@@ -2,9 +2,13 @@
 
 Usage:
     fleet status          Show all VMs, sessions, agent states
+    fleet dashboard       Meta-project tracking view
     fleet add-task        Queue a new task
     fleet start           Begin autonomous director loop
     fleet run-once        Execute one director cycle
+    fleet watch           Live snapshot of a remote session
+    fleet snapshot        Point-in-time capture of all sessions
+    fleet adopt           Bring existing sessions under management
     fleet report          Generate summary report
     fleet auth <vm>       Propagate auth to a VM
     fleet observe <vm>    Observe agent sessions on a VM
@@ -31,9 +35,11 @@ __all__ = ["create_fleet_cli"]
 # Default paths
 DEFAULT_QUEUE_PATH = Path.home() / ".amplihack" / "fleet" / "task_queue.json"
 DEFAULT_LOG_DIR = Path.home() / ".amplihack" / "fleet" / "logs"
+DEFAULT_DASHBOARD_PATH = Path.home() / ".amplihack" / "fleet" / "dashboard.json"
+DEFAULT_GRAPH_PATH = Path.home() / ".amplihack" / "fleet" / "graph.json"
 AZLIN_PATH = "/home/azureuser/src/azlin/.venv/bin/azlin"
 
-# Existing VMs that should not be managed
+# Existing VMs that should not be managed (configurable via --exclude)
 EXISTING_VMS = {"devy", "devo", "devi", "deva", "amplihack", "seldon-vm"}
 
 
@@ -51,7 +57,11 @@ def _get_director(queue_path: Path = DEFAULT_QUEUE_PATH) -> FleetDirector:
 
 @click.group("fleet")
 def fleet_cli():
-    """Fleet orchestration for distributed coding agents."""
+    """Fleet orchestration for distributed coding agents.
+
+    Manage coding agents across multiple Azure VMs with
+    priority-based task routing and autonomous monitoring.
+    """
     pass
 
 
@@ -62,6 +72,17 @@ def status():
     state.exclude_vms(*EXISTING_VMS)
     state.refresh()
     click.echo(state.summary())
+
+
+@fleet_cli.command("dashboard")
+def dashboard():
+    """Show meta-project tracking dashboard."""
+    from amplihack.fleet.fleet_dashboard import FleetDashboard
+
+    dash = FleetDashboard(persist_path=DEFAULT_DASHBOARD_PATH)
+    queue = TaskQueue(persist_path=DEFAULT_QUEUE_PATH)
+    dash.update_from_queue(queue)
+    click.echo(dash.summary())
 
 
 @fleet_cli.command("add-task")
@@ -86,7 +107,8 @@ def status():
     help="Agent mode",
 )
 @click.option("--max-turns", default=20, help="Max agent turns")
-def add_task(prompt, repo, priority, agent, mode, max_turns):
+@click.option("--protected", is_flag=True, help="Deep work mode — never preempt")
+def add_task(prompt, repo, priority, agent, mode, max_turns, protected):
     """Add a task to the fleet queue."""
     queue = TaskQueue(persist_path=DEFAULT_QUEUE_PATH)
     priority_map = {
@@ -117,10 +139,15 @@ def show_queue():
 @fleet_cli.command("start")
 @click.option("--max-cycles", default=0, help="Max director cycles (0 = unlimited)")
 @click.option("--interval", default=60, help="Poll interval in seconds")
-def start(max_cycles, interval):
+@click.option("--adopt", is_flag=True, help="Adopt existing sessions at startup")
+def start(max_cycles, interval, adopt):
     """Start autonomous fleet director loop."""
     director = _get_director()
     director.poll_interval_seconds = interval
+
+    if adopt:
+        _adopt_all_sessions(director)
+
     click.echo("Starting Fleet Director (Ctrl+C to stop)...")
     click.echo(f"Poll interval: {interval}s, Max cycles: {max_cycles or 'unlimited'}")
     click.echo(f"Excluded VMs: {', '.join(EXISTING_VMS)}")
@@ -136,6 +163,103 @@ def run_once():
     click.echo(f"Cycle completed: {len(actions)} actions taken")
     for action in actions:
         click.echo(f"  {action.action_type.value}: {action.reason}")
+
+
+@fleet_cli.command("watch")
+@click.argument("vm_name")
+@click.argument("session_name")
+@click.option("--lines", default=30, help="Number of lines to capture")
+def watch(vm_name, session_name, lines):
+    """Live snapshot of a remote tmux session.
+
+    Shows what the agent is currently displaying.
+    """
+    import subprocess
+
+    cmd = f"tmux capture-pane -t {session_name} -p -S -{lines}"
+    try:
+        result = subprocess.run(
+            [AZLIN_PATH, "connect", vm_name, "--no-tmux", "--", cmd],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        if result.returncode == 0:
+            click.echo(f"--- {vm_name}/{session_name} ---")
+            click.echo(result.stdout)
+            click.echo(f"--- end ---")
+        else:
+            click.echo(f"Failed to capture: {result.stderr[:200]}")
+    except subprocess.TimeoutExpired:
+        click.echo("Timeout connecting to VM")
+
+
+@fleet_cli.command("snapshot")
+def snapshot():
+    """Point-in-time capture of all managed sessions."""
+    state = FleetState(azlin_path=AZLIN_PATH)
+    state.exclude_vms(*EXISTING_VMS)
+    state.refresh()
+
+    observer = FleetObserver(azlin_path=AZLIN_PATH)
+
+    click.echo(f"Fleet Snapshot ({len(state.managed_vms())} managed VMs)")
+    click.echo("=" * 60)
+
+    for vm in state.managed_vms():
+        if not vm.is_running:
+            continue
+        click.echo(f"\n[{vm.name}] ({vm.region})")
+        if not vm.tmux_sessions:
+            click.echo("  No sessions")
+            continue
+
+        for sess in vm.tmux_sessions:
+            obs = observer.observe_session(vm.name, sess.session_name)
+            click.echo(f"  [{obs.status.value}] {sess.session_name}")
+            if obs.last_output_lines:
+                for line in obs.last_output_lines[-3:]:
+                    click.echo(f"    | {line[:100]}")
+
+
+@fleet_cli.command("adopt")
+@click.argument("vm_name")
+@click.option("--sessions", multiple=True, help="Specific sessions to adopt (default: all)")
+def adopt(vm_name, sessions):
+    """Bring existing tmux sessions under fleet management.
+
+    Discovers sessions on a VM, infers what they're working on,
+    and begins tracking them without disruption.
+    """
+    from amplihack.fleet.fleet_adopt import SessionAdopter
+
+    adopter = SessionAdopter(azlin_path=AZLIN_PATH)
+    queue = TaskQueue(persist_path=DEFAULT_QUEUE_PATH)
+
+    click.echo(f"Discovering sessions on {vm_name}...")
+    discovered = adopter.discover_sessions(vm_name)
+
+    if not discovered:
+        click.echo("No sessions found.")
+        return
+
+    click.echo(f"Found {len(discovered)} sessions:")
+    for s in discovered:
+        click.echo(f"  {s.session_name}")
+        if s.inferred_repo:
+            click.echo(f"    Repo: {s.inferred_repo}")
+        if s.inferred_branch:
+            click.echo(f"    Branch: {s.inferred_branch}")
+        if s.agent_type:
+            click.echo(f"    Agent: {s.agent_type}")
+
+    # Adopt selected sessions
+    session_filter = list(sessions) if sessions else None
+    adopted = adopter.adopt_sessions(vm_name, queue, sessions=session_filter)
+
+    click.echo(f"\nAdopted {len(adopted)} sessions:")
+    for s in adopted:
+        click.echo(f"  {s.session_name} -> task {s.task_id}")
 
 
 @fleet_cli.command("report")
@@ -160,13 +284,12 @@ def propagate_auth(vm_name, services):
     results = auth.propagate_all(vm_name, services=list(services))
 
     for r in results:
-        status = "OK" if r.success else "FAIL"
+        status_str = "OK" if r.success else "FAIL"
         files = ", ".join(r.files_copied) if r.files_copied else "none"
-        click.echo(f"  [{status}] {r.service}: {files} ({r.duration_seconds:.1f}s)")
+        click.echo(f"  [{status_str}] {r.service}: {files} ({r.duration_seconds:.1f}s)")
         if r.error:
             click.echo(f"         Error: {r.error}")
 
-    # Verify
     click.echo("\nVerifying auth...")
     verify = auth.verify_auth(vm_name)
     for service, works in verify.items():
@@ -199,9 +322,37 @@ def observe(vm_name):
         if obs.matched_pattern:
             click.echo(f"  Pattern: {obs.matched_pattern}")
         if obs.last_output_lines:
-            click.echo(f"  Last output:")
+            click.echo("  Last output:")
             for line in obs.last_output_lines[-5:]:
                 click.echo(f"    | {line[:120]}")
+
+
+@fleet_cli.command("graph")
+def show_graph():
+    """Show fleet knowledge graph summary."""
+    from amplihack.fleet.fleet_graph import FleetGraph
+
+    graph = FleetGraph(persist_path=DEFAULT_GRAPH_PATH)
+    click.echo(graph.summary())
+
+
+def _adopt_all_sessions(director: FleetDirector) -> None:
+    """Adopt existing sessions on all managed VMs."""
+    from amplihack.fleet.fleet_adopt import SessionAdopter
+
+    adopter = SessionAdopter(azlin_path=AZLIN_PATH)
+    state = director._fleet_state
+    state.refresh()
+
+    total = 0
+    for vm in state.managed_vms():
+        if not vm.is_running:
+            continue
+        adopted = adopter.adopt_sessions(vm.name, director.task_queue)
+        total += len(adopted)
+
+    if total:
+        click.echo(f"Adopted {total} existing sessions")
 
 
 def create_fleet_cli() -> click.Group:

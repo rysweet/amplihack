@@ -24,11 +24,15 @@ Public API (the "studs"):
     RepoSetup: Automated workspace preparation
 """
 
+from amplihack.fleet.fleet_adopt import SessionAdopter
 from amplihack.fleet.fleet_auth import AuthPropagator, GitHubIdentity
 from amplihack.fleet.fleet_dashboard import FleetDashboard, ProjectInfo
 from amplihack.fleet.fleet_director import FleetDirector
+from amplihack.fleet.fleet_graph import FleetGraph
 from amplihack.fleet.fleet_health import HealthChecker, HealthReport
+from amplihack.fleet.fleet_logs import LogReader, SessionSummary
 from amplihack.fleet.fleet_observer import FleetObserver
+from amplihack.fleet.fleet_reasoners import ReasonerChain
 from amplihack.fleet.fleet_results import ResultCollector, TaskResult
 from amplihack.fleet.fleet_setup import RepoSetup
 from amplihack.fleet.fleet_state import FleetState, VMInfo, TmuxSessionInfo
