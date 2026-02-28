@@ -4,23 +4,26 @@ This document provides detailed installation instructions for all required tools
 
 ## Required Tools
 
-The AmplihHack framework requires the following tools to be installed:
+The amplihack framework requires the following tools. Each entry explains **what** the tool does and **why** amplihack needs it:
 
-1. **Node.js** (v18 or higher) - Required for Claude CLI and claude-trace
-2. **npm** (comes with Node.js) - Package manager for Node.js
-3. **uv** - Fast Python package installer and resolver
-4. **git** - Version control system
-5. **claude** - Claude Code CLI (auto-installed if missing). When installed via npm, amplihack automatically updates your shell profile (`~/.bashrc` or `~/.zshrc`) so the `claude` binary is in your PATH for future sessions.
+| Tool        | Min Version    | What It Does                  | Why amplihack Needs It                                |
+| ----------- | -------------- | ----------------------------- | ----------------------------------------------------- |
+| **Node.js** | v18+           | JavaScript runtime            | Runs Claude CLI and claude-trace (debugging/tracing)  |
+| **npm**     | (with Node.js) | Node.js package manager       | Installs Claude CLI and claude-trace packages         |
+| **uv**      | latest         | Fast Python package installer | Installs amplihack itself and its Python dependencies |
+| **git**     | 2.0+           | Version control               | Branch management, PRs, and workflow automation       |
+| **claude**  | latest         | Claude Code CLI               | Core AI coding assistant that amplihack extends       |
 
 ## Quick Check
 
-You can check if all prerequisites are installed by running:
+Before installing amplihack, verify your prerequisites with this script:
 
 ```bash
-amplihack
+# Copy-paste this into your terminal — no installation required
+node --version && npm --version && uv --version && git --version && echo "All prerequisites OK"
 ```
 
-If any tools are missing, the framework will display detailed installation instructions.
+After installing amplihack, running `amplihack` will also check for missing tools and display installation instructions.
 
 ## Platform-Specific Installation
 

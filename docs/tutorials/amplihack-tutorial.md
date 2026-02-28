@@ -10,17 +10,20 @@ This tutorial provides a complete learning path through amplihack's capabilities
 
 ## How to Start the Tutorial
 
-**Claude Code / Amplifier**:
-
-```bash
-# Invoke the guide agent
-Task(subagent_type="guide", prompt="Start tutorial")
-```
-
-**In Natural Conversation**:
+**The simplest way** — just type this in Claude Code:
 
 ```
 "I want to learn amplihack - take me through the tutorial"
+```
+
+Claude will automatically invoke the guide agent and begin the tutorial.
+
+**What's a "guide agent"?** Amplihack includes specialized AI agents for different tasks (building, reviewing, testing, etc.). The **guide agent** is one that's designed specifically for interactive teaching. You don't need to understand agents to use one — Claude handles the delegation.
+
+**For advanced users** — you can invoke the guide agent directly using Claude Code's `Task()` tool (a built-in function that delegates work to specialized agents):
+
+```bash
+Task(subagent_type="guide", prompt="Start tutorial")
 ```
 
 The guide agent will:
