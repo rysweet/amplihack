@@ -22,26 +22,26 @@ _ROUTING_PROMPT = """\
 <system-reminder source="auto-intent-router">
 Before responding, classify this prompt into one of these categories and act accordingly:
 
-  DEV (build, fix, write, test, verify, deploy, document, refactor, configure, add feature)
+  DEV (build, fix, write, test, verify, deploy, document, refactor, configure, review code, add feature)
     → Invoke Skill(skill="dev-orchestrator"). Do not answer inline.
 
-  INVESTIGATE (analyze, understand, explore, research, audit, trace, map out)
-    → Invoke Skill(skill="dev-orchestrator"). It will use INVESTIGATION_WORKFLOW.
+  INVESTIGATE (analyze, understand, explore, research, audit, trace, map out, what's broken, what's failing)
+    → Invoke Skill(skill="dev-orchestrator"). Do not answer inline. It will use INVESTIGATION_WORKFLOW.
 
-  HYBRID (investigate/understand THEN implement/fix/build — both in one prompt)
-    → Invoke Skill(skill="dev-orchestrator"). It will create parallel workstreams.
+  HYBRID (investigate/understand THEN implement/fix/build, or run command THEN fix — two phases in one prompt)
+    → Invoke Skill(skill="dev-orchestrator"). Do not answer inline. It will create parallel workstreams.
 
   Q&A (what is, how does, explain, describe, compare, define — knowledge questions)
     → Answer directly and concisely. No workflow invocation needed.
 
-  OPS (run git, show disk, delete temp files, restart service — admin/shell tasks)
+  OPS (run git, show disk, run tests, run linter, check logs, delete temp files, restart service — admin/shell tasks)
     → Execute directly. No workflow invocation needed.
 
-  SKIP (prompt starts with / — existing slash command; or bypass phrases like
-        "just answer", "skip workflow", "skip orchestration", "without workflow")
-    → Respect the existing command or bypass. Do not override.
+  SKIP (bypass phrases: "just answer", "skip workflow", "skip orchestration", "without workflow")
+    → Respect the bypass. Do not invoke any workflow.
 
-Key: "make sure it works" = DEV (verification). "write docs" = DEV (documentation).
+Key: "make sure it works" = DEV. "write docs" = DEV. "review this PR" = DEV.
+     "run tests" = OPS. "run tests and fix failures" = HYBRID. "what's broken?" = INVESTIGATE.
      "tests are failing" without a clear action request = ask if they want you to investigate/fix.
      "investigate X then fix Y" = HYBRID. "what is OAuth?" = Q&A.
 </system-reminder>"""
