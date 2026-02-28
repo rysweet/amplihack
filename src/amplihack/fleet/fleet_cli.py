@@ -327,6 +327,89 @@ def observe(vm_name):
                 click.echo(f"    | {line[:120]}")
 
 
+@fleet_cli.command("dry-run")
+@click.option("--vm", multiple=True, help="Specific VMs to analyze (default: all managed)")
+@click.option("--priorities", default="", help="Project priorities to guide decisions")
+@click.option("--backend", type=click.Choice(["anthropic", "copilot"]), default="anthropic")
+def dry_run(vm, priorities, backend):
+    """Show what the director would do for each session WITHOUT acting.
+
+    Reads each session's tmux output and JSONL transcript, then uses
+    the LLM to reason about what action to take. Displays the full
+    reasoning chain for your review.
+    """
+    from amplihack.fleet.fleet_session_reasoner import (
+        SessionReasoner,
+        AnthropicBackend,
+        CopilotBackend,
+    )
+
+    # Select backend
+    if backend == "copilot":
+        try:
+            llm_backend = CopilotBackend()
+        except Exception:
+            click.echo("Copilot backend not available, falling back to Anthropic")
+            llm_backend = AnthropicBackend()
+    else:
+        llm_backend = AnthropicBackend()
+
+    reasoner = SessionReasoner(
+        azlin_path=AZLIN_PATH,
+        backend=llm_backend,
+        dry_run=True,
+    )
+
+    # Discover sessions
+    state = FleetState(azlin_path=AZLIN_PATH)
+    state.exclude_vms(*EXISTING_VMS)
+    state.refresh()
+
+    target_vms = list(vm) if vm else [v.name for v in state.managed_vms() if v.is_running]
+
+    if not target_vms:
+        click.echo("No managed VMs found. Use 'fleet adopt' to bring VMs under management.")
+        return
+
+    # Also check user's existing VMs if specifically requested
+    sessions_to_check = []
+    for v in state.vms:
+        if v.name in target_vms:
+            for sess in v.tmux_sessions:
+                sessions_to_check.append({
+                    "vm_name": v.name,
+                    "session_name": sess.session_name,
+                    "task_prompt": "",
+                })
+
+    if not sessions_to_check:
+        # Try direct tmux listing on the specified VMs
+        for vm_name in target_vms:
+            click.echo(f"Scanning {vm_name} for sessions...")
+            tmux_sessions = state._poll_tmux_sessions(vm_name)
+            for sess in tmux_sessions:
+                sessions_to_check.append({
+                    "vm_name": vm_name,
+                    "session_name": sess.session_name,
+                    "task_prompt": "",
+                })
+
+    if not sessions_to_check:
+        click.echo("No sessions found on target VMs.")
+        return
+
+    click.echo(f"\nFleet Director Dry Run — {len(sessions_to_check)} sessions")
+    click.echo(f"Backend: {backend}")
+    click.echo(f"Priorities: {priorities or '(none specified)'}")
+    click.echo("")
+
+    # Reason about each session
+    reasoner.reason_about_all(sessions_to_check, project_priorities=priorities)
+
+    # Show summary
+    click.echo("\n" + reasoner.dry_run_report())
+
+
 @fleet_cli.command("graph")
 def show_graph():
     """Show fleet knowledge graph summary."""
