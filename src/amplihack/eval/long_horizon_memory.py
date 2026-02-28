@@ -229,13 +229,12 @@ def _deterministic_grade(
             )
             ratio = min(1.0, ratio + paraphrase_hits * 0.25)
 
-        # Check incorrect patterns AFTER keyword matching. Only zero the score
-        # when the correct keywords/paraphrases are NOT present. When the answer
-        # contains BOTH the correct value and an incorrect pattern (e.g.
-        # "budget increased from $1.2M to $1.4M"), the answer is providing
-        # historical context, not stating the wrong value.
-        has_correct = matched > 0 or paraphrase_hits > 0
-        if rubric.incorrect_patterns and not has_correct:
+        # Check incorrect patterns AFTER keyword matching. Only skip incorrect
+        # check when ALL required keywords match (full correct answer present).
+        # Partial matches (some keywords) still get checked for incorrect patterns.
+        all_keywords_matched = rubric.required_keywords and matched == len(rubric.required_keywords)
+        has_full_correct = all_keywords_matched or paraphrase_hits > 0
+        if rubric.incorrect_patterns and not has_full_correct:
             found_incorrect = any(
                 re.search(re.escape(pat.lower()), answer_lower) for pat in rubric.incorrect_patterns
             )
