@@ -1,5 +1,5 @@
 ---
-name: amplihack:guide
+name: guide
 version: 1.0.0
 description: Interactive guide to amplihack features and workflows
 triggers:

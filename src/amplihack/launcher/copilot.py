@@ -528,6 +528,79 @@ def stage_agents(source_agents: Path, copilot_home: Path) -> int:
     return copied
 
 
+def register_copilot_plugin(source_commands: Path, copilot_home: Path) -> bool:
+    """Register amplihack as a Copilot CLI local plugin and stage command files.
+
+    Copilot CLI only discovers commands from registered plugins (not from
+    ~/.copilot/commands/ directly). This function:
+    1. Copies command .md files to ~/.copilot/installed-plugins/amplihack@local/commands/
+    2. Copies plugin.json to ~/.copilot/installed-plugins/amplihack@local/
+    3. Registers the plugin in ~/.copilot/config.json under installed_plugins
+
+    Args:
+        source_commands: Path to amplihack commands source directory
+            (e.g. package_dir/.claude/commands/amplihack/)
+        copilot_home: Path to copilot home directory (e.g. ~/.copilot/)
+
+    Returns:
+        True if registration succeeded, False otherwise
+    """
+    if not source_commands.exists():
+        return False
+
+    plugin_cache = copilot_home / "installed-plugins" / "amplihack@local"
+    plugin_commands_dest = plugin_cache / "commands"
+    plugin_commands_dest.mkdir(parents=True, exist_ok=True)
+
+    # Copy plugin.json to plugin root
+    plugin_json_src = source_commands / "plugin.json"
+    if plugin_json_src.exists():
+        shutil.copy2(plugin_json_src, plugin_cache / "plugin.json")
+
+    # Copy all command .md files (skip plugin.json)
+    copied = 0
+    for source_file in source_commands.glob("*.md"):
+        shutil.copy2(source_file, plugin_commands_dest / source_file.name)
+        copied += 1
+
+    if copied == 0:
+        return False
+
+    # Register plugin in ~/.copilot/config.json
+    config_file = copilot_home / "config.json"
+    try:
+        if config_file.exists():
+            config = json.loads(config_file.read_text())
+        else:
+            config = {}
+
+        if "installed_plugins" not in config:
+            config["installed_plugins"] = []
+
+        # Remove existing amplihack entry if present (idempotent update)
+        config["installed_plugins"] = [
+            p for p in config["installed_plugins"] if p.get("name") != "amplihack"
+        ]
+
+        config["installed_plugins"].append(
+            {
+                "name": "amplihack",
+                "marketplace": "local",
+                "version": "1.0.0",
+                "enabled": True,
+                "cache_path": str(plugin_cache),
+                "source": "local",
+            }
+        )
+
+        copilot_home.mkdir(parents=True, exist_ok=True)
+        config_file.write_text(json.dumps(config, indent=2) + "\n")
+        return True
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"Warning: Could not update Copilot CLI config.json: {e}")
+        return False
+
+
 def stage_directory(source_dir: Path, copilot_home: Path, dest_name: str) -> int:
     """Stage a directory of .md files to ~/.copilot/<dest_name>/amplihack/.
 
@@ -881,10 +954,14 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
         if n > 0:
             print(f"✓ Staged {n} context files to ~/.copilot/context/")
 
-        # Commands (flattened from amplihack/ subdir)
-        n = stage_directory(claude_dir / "commands", copilot_home, "commands")
-        if n > 0:
-            print(f"✓ Staged {n} commands to ~/.copilot/commands/")
+        # Commands — register as a proper Copilot CLI plugin so commands are discoverable.
+        # ~/.copilot/commands/ is not a supported location; Copilot only loads from
+        # registered plugins (installed_plugins in config.json) or Skills.
+        # (Fix for issue #2686)
+        if register_copilot_plugin(claude_dir / "commands" / "amplihack", copilot_home):
+            print(
+                "✓ Registered amplihack as Copilot CLI plugin (~/.copilot/installed-plugins/amplihack@local/)"
+            )
 
         # Hooks (bash wrappers + amplihack-hooks.json to .github/hooks/)
         n = stage_hooks(package_dir, user_dir)
