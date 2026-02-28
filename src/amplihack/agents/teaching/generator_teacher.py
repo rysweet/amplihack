@@ -21,6 +21,7 @@ logic, no external dependencies beyond the standard library.
 from __future__ import annotations
 
 import json
+import os
 import textwrap
 from dataclasses import dataclass, field
 from typing import Any
@@ -2348,7 +2349,7 @@ class GeneratorTeacher:
     """
 
     def __init__(self, model: str = "") -> None:
-        self.model = model or "claude-sonnet-4-5-20250929"
+        self.model = model or os.environ.get("EVAL_MODEL", "claude-opus-4-6")
         self.curriculum = self._build_curriculum()
         self.progress: dict[str, LessonResult] = {}
 

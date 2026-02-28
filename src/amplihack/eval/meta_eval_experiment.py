@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -164,8 +165,12 @@ class ExperimentConfig:
 
     teaching_turns: int = 6
     quiz_questions: int = 5
-    model: str = "claude-sonnet-4-5-20250929"
+    model: str = ""
     output_dir: str = "./meta_eval_results"
+
+    def __post_init__(self) -> None:
+        if not self.model:
+            self.model = os.environ.get("EVAL_MODEL", "claude-opus-4-6")
 
 
 @dataclass
@@ -447,8 +452,8 @@ def main():
     )
     parser.add_argument(
         "--model",
-        default="claude-sonnet-4-5-20250929",
-        help="LLM model to use",
+        default="",
+        help="LLM model to use (default from env EVAL_MODEL or claude-opus-4-6)",
     )
     parser.add_argument(
         "--output-dir",

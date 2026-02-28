@@ -82,7 +82,7 @@ def learning_phase(news_articles: list[dict], agent_name: str, sdk: str = "mini"
     storage_path.mkdir(parents=True, exist_ok=True)
 
     # Get model from env or use default
-    model = os.environ.get("EVAL_MODEL", "anthropic/claude-sonnet-4-5-20250929")
+    model = os.environ.get("EVAL_MODEL", "claude-opus-4-6")
 
     # Validate SDK agent can be created (verifies SDK adapter works)
     sdk_agent_created = False
@@ -147,7 +147,7 @@ def testing_phase(quiz_questions: list[dict], agent_name: str, sdk: str = "mini"
     storage_path.mkdir(parents=True, exist_ok=True)
 
     # Get model from env or use default
-    model = os.environ.get("EVAL_MODEL", "anthropic/claude-sonnet-4-5-20250929")
+    model = os.environ.get("EVAL_MODEL", "claude-opus-4-6")
 
     agent = LearningAgent(
         agent_name=agent_name,

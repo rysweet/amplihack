@@ -42,7 +42,7 @@ _TEST_API_KEY = "test-key-for-unit-tests"  # pragma: allowlist secret
 def _make_agent(
     name: str = "test-agent",
     instructions: str = "",
-    model: str = "gpt-4o-test",
+    model: str = "claude-opus-4-6-test",
     enable_memory: bool = False,
     **kwargs: Any,
 ) -> MicrosoftGoalSeekingAgent:
@@ -91,8 +91,8 @@ class TestInitialization:
         assert agent.name == "test-agent"
 
     def test_creates_with_model(self):
-        agent = _make_agent(model="gpt-3.5-turbo")
-        assert agent.model == "gpt-3.5-turbo"
+        agent = _make_agent(model="claude-opus-4-6")
+        assert agent.model == "claude-opus-4-6"
 
     def test_sdk_type_is_microsoft(self):
         agent = _make_agent()
@@ -392,7 +392,7 @@ class TestFactoryIntegration:
 
         with patch.dict(os.environ, {"OPENAI_API_KEY": _TEST_API_KEY}):
             agent = create_agent(name="factory-model", sdk="microsoft", enable_memory=False)
-            assert agent.model == "gpt-4o"
+            assert agent.model == "claude-opus-4-6"
 
 
 # ===========================================================================

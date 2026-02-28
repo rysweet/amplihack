@@ -19,7 +19,7 @@ class MeetingSynthesizerAgent(DomainAgent):
     def __init__(
         self,
         agent_name: str = "meeting_synthesizer_agent",
-        model: str = "gpt-4o-mini",
+        model: str = "",
         skill_injector: Any | None = None,
     ):
         super().__init__(

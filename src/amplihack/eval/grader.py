@@ -220,7 +220,7 @@ def grade_answer(
         raise OSError("ANTHROPIC_API_KEY environment variable is required for grading")
     client = anthropic.Anthropic(api_key=api_key)
 
-    grader_model = os.environ.get("GRADER_MODEL", "claude-sonnet-4-5-20250929")
+    grader_model = os.environ.get("GRADER_MODEL", "claude-opus-4-6")
     prompt = _build_grading_prompt(question, expected, actual, level)
 
     # Clamp num_votes to valid range
