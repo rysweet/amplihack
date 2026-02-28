@@ -1,384 +1,68 @@
 #!/usr/bin/env python3
 """
-dev_intent_router.py — Smart prompt routing for amplihack development workflows.
+dev_intent_router.py — Injects intent-routing guidance into every prompt.
 
-Six routing outcomes, matching amplihack's workflow types:
+Instead of regex-based classification (which required 366 lines and still
+found 5+ bugs per audit round), this module injects a short classification
+prompt that lets the LLM itself classify intent with full natural language
+understanding.
 
-  DEV         → dev-orchestrator + DEFAULT_WORKFLOW (build, fix, write, verify, deploy)
-  INVESTIGATE → dev-orchestrator + INVESTIGATION_WORKFLOW (analyze, explore, understand)
-  HYBRID      → dev-orchestrator (investigate first, then implement)
-  Q&A         → direct concise answer (knowledge questions)
-  OPS         → direct execution (shell commands, admin)
-  SKIP        → no injection (existing slash commands, greetings, bypasses)
+The LLM already processes every message — making it classify intent is
+essentially free (happens during existing thinking) and infinitely more
+accurate than any regex pattern.
 
-Design principles:
-  - Fast: <1ms (pure regex + keyword matching, no LLM)
-  - Conservative on SKIP: anything that might be work gets routed somewhere
-  - Human injection text: brief, helpful, not robotic
-  - Disable: export AMPLIHACK_AUTO_DEV=false (also: 0, no, off)
+Disable: export AMPLIHACK_AUTO_DEV=false (also: 0, no, off)
 """
 
 import os
-import re
-from dataclasses import dataclass
 
+# The classification prompt injected as additionalContext.
+# Claude reads this BEFORE processing the user's message.
+_ROUTING_PROMPT = """\
+<system-reminder source="auto-intent-router">
+Before responding, classify this prompt into one of these categories and act accordingly:
 
-@dataclass
-class IntentResult:
-    route_type: str    # "dev" | "investigate" | "hybrid" | "qa" | "ops" | "skip"
-    confidence: float  # 0.0–1.0
-    tier: str          # "required" | "recommended" | "suggested" | "skip"
-    reason: str
+  DEV (build, fix, write, test, verify, deploy, document, refactor, configure, add feature)
+    → Invoke Skill(skill="dev-orchestrator"). Do not answer inline.
 
-    @property
-    def should_route(self) -> bool:
-        """True for any route that produces an injection."""
-        return self.route_type != "skip"
+  INVESTIGATE (analyze, understand, explore, research, audit, trace, map out)
+    → Invoke Skill(skill="dev-orchestrator"). It will use INVESTIGATION_WORKFLOW.
 
-# Backwards-compatible alias
-DevIntentResult = IntentResult
+  HYBRID (investigate/understand THEN implement/fix/build — both in one prompt)
+    → Invoke Skill(skill="dev-orchestrator"). It will create parallel workstreams.
 
+  Q&A (what is, how does, explain, describe, compare, define — knowledge questions)
+    → Answer directly and concisely. No workflow invocation needed.
 
-# ── Hard bypasses ─────────────────────────────────────────────────────────────
+  OPS (run git, show disk, delete temp files, restart service — admin/shell tasks)
+    → Execute directly. No workflow invocation needed.
 
-_SKIP_PREFIXES = ('/', 'task(', 'skill(')
+  SKIP (prompt starts with / — existing slash command; or "just answer"/"skip workflow" bypass)
+    → Respect the existing command or bypass. Do not override.
 
-_BYPASS_RE = re.compile(
-    r'\b(?:just\s+(?:answer|explain|tell)|only\s+(?:explain|tell|describe)|'
-    r'briefly\s+(?:answer\b)?|without\s+(?:orchestration|workflow|/dev|dev\b)|'
-    r'quick(?:ly)?\s+(?:answer|tell|explain|show)|'
-    r'skip\s+(?:orchestration|workflow)|'
-    r'directly\s+answer|no\s+workflow|'
-    r'don\'t\s+use\s+/dev)\b',
-    re.I,
-)
-
-
-# ── Greetings ─────────────────────────────────────────────────────────────────
-
-_GREETING_RE = re.compile(
-    r'^(?:hi\b|hello\b|hey\b|thanks\b|thank\s+you|ok\b|okay\b|'
-    r'yes\b|no\b|sure\b|sounds\s+good|great\b|perfect\b|'
-    r'awesome\b|cool\b|nice\b|got\s+it|understood)\b',
-    re.I,
-)
-
-
-# ── Operations (shell/admin) ─────────────────────────────────────────────────
-
-_OPS_RE = re.compile(
-    r'(?:'
-    r'git\s+\w+'
-    r'|(?<![/A-Z])\bcd\b'
-    r'|\bls\b|\bpwd\b|\brm\b|\bcp\b|\bmv\b|\bcat\b|\bgrep\b'
-    r'|disk\s+usage|\bdf\b|\bdu\b|\bps\b|\bkill\b'
-    r'|restart\s+\w+'
-    r'|run\s+(?:the\s+)?(?:test|tests|linter|lint|migration|migrations|script|scripts|checks?|build)\b'
-    r'|clean\s+up\s+(?:old|temp|log)'
-    r'|delete\s+(?:old|temp|log)\s+files?'
-    r'|show\s+me\s+(?:the\s+)?(?:files?|directory|output|log\s+files?)'
-    r')',
-    re.I,
-)
-
-
-# ── Q&A / knowledge patterns ─────────────────────────────────────────────────
-
-_KNOWLEDGE_RE = re.compile(
-    r'\b(?:'
-    r'what\s+is\b|what\s+are\b|what\s+does\b|what\s+do\b|what\s+did\b|'
-    r"what's\s+\w+\b|what\s+would\b|what\s+should\b|what\s+can\b|"
-    r'where\s+(?:is|are|does|do|can|should)\s|'
-    r'explain\b|describe\b|'
-    r'tell\s+me\s+(?:about|what)|'
-    r'how\s+(?:does|do|is|are)\s|'
-    r'why\s+(?:does|do|is|are|would|should)\s|'
-    r'when\s+(?:should|would|do)\s|'
-    r'difference\s+between|compare\b|define\b'
-    r')\b',
-    re.I,
-)
-
-
-# ── Development action verbs ─────────────────────────────────────────────────
-# Build, fix, write, verify, deploy — things that CHANGE the codebase
-
-_DEV_RE = re.compile(
-    r'\b(?:implement|build|create|fix|add|develop|make|generate|configure|'
-    r'optimize|improve|patch|repair|resolve|handle|update|upgrade|refactor|'
-    r'migrate|deploy|integrate|scaffold|debug|verify|'
-    r'structure|architect|design|organize|arrange|'
-    r'set\s+up|clean\s+up|wire\s+up|hook\s+up|spin\s+up|'
-    r'port\s+(?:to|from)|extract|split|merge|combine|'
-    r'profile|monitor|benchmark|secure|harden|automate|'
-    r'document|write|'
-    r'redesign|rebuild|rewrite|rework|rearchitect)\b',
-    re.I,
-)
-
-
-# ── Investigation verbs ──────────────────────────────────────────────────────
-# Understand, explore, analyze — things that READ and LEARN about the codebase
-
-_INVESTIGATE_RE = re.compile(
-    r'\b(?:investigate|analyze|explore|research|understand|'
-    r'audit|study|examine|'
-    r'map\s+(?:out|the)|trace|'
-    r'look\s+(?:at|into)|dig\s+into|'
-    r'figure\s+out|find\s+out)\b',
-    re.I,
-)
-
-
-# ── Test-verb detection ──────────────────────────────────────────────────────
-
-_TEST_NOUN_FOLLOW = frozenset({
-    'suite', 'suites', 'case', 'cases', 'coverage', 'result', 'results',
-    'run', 'runner', 'runners', 'data', 'bed', 'driven', 'environment',
-    'setup', 'teardown', 'fixture', 'fixtures', 'harness', 'plan', 'plans',
-    'report', 'reports', 'output', 'outputs', 'execution',
-    # Auxiliary/copula verbs that follow 'tests' when it's a noun-subject
-    'are', 'is', 'were', 'was', 'fail', 'fails', 'failed',
-    'pass', 'passed', 'passing', 'have', 'had', 'do', 'did',
-    'will', 'would', 'can', 'could', 'should', 'might',
-    'broke', 'break', 'ran', 'take', 'took',
-})
-
-_TEST_NONVERB_BEFORE = re.compile(
-    r'\b(?:a|an|the|this|that|these|those|my|your|our|their|its|'
-    r'quick|simple|basic|initial|final|unit|integration|end[\s-]to[\s-]end|'
-    r'just|only|another|one|some|any)'
-    r'(?:\s+(?:i|you|we|he|she|they|me|us|him|her|them|it))?\s+$',
-    re.I,
-)
-
-
-_WH_QUESTION_RE = re.compile(
-    r'^\s*(?:what|when|where|which|who|how)\b', re.I,
-)
-
-
-def _is_test_imperative(text_lower: str) -> bool:
-    """True when 'test' is an imperative verb (not a noun or modal context)."""
-    for m in re.finditer(r'\btest[s]?\b', text_lower):
-        pos = m.start()
-        before = text_lower[:pos]
-        after = text_lower[pos + len(m.group()):].lstrip()
-        next_word_m = re.match(r'(\w+)', after)
-        if not next_word_m:
-            continue
-        if next_word_m.group(1) in _TEST_NOUN_FOLLOW:
-            continue
-        if _TEST_NONVERB_BEFORE.search(before):
-            continue
-        # "what should I test next?" — WH-question context, not imperative
-        if _WH_QUESTION_RE.match(text_lower):
-            continue
-        return True
-    return False
-
-
-# ── Technology context ────────────────────────────────────────────────────────
-
-_TECH_WORDS = frozenset({
-    'api', 'endpoint', 'service', 'database', 'schema', 'oauth', 'jwt',
-    'auth', 'authentication', 'middleware', 'component', 'module', 'function',
-    'class', 'pipeline', 'dockerfile', 'migration', 'query', 'cache', 'caching',
-    'feature', 'bug', 'issue', 'pr', 'test', 'spec', 'webhook', 'ui',
-    'microservice', 'microservices', 'ci', 'cicd', 'workflow', 'hook',
-    'plugin', 'backend', 'frontend', 'fullstack', 'cli', 'sdk', 'library',
-    'package', 'lambda', 'serverless', 'container', 'kubernetes', 'docker',
-    'terraform', 'redis', 'postgres', 'mysql', 'mongodb', 'elasticsearch',
-    'graphql', 'grpc', 'websocket', 'cron', 'queue', 'worker',
-    'security', 'vulnerability', 'vulnerabilities', 'injection', 'xss', 'csrf',
-})
-
-
-# ── Review verb (can be either investigate or dev depending on context) ──────
-
-_REVIEW_RE = re.compile(r'\breview\b', re.I)
-
-_ARTICLE_BEFORE_RE = re.compile(r'\b(?:the|a|an|this|that|my|our|your|its)\s+$', re.I)
-
-
-# ── Main classifier ──────────────────────────────────────────────────────────
-
-def classify(prompt: str) -> IntentResult:
-    """
-    Classify a user prompt into one of six routing outcomes.
-
-    DEV:         Build, fix, write, verify, deploy → DEFAULT_WORKFLOW
-    INVESTIGATE: Analyze, explore, understand → INVESTIGATION_WORKFLOW
-    HYBRID:      Both investigate AND dev verbs → investigate then implement
-    Q&A:         Knowledge/explanation question → direct answer
-    OPS:         Shell/admin → execute directly
-    SKIP:        Existing commands, greetings, bypasses → no injection
-    """
-    if not prompt or not prompt.strip():
-        return IntentResult("skip", 0.0, "skip", "empty prompt")
-
-    p = prompt.strip()
-    p_lower = p.lower()
-
-    # 1. Hard bypasses
-    for prefix in _SKIP_PREFIXES:
-        if p_lower.startswith(prefix):
-            return IntentResult("skip", 0.0, "skip", "existing command")
-
-    if _BYPASS_RE.search(p):
-        return IntentResult("skip", 0.0, "skip", "explicit bypass")
-
-    # 2. Greetings
-    if _GREETING_RE.match(p) and len(p.split()) <= 5:
-        return IntentResult("skip", 0.0, "skip", "greeting")
-
-    # 3. Operations
-    if _OPS_RE.search(p):
-        return IntentResult("ops", 0.85, "required", "operations task")
-
-    # 4. Feature extraction
-    has_dev = bool(_DEV_RE.search(p)) or _is_test_imperative(p_lower)
-    has_investigate = bool(_INVESTIGATE_RE.search(p))
-    has_review = bool(_REVIEW_RE.search(p))
-    has_knowledge = bool(_KNOWLEDGE_RE.search(p))
-    words = frozenset(re.findall(r'\b\w+\b', p_lower))
-    tech_hits = _TECH_WORDS & words
-
-    # 'review' context: "review PR #42" = dev; "review the architecture" = investigate
-    if has_review and not has_dev and not has_investigate:
-        if words & {'pr', 'code', 'implementation', 'fix', 'patch'}:
-            has_dev = True
-        else:
-            has_investigate = True
-
-    # For hybrid detection: filter out dev-verb matches that are actually nouns.
-    # "the build is failing" → "build" is a noun; "investigate then build it" → verb.
-    # Check ALL dev matches — if any real verb exists (not preceded by article), keep has_dev.
-    if has_investigate and has_dev:
-        has_real_dev_verb = False
-        for dev_m in _DEV_RE.finditer(p):
-            before = p[:dev_m.start()]
-            if not _ARTICLE_BEFORE_RE.search(before):
-                has_real_dev_verb = True
-                break
-        if not has_real_dev_verb:
-            has_dev = False
-
-    # 5. HYBRID: both investigate AND dev verbs present
-    #    "investigate X then implement Y", "analyze and fix", "understand then add"
-    if has_investigate and has_dev:
-        return IntentResult("hybrid", 0.90, "required",
-                            "investigate then implement")
-
-    # 6. Pure development action (no investigation verb, no knowledge question)
-    if has_dev and not has_knowledge:
-        return IntentResult("dev", 0.95, "required", "development task")
-
-    # 7. Development + knowledge ("explain how to implement X")
-    if has_dev and has_knowledge:
-        return IntentResult("dev", 0.80, "recommended",
-                            "development task with explanation")
-
-    # 8. Pure investigation (no dev verb)
-    if has_investigate and not has_knowledge:
-        return IntentResult("investigate", 0.90, "required", "investigation task")
-
-    # 9. Investigation + knowledge ("how does the caching layer work")
-    if has_investigate and has_knowledge:
-        return IntentResult("investigate", 0.80, "recommended",
-                            "investigation with explanation")
-
-    # 10. Pure Q&A (knowledge question, no action verbs)
-    if has_knowledge and not has_dev and not has_investigate:
-        return IntentResult("qa", 0.85, "required", "knowledge question")
-
-    # 11. Implicit dev context via tech words
-    if len(tech_hits) >= 2:
-        return IntentResult("dev", 0.55, "suggested",
-                            f"implicit dev context: {tech_hits}")
-
-    if tech_hits:
-        return IntentResult("skip", 0.30, "skip", "single tech word, ambiguous")
-
-    return IntentResult("skip", 0.10, "skip", "no clear intent")
-
-
-# ── Injection builders ────────────────────────────────────────────────────────
-
-def build_context_injection(result: IntentResult, prompt: str) -> str:
-    """Build human-readable routing signal for Claude."""
-
-    task_preview = prompt[:200]
-
-    if result.route_type == "dev":
-        directives = {
-            "required":    'Invoke Skill(skill="dev-orchestrator") — this is a development task.',
-            "recommended": 'This looks like a dev task. Invoke Skill(skill="dev-orchestrator") '
-                           'unless you have a reason to answer directly.',
-            "suggested":   'This might be a dev task. Consider invoking '
-                           'Skill(skill="dev-orchestrator").',
-        }
-        return (
-            f'<system-reminder source="auto-dev-router">\n'
-            f'{directives.get(result.tier, "")}\n'
-            f'Task: "{task_preview}"\n'
-            f'</system-reminder>'
-        )
-
-    if result.route_type == "investigate":
-        return (
-            f'<system-reminder source="auto-dev-router">\n'
-            f'This is an investigation/research task. '
-            f'Invoke Skill(skill="dev-orchestrator") — it will use the '
-            f'INVESTIGATION_WORKFLOW to analyze the system.\n'
-            f'Task: "{task_preview}"\n'
-            f'</system-reminder>'
-        )
-
-    if result.route_type == "hybrid":
-        return (
-            f'<system-reminder source="auto-dev-router">\n'
-            f'This is a hybrid task — investigate first, then implement. '
-            f'Invoke Skill(skill="dev-orchestrator") — it will create '
-            f'investigation and development workstreams.\n'
-            f'Task: "{task_preview}"\n'
-            f'</system-reminder>'
-        )
-
-    if result.route_type == "qa":
-        return (
-            f'<system-reminder source="auto-qa-router">\n'
-            f'Knowledge/Q&A question — answer directly and concisely. '
-            f'No workflow invocation needed.\n'
-            f'Question: "{task_preview}"\n'
-            f'</system-reminder>'
-        )
-
-    if result.route_type == "ops":
-        return (
-            f'<system-reminder source="auto-ops-router">\n'
-            f'Operations/admin task — execute directly. '
-            f'No workflow invocation needed.\n'
-            f'Task: "{task_preview}"\n'
-            f'</system-reminder>'
-        )
-
-    return ""
+Key: "make sure it works" = DEV (verification). "write docs" = DEV (documentation).
+     "tests are failing" with no action verb = Q&A (observation, not a task).
+     "investigate X then fix Y" = HYBRID. "what is OAuth?" = Q&A.
+</system-reminder>"""
 
 
 def should_auto_route(prompt: str) -> tuple[bool, str]:
     """
-    Main entry point for user_prompt_submit.py.
-
     Returns (should_inject, injection_text).
-    Disable: export AMPLIHACK_AUTO_DEV=false (also: 0, no, off)
+
+    Only two reasons NOT to inject:
+    1. Disabled via AMPLIHACK_AUTO_DEV=false/0/no/off
+    2. Prompt starts with / (existing slash command — Claude handles these natively)
     """
+    # Check disable flag
     auto_dev = os.environ.get("AMPLIHACK_AUTO_DEV", "true").lower().strip()
     if auto_dev in ("false", "0", "no", "off"):
         return False, ""
 
-    result = classify(prompt)
-    if result.route_type == "skip":
+    # Don't inject for empty prompts or existing slash commands
+    if not prompt or not prompt.strip():
+        return False, ""
+    if prompt.strip().startswith("/"):
         return False, ""
 
-    return True, build_context_injection(result, prompt)
+    return True, _ROUTING_PROMPT
