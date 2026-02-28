@@ -100,6 +100,16 @@ When you run `/dev fix the login bug`, here is what you will see:
 
 **If you see `BLOCKED`**: parallel workstream spawning was limited. Your task will still complete as a single-session execution.
 
+## Auto-Routing (Without Typing /dev)
+
+The `UserPromptSubmit` hook automatically injects intent-routing guidance on
+every message (except slash commands). Claude classifies your intent and invokes
+`/dev` when appropriate — no prefix needed.
+
+- **Disable**: `export AMPLIHACK_AUTO_DEV=false`
+- **Override for one prompt**: Include "just answer" or "without workflow"
+- **Details**: See the [auto-routing tutorial section](../../docs/tutorials/dev-orchestrator-tutorial.md#auto-routing-how-it-works)
+
 ## How It Works
 
 ```

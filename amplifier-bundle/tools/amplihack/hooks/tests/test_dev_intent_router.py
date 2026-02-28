@@ -16,11 +16,16 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from dev_intent_router import should_auto_route, _ROUTING_PROMPT
+from dev_intent_router import _ROUTING_PROMPT, should_auto_route
 
 
 class TestInjectionFires(unittest.TestCase):
-    """Prompts that SHOULD receive the routing injection."""
+    """Prompts that SHOULD receive the routing injection.
+
+    All non-slash, non-empty string prompts get injected — the LLM handles
+    classification. One representative test per routing category suffices since
+    should_auto_route() has a single code path (line 75: return True, _ROUTING_PROMPT).
+    """
 
     def setUp(self):
         os.environ.pop("AMPLIHACK_AUTO_DEV", None)
@@ -30,37 +35,24 @@ class TestInjectionFires(unittest.TestCase):
         self.assertTrue(ok, f"Expected injection for: '{prompt}'")
         self.assertEqual(ctx, _ROUTING_PROMPT)
 
-    # Development tasks
-    def test_fix_bug(self):               self._assert_injects("fix the login timeout bug")
-    def test_build_api(self):             self._assert_injects("build a REST API")
-    def test_write_docs(self):            self._assert_injects("write the docs")
-    def test_make_sure(self):             self._assert_injects("make sure it works")
-    def test_deploy(self):                self._assert_injects("deploy to staging")
+    # One representative per routing category
+    def test_dev_task(self):
+        self._assert_injects("fix the login timeout bug")
 
-    # Investigation tasks
-    def test_investigate(self):           self._assert_injects("investigate why the build is failing")
-    def test_understand(self):            self._assert_injects("understand how the caching layer works")
-    def test_analyze(self):               self._assert_injects("analyze the performance bottlenecks")
+    def test_investigate_task(self):
+        self._assert_injects("investigate why the build is failing")
 
-    # Hybrid tasks
-    def test_hybrid(self):                self._assert_injects("investigate auth then add OAuth")
+    def test_hybrid_task(self):
+        self._assert_injects("investigate auth then add OAuth")
 
-    # Q&A (still gets injection — LLM routes to "answer directly")
-    def test_qa_what_is(self):            self._assert_injects("what is OAuth?")
-    def test_qa_how_does(self):           self._assert_injects("how does JWT work?")
-    def test_qa_what_does(self):          self._assert_injects("what does this function do?")
-    def test_qa_where_is(self):           self._assert_injects("where is the database config?")
+    def test_qa_task(self):
+        self._assert_injects("what is OAuth?")
 
-    # Ops (still gets injection — LLM routes to "execute directly")
-    def test_ops_git(self):               self._assert_injects("run git status")
-    def test_ops_disk(self):              self._assert_injects("show me the disk usage")
+    def test_ops_task(self):
+        self._assert_injects("run git status")
 
-    # Ambiguous (LLM handles it, hook just injects)
-    def test_tests_are_failing(self):     self._assert_injects("the tests are failing")
-    def test_this_is_broken(self):        self._assert_injects("this is broken")
-    def test_greeting_with_task(self):    self._assert_injects("hey can you fix the login?")
-    def test_make_it_work(self):          self._assert_injects("make it work")
-    def test_whats_wrong(self):           self._assert_injects("what's wrong with the tests?")
+    def test_ambiguous_task(self):
+        self._assert_injects("the tests are failing")
 
 
 class TestInjectionSkips(unittest.TestCase):
@@ -75,23 +67,42 @@ class TestInjectionSkips(unittest.TestCase):
         self.assertEqual(ctx, "")
 
     # Existing slash commands — always respected
-    def test_dev_command(self):            self._assert_skips("/dev fix the bug")
-    def test_analyze_command(self):        self._assert_skips("/analyze the auth module")
-    def test_fix_command(self):            self._assert_skips("/fix import errors")
-    def test_multitask_command(self):      self._assert_skips("/multitask - run 3 tasks")
-    def test_amplihack_command(self):      self._assert_skips("/amplihack:ddd:1-plan")
+    def test_dev_command(self):
+        self._assert_skips("/dev fix the bug")
+
+    def test_analyze_command(self):
+        self._assert_skips("/analyze the auth module")
+
+    def test_fix_command(self):
+        self._assert_skips("/fix import errors")
+
+    def test_multitask_command(self):
+        self._assert_skips("/multitask - run 3 tasks")
+
+    def test_amplihack_command(self):
+        self._assert_skips("/amplihack:ddd:1-plan")
 
     # Empty/whitespace/type guards
-    def test_empty(self):                  self._assert_skips("")
-    def test_whitespace_only(self):        self._assert_skips("   ")
-    def test_newlines_only(self):          self._assert_skips("\n\n\n")
+    def test_empty(self):
+        self._assert_skips("")
+
+    def test_whitespace_only(self):
+        self._assert_skips("   ")
+
+    def test_newlines_only(self):
+        self._assert_skips("\n\n\n")
+
     def test_none_input(self):
-        ok, ctx = should_auto_route(None)
+        ok, ctx = should_auto_route(None)  # type: ignore[arg-type]
         self.assertFalse(ok)
+
     def test_int_input(self):
-        ok, ctx = should_auto_route(123)
+        ok, ctx = should_auto_route(123)  # type: ignore[arg-type]
         self.assertFalse(ok)
-    def test_slash_with_whitespace(self):  self._assert_skips("   /dev fix the bug   ")
+
+    def test_slash_with_whitespace(self):
+        self._assert_skips("   /dev fix the bug   ")
+
     def test_whitespace_slash(self):
         # Only actual slash prefix skips; whitespace-then-text injects
         ok, _ = should_auto_route("   hello")
@@ -110,12 +121,23 @@ class TestEnvVarDisable(unittest.TestCase):
         self.assertFalse(ok, f"AMPLIHACK_AUTO_DEV={value} should disable routing")
         self.assertEqual(ctx, "")
 
-    def test_false(self):     self._assert_disabled("false")
-    def test_False(self):     self._assert_disabled("False")
-    def test_FALSE(self):     self._assert_disabled("FALSE")
-    def test_zero(self):      self._assert_disabled("0")
-    def test_no(self):        self._assert_disabled("no")
-    def test_off(self):       self._assert_disabled("off")
+    def test_false(self):
+        self._assert_disabled("false")
+
+    def test_False(self):
+        self._assert_disabled("False")
+
+    def test_FALSE(self):
+        self._assert_disabled("FALSE")
+
+    def test_zero(self):
+        self._assert_disabled("0")
+
+    def test_no(self):
+        self._assert_disabled("no")
+
+    def test_off(self):
+        self._assert_disabled("off")
 
     def test_enabled_by_default(self):
         os.environ.pop("AMPLIHACK_AUTO_DEV", None)
@@ -167,8 +189,11 @@ class TestRoutingPromptContent(unittest.TestCase):
 
     def test_prompt_is_concise(self):
         """The routing prompt should not be excessively long."""
-        self.assertLess(len(_ROUTING_PROMPT), 1500,
-            "Routing prompt should be concise to minimize token overhead")
+        self.assertLess(
+            len(_ROUTING_PROMPT),
+            1500,
+            "Routing prompt should be concise to minimize token overhead",
+        )
 
 
 if __name__ == "__main__":
