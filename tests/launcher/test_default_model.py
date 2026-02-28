@@ -4,7 +4,7 @@ TDD approach - tests written BEFORE implementation.
 These tests WILL FAIL until the default model logic is implemented.
 
 Feature specification:
-- Default model is sonnet[1m] when no overrides present
+- Default model is opus[1m] when no overrides present
 - Azure proxy takes precedence (highest priority)
 - User --model flag takes precedence
 - AMPLIHACK_DEFAULT_MODEL environment variable overrides hardcoded default
@@ -46,13 +46,13 @@ class TestDefaultModelSelection:
             with patch("amplihack.launcher.core.get_claude_command", return_value="claude"):
                 cmd = launcher.build_claude_command()
 
-                # Verify: Azure model in command, NOT default sonnet[1m]
+                # Verify: Azure model in command, NOT default opus[1m]
                 assert "--model" in cmd
                 model_idx = cmd.index("--model")
                 assert cmd[model_idx + 1] == "azure/gpt-5-codex"
 
-                # Verify: sonnet[1m] is NOT present
-                assert "sonnet[1m]" not in " ".join(cmd)
+                # Verify: opus[1m] is NOT present
+                assert "opus[1m]" not in " ".join(cmd)
 
     def test_user_model_flag_overrides_default(self, monkeypatch):
         """When user specifies --model, don't add default.
@@ -72,15 +72,15 @@ class TestDefaultModelSelection:
             assert "--model" in cmd
             assert "opus" in cmd
 
-            # Verify: Default sonnet[1m] is NOT added
+            # Verify: Default opus[1m] is NOT added
             model_count = cmd.count("--model")
             assert model_count == 1, "Should have exactly one --model flag"
 
-            # Verify: sonnet[1m] is NOT present
-            assert "sonnet[1m]" not in " ".join(cmd)
+            # Verify: opus[1m] is NOT present
+            assert "opus[1m]" not in " ".join(cmd)
 
     def test_env_var_overrides_hardcoded_default(self, monkeypatch):
-        """AMPLIHACK_DEFAULT_MODEL overrides sonnet[1m].
+        """AMPLIHACK_DEFAULT_MODEL overrides opus[1m].
 
         Priority: Environment variable > hardcoded default
         Allows users to customize their default without code changes.
@@ -101,12 +101,12 @@ class TestDefaultModelSelection:
             assert cmd[model_idx + 1] == "claude-3-opus-20240229"
 
             # Verify: Hardcoded default NOT present
-            assert "sonnet[1m]" not in " ".join(cmd)
+            assert "opus[1m]" not in " ".join(cmd)
 
     def test_hardcoded_default_when_no_overrides(self, monkeypatch):
-        """Uses sonnet[1m] when no proxy, no user flag, no env var.
+        """Uses opus[1m] when no proxy, no user flag, no env var.
 
-        Baseline behavior: When nothing overrides, use sonnet[1m].
+        Baseline behavior: When nothing overrides, use opus[1m].
         """
         # Setup: Clean environment - no overrides
         monkeypatch.delenv("AMPLIHACK_DEFAULT_MODEL", raising=False)
@@ -121,7 +121,7 @@ class TestDefaultModelSelection:
             # Verify: Default model is present
             assert "--model" in cmd
             model_idx = cmd.index("--model")
-            assert cmd[model_idx + 1] == "sonnet[1m]"
+            assert cmd[model_idx + 1] == "opus[1m]"
 
     @pytest.mark.parametrize("use_trace", [True, False])
     def test_both_paths_consistent(self, use_trace, monkeypatch):
@@ -154,7 +154,7 @@ class TestDefaultModelSelection:
             # Verify: Default model is present in BOTH paths
             assert "--model" in cmd
             model_idx = cmd.index("--model")
-            assert cmd[model_idx + 1] == "sonnet[1m]", (
+            assert cmd[model_idx + 1] == "opus[1m]", (
                 f"Model mismatch in {'claude-trace' if use_trace else 'standard'} path"
             )
 
@@ -236,7 +236,7 @@ class TestDefaultModelSelection:
             assert model_count == 1
 
     def test_env_var_beats_hardcoded_default(self, monkeypatch):
-        """AMPLIHACK_DEFAULT_MODEL beats sonnet[1m].
+        """AMPLIHACK_DEFAULT_MODEL beats opus[1m].
 
         Environment configuration beats hardcoded defaults.
         Lowest priority override, but still an override.
@@ -257,7 +257,7 @@ class TestDefaultModelSelection:
             assert cmd[model_idx + 1] == "claude-3-haiku-20240307"
 
             # Verify: Hardcoded default NOT used
-            assert "sonnet[1m]" not in " ".join(cmd)
+            assert "opus[1m]" not in " ".join(cmd)
 
     def test_has_model_arg_detects_user_flag(self):
         """_has_model_arg() correctly detects user's --model flag.
@@ -307,7 +307,7 @@ class TestDefaultModelSelection:
                 # Verify: --model is in claude args
                 assert "--model" in claude_args
                 model_idx = claude_args.index("--model")
-                assert claude_args[model_idx + 1] == "sonnet[1m]"
+                assert claude_args[model_idx + 1] == "opus[1m]"
 
     def test_standard_path_model_logic(self, monkeypatch):
         """Standard claude path includes default model correctly.
@@ -326,7 +326,7 @@ class TestDefaultModelSelection:
             # Verify: --model is in command
             assert "--model" in cmd
             model_idx = cmd.index("--model")
-            assert cmd[model_idx + 1] == "sonnet[1m]"
+            assert cmd[model_idx + 1] == "opus[1m]"
 
             # Verify: No --run-with (that's claude-trace only)
             assert "--run-with" not in cmd
