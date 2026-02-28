@@ -54,12 +54,7 @@ Key: "make sure it works" = DEV. "write docs" = DEV. "review this PR" = DEV.
      "investigate X then fix Y" = HYBRID. "what is OAuth?" = Q&A.
 </system-reminder>"""
 
-_WELCOME_BANNER = (
-    "NOTE: amplihack auto-routing is active. Development tasks automatically "
-    "use the smart orchestrator. "
-    "Disable: /amplihack:no-auto-dev  |  "
-    'One-time bypass: include "just answer" in your message.'
-)
+_WELCOME_BANNER = ""  # Deprecated: visible notice now shown by session_start hook via stderr
 
 # Minimum prompt length to inject routing (saves ~400 tokens on trivial turns)
 _MIN_PROMPT_LENGTH = 10
@@ -76,13 +71,6 @@ def _get_semaphore_path() -> Path:
     if project_dir:
         return Path(project_dir) / ".claude" / "runtime" / "locks" / ".auto_dev_active"
     return Path.cwd() / ".claude" / "runtime" / "locks" / ".auto_dev_active"
-
-
-def _get_banner_flag_path() -> Path:
-    """Return the path to the per-session welcome-banner-shown flag."""
-    project_dir = os.environ.get("CLAUDE_PROJECT_DIR", "")
-    base = Path(project_dir) if project_dir else Path.cwd()
-    return base / ".claude" / "runtime" / "locks" / ".auto_dev_banner_shown"
 
 
 def is_auto_dev_enabled() -> bool:
@@ -127,11 +115,6 @@ def disable_auto_dev() -> str:
     sem.parent.mkdir(parents=True, exist_ok=True)
     try:
         sem.unlink()
-    except FileNotFoundError:
-        pass
-    # Also clear the banner flag so it re-shows if re-enabled.
-    try:
-        _get_banner_flag_path().unlink()
     except FileNotFoundError:
         pass
     return "Auto-routing disabled. Type /amplihack:auto-dev to re-enable."
@@ -228,13 +211,11 @@ def should_auto_route(prompt: str) -> tuple[bool, str]:
 
     Returns (False, "") when:
     1. Disabled via semaphore file or AMPLIHACK_AUTO_DEV env var
+    1b. A workflow is already in progress (workflow-active semaphore)
     2. Prompt is not a string
     3. Prompt is empty or whitespace-only
     4. Prompt starts with / (existing slash command)
     5. Prompt is very short (< 10 chars) — likely conversational, not a task
-
-    When injecting for the first time in a session, prepends a one-line
-    welcome banner explaining auto-routing and how to disable it.
     """
     # 1. Check disable flag (semaphore file or env var)
     if not is_auto_dev_enabled():
@@ -261,21 +242,13 @@ def should_auto_route(prompt: str) -> tuple[bool, str]:
     if len(stripped) < _MIN_PROMPT_LENGTH:
         return False, ""
 
-    # 6. Build injection text — prepend welcome banner on first injection
-    injection = _ROUTING_PROMPT
-    banner_flag = _get_banner_flag_path()
+    # 6. Ensure semaphore file exists on first injection (prevents the locks
+    #    dir being created by other code from accidentally disabling routing).
     try:
-        if not banner_flag.exists():
-            banner_flag.parent.mkdir(parents=True, exist_ok=True)
-            banner_flag.write_text("shown\n")
-            # Ensure the auto-dev semaphore exists so the locks dir being
-            # created doesn't accidentally disable routing (the dir existing
-            # flips from env-var to file-based detection). Use enable_auto_dev()
-            # for atomic creation instead of raw write_text.
-            if not _get_semaphore_path().exists():
-                enable_auto_dev()
-            injection = _WELCOME_BANNER + "\n\n" + _ROUTING_PROMPT
+        sem = _get_semaphore_path()
+        if not sem.parent.exists() or not sem.exists():
+            enable_auto_dev()  # atomic O_EXCL creation
     except OSError:
-        pass  # fail-open: skip banner if we can't write the flag
+        pass  # fail-open
 
-    return True, injection
+    return True, _ROUTING_PROMPT

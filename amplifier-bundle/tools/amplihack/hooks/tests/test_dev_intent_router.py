@@ -8,7 +8,7 @@ evaluates with full natural language understanding. These tests verify:
 2. The injection does NOT fire for slash commands, disabled state, or short messages
 3. The injection text contains the correct routing categories
 4. The semaphore file and env var disable mechanisms work
-5. The first-run welcome banner appears once per session
+5. The workflow-active semaphore blocks injection during orchestration
 """
 
 import os
@@ -22,7 +22,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from dev_intent_router import (
     _MIN_PROMPT_LENGTH,
     _ROUTING_PROMPT,
-    _WELCOME_BANNER,
     clear_workflow_active,
     disable_auto_dev,
     enable_auto_dev,
@@ -33,37 +32,34 @@ from dev_intent_router import (
 )
 
 
-class TestInjectionFires(unittest.TestCase):
-    """Prompts that SHOULD receive the routing injection.
+def _make_patches(tmp: str):
+    """Create standard patches for all path helpers pointing to a temp dir."""
+    return [
+        patch(
+            "dev_intent_router._get_semaphore_path",
+            return_value=Path(tmp) / ".auto_dev_active",
+        ),
+        patch(
+            "dev_intent_router._get_workflow_active_path",
+            return_value=Path(tmp) / ".workflow_active",
+        ),
+    ]
 
-    All non-slash, non-empty, non-short string prompts get injected — the LLM
-    handles classification. One representative test per routing category.
-    """
+
+class TestInjectionFires(unittest.TestCase):
+    """Prompts that SHOULD receive the routing injection."""
 
     def setUp(self):
         os.environ.pop("AMPLIHACK_AUTO_DEV", None)
         self._tmp = tempfile.mkdtemp()
-        self._patch = patch(
-            "dev_intent_router._get_semaphore_path",
-            return_value=Path(self._tmp) / ".auto_dev_active",
-        )
-        self._patch_banner = patch(
-            "dev_intent_router._get_banner_flag_path",
-            return_value=Path(self._tmp) / ".auto_dev_banner_shown",
-        )
-        self._patch_workflow = patch(
-            "dev_intent_router._get_workflow_active_path",
-            return_value=Path(self._tmp) / ".workflow_active",
-        )
-        self._patch.start()
-        self._patch_banner.start()
-        self._patch_workflow.start()
+        self._patches = _make_patches(self._tmp)
+        for p in self._patches:
+            p.start()
         (Path(self._tmp) / ".auto_dev_active").write_text("enabled\n")
 
     def tearDown(self):
-        self._patch.stop()
-        self._patch_banner.stop()
-        self._patch_workflow.stop()
+        for p in self._patches:
+            p.stop()
         import shutil
 
         shutil.rmtree(self._tmp, ignore_errors=True)
@@ -71,9 +67,8 @@ class TestInjectionFires(unittest.TestCase):
     def _assert_injects(self, prompt: str):
         ok, ctx = should_auto_route(prompt)
         self.assertTrue(ok, f"Expected injection for: '{prompt}'")
-        self.assertIn(_ROUTING_PROMPT, ctx)
+        self.assertEqual(ctx, _ROUTING_PROMPT)
 
-    # One representative per routing category
     def test_dev_task(self):
         self._assert_injects("fix the login timeout bug")
 
@@ -99,27 +94,14 @@ class TestInjectionSkips(unittest.TestCase):
     def setUp(self):
         os.environ.pop("AMPLIHACK_AUTO_DEV", None)
         self._tmp = tempfile.mkdtemp()
-        self._patch = patch(
-            "dev_intent_router._get_semaphore_path",
-            return_value=Path(self._tmp) / ".auto_dev_active",
-        )
-        self._patch_banner = patch(
-            "dev_intent_router._get_banner_flag_path",
-            return_value=Path(self._tmp) / ".auto_dev_banner_shown",
-        )
-        self._patch_workflow = patch(
-            "dev_intent_router._get_workflow_active_path",
-            return_value=Path(self._tmp) / ".workflow_active",
-        )
-        self._patch.start()
-        self._patch_banner.start()
-        self._patch_workflow.start()
+        self._patches = _make_patches(self._tmp)
+        for p in self._patches:
+            p.start()
         (Path(self._tmp) / ".auto_dev_active").write_text("enabled\n")
 
     def tearDown(self):
-        self._patch.stop()
-        self._patch_banner.stop()
-        self._patch_workflow.stop()
+        for p in self._patches:
+            p.stop()
         import shutil
 
         shutil.rmtree(self._tmp, ignore_errors=True)
@@ -129,7 +111,7 @@ class TestInjectionSkips(unittest.TestCase):
         self.assertFalse(ok, f"Expected NO injection for: '{prompt}'")
         self.assertEqual(ctx, "")
 
-    # Existing slash commands — always respected
+    # Slash commands
     def test_dev_command(self):
         self._assert_skips("/dev fix the bug")
 
@@ -166,7 +148,7 @@ class TestInjectionSkips(unittest.TestCase):
     def test_slash_with_whitespace(self):
         self._assert_skips("   /dev fix the bug   ")
 
-    # Short messages — token-saving skip
+    # Short messages
     def test_short_yes(self):
         self._assert_skips("yes")
 
@@ -180,7 +162,6 @@ class TestInjectionSkips(unittest.TestCase):
         self._assert_skips("no")
 
     def test_at_threshold(self):
-        # Exactly _MIN_PROMPT_LENGTH chars should inject
         prompt = "x" * _MIN_PROMPT_LENGTH
         ok, _ = should_auto_route(prompt)
         self.assertTrue(ok)
@@ -196,21 +177,14 @@ class TestSemaphoreToggle(unittest.TestCase):
 
     def setUp(self):
         self._tmp = tempfile.mkdtemp()
-        self._patch = patch(
-            "dev_intent_router._get_semaphore_path",
-            return_value=Path(self._tmp) / ".auto_dev_active",
-        )
-        self._patch_banner = patch(
-            "dev_intent_router._get_banner_flag_path",
-            return_value=Path(self._tmp) / ".auto_dev_banner_shown",
-        )
-        self._patch.start()
-        self._patch_banner.start()
+        self._patches = _make_patches(self._tmp)
+        for p in self._patches:
+            p.start()
         os.environ.pop("AMPLIHACK_AUTO_DEV", None)
 
     def tearDown(self):
-        self._patch.stop()
-        self._patch_banner.stop()
+        for p in self._patches:
+            p.stop()
         import shutil
 
         shutil.rmtree(self._tmp, ignore_errors=True)
@@ -244,23 +218,34 @@ class TestSemaphoreToggle(unittest.TestCase):
         self.assertIn("already", msg2)
 
     def test_disable_idempotent(self):
-        # Disable without ever enabling — should not crash
         msg = disable_auto_dev()
         self.assertIn("disabled", msg.lower())
 
     def test_disable_preserves_workflow_active(self):
-        """Disabling auto-routing does NOT clear an active workflow semaphore.
-        The orchestrator is still running and will clear it when done."""
+        """Disabling auto-routing does NOT clear an active workflow semaphore."""
         enable_auto_dev()
-        # Need to mock workflow path too for this test
-        workflow_path = Path(self._tmp) / ".workflow_active"
-        with patch(
-            "dev_intent_router._get_workflow_active_path",
-            return_value=workflow_path,
+        set_workflow_active("Development", 1)
+        disable_auto_dev()
+        self.assertTrue(
+            (Path(self._tmp) / ".workflow_active").exists(),
+            "Workflow semaphore must persist after disable",
+        )
+
+    def test_first_injection_creates_semaphore(self):
+        """First injection auto-creates the semaphore if locks dir doesn't exist."""
+        import shutil
+
+        fresh = tempfile.mkdtemp()
+        sem = Path(fresh) / "locks" / ".auto_dev_active"
+        wf = Path(fresh) / "locks" / ".workflow_active"
+        with (
+            patch("dev_intent_router._get_semaphore_path", return_value=sem),
+            patch("dev_intent_router._get_workflow_active_path", return_value=wf),
         ):
-            set_workflow_active("Development", 1)
-            disable_auto_dev()
-            self.assertTrue(workflow_path.exists(), "Workflow semaphore must persist after disable")
+            ok, _ = should_auto_route("fix the login timeout bug")
+            self.assertTrue(ok)
+            self.assertTrue(sem.exists(), "Semaphore must be auto-created on first injection")
+        shutil.rmtree(fresh, ignore_errors=True)
 
 
 class TestEnvVarFallback(unittest.TestCase):
@@ -268,21 +253,22 @@ class TestEnvVarFallback(unittest.TestCase):
 
     def setUp(self):
         self._tmp = tempfile.mkdtemp()
-        # Point to a non-existent dir so locks dir doesn't exist
-        self._patch = patch(
-            "dev_intent_router._get_semaphore_path",
-            return_value=Path(self._tmp) / "nonexistent" / ".auto_dev_active",
-        )
-        self._patch_banner = patch(
-            "dev_intent_router._get_banner_flag_path",
-            return_value=Path(self._tmp) / "nonexistent" / ".auto_dev_banner_shown",
-        )
-        self._patch.start()
-        self._patch_banner.start()
+        self._patches = [
+            patch(
+                "dev_intent_router._get_semaphore_path",
+                return_value=Path(self._tmp) / "nonexistent" / ".auto_dev_active",
+            ),
+            patch(
+                "dev_intent_router._get_workflow_active_path",
+                return_value=Path(self._tmp) / "nonexistent" / ".workflow_active",
+            ),
+        ]
+        for p in self._patches:
+            p.start()
 
     def tearDown(self):
-        self._patch.stop()
-        self._patch_banner.stop()
+        for p in self._patches:
+            p.stop()
         os.environ.pop("AMPLIHACK_AUTO_DEV", None)
         import shutil
 
@@ -299,75 +285,6 @@ class TestEnvVarFallback(unittest.TestCase):
     def test_env_default_enables(self):
         os.environ.pop("AMPLIHACK_AUTO_DEV", None)
         self.assertTrue(is_auto_dev_enabled())
-
-
-class TestWelcomeBanner(unittest.TestCase):
-    """First-run welcome banner shows once per session."""
-
-    def setUp(self):
-        self._tmp = tempfile.mkdtemp()
-        self._patch = patch(
-            "dev_intent_router._get_semaphore_path",
-            return_value=Path(self._tmp) / ".auto_dev_active",
-        )
-        self._patch_banner = patch(
-            "dev_intent_router._get_banner_flag_path",
-            return_value=Path(self._tmp) / ".auto_dev_banner_shown",
-        )
-        self._patch_workflow = patch(
-            "dev_intent_router._get_workflow_active_path",
-            return_value=Path(self._tmp) / ".workflow_active",
-        )
-        self._patch.start()
-        self._patch_banner.start()
-        self._patch_workflow.start()
-        os.environ.pop("AMPLIHACK_AUTO_DEV", None)
-        (Path(self._tmp) / ".auto_dev_active").write_text("enabled\n")
-
-    def tearDown(self):
-        self._patch.stop()
-        self._patch_banner.stop()
-        self._patch_workflow.stop()
-        import shutil
-
-        shutil.rmtree(self._tmp, ignore_errors=True)
-
-    def test_first_injection_includes_banner(self):
-        ok, ctx = should_auto_route("fix the login timeout bug")
-        self.assertTrue(ok)
-        self.assertIn(_WELCOME_BANNER, ctx)
-        self.assertIn(_ROUTING_PROMPT, ctx)
-
-    def test_second_injection_no_banner(self):
-        should_auto_route("fix the login timeout bug")  # first — shows banner
-        ok, ctx = should_auto_route("add pagination to the API")  # second — no banner
-        self.assertTrue(ok)
-        self.assertNotIn(_WELCOME_BANNER, ctx)
-        self.assertEqual(ctx, _ROUTING_PROMPT)
-
-    def test_banner_creates_semaphore_when_missing(self):
-        """Bug fix: banner must create auto-dev semaphore to prevent
-        locks dir creation from accidentally disabling routing."""
-        import shutil
-
-        # Simulate truly fresh first run: no locks dir at all
-        # This forces env-var fallback (enabled by default)
-        fresh_tmp = tempfile.mkdtemp()
-        sem_path = Path(fresh_tmp) / "locks" / ".auto_dev_active"
-        banner_path = Path(fresh_tmp) / "locks" / ".auto_dev_banner_shown"
-        workflow_path = Path(fresh_tmp) / "locks" / ".workflow_active"
-
-        with (
-            patch("dev_intent_router._get_semaphore_path", return_value=sem_path),
-            patch("dev_intent_router._get_banner_flag_path", return_value=banner_path),
-            patch("dev_intent_router._get_workflow_active_path", return_value=workflow_path),
-        ):
-            ok, ctx = should_auto_route("fix the login timeout bug")
-            self.assertTrue(ok, "First injection should fire via env-var fallback")
-            self.assertIn(_WELCOME_BANNER, ctx)
-            self.assertTrue(sem_path.exists(), "Semaphore must be created by banner logic")
-
-        shutil.rmtree(fresh_tmp, ignore_errors=True)
 
 
 class TestRoutingPromptContent(unittest.TestCase):
@@ -402,7 +319,6 @@ class TestRoutingPromptContent(unittest.TestCase):
         self.assertTrue(_ROUTING_PROMPT.endswith("</system-reminder>"))
 
     def test_mentions_key_disambiguation_examples(self):
-        """The prompt includes examples that help the LLM with tricky cases."""
         self.assertIn("make sure it works", _ROUTING_PROMPT)
         self.assertIn("write docs", _ROUTING_PROMPT)
         self.assertIn("tests are failing", _ROUTING_PROMPT)
@@ -410,15 +326,9 @@ class TestRoutingPromptContent(unittest.TestCase):
         self.assertIn("run tests", _ROUTING_PROMPT)
 
     def test_prompt_is_concise(self):
-        """The routing prompt should not be excessively long."""
-        self.assertLess(
-            len(_ROUTING_PROMPT),
-            1900,
-            "Routing prompt should be concise to minimize token overhead",
-        )
+        self.assertLess(len(_ROUTING_PROMPT), 1900)
 
     def test_auto_routed_announcement(self):
-        """DEV/INVESTIGATE/HYBRID categories instruct Claude to announce routing."""
         self.assertIn("[auto-routed]", _ROUTING_PROMPT)
 
 
@@ -427,28 +337,15 @@ class TestWorkflowActiveSemaphore(unittest.TestCase):
 
     def setUp(self):
         self._tmp = tempfile.mkdtemp()
-        self._patch = patch(
-            "dev_intent_router._get_semaphore_path",
-            return_value=Path(self._tmp) / ".auto_dev_active",
-        )
-        self._patch_banner = patch(
-            "dev_intent_router._get_banner_flag_path",
-            return_value=Path(self._tmp) / ".auto_dev_banner_shown",
-        )
-        self._patch_workflow = patch(
-            "dev_intent_router._get_workflow_active_path",
-            return_value=Path(self._tmp) / ".workflow_active",
-        )
-        self._patch.start()
-        self._patch_banner.start()
-        self._patch_workflow.start()
+        self._patches = _make_patches(self._tmp)
+        for p in self._patches:
+            p.start()
         os.environ.pop("AMPLIHACK_AUTO_DEV", None)
         (Path(self._tmp) / ".auto_dev_active").write_text("enabled\n")
 
     def tearDown(self):
-        self._patch.stop()
-        self._patch_banner.stop()
-        self._patch_workflow.stop()
+        for p in self._patches:
+            p.stop()
         import shutil
 
         shutil.rmtree(self._tmp, ignore_errors=True)
@@ -484,8 +381,7 @@ class TestWorkflowActiveSemaphore(unittest.TestCase):
         self.assertTrue(data["active"])
 
     def test_dead_pid_clears_semaphore(self):
-        """Semaphore with a dead PID is treated as orphaned."""
-        set_workflow_active("Development", 1, pid=99999999)  # nonexistent PID
+        set_workflow_active("Development", 1, pid=99999999)
         self.assertFalse(is_workflow_active())
 
     def test_stale_semaphore_ignored(self):
@@ -494,7 +390,7 @@ class TestWorkflowActiveSemaphore(unittest.TestCase):
         path = Path(self._tmp) / ".workflow_active"
         import time
 
-        old_time = time.time() - 7201  # 2 hours + 1 second
+        old_time = time.time() - 7201
         os.utime(str(path), (old_time, old_time))
         self.assertFalse(is_workflow_active())
 
