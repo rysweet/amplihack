@@ -504,11 +504,17 @@ class LearningAgent:
                 # Solution A: Use thread-local cache to avoid data races when
                 # multiple threads share one LearningAgent instance
                 # (e.g. --parallel-workers 10 in the eval harness).
-                cached = getattr(self._thread_local, "_cached_all_facts", None)
-                if cached is None:
-                    cached = self.memory.get_all_facts(limit=15000)
-                self._thread_local._cached_all_facts = cached
-                kb_size = len(cached)
+                # Solution D: Skip the DB query entirely when pre-snapshot is already
+                # available — _simple_retrieval() will use it and the thread-local
+                # cache would never be consumed, causing a wasted get_all_facts() call.
+                if self._pre_snapshot_facts is not None:
+                    kb_size = len(self._pre_snapshot_facts)
+                else:
+                    cached = getattr(self._thread_local, "_cached_all_facts", None)
+                    if cached is None:
+                        cached = self.memory.get_all_facts(limit=15000)
+                    self._thread_local._cached_all_facts = cached
+                    kb_size = len(cached)
                 if kb_size <= 500:
                     use_simple = True
 

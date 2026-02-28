@@ -813,9 +813,16 @@ class LongHorizonMemoryEval:
         # Solution D: Pre-snapshot all facts so parallel workers don't race on
         # get_all_facts(). The snapshot is set as _pre_snapshot_facts on the
         # LearningAgent and consumed by _simple_retrieval() in each worker.
+        #
+        # NOTE: _MiniAgentWrapper._agent IS a LearningAgent (has _pre_snapshot_facts).
+        # _SDKAgentWrapper._agent is a GoalSeekingAgent, which does NOT have
+        # _pre_snapshot_facts, so Solution D silently no-ops for SDK paths — those
+        # workers fall back to per-thread DB queries (still correct, just not pre-snapshotted).
         _la = None
         if hasattr(agent, "_agent"):
-            _la = agent._agent  # _MiniAgentWrapper or _SDKAgentWrapper
+            _la = (
+                agent._agent
+            )  # may be LearningAgent (_MiniAgentWrapper) or GoalSeekingAgent (_SDKAgentWrapper)
         elif hasattr(agent, "memory") and hasattr(agent, "_pre_snapshot_facts"):
             _la = agent  # bare LearningAgent
         if _la is not None and hasattr(_la, "memory") and hasattr(_la.memory, "get_all_facts"):
@@ -847,32 +854,35 @@ class LongHorizonMemoryEval:
                     completed[0] / total * 100,
                 )
 
-        with ThreadPoolExecutor(max_workers=self.parallel_workers) as executor:
-            futures = {executor.submit(_worker, i, q): i for i, q in enumerate(qs)}
-            for future in as_completed(futures):
-                exc = future.exception()
-                if exc is not None:
-                    idx = futures[future]
-                    logger.warning("Worker for question %d failed: %s", idx + 1, exc)
-                    q = qs[idx]
-                    results[idx] = EvalResult(
-                        question_id=q.question_id,
-                        question_text=q.text,
-                        category=q.category,
-                        expected_answer=q.expected_answer,
-                        actual_answer=f"Error: {exc}",
-                        dimensions=[
-                            DimensionScore(dimension=d, score=0.0, reasoning=f"Worker error: {exc}")
-                            for d in (q.scoring_dimensions or ["factual_accuracy"])
-                        ],
-                        overall_score=0.0,
-                        grading_time_s=0.0,
-                    )
-
-        # Solution D: Clear the pre-snapshot after parallel eval to avoid
-        # stale data affecting future evaluations.
-        if _la is not None and hasattr(_la, "_pre_snapshot_facts"):
-            _la._pre_snapshot_facts = None
+        try:
+            with ThreadPoolExecutor(max_workers=self.parallel_workers) as executor:
+                futures = {executor.submit(_worker, i, q): i for i, q in enumerate(qs)}
+                for future in as_completed(futures):
+                    exc = future.exception()
+                    if exc is not None:
+                        idx = futures[future]
+                        logger.warning("Worker for question %d failed: %s", idx + 1, exc)
+                        q = qs[idx]
+                        results[idx] = EvalResult(
+                            question_id=q.question_id,
+                            question_text=q.text,
+                            category=q.category,
+                            expected_answer=q.expected_answer,
+                            actual_answer=f"Error: {exc}",
+                            dimensions=[
+                                DimensionScore(
+                                    dimension=d, score=0.0, reasoning=f"Worker error: {exc}"
+                                )
+                                for d in (q.scoring_dimensions or ["factual_accuracy"])
+                            ],
+                            overall_score=0.0,
+                            grading_time_s=0.0,
+                        )
+        finally:
+            # Solution D: Clear the pre-snapshot regardless of success/failure to
+            # prevent stale data from persisting across eval invocations.
+            if _la is not None and hasattr(_la, "_pre_snapshot_facts"):
+                _la._pre_snapshot_facts = None
 
         return [r for r in results if r is not None]
 
