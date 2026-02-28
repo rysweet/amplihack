@@ -275,9 +275,21 @@ every message. Claude's natural language understanding handles the rest.
 
 **Disable auto-routing:**
 
+```
+/amplihack:no-auto-dev           # toggles instantly during a session
+```
+
+Or via environment variable:
+
 ```bash
 export AMPLIHACK_AUTO_DEV=false   # for one session
 echo 'export AMPLIHACK_AUTO_DEV=false' >> ~/.bashrc  # permanent
+```
+
+**Re-enable:**
+
+```
+/amplihack:auto-dev
 ```
 
 **Override for a single prompt:** Include "just answer" or "without workflow"
