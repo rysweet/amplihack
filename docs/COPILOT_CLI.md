@@ -23,6 +23,10 @@ This document describes the complete integration between GitHub Copilot CLI and 
 - [Troubleshooting](#troubleshooting)
 - [Philosophy Alignment](#philosophy-alignment)
 
+## Where Do Agents Come From?
+
+Copilot CLI agents are **authored by the amplihack project** and stored in `~/.amplihack/.claude/agents/amplihack/`. When you run `amplihack copilot`, the framework symlinks these agents into `.github/agents/` so GitHub Copilot CLI can discover them. You don't need to write agents yourself — amplihack provides 30+ specialized agents (architect, builder, reviewer, tester, security, etc.) that Copilot can delegate to.
+
 ## Architecture
 
 ### Directory Structure
