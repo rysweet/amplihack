@@ -982,8 +982,8 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
         print(f"Warning: Could not prepare Copilot environment: {e}")
 
     # Build command with filesystem access to user directories
-    # Model can be overridden via COPILOT_MODEL env var (default: Opus 4.5)
-    model = os.getenv("COPILOT_MODEL", "claude-opus-4.5")
+    # Model can be overridden via COPILOT_MODEL env var (default: Opus 4.6 1M context)
+    model = os.getenv("COPILOT_MODEL", "opus[1m]")
     cmd = [
         "copilot",
         "--allow-all-tools",
