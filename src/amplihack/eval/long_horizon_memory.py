@@ -800,11 +800,34 @@ class LongHorizonMemoryEval:
 
         Each worker answers one question and grades the response. Results are
         collected into an ordered list matching the original question order.
+
+        Solution D: Before spawning workers, snapshot all facts once and inject
+        the snapshot into the underlying LearningAgent. This ensures every thread
+        sees the same consistent set of facts without racing on get_all_facts().
         """
         total = len(qs)
         results: list[EvalResult | None] = [None] * total
         completed = [0]
         lock = threading.Lock()
+
+        # Solution D: Pre-snapshot all facts so parallel workers don't race on
+        # get_all_facts(). The snapshot is set as _pre_snapshot_facts on the
+        # LearningAgent and consumed by _simple_retrieval() in each worker.
+        _la = None
+        if hasattr(agent, "_agent"):
+            _la = agent._agent  # _MiniAgentWrapper or _SDKAgentWrapper
+        elif hasattr(agent, "memory") and hasattr(agent, "_pre_snapshot_facts"):
+            _la = agent  # bare LearningAgent
+        if _la is not None and hasattr(_la, "memory") and hasattr(_la.memory, "get_all_facts"):
+            try:
+                facts_snapshot = _la.memory.get_all_facts(limit=15000)
+                _la._pre_snapshot_facts = facts_snapshot
+                logger.info(
+                    "Solution D: pre-snapshot %d facts before parallel evaluation",
+                    len(facts_snapshot),
+                )
+            except Exception as e:
+                logger.warning("Solution D: pre-snapshot failed, workers will query DB: %s", e)
 
         logger.info(
             "Starting parallel evaluation: %d questions, %d workers",
@@ -845,6 +868,11 @@ class LongHorizonMemoryEval:
                         overall_score=0.0,
                         grading_time_s=0.0,
                     )
+
+        # Solution D: Clear the pre-snapshot after parallel eval to avoid
+        # stale data affecting future evaluations.
+        if _la is not None and hasattr(_la, "_pre_snapshot_facts"):
+            _la._pre_snapshot_facts = None
 
         return [r for r in results if r is not None]
 
