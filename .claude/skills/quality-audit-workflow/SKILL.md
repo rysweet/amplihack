@@ -117,6 +117,30 @@ This workflow ruthlessly applies:
 - Real-world usage patterns
 - Output format examples
 
+## Seek/Validate/Fix/Recurse Loop (v2.0)
+
+The quality-audit-cycle recipe now supports automatic recursion:
+
+```
+Cycle 1: SEEK → VALIDATE → FIX → decision
+Cycle 2: SEEK → VALIDATE → FIX → decision  (if fixes were applied)
+Cycle 3: SEEK → VALIDATE → FIX → decision  (if fixes were applied)
+...until clean pass or max_cycles reached
+```
+
+**Key features:**
+
+- Each finding is independently validated before fixing (prevents false positives)
+- Findings marked as false positives are skipped
+- The loop stops when no fixes are applied (clean pass) or max_cycles is reached
+- Each cycle reports: issues found, validated, fixed, remaining
+
+**Run via recipe:**
+
+```bash
+amplihack recipe execute quality-audit-cycle.yaml --context '{"target_path": "src/amplihack", "max_cycles": "3"}'
+```
+
 ## Configuration
 
 Override defaults via environment or prompt:
@@ -127,7 +151,12 @@ Override defaults via environment or prompt:
 - `AUDIT_SEVERITY_THRESHOLD`: Minimum severity to create issue (default: medium)
 - `AUDIT_MODULE_LOC_LIMIT`: Flag modules exceeding this LOC (default: 300)
 
-**Phase 3.5 Validation Settings** [NEW]:
+**Recurse Loop Settings** (v2.0):
+
+- `max_cycles`: Maximum audit cycles before stopping (default: 3)
+- `validation_threshold`: Minimum validators that must agree (default: 2)
+
+**Phase 3.5 Validation Settings**:
 
 - `AUDIT_PR_SCAN_DAYS`: Days to scan for recent PRs (default: 30)
 - `AUDIT_AUTO_CLOSE_THRESHOLD`: Confidence % for auto-close (default: 90)
