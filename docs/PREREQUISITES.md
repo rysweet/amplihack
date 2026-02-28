@@ -305,43 +305,19 @@ git config --list
 
 **Purpose:** Official Claude Code command-line interface
 
-**Installation (Required):**
+**Documentation:** <https://code.claude.com/docs/en/setup>
 
-**macOS:**
+**Installation — pick the method for your platform:**
 
-```bash
-# Recommended: Homebrew
-brew install --cask claude-code
+| Platform | Command |
+|----------|---------|
+| macOS (Homebrew) | `brew install --cask claude-code` |
+| macOS / Linux / WSL | `curl -fsSL https://claude.ai/install.sh \| bash` |
+| Windows (WinGet) | `winget install Anthropic.ClaudeCode` |
 
-# Alternative: Install script
-curl -fsSL https://claude.ai/install.sh | bash
-```
-
-**Linux/WSL:**
-
-```bash
-curl -fsSL https://claude.ai/install.sh | bash
-```
-
-**Windows:**
-
-```powershell
-# Recommended: WinGet
-winget install Anthropic.ClaudeCode
-
-# Alternative: PowerShell script
-irm https://claude.ai/install.ps1 | iex
-```
-
-**Note:** npm installation is deprecated. Auto-installation uses platform-specific methods.
-
-**Documentation:** https://code.claude.com/docs/en/setup
-
-**Usage:**
-
-- The `claude` command provides the core CLI functionality
-- Used by claude-trace for enhanced debugging
-- Essential for all UVX deployments
+> **Note:** The older `npm install -g @anthropic-ai/claude-code` method is
+> **deprecated** and no longer recommended. Use the platform-specific
+> installers above.
 
 **Verification:**
 
@@ -350,28 +326,14 @@ claude --version
 # Should show version information
 ```
 
-**Enable Auto-Installation (Opt-In for Security):**
+**Auto-Installation (Opt-In):**
 
 ```bash
 export AMPLIHACK_AUTO_INSTALL=1
 ```
 
-The framework will automatically install Claude CLI if missing when `AMPLIHACK_AUTO_INSTALL=1` is set. This requires explicit user consent for security.
-
-**Manual Installation for User-Local (without sudo) - DEPRECATED:**
-
-> **Note:** npm installation is deprecated. Please use the platform-specific installers shown above for the best experience.
-
-```bash
-# Configure npm for user-local installations (if needed)
-mkdir ~/.npm-global
-npm config set prefix '~/.npm-global'
-echo 'export PATH=~/.npm-global/bin:$PATH' >> ~/.profile
-source ~/.profile
-
-# Then install Claude CLI (deprecated method)
-npm install -g @anthropic-ai/claude-code
-```
+When set, the framework will automatically install Claude CLI if missing.
+This requires explicit opt-in for security.
 
 ---
 
