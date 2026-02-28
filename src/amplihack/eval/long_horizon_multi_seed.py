@@ -337,7 +337,7 @@ def main() -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     seeds = [int(s.strip()) for s in args.seeds.split(",")]
-    agent_model = args.model or os.environ.get("EVAL_MODEL", "claude-sonnet-4-5-20250929")
+    agent_model = args.model or os.environ.get("EVAL_MODEL", "claude-opus-4-6")
 
     def agent_factory():
         import tempfile

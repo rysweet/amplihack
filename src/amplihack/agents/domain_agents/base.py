@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any
@@ -60,7 +61,7 @@ class DomainAgent(ABC):
         self,
         agent_name: str,
         domain: str,
-        model: str = "gpt-4o-mini",
+        model: str = "",
         skill_injector: Any | None = None,
     ):
         if not agent_name or not agent_name.strip():
@@ -70,7 +71,7 @@ class DomainAgent(ABC):
 
         self.agent_name = agent_name.strip()
         self.domain = domain.strip()
-        self.model = model
+        self.model = model or os.environ.get("EVAL_MODEL", "claude-opus-4-6")
         self.executor = ActionExecutor()
         self.injected_skills: list[str] = []
 

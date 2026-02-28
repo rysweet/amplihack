@@ -57,7 +57,9 @@ class ClaudeGoalSeekingAgent(GoalSeekingAgent):
                 "claude-agent-sdk not installed. Install with: pip install claude-agent-sdk"
             )
 
-        resolved_model = model or os.environ.get("CLAUDE_AGENT_MODEL", "claude-sonnet-4-5-20250929")
+        resolved_model = model or os.environ.get(
+            "CLAUDE_AGENT_MODEL", os.environ.get("EVAL_MODEL", "claude-opus-4-6")
+        )
         self._allowed_native_tools = allowed_native_tools or [
             "bash",
             "read_file",

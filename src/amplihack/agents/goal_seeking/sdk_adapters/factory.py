@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from .base import AgentResult, AgentTool, GoalSeekingAgent, SDKType
+
+_DEFAULT_MODEL = os.environ.get("EVAL_MODEL", "claude-opus-4-6")
 
 
 def create_agent(
@@ -21,13 +24,15 @@ def create_agent(
     if isinstance(sdk, str):
         sdk = SDKType(sdk.lower())
 
+    resolved_model = model or _DEFAULT_MODEL
+
     if sdk == SDKType.CLAUDE:
         from .claude_sdk import ClaudeGoalSeekingAgent
 
         return ClaudeGoalSeekingAgent(
             name=name,
             instructions=instructions,
-            model=model or "claude-sonnet-4-5-20250929",
+            model=resolved_model,
             storage_path=storage_path,
             enable_memory=enable_memory,
             enable_eval=enable_eval,
@@ -40,7 +45,7 @@ def create_agent(
         return CopilotGoalSeekingAgent(
             name=name,
             instructions=instructions,
-            model=model or "gpt-4.1",
+            model=resolved_model,
             storage_path=storage_path,
             enable_memory=enable_memory,
             enable_eval=enable_eval,
@@ -53,7 +58,7 @@ def create_agent(
         return MicrosoftGoalSeekingAgent(
             name=name,
             instructions=instructions,
-            model=model or "gpt-4o",
+            model=resolved_model,
             storage_path=storage_path,
             enable_memory=enable_memory,
             enable_eval=enable_eval,

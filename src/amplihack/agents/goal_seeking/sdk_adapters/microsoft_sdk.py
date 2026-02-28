@@ -119,7 +119,9 @@ class MicrosoftGoalSeekingAgent(GoalSeekingAgent):
                 "agent-framework not installed. Install with: pip install agent-framework"
             )
 
-        resolved_model = model or os.environ.get("MICROSOFT_AGENT_MODEL", "gpt-4o")
+        resolved_model = model or os.environ.get(
+            "MICROSOFT_AGENT_MODEL", os.environ.get("EVAL_MODEL", "claude-opus-4-6")
+        )
 
         self._session: Any = None
         self._extra_kwargs = kwargs

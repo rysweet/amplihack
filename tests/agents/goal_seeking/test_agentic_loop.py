@@ -49,7 +49,7 @@ class TestAgenticLoop:
             agent_name="test_agent",
             action_executor=executor,
             memory_retriever=memory,
-            model="gpt-3.5-turbo",
+            model="claude-opus-4-6",
         )
 
     def test_init_with_valid_params(self, executor, memory):

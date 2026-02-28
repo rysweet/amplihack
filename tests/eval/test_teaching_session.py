@@ -26,7 +26,7 @@ class TestTeachingConfig:
     def test_default_config(self):
         config = TeachingConfig()
         assert config.max_turns == 6
-        assert config.model == "claude-sonnet-4-5-20250929"
+        assert config.model == "claude-opus-4-6"
         assert config.teacher_system_prompt is not None
         assert config.student_system_prompt is not None
 
