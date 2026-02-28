@@ -23,9 +23,12 @@ from dev_intent_router import (
     _MIN_PROMPT_LENGTH,
     _ROUTING_PROMPT,
     _WELCOME_BANNER,
+    clear_workflow_active,
     disable_auto_dev,
     enable_auto_dev,
     is_auto_dev_enabled,
+    is_workflow_active,
+    set_workflow_active,
     should_auto_route,
 )
 
@@ -356,9 +359,86 @@ class TestRoutingPromptContent(unittest.TestCase):
         """The routing prompt should not be excessively long."""
         self.assertLess(
             len(_ROUTING_PROMPT),
-            1700,
+            1900,
             "Routing prompt should be concise to minimize token overhead",
         )
+
+    def test_auto_routed_announcement(self):
+        """DEV/INVESTIGATE/HYBRID categories instruct Claude to announce routing."""
+        self.assertIn("[auto-routed]", _ROUTING_PROMPT)
+
+
+class TestWorkflowActiveSemaphore(unittest.TestCase):
+    """Skip injection when a workflow is already running."""
+
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp()
+        self._patch = patch(
+            "dev_intent_router._get_semaphore_path",
+            return_value=Path(self._tmp) / ".auto_dev_active",
+        )
+        self._patch_banner = patch(
+            "dev_intent_router._get_banner_flag_path",
+            return_value=Path(self._tmp) / ".auto_dev_banner_shown",
+        )
+        self._patch_workflow = patch(
+            "dev_intent_router._get_workflow_active_path",
+            return_value=Path(self._tmp) / ".workflow_active",
+        )
+        self._patch.start()
+        self._patch_banner.start()
+        self._patch_workflow.start()
+        os.environ.pop("AMPLIHACK_AUTO_DEV", None)
+        (Path(self._tmp) / ".auto_dev_active").write_text("enabled\n")
+
+    def tearDown(self):
+        self._patch.stop()
+        self._patch_banner.stop()
+        self._patch_workflow.stop()
+        import shutil
+
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def test_set_creates_semaphore(self):
+        set_workflow_active("Development", 1)
+        self.assertTrue(is_workflow_active())
+
+    def test_clear_removes_semaphore(self):
+        set_workflow_active("Development", 1)
+        clear_workflow_active()
+        self.assertFalse(is_workflow_active())
+
+    def test_active_workflow_blocks_injection(self):
+        set_workflow_active("Development", 1)
+        ok, ctx = should_auto_route("fix the login bug please")
+        self.assertFalse(ok)
+        self.assertEqual(ctx, "")
+
+    def test_cleared_workflow_restores_injection(self):
+        set_workflow_active("Development", 1)
+        clear_workflow_active()
+        ok, _ = should_auto_route("fix the login bug please")
+        self.assertTrue(ok)
+
+    def test_semaphore_contains_json(self):
+        set_workflow_active("Investigation", 2)
+        import json
+
+        data = json.loads((Path(self._tmp) / ".workflow_active").read_text())
+        self.assertEqual(data["task_type"], "Investigation")
+        self.assertEqual(data["workstreams"], 2)
+        self.assertTrue(data["active"])
+
+    def test_stale_semaphore_ignored(self):
+        """Semaphore older than 30 min is treated as stale."""
+        set_workflow_active("Development", 1)
+        path = Path(self._tmp) / ".workflow_active"
+        # Backdate the file 31 minutes
+        import time
+
+        old_time = time.time() - 1860
+        os.utime(str(path), (old_time, old_time))
+        self.assertFalse(is_workflow_active())
 
 
 if __name__ == "__main__":

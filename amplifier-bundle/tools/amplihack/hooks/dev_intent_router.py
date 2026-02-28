@@ -31,13 +31,13 @@ _ROUTING_PROMPT = """\
 Before responding, classify this prompt into one of these categories and act accordingly:
 
   DEV (build, fix, write, test, verify, deploy, document, refactor, configure, review code, add feature)
-    → Invoke Skill(skill="dev-orchestrator"). Do not answer inline.
+    → Say "[auto-routed] DEV → launching dev-orchestrator" then Invoke Skill(skill="dev-orchestrator"). Do not answer inline.
 
   INVESTIGATE (analyze, understand, explore, research, audit, trace, map out, what's broken, what's failing)
-    → Invoke Skill(skill="dev-orchestrator"). Do not answer inline. It will use INVESTIGATION_WORKFLOW.
+    → Say "[auto-routed] INVESTIGATE → launching dev-orchestrator" then Invoke Skill(skill="dev-orchestrator"). Do not answer inline. It will use INVESTIGATION_WORKFLOW.
 
   HYBRID (investigate/understand THEN implement/fix/build, or run command THEN fix — two phases in one prompt)
-    → Invoke Skill(skill="dev-orchestrator"). Do not answer inline. It will create parallel workstreams.
+    → Say "[auto-routed] HYBRID → launching dev-orchestrator" then Invoke Skill(skill="dev-orchestrator"). Do not answer inline. It will create parallel workstreams.
 
   Q&A (what is, how does, explain, describe, compare, define — knowledge questions)
     → Answer directly and concisely. No workflow invocation needed.
@@ -138,6 +138,66 @@ def disable_auto_dev() -> str:
 
 
 # ---------------------------------------------------------------------------
+# Workflow-active semaphore (skip injection while orchestrator is running)
+# ---------------------------------------------------------------------------
+
+
+def _get_workflow_active_path() -> Path:
+    """Return the path to the workflow-in-progress semaphore."""
+    project_dir = os.environ.get("CLAUDE_PROJECT_DIR", "")
+    base = Path(project_dir) if project_dir else Path.cwd()
+    return base / ".claude" / "runtime" / "locks" / ".workflow_active"
+
+
+def set_workflow_active(task_type: str = "", workstreams: int = 0) -> None:
+    """Mark a workflow as in progress. Called by the orchestrator recipe."""
+    path = _get_workflow_active_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    import json
+    import time
+
+    data = json.dumps(
+        {
+            "active": True,
+            "task_type": task_type,
+            "workstreams": workstreams,
+            "started_at": time.time(),
+            "pid": os.getpid(),
+        }
+    )
+    try:
+        path.write_text(data + "\n")
+    except OSError:
+        pass
+
+
+def clear_workflow_active() -> None:
+    """Clear the workflow-in-progress semaphore. Called when orchestrator finishes."""
+    try:
+        _get_workflow_active_path().unlink()
+    except FileNotFoundError:
+        pass
+
+
+def is_workflow_active() -> bool:
+    """Check if a workflow is currently in progress (skip injection if so)."""
+    path = _get_workflow_active_path()
+    if not path.exists():
+        return False
+    # Stale check: if the file is older than 30 minutes, consider it stale
+    try:
+        import time
+
+        age = time.time() - path.stat().st_mtime
+        if age > 1800:  # 30 min
+            path.unlink(missing_ok=True)
+            return False
+        return True
+    except OSError:
+        return False
+
+
+# ---------------------------------------------------------------------------
 # Main entry point
 # ---------------------------------------------------------------------------
 
@@ -158,6 +218,10 @@ def should_auto_route(prompt: str) -> tuple[bool, str]:
     """
     # 1. Check disable flag (semaphore file or env var)
     if not is_auto_dev_enabled():
+        return False, ""
+
+    # 1b. Skip if a workflow is already running (avoid re-classification mid-task)
+    if is_workflow_active():
         return False, ""
 
     # 2. Type guard
@@ -184,6 +248,12 @@ def should_auto_route(prompt: str) -> tuple[bool, str]:
         if not banner_flag.exists():
             banner_flag.parent.mkdir(parents=True, exist_ok=True)
             banner_flag.write_text("shown\n")
+            # Also ensure the auto-dev semaphore exists so the locks dir
+            # being created doesn't accidentally disable routing (the dir
+            # existing flips from env-var to file-based detection).
+            sem = _get_semaphore_path()
+            if not sem.exists():
+                sem.write_text("enabled\n")
             injection = _WELCOME_BANNER + "\n\n" + _ROUTING_PROMPT
     except OSError:
         pass  # fail-open: skip banner if we can't write the flag
