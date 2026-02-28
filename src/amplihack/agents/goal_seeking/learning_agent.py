@@ -519,8 +519,10 @@ class LearningAgent:
                     use_simple = True
 
             if use_simple:
-                # Simple retrieval: get all facts for complete coverage
-                relevant_facts = self._simple_retrieval(question)
+                # Simple retrieval: get all facts for complete coverage.
+                # Solution C: pass force_verbatim so simple_recall questions in agentic
+                # context also bypass Tier 3 compression (not just entity-retrieval fallback).
+                relevant_facts = self._simple_retrieval(question, force_verbatim=_force_simple)
             else:
                 # Large KB: try entity-centric retrieval first
                 relevant_facts = self._entity_retrieval(question)
