@@ -1646,6 +1646,58 @@ class HierarchicalMemory:
                         items.append(row[0])
                 return {"count": len(items), "items": items, "query_type": query_type}
 
+            elif query_type == "list_incident_cves":
+                # Graph JOIN: find ALL facts mentioning incident IDs or CVE IDs.
+                # Uses CONTAINS on content to find cross-entity relationships
+                # (e.g. incident facts that reference CVEs and vice versa).
+                # Also traverses SUPERSEDES/SIMILAR_TO edges to find related
+                # facts across incident boundaries.
+                result = self.connection.execute(
+                    """
+                    MATCH (n:SemanticMemory)
+                    WHERE n.agent_id = $aid
+                      AND (n.content CONTAINS 'CVE-' OR n.content CONTAINS 'INC-')
+                    RETURN n.content, n.concept
+                    LIMIT 200
+                    """,
+                    {"aid": self.agent_name},
+                )
+                items = []
+                contents = []
+                while result.has_next():
+                    row = result.get_next()
+                    contents.append(row[0])
+                    if row[1]:
+                        items.append(row[1])
+
+                # Also traverse SUPERSEDES/SIMILAR_TO edges from incident nodes
+                try:
+                    edge_result = self.connection.execute(
+                        """
+                        MATCH (a:SemanticMemory)-[r]->(b:SemanticMemory)
+                        WHERE a.agent_id = $aid
+                          AND (a.content CONTAINS 'INC-' OR a.content CONTAINS 'CVE-')
+                          AND (type(r) = 'SUPERSEDES' OR type(r) = 'SIMILAR_TO')
+                        RETURN b.content, b.concept
+                        LIMIT 100
+                        """,
+                        {"aid": self.agent_name},
+                    )
+                    while edge_result.has_next():
+                        row = edge_result.get_next()
+                        contents.append(row[0])
+                        if row[1]:
+                            items.append(row[1])
+                except Exception as e:
+                    logger.debug("Edge traversal for incident_cves failed: %s", e)
+
+                return {
+                    "count": len(contents),
+                    "items": list(set(items)),
+                    "contents": contents,
+                    "query_type": query_type,
+                }
+
         except Exception as e:
             logger.debug("Aggregation query failed (%s): %s", query_type, e)
 
