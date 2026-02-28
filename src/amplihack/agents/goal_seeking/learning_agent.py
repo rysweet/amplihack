@@ -17,6 +17,7 @@ import json
 import logging
 import os
 import re
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -161,6 +162,15 @@ class LearningAgent:
             memory_retriever=self.memory,
             model=self.model,
         )
+
+        # Solution A: Thread-local storage for _cached_all_facts to prevent
+        # data races when multiple threads share one LearningAgent instance
+        # (e.g. --parallel-workers 10 in the eval harness).
+        self._thread_local = threading.local()
+
+        # Solution D: Pre-snapshot holder - set by eval harness before parallel
+        # evaluation so all threads use the same consistent fact snapshot.
+        self._pre_snapshot_facts: list[dict[str, Any]] | None = None
 
     def learn_from_content(self, content: str) -> dict[str, Any]:
         """Learn from content by extracting and storing facts.
@@ -399,7 +409,12 @@ class LearningAgent:
     # The iterative loop filters noise better than dumping all facts
 
     def answer_question(
-        self, question: str, question_level: str = "L1", return_trace: bool = False
+        self,
+        question: str,
+        question_level: str = "L1",
+        return_trace: bool = False,
+        _skip_qanda_store: bool = False,
+        _force_simple: bool = False,
     ) -> str | tuple[str, ReasoningTrace | None]:
         """Answer a question using adaptive retrieval and LLM synthesis.
 
@@ -411,6 +426,14 @@ class LearningAgent:
         Args:
             question: Question to answer
             question_level: Complexity level (L1/L2/L3/L4)
+            return_trace: If True, return (answer, ReasoningTrace) tuple
+            _skip_qanda_store: (Solution B) When True, skip storing the Q&A pair as
+                a learning fact. Used when answer_question_agentic calls this
+                internally to reduce concurrent DB writes during parallel eval.
+            _force_simple: (Solution C) When True AND entity retrieval returns empty,
+                force _simple_retrieval to return all facts verbatim (bypass tiered
+                summarization). Prevents infrastructure facts stored early in the
+                knowledge base from being lost in Tier 3 topic-level summaries.
 
         Returns:
             Synthesized answer string
@@ -478,15 +501,28 @@ class LearningAgent:
         else:
             use_simple = intent_type in self.SIMPLE_INTENTS
             if not use_simple and hasattr(self.memory, "get_all_facts"):
-                # Cache KB snapshot to avoid repeated queries within this call
-                self._cached_all_facts = self.memory.get_all_facts(limit=15000)
-                kb_size = len(self._cached_all_facts)
+                # Solution A: Use thread-local cache to avoid data races when
+                # multiple threads share one LearningAgent instance
+                # (e.g. --parallel-workers 10 in the eval harness).
+                # Solution D: Skip the DB query entirely when pre-snapshot is already
+                # available — _simple_retrieval() will use it and the thread-local
+                # cache would never be consumed, causing a wasted get_all_facts() call.
+                if self._pre_snapshot_facts is not None:
+                    kb_size = len(self._pre_snapshot_facts)
+                else:
+                    cached = getattr(self._thread_local, "_cached_all_facts", None)
+                    if cached is None:
+                        cached = self.memory.get_all_facts(limit=15000)
+                    self._thread_local._cached_all_facts = cached
+                    kb_size = len(cached)
                 if kb_size <= 500:
                     use_simple = True
 
             if use_simple:
-                # Simple retrieval: get all facts for complete coverage
-                relevant_facts = self._simple_retrieval(question)
+                # Simple retrieval: get all facts for complete coverage.
+                # Solution C: pass force_verbatim so simple_recall questions in agentic
+                # context also bypass Tier 3 compression (not just entity-retrieval fallback).
+                relevant_facts = self._simple_retrieval(question, force_verbatim=_force_simple)
             else:
                 # Large KB: try entity-centric retrieval first
                 relevant_facts = self._entity_retrieval(question)
@@ -508,7 +544,10 @@ class LearningAgent:
                         "Entity retrieval empty/noise for '%s'; simple retrieval + rerank",
                         question[:50],
                     )
-                    relevant_facts = self._simple_retrieval(question)
+                    # Solution C: When _force_simple is set (agentic context),
+                    # bypass tiered summarization to avoid losing early-stored
+                    # infrastructure facts that get compressed into Tier 3 summaries.
+                    relevant_facts = self._simple_retrieval(question, force_verbatim=_force_simple)
 
         # Fall back to simple retrieval if all strategies found nothing
         if not relevant_facts:
@@ -662,13 +701,17 @@ class LearningAgent:
                 total_facts_collected=len(relevant_facts),
             )
 
-        # Store the question-answer pair as a learning (truncate to fit)
-        self.memory.store_fact(
-            context=f"Question: {question[:200]}",
-            fact=f"Answer: {answer[:900]}",
-            confidence=0.7,
-            tags=["q_and_a", question_level.lower()],
-        )
+        # Store the question-answer pair as a learning (truncate to fit).
+        # Solution B: Skip Q&A store when called from answer_question_agentic
+        # to reduce concurrent DB writes during parallel evaluation. The agentic
+        # caller will store its own final answer after refinement if needed.
+        if not _skip_qanda_store:
+            self.memory.store_fact(
+                context=f"Question: {question[:200]}",
+                fact=f"Answer: {answer[:900]}",
+                confidence=0.7,
+                tags=["q_and_a", question_level.lower()],
+            )
 
         if return_trace:
             return answer, reasoning_trace
@@ -699,8 +742,17 @@ class LearningAgent:
         if not question or not question.strip():
             return "Error: Question is empty"
 
-        # Step 1: Run the full single-shot pipeline (guaranteed baseline)
-        initial_result = self.answer_question(question, return_trace=True)
+        # Step 1: Run the full single-shot pipeline (guaranteed baseline).
+        # Solution B: pass _skip_qanda_store=True to avoid concurrent DB writes.
+        # Solution C: pass _force_simple=True so entity-retrieval fallback returns
+        #   all verbatim facts instead of compressed Tier 3 summaries, ensuring
+        #   early-stored infrastructure facts are not lost.
+        initial_result = self.answer_question(
+            question,
+            return_trace=True,
+            _skip_qanda_store=True,
+            _force_simple=True,
+        )
         if isinstance(initial_result, tuple):
             initial_answer, trace = initial_result
         else:
@@ -865,7 +917,9 @@ class LearningAgent:
             logger.warning("Answer evaluation failed: %s", exc)
             return {"is_complete": True, "gaps": []}
 
-    def _simple_retrieval(self, question: str) -> list[dict[str, Any]]:
+    def _simple_retrieval(
+        self, question: str, force_verbatim: bool = False
+    ) -> list[dict[str, Any]]:
         """Single-pass retrieval with progressive summarization for large KBs.
 
         For small KBs (<=500 facts): returns all facts verbatim.
@@ -877,6 +931,10 @@ class LearningAgent:
 
         Args:
             question: The question to retrieve facts for
+            force_verbatim: (Solution C/D) When True, bypass tiered summarization
+                and return all facts verbatim regardless of KB size. Use in agentic
+                context or when pre-snapshot is available to prevent early-stored
+                facts from being lost in Tier 3 compression.
 
         Returns:
             List of fact dicts
@@ -884,15 +942,29 @@ class LearningAgent:
         if not hasattr(self.memory, "get_all_facts"):
             return []
 
-        # Reuse cached snapshot from answer_question if available
-        if hasattr(self, "_cached_all_facts") and self._cached_all_facts is not None:
-            all_facts = self._cached_all_facts
-            self._cached_all_facts = None  # consume cache; one-shot per question
+        # Solution D: Use pre-snapshot if available (set by eval harness before
+        # parallel evaluation to give all threads a consistent view of facts).
+        if self._pre_snapshot_facts is not None:
+            logger.debug(
+                "Using pre-snapshot facts (%d) for thread-safe retrieval",
+                len(self._pre_snapshot_facts),
+            )
+            if force_verbatim or len(self._pre_snapshot_facts) <= 1000:
+                return list(self._pre_snapshot_facts)
+            return self._tiered_retrieval(question, self._pre_snapshot_facts)
+
+        # Solution A: Reuse thread-local cached snapshot from answer_question.
+        # Thread-local storage prevents data races when multiple threads share
+        # one LearningAgent instance (e.g. --parallel-workers 10 in eval harness).
+        cached = getattr(self._thread_local, "_cached_all_facts", None)
+        if cached is not None:
+            all_facts = cached
+            self._thread_local._cached_all_facts = None  # consume; one-shot per question
         else:
             all_facts = self.memory.get_all_facts(limit=15000)
         kb_size = len(all_facts)
 
-        if kb_size <= 1000:
+        if force_verbatim or kb_size <= 1000:
             return all_facts
 
         # Large KB (1000+ facts): use progressive summarization tiers
