@@ -330,17 +330,18 @@ steps:
       REPO_PATH='{{repo_path}}'
       WS_FILE='{{workstreams_file}}'
       SESSION_JSON='{{session_info}}'
-      # Parse tree_id, depth, and validate workstreams file in one Python subprocess
-      read -r TREE_ID SESSION_DEPTH WS_COUNT_CHECK < <(echo "$SESSION_JSON" | python3 - "$WS_FILE" <<'PYEOF'
-      import sys, json
+      # Parse tree_id, depth, and validate workstreams file in one Python subprocess.
+      # Uses env vars instead of pipe+heredoc to avoid stdin conflict (issue #2581).
+      export SESSION_JSON WS_FILE
+      read -r TREE_ID SESSION_DEPTH WS_COUNT_CHECK < <(python3 <<'PYEOF'
+      import os, json
       try:
-          d = json.loads(sys.stdin.read())
+          d = json.loads(os.environ.get('SESSION_JSON', '{}'))
           tid = d.get('tree_id', '')
           depth = d.get('depth', 0)
       except Exception:
           tid, depth = '', 0
-      # Validate workstreams file
-      ws_file = sys.argv[1] if len(sys.argv) > 1 else ''
+      ws_file = os.environ.get('WS_FILE', '')
       ws_count = 0
       if ws_file:
           try:
@@ -610,12 +611,13 @@ steps:
       SESSION_JSON='{{session_info}}'
       TREE_SCRIPT="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/session_tree.py"
       HOOKS_DIR="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/amplihack/hooks"
-      export HOOKS_DIR
-      # Parse session fields and clear workflow semaphore in one Python subprocess
-      read -r SESSION_ID TREE_ID STATUS < <(echo "$SESSION_JSON" | python3 - <<'PYEOF'
-      import sys, json, os
+      # Parse session fields and clear workflow semaphore in one Python subprocess.
+      # Uses env vars instead of pipe+heredoc to avoid stdin conflict (issue #2581).
+      export SESSION_JSON HOOKS_DIR
+      read -r SESSION_ID TREE_ID STATUS < <(python3 <<'PYEOF'
+      import json, os, sys
       try:
-          d = json.loads(sys.stdin.read())
+          d = json.loads(os.environ.get('SESSION_JSON', '{}'))
           sid, tid, status = d.get('session_id',''), d.get('tree_id',''), d.get('status','')
       except Exception:
           sid, tid, status = '', '', ''
