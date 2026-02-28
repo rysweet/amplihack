@@ -502,6 +502,16 @@ Rules:
             )
         ]
 
+        # Entity-linked retrieval: when the question mentions structured IDs
+        # (e.g. INC-2024-001, CVE-2024-3094), search for ALL facts containing
+        # those IDs to capture related facts stored under different contexts.
+        if self._ENTITY_ID_PATTERN.search(question):
+            relevant_facts = self._entity_linked_retrieval(question, relevant_facts)
+
+        # Chain-aware multi-hop: when the question mentions 2+ named entities
+        # or IDs, retrieve facts for each entity separately and merge.
+        relevant_facts = self._multi_entity_retrieval(question, relevant_facts)
+
         # For math/numerical and temporal questions on large KBs, supplement retrieval
         # with keyword-targeted search to recover exact numbers/temporal chains
         # lost in summarization or missed by entity retrieval.
@@ -1102,6 +1112,129 @@ Rules:
             question[:80],
         )
         return all_facts
+
+    # Regex for structured entity IDs (e.g. INC-2024-001, CVE-2024-3094)
+    _ENTITY_ID_PATTERN = re.compile(r"\b([A-Z]{2,5}-\d{4}-\d{2,5})\b")
+
+    def _entity_linked_retrieval(
+        self, question: str, existing_facts: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """Retrieve all facts linked to entity IDs found in the question.
+
+        When the question mentions structured IDs like INC-2024-001 or
+        CVE-2024-3094, searches memory for ALL facts containing those IDs.
+        This catches related facts stored under different context tags
+        (e.g. CVE details stored separately from incident timeline).
+
+        Args:
+            question: The question text
+            existing_facts: Already-retrieved facts to merge with
+
+        Returns:
+            Merged, deduplicated list of facts including entity-linked ones
+        """
+        entity_ids = self._ENTITY_ID_PATTERN.findall(question)
+        if not entity_ids:
+            return existing_facts
+
+        existing_ids = {
+            f.get("experience_id", "") for f in existing_facts if f.get("experience_id")
+        }
+        new_facts: list[dict[str, Any]] = []
+
+        for entity_id in entity_ids:
+            # Search by text content for any fact mentioning the entity ID
+            if hasattr(self.memory, "search"):
+                results = self.memory.search(query=entity_id, limit=30)
+                for fact in results:
+                    fid = fact.get("experience_id", "")
+                    if fid and fid not in existing_ids:
+                        existing_ids.add(fid)
+                        new_facts.append(fact)
+
+            # Also try entity retrieval if available (different index path)
+            if hasattr(self.memory, "retrieve_by_entity"):
+                results = self.memory.retrieve_by_entity(entity_id, limit=30)
+                for fact in results:
+                    fid = fact.get("experience_id", "")
+                    if fid and fid not in existing_ids:
+                        existing_ids.add(fid)
+                        new_facts.append(fact)
+
+        if new_facts:
+            logger.info(
+                "Entity-linked retrieval: %d IDs -> %d new facts for '%s'",
+                len(entity_ids),
+                len(new_facts),
+                question[:60],
+            )
+
+        return existing_facts + new_facts
+
+    def _multi_entity_retrieval(
+        self, question: str, existing_facts: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """Chain-aware retrieval for questions mentioning multiple entities.
+
+        When a question references 2+ named entities or structured IDs,
+        runs separate retrieval for each entity and merges results. This
+        ensures multi-hop questions get facts from all relevant entities
+        rather than only the first one matched.
+
+        Args:
+            question: The question text
+            existing_facts: Already-retrieved facts
+
+        Returns:
+            Merged, deduplicated facts from all entities
+        """
+        # Collect entity names (proper nouns)
+        name_candidates = re.findall(
+            r"\b("
+            r"[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+"
+            r")\b",
+            question,
+        )
+        # Collect structured IDs
+        id_candidates = self._ENTITY_ID_PATTERN.findall(question)
+
+        all_entities = list(set(name_candidates + id_candidates))
+        if len(all_entities) < 2:
+            return existing_facts
+
+        existing_ids = {
+            f.get("experience_id", "") for f in existing_facts if f.get("experience_id")
+        }
+        new_facts: list[dict[str, Any]] = []
+
+        for entity in all_entities:
+            # Try entity retrieval
+            if hasattr(self.memory, "retrieve_by_entity"):
+                results = self.memory.retrieve_by_entity(entity, limit=40)
+                for fact in results:
+                    fid = fact.get("experience_id", "")
+                    if fid and fid not in existing_ids:
+                        existing_ids.add(fid)
+                        new_facts.append(fact)
+
+            # Also try text search for IDs
+            if self._ENTITY_ID_PATTERN.match(entity) and hasattr(self.memory, "search"):
+                results = self.memory.search(query=entity, limit=20)
+                for fact in results:
+                    fid = fact.get("experience_id", "")
+                    if fid and fid not in existing_ids:
+                        existing_ids.add(fid)
+                        new_facts.append(fact)
+
+        if new_facts:
+            logger.info(
+                "Multi-entity retrieval: %d entities -> %d new facts for '%s'",
+                len(all_entities),
+                len(new_facts),
+                question[:60],
+            )
+
+        return existing_facts + new_facts
 
     def _filter_facts_by_source_reference(
         self, question: str, facts: list[dict[str, Any]]
