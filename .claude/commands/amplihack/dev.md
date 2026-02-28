@@ -153,7 +153,7 @@ When this command is invoked with `{TASK_DESCRIPTION}`:
 
 ```python
 from amplihack.recipes import run_recipe_by_name
-from amplihack.recipes.adapters.sdk import ClaudeSDKAdapter
+from amplihack.recipes.adapters import ClaudeSDKAdapter
 
 # IMPORTANT: Replace TASK_DESCRIPTION with the actual user request text
 task = "<the actual task from the user>"
