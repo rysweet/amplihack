@@ -291,11 +291,18 @@ class HierarchicalMemory:
         elif isinstance(db_path, str):
             db_path = Path(db_path)
 
-        # Kuzu needs a path to its database directory (it creates it)
-        # If the path already exists as a regular directory without Kuzu files, append /kuzu_db
-        self.db_path = (
-            db_path / "kuzu_db" if db_path.is_dir() and not (db_path / "lock").exists() else db_path
-        )
+        # Kuzu needs a path to its database directory (it creates it).
+        # If the path already exists as a regular directory (e.g. pre-created by
+        # the segmented-learning orchestrator), always use db_path/kuzu_db to avoid
+        # path divergence across segments. The old check for "lock" file caused
+        # segment 2+ to use a different path than segment 1 (issue #2655).
+        if db_path.is_dir() and not (db_path / "kuzu.lock").exists():
+            self.db_path = db_path / "kuzu_db"
+        elif (db_path / "kuzu_db").is_dir():
+            # Existing kuzu_db subdirectory — use it (reconnect to segment 1's DB)
+            self.db_path = db_path / "kuzu_db"
+        else:
+            self.db_path = db_path
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
 
         self.database = kuzu.Database(str(self.db_path))
