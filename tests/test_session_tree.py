@@ -5,11 +5,10 @@ Covers: depth enforcement, max-session limits,
 concurrent access (via locking), env var propagation.
 """
 
-import json
 import os
 import sys
-import time
 import threading
+import time
 import unittest
 from pathlib import Path
 
@@ -40,12 +39,13 @@ class TestDepthEnforcement(unittest.TestCase):
 
     def tearDown(self):
         for tree in self._trees_created:
-            for suffix in ('.json', '.lock'):
-                p = st.STATE_DIR / f'{tree}{suffix}'
+            for suffix in (".json", ".lock"):
+                p = st.STATE_DIR / f"{tree}{suffix}"
                 p.unlink(missing_ok=True)
 
     def _unique_tree(self) -> str:
         import uuid
+
         t = "test-" + uuid.uuid4().hex[:8]
         self._trees_created.append(t)
         return t
@@ -96,12 +96,13 @@ class TestMaxSessionsLimit(unittest.TestCase):
 
     def tearDown(self):
         for tree in self._trees_created:
-            for suffix in ('.json', '.lock'):
-                p = st.STATE_DIR / f'{tree}{suffix}'
+            for suffix in (".json", ".lock"):
+                p = st.STATE_DIR / f"{tree}{suffix}"
                 p.unlink(missing_ok=True)
 
     def _unique_tree(self) -> str:
         import uuid
+
         t = "test-" + uuid.uuid4().hex[:8]
         self._trees_created.append(t)
         return t
@@ -158,12 +159,13 @@ class TestSessionRegistration(unittest.TestCase):
 
     def tearDown(self):
         for tree in self._trees_created:
-            for suffix in ('.json', '.lock'):
-                p = st.STATE_DIR / f'{tree}{suffix}'
+            for suffix in (".json", ".lock"):
+                p = st.STATE_DIR / f"{tree}{suffix}"
                 p.unlink(missing_ok=True)
 
     def _unique_tree(self) -> str:
         import uuid
+
         t = "test-" + uuid.uuid4().hex[:8]
         self._trees_created.append(t)
         return t
@@ -261,12 +263,13 @@ class TestGetStatus(unittest.TestCase):
 
     def tearDown(self):
         for tree in self._trees_created:
-            for suffix in ('.json', '.lock'):
-                p = st.STATE_DIR / f'{tree}{suffix}'
+            for suffix in (".json", ".lock"):
+                p = st.STATE_DIR / f"{tree}{suffix}"
                 p.unlink(missing_ok=True)
 
     def _unique_tree(self) -> str:
         import uuid
+
         t = "test-" + uuid.uuid4().hex[:8]
         self._trees_created.append(t)
         return t
@@ -305,12 +308,13 @@ class TestConcurrentAccess(unittest.TestCase):
 
     def tearDown(self):
         for tree in self._trees_created:
-            for suffix in ('.json', '.lock'):
-                p = st.STATE_DIR / f'{tree}{suffix}'
+            for suffix in (".json", ".lock"):
+                p = st.STATE_DIR / f"{tree}{suffix}"
                 p.unlink(missing_ok=True)
 
     def _unique_tree(self) -> str:
         import uuid
+
         t = "test-" + uuid.uuid4().hex[:8]
         self._trees_created.append(t)
         return t
@@ -385,12 +389,13 @@ class TestTTLPruning(unittest.TestCase):
 
     def tearDown(self):
         for tree in self._trees_created:
-            for suffix in ('.json', '.lock'):
-                p = st.STATE_DIR / f'{tree}{suffix}'
+            for suffix in (".json", ".lock"):
+                p = st.STATE_DIR / f"{tree}{suffix}"
                 p.unlink(missing_ok=True)
 
     def _unique_tree(self):
         import uuid
+
         t = "test-" + uuid.uuid4().hex[:8]
         self._trees_created.append(t)
         return t
@@ -404,8 +409,9 @@ class TestTTLPruning(unittest.TestCase):
         state["sessions"]["old"]["completed_at"] = time.time() - (25 * 3600)
         st._save(tree, state)  # This triggers pruning
         state_after = st._load(tree)
-        self.assertNotIn("old", state_after["sessions"],
-            "Completed session older than 24h must be pruned")
+        self.assertNotIn(
+            "old", state_after["sessions"], "Completed session older than 24h must be pruned"
+        )
 
     def test_recent_completed_session_preserved(self):
         tree = self._unique_tree()
@@ -413,8 +419,9 @@ class TestTTLPruning(unittest.TestCase):
         st.complete_session("recent", tree_id=tree)
         # completed_at is now — should NOT be pruned
         state_after = st._load(tree)
-        self.assertIn("recent", state_after["sessions"],
-            "Recently completed session must not be pruned")
+        self.assertIn(
+            "recent", state_after["sessions"], "Recently completed session must not be pruned"
+        )
 
     def test_leaked_active_session_pruned_after_4h(self):
         tree = self._unique_tree()
@@ -424,16 +431,18 @@ class TestTTLPruning(unittest.TestCase):
         state["sessions"]["leaked"]["started_at"] = time.time() - (5 * 3600)
         st._save(tree, state)  # This triggers active pruning
         state_after = st._load(tree)
-        self.assertNotIn("leaked", state_after["sessions"],
-            "Active session older than 4h must be pruned as leaked")
+        self.assertNotIn(
+            "leaked",
+            state_after["sessions"],
+            "Active session older than 4h must be pruned as leaked",
+        )
 
     def test_fresh_active_session_preserved(self):
         tree = self._unique_tree()
         st.register_session("fresh", tree_id=tree, depth=0)
         # started_at is now — should NOT be pruned
         state_after = st._load(tree)
-        self.assertIn("fresh", state_after["sessions"],
-            "Fresh active session must not be pruned")
+        self.assertIn("fresh", state_after["sessions"], "Fresh active session must not be pruned")
 
     def test_active_session_missing_started_at_is_pruned(self):
         """Active sessions with no started_at are treated as epoch 0 and always pruned."""
@@ -444,8 +453,11 @@ class TestTTLPruning(unittest.TestCase):
         st._save(tree, state)
         # _save() triggers TTL pruning; session with no started_at should be pruned
         state_after = st._load(tree)
-        self.assertNotIn("no-ts", state_after["sessions"],
-            "Active session with missing started_at must be pruned")
+        self.assertNotIn(
+            "no-ts",
+            state_after["sessions"],
+            "Active session with missing started_at must be pruned",
+        )
 
     def test_completed_session_missing_completed_at_is_pruned(self):
         """Completed sessions with no completed_at default to 0 (epoch) — always pruned."""
@@ -468,31 +480,40 @@ class TestCLISubcommands(unittest.TestCase):
 
     def tearDown(self):
         for tree in self._trees_created:
-            for suffix in ('.json', '.lock'):
-                p = st.STATE_DIR / f'{tree}{suffix}'
+            for suffix in (".json", ".lock"):
+                p = st.STATE_DIR / f"{tree}{suffix}"
                 p.unlink(missing_ok=True)
 
     def _run_cli(self, args, extra_env=None):
         import subprocess
-        script = str(Path(__file__).parent.parent / "amplifier-bundle" / "tools" / "session_tree.py")
+
+        script = str(
+            Path(__file__).parent.parent / "amplifier-bundle" / "tools" / "session_tree.py"
+        )
         env = os.environ.copy()
         if extra_env:
             env.update(extra_env)
         return subprocess.run(
             [sys.executable, script] + args,
-            capture_output=True, text=True, env=env,
-            cwd=str(Path(__file__).parent.parent)
+            capture_output=True,
+            text=True,
+            env=env,
+            cwd=str(Path(__file__).parent.parent),
         )
 
     def test_register_outputs_tree_id_and_depth(self):
         """The recipe's setup-session step calls: session_tree.py register <session_id>"""
         import re as _re
+
         r = self._run_cli(["register", "test-sess-cli"])
         self.assertEqual(r.returncode, 0, f"register should exit 0: {r.stderr}")
-        self.assertRegex(r.stdout.strip(), r'^TREE_ID=[A-Za-z0-9_-]+ DEPTH=\d+$',
-            f"Output must be 'TREE_ID=... DEPTH=...' format, got: {r.stdout!r}")
+        self.assertRegex(
+            r.stdout.strip(),
+            r"^TREE_ID=[A-Za-z0-9_-]+ DEPTH=\d+$",
+            f"Output must be 'TREE_ID=... DEPTH=...' format, got: {r.stdout!r}",
+        )
         # Record tree for cleanup
-        m = _re.search(r'TREE_ID=([A-Za-z0-9_-]+)', r.stdout)
+        m = _re.search(r"TREE_ID=([A-Za-z0-9_-]+)", r.stdout)
         if m:
             self._trees_created.append(m.group(1))
 
@@ -505,7 +526,7 @@ class TestCLISubcommands(unittest.TestCase):
                 "AMPLIHACK_SESSION_DEPTH": "0",
                 "AMPLIHACK_MAX_DEPTH": "3",
                 "AMPLIHACK_MAX_SESSIONS": "10",
-            }
+            },
         )
         self.assertEqual(r.returncode, 0)
         self.assertEqual(r.stdout.strip(), "ALLOWED")
@@ -513,30 +534,36 @@ class TestCLISubcommands(unittest.TestCase):
     def test_complete_exits_zero(self):
         """The recipe's complete-session step calls: session_tree.py complete <id>"""
         import re as _re
+
         # Register first
         reg = self._run_cli(["register", "sess-for-complete"])
-        m = _re.search(r'TREE_ID=([A-Za-z0-9_-]+)', reg.stdout)
+        m = _re.search(r"TREE_ID=([A-Za-z0-9_-]+)", reg.stdout)
         self.assertIsNotNone(m, f"register output malformed: {reg.stdout!r}")
         tree_id = m.group(1)
         self._trees_created.append(tree_id)
         # Complete
-        r = self._run_cli(["complete", "sess-for-complete"],
-                         extra_env={"AMPLIHACK_TREE_ID": tree_id})
+        r = self._run_cli(
+            ["complete", "sess-for-complete"], extra_env={"AMPLIHACK_TREE_ID": tree_id}
+        )
         self.assertEqual(r.returncode, 0, f"complete should exit 0: {r.stderr}")
 
     def test_check_blocked_at_max_depth(self):
         """Session at max depth must return BLOCKED."""
         r = self._run_cli(
             ["check"],
-            extra_env={"AMPLIHACK_TREE_ID": "", "AMPLIHACK_SESSION_DEPTH": "3", "AMPLIHACK_MAX_DEPTH": "3"}
+            extra_env={
+                "AMPLIHACK_TREE_ID": "",
+                "AMPLIHACK_SESSION_DEPTH": "3",
+                "AMPLIHACK_MAX_DEPTH": "3",
+            },
         )
         self.assertEqual(r.returncode, 0)
         self.assertIn("BLOCKED", r.stdout.strip())
 
     def test_register_exits_rc1_on_capacity_overflow(self):
         """CLI register exits rc=1 when capacity is exceeded (recipe depends on this)."""
-        import re as _re
         import uuid
+
         tree = "test-" + uuid.uuid4().hex[:8]
         self._trees_created.append(tree)
         saved = os.environ.get("AMPLIHACK_MAX_SESSIONS")
@@ -545,17 +572,20 @@ class TestCLISubcommands(unittest.TestCase):
             # Fill the single slot
             r1 = self._run_cli(
                 ["register", "first-session"],
-                extra_env={"AMPLIHACK_TREE_ID": tree, "AMPLIHACK_MAX_SESSIONS": "1"}
+                extra_env={"AMPLIHACK_TREE_ID": tree, "AMPLIHACK_MAX_SESSIONS": "1"},
             )
             self.assertEqual(r1.returncode, 0, f"first register should succeed: {r1.stderr}")
 
             # Second register must fail with rc=1
             r2 = self._run_cli(
                 ["register", "second-session"],
-                extra_env={"AMPLIHACK_TREE_ID": tree, "AMPLIHACK_MAX_SESSIONS": "1"}
+                extra_env={"AMPLIHACK_TREE_ID": tree, "AMPLIHACK_MAX_SESSIONS": "1"},
             )
-            self.assertEqual(r2.returncode, 1,
-                f"register should exit 1 on capacity overflow, got rc={r2.returncode}, stderr={r2.stderr}")
+            self.assertEqual(
+                r2.returncode,
+                1,
+                f"register should exit 1 on capacity overflow, got rc={r2.returncode}, stderr={r2.stderr}",
+            )
         finally:
             if saved is None:
                 os.environ.pop("AMPLIHACK_MAX_SESSIONS", None)
@@ -571,12 +601,13 @@ class TestDuplicateSessionRegistration(unittest.TestCase):
 
     def tearDown(self):
         for tree in self._trees_created:
-            for suffix in ('.json', '.lock'):
-                p = st.STATE_DIR / f'{tree}{suffix}'
+            for suffix in (".json", ".lock"):
+                p = st.STATE_DIR / f"{tree}{suffix}"
                 p.unlink(missing_ok=True)
 
     def _unique_tree(self):
         import uuid
+
         t = "test-" + uuid.uuid4().hex[:8]
         self._trees_created.append(t)
         return t
@@ -617,12 +648,13 @@ class TestCorruptedJsonRecovery(unittest.TestCase):
 
     def tearDown(self):
         for tree in self._trees_created:
-            for suffix in ('.json', '.lock'):
-                p = st.STATE_DIR / f'{tree}{suffix}'
+            for suffix in (".json", ".lock"):
+                p = st.STATE_DIR / f"{tree}{suffix}"
                 p.unlink(missing_ok=True)
 
     def _unique_tree(self):
         import uuid
+
         t = "test-" + uuid.uuid4().hex[:8]
         self._trees_created.append(t)
         return t
@@ -653,8 +685,9 @@ class TestCorruptedJsonRecovery(unittest.TestCase):
         st._ensure_state_dir()
         (st.STATE_DIR / f"{tree}.json").write_text('{"sessions": "not_a_dict"}')
         result = st._load(tree)
-        self.assertEqual(result, {"sessions": {}},
-            "Schema-invalid state file must be treated as empty state")
+        self.assertEqual(
+            result, {"sessions": {}}, "Schema-invalid state file must be treated as empty state"
+        )
 
     def test_load_with_sessions_as_list_returns_empty_state(self):
         """When sessions is a list (wrong type), _load must return empty state."""
@@ -671,11 +704,12 @@ class TestGetStatusEdgeCases(unittest.TestCase):
 
     def tearDown(self):
         for tree in self._trees_created:
-            for suffix in ('.json', '.lock'):
-                (st.STATE_DIR / f'{tree}{suffix}').unlink(missing_ok=True)
+            for suffix in (".json", ".lock"):
+                (st.STATE_DIR / f"{tree}{suffix}").unlink(missing_ok=True)
 
     def _unique_tree(self):
         import uuid
+
         t = "test-" + uuid.uuid4().hex[:8]
         self._trees_created.append(t)
         return t
@@ -683,6 +717,8 @@ class TestGetStatusEdgeCases(unittest.TestCase):
     def test_status_for_never_registered_tree_returns_empty(self):
         """get_status for a tree with no state file must return empty lists."""
         import uuid
+
+
         tree = "test-never-" + uuid.uuid4().hex[:8]
         result = st.get_status(tree)
         self.assertEqual(result["tree_id"], tree)
@@ -699,12 +735,13 @@ class TestStaleLockCleanup(unittest.TestCase):
 
     def tearDown(self):
         for tree in self._trees_created:
-            for suffix in ('.json', '.lock'):
-                p = st.STATE_DIR / f'{tree}{suffix}'
+            for suffix in (".json", ".lock"):
+                p = st.STATE_DIR / f"{tree}{suffix}"
                 p.unlink(missing_ok=True)
 
     def _unique_tree(self):
         import uuid
+
         t = "test-" + uuid.uuid4().hex[:8]
         self._trees_created.append(t)
         return t
@@ -719,6 +756,7 @@ class TestStaleLockCleanup(unittest.TestCase):
         # The safest approach: use a PID we just know is dead.
         # We can fork a process, get its PID, wait for it to exit, then use that PID.
         import subprocess
+
         proc = subprocess.Popen([sys.executable, "-c", "import sys; sys.exit(0)"])
         dead_pid = proc.pid
         proc.wait()  # Ensure it's dead
