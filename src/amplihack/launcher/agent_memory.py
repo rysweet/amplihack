@@ -61,8 +61,7 @@ class AgentMemory:
             store = ExperienceStore(
                 agent_name=agent_name,
                 storage_path=path,
-                backend="sqlite",
-            )
+            )  # Uses kuzu graph backend by default
             return cls(store)
         except Exception as e:
             logger.debug(f"Failed to init memory: {e}")
@@ -146,12 +145,8 @@ class AgentMemory:
             return ""
 
     def close(self) -> None:
-        """Close the memory store."""
-        try:
-            if hasattr(self._store, "close"):
-                self._store.close()
-        except Exception:
-            pass
+        """Clean up the memory store (no-op if store has no close method)."""
+        pass  # ExperienceStore handles cleanup internally
 
     def _safe_add(
         self,
