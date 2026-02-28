@@ -55,7 +55,7 @@ classifies your task, detects parallel workstreams, and executes via recipe runn
 **Goal-Seeking Loop**: The up-to-3-round retry mechanism. After each execution
 round, a reviewer agent evaluates whether the goal was achieved. If PARTIAL or
 NOT_ACHIEVED, another round runs automatically (up to 3 total). After all rounds
-complete, a mandatory `reflect-final` step runs unconditionally to produce the
+complete, a `reflect-final` step runs for all completed development and investigation tasks to produce the
 definitive `GOAL_STATUS` assessment used in the summary.
 
 **Recursion Guard Fallback**: When the session depth limit is reached and
@@ -85,17 +85,32 @@ task runs as a single Claude session without sub-workstream spawning.
 
 When you run `/dev fix the login bug`, here is what you will see:
 
-1. **Classification** (~30 seconds): The orchestrator analyzes your request and outputs a structured plan. You will see agent reasoning and a JSON decomposition.
+1. **Classification** (~1 minute): The orchestrator analyzes your request and outputs a structured plan. You will see agent reasoning and a JSON decomposition.
 
-2. **Execution** (1–5 minutes for typical tasks): The builder agent does the actual work — you will see detailed implementation output streaming in real time.
+2. **Execution** (~5–15min for a typical bug fix, longer for complex features): The builder agent does the actual work — you will see detailed implementation output streaming in real time.
 
 3. **Reflection** (~1 minute): A reviewer evaluates whether the goal was achieved. If not, another round runs automatically (up to 3 total). You will see `GOAL_STATUS: PARTIAL` or `GOAL_STATUS: ACHIEVED` in the output.
 
 4. **Summary**: When complete, look for `# Dev Orchestrator -- Execution Complete` at the bottom. This contains the structured summary including PR links and goal status.
 
+> **Timing varies significantly** based on task complexity, model load, and number of reflection rounds.
+> Simple Q&A: seconds. Typical bug fix: 5–15 minutes. Complex multi-workstream features: 30+ minutes.
+
 **If execution takes longer than 2 minutes with no output**, the agent is working — there are no progress bars between major steps.
 
 **If you see `BLOCKED`**: parallel workstream spawning was limited. Your task will still complete as a single-session execution.
+
+## Auto-Routing (Without Typing /dev)
+
+The `UserPromptSubmit` hook automatically injects intent-routing guidance on
+every message (except slash commands and short conversational turns). Claude
+classifies your intent and invokes `dev-orchestrator` when appropriate.
+
+- **Disable**: `/amplihack:no-auto-dev` (toggles instantly, no restart needed)
+- **Re-enable**: `/amplihack:auto-dev`
+- **Override for one prompt**: Include "just answer" or "without workflow"
+- **Legacy env var**: `export AMPLIHACK_AUTO_DEV=false` (still works)
+- **Details**: See the [auto-routing tutorial section](../../../docs/tutorials/dev-orchestrator-tutorial.md#auto-routing-how-it-works)
 
 ## How It Works
 

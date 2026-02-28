@@ -79,6 +79,7 @@ User request
 ```
 
 **Session tree enforcement** (prevents infinite recursion):
+
 - Each subprocess inherits `AMPLIHACK_TREE_ID`, `AMPLIHACK_SESSION_DEPTH`, `AMPLIHACK_MAX_DEPTH`
 - Depth >= 3: recursion guard blocks sub-workstream spawning, falls back to single-session
 - Max 10 concurrent sessions per tree; extras queue in FIFO order
@@ -89,8 +90,8 @@ User request
 This skill auto-activates for development and investigation keywords. It is also the
 **default behavior** per CLAUDE.md — invoke it for any non-trivial task.
 
-The `UserPromptSubmit` hook reinforces this by injecting a classification reminder
-that references `/dev` as the entry point.
+The `UserPromptSubmit` hook reinforces this by injecting a classification prompt
+that instructs Claude to invoke `Skill(skill="dev-orchestrator")` for dev/investigation tasks.
 
 ## Execution Instructions
 
@@ -142,13 +143,15 @@ After execution completes, verify the goal was achieved. If not:
 
 ## Task Type Classification
 
-| Type          | Keywords                                                      | Action                        |
-| ------------- | ------------------------------------------------------------- | ----------------------------- |
-| Q&A           | "what is", "explain", "how do I", "quick question"            | Respond directly              |
-| Operations    | "cleanup", "delete", "git status", "run command"              | Execute directly              |
-| Investigation | "investigate", "analyze", "how does", "understand", "explore" | investigation-workflow        |
-| Development   | "implement", "build", "create", "add", "fix", "refactor"      | smart-orchestrator            |
-| Hybrid        | Both investigation + development keywords                     | investigation first, then dev |
+| Type          | Keywords                                                       | Action                                              |
+| ------------- | -------------------------------------------------------------- | --------------------------------------------------- |
+| Q&A           | "what is", "explain", "how does", "how do I", "quick question" | Respond directly                                    |
+| Operations    | "clean up", "delete", "git status", "run command"              | builder agent (direct execution, no workflow steps) |
+| Investigation | "investigate", "analyze", "understand", "explore"              | investigation-workflow                              |
+| Development   | "implement", "build", "create", "add", "fix", "refactor"       | smart-orchestrator                                  |
+| Hybrid\*      | Both investigation + development keywords                      | Decomposed into investigation + dev workstreams     |
+
+\* Hybrid is not a distinct task_type — the orchestrator classifies as Development and decomposes into multiple workstreams (one investigation, one development).
 
 ## Workstream Decomposition Examples
 
@@ -183,10 +186,13 @@ Set `AMPLIHACK_MAX_DEPTH=0` before running `/dev`. This causes the recursion gua
 to block parallel spawning and fall back to single-session mode for all tasks:
 
 ```bash
-AMPLIHACK_MAX_DEPTH=0 /dev build a webui and an api
+export AMPLIHACK_MAX_DEPTH=0  # set in your shell first
+/dev build a webui and an api  # then type in Claude Code
 ```
 
-Note: This affects all depth checks, not just parallel workstream spawning.
+Note: The env var must be set in your shell before starting Claude Code — it cannot
+be prefixed inline on the `/dev` command. This affects all depth checks, not just
+parallel workstream spawning.
 
 ## Canonical Sources
 
@@ -222,19 +228,22 @@ Appears at the end of round execution steps:
 
 - `STATUS: COMPLETE` — the round's work is fully done
 - `STATUS: CONTINUE` — more work remains after this round
+- `STATUS: PARTIAL` — the final round (round 3) reached partial completion
+- `STATUS: DEPTH_LIMITED` — (legacy, no longer emitted; use BLOCKED path instead)
 
 ### Goal status (from reviewer agents)
 
 Appears at the end of reflection steps:
 
 - `GOAL_STATUS: ACHIEVED` — all success criteria met, task is done
-- `GOAL_STATUS: PARTIAL — [description]` — some criteria met, more work needed
-- `GOAL_STATUS: NOT_ACHIEVED — [reason]` — goal not met, another round needed
+- `GOAL_STATUS: PARTIAL -- [description]` — some criteria met, more work needed
+- `GOAL_STATUS: NOT_ACHIEVED -- [reason]` — goal not met, another round needed
 
 The goal-seeking loop uses GOAL_STATUS signals to decide whether to run round 2 or 3.
 
 **BLOCKED path (recursion guard)**: When multi-workstream spawning is blocked
 by the depth limit, the orchestrator falls back to single-session execution:
+
 1. `announce-depth-limited` — prints a warning banner with remediation info
 2. `execute-single-fallback-blocked` — executes the full task as a single
    builder agent session (same as single-workstream path, produces
