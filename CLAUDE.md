@@ -47,12 +47,28 @@ turns, it's the same topic. Continue in the current workflow.
 
 ### Quick Classification (3 seconds max)
 
-| Task Type         | Action                    | When to Use                                            |
-| ----------------- | ------------------------- | ------------------------------------------------------ |
-| **Q&A**           | Respond directly          | Simple questions, single-turn answers, no code changes |
-| **Operations**    | Respond directly          | Admin tasks, commands, disk cleanup, repo management   |
+| Task Type         | Action                      | When to Use                                            |
+| ----------------- | --------------------------- | ------------------------------------------------------ |
+| **Q&A**           | Respond directly            | Simple questions, single-turn answers, no code changes |
+| **Operations**    | Respond directly            | Admin tasks, commands, disk cleanup, repo management   |
 | **Investigation** | smart-orchestrator (`/dev`) | Understanding code, exploring systems, research        |
 | **Development**   | smart-orchestrator (`/dev`) | Code changes, features, bugs, refactoring              |
+
+### Code File Edit Rule (MANDATORY)
+
+**If the task requires editing ANY code files (`.py`, `.yaml`, `.ts`, `.js`,
+`.rs`, `.go`, `.json`, `.toml`, etc.), it MUST be classified as Development —
+never Q&A or Operations, even if the change seems trivial.**
+
+Examples of "trivial" changes that STILL require the Development workflow:
+
+- Changing a default value in a config file
+- Updating a version string
+- Fixing a typo in a code comment
+- Changing an import path
+
+The only exception is editing `CLAUDE.md` itself or files in `.claude/context/`
+— these are documentation/configuration, not code.
 
 ### Classification Keywords
 
@@ -108,6 +124,8 @@ orchestration" for direct implementation.
 - Starting implementation without reading DEFAULT_WORKFLOW.md
 - Skipping Step 0 of DEFAULT_WORKFLOW
 - Treating workflow as optional
+- Classifying code file edits as Q&A to skip the workflow (even "just change one
+  line" requires Development workflow if it touches code files)
 
 ## Working Philosophy
 
@@ -199,7 +217,8 @@ Amplihack provides four extensibility mechanisms with clear invocation patterns:
 
 **Composition Examples:**
 
-- Command invoking workflow: `/dev` invokes `smart-orchestrator` recipe which calls `default-workflow`
+- Command invoking workflow: `/dev` invokes `smart-orchestrator` recipe which
+  calls `default-workflow`
 - Command invoking command: `/improve` can invoke `/amplihack:reflect`
 - Skill invoking agent: `test-gap-analyzer` invokes `tester` agent
 - Agent invoking skill: `architect` can invoke `mermaid-diagram-generator`
@@ -605,21 +624,25 @@ Default execution mode for all non-trivial tasks. The dev-orchestrator:
 The dev-orchestrator enforces recursion limits via a session tree to prevent
 infinite sub-orchestration. Four environment variables control this:
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `AMPLIHACK_TREE_ID` | (auto-generated per invocation) | Shared tree ID. Auto-generated when `/dev` runs. Not persistent across Claude Code sessions. To inspect state after a session ends, check `/tmp/amplihack-session-trees/` for `.json` files. |
-| `AMPLIHACK_SESSION_DEPTH` | `0` | Current depth — auto-incremented by the recipe runner, **do not set manually**. Setting this to a value >= AMPLIHACK_MAX_DEPTH will cause session registration to fail silently. If accidentally set: `unset AMPLIHACK_SESSION_DEPTH` |
-| `AMPLIHACK_MAX_DEPTH` | `3` | Read by session_tree.py — max recursion depth before spawning blocked. Set in your shell before running `/dev` to override. |
-| `AMPLIHACK_MAX_SESSIONS` | `10` | Read by session_tree.py — max concurrent active sessions per tree. Set in shell to override. |
+| Variable                  | Default                         | Purpose                                                                                                                                                                                                                               |
+| ------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AMPLIHACK_TREE_ID`       | (auto-generated per invocation) | Shared tree ID. Auto-generated when `/dev` runs. Not persistent across Claude Code sessions. To inspect state after a session ends, check `/tmp/amplihack-session-trees/` for `.json` files.                                          |
+| `AMPLIHACK_SESSION_DEPTH` | `0`                             | Current depth — auto-incremented by the recipe runner, **do not set manually**. Setting this to a value >= AMPLIHACK_MAX_DEPTH will cause session registration to fail silently. If accidentally set: `unset AMPLIHACK_SESSION_DEPTH` |
+| `AMPLIHACK_MAX_DEPTH`     | `3`                             | Read by session_tree.py — max recursion depth before spawning blocked. Set in your shell before running `/dev` to override.                                                                                                           |
+| `AMPLIHACK_MAX_SESSIONS`  | `10`                            | Read by session_tree.py — max concurrent active sessions per tree. Set in shell to override.                                                                                                                                          |
 
-> **Important**: `AMPLIHACK_SESSION_DEPTH` and `AMPLIHACK_TREE_ID` are set automatically by the recipe runner. Do not set them manually in your shell. If they are accidentally set and causing issues, run:
+> **Important**: `AMPLIHACK_SESSION_DEPTH` and `AMPLIHACK_TREE_ID` are set
+> automatically by the recipe runner. Do not set them manually in your shell. If
+> they are accidentally set and causing issues, run:
+>
 > ```bash
 > unset AMPLIHACK_SESSION_DEPTH AMPLIHACK_TREE_ID
 > ```
 
-**Important**: `AMPLIHACK_TREE_ID` is auto-generated by the recipe and lives only in the recipe
-runner's environment — it is NOT exported to your shell. After a session ends,
-use `ls /tmp/amplihack-session-trees/*.json` to find the tree ID from filenames.
+**Important**: `AMPLIHACK_TREE_ID` is auto-generated by the recipe and lives
+only in the recipe runner's environment — it is NOT exported to your shell.
+After a session ends, use `ls /tmp/amplihack-session-trees/*.json` to find the
+tree ID from filenames.
 
 **Debugging a blocked session:**
 
@@ -645,10 +668,10 @@ python3 amplifier-bundle/tools/session_tree.py check
 export AMPLIHACK_MAX_DEPTH=5
 ```
 
-**When you see "RECURSION GUARD: session depth limit reached":**
-The orchestrator is blocking sub-workstream spawning to prevent infinite recursion.
-Increase `AMPLIHACK_MAX_DEPTH` if you need deeper orchestration.
-State is tracked in `/tmp/amplihack-session-trees/{tree_id}.json`.
+**When you see "RECURSION GUARD: session depth limit reached":** The
+orchestrator is blocking sub-workstream spawning to prevent infinite recursion.
+Increase `AMPLIHACK_MAX_DEPTH` if you need deeper orchestration. State is
+tracked in `/tmp/amplihack-session-trees/{tree_id}.json`.
 
 ### /analyze <path>
 
@@ -666,7 +689,8 @@ Intelligent fix workflow optimization for common error patterns. Key features:
 - **Template-based**: Uses pre-built templates for 80% of common fixes
 - **Mode selection**: QUICK (< 5 min), DIAGNOSTIC (root cause), COMPREHENSIVE
   (full workflow)
-- **Integration**: Seamlessly works with **dev-orchestrator** (`/dev`) and existing agents
+- **Integration**: Seamlessly works with **dev-orchestrator** (`/dev`) and
+  existing agents
 
 **Usage Examples:**
 
