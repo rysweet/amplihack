@@ -90,8 +90,8 @@ User request
 This skill auto-activates for development and investigation keywords. It is also the
 **default behavior** per CLAUDE.md — invoke it for any non-trivial task.
 
-The `UserPromptSubmit` hook reinforces this by injecting a classification reminder
-that references `/dev` as the entry point.
+The `UserPromptSubmit` hook reinforces this by injecting a classification prompt
+that instructs Claude to invoke `Skill(skill="dev-orchestrator")` for dev/investigation tasks.
 
 ## Execution Instructions
 
