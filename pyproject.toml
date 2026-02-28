@@ -5,7 +5,7 @@ backend-path = ["."]
 
 [project]
 name = "amplihack"
-version = "0.5.81"
+version = "0.5.82"
 description = "Amplifier bundle for agentic coding with comprehensive skills, recipes, and workflows"
 requires-python = ">=3.11"
 dependencies = [
