@@ -113,7 +113,7 @@ except ImportError:
 
 ```python
 from amplihack.recipes import run_recipe_by_name
-from amplihack.recipes.adapters.sdk import ClaudeSDKAdapter
+from amplihack.recipes.adapters import ClaudeSDKAdapter
 
 adapter = ClaudeSDKAdapter()
 result = run_recipe_by_name(
