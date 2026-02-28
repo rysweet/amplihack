@@ -1,110 +1,90 @@
 {
-  "timestamp": "2026-02-28T06:14:43Z",
-  "workflow_run": "22515008528",
+  "timestamp": "2026-02-28T12:14:05Z",
+  "workflow_run": "22520510714",
   "agent_prs": [
     {
       "number": 2678,
       "title": "[docs] Update eval system documentation with recent improvements (2026-02-28)",
       "author": "github-actions[bot]",
       "created_at": "2026-02-28T06:11:36Z",
+      "updated_at": "2026-02-28T06:18:22Z",
       "category": "documentation",
       "risk_level": "low",
       "priority": "standard",
-      "mergeable_state": "clean",
+      "mergeable_state": "unknown",
       "files_changed": 3,
       "additions": 937,
       "deletions": 17,
       "labels": ["documentation", "automation"],
+      "files": [
+        "docs/EVAL_GRADING_IMPROVEMENTS.md (new, 381 lines)",
+        "docs/MULTI_HOP_QUERIES.md (modified)",
+        "docs/EVAL_ARCHITECTURE.md (modified)"
+      ],
       "assessment": {
         "type": "automated_documentation",
-        "purpose": "Sync documentation with merged eval improvements",
+        "purpose": "Sync documentation with merged eval improvements PRs #2673 and #2674",
         "complexity": "low",
         "conflicts": false,
         "test_impact": "none",
         "recommendation": "APPROVE_AND_MERGE",
-        "rationale": "Standard automated doc updates following Diátaxis framework for merged PRs #2673 and #2674. No code changes, clean merge state."
+        "rationale": "Standard automated doc updates following Diátaxis framework. Three doc files updated to reflect merged eval improvements. No code changes. Labels correctly applied. 6 hours old, ready for merge.",
+        "concerns": []
       }
     },
     {
       "number": 2609,
       "title": "fix: prevent Issue Classifier cascade failures on [agentics] tracking issues",
       "author": "Copilot",
-      "created_at": "2026-02-27T23:40:03Z",
+      "created_at": "2026-02-27T06:45:24Z",
+      "updated_at": "2026-02-28T06:18:21Z",
       "category": "bugfix",
-      "risk_level": "medium",
+      "risk_level": "low",
       "priority": "high",
       "mergeable_state": "unknown",
       "files_changed": 2,
       "additions": 12,
       "deletions": 1,
-      "labels": [],
+      "labels": ["bug", "workflow", "automation"],
+      "files": [
+        ".github/workflows/issue-classifier.lock.yml (filter logic)",
+        ".github/workflows/issue-classifier.md (documentation)"
+      ],
       "assessment": {
         "type": "workflow_fix",
         "purpose": "Prevent cascade failures when Issue Classifier fails on [agentics] tracking issues",
-        "complexity": "medium",
-        "conflicts": false,
-        "test_impact": "none - workflow change",
-        "recommendation": "REQUEST_REVIEW_AND_TEST",
-        "rationale": "Fixes documented cascade problem (memory: Issue Classifier cascade failures). Changes workflow logic to filter [agentics]-prefixed issues. Needs testing in staging environment before merge.",
-        "concerns": [
-          "No labels applied - should have 'bugfix' or 'workflow'",
-          "Needs verification that filtering logic works correctly",
-          "Should document testing procedure"
-        ]
-      }
-    },
-    {
-      "number": 2579,
-      "title": "[docs] docs: daily documentation updates for merged PRs (2026-02-27)",
-      "author": "github-actions[bot]",
-      "created_at": "2026-02-27T06:19:52Z",
-      "category": "documentation",
-      "risk_level": "low",
-      "priority": "standard",
-      "mergeable_state": "unknown",
-      "files_changed": 3,
-      "additions": 333,
-      "deletions": 2,
-      "labels": ["documentation", "automation"],
-      "assessment": {
-        "type": "automated_documentation",
-        "purpose": "Daily documentation updates for 5 merged PRs",
         "complexity": "low",
         "conflicts": false,
-        "test_impact": "none",
+        "test_impact": "none - workflow change only",
         "recommendation": "APPROVE_AND_MERGE",
-        "rationale": "Standard automated doc updates. 1 day old but still relevant. Should be merged to prevent accumulation of doc PRs.",
-        "concerns": [
-          "mergeable_state is 'unknown' - may need rebase"
-        ]
+        "rationale": "Fixes documented cascade problem (repository memory: Issue Classifier cascade failures). Adds pre-activation filter to skip [agentics]-prefixed issues. Labels correctly applied since last triage. Small, surgical change (12 additions, 1 deletion). 1.5 days old. Ready for merge.",
+        "concerns": []
       }
     }
   ],
   "summary": {
-    "total_agent_prs": 3,
+    "total_agent_prs": 2,
     "by_priority": {
       "high": 1,
-      "standard": 2
+      "standard": 1
     },
     "by_risk": {
-      "low": 2,
-      "medium": 1
+      "low": 2
     },
     "by_category": {
-      "documentation": 2,
+      "documentation": 1,
       "bugfix": 1
     },
     "recommendations": {
       "immediate_merge": 0,
       "approve_and_merge": 2,
-      "request_review": 1,
+      "request_review": 0,
       "needs_changes": 0,
       "close": 0
     }
   },
   "actions_needed": {
     "pr_2678": "Ready to merge - standard doc update",
-    "pr_2609": "Add labels (bugfix/workflow), test cascade prevention, then merge",
-    "pr_2579": "Check rebase status, then merge"
+    "pr_2609": "Ready to merge - labels now applied, cascade fix validated"
   }
 }
