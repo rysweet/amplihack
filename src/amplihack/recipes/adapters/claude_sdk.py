@@ -42,8 +42,20 @@ class ClaudeSDKAdapter:
         prompt: str,
         agent_name: str | None = None,
         agent_system_prompt: str | None = None,
+        mode: str | None = None,
+        working_dir: str = ".",
     ) -> str:
-        """Execute an agent step via the Claude Agent SDK."""
+        """Execute an agent step via the Claude Agent SDK.
+
+        Args:
+            prompt: The task prompt.
+            agent_name: Optional agent identifier for context.
+            agent_system_prompt: Optional system prompt for the agent.
+            mode: Execution mode hint (e.g. "plan", "implement"). Currently
+                  unused by the SDK adapter but accepted for protocol compat.
+            working_dir: Working directory hint. Currently unused by the SDK
+                         adapter but accepted for protocol compatibility.
+        """
         sdk = self._get_sdk()
 
         enriched_prompt = prompt

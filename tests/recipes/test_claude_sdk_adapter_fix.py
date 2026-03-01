@@ -188,6 +188,58 @@ def test_claude_sdk_adapter_model_parameter_not_direct():
         print("✅ Model is NOT passed as direct parameter (fix applied)")
 
 
+def test_claude_sdk_adapter_accepts_mode_and_working_dir():
+    """Verify execute_agent_step accepts mode and working_dir parameters.
+
+    The recipe runner passes mode=step.mode and working_dir=working_dir
+    to all adapters. ClaudeSDKAdapter was missing these, causing TypeError.
+    """
+    from amplihack.recipes.adapters.claude_sdk import ClaudeSDKAdapter
+
+    adapter = ClaudeSDKAdapter()
+
+    mock_sdk = MagicMock()
+    mock_sdk.query = AsyncMock(return_value="Test response")
+
+    with patch.object(adapter, "_get_sdk", return_value=mock_sdk):
+        # This call would raise TypeError before the fix:
+        # "got an unexpected keyword argument 'mode'"
+        adapter.execute_agent_step(
+            prompt="Test prompt",
+            agent_name="builder",
+            agent_system_prompt="You are a builder.",
+            mode="plan",
+            working_dir="/tmp/test",
+        )
+
+        # Should succeed without TypeError
+        assert mock_sdk.query.called
+
+        print("✅ mode and working_dir accepted without TypeError")
+
+
+def test_claude_sdk_adapter_matches_protocol_signature():
+    """Verify ClaudeSDKAdapter.execute_agent_step signature matches SDKAdapter protocol."""
+    import inspect
+
+    from amplihack.recipes.adapters.base import SDKAdapter
+    from amplihack.recipes.adapters.claude_sdk import ClaudeSDKAdapter
+
+    protocol_sig = inspect.signature(SDKAdapter.execute_agent_step)
+    adapter_sig = inspect.signature(ClaudeSDKAdapter.execute_agent_step)
+
+    protocol_params = set(protocol_sig.parameters.keys()) - {"self"}
+    adapter_params = set(adapter_sig.parameters.keys()) - {"self"}
+
+    missing = protocol_params - adapter_params
+    assert not missing, (
+        f"ClaudeSDKAdapter.execute_agent_step is missing parameters "
+        f"from SDKAdapter protocol: {missing}"
+    )
+
+    print(f"✅ All protocol parameters present: {protocol_params}")
+
+
 if __name__ == "__main__":
     print("🧪 Running ClaudeSDKAdapter Model Parameter Tests (Issue #2336)\n")
     print("⚠️  These tests SHOULD FAIL before the fix is applied\n")
