@@ -268,6 +268,35 @@ class UserPromptSubmitHook(HookProcessor):
         Returns:
             Additional context to inject
         """
+        # Extract user prompt FIRST (needed for /dev detection before strategy)
+        user_message = input_data.get("userMessage", "")
+        if isinstance(user_message, dict):
+            early_prompt = user_message.get("text", "")
+        else:
+            early_prompt = str(user_message)
+
+        # Detect /dev invocation BEFORE strategy check — must run regardless
+        # of which strategy handles the prompt, because Copilot strategies
+        # short-circuit and return early, skipping downstream detection.
+        if self._is_dev_prompt(early_prompt):
+            try:
+                import time
+
+                from workflow_enforcement_hook import _write_state
+
+                _write_state(
+                    {
+                        "dev_invoked_at": time.time(),
+                        "dev_prompt": early_prompt[:200],
+                        "source": "user_prompt_submit",
+                        "tool_calls_since": 0,
+                        "warning_emitted": False,
+                    }
+                )
+                self.log("Workflow enforcement: /dev detected in prompt, tracking started")
+            except Exception as e:
+                self.log(f"Workflow enforcement setup failed (non-fatal): {e}", "WARNING")
+
         # Detect launcher and select strategy
         self.strategy = self._select_strategy()
         if self.strategy:
@@ -351,28 +380,6 @@ class UserPromptSubmitHook(HookProcessor):
 
         except Exception as e:
             self.log(f"Memory injection failed (non-fatal): {e}", "WARNING")
-
-        # 2.5. Detect /dev invocation at prompt level for workflow enforcement.
-        # This ensures the PostToolUse workflow_enforcement_hook can detect
-        # bypass even when Copilot/Claude doesn't invoke the Skill tool.
-        if self._is_dev_prompt(user_prompt):
-            try:
-                import time
-
-                from workflow_enforcement_hook import _write_state
-
-                _write_state(
-                    {
-                        "dev_invoked_at": time.time(),
-                        "dev_prompt": user_prompt[:200],
-                        "source": "user_prompt_submit",
-                        "tool_calls_since": 0,
-                        "warning_emitted": False,
-                    }
-                )
-                self.log("Workflow enforcement: /dev detected in prompt, tracking started")
-            except Exception as e:
-                self.log(f"Workflow enforcement setup failed (non-fatal): {e}", "WARNING")
 
         # 3. Inject AMPLIHACK.md framework instructions (if CLAUDE.md differs)
         amplihack_context = self._inject_amplihack_if_different()
