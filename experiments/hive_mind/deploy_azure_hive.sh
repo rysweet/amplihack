@@ -519,22 +519,17 @@ _event_bus = None
 
 
 def _init_hive():
-    """Initialize the Kuzu hive mind and event bus connections."""
+    """Initialize the hive graph and event bus connections."""
     global _hive, _event_bus
 
-    # Import hive mind modules
-    sys.path.insert(0, "/app/hive_mind_core")
-    sys.path.insert(0, "/app/hive_mind")
+    from amplihack.agents.goal_seeking.hive_mind.hive_graph import (
+        InMemoryHiveGraph,
+    )
+    from amplihack.agents.goal_seeking.hive_mind.event_bus import create_event_bus
 
-    from kuzu_hive import KuzuHiveMind
-    from event_bus import create_event_bus
-
-    db_path = os.path.join(DATA_DIR, AGENT_ID, "hive.db")
-    os.makedirs(os.path.dirname(db_path), exist_ok=True)
-
-    _hive = KuzuHiveMind(db_path=db_path)
+    _hive = InMemoryHiveGraph(hive_id=f"hive-{AGENT_ID}")
     _hive.register_agent(AGENT_ID, domain=AGENT_DOMAIN)
-    logger.info("Hive mind initialized: agent=%s domain=%s db=%s", AGENT_ID, AGENT_DOMAIN, db_path)
+    logger.info("Hive mind initialized: agent=%s domain=%s", AGENT_ID, AGENT_DOMAIN)
 
     # Connect event bus
     if SERVICE_BUS_CONN_STR:
@@ -596,8 +591,12 @@ def learn(req: LearnRequest):
     """Store a fact in the agent's local memory."""
     if _hive is None:
         raise HTTPException(status_code=503, detail="Hive not initialized")
-    _hive.store_fact(AGENT_ID, req.concept, req.content, req.confidence)
-    return {"status": "stored", "agent_id": AGENT_ID, "concept": req.concept}
+    from amplihack.agents.goal_seeking.hive_mind.hive_graph import HiveFact
+    fid = _hive.promote_fact(AGENT_ID, HiveFact(
+        fact_id="", content=req.content, concept=req.concept,
+        confidence=req.confidence,
+    ))
+    return {"status": "stored", "agent_id": AGENT_ID, "concept": req.concept, "fact_id": fid}
 
 
 @app.post("/learn_batch")
@@ -605,34 +604,45 @@ def learn_batch(req: FactList):
     """Store multiple facts at once."""
     if _hive is None:
         raise HTTPException(status_code=503, detail="Hive not initialized")
+    from amplihack.agents.goal_seeking.hive_mind.hive_graph import HiveFact
     stored = 0
     for fact in req.facts:
-        _hive.store_fact(AGENT_ID, fact.concept, fact.content, fact.confidence)
+        _hive.promote_fact(AGENT_ID, HiveFact(
+            fact_id="", content=fact.content, concept=fact.concept,
+            confidence=fact.confidence,
+        ))
         stored += 1
     return {"status": "stored", "agent_id": AGENT_ID, "count": stored}
 
 
 @app.post("/promote")
 def promote(req: PromoteRequest):
-    """Promote a fact from local to hive-level knowledge."""
+    """Promote a fact to the hive (same as learn for InMemoryHiveGraph)."""
     if _hive is None:
         raise HTTPException(status_code=503, detail="Hive not initialized")
-    result = _hive.promote_fact(AGENT_ID, req.concept, req.content, req.confidence)
-    return {"agent_id": AGENT_ID, **result}
+    from amplihack.agents.goal_seeking.hive_mind.hive_graph import HiveFact
+    fid = _hive.promote_fact(AGENT_ID, HiveFact(
+        fact_id="", content=req.content, concept=req.concept,
+        confidence=req.confidence,
+    ))
+    return {"agent_id": AGENT_ID, "fact_id": fid, "status": "promoted"}
 
 
 @app.post("/query")
 def query(req: QueryRequest):
-    """Query agent memory (local or hive-wide)."""
+    """Query agent memory."""
     if _hive is None:
         raise HTTPException(status_code=503, detail="Hive not initialized")
 
-    if req.mode == "local":
-        results = _hive.query_local(AGENT_ID, req.query, limit=req.limit)
-    else:
-        results = _hive.query_all(AGENT_ID, req.query, limit=req.limit)
-
-    return {"agent_id": AGENT_ID, "mode": req.mode, "results": results}
+    results = _hive.query_facts(req.query, limit=req.limit)
+    return {
+        "agent_id": AGENT_ID,
+        "mode": req.mode,
+        "results": [
+            {"content": f.content, "concept": f.concept, "confidence": f.confidence}
+            for f in results
+        ],
+    }
 
 
 @app.get("/stats")
@@ -663,13 +673,14 @@ def _poll_events():
                     event.source_agent,
                 )
                 if event.event_type == "FACT_PROMOTED":
+                    from amplihack.agents.goal_seeking.hive_mind.hive_graph import HiveFact
                     payload = event.payload
-                    _hive.store_fact(
-                        AGENT_ID,
-                        payload.get("concept", "shared"),
-                        payload.get("content", ""),
-                        payload.get("confidence", 0.5),
-                    )
+                    _hive.promote_fact(AGENT_ID, HiveFact(
+                        fact_id="",
+                        content=payload.get("content", ""),
+                        concept=payload.get("concept", "shared"),
+                        confidence=payload.get("confidence", 0.5),
+                    ))
         except Exception:
             logger.exception("Error polling events")
         time.sleep(2)
