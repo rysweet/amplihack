@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import shlex
 import subprocess
 import time
@@ -33,6 +34,12 @@ from amplihack.fleet.fleet_tasks import FleetTask, TaskPriority, TaskQueue, Task
 __all__ = ["FleetDirector"]
 
 logger = logging.getLogger(__name__)
+
+
+def _validate_name(name: str, label: str = "name") -> None:
+    """Validate names used in subprocess calls (VM names, session names)."""
+    if not name or not re.match(r'^[a-zA-Z0-9][a-zA-Z0-9_.-]*$', name):
+        raise ValueError(f"Invalid {label}: {name!r}")
 
 
 class ActionType(Enum):
@@ -368,6 +375,7 @@ class FleetDirector:
 
         vm_name = action.vm_name
         session_name = action.session_name or f"fleet-{task.id}"
+        _validate_name(vm_name, "vm_name")
 
         # Build the tmux command to start an agent
         safe_session = shlex.quote(session_name)
@@ -416,6 +424,7 @@ class FleetDirector:
     def _reassign_task(self, action: DirectorAction) -> str:
         """Stop stuck agent and requeue task."""
         if action.task and action.vm_name and action.session_name:
+            _validate_name(action.vm_name, "vm_name")
             # Kill the stuck session
             kill_cmd = f"tmux kill-session -t {shlex.quote(action.session_name)} 2>/dev/null || true"
             try:

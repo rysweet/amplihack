@@ -183,6 +183,8 @@ class AuthPropagator:
                 for src_path, dest_path, _ in files_to_bundle:
                     # Store relative to home
                     arcname = dest_path.replace("~/", "")
+                    if ".." in arcname or arcname.startswith("/"):
+                        continue  # Skip unsafe paths
                     tar.add(src_path, arcname=arcname)
 
             # Copy bundle (neutral filename bypasses azlin credential check)
