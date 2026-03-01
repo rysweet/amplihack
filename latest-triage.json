@@ -1,66 +1,14 @@
 {
-  "timestamp": "2026-03-01T00:44:35Z",
-  "workflow_run": "22532510429",
-  "agent_prs": [
-    {
-      "number": 2609,
-      "title": "fix: prevent Issue Classifier cascade failures on [agentics] tracking issues",
-      "author": "Copilot",
-      "created_at": "2026-02-27T06:45:24Z",
-      "updated_at": "2026-02-28T06:18:21Z",
-      "age_hours": 42.0,
-      "category": "workflow_bugfix",
-      "risk_level": "low",
-      "priority": "high",
-      "mergeable_state": "unknown",
-      "draft": true,
-      "files_changed": 2,
-      "additions": 12,
-      "deletions": 1,
-      "labels": ["bug", "workflow", "automation"],
-      "files": [
-        ".github/workflows/issue-classifier.lock.yml (filter logic)",
-        ".github/workflows/issue-classifier.md (documentation)"
-      ],
-      "assessment": {
-        "type": "workflow_bugfix",
-        "purpose": "Prevent cascade failures when Issue Classifier fails on [agentics] tracking issues",
-        "complexity": "low",
-        "conflicts": false,
-        "test_impact": "none - workflow change only",
-        "recommendation": "APPROVE_AND_MERGE",
-        "rationale": "Fixes documented cascade problem (repository memory confirms issue). Adds pre-activation filter to skip [agentics]-prefixed issues. Labels correctly applied. Small, surgical change (12 additions, 1 deletion). 42 hours old (1.7 days). Ready for merge after removing draft status.",
-        "concerns": [
-          "Currently marked as draft - should be moved to ready for review before merge"
-        ],
-        "next_steps": [
-          "Remove draft status",
-          "Request final review from maintainer",
-          "Merge after approval"
-        ]
-      }
-    }
-  ],
-  "summary": {
-    "total_agent_prs": 1,
-    "by_priority": {
-      "high": 1
-    },
-    "by_risk": {
-      "low": 1
-    },
-    "by_category": {
-      "workflow_bugfix": 1
-    },
-    "recommendations": {
-      "immediate_merge": 0,
-      "approve_and_merge": 1,
-      "request_review": 0,
-      "needs_changes": 0,
-      "close": 0
-    }
+  "timestamp": "2026-03-01T18:39:44Z",
+  "workflow_run": "22549913236",
+  "total_agent_prs": 2,
+  "by_status": {
+    "ready_for_review": 1,
+    "blocked_draft": 1
   },
-  "actions_needed": {
-    "pr_2609": "READY TO MERGE - Remove draft status, request final review, then merge. Fixes cascade issue documented in repository memory."
-  }
+  "by_priority": {
+    "high": 1,
+    "medium": 1
+  },
+  "latest_triage_file": "pr-triage-2026-03-01-18Z.json"
 }

@@ -1,0 +1,107 @@
+{
+  "timestamp": "2026-03-01T18:39:44Z",
+  "workflow_run": "22549913236",
+  "agent_prs": [
+    {
+      "number": 2746,
+      "title": "[docs] Daily documentation update - recipe runner changes (2026-03-01)",
+      "author": "github-actions[bot]",
+      "created_at": "2026-03-01T06:17:36Z",
+      "updated_at": "2026-03-01T12:16:48Z",
+      "age_hours": 12.4,
+      "category": "documentation",
+      "risk_level": "low",
+      "priority": "medium",
+      "mergeable_state": "unknown",
+      "draft": false,
+      "files_changed": 5,
+      "additions": 669,
+      "deletions": 1,
+      "labels": ["documentation", "automation"],
+      "files": [
+        "docs/explanation/recipe-runner-enforcement.md (added, 232 additions)",
+        "docs/explanation/smart-context-inference.md (added, 394 additions)",
+        "docs/howto/recipe-cli-commands.md (modified, 22 additions)",
+        "docs/reference/recipe-cli-reference.md (modified, 18 additions)",
+        "docs/tutorials/dev-orchestrator-tutorial.md (modified, 3 additions, 1 deletion)"
+      ],
+      "assessment": {
+        "type": "documentation",
+        "purpose": "Automated daily documentation update reflecting merged PRs #2741 (recipe runner enforcement) and #2742 (smart context inference)",
+        "complexity": "low",
+        "conflicts": false,
+        "test_impact": "none - documentation only",
+        "recommendation": "APPROVE_AND_MERGE",
+        "rationale": "Automated documentation PR following established patterns. Documents recent recipe runner enforcement changes across all Diátaxis categories (Tutorial, How-To, Reference, Explanation). Large additions (669) but all documentation with no code changes. 12 hours old. Standard daily update process.",
+        "concerns": [],
+        "next_steps": [
+          "Review documentation accuracy against source PRs",
+          "Verify Diátaxis categorization is correct",
+          "Merge after approval"
+        ]
+      }
+    },
+    {
+      "number": 2609,
+      "title": "fix: prevent Issue Classifier cascade failures on [agentics] tracking issues",
+      "author": "Copilot",
+      "created_at": "2026-02-27T06:45:24Z",
+      "updated_at": "2026-03-01T00:46:19Z",
+      "age_hours": 90.1,
+      "category": "workflow_bugfix",
+      "risk_level": "low",
+      "priority": "high",
+      "mergeable_state": "unknown",
+      "draft": true,
+      "files_changed": 2,
+      "additions": 12,
+      "deletions": 1,
+      "labels": ["bug", "workflow", "automation"],
+      "files": [
+        ".github/workflows/issue-classifier.lock.yml (pre-activation filter, 11 additions, 1 deletion)",
+        ".github/workflows/issue-classifier.md (documentation, 1 addition)"
+      ],
+      "assessment": {
+        "type": "workflow_bugfix",
+        "purpose": "Prevent cascade failures when Issue Classifier fails on [agentics] tracking issues",
+        "complexity": "low",
+        "conflicts": false,
+        "test_impact": "none - workflow change only",
+        "recommendation": "NEEDS_ACTION",
+        "rationale": "Fixes documented cascade problem (repository memory confirms issue: 'Issue Classifier workflow cascades when it fails on an issue: failure notice [agentics] issues re-trigger the classifier'). Adds pre-activation filter to skip [agentics]-prefixed issues. Labels correctly applied. Small, surgical change (12 additions, 1 deletion). 90 hours old (3.75 days). BLOCKED: Currently marked as DRAFT - must be moved to ready-for-review before merge.",
+        "concerns": [
+          "CRITICAL: PR is in DRAFT status - cannot merge until moved to ready-for-review",
+          "PR is 3.75 days old - may need rebase if main has advanced"
+        ],
+        "next_steps": [
+          "REQUIRED: Remove draft status (mark PR as ready for review)",
+          "Check if rebase needed against current main",
+          "Request final review from maintainer",
+          "Merge after approval"
+        ]
+      }
+    }
+  ],
+  "summary": {
+    "total_agent_prs": 2,
+    "by_priority": {
+      "high": 1,
+      "medium": 1
+    },
+    "by_risk": {
+      "low": 2
+    },
+    "by_category": {
+      "documentation": 1,
+      "workflow_bugfix": 1
+    },
+    "recommendations": {
+      "approve_and_merge": 1,
+      "needs_action": 1
+    }
+  },
+  "actions_needed": {
+    "pr_2746": "READY FOR REVIEW - Standard automated documentation update. Review accuracy and merge.",
+    "pr_2609": "BLOCKED ON DRAFT STATUS - Remove draft status to unblock. Fixes critical cascade bug documented in repository memory."
+  }
+}
