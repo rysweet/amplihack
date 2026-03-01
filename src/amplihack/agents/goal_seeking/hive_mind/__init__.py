@@ -190,3 +190,23 @@ try:
     ]
 except ImportError:
     pass
+
+# Configurable Deployer (Experiment 9 - Dynamic Lifecycle Management)
+try:
+    from .deployer import (
+        AgentConfig as DeployerAgentConfig,
+    )
+    from .deployer import (
+        DeployMode,
+        HiveConfig,
+        HiveDeployer,
+    )
+
+    __all__ += [
+        "DeployerAgentConfig",
+        "DeployMode",
+        "HiveConfig",
+        "HiveDeployer",
+    ]
+except ImportError:
+    pass
