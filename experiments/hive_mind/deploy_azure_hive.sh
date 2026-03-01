@@ -430,9 +430,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install core Python dependencies
-# amplihack already depends on amplihack-memory-lib — install once
+# Install from feature branch which includes hive_mind modules
 RUN pip install --no-cache-dir \
-    "amplihack @ git+https://github.com/rysweet/amplihack.git" \
+    "amplihack @ git+https://github.com/rysweet/amplihack.git@feat/hive-mind-experiments" \
     azure-servicebus \
     kuzu \
     httpx \
