@@ -13,7 +13,6 @@ pattern (same as blarify_staleness_hook and context_automation_hook).
 """
 
 import json
-import os
 
 # ---------------------------------------------------------------------------
 # Imports for tool registry
@@ -109,10 +108,14 @@ WORKFLOW_EVIDENCE_TODO = (
 
 
 def _get_session_id() -> str:
-    """Get a stable session identifier."""
-    # Use PPID (parent process ID) as a proxy for session identity.
-    # All hook invocations in the same Claude Code session share a parent.
-    return str(os.getppid())
+    """Get a stable session identifier.
+
+    Uses a fixed name instead of PID because Copilot CLI spawns hooks as
+    separate processes with different PPIDs for UserPromptSubmit vs PostToolUse.
+    Since only one interactive session runs at a time per machine, a single
+    state file is sufficient.
+    """
+    return "current"
 
 
 def _state_path() -> Path:
