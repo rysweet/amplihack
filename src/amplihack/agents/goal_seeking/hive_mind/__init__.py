@@ -211,6 +211,37 @@ try:
 except ImportError:
     pass
 
+# HiveGraph Protocol & InMemory/P2P backends (Experiment 11 - Protocol + Federation)
+try:
+    from .hive_graph import HiveAgent as HiveGraphAgent
+    from .hive_graph import (
+        HiveEdge,
+        HiveGraph,
+        InMemoryHiveGraph,
+        create_hive_graph,
+    )
+    from .hive_graph import HiveFact as HiveGraphFact
+
+    __all__ += [
+        "HiveGraph",
+        "HiveGraphAgent",
+        "HiveGraphFact",
+        "HiveEdge",
+        "InMemoryHiveGraph",
+        "create_hive_graph",
+    ]
+except ImportError:
+    pass
+
+try:
+    from .peer_hive import PeerHiveGraph
+
+    __all__ += [
+        "PeerHiveGraph",
+    ]
+except ImportError:
+    pass
+
 # Desired-state HiveController (Experiment 10 - Declarative Reconciliation)
 try:
     from .controller import (
