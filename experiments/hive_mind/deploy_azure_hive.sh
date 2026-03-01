@@ -308,6 +308,7 @@ create_storage() {
             --location "${LOCATION}" \
             --sku Standard_LRS \
             --kind StorageV2 \
+            --allow-blob-public-access false \
             -o none
         _ok "Storage account created."
     fi
