@@ -90,7 +90,10 @@ class DirectorLog:
     def _save(self) -> None:
         if self.persist_path:
             self.persist_path.parent.mkdir(parents=True, exist_ok=True)
-            self.persist_path.write_text(json.dumps(self.actions, indent=2))
+            # Atomic write: temp file then rename
+            tmp = self.persist_path.with_suffix(".tmp")
+            tmp.write_text(json.dumps(self.actions, indent=2))
+            tmp.rename(self.persist_path)
 
 
 @dataclass
@@ -114,11 +117,28 @@ class FleetDirector:
     _exclude_vms: set[str] = field(default_factory=set)
     _running: bool = False
     _cycle_count: int = 0
+    _missing_session_counts: dict[str, int] = field(default_factory=dict)
+    _stats: dict[str, int] = field(default_factory=lambda: {"actions": 0, "successes": 0, "failures": 0})
 
     def __post_init__(self):
+        # Lazy import to avoid circular dependency (fleet_reasoners imports from fleet_director)
+        from amplihack.fleet.fleet_reasoners import (
+            BatchAssignReasoner,
+            CoordinationReasoner,
+            LifecycleReasoner,
+            PreemptionReasoner,
+            ReasonerChain,
+        )
+
         self._fleet_state.azlin_path = self.azlin_path
         self._observer.azlin_path = self.azlin_path
         self._auth.azlin_path = self.azlin_path
+        self._reasoner_chain = ReasonerChain(reasoners=[
+            LifecycleReasoner(),
+            PreemptionReasoner(),
+            CoordinationReasoner(),
+            BatchAssignReasoner(max_agents_per_vm=self.max_agents_per_vm),
+        ])
 
         if self.log_dir:
             self._log.persist_path = self.log_dir / "director_log.json"
@@ -160,6 +180,8 @@ class FleetDirector:
         """
         self._running = True
         cycle = 0
+        consecutive_failures = 0
+        MAX_CONSECUTIVE_FAILURES = 5
 
         while self._running:
             cycle += 1
@@ -168,11 +190,16 @@ class FleetDirector:
 
             try:
                 self.run_once()
+                consecutive_failures = 0  # Reset on success
             except KeyboardInterrupt:
                 logger.info("Director interrupted by user")
                 break
             except Exception as e:
-                logger.error(f"Director cycle error: {e}")
+                consecutive_failures += 1
+                logger.error(f"Director cycle error ({consecutive_failures}/{MAX_CONSECUTIVE_FAILURES}): {e}")
+                if consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
+                    logger.error(f"CIRCUIT BREAKER: {MAX_CONSECUTIVE_FAILURES} consecutive failures. Stopping director.")
+                    break
 
             # Check if all tasks are done
             if not self.task_queue.next_task() and not self.task_queue.active_tasks():
@@ -207,100 +234,9 @@ class FleetDirector:
         return self._fleet_state
 
     def reason(self, state: FleetState) -> list[DirectorAction]:
-        """Decide what actions to take based on current state.
-
-        Decision priorities:
-        1. Handle completed agents (mark tasks done)
-        2. Handle stuck/errored agents (reassign or fail)
-        3. Assign queued tasks to idle VMs
-        """
-        actions: list[DirectorAction] = []
-
-        # 1. Check active tasks against observed state
-        for task in self.task_queue.active_tasks():
-            if not task.assigned_vm or not task.assigned_session:
-                continue
-
-            vm = state.get_vm(task.assigned_vm)
-            if not vm:
-                continue
-
-            # Find the session
-            session = None
-            for s in vm.tmux_sessions:
-                if s.session_name == task.assigned_session:
-                    session = s
-                    break
-
-            if not session:
-                # Session gone — task likely completed or crashed
-                actions.append(
-                    DirectorAction(
-                        action_type=ActionType.MARK_FAILED,
-                        task=task,
-                        vm_name=task.assigned_vm,
-                        session_name=task.assigned_session,
-                        reason="Session no longer exists",
-                    )
-                )
-                continue
-
-            if session.agent_status == AgentStatus.COMPLETED:
-                actions.append(
-                    DirectorAction(
-                        action_type=ActionType.MARK_COMPLETE,
-                        task=task,
-                        vm_name=task.assigned_vm,
-                        session_name=task.assigned_session,
-                        reason="Agent completed successfully",
-                    )
-                )
-            elif session.agent_status == AgentStatus.ERROR:
-                actions.append(
-                    DirectorAction(
-                        action_type=ActionType.MARK_FAILED,
-                        task=task,
-                        vm_name=task.assigned_vm,
-                        session_name=task.assigned_session,
-                        reason=f"Agent error detected: {session.last_output[-200:]}",
-                    )
-                )
-            elif session.agent_status == AgentStatus.STUCK:
-                actions.append(
-                    DirectorAction(
-                        action_type=ActionType.REASSIGN_TASK,
-                        task=task,
-                        vm_name=task.assigned_vm,
-                        session_name=task.assigned_session,
-                        reason="Agent appears stuck (no output change)",
-                    )
-                )
-
-        # 2. Assign queued tasks to available capacity
-        next_task = self.task_queue.next_task()
-        while next_task:
-            target = self._find_best_vm(state)
-            if not target:
-                break  # No available capacity
-
-            vm_name, session_name = target
-            actions.append(
-                DirectorAction(
-                    action_type=ActionType.START_AGENT,
-                    task=next_task,
-                    vm_name=vm_name,
-                    session_name=session_name,
-                    reason=f"Assigning {next_task.priority.name} task to idle capacity",
-                )
-            )
-            # Mark as assigned so next_task() skips it
-            next_task.assign(vm_name, session_name)
-
-            next_task = self.task_queue.next_task()
-
-        # Persist assignments so crash between reason() and act() won't lose state
-        self.task_queue.save()
-
+        """Delegate to composable reasoner chain."""
+        actions = self._reasoner_chain.reason(state, self.task_queue)
+        self.task_queue.save()  # Persist any state mutations from reasoning
         return actions
 
     def act(self, actions: list[DirectorAction]) -> list[tuple[DirectorAction, str]]:
@@ -327,15 +263,14 @@ class FleetDirector:
         return results
 
     def learn(self, results: list[tuple[DirectorAction, str]]) -> None:
-        """Update patterns based on action outcomes.
-
-        For now, just log. Future: track success rates per VM/agent combo.
-        """
+        """Track action outcomes for operational visibility."""
         for action, outcome in results:
+            self._stats["actions"] += 1
             if "ERROR" in outcome:
-                logger.warning(
-                    f"LEARN: Action {action.action_type.value} failed on {action.vm_name}: {outcome}"
-                )
+                self._stats["failures"] += 1
+                logger.warning(f"LEARN: {action.action_type.value} failed on {action.vm_name}: {outcome}")
+            else:
+                self._stats["successes"] += 1
 
     def status_report(self) -> str:
         """Generate human-readable status report."""
@@ -349,6 +284,10 @@ class FleetDirector:
             self.task_queue.summary(),
             "",
             f"Director log: {len(self._log.actions)} actions recorded",
+            "",
+            f"Stats: {self._stats['actions']} actions, "
+            f"{self._stats['successes']} successes, "
+            f"{self._stats['failures']} failures",
         ]
         return "\n".join(lines)
 
@@ -406,7 +345,7 @@ class FleetDirector:
 
         except subprocess.TimeoutExpired:
             return "ERROR: Timeout starting agent"
-        except subprocess.SubprocessError as e:
+        except (subprocess.SubprocessError, FileNotFoundError) as e:
             return f"ERROR: {e}"
 
     def _mark_complete(self, action: DirectorAction) -> str:
@@ -434,14 +373,14 @@ class FleetDirector:
                     text=True,
                     timeout=30,
                 )
-            except (subprocess.TimeoutExpired, subprocess.SubprocessError):
+            except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
                 pass
 
             # Requeue the task
             action.task.status = TaskStatus.QUEUED
             action.task.assigned_vm = None
             action.task.assigned_session = None
-            return f"Stuck agent killed, task requeued"
+            return "Stuck agent killed, task requeued"
 
         return "ERROR: Missing task/vm/session for reassignment"
 
@@ -452,31 +391,3 @@ class FleetDirector:
             success = sum(1 for r in results if r.success)
             return f"Auth propagated: {success}/{len(results)} services"
         return "ERROR: No VM specified"
-
-    def _find_best_vm(self, state: FleetState) -> Optional[tuple[str, str]]:
-        """Find the best VM and session name for a new task.
-
-        Returns (vm_name, session_name) or None if no capacity.
-        """
-        managed = state.managed_vms()
-        candidates = []
-
-        for vm in managed:
-            if not vm.is_running:
-                continue
-
-            active = vm.active_agents
-            if active < self.max_agents_per_vm:
-                # Score: prefer VMs with fewer active agents
-                score = self.max_agents_per_vm - active
-                candidates.append((score, vm.name))
-
-        if not candidates:
-            return None
-
-        # Pick VM with most available capacity
-        candidates.sort(reverse=True)
-        best_vm = candidates[0][1]
-        session_name = f"fleet-{int(time.time()) % 10000}"
-
-        return best_vm, session_name

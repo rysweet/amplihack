@@ -114,9 +114,11 @@ class ResultCollector:
     def record(self, result: TaskResult) -> None:
         """Record a task result."""
         self._results[result.task_id] = result
-        # Write individual result file
+        # Atomic write: individual result file
         result_file = self.results_dir / f"{result.task_id}.json"
-        result_file.write_text(json.dumps(result.to_dict(), indent=2))
+        tmp = result_file.with_suffix('.tmp')
+        tmp.write_text(json.dumps(result.to_dict(), indent=2))
+        tmp.rename(result_file)
         self._save_index()
 
     def get(self, task_id: str) -> Optional[TaskResult]:
@@ -179,7 +181,10 @@ class ResultCollector:
         """Save results index for fast loading."""
         index_file = self.results_dir / "index.json"
         index = {tid: r.to_dict() for tid, r in self._results.items()}
-        index_file.write_text(json.dumps(index, indent=2))
+        # Atomic write: temp file then rename
+        tmp = index_file.with_suffix('.tmp')
+        tmp.write_text(json.dumps(index, indent=2))
+        tmp.rename(index_file)
 
     def _load_index(self) -> None:
         """Load results index."""
@@ -188,6 +193,14 @@ class ResultCollector:
             return
         try:
             data = json.loads(index_file.read_text())
-            self._results = {tid: TaskResult.from_dict(d) for tid, d in data.items()}
-        except (json.JSONDecodeError, KeyError, TypeError):
-            self._results = {}
+        except json.JSONDecodeError:
+            import logging
+            logging.getLogger(__name__).warning(f"Corrupt results index: {index_file}")
+            return
+        self._results = {}
+        for tid, d in data.items():
+            try:
+                self._results[tid] = TaskResult.from_dict(d)
+            except (KeyError, TypeError) as e:
+                import logging
+                logging.getLogger(__name__).warning(f"Skipping corrupt result entry {tid}: {e}")

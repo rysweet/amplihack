@@ -143,7 +143,7 @@ class HealthChecker:
 
         except subprocess.TimeoutExpired:
             health.errors.append("Health check timed out")
-        except subprocess.SubprocessError as e:
+        except (subprocess.SubprocessError, FileNotFoundError) as e:
             health.errors.append(f"Health check error: {e}")
 
         return health
@@ -151,8 +151,8 @@ class HealthChecker:
     def check_fleet(self, vm_names: list[str]) -> HealthReport:
         """Check health of multiple VMs.
 
-        Currently sequential (one Bastion tunnel per VM).
-        TODO: Parallel with connection pooling at 15+ VMs.
+        Sequential polling (one Bastion tunnel per VM). For parallel polling,
+        use concurrent.futures.ThreadPoolExecutor.
         """
         report = HealthReport(timestamp=datetime.now())
         for vm_name in vm_names:
@@ -189,8 +189,10 @@ class HealthChecker:
                 used = float(parts[2])
                 if total > 0:
                     health.memory_used_pct = (used / total) * 100
+                    return
         except (ValueError, IndexError):
             pass
+        health.errors.append("Failed to parse memory metrics")
 
     def _parse_disk(self, raw: str, health: VMHealth) -> None:
         """Parse df -h output."""
@@ -199,8 +201,10 @@ class HealthChecker:
             match = re.search(r"(\d+)%", raw)
             if match:
                 health.disk_used_pct = float(match.group(1))
+                return
         except (ValueError, AttributeError):
             pass
+        health.errors.append("Failed to parse disk metrics")
 
     def _parse_processes(self, raw: str, health: VMHealth) -> None:
         """Parse process list."""
@@ -222,13 +226,17 @@ class HealthChecker:
             parts = raw.strip().split()
             if parts:
                 health.load_average = float(parts[0])
+                return
         except (ValueError, IndexError):
             pass
+        health.errors.append("Failed to parse load average")
 
     def _parse_uptime(self, raw: str, health: VMHealth) -> None:
         """Parse /proc/uptime."""
         try:
             seconds = float(raw.strip().split()[0])
             health.uptime_hours = seconds / 3600
+            return
         except (ValueError, IndexError):
             pass
+        health.errors.append("Failed to parse uptime")

@@ -19,10 +19,15 @@ Public API:
 
 from __future__ import annotations
 
+import logging
+import os
+import shutil
 import sys
 from pathlib import Path
 
 import click
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 from amplihack.fleet.fleet_auth import AuthPropagator
 from amplihack.fleet.fleet_director import FleetDirector
@@ -37,7 +42,7 @@ DEFAULT_QUEUE_PATH = Path.home() / ".amplihack" / "fleet" / "task_queue.json"
 DEFAULT_LOG_DIR = Path.home() / ".amplihack" / "fleet" / "logs"
 DEFAULT_DASHBOARD_PATH = Path.home() / ".amplihack" / "fleet" / "dashboard.json"
 DEFAULT_GRAPH_PATH = Path.home() / ".amplihack" / "fleet" / "graph.json"
-AZLIN_PATH = "/home/azureuser/src/azlin/.venv/bin/azlin"
+AZLIN_PATH = os.environ.get("AZLIN_PATH", shutil.which("azlin") or "/home/azureuser/src/azlin/.venv/bin/azlin")
 
 # Existing VMs that should not be managed (configurable via --exclude)
 EXISTING_VMS = {"devy", "devo", "devi", "deva", "amplihack", "seldon-vm"}

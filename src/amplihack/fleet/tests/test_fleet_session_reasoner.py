@@ -302,9 +302,10 @@ class TestLLMBackends:
         assert backend.calls[0] == ("system", "user")
 
     def test_llm_backend_protocol(self):
-        """LLMBackend base raises NotImplementedError (abstract protocol)."""
+        """LLMBackend is a Protocol — cannot be instantiated directly."""
+        from typing import Protocol
         from amplihack.fleet.fleet_session_reasoner import LLMBackend
 
-        backend = LLMBackend()
-        with pytest.raises(NotImplementedError):
-            backend.complete("system", "user")
+        assert issubclass(LLMBackend, Protocol)
+        with pytest.raises(TypeError, match="Protocols cannot be instantiated"):
+            LLMBackend()

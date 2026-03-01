@@ -155,14 +155,20 @@ class TestLifecycleReasoner:
         assert len(actions) == 0
 
     def test_missing_session_marks_failed(self):
+        """C2: Missing session requires 2 consecutive cycles before MARK_FAILED."""
         vm = _make_vm("vm-01", sessions=[])  # no sessions
         task = _make_task(vm="vm-01", session="ghost-session")
         state = _make_state([vm])
         queue = _make_queue([task])
 
         reasoner = LifecycleReasoner()
-        actions = reasoner.reason(state, queue, [])
 
+        # First cycle: grace period, no actions
+        actions = reasoner.reason(state, queue, [])
+        assert len(actions) == 0
+
+        # Second cycle: session still missing, now MARK_FAILED
+        actions = reasoner.reason(state, queue, [])
         assert len(actions) == 1
         assert actions[0].action_type == ActionType.MARK_FAILED
         assert "no longer exists" in actions[0].reason

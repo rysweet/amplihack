@@ -141,7 +141,7 @@ class AuthPropagator:
                     timeout=30,
                 )
                 results[service] = result.returncode == 0
-            except (subprocess.TimeoutExpired, subprocess.SubprocessError):
+            except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
                 results[service] = False
 
         return results
@@ -270,7 +270,7 @@ class AuthPropagator:
                     errors.append(f"Failed to copy {src_path.name}: {result.stderr.strip()}")
             except subprocess.TimeoutExpired:
                 errors.append(f"Timeout copying {src_path.name}")
-            except subprocess.SubprocessError as e:
+            except (subprocess.SubprocessError, FileNotFoundError) as e:
                 errors.append(f"Error copying {src_path.name}: {e}")
 
         duration = time.monotonic() - start
@@ -333,7 +333,7 @@ class AuthPropagator:
                 duration_seconds=time.monotonic() - start,
             )
 
-        except (subprocess.TimeoutExpired, subprocess.SubprocessError) as e:
+        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as e:
             return AuthResult(
                 service="github-identity",
                 vm_name=vm_name,
@@ -354,7 +354,7 @@ class AuthPropagator:
             )
             if result.returncode == 0 and result.stdout.strip():
                 return [u.strip() for u in result.stdout.strip().split("\n") if u.strip()]
-        except (subprocess.TimeoutExpired, subprocess.SubprocessError):
+        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
             pass
         return []
 

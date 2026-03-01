@@ -23,20 +23,39 @@ import shlex
 import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Protocol
 
 __all__ = ["SessionReasoner", "SessionContext", "SessionDecision", "LLMBackend"]
 
+# --- Safety: dangerous input blocklist (H10) ---
+DANGEROUS_PATTERNS = [
+    "rm -rf", "rm -r /", "rmdir /",
+    "git push --force", "git push -f",
+    "git reset --hard",
+    "DROP TABLE", "DROP DATABASE",
+    "DELETE FROM", "TRUNCATE TABLE",
+    "> /dev/sda", "mkfs.",
+    ":(){ :|:& };:",  # fork bomb
+]
 
-class LLMBackend:
-    """Protocol for LLM backends. Implement for Claude SDK, Copilot SDK, etc."""
-
-    def complete(self, system_prompt: str, user_prompt: str) -> str:
-        """Send a prompt and get a text response."""
-        raise NotImplementedError
+# --- Safety: confidence thresholds (H4) ---
+MIN_CONFIDENCE_SEND = 0.6
+MIN_CONFIDENCE_RESTART = 0.8
 
 
-class AnthropicBackend(LLMBackend):
+def _is_dangerous_input(text: str) -> bool:
+    """Check if input text contains dangerous patterns."""
+    text_lower = text.lower()
+    return any(pattern.lower() in text_lower for pattern in DANGEROUS_PATTERNS)
+
+
+class LLMBackend(Protocol):
+    """Protocol for LLM backends."""
+
+    def complete(self, system_prompt: str, user_prompt: str) -> str: ...
+
+
+class AnthropicBackend:
     """Anthropic SDK backend."""
 
     def __init__(self, model: str = "claude-sonnet-4-20250514", api_key: str = ""):
@@ -327,7 +346,7 @@ echo '===END==='
             if result.returncode == 0:
                 self._parse_context_output(result.stdout, context)
 
-        except (subprocess.TimeoutExpired, subprocess.SubprocessError):
+        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
             context.agent_status = "unreachable"
 
         return context
@@ -517,6 +536,19 @@ echo '===END==='
 
     def _execute_decision(self, decision: SessionDecision) -> None:
         """ACT: Execute the decision on the remote session."""
+        # H4: Confidence threshold -- reject low-confidence actions
+        if decision.action == "send_input" and decision.confidence < MIN_CONFIDENCE_SEND:
+            return  # Too low confidence to inject keystrokes
+        if decision.action == "restart" and decision.confidence < MIN_CONFIDENCE_RESTART:
+            return  # Too low confidence for restart
+
+        # H10: Dangerous input blocklist -- block before sending
+        if decision.action == "send_input" and decision.input_text:
+            if _is_dangerous_input(decision.input_text):
+                decision.action = "escalate"
+                decision.reasoning = f"BLOCKED: Input contains dangerous pattern. Original: {decision.input_text[:100]}"
+                return
+
         if decision.action == "send_input" and decision.input_text:
             safe_session = shlex.quote(decision.session_name)
             # Use tmux send-keys to inject the input
@@ -529,7 +561,7 @@ echo '===END==='
                         text=True,
                         timeout=30,
                     )
-                except (subprocess.TimeoutExpired, subprocess.SubprocessError):
+                except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
                     pass
 
         elif decision.action == "restart":
@@ -542,7 +574,7 @@ echo '===END==='
                     text=True,
                     timeout=30,
                 )
-            except (subprocess.TimeoutExpired, subprocess.SubprocessError):
+            except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
                 pass
 
     def _show_decision(self, decision: SessionDecision, context: SessionContext) -> None:
