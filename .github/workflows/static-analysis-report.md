@@ -31,7 +31,7 @@ steps:
 
       # Install Python analysis tools
       pip install --upgrade pip
-      pip install bandit==1.7.6 pylint==3.0.3 mypy==1.8.0 safety==2.3.5
+      pip install bandit==1.7.6 pyright safety==2.3.5
 
       echo "Python static analysis tools installed successfully"
 
@@ -56,8 +56,7 @@ steps:
       # Verify Python tools
       echo "Testing Python tools..."
       bandit --version
-      pylint --version
-      mypy --version
+      pyright --version
       safety --version
 
       # Verify Rust tools
@@ -81,7 +80,7 @@ Weekly scan all Python and Rust source code with static analysis tools to identi
 
 - **Repository**: ${{ github.repository }}
 - **Languages**: Python, Rust
-- **Python Tools**: bandit (security), pylint (quality), mypy (types), safety (dependencies)
+- **Python Tools**: bandit (security), pyright (types + quality), safety (dependencies)
 - **Rust Tools**: clippy (linting), cargo-audit (security), rustfmt (formatting)
 
 ## Analysis Process
@@ -90,7 +89,7 @@ Weekly scan all Python and Rust source code with static analysis tools to identi
 
 All static analysis tools have been installed and verified in the previous steps. You have access to:
 
-- Python: bandit, pylint, mypy, safety
+- Python: bandit, pyright, safety
 - Rust: clippy, cargo-audit, rustfmt
 
 ### Phase 1: Run Static Analysis
@@ -116,39 +115,22 @@ Parse the JSON output to extract:
 - Issue description
 - More info URL
 
-#### 1.2 Python Code Quality (Pylint)
+#### 1.2 Python Type Checking & Quality (Pyright)
 
-Run Pylint for code quality analysis:
+Run Pyright for type safety and code quality analysis:
 
 ```bash
-# Run pylint on Python source directories
-pylint amplihack --output-format=json > /tmp/pylint-results.json || true
-pylint amplihack > /tmp/pylint-report.txt || true
+# Run pyright on Python source directories
+pyright src/amplihack --outputjson > /tmp/pyright-results.json 2>&1 || true
+pyright src/amplihack > /tmp/pyright-report.txt 2>&1 || true
 ```
 
 Parse the JSON output to extract:
 
-- Message code (e.g., C0111, W0612)
-- Message type (convention, refactor, warning, error)
+- Diagnostic severity (error, warning, information)
 - Affected file and line number
-- Message description
-- Symbol name
-
-#### 1.3 Python Type Checking (mypy)
-
-Run mypy for type safety analysis:
-
-```bash
-# Run mypy on Python source
-mypy amplihack --json-report /tmp/mypy-report --txt-report /tmp/mypy-txt || true
-```
-
-Parse the output to extract:
-
-- Error type (e.g., no-untyped-def, type-arg)
-- Affected file and line number
-- Error description
-- Severity
+- Error message and rule name
+- Range (start/end position)
 
 #### 1.4 Python Dependency Security (safety)
 
@@ -222,8 +204,7 @@ Review the output from all tools and cluster findings:
 **Python Findings**:
 
 - Bandit: Security issues by severity and confidence
-- Pylint: Code quality issues by type
-- Mypy: Type safety issues
+- Pyright: Type safety and code quality issues
 - Safety: Known vulnerabilities in dependencies
 
 **Rust Findings**:
@@ -368,8 +349,7 @@ Create an issue with:
 **Python**:
 
 - Security (Bandit): [NUM] findings
-- Quality (Pylint): [NUM] findings
-- Types (Mypy): [NUM] findings
+- Types & Quality (Pyright): [NUM] findings
 - Dependencies (Safety): [NUM] vulnerabilities
 
 **Rust**:
@@ -395,17 +375,12 @@ Create an issue with:
 | ---------- | -------- | ---------- | ----- | ------------- |
 | B201       | HIGH     | MEDIUM     | [NUM] | [Description] |
 
-#### Python Quality (Pylint)
+#### Python Types & Quality (Pyright)
 
-| Message Code | Type       | Count | Description       |
-| ------------ | ---------- | ----- | ----------------- |
-| C0111        | convention | [NUM] | Missing docstring |
-
-#### Python Types (Mypy)
-
-| Error Type     | Count | Description                 |
-| -------------- | ----- | --------------------------- |
-| no-untyped-def | [NUM] | Function missing type hints |
+| Diagnostic               | Severity | Count | Description            |
+| ------------------------ | -------- | ----- | ---------------------- |
+| reportMissingImports     | error    | [NUM] | Missing import         |
+| reportGeneralClassIssues | warning  | [NUM] | Class-level type issue |
 
 #### Python Dependencies (Safety)
 
@@ -613,7 +588,7 @@ Update cache memory with scan data for future reference and trend analysis.
 
 A successful static analysis scan:
 
-- ✅ Runs all Python tools (bandit, pylint, mypy, safety)
+- ✅ Runs all Python tools (bandit, pyright, safety)
 - ✅ Runs all Rust tools (clippy, cargo-audit, rustfmt)
 - ✅ Clusters findings by tool and issue type
 - ✅ Generates detailed fix prompts for top issues
