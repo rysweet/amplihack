@@ -1,6 +1,6 @@
 # File Organization Guidelines
 
-Guidelines fer organizing files in the amplihack repository. Followin' these keeps the root directory clean and makes documentation discoverable.
+Guidelines for organizing files in the amplihack repository. Following these keeps the root directory clean and makes documentation discoverable.
 
 ## Directory Structure
 
@@ -17,7 +17,7 @@ Keep the root directory minimal and focused on essential project files:
 - `LICENSE` - Project license
 - `.gitignore` - Git ignore patterns
 
-**Avoid placin' in root:**
+**Avoid placing in root:**
 
 - Test results or validation reports
 - Evaluation summaries or analysis documents
@@ -42,11 +42,11 @@ docs/
 └── concepts/          # Understanding-oriented docs
 ```
 
-**See the [Eight Rules of Good Documentation](~/.amplihack/.claude/skills/documentation-writing/reference.md) fer complete guidelines.**
+**See the [Eight Rules of Good Documentation](~/.amplihack/.claude/skills/documentation-writing/reference.md) for complete guidelines.**
 
 ### Archive (archive/)
 
-Legacy files that be superseded but may be needed fer reference:
+Legacy files that be superseded but may be needed for reference:
 
 ```
 archive/
@@ -80,7 +80,7 @@ Move files when they:
 
 Keep files in root only when they:
 
-- Are essential fer project setup (README, LICENSE, pyproject.toml)
+- Are essential for project setup (README, LICENSE, pyproject.toml)
 - Configure the development environment (CLAUDE.md, Makefile)
 - Are required by tools (pyproject.toml, .gitignore)
 
@@ -111,7 +111,7 @@ New File?
 
 ### Cleanup Agent Gap
 
-**Known Gap (Issue #1913):** The cleanup agent focuses on code quality (dead code, complexity) but doesn't enforce documentation organization. This was discovered during root cleanup and be documented fer future consideration - no immediate action needed.
+**Known Gap (Issue #1913):** The cleanup agent focuses on code quality (dead code, complexity) but doesn't enforce documentation organization. This was discovered during root cleanup and be documented for future consideration - no immediate action needed.
 
 **Future Enhancement Opportunity**: If root organization becomes a recurring issue, consider extending cleanup agent to suggest documentation moves. Not implemented yet - trust in emergence.
 
