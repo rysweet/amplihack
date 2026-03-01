@@ -408,24 +408,8 @@ def dry_run(vm, priorities):
 
 
 @fleet_cli.command("tui")
-@click.option("--interval", default=60, help="Refresh interval in seconds")
-@click.option("--once", is_flag=True, help="Single snapshot then exit")
-def tui(interval, once):
-    """Live TUI dashboard -- runs in terminal with auto-refresh.
-
-    Shows all VMs and sessions with status icons, branches, and PR info.
-    Auto-refreshes on a configurable interval. Press 'q' to quit, 'r' to
-    force an immediate refresh.
-    """
-    from amplihack.fleet.fleet_tui import FleetTUI
-
-    app = FleetTUI(refresh_interval=interval)
-    app.run(once=once)
-
-
-@fleet_cli.command("tui2")
 @click.option("--interval", default=30, help="Refresh interval in seconds")
-def tui2(interval):
+def tui(interval):
     """Interactive fleet dashboard (Textual TUI).
 
     A polished three-tab interface: Fleet Overview, Session Detail,
