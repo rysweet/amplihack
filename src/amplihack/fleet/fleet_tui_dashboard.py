@@ -91,71 +91,116 @@ class _CachedSession:
 class FleetDashboardApp(App):
     """Interactive fleet management dashboard built on Textual."""
 
-    TITLE = "Fleet Dashboard v2"
+    TITLE = "Fleet Dashboard"
+    SUB_TITLE = "Autonomous Coding Agent Fleet Management"
 
     CSS = """
 Screen {
     layout: vertical;
+    background: $surface;
 }
+
+/* ---- Fleet Overview Tab ---- */
 #fleet-tab Horizontal {
     height: 1fr;
 }
 #session-table {
-    width: 60%;
+    width: 62%;
+    border: tall $primary-background;
+    scrollbar-size: 1 1;
+}
+#session-table > .datatable--cursor {
+    background: $accent 40%;
+    color: $text;
 }
 #preview-pane {
-    width: 40%;
-    border: solid $accent;
+    width: 38%;
+    border: tall $accent;
     padding: 0 1;
+    background: $panel;
+    color: $text-muted;
 }
 #fleet-summary {
     height: 3;
     dock: bottom;
-    padding: 0 1;
-    background: $surface;
+    padding: 0 2;
+    background: $primary-background;
+    color: $text;
+    text-style: bold;
 }
+
+/* ---- Session Detail Tab ---- */
 #detail-header {
     height: auto;
-    max-height: 5;
-    padding: 0 1;
-    background: $surface;
+    max-height: 6;
+    padding: 1 2;
+    background: $primary-background;
+    color: $text;
+    text-style: bold;
+    border-bottom: heavy $accent;
 }
 #tmux-capture {
     height: 1fr;
-    min-height: 8;
-    border: solid $primary;
+    min-height: 10;
+    border: tall $primary;
+    padding: 0 1;
+    background: #1a1a2e;
+    color: #eaeaea;
 }
 #proposal-section {
     height: auto;
-    max-height: 14;
-    border: solid $accent;
-    padding: 1;
+    max-height: 16;
+    border: tall $warning;
+    padding: 1 2;
+    background: $panel;
 }
+
+/* ---- Action Editor Tab ---- */
 #editor-reasoning {
     height: auto;
-    max-height: 6;
-    padding: 0 1;
-    background: $surface;
+    max-height: 8;
+    padding: 1 2;
+    background: $panel;
+    border: tall $accent;
+    color: $text-muted;
 }
 #input-editor {
-    height: 8;
+    height: 10;
+    border: tall $success;
 }
+#action-select {
+    margin: 1 2;
+    width: 40;
+}
+
+/* ---- Shared ---- */
 Button {
     margin: 0 1;
+    min-width: 14;
 }
 .button-row {
-    height: 3;
+    height: 5;
     layout: horizontal;
     align: center middle;
+    padding: 1 0;
 }
 #loading-overlay {
     display: none;
     dock: top;
     height: 3;
     content-align: center middle;
+    background: $warning 30%;
 }
 .active-loading #loading-overlay {
     display: block;
+}
+
+/* ---- Tab styling ---- */
+TabbedContent {
+    height: 1fr;
+}
+TabPane {
+    padding: 0;
 }
 """
 
@@ -276,15 +321,16 @@ Button {
                 icon, style = STATUS_STYLES.get(sess.status, ("\u25cb", "dim"))
                 branch = sess.branch[:24] + "..." if len(sess.branch) > 24 else sess.branch
                 pr = sess.pr or ""
+                state_label = sess.status.upper()[:8]
                 rows.append((
                     key,
                     [
-                        f"[{style}]{icon}[/]",
-                        vm.name,
+                        f"[bold {style}]{icon}[/]",
+                        f"[bold]{vm.name}[/]",
                         sess.session_name,
-                        sess.status,
-                        branch,
-                        pr,
+                        f"[{style}]{state_label}[/]",
+                        f"[dim]{branch}[/]",
+                        f"[bold cyan]{pr}[/]" if pr else "",
                     ],
                 ))
                 # Preserve existing proposal if present
