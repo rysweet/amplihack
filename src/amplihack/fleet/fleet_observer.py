@@ -157,6 +157,9 @@ class FleetObserver:
         """Capture tmux pane content from a remote VM."""
         import shlex
 
+        if any(c in session_name for c in ['\n', '`', '$', '|', '&', ';']):
+            return None  # Reject unsafe session names
+
         cmd = (
             f"tmux capture-pane -t {shlex.quote(session_name)} -p -S -{self.capture_lines} 2>/dev/null"
         )
