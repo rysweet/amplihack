@@ -130,8 +130,8 @@ steps:
       echo "  Step 21: Convert PR to Ready"
       echo "  Step 22: Ensure PR Mergeable"
       echo ""
-      echo "Task: {{task_description}}"
-      echo "Repository: {{repo_path}}"
+      printf 'Task: %s\n' {{task_description}}
+      printf 'Repository: %s\n' {{repo_path}}
     output: "workflow_init"
 
   # ==========================================================================
@@ -248,25 +248,12 @@ steps:
     command: |
       cd "{{repo_path}}" && \
       echo "=== Step 3: Creating GitHub Issue ===" && \
-      ISSUE_BODY=$(cat << 'ISSUE_EOF'
-      ## Task Description
-      {{task_description}}
-
-      ## Requirements
-      {{final_requirements}}
-
-      ## Acceptance Criteria
-      - [ ] All explicit requirements met
-      - [ ] Tests passing
-      - [ ] Philosophy compliant
-      - [ ] Documentation updated
-
-      ## Classification
-      Generated via default-workflow recipe
-      ISSUE_EOF
-      ) && \
+      ISSUE_TITLE=$(printf '%s' {{task_description}}) && \
+      ISSUE_TASK=$(printf '%s' {{task_description}}) && \
+      ISSUE_REQS=$(printf '%s' {{final_requirements}}) && \
+      ISSUE_BODY=$(printf '## Task Description\n%s\n\n## Requirements\n%s\n\n## Acceptance Criteria\n- [ ] All explicit requirements met\n- [ ] Tests passing\n- [ ] Philosophy compliant\n- [ ] Documentation updated\n\n## Classification\nGenerated via default-workflow recipe\n' "$ISSUE_TASK" "$ISSUE_REQS") && \
       gh issue create \
-        --title "{{task_description}}" \
+        --title "$ISSUE_TITLE" \
         --body "$ISSUE_BODY" \
         --label "workflow:default" 2>&1 | cat
     output: "issue_creation"
@@ -295,8 +282,8 @@ steps:
       # Fetch latest refs
       git fetch origin main >&2
 
-      # Generate branch name (use heredoc to avoid bash syntax errors with special chars)
-      TASK_DESC='{{task_description}}'
+      # Generate branch name — use printf to safely capture the shlex-quoted value
+      TASK_DESC=$(printf '%s' {{task_description}})
       TASK_SLUG=$(echo "$TASK_DESC" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | sed 's/[^a-z0-9-]//g' | cut -c1-50)
       BRANCH_NAME="{{branch_prefix}}/issue-{{issue_number}}-${TASK_SLUG}"
       WORKTREE_PATH="{{repo_path}}/worktrees/${BRANCH_NAME}"
@@ -978,17 +965,10 @@ steps:
       git add -A && \
       echo "" && \
       echo "--- Creating Commit ---" && \
+      COMMIT_TITLE=$(printf 'feat: %s' {{task_description}}) && \
+      COMMIT_MSG=$(printf '%s\n\nImplements issue #%s\n\nChanges:\n- Implementation as per design specification\n- Tests added for new functionality\n- Documentation updated\n\nCloses #%s' "$COMMIT_TITLE" {{issue_number}} {{issue_number}}) && \
       if [ -n "$(git diff --cached --name-only)" ]; then \
-        git commit -m "feat: {{task_description}}
-
-      Implements issue #{{issue_number}}
-
-      Changes:
-      - Implementation as per design specification
-      - Tests added for new functionality
-      - Documentation updated
-
-      Closes #{{issue_number}}" ; \
+        git commit -m "$COMMIT_MSG" ; \
       else \
         echo "WARNING: Nothing to commit - changes already committed" ; \
       fi && \
@@ -1012,34 +992,12 @@ steps:
     command: |
       cd "{{worktree_setup.worktree_path}}" && \
       echo "=== Step 15: Creating Draft PR ===" && \
-      PR_BODY=$(cat << 'PR_EOF'
-      ## Summary
-      {{task_description}}
-
-      ## Issue
-      Closes #{{issue_number}}
-
-      ## Changes
-      {{design_spec}}
-
-      ## Testing
-      - Unit tests added
-      - Local testing completed
-      - Pre-commit hooks pass
-
-      ## Checklist
-      - [x] Tests pass
-      - [x] Documentation updated
-      - [x] No stubs or TODOs
-      - [ ] Code review completed
-      - [ ] Philosophy check passed
-
-      ---
-      *This PR was created as a draft for review before merging.*
-      PR_EOF
-      ) && \
+      PR_TITLE=$(printf '%s' {{task_description}}) && \
+      PR_TASK=$(printf '%s' {{task_description}}) && \
+      PR_DESIGN=$(printf '%s' {{design_spec}}) && \
+      PR_BODY=$(printf '## Summary\n%s\n\n## Issue\nCloses #%s\n\n## Changes\n%s\n\n## Testing\n- Unit tests added\n- Local testing completed\n- Pre-commit hooks pass\n\n## Checklist\n- [x] Tests pass\n- [x] Documentation updated\n- [x] No stubs or TODOs\n- [ ] Code review completed\n- [ ] Philosophy check passed\n\n---\n*This PR was created as a draft for review before merging.*\n' "$PR_TASK" {{issue_number}} "$PR_DESIGN") && \
       gh pr create --draft \
-        --title "{{task_description}}" \
+        --title "$PR_TITLE" \
         --body "$PR_BODY" 2>&1 | cat
     output: "pr_url"
 
@@ -1549,9 +1507,9 @@ steps:
       echo "PR Status:" && \
       gh pr view --json state,mergeable,reviews,statusCheckRollup 2>&1 | cat && \
       echo "" && \
-      echo "=== Task: {{task_description}} ===" && \
-      echo "=== Issue: #{{issue_number}} ===" && \
-      echo "=== PR: {{pr_url}} ===" && \
+      printf '=== Task: %s ===\n' {{task_description}} && \
+      printf '=== Issue: #%s ===\n' {{issue_number}} && \
+      printf '=== PR: %s ===\n' {{pr_url}} && \
       echo "" && \
       echo "All 23 workflow steps completed successfully."
     output: "final_status"
@@ -1563,31 +1521,31 @@ steps:
     type: "bash"
     parse_json: true
     command: |
-      cat << 'EOF'
-      {
-        "workflow": "default-workflow",
-        "version": "2.0.0",
-        "task": "{{task_description}}",
-        "issue_number": "{{issue_number}}",
-        "pr_url": "{{pr_url}}",
-        "status": "complete",
-        "steps_completed": 23,
-        "phases_completed": [
-          "requirements-clarification",
-          "design",
-          "implementation",
-          "testing",
-          "review",
-          "merge"
-        ],
-        "mandatory_steps_completed": {
-          "step_0_preparation": true,
-          "step_14_version_bump": true,
-          "step_17_pr_review": true,
-          "step_18_implement_feedback": true
-        },
-        "philosophy_compliant": true,
-        "ready_to_merge": true
-      }
-      EOF
+      export TASK_VAL=$(printf '%s' {{task_description}})
+      export ISSUE_VAL=$(printf '%s' {{issue_number}})
+      export PR_VAL=$(printf '%s' {{pr_url}})
+      python3 << 'PYEOF'
+      import json, os
+      print(json.dumps({
+          "workflow": "default-workflow",
+          "version": "2.0.0",
+          "task": os.environ.get("TASK_VAL", ""),
+          "issue_number": os.environ.get("ISSUE_VAL", ""),
+          "pr_url": os.environ.get("PR_VAL", ""),
+          "status": "complete",
+          "steps_completed": 23,
+          "phases_completed": [
+              "requirements-clarification", "design", "implementation",
+              "testing", "review", "merge"
+          ],
+          "mandatory_steps_completed": {
+              "step_0_preparation": True,
+              "step_14_version_bump": True,
+              "step_17_pr_review": True,
+              "step_18_implement_feedback": True
+          },
+          "philosophy_compliant": True,
+          "ready_to_merge": True
+      }, indent=2))
+      PYEOF
     output: "workflow_result"
