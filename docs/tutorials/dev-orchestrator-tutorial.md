@@ -39,8 +39,10 @@ and how to interpret what you see during execution.
 
 1. **Classifies** your request (Q&A, Operations, Investigation, or Development)
 2. **Decomposes** it into workstreams if it contains independent parallel components (hybrid "investigate then build" requests become multiple workstreams)
-3. **Executes** via the recipe runner with a goal-seeking loop (up to 3 rounds)
+3. **Executes** via the recipe runner with a goal-seeking loop (up to 3 rounds) — **REQUIRED for all Development and Investigation tasks**
 4. **Reflects** on whether the goal was achieved
+
+**Important**: As of March 2026, the recipe runner is MANDATORY for all Development and Investigation tasks. There are no bypass or fallback paths. Q&A and Operations tasks still bypass the workflow correctly.
 
 ### Try it
 
