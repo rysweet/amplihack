@@ -565,34 +565,47 @@ class InMemoryHiveGraph:
             count += 1
         return count
 
-    def query_federated(self, query: str, limit: int = 20) -> list[HiveFact]:
-        """Query local + parent + children for facts matching query.
+    def query_federated(
+        self,
+        query: str,
+        limit: int = 20,
+        _visited: set[str] | None = None,
+    ) -> list[HiveFact]:
+        """Query the entire federation tree for facts matching query.
 
-        Deduplicates by content to avoid returning the same fact from
-        multiple levels of the tree.
+        Traverses up to parent (and parent's parent, etc.) and down to
+        children (and children's children, etc.), avoiding cycles via a
+        visited set keyed by hive_id.
 
         Args:
             query: Space-separated keywords.
             limit: Maximum results.
+            _visited: Internal — hive_ids already queried (prevents loops).
 
         Returns:
             Merged, deduplicated list of HiveFact sorted by confidence.
         """
+        if _visited is None:
+            _visited = set()
+        if self._hive_id in _visited:
+            return []
+        _visited.add(self._hive_id)
+
         # Local results
         results = list(self.query_facts(query, limit=limit))
         seen_content: set[str] = {f.content for f in results}
 
-        # Parent results
+        # Parent (recursive, with visited set to prevent loops)
         if self._parent is not None:
-            parent_results = self._parent.query_facts(query, limit=limit)
+            parent_results = self._parent.query_federated(query, limit=limit, _visited=_visited)
             for f in parent_results:
                 if f.content not in seen_content:
                     seen_content.add(f.content)
                     results.append(f)
 
-        # Children results
+        # Children (recursive)
         for child in self._children:
-            child_results = child.query_facts(query, limit=limit)
+            child_results = child.query_federated(query, limit=limit, _visited=_visited)
             for f in child_results:
                 if f.content not in seen_content:
                     seen_content.add(f.content)
