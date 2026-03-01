@@ -794,3 +794,308 @@ class TestClose:
         populated_hive.close()
         # Can still read (in-memory, not destroyed)
         assert populated_hive.get_fact("f1") is not None
+
+
+# ---------------------------------------------------------------------------
+# TestFederatedRetrievalParity (Issue #2754)
+# ---------------------------------------------------------------------------
+
+
+class TestFederatedRetrievalParity:
+    """Federated retrieval must match flat retrieval quality.
+
+    When the same facts are distributed across N hives in a federation,
+    querying federated should return the same top-K results as putting
+    all facts in a single flat hive.
+    """
+
+    def _build_facts(self, n: int) -> list[HiveFact]:
+        """Generate N diverse facts across domains."""
+        domains = [
+            ("infrastructure", "Server {i} runs on port {p}", "networking"),
+            ("security", "Alert {i}: brute force from IP 10.0.{p}.1", "incidents"),
+            ("database", "Table users_{i} has {p} million rows", "schema"),
+            ("monitoring", "Metric cpu_usage_{i} threshold is {p}%", "metrics"),
+            ("deployment", "Service svc_{i} deployed to region-{p}", "deploy"),
+        ]
+        facts = []
+        for i in range(n):
+            domain_idx = i % len(domains)
+            domain, template, concept = domains[domain_idx]
+            facts.append(
+                HiveFact(
+                    fact_id=f"f_{i}",
+                    content=template.format(i=i, p=8000 + i),
+                    concept=concept,
+                    confidence=0.5 + (i % 50) * 0.01,
+                    tags=[domain],
+                )
+            )
+        return facts
+
+    def test_federated_matches_flat_with_many_facts(self):
+        """Core parity test: federated returns same results as flat.
+
+        Distribute 200 facts across 5 hives. Querying federated from any
+        node should return the same top-20 as querying a flat hive with
+        all 200 facts.
+        """
+        facts = self._build_facts(200)
+        limit = 20
+
+        # -- Flat hive: all facts in one place --
+        flat = InMemoryHiveGraph("flat")
+        flat.register_agent("flat_agent")
+        for f in facts:
+            flat.promote_fact(
+                "flat_agent",
+                HiveFact(
+                    fact_id=f"flat_{f.fact_id}",
+                    content=f.content,
+                    concept=f.concept,
+                    confidence=f.confidence,
+                    tags=list(f.tags),
+                ),
+            )
+
+        # -- Federated: 5 child hives under a root --
+        root = InMemoryHiveGraph("root")
+        children = []
+        for idx in range(5):
+            child = InMemoryHiveGraph(f"child-{idx}")
+            child.register_agent(f"agent_{idx}")
+            root.add_child(child)
+            child.set_parent(root)
+            children.append(child)
+
+        # Distribute facts round-robin across children
+        for i, f in enumerate(facts):
+            child = children[i % 5]
+            child.promote_fact(
+                f"agent_{i % 5}",
+                HiveFact(
+                    fact_id=f"fed_{f.fact_id}",
+                    content=f.content,
+                    concept=f.concept,
+                    confidence=f.confidence,
+                    tags=list(f.tags),
+                ),
+            )
+
+        # Queries that should work well in both modes
+        queries = [
+            "Server port networking",
+            "brute force IP alert security",
+            "Table users rows schema database",
+            "cpu_usage metric threshold monitoring",
+            "Service deployed region deployment",
+        ]
+
+        for query in queries:
+            flat_results = flat.query_facts(query, limit=limit)
+            fed_results = root.query_federated(query, limit=limit)
+
+            flat_contents = {f.content for f in flat_results}
+            fed_contents = {f.content for f in fed_results}
+
+            # Federated should find at least 80% of what flat finds
+            if flat_contents:
+                overlap = len(flat_contents & fed_contents)
+                parity = overlap / len(flat_contents)
+                assert parity >= 0.8, (
+                    f"Federated parity too low for '{query}': "
+                    f"{parity:.0%} ({overlap}/{len(flat_contents)})"
+                )
+
+    def test_federated_does_not_lose_results_to_per_hive_limit(self):
+        """Regression: per-hive limit must not drop globally-relevant facts.
+
+        Put 50 facts per hive (5 hives = 250 facts). Query with limit=10.
+        The top-10 globally should come from multiple hives, not just
+        whichever hive happens to match best locally.
+        """
+        # Create facts where the best matches are spread across hives
+        root = InMemoryHiveGraph("root")
+        children = []
+        for idx in range(5):
+            child = InMemoryHiveGraph(f"child-{idx}")
+            child.register_agent(f"agent_{idx}")
+            root.add_child(child)
+            child.set_parent(root)
+            children.append(child)
+
+        # Each child gets 50 facts, but only 2 per child are high-relevance
+        for c_idx, child in enumerate(children):
+            for f_idx in range(50):
+                if f_idx < 2:
+                    # High-relevance: mentions "critical alert security breach"
+                    content = f"critical alert security breach incident {c_idx}_{f_idx}"
+                    concept = "security"
+                    confidence = 0.95
+                else:
+                    # Low-relevance filler
+                    content = f"routine maintenance log entry {c_idx}_{f_idx}"
+                    concept = "maintenance"
+                    confidence = 0.5
+                child.promote_fact(
+                    f"agent_{c_idx}",
+                    HiveFact(
+                        fact_id=f"f_{c_idx}_{f_idx}",
+                        content=content,
+                        concept=concept,
+                        confidence=confidence,
+                    ),
+                )
+
+        # Query should find all 10 high-relevance facts (2 per hive * 5 hives)
+        results = root.query_federated("critical alert security breach", limit=10)
+        security_results = [f for f in results if "critical alert" in f.content]
+        assert len(security_results) == 10, (
+            f"Expected 10 security facts from 5 hives, got {len(security_results)}"
+        )
+
+    def test_federated_global_reranking_by_keyword_score(self):
+        """Federated must re-rank by keyword score, not just confidence.
+
+        Bug: query_federated sorts by confidence only, but query_facts
+        sorts by keyword hits first. This means federated can return
+        high-confidence but low-relevance facts over low-confidence but
+        high-relevance facts.
+        """
+        root = InMemoryHiveGraph("root")
+        child_a = InMemoryHiveGraph("child-a")
+        child_b = InMemoryHiveGraph("child-b")
+        root.add_child(child_a)
+        root.add_child(child_b)
+        child_a.set_parent(root)
+        child_b.set_parent(root)
+
+        child_a.register_agent("agent_a")
+        child_b.register_agent("agent_b")
+
+        # Child A: highly relevant fact (3 keyword matches) but low confidence
+        child_a.promote_fact(
+            "agent_a",
+            HiveFact(
+                fact_id="relevant",
+                content="critical security alert breach detected",
+                concept="security",
+                confidence=0.5,
+            ),
+        )
+
+        # Child B: low relevance (1 keyword match) but high confidence
+        child_b.promote_fact(
+            "agent_b",
+            HiveFact(
+                fact_id="irrelevant",
+                content="routine maintenance alert scheduled",
+                concept="maintenance",
+                confidence=0.99,
+            ),
+        )
+
+        # Flat hive would rank "critical security alert breach" first
+        # because it has 3 keyword hits vs 1
+        flat = InMemoryHiveGraph("flat")
+        flat.register_agent("flat_a")
+        flat.promote_fact(
+            "flat_a",
+            HiveFact(
+                fact_id="flat_relevant",
+                content="critical security alert breach detected",
+                concept="security",
+                confidence=0.5,
+            ),
+        )
+        flat.promote_fact(
+            "flat_a",
+            HiveFact(
+                fact_id="flat_irrelevant",
+                content="routine maintenance alert scheduled",
+                concept="maintenance",
+                confidence=0.99,
+            ),
+        )
+
+        query = "security alert breach"
+        flat_results = flat.query_facts(query, limit=2)
+        fed_results = root.query_federated(query, limit=2)
+
+        # Flat correctly puts the 3-hit fact first
+        assert "critical" in flat_results[0].content
+
+        # Federated MUST also put the 3-hit fact first (global re-ranking)
+        assert "critical" in fed_results[0].content, (
+            f"Federated should rank by keyword relevance, not confidence. "
+            f"Got: {[f.content for f in fed_results]}"
+        )
+
+    def test_federated_preserves_best_facts_across_hives(self):
+        """Regression: federated retrieval must find best facts from all hives.
+
+        Each child has 30 low-relevance facts plus 1 high-relevance fact.
+        The global re-ranking must surface the best facts from every hive,
+        not just from whichever hive matches best locally.
+        """
+        root = InMemoryHiveGraph("root")
+        hive_a = InMemoryHiveGraph("hive-a")
+        hive_b = InMemoryHiveGraph("hive-b")
+        root.add_child(hive_a)
+        root.add_child(hive_b)
+        hive_a.set_parent(root)
+        hive_b.set_parent(root)
+
+        hive_a.register_agent("a")
+        hive_b.register_agent("b")
+
+        # Hive A: 1 perfect match + 30 partial matches
+        hive_a.promote_fact(
+            "a",
+            HiveFact(
+                fact_id="best_a",
+                content="server port 8080 database connection timeout error",
+                concept="infrastructure",
+                confidence=0.9,
+            ),
+        )
+        for i in range(30):
+            hive_a.promote_fact(
+                "a",
+                HiveFact(
+                    fact_id=f"filler_a_{i}",
+                    content=f"server routine check {i} completed successfully",
+                    concept="ops",
+                    confidence=0.8,
+                ),
+            )
+
+        # Hive B: 1 perfect match + 30 partial matches
+        hive_b.promote_fact(
+            "b",
+            HiveFact(
+                fact_id="best_b",
+                content="database connection timeout error port 5432 server",
+                concept="infrastructure",
+                confidence=0.9,
+            ),
+        )
+        for i in range(30):
+            hive_b.promote_fact(
+                "b",
+                HiveFact(
+                    fact_id=f"filler_b_{i}",
+                    content=f"database backup schedule {i} completed normally",
+                    concept="ops",
+                    confidence=0.8,
+                ),
+            )
+
+        # Query with small limit - both best facts should appear
+        results = root.query_federated(
+            "server database connection timeout error port",
+            limit=5,
+        )
+        result_ids = {f.fact_id for f in results}
+        assert "best_a" in result_ids, "Lost best fact from hive A"
+        assert "best_b" in result_ids, "Lost best fact from hive B"

@@ -596,13 +596,17 @@ class PeerHiveGraph:
         Traverses up to parent and down to children recursively,
         avoiding cycles via a visited set keyed by hive_id.
 
+        Uses a large internal limit when fetching from each hive, then
+        performs a single global re-ranking by keyword score so the final
+        top-K is globally optimal (not just locally optimal per hive).
+
         Args:
             query: Space-separated keywords.
             limit: Maximum results.
             _visited: Internal -- hive_ids already queried (prevents loops).
 
         Returns:
-            Merged, deduplicated list of HiveFact sorted by confidence.
+            Merged, deduplicated list of HiveFact sorted by keyword relevance.
         """
         if _visited is None:
             _visited = set()
@@ -610,8 +614,13 @@ class PeerHiveGraph:
             return []
         _visited.add(self._hive_id)
 
+        # Fetch broadly from each hive to avoid per-hive truncation.
+        # 10x multiplier ensures global re-ranking sees enough candidates
+        # from each hive. Cap at 2000 to bound memory on large limit values.
+        internal_limit = min(max(limit * 10, 200), 2000)
+
         # Local results
-        results = list(self.query_facts(query, limit=limit))
+        results = list(self.query_facts(query, limit=internal_limit))
         seen_content: set[str] = {f.content for f in results}
 
         with self._lock:
@@ -620,7 +629,11 @@ class PeerHiveGraph:
 
         # Parent (recursive, with visited set to prevent loops)
         if parent is not None:
-            parent_results = parent.query_federated(query, limit=limit, _visited=_visited)
+            parent_results = parent.query_federated(
+                query,
+                limit=internal_limit,
+                _visited=_visited,
+            )
             for f in parent_results:
                 if f.content not in seen_content:
                     seen_content.add(f.content)
@@ -628,13 +641,29 @@ class PeerHiveGraph:
 
         # Children (recursive)
         for child in children:
-            child_results = child.query_federated(query, limit=limit, _visited=_visited)
+            child_results = child.query_federated(
+                query,
+                limit=internal_limit,
+                _visited=_visited,
+            )
             for f in child_results:
                 if f.content not in seen_content:
                     seen_content.add(f.content)
                     results.append(f)
 
-        results.sort(key=lambda f: -f.confidence)
+        # Global re-ranking by keyword score (same scoring as query_facts)
+        keywords = _tokenize(query)
+        if keywords:
+
+            def _global_score(fact: HiveFact) -> float:
+                fact_words = _tokenize(f"{fact.content} {fact.concept}")
+                hits = len(keywords & fact_words)
+                return hits + fact.confidence * 0.01
+
+            results.sort(key=lambda f: (-_global_score(f), -f.confidence))
+        else:
+            results.sort(key=lambda f: -f.confidence)
+
         return results[:limit]
 
     # -- Stats & lifecycle -----------------------------------------------------
