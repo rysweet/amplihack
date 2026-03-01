@@ -149,11 +149,15 @@ class AgentNode:
         self._incorporated_events: set[str] = set()
 
         # Federated graph: local agent graph + shared hive graph
-        if hive_store is not None:
+        if hive_store is not None and KuzuGraphStore is not None:
+            # Share the Kuzu DB instance from CognitiveMemory to avoid
+            # opening a second database at the same path (Mmap error)
             local_graph = KuzuGraphStore(
                 db_path=db_dir,
                 store_id=agent_id,
+                db=self.memory._db,  # share existing DB instance
             )
+            local_graph._known_node_tables.add("SemanticMemory")
             self._federated: FederatedGraphStore | None = FederatedGraphStore(
                 local_store=local_graph,
                 hive_store=hive_store,
