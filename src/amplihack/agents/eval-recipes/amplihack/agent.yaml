@@ -1,0 +1,2 @@
+required_env_vars:
+  - ANTHROPIC_API_KEY
