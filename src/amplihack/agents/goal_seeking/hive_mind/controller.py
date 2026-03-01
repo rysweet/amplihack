@@ -9,7 +9,7 @@ Architecture:
     HiveManifest    -- Desired state declaration (from YAML / dict)
     HiveState       -- Snapshot of actual running state
     HiveController  -- Reconciliation loop: desired -> actual
-    InMemoryGraphStore -- Lightweight graph store for testing (no PG/Kuzu)
+    InMemoryGraphStore -- Lightweight graph store for testing
 
 Public API:
     HiveManifest: Desired state for the hive mind system
@@ -81,8 +81,8 @@ class InMemoryGraphStore:
     """Lightweight in-memory graph store for testing.
 
     Stores facts as dicts in memory.  Implements just enough of the graph store
-    interface for the HiveController + HiveGateway to work without Kuzu or
-    Postgres.  Not suitable for production.
+    interface for the HiveController + HiveGateway to work without Kuzu.
+    Not suitable for production.
     """
 
     def __init__(self, store_id: str = "memory") -> None:
@@ -300,8 +300,8 @@ class GraphStoreConfig:
     """Configuration for the hive's graph store backend.
 
     Attributes:
-        backend: Store type -- "memory", "postgres+age", or "kuzu".
-        connection_string: Connection string for postgres/remote backends.
+        backend: Store type -- "memory" or "kuzu".
+        connection_string: Connection string for remote backends.
         graph_name: Name of the graph in the backend.
         db_path: Filesystem path for kuzu backend.
     """
@@ -317,7 +317,7 @@ class EventBusConfig:
     """Configuration for the hive's event bus.
 
     Attributes:
-        backend: Bus type -- "local", "pg_notify", "azure_service_bus".
+        backend: Bus type -- "local", "redis", or "azure_service_bus".
         connection_string: Connection string for remote backends.
     """
 

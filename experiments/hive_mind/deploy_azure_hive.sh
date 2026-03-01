@@ -415,8 +415,8 @@ build_and_push() {
     local dockerfile="${REPO_ROOT}/experiments/hive_mind/Dockerfile.hive"
     local image_full="${ACR_LOGIN_SERVER}/${IMAGE_NAME}:${IMAGE_TAG}"
 
-    # Generate the Dockerfile if it does not already exist
-    if [[ ! -f "${dockerfile}" ]]; then
+    # Always regenerate the Dockerfile to pick up changes
+    if true; then
         _info "Generating Dockerfile at ${dockerfile}..."
         cat > "${dockerfile}" << 'DOCKERFILE_EOF'
 FROM python:3.11-slim
@@ -456,9 +456,9 @@ DOCKERFILE_EOF
         _ok "Dockerfile generated."
     fi
 
-    # Generate agent_runner.py if it does not already exist
+    # Always regenerate agent_runner.py to pick up changes
     local runner="${REPO_ROOT}/experiments/hive_mind/agent_runner.py"
-    if [[ ! -f "${runner}" ]]; then
+    if true; then
         _info "Generating agent_runner.py..."
         cat > "${runner}" << 'RUNNER_EOF'
 #!/usr/bin/env python3
@@ -792,8 +792,8 @@ deploy_single_agent() {
             --ingress internal \
             --min-replicas 1 \
             --max-replicas 1 \
-            --cpu 0.5 \
-            --memory 1.0Gi \
+            --cpu 2.0 \
+            --memory 4.0Gi \
             --env-vars \
                 "AGENT_ID=${agent_id}" \
                 "AGENT_DOMAIN=${agent_domain}" \

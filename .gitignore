@@ -192,3 +192,18 @@ Specs/INTENSIVE_MEMORY_EVAL_DESIGN.md
 Specs/MATRIX_EVAL_REPORT.md
 eval_data/
 debug_eval/
+
+# Eval result data (generated per-run, not source)
+domain_eval_results/
+five_agent_results/
+meta_eval_results/
+eval_progressive_example/
+eval_results.json
+
+# Hive mind generated deployment files
+experiments/hive_mind/Dockerfile.hive
+experiments/hive_mind/agent_runner.py
+
+# Benchmark run artifacts
+tests/benchmarks/results/
+*.pid

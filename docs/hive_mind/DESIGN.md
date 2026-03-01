@@ -173,15 +173,14 @@ overall. Composes all four layers for best-of-all-worlds.
 - `PullManager` — Hive query + pull to local
 - `HierarchicalKnowledgeGraph` — Two-level orchestrator
 
-## Future Work
+## Current State
 
-1. **Real Kuzu Integration**: Connect to actual Kuzu backend instead of
-   in-memory dicts for persistence across sessions
-2. **LearningAgent Bridge**: Hook into learn_from_content and answer_question
-   to transparently use the hive (in progress)
-3. **Full Eval Harness**: Run against the 1000-turn eval with multi-agent
-   scenarios
-4. **Distributed Mode**: Replace in-process event bus with Redis Streams or
-   similar for cross-process agents
-5. **Semantic Dedup**: Use embedding similarity instead of content-hash for
-   fuzzy deduplication
+All five original "future work" items have been implemented:
+
+1. **Real Kuzu Integration** — Done. Each agent owns a Kuzu DB via KuzuGraphStore.
+2. **LearningAgent Bridge** — Done. FederatedGraphStore composes local + hive.
+3. **Full Eval Harness** — Done. 1000-turn eval with 12 agents across 5 hive federation.
+4. **Distributed Mode** — Done. EventBus with Local/Redis/Azure Service Bus backends.
+5. **HiveGraph Protocol** — Done. Swappable backends (InMemory, PeerHive with Raft).
+
+See `TUTORIAL.md` in this directory for getting started.
