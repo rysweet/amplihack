@@ -42,6 +42,8 @@ class ClaudeSDKAdapter:
         prompt: str,
         agent_name: str | None = None,
         agent_system_prompt: str | None = None,
+        mode: str | None = None,
+        working_dir: str = ".",
     ) -> str:
         """Execute an agent step via the Claude Agent SDK."""
         sdk = self._get_sdk()
