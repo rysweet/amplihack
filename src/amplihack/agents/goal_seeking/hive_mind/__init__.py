@@ -174,3 +174,19 @@ try:
     ]
 except ImportError:
     pass
+
+# Distributed Hive Mind (Experiment 8 - True Distributed, Own-DB-Per-Agent)
+try:
+    from .distributed import (
+        AgentNode,
+        DistributedHiveMind,
+        HiveCoordinator,
+    )
+
+    __all__ += [
+        "AgentNode",
+        "DistributedHiveMind",
+        "HiveCoordinator",
+    ]
+except ImportError:
+    pass
