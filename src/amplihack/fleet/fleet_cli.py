@@ -423,6 +423,20 @@ def tui(interval, once):
     app.run(once=once)
 
 
+@fleet_cli.command("tui2")
+@click.option("--interval", default=30, help="Refresh interval in seconds")
+def tui2(interval):
+    """Interactive fleet dashboard (Textual TUI).
+
+    A polished three-tab interface: Fleet Overview, Session Detail,
+    and Action Editor.  Auto-refreshes and supports LLM-powered
+    dry-run reasoning for each session.
+    """
+    from amplihack.fleet.fleet_tui_dashboard import run_dashboard
+
+    run_dashboard(interval=interval)
+
+
 @fleet_cli.command("graph")
 def show_graph():
     """Show fleet knowledge graph summary."""
