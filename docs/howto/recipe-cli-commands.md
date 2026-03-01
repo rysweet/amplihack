@@ -121,6 +121,8 @@ Use dry run to:
 
 **Task**: Provide values for recipe context variables.
 
+**Option 1: Explicit context flags** (highest priority):
+
 ```bash
 amplihack recipe run bug-triage \
   --context issue_number="456" \
@@ -128,12 +130,32 @@ amplihack recipe run bug-triage \
   --context branch_name="fix/issue-456"
 ```
 
+**Option 2: Environment variables** (smart inference):
+
+```bash
+# Set context via environment variables
+export AMPLIHACK_CONTEXT_ISSUE_NUMBER="456"
+export AMPLIHACK_REPO_PATH="/home/user/myproject"
+export AMPLIHACK_CONTEXT_BRANCH_NAME="fix/issue-456"
+
+# Run without explicit --context (values inferred automatically)
+amplihack recipe run bug-triage
+```
+
 Context variables:
 
 - Defined in recipe YAML `context:` block
 - Passed via `--context key=value` format (fail-fast validation)
+- **NEW**: Auto-inferred from `AMPLIHACK_CONTEXT_<KEY>` environment variables
+- **NEW**: Well-known variables: `AMPLIHACK_TASK_DESCRIPTION`, `AMPLIHACK_REPO_PATH`
 - Injected into prompts with `{{variable}}` syntax
 - Available to all steps in the recipe
+
+**Context inference priority**:
+1. Explicit `--context key=value` (highest priority)
+2. `AMPLIHACK_CONTEXT_<KEY>` environment variables
+3. Well-known env vars: `AMPLIHACK_TASK_DESCRIPTION`, `AMPLIHACK_REPO_PATH`
+4. Recipe YAML defaults (lowest priority)
 
 **Required vs optional context**:
 

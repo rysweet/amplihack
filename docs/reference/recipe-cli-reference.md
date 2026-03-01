@@ -217,6 +217,13 @@ Execution continues until:
 | `--output <path>`       | Write execution log to file             | -           |
 | `--interactive`         | Prompt for approval before each step    | `false`     |
 
+**Smart Context Inference**: The recipe runner automatically infers missing context variables from environment variables:
+
+1. Explicit `--context key=value` (highest priority)
+2. `AMPLIHACK_CONTEXT_<KEY>` environment variables (e.g., `AMPLIHACK_CONTEXT_QUESTION`)
+3. Well-known environment variables: `AMPLIHACK_TASK_DESCRIPTION`, `AMPLIHACK_REPO_PATH`
+4. Recipe YAML defaults (lowest priority)
+
 ### Examples
 
 **Basic execution**:
@@ -224,6 +231,17 @@ Execution continues until:
 ```bash
 amplihack recipe run default-workflow \
   --context '{"task_description": "Add user authentication", "repo_path": "."}'
+```
+
+**Using environment variables for context** (smart inference):
+
+```bash
+# Set context via environment variables
+export AMPLIHACK_CONTEXT_TASK_DESCRIPTION="Add user authentication"
+export AMPLIHACK_REPO_PATH="."
+
+# Run without explicit --context (values inferred automatically)
+amplihack recipe run default-workflow
 ```
 
 **Output**:
