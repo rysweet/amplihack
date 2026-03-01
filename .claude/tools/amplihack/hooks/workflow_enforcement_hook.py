@@ -58,6 +58,15 @@ DEV_SKILL_NAMES = frozenset(
         "default-workflow",
         "amplihack:default-workflow",
         "amplihack:amplihack:default-workflow",
+        ".claude:amplihack:dev",
+        ".claude:amplihack:default-workflow",
+    }
+)
+
+# Tool names that indicate workflow is being followed (not just Read/Edit)
+WORKFLOW_EVIDENCE_TOOLS = frozenset(
+    {
+        "TaskCreate",  # Workflow step tracking
     }
 )
 
@@ -70,6 +79,8 @@ WORKFLOW_EVIDENCE_BASH = (
     "git checkout -b",
     "git switch -c",
     "git branch ",
+    "gh pr create",
+    "gh issue create",
 )
 
 # Patterns in Read file paths that indicate workflow is being followed
@@ -184,6 +195,10 @@ def _has_workflow_evidence(input_data: dict[str, Any]) -> bool:
 
     # Check Agent tool — launching subagents is evidence of orchestration
     if tool_name == "Agent":
+        return True
+
+    # Check tool names that directly indicate workflow execution
+    if tool_name in WORKFLOW_EVIDENCE_TOOLS:
         return True
 
     return False
