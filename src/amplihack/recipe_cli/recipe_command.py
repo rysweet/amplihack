@@ -142,8 +142,11 @@ def handle_run(
         adapter = CLISubprocessAdapter(working_dir=wd)
         runner = RecipeRunner(adapter=adapter)
 
-        # Merge context: user context overrides recipe defaults
-        merged_context = {**(recipe.context or {}), **context}
+        # Merge context: user context overrides recipe defaults.
+        # Smart inference fills gaps for common variables when not provided.
+        recipe_defaults = recipe.context or {}
+        merged_context = {**recipe_defaults, **context}
+        merged_context = _infer_missing_context(recipe_defaults, merged_context, verbose)
 
         # Execute recipe
         result = runner.execute(
@@ -178,6 +181,69 @@ def handle_run(
 
             traceback.print_exc()
         return 1
+
+
+def _infer_missing_context(
+    recipe_defaults: dict[str, Any],
+    merged: dict[str, Any],
+    verbose: bool = False,
+) -> dict[str, Any]:
+    """Infer missing context variables from environment when not explicitly set.
+
+    Inference strategies (in priority order):
+    1. Explicit --context values (already in merged, highest priority)
+    2. Environment variables (AMPLIHACK_CONTEXT_<KEY>)
+    3. Recipe defaults (already in merged from recipe YAML)
+
+    Only infers for variables that exist in recipe defaults but are empty strings
+    (the recipe declared them but no value was provided).
+
+    Args:
+        recipe_defaults: Original defaults from recipe YAML
+        merged: Already-merged context (recipe defaults + user overrides)
+        verbose: Print inference details
+
+    Returns:
+        Updated context dict with inferred values
+    """
+    import os
+
+    result = merged.copy()
+    inferred: list[str] = []
+
+    for key, value in result.items():
+        # Only infer for empty-string defaults (recipe declared but unfilled)
+        if value != "":
+            continue
+
+        # Strategy: check AMPLIHACK_CONTEXT_<KEY> environment variable
+        env_key = f"AMPLIHACK_CONTEXT_{key.upper()}"
+        env_value = os.environ.get(env_key, "")
+        if env_value:
+            result[key] = env_value
+            inferred.append(f"{key} (from ${env_key})")
+            continue
+
+        # Strategy: common variable inference from well-known env vars
+        if key == "task_description":
+            # Check if the smart-orchestrator already set this via user_context
+            task = os.environ.get("AMPLIHACK_TASK_DESCRIPTION", "")
+            if task:
+                result[key] = task
+                inferred.append(f"{key} (from $AMPLIHACK_TASK_DESCRIPTION)")
+        elif key == "repo_path":
+            # Default to current directory if not set
+            result[key] = os.environ.get("AMPLIHACK_REPO_PATH", ".")
+            if result[key] != ".":
+                inferred.append(f"{key} (from $AMPLIHACK_REPO_PATH)")
+
+    if inferred and verbose:
+        print(
+            f"[context] Inferred {len(inferred)} variable(s): {', '.join(inferred)}",
+            file=sys.stderr,
+        )
+
+    return result
 
 
 def handle_list(
