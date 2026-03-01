@@ -73,7 +73,7 @@ class SessionAdopter:
 
             return self._parse_discovery_output(vm_name, result.stdout)
 
-        except (subprocess.TimeoutExpired, subprocess.SubprocessError):
+        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
             return []
 
     def adopt_sessions(

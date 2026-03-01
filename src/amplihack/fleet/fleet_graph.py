@@ -240,29 +240,41 @@ class FleetGraph:
                 for e in self.edges
             ],
         }
-        self.persist_path.write_text(json.dumps(data, indent=2))
+        # Atomic write: temp file then rename
+        tmp = self.persist_path.with_suffix('.tmp')
+        tmp.write_text(json.dumps(data, indent=2))
+        tmp.rename(self.persist_path)
 
     def load(self) -> None:
         if not self.persist_path or not self.persist_path.exists():
             return
         try:
             data = json.loads(self.persist_path.read_text())
-            self.nodes = {}
-            for nid, ndata in data.get("nodes", {}).items():
+        except json.JSONDecodeError:
+            import logging
+            logging.getLogger(__name__).warning(f"Corrupt graph file: {self.persist_path}")
+            return
+        self.nodes = {}
+        for nid, ndata in data.get("nodes", {}).items():
+            try:
                 self.nodes[nid] = GraphNode(
                     id=nid,
                     node_type=NodeType(ndata["type"]),
                     label=ndata.get("label", nid),
                     metadata=ndata.get("metadata", {}),
                 )
-            self.edges = []
-            for edata in data.get("edges", []):
+            except (KeyError, TypeError, ValueError) as e:
+                import logging
+                logging.getLogger(__name__).warning(f"Skipping corrupt graph node {nid}: {e}")
+        self.edges = []
+        for edata in data.get("edges", []):
+            try:
                 self.edges.append(GraphEdge(
                     source_id=edata["source"],
                     target_id=edata["target"],
                     edge_type=EdgeType(edata["type"]),
                     metadata=edata.get("metadata", {}),
                 ))
-        except (json.JSONDecodeError, KeyError, TypeError, ValueError):
-            self.nodes = {}
-            self.edges = []
+            except (KeyError, TypeError, ValueError) as e:
+                import logging
+                logging.getLogger(__name__).warning(f"Skipping corrupt graph edge: {e}")

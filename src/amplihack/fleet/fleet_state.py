@@ -167,7 +167,7 @@ class FleetState:
             if result.returncode == 0 and result.stdout.strip():
                 return self._parse_vm_json(result.stdout)
 
-        except (subprocess.TimeoutExpired, subprocess.SubprocessError, json.JSONDecodeError):
+        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError, json.JSONDecodeError):
             pass
 
         # Fallback: parse text output
@@ -180,7 +180,7 @@ class FleetState:
             )
             if result.returncode == 0:
                 return self._parse_vm_text(result.stdout)
-        except (subprocess.TimeoutExpired, subprocess.SubprocessError):
+        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
             pass
 
         return []
@@ -280,5 +280,5 @@ class FleetState:
                     )
             return sessions
 
-        except (subprocess.TimeoutExpired, subprocess.SubprocessError):
+        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
             return []

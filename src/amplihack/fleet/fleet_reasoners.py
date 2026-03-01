@@ -56,7 +56,7 @@ class Reasoner(Protocol):
 class ReasonerChain:
     """Ordered chain of reasoners. Runs each in sequence, accumulating actions."""
 
-    reasoners: list = field(default_factory=list)
+    reasoners: list[Reasoner] = field(default_factory=list)
 
     def reason(self, state: FleetState, queue: TaskQueue) -> list[DirectorAction]:
         all_actions: list[DirectorAction] = []
@@ -71,9 +71,12 @@ class LifecycleReasoner:
     """Handles task lifecycle: completions, failures, stuck detection.
 
     Respects protected tasks (deep work mode) and per-task stuck thresholds.
+    C2: Grace period for missing sessions -- only MARK_FAILED after 2+
+    consecutive cycles of the session being absent.
     """
 
     default_stuck_threshold: float = 300.0
+    _missing_session_counts: dict[str, int] = field(default_factory=dict)
 
     def reason(
         self,
@@ -93,13 +96,20 @@ class LifecycleReasoner:
 
             session = self._find_session(vm, task.assigned_session)
             if not session:
-                actions.append(DirectorAction(
-                    action_type=ActionType.MARK_FAILED,
-                    task=task,
-                    vm_name=task.assigned_vm,
-                    session_name=task.assigned_session,
-                    reason="Session no longer exists",
-                ))
+                # C2: Grace period -- only fail after 2+ consecutive missing cycles
+                key = f"{task.assigned_vm}:{task.assigned_session}"
+                self._missing_session_counts[key] = self._missing_session_counts.get(key, 0) + 1
+                if self._missing_session_counts[key] >= 2:
+                    # Session truly gone after 2 cycles
+                    actions.append(DirectorAction(
+                        action_type=ActionType.MARK_FAILED,
+                        task=task,
+                        vm_name=task.assigned_vm,
+                        session_name=task.assigned_session,
+                        reason="Session no longer exists (missing 2+ cycles)",
+                    ))
+                    del self._missing_session_counts[key]
+                # else: wait one more cycle before marking failed
                 continue
 
             if session.agent_status == AgentStatus.COMPLETED:
@@ -122,8 +132,7 @@ class LifecycleReasoner:
 
             elif session.agent_status == AgentStatus.STUCK:
                 # Respect protected flag (deep work mode)
-                protected = getattr(task, "protected", False)
-                if protected:
+                if task.protected:
                     continue
                 actions.append(DirectorAction(
                     action_type=ActionType.REASSIGN_TASK,
@@ -181,7 +190,7 @@ class PreemptionReasoner:
             victim = running[0]
             if victim.priority.value <= critical_task.priority.value:
                 break  # Don't preempt equal or higher priority
-            if getattr(victim, "protected", False):
+            if victim.protected:
                 running.pop(0)
                 continue
 
@@ -203,6 +212,10 @@ class CoordinationReasoner:
 
     Writes coordination files so agents investigating the same codebase
     can see what others are working on and avoid duplication.
+
+    Note: Coordination files are designed to be read by agents via shared
+    NFS mount. This is not dead code -- it is infrastructure for multi-agent
+    awareness across VMs.
     """
 
     coordination_dir: Path = field(

@@ -27,13 +27,6 @@ from amplihack.fleet.fleet_tasks import FleetTask, TaskQueue, TaskStatus
 
 __all__ = ["FleetDashboard", "ProjectInfo"]
 
-# Approximate VM costs per hour (Standard_E16as_v5)
-VM_COST_PER_HOUR = {
-    "Standard_E16as_v5": 0.576,  # ~$417/month
-    "Standard_E8as_v5": 0.252,   # ~$182/month
-    "Standard_D2s_v3": 0.096,    # ~$70/month
-    "Standard_E32as_v5": 1.152,  # ~$835/month
-}
 DEFAULT_COST_PER_HOUR = 0.576
 
 
@@ -232,14 +225,24 @@ class FleetDashboard:
         if not self.persist_path:
             return
         self.persist_path.parent.mkdir(parents=True, exist_ok=True)
-        data = [p.to_dict() for p in self.projects]
-        self.persist_path.write_text(json.dumps(data, indent=2))
+        # Atomic write: temp file then rename
+        tmp = self.persist_path.with_suffix('.tmp')
+        tmp.write_text(json.dumps([p.to_dict() for p in self.projects], indent=2))
+        tmp.rename(self.persist_path)
 
     def load(self) -> None:
         if not self.persist_path or not self.persist_path.exists():
             return
         try:
             data = json.loads(self.persist_path.read_text())
-            self.projects = [ProjectInfo.from_dict(item) for item in data]
-        except (json.JSONDecodeError, KeyError, TypeError):
-            self.projects = []
+        except json.JSONDecodeError:
+            import logging
+            logging.getLogger(__name__).warning(f"Corrupt dashboard file: {self.persist_path}")
+            return
+        self.projects = []
+        for item in data:
+            try:
+                self.projects.append(ProjectInfo.from_dict(item))
+            except (KeyError, TypeError) as e:
+                import logging
+                logging.getLogger(__name__).warning(f"Skipping corrupt project entry: {e}")

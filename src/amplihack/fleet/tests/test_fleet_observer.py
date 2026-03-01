@@ -73,10 +73,12 @@ class TestFleetObserverClassification:
         assert status == AgentStatus.ERROR
 
     def test_detect_waiting_input_question(self):
+        """Generic questions no longer trigger WAITING_INPUT (L5: narrowed patterns)."""
         observer = self._make_observer()
         lines = ["Which approach do you prefer?"]
         status, conf, _ = self._classify(observer, lines)
-        assert status == AgentStatus.WAITING_INPUT
+        # After L5 fix, a bare question mark is not enough to classify as waiting
+        assert status != AgentStatus.WAITING_INPUT
 
     def test_detect_waiting_input_yn(self):
         observer = self._make_observer()

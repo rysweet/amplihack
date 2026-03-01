@@ -55,6 +55,7 @@ class FleetTask:
     agent_command: str = "claude"  # claude, amplifier, copilot
     agent_mode: str = "auto"  # auto, ultrathink
     max_turns: int = 20
+    protected: bool = False  # Deep work mode — never preempt or mark as stuck
 
     # Assignment tracking
     assigned_vm: Optional[str] = None
@@ -106,6 +107,7 @@ class FleetTask:
             "agent_command": self.agent_command,
             "agent_mode": self.agent_mode,
             "max_turns": self.max_turns,
+            "protected": self.protected,
             "assigned_vm": self.assigned_vm,
             "assigned_session": self.assigned_session,
             "assigned_at": self.assigned_at.isoformat() if self.assigned_at else None,
@@ -130,6 +132,7 @@ class FleetTask:
             agent_command=data.get("agent_command", "claude"),
             agent_mode=data.get("agent_mode", "auto"),
             max_turns=data.get("max_turns", 20),
+            protected=data.get("protected", False),
             assigned_vm=data.get("assigned_vm"),
             assigned_session=data.get("assigned_session"),
         )
@@ -236,8 +239,10 @@ class TaskQueue:
         if not self.persist_path:
             return
         self.persist_path.parent.mkdir(parents=True, exist_ok=True)
-        data = [t.to_dict() for t in self.tasks]
-        self.persist_path.write_text(json.dumps(data, indent=2))
+        # Atomic write: temp file then rename
+        tmp = self.persist_path.with_suffix('.tmp')
+        tmp.write_text(json.dumps([t.to_dict() for t in self.tasks], indent=2))
+        tmp.rename(self.persist_path)
 
     def load(self) -> None:
         """Load queue from JSON file."""
@@ -245,6 +250,14 @@ class TaskQueue:
             return
         try:
             data = json.loads(self.persist_path.read_text())
-            self.tasks = [FleetTask.from_dict(item) for item in data]
-        except (json.JSONDecodeError, KeyError, TypeError):
-            self.tasks = []
+        except json.JSONDecodeError:
+            import logging
+            logging.getLogger(__name__).warning(f"Corrupt queue file: {self.persist_path}")
+            return
+        self.tasks = []
+        for item in data:
+            try:
+                self.tasks.append(FleetTask.from_dict(item))
+            except (KeyError, TypeError) as e:
+                import logging
+                logging.getLogger(__name__).warning(f"Skipping corrupt task entry: {e}")

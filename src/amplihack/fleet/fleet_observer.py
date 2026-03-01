@@ -47,12 +47,11 @@ ERROR_PATTERNS = [
 ]
 
 WAITING_PATTERNS = [
-    r"\?\s*$",  # Ends with question mark
+    r"[?]\s*\[Y/n\]",  # Y/n prompts
+    r"[?]\s*\[y/N\]",
+    r"\(yes/no\)",
     r"Press .* to continue",
     r"Do you want to",
-    r"Y/n\]",
-    r"y/N\]",
-    r"\(yes/no\)",
     r"Enter.*:",
     r"waiting for.*input",
 ]
@@ -172,7 +171,7 @@ class FleetObserver:
             )
             if result.returncode == 0:
                 return result.stdout
-        except (subprocess.TimeoutExpired, subprocess.SubprocessError):
+        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
             pass
         return None
 
@@ -189,18 +188,6 @@ class FleetObserver:
         combined = "\n".join(lines)
         key = f"{vm_name}:{session_name}"
 
-        # Check for stuck (no output change)
-        now = time.monotonic()
-        prev = self._previous_captures.get(key, "")
-        if combined == prev:
-            last_change = self._last_change_time.get(key, now)
-            if now - last_change > self.stuck_threshold_seconds:
-                self._previous_captures[key] = combined
-                return AgentStatus.STUCK, 0.8, "no_output_change"
-        else:
-            self._last_change_time[key] = now
-        self._previous_captures[key] = combined
-
         # Check patterns in priority order (most specific first)
 
         # 1. Completion patterns
@@ -213,21 +200,37 @@ class FleetObserver:
             if re.search(pattern, combined, re.IGNORECASE):
                 return AgentStatus.ERROR, 0.85, pattern
 
-        # 3. Waiting for input
+        # 3. Running patterns (checked BEFORE stuck so active work isn't
+        #    misclassified as stuck when output hasn't changed yet)
+        for pattern in RUNNING_PATTERNS:
+            if re.search(pattern, combined, re.IGNORECASE):
+                # Update change tracking so running sessions reset the timer
+                self._last_change_time[key] = time.monotonic()
+                self._previous_captures[key] = combined
+                return AgentStatus.RUNNING, 0.8, pattern
+
+        # 4. Check for stuck (no output change) — after running patterns
+        now = time.monotonic()
+        prev = self._previous_captures.get(key, "")
+        if combined == prev:
+            last_change = self._last_change_time.get(key, now)
+            if now - last_change > self.stuck_threshold_seconds:
+                self._previous_captures[key] = combined
+                return AgentStatus.STUCK, 0.8, "no_output_change"
+        else:
+            self._last_change_time[key] = now
+        self._previous_captures[key] = combined
+
+        # 5. Waiting for input
         for pattern in WAITING_PATTERNS:
             if re.search(pattern, combined, re.IGNORECASE):
                 return AgentStatus.WAITING_INPUT, 0.8, pattern
 
-        # 4. Idle (shell prompt, no agent)
+        # 6. Idle (shell prompt, no agent)
         last_line = lines[-1].strip() if lines else ""
         for pattern in IDLE_PATTERNS:
             if re.search(pattern, last_line):
                 return AgentStatus.IDLE, 0.7, pattern
-
-        # 5. Running patterns
-        for pattern in RUNNING_PATTERNS:
-            if re.search(pattern, combined, re.IGNORECASE):
-                return AgentStatus.RUNNING, 0.8, pattern
 
         # Default: if there's recent output, assume running
         if len(combined.strip()) > 50:

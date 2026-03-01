@@ -142,7 +142,7 @@ class TestFleetDirectorReason:
         assert any(a.action_type == ActionType.MARK_FAILED for a in actions)
 
     def test_detect_missing_session(self):
-        """If assigned session no longer exists, mark failed."""
+        """If assigned session no longer exists for 2+ cycles, mark failed (C2 grace period)."""
         task = FleetTask(prompt="Test")
         task.assign("vm-1", "gone-sess")
         task.start()
@@ -157,6 +157,11 @@ class TestFleetDirectorReason:
         )
         state = self._make_state([vm])
 
+        # First cycle: grace period, no MARK_FAILED yet
+        actions = director.reason(state)
+        assert not any(a.action_type == ActionType.MARK_FAILED for a in actions)
+
+        # Second cycle: session still missing, now MARK_FAILED
         actions = director.reason(state)
         assert any(a.action_type == ActionType.MARK_FAILED for a in actions)
 
@@ -165,8 +170,10 @@ class TestFleetDirectorReason:
             FleetTask(prompt=f"Task {i}", priority=TaskPriority.HIGH)
             for i in range(5)
         ]
-        director = self._make_director(tasks=tasks)
-        director.max_agents_per_vm = 2
+        queue = TaskQueue()
+        for t in tasks:
+            queue.add(t)
+        director = FleetDirector(task_queue=queue, max_agents_per_vm=2)
 
         vm = VMInfo(
             name="vm-1",
