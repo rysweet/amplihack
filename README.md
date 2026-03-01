@@ -219,138 +219,100 @@ Workflows are customizable - edit
 Workflow customization:
 [docs/WORKFLOW_COMPLETION.md](https://rysweet.github.io/amplihack/WORKFLOW_COMPLETION/)
 
-## Feature Catalog
+## Features
 
-### Orchestration & Execution
+### What Most People Use
 
-- **[Workflow Orchestration](#workflows)** - Systematic multi-step workflows for
-  development, investigation, and operations
-- **[dev-orchestrator (`/dev`)](/dev)** - Unified task orchestrator: classifies
-  tasks, detects parallel workstreams, executes via recipe runner, reflects on
-  goal achievement (default for all non-trivial tasks)
-- **[smart-orchestrator recipe](amplifier-bundle/recipes/smart-orchestrator.yaml)** -
-  Core recipe powering /dev: classify → decompose → execute → goal-seeking loop
-- **[Recipe Runner](docs/recipes/README.md)** - Code-enforced workflows that
-  models cannot skip (10 bundled recipes)
-- **[Auto Mode](https://rysweet.github.io/amplihack/AUTO_MODE/)** - Autonomous
-  agentic loops for multi-turn workflows
-- **[Multitask](~/.amplihack/.claude/skills/multitask/SKILL.md)** - Parallel
-  workstream execution with subprocess isolation
+These are the features you'll use daily:
 
-### Agents & Specialized Analysis
+| Feature              | What It Does                                                                 |
+| -------------------- | ---------------------------------------------------------------------------- |
+| **`/dev <task>`**    | The main command. Classifies your task, runs the right workflow, creates PRs |
+| **37 Agents**        | Specialized AI agents (architect, builder, reviewer, tester, security, etc.) |
+| **Recipe Runner**    | Code-enforced workflows that models cannot skip                              |
+| **`/fix <pattern>`** | Rapid resolution of common errors (imports, CI, tests, config)               |
+| **85+ Skills**       | PDF/Excel/Word processing, Azure admin, pre-commit management, and more      |
 
-- **[37 Agents](~/.amplihack/.claude/agents/)** (7 core, 30 specialized) -
-  Architect, builder, reviewer, tester, security, optimizer, and more
-- **[Goal-Seeking Agent Generator](https://rysweet.github.io/amplihack/GOAL_AGENT_GENERATOR_GUIDE/)** -
-  Create autonomous agents from simple prompts
-- **[Expert Panel](/amplihack:expert-panel)** - Multi-expert review with voting
-  for complex decisions
-- **[Multi-Agent Debate](/amplihack:debate)** - Structured debate for
-  architectural trade-offs
-- **[N-Version Programming](/amplihack:n-version)** - Generate multiple
+### Everything Else
+
+<details>
+<summary>Orchestration & Execution (6 features)</summary>
+
+- **[dev-orchestrator (`/dev`)](/dev)** — Unified task orchestrator with
+  goal-seeking loop
+- **[Recipe Runner](docs/recipes/README.md)** — Code-enforced workflows (10
+  bundled recipes)
+- **[Auto Mode](https://rysweet.github.io/amplihack/AUTO_MODE/)** — Autonomous
+  agentic loops
+- **[Multitask](~/.amplihack/.claude/skills/multitask/SKILL.md)** — Parallel
+  workstream execution
+- **[Expert Panel](/amplihack:expert-panel)** — Multi-expert review with voting
+- **[N-Version Programming](/amplihack:n-version)** — Generate multiple
   implementations, select best
 
-### Workflows & Methodologies
+</details>
 
-- **[Document-Driven Development](https://rysweet.github.io/amplihack/document_driven_development/)** -
-  Documentation-first methodology for large features
-- **[Fix Workflow](/amplihack:fix)** - Rapid resolution of common error patterns
-  (imports, CI, tests, config)
-- **[Pre-Commit Diagnostics](~/.amplihack/.claude/agents/amplihack/specialized/pre-commit-diagnostic.md)** -
-  Fix linting, formatting, type checking before push
-- **[CI Diagnostics](~/.amplihack/.claude/agents/amplihack/specialized/ci-diagnostic-workflow.md)** -
-  Iterate until PR is mergeable (never auto-merges)
-- **[Cascade Fallback](/amplihack:cascade)** - Graceful degradation for
-  resilient operations
+<details>
+<summary>Workflows & Methodologies (5 features)</summary>
 
-### Memory & Knowledge Management
+- **[Document-Driven Development](https://rysweet.github.io/amplihack/document_driven_development/)**
+  — Docs-first for large features
+- **[Pre-Commit Diagnostics](~/.amplihack/.claude/agents/amplihack/specialized/pre-commit-diagnostic.md)**
+  — Fix linting before push
+- **[CI Diagnostics](~/.amplihack/.claude/agents/amplihack/specialized/ci-diagnostic-workflow.md)**
+  — Iterate until PR is mergeable
+- **[Cascade Fallback](/amplihack:cascade)** — Graceful degradation
+- **[Quality Audit](/amplihack:analyze)** — Seek/validate/fix/recurse quality
+  loop
 
-- **[Kuzu Memory System](https://rysweet.github.io/amplihack/AGENT_MEMORY_QUICKSTART/)** -
-  Persistent memory and knowledge graphs across sessions
-- **[Discoveries](https://rysweet.github.io/amplihack/DISCOVERIES/)** -
-  Documented problems, solutions, and learnings
-- **[Investigation Workflow](#workflows)** - Deep knowledge excavation with
+</details>
+
+<details>
+<summary>Memory & Knowledge (5 features)</summary>
+
+- **[Kuzu Memory System](https://rysweet.github.io/amplihack/AGENT_MEMORY_QUICKSTART/)**
+  — Persistent memory across sessions
+- **[Investigation Workflow](#workflows)** — Deep knowledge excavation with
   auto-documentation
-- **[Knowledge Builder](/amplihack:knowledge-builder)** - Build comprehensive
-  knowledge base from codebase
-- **[Transcripts Management](/amplihack:transcripts)** - Conversation transcript
-  tracking and search
+- **[Discoveries](https://rysweet.github.io/amplihack/DISCOVERIES/)** —
+  Documented problems and solutions
+- **[Knowledge Builder](/amplihack:knowledge-builder)** — Build knowledge base
+  from codebase
+- **[Goal-Seeking Agent Generator](https://rysweet.github.io/amplihack/GOAL_AGENT_GENERATOR_GUIDE/)**
+  — Create agents from prompts
 
-### Skills & Tools
+</details>
 
-- **[85+ Skills](~/.amplihack/.claude/skills/README.md)** - PDF, XLSX, DOCX,
-  PPTX manipulation, Azure admin, AzDO, and workflow patterns
-- **[Silent Degradation Audit](~/.amplihack/.claude/skills/silent-degradation-audit/SKILL.md)** -
-  Multi-wave code audit detecting silent failures through 6 progressive waves
-  with multi-agent validation (NEW)
-- **[Office Skills](~/.amplihack/.claude/skills/README.md)** - Comprehensive
-  document processing (PDF, Excel, Word, PowerPoint)
-- **[Azure Admin](~/.amplihack/.claude/skills/azure-admin/README.md)** -
-  Identity management, RBAC, resource orchestration
-- **[Azure DevOps CLI](~/.amplihack/.claude/skills/azure-devops-cli/README.md)** -
-  Pipelines, repos, artifacts automation
-- **[Pre-Commit Manager](~/.amplihack/.claude/skills/pre-commit-manager/README.md)** -
-  Automatic hook setup with preference memory
+<details>
+<summary>Integration & Compatibility (5 features)</summary>
 
-### Development Tools
+- **[GitHub Copilot CLI](https://rysweet.github.io/amplihack/github-copilot-litellm-integration/)**
+  — Full Copilot compatibility
+- **[Microsoft Amplifier](https://github.com/microsoft/amplifier)** —
+  Multi-model support
+- **[Azure OpenAI Proxy](https://rysweet.github.io/amplihack/PROXY_CONFIG_GUIDE/)**
+  — Use Azure models via Claude Code
+- **[RustyClawd](#rustyclawd-integration)** — High-performance Rust launcher
+  (5-10x faster startup)
+- **[Remote Execution](~/.amplihack/.claude/tools/amplihack/remote/README.md)**
+  — Distribute work across Azure VMs
 
-- **[Profile Management](https://rysweet.github.io/amplihack/PROFILE_MANAGEMENT/)** -
-  Token optimization (72% reduction) via component filtering
-- **[Modular Build](/amplihack:modular-build)** - Self-contained modules with
-  clear contracts
-- **[Cleanup Agent](~/.amplihack/.claude/agents/amplihack/specialized/cleanup.md)** -
-  Remove artifacts and enforce philosophy
-- **[Worktree Management](~/.amplihack/.claude/agents/amplihack/specialized/worktree-manager.md)** -
-  Git worktree automation for parallel development
-- **[Statusline](https://rysweet.github.io/amplihack/reference/STATUSLINE/)** -
-  Real-time session info (tokens, cost, duration, model)
+</details>
 
-### Quality & Security
+<details>
+<summary>Quality, Security & Customization (5 features)</summary>
 
-- **[Code Analysis](/amplihack:analyze)** - Comprehensive philosophy compliance
-  review
-- **[Security Analysis](/amplihack:xpia)** - XPIA cross-prompt injection defense
-- **[Reflection](/amplihack:reflect)** - Session analysis and improvement
-  recommendations
-- **[Socratic Questioning](/amplihack:socratic)** - Challenge claims and clarify
+- **[Security Analysis](/amplihack:xpia)** — Cross-prompt injection defense
+- **[Socratic Questioning](/amplihack:socratic)** — Challenge claims and clarify
   requirements
-- **[Benchmarking](https://rysweet.github.io/amplihack/BENCHMARKING/)** -
-  Performance measurement with eval-recipes
+- **[Benchmarking](https://rysweet.github.io/amplihack/BENCHMARKING/)** —
+  Performance measurement
+- **[Customization](/amplihack:customize)** — User preferences (verbosity,
+  style, workflow)
+- **[Statusline](https://rysweet.github.io/amplihack/reference/STATUSLINE/)** —
+  Real-time session info
 
-### Documentation & Publishing
-
-- **[GitHub Pages Generation](https://rysweet.github.io/amplihack/howto/github-pages-generation/)** -
-  Automatic documentation sites with MkDocs
-- **[Documentation System](~/.amplihack/.claude/context/PHILOSOPHY.md)** - Eight
-  rules of good documentation
-- **[Implementation Summary](https://rysweet.github.io/amplihack/IMPLEMENTATION_SUMMARY/)** -
-  Architecture overview
-
-### Integration & Compatibility
-
-- **[GitHub Copilot CLI](https://rysweet.github.io/amplihack/github-copilot-litellm-integration/)** -
-  Full compatibility with adaptive hooks
-- **[Microsoft Amplifier](https://github.com/microsoft/amplifier)** -
-  Multi-model support with configuration wizard
-- **[Awesome-Copilot Integration](docs/howto/awesome-copilot-integration.md)** -
-  MCP server, plugin marketplace, drift detection
-- **[RustyClawd Integration](#rustyclawd-integration)** - High-performance Rust
-  implementation (5-10x faster startup)
-- **[Azure OpenAI Proxy](https://rysweet.github.io/amplihack/PROXY_CONFIG_GUIDE/)** -
-  Use Azure models via Claude Code
-
-### Advanced Features
-
-- **[Remote Execution](~/.amplihack/.claude/tools/amplihack/remote/README.md)** -
-  Distribute work across Azure VMs (Beta)
-- **[Power-Steering](https://rysweet.github.io/amplihack/reference/STATUSLINE/#power-steering)** -
-  AI-powered session guidance with redirect detection
-- **[Lock Mode](https://rysweet.github.io/amplihack/reference/STATUSLINE/#lock-mode)** -
-  Continuous work without stopping
-- **[Customization System](/amplihack:customize)** - Manage user preferences
-  (verbosity, style, workflow)
-- **[Session Logs](~/.amplihack/.claude/runtime/logs/)** - Comprehensive logging
-  and decision records
+</details>
 
 ## Configuration
 
