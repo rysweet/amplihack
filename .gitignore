@@ -55,6 +55,17 @@ dist/
 *.egg-info/
 .eggs/
 
+# Build artifacts copied by build_hooks.py (canonical sources are at repo root)
+src/amplihack/.claude/
+src/amplihack/amplifier-bundle/
+src/amplihack/.claude-plugin/
+src/amplihack/.github/
+src/amplihack/agents/
+src/amplihack/commands/
+src/amplihack/skills/
+src/amplihack/CLAUDE.md
+src/amplihack/AMPLIHACK.md
+
 # MkDocs
 site/
 .mkdocs_cache/
