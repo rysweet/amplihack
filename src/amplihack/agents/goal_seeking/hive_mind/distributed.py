@@ -20,6 +20,7 @@ import logging
 import os
 import sys
 import time
+from collections import OrderedDict
 
 # Import CognitiveMemory from the real amplihack-memory-lib
 _MEMORY_LIB_PATH = "/home/azureuser/src/amplihack-memory-lib-real/src"
@@ -41,6 +42,7 @@ from .event_bus import BusEvent, EventBus, LocalEventBus, _make_event
 # independent databases are opened in the same process.  256MB is sufficient
 # for agent-level fact storage and prevents virtual-memory exhaustion.
 _DEFAULT_MAX_DB_SIZE = 256 * 1024 * 1024  # 256 MB
+_MAX_INCORPORATED_EVENTS = 100_000  # Cap dedup set to prevent unbounded growth
 
 logger = logging.getLogger(__name__)
 
@@ -146,7 +148,9 @@ class AgentNode:
         self.memory = _make_sized_cognitive_memory(agent_id, db_dir, max_db_size)
         self._event_bus: EventBus | None = None
         self._coordinator: HiveCoordinator | None = None
-        self._incorporated_events: set[str] = set()
+        # Bounded dedup tracker: OrderedDict preserves insertion order so
+        # we can evict the oldest entries when the cap is reached.
+        self._incorporated_events: OrderedDict[str, None] = OrderedDict()
 
         # Federated graph: local agent graph + shared hive graph
         if hive_store is not None and KuzuGraphStore is not None:
@@ -308,7 +312,10 @@ class AgentNode:
             confidence=peer_confidence,
             tags=peer_tags,
         )
-        self._incorporated_events.add(event.event_id)
+        # Add to bounded dedup tracker, evicting oldest if at capacity.
+        self._incorporated_events[event.event_id] = None
+        if len(self._incorporated_events) > _MAX_INCORPORATED_EVENTS:
+            self._incorporated_events.popitem(last=False)  # evict oldest
         return True
 
     def join_hive(self, event_bus: EventBus, coordinator: HiveCoordinator) -> None:
