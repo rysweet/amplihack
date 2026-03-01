@@ -23,6 +23,7 @@ import shlex
 import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
 from typing import Optional, Protocol
 
 __all__ = ["SessionReasoner", "SessionContext", "SessionDecision", "LLMBackend"]
@@ -148,7 +149,33 @@ class SessionDecision:
         return "\n".join(lines)
 
 
-SYSTEM_PROMPT = """You are a Fleet Director managing coding agent sessions across multiple VMs.
+def _load_strategy_dictionary() -> str:
+    """Load the strategy dictionary if available."""
+    strategy_path = Path(__file__).parent / "STRATEGY_DICTIONARY.md"
+    if strategy_path.exists():
+        content = strategy_path.read_text()
+        # Extract just the strategy index and decision quick-reference (not full details)
+        lines = content.split("\n")
+        index_section = []
+        in_index = False
+        in_quick_ref = False
+        for line in lines:
+            if "STRATEGY INDEX" in line:
+                in_index = True
+            elif "## STRATEGIES" in line:
+                in_index = False
+            elif "DECISION QUICK-REFERENCE" in line:
+                in_quick_ref = True
+
+            if in_index or in_quick_ref:
+                index_section.append(line)
+
+        if index_section:
+            return "\n".join(index_section)
+    return ""
+
+
+SYSTEM_PROMPT_BASE = """You are a Fleet Director managing coding agent sessions across multiple VMs.
 
 For each session, you analyze the current terminal output and transcript to decide what to do.
 
@@ -174,6 +201,18 @@ CRITICAL — Thinking Detection:
 - DO NOT interrupt a thinking agent. DO NOT mark a thinking agent as stuck.
 - A thinking agent may appear to have no new output for minutes — this is normal for complex reasoning.
 
+Amplihack Strategy Awareness:
+- Verify agents follow DEFAULT_WORKFLOW (22 steps). If steps skipped, remind them.
+- Outside-in testing is MANDATORY before marking complete. Check PR for test results.
+- Use philosophy-guardian to enforce ruthless simplicity.
+- For complex tasks, agents should use architect-first design, then builder.
+- For important PRs, invoke multi-agent review (reviewer + security + philosophy).
+- Lock mode (/amplihack:lock) protects deep work sessions from interruption.
+- Quality-audit-workflow finds issues CI cannot.
+- Pre-commit-diagnostic auto-fixes formatting/linting failures.
+- CI-diagnostic-workflow iterates fixes until PR is mergeable.
+- When confidence < 0.6, default to WAIT or ESCALATE, not SEND_INPUT.
+
 Guidelines:
 - If the agent is asking a question, answer it based on the task and project priorities
 - If the agent is waiting for permission (Y/n prompts), approve unless it's destructive
@@ -182,6 +221,11 @@ Guidelines:
 - NEVER approve destructive operations (force push, drop database, delete production data)
 - Prefer the simplest answer that keeps the agent moving forward
 - For coding questions, prefer quality over speed"""
+
+
+# Build full system prompt with strategy dictionary at module load time
+_strategy_ref = _load_strategy_dictionary()
+SYSTEM_PROMPT = SYSTEM_PROMPT_BASE + ("\n\n" + _strategy_ref if _strategy_ref else "")
 
 
 @dataclass
