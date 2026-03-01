@@ -268,8 +268,9 @@ class UserPromptSubmitHook(HookProcessor):
         Returns:
             Additional context to inject
         """
-        # Extract user prompt FIRST (needed for /dev detection before strategy)
-        user_message = input_data.get("userMessage", "")
+        # Extract user prompt FIRST (needed for /dev detection before strategy).
+        # Copilot uses "prompt" key, Claude Code uses "userMessage".
+        user_message = input_data.get("userMessage", "") or input_data.get("prompt", "")
         if isinstance(user_message, dict):
             early_prompt = user_message.get("text", "")
         else:
