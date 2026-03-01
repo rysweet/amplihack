@@ -120,7 +120,7 @@ class WorkflowClassificationReminder(HookProcessor):
         """Build the system reminder message."""
         truncated = user_prompt[:100] + ("..." if len(user_prompt) > 100 else "")
         return (
-            f'NEW TOPIC DETECTED - Classify and Route\n\n'
+            f"NEW TOPIC DETECTED - Classify and Route\n\n"
             f'Request: "{truncated}"\n\n'
             "Classify (choose ONE):\n"
             '  Q&A         -> "what is", "explain", "how do I"        -> respond directly\n'
@@ -146,8 +146,8 @@ class WorkflowClassificationReminder(HookProcessor):
         Returns:
             Additional context to inject (system reminder if new topic detected)
         """
-        # Extract user prompt
-        user_message = input_data.get("userMessage", "")
+        # Extract user prompt — Copilot uses "prompt", Claude Code uses "userMessage"
+        user_message = input_data.get("userMessage", "") or input_data.get("prompt", "")
         if isinstance(user_message, dict):
             user_prompt = user_message.get("text", "")
         else:

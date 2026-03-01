@@ -268,6 +268,36 @@ class UserPromptSubmitHook(HookProcessor):
         Returns:
             Additional context to inject
         """
+        # Extract user prompt FIRST (needed for /dev detection before strategy).
+        # Copilot uses "prompt" key, Claude Code uses "userMessage".
+        user_message = input_data.get("userMessage", "") or input_data.get("prompt", "")
+        if isinstance(user_message, dict):
+            early_prompt = user_message.get("text", "")
+        else:
+            early_prompt = str(user_message)
+
+        # Detect /dev invocation BEFORE strategy check — must run regardless
+        # of which strategy handles the prompt, because Copilot strategies
+        # short-circuit and return early, skipping downstream detection.
+        if self._is_dev_prompt(early_prompt):
+            try:
+                import time
+
+                from workflow_enforcement_hook import _write_state
+
+                _write_state(
+                    {
+                        "dev_invoked_at": time.time(),
+                        "dev_prompt": early_prompt[:200],
+                        "source": "user_prompt_submit",
+                        "tool_calls_since": 0,
+                        "warning_emitted": False,
+                    }
+                )
+                self.log("Workflow enforcement: /dev detected in prompt, tracking started")
+            except Exception as e:
+                self.log(f"Workflow enforcement setup failed (non-fatal): {e}", "WARNING")
+
         # Detect launcher and select strategy
         self.strategy = self._select_strategy()
         if self.strategy:
@@ -368,6 +398,27 @@ class UserPromptSubmitHook(HookProcessor):
         return {
             "additionalContext": full_context,
         }
+
+    @staticmethod
+    def _is_dev_prompt(prompt: str) -> bool:
+        """Detect if the user prompt is a /dev invocation.
+
+        Matches: /dev, /amplihack:dev, "use dev-orchestrator", etc.
+        Does NOT match: Q&A questions, operations, or general chat.
+        """
+        prompt_lower = prompt.strip().lower()
+        # Explicit /dev command
+        if prompt_lower.startswith("/dev ") or prompt_lower == "/dev":
+            return True
+        # Skill invocation syntax
+        if "dev-orchestrator" in prompt_lower:
+            return True
+        # Amplihack dev command variants
+        if prompt_lower.startswith("/amplihack:dev") or prompt_lower.startswith(
+            "/.claude:amplihack:dev"
+        ):
+            return True
+        return False
 
     def _select_strategy(self):
         """Detect launcher and select appropriate strategy."""
