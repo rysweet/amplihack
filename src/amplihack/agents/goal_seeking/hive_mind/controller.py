@@ -157,7 +157,14 @@ class InMemoryGraphStore:
         return {"semantic": len(self._facts)}
 
     def close(self) -> None:
-        """Release resources (no-op for in-memory)."""
+        """No-op: in-memory store has no external resources to release.
+
+        Data is preserved so that references to this store remain valid
+        after close().  Use clear() to explicitly wipe data.
+        """
+
+    def clear(self) -> None:
+        """Explicitly destroy all in-memory data."""
         self._facts.clear()
         self._agents.clear()
         self._edges.clear()
@@ -900,7 +907,7 @@ class HiveController:
         elif hasattr(self._gateway, "registry"):
             try:
                 self._gateway.registry.register(spec.agent_id, spec.domain)
-            except (ValueError, Exception):
+            except ValueError:
                 pass  # Already registered
 
         self._agents[spec.agent_id] = agent

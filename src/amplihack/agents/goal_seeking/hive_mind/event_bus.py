@@ -95,7 +95,7 @@ class BusEvent:
         )
 
 
-def _make_event(
+def make_event(
     event_type: str,
     source_agent: str,
     payload: dict[str, Any] | None = None,
@@ -108,6 +108,10 @@ def _make_event(
         timestamp=time.time(),
         payload=payload or {},
     )
+
+
+# Backwards-compatible alias
+_make_event = make_event
 
 
 # ---------------------------------------------------------------------------
@@ -141,6 +145,17 @@ class EventBus(Protocol):
         """
         ...
 
+    def unsubscribe(self, agent_id: str) -> None:
+        """Remove an agent's subscription and mailbox.
+
+        After unsubscribe, the agent will no longer receive events and
+        any pending events in its mailbox are discarded.
+
+        Args:
+            agent_id: The agent to unsubscribe.
+        """
+        ...
+
     def poll(self, agent_id: str) -> list[BusEvent]:
         """Drain and return all pending events for an agent.
 
@@ -165,6 +180,9 @@ class EventBus(Protocol):
 # ---------------------------------------------------------------------------
 
 
+MAX_MAILBOX_SIZE = 1_000_000
+
+
 class LocalEventBus:
     """In-process event bus for single-machine testing and development.
 
@@ -176,7 +194,7 @@ class LocalEventBus:
         >>> bus = LocalEventBus()
         >>> bus.subscribe("agent_a")
         >>> bus.subscribe("agent_b", event_types=["FACT_LEARNED"])
-        >>> evt = _make_event("FACT_LEARNED", "agent_a", {"fact": "test"})
+        >>> evt = make_event("FACT_LEARNED", "agent_a", {"fact": "test"})
         >>> bus.publish(evt)
         >>> events = bus.poll("agent_b")
         >>> assert len(events) == 1
@@ -215,6 +233,16 @@ class LocalEventBus:
                     continue
 
                 mailbox.append(event)
+                # Enforce mailbox size limit -- drop oldest events
+                if len(mailbox) > MAX_MAILBOX_SIZE:
+                    dropped = len(mailbox) - MAX_MAILBOX_SIZE
+                    del mailbox[:dropped]
+                    logger.warning(
+                        "Mailbox for %s exceeded %d events, dropped %d oldest",
+                        agent_id,
+                        MAX_MAILBOX_SIZE,
+                        dropped,
+                    )
 
     def subscribe(self, agent_id: str, event_types: list[str] | None = None) -> None:
         """Subscribe an agent to receive events.
@@ -230,6 +258,16 @@ class LocalEventBus:
             if agent_id not in self._mailboxes:
                 self._mailboxes[agent_id] = []
             self._filters[agent_id] = set(event_types) if event_types is not None else None
+
+    def unsubscribe(self, agent_id: str) -> None:
+        """Remove an agent's subscription and mailbox.
+
+        Args:
+            agent_id: The agent to unsubscribe.
+        """
+        with self._lock:
+            self._mailboxes.pop(agent_id, None)
+            self._filters.pop(agent_id, None)
 
     def poll(self, agent_id: str) -> list[BusEvent]:
         """Drain and return all pending events for an agent.
@@ -340,6 +378,20 @@ class AzureServiceBusEventBus:
                     subscription_name=agent_id,
                 )
                 logger.debug("Subscribed agent %s to topic %s", agent_id, self._topic_name)
+
+    def unsubscribe(self, agent_id: str) -> None:
+        """Close the receiver for an agent and remove its subscription mapping.
+
+        Args:
+            agent_id: The agent to unsubscribe.
+        """
+        with self._lock:
+            receiver = self._receivers.pop(agent_id, None)
+        if receiver is not None:
+            try:
+                receiver.close()
+            except Exception:
+                logger.debug("Error closing receiver for %s", agent_id, exc_info=True)
 
     def poll(self, agent_id: str) -> list[BusEvent]:
         """Receive pending messages from the agent's subscription.
@@ -470,6 +522,16 @@ class RedisEventBus:
                         if allowed is not None and event.event_type not in allowed:
                             continue
                         mailbox.append(event)
+                        # Enforce mailbox size limit -- drop oldest events
+                        if len(mailbox) > MAX_MAILBOX_SIZE:
+                            dropped = len(mailbox) - MAX_MAILBOX_SIZE
+                            del mailbox[:dropped]
+                            logger.warning(
+                                "Redis mailbox for %s exceeded %d events, dropped %d oldest",
+                                agent_id,
+                                MAX_MAILBOX_SIZE,
+                                dropped,
+                            )
             except Exception:
                 if self._running:
                     logger.debug("Error in Redis listener loop", exc_info=True)
@@ -493,6 +555,16 @@ class RedisEventBus:
             if agent_id not in self._mailboxes:
                 self._mailboxes[agent_id] = []
             self._filters[agent_id] = set(event_types) if event_types is not None else None
+
+    def unsubscribe(self, agent_id: str) -> None:
+        """Remove an agent's subscription and mailbox.
+
+        Args:
+            agent_id: The agent to unsubscribe.
+        """
+        with self._lock:
+            self._mailboxes.pop(agent_id, None)
+            self._filters.pop(agent_id, None)
 
     def poll(self, agent_id: str) -> list[BusEvent]:
         """Drain and return all pending events for an agent.
@@ -576,5 +648,7 @@ __all__ = [
     "AzureServiceBusEventBus",
     "RedisEventBus",
     "create_event_bus",
+    "make_event",
     "_make_event",
+    "MAX_MAILBOX_SIZE",
 ]

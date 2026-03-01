@@ -36,7 +36,7 @@ except ImportError:
     FederatedGraphStore = None  # type: ignore[assignment,misc]
     KuzuGraphStore = None  # type: ignore[assignment,misc]
 
-from .event_bus import BusEvent, EventBus, LocalEventBus, _make_event
+from .event_bus import BusEvent, EventBus, LocalEventBus, make_event
 
 # Kuzu default max_db_size is 8TB which can cause Mmap failures when many
 # independent databases are opened in the same process.  256MB is sufficient
@@ -196,7 +196,7 @@ class AgentNode:
         )
         # Publish event if connected to hive
         if self._event_bus is not None:
-            event = _make_event(
+            event = make_event(
                 event_type="FACT_LEARNED",
                 source_agent=self.agent_id,
                 payload={
@@ -332,6 +332,8 @@ class AgentNode:
 
     def leave_hive(self) -> None:
         """Leave the hive network. Local DB is completely unaffected."""
+        if self._event_bus is not None:
+            self._event_bus.unsubscribe(self.agent_id)
         if self._coordinator is not None:
             self._coordinator.unregister_agent(self.agent_id)
         self._event_bus = None
@@ -377,15 +379,16 @@ class HiveCoordinator:
     """
 
     DEFAULT_TRUST = 1.0
+    _MAX_CONTRADICTIONS = 10_000
 
     def __init__(self) -> None:
         # agent_id -> {domain, joined_at, fact_count, topics}
         self._agents: dict[str, dict] = {}
-        # topic -> [agent_ids] -- who knows about what
-        self._expertise: dict[str, list[str]] = {}
+        # topic -> set of agent_ids -- who knows about what
+        self._expertise: dict[str, set[str]] = {}
         # agent_id -> trust score
         self._trust: dict[str, float] = {}
-        # detected contradictions
+        # detected contradictions (capped at _MAX_CONTRADICTIONS, newest kept)
         self._contradictions: list[dict] = []
 
     def register_agent(self, agent_id: str, domain: str = "") -> None:
@@ -407,9 +410,8 @@ class HiveCoordinator:
         if domain:
             for keyword in domain.lower().split():
                 if keyword not in self._expertise:
-                    self._expertise[keyword] = []
-                if agent_id not in self._expertise[keyword]:
-                    self._expertise[keyword].append(agent_id)
+                    self._expertise[keyword] = set()
+                self._expertise[keyword].add(agent_id)
 
     def unregister_agent(self, agent_id: str) -> None:
         """Remove an agent from the hive. Its local DB is unaffected.
@@ -421,10 +423,9 @@ class HiveCoordinator:
         self._trust.pop(agent_id, None)
         # Clean up expertise index
         for topic, agents in list(self._expertise.items()):
-            if agent_id in agents:
-                agents.remove(agent_id)
-                if not agents:
-                    del self._expertise[topic]
+            agents.discard(agent_id)
+            if not agents:
+                del self._expertise[topic]
 
     def get_experts(self, topic: str) -> list[str]:
         """Which agents know about this topic?
@@ -520,9 +521,8 @@ class HiveCoordinator:
         # Update expertise index
         for keyword in concept.lower().split():
             if keyword not in self._expertise:
-                self._expertise[keyword] = []
-            if agent_id not in self._expertise[keyword]:
-                self._expertise[keyword].append(agent_id)
+                self._expertise[keyword] = set()
+            self._expertise[keyword].add(agent_id)
 
     def check_trust(self, agent_id: str) -> float:
         """Get trust score for an agent.
@@ -560,13 +560,30 @@ class HiveCoordinator:
                 "resolved": False,
             }
         )
+        # Cap the list to prevent unbounded growth, keeping most recent
+        if len(self._contradictions) > self._MAX_CONTRADICTIONS:
+            self._contradictions = self._contradictions[-self._MAX_CONTRADICTIONS :]
+
+    def resolve_contradiction(self, index: int) -> bool:
+        """Mark a contradiction as resolved by index.
+
+        Args:
+            index: Zero-based index into the contradictions list.
+
+        Returns:
+            True if the contradiction was marked resolved, False if index is out of range.
+        """
+        if 0 <= index < len(self._contradictions):
+            self._contradictions[index]["resolved"] = True
+            return True
+        return False
 
     def get_hive_stats(self) -> dict:
         """Stats about the hive.
 
         Returns:
             Dict with agent_count, agents, total_facts, expertise_topics,
-            contradictions_count.
+            contradictions_count. All values are JSON-serializable.
         """
         total_facts = sum(info.get("fact_count", 0) for info in self._agents.values())
         return {
@@ -576,11 +593,12 @@ class HiveCoordinator:
                     "domain": info["domain"],
                     "trust": self._trust.get(aid, 0.0),
                     "fact_count": info.get("fact_count", 0),
+                    "topics": sorted(info.get("topics", set())),
                 }
                 for aid, info in self._agents.items()
             },
             "total_facts_reported": total_facts,
-            "expertise_topics": list(self._expertise.keys()),
+            "expertise_topics": sorted(self._expertise.keys()),
             "contradictions_count": len(self._contradictions),
         }
 
