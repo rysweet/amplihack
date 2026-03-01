@@ -801,7 +801,7 @@ deploy_single_agent() {
             --registry-username "${ACR_USERNAME}" \
             --registry-password "${ACR_PASSWORD}" \
             --target-port 8080 \
-            --ingress internal \
+            --ingress external \
             --min-replicas 1 \
             --max-replicas 1 \
             --cpu 2.0 \
