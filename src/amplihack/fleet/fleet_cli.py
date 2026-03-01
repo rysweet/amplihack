@@ -331,8 +331,7 @@ def observe(vm_name):
 @fleet_cli.command("dry-run")
 @click.option("--vm", multiple=True, help="Specific VMs to analyze (default: all managed)")
 @click.option("--priorities", default="", help="Project priorities to guide decisions")
-@click.option("--backend", type=click.Choice(["anthropic", "copilot"]), default="anthropic")
-def dry_run(vm, priorities, backend):
+def dry_run(vm, priorities):
     """Show what the director would do for each session WITHOUT acting.
 
     Reads each session's tmux output and JSONL transcript, then uses
@@ -342,18 +341,9 @@ def dry_run(vm, priorities, backend):
     from amplihack.fleet.fleet_session_reasoner import (
         SessionReasoner,
         AnthropicBackend,
-        CopilotBackend,
     )
 
-    # Select backend
-    if backend == "copilot":
-        try:
-            llm_backend = CopilotBackend()
-        except Exception:
-            click.echo("Copilot backend not available, falling back to Anthropic")
-            llm_backend = AnthropicBackend()
-    else:
-        llm_backend = AnthropicBackend()
+    llm_backend = AnthropicBackend()
 
     reasoner = SessionReasoner(
         azlin_path=AZLIN_PATH,
@@ -400,7 +390,7 @@ def dry_run(vm, priorities, backend):
         return
 
     click.echo(f"\nFleet Director Dry Run — {len(sessions_to_check)} sessions")
-    click.echo(f"Backend: {backend}")
+    click.echo(f"Backend: anthropic")
     click.echo(f"Priorities: {priorities or '(none specified)'}")
     click.echo("")
 

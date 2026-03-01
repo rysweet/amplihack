@@ -19,6 +19,7 @@ Public API:
 from __future__ import annotations
 
 import json
+import shlex
 import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -161,8 +162,9 @@ done
     def _build_log_reader_command(self, project_path: str, tail_lines: int) -> str:
         """Build SSH command to read and summarize a specific project's log."""
         # Convert project path to Claude's project key format
+        safe_path = shlex.quote(project_path)
         return f"""
-PROJECT_KEY=$(echo '{project_path}' | sed 's|/|-|g')
+PROJECT_KEY=$(echo {safe_path} | sed 's|/|-|g')
 JSONL=$(ls -t ~/.claude/projects/$PROJECT_KEY/*.jsonl 2>/dev/null | head -1)
 
 if [ -z "$JSONL" ]; then

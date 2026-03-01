@@ -56,16 +56,6 @@ class AnthropicBackend(LLMBackend):
         return response.content[0].text
 
 
-class CopilotBackend(LLMBackend):
-    """GitHub Copilot SDK backend (placeholder — implement when SDK available)."""
-
-    def complete(self, system_prompt: str, user_prompt: str) -> str:
-        # TODO: Implement with github.copilot SDK when available
-        # from github_copilot import CopilotClient
-        # client = CopilotClient()
-        # return client.chat(system=system_prompt, user=user_prompt)
-        raise NotImplementedError("Copilot SDK backend not yet implemented")
-
 
 @dataclass
 class SessionContext:

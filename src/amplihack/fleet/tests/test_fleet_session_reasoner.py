@@ -301,9 +301,10 @@ class TestLLMBackends:
         assert len(backend.calls) == 1
         assert backend.calls[0] == ("system", "user")
 
-    def test_copilot_backend_raises(self):
-        from amplihack.fleet.fleet_session_reasoner import CopilotBackend
+    def test_llm_backend_protocol(self):
+        """LLMBackend base raises NotImplementedError (abstract protocol)."""
+        from amplihack.fleet.fleet_session_reasoner import LLMBackend
 
-        backend = CopilotBackend()
+        backend = LLMBackend()
         with pytest.raises(NotImplementedError):
             backend.complete("system", "user")

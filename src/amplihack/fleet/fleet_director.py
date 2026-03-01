@@ -291,6 +291,9 @@ class FleetDirector:
 
             next_task = self.task_queue.next_task()
 
+        # Persist assignments so crash between reason() and act() won't lose state
+        self.task_queue.save()
+
         return actions
 
     def act(self, actions: list[DirectorAction]) -> list[tuple[DirectorAction, str]]:
