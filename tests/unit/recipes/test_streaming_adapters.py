@@ -127,15 +127,15 @@ class TestCLISubprocessAdapterStreaming:
             join_kwargs = mock_thread_instance.join.call_args[1]
             assert "timeout" in join_kwargs
 
-    def test_execute_agent_step_cleans_up_log_file(self) -> None:
-        """Log file is deleted after execution."""
+    def test_execute_agent_step_cleans_up_temp_dir(self) -> None:
+        """Temp directory (including log file) is cleaned up after execution (#2758)."""
         with (
             patch("subprocess.Popen") as mock_popen,
             patch("threading.Thread"),
             patch("pathlib.Path.read_text") as mock_read,
             patch("pathlib.Path.mkdir"),
-            patch("pathlib.Path.unlink") as mock_unlink,
             patch("builtins.open", mock_open()),
+            patch("shutil.rmtree") as mock_rmtree,
         ):
             mock_proc = MagicMock()
             mock_proc.returncode = 0
@@ -145,8 +145,11 @@ class TestCLISubprocessAdapterStreaming:
             adapter = CLISubprocessAdapter()
             adapter.execute_agent_step("prompt")
 
-            # Verify unlink was called to delete log file
-            assert mock_unlink.called
+            # Verify rmtree was called to clean up the temp directory
+            assert mock_rmtree.called
+            # The temp dir should have recipe-agent- prefix
+            cleanup_path = mock_rmtree.call_args[0][0]
+            assert "recipe-agent-" in str(cleanup_path)
 
     @patch("subprocess.run")
     def test_execute_bash_step_has_timeout(self, mock_run: MagicMock) -> None:
@@ -268,7 +271,7 @@ class TestNestedSessionAdapterStreaming:
         """Agent steps run without timeout parameter."""
         with (
             patch("subprocess.Popen") as mock_popen,
-            patch("threading.Thread") as mock_thread,
+            patch("threading.Thread"),
             patch("pathlib.Path.read_text") as mock_read,
         ):
             mock_proc = MagicMock()
@@ -316,7 +319,7 @@ class TestNestedSessionAdapterStreaming:
             patch("subprocess.Popen") as mock_popen,
             patch("threading.Thread"),
             patch("pathlib.Path.read_text") as mock_read,
-            patch("builtins.open", mock_open()) as mock_file,
+            patch("builtins.open", mock_open()),
         ):
             mock_proc = MagicMock()
             mock_proc.returncode = 0
