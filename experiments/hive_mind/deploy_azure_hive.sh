@@ -522,10 +522,10 @@ def _init_hive():
     """Initialize the hive graph and event bus connections."""
     global _hive, _event_bus
 
-    from amplihack.agents.goal_seeking.hive_mind.hive_graph import (
-        InMemoryHiveGraph,
-    )
-    from amplihack.agents.goal_seeking.hive_mind.event_bus import create_event_bus
+    sys.path.insert(0, "/app/hive_mind_core")
+    sys.path.insert(0, "/app")
+    from hive_graph import InMemoryHiveGraph
+    from event_bus import create_event_bus
 
     _hive = InMemoryHiveGraph(hive_id=f"hive-{AGENT_ID}")
     _hive.register_agent(AGENT_ID, domain=AGENT_DOMAIN)
@@ -591,7 +591,7 @@ def learn(req: LearnRequest):
     """Store a fact in the agent's local memory."""
     if _hive is None:
         raise HTTPException(status_code=503, detail="Hive not initialized")
-    from amplihack.agents.goal_seeking.hive_mind.hive_graph import HiveFact
+    from hive_graph import HiveFact
     fid = _hive.promote_fact(AGENT_ID, HiveFact(
         fact_id="", content=req.content, concept=req.concept,
         confidence=req.confidence,
@@ -604,7 +604,7 @@ def learn_batch(req: FactList):
     """Store multiple facts at once."""
     if _hive is None:
         raise HTTPException(status_code=503, detail="Hive not initialized")
-    from amplihack.agents.goal_seeking.hive_mind.hive_graph import HiveFact
+    from hive_graph import HiveFact
     stored = 0
     for fact in req.facts:
         _hive.promote_fact(AGENT_ID, HiveFact(
@@ -620,7 +620,7 @@ def promote(req: PromoteRequest):
     """Promote a fact to the hive (same as learn for InMemoryHiveGraph)."""
     if _hive is None:
         raise HTTPException(status_code=503, detail="Hive not initialized")
-    from amplihack.agents.goal_seeking.hive_mind.hive_graph import HiveFact
+    from hive_graph import HiveFact
     fid = _hive.promote_fact(AGENT_ID, HiveFact(
         fact_id="", content=req.content, concept=req.concept,
         confidence=req.confidence,
@@ -673,7 +673,7 @@ def _poll_events():
                     event.source_agent,
                 )
                 if event.event_type == "FACT_PROMOTED":
-                    from amplihack.agents.goal_seeking.hive_mind.hive_graph import HiveFact
+                    from hive_graph import HiveFact
                     payload = event.payload
                     _hive.promote_fact(AGENT_ID, HiveFact(
                         fact_id="",
