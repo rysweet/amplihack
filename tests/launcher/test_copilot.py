@@ -848,6 +848,61 @@ class TestRegisterCopilotPlugin:
         assert "other-plugin" in names
         assert "amplihack" in names
 
+    def test_plugin_entry_includes_installed_at(self, tmp_path):
+        """Plugin entry must include installed_at ISO timestamp (issue #2751).
+
+        Copilot CLI validates config.json with a strict schema that requires
+        installed_at as a string. Missing it causes:
+            "invalid_type: expected string, received undefined"
+        which breaks copilot CLI globally, not just for amplihack.
+        """
+        source_commands = tmp_path / "commands" / "amplihack"
+        source_commands.mkdir(parents=True)
+        (source_commands / "dev.md").write_text("# Dev command")
+
+        copilot_home = tmp_path / "copilot"
+
+        register_copilot_plugin(source_commands, copilot_home)
+
+        config = json.loads((copilot_home / "config.json").read_text())
+        plugin = next(p for p in config["installed_plugins"] if p["name"] == "amplihack")
+
+        # installed_at must exist and be a non-empty string
+        assert "installed_at" in plugin, "installed_at field missing from plugin entry"
+        assert isinstance(plugin["installed_at"], str), "installed_at must be a string"
+        assert len(plugin["installed_at"]) > 0, "installed_at must not be empty"
+
+        # Must be valid ISO 8601 format
+        from datetime import datetime
+
+        datetime.fromisoformat(plugin["installed_at"])  # Raises ValueError if invalid
+
+    def test_installed_at_updates_on_re_registration(self, tmp_path):
+        """Re-registration should update installed_at to current time."""
+        source_commands = tmp_path / "commands" / "amplihack"
+        source_commands.mkdir(parents=True)
+        (source_commands / "dev.md").write_text("# Dev")
+
+        copilot_home = tmp_path / "copilot"
+
+        # First registration
+        register_copilot_plugin(source_commands, copilot_home)
+        config1 = json.loads((copilot_home / "config.json").read_text())
+        plugin1 = next(p for p in config1["installed_plugins"] if p["name"] == "amplihack")
+        ts1 = plugin1["installed_at"]
+
+        # Second registration — installed_at should still be a valid timestamp
+        register_copilot_plugin(source_commands, copilot_home)
+        config2 = json.loads((copilot_home / "config.json").read_text())
+        plugin2 = next(p for p in config2["installed_plugins"] if p["name"] == "amplihack")
+        ts2 = plugin2["installed_at"]
+
+        # Both timestamps must be valid ISO 8601
+        from datetime import datetime
+
+        datetime.fromisoformat(ts1)
+        datetime.fromisoformat(ts2)
+
     def test_returns_false_for_missing_source(self, tmp_path):
         """Returns False if source directory does not exist."""
         source_commands = tmp_path / "nonexistent"
