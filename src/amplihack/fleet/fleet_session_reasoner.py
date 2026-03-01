@@ -26,7 +26,16 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Protocol
 
-__all__ = ["SessionReasoner", "SessionContext", "SessionDecision", "LLMBackend"]
+__all__ = [
+    "SessionReasoner",
+    "SessionContext",
+    "SessionDecision",
+    "LLMBackend",
+    "AnthropicBackend",
+    "CopilotBackend",
+    "LiteLLMBackend",
+    "auto_detect_backend",
+]
 
 # --- Safety: dangerous input blocklist (H10) ---
 DANGEROUS_PATTERNS = [
@@ -75,6 +84,112 @@ class AnthropicBackend:
         )
         return response.content[0].text
 
+
+class CopilotBackend:
+    """GitHub Copilot SDK backend.
+
+    Requires: pip install copilot-sdk
+    Requires: GitHub Copilot subscription + gh auth login
+    """
+
+    def __init__(self, model: str = "gpt-4o"):
+        self.model = model
+
+    def complete(self, system_prompt: str, user_prompt: str) -> str:
+        import asyncio
+
+        return asyncio.run(self._async_complete(system_prompt, user_prompt))
+
+    async def _async_complete(self, system_prompt: str, user_prompt: str) -> str:
+        import asyncio
+
+        from copilot import CopilotClient
+
+        client = CopilotClient()
+        await client.start()
+
+        try:
+            session = await client.create_session({"model": self.model})
+            response_parts: list[str] = []
+            done = asyncio.Event()
+
+            def on_event(event):
+                if event.type.value == "assistant.message":
+                    response_parts.append(event.data.content)
+                elif event.type.value == "session.idle":
+                    done.set()
+
+            session.on(on_event)
+            await session.send({"prompt": f"{system_prompt}\n\n{user_prompt}"})
+
+            try:
+                await asyncio.wait_for(done.wait(), timeout=60)
+            except asyncio.TimeoutError:
+                pass
+
+            await session.destroy()
+            return "".join(response_parts)
+        finally:
+            await client.stop()
+
+
+class LiteLLMBackend:
+    """LiteLLM backend -- supports 100+ LLM providers.
+
+    Requires: pip install litellm
+    Works with: OpenAI, Anthropic, Azure, Copilot, Ollama, etc.
+    Set model via constructor: "gpt-4o", "claude-sonnet-4-20250514", "ollama/llama3", etc.
+    """
+
+    def __init__(self, model: str = "gpt-4o"):
+        self.model = model
+
+    def complete(self, system_prompt: str, user_prompt: str) -> str:
+        import litellm
+
+        response = litellm.completion(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            max_tokens=500,
+        )
+        return response.choices[0].message.content
+
+
+def auto_detect_backend() -> LLMBackend:
+    """Auto-detect the best available LLM backend.
+
+    Priority:
+    1. Anthropic (if ANTHROPIC_API_KEY set)
+    2. LiteLLM (if installed -- supports many providers)
+    3. Copilot SDK (if installed + gh auth)
+
+    Raises RuntimeError if no backend available.
+    """
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        return AnthropicBackend()
+
+    try:
+        import litellm  # noqa: F401
+
+        return LiteLLMBackend()
+    except ImportError:
+        pass
+
+    try:
+        from copilot import CopilotClient  # noqa: F401
+
+        return CopilotBackend()
+    except ImportError:
+        pass
+
+    raise RuntimeError(
+        "No LLM backend available. Set ANTHROPIC_API_KEY, "
+        "or install litellm (pip install litellm), "
+        "or install copilot-sdk (pip install copilot-sdk)"
+    )
 
 
 @dataclass
@@ -244,7 +359,11 @@ class SessionReasoner:
 
     def __post_init__(self):
         if self.backend is None:
-            self.backend = AnthropicBackend()
+            try:
+                self.backend = auto_detect_backend()
+            except RuntimeError:
+                # Will fail at reasoning time with a clear error
+                self.backend = AnthropicBackend()
 
     def reason_about_session(
         self,

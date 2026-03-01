@@ -388,7 +388,13 @@ def observe(vm_name):
 @fleet_cli.command("dry-run")
 @click.option("--vm", multiple=True, help="Specific VMs to analyze (default: all managed)")
 @click.option("--priorities", default="", help="Project priorities to guide decisions")
-def dry_run(vm, priorities):
+@click.option(
+    "--backend",
+    type=click.Choice(["auto", "anthropic", "copilot", "litellm"]),
+    default="auto",
+    help="LLM backend for reasoning (default: auto-detect)",
+)
+def dry_run(vm, priorities, backend):
     """Show what the admiral would do for each session WITHOUT acting.
 
     Reads each session's tmux output and JSONL transcript, then uses
@@ -396,11 +402,23 @@ def dry_run(vm, priorities):
     reasoning chain for your review.
     """
     from amplihack.fleet.fleet_session_reasoner import (
-        SessionReasoner,
         AnthropicBackend,
+        CopilotBackend,
+        LiteLLMBackend,
+        SessionReasoner,
+        auto_detect_backend,
     )
 
-    llm_backend = AnthropicBackend()
+    if backend == "auto":
+        llm_backend = auto_detect_backend()
+    elif backend == "anthropic":
+        llm_backend = AnthropicBackend()
+    elif backend == "copilot":
+        llm_backend = CopilotBackend()
+    elif backend == "litellm":
+        llm_backend = LiteLLMBackend()
+    else:
+        llm_backend = auto_detect_backend()
 
     reasoner = SessionReasoner(
         azlin_path=AZLIN_PATH,
@@ -447,7 +465,7 @@ def dry_run(vm, priorities):
         return
 
     click.echo(f"\nFleet Admiral Dry Run — {len(sessions_to_check)} sessions")
-    click.echo(f"Backend: anthropic")
+    click.echo(f"Backend: {type(llm_backend).__name__}")
     click.echo(f"Priorities: {priorities or '(none specified)'}")
     click.echo("")
 

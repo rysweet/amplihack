@@ -5,16 +5,20 @@ All LLM calls are mocked.
 """
 
 import json
+import os
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from amplihack.fleet.fleet_session_reasoner import (
     AnthropicBackend,
+    CopilotBackend,
+    LiteLLMBackend,
     LLMBackend,
     SessionContext,
     SessionDecision,
     SessionReasoner,
+    auto_detect_backend,
 )
 
 
@@ -485,3 +489,34 @@ class TestLLMBackends:
         assert issubclass(LLMBackend, Protocol)
         with pytest.raises(TypeError, match="Protocols cannot be instantiated"):
             LLMBackend()
+
+    def test_copilot_backend_import_error(self):
+        """CopilotBackend.complete raises ImportError when copilot-sdk not installed."""
+        backend = CopilotBackend(model="gpt-4o")
+        assert backend.model == "gpt-4o"
+        # Simulate copilot-sdk not being installed
+        with patch.dict("sys.modules", {"copilot": None}):
+            with pytest.raises((ImportError, ModuleNotFoundError)):
+                backend.complete("system", "user")
+
+    def test_litellm_backend_import_error(self):
+        """LiteLLMBackend.complete raises ImportError when litellm not installed."""
+        backend = LiteLLMBackend(model="gpt-4o")
+        assert backend.model == "gpt-4o"
+        # Patch litellm import to simulate missing package
+        with patch.dict("sys.modules", {"litellm": None}):
+            with pytest.raises((ImportError, ModuleNotFoundError)):
+                backend.complete("system", "user")
+
+    def test_auto_detect_with_anthropic_key(self):
+        """auto_detect_backend returns AnthropicBackend when ANTHROPIC_API_KEY is set."""
+        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key-123"}):
+            backend = auto_detect_backend()
+            assert isinstance(backend, AnthropicBackend)
+
+    def test_auto_detect_without_any_backend(self):
+        """auto_detect_backend raises RuntimeError when no backend is available."""
+        with patch.dict(os.environ, {}, clear=True):
+            with patch.dict("sys.modules", {"litellm": None, "copilot": None}):
+                with pytest.raises(RuntimeError, match="No LLM backend available"):
+                    auto_detect_backend()
