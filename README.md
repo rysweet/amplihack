@@ -51,8 +51,8 @@ high-quality code.
 
 ### Prerequisites
 
-- **Platform**: macOS, Linux, or Windows (via WSL or native — see
-  [Prerequisites](docs/PREREQUISITES.md))
+- **Platform**: macOS, Linux, or Windows via WSL (native Windows is not
+  supported)
 - **Runtime**: Python 3.12+, Node.js 18+
 - **Tools**: git, npm, uv ([astral.sh/uv](https://docs.astral.sh/uv/))
 - **Optional**: GitHub CLI (`gh`), Azure CLI (`az`)
