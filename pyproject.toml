@@ -105,6 +105,7 @@ blarify-all = [
 
 [project.scripts]
 amplihack = "amplihack:main"
+fleet = "amplihack.fleet.fleet_cli:fleet_cli"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
