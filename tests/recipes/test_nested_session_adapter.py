@@ -99,6 +99,7 @@ def test_get_adapter_auto_detects_nested():
 
     print(f"✅ Auto-selected adapter: {adapter.name}")
     assert "nested-session" in adapter.name, f"Expected nested-session adapter, got {adapter.name}"
+    assert "amplihack" in adapter.name, f"Expected amplihack in adapter name, got {adapter.name}"
 
 
 def test_nested_session_isolated_from_parent():

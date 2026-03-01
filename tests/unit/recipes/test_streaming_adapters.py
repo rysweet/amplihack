@@ -288,14 +288,14 @@ class TestNestedSessionAdapterStreaming:
             assert result == "output"
 
     def test_execute_agent_step_unsets_claudecode(self) -> None:
-        """CLAUDECODE env var is unset for nested sessions."""
+        """CLAUDECODE and CLAUDE_CODE_ENTRYPOINT env vars are unset for nested sessions."""
         with (
             patch("subprocess.Popen") as mock_popen,
             patch("threading.Thread"),
             patch("pathlib.Path.read_text") as mock_read,
             patch("os.environ.copy") as mock_env_copy,
         ):
-            mock_env = {"CLAUDECODE": "1", "PATH": "/usr/bin"}
+            mock_env = {"CLAUDECODE": "1", "CLAUDE_CODE_ENTRYPOINT": "1", "PATH": "/usr/bin"}
             mock_env_copy.return_value = mock_env.copy()
 
             mock_proc = MagicMock()
@@ -306,11 +306,12 @@ class TestNestedSessionAdapterStreaming:
             adapter = NestedSessionAdapter(use_temp_dirs=False)
             adapter.execute_agent_step("prompt")
 
-            # Verify CLAUDECODE was removed from env
+            # Verify CLAUDECODE and CLAUDE_CODE_ENTRYPOINT were removed from env
             popen_kwargs = mock_popen.call_args[1]
             assert "env" in popen_kwargs
             env = popen_kwargs["env"]
             assert "CLAUDECODE" not in env
+            assert "CLAUDE_CODE_ENTRYPOINT" not in env
             assert "PATH" in env  # Other vars preserved
 
     def test_execute_agent_step_streams_to_log(self) -> None:

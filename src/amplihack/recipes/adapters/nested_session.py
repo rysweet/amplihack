@@ -32,10 +32,13 @@ class NestedSessionAdapter:
 
     def __init__(
         self,
-        cli: str = "claude",
+        cli: str | None = None,
         working_dir: str = ".",
         use_temp_dirs: bool = True,
     ) -> None:
+        # Detect which agent to use: AMPLIHACK_AGENT env var, or default to "claude"
+        if cli is None:
+            cli = os.environ.get("AMPLIHACK_AGENT", "claude")
         self._cli = cli
         self._working_dir = working_dir
         self._use_temp_dirs = use_temp_dirs
@@ -53,9 +56,10 @@ class NestedSessionAdapter:
         Runs without a hard timeout. Output is streamed to a log file
         and tailed by a background thread for progress monitoring.
         """
-        # Prepare environment without CLAUDECODE
+        # Prepare environment without vars that block nested sessions
         env = os.environ.copy()
         env.pop("CLAUDECODE", None)
+        env.pop("CLAUDE_CODE_ENTRYPOINT", None)
 
         # Prepare working directory
         temp_dir = None
@@ -70,7 +74,8 @@ class NestedSessionAdapter:
         output_file = output_dir / f".agent-step-{int(time.time())}.log"
 
         try:
-            cmd = [self._cli, "-p", prompt]
+            # Build command: amplihack <agent> --subprocess-safe -- -p "<prompt>"
+            cmd = ["amplihack", self._cli, "--subprocess-safe", "--", "-p", prompt]
 
             # Launch process – no timeout
             with open(output_file, "w") as log_fh:
@@ -101,7 +106,7 @@ class NestedSessionAdapter:
 
             if proc.returncode != 0:
                 raise RuntimeError(
-                    f"{self._cli} failed (exit {proc.returncode}): {stdout[-500:].strip()}"
+                    f"amplihack {self._cli} failed (exit {proc.returncode}): {stdout[-500:].strip()}"
                 )
 
             return stdout.strip()
@@ -140,12 +145,12 @@ class NestedSessionAdapter:
         return result.stdout.strip()
 
     def is_available(self) -> bool:
-        """Check if the CLI tool is on the PATH."""
-        return shutil.which(self._cli) is not None
+        """Check if amplihack is available."""
+        return shutil.which("amplihack") is not None
 
     @property
     def name(self) -> str:
-        return f"nested-session ({self._cli})"
+        return f"nested-session (amplihack {self._cli})"
 
     @staticmethod
     def _tail_output(path: Path, stop: threading.Event) -> None:
