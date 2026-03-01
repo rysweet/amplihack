@@ -210,3 +210,31 @@ try:
     ]
 except ImportError:
     pass
+
+# Desired-state HiveController (Experiment 10 - Declarative Reconciliation)
+try:
+    from .controller import (
+        AgentSpec,
+        EventBusConfig,
+        GatewayConfig,
+        GraphStoreConfig,
+        HiveController,
+        HiveManifest,
+        HiveState,
+        InMemoryGateway,
+        InMemoryGraphStore,
+    )
+
+    __all__ += [
+        "AgentSpec",
+        "EventBusConfig",
+        "GatewayConfig",
+        "GraphStoreConfig",
+        "HiveController",
+        "HiveManifest",
+        "HiveState",
+        "InMemoryGateway",
+        "InMemoryGraphStore",
+    ]
+except ImportError:
+    pass
