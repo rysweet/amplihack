@@ -18,17 +18,15 @@ from __future__ import annotations
 
 import logging
 import os
-import sys
 import time
 from collections import OrderedDict
 
-# Import CognitiveMemory from the real amplihack-memory-lib
-_MEMORY_LIB_PATH = "/home/azureuser/src/amplihack-memory-lib-real/src"
-if _MEMORY_LIB_PATH not in sys.path:
-    sys.path.insert(0, _MEMORY_LIB_PATH)
-
-import kuzu
-from amplihack_memory.cognitive_memory import CognitiveMemory
+try:
+    import kuzu
+    from amplihack_memory.cognitive_memory import CognitiveMemory
+except ImportError:
+    kuzu = None  # type: ignore[assignment]
+    CognitiveMemory = None  # type: ignore[assignment,misc]
 
 try:
     from amplihack_memory.graph import FederatedGraphStore, KuzuGraphStore
@@ -76,7 +74,14 @@ def _make_sized_cognitive_memory(
 
     Returns:
         Fully functional CognitiveMemory with size-limited database.
+
+    Raises:
+        ImportError: If kuzu or amplihack-memory-lib is not installed.
     """
+    if kuzu is None or CognitiveMemory is None:
+        raise ImportError(
+            "kuzu and amplihack-memory-lib required. pip install kuzu amplihack-memory-lib"
+        )
     from pathlib import Path
 
     path = Path(db_path)

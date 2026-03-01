@@ -27,7 +27,6 @@ import logging
 import os
 import re
 import shutil
-import sys
 import tempfile
 import time
 import uuid
@@ -35,14 +34,6 @@ from dataclasses import dataclass, field
 from typing import Any
 
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# Memory lib path setup
-# ---------------------------------------------------------------------------
-
-_MEMORY_LIB_PATH = "/home/azureuser/src/amplihack-memory-lib-real/src"
-if _MEMORY_LIB_PATH not in sys.path:
-    sys.path.insert(0, _MEMORY_LIB_PATH)
 
 # ---------------------------------------------------------------------------
 # Imports with fallback guards
@@ -79,13 +70,6 @@ try:
 except ImportError:
     LocalEventBus = None  # type: ignore[assignment,misc]
     create_event_bus = None  # type: ignore[assignment]
-
-try:
-    from .kuzu_hive import AgentRegistry, HiveGateway, HiveKuzuSchema
-except ImportError:
-    AgentRegistry = None  # type: ignore[assignment,misc]
-    HiveGateway = None  # type: ignore[assignment,misc]
-    HiveKuzuSchema = None  # type: ignore[assignment,misc]
 
 
 # ---------------------------------------------------------------------------
@@ -538,10 +522,9 @@ class HiveController:
         self._event_bus: Any = None
         self._agents: dict[str, AgentNode] = {}
         self._coordinator: HiveCoordinator | None = None
-        self._gateway: InMemoryGateway | HiveGateway | None = None
+        self._gateway: InMemoryGateway | None = None
         self._base_dir: str = ""
         self._owns_base_dir: bool = False
-        self._hive_mem: Any = None  # CognitiveMemory for kuzu backend
 
     # ------------------------------------------------------------------
     # Core reconciliation
@@ -563,6 +546,10 @@ class HiveController:
 
         # 3. Ensure coordinator exists
         if self._coordinator is None:
+            if HiveCoordinator is None:
+                raise ImportError(
+                    "HiveCoordinator unavailable. pip install kuzu amplihack-memory-lib"
+                )
             self._coordinator = HiveCoordinator()
 
         # 4. Ensure gateway exists
@@ -775,7 +762,6 @@ class HiveController:
 
         self._coordinator = None
         self._gateway = None
-        self._hive_mem = None
 
         # Remove temp directory if requested
         if cleanup and self._base_dir and os.path.isdir(self._base_dir):
@@ -817,14 +803,6 @@ class HiveController:
 
             if KuzuGraphStore is not None:
                 self._hive_store = KuzuGraphStore(db_path=hive_db_path)
-
-            # Create hive CognitiveMemory for gateway
-            if _make_sized_cognitive_memory is not None and CognitiveMemory is not None:
-                hive_mem_path = os.path.join(self._base_dir, "hive_memory", "kuzu_db")
-                self._hive_mem = _make_sized_cognitive_memory("__hive__", hive_mem_path)
-                if HiveKuzuSchema is not None:
-                    schema = HiveKuzuSchema(self._hive_mem._conn)
-                    schema.setup()
         else:
             # For unknown backends, fall back to memory
             logger.warning(
@@ -849,6 +827,8 @@ class HiveController:
             self._event_bus = create_event_bus(backend, **kwargs)
         else:
             # Bare minimum fallback
+            if LocalEventBus is None:
+                raise ImportError("LocalEventBus unavailable. Event bus module failed to import.")
             self._event_bus = LocalEventBus()
 
     def _ensure_gateway(self) -> None:
@@ -857,28 +837,14 @@ class HiveController:
             return
 
         gw_cfg = self.manifest.gateway
-        backend = self.manifest.graph_store.backend
 
-        if backend == "memory":
-            self._gateway = InMemoryGateway(
-                store=self._hive_store,
-                trust_threshold=gw_cfg.trust_threshold,
-                contradiction_overlap=gw_cfg.contradiction_overlap,
-                consensus_required=gw_cfg.consensus_required,
-            )
-        elif backend == "kuzu" and self._hive_mem is not None:
-            if HiveGateway is not None and AgentRegistry is not None:
-                registry = AgentRegistry(self._hive_mem._conn)
-                self._gateway = HiveGateway(self._hive_mem, registry)
-                self._gateway.TRUST_THRESHOLD = gw_cfg.trust_threshold
-        else:
-            # Fallback to in-memory gateway
-            self._gateway = InMemoryGateway(
-                store=self._hive_store,
-                trust_threshold=gw_cfg.trust_threshold,
-                contradiction_overlap=gw_cfg.contradiction_overlap,
-                consensus_required=gw_cfg.consensus_required,
-            )
+        # All backends use InMemoryGateway for promotion validation
+        self._gateway = InMemoryGateway(
+            store=self._hive_store,
+            trust_threshold=gw_cfg.trust_threshold,
+            contradiction_overlap=gw_cfg.contradiction_overlap,
+            consensus_required=gw_cfg.consensus_required,
+        )
 
     # ------------------------------------------------------------------
     # Private: agent lifecycle
@@ -904,11 +870,6 @@ class HiveController:
         # Register trust in gateway
         if isinstance(self._gateway, InMemoryGateway):
             self._gateway.set_trust(spec.agent_id, 1.0)
-        elif hasattr(self._gateway, "registry"):
-            try:
-                self._gateway.registry.register(spec.agent_id, spec.domain)
-            except ValueError:
-                pass  # Already registered
 
         self._agents[spec.agent_id] = agent
 
