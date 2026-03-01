@@ -17,6 +17,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
 
 from textual.app import App, ComposeResult
@@ -48,6 +49,19 @@ from amplihack.fleet.fleet_session_reasoner import (
 )
 
 __all__ = ["FleetDashboardApp", "run_dashboard"]
+
+# ---------------------------------------------------------------------------
+# Pirate ship ASCII logo
+# ---------------------------------------------------------------------------
+PIRATE_LOGO = """\
+[cyan]        |    |    |
+       )_)  )_)  )_)
+      )___))___))___)\\
+     )____)____)_____)\\\\
+   _____|____|____|____\\\\\\__
+---\\                   /------
+    \\_________________/[/cyan]
+  [bold green]~~~  A M P L I H A C K   F L E E T  ~~~[/bold green]"""
 
 # ---------------------------------------------------------------------------
 # Status icon mapping (Rich-compatible markup)
@@ -100,6 +114,19 @@ Screen {
     background: $surface;
 }
 
+/* ---- Pirate Logo ---- */
+#pirate-logo {
+    height: auto;
+    max-height: 10;
+    padding: 0 2;
+    content-align: center middle;
+    text-align: center;
+    background: $surface;
+}
+#pirate-logo.hidden {
+    display: none;
+}
+
 /* ---- Fleet Overview Tab ---- */
 #fleet-tab Horizontal {
     height: 1fr;
@@ -114,6 +141,22 @@ Screen {
     color: $text;
 }
 #preview-pane {
+    width: 38%;
+    border: tall $accent;
+    padding: 0 1;
+    background: $panel;
+    color: $text-muted;
+}
+#all-session-table {
+    width: 62%;
+    border: tall $primary-background;
+    scrollbar-size: 1 1;
+}
+#all-session-table > .datatable--cursor {
+    background: $accent 40%;
+    color: $text;
+}
+#all-preview-pane {
     width: 38%;
     border: tall $accent;
     padding: 0 1;
@@ -173,6 +216,17 @@ Screen {
     width: 40;
 }
 
+/* ---- Projects Tab ---- */
+#project-table {
+    height: 1fr;
+    border: tall $primary-background;
+    scrollbar-size: 1 1;
+}
+#project-table > .datatable--cursor {
+    background: $accent 40%;
+    color: $text;
+}
+
 /* ---- Shared ---- */
 Button {
     margin: 0 1;
@@ -210,8 +264,10 @@ TabPane {
         Binding("enter", "open_detail", "Detail", show=True),
         Binding("escape", "back_to_fleet", "Back", show=True),
         Binding("e", "edit_proposal", "Edit", show=True),
+        Binding("A", "adopt_session", "Adopt", show=True),
         Binding("a", "apply_proposal", "Apply", show=True),
         Binding("d", "dry_run_session", "Dry-run", show=True),
+        Binding("l", "toggle_logo", "Logo", show=True),
     ]
 
     def __init__(
@@ -223,6 +279,8 @@ TabPane {
         self._refresh_interval = refresh_interval
         self._fleet = FleetTUI()
         self._cache: dict[str, _CachedSession] = {}
+        self._all_cache: dict[str, _CachedSession] = {}
+        self._managed_vm_names: set[str] = set()
         self._selected_key: str = ""
         self._refreshing = False
 
@@ -232,12 +290,19 @@ TabPane {
 
     def compose(self) -> ComposeResult:
         yield Header()
+        yield Static(PIRATE_LOGO, id="pirate-logo", markup=True)
         with TabbedContent(id="tabs"):
             # --- Tab 1: Fleet Overview ---
             with TabPane("Fleet Overview", id="fleet-tab"):
-                with Horizontal():
-                    yield DataTable(id="session-table", cursor_type="row")
-                    yield RichLog(id="preview-pane", wrap=True, markup=True)
+                with TabbedContent(id="fleet-subtabs"):
+                    with TabPane("Managed", id="managed-subtab"):
+                        with Horizontal():
+                            yield DataTable(id="session-table", cursor_type="row")
+                            yield RichLog(id="preview-pane", wrap=True, markup=True)
+                    with TabPane("All Sessions", id="all-subtab"):
+                        with Horizontal():
+                            yield DataTable(id="all-session-table", cursor_type="row")
+                            yield RichLog(id="all-preview-pane", wrap=True, markup=True)
                 yield Static("Loading fleet data...", id="fleet-summary")
 
             # --- Tab 2: Session Detail ---
@@ -260,6 +325,10 @@ TabPane {
                     yield Button("Apply Edited", id="btn-apply-edited", variant="success")
                     yield Button("Cancel", id="btn-cancel", variant="error")
 
+            # --- Tab 4: Projects ---
+            with TabPane("Projects", id="projects-tab"):
+                yield DataTable(id="project-table", cursor_type="row")
+
         yield LoadingIndicator(id="loading-overlay")
         yield Footer()
 
@@ -268,9 +337,17 @@ TabPane {
     # ------------------------------------------------------------------
 
     def on_mount(self) -> None:
-        # Set up data table columns
+        # Set up managed data table columns
         table = self.query_one("#session-table", DataTable)
         table.add_columns("St", "VM", "Session", "State", "Branch", "PR")
+
+        # Set up all-sessions data table columns (extra "Mgd" column)
+        all_table = self.query_one("#all-session-table", DataTable)
+        all_table.add_columns("St", "VM", "Session", "State", "Branch", "PR", "Mgd")
+
+        # Set up project table columns
+        proj_table = self.query_one("#project-table", DataTable)
+        proj_table.add_columns("Name", "Repo", "Identity", "Priority", "VMs", "Tasks", "PRs")
 
         # Initial load
         self._schedule_refresh()
@@ -288,29 +365,48 @@ TabPane {
         self._refreshing = True
         self._do_refresh()
 
-    @work(thread=True)
-    def _do_refresh(self) -> None:
-        """Poll all VMs via azlin in a background thread."""
-        worker = get_current_worker()
-        try:
-            vms: list[VMView] = self._fleet.refresh()
-        except Exception:
-            vms = []
+    @staticmethod
+    def _build_rows_and_cache(
+        vms: list[VMView],
+        old_cache: dict[str, _CachedSession],
+        managed_vm_names: set[str] | None = None,
+        include_mgd_column: bool = False,
+    ) -> tuple[list[tuple[str, list[str]]], dict[str, _CachedSession]]:
+        """Build table rows and cache from VM views.
 
-        if worker.is_cancelled:
-            return
+        Args:
+            vms: VM view list from FleetTUI.
+            old_cache: Previous cache to preserve proposals.
+            managed_vm_names: If provided, used to determine managed status.
+            include_mgd_column: If True, append a Mgd column to each row.
 
-        # Build cache from results
+        Returns:
+            (rows, new_cache) tuple.
+        """
         new_cache: dict[str, _CachedSession] = {}
         rows: list[tuple[str, list[str]]] = []
 
         for vm in vms:
             if not vm.is_running:
                 continue
+
+            is_managed = managed_vm_names is None or vm.name in managed_vm_names
+
             if not vm.sessions:
                 key = f"{vm.name}/(no sessions)"
                 icon, style = "\u25cb", "dim"
-                rows.append((key, [f"[{style}]{icon}[/]", vm.name, "(none)", "stopped", "", ""]))
+                cell_style = "" if is_managed else "dim"
+                cells = [
+                    f"[{style}]{icon}[/]",
+                    f"[{cell_style}]{vm.name}[/]" if cell_style else vm.name,
+                    f"[{cell_style}](none)[/]" if cell_style else "(none)",
+                    f"[{cell_style}]stopped[/]" if cell_style else "stopped",
+                    "",
+                    "",
+                ]
+                if include_mgd_column:
+                    cells.append("[green]Y[/]" if is_managed else "[dim]N[/]")
+                rows.append((key, cells))
                 new_cache[key] = _CachedSession(
                     view=SessionView(vm_name=vm.name, session_name="(none)", status="empty"),
                 )
@@ -322,42 +418,114 @@ TabPane {
                 branch = sess.branch[:24] + "..." if len(sess.branch) > 24 else sess.branch
                 pr = sess.pr or ""
                 state_label = sess.status.upper()[:8]
-                rows.append((
-                    key,
-                    [
+
+                if is_managed:
+                    cells = [
                         f"[bold {style}]{icon}[/]",
                         f"[bold]{vm.name}[/]",
                         sess.session_name,
                         f"[{style}]{state_label}[/]",
                         f"[dim]{branch}[/]",
                         f"[bold cyan]{pr}[/]" if pr else "",
-                    ],
-                ))
-                # Preserve existing proposal if present
-                old = self._cache.get(key)
+                    ]
+                else:
+                    # Dim all cells for unmanaged
+                    cells = [
+                        f"[dim]{icon}[/]",
+                        f"[dim]{vm.name}[/]",
+                        f"[dim]{sess.session_name}[/]",
+                        f"[dim]{state_label}[/]",
+                        f"[dim]{branch}[/]",
+                        f"[dim]{pr}[/]" if pr else "",
+                    ]
+
+                if include_mgd_column:
+                    cells.append("[green]Y[/]" if is_managed else "[dim]N[/]")
+
+                rows.append((key, cells))
+                old = old_cache.get(key)
                 entry = _CachedSession(view=sess)
                 if old and old.proposal:
                     entry.proposal = old.proposal
                 new_cache[key] = entry
 
+        return rows, new_cache
+
+    @work(thread=True)
+    def _do_refresh(self) -> None:
+        """Poll all VMs via azlin in a background thread."""
+        worker = get_current_worker()
+
+        # Pass 1: managed VMs only
+        try:
+            managed_vms: list[VMView] = self._fleet.refresh()
+        except Exception:
+            managed_vms = []
+
+        if worker.is_cancelled:
+            return
+
+        managed_vm_names = {vm.name for vm in managed_vms}
+
+        managed_rows, new_cache = self._build_rows_and_cache(
+            managed_vms, self._cache,
+        )
+
+        # Pass 2: all VMs (including unmanaged)
+        try:
+            all_vms: list[VMView] = self._fleet.refresh_all()
+        except Exception:
+            all_vms = []
+
+        if worker.is_cancelled:
+            return
+
+        all_rows, all_cache = self._build_rows_and_cache(
+            all_vms, self._all_cache,
+            managed_vm_names=managed_vm_names,
+            include_mgd_column=True,
+        )
+
         # Post results back to UI thread
-        self.call_from_thread(self._apply_refresh, vms, rows, new_cache)
+        self.call_from_thread(
+            self._apply_refresh,
+            managed_vms,
+            managed_rows,
+            new_cache,
+            all_rows,
+            all_cache,
+            managed_vm_names,
+        )
 
     def _apply_refresh(
         self,
         vms: list[VMView],
         rows: list[tuple[str, list[str]]],
         new_cache: dict[str, _CachedSession],
+        all_rows: list[tuple[str, list[str]]],
+        all_cache: dict[str, _CachedSession],
+        managed_vm_names: set[str],
     ) -> None:
         """Update UI with refreshed data (called on the main thread)."""
         self._refreshing = False
         self._cache = new_cache
+        self._all_cache = all_cache
+        self._managed_vm_names = managed_vm_names
 
-        # Rebuild the data table
+        # Rebuild managed data table
         table = self.query_one("#session-table", DataTable)
         table.clear()
         for key, cells in rows:
             table.add_row(*cells, key=key)
+
+        # Rebuild all-sessions data table
+        all_table = self.query_one("#all-session-table", DataTable)
+        all_table.clear()
+        for key, cells in all_rows:
+            all_table.add_row(*cells, key=key)
+
+        # Rebuild projects table
+        self._refresh_projects_table()
 
         # Summary bar
         total_sessions = sum(1 for v in vms for _ in v.sessions if v.is_running)
@@ -382,21 +550,54 @@ TabPane {
         )
         self.query_one("#fleet-summary", Static).update(summary)
 
+    def _refresh_projects_table(self) -> None:
+        """Populate the projects tab DataTable from FleetDashboard."""
+        from amplihack.fleet.fleet_dashboard import FleetDashboard
+
+        dash_path = Path.home() / ".amplihack" / "fleet" / "dashboard.json"
+        dash = FleetDashboard(persist_path=dash_path)
+
+        proj_table = self.query_one("#project-table", DataTable)
+        proj_table.clear()
+
+        for proj in dash.projects:
+            prio_colors = {"high": "red", "medium": "yellow", "low": "dim"}
+            prio_style = prio_colors.get(proj.priority, "dim")
+            proj_table.add_row(
+                f"[bold]{proj.name}[/]",
+                proj.repo_url[:40] + ("..." if len(proj.repo_url) > 40 else ""),
+                proj.github_identity or "[dim]--[/]",
+                f"[{prio_style}]{proj.priority}[/]",
+                str(len(proj.vms)),
+                f"{proj.tasks_completed}/{proj.tasks_total}",
+                str(len(proj.prs_created)),
+                key=proj.name,
+            )
+
     # ------------------------------------------------------------------
     # DataTable events
     # ------------------------------------------------------------------
 
     def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
-        """When the cursor moves in the fleet table, update the preview pane."""
+        """When the cursor moves in a fleet table, update the appropriate preview pane."""
         if event.row_key is None:
             return
         key = str(event.row_key.value)
+
+        # Determine which table/preview to use
+        table_id = event.data_table.id
+        if table_id == "all-session-table":
+            entry = self._all_cache.get(key)
+            preview = self.query_one("#all-preview-pane", RichLog)
+        else:
+            entry = self._cache.get(key)
+            preview = self.query_one("#preview-pane", RichLog)
+
         self._selected_key = key
-        entry = self._cache.get(key)
+
         if entry is None:
             return
 
-        preview = self.query_one("#preview-pane", RichLog)
         preview.clear()
         preview.write(f"[bold]{key}[/bold]")
         preview.write(f"Status: {entry.view.status}")
@@ -419,6 +620,64 @@ TabPane {
     def action_force_refresh(self) -> None:
         self._schedule_refresh()
         self.notify("Refreshing fleet data...")
+
+    def action_toggle_logo(self) -> None:
+        """Toggle visibility of the pirate ship logo."""
+        logo = self.query_one("#pirate-logo", Static)
+        logo.toggle_class("hidden")
+
+    def action_adopt_session(self) -> None:
+        """Adopt the highlighted unmanaged session into fleet management."""
+        if not self._selected_key:
+            self.notify("No session selected", severity="warning")
+            return
+
+        # Check if session is already managed
+        entry = self._all_cache.get(self._selected_key)
+        if entry is None:
+            entry = self._cache.get(self._selected_key)
+        if entry is None:
+            self.notify("Session not found in cache", severity="warning")
+            return
+
+        vm_name = entry.view.vm_name
+        if vm_name in self._managed_vm_names:
+            self.notify(f"{vm_name} is already managed", severity="information")
+            return
+
+        session_name = entry.view.session_name
+        if session_name == "(none)":
+            self.notify("Cannot adopt a VM with no sessions", severity="warning")
+            return
+
+        self.notify(f"Adopting {vm_name}/{session_name}...")
+        self._adopt_session_bg(vm_name, session_name)
+
+    @work(thread=True)
+    def _adopt_session_bg(self, vm_name: str, session_name: str) -> None:
+        """Run SessionAdopter in a background thread."""
+        worker = get_current_worker()
+
+        try:
+            from amplihack.fleet.fleet_adopt import SessionAdopter
+            from amplihack.fleet.fleet_tasks import TaskQueue
+
+            queue_path = Path.home() / ".amplihack" / "fleet" / "task_queue.json"
+            adopter = SessionAdopter(azlin_path=self._fleet.azlin_path)
+            queue = TaskQueue(persist_path=queue_path)
+            adopted = adopter.adopt_sessions(vm_name, queue, sessions=[session_name])
+            msg = f"Adopted {len(adopted)} session(s) on {vm_name}"
+            severity = "information"
+        except Exception as exc:
+            msg = f"Adopt failed: {exc}"
+            severity = "error"
+
+        if worker.is_cancelled:
+            return
+
+        self.call_from_thread(self.notify, msg, severity=severity)
+        # Trigger a refresh to update tables
+        self.call_from_thread(self._schedule_refresh)
 
     def action_open_detail(self) -> None:
         """Switch to Session Detail tab and kick off tmux capture + reasoning."""

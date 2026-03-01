@@ -37,6 +37,8 @@ class ProjectInfo:
     repo_url: str
     name: str = ""
     github_identity: str = ""  # Which gh account to use
+    priority: str = "medium"  # low, medium, high
+    notes: str = ""
     vms: list[str] = field(default_factory=list)  # VMs working on this project
     tasks_total: int = 0
     tasks_completed: int = 0
@@ -63,6 +65,8 @@ class ProjectInfo:
             "repo_url": self.repo_url,
             "name": self.name,
             "github_identity": self.github_identity,
+            "priority": self.priority,
+            "notes": self.notes,
             "vms": self.vms,
             "tasks_total": self.tasks_total,
             "tasks_completed": self.tasks_completed,
@@ -80,6 +84,8 @@ class ProjectInfo:
             repo_url=data.get("repo_url", ""),
             name=data.get("name", ""),
             github_identity=data.get("github_identity", ""),
+            priority=data.get("priority", "medium"),
+            notes=data.get("notes", ""),
             vms=data.get("vms", []),
             tasks_total=data.get("tasks_total", 0),
             tasks_completed=data.get("tasks_completed", 0),
@@ -115,12 +121,14 @@ class FleetDashboard:
         repo_url: str,
         github_identity: str = "",
         name: str = "",
+        priority: str = "medium",
     ) -> ProjectInfo:
         """Register a project for fleet tracking."""
         project = ProjectInfo(
             repo_url=repo_url,
             name=name,
             github_identity=github_identity,
+            priority=priority,
             started_at=datetime.now(),
         )
         self.projects.append(project)
@@ -133,6 +141,15 @@ class FleetDashboard:
             if proj.name == name_or_url or proj.repo_url == name_or_url:
                 return proj
         return None
+
+    def remove_project(self, name_or_url: str) -> bool:
+        """Remove a project by name or repo URL. Returns True if found and removed."""
+        proj = self.get_project(name_or_url)
+        if proj is None:
+            return False
+        self.projects.remove(proj)
+        self._save()
+        return True
 
     def update_from_queue(self, queue: TaskQueue) -> None:
         """Sync project stats from the task queue."""

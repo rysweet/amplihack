@@ -490,6 +490,93 @@ def tui(interval):
     run_dashboard(interval=interval)
 
 
+@fleet_cli.group("project")
+def project():
+    """Manage fleet projects (repos, identities, priorities)."""
+    pass
+
+
+@project.command("add")
+@click.argument("repo_url")
+@click.option("--identity", default="", help="GitHub identity")
+@click.option(
+    "--priority",
+    type=click.Choice(["low", "medium", "high"]),
+    default="medium",
+    help="Project priority",
+)
+@click.option("--name", default="", help="Display name (default: derived from URL)")
+def project_add(repo_url, identity, priority, name):
+    """Register a project for fleet tracking."""
+    from amplihack.fleet.fleet_dashboard import FleetDashboard
+
+    dash = FleetDashboard(persist_path=DEFAULT_DASHBOARD_PATH)
+
+    # Check for duplicates
+    existing = dash.get_project(repo_url)
+    if existing is None and name:
+        existing = dash.get_project(name)
+    if existing:
+        click.echo(f"Project already registered: {existing.name} ({existing.repo_url})")
+        return
+
+    proj = dash.add_project(
+        repo_url=repo_url,
+        github_identity=identity,
+        name=name,
+        priority=priority,
+    )
+    click.echo(f"Added project: {proj.name}")
+    click.echo(f"  Repo: {proj.repo_url}")
+    if identity:
+        click.echo(f"  Identity: {identity}")
+    click.echo(f"  Priority: {priority}")
+
+
+@project.command("list")
+def project_list():
+    """List all registered fleet projects."""
+    from amplihack.fleet.fleet_dashboard import FleetDashboard
+
+    dash = FleetDashboard(persist_path=DEFAULT_DASHBOARD_PATH)
+
+    if not dash.projects:
+        click.echo("No projects registered. Use 'fleet project add <repo_url>' to add one.")
+        return
+
+    click.echo(f"Fleet Projects ({len(dash.projects)})")
+    click.echo("=" * 60)
+    for proj in dash.projects:
+        prio_map = {"high": "!!!", "medium": "!!", "low": "!"}
+        prio_label = prio_map.get(proj.priority, "!!")
+        click.echo(f"  [{prio_label}] {proj.name}")
+        click.echo(f"      Repo: {proj.repo_url}")
+        if proj.github_identity:
+            click.echo(f"      Identity: {proj.github_identity}")
+        click.echo(f"      Priority: {proj.priority}")
+        click.echo(
+            f"      VMs: {len(proj.vms)} | "
+            f"Tasks: {proj.tasks_completed}/{proj.tasks_total} | "
+            f"PRs: {len(proj.prs_created)}"
+        )
+        if proj.notes:
+            click.echo(f"      Notes: {proj.notes}")
+        click.echo()
+
+
+@project.command("remove")
+@click.argument("name")
+def project_remove(name):
+    """Remove a project by name or repo URL."""
+    from amplihack.fleet.fleet_dashboard import FleetDashboard
+
+    dash = FleetDashboard(persist_path=DEFAULT_DASHBOARD_PATH)
+    if dash.remove_project(name):
+        click.echo(f"Removed project: {name}")
+    else:
+        click.echo(f"Project not found: {name}")
+
+
 @fleet_cli.command("graph")
 def show_graph():
     """Show fleet knowledge graph summary."""
