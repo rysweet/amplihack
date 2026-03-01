@@ -9,6 +9,7 @@ import signal
 import subprocess
 import tempfile
 import threading
+from datetime import UTC, datetime
 from pathlib import Path
 
 from ..context.adaptive.detector import LauncherDetector
@@ -590,6 +591,7 @@ def register_copilot_plugin(source_commands: Path, copilot_home: Path) -> bool:
                 "enabled": True,
                 "cache_path": str(plugin_cache),
                 "source": "local",
+                "installed_at": datetime.now(UTC).isoformat(),
             }
         )
 
