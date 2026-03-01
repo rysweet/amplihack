@@ -48,7 +48,7 @@ classifies your task, detects parallel workstreams, and executes via recipe runn
 
 **Recipe**: A YAML workflow definition that specifies the exact sequence of steps Claude follows. The `smart-orchestrator` recipe is what runs when you invoke `/dev`.
 
-**Recipe Runner**: The Python execution engine (`amplihack.recipes.run_recipe_by_name`) that executes recipes with code-enforced step ordering. When available, it's strongly preferred over prompt-based execution.
+**Recipe Runner**: The Python execution engine (`amplihack.recipes.run_recipe_by_name`) that executes recipes with code-enforced step ordering. It is the REQUIRED execution method for all Development and Investigation tasks. There is no prompt-based alternative.
 
 **Session Tree**: A lightweight state tracker in `/tmp/amplihack-session-trees/` that prevents infinite recursive orchestration by tracking active sessions and enforcing depth and capacity limits.
 
@@ -144,9 +144,15 @@ classifies your intent and invokes `dev-orchestrator` when appropriate.
 
 > **Note for users**: The section below documents how Claude internally executes this command. You do not need to run any of this code yourself — just type `/dev <your task>`.
 
+**CRITICAL**: Development and Investigation tasks have exactly ONE execution
+path: the recipe runner via `run_recipe_by_name("smart-orchestrator")`.
+Direct classification, direct skill invocation, or inline workflow execution
+are PROHIBITED for these task types. Violations skip the 23-step workflow,
+recursion guards, and goal verification.
+
 When this command is invoked with `{TASK_DESCRIPTION}`:
 
-### Option A: Recipe Runner (PREFERRED when available)
+### REQUIRED: Execute via Recipe Runner
 
 > Note: `{TASK_DESCRIPTION}` below is the literal user text passed to this command.
 > Claude must substitute the actual task text — do not pass the string `"{TASK_DESCRIPTION}"`.
@@ -169,22 +175,7 @@ result = run_recipe_by_name(
 )
 ```
 
-### Option B: Skill invocation (if Recipe Runner unavailable)
-
-```
-Skill(skill="dev-orchestrator")
-```
-
-### Option C: Direct classification + routing (final fallback)
-
-1. **Classify** the task type from `{TASK_DESCRIPTION}`:
-   - **Q&A** (what is, explain, how do I): respond directly
-   - **Operations** (cleanup, delete, run command): execute directly
-   - **Investigation** (investigate, analyze, understand): `Skill(skill="investigation-workflow")`
-   - **Development** (implement, build, fix, create, refactor): continue below
-
-2. **Detect parallel workstreams**:
-   - If single cohesive task: `Skill(skill="default-workflow")`
-   - If multiple independent components: split into workstreams and launch multitask orchestrator
-
-3. **Reflect on goal achievement**: After execution, verify success criteria met.
+**There are no fallback paths.** The recipe runner is the only execution method
+for Development and Investigation tasks. If the recipe runner fails with an
+ImportError, report the error to the user and stop. Do NOT silently fall back
+to direct execution, skill invocation, or manual classification.

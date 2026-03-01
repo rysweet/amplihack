@@ -95,21 +95,15 @@ that instructs Claude to invoke `Skill(skill="dev-orchestrator")` for dev/invest
 
 ## Execution Instructions
 
+**CRITICAL**: Development and Investigation tasks have exactly ONE execution
+path: the recipe runner via `run_recipe_by_name("smart-orchestrator")`.
+Direct classification, direct skill invocation, or inline workflow execution
+are PROHIBITED for these task types. Violations skip the 23-step workflow,
+recursion guards, and goal verification.
+
 When this skill is activated:
 
-### Step 1: Check Recipe Runner availability
-
-```python
-try:
-    from amplihack.recipes import run_recipe_by_name
-    RECIPE_RUNNER_AVAILABLE = True
-except ImportError:
-    RECIPE_RUNNER_AVAILABLE = False
-```
-
-### Step 2: Route to appropriate execution method
-
-**PREFERRED — Recipe Runner (when available)**:
+### REQUIRED: Execute via Recipe Runner
 
 ```python
 from amplihack.recipes import run_recipe_by_name
@@ -126,16 +120,17 @@ result = run_recipe_by_name(
 )
 ```
 
-**FALLBACK — Direct workflow execution (if Recipe Runner unavailable)**:
+**There are no fallback paths for Development or Investigation tasks.** The
+recipe runner is required. If it fails with an ImportError, report the error
+to the user and stop. Do not silently fall back to direct skill invocation
+or manual classification.
+
+**Q&A and Operations only** may bypass the recipe runner:
 
 - Q&A: Respond directly (analyzer agent)
 - Operations: Builder agent (direct execution, no workflow steps)
-- Investigation: `Skill(skill="investigation-workflow")`
-- Development with single task: `Skill(skill="default-workflow")`
-- Development with parallel tasks: Invoke `Task(subagent_type="general-purpose")` to run
-  the multitask orchestrator
 
-### Step 3: Reflect and verify
+### After Execution: Reflect and verify
 
 After execution completes, verify the goal was achieved. If not:
 
