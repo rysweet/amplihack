@@ -982,14 +982,16 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
         print(f"Warning: Could not prepare Copilot environment: {e}")
 
     # Build command with filesystem access to user directories
-    # Model can be overridden via COPILOT_MODEL env var (default: Opus 4.6 1M context)
-    model = os.getenv("COPILOT_MODEL", "opus[1m]")
+    # Model override via COPILOT_MODEL env var. Note: Copilot CLI uses different
+    # model IDs than Claude Code — "opus[1m]" is Claude-specific and not recognized
+    # by Copilot. Only pass --model if explicitly set by the user.
     cmd = [
         "copilot",
         "--allow-all-tools",
-        "--model",
-        model,
     ]
+    copilot_model = os.getenv("COPILOT_MODEL", "")
+    if copilot_model:
+        cmd.extend(["--model", copilot_model])
 
     # Add all available directories (home, temp, cwd)
     for directory in get_copilot_directories():
