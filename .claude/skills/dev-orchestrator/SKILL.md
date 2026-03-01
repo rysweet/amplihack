@@ -95,15 +95,28 @@ that instructs Claude to invoke `Skill(skill="dev-orchestrator")` for dev/invest
 
 ## Execution Instructions
 
-**CRITICAL**: Development and Investigation tasks have exactly ONE execution
-path: the recipe runner via `run_recipe_by_name("smart-orchestrator")`.
-Direct classification, direct skill invocation, or inline workflow execution
-are PROHIBITED for these task types. Violations skip the 23-step workflow,
-recursion guards, and goal verification.
+**YOUR NEXT ACTION after reading this skill MUST be a Bash tool call that
+executes `run_recipe_by_name("smart-orchestrator")`.**
+
+If you find yourself doing anything else — reading more files, calling
+TodoWrite, invoking Agent, or typing a response — you are bypassing the
+workflow. Stop. Go back. Run the recipe runner.
+
+Development and Investigation tasks have exactly ONE execution path: the
+recipe runner. There is no "Option B." There is no "I'll follow the steps
+manually." There is no "Let me just quickly..." The recipe runner IS the
+workflow. Skipping it means skipping the 23-step process, the recursion
+guards, the goal verification, and the quality gates that exist for a reason.
+
+A PostToolUse hook monitors every tool call after this skill activates. If
+it detects 3 tool calls without recipe runner evidence, it will fire a hard
+WARNING. Do not wait for the warning — run the recipe runner immediately.
 
 When this skill is activated:
 
-### REQUIRED: Execute via Recipe Runner
+### REQUIRED: Execute via Recipe Runner — IMMEDIATELY
+
+Your very next tool call must be:
 
 ```python
 from amplihack.recipes import run_recipe_by_name
@@ -125,6 +138,13 @@ recipe runner is required. If it fails with an ImportError, report the error
 to the user and stop. Do not silently fall back to direct skill invocation
 or manual classification.
 
+**Common rationalizations that are NOT acceptable:**
+
+- "Let me first understand the codebase" — the recipe does that in Step 0
+- "I'll follow the workflow steps manually" — NO, the recipe enforces them
+- "The recipe runner might not work" — try it first, report errors if it fails
+- "This is a simple task" — simple or complex, the recipe runner handles both
+
 **Q&A and Operations only** may bypass the recipe runner:
 
 - Q&A: Respond directly (analyzer agent)
@@ -136,6 +156,19 @@ After execution completes, verify the goal was achieved. If not:
 
 - For missing information: ask the user
 - For fixable gaps: re-invoke with the remaining work description
+
+### Enforcement: PostToolUse Workflow Guard
+
+A PostToolUse hook (`workflow_enforcement_hook.py`) actively monitors every
+tool call after this skill is invoked. It tracks:
+
+- Whether `/dev` or `dev-orchestrator` was called (sets a flag)
+- Whether the recipe runner was actually executed (clears the flag)
+- How many tool calls have passed without workflow evidence
+
+If 3+ tool calls pass without evidence of recipe runner execution, the hook
+emits a hard WARNING. This is not a suggestion — it means you are violating
+the mandatory workflow. State is stored in `/tmp/amplihack-workflow-state/`.
 
 ## Task Type Classification
 
