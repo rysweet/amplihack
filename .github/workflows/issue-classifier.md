@@ -159,5 +159,6 @@ Where `category` is one of: bug, feature, enhancement, documentation
 - **Prioritize bugs**: If something is genuinely broken, it should be labeled as a bug regardless of how it's phrased
 - **One label only**: Even if an issue spans categories, choose the primary one
 - **Err on the side of clarity**: If truly ambiguous, default to **bug** for problems or **feature** for requests
+- **Always apply a label**: You must always call `add-labels` with exactly one label. Do not use noop — the workflow runs in `strict: true` mode, and calling noop (or producing no output) will cause the Copilot CLI to exit with a non-zero status code. This triggers failure reports and a cascade of re-runs that cannot succeed.
 
 Your classification helps maintainers prioritize work effectively. Accurate categorization is critical for project health.
