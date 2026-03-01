@@ -944,12 +944,22 @@ jobs:
   pre_activation:
     runs-on: ubuntu-slim
     outputs:
-      activated: ${{ steps.check_membership.outputs.is_team_member == 'true' }}
+      activated: ${{ steps.check_membership.outputs.is_team_member == 'true' && steps.check_not_tracking_issue.outputs.is_not_tracking_issue == 'true' }}
     steps:
       - name: Setup Scripts
         uses: github/gh-aw/actions/setup@cec1ecf3b97e9a1bbffaedf490a49ce03c1071ba # v0.44.0
         with:
           destination: /opt/gh-aw/actions
+      - name: Skip automated tracking issues
+        id: check_not_tracking_issue
+        run: |
+          TITLE="${{ github.event.issue.title }}"
+          if [[ "$TITLE" == \[agentics\]* ]]; then
+            echo "is_not_tracking_issue=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping automated [agentics] tracking issue: $TITLE"
+          else
+            echo "is_not_tracking_issue=true" >> "$GITHUB_OUTPUT"
+          fi
       - name: Check team membership for workflow
         id: check_membership
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
