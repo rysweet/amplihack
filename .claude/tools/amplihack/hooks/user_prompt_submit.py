@@ -352,6 +352,28 @@ class UserPromptSubmitHook(HookProcessor):
         except Exception as e:
             self.log(f"Memory injection failed (non-fatal): {e}", "WARNING")
 
+        # 2.5. Detect /dev invocation at prompt level for workflow enforcement.
+        # This ensures the PostToolUse workflow_enforcement_hook can detect
+        # bypass even when Copilot/Claude doesn't invoke the Skill tool.
+        if self._is_dev_prompt(user_prompt):
+            try:
+                import time
+
+                from workflow_enforcement_hook import _write_state
+
+                _write_state(
+                    {
+                        "dev_invoked_at": time.time(),
+                        "dev_prompt": user_prompt[:200],
+                        "source": "user_prompt_submit",
+                        "tool_calls_since": 0,
+                        "warning_emitted": False,
+                    }
+                )
+                self.log("Workflow enforcement: /dev detected in prompt, tracking started")
+            except Exception as e:
+                self.log(f"Workflow enforcement setup failed (non-fatal): {e}", "WARNING")
+
         # 3. Inject AMPLIHACK.md framework instructions (if CLAUDE.md differs)
         amplihack_context = self._inject_amplihack_if_different()
         if amplihack_context:
@@ -368,6 +390,27 @@ class UserPromptSubmitHook(HookProcessor):
         return {
             "additionalContext": full_context,
         }
+
+    @staticmethod
+    def _is_dev_prompt(prompt: str) -> bool:
+        """Detect if the user prompt is a /dev invocation.
+
+        Matches: /dev, /amplihack:dev, "use dev-orchestrator", etc.
+        Does NOT match: Q&A questions, operations, or general chat.
+        """
+        prompt_lower = prompt.strip().lower()
+        # Explicit /dev command
+        if prompt_lower.startswith("/dev ") or prompt_lower == "/dev":
+            return True
+        # Skill invocation syntax
+        if "dev-orchestrator" in prompt_lower:
+            return True
+        # Amplihack dev command variants
+        if prompt_lower.startswith("/amplihack:dev") or prompt_lower.startswith(
+            "/.claude:amplihack:dev"
+        ):
+            return True
+        return False
 
     def _select_strategy(self):
         """Detect launcher and select appropriate strategy."""
