@@ -524,11 +524,18 @@ class TestInMemoryGraphStore:
         store.store_fact("a", "content", 0.9)
         assert store.get_statistics() == {"semantic": 1}
 
-    def test_close_clears_data(self):
-        """close() clears all stored data."""
+    def test_close_preserves_data(self):
+        """close() is a no-op -- data survives for continued use."""
         store = InMemoryGraphStore()
         store.store_fact("a", "content", 0.9)
         store.close()
+        assert len(store.get_all_facts()) == 1
+
+    def test_clear_destroys_data(self):
+        """clear() explicitly wipes all in-memory data."""
+        store = InMemoryGraphStore()
+        store.store_fact("a", "content", 0.9)
+        store.clear()
         assert store.get_all_facts() == []
 
 
