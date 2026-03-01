@@ -27,6 +27,7 @@ Public API (the "studs"):
 
 from __future__ import annotations
 
+import threading
 import uuid
 from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
@@ -262,6 +263,7 @@ class InMemoryHiveGraph:
         self._edges: list[HiveEdge] = []
         self._parent: HiveGraph | None = None
         self._children: list[HiveGraph] = []
+        self._lock = threading.RLock()
 
     # -- Property --------------------------------------------------------------
 
@@ -283,15 +285,16 @@ class InMemoryHiveGraph:
         Raises:
             ValueError: If agent_id is already registered.
         """
-        if agent_id in self._agents:
-            raise ValueError(f"Agent '{agent_id}' already registered")
-        self._agents[agent_id] = HiveAgent(
-            agent_id=agent_id,
-            domain=domain,
-            trust=max(0.0, min(2.0, trust)),
-            fact_count=0,
-            status="active",
-        )
+        with self._lock:
+            if agent_id in self._agents:
+                raise ValueError(f"Agent '{agent_id}' already registered")
+            self._agents[agent_id] = HiveAgent(
+                agent_id=agent_id,
+                domain=domain,
+                trust=max(0.0, min(2.0, trust)),
+                fact_count=0,
+                status="active",
+            )
 
     def unregister_agent(self, agent_id: str) -> None:
         """Remove an agent from the hive.
@@ -302,18 +305,20 @@ class InMemoryHiveGraph:
         Raises:
             KeyError: If agent_id not found.
         """
-        if agent_id not in self._agents:
-            raise KeyError(f"Agent '{agent_id}' not found")
-        self._agents[agent_id].status = "removed"
-        del self._agents[agent_id]
+        with self._lock:
+            if agent_id not in self._agents:
+                raise KeyError(f"Agent '{agent_id}' not found")
+            del self._agents[agent_id]
 
     def get_agent(self, agent_id: str) -> HiveAgent | None:
         """Retrieve an agent by ID, or None if not found."""
-        return self._agents.get(agent_id)
+        with self._lock:
+            return self._agents.get(agent_id)
 
     def list_agents(self) -> list[HiveAgent]:
         """List all registered (active) agents."""
-        return list(self._agents.values())
+        with self._lock:
+            return list(self._agents.values())
 
     def update_trust(self, agent_id: str, trust: float) -> None:
         """Set an agent's trust score.
@@ -325,10 +330,11 @@ class InMemoryHiveGraph:
         Raises:
             KeyError: If agent not found.
         """
-        agent = self._agents.get(agent_id)
-        if agent is None:
-            raise KeyError(f"Agent '{agent_id}' not found")
-        agent.trust = max(0.0, min(2.0, trust))
+        with self._lock:
+            agent = self._agents.get(agent_id)
+            if agent is None:
+                raise KeyError(f"Agent '{agent_id}' not found")
+            agent.trust = max(0.0, min(2.0, trust))
 
     # -- Fact management -------------------------------------------------------
 
@@ -336,7 +342,7 @@ class InMemoryHiveGraph:
         """Promote a fact into the hive.
 
         If fact.fact_id is empty, generates one. Records the source agent
-        and increments their fact count.
+        and increments their fact count. Confidence is clamped to [0.0, 1.0].
 
         Args:
             agent_id: The promoting agent.
@@ -348,20 +354,23 @@ class InMemoryHiveGraph:
         Raises:
             KeyError: If agent_id not registered.
         """
-        if agent_id not in self._agents:
-            raise KeyError(f"Agent '{agent_id}' not registered")
+        with self._lock:
+            if agent_id not in self._agents:
+                raise KeyError(f"Agent '{agent_id}' not registered")
 
-        if not fact.fact_id:
-            fact.fact_id = _new_fact_id()
+            if not fact.fact_id:
+                fact.fact_id = _new_fact_id()
 
-        fact.source_agent = agent_id
-        self._facts[fact.fact_id] = fact
-        self._agents[agent_id].fact_count += 1
-        return fact.fact_id
+            fact.source_agent = agent_id
+            fact.confidence = max(0.0, min(1.0, fact.confidence))
+            self._facts[fact.fact_id] = fact
+            self._agents[agent_id].fact_count += 1
+            return fact.fact_id
 
     def get_fact(self, fact_id: str) -> HiveFact | None:
         """Retrieve a fact by ID, or None if not found."""
-        return self._facts.get(fact_id)
+        with self._lock:
+            return self._facts.get(fact_id)
 
     def query_facts(self, query: str, limit: int = 20) -> list[HiveFact]:
         """Search facts by keyword query.
@@ -377,52 +386,56 @@ class InMemoryHiveGraph:
         Returns:
             List of matching HiveFact.
         """
-        if not query or not query.strip():
-            return list(self._facts.values())[:limit]
+        with self._lock:
+            if not query or not query.strip():
+                return list(self._facts.values())[:limit]
 
-        keywords = _tokenize(query)
-        if not keywords:
-            return list(self._facts.values())[:limit]
+            keywords = _tokenize(query)
+            if not keywords:
+                return list(self._facts.values())[:limit]
 
-        scored: list[tuple[float, HiveFact]] = []
-        for fact in self._facts.values():
-            if fact.status == "retracted":
-                continue
-            fact_words = _tokenize(f"{fact.content} {fact.concept}")
-            hits = len(keywords & fact_words)
-            if hits > 0:
-                # Score: keyword hits + confidence as tiebreaker
-                score = hits + fact.confidence * 0.01
-                scored.append((score, fact))
+            scored: list[tuple[float, HiveFact]] = []
+            for fact in self._facts.values():
+                if fact.status == "retracted":
+                    continue
+                fact_words = _tokenize(f"{fact.content} {fact.concept}")
+                hits = len(keywords & fact_words)
+                if hits > 0:
+                    # Score: keyword hits + confidence as tiebreaker
+                    score = hits + fact.confidence * 0.01
+                    scored.append((score, fact))
 
-        scored.sort(key=lambda x: (-x[0], -x[1].confidence))
-        return [f for _, f in scored[:limit]]
+            scored.sort(key=lambda x: (-x[0], -x[1].confidence))
+            return [f for _, f in scored[:limit]]
 
     def retract_fact(self, fact_id: str) -> bool:
         """Retract a fact. Returns True if found and retracted."""
-        fact = self._facts.get(fact_id)
-        if fact is None:
-            return False
-        fact.status = "retracted"
-        return True
+        with self._lock:
+            fact = self._facts.get(fact_id)
+            if fact is None:
+                return False
+            fact.status = "retracted"
+            return True
 
     # -- Graph edges -----------------------------------------------------------
 
     def add_edge(self, edge: HiveEdge) -> None:
         """Add an edge to the graph."""
-        self._edges.append(edge)
+        with self._lock:
+            self._edges.append(edge)
 
     def get_edges(self, node_id: str, edge_type: str | None = None) -> list[HiveEdge]:
         """Get edges for a node, optionally filtered by type.
 
         Returns edges where node_id is either source or target.
         """
-        results: list[HiveEdge] = []
-        for e in self._edges:
-            if e.source_id == node_id or e.target_id == node_id:
-                if edge_type is None or e.edge_type == edge_type:
-                    results.append(e)
-        return results
+        with self._lock:
+            results: list[HiveEdge] = []
+            for e in self._edges:
+                if e.source_id == node_id or e.target_id == node_id:
+                    if edge_type is None or e.edge_type == edge_type:
+                        results.append(e)
+            return results
 
     # -- Contradiction detection -----------------------------------------------
 
@@ -444,21 +457,22 @@ class InMemoryHiveGraph:
         if not concept:
             return []
 
-        contradictions: list[HiveFact] = []
-        concept_lower = concept.lower()
+        with self._lock:
+            contradictions: list[HiveFact] = []
+            concept_lower = concept.lower()
 
-        for fact in self._facts.values():
-            if fact.status == "retracted":
-                continue
-            if fact.concept.lower() != concept_lower:
-                continue
-            if fact.content == content:
-                continue
-            overlap = _word_overlap(content, fact.content)
-            if overlap > 0.4:
-                contradictions.append(fact)
+            for fact in self._facts.values():
+                if fact.status == "retracted":
+                    continue
+                if fact.concept.lower() != concept_lower:
+                    continue
+                if fact.content == content:
+                    continue
+                overlap = _word_overlap(content, fact.content)
+                if overlap > 0.4:
+                    contradictions.append(fact)
 
-        return contradictions
+            return contradictions
 
     # -- Expertise routing -----------------------------------------------------
 
@@ -474,16 +488,17 @@ class InMemoryHiveGraph:
         if not query_words:
             return []
 
-        scored: list[tuple[float, str]] = []
-        for agent in self._agents.values():
-            if agent.status != "active":
-                continue
-            domain_words = _tokenize(agent.domain)
-            if not domain_words:
-                continue
-            hits = len(query_words & domain_words)
-            if hits > 0:
-                scored.append((hits, agent.agent_id))
+        with self._lock:
+            scored: list[tuple[float, str]] = []
+            for agent in self._agents.values():
+                if agent.status != "active":
+                    continue
+                domain_words = _tokenize(agent.domain)
+                if not domain_words:
+                    continue
+                hits = len(query_words & domain_words)
+                if hits > 0:
+                    scored.append((hits, agent.agent_id))
 
         scored.sort(key=lambda x: -x[0])
         return [agent_id for _, agent_id in scored]
@@ -492,11 +507,18 @@ class InMemoryHiveGraph:
 
     def set_parent(self, parent: HiveGraph) -> None:
         """Set the parent hive in the federation tree."""
-        self._parent = parent
+        with self._lock:
+            self._parent = parent
 
     def add_child(self, child: HiveGraph) -> None:
-        """Add a child hive to the federation tree."""
-        self._children.append(child)
+        """Add a child hive to the federation tree.
+
+        Duplicate children (by hive_id) are silently ignored.
+        """
+        with self._lock:
+            existing_ids = {c.hive_id for c in self._children}
+            if child.hive_id not in existing_ids:
+                self._children.append(child)
 
     def escalate_fact(self, fact: HiveFact) -> bool:
         """Promote a fact to the parent hive.
@@ -619,16 +641,17 @@ class InMemoryHiveGraph:
 
     def get_stats(self) -> dict[str, Any]:
         """Return hive statistics."""
-        active_facts = sum(1 for f in self._facts.values() if f.status != "retracted")
-        return {
-            "hive_id": self._hive_id,
-            "agent_count": len(self._agents),
-            "fact_count": len(self._facts),
-            "active_facts": active_facts,
-            "edge_count": len(self._edges),
-            "has_parent": self._parent is not None,
-            "child_count": len(self._children),
-        }
+        with self._lock:
+            active_facts = sum(1 for f in self._facts.values() if f.status != "retracted")
+            return {
+                "hive_id": self._hive_id,
+                "agent_count": len(self._agents),
+                "fact_count": len(self._facts),
+                "active_facts": active_facts,
+                "edge_count": len(self._edges),
+                "has_parent": self._parent is not None,
+                "child_count": len(self._children),
+            }
 
     def close(self) -> None:
         """Release resources (no-op for in-memory)."""
