@@ -1,21 +1,16 @@
 """Hive Mind: Distributed knowledge sharing between goal-seeking agents.
 
 Philosophy:
-- Shared blackboard via Kuzu graph for cross-agent knowledge retrieval
-- Event-sourced architecture for temporal reasoning and audit trails
-- Gossip protocol for epidemic-style knowledge dissemination
 - Content-hash deduplication prevents redundant storage
 - Each fact records its source_agent_id for provenance
+- Transport-agnostic event bus for inter-agent communication
+- Declarative controller for desired-state reconciliation
 
 Production modules (re-exported here):
     HiveGraph, InMemoryHiveGraph, PeerHiveGraph: Graph protocol + backends
     BusEvent, EventBus, LocalEventBus, etc.: Transport-agnostic event bus
     AgentNode, HiveCoordinator, DistributedHiveMind: Distributed hive mind
     HiveController, HiveManifest, etc.: Declarative reconciliation controller
-
-Experimental modules (importable directly, not re-exported):
-    blackboard, event_sourced, gossip, hierarchical, unified,
-    learning_agent_bridge, kuzu_hive
 """
 
 __all__: list[str] = []

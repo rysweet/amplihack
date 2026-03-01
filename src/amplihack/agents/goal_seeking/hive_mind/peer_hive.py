@@ -181,6 +181,10 @@ if HAS_PYSYNCOBJ:
                         results.append(e)
             return results
 
+        def get_edge_count(self) -> int:
+            """Return total number of edges (local read)."""
+            return len(self.__edges)
+
         # -- Expertise routing (local read) --------------------------------
 
         def get_expertise_agents(self, concept: str) -> list[str]:
@@ -512,20 +516,29 @@ class PeerHiveGraph:
 
     def set_parent(self, parent: HiveGraph) -> None:
         """Set the parent hive in the federation tree."""
-        self._parent = parent
+        with self._lock:
+            self._parent = parent
 
     def add_child(self, child: HiveGraph) -> None:
-        """Add a child hive to the federation tree."""
-        self._children.append(child)
+        """Add a child hive to the federation tree.
+
+        Duplicate children (by hive_id) are silently ignored.
+        """
+        with self._lock:
+            existing_ids = {c.hive_id for c in self._children}
+            if child.hive_id not in existing_ids:
+                self._children.append(child)
 
     def escalate_fact(self, fact: HiveFact) -> bool:
         """Promote a fact to the parent hive."""
-        if self._parent is None:
-            return False
+        with self._lock:
+            if self._parent is None:
+                return False
+            parent = self._parent
 
         relay_id = f"__relay_{self._hive_id}__"
-        if self._parent.get_agent(relay_id) is None:
-            self._parent.register_agent(relay_id, domain="relay")
+        if parent.get_agent(relay_id) is None:
+            parent.register_agent(relay_id, domain="relay")
 
         escalated = HiveFact(
             fact_id=_new_fact_id(),
@@ -536,9 +549,9 @@ class PeerHiveGraph:
             tags=list(fact.tags) + [f"escalated_from:{self._hive_id}"],
             status="promoted",
         )
-        self._parent.promote_fact(relay_id, escalated)
+        parent.promote_fact(relay_id, escalated)
 
-        self._parent.add_edge(
+        parent.add_edge(
             HiveEdge(
                 source_id=self._hive_id,
                 target_id=escalated.fact_id,
@@ -550,8 +563,11 @@ class PeerHiveGraph:
 
     def broadcast_fact(self, fact: HiveFact) -> int:
         """Push a fact to all children."""
+        with self._lock:
+            children = list(self._children)
+
         count = 0
-        for child in self._children:
+        for child in children:
             relay_id = f"__relay_{self._hive_id}__"
             if child.get_agent(relay_id) is None:
                 child.register_agent(relay_id, domain="relay")
@@ -598,16 +614,20 @@ class PeerHiveGraph:
         results = list(self.query_facts(query, limit=limit))
         seen_content: set[str] = {f.content for f in results}
 
+        with self._lock:
+            parent = self._parent
+            children = list(self._children)
+
         # Parent (recursive, with visited set to prevent loops)
-        if self._parent is not None:
-            parent_results = self._parent.query_federated(query, limit=limit, _visited=_visited)
+        if parent is not None:
+            parent_results = parent.query_federated(query, limit=limit, _visited=_visited)
             for f in parent_results:
                 if f.content not in seen_content:
                     seen_content.add(f.content)
                     results.append(f)
 
         # Children (recursive)
-        for child in self._children:
+        for child in children:
             child_results = child.query_federated(query, limit=limit, _visited=_visited)
             for f in child_results:
                 if f.content not in seen_content:
@@ -628,7 +648,7 @@ class PeerHiveGraph:
             "agent_count": len(self._state.get_all_agents()),
             "fact_count": len(all_meta),
             "active_facts": active,
-            "edge_count": len(self._state.get_edges("", None)),
+            "edge_count": self._state.get_edge_count(),
             "has_parent": self._parent is not None,
             "child_count": len(self._children),
             "self_address": self._self_address,
