@@ -1,18 +1,18 @@
-"""Per-session reasoning loop — the director's brain for each agent session.
+"""Per-session reasoning loop — the admiral's brain for each agent session.
 
-For each session, the director:
+For each session, the admiral:
 1. PERCEIVE: Capture tmux pane + read JSONL transcript
 2. REASON: Use Anthropic SDK to decide what action to take
 3. ACT: Inject keystrokes via tmux send-keys (or show in dry-run)
 4. LEARN: Record the decision and its outcome
 
-The key insight: the director doesn't just OBSERVE sessions — it DRIVES them
+The key insight: the admiral doesn't just OBSERVE sessions — it DRIVES them
 by typing into the TUI when agents need input, get stuck, or need redirection.
 
 Public API:
     SessionReasoner: Per-session reasoning engine
     SessionContext: Gathered context for a single session
-    SessionDecision: What the director decided to do
+    SessionDecision: What the admiral decided to do
 """
 
 from __future__ import annotations
@@ -79,7 +79,7 @@ class AnthropicBackend:
 
 @dataclass
 class SessionContext:
-    """Everything the director knows about a session at reasoning time."""
+    """Everything the admiral knows about a session at reasoning time."""
 
     vm_name: str
     session_name: str
@@ -124,13 +124,13 @@ class SessionContext:
 
 @dataclass
 class SessionDecision:
-    """What the director decided to do for a session."""
+    """What the admiral decided to do for a session."""
 
     session_name: str
     vm_name: str
     action: str  # "send_input", "wait", "escalate", "mark_complete", "restart"
     input_text: str = ""  # Text to type into the session (if action=send_input)
-    reasoning: str = ""  # Why the director made this decision
+    reasoning: str = ""  # Why the admiral made this decision
     confidence: float = 0.0
     timestamp: datetime = field(default_factory=datetime.now)
 
@@ -175,7 +175,7 @@ def _load_strategy_dictionary() -> str:
     return ""
 
 
-SYSTEM_PROMPT_BASE = """You are a Fleet Director managing coding agent sessions across multiple VMs.
+SYSTEM_PROMPT_BASE = """You are a Fleet Admiral managing coding agent sessions across multiple VMs.
 
 For each session, you analyze the current terminal output and transcript to decide what to do.
 
@@ -675,7 +675,7 @@ echo '===END==='
                 pass
 
     def _show_decision(self, decision: SessionDecision, context: SessionContext) -> None:
-        """DRY-RUN: Print what the director would do without acting."""
+        """DRY-RUN: Print what the admiral would do without acting."""
         print(f"\n{'='*60}")
         print(f"DRY RUN: {decision.vm_name}/{decision.session_name}")
         print(f"{'='*60}")
@@ -701,7 +701,7 @@ echo '===END==='
             return "No decisions made yet."
 
         lines = [
-            f"Fleet Director Dry Run — {len(self._decisions)} sessions analyzed",
+            f"Fleet Admiral Dry Run — {len(self._decisions)} sessions analyzed",
             "",
         ]
 

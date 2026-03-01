@@ -3,7 +3,7 @@
 ## Vision
 
 You type `fleet dry-run` and see what every agent session needs. You type
-`fleet start --adopt` and the director takes over — answering agent questions,
+`fleet start --adopt` and the admiral takes over — answering agent questions,
 approving safe operations, escalating complex decisions. You check in with
 `fleet watch` and `fleet dashboard` to see progress.
 
@@ -22,7 +22,7 @@ per-session reasoning loop.
 
 ## Composable Reasoner Chain
 
-The director's `reason()` delegates to a chain of composable reasoners:
+The admiral's `reason()` delegates to a chain of composable reasoners:
 
 ```
 LifecycleReasoner → PreemptionReasoner → CoordinationReasoner → BatchAssignReasoner
@@ -42,10 +42,10 @@ is one class + one append to the chain.
 
 | Scale | Architecture |
 |-------|-------------|
-| 6-15 VMs | Current centralized director |
+| 6-15 VMs | Current centralized admiral |
 | 15-30 VMs | Add parallel Bastion tunnels + push-based heartbeats |
 | 30-50 VMs | SQLite task queue + persistent SSH tunnels |
-| 50+ VMs | Hub-spoke: regional directors reporting to coordinator |
+| 50+ VMs | Hub-spoke: regional admirals reporting to coordinator |
 
 ## Future Directions
 

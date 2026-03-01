@@ -5,8 +5,8 @@ Usage:
     fleet dashboard       Meta-project tracking view
     fleet tui             Live TUI dashboard with auto-refresh
     fleet add-task        Queue a new task
-    fleet start           Begin autonomous director loop
-    fleet run-once        Execute one director cycle
+    fleet start           Begin autonomous admiral loop
+    fleet run-once        Execute one admiral cycle
     fleet watch           Live snapshot of a remote session
     fleet snapshot        Point-in-time capture of all sessions
     fleet adopt           Bring existing sessions under management
@@ -31,7 +31,7 @@ import click
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 from amplihack.fleet.fleet_auth import AuthPropagator
-from amplihack.fleet.fleet_director import FleetDirector
+from amplihack.fleet.fleet_admiral import FleetAdmiral
 from amplihack.fleet.fleet_observer import FleetObserver
 from amplihack.fleet.fleet_state import FleetState
 from amplihack.fleet.fleet_tasks import TaskPriority, TaskQueue
@@ -49,10 +49,10 @@ AZLIN_PATH = os.environ.get("AZLIN_PATH", shutil.which("azlin") or "/home/azureu
 EXISTING_VMS = {"devy", "devo", "devi", "deva", "amplihack", "seldon-vm"}
 
 
-def _get_director(queue_path: Path = DEFAULT_QUEUE_PATH) -> FleetDirector:
-    """Create a configured FleetDirector."""
+def _get_director(queue_path: Path = DEFAULT_QUEUE_PATH) -> FleetAdmiral:
+    """Create a configured FleetAdmiral."""
     queue = TaskQueue(persist_path=queue_path)
-    director = FleetDirector(
+    director = FleetAdmiral(
         task_queue=queue,
         azlin_path=AZLIN_PATH,
         log_dir=DEFAULT_LOG_DIR,
@@ -67,14 +67,14 @@ def fleet_cli(ctx):
     """Fleet orchestration for distributed coding agents.
 
     Manage coding agents (Claude Code, GitHub Copilot, Amplifier) running
-    across multiple Azure VMs via azlin. The fleet director monitors agent
+    across multiple Azure VMs via azlin. The fleet admiral monitors agent
     sessions, answers questions, and routes tasks autonomously.
 
     \b
     QUICK START:
       amplihack fleet              Launch the interactive TUI dashboard
       amplihack fleet status       Quick text overview of all VMs and sessions
-      amplihack fleet dry-run      See what the director would do (no action)
+      amplihack fleet dry-run      See what the admiral would do (no action)
 
     \b
     SESSION MANAGEMENT:
@@ -89,8 +89,8 @@ def fleet_cli(ctx):
       amplihack fleet dashboard    Project-level tracking
 
     \b
-    DIRECTOR CONTROL:
-      amplihack fleet start        Run autonomous director loop
+    ADMIRAL CONTROL:
+      amplihack fleet start        Run autonomous admiral loop
       amplihack fleet run-once     Single PERCEIVE→REASON→ACT cycle
 
     \b
@@ -101,7 +101,7 @@ def fleet_cli(ctx):
     \b
     ENVIRONMENT:
       AZLIN_PATH    Path to azlin binary (auto-detected if on PATH)
-      ANTHROPIC_API_KEY   Required for dry-run and director LLM reasoning
+      ANTHROPIC_API_KEY   Required for dry-run and admiral LLM reasoning
 
     \b
     REQUIRES:
@@ -118,7 +118,7 @@ def fleet_cli(ctx):
             click.echo("")
             click.echo("Or use text-based commands:")
             click.echo("  amplihack fleet status     Quick overview")
-            click.echo("  amplihack fleet dry-run    Director reasoning")
+            click.echo("  amplihack fleet dry-run    Admiral reasoning")
             click.echo("  amplihack fleet --help     All commands")
 
 
@@ -194,18 +194,18 @@ def show_queue():
 
 
 @fleet_cli.command("start")
-@click.option("--max-cycles", default=0, help="Max director cycles (0 = unlimited)")
+@click.option("--max-cycles", default=0, help="Max admiral cycles (0 = unlimited)")
 @click.option("--interval", default=60, help="Poll interval in seconds")
 @click.option("--adopt", is_flag=True, help="Adopt existing sessions at startup")
 def start(max_cycles, interval, adopt):
-    """Start autonomous fleet director loop."""
+    """Start autonomous fleet admiral loop."""
     director = _get_director()
     director.poll_interval_seconds = interval
 
     if adopt:
         _adopt_all_sessions(director)
 
-    click.echo("Starting Fleet Director (Ctrl+C to stop)...")
+    click.echo("Starting Fleet Admiral (Ctrl+C to stop)...")
     click.echo(f"Poll interval: {interval}s, Max cycles: {max_cycles or 'unlimited'}")
     click.echo(f"Excluded VMs: {', '.join(EXISTING_VMS)}")
     click.echo("")
@@ -389,7 +389,7 @@ def observe(vm_name):
 @click.option("--vm", multiple=True, help="Specific VMs to analyze (default: all managed)")
 @click.option("--priorities", default="", help="Project priorities to guide decisions")
 def dry_run(vm, priorities):
-    """Show what the director would do for each session WITHOUT acting.
+    """Show what the admiral would do for each session WITHOUT acting.
 
     Reads each session's tmux output and JSONL transcript, then uses
     the LLM to reason about what action to take. Displays the full
@@ -446,7 +446,7 @@ def dry_run(vm, priorities):
         click.echo("No sessions found on target VMs.")
         return
 
-    click.echo(f"\nFleet Director Dry Run — {len(sessions_to_check)} sessions")
+    click.echo(f"\nFleet Admiral Dry Run — {len(sessions_to_check)} sessions")
     click.echo(f"Backend: anthropic")
     click.echo(f"Priorities: {priorities or '(none specified)'}")
     click.echo("")
@@ -481,7 +481,7 @@ def show_graph():
     click.echo(graph.summary())
 
 
-def _adopt_all_sessions(director: FleetDirector) -> None:
+def _adopt_all_sessions(director: FleetAdmiral) -> None:
     """Adopt existing sessions on all managed VMs."""
     from amplihack.fleet.fleet_adopt import SessionAdopter
 

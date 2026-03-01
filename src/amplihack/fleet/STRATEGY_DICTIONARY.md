@@ -1,6 +1,6 @@
-# Fleet Director Strategy Dictionary
+# Fleet Admiral Strategy Dictionary
 
-Reference document for the fleet director's decision engine. Read before every decision cycle.
+Reference document for the fleet admiral's decision engine. Read before every decision cycle.
 Based on analysis of 140+ real sessions and observed tool/strategy usage patterns.
 
 ---
@@ -48,8 +48,8 @@ If steps were skipped, inject a reminder: "You skipped Step N. Execute it now be
 
 **Example:**
 ```
-Director observes session-7 pushed a PR without test results.
-→ Director sends: "Step 13 (Local Testing) is mandatory. Run at least 2 test
+Admiral observes session-7 pushed a PR without test results.
+→ Admiral sends: "Step 13 (Local Testing) is mandatory. Run at least 2 test
   scenarios and document results in the PR description before this can merge."
 → Agent executes tests, updates PR.
 ```
@@ -69,8 +69,8 @@ Minimum: 1 simple scenario + 1 complex scenario with documented output.
 
 **Example:**
 ```
-Director reviews PR #142, finds no test results section.
-→ Director instructs agent: "Run outside-in testing. Execute:
+Admiral reviews PR #142, finds no test results section.
+→ Admiral instructs agent: "Run outside-in testing. Execute:
    uvx --from git+https://github.com/org/repo@branch package-name --help
    Then test the actual user workflow that changed."
 → Agent runs tests, pastes results into PR.
@@ -90,11 +90,11 @@ Director reviews PR #142, finds no test results section.
 
 **Example:**
 ```
-Director sees builder created a 4-layer abstraction for a config reader.
-→ Director invokes philosophy-guardian on the module.
+Admiral sees builder created a 4-layer abstraction for a config reader.
+→ Admiral invokes philosophy-guardian on the module.
 → Guardian reports: "3 unnecessary abstraction layers. Direct implementation
    would be 40 lines vs current 180."
-→ Director instructs agent to simplify.
+→ Admiral instructs agent to simplify.
 ```
 
 ---
@@ -112,7 +112,7 @@ Synthesize results to build a complete system picture before any implementation 
 **Example:**
 ```
 Task: "Add caching to the API layer"
-→ Director launches in parallel:
+→ Admiral launches in parallel:
    - analyzer on API routes (understand endpoints)
    - analyzer on data layer (understand current data flow)
    - analyzer on config system (understand how settings work)
@@ -134,7 +134,7 @@ Collect all findings, deduplicate, post consolidated review to PR.
 **Example:**
 ```
 PR #98 adds JWT authentication (security-sensitive).
-→ Director launches:
+→ Admiral launches:
    - reviewer: checks code quality, test coverage, error handling
    - security: checks token validation, timing attacks, secret storage
    - philosophy-guardian: checks for over-engineering
@@ -147,16 +147,16 @@ PR #98 adds JWT authentication (security-sensitive).
 
 **When:** Agent is working on a complex task requiring sustained focus (2+ hours). Architectural redesign, large refactoring, deep debugging.
 
-**Action:** Use `/amplihack:lock` to mark the session as protected. Set task status to `in_progress` with a lock flag. Prevent the director from interrupting with status checks or reassignments.
+**Action:** Use `/amplihack:lock` to mark the session as protected. Set task status to `in_progress` with a lock flag. Prevent the admiral from interrupting with status checks or reassignments.
 
 Check back only at the estimated completion time or if the agent signals it is stuck.
 
 **Example:**
 ```
 Agent session-3 is redesigning the database schema (estimated 3 hours).
-→ Director: /amplihack:lock session-3 --duration 3h --reason "schema redesign"
-→ Director skips session-3 in monitoring cycles until lock expires.
-→ After 3h, director checks: "Lock expired on session-3. Checking status."
+→ Admiral: /amplihack:lock session-3 --duration 3h --reason "schema redesign"
+→ Admiral skips session-3 in monitoring cycles until lock expires.
+→ After 3h, admiral checks: "Lock expired on session-3. Checking status."
 ```
 
 ---
@@ -175,12 +175,12 @@ Track measurement in fleet state for reporting.
 **Example:**
 ```
 Task: "Add pagination to /api/users endpoint"
-Agent reports done. Director checks:
+Agent reports done. Admiral checks:
 - [x] Endpoint accepts page/limit params → YES
 - [x] Response includes total_count → YES
 - [ ] Tests cover edge cases (page=0, limit=10000) → NO
 → GOAL_STATUS: PARTIAL
-→ Director: "Missing edge case tests for page=0 and limit=10000. Add them."
+→ Admiral: "Missing edge case tests for page=0 and limit=10000. Add them."
 ```
 
 ---
@@ -200,9 +200,9 @@ Iterate until audit is clean or remaining issues are documented as accepted.
 **Example:**
 ```
 Feature "user notifications" is complete.
-→ Director invokes quality-audit-workflow on src/notifications/
+→ Admiral invokes quality-audit-workflow on src/notifications/
 → Audit finds: 2 untested error paths, 1 duplicated validation block
-→ Director creates fix tasks, agent resolves them
+→ Admiral creates fix tasks, agent resolves them
 → Re-audit: clean. Feature approved.
 ```
 
@@ -223,7 +223,7 @@ Do not proceed to push until all hooks pass.
 **Example:**
 ```
 Agent session-5: "Pre-commit failed: ruff found 3 issues, black reformatted 2 files"
-→ Director invokes pre-commit-diagnostic agent
+→ Admiral invokes pre-commit-diagnostic agent
 → Agent auto-fixes all issues, re-runs hooks
 → All hooks pass. Agent commits successfully.
 ```
@@ -247,10 +247,10 @@ Never auto-merge. Report "PR is mergeable" and wait for human approval.
 **Example:**
 ```
 PR #77 CI failed: test_auth_flow assertion error.
-→ Director invokes ci-diagnostic-workflow
+→ Admiral invokes ci-diagnostic-workflow
 → Agent identifies: test expects old response format, code changed format
 → Agent updates test, pushes fix commit
-→ CI re-runs, all green. Director reports: "PR #77 is now mergeable."
+→ CI re-runs, all green. Admiral reports: "PR #77 is now mergeable."
 ```
 
 ---
@@ -270,7 +270,7 @@ Prevents: merge conflicts, accidental cross-task pollution, lost work.
 **Example:**
 ```
 Two tasks: "Add caching" and "Fix auth bug"
-→ Director creates worktree for each:
+→ Admiral creates worktree for each:
    - .claude/worktrees/add-caching/ (branch: feat/add-caching)
    - .claude/worktrees/fix-auth/ (branch: fix/auth-bug)
 → Each agent works in isolation. No conflicts.
@@ -294,7 +294,7 @@ Two tasks: "Add caching" and "Fix auth bug"
 ```
 Task: "Fix race condition in job scheduler"
 Agent has never seen the scheduler code.
-→ Director: "Run investigation workflow on src/scheduler/ first."
+→ Admiral: "Run investigation workflow on src/scheduler/ first."
 → Agent maps: JobQueue, Worker, Dispatcher classes and their interactions
 → Agent identifies the race condition location
 → Then proceeds to DEFAULT_WORKFLOW for the fix with full understanding.
@@ -308,7 +308,7 @@ Agent has never seen the scheduler code.
 
 **Action:** Invoke `architect` agent before `builder`:
 1. Architect produces: module boundaries, public contracts, data models, error handling strategy
-2. Director reviews architect output for philosophy compliance
+2. Admiral reviews architect output for philosophy compliance
 3. Hand specification to `builder` agent for implementation
 4. `reviewer` validates implementation matches spec
 
@@ -317,10 +317,10 @@ Sequential chain: architect → builder → reviewer
 **Example:**
 ```
 Task: "Add webhook notification system"
-→ Director invokes architect: design the webhook module
+→ Admiral invokes architect: design the webhook module
 → Architect produces: WebhookManager class, event model, retry strategy, API endpoints
-→ Director checks: spec is simple, self-contained, regeneratable
-→ Director hands spec to builder: "Implement this specification exactly."
+→ Admiral checks: spec is simple, self-contained, regeneratable
+→ Admiral hands spec to builder: "Implement this specification exactly."
 → Builder produces code. Reviewer validates.
 ```
 
@@ -340,9 +340,9 @@ Task: "Add webhook notification system"
 **Example:**
 ```
 Backlog has 8 tasks. 3 fleet sessions available.
-→ Director invokes pm-architect: "Prioritize these 8 tasks."
+→ Admiral invokes pm-architect: "Prioritize these 8 tasks."
 → PM recommends: #45 (blocker, 2h), #42 (high, 4h), #48 (medium, 1h)
-→ Director assigns: session-1=#45, session-2=#42, session-3=#48
+→ Admiral assigns: session-1=#45, session-2=#42, session-3=#48
 → Remaining tasks queued for next available session.
 ```
 
@@ -364,7 +364,7 @@ Cost: 3-4x execution time. Benefit: 30-65% error reduction.
 **Example:**
 ```
 Task: "Implement rate limiter for API"
-→ Director: /amplihack:n-version "Implement rate limiter"
+→ Admiral: /amplihack:n-version "Implement rate limiter"
 → Version A: Token bucket algorithm
 → Version B: Sliding window counter
 → Version C: Fixed window with burst
@@ -389,7 +389,7 @@ Cost: 2-3x execution time. Benefit: 40-70% better decision quality.
 **Example:**
 ```
 Question: "Should fleet state use SQLite or in-memory dict with JSON persistence?"
-→ Director: /amplihack:debate "SQLite vs JSON for fleet state"
+→ Admiral: /amplihack:debate "SQLite vs JSON for fleet state"
 → Simplicity perspective: JSON -- fewer dependencies, easier debugging
 → Performance perspective: SQLite -- concurrent access, query capability
 → Maintenance perspective: JSON -- human-readable, git-friendly
@@ -400,7 +400,7 @@ Question: "Should fleet state use SQLite or in-memory dict with JSON persistence
 
 ### 17. Dry-Run Validation
 
-**When:** Before the director takes any live action that modifies sessions, sends commands to agents, or changes fleet state. Especially before destructive operations.
+**When:** Before the admiral takes any live action that modifies sessions, sends commands to agents, or changes fleet state. Especially before destructive operations.
 
 **Action:** Run the decision through dry-run mode:
 1. Log what WOULD happen without executing
@@ -411,20 +411,20 @@ Question: "Should fleet state use SQLite or in-memory dict with JSON persistence
 
 **Example:**
 ```
-Director decides to kill stuck session-4 and reassign its task.
+Admiral decides to kill stuck session-4 and reassign its task.
 → Dry-run output:
    "WOULD: Terminate session-4 (running 6h, last activity 2h ago)"
    "WOULD: Reassign task #55 to new session-5"
    "WOULD: Create worktree for session-5"
-→ Director checks: session-4 has uncommitted changes!
-→ Director adjusts: save worktree first, THEN terminate.
+→ Admiral checks: session-4 has uncommitted changes!
+→ Admiral adjusts: save worktree first, THEN terminate.
 ```
 
 ---
 
 ### 18. Session Adoption Protocol
 
-**When:** Director starts and finds existing running sessions. Taking over management of sessions started by another director or manually by operator.
+**When:** Admiral starts and finds existing running sessions. Taking over management of sessions started by another admiral or manually by operator.
 
 **Action:** Follow the adoption sequence:
 1. **Scan**: List all active Claude sessions (`fleet ps`)
@@ -437,7 +437,7 @@ Never disrupt a session mid-operation during adoption.
 
 **Example:**
 ```
-Director starts. Finds 3 running sessions.
+Admiral starts. Finds 3 running sessions.
 → Scan: session-1 (active, last cmd 5m ago), session-2 (active, 30m ago), session-3 (idle, 2h ago)
 → Infer: session-1 is implementing auth, session-2 is debugging tests, session-3 might be stuck
 → Track: Create records for all 3
@@ -462,7 +462,7 @@ Director starts. Finds 3 running sessions.
 **Example:**
 ```
 Operator: "What's the status?"
-→ Director:
+→ Admiral:
    COMPLETED: Task #45 (auth fix) -- PR #99 merged
    IN PROGRESS: session-2 on task #42 (caching) -- 60% complete
    BLOCKED: session-3 hit CI failure on PR #101
@@ -475,7 +475,7 @@ Operator: "What's the status?"
 ### 20. Escalation Protocol
 
 **When:**
-- Director confidence < 0.6 on any decision
+- Admiral confidence < 0.6 on any decision
 - Destructive operation detected (force push, branch delete, session kill with unsaved work)
 - Same issue recurs 3+ times despite fixes
 - Agent stuck for > 2 hours with no progress
@@ -491,7 +491,7 @@ Operator: "What's the status?"
 **Example:**
 ```
 Session-6 has failed CI 3 times on the same test.
-→ Director: "ESCALATION: session-6 has failed CI 3 times on test_webhook_retry.
+→ Admiral: "ESCALATION: session-6 has failed CI 3 times on test_webhook_retry.
    Root cause unclear after 3 fix attempts.
    Options:
    A) Run investigation workflow on the test module
@@ -655,7 +655,7 @@ Architectural question
   → Clear trade-off?  → Strategy 16 (Debate)
   → Need prioritization? → Strategy 14 (Sprint Planning)
 
-Director action
+Admiral action
   → Always → Strategy 17 (Dry-Run Validation) first
   → Confidence < 0.6 → Strategy 20 (Escalation Protocol)
 ```

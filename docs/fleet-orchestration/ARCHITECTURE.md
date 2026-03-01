@@ -7,16 +7,16 @@ with coding agents (Claude Code, GitHub Copilot, Amplifier). Today this
 requires manual auth setup, agent startup, monitoring, and priority management
 across all sessions.
 
-## Solution: Fleet Director
+## Solution: Fleet Admiral
 
-A centralized director that manages agent sessions using a per-session
-PERCEIVE->REASON->ACT->LEARN loop. The director reads each session's terminal
+A centralized admiral that manages agent sessions using a per-session
+PERCEIVE->REASON->ACT->LEARN loop. The admiral reads each session's terminal
 output and transcript, uses an LLM to decide what action to take, and
 injects keystrokes via tmux to continue work.
 
 ```
 +--------------------------------------------------------------+
-|                     FLEET DIRECTOR                            |
+|                     FLEET ADMIRAL                            |
 |                                                               |
 |  For each session:                                            |
 |    PERCEIVE -> REASON -> ACT -> LEARN                         |
@@ -47,7 +47,7 @@ For each tmux session on each cycle:
 
 ### Thinking Detection
 
-The director detects when an agent is actively thinking/processing and
+The admiral detects when an agent is actively thinking/processing and
 does NOT interrupt. Indicators:
 
 | Agent | Thinking Indicator | Meaning |
@@ -58,7 +58,7 @@ does NOT interrupt. Indicators:
 | Copilot | `Thinking...` | LLM call in flight |
 | Copilot | `Running:` | Tool execution |
 
-When thinking is detected, the director skips the LLM reasoning call
+When thinking is detected, the admiral skips the LLM reasoning call
 entirely (fast-path WAIT) to save cost.
 
 ### Safety Mechanisms
@@ -66,6 +66,9 @@ entirely (fast-path WAIT) to save cost.
 **Dangerous input blocklist**: The session reasoner blocks commands matching
 destructive patterns (`rm -rf`, `git push --force`, `DROP TABLE`, fork bombs,
 etc.) regardless of LLM confidence.
+
+**Confidence thresholds**: Actions require minimum confidence of 0.6 to execute.
+Restart actions require 0.8. Below-threshold decisions are logged but not acted on.
 
 **Confidence thresholds**: Actions require minimum confidence of 0.6 to execute.
 Restart actions require 0.8. Below-threshold decisions are logged but not acted on.
@@ -79,7 +82,7 @@ init, 1 CLI entry point):
 
 | Module | File | Purpose |
 |--------|------|---------|
-| `fleet_director` | `fleet_director.py` | Central control plane. Orchestrates the PERCEIVE->REASON->ACT->LEARN loop across all VMs. Manages session lifecycle (start, stop, reassign, mark complete). |
+| `fleet_admiral` | `fleet_admiral.py` | Central control plane. Orchestrates the PERCEIVE->REASON->ACT->LEARN loop across all VMs. Manages session lifecycle (start, stop, reassign, mark complete). |
 | `fleet_session_reasoner` | `fleet_session_reasoner.py` | Per-session LLM reasoning. Captures tmux pane + JSONL logs, sends to Anthropic SDK, parses structured decisions. Implements dry-run mode, dangerous input blocking, and confidence thresholds. |
 | `fleet_reasoners` | `fleet_reasoners.py` | Composable reasoning chain with four pluggable reasoners: LifecycleReasoner (completions, failures, stuck detection), PreemptionReasoner (emergency priority escalation), CoordinationReasoner (inter-agent context sharing), BatchAssignReasoner (context-aware batch assignment). |
 
@@ -115,14 +118,14 @@ init, 1 CLI entry point):
 | Module | File | Purpose |
 |--------|------|---------|
 | `fleet_tui` | `fleet_tui.py` | Standard-library terminal dashboard. Uses ANSI escape codes for rendering, `select()` for input, `termios` for raw mode. No external dependencies. Shows VM status, session states, and agent activity. |
-| `fleet_tui_dashboard` | `fleet_tui_dashboard.py` | Interactive Textual-based dashboard (requires `amplihack[fleet-tui]`). Three-tab interface: Fleet Overview (session table + preview), Session Detail (full tmux capture + director proposal), Action Editor (edit and apply actions). Auto-refreshes via background workers. |
+| `fleet_tui_dashboard` | `fleet_tui_dashboard.py` | Interactive Textual-based dashboard (requires `amplihack[fleet-tui]`). Three-tab interface: Fleet Overview (session table + preview), Session Detail (full tmux capture + admiral proposal), Action Editor (edit and apply actions). Auto-refreshes via background workers. |
 | `fleet_cli` | `fleet_cli.py` | Click-based CLI entry point. Registers all subcommands (status, dashboard, tui, add-task, start, run-once, watch, snapshot, adopt, report, auth, observe, dry-run, graph, queue). Default command (no subcommand) launches the TUI dashboard. |
 
 ### Package
 
 | Module | File | Purpose |
 |--------|------|---------|
-| `__init__` | `__init__.py` | Package init. Exports public API: FleetDirector, FleetState, TaskQueue, AuthPropagator, GitHubIdentity, FleetObserver, FleetDashboard, ResultCollector, HealthChecker, RepoSetup, SessionAdopter, FleetGraph, ReasonerChain, LogReader, and associated data classes. |
+| `__init__` | `__init__.py` | Package init. Exports public API: FleetAdmiral (with FleetDirector backward-compat alias), FleetState, TaskQueue, AuthPropagator, GitHubIdentity, FleetObserver, FleetDashboard, ResultCollector, HealthChecker, RepoSetup, SessionAdopter, FleetGraph, ReasonerChain, LogReader, and associated data classes. |
 
 ## LLM Backend Protocol
 
@@ -142,14 +145,14 @@ New backends can be added by implementing the `complete` method.
 ```bash
 amplihack fleet                 # Launch interactive TUI dashboard
 amplihack fleet status          # VM/session inventory
-amplihack fleet dry-run         # Show what director would do (no action)
+amplihack fleet dry-run         # Show what admiral would do (no action)
 amplihack fleet dry-run --vm devo   # Dry-run for specific VM
 amplihack fleet watch vm session    # Live snapshot of remote session
 amplihack fleet snapshot        # Capture all sessions at once
 amplihack fleet observe vm      # Pattern-based session classification
 amplihack fleet adopt vm        # Bring existing sessions under management
-amplihack fleet start           # Start autonomous director loop
-amplihack fleet start --adopt   # Start director, adopt all at startup
+amplihack fleet start           # Start autonomous admiral loop
+amplihack fleet start --adopt   # Start admiral, adopt all at startup
 amplihack fleet run-once        # Single PERCEIVE->REASON->ACT cycle
 amplihack fleet add-task "prompt"   # Queue a task for the fleet
 amplihack fleet queue           # Show task queue
@@ -161,14 +164,14 @@ amplihack fleet report          # Generate fleet status report
 
 ## Session Adoption
 
-Users can start sessions manually, then hand them to the director:
+Users can start sessions manually, then hand them to the admiral:
 
 ```bash
 amplihack fleet adopt devo          # Discovers sessions, infers context, begins tracking
 amplihack fleet start --adopt       # Adopt all managed VMs at startup
 ```
 
-The director discovers existing tmux sessions via SSH, infers what they're
+The admiral discovers existing tmux sessions via SSH, infers what they're
 working on (from tmux pane content, git state, and JSONL logs), creates
 tracking records, and begins observing without disruption.
 
@@ -181,7 +184,7 @@ Fleet state is stored under `~/.amplihack/fleet/`:
 | `task_queue.json` | Priority-ordered task queue |
 | `dashboard.json` | Project metrics and cost tracking |
 | `graph.json` | Knowledge graph (projects, tasks, VMs, PRs) |
-| `logs/` | Director decision logs |
+| `logs/` | Admiral decision logs |
 
 ## Constraints
 

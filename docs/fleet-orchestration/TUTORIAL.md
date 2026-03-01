@@ -10,8 +10,8 @@ Manage coding agents (Claude Code, GitHub Copilot, Amplifier) running across mul
 - [The Dashboard](#the-dashboard)
 - [Observing Your Fleet](#observing-your-fleet)
 - [Adopting Existing Sessions](#adopting-existing-sessions)
-- [The Director: Dry-Run First](#the-director-dry-run-first)
-- [Running the Director Live](#running-the-director-live)
+- [The Admiral: Dry-Run First](#the-admiral-dry-run-first)
+- [Running the Admiral Live](#running-the-admiral-live)
 - [Task Management](#task-management)
 - [Environment Variables](#environment-variables)
 - [Running in tmux](#running-in-tmux)
@@ -30,9 +30,9 @@ Before you begin, you need:
 
    You should see your VMs listed with their status.
 
-3. **Coding agents running in tmux** on those VMs. Each VM should have one or more tmux sessions with Claude Code, Copilot, or Amplifier running inside them. The fleet director observes and manages these sessions.
+3. **Coding agents running in tmux** on those VMs. Each VM should have one or more tmux sessions with Claude Code, Copilot, or Amplifier running inside them. The fleet admiral observes and manages these sessions.
 
-4. **An Anthropic API key** set in your environment. The director uses Claude to reason about what each agent session needs:
+4. **An Anthropic API key** set in your environment. The admiral uses Claude to reason about what each agent session needs:
 
    ```bash
    export ANTHROPIC_API_KEY=sk-ant-...
@@ -91,7 +91,7 @@ amplihack fleet tui --interval 15   # Faster refresh (default: 30s)
 | Enter     | Dive into Session Detail for selected row    |
 | Escape    | Go back to Fleet Overview                    |
 | e         | Open Action Editor for the selected session  |
-| a         | Apply the director's proposed action         |
+| a         | Apply the admiral's proposed action          |
 | d         | Run dry-run reasoning for selected session   |
 | r         | Force refresh all sessions                   |
 | q         | Quit the dashboard                           |
@@ -100,9 +100,9 @@ amplihack fleet tui --interval 15   # Faster refresh (default: 30s)
 
 1. **Fleet Overview** -- The main view. A table of all sessions across all VMs with a preview pane on the right showing the last few lines of terminal output for the selected session.
 
-2. **Session Detail** -- Deep view of a single session. Shows the full tmux capture (what the agent's terminal looks like right now) and the director's proposed action with its reasoning.
+2. **Session Detail** -- Deep view of a single session. Shows the full tmux capture (what the agent's terminal looks like right now) and the admiral's proposed action with its reasoning.
 
-3. **Action Editor** -- Edit and override the director's proposed action before applying it. Choose an action type (send_input, wait, escalate, mark_complete, restart) and modify the input text.
+3. **Action Editor** -- Edit and override the admiral's proposed action before applying it. Choose an action type (send_input, wait, escalate, mark_complete, restart) and modify the input text.
 
 ### Status Icons
 
@@ -155,7 +155,7 @@ Runs the pattern-based observer on all sessions of a specific VM. Shows the dete
 
 ## Adopting Existing Sessions
 
-You do not need to start sessions through the fleet director. If you already have agents running in tmux sessions on your VMs (started manually or by another tool), you can bring them under fleet management.
+You do not need to start sessions through the fleet admiral. If you already have agents running in tmux sessions on your VMs (started manually or by another tool), you can bring them under fleet management.
 
 ### Adopt Sessions on a Single VM
 
@@ -193,13 +193,13 @@ Adopted 3 sessions:
   amplifier-session -> task ghi789
 ```
 
-### Adopt at Director Startup
+### Adopt at Admiral Startup
 
 ```bash
 amplihack fleet start --adopt
 ```
 
-When starting the director, `--adopt` scans all managed VMs and brings existing sessions under management before beginning the autonomous loop.
+When starting the admiral, `--adopt` scans all managed VMs and brings existing sessions under management before beginning the autonomous loop.
 
 ### Adopt Specific Sessions
 
@@ -209,9 +209,9 @@ amplihack fleet adopt devo --sessions claude-session-1 --sessions claude-session
 
 Only adopt named sessions, leaving others alone.
 
-## The Director: Dry-Run First
+## The Admiral: Dry-Run First
 
-The director is the autonomous reasoning engine. Before letting it act, use dry-run mode to see what it would do.
+The admiral is the autonomous reasoning engine. Before letting it act, use dry-run mode to see what it would do.
 
 ### Running a Dry-Run
 
@@ -219,7 +219,7 @@ The director is the autonomous reasoning engine. Before letting it act, use dry-
 amplihack fleet dry-run
 ```
 
-For each session on each managed VM, the director:
+For each session on each managed VM, the admiral:
 
 1. **PERCEIVE**: Captures the tmux pane and reads JSONL transcript summaries via SSH
 2. **REASON**: Sends the captured context to Claude, which decides what action to take
@@ -240,22 +240,22 @@ amplihack fleet dry-run --priorities "auth feature is highest priority, fix CI o
 
 ### What Dry-Run Shows
 
-For each session, you see the director's decision:
+For each session, you see the admiral's decision:
 
 - **Action**: `send_input`, `wait`, `escalate`, `mark_complete`, or `restart`
-- **Confidence**: How sure the director is (0.0 to 1.0)
+- **Confidence**: How sure the admiral is (0.0 to 1.0)
 - **Reasoning**: Why it chose this action
 - **Proposed input**: What it would type into the session (if `send_input`)
 
 ### Safety Mechanisms
 
-The director has built-in safety at multiple levels:
+The admiral has built-in safety at multiple levels:
 
-**Thinking detection**: If an agent is actively processing (Claude Code shows `●` or `⎿`, Copilot shows `Thinking...`), the director skips the LLM call entirely and fast-paths to WAIT. It never interrupts a working agent.
+**Thinking detection**: If an agent is actively processing (Claude Code shows `●` or `⎿`, Copilot shows `Thinking...`), the admiral skips the LLM call entirely and fast-paths to WAIT. It never interrupts a working agent.
 
 **Confidence thresholds**: Actions below 0.6 confidence are not executed. Restart actions require 0.8 confidence.
 
-**Dangerous input blocklist**: The director refuses to send commands matching dangerous patterns, regardless of confidence:
+**Dangerous input blocklist**: The admiral refuses to send commands matching dangerous patterns, regardless of confidence:
 
 - `rm -rf`, `rm -r /`
 - `git push --force`, `git push -f`
@@ -263,15 +263,15 @@ The director has built-in safety at multiple levels:
 - `DROP TABLE`, `DROP DATABASE`
 - Fork bombs and disk-destructive commands
 
-## Running the Director Live
+## Running the Admiral Live
 
-After reviewing dry-run output and confirming the director's reasoning looks sound:
+After reviewing dry-run output and confirming the admiral's reasoning looks sound:
 
 ```bash
 amplihack fleet start
 ```
 
-The director begins the autonomous loop: PERCEIVE, REASON, ACT, LEARN. It polls all sessions at a configurable interval, decides what each session needs, and acts.
+The admiral begins the autonomous loop: PERCEIVE, REASON, ACT, LEARN. It polls all sessions at a configurable interval, decides what each session needs, and acts.
 
 ### Controlling the Loop
 
@@ -281,7 +281,7 @@ amplihack fleet start --max-cycles 10  # Stop after 10 cycles
 amplihack fleet start --adopt          # Adopt existing sessions first
 ```
 
-Press `Ctrl+C` to stop the director gracefully.
+Press `Ctrl+C` to stop the admiral gracefully.
 
 ### Single Cycle
 
@@ -314,7 +314,7 @@ Options:
 | `--agent` | claude, amplifier, copilot | claude | Which agent to use |
 | `--mode` | auto, ultrathink | auto | Agent execution mode |
 | `--max-turns` | integer | 20 | Maximum agent turns |
-| `--protected` | flag | false | Deep work mode -- director will not preempt |
+| `--protected` | flag | false | Deep work mode -- admiral will not preempt |
 
 ### Viewing the Queue
 
@@ -345,7 +345,7 @@ Shows the relationship graph between projects, tasks, agents, VMs, and PRs. Usef
 | Variable | Purpose | Default |
 |----------|---------|---------|
 | `AZLIN_PATH` | Path to the azlin binary | Auto-detected via `which azlin`, falls back to `/home/azureuser/src/azlin/.venv/bin/azlin` |
-| `ANTHROPIC_API_KEY` | API key for Claude (required for dry-run and director reasoning) | (none -- must be set) |
+| `ANTHROPIC_API_KEY` | API key for Claude (required for dry-run and admiral reasoning) | (none -- must be set) |
 
 ## Running in tmux
 
@@ -361,13 +361,13 @@ tmux attach -t fleet-dashboard
 # Detach without stopping: Ctrl+b, then d
 ```
 
-For the director loop:
+For the admiral loop:
 
 ```bash
-tmux new-session -d -s fleet-director "amplihack fleet start --adopt --interval 30"
+tmux new-session -d -s fleet-admiral "amplihack fleet start --adopt --interval 30"
 
 # Check on it
-tmux attach -t fleet-director
+tmux attach -t fleet-admiral
 ```
 
 ## Auth Propagation
@@ -384,5 +384,5 @@ This copies credential files to the target VM and verifies they work.
 ## Next Steps
 
 - Read the [Architecture](./ARCHITECTURE.md) document to understand how the modules fit together
-- Read the [Strategy Dictionary](../../src/amplihack/fleet/STRATEGY_DICTIONARY.md) to understand the director's 20 decision strategies
+- Read the [Strategy Dictionary](../../src/amplihack/fleet/STRATEGY_DICTIONARY.md) to understand the admiral's 20 decision strategies
 - Run `amplihack fleet --help` for the full command reference

@@ -1,4 +1,4 @@
-"""Composable reasoning functions for the fleet director.
+"""Composable reasoning functions for the fleet admiral.
 
 Each reasoner takes fleet state + task queue and returns DirectorActions.
 Reasoners run in priority order as a chain. This replaces the monolithic
@@ -28,7 +28,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Protocol
 
-from amplihack.fleet.fleet_director import ActionType, DirectorAction
+from amplihack.fleet.fleet_admiral import ActionType, DirectorAction
 from amplihack.fleet.fleet_state import AgentStatus, FleetState
 from amplihack.fleet.fleet_tasks import FleetTask, TaskPriority, TaskQueue, TaskStatus
 
@@ -258,7 +258,7 @@ class CoordinationReasoner:
             }
             coord_file.write_text(json.dumps(coord_data, indent=2))
 
-        return []  # Side-effect only — no director actions
+        return []  # Side-effect only — no admiral actions
 
 
 @dataclass
