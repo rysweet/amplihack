@@ -1,26 +1,26 @@
 # Your First Documentation Site
 
-In this 30-minute tutorial, ye'll learn how to create and deploy yer first documentation site to GitHub Pages using amplihack's built-in tools.
+In this 30-minute tutorial, you'll learn how to create and deploy your first documentation site to GitHub Pages using amplihack's built-in tools.
 
 ## What You'll Build
 
-By the end of this tutorial, ye'll have:
+By the end of this tutorial, you'll have:
 
 - A live documentation site on GitHub Pages
-- Automatic navigation from yer docs structure
+- Automatic navigation from your docs structure
 - Material theme with search and code highlighting
 - Validated documentation that meets quality standards
 
 ## Prerequisites
 
-**Ye'll need**:
+**You'll need**:
 
 - Python 3.8 or later
 - Git installed and configured
 - A GitHub repository
 - 30 minutes
 
-**Check yer setup**:
+**Check your setup**:
 
 ```bash
 python --version   # Should be 3.8+
@@ -56,7 +56,7 @@ mkdir -p docs/reference
 cat > docs/index.md << 'EOF'
 # Welcome to My Project
 
-This is yer documentation site, generated with amplihack.
+This is your documentation site, generated with amplihack.
 
 ## Quick Links
 
@@ -73,7 +73,7 @@ EOF
 cat > docs/tutorials/getting-started.md << 'EOF'
 # Getting Started
 
-This tutorial walks ye through the basics of using this project.
+This tutorial walks you through the basics of using this project.
 
 ## Installation
 
@@ -107,7 +107,7 @@ cat > docs/howto/deploy.md << 'EOF'
 
 # How to Deploy
 
-This guide shows how to deploy yer application.
+This guide shows how to deploy your application.
 
 ## Deploy to Production
 
@@ -176,11 +176,11 @@ EOF
 
 ````
 
-**Result**: Ye now have a documentation structure following the Diataxis framework (tutorials, how-to, reference).
+**Result**: You now have a documentation structure following the Diataxis framework (tutorials, how-to, reference).
 
 ## Step 3: Generate the Site (3 minutes)
 
-Create a Python script to generate yer site:
+Create a Python script to generate your site:
 
 ```python
 # generate_docs.py
@@ -214,7 +214,7 @@ else:
         print(f"  - {error}")
 ````
 
-**Important**: Update `project_url` with yer actual GitHub repository URL!
+**Important**: Update `project_url` with your actual GitHub repository URL!
 
 Run the script:
 
@@ -254,7 +254,7 @@ INFO    -  Documentation built in 0.42 seconds
 INFO    -  [00:00:00] Serving on http://127.0.0.1:8000
 ```
 
-Open yer browser to http://127.0.0.1:8000 and ye'll see yer documentation site!
+Open your browser to http://127.0.0.1:8000 and you'll see your documentation site!
 
 **What to check**:
 
@@ -334,7 +334,7 @@ Scores:
 
 ## Step 6: Commit Your Work (3 minutes)
 
-Before deploying, commit yer documentation:
+Before deploying, commit your documentation:
 
 ```bash
 # Add generated files to .gitignore
@@ -351,7 +351,7 @@ git push origin main
 
 - They're generated files
 - They'll be built fresh on deployment
-- Keeps yer repo clean
+- Keeps your repo clean
 
 ## Step 7: Deploy to GitHub Pages (5 minutes)
 
@@ -407,7 +407,7 @@ else:
     exit(1)
 ```
 
-**Important**: Update `project_url` with yer actual repository URL!
+**Important**: Update `project_url` with your actual repository URL!
 
 Run the deployment:
 
@@ -435,9 +435,9 @@ Note: It may take 1-2 minutes for GitHub to build the site.
 
 ## Step 8: Enable GitHub Pages (2 minutes)
 
-Configure yer repository to serve from the `gh-pages` branch:
+Configure your repository to serve from the `gh-pages` branch:
 
-1. Go to yer repository on GitHub
+1. Go to your repository on GitHub
 2. Click **Settings**
 3. Scroll to **Pages** section
 4. Under **Source**, select:
@@ -449,13 +449,13 @@ GitHub will show: "Your site is live at https://YOUR_USERNAME.github.io/YOUR_REP
 
 ## Step 9: Visit Your Site (1 minute)
 
-Open the URL from GitHub Pages settings. Ye should see:
+Open the URL from GitHub Pages settings. You should see:
 
-- ✓ Yer documentation with Material theme
+- ✓ Your documentation with Material theme
 - ✓ Navigation menu
 - ✓ Search functionality
 - ✓ Code syntax highlighting
-- ✓ All yer pages accessible
+- ✓ All your pages accessible
 
 ## Congratulations! 🎉
 
@@ -469,7 +469,7 @@ Ye've successfully:
 
 ## Next Steps
 
-Now that ye have a working docs site, explore these topics:
+Now that you have a working docs site, explore these topics:
 
 ### Customize the Theme
 
@@ -495,7 +495,7 @@ config = SiteConfig(
 
 ### Custom Navigation
 
-Define yer own navigation structure:
+Define your own navigation structure:
 
 ```python
 config = SiteConfig(
@@ -548,7 +548,7 @@ jobs:
 
 ### Add More Content
 
-Expand yer documentation:
+Expand your documentation:
 
 - **Tutorials**: Step-by-step learning guides
 - **How-Tos**: Task-focused problem solutions

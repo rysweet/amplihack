@@ -1,10 +1,10 @@
 # Plugin Architecture
 
-Complete technical architecture fer amplihack's Claude Code plugin system.
+Complete technical architecture for amplihack's Claude Code plugin system.
 
 ## Overview
 
-Amplihack uses Claude Code's plugin architecture t' provide global installation and cross-project access t' agents, commands, skills, and hooks. The plugin installs at `~/.amplihack/.claude/` and be discoverable by all Claude Code sessions.
+Amplihack uses Claude Code's plugin architecture to provide global installation and cross-project access to agents, commands, skills, and hooks. The plugin installs at `~/.amplihack/.claude/` and is discoverable by all Claude Code sessions.
 
 ## Architecture
 
@@ -84,7 +84,7 @@ The plugin manifest (`~/.amplihack/.claude-plugin/plugin.json`) defines the plug
 
 ## Hook Registration
 
-All hooks use `${CLAUDE_PLUGIN_ROOT}` variable substitution t' reference the plugin installation directory. This ensures hooks work from any project directory.
+All hooks use `${CLAUDE_PLUGIN_ROOT}` variable substitution to reference the plugin installation directory. This ensures hooks work from any project directory.
 
 **Hook Configuration (`hooks.json`):**
 
@@ -119,9 +119,9 @@ All hooks use `${CLAUDE_PLUGIN_ROOT}` variable substitution t' reference the plu
 
 **Key Points:**
 
-- All hooks use `${CLAUDE_PLUGIN_ROOT}` fer absolute paths
-- Hooks be loaded once when plugin initializes
-- Changes t' hooks require plugin reinstall or Claude Code restart
+- All hooks use `${CLAUDE_PLUGIN_ROOT}` for absolute paths
+- Hooks are loaded once when plugin initializes
+- Changes to hooks require plugin reinstall or Claude Code restart
 
 ## Plugin Installation
 
@@ -201,7 +201,7 @@ Plugin installation updates `~/.claude/settings.json`:
 
 **Key Properties:**
 
-- `enabledPlugins`: Array o' plugin names t' load
+- `enabledPlugins`: Array of plugin names to load
 - `extraKnownMarketplaces`: Plugin discovery sources
 - `hooks`: Lifecycle hook registrations with `${CLAUDE_PLUGIN_ROOT}` paths
 
@@ -213,7 +213,7 @@ The plugin system maintains backward compatibility with per-project `~/.amplihac
 
 1. **LOCAL**: Project has `~/.amplihack/.claude/` directory → Use project-local
 2. **PLUGIN**: Plugin installed at `~/.amplihack/.claude/` → Use plugin
-3. **NONE**: No installation found → Prompt user t' install
+3. **NONE**: No installation found → Prompt user to install
 
 **Migration Commands:**
 
@@ -242,7 +242,7 @@ AMPLIHACK_MODE=plugin amplihack launch
 ### GitHub Copilot ⚠️
 
 - **Status**: Partial compatibility
-- **Installation**: Manual copy t' project `~/.amplihack/.claude/` directory
+- **Installation**: Manual copy to project `~/.amplihack/.claude/` directory
 - **Limitations**: No plugin system (yet), hooks may not work
 - **Workaround**: Use per-project installation mode
 
@@ -284,7 +284,7 @@ The `plugin verify` command checks three levels:
 Plugin Verification Checklist
 ├─ ✅ Installed: Plugin directory exists at ~/.amplihack/.claude/
 ├─ ✅ Discoverable: Plugin listed in ~/.claude/settings.json
-└─ ✅ Hooks loaded: hooks.json exists and be valid
+└─ ✅ Hooks loaded: hooks.json exists and is valid
 ```
 
 **Example Output:**
@@ -296,15 +296,15 @@ Plugin: amplihack
   Discoverable: ✅
   Hooks loaded: ✅
 
-Plugin be fully functional!
+Plugin is fully functional!
 ```
 
 ## Security Considerations
 
 - **Plugin Source Validation**: Only install plugins from trusted sources
 - **Hook Execution**: All hooks run with same permissions as Claude Code
-- **Path Traversal**: `${CLAUDE_PLUGIN_ROOT}` be validated before resolution
-- **Settings Backup**: Settings.json be backed up before modification
+- **Path Traversal**: `${CLAUDE_PLUGIN_ROOT}` is validated before resolution
+- **Settings Backup**: Settings.json is backed up before modification
 
 ## Performance
 
@@ -329,7 +329,7 @@ amplihack plugin verify amplihack
 
 1. Check `~/.claude/settings.json` contains plugin name
 2. Verify plugin directory exists at `~/.amplihack/.claude/`
-3. Restart Claude Code t' reload plugin
+3. Restart Claude Code to reload plugin
 
 ### Hooks Not Loading
 
@@ -343,9 +343,9 @@ cat ~/.amplihack/.claude/tools/amplihack/hooks/hooks.json
 
 **Solutions**:
 
-1. Verify `hooks.json` be valid JSON
+1. Verify `hooks.json` is valid JSON
 2. Check all hook scripts exist at specified paths
-3. Verify `${CLAUDE_PLUGIN_ROOT}` variable be set
+3. Verify `${CLAUDE_PLUGIN_ROOT}` variable is set
 4. Reinstall plugin: `amplihack plugin install --force`
 
 ### Mode Conflicts
@@ -376,4 +376,4 @@ amplihack mode status
 
 - **Install Plugin**: See [README.md Plugin Section](../README.md#plugin-installation)
 - **Migrate Project**: See [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md)
-- **Customize**: Create local `~/.amplihack/.claude/` fer project-specific agents
+- **Customize**: Create local `~/.amplihack/.claude/` for project-specific agents
