@@ -61,14 +61,65 @@ def _get_director(queue_path: Path = DEFAULT_QUEUE_PATH) -> FleetDirector:
     return director
 
 
-@click.group("fleet")
-def fleet_cli():
+@click.group("fleet", invoke_without_command=True)
+@click.pass_context
+def fleet_cli(ctx):
     """Fleet orchestration for distributed coding agents.
 
-    Manage coding agents across multiple Azure VMs with
-    priority-based task routing and autonomous monitoring.
+    Manage coding agents (Claude Code, GitHub Copilot, Amplifier) running
+    across multiple Azure VMs via azlin. The fleet director monitors agent
+    sessions, answers questions, and routes tasks autonomously.
+
+    \b
+    QUICK START:
+      amplihack fleet              Launch the interactive TUI dashboard
+      amplihack fleet status       Quick text overview of all VMs and sessions
+      amplihack fleet dry-run      See what the director would do (no action)
+
+    \b
+    SESSION MANAGEMENT:
+      amplihack fleet adopt <vm>   Bring existing sessions under management
+      amplihack fleet watch <vm> <session>   Live snapshot of a session
+      amplihack fleet snapshot     Capture all sessions at once
+
+    \b
+    TASK MANAGEMENT:
+      amplihack fleet add-task "prompt" --priority high   Queue work
+      amplihack fleet queue        Show task queue
+      amplihack fleet dashboard    Project-level tracking
+
+    \b
+    DIRECTOR CONTROL:
+      amplihack fleet start        Run autonomous director loop
+      amplihack fleet run-once     Single PERCEIVE→REASON→ACT cycle
+
+    \b
+    SETUP:
+      amplihack fleet auth <vm>    Propagate auth tokens to a VM
+      amplihack fleet observe <vm> Observe sessions with pattern classification
+
+    \b
+    ENVIRONMENT:
+      AZLIN_PATH    Path to azlin binary (auto-detected if on PATH)
+      ANTHROPIC_API_KEY   Required for dry-run and director LLM reasoning
+
+    \b
+    REQUIRES:
+      pip install amplihack[fleet-tui]   For the interactive TUI dashboard
+      azlin                              For VM management (github.com/rysweet/azlin)
     """
-    pass
+    if ctx.invoked_subcommand is None:
+        # Default: launch TUI dashboard
+        try:
+            from amplihack.fleet.fleet_tui_dashboard import run_dashboard
+            run_dashboard(interval=30)
+        except ImportError:
+            click.echo("Textual not installed. Install with: pip install amplihack[fleet-tui]")
+            click.echo("")
+            click.echo("Or use text-based commands:")
+            click.echo("  amplihack fleet status     Quick overview")
+            click.echo("  amplihack fleet dry-run    Director reasoning")
+            click.echo("  amplihack fleet --help     All commands")
 
 
 @fleet_cli.command("status")

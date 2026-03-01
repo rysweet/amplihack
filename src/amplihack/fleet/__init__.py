@@ -37,8 +37,6 @@ from amplihack.fleet.fleet_results import ResultCollector, TaskResult
 from amplihack.fleet.fleet_setup import RepoSetup
 from amplihack.fleet.fleet_state import FleetState, VMInfo, TmuxSessionInfo
 from amplihack.fleet.fleet_tasks import TaskQueue, FleetTask
-from amplihack.fleet.fleet_tui import FleetTUI
-
 __all__ = [
     "AuthPropagator",
     "FleetDashboard",
@@ -58,7 +56,6 @@ __all__ = [
     "SessionSummary",
     "TaskQueue",
     "FleetTask",
-    "FleetTUI",
     "TaskResult",
     "TmuxSessionInfo",
     "VMInfo",

@@ -257,7 +257,8 @@ class FleetTUI:
             dash_len = inner - len(f"  [{vm.name}] {vm.region} ") - 2
             if dash_len < 4:
                 dash_len = 4
-            vm_header = f"  {BOLD}[{vm.name}]{RESET} {DIM}{vm.region}{RESET} {DIM}{'\u2500' * dash_len}{RESET}"
+            dashes = "\u2500" * dash_len
+            vm_header = f"  {BOLD}[{vm.name}]{RESET} {DIM}{vm.region}{RESET} {DIM}{dashes}{RESET}"
             raw_header_len = len(f"  [{vm.name}] {vm.region} ") + dash_len
             lines.append(self._boxline(vm_header, inner, width, raw_len=raw_header_len))
 
