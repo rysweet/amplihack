@@ -29,6 +29,12 @@ if _MEMORY_LIB_PATH not in sys.path:
 import kuzu
 from amplihack_memory.cognitive_memory import CognitiveMemory
 
+try:
+    from amplihack_memory.graph import FederatedGraphStore, KuzuGraphStore
+except ImportError:
+    FederatedGraphStore = None  # type: ignore[assignment,misc]
+    KuzuGraphStore = None  # type: ignore[assignment,misc]
+
 from .event_bus import BusEvent, EventBus, LocalEventBus, _make_event
 
 # Kuzu default max_db_size is 8TB which can cause Mmap failures when many
@@ -119,6 +125,7 @@ class AgentNode:
         db_dir: str,
         domain: str = "",
         max_db_size: int = _DEFAULT_MAX_DB_SIZE,
+        hive_store: KuzuGraphStore | None = None,
     ) -> None:
         """Create an agent with its own independent database.
 
@@ -128,6 +135,10 @@ class AgentNode:
             domain: Domain of expertise (e.g. "biology", "infrastructure").
             max_db_size: Maximum Kuzu DB size in bytes (default 256 MB).
                          Prevents Mmap exhaustion with many agents.
+            hive_store: Optional hive graph store. When provided, a
+                FederatedGraphStore is created that composes this agent's
+                local graph with the shared hive graph, enabling cross-agent
+                graph queries and traversal.
         """
         self.agent_id = agent_id
         self.domain = domain
@@ -136,6 +147,19 @@ class AgentNode:
         self._event_bus: EventBus | None = None
         self._coordinator: HiveCoordinator | None = None
         self._incorporated_events: set[str] = set()
+
+        # Federated graph: local agent graph + shared hive graph
+        if hive_store is not None:
+            local_graph = KuzuGraphStore(
+                db_path=db_dir,
+                store_id=agent_id,
+            )
+            self._federated: FederatedGraphStore | None = FederatedGraphStore(
+                local_store=local_graph,
+                hive_store=hive_store,
+            )
+        else:
+            self._federated = None
 
     def learn(
         self,
@@ -225,6 +249,32 @@ class AgentNode:
             }
             for f in facts
         ]
+
+    def query_federated(self, query: str, limit: int = 10):
+        """Query local + hive via the federated graph.
+
+        When a hive_store was provided at construction, this queries both
+        the agent's local graph and the shared hive graph, deduplicates
+        results, and annotates them with source provenance.
+
+        Falls back to local-only query when no federated graph is available.
+
+        Args:
+            query: Search query string.
+            limit: Maximum results.
+
+        Returns:
+            FederatedQueryResult when federated graph available, otherwise
+            a list of fact dicts from local-only query.
+        """
+        if self._federated is not None:
+            return self._federated.federated_query(query, limit=limit)
+        return self.query(query, limit)
+
+    @property
+    def federated(self) -> FederatedGraphStore | None:
+        """Access the federated graph store, or None if not connected."""
+        return self._federated
 
     def incorporate_peer_fact(self, event: BusEvent) -> bool:
         """Decide whether to incorporate a peer's fact into local DB.
