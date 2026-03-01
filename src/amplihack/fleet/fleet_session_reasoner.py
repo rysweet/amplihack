@@ -438,16 +438,19 @@ echo '===END==='
         Critically distinguishes between:
         - THINKING: Agent is actively processing (LLM call in flight, tool running)
         - WAITING_INPUT: Agent needs user input to proceed
-        - IDLE: No agent running (bare shell prompt)
-        - RUNNING: Agent actively producing output
+        - IDLE: No agent running (bare shell prompt), or agent at prompt with no input
+        - RUNNING: Agent actively producing output (or status bar says "(running)")
         - ERROR/COMPLETED: Terminal states
 
-        Claude Code indicators:
+        Claude Code indicators (validated against live 9-session test data):
+        - "·" (middle dot) + active verb + "..." = CURRENTLY thinking (e.g. "· Scampering...")
+        - "✻" + past tense + "for Xm Ys" = JUST FINISHED thinking (e.g. "✻ Brewed for 6m 11s")
         - "●" (filled circle) = tool call in progress or result
-        - "✻" = processing/cooking indicator
         - "⏵⏵" = status bar (present when Claude Code is active)
-        - "❯" at end of line = Claude Code prompt (idle within agent)
+        - "❯" bare (no text after) = idle at prompt, waiting for next task
+        - "❯ <text>" (text after prompt) = user submitted input, agent processing
         - Streaming "⎿" = tool output being written
+        - Status bar with "(running)" = subagent/background task active
 
         Copilot CLI indicators:
         - "Thinking..." or spinner characters
@@ -459,23 +462,67 @@ echo '===END==='
         last_line = last_lines[-1].strip() if last_lines else ""
         last_line_lower = last_line.lower()
 
+        # --- Helper: find the prompt line and check if user typed input ---
+        prompt_line_text = ""
+        has_prompt = False
+        for line in reversed(last_lines):
+            stripped = line.strip()
+            if stripped.startswith("❯"):
+                has_prompt = True
+                # Text after the prompt character (strip the "❯" and whitespace)
+                prompt_line_text = stripped[len("❯"):].strip()
+                break
+
+        # --- STATUS BAR "(running)" detection (high priority) ---
+        # When status bar shows "(running)", a subagent or background task is active
+        for line in last_lines:
+            if "(running)" in line and "⏵⏵" in line:
+                return "running"
+
         # --- THINKING/WORKING detection (highest priority) ---
-        # Claude Code: filled circle means tool call active
-        # Check if the LAST substantial line has a tool indicator
+
+        # Claude Code: "·" (middle dot U+00B7) with active verb = CURRENTLY thinking
+        # Patterns: "· Scampering...", "· Brewing...", "· Scampering… (3m 20s · ↓ 575 tokens)"
+        # Scan ALL lines (not just last) because status bar lines appear below the · indicator
+        for line in last_lines:
+            stripped = line.strip()
+            if stripped.startswith("\u00b7 ") or stripped.startswith("· "):
+                return "thinking"
+
+        # Claude Code: check last non-empty line for tool/streaming indicators
         for line in reversed(last_lines):
             stripped = line.strip()
             if not stripped:
                 continue
-            # Active tool call (Claude Code)
+            # Active tool call (Claude Code) — ● without being a completed Bash result
             if stripped.startswith("●") and not stripped.startswith("● Bash("):
                 return "thinking"
             # Tool is executing with output streaming
             if stripped.startswith("⎿"):
                 return "thinking"
-            # Processing indicator
-            if "✻" in stripped and ("for" in stripped.lower() or "saut" in stripped.lower()):
-                return "thinking"
             break  # Only check the last non-empty line for these
+
+        # Claude Code: "✻" = JUST FINISHED thinking (past tense completion indicator)
+        # "✻ Brewed for 6m 11s", "✻ Cogitated for 4m 2s"
+        # If followed by ❯ prompt with user text → agent processing input → thinking
+        # If followed by ❯ prompt bare → agent idle at prompt → idle
+        has_finished_indicator = False
+        for line in last_lines:
+            stripped = line.strip()
+            if "✻" in stripped:
+                has_finished_indicator = True
+                break
+
+        if has_finished_indicator and has_prompt:
+            if prompt_line_text:
+                # User already typed something at the prompt — agent is processing it
+                return "thinking"
+            else:
+                # Bare prompt after finish indicator — agent is idle
+                return "idle"
+        elif has_finished_indicator and not has_prompt:
+            # ✻ visible but no prompt yet — still finishing up
+            return "thinking"
 
         # Copilot: explicit thinking indicators
         if any(p in combined_lower for p in ["thinking...", "running:", "loading"]):
@@ -489,10 +536,27 @@ echo '===END==='
                 return "waiting_input"
             return "thinking"
 
+        # --- PROMPT with user input = agent processing ---
+        # "❯ now close issue 12 and commit" means user typed input, agent is working
+        if has_prompt and prompt_line_text:
+            return "thinking"
+
+        # --- IDLE detection for bare prompts (before waiting_input) ---
+        # A bare ❯ with no text means the agent is at the prompt, idle.
+        # This must be checked BEFORE permission-prompt detection because the status
+        # bar often shows "bypass permissions on" (current mode), which is NOT a
+        # permission request -- it just describes the active setting.
+        if has_prompt and not prompt_line_text:
+            return "idle"
+        # Bare shell prompt
+        if last_line_lower.endswith("$ ") or last_line_lower.endswith("$"):
+            return "idle"
+
         # --- WAITING_INPUT detection ---
         if any(p in combined_lower for p in ["y/n]", "yes/no", "[y/n", "(yes/no)"]):
             return "waiting_input"
-        # Claude Code permission prompt
+        # Claude Code permission prompt — only when there is NO bare ❯ prompt
+        # (bare prompt already handled above as idle)
         if "⏵⏵" in combined and ("bypass" in combined_lower or "allow" in combined_lower):
             return "waiting_input"
         # Generic question at end
@@ -511,17 +575,6 @@ echo '===END==='
             # Only if it looks like a recent action, not historical output
             if any(p in combined_lower for p in ["created", "opened", "merged"]):
                 return "completed"
-
-        # --- IDLE detection (bare shell prompt, no agent) ---
-        if last_line_lower.endswith("$ ") or last_line_lower.endswith("$"):
-            return "idle"
-        # Claude Code idle prompt
-        if last_line.strip() == "❯" or last_line.strip().endswith("❯"):
-            # But only if no status bar nearby (status bar = agent session active)
-            if not any("⏵⏵" in l for l in last_lines[-3:]):
-                return "idle"
-            else:
-                return "waiting_input"  # Agent is at prompt, waiting for next command
 
         # --- Default: assume running if substantial output ---
         if len(combined.strip()) > 50:

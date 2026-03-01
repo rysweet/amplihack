@@ -153,7 +153,10 @@ class TestSessionReasonerDecisionParsing:
 
 
 class TestSessionReasonerStatusInference:
-    """Tests for tmux output status inference — especially thinking detection."""
+    """Tests for tmux output status inference — especially thinking detection.
+
+    Test cases are derived from REAL live data observed across 9 sessions on 4 VMs.
+    """
 
     def test_infer_waiting_input_yn(self):
         reasoner = SessionReasoner(dry_run=True)
@@ -191,12 +194,6 @@ class TestSessionReasonerStatusInference:
         tmux = "● Bash(git status)\n  ⎿  M src/auth.py"
         assert reasoner._infer_status(tmux) == "thinking"
 
-    def test_thinking_claude_processing(self):
-        """Claude Code shows ✻ Sautéed for processing time."""
-        reasoner = SessionReasoner(dry_run=True)
-        tmux = "✻ Sautéed for 2m 28s"
-        assert reasoner._infer_status(tmux) == "thinking"
-
     def test_thinking_claude_bash_tool(self):
         """Claude Code actively running a Bash tool."""
         reasoner = SessionReasoner(dry_run=True)
@@ -208,17 +205,162 @@ class TestSessionReasonerStatusInference:
         reasoner = SessionReasoner(dry_run=True)
         assert reasoner._infer_status("Thinking...") == "thinking"
 
-    def test_waiting_claude_permission_prompt(self):
-        """Claude Code permission prompt with ⏵⏵."""
+    def test_idle_claude_bare_prompt_with_bypass_status(self):
+        """Bare ❯ prompt + status bar showing 'bypass on' = IDLE, not waiting.
+
+        The status bar text '⏵⏵ bypass permissions on' describes the current mode,
+        NOT a permission request. The agent is idle at the prompt.
+        """
         reasoner = SessionReasoner(dry_run=True)
         tmux = "❯ \n──────\n  ~/src/repo  ⏵⏵ bypass permissions on"
+        assert reasoner._infer_status(tmux) == "idle"
+
+    # --- FIX 1: ✻ (timing verb) = JUST FINISHED thinking, not active thinking ---
+
+    def test_finished_thinking_then_idle(self):
+        """✻ past-tense verb followed by bare ❯ prompt = IDLE, not thinking.
+
+        Real live data: '✻ Brewed for 6m 11s' means agent finished processing.
+        If followed by bare prompt, agent is idle at prompt waiting for next task.
+        """
+        reasoner = SessionReasoner(dry_run=True)
+        tmux = "✻ Brewed for 6m 11s\n❯ \n  ⏵⏵ bypass permissions on"
+        assert reasoner._infer_status(tmux) == "idle"
+
+    def test_finished_thinking_cogitated_then_idle(self):
+        """✻ Cogitated for Xm Ys + bare prompt = IDLE."""
+        reasoner = SessionReasoner(dry_run=True)
+        tmux = "some output\n✻ Cogitated for 4m 2s\n❯ \n  ~/src  Opus 4.6  ⏵⏵ bypass"
+        assert reasoner._infer_status(tmux) == "idle"
+
+    def test_finished_thinking_sauteed_then_idle(self):
+        """✻ Sautéed for Xm Ys + bare prompt = IDLE."""
+        reasoner = SessionReasoner(dry_run=True)
+        tmux = "✻ Sautéed for 2m 28s\n❯ \n  ⏵⏵ on"
+        assert reasoner._infer_status(tmux) == "idle"
+
+    def test_finished_thinking_no_prompt_yet(self):
+        """✻ alone without prompt = still finishing up = thinking."""
+        reasoner = SessionReasoner(dry_run=True)
+        tmux = "✻ Sautéed for 2m 28s"
+        assert reasoner._infer_status(tmux) == "thinking"
+
+    # --- FIX 1b: · (middle dot) with active verb = CURRENTLY thinking ---
+
+    def test_active_thinking_middle_dot_scampering(self):
+        """· Scampering... with middle dot = CURRENTLY thinking.
+
+        Real live data: '· Scampering… (3m 20s · ↓ 575 tokens)' means agent
+        is actively processing right now.
+        """
+        reasoner = SessionReasoner(dry_run=True)
+        tmux = "\u00b7 Scampering\u2026 (3m 20s \u00b7 \u2193 575 tokens)"
+        assert reasoner._infer_status(tmux) == "thinking"
+
+    def test_active_thinking_middle_dot_brewing(self):
+        """· Brewing... = CURRENTLY thinking."""
+        reasoner = SessionReasoner(dry_run=True)
+        tmux = "\u00b7 Brewing\u2026"
+        assert reasoner._infer_status(tmux) == "thinking"
+
+    def test_active_thinking_middle_dot_with_prior_output(self):
+        """Middle dot active verb after prior output = thinking."""
+        reasoner = SessionReasoner(dry_run=True)
+        tmux = "some prior tool output\n\u00b7 Saut\u00e9ing\u2026 (1m 5s)"
+        assert reasoner._infer_status(tmux) == "thinking"
+
+    # --- FIX 2: ❯ with user text = agent processing input, not idle ---
+
+    def test_prompt_with_user_input_is_thinking(self):
+        """❯ followed by user text = agent processing submitted input.
+
+        Real live data: '❯ now close issue 12 and commit the .gitignore change'
+        means user typed input and agent is working on it.
+        """
+        reasoner = SessionReasoner(dry_run=True)
+        tmux = "❯ now close issue 12 and commit the .gitignore change\n  ⏵⏵ bypass permissions on"
+        assert reasoner._infer_status(tmux) == "thinking"
+
+    def test_prompt_with_user_input_no_status_bar(self):
+        """❯ with user text but no status bar = still thinking."""
+        reasoner = SessionReasoner(dry_run=True)
+        tmux = "❯ fix the auth module and run tests"
+        assert reasoner._infer_status(tmux) == "thinking"
+
+    def test_bare_prompt_with_status_bar_is_idle(self):
+        """Bare ❯ with status bar = idle (waiting for next task).
+
+        Real live data: bare '❯ ' with '⏵⏵' = truly idle.
+        """
+        reasoner = SessionReasoner(dry_run=True)
+        tmux = "❯ \n  ⏵⏵ bypass permissions on"
+        assert reasoner._infer_status(tmux) == "idle"
+
+    def test_bare_prompt_no_status_bar_is_idle(self):
+        """Bare ❯ without status bar = idle."""
+        reasoner = SessionReasoner(dry_run=True)
+        tmux = "some output\n❯ "
+        assert reasoner._infer_status(tmux) == "idle"
+
+    def test_finished_then_user_typed_input(self):
+        """✻ finished indicator + ❯ with user text = thinking (processing new input).
+
+        Real scenario: agent finished one task, user typed next task at prompt.
+        """
+        reasoner = SessionReasoner(dry_run=True)
+        tmux = "✻ Brewed for 6m 11s\n❯ now fix the tests\n  ⏵⏵ bypass on"
+        assert reasoner._infer_status(tmux) == "thinking"
+
+    # --- FIX 3: Status bar "(running)" = running ---
+
+    def test_status_bar_running_indicator(self):
+        """Status bar with '(running)' suffix = subagent/background task active.
+
+        Real live data: '· Wire LadybugDB backend for graph-query (running)'
+        in status bar means a background task is running.
+        """
+        reasoner = SessionReasoner(dry_run=True)
+        tmux = "❯ \n  ~/src  ⏵⏵ · Wire LadybugDB backend for graph-query (running)"
+        assert reasoner._infer_status(tmux) == "running"
+
+    def test_status_bar_running_with_prompt(self):
+        """(running) in status bar even with bare prompt = running."""
+        reasoner = SessionReasoner(dry_run=True)
+        tmux = "some output\n❯ \n  ⏵⏵ Implement auth (running)"
+        assert reasoner._infer_status(tmux) == "running"
+
+    # --- Regression tests for existing behavior that must still work ---
+
+    def test_waiting_input_yes_no_prompt(self):
+        reasoner = SessionReasoner(dry_run=True)
+        assert reasoner._infer_status("Do you want to continue? (yes/no)") == "waiting_input"
+
+    def test_waiting_claude_permission_allow_no_prompt(self):
+        """Claude Code permission prompt with 'allow' but no bare ❯ prompt = waiting."""
+        reasoner = SessionReasoner(dry_run=True)
+        tmux = "Some tool output\n  ⏵⏵ allow all"
         assert reasoner._infer_status(tmux) == "waiting_input"
 
-    def test_waiting_claude_idle_with_status_bar(self):
-        """Claude Code at ❯ prompt but with status bar = waiting for input."""
+    def test_waiting_claude_actual_permission_request(self):
+        """Real permission request scenario: tool wants to run, asking for approval.
+
+        When Claude Code asks for permission, the Y/n prompt is the last line.
+        """
         reasoner = SessionReasoner(dry_run=True)
-        tmux = "❯ \n──────\n  ~/src  Opus 4.6  ⏵⏵ bypass permissions"
+        tmux = "I need to run a cleanup command.\nAllow this tool call? [Y/n]"
         assert reasoner._infer_status(tmux) == "waiting_input"
+
+    def test_error_fatal(self):
+        reasoner = SessionReasoner(dry_run=True)
+        assert reasoner._infer_status("fatal: not a git repository") == "error"
+
+    def test_completed_workflow(self):
+        reasoner = SessionReasoner(dry_run=True)
+        assert reasoner._infer_status("GOAL_STATUS: ACHIEVED") == "completed"
+
+    def test_idle_bare_shell(self):
+        reasoner = SessionReasoner(dry_run=True)
+        assert reasoner._infer_status("user@host:~/code$") == "idle"
 
     def test_thinking_fast_path_skips_llm(self):
         """When status is thinking, the LLM call is skipped entirely."""
@@ -241,6 +383,40 @@ class TestSessionReasonerStatusInference:
             assert "thinking" in decision.reasoning.lower()
             # Key: LLM backend was NOT called
             assert len(mock.calls) == 0
+
+    # --- Combined real-world scenario tests ---
+
+    def test_real_scenario_agent_just_finished_at_prompt(self):
+        """Full realistic tmux capture: agent finished task, sitting at prompt.
+
+        This is the most common misdetection case from live testing.
+        """
+        reasoner = SessionReasoner(dry_run=True)
+        tmux = """  I've completed the implementation of the new auth module.
+  The tests are passing and the PR has been created.
+
+✻ Cogitated for 4m 2s
+
+❯
+  ~/src/amplihack  main  Opus 4.6  ⏵⏵ bypass permissions on"""
+        assert reasoner._infer_status(tmux) == "idle"
+
+    def test_real_scenario_agent_actively_processing(self):
+        """Full realistic tmux: agent is mid-thought with streaming indicator."""
+        reasoner = SessionReasoner(dry_run=True)
+        tmux = """  Let me analyze the codebase structure...
+
+· Scampering\u2026 (2m 15s \u00b7 \u2193 1.2k tokens)"""
+        assert reasoner._infer_status(tmux) == "thinking"
+
+    def test_real_scenario_user_just_submitted_task(self):
+        """Full realistic tmux: user typed a command at the prompt."""
+        reasoner = SessionReasoner(dry_run=True)
+        tmux = """✻ Brewed for 3m 45s
+
+❯ now close issue 12 and commit the .gitignore change
+  ⏵⏵ bypass permissions on"""
+        assert reasoner._infer_status(tmux) == "thinking"
 
 
 class TestSessionReasonerDryRun:

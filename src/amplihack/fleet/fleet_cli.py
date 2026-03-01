@@ -3,6 +3,7 @@
 Usage:
     fleet status          Show all VMs, sessions, agent states
     fleet dashboard       Meta-project tracking view
+    fleet tui             Live TUI dashboard with auto-refresh
     fleet add-task        Queue a new task
     fleet start           Begin autonomous director loop
     fleet run-once        Execute one director cycle
@@ -404,6 +405,22 @@ def dry_run(vm, priorities):
 
     # Show summary
     click.echo("\n" + reasoner.dry_run_report())
+
+
+@fleet_cli.command("tui")
+@click.option("--interval", default=60, help="Refresh interval in seconds")
+@click.option("--once", is_flag=True, help="Single snapshot then exit")
+def tui(interval, once):
+    """Live TUI dashboard -- runs in terminal with auto-refresh.
+
+    Shows all VMs and sessions with status icons, branches, and PR info.
+    Auto-refreshes on a configurable interval. Press 'q' to quit, 'r' to
+    force an immediate refresh.
+    """
+    from amplihack.fleet.fleet_tui import FleetTUI
+
+    app = FleetTUI(refresh_interval=interval)
+    app.run(once=once)
 
 
 @fleet_cli.command("graph")
