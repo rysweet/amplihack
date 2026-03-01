@@ -10,27 +10,27 @@ across all sessions.
 ## Solution: Fleet Director
 
 A centralized director that manages agent sessions using a per-session
-PERCEIVE→REASON→ACT→LEARN loop. The director reads each session's terminal
+PERCEIVE->REASON->ACT->LEARN loop. The director reads each session's terminal
 output and transcript, uses an LLM to decide what action to take, and
 injects keystrokes via tmux to continue work.
 
 ```
-┌──────────────────────────────────────────────────────────┐
-│                     FLEET DIRECTOR                        │
-│                                                           │
-│  For each session:                                        │
-│    PERCEIVE → REASON → ACT → LEARN                        │
-│       │          │       │      │                         │
-│    tmux capture  LLM   tmux   record                      │
-│    JSONL logs   decide  send   outcome                    │
-│    health check  what   keys                              │
-│                  to type                                   │
-└───────────────────────────┬──────────────────────────────┘
-                            │ azlin + Bastion tunnels
-              ┌─────────────┼─────────────┐
-              ▼             ▼             ▼
-          [VM-1]        [VM-2]        [VM-3]
-          tmux A,B      tmux C,D      tmux E,F
++--------------------------------------------------------------+
+|                     FLEET DIRECTOR                            |
+|                                                               |
+|  For each session:                                            |
+|    PERCEIVE -> REASON -> ACT -> LEARN                         |
+|       |          |       |      |                             |
+|    tmux capture  LLM   tmux   record                          |
+|    JSONL logs   decide  send   outcome                        |
+|    health check  what   keys                                  |
+|                  to type                                       |
++----------------------------+---------------------------------+
+                             | azlin + Bastion tunnels
+               +-------------+-------------+
+               v             v             v
+           [VM-1]        [VM-2]        [VM-3]
+           tmux A,B      tmux C,D      tmux E,F
 ```
 
 ## Per-Session Reasoning Loop
@@ -41,7 +41,7 @@ For each tmux session on each cycle:
    git branch, JSONL transcript summary, process health
 2. **REASON**: Feed context to LLM backend (Claude or Copilot SDK) which
    returns a decision: send_input, wait, escalate, mark_complete, or restart
-3. **ACT**: Execute decision — inject keystrokes via `tmux send-keys` or
+3. **ACT**: Execute decision -- inject keystrokes via `tmux send-keys` or
    show reasoning in dry-run mode
 4. **LEARN**: Record decision and outcome for future reference
 
@@ -54,57 +54,109 @@ does NOT interrupt. Indicators:
 |-------|-------------------|---------|
 | Claude Code | `●` prefix | Tool call active |
 | Claude Code | `⎿` prefix | Streaming tool output |
-| Claude Code | `✻ Sautéed for` | Processing complete (timing) |
+| Claude Code | `✻ Sauteed for` | Processing complete (timing) |
 | Copilot | `Thinking...` | LLM call in flight |
 | Copilot | `Running:` | Tool execution |
 
 When thinking is detected, the director skips the LLM reasoning call
 entirely (fast-path WAIT) to save cost.
 
+### Safety Mechanisms
+
+**Dangerous input blocklist**: The session reasoner blocks commands matching
+destructive patterns (`rm -rf`, `git push --force`, `DROP TABLE`, fork bombs,
+etc.) regardless of LLM confidence.
+
+**Confidence thresholds**: Actions require minimum confidence of 0.6 to execute.
+Restart actions require 0.8. Below-threshold decisions are logged but not acted on.
+
 ## Modules
 
-| Module | Purpose |
-|--------|---------|
-| `fleet_session_reasoner` | Per-session PERCEIVE→REASON→ACT→LEARN with LLM |
-| `fleet_state` | VM/tmux session inventory from azlin |
-| `fleet_observer` | Pattern-based agent state classification |
-| `fleet_health` | Process-level monitoring (memory, disk, load) |
-| `fleet_logs` | Claude Code JSONL transcript reader |
-| `fleet_tasks` | Priority-ordered task queue with persistence |
-| `fleet_director` | Director loop orchestrating all modules |
-| `fleet_reasoners` | Composable reasoning chain (lifecycle, preemption, coordination, batch) |
-| `fleet_auth` | Auth propagation with multi-GitHub identity |
-| `fleet_adopt` | Bring existing sessions under management |
-| `fleet_setup` | Automated repo clone + dependency install |
-| `fleet_dashboard` | Meta-project tracking |
-| `fleet_results` | Structured outcome collection |
-| `fleet_graph` | Lightweight JSON knowledge graph |
-| `fleet_cli` | CLI commands |
+The fleet package contains 19 source files (17 functional modules, 1 package
+init, 1 CLI entry point):
+
+### Core Loop
+
+| Module | File | Purpose |
+|--------|------|---------|
+| `fleet_director` | `fleet_director.py` | Central control plane. Orchestrates the PERCEIVE->REASON->ACT->LEARN loop across all VMs. Manages session lifecycle (start, stop, reassign, mark complete). |
+| `fleet_session_reasoner` | `fleet_session_reasoner.py` | Per-session LLM reasoning. Captures tmux pane + JSONL logs, sends to Anthropic SDK, parses structured decisions. Implements dry-run mode, dangerous input blocking, and confidence thresholds. |
+| `fleet_reasoners` | `fleet_reasoners.py` | Composable reasoning chain with four pluggable reasoners: LifecycleReasoner (completions, failures, stuck detection), PreemptionReasoner (emergency priority escalation), CoordinationReasoner (inter-agent context sharing), BatchAssignReasoner (context-aware batch assignment). |
+
+### Perception Layer
+
+| Module | File | Purpose |
+|--------|------|---------|
+| `fleet_state` | `fleet_state.py` | Real-time VM and session inventory. Polls azlin and tmux to maintain current fleet state. Provides `FleetState`, `VMInfo`, `TmuxSessionInfo`, `AgentStatus`. |
+| `fleet_observer` | `fleet_observer.py` | Pattern-based agent state classification via tmux capture-pane. Detects running, idle, completed, stuck, error, and waiting_input states using regex patterns. |
+| `fleet_health` | `fleet_health.py` | Process-level health monitoring beyond tmux. Checks agent processes (pgrep), heartbeat files, memory usage, disk usage, and load average on each VM. |
+| `fleet_logs` | `fleet_logs.py` | Claude Code JSONL transcript reader. Extracts tasks, tool usage, PRs created, errors, token counts, and session duration from remote JSONL logs. Powers the LEARN phase. |
+| `transcript_analyzer` | `transcript_analyzer.py` | Cross-session transcript analysis. Gathers JSONL files from local machine and remote VMs, analyzes tool usage frequency, strategy patterns, agent invocations, and workflow compliance. |
+
+### Session Management
+
+| Module | File | Purpose |
+|--------|------|---------|
+| `fleet_adopt` | `fleet_adopt.py` | Bring existing sessions under management. Discovers tmux sessions via SSH, infers repo/branch/agent from pane content and git state, creates tracking records. Non-disruptive: observes without injecting commands. |
+| `fleet_tasks` | `fleet_tasks.py` | Priority-ordered task queue with JSON persistence. Manages task lifecycle: queued -> assigned -> running -> completed/failed. Supports priority levels (critical, high, medium, low). |
+| `fleet_auth` | `fleet_auth.py` | Auth propagation with multi-GitHub identity support. Copies GitHub CLI, Azure CLI, and Claude API credentials to target VMs. Uses azlin cp for secure transfer. Supports per-VM GitHub account switching. |
+| `fleet_setup` | `fleet_setup.py` | Automated workspace preparation on remote VMs. Clones repositories, creates working branches, detects project type, installs dependencies, and verifies builds. |
+
+### Tracking and Knowledge
+
+| Module | File | Purpose |
+|--------|------|---------|
+| `fleet_results` | `fleet_results.py` | Structured outcome collection for the LEARN phase. Stores PR URLs, commit SHAs, test results, error summaries, and timing data as JSON per task. |
+| `fleet_dashboard` | `fleet_dashboard.py` | Meta-project tracking. Fleet-wide metrics: project count, agent utilization, cost estimates per VM, PR counts, completion rates, time-to-completion trends. |
+| `fleet_graph` | `fleet_graph.py` | Lightweight JSON knowledge graph. Tracks relationships between projects, tasks, agents, VMs, and PRs. Detects task dependencies and prevents conflicting file modifications. |
+
+### User Interface
+
+| Module | File | Purpose |
+|--------|------|---------|
+| `fleet_tui` | `fleet_tui.py` | Standard-library terminal dashboard. Uses ANSI escape codes for rendering, `select()` for input, `termios` for raw mode. No external dependencies. Shows VM status, session states, and agent activity. |
+| `fleet_tui_dashboard` | `fleet_tui_dashboard.py` | Interactive Textual-based dashboard (requires `amplihack[fleet-tui]`). Three-tab interface: Fleet Overview (session table + preview), Session Detail (full tmux capture + director proposal), Action Editor (edit and apply actions). Auto-refreshes via background workers. |
+| `fleet_cli` | `fleet_cli.py` | Click-based CLI entry point. Registers all subcommands (status, dashboard, tui, add-task, start, run-once, watch, snapshot, adopt, report, auth, observe, dry-run, graph, queue). Default command (no subcommand) launches the TUI dashboard. |
+
+### Package
+
+| Module | File | Purpose |
+|--------|------|---------|
+| `__init__` | `__init__.py` | Package init. Exports public API: FleetDirector, FleetState, TaskQueue, AuthPropagator, GitHubIdentity, FleetObserver, FleetDashboard, ResultCollector, HealthChecker, RepoSetup, SessionAdopter, FleetGraph, ReasonerChain, LogReader, and associated data classes. |
 
 ## LLM Backend Protocol
 
 The session reasoner uses a pluggable LLM backend:
 
 ```python
-class LLMBackend:
+class LLMBackend(Protocol):
     def complete(self, system_prompt: str, user_prompt: str) -> str: ...
 
 class AnthropicBackend(LLMBackend): ...  # Claude SDK
-class CopilotBackend(LLMBackend): ...    # GitHub Copilot SDK
 ```
+
+New backends can be added by implementing the `complete` method.
 
 ## Key CLI Commands
 
 ```bash
-fleet status              # VM/session inventory
-fleet dry-run             # Show what director would do (no action)
-fleet dry-run --vm devo   # Dry-run for specific VM
-fleet watch vm session    # Live snapshot of remote session
-fleet snapshot            # Capture all sessions at once
-fleet adopt vm            # Bring existing sessions under management
-fleet start --adopt       # Start director, adopt all at startup
-fleet dashboard           # Meta-project tracking view
-fleet add-task "prompt"   # Queue a task for the fleet
+amplihack fleet                 # Launch interactive TUI dashboard
+amplihack fleet status          # VM/session inventory
+amplihack fleet dry-run         # Show what director would do (no action)
+amplihack fleet dry-run --vm devo   # Dry-run for specific VM
+amplihack fleet watch vm session    # Live snapshot of remote session
+amplihack fleet snapshot        # Capture all sessions at once
+amplihack fleet observe vm      # Pattern-based session classification
+amplihack fleet adopt vm        # Bring existing sessions under management
+amplihack fleet start           # Start autonomous director loop
+amplihack fleet start --adopt   # Start director, adopt all at startup
+amplihack fleet run-once        # Single PERCEIVE->REASON->ACT cycle
+amplihack fleet add-task "prompt"   # Queue a task for the fleet
+amplihack fleet queue           # Show task queue
+amplihack fleet dashboard       # Meta-project tracking view
+amplihack fleet auth vm         # Propagate auth tokens to a VM
+amplihack fleet graph           # Show knowledge graph summary
+amplihack fleet report          # Generate fleet status report
 ```
 
 ## Session Adoption
@@ -112,17 +164,28 @@ fleet add-task "prompt"   # Queue a task for the fleet
 Users can start sessions manually, then hand them to the director:
 
 ```bash
-fleet adopt devo          # Discovers sessions, infers context, begins tracking
-fleet start --adopt       # Adopt all managed VMs at startup
+amplihack fleet adopt devo          # Discovers sessions, infers context, begins tracking
+amplihack fleet start --adopt       # Adopt all managed VMs at startup
 ```
 
 The director discovers existing tmux sessions via SSH, infers what they're
 working on (from tmux pane content, git state, and JSONL logs), creates
 tracking records, and begins observing without disruption.
 
+## Data Persistence
+
+Fleet state is stored under `~/.amplihack/fleet/`:
+
+| File | Content |
+|------|---------|
+| `task_queue.json` | Priority-ordered task queue |
+| `dashboard.json` | Project metrics and cost tracking |
+| `graph.json` | Knowledge graph (projects, tasks, VMs, PRs) |
+| `logs/` | Director decision logs |
+
 ## Constraints
 
 - Azure Bastion tunnels: ~30s per connection setup
 - No public IPs allowed
 - Auth propagation via shared NFS storage (azlin blocks credential file copies)
-- No ML — rules and LLM reasoning only
+- No ML -- rules and LLM reasoning only
