@@ -508,6 +508,17 @@ class HiveGateway:
             "reason": "Clean promotion",
         }
 
+    @staticmethod
+    def _word_overlap(a: str, b: str) -> float:
+        """Compute word-level Jaccard overlap between two strings."""
+        words_a = set(a.lower().split())
+        words_b = set(b.lower().split())
+        if not words_a or not words_b:
+            return 0.0
+        intersection = words_a & words_b
+        union = words_a | words_b
+        return len(intersection) / len(union) if union else 0.0
+
     def find_contradictions(
         self,
         content: str,
@@ -516,8 +527,14 @@ class HiveGateway:
     ) -> list[dict]:
         """Search existing hive facts for potential contradictions.
 
-        A contradiction is a fact with the same concept but different content.
-        Only checks facts owned by the hive agent.
+        A contradiction is a fact with the same concept AND high word overlap
+        but different content. This avoids flagging complementary facts about
+        the same topic as contradictions. Two facts about "genetics" with
+        different wording are complementary (both promoted). Two facts about
+        "PostgreSQL port" claiming different port numbers are contradictions.
+
+        The overlap threshold (0.4) means at least 40% of words must match
+        for the gateway to consider them potentially contradictory.
 
         Args:
             content: The fact content to check against.
@@ -547,18 +564,24 @@ class HiveGateway:
                 "excl": exclude_node_id,
             },
         )
-        contradictions = []
+        # Filter: only flag as contradiction if high word overlap (>40%)
+        # Two facts with the same concept but low overlap are complementary
+        candidates = []
         while result.has_next():
             row = result.get_next()
-            contradictions.append(
-                {
-                    "node_id": row[0],
-                    "concept": row[1],
-                    "content": row[2],
-                    "confidence": float(row[3]),
-                }
-            )
-        return contradictions
+            existing_content = row[2]
+            overlap = self._word_overlap(content, existing_content)
+            if overlap >= 0.4:
+                candidates.append(
+                    {
+                        "node_id": row[0],
+                        "concept": row[1],
+                        "content": existing_content,
+                        "confidence": float(row[3]),
+                        "overlap": overlap,
+                    }
+                )
+        return candidates
 
     def resolve_contradiction(self, fact_a_id: str, fact_b_id: str, winner: str) -> None:
         """Resolve a contradiction by marking the winner.
