@@ -86,6 +86,12 @@ class LifecycleReasoner:
     ) -> list[DirectorAction]:
         actions: list[DirectorAction] = []
 
+        # Prune stale entries for tasks no longer active
+        active_keys = {f"{t.assigned_vm}:{t.assigned_session}" for t in queue.active_tasks() if t.assigned_vm and t.assigned_session}
+        stale_keys = [k for k in self._missing_session_counts if k not in active_keys]
+        for k in stale_keys:
+            del self._missing_session_counts[k]
+
         for task in queue.active_tasks():
             if not task.assigned_vm or not task.assigned_session:
                 continue
@@ -190,7 +196,7 @@ class PreemptionReasoner:
         running = sorted(
             queue.active_tasks(),
             key=lambda t: t.priority.value,
-            reverse=True,  # Lowest priority first
+            reverse=True,  # Highest numeric value first (= lowest priority level — LOW tasks first)
         )
 
         for critical_task in critical_queued:
@@ -341,7 +347,7 @@ class BatchAssignReasoner:
                     reason=f"Batch assign: {task.priority.name} task",
                 )
             )
-            task.assign(best_vm, session_name)
+            # Don't assign here — let _start_agent assign after confirmed start
 
             capacity[best_vm] -= 1
             if capacity[best_vm] <= 0:
