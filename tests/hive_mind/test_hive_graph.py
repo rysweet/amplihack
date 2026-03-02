@@ -1091,11 +1091,16 @@ class TestFederatedRetrievalParity:
                 ),
             )
 
-        # Query with small limit - both best facts should appear
+        # Query with small limit - both best facts' CONTENT should appear
+        # (fact_ids may differ due to Proposal 4 cross-group broadcast copies)
         results = root.query_federated(
             "server database connection timeout error port",
             limit=5,
         )
-        result_ids = {f.fact_id for f in results}
-        assert "best_a" in result_ids, "Lost best fact from hive A"
-        assert "best_b" in result_ids, "Lost best fact from hive B"
+        result_contents = {f.content for f in results}
+        assert "server port 8080 database connection timeout error" in result_contents, (
+            "Lost best fact content from hive A"
+        )
+        assert "database connection timeout error port 5432 server" in result_contents, (
+            "Lost best fact content from hive B"
+        )

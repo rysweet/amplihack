@@ -275,7 +275,12 @@ class CognitiveAdapter:
         }
 
     def _search_hive(self, query: str, limit: int = 50) -> list[dict[str, Any]]:
-        """Search the shared hive store."""
+        """Search the shared hive store.
+
+        Proposal 5: Prefer federated queries over local-only queries.
+        Order: federated_query (FederatedGraphStore) → query_federated
+        (InMemoryHiveGraph tree traversal) → query_facts (local only).
+        """
         if self._hive_store is None:
             return []
         try:
@@ -292,9 +297,11 @@ class CognitiveAdapter:
                     )
                     for r in (fqr.results if hasattr(fqr, "results") else fqr)
                 ]
-            # HiveGraphStore or InMemoryHiveGraph with query_facts
-            if hasattr(self._hive_store, "query_facts"):
-                facts = self._hive_store.query_facts(query, limit=limit)
+            # Proposal 5: Prefer query_federated (tree traversal) over
+            # query_facts (local only) so the adapter always uses the
+            # broadest available query when the hive has a federation tree.
+            if hasattr(self._hive_store, "query_federated"):
+                facts = self._hive_store.query_federated(query, limit=limit)
                 return [
                     self._hive_fact_to_dict(
                         content=f.content,
@@ -305,9 +312,9 @@ class CognitiveAdapter:
                     )
                     for f in facts
                 ]
-            # InMemoryHiveGraph with query_federated
-            if hasattr(self._hive_store, "query_federated"):
-                facts = self._hive_store.query_federated(query, limit=limit)
+            # Fallback: local-only query (no federation)
+            if hasattr(self._hive_store, "query_facts"):
+                facts = self._hive_store.query_facts(query, limit=limit)
                 return [
                     self._hive_fact_to_dict(
                         content=f.content,
