@@ -183,4 +183,53 @@ All five original "future work" items have been implemented:
 4. **Distributed Mode** — Done. EventBus with Local/Redis/Azure Service Bus backends.
 5. **HiveGraph Protocol** — Done. Swappable backends (InMemory, PeerHive with Raft).
 
+## CognitiveAdapter Hive Integration
+
+The bridge between LearningAgent and the hive mind is in `CognitiveAdapter`
+(`src/amplihack/agents/goal_seeking/cognitive_adapter.py`).
+
+### How Facts Flow
+
+```
+LearningAgent.learn_from_content(content)
+  → LLM extracts structured facts
+  → CognitiveAdapter.store_fact(context, fact, confidence)
+    → Stores in local Kuzu DB (CognitiveMemory.store_fact)
+    → _promote_to_hive() — auto-promotes to shared hive if connected
+      → hive.promote_fact(agent_name, HiveFact(...))
+
+LearningAgent.answer_question(question)
+  → CognitiveAdapter.search(query) or get_all_facts()
+    → Queries local Kuzu DB
+    → _search_hive(query) — queries shared hive
+    → _merge_results() — deduplicates, local facts prioritized
+  → LLM synthesizes answer from merged fact set
+```
+
+### Usage
+
+```python
+from amplihack.agents.goal_seeking.learning_agent import LearningAgent
+from amplihack.agents.goal_seeking.hive_mind.hive_graph import InMemoryHiveGraph
+
+hive = InMemoryHiveGraph("shared")
+hive.register_agent("agent_a")
+
+agent = LearningAgent(
+    agent_name="agent_a",
+    storage_path=Path("/tmp/agent_a"),
+    use_hierarchical=True,
+    hive_store=hive,  # Enables auto-promotion + hive retrieval
+)
+```
+
+### Key Design Decisions
+
+1. **Auto-promotion on store**: Every `store_fact()` call auto-promotes to hive.
+   Simpler than explicit promotion — no facts missed, no extra caller code.
+2. **Local-first merge**: Local facts take priority over hive facts in dedup.
+   Agents trust their own extractions more than shared knowledge.
+3. **Silent failure**: Hive promotion errors are logged but never raised.
+   Local storage always succeeds even if the hive is unavailable.
+
 See `TUTORIAL.md` in this directory for getting started.
