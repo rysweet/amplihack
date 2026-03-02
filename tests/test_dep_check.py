@@ -5,7 +5,8 @@ Verifies that:
 2. validate_sdk_deps detects missing packages
 3. validate_sdk_deps passes when all deps are present
 4. check_sdk_dep returns correct bools
-5. All SDK adapter imports work end-to-end
+5. ensure_sdk_deps targets the running interpreter
+6. All SDK adapter imports work end-to-end
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ from amplihack.dep_check import (
     SDK_DEPENDENCIES,
     DepCheckResult,
     check_sdk_dep,
+    ensure_sdk_deps,
     validate_sdk_deps,
 )
 
@@ -132,7 +134,63 @@ class TestSdkDependenciesRegistry:
 
 
 # ===========================================================================
-# 6. End-to-end SDK adapter import tests
+# 6. ensure_sdk_deps tests
+# ===========================================================================
+class TestEnsureSdkDeps:
+    """Test the ensure_sdk_deps auto-install function."""
+
+    def test_returns_ok_when_all_installed(self):
+        """Should short-circuit when deps already present."""
+        result = ensure_sdk_deps()
+        assert result.all_ok
+
+    def test_uses_python_flag_with_uv(self):
+        """uv pip install must use --python to target the running interpreter."""
+        import sys
+
+        fake_deps = {"nonexistent_pkg_test": "nonexistent-pkg-test"}
+        with (
+            patch("amplihack.dep_check.SDK_DEPENDENCIES", fake_deps),
+            patch("shutil.which", return_value="/usr/bin/uv"),
+            patch("subprocess.run") as mock_run,
+        ):
+            mock_run.return_value = type("R", (), {"returncode": 1, "stderr": "not found"})()
+            ensure_sdk_deps()
+
+            cmd = mock_run.call_args[0][0]
+            assert "--python" in cmd, f"--python flag missing from uv command: {cmd}"
+            assert sys.executable in cmd, f"sys.executable missing from uv command: {cmd}"
+
+    def test_uses_pre_flag_with_pip(self):
+        """pip install must use --pre for pre-release packages."""
+        fake_deps = {"nonexistent_pkg_test": "nonexistent-pkg-test"}
+        with (
+            patch("amplihack.dep_check.SDK_DEPENDENCIES", fake_deps),
+            patch("shutil.which", side_effect=lambda x: None if x == "uv" else "/usr/bin/pip"),
+            patch("subprocess.run") as mock_run,
+        ):
+            mock_run.return_value = type("R", (), {"returncode": 1, "stderr": "not found"})()
+            ensure_sdk_deps()
+
+            cmd = mock_run.call_args[0][0]
+            assert "--pre" in cmd, f"--pre flag missing from pip command: {cmd}"
+
+    def test_invalidates_import_caches_after_install(self):
+        """Must call importlib.invalidate_caches() after installing."""
+        fake_deps = {"nonexistent_pkg_test": "nonexistent-pkg-test"}
+        with (
+            patch("amplihack.dep_check.SDK_DEPENDENCIES", fake_deps),
+            patch("shutil.which", return_value="/usr/bin/uv"),
+            patch("subprocess.run") as mock_run,
+            patch("importlib.invalidate_caches") as mock_invalidate,
+        ):
+            mock_run.return_value = type("R", (), {"returncode": 0, "stderr": "", "stdout": ""})()
+            ensure_sdk_deps()
+            mock_invalidate.assert_called_once()
+
+
+# ===========================================================================
+# 7. End-to-end SDK adapter import tests
 # ===========================================================================
 class TestSdkAdapterImports:
     """Verify all SDK adapter modules import without error."""
