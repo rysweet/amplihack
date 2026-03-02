@@ -344,6 +344,10 @@ class InMemoryHiveGraph:
         If fact.fact_id is empty, generates one. Records the source agent
         and increments their fact count. Confidence is clamped to [0.0, 1.0].
 
+        When this hive has a parent and the fact's confidence >= 0.9,
+        the fact is automatically broadcast to sibling groups via the parent
+        (Proposal 4: cross-group replication for high-confidence facts).
+
         Args:
             agent_id: The promoting agent.
             fact: The fact to promote.
@@ -365,7 +369,21 @@ class InMemoryHiveGraph:
             fact.confidence = max(0.0, min(1.0, fact.confidence))
             self._facts[fact.fact_id] = fact
             self._agents[agent_id].fact_count += 1
-            return fact.fact_id
+            fact_id = fact.fact_id
+
+        # Proposal 4: Auto-replicate high-confidence facts to sibling groups.
+        # This ensures important facts are available in ALL groups, not just
+        # the one where they were promoted. Prevents "fact in wrong group"
+        # failures in federated queries.
+        # Guard: only broadcast original facts (not already-broadcast copies)
+        # to prevent infinite recursion (child→parent→child→...).
+        is_broadcast_copy = any(
+            t.startswith("broadcast_from:") or t.startswith("escalated_from:") for t in fact.tags
+        )
+        if fact.confidence >= 0.9 and self._parent is not None and not is_broadcast_copy:
+            self._parent.broadcast_fact(fact)
+
+        return fact_id
 
     def get_fact(self, fact_id: str) -> HiveFact | None:
         """Retrieve a fact by ID, or None if not found."""
@@ -595,13 +613,14 @@ class InMemoryHiveGraph:
     ) -> list[HiveFact]:
         """Query the entire federation tree for facts matching query.
 
-        Traverses up to parent (and parent's parent, etc.) and down to
-        children (and children's children, etc.), avoiding cycles via a
-        visited set keyed by hive_id.
+        Two-phase approach (Proposals 1+2):
+          Phase 1: Collect ALL matching facts from every hive in the tree
+                   (no per-hive cap — Proposal 1).
+          Phase 2: Global re-rank by keyword score, return top-K.
 
-        Uses a large internal limit when fetching from each hive, then
-        performs a single global re-ranking by keyword score so the final
-        top-K is globally optimal (not just locally optimal per hive).
+        Query routing (Proposal 3): Children whose agents have matching
+        domains get 3x the internal limit, ensuring domain-relevant groups
+        contribute more facts to the global pool.
 
         Args:
             query: Space-separated keywords.
@@ -617,12 +636,11 @@ class InMemoryHiveGraph:
             return []
         _visited.add(self._hive_id)
 
-        # Fetch broadly from each hive to avoid per-hive truncation.
-        # 10x multiplier ensures global re-ranking sees enough candidates
-        # from each hive. Cap at 2000 to bound memory on large limit values.
-        internal_limit = min(max(limit * 10, 200), 2000)
+        # Proposal 1: Remove the 2000 cap. Use uncapped 10x multiplier so
+        # global re-ranking sees ALL candidates from each hive.
+        internal_limit = max(limit * 10, 200)
 
-        # Local results
+        # Phase 1: Collect from local hive
         results = list(self.query_facts(query, limit=internal_limit))
         seen_content: set[str] = {f.content for f in results}
 
@@ -630,6 +648,16 @@ class InMemoryHiveGraph:
         with self._lock:
             parent = self._parent
             children = list(self._children)
+
+        # Proposal 3: Query routing — identify which children have agents
+        # whose domains match the query. Give those children 3x the limit.
+        keywords = _tokenize(query)
+        priority_child_ids: set[str] = set()
+        if keywords:
+            for child in children:
+                routed = child.route_query(query)
+                if routed:
+                    priority_child_ids.add(child.hive_id)
 
         # Parent (recursive, with visited set to prevent loops)
         if parent is not None:
@@ -643,11 +671,14 @@ class InMemoryHiveGraph:
                     seen_content.add(f.content)
                     results.append(f)
 
-        # Children (recursive)
+        # Children (recursive, with routing-based limits)
         for child in children:
+            child_limit = (
+                internal_limit * 3 if child.hive_id in priority_child_ids else internal_limit
+            )
             child_results = child.query_federated(
                 query,
-                limit=internal_limit,
+                limit=child_limit,
                 _visited=_visited,
             )
             for f in child_results:
@@ -655,8 +686,7 @@ class InMemoryHiveGraph:
                     seen_content.add(f.content)
                     results.append(f)
 
-        # Global re-ranking by keyword score (same scoring as query_facts)
-        keywords = _tokenize(query)
+        # Phase 2: Global re-ranking by keyword score
         if keywords:
 
             def _global_score(fact: HiveFact) -> float:
