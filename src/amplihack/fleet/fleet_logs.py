@@ -136,7 +136,7 @@ with open('$LATEST') as f:
             if 'sessionId' in obj: stats['session'] = obj['sessionId']
             if 'gitBranch' in obj and obj['gitBranch']: stats['branch'] = obj['gitBranch']
             if 'cwd' in obj and obj['cwd']: stats['cwd'] = obj['cwd']
-        except: pass
+        except Exception: pass
 print(json.dumps(stats))
 " 2>/dev/null
     fi
@@ -193,7 +193,7 @@ for line in sys.stdin:
         if 'sessionId' in obj: stats['session'] = obj['sessionId']
         if 'gitBranch' in obj and obj['gitBranch']: stats['branch'] = obj['gitBranch']
         if 'cwd' in obj and obj['cwd']: stats['cwd'] = obj['cwd']
-    except: pass
+    except Exception: pass
 print(json.dumps(stats))
 " 2>/dev/null
 """

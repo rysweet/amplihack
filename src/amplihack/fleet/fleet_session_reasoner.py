@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shlex
 import subprocess
 from dataclasses import dataclass, field
@@ -38,25 +39,41 @@ __all__ = [
 ]
 
 # --- Safety: dangerous input blocklist (H10) ---
+# Uses regex with word boundaries to prevent bypass via case/syntax variations.
 DANGEROUS_PATTERNS = [
-    "rm -rf", "rm -r /", "rmdir /",
-    "git push --force", "git push -f",
-    "git reset --hard",
-    "DROP TABLE", "DROP DATABASE",
-    "DELETE FROM", "TRUNCATE TABLE",
-    "> /dev/sda", "mkfs.",
-    ":(){ :|:& };:",  # fork bomb
+    re.compile(r"\brm\s+-rf\b", re.IGNORECASE),
+    re.compile(r"\brm\s+-r\s+/", re.IGNORECASE),
+    re.compile(r"\brmdir\s+/", re.IGNORECASE),
+    re.compile(r"\bgit\s+push\s+--force\b", re.IGNORECASE),
+    re.compile(r"\bgit\s+push\s+-f\b", re.IGNORECASE),
+    re.compile(r"\bgit\s+reset\s+--hard\b", re.IGNORECASE),
+    re.compile(r"\bDROP\s+TABLE\b", re.IGNORECASE),
+    re.compile(r"\bDROP\s+DATABASE\b", re.IGNORECASE),
+    re.compile(r"\bDELETE\s+FROM\b", re.IGNORECASE),
+    re.compile(r"\bTRUNCATE\s+TABLE\b", re.IGNORECASE),
+    re.compile(r">\s*/dev/sda", re.IGNORECASE),
+    re.compile(r"\bmkfs\.", re.IGNORECASE),
+    re.compile(r":\(\)\s*\{", re.IGNORECASE),  # fork bomb prefix
 ]
 
 # --- Safety: confidence thresholds (H4) ---
 MIN_CONFIDENCE_SEND = 0.6
 MIN_CONFIDENCE_RESTART = 0.8
 
+# --- Safety: VM name validation ---
+_VM_NAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$")
+
+
+def _validate_vm_name(name: str) -> str:
+    """Validate VM name contains only safe characters."""
+    if not _VM_NAME_RE.match(name):
+        raise ValueError(f"Invalid VM name: {name!r}")
+    return name
+
 
 def _is_dangerous_input(text: str) -> bool:
     """Check if input text contains dangerous patterns."""
-    text_lower = text.lower()
-    return any(pattern.lower() in text_lower for pattern in DANGEROUS_PATTERNS)
+    return any(pattern.search(text) for pattern in DANGEROUS_PATTERNS)
 
 
 class LLMBackend(Protocol):
@@ -208,6 +225,9 @@ class SessionContext:
     pr_url: str = ""
     task_prompt: str = ""  # Original task assigned to this session
     project_priorities: str = ""  # Fleet-level priorities
+
+    def __post_init__(self):
+        _validate_vm_name(self.vm_name)
 
     def to_prompt_context(self) -> str:
         """Format context for the reasoning LLM call."""
@@ -488,7 +508,7 @@ for line in sys.stdin:
                 msgs.append(content[:200])
         elif obj.get('type') == 'pr-link':
             msgs.append('PR_CREATED:' + obj.get('url',''))
-    except: pass
+    except Exception: pass
 # Print last 5 messages
 for m in msgs[-5:]:
     print(m)
@@ -723,6 +743,21 @@ echo '===END==='
                     "reasoning": "Could not parse LLM response",
                     "confidence": 0.3,
                 }
+
+            # Validate field types from untrusted LLM output
+            valid_actions = {"send_input", "wait", "escalate", "mark_complete", "restart"}
+            action = decision_data.get("action", "")
+            if not isinstance(action, str) or action not in valid_actions:
+                decision_data["action"] = "wait"
+            if "confidence" in decision_data:
+                try:
+                    decision_data["confidence"] = max(0.0, min(1.0, float(decision_data["confidence"])))
+                except (TypeError, ValueError):
+                    decision_data["confidence"] = 0.5
+            if not isinstance(decision_data.get("input_text", ""), str):
+                decision_data["input_text"] = ""
+            if not isinstance(decision_data.get("reasoning", ""), str):
+                decision_data["reasoning"] = ""
 
             return SessionDecision(
                 session_name=context.session_name,

@@ -171,7 +171,7 @@ for line in sys.stdin:
                         text = c.get('text','')[:100]
                         if text: print(f'LAST_MSG:{text}')
                         break
-    except: pass
+    except Exception: pass
 " 2>/dev/null | tail -3
         fi
     fi

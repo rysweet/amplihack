@@ -1085,7 +1085,7 @@ TabPane {
             if _is_dangerous_input(decision.input_text):
                 self.notify(
                     f"BLOCKED: Input contains dangerous pattern. "
-                    f"Matches against: {', '.join(DANGEROUS_PATTERNS[:3])}...",
+                    f"Matches against: {', '.join(p.pattern for p in DANGEROUS_PATTERNS[:3])}...",
                     severity="error",
                     timeout=8,
                 )
