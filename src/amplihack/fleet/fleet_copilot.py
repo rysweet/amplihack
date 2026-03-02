@@ -27,10 +27,10 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
+from amplihack.fleet._validation import is_dangerous_input
 from amplihack.fleet.fleet_session_reasoner import (
     SessionContext,
     SessionReasoner,
-    _is_dangerous_input,
     auto_detect_backend,
     infer_agent_status,
 )
@@ -249,7 +249,7 @@ class SessionCopilot:
 
         # Use the reasoner's LLM call with our co-pilot prompt
         try:
-            decision = self.reasoner._reason(context)
+            decision = self.reasoner.reason(context)
             suggestion = CopilotSuggestion(
                 action=decision.action,
                 input_text=decision.input_text,
@@ -259,7 +259,7 @@ class SessionCopilot:
             )
 
             # Safety check
-            if suggestion.input_text and _is_dangerous_input(suggestion.input_text):
+            if suggestion.input_text and is_dangerous_input(suggestion.input_text):
                 suggestion = CopilotSuggestion(
                     action="escalate",
                     reasoning=f"Blocked dangerous input: {suggestion.input_text[:50]}",
