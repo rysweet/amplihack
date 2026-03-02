@@ -107,9 +107,9 @@ When this skill is activated:
 
 ```python
 from amplihack.recipes import run_recipe_by_name
-from amplihack.recipes.adapters import ClaudeSDKAdapter
+from amplihack.recipes.adapters import get_adapter
 
-adapter = ClaudeSDKAdapter()
+adapter = get_adapter()  # Auto-selects best adapter (NestedSession in Claude Code, CLI otherwise)
 result = run_recipe_by_name(
     "smart-orchestrator",
     adapter=adapter,
