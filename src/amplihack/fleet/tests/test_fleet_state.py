@@ -112,7 +112,7 @@ class TestFleetStateParseTmux:
     def test_poll_tmux_sessions(self, mock_run):
         mock_run.return_value = MagicMock(
             returncode=0,
-            stdout="amplihack-ultra:1:1\nbart:2:0\nlin-dev:1:0\n",
+            stdout="amplihack-ultra|||1|||1\nbart|||2|||0\nlin-dev|||1|||0\n",
         )
 
         state = FleetState()

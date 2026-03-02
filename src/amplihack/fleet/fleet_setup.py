@@ -17,8 +17,9 @@ from __future__ import annotations
 import re
 import shlex
 import subprocess
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
+from amplihack.fleet._defaults import get_azlin_path
 from amplihack.fleet._validation import validate_vm_name
 
 __all__ = ["RepoSetup", "SetupResult"]
@@ -55,7 +56,7 @@ class RepoSetup:
     before the agent starts.
     """
 
-    azlin_path: str = "/home/azureuser/src/azlin/.venv/bin/azlin"
+    azlin_path: str = field(default_factory=get_azlin_path)
     workspace_base: str = "/workspace"
 
     def setup_repo(

@@ -246,13 +246,17 @@ class TaskQueue:
         self.persist_path.parent.mkdir(parents=True, exist_ok=True)
         # Atomic write: unique temp file then replace
         fd, tmp_path = tempfile.mkstemp(dir=str(self.persist_path.parent), suffix=".tmp")
+        fd_closed = False
         try:
             os.write(fd, json.dumps([t.to_dict() for t in self.tasks], indent=2).encode())
             os.close(fd)
+            fd_closed = True
             os.replace(tmp_path, str(self.persist_path))
         except BaseException:
-            os.close(fd)
-            os.unlink(tmp_path)
+            if not fd_closed:
+                os.close(fd)
+            if os.path.exists(tmp_path):
+                os.unlink(tmp_path)
             raise
 
     def load(self) -> None:

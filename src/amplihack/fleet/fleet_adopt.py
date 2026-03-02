@@ -15,6 +15,7 @@ Public API:
 
 from __future__ import annotations
 
+import logging
 import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -24,6 +25,8 @@ from amplihack.fleet._validation import validate_vm_name
 from amplihack.fleet.fleet_tasks import TaskPriority, TaskQueue
 
 __all__ = ["SessionAdopter", "AdoptedSession"]
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -73,7 +76,8 @@ class SessionAdopter:
 
             return self._parse_discovery_output(vm_name, result.stdout)
 
-        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
+        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
+            logger.warning("Session discovery failed for %s: %s", vm_name, exc)
             return []
 
     def adopt_sessions(

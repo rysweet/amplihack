@@ -213,7 +213,8 @@ class FleetState:
                 )
                 vms.append(vm)
             return vms
-        except (json.JSONDecodeError, KeyError, TypeError):
+        except (json.JSONDecodeError, KeyError, TypeError) as exc:
+            logger.warning("Failed to parse VM JSON: %s", exc)
             return []
 
     def _parse_vm_text(self, text: str) -> list[VMInfo]:
@@ -268,7 +269,7 @@ class FleetState:
                     vm_name,
                     "--no-tmux",
                     "--",
-                    "tmux list-sessions -F '#{session_name}:#{session_windows}:#{session_attached}' 2>/dev/null || echo 'no-tmux'",
+                    "tmux list-sessions -F '#{session_name}|||#{session_windows}|||#{session_attached}' 2>/dev/null || echo 'no-tmux'",
                 ],
                 capture_output=True,
                 text=True,
@@ -283,7 +284,7 @@ class FleetState:
                 line = line.strip().strip("'")
                 if not line or line == "no-tmux":
                     continue
-                parts = line.split(":")
+                parts = line.split("|||")
                 if len(parts) >= 3:
                     sessions.append(
                         TmuxSessionInfo(

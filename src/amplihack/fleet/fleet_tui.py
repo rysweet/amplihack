@@ -18,6 +18,8 @@ Public API:
 
 from __future__ import annotations
 
+import json
+import logging
 import select
 import shutil
 import subprocess
@@ -427,8 +429,6 @@ class FleetTUI:
         """
         # Strategy 1: az vm list (Azure CLI with JSON — fast, no Bastion tunnels)
         try:
-            import json as _json
-
             rg = self._read_azlin_resource_group()
             result = subprocess.run(
                 ["az", "vm", "list", "--resource-group", rg, "--show-details", "--output", "json"],
@@ -437,7 +437,7 @@ class FleetTUI:
                 timeout=30,
             )
             if result.returncode == 0 and result.stdout.strip():
-                vms_data = _json.loads(result.stdout)
+                vms_data = json.loads(result.stdout)
                 return [
                     (
                         vm.get("name", ""),
@@ -451,8 +451,8 @@ class FleetTUI:
             pass  # No resource group configured — fall through to azlin CLI
         except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
             pass
-        except Exception:
-            pass
+        except (json.JSONDecodeError, KeyError, TypeError) as exc:
+            logging.getLogger(__name__).debug("az vm list parse error: %s", exc)
 
         # Strategy 2: azlin CLI text output
         try:
@@ -561,8 +561,8 @@ done
             )
             if result.returncode == 0:
                 return self._parse_session_output(vm_name, result.stdout)
-        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
-            pass
+        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
+            logging.getLogger(__name__).debug("Poll VM %s failed: %s", vm_name, exc)
 
         return []
 

@@ -14,6 +14,7 @@ Public API:
 
 from __future__ import annotations
 
+import logging
 import re
 import subprocess
 import time
@@ -25,6 +26,8 @@ from amplihack.fleet._validation import validate_vm_name
 from amplihack.fleet.fleet_state import AgentStatus, TmuxSessionInfo
 
 __all__ = ["FleetObserver", "ObservationResult"]
+
+logger = logging.getLogger(__name__)
 
 # Patterns that indicate specific agent states
 COMPLETION_PATTERNS = [
@@ -168,8 +171,8 @@ class FleetObserver:
             )
             if result.returncode == 0:
                 return result.stdout
-        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
-            pass
+        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
+            logger.debug("Capture pane failed for %s/%s: %s", vm_name, session_name, exc)
         return None
 
     def _classify_output(
