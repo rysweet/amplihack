@@ -20,6 +20,7 @@ import kuzu
 
 logger = logging.getLogger(__name__)
 
+from ._embeddings import EMBEDDING_DIM, get_shared_generator
 from .memory_types import (
     EpisodicMemory,
     MemoryCategory,
@@ -104,6 +105,7 @@ _NODE_TABLES = [
         source_id STRING,
         tags STRING,
         metadata STRING,
+        embedding DOUBLE[768] DEFAULT null,
         created_at INT64,
         PRIMARY KEY(node_id)
     )
@@ -222,6 +224,39 @@ class CognitiveMemory:
             except Exception as exc:
                 if "already exists" not in str(exc).lower():
                     raise
+        self._migrate_embedding_column()
+        self._ensure_vector_index()
+
+    def _migrate_embedding_column(self) -> None:
+        """Add embedding column to SemanticMemory if missing (DB migration)."""
+        try:
+            self._conn.execute(
+                f"ALTER TABLE SemanticMemory ADD embedding DOUBLE[{EMBEDDING_DIM}] DEFAULT null"
+            )
+            logger.info("Added embedding column to SemanticMemory")
+        except Exception as exc:
+            if "already exists" in str(exc).lower() or "exist" in str(exc).lower():
+                pass  # Column already present — expected for new DBs
+            else:
+                logger.debug("Embedding column migration skipped: %s", exc)
+
+    def _ensure_vector_index(self) -> None:
+        """Create HNSW vector index on SemanticMemory.embedding if not exists."""
+        try:
+            self._conn.execute(
+                "CALL CREATE_VECTOR_INDEX("
+                "'SemanticMemory', 'semantic_embedding_idx', 'embedding', "
+                "metric := 'cosine')"
+            )
+            self._has_vector_index = True
+            logger.debug("Created vector index on SemanticMemory.embedding")
+        except Exception as exc:
+            err = str(exc).lower()
+            if "already exists" in err or "exist" in err:
+                self._has_vector_index = True
+            else:
+                self._has_vector_index = False
+                logger.debug("Vector index not available: %s", exc)
 
     def _load_max_order(self, table: str, column: str) -> int:
         try:
@@ -734,6 +769,11 @@ class CognitiveMemory:
     ) -> str:
         """Store a semantic fact.
 
+        When sentence-transformers is installed, automatically generates
+        and stores an embedding vector alongside the fact for semantic
+        search.  Falls back to keyword search when embeddings are
+        unavailable.
+
         Args:
             concept: The concept or topic.
             content: Factual content.
@@ -750,6 +790,10 @@ class CognitiveMemory:
         tags_json = json.dumps(tags) if tags else "[]"
         meta_json = json.dumps(temporal_metadata) if temporal_metadata else "{}"
 
+        # Generate embedding from concept + content for richer semantics
+        gen = get_shared_generator()
+        embedding = gen.generate(f"{concept} {content}") if gen.available else None
+
         self._conn.execute(
             """
             CREATE (:SemanticMemory {
@@ -761,6 +805,7 @@ class CognitiveMemory:
                 source_id: $src,
                 tags: $tags,
                 metadata: $meta,
+                embedding: $emb,
                 created_at: $ts
             })
             """,
@@ -773,6 +818,7 @@ class CognitiveMemory:
                 "src": source_id,
                 "tags": tags_json,
                 "meta": meta_json,
+                "emb": embedding,
                 "ts": now,
             },
         )
@@ -784,7 +830,120 @@ class CognitiveMemory:
         limit: int = 10,
         min_confidence: float = 0.0,
     ) -> list[SemanticFact]:
-        """Search semantic facts by keyword matching on concept and content.
+        """Search semantic facts using vector similarity or keyword matching.
+
+        Automatically uses vector search (cosine similarity via HNSW index)
+        when sentence-transformers is installed and embeddings exist.
+        Falls back to keyword matching (CONTAINS) otherwise.
+
+        Args:
+            query: Search string.
+            limit: Maximum results.
+            min_confidence: Minimum confidence threshold.
+
+        Returns:
+            List of matching SemanticFact, best matches first.
+        """
+        # Try vector search first
+        gen = get_shared_generator()
+        if gen.available and getattr(self, "_has_vector_index", False):
+            results = self._search_facts_vector(query, limit=limit, min_confidence=min_confidence)
+            if results:
+                return results
+            # Fall through to keyword search if vector returned nothing
+
+        return self._search_facts_keyword(query, limit=limit, min_confidence=min_confidence)
+
+    def _search_facts_vector(
+        self,
+        query: str,
+        limit: int = 10,
+        min_confidence: float = 0.0,
+    ) -> list[SemanticFact]:
+        """Search facts using vector similarity (HNSW index).
+
+        Args:
+            query: Search query.
+            limit: Maximum results.
+            min_confidence: Minimum confidence threshold.
+
+        Returns:
+            List of SemanticFact sorted by semantic similarity.
+        """
+        gen = get_shared_generator()
+        query_embedding = gen.generate_query(query)
+        if query_embedding is None:
+            return []
+
+        try:
+            # Fetch more candidates than needed, then filter by agent_id and confidence
+            fetch_limit = limit * 5
+            result = self._conn.execute(
+                """
+                CALL QUERY_VECTOR_INDEX(
+                    'SemanticMemory', 'semantic_embedding_idx',
+                    $query_emb, $fetch_limit
+                )
+                RETURN node.node_id, node.agent_id, node.concept, node.content,
+                       node.confidence, node.source_id, node.tags, node.metadata,
+                       node.created_at, distance
+                """,
+                {"query_emb": query_embedding, "fetch_limit": fetch_limit},
+            )
+        except Exception as exc:
+            logger.debug("Vector search failed, falling back to keyword: %s", exc)
+            return []
+
+        facts: list[SemanticFact] = []
+        while result.has_next():
+            row = result.get_next()
+            agent_id = row[1]
+            confidence = float(row[4])
+
+            # Filter: agent isolation + confidence threshold
+            if agent_id != self.agent_name:
+                continue
+            if confidence < min_confidence:
+                continue
+
+            tags: list[str] = []
+            if row[6]:
+                try:
+                    tags = json.loads(row[6])
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            meta: dict = {}
+            if row[7]:
+                try:
+                    meta = json.loads(row[7])
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            facts.append(
+                SemanticFact(
+                    node_id=row[0],
+                    concept=row[2],
+                    content=row[3],
+                    confidence=confidence,
+                    source_id=row[5] or "",
+                    tags=tags,
+                    metadata=meta,
+                    created_at=datetime.fromtimestamp(row[8]),
+                )
+            )
+            if len(facts) >= limit:
+                break
+
+        return facts
+
+    def _search_facts_keyword(
+        self,
+        query: str,
+        limit: int = 10,
+        min_confidence: float = 0.0,
+    ) -> list[SemanticFact]:
+        """Search facts using keyword matching (CONTAINS).
+
+        Fallback when vector search is unavailable.
 
         Args:
             query: Search string (keywords matched via CONTAINS).
@@ -794,7 +953,6 @@ class CognitiveMemory:
         Returns:
             List of matching SemanticFact ordered by confidence descending.
         """
-        # Tokenise query and build OR conditions
         keywords = [w.strip() for w in query.split() if w.strip()]
         if not keywords:
             return self.get_all_facts(limit=limit)
