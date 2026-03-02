@@ -1,0 +1,112 @@
+{
+  "timestamp": "2026-03-02T07:06:48.982515+00:00",
+  "workflow_run": "22565123471",
+  "agent_prs": [
+    {
+      "number": 2746,
+      "title": "[docs] Daily documentation update - recipe runner changes (2026-03-01)",
+      "author": "github-actions[bot]",
+      "created_at": "2026-03-01T06:17:36Z",
+      "updated_at": "2026-03-02T02:33:38Z",
+      "age_hours": 24.8,
+      "draft": false,
+      "state": "open",
+      "mergeable_state": "unknown",
+      "additions": 669,
+      "deletions": 1,
+      "changed_files": 5,
+      "labels": ["documentation", "automation"],
+      "files": [
+        {"filename": "docs/explanation/recipe-runner-enforcement.md", "status": "added", "additions": 232},
+        {"filename": "docs/explanation/smart-context-inference.md", "status": "added", "additions": 394},
+        {"filename": "docs/howto/recipe-cli-commands.md", "status": "modified", "additions": 22},
+        {"filename": "docs/reference/recipe-cli-commands.md", "status": "modified", "additions": 18},
+        {"filename": "docs/tutorials/dev-orchestrator-tutorial.md", "status": "modified", "additions": 3, "deletions": 1}
+      ],
+      "category": "documentation",
+      "risk_level": "low",
+      "priority": "medium",
+      "assessment": {
+        "type": "automated_documentation",
+        "purpose": "Daily automated documentation update following Diátaxis framework",
+        "complexity": "low",
+        "conflicts": false,
+        "test_impact": "none",
+        "recommendation": "APPROVE_AND_MERGE",
+        "rationale": "Standard automated daily documentation update. Documents PRs #2741 (recipe runner enforcement) and #2742 (smart context inference). All changes are documentation-only (669 additions, 1 deletion). Properly categorized across Diátaxis framework (Tutorial, How-To, Reference, Explanation). Age: 24.8 hours. No code changes.",
+        "concerns": [],
+        "next_steps": [
+          "Verify documentation accuracy against source PRs #2741 and #2742",
+          "Confirm Diátaxis categorization is correct",
+          "Approve and merge"
+        ]
+      }
+    },
+    {
+      "number": 2719,
+      "title": "docs: streamline Claude CLI installation in PREREQUISITES.md",
+      "author": "voidborne-d",
+      "created_at": "2026-02-28T21:06:05Z",
+      "updated_at": "2026-02-28T21:06:05Z",
+      "age_hours": 34.0,
+      "draft": false,
+      "state": "open",
+      "mergeable_state": "unknown",
+      "additions": 13,
+      "deletions": 51,
+      "changed_files": 1,
+      "labels": [],
+      "files": [
+        {"filename": "docs/PREREQUISITES.md", "status": "modified", "additions": 13, "deletions": 51}
+      ],
+      "category": "documentation_improvement",
+      "risk_level": "low",
+      "priority": "medium",
+      "assessment": {
+        "type": "documentation_refactoring",
+        "purpose": "Streamline Claude CLI installation instructions by removing verbosity and self-contradictory content",
+        "complexity": "low",
+        "conflicts": false,
+        "test_impact": "none",
+        "recommendation": "NEEDS_LABELS_THEN_MERGE",
+        "rationale": "Clean documentation improvement. Consolidates 4 verbose installation blocks into a single platform table. Removes self-contradictory npm instructions (said 'deprecated' then provided detailed steps). Net reduction of 38 lines (13 additions, 51 deletions). Single file change. Author is CONTRIBUTOR (voidborne-d). Age: 34.0 hours. MISSING: documentation label should be added.",
+        "concerns": [
+          "No labels applied - should have 'documentation' label",
+          "No review activity after 34 hours",
+          "CONTRIBUTOR author (not bot) - verify quality"
+        ],
+        "next_steps": [
+          "Add 'documentation' label for consistency",
+          "Review platform table for accuracy",
+          "Verify all installation methods are current",
+          "Approve and merge"
+        ]
+      }
+    }
+  ],
+  "summary": {
+    "total_agent_prs": 2,
+    "by_status": {
+      "ready_for_review": 2,
+      "draft": 0
+    },
+    "by_priority": {
+      "medium": 2
+    },
+    "by_risk": {
+      "low": 2
+    },
+    "by_category": {
+      "documentation": 1,
+      "documentation_improvement": 1
+    },
+    "recommendations": {
+      "approve_and_merge": 1,
+      "needs_labels_then_merge": 1
+    }
+  },
+  "actions_needed": {
+    "pr_2746": "READY FOR MERGE - Standard automated documentation update. Review accuracy and approve.",
+    "pr_2719": "NEEDS LABELS - Add 'documentation' label, review content, then merge."
+  }
+}

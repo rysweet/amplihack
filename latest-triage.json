@@ -1,14 +1,13 @@
 {
-  "timestamp": "2026-03-01T18:39:44Z",
-  "workflow_run": "22549913236",
+  "timestamp": "2026-03-02T07:06:48Z",
+  "workflow_run": "22565123471",
   "total_agent_prs": 2,
   "by_status": {
-    "ready_for_review": 1,
-    "blocked_draft": 1
+    "ready_for_review": 2,
+    "draft": 0
   },
   "by_priority": {
-    "high": 1,
-    "medium": 1
+    "medium": 2
   },
-  "latest_triage_file": "pr-triage-2026-03-01-18Z.json"
+  "latest_triage_file": "pr-triage-2026-03-02-07Z.json"
 }
