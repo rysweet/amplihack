@@ -29,6 +29,7 @@ import time
 import tty
 from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
 
 __all__ = ["FleetTUI", "run_tui"]
@@ -434,18 +435,19 @@ class FleetTUI:
         1. Try azlin Python API (VMManager.list_vms) -- most reliable
         2. Fallback: azlin CLI text output parsed from table
         """
-        # Strategy 1: azlin Python API
+        # Strategy 1: azlin Python API (reads resource group from azlin config)
         try:
             import sys as _sys
-            # Ensure azlin is importable
             azlin_src = "/home/azureuser/src/azlin/src"
             if azlin_src not in _sys.path:
                 _sys.path.insert(0, azlin_src)
             from azlin.vm_manager import VMManager  # type: ignore[import-not-found]
 
-            vms = VMManager.list_vms(resource_group="azlin-rg", include_stopped=True)
+            # Read resource group from azlin config (~/.azlin/config.toml)
+            rg = self._read_azlin_resource_group()
+            vms = VMManager.list_vms(resource_group=rg, include_stopped=True)
             return [
-                (vm.name, vm.location, vm.is_running())
+                (vm.name, vm.location, "running" in (vm.power_state or "").lower())
                 for vm in vms
             ]
         except Exception:
@@ -465,6 +467,17 @@ class FleetTUI:
             pass
 
         return []
+
+    def _read_azlin_resource_group(self) -> str:
+        """Read the default resource group from ~/.azlin/config.toml."""
+        config_path = Path.home() / ".azlin" / "config.toml"
+        if config_path.exists():
+            for line in config_path.read_text().splitlines():
+                if line.startswith("default_resource_group"):
+                    # Parse: default_resource_group = "value"
+                    _, _, value = line.partition("=")
+                    return value.strip().strip('"').strip("'")
+        return "rysweet-linux-vm-pool"  # sensible default
 
     def _parse_vm_text(self, text: str) -> list[tuple[str, str, bool]]:
         """Parse text table from azlin list."""
