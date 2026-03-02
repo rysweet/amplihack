@@ -48,7 +48,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 # Import git utilities for worktree detection
 try:
-    from git_utils import get_shared_runtime_dir
+    from git_utils import get_shared_runtime_dir  # type: ignore[import-not-found]
 except ImportError:
     # Fallback if git_utils not available (fail-open)
     def get_shared_runtime_dir(project_root: str | Path) -> str:

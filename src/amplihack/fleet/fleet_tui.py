@@ -401,6 +401,26 @@ class FleetTUI:
                 time.sleep(min(1.0, remaining))
         return None
 
+    def refresh_all(self) -> list[VMView]:
+        """Poll all VMs including excluded ones (for 'All Sessions' tab).
+
+        Returns a list of VMView objects sorted by VM name.
+        """
+        vm_list = self._get_vm_list()
+        result: list[VMView] = []
+
+        for vm_name, region, is_running in vm_list:
+            # No exclude filter -- show everything
+            vm_view = VMView(name=vm_name, region=region, is_running=is_running)
+
+            if is_running:
+                vm_view.sessions = self._poll_vm(vm_name)
+
+            result.append(vm_view)
+
+        result.sort(key=lambda v: v.name)
+        return result
+
     # ------------------------------------------------------------------
     # Data gathering: azlin + tmux polling
     # ------------------------------------------------------------------
@@ -409,20 +429,29 @@ class FleetTUI:
         """Get VM list from azlin.
 
         Returns list of (name, region, is_running) tuples.
+
+        Strategy:
+        1. Try azlin Python API (VMManager.list_vms) -- most reliable
+        2. Fallback: azlin CLI text output parsed from table
         """
+        # Strategy 1: azlin Python API
         try:
-            result = subprocess.run(
-                [self.azlin_path, "list", "--json"],
-                capture_output=True,
-                text=True,
-                timeout=60,
-            )
-            if result.returncode == 0 and result.stdout.strip():
-                return self._parse_vm_json(result.stdout)
-        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
+            import sys as _sys
+            # Ensure azlin is importable
+            azlin_src = "/home/azureuser/src/azlin/src"
+            if azlin_src not in _sys.path:
+                _sys.path.insert(0, azlin_src)
+            from azlin.vm_manager import VMManager  # type: ignore[import-not-found]
+
+            vms = VMManager.list_vms(resource_group="azlin-rg", include_stopped=True)
+            return [
+                (vm.name, vm.location, vm.is_running())
+                for vm in vms
+            ]
+        except Exception:
             pass
 
-        # Fallback: try text output
+        # Strategy 2: azlin CLI text output
         try:
             result = subprocess.run(
                 [self.azlin_path, "list"],
@@ -436,25 +465,6 @@ class FleetTUI:
             pass
 
         return []
-
-    def _parse_vm_json(self, json_str: str) -> list[tuple[str, str, bool]]:
-        """Parse JSON from azlin list --json."""
-        import json
-
-        try:
-            data = json.loads(json_str)
-            items = data if isinstance(data, list) else data.get("vms", [])
-            result = []
-            for item in items:
-                name = item.get("name", "")
-                region = item.get("region", item.get("location", ""))
-                status = item.get("status", "")
-                is_running = "run" in status.lower()
-                if name:
-                    result.append((name, region, is_running))
-            return result
-        except Exception:
-            return []
 
     def _parse_vm_text(self, text: str) -> list[tuple[str, str, bool]]:
         """Parse text table from azlin list."""

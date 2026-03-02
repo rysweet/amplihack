@@ -78,6 +78,30 @@ class RecipeResult:
     step_results: list[StepResult] = field(default_factory=list)
     context: dict[str, Any] = field(default_factory=dict)
 
+    @property
+    def output(self) -> str:
+        """Aggregate output from all completed steps as a single string.
+
+        Useful for callers that need a string summary of the recipe execution
+        (e.g. for logging, truncation with ``result.output[:500]``, etc.).
+        """
+        parts = []
+        for sr in self.step_results:
+            if sr.output:
+                parts.append(sr.output)
+            elif sr.error:
+                parts.append(f"[{sr.step_id} error] {sr.error}")
+        return "\n".join(parts)
+
+    def __str__(self) -> str:
+        status = "SUCCESS" if self.success else "FAILED"
+        step_count = len(self.step_results)
+        return f"RecipeResult({self.recipe_name}: {status}, {step_count} steps)"
+
+    def __getitem__(self, key: int | slice) -> str:
+        """Support subscripting (e.g. ``result[:500]``) by delegating to ``.output``."""
+        return self.output[key]
+
 
 class StepExecutionError(Exception):
     """Raised when a step fails to execute."""

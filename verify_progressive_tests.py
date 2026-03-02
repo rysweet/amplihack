@@ -12,7 +12,7 @@ from amplihack_eval.data.progressive_levels import (  # type: ignore[import-not-
     LEVEL_2,
 )
 
-from amplihack.agents.goal_seeking import LearningAgent
+from amplihack.agents.goal_seeking import LearningAgent  # type: ignore[import-not-found]
 
 
 def test_basic_functionality():
@@ -20,7 +20,7 @@ def test_basic_functionality():
     print("Testing LearningAgent basic functionality...")
 
     # Test 1: Backward compatibility
-    from amplihack.agents.goal_seeking import WikipediaLearningAgent
+    from amplihack.agents.goal_seeking import WikipediaLearningAgent  # type: ignore[import-not-found]
 
     print(
         f"✓ Backward compatibility: LearningAgent is WikipediaLearningAgent = {LearningAgent is WikipediaLearningAgent}"

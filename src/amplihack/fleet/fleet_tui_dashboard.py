@@ -27,6 +27,7 @@ from textual.widgets import (
     DataTable,
     Footer,
     Header,
+    Input,
     RichLog,
     Static,
     TabbedContent,
@@ -217,6 +218,16 @@ Screen {
 }
 
 /* ---- Projects Tab ---- */
+#project-add-bar {
+    height: auto;
+    layout: horizontal;
+    padding: 1 1;
+    background: $primary-background;
+}
+#project-repo-input {
+    width: 1fr;
+    margin: 0 1 0 0;
+}
 #project-table {
     height: 1fr;
     border: tall $primary-background;
@@ -225,6 +236,22 @@ Screen {
 #project-table > .datatable--cursor {
     background: $accent 40%;
     color: $text;
+}
+
+/* ---- New Session Tab ---- */
+#new-session-header {
+    padding: 1 2;
+    background: $primary-background;
+    color: $text;
+}
+#new-session-form {
+    height: auto;
+    padding: 1 2;
+    align: left middle;
+}
+#new-session-form Select {
+    width: 30;
+    margin: 0 1;
 }
 
 /* ---- Shared ---- */
@@ -268,6 +295,7 @@ TabPane {
         Binding("a", "apply_proposal", "Apply", show=True),
         Binding("d", "dry_run_session", "Dry-run", show=True),
         Binding("l", "toggle_logo", "Logo", show=True),
+        Binding("n", "new_session", "New Session", show=True),
     ]
 
     def __init__(
@@ -327,7 +355,31 @@ TabPane {
 
             # --- Tab 4: Projects ---
             with TabPane("Projects", id="projects-tab"):
+                with Horizontal(id="project-add-bar"):
+                    yield Input(
+                        placeholder="https://github.com/owner/repo",
+                        id="project-repo-input",
+                    )
+                    yield Button("Add", id="btn-add-project", variant="success")
+                    yield Button("Remove", id="btn-remove-project", variant="error")
                 yield DataTable(id="project-table", cursor_type="row")
+
+            # --- Tab 5: New Session ---
+            with TabPane("New Session", id="new-session-tab"):
+                yield Static("[bold]Create a new agent session on a VM[/bold]", id="new-session-header")
+                with Horizontal(id="new-session-form"):
+                    yield Select([], id="vm-select", prompt="Select VM")
+                    yield Select(
+                        [
+                            ("claude", "claude"),
+                            ("copilot", "copilot"),
+                            ("amplifier", "amplifier"),
+                        ],
+                        id="agent-select",
+                        prompt="Agent type",
+                        value="claude",
+                    )
+                    yield Button("Create Session", id="btn-create-session", variant="success")
 
         yield LoadingIndicator(id="loading-overlay")
         yield Footer()
@@ -894,6 +946,15 @@ TabPane {
             tabs = self.query_one("#tabs", TabbedContent)
             tabs.active = "detail-tab"
 
+        elif button_id == "btn-add-project":
+            self._add_project_from_input()
+
+        elif button_id == "btn-remove-project":
+            self._remove_selected_project()
+
+        elif button_id == "btn-create-session":
+            self._create_new_session()
+
     def _apply_from_editor(self) -> None:
         """Build a decision from the editor fields and apply it."""
         if not self._selected_key:
@@ -937,6 +998,147 @@ TabPane {
 
         # Execute in background
         self._execute_decision_bg(decision)
+
+    # ------------------------------------------------------------------
+    # Project management
+    # ------------------------------------------------------------------
+
+    def _add_project_from_input(self) -> None:
+        """Add a project from the repo Input widget."""
+        repo_input = self.query_one("#project-repo-input", Input)
+        repo_url = repo_input.value.strip()
+        if not repo_url:
+            self.notify("Enter a repo URL first", severity="warning")
+            return
+
+        from amplihack.fleet.fleet_dashboard import FleetDashboard
+
+        dash_path = Path.home() / ".amplihack" / "fleet" / "dashboard.json"
+        dash = FleetDashboard(persist_path=dash_path)
+
+        if dash.get_project(repo_url):
+            self.notify(f"Project already exists: {repo_url}", severity="warning")
+            return
+
+        dash.add_project(repo_url=repo_url)
+        repo_input.value = ""
+        self._refresh_projects_table()
+        self.notify(f"Added project: {repo_url}")
+
+    def _remove_selected_project(self) -> None:
+        """Remove the currently selected project from the table."""
+        proj_table = self.query_one("#project-table", DataTable)
+        if proj_table.cursor_row is None:
+            self.notify("Select a project first", severity="warning")
+            return
+
+        row_key = proj_table.get_row_at(proj_table.cursor_row)
+        if not row_key:
+            return
+
+        # The key is the project name (set when adding rows)
+        cursor_key = proj_table.coordinate_to_cell_key(
+            proj_table.cursor_coordinate
+        ).row_key
+        project_name = str(cursor_key.value) if cursor_key else ""
+        if not project_name:
+            self.notify("Could not determine project name", severity="warning")
+            return
+
+        from amplihack.fleet.fleet_dashboard import FleetDashboard
+
+        dash_path = Path.home() / ".amplihack" / "fleet" / "dashboard.json"
+        dash = FleetDashboard(persist_path=dash_path)
+
+        if dash.remove_project(project_name):
+            self._refresh_projects_table()
+            self.notify(f"Removed project: {project_name}")
+        else:
+            self.notify(f"Project not found: {project_name}", severity="warning")
+
+    # ------------------------------------------------------------------
+    # New session creation
+    # ------------------------------------------------------------------
+
+    def action_new_session(self) -> None:
+        """Switch to the New Session tab."""
+        tabs = self.query_one("#tabs", TabbedContent)
+        tabs.active = "new-session-tab"
+        # Populate VM select with running VMs
+        self._populate_vm_select()
+
+    def _populate_vm_select(self) -> None:
+        """Fill the VM select dropdown with running VMs from cache."""
+        all_vms: set[str] = set()
+        for key, entry in self._cache.items():
+            if entry.view.vm_name and entry.view.status != "empty":
+                all_vms.add(entry.view.vm_name)
+        for key, entry in self._all_cache.items():
+            if entry.view.vm_name:
+                all_vms.add(entry.view.vm_name)
+
+        vm_select = self.query_one("#vm-select", Select)
+        options = [(name, name) for name in sorted(all_vms)]
+        vm_select.set_options(options)
+
+    def _create_new_session(self) -> None:
+        """Create a new agent session on the selected VM."""
+        vm_select = self.query_one("#vm-select", Select)
+        agent_select = self.query_one("#agent-select", Select)
+
+        vm_name = str(vm_select.value) if vm_select.value is not Select.BLANK else ""
+        agent_type = str(agent_select.value) if agent_select.value is not Select.BLANK else "claude"
+
+        if not vm_name:
+            self.notify("Select a VM first", severity="warning")
+            return
+
+        self.notify(f"Creating {agent_type} session on {vm_name}...")
+        self._create_session_bg(vm_name, agent_type)
+
+    @work(thread=True)
+    def _create_session_bg(self, vm_name: str, agent_type: str) -> None:
+        """Create a new tmux session on a VM in background."""
+        import subprocess
+
+        worker = get_current_worker()
+
+        # Map agent types to amplihack launch commands
+        agent_commands = {
+            "claude": "amplihack claude",
+            "copilot": "amplihack copilot",
+            "amplifier": "amplihack amplifier",
+        }
+        launch_cmd = agent_commands.get(agent_type, f"amplihack {agent_type}")
+
+        # Create a new tmux session and run the agent inside it
+        session_name = f"{agent_type}-{int(__import__('time').time()) % 10000}"
+        remote_cmd = (
+            f"tmux new-session -d -s {session_name} '{launch_cmd}'"
+        )
+
+        try:
+            result = subprocess.run(
+                [self._fleet.azlin_path, "connect", vm_name, "--no-tmux", "--", remote_cmd],
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+            if result.returncode == 0:
+                msg = f"Created session '{session_name}' on {vm_name} running {agent_type}"
+                severity = "information"
+            else:
+                msg = f"Failed to create session: {result.stderr.strip()}"
+                severity = "error"
+        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
+            msg = f"Failed to create session: {exc}"
+            severity = "error"
+
+        if worker.is_cancelled:
+            return
+
+        self.call_from_thread(self.notify, msg, severity=severity)
+        self.call_from_thread(self._schedule_refresh)
 
     @work(thread=True)
     def _execute_decision_bg(self, decision: SessionDecision) -> None:
