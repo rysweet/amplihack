@@ -14,6 +14,8 @@ Public API:
     FleetGraph: Relationship tracking between fleet entities
     GraphNode: Single entity in the graph
     GraphEdge: Relationship between two entities
+    NodeType: Types of entities in the fleet graph
+    EdgeType: Types of relationships between entities
 """
 
 from __future__ import annotations
@@ -24,7 +26,7 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 
-__all__ = ["FleetGraph", "NodeType", "EdgeType"]
+__all__ = ["FleetGraph", "GraphNode", "GraphEdge", "NodeType", "EdgeType"]
 
 
 class NodeType(Enum):
@@ -248,6 +250,10 @@ class FleetGraph:
             return
         if not self.persist_path:
             return
+        if getattr(self, '_load_failed', False):
+            import logging
+            logging.getLogger(__name__).error("Refusing to save — load failed for %s. Fix the .bak file manually.", self.persist_path)
+            return
         self.persist_path.parent.mkdir(parents=True, exist_ok=True)
         data = {
             "nodes": {
@@ -280,8 +286,12 @@ class FleetGraph:
             data = json.loads(self.persist_path.read_text())
         except json.JSONDecodeError:
             import logging
+            import shutil
 
-            logging.getLogger(__name__).warning(f"Corrupt graph file: {self.persist_path}")
+            logging.getLogger(__name__).warning(f"Corrupt graph file: {self.persist_path} — creating backup")
+            backup = self.persist_path.with_suffix(".json.bak")
+            shutil.copy2(self.persist_path, backup)
+            self._load_failed = True
             return
         self.nodes = {}
         for nid, ndata in data.get("nodes", {}).items():

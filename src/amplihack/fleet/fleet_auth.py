@@ -25,9 +25,10 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from amplihack.fleet._defaults import get_azlin_path
 from amplihack.fleet._validation import validate_vm_name
 
-__all__ = ["AuthPropagator", "GitHubIdentity"]
+__all__ = ["AuthPropagator", "AuthResult", "GitHubIdentity"]
 
 _CHMOD_MODE_RE = re.compile(r"^[0-7]{3,4}$")
 
@@ -99,7 +100,7 @@ class AuthPropagator:
     and sets correct file permissions.
     """
 
-    azlin_path: str = "/home/azureuser/src/azlin/.venv/bin/azlin"
+    azlin_path: str = field(default_factory=get_azlin_path)
 
     def propagate_all(self, vm_name: str, services: list[str] | None = None) -> list[AuthResult]:
         """Copy all auth tokens to a target VM.
@@ -227,7 +228,7 @@ class AuthPropagator:
                 perms_cmds.append(f"chmod {mode} ~/{dest_path.replace('~/', '')} 2>/dev/null")
 
             extract_cmd = (
-                "cd ~ && tar xzf --no-absolute-names fleet-auth-bundle.tar.gz && "
+                "cd ~ && tar --no-absolute-names -xzf fleet-auth-bundle.tar.gz && "
                 + " && ".join(perms_cmds)
                 + " && rm -f fleet-auth-bundle.tar.gz && echo 'AUTH_OK'"
             )

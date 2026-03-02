@@ -78,14 +78,15 @@ class CopilotSuggestion:
     input_text: str = ""
     reasoning: str = ""
     confidence: float = 0.0
-    progress_pct: int = 0
+    progress_pct: int | None = None
     timestamp: datetime = field(default_factory=datetime.now)
 
     def summary(self) -> str:
+        progress_str = f"{self.progress_pct}%" if self.progress_pct is not None else "unknown"
         lines = [
             f"  Action: {self.action}",
             f"  Confidence: {self.confidence:.0%}",
-            f"  Progress: {self.progress_pct}%",
+            f"  Progress: {progress_str}",
             f"  Reasoning: {self.reasoning}",
         ]
         if self.input_text:
@@ -311,15 +312,20 @@ class SessionCopilot:
             summary += f", {len(errors)} errors detected"
         return summary
 
-    def _estimate_progress(self, transcript: str) -> int:
-        """Rough progress estimate based on transcript patterns."""
-        if not transcript:
-            return 0
+    def _estimate_progress(self, transcript: str) -> int | None:
+        """Progress estimate based on transcript patterns.
 
-        lines = transcript.strip().split("\n")
+        Returns an integer percentage when a concrete signal is found in the
+        transcript (e.g. "goal achieved", "PR created", "tests pass").
+        Returns None when no concrete signal is available — the caller should
+        display "unknown" rather than a fabricated number.
+        """
+        if not transcript:
+            return None
+
         content = transcript.lower()
 
-        # Check for completion signals
+        # Check for completion signals — these are concrete
         if "goal_status: achieved" in content:
             return 100
         if "pr created" in content or "pull request" in content:
@@ -327,16 +333,8 @@ class SessionCopilot:
         if "tests pass" in content or "all tests" in content:
             return 80
 
-        # Rough estimate based on activity volume
-        if len(lines) > 100:
-            return min(70, len(lines) // 2)
-        if len(lines) > 50:
-            return min(50, len(lines) // 3)
-        if len(lines) > 20:
-            return 30
-        if len(lines) > 5:
-            return 15
-        return 5
+        # No concrete signal — return None instead of fabricating a percentage
+        return None
 
     @property
     def history(self) -> list[CopilotSuggestion]:

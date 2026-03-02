@@ -21,8 +21,6 @@ Public API:
 from __future__ import annotations
 
 import logging
-import os
-import shutil
 import sys
 from pathlib import Path
 
@@ -30,6 +28,7 @@ import click
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
+from amplihack.fleet._defaults import DEFAULT_EXCLUDE_VMS, get_azlin_path
 from amplihack.fleet._validation import validate_vm_name
 from amplihack.fleet.fleet_admiral import FleetAdmiral
 from amplihack.fleet.fleet_auth import AuthPropagator
@@ -44,9 +43,7 @@ DEFAULT_QUEUE_PATH = Path.home() / ".amplihack" / "fleet" / "task_queue.json"
 DEFAULT_LOG_DIR = Path.home() / ".amplihack" / "fleet" / "logs"
 DEFAULT_DASHBOARD_PATH = Path.home() / ".amplihack" / "fleet" / "dashboard.json"
 DEFAULT_GRAPH_PATH = Path.home() / ".amplihack" / "fleet" / "graph.json"
-AZLIN_PATH = os.environ.get(
-    "AZLIN_PATH", shutil.which("azlin") or "/home/azureuser/src/azlin/.venv/bin/azlin"
-)
+AZLIN_PATH = get_azlin_path()
 
 
 def _validate_vm_name_cli(ctx, param, value):
@@ -60,7 +57,7 @@ def _validate_vm_name_cli(ctx, param, value):
 
 
 # Existing VMs that should not be managed (configurable via --exclude)
-EXISTING_VMS = {"devy", "devo", "devi", "deva", "amplihack", "seldon-vm"}
+EXISTING_VMS = DEFAULT_EXCLUDE_VMS
 
 
 def _get_director(queue_path: Path = DEFAULT_QUEUE_PATH) -> FleetAdmiral:
@@ -648,8 +645,9 @@ def copilot_mode(goal: str, once: bool, interval: int):
 
     while True:
         suggestion = copilot.suggest()
+        progress_str = f"{suggestion.progress_pct}%" if suggestion.progress_pct is not None else "unknown"
         click.echo(
-            f"\n[{suggestion.timestamp.strftime('%H:%M:%S')}] Progress: {suggestion.progress_pct}%"
+            f"\n[{suggestion.timestamp.strftime('%H:%M:%S')}] Progress: {progress_str}"
         )
         click.echo(suggestion.summary())
 

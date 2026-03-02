@@ -25,6 +25,7 @@ from amplihack.fleet.fleet_tasks import FleetTask, TaskQueue, TaskStatus
 
 __all__ = ["FleetDashboard", "ProjectInfo"]
 
+# Based on Standard_E16as_v5 on-demand pricing ($0.576/hr, East US, March 2026)
 DEFAULT_COST_PER_HOUR = 0.576
 
 
@@ -186,10 +187,11 @@ class FleetDashboard:
                 vm = state.get_vm(vm_name)
                 if vm and vm.is_running:
                     # NOTE: Uses project start time for all VMs. Per-VM timing would require vm_assigned_at tracking.
-                    hours_active = 1.0  # Minimum billing unit
+                    # Azure bills per-second; default to 1 hour if no start time recorded.
+                    hours_active = 1.0
                     if proj.started_at:
                         hours_active = max(
-                            1.0,
+                            0.0,
                             (datetime.now() - proj.started_at).total_seconds() / 3600,
                         )
                     total_cost += hours_active * DEFAULT_COST_PER_HOUR
@@ -242,6 +244,10 @@ class FleetDashboard:
     def _save(self) -> None:
         if not self.persist_path:
             return
+        if getattr(self, '_load_failed', False):
+            import logging
+            logging.getLogger(__name__).error("Refusing to save — load failed for %s. Fix the .bak file manually.", self.persist_path)
+            return
         self.persist_path.parent.mkdir(parents=True, exist_ok=True)
         # Atomic write: temp file then rename
         tmp = self.persist_path.with_suffix(".tmp")
@@ -255,8 +261,12 @@ class FleetDashboard:
             data = json.loads(self.persist_path.read_text())
         except json.JSONDecodeError:
             import logging
+            import shutil
 
-            logging.getLogger(__name__).warning(f"Corrupt dashboard file: {self.persist_path}")
+            logging.getLogger(__name__).warning(f"Corrupt dashboard file: {self.persist_path} — creating backup")
+            backup = self.persist_path.with_suffix(".json.bak")
+            shutil.copy2(self.persist_path, backup)
+            self._load_failed = True
             return
         self.projects = []
         for item in data:

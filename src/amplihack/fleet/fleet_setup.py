@@ -21,7 +21,7 @@ from dataclasses import dataclass
 
 from amplihack.fleet._validation import validate_vm_name
 
-__all__ = ["RepoSetup"]
+__all__ = ["RepoSetup", "SetupResult"]
 
 _URL_SCHEME_RE = re.compile(r"^(https?://|git@|ssh://)")
 
@@ -171,24 +171,25 @@ fi
 if [ -f "pyproject.toml" ]; then
     echo "Python project detected"
     if command -v uv &>/dev/null; then
-        uv sync --quiet 2>/dev/null || pip install -e . --quiet 2>/dev/null || true
+        uv sync --quiet 2>/dev/null || echo "WARN: uv sync failed"
+        pip install -e . --quiet 2>/dev/null || echo "WARN: pip install failed"
     elif command -v pip &>/dev/null; then
-        pip install -e . --quiet 2>/dev/null || true
+        pip install -e . --quiet 2>/dev/null || echo "WARN: pip install failed"
     fi
 elif [ -f "package.json" ]; then
     echo "Node.js project detected"
     if command -v npm &>/dev/null; then
-        npm install --quiet 2>/dev/null || true
+        npm install --quiet 2>/dev/null || echo "WARN: npm install failed"
     fi
 elif [ -f "Cargo.toml" ]; then
     echo "Rust project detected"
-    cargo build --quiet 2>/dev/null || true
+    cargo build --quiet 2>/dev/null || echo "WARN: cargo build failed"
 elif [ -f "go.mod" ]; then
     echo "Go project detected"
-    go mod download 2>/dev/null || true
+    go mod download 2>/dev/null || echo "WARN: go mod download failed"
 elif ls *.sln >/dev/null 2>&1 || ls *.csproj >/dev/null 2>&1; then
     echo ".NET project detected"
-    dotnet restore --quiet 2>/dev/null || true
+    dotnet restore --quiet 2>/dev/null || echo "WARN: dotnet restore failed"
 fi
 
 echo "Workspace ready: $(pwd)"

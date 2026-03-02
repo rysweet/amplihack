@@ -15,7 +15,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from amplihack.fleet.fleet_director import ActionType, DirectorAction
+from amplihack.fleet.fleet_admiral import ActionType, DirectorAction
 from amplihack.fleet.fleet_state import AgentStatus, FleetState, TmuxSessionInfo, VMInfo
 from amplihack.fleet.fleet_tasks import FleetTask, TaskPriority, TaskQueue, TaskStatus
 from amplihack.fleet.fleet_reasoners import (

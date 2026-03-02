@@ -20,9 +20,10 @@ import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from amplihack.fleet._defaults import get_azlin_path
 from amplihack.fleet._validation import validate_vm_name
 
-__all__ = ["HealthChecker", "HealthReport"]
+__all__ = ["HealthChecker", "HealthReport", "VMHealth"]
 
 
 # Agent process names to check for
@@ -104,7 +105,7 @@ class HealthChecker:
     in one command (minimizes Bastion tunnel overhead).
     """
 
-    azlin_path: str = "/home/azureuser/src/azlin/.venv/bin/azlin"
+    azlin_path: str = field(default_factory=get_azlin_path)
 
     def check_vm(self, vm_name: str) -> VMHealth:
         """Run all health checks on a single VM in one SSH connection.

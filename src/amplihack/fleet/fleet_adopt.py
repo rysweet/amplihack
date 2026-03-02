@@ -16,9 +16,10 @@ Public API:
 from __future__ import annotations
 
 import subprocess
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
+from amplihack.fleet._defaults import get_azlin_path
 from amplihack.fleet._validation import validate_vm_name
 from amplihack.fleet.fleet_tasks import TaskPriority, TaskQueue
 
@@ -48,7 +49,7 @@ class SessionAdopter:
     Non-disruptive: reads session state without modifying anything.
     """
 
-    azlin_path: str = "/home/azureuser/src/azlin/.venv/bin/azlin"
+    azlin_path: str = field(default_factory=get_azlin_path)
 
     def discover_sessions(self, vm_name: str) -> list[AdoptedSession]:
         """Discover all tmux sessions on a VM and infer their context.

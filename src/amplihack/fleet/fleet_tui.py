@@ -18,7 +18,6 @@ Public API:
 
 from __future__ import annotations
 
-import os
 import select
 import shutil
 import subprocess
@@ -29,6 +28,8 @@ import tty
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
+
+from amplihack.fleet._defaults import DEFAULT_EXCLUDE_VMS, get_azlin_path
 
 __all__ = ["FleetTUI", "run_tui"]
 
@@ -119,14 +120,9 @@ class FleetTUI:
     a box-drawn dashboard with auto-refresh and keyboard control.
     """
 
-    azlin_path: str = field(
-        default_factory=lambda: os.environ.get(
-            "AZLIN_PATH",
-            shutil.which("azlin") or "/home/azureuser/src/azlin/.venv/bin/azlin",
-        )
-    )
+    azlin_path: str = field(default_factory=get_azlin_path)
     refresh_interval: int = 60
-    exclude_vms: set[str] = field(default_factory=lambda: {"fleet-exp-1", "fleet-exp-2"})
+    exclude_vms: set[str] = field(default_factory=lambda: set(DEFAULT_EXCLUDE_VMS))
 
     def run(self, once: bool = False) -> None:
         """Main TUI loop with non-blocking keyboard input.
@@ -451,6 +447,8 @@ class FleetTUI:
                     for vm in vms_data
                     if vm.get("name")
                 ]
+        except ValueError:
+            pass  # No resource group configured — fall through to azlin CLI
         except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
             pass
         except Exception:
@@ -472,7 +470,11 @@ class FleetTUI:
         return []
 
     def _read_azlin_resource_group(self) -> str:
-        """Read the default resource group from ~/.azlin/config.toml."""
+        """Read the default resource group from ~/.azlin/config.toml.
+
+        Raises:
+            ValueError: If no resource group is configured.
+        """
         config_path = Path.home() / ".azlin" / "config.toml"
         if config_path.exists():
             for line in config_path.read_text().splitlines():
@@ -480,7 +482,9 @@ class FleetTUI:
                     # Parse: default_resource_group = "value"
                     _, _, value = line.partition("=")
                     return value.strip().strip('"').strip("'")
-        return "rysweet-linux-vm-pool"  # sensible default
+        raise ValueError(
+            "No resource group configured. Set default_resource_group in ~/.azlin/config.toml"
+        )
 
     def _parse_vm_text(self, text: str) -> list[tuple[str, str, bool]]:
         """Parse text table from azlin list."""
@@ -619,6 +623,9 @@ done
         return sessions
 
     def _classify_status(self, tmux_text: str) -> str:
+        # NOTE: This is a simplified status classifier for TUI display purposes.
+        # The canonical status classifier is infer_agent_status() in fleet_session_reasoner.py.
+        # These two systems return different value sets — unification is tracked in issue #2799.
         """Classify session status from tmux capture text.
 
         Reuses patterns from fleet_session_reasoner._infer_status:
