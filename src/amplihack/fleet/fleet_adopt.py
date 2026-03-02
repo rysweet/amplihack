@@ -72,6 +72,7 @@ class SessionAdopter:
             )
 
             if result.returncode != 0:
+                logger.warning("Session discovery command failed for %s (rc=%d): %s", vm_name, result.returncode, result.stderr[:200])
                 return []
 
             return self._parse_discovery_output(vm_name, result.stdout)

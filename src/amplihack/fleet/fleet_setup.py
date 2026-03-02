@@ -113,6 +113,8 @@ class RepoSetup:
             )
 
         except subprocess.TimeoutExpired:
+            import logging as _log
+            _log.getLogger(__name__).warning("Repo setup timed out for %s on %s", repo_url, vm_name)
             return SetupResult(
                 vm_name=vm_name,
                 repo_url=repo_url,

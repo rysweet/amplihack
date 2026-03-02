@@ -114,7 +114,9 @@ class LogReader:
 
             return self._parse_log_summary(result.stdout)
 
-        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
+        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
+            import logging
+            logging.getLogger(__name__).debug("read_session_log failed for %s: %s", vm_name, exc)
             return None
 
     def read_all_sessions(self, vm_name: str) -> list[SessionSummary]:
@@ -161,7 +163,9 @@ done
 
             return self._parse_all_logs_output(result.stdout)
 
-        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
+        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
+            import logging
+            logging.getLogger(__name__).debug("read_all_sessions failed for %s: %s", vm_name, exc)
             return []
 
     def _build_log_reader_command(self, project_path: str, tail_lines: int) -> str:

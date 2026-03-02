@@ -464,9 +464,10 @@ class FleetTUI:
             )
             if result.returncode == 0:
                 return self._parse_vm_text(result.stdout)
-        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
-            pass
+        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
+            logging.getLogger(__name__).debug("azlin list failed: %s", exc)
 
+        logging.getLogger(__name__).warning("All VM polling strategies failed")
         return []
 
     def _read_azlin_resource_group(self) -> str:
