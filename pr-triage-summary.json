@@ -1,0 +1,81 @@
+{
+  "triage_date": "2026-03-02T18:55:38Z",
+  "repository": "rysweet/amplihack",
+  "total_prs": 6,
+  "summary": {
+    "high_priority": 1,
+    "medium_priority": 1,
+    "low_priority": 4,
+    "blocked": 1,
+    "ready_for_review": 1,
+    "fast_track_candidates": 1,
+    "drafts": 3,
+    "critical_issues": 1
+  },
+  "prs": [
+    {
+      "number": 2727,
+      "priority": 9,
+      "status": "ready_for_review",
+      "risk": 45,
+      "type": "feature",
+      "scope": "major",
+      "actions": ["request_review"]
+    },
+    {
+      "number": 2717,
+      "priority": 6,
+      "status": "blocked",
+      "risk": 90,
+      "type": "feature",
+      "scope": "major",
+      "actions": ["request_rebase", "suggest_split"]
+    },
+    {
+      "number": 2719,
+      "priority": 4,
+      "status": "fast_track",
+      "risk": 10,
+      "type": "documentation",
+      "scope": "minor",
+      "actions": ["request_quick_review"]
+    },
+    {
+      "number": 1784,
+      "priority": 4,
+      "status": "draft_stale",
+      "risk": 60,
+      "type": "feature",
+      "scope": "major",
+      "actions": ["check_relevance"],
+      "age_days": 90
+    },
+    {
+      "number": 1376,
+      "priority": 3,
+      "status": "draft_very_stale",
+      "risk": 30,
+      "type": "feature",
+      "scope": "minor",
+      "actions": ["check_relevance"],
+      "age_days": 105
+    },
+    {
+      "number": 2515,
+      "priority": 2,
+      "status": "invalid",
+      "risk": 35,
+      "type": "documentation",
+      "scope": "minor",
+      "actions": ["close_invalid"],
+      "critical": true,
+      "reason": "same_branch_merge"
+    }
+  ],
+  "actions_taken": {
+    "issues_created": 1,
+    "comments_added": 6,
+    "prs_triaged": 6
+  },
+  "next_review": "2026-03-09T18:55:38Z"
+}
