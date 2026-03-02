@@ -584,7 +584,7 @@ TabPane {
         # Show VMs immediately (no sessions yet)
         self.call_from_thread(
             self._apply_refresh,
-            quick_all,
+            quick_managed,
             managed_rows,
             new_cache,
             all_rows,
@@ -650,12 +650,8 @@ TabPane {
         all_rows: list[tuple[str, list[str]]],
         all_cache: dict[str, _CachedSession],
         managed_vm_names: set[str],
-        final: bool = False,
     ) -> None:
         """Update UI with refreshed data (called on the main thread)."""
-        if final:
-            self._refreshing = False
-            self.remove_class("active-loading")
         self._cache = new_cache
         self._all_cache = all_cache
         self._managed_vm_names = managed_vm_names
@@ -1218,6 +1214,7 @@ TabPane {
     @work(thread=True)
     def _create_session_bg(self, vm_name: str, agent_type: str) -> None:
         """Create a new tmux session on a VM in background."""
+        import shlex
         import subprocess
 
         validate_vm_name(vm_name)
@@ -1240,7 +1237,7 @@ TabPane {
 
         # Create a new tmux session and run the agent inside it
         session_name = f"{agent_type}-{int(__import__('time').time()) % 10000}"
-        remote_cmd = f"tmux new-session -d -s {session_name} '{launch_cmd}'"
+        remote_cmd = f"tmux new-session -d -s {shlex.quote(session_name)} {shlex.quote(launch_cmd)}"
 
         try:
             result = subprocess.run(
@@ -1277,7 +1274,7 @@ TabPane {
                 dry_run=False,
             )
             # Use the internal execute method directly
-            reasoner._execute_decision(decision)
+            reasoner.execute_decision(decision)
             msg = f"Applied: {decision.action}"
             severity = "information"
         except Exception as exc:

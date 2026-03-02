@@ -138,6 +138,7 @@ class AuthPropagator:
 
         Returns dict of service_name -> auth_works.
         """
+        validate_vm_name(vm_name)
         checks = {
             "github": "gh auth status",
             "azure": "az account show --query name -o tsv",
@@ -167,6 +168,7 @@ class AuthPropagator:
         Note: azlin cp blocks credential filenames, so we bundle them
         under a neutral name (fleet-auth-bundle.tar.gz).
         """
+        validate_vm_name(vm_name)
         import tarfile
         import tempfile
 
@@ -225,7 +227,7 @@ class AuthPropagator:
                 perms_cmds.append(f"chmod {mode} ~/{dest_path.replace('~/', '')} 2>/dev/null")
 
             extract_cmd = (
-                "cd ~ && tar xzf fleet-auth-bundle.tar.gz && "
+                "cd ~ && tar xzf --no-absolute-names fleet-auth-bundle.tar.gz && "
                 + " && ".join(perms_cmds)
                 + " && rm -f fleet-auth-bundle.tar.gz && echo 'AUTH_OK'"
             )
@@ -291,11 +293,12 @@ class AuthPropagator:
 
         duration = time.monotonic() - start
 
-        if errors and not files_copied:
+        if errors:
             return AuthResult(
                 service=service,
                 vm_name=vm_name,
                 success=False,
+                files_copied=files_copied,
                 error="; ".join(errors),
                 duration_seconds=duration,
             )
@@ -305,7 +308,6 @@ class AuthPropagator:
             vm_name=vm_name,
             success=True,
             files_copied=files_copied,
-            error="; ".join(errors) if errors else None,
             duration_seconds=duration,
         )
 

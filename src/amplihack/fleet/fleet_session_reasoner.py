@@ -18,6 +18,7 @@ Public API:
 from __future__ import annotations
 
 import json
+import logging
 import os
 import shlex
 import subprocess
@@ -25,6 +26,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Protocol
+
+logger = logging.getLogger(__name__)
 
 from amplihack.fleet._validation import (
     DANGEROUS_PATTERNS,
@@ -44,9 +47,6 @@ __all__ = [
     "auto_detect_backend",
     "infer_agent_status",
 ]
-
-# Re-export for backward compatibility
-_is_dangerous_input = is_dangerous_input
 
 # --- Safety: confidence thresholds (H4) ---
 MIN_CONFIDENCE_SEND = 0.6
@@ -76,6 +76,8 @@ class AnthropicBackend:
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
         )
+        if not response.content:
+            return ""
         block = response.content[0]
         return getattr(block, "text", "")
 
@@ -479,8 +481,8 @@ class SessionReasoner:
             try:
                 self.backend = auto_detect_backend()
             except RuntimeError:
-                # Will fail at reasoning time with a clear error
-                self.backend = AnthropicBackend()
+                # Will fail at reasoning time with a clear error (handled at line 690)
+                self.backend = None
 
     def reason_about_session(
         self,
@@ -748,8 +750,12 @@ echo '===END==='
                 confidence=0.0,
             )
 
+    def execute_decision(self, decision: SessionDecision) -> None:
+        """Public API: Execute the decision on the remote session."""
+        self._execute_decision(decision)
+
     def _execute_decision(self, decision: SessionDecision) -> None:
-        """ACT: Execute the decision on the remote session."""
+        """ACT: Execute the decision on the remote session (internal)."""
         # Validate names before subprocess use
         validate_vm_name(decision.vm_name)
         validate_session_name(decision.session_name)
@@ -786,8 +792,13 @@ echo '===END==='
                         text=True,
                         timeout=30,
                     )
-                except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
-                    pass
+                except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
+                    logger.warning(
+                        "send_input failed for %s/%s: %s",
+                        decision.vm_name,
+                        decision.session_name,
+                        exc,
+                    )
 
         elif decision.action == "restart":
             safe_session = shlex.quote(decision.session_name)
@@ -802,8 +813,13 @@ echo '===END==='
                     text=True,
                     timeout=30,
                 )
-            except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
-                pass
+            except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
+                logger.warning(
+                    "restart failed for %s/%s: %s",
+                    decision.vm_name,
+                    decision.session_name,
+                    exc,
+                )
 
     def _show_decision(self, decision: SessionDecision, context: SessionContext) -> None:
         """DRY-RUN: Print what the admiral would do without acting."""

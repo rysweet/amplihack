@@ -351,20 +351,19 @@ class TestBatchAssignReasoner:
         assert len(actions) == 1
         assert actions[0].task.id == "high"
 
-    def test_respects_dependencies(self):
-        """Task with unfinished dependency should not be assigned."""
+    def test_assigns_queued_tasks(self):
+        """Queued tasks get assigned when capacity is available."""
         dep = _make_task(task_id="dep", status=TaskStatus.RUNNING, vm="vm-01", session="s1")
-        blocked = _make_task(task_id="blocked", status=TaskStatus.QUEUED, vm=None, session=None)
-        blocked.depends_on = ["dep"]  # type: ignore[attr-defined]
+        queued = _make_task(task_id="queued", status=TaskStatus.QUEUED, vm=None, session=None)
         vm = _make_vm("vm-02")
         state = _make_state([vm])
-        queue = _make_queue([dep, blocked])
+        queue = _make_queue([dep, queued])
 
         reasoner = BatchAssignReasoner(max_agents_per_vm=3)
         actions = reasoner.reason(state, queue, [])
 
-        # blocked task should NOT be assigned since dep is not COMPLETED
-        assert all(a.task.id != "blocked" for a in actions)
+        # queued task should be assigned since vm-02 has capacity
+        assert any(a.task.id == "queued" for a in actions)
 
 
 # ────────────────────────────────────────────

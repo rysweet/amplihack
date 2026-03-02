@@ -86,10 +86,30 @@ class FleetGraph:
     nodes: dict[str, GraphNode] = field(default_factory=dict)
     edges: list[GraphEdge] = field(default_factory=list)
     persist_path: Path | None = None
+    _batching: bool = field(default=False, repr=False)
 
     def __post_init__(self):
         if self.persist_path and self.persist_path.exists():
             self.load()
+
+    class _BatchContext:
+        """Context manager that defers _save() calls until exit."""
+
+        def __init__(self, graph: FleetGraph):
+            self._graph = graph
+
+        def __enter__(self):
+            self._graph._batching = True
+            return self._graph
+
+        def __exit__(self, *exc):
+            self._graph._batching = False
+            self._graph._save()
+            return False
+
+    def batch(self) -> _BatchContext:
+        """Context manager to batch multiple add_node/add_edge calls into one save."""
+        return self._BatchContext(self)
 
     # --- Node operations ---
 
@@ -224,6 +244,8 @@ class FleetGraph:
     # --- Persistence ---
 
     def _save(self) -> None:
+        if self._batching:
+            return
         if not self.persist_path:
             return
         self.persist_path.parent.mkdir(parents=True, exist_ok=True)

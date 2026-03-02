@@ -128,7 +128,7 @@ for dir in ~/.claude/projects/*/; do
         python3 -c "
 import json, sys
 stats = {'session':'','branch':'','cwd':'','msgs':0,'tools':0,'user':0,'asst':0,'prs':[],'errors':[],'files':[],'last':''}
-with open('$LATEST') as f:
+with open(sys.argv[1]) as f:
     for line in f:
         try:
             obj = json.loads(line)
@@ -142,7 +142,7 @@ with open('$LATEST') as f:
             if 'cwd' in obj and obj['cwd']: stats['cwd'] = obj['cwd']
         except Exception: pass
 print(json.dumps(stats))
-" 2>/dev/null
+" "$LATEST" 2>/dev/null
     fi
 done
 """
@@ -170,7 +170,7 @@ done
         safe_path = shlex.quote(project_path)
         return f"""
 PROJECT_KEY=$(echo {safe_path} | sed 's|/|-|g')
-JSONL=$(ls -t ~/.claude/projects/$PROJECT_KEY/*.jsonl 2>/dev/null | head -1)
+JSONL=$(ls -t ~/.claude/projects/"$PROJECT_KEY"/*.jsonl 2>/dev/null | head -1)
 
 if [ -z "$JSONL" ]; then
     echo "NO_LOG"

@@ -147,6 +147,11 @@ class FleetAdmiral:
         self._fleet_state.exclude_vms(*vm_names)
         return self
 
+    @property
+    def fleet_state(self) -> FleetState:
+        """Public access to fleet state (avoids _fleet_state private access)."""
+        return self._fleet_state
+
     def run_once(self) -> list[DirectorAction]:
         """Execute one PERCEIVE→REASON→ACT cycle.
 
@@ -272,7 +277,7 @@ class FleetAdmiral:
         for action, outcome in results:
             self._stats["actions"] += 1
 
-            if "ERROR" in outcome:
+            if outcome.startswith("ERROR"):
                 self._stats["failures"] += 1
                 logger.warning(
                     f"LEARN: {action.action_type.value} failed on {action.vm_name}: {outcome}"

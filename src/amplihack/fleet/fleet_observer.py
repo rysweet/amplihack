@@ -36,12 +36,10 @@ COMPLETION_PATTERNS = [
 ]
 
 ERROR_PATTERNS = [
-    r"ERROR:",
+    r"(?:^|\n)\s*(?:ERROR|FATAL|CRITICAL):",
     r"Traceback \(most recent",
-    r"FATAL:",
     r"panic:",
     r"GOAL_STATUS:\s*NOT_ACHIEVED",
-    r"Failed to",
     r"Permission denied",
     r"Authentication failed",
 ]
@@ -52,7 +50,7 @@ WAITING_PATTERNS = [
     r"\(yes/no\)",
     r"Press .* to continue",
     r"Do you want to",
-    r"Enter.*:",
+    r"^Enter\s+\w+\s*:",
     r"waiting for.*input",
 ]
 
@@ -210,7 +208,12 @@ class FleetObserver:
                 self._previous_captures[key] = combined
                 return AgentStatus.RUNNING, 0.8, pattern
 
-        # 4. Check for stuck (no output change) — after running patterns
+        # 4. Waiting for input (checked BEFORE stuck — more specific)
+        for pattern in WAITING_PATTERNS:
+            if re.search(pattern, combined, re.IGNORECASE | re.MULTILINE):
+                return AgentStatus.WAITING_INPUT, 0.8, pattern
+
+        # 5. Check for stuck (no output change) — after running and waiting
         now = time.monotonic()
         prev = self._previous_captures.get(key, "")
         if combined == prev:
@@ -221,11 +224,6 @@ class FleetObserver:
         else:
             self._last_change_time[key] = now
         self._previous_captures[key] = combined
-
-        # 5. Waiting for input
-        for pattern in WAITING_PATTERNS:
-            if re.search(pattern, combined, re.IGNORECASE):
-                return AgentStatus.WAITING_INPUT, 0.8, pattern
 
         # 6. Idle (shell prompt, no agent)
         last_line = lines[-1].strip() if lines else ""

@@ -274,11 +274,10 @@ class CoordinationReasoner:
 
 @dataclass
 class BatchAssignReasoner:
-    """Assigns queued tasks to VMs with group-awareness and dependency checking.
+    """Assigns queued tasks to VMs with group-awareness.
 
     Replaces greedy one-at-a-time assignment with batch logic that:
     - Groups related tasks onto the same VM when possible
-    - Respects task dependencies (depends_on)
     - Considers VM capacity
     """
 
@@ -296,16 +295,8 @@ class BatchAssignReasoner:
         if not queued:
             return actions
 
-        # Check dependency satisfaction
-        completed_ids = {t.id for t in queue.tasks if t.status == TaskStatus.COMPLETED}
-        depends_on_fn = lambda t: getattr(t, "depends_on", [])
-        ready = [t for t in queued if all(dep in completed_ids for dep in depends_on_fn(t))]
-
-        if not ready:
-            return actions
-
         # Sort by priority then creation time
-        ready.sort(key=lambda t: (t.priority.value, t.created_at))
+        queued.sort(key=lambda t: (t.priority.value, t.created_at))
 
         # Build VM capacity map
         capacity: dict[str, int] = {}
@@ -333,7 +324,7 @@ class BatchAssignReasoner:
             return actions
 
         # Assign tasks
-        for task in ready:
+        for task in queued:
             if not capacity:
                 break
 

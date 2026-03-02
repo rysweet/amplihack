@@ -27,7 +27,7 @@ class TestFleetTask:
         assert task.agent_command == "claude"
         assert task.agent_mode == "auto"
         assert task.id  # Should have auto-generated ID
-        assert len(task.id) == 8
+        assert len(task.id) == 12
 
     def test_assign_task(self):
         task = FleetTask(prompt="Test")
