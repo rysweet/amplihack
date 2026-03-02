@@ -435,21 +435,29 @@ class FleetTUI:
         1. Try azlin Python API (VMManager.list_vms) -- most reliable
         2. Fallback: azlin CLI text output parsed from table
         """
-        # Strategy 1: azlin Python API (reads resource group from azlin config)
+        # Strategy 1: az vm list (Azure CLI with JSON — fast, no Bastion tunnels)
         try:
-            import sys as _sys
-            azlin_src = "/home/azureuser/src/azlin/src"
-            if azlin_src not in _sys.path:
-                _sys.path.insert(0, azlin_src)
-            from azlin.vm_manager import VMManager  # type: ignore[import-not-found]
-
-            # Read resource group from azlin config (~/.azlin/config.toml)
+            import json as _json
             rg = self._read_azlin_resource_group()
-            vms = VMManager.list_vms(resource_group=rg, include_stopped=True)
-            return [
-                (vm.name, vm.location, "running" in (vm.power_state or "").lower())
-                for vm in vms
-            ]
+            result = subprocess.run(
+                ["az", "vm", "list", "--resource-group", rg, "--show-details", "--output", "json"],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                vms_data = _json.loads(result.stdout)
+                return [
+                    (
+                        vm.get("name", ""),
+                        vm.get("location", ""),
+                        "running" in (vm.get("powerState", "") or "").lower(),
+                    )
+                    for vm in vms_data
+                    if vm.get("name")
+                ]
+        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
+            pass
         except Exception:
             pass
 
