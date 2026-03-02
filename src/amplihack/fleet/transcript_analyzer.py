@@ -22,6 +22,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
+from amplihack.fleet._validation import validate_vm_name
+
 __all__ = [
     "TranscriptAnalyzer",
     "AnalysisReport",
@@ -91,6 +93,7 @@ def gather_remote_transcripts(
 
     for vm in vm_names:
         try:
+            validate_vm_name(vm)
             proc = subprocess.run(
                 [
                     azlin_path,

@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import shlex
 import subprocess
 from dataclasses import dataclass, field
@@ -27,7 +26,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Protocol
 
-from amplihack.fleet._validation import validate_session_name, validate_vm_name
+from amplihack.fleet._validation import (
+    DANGEROUS_PATTERNS,
+    is_dangerous_input,
+    validate_session_name,
+    validate_vm_name,
+)
 
 __all__ = [
     "SessionReasoner",
@@ -41,32 +45,12 @@ __all__ = [
     "infer_agent_status",
 ]
 
-# --- Safety: dangerous input blocklist (H10) ---
-# Uses regex with word boundaries to prevent bypass via case/syntax variations.
-DANGEROUS_PATTERNS = [
-    re.compile(r"\brm\s+-rf\b", re.IGNORECASE),
-    re.compile(r"\brm\s+-r\s+/", re.IGNORECASE),
-    re.compile(r"\brmdir\s+/", re.IGNORECASE),
-    re.compile(r"\bgit\s+push\s+--force\b", re.IGNORECASE),
-    re.compile(r"\bgit\s+push\s+-f\b", re.IGNORECASE),
-    re.compile(r"\bgit\s+reset\s+--hard\b", re.IGNORECASE),
-    re.compile(r"\bDROP\s+TABLE\b", re.IGNORECASE),
-    re.compile(r"\bDROP\s+DATABASE\b", re.IGNORECASE),
-    re.compile(r"\bDELETE\s+FROM\b", re.IGNORECASE),
-    re.compile(r"\bTRUNCATE\s+TABLE\b", re.IGNORECASE),
-    re.compile(r">\s*/dev/sda", re.IGNORECASE),
-    re.compile(r"\bmkfs\.", re.IGNORECASE),
-    re.compile(r":\(\)\s*\{", re.IGNORECASE),  # fork bomb prefix
-]
+# Re-export for backward compatibility
+_is_dangerous_input = is_dangerous_input
 
 # --- Safety: confidence thresholds (H4) ---
 MIN_CONFIDENCE_SEND = 0.6
 MIN_CONFIDENCE_RESTART = 0.8
-
-
-def _is_dangerous_input(text: str) -> bool:
-    """Check if input text contains dangerous patterns."""
-    return any(pattern.search(text) for pattern in DANGEROUS_PATTERNS)
 
 
 class LLMBackend(Protocol):
@@ -688,6 +672,13 @@ echo '===END==='
         """Infer agent status from tmux capture. Delegates to module-level function."""
         return infer_agent_status(tmux_text)
 
+    def reason(self, context: SessionContext) -> SessionDecision:
+        """Public entry point for LLM-based reasoning about a session context.
+
+        Delegates to the internal _reason implementation.
+        """
+        return self._reason(context)
+
     def _reason(self, context: SessionContext) -> SessionDecision:
         """REASON: Call LLM backend to decide what to do.
 
@@ -778,7 +769,7 @@ echo '===END==='
 
         # H10: Dangerous input blocklist -- block before sending
         if decision.action == "send_input" and decision.input_text:
-            if _is_dangerous_input(decision.input_text):
+            if is_dangerous_input(decision.input_text):
                 decision.action = "escalate"
                 decision.reasoning = f"BLOCKED: Input contains dangerous pattern. Original: {decision.input_text[:100]}"
                 return

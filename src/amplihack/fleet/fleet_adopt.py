@@ -19,6 +19,7 @@ import subprocess
 from dataclasses import dataclass
 from datetime import datetime
 
+from amplihack.fleet._validation import validate_vm_name
 from amplihack.fleet.fleet_tasks import TaskPriority, TaskQueue
 
 __all__ = ["SessionAdopter", "AdoptedSession"]
@@ -54,6 +55,7 @@ class SessionAdopter:
 
         Uses a single SSH connection to gather all session data.
         """
+        validate_vm_name(vm_name)
         # Single compound command: list sessions + get context for each
         discover_cmd = self._build_discover_command()
 
@@ -89,6 +91,7 @@ class SessionAdopter:
         Returns:
             List of adopted sessions with linked task IDs
         """
+        validate_vm_name(vm_name)
         discovered = self.discover_sessions(vm_name)
 
         if sessions:

@@ -249,6 +249,10 @@ def watch(vm_name, session_name, lines):
     import shlex
     import subprocess
 
+    from amplihack.fleet._validation import validate_session_name
+
+    validate_session_name(session_name)
+    lines = max(1, min(lines, 10000))
     cmd = f"tmux capture-pane -t {shlex.quote(session_name)} -p -S -{lines}"
     try:
         result = subprocess.run(

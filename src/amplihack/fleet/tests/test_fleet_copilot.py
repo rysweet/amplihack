@@ -174,7 +174,7 @@ class TestSessionCopilot:
         mock_decision.confidence = 0.9
 
         mock_reasoner = MagicMock()
-        mock_reasoner._reason.return_value = mock_decision
+        mock_reasoner.reason.return_value = mock_decision
 
         copilot = SessionCopilot(goal="Fix bug", _transcript_dir=str(tmp_path))
         copilot.reasoner = mock_reasoner

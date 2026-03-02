@@ -16,12 +16,12 @@ from unittest.mock import MagicMock, call, patch
 
 import pytest
 
+from amplihack.fleet._validation import validate_session_name, validate_vm_name
 from amplihack.fleet.fleet_admiral import (
     ActionType,
     DirectorAction,
     DirectorLog,
     FleetAdmiral,
-    _validate_name,
 )
 from amplihack.fleet.fleet_state import AgentStatus, FleetState, TmuxSessionInfo, VMInfo
 from amplihack.fleet.fleet_tasks import FleetTask, TaskPriority, TaskQueue, TaskStatus
@@ -772,28 +772,33 @@ class TestExecuteAction:
 
 
 class TestValidateName:
-    """_validate_name rejects invalid names."""
+    """validate_vm_name / validate_session_name reject invalid names."""
 
-    def test_valid_names(self):
-        _validate_name("vm-1")
-        _validate_name("my_vm.test")
-        _validate_name("A123")
+    def test_valid_vm_names(self):
+        validate_vm_name("vm-1")
+        validate_vm_name("my_vm")
+        validate_vm_name("A123")
+
+    def test_valid_session_names(self):
+        validate_session_name("session-1")
+        validate_session_name("my_session.test")
+        validate_session_name("A123:colon")
 
     def test_empty_name(self):
         with pytest.raises(ValueError, match="Invalid"):
-            _validate_name("")
+            validate_vm_name("")
 
     def test_name_starting_with_special(self):
         with pytest.raises(ValueError, match="Invalid"):
-            _validate_name("-bad")
+            validate_vm_name("-bad")
 
     def test_name_with_spaces(self):
         with pytest.raises(ValueError, match="Invalid"):
-            _validate_name("has space")
+            validate_vm_name("has space")
 
     def test_none_name(self):
         with pytest.raises((ValueError, TypeError)):
-            _validate_name(None)  # type: ignore[arg-type]  # testing invalid input
+            validate_vm_name(None)  # type: ignore[arg-type]  # testing invalid input
 
 
 class TestDirectorLog:

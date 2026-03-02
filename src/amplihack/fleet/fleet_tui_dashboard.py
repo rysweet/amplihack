@@ -42,12 +42,16 @@ from textual.widgets import (
 )
 from textual.worker import get_current_worker
 
-from amplihack.fleet.fleet_session_reasoner import (
+from amplihack.fleet._validation import (
     DANGEROUS_PATTERNS,
+    is_dangerous_input,
+    validate_session_name,
+    validate_vm_name,
+)
+from amplihack.fleet.fleet_session_reasoner import (
     AnthropicBackend,
     SessionDecision,
     SessionReasoner,
-    _is_dangerous_input,
 )
 from amplihack.fleet.fleet_tui import FleetTUI, SessionView, VMView
 
@@ -861,6 +865,8 @@ TabPane {
         import shlex
         import subprocess
 
+        validate_vm_name(vm_name)
+        validate_session_name(session_name)
         worker = get_current_worker()
         key = f"{vm_name}/{session_name}"
 
@@ -1108,7 +1114,7 @@ TabPane {
     def _apply_decision(self, decision: SessionDecision) -> None:
         """Validate and apply a decision (dangerous input check, then execute)."""
         if decision.action == "send_input" and decision.input_text:
-            if _is_dangerous_input(decision.input_text):
+            if is_dangerous_input(decision.input_text):
                 self.notify(
                     f"BLOCKED: Input contains dangerous pattern. "
                     f"Matches against: {', '.join(p.pattern for p in DANGEROUS_PATTERNS[:3])}...",
@@ -1214,6 +1220,7 @@ TabPane {
         """Create a new tmux session on a VM in background."""
         import subprocess
 
+        validate_vm_name(vm_name)
         worker = get_current_worker()
 
         # Map agent types to amplihack launch commands
@@ -1222,7 +1229,14 @@ TabPane {
             "copilot": "amplihack copilot",
             "amplifier": "amplihack amplifier",
         }
-        launch_cmd = agent_commands.get(agent_type, f"amplihack {agent_type}")
+        launch_cmd = agent_commands.get(agent_type)
+        if launch_cmd is None:
+            self.call_from_thread(
+                self.notify,
+                f"Unknown agent type: {agent_type!r}. Must be one of: {', '.join(agent_commands)}",
+                severity="error",
+            )
+            return
 
         # Create a new tmux session and run the agent inside it
         session_name = f"{agent_type}-{int(__import__('time').time()) % 10000}"
