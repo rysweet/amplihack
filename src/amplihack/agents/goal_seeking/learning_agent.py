@@ -85,6 +85,7 @@ class LearningAgent:
         model: str | None = None,
         storage_path: Path | None = None,
         use_hierarchical: bool = False,
+        hive_store: object | None = None,
     ):
         """Initialize learning agent.
 
@@ -94,6 +95,11 @@ class LearningAgent:
             storage_path: Custom storage path for memory
             use_hierarchical: If True, use HierarchicalMemory via FlatRetrieverAdapter.
                 If False, use original MemoryRetriever (backward compatible).
+            hive_store: Optional shared hive graph store for distributed memory.
+                When set, the agent's retrieval path queries both local memory
+                and the shared hive, enabling cross-agent knowledge sharing.
+                Accepts any object with query_facts() or query_federated() methods
+                (e.g., InMemoryHiveGraph, HiveGraphStore, FederatedGraphStore).
 
         Note:
             Requires OPENAI_API_KEY or appropriate provider key to be set.
@@ -109,6 +115,7 @@ class LearningAgent:
                 self.memory = CognitiveAdapter(
                     agent_name=agent_name,
                     db_path=storage_path,
+                    hive_store=hive_store,
                 )
             else:
                 self.memory = FlatRetrieverAdapter(
