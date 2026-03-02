@@ -142,7 +142,60 @@ for p in [peer1, peer2, peer3]:
     p.close()
 ```
 
-## 4. Distributed Agents with Kuzu (Full Stack)
+## 4. LearningAgent with Hive Store (Recommended)
+
+Connect a real LLM-backed LearningAgent to a shared hive for distributed memory.
+Facts learned by the agent are auto-promoted to the hive; queries merge local + hive facts.
+
+```python
+from pathlib import Path
+from amplihack.agents.goal_seeking.learning_agent import LearningAgent
+from amplihack.agents.goal_seeking.hive_mind.hive_graph import InMemoryHiveGraph
+
+# Create shared hive
+hive = InMemoryHiveGraph("shared-hive")
+hive.register_agent("agent_a")
+hive.register_agent("agent_b")
+
+# Create agents with hive_store
+agent_a = LearningAgent(
+    agent_name="agent_a",
+    storage_path=Path("/tmp/agent_a_db"),
+    use_hierarchical=True,
+    hive_store=hive,  # <-- Auto-promotes facts to hive
+)
+agent_b = LearningAgent(
+    agent_name="agent_b",
+    storage_path=Path("/tmp/agent_b_db"),
+    use_hierarchical=True,
+    hive_store=hive,
+)
+
+# Agent A learns biology
+agent_a.learn_from_content(
+    "Photosynthesis converts sunlight into chemical energy in chloroplasts."
+)
+
+# Agent B learns chemistry
+agent_b.learn_from_content(
+    "Water (H2O) has a bent molecular geometry with a 104.5 degree bond angle."
+)
+
+# Agent B can answer questions about biology (facts shared via hive)
+answer = agent_b.answer_question("How do plants convert sunlight to energy?")
+print(answer)
+
+agent_a.close()
+agent_b.close()
+```
+
+**How auto-promotion works**: When `CognitiveAdapter.store_fact()` is called
+(inside `learn_from_content`), it stores the fact in the agent's local Kuzu DB
+AND promotes it to the hive. When `search()` or `get_all_facts()` is called
+(inside `answer_question`), it queries both local Kuzu and the hive, deduplicates
+by content, and returns merged results.
+
+## 5. Distributed Agents with Kuzu (Full Stack)
 
 Each agent owns its own Kuzu database. A shared HiveGraphStore acts as the
 federation layer. FederatedGraphStore composes local + hive for unified queries.
@@ -174,7 +227,7 @@ print(f"Found: {results}")
 agent_a.close()
 ```
 
-## 5. Deploy to Azure
+## 6. Deploy to Azure
 
 The deploy script provisions everything idempotently:
 
@@ -214,19 +267,32 @@ export HIVE_AGENT_COUNT=10               # Default: 20
 export HIVE_IMAGE_TAG="v2"               # Default: latest
 ```
 
-## 6. Running the Local Eval
+## 7. Running the LearningAgent Eval
 
-Compare isolated vs federated vs distributed retrieval quality:
+Compare single vs flat-sharing vs federated using real LLM agents:
 
 ```bash
-# 5-agent rigorous eval (flat vs gossip vs hive)
-uv run python experiments/hive_mind/run_rigorous_eval.py
+# LearningAgent eval — real LLM fact extraction + synthesis
+uv run python experiments/hive_mind/run_learning_agent_hive_eval.py \
+  --turns 100 --questions 20 --agents 5 --groups 2
 
-# 20-agent distributed eval with real Kuzu DBs
-uv run python experiments/hive_mind/run_full_distributed_eval.py
+# Run just single condition (faster iteration)
+uv run python experiments/hive_mind/run_learning_agent_hive_eval.py \
+  --turns 50 --questions 10 --conditions single
 
-# 20-agent eval with HiveGraph federation
+# Use a specific model
+uv run python experiments/hive_mind/run_learning_agent_hive_eval.py \
+  --model claude-sonnet-4-5-20250929 --turns 100 --questions 20
+```
+
+For keyword-based eval scripts (no LLM, faster but less realistic):
+
+```bash
+# 20-agent distributed eval with Kuzu DBs
 uv run python experiments/hive_mind/run_distributed_20agent_eval.py
+
+# 20-agent distributed eval with event bus
+uv run python experiments/hive_mind/run_full_distributed_eval.py
 ```
 
 ## Architecture

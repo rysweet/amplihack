@@ -117,6 +117,10 @@ class CognitiveAdapter:
     ) -> str:
         """Store a fact as semantic knowledge.
 
+        When a hive_store is connected, automatically promotes the fact to
+        the shared hive after storing locally. This ensures facts flow from
+        learn → local memory → shared hive without extra caller code.
+
         Args:
             context: Topic/concept
             fact: The fact content
@@ -134,7 +138,7 @@ class CognitiveAdapter:
             raise ValueError("fact cannot be empty")
 
         if self._cognitive:
-            return self.memory.store_fact(
+            node_id = self.memory.store_fact(
                 concept=context.strip(),
                 content=fact.strip(),
                 confidence=confidence,
@@ -142,14 +146,57 @@ class CognitiveAdapter:
                 tags=tags,
                 temporal_metadata=temporal_metadata,
             )
-        return self.memory.store_knowledge(
-            content=fact.strip(),
-            concept=context.strip(),
-            confidence=confidence,
-            source_id=source_id,
-            tags=tags,
-            temporal_metadata=temporal_metadata,
-        )
+        else:
+            node_id = self.memory.store_knowledge(
+                content=fact.strip(),
+                concept=context.strip(),
+                confidence=confidence,
+                source_id=source_id,
+                tags=tags,
+                temporal_metadata=temporal_metadata,
+            )
+
+        # Auto-promote to shared hive if connected
+        self._promote_to_hive(context.strip(), fact.strip(), confidence, tags)
+
+        return node_id
+
+    def _promote_to_hive(
+        self,
+        context: str,
+        fact: str,
+        confidence: float,
+        tags: list[str] | None = None,
+    ) -> None:
+        """Promote a fact to the shared hive store.
+
+        Silently skips if no hive_store is connected or if the hive lacks
+        the promote_fact method. Errors are logged but never raised to
+        avoid disrupting local storage.
+        """
+        if self._hive_store is None:
+            return
+        if not hasattr(self._hive_store, "promote_fact"):
+            return
+        try:
+            from .hive_mind.hive_graph import HiveFact
+
+            hive_fact = HiveFact(
+                fact_id="",
+                content=fact,
+                concept=context,
+                confidence=confidence,
+                source_agent=self.agent_name,
+                tags=list(tags) if tags else [],
+            )
+            # Ensure agent is registered before promoting
+            if hasattr(self._hive_store, "get_agent"):
+                agent = self._hive_store.get_agent(self.agent_name)
+                if agent is None and hasattr(self._hive_store, "register_agent"):
+                    self._hive_store.register_agent(self.agent_name)
+            self._hive_store.promote_fact(self.agent_name, hive_fact)
+        except Exception:
+            logger.debug("Failed to promote fact to hive (non-fatal)", exc_info=True)
 
     def search(
         self,
@@ -203,6 +250,30 @@ class CognitiveAdapter:
         hive_results = self._get_all_hive_facts(limit=limit)
         return self._merge_results(local_results, hive_results, limit)
 
+    @staticmethod
+    def _hive_fact_to_dict(
+        content: str,
+        concept: str,
+        confidence: float,
+        tags: list[str] | None = None,
+        source: str = "unknown",
+    ) -> dict[str, Any]:
+        """Convert a hive fact to the same dict format as local facts.
+
+        Uses "outcome" key (not "fact") to match _semantic_fact_to_dict output,
+        so LearningAgent can process hive facts identically to local ones.
+        """
+        return {
+            "experience_id": "",
+            "context": concept,
+            "outcome": content,
+            "confidence": confidence,
+            "timestamp": "",
+            "tags": tags or [],
+            "metadata": {},
+            "source": f"hive:{source}",
+        }
+
     def _search_hive(self, query: str, limit: int = 50) -> list[dict[str, Any]]:
         """Search the shared hive store."""
         if self._hive_store is None:
@@ -212,39 +283,39 @@ class CognitiveAdapter:
             if hasattr(self._hive_store, "federated_query"):
                 fqr = self._hive_store.federated_query(query, limit=limit)
                 return [
-                    {
-                        "context": r.get("concept", ""),
-                        "fact": r.get("content", ""),
-                        "confidence": r.get("confidence", 0.5),
-                        "tags": r.get("tags", []),
-                        "source": f"hive:{r.get('source', 'unknown')}",
-                    }
+                    self._hive_fact_to_dict(
+                        content=r.get("content", ""),
+                        concept=r.get("concept", ""),
+                        confidence=r.get("confidence", 0.5),
+                        tags=r.get("tags", []),
+                        source=r.get("source", "unknown"),
+                    )
                     for r in (fqr.results if hasattr(fqr, "results") else fqr)
                 ]
             # HiveGraphStore or InMemoryHiveGraph with query_facts
             if hasattr(self._hive_store, "query_facts"):
                 facts = self._hive_store.query_facts(query, limit=limit)
                 return [
-                    {
-                        "context": f.concept,
-                        "fact": f.content,
-                        "confidence": f.confidence,
-                        "tags": getattr(f, "tags", []),
-                        "source": f"hive:{getattr(f, 'source_agent', 'unknown')}",
-                    }
+                    self._hive_fact_to_dict(
+                        content=f.content,
+                        concept=f.concept,
+                        confidence=f.confidence,
+                        tags=getattr(f, "tags", []),
+                        source=getattr(f, "source_agent", "unknown"),
+                    )
                     for f in facts
                 ]
             # InMemoryHiveGraph with query_federated
             if hasattr(self._hive_store, "query_federated"):
                 facts = self._hive_store.query_federated(query, limit=limit)
                 return [
-                    {
-                        "context": f.concept,
-                        "fact": f.content,
-                        "confidence": f.confidence,
-                        "tags": getattr(f, "tags", []),
-                        "source": f"hive:{getattr(f, 'source_agent', 'unknown')}",
-                    }
+                    self._hive_fact_to_dict(
+                        content=f.content,
+                        concept=f.concept,
+                        confidence=f.confidence,
+                        tags=getattr(f, "tags", []),
+                        source=getattr(f, "source_agent", "unknown"),
+                    )
                     for f in facts
                 ]
         except Exception:
@@ -261,25 +332,25 @@ class CognitiveAdapter:
                 if facts and isinstance(facts[0], dict):
                     return facts[:limit]
                 return [
-                    {
-                        "context": getattr(f, "concept", ""),
-                        "fact": getattr(f, "content", ""),
-                        "confidence": getattr(f, "confidence", 0.5),
-                        "tags": getattr(f, "tags", []),
-                        "source": f"hive:{getattr(f, 'source_agent', 'unknown')}",
-                    }
+                    self._hive_fact_to_dict(
+                        content=getattr(f, "content", ""),
+                        concept=getattr(f, "concept", ""),
+                        confidence=getattr(f, "confidence", 0.5),
+                        tags=getattr(f, "tags", []),
+                        source=getattr(f, "source_agent", "unknown"),
+                    )
                     for f in facts[:limit]
                 ]
             if hasattr(self._hive_store, "query_facts"):
                 facts = self._hive_store.query_facts("", limit=limit)
                 return [
-                    {
-                        "context": f.concept,
-                        "fact": f.content,
-                        "confidence": f.confidence,
-                        "tags": getattr(f, "tags", []),
-                        "source": f"hive:{getattr(f, 'source_agent', 'unknown')}",
-                    }
+                    self._hive_fact_to_dict(
+                        content=f.content,
+                        concept=f.concept,
+                        confidence=f.confidence,
+                        tags=getattr(f, "tags", []),
+                        source=getattr(f, "source_agent", "unknown"),
+                    )
                     for f in facts
                 ]
         except Exception:
@@ -292,20 +363,23 @@ class CognitiveAdapter:
         hive: list[dict[str, Any]],
         limit: int,
     ) -> list[dict[str, Any]]:
-        """Merge local and hive results, deduplicating by fact content."""
+        """Merge local and hive results, deduplicating by fact content.
+
+        Both local and hive results use "outcome" key for fact content.
+        """
         seen: set[str] = set()
         merged: list[dict[str, Any]] = []
 
         # Local facts first (higher trust)
         for r in local:
-            content = r.get("fact", "")
+            content = r.get("outcome", r.get("fact", ""))
             if content and content not in seen:
                 seen.add(content)
                 merged.append(r)
 
         # Then hive facts
         for r in hive:
-            content = r.get("fact", "")
+            content = r.get("outcome", r.get("fact", ""))
             if content and content not in seen:
                 seen.add(content)
                 merged.append(r)
