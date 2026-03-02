@@ -14,11 +14,14 @@ Public API:
 
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -286,16 +289,21 @@ TabPane {
 """
 
     BINDINGS = [
-        Binding("q", "quit", "Quit", show=True),
-        Binding("r", "force_refresh", "Refresh", show=True),
-        Binding("enter", "open_detail", "Detail", show=True),
-        Binding("escape", "back_to_fleet", "Back", show=True),
+        Binding("q", "quit", "Quit", show=True, priority=True),
+        Binding("r", "force_refresh", "Refresh", show=True, priority=True),
+        Binding("enter", "open_detail", "Detail", show=True, priority=True),
+        Binding("escape", "back_to_fleet", "Back", show=True, priority=True),
         Binding("e", "edit_proposal", "Edit", show=True),
         Binding("A", "adopt_session", "Adopt", show=True),
         Binding("a", "apply_proposal", "Apply", show=True),
         Binding("d", "dry_run_session", "Dry-run", show=True),
         Binding("l", "toggle_logo", "Logo", show=True),
         Binding("n", "new_session", "New Session", show=True),
+        # Tab navigation — always works regardless of focus
+        Binding("1", "tab_fleet", "Fleet", show=True, priority=True),
+        Binding("2", "tab_detail", "Detail", show=True, priority=True),
+        Binding("3", "tab_editor", "Editor", show=True, priority=True),
+        Binding("4", "tab_projects", "Projects", show=True, priority=True),
     ]
 
     def __init__(
@@ -400,6 +408,9 @@ TabPane {
         # Set up project table columns
         proj_table = self.query_one("#project-table", DataTable)
         proj_table.add_columns("Name", "Repo", "Identity", "Priority", "VMs", "Tasks", "PRs")
+
+        # Focus the main session table so arrow keys work immediately
+        table.focus()
 
         # Initial load
         self._schedule_refresh()
@@ -509,9 +520,12 @@ TabPane {
         worker = get_current_worker()
 
         # Pass 1: managed VMs only
+        managed_refresh_error = ""
         try:
             managed_vms: list[VMView] = self._fleet.refresh()
-        except Exception:
+        except Exception as exc:
+            logger.warning("Fleet refresh (managed) failed: %s", exc)
+            managed_refresh_error = f"Managed refresh failed: {exc}"
             managed_vms = []
 
         if worker.is_cancelled:
@@ -524,9 +538,12 @@ TabPane {
         )
 
         # Pass 2: all VMs (including unmanaged)
+        all_refresh_error = ""
         try:
             all_vms: list[VMView] = self._fleet.refresh_all()
-        except Exception:
+        except Exception as exc:
+            logger.warning("Fleet refresh (all) failed: %s", exc)
+            all_refresh_error = f"All-VM refresh failed: {exc}"
             all_vms = []
 
         if worker.is_cancelled:
@@ -537,6 +554,11 @@ TabPane {
             managed_vm_names=managed_vm_names,
             include_mgd_column=True,
         )
+
+        # Notify user of any refresh errors
+        refresh_error = managed_refresh_error or all_refresh_error
+        if refresh_error:
+            self.call_from_thread(self.notify, refresh_error, severity="warning")
 
         # Post results back to UI thread
         self.call_from_thread(
@@ -602,12 +624,17 @@ TabPane {
         )
         self.query_one("#fleet-summary", Static).update(summary)
 
-    def _refresh_projects_table(self) -> None:
-        """Populate the projects tab DataTable from FleetDashboard."""
+    @staticmethod
+    def _get_dashboard():
+        """Create a FleetDashboard instance with the standard persist path."""
         from amplihack.fleet.fleet_dashboard import FleetDashboard
 
         dash_path = Path.home() / ".amplihack" / "fleet" / "dashboard.json"
-        dash = FleetDashboard(persist_path=dash_path)
+        return FleetDashboard(persist_path=dash_path)
+
+    def _refresh_projects_table(self) -> None:
+        """Populate the projects tab DataTable from FleetDashboard."""
+        dash = self._get_dashboard()
 
         proj_table = self.query_one("#project-table", DataTable)
         proj_table.clear()
@@ -809,6 +836,31 @@ TabPane {
     def action_back_to_fleet(self) -> None:
         tabs = self.query_one("#tabs", TabbedContent)
         tabs.active = "fleet-tab"
+        # Focus the session table so arrow keys work for navigation
+        try:
+            self.query_one("#session-table", DataTable).focus()
+        except Exception:
+            pass
+
+    def action_tab_fleet(self) -> None:
+        tabs = self.query_one("#tabs", TabbedContent)
+        tabs.active = "fleet-tab"
+        try:
+            self.query_one("#session-table", DataTable).focus()
+        except Exception:
+            pass
+
+    def action_tab_detail(self) -> None:
+        tabs = self.query_one("#tabs", TabbedContent)
+        tabs.active = "detail-tab"
+
+    def action_tab_editor(self) -> None:
+        tabs = self.query_one("#tabs", TabbedContent)
+        tabs.active = "editor-tab"
+
+    def action_tab_projects(self) -> None:
+        tabs = self.query_one("#tabs", TabbedContent)
+        tabs.active = "projects-tab"
 
     def action_dry_run_session(self) -> None:
         """Run LLM reasoning for the currently selected session."""
@@ -1011,10 +1063,7 @@ TabPane {
             self.notify("Enter a repo URL first", severity="warning")
             return
 
-        from amplihack.fleet.fleet_dashboard import FleetDashboard
-
-        dash_path = Path.home() / ".amplihack" / "fleet" / "dashboard.json"
-        dash = FleetDashboard(persist_path=dash_path)
+        dash = self._get_dashboard()
 
         if dash.get_project(repo_url):
             self.notify(f"Project already exists: {repo_url}", severity="warning")
@@ -1045,10 +1094,7 @@ TabPane {
             self.notify("Could not determine project name", severity="warning")
             return
 
-        from amplihack.fleet.fleet_dashboard import FleetDashboard
-
-        dash_path = Path.home() / ".amplihack" / "fleet" / "dashboard.json"
-        dash = FleetDashboard(persist_path=dash_path)
+        dash = self._get_dashboard()
 
         if dash.remove_project(project_name):
             self._refresh_projects_table()
