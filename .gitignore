@@ -203,3 +203,10 @@ Specs/INTENSIVE_MEMORY_EVAL_DESIGN.md
 Specs/MATRIX_EVAL_REPORT.md
 eval_data/
 debug_eval/
+
+# Eval results and generated agent artifacts (auto-generated outputs)
+eval_results.json
+*_eval_results/
+*_results/
+eval_progressive_example/
+generated-agents/

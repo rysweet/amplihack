@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 # Add hooks directory to path
-sys.path.insert(0, str(Path(__file__).parent / ".claude/tools/amplihack/hooks"))
+sys.path.insert(0, str(Path(__file__).parent.parent / ".claude/tools/amplihack/hooks"))
 
 from git_utils import get_shared_runtime_dir  # type: ignore[import-not-found]
 
