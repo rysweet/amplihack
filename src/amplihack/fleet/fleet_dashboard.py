@@ -122,6 +122,9 @@ class FleetDashboard:
         priority: str = "medium",
     ) -> ProjectInfo:
         """Register a project for fleet tracking."""
+        existing = self.get_project(repo_url)
+        if existing:
+            return existing
         project = ProjectInfo(
             repo_url=repo_url,
             name=name,
@@ -182,7 +185,7 @@ class FleetDashboard:
             for vm_name in proj.vms:
                 vm = state.get_vm(vm_name)
                 if vm and vm.is_running:
-                    # Estimate based on time active
+                    # NOTE: Uses project start time for all VMs. Per-VM timing would require vm_assigned_at tracking.
                     hours_active = 1.0  # Minimum billing unit
                     if proj.started_at:
                         hours_active = max(

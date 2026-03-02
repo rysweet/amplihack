@@ -473,7 +473,7 @@ def dry_run(vm, priorities, backend):
         # Try direct tmux listing on the specified VMs
         for vm_name in target_vms:
             click.echo(f"Scanning {vm_name} for sessions...")
-            tmux_sessions = state._poll_tmux_sessions(vm_name)
+            tmux_sessions = state.poll_tmux_sessions(vm_name)
             for sess in tmux_sessions:
                 sessions_to_check.append(
                     {
@@ -613,7 +613,7 @@ def _adopt_all_sessions(director: FleetAdmiral) -> None:
     from amplihack.fleet.fleet_adopt import SessionAdopter
 
     adopter = SessionAdopter(azlin_path=AZLIN_PATH)
-    state = director._fleet_state
+    state = director.fleet_state
     state.refresh()
 
     total = 0

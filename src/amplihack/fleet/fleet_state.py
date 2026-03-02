@@ -248,6 +248,10 @@ class FleetState:
 
         return vms
 
+    def poll_tmux_sessions(self, vm_name: str) -> list[TmuxSessionInfo]:
+        """Public wrapper for tmux session polling."""
+        return self._poll_tmux_sessions(vm_name)
+
     def _poll_tmux_sessions(self, vm_name: str) -> list[TmuxSessionInfo]:
         """Get tmux session list from a VM."""
         try:

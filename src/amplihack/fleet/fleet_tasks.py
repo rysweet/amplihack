@@ -12,6 +12,8 @@ Public API:
 from __future__ import annotations
 
 import json
+import os
+import tempfile
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -45,7 +47,7 @@ class TaskStatus(Enum):
 class FleetTask:
     """A single task to be executed by a fleet agent."""
 
-    id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
+    id: str = field(default_factory=lambda: str(uuid.uuid4())[:12])
     prompt: str = ""
     repo_url: str = ""
     branch: str = ""
@@ -238,10 +240,16 @@ class TaskQueue:
         if not self.persist_path:
             return
         self.persist_path.parent.mkdir(parents=True, exist_ok=True)
-        # Atomic write: temp file then rename
-        tmp = self.persist_path.with_suffix(".tmp")
-        tmp.write_text(json.dumps([t.to_dict() for t in self.tasks], indent=2))
-        tmp.rename(self.persist_path)
+        # Atomic write: unique temp file then replace
+        fd, tmp_path = tempfile.mkstemp(dir=str(self.persist_path.parent), suffix=".tmp")
+        try:
+            os.write(fd, json.dumps([t.to_dict() for t in self.tasks], indent=2).encode())
+            os.close(fd)
+            os.replace(tmp_path, str(self.persist_path))
+        except BaseException:
+            os.close(fd)
+            os.unlink(tmp_path)
+            raise
 
     def load(self) -> None:
         """Load queue from JSON file."""

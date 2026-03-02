@@ -178,6 +178,9 @@ _STRATEGY_KEYWORDS: dict[str, str] = {
 # Workflow step markers (detected in text blocks)
 _WORKFLOW_STEP_RE = re.compile(r"(?:step|workflow)\s+(\d+)", re.I)
 
+# All expected DEFAULT_WORKFLOW steps (0 through 22)
+ALL_EXPECTED_STEPS = list(range(0, 23))
+
 
 class TranscriptAnalyzer:
     """Analyzes Claude Code JSONL transcripts for patterns and metrics.
@@ -268,9 +271,10 @@ class TranscriptAnalyzer:
         # Mark which workflow steps appeared in this transcript
         for step in transcript_has_step:
             steps_seen[step] = steps_seen.get(step, 0) + 1
-        # Every transcript could have every step
-        for step in transcript_has_step:
-            steps_total[step] = steps_total.get(step, 0) + 1
+        # Every transcript could have every step (0-22)
+        for i in ALL_EXPECTED_STEPS:
+            step_key = f"step_{i}"
+            steps_total[step_key] = steps_total.get(step_key, 0) + 1
 
     def _extract_assistant_patterns(
         self,
