@@ -24,6 +24,7 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 
+from amplihack.fleet._defaults import get_azlin_path
 from amplihack.fleet._validation import validate_session_name, validate_vm_name
 from amplihack.fleet.fleet_auth import AuthPropagator
 from amplihack.fleet.fleet_observer import FleetObserver
@@ -97,7 +98,7 @@ class FleetAdmiral:
     """
 
     task_queue: TaskQueue
-    azlin_path: str = "/home/azureuser/src/azlin/.venv/bin/azlin"
+    azlin_path: str = field(default_factory=get_azlin_path)
     poll_interval_seconds: float = 60.0
     max_agents_per_vm: int = 3
     log_dir: Path | None = None
@@ -381,7 +382,7 @@ class FleetAdmiral:
 
         # Create tmux session and start agent
         setup_cmd = (
-            f"tmux new-session -d -s {safe_session} 2>/dev/null || true && "
+            f"tmux new-session -d -s {safe_session} && "
             f"tmux send-keys -t {safe_session} "
             f"'amplihack {task.agent_command} --{task.agent_mode} "
             f"--max-turns {task.max_turns} "

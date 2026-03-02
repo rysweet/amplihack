@@ -20,10 +20,11 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from amplihack.fleet._defaults import get_azlin_path
 from amplihack.fleet._validation import validate_vm_name
 from amplihack.fleet.fleet_state import AgentStatus, TmuxSessionInfo
 
-__all__ = ["FleetObserver"]
+__all__ = ["FleetObserver", "ObservationResult"]
 
 # Patterns that indicate specific agent states
 COMPLETION_PATTERNS = [
@@ -95,7 +96,7 @@ class FleetObserver:
     classifies the agent's state using pattern matching.
     """
 
-    azlin_path: str = "/home/azureuser/src/azlin/.venv/bin/azlin"
+    azlin_path: str = field(default_factory=get_azlin_path)
     capture_lines: int = 50  # Number of lines to capture from pane
     _previous_captures: dict[str, str] = field(default_factory=dict)
     _last_change_time: dict[str, float] = field(default_factory=dict)

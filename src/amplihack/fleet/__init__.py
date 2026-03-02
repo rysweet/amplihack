@@ -26,44 +26,47 @@ Public API (the "studs"):
 
 from amplihack.fleet.fleet_admiral import FleetAdmiral
 from amplihack.fleet.fleet_adopt import SessionAdopter
-from amplihack.fleet.fleet_auth import AuthPropagator, GitHubIdentity
+from amplihack.fleet.fleet_auth import AuthPropagator, AuthResult, GitHubIdentity
 from amplihack.fleet.fleet_dashboard import FleetDashboard, ProjectInfo
-
-# Backward-compat alias — existing code and tests still reference FleetDirector
-FleetDirector = FleetAdmiral
 from amplihack.fleet.fleet_copilot import CopilotSuggestion, SessionCopilot
 from amplihack.fleet.fleet_graph import FleetGraph
-from amplihack.fleet.fleet_health import HealthChecker, HealthReport
+from amplihack.fleet.fleet_health import HealthChecker, HealthReport, VMHealth
 from amplihack.fleet.fleet_logs import LogReader, SessionSummary
-from amplihack.fleet.fleet_observer import FleetObserver
+from amplihack.fleet.fleet_observer import FleetObserver, ObservationResult
 from amplihack.fleet.fleet_reasoners import ReasonerChain
 from amplihack.fleet.fleet_results import ResultCollector, TaskResult
-from amplihack.fleet.fleet_setup import RepoSetup
-from amplihack.fleet.fleet_state import FleetState, TmuxSessionInfo, VMInfo
-from amplihack.fleet.fleet_tasks import FleetTask, TaskQueue
+from amplihack.fleet.fleet_setup import RepoSetup, SetupResult
+from amplihack.fleet.fleet_state import AgentStatus, FleetState, TmuxSessionInfo, VMInfo
+from amplihack.fleet.fleet_tasks import FleetTask, TaskPriority, TaskQueue, TaskStatus
 
 __all__ = [
+    "AgentStatus",
     "AuthPropagator",
+    "AuthResult",
     "FleetDashboard",
     "FleetAdmiral",
-    "FleetDirector",  # backward-compat alias
     "FleetGraph",
     "FleetObserver",
     "FleetState",
     "GitHubIdentity",
     "HealthChecker",
     "HealthReport",
+    "ObservationResult",
     "LogReader",
     "ProjectInfo",
     "ReasonerChain",
     "RepoSetup",
     "ResultCollector",
+    "SetupResult",
     "SessionAdopter",
     "SessionSummary",
+    "TaskPriority",
     "TaskQueue",
+    "TaskStatus",
     "FleetTask",
     "TaskResult",
     "TmuxSessionInfo",
+    "VMHealth",
     "VMInfo",
     "SessionCopilot",
     "CopilotSuggestion",

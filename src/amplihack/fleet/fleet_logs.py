@@ -23,6 +23,7 @@ import shlex
 import subprocess
 from dataclasses import dataclass, field
 
+from amplihack.fleet._defaults import get_azlin_path
 from amplihack.fleet._validation import validate_vm_name
 
 __all__ = ["LogReader", "SessionSummary"]
@@ -78,7 +79,7 @@ class LogReader:
     Extracts only the information the director needs — not raw logs.
     """
 
-    azlin_path: str = "/home/azureuser/src/azlin/.venv/bin/azlin"
+    azlin_path: str = field(default_factory=get_azlin_path)
 
     def read_session_log(
         self,

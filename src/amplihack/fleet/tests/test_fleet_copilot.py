@@ -109,6 +109,16 @@ class TestCopilotSuggestion:
         assert "60%" in text
         assert "continue with" in text
 
+    def test_summary_unknown_progress(self):
+        s = CopilotSuggestion(
+            action="wait",
+            reasoning="thinking",
+            confidence=0.95,
+            progress_pct=None,
+        )
+        text = s.summary()
+        assert "unknown" in text
+
     def test_summary_no_input(self):
         s = CopilotSuggestion(action="wait", reasoning="thinking", confidence=0.95)
         text = s.summary()
@@ -189,14 +199,17 @@ class TestSessionCopilot:
         """Progress estimation based on transcript content."""
         copilot = SessionCopilot(goal="test")
 
-        # Empty transcript
-        assert copilot._estimate_progress("") == 0
+        # Empty transcript returns None (unknown)
+        assert copilot._estimate_progress("") is None
 
         # Goal achieved
         assert copilot._estimate_progress("GOAL_STATUS: ACHIEVED") == 100
 
         # PR created
         assert copilot._estimate_progress("PR created successfully") == 90
+
+        # No concrete signal returns None
+        assert copilot._estimate_progress("just some random lines\nof output") is None
 
     def test_history_tracking(self, tmp_path: Path):
         """Co-pilot tracks suggestion history."""

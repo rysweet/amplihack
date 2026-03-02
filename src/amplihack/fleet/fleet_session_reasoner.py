@@ -29,6 +29,7 @@ from typing import Protocol
 
 logger = logging.getLogger(__name__)
 
+from amplihack.fleet._defaults import get_azlin_path
 from amplihack.fleet._validation import (
     DANGEROUS_PATTERNS,
     is_dangerous_input,
@@ -357,6 +358,15 @@ def infer_agent_status(tmux_text: str) -> str:
     - IDLE: No agent running (bare shell prompt), or agent at prompt with no input
     - RUNNING: Agent actively producing output (or status bar says "(running)")
     - ERROR/COMPLETED: Terminal states
+
+    Returns one of:
+        "thinking" -- Agent is actively processing (LLM call, tool running)
+        "running" -- Agent producing output or status bar shows active
+        "waiting_input" -- Agent needs user input (Y/n, permission prompt)
+        "idle" -- At prompt with no input, bare shell prompt
+        "error" -- Error indicators in output
+        "completed" -- Goal achieved or PR created
+        "unknown" -- Cannot determine status
     """
     last_lines = tmux_text.strip().split("\n")[-10:]
     combined = "\n".join(last_lines)
@@ -471,7 +481,7 @@ class SessionReasoner:
     then either acts (live mode) or shows the decision (dry-run mode).
     """
 
-    azlin_path: str = "/home/azureuser/src/azlin/.venv/bin/azlin"
+    azlin_path: str = field(default_factory=get_azlin_path)
     backend: LLMBackend | None = None
     dry_run: bool = False
     _decisions: list[SessionDecision] = field(default_factory=list)

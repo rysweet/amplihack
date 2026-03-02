@@ -178,6 +178,10 @@ class ResultCollector:
 
     def _save_index(self) -> None:
         """Save results index for fast loading."""
+        if getattr(self, '_load_failed', False):
+            import logging
+            logging.getLogger(__name__).error("Refusing to save — load failed for results index. Fix the .bak file manually.")
+            return
         index_file = self.results_dir / "index.json"
         index = {tid: r.to_dict() for tid, r in self._results.items()}
         # Atomic write: temp file then rename
@@ -194,8 +198,12 @@ class ResultCollector:
             data = json.loads(index_file.read_text())
         except json.JSONDecodeError:
             import logging
+            import shutil
 
-            logging.getLogger(__name__).warning(f"Corrupt results index: {index_file}")
+            logging.getLogger(__name__).warning(f"Corrupt results index: {index_file} — creating backup")
+            backup = index_file.with_suffix(".json.bak")
+            shutil.copy2(index_file, backup)
+            self._load_failed = True
             return
         self._results = {}
         for tid, d in data.items():

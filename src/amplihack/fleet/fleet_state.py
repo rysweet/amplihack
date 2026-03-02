@@ -12,12 +12,17 @@ Public API:
 from __future__ import annotations
 
 import json
+import logging
 import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 
+from amplihack.fleet._defaults import get_azlin_path
+
 __all__ = ["FleetState", "VMInfo", "TmuxSessionInfo", "AgentStatus"]
+
+logger = logging.getLogger(__name__)
 
 
 class AgentStatus(Enum):
@@ -80,7 +85,7 @@ class FleetState:
 
     vms: list[VMInfo] = field(default_factory=list)
     timestamp: datetime | None = None
-    azlin_path: str = "/home/azureuser/src/azlin/.venv/bin/azlin"
+    azlin_path: str = field(default_factory=get_azlin_path)
     _exclude_vms: set[str] = field(default_factory=set)
 
     def exclude_vms(self, *vm_names: str) -> FleetState:
@@ -173,8 +178,8 @@ class FleetState:
             subprocess.SubprocessError,
             FileNotFoundError,
             json.JSONDecodeError,
-        ):
-            pass
+        ) as exc:
+            logger.warning("VM polling failed (strategy 1: JSON): %s", exc)
 
         # Fallback: parse text output
         try:
@@ -186,9 +191,10 @@ class FleetState:
             )
             if result.returncode == 0:
                 return self._parse_vm_text(result.stdout)
-        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
-            pass
+        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
+            logger.warning("VM polling failed (strategy 2: text): %s", exc)
 
+        logger.error("All VM polling strategies failed")
         return []
 
     def _parse_vm_json(self, json_str: str) -> list[VMInfo]:
@@ -290,5 +296,6 @@ class FleetState:
                     )
             return sessions
 
-        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
+        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
+            logger.warning("tmux session polling failed for %s: %s", vm_name, exc)
             return []

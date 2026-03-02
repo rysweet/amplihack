@@ -112,10 +112,10 @@ class TestReadAzlinResourceGroup:
 
 
 class TestReadAzlinResourceGroupDefault:
-    """_read_azlin_resource_group fallback when config missing."""
+    """_read_azlin_resource_group raises ValueError when config missing."""
 
-    def test_returns_default_when_file_missing(self, tui: FleetTUI) -> None:
-        """Should return sensible default when ~/.azlin/config.toml does not exist."""
+    def test_raises_when_file_missing(self, tui: FleetTUI) -> None:
+        """Should raise ValueError when ~/.azlin/config.toml does not exist."""
         mock_path = MagicMock(spec=Path)
         mock_path.exists.return_value = False
 
@@ -125,12 +125,11 @@ class TestReadAzlinResourceGroupDefault:
             mock_home.return_value.__truediv__ = MagicMock(return_value=azlin_dir)
             azlin_dir.__truediv__ = MagicMock(return_value=mock_path)
 
-            result = tui._read_azlin_resource_group()
+            with pytest.raises(ValueError, match="No resource group configured"):
+                tui._read_azlin_resource_group()
 
-        assert result == "rysweet-linux-vm-pool"
-
-    def test_returns_default_when_no_matching_key(self, tui: FleetTUI) -> None:
-        """Should return default when config exists but has no resource_group key."""
+    def test_raises_when_no_matching_key(self, tui: FleetTUI) -> None:
+        """Should raise ValueError when config exists but has no resource_group key."""
         config_content = "[azure]\nsubscription = \"abc\"\n"
         mock_path = MagicMock(spec=Path)
         mock_path.exists.return_value = True
@@ -142,9 +141,8 @@ class TestReadAzlinResourceGroupDefault:
             mock_home.return_value.__truediv__ = MagicMock(return_value=azlin_dir)
             azlin_dir.__truediv__ = MagicMock(return_value=mock_path)
 
-            result = tui._read_azlin_resource_group()
-
-        assert result == "rysweet-linux-vm-pool"
+            with pytest.raises(ValueError, match="No resource group configured"):
+                tui._read_azlin_resource_group()
 
 
 # ---------------------------------------------------------------------------
