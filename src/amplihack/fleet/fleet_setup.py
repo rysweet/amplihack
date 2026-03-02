@@ -14,12 +14,23 @@ Public API:
 
 from __future__ import annotations
 
+import re
 import shlex
 import subprocess
 from dataclasses import dataclass
-from typing import Optional
+
+from amplihack.fleet._validation import validate_vm_name
 
 __all__ = ["RepoSetup"]
+
+_URL_SCHEME_RE = re.compile(r"^(https?://|git@|ssh://)")
+
+
+def _validate_repo_url(url: str) -> str:
+    """Validate repo URL uses a safe transport scheme."""
+    if not _URL_SCHEME_RE.match(url):
+        raise ValueError(f"Unsupported repo URL scheme: {url!r}")
+    return url
 
 
 @dataclass
@@ -62,6 +73,8 @@ class RepoSetup:
             branch: Branch to create/checkout (optional)
             github_identity: GitHub username for auth context
         """
+        validate_vm_name(vm_name)
+        _validate_repo_url(repo_url)
         import time
 
         start = time.monotonic()

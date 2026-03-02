@@ -26,7 +26,7 @@ import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Protocol
+from typing import Protocol
 
 from amplihack.fleet.fleet_admiral import ActionType, DirectorAction
 from amplihack.fleet.fleet_state import AgentStatus, FleetState
@@ -101,46 +101,54 @@ class LifecycleReasoner:
                 self._missing_session_counts[key] = self._missing_session_counts.get(key, 0) + 1
                 if self._missing_session_counts[key] >= 2:
                     # Session truly gone after 2 cycles
-                    actions.append(DirectorAction(
-                        action_type=ActionType.MARK_FAILED,
-                        task=task,
-                        vm_name=task.assigned_vm,
-                        session_name=task.assigned_session,
-                        reason="Session no longer exists (missing 2+ cycles)",
-                    ))
+                    actions.append(
+                        DirectorAction(
+                            action_type=ActionType.MARK_FAILED,
+                            task=task,
+                            vm_name=task.assigned_vm,
+                            session_name=task.assigned_session,
+                            reason="Session no longer exists (missing 2+ cycles)",
+                        )
+                    )
                     del self._missing_session_counts[key]
                 # else: wait one more cycle before marking failed
                 continue
 
             if session.agent_status == AgentStatus.COMPLETED:
-                actions.append(DirectorAction(
-                    action_type=ActionType.MARK_COMPLETE,
-                    task=task,
-                    vm_name=task.assigned_vm,
-                    session_name=task.assigned_session,
-                    reason="Agent completed successfully",
-                ))
+                actions.append(
+                    DirectorAction(
+                        action_type=ActionType.MARK_COMPLETE,
+                        task=task,
+                        vm_name=task.assigned_vm,
+                        session_name=task.assigned_session,
+                        reason="Agent completed successfully",
+                    )
+                )
 
             elif session.agent_status == AgentStatus.ERROR:
-                actions.append(DirectorAction(
-                    action_type=ActionType.MARK_FAILED,
-                    task=task,
-                    vm_name=task.assigned_vm,
-                    session_name=task.assigned_session,
-                    reason=f"Agent error: {session.last_output[-200:]}",
-                ))
+                actions.append(
+                    DirectorAction(
+                        action_type=ActionType.MARK_FAILED,
+                        task=task,
+                        vm_name=task.assigned_vm,
+                        session_name=task.assigned_session,
+                        reason=f"Agent error: {session.last_output[-200:]}",
+                    )
+                )
 
             elif session.agent_status == AgentStatus.STUCK:
                 # Respect protected flag (deep work mode)
                 if task.protected:
                     continue
-                actions.append(DirectorAction(
-                    action_type=ActionType.REASSIGN_TASK,
-                    task=task,
-                    vm_name=task.assigned_vm,
-                    session_name=task.assigned_session,
-                    reason="Agent appears stuck",
-                ))
+                actions.append(
+                    DirectorAction(
+                        action_type=ActionType.REASSIGN_TASK,
+                        task=task,
+                        vm_name=task.assigned_vm,
+                        session_name=task.assigned_session,
+                        reason="Agent appears stuck",
+                    )
+                )
 
         return actions
 
@@ -168,7 +176,8 @@ class PreemptionReasoner:
         actions: list[DirectorAction] = []
 
         critical_queued = [
-            t for t in queue.tasks
+            t
+            for t in queue.tasks
             if t.status == TaskStatus.QUEUED and t.priority == TaskPriority.CRITICAL
         ]
         if not critical_queued:
@@ -195,13 +204,15 @@ class PreemptionReasoner:
                 continue
 
             running.pop(0)
-            actions.append(DirectorAction(
-                action_type=ActionType.REASSIGN_TASK,
-                task=victim,
-                vm_name=victim.assigned_vm,
-                session_name=victim.assigned_session,
-                reason=f"Preempted for CRITICAL task {critical_task.id}",
-            ))
+            actions.append(
+                DirectorAction(
+                    action_type=ActionType.REASSIGN_TASK,
+                    task=victim,
+                    vm_name=victim.assigned_vm,
+                    session_name=victim.assigned_session,
+                    reason=f"Preempted for CRITICAL task {critical_task.id}",
+                )
+            )
 
         return actions
 
@@ -288,10 +299,7 @@ class BatchAssignReasoner:
         # Check dependency satisfaction
         completed_ids = {t.id for t in queue.tasks if t.status == TaskStatus.COMPLETED}
         depends_on_fn = lambda t: getattr(t, "depends_on", [])
-        ready = [
-            t for t in queued
-            if all(dep in completed_ids for dep in depends_on_fn(t))
-        ]
+        ready = [t for t in queued if all(dep in completed_ids for dep in depends_on_fn(t))]
 
         if not ready:
             return actions
@@ -307,12 +315,14 @@ class BatchAssignReasoner:
             used = vm.active_agents
             # Account for assignments from prior reasoners
             used += sum(
-                1 for a in prior_actions
+                1
+                for a in prior_actions
                 if a.action_type == ActionType.START_AGENT and a.vm_name == vm.name
             )
             # Account for our own assignments this cycle
             used += sum(
-                1 for a in actions
+                1
+                for a in actions
                 if a.action_type == ActionType.START_AGENT and a.vm_name == vm.name
             )
             remaining = self.max_agents_per_vm - used
@@ -331,13 +341,15 @@ class BatchAssignReasoner:
             best_vm = max(capacity, key=capacity.get)  # type: ignore[arg-type]
 
             session_name = f"fleet-{task.id}"
-            actions.append(DirectorAction(
-                action_type=ActionType.START_AGENT,
-                task=task,
-                vm_name=best_vm,
-                session_name=session_name,
-                reason=f"Batch assign: {task.priority.name} task",
-            ))
+            actions.append(
+                DirectorAction(
+                    action_type=ActionType.START_AGENT,
+                    task=task,
+                    vm_name=best_vm,
+                    session_name=session_name,
+                    reason=f"Batch assign: {task.priority.name} task",
+                )
+            )
             task.assign(best_vm, session_name)
 
             capacity[best_vm] -= 1

@@ -23,7 +23,6 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 __all__ = ["FleetGraph", "NodeType", "EdgeType"]
 
@@ -44,15 +43,15 @@ class NodeType(Enum):
 class EdgeType(Enum):
     """Types of relationships."""
 
-    CONTAINS = "contains"        # project → task
+    CONTAINS = "contains"  # project → task
     ASSIGNED_TO = "assigned_to"  # task → vm/session
-    RUNS_ON = "runs_on"          # agent → vm
-    PRODUCED = "produced"        # task → pr
-    DEPENDS_ON = "depends_on"    # task → task
-    MODIFIES = "modifies"        # task → file
-    REVIEWS = "reviews"          # task → pr
-    CONFLICTS = "conflicts"      # task ↔ task (same files)
-    RELATED = "related"          # generic relationship
+    RUNS_ON = "runs_on"  # agent → vm
+    PRODUCED = "produced"  # task → pr
+    DEPENDS_ON = "depends_on"  # task → task
+    MODIFIES = "modifies"  # task → file
+    REVIEWS = "reviews"  # task → pr
+    CONFLICTS = "conflicts"  # task ↔ task (same files)
+    RELATED = "related"  # generic relationship
 
 
 @dataclass
@@ -63,7 +62,7 @@ class GraphNode:
     node_type: NodeType
     label: str = ""
     metadata: dict = field(default_factory=dict)
-    updated_at: Optional[datetime] = None
+    updated_at: datetime | None = None
 
 
 @dataclass
@@ -86,7 +85,7 @@ class FleetGraph:
 
     nodes: dict[str, GraphNode] = field(default_factory=dict)
     edges: list[GraphEdge] = field(default_factory=list)
-    persist_path: Optional[Path] = None
+    persist_path: Path | None = None
 
     def __post_init__(self):
         if self.persist_path and self.persist_path.exists():
@@ -107,7 +106,7 @@ class FleetGraph:
         self._save()
         return node
 
-    def get_node(self, node_id: str) -> Optional[GraphNode]:
+    def get_node(self, node_id: str) -> GraphNode | None:
         return self.nodes.get(node_id)
 
     def nodes_of_type(self, node_type: NodeType) -> list[GraphNode]:
@@ -115,12 +114,17 @@ class FleetGraph:
 
     # --- Edge operations ---
 
-    def add_edge(self, source_id: str, target_id: str, edge_type: EdgeType, **metadata) -> GraphEdge:
+    def add_edge(
+        self, source_id: str, target_id: str, edge_type: EdgeType, **metadata
+    ) -> GraphEdge:
         """Add a relationship. Deduplicates by (source, target, type)."""
         # Remove existing edge of same type between same nodes
         self.edges = [
-            e for e in self.edges
-            if not (e.source_id == source_id and e.target_id == target_id and e.edge_type == edge_type)
+            e
+            for e in self.edges
+            if not (
+                e.source_id == source_id and e.target_id == target_id and e.edge_type == edge_type
+            )
         ]
         edge = GraphEdge(
             source_id=source_id,
@@ -132,7 +136,7 @@ class FleetGraph:
         self._save()
         return edge
 
-    def neighbors(self, node_id: str, edge_type: Optional[EdgeType] = None) -> list[str]:
+    def neighbors(self, node_id: str, edge_type: EdgeType | None = None) -> list[str]:
         """Get IDs of connected nodes."""
         result = []
         for edge in self.edges:
@@ -144,10 +148,11 @@ class FleetGraph:
                     result.append(edge.source_id)
         return result
 
-    def edges_from(self, node_id: str, edge_type: Optional[EdgeType] = None) -> list[GraphEdge]:
+    def edges_from(self, node_id: str, edge_type: EdgeType | None = None) -> list[GraphEdge]:
         """Get outgoing edges from a node."""
         return [
-            e for e in self.edges
+            e
+            for e in self.edges
             if e.source_id == node_id and (edge_type is None or e.edge_type == edge_type)
         ]
 
@@ -179,7 +184,8 @@ class FleetGraph:
     def project_tasks(self, project_id: str) -> list[str]:
         """Get all task IDs for a project."""
         return [
-            e.target_id for e in self.edges
+            e.target_id
+            for e in self.edges
             if e.source_id == project_id and e.edge_type == EdgeType.CONTAINS
         ]
 
@@ -241,7 +247,7 @@ class FleetGraph:
             ],
         }
         # Atomic write: temp file then rename
-        tmp = self.persist_path.with_suffix('.tmp')
+        tmp = self.persist_path.with_suffix(".tmp")
         tmp.write_text(json.dumps(data, indent=2))
         tmp.rename(self.persist_path)
 
@@ -252,6 +258,7 @@ class FleetGraph:
             data = json.loads(self.persist_path.read_text())
         except json.JSONDecodeError:
             import logging
+
             logging.getLogger(__name__).warning(f"Corrupt graph file: {self.persist_path}")
             return
         self.nodes = {}
@@ -265,16 +272,20 @@ class FleetGraph:
                 )
             except (KeyError, TypeError, ValueError) as e:
                 import logging
+
                 logging.getLogger(__name__).warning(f"Skipping corrupt graph node {nid}: {e}")
         self.edges = []
         for edata in data.get("edges", []):
             try:
-                self.edges.append(GraphEdge(
-                    source_id=edata["source"],
-                    target_id=edata["target"],
-                    edge_type=EdgeType(edata["type"]),
-                    metadata=edata.get("metadata", {}),
-                ))
+                self.edges.append(
+                    GraphEdge(
+                        source_id=edata["source"],
+                        target_id=edata["target"],
+                        edge_type=EdgeType(edata["type"]),
+                        metadata=edata.get("metadata", {}),
+                    )
+                )
             except (KeyError, TypeError, ValueError) as e:
                 import logging
+
                 logging.getLogger(__name__).warning(f"Skipping corrupt graph edge: {e}")

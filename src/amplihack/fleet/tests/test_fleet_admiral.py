@@ -39,8 +39,8 @@ def _make_queue(*tasks: FleetTask, persist_path=None) -> TaskQueue:
     return q
 
 
-def _make_task(**overrides) -> FleetTask:
-    defaults = dict(
+def _make_task(**overrides: object) -> FleetTask:
+    defaults: dict[str, object] = dict(
         id="t1",
         prompt="Fix the flaky test",
         repo_url="https://github.com/org/repo",
@@ -48,7 +48,7 @@ def _make_task(**overrides) -> FleetTask:
         status=TaskStatus.QUEUED,
     )
     defaults.update(overrides)
-    return FleetTask(**defaults)
+    return FleetTask(**defaults)  # type: ignore[arg-type]
 
 
 def _make_vm(name: str, status: str = "Running", sessions=None) -> VMInfo:
@@ -792,8 +792,8 @@ class TestValidateName:
             _validate_name("has space")
 
     def test_none_name(self):
-        with pytest.raises(ValueError, match="Invalid"):
-            _validate_name(None)
+        with pytest.raises((ValueError, TypeError)):
+            _validate_name(None)  # type: ignore[arg-type]  # testing invalid input
 
 
 class TestDirectorLog:

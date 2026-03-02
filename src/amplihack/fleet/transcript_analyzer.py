@@ -21,7 +21,6 @@ from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 __all__ = [
     "TranscriptAnalyzer",
@@ -42,9 +41,7 @@ class AnalysisReport:
     workflow_compliance: dict[str, float] = field(default_factory=dict)
     total_transcripts: int = 0
     total_messages: int = 0
-    analysis_timestamp: str = field(
-        default_factory=lambda: datetime.now().isoformat()
-    )
+    analysis_timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
 
     def to_dict(self) -> dict:
         return {
@@ -79,7 +76,7 @@ def gather_local_transcripts(limit: int = 50) -> list[Path]:
 
 def gather_remote_transcripts(
     vm_names: list[str],
-    azlin_path: Optional[str] = None,
+    azlin_path: str | None = None,
 ) -> dict[str, list[dict]]:
     """Gather transcript summaries from remote VMs via azlin.
 
@@ -87,9 +84,7 @@ def gather_remote_transcripts(
     dict mapping VM name to a list of per-session summary dicts.
     """
     if azlin_path is None:
-        azlin_path = os.environ.get(
-            "AZLIN_PATH", shutil.which("azlin") or "azlin"
-        )
+        azlin_path = os.environ.get("AZLIN_PATH", shutil.which("azlin") or "azlin")
 
     remote_script = _build_remote_summary_script()
     results: dict[str, list[dict]] = {}
@@ -151,9 +146,7 @@ def _build_remote_summary_script() -> str:
 
 _SKILL_RE = re.compile(r'Skill\s*\(\s*skill\s*=\s*["\']([^"\']+)["\']', re.I)
 _SKILL_INVOKE_RE = re.compile(r'"?skill"?\s*[:=]\s*["\']([^"\']+)["\']', re.I)
-_AGENT_RE = re.compile(
-    r'(?:agent|subagent_type)\s*[:=]\s*["\']([^"\']+)["\']', re.I
-)
+_AGENT_RE = re.compile(r'(?:agent|subagent_type)\s*[:=]\s*["\']([^"\']+)["\']', re.I)
 
 # Known strategy markers (keywords that signal a strategy from the dictionary)
 _STRATEGY_KEYWORDS: dict[str, str] = {
@@ -180,9 +173,7 @@ _STRATEGY_KEYWORDS: dict[str, str] = {
 }
 
 # Workflow step markers (detected in text blocks)
-_WORKFLOW_STEP_RE = re.compile(
-    r"(?:step|workflow)\s+(\d+)", re.I
-)
+_WORKFLOW_STEP_RE = re.compile(r"(?:step|workflow)\s+(\d+)", re.I)
 
 
 class TranscriptAnalyzer:
@@ -197,7 +188,7 @@ class TranscriptAnalyzer:
     """
 
     def __init__(self) -> None:
-        self._report: Optional[AnalysisReport] = None
+        self._report: AnalysisReport | None = None
 
     # ── Gathering ────────────────────────────────────────────────────
 
@@ -208,7 +199,7 @@ class TranscriptAnalyzer:
     def gather_remote(
         self,
         vm_names: list[str],
-        azlin_path: Optional[str] = None,
+        azlin_path: str | None = None,
     ) -> dict[str, list[dict]]:
         """Gather transcript summaries from remote azlin VMs."""
         return gather_remote_transcripts(vm_names, azlin_path=azlin_path)
@@ -264,9 +255,7 @@ class TranscriptAnalyzer:
                     entry_type = entry.get("type", "")
 
                     if entry_type == "assistant":
-                        self._extract_assistant_patterns(
-                            entry, report, transcript_has_step
-                        )
+                        self._extract_assistant_patterns(entry, report, transcript_has_step)
                     elif entry_type == "user":
                         self._extract_user_patterns(entry, report)
 
@@ -304,7 +293,9 @@ class TranscriptAnalyzer:
 
                 # Check tool input for skill/agent invocations
                 tool_input = block.get("input", {})
-                input_str = json.dumps(tool_input) if isinstance(tool_input, dict) else str(tool_input)
+                input_str = (
+                    json.dumps(tool_input) if isinstance(tool_input, dict) else str(tool_input)
+                )
                 self._scan_for_skills(input_str, report)
                 self._scan_for_agents(input_str, report)
 
@@ -320,9 +311,7 @@ class TranscriptAnalyzer:
         message = entry.get("message", {})
         content = message.get("content", "")
         if isinstance(content, list):
-            text = " ".join(
-                b.get("text", "") if isinstance(b, dict) else str(b) for b in content
-            )
+            text = " ".join(b.get("text", "") if isinstance(b, dict) else str(b) for b in content)
         else:
             text = str(content)
         self._scan_for_strategies(text, report)

@@ -24,12 +24,14 @@ Public API (the "studs"):
     RepoSetup: Automated workspace preparation
 """
 
+from amplihack.fleet.fleet_admiral import FleetAdmiral
 from amplihack.fleet.fleet_adopt import SessionAdopter
 from amplihack.fleet.fleet_auth import AuthPropagator, GitHubIdentity
 from amplihack.fleet.fleet_dashboard import FleetDashboard, ProjectInfo
-from amplihack.fleet.fleet_admiral import FleetAdmiral
+
 # Backward-compat alias — existing code and tests still reference FleetDirector
 FleetDirector = FleetAdmiral
+from amplihack.fleet.fleet_copilot import CopilotSuggestion, SessionCopilot
 from amplihack.fleet.fleet_graph import FleetGraph
 from amplihack.fleet.fleet_health import HealthChecker, HealthReport
 from amplihack.fleet.fleet_logs import LogReader, SessionSummary
@@ -37,8 +39,9 @@ from amplihack.fleet.fleet_observer import FleetObserver
 from amplihack.fleet.fleet_reasoners import ReasonerChain
 from amplihack.fleet.fleet_results import ResultCollector, TaskResult
 from amplihack.fleet.fleet_setup import RepoSetup
-from amplihack.fleet.fleet_state import FleetState, VMInfo, TmuxSessionInfo
-from amplihack.fleet.fleet_tasks import TaskQueue, FleetTask
+from amplihack.fleet.fleet_state import FleetState, TmuxSessionInfo, VMInfo
+from amplihack.fleet.fleet_tasks import FleetTask, TaskQueue
+
 __all__ = [
     "AuthPropagator",
     "FleetDashboard",
@@ -62,4 +65,6 @@ __all__ = [
     "TaskResult",
     "TmuxSessionInfo",
     "VMInfo",
+    "SessionCopilot",
+    "CopilotSuggestion",
 ]

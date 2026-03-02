@@ -23,7 +23,11 @@ logger = logging.getLogger(__name__)
 # Try to import memory lib, degrade gracefully
 _MEMORY_AVAILABLE = False
 try:
-    from amplihack_memory import Experience, ExperienceStore, ExperienceType  # type: ignore[import-not-found]
+    from amplihack_memory import (  # type: ignore[import-not-found]
+        Experience,
+        ExperienceStore,
+        ExperienceType,
+    )
 
     _MEMORY_AVAILABLE = True
 except ImportError:
@@ -77,10 +81,9 @@ class AgentMemory:
         if isinstance(value, str):
             return value
         # RecipeResult exposes an .output property with aggregated step text
-        if hasattr(value, "output"):
-            out = value.output
-            if isinstance(out, str):
-                return out
+        out = getattr(value, "output", None)
+        if isinstance(out, str):
+            return out
         return str(value)
 
     def store_goal(self, goal: str) -> None:
@@ -168,7 +171,7 @@ class AgentMemory:
 
     def close(self) -> None:
         """Clean up the memory store (no-op if store has no close method)."""
-        pass  # ExperienceStore handles cleanup internally
+        # ExperienceStore handles cleanup internally
 
     def _safe_add(
         self,

@@ -257,12 +257,14 @@ class TestTaskQueueE2E:
 
         # Director dispatches highest priority first
         next_t = queue.next_task()
+        assert next_t is not None
         assert next_t.id == critical.id
         next_t.assign("vm-1", "fleet-001")
         next_t.start()
 
         # Director dispatches next
         next_t = queue.next_task()
+        assert next_t is not None
         assert next_t.id == high.id
         next_t.assign("vm-2", "fleet-002")
         next_t.start()
@@ -272,6 +274,7 @@ class TestTaskQueueE2E:
 
         # Medium is now dispatched
         next_t = queue.next_task()
+        assert next_t is not None
         assert next_t.id == medium.id
 
         # Verify state

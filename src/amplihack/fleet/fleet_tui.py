@@ -19,18 +19,16 @@ Public API:
 from __future__ import annotations
 
 import os
-import shlex
+import select
 import shutil
 import subprocess
 import sys
-import select
 import termios
 import time
 import tty
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 __all__ = ["FleetTUI", "run_tui"]
 
@@ -61,32 +59,32 @@ MR = "\u2563"  # middle-right junction
 
 # Status icons and their ANSI colors
 STATUS_MAP = {
-    "thinking":      ("@", GREEN,  "thinking"),
-    "working":       ("@", GREEN,  "working"),
-    "running":       ("@", GREEN,  "running"),
-    "waiting_input": ("@", GREEN,  "waiting"),
-    "idle":          ("*", YELLOW, "idle"),
-    "shell":         ("o", DIM,    "shell"),
-    "empty":         ("o", DIM,    "empty"),
-    "no_session":    ("o", DIM,    "empty"),
-    "unknown":       ("o", DIM,    "unknown"),
-    "error":         ("x", RED,    "error"),
-    "completed":     ("v", BLUE,   "done"),
+    "thinking": ("@", GREEN, "thinking"),
+    "working": ("@", GREEN, "working"),
+    "running": ("@", GREEN, "running"),
+    "waiting_input": ("@", GREEN, "waiting"),
+    "idle": ("*", YELLOW, "idle"),
+    "shell": ("o", DIM, "shell"),
+    "empty": ("o", DIM, "empty"),
+    "no_session": ("o", DIM, "empty"),
+    "unknown": ("o", DIM, "unknown"),
+    "error": ("x", RED, "error"),
+    "completed": ("v", BLUE, "done"),
 }
 
 # Mapping for UTF-8 capable terminals
 STATUS_ICONS_UTF8 = {
-    "thinking":      "\u25c9",  # filled circle with dot
-    "working":       "\u25c9",
-    "running":       "\u25c9",
+    "thinking": "\u25c9",  # filled circle with dot
+    "working": "\u25c9",
+    "running": "\u25c9",
     "waiting_input": "\u25c9",
-    "idle":          "\u25cf",  # filled circle
-    "shell":         "\u25cb",  # empty circle
-    "empty":         "\u25cb",
-    "no_session":    "\u25cb",
-    "unknown":       "\u25cb",
-    "error":         "\u2717",  # ballot x
-    "completed":     "\u2713",  # check mark
+    "idle": "\u25cf",  # filled circle
+    "shell": "\u25cb",  # empty circle
+    "empty": "\u25cb",
+    "no_session": "\u25cb",
+    "unknown": "\u25cb",
+    "error": "\u2717",  # ballot x
+    "completed": "\u2713",  # check mark
 }
 
 
@@ -128,9 +126,7 @@ class FleetTUI:
         )
     )
     refresh_interval: int = 60
-    exclude_vms: set[str] = field(
-        default_factory=lambda: {"fleet-exp-1", "fleet-exp-2"}
-    )
+    exclude_vms: set[str] = field(default_factory=lambda: {"fleet-exp-1", "fleet-exp-2"})
 
     def run(self, once: bool = False) -> None:
         """Main TUI loop with non-blocking keyboard input.
@@ -160,7 +156,7 @@ class FleetTUI:
                 key = self._wait_with_keypress(self.refresh_interval)
                 if key == "q":
                     break
-                elif key == "r":
+                if key == "r":
                     continue  # immediate refresh
                 # else: timeout expired, auto-refresh
 
@@ -179,11 +175,21 @@ class FleetTUI:
 
         Returns a list of VMView objects sorted by VM name.
         """
-        vm_list = self._get_vm_list()
-        result: list[VMView] = []
+        return list(self.refresh_iter())
 
-        for vm_name, region, is_running in vm_list:
-            if vm_name in self.exclude_vms:
+    def refresh_iter(self, *, exclude: bool = True):
+        """Yield VMView objects one at a time as each VM is polled.
+
+        Args:
+            exclude: If True, skip VMs in self.exclude_vms.
+
+        Yields:
+            VMView for each polled VM (sessions populated for running VMs).
+        """
+        vm_list = self._get_vm_list()
+
+        for vm_name, region, is_running in sorted(vm_list, key=lambda x: x[0]):
+            if exclude and vm_name in self.exclude_vms:
                 continue
 
             vm_view = VMView(name=vm_name, region=region, is_running=is_running)
@@ -191,10 +197,7 @@ class FleetTUI:
             if is_running:
                 vm_view.sessions = self._poll_vm(vm_name)
 
-            result.append(vm_view)
-
-        result.sort(key=lambda v: v.name)
-        return result
+            yield vm_view
 
     def render(self, vms: list[VMView]) -> None:
         """Render the dashboard to terminal using ANSI codes."""
@@ -251,7 +254,11 @@ class FleetTUI:
         for vm in vms:
             if not vm.is_running:
                 vm_header = f"  {DIM}[{vm.name}] {vm.region} (stopped){RESET}"
-                lines.append(self._boxline(vm_header, inner, width, raw_len=len(f"  [{vm.name}] {vm.region} (stopped)")))
+                lines.append(
+                    self._boxline(
+                        vm_header, inner, width, raw_len=len(f"  [{vm.name}] {vm.region} (stopped)")
+                    )
+                )
                 continue
 
             # VM header line with a dashed separator
@@ -265,7 +272,9 @@ class FleetTUI:
 
             if not vm.sessions:
                 empty_line = f"    {DIM}(no sessions){RESET}"
-                lines.append(self._boxline(empty_line, inner, width, raw_len=len("    (no sessions)")))
+                lines.append(
+                    self._boxline(empty_line, inner, width, raw_len=len("    (no sessions)"))
+                )
             else:
                 for sess in vm.sessions:
                     sess_line, raw_len = self._format_session(sess, inner)
@@ -306,7 +315,9 @@ class FleetTUI:
 
         # Footer: controls
         controls = f"  {DIM}Next refresh in {self.refresh_interval}s    Press q to quit, r to refresh now{RESET}"
-        raw_controls_len = len(f"  Next refresh in {self.refresh_interval}s    Press q to quit, r to refresh now")
+        raw_controls_len = len(
+            f"  Next refresh in {self.refresh_interval}s    Press q to quit, r to refresh now"
+        )
         lines.append(self._boxline(controls, inner, width, raw_len=raw_controls_len))
 
         # Bottom border
@@ -315,9 +326,7 @@ class FleetTUI:
         sys.stdout.write("\n".join(lines))
         sys.stdout.flush()
 
-    def _boxline(
-        self, content: str, inner: int, width: int, raw_len: int = 0
-    ) -> str:
+    def _boxline(self, content: str, inner: int, width: int, raw_len: int = 0) -> str:
         """Wrap content in box-drawing vertical lines with right-padding.
 
         Args:
@@ -339,9 +348,7 @@ class FleetTUI:
         Returns (formatted_string, raw_visible_length).
         """
         icon_char = STATUS_ICONS_UTF8.get(sess.status, "\u25cb")
-        _fallback, color, label = STATUS_MAP.get(
-            sess.status, ("o", DIM, sess.status)
-        )
+        _fallback, color, label = STATUS_MAP.get(sess.status, ("o", DIM, sess.status))
 
         # Build the right-side info: status label + branch/PR + last_line
         status_label = label.upper()
@@ -377,7 +384,7 @@ class FleetTUI:
 
         return formatted, raw_len
 
-    def _wait_with_keypress(self, seconds: int) -> Optional[str]:
+    def _wait_with_keypress(self, seconds: int) -> str | None:
         """Wait for N seconds, returning early if a key is pressed.
 
         Returns the key character if pressed, or None on timeout.
@@ -407,20 +414,7 @@ class FleetTUI:
 
         Returns a list of VMView objects sorted by VM name.
         """
-        vm_list = self._get_vm_list()
-        result: list[VMView] = []
-
-        for vm_name, region, is_running in vm_list:
-            # No exclude filter -- show everything
-            vm_view = VMView(name=vm_name, region=region, is_running=is_running)
-
-            if is_running:
-                vm_view.sessions = self._poll_vm(vm_name)
-
-            result.append(vm_view)
-
-        result.sort(key=lambda v: v.name)
-        return result
+        return list(self.refresh_iter(exclude=False))
 
     # ------------------------------------------------------------------
     # Data gathering: azlin + tmux polling
@@ -438,6 +432,7 @@ class FleetTUI:
         # Strategy 1: az vm list (Azure CLI with JSON — fast, no Bastion tunnels)
         try:
             import json as _json
+
             rg = self._read_azlin_resource_group()
             result = subprocess.run(
                 ["az", "vm", "list", "--resource-group", rg, "--show-details", "--output", "json"],
@@ -583,7 +578,7 @@ done
             # Extract session name
             header_end = part.index("===")
             session_name = part[:header_end].strip()
-            rest = part[header_end + 3:]
+            rest = part[header_end + 3 :]
 
             view = SessionView(vm_name=vm_name, session_name=session_name)
 
@@ -652,9 +647,7 @@ done
             if stripped.startswith("\u23bf"):
                 return "thinking"
             # Processing timer
-            if "\u273b" in stripped and (
-                "for" in stripped.lower() or "saut" in stripped.lower()
-            ):
+            if "\u273b" in stripped and ("for" in stripped.lower() or "saut" in stripped.lower()):
                 return "thinking"
             break
 
@@ -693,8 +686,7 @@ done
         if last_line.strip() == "\u276f" or last_line.strip().endswith("\u276f"):
             if not any("\u23f5\u23f5" in l for l in last_lines[-3:]):
                 return "shell"
-            else:
-                return "idle"
+            return "idle"
 
         # --- Default: running if there is substantial output ---
         if len(combined.strip()) > 50:

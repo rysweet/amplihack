@@ -16,13 +16,11 @@ Public API:
 from __future__ import annotations
 
 import json
-import time
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
-from amplihack.fleet.fleet_state import FleetState, VMInfo
+from amplihack.fleet.fleet_state import FleetState
 from amplihack.fleet.fleet_tasks import FleetTask, TaskQueue, TaskStatus
 
 __all__ = ["FleetDashboard", "ProjectInfo"]
@@ -46,8 +44,8 @@ class ProjectInfo:
     tasks_in_progress: int = 0
     prs_created: list[str] = field(default_factory=list)
     estimated_cost_usd: float = 0.0
-    started_at: Optional[datetime] = None
-    last_activity: Optional[datetime] = None
+    started_at: datetime | None = None
+    last_activity: datetime | None = None
 
     def __post_init__(self):
         if not self.name and self.repo_url:
@@ -110,7 +108,7 @@ class FleetDashboard:
     """
 
     projects: list[ProjectInfo] = field(default_factory=list)
-    persist_path: Optional[Path] = None
+    persist_path: Path | None = None
 
     def __post_init__(self):
         if self.persist_path and self.persist_path.exists():
@@ -135,7 +133,7 @@ class FleetDashboard:
         self._save()
         return project
 
-    def get_project(self, name_or_url: str) -> Optional[ProjectInfo]:
+    def get_project(self, name_or_url: str) -> ProjectInfo | None:
         """Find a project by name or repo URL."""
         for proj in self.projects:
             if proj.name == name_or_url or proj.repo_url == name_or_url:
@@ -243,7 +241,7 @@ class FleetDashboard:
             return
         self.persist_path.parent.mkdir(parents=True, exist_ok=True)
         # Atomic write: temp file then rename
-        tmp = self.persist_path.with_suffix('.tmp')
+        tmp = self.persist_path.with_suffix(".tmp")
         tmp.write_text(json.dumps([p.to_dict() for p in self.projects], indent=2))
         tmp.rename(self.persist_path)
 
@@ -254,6 +252,7 @@ class FleetDashboard:
             data = json.loads(self.persist_path.read_text())
         except json.JSONDecodeError:
             import logging
+
             logging.getLogger(__name__).warning(f"Corrupt dashboard file: {self.persist_path}")
             return
         self.projects = []
@@ -262,4 +261,5 @@ class FleetDashboard:
                 self.projects.append(ProjectInfo.from_dict(item))
             except (KeyError, TypeError) as e:
                 import logging
+
                 logging.getLogger(__name__).warning(f"Skipping corrupt project entry: {e}")

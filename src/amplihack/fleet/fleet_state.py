@@ -16,7 +16,6 @@ import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Optional
 
 __all__ = ["FleetState", "VMInfo", "TmuxSessionInfo", "AgentStatus"]
 
@@ -43,7 +42,7 @@ class TmuxSessionInfo:
     attached: bool = False
     agent_status: AgentStatus = AgentStatus.UNKNOWN
     last_output: str = ""
-    last_checked: Optional[datetime] = None
+    last_checked: datetime | None = None
 
 
 @dataclass
@@ -57,7 +56,7 @@ class VMInfo:
     ip: str = ""
     region: str = ""
     tmux_sessions: list[TmuxSessionInfo] = field(default_factory=list)
-    last_polled: Optional[datetime] = None
+    last_polled: datetime | None = None
 
     @property
     def is_running(self) -> bool:
@@ -80,7 +79,7 @@ class FleetState:
     """
 
     vms: list[VMInfo] = field(default_factory=list)
-    timestamp: Optional[datetime] = None
+    timestamp: datetime | None = None
     azlin_path: str = "/home/azureuser/src/azlin/.venv/bin/azlin"
     _exclude_vms: set[str] = field(default_factory=set)
 
@@ -105,7 +104,7 @@ class FleetState:
 
         return self
 
-    def get_vm(self, name: str) -> Optional[VMInfo]:
+    def get_vm(self, name: str) -> VMInfo | None:
         """Get VM by name."""
         for vm in self.vms:
             if vm.name == name:
@@ -129,7 +128,9 @@ class FleetState:
         sessions = sum(len(vm.tmux_sessions) for vm in managed)
 
         lines = [
-            f"Fleet State ({self.timestamp:%Y-%m-%d %H:%M:%S})" if self.timestamp else "Fleet State",
+            f"Fleet State ({self.timestamp:%Y-%m-%d %H:%M:%S})"
+            if self.timestamp
+            else "Fleet State",
             f"  Total VMs: {total} ({len(managed)} managed, {len(self._exclude_vms)} excluded)",
             f"  Running: {running}",
             f"  Tmux sessions: {sessions}",
@@ -167,7 +168,12 @@ class FleetState:
             if result.returncode == 0 and result.stdout.strip():
                 return self._parse_vm_json(result.stdout)
 
-        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError, json.JSONDecodeError):
+        except (
+            subprocess.TimeoutExpired,
+            subprocess.SubprocessError,
+            FileNotFoundError,
+            json.JSONDecodeError,
+        ):
             pass
 
         # Fallback: parse text output

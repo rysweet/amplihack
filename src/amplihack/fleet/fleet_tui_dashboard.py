@@ -19,38 +19,37 @@ import os
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
+from textual import work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.widgets import (
+    Button,
     DataTable,
     Footer,
     Header,
     Input,
+    LoadingIndicator,
     RichLog,
+    Select,
     Static,
     TabbedContent,
     TabPane,
     TextArea,
-    Button,
-    Select,
-    LoadingIndicator,
 )
 from textual.worker import get_current_worker
-from textual import work
 
-from amplihack.fleet.fleet_tui import FleetTUI, SessionView, VMView
 from amplihack.fleet.fleet_session_reasoner import (
-    SessionReasoner,
-    SessionDecision,
-    AnthropicBackend,
-    _is_dangerous_input,
     DANGEROUS_PATTERNS,
+    AnthropicBackend,
+    SessionDecision,
+    SessionReasoner,
+    _is_dangerous_input,
 )
+from amplihack.fleet.fleet_tui import FleetTUI, SessionView, VMView
 
 __all__ = ["FleetDashboardApp", "run_dashboard"]
 
@@ -58,6 +57,10 @@ __all__ = ["FleetDashboardApp", "run_dashboard"]
 # Pirate ship ASCII logo
 # ---------------------------------------------------------------------------
 PIRATE_LOGO = """\
+[bold white]              _~
+             /~   \\
+            |  ☠  |
+             \\_~_/[/bold white]
 [cyan]        |    |    |
        )_)  )_)  )_)
       )___))___))___)\\
@@ -71,17 +74,17 @@ PIRATE_LOGO = """\
 # Status icon mapping (Rich-compatible markup)
 # ---------------------------------------------------------------------------
 STATUS_STYLES: dict[str, tuple[str, str]] = {
-    "thinking":      ("\u25c9", "green"),
-    "working":       ("\u25c9", "green"),
-    "running":       ("\u25c9", "green"),
+    "thinking": ("\u25c9", "green"),
+    "working": ("\u25c9", "green"),
+    "running": ("\u25c9", "green"),
     "waiting_input": ("\u25c9", "green"),
-    "idle":          ("\u25cf", "yellow"),
-    "shell":         ("\u25cb", "dim"),
-    "empty":         ("\u25cb", "dim"),
-    "no_session":    ("\u25cb", "dim"),
-    "unknown":       ("\u25cb", "dim"),
-    "error":         ("\u2717", "red"),
-    "completed":     ("\u2713", "dodger_blue1"),
+    "idle": ("\u25cf", "yellow"),
+    "shell": ("\u25cb", "dim"),
+    "empty": ("\u25cb", "dim"),
+    "no_session": ("\u25cb", "dim"),
+    "unknown": ("\u25cb", "dim"),
+    "error": ("\u2717", "red"),
+    "completed": ("\u2713", "dodger_blue1"),
 }
 
 ACTION_CHOICES: list[tuple[str, str]] = [
@@ -99,12 +102,13 @@ class _CachedSession:
 
     view: SessionView
     tmux_capture: str = ""
-    proposal: Optional[SessionDecision] = None
+    proposal: SessionDecision | None = None
 
 
 # ---------------------------------------------------------------------------
 # Textual App
 # ---------------------------------------------------------------------------
+
 
 class FleetDashboardApp(App):
     """Interactive fleet management dashboard built on Textual."""
@@ -319,6 +323,7 @@ TabPane {
         self._managed_vm_names: set[str] = set()
         self._selected_key: str = ""
         self._refreshing = False
+        self._refresh_generation: int = 0
 
     # ------------------------------------------------------------------
     # Layout
@@ -343,7 +348,9 @@ TabPane {
 
             # --- Tab 2: Session Detail ---
             with TabPane("Session Detail", id="detail-tab"):
-                yield Static("Select a session from Fleet Overview and press Enter.", id="detail-header")
+                yield Static(
+                    "Select a session from Fleet Overview and press Enter.", id="detail-header"
+                )
                 yield RichLog(id="tmux-capture", wrap=True, markup=True)
                 with Vertical(id="proposal-section"):
                     yield Static("Proposal will appear here after dry-run.", id="proposal-text")
@@ -354,7 +361,9 @@ TabPane {
 
             # --- Tab 3: Action Editor ---
             with TabPane("Action Editor", id="editor-tab"):
-                yield Select(ACTION_CHOICES, id="action-select", prompt="Action type", value="send_input")
+                yield Select(
+                    ACTION_CHOICES, id="action-select", prompt="Action type", value="send_input"
+                )
                 yield TextArea(id="input-editor", language=None)
                 yield Static("", id="editor-reasoning")
                 with Horizontal(classes="button-row"):
@@ -374,7 +383,9 @@ TabPane {
 
             # --- Tab 5: New Session ---
             with TabPane("New Session", id="new-session-tab"):
-                yield Static("[bold]Create a new agent session on a VM[/bold]", id="new-session-header")
+                yield Static(
+                    "[bold]Create a new agent session on a VM[/bold]", id="new-session-header"
+                )
                 with Horizontal(id="new-session-form"):
                     yield Select([], id="vm-select", prompt="Select VM")
                     yield Select(
@@ -426,6 +437,8 @@ TabPane {
         if self._refreshing:
             return
         self._refreshing = True
+        self._refresh_generation += 1
+        self.add_class("active-loading")
         self._do_refresh()
 
     @staticmethod
@@ -468,7 +481,7 @@ TabPane {
                     "",
                 ]
                 if include_mgd_column:
-                    cells.append("[green]Y[/]" if is_managed else "[dim]N[/]")
+                    cells.append("[green]\u2713[/]" if is_managed else "[red]\u2717[/]")
                 rows.append((key, cells))
                 new_cache[key] = _CachedSession(
                     view=SessionView(vm_name=vm.name, session_name="(none)", status="empty"),
@@ -503,7 +516,7 @@ TabPane {
                     ]
 
                 if include_mgd_column:
-                    cells.append("[green]Y[/]" if is_managed else "[dim]N[/]")
+                    cells.append("[green]\u2713[/]" if is_managed else "[red]\u2717[/]")
 
                 rows.append((key, cells))
                 old = old_cache.get(key)
@@ -523,13 +536,23 @@ TabPane {
            → Update table immediately so user sees VMs
         2. Slow phase (30-60s per VM): Poll tmux sessions via Bastion
            → Update table again with session details
+
+        Uses a generation counter to discard stale results when a new
+        refresh is triggered while this one is still running.
         """
         worker = get_current_worker()
+        my_generation = self._refresh_generation
 
         # PHASE 1: Quick VM list (no sessions) — show something fast
         try:
             vm_list = self._fleet._get_vm_list()
-        except Exception:
+        except Exception as exc:
+            logger.error("Phase 1 VM list fetch failed: %s", exc)
+            self.call_from_thread(
+                self.notify,
+                f"VM list fetch failed: {exc}",
+                severity="error",
+            )
             vm_list = []
 
         if worker.is_cancelled:
@@ -547,7 +570,9 @@ TabPane {
         managed_vm_names = {vm.name for vm in quick_managed}
         managed_rows, new_cache = self._build_rows_and_cache(quick_managed, self._cache)
         all_rows, all_cache = self._build_rows_and_cache(
-            quick_all, self._cache, include_mgd_column=True,
+            quick_all,
+            self._cache,
+            include_mgd_column=True,
             managed_vm_names=managed_vm_names,
         )
         new_cache.update(all_cache)
@@ -566,53 +591,52 @@ TabPane {
         if worker.is_cancelled:
             return
 
-        # PHASE 2: Slow session polling (background, updates rows progressively)
-        managed_refresh_error = ""
+        # PHASE 2: Progressive session polling — update table per-VM
+        all_vms: list[VMView] = []
         try:
-            managed_vms: list[VMView] = self._fleet.refresh()
+            for vm in self._fleet.refresh_iter(exclude=False):
+                if worker.is_cancelled or my_generation != self._refresh_generation:
+                    return
+                all_vms.append(vm)
+
+                # Rebuild tables with what we have so far
+                managed_vm_names = {
+                    v.name for v in all_vms if v.name not in self._fleet.exclude_vms
+                }
+                managed_vms = [v for v in all_vms if v.name not in self._fleet.exclude_vms]
+                managed_rows, new_cache = self._build_rows_and_cache(managed_vms, self._cache)
+                all_rows, all_cache = self._build_rows_and_cache(
+                    all_vms,
+                    self._all_cache,
+                    managed_vm_names=managed_vm_names,
+                    include_mgd_column=True,
+                )
+
+                # Push incremental update to UI
+                self.call_from_thread(
+                    self._apply_refresh,
+                    managed_vms,
+                    managed_rows,
+                    new_cache,
+                    all_rows,
+                    all_cache,
+                    managed_vm_names,
+                )
         except Exception as exc:
-            logger.warning("Fleet refresh (managed) failed: %s", exc)
-            managed_refresh_error = f"Managed refresh failed: {exc}"
-            managed_vms = []
+            logger.warning("Fleet refresh failed: %s", exc)
+            self.call_from_thread(
+                self.notify,
+                f"Fleet refresh failed: {exc}",
+                severity="warning",
+            )
+        finally:
+            # Mark refresh complete so next schedule can proceed
+            self.call_from_thread(self._finish_refresh)
 
-        if worker.is_cancelled:
-            return
-
-        managed_vm_names = {vm.name for vm in managed_vms}
-        managed_rows, new_cache = self._build_rows_and_cache(managed_vms, self._cache)
-
-        all_refresh_error = ""
-        try:
-            all_vms: list[VMView] = self._fleet.refresh_all()
-        except Exception as exc:
-            logger.warning("Fleet refresh (all) failed: %s", exc)
-            all_refresh_error = f"All-VM refresh failed: {exc}"
-            all_vms = []
-
-        if worker.is_cancelled:
-            return
-
-        all_rows, all_cache = self._build_rows_and_cache(
-            all_vms, self._all_cache,
-            managed_vm_names=managed_vm_names,
-            include_mgd_column=True,
-        )
-
-        # Notify user of any refresh errors
-        refresh_error = managed_refresh_error or all_refresh_error
-        if refresh_error:
-            self.call_from_thread(self.notify, refresh_error, severity="warning")
-
-        # Post results back to UI thread
-        self.call_from_thread(
-            self._apply_refresh,
-            managed_vms,
-            managed_rows,
-            new_cache,
-            all_rows,
-            all_cache,
-            managed_vm_names,
-        )
+    def _finish_refresh(self) -> None:
+        """Mark refresh cycle complete (called on main thread after Phase 2)."""
+        self._refreshing = False
+        self.remove_class("active-loading")
 
     def _apply_refresh(
         self,
@@ -622,9 +646,12 @@ TabPane {
         all_rows: list[tuple[str, list[str]]],
         all_cache: dict[str, _CachedSession],
         managed_vm_names: set[str],
+        final: bool = False,
     ) -> None:
         """Update UI with refreshed data (called on the main thread)."""
-        self._refreshing = False
+        if final:
+            self._refreshing = False
+            self.remove_class("active-loading")
         self._cache = new_cache
         self._all_cache = all_cache
         self._managed_vm_names = managed_vm_names
@@ -647,17 +674,13 @@ TabPane {
         # Summary bar
         total_sessions = sum(1 for v in vms for _ in v.sessions if v.is_running)
         active = sum(
-            1 for v in vms for s in v.sessions
+            1
+            for v in vms
+            for s in v.sessions
             if v.is_running and s.status in ("thinking", "working", "running", "waiting_input")
         )
-        idle = sum(
-            1 for v in vms for s in v.sessions
-            if v.is_running and s.status == "idle"
-        )
-        errors = sum(
-            1 for v in vms for s in v.sessions
-            if v.is_running and s.status == "error"
-        )
+        idle = sum(1 for v in vms for s in v.sessions if v.is_running and s.status == "idle")
+        errors = sum(1 for v in vms for s in v.sessions if v.is_running and s.status == "error")
         now = datetime.now().strftime("%H:%M:%S")
         summary = (
             f"  {len(vms)} VMs | {total_sessions} sessions | "
@@ -728,10 +751,10 @@ TabPane {
         if entry.view.pr:
             preview.write(f"PR: {entry.view.pr}")
         if entry.view.last_line:
-            preview.write(f"\n[dim]Last output:[/dim]")
+            preview.write("\n[dim]Last output:[/dim]")
             preview.write(entry.view.last_line)
         if entry.tmux_capture:
-            preview.write(f"\n[dim]--- tmux capture ---[/dim]")
+            preview.write("\n[dim]--- tmux capture ---[/dim]")
             for line in entry.tmux_capture.split("\n")[-15:]:
                 preview.write(line)
 
@@ -883,7 +906,7 @@ TabPane {
         try:
             self.query_one("#session-table", DataTable).focus()
         except Exception:
-            pass
+            logger.warning("Could not focus session table after returning to fleet")
 
     def action_tab_fleet(self) -> None:
         tabs = self.query_one("#tabs", TabbedContent)
@@ -891,19 +914,22 @@ TabPane {
         try:
             self.query_one("#session-table", DataTable).focus()
         except Exception:
-            pass
+            logger.warning("Could not focus session table in fleet tab")
 
     def action_tab_detail(self) -> None:
         tabs = self.query_one("#tabs", TabbedContent)
         tabs.active = "detail-tab"
+        tabs.focus()
 
     def action_tab_editor(self) -> None:
         tabs = self.query_one("#tabs", TabbedContent)
         tabs.active = "editor-tab"
+        tabs.focus()
 
     def action_tab_projects(self) -> None:
         tabs = self.query_one("#tabs", TabbedContent)
         tabs.active = "projects-tab"
+        tabs.focus()
 
     def action_dry_run_session(self) -> None:
         """Run LLM reasoning for the currently selected session."""
@@ -1129,9 +1155,7 @@ TabPane {
             return
 
         # The key is the project name (set when adding rows)
-        cursor_key = proj_table.coordinate_to_cell_key(
-            proj_table.cursor_coordinate
-        ).row_key
+        cursor_key = proj_table.coordinate_to_cell_key(proj_table.cursor_coordinate).row_key
         project_name = str(cursor_key.value) if cursor_key else ""
         if not project_name:
             self.notify("Could not determine project name", severity="warning")
@@ -1202,9 +1226,7 @@ TabPane {
 
         # Create a new tmux session and run the agent inside it
         session_name = f"{agent_type}-{int(__import__('time').time()) % 10000}"
-        remote_cmd = (
-            f"tmux new-session -d -s {session_name} '{launch_cmd}'"
-        )
+        remote_cmd = f"tmux new-session -d -s {session_name} '{launch_cmd}'"
 
         try:
             result = subprocess.run(
@@ -1257,6 +1279,7 @@ TabPane {
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
+
 
 def run_dashboard(interval: int = 30) -> None:
     """Launch the interactive fleet dashboard.

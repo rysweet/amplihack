@@ -22,8 +22,8 @@ import json
 import shlex
 import subprocess
 from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Optional
+
+from amplihack.fleet._validation import validate_vm_name
 
 __all__ = ["LogReader", "SessionSummary"]
 
@@ -81,8 +81,11 @@ class LogReader:
     azlin_path: str = "/home/azureuser/src/azlin/.venv/bin/azlin"
 
     def read_session_log(
-        self, vm_name: str, project_path: str, tail_lines: int = 200,
-    ) -> Optional[SessionSummary]:
+        self,
+        vm_name: str,
+        project_path: str,
+        tail_lines: int = 200,
+    ) -> SessionSummary | None:
         """Read the most recent Claude Code session log for a project.
 
         Args:
@@ -93,6 +96,7 @@ class LogReader:
         Returns:
             SessionSummary or None if no log found
         """
+        validate_vm_name(vm_name)
         # Build a command that finds and summarizes the log in one SSH call
         read_cmd = self._build_log_reader_command(project_path, tail_lines)
 
@@ -161,6 +165,7 @@ done
 
     def _build_log_reader_command(self, project_path: str, tail_lines: int) -> str:
         """Build SSH command to read and summarize a specific project's log."""
+        tail_lines = max(1, min(tail_lines, 10000))
         # Convert project path to Claude's project key format
         safe_path = shlex.quote(project_path)
         return f"""
@@ -198,7 +203,7 @@ print(json.dumps(stats))
 " 2>/dev/null
 """
 
-    def _parse_log_summary(self, output: str) -> Optional[SessionSummary]:
+    def _parse_log_summary(self, output: str) -> SessionSummary | None:
         """Parse the remote log reader output."""
         for line in output.strip().split("\n"):
             line = line.strip()
@@ -231,16 +236,18 @@ print(json.dumps(stats))
                 continue
             try:
                 stats = json.loads(line)
-                summaries.append(SessionSummary(
-                    session_id=stats.get("session", ""),
-                    git_branch=stats.get("branch", ""),
-                    cwd=stats.get("cwd", ""),
-                    message_count=stats.get("msgs", 0),
-                    tool_use_count=stats.get("tools", 0),
-                    user_messages=stats.get("user", 0),
-                    assistant_messages=stats.get("asst", 0),
-                    pr_urls=stats.get("prs", []),
-                ))
+                summaries.append(
+                    SessionSummary(
+                        session_id=stats.get("session", ""),
+                        git_branch=stats.get("branch", ""),
+                        cwd=stats.get("cwd", ""),
+                        message_count=stats.get("msgs", 0),
+                        tool_use_count=stats.get("tools", 0),
+                        user_messages=stats.get("user", 0),
+                        assistant_messages=stats.get("asst", 0),
+                        pr_urls=stats.get("prs", []),
+                    )
+                )
             except (json.JSONDecodeError, KeyError):
                 continue
         return summaries

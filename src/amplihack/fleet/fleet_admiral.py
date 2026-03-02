@@ -24,12 +24,11 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 from amplihack.fleet.fleet_auth import AuthPropagator
 from amplihack.fleet.fleet_observer import FleetObserver
-from amplihack.fleet.fleet_state import AgentStatus, FleetState, VMInfo
-from amplihack.fleet.fleet_tasks import FleetTask, TaskPriority, TaskQueue, TaskStatus
+from amplihack.fleet.fleet_state import FleetState
+from amplihack.fleet.fleet_tasks import FleetTask, TaskQueue, TaskStatus
 
 __all__ = ["FleetAdmiral"]
 
@@ -38,7 +37,7 @@ logger = logging.getLogger(__name__)
 
 def _validate_name(name: str, label: str = "name") -> None:
     """Validate names used in subprocess calls (VM names, session names)."""
-    if not name or not re.match(r'^[a-zA-Z0-9][a-zA-Z0-9_.-]*$', name):
+    if not name or not re.match(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]*$", name):
         raise ValueError(f"Invalid {label}: {name!r}")
 
 
@@ -59,9 +58,9 @@ class DirectorAction:
     """A single action decided by the admiral."""
 
     action_type: ActionType
-    task: Optional[FleetTask] = None
-    vm_name: Optional[str] = None
-    session_name: Optional[str] = None
+    task: FleetTask | None = None
+    vm_name: str | None = None
+    session_name: str | None = None
     reason: str = ""
     timestamp: datetime = field(default_factory=datetime.now)
 
@@ -71,7 +70,7 @@ class DirectorLog:
     """Record of admiral decisions and outcomes."""
 
     actions: list[dict] = field(default_factory=list)
-    persist_path: Optional[Path] = None
+    persist_path: Path | None = None
 
     def record(self, action: DirectorAction, outcome: str) -> None:
         """Record an action and its outcome."""
@@ -107,7 +106,7 @@ class FleetAdmiral:
     azlin_path: str = "/home/azureuser/src/azlin/.venv/bin/azlin"
     poll_interval_seconds: float = 60.0
     max_agents_per_vm: int = 3
-    log_dir: Optional[Path] = None
+    log_dir: Path | None = None
 
     # Internal state
     _fleet_state: FleetState = field(default_factory=FleetState)
@@ -118,7 +117,9 @@ class FleetAdmiral:
     _running: bool = False
     _cycle_count: int = 0
     _missing_session_counts: dict[str, int] = field(default_factory=dict)
-    _stats: dict[str, int] = field(default_factory=lambda: {"actions": 0, "successes": 0, "failures": 0})
+    _stats: dict[str, int] = field(
+        default_factory=lambda: {"actions": 0, "successes": 0, "failures": 0}
+    )
 
     def __post_init__(self):
         # Lazy import to avoid circular dependency (fleet_reasoners imports from fleet_admiral)
@@ -133,12 +134,14 @@ class FleetAdmiral:
         self._fleet_state.azlin_path = self.azlin_path
         self._observer.azlin_path = self.azlin_path
         self._auth.azlin_path = self.azlin_path
-        self._reasoner_chain = ReasonerChain(reasoners=[
-            LifecycleReasoner(),
-            PreemptionReasoner(),
-            CoordinationReasoner(),
-            BatchAssignReasoner(max_agents_per_vm=self.max_agents_per_vm),
-        ])
+        self._reasoner_chain = ReasonerChain(
+            reasoners=[
+                LifecycleReasoner(),
+                PreemptionReasoner(),
+                CoordinationReasoner(),
+                BatchAssignReasoner(max_agents_per_vm=self.max_agents_per_vm),
+            ]
+        )
 
         if self.log_dir:
             self._log.persist_path = self.log_dir / "admiral_log.json"
@@ -196,9 +199,13 @@ class FleetAdmiral:
                 break
             except Exception as e:
                 consecutive_failures += 1
-                logger.error(f"Admiral cycle error ({consecutive_failures}/{MAX_CONSECUTIVE_FAILURES}): {e}")
+                logger.error(
+                    f"Admiral cycle error ({consecutive_failures}/{MAX_CONSECUTIVE_FAILURES}): {e}"
+                )
                 if consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
-                    logger.error(f"CIRCUIT BREAKER: {MAX_CONSECUTIVE_FAILURES} consecutive failures. Stopping admiral.")
+                    logger.error(
+                        f"CIRCUIT BREAKER: {MAX_CONSECUTIVE_FAILURES} consecutive failures. Stopping admiral."
+                    )
                     break
 
             # Check if all tasks are done
@@ -251,9 +258,7 @@ class FleetAdmiral:
                 outcome = self._execute_action(action)
                 self._log.record(action, outcome)
                 results.append((action, outcome))
-                logger.info(
-                    f"ACT: {action.action_type.value} on {action.vm_name} — {outcome}"
-                )
+                logger.info(f"ACT: {action.action_type.value} on {action.vm_name} — {outcome}")
             except Exception as e:
                 outcome = f"ERROR: {e}"
                 self._log.record(action, outcome)
@@ -275,11 +280,14 @@ class FleetAdmiral:
 
             if "ERROR" in outcome:
                 self._stats["failures"] += 1
-                logger.warning(f"LEARN: {action.action_type.value} failed on {action.vm_name}: {outcome}")
+                logger.warning(
+                    f"LEARN: {action.action_type.value} failed on {action.vm_name}: {outcome}"
+                )
 
                 # Persist failure learning to amplihack memory
                 try:
                     from amplihack.memory.discoveries import store_discovery
+
                     store_discovery(
                         content=f"Fleet action {action.action_type.value} failed on {action.vm_name}: {outcome}",
                         category="fleet-failure",
@@ -294,6 +302,7 @@ class FleetAdmiral:
                 if action.action_type.value in ("start_agent", "reassign_task"):
                     try:
                         from amplihack.memory.discoveries import store_discovery
+
                         store_discovery(
                             content=f"Fleet action {action.action_type.value} succeeded on {action.vm_name}: {outcome}",
                             category="fleet-success",
@@ -306,6 +315,7 @@ class FleetAdmiral:
         """Retrieve recent fleet learnings from amplihack memory."""
         try:
             from amplihack.memory.discoveries import get_recent_discoveries
+
             return get_recent_discoveries(days=30, limit=limit)
         except ImportError:
             return []
@@ -333,16 +343,15 @@ class FleetAdmiral:
         """Execute a single action."""
         if action.action_type == ActionType.START_AGENT:
             return self._start_agent(action)
-        elif action.action_type == ActionType.MARK_COMPLETE:
+        if action.action_type == ActionType.MARK_COMPLETE:
             return self._mark_complete(action)
-        elif action.action_type == ActionType.MARK_FAILED:
+        if action.action_type == ActionType.MARK_FAILED:
             return self._mark_failed(action)
-        elif action.action_type == ActionType.REASSIGN_TASK:
+        if action.action_type == ActionType.REASSIGN_TASK:
             return self._reassign_task(action)
-        elif action.action_type == ActionType.PROPAGATE_AUTH:
+        if action.action_type == ActionType.PROPAGATE_AUTH:
             return self._propagate_auth(action)
-        else:
-            return f"Unknown action: {action.action_type}"
+        return f"Unknown action: {action.action_type}"
 
     def _start_agent(self, action: DirectorAction) -> str:
         """Start a coding agent in a tmux session on a VM."""
@@ -351,8 +360,21 @@ class FleetAdmiral:
             return "ERROR: No task provided"
 
         vm_name = action.vm_name
+        if not vm_name:
+            return "ERROR: No VM name provided"
         session_name = action.session_name or f"fleet-{task.id}"
         _validate_name(vm_name, "vm_name")
+        _validate_name(session_name, "session_name")
+
+        # Validate agent command and mode against allowlist (security: prevent injection)
+        valid_agents = {"claude", "amplifier", "copilot"}
+        valid_modes = {"auto", "ultrathink"}
+        if task.agent_command not in valid_agents:
+            return f"ERROR: Invalid agent command: {task.agent_command!r}"
+        if task.agent_mode not in valid_modes:
+            return f"ERROR: Invalid agent mode: {task.agent_mode!r}"
+        if not isinstance(task.max_turns, int) or task.max_turns < 1 or task.max_turns > 1000:
+            return f"ERROR: Invalid max_turns: {task.max_turns!r}"
 
         # Build the tmux command to start an agent
         safe_session = shlex.quote(session_name)
@@ -378,8 +400,7 @@ class FleetAdmiral:
             if result.returncode == 0:
                 task.start()
                 return f"Agent started: {session_name} on {vm_name}"
-            else:
-                return f"ERROR: Failed to start agent: {result.stderr[:200]}"
+            return f"ERROR: Failed to start agent: {result.stderr[:200]}"
 
         except subprocess.TimeoutExpired:
             return "ERROR: Timeout starting agent"
@@ -403,7 +424,9 @@ class FleetAdmiral:
         if action.task and action.vm_name and action.session_name:
             _validate_name(action.vm_name, "vm_name")
             # Kill the stuck session
-            kill_cmd = f"tmux kill-session -t {shlex.quote(action.session_name)} 2>/dev/null || true"
+            kill_cmd = (
+                f"tmux kill-session -t {shlex.quote(action.session_name)} 2>/dev/null || true"
+            )
             try:
                 subprocess.run(
                     [self.azlin_path, "connect", action.vm_name, "--no-tmux", "--", kill_cmd],
@@ -411,8 +434,13 @@ class FleetAdmiral:
                     text=True,
                     timeout=30,
                 )
-            except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
-                pass
+            except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as e:
+                logger.warning(
+                    "Failed to kill stuck session %s on %s: %s",
+                    action.session_name,
+                    action.vm_name,
+                    e,
+                )
 
             # Requeue the task
             action.task.status = TaskStatus.QUEUED

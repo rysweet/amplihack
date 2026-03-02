@@ -18,14 +18,26 @@ Public API:
 
 from __future__ import annotations
 
+import re
 import shlex
 import subprocess
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+
+from amplihack.fleet._validation import validate_vm_name
 
 __all__ = ["AuthPropagator", "GitHubIdentity"]
+
+_CHMOD_MODE_RE = re.compile(r"^[0-7]{3,4}$")
+
+
+def _validate_chmod_mode(mode: str) -> str:
+    """Validate chmod mode is a safe numeric string."""
+    if not _CHMOD_MODE_RE.match(mode):
+        raise ValueError(f"Invalid chmod mode: {mode!r}")
+    return mode
+
 
 # Auth files to propagate, organized by service
 AUTH_FILES = {
@@ -75,7 +87,7 @@ class AuthResult:
     vm_name: str
     success: bool
     files_copied: list[str] = field(default_factory=list)
-    error: Optional[str] = None
+    error: str | None = None
     duration_seconds: float = 0.0
 
 
@@ -89,7 +101,7 @@ class AuthPropagator:
 
     azlin_path: str = "/home/azureuser/src/azlin/.venv/bin/azlin"
 
-    def propagate_all(self, vm_name: str, services: Optional[list[str]] = None) -> list[AuthResult]:
+    def propagate_all(self, vm_name: str, services: list[str] | None = None) -> list[AuthResult]:
         """Copy all auth tokens to a target VM.
 
         Args:
@@ -155,8 +167,8 @@ class AuthPropagator:
         Note: azlin cp blocks credential filenames, so we bundle them
         under a neutral name (fleet-auth-bundle.tar.gz).
         """
-        import tempfile
         import tarfile
+        import tempfile
 
         start = time.monotonic()
         files_to_bundle = []
@@ -165,7 +177,9 @@ class AuthPropagator:
             for file_info in service_files:
                 src = Path(file_info["src"]).expanduser()
                 if src.exists():
-                    files_to_bundle.append((str(src), file_info["dest"], file_info.get("mode", "600")))
+                    files_to_bundle.append(
+                        (str(src), file_info["dest"], file_info.get("mode", "600"))
+                    )
 
         if not files_to_bundle:
             return AuthResult(
@@ -207,6 +221,7 @@ class AuthPropagator:
             # Extract on remote and set permissions
             perms_cmds = []
             for _, dest_path, mode in files_to_bundle:
+                _validate_chmod_mode(mode)
                 perms_cmds.append(f"chmod {mode} ~/{dest_path.replace('~/', '')} 2>/dev/null")
 
             extract_cmd = (
@@ -264,6 +279,7 @@ class AuthPropagator:
                 )
 
                 if result.returncode == 0:
+                    _validate_chmod_mode(mode)
                     self._remote_exec(vm_name, f"chmod {mode} {shlex.quote(dest)}")
                     files_copied.append(str(src_path.name))
                 else:
@@ -360,6 +376,7 @@ class AuthPropagator:
 
     def _remote_exec(self, vm_name: str, command: str) -> subprocess.CompletedProcess:
         """Execute command on remote VM via azlin."""
+        validate_vm_name(vm_name)
         return subprocess.run(
             [self.azlin_path, "connect", vm_name, "--no-tmux", "--", command],
             capture_output=True,

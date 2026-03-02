@@ -16,13 +16,10 @@ Public API:
 from __future__ import annotations
 
 import subprocess
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
-from pathlib import Path
-from typing import Optional
 
-from amplihack.fleet.fleet_state import FleetState, TmuxSessionInfo
-from amplihack.fleet.fleet_tasks import FleetTask, TaskPriority, TaskQueue, TaskStatus
+from amplihack.fleet.fleet_tasks import TaskPriority, TaskQueue
 
 __all__ = ["SessionAdopter", "AdoptedSession"]
 
@@ -39,8 +36,8 @@ class AdoptedSession:
     inferred_pr: str = ""
     working_directory: str = ""
     agent_type: str = ""  # claude, amplifier, copilot
-    adopted_at: Optional[datetime] = None
-    task_id: Optional[str] = None  # Fleet task ID once created
+    adopted_at: datetime | None = None
+    task_id: str | None = None  # Fleet task ID once created
 
 
 @dataclass
@@ -80,7 +77,7 @@ class SessionAdopter:
         self,
         vm_name: str,
         queue: TaskQueue,
-        sessions: Optional[list[str]] = None,
+        sessions: list[str] | None = None,
     ) -> list[AdoptedSession]:
         """Adopt sessions on a VM into the fleet task queue.
 
@@ -182,7 +179,7 @@ echo "===DONE==="
     def _parse_discovery_output(self, vm_name: str, output: str) -> list[AdoptedSession]:
         """Parse the compound discovery output into AdoptedSession records."""
         sessions = []
-        current: Optional[AdoptedSession] = None
+        current: AdoptedSession | None = None
 
         for line in output.split("\n"):
             line = line.strip()
@@ -190,7 +187,7 @@ echo "===DONE==="
             if line.startswith("===SESSION:") and line.endswith("==="):
                 if current:
                     sessions.append(current)
-                session_name = line[len("===SESSION:"):-len("===")]
+                session_name = line[len("===SESSION:") : -len("===")]
                 current = AdoptedSession(vm_name=vm_name, session_name=session_name)
 
             elif current:

@@ -21,7 +21,6 @@ import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 __all__ = ["ResultCollector", "TaskResult"]
 
@@ -35,7 +34,7 @@ class TaskResult:
     pr_url: str = ""
     pr_number: int = 0
     commit_shas: list[str] = field(default_factory=list)
-    tests_passed: Optional[bool] = None
+    tests_passed: bool | None = None
     tests_summary: str = ""
     error_summary: str = ""
     agent_log_tail: str = ""  # Last N lines of agent output
@@ -43,8 +42,8 @@ class TaskResult:
     session_name: str = ""
     repo_url: str = ""
     branch: str = ""
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
     duration_seconds: float = 0.0
 
     @property
@@ -116,12 +115,12 @@ class ResultCollector:
         self._results[result.task_id] = result
         # Atomic write: individual result file
         result_file = self.results_dir / f"{result.task_id}.json"
-        tmp = result_file.with_suffix('.tmp')
+        tmp = result_file.with_suffix(".tmp")
         tmp.write_text(json.dumps(result.to_dict(), indent=2))
         tmp.rename(result_file)
         self._save_index()
 
-    def get(self, task_id: str) -> Optional[TaskResult]:
+    def get(self, task_id: str) -> TaskResult | None:
         """Get result by task ID."""
         return self._results.get(task_id)
 
@@ -182,7 +181,7 @@ class ResultCollector:
         index_file = self.results_dir / "index.json"
         index = {tid: r.to_dict() for tid, r in self._results.items()}
         # Atomic write: temp file then rename
-        tmp = index_file.with_suffix('.tmp')
+        tmp = index_file.with_suffix(".tmp")
         tmp.write_text(json.dumps(index, indent=2))
         tmp.rename(index_file)
 
@@ -195,6 +194,7 @@ class ResultCollector:
             data = json.loads(index_file.read_text())
         except json.JSONDecodeError:
             import logging
+
             logging.getLogger(__name__).warning(f"Corrupt results index: {index_file}")
             return
         self._results = {}
@@ -203,4 +203,5 @@ class ResultCollector:
                 self._results[tid] = TaskResult.from_dict(d)
             except (KeyError, TypeError) as e:
                 import logging
+
                 logging.getLogger(__name__).warning(f"Skipping corrupt result entry {tid}: {e}")

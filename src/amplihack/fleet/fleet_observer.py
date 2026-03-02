@@ -19,8 +19,8 @@ import subprocess
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional
 
+from amplihack.fleet._validation import validate_vm_name
 from amplihack.fleet.fleet_state import AgentStatus, TmuxSessionInfo
 
 __all__ = ["FleetObserver"]
@@ -86,7 +86,7 @@ class ObservationResult:
     last_output_lines: list[str] = field(default_factory=list)
     confidence: float = 0.0
     matched_pattern: str = ""
-    observed_at: Optional[datetime] = None
+    observed_at: datetime | None = None
 
 
 @dataclass
@@ -128,9 +128,7 @@ class FleetObserver:
         # Focus on last N non-empty lines
         recent_lines = [l for l in lines[-20:] if l.strip()]
 
-        status, confidence, pattern = self._classify_output(
-            recent_lines, vm_name, session_name
-        )
+        status, confidence, pattern = self._classify_output(recent_lines, vm_name, session_name)
 
         return ObservationResult(
             session_name=session_name,
@@ -143,7 +141,8 @@ class FleetObserver:
         )
 
     def observe_all(
-        self, sessions: list[TmuxSessionInfo],
+        self,
+        sessions: list[TmuxSessionInfo],
     ) -> list[ObservationResult]:
         """Observe multiple sessions and return classified results."""
         results = []
@@ -152,16 +151,15 @@ class FleetObserver:
             results.append(result)
         return results
 
-    def _capture_pane(self, vm_name: str, session_name: str) -> Optional[str]:
+    def _capture_pane(self, vm_name: str, session_name: str) -> str | None:
         """Capture tmux pane content from a remote VM."""
         import shlex
 
-        if any(c in session_name for c in ['\n', '`', '$', '|', '&', ';']):
+        validate_vm_name(vm_name)
+        if any(c in session_name for c in ["\n", "`", "$", "|", "&", ";"]):
             return None  # Reject unsafe session names
 
-        cmd = (
-            f"tmux capture-pane -t {shlex.quote(session_name)} -p -S -{self.capture_lines} 2>/dev/null"
-        )
+        cmd = f"tmux capture-pane -t {shlex.quote(session_name)} -p -S -{self.capture_lines} 2>/dev/null"
         try:
             result = subprocess.run(
                 [self.azlin_path, "connect", vm_name, "--no-tmux", "--", cmd],
@@ -176,7 +174,10 @@ class FleetObserver:
         return None
 
     def _classify_output(
-        self, lines: list[str], vm_name: str, session_name: str,
+        self,
+        lines: list[str],
+        vm_name: str,
+        session_name: str,
     ) -> tuple[AgentStatus, float, str]:
         """Classify agent state from recent output lines.
 

@@ -19,9 +19,11 @@ import re
 import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional
+
+from amplihack.fleet._validation import validate_vm_name
 
 __all__ = ["HealthChecker", "HealthReport"]
+
 
 # Agent process names to check for
 AGENT_PROCESSES = ["claude", "amplifier", "copilot", "node"]
@@ -39,7 +41,7 @@ class VMHealth:
     tmux_sessions: list[str] = field(default_factory=list)
     load_average: float = 0.0
     uptime_hours: float = 0.0
-    checked_at: Optional[datetime] = None
+    checked_at: datetime | None = None
     errors: list[str] = field(default_factory=list)
 
     @property
@@ -53,11 +55,7 @@ class VMHealth:
 
     @property
     def needs_attention(self) -> bool:
-        return (
-            self.memory_used_pct > 80.0
-            or self.disk_used_pct > 80.0
-            or not self.ssh_reachable
-        )
+        return self.memory_used_pct > 80.0 or self.disk_used_pct > 80.0 or not self.ssh_reachable
 
 
 @dataclass
@@ -65,7 +63,7 @@ class HealthReport:
     """Fleet-wide health report."""
 
     vm_health: list[VMHealth] = field(default_factory=list)
-    timestamp: Optional[datetime] = None
+    timestamp: datetime | None = None
 
     @property
     def healthy_count(self) -> int:
@@ -113,6 +111,7 @@ class HealthChecker:
 
         Uses a single compound command to minimize Bastion tunnel overhead.
         """
+        validate_vm_name(vm_name)
         health = VMHealth(vm_name=vm_name, checked_at=datetime.now())
 
         # Single compound command that collects all metrics

@@ -25,7 +25,9 @@ import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Protocol
+from typing import Protocol
+
+from amplihack.fleet._validation import validate_session_name, validate_vm_name
 
 __all__ = [
     "SessionReasoner",
@@ -36,6 +38,7 @@ __all__ = [
     "CopilotBackend",
     "LiteLLMBackend",
     "auto_detect_backend",
+    "infer_agent_status",
 ]
 
 # --- Safety: dangerous input blocklist (H10) ---
@@ -59,16 +62,6 @@ DANGEROUS_PATTERNS = [
 # --- Safety: confidence thresholds (H4) ---
 MIN_CONFIDENCE_SEND = 0.6
 MIN_CONFIDENCE_RESTART = 0.8
-
-# --- Safety: VM name validation ---
-_VM_NAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$")
-
-
-def _validate_vm_name(name: str) -> str:
-    """Validate VM name contains only safe characters."""
-    if not _VM_NAME_RE.match(name):
-        raise ValueError(f"Invalid VM name: {name!r}")
-    return name
 
 
 def _is_dangerous_input(text: str) -> bool:
@@ -99,7 +92,8 @@ class AnthropicBackend:
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
         )
-        return response.content[0].text
+        block = response.content[0]
+        return getattr(block, "text", "")
 
 
 class CopilotBackend:
@@ -141,7 +135,7 @@ class CopilotBackend:
 
             try:
                 await asyncio.wait_for(done.wait(), timeout=60)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 pass
 
             await session.destroy()
@@ -172,7 +166,12 @@ class LiteLLMBackend:
             ],
             max_tokens=500,
         )
-        return response.choices[0].message.content
+        choices = getattr(response, "choices", [])
+        if choices:
+            msg = getattr(choices[0], "message", None)
+            content = getattr(msg, "content", None) if msg else None
+            return str(content) if content else ""
+        return ""
 
 
 def auto_detect_backend() -> LLMBackend:
@@ -227,7 +226,7 @@ class SessionContext:
     project_priorities: str = ""  # Fleet-level priorities
 
     def __post_init__(self):
-        _validate_vm_name(self.vm_name)
+        validate_vm_name(self.vm_name)
 
     def to_prompt_context(self) -> str:
         """Format context for the reasoning LLM call."""
@@ -248,7 +247,7 @@ class SessionContext:
         if self.transcript_summary:
             parts.append(f"\nTranscript summary:\n{self.transcript_summary}")
 
-        parts.append(f"\nCurrent terminal output (last lines):")
+        parts.append("\nCurrent terminal output (last lines):")
         parts.append(self.tmux_capture[-2000:] if self.tmux_capture else "(empty)")
 
         if self.project_priorities:
@@ -363,6 +362,120 @@ _strategy_ref = _load_strategy_dictionary()
 SYSTEM_PROMPT = SYSTEM_PROMPT_BASE + ("\n\n" + _strategy_ref if _strategy_ref else "")
 
 
+def infer_agent_status(tmux_text: str) -> str:
+    """Infer agent status from tmux/terminal output.
+
+    Critically distinguishes between:
+    - THINKING: Agent is actively processing (LLM call in flight, tool running)
+    - WAITING_INPUT: Agent needs user input to proceed
+    - IDLE: No agent running (bare shell prompt), or agent at prompt with no input
+    - RUNNING: Agent actively producing output (or status bar says "(running)")
+    - ERROR/COMPLETED: Terminal states
+    """
+    last_lines = tmux_text.strip().split("\n")[-10:]
+    combined = "\n".join(last_lines)
+    combined_lower = combined.lower()
+    last_line = last_lines[-1].strip() if last_lines else ""
+    last_line_lower = last_line.lower()
+
+    # Helper: find the prompt line and check if user typed input
+    prompt_line_text = ""
+    has_prompt = False
+    for line in reversed(last_lines):
+        stripped = line.strip()
+        if stripped.startswith("❯"):
+            has_prompt = True
+            prompt_line_text = stripped[len("❯") :].strip()
+            break
+
+    # STATUS BAR "(running)" detection (high priority)
+    for line in last_lines:
+        if "(running)" in line and "⏵⏵" in line:
+            return "running"
+
+    # THINKING/WORKING detection (highest priority)
+    for line in last_lines:
+        stripped = line.strip()
+        if stripped.startswith("\u00b7 ") or stripped.startswith("· "):
+            return "thinking"
+
+    # Check last non-empty line for tool/streaming indicators
+    for line in reversed(last_lines):
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if stripped.startswith("●") and not stripped.startswith("● Bash("):
+            return "thinking"
+        if stripped.startswith("⎿"):
+            return "thinking"
+        break
+
+    # "✻" = JUST FINISHED thinking
+    has_finished_indicator = False
+    for line in last_lines:
+        stripped = line.strip()
+        if "✻" in stripped:
+            has_finished_indicator = True
+            break
+
+    if has_finished_indicator and has_prompt:
+        if prompt_line_text:
+            return "thinking"
+        return "idle"
+    if has_finished_indicator and not has_prompt:
+        return "thinking"
+
+    # Copilot: explicit thinking indicators
+    if any(p in combined_lower for p in ["thinking...", "running:", "loading"]):
+        return "thinking"
+
+    # Claude Code actively streaming (tool call with output)
+    if (
+        "● Bash(" in combined
+        or "● Read(" in combined
+        or "● Write(" in combined
+        or "● Edit(" in combined
+    ):
+        if "⏵⏵" in last_line:
+            return "waiting_input"
+        return "thinking"
+
+    # PROMPT with user input = agent processing
+    if has_prompt and prompt_line_text:
+        return "thinking"
+
+    # IDLE detection for bare prompts
+    if has_prompt and not prompt_line_text:
+        return "idle"
+    if last_line_lower.endswith("$ ") or last_line_lower.endswith("$"):
+        return "idle"
+
+    # WAITING_INPUT detection
+    if any(p in combined_lower for p in ["y/n]", "yes/no", "[y/n", "(yes/no)"]):
+        return "waiting_input"
+    if "⏵⏵" in combined and ("bypass" in combined_lower or "allow" in combined_lower):
+        return "waiting_input"
+    if last_line_lower.endswith("?"):
+        return "waiting_input"
+
+    # ERROR detection
+    if any(p in combined_lower for p in ["error:", "traceback", "fatal:", "panic:"]):
+        return "error"
+
+    # COMPLETED detection
+    if any(p in combined for p in ["GOAL_STATUS: ACHIEVED", "Workflow Complete"]):
+        return "completed"
+    if any(p in combined for p in ["gh pr create", "PR #", "pull request"]):
+        if any(p in combined_lower for p in ["created", "opened", "merged"]):
+            return "completed"
+
+    # Default: assume running if substantial output
+    if len(combined.strip()) > 50:
+        return "running"
+
+    return "unknown"
+
+
 @dataclass
 class SessionReasoner:
     """Per-session reasoning engine — SDK-agnostic.
@@ -373,7 +486,7 @@ class SessionReasoner:
     """
 
     azlin_path: str = "/home/azureuser/src/azlin/.venv/bin/azlin"
-    backend: Optional[LLMBackend] = None
+    backend: LLMBackend | None = None
     dry_run: bool = False
     _decisions: list[SessionDecision] = field(default_factory=list)
 
@@ -572,154 +685,8 @@ echo '===END==='
                             context.pr_url = line[11:]
 
     def _infer_status(self, tmux_text: str) -> str:
-        """Infer agent status from tmux capture.
-
-        Critically distinguishes between:
-        - THINKING: Agent is actively processing (LLM call in flight, tool running)
-        - WAITING_INPUT: Agent needs user input to proceed
-        - IDLE: No agent running (bare shell prompt), or agent at prompt with no input
-        - RUNNING: Agent actively producing output (or status bar says "(running)")
-        - ERROR/COMPLETED: Terminal states
-
-        Claude Code indicators (validated against live 9-session test data):
-        - "·" (middle dot) + active verb + "..." = CURRENTLY thinking (e.g. "· Scampering...")
-        - "✻" + past tense + "for Xm Ys" = JUST FINISHED thinking (e.g. "✻ Brewed for 6m 11s")
-        - "●" (filled circle) = tool call in progress or result
-        - "⏵⏵" = status bar (present when Claude Code is active)
-        - "❯" bare (no text after) = idle at prompt, waiting for next task
-        - "❯ <text>" (text after prompt) = user submitted input, agent processing
-        - Streaming "⎿" = tool output being written
-        - Status bar with "(running)" = subagent/background task active
-
-        Copilot CLI indicators:
-        - "Thinking..." or spinner characters
-        - "Running:" prefix for tool execution
-        """
-        last_lines = tmux_text.strip().split("\n")[-10:]
-        combined = "\n".join(last_lines)
-        combined_lower = combined.lower()
-        last_line = last_lines[-1].strip() if last_lines else ""
-        last_line_lower = last_line.lower()
-
-        # --- Helper: find the prompt line and check if user typed input ---
-        prompt_line_text = ""
-        has_prompt = False
-        for line in reversed(last_lines):
-            stripped = line.strip()
-            if stripped.startswith("❯"):
-                has_prompt = True
-                # Text after the prompt character (strip the "❯" and whitespace)
-                prompt_line_text = stripped[len("❯"):].strip()
-                break
-
-        # --- STATUS BAR "(running)" detection (high priority) ---
-        # When status bar shows "(running)", a subagent or background task is active
-        for line in last_lines:
-            if "(running)" in line and "⏵⏵" in line:
-                return "running"
-
-        # --- THINKING/WORKING detection (highest priority) ---
-
-        # Claude Code: "·" (middle dot U+00B7) with active verb = CURRENTLY thinking
-        # Patterns: "· Scampering...", "· Brewing...", "· Scampering… (3m 20s · ↓ 575 tokens)"
-        # Scan ALL lines (not just last) because status bar lines appear below the · indicator
-        for line in last_lines:
-            stripped = line.strip()
-            if stripped.startswith("\u00b7 ") or stripped.startswith("· "):
-                return "thinking"
-
-        # Claude Code: check last non-empty line for tool/streaming indicators
-        for line in reversed(last_lines):
-            stripped = line.strip()
-            if not stripped:
-                continue
-            # Active tool call (Claude Code) — ● without being a completed Bash result
-            if stripped.startswith("●") and not stripped.startswith("● Bash("):
-                return "thinking"
-            # Tool is executing with output streaming
-            if stripped.startswith("⎿"):
-                return "thinking"
-            break  # Only check the last non-empty line for these
-
-        # Claude Code: "✻" = JUST FINISHED thinking (past tense completion indicator)
-        # "✻ Brewed for 6m 11s", "✻ Cogitated for 4m 2s"
-        # If followed by ❯ prompt with user text → agent processing input → thinking
-        # If followed by ❯ prompt bare → agent idle at prompt → idle
-        has_finished_indicator = False
-        for line in last_lines:
-            stripped = line.strip()
-            if "✻" in stripped:
-                has_finished_indicator = True
-                break
-
-        if has_finished_indicator and has_prompt:
-            if prompt_line_text:
-                # User already typed something at the prompt — agent is processing it
-                return "thinking"
-            else:
-                # Bare prompt after finish indicator — agent is idle
-                return "idle"
-        elif has_finished_indicator and not has_prompt:
-            # ✻ visible but no prompt yet — still finishing up
-            return "thinking"
-
-        # Copilot: explicit thinking indicators
-        if any(p in combined_lower for p in ["thinking...", "running:", "loading"]):
-            return "thinking"
-
-        # Claude Code actively streaming (tool call with output)
-        if "● Bash(" in combined or "● Read(" in combined or "● Write(" in combined or "● Edit(" in combined:
-            # Check if it's a recently completed tool vs actively running
-            # If the status bar is on the very last line, agent is idle at prompt
-            if "⏵⏵" in last_line:
-                return "waiting_input"
-            return "thinking"
-
-        # --- PROMPT with user input = agent processing ---
-        # "❯ now close issue 12 and commit" means user typed input, agent is working
-        if has_prompt and prompt_line_text:
-            return "thinking"
-
-        # --- IDLE detection for bare prompts (before waiting_input) ---
-        # A bare ❯ with no text means the agent is at the prompt, idle.
-        # This must be checked BEFORE permission-prompt detection because the status
-        # bar often shows "bypass permissions on" (current mode), which is NOT a
-        # permission request -- it just describes the active setting.
-        if has_prompt and not prompt_line_text:
-            return "idle"
-        # Bare shell prompt
-        if last_line_lower.endswith("$ ") or last_line_lower.endswith("$"):
-            return "idle"
-
-        # --- WAITING_INPUT detection ---
-        if any(p in combined_lower for p in ["y/n]", "yes/no", "[y/n", "(yes/no)"]):
-            return "waiting_input"
-        # Claude Code permission prompt — only when there is NO bare ❯ prompt
-        # (bare prompt already handled above as idle)
-        if "⏵⏵" in combined and ("bypass" in combined_lower or "allow" in combined_lower):
-            return "waiting_input"
-        # Generic question at end
-        if last_line_lower.endswith("?"):
-            return "waiting_input"
-
-        # --- ERROR detection ---
-        if any(p in combined_lower for p in ["error:", "traceback", "fatal:", "panic:"]):
-            return "error"
-
-        # --- COMPLETED detection ---
-        if any(p in combined for p in ["GOAL_STATUS: ACHIEVED", "Workflow Complete"]):
-            return "completed"
-        # PR created (but not just mentioned in output)
-        if any(p in combined for p in ["gh pr create", "PR #", "pull request"]):
-            # Only if it looks like a recent action, not historical output
-            if any(p in combined_lower for p in ["created", "opened", "merged"]):
-                return "completed"
-
-        # --- Default: assume running if substantial output ---
-        if len(combined.strip()) > 50:
-            return "running"
-
-        return "unknown"
+        """Infer agent status from tmux capture. Delegates to module-level function."""
+        return infer_agent_status(tmux_text)
 
     def _reason(self, context: SessionContext) -> SessionDecision:
         """REASON: Call LLM backend to decide what to do.
@@ -728,6 +695,9 @@ echo '===END==='
         or any other LLM that implements the complete() method.
         """
         prompt_text = context.to_prompt_context()
+
+        if self.backend is None:
+            raise RuntimeError("No LLM backend configured")
 
         try:
             response_text = self.backend.complete(SYSTEM_PROMPT, prompt_text)
@@ -751,7 +721,9 @@ echo '===END==='
                 decision_data["action"] = "wait"
             if "confidence" in decision_data:
                 try:
-                    decision_data["confidence"] = max(0.0, min(1.0, float(decision_data["confidence"])))
+                    decision_data["confidence"] = max(
+                        0.0, min(1.0, float(decision_data["confidence"]))
+                    )
                 except (TypeError, ValueError):
                     decision_data["confidence"] = 0.5
             if not isinstance(decision_data.get("input_text", ""), str):
@@ -787,9 +759,20 @@ echo '===END==='
 
     def _execute_decision(self, decision: SessionDecision) -> None:
         """ACT: Execute the decision on the remote session."""
+        # Validate names before subprocess use
+        validate_vm_name(decision.vm_name)
+        validate_session_name(decision.session_name)
+
         # H4: Confidence threshold -- reject low-confidence actions
         if decision.action == "send_input" and decision.confidence < MIN_CONFIDENCE_SEND:
-            return  # Too low confidence to inject keystrokes
+            import logging as _log
+
+            _log.getLogger(__name__).info(
+                "Suppressed send_input (confidence %.2f < %.2f)",
+                decision.confidence,
+                MIN_CONFIDENCE_SEND,
+            )
+            return
         if decision.action == "restart" and decision.confidence < MIN_CONFIDENCE_RESTART:
             return  # Too low confidence for restart
 
@@ -817,7 +800,10 @@ echo '===END==='
 
         elif decision.action == "restart":
             safe_session = shlex.quote(decision.session_name)
-            cmd = f"tmux send-keys -t {safe_session} C-c C-c && sleep 1 && tmux send-keys -t {safe_session} '!!'" + " Enter"
+            cmd = (
+                f"tmux send-keys -t {safe_session} C-c C-c && sleep 1 && tmux send-keys -t {safe_session} '!!'"
+                + " Enter"
+            )
             try:
                 subprocess.run(
                     [self.azlin_path, "connect", decision.vm_name, "--no-tmux", "--", cmd],
@@ -830,24 +816,24 @@ echo '===END==='
 
     def _show_decision(self, decision: SessionDecision, context: SessionContext) -> None:
         """DRY-RUN: Print what the admiral would do without acting."""
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"DRY RUN: {decision.vm_name}/{decision.session_name}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         print(f"Status: {context.agent_status}")
         if context.git_branch:
             print(f"Branch: {context.git_branch}")
         if context.repo_url:
             print(f"Repo: {context.repo_url}")
-        print(f"\nTerminal (last 10 lines):")
+        print("\nTerminal (last 10 lines):")
         for line in context.tmux_capture.strip().split("\n")[-10:]:
             print(f"  | {line[:120]}")
         if context.transcript_summary:
-            print(f"\nTranscript context:")
+            print("\nTranscript context:")
             for line in context.transcript_summary.strip().split("\n")[-5:]:
                 print(f"  > {line[:120]}")
-        print(f"\nDecision:")
+        print("\nDecision:")
         print(decision.summary())
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
     def dry_run_report(self) -> str:
         """Summary of all decisions from dry-run mode."""

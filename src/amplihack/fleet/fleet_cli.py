@@ -30,8 +30,9 @@ import click
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
-from amplihack.fleet.fleet_auth import AuthPropagator
+from amplihack.fleet._validation import validate_vm_name
 from amplihack.fleet.fleet_admiral import FleetAdmiral
+from amplihack.fleet.fleet_auth import AuthPropagator
 from amplihack.fleet.fleet_observer import FleetObserver
 from amplihack.fleet.fleet_state import FleetState
 from amplihack.fleet.fleet_tasks import TaskPriority, TaskQueue
@@ -43,7 +44,20 @@ DEFAULT_QUEUE_PATH = Path.home() / ".amplihack" / "fleet" / "task_queue.json"
 DEFAULT_LOG_DIR = Path.home() / ".amplihack" / "fleet" / "logs"
 DEFAULT_DASHBOARD_PATH = Path.home() / ".amplihack" / "fleet" / "dashboard.json"
 DEFAULT_GRAPH_PATH = Path.home() / ".amplihack" / "fleet" / "graph.json"
-AZLIN_PATH = os.environ.get("AZLIN_PATH", shutil.which("azlin") or "/home/azureuser/src/azlin/.venv/bin/azlin")
+AZLIN_PATH = os.environ.get(
+    "AZLIN_PATH", shutil.which("azlin") or "/home/azureuser/src/azlin/.venv/bin/azlin"
+)
+
+
+def _validate_vm_name_cli(ctx, param, value):
+    """Click callback to validate VM name."""
+    if value:
+        try:
+            validate_vm_name(value)
+        except ValueError:
+            raise click.BadParameter(f"Invalid VM name: {value!r}")
+    return value
+
 
 # Existing VMs that should not be managed (configurable via --exclude)
 EXISTING_VMS = {"devy", "devo", "devi", "deva", "amplihack", "seldon-vm"}
@@ -112,6 +126,7 @@ def fleet_cli(ctx):
         # Default: launch TUI dashboard
         try:
             from amplihack.fleet.fleet_tui_dashboard import run_dashboard
+
             run_dashboard(interval=30)
         except ImportError:
             click.echo("Textual not installed. Install with: pip install amplihack[fleet-tui]")
@@ -223,7 +238,7 @@ def run_once():
 
 
 @fleet_cli.command("watch")
-@click.argument("vm_name")
+@click.argument("vm_name", callback=_validate_vm_name_cli)
 @click.argument("session_name")
 @click.option("--lines", default=30, help="Number of lines to capture")
 def watch(vm_name, session_name, lines):
@@ -245,7 +260,7 @@ def watch(vm_name, session_name, lines):
         if result.returncode == 0:
             click.echo(f"--- {vm_name}/{session_name} ---")
             click.echo(result.stdout)
-            click.echo(f"--- end ---")
+            click.echo("--- end ---")
         else:
             click.echo(f"Failed to capture: {result.stderr[:200]}")
     except subprocess.TimeoutExpired:
@@ -281,7 +296,7 @@ def snapshot():
 
 
 @fleet_cli.command("adopt")
-@click.argument("vm_name")
+@click.argument("vm_name", callback=_validate_vm_name_cli)
 @click.option("--sessions", multiple=True, help="Specific sessions to adopt (default: all)")
 def adopt(vm_name, sessions):
     """Bring existing tmux sessions under fleet management.
@@ -329,7 +344,7 @@ def report():
 
 
 @fleet_cli.command("auth")
-@click.argument("vm_name")
+@click.argument("vm_name", callback=_validate_vm_name_cli)
 @click.option(
     "--services",
     multiple=True,
@@ -356,7 +371,7 @@ def propagate_auth(vm_name, services):
 
 
 @fleet_cli.command("observe")
-@click.argument("vm_name")
+@click.argument("vm_name", callback=_validate_vm_name_cli)
 def observe(vm_name):
     """Observe agent sessions on a VM."""
     state = FleetState(azlin_path=AZLIN_PATH)
@@ -442,11 +457,13 @@ def dry_run(vm, priorities, backend):
     for v in state.vms:
         if v.name in target_vms:
             for sess in v.tmux_sessions:
-                sessions_to_check.append({
-                    "vm_name": v.name,
-                    "session_name": sess.session_name,
-                    "task_prompt": "",
-                })
+                sessions_to_check.append(
+                    {
+                        "vm_name": v.name,
+                        "session_name": sess.session_name,
+                        "task_prompt": "",
+                    }
+                )
 
     if not sessions_to_check:
         # Try direct tmux listing on the specified VMs
@@ -454,11 +471,13 @@ def dry_run(vm, priorities, backend):
             click.echo(f"Scanning {vm_name} for sessions...")
             tmux_sessions = state._poll_tmux_sessions(vm_name)
             for sess in tmux_sessions:
-                sessions_to_check.append({
-                    "vm_name": vm_name,
-                    "session_name": sess.session_name,
-                    "task_prompt": "",
-                })
+                sessions_to_check.append(
+                    {
+                        "vm_name": vm_name,
+                        "session_name": sess.session_name,
+                        "task_prompt": "",
+                    }
+                )
 
     if not sessions_to_check:
         click.echo("No sessions found on target VMs.")
@@ -493,7 +512,6 @@ def tui(interval):
 @fleet_cli.group("project")
 def project():
     """Manage fleet projects (repos, identities, priorities)."""
-    pass
 
 
 @project.command("add")
@@ -603,6 +621,42 @@ def _adopt_all_sessions(director: FleetAdmiral) -> None:
 
     if total:
         click.echo(f"Adopted {total} existing sessions")
+
+
+@fleet_cli.command("copilot")
+@click.option("--goal", "-g", required=True, help="Goal for the co-pilot to work toward")
+@click.option("--once", is_flag=True, help="Run once and exit (default: continuous loop)")
+@click.option("--interval", "-i", default=15, help="Seconds between checks (continuous mode)")
+def copilot_mode(goal: str, once: bool, interval: int):
+    """Run local session co-pilot — autonomous goal-seeking agent helper.
+
+    Watches the local Claude Code transcript and suggests/injects actions
+    to keep the session moving toward the stated goal.
+    """
+    import time
+
+    from amplihack.fleet.fleet_copilot import SessionCopilot
+
+    copilot = SessionCopilot(goal=goal)
+    click.echo(f"Co-pilot active | Goal: {goal}")
+    click.echo(f"Mode: {'single check' if once else f'continuous ({interval}s interval)'}")
+    click.echo("---")
+
+    while True:
+        suggestion = copilot.suggest()
+        click.echo(
+            f"\n[{suggestion.timestamp.strftime('%H:%M:%S')}] Progress: {suggestion.progress_pct}%"
+        )
+        click.echo(suggestion.summary())
+
+        if suggestion.action == "mark_complete":
+            click.echo("\nGoal achieved!")
+            break
+
+        if once:
+            break
+
+        time.sleep(interval)
 
 
 def create_fleet_cli() -> click.Group:

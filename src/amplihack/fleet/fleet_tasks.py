@@ -17,7 +17,6 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 __all__ = ["TaskQueue", "FleetTask", "TaskStatus", "TaskPriority"]
 
@@ -58,17 +57,17 @@ class FleetTask:
     protected: bool = False  # Deep work mode — never preempt or mark as stuck
 
     # Assignment tracking
-    assigned_vm: Optional[str] = None
-    assigned_session: Optional[str] = None
-    assigned_at: Optional[datetime] = None
+    assigned_vm: str | None = None
+    assigned_session: str | None = None
+    assigned_at: datetime | None = None
 
     # Lifecycle tracking
     created_at: datetime = field(default_factory=datetime.now)
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    result: Optional[str] = None
-    pr_url: Optional[str] = None
-    error: Optional[str] = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    result: str | None = None
+    pr_url: str | None = None
+    error: str | None = None
 
     def assign(self, vm_name: str, session_name: str) -> None:
         """Assign task to a VM and session."""
@@ -159,7 +158,7 @@ class TaskQueue:
     """
 
     tasks: list[FleetTask] = field(default_factory=list)
-    persist_path: Optional[Path] = None
+    persist_path: Path | None = None
 
     def __post_init__(self):
         if self.persist_path and self.persist_path.exists():
@@ -191,7 +190,7 @@ class TaskQueue:
         )
         return self.add(task)
 
-    def next_task(self) -> Optional[FleetTask]:
+    def next_task(self) -> FleetTask | None:
         """Get highest-priority unassigned task."""
         queued = [t for t in self.tasks if t.status == TaskStatus.QUEUED]
         if not queued:
@@ -201,7 +200,7 @@ class TaskQueue:
         queued.sort(key=lambda t: (t.priority.value, t.created_at))
         return queued[0]
 
-    def get_task(self, task_id: str) -> Optional[FleetTask]:
+    def get_task(self, task_id: str) -> FleetTask | None:
         """Get task by ID."""
         for task in self.tasks:
             if task.id == task_id:
@@ -240,7 +239,7 @@ class TaskQueue:
             return
         self.persist_path.parent.mkdir(parents=True, exist_ok=True)
         # Atomic write: temp file then rename
-        tmp = self.persist_path.with_suffix('.tmp')
+        tmp = self.persist_path.with_suffix(".tmp")
         tmp.write_text(json.dumps([t.to_dict() for t in self.tasks], indent=2))
         tmp.rename(self.persist_path)
 
@@ -252,6 +251,7 @@ class TaskQueue:
             data = json.loads(self.persist_path.read_text())
         except json.JSONDecodeError:
             import logging
+
             logging.getLogger(__name__).warning(f"Corrupt queue file: {self.persist_path}")
             return
         self.tasks = []
@@ -260,4 +260,5 @@ class TaskQueue:
                 self.tasks.append(FleetTask.from_dict(item))
             except (KeyError, TypeError) as e:
                 import logging
+
                 logging.getLogger(__name__).warning(f"Skipping corrupt task entry: {e}")
