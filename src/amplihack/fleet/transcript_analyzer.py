@@ -92,7 +92,8 @@ def gather_remote_transcripts(
     dict mapping VM name to a list of per-session summary dicts.
     """
     if azlin_path is None:
-        azlin_path = os.environ.get("AZLIN_PATH", shutil.which("azlin") or "azlin")
+        from amplihack.fleet._defaults import get_azlin_path
+        azlin_path = get_azlin_path()
 
     remote_script = _build_remote_summary_script()
     results: dict[str, list[dict]] = {}

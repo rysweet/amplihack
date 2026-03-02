@@ -401,7 +401,9 @@ class FleetAdmiral:
             )
 
             if result.returncode == 0:
+                task.assign(vm_name, session_name)
                 task.start()
+                self.task_queue.save()
                 return f"Agent started: {session_name} on {vm_name}"
             return f"ERROR: Failed to start agent: {result.stderr[:200]}"
 
@@ -414,12 +416,14 @@ class FleetAdmiral:
         """Mark a task as completed."""
         if action.task:
             action.task.complete(result="Detected as completed by observer")
+        self.task_queue.save()
         return "Task marked complete"
 
     def _mark_failed(self, action: DirectorAction) -> str:
         """Mark a task as failed."""
         if action.task:
             action.task.fail(error=action.reason)
+        self.task_queue.save()
         return f"Task marked failed: {action.reason}"
 
     def _reassign_task(self, action: DirectorAction) -> str:
@@ -449,6 +453,7 @@ class FleetAdmiral:
             action.task.status = TaskStatus.QUEUED
             action.task.assigned_vm = None
             action.task.assigned_session = None
+            self.task_queue.save()
             return "Stuck agent killed, task requeued"
 
         return "ERROR: Missing task/vm/session for reassignment"
