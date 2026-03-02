@@ -5,7 +5,7 @@ backend-path = ["."]
 
 [project]
 name = "amplihack"
-version = "0.5.96"
+version = "0.5.97"
 description = "Amplifier bundle for agentic coding with comprehensive skills, recipes, and workflows"
 requires-python = ">=3.11"
 dependencies = [
@@ -18,8 +18,8 @@ dependencies = [
     "python-dotenv>=0.19.0",
 
     # agent-framework is optional because it requires pre-release Azure deps
-    # that break uv resolution outside the project. Install separately:
-    #   pip install "agent-framework>=1.0.0rc1" --prerelease=allow
+    # that break uv/uvx resolution in fresh environments. Installed at startup
+    # via dep_check.ensure_sdk_deps() which targets the running interpreter.
     "claude-agent-sdk>=0.1.0", # Claude Python Agent SDK for auto mode streaming
     "github-copilot-sdk>=0.1.0", # GitHub Copilot SDK for embedding Copilot in applications
     "rich>=13.0.0", # Required for --ui interactive TUI mode

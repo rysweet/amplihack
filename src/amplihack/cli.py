@@ -177,6 +177,8 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
         _ensure_amplihack_staged()
 
         # Auto-install missing SDK dependencies (e.g. agent-framework)
+        # Uses --python sys.executable to target the running interpreter,
+        # critical when launched via uvx (ephemeral venv != project .venv).
         try:
             from .dep_check import ensure_sdk_deps
 

@@ -83,6 +83,22 @@
           }
         ]
       }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.amplihack/.claude/tools/amplihack/hooks/user_prompt_submit.py",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.amplihack/.claude/tools/amplihack/hooks/workflow_classification_reminder.py",
+            "timeout": 5
+          }
+        ]
+      }
     ]
   }
 }

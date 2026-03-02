@@ -1,17 +1,18 @@
 """Startup dependency validation for SDK adapters.
 
 Checks that all required SDK packages are importable at startup
-and fails loudly if any are missing. This prevents silent ImportError
+and auto-installs any that are missing. This prevents silent ImportError
 failures deep in agent code.
 
 Philosophy:
 - Fail fast: detect missing deps before any eval or agent work
-- No silent fallbacks: if a dep is missing, say so clearly
-- Single responsibility: just check imports, nothing else
+- Auto-heal: install missing deps targeting the running interpreter
+- Single responsibility: just check imports and install if needed
 
 Public API:
     validate_sdk_deps: Check all SDK packages, raise if missing
     check_sdk_dep: Check a single SDK package, return bool
+    ensure_sdk_deps: Check and auto-install missing SDK packages
 """
 
 from __future__ import annotations
@@ -99,11 +100,18 @@ def ensure_sdk_deps() -> DepCheckResult:
     """Check SDK deps and auto-install any that are missing.
 
     For packages requiring pre-release versions (like agent-framework),
-    uses subprocess to run pip install with --prerelease=allow.
+    uses subprocess to run pip/uv install with pre-release flags.
+
+    Uses ``--python sys.executable`` with uv to ensure packages are
+    installed into the *running* Python environment (critical when
+    amplihack is launched via uvx, whose ephemeral venv differs from the
+    project .venv that bare ``uv pip install`` targets).
 
     Returns:
         DepCheckResult after installation attempt.
     """
+    import sys
+
     result = validate_sdk_deps(raise_on_missing=False)
     if result.all_ok:
         return result
@@ -111,14 +119,20 @@ def ensure_sdk_deps() -> DepCheckResult:
     import shutil
     import subprocess
 
-    # Try uv first, fall back to pip
+    # Try uv first, fall back to pip.
+    # Always target the *running* interpreter so the package lands in the
+    # correct site-packages (not the project .venv when running under uvx).
     installer = shutil.which("uv")
     if installer:
-        base_cmd = [installer, "pip", "install", "--prerelease=allow"]
+        base_cmd = [
+            installer, "pip", "install",
+            "--python", sys.executable,
+            "--prerelease=allow",
+        ]
     else:
         installer = shutil.which("pip")
         if installer:
-            base_cmd = [installer, "install"]
+            base_cmd = [installer, "install", "--pre"]
         else:
             logger.warning("Neither uv nor pip found. Cannot auto-install SDK deps.")
             return result
@@ -138,6 +152,10 @@ def ensure_sdk_deps() -> DepCheckResult:
                 )
         except Exception as e:
             logger.warning("Failed to install %s: %s", pip_name, e)
+
+    # Invalidate import caches so Python picks up newly-installed packages
+    # without requiring a process restart.
+    importlib.invalidate_caches()
 
     # Re-check after install
     return validate_sdk_deps(raise_on_missing=False)
