@@ -155,7 +155,9 @@ class AuthPropagator:
                     timeout=30,
                 )
                 results[service] = result.returncode == 0
-            except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
+            except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
+                import logging
+                logging.getLogger(__name__).debug("verify_auth %s failed for %s: %s", service, vm_name, exc)
                 results[service] = False
 
         return results
@@ -353,6 +355,8 @@ class AuthPropagator:
             )
 
         except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as e:
+            import logging as _log
+            _log.getLogger(__name__).debug("switch_github_identity failed for %s: %s", vm_name, e)
             return AuthResult(
                 service="github-identity",
                 vm_name=vm_name,
