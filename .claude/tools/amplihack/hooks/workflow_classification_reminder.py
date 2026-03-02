@@ -43,6 +43,21 @@ class WorkflowClassificationReminder(HookProcessor):
         session_id = self.get_session_id()
         return self._state_dir / f"{session_id}.json"
 
+    def _is_explicit_dev_command(self, user_prompt: str) -> bool:
+        """Check if the user explicitly invoked /dev (slash command).
+
+        When /dev is typed explicitly, the command file already loads with
+        recipe runner instructions. Injecting a classification reminder would
+        add competing instructions that confuse the model.
+        """
+        prompt_lower = user_prompt.strip().lower()
+        return (
+            prompt_lower.startswith("/dev ")
+            or prompt_lower == "/dev"
+            or prompt_lower.startswith("/amplihack:dev")
+            or prompt_lower.startswith("/.claude:amplihack:dev")
+        )
+
     def is_new_topic(self, user_prompt: str, input_data: dict) -> bool:
         """Detect if this is a new topic requiring classification.
 
@@ -53,6 +68,11 @@ class WorkflowClassificationReminder(HookProcessor):
         Returns:
             True if this appears to be a new topic
         """
+        # Skip classification when /dev is explicitly invoked — the command
+        # file already provides recipe runner instructions directly.
+        if self._is_explicit_dev_command(user_prompt):
+            return False
+
         # Always classify on first turn
         turn_count = input_data.get("turnCount", 0)
         if turn_count == 0 or turn_count == 1:
