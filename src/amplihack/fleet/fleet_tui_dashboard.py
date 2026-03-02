@@ -554,7 +554,13 @@ TabPane {
 
         # Show VMs immediately (no sessions yet)
         self.call_from_thread(
-            self._apply_refresh, quick_all, managed_rows, all_rows, new_cache,
+            self._apply_refresh,
+            quick_all,
+            managed_rows,
+            new_cache,
+            all_rows,
+            all_cache,
+            managed_vm_names,
         )
 
         if worker.is_cancelled:
