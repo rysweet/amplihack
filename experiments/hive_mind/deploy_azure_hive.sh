@@ -529,7 +529,7 @@ def _init_hive():
 
     _hive = InMemoryHiveGraph(hive_id=f"hive-{AGENT_ID}")
     _hive.register_agent(AGENT_ID, domain=AGENT_DOMAIN)
-    logger.info("Hive mind initialized: agent=%s domain=%s", AGENT_ID, AGENT_DOMAIN)
+    logger.info("Hive initialized: agent=%s domain=%s", AGENT_ID, AGENT_DOMAIN)
 
     # Connect event bus
     if SERVICE_BUS_CONN_STR:
@@ -586,9 +586,28 @@ def health():
     }
 
 
+def _publish_fact(content: str, concept: str, confidence: float) -> None:
+    """Publish a FACT_PROMOTED event to the event bus so all agents receive it."""
+    if _event_bus is None:
+        return
+    import uuid as _uuid
+    from event_bus import BusEvent
+    evt = BusEvent(
+        event_id=_uuid.uuid4().hex,
+        event_type="FACT_PROMOTED",
+        source_agent=AGENT_ID,
+        timestamp=time.time(),
+        payload={"content": content, "concept": concept, "confidence": confidence},
+    )
+    try:
+        _event_bus.publish(evt)
+    except Exception:
+        logger.exception("Failed to publish FACT_PROMOTED event")
+
+
 @app.post("/learn")
 def learn(req: LearnRequest):
-    """Store a fact in the agent's local memory."""
+    """Store a fact locally and publish to event bus for distribution."""
     if _hive is None:
         raise HTTPException(status_code=503, detail="Hive not initialized")
     from hive_graph import HiveFact
@@ -596,12 +615,13 @@ def learn(req: LearnRequest):
         fact_id="", content=req.content, concept=req.concept,
         confidence=req.confidence,
     ))
+    _publish_fact(req.content, req.concept, req.confidence)
     return {"status": "stored", "agent_id": AGENT_ID, "concept": req.concept, "fact_id": fid}
 
 
 @app.post("/learn_batch")
 def learn_batch(req: FactList):
-    """Store multiple facts at once."""
+    """Store multiple facts and publish each to the event bus."""
     if _hive is None:
         raise HTTPException(status_code=503, detail="Hive not initialized")
     from hive_graph import HiveFact
@@ -611,13 +631,14 @@ def learn_batch(req: FactList):
             fact_id="", content=fact.content, concept=fact.concept,
             confidence=fact.confidence,
         ))
+        _publish_fact(fact.content, fact.concept, fact.confidence)
         stored += 1
     return {"status": "stored", "agent_id": AGENT_ID, "count": stored}
 
 
 @app.post("/promote")
 def promote(req: PromoteRequest):
-    """Promote a fact to the hive (same as learn for InMemoryHiveGraph)."""
+    """Promote a fact and publish to event bus."""
     if _hive is None:
         raise HTTPException(status_code=503, detail="Hive not initialized")
     from hive_graph import HiveFact
@@ -625,12 +646,13 @@ def promote(req: PromoteRequest):
         fact_id="", content=req.content, concept=req.concept,
         confidence=req.confidence,
     ))
+    _publish_fact(req.content, req.concept, req.confidence)
     return {"agent_id": AGENT_ID, "fact_id": fid, "status": "promoted"}
 
 
 @app.post("/query")
 def query(req: QueryRequest):
-    """Query agent memory."""
+    """Query agent memory (local facts + facts received via event bus)."""
     if _hive is None:
         raise HTTPException(status_code=503, detail="Hive not initialized")
 
