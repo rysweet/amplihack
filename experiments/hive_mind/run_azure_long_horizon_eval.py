@@ -28,6 +28,7 @@ import subprocess
 import sys
 import time
 from collections import defaultdict
+from typing import Any
 
 import httpx  # type: ignore[import-untyped]
 
@@ -194,16 +195,137 @@ def get_agent_stats(client: httpx.Client, url: str) -> dict:
 # ---------------------------------------------------------------------------
 
 
+def run_azure_mode(
+    mode: str,
+    ground_truth: Any,
+    questions: list,
+    domain_agents: dict[str, str],
+    client: httpx.Client,
+    propagation_wait: int,
+) -> dict:
+    """Run a single eval mode against Azure agents.
+
+    Modes:
+        single: Teach ALL facts to 1 agent, query only that agent.
+        flat: Teach round-robin to all agents, wait for SB propagation, query best-of-5.
+    """
+    agent_ids = sorted(domain_agents.keys())
+    print(f"\n  [{mode.upper()}] Running against {len(agent_ids)} Azure agents...")
+
+    if mode == "single":
+        # Teach everything to one agent, query only that agent
+        target = agent_ids[0]
+        target_url = domain_agents[target]
+        print(f"    Target agent: {target}")
+
+        all_facts: list[dict] = []
+        for turn in ground_truth.turns:
+            for fact in turn.facts:
+                content = f"{fact.get('entity', '')}: {fact.get('attribute', '')} = {fact.get('value', '')}"
+                all_facts.append(
+                    {"concept": turn.block_name, "content": content, "confidence": 0.9}
+                )
+            all_facts.append(
+                {"concept": turn.block_name, "content": turn.content, "confidence": 0.85}
+            )
+
+        total = 0
+        for i in range(0, len(all_facts), 50):
+            total += teach_agent(client, target_url, target, all_facts[i : i + 50])
+        print(f"    Taught {total} facts to {target}")
+
+        # Query only this agent
+        per_q: dict[str, float] = {}
+        per_cat: dict[str, list[float]] = defaultdict(list)
+        for q in questions:
+            texts = query_agent(client, target_url, q.text, limit=50)
+            s = score_question(q, texts)
+            per_q[q.question_id] = s
+            per_cat[q.category].append(s)
+
+        overall = sum(per_q.values()) / len(per_q) if per_q else 0.0
+        print(f"    Overall: {overall:.1%}")
+
+        return {
+            "mode": "azure-single",
+            "agents": 1,
+            "facts": total,
+            "overall": round(overall, 4),
+            "per_category": {c: round(sum(ss) / len(ss), 4) for c, ss in per_cat.items()},
+            "per_question": {qid: round(v, 4) for qid, v in per_q.items()},
+        }
+
+    # flat (distributed via Service Bus)
+    # Teach round-robin, wait for propagation, query best-of-5
+    agent_facts_map: dict[str, list[dict]] = defaultdict(list)
+    for i, turn in enumerate(ground_truth.turns):
+        aid = agent_ids[i % len(agent_ids)]
+        for fact in turn.facts:
+            content = (
+                f"{fact.get('entity', '')}: {fact.get('attribute', '')} = {fact.get('value', '')}"
+            )
+            agent_facts_map[aid].append(
+                {"concept": turn.block_name, "content": content, "confidence": 0.9}
+            )
+        agent_facts_map[aid].append(
+            {"concept": turn.block_name, "content": turn.content, "confidence": 0.85}
+        )
+
+    total = 0
+    for aid in agent_ids:
+        facts = agent_facts_map[aid]
+        for i in range(0, len(facts), 50):
+            total += teach_agent(client, domain_agents[aid], aid, facts[i : i + 50])
+    print(f"    Taught {total} facts across {len(agent_ids)} agents")
+
+    # Wait for Service Bus propagation
+    print(f"    Waiting {propagation_wait}s for propagation...")
+    time.sleep(propagation_wait)
+
+    # Check propagation
+    for aid in agent_ids[:2]:
+        stats = get_agent_stats(client, domain_agents[aid])
+        own = len(agent_facts_map.get(aid, []))
+        got = stats.get("fact_count", 0)
+        print(f"    {aid}: own={own}, total={got}, via_bus={got - own}")
+
+    # Query best-of-5
+    per_q = {}
+    per_cat = defaultdict(list)
+    for q in questions:
+        best_score = 0.0
+        for aid in agent_ids[:5]:
+            texts = query_agent(client, domain_agents[aid], q.text, limit=50)
+            s = score_question(q, texts)
+            if s > best_score:
+                best_score = s
+        per_q[q.question_id] = best_score
+        per_cat[q.category].append(best_score)
+
+    overall = sum(per_q.values()) / len(per_q) if per_q else 0.0
+    print(f"    Overall: {overall:.1%}")
+
+    return {
+        "mode": "azure-flat",
+        "agents": len(agent_ids),
+        "facts": total,
+        "overall": round(overall, 4),
+        "per_category": {c: round(sum(ss) / len(ss), 4) for c, ss in per_cat.items()},
+        "per_question": {qid: round(v, 4) for qid, v in per_q.items()},
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Azure long-horizon eval")
     parser.add_argument("--turns", type=int, default=1000)
     parser.add_argument("--questions", type=int, default=100)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--resource-group", type=str, default="hive-mind-eval-rg")
+    parser.add_argument("--mode", type=str, default="all", choices=["all", "single", "flat"])
     parser.add_argument(
         "--propagation-wait",
         type=int,
-        default=30,
+        default=45,
         help="Seconds to wait for Service Bus propagation",
     )
     parser.add_argument(
@@ -220,9 +342,8 @@ def main() -> None:
     # Discover agents
     print(f"\nDiscovering agents in {args.resource_group}...")
     agents = discover_agents(args.resource_group)
-    # Filter out adversary for teaching
     domain_agents = {k: v for k, v in agents.items() if k != "adversary"}
-    print(f"  Found {len(domain_agents)} domain agents + adversary")
+    print(f"  Found {len(domain_agents)} domain agents")
 
     if not domain_agents:
         print("ERROR: No agents found")
@@ -231,8 +352,8 @@ def main() -> None:
     agent_ids = sorted(domain_agents.keys())
     client = httpx.Client()
 
-    # Phase 1: Health check
-    print("\nPhase 1: Health check...")
+    # Health check
+    print("\nHealth check...")
     healthy = 0
     for aid in agent_ids:
         try:
@@ -243,109 +364,42 @@ def main() -> None:
             pass
     print(f"  {healthy}/{len(agent_ids)} healthy")
 
-    # Phase 2: Teach facts — distribute turns round-robin across agents
-    print(f"\nPhase 2: Teaching {len(ground_truth.turns)} turns across {len(agent_ids)} agents...")
-    t0 = time.time()
-    total_taught = 0
+    # Run modes
+    modes = ["single", "flat"] if args.mode == "all" else [args.mode]
+    all_results = []
 
-    # Group turns by target agent
-    agent_facts: dict[str, list[dict]] = defaultdict(list)
-    for i, turn in enumerate(ground_truth.turns):
-        aid = agent_ids[i % len(agent_ids)]
-        # Structured facts
-        for fact in turn.facts:
-            content = (
-                f"{fact.get('entity', '')}: {fact.get('attribute', '')} = {fact.get('value', '')}"
-            )
-            agent_facts[aid].append(
-                {
-                    "concept": turn.block_name,
-                    "content": content,
-                    "confidence": 0.9,
-                }
-            )
-        # Raw turn content
-        agent_facts[aid].append(
-            {
-                "concept": turn.block_name,
-                "content": turn.content,
-                "confidence": 0.85,
-            }
+    for mode in modes:
+        t0 = time.time()
+        result = run_azure_mode(
+            mode, ground_truth, questions, domain_agents, client, args.propagation_wait
         )
+        result["elapsed_seconds"] = round(time.time() - t0, 1)
+        all_results.append(result)
 
-    # Send in batches
-    for aid in agent_ids:
-        facts = agent_facts[aid]
-        if not facts:
-            continue
-        # Send in chunks of 50
-        for i in range(0, len(facts), 50):
-            chunk = facts[i : i + 50]
-            count = teach_agent(client, domain_agents[aid], aid, chunk)
-            total_taught += count
-
-    elapsed = time.time() - t0
-    print(f"  Taught {total_taught} facts in {elapsed:.1f}s")
-    print("  Each fact published to Azure Service Bus for cross-agent propagation")
-
-    # Phase 3: Wait for Service Bus propagation
-    print(f"\nPhase 3: Waiting {args.propagation_wait}s for Service Bus propagation...")
-    time.sleep(args.propagation_wait)
-
-    # Check propagation by looking at stats
-    print("  Checking propagation status...")
-    for aid in agent_ids[:3]:  # Sample 3 agents
-        stats = get_agent_stats(client, domain_agents[aid])
-        own_facts = len(agent_facts.get(aid, []))
-        total_facts = stats.get("fact_count", 0)
-        received = total_facts - own_facts
-        print(f"    {aid}: own={own_facts}, total={total_facts}, received_via_bus={received}")
-
-    # Phase 4: Query all agents
-    print(f"\nPhase 4: Querying {len(questions)} questions across agents...")
-    t0 = time.time()
-
-    per_q: dict[str, float] = {}
-    per_cat: dict[str, list[float]] = defaultdict(list)
-
-    for q in questions:
-        # Query multiple agents and take best score (any agent can answer)
-        best_score = 0.0
-        for aid in agent_ids[:5]:  # Query 5 agents per question
-            texts = query_agent(client, domain_agents[aid], q.text, limit=50)
-            s = score_question(q, texts)
-            if s > best_score:
-                best_score = s
-
-        per_q[q.question_id] = best_score
-        per_cat[q.category].append(best_score)
-
-    overall = sum(per_q.values()) / len(per_q) if per_q else 0.0
-    cat_avg = {c: sum(ss) / len(ss) for c, ss in per_cat.items()}
-
-    elapsed = time.time() - t0
-    print(f"  Done in {elapsed:.1f}s. Overall: {overall:.1%}")
-
-    # Phase 5: Results
-    categories = sorted(cat_avg.keys())
+    # Print comparison
+    categories = sorted(set(q.category for q in questions))
     print(f"\n{'=' * 60}")
     print("  AZURE LONG-HORIZON EVAL RESULTS")
     print(f"{'=' * 60}")
-    print(f"  Agents: {len(agent_ids)}")
-    print(f"  Facts taught: {total_taught}")
-    print(f"  Questions: {len(questions)}")
-    print(f"  Overall: {overall:.1%}")
-    print(f"\n  {'Category':<28s} {'Score':>8s}")
+
+    print(f"\n  {'Mode':<20s} {'Agents':>7s} {'Overall':>9s}")
     print(f"  {'-' * 38}")
+    for r in all_results:
+        print(f"  {r['mode']:<20s} {r['agents']:>7d} {r['overall']:>8.1%}")
+
+    print(f"\n  {'Category':<28s}", end="")
+    for r in all_results:
+        print(f" {r['mode'][:12]:>12s}", end="")
+    print()
+    print(f"  {'-' * (28 + 13 * len(all_results))}")
     for cat in categories:
-        print(f"  {cat:<28s} {cat_avg[cat]:>7.1%}")
+        print(f"  {cat:<28s}", end="")
+        for r in all_results:
+            val = r["per_category"].get(cat, 0.0)
+            print(f" {val:>11.1%}", end="")
+        print()
 
-    # Collect final stats
-    all_stats = {}
-    for aid in agent_ids:
-        all_stats[aid] = get_agent_stats(client, domain_agents[aid])
-
-    # Save results
+    # Save
     output = {
         "date": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "environment": "azure",
@@ -354,15 +408,9 @@ def main() -> None:
             "turns": args.turns,
             "questions": args.questions,
             "seed": args.seed,
-            "agents": len(agent_ids),
             "propagation_wait_seconds": args.propagation_wait,
         },
-        "results": {
-            "overall": round(overall, 4),
-            "per_category": {c: round(v, 4) for c, v in cat_avg.items()},
-            "per_question": {qid: round(v, 4) for qid, v in per_q.items()},
-        },
-        "agent_stats": all_stats,
+        "results": all_results,
     }
 
     os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)
