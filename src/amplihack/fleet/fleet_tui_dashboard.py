@@ -516,10 +516,51 @@ TabPane {
 
     @work(thread=True)
     def _do_refresh(self) -> None:
-        """Poll all VMs via azlin in a background thread."""
+        """Poll all VMs via azlin in a background thread.
+
+        Two-phase refresh for fast UX:
+        1. Quick phase (~6s): Get VM list only (no session polling)
+           → Update table immediately so user sees VMs
+        2. Slow phase (30-60s per VM): Poll tmux sessions via Bastion
+           → Update table again with session details
+        """
         worker = get_current_worker()
 
-        # Pass 1: managed VMs only
+        # PHASE 1: Quick VM list (no sessions) — show something fast
+        try:
+            vm_list = self._fleet._get_vm_list()
+        except Exception:
+            vm_list = []
+
+        if worker.is_cancelled:
+            return
+
+        # Build quick view with VMs but no sessions
+        quick_managed: list[VMView] = []
+        quick_all: list[VMView] = []
+        for name, region, is_running in vm_list:
+            vm = VMView(name=name, region=region, is_running=is_running)
+            quick_all.append(vm)
+            if name not in self._fleet.exclude_vms:
+                quick_managed.append(vm)
+
+        managed_vm_names = {vm.name for vm in quick_managed}
+        managed_rows, new_cache = self._build_rows_and_cache(quick_managed, self._cache)
+        all_rows, all_cache = self._build_rows_and_cache(
+            quick_all, self._cache, include_mgd_column=True,
+            managed_vm_names=managed_vm_names,
+        )
+        new_cache.update(all_cache)
+
+        # Show VMs immediately (no sessions yet)
+        self.call_from_thread(
+            self._apply_refresh, quick_all, managed_rows, all_rows, new_cache,
+        )
+
+        if worker.is_cancelled:
+            return
+
+        # PHASE 2: Slow session polling (background, updates rows progressively)
         managed_refresh_error = ""
         try:
             managed_vms: list[VMView] = self._fleet.refresh()
@@ -532,12 +573,8 @@ TabPane {
             return
 
         managed_vm_names = {vm.name for vm in managed_vms}
+        managed_rows, new_cache = self._build_rows_and_cache(managed_vms, self._cache)
 
-        managed_rows, new_cache = self._build_rows_and_cache(
-            managed_vms, self._cache,
-        )
-
-        # Pass 2: all VMs (including unmanaged)
         all_refresh_error = ""
         try:
             all_vms: list[VMView] = self._fleet.refresh_all()
