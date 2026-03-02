@@ -31,6 +31,13 @@ try:
 except ImportError:
     HAS_COGNITIVE_MEMORY = False
 
+try:
+    import amplihack_memory.graph  # type: ignore[import-not-found]  # noqa: F401
+
+    HAS_FEDERATED = True
+except ImportError:
+    HAS_FEDERATED = False
+
 
 class CognitiveAdapter:
     """Adapter providing FlatRetrieverAdapter-compatible interface over CognitiveMemory.
@@ -54,9 +61,11 @@ class CognitiveAdapter:
         agent_name: str,
         db_path: str | Path | None = None,
         require_cognitive: bool = False,
+        hive_store: Any | None = None,
     ):
         self.agent_name = agent_name
         self.memory: Any = None  # CognitiveMemory or HierarchicalMemory
+        self._hive_store = hive_store  # Optional shared hive for distributed memory
 
         if db_path is None:
             db_path = Path.home() / ".amplihack" / "cognitive_memory" / agent_name
@@ -149,7 +158,11 @@ class CognitiveAdapter:
         min_confidence: float = 0.0,
         **kwargs: Any,
     ) -> list[dict[str, Any]]:
-        """Search memory and return flat list of result dicts."""
+        """Search memory and return flat list of result dicts.
+
+        When a hive_store is connected, searches both local memory and
+        the shared hive, deduplicates by content, and returns merged results.
+        """
         if not query or not query.strip():
             return []
 
@@ -157,17 +170,147 @@ class CognitiveAdapter:
             results = self.memory.search_facts(
                 query=query.strip(), limit=limit, min_confidence=min_confidence
             )
-            return [self._semantic_fact_to_dict(r) for r in results]
-        subgraph = self.memory.retrieve_subgraph(query=query.strip(), max_nodes=limit)
-        return [self._node_to_dict(n) for n in subgraph.nodes if n.confidence >= min_confidence]
+            local_results = [self._semantic_fact_to_dict(r) for r in results]
+        else:
+            subgraph = self.memory.retrieve_subgraph(query=query.strip(), max_nodes=limit)
+            local_results = [
+                self._node_to_dict(n) for n in subgraph.nodes if n.confidence >= min_confidence
+            ]
+
+        if self._hive_store is None:
+            return local_results
+
+        # Query hive and merge
+        hive_results = self._search_hive(query.strip(), limit=limit)
+        return self._merge_results(local_results, hive_results, limit)
 
     def get_all_facts(self, limit: int = 50) -> list[dict[str, Any]]:
-        """Retrieve all facts without keyword filtering."""
+        """Retrieve all facts without keyword filtering.
+
+        When a hive_store is connected, returns facts from both local
+        memory and the shared hive, deduplicated by content.
+        """
         if self._cognitive:
             results = self.memory.get_all_facts(limit=limit)
-            return [self._semantic_fact_to_dict(r) for r in results]
-        nodes = self.memory.get_all_knowledge(limit=limit)
-        return [self._node_to_dict(n) for n in nodes]
+            local_results = [self._semantic_fact_to_dict(r) for r in results]
+        else:
+            nodes = self.memory.get_all_knowledge(limit=limit)
+            local_results = [self._node_to_dict(n) for n in nodes]
+
+        if self._hive_store is None:
+            return local_results
+
+        hive_results = self._get_all_hive_facts(limit=limit)
+        return self._merge_results(local_results, hive_results, limit)
+
+    def _search_hive(self, query: str, limit: int = 50) -> list[dict[str, Any]]:
+        """Search the shared hive store."""
+        if self._hive_store is None:
+            return []
+        try:
+            # FederatedGraphStore.federated_query returns FederatedQueryResult
+            if hasattr(self._hive_store, "federated_query"):
+                fqr = self._hive_store.federated_query(query, limit=limit)
+                return [
+                    {
+                        "context": r.get("concept", ""),
+                        "fact": r.get("content", ""),
+                        "confidence": r.get("confidence", 0.5),
+                        "tags": r.get("tags", []),
+                        "source": f"hive:{r.get('source', 'unknown')}",
+                    }
+                    for r in (fqr.results if hasattr(fqr, "results") else fqr)
+                ]
+            # HiveGraphStore or InMemoryHiveGraph with query_facts
+            if hasattr(self._hive_store, "query_facts"):
+                facts = self._hive_store.query_facts(query, limit=limit)
+                return [
+                    {
+                        "context": f.concept,
+                        "fact": f.content,
+                        "confidence": f.confidence,
+                        "tags": getattr(f, "tags", []),
+                        "source": f"hive:{getattr(f, 'source_agent', 'unknown')}",
+                    }
+                    for f in facts
+                ]
+            # InMemoryHiveGraph with query_federated
+            if hasattr(self._hive_store, "query_federated"):
+                facts = self._hive_store.query_federated(query, limit=limit)
+                return [
+                    {
+                        "context": f.concept,
+                        "fact": f.content,
+                        "confidence": f.confidence,
+                        "tags": getattr(f, "tags", []),
+                        "source": f"hive:{getattr(f, 'source_agent', 'unknown')}",
+                    }
+                    for f in facts
+                ]
+        except Exception:
+            logger.exception("Error searching hive store")
+        return []
+
+    def _get_all_hive_facts(self, limit: int = 50) -> list[dict[str, Any]]:
+        """Get all facts from the shared hive store."""
+        if self._hive_store is None:
+            return []
+        try:
+            if hasattr(self._hive_store, "get_all_facts"):
+                facts = self._hive_store.get_all_facts(limit=limit)
+                if facts and isinstance(facts[0], dict):
+                    return facts[:limit]
+                return [
+                    {
+                        "context": getattr(f, "concept", ""),
+                        "fact": getattr(f, "content", ""),
+                        "confidence": getattr(f, "confidence", 0.5),
+                        "tags": getattr(f, "tags", []),
+                        "source": f"hive:{getattr(f, 'source_agent', 'unknown')}",
+                    }
+                    for f in facts[:limit]
+                ]
+            if hasattr(self._hive_store, "query_facts"):
+                facts = self._hive_store.query_facts("", limit=limit)
+                return [
+                    {
+                        "context": f.concept,
+                        "fact": f.content,
+                        "confidence": f.confidence,
+                        "tags": getattr(f, "tags", []),
+                        "source": f"hive:{getattr(f, 'source_agent', 'unknown')}",
+                    }
+                    for f in facts
+                ]
+        except Exception:
+            logger.exception("Error getting all hive facts")
+        return []
+
+    @staticmethod
+    def _merge_results(
+        local: list[dict[str, Any]],
+        hive: list[dict[str, Any]],
+        limit: int,
+    ) -> list[dict[str, Any]]:
+        """Merge local and hive results, deduplicating by fact content."""
+        seen: set[str] = set()
+        merged: list[dict[str, Any]] = []
+
+        # Local facts first (higher trust)
+        for r in local:
+            content = r.get("fact", "")
+            if content and content not in seen:
+                seen.add(content)
+                merged.append(r)
+
+        # Then hive facts
+        for r in hive:
+            content = r.get("fact", "")
+            if content and content not in seen:
+                seen.add(content)
+                merged.append(r)
+
+        return merged[:limit]
 
     def get_statistics(self) -> dict[str, Any]:
         """Get memory statistics."""
