@@ -1,0 +1,987 @@
+{
+  "date": "2026-03-02T00:14:42Z",
+  "store_type": "hive_graph_federation",
+  "num_scenarios": 5,
+  "elapsed_seconds": 0.6,
+  "average_overall_score": 0.9378,
+  "average_hive_vs_baseline_delta": 0.2784,
+  "scenarios": [
+    {
+      "scenario_id": "hive_infra",
+      "overall_score": 0.96,
+      "hive_vs_baseline_delta": 0.2508,
+      "dimensions": [
+        {
+          "dimension": "cross_domain_accuracy",
+          "score": 1.0,
+          "details": "Average score on 10 cross-domain/synthesis questions: 100.00%"
+        },
+        {
+          "dimension": "knowledge_coverage",
+          "score": 1.0,
+          "details": "Average agent coverage: 100.00% across 5 agents."
+        },
+        {
+          "dimension": "collaboration_efficiency",
+          "score": 0.7333,
+          "details": "Propagation: 2/3 rounds, 400 facts propagated (100% coverage)."
+        },
+        {
+          "dimension": "adversarial_resilience",
+          "score": 1.0,
+          "details": "No adversarial agent in this scenario. Score defaults to 1.0."
+        },
+        {
+          "dimension": "no_regression",
+          "score": 1.0,
+          "details": "No regressions detected (5% tolerance)."
+        }
+      ],
+      "per_difficulty_scores": {
+        "single_domain": 1.0,
+        "cross_domain": 1.0,
+        "synthesis": 1.0
+      },
+      "num_questions": 15,
+      "question_results": [
+        {
+          "question_id": "hive_infra_q01",
+          "difficulty": "single_domain",
+          "required_domains": ["networking"],
+          "hive_score": 1.0,
+          "baseline_score": 1.0,
+          "improvement": 0.0,
+          "keywords_found": ["F5", "BIG-IP", "17.1.1"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_infra_q02",
+          "difficulty": "single_domain",
+          "required_domains": ["storage"],
+          "hive_score": 1.0,
+          "baseline_score": 1.0,
+          "improvement": 0.0,
+          "keywords_found": ["30", "days", "daily"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_infra_q03",
+          "difficulty": "single_domain",
+          "required_domains": ["compute"],
+          "hive_score": 1.0,
+          "baseline_score": 1.0,
+          "improvement": 0.0,
+          "keywords_found": ["48"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_infra_q04",
+          "difficulty": "single_domain",
+          "required_domains": ["security"],
+          "hive_score": 1.0,
+          "baseline_score": 1.0,
+          "improvement": 0.0,
+          "keywords_found": ["November", "2025", "zero"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_infra_q05",
+          "difficulty": "single_domain",
+          "required_domains": ["monitoring"],
+          "hive_score": 1.0,
+          "baseline_score": 1.0,
+          "improvement": 0.0,
+          "keywords_found": ["15", "seconds"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_infra_q06",
+          "difficulty": "cross_domain",
+          "required_domains": ["networking", "compute"],
+          "hive_score": 1.0,
+          "baseline_score": 0.6,
+          "improvement": 0.4,
+          "keywords_found": ["VLAN", "200", "taints", "tolerations", "compliance"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_infra_q07",
+          "difficulty": "cross_domain",
+          "required_domains": ["storage", "security"],
+          "hive_score": 1.0,
+          "baseline_score": 0.8,
+          "improvement": 0.2,
+          "keywords_found": ["AES-256", "Vault", "30", "days", "rotation"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_infra_q08",
+          "difficulty": "cross_domain",
+          "required_domains": ["networking", "monitoring"],
+          "hive_score": 1.0,
+          "baseline_score": 0.75,
+          "improvement": 0.25,
+          "keywords_found": ["2", "ms", "SLO", "99.95"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_infra_q09",
+          "difficulty": "cross_domain",
+          "required_domains": ["compute", "monitoring"],
+          "hive_score": 1.0,
+          "baseline_score": 0.5,
+          "improvement": 0.5,
+          "keywords_found": ["70%", "CPU", "auto-scaling", "PagerDuty"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_infra_q10",
+          "difficulty": "cross_domain",
+          "required_domains": ["security", "compute"],
+          "hive_score": 1.0,
+          "baseline_score": 0.75,
+          "improvement": 0.25,
+          "keywords_found": ["Trivy", "Falco", "Cosign", "containerd"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_infra_q11",
+          "difficulty": "synthesis",
+          "required_domains": ["networking", "storage", "compute", "security"],
+          "hive_score": 1.0,
+          "baseline_score": 0.2857,
+          "improvement": 0.7143,
+          "keywords_found": [
+            "VLAN",
+            "200",
+            "mTLS",
+            "encryption",
+            "AES-256",
+            "compliance",
+            "restricted"
+          ],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_infra_q12",
+          "difficulty": "synthesis",
+          "required_domains": ["networking", "compute", "monitoring"],
+          "hive_score": 1.0,
+          "baseline_score": 0.6,
+          "improvement": 0.4,
+          "keywords_found": ["Jaeger", "Prometheus", "Fluent Bit", "OpenSearch", "Grafana"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_infra_q13",
+          "difficulty": "synthesis",
+          "required_domains": ["storage", "compute", "security"],
+          "hive_score": 1.0,
+          "baseline_score": 0.8333,
+          "improvement": 0.1667,
+          "keywords_found": ["RPO", "15", "minutes", "availability zones", "3", "WORM"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_infra_q14",
+          "difficulty": "synthesis",
+          "required_domains": ["networking", "storage", "compute", "monitoring"],
+          "hive_score": 1.0,
+          "baseline_score": 0.2857,
+          "improvement": 0.7143,
+          "keywords_found": ["500", "Mbps", "10", "TB", "120", "nodes", "10,000"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_infra_q15",
+          "difficulty": "synthesis",
+          "required_domains": ["networking", "storage", "compute", "security", "monitoring"],
+          "hive_score": 1.0,
+          "baseline_score": 0.8333,
+          "improvement": 0.1667,
+          "keywords_found": ["mTLS", "SPIFFE", "Kerberos", "zero-trust", "SIEM", "Splunk"],
+          "keywords_missing": []
+        }
+      ]
+    },
+    {
+      "scenario_id": "hive_arch",
+      "overall_score": 0.924,
+      "hive_vs_baseline_delta": 0.3,
+      "dimensions": [
+        {
+          "dimension": "cross_domain_accuracy",
+          "score": 0.88,
+          "details": "Average score on 10 cross-domain/synthesis questions: 88.00%"
+        },
+        {
+          "dimension": "knowledge_coverage",
+          "score": 1.0,
+          "details": "Average agent coverage: 100.00% across 5 agents."
+        },
+        {
+          "dimension": "collaboration_efficiency",
+          "score": 0.7333,
+          "details": "Propagation: 2/3 rounds, 400 facts propagated (100% coverage)."
+        },
+        {
+          "dimension": "adversarial_resilience",
+          "score": 1.0,
+          "details": "No adversarial agent in this scenario. Score defaults to 1.0."
+        },
+        {
+          "dimension": "no_regression",
+          "score": 1.0,
+          "details": "No regressions detected (5% tolerance)."
+        }
+      ],
+      "per_difficulty_scores": {
+        "single_domain": 1.0,
+        "cross_domain": 0.95,
+        "synthesis": 0.81
+      },
+      "num_questions": 15,
+      "question_results": [
+        {
+          "question_id": "hive_arch_q01",
+          "difficulty": "single_domain",
+          "required_domains": ["frontend"],
+          "hive_score": 1.0,
+          "baseline_score": 1.0,
+          "improvement": 0.0,
+          "keywords_found": ["Vite", "250", "KB"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_arch_q02",
+          "difficulty": "single_domain",
+          "required_domains": ["backend"],
+          "hive_score": 1.0,
+          "baseline_score": 1.0,
+          "improvement": 0.0,
+          "keywords_found": ["FastAPI", "Python", "3.12"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_arch_q03",
+          "difficulty": "single_domain",
+          "required_domains": ["database"],
+          "hive_score": 1.0,
+          "baseline_score": 1.0,
+          "improvement": 0.0,
+          "keywords_found": ["127", "PostgreSQL", "16"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_arch_q04",
+          "difficulty": "single_domain",
+          "required_domains": ["devops"],
+          "hive_score": 1.0,
+          "baseline_score": 1.0,
+          "improvement": 0.0,
+          "keywords_found": ["8-12", "blue-green"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_arch_q05",
+          "difficulty": "single_domain",
+          "required_domains": ["testing"],
+          "hive_score": 1.0,
+          "baseline_score": 1.0,
+          "improvement": 0.0,
+          "keywords_found": ["60%", "unit", "4,200"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_arch_q06",
+          "difficulty": "cross_domain",
+          "required_domains": ["frontend", "backend"],
+          "hive_score": 1.0,
+          "baseline_score": 0.6,
+          "improvement": 0.4,
+          "keywords_found": [
+            "TanStack",
+            "React Query",
+            "Redis",
+            "5-minute",
+            "stale-while-revalidate"
+          ],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_arch_q07",
+          "difficulty": "cross_domain",
+          "required_domains": ["database", "devops"],
+          "hive_score": 1.0,
+          "baseline_score": 0.5,
+          "improvement": 0.5,
+          "keywords_found": ["Alembic", "pre-deploy", "rollback", "backward-incompatible"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_arch_q08",
+          "difficulty": "cross_domain",
+          "required_domains": ["backend", "testing"],
+          "hive_score": 1.0,
+          "baseline_score": 0.3333,
+          "improvement": 0.6667,
+          "keywords_found": ["Pact", "OpenAPI", "conformance"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_arch_q09",
+          "difficulty": "cross_domain",
+          "required_domains": ["frontend", "testing"],
+          "hive_score": 1.0,
+          "baseline_score": 0.75,
+          "improvement": 0.25,
+          "keywords_found": ["LaunchDarkly", "enabled", "disabled", "flag"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_arch_q10",
+          "difficulty": "cross_domain",
+          "required_domains": ["database", "devops"],
+          "hive_score": 0.75,
+          "baseline_score": 0.5,
+          "improvement": 0.25,
+          "keywords_found": ["Alembic", "health check", "rollback"],
+          "keywords_missing": ["canary"]
+        },
+        {
+          "question_id": "hive_arch_q11",
+          "difficulty": "synthesis",
+          "required_domains": ["frontend", "backend", "database"],
+          "hive_score": 1.0,
+          "baseline_score": 0.5,
+          "improvement": 0.5,
+          "keywords_found": ["React", "FastAPI", "PostgreSQL", "Redis", "trace-id", "Sentry"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_arch_q12",
+          "difficulty": "synthesis",
+          "required_domains": ["devops", "testing", "backend"],
+          "hive_score": 0.6667,
+          "baseline_score": 0.5,
+          "improvement": 0.1667,
+          "keywords_found": ["GitHub Actions", "pytest", "staging", "canary"],
+          "keywords_missing": ["Snyk", "smoke"]
+        },
+        {
+          "question_id": "hive_arch_q13",
+          "difficulty": "synthesis",
+          "required_domains": ["frontend", "backend", "database", "devops", "testing"],
+          "hive_score": 0.8,
+          "baseline_score": 0.2,
+          "improvement": 0.6,
+          "keywords_found": ["React", "FastAPI", "Alembic", "Pact"],
+          "keywords_missing": ["Helm"]
+        },
+        {
+          "question_id": "hive_arch_q14",
+          "difficulty": "synthesis",
+          "required_domains": ["frontend", "backend", "database", "devops"],
+          "hive_score": 0.75,
+          "baseline_score": 0.25,
+          "improvement": 0.5,
+          "keywords_found": ["Core Web Vitals", "structlog", "pg_stat_statements"],
+          "keywords_missing": ["ArgoCD"]
+        },
+        {
+          "question_id": "hive_arch_q15",
+          "difficulty": "synthesis",
+          "required_domains": ["frontend", "backend", "database", "devops"],
+          "hive_score": 0.8333,
+          "baseline_score": 0.1667,
+          "improvement": 0.6667,
+          "keywords_found": ["PKCE", "OAuth2", "rate", "TLS", "1.3"],
+          "keywords_missing": ["Snyk"]
+        }
+      ]
+    },
+    {
+      "scenario_id": "hive_incident",
+      "overall_score": 0.96,
+      "hive_vs_baseline_delta": 0.2133,
+      "dimensions": [
+        {
+          "dimension": "cross_domain_accuracy",
+          "score": 1.0,
+          "details": "Average score on 10 cross-domain/synthesis questions: 100.00%"
+        },
+        {
+          "dimension": "knowledge_coverage",
+          "score": 1.0,
+          "details": "Average agent coverage: 100.00% across 5 agents."
+        },
+        {
+          "dimension": "collaboration_efficiency",
+          "score": 0.7333,
+          "details": "Propagation: 2/3 rounds, 400 facts propagated (100% coverage)."
+        },
+        {
+          "dimension": "adversarial_resilience",
+          "score": 1.0,
+          "details": "No adversarial agent in this scenario. Score defaults to 1.0."
+        },
+        {
+          "dimension": "no_regression",
+          "score": 1.0,
+          "details": "No regressions detected (5% tolerance)."
+        }
+      ],
+      "per_difficulty_scores": {
+        "single_domain": 1.0,
+        "cross_domain": 1.0,
+        "synthesis": 1.0
+      },
+      "num_questions": 15,
+      "question_results": [
+        {
+          "question_id": "hive_inc_q01",
+          "difficulty": "single_domain",
+          "required_domains": ["timeline"],
+          "hive_score": 1.0,
+          "baseline_score": 1.0,
+          "improvement": 0.0,
+          "keywords_found": ["14:28", "P1", "INC-4521"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_inc_q02",
+          "difficulty": "single_domain",
+          "required_domains": ["logs"],
+          "hive_score": 1.0,
+          "baseline_score": 1.0,
+          "improvement": 0.0,
+          "keywords_found": ["ConnectionPool", "exhausted", "50"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_inc_q03",
+          "difficulty": "single_domain",
+          "required_domains": ["metrics"],
+          "hive_score": 1.0,
+          "baseline_score": 1.0,
+          "improvement": 0.0,
+          "keywords_found": ["40.3%", "38", "minutes"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_inc_q04",
+          "difficulty": "single_domain",
+          "required_domains": ["code"],
+          "hive_score": 1.0,
+          "baseline_score": 1.0,
+          "improvement": 0.0,
+          "keywords_found": ["ALTER TABLE", "ADD COLUMN", "metadata", "JSONB"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_inc_q05",
+          "difficulty": "single_domain",
+          "required_domains": ["comms"],
+          "hive_score": 1.0,
+          "baseline_score": 1.0,
+          "improvement": 0.0,
+          "keywords_found": ["127", "$15,200"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_inc_q06",
+          "difficulty": "cross_domain",
+          "required_domains": ["timeline", "metrics"],
+          "hive_score": 1.0,
+          "baseline_score": 1.0,
+          "improvement": 0.0,
+          "keywords_found": ["14:55", "15:02", "8%", "rollback"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_inc_q07",
+          "difficulty": "cross_domain",
+          "required_domains": ["logs", "code"],
+          "hive_score": 1.0,
+          "baseline_score": 1.0,
+          "improvement": 0.0,
+          "keywords_found": ["ALTER TABLE", "lock", "pool_size=50", "max_overflow=0"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_inc_q08",
+          "difficulty": "cross_domain",
+          "required_domains": ["timeline", "comms"],
+          "hive_score": 1.0,
+          "baseline_score": 0.5,
+          "improvement": 0.5,
+          "keywords_found": ["14:32", "status page", "14:40", "merchants"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_inc_q09",
+          "difficulty": "cross_domain",
+          "required_domains": ["metrics", "code"],
+          "hive_score": 1.0,
+          "baseline_score": 0.6667,
+          "improvement": 0.3333,
+          "keywords_found": ["5%", "canary", "migration", "once", "staging", "500,000"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_inc_q10",
+          "difficulty": "cross_domain",
+          "required_domains": ["timeline", "comms"],
+          "hive_score": 1.0,
+          "baseline_score": 1.0,
+          "improvement": 0.0,
+          "keywords_found": ["5", "action items", "migration dry-run", "canary", "blameless"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_inc_q11",
+          "difficulty": "synthesis",
+          "required_domains": ["timeline", "logs", "metrics", "code", "comms"],
+          "hive_score": 1.0,
+          "baseline_score": 0.6667,
+          "improvement": 0.3333,
+          "keywords_found": ["14:23", "ALTER TABLE", "40.3%", "rollback", "v2.7.9", "127"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_inc_q12",
+          "difficulty": "synthesis",
+          "required_domains": ["code", "logs", "metrics", "timeline"],
+          "hive_score": 1.0,
+          "baseline_score": 0.5,
+          "improvement": 0.5,
+          "keywords_found": [
+            "migration",
+            "lock",
+            "ConnectionPool",
+            "45,000ms",
+            "rollback",
+            "pool recycle"
+          ],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_inc_q13",
+          "difficulty": "synthesis",
+          "required_domains": ["code", "metrics", "comms", "timeline", "logs"],
+          "hive_score": 1.0,
+          "baseline_score": 0.4,
+          "improvement": 0.6,
+          "keywords_found": ["12 minutes", "single reviewer", "staging", "500,000", "canary"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_inc_q14",
+          "difficulty": "synthesis",
+          "required_domains": ["timeline", "metrics", "comms"],
+          "hive_score": 1.0,
+          "baseline_score": 0.6667,
+          "improvement": 0.3333,
+          "keywords_found": ["$340,000", "12,000", "transactions", "$15,200", "3", "enterprise"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_inc_q15",
+          "difficulty": "synthesis",
+          "required_domains": ["code", "logs", "metrics", "comms", "timeline"],
+          "hive_score": 1.0,
+          "baseline_score": 0.4,
+          "improvement": 0.6,
+          "keywords_found": [
+            "pool_pre_ping",
+            "max_overflow=10",
+            "exponential",
+            "dry-run",
+            "playbook"
+          ],
+          "keywords_missing": []
+        }
+      ]
+    },
+    {
+      "scenario_id": "hive_research",
+      "overall_score": 0.96,
+      "hive_vs_baseline_delta": 0.2878,
+      "dimensions": [
+        {
+          "dimension": "cross_domain_accuracy",
+          "score": 1.0,
+          "details": "Average score on 10 cross-domain/synthesis questions: 100.00%"
+        },
+        {
+          "dimension": "knowledge_coverage",
+          "score": 1.0,
+          "details": "Average agent coverage: 100.00% across 5 agents."
+        },
+        {
+          "dimension": "collaboration_efficiency",
+          "score": 0.7333,
+          "details": "Propagation: 2/3 rounds, 400 facts propagated (100% coverage)."
+        },
+        {
+          "dimension": "adversarial_resilience",
+          "score": 1.0,
+          "details": "No adversarial agent in this scenario. Score defaults to 1.0."
+        },
+        {
+          "dimension": "no_regression",
+          "score": 1.0,
+          "details": "No regressions detected (5% tolerance)."
+        }
+      ],
+      "per_difficulty_scores": {
+        "single_domain": 0.9333,
+        "cross_domain": 1.0,
+        "synthesis": 1.0
+      },
+      "num_questions": 15,
+      "question_results": [
+        {
+          "question_id": "hive_res_q01",
+          "difficulty": "single_domain",
+          "required_domains": ["paper_a"],
+          "hive_score": 1.0,
+          "baseline_score": 1.0,
+          "improvement": 0.0,
+          "keywords_found": ["power law", "8.3%", "doubling"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_res_q02",
+          "difficulty": "single_domain",
+          "required_domains": ["paper_b"],
+          "hive_score": 1.0,
+          "baseline_score": 1.0,
+          "improvement": 0.0,
+          "keywords_found": ["EBA", "256", "slots", "episodic"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_res_q03",
+          "difficulty": "single_domain",
+          "required_domains": ["paper_c"],
+          "hive_score": 0.6667,
+          "baseline_score": 0.6667,
+          "improvement": 0.0,
+          "keywords_found": ["differential privacy", "epsilon=1.0"],
+          "keywords_missing": ["homomorphic"]
+        },
+        {
+          "question_id": "hive_res_q04",
+          "difficulty": "single_domain",
+          "required_domains": ["paper_d"],
+          "hive_score": 1.0,
+          "baseline_score": 1.0,
+          "improvement": 0.0,
+          "keywords_found": ["EWC+", "67%", "forgetting"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_res_q05",
+          "difficulty": "single_domain",
+          "required_domains": ["paper_e"],
+          "hive_score": 1.0,
+          "baseline_score": 1.0,
+          "improvement": 0.0,
+          "keywords_found": ["5", "optimal", "coordination overhead"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_res_q06",
+          "difficulty": "cross_domain",
+          "required_domains": ["paper_a", "paper_b"],
+          "hive_score": 1.0,
+          "baseline_score": 1.0,
+          "improvement": 0.0,
+          "keywords_found": ["retrieval", "episodic", "complementary", "long-context"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_res_q07",
+          "difficulty": "cross_domain",
+          "required_domains": ["paper_a", "paper_b", "paper_d"],
+          "hive_score": 1.0,
+          "baseline_score": 0.6,
+          "improvement": 0.4,
+          "keywords_found": ["512", "A100", "128", "H100", "0.3%"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_res_q08",
+          "difficulty": "cross_domain",
+          "required_domains": ["paper_c", "paper_e"],
+          "hive_score": 1.0,
+          "baseline_score": 0.75,
+          "improvement": 0.25,
+          "keywords_found": ["shared", "memory", "communication", "federation"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_res_q09",
+          "difficulty": "cross_domain",
+          "required_domains": ["paper_b", "paper_d"],
+          "hive_score": 1.0,
+          "baseline_score": 0.75,
+          "improvement": 0.25,
+          "keywords_found": ["EWC+", "catastrophic forgetting", "64K", "replay"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_res_q10",
+          "difficulty": "cross_domain",
+          "required_domains": ["paper_a", "paper_b", "paper_c", "paper_d"],
+          "hive_score": 1.0,
+          "baseline_score": 0.5,
+          "improvement": 0.5,
+          "keywords_found": ["negative", "positional", "temporal", "numerical"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_res_q11",
+          "difficulty": "synthesis",
+          "required_domains": ["paper_a", "paper_b", "paper_c", "paper_d", "paper_e"],
+          "hive_score": 1.0,
+          "baseline_score": 0.3333,
+          "improvement": 0.6667,
+          "keywords_found": ["dense", "retrieval", "episodic", "FedKG", "EWC+", "shared memory"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_res_q12",
+          "difficulty": "synthesis",
+          "required_domains": ["paper_a", "paper_b", "paper_c", "paper_d", "paper_e"],
+          "hive_score": 1.0,
+          "baseline_score": 0.75,
+          "improvement": 0.25,
+          "keywords_found": ["continual learning", "temporal", "forgetting", "update"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_res_q13",
+          "difficulty": "synthesis",
+          "required_domains": ["paper_a", "paper_b", "paper_c", "paper_d", "paper_e"],
+          "hive_score": 1.0,
+          "baseline_score": 0.4,
+          "improvement": 0.6,
+          "keywords_found": ["A100", "H100", "linear", "logarithmic", "cost"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_res_q14",
+          "difficulty": "synthesis",
+          "required_domains": ["paper_b", "paper_c", "paper_d", "paper_e"],
+          "hive_score": 1.0,
+          "baseline_score": 0.4,
+          "improvement": 0.6,
+          "keywords_found": ["open-source", "85%", "PyTorch", "CL-Deploy", "CoordBench"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_res_q15",
+          "difficulty": "synthesis",
+          "required_domains": ["paper_a", "paper_b", "paper_c", "paper_d", "paper_e"],
+          "hive_score": 1.0,
+          "baseline_score": 0.2,
+          "improvement": 0.8,
+          "keywords_found": ["MS MARCO", "LongBench", "CL-Agent-Bench", "CoordBench", "human"],
+          "keywords_missing": []
+        }
+      ]
+    },
+    {
+      "scenario_id": "hive_adversarial",
+      "overall_score": 0.885,
+      "hive_vs_baseline_delta": 0.34,
+      "dimensions": [
+        {
+          "dimension": "cross_domain_accuracy",
+          "score": 0.875,
+          "details": "Average score on 10 cross-domain/synthesis questions: 87.50%"
+        },
+        {
+          "dimension": "knowledge_coverage",
+          "score": 1.0,
+          "details": "Average agent coverage: 100.00% across 5 agents."
+        },
+        {
+          "dimension": "collaboration_efficiency",
+          "score": 0.7333,
+          "details": "Propagation: 2/3 rounds, 400 facts propagated (100% coverage)."
+        },
+        {
+          "dimension": "adversarial_resilience",
+          "score": 0.75,
+          "details": "Average score on 5 synthesis questions with adversarial data: 75.00%"
+        },
+        {
+          "dimension": "no_regression",
+          "score": 1.0,
+          "details": "No regressions detected (5% tolerance)."
+        }
+      ],
+      "per_difficulty_scores": {
+        "single_domain": 1.0,
+        "cross_domain": 1.0,
+        "synthesis": 0.75
+      },
+      "num_questions": 15,
+      "question_results": [
+        {
+          "question_id": "hive_adv_q01",
+          "difficulty": "single_domain",
+          "required_domains": ["networking"],
+          "hive_score": 1.0,
+          "baseline_score": 1.0,
+          "improvement": 0.0,
+          "keywords_found": ["25,000"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_adv_q02",
+          "difficulty": "single_domain",
+          "required_domains": ["storage"],
+          "hive_score": 1.0,
+          "baseline_score": 1.0,
+          "improvement": 0.0,
+          "keywords_found": ["320", "TB"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_adv_q03",
+          "difficulty": "single_domain",
+          "required_domains": ["compute"],
+          "hive_score": 1.0,
+          "baseline_score": 0.0,
+          "improvement": 1.0,
+          "keywords_found": ["1.28"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_adv_q04",
+          "difficulty": "single_domain",
+          "required_domains": ["security"],
+          "hive_score": 1.0,
+          "baseline_score": 1.0,
+          "improvement": 0.0,
+          "keywords_found": ["ISO", "27001", "March", "2025"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_adv_q05",
+          "difficulty": "single_domain",
+          "required_domains": ["storage"],
+          "hive_score": 1.0,
+          "baseline_score": 1.0,
+          "improvement": 0.0,
+          "keywords_found": ["AES-128-GCM", "KMS"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_adv_q06",
+          "difficulty": "cross_domain",
+          "required_domains": ["networking", "storage"],
+          "hive_score": 1.0,
+          "baseline_score": 0.6667,
+          "improvement": 0.3333,
+          "keywords_found": ["mTLS", "AES-128-GCM", "encrypted"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_adv_q07",
+          "difficulty": "cross_domain",
+          "required_domains": ["security", "compute"],
+          "hive_score": 1.0,
+          "baseline_score": 1.0,
+          "improvement": 0.0,
+          "keywords_found": ["Notary", "Grype", "Sysdig"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_adv_q08",
+          "difficulty": "cross_domain",
+          "required_domains": ["compute", "storage"],
+          "hive_score": 1.0,
+          "baseline_score": 0.3333,
+          "improvement": 0.6667,
+          "keywords_found": ["2", "availability zones", "replication"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_adv_q09",
+          "difficulty": "cross_domain",
+          "required_domains": ["security"],
+          "hive_score": 1.0,
+          "baseline_score": 1.0,
+          "improvement": 0.0,
+          "keywords_found": ["60", "days", "180", "days"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_adv_q10",
+          "difficulty": "cross_domain",
+          "required_domains": ["security", "networking"],
+          "hive_score": 1.0,
+          "baseline_score": 0.0,
+          "improvement": 1.0,
+          "keywords_found": ["ELK", "GuardDuty", "Zipkin"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_adv_q11",
+          "difficulty": "synthesis",
+          "required_domains": ["networking", "storage", "compute", "security"],
+          "hive_score": 1.0,
+          "baseline_score": 0.5,
+          "improvement": 0.5,
+          "keywords_found": ["mTLS", "encrypted", "ISO 27001", "Gatekeeper"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_adv_q12",
+          "difficulty": "synthesis",
+          "required_domains": ["networking", "storage", "security", "misleading"],
+          "hive_score": 0.75,
+          "baseline_score": 0.5,
+          "improvement": 0.25,
+          "keywords_found": ["mTLS", "AES", "encrypted"],
+          "keywords_missing": ["contradicts"]
+        },
+        {
+          "question_id": "hive_adv_q13",
+          "difficulty": "synthesis",
+          "required_domains": ["compute", "storage", "networking"],
+          "hive_score": 1.0,
+          "baseline_score": 0.4,
+          "improvement": 0.6,
+          "keywords_found": ["2", "zones", "replication", "RPO", "30"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_adv_q14",
+          "difficulty": "synthesis",
+          "required_domains": ["networking", "security", "misleading"],
+          "hive_score": 1.0,
+          "baseline_score": 0.25,
+          "improvement": 0.75,
+          "keywords_found": ["ELK", "Zipkin", "GuardDuty", "active"],
+          "keywords_missing": []
+        },
+        {
+          "question_id": "hive_adv_q15",
+          "difficulty": "synthesis",
+          "required_domains": ["networking", "storage", "compute", "security", "misleading"],
+          "hive_score": 0.0,
+          "baseline_score": 0.0,
+          "improvement": 0.0,
+          "keywords_found": [],
+          "keywords_missing": ["contradicts", "misleading", "corroborat"]
+        }
+      ]
+    }
+  ]
+}
