@@ -509,6 +509,9 @@ AGENT_ID = os.environ.get("AGENT_ID", "unknown")
 AGENT_DOMAIN = os.environ.get("AGENT_DOMAIN", "general")
 SERVICE_BUS_CONN_STR = os.environ.get("SERVICE_BUS_CONN_STR", "")
 DATA_DIR = os.environ.get("DATA_DIR", "/data")
+# Group for federated mode: agents only incorporate facts from same group.
+# Set dynamically via /set_group endpoint. Empty = accept all facts (flat mode).
+_hive_group = ""
 
 # ---------------------------------------------------------------------------
 # Hive Mind setup (lazy -- initialized at startup)
@@ -587,7 +590,7 @@ def health():
 
 
 def _publish_fact(content: str, concept: str, confidence: float) -> None:
-    """Publish a FACT_PROMOTED event to the event bus so all agents receive it."""
+    """Publish a FACT_PROMOTED event to the event bus so other agents receive it."""
     if _event_bus is None:
         return
     import uuid as _uuid
@@ -597,7 +600,12 @@ def _publish_fact(content: str, concept: str, confidence: float) -> None:
         event_type="FACT_PROMOTED",
         source_agent=AGENT_ID,
         timestamp=time.time(),
-        payload={"content": content, "concept": concept, "confidence": confidence},
+        payload={
+            "content": content,
+            "concept": concept,
+            "confidence": confidence,
+            "group": _hive_group,
+        },
     )
     try:
         _event_bus.publish(evt)
@@ -672,7 +680,38 @@ def stats():
     """Return hive statistics for this agent."""
     if _hive is None:
         raise HTTPException(status_code=503, detail="Hive not initialized")
-    return {"agent_id": AGENT_ID, "stats": _hive.get_stats()}
+    return {"agent_id": AGENT_ID, "group": _hive_group, "stats": _hive.get_stats()}
+
+
+class SetGroupRequest(BaseModel):
+    group: str
+
+
+@app.post("/set_group")
+def set_group(req: SetGroupRequest):
+    """Set the agent's group for federated mode.
+
+    When a group is set, the agent only incorporates facts from agents
+    in the same group (based on the 'group' field in event payloads).
+    Set to empty string to accept all facts (flat mode).
+    """
+    global _hive_group
+    _hive_group = req.group
+    return {"agent_id": AGENT_ID, "group": _hive_group}
+
+
+@app.post("/reset")
+def reset_agent():
+    """Reset the agent's hive to empty state."""
+    global _hive, _hive_group
+    if _hive is None:
+        raise HTTPException(status_code=503, detail="Hive not initialized")
+    sys.path.insert(0, "/app/hive_mind_core")
+    from hive_graph import InMemoryHiveGraph
+    _hive = InMemoryHiveGraph(hive_id=f"hive-{AGENT_ID}")
+    _hive.register_agent(AGENT_ID, domain=AGENT_DOMAIN)
+    _hive_group = ""
+    return {"agent_id": AGENT_ID, "status": "reset"}
 
 
 # ---------------------------------------------------------------------------
@@ -695,8 +734,13 @@ def _poll_events():
                     event.source_agent,
                 )
                 if event.event_type == "FACT_PROMOTED":
-                    from hive_graph import HiveFact
                     payload = event.payload
+                    # In federated mode, only accept facts from same group
+                    fact_group = payload.get("group", "")
+                    if _hive_group and fact_group and fact_group != _hive_group:
+                        continue  # Different group, skip
+
+                    from hive_graph import HiveFact
                     _hive.promote_fact(AGENT_ID, HiveFact(
                         fact_id="",
                         content=payload.get("content", ""),

@@ -208,6 +208,8 @@ def run_azure_mode(
     Modes:
         single: Teach ALL facts to 1 agent, query only that agent.
         flat: Teach round-robin to all agents, wait for SB propagation, query best-of-5.
+        federated: 4 groups of 5 agents, facts only propagate within group,
+                   query one agent per group and take best.
     """
     agent_ids = sorted(domain_agents.keys())
     print(f"\n  [{mode.upper()}] Running against {len(agent_ids)} Azure agents...")
@@ -255,64 +257,175 @@ def run_azure_mode(
             "per_question": {qid: round(v, 4) for qid, v in per_q.items()},
         }
 
-    # flat (distributed via Service Bus)
-    # Teach round-robin, wait for propagation, query best-of-5
-    agent_facts_map: dict[str, list[dict]] = defaultdict(list)
-    for i, turn in enumerate(ground_truth.turns):
-        aid = agent_ids[i % len(agent_ids)]
-        for fact in turn.facts:
-            content = (
-                f"{fact.get('entity', '')}: {fact.get('attribute', '')} = {fact.get('value', '')}"
-            )
+    # Helper: build facts from turns
+    def _turns_to_facts(turns: list) -> list[dict]:
+        facts: list[dict] = []
+        for turn in turns:
+            for fact in turn.facts:
+                content = f"{fact.get('entity', '')}: {fact.get('attribute', '')} = {fact.get('value', '')}"
+                facts.append({"concept": turn.block_name, "content": content, "confidence": 0.9})
+            facts.append({"concept": turn.block_name, "content": turn.content, "confidence": 0.85})
+        return facts
+
+    # Helper: reset all agents to clean state
+    def _reset_all() -> None:
+        for aid in agent_ids:
+            try:
+                client.post(f"{domain_agents[aid]}/reset", timeout=10.0)
+            except Exception:
+                pass
+
+    # Helper: set group on agents
+    def _set_groups(groups: dict[str, list[str]]) -> None:
+        for group_name, members in groups.items():
+            for aid in members:
+                if aid in domain_agents:
+                    try:
+                        client.post(
+                            f"{domain_agents[aid]}/set_group",
+                            json={"group": group_name},
+                            timeout=10.0,
+                        )
+                    except Exception:
+                        pass
+
+    if mode == "flat":
+        # Teach round-robin, wait for propagation, query best-of-5
+        agent_facts_map: dict[str, list[dict]] = defaultdict(list)
+        for i, turn in enumerate(ground_truth.turns):
+            aid = agent_ids[i % len(agent_ids)]
+            for fact in turn.facts:
+                content = f"{fact.get('entity', '')}: {fact.get('attribute', '')} = {fact.get('value', '')}"
+                agent_facts_map[aid].append(
+                    {"concept": turn.block_name, "content": content, "confidence": 0.9}
+                )
             agent_facts_map[aid].append(
-                {"concept": turn.block_name, "content": content, "confidence": 0.9}
+                {"concept": turn.block_name, "content": turn.content, "confidence": 0.85}
             )
-        agent_facts_map[aid].append(
-            {"concept": turn.block_name, "content": turn.content, "confidence": 0.85}
-        )
 
-    total = 0
-    for aid in agent_ids:
-        facts = agent_facts_map[aid]
-        for i in range(0, len(facts), 50):
-            total += teach_agent(client, domain_agents[aid], aid, facts[i : i + 50])
-    print(f"    Taught {total} facts across {len(agent_ids)} agents")
+        total = 0
+        for aid in agent_ids:
+            facts = agent_facts_map[aid]
+            for i in range(0, len(facts), 50):
+                total += teach_agent(client, domain_agents[aid], aid, facts[i : i + 50])
+        print(f"    Taught {total} facts across {len(agent_ids)} agents")
 
-    # Wait for Service Bus propagation
-    print(f"    Waiting {propagation_wait}s for propagation...")
-    time.sleep(propagation_wait)
+        print(f"    Waiting {propagation_wait}s for propagation...")
+        time.sleep(propagation_wait)
 
-    # Check propagation
-    for aid in agent_ids[:2]:
-        stats = get_agent_stats(client, domain_agents[aid])
-        own = len(agent_facts_map.get(aid, []))
-        got = stats.get("fact_count", 0)
-        print(f"    {aid}: own={own}, total={got}, via_bus={got - own}")
+        for aid in agent_ids[:2]:
+            stats = get_agent_stats(client, domain_agents[aid])
+            own = len(agent_facts_map.get(aid, []))
+            got = stats.get("fact_count", 0)
+            print(f"    {aid}: own={own}, total={got}, via_bus={got - own}")
 
-    # Query best-of-5
-    per_q = {}
-    per_cat = defaultdict(list)
-    for q in questions:
-        best_score = 0.0
-        for aid in agent_ids[:5]:
-            texts = query_agent(client, domain_agents[aid], q.text, limit=50)
-            s = score_question(q, texts)
-            if s > best_score:
-                best_score = s
-        per_q[q.question_id] = best_score
-        per_cat[q.category].append(best_score)
+        per_q: dict[str, float] = {}
+        per_cat: dict[str, list[float]] = defaultdict(list)
+        for q in questions:
+            best_score = 0.0
+            for aid in agent_ids[:5]:
+                texts = query_agent(client, domain_agents[aid], q.text, limit=50)
+                s = score_question(q, texts)
+                if s > best_score:
+                    best_score = s
+            per_q[q.question_id] = best_score
+            per_cat[q.category].append(best_score)
 
-    overall = sum(per_q.values()) / len(per_q) if per_q else 0.0
-    print(f"    Overall: {overall:.1%}")
+        overall = sum(per_q.values()) / len(per_q) if per_q else 0.0
+        print(f"    Overall: {overall:.1%}")
 
-    return {
-        "mode": "azure-flat",
-        "agents": len(agent_ids),
-        "facts": total,
-        "overall": round(overall, 4),
-        "per_category": {c: round(sum(ss) / len(ss), 4) for c, ss in per_cat.items()},
-        "per_question": {qid: round(v, 4) for qid, v in per_q.items()},
-    }
+        return {
+            "mode": "azure-flat",
+            "agents": len(agent_ids),
+            "facts": total,
+            "overall": round(overall, 4),
+            "per_category": {c: round(sum(ss) / len(ss), 4) for c, ss in per_cat.items()},
+            "per_question": {qid: round(v, 4) for qid, v in per_q.items()},
+        }
+
+    if mode == "federated":
+        # Split 20 agents into 4 groups of 5
+        num_groups = 4
+        group_size = len(agent_ids) // num_groups
+        groups: dict[str, list[str]] = {}
+        for g in range(num_groups):
+            group_name = f"group_{g}"
+            groups[group_name] = agent_ids[g * group_size : (g + 1) * group_size]
+        print(f"    Groups: {num_groups} x {group_size} agents")
+        for gn, members in groups.items():
+            print(f"      {gn}: {members}")
+
+        # Reset all agents and set groups
+        print("    Resetting agents and setting groups...")
+        _reset_all()
+        time.sleep(2)
+        _set_groups(groups)
+
+        # Teach facts: distribute round-robin across ALL agents
+        # but each agent's group determines which SB events it accepts
+        agent_facts_map = defaultdict(list)
+        for i, turn in enumerate(ground_truth.turns):
+            aid = agent_ids[i % len(agent_ids)]
+            for fact in turn.facts:
+                content = f"{fact.get('entity', '')}: {fact.get('attribute', '')} = {fact.get('value', '')}"
+                agent_facts_map[aid].append(
+                    {"concept": turn.block_name, "content": content, "confidence": 0.9}
+                )
+            agent_facts_map[aid].append(
+                {"concept": turn.block_name, "content": turn.content, "confidence": 0.85}
+            )
+
+        total = 0
+        for aid in agent_ids:
+            facts = agent_facts_map[aid]
+            for i in range(0, len(facts), 50):
+                total += teach_agent(client, domain_agents[aid], aid, facts[i : i + 50])
+        print(f"    Taught {total} facts across {len(agent_ids)} agents")
+
+        print(f"    Waiting {propagation_wait}s for within-group propagation...")
+        time.sleep(propagation_wait)
+
+        # Check: agents should have facts from their group only
+        for gn, members in list(groups.items())[:2]:
+            aid = members[0]
+            stats = get_agent_stats(client, domain_agents[aid])
+            own = len(agent_facts_map.get(aid, []))
+            got = stats.get("fact_count", 0)
+            group_total = sum(len(agent_facts_map.get(m, [])) for m in members)
+            print(f"    {aid} ({gn}): own={own}, total={got}, group_expected~={group_total}")
+
+        # Query: ask one agent per group per question, take best across groups
+        # This simulates cross-group federation: each group's representative answers
+        per_q = {}
+        per_cat = defaultdict(list)
+        for q in questions:
+            best_score = 0.0
+            for gn, members in groups.items():
+                # Query one representative from each group
+                representative = members[0]
+                texts = query_agent(client, domain_agents[representative], q.text, limit=50)
+                s = score_question(q, texts)
+                if s > best_score:
+                    best_score = s
+            per_q[q.question_id] = best_score
+            per_cat[q.category].append(best_score)
+
+        overall = sum(per_q.values()) / len(per_q) if per_q else 0.0
+        print(f"    Overall: {overall:.1%}")
+
+        return {
+            "mode": "azure-federated",
+            "agents": len(agent_ids),
+            "groups": num_groups,
+            "agents_per_group": group_size,
+            "facts": total,
+            "overall": round(overall, 4),
+            "per_category": {c: round(sum(ss) / len(ss), 4) for c, ss in per_cat.items()},
+            "per_question": {qid: round(v, 4) for qid, v in per_q.items()},
+        }
+
+    # Unknown mode
+    return {"mode": mode, "error": f"Unknown mode: {mode}"}
 
 
 def main() -> None:
@@ -321,7 +434,9 @@ def main() -> None:
     parser.add_argument("--questions", type=int, default=100)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--resource-group", type=str, default="hive-mind-eval-rg")
-    parser.add_argument("--mode", type=str, default="all", choices=["all", "single", "flat"])
+    parser.add_argument(
+        "--mode", type=str, default="all", choices=["all", "single", "flat", "federated"]
+    )
     parser.add_argument(
         "--propagation-wait",
         type=int,
@@ -365,7 +480,7 @@ def main() -> None:
     print(f"  {healthy}/{len(agent_ids)} healthy")
 
     # Run modes
-    modes = ["single", "flat"] if args.mode == "all" else [args.mode]
+    modes = ["single", "flat", "federated"] if args.mode == "all" else [args.mode]
     all_results = []
 
     for mode in modes:
