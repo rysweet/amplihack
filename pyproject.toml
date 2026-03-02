@@ -23,6 +23,7 @@ dependencies = [
     "claude-agent-sdk>=0.1.0", # Claude Python Agent SDK for auto mode streaming
     "github-copilot-sdk>=0.1.0", # GitHub Copilot SDK for embedding Copilot in applications
     "rich>=13.0.0", # Required for --ui interactive TUI mode
+    "textual>=1.0.0", # Required for fleet TUI dashboard
     "azure-identity>=1.12.0", # Azure Service Principal authentication for remote execution
     "kuzu>=0.11.0", # Embedded graph database for memory system
     "amplihack-memory-lib @ git+https://github.com/rysweet/amplihack-memory-lib.git@v0.2.0", # Standalone memory system with CognitiveMemory 6-type system

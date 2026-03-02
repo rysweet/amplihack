@@ -89,7 +89,7 @@ class TestFleetDefault:
         ):
             result = runner.invoke(fleet_cli, [], catch_exceptions=False)
             assert result.exit_code == 0
-            assert "Textual not installed" in result.output
+            assert "textual" in result.output.lower()
             assert "fleet status" in result.output
 
 
