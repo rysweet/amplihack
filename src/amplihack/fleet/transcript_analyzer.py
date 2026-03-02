@@ -68,9 +68,15 @@ def gather_local_transcripts(limit: int = 50) -> list[Path]:
     if not projects_dir.is_dir():
         return []
 
+    def _safe_mtime(p: Path) -> float:
+        try:
+            return p.stat().st_mtime
+        except (OSError, FileNotFoundError):
+            return 0.0
+
     jsonl_files = sorted(
         projects_dir.rglob("*.jsonl"),
-        key=lambda p: p.stat().st_mtime,
+        key=_safe_mtime,
         reverse=True,
     )
     return jsonl_files[:limit]

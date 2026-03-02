@@ -373,8 +373,9 @@ class AuthPropagator:
             )
             if result.returncode == 0 and result.stdout.strip():
                 return [u.strip() for u in result.stdout.strip().split("\n") if u.strip()]
-        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
-            pass
+        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
+            import logging
+            logging.getLogger(__name__).debug("list_github_identities failed for %s: %s", vm_name, exc)
         return []
 
     def _remote_exec(self, vm_name: str, command: str) -> subprocess.CompletedProcess:

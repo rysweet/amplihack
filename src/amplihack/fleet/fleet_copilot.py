@@ -229,6 +229,8 @@ class SessionCopilot:
                 progress_pct=self._estimate_progress(transcript),
             )
             self._suggestions.append(suggestion)
+            if len(self._suggestions) > 1000:
+                self._suggestions = self._suggestions[-1000:]
             return suggestion
 
         # Build context for the reasoner
@@ -268,6 +270,8 @@ class SessionCopilot:
                 )
 
             self._suggestions.append(suggestion)
+            if len(self._suggestions) > 1000:
+                self._suggestions = self._suggestions[-1000:]
             return suggestion
         except Exception as exc:
             logger.error("Co-pilot reasoning failed: %s", exc)

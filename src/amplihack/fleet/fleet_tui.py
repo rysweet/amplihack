@@ -449,8 +449,8 @@ class FleetTUI:
                 ]
         except ValueError:
             pass  # No resource group configured — fall through to azlin CLI
-        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
-            pass
+        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
+            logging.getLogger(__name__).debug("az vm list failed: %s", exc)
         except (json.JSONDecodeError, KeyError, TypeError) as exc:
             logging.getLogger(__name__).debug("az vm list parse error: %s", exc)
 

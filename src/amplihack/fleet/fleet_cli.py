@@ -43,7 +43,8 @@ DEFAULT_QUEUE_PATH = Path.home() / ".amplihack" / "fleet" / "task_queue.json"
 DEFAULT_LOG_DIR = Path.home() / ".amplihack" / "fleet" / "logs"
 DEFAULT_DASHBOARD_PATH = Path.home() / ".amplihack" / "fleet" / "dashboard.json"
 DEFAULT_GRAPH_PATH = Path.home() / ".amplihack" / "fleet" / "graph.json"
-AZLIN_PATH = get_azlin_path()
+def _get_azlin() -> str:
+    return get_azlin_path()
 
 
 def _validate_vm_name_cli(ctx, param, value):
@@ -65,7 +66,7 @@ def _get_director(queue_path: Path = DEFAULT_QUEUE_PATH) -> FleetAdmiral:
     queue = TaskQueue(persist_path=queue_path)
     director = FleetAdmiral(
         task_queue=queue,
-        azlin_path=AZLIN_PATH,
+        azlin_path=_get_azlin(),
         log_dir=DEFAULT_LOG_DIR,
     )
     director.exclude_vms(*EXISTING_VMS)
@@ -137,7 +138,7 @@ def fleet_cli(ctx):
 @fleet_cli.command("status")
 def status():
     """Show current fleet state — VMs, sessions, agents."""
-    state = FleetState(azlin_path=AZLIN_PATH)
+    state = FleetState(azlin_path=_get_azlin())
     state.exclude_vms(*EXISTING_VMS)
     state.refresh()
     click.echo(state.summary())
@@ -253,7 +254,7 @@ def watch(vm_name, session_name, lines):
     cmd = f"tmux capture-pane -t {shlex.quote(session_name)} -p -S -{lines}"
     try:
         result = subprocess.run(
-            [AZLIN_PATH, "connect", vm_name, "--no-tmux", "--", cmd],
+            [_get_azlin(), "connect", vm_name, "--no-tmux", "--", cmd],
             capture_output=True,
             text=True,
             timeout=60,
@@ -271,11 +272,11 @@ def watch(vm_name, session_name, lines):
 @fleet_cli.command("snapshot")
 def snapshot():
     """Point-in-time capture of all managed sessions."""
-    state = FleetState(azlin_path=AZLIN_PATH)
+    state = FleetState(azlin_path=_get_azlin())
     state.exclude_vms(*EXISTING_VMS)
     state.refresh()
 
-    observer = FleetObserver(azlin_path=AZLIN_PATH)
+    observer = FleetObserver(azlin_path=_get_azlin())
 
     click.echo(f"Fleet Snapshot ({len(state.managed_vms())} managed VMs)")
     click.echo("=" * 60)
@@ -307,7 +308,7 @@ def adopt(vm_name, sessions):
     """
     from amplihack.fleet.fleet_adopt import SessionAdopter
 
-    adopter = SessionAdopter(azlin_path=AZLIN_PATH)
+    adopter = SessionAdopter(azlin_path=_get_azlin())
     queue = TaskQueue(persist_path=DEFAULT_QUEUE_PATH)
 
     click.echo(f"Discovering sessions on {vm_name}...")
@@ -354,7 +355,7 @@ def report():
 )
 def propagate_auth(vm_name, services):
     """Propagate authentication tokens to a VM."""
-    auth = AuthPropagator(azlin_path=AZLIN_PATH)
+    auth = AuthPropagator(azlin_path=_get_azlin())
     results = auth.propagate_all(vm_name, services=list(services))
 
     for r in results:
@@ -375,7 +376,7 @@ def propagate_auth(vm_name, services):
 @click.argument("vm_name", callback=_validate_vm_name_cli)
 def observe(vm_name):
     """Observe agent sessions on a VM."""
-    state = FleetState(azlin_path=AZLIN_PATH)
+    state = FleetState(azlin_path=_get_azlin())
     state.refresh()
 
     vm = state.get_vm(vm_name)
@@ -387,7 +388,7 @@ def observe(vm_name):
         click.echo(f"No tmux sessions on {vm_name}")
         return
 
-    observer = FleetObserver(azlin_path=AZLIN_PATH)
+    observer = FleetObserver(azlin_path=_get_azlin())
     results = observer.observe_all(vm.tmux_sessions)
 
     for obs in results:
@@ -437,13 +438,13 @@ def dry_run(vm, priorities, backend):
         llm_backend = auto_detect_backend()
 
     reasoner = SessionReasoner(
-        azlin_path=AZLIN_PATH,
+        azlin_path=_get_azlin(),
         backend=llm_backend,
         dry_run=True,
     )
 
     # Discover sessions
-    state = FleetState(azlin_path=AZLIN_PATH)
+    state = FleetState(azlin_path=_get_azlin())
     state.exclude_vms(*EXISTING_VMS)
     state.refresh()
 
@@ -609,7 +610,7 @@ def _adopt_all_sessions(director: FleetAdmiral) -> None:
     """Adopt existing sessions on all managed VMs."""
     from amplihack.fleet.fleet_adopt import SessionAdopter
 
-    adopter = SessionAdopter(azlin_path=AZLIN_PATH)
+    adopter = SessionAdopter(azlin_path=_get_azlin())
     state = director.fleet_state
     state.refresh()
 

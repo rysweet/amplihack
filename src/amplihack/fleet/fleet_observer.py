@@ -229,6 +229,13 @@ class FleetObserver:
             self._last_change_time[key] = now
         self._previous_captures[key] = combined
 
+        # Evict stale entries to prevent unbounded growth
+        if len(self._previous_captures) > 500:
+            oldest_keys = list(self._previous_captures.keys())[:-500]
+            for k in oldest_keys:
+                self._previous_captures.pop(k, None)
+                self._last_change_time.pop(k, None)
+
         # 6. Idle (shell prompt, no agent)
         last_line = lines[-1].strip() if lines else ""
         for pattern in IDLE_PATTERNS:
