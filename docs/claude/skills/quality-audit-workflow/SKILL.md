@@ -113,7 +113,7 @@ This workflow ruthlessly applies:
 | Test Gaps    | Files without tests, tests without assertions                |
 | Doc Gaps     | Public functions without docstrings, outdated docs           |
 
-### New Categories (v3.0)
+### Extended Categories
 
 | Category           | What It Detects                                              |
 | ------------------ | ------------------------------------------------------------ |
@@ -121,6 +121,7 @@ This workflow ruthlessly applies:
 | Error Swallowing   | Catch blocks with no logging/re-raise, error-to-None transforms, catch-all discarding exceptions |
 | Structural Issues  | Files >500 LOC, functions >50 lines, nesting >4 levels, >5 parameters, circular imports |
 | Documentation      | Point-in-time content, unprofessional tone (pirate speak, chatbot artifacts), quality/correctness gaps |
+| Hardcoded Limits   | Non-configurable numeric caps (`[:N]`, `max_X = N`), silent truncation without logging, data loss from processing limits |
 
 ## Multi-Agent Validation (v3.0)
 

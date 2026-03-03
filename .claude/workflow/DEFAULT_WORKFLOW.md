@@ -966,6 +966,10 @@ Each cycle escalates depth: look with fresh eyes, dig deeper, challenge prior fi
 
 - [ ] **Structural Issues**: Files >500 LOC, functions >50 lines, nesting >4 levels, >5 parameters, circular imports
 
+**Hardcoded Limits (#2822):**
+
+- [ ] **Hardcoded Limits**: Non-configurable numeric caps (`[:N]`, `max_X = N`, `if len() > N`), silent truncation without logging. Severity: HIGH = data loss, MEDIUM = incomplete data, LOW = display-only.
+
 **Documentation Audit:**
 
 - [ ] **Point-in-time removal**: Remove ALL temporal content — status updates, session notes, "as of today", "we just finished". Docs must read correctly years after being written.
