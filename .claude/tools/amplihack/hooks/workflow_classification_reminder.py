@@ -43,6 +43,21 @@ class WorkflowClassificationReminder(HookProcessor):
         session_id = self.get_session_id()
         return self._state_dir / f"{session_id}.json"
 
+    def _is_explicit_dev_command(self, user_prompt: str) -> bool:
+        """Check if the user explicitly invoked /dev (slash command).
+
+        When /dev is typed explicitly, the command file already loads with
+        recipe runner instructions. Injecting a classification reminder would
+        add competing instructions that confuse the model.
+        """
+        prompt_lower = user_prompt.strip().lower()
+        return (
+            prompt_lower.startswith("/dev ")
+            or prompt_lower == "/dev"
+            or prompt_lower.startswith("/amplihack:dev")
+            or prompt_lower.startswith("/.claude:amplihack:dev")
+        )
+
     def is_new_topic(self, user_prompt: str, input_data: dict) -> bool:
         """Detect if this is a new topic requiring classification.
 
@@ -53,6 +68,11 @@ class WorkflowClassificationReminder(HookProcessor):
         Returns:
             True if this appears to be a new topic
         """
+        # Skip classification when /dev is explicitly invoked — the command
+        # file already provides recipe runner instructions directly.
+        if self._is_explicit_dev_command(user_prompt):
+            return False
+
         # Always classify on first turn
         turn_count = input_data.get("turnCount", 0)
         if turn_count == 0 or turn_count == 1:
@@ -120,7 +140,7 @@ class WorkflowClassificationReminder(HookProcessor):
         """Build the system reminder message."""
         truncated = user_prompt[:100] + ("..." if len(user_prompt) > 100 else "")
         return (
-            f'NEW TOPIC DETECTED - Classify and Route\n\n'
+            f"NEW TOPIC DETECTED - Classify and Route\n\n"
             f'Request: "{truncated}"\n\n'
             "Classify (choose ONE):\n"
             '  Q&A         -> "what is", "explain", "how do I"        -> respond directly\n'
@@ -146,8 +166,8 @@ class WorkflowClassificationReminder(HookProcessor):
         Returns:
             Additional context to inject (system reminder if new topic detected)
         """
-        # Extract user prompt
-        user_message = input_data.get("userMessage", "")
+        # Extract user prompt — Copilot uses "prompt", Claude Code uses "userMessage"
+        user_message = input_data.get("userMessage", "") or input_data.get("prompt", "")
         if isinstance(user_message, dict):
             user_prompt = user_message.get("text", "")
         else:

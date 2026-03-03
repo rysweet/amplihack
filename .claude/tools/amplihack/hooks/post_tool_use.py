@@ -57,9 +57,14 @@ class PostToolUseHook(HookProcessor):
         except ImportError as e:
             self.log(f"Blarify staleness hook not available: {e}", "DEBUG")
 
-        # Future: Add more tool hooks here
-        # from other_tool_hook import register_other_hook
-        # register_other_hook()
+        # Register workflow enforcement hook (detects recipe runner bypass)
+        try:
+            from workflow_enforcement_hook import register_workflow_enforcement_hook
+
+            register_workflow_enforcement_hook()
+            self.log("Workflow enforcement hook registered", "DEBUG")
+        except ImportError as e:
+            self.log(f"Workflow enforcement hook not available: {e}", "DEBUG")
 
     def save_tool_metric(self, tool_name: str, duration_ms: int | None = None):
         """Save tool usage metric with structured data.

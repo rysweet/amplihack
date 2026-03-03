@@ -5,6 +5,10 @@ agent steps, and uses subprocess for bash steps.
 
 Agent steps run without a hard timeout. Instead, output is streamed and
 monitored so callers can observe progress in real time.
+
+Agent steps use a temporary working directory to prevent file write races
+when running inside a nested Claude Code session (#2758). Session tree env
+vars are propagated so child processes respect recursion depth limits.
 """
 
 from __future__ import annotations
@@ -12,8 +16,10 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import tempfile
 import threading
 import time
+import uuid
 from pathlib import Path
 
 _NON_INTERACTIVE_FOOTER = (
@@ -53,66 +59,69 @@ class CLISubprocessAdapter:
         progress lines, so an orchestrator watching stdout can tell the
         step is alive.
 
+        Uses a temporary working directory to prevent file write races on
+        sessions.jsonl, settings.json, and Blarify indexing when running
+        inside a nested Claude Code session (#2758).
+
         Returns:
             The full stdout of the CLI process.
 
         Raises:
             RuntimeError: If the CLI exits with a non-zero code.
         """
-        actual_cwd = working_dir or self._working_dir
-        # Append non-interactive footer so nested sessions never ask
-        # interactive questions and hang waiting for input (#2464).
-        prompt = prompt + _NON_INTERACTIVE_FOOTER
-        cmd = [self._cli, "-p", prompt]
-
-        # Write output to a temp file so we can tail it
-        output_dir = Path(actual_cwd) / ".recipe-output"
-        output_dir.mkdir(parents=True, exist_ok=True)
-        output_file = output_dir / f"agent-step-{int(time.time())}.log"
-
-        # Launch process - no timeout
-        # CRITICAL: Remove CLAUDECODE env var so nested claude sessions work
-        child_env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
-        with open(output_file, "w") as log_fh:
-            proc = subprocess.Popen(
-                cmd,
-                stdout=log_fh,
-                stderr=subprocess.STDOUT,
-                cwd=actual_cwd,
-                env=child_env,
-            )
-
-        # Background thread tails the log so callers see progress
-        stop_event = threading.Event()
-        tail_thread = threading.Thread(
-            target=self._tail_output,
-            args=(output_file, stop_event),
-            daemon=True,
-        )
-        tail_thread.start()
+        # Use a temp directory to avoid file races with the parent session (#2758).
+        # This matches the multitask orchestrator pattern.
+        temp_dir = tempfile.mkdtemp(prefix="recipe-agent-")
+        actual_cwd = temp_dir
 
         try:
-            proc.wait()  # Block until process finishes - no timeout
+            # Append non-interactive footer so nested sessions never ask
+            # interactive questions and hang waiting for input (#2464).
+            prompt = prompt + _NON_INTERACTIVE_FOOTER
+            cmd = [self._cli, "-p", prompt]
+
+            # Write output to a temp file so we can tail it
+            output_dir = Path(actual_cwd) / ".recipe-output"
+            output_dir.mkdir(parents=True, exist_ok=True)
+            output_file = output_dir / f"agent-step-{int(time.time())}.log"
+
+            # Launch process - no timeout
+            child_env = self._build_child_env()
+            with open(output_file, "w") as log_fh:
+                proc = subprocess.Popen(
+                    cmd,
+                    stdout=log_fh,
+                    stderr=subprocess.STDOUT,
+                    cwd=actual_cwd,
+                    env=child_env,
+                )
+
+            # Background thread tails the log so callers see progress
+            stop_event = threading.Event()
+            tail_thread = threading.Thread(
+                target=self._tail_output,
+                args=(output_file, stop_event),
+                daemon=True,
+            )
+            tail_thread.start()
+
+            try:
+                proc.wait()  # Block until process finishes - no timeout
+            finally:
+                stop_event.set()
+                tail_thread.join(timeout=2)
+
+            # Read full output
+            stdout = output_file.read_text(errors="replace")
+
+            if proc.returncode != 0:
+                raise RuntimeError(
+                    f"{self._cli} failed (exit {proc.returncode}): {stdout[-500:].strip()}"
+                )
+            return stdout.strip()
         finally:
-            stop_event.set()
-            tail_thread.join(timeout=2)
-
-        # Read full output
-        stdout = output_file.read_text(errors="replace")
-
-        # Clean up log
-        try:
-            output_file.unlink(missing_ok=True)
-            if not any(output_dir.iterdir()):
-                output_dir.rmdir()
-        except OSError:
-            pass
-
-        if proc.returncode != 0:
-            raise RuntimeError(
-                f"{self._cli} failed (exit {proc.returncode}): {stdout[-500:].strip()}"
-            )
-        return stdout.strip()
+            # Always clean up the temp directory
+            shutil.rmtree(temp_dir, ignore_errors=True)
 
     # ------------------------------------------------------------------
     # Bash steps - keep a timeout (these should be fast)
@@ -128,8 +137,11 @@ class CLISubprocessAdapter:
 
         Uses explicit bash invocation instead of shell=True to prevent
         injection vulnerabilities (per PR #2010 security fix).
+
+        Propagates session tree env vars so child processes respect
+        recursion depth limits (#2758).
         """
-        child_env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
+        child_env = self._build_child_env()
         result = subprocess.run(
             ["/bin/bash", "-c", command],
             capture_output=True,
@@ -147,6 +159,27 @@ class CLISubprocessAdapter:
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _build_child_env() -> dict[str, str]:
+        """Build environment for child processes.
+
+        - Removes CLAUDECODE so nested Claude sessions work.
+        - Propagates session tree env vars, incrementing depth by 1.
+        - Generates a tree ID if none exists.
+        """
+        child_env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
+
+        # Propagate session tree context (#2758)
+        current_depth = int(os.environ.get("AMPLIHACK_SESSION_DEPTH", "0"))
+        tree_id = os.environ.get("AMPLIHACK_TREE_ID") or uuid.uuid4().hex[:8]
+
+        child_env["AMPLIHACK_TREE_ID"] = tree_id
+        child_env["AMPLIHACK_SESSION_DEPTH"] = str(current_depth + 1)
+        child_env["AMPLIHACK_MAX_DEPTH"] = os.environ.get("AMPLIHACK_MAX_DEPTH", "3")
+        child_env["AMPLIHACK_MAX_SESSIONS"] = os.environ.get("AMPLIHACK_MAX_SESSIONS", "10")
+
+        return child_env
 
     def is_available(self) -> bool:
         """Check if the CLI tool is on the PATH."""

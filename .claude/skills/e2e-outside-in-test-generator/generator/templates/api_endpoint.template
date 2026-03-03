@@ -1,0 +1,40 @@
+# API Endpoint Test - {method} {path}
+# Auto-generated outside-in test scenario
+
+scenario:
+  name: "API {method} {path} - {summary}"
+  description: |
+    Verifies the {method} {path} endpoint responds correctly with valid input
+    and returns appropriate error responses for invalid input.
+  type: api
+  level: 1
+  tags: [api, {method_lower}, {tag}, auto-generated]
+
+  prerequisites:
+    - "API server is running at {base_url}"
+
+  variables:
+    base_url: "{base_url}"
+
+  steps:
+    - action: http_request
+      method: "{method}"
+      url: "{base_url}{path}"
+{request_body}
+{auth_header}
+      description: "Send valid {method} request to {path}"
+      timeout: 10s
+
+    - action: verify_status_code
+      expected: {expected_status}
+      description: "Should return {expected_status} status"
+
+    - action: verify_response
+      matches: "{response_pattern}"
+      description: "Response should match expected schema"
+
+{validation_steps}
+  cleanup:
+    - action: log_response
+      save_as: "{method_lower}-{path_slug}-response.json"
+      description: "Save response for debugging"

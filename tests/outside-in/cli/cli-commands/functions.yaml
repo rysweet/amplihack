@@ -1,0 +1,36 @@
+# CLI Command Test - functions
+# Auto-generated outside-in test scenario
+
+scenario:
+  name: "CLI Command - cli.py functions"
+  description: |
+    Verifies that the 'functions' command works correctly with valid arguments,
+    produces expected output, and handles basic error cases.
+  type: cli
+  level: 1
+  tags: [cli, command, functions, auto-generated]
+
+  prerequisites:
+    - "src/amplihack/cli.py binary exists and is executable"
+
+  steps:
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["functions"]
+      description: "Run functions with valid arguments"
+      timeout: 15s
+
+    - action: verify_output
+      matches: "(.+)"
+      timeout: 10s
+      description: "Command should produce expected output"
+
+    - action: verify_exit_code
+      expected: 0
+      description: "Command should succeed with valid args"
+
+
+  cleanup:
+    - action: stop_application
+      force: true
+      description: "Ensure process is terminated"

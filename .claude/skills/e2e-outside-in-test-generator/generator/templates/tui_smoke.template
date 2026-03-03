@@ -1,0 +1,52 @@
+# TUI Smoke Test - {app_name}
+# Auto-generated outside-in test scenario
+
+scenario:
+  name: "TUI Smoke - {app_name} Startup and Display"
+  description: |
+    Verifies that {app_name} TUI starts correctly, renders its initial screen,
+    and can be exited cleanly.
+  type: tui
+  level: 1
+  tags: [tui, smoke, basic, auto-generated]
+
+  prerequisites:
+    - "{binary_path} binary exists"
+    - "Terminal supports ANSI escape codes"
+
+  environment:
+    terminal_size:
+      width: {terminal_width}
+      height: {terminal_height}
+    variables:
+      TERM: "xterm-256color"
+
+  steps:
+    - action: launch
+      target: "{binary_path}"
+      args: [{launch_args}]
+      description: "Start TUI application"
+      timeout: 10s
+
+    - action: wait_for_screen
+      matches: "{ready_pattern}"
+      timeout: 5s
+      description: "Wait for application to render"
+
+    - action: capture_screenshot
+      save_as: "initial-state.txt"
+      description: "Capture initial screen state"
+
+{widget_checks}
+    - action: send_keypress
+      value: "{quit_key}"
+      description: "Exit application"
+
+    - action: verify_exit_code
+      expected: 0
+      description: "Should exit cleanly"
+
+  cleanup:
+    - action: stop_application
+      force: true
+      description: "Ensure process is terminated"

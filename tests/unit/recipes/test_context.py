@@ -130,6 +130,62 @@ class TestContextRenderShell:
         assert "hello" in rendered
 
 
+class TestContextRenderShellBashQuoting:
+    """Test that render_shell output produces valid bash in common recipe patterns.
+
+    Regression tests for the bash quoting bug where shlex.quote() output
+    (single-quoted values) nested inside double-quoted echo strings produced
+    broken bash. The fix uses printf '%s' where the shlex-quoted value becomes
+    a standalone shell argument.
+    """
+
+    def test_printf_pattern_with_apostrophes(self) -> None:
+        """printf '%s' with shlex-quoted value handles apostrophes correctly."""
+        import subprocess
+
+        ctx = RecipeContext({"task_description": "Fix the auth bug — it's broken and doesn't work"})
+        cmd = ctx.render_shell("printf '%s\\n' {{task_description}}")
+        result = subprocess.run(["bash", "-c", cmd], capture_output=True, text=True, timeout=5)
+        assert result.returncode == 0
+        assert "it's broken" in result.stdout
+        assert "doesn't work" in result.stdout
+
+    def test_printf_pattern_with_shell_metacharacters(self) -> None:
+        """printf '%s' safely handles shell metacharacters in values."""
+        import subprocess
+
+        ctx = RecipeContext({"task_description": 'Add feature; rm -rf / && echo "pwned"'})
+        cmd = ctx.render_shell("printf '%s\\n' {{task_description}}")
+        result = subprocess.run(["bash", "-c", cmd], capture_output=True, text=True, timeout=5)
+        assert result.returncode == 0
+        assert "rm -rf" in result.stdout  # value preserved, not executed
+
+    def test_variable_assignment_with_printf(self) -> None:
+        """Variable assignment via $(printf '%s' ...) captures value correctly."""
+        import subprocess
+
+        ctx = RecipeContext({"task_description": "Fix it's broken"})
+        cmd = ctx.render_shell("TASK=$(printf '%s' {{task_description}}) && echo \"$TASK\"")
+        result = subprocess.run(["bash", "-c", cmd], capture_output=True, text=True, timeout=5)
+        assert result.returncode == 0
+        assert "it's broken" in result.stdout
+
+    def test_echo_in_double_quotes_is_broken(self) -> None:
+        """Demonstrate that echo '\"...{{var}}...\"' produces mangled output.
+
+        This is the original bug pattern. The output contains literal single
+        quotes from shlex.quote() that corrupt the displayed text.
+        """
+        ctx = RecipeContext({"task_description": "it's broken"})
+        old_cmd = ctx.render_shell('echo "Task: {{task_description}}"')
+        import subprocess
+
+        result = subprocess.run(["bash", "-c", old_cmd], capture_output=True, text=True, timeout=5)
+        # The old pattern produces garbled output with literal quotes
+        # e.g. "Task: 'it'"'"'s broken'" instead of "Task: it's broken"
+        assert result.stdout.strip() != "Task: it's broken"
+
+
 class TestContextEvaluateSecurity:
     """Test that dangerous expressions are rejected."""
 

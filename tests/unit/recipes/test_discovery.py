@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from amplihack.recipes.discovery import (
+    _PACKAGE_BUNDLE_DIR,
     check_upstream_changes,
     discover_recipes,
     find_recipe,
@@ -32,6 +33,29 @@ class TestDiscoverRecipes:
         assert info.path.exists()
         assert info.step_count > 0
         assert info.sha256  # non-empty hash
+
+    def test_discovers_from_installed_package_path(self, tmp_path: Path) -> None:
+        """Discovers bundled recipes even when CWD has no recipe dirs (fix #2812)."""
+        import os
+
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(tmp_path)
+            recipes = discover_recipes()
+            assert len(recipes) >= 10, (
+                f"Expected >=10 recipes from installed package, got {len(recipes)}. "
+                "Recipe discovery must include the installed package bundle path."
+            )
+            assert "smart-orchestrator" in recipes
+            assert "default-workflow" in recipes
+        finally:
+            os.chdir(original_cwd)
+
+    def test_package_bundle_dir_is_absolute(self) -> None:
+        """_PACKAGE_BUNDLE_DIR is an absolute path to the installed package."""
+        assert _PACKAGE_BUNDLE_DIR.is_absolute(), (
+            f"Expected absolute path, got: {_PACKAGE_BUNDLE_DIR}"
+        )
 
 
 class TestListRecipes:

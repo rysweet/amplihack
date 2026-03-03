@@ -79,7 +79,7 @@ def generate_smoke_tests(
     generated = []
 
     # Generate smoke test for each route
-    for route in stack.routes[:5]:  # Max 5 routes
+    for route in stack.routes:
         context = {
             "feature_name": route.component.replace("/", " ").title(),
             "route": route.path,
@@ -372,7 +372,7 @@ def generate_responsive_tests(
     generated = []
 
     # Test main routes for responsiveness
-    for route in stack.routes[:2]:  # Test first 2 routes
+    for route in stack.routes:
         context = {
             "feature_name": route.component.replace("/", " ").title(),
             "route": route.path,

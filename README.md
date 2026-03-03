@@ -241,7 +241,7 @@ These are the features you'll use daily:
 - **[dev-orchestrator (`/dev`)](/dev)** — Unified task orchestrator with
   goal-seeking loop
 - **[Recipe Runner](docs/recipes/README.md)** — Code-enforced workflows (10
-  bundled recipes)
+  bundled recipes, also available via `amplihack recipe` CLI)
 - **[Auto Mode](https://rysweet.github.io/amplihack/AUTO_MODE/)** — Autonomous
   agentic loops
 - **[Multitask](~/.amplihack/.claude/skills/multitask/SKILL.md)** — Parallel
@@ -249,6 +249,19 @@ These are the features you'll use daily:
 - **[Expert Panel](/amplihack:expert-panel)** — Multi-expert review with voting
 - **[N-Version Programming](/amplihack:n-version)** — Generate multiple
   implementations, select best
+
+**Recipe CLI** — Run recipes directly from your shell (outside interactive
+sessions):
+
+```bash
+amplihack recipe list                  # List available recipes
+amplihack recipe show smart-orchestrator  # View recipe details
+amplihack recipe run smart-orchestrator -c task_description="fix login bug"
+amplihack recipe run ./my-recipe.yaml --dry-run  # Preview execution
+amplihack recipe validate my-recipe.yaml         # Validate recipe syntax
+```
+
+Full reference: [docs/reference/recipe-cli-reference.md](docs/reference/recipe-cli-reference.md)
 
 </details>
 
