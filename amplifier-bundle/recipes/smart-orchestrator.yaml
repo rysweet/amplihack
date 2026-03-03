@@ -112,7 +112,8 @@ steps:
               "╚══════════════════════════════════════════════════════════════════╝\n"
           )
           print(msg, file=sys.stderr)
-          print(msg)  # also print to stdout so recipe runner captures it visibly
+          # Do NOT print to stdout — stdout is captured as the output variable
+          # and box-drawing characters would corrupt downstream template substitution
 
       task_type = h.normalise_type(obj.get("task_type", "Development"))
       print(task_type)
@@ -125,6 +126,11 @@ steps:
     type: "bash"
     command: |
       HELPER_PATH="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/orch_helper.py"
+      DECOMP_JSON=$(cat <<'EOFDECOMP'
+      {{decomposition_json}}
+      EOFDECOMP
+      )
+      TASK_TYPE='{{task_type}}'
       HOOKS_DIR="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/amplihack/hooks"
       _DECOMP_TMPFILE=$(mktemp)
       trap 'rm -f "$_DECOMP_TMPFILE"' EXIT
@@ -255,7 +261,7 @@ steps:
     type: "bash"
     condition: "'Development' in task_type or 'Investigation' in task_type"
     command: |
-      SESSION_JSON=$(printf '%s' {{session_info}})
+      SESSION_JSON='{{session_info}}'
       # Extract status using shell grep — no Python subprocess needed
       if echo "$SESSION_JSON" | grep -qE '"status" *: *"ok"'; then
         echo "ALLOWED"
@@ -280,7 +286,7 @@ steps:
   - id: "execute-single-round-1"
     type: "agent"
     condition: |
-      ('Development' in task_type or 'Investigation' in task_type) and (int(str(workstream_count).strip() or '1') == 1 or force_single_workstream == 'true')
+      ('Development' in task_type or 'Investigation' in task_type) and ((workstream_count == '1' or workstream_count == '') or force_single_workstream == 'true')
     agent: "amplihack:core:builder"
     prompt: |
       Execute this task following the complete development workflow (DEFAULT_WORKFLOW.md, steps 0-22).
@@ -300,7 +306,7 @@ steps:
   - id: "create-workstreams-config"
     type: "bash"
     condition: |
-      ('Development' in task_type or 'Investigation' in task_type) and int(str(workstream_count).strip() or '1') > 1 and 'ALLOWED' in recursion_guard and force_single_workstream != 'true'
+      ('Development' in task_type or 'Investigation' in task_type) and workstream_count != '1' and workstream_count != '' and 'ALLOWED' in recursion_guard and force_single_workstream != 'true'
     command: |
       HELPER_PATH="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/orch_helper.py"
       if [ ! -f "$HELPER_PATH" ]; then
@@ -343,14 +349,14 @@ steps:
   - id: "launch-parallel-round-1"
     type: "bash"
     condition: |
-      ('Development' in task_type or 'Investigation' in task_type) and int(str(workstream_count).strip() or '1') > 1 and 'ALLOWED' in recursion_guard and force_single_workstream != 'true'
+      ('Development' in task_type or 'Investigation' in task_type) and workstream_count != '1' and workstream_count != '' and 'ALLOWED' in recursion_guard and force_single_workstream != 'true'
     command: |
-      REPO_PATH=$(printf '%s' {{repo_path}})
-      WS_FILE=$(printf '%s' {{workstreams_file}})
-      export SESSION_JSON=$(printf '%s' {{session_info}})
+      REPO_PATH='{{repo_path}}'
+      WS_FILE='{{workstreams_file}}'
+      SESSION_JSON='{{session_info}}'
       # Parse tree_id, depth, and validate workstreams file in one Python subprocess.
       # Uses env vars instead of pipe+heredoc to avoid stdin conflict (issue #2581).
-      export WS_FILE
+      export SESSION_JSON WS_FILE
       read -r TREE_ID SESSION_DEPTH WS_COUNT_CHECK < <(python3 <<'PYEOF'
       import os, json
       try:
@@ -405,7 +411,7 @@ steps:
     type: "agent"
     # Fires when blocked from spawning subworkstreams — executes as single session instead
     condition: |
-      ('Development' in task_type or 'Investigation' in task_type) and 'BLOCKED' in recursion_guard and int(str(workstream_count).strip() or '1') > 1
+      ('Development' in task_type or 'Investigation' in task_type) and 'BLOCKED' in recursion_guard and workstream_count != '1' and workstream_count != ''
     agent: "amplihack:core:builder"
     prompt: |
       Execute this task as a single session (parallel execution is depth-limited).
@@ -427,7 +433,7 @@ steps:
   - id: "cleanup-helper"
     type: "bash"
     command: |
-      WS_FILE=$(printf '%s' {{workstreams_file}})
+      WS_FILE='{{workstreams_file}}'
       [ -f "$WS_FILE" ] && rm -f "$WS_FILE"
       echo "ok"
     output: "cleanup_status"
@@ -626,12 +632,12 @@ steps:
   - id: "complete-session"
     type: "bash"
     command: |
-      export SESSION_JSON=$(printf '%s' {{session_info}})
+      SESSION_JSON='{{session_info}}'
       TREE_SCRIPT="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/session_tree.py"
       HOOKS_DIR="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/amplihack/hooks"
       # Parse session fields and clear workflow semaphore in one Python subprocess.
       # Uses env vars instead of pipe+heredoc to avoid stdin conflict (issue #2581).
-      export HOOKS_DIR
+      export SESSION_JSON HOOKS_DIR
       read -r SESSION_ID TREE_ID STATUS < <(python3 <<'PYEOF'
       import json, os, sys
       try:

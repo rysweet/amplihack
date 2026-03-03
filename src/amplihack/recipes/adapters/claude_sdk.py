@@ -70,13 +70,22 @@ class ClaudeSDKAdapter:
         from claude_agent_sdk import ClaudeAgentOptions  # type: ignore[import-untyped]
 
         options = ClaudeAgentOptions(model=self._model)
-        result = asyncio.run(
-            sdk.query(
+
+        # sdk.query() is an async generator (AsyncIterator[Message]), not a
+        # coroutine.  We must iterate it to collect messages and extract the
+        # final ResultMessage.
+        async def _consume_query() -> str:
+            result_text = ""
+            async for message in sdk.query(
                 prompt=enriched_prompt,
                 options=options,
-            )
-        )
-        return str(result)
+            ):
+                # ResultMessage carries the final output in its .result field
+                if hasattr(message, "result") and message.result is not None:
+                    result_text = message.result
+            return result_text
+
+        return asyncio.run(_consume_query())
 
     def execute_bash_step(
         self,
