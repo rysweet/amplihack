@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# pyright: reportMissingImports=false
 """20-Agent Kuzu Hive Mind Evaluation: 10 domains x 2 agents + 1 adversarial.
 
 Each of the 20 domain agents stores 15 facts locally, promotes its top 8 via
@@ -21,22 +22,25 @@ Usage:
 
 from __future__ import annotations
 
+import os
 import sys
 import tempfile
 import time
 from pathlib import Path
 
 # Ensure amplihack-memory-lib is importable
-_MEMORY_LIB_PATH = "/home/azureuser/src/amplihack-memory-lib-real/src"
-if _MEMORY_LIB_PATH not in sys.path:
+_MEMORY_LIB_PATH = os.environ.get("AMPLIHACK_MEMORY_LIB_PATH", "")
+if _MEMORY_LIB_PATH and _MEMORY_LIB_PATH not in sys.path:
     sys.path.insert(0, _MEMORY_LIB_PATH)
 
 # Ensure amplihack package is importable
-_SRC_PATH = "/home/azureuser/src/amplihack5/src"
-if _SRC_PATH not in sys.path:
+_SRC_PATH = os.environ.get("AMPLIHACK_SRC_PATH", "")
+if _SRC_PATH and _SRC_PATH not in sys.path:
     sys.path.insert(0, _SRC_PATH)
 
-from amplihack.agents.goal_seeking.hive_mind.kuzu_hive import KuzuHiveMind
+from amplihack.agents.goal_seeking.hive_mind.kuzu_hive import (
+    KuzuHiveMind,  # type: ignore[import-not-found]
+)
 
 # ---------------------------------------------------------------------------
 # Domain fact corpora: 10 domains x 2 agents x 15 facts = 300 facts
