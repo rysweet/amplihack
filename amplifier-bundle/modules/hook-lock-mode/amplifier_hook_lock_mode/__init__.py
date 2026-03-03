@@ -3,17 +3,23 @@
 Lock mode prevents the agent from stopping by injecting system directives
 on every provider:request that guide the LLM to continue working.
 
+Two modes:
+1. Dumb mode (no goal): Injects "continue" directive. Cheap, fast, no reasoning.
+2. Smart co-pilot mode (with goal): Uses SessionCopilot LLM reasoning to
+   suggest contextual next actions, track progress, and auto-disable on
+   completion or escalation.
+
 This approach works because:
 1. session:end is a notification event (cannot be blocked)
 2. provider:request fires before every LLM call
 3. Context injection guides LLM behavior without blocking events
 
 Usage:
-    # Enable lock mode
+    # Dumb mode
     python .claude/tools/amplihack/lock_tool.py lock
 
-    # With custom message
-    python .claude/tools/amplihack/lock_tool.py lock --message "Focus on tests"
+    # Smart co-pilot mode
+    python .claude/tools/amplihack/lock_tool.py lock --goal "Fix auth bug, write tests, create PR"
 
     # Disable lock mode
     python .claude/tools/amplihack/lock_tool.py unlock
@@ -35,10 +41,124 @@ _PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.parent
 _LOCK_DIR = _PROJECT_ROOT / ".claude" / "runtime" / "locks"
 _LOCK_FILE = _LOCK_DIR / ".lock_active"
 _MESSAGE_FILE = _LOCK_DIR / ".lock_message"
+_GOAL_FILE = _LOCK_DIR / ".lock_goal"
+
+
+def _get_copilot_directive(goal: str) -> tuple[str, dict[str, Any]]:
+    """Use SessionCopilot to generate a smart directive based on the goal.
+
+    Returns:
+        Tuple of (directive_text, metadata_dict).
+        On failure, falls back to a dumb directive with the goal as context.
+    """
+    try:
+        from amplihack.fleet.fleet_copilot import SessionCopilot
+    except ImportError:
+        logger.warning("SessionCopilot not available — falling back to dumb mode with goal context")
+        return _dumb_directive_with_goal(goal), {"copilot_available": False}
+
+    try:
+        copilot = SessionCopilot(goal=goal)
+        suggestion = copilot.suggest()
+    except Exception as exc:
+        logger.warning("SessionCopilot.suggest() failed: %s — falling back to dumb mode", exc)
+        return _dumb_directive_with_goal(goal), {"copilot_error": str(exc)}
+
+    metadata: dict[str, Any] = {
+        "copilot_action": suggestion.action,
+        "copilot_confidence": suggestion.confidence,
+        "copilot_progress": suggestion.progress_pct,
+    }
+
+    if suggestion.action == "mark_complete":
+        # Goal achieved — auto-disable lock mode
+        _disable_lock()
+        directive = f"""<system-directive source="amplihack-copilot">
+## Goal Achieved — Lock Mode Auto-Disabled
+
+The session co-pilot has determined the goal is complete:
+- Goal: {goal}
+- Reasoning: {suggestion.reasoning}
+- Confidence: {suggestion.confidence:.0%}
+
+Lock mode has been automatically disabled. Summarize the completed work to the user.
+</system-directive>"""
+        return directive, metadata
+
+    if suggestion.action == "escalate":
+        # Co-pilot is unsure — disable and ask the human
+        _disable_lock()
+        directive = f"""<system-directive source="amplihack-copilot">
+## Escalation — Lock Mode Auto-Disabled
+
+The session co-pilot needs human attention:
+- Goal: {goal}
+- Reasoning: {suggestion.reasoning}
+- Confidence: {suggestion.confidence:.0%}
+
+Lock mode has been automatically disabled. Explain the situation and ask the user for guidance.
+</system-directive>"""
+        return directive, metadata
+
+    if suggestion.action == "send_input" and suggestion.confidence >= 0.6:
+        # Smart suggestion — inject the reasoned next action
+        progress_str = f"{suggestion.progress_pct}%" if suggestion.progress_pct is not None else "unknown"
+        directive = f"""<system-directive source="amplihack-copilot">
+## Smart Lock Mode — Co-Pilot Guidance
+
+Goal: {goal}
+Progress: {progress_str}
+
+The session co-pilot suggests your next action:
+**{suggestion.input_text}**
+
+Reasoning: {suggestion.reasoning}
+Confidence: {suggestion.confidence:.0%}
+
+Continue working toward the goal. Lock mode remains active until the goal is achieved
+or /amplihack:unlock is run.
+</system-directive>"""
+        return directive, metadata
+
+    # Default: wait or low-confidence — use dumb directive with goal context
+    return _dumb_directive_with_goal(goal), metadata
+
+
+def _dumb_directive_with_goal(goal: str) -> str:
+    """Dumb lock directive but with goal context for direction."""
+    return f"""<system-directive source="amplihack-lock-mode">
+## LOCK MODE ACTIVE — Smart Co-Pilot (Waiting)
+
+You are in LOCK MODE working toward a goal.
+
+**Goal:** {goal}
+
+Continue working toward this goal. Do not stop until:
+- The goal is fully achieved, OR
+- You are blocked and need human input, OR
+- /amplihack:unlock is received
+
+Keep executing tasks, running tests, and making progress.
+</system-directive>"""
+
+
+def _disable_lock() -> None:
+    """Remove lock files to auto-disable lock mode."""
+    for f in (_LOCK_FILE, _MESSAGE_FILE, _GOAL_FILE):
+        try:
+            if f.exists():
+                f.unlink()
+        except Exception as exc:
+            logger.warning("Failed to remove %s: %s", f, exc)
 
 
 class LockModeHook(Hook):
-    """Hook that injects continuous work directives when lock mode is active."""
+    """Hook that injects continuous work directives when lock mode is active.
+
+    Two modes:
+    - Dumb mode (no goal file): Injects generic "continue" directive.
+    - Smart mode (goal file exists): Uses SessionCopilot for reasoned guidance.
+    """
 
     def __init__(self, config: dict[str, Any] | None = None):
         self.config = config or {}
@@ -61,6 +181,15 @@ class LockModeHook(Hook):
             pass
         return ""
 
+    def _get_goal(self) -> str:
+        """Get the co-pilot goal if present."""
+        try:
+            if _GOAL_FILE.exists():
+                return _GOAL_FILE.read_text().strip()
+        except Exception:
+            pass
+        return ""
+
     async def __call__(self, event: str, data: dict[str, Any]) -> HookResult | None:
         """Inject lock mode directives on provider:request events."""
         if not self.enabled:
@@ -76,7 +205,7 @@ class LockModeHook(Hook):
         # Log state changes
         if self._last_lock_check != is_locked:
             if is_locked:
-                logger.info("LockModeHook: Lock mode ACTIVE - injecting continuous work directive")
+                logger.info("LockModeHook: Lock mode ACTIVE")
             else:
                 logger.info("LockModeHook: Lock mode INACTIVE")
             self._last_lock_check = is_locked
@@ -84,11 +213,24 @@ class LockModeHook(Hook):
         if not is_locked:
             return None
 
-        # Get custom message if any
+        # Check for goal (smart co-pilot mode)
+        goal = self._get_goal()
+        if goal:
+            directive, metadata = _get_copilot_directive(goal)
+            metadata["lock_mode"] = True
+            metadata["mode"] = "smart"
+            metadata["goal"] = goal
+            return HookResult(
+                action="inject_context",
+                context_injection=directive,
+                ephemeral=True,
+                metadata=metadata,
+            )
+
+        # Dumb mode: bare "continue" directive
         custom_message = self._get_lock_message()
         custom_instruction = f"\nCurrent focus: {custom_message}" if custom_message else ""
 
-        # Inject context directive
         lock_directive = f"""<system-directive source="amplihack-lock-mode">
 ## LOCK MODE ACTIVE - Continuous Work Required
 
@@ -115,8 +257,8 @@ Lock mode will remain active until the user runs `/amplihack:unlock`.
         return HookResult(
             action="inject_context",
             context_injection=lock_directive,
-            ephemeral=True,  # Don't persist in conversation history
-            metadata={"lock_mode": True, "custom_message": custom_message or None},
+            ephemeral=True,
+            metadata={"lock_mode": True, "mode": "dumb", "custom_message": custom_message or None},
         )
 
 

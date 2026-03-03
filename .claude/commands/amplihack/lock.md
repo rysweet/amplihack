@@ -1,52 +1,74 @@
 ---
 name: lock
-version: 1.0.0
-description: Enable continuous work mode without stopping
+version: 2.0.0
+description: Enable continuous work mode — dumb or smart co-pilot
 triggers:
   - "Enable continuous work mode"
   - "Work autonomously"
   - "Don't stop until done"
   - "Keep working through all tasks"
+  - "Work toward this goal"
 ---
 
 # Lock: Enable Continuous Work Mode
 
 **Purpose**: Enable continuous work mode to prevent Claude from stopping until explicitly unlocked.
 
-**Usage**: `amplihack:lock [optional lock message]`
+**Two modes:**
 
-When locked, Claude will:
+1. **Dumb mode** (no goal): Injects "continue" on every turn. Cheap, fast, no reasoning.
+2. **Smart co-pilot mode** (with `--goal`): Uses SessionCopilot LLM reasoning to suggest contextual next actions, track progress, and auto-disable on goal completion or escalation.
 
-- use the Bash tool to run the amplihack lock tool:,
+**Usage**: `amplihack:lock [optional lock message]` or `amplihack:lock --goal "your objective"`
 
-**Basic usage (default continuation prompt):**
+When locked, Claude will use the Bash tool to run the amplihack lock tool:
+
+**Basic usage (dumb mode — bare continue):**
 
 ```bash
 python .claude/tools/amplihack/lock_tool.py lock
 ```
 
-**With custom instruction:**
+**With custom instruction (dumb mode with focus):**
 
 ```bash
 python .claude/tools/amplihack/lock_tool.py lock --message "Focus on security fixes first"
 ```
 
-- Continue working through all TODOs and next steps
-- Block stop attempts and keep pursuing the user's objective
-- Look for additional work and execute in parallel
-- Not stop until `/amplihack:unlock` is run
+**Smart co-pilot mode (LLM-reasoned guidance):**
 
-Use this mode when you want Claude to work autonomously through a complex task without stopping.
+```bash
+python .claude/tools/amplihack/lock_tool.py lock --goal "Fix the auth bug, write tests, create PR"
+```
+
+**Combined (goal + message):**
+
+```bash
+python .claude/tools/amplihack/lock_tool.py lock --goal "Implement OAuth2 login" --message "Use PKCE flow"
+```
+
+## Smart Co-Pilot Mode
+
+When `--goal` is provided, the hook uses `SessionCopilot` from the fleet module to:
+
+- **Read the session transcript** and detect the current agent status
+- **Reason about the next action** using LLM-powered analysis
+- **Inject specific guidance** instead of generic "continue"
+- **Track progress** toward the stated goal
+- **Auto-disable** when the goal is achieved (`mark_complete`)
+- **Escalate** to the human when the co-pilot is uncertain
+
+The co-pilot actions:
+| Action | Behavior |
+|--------|----------|
+| `send_input` (confidence >= 0.6) | Injects reasoned next step |
+| `wait` | Agent is working — no intervention |
+| `mark_complete` | Goal achieved — auto-disables lock |
+| `escalate` | Needs human — auto-disables lock |
 
 ## Custom Continuation Messages
 
-The optional message a user can supply on the /amplihack:lock command will be passed to the lock tool with the `--message` flag and allows you to provide a custom instruction that Claude sees when attempting to stop.
-This enables:
-
-- Task-specific guidance
-- Context about what to prioritize
-- Domain-specific instructions
-- Direction for autonomous work
+The optional `--message` flag provides a custom instruction that Claude sees when attempting to stop.
 
 **Example custom messages:**
 
@@ -54,30 +76,42 @@ This enables:
 "Focus on security fixes first, then performance optimizations"
 "Check all API endpoints for authentication issues"
 "Run full test suite after each change"
-"When condition X is met, you may remove the lock file."
 ```
 
-**Note**: Messages are limited to 1000 characters. Messages over 500 characters will show a warning.
+**Note**: Messages are limited to 1000 characters.
 
 ---
 
 ## Instructions
 
-Use the Bash tool to run the lock tool:
+Use the Bash tool to run the lock tool. Parse the user's command to determine if they provided a goal, a message, or both.
 
-**Basic usage (default continuation prompt):**
+**If the user provides a goal (smart mode):**
+
+```bash
+python .claude/tools/amplihack/lock_tool.py lock --goal "user's goal here"
+```
+
+**If the user provides just a message (dumb mode):**
+
+```bash
+python .claude/tools/amplihack/lock_tool.py lock --message "user's message here"
+```
+
+**If the user provides both:**
+
+```bash
+python .claude/tools/amplihack/lock_tool.py lock --goal "user's goal" --message "user's focus"
+```
+
+**If the user provides nothing (plain dumb mode):**
 
 ```bash
 python .claude/tools/amplihack/lock_tool.py lock
 ```
 
-**With custom instruction:**
-
-```bash
-python .claude/tools/amplihack/lock_tool.py lock --message "Focus on security fixes first"
-```
-
 **Lock files:**
 
-- Lock flag: `~/.amplihack/.claude/runtime/locks/.lock_active`
-- Custom message: `~/.amplihack/.claude/runtime/locks/.lock_message`
+- Lock flag: `.claude/runtime/locks/.lock_active`
+- Custom message: `.claude/runtime/locks/.lock_message`
+- Goal (smart mode): `.claude/runtime/locks/.lock_goal`

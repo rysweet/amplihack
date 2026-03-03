@@ -32,10 +32,17 @@ _PROJECT_ROOT = _get_project_root()
 LOCK_DIR = _PROJECT_ROOT / ".claude" / "runtime" / "locks"
 LOCK_FILE = LOCK_DIR / ".lock_active"
 MESSAGE_FILE = LOCK_DIR / ".lock_message"
+GOAL_FILE = LOCK_DIR / ".lock_goal"
 
 
-def create_lock(message: str = None) -> int:
-    """Create lock to enable continuous work mode."""
+def create_lock(message: str = None, goal: str = None) -> int:
+    """Create lock to enable continuous work mode.
+
+    Args:
+        message: Custom instruction for the dumb "continue" mode.
+        goal: When provided, enables smart co-pilot mode using SessionCopilot
+              reasoning instead of bare "continue" injection.
+    """
     try:
         # Create locks directory
         LOCK_DIR.mkdir(parents=True, exist_ok=True)
@@ -46,6 +53,9 @@ def create_lock(message: str = None) -> int:
             if message:
                 MESSAGE_FILE.write_text(message)
                 print(f"✓ Updated lock message: {message}")
+            if goal:
+                GOAL_FILE.write_text(goal)
+                print(f"✓ Updated goal: {goal}")
             return 0
 
         # Create lock file atomically
@@ -53,13 +63,19 @@ def create_lock(message: str = None) -> int:
         os.write(fd, f"locked_at: {datetime.now().isoformat()}\n".encode())
         os.close(fd)
 
-        print("✓ Lock enabled - Claude will continue working until unlocked")
-        print("  Use /amplihack:unlock to disable continuous work mode")
+        mode = "smart co-pilot" if goal else "continuous work"
+        print(f"✓ Lock enabled ({mode} mode) - working until unlocked")
+        print("  Use /amplihack:unlock to disable")
 
         # Save custom message if provided
         if message:
             MESSAGE_FILE.write_text(message)
             print(f"  Custom instruction: {message}")
+
+        # Save goal if provided (enables smart co-pilot mode)
+        if goal:
+            GOAL_FILE.write_text(goal)
+            print(f"  Goal: {goal}")
 
         return 0
 
@@ -80,9 +96,10 @@ def remove_lock() -> int:
         else:
             print("ℹ Lock was not enabled")
 
-        # Clean up message file if exists
-        if MESSAGE_FILE.exists():
-            MESSAGE_FILE.unlink()
+        # Clean up message and goal files
+        for f in (MESSAGE_FILE, GOAL_FILE):
+            if f.exists():
+                f.unlink()
 
         return 0
 
@@ -98,6 +115,13 @@ def check_lock() -> int:
             lock_info = LOCK_FILE.read_text().strip()
             print("✓ Lock is ACTIVE")
             print(f"  {lock_info}")
+
+            if GOAL_FILE.exists():
+                goal = GOAL_FILE.read_text().strip()
+                print(f"  Mode: smart co-pilot")
+                print(f"  Goal: {goal}")
+            else:
+                print(f"  Mode: dumb (bare continue)")
 
             if MESSAGE_FILE.exists():
                 message = MESSAGE_FILE.read_text().strip()
@@ -120,6 +144,10 @@ def main():
     # Lock command
     lock_parser = subparsers.add_parser("lock", help="Enable continuous work mode")
     lock_parser.add_argument("--message", "-m", help="Custom instruction for Claude")
+    lock_parser.add_argument(
+        "--goal", "-g",
+        help="Goal for smart co-pilot mode (uses LLM reasoning instead of bare 'continue')",
+    )
 
     # Unlock command
     subparsers.add_parser("unlock", help="Disable continuous work mode")
@@ -131,7 +159,7 @@ def main():
 
     # Execute command
     if args.command == "lock":
-        return create_lock(message=args.message)
+        return create_lock(message=args.message, goal=args.goal)
     if args.command == "unlock":
         return remove_lock()
     if args.command == "check":
