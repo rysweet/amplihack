@@ -204,3 +204,6 @@ class LWWRegister:
         if data["value"] is not None:
             reg._entry = _LWWEntry(value=data["value"], timestamp=data["timestamp"])
         return reg
+
+
+__all__ = ["GSet", "ORSet", "LWWRegister"]

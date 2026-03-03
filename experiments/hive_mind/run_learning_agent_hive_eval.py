@@ -229,7 +229,21 @@ def run_flat(
     logger.info("=== HIVE_FLAT: %d agents, shared hive ===", num_agents)
     t0 = time.time()
 
-    hive = InMemoryHiveGraph("flat-hive")
+    from amplihack.agents.goal_seeking.hive_mind.embeddings import EmbeddingGenerator
+
+    try:
+        embedder = EmbeddingGenerator()
+        if not embedder.available:
+            embedder = None
+    except Exception:
+        embedder = None
+
+    hive = InMemoryHiveGraph(
+        "flat-hive",
+        embedding_generator=embedder,
+        enable_gossip=True,
+        enable_ttl=True,
+    )
 
     agents: list[LearningAgent] = []
     for i in range(num_agents):
@@ -288,11 +302,30 @@ def run_federated(
     logger.info("=== HIVE_FEDERATED: %d agents, %d groups ===", num_agents, num_groups)
     t0 = time.time()
 
+    from amplihack.agents.goal_seeking.hive_mind.embeddings import EmbeddingGenerator
+
+    try:
+        embedder = EmbeddingGenerator()
+        if not embedder.available:
+            embedder = None
+    except Exception:
+        embedder = None
+
     # Create federation tree: root hive with M group hives as children
-    root_hive = InMemoryHiveGraph("root-hive")
+    root_hive = InMemoryHiveGraph(
+        "root-hive",
+        embedding_generator=embedder,
+        enable_gossip=True,
+        enable_ttl=True,
+    )
     group_hives: list[InMemoryHiveGraph] = []
     for g in range(num_groups):
-        group_hive = InMemoryHiveGraph(f"group-{g}")
+        group_hive = InMemoryHiveGraph(
+            f"group-{g}",
+            embedding_generator=embedder,
+            enable_gossip=True,
+            enable_ttl=True,
+        )
         group_hive.set_parent(root_hive)
         root_hive.add_child(group_hive)
         group_hives.append(group_hive)

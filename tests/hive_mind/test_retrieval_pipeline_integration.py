@@ -18,7 +18,6 @@ from amplihack.agents.goal_seeking.hive_mind.hive_graph import (
 )
 from amplihack.agents.goal_seeking.hive_mind.reranker import hybrid_score_weighted
 
-
 # ---------------------------------------------------------------------------
 # InMemoryHiveGraph with embedding_generator
 # ---------------------------------------------------------------------------
@@ -100,9 +99,7 @@ class TestEmbeddingIntegration:
         assert len(results) == 1
 
     def test_empty_query_with_embeddings(self, hive):
-        hive.promote_fact(
-            "agent_a", HiveFact(fact_id="f1", content="some fact", concept="test")
-        )
+        hive.promote_fact("agent_a", HiveFact(fact_id="f1", content="some fact", concept="test"))
         results = hive.query_facts("", limit=5)
         assert len(results) >= 1
 
@@ -295,14 +292,14 @@ class TestConfidenceGate:
         hive.promote_fact(
             "agent_a",
             HiveFact(
-                fact_id="f1", content="DNA stores genetic information",
-                concept="genetics", confidence=0.9,
+                fact_id="f1",
+                content="DNA stores genetic information",
+                concept="genetics",
+                confidence=0.9,
             ),
         )
         with tempfile.TemporaryDirectory() as td:
-            adapter = CognitiveAdapter(
-                "agent_b", db_path=td, hive_store=hive, confidence_gate=0.5
-            )
+            adapter = CognitiveAdapter("agent_b", db_path=td, hive_store=hive, confidence_gate=0.5)
             results = adapter.search("DNA genetics", limit=10)
             assert any("DNA" in r.get("outcome", "") for r in results)
             adapter.close()
@@ -311,14 +308,14 @@ class TestConfidenceGate:
         hive.promote_fact(
             "agent_a",
             HiveFact(
-                fact_id="f1", content="Maybe DNA does something",
-                concept="genetics", confidence=0.1,
+                fact_id="f1",
+                content="Maybe DNA does something",
+                concept="genetics",
+                confidence=0.1,
             ),
         )
         with tempfile.TemporaryDirectory() as td:
-            adapter = CognitiveAdapter(
-                "agent_b", db_path=td, hive_store=hive, confidence_gate=0.5
-            )
+            adapter = CognitiveAdapter("agent_b", db_path=td, hive_store=hive, confidence_gate=0.5)
             results = adapter.search("DNA genetics", limit=10)
             hive_results = [r for r in results if "hive:" in r.get("source", "")]
             assert len(hive_results) == 0
@@ -328,14 +325,14 @@ class TestConfidenceGate:
         hive.promote_fact(
             "agent_a",
             HiveFact(
-                fact_id="f1", content="Low confidence DNA fact",
-                concept="genetics", confidence=0.1,
+                fact_id="f1",
+                content="Low confidence DNA fact",
+                concept="genetics",
+                confidence=0.1,
             ),
         )
         with tempfile.TemporaryDirectory() as td:
-            adapter = CognitiveAdapter(
-                "agent_b", db_path=td, hive_store=hive, confidence_gate=0.0
-            )
+            adapter = CognitiveAdapter("agent_b", db_path=td, hive_store=hive, confidence_gate=0.0)
             results = adapter.search("DNA genetics Low confidence", limit=10)
             hive_results = [r for r in results if "hive:" in r.get("source", "")]
             assert len(hive_results) >= 1
@@ -435,6 +432,7 @@ class TestGracefulDegradation:
     def test_broken_embedding_generator_falls_back(self):
         class BrokenGenerator:
             available = True
+
             def embed(self, text: str):
                 raise RuntimeError("Broken!")
 
