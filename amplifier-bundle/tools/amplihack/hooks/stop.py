@@ -111,7 +111,16 @@ class StopHook(HookProcessor):
             if goal_file.exists():
                 goal = goal_file.read_text().strip()
                 if goal:
-                    copilot_prompt = self._get_copilot_continuation(goal, input_data)
+                    try:
+                        from copilot_stop_handler import get_copilot_continuation
+                        copilot_prompt = get_copilot_continuation(
+                            goal=goal,
+                            project_root=self.project_root,
+                            log_fn=self.log,
+                            metric_fn=self.save_metric,
+                        )
+                    except ImportError:
+                        copilot_prompt = None
                     if copilot_prompt:
                         self.log("=== STOP HOOK ENDED (decision: block - copilot reasoning) ===")
                         return {"decision": "block", "reason": copilot_prompt}
@@ -296,73 +305,7 @@ class StopHook(HookProcessor):
             self.log("=== STOP HOOK ENDED (decision: approve - error occurred) ===")
             return {"decision": "approve"}
 
-    # Neo4j cleanup methods removed (Week 7 cleanup)
-    # Kuzu backend does not require cleanup on session exit
-
-    def _get_copilot_continuation(self, goal: str, input_data: dict) -> str | None:
-        """Use SessionCopilot to generate an intelligent continuation prompt.
-
-        Reads the session transcript, reasons about progress toward the goal,
-        and returns a specific next-step prompt. If the goal is achieved or
-        escalation is needed, auto-disables lock mode.
-
-        Returns the continuation prompt, or None if copilot is unavailable.
-        """
-        try:
-            from amplihack.fleet.fleet_copilot import SessionCopilot
-        except ImportError as exc:
-            self.log(f"SessionCopilot not available: {exc}", "WARNING")
-            return None
-
-        try:
-            copilot = SessionCopilot(goal=goal)
-            suggestion = copilot.suggest()
-            self.log(f"Copilot suggestion: {suggestion.action} (confidence={suggestion.confidence:.0%})")
-            self.save_metric("copilot_suggestions", 1)
-
-            if suggestion.action == "mark_complete":
-                # Goal achieved — auto-disable lock
-                self.log("Copilot: goal achieved, disabling lock")
-                self._disable_lock_files()
-                self.save_metric("copilot_mark_complete", 1)
-                return (
-                    f"The session co-pilot determined the goal is achieved: {suggestion.reasoning}\n\n"
-                    f"Goal: {goal}\n"
-                    f"Lock mode has been auto-disabled. Summarize the completed work to the user."
-                )
-
-            if suggestion.action == "escalate":
-                # Copilot needs human help — auto-disable lock
-                self.log(f"Copilot: escalating — {suggestion.reasoning}")
-                self._disable_lock_files()
-                self.save_metric("copilot_escalations", 1)
-                return (
-                    f"The session co-pilot is escalating: {suggestion.reasoning}\n\n"
-                    f"Goal: {goal}\n"
-                    f"Lock mode has been auto-disabled. Explain the situation and ask the user for guidance."
-                )
-
-            if suggestion.action == "send_input" and suggestion.confidence >= 0.6:
-                # Specific next action
-                self.save_metric("copilot_send_input", 1)
-                progress = f"{suggestion.progress_pct}%" if suggestion.progress_pct is not None else "unknown"
-                return (
-                    f"Session co-pilot guidance (goal: {goal}, progress: {progress}):\n\n"
-                    f"{suggestion.input_text}\n\n"
-                    f"Reasoning: {suggestion.reasoning}"
-                )
-
-            # wait or low confidence — use a goal-aware generic prompt
-            return (
-                f"Continue working toward the goal: {goal}\n\n"
-                f"The session co-pilot is monitoring progress. Keep executing tasks, "
-                f"running tests, and making progress toward the goal."
-            )
-
-        except Exception as exc:
-            self.log(f"Copilot error: {exc}", "WARNING")
-            self.save_metric("copilot_errors", 1)
-            return None
+    # Copilot logic extracted to copilot_stop_handler.py
 
     def _disable_lock_files(self) -> None:
         """Remove lock and goal files to auto-disable lock mode."""

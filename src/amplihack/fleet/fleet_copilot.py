@@ -293,11 +293,14 @@ def _extract_last_output(transcript_text: str) -> str:
     """Extract the most recent assistant output from the JSONL transcript.
 
     Walks entries in reverse and returns text from the LAST assistant message
-    only. This is what infer_agent_status() needs to classify the current state.
+    only. Skips lines that can't be assistant messages without JSON parsing.
     """
     lines = transcript_text.strip().split("\n") if transcript_text else []
 
     for line in reversed(lines):
+        # Fast skip: don't parse lines that can't be assistant messages
+        if '"assistant"' not in line:
+            continue
         try:
             entry = json.loads(line)
         except (json.JSONDecodeError, ValueError):
