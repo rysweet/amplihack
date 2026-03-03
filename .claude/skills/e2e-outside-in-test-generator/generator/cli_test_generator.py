@@ -68,10 +68,10 @@ def _generate_cli_command_tests(
     ensure_directory(tests_dir)
 
     generated = []
-    for cmd in config.commands[:10]:  # Limit to 10 commands
+    for cmd in config.commands:
         # Build command args string
         args_list = [f'"{cmd.name}"']
-        for arg in cmd.args[:3]:
+        for arg in cmd.args:
             args_list.append(f'"<{arg}>"')
 
         extra_steps = ""
@@ -192,7 +192,7 @@ def _generate_cli_integration_tests(
     if len(config.commands) >= 2:
         # Create a multi-command workflow test
         steps = []
-        for i, cmd in enumerate(config.commands[:3]):
+        for i, cmd in enumerate(config.commands):
             args = [f'"{cmd.name}"'] + [f'"test-arg-{j}"' for j in range(min(len(cmd.args), 2))]
             steps.append(f"""    - action: launch
       target: "{config.binary_path}"
@@ -234,7 +234,7 @@ scenario:
             GeneratedTest(
                 category=TestCategory.CLI_INTEGRATION,
                 file_path=test_file,
-                test_count=len(config.commands[:3]) * 2,
+                test_count=len(config.commands) * 2,
                 description="CLI multi-command integration test",
             )
         )

@@ -234,7 +234,7 @@ def _is_mcp_project(project_root: Path) -> bool:
 
     # Check for MCP SDK imports in source files
     for pattern in ["*.py", "*.ts", "*.js"]:
-        for f in find_files(project_root, pattern)[:20]:
+        for f in _filter_vendor_files(find_files(project_root, pattern)):
             try:
                 content = read_file(f)
                 if any(
@@ -283,7 +283,7 @@ def _detect_cli_framework(project_root: Path) -> tuple[str, str]:
     for language, frameworks in CLI_MARKERS.items():
         extensions = _language_extensions(language)
         for ext in extensions:
-            for f in _filter_vendor_files(find_files(project_root, f"*{ext}"))[:15]:
+            for f in _filter_vendor_files(find_files(project_root, f"*{ext}")):
                 try:
                     content = read_file(f)
                     for framework, markers in frameworks.items():
@@ -299,7 +299,7 @@ def _detect_tui_framework(project_root: Path) -> tuple[str, str]:
     for language, frameworks in TUI_MARKERS.items():
         extensions = _language_extensions(language)
         for ext in extensions:
-            for f in _filter_vendor_files(find_files(project_root, f"*{ext}"))[:15]:
+            for f in _filter_vendor_files(find_files(project_root, f"*{ext}")):
                 try:
                     content = read_file(f)
                     for framework, markers in frameworks.items():
@@ -373,7 +373,7 @@ def _extract_cli_commands(
             0 if f.stem in priority_names else 1,
             str(f),
         ))
-        for f in prioritized[:30]:
+        for f in prioritized:
             try:
                 content = read_file(f)
                 commands.extend(_parse_commands_from_content(content, framework))
@@ -489,7 +489,7 @@ def _has_interactive_mode(project_root: Path, language: str) -> bool:
     """Check if CLI has an interactive/REPL mode."""
     extensions = _language_extensions(language)
     for ext in extensions:
-        for f in find_files(project_root, f"*{ext}")[:10]:
+        for f in _filter_vendor_files(find_files(project_root, f"*{ext}")):
             try:
                 content = read_file(f)
                 if any(
@@ -544,7 +544,7 @@ def _extract_tui_widgets(
 
     framework_widgets = widget_patterns.get(framework, {})
     for ext in extensions:
-        for f in find_files(project_root, f"*{ext}")[:20]:
+        for f in _filter_vendor_files(find_files(project_root, f"*{ext}")):
             try:
                 content = read_file(f)
                 for widget_name, widget_type in framework_widgets.items():
@@ -573,7 +573,7 @@ def _extract_tui_screens(
     extensions = _language_extensions(language)
 
     for ext in extensions:
-        for f in find_files(project_root, f"*{ext}")[:20]:
+        for f in _filter_vendor_files(find_files(project_root, f"*{ext}")):
             try:
                 content = read_file(f)
                 if framework == "textual":
@@ -597,7 +597,7 @@ def _extract_keyboard_shortcuts(
     extensions = _language_extensions(language)
 
     for ext in extensions:
-        for f in find_files(project_root, f"*{ext}")[:20]:
+        for f in _filter_vendor_files(find_files(project_root, f"*{ext}")):
             try:
                 content = read_file(f)
                 if framework == "textual":
@@ -828,7 +828,7 @@ def _extract_mcp_tools(mcp_data: dict, project_root: Path) -> list[MCPTool]:
 
     # From source code (Python MCP SDK patterns)
     if not tools:
-        for f in find_files(project_root, "*.py")[:20]:
+        for f in _filter_vendor_files(find_files(project_root, "*.py")):
             try:
                 content = read_file(f)
                 # @server.tool() or @mcp.tool()
@@ -851,7 +851,7 @@ def _extract_mcp_tools(mcp_data: dict, project_root: Path) -> list[MCPTool]:
 
     # From source code (TypeScript MCP SDK patterns)
     if not tools:
-        for f in find_files(project_root, "*.ts")[:20]:
+        for f in _filter_vendor_files(find_files(project_root, "*.ts")):
             try:
                 content = read_file(f)
                 # server.tool("name", ...)

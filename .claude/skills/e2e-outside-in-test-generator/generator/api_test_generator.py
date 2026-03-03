@@ -42,7 +42,7 @@ def _generate_api_smoke_tests(
     ensure_directory(tests_dir)
 
     generated = []
-    for endpoint in config.endpoints[:15]:  # Limit to 15 endpoints
+    for endpoint in config.endpoints:
         path_slug = endpoint.path.replace("/", "-").strip("-") or "root"
         tag = endpoint.tags[0] if endpoint.tags else "general"
 
@@ -128,7 +128,7 @@ def _generate_api_crud_tests(
         resource = parts[0] if parts else "root"
         resources.setdefault(resource, []).append(ep)
 
-    for resource, endpoints in list(resources.items())[:5]:
+    for resource, endpoints in resources.items():
         methods = {ep.method for ep in endpoints}
         if len(methods) < 2:
             continue  # Skip resources with only one method
@@ -223,7 +223,7 @@ def _generate_api_validation_tests(
         ep for ep in config.endpoints if ep.method in ("POST", "PUT", "PATCH")
     ]
 
-    for ep in body_endpoints[:5]:
+    for ep in body_endpoints:
         path_slug = ep.path.replace("/", "-").strip("-") or "root"
 
         content = f"""# API Validation Test - {ep.method} {ep.path}
@@ -307,9 +307,9 @@ def _generate_api_auth_tests(
     ensure_directory(tests_dir)
 
     # Find protected endpoints
-    protected = [ep for ep in config.endpoints if ep.requires_auth][:5]
+    protected = [ep for ep in config.endpoints if ep.requires_auth]
     if not protected:
-        protected = config.endpoints[:3]  # Test first 3 anyway
+        protected = config.endpoints
 
     steps = ""
     for ep in protected:
@@ -374,12 +374,12 @@ def _generate_api_workflow_tests(
         for tag in ep.tags or ["general"]:
             tag_endpoints.setdefault(tag, []).append(ep)
 
-    for tag, endpoints in list(tag_endpoints.items())[:3]:
+    for tag, endpoints in tag_endpoints.items():
         if len(endpoints) < 2:
             continue
 
         steps = ""
-        for i, ep in enumerate(endpoints[:4]):
+        for i, ep in enumerate(endpoints):
             body_line = ""
             if ep.method in ("POST", "PUT", "PATCH"):
                 sample = _generate_sample_data(ep.request_body_schema) if ep.request_body_schema else {}

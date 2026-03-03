@@ -43,7 +43,7 @@ def _generate_tui_smoke_tests(
 
     # Build widget check steps
     widget_checks = ""
-    for widget in config.widgets[:5]:
+    for widget in config.widgets:
         widget_checks += f"""    - action: verify_screen
       matches: ".*"
       description: "Verify {widget.name} ({widget.widget_type}) is rendered"
@@ -94,7 +94,7 @@ def _generate_tui_navigation_tests(
     # Build navigation steps from keyboard shortcuts
     nav_steps = ""
     if config.keyboard_shortcuts:
-        for key, action in list(config.keyboard_shortcuts.items())[:8]:
+        for key, action in config.keyboard_shortcuts.items():
             if action in ("quit", "exit", "close"):
                 continue
             nav_steps += f"""    - action: send_keypress

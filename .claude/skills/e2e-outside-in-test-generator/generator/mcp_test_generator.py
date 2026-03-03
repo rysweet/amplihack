@@ -43,7 +43,7 @@ def _generate_mcp_smoke_tests(
     generated = []
     server_args = ", ".join(f'"{a}"' for a in config.server_args)
 
-    for tool in config.tools[:10]:  # Limit to 10 tools
+    for tool in config.tools:
         # Generate sample valid input from schema
         valid_input = _generate_sample_input(tool)
         valid_input_json = json.dumps(valid_input, indent=6)
@@ -123,14 +123,14 @@ def _generate_mcp_validation_tests(
     # Find tools with defined input schemas
     schema_tools = [t for t in config.tools if t.input_schema]
 
-    for tool in schema_tools[:5]:
+    for tool in schema_tools:
         properties = tool.input_schema.get("properties", {})
         if not isinstance(properties, dict):
             continue
 
         # Generate type mismatch tests
         steps = ""
-        for prop_name, prop_def in list(properties.items())[:3]:
+        for prop_name, prop_def in properties.items():
             if not isinstance(prop_def, dict):
                 continue
             prop_type = prop_def.get("type", "string")
@@ -285,7 +285,7 @@ def _generate_mcp_workflow_tests(
 
     # Build workflow steps calling tools in sequence
     steps = ""
-    for i, tool in enumerate(config.tools[:4]):
+    for i, tool in enumerate(config.tools):
         valid_input = _generate_sample_input(tool)
         steps += f"""    - action: mcp_call_tool
       tool: "{tool.name}"
