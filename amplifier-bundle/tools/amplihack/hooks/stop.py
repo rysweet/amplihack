@@ -119,7 +119,9 @@ class StopHook(HookProcessor):
                             log_fn=self.log,
                             metric_fn=self.save_metric,
                         )
-                    except ImportError:
+                    except ImportError as exc:
+                        self.log(f"copilot_stop_handler import failed: {exc}", "WARNING")
+                        self.save_metric("copilot_import_errors", 1)
                         copilot_prompt = None
                     if copilot_prompt:
                         self.log("=== STOP HOOK ENDED (decision: block - copilot reasoning) ===")

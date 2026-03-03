@@ -221,6 +221,11 @@ class FleetTUI:
             logging.getLogger(__name__).debug("azlin list failed: %s", exc)
 
         logging.getLogger(__name__).warning("All VM polling strategies failed")
+        print(
+            "ERROR: Could not retrieve VM list. Both 'az vm list' and 'azlin list' failed.\n"
+            "Check: az CLI login ('az login'), azlin config, and network connectivity.",
+            file=sys.stderr,
+        )
         return []
 
     def _read_azlin_resource_group(self) -> str:
@@ -277,7 +282,7 @@ for SESS in $SESSIONS; do
     echo "---END---"
 done
 """
-        gather_cmd = gather_cmd.replace("__CAPTURE_DEPTH__", str(self.capture_lines))
+        gather_cmd = gather_cmd.replace("__CAPTURE_DEPTH__", str(int(self.capture_lines)))
         try:
             result = subprocess.run(
                 [self.azlin_path, "connect", vm_name, "--no-tmux", "--", gather_cmd],
