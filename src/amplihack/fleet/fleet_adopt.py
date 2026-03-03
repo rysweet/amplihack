@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 from amplihack.fleet._defaults import get_azlin_path
-from amplihack.fleet._validation import validate_vm_name
+from amplihack.fleet._validation import validate_session_name, validate_vm_name
 from amplihack.fleet.fleet_tasks import TaskPriority, TaskQueue
 
 __all__ = ["SessionAdopter", "AdoptedSession"]
@@ -98,6 +98,9 @@ class SessionAdopter:
             List of adopted sessions with linked task IDs
         """
         validate_vm_name(vm_name)
+        if sessions:
+            for s in sessions:
+                validate_session_name(s)
         discovered = self.discover_sessions(vm_name)
 
         if sessions:

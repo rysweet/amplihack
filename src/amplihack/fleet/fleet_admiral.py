@@ -381,13 +381,16 @@ class FleetAdmiral:
         # Build the tmux command to start an agent
         safe_session = shlex.quote(session_name)
         safe_prompt = shlex.quote(task.prompt)
+        safe_agent = shlex.quote(task.agent_command)
+        safe_mode = shlex.quote(task.agent_mode)
+        safe_turns = shlex.quote(str(int(task.max_turns)))
 
         # Create tmux session and start agent
         setup_cmd = (
             f"tmux new-session -d -s {safe_session} && "
             f"tmux send-keys -t {safe_session} "
-            f"'amplihack {task.agent_command} --{task.agent_mode} "
-            f"--max-turns {task.max_turns} "
+            f"'amplihack {safe_agent} --{safe_mode} "
+            f"--max-turns {safe_turns} "
             f"-- -p {safe_prompt}' C-m"
         )
 

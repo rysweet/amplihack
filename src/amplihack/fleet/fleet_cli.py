@@ -29,7 +29,7 @@ import click
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 from amplihack.fleet._constants import DEFAULT_CAPTURE_LINES, DEFAULT_DASHBOARD_REFRESH_SECONDS
-from amplihack.fleet._defaults import DEFAULT_EXCLUDE_VMS, ensure_azlin, get_azlin_path
+from amplihack.fleet._defaults import DEFAULT_EXCLUDE_VMS, get_azlin_path
 from amplihack.fleet._validation import validate_vm_name
 from amplihack.fleet.fleet_admiral import FleetAdmiral
 from amplihack.fleet.fleet_state import FleetState
@@ -45,8 +45,8 @@ DEFAULT_GRAPH_PATH = Path.home() / ".amplihack" / "fleet" / "graph.json"
 
 
 def _get_azlin() -> str:
-    """Get azlin path, installing it automatically if not found."""
-    return ensure_azlin()
+    """Get azlin path. Raises ValueError if not found."""
+    return get_azlin_path()
 
 
 def _validate_vm_name_cli(ctx, param, value):
@@ -155,43 +155,42 @@ def fleet_cli(ctx):
 
 @fleet_cli.command("setup")
 def setup():
-    """Check prerequisites and install azlin if missing.
+    """Check prerequisites and report what is missing.
 
-    Run this on a new machine to ensure the fleet CLI is ready to use.
-    Checks for azlin, installs it via pip if not found, and verifies
-    the installation.
+    Run this on a new machine to verify the fleet CLI is ready to use.
+    Does NOT install anything — reports what needs to be installed manually.
     """
     click.echo("Fleet setup — checking prerequisites...")
+    all_ok = True
 
     # Check azlin
     try:
         path = get_azlin_path()
-        click.echo(f"  azlin: {path} (already installed)")
+        click.echo(f"  azlin: {path}")
     except ValueError:
-        click.echo("  azlin: not found — installing...")
-        try:
-            path = ensure_azlin()
-            click.echo(f"  azlin: {path} (installed)")
-        except ValueError as exc:
-            click.echo(f"  azlin: FAILED — {exc}", err=True)
-            raise SystemExit(1)
+        click.echo("  azlin: NOT FOUND", err=True)
+        click.echo("    Install azlin and set AZLIN_PATH, or add it to PATH.", err=True)
+        click.echo("    See: https://github.com/rysweet/azlin", err=True)
+        all_ok = False
+        path = None
 
-    # Verify azlin works
-    import subprocess
-    try:
-        result = subprocess.run(
-            [path, "--version"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-        if result.returncode == 0:
-            version = result.stdout.strip() or "unknown"
-            click.echo(f"  azlin version: {version}")
-        else:
-            click.echo(f"  azlin: installed but --version failed ({result.stderr.strip()})", err=True)
-    except Exception as exc:
-        click.echo(f"  azlin: installed but verification failed — {exc}", err=True)
+    # Verify azlin works if found
+    if path:
+        import subprocess
+        try:
+            result = subprocess.run(
+                [path, "--version"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            if result.returncode == 0:
+                version = result.stdout.strip() or "unknown"
+                click.echo(f"  azlin version: {version}")
+            else:
+                click.echo(f"  azlin: found but --version failed ({result.stderr.strip()})", err=True)
+        except Exception as exc:
+            click.echo(f"  azlin: found but verification failed — {exc}", err=True)
 
     # Check Azure CLI (optional but helpful)
     az_path = shutil.which("az")
@@ -200,7 +199,11 @@ def setup():
     else:
         click.echo("  az CLI: not found (optional — needed for VM provisioning)")
 
-    click.echo("\nFleet setup complete.")
+    if all_ok:
+        click.echo("\nAll prerequisites found.")
+    else:
+        click.echo("\nMissing prerequisites — see errors above.", err=True)
+        raise SystemExit(1)
 
 
 @fleet_cli.command("status")
