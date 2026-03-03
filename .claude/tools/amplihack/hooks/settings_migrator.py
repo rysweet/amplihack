@@ -56,8 +56,9 @@ class SettingsMigrator:
     """
 
     # Patterns to detect amplihack hooks (substring match against command field).
-    # Covers all amplihack hook scripts. XPIA hooks (xpia/hooks/*) are NOT matched
-    # here — they are security hooks that belong in global settings.
+    # Only matches amplihack workflow hooks — NOT xpia security hooks.
+    # XPIA hooks are intentionally global (run for every project) and fail-open
+    # when no project root is found, so they must NOT be removed from global settings.
     AMPLIHACK_HOOK_PATTERNS = [
         "amplihack/hooks/stop.py",
         "amplihack/hooks/session_start.py",
