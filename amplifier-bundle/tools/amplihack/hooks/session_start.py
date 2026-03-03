@@ -169,10 +169,24 @@ class SessionStartHook(HookProcessor):
         # Build context if needed
         context_parts = []
 
-        # Add project context
+        # Add project context (from PROJECT.md if available, otherwise generic)
         context_parts.append("## Project Context")
-        context_parts.append("This is the Microsoft Hackathon 2025 Agentic Coding project.")
-        context_parts.append("Focus on building AI-powered development tools.")
+        project_md = self.project_root / ".claude" / "context" / "PROJECT.md"
+        if project_md.exists():
+            try:
+                project_content = project_md.read_text().strip()
+                # Extract the first non-empty, non-header line as a summary
+                for line in project_content.splitlines():
+                    stripped = line.strip()
+                    if stripped and not stripped.startswith("#") and not stripped.startswith("---"):
+                        context_parts.append(stripped)
+                        break
+                else:
+                    context_parts.append("Project context loaded from PROJECT.md.")
+            except Exception:
+                context_parts.append("Project context available in .claude/context/PROJECT.md.")
+        else:
+            context_parts.append("Project context available in CLAUDE.md or .claude/context/PROJECT.md.")
 
         # Check for recent discoveries from memory
         context_parts.append("\n## Recent Learnings")
