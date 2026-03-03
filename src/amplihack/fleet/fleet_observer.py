@@ -100,7 +100,7 @@ class FleetObserver:
     """
 
     azlin_path: str = field(default_factory=get_azlin_path)
-    capture_lines: int = 50  # Number of lines to capture from pane
+    capture_lines: int = 5000  # Capture full terminal scrollback
     _previous_captures: dict[str, str] = field(default_factory=dict)
     _last_change_time: dict[str, float] = field(default_factory=dict)
     stuck_threshold_seconds: float = 300.0  # 5 minutes without change = stuck
@@ -127,16 +127,15 @@ class FleetObserver:
             )
 
         lines = pane_content.strip().split("\n")
-        # Focus on last N non-empty lines
-        recent_lines = [l for l in lines[-20:] if l.strip()]
+        non_empty_lines = [l for l in lines if l.strip()]
 
-        status, confidence, pattern = self._classify_output(recent_lines, vm_name, session_name)
+        status, confidence, pattern = self._classify_output(non_empty_lines, vm_name, session_name)
 
         return ObservationResult(
             session_name=session_name,
             vm_name=vm_name,
             status=status,
-            last_output_lines=recent_lines[-10:],
+            last_output_lines=non_empty_lines,
             confidence=confidence,
             matched_pattern=pattern,
             observed_at=datetime.now(),
@@ -228,13 +227,6 @@ class FleetObserver:
         else:
             self._last_change_time[key] = now
         self._previous_captures[key] = combined
-
-        # Evict stale entries to prevent unbounded growth
-        if len(self._previous_captures) > 500:
-            oldest_keys = list(self._previous_captures.keys())[:-500]
-            for k in oldest_keys:
-                self._previous_captures.pop(k, None)
-                self._last_change_time.pop(k, None)
 
         # 6. Idle (shell prompt, no agent)
         last_line = lines[-1].strip() if lines else ""

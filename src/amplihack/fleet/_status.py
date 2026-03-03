@@ -31,11 +31,13 @@ def infer_agent_status(tmux_text: str) -> str:
         "completed" -- Goal achieved or PR created
         "unknown" -- Cannot determine status
     """
-    last_lines = tmux_text.strip().split("\n")[-10:]
-    combined = "\n".join(last_lines)
+    all_lines = tmux_text.strip().split("\n")
+    combined = "\n".join(all_lines)
     combined_lower = combined.lower()
-    last_line = last_lines[-1].strip() if last_lines else ""
+    last_line = all_lines[-1].strip() if all_lines else ""
     last_line_lower = last_line.lower()
+    # Use all lines for pattern matching — status inference needs full context
+    last_lines = all_lines
 
     # Helper: find the prompt line and check if user typed input
     prompt_line_text = ""
