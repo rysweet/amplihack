@@ -27,10 +27,29 @@ Public API (the "studs"):
 
 from __future__ import annotations
 
+import logging
 import threading
 import uuid
 from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
+
+logger = logging.getLogger(__name__)
+
+# Graceful imports for retrieval pipeline modules
+try:
+    from .embeddings import EmbeddingGenerator as _EmbeddingGeneratorType
+
+    _HAS_EMBEDDINGS = True
+except ImportError:
+    _EmbeddingGeneratorType = None  # type: ignore[assignment,misc]
+    _HAS_EMBEDDINGS = False
+
+try:
+    from .reranker import hybrid_score_weighted, rrf_merge
+
+    _HAS_RERANKER = True
+except ImportError:
+    _HAS_RERANKER = False
 
 # ---------------------------------------------------------------------------
 # Data models
@@ -258,15 +277,24 @@ class InMemoryHiveGraph:
         >>> assert len(results) >= 1
     """
 
-    def __init__(self, hive_id: str = "test-hive", broadcast_threshold: float = 0.9) -> None:
+    def __init__(
+        self,
+        hive_id: str = "test-hive",
+        broadcast_threshold: float = 0.9,
+        embedding_generator: Any | None = None,
+    ) -> None:
         self._hive_id = hive_id
-        self._broadcast_threshold = broadcast_threshold
+        self._broadcast_threshold = max(0.0, min(1.0, broadcast_threshold))
         self._agents: dict[str, HiveAgent] = {}
         self._facts: dict[str, HiveFact] = {}
         self._edges: list[HiveEdge] = []
         self._parent: HiveGraph | None = None
         self._children: list[HiveGraph] = []
         self._lock = threading.RLock()
+        # Embedding support: when provided, promote_fact generates embeddings
+        # and query_facts uses vector search as primary signal
+        self._embedding_generator = embedding_generator
+        self._embeddings: dict[str, list[float]] = {}  # fact_id -> embedding vector
 
     # -- Property --------------------------------------------------------------
 
@@ -374,6 +402,19 @@ class InMemoryHiveGraph:
             self._agents[agent_id].fact_count += 1
             fact_id = fact.fact_id
 
+            # Generate embedding if generator available
+            if self._embedding_generator is not None:
+                try:
+                    text = f"{fact.content} {fact.concept}".strip()
+                    emb = self._embedding_generator.embed(text)
+                    if emb is not None:
+                        # Convert numpy arrays to plain lists if needed
+                        self._embeddings[fact.fact_id] = (
+                            emb.tolist() if hasattr(emb, "tolist") else list(emb)
+                        )
+                except Exception:
+                    logger.debug("Failed to generate embedding for fact %s", fact.fact_id)
+
         # Proposal 4: Auto-replicate high-confidence facts to sibling groups.
         # This ensures important facts are available in ALL groups, not just
         # the one where they were promoted. Prevents "fact in wrong group"
@@ -399,11 +440,12 @@ class InMemoryHiveGraph:
             return self._facts.get(fact_id)
 
     def query_facts(self, query: str, limit: int = 20) -> list[HiveFact]:
-        """Search facts by keyword query.
+        """Search facts by keyword query, with optional vector search.
 
-        Scores each fact by counting how many query keywords appear
-        in either its content or concept. Returns top matches sorted
-        by score descending, then confidence descending.
+        When an embedding_generator is available, uses vector search as
+        the primary signal with hybrid scoring (semantic_similarity 0.5 +
+        confirmation_count 0.3 + source_trust 0.2). Falls back to keyword
+        search if embeddings unavailable or vector search fails.
 
         Args:
             query: Space-separated keywords.
@@ -416,23 +458,86 @@ class InMemoryHiveGraph:
             if not query or not query.strip():
                 return list(self._facts.values())[:limit]
 
-            keywords = _tokenize(query)
-            if not keywords:
-                return list(self._facts.values())[:limit]
+            # Try vector search first when embeddings are available
+            if (
+                self._embedding_generator is not None
+                and self._embeddings
+                and _HAS_RERANKER
+            ):
+                try:
+                    return self._vector_query(query, limit)
+                except Exception:
+                    logger.debug("Vector search failed, falling back to keyword search")
 
-            scored: list[tuple[float, HiveFact]] = []
-            for fact in self._facts.values():
-                if fact.status == "retracted":
-                    continue
-                fact_words = _tokenize(f"{fact.content} {fact.concept}")
-                hits = len(keywords & fact_words)
-                if hits > 0:
-                    # Score: keyword hits + confidence as tiebreaker
-                    score = hits + fact.confidence * 0.01
-                    scored.append((score, fact))
+            # Keyword fallback
+            return self._keyword_query(query, limit)
 
-            scored.sort(key=lambda x: (-x[0], -x[1].confidence))
-            return [f for _, f in scored[:limit]]
+    def _cosine_sim(self, a: list[float], b: list[float]) -> float:
+        """Compute cosine similarity between two vectors."""
+        import math
+
+        if len(a) != len(b) or not a:
+            # Pad shorter vector
+            max_len = max(len(a), len(b))
+            a = a + [0.0] * (max_len - len(a))
+            b = b + [0.0] * (max_len - len(b))
+        dot = sum(x * y for x, y in zip(a, b))
+        norm_a = math.sqrt(sum(x * x for x in a))
+        norm_b = math.sqrt(sum(x * x for x in b))
+        if norm_a == 0.0 or norm_b == 0.0:
+            return 0.0
+        return dot / (norm_a * norm_b)
+
+    def _vector_query(self, query: str, limit: int) -> list[HiveFact]:
+        """Vector search with hybrid scoring. Must be called under lock."""
+        query_emb = self._embedding_generator.embed(query)
+        if query_emb is None:
+            return self._keyword_query(query, limit)
+        query_vec = query_emb.tolist() if hasattr(query_emb, "tolist") else list(query_emb)
+
+        scored: list[tuple[float, HiveFact]] = []
+        for fact in self._facts.values():
+            if fact.status == "retracted":
+                continue
+            fact_emb = self._embeddings.get(fact.fact_id)
+            if fact_emb is None:
+                continue
+            sim = self._cosine_sim(query_vec, fact_emb)
+            # Count confirmations from edges
+            conf_count = sum(
+                1 for e in self._edges
+                if e.target_id == fact.fact_id and e.edge_type == "CONFIRMED_BY"
+            )
+            agent = self._agents.get(fact.source_agent)
+            trust = agent.trust if agent else 1.0
+            score = hybrid_score_weighted(
+                semantic_similarity=sim,
+                confirmation_count=conf_count,
+                source_trust=trust,
+            )
+            scored.append((score, fact))
+
+        scored.sort(key=lambda x: (-x[0], -x[1].confidence))
+        return [f for _, f in scored[:limit]]
+
+    def _keyword_query(self, query: str, limit: int) -> list[HiveFact]:
+        """Keyword-based search. Must be called under lock."""
+        keywords = _tokenize(query)
+        if not keywords:
+            return list(self._facts.values())[:limit]
+
+        scored: list[tuple[float, HiveFact]] = []
+        for fact in self._facts.values():
+            if fact.status == "retracted":
+                continue
+            fact_words = _tokenize(f"{fact.content} {fact.concept}")
+            hits = len(keywords & fact_words)
+            if hits > 0:
+                score = hits + fact.confidence * 0.01
+                scored.append((score, fact))
+
+        scored.sort(key=lambda x: (-x[0], -x[1].confidence))
+        return [f for _, f in scored[:limit]]
 
     def retract_fact(self, fact_id: str) -> bool:
         """Retract a fact. Returns True if found and retracted."""
@@ -694,15 +799,39 @@ class InMemoryHiveGraph:
                     seen_content.add(f.content)
                     results.append(f)
 
-        # Phase 2: Global re-ranking by keyword score
-        if keywords:
+        # Phase 2: Global re-ranking
+        # Use RRF merge when multiple sources contributed facts
+        # (keyword ranking + confidence ranking), with graceful fallback
+        has_multi_source = len(children) > 0 or parent is not None
+        if keywords and _HAS_RERANKER and has_multi_source:
+            try:
+                def _keyword_score(fact: HiveFact) -> float:
+                    fact_words = _tokenize(f"{fact.content} {fact.concept}")
+                    hits = len(keywords & fact_words)
+                    return hits + fact.confidence * 0.01
 
-            def _global_score(fact: HiveFact) -> float:
+                keyword_ranked = sorted(results, key=lambda f: -_keyword_score(f))
+                confidence_ranked = sorted(results, key=lambda f: -f.confidence)
+                scored_facts = rrf_merge(
+                    keyword_ranked, confidence_ranked,
+                    key="fact_id", limit=len(results),
+                )
+                results = [sf.fact for sf in scored_facts]
+            except Exception:
+                logger.debug("RRF merge failed, falling back to keyword re-ranking")
+                def _global_score(fact: HiveFact) -> float:
+                    fact_words = _tokenize(f"{fact.content} {fact.concept}")
+                    hits = len(keywords & fact_words)
+                    return hits + fact.confidence * 0.01
+
+                results.sort(key=lambda f: (-_global_score(f), -f.confidence))
+        elif keywords:
+            def _global_score_fb(fact: HiveFact) -> float:
                 fact_words = _tokenize(f"{fact.content} {fact.concept}")
                 hits = len(keywords & fact_words)
                 return hits + fact.confidence * 0.01
 
-            results.sort(key=lambda f: (-_global_score(f), -f.confidence))
+            results.sort(key=lambda f: (-_global_score_fb(f), -f.confidence))
         else:
             results.sort(key=lambda f: -f.confidence)
 

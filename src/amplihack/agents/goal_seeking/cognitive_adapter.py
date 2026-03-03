@@ -38,6 +38,21 @@ try:
 except ImportError:
     HAS_FEDERATED = False
 
+# Graceful imports for retrieval pipeline modules
+try:
+    from .hive_mind.quality import QualityGate, score_content_quality
+
+    _HAS_QUALITY = True
+except ImportError:
+    _HAS_QUALITY = False
+
+try:
+    from .hive_mind.query_expansion import expand_query, search_expanded
+
+    _HAS_QUERY_EXPANSION = True
+except ImportError:
+    _HAS_QUERY_EXPANSION = False
+
 
 class CognitiveAdapter:
     """Adapter providing FlatRetrieverAdapter-compatible interface over CognitiveMemory.
@@ -62,10 +77,19 @@ class CognitiveAdapter:
         db_path: str | Path | None = None,
         require_cognitive: bool = False,
         hive_store: Any | None = None,
+        quality_threshold: float = 0.3,
+        confidence_gate: float = 0.3,
+        enable_query_expansion: bool = False,
     ):
         self.agent_name = agent_name
         self.memory: Any = None  # CognitiveMemory or HierarchicalMemory
         self._hive_store = hive_store  # Optional shared hive for distributed memory
+        # Quality gate: reject facts below this quality score before promoting
+        self._quality_threshold = quality_threshold
+        # Confidence gate: skip hive results if max confidence below threshold
+        self._confidence_gate = confidence_gate
+        # Query expansion: opt-in, disabled by default
+        self._enable_query_expansion = enable_query_expansion and _HAS_QUERY_EXPANSION
 
         if db_path is None:
             db_path = Path.home() / ".amplihack" / "cognitive_memory" / agent_name
@@ -178,15 +202,24 @@ class CognitiveAdapter:
             return
         if not hasattr(self._hive_store, "promote_fact"):
             return
+        # Quality gate: reject low-quality content before promoting
+        quality_threshold = getattr(self, "_quality_threshold", 0.3)
+        if _HAS_QUALITY and quality_threshold > 0:
+            try:
+                quality = score_content_quality(fact, context)
+                if quality < quality_threshold:
+                    logger.debug(
+                        "Fact rejected by quality gate (%.2f < %.2f): %s",
+                        quality,
+                        quality_threshold,
+                        fact[:80],
+                    )
+                    return
+            except Exception:
+                logger.debug("Quality scoring failed, proceeding with promotion")
+
         try:
             from .hive_mind.hive_graph import HiveFact
-            from .hive_mind.quality import score_content_quality
-
-            # Quality gate: reject low-quality content before promoting
-            quality = score_content_quality(fact, context)
-            if quality < 0.3:
-                logger.debug("Fact rejected by quality gate (score=%.2f): %s", quality, fact[:50])
-                return
 
             hive_fact = HiveFact(
                 fact_id="",
@@ -284,56 +317,87 @@ class CognitiveAdapter:
     def _search_hive(self, query: str, limit: int = 50) -> list[dict[str, Any]]:
         """Search the shared hive store.
 
+        Optionally expands the query with synonyms when query expansion
+        is enabled. Applies a confidence gate -- if the maximum confidence
+        in results is below the threshold, returns empty list.
+
         Proposal 5: Prefer federated queries over local-only queries.
         Order: federated_query (FederatedGraphStore) → query_federated
         (InMemoryHiveGraph tree traversal) → query_facts (local only).
         """
         if self._hive_store is None:
             return []
+
+        # Optional query expansion
+        search_query = query
+        if self._enable_query_expansion and _HAS_QUERY_EXPANSION:
+            try:
+                expanded = expand_query(query)
+                if expanded:
+                    search_query = " ".join(expanded)
+            except Exception:
+                logger.debug("Query expansion failed, using original query")
+
         try:
-            # FederatedGraphStore.federated_query returns FederatedQueryResult
-            if hasattr(self._hive_store, "federated_query"):
-                fqr = self._hive_store.federated_query(query, limit=limit)
-                return [
-                    self._hive_fact_to_dict(
-                        content=r.get("content", ""),
-                        concept=r.get("concept", ""),
-                        confidence=r.get("confidence", 0.5),
-                        tags=r.get("tags", []),
-                        source=r.get("source", "unknown"),
+            results = self._execute_hive_search(search_query, limit)
+
+            # Confidence gate: skip hive results if max confidence below threshold
+            if results and self._confidence_gate > 0:
+                max_conf = max(r.get("confidence", 0.0) for r in results)
+                if max_conf < self._confidence_gate:
+                    logger.debug(
+                        "Hive results below confidence gate (%.2f < %.2f)",
+                        max_conf,
+                        self._confidence_gate,
                     )
-                    for r in (fqr.results if hasattr(fqr, "results") else fqr)
-                ]
-            # Proposal 5: Prefer query_federated (tree traversal) over
-            # query_facts (local only) so the adapter always uses the
-            # broadest available query when the hive has a federation tree.
-            if hasattr(self._hive_store, "query_federated"):
-                facts = self._hive_store.query_federated(query, limit=limit)
-                return [
-                    self._hive_fact_to_dict(
-                        content=f.content,
-                        concept=f.concept,
-                        confidence=f.confidence,
-                        tags=getattr(f, "tags", []),
-                        source=getattr(f, "source_agent", "unknown"),
-                    )
-                    for f in facts
-                ]
-            # Fallback: local-only query (no federation)
-            if hasattr(self._hive_store, "query_facts"):
-                facts = self._hive_store.query_facts(query, limit=limit)
-                return [
-                    self._hive_fact_to_dict(
-                        content=f.content,
-                        concept=f.concept,
-                        confidence=f.confidence,
-                        tags=getattr(f, "tags", []),
-                        source=getattr(f, "source_agent", "unknown"),
-                    )
-                    for f in facts
-                ]
+                    return []
+
+            return results
         except Exception:
             logger.exception("Error searching hive store")
+        return []
+
+    def _execute_hive_search(self, query: str, limit: int) -> list[dict[str, Any]]:
+        """Execute the actual hive search using the best available method."""
+        # FederatedGraphStore.federated_query returns FederatedQueryResult
+        if hasattr(self._hive_store, "federated_query"):
+            fqr = self._hive_store.federated_query(query, limit=limit)
+            return [
+                self._hive_fact_to_dict(
+                    content=r.get("content", ""),
+                    concept=r.get("concept", ""),
+                    confidence=r.get("confidence", 0.5),
+                    tags=r.get("tags", []),
+                    source=r.get("source", "unknown"),
+                )
+                for r in (fqr.results if hasattr(fqr, "results") else fqr)
+            ]
+        # Proposal 5: Prefer query_federated (tree traversal)
+        if hasattr(self._hive_store, "query_federated"):
+            facts = self._hive_store.query_federated(query, limit=limit)
+            return [
+                self._hive_fact_to_dict(
+                    content=f.content,
+                    concept=f.concept,
+                    confidence=f.confidence,
+                    tags=getattr(f, "tags", []),
+                    source=getattr(f, "source_agent", "unknown"),
+                )
+                for f in facts
+            ]
+        # Fallback: local-only query (no federation)
+        if hasattr(self._hive_store, "query_facts"):
+            facts = self._hive_store.query_facts(query, limit=limit)
+            return [
+                self._hive_fact_to_dict(
+                    content=f.content,
+                    concept=f.concept,
+                    confidence=f.confidence,
+                    tags=getattr(f, "tags", []),
+                    source=getattr(f, "source_agent", "unknown"),
+                )
+                for f in facts
+            ]
         return []
 
     def _get_all_hive_facts(self, limit: int = 50) -> list[dict[str, Any]]:

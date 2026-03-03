@@ -218,10 +218,45 @@ def rrf_merge(
     return result[:limit]
 
 
+def hybrid_score_weighted(
+    semantic_similarity: float = 0.0,
+    confirmation_count: int = 0,
+    source_trust: float = 1.0,
+    *,
+    w_semantic: float = 0.5,
+    w_confirmation: float = 0.3,
+    w_trust: float = 0.2,
+) -> float:
+    """Compute a hybrid relevance score combining multiple signals.
+
+    Default weights: semantic_similarity (0.5) + confirmation_count (0.3)
+    + source_trust (0.2).
+
+    Args:
+        semantic_similarity: Cosine similarity score (0.0-1.0).
+        confirmation_count: Number of confirming agents (0+).
+        source_trust: Trust score of the source agent (0.0-2.0).
+        w_semantic: Weight for semantic similarity.
+        w_confirmation: Weight for confirmation count.
+        w_trust: Weight for source trust.
+
+    Returns:
+        Combined score.
+    """
+    conf_score = min(1.0, confirmation_count / 5.0) if confirmation_count > 0 else 0.0
+    trust_score = min(1.0, source_trust / 2.0)
+    return (
+        w_semantic * semantic_similarity
+        + w_confirmation * conf_score
+        + w_trust * trust_score
+    )
+
+
 __all__ = [
     "CrossEncoderReranker",
     "ScoredFact",
     "hybrid_score",
+    "hybrid_score_weighted",
     "rrf_merge",
     "HAS_CROSS_ENCODER",
     "DEFAULT_CROSS_ENCODER_MODEL",
