@@ -90,7 +90,14 @@ def get_copilot_continuation(
                 f"Lock mode has been auto-disabled. Explain the situation and ask the user for guidance."
             )
 
-        if suggestion.action == "send_input" and suggestion.confidence >= 0.6:
+        # Import constant here (hooks dir may not have fleet on path at import time)
+        min_confidence = 0.6
+        try:
+            from amplihack.fleet._constants import MIN_CONFIDENCE_SEND
+            min_confidence = MIN_CONFIDENCE_SEND
+        except ImportError:
+            pass
+        if suggestion.action == "send_input" and suggestion.confidence >= min_confidence:
             _metric("copilot_send_input")
             progress = f"{suggestion.progress_pct}%" if suggestion.progress_pct is not None else "unknown"
             return (

@@ -24,6 +24,10 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
+from amplihack.fleet._constants import (
+    CONFIDENCE_COPILOT_WAIT,
+    DEFAULT_RECENT_MESSAGE_COUNT,
+)
 from amplihack.fleet._validation import is_dangerous_input
 from amplihack.fleet._backends import auto_detect_backend
 from amplihack.fleet.fleet_session_reasoner import (
@@ -40,35 +44,10 @@ __all__ = [
 
 logger = logging.getLogger(__name__)
 
-# Co-pilot specific system prompt (lighter than fleet admiral prompt)
-COPILOT_SYSTEM_PROMPT = """You are a Session Co-Pilot helping a Claude Code agent stay on track.
+# System prompt loaded from separate file — keeps prompts out of code
+from amplihack.fleet.prompts import load_prompt
 
-You are watching the local session's JSONL transcript. When the agent stops (completed a step,
-waiting for input, or got stuck), you decide the next action.
-
-Your options:
-1. SEND_INPUT: Provide the next instruction to keep moving toward the goal
-2. WAIT: The agent is still working — no intervention needed
-3. ESCALATE: The situation needs human attention
-4. MARK_COMPLETE: The goal has been achieved
-
-Respond in this exact JSON format:
-{
-  "action": "send_input|wait|escalate|mark_complete",
-  "input_text": "text to inject (only for send_input)",
-  "reasoning": "why you chose this action",
-  "confidence": 0.0 to 1.0,
-  "progress_pct": 0 to 100
-}
-
-Key rules:
-- If the agent is actively thinking/processing, ALWAYS WAIT
-- Track progress toward the stated goal
-- When suggesting input, be specific and actionable
-- NEVER suggest destructive operations
-- If confidence < 0.6, default to WAIT
-- Mark complete only when the goal is clearly achieved (PR created, tests pass)
-"""
+COPILOT_SYSTEM_PROMPT = load_prompt("copilot_system.prompt")
 
 
 @dataclass
@@ -139,7 +118,10 @@ def read_local_transcript(
         return ""
 
 
-def build_rich_context(transcript_text: str, recent_message_count: int = 500) -> str:
+def build_rich_context(
+    transcript_text: str,
+    recent_message_count: int = DEFAULT_RECENT_MESSAGE_COUNT,
+) -> str:
     """Build intelligent context from a transcript for LLM reasoning.
 
     Always includes:
@@ -433,7 +415,7 @@ class SessionCopilot:
             suggestion = CopilotSuggestion(
                 action="wait",
                 reasoning="Agent has a tool call in flight — no intervention needed",
-                confidence=0.95,
+                confidence=CONFIDENCE_COPILOT_WAIT,
                 progress_pct=self._estimate_progress(transcript),
             )
             self._suggestions.append(suggestion)
