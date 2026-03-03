@@ -1,0 +1,25 @@
+# API Workflow Test - {workflow_name}
+# Auto-generated outside-in test scenario
+
+scenario:
+  name: "API Workflow - {workflow_name}"
+  description: |
+    Verifies the end-to-end {workflow_name} workflow by executing a sequence
+    of API calls and validating the business logic.
+  type: api
+  level: 2
+  tags: [api, workflow, integration, auto-generated]
+
+  prerequisites:
+    - "API server is running at {base_url}"
+
+  variables:
+    base_url: "{base_url}"
+
+  steps:
+{workflow_steps}
+
+  cleanup:
+    - action: log_response
+      save_as: "workflow-{workflow_slug}-result.json"
+      description: "Save workflow results"

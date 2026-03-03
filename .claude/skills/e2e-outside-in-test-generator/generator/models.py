@@ -2,6 +2,8 @@
 
 All dataclasses used throughout the test generation system.
 Provides type-safe data structures with validation.
+
+Supports multiple app types: Web, CLI, TUI, API, MCP.
 """
 
 from dataclasses import dataclass, field
@@ -10,9 +12,20 @@ from pathlib import Path
 from typing import Any
 
 
+class AppType(Enum):
+    """Application types supported for test generation."""
+
+    WEB = "web"
+    CLI = "cli"
+    TUI = "tui"
+    API = "api"
+    MCP = "mcp"
+
+
 class TestCategory(Enum):
     """Test categories for comprehensive coverage."""
 
+    # Web categories
     SMOKE = "smoke"
     FORM_INTERACTION = "form_interaction"
     COMPONENT_INTERACTION = "component_interaction"
@@ -20,6 +33,27 @@ class TestCategory(Enum):
     API_STREAMING = "api_streaming"
     RESPONSIVE = "responsive"
     PWA_BASICS = "pwa_basics"
+    # CLI categories
+    CLI_SMOKE = "cli_smoke"
+    CLI_COMMANDS = "cli_commands"
+    CLI_ERROR_HANDLING = "cli_error_handling"
+    CLI_INTEGRATION = "cli_integration"
+    # TUI categories
+    TUI_SMOKE = "tui_smoke"
+    TUI_NAVIGATION = "tui_navigation"
+    TUI_FORMS = "tui_forms"
+    TUI_INTERACTION = "tui_interaction"
+    # API categories
+    API_SMOKE = "api_smoke"
+    API_CRUD = "api_crud"
+    API_VALIDATION = "api_validation"
+    API_AUTH = "api_auth"
+    API_WORKFLOW = "api_workflow"
+    # MCP categories
+    MCP_TOOL_SMOKE = "mcp_tool_smoke"
+    MCP_TOOL_VALIDATION = "mcp_tool_validation"
+    MCP_TOOL_ERROR = "mcp_tool_error"
+    MCP_WORKFLOW = "mcp_workflow"
 
 
 class LocatorStrategy(Enum):
@@ -113,6 +147,121 @@ class StackConfig:
 
 
 @dataclass
+class CLICommand:
+    """CLI command definition."""
+
+    name: str
+    description: str = ""
+    args: list[str] = field(default_factory=list)
+    flags: list[str] = field(default_factory=list)
+    subcommands: list[str] = field(default_factory=list)
+    required_args: list[str] = field(default_factory=list)
+
+
+@dataclass
+class CLIConfig:
+    """CLI application configuration."""
+
+    app_type: AppType = AppType.CLI
+    binary_path: str = ""
+    framework: str = "unknown"  # argparse, click, typer, commander, yargs, clap
+    commands: list[CLICommand] = field(default_factory=list)
+    global_flags: list[str] = field(default_factory=list)
+    has_interactive_mode: bool = False
+    has_help: bool = True
+    has_version: bool = True
+
+
+@dataclass
+class TUIWidget:
+    """TUI widget/element definition."""
+
+    name: str
+    widget_type: str  # list, form, table, tree, input, button, panel
+    description: str = ""
+    keyboard_shortcuts: list[str] = field(default_factory=list)
+
+
+@dataclass
+class TUIConfig:
+    """TUI application configuration."""
+
+    app_type: AppType = AppType.TUI
+    binary_path: str = ""
+    framework: str = "unknown"  # textual, blessed, rich, ink, bubbletea, cursive
+    widgets: list[TUIWidget] = field(default_factory=list)
+    screens: list[str] = field(default_factory=list)
+    keyboard_shortcuts: dict[str, str] = field(default_factory=dict)
+    has_mouse_support: bool = False
+    terminal_width: int = 80
+    terminal_height: int = 24
+
+
+@dataclass
+class APIEndpointSpec:
+    """API endpoint from OpenAPI spec."""
+
+    path: str
+    method: str
+    operation_id: str = ""
+    summary: str = ""
+    description: str = ""
+    request_body_schema: dict | None = None
+    response_schema: dict | None = None
+    parameters: list[dict] = field(default_factory=list)
+    requires_auth: bool = False
+    tags: list[str] = field(default_factory=list)
+
+
+@dataclass
+class APIConfig:
+    """API application configuration from OpenAPI/Swagger spec."""
+
+    app_type: AppType = AppType.API
+    spec_file: str = ""
+    spec_format: str = "openapi"  # openapi, swagger, graphql
+    base_url: str = "http://localhost:3000"
+    api_version: str = ""
+    endpoints: list[APIEndpointSpec] = field(default_factory=list)
+    auth_type: str = "none"  # none, bearer, api_key, oauth2, basic
+    schemas: dict[str, dict] = field(default_factory=dict)
+
+
+@dataclass
+class MCPTool:
+    """MCP tool definition."""
+
+    name: str
+    description: str = ""
+    input_schema: dict = field(default_factory=dict)
+    required_inputs: list[str] = field(default_factory=list)
+    output_description: str = ""
+
+
+@dataclass
+class MCPResource:
+    """MCP resource definition."""
+
+    uri: str
+    name: str = ""
+    description: str = ""
+    mime_type: str = ""
+
+
+@dataclass
+class MCPConfig:
+    """MCP server configuration."""
+
+    app_type: AppType = AppType.MCP
+    server_command: str = ""
+    server_args: list[str] = field(default_factory=list)
+    transport: str = "stdio"  # stdio, sse
+    tools: list[MCPTool] = field(default_factory=list)
+    resources: list[MCPResource] = field(default_factory=list)
+    protocol_version: str = ""
+
+
+@dataclass
 class StackDetectionResult:
     """Result of stack detection with confidence scores."""
 
@@ -171,14 +320,12 @@ class GenerationConfig:
     enable_coverage_audit: bool = True
     custom_templates: list[str] = field(default_factory=list)
     workers: int = 1  # MANDATORY: Must always be 1
-    output_dir: str = "e2e"  # MANDATORY: Must be "e2e" not "tests/e2e"
+    output_dir: str = "e2e"
 
     def __post_init__(self):
         """Validate configuration."""
         if self.workers != 1:
             raise ValueError("workers MUST be 1 for deterministic test execution")
-        if self.output_dir != "e2e":
-            raise ValueError("output_dir MUST be 'e2e' not 'tests/e2e'")
 
 
 @dataclass

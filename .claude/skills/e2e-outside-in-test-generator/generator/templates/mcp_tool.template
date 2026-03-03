@@ -1,0 +1,47 @@
+# MCP Tool Test - {tool_name}
+# Auto-generated outside-in test scenario
+
+scenario:
+  name: "MCP Tool - {tool_name}"
+  description: |
+    Verifies the MCP tool '{tool_name}' responds correctly to valid input,
+    validates required parameters, and handles errors gracefully.
+    Tool description: {tool_description}
+  type: mcp
+  level: 1
+  tags: [mcp, tool, {tool_name}, auto-generated]
+
+  prerequisites:
+    - "MCP server is available via {transport} transport"
+
+  environment:
+    variables:
+      MCP_TRANSPORT: "{transport}"
+
+  steps:
+    - action: mcp_connect
+      command: "{server_command}"
+      args: [{server_args}]
+      transport: "{transport}"
+      description: "Connect to MCP server"
+      timeout: 15s
+
+    - action: mcp_call_tool
+      tool: "{tool_name}"
+      input: {valid_input}
+      description: "Call {tool_name} with valid input"
+      timeout: 30s
+
+    - action: verify_mcp_response
+      matches: "{response_pattern}"
+      description: "Tool should return expected output"
+
+{validation_steps}
+{error_steps}
+    - action: mcp_disconnect
+      description: "Disconnect from MCP server"
+
+  cleanup:
+    - action: mcp_disconnect
+      force: true
+      description: "Ensure MCP connection is closed"
