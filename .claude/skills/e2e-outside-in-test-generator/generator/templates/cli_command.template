@@ -1,0 +1,36 @@
+# CLI Command Test - {command_name}
+# Auto-generated outside-in test scenario
+
+scenario:
+  name: "CLI Command - {app_name} {command_name}"
+  description: |
+    Verifies that the '{command_name}' command works correctly with valid arguments,
+    produces expected output, and handles basic error cases.
+  type: cli
+  level: 1
+  tags: [cli, command, {command_name}, auto-generated]
+
+  prerequisites:
+    - "{binary_path} binary exists and is executable"
+
+  steps:
+    - action: launch
+      target: "{binary_path}"
+      args: [{command_args}]
+      description: "Run {command_name} with valid arguments"
+      timeout: 15s
+
+    - action: verify_output
+      matches: "{success_pattern}"
+      timeout: 10s
+      description: "Command should produce expected output"
+
+    - action: verify_exit_code
+      expected: 0
+      description: "Command should succeed with valid args"
+
+{extra_steps}
+  cleanup:
+    - action: stop_application
+      force: true
+      description: "Ensure process is terminated"

@@ -158,9 +158,8 @@ class SessionStartHook(HookProcessor):
             self.log(f"Settings merge failed (non-critical): {e}", "WARNING")
             self.save_metric("settings_update_error", True)
 
-        # Neo4j has been removed from this project (Week 7 cleanup)
-        # Memory functionality now uses Kuzu backend exclusively
-        self.log("Using Kuzu memory backend (Neo4j removed)")
+        # Memory functionality uses Kuzu backend
+        self.log("Using Kuzu memory backend")
         self.save_metric("kuzu_backend", True)
 
         # Show auto-routing status to the user (visible in terminal via stderr)
@@ -169,10 +168,19 @@ class SessionStartHook(HookProcessor):
         # Build context if needed
         context_parts = []
 
-        # Add project context
-        context_parts.append("## Project Context")
-        context_parts.append("This is the Microsoft Hackathon 2025 Agentic Coding project.")
-        context_parts.append("Focus on building AI-powered development tools.")
+        # Add project context dynamically from .claude/context/PROJECT.md
+        # Do NOT hardcode project-specific context here — the hook must be project-agnostic.
+        # Project context is provided by the project itself via .claude/context/PROJECT.md.
+        project_context_file = self.project_root / ".claude" / "context" / "PROJECT.md"
+        if project_context_file.exists():
+            try:
+                with open(project_context_file) as f:
+                    project_context_content = f.read()
+                context_parts.append("## Project Context")
+                context_parts.append(project_context_content)
+                self.log(f"Loaded project context from: {project_context_file}")
+            except Exception as e:
+                self.log(f"Could not read project context: {e}", "WARNING")
 
         # Check for recent discoveries from memory
         context_parts.append("\n## Recent Learnings")

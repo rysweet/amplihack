@@ -1,0 +1,52 @@
+# TUI Navigation Test - {app_name}
+# Auto-generated outside-in test scenario
+
+scenario:
+  name: "TUI Navigation - {app_name} Keyboard Navigation"
+  description: |
+    Verifies keyboard navigation in {app_name} including arrow keys,
+    tab navigation, and screen transitions.
+  type: tui
+  level: 1
+  tags: [tui, navigation, keyboard, auto-generated]
+
+  prerequisites:
+    - "{binary_path} binary exists"
+    - "Terminal supports ANSI escape codes"
+
+  environment:
+    terminal_size:
+      width: {terminal_width}
+      height: {terminal_height}
+    variables:
+      TERM: "xterm-256color"
+
+  steps:
+    - action: launch
+      target: "{binary_path}"
+      args: [{launch_args}]
+      description: "Start TUI application"
+      timeout: 10s
+
+    - action: wait_for_screen
+      matches: "{ready_pattern}"
+      timeout: 5s
+      description: "Wait for application to render"
+
+{navigation_steps}
+    - action: capture_screenshot
+      save_as: "navigation-result.txt"
+      description: "Capture final navigation state"
+
+    - action: send_keypress
+      value: "{quit_key}"
+      description: "Exit application"
+
+    - action: verify_exit_code
+      expected: 0
+      description: "Should exit cleanly"
+
+  cleanup:
+    - action: stop_application
+      force: true
+      description: "Ensure process is terminated"
