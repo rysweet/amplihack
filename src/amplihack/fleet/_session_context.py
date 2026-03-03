@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from amplihack.fleet._validation import validate_vm_name
+from amplihack.fleet._validation import validate_session_name, validate_vm_name
 
 
 @dataclass
@@ -32,6 +32,7 @@ class SessionContext:
 
     def __post_init__(self):
         validate_vm_name(self.vm_name)
+        validate_session_name(self.session_name)
 
     def to_prompt_context(self) -> str:
         """Format context for the reasoning LLM call."""

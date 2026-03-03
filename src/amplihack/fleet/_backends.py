@@ -69,6 +69,7 @@ class CopilotBackend:
     def complete(self, system_prompt: str, user_prompt: str) -> str:
         import asyncio
 
+        # WARNING: asyncio.run() will crash if called from async context. See PATTERNS.md.
         return asyncio.run(self._async_complete(system_prompt, user_prompt))
 
     async def _async_complete(self, system_prompt: str, user_prompt: str) -> str:
@@ -139,10 +140,9 @@ def auto_detect_backend() -> LLMBackend:
 
     Priority:
     1. Anthropic (if ANTHROPIC_API_KEY set)
-    2. LiteLLM (always available -- declared dependency)
-    3. Copilot SDK (always available -- declared dependency)
+    2. LiteLLM (fallback -- always available as declared dependency)
 
-    Raises RuntimeError if no backend has valid credentials.
+    Always returns a backend; falls back to LiteLLMBackend.
     """
     if os.environ.get("ANTHROPIC_API_KEY"):
         return AnthropicBackend()
