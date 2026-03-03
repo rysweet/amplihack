@@ -45,7 +45,8 @@ DEFAULT_GRAPH_PATH = Path.home() / ".amplihack" / "fleet" / "graph.json"
 
 
 def _get_azlin() -> str:
-    return get_azlin_path()
+    """Get azlin path, installing it automatically if not found."""
+    return ensure_azlin()
 
 
 def _validate_vm_name_cli(ctx, param, value):
