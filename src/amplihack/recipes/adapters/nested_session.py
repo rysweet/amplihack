@@ -72,7 +72,7 @@ class NestedSessionAdapter:
         try:
             cmd = [self._cli, "-p", prompt]
 
-            # Launch process – no timeout
+            # Launch process - no timeout
             with open(output_file, "w") as log_fh:
                 proc = subprocess.Popen(
                     cmd,
@@ -92,7 +92,7 @@ class NestedSessionAdapter:
             tail_thread.start()
 
             try:
-                proc.wait()  # No timeout – let it run
+                proc.wait()  # No timeout - let it run
             finally:
                 stop_event.set()
                 tail_thread.join(timeout=2)
@@ -119,7 +119,7 @@ class NestedSessionAdapter:
         self,
         command: str,
         working_dir: str = ".",
-        timeout: int = 120,
+        timeout: int | None = None,
     ) -> str:
         """Execute a bash command via subprocess.
 

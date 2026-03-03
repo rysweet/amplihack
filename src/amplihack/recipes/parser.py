@@ -190,7 +190,7 @@ class RecipeParser:
             parse_json=raw.get("parse_json", False),
             mode=raw.get("mode"),
             working_dir=raw.get("working_dir"),
-            timeout=raw.get("timeout", 120),
+            timeout=raw.get("timeout"),
             auto_stage=raw.get("auto_stage"),
         )
 
