@@ -68,6 +68,7 @@ class HiveFact:
         source_agent: ID of the agent that contributed this fact.
         tags: Categorization tags.
         status: Fact status: "promoted", "quarantined", "contradicted", "retracted".
+        embedding: Optional dense vector for semantic search.
     """
 
     fact_id: str
@@ -77,6 +78,7 @@ class HiveFact:
     source_agent: str = ""
     tags: list[str] = field(default_factory=list)
     status: str = "promoted"
+    embedding: Any = None
 
 
 @dataclass
@@ -256,8 +258,9 @@ class InMemoryHiveGraph:
         >>> assert len(results) >= 1
     """
 
-    def __init__(self, hive_id: str = "test-hive") -> None:
+    def __init__(self, hive_id: str = "test-hive", broadcast_threshold: float = 0.9) -> None:
         self._hive_id = hive_id
+        self._broadcast_threshold = broadcast_threshold
         self._agents: dict[str, HiveAgent] = {}
         self._facts: dict[str, HiveFact] = {}
         self._edges: list[HiveEdge] = []
@@ -380,7 +383,12 @@ class InMemoryHiveGraph:
         is_broadcast_copy = any(
             t.startswith("broadcast_from:") or t.startswith("escalated_from:") for t in fact.tags
         )
-        if fact.confidence >= 0.9 and self._parent is not None and not is_broadcast_copy:
+        if (
+            fact.confidence >= self._broadcast_threshold
+            and self._parent is not None
+            and not is_broadcast_copy
+        ):
+            self.escalate_fact(fact)
             self._parent.broadcast_fact(fact)
 
         return fact_id

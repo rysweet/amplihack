@@ -180,6 +180,13 @@ class CognitiveAdapter:
             return
         try:
             from .hive_mind.hive_graph import HiveFact
+            from .hive_mind.quality import score_content_quality
+
+            # Quality gate: reject low-quality content before promoting
+            quality = score_content_quality(fact, context)
+            if quality < 0.3:
+                logger.debug("Fact rejected by quality gate (score=%.2f): %s", quality, fact[:50])
+                return
 
             hive_fact = HiveFact(
                 fact_id="",
