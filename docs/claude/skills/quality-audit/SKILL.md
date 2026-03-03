@@ -1,8 +1,9 @@
 ---
-name: quality-audit-workflow
-description: Comprehensive codebase quality audit with parallel agent orchestration, GitHub issue creation, automated PR generation per issue, and PM-prioritized recommendations. Use for code review, refactoring audits, technical debt analysis, module quality assessment, or codebase health checks.
-source_urls:
-  - https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices
+name: quality-audit
+description: Iterative codebase quality audit with multi-agent validation and escalating-depth SEEK/VALIDATE/FIX/RECURSE cycle. Use for quality audit, code audit, codebase review, technical debt audit, refactoring opportunities, module quality check, or architecture review.
+metadata:
+  version: "3.0"
+  author: amplihack
 ---
 
 # Quality Audit Workflow

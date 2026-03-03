@@ -1,53 +1,13 @@
 # Skill Builder Reference Documentation
 
-This file contains comprehensive documentation about Claude Code skills, built from official sources and research. Updated: 2025-11-16
+This file contains documentation about Claude Code skills, built from
+official sources. For the latest versions, see the URLs in SKILL.md.
 
 ---
 
-## Key Updates (2025-11-16)
+## Progressive Disclosure
 
-**CRITICAL CHANGES - Progressive Disclosure Emphasis:**
-
-1. **Lower Token Threshold for SKILL.md:**
-   - OLD: "Keep under 5,000 tokens"
-   - NEW: "Target 1,000-2,000 tokens"
-   - Warning at 2,000+, not 5,000+
-
-2. **MANDATORY Navigation Guide:**
-   - Required for ALL multi-file skills
-   - Must explicitly state when to read each supporting file
-   - Template provided in "Progressive Disclosure Pattern" section
-   - Reference example: agent-sdk skill lines 376-408
-
-3. **Source URLs Now Required:**
-   - MANDATORY in YAML frontmatter for skills based on external docs
-   - Enables drift detection and attribution
-   - Format: `source_urls: [list of URLs]`
-
-4. **Content-Based Splitting:**
-   - Split based on CONTENT (beginner vs expert), not just token count
-   - SKILL.md = Quick start covering 80% of use cases
-   - Supporting files = Deep dives, complete API reference, advanced patterns
-   - Reference example: agent-sdk (514-line SKILL.md with 4 supporting files)
-
-5. **Supporting File Templates:**
-   - reference.md: Complete API reference, architecture, configuration
-   - examples.md: Working copy-paste code examples
-   - patterns.md: Production patterns, anti-patterns, optimization
-   - All templates included in this document
-
-**What This Means:**
-
-- Progressive disclosure is now the DEFAULT approach, not an exception
-- Skills should use supporting files even if SKILL.md is under 2,000 tokens
-- Better organization = better user experience (quick start vs deep dive)
-
----
-
-## Table of Contents
-
-1. [How Claude Code Skills Work](#how-claude-code-skills-work)
-2. [Skill Architecture](#skill-architecture)
+Skills
 3. [YAML Frontmatter Specification](#yaml-frontmatter-specification)
 4. [Progressive Disclosure Pattern](#progressive-disclosure-pattern)
 5. [File Structure & Organization](#file-structure--organization)
