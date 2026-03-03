@@ -32,7 +32,7 @@ from amplihack.fleet._constants import (
     DEFAULT_STUCK_THRESHOLD_SECONDS,
 )
 from amplihack.fleet._defaults import get_azlin_path
-from amplihack.fleet._validation import validate_vm_name
+from amplihack.fleet._validation import validate_session_name, validate_vm_name
 from amplihack.fleet.fleet_state import AgentStatus, TmuxSessionInfo
 
 __all__ = ["FleetObserver", "ObservationResult"]
@@ -167,7 +167,9 @@ class FleetObserver:
         import shlex
 
         validate_vm_name(vm_name)
-        if any(c in session_name for c in ["\n", "`", "$", "|", "&", ";"]):
+        try:
+            validate_session_name(session_name)
+        except ValueError:
             return None  # Reject unsafe session names
 
         cmd = f"tmux capture-pane -t {shlex.quote(session_name)} -p -S -{self.capture_lines} 2>/dev/null"

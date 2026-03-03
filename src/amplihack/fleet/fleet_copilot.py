@@ -175,7 +175,12 @@ def build_rich_context(
                 break
 
     # 2. Determine split point
-    if total <= recent_message_count:
+    if total == 1:
+        # Single entry — return as recent context only, no duplication
+        recent_lines = lines
+        middle_summary = ""
+        first_user_msg = ""  # Skip ORIGINAL USER REQUEST section
+    elif total <= recent_message_count:
         # Transcript fits entirely — no summarization needed
         recent_lines = lines
         middle_summary = ""
@@ -232,7 +237,18 @@ def _summarize_entries(lines: list[str]) -> str:
 
         msg_type = entry.get("type", "")
         if msg_type == "tool_use":
-            tool_uses[entry.get("name", "unknown")] = tool_uses.get(entry.get("name", "unknown"), 0) + 1
+            # Tool name may be at top-level "name" or nested in message content blocks
+            tool_name = entry.get("name", "")
+            if not tool_name:
+                msg_content = entry.get("message", {}).get("content", [])
+                if isinstance(msg_content, list):
+                    for block in msg_content:
+                        if isinstance(block, dict) and block.get("type") == "tool_use":
+                            tool_name = block.get("name", "")
+                            if tool_name:
+                                break
+            tool_name = tool_name or "unknown"
+            tool_uses[tool_name] = tool_uses.get(tool_name, 0) + 1
         elif msg_type in ("human", "user"):
             user_msgs += 1
         elif msg_type == "assistant":
@@ -322,6 +338,12 @@ def _infer_jsonl_status(transcript_text: str) -> str:
 
         if msg_type == "tool_use":
             return "tool_running"
+
+        if msg_type == "tool_result":
+            return "idle"  # Tool finished, agent should respond next
+
+        if msg_type in ("human", "user"):
+            return "tool_running"  # Agent processing user input
 
         if msg_type == "assistant":
             # Check content for completion/error signals
