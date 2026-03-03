@@ -55,18 +55,29 @@ class SettingsMigrator:
     while preserving all other hooks and settings. Creates backups before modification.
     """
 
-    # Patterns to detect amplihack hooks
+    # Patterns to detect amplihack hooks (substring match against command field).
+    # Covers all amplihack hook scripts. XPIA hooks (xpia/hooks/*) are NOT matched
+    # here — they are security hooks that belong in global settings.
     AMPLIHACK_HOOK_PATTERNS = [
         "amplihack/hooks/stop.py",
-        ".claude/tools/amplihack/hooks/stop.py",
         "amplihack/hooks/session_start.py",
-        ".claude/tools/amplihack/hooks/session_start.py",
         "amplihack/hooks/pre_tool_use.py",
-        ".claude/tools/amplihack/hooks/pre_tool_use.py",
         "amplihack/hooks/post_tool_use.py",
-        ".claude/tools/amplihack/hooks/post_tool_use.py",
         "amplihack/hooks/pre_compact.py",
-        ".claude/tools/amplihack/hooks/pre_compact.py",
+        "amplihack/hooks/session_end.py",
+        "amplihack/hooks/user_prompt_submit.py",
+        "amplihack/hooks/workflow_classification_reminder.py",
+    ]
+
+    # All Claude Code hook event types that may contain amplihack hooks
+    ALL_HOOK_TYPES = [
+        "SessionStart",
+        "Stop",
+        "PreToolUse",
+        "PostToolUse",
+        "PreCompact",
+        "SessionEnd",
+        "UserPromptSubmit",
     ]
 
     def __init__(self, project_root: Path | None = None):
@@ -126,7 +137,7 @@ class SettingsMigrator:
             hooks = settings.get("hooks", {})
 
             # Check all hook types
-            for hook_type in ["Stop", "SessionStart", "PreToolUse", "PostToolUse", "PreCompact"]:
+            for hook_type in self.ALL_HOOK_TYPES:
                 hook_configs = hooks.get(hook_type, [])
 
                 for hook_config in hook_configs:
@@ -165,7 +176,8 @@ class SettingsMigrator:
 
             if not global_hooks_found:
                 self.log("No global amplihack hooks found")
-                # Still check project settings
+                # Still deduplicate project settings if they exist
+                self._deduplicate_settings_file(self.project_settings_path)
                 project_hook_ensured = self.project_settings_path.exists()
                 return HookMigrationResult(
                     success=True,
@@ -198,6 +210,12 @@ class SettingsMigrator:
                 )
 
             self.log("Successfully removed global amplihack hooks")
+
+            # Deduplicate any remaining hooks in global settings
+            self._deduplicate_settings_file(self.global_settings_path)
+
+            # Also deduplicate project settings (prevents duplicates there too)
+            self._deduplicate_settings_file(self.project_settings_path)
 
             # Check project settings
             project_hook_ensured = self.project_settings_path.exists()
@@ -263,7 +281,7 @@ class SettingsMigrator:
             # Remove amplihack hooks while preserving others
             hooks = settings.get("hooks", {})
 
-            for hook_type in ["Stop", "SessionStart", "PreToolUse", "PostToolUse", "PreCompact"]:
+            for hook_type in self.ALL_HOOK_TYPES:
                 if hook_type not in hooks:
                     continue
 
@@ -302,6 +320,67 @@ class SettingsMigrator:
         except (OSError, json.JSONDecodeError) as e:
             self.log(f"Error removing hooks: {e}")
             return False
+
+    def _deduplicate_settings_file(self, file_path: Path) -> None:
+        """Deduplicate hooks in a settings.json file.
+
+        Args:
+            file_path: Path to settings.json to deduplicate
+        """
+        if not file_path.exists():
+            return
+
+        try:
+            with open(file_path) as f:
+                settings = json.load(f)
+
+            removed = self.deduplicate_hooks(settings)
+
+            if removed > 0:
+                self.log(f"Removed {removed} duplicate hook entries from {file_path.name}")
+                self.safe_json_update(file_path, settings)
+        except (OSError, json.JSONDecodeError) as e:
+            self.log(f"Deduplication failed for {file_path}: {e}")
+
+    @staticmethod
+    def deduplicate_hooks(settings: dict[str, Any]) -> int:
+        """Remove duplicate hook entries from a settings dict (in-place).
+
+        Two hook config entries are considered duplicates when they have
+        the same set of command strings (order-independent). Other fields
+        like type, timeout, or matcher are ignored for comparison purposes
+        since real-world duplicates differ only in position, not metadata.
+
+        Args:
+            settings: Parsed settings.json dict (modified in-place)
+
+        Returns:
+            Number of duplicate entries removed
+        """
+        hooks = settings.get("hooks", {})
+        removed = 0
+
+        for hook_type, hook_configs in list(hooks.items()):
+            if not isinstance(hook_configs, list):
+                continue
+
+            seen_commands: set[frozenset[str]] = set()
+            unique_configs: list[dict[str, Any]] = []
+
+            for config in hook_configs:
+                # Build a signature from the command set in this config
+                commands = frozenset(h.get("command", "") for h in config.get("hooks", []))
+
+                if commands in seen_commands:
+                    removed += 1
+                    continue
+
+                seen_commands.add(commands)
+                unique_configs.append(config)
+
+            hooks[hook_type] = unique_configs
+
+        return removed
 
     def safe_json_update(self, file_path: Path, data: dict[str, Any]) -> bool:
         """Atomic JSON file update with backup.

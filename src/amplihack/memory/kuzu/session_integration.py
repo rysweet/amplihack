@@ -15,13 +15,17 @@ def setup_blarify_indexing(
     project_root: Path,
     log: Callable,
     save_metric: Callable,
-) -> None:
+) -> bool:
     """Check if blarify indexing is needed and dispatch it.
 
     Args:
         project_root: Project root directory
         log: Logger function (message, level)
         save_metric: Metric saving function (key, value)
+
+    Returns:
+        True if background indexing was started (DB will be locked),
+        False otherwise (safe to query the DB).
     """
     src_path = project_root / "src"
     if src_path.exists():
@@ -34,7 +38,7 @@ def setup_blarify_indexing(
     if not status.needs_indexing:
         log("Blarify index is fresh - no indexing needed")
         save_metric("blarify_index_fresh", True)
-        return
+        return False
 
     log(f"Blarify indexing needed: {status.reason}")
 
@@ -46,7 +50,7 @@ def setup_blarify_indexing(
             file=sys.stderr,
         )
         save_metric("blarify_missing_scip", True)
-        return
+        return False
 
     mode = os.environ.get("AMPLIHACK_BLARIFY_MODE", "background").lower()
 
@@ -57,12 +61,14 @@ def setup_blarify_indexing(
     if mode == "skip":
         log("User skipped blarify indexing (AMPLIHACK_BLARIFY_MODE=skip)")
         save_metric("blarify_indexing_skipped", True)
-    elif mode == "sync":
+        return False
+    if mode == "sync":
         print("  Mode: synchronous (AMPLIHACK_BLARIFY_MODE=sync)", file=sys.stderr)
         _run_sync(project_root, log, save_metric)
-    else:
-        print("  Mode: background indexing", file=sys.stderr)
-        _run_background(project_root, log, save_metric)
+        return False  # sync indexing completes before returning
+    print("  Mode: background indexing", file=sys.stderr)
+    _run_background(project_root, log, save_metric)
+    return True  # background indexer holds the DB lock
 
 
 def inject_code_graph_context(
@@ -91,21 +97,24 @@ def inject_code_graph_context(
 
     from amplihack.memory.kuzu.connector import KuzuConnector
 
-    conn = KuzuConnector(str(db_path))
-    conn.connect()
+    conn = KuzuConnector(str(db_path), read_only=True)
+    try:
+        conn.connect()
 
-    stats = {}
-    for label, query in [
-        ("files", "MATCH (cf:CodeFile) RETURN count(cf) as cnt"),
-        ("classes", "MATCH (c:CodeClass) RETURN count(c) as cnt"),
-        ("functions", "MATCH (f:CodeFunction) RETURN count(f) as cnt"),
-    ]:
-        try:
-            result = conn.execute_query(query)
-            stats[label] = result[0]["cnt"] if result else 0
-        except Exception as e:
-            log(f"Code graph query failed for {label}: {e}", "WARNING")
-            stats[label] = 0
+        stats = {}
+        for label, query in [
+            ("files", "MATCH (cf:CodeFile) RETURN count(cf) as cnt"),
+            ("classes", "MATCH (c:CodeClass) RETURN count(c) as cnt"),
+            ("functions", "MATCH (f:CodeFunction) RETURN count(f) as cnt"),
+        ]:
+            try:
+                result = conn.execute_query(query)
+                stats[label] = result[0]["cnt"] if result else 0
+            except Exception as e:
+                log(f"Code graph query failed for {label}: {e}", "WARNING")
+                stats[label] = 0
+    finally:
+        conn.close()
 
     total = stats.get("files", 0) + stats.get("classes", 0) + stats.get("functions", 0)
     if total == 0:
@@ -151,12 +160,15 @@ def _run_sync(project_root: Path, log: Callable, save_metric: Callable) -> None:
         connector = KuzuConnector(str(db_path))
         connector.connect()
 
-        result = Orchestrator(connector=connector).run(
-            codebase_path=project_root,
-            languages=["python", "javascript", "typescript"],
-            background=False,
-            config=IndexingConfig(max_retries=2),
-        )
+        try:
+            result = Orchestrator(connector=connector).run(
+                codebase_path=project_root,
+                languages=["python", "javascript", "typescript"],
+                background=False,
+                config=IndexingConfig(max_retries=2),
+            )
+        finally:
+            connector.close()
 
         if result.success:
             print(

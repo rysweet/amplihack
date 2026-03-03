@@ -26,6 +26,7 @@ Schema:
 import asyncio
 import json
 import logging
+import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
@@ -74,8 +75,9 @@ class KuzuBackend:
         # Create parent directory if needed
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Create database connection (Kùzu creates the file)
-        self.database = kuzu.Database(str(self.db_path))
+        # Create database connection with retry for lock contention.
+        # Kuzu only allows single-process access; concurrent hooks may race.
+        self.database = self._open_database_with_retry(self.db_path)
         self.connection = kuzu.Connection(self.database)
 
         # Initialize code graph integration (lazy loaded)
@@ -83,6 +85,42 @@ class KuzuBackend:
 
         # Thread pool for async operations (4 workers for Kuzu's multi-threading)
         self._executor = ThreadPoolExecutor(max_workers=4)
+
+    @staticmethod
+    def _open_database_with_retry(
+        db_path: Path, max_retries: int = 3, base_delay: float = 0.2
+    ) -> "kuzu.Database":
+        """Open Kuzu database with exponential backoff retry on lock contention.
+
+        Args:
+            db_path: Path to Kuzu database directory
+            max_retries: Maximum number of retry attempts
+            base_delay: Initial delay in seconds (doubles each retry)
+
+        Returns:
+            Open kuzu.Database instance
+
+        Raises:
+            RuntimeError: If all retries fail
+        """
+        last_error = None
+        for attempt in range(max_retries + 1):
+            try:
+                return kuzu.Database(str(db_path))
+            except RuntimeError as e:
+                last_error = e
+                if "Could not set lock on file" not in str(e):
+                    raise  # Not a lock contention error — don't retry
+                if attempt < max_retries:
+                    delay = base_delay * (2**attempt)
+                    logger.warning(
+                        "Kuzu DB locked (attempt %d/%d), retrying in %.1fs",
+                        attempt + 1,
+                        max_retries + 1,
+                        delay,
+                    )
+                    time.sleep(delay)
+        raise last_error  # type: ignore[misc]
 
     def get_capabilities(self) -> BackendCapabilities:
         """Get Kùzu backend capabilities."""

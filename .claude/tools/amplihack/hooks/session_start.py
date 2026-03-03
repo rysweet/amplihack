@@ -180,12 +180,15 @@ class SessionStartHook(HookProcessor):
         # Blarify Code Graph Indexing (on by default, disable with env var)
         # ═══════════════════════════════════════════════════════════════
         blarify_disabled = os.environ.get("AMPLIHACK_DISABLE_BLARIFY") == "1"
+        blarify_indexing_active = False
 
         if not blarify_disabled:
             try:
                 from amplihack.memory.kuzu.session_integration import setup_blarify_indexing
 
-                setup_blarify_indexing(self.project_root, self.log, self.save_metric)
+                blarify_indexing_active = setup_blarify_indexing(
+                    self.project_root, self.log, self.save_metric
+                )
             except Exception as e:
                 # Fail gracefully - NEVER block session start
                 self.log(f"Blarify setup failed (non-critical): {e}", "WARNING")
@@ -235,13 +238,18 @@ class SessionStartHook(HookProcessor):
             # Fallback if memory module not available
             context_parts.append("Check .claude/context/DISCOVERIES.md for recent insights.")
 
-        # Inject code graph context if blarify index exists
-        try:
-            from amplihack.memory.kuzu.session_integration import inject_code_graph_context
+        # Inject code graph context if blarify index exists and DB is not locked
+        if blarify_indexing_active:
+            self.log("Skipping code graph injection (background indexing in progress)")
+        else:
+            try:
+                from amplihack.memory.kuzu.session_integration import inject_code_graph_context
 
-            inject_code_graph_context(self.project_root, context_parts, self.log, self.save_metric)
-        except Exception as e:
-            self.log(f"Code graph context injection failed: {e}", "WARNING")
+                inject_code_graph_context(
+                    self.project_root, context_parts, self.log, self.save_metric
+                )
+            except Exception as e:
+                self.log(f"Code graph context injection failed: {e}", "WARNING")
 
         # Simplified preference file resolution
         preferences_file = (
