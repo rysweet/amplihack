@@ -1,17 +1,23 @@
 ---
 name: e2e-outside-in-test-generator
-version: 1.0.0
-description: Generates comprehensive end-to-end Playwright tests using outside-in methodology
+version: 0.2.0
+description: |
+  Generates comprehensive end-to-end test scenarios using outside-in methodology.
+  Supports 5 app types: Web (Playwright), CLI, TUI, API, and MCP (gadugi YAML).
+  Auto-detects app type or accepts explicit override.
 activation_keywords:
   - "add e2e tests"
   - "add playwright tests"
   - "add browser tests"
   - "add outside-in tests"
   - "generate e2e suite"
+  - "add cli tests"
+  - "add tui tests"
+  - "add api tests"
+  - "add mcp tests"
+  - "generate test scenarios"
 category: testing
-requires:
-  - Frontend framework (Next.js, React, Vue, Angular)
-  - Backend API
+requires: []
 invokes:
   - test-gap-analyzer (test coverage analysis)
   - shadow-testing (parallel test execution)
