@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# pyright: reportMissingImports=false
 """20-agent hive mind evaluation with real consensus and adversarial testing.
 
 Tests whether 20 topic-specialist agents connected via a hive mind with
@@ -43,7 +44,9 @@ from dataclasses import dataclass, field
 
 # Allow running from repo root
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
-sys.path.insert(0, "/home/azureuser/src/amplihack-agent-eval/src")
+_EVAL_SRC = os.environ.get("AMPLIHACK_EVAL_SRC_PATH", "")
+if _EVAL_SRC:
+    sys.path.insert(0, _EVAL_SRC)
 
 from amplihack.agents.goal_seeking.hive_mind.unified import (  # type: ignore[import-not-found]
     HiveMindAgent,

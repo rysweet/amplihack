@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# pyright: reportMissingImports=false
 """Experiment 2: Event-Sourced Hive Mind Evaluation.
 
 Hypothesis: An event-sourcing architecture enables better temporal reasoning
@@ -27,7 +28,7 @@ from typing import Any
 # Ensure src/ is on the path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
-from amplihack.agents.goal_seeking.hive_mind.event_sourced import (
+from amplihack.agents.goal_seeking.hive_mind.event_sourced import (  # type: ignore[import-not-found]
     FACT_LEARNED,
     EventSourcedMemory,
     HiveEvent,
@@ -421,7 +422,6 @@ def run_storage_efficiency_analysis() -> dict[str, Any]:
     print("=" * 70)
 
     import json
-    import sys
 
     # Baseline: just the facts
     all_facts = INFRA_FACTS + SECURITY_FACTS + PERFORMANCE_FACTS
