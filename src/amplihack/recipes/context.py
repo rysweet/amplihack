@@ -7,6 +7,7 @@ and AST-based safe condition evaluation (whitelist-validated before eval).
 from __future__ import annotations
 
 import ast
+import builtins as _builtins_module
 import copy
 import json
 import re
@@ -43,7 +44,7 @@ _SAFE_NODES = (
 )
 
 # Functions allowed in Call nodes. Only pure type-coercion and string helpers.
-_SAFE_CALL_NAMES = frozenset({"int", "str", "len", "bool", "float", "abs", "min", "max"})
+_SAFE_CALL_NAMES = frozenset({"int", "str", "len", "bool", "float", "min", "max"})
 
 # Methods allowed on objects (e.g. value.strip()). Only side-effect-free string methods.
 _SAFE_METHOD_NAMES = frozenset({
@@ -204,7 +205,15 @@ class RecipeContext:
         namespace = self._build_namespace()
 
         # Provide safe builtins that condition expressions may call
-        safe_builtins = {name: __builtins__[name] if isinstance(__builtins__, dict) else getattr(__builtins__, name) for name in _SAFE_CALL_NAMES if (isinstance(__builtins__, dict) and name in __builtins__) or (not isinstance(__builtins__, dict) and hasattr(__builtins__, name))}
+        safe_builtins = {
+            name: getattr(_builtins_module, name)
+            for name in _SAFE_CALL_NAMES
+            if hasattr(_builtins_module, name)
+        }
+
+        # Prevent context variables from shadowing safe builtins
+        for name in _SAFE_CALL_NAMES:
+            namespace.pop(name, None)
 
         code = compile(tree, "<condition>", "eval")
         return bool(eval(code, {"__builtins__": safe_builtins}, namespace))
