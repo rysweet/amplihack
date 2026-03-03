@@ -1,0 +1,38 @@
+# CLI Error Handling Test - {app_name}
+# Auto-generated outside-in test scenario
+
+scenario:
+  name: "CLI Error Handling - {app_name}"
+  description: |
+    Verifies that {app_name} CLI handles invalid input gracefully with clear error messages
+    and appropriate exit codes.
+  type: cli
+  level: 2
+  tags: [cli, error-handling, resilience, auto-generated]
+
+  prerequisites:
+    - "{binary_path} binary exists and is executable"
+
+  steps:
+    - action: launch
+      target: "{binary_path}"
+      args: ["nonexistent-command"]
+      description: "Run with invalid command"
+      timeout: 10s
+
+    - action: verify_output
+      matches: "(error|unknown|invalid|not found)"
+      case_sensitive: false
+      timeout: 5s
+      description: "Should show error for unknown command"
+
+    - action: verify_exit_code
+      expected: 1
+      description: "Should exit with non-zero code"
+
+{missing_arg_steps}
+{invalid_arg_steps}
+  cleanup:
+    - action: stop_application
+      force: true
+      description: "Ensure process is terminated"

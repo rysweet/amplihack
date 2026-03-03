@@ -1,0 +1,50 @@
+# CLI Smoke Tests - {app_name}
+# Auto-generated outside-in test scenarios
+
+scenario:
+  name: "CLI Smoke - {app_name} Basic Operations"
+  description: |
+    Verifies that {app_name} CLI starts correctly, responds to --help and --version,
+    and exits cleanly.
+  type: cli
+  level: 1
+  tags: [cli, smoke, basic, auto-generated]
+
+  prerequisites:
+    - "{binary_path} binary exists and is executable"
+
+  steps:
+    - action: launch
+      target: "{binary_path}"
+      args: ["--help"]
+      description: "Run help command"
+      timeout: 10s
+
+    - action: verify_output
+      matches: "{help_pattern}"
+      timeout: 5s
+      description: "Help output should contain usage info"
+
+    - action: verify_exit_code
+      expected: 0
+      description: "Help command should exit cleanly"
+
+    - action: launch
+      target: "{binary_path}"
+      args: ["--version"]
+      description: "Run version command"
+      timeout: 5s
+
+    - action: verify_output
+      matches: "{version_pattern}"
+      timeout: 3s
+      description: "Should display version information"
+
+    - action: verify_exit_code
+      expected: 0
+      description: "Version command should exit cleanly"
+
+  cleanup:
+    - action: stop_application
+      force: true
+      description: "Ensure process is terminated"
