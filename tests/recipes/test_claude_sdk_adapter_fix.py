@@ -1,13 +1,12 @@
 """Test ClaudeSDKAdapter model parameter fix for Issue #2336.
 
 This test verifies that ClaudeSDKAdapter passes model via ClaudeAgentOptions
-instead of as a direct parameter to sdk.query().
-
-EXPECTED BEHAVIOR: These tests SHOULD FAIL before the fix is applied.
+instead of as a direct parameter to sdk.query(), and that query() is consumed
+as an async generator (not awaited as a coroutine).
 """
 
 import sys
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 # Mock the claude_agent_sdk module before it gets imported
 mock_claude_agent_sdk = MagicMock()
@@ -15,58 +14,64 @@ mock_claude_agent_sdk.ClaudeAgentOptions = MagicMock
 sys.modules["claude_agent_sdk"] = mock_claude_agent_sdk
 
 
-def test_claude_sdk_adapter_uses_options_parameter():
-    """Verify sdk.query() is called with options parameter, not model parameter.
+def _make_async_gen_query(return_text="Test response"):
+    """Create a mock query function that behaves like the real async generator.
 
-    EXPECTED TO FAIL: Before fix, sdk.query() receives model as direct parameter
+    The real ``claude_agent_sdk.query()`` is an async generator that yields
+    Message objects.  The final message is a ResultMessage with a ``.result``
+    attribute containing the text output.
     """
+    result_msg = MagicMock()
+    result_msg.result = return_text
+
+    async def _fake_query(**kwargs):
+        yield result_msg
+
+    return _fake_query
+
+
+def test_claude_sdk_adapter_uses_options_parameter():
+    """Verify sdk.query() is called with options parameter, not model parameter."""
     from amplihack.recipes.adapters.claude_sdk import ClaudeSDKAdapter
 
     # Create adapter with custom model
     adapter = ClaudeSDKAdapter(model="claude-opus-4-20250514")
 
-    # Mock the SDK
+    # Mock the SDK with async generator query
     mock_sdk = MagicMock()
-    mock_sdk.query = AsyncMock(return_value="Test response")
+    captured_kwargs = {}
+
+    async def _capturing_query(**kwargs):
+        captured_kwargs.update(kwargs)
+        msg = MagicMock()
+        msg.result = "Test response"
+        yield msg
+
+    mock_sdk.query = _capturing_query
 
     # Patch _get_sdk to return our mock
     with patch.object(adapter, "_get_sdk", return_value=mock_sdk):
-        # Execute agent step
         adapter.execute_agent_step(prompt="Test prompt")
 
-        # Verify sdk.query was called
-        assert mock_sdk.query.called, "sdk.query() should be called"
-
-        # Get the call arguments
-        call_args = mock_sdk.query.call_args
-
-        # THIS SHOULD FAIL before fix is applied
-        # Before fix: sdk.query(prompt=..., model=...)
-        # After fix: sdk.query(prompt=..., options=ClaudeAgentOptions(model=...))
-        assert "options" in call_args.kwargs, (
-            "sdk.query() should receive 'options' parameter, not 'model' parameter directly"
+        assert "options" in captured_kwargs, (
+            "sdk.query() should receive 'options' parameter"
         )
-        assert "model" not in call_args.kwargs, (
+        assert "model" not in captured_kwargs, (
             "sdk.query() should NOT receive 'model' as direct parameter"
         )
 
-        print("✅ sdk.query() called with options parameter")
-
 
 def test_claude_sdk_adapter_creates_options_object():
-    """Verify ClaudeAgentOptions object is created with correct model value.
-
-    EXPECTED TO FAIL: Before fix, no ClaudeAgentOptions object is created
-    """
+    """Verify ClaudeAgentOptions object is created with correct model value."""
     from amplihack.recipes.adapters.claude_sdk import ClaudeSDKAdapter
 
     # Create adapter with custom model
     custom_model = "claude-opus-4-6"
     adapter = ClaudeSDKAdapter(model=custom_model)
 
-    # Mock the SDK
+    # Mock the SDK with async generator
     mock_sdk = MagicMock()
-    mock_sdk.query = AsyncMock(return_value="Test response")
+    mock_sdk.query = _make_async_gen_query("Test response")
 
     # Create a fresh mock for ClaudeAgentOptions for this test
     mock_options_class = MagicMock()
@@ -78,22 +83,13 @@ def test_claude_sdk_adapter_creates_options_object():
         with patch.dict(
             "sys.modules", {"claude_agent_sdk": MagicMock(ClaudeAgentOptions=mock_options_class)}
         ):
-            # Execute agent step
             adapter.execute_agent_step(prompt="Test prompt")
 
-            # THIS SHOULD FAIL before fix is applied
-            # Verify ClaudeAgentOptions was instantiated
             assert mock_options_class.called, "ClaudeAgentOptions should be instantiated"
 
-            # Verify it was called with model parameter
             call_kwargs = mock_options_class.call_args.kwargs
             assert "model" in call_kwargs, "ClaudeAgentOptions should receive model parameter"
-            assert call_kwargs["model"] == custom_model, (
-                f"ClaudeAgentOptions model should be '{custom_model}', "
-                f"got '{call_kwargs.get('model')}'"
-            )
-
-            print(f"✅ ClaudeAgentOptions created with model='{custom_model}'")
+            assert call_kwargs["model"] == custom_model
 
 
 def test_claude_sdk_adapter_passes_prompt_correctly():
@@ -102,21 +98,23 @@ def test_claude_sdk_adapter_passes_prompt_correctly():
 
     adapter = ClaudeSDKAdapter()
 
-    # Mock the SDK
     mock_sdk = MagicMock()
-    mock_sdk.query = AsyncMock(return_value="Test response")
+    captured_kwargs = {}
 
+    async def _capturing_query(**kwargs):
+        captured_kwargs.update(kwargs)
+        msg = MagicMock()
+        msg.result = "Test response"
+        yield msg
+
+    mock_sdk.query = _capturing_query
     test_prompt = "What is the meaning of life?"
 
     with patch.object(adapter, "_get_sdk", return_value=mock_sdk):
         adapter.execute_agent_step(prompt=test_prompt)
 
-        # Verify prompt is passed
-        call_args = mock_sdk.query.call_args
-        assert "prompt" in call_args.kwargs, "sdk.query() should receive prompt parameter"
-        assert call_args.kwargs["prompt"] == test_prompt, "Prompt should match input"
-
-        print("✅ Prompt passed correctly to sdk.query()")
+        assert "prompt" in captured_kwargs, "sdk.query() should receive prompt parameter"
+        assert captured_kwargs["prompt"] == test_prompt
 
 
 def test_claude_sdk_adapter_enriches_prompt_with_system_context():
@@ -125,9 +123,16 @@ def test_claude_sdk_adapter_enriches_prompt_with_system_context():
 
     adapter = ClaudeSDKAdapter()
 
-    # Mock the SDK
     mock_sdk = MagicMock()
-    mock_sdk.query = AsyncMock(return_value="Test response")
+    captured_kwargs = {}
+
+    async def _capturing_query(**kwargs):
+        captured_kwargs.update(kwargs)
+        msg = MagicMock()
+        msg.result = "Test response"
+        yield msg
+
+    mock_sdk.query = _capturing_query
 
     test_prompt = "Execute task"
     agent_name = "builder"
@@ -138,84 +143,59 @@ def test_claude_sdk_adapter_enriches_prompt_with_system_context():
             prompt=test_prompt, agent_name=agent_name, agent_system_prompt=system_prompt
         )
 
-        # Verify enriched prompt structure
-        call_args = mock_sdk.query.call_args
-        enriched_prompt = call_args.kwargs["prompt"]
-
-        assert f"[System context for {agent_name}]" in enriched_prompt, (
-            "Enriched prompt should include system context header"
-        )
-        assert system_prompt in enriched_prompt, (
-            "Enriched prompt should include agent system prompt"
-        )
-        assert "[Task]" in enriched_prompt, "Enriched prompt should include task header"
-        assert test_prompt in enriched_prompt, "Enriched prompt should include original prompt"
-
-        print("✅ Prompt enrichment works correctly")
+        enriched_prompt = captured_kwargs["prompt"]
+        assert f"[System context for {agent_name}]" in enriched_prompt
+        assert system_prompt in enriched_prompt
+        assert "[Task]" in enriched_prompt
+        assert test_prompt in enriched_prompt
 
 
 def test_claude_sdk_adapter_model_parameter_not_direct():
-    """Comprehensive test: verify model is NEVER passed as direct parameter.
-
-    EXPECTED TO FAIL: Before fix, model is passed as direct kwarg
-    """
+    """Verify model is NEVER passed as direct parameter to sdk.query()."""
     from amplihack.recipes.adapters.claude_sdk import ClaudeSDKAdapter
 
     adapter = ClaudeSDKAdapter(model="claude-opus-4-20250514")
 
-    # Mock the SDK
     mock_sdk = MagicMock()
-    mock_sdk.query = AsyncMock(return_value="Test response")
+    captured_kwargs = {}
+
+    async def _capturing_query(**kwargs):
+        captured_kwargs.update(kwargs)
+        msg = MagicMock()
+        msg.result = "Test response"
+        yield msg
+
+    mock_sdk.query = _capturing_query
 
     with patch.object(adapter, "_get_sdk", return_value=mock_sdk):
-        # Execute agent step
         adapter.execute_agent_step(prompt="Test")
 
-        # Get call kwargs
-        call_kwargs = mock_sdk.query.call_args.kwargs
-
-        # THIS IS THE KEY TEST - SHOULD FAIL before fix
-        # Before fix: {'prompt': '...', 'model': '...'}
-        # After fix: {'prompt': '...', 'options': ClaudeAgentOptions(model='...')}
-
-        if "model" in call_kwargs:
-            raise AssertionError(
-                f"CRITICAL: sdk.query() received 'model' as direct parameter. "
-                f"This MUST be passed via ClaudeAgentOptions instead. "
-                f"Current kwargs: {list(call_kwargs.keys())}"
-            )
-
-        print("✅ Model is NOT passed as direct parameter (fix applied)")
+        assert "model" not in captured_kwargs, (
+            f"sdk.query() received 'model' as direct parameter. "
+            f"This MUST be passed via ClaudeAgentOptions instead. "
+            f"Current kwargs: {list(captured_kwargs.keys())}"
+        )
 
 
 def test_claude_sdk_adapter_accepts_mode_and_working_dir():
-    """Verify execute_agent_step accepts mode and working_dir parameters.
-
-    The recipe runner passes mode=step.mode and working_dir=working_dir
-    to all adapters. ClaudeSDKAdapter was missing these, causing TypeError.
-    """
+    """Verify execute_agent_step accepts mode and working_dir parameters."""
     from amplihack.recipes.adapters.claude_sdk import ClaudeSDKAdapter
 
     adapter = ClaudeSDKAdapter()
 
     mock_sdk = MagicMock()
-    mock_sdk.query = AsyncMock(return_value="Test response")
+    mock_sdk.query = _make_async_gen_query("Test response")
 
     with patch.object(adapter, "_get_sdk", return_value=mock_sdk):
-        # This call would raise TypeError before the fix:
-        # "got an unexpected keyword argument 'mode'"
-        adapter.execute_agent_step(
+        # This call would raise TypeError if mode/working_dir not accepted
+        result = adapter.execute_agent_step(
             prompt="Test prompt",
             agent_name="builder",
             agent_system_prompt="You are a builder.",
             mode="plan",
             working_dir="/tmp/test",
         )
-
-        # Should succeed without TypeError
-        assert mock_sdk.query.called
-
-        print("✅ mode and working_dir accepted without TypeError")
+        assert result == "Test response"
 
 
 def test_claude_sdk_adapter_matches_protocol_signature():
@@ -240,41 +220,83 @@ def test_claude_sdk_adapter_matches_protocol_signature():
     print(f"✅ All protocol parameters present: {protocol_params}")
 
 
+def test_claude_sdk_adapter_consumes_async_generator():
+    """Verify execute_agent_step properly consumes query() as an async generator.
+
+    This is the core fix: query() yields Message objects, and the adapter must
+    iterate them with ``async for`` instead of awaiting with ``asyncio.run()``.
+    """
+    from amplihack.recipes.adapters.claude_sdk import ClaudeSDKAdapter
+
+    adapter = ClaudeSDKAdapter()
+
+    mock_sdk = MagicMock()
+
+    # Create a multi-message async generator (like the real SDK)
+    async def _multi_message_query(**kwargs):
+        # First message: a system/assistant message (no .result)
+        msg1 = MagicMock(spec=[])
+        yield msg1
+        # Second message: the ResultMessage with .result
+        msg2 = MagicMock()
+        msg2.result = "Final answer from agent"
+        yield msg2
+
+    mock_sdk.query = _multi_message_query
+
+    with patch.object(adapter, "_get_sdk", return_value=mock_sdk):
+        result = adapter.execute_agent_step(prompt="Test prompt")
+
+        # Should get the .result from the ResultMessage, not str() of generator
+        assert result == "Final answer from agent"
+        assert "async_generator" not in result
+
+
+def test_claude_sdk_adapter_returns_empty_when_no_result_message():
+    """Verify adapter returns empty string when query yields no ResultMessage."""
+    from amplihack.recipes.adapters.claude_sdk import ClaudeSDKAdapter
+
+    adapter = ClaudeSDKAdapter()
+
+    mock_sdk = MagicMock()
+
+    async def _no_result_query(**kwargs):
+        msg = MagicMock(spec=[])  # No .result attribute
+        yield msg
+
+    mock_sdk.query = _no_result_query
+
+    with patch.object(adapter, "_get_sdk", return_value=mock_sdk):
+        result = adapter.execute_agent_step(prompt="Test prompt")
+        assert result == ""
+
+
 if __name__ == "__main__":
-    print("🧪 Running ClaudeSDKAdapter Model Parameter Tests (Issue #2336)\n")
-    print("⚠️  These tests SHOULD FAIL before the fix is applied\n")
+    print("Running ClaudeSDKAdapter tests\n")
 
     tests = [
-        ("sdk.query() uses options parameter", test_claude_sdk_adapter_uses_options_parameter),
-        ("ClaudeAgentOptions created with model", test_claude_sdk_adapter_creates_options_object),
-        ("Prompt passed correctly", test_claude_sdk_adapter_passes_prompt_correctly),
-        ("Prompt enrichment works", test_claude_sdk_adapter_enriches_prompt_with_system_context),
-        ("Model NOT direct parameter", test_claude_sdk_adapter_model_parameter_not_direct),
+        test_claude_sdk_adapter_uses_options_parameter,
+        test_claude_sdk_adapter_creates_options_object,
+        test_claude_sdk_adapter_passes_prompt_correctly,
+        test_claude_sdk_adapter_enriches_prompt_with_system_context,
+        test_claude_sdk_adapter_model_parameter_not_direct,
+        test_claude_sdk_adapter_accepts_mode_and_working_dir,
+        test_claude_sdk_adapter_matches_protocol_signature,
+        test_claude_sdk_adapter_consumes_async_generator,
+        test_claude_sdk_adapter_returns_empty_when_no_result_message,
     ]
 
     passed = 0
     failed = 0
 
-    for test_name, test_func in tests:
-        print(f"\n{'=' * 60}")
-        print(f"Test: {test_name}")
-        print(f"{'=' * 60}")
+    for test_func in tests:
+        name = test_func.__name__
         try:
             test_func()
-            print("✅ PASSED")
+            print(f"  PASSED: {name}")
             passed += 1
-        except AssertionError as e:
-            print(f"❌ FAILED (EXPECTED): {e}")
-            failed += 1
         except Exception as e:
-            print(f"❌ ERROR: {e}")
+            print(f"  FAILED: {name}: {e}")
             failed += 1
-            import traceback
 
-            traceback.print_exc()
-
-    print(f"\n{'=' * 60}")
-    print(f"SUMMARY: {passed} passed, {failed} failed")
-    if failed > 0:
-        print("⚠️  Failures are EXPECTED before fix implementation")
-    print(f"{'=' * 60}")
+    print(f"\n{passed} passed, {failed} failed")

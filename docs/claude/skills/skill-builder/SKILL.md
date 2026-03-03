@@ -1,14 +1,17 @@
 ---
 name: skill-builder
-version: 1.0.0
-description: Creates, refines, and validates Claude Code skills following amplihack philosophy and official best practices. Automatically activates when building, creating, generating, or designing new skills.
+description: Creates, refines, and validates Agent Skills following the open standard at agentskills.io, Claude Code extensions, and Anthropic best practices. Use when building, creating, generating, or designing new skills.
+metadata:
+  version: "2.0"
+  author: amplihack
 ---
 
 # Skill Builder
 
 ## Purpose
 
-Helps users create production-ready Claude Code skills that follow best practices from official Anthropic documentation and amplihack's ruthless simplicity philosophy.
+Creates production-ready Agent Skills following the official specifications
+and best practices.
 
 ## When I Activate
 
@@ -16,79 +19,106 @@ I automatically load when you mention:
 
 - "build a skill" or "create a skill"
 - "generate a skill" or "make a skill"
-- "design a skill" or "develop a skill"
-- "skill builder" or "new skill"
-- "skill for [purpose]"
+- "design a skill" or "new skill"
+
+## Authoritative References (Read These First)
+
+Before creating any skill, read the current versions of these docs:
+
+1. **Agent Skills Specification** (the open standard):
+   https://agentskills.io/specification
+2. **Skill Authoring Best Practices** (Anthropic):
+   https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices
+3. **Claude Code Skills Documentation** (Claude Code extensions):
+   https://docs.claude.com/en/docs/claude-code/skills
+4. **Example Skills** (reference implementations):
+   https://github.com/anthropics/skills
+
+These are the source of truth. If anything in this skill contradicts those
+docs, the official docs win.
 
 ## What I Do
 
-I orchestrate the skill creation process using amplihack's specialized agents:
+Create skills in 5 steps:
 
-1. **Clarify Requirements** (prompt-writer agent)
-   - Understand skill purpose and scope
-   - Define target users and use cases
-   - Identify skill type (agent, command, scenario)
+1. **Clarify** → Define purpose, scope, activation keywords
+2. **Design** → Plan structure, decide on progressive disclosure
+3. **Generate** → Create SKILL.md with proper frontmatter and body
+4. **Validate** → Check against spec and best practices
+5. **Test** → Verify activation and behavior
 
-2. **Design Structure** (architect agent)
-   - Plan YAML frontmatter fields
-   - Design skill organization (single vs multi-file)
-   - Calculate token budget allocation
-   - Choose appropriate templates
+## Frontmatter (Agent Skills Spec)
 
-3. **Generate Skill** (builder agent)
-   - Create SKILL.md with proper YAML frontmatter
-   - Write clear instructions and examples
-   - Include supporting files if needed
-   - Follow progressive disclosure pattern
+Only two fields are required:
 
-4. **Validate Quality** (reviewer agent)
-   - Check YAML frontmatter syntax
-   - Verify token budget (<5,000 tokens core)
-   - Ensure philosophy compliance (>85% score)
-   - Test description quality for discovery
-
-5. **Create Tests** (tester agent)
-   - Define activation test cases
-   - Create edge case validations
-   - Document expected behaviors
-
-## Skill Types Supported
-
-- **skill**: Claude Code skills in `~/.amplihack/.claude/skills/` (auto-discovery)
-- **agent**: Specialized agents in `~/.amplihack/.claude/agents/amplihack/specialized/`
-- **command**: Slash commands in `~/.amplihack/.claude/commands/amplihack/`
-- **scenario**: Production tools in `~/.amplihack/.claude/scenarios/`
-
-See [examples.md](./examples.md) for detailed examples of each type.
-
-## Command Interface
-
-For explicit invocation:
-
-```bash
-/amplihack:skill-builder <skill-name> <skill-type> <description>
+```yaml
+---
+name: my-skill
+description: What this skill does and when to use it. Include specific keywords for discovery.
+---
 ```
 
-Examples in [examples.md](./examples.md).
+Optional fields: `license`, `compatibility`, `metadata`, `allowed-tools`.
 
-## Documentation
+Claude Code adds: `disable-model-invocation`, `user-invocable`, `model`,
+`context`, `agent`, `hooks`, `argument-hint`.
 
-**Supporting Files** (progressive disclosure):
+**Do NOT use**: `version` (use `metadata.version`), `auto_activates`,
+`priority_score`, `source_urls`, `evaluation_criteria`, `invokes`,
+`philosophy`, `maturity` — none of these are recognized by any runtime.
 
-- [reference.md](./reference.md): Architecture, patterns, YAML spec, best practices
-- [examples.md](./examples.md): Real-world usage, testing, troubleshooting
+## Key Best Practices
 
-**Original Documentation Sources** (embedded in reference.md):
+From the [official best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices):
 
-1. **Official Claude Code Skills**: https://code.claude.com/docs/en/skills
-2. **Anthropic Agent SDK Skills**: https://docs.claude.com/en/docs/agent-sdk/skills
-3. **Agent Skills Engineering Blog**: https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills
-4. **Claude Cookbooks - Skills**: https://github.com/anthropics/claude-cookbooks/tree/main/skills
-5. **Skills Custom Development Notebook**: https://github.com/anthropics/claude-cookbooks/blob/main/skills/notebooks/03_skills_custom_development.ipynb
-6. **metaskills/skill-builder** (Reference): https://github.com/metaskills/skill-builder
+### Conciseness
 
-All documentation is embedded in reference.md for offline access. Links provided for updates and verification.
+- Claude is already smart. Only add context it doesn't have.
+- Challenge every paragraph: "Does this justify its token cost?"
+- SKILL.md body under 500 lines.
 
----
+### Description Quality
 
-**Note**: This skill automatically loads when Claude detects skill building intent. For explicit control, use `/amplihack:skill-builder`.
+- Write in **third person** ("Processes Excel files", not "I help you")
+- Include both what the skill does AND when to use it
+- Include specific trigger keywords for discovery
+- Max 1024 characters
+
+### Progressive Disclosure
+
+- Metadata loaded at startup (name + description only)
+- SKILL.md loaded when skill activates
+- Supporting files loaded only when needed
+- Keep references **one level deep** from SKILL.md
+
+### Degrees of Freedom
+
+- **High freedom**: Multiple valid approaches, context-dependent
+- **Medium freedom**: Preferred pattern exists, some variation OK
+- **Low freedom**: Fragile operations, exact sequence required
+
+### No Time-Sensitive Content
+
+- Never write "as of today", "recently added", "new in v3.0"
+- Use an "old patterns" section for historical context if needed
+
+### Feedback Loops
+
+- Run validator → fix errors → repeat
+- Include verification steps for critical operations
+
+## Validation Checklist
+
+✅ **Frontmatter**: `name` and `description` present and valid
+✅ **Name**: Lowercase, hyphens only, 1-64 chars, matches directory name
+✅ **Description**: 1-1024 chars, third person, includes trigger keywords
+✅ **Body**: Under 500 lines
+✅ **References**: One level deep from SKILL.md
+✅ **No stale content**: No temporal references
+✅ **Consistent terminology**: One term per concept throughout
+✅ **Tested**: Works with at least 3 representative prompts
+
+## Supporting Files
+
+- [reference.md](./reference.md): Detailed patterns, architecture, validation rules
+- [examples.md](./examples.md): Skill creation workflows and examples
