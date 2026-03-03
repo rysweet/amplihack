@@ -272,12 +272,18 @@ def _is_cli_project(project_root: Path) -> bool:
     return framework != "unknown"
 
 
+def _filter_vendor_files(files: list[Path]) -> list[Path]:
+    """Filter out vendor, node_modules, and other non-project directories."""
+    skip_dirs = ("vendor", "node_modules", "dist", ".venv", "__pycache__", ".git")
+    return [f for f in files if not any(skip in f.parts for skip in skip_dirs)]
+
+
 def _detect_cli_framework(project_root: Path) -> tuple[str, str]:
     """Detect CLI framework and language."""
     for language, frameworks in CLI_MARKERS.items():
         extensions = _language_extensions(language)
         for ext in extensions:
-            for f in find_files(project_root, f"*{ext}")[:15]:
+            for f in _filter_vendor_files(find_files(project_root, f"*{ext}"))[:15]:
                 try:
                     content = read_file(f)
                     for framework, markers in frameworks.items():
@@ -293,7 +299,7 @@ def _detect_tui_framework(project_root: Path) -> tuple[str, str]:
     for language, frameworks in TUI_MARKERS.items():
         extensions = _language_extensions(language)
         for ext in extensions:
-            for f in find_files(project_root, f"*{ext}")[:15]:
+            for f in _filter_vendor_files(find_files(project_root, f"*{ext}"))[:15]:
                 try:
                     content = read_file(f)
                     for framework, markers in frameworks.items():
@@ -317,8 +323,12 @@ def _language_extensions(language: str) -> list[str]:
 def _find_binary_path(project_root: Path, language: str) -> str:
     """Find the binary/entry point path."""
     if language == "python":
-        for name in ["main.py", "cli.py", "app.py", "__main__.py"]:
+        for name in ["cli.py", "main.py", "app.py", "__main__.py"]:
             candidates = find_files(project_root, name)
+            # Filter out vendor/node_modules directories
+            candidates = [c for c in candidates if not any(
+                skip in c.parts for skip in ("vendor", "node_modules", ".venv", "__pycache__")
+            )]
             if candidates:
                 return str(candidates[0].relative_to(project_root))
         return "python -m <module>"
@@ -350,8 +360,20 @@ def _extract_cli_commands(
     commands = []
     extensions = _language_extensions(language)
 
+    # Prioritize CLI entry point files, exclude vendor directories
+    priority_names = ["cli", "main", "app", "__main__", "commands", "cmd"]
     for ext in extensions:
-        for f in find_files(project_root, f"*{ext}")[:20]:
+        all_files = find_files(project_root, f"*{ext}")
+        # Filter out vendor/node_modules/dist directories
+        filtered = [f for f in all_files if not any(
+            skip in f.parts for skip in ("vendor", "node_modules", "dist", ".venv", "__pycache__")
+        )]
+        # Sort: priority files first
+        prioritized = sorted(filtered, key=lambda f: (
+            0 if f.stem in priority_names else 1,
+            str(f),
+        ))
+        for f in prioritized[:30]:
             try:
                 content = read_file(f)
                 commands.extend(_parse_commands_from_content(content, framework))
