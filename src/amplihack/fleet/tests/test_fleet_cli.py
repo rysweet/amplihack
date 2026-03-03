@@ -990,7 +990,7 @@ class TestAdoptAllSessions:
 
 
 # ---------------------------------------------------------------------------
-# fleet copilot-status (TDD -- command does not exist yet)
+# fleet copilot-status (tests patch module-level vars for isolation)
 # ---------------------------------------------------------------------------
 
 
@@ -998,8 +998,7 @@ class TestFleetCopilotStatus:
     """Tests for fleet copilot-status command.
 
     This command shows the current copilot lock/goal state.
-    The command does not exist yet -- these tests are TDD stubs
-    that will fail until implementation in Step 8.
+    Tests patch COPILOT_LOCK_DIR/COPILOT_LOG_DIR with tmp_path for isolation.
     """
 
     def test_copilot_status_no_lock(self, runner, tmp_path):
@@ -1037,7 +1036,7 @@ class TestFleetCopilotStatus:
 
 
 # ---------------------------------------------------------------------------
-# fleet copilot-log (TDD -- command does not exist yet)
+# fleet copilot-log (tests patch module-level vars for isolation)
 # ---------------------------------------------------------------------------
 
 
@@ -1045,8 +1044,7 @@ class TestFleetCopilotLog:
     """Tests for fleet copilot-log command.
 
     This command shows copilot decision history from the decisions.jsonl file.
-    The command does not exist yet -- these tests are TDD stubs
-    that will fail until implementation in Step 8.
+    Tests patch COPILOT_LOCK_DIR/COPILOT_LOG_DIR with tmp_path for isolation.
     """
 
     def test_copilot_log_no_file(self, runner, tmp_path):
