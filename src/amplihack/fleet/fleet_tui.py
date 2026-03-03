@@ -31,6 +31,7 @@ import tty
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from amplihack.fleet._constants import DEFAULT_TUI_REFRESH_SECONDS, SUBPROCESS_TIMEOUT_SECONDS
 from amplihack.fleet._defaults import DEFAULT_EXCLUDE_VMS, get_azlin_path
 from amplihack.fleet._tui_classify import classify_status
 from amplihack.fleet._tui_data import SessionView, VMView
@@ -53,7 +54,7 @@ class FleetTUI:
     """
 
     azlin_path: str = field(default_factory=get_azlin_path)
-    refresh_interval: int = 60
+    refresh_interval: int = DEFAULT_TUI_REFRESH_SECONDS
     exclude_vms: set[str] = field(default_factory=lambda: set(DEFAULT_EXCLUDE_VMS))
 
     def run(self, once: bool = False) -> None:
@@ -211,7 +212,7 @@ class FleetTUI:
                 [self.azlin_path, "list"],
                 capture_output=True,
                 text=True,
-                timeout=60,
+                timeout=SUBPROCESS_TIMEOUT_SECONDS,
             )
             if result.returncode == 0:
                 return parse_vm_text(result.stdout)
@@ -280,7 +281,7 @@ done
                 [self.azlin_path, "connect", vm_name, "--no-tmux", "--", gather_cmd],
                 capture_output=True,
                 text=True,
-                timeout=60,
+                timeout=SUBPROCESS_TIMEOUT_SECONDS,
             )
             if result.returncode == 0:
                 return parse_session_output(vm_name, result.stdout)
@@ -305,7 +306,7 @@ done
         return parse_vm_text(text)
 
 
-def run_tui(interval: int = 60, once: bool = False) -> None:
+def run_tui(interval: int = DEFAULT_TUI_REFRESH_SECONDS, once: bool = False) -> None:
     """Entry point for the TUI dashboard.
 
     Args:

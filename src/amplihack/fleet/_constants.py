@@ -4,7 +4,7 @@ All thresholds, timeouts, and capacity values used across the fleet module.
 Import from here instead of hardcoding in individual files.
 
 Public API:
-    Confidence thresholds, timing constants, capacity defaults.
+    Confidence thresholds, timing constants, capacity defaults, health thresholds.
 """
 
 # ── Confidence Thresholds ──────────────────────────────────────────────
@@ -22,6 +22,7 @@ CONFIDENCE_COPILOT_WAIT = 0.95   # Copilot fast-path wait confidence
 DEFAULT_STUCK_THRESHOLD_SECONDS = 300.0  # 5 minutes without change = stuck
 DEFAULT_POLL_INTERVAL_SECONDS = 60.0     # Fleet admiral poll interval
 SUBPROCESS_TIMEOUT_SECONDS = 60          # SSH/subprocess timeout
+SUBPROCESS_TIMEOUT_KILL_SECONDS = 30     # Shorter timeout for kill operations
 DEFAULT_TUI_REFRESH_SECONDS = 60         # Simple TUI refresh interval
 DEFAULT_DASHBOARD_REFRESH_SECONDS = 30   # Interactive dashboard refresh
 
@@ -30,6 +31,12 @@ DEFAULT_CAPTURE_LINES = 5000       # Terminal scrollback capture depth
 DEFAULT_RECENT_MESSAGE_COUNT = 500 # Recent transcript entries for rich context
 DEFAULT_MAX_AGENTS_PER_VM = 3      # Max concurrent agents per VM
 DEFAULT_MAX_TURNS = 20             # Default task max turns
+
+# ── Health Thresholds ─────────────────────────────────────────────────
+MEMORY_HEALTHY_MAX_PCT = 95.0      # Below this = healthy
+DISK_HEALTHY_MAX_PCT = 90.0        # Below this = healthy
+MEMORY_ATTENTION_THRESHOLD_PCT = 80.0  # Above this = needs attention
+DISK_ATTENTION_THRESHOLD_PCT = 80.0    # Above this = needs attention
 
 # ── Cost ───────────────────────────────────────────────────────────────
 DEFAULT_COST_PER_HOUR = 0.576  # Standard_E16as_v5, March 2026
@@ -47,11 +54,16 @@ __all__ = [
     "DEFAULT_STUCK_THRESHOLD_SECONDS",
     "DEFAULT_POLL_INTERVAL_SECONDS",
     "SUBPROCESS_TIMEOUT_SECONDS",
+    "SUBPROCESS_TIMEOUT_KILL_SECONDS",
     "DEFAULT_TUI_REFRESH_SECONDS",
     "DEFAULT_DASHBOARD_REFRESH_SECONDS",
     "DEFAULT_CAPTURE_LINES",
     "DEFAULT_RECENT_MESSAGE_COUNT",
     "DEFAULT_MAX_AGENTS_PER_VM",
     "DEFAULT_MAX_TURNS",
+    "MEMORY_HEALTHY_MAX_PCT",
+    "DISK_HEALTHY_MAX_PCT",
+    "MEMORY_ATTENTION_THRESHOLD_PCT",
+    "DISK_ATTENTION_THRESHOLD_PCT",
     "DEFAULT_COST_PER_HOUR",
 ]

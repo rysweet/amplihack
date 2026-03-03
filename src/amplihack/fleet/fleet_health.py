@@ -20,6 +20,12 @@ import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from amplihack.fleet._constants import (
+    DISK_ATTENTION_THRESHOLD_PCT,
+    DISK_HEALTHY_MAX_PCT,
+    MEMORY_ATTENTION_THRESHOLD_PCT,
+    MEMORY_HEALTHY_MAX_PCT,
+)
 from amplihack.fleet._defaults import get_azlin_path
 from amplihack.fleet._validation import validate_vm_name
 
@@ -49,14 +55,14 @@ class VMHealth:
     def is_healthy(self) -> bool:
         return (
             self.ssh_reachable
-            and self.memory_used_pct < 95.0
-            and self.disk_used_pct < 90.0
+            and self.memory_used_pct < MEMORY_HEALTHY_MAX_PCT
+            and self.disk_used_pct < DISK_HEALTHY_MAX_PCT
             and len(self.errors) == 0
         )
 
     @property
     def needs_attention(self) -> bool:
-        return self.memory_used_pct > 80.0 or self.disk_used_pct > 80.0 or not self.ssh_reachable
+        return self.memory_used_pct > MEMORY_ATTENTION_THRESHOLD_PCT or self.disk_used_pct > DISK_ATTENTION_THRESHOLD_PCT or not self.ssh_reachable
 
 
 @dataclass

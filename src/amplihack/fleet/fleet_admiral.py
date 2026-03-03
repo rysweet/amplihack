@@ -24,6 +24,12 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 
+from amplihack.fleet._constants import (
+    DEFAULT_MAX_AGENTS_PER_VM,
+    DEFAULT_POLL_INTERVAL_SECONDS,
+    SUBPROCESS_TIMEOUT_KILL_SECONDS,
+    SUBPROCESS_TIMEOUT_SECONDS,
+)
 from amplihack.fleet._defaults import get_azlin_path
 from amplihack.fleet._validation import validate_session_name, validate_vm_name
 from amplihack.fleet.fleet_auth import AuthPropagator
@@ -99,8 +105,8 @@ class FleetAdmiral:
 
     task_queue: TaskQueue
     azlin_path: str = field(default_factory=get_azlin_path)
-    poll_interval_seconds: float = 60.0
-    max_agents_per_vm: int = 3
+    poll_interval_seconds: float = DEFAULT_POLL_INTERVAL_SECONDS
+    max_agents_per_vm: int = DEFAULT_MAX_AGENTS_PER_VM
     log_dir: Path | None = None
 
     # Internal state
@@ -385,7 +391,7 @@ class FleetAdmiral:
                 [self.azlin_path, "connect", vm_name, "--no-tmux", "--", setup_cmd],
                 capture_output=True,
                 text=True,
-                timeout=60,
+                timeout=SUBPROCESS_TIMEOUT_SECONDS,
             )
 
             if result.returncode == 0:
@@ -427,7 +433,7 @@ class FleetAdmiral:
                     [self.azlin_path, "connect", action.vm_name, "--no-tmux", "--", kill_cmd],
                     capture_output=True,
                     text=True,
-                    timeout=30,
+                    timeout=SUBPROCESS_TIMEOUT_KILL_SECONDS,
                 )
             except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as e:
                 logger.warning(

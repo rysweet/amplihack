@@ -138,9 +138,10 @@ def fleet_cli(ctx):
       azlin                              For VM management (github.com/rysweet/azlin)
     """
     if ctx.invoked_subcommand is None:
+        from amplihack.fleet._constants import DEFAULT_DASHBOARD_REFRESH_SECONDS
         from amplihack.fleet.fleet_tui_dashboard import run_dashboard
 
-        run_dashboard(interval=30)
+        run_dashboard(interval=DEFAULT_DASHBOARD_REFRESH_SECONDS)
 
 
 @fleet_cli.command("status")
@@ -154,7 +155,8 @@ def status():
 
 @fleet_cli.command("tui")
 @click.option("--interval", default=30, help="Refresh interval in seconds")
-def tui(interval):
+@click.option("--capture-lines", default=5000, type=int, help="Terminal scrollback capture depth")
+def tui(interval, capture_lines):
     """Interactive fleet dashboard (Textual TUI).
 
     A polished three-tab interface: Fleet Overview, Session Detail,
@@ -163,7 +165,7 @@ def tui(interval):
     """
     from amplihack.fleet.fleet_tui_dashboard import run_dashboard
 
-    run_dashboard(interval=interval)
+    run_dashboard(interval=interval, capture_lines=capture_lines)
 
 
 # ------------------------------------------------------------------

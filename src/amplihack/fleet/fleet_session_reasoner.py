@@ -30,6 +30,7 @@ from amplihack.fleet._backends import (
     LLMBackend,
     auto_detect_backend,
 )
+from amplihack.fleet._constants import MIN_CONFIDENCE_RESTART, MIN_CONFIDENCE_SEND
 from amplihack.fleet._defaults import get_azlin_path
 from amplihack.fleet._session_context import SessionContext, SessionDecision
 from amplihack.fleet._session_gather import gather_context
@@ -55,10 +56,6 @@ __all__ = [
     "auto_detect_backend",
     "infer_agent_status",
 ]
-
-# --- Safety: confidence thresholds (H4) ---
-MIN_CONFIDENCE_SEND = 0.6
-MIN_CONFIDENCE_RESTART = 0.8
 
 
 @dataclass

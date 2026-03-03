@@ -28,6 +28,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Protocol
 
+from amplihack.fleet._constants import DEFAULT_STUCK_THRESHOLD_SECONDS
 from amplihack.fleet.fleet_admiral import ActionType, DirectorAction
 from amplihack.fleet.fleet_state import AgentStatus, FleetState
 from amplihack.fleet.fleet_tasks import FleetTask, TaskPriority, TaskQueue, TaskStatus
@@ -75,7 +76,7 @@ class LifecycleReasoner:
     consecutive cycles of the session being absent.
     """
 
-    default_stuck_threshold: float = 300.0
+    default_stuck_threshold: float = DEFAULT_STUCK_THRESHOLD_SECONDS
     _missing_session_counts: dict[str, int] = field(default_factory=dict)
 
     def reason(

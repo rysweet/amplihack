@@ -20,13 +20,11 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
+from amplihack.fleet._constants import DEFAULT_COST_PER_HOUR
 from amplihack.fleet.fleet_state import FleetState
 from amplihack.fleet.fleet_tasks import FleetTask, TaskQueue, TaskStatus
 
 __all__ = ["FleetDashboard", "ProjectInfo"]
-
-# Based on Standard_E16as_v5 on-demand pricing ($0.576/hr, East US, March 2026)
-DEFAULT_COST_PER_HOUR = 0.576
 
 
 @dataclass
