@@ -987,3 +987,145 @@ class TestAdoptAllSessions:
         mock_director.fleet_state.managed_vms.return_value = []
 
         _adopt_all_sessions(mock_director)
+
+
+# ---------------------------------------------------------------------------
+# fleet copilot-status (TDD -- command does not exist yet)
+# ---------------------------------------------------------------------------
+
+
+class TestFleetCopilotStatus:
+    """Tests for fleet copilot-status command.
+
+    This command shows the current copilot lock/goal state.
+    The command does not exist yet -- these tests are TDD stubs
+    that will fail until implementation in Step 8.
+    """
+
+    def test_copilot_status_no_lock(self, runner, tmp_path):
+        """When no lock active, shows 'not active'."""
+        with patch("amplihack.fleet._cli_commands.COPILOT_LOCK_DIR", tmp_path):
+            result = runner.invoke(fleet_cli, ["copilot-status"], catch_exceptions=False)
+        assert result.exit_code == 0
+        assert "not active" in result.output.lower()
+
+    def test_copilot_status_with_goal(self, runner, tmp_path):
+        """When lock + goal file exist, shows goal text."""
+        lock_file = tmp_path / ".lock_active"
+        lock_file.write_text("locked")
+        goal_file = tmp_path / ".lock_goal"
+        goal_file.write_text("Fix authentication bug in login flow")
+
+        with patch("amplihack.fleet._cli_commands.COPILOT_LOCK_DIR", tmp_path):
+            result = runner.invoke(fleet_cli, ["copilot-status"], catch_exceptions=False)
+
+        assert result.exit_code == 0
+        assert "active" in result.output.lower()
+        assert "Fix authentication bug in login flow" in result.output
+
+    def test_copilot_status_lock_without_goal(self, runner, tmp_path):
+        """When lock exists but no goal file, shows active with no goal."""
+        lock_file = tmp_path / ".lock_active"
+        lock_file.write_text("locked")
+
+        with patch("amplihack.fleet._cli_commands.COPILOT_LOCK_DIR", tmp_path):
+            result = runner.invoke(fleet_cli, ["copilot-status"], catch_exceptions=False)
+
+        assert result.exit_code == 0
+        assert "active" in result.output.lower()
+        assert "no goal" in result.output.lower()
+
+
+# ---------------------------------------------------------------------------
+# fleet copilot-log (TDD -- command does not exist yet)
+# ---------------------------------------------------------------------------
+
+
+class TestFleetCopilotLog:
+    """Tests for fleet copilot-log command.
+
+    This command shows copilot decision history from the decisions.jsonl file.
+    The command does not exist yet -- these tests are TDD stubs
+    that will fail until implementation in Step 8.
+    """
+
+    def test_copilot_log_no_file(self, runner, tmp_path):
+        """When no decisions file, shows 'no decisions'."""
+        with patch("amplihack.fleet._cli_commands.COPILOT_LOG_DIR", tmp_path):
+            result = runner.invoke(fleet_cli, ["copilot-log"], catch_exceptions=False)
+        assert result.exit_code == 0
+        assert "no decisions" in result.output.lower()
+
+    def test_copilot_log_with_entries(self, runner, tmp_path):
+        """When decisions.jsonl has entries, shows them."""
+        import json
+
+        decisions_file = tmp_path / "decisions.jsonl"
+        entries = [
+            json.dumps({
+                "timestamp": "2026-03-03T10:00:00",
+                "action": "send_input",
+                "input_text": "continue",
+                "reasoning": "Agent is idle at prompt",
+                "confidence": 0.85,
+            }),
+            json.dumps({
+                "timestamp": "2026-03-03T10:05:00",
+                "action": "wait",
+                "input_text": "",
+                "reasoning": "Agent has a tool call in flight",
+                "confidence": 0.95,
+            }),
+        ]
+        decisions_file.write_text("\n".join(entries))
+
+        with patch("amplihack.fleet._cli_commands.COPILOT_LOG_DIR", tmp_path):
+            result = runner.invoke(fleet_cli, ["copilot-log"], catch_exceptions=False)
+
+        assert result.exit_code == 0
+        assert "send_input" in result.output
+        assert "wait" in result.output
+        assert "Agent is idle" in result.output
+
+    def test_copilot_log_tail(self, runner, tmp_path):
+        """--tail N shows last N entries only."""
+        import json
+
+        decisions_file = tmp_path / "decisions.jsonl"
+        entries = [
+            json.dumps({
+                "timestamp": f"2026-03-03T10:{i:02d}:00",
+                "action": f"action_{i}",
+                "reasoning": f"reason_{i}",
+                "confidence": 0.8,
+            })
+            for i in range(10)
+        ]
+        decisions_file.write_text("\n".join(entries))
+
+        with patch("amplihack.fleet._cli_commands.COPILOT_LOG_DIR", tmp_path):
+            result = runner.invoke(
+                fleet_cli,
+                ["copilot-log", "--tail", "3"],
+                catch_exceptions=False,
+            )
+
+        assert result.exit_code == 0
+        # Should show last 3 entries (action_7, action_8, action_9)
+        assert "action_9" in result.output
+        assert "action_8" in result.output
+        assert "action_7" in result.output
+        # Should NOT show earlier entries
+        assert "action_0" not in result.output
+        assert "action_5" not in result.output
+
+    def test_copilot_log_empty_file(self, runner, tmp_path):
+        """When decisions.jsonl exists but is empty, shows 'no decisions'."""
+        decisions_file = tmp_path / "decisions.jsonl"
+        decisions_file.write_text("")
+
+        with patch("amplihack.fleet._cli_commands.COPILOT_LOG_DIR", tmp_path):
+            result = runner.invoke(fleet_cli, ["copilot-log"], catch_exceptions=False)
+
+        assert result.exit_code == 0
+        assert "no decisions" in result.output.lower()

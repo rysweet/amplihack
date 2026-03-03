@@ -9,6 +9,7 @@ fleet_cli.py's create_fleet_cli() instead.
 
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
 from typing import Any, Callable
@@ -41,6 +42,13 @@ _default_queue_path: Path = Path()
 _default_dashboard_path: Path = Path()
 _default_graph_path: Path = Path()
 _adopt_all_sessions: Callable[..., None] = lambda d: None
+
+# Copilot lock/log directories -- tests patch these with tmp_path.
+# Defaults match the real paths used by lock_tool.py and copilot_stop_handler.py.
+import os as _os
+_project_root = Path(_os.environ.get("CLAUDE_PROJECT_DIR", "."))
+COPILOT_LOCK_DIR: Path = _project_root / ".claude" / "runtime" / "locks"
+COPILOT_LOG_DIR: Path = _project_root / ".claude" / "runtime" / "copilot-decisions"
 
 
 def register_commands(
@@ -247,3 +255,66 @@ def register_commands(
             click.echo(f"Removed project: {name}")
         else:
             click.echo(f"Project not found: {name}")
+
+    # ------------------------------------------------------------------
+    # fleet copilot-status
+    # ------------------------------------------------------------------
+
+    @fleet_cli.command("copilot-status")
+    def copilot_status():
+        """Show current copilot lock/goal state."""
+        lock_file = COPILOT_LOCK_DIR / ".lock_active"
+        goal_file = COPILOT_LOCK_DIR / ".lock_goal"
+
+        if not lock_file.exists():
+            click.echo("Copilot: not active")
+            return
+
+        if goal_file.exists():
+            goal_text = goal_file.read_text().strip()
+            click.echo(f"Copilot: active")
+            click.echo(f"Goal: {goal_text}")
+        else:
+            click.echo("Copilot: active (no goal)")
+
+    # ------------------------------------------------------------------
+    # fleet copilot-log
+    # ------------------------------------------------------------------
+
+    @fleet_cli.command("copilot-log")
+    @click.option("--tail", default=0, type=int, help="Show last N entries only")
+    def copilot_log(tail):
+        """Show copilot decision history."""
+        decisions_file = COPILOT_LOG_DIR / "decisions.jsonl"
+
+        if not decisions_file.exists():
+            click.echo("No decisions recorded.")
+            return
+
+        text = decisions_file.read_text().strip()
+        if not text:
+            click.echo("No decisions recorded.")
+            return
+
+        lines = text.splitlines()
+        entries = []
+        for line in lines:
+            line = line.strip()
+            if line:
+                entries.append(json.loads(line))
+
+        if not entries:
+            click.echo("No decisions recorded.")
+            return
+
+        if tail > 0:
+            entries = entries[-tail:]
+
+        for entry in entries:
+            ts = entry.get("timestamp", "?")
+            action = entry.get("action", "?")
+            reasoning = entry.get("reasoning", "")
+            confidence = entry.get("confidence", "")
+            click.echo(f"[{ts}] {action} (confidence={confidence})")
+            if reasoning:
+                click.echo(f"  {reasoning}")

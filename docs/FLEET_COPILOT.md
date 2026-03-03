@@ -25,6 +25,27 @@ Claude will:
 3. Enable lock mode
 4. Start working immediately
 
+## CLI Commands
+
+### fleet setup
+Check prerequisites and install azlin if missing. Run on a new machine:
+```
+fleet setup
+```
+
+### fleet copilot-status
+Show whether the co-pilot is active, the current goal, and lock state:
+```
+fleet copilot-status
+```
+
+### fleet copilot-log
+View the co-pilot's decision history (what it decided and why):
+```
+fleet copilot-log
+fleet copilot-log --tail 5     # last 5 decisions
+```
+
 ## How It Works
 
 Two hooks work together:
@@ -45,6 +66,10 @@ When the agent tries to stop, the Stop hook:
    - **wait**: Blocks stop with a generic "keep working toward goal" prompt
    - **mark_complete**: Auto-disables lock, tells agent to summarize completed work
    - **escalate**: Auto-disables lock, tells agent to ask the user for help
+
+Every decision is logged to `.claude/runtime/copilot-decisions/decisions.jsonl`
+for debugging and auditing. View logs with `fleet copilot-log` or in the TUI
+Copilot Log tab.
 
 ## Smart Transcript Reading
 
@@ -76,11 +101,15 @@ to either summarize completed work or explain why it needs help.
 |------|---------|
 | `.claude/runtime/locks/.lock_active` | Lock state (exists = locked) |
 | `.claude/runtime/locks/.lock_goal` | Goal + definition of done |
+| `.claude/runtime/copilot-decisions/decisions.jsonl` | Copilot decision log |
 | `.claude/tools/amplihack/lock_tool.py` | CLI: lock/unlock/check |
 | `amplifier-bundle/tools/amplihack/hooks/stop.py` | Stop hook (delegates to copilot handler) |
 | `amplifier-bundle/tools/amplihack/hooks/copilot_stop_handler.py` | Copilot reasoning + decision logging |
 | `amplifier-bundle/modules/hook-lock-mode/` | Provider:request hook for goal injection |
 | `src/amplihack/fleet/fleet_copilot.py` | SessionCopilot engine |
+| `src/amplihack/fleet/prompts/copilot_system.prompt` | LLM system prompt |
+| `src/amplihack/fleet/prompts/lock_mode_directive.prompt` | Goal injection template |
+| `src/amplihack/fleet/_constants.py` | All configurable thresholds |
 
 ## Examples
 
