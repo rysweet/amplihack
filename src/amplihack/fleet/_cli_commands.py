@@ -43,12 +43,24 @@ _default_dashboard_path: Path = Path()
 _default_graph_path: Path = Path()
 _adopt_all_sessions: Callable[..., None] = lambda d: None
 
-# Copilot lock/log directories -- tests patch these with tmp_path.
-# Defaults match the real paths used by lock_tool.py and copilot_stop_handler.py.
+# Copilot lock/log directory functions -- resolved at call time, not import time.
+# Tests patch these module-level vars for filesystem isolation.
 import os as _os
-_project_root = Path(_os.environ.get("CLAUDE_PROJECT_DIR", "."))
-COPILOT_LOCK_DIR: Path = _project_root / ".claude" / "runtime" / "locks"
-COPILOT_LOG_DIR: Path = _project_root / ".claude" / "runtime" / "copilot-decisions"
+
+
+def _copilot_lock_dir() -> Path:
+    root = Path(_os.environ.get("CLAUDE_PROJECT_DIR", "."))
+    return root / ".claude" / "runtime" / "locks"
+
+
+def _copilot_log_dir() -> Path:
+    root = Path(_os.environ.get("CLAUDE_PROJECT_DIR", "."))
+    return root / ".claude" / "runtime" / "copilot-decisions"
+
+
+# Module-level vars for test patching (tests set these to tmp_path)
+COPILOT_LOCK_DIR: Path | None = None
+COPILOT_LOG_DIR: Path | None = None
 
 
 def register_commands(
@@ -263,8 +275,9 @@ def register_commands(
     @fleet_cli.command("copilot-status")
     def copilot_status():
         """Show current copilot lock/goal state."""
-        lock_file = COPILOT_LOCK_DIR / ".lock_active"
-        goal_file = COPILOT_LOCK_DIR / ".lock_goal"
+        lock_dir = COPILOT_LOCK_DIR if COPILOT_LOCK_DIR is not None else _copilot_lock_dir()
+        lock_file = lock_dir / ".lock_active"
+        goal_file = lock_dir / ".lock_goal"
 
         if not lock_file.exists():
             click.echo("Copilot: not active")
@@ -285,7 +298,8 @@ def register_commands(
     @click.option("--tail", default=0, type=int, help="Show last N entries only")
     def copilot_log(tail):
         """Show copilot decision history."""
-        decisions_file = COPILOT_LOG_DIR / "decisions.jsonl"
+        log_dir = COPILOT_LOG_DIR if COPILOT_LOG_DIR is not None else _copilot_log_dir()
+        decisions_file = log_dir / "decisions.jsonl"
 
         if not decisions_file.exists():
             click.echo("No decisions recorded.")
@@ -301,7 +315,10 @@ def register_commands(
         for line in lines:
             line = line.strip()
             if line:
-                entries.append(json.loads(line))
+                try:
+                    entries.append(json.loads(line))
+                except json.JSONDecodeError:
+                    click.echo(f"  (skipped malformed entry)", err=True)
 
         if not entries:
             click.echo("No decisions recorded.")
