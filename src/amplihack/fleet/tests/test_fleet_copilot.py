@@ -310,11 +310,11 @@ class TestSessionCopilot:
         entries = [
             json.dumps({"type": "human", "message": {"content": "hello"}}),
             json.dumps({"type": "assistant", "message": {"content": "hi"}}),
-            json.dumps({"type": "tool_use", "message": {"content": "read file"}}),
+            json.dumps({"type": "tool_use", "name": "Read", "message": {"content": "read file"}}),
         ]
         transcript = "\n".join(entries)
         summary = copilot._summarize_transcript(transcript)
         assert "3 entries" in summary
-        assert "1 user msgs" in summary
-        assert "1 assistant msgs" in summary
-        assert "1 tool uses" in summary
+        assert "1 user" in summary
+        assert "1 assistant" in summary
+        assert "1 tool" in summary

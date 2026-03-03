@@ -309,7 +309,7 @@ class StopHook(HookProcessor):
         Returns the continuation prompt, or None if copilot is unavailable.
         """
         try:
-            from amplihack.fleet.fleet_copilot import SessionCopilot, build_rich_context
+            from amplihack.fleet.fleet_copilot import SessionCopilot
         except ImportError as exc:
             self.log(f"SessionCopilot not available: {exc}", "WARNING")
             return None

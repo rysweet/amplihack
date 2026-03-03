@@ -208,7 +208,6 @@ def build_rich_context(transcript_text: str, recent_message_count: int = 500) ->
             entry = json.loads(line)
         except (json.JSONDecodeError, ValueError):
             continue
-        msg_type = entry.get("type", "")
         content = entry.get("message", {}).get("content", "")
 
         if isinstance(content, list):
@@ -276,15 +275,15 @@ def _summarize_entries(lines: list[str]) -> str:
     ]
 
     if tool_uses:
-        top_tools = sorted(tool_uses.items(), key=lambda x: x[1], reverse=True)[:10]
+        top_tools = sorted(tool_uses.items(), key=lambda x: x[1], reverse=True)
         parts.append(f"  Top tools: {', '.join(f'{k}({v})' for k, v in top_tools)}")
 
     if files_mentioned:
-        parts.append(f"  Files touched: {', '.join(sorted(files_mentioned)[:20])}")
+        parts.append(f"  Files touched: {', '.join(sorted(files_mentioned))}")
 
     if errors:
         parts.append(f"  Errors encountered ({len(errors)}):")
-        for err in errors[:5]:
+        for err in errors:
             parts.append(f"    - {err}")
 
     return "\n".join(parts)
@@ -394,38 +393,12 @@ class SessionCopilot:
             )
 
     def _summarize_transcript(self, transcript: str) -> str:
-        """Create a brief summary of the transcript for context."""
+        """Create a brief summary of the transcript for context.
+
+        Delegates to the module-level _summarize_entries to avoid duplication.
+        """
         lines = transcript.strip().split("\n") if transcript else []
-        tool_uses = 0
-        user_msgs = 0
-        assistant_msgs = 0
-        errors = []
-
-        for line in lines:
-            try:
-                entry = json.loads(line)
-            except (json.JSONDecodeError, ValueError):
-                continue
-            msg_type = entry.get("type", "")
-            if msg_type == "tool_use":
-                tool_uses += 1
-            elif msg_type == "human":
-                user_msgs += 1
-            elif msg_type == "assistant":
-                assistant_msgs += 1
-
-            content = str(entry.get("message", {}).get("content", ""))
-            if "error" in content.lower() or "traceback" in content.lower():
-                errors.append(content)
-
-        summary = (
-            f"Transcript: {len(lines)} entries, "
-            f"{user_msgs} user msgs, {assistant_msgs} assistant msgs, "
-            f"{tool_uses} tool uses"
-        )
-        if errors:
-            summary += f", {len(errors)} errors detected"
-        return summary
+        return _summarize_entries(lines)
 
     def _estimate_progress(self, transcript: str) -> int | None:
         """Progress estimate based on transcript patterns."""

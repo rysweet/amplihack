@@ -38,15 +38,16 @@ class LockModeHook(Hook):
     def _is_locked(self) -> bool:
         try:
             return _LOCK_FILE.exists()
-        except Exception:
+        except Exception as exc:
+            logger.warning("Cannot check lock file: %s", exc)
             return False
 
     def _get_goal(self) -> str:
         try:
             if _GOAL_FILE.exists():
                 return _GOAL_FILE.read_text().strip()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Cannot read goal file: %s", exc)
         return ""
 
     async def __call__(self, event: str, data: dict[str, Any]) -> HookResult | None:
