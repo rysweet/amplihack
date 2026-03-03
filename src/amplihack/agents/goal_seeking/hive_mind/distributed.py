@@ -457,12 +457,11 @@ class HiveCoordinator:
                 matching_agents.add(agent_id)
 
         # Sort by trust descending
-        sorted_agents = sorted(
+        return sorted(
             matching_agents,
             key=lambda a: self._trust.get(a, 0.0),
             reverse=True,
         )
-        return sorted_agents
 
     def route_query(self, query: str) -> list[str]:
         """Route a query to the most relevant agents.
