@@ -156,8 +156,13 @@ class FleetAdmiral:
 
     @property
     def fleet_state(self) -> FleetState:
-        """Public access to fleet state (avoids _fleet_state private access)."""
+        """Public access to fleet state."""
         return self._fleet_state
+
+    @property
+    def observer(self) -> FleetObserver:
+        """Public access to fleet observer for configuration."""
+        return self._observer
 
     def run_once(self) -> list[DirectorAction]:
         """Execute one PERCEIVE→REASON→ACT cycle.

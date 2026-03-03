@@ -247,6 +247,6 @@ def run_dashboard(
         capture_lines: Terminal scrollback capture depth (passed to FleetTUI).
     """
     app = FleetDashboardApp(refresh_interval=interval)
-    if capture_lines is not None and hasattr(app, '_fleet'):
+    if capture_lines is not None:
         app._fleet.capture_lines = capture_lines
     app.run()
