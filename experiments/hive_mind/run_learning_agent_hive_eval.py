@@ -195,6 +195,7 @@ def run_single(
     seed: int,
     tmpdir: str,
     parallel_workers: int = 5,
+    prompt_variant: int | None = None,
 ) -> ConditionResult:
     """Run SINGLE condition: 1 LearningAgent, no hive."""
     logger.info("=== SINGLE: 1 agent, no hive ===")
@@ -205,6 +206,7 @@ def run_single(
         agent_name="single_agent",
         model=model,
         storage_path=storage,
+        prompt_variant=prompt_variant,
     )
 
     runner = EvalRunner(
@@ -229,6 +231,7 @@ def run_flat(
     seed: int,
     tmpdir: str,
     parallel_workers: int = 5,
+    prompt_variant: int | None = None,
 ) -> ConditionResult:
     """Run HIVE_FLAT: N agents sharing a single InMemoryHiveGraph."""
     logger.info("=== HIVE_FLAT: %d agents, shared hive ===", num_agents)
@@ -254,12 +257,16 @@ def run_flat(
     for i in range(num_agents):
         name = f"flat_agent_{i}"
         hive.register_agent(name)
+        kwargs: dict[str, Any] = {}
+        if prompt_variant is not None:
+            kwargs["prompt_variant"] = prompt_variant
         agent = LearningAgent(
             agent_name=name,
             model=model,
             storage_path=Path(tmpdir) / f"flat_{i}",
             use_hierarchical=True,
             hive_store=hive,
+            **kwargs,
         )
         agents.append(agent)
 
@@ -302,6 +309,7 @@ def run_federated(
     seed: int,
     tmpdir: str,
     parallel_workers: int = 5,
+    prompt_variant: int | None = None,
 ) -> ConditionResult:
     """Run HIVE_FEDERATED: N agents in M groups with federation tree."""
     logger.info("=== HIVE_FEDERATED: %d agents, %d groups ===", num_agents, num_groups)
@@ -344,12 +352,16 @@ def run_federated(
         for _ in range(n):
             name = f"fed_agent_{agent_idx}"
             group_hive.register_agent(name)
+            kwargs: dict[str, Any] = {}
+            if prompt_variant is not None:
+                kwargs["prompt_variant"] = prompt_variant
             agent = LearningAgent(
                 agent_name=name,
                 model=model,
                 storage_path=Path(tmpdir) / f"fed_{agent_idx}",
                 use_hierarchical=True,
                 hive_store=group_hive,
+                **kwargs,
             )
             agents.append(agent)
             agent_idx += 1
@@ -455,6 +467,7 @@ def main() -> None:
                 args.seed,
                 tmpdir,
                 args.parallel_workers,
+                prompt_variant=args.prompt_variant,
             )
             results.append(r)
 
@@ -467,6 +480,7 @@ def main() -> None:
                 args.seed,
                 tmpdir,
                 args.parallel_workers,
+                prompt_variant=args.prompt_variant,
             )
             results.append(r)
 
@@ -480,6 +494,7 @@ def main() -> None:
                 args.seed,
                 tmpdir,
                 args.parallel_workers,
+                prompt_variant=args.prompt_variant,
             )
             results.append(r)
 
@@ -514,6 +529,7 @@ def main() -> None:
             "seed": args.seed,
             "agents": args.agents,
             "groups": args.groups,
+            "prompt_variant": args.prompt_variant,
         },
         "results": [],
     }
