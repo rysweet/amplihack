@@ -81,16 +81,7 @@ class TestFleetDefault:
             assert result.exit_code == 0
             mock_module.run_dashboard.assert_called_once_with(interval=30)
 
-    def test_no_subcommand_fallback_when_textual_missing(self, runner):
-        """When Textual is not installed, shows fallback guidance."""
-        with patch.dict(
-            "sys.modules",
-            {"amplihack.fleet.fleet_tui_dashboard": None},
-        ):
-            result = runner.invoke(fleet_cli, [], catch_exceptions=False)
-            assert result.exit_code == 0
-            assert "textual" in result.output.lower()
-            assert "fleet status" in result.output
+    # textual is a base dependency — no ImportError fallback test needed
 
 
 # ---------------------------------------------------------------------------

@@ -120,18 +120,9 @@ def fleet_cli(ctx):
       azlin                              For VM management (github.com/rysweet/azlin)
     """
     if ctx.invoked_subcommand is None:
-        # Default: launch TUI dashboard
-        try:
-            from amplihack.fleet.fleet_tui_dashboard import run_dashboard
+        from amplihack.fleet.fleet_tui_dashboard import run_dashboard
 
-            run_dashboard(interval=30)
-        except ImportError:
-            click.echo("Textual library not found. Install with: pip install textual")
-            click.echo("")
-            click.echo("Text-based commands still work:")
-            click.echo("  amplihack fleet status     Quick overview")
-            click.echo("  amplihack fleet dry-run    Admiral reasoning")
-            click.echo("  amplihack fleet --help     All commands")
+        run_dashboard(interval=30)
 
 
 @fleet_cli.command("status")
@@ -505,11 +496,7 @@ def tui(interval):
     and Action Editor.  Auto-refreshes and supports LLM-powered
     dry-run reasoning for each session.
     """
-    try:
-        from amplihack.fleet.fleet_tui_dashboard import run_dashboard
-    except ImportError:
-        click.echo("Error: textual library not found. Install with: pip install textual")
-        raise SystemExit(1)
+    from amplihack.fleet.fleet_tui_dashboard import run_dashboard
 
     run_dashboard(interval=interval)
 
