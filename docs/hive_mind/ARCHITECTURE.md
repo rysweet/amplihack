@@ -8,39 +8,28 @@ lifecycle management.
 
 ### Single: One Agent, No Hive
 
-```
-┌─────────────────────────────┐
-│         LearningAgent       │
-│  ┌───────────┐              │
-│  │  Kuzu DB  │ ← all facts  │
-│  └───────────┘              │
-│       ↕                     │
-│  answer_question()          │
-│  → search local Kuzu        │
-│  → LLM synthesize           │
-└─────────────────────────────┘
+```mermaid
+graph TD
+    subgraph LearningAgent
+        KuzuDB[(Kuzu DB)] --- |all facts| Ops
+        Ops[answer_question] --> Search[search local Kuzu]
+        Search --> Synth[LLM synthesize]
+    end
 ```
 
 One agent learns all turns. All facts in one Kuzu DB. No hive involved.
 
 ### Flat: N Agents, One Shared Hive
 
-```
-┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐
-│ Agent 0  │  │ Agent 1  │  │ Agent 2  │  │ Agent 3  │  │ Agent 4  │
-│ Kuzu DB  │  │ Kuzu DB  │  │ Kuzu DB  │  │ Kuzu DB  │  │ Kuzu DB  │
-└────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘
-     │             │             │             │             │
-     └──────┬──────┴──────┬──────┴──────┬──────┴──────┬──────┘
-            │             │             │             │
-            ▼             ▼             ▼             ▼
-     ┌──────────────────────────────────────────────────────┐
-     │            InMemoryHiveGraph("flat-hive")            │
-     │                                                      │
-     │  _facts = { all promoted facts from all agents }     │
-     │                                                      │
-     │  query_facts("X") → scores ALL facts → returns top K │
-     └──────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    A0[Agent 0<br/>Kuzu DB] --> Hive
+    A1[Agent 1<br/>Kuzu DB] --> Hive
+    A2[Agent 2<br/>Kuzu DB] --> Hive
+    A3[Agent 3<br/>Kuzu DB] --> Hive
+    A4[Agent 4<br/>Kuzu DB] --> Hive
+
+    Hive["InMemoryHiveGraph(&quot;flat-hive&quot;)<br/>_facts = all promoted facts from all agents<br/>query_facts(&quot;X&quot;) → scores ALL facts → returns top K"]
 ```
 
 All agents share the SAME Python object reference. `store_fact()` auto-promotes
@@ -48,28 +37,19 @@ and the fact lands in one shared dict. Every agent sees every fact immediately.
 
 ### Federated: N Agents, M Group Hives + Root
 
-```
-                    ┌─────────────────────────┐
-                    │  InMemoryHiveGraph       │
-                    │  ("root-hive")           │
-                    │                          │
-                    │  _facts = { broadcast    │
-                    │    copies only }         │
-                    │  _children = [g0, g1]    │
-                    └──────────┬───────────────┘
-                               │
-                 ┌─────────────┴─────────────┐
-                 │                           │
-    ┌────────────▼──────────┐   ┌────────────▼──────────┐
-    │ InMemoryHiveGraph     │   │ InMemoryHiveGraph     │
-    │ ("group-0")           │   │ ("group-1")           │
-    │ _parent = root        │   │ _parent = root        │
-    └───┬──────┬──────┬─────┘   └───┬──────┬────────────┘
-        │      │      │             │      │
-   ┌────┴┐ ┌──┴──┐ ┌─┴───┐   ┌────┴┐ ┌──┴──┐
-   │Ag 0 │ │Ag 1 │ │Ag 2 │   │Ag 3 │ │Ag 4 │
-   │Kuzu │ │Kuzu │ │Kuzu │   │Kuzu │ │Kuzu │
-   └─────┘ └─────┘ └─────┘   └─────┘ └─────┘
+```mermaid
+graph TD
+    Root["InMemoryHiveGraph(&quot;root-hive&quot;)<br/>_facts = broadcast copies only<br/>_children = [g0, g1]"]
+
+    Root --> G0["InMemoryHiveGraph(&quot;group-0&quot;)<br/>_parent = root"]
+    Root --> G1["InMemoryHiveGraph(&quot;group-1&quot;)<br/>_parent = root"]
+
+    G0 --> Ag0[Ag 0<br/>Kuzu]
+    G0 --> Ag1[Ag 1<br/>Kuzu]
+    G0 --> Ag2[Ag 2<br/>Kuzu]
+
+    G1 --> Ag3[Ag 3<br/>Kuzu]
+    G1 --> Ag4[Ag 4<br/>Kuzu]
 ```
 
 Agents in each group share a group-level hive. High-confidence facts (≥ 0.9)
@@ -106,14 +86,13 @@ Federated queries (`query_federated()`) collect results from each hive in
 the tree, then apply **Reciprocal Rank Fusion (RRF)** to merge multiple
 ranked lists:
 
-```
-Phase 1: Collect — query each hive (local, parent, children)
-         No per-hive cap; domain-routed children get 3x limit
+```mermaid
+graph LR
+    P1["Phase 1: Collect<br/>Query each hive<br/>(local, parent, children)<br/>No per-hive cap;<br/>domain-routed children get 3x limit"]
+    P2["Phase 2: Deduplicate<br/>By content string"]
+    P3["Phase 3: Global rerank<br/>RRF merge of keyword-ranked<br/>+ confidence-ranked lists<br/>Falls back to keyword-only<br/>if RRF unavailable"]
 
-Phase 2: Deduplicate — by content string
-
-Phase 3: Global rerank — RRF merge of keyword-ranked + confidence-ranked lists
-         Falls back to keyword-only sorting if RRF unavailable
+    P1 --> P2 --> P3
 ```
 
 Domain routing gives priority to children whose agents have domains matching
@@ -215,19 +194,24 @@ When TTL is disabled, `gc()` is a no-op returning an empty list.
 
 ### Step 1: Learning (same in all modes)
 
-```
-learn_from_content("Server prod-01 runs PostgreSQL on port 5432")
-  │
-  ├→ LLM call #1: extract temporal metadata
-  ├→ LLM call #2: extract structured facts as JSON
-  │     → [{"context": "infrastructure", "fact": "Server prod-01...", "confidence": 0.85}]
-  ├→ LLM call #3: summary concept map
-  │
-  └→ For each extracted fact:
-        CognitiveAdapter.store_fact("infrastructure", "Server prod-01...", 0.85)
-          │
-          ├→ Store in local Kuzu DB
-          └→ _promote_to_hive()  ←── THIS IS WHERE MODES DIVERGE
+```mermaid
+graph TD
+    Learn["learn_from_content(&quot;Server prod-01 runs PostgreSQL on port 5432&quot;)"]
+    LLM1["LLM call #1: extract temporal metadata"]
+    LLM2["LLM call #2: extract structured facts as JSON"]
+    JSON[/"[{context: infrastructure, fact: Server prod-01..., confidence: 0.85}]"/]
+    LLM3["LLM call #3: summary concept map"]
+    Store["CognitiveAdapter.store_fact(&quot;infrastructure&quot;, &quot;Server prod-01...&quot;, 0.85)"]
+    Local[(Store in local Kuzu DB)]
+    Promote["_promote_to_hive()<br/>THIS IS WHERE MODES DIVERGE"]
+
+    Learn --> LLM1
+    Learn --> LLM2
+    LLM2 --> JSON
+    Learn --> LLM3
+    JSON --> Store
+    Store --> Local
+    Store --> Promote
 ```
 
 ### Step 2: Promotion (mode-dependent)
@@ -250,31 +234,24 @@ collected facts.
 
 ## Azure Deployment Architecture
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                  Azure Container Apps Environment           │
-│                                                             │
-│  ┌─────────┐ ┌─────────┐ ┌─────────┐     ┌─────────┐      │
-│  │ Agent 1 │ │ Agent 2 │ │ Agent 3 │ ... │ Agent N │      │
-│  │ :8080   │ │ :8080   │ │ :8080   │     │ :8080   │      │
-│  │ Learning│ │ Learning│ │ Learning│     │ Learning│      │
-│  │ Agent   │ │ Agent   │ │ Agent   │     │ Agent   │      │
-│  │ Kuzu DB │ │ Kuzu DB │ │ Kuzu DB │     │ Kuzu DB │      │
-│  │ + Hive  │ │ + Hive  │ │ + Hive  │     │ + Hive  │      │
-│  └────┬────┘ └────┬────┘ └────┬────┘     └────┬────┘      │
-│       └─────┬─────┴─────┬─────┴────────┬───────┘           │
-│             ▼           ▼              ▼                    │
-│  ┌──────────────────────────────────────────────┐          │
-│  │        Azure Service Bus (Standard)          │          │
-│  │        Topic: "hive-events"                  │          │
-│  │        N subscriptions (one per agent)       │          │
-│  └──────────────────────────────────────────────┘          │
-│                                                             │
-│  ┌──────────────────┐  ┌───────────────────┐               │
-│  │ Azure Files      │  │ Container Registry│               │
-│  │ (Kuzu DB persist)│  │ (agent images)    │               │
-│  └──────────────────┘  └───────────────────┘               │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    subgraph ACA["Azure Container Apps Environment"]
+        A1["Agent 1 :8080<br/>LearningAgent<br/>Kuzu DB + Hive"]
+        A2["Agent 2 :8080<br/>LearningAgent<br/>Kuzu DB + Hive"]
+        A3["Agent 3 :8080<br/>LearningAgent<br/>Kuzu DB + Hive"]
+        AN["Agent N :8080<br/>LearningAgent<br/>Kuzu DB + Hive"]
+
+        SB["Azure Service Bus (Standard)<br/>Topic: &quot;hive-events&quot;<br/>N subscriptions (one per agent)"]
+
+        A1 --> SB
+        A2 --> SB
+        A3 --> SB
+        AN --> SB
+
+        Files[("Azure Files<br/>(Kuzu DB persist)")]
+        ACR["Container Registry<br/>(agent images)"]
+    end
 ```
 
 In Azure, containers can't share Python objects. Service Bus acts as the
@@ -283,28 +260,31 @@ optional group filtering for federated mode).
 
 ## Data Flow Summary
 
-```
-                     SINGLE           FLAT             FEDERATED
-                     ──────           ────             ─────────
-Storage:             1 Kuzu DB        N Kuzu DBs       N Kuzu DBs
-                                     + 1 shared hive   + M group hives
-                                                       + 1 root hive
+```mermaid
+graph LR
+    subgraph SINGLE
+        S_Store[1 Kuzu DB]
+        S_Promo[Local only]
+        S_Vis[All in one DB]
+        S_Query[Local Kuzu]
+        S_Ret[Keyword only]
+    end
 
-Fact promotion:      Local only       Local + hive     Local + group hive
-                                                       + broadcast if ≥0.9
+    subgraph FLAT
+        F_Store["N Kuzu DBs<br/>+ 1 shared hive"]
+        F_Promo[Local + hive]
+        F_Vis[All in one hive]
+        F_Query["Local Kuzu<br/>+ hive.query()"]
+        F_Ret["Vector + keyword<br/>(single pool)"]
+    end
 
-Fact visibility:     All in one DB    All in one hive  Group-local +
-                                                       broadcast copies +
-                                                       query_federated
-                                                       tree traversal
-
-Query path:          Local Kuzu       Local Kuzu       Local Kuzu
-                                     + hive.query()    + group.query_fed()
-                                                         → root
-                                                         → sibling groups
-
-Retrieval:           Keyword only     Vector + keyword  Vector + keyword
-                                     (single pool)     (per-pool → RRF merge)
+    subgraph FEDERATED
+        Fed_Store["N Kuzu DBs<br/>+ M group hives<br/>+ 1 root hive"]
+        Fed_Promo["Local + group hive<br/>+ broadcast if ≥0.9"]
+        Fed_Vis["Group-local +<br/>broadcast copies +<br/>query_federated<br/>tree traversal"]
+        Fed_Query["Local Kuzu<br/>+ group.query_fed()<br/>→ root → siblings"]
+        Fed_Ret["Vector + keyword<br/>(per-pool → RRF merge)"]
+    end
 ```
 
 ## Key Files
