@@ -118,10 +118,10 @@ class FleetDashboardApp(_ActionsMixin, _RefreshMixin, App):
         Binding("2", "tab_detail", "[u]S[/u]ession Detail", show=True, priority=True),
         Binding("3", "tab_editor", "Editor", show=True, priority=True),
         Binding("4", "tab_projects", "[u]P[/u]rojects", show=True, priority=True),
-        # Tab navigation — letter hotkeys
-        Binding("f", "tab_fleet", "[u]F[/u]leet", show=False),
-        Binding("s", "tab_detail", "[u]S[/u]ession Detail", show=False),
-        Binding("p", "tab_projects", "[u]P[/u]rojects", show=False),
+        # Tab navigation — letter hotkeys (priority=True so they aren't consumed by child widgets)
+        Binding("f", "tab_fleet", "[u]F[/u]leet", show=False, priority=True),
+        Binding("s", "tab_detail", "[u]S[/u]ession Detail", show=False, priority=True),
+        Binding("p", "tab_projects", "[u]P[/u]rojects", show=False, priority=True),
         # Tab navigation — arrow keys
         Binding("left", "tab_prev", "Prev Tab", show=False),
         Binding("right", "tab_next", "Next Tab", show=False),
@@ -255,7 +255,13 @@ def run_dashboard(
         interval: Auto-refresh interval in seconds.
         capture_lines: Terminal scrollback capture depth (passed to FleetTUI).
     """
-    app = FleetDashboardApp(refresh_interval=interval)
+    try:
+        app = FleetDashboardApp(refresh_interval=interval)
+    except ValueError as exc:
+        import click
+        click.echo(f"ERROR: {exc}", err=True)
+        click.echo("Run 'fleet setup' to check prerequisites.", err=True)
+        raise SystemExit(1)
     if capture_lines is not None:
         app._fleet.capture_lines = capture_lines
     app.run()
