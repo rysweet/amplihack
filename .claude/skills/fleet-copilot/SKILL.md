@@ -1,69 +1,69 @@
 ---
 name: fleet-copilot
-version: 1.0.0
+version: 2.0.0
 description: >-
-  Smart autonomous guidance — enables lock mode with a goal so the session
-  co-pilot uses LLM reasoning to keep the agent moving toward the objective.
+  Autonomous co-pilot — agent formulates goal from natural language, enables
+  lock mode with SessionCopilot reasoning, works until goal is achieved.
 triggers:
   - "fleet copilot"
-  - "smart lock"
-  - "autonomous goal"
-  - "work toward goal"
   - "copilot mode"
+  - "work toward goal"
+  - "keep going until done"
+  - "autonomous mode"
 invocable_by: user
 ---
 
 # Fleet Co-Pilot Skill
 
-Convenience wrapper that enables lock mode with a goal, activating the smart
-session co-pilot. This merges the old lock mode ("keep going") with the fleet
-co-pilot's LLM reasoning into a single feature.
-
-## What It Does
-
-When invoked with a goal, the skill:
-
-1. Enables lock mode via `lock_tool.py lock --goal "..."`
-2. The LockModeHook detects the goal file and switches to smart mode
-3. On each provider:request, the hook uses `SessionCopilot.suggest()` to:
-   - Read the session transcript
-   - Reason about what to do next
-   - Inject specific, contextual guidance (not generic "continue")
-4. Auto-disables when the goal is achieved or escalation is needed
+The agent takes the user's natural language, formulates a goal with definition
+of done, writes it to the goal file, enables lock mode, and starts working.
+SessionCopilot reasoning monitors progress on each turn.
 
 ## Usage
 
 ```
-/fleet-copilot Fix the auth bug, write tests, create PR
-/fleet-copilot Implement OAuth2 with PKCE flow and add integration tests
+/fleet-copilot fix the auth bug and make sure tests pass
+/fleet-copilot implement OAuth2 login and create a PR
+/fleet-copilot keep going until all the TODOs are done
 ```
 
 ## Instructions
 
 When this skill is activated:
 
-1. Extract the goal from the user's message (everything after the command name)
-2. Run the lock tool with the goal:
+### Step 1: Formulate the goal
 
-```bash
-python .claude/tools/amplihack/lock_tool.py lock --goal "USER_GOAL_HERE"
+From the user's natural language, create:
+
+1. **Goal**: Clear objective statement
+2. **Definition of Done**: Concrete, verifiable criteria
+
+### Step 2: Write the goal file
+
+Use the Write tool to create `.claude/runtime/locks/.lock_goal`:
+
+```
+Goal: [objective from user's words]
+
+Definition of Done:
+- [criterion 1]
+- [criterion 2]
+- [criterion 3]
 ```
 
-3. Confirm to the user that smart co-pilot mode is active with their goal.
+### Step 3: Enable lock
 
-The hook will now use SessionCopilot reasoning on every turn to guide the agent
-toward the stated goal. The agent should then begin working on the goal
-immediately.
+```bash
+python .claude/tools/amplihack/lock_tool.py lock
+```
 
-## Disabling
+### Step 4: Start working
 
-The co-pilot auto-disables when:
-- Goal is achieved (mark_complete action)
-- Co-pilot needs human help (escalate action)
+Begin immediately. The LockModeHook uses SessionCopilot to monitor and guide.
+
+## Auto-disable
+
+Lock mode stops when:
+- Goal achieved (`mark_complete`)
+- Human needed (`escalate`)
 - User runs `/amplihack:unlock`
-
-## Relationship to Lock Mode
-
-This skill IS lock mode with a goal. The `--goal` flag is the dial between:
-- **No goal** = dumb mode (bare "continue")
-- **With goal** = smart co-pilot (LLM-reasoned guidance)
