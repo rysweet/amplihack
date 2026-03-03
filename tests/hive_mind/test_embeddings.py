@@ -236,3 +236,102 @@ class TestVectorSearchInQueryFacts:
 
         results = hive.query_facts("")
         assert len(results) == 2
+
+    def test_vector_search_with_mock_embedder(self):
+        """query_facts uses vector search when embedder is available."""
+        from amplihack.agents.goal_seeking.hive_mind.hive_graph import (
+            HiveFact,
+            InMemoryHiveGraph,
+        )
+
+        mock_embedder = MagicMock()
+        mock_embedder.available = True
+        query_vec = np.array([0.9, 0.1], dtype=np.float32)
+        mock_embedder.embed.return_value = query_vec
+
+        hive = InMemoryHiveGraph("test", embedder=mock_embedder)
+        hive.register_agent("a1")
+
+        close_embedding = np.array([0.95, 0.05], dtype=np.float32)
+        hive.promote_fact(
+            "a1",
+            HiveFact(
+                fact_id="f1",
+                content="DNA stores genetic info",
+                concept="biology",
+                embedding=close_embedding,
+            ),
+        )
+        hive.promote_fact(
+            "a1",
+            HiveFact(fact_id="f2", content="Python programming language", concept="tech"),
+        )
+
+        results = hive.query_facts("DNA")
+        assert len(results) >= 1
+        assert results[0].fact_id == "f1"
+
+    def test_vector_search_falls_back_when_embedder_unavailable(self):
+        """query_facts falls back to keyword search when embedder is not available."""
+        from amplihack.agents.goal_seeking.hive_mind.hive_graph import (
+            HiveFact,
+            InMemoryHiveGraph,
+        )
+
+        mock_embedder = MagicMock()
+        mock_embedder.available = False
+
+        hive = InMemoryHiveGraph("test", embedder=mock_embedder)
+        hive.register_agent("a1")
+        hive.promote_fact(
+            "a1", HiveFact(fact_id="f1", content="DNA stores genetic info", concept="biology")
+        )
+
+        results = hive.query_facts("DNA")
+        assert len(results) == 1
+        assert results[0].fact_id == "f1"
+        mock_embedder.embed.assert_not_called()
+
+    def test_vector_search_without_embedder(self):
+        """query_facts works normally without any embedder (backward compat)."""
+        from amplihack.agents.goal_seeking.hive_mind.hive_graph import (
+            HiveFact,
+            InMemoryHiveGraph,
+        )
+
+        hive = InMemoryHiveGraph("test")
+        hive.register_agent("a1")
+        hive.promote_fact(
+            "a1",
+            HiveFact(
+                fact_id="f1",
+                content="DNA stores genetic info",
+                concept="biology",
+                embedding=np.array([0.5, 0.5], dtype=np.float32),
+            ),
+        )
+
+        results = hive.query_facts("DNA")
+        assert len(results) == 1
+        assert results[0].fact_id == "f1"
+
+    def test_vector_search_embedding_exception_graceful(self):
+        """query_facts handles embedding failures gracefully."""
+        from amplihack.agents.goal_seeking.hive_mind.hive_graph import (
+            HiveFact,
+            InMemoryHiveGraph,
+        )
+
+        mock_embedder = MagicMock()
+        mock_embedder.available = True
+        mock_embedder.embed.side_effect = RuntimeError("model crashed")
+
+        hive = InMemoryHiveGraph("test", embedder=mock_embedder)
+        hive.register_agent("a1")
+        hive.promote_fact(
+            "a1", HiveFact(fact_id="f1", content="DNA stores genetic info", concept="biology")
+        )
+
+        results = hive.query_facts("DNA")
+        assert len(results) == 1
+        assert results[0].fact_id == "f1"

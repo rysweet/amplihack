@@ -27,10 +27,13 @@ Public API (the "studs"):
 
 from __future__ import annotations
 
+import logging
 import threading
 import uuid
 from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Data models
@@ -258,7 +261,12 @@ class InMemoryHiveGraph:
         >>> assert len(results) >= 1
     """
 
-    def __init__(self, hive_id: str = "test-hive", broadcast_threshold: float = 0.9) -> None:
+    def __init__(
+        self,
+        hive_id: str = "test-hive",
+        broadcast_threshold: float = 0.9,
+        embedder: Any = None,
+    ) -> None:
         self._hive_id = hive_id
         self._broadcast_threshold = broadcast_threshold
         self._agents: dict[str, HiveAgent] = {}
@@ -267,6 +275,7 @@ class InMemoryHiveGraph:
         self._parent: HiveGraph | None = None
         self._children: list[HiveGraph] = []
         self._lock = threading.RLock()
+        self._embedder = embedder  # Optional EmbeddingGenerator for vector search
 
     # -- Property --------------------------------------------------------------
 
@@ -379,7 +388,7 @@ class InMemoryHiveGraph:
         # the one where they were promoted. Prevents "fact in wrong group"
         # failures in federated queries.
         # Guard: only broadcast original facts (not already-broadcast copies)
-        # to prevent infinite recursion (child→parent→child→...).
+        # to prevent infinite recursion (child->parent->child->...).
         is_broadcast_copy = any(
             t.startswith("broadcast_from:") or t.startswith("escalated_from:") for t in fact.tags
         )
@@ -399,11 +408,11 @@ class InMemoryHiveGraph:
             return self._facts.get(fact_id)
 
     def query_facts(self, query: str, limit: int = 20) -> list[HiveFact]:
-        """Search facts by keyword query.
+        """Search facts by keyword query with optional vector search.
 
-        Scores each fact by counting how many query keywords appear
-        in either its content or concept. Returns top matches sorted
-        by score descending, then confidence descending.
+        When an embedder is available and facts have embeddings, uses hybrid
+        scoring (keyword + vector). Falls back to keyword-only when embeddings
+        are unavailable.
 
         Args:
             query: Space-separated keywords.
@@ -420,16 +429,61 @@ class InMemoryHiveGraph:
             if not keywords:
                 return list(self._facts.values())[:limit]
 
-            scored: list[tuple[float, HiveFact]] = []
+            # Check if vector search is possible
+            query_embedding = None
+            if self._embedder is not None and getattr(self._embedder, "available", False):
+                try:
+                    query_embedding = self._embedder.embed(query)
+                except Exception:
+                    logger.debug("Embedding query failed, falling back to keyword-only")
+
+            # Collect facts with embeddings for batch similarity
+            facts_with_embeddings: list[tuple[int, Any]] = []
+            active_facts: list[HiveFact] = []
             for fact in self._facts.values():
                 if fact.status == "retracted":
                     continue
+                active_facts.append(fact)
+                if query_embedding is not None and fact.embedding is not None:
+                    facts_with_embeddings.append((len(active_facts) - 1, fact.embedding))
+
+            # Compute vector similarities if available
+            vector_scores: dict[int, float] = {}
+            if query_embedding is not None and facts_with_embeddings:
+                try:
+                    from .embeddings import EmbeddingGenerator
+
+                    indices, embeddings = zip(*facts_with_embeddings, strict=False)
+                    similarities = EmbeddingGenerator.cosine_similarity_batch(
+                        query_embedding, list(embeddings)
+                    )
+                    for idx, sim in zip(indices, similarities, strict=False):
+                        vector_scores[idx] = max(0.0, sim)  # Clamp negatives
+                except Exception:
+                    logger.debug("Vector similarity failed, falling back to keyword-only")
+
+            # Score all active facts
+            scored: list[tuple[float, HiveFact]] = []
+            for i, fact in enumerate(active_facts):
                 fact_words = _tokenize(f"{fact.content} {fact.concept}")
-                hits = len(keywords & fact_words)
-                if hits > 0:
-                    # Score: keyword hits + confidence as tiebreaker
-                    score = hits + fact.confidence * 0.01
-                    scored.append((score, fact))
+                kw_hits = len(keywords & fact_words)
+                kw_score = kw_hits + fact.confidence * 0.01
+
+                if i in vector_scores:
+                    # Hybrid: combine keyword and vector scores
+                    from .reranker import hybrid_score
+
+                    combined = hybrid_score(kw_score, vector_scores[i])
+                    scored.append((combined, fact))
+                elif kw_hits > 0:
+                    scored.append((kw_score, fact))
+
+            # Include vector-only matches (high similarity but no keyword hits)
+            if vector_scores:
+                scored_indices = {id(f) for _, f in scored}
+                for i, vscore in vector_scores.items():
+                    if id(active_facts[i]) not in scored_indices and vscore > 0.3:
+                        scored.append((vscore * 0.6, active_facts[i]))
 
             scored.sort(key=lambda x: (-x[0], -x[1].confidence))
             return [f for _, f in scored[:limit]]
@@ -621,22 +675,22 @@ class InMemoryHiveGraph:
     ) -> list[HiveFact]:
         """Query the entire federation tree for facts matching query.
 
-        Two-phase approach (Proposals 1+2):
-          Phase 1: Collect ALL matching facts from every hive in the tree
-                   (no per-hive cap — Proposal 1).
-          Phase 2: Global re-rank by keyword score, return top-K.
+        Two-phase approach:
+          Phase 1: Collect ranked lists from local hive, parent, and children.
+                   Uses RRF (Reciprocal Rank Fusion) to merge results from
+                   multiple sources for robust cross-source ranking.
+          Phase 2: Deduplicate by content and re-rank by keyword relevance.
 
         Query routing (Proposal 3): Children whose agents have matching
-        domains get 3x the internal limit, ensuring domain-relevant groups
-        contribute more facts to the global pool.
+        domains get 3x the internal limit.
 
         Args:
             query: Space-separated keywords.
             limit: Maximum results.
-            _visited: Internal — hive_ids already queried (prevents loops).
+            _visited: Internal -- hive_ids already queried (prevents loops).
 
         Returns:
-            Merged, deduplicated list of HiveFact sorted by keyword relevance.
+            Merged, deduplicated list of HiveFact sorted by relevance.
         """
         if _visited is None:
             _visited = set()
@@ -644,21 +698,23 @@ class InMemoryHiveGraph:
             return []
         _visited.add(self._hive_id)
 
-        # Proposal 1: Remove the 2000 cap. Use uncapped 10x multiplier so
-        # global re-ranking sees ALL candidates from each hive.
+        # Use large internal limit so RRF sees all candidates.
         internal_limit = max(limit * 10, 200)
 
-        # Phase 1: Collect from local hive
-        results = list(self.query_facts(query, limit=internal_limit))
-        seen_content: set[str] = {f.content for f in results}
+        # Phase 1: Collect ranked lists from each source
+        ranked_lists: list[list[HiveFact]] = []
+
+        # Local hive results
+        local_results = list(self.query_facts(query, limit=internal_limit))
+        if local_results:
+            ranked_lists.append(local_results)
 
         # Snapshot parent/children under lock for thread safety
         with self._lock:
             parent = self._parent
             children = list(self._children)
 
-        # Proposal 3: Query routing — identify which children have agents
-        # whose domains match the query. Give those children 3x the limit.
+        # Query routing -- identify priority children
         keywords = _tokenize(query)
         priority_child_ids: set[str] = set()
         if keywords:
@@ -674,10 +730,8 @@ class InMemoryHiveGraph:
                 limit=internal_limit,
                 _visited=_visited,
             )
-            for f in parent_results:
-                if f.content not in seen_content:
-                    seen_content.add(f.content)
-                    results.append(f)
+            if parent_results:
+                ranked_lists.append(parent_results)
 
         # Children (recursive, with routing-based limits)
         for child in children:
@@ -689,24 +743,50 @@ class InMemoryHiveGraph:
                 limit=child_limit,
                 _visited=_visited,
             )
-            for f in child_results:
-                if f.content not in seen_content:
-                    seen_content.add(f.content)
-                    results.append(f)
+            if child_results:
+                ranked_lists.append(child_results)
 
-        # Phase 2: Global re-ranking by keyword score
+        # Phase 2: Merge, deduplicate, and re-rank
+        if not ranked_lists:
+            return []
+
+        # Content deduplication helper
+        def _dedup_by_content(facts: list[HiveFact]) -> list[HiveFact]:
+            seen: set[str] = set()
+            out: list[HiveFact] = []
+            for f in facts:
+                if f.content not in seen:
+                    seen.add(f.content)
+                    out.append(f)
+            return out
+
+        if len(ranked_lists) == 1:
+            merged = _dedup_by_content(ranked_lists[0])
+        else:
+            try:
+                from .reranker import rrf_merge
+
+                scored = rrf_merge(*ranked_lists, key="fact_id", limit=internal_limit)
+                merged = _dedup_by_content([sf.fact for sf in scored])
+            except Exception:
+                logger.debug("RRF merge failed, falling back to flat merge")
+                flat: list[HiveFact] = []
+                for rlist in ranked_lists:
+                    flat.extend(rlist)
+                merged = _dedup_by_content(flat)
+
+        # Global re-ranking by keyword relevance
         if keywords:
 
-            def _global_score(fact: HiveFact) -> float:
-                fact_words = _tokenize(f"{fact.content} {fact.concept}")
-                hits = len(keywords & fact_words)
-                return hits + fact.confidence * 0.01
+            def _kw_score(fact: HiveFact) -> float:
+                fw = _tokenize(f"{fact.content} {fact.concept}")
+                return len(keywords & fw) + fact.confidence * 0.01
 
-            results.sort(key=lambda f: (-_global_score(f), -f.confidence))
+            merged.sort(key=lambda f: (-_kw_score(f), -f.confidence))
         else:
-            results.sort(key=lambda f: -f.confidence)
+            merged.sort(key=lambda f: -f.confidence)
 
-        return results[:limit]
+        return merged[:limit]
 
     # -- Stats & lifecycle -----------------------------------------------------
 
