@@ -10,6 +10,8 @@ from amplihack.fleet.fleet_copilot import (
     CopilotSuggestion,
     SessionCopilot,
     _extract_last_output,
+    _infer_jsonl_status,
+    _summarize_entries,
     build_rich_context,
     read_local_transcript,
 )
@@ -320,3 +322,90 @@ class TestSessionCopilot:
         assert "1 user" in summary
         assert "1 assistant" in summary
         assert "1 tool" in summary
+
+
+class TestInferJsonlStatus:
+    """Unit tests for _infer_jsonl_status — JSONL-based status inference."""
+
+    def test_tool_result_returns_idle(self):
+        entry = json.dumps({"type": "tool_result", "message": {"content": "done"}})
+        assert _infer_jsonl_status(entry) == "idle"
+
+    def test_human_returns_tool_running(self):
+        entry = json.dumps({"type": "human", "message": {"content": "Fix the bug"}})
+        assert _infer_jsonl_status(entry) == "tool_running"
+
+    def test_user_returns_tool_running(self):
+        entry = json.dumps({"type": "user", "message": {"content": "Fix the bug"}})
+        assert _infer_jsonl_status(entry) == "tool_running"
+
+    def test_tool_use_returns_tool_running(self):
+        entry = json.dumps({"type": "tool_use", "name": "Bash", "message": {"content": "ls"}})
+        assert _infer_jsonl_status(entry) == "tool_running"
+
+    def test_assistant_idle(self):
+        entry = json.dumps(
+            {"type": "assistant", "message": {"content": [{"type": "text", "text": "All done here."}]}}
+        )
+        assert _infer_jsonl_status(entry) == "idle"
+
+    def test_assistant_completed(self):
+        entry = json.dumps(
+            {"type": "assistant", "message": {"content": "GOAL_STATUS: ACHIEVED — all tasks done"}}
+        )
+        assert _infer_jsonl_status(entry) == "completed"
+
+    def test_assistant_error(self):
+        entry = json.dumps(
+            {"type": "assistant", "message": {"content": "error: cannot find module X"}}
+        )
+        assert _infer_jsonl_status(entry) == "error"
+
+    def test_empty_returns_unknown(self):
+        assert _infer_jsonl_status("") == "unknown"
+
+
+class TestBuildRichContextDedup:
+    """Test that build_rich_context avoids duplicate sections for tiny transcripts."""
+
+    def test_single_entry_no_duplicate(self):
+        """A 1-entry transcript should NOT produce ORIGINAL USER REQUEST (only RECENT CONTEXT)."""
+        entries = [
+            json.dumps({"type": "assistant", "message": {"content": "hi"}}),
+        ]
+        result = build_rich_context("\n".join(entries))
+        # Only 1 entry, and it's not a human message, so no ORIGINAL USER REQUEST
+        assert "ORIGINAL USER REQUEST" not in result
+
+
+class TestSummarizeEntriesNestedToolName:
+    """Test that _summarize_entries extracts tool names from nested content blocks."""
+
+    def test_summarize_entries_nested_tool_name(self):
+        """Entries with tool name in message.content blocks should be counted."""
+        entries = [
+            json.dumps({
+                "type": "tool_use",
+                "message": {
+                    "content": [
+                        {"type": "tool_use", "name": "Read"},
+                    ],
+                },
+            }),
+            json.dumps({
+                "type": "tool_use",
+                "message": {
+                    "content": [
+                        {"type": "tool_use", "name": "Read"},
+                    ],
+                },
+            }),
+            json.dumps({
+                "type": "tool_use",
+                "name": "Bash",
+                "message": {"content": ""},
+            }),
+        ]
+        summary = _summarize_entries(entries)
+        assert "Read" in summary
+        assert "Bash" in summary

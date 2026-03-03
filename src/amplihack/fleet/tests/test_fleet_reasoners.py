@@ -8,6 +8,7 @@ Testing pyramid:
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional
@@ -456,3 +457,33 @@ class TestReasonerChainFullScenario:
         # Should assign queued task (vm-01 has capacity after completion detected)
         start_actions = [a for a in actions if a.action_type == ActionType.START_AGENT]
         assert len(start_actions) >= 1
+
+
+class TestCoordinationReasonerAtomicWrite:
+    """CoordinationReasoner writes coordination files atomically."""
+
+    def test_coordination_reasoner_atomic_write(self, tmp_path):
+        """After reason(), the .tmp file should NOT exist and .json should be valid."""
+        # Two tasks on the same repo triggers coordination file write
+        t1 = _make_task(task_id="t1", repo_url="https://github.com/org/myrepo.git")
+        t2 = _make_task(task_id="t2", repo_url="https://github.com/org/myrepo.git", session="sess-2")
+
+        state = _make_state([])
+        queue = _make_queue([t1, t2])
+
+        reasoner = CoordinationReasoner(coordination_dir=tmp_path)
+        actions = reasoner.reason(state, queue, [])
+
+        # CoordinationReasoner is side-effect only — no actions returned
+        assert actions == []
+
+        # The .json file should exist with valid content
+        json_file = tmp_path / "myrepo.json"
+        assert json_file.exists()
+        data = json.loads(json_file.read_text())
+        assert data["repo"] == "https://github.com/org/myrepo.git"
+        assert len(data["active_agents"]) == 2
+
+        # The .tmp file should NOT exist (atomic rename cleans it up)
+        tmp_file = tmp_path / "myrepo.tmp"
+        assert not tmp_file.exists()

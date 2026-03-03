@@ -127,6 +127,20 @@ class TestParseDiscoveryOutput:
         assert len(sessions) == 1
         assert sessions[0].working_directory == "/tmp/test"
 
+    def test_parse_discovery_skips_invalid_session_names(self):
+        """Sessions with shell metacharacters in the name should be skipped."""
+        output = (
+            "===SESSION:bad;name===\n"
+            "CWD:/tmp/evil\n"
+            "===SESSION:good-session===\n"
+            "CWD:/workspace/repo\n"
+            "CMD:claude\n"
+            "===DONE===\n"
+        )
+        sessions = self.adopter._parse_discovery_output("vm-01", output)
+        assert len(sessions) == 1
+        assert sessions[0].session_name == "good-session"
+
 
 # ────────────────────────────────────────────
 # INTEGRATION TESTS (30%) — adopt_sessions

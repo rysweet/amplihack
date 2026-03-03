@@ -719,6 +719,23 @@ class TestParseSessionOutput:
         assert sessions[0].branch == "main"
 
 
+class TestParseSessionOutputValidation:
+    """parse_session_output skips sessions with invalid names."""
+
+    def test_parse_session_output_skips_invalid_names(self, tui: FleetTUI) -> None:
+        """Sessions with shell metacharacters should be silently skipped."""
+        long_output = "working " * 10
+        output = (
+            "===SESSION:bad;name===\n"
+            f"---CAPTURE---\n{long_output}\n---GIT---\nBRANCH:evil\n---END---\n"
+            "===SESSION:good-sess===\n"
+            f"---CAPTURE---\n{long_output}\n---GIT---\nBRANCH:main\n---END---\n"
+        )
+        sessions = tui._parse_session_output("vm-1", output)
+        assert len(sessions) == 1
+        assert sessions[0].session_name == "good-sess"
+
+
 class TestClassifyStatusAdditional:
     """Additional _classify_status edge cases not in existing tests."""
 

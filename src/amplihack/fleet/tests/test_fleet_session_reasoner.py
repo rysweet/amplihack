@@ -69,6 +69,16 @@ class TestSessionContext:
         prompt = ctx.to_prompt_context()
         assert "x" * 5000 in prompt  # Full content preserved, no truncation
 
+    def test_session_context_rejects_invalid_session_name(self):
+        """SessionContext.__post_init__ rejects session names with shell metacharacters."""
+        with pytest.raises(ValueError):
+            SessionContext(vm_name="vm-1", session_name="bad;name")
+
+    def test_session_context_accepts_valid_session_name(self):
+        """SessionContext.__post_init__ accepts clean alphanumeric session names."""
+        ctx = SessionContext(vm_name="vm-1", session_name="copilot")
+        assert ctx.session_name == "copilot"
+
 
 class TestSessionDecision:
     """Unit tests for SessionDecision."""

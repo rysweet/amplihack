@@ -186,3 +186,13 @@ class TestFleetObserverIntegration:
         results = observer.observe_all(sessions)
         assert len(results) == 2
         assert all(r.status == AgentStatus.COMPLETED for r in results)
+
+
+class TestCapturePaneValidation:
+    """Tests for _capture_pane session name validation."""
+
+    def test_capture_pane_rejects_invalid_session(self):
+        """_capture_pane returns None for session names with shell metacharacters."""
+        observer = FleetObserver()
+        result = observer._capture_pane("vm-1", "bad;injection")
+        assert result is None
