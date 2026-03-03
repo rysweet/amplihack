@@ -35,7 +35,7 @@ except ImportError:
     FederatedGraphStore = None  # type: ignore[assignment,misc]
     KuzuGraphStore = None  # type: ignore[assignment,misc]
 
-from .constants import DEFAULT_TRUST_SCORE, MAX_TRUST_SCORE
+from .constants import DEFAULT_TRUST_SCORE, MAX_TRUST_SCORE, PEER_CONFIDENCE_DISCOUNT
 from .event_bus import BusEvent, EventBus, LocalEventBus, make_event
 
 # Kuzu default max_db_size is 8TB which can cause Mmap failures when many
@@ -48,8 +48,8 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "AgentNode",
-    "HiveCoordinator",
     "DistributedHiveMind",
+    "HiveCoordinator",
 ]
 
 
@@ -315,7 +315,7 @@ class AgentNode:
                 return False
 
             payload = event.payload
-            peer_confidence = payload.get("confidence", 0.5) * 0.9
+            peer_confidence = payload.get("confidence", 0.5) * PEER_CONFIDENCE_DISCOUNT
             peer_tags = list(payload.get("tags", []))
             peer_tags.append(f"from:{event.source_agent}")
 
@@ -819,6 +819,12 @@ class DistributedHiveMind:
     def close(self) -> None:
         """Shut down the hive: disconnect all agents, close event bus."""
         for agent in list(self._agents.values()):
-            agent.leave_hive()
+            try:
+                agent.leave_hive()
+            except Exception:
+                logger.debug("Error disconnecting agent %s", agent.agent_id, exc_info=True)
         self._agents.clear()
-        self.event_bus.close()
+        try:
+            self.event_bus.close()
+        except Exception:
+            logger.debug("Error closing event bus", exc_info=True)
