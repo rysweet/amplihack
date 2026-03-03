@@ -261,6 +261,106 @@ class TestRRFMerge:
         assert result[0].source == "rrf"
 
 
+class TestHybridScoreWeighted:
+    """Test hybrid_score_weighted multi-signal scoring."""
+
+    def test_default_weights(self):
+        """Default weights produce expected score."""
+        from amplihack.agents.goal_seeking.hive_mind.reranker import hybrid_score_weighted
+
+        score = hybrid_score_weighted(
+            semantic_similarity=1.0,
+            confirmation_count=5,
+            source_trust=2.0,
+        )
+        # 0.5*1.0 + 0.3*1.0 + 0.2*1.0 = 1.0
+        assert abs(score - 1.0) < 1e-5
+
+    def test_zero_inputs(self):
+        """Zero inputs produce zero score."""
+        from amplihack.agents.goal_seeking.hive_mind.reranker import hybrid_score_weighted
+
+        score = hybrid_score_weighted(
+            semantic_similarity=0.0,
+            confirmation_count=0,
+            source_trust=0.0,
+        )
+        assert score == 0.0
+
+    def test_confirmation_normalized(self):
+        """Confirmation count is normalized: min(1.0, count/5)."""
+        from amplihack.agents.goal_seeking.hive_mind.reranker import hybrid_score_weighted
+
+        score_5 = hybrid_score_weighted(confirmation_count=5)
+        score_10 = hybrid_score_weighted(confirmation_count=10)
+        # Both should have conf_score = 1.0 (capped)
+        assert abs(score_5 - score_10) < 1e-5
+
+
+class TestTrustWeightedScore:
+    """Test trust_weighted_score combining similarity, trust, and confidence."""
+
+    def test_all_max_values(self):
+        """Maximum values produce score of 1.0."""
+        from amplihack.agents.goal_seeking.hive_mind.reranker import trust_weighted_score
+
+        score = trust_weighted_score(similarity=1.0, trust=2.0, confidence=1.0)
+        # 0.5*1.0 + 0.3*1.0 + 0.2*1.0 = 1.0
+        assert abs(score - 1.0) < 1e-5
+
+    def test_all_zero_values(self):
+        """Zero values produce score of 0.0."""
+        from amplihack.agents.goal_seeking.hive_mind.reranker import trust_weighted_score
+
+        score = trust_weighted_score(similarity=0.0, trust=0.0, confidence=0.0)
+        assert score == 0.0
+
+    def test_trust_normalization(self):
+        """Trust is normalized from [0, 2] to [0, 1]."""
+        from amplihack.agents.goal_seeking.hive_mind.reranker import trust_weighted_score
+
+        score_low = trust_weighted_score(similarity=0.0, trust=0.5, confidence=0.0)
+        score_high = trust_weighted_score(similarity=0.0, trust=1.5, confidence=0.0)
+        # trust=0.5 -> norm=0.25, trust=1.5 -> norm=0.75
+        assert abs(score_low - 0.3 * 0.25) < 1e-5
+        assert abs(score_high - 0.3 * 0.75) < 1e-5
+
+    def test_custom_weights(self):
+        """Custom weights are respected."""
+        from amplihack.agents.goal_seeking.hive_mind.reranker import trust_weighted_score
+
+        score = trust_weighted_score(
+            similarity=1.0,
+            trust=2.0,
+            confidence=1.0,
+            w_similarity=0.7,
+            w_trust=0.2,
+            w_confidence=0.1,
+        )
+        # 0.7*1.0 + 0.2*1.0 + 0.1*1.0 = 1.0
+        assert abs(score - 1.0) < 1e-5
+
+    def test_high_trust_boosts_score(self):
+        """Higher trust produces higher score."""
+        from amplihack.agents.goal_seeking.hive_mind.reranker import trust_weighted_score
+
+        low_trust = trust_weighted_score(similarity=0.5, trust=0.2, confidence=0.5)
+        high_trust = trust_weighted_score(similarity=0.5, trust=1.8, confidence=0.5)
+        assert high_trust > low_trust
+
+    def test_values_clamped(self):
+        """Out-of-range inputs are clamped."""
+        from amplihack.agents.goal_seeking.hive_mind.reranker import trust_weighted_score
+
+        # Negative values clamped to 0
+        score_neg = trust_weighted_score(similarity=-0.5, trust=-1.0, confidence=-0.5)
+        assert score_neg == 0.0
+
+        # Over-range values clamped to max
+        score_over = trust_weighted_score(similarity=2.0, trust=5.0, confidence=2.0)
+        assert abs(score_over - 1.0) < 1e-5
+
+
 class TestQueryFederatedUsesRRF:
     """Test that query_federated uses RRF for merging."""
 
