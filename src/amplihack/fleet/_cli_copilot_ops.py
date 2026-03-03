@@ -69,7 +69,7 @@ def register_copilot_ops(fleet_cli: click.Group) -> None:
                 try:
                     entries.append(json.loads(line))
                 except json.JSONDecodeError:
-                    click.echo(f"  (skipped malformed entry)", err=True)
+                    click.echo("  (skipped malformed entry)", err=True)
 
         if not entries:
             click.echo("No decisions recorded.")

@@ -26,7 +26,7 @@ from amplihack.fleet._validation import is_dangerous_input
 from amplihack.fleet._backends import auto_detect_backend
 from amplihack.fleet._transcript import (
     build_rich_context,
-    extract_last_output as _extract_last_output,
+    extract_last_output as _extract_last_output,  # Re-exported for backward compatibility (tests import from here)
     infer_jsonl_status as _infer_jsonl_status,
     read_local_transcript,
     summarize_entries as _summarize_entries,
