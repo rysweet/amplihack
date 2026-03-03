@@ -5,8 +5,10 @@ Centralizes environment-dependent defaults to avoid hardcoding paths.
 
 import os
 import shutil
+import subprocess
+import sys
 
-__all__ = ["get_azlin_path", "DEFAULT_EXCLUDE_VMS"]
+__all__ = ["get_azlin_path", "ensure_azlin", "DEFAULT_EXCLUDE_VMS"]
 
 
 def get_azlin_path() -> str:
@@ -21,8 +23,62 @@ def get_azlin_path() -> str:
     if which_path:
         return which_path
     raise ValueError(
-        "azlin not found. Set AZLIN_PATH environment variable or install azlin on PATH. "
+        "azlin not found. Install with: pip install azlin\n"
+        "Or set AZLIN_PATH to the binary location.\n"
         "See: https://github.com/rysweet/azlin"
+    )
+
+
+def ensure_azlin() -> str:
+    """Ensure azlin is installed. Install it if missing.
+
+    Tries pip, uv pip, and pipx in order. Returns the azlin path
+    if available or successfully installed.
+    Raises ValueError if all installation methods fail.
+    """
+    try:
+        return get_azlin_path()
+    except ValueError:
+        pass
+
+    # azlin not found — try multiple install methods
+    install_methods = [
+        ([sys.executable, "-m", "pip", "install", "azlin"], "pip"),
+        (["uv", "pip", "install", "azlin"], "uv pip"),
+        (["pip", "install", "azlin"], "pip (system)"),
+        (["pipx", "install", "azlin"], "pipx"),
+    ]
+
+    last_error = ""
+    for cmd, method_name in install_methods:
+        try:
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=120,
+            )
+            if result.returncode == 0:
+                # Verify it's now findable
+                which_path = shutil.which("azlin")
+                if which_path:
+                    return which_path
+                # Check common pip script locations
+                for candidate in [
+                    os.path.join(os.path.dirname(sys.executable), "azlin"),
+                    os.path.expanduser("~/.local/bin/azlin"),
+                ]:
+                    if os.path.isfile(candidate):
+                        return candidate
+                last_error = f"{method_name} installed azlin but it's not on PATH"
+                continue
+            last_error = result.stderr.strip()
+        except FileNotFoundError:
+            continue
+        except subprocess.TimeoutExpired:
+            last_error = f"{method_name} timed out"
+            continue
+
+    raise ValueError(
+        f"Could not install azlin. Last error: {last_error}\n"
+        "Install manually: pip install azlin"
     )
 
 
