@@ -508,8 +508,7 @@ class InMemoryHiveGraph:
         # Guard: only broadcast original facts (not already-broadcast copies)
         # to prevent infinite recursion (child->parent->child->...).
         is_broadcast_copy = any(
-            t.startswith(BROADCAST_TAG_PREFIX) or t.startswith(ESCALATION_TAG_PREFIX)
-            for t in fact_tags
+            t.startswith((BROADCAST_TAG_PREFIX, ESCALATION_TAG_PREFIX)) for t in fact_tags
         )
         if (
             fact_confidence >= broadcast_threshold
@@ -669,9 +668,10 @@ class InMemoryHiveGraph:
         with self._lock:
             results: list[HiveEdge] = []
             for e in self._edges:
-                if e.source_id == node_id or e.target_id == node_id:
-                    if edge_type is None or e.edge_type == edge_type:
-                        results.append(e)
+                if (e.source_id == node_id or e.target_id == node_id) and (
+                    edge_type is None or e.edge_type == edge_type
+                ):
+                    results.append(e)
             return results
 
     # -- Contradiction detection -----------------------------------------------
@@ -757,6 +757,17 @@ class InMemoryHiveGraph:
             if child.hive_id not in existing_ids:
                 self._children.append(child)
 
+    def _ensure_relay_agent(self, target_graph: InMemoryHiveGraph) -> str:
+        """Ensure a relay agent exists in *target_graph* for this hive.
+
+        Returns:
+            The relay agent ID.
+        """
+        relay_id = f"__relay_{self._hive_id}__"
+        if target_graph.get_agent(relay_id) is None:
+            target_graph.register_agent(relay_id, domain="relay")
+        return relay_id
+
     def escalate_fact(self, fact: HiveFact) -> bool:
         """Promote a fact to the parent hive.
 
@@ -769,10 +780,7 @@ class InMemoryHiveGraph:
         if self._parent is None:
             return False
 
-        # Ensure a relay agent exists in the parent for escalated facts
-        relay_id = f"__relay_{self._hive_id}__"
-        if self._parent.get_agent(relay_id) is None:
-            self._parent.register_agent(relay_id, domain="relay")
+        relay_id = self._ensure_relay_agent(self._parent)
 
         # Create a copy of the fact with a new ID for the parent
         escalated = HiveFact(
@@ -781,7 +789,7 @@ class InMemoryHiveGraph:
             concept=fact.concept,
             confidence=fact.confidence,
             source_agent=fact.source_agent,
-            tags=list(fact.tags) + [f"{ESCALATION_TAG_PREFIX}{self._hive_id}"],
+            tags=[*fact.tags, f"{ESCALATION_TAG_PREFIX}{self._hive_id}"],
             status="promoted",
         )
         self._parent.promote_fact(relay_id, escalated)
@@ -807,9 +815,7 @@ class InMemoryHiveGraph:
         """
         count = 0
         for child in self._children:
-            relay_id = f"__relay_{self._hive_id}__"
-            if child.get_agent(relay_id) is None:
-                child.register_agent(relay_id, domain="relay")
+            relay_id = self._ensure_relay_agent(child)
 
             broadcast_copy = HiveFact(
                 fact_id=_new_fact_id(),
@@ -817,7 +823,7 @@ class InMemoryHiveGraph:
                 concept=fact.concept,
                 confidence=fact.confidence,
                 source_agent=fact.source_agent,
-                tags=list(fact.tags) + [f"{BROADCAST_TAG_PREFIX}{self._hive_id}"],
+                tags=[*fact.tags, f"{BROADCAST_TAG_PREFIX}{self._hive_id}"],
                 status="promoted",
             )
             child.promote_fact(relay_id, broadcast_copy)
@@ -1084,8 +1090,8 @@ def create_hive_graph(backend: str = "memory", **config: Any) -> HiveGraph:
 
 __all__ = [
     "HiveAgent",
-    "HiveFact",
     "HiveEdge",
+    "HiveFact",
     "HiveGraph",
     "InMemoryHiveGraph",
     "create_hive_graph",

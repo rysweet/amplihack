@@ -16,13 +16,14 @@ Public API (the "studs"):
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import re
 from dataclasses import dataclass, field
 
-logger = logging.getLogger(__name__)
-
 from .constants import DEFAULT_BROADCAST_THRESHOLD, DEFAULT_QUALITY_THRESHOLD
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Quality scoring heuristics
@@ -194,10 +195,10 @@ class QualityGate:
         Returns:
             Quality score between 0.0 and 1.0.
         """
-        key = f"{hash(content)}:{hash(concept)}"
+        key = hashlib.sha256(f"{content}:{concept}".encode()).hexdigest()[:16]
         if key not in self._quality_scores:
             self._quality_scores[key] = score_content_quality(content, concept)
         return self._quality_scores[key]
 
 
-__all__ = ["score_content_quality", "QualityGate"]
+__all__ = ["QualityGate", "score_content_quality"]

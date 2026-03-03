@@ -412,7 +412,12 @@ class AzureServiceBusEventBus:
             return []
 
         events: list[BusEvent] = []
-        received_messages = receiver.receive_messages(max_message_count=100, max_wait_time=5)
+        try:
+            received_messages = receiver.receive_messages(max_message_count=100, max_wait_time=5)
+        except Exception:
+            # Receiver may have been closed by a concurrent unsubscribe()
+            logger.debug("Receiver for %s unavailable during poll", agent_id, exc_info=True)
+            return []
         for msg in received_messages:
             try:
                 body = str(msg)
@@ -423,7 +428,10 @@ class AzureServiceBusEventBus:
                 receiver.complete_message(msg)
             except Exception:
                 logger.exception("Failed to deserialize Service Bus message, dead-lettering")
-                receiver.dead_letter_message(msg, reason="deserialization_error")
+                try:
+                    receiver.dead_letter_message(msg, reason="deserialization_error")
+                except Exception:
+                    logger.debug("Failed to dead-letter message", exc_info=True)
         return events
 
     def close(self) -> None:
@@ -642,13 +650,13 @@ def create_event_bus(backend: str = "local", **kwargs: Any) -> EventBus:
 
 
 __all__ = [
+    "MAX_MAILBOX_SIZE",
+    "AzureServiceBusEventBus",
     "BusEvent",
     "EventBus",
     "LocalEventBus",
-    "AzureServiceBusEventBus",
     "RedisEventBus",
+    "_make_event",  # backwards-compatible alias for make_event
     "create_event_bus",
     "make_event",
-    "_make_event",  # backwards-compatible alias for make_event
-    "MAX_MAILBOX_SIZE",
 ]
