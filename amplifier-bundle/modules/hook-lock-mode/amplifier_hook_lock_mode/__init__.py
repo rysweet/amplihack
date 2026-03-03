@@ -9,6 +9,7 @@ This hook provides passive context injection so the agent stays on track.
 """
 
 import logging
+import os
 from pathlib import Path
 from typing import Any
 
@@ -16,10 +17,18 @@ from amplifier_core.protocols import Hook, HookResult
 
 logger = logging.getLogger(__name__)
 
-_PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.parent
-_LOCK_DIR = _PROJECT_ROOT / ".claude" / "runtime" / "locks"
-_LOCK_FILE = _LOCK_DIR / ".lock_active"
-_GOAL_FILE = _LOCK_DIR / ".lock_goal"
+
+def _get_project_root() -> Path:
+    """Get project root from environment or fallback to parent chain."""
+    env_root = os.environ.get("CLAUDE_PROJECT_DIR")
+    if env_root:
+        return Path(env_root)
+    # Fallback: __init__.py -> amplifier_hook_lock_mode/ -> hook-lock-mode/ -> modules/ -> amplifier-bundle/ -> project root
+    return Path(__file__).parent.parent.parent.parent.parent
+
+
+def _lock_dir() -> Path:
+    return _get_project_root() / ".claude" / "runtime" / "locks"
 
 
 class LockModeHook(Hook):
@@ -37,15 +46,16 @@ class LockModeHook(Hook):
 
     def _is_locked(self) -> bool:
         try:
-            return _LOCK_FILE.exists()
+            return (_lock_dir() / ".lock_active").exists()
         except Exception as exc:
             logger.warning("Cannot check lock file: %s", exc)
             return False
 
     def _get_goal(self) -> str:
         try:
-            if _GOAL_FILE.exists():
-                content = _GOAL_FILE.read_text().strip()
+            goal_file = _lock_dir() / ".lock_goal"
+            if goal_file.exists():
+                content = goal_file.read_text().strip()
                 # Sanitize: strip XML-like tags to prevent prompt injection
                 content = content.replace("<", "&lt;").replace(">", "&gt;")
                 # Length limit: prevent oversized goal from flooding LLM context

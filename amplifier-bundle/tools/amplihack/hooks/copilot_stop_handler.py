@@ -118,9 +118,8 @@ def disable_lock_files(project_root: Path, log_fn: callable = logger.info) -> No
     for name in (".lock_active", ".lock_goal"):
         f = lock_dir / name
         try:
-            if f.exists():
-                f.unlink()
-                log_fn(f"Removed {f}")
+            f.unlink(missing_ok=True)
+            log_fn(f"Removed {f}")
         except OSError as exc:
             log_fn(f"Failed to remove {f}: {exc}")
 
@@ -152,7 +151,7 @@ def _log_decision(
             "input_text": input_text,
             "progress_pct": progress_pct,
         }
-        with open(log_file, "a") as f:
-            f.write(json.dumps(entry) + "\n")
+        with open(log_file, "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
     except Exception as exc:
         logger.debug("Failed to log copilot decision: %s", exc)

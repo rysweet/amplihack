@@ -204,22 +204,14 @@ class TestCopilotSuggestion:
 class TestSessionCopilot:
     """SessionCopilot reasoning engine."""
 
-    def test_suggest_wait_when_thinking(self, tmp_path: Path):
-        """If agent is actively thinking, co-pilot should wait."""
+    def test_suggest_wait_when_tool_running(self, tmp_path: Path):
+        """If last entry is tool_use, co-pilot should wait (fast path)."""
         subdir = tmp_path / "proj"
         subdir.mkdir(exist_ok=True)
         log = subdir / "session.jsonl"
         entries = [
-            json.dumps(
-                {
-                    "type": "assistant",
-                    "message": {
-                        "content": [
-                            {"type": "text", "text": "· Scampering through the codebase..."}
-                        ]
-                    },
-                }
-            ),
+            json.dumps({"type": "human", "message": {"content": "Fix the bug"}}),
+            json.dumps({"type": "tool_use", "name": "Bash", "message": {"content": "running tests"}}),
         ]
         log.write_text("\n".join(entries))
 

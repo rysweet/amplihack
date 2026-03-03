@@ -43,8 +43,10 @@ def create_lock() -> int:
             return 0
 
         fd = os.open(str(LOCK_FILE), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-        os.write(fd, f"locked_at: {datetime.now().isoformat()}\n".encode())
-        os.close(fd)
+        try:
+            os.write(fd, f"locked_at: {datetime.now().isoformat()}\n".encode())
+        finally:
+            os.close(fd)
 
         print("Lock enabled — autonomous co-pilot active")
         print("  Use /amplihack:unlock to disable")

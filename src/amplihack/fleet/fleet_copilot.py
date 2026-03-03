@@ -19,13 +19,13 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
 from amplihack.fleet._validation import is_dangerous_input
 from amplihack.fleet._backends import auto_detect_backend
-from amplihack.fleet._status import infer_agent_status
 from amplihack.fleet.fleet_session_reasoner import (
     SessionContext,
     SessionReasoner,
@@ -106,10 +106,12 @@ def read_local_transcript(
         search_dirs = [Path(log_dir)]
     else:
         home = Path.home()
+        # Use CLAUDE_PROJECT_DIR if set, otherwise cwd for project-local path
+        project_dir = Path(os.environ.get("CLAUDE_PROJECT_DIR", "."))
         search_dirs = [
             home / ".claude" / "projects",
             home / ".claude",
-            Path(".claude") / "runtime" / "logs",
+            project_dir / ".claude" / "runtime" / "logs",
         ]
 
     latest_file: Path | None = None
@@ -254,21 +256,41 @@ def _summarize_entries(lines: list[str]) -> str:
         elif msg_type == "assistant":
             assistant_msgs += 1
 
-        # Extract key signals
-        content = str(entry.get("message", {}).get("content", ""))
-        content_lower = content.lower()
-        if "error" in content_lower or "traceback" in content_lower:
-            # Keep first line of each error
-            first_line = content.split("\n")[0]
-            if first_line not in errors:
-                errors.append(first_line)
+        # Extract text content properly (not str() on dicts)
+        raw_content = entry.get("message", {}).get("content", "")
+        if isinstance(raw_content, list):
+            text_parts = [
+                b.get("text", "") for b in raw_content
+                if isinstance(b, dict) and b.get("type") == "text"
+            ]
+            content_text = "\n".join(text_parts)
+        elif isinstance(raw_content, str):
+            content_text = raw_content
+        else:
+            content_text = ""
 
-        # Track files
+        if content_text:
+            content_lower = content_text.lower()
+            if "error" in content_lower or "traceback" in content_lower:
+                first_line = content_text.split("\n")[0]
+                if first_line not in errors:
+                    errors.append(first_line)
+
+        # Track files from tool_use input parameters
         if msg_type == "tool_use":
-            for key in ("file_path", "path", "file"):
-                val = entry.get(key, "")
-                if val:
-                    files_mentioned.add(val)
+            # Claude Code JSONL: tool params may be in entry directly or in message.content
+            for source in (entry, entry.get("message", {})):
+                for key in ("file_path", "path", "file"):
+                    val = source.get(key, "")
+                    if val:
+                        files_mentioned.add(val)
+            # Also check input dict if present
+            tool_input = entry.get("input", {})
+            if isinstance(tool_input, dict):
+                for key in ("file_path", "path", "file"):
+                    val = tool_input.get(key, "")
+                    if val:
+                        files_mentioned.add(val)
 
     parts = [
         f"  {len(lines)} entries: {user_msgs} user, {assistant_msgs} assistant, {sum(tool_uses.values())} tool calls",
@@ -287,6 +309,60 @@ def _summarize_entries(lines: list[str]) -> str:
             parts.append(f"    - {err}")
 
     return "\n".join(parts)
+
+
+def _infer_jsonl_status(transcript_text: str) -> str:
+    """Infer agent status from JSONL transcript entry types.
+
+    Unlike infer_agent_status (which parses tmux terminal output), this
+    looks at the JSONL entry types to determine what the agent is doing.
+
+    Returns:
+        "tool_running" — last entry is a tool_use (agent mid-execution)
+        "idle" — last entry is assistant text (agent finished speaking)
+        "completed" — transcript contains goal completion signals
+        "error" — transcript ends with error indicators
+        "unknown" — empty or unparseable transcript
+    """
+    if not transcript_text:
+        return "unknown"
+
+    lines = transcript_text.strip().split("\n")
+
+    # Check last few entries for status signals
+    for line in reversed(lines[-10:]):
+        try:
+            entry = json.loads(line)
+        except (json.JSONDecodeError, ValueError):
+            continue
+
+        msg_type = entry.get("type", "")
+
+        if msg_type == "tool_use":
+            return "tool_running"
+
+        if msg_type == "assistant":
+            # Check content for completion/error signals
+            content = entry.get("message", {}).get("content", "")
+            if isinstance(content, list):
+                text_parts = [
+                    b.get("text", "") for b in content
+                    if isinstance(b, dict) and b.get("type") == "text"
+                ]
+                content_str = "\n".join(text_parts)
+            elif isinstance(content, str):
+                content_str = content
+            else:
+                content_str = ""
+
+            content_lower = content_str.lower()
+            if "goal_status: achieved" in content_lower:
+                return "completed"
+            if "error:" in content_lower or "traceback" in content_lower:
+                return "error"
+            return "idle"
+
+    return "unknown"
 
 
 def _extract_last_output(transcript_text: str) -> str:
@@ -342,16 +418,21 @@ class SessionCopilot:
             self.reasoner = SessionReasoner(backend=backend, dry_run=True)
 
     def suggest(self) -> CopilotSuggestion:
-        """Read the local transcript and suggest the next action."""
-        transcript = read_local_transcript(log_dir=self._transcript_dir)
-        last_output = _extract_last_output(transcript)
-        status = infer_agent_status(last_output)
+        """Read the local transcript and suggest the next action.
 
-        # Fast path: if agent is actively working, just wait
-        if status in ("thinking", "running", "working"):
+        Called from the Stop hook when the agent is about to stop.
+        Since we're reading JSONL transcripts (not tmux), we infer status
+        from the entry types directly rather than using infer_agent_status
+        (which expects terminal output).
+        """
+        transcript = read_local_transcript(log_dir=self._transcript_dir)
+        status = _infer_jsonl_status(transcript)
+
+        # Fast path: if the last entry suggests the agent is mid-tool-call, wait
+        if status == "tool_running":
             suggestion = CopilotSuggestion(
                 action="wait",
-                reasoning=f"Agent is {status} — no intervention needed",
+                reasoning="Agent has a tool call in flight — no intervention needed",
                 confidence=0.95,
                 progress_pct=self._estimate_progress(transcript),
             )
@@ -392,11 +473,13 @@ class SessionCopilot:
             return suggestion
         except Exception as exc:
             logger.error("Co-pilot reasoning failed: %s", exc)
-            return CopilotSuggestion(
+            suggestion = CopilotSuggestion(
                 action="wait",
                 reasoning="Internal reasoning error — see logs",
                 confidence=0.0,
             )
+            self._suggestions.append(suggestion)
+            return suggestion
 
     def _summarize_transcript(self, transcript: str) -> str:
         """Create a brief summary of the transcript for context.
