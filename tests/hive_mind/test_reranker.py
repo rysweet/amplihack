@@ -301,3 +301,121 @@ class TestQueryFederatedUsesRRF:
         assert len(results) >= 1
         contents = {f.content for f in results}
         assert "DNA stores genetic information" in contents
+
+    def test_federated_query_calls_rrf_merge(self):
+        """query_federated uses rrf_merge when multiple sources have results."""
+        from unittest.mock import patch as mock_patch
+
+        from amplihack.agents.goal_seeking.hive_mind.hive_graph import (
+            HiveFact,
+            InMemoryHiveGraph,
+        )
+        from amplihack.agents.goal_seeking.hive_mind.reranker import ScoredFact
+
+        parent = InMemoryHiveGraph("parent")
+        child = InMemoryHiveGraph("child")
+        child.set_parent(parent)
+        parent.add_child(child)
+
+        parent.register_agent("relay")
+        child.register_agent("agent_a")
+
+        parent.promote_fact(
+            "relay",
+            HiveFact(fact_id="fp1", content="parent fact DNA", concept="bio"),
+        )
+        child.promote_fact(
+            "agent_a",
+            HiveFact(fact_id="fc1", content="child fact DNA", concept="bio"),
+        )
+
+        # Patch rrf_merge to verify it's called
+        with mock_patch("amplihack.agents.goal_seeking.hive_mind.reranker.rrf_merge") as mock_rrf:
+            parent_fact = parent.get_fact("fp1")
+            child_fact = child.get_fact("fc1")
+            mock_rrf.return_value = [
+                ScoredFact(fact=parent_fact, score=0.03, source="rrf"),
+                ScoredFact(fact=child_fact, score=0.02, source="rrf"),
+            ]
+
+            parent.query_federated("DNA", limit=10)
+            assert mock_rrf.called
+
+    def test_federated_query_single_source_skips_rrf(self):
+        """query_federated skips RRF when only one source has results."""
+        from amplihack.agents.goal_seeking.hive_mind.hive_graph import (
+            HiveFact,
+            InMemoryHiveGraph,
+        )
+
+        hive = InMemoryHiveGraph("solo")
+        hive.register_agent("a1")
+        hive.promote_fact("a1", HiveFact(fact_id="f1", content="DNA info", concept="bio"))
+
+        results = hive.query_federated("DNA", limit=10)
+        assert len(results) == 1
+        assert results[0].fact_id == "f1"
+
+    def test_federated_query_rrf_fallback_on_error(self):
+        """query_federated falls back if rrf_merge fails."""
+        from unittest.mock import patch as mock_patch
+
+        from amplihack.agents.goal_seeking.hive_mind.hive_graph import (
+            HiveFact,
+            InMemoryHiveGraph,
+        )
+
+        parent = InMemoryHiveGraph("parent")
+        child = InMemoryHiveGraph("child")
+        child.set_parent(parent)
+        parent.add_child(child)
+
+        parent.register_agent("relay")
+        child.register_agent("agent_a")
+
+        parent.promote_fact(
+            "relay",
+            HiveFact(fact_id="fp1", content="parent fact DNA", concept="bio", confidence=0.9),
+        )
+        child.promote_fact(
+            "agent_a",
+            HiveFact(fact_id="fc1", content="child fact DNA", concept="bio", confidence=0.7),
+        )
+
+        with mock_patch(
+            "amplihack.agents.goal_seeking.hive_mind.reranker.rrf_merge",
+            side_effect=RuntimeError("rrf broken"),
+        ):
+            results = parent.query_federated("DNA", limit=10)
+            assert len(results) >= 1
+
+    def test_federated_query_merges_all_children(self):
+        """query_federated merges facts from all children via RRF."""
+        from amplihack.agents.goal_seeking.hive_mind.hive_graph import (
+            HiveFact,
+            InMemoryHiveGraph,
+        )
+
+        parent = InMemoryHiveGraph("parent")
+        c1 = InMemoryHiveGraph("c1")
+        c2 = InMemoryHiveGraph("c2")
+        c3 = InMemoryHiveGraph("c3")
+
+        for c in [c1, c2, c3]:
+            c.set_parent(parent)
+            parent.add_child(c)
+
+        parent.register_agent("relay")
+        c1.register_agent("a1")
+        c2.register_agent("a2")
+        c3.register_agent("a3")
+
+        c1.promote_fact("a1", HiveFact(fact_id="f1", content="DNA alpha", concept="bio"))
+        c2.promote_fact("a2", HiveFact(fact_id="f2", content="DNA beta", concept="bio"))
+        c3.promote_fact("a3", HiveFact(fact_id="f3", content="DNA gamma", concept="bio"))
+
+        results = parent.query_federated("DNA", limit=10)
+        contents = {f.content for f in results}
+        assert "DNA alpha" in contents
+        assert "DNA beta" in contents
+        assert "DNA gamma" in contents
