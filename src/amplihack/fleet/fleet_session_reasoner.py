@@ -19,17 +19,23 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import shlex
 import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Protocol
 
 logger = logging.getLogger(__name__)
 
+from amplihack.fleet._backends import (
+    AnthropicBackend,
+    CopilotBackend,
+    LiteLLMBackend,
+    LLMBackend,
+    auto_detect_backend,
+)
 from amplihack.fleet._defaults import get_azlin_path
+from amplihack.fleet._status import infer_agent_status
 from amplihack.fleet._validation import (
     DANGEROUS_PATTERNS,
     is_dangerous_input,
@@ -41,6 +47,7 @@ __all__ = [
     "SessionReasoner",
     "SessionContext",
     "SessionDecision",
+    # Re-exported for backward compatibility
     "LLMBackend",
     "AnthropicBackend",
     "CopilotBackend",
@@ -52,130 +59,6 @@ __all__ = [
 # --- Safety: confidence thresholds (H4) ---
 MIN_CONFIDENCE_SEND = 0.6
 MIN_CONFIDENCE_RESTART = 0.8
-
-
-class LLMBackend(Protocol):
-    """Protocol for LLM backends."""
-
-    def complete(self, system_prompt: str, user_prompt: str) -> str: ...
-
-
-class AnthropicBackend:
-    """Anthropic SDK backend."""
-
-    def __init__(self, model: str = "claude-sonnet-4-20250514", api_key: str = ""):
-        self.model = model
-        self.api_key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
-
-    def complete(self, system_prompt: str, user_prompt: str) -> str:
-        import anthropic
-
-        client = anthropic.Anthropic(api_key=self.api_key)
-        response = client.messages.create(
-            model=self.model,
-            max_tokens=500,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_prompt}],
-        )
-        if not response.content:
-            return ""
-        block = response.content[0]
-        return getattr(block, "text", "")
-
-
-class CopilotBackend:
-    """GitHub Copilot SDK backend.
-
-    Requires: pip install copilot-sdk
-    Requires: GitHub Copilot subscription + gh auth login
-    """
-
-    def __init__(self, model: str = "gpt-4o"):
-        self.model = model
-
-    def complete(self, system_prompt: str, user_prompt: str) -> str:
-        import asyncio
-
-        return asyncio.run(self._async_complete(system_prompt, user_prompt))
-
-    async def _async_complete(self, system_prompt: str, user_prompt: str) -> str:
-        import asyncio
-
-        from copilot import CopilotClient
-
-        client = CopilotClient()
-        await client.start()
-
-        try:
-            session = await client.create_session({"model": self.model})
-            response_parts: list[str] = []
-            done = asyncio.Event()
-
-            def on_event(event):
-                if event.type.value == "assistant.message":
-                    response_parts.append(event.data.content)
-                elif event.type.value == "session.idle":
-                    done.set()
-
-            session.on(on_event)
-            await session.send({"prompt": f"{system_prompt}\n\n{user_prompt}"})
-
-            try:
-                await asyncio.wait_for(done.wait(), timeout=60)
-            except TimeoutError:
-                pass
-
-            await session.destroy()
-            return "".join(response_parts)
-        finally:
-            await client.stop()
-
-
-class LiteLLMBackend:
-    """LiteLLM backend -- supports 100+ LLM providers.
-
-    Requires: pip install litellm
-    Works with: OpenAI, Anthropic, Azure, Copilot, Ollama, etc.
-    Set model via constructor: "gpt-4o", "claude-sonnet-4-20250514", "ollama/llama3", etc.
-    """
-
-    def __init__(self, model: str = "gpt-4o"):
-        self.model = model
-
-    def complete(self, system_prompt: str, user_prompt: str) -> str:
-        import litellm
-
-        response = litellm.completion(
-            model=self.model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            max_tokens=500,
-        )
-        choices = getattr(response, "choices", [])
-        if choices:
-            msg = getattr(choices[0], "message", None)
-            content = getattr(msg, "content", None) if msg else None
-            return str(content) if content else ""
-        return ""
-
-
-def auto_detect_backend() -> LLMBackend:
-    """Auto-detect the best available LLM backend.
-
-    Priority:
-    1. Anthropic (if ANTHROPIC_API_KEY set)
-    2. LiteLLM (always available — declared dependency)
-    3. Copilot SDK (always available — declared dependency)
-
-    Raises RuntimeError if no backend has valid credentials.
-    """
-    if os.environ.get("ANTHROPIC_API_KEY"):
-        return AnthropicBackend()
-
-    # LiteLLM supports 100+ providers — use it if any provider env vars are set
-    return LiteLLMBackend()
 
 
 @dataclass
@@ -330,129 +213,6 @@ Guidelines:
 # Build full system prompt with strategy dictionary at module load time
 _strategy_ref = _load_strategy_dictionary()
 SYSTEM_PROMPT = SYSTEM_PROMPT_BASE + ("\n\n" + _strategy_ref if _strategy_ref else "")
-
-
-def infer_agent_status(tmux_text: str) -> str:
-    """Infer agent status from tmux/terminal output.
-
-    Critically distinguishes between:
-    - THINKING: Agent is actively processing (LLM call in flight, tool running)
-    - WAITING_INPUT: Agent needs user input to proceed
-    - IDLE: No agent running (bare shell prompt), or agent at prompt with no input
-    - RUNNING: Agent actively producing output (or status bar says "(running)")
-    - ERROR/COMPLETED: Terminal states
-
-    Returns one of:
-        "thinking" -- Agent is actively processing (LLM call, tool running)
-        "running" -- Agent producing output or status bar shows active
-        "waiting_input" -- Agent needs user input (Y/n, permission prompt)
-        "idle" -- At prompt with no input, bare shell prompt
-        "error" -- Error indicators in output
-        "completed" -- Goal achieved or PR created
-        "unknown" -- Cannot determine status
-    """
-    last_lines = tmux_text.strip().split("\n")[-10:]
-    combined = "\n".join(last_lines)
-    combined_lower = combined.lower()
-    last_line = last_lines[-1].strip() if last_lines else ""
-    last_line_lower = last_line.lower()
-
-    # Helper: find the prompt line and check if user typed input
-    prompt_line_text = ""
-    has_prompt = False
-    for line in reversed(last_lines):
-        stripped = line.strip()
-        if stripped.startswith("❯"):
-            has_prompt = True
-            prompt_line_text = stripped[len("❯") :].strip()
-            break
-
-    # STATUS BAR "(running)" detection (high priority)
-    for line in last_lines:
-        if "(running)" in line and "⏵⏵" in line:
-            return "running"
-
-    # THINKING/WORKING detection (highest priority)
-    for line in last_lines:
-        stripped = line.strip()
-        if stripped.startswith("\u00b7 ") or stripped.startswith("· "):
-            return "thinking"
-
-    # Check last non-empty line for tool/streaming indicators
-    for line in reversed(last_lines):
-        stripped = line.strip()
-        if not stripped:
-            continue
-        if stripped.startswith("●") and not stripped.startswith("● Bash("):
-            return "thinking"
-        if stripped.startswith("⎿"):
-            return "thinking"
-        break
-
-    # "✻" = JUST FINISHED thinking
-    has_finished_indicator = False
-    for line in last_lines:
-        stripped = line.strip()
-        if "✻" in stripped:
-            has_finished_indicator = True
-            break
-
-    if has_finished_indicator and has_prompt:
-        if prompt_line_text:
-            return "thinking"
-        return "idle"
-    if has_finished_indicator and not has_prompt:
-        return "thinking"
-
-    # Copilot: explicit thinking indicators
-    if any(p in combined_lower for p in ["thinking...", "running:", "loading"]):
-        return "thinking"
-
-    # Claude Code actively streaming (tool call with output)
-    if (
-        "● Bash(" in combined
-        or "● Read(" in combined
-        or "● Write(" in combined
-        or "● Edit(" in combined
-    ):
-        if "⏵⏵" in last_line:
-            return "waiting_input"
-        return "thinking"
-
-    # PROMPT with user input = agent processing
-    if has_prompt and prompt_line_text:
-        return "thinking"
-
-    # IDLE detection for bare prompts
-    if has_prompt and not prompt_line_text:
-        return "idle"
-    if last_line_lower.endswith("$ ") or last_line_lower.endswith("$"):
-        return "idle"
-
-    # WAITING_INPUT detection
-    if any(p in combined_lower for p in ["y/n]", "yes/no", "[y/n", "(yes/no)"]):
-        return "waiting_input"
-    if "⏵⏵" in combined and ("bypass" in combined_lower or "allow" in combined_lower):
-        return "waiting_input"
-    if last_line_lower.endswith("?"):
-        return "waiting_input"
-
-    # ERROR detection
-    if any(p in combined_lower for p in ["error:", "traceback", "fatal:", "panic:"]):
-        return "error"
-
-    # COMPLETED detection
-    if any(p in combined for p in ["GOAL_STATUS: ACHIEVED", "Workflow Complete"]):
-        return "completed"
-    if any(p in combined for p in ["gh pr create", "PR #", "pull request"]):
-        if any(p in combined_lower for p in ["created", "opened", "merged"]):
-            return "completed"
-
-    # Default: assume running if substantial output
-    if len(combined.strip()) > 50:
-        return "running"
-
-    return "unknown"
 
 
 @dataclass

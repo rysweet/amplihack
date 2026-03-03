@@ -112,7 +112,7 @@ class TestFleetStatus:
 
 
 class TestFleetAddTask:
-    @patch("amplihack.fleet.fleet_cli.TaskQueue")
+    @patch("amplihack.fleet._cli_commands.TaskQueue")
     def test_add_task_default_options(self, MockQueue, runner):
         mock_queue = MagicMock()
         mock_task = MagicMock()
@@ -136,7 +136,7 @@ class TestFleetAddTask:
         assert call_kwargs.kwargs["agent_mode"] == "auto"
         assert call_kwargs.kwargs["max_turns"] == 20
 
-    @patch("amplihack.fleet.fleet_cli.TaskQueue")
+    @patch("amplihack.fleet._cli_commands.TaskQueue")
     def test_add_task_with_all_options(self, MockQueue, runner):
         mock_queue = MagicMock()
         mock_task = MagicMock()
@@ -189,7 +189,7 @@ class TestFleetAddTask:
         )
         assert result.exit_code != 0
 
-    @patch("amplihack.fleet.fleet_cli.TaskQueue")
+    @patch("amplihack.fleet._cli_commands.TaskQueue")
     def test_add_task_priority_mapping(self, MockQueue, runner):
         """Each CLI priority string maps to the correct TaskPriority enum."""
         from amplihack.fleet.fleet_tasks import TaskPriority
@@ -224,7 +224,7 @@ class TestFleetAddTask:
 
 
 class TestFleetQueue:
-    @patch("amplihack.fleet.fleet_cli.TaskQueue")
+    @patch("amplihack.fleet._cli_commands.TaskQueue")
     def test_queue_shows_summary(self, MockQueue, runner):
         mock_queue = MagicMock()
         mock_queue.summary.return_value = "Task Queue (2 tasks)\n  QUEUED (2):"
@@ -235,7 +235,7 @@ class TestFleetQueue:
         assert "Task Queue (2 tasks)" in result.output
         mock_queue.summary.assert_called_once()
 
-    @patch("amplihack.fleet.fleet_cli.TaskQueue")
+    @patch("amplihack.fleet._cli_commands.TaskQueue")
     def test_queue_empty(self, MockQueue, runner):
         mock_queue = MagicMock()
         mock_queue.summary.return_value = "Task Queue (0 tasks)"
@@ -252,7 +252,7 @@ class TestFleetQueue:
 
 
 class TestFleetDashboard:
-    @patch("amplihack.fleet.fleet_cli.TaskQueue")
+    @patch("amplihack.fleet._cli_commands.TaskQueue")
     @patch("amplihack.fleet.fleet_dashboard.FleetDashboard")
     def test_dashboard_runs(self, MockDashboard, MockQueue, runner):
         mock_dash = MagicMock()
@@ -447,7 +447,7 @@ class TestFleetProjectRemove:
 
 
 class TestFleetRunOnce:
-    @patch("amplihack.fleet.fleet_cli._get_director")
+    @patch("amplihack.fleet._cli_commands._get_director")
     def test_run_once_no_actions(self, mock_get_director, runner):
         mock_director = MagicMock()
         mock_director.run_once.return_value = []
@@ -457,7 +457,7 @@ class TestFleetRunOnce:
         assert result.exit_code == 0
         assert "0 actions taken" in result.output
 
-    @patch("amplihack.fleet.fleet_cli._get_director")
+    @patch("amplihack.fleet._cli_commands._get_director")
     def test_run_once_with_actions(self, mock_get_director, runner):
         from amplihack.fleet.fleet_admiral import ActionType
 
@@ -481,7 +481,7 @@ class TestFleetRunOnce:
 
 
 class TestFleetStart:
-    @patch("amplihack.fleet.fleet_cli._get_director")
+    @patch("amplihack.fleet._cli_commands._get_director")
     def test_start_basic(self, mock_get_director, runner):
         mock_director = MagicMock()
         mock_get_director.return_value = mock_director
@@ -491,7 +491,7 @@ class TestFleetStart:
         assert "Starting Fleet Admiral" in result.output
         mock_director.run_loop.assert_called_once_with(max_cycles=0)
 
-    @patch("amplihack.fleet.fleet_cli._get_director")
+    @patch("amplihack.fleet._cli_commands._get_director")
     def test_start_with_options(self, mock_get_director, runner):
         mock_director = MagicMock()
         mock_get_director.return_value = mock_director
@@ -506,8 +506,8 @@ class TestFleetStart:
         assert mock_director.poll_interval_seconds == 30
         mock_director.run_loop.assert_called_once_with(max_cycles=5)
 
-    @patch("amplihack.fleet.fleet_cli._adopt_all_sessions")
-    @patch("amplihack.fleet.fleet_cli._get_director")
+    @patch("amplihack.fleet._cli_commands._adopt_all_sessions")
+    @patch("amplihack.fleet._cli_commands._get_director")
     def test_start_with_adopt_flag(self, mock_get_director, mock_adopt, runner):
         mock_director = MagicMock()
         mock_get_director.return_value = mock_director
@@ -580,7 +580,7 @@ class TestFleetWatch:
 
 
 class TestFleetAuth:
-    @patch("amplihack.fleet.fleet_cli.AuthPropagator")
+    @patch("amplihack.fleet._cli_commands.AuthPropagator")
     def test_auth_propagation_success(self, MockAuth, runner):
         mock_auth = MagicMock()
         mock_result_gh = MagicMock()
@@ -606,7 +606,7 @@ class TestFleetAuth:
         assert "[+] github" in result.output
         assert "[X] claude" in result.output
 
-    @patch("amplihack.fleet.fleet_cli.AuthPropagator")
+    @patch("amplihack.fleet._cli_commands.AuthPropagator")
     def test_auth_propagation_failure(self, MockAuth, runner):
         mock_auth = MagicMock()
         mock_result = MagicMock()
@@ -636,8 +636,8 @@ class TestFleetAuth:
 
 
 class TestFleetObserve:
-    @patch("amplihack.fleet.fleet_cli.FleetObserver")
-    @patch("amplihack.fleet.fleet_cli.FleetState")
+    @patch("amplihack.fleet._cli_commands.FleetObserver")
+    @patch("amplihack.fleet._cli_commands.FleetState")
     def test_observe_with_sessions(self, MockState, MockObserver, runner):
         from amplihack.fleet.fleet_state import AgentStatus, TmuxSessionInfo
 
@@ -672,7 +672,7 @@ class TestFleetObserve:
         assert "claude-1" in result.output
         assert "running" in result.output
 
-    @patch("amplihack.fleet.fleet_cli.FleetState")
+    @patch("amplihack.fleet._cli_commands.FleetState")
     def test_observe_vm_not_found(self, MockState, runner):
         mock_state = MagicMock()
         mock_state.get_vm.return_value = None
@@ -681,8 +681,8 @@ class TestFleetObserve:
         result = runner.invoke(fleet_cli, ["observe", "nonexistent"])
         assert result.exit_code != 0
 
-    @patch("amplihack.fleet.fleet_cli.FleetObserver")
-    @patch("amplihack.fleet.fleet_cli.FleetState")
+    @patch("amplihack.fleet._cli_commands.FleetObserver")
+    @patch("amplihack.fleet._cli_commands.FleetState")
     def test_observe_no_sessions(self, MockState, MockObserver, runner):
         mock_vm = MagicMock()
         mock_vm.name = "empty-vm"
@@ -707,8 +707,8 @@ class TestFleetObserve:
 
 
 class TestFleetSnapshot:
-    @patch("amplihack.fleet.fleet_cli.FleetObserver")
-    @patch("amplihack.fleet.fleet_cli.FleetState")
+    @patch("amplihack.fleet._cli_commands.FleetObserver")
+    @patch("amplihack.fleet._cli_commands.FleetState")
     def test_snapshot_empty_fleet(self, MockState, MockObserver, runner):
         mock_state = MagicMock()
         mock_state.managed_vms.return_value = []
@@ -725,7 +725,7 @@ class TestFleetSnapshot:
 
 
 class TestFleetReport:
-    @patch("amplihack.fleet.fleet_cli._get_director")
+    @patch("amplihack.fleet._cli_commands._get_director")
     def test_report_runs(self, mock_get_director, runner):
         mock_director = MagicMock()
         mock_director.status_report.return_value = "Fleet Report\n  Status: healthy"

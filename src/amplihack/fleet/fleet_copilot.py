@@ -28,11 +28,11 @@ from datetime import datetime
 from pathlib import Path
 
 from amplihack.fleet._validation import is_dangerous_input
+from amplihack.fleet._backends import auto_detect_backend
+from amplihack.fleet._status import infer_agent_status
 from amplihack.fleet.fleet_session_reasoner import (
     SessionContext,
     SessionReasoner,
-    auto_detect_backend,
-    infer_agent_status,
 )
 
 __all__ = ["SessionCopilot", "CopilotSuggestion", "read_local_transcript"]
