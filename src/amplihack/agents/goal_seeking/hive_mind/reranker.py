@@ -13,6 +13,8 @@ Philosophy:
 Public API (the "studs"):
     CrossEncoderReranker: Rerank facts using cross-encoder model
     hybrid_score: Combine keyword and vector scores
+    hybrid_score_weighted: Multi-signal scoring (semantic + confirmation + trust)
+    trust_weighted_score: Score combining similarity, trust, and confidence
     rrf_merge: Reciprocal Rank Fusion for merging ranked lists
     HAS_CROSS_ENCODER: Feature flag for availability checks
 """
@@ -218,6 +220,38 @@ def rrf_merge(
     return result[:limit]
 
 
+def trust_weighted_score(
+    similarity: float,
+    trust: float,
+    confidence: float,
+    *,
+    w_similarity: float = 0.5,
+    w_trust: float = 0.3,
+    w_confidence: float = 0.2,
+) -> float:
+    """Score combining similarity, source trust, and fact confidence.
+
+    Weights default to similarity-heavy (0.5) with trust (0.3) as a strong
+    secondary signal and confidence (0.2) as a tiebreaker.
+
+    Args:
+        similarity: Semantic similarity score (0.0-1.0).
+        trust: Source agent's trust score (0.0-2.0).
+        confidence: Fact's confidence score (0.0-1.0).
+        w_similarity: Weight for similarity.
+        w_trust: Weight for trust.
+        w_confidence: Weight for confidence.
+
+    Returns:
+        Combined trust-weighted score.
+    """
+    # Normalize trust from [0.0, 2.0] to [0.0, 1.0]
+    trust_norm = min(1.0, max(0.0, trust) / 2.0)
+    confidence_norm = min(1.0, max(0.0, confidence))
+    similarity_norm = min(1.0, max(0.0, similarity))
+    return w_similarity * similarity_norm + w_trust * trust_norm + w_confidence * confidence_norm
+
+
 def hybrid_score_weighted(
     semantic_similarity: float = 0.0,
     confirmation_count: int = 0,
@@ -245,11 +279,7 @@ def hybrid_score_weighted(
     """
     conf_score = min(1.0, confirmation_count / 5.0) if confirmation_count > 0 else 0.0
     trust_score = min(1.0, source_trust / 2.0)
-    return (
-        w_semantic * semantic_similarity
-        + w_confirmation * conf_score
-        + w_trust * trust_score
-    )
+    return w_semantic * semantic_similarity + w_confirmation * conf_score + w_trust * trust_score
 
 
 __all__ = [
@@ -257,6 +287,7 @@ __all__ = [
     "ScoredFact",
     "hybrid_score",
     "hybrid_score_weighted",
+    "trust_weighted_score",
     "rrf_merge",
     "HAS_CROSS_ENCODER",
     "DEFAULT_CROSS_ENCODER_MODEL",
