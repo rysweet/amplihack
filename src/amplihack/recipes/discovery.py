@@ -5,16 +5,18 @@ about each discovered recipe. Supports tracking upstream recipe bundles.
 
 Search Path Priority
 --------------------
-Recipes are discovered in a specific priority order (global → local):
+Recipes are discovered in a specific priority order (package → global → local):
 
-1. User home recipes (~/.amplihack/.claude/recipes/) - Global installation
-2. Global bundled recipes (amplifier-bundle/recipes/)
-3. Global source recipes (src/amplihack/amplifier-bundle/recipes/)
-4. Project local recipes (.claude/recipes/)
+1. Installed package recipes (site-packages/amplihack/amplifier-bundle/recipes/)
+2. User home recipes (~/.amplihack/.claude/recipes/) - Global installation
+3. Global bundled recipes (amplifier-bundle/recipes/)
+4. Global source recipes (src/amplihack/amplifier-bundle/recipes/)
+5. Project local recipes (.claude/recipes/)
 
-This ordering ensures that core global recipes are always available first,
-preventing ImportError when user directories don't exist. Project-local
-recipes can still override globals by name (last path wins).
+The installed package path is resolved via ``Path(__file__)`` so that
+bundled recipes are always discoverable regardless of the current working
+directory.  Project-local recipes can still override globals by name
+(last path wins).
 """
 
 from __future__ import annotations
@@ -34,20 +36,35 @@ logger = logging.getLogger(__name__)
 _UPSTREAM_REPO = "https://github.com/microsoft/amplifier-bundle-recipes"
 _UPSTREAM_BRANCH = "main"
 
+# Resolve the installed package's bundled recipes directory.
+# ``__file__`` is ``<pkg>/recipes/discovery.py``, so ``.parent.parent``
+# gives the ``<pkg>/`` root where ``amplifier-bundle/recipes/`` lives.
+_PACKAGE_DIR = Path(__file__).resolve().parent.parent
+_PACKAGE_BUNDLE_DIR = _PACKAGE_DIR / "amplifier-bundle" / "recipes"
+
+# For editable installs (pip install -e), ``_PACKAGE_DIR`` is
+# ``src/amplihack/`` and the full bundle may only exist at the repo root's
+# ``amplifier-bundle/recipes/``.  We detect this by walking up to the repo root.
+_REPO_ROOT_BUNDLE_DIR = _PACKAGE_DIR.parent.parent / "amplifier-bundle" / "recipes"
+
 # Directories searched for recipe files, in priority order.
 # Later entries override earlier ones when recipes share the same name.
 #
-# IMPORTANT: Global recipes come first to ensure core recipes are always
-# discoverable even in /tmp clones where local directories don't exist.
-# This fixes Issue #2381 where Recipe Runner failed in subprocess isolation.
+# The installed-package path comes first so that core recipes are always
+# discoverable even when CWD is an unrelated project.  This fixes #2812
+# where recipe discovery failed outside the amplihack source tree.
 #
-# Priority (global → local):
-# 1. ~/.amplihack/.claude/recipes/       - User home (global installation)
-# 2. amplifier-bundle/recipes/           - Global bundled recipes
-# 3. src/amplihack/amplifier-bundle/     - Global source recipes
-# 4. .claude/recipes/                    - Project local recipes
+# Priority (package → repo-root → global → local):
+# 1. <site-packages>/amplihack/amplifier-bundle/recipes/ - Installed package
+# 2. <repo-root>/amplifier-bundle/recipes/               - Editable install
+# 3. ~/.amplihack/.claude/recipes/       - User home (global installation)
+# 4. amplifier-bundle/recipes/           - Global bundled (CWD-relative)
+# 5. src/amplihack/amplifier-bundle/     - Global source (CWD-relative)
+# 6. .claude/recipes/                    - Project local recipes
 _DEFAULT_SEARCH_DIRS: list[Path] = [
-    Path.home() / ".amplihack" / ".claude" / "recipes",  # Global - FIRST
+    _PACKAGE_BUNDLE_DIR,  # Installed package — ALWAYS available
+    _REPO_ROOT_BUNDLE_DIR,  # Editable install — repo root fallback
+    Path.home() / ".amplihack" / ".claude" / "recipes",  # Global user home
     Path("amplifier-bundle") / "recipes",  # Global bundled
     Path("src") / "amplihack" / "amplifier-bundle" / "recipes",  # Global source
     Path(".claude") / "recipes",  # Local - LAST
