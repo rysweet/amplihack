@@ -138,11 +138,30 @@ class _ActionsMixin(_WorkersMixin):
         )
 
     def action_back_to_fleet(self) -> None:
-        self.query_one("#tabs", TabbedContent).active = "fleet-tab"
+        """Go back one level. Editor→Detail, Detail→Fleet, anywhere→Fleet."""
+        tabs = self.query_one("#tabs", TabbedContent)
+        current = tabs.active
+
+        # Navigate back contextually
+        if current == "editor-tab":
+            tabs.active = "detail-tab"
+        elif current in ("detail-tab", "new-session-tab", "projects-tab"):
+            tabs.active = "fleet-tab"
+        # If already on fleet-tab, stay (Escape doesn't quit)
+
         try:
             self.query_one("#session-table", DataTable).focus()
         except Exception as exc:
-            logger.warning("Could not focus session table after returning to fleet: %s", exc)
+            logger.warning("Could not focus session table: %s", exc)
+
+    # Ordered list of tab IDs for arrow-key navigation
+    _TAB_ORDER: list[str] = [
+        "fleet-tab",
+        "detail-tab",
+        "editor-tab",
+        "projects-tab",
+        "new-session-tab",
+    ]
 
     def action_tab_fleet(self) -> None:
         self.query_one("#tabs", TabbedContent).active = "fleet-tab"
@@ -165,6 +184,24 @@ class _ActionsMixin(_WorkersMixin):
         tabs = self.query_one("#tabs", TabbedContent)
         tabs.active = "projects-tab"
         tabs.focus()
+
+    def action_tab_next(self) -> None:
+        """Advance to the next tab, wrapping around at the end."""
+        tabs = self.query_one("#tabs", TabbedContent)
+        try:
+            idx = self._TAB_ORDER.index(tabs.active)
+            tabs.active = self._TAB_ORDER[(idx + 1) % len(self._TAB_ORDER)]
+        except (ValueError, Exception):
+            tabs.active = self._TAB_ORDER[0]
+
+    def action_tab_prev(self) -> None:
+        """Move to the previous tab, wrapping around at the start."""
+        tabs = self.query_one("#tabs", TabbedContent)
+        try:
+            idx = self._TAB_ORDER.index(tabs.active)
+            tabs.active = self._TAB_ORDER[(idx - 1) % len(self._TAB_ORDER)]
+        except (ValueError, Exception):
+            tabs.active = self._TAB_ORDER[0]
 
     def action_dry_run_session(self) -> None:
         """Run LLM reasoning for the currently selected session."""

@@ -100,6 +100,8 @@ class FleetDashboardApp(_ActionsMixin, _RefreshMixin, App):
 
     CSS = APP_CSS
 
+    COMMAND_PALETTE_BINDING = ""  # Disable command palette (prevents Escape hijack)
+
     BINDINGS = [
         Binding("q", "quit", "Quit", show=True, priority=True),
         Binding("r", "force_refresh", "Refresh", show=True, priority=True),
@@ -111,11 +113,18 @@ class FleetDashboardApp(_ActionsMixin, _RefreshMixin, App):
         Binding("d", "dry_run_session", "Dry-run", show=True),
         Binding("l", "toggle_logo", "Logo", show=True),
         Binding("n", "new_session", "New Session", show=True),
-        # Tab navigation
-        Binding("1", "tab_fleet", "Fleet", show=True, priority=True),
-        Binding("2", "tab_detail", "Detail", show=True, priority=True),
+        # Tab navigation — numeric keys
+        Binding("1", "tab_fleet", "[u]F[/u]leet", show=True, priority=True),
+        Binding("2", "tab_detail", "[u]S[/u]ession Detail", show=True, priority=True),
         Binding("3", "tab_editor", "Editor", show=True, priority=True),
-        Binding("4", "tab_projects", "Projects", show=True, priority=True),
+        Binding("4", "tab_projects", "[u]P[/u]rojects", show=True, priority=True),
+        # Tab navigation — letter hotkeys
+        Binding("f", "tab_fleet", "[u]F[/u]leet", show=False),
+        Binding("s", "tab_detail", "[u]S[/u]ession Detail", show=False),
+        Binding("p", "tab_projects", "[u]P[/u]rojects", show=False),
+        # Tab navigation — arrow keys
+        Binding("left", "tab_prev", "Prev Tab", show=False),
+        Binding("right", "tab_next", "Next Tab", show=False),
     ]
 
     def __init__(
