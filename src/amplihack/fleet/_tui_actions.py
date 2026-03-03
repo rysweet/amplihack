@@ -142,17 +142,11 @@ class _ActionsMixin(_WorkersMixin):
         tabs = self.query_one("#tabs", TabbedContent)
         current = tabs.active
 
-        # Navigate back contextually
         if current == "editor-tab":
             tabs.active = "detail-tab"
         elif current in ("detail-tab", "new-session-tab", "projects-tab"):
             tabs.active = "fleet-tab"
         # If already on fleet-tab, stay (Escape doesn't quit)
-
-        try:
-            self.query_one("#session-table", DataTable).focus()
-        except Exception as exc:
-            logger.warning("Could not focus session table: %s", exc)
 
     # Ordered list of tab IDs for arrow-key navigation
     _TAB_ORDER: list[str] = [
@@ -165,25 +159,15 @@ class _ActionsMixin(_WorkersMixin):
 
     def action_tab_fleet(self) -> None:
         self.query_one("#tabs", TabbedContent).active = "fleet-tab"
-        try:
-            self.query_one("#session-table", DataTable).focus()
-        except Exception as exc:
-            logger.warning("Could not focus session table in fleet tab: %s", exc)
 
     def action_tab_detail(self) -> None:
-        tabs = self.query_one("#tabs", TabbedContent)
-        tabs.active = "detail-tab"
-        tabs.focus()
+        self.query_one("#tabs", TabbedContent).active = "detail-tab"
 
     def action_tab_editor(self) -> None:
-        tabs = self.query_one("#tabs", TabbedContent)
-        tabs.active = "editor-tab"
-        tabs.focus()
+        self.query_one("#tabs", TabbedContent).active = "editor-tab"
 
     def action_tab_projects(self) -> None:
-        tabs = self.query_one("#tabs", TabbedContent)
-        tabs.active = "projects-tab"
-        tabs.focus()
+        self.query_one("#tabs", TabbedContent).active = "projects-tab"
 
     def action_tab_next(self) -> None:
         """Advance to the next tab, wrapping around at the end."""

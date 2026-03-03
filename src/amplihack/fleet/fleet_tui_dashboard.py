@@ -234,7 +234,8 @@ class FleetDashboardApp(_ActionsMixin, _RefreshMixin, App):
         proj_table = self.query_one("#project-table", DataTable)
         proj_table.add_columns("Name", "Repo", "Identity", "Priority", "VMs", "Tasks", "PRs")
 
-        table.focus()
+        # Don't focus DataTable — it consumes single-letter keys and
+        # blocks app-level hotkeys (f, s, p, etc.) from firing.
 
         self._schedule_refresh()
         self.set_interval(self._refresh_interval, self._schedule_refresh)

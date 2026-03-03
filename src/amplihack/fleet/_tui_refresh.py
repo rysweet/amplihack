@@ -196,7 +196,17 @@ class _RefreshMixin:
         new_cache: dict[str, _CachedSession], all_rows: list[tuple[str, list[str]]],
         all_cache: dict[str, _CachedSession], managed_vm_names: set[str],
     ) -> None:
-        """Update UI with refreshed data (main thread)."""
+        """Update UI with refreshed data (main thread).
+
+        Preserves the user's current tab — table updates do not
+        steal focus or switch tabs.
+        """
+        # Remember current tab so refresh doesn't hijack it
+        try:
+            current_tab = self.query_one("#tabs", TabbedContent).active
+        except Exception:
+            current_tab = None
+
         self._cache = new_cache
         self._all_cache = all_cache
         self._managed_vm_names = managed_vm_names
@@ -210,6 +220,15 @@ class _RefreshMixin:
         all_table.clear()
         for key, cells in all_rows:
             all_table.add_row(*cells, key=key)
+
+        # Restore tab if refresh changed it
+        if current_tab:
+            try:
+                tabs = self.query_one("#tabs", TabbedContent)
+                if tabs.active != current_tab:
+                    tabs.active = current_tab
+            except Exception:
+                pass
 
         self._refresh_projects_table()
 
