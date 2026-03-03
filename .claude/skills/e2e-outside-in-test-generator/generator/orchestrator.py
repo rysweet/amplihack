@@ -257,16 +257,6 @@ def generate_e2e_tests(
             error="workers MUST be 1 (MANDATORY requirement)",
         )
 
-    if config.output_dir != "e2e":
-        return TestGenerationResult(
-            success=False,
-            total_tests=0,
-            bugs_found=[],
-            coverage_report=None,  # type: ignore
-            execution_time=0.0,
-            error="output_dir MUST be 'e2e' not 'tests/e2e' (MANDATORY requirement)",
-        )
-
     try:
         # Phase 1: Stack Detection
         print("Phase 1/4: Detecting stack...")

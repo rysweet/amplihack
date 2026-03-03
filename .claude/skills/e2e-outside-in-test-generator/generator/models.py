@@ -320,14 +320,12 @@ class GenerationConfig:
     enable_coverage_audit: bool = True
     custom_templates: list[str] = field(default_factory=list)
     workers: int = 1  # MANDATORY: Must always be 1
-    output_dir: str = "e2e"  # MANDATORY: Must be "e2e" not "tests/e2e"
+    output_dir: str = "e2e"
 
     def __post_init__(self):
         """Validate configuration."""
         if self.workers != 1:
             raise ValueError("workers MUST be 1 for deterministic test execution")
-        if self.output_dir != "e2e":
-            raise ValueError("output_dir MUST be 'e2e' not 'tests/e2e'")
 
 
 @dataclass
