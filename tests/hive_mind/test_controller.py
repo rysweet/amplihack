@@ -23,8 +23,10 @@ import textwrap
 import pytest
 
 # Ensure amplihack-memory-lib is importable
-_MEMORY_LIB_PATH = "/home/azureuser/src/amplihack-memory-lib-real/src"
-if _MEMORY_LIB_PATH not in sys.path:
+_MEMORY_LIB_PATH = os.environ.get(
+    "AMPLIHACK_MEMORY_LIB_PATH", "/home/azureuser/src/amplihack-memory-lib-real/src"
+)
+if os.path.isdir(_MEMORY_LIB_PATH) and _MEMORY_LIB_PATH not in sys.path:
     sys.path.insert(0, _MEMORY_LIB_PATH)
 
 from amplihack.agents.goal_seeking.hive_mind.controller import (

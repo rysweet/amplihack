@@ -189,12 +189,12 @@ class QualityGate:
         return confidence >= self.broadcast_threshold
 
     def score(self, content: str, concept: str = "") -> float:
-        """Score content quality (cached by content hash).
+        """Score content quality (cached by content+concept hash).
 
         Returns:
             Quality score between 0.0 and 1.0.
         """
-        key = f"{content[:100]}:{concept[:50]}"
+        key = f"{hash(content)}:{hash(concept)}"
         if key not in self._quality_scores:
             self._quality_scores[key] = score_content_quality(content, concept)
         return self._quality_scores[key]
