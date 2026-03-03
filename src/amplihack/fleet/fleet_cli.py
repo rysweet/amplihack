@@ -128,8 +128,14 @@ def fleet_cli(ctx):
 
     \b
     SETUP:
+      amplihack fleet setup        Check prerequisites and install azlin
       amplihack fleet auth <vm>    Propagate auth tokens to a VM
       amplihack fleet observe <vm> Observe sessions with pattern classification
+
+    \b
+    CO-PILOT:
+      amplihack fleet copilot-status   Show copilot lock/goal state
+      amplihack fleet copilot-log      Show copilot decision history
 
     \b
     ENVIRONMENT:
