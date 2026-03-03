@@ -37,16 +37,16 @@ class TestReadLocalTranscript:
         assert "hello" in result
         assert "hi" in result
 
-    def test_max_entries_limits_output(self, tmp_path: Path):
+    def test_reads_all_entries(self, tmp_path: Path):
         subdir = tmp_path / "project"
         subdir.mkdir()
         log = subdir / "session.jsonl"
         entries = [json.dumps({"type": "human", "i": i}) for i in range(100)]
         log.write_text("\n".join(entries))
 
-        result = read_local_transcript(max_entries=5, log_dir=str(tmp_path))
+        result = read_local_transcript(log_dir=str(tmp_path))
         lines = result.strip().split("\n")
-        assert len(lines) == 5
+        assert len(lines) == 100
 
     def test_handles_corrupt_file(self, tmp_path: Path):
         subdir = tmp_path / "project"
@@ -83,13 +83,13 @@ class TestExtractLastOutput:
     def test_empty_on_no_transcript(self):
         assert _extract_last_output("") == ""
 
-    def test_limits_to_2000_chars(self):
+    def test_preserves_full_output(self):
         big_text = "x" * 5000
         entries = [
             json.dumps({"type": "assistant", "message": {"content": big_text}}),
         ]
         result = _extract_last_output("\n".join(entries))
-        assert len(result) <= 2000
+        assert len(result) == 5000
 
 
 class TestCopilotSuggestion:

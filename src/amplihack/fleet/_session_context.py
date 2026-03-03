@@ -48,12 +48,12 @@ class SessionContext:
         if self.pr_url:
             parts.append(f"PR: {self.pr_url}")
         if self.files_modified:
-            parts.append(f"Files modified: {', '.join(self.files_modified[:10])}")
+            parts.append(f"Files modified: {', '.join(self.files_modified)}")
         if self.transcript_summary:
             parts.append(f"\nTranscript summary:\n{self.transcript_summary}")
 
-        parts.append("\nCurrent terminal output (last lines):")
-        parts.append(self.tmux_capture[-2000:] if self.tmux_capture else "(empty)")
+        parts.append("\nCurrent terminal output:")
+        parts.append(self.tmux_capture if self.tmux_capture else "(empty)")
 
         if self.project_priorities:
             parts.append(f"\nProject priorities: {self.project_priorities}")

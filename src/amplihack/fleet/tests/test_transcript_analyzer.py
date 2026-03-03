@@ -302,8 +302,8 @@ class TestGatherLocal:
             "amplihack.fleet.transcript_analyzer.Path.home",
             return_value=tmp_path,
         ):
-            result = gather_local_transcripts(limit=3)
-        assert len(result) == 3
+            result = gather_local_transcripts()
+        assert len(result) == 5
         assert all(p.suffix == ".jsonl" for p in result)
 
     def test_gather_empty_dir(self, tmp_path: Path):
@@ -427,7 +427,7 @@ class TestEndToEnd:
             return_value=tmp_path,
         ):
             analyzer = TranscriptAnalyzer()
-            transcripts = analyzer.gather_local(limit=10)
+            transcripts = analyzer.gather_local()
             assert len(transcripts) == 1
 
             report = analyzer.analyze(transcripts)

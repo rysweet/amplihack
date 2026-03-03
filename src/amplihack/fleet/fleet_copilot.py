@@ -96,25 +96,22 @@ class CopilotSuggestion:
 
 
 def read_local_transcript(
-    max_entries: int = 50,
     log_dir: str | None = None,
 ) -> str:
     """Read the most recent local Claude Code JSONL transcript.
 
     Searches for the latest JSONL file in common transcript locations.
+    Returns the FULL transcript — no truncation.
 
     Args:
-        max_entries: Maximum number of recent entries to return.
         log_dir: Override transcript directory path.
 
     Returns:
-        String with the last N transcript entries, or empty string if not found.
+        Full transcript content, or empty string if not found.
     """
-    # If explicit dir provided, search only there
     if log_dir:
         search_dirs = [Path(log_dir)]
     else:
-        # Common Claude Code transcript locations
         home = Path.home()
         search_dirs = [
             home / ".claude" / "projects",
@@ -122,19 +119,14 @@ def read_local_transcript(
             Path(".claude") / "runtime" / "logs",
         ]
 
-    # Find the most recent JSONL file (bounded search to avoid large filesystem scans)
+    # Find the most recent JSONL file — scan all files, no cap
     latest_file: Path | None = None
     latest_mtime = 0.0
-    max_files_checked = 200
 
     for search_dir in search_dirs:
         if not search_dir.exists():
             continue
-        checked = 0
         for jsonl_file in search_dir.glob("*/*.jsonl"):
-            checked += 1
-            if checked > max_files_checked:
-                break
             try:
                 mtime = jsonl_file.stat().st_mtime
             except OSError:
@@ -146,11 +138,8 @@ def read_local_transcript(
     if not latest_file:
         return ""
 
-    # Read last N entries
     try:
-        lines = latest_file.read_text().strip().split("\n")
-        recent = lines[-max_entries:]
-        return "\n".join(recent)
+        return latest_file.read_text().strip()
     except Exception as exc:
         logger.warning("Failed to read transcript %s: %s", latest_file, exc)
         return ""
@@ -159,13 +148,13 @@ def read_local_transcript(
 def _extract_last_output(transcript_text: str) -> str:
     """Extract the last meaningful output from the JSONL transcript.
 
-    Simulates what a tmux capture would show by extracting the most recent
-    assistant messages and tool results.
+    Walks ALL entries in reverse and collects assistant text blocks.
+    Returns the full combined output — no truncation.
     """
     lines = transcript_text.strip().split("\n") if transcript_text else []
     output_parts: list[str] = []
 
-    for line in reversed(lines[-20:]):
+    for line in reversed(lines):
         try:
             entry = json.loads(line)
         except (json.JSONDecodeError, ValueError):
@@ -181,9 +170,7 @@ def _extract_last_output(transcript_text: str) -> str:
             elif isinstance(content, str):
                 output_parts.append(content)
 
-    # Return the last ~2000 chars of output
-    combined = "\n".join(reversed(output_parts))
-    return combined[-2000:]
+    return "\n".join(reversed(output_parts))
 
 
 @dataclass
@@ -211,7 +198,6 @@ class SessionCopilot:
             CopilotSuggestion with the recommended action.
         """
         transcript = read_local_transcript(
-            max_entries=50,
             log_dir=self._transcript_dir,
         )
         last_output = _extract_last_output(transcript)
@@ -226,8 +212,6 @@ class SessionCopilot:
                 progress_pct=self._estimate_progress(transcript),
             )
             self._suggestions.append(suggestion)
-            if len(self._suggestions) > 1000:
-                self._suggestions = self._suggestions[-1000:]
             return suggestion
 
         # Build context for the reasoner
@@ -260,8 +244,6 @@ class SessionCopilot:
                 )
 
             self._suggestions.append(suggestion)
-            if len(self._suggestions) > 1000:
-                self._suggestions = self._suggestions[-1000:]
             return suggestion
         except Exception as exc:
             logger.error("Co-pilot reasoning failed: %s", exc)
@@ -295,7 +277,7 @@ class SessionCopilot:
             # Detect errors
             content = str(entry.get("message", {}).get("content", ""))
             if "error" in content.lower() or "traceback" in content.lower():
-                errors.append(content[:100])
+                errors.append(content)
 
         summary = (
             f"Transcript: {len(lines)} entries, "

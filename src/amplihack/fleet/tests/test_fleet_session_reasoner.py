@@ -60,14 +60,14 @@ class TestSessionContext:
         assert "Security first" in prompt
         assert "Which approach?" in prompt
 
-    def test_to_prompt_context_truncates_long_tmux(self):
+    def test_to_prompt_context_preserves_full_tmux(self):
         ctx = SessionContext(
             vm_name="vm-1",
             session_name="sess-1",
             tmux_capture="x" * 5000,
         )
         prompt = ctx.to_prompt_context()
-        assert len(prompt) < 5000  # Truncated
+        assert "x" * 5000 in prompt  # Full content preserved, no truncation
 
 
 class TestSessionDecision:

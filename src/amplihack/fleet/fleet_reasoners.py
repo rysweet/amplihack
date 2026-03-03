@@ -265,7 +265,7 @@ class CoordinationReasoner:
                 "active_agents": [
                     {
                         "task_id": t.id,
-                        "prompt": t.prompt[:200],
+                        "prompt": t.prompt,
                         "vm": t.assigned_vm,
                         "session": t.assigned_session,
                     }

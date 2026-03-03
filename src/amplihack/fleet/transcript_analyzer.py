@@ -58,11 +58,11 @@ class AnalysisReport:
         }
 
 
-def gather_local_transcripts(limit: int = 50) -> list[Path]:
+def gather_local_transcripts() -> list[Path]:
     """Find local JSONL transcript files under ~/.claude/projects/.
 
     Searches the standard Claude Code transcript directory for JSONL
-    files, returns the most recently modified ones up to ``limit``.
+    files, returns all of them sorted by most recently modified first.
     """
     projects_dir = Path.home() / ".claude" / "projects"
     if not projects_dir.is_dir():
@@ -74,12 +74,11 @@ def gather_local_transcripts(limit: int = 50) -> list[Path]:
         except (OSError, FileNotFoundError):
             return 0.0
 
-    jsonl_files = sorted(
+    return sorted(
         projects_dir.rglob("*.jsonl"),
         key=_safe_mtime,
         reverse=True,
     )
-    return jsonl_files[:limit]
 
 
 def gather_remote_transcripts(
@@ -134,7 +133,7 @@ def _build_remote_summary_script() -> str:
         "if not base.is_dir():\n"
         "    print('[]'); sys.exit(0)\n"
         "summaries = []\n"
-        "for f in sorted(base.rglob('*.jsonl'), key=lambda p: p.stat().st_mtime, reverse=True)[:20]:\n"
+        "for f in sorted(base.rglob('*.jsonl'), key=lambda p: p.stat().st_mtime, reverse=True):\n"
         "    tools = collections.Counter()\n"
         "    msgs = 0\n"
         "    for line in f.open():\n"
@@ -195,7 +194,7 @@ class TranscriptAnalyzer:
     Usage::
 
         analyzer = TranscriptAnalyzer()
-        transcripts = analyzer.gather_local(limit=30)
+        transcripts = analyzer.gather_local()
         report = analyzer.analyze(transcripts)
         print(report.report())
     """
@@ -205,9 +204,9 @@ class TranscriptAnalyzer:
 
     # ── Gathering ────────────────────────────────────────────────────
 
-    def gather_local(self, limit: int = 50) -> list[Path]:
+    def gather_local(self) -> list[Path]:
         """Find local JSONL transcript files."""
-        return gather_local_transcripts(limit=limit)
+        return gather_local_transcripts()
 
     def gather_remote(
         self,

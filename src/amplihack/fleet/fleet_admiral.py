@@ -79,9 +79,6 @@ class DirectorLog:
             "outcome": outcome,
         }
         self.actions.append(entry)
-        # Cap action history to prevent unbounded growth
-        if len(self.actions) > 1000:
-            self.actions = self.actions[-1000:]
         self._save()
 
     def _save(self) -> None:
