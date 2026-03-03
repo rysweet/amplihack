@@ -42,7 +42,7 @@ class Step:
     parse_json: bool = False
     mode: str | None = None
     working_dir: str | None = None
-    timeout: int = 120
+    timeout: int | None = None
     auto_stage: bool | None = None  # None = inherit from runner default
 
 

@@ -82,7 +82,7 @@ class ClaudeSDKAdapter:
         self,
         command: str,
         working_dir: str = ".",
-        timeout: int = 120,
+        timeout: int | None = None,
     ) -> str:
         """Execute a bash command via subprocess.
 
