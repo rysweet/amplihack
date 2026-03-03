@@ -45,18 +45,17 @@ from dataclasses import dataclass, field
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
 sys.path.insert(0, "/home/azureuser/src/amplihack-agent-eval/src")
 
+from amplihack.agents.goal_seeking.hive_mind.unified import (  # type: ignore[import-not-found]
+    HiveMindAgent,
+    HiveMindConfig,
+    UnifiedHiveMind,
+)
 from amplihack_eval.data.long_horizon import (  # type: ignore[import-not-found]
     GroundTruth,
     Question,
     Turn,
     generate_dialogue,
     generate_questions,
-)
-
-from amplihack.agents.goal_seeking.hive_mind.unified import (
-    HiveMindAgent,
-    HiveMindConfig,
-    UnifiedHiveMind,
 )
 
 # ---------------------------------------------------------------------------
@@ -502,78 +501,20 @@ def run_flat_shared_20(
 # ---------------------------------------------------------------------------
 
 
-def run_hive_20(
-    ground_truth: GroundTruth,
-    questions: list[Question],
+def _hive20_vote_on_promotions(
+    hive: UnifiedHiveMind,
     partitions: list[AgentPartition],
-) -> tuple[ConditionResult, dict[str, int]]:
-    """20 agents with consensus hive + 1 adversarial agent.
+    block_to_agents: dict[str, list[str]],
+) -> int:
+    """Run consensus voting on pending promotions.
 
-    Returns (condition_result, adversarial_stats).
+    Same-block agents vote first; falls back to affinity-block agents for
+    single-agent blocks. Returns total votes cast.
     """
-    print("  [4/4] HIVE_20 (consensus=2, +adversarial)...")
-    t0 = time.time()
-
-    config = HiveMindConfig(
-        promotion_confidence_threshold=0.5,
-        promotion_consensus_required=2,  # Real consensus: proposer + 1 voter
-        gossip_interval_rounds=5,
-        gossip_top_k=20,
-        gossip_fanout=4,
-        event_relevance_threshold=0.2,
-        enable_gossip=True,
-        enable_events=True,
-    )
-
-    hive = UnifiedHiveMind(config)
-    agents: dict[str, HiveMindAgent] = {}
-    block_to_agents: dict[str, list[str]] = defaultdict(list)
-
-    # Register all 20 legitimate agents
-    for part in partitions:
-        hive.register_agent(part.agent_name)
-        agents[part.agent_name] = HiveMindAgent(part.agent_name, hive)
-        block_to_agents[part.block_name].append(part.agent_name)
-
-    # Register adversarial agent #21
-    hive.register_agent("adversary")
-    adversary = HiveMindAgent("adversary", hive)
-
-    print(f"       Registered {len(agents)} agents + 1 adversary")
-
-    # Phase 1: Each legitimate agent learns its partition
-    total_facts = 0
-    for part in partitions:
-        agent = agents[part.agent_name]
-        count = _learn_turns(agent, part.turns)
-        total_facts += count
-    print(f"       Phase 1: {total_facts} facts learned across 20 agents")
-
-    # Phase 2: Each agent promotes its facts. With consensus_required=2,
-    # facts go to pending state. Then agents within the same block vote
-    # on each other's promotions (topic overlap = plausible voters).
-    promoted_count = 0
-    for part in partitions:
-        agent = agents[part.agent_name]
-        for turn in part.turns:
-            for fact in turn.facts:
-                content = f"{fact.get('entity', '')}: {fact.get('attribute', '')} = {fact.get('value', '')}"
-                agent.promote(content, 0.9, [turn.block_name])
-                promoted_count += 1
-            agent.promote(turn.content, 0.85, [turn.block_name, f"turn_{turn.turn_number}"])
-            promoted_count += 1
-
-    print(f"       Phase 2: {promoted_count} facts proposed for promotion")
-
-    # Phase 2b: Voting round -- agents in the same block vote approve
-    # on each other's pending promotions. For single-agent blocks, a
-    # neighboring block's agent votes (simulating topic affinity).
     pending = hive._graph.get_pending_promotions()
     pre_vote_pending = len(pending)
     print(f"       Phase 2b: {pre_vote_pending} pending promotions, running consensus votes...")
 
-    # Build a mapping: block -> list of agent names
-    # For cross-voting, define block affinity pairs
     block_affinity = {
         "people": ["projects"],
         "projects": ["people", "technical"],
@@ -637,8 +578,17 @@ def run_hive_20(
         f"{post_stats['hive_facts']} facts in hive, "
         f"{post_stats['pending_promotions']} still pending"
     )
+    return votes_cast
 
-    # Phase 3: Adversarial injection -- adversary promotes 10 wrong facts
+
+def _hive20_inject_adversarial(
+    hive: UnifiedHiveMind,
+    adversary: HiveMindAgent,
+) -> dict[str, int]:
+    """Inject adversarial facts and check how many were blocked by consensus.
+
+    Returns dict with keys: total_injected, blocked, promoted.
+    """
     adversarial_pending_ids: list[str] = []
     for wrong_fact in ADVERSARIAL_FACTS:
         adversary.learn(wrong_fact, 0.95, ["adversary"])
@@ -647,19 +597,17 @@ def run_hive_20(
 
     print(f"       Phase 3: Adversary injected {len(ADVERSARIAL_FACTS)} wrong facts")
 
-    # Check how many adversarial facts got through consensus
+    # Check how many adversarial facts got through consensus.
     # With consensus_required=2, adversary needs another agent to vote approve.
     # Legitimate agents should NOT vote on adversarial facts (different topics).
     adv_pending_after = hive._graph.get_pending_promotions()
     adv_blocked = 0
     adv_promoted = 0
     for fid in adversarial_pending_ids:
-        # Check if still pending
         still_pending = any(p.fact_id == fid for p in adv_pending_after)
         if still_pending:
             adv_blocked += 1
         else:
-            # Check if it made it to hive
             if fid in hive._graph._hive_store:
                 adv_promoted += 1
             else:
@@ -673,19 +621,20 @@ def run_hive_20(
     print(
         f"       Phase 3: {adv_blocked}/{len(ADVERSARIAL_FACTS)} adversarial facts BLOCKED by consensus"
     )
+    return adversarial_stats
 
-    # Phase 4: Gossip rounds to spread knowledge
-    gossip_rounds = 5
-    for _ in range(gossip_rounds):
-        hive.run_gossip_round()
-    print(f"       Phase 4: {gossip_rounds} gossip rounds completed")
 
-    # Phase 5: Process events so agents incorporate hive facts locally
-    event_stats = hive.process_events()
-    total_events = sum(event_stats.values())
-    print(f"       Phase 5: {total_events} events processed across agents")
+def _hive20_evaluate(
+    hive: UnifiedHiveMind,
+    questions: list[Question],
+    ground_truth: GroundTruth,
+    agents: dict[str, HiveMindAgent],
+    block_to_agents: dict[str, list[str]],
+) -> tuple[dict[str, float], dict[str, list[float]]]:
+    """Answer questions using query_all (local + hive + gossip).
 
-    # Phase 6: Answer questions using query_all (local + hive + gossip)
+    Returns (per_question scores, per_category score lists).
+    """
     per_question: dict[str, float] = {}
     per_category: dict[str, list[float]] = defaultdict(list)
 
@@ -718,6 +667,86 @@ def run_hive_20(
         s = score_question(q, best_texts)
         per_question[q.question_id] = s
         per_category[q.category].append(s)
+
+    return per_question, per_category
+
+
+def run_hive_20(
+    ground_truth: GroundTruth,
+    questions: list[Question],
+    partitions: list[AgentPartition],
+) -> tuple[ConditionResult, dict[str, int]]:
+    """20 agents with consensus hive + 1 adversarial agent.
+
+    Returns (condition_result, adversarial_stats).
+    """
+    print("  [4/4] HIVE_20 (consensus=2, +adversarial)...")
+    t0 = time.time()
+
+    config = HiveMindConfig(
+        promotion_confidence_threshold=0.5,
+        promotion_consensus_required=2,  # Real consensus: proposer + 1 voter
+        gossip_interval_rounds=5,
+        gossip_top_k=20,
+        gossip_fanout=4,
+        event_relevance_threshold=0.2,
+        enable_gossip=True,
+        enable_events=True,
+    )
+
+    hive = UnifiedHiveMind(config)
+    agents: dict[str, HiveMindAgent] = {}
+    block_to_agents: dict[str, list[str]] = defaultdict(list)
+
+    # Register all 20 legitimate agents
+    for part in partitions:
+        hive.register_agent(part.agent_name)
+        agents[part.agent_name] = HiveMindAgent(part.agent_name, hive)
+        block_to_agents[part.block_name].append(part.agent_name)
+
+    # Register adversarial agent #21
+    hive.register_agent("adversary")
+    adversary = HiveMindAgent("adversary", hive)
+
+    print(f"       Registered {len(agents)} agents + 1 adversary")
+
+    # Phase 1: Each legitimate agent learns its partition
+    total_facts = 0
+    for part in partitions:
+        agent = agents[part.agent_name]
+        count = _learn_turns(agent, part.turns)
+        total_facts += count
+    print(f"       Phase 1: {total_facts} facts learned across 20 agents")
+
+    # Phase 2: Each agent promotes its facts to pending state
+    promoted_count = sum(_promote_turns(agents[p.agent_name], p.turns) for p in partitions)
+    print(f"       Phase 2: {promoted_count} facts proposed for promotion")
+
+    # Phase 2b: Consensus voting
+    _hive20_vote_on_promotions(hive, partitions, block_to_agents)
+
+    # Phase 3: Adversarial injection + consensus check
+    adversarial_stats = _hive20_inject_adversarial(hive, adversary)
+
+    # Phase 4: Gossip rounds to spread knowledge
+    gossip_rounds = 5
+    for _ in range(gossip_rounds):
+        hive.run_gossip_round()
+    print(f"       Phase 4: {gossip_rounds} gossip rounds completed")
+
+    # Phase 5: Process events so agents incorporate hive facts locally
+    event_stats = hive.process_events()
+    total_events = sum(event_stats.values())
+    print(f"       Phase 5: {total_events} events processed across agents")
+
+    # Phase 6: Answer questions using query_all (local + hive + gossip)
+    per_question, per_category = _hive20_evaluate(
+        hive,
+        questions,
+        ground_truth,
+        agents,
+        block_to_agents,
+    )
 
     overall = sum(per_question.values()) / len(per_question) if per_question else 0.0
     cat_avg = {cat: sum(scores) / len(scores) for cat, scores in per_category.items()}

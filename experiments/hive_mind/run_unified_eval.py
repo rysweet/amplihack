@@ -25,7 +25,7 @@ import sys
 # Allow running from repo root
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
 
-from amplihack.agents.goal_seeking.hive_mind.unified import (
+from amplihack.agents.goal_seeking.hive_mind.unified import (  # type: ignore[import-not-found]
     HiveMindAgent,
     HiveMindConfig,
     UnifiedHiveMind,
@@ -534,82 +534,18 @@ PRIOR_BASELINES = {
 }
 
 
-def run_evaluation() -> dict:
-    """Run the full unified hive mind evaluation.
+def _evaluate_questions(
+    agents: dict[str, HiveMindAgent],
+) -> tuple[list[float], list[float], list[float], list[float], list[float]]:
+    """Run Phase 5: evaluate all questions and print per-question results.
+
+    Args:
+        agents: Mapping of agent_id to HiveMindAgent instances.
 
     Returns:
-        Dict with detailed evaluation results.
+        (local_scores, cross_domain_scores, combined_scores,
+         baseline_scores, hive_scores)
     """
-    print("=" * 70)
-    print("UNIFIED HIVE MIND EVALUATION (Experiment 5)")
-    print("Combines: Hierarchical + Event Bus + Gossip + Content-Hash Dedup")
-    print("=" * 70)
-
-    # --- Setup ---
-    config = HiveMindConfig(
-        promotion_confidence_threshold=0.6,
-        promotion_consensus_required=1,  # immediate promotion for eval
-        gossip_interval_rounds=5,
-        gossip_top_k=10,
-        gossip_fanout=2,
-        enable_gossip=True,
-        enable_events=True,
-    )
-    hive = UnifiedHiveMind(config=config)
-
-    agent_domains = {
-        "infra": INFRASTRUCTURE_FACTS,
-        "security": SECURITY_FACTS,
-        "performance": PERFORMANCE_FACTS,
-    }
-
-    # Create agent wrappers
-    agents: dict[str, HiveMindAgent] = {}
-    for agent_id in agent_domains:
-        hive.register_agent(agent_id)
-        agents[agent_id] = HiveMindAgent(agent_id, hive)
-
-    # --- Phase 1: Each agent learns its domain facts ---
-    print("\n--- Phase 1: Learning (30 facts per agent) ---")
-    for agent_id, facts in agent_domains.items():
-        for content, conf, tags in facts:
-            agents[agent_id].learn(content, conf, tags)
-        summary = hive.get_agent_knowledge_summary(agent_id)
-        print(
-            f"  {agent_id}: {summary['local_facts']} local facts, round={summary['learning_round']}"
-        )
-
-    # --- Phase 2: Each agent promotes top-10 highest-confidence facts ---
-    print("\n--- Phase 2: Promotion (top-10 per agent) ---")
-    for agent_id, facts in agent_domains.items():
-        sorted_facts = sorted(facts, key=lambda f: -f[1])[:10]
-        for content, conf, tags in sorted_facts:
-            agents[agent_id].promote(content, conf, tags)
-        print(f"  {agent_id}: promoted 10 facts")
-
-    stats_after_promotion = hive.get_stats()
-    print(f"  Total hive facts: {stats_after_promotion['graph']['hive_facts']}")
-
-    # --- Phase 3: Run 3 gossip rounds ---
-    print("\n--- Phase 3: Gossip (3 rounds) ---")
-    for i in range(3):
-        gossip_stats = hive.run_gossip_round()
-        print(
-            f"  Round {gossip_stats['round_number']}: "
-            f"{gossip_stats['messages_sent']} messages, "
-            f"{gossip_stats['new_facts_learned']} new facts learned"
-        )
-
-    # --- Phase 4: Process all events ---
-    print("\n--- Phase 4: Event Processing ---")
-    event_results = hive.process_events()
-    for agent_id, count in event_results.items():
-        print(f"  {agent_id}: incorporated {count} events")
-
-    # --- Phase 5: Evaluation ---
-    print("\n--- Phase 5: Evaluation (12 questions) ---")
-    print("-" * 70)
-
     local_scores: list[float] = []
     cross_domain_scores: list[float] = []
     combined_scores: list[float] = []
@@ -649,7 +585,32 @@ def run_evaluation() -> dict:
         else:
             print("    No change")
 
-    # --- Summary ---
+    return local_scores, cross_domain_scores, combined_scores, baseline_scores, hive_scores
+
+
+def _print_summary(
+    baseline_scores: list[float],
+    hive_scores: list[float],
+    local_scores: list[float],
+    cross_domain_scores: list[float],
+    combined_scores: list[float],
+    agent_domains: dict[str, list],
+    hive: UnifiedHiveMind,
+) -> dict:
+    """Print evaluation summary, agent knowledge, system stats, and comparison.
+
+    Args:
+        baseline_scores: Per-question baseline (local-only) scores.
+        hive_scores: Per-question unified scores.
+        local_scores: Scores for local-category questions.
+        cross_domain_scores: Scores for cross-domain-category questions.
+        combined_scores: Scores for combined-category questions.
+        agent_domains: Agent domain mapping (used for iteration keys).
+        hive: The UnifiedHiveMind instance (used for stats).
+
+    Returns:
+        Dict with detailed evaluation results.
+    """
     print("\n" + "=" * 70)
     print("EVALUATION SUMMARY")
     print("=" * 70)
@@ -745,6 +706,113 @@ def run_evaluation() -> dict:
             "Exp 5 (Unified)": exp5_results,
         },
     }
+
+
+def _setup_and_run_phases(
+    agent_domains: dict[str, list],
+) -> tuple[dict[str, HiveMindAgent], UnifiedHiveMind]:
+    """Create hive, register agents, and run phases 1-4 (learn, promote, gossip, events).
+
+    Args:
+        agent_domains: Mapping of agent_id to list of (content, confidence, tags) facts.
+
+    Returns:
+        (agents, hive) -- the populated agent dict and the hive instance.
+    """
+    config = HiveMindConfig(
+        promotion_confidence_threshold=0.6,
+        promotion_consensus_required=1,  # immediate promotion for eval
+        gossip_interval_rounds=5,
+        gossip_top_k=10,
+        gossip_fanout=2,
+        enable_gossip=True,
+        enable_events=True,
+    )
+    hive = UnifiedHiveMind(config=config)
+
+    agents: dict[str, HiveMindAgent] = {}
+    for agent_id in agent_domains:
+        hive.register_agent(agent_id)
+        agents[agent_id] = HiveMindAgent(agent_id, hive)
+
+    # --- Phase 1: Each agent learns its domain facts ---
+    print("\n--- Phase 1: Learning (30 facts per agent) ---")
+    for agent_id, facts in agent_domains.items():
+        for content, conf, tags in facts:
+            agents[agent_id].learn(content, conf, tags)
+        summary = hive.get_agent_knowledge_summary(agent_id)
+        print(
+            f"  {agent_id}: {summary['local_facts']} local facts, round={summary['learning_round']}"
+        )
+
+    # --- Phase 2: Each agent promotes top-10 highest-confidence facts ---
+    print("\n--- Phase 2: Promotion (top-10 per agent) ---")
+    for agent_id, facts in agent_domains.items():
+        sorted_facts = sorted(facts, key=lambda f: -f[1])[:10]
+        for content, conf, tags in sorted_facts:
+            agents[agent_id].promote(content, conf, tags)
+        print(f"  {agent_id}: promoted 10 facts")
+
+    stats_after_promotion = hive.get_stats()
+    print(f"  Total hive facts: {stats_after_promotion['graph']['hive_facts']}")
+
+    # --- Phase 3: Run 3 gossip rounds ---
+    print("\n--- Phase 3: Gossip (3 rounds) ---")
+    for i in range(3):
+        gossip_stats = hive.run_gossip_round()
+        print(
+            f"  Round {gossip_stats['round_number']}: "
+            f"{gossip_stats['messages_sent']} messages, "
+            f"{gossip_stats['new_facts_learned']} new facts learned"
+        )
+
+    # --- Phase 4: Process all events ---
+    print("\n--- Phase 4: Event Processing ---")
+    event_results = hive.process_events()
+    for agent_id, count in event_results.items():
+        print(f"  {agent_id}: incorporated {count} events")
+
+    return agents, hive
+
+
+def run_evaluation() -> dict:
+    """Run the full unified hive mind evaluation.
+
+    Returns:
+        Dict with detailed evaluation results.
+    """
+    print("=" * 70)
+    print("UNIFIED HIVE MIND EVALUATION (Experiment 5)")
+    print("Combines: Hierarchical + Event Bus + Gossip + Content-Hash Dedup")
+    print("=" * 70)
+
+    agent_domains = {
+        "infra": INFRASTRUCTURE_FACTS,
+        "security": SECURITY_FACTS,
+        "performance": PERFORMANCE_FACTS,
+    }
+
+    # Phases 1-4: setup, learn, promote, gossip, events
+    agents, hive = _setup_and_run_phases(agent_domains)
+
+    # Phase 5: Evaluation
+    print("\n--- Phase 5: Evaluation (12 questions) ---")
+    print("-" * 70)
+
+    local_scores, cross_domain_scores, combined_scores, baseline_scores, hive_scores = (
+        _evaluate_questions(agents)
+    )
+
+    # Summary, stats, comparison, and return value
+    return _print_summary(
+        baseline_scores,
+        hive_scores,
+        local_scores,
+        cross_domain_scores,
+        combined_scores,
+        agent_domains,
+        hive,
+    )
 
 
 if __name__ == "__main__":

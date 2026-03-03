@@ -36,15 +36,14 @@ sys.path.insert(0, os.path.dirname(__file__))
 # ---------------------------------------------------------------------------
 # Import fact data and questions from the original eval
 # ---------------------------------------------------------------------------
-from run_5agent_real_eval import (  # type: ignore[import-not-found]
-    AGENT_DOMAINS,
-    EVAL_QUESTIONS,
-)
-
-from amplihack.agents.goal_seeking.hive_mind.unified import (
+from amplihack.agents.goal_seeking.hive_mind.unified import (  # type: ignore[import-not-found]
     HiveMindAgent,
     HiveMindConfig,
     UnifiedHiveMind,
+)
+from run_5agent_real_eval import (  # type: ignore[import-not-found]
+    AGENT_DOMAINS,
+    EVAL_QUESTIONS,
 )
 
 # All 125 facts as a flat list
@@ -557,52 +556,17 @@ def _avg_metrics(
 # ---------------------------------------------------------------------------
 
 
-def run_rigorous_evaluation() -> dict[str, Any]:
-    """Run the rigorous 4-condition + adversarial + noise evaluation."""
+def _print_baseline_comparison(
+    iso_metrics: dict[str, tuple[float, float, float]],
+    flat_metrics: dict[str, tuple[float, float, float]],
+    gossip_metrics: dict[str, tuple[float, float, float]],
+    hive_metrics: dict[str, tuple[float, float, float]],
+) -> dict[str, float]:
+    """Print baseline comparison table and return critical deltas.
 
-    print("=" * 74)
-    print("          RIGOROUS 5-AGENT HIVE MIND EVALUATION")
-    print("=" * 74)
-    print("Conditions: ISOLATED | FLAT_SHARED | GOSSIP_ONLY | HIVE")
-    print("Agents: 5 | Facts/agent: 25 | Total: 125 | Questions: 30")
-    print("Metrics: Recall, Precision, F1")
-    print("=" * 74)
-
-    t0 = time.perf_counter()
-
-    # ---- Condition 1: ISOLATED ----
-    print("\n--- Setting up ISOLATED condition ---")
-    iso_agents = _setup_isolated()
-    iso_results = _evaluate_condition(iso_agents, use_ask=False)
-    iso_metrics = _avg_metrics(iso_results)
-    print("  Done. (each agent: 25 local facts, no sharing)")
-
-    # ---- Condition 2: FLAT_SHARED ----
-    print("\n--- Setting up FLAT_SHARED condition ---")
-    flat_agents = _setup_flat_shared()
-    flat_results = _evaluate_condition(flat_agents, use_ask=False)
-    flat_metrics = _avg_metrics(flat_results)
-    print("  Done. (each agent: 125 local facts, bulk INSERT)")
-
-    # ---- Condition 3: GOSSIP_ONLY ----
-    print("\n--- Setting up GOSSIP_ONLY condition ---")
-    gossip_agents = _setup_gossip_only()
-    gossip_results = _evaluate_condition(gossip_agents, use_ask=True)
-    gossip_metrics = _avg_metrics(gossip_results)
-    print("  Done. (25 local + gossip, no promotion/events)")
-
-    # ---- Condition 4: HIVE ----
-    print("\n--- Setting up HIVE condition ---")
-    hive_agents, hive_obj = _setup_hive()
-    hive_results = _evaluate_condition(hive_agents, use_ask=True)
-    hive_metrics = _avg_metrics(hive_results)
-    print("  Done. (25 local + promote + gossip + events)")
-
-    elapsed_baseline = time.perf_counter() - t0
-
-    # ==================================================================
-    # BASELINE COMPARISON TABLE
-    # ==================================================================
+    Returns:
+        Dict with 'delta_pp' (F1 delta) and 'delta_recall_pp'.
+    """
     print("\n" + "=" * 74)
     print("--- BASELINE COMPARISON (the REAL test) ---")
     print("=" * 74)
@@ -653,15 +617,22 @@ def run_rigorous_evaluation() -> dict[str, Any]:
     delta_recall_pp = (hive_recall - flat_recall) * 100
     print(f"CRITICAL: Hive vs Flat-Shared Recall delta: {delta_recall_pp:+.1f}pp")
 
-    # ==================================================================
-    # ask() vs ask_local() COMPARISON
-    # ==================================================================
+    return {"delta_pp": delta_pp, "delta_recall_pp": delta_recall_pp}
+
+
+def _compare_ask_vs_local(
+    hive_agents: dict[str, HiveMindAgent],
+    hive_metrics: dict[str, tuple[float, float, float]],
+    hive_local_metrics: dict[str, tuple[float, float, float]],
+) -> dict[str, int]:
+    """Print ask() vs ask_local() comparison and return counts.
+
+    Returns:
+        Dict with 'same', 'ask_better', 'local_better' counts.
+    """
     print("\n" + "=" * 74)
     print("--- HIVE ask() vs ask_local() ---")
     print("=" * 74)
-
-    hive_local_results = _evaluate_condition(hive_agents, use_ask=False)
-    hive_local_metrics = _avg_metrics(hive_local_results)
 
     same_count = 0
     ask_better = 0
@@ -708,15 +679,22 @@ def run_rigorous_evaluation() -> dict[str, Any]:
         )
         print("  The hive query layer may add noise rather than value.")
 
-    # ==================================================================
-    # ADVERSARIAL RESILIENCE
-    # ==================================================================
+    return {"same": same_count, "ask_better": ask_better, "local_better": local_better}
+
+
+def _evaluate_adversarial(
+    adv_agents: dict[str, HiveMindAgent],
+) -> dict[str, Any]:
+    """Test adversarial resilience and return results.
+
+    Returns:
+        Dict with 'wrong_propagated', 'corrupted', 'resilience',
+        'total_wrong', 'total_questions_check'.
+    """
     print("\n" + "=" * 74)
     print("--- ADVERSARIAL RESILIENCE ---")
     print("=" * 74)
     print("Adversarial agent: 10 correct + 5 WRONG facts")
-
-    adv_agents, adv_hive = _setup_hive_with_adversary()
 
     # Check whether wrong facts propagated to other agents
     wrong_propagated = 0
@@ -774,15 +752,29 @@ def run_rigorous_evaluation() -> dict[str, Any]:
     print(f"Correct answers corrupted: {corrupted}/{total_questions_check}")
     print(f"Resilience score: {resilience:.0%}")
 
-    # ==================================================================
-    # PRECISION UNDER NOISE
-    # ==================================================================
+    return {
+        "wrong_propagated": wrong_propagated,
+        "corrupted": corrupted,
+        "resilience": resilience,
+        "total_wrong": total_wrong,
+        "total_questions_check": total_questions_check,
+    }
+
+
+def _evaluate_noise_precision(
+    hive_metrics: dict[str, tuple[float, float, float]],
+    noisy_agents: dict[str, HiveMindAgent],
+) -> dict[str, float]:
+    """Evaluate precision under noise from distractor facts.
+
+    Returns:
+        Dict with 'clean_precision', 'noisy_precision', 'precision_drop_pp'.
+    """
     print("\n" + "=" * 74)
     print("--- PRECISION UNDER NOISE ---")
     print("=" * 74)
     print("Adding 10 distractor facts per agent (50 irrelevant facts total)")
 
-    noisy_agents, noisy_hive = _setup_hive_with_distractors()
     noisy_results = _evaluate_condition(noisy_agents, use_ask=True)
     noisy_metrics = _avg_metrics(noisy_results)
 
@@ -806,9 +798,20 @@ def run_rigorous_evaluation() -> dict[str, Any]:
     else:
         print("Hive maintains precision under noise")
 
-    # ==================================================================
-    # PER-QUESTION DETAIL
-    # ==================================================================
+    return {
+        "clean_precision": clean_precision,
+        "noisy_precision": noisy_precision,
+        "precision_drop_pp": precision_drop,
+    }
+
+
+def _print_per_question_detail(
+    iso_agents: dict[str, HiveMindAgent],
+    flat_agents: dict[str, HiveMindAgent],
+    gossip_agents: dict[str, HiveMindAgent],
+    hive_agents: dict[str, HiveMindAgent],
+) -> None:
+    """Print per-question recall detail for all 4 conditions."""
     print("\n" + "=" * 74)
     print("--- PER-QUESTION DETAIL (all 4 conditions) ---")
     print("=" * 74)
@@ -842,22 +845,27 @@ def run_rigorous_evaluation() -> dict[str, Any]:
             f"{iso_score:>4.0%} {flat_score:>5.0%} {gos_score:>5.0%} {hive_score:>4.0%}"
         )
 
-    # ==================================================================
-    # TIMING
-    # ==================================================================
-    total_elapsed = time.perf_counter() - t0
-    print("\n--- Timing ---")
-    print(f"Baseline conditions: {elapsed_baseline:.1f}s")
-    print(f"Total evaluation:    {total_elapsed:.1f}s")
 
-    # ==================================================================
-    # HONEST SUMMARY
-    # ==================================================================
+def _print_honest_summary(
+    iso_metrics: dict[str, tuple[float, float, float]],
+    flat_metrics: dict[str, tuple[float, float, float]],
+    gossip_metrics: dict[str, tuple[float, float, float]],
+    hive_metrics: dict[str, tuple[float, float, float]],
+    delta_pp: float,
+    wrong_propagated: int,
+    corrupted: int,
+    resilience: float,
+    precision_drop: float,
+    total_wrong: int,
+) -> None:
+    """Print the honest summary section."""
     print("\n" + "=" * 74)
     print("--- HONEST SUMMARY ---")
     print("=" * 74)
 
     iso_f1 = iso_metrics["overall"][2]
+    flat_f1 = flat_metrics["overall"][2]
+    hive_f1 = hive_metrics["overall"][2]
 
     print(f"ISOLATED    F1: {iso_f1:.1%}")
     print(f"FLAT_SHARED F1: {flat_f1:.1%}  (delta vs isolated: {(flat_f1 - iso_f1) * 100:+.1f}pp)")
@@ -897,39 +905,95 @@ def run_rigorous_evaluation() -> dict[str, Any]:
 
     print("\n" + "=" * 74)
 
+
+def _setup_and_eval(label: str, setup_fn, use_ask: bool, desc: str):
+    """Set up a condition, evaluate it, and return (agents, metrics)."""
+    print(f"\n--- Setting up {label} condition ---")
+    result = setup_fn()
+    agents = result[0] if isinstance(result, tuple) else result
+    metrics = _avg_metrics(_evaluate_condition(agents, use_ask=use_ask))
+    print(f"  Done. ({desc})")
+    return agents, metrics
+
+
+def _metrics_dict(metrics: dict[str, tuple[float, float, float]]) -> dict[str, Any]:
+    """Convert (recall, precision, f1) tuples to named dicts."""
+    return {k: {"recall": v[0], "precision": v[1], "f1": v[2]} for k, v in metrics.items()}
+
+
+def run_rigorous_evaluation() -> dict[str, Any]:
+    """Run the rigorous 4-condition + adversarial + noise evaluation."""
+    print("=" * 74)
+    print("          RIGOROUS 5-AGENT HIVE MIND EVALUATION")
+    print("=" * 74)
+    print("Conditions: ISOLATED | FLAT_SHARED | GOSSIP_ONLY | HIVE")
+    print("Agents: 5 | Facts/agent: 25 | Total: 125 | Questions: 30")
+    print("Metrics: Recall, Precision, F1")
+    print("=" * 74)
+
+    t0 = time.perf_counter()
+
+    # 4 baseline conditions
+    iso_agents, iso_metrics = _setup_and_eval(
+        "ISOLATED", _setup_isolated, False, "each agent: 25 local facts, no sharing"
+    )
+    flat_agents, flat_metrics = _setup_and_eval(
+        "FLAT_SHARED", _setup_flat_shared, False, "each agent: 125 local facts, bulk INSERT"
+    )
+    gossip_agents, gossip_metrics = _setup_and_eval(
+        "GOSSIP_ONLY", _setup_gossip_only, True, "25 local + gossip, no promotion/events"
+    )
+    hive_agents, hive_metrics = _setup_and_eval(
+        "HIVE", _setup_hive, True, "25 local + promote + gossip + events"
+    )
+    elapsed_baseline = time.perf_counter() - t0
+
+    # Analysis sections
+    deltas = _print_baseline_comparison(iso_metrics, flat_metrics, gossip_metrics, hive_metrics)
+    hive_local_metrics = _avg_metrics(_evaluate_condition(hive_agents, use_ask=False))
+    ask_vs_local = _compare_ask_vs_local(hive_agents, hive_metrics, hive_local_metrics)
+    adv_agents, _ = _setup_hive_with_adversary()
+    adv = _evaluate_adversarial(adv_agents)
+    noisy_agents, _ = _setup_hive_with_distractors()
+    noise = _evaluate_noise_precision(hive_metrics, noisy_agents)
+    _print_per_question_detail(iso_agents, flat_agents, gossip_agents, hive_agents)
+
+    # Timing
+    total_elapsed = time.perf_counter() - t0
+    print("\n--- Timing ---")
+    print(f"Baseline conditions: {elapsed_baseline:.1f}s")
+    print(f"Total evaluation:    {total_elapsed:.1f}s")
+
+    # Summary
+    _print_honest_summary(
+        iso_metrics,
+        flat_metrics,
+        gossip_metrics,
+        hive_metrics,
+        deltas["delta_pp"],
+        adv["wrong_propagated"],
+        adv["corrupted"],
+        adv["resilience"],
+        noise["precision_drop_pp"],
+        adv["total_wrong"],
+    )
+
     return {
         "conditions": {
-            "isolated": {
-                k: {"recall": v[0], "precision": v[1], "f1": v[2]} for k, v in iso_metrics.items()
-            },
-            "flat_shared": {
-                k: {"recall": v[0], "precision": v[1], "f1": v[2]} for k, v in flat_metrics.items()
-            },
-            "gossip_only": {
-                k: {"recall": v[0], "precision": v[1], "f1": v[2]}
-                for k, v in gossip_metrics.items()
-            },
-            "hive": {
-                k: {"recall": v[0], "precision": v[1], "f1": v[2]} for k, v in hive_metrics.items()
-            },
+            "isolated": _metrics_dict(iso_metrics),
+            "flat_shared": _metrics_dict(flat_metrics),
+            "gossip_only": _metrics_dict(gossip_metrics),
+            "hive": _metrics_dict(hive_metrics),
         },
-        "hive_vs_flat_f1_delta_pp": delta_pp,
-        "hive_vs_flat_recall_delta_pp": delta_recall_pp,
-        "ask_vs_local": {
-            "same": same_count,
-            "ask_better": ask_better,
-            "local_better": local_better,
-        },
+        "hive_vs_flat_f1_delta_pp": deltas["delta_pp"],
+        "hive_vs_flat_recall_delta_pp": deltas["delta_recall_pp"],
+        "ask_vs_local": ask_vs_local,
         "adversarial": {
-            "wrong_propagated": wrong_propagated,
-            "corrupted": corrupted,
-            "resilience": resilience,
+            "wrong_propagated": adv["wrong_propagated"],
+            "corrupted": adv["corrupted"],
+            "resilience": adv["resilience"],
         },
-        "noise": {
-            "clean_precision": clean_precision,
-            "noisy_precision": noisy_precision,
-            "precision_drop_pp": precision_drop,
-        },
+        "noise": noise,
     }
 
 
