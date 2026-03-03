@@ -38,7 +38,18 @@ _SAFE_NODES = (
     ast.NotIn,
     ast.Subscript,
     ast.Index,  # Still present in 3.11+ for backward compat, harmless to whitelist
+    ast.Call,  # Allowed but restricted to safe functions (see _SAFE_CALL_NAMES)
+    ast.keyword,  # Required for keyword arguments in calls
 )
+
+# Functions allowed in Call nodes. Only pure type-coercion and string helpers.
+_SAFE_CALL_NAMES = frozenset({"int", "str", "len", "bool", "float", "abs", "min", "max"})
+
+# Methods allowed on objects (e.g. value.strip()). Only side-effect-free string methods.
+_SAFE_METHOD_NAMES = frozenset({
+    "strip", "lstrip", "rstrip", "lower", "upper", "title",
+    "startswith", "endswith", "replace", "split", "join", "count", "find",
+})
 
 
 class _SafeNodeVisitor(ast.NodeVisitor):
@@ -48,6 +59,27 @@ class _SafeNodeVisitor(ast.NodeVisitor):
         if not isinstance(node, _SAFE_NODES):
             raise ValueError(f"Unsafe expression: node type '{type(node).__name__}' is not allowed")
         super().generic_visit(node)
+
+    def visit_Call(self, node: ast.Call) -> None:
+        """Validate that Call nodes only invoke safe functions."""
+        if isinstance(node.func, ast.Name):
+            # Direct call: int(...), str(...), len(...)
+            if node.func.id not in _SAFE_CALL_NAMES:
+                raise ValueError(
+                    f"Unsafe function call: '{node.func.id}' is not allowed. "
+                    f"Safe functions: {sorted(_SAFE_CALL_NAMES)}"
+                )
+        elif isinstance(node.func, ast.Attribute):
+            # Method call: value.strip(), s.lower()
+            if node.func.attr not in _SAFE_METHOD_NAMES:
+                raise ValueError(
+                    f"Unsafe method call: '.{node.func.attr}()' is not allowed. "
+                    f"Safe methods: {sorted(_SAFE_METHOD_NAMES)}"
+                )
+        else:
+            raise ValueError("Unsafe expression: only named function/method calls are allowed")
+        # Continue visiting child nodes
+        self.generic_visit(node)
 
 
 class RecipeContext:
@@ -171,8 +203,11 @@ class RecipeContext:
         # Build a flattened namespace from the context for evaluation
         namespace = self._build_namespace()
 
+        # Provide safe builtins that condition expressions may call
+        safe_builtins = {name: __builtins__[name] if isinstance(__builtins__, dict) else getattr(__builtins__, name) for name in _SAFE_CALL_NAMES if (isinstance(__builtins__, dict) and name in __builtins__) or (not isinstance(__builtins__, dict) and hasattr(__builtins__, name))}
+
         code = compile(tree, "<condition>", "eval")
-        return bool(eval(code, {"__builtins__": {}}, namespace))
+        return bool(eval(code, {"__builtins__": safe_builtins}, namespace))
 
     def to_dict(self) -> dict[str, Any]:
         """Return a deep copy of the context data."""
