@@ -68,7 +68,7 @@ class TestEmbeddingGeneratorAvailability:
         assert result is None
 
 
-class TestCossineSimilarity:
+class TestCosineSimilarity:
     """Test cosine similarity computation (no model needed)."""
 
     def test_identical_vectors(self):

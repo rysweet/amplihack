@@ -649,6 +649,6 @@ __all__ = [
     "RedisEventBus",
     "create_event_bus",
     "make_event",
-    "_make_event",
+    "_make_event",  # backwards-compatible alias for make_event
     "MAX_MAILBOX_SIZE",
 ]

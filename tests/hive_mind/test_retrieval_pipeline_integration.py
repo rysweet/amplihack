@@ -16,7 +16,6 @@ from amplihack.agents.goal_seeking.hive_mind.hive_graph import (
     HiveFact,
     InMemoryHiveGraph,
 )
-from amplihack.agents.goal_seeking.hive_mind.reranker import hybrid_score_weighted
 
 # ---------------------------------------------------------------------------
 # InMemoryHiveGraph with embedding_generator
@@ -378,32 +377,7 @@ class TestQueryExpansionIntegration:
             adapter.close()
 
 
-# ---------------------------------------------------------------------------
-# hybrid_score_weighted function
-# ---------------------------------------------------------------------------
-
-
-class TestHybridScoreWeighted:
-    """hybrid_score_weighted combines signals correctly."""
-
-    def test_default_weights(self):
-        score = hybrid_score_weighted(
-            semantic_similarity=1.0, confirmation_count=5, source_trust=2.0
-        )
-        # 0.5 * 1.0 + 0.3 * 1.0 + 0.2 * 1.0 = 1.0
-        assert score == pytest.approx(1.0)
-
-    def test_zero_inputs(self):
-        score = hybrid_score_weighted(
-            semantic_similarity=0.0, confirmation_count=0, source_trust=0.0
-        )
-        assert score == pytest.approx(0.0)
-
-    def test_semantic_only(self):
-        score = hybrid_score_weighted(
-            semantic_similarity=0.8, confirmation_count=0, source_trust=0.0
-        )
-        assert score == pytest.approx(0.5 * 0.8)
+# hybrid_score_weighted tests are in test_reranker.py (canonical location)
 
 
 # ---------------------------------------------------------------------------

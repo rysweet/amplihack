@@ -21,13 +21,13 @@ import tempfile
 import time
 
 # Ensure amplihack-memory-lib is importable
-_MEMORY_LIB_PATH = "/home/azureuser/src/amplihack-memory-lib-real/src"
-if _MEMORY_LIB_PATH not in sys.path:
+_MEMORY_LIB_PATH = os.environ.get("AMPLIHACK_MEMORY_LIB_PATH", "")
+if _MEMORY_LIB_PATH and _MEMORY_LIB_PATH not in sys.path:
     sys.path.insert(0, _MEMORY_LIB_PATH)
 
 # Ensure amplihack5 src is importable
-_SRC_PATH = "/home/azureuser/src/amplihack5/src"
-if _SRC_PATH not in sys.path:
+_SRC_PATH = os.environ.get("AMPLIHACK_SRC_PATH", "")
+if _SRC_PATH and _SRC_PATH not in sys.path:
     sys.path.insert(0, _SRC_PATH)
 
 from amplihack.agents.goal_seeking.hive_mind.distributed import (

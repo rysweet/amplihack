@@ -13,11 +13,7 @@ Merge properties verified for every type:
 
 from __future__ import annotations
 
-import sys
 import threading
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 from amplihack.agents.goal_seeking.hive_mind.crdt import (
     GSet,
@@ -34,8 +30,8 @@ def _clone_gset(gs: GSet) -> GSet:
     return GSet.from_dict(gs.to_dict())
 
 
-def _clone_orset(os: ORSet) -> ORSet:
-    return ORSet.from_dict(os.to_dict())
+def _clone_orset(orset: ORSet) -> ORSet:
+    return ORSet.from_dict(orset.to_dict())
 
 
 def _clone_lww(reg: LWWRegister) -> LWWRegister:

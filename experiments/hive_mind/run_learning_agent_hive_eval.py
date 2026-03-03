@@ -34,12 +34,12 @@ from pathlib import Path
 from typing import Any
 
 # Ensure paths
-_MEMORY_LIB_PATH = "/home/azureuser/src/amplihack-memory-lib-real/src"
-if _MEMORY_LIB_PATH not in sys.path:
+_MEMORY_LIB_PATH = os.environ.get("AMPLIHACK_MEMORY_LIB_PATH", "")
+if _MEMORY_LIB_PATH and _MEMORY_LIB_PATH not in sys.path:
     sys.path.insert(0, _MEMORY_LIB_PATH)
 
-_SRC_PATH = "/home/azureuser/src/amplihack5/src"
-if _SRC_PATH not in sys.path:
+_SRC_PATH = os.environ.get("AMPLIHACK_SRC_PATH", "")
+if _SRC_PATH and _SRC_PATH not in sys.path:
     sys.path.insert(0, _SRC_PATH)
 
 from amplihack_eval.adapters.base import AgentAdapter, AgentResponse
@@ -107,6 +107,7 @@ class HiveLearningAgentAdapter(AgentAdapter):
         try:
             return self._agent.get_memory_stats()
         except Exception:
+            logger.debug("get_memory_stats failed", exc_info=True)
             return {}
 
     @property
@@ -166,7 +167,7 @@ class MultiAgentHiveAdapter(AgentAdapter):
                 s = agent.get_memory_stats()
                 stats[agent.agent_name] = s
             except Exception:
-                pass
+                logger.debug("get_memory_stats failed for %s", agent.agent_name, exc_info=True)
         return stats
 
     @property
@@ -244,6 +245,7 @@ def run_flat(
         if not embedder.available:
             embedder = None
     except Exception:
+        logger.debug("EmbeddingGenerator init failed (flat)", exc_info=True)
         embedder = None
 
     hive = InMemoryHiveGraph(
@@ -322,6 +324,7 @@ def run_federated(
         if not embedder.available:
             embedder = None
     except Exception:
+        logger.debug("EmbeddingGenerator init failed (federated)", exc_info=True)
         embedder = None
 
     # Create federation tree: root hive with M group hives as children
