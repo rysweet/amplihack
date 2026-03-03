@@ -930,7 +930,7 @@ Add this section to your PR description:
 
 **Added per issues #2805, #2809, #2810.**
 
-Invoke the **quality-audit-workflow** skill to run a comprehensive, iterative quality audit on all files changed in this PR. This is the last substantive check before the PR is marked ready.
+Invoke the **quality-audit** skill to run a comprehensive, iterative quality audit on all files changed in this PR. This is the last substantive check before the PR is marked ready.
 
 #### Loop Structure
 
