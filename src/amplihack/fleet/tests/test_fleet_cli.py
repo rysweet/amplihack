@@ -772,7 +772,7 @@ class TestFleetTuiCommand:
         ):
             result = runner.invoke(fleet_cli, ["tui"], catch_exceptions=False)
             assert result.exit_code == 0
-            mock_module.run_dashboard.assert_called_once_with(interval=30, capture_lines=5000)
+            mock_module.run_dashboard.assert_called_once_with(interval=30, capture_lines=50)
 
     def test_tui_custom_interval(self, runner):
         """fleet tui --interval 10 should pass interval to dashboard."""
@@ -783,7 +783,7 @@ class TestFleetTuiCommand:
         ):
             result = runner.invoke(fleet_cli, ["tui", "--interval", "10"], catch_exceptions=False)
             assert result.exit_code == 0
-            mock_module.run_dashboard.assert_called_once_with(interval=10, capture_lines=5000)
+            mock_module.run_dashboard.assert_called_once_with(interval=10, capture_lines=50)
 
     def test_tui_custom_capture_lines(self, runner):
         """fleet tui --capture-lines 10000 should pass to dashboard."""

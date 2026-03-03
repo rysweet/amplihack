@@ -167,10 +167,10 @@ class FleetObserver:
         import shlex
 
         validate_vm_name(vm_name)
-        try:
-            validate_session_name(session_name)
-        except ValueError:
-            logger.warning("Rejecting unsafe session name for pane capture: %r", session_name)
+        # shlex.quote handles safety for the session name in the SSH command.
+        # Don't use validate_session_name here — tmux reports names like "(none)"
+        # that are valid but don't match our strict regex.
+        if not session_name:
             return None
 
         cmd = f"tmux capture-pane -t {shlex.quote(session_name)} -p -S -{self.capture_lines} 2>/dev/null"

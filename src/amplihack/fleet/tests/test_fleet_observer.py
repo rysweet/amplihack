@@ -189,10 +189,18 @@ class TestFleetObserverIntegration:
 
 
 class TestCapturePaneValidation:
-    """Tests for _capture_pane session name validation."""
+    """Tests for _capture_pane input handling."""
 
-    def test_capture_pane_rejects_invalid_session(self):
-        """_capture_pane returns None for session names with shell metacharacters."""
+    def test_capture_pane_rejects_empty_session(self):
+        """_capture_pane returns None for empty session names."""
         observer = FleetObserver()
-        result = observer._capture_pane("vm-1", "bad;injection")
+        result = observer._capture_pane("vm-1", "")
+        assert result is None
+
+    def test_capture_pane_accepts_parenthesized_names(self):
+        """_capture_pane accepts names like (none) from tmux — shlex.quote handles safety."""
+        observer = FleetObserver()
+        # Will fail to connect but should not raise ValueError
+        result = observer._capture_pane("vm-1", "(none)")
+        # Returns None because azlin isn't available, but no ValueError raised
         assert result is None

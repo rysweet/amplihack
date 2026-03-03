@@ -724,18 +724,23 @@ class TestParseSessionOutput:
 class TestParseSessionOutputValidation:
     """parse_session_output skips sessions with invalid names."""
 
-    def test_parse_session_output_skips_invalid_names(self) -> None:
-        """Sessions with shell metacharacters should be silently skipped."""
+    def test_parse_session_output_accepts_all_tmux_names(self) -> None:
+        """Parser accepts all session names from tmux (shlex.quote handles safety)."""
         long_output = "working " * 10
         output = (
-            "===SESSION:bad;name===\n"
-            f"---CAPTURE---\n{long_output}\n---GIT---\nBRANCH:evil\n---END---\n"
+            "===SESSION:odd-name===\n"
+            f"---CAPTURE---\n{long_output}\n---GIT---\nBRANCH:feat\n---END---\n"
             "===SESSION:good-sess===\n"
             f"---CAPTURE---\n{long_output}\n---GIT---\nBRANCH:main\n---END---\n"
         )
         sessions = parse_session_output("vm-1", output)
-        assert len(sessions) == 1
-        assert sessions[0].session_name == "good-sess"
+        assert len(sessions) == 2
+
+    def test_parse_session_output_skips_empty_names(self) -> None:
+        """Empty session names are skipped."""
+        output = "===SESSION:===\n---CAPTURE---\nhi\n---GIT---\n---END---\n"
+        sessions = parse_session_output("vm-1", output)
+        assert len(sessions) == 0
 
 
 class TestClassifyStatusAdditional:

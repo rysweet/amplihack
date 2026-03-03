@@ -27,7 +27,8 @@ DEFAULT_TUI_REFRESH_SECONDS = 60         # Simple TUI refresh interval
 DEFAULT_DASHBOARD_REFRESH_SECONDS = 30   # Interactive dashboard refresh
 
 # ── Capacity ───────────────────────────────────────────────────────────
-DEFAULT_CAPTURE_LINES = 5000       # Terminal scrollback capture depth
+DEFAULT_CAPTURE_LINES = 50         # Terminal scrollback for fleet poll (per-VM, runs often)
+DEFAULT_DETAIL_CAPTURE_LINES = 500 # Deeper capture for session detail view (on-demand)
 DEFAULT_RECENT_MESSAGE_COUNT = 500 # Recent transcript entries for rich context
 DEFAULT_MAX_AGENTS_PER_VM = 3      # Max concurrent agents per VM
 DEFAULT_MAX_TURNS = 20             # Default task max turns

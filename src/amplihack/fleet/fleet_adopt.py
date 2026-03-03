@@ -200,6 +200,10 @@ echo "===DONE==="
                 if current:
                     sessions.append(current)
                 session_name = line[len("===SESSION:") : -len("===")]
+                # Skip tmux placeholder names like "(none)" that aren't real sessions
+                if not session_name or session_name.startswith("("):
+                    current = None
+                    continue
                 try:
                     validate_session_name(session_name)
                 except ValueError:

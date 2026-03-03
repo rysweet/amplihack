@@ -63,11 +63,13 @@ class _WorkersMixin:
         import subprocess
 
         validate_vm_name(vm_name)
-        validate_session_name(session_name)
+        # Don't validate session_name here — tmux can report names like "(none)"
+        # that don't match our strict regex. shlex.quote handles safety for SSH.
         worker = get_current_worker()
         key = f"{vm_name}/{session_name}"
 
-        cmd = f"tmux capture-pane -t {shlex.quote(session_name)} -p -S -60"
+        from amplihack.fleet._constants import DEFAULT_DETAIL_CAPTURE_LINES
+        cmd = f"tmux capture-pane -t {shlex.quote(session_name)} -p -S -{DEFAULT_DETAIL_CAPTURE_LINES}"
         capture_text = ""
         try:
             result = subprocess.run(

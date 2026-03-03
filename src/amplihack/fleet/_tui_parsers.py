@@ -36,10 +36,9 @@ def parse_session_output(vm_name: str, output: str) -> list[SessionView]:
         session_name = part[:header_end].strip()
         rest = part[header_end + 3 :]
 
-        try:
-            validate_session_name(session_name)
-        except ValueError:
-            logger.warning("Skipping invalid session name in TUI parser: %r", session_name)
+        # Accept all session names from tmux for display purposes.
+        # Names like "(none)" are valid tmux output — don't reject them.
+        if not session_name:
             continue
 
         view = SessionView(vm_name=vm_name, session_name=session_name)
