@@ -1,30 +1,9 @@
-# GitHub CLI Skill
-
 ---
-
 name: github
 description: Expert guidance for GitHub CLI (gh) - issues, PRs, repos, releases, and GitHub API. Use when working with GitHub, managing issues/PRs, or when user mentions GitHub, PRs, issues, or repos. Preferred over GitHub MCP server for context efficiency.
-keywords:
-
-- github
-- gh cli
-- issues
-- pull requests
-- prs
-- repos
-- releases
-- gists
-- github actions
-- workflows
-- github api
-
-<!-- prettier-ignore-start -->
-auto_activate: true
-version: 1.0.0
-token_budget: 2000
-<!-- prettier-ignore-end -->
-
 ---
+
+# GitHub CLI Skill
 
 ## Quick Start
 
