@@ -25,6 +25,8 @@ from unittest.mock import MagicMock, patch, PropertyMock
 import pytest
 
 from amplihack.fleet.fleet_tui import FleetTUI, VMView, SessionView
+from amplihack.fleet._tui_classify import classify_status
+from amplihack.fleet._tui_parsers import parse_session_output, parse_vm_text
 
 
 # ---------------------------------------------------------------------------
@@ -268,15 +270,15 @@ class TestGetVmListFallback:
 class TestParseVmText:
     """_parse_vm_text parses azlin list table format."""
 
-    def test_parses_standard_table(self, tui: FleetTUI) -> None:
+    def test_parses_standard_table(self) -> None:
         """Should parse a standard azlin list table with Unicode box chars."""
-        vms = tui._parse_vm_text(AZLIN_LIST_TABLE)
+        vms = parse_vm_text(AZLIN_LIST_TABLE)
 
         assert len(vms) == 2
         assert vms[0] == ("fleet-vm-1", "westus2", True)
         assert vms[1] == ("fleet-vm-2", "eastus", False)
 
-    def test_parses_pipe_separated_table(self, tui: FleetTUI) -> None:
+    def test_parses_pipe_separated_table(self) -> None:
         """Should handle ASCII pipe-delimited tables as well."""
         table = """\
 Fleet VMs
@@ -284,24 +286,24 @@ Fleet VMs
 +----------+---------+------+---------+------+--------+
 | vm-pipe  | work    | yes  | Running | D4s  | westus |
 """
-        vms = tui._parse_vm_text(table)
+        vms = parse_vm_text(table)
 
         assert len(vms) == 1
         assert vms[0][0] == "vm-pipe"
         assert vms[0][2] is True
 
-    def test_handles_empty_input(self, tui: FleetTUI) -> None:
+    def test_handles_empty_input(self) -> None:
         """Should return empty list for empty/blank input."""
-        assert tui._parse_vm_text("") == []
-        assert tui._parse_vm_text("   \n  \n") == []
+        assert parse_vm_text("") == []
+        assert parse_vm_text("   \n  \n") == []
 
-    def test_handles_table_with_no_data_rows(self, tui: FleetTUI) -> None:
+    def test_handles_table_with_no_data_rows(self) -> None:
         """Should return empty list when table has headers but no data."""
         table = """\
 \u2502 Name \u2502 Session \u2502 Tmux \u2502 Status \u2502 Size \u2502 Region \u2502
 \u2523\u2501\u2501\u2501\u2501\u2501\u2501\u2523\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2523\u2501\u2501\u2501\u2501\u2501\u2501\u2523\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2523\u2501\u2501\u2501\u2501\u2501\u2501\u2523\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2523
 """
-        vms = tui._parse_vm_text(table)
+        vms = parse_vm_text(table)
         assert vms == []
 
 
@@ -313,85 +315,85 @@ Fleet VMs
 class TestClassifyStatus:
     """_classify_status classifies tmux capture text into session states."""
 
-    def test_detects_thinking_from_tool_call(self, tui: FleetTUI) -> None:
+    def test_detects_thinking_from_tool_call(self) -> None:
         """Active Claude Code tool call (filled circle) = thinking."""
         text = "Some prior output\n\u25cf Writing to file..."
-        assert tui._classify_status(text) == "thinking"
+        assert classify_status(text) == "thinking"
 
-    def test_detects_thinking_from_streaming(self, tui: FleetTUI) -> None:
+    def test_detects_thinking_from_streaming(self) -> None:
         """Streaming indicator = thinking."""
         text = "line 1\nline 2\n\u23bf streaming output..."
-        assert tui._classify_status(text) == "thinking"
+        assert classify_status(text) == "thinking"
 
-    def test_detects_thinking_from_processing_timer(self, tui: FleetTUI) -> None:
+    def test_detects_thinking_from_processing_timer(self) -> None:
         """Processing timer with flower symbol = thinking."""
         text = "working...\n\u273b Processing for 12s"
-        assert tui._classify_status(text) == "thinking"
+        assert classify_status(text) == "thinking"
 
-    def test_detects_thinking_from_tool_prefixes(self, tui: FleetTUI) -> None:
+    def test_detects_thinking_from_tool_prefixes(self) -> None:
         """Tool call prefixes like Bash(), Read() = thinking."""
         text = "Some context\n\u25cf Bash(cd /tmp && ls)\noutput here"
-        assert tui._classify_status(text) == "thinking"
+        assert classify_status(text) == "thinking"
 
-    def test_detects_idle_from_tool_prefix_with_play_button(self, tui: FleetTUI) -> None:
+    def test_detects_idle_from_tool_prefix_with_play_button(self) -> None:
         """Tool call visible but last line has play button = idle."""
         text = "output\n\u25cf Read(file.py)\n\u23f5\u23f5"
-        assert tui._classify_status(text) == "idle"
+        assert classify_status(text) == "idle"
 
-    def test_detects_error(self, tui: FleetTUI) -> None:
+    def test_detects_error(self) -> None:
         """Error markers in output = error."""
         text = "running command\nError: connection refused\nretrying..."
-        assert tui._classify_status(text) == "error"
+        assert classify_status(text) == "error"
 
-    def test_detects_error_from_traceback(self, tui: FleetTUI) -> None:
+    def test_detects_error_from_traceback(self) -> None:
         """Python traceback = error."""
         text = "File 'app.py', line 42\nTraceback (most recent call last):\nValueError"
-        assert tui._classify_status(text) == "error"
+        assert classify_status(text) == "error"
 
-    def test_detects_error_from_fatal(self, tui: FleetTUI) -> None:
+    def test_detects_error_from_fatal(self) -> None:
         """Fatal message = error."""
         text = "some output\nfatal: not a git repository"
-        assert tui._classify_status(text) == "error"
+        assert classify_status(text) == "error"
 
-    def test_detects_completed_from_goal_achieved(self, tui: FleetTUI) -> None:
+    def test_detects_completed_from_goal_achieved(self) -> None:
         """GOAL_STATUS: ACHIEVED = completed."""
         text = "All done\nGOAL_STATUS: ACHIEVED\nFinished successfully."
-        assert tui._classify_status(text) == "completed"
+        assert classify_status(text) == "completed"
 
-    def test_detects_completed_from_pr_created(self, tui: FleetTUI) -> None:
+    def test_detects_completed_from_pr_created(self) -> None:
         """PR creation with 'created' = completed."""
         text = "gh pr create --title 'Fix'\nPR #42 created"
-        assert tui._classify_status(text) == "completed"
+        assert classify_status(text) == "completed"
 
-    def test_detects_shell_from_dollar_prompt(self, tui: FleetTUI) -> None:
+    def test_detects_shell_from_dollar_prompt(self) -> None:
         """Shell prompt ending in $ = shell."""
         text = "last command output\nazureuser@vm:~$ "
-        assert tui._classify_status(text) == "shell"
+        assert classify_status(text) == "shell"
 
-    def test_detects_shell_from_chevron_prompt(self, tui: FleetTUI) -> None:
+    def test_detects_shell_from_chevron_prompt(self) -> None:
         """Claude Code chevron prompt without play button = shell."""
         text = "some output\n\u276f"
-        assert tui._classify_status(text) == "shell"
+        assert classify_status(text) == "shell"
 
-    def test_detects_idle_from_chevron_with_play_button(self, tui: FleetTUI) -> None:
+    def test_detects_idle_from_chevron_with_play_button(self) -> None:
         """Chevron prompt with play button in recent lines = idle."""
         text = "output\n\u23f5\u23f5 some status\nmore\n\u276f"
-        assert tui._classify_status(text) == "idle"
+        assert classify_status(text) == "idle"
 
-    def test_detects_running_from_substantial_output(self, tui: FleetTUI) -> None:
+    def test_detects_running_from_substantial_output(self) -> None:
         """Substantial output without other markers = running."""
         text = "Building project...\n" + "x" * 60 + "\nStill building..."
-        assert tui._classify_status(text) == "running"
+        assert classify_status(text) == "running"
 
-    def test_detects_unknown_from_minimal_output(self, tui: FleetTUI) -> None:
+    def test_detects_unknown_from_minimal_output(self) -> None:
         """Very short output without markers = unknown."""
         text = "hi"
-        assert tui._classify_status(text) == "unknown"
+        assert classify_status(text) == "unknown"
 
-    def test_detects_thinking_from_keywords(self, tui: FleetTUI) -> None:
+    def test_detects_thinking_from_keywords(self) -> None:
         """Keywords like 'thinking...' in output = thinking."""
         text = "Agent is thinking...\nPlease wait."
-        assert tui._classify_status(text) == "thinking"
+        assert classify_status(text) == "thinking"
 
 
 # ---------------------------------------------------------------------------
@@ -611,13 +613,13 @@ class TestRefreshAll:
 class TestParseSessionOutput:
     """_parse_session_output parses compound SSH output into SessionView objects."""
 
-    def test_parses_no_sessions_marker(self, tui: FleetTUI) -> None:
+    def test_parses_no_sessions_marker(self) -> None:
         """===NO_SESSIONS=== marker should return empty list."""
         output = "===NO_SESSIONS==="
-        sessions = tui._parse_session_output("test-vm", output)
+        sessions = parse_session_output("test-vm", output)
         assert sessions == []
 
-    def test_parses_single_session(self, tui: FleetTUI) -> None:
+    def test_parses_single_session(self) -> None:
         """Parse output with one session."""
         long_line = "x" * 60
         output = (
@@ -632,7 +634,7 @@ class TestParseSessionOutput:
             f"PR:#42\n"
             f"---END---\n"
         )
-        sessions = tui._parse_session_output("test-vm", output)
+        sessions = parse_session_output("test-vm", output)
         assert len(sessions) == 1
         assert sessions[0].session_name == "work-1"
         assert sessions[0].vm_name == "test-vm"
@@ -640,7 +642,7 @@ class TestParseSessionOutput:
         assert sessions[0].pr == "#42"
         assert sessions[0].status == "running"
 
-    def test_parses_multiple_sessions(self, tui: FleetTUI) -> None:
+    def test_parses_multiple_sessions(self) -> None:
         """Parse output with multiple sessions."""
         output = (
             "===SESSION:sess-1===\n"
@@ -655,13 +657,13 @@ class TestParseSessionOutput:
             "---GIT---\n"
             "---END---\n"
         )
-        sessions = tui._parse_session_output("vm-1", output)
+        sessions = parse_session_output("vm-1", output)
         assert len(sessions) == 2
         assert sessions[0].session_name == "sess-1"
         assert sessions[1].session_name == "sess-2"
         assert sessions[1].status == "empty"
 
-    def test_parses_empty_capture(self, tui: FleetTUI) -> None:
+    def test_parses_empty_capture(self) -> None:
         """Empty capture text results in 'empty' status."""
         output = (
             "===SESSION:work===\n"
@@ -670,11 +672,11 @@ class TestParseSessionOutput:
             "---GIT---\n"
             "---END---\n"
         )
-        sessions = tui._parse_session_output("vm-1", output)
+        sessions = parse_session_output("vm-1", output)
         assert len(sessions) == 1
         assert sessions[0].status == "empty"
 
-    def test_extracts_last_meaningful_line(self, tui: FleetTUI) -> None:
+    def test_extracts_last_meaningful_line(self) -> None:
         """last_line should be the last non-empty line from capture."""
         long_line = "x" * 60
         output = (
@@ -686,12 +688,12 @@ class TestParseSessionOutput:
             f"---GIT---\n"
             f"---END---\n"
         )
-        sessions = tui._parse_session_output("vm-1", output)
+        sessions = parse_session_output("vm-1", output)
         assert len(sessions) == 1
         # last_line should be truncated to 60 chars
         assert len(sessions[0].last_line) <= 60
 
-    def test_truncates_long_last_line(self, tui: FleetTUI) -> None:
+    def test_truncates_long_last_line(self) -> None:
         """last_line is truncated to 60 characters."""
         long_line = "A" * 100
         output = (
@@ -701,10 +703,10 @@ class TestParseSessionOutput:
             f"---GIT---\n"
             f"---END---\n"
         )
-        sessions = tui._parse_session_output("vm-1", output)
+        sessions = parse_session_output("vm-1", output)
         assert len(sessions[0].last_line) == 60
 
-    def test_handles_missing_end_marker(self, tui: FleetTUI) -> None:
+    def test_handles_missing_end_marker(self) -> None:
         """Git section without ---END--- should still parse."""
         long_output = "output " * 10
         output = (
@@ -714,7 +716,7 @@ class TestParseSessionOutput:
             f"---GIT---\n"
             f"BRANCH:main\n"
         )
-        sessions = tui._parse_session_output("vm-1", output)
+        sessions = parse_session_output("vm-1", output)
         assert len(sessions) == 1
         assert sessions[0].branch == "main"
 
@@ -722,7 +724,7 @@ class TestParseSessionOutput:
 class TestParseSessionOutputValidation:
     """parse_session_output skips sessions with invalid names."""
 
-    def test_parse_session_output_skips_invalid_names(self, tui: FleetTUI) -> None:
+    def test_parse_session_output_skips_invalid_names(self) -> None:
         """Sessions with shell metacharacters should be silently skipped."""
         long_output = "working " * 10
         output = (
@@ -731,7 +733,7 @@ class TestParseSessionOutputValidation:
             "===SESSION:good-sess===\n"
             f"---CAPTURE---\n{long_output}\n---GIT---\nBRANCH:main\n---END---\n"
         )
-        sessions = tui._parse_session_output("vm-1", output)
+        sessions = parse_session_output("vm-1", output)
         assert len(sessions) == 1
         assert sessions[0].session_name == "good-sess"
 
@@ -739,55 +741,55 @@ class TestParseSessionOutputValidation:
 class TestClassifyStatusAdditional:
     """Additional _classify_status edge cases not in existing tests."""
 
-    def test_copilot_loading_is_thinking(self, tui: FleetTUI) -> None:
+    def test_copilot_loading_is_thinking(self) -> None:
         """'loading' keyword in output = thinking."""
         text = "Copilot is loading the workspace..."
-        assert tui._classify_status(text) == "thinking"
+        assert classify_status(text) == "thinking"
 
-    def test_workflow_complete_is_completed(self, tui: FleetTUI) -> None:
+    def test_workflow_complete_is_completed(self) -> None:
         """'Workflow Complete' marker = completed."""
         text = "All tasks done.\nWorkflow Complete\nFinished."
-        assert tui._classify_status(text) == "completed"
+        assert classify_status(text) == "completed"
 
-    def test_pr_opened_is_completed(self, tui: FleetTUI) -> None:
+    def test_pr_opened_is_completed(self) -> None:
         """PR opened marker = completed."""
         text = "pull request #55 opened successfully"
-        assert tui._classify_status(text) == "completed"
+        assert classify_status(text) == "completed"
 
-    def test_pr_merged_is_completed(self, tui: FleetTUI) -> None:
+    def test_pr_merged_is_completed(self) -> None:
         """PR merged marker = completed."""
         text = "gh pr create done\nPR #42 merged"
-        assert tui._classify_status(text) == "completed"
+        assert classify_status(text) == "completed"
 
-    def test_panic_is_error(self, tui: FleetTUI) -> None:
+    def test_panic_is_error(self) -> None:
         """'panic:' in output = error."""
         text = "goroutine 1 [running]:\npanic: runtime error"
-        assert tui._classify_status(text) == "error"
+        assert classify_status(text) == "error"
 
-    def test_dollar_sign_only_is_shell(self, tui: FleetTUI) -> None:
+    def test_dollar_sign_only_is_shell(self) -> None:
         """Line ending with just $ is shell."""
         text = "some output\nuser@host:~$"
-        assert tui._classify_status(text) == "shell"
+        assert classify_status(text) == "shell"
 
-    def test_bash_tool_call_is_thinking(self, tui: FleetTUI) -> None:
+    def test_bash_tool_call_is_thinking(self) -> None:
         """Bash() tool call prefix with non-play-button last line = thinking."""
         text = "Prior output\n\u25cf Bash(make test)\nRunning..."
-        assert tui._classify_status(text) == "thinking"
+        assert classify_status(text) == "thinking"
 
-    def test_read_tool_call_is_thinking(self, tui: FleetTUI) -> None:
+    def test_read_tool_call_is_thinking(self) -> None:
         """Read() tool call is thinking."""
         text = "Context\n\u25cf Read(src/main.py)\nFile contents..."
-        assert tui._classify_status(text) == "thinking"
+        assert classify_status(text) == "thinking"
 
-    def test_write_tool_call_is_thinking(self, tui: FleetTUI) -> None:
+    def test_write_tool_call_is_thinking(self) -> None:
         """Write() tool call is thinking."""
         text = "Planning\n\u25cf Write(output.txt)\nWriting..."
-        assert tui._classify_status(text) == "thinking"
+        assert classify_status(text) == "thinking"
 
-    def test_edit_tool_call_is_thinking(self, tui: FleetTUI) -> None:
+    def test_edit_tool_call_is_thinking(self) -> None:
         """Edit() tool call is thinking."""
         text = "Editing\n\u25cf Edit(src/app.py)\nApplying changes..."
-        assert tui._classify_status(text) == "thinking"
+        assert classify_status(text) == "thinking"
 
 
 class TestPollVm:

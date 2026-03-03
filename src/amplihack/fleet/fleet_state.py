@@ -1,12 +1,6 @@
-"""Fleet state management — real-time inventory of VMs and agent sessions.
+"""Fleet state management -- real-time inventory of VMs and agent sessions.
 
-Polls azlin and tmux to maintain current state of all VMs, their tmux sessions,
-and agent status within each session.
-
-Public API:
-    FleetState: Snapshot of entire fleet
-    VMInfo: Single VM details
-    TmuxSessionInfo: Single tmux session details
+Public API: FleetState, VMInfo, TmuxSessionInfo, AgentStatus
 """
 
 from __future__ import annotations

@@ -1,21 +1,9 @@
 """Fleet TUI Dashboard -- live terminal view of all fleet sessions.
 
-A standalone auto-refreshing dashboard showing VM status, session states,
-and agent activity. Designed to run in its own tmux session.
-
-Uses ONLY Python standard library -- ANSI escape codes for terminal control,
-select() for non-blocking input, termios for raw mode.
-
-Usage:
-    fleet tui                    # Interactive TUI
-    fleet tui --interval 30      # Refresh every 30 seconds
-    fleet tui --once             # Single snapshot then exit
-
 Public API:
     FleetTUI: The dashboard application
     run_tui: Entry point function
-    SessionView: Re-exported from _tui_data
-    VMView: Re-exported from _tui_data
+    SessionView / VMView: Re-exported from _tui_data
 """
 
 from __future__ import annotations
@@ -297,20 +285,6 @@ done
 
         return []
 
-    # Keep _classify_status as a method for backward compatibility
-    def _classify_status(self, tmux_text: str) -> str:
-        """Classify session status. Delegates to standalone function."""
-        return classify_status(tmux_text)
-
-    # Keep _parse_session_output as a method for backward compatibility
-    def _parse_session_output(self, vm_name: str, output: str) -> list[SessionView]:
-        """Parse session output. Delegates to standalone function."""
-        return parse_session_output(vm_name, output)
-
-    # Keep _parse_vm_text as a method for backward compatibility
-    def _parse_vm_text(self, text: str) -> list[tuple[str, str, bool]]:
-        """Parse VM text. Delegates to standalone function."""
-        return parse_vm_text(text)
 
 
 def run_tui(interval: int = DEFAULT_TUI_REFRESH_SECONDS, once: bool = False) -> None:

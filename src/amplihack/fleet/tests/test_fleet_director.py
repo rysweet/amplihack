@@ -219,7 +219,7 @@ class TestFleetDirectorReason:
 class TestFleetDirectorAct:
     """Tests for action execution with mocked subprocess."""
 
-    @patch("amplihack.fleet.fleet_admiral.subprocess.run")
+    @patch("amplihack.fleet._admiral_actions.subprocess.run")
     def test_start_agent_success(self, mock_run):
         mock_run.return_value = MagicMock(returncode=0, stdout="ok", stderr="")
 
@@ -239,7 +239,7 @@ class TestFleetDirectorAct:
         assert "started" in result.lower()
         assert task.status == TaskStatus.RUNNING
 
-    @patch("amplihack.fleet.fleet_admiral.subprocess.run")
+    @patch("amplihack.fleet._admiral_actions.subprocess.run")
     def test_start_agent_failure(self, mock_run):
         mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="Connection refused")
 
@@ -284,7 +284,7 @@ class TestFleetDirectorAct:
         director._execute_action(action)
         assert task.status == TaskStatus.FAILED
 
-    @patch("amplihack.fleet.fleet_admiral.subprocess.run")
+    @patch("amplihack.fleet._admiral_actions.subprocess.run")
     def test_reassign_stuck_task(self, mock_run):
         mock_run.return_value = MagicMock(returncode=0)
 
@@ -310,7 +310,7 @@ class TestFleetDirectorAct:
 class TestFleetDirectorE2E:
     """End-to-end test of one director cycle."""
 
-    @patch("amplihack.fleet.fleet_admiral.subprocess.run")
+    @patch("amplihack.fleet._admiral_actions.subprocess.run")
     @patch.object(FleetState, "refresh")
     def test_single_cycle(self, mock_refresh, mock_run):
         """Complete PERCEIVE→REASON→ACT cycle with mocked state."""

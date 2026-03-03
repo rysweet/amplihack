@@ -18,11 +18,9 @@ from amplihack.fleet._validation import (
     validate_session_name,
     validate_vm_name,
 )
-from amplihack.fleet.fleet_session_reasoner import (
-    AnthropicBackend,
-    SessionDecision,
-    SessionReasoner,
-)
+from amplihack.fleet._backends import AnthropicBackend
+from amplihack.fleet._session_context import SessionDecision
+from amplihack.fleet.fleet_session_reasoner import SessionReasoner
 
 logger = logging.getLogger(__name__)
 

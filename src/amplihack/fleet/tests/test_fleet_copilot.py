@@ -9,11 +9,13 @@ from unittest.mock import MagicMock
 from amplihack.fleet.fleet_copilot import (
     CopilotSuggestion,
     SessionCopilot,
-    _extract_last_output,
-    _infer_jsonl_status,
-    _summarize_entries,
     build_rich_context,
     read_local_transcript,
+)
+from amplihack.fleet._transcript import (
+    extract_last_output as _extract_last_output,
+    infer_jsonl_status as _infer_jsonl_status,
+    summarize_entries as _summarize_entries,
 )
 
 
