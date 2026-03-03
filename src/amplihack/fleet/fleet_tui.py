@@ -14,6 +14,8 @@ Usage:
 Public API:
     FleetTUI: The dashboard application
     run_tui: Entry point function
+    SessionView: Re-exported from _tui_data
+    VMView: Re-exported from _tui_data
 """
 
 from __future__ import annotations
@@ -30,36 +32,16 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from amplihack.fleet._defaults import DEFAULT_EXCLUDE_VMS, get_azlin_path
+from amplihack.fleet._tui_classify import classify_status
+from amplihack.fleet._tui_data import SessionView, VMView
+from amplihack.fleet._tui_parsers import parse_session_output, parse_vm_text
 from amplihack.fleet._tui_render import (
     HIDE_CURSOR,
     SHOW_CURSOR,
     render_dashboard,
 )
 
-__all__ = ["FleetTUI", "run_tui"]
-
-
-@dataclass
-class SessionView:
-    """Display-oriented view of a single session."""
-
-    vm_name: str
-    session_name: str
-    status: str = "unknown"  # thinking, working, idle, shell, empty, error, completed
-    branch: str = ""
-    pr: str = ""
-    last_line: str = ""
-    repo: str = ""
-
-
-@dataclass
-class VMView:
-    """Display-oriented view of a single VM."""
-
-    name: str
-    region: str = ""
-    is_running: bool = True
-    sessions: list[SessionView] = field(default_factory=list)
+__all__ = ["FleetTUI", "run_tui", "SessionView", "VMView"]
 
 
 @dataclass
@@ -193,8 +175,8 @@ class FleetTUI:
         Returns list of (name, region, is_running) tuples.
 
         Strategy:
-        1. Try azlin Python API (VMManager.list_vms) -- most reliable
-        2. Strategy 2: azlin CLI text output parsed from table
+        1. Try az vm list (Azure CLI with JSON -- fast, no Bastion tunnels)
+        2. Fallback: azlin CLI text output parsed from table
         """
         # Strategy 1: az vm list (Azure CLI with JSON -- fast, no Bastion tunnels)
         try:
@@ -232,7 +214,7 @@ class FleetTUI:
                 timeout=60,
             )
             if result.returncode == 0:
-                return self._parse_vm_text(result.stdout)
+                return parse_vm_text(result.stdout)
         except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
             logging.getLogger(__name__).debug("azlin list failed: %s", exc)
 
@@ -255,35 +237,6 @@ class FleetTUI:
         raise ValueError(
             "No resource group configured. Set default_resource_group in ~/.azlin/config.toml"
         )
-
-    def _parse_vm_text(self, text: str) -> list[tuple[str, str, bool]]:
-        """Parse text table from azlin list."""
-        vms = []
-        lines = text.strip().split("\n")
-        in_table = False
-
-        for line in lines:
-            if "Session" in line and ("Tmux" in line or "Status" in line):
-                in_table = True
-                continue
-            if line.startswith(("\u2523", "\u2521", "\u2514", "+")):
-                continue
-            if not in_table:
-                continue
-
-            if "\u2502" in line or "|" in line:
-                sep = "\u2502" if "\u2502" in line else "|"
-                parts = [p.strip() for p in line.split(sep) if p.strip()]
-                if len(parts) >= 4:
-                    name = parts[0]
-                    if not name:
-                        continue
-                    status = parts[3] if len(parts) > 3 else ""
-                    region = parts[5] if len(parts) > 5 else ""
-                    is_running = "run" in status.lower()
-                    vms.append((name, region, is_running))
-
-        return vms
 
     def _poll_vm(self, vm_name: str) -> list[SessionView]:
         """Poll a single VM for its tmux sessions and capture status info.
@@ -330,146 +283,26 @@ done
                 timeout=60,
             )
             if result.returncode == 0:
-                return self._parse_session_output(vm_name, result.stdout)
+                return parse_session_output(vm_name, result.stdout)
         except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
             logging.getLogger(__name__).debug("Poll VM %s failed: %s", vm_name, exc)
 
         return []
 
-    def _parse_session_output(self, vm_name: str, output: str) -> list[SessionView]:
-        """Parse the compound tmux output for a VM into SessionView objects."""
-        sessions: list[SessionView] = []
-
-        if "===NO_SESSIONS===" in output:
-            return sessions
-
-        # Split by session markers
-        parts = output.split("===SESSION:")
-        for part in parts[1:]:  # skip everything before first marker
-            if "===" not in part:
-                continue
-
-            # Extract session name
-            header_end = part.index("===")
-            session_name = part[:header_end].strip()
-            rest = part[header_end + 3 :]
-
-            view = SessionView(vm_name=vm_name, session_name=session_name)
-
-            # Extract capture
-            if "---CAPTURE---" in rest and "---GIT---" in rest:
-                capture_start = rest.index("---CAPTURE---") + len("---CAPTURE---")
-                capture_end = rest.index("---GIT---")
-                capture = rest[capture_start:capture_end].strip()
-
-                if capture and capture != "(empty)":
-                    view.status = self._classify_status(capture)
-                    # Get last meaningful line for display
-                    meaningful_lines = [
-                        l.strip()
-                        for l in capture.split("\n")
-                        if l.strip() and not l.strip().startswith("\u2509")
-                    ]
-                    if meaningful_lines:
-                        view.last_line = meaningful_lines[-1][:60]
-                else:
-                    view.status = "empty"
-
-            # Extract git info
-            if "---GIT---" in rest:
-                git_start = rest.index("---GIT---") + len("---GIT---")
-                git_end = rest.index("---END---") if "---END---" in rest else len(rest)
-                git_section = rest[git_start:git_end].strip()
-
-                for line in git_section.split("\n"):
-                    line = line.strip()
-                    if line.startswith("BRANCH:"):
-                        view.branch = line[7:]
-                    elif line.startswith("PR:"):
-                        view.pr = line[3:]
-
-            sessions.append(view)
-
-        return sessions
-
+    # Keep _classify_status as a method for backward compatibility
     def _classify_status(self, tmux_text: str) -> str:
-        # NOTE: This is a simplified status classifier for TUI display purposes.
-        # The canonical status classifier is infer_agent_status() in fleet_session_reasoner.py.
-        # These two systems return different value sets -- unification is tracked in issue #2799.
-        """Classify session status from tmux capture text.
+        """Classify session status. Delegates to standalone function."""
+        return classify_status(tmux_text)
 
-        Reuses patterns from fleet_session_reasoner._infer_status:
-        - Active tool indicators (filled circle, streaming) = thinking
-        - Processing markers = thinking
-        - Claude Code prompt with status bar = idle/waiting
-        - Shell prompt = shell
-        - Error markers = error
-        - Completion markers = completed
-        - Substantial output = running
-        """
-        last_lines = tmux_text.strip().split("\n")[-10:]
-        combined = "\n".join(last_lines)
-        combined_lower = combined.lower()
-        last_line = last_lines[-1].strip() if last_lines else ""
+    # Keep _parse_session_output as a method for backward compatibility
+    def _parse_session_output(self, vm_name: str, output: str) -> list[SessionView]:
+        """Parse session output. Delegates to standalone function."""
+        return parse_session_output(vm_name, output)
 
-        # --- THINKING/WORKING (highest priority) ---
-        for line in reversed(last_lines):
-            stripped = line.strip()
-            if not stripped:
-                continue
-            # Active Claude Code tool call
-            if stripped.startswith("\u25cf") and not stripped.startswith("\u25cf Bash("):
-                return "thinking"
-            # Streaming output
-            if stripped.startswith("\u23bf"):
-                return "thinking"
-            # Processing timer
-            if "\u273b" in stripped and ("for" in stripped.lower() or "saut" in stripped.lower()):
-                return "thinking"
-            break
-
-        # Copilot thinking indicators
-        if any(p in combined_lower for p in ["thinking...", "running:", "loading"]):
-            return "thinking"
-
-        # Claude Code tool call with output
-        tool_prefixes = [
-            "\u25cf Bash(",
-            "\u25cf Read(",
-            "\u25cf Write(",
-            "\u25cf Edit(",
-        ]
-        if any(p in combined for p in tool_prefixes):
-            if "\u23f5\u23f5" in last_line:
-                return "idle"
-            return "thinking"
-
-        # --- ERROR ---
-        if any(p in combined_lower for p in ["error:", "traceback", "fatal:", "panic:"]):
-            return "error"
-
-        # --- COMPLETED ---
-        if any(p in combined for p in ["GOAL_STATUS: ACHIEVED", "Workflow Complete"]):
-            return "completed"
-        if any(p in combined for p in ["gh pr create", "PR #", "pull request"]):
-            if any(p in combined_lower for p in ["created", "opened", "merged"]):
-                return "completed"
-
-        # --- IDLE (shell prompt, no agent) ---
-        if last_line.endswith("$ ") or last_line.endswith("$"):
-            return "shell"
-
-        # Claude Code idle prompt
-        if last_line.strip() == "\u276f" or last_line.strip().endswith("\u276f"):
-            if not any("\u23f5\u23f5" in l for l in last_lines[-3:]):
-                return "shell"
-            return "idle"
-
-        # --- Default: running if there is substantial output ---
-        if len(combined.strip()) > 50:
-            return "running"
-
-        return "unknown"
+    # Keep _parse_vm_text as a method for backward compatibility
+    def _parse_vm_text(self, text: str) -> list[tuple[str, str, bool]]:
+        """Parse VM text. Delegates to standalone function."""
+        return parse_vm_text(text)
 
 
 def run_tui(interval: int = 60, once: bool = False) -> None:

@@ -601,3 +601,274 @@ class TestRefreshAll:
         assert "excluded-vm" in refresh_all_names
         assert "normal-vm" in refresh_names
         assert "normal-vm" in refresh_all_names
+
+
+# ---------------------------------------------------------------------------
+# Additional coverage: fleet_tui.py _parse_session_output tests
+# ---------------------------------------------------------------------------
+
+
+class TestParseSessionOutput:
+    """_parse_session_output parses compound SSH output into SessionView objects."""
+
+    def test_parses_no_sessions_marker(self, tui: FleetTUI) -> None:
+        """===NO_SESSIONS=== marker should return empty list."""
+        output = "===NO_SESSIONS==="
+        sessions = tui._parse_session_output("test-vm", output)
+        assert sessions == []
+
+    def test_parses_single_session(self, tui: FleetTUI) -> None:
+        """Parse output with one session."""
+        long_line = "x" * 60
+        output = (
+            f"===SESSION:work-1===\n"
+            f"---CAPTURE---\n"
+            f"Building project...\n"
+            f"Step 1: Reading files\n"
+            f"Step 2: Compiling\n"
+            f"{long_line}\n"
+            f"---GIT---\n"
+            f"BRANCH:feat/auth\n"
+            f"PR:#42\n"
+            f"---END---\n"
+        )
+        sessions = tui._parse_session_output("test-vm", output)
+        assert len(sessions) == 1
+        assert sessions[0].session_name == "work-1"
+        assert sessions[0].vm_name == "test-vm"
+        assert sessions[0].branch == "feat/auth"
+        assert sessions[0].pr == "#42"
+        assert sessions[0].status == "running"
+
+    def test_parses_multiple_sessions(self, tui: FleetTUI) -> None:
+        """Parse output with multiple sessions."""
+        output = (
+            "===SESSION:sess-1===\n"
+            "---CAPTURE---\n"
+            "Thinking...\n"
+            "---GIT---\n"
+            "BRANCH:main\n"
+            "---END---\n"
+            "===SESSION:sess-2===\n"
+            "---CAPTURE---\n"
+            "(empty)\n"
+            "---GIT---\n"
+            "---END---\n"
+        )
+        sessions = tui._parse_session_output("vm-1", output)
+        assert len(sessions) == 2
+        assert sessions[0].session_name == "sess-1"
+        assert sessions[1].session_name == "sess-2"
+        assert sessions[1].status == "empty"
+
+    def test_parses_empty_capture(self, tui: FleetTUI) -> None:
+        """Empty capture text results in 'empty' status."""
+        output = (
+            "===SESSION:work===\n"
+            "---CAPTURE---\n"
+            "\n"
+            "---GIT---\n"
+            "---END---\n"
+        )
+        sessions = tui._parse_session_output("vm-1", output)
+        assert len(sessions) == 1
+        assert sessions[0].status == "empty"
+
+    def test_extracts_last_meaningful_line(self, tui: FleetTUI) -> None:
+        """last_line should be the last non-empty line from capture."""
+        long_line = "x" * 60
+        output = (
+            f"===SESSION:work===\n"
+            f"---CAPTURE---\n"
+            f"Line 1\n"
+            f"Line 2: the important one\n"
+            f"{long_line}\n"
+            f"---GIT---\n"
+            f"---END---\n"
+        )
+        sessions = tui._parse_session_output("vm-1", output)
+        assert len(sessions) == 1
+        # last_line should be truncated to 60 chars
+        assert len(sessions[0].last_line) <= 60
+
+    def test_truncates_long_last_line(self, tui: FleetTUI) -> None:
+        """last_line is truncated to 60 characters."""
+        long_line = "A" * 100
+        output = (
+            f"===SESSION:work===\n"
+            f"---CAPTURE---\n"
+            f"{long_line}\n"
+            f"---GIT---\n"
+            f"---END---\n"
+        )
+        sessions = tui._parse_session_output("vm-1", output)
+        assert len(sessions[0].last_line) == 60
+
+    def test_handles_missing_end_marker(self, tui: FleetTUI) -> None:
+        """Git section without ---END--- should still parse."""
+        long_output = "output " * 10
+        output = (
+            f"===SESSION:work===\n"
+            f"---CAPTURE---\n"
+            f"{long_output}\n"
+            f"---GIT---\n"
+            f"BRANCH:main\n"
+        )
+        sessions = tui._parse_session_output("vm-1", output)
+        assert len(sessions) == 1
+        assert sessions[0].branch == "main"
+
+
+class TestClassifyStatusAdditional:
+    """Additional _classify_status edge cases not in existing tests."""
+
+    def test_copilot_loading_is_thinking(self, tui: FleetTUI) -> None:
+        """'loading' keyword in output = thinking."""
+        text = "Copilot is loading the workspace..."
+        assert tui._classify_status(text) == "thinking"
+
+    def test_workflow_complete_is_completed(self, tui: FleetTUI) -> None:
+        """'Workflow Complete' marker = completed."""
+        text = "All tasks done.\nWorkflow Complete\nFinished."
+        assert tui._classify_status(text) == "completed"
+
+    def test_pr_opened_is_completed(self, tui: FleetTUI) -> None:
+        """PR opened marker = completed."""
+        text = "pull request #55 opened successfully"
+        assert tui._classify_status(text) == "completed"
+
+    def test_pr_merged_is_completed(self, tui: FleetTUI) -> None:
+        """PR merged marker = completed."""
+        text = "gh pr create done\nPR #42 merged"
+        assert tui._classify_status(text) == "completed"
+
+    def test_panic_is_error(self, tui: FleetTUI) -> None:
+        """'panic:' in output = error."""
+        text = "goroutine 1 [running]:\npanic: runtime error"
+        assert tui._classify_status(text) == "error"
+
+    def test_dollar_sign_only_is_shell(self, tui: FleetTUI) -> None:
+        """Line ending with just $ is shell."""
+        text = "some output\nuser@host:~$"
+        assert tui._classify_status(text) == "shell"
+
+    def test_bash_tool_call_is_thinking(self, tui: FleetTUI) -> None:
+        """Bash() tool call prefix with non-play-button last line = thinking."""
+        text = "Prior output\n\u25cf Bash(make test)\nRunning..."
+        assert tui._classify_status(text) == "thinking"
+
+    def test_read_tool_call_is_thinking(self, tui: FleetTUI) -> None:
+        """Read() tool call is thinking."""
+        text = "Context\n\u25cf Read(src/main.py)\nFile contents..."
+        assert tui._classify_status(text) == "thinking"
+
+    def test_write_tool_call_is_thinking(self, tui: FleetTUI) -> None:
+        """Write() tool call is thinking."""
+        text = "Planning\n\u25cf Write(output.txt)\nWriting..."
+        assert tui._classify_status(text) == "thinking"
+
+    def test_edit_tool_call_is_thinking(self, tui: FleetTUI) -> None:
+        """Edit() tool call is thinking."""
+        text = "Editing\n\u25cf Edit(src/app.py)\nApplying changes..."
+        assert tui._classify_status(text) == "thinking"
+
+
+class TestPollVm:
+    """Tests for _poll_vm subprocess handling."""
+
+    def test_poll_vm_success(self, tui: FleetTUI) -> None:
+        """Successful SSH poll returns parsed sessions."""
+        active_output = "Active output " * 5
+        output = (
+            f"===SESSION:work-1===\n"
+            f"---CAPTURE---\n"
+            f"{active_output}\n"
+            f"---GIT---\n"
+            f"BRANCH:main\n"
+            f"---END---\n"
+        )
+        with patch("amplihack.fleet.fleet_tui.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout=output)
+            sessions = tui._poll_vm("test-vm")
+
+        assert len(sessions) == 1
+
+    def test_poll_vm_failure(self, tui: FleetTUI) -> None:
+        """Failed SSH poll returns empty list."""
+        with patch("amplihack.fleet.fleet_tui.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=1, stdout="")
+            sessions = tui._poll_vm("test-vm")
+
+        assert sessions == []
+
+    def test_poll_vm_timeout(self, tui: FleetTUI) -> None:
+        """SSH timeout returns empty list."""
+        with patch("amplihack.fleet.fleet_tui.subprocess.run") as mock_run:
+            mock_run.side_effect = subprocess.TimeoutExpired(cmd=["azlin"], timeout=60)
+            sessions = tui._poll_vm("test-vm")
+
+        assert sessions == []
+
+    def test_poll_vm_file_not_found(self, tui: FleetTUI) -> None:
+        """Missing azlin binary returns empty list."""
+        with patch("amplihack.fleet.fleet_tui.subprocess.run") as mock_run:
+            mock_run.side_effect = FileNotFoundError("azlin not found")
+            sessions = tui._poll_vm("test-vm")
+
+        assert sessions == []
+
+
+class TestGetVmListNoResourceGroup:
+    """_get_vm_list when no resource group is configured."""
+
+    def test_falls_back_when_no_rg(self, tui: FleetTUI) -> None:
+        """No resource group should fall through to azlin CLI."""
+        azlin_result = MagicMock()
+        azlin_result.returncode = 0
+        azlin_result.stdout = AZLIN_LIST_TABLE
+
+        with patch.object(tui, "_read_azlin_resource_group", side_effect=ValueError("no rg")), \
+             patch("amplihack.fleet.fleet_tui.subprocess.run", return_value=azlin_result):
+            vms = tui._get_vm_list()
+
+        assert len(vms) == 2
+
+    def test_az_json_parse_error_falls_back(self, tui: FleetTUI) -> None:
+        """JSON parse error in az output falls back to azlin CLI."""
+        bad_json_result = MagicMock()
+        bad_json_result.returncode = 0
+        bad_json_result.stdout = "not valid json{{"
+
+        azlin_result = MagicMock()
+        azlin_result.returncode = 0
+        azlin_result.stdout = AZLIN_LIST_TABLE
+
+        call_count = [0]
+
+        def side_effect(cmd, **kwargs):
+            call_count[0] += 1
+            if cmd[0] == "az":
+                return bad_json_result
+            return azlin_result
+
+        with patch.object(tui, "_read_azlin_resource_group", return_value="rg"), \
+             patch("amplihack.fleet.fleet_tui.subprocess.run", side_effect=side_effect):
+            vms = tui._get_vm_list()
+
+        assert len(vms) == 2
+
+
+class TestRunTui:
+    """Tests for run_tui entry point."""
+
+    def test_run_tui_creates_instance(self) -> None:
+        """run_tui should create a FleetTUI and call run()."""
+        from amplihack.fleet.fleet_tui import run_tui
+
+        with patch("amplihack.fleet.fleet_tui.FleetTUI") as MockTUI:
+            mock_instance = MagicMock()
+            MockTUI.return_value = mock_instance
+            run_tui(interval=45, once=True)
+
+            MockTUI.assert_called_once_with(refresh_interval=45)
+            mock_instance.run.assert_called_once_with(once=True)
