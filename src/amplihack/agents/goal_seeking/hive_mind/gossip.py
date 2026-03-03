@@ -22,6 +22,14 @@ import random
 from dataclasses import dataclass
 from typing import Any
 
+from .constants import (
+    DEFAULT_GOSSIP_FANOUT,
+    DEFAULT_GOSSIP_TOP_K,
+    GOSSIP_MIN_CONFIDENCE,
+    GOSSIP_RELAY_AGENT_PREFIX,
+    GOSSIP_TAG_PREFIX,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -35,9 +43,9 @@ class GossipProtocol:
         min_confidence: Minimum confidence for a fact to be gossip-eligible.
     """
 
-    top_k: int = 10
-    fanout: int = 2
-    min_confidence: float = 0.3
+    top_k: int = DEFAULT_GOSSIP_TOP_K
+    fanout: int = DEFAULT_GOSSIP_FANOUT
+    min_confidence: float = GOSSIP_MIN_CONFIDENCE
 
 
 def _select_peers(
@@ -153,7 +161,7 @@ def run_gossip_round(
         shared_ids: list[str] = []
 
         # Ensure relay agent exists in peer
-        relay_id = f"__gossip_{source_hive.hive_id}__"
+        relay_id = f"{GOSSIP_RELAY_AGENT_PREFIX}{source_hive.hive_id}__"
         if peer.get_agent(relay_id) is None:
             peer.register_agent(relay_id, domain="gossip_relay")
 
@@ -173,7 +181,8 @@ def run_gossip_round(
                 concept=getattr(fact, "concept", ""),
                 confidence=fact.confidence,
                 source_agent=getattr(fact, "source_agent", ""),
-                tags=list(getattr(fact, "tags", [])) + [f"gossip_from:{source_hive.hive_id}"],
+                tags=list(getattr(fact, "tags", []))
+                + [f"{GOSSIP_TAG_PREFIX}{source_hive.hive_id}"],
                 status="promoted",
             )
             new_id = peer.promote_fact(relay_id, gossip_copy)

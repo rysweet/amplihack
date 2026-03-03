@@ -27,6 +27,18 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+from .constants import (
+    CONFIRMATION_NORMALIZATION_DIVISOR,
+    DEFAULT_CONFIRMATION_WEIGHT,
+    DEFAULT_CROSS_ENCODER_MODEL,
+    DEFAULT_KEYWORD_WEIGHT,
+    DEFAULT_SEMANTIC_WEIGHT,
+    DEFAULT_TRUST_WEIGHT,
+    DEFAULT_VECTOR_WEIGHT,
+    RRF_K,
+    TRUST_NORMALIZATION_DIVISOR,
+)
+
 # ---------------------------------------------------------------------------
 # Optional dependency: sentence-transformers CrossEncoder
 # ---------------------------------------------------------------------------
@@ -38,8 +50,6 @@ try:
 except ImportError:
     CrossEncoder = None  # type: ignore[assignment,misc]
     HAS_CROSS_ENCODER = False
-
-DEFAULT_CROSS_ENCODER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
 
 # ---------------------------------------------------------------------------
@@ -155,8 +165,8 @@ class CrossEncoderReranker:
 def hybrid_score(
     keyword_score: float,
     vector_score: float,
-    keyword_weight: float = 0.4,
-    vector_weight: float = 0.6,
+    keyword_weight: float = DEFAULT_KEYWORD_WEIGHT,
+    vector_weight: float = DEFAULT_VECTOR_WEIGHT,
 ) -> float:
     """Combine keyword and vector retrieval scores.
 
@@ -177,7 +187,7 @@ def hybrid_score(
 # ---------------------------------------------------------------------------
 
 # Standard RRF constant (Cormack et al., 2009)
-_RRF_K = 60
+_RRF_K = RRF_K
 
 
 def rrf_merge(
@@ -225,9 +235,9 @@ def trust_weighted_score(
     trust: float,
     confidence: float,
     *,
-    w_similarity: float = 0.5,
-    w_trust: float = 0.3,
-    w_confidence: float = 0.2,
+    w_similarity: float = DEFAULT_SEMANTIC_WEIGHT,
+    w_trust: float = DEFAULT_CONFIRMATION_WEIGHT,
+    w_confidence: float = DEFAULT_TRUST_WEIGHT,
 ) -> float:
     """Score combining similarity, source trust, and fact confidence.
 
@@ -246,7 +256,7 @@ def trust_weighted_score(
         Combined trust-weighted score.
     """
     # Normalize trust from [0.0, 2.0] to [0.0, 1.0]
-    trust_norm = min(1.0, max(0.0, trust) / 2.0)
+    trust_norm = min(1.0, max(0.0, trust) / TRUST_NORMALIZATION_DIVISOR)
     confidence_norm = min(1.0, max(0.0, confidence))
     similarity_norm = min(1.0, max(0.0, similarity))
     return w_similarity * similarity_norm + w_trust * trust_norm + w_confidence * confidence_norm
@@ -257,9 +267,9 @@ def hybrid_score_weighted(
     confirmation_count: int = 0,
     source_trust: float = 1.0,
     *,
-    w_semantic: float = 0.5,
-    w_confirmation: float = 0.3,
-    w_trust: float = 0.2,
+    w_semantic: float = DEFAULT_SEMANTIC_WEIGHT,
+    w_confirmation: float = DEFAULT_CONFIRMATION_WEIGHT,
+    w_trust: float = DEFAULT_TRUST_WEIGHT,
 ) -> float:
     """Compute a hybrid relevance score combining multiple signals.
 
@@ -277,8 +287,12 @@ def hybrid_score_weighted(
     Returns:
         Combined score.
     """
-    conf_score = min(1.0, confirmation_count / 5.0) if confirmation_count > 0 else 0.0
-    trust_score = min(1.0, source_trust / 2.0)
+    conf_score = (
+        min(1.0, confirmation_count / CONFIRMATION_NORMALIZATION_DIVISOR)
+        if confirmation_count > 0
+        else 0.0
+    )
+    trust_score = min(1.0, source_trust / TRUST_NORMALIZATION_DIVISOR)
     return w_semantic * semantic_similarity + w_confirmation * conf_score + w_trust * trust_score
 
 

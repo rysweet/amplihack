@@ -31,6 +31,22 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
 
+from .constants import (
+    BROADCAST_TAG_PREFIX,
+    CONFIDENCE_SCORE_BOOST,
+    DEFAULT_BROADCAST_THRESHOLD,
+    DEFAULT_CONTRADICTION_OVERLAP,
+    DEFAULT_TRUST_SCORE,
+    DOMAIN_ROUTING_PRIORITY_MULTIPLIER,
+    ESCALATION_TAG_PREFIX,
+    FACT_ID_HEX_LENGTH,
+    FEDERATED_QUERY_LIMIT_MULTIPLIER,
+    FEDERATED_QUERY_MIN_LIMIT,
+    GOSSIP_TAG_PREFIX,
+    MAX_TRUST_SCORE,
+    SECONDS_PER_HOUR,
+)
+
 logger = logging.getLogger(__name__)
 
 # Graceful imports for retrieval pipeline modules
@@ -90,7 +106,7 @@ class HiveAgent:
 
     agent_id: str
     domain: str = ""
-    trust: float = 1.0
+    trust: float = DEFAULT_TRUST_SCORE
     fact_count: int = 0
     status: str = "active"
 
@@ -162,7 +178,9 @@ class HiveGraph(Protocol):
 
     # -- Agent registry -------------------------------------------------------
 
-    def register_agent(self, agent_id: str, domain: str = "", trust: float = 1.0) -> None:
+    def register_agent(
+        self, agent_id: str, domain: str = "", trust: float = DEFAULT_TRUST_SCORE
+    ) -> None:
         """Register an agent in the hive."""
         ...
 
@@ -179,7 +197,7 @@ class HiveGraph(Protocol):
         ...
 
     def update_trust(self, agent_id: str, trust: float) -> None:
-        """Set an agent's trust score (clamped to [0.0, 2.0])."""
+        """Set an agent's trust score (clamped to [0.0, MAX_TRUST_SCORE])."""
         ...
 
     # -- Fact management -------------------------------------------------------
@@ -262,7 +280,7 @@ class HiveGraph(Protocol):
 
 def _new_fact_id() -> str:
     """Generate a unique fact ID."""
-    return f"hf_{uuid.uuid4().hex[:12]}"
+    return f"hf_{uuid.uuid4().hex[:FACT_ID_HEX_LENGTH]}"
 
 
 def _tokenize(text: str) -> set[str]:
@@ -302,7 +320,7 @@ class InMemoryHiveGraph:
     def __init__(
         self,
         hive_id: str = "test-hive",
-        broadcast_threshold: float = 0.9,
+        broadcast_threshold: float = DEFAULT_BROADCAST_THRESHOLD,
         embedding_generator: Any | None = None,
         enable_gossip: bool = False,
         enable_ttl: bool = False,
@@ -343,7 +361,9 @@ class InMemoryHiveGraph:
 
     # -- Agent registry --------------------------------------------------------
 
-    def register_agent(self, agent_id: str, domain: str = "", trust: float = 1.0) -> None:
+    def register_agent(
+        self, agent_id: str, domain: str = "", trust: float = DEFAULT_TRUST_SCORE
+    ) -> None:
         """Register an agent in the hive.
 
         Args:
@@ -357,7 +377,7 @@ class InMemoryHiveGraph:
         with self._lock:
             if agent_id in self._agents:
                 raise ValueError(f"Agent '{agent_id}' already registered")
-            clamped_trust = max(0.0, min(2.0, trust))
+            clamped_trust = max(0.0, min(MAX_TRUST_SCORE, trust))
             self._agents[agent_id] = HiveAgent(
                 agent_id=agent_id,
                 domain=domain,
@@ -410,7 +430,7 @@ class InMemoryHiveGraph:
             agent = self._agents.get(agent_id)
             if agent is None:
                 raise KeyError(f"Agent '{agent_id}' not found")
-            clamped = max(0.0, min(2.0, trust))
+            clamped = max(0.0, min(MAX_TRUST_SCORE, trust))
             agent.trust = clamped
             if _HAS_CRDT:
                 if agent_id not in self._trust_registers:
@@ -481,7 +501,8 @@ class InMemoryHiveGraph:
         # Guard: only broadcast original facts (not already-broadcast copies)
         # to prevent infinite recursion (child->parent->child->...).
         is_broadcast_copy = any(
-            t.startswith("broadcast_from:") or t.startswith("escalated_from:") for t in fact.tags
+            t.startswith(BROADCAST_TAG_PREFIX) or t.startswith(ESCALATION_TAG_PREFIX)
+            for t in fact.tags
         )
         if (
             fact.confidence >= self._broadcast_threshold
@@ -493,7 +514,7 @@ class InMemoryHiveGraph:
 
         # Auto-gossip on promote when gossip is enabled
         if self._enable_gossip and self._gossip_peers:
-            is_gossip_copy = any(t.startswith("gossip_from:") for t in fact.tags)
+            is_gossip_copy = any(t.startswith(GOSSIP_TAG_PREFIX) for t in fact.tags)
             if not is_gossip_copy and not is_broadcast_copy:
                 try:
                     _run_gossip_round(self, self._gossip_peers)
@@ -578,7 +599,7 @@ class InMemoryHiveGraph:
                 if e.target_id == fact.fact_id and e.edge_type == "CONFIRMED_BY"
             )
             agent = self._agents.get(fact.source_agent)
-            trust = agent.trust if agent else 1.0
+            trust = agent.trust if agent else DEFAULT_TRUST_SCORE
             score = hybrid_score_weighted(
                 semantic_similarity=sim,
                 confirmation_count=conf_count,
@@ -602,7 +623,7 @@ class InMemoryHiveGraph:
             fact_words = _tokenize(f"{fact.content} {fact.concept}")
             hits = len(keywords & fact_words)
             if hits > 0:
-                score = hits + fact.confidence * 0.01
+                score = hits + fact.confidence * CONFIDENCE_SCORE_BOOST
                 scored.append((score, fact))
 
         scored.sort(key=lambda x: (-x[0], -x[1].confidence))
@@ -671,7 +692,7 @@ class InMemoryHiveGraph:
                 if fact.content == content:
                     continue
                 overlap = _word_overlap(content, fact.content)
-                if overlap > 0.4:
+                if overlap > DEFAULT_CONTRADICTION_OVERLAP:
                     contradictions.append(fact)
 
             return contradictions
@@ -746,7 +767,7 @@ class InMemoryHiveGraph:
             concept=fact.concept,
             confidence=fact.confidence,
             source_agent=fact.source_agent,
-            tags=list(fact.tags) + [f"escalated_from:{self._hive_id}"],
+            tags=list(fact.tags) + [f"{ESCALATION_TAG_PREFIX}{self._hive_id}"],
             status="promoted",
         )
         self._parent.promote_fact(relay_id, escalated)
@@ -782,7 +803,7 @@ class InMemoryHiveGraph:
                 concept=fact.concept,
                 confidence=fact.confidence,
                 source_agent=fact.source_agent,
-                tags=list(fact.tags) + [f"broadcast_from:{self._hive_id}"],
+                tags=list(fact.tags) + [f"{BROADCAST_TAG_PREFIX}{self._hive_id}"],
                 status="promoted",
             )
             child.promote_fact(relay_id, broadcast_copy)
@@ -822,7 +843,7 @@ class InMemoryHiveGraph:
 
         # Proposal 1: Remove the 2000 cap. Use uncapped 10x multiplier so
         # global re-ranking sees ALL candidates from each hive.
-        internal_limit = max(limit * 10, 200)
+        internal_limit = max(limit * FEDERATED_QUERY_LIMIT_MULTIPLIER, FEDERATED_QUERY_MIN_LIMIT)
 
         # Phase 1: Collect from local hive
         results = list(self.query_facts(query, limit=internal_limit))
@@ -858,7 +879,9 @@ class InMemoryHiveGraph:
         # Children (recursive, with routing-based limits)
         for child in children:
             child_limit = (
-                internal_limit * 3 if child.hive_id in priority_child_ids else internal_limit
+                internal_limit * DOMAIN_ROUTING_PRIORITY_MULTIPLIER
+                if child.hive_id in priority_child_ids
+                else internal_limit
             )
             child_results = child.query_federated(
                 query,
@@ -922,7 +945,7 @@ class InMemoryHiveGraph:
             fact = self._facts.get(fact_id)
             if fact is not None and fact.status != "retracted":
                 original = self._original_confidences.get(fact_id, fact.confidence)
-                elapsed_hours = (now - ttl.created_at) / 3600.0
+                elapsed_hours = (now - ttl.created_at) / SECONDS_PER_HOUR
                 if elapsed_hours > 0:
                     fact.confidence = decay_confidence(
                         original, elapsed_hours, ttl.confidence_decay_rate
@@ -976,7 +999,7 @@ class InMemoryHiveGraph:
                 self._trust_registers[agent_id].merge(reg)
                 merged_trust = self._trust_registers[agent_id].get()
                 if merged_trust is not None and agent_id in self._agents:
-                    self._agents[agent_id].trust = max(0.0, min(2.0, merged_trust))
+                    self._agents[agent_id].trust = max(0.0, min(MAX_TRUST_SCORE, merged_trust))
 
     # -- Gossip ----------------------------------------------------------------
 

@@ -35,6 +35,8 @@ if TYPE_CHECKING:
 # Optional dependency: sentence-transformers
 # ---------------------------------------------------------------------------
 
+from .constants import DEFAULT_EMBEDDING_MODEL
+
 try:
     from sentence_transformers import SentenceTransformer  # type: ignore[import-untyped]
 
@@ -43,8 +45,8 @@ except ImportError:
     SentenceTransformer = None  # type: ignore[assignment,misc]
     HAS_SENTENCE_TRANSFORMERS = False
 
-# Default model -- small, fast, good quality for retrieval
-DEFAULT_MODEL = "BAAI/bge-base-en-v1.5"
+# Backward-compatible alias
+DEFAULT_MODEL = DEFAULT_EMBEDDING_MODEL
 
 
 class EmbeddingGenerator:

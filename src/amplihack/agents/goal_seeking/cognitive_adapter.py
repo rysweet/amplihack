@@ -21,6 +21,8 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from .hive_mind.constants import DEFAULT_CONFIDENCE_GATE, DEFAULT_QUALITY_THRESHOLD
+
 logger = logging.getLogger(__name__)
 
 # Try importing CognitiveMemory, fall back to HierarchicalMemory
@@ -40,14 +42,14 @@ except ImportError:
 
 # Graceful imports for retrieval pipeline modules
 try:
-    from .hive_mind.quality import QualityGate, score_content_quality
+    from .hive_mind.quality import score_content_quality
 
     _HAS_QUALITY = True
 except ImportError:
     _HAS_QUALITY = False
 
 try:
-    from .hive_mind.query_expansion import expand_query, search_expanded
+    from .hive_mind.query_expansion import expand_query
 
     _HAS_QUERY_EXPANSION = True
 except ImportError:
@@ -77,8 +79,8 @@ class CognitiveAdapter:
         db_path: str | Path | None = None,
         require_cognitive: bool = False,
         hive_store: Any | None = None,
-        quality_threshold: float = 0.3,
-        confidence_gate: float = 0.3,
+        quality_threshold: float = DEFAULT_QUALITY_THRESHOLD,
+        confidence_gate: float = DEFAULT_CONFIDENCE_GATE,
         enable_query_expansion: bool = False,
     ):
         self.agent_name = agent_name
@@ -203,7 +205,7 @@ class CognitiveAdapter:
         if not hasattr(self._hive_store, "promote_fact"):
             return
         # Quality gate: reject low-quality content before promoting
-        quality_threshold = getattr(self, "_quality_threshold", 0.3)
+        quality_threshold = getattr(self, "_quality_threshold", DEFAULT_QUALITY_THRESHOLD)
         if _HAS_QUALITY and quality_threshold > 0:
             try:
                 quality = score_content_quality(fact, context)

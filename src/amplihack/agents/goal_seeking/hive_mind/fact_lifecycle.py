@@ -23,6 +23,13 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
+from .constants import (
+    DEFAULT_CONFIDENCE_DECAY_RATE,
+    DEFAULT_FACT_TTL_SECONDS,
+    DEFAULT_MAX_AGE_HOURS,
+    SECONDS_PER_HOUR,
+)
+
 
 @dataclass
 class FactTTL:
@@ -37,12 +44,14 @@ class FactTTL:
 
     fact_id: str
     created_at: float = field(default_factory=time.time)
-    ttl_seconds: float = 86400.0
-    confidence_decay_rate: float = 0.01
+    ttl_seconds: float = DEFAULT_FACT_TTL_SECONDS
+    confidence_decay_rate: float = DEFAULT_CONFIDENCE_DECAY_RATE
 
 
 def decay_confidence(
-    original_confidence: float, elapsed_hours: float, decay_rate: float = 0.01
+    original_confidence: float,
+    elapsed_hours: float,
+    decay_rate: float = DEFAULT_CONFIDENCE_DECAY_RATE,
 ) -> float:
     """Compute decayed confidence using exponential decay.
 
@@ -65,7 +74,7 @@ def decay_confidence(
 def gc_expired_facts(
     hive: Any,
     ttl_registry: dict[str, FactTTL],
-    max_age_hours: float = 24.0,
+    max_age_hours: float = DEFAULT_MAX_AGE_HOURS,
     now: float | None = None,
 ) -> list[str]:
     """Garbage-collect expired facts from a hive.
@@ -85,7 +94,7 @@ def gc_expired_facts(
     if now is None:
         now = time.time()
 
-    max_age_seconds = max_age_hours * 3600.0
+    max_age_seconds = max_age_hours * SECONDS_PER_HOUR
     removed: list[str] = []
 
     # Iterate over a copy of keys since we mutate the registry

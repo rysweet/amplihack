@@ -33,6 +33,14 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
+from .constants import (
+    DEFAULT_CONTRADICTION_OVERLAP,
+    DEFAULT_QUALITY_THRESHOLD,
+    DEFAULT_TRUST_SCORE,
+    FACT_ID_HEX_LENGTH,
+    MAX_TRUST_SCORE,
+)
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -104,7 +112,7 @@ class InMemoryGraphStore:
         tags: list[str] | None = None,
     ) -> str:
         """Store a fact and return its node_id."""
-        node_id = f"mem_{uuid.uuid4().hex[:12]}"
+        node_id = f"mem_{uuid.uuid4().hex[:FACT_ID_HEX_LENGTH]}"
         self._facts[node_id] = {
             "node_id": node_id,
             "concept": concept,
@@ -169,8 +177,8 @@ class InMemoryGateway:
     def __init__(
         self,
         store: InMemoryGraphStore,
-        trust_threshold: float = 0.3,
-        contradiction_overlap: float = 0.4,
+        trust_threshold: float = DEFAULT_QUALITY_THRESHOLD,
+        contradiction_overlap: float = DEFAULT_CONTRADICTION_OVERLAP,
         consensus_required: int = 2,
     ) -> None:
         self._store = store
@@ -181,11 +189,11 @@ class InMemoryGateway:
 
     def set_trust(self, agent_id: str, trust: float) -> None:
         """Set trust score for an agent."""
-        self._agent_trust[agent_id] = max(0.0, min(2.0, trust))
+        self._agent_trust[agent_id] = max(0.0, min(MAX_TRUST_SCORE, trust))
 
     def get_trust(self, agent_id: str) -> float:
         """Get trust score for an agent."""
-        return self._agent_trust.get(agent_id, 1.0)
+        return self._agent_trust.get(agent_id, DEFAULT_TRUST_SCORE)
 
     def submit_for_promotion(
         self,
@@ -350,8 +358,8 @@ class GatewayConfig:
         consensus_required: Number of confirmations needed (reserved).
     """
 
-    trust_threshold: float = 0.3
-    contradiction_overlap: float = 0.4
+    trust_threshold: float = DEFAULT_QUALITY_THRESHOLD
+    contradiction_overlap: float = DEFAULT_CONTRADICTION_OVERLAP
     consensus_required: int = 2
 
 
@@ -869,7 +877,7 @@ class HiveController:
 
         # Register trust in gateway
         if isinstance(self._gateway, InMemoryGateway):
-            self._gateway.set_trust(spec.agent_id, 1.0)
+            self._gateway.set_trust(spec.agent_id, DEFAULT_TRUST_SCORE)
 
         self._agents[spec.agent_id] = agent
 

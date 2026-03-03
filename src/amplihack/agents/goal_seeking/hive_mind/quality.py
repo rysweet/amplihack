@@ -22,6 +22,8 @@ from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)
 
+from .constants import DEFAULT_BROADCAST_THRESHOLD, DEFAULT_QUALITY_THRESHOLD
+
 # ---------------------------------------------------------------------------
 # Quality scoring heuristics
 # ---------------------------------------------------------------------------
@@ -150,9 +152,9 @@ class QualityGate:
         False
     """
 
-    promotion_threshold: float = 0.3
+    promotion_threshold: float = DEFAULT_QUALITY_THRESHOLD
     retrieval_confidence_threshold: float = 0.0
-    broadcast_threshold: float = 0.9
+    broadcast_threshold: float = DEFAULT_BROADCAST_THRESHOLD
     _quality_scores: dict[str, float] = field(default_factory=dict, repr=False)
 
     def should_promote(self, content: str, concept: str = "") -> bool:

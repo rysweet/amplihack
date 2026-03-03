@@ -27,6 +27,8 @@ logger = logging.getLogger(__name__)
 # Optional dependency: anthropic SDK
 # ---------------------------------------------------------------------------
 
+from .constants import DEFAULT_EXPANSION_MODEL
+
 try:
     import anthropic  # type: ignore[import-untyped]
 
@@ -35,7 +37,8 @@ except ImportError:
     anthropic = None  # type: ignore[assignment]
     HAS_ANTHROPIC = False
 
-EXPANSION_MODEL = "claude-haiku-4-5-20251001"
+# Backward-compatible alias
+EXPANSION_MODEL = DEFAULT_EXPANSION_MODEL
 _MAX_EXPANSIONS = 4
 
 
