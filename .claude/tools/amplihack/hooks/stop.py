@@ -582,7 +582,7 @@ class StopHook(HookProcessor):
         # Load reflection config
         config_path = self.project_root / ".claude" / "tools" / "amplihack" / ".reflection_config"
         if not config_path.exists():
-            self.log("Reflection config not found - skipping reflection", "WARNING")
+            self.log("Reflection config not found - skipping reflection (opt-in feature)", "DEBUG")
             self.save_metric("reflection_no_config", 1)
             return False
 
