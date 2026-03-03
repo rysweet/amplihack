@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 import uuid
 from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
@@ -50,6 +51,28 @@ try:
     _HAS_RERANKER = True
 except ImportError:
     _HAS_RERANKER = False
+
+# Graceful imports for CRDT, gossip, and fact lifecycle modules
+try:
+    from .crdt import LWWRegister, ORSet
+
+    _HAS_CRDT = True
+except ImportError:
+    _HAS_CRDT = False
+
+try:
+    from .gossip import run_gossip_round as _run_gossip_round
+
+    _HAS_GOSSIP = True
+except ImportError:
+    _HAS_GOSSIP = False
+
+try:
+    from .fact_lifecycle import FactTTL, decay_confidence, gc_expired_facts
+
+    _HAS_LIFECYCLE = True
+except ImportError:
+    _HAS_LIFECYCLE = False
 
 # ---------------------------------------------------------------------------
 # Data models
@@ -88,6 +111,7 @@ class HiveFact:
         tags: Categorization tags.
         status: Fact status: "promoted", "quarantined", "contradicted", "retracted".
         embedding: Optional dense vector for semantic search.
+        created_at: Unix timestamp when the fact was created.
     """
 
     fact_id: str
@@ -98,6 +122,7 @@ class HiveFact:
     tags: list[str] = field(default_factory=list)
     status: str = "promoted"
     embedding: Any = None
+    created_at: float = field(default_factory=time.time)
 
 
 @dataclass
@@ -282,6 +307,8 @@ class InMemoryHiveGraph:
         hive_id: str = "test-hive",
         broadcast_threshold: float = 0.9,
         embedding_generator: Any | None = None,
+        enable_gossip: bool = False,
+        enable_ttl: bool = False,
     ) -> None:
         self._hive_id = hive_id
         self._broadcast_threshold = max(0.0, min(1.0, broadcast_threshold))
@@ -295,6 +322,20 @@ class InMemoryHiveGraph:
         # and query_facts uses vector search as primary signal
         self._embedding_generator = embedding_generator
         self._embeddings: dict[str, list[float]] = {}  # fact_id -> embedding vector
+
+        # CRDT backing stores (graceful: no-op if crdt module unavailable)
+        if _HAS_CRDT:
+            self._fact_set: ORSet = ORSet()
+            self._trust_registers: dict[str, LWWRegister] = {}
+
+        # Gossip protocol (requires gossip module)
+        self._enable_gossip = enable_gossip and _HAS_GOSSIP
+        self._gossip_peers: list[Any] = []
+
+        # Fact lifecycle / TTL (requires fact_lifecycle module)
+        self._enable_ttl = enable_ttl and _HAS_LIFECYCLE
+        self._ttl_registry: dict[str, Any] = {}
+        self._original_confidences: dict[str, float] = {}  # for correct repeated decay
 
     # -- Property --------------------------------------------------------------
 
@@ -319,13 +360,18 @@ class InMemoryHiveGraph:
         with self._lock:
             if agent_id in self._agents:
                 raise ValueError(f"Agent '{agent_id}' already registered")
+            clamped_trust = max(0.0, min(2.0, trust))
             self._agents[agent_id] = HiveAgent(
                 agent_id=agent_id,
                 domain=domain,
-                trust=max(0.0, min(2.0, trust)),
+                trust=clamped_trust,
                 fact_count=0,
                 status="active",
             )
+            if _HAS_CRDT:
+                reg = LWWRegister()
+                reg.set(clamped_trust, time.time())
+                self._trust_registers[agent_id] = reg
 
     def unregister_agent(self, agent_id: str) -> None:
         """Remove an agent from the hive.
@@ -340,6 +386,8 @@ class InMemoryHiveGraph:
             if agent_id not in self._agents:
                 raise KeyError(f"Agent '{agent_id}' not found")
             del self._agents[agent_id]
+            if _HAS_CRDT:
+                self._trust_registers.pop(agent_id, None)
 
     def get_agent(self, agent_id: str) -> HiveAgent | None:
         """Retrieve an agent by ID, or None if not found."""
@@ -365,7 +413,12 @@ class InMemoryHiveGraph:
             agent = self._agents.get(agent_id)
             if agent is None:
                 raise KeyError(f"Agent '{agent_id}' not found")
-            agent.trust = max(0.0, min(2.0, trust))
+            clamped = max(0.0, min(2.0, trust))
+            agent.trust = clamped
+            if _HAS_CRDT:
+                if agent_id not in self._trust_registers:
+                    self._trust_registers[agent_id] = LWWRegister()
+                self._trust_registers[agent_id].set(clamped, time.time())
 
     # -- Fact management -------------------------------------------------------
 
@@ -402,6 +455,18 @@ class InMemoryHiveGraph:
             self._agents[agent_id].fact_count += 1
             fact_id = fact.fact_id
 
+            # Track in ORSet for CRDT-based merge
+            if _HAS_CRDT:
+                self._fact_set.add(fact.fact_id)
+
+            # Register TTL metadata when lifecycle is enabled
+            if self._enable_ttl:
+                self._ttl_registry[fact.fact_id] = FactTTL(
+                    fact_id=fact.fact_id,
+                    created_at=fact.created_at,
+                )
+                self._original_confidences[fact.fact_id] = fact.confidence
+
             # Generate embedding if generator available
             if self._embedding_generator is not None:
                 try:
@@ -416,11 +481,8 @@ class InMemoryHiveGraph:
                     logger.debug("Failed to generate embedding for fact %s", fact.fact_id)
 
         # Proposal 4: Auto-replicate high-confidence facts to sibling groups.
-        # This ensures important facts are available in ALL groups, not just
-        # the one where they were promoted. Prevents "fact in wrong group"
-        # failures in federated queries.
         # Guard: only broadcast original facts (not already-broadcast copies)
-        # to prevent infinite recursion (child→parent→child→...).
+        # to prevent infinite recursion (child->parent->child->...).
         is_broadcast_copy = any(
             t.startswith("broadcast_from:") or t.startswith("escalated_from:") for t in fact.tags
         )
@@ -431,6 +493,15 @@ class InMemoryHiveGraph:
         ):
             self.escalate_fact(fact)
             self._parent.broadcast_fact(fact)
+
+        # Auto-gossip on promote when gossip is enabled
+        if self._enable_gossip and self._gossip_peers:
+            is_gossip_copy = any(t.startswith("gossip_from:") for t in fact.tags)
+            if not is_gossip_copy and not is_broadcast_copy:
+                try:
+                    _run_gossip_round(self, self._gossip_peers)
+                except Exception:
+                    logger.debug("Auto-gossip failed for fact %s", fact_id)
 
         return fact_id
 
@@ -455,15 +526,15 @@ class InMemoryHiveGraph:
             List of matching HiveFact.
         """
         with self._lock:
+            # Apply confidence decay before scoring when TTL is enabled
+            if self._enable_ttl:
+                self._apply_ttl_decay()
+
             if not query or not query.strip():
                 return list(self._facts.values())[:limit]
 
             # Try vector search first when embeddings are available
-            if (
-                self._embedding_generator is not None
-                and self._embeddings
-                and _HAS_RERANKER
-            ):
+            if self._embedding_generator is not None and self._embeddings and _HAS_RERANKER:
                 try:
                     return self._vector_query(query, limit)
                 except Exception:
@@ -481,7 +552,7 @@ class InMemoryHiveGraph:
             max_len = max(len(a), len(b))
             a = a + [0.0] * (max_len - len(a))
             b = b + [0.0] * (max_len - len(b))
-        dot = sum(x * y for x, y in zip(a, b))
+        dot = sum(x * y for x, y in zip(a, b, strict=False))
         norm_a = math.sqrt(sum(x * x for x in a))
         norm_b = math.sqrt(sum(x * x for x in b))
         if norm_a == 0.0 or norm_b == 0.0:
@@ -505,7 +576,8 @@ class InMemoryHiveGraph:
             sim = self._cosine_sim(query_vec, fact_emb)
             # Count confirmations from edges
             conf_count = sum(
-                1 for e in self._edges
+                1
+                for e in self._edges
                 if e.target_id == fact.fact_id and e.edge_type == "CONFIRMED_BY"
             )
             agent = self._agents.get(fact.source_agent)
@@ -546,6 +618,8 @@ class InMemoryHiveGraph:
             if fact is None:
                 return False
             fact.status = "retracted"
+            if _HAS_CRDT:
+                self._fact_set.remove(fact_id)
             return True
 
     # -- Graph edges -----------------------------------------------------------
@@ -805,6 +879,7 @@ class InMemoryHiveGraph:
         has_multi_source = len(children) > 0 or parent is not None
         if keywords and _HAS_RERANKER and has_multi_source:
             try:
+
                 def _keyword_score(fact: HiveFact) -> float:
                     fact_words = _tokenize(f"{fact.content} {fact.concept}")
                     hits = len(keywords & fact_words)
@@ -813,12 +888,15 @@ class InMemoryHiveGraph:
                 keyword_ranked = sorted(results, key=lambda f: -_keyword_score(f))
                 confidence_ranked = sorted(results, key=lambda f: -f.confidence)
                 scored_facts = rrf_merge(
-                    keyword_ranked, confidence_ranked,
-                    key="fact_id", limit=len(results),
+                    keyword_ranked,
+                    confidence_ranked,
+                    key="fact_id",
+                    limit=len(results),
                 )
                 results = [sf.fact for sf in scored_facts]
             except Exception:
                 logger.debug("RRF merge failed, falling back to keyword re-ranking")
+
                 def _global_score(fact: HiveFact) -> float:
                     fact_words = _tokenize(f"{fact.content} {fact.concept}")
                     hits = len(keywords & fact_words)
@@ -826,6 +904,7 @@ class InMemoryHiveGraph:
 
                 results.sort(key=lambda f: (-_global_score(f), -f.confidence))
         elif keywords:
+
             def _global_score_fb(fact: HiveFact) -> float:
                 fact_words = _tokenize(f"{fact.content} {fact.concept}")
                 hits = len(keywords & fact_words)
@@ -836,6 +915,108 @@ class InMemoryHiveGraph:
             results.sort(key=lambda f: -f.confidence)
 
         return results[:limit]
+
+    # -- TTL decay (private) ---------------------------------------------------
+
+    def _apply_ttl_decay(self) -> None:
+        """Apply confidence decay to facts with TTL entries. Must be called under lock."""
+        now = time.time()
+        for fact_id, ttl in self._ttl_registry.items():
+            fact = self._facts.get(fact_id)
+            if fact is not None and fact.status != "retracted":
+                original = self._original_confidences.get(fact_id, fact.confidence)
+                elapsed_hours = (now - ttl.created_at) / 3600.0
+                if elapsed_hours > 0:
+                    fact.confidence = decay_confidence(
+                        original, elapsed_hours, ttl.confidence_decay_rate
+                    )
+
+    # -- CRDT merge ------------------------------------------------------------
+
+    def merge_state(self, other: InMemoryHiveGraph) -> None:
+        """Merge CRDTs from another hive replica for eventual consistency.
+
+        Merges ORSets (fact membership) and LWWRegisters (agent trust).
+        When CRDTs are unavailable, this is a no-op.
+
+        Args:
+            other: Another InMemoryHiveGraph to merge state from.
+        """
+        if not _HAS_CRDT:
+            return
+
+        with self._lock:
+            # Merge fact ORSets
+            self._fact_set.merge(other._fact_set)
+
+            # Copy HiveFact objects from other that we don't have yet
+            for fact_id, fact in other._facts.items():
+                if fact_id not in self._facts:
+                    self._facts[fact_id] = HiveFact(
+                        fact_id=fact.fact_id,
+                        content=fact.content,
+                        concept=fact.concept,
+                        confidence=fact.confidence,
+                        source_agent=fact.source_agent,
+                        tags=list(fact.tags),
+                        status=fact.status,
+                        embedding=fact.embedding,
+                        created_at=fact.created_at,
+                    )
+
+            # Sync fact status with ORSet membership (add-wins semantics)
+            live_ids = self._fact_set.items
+            for fact_id, fact in self._facts.items():
+                if fact_id not in live_ids and fact.status != "retracted":
+                    fact.status = "retracted"
+                elif fact_id in live_ids and fact.status == "retracted":
+                    fact.status = "promoted"
+
+            # Merge trust LWWRegisters and sync agent trust values
+            for agent_id, reg in other._trust_registers.items():
+                if agent_id not in self._trust_registers:
+                    self._trust_registers[agent_id] = LWWRegister()
+                self._trust_registers[agent_id].merge(reg)
+                merged_trust = self._trust_registers[agent_id].get()
+                if merged_trust is not None and agent_id in self._agents:
+                    self._agents[agent_id].trust = max(0.0, min(2.0, merged_trust))
+
+    # -- Gossip ----------------------------------------------------------------
+
+    def run_gossip(self, peers: list[Any]) -> dict[str, list[str]]:
+        """Run a gossip round, sharing top facts with selected peers.
+
+        Stores the peer list for automatic gossip on future promote_fact calls
+        (when enable_gossip=True).
+
+        Args:
+            peers: List of HiveGraph peers to gossip with.
+
+        Returns:
+            Dict mapping peer hive_id to list of shared fact_ids.
+            Empty dict if gossip module unavailable.
+        """
+        self._gossip_peers = list(peers)
+        if not _HAS_GOSSIP:
+            return {}
+        return _run_gossip_round(self, peers)
+
+    # -- Garbage collection ----------------------------------------------------
+
+    def gc(self) -> list[str]:
+        """Garbage-collect expired facts based on TTL.
+
+        Returns:
+            List of fact_ids that were garbage-collected.
+            Empty list if TTL is not enabled.
+        """
+        if not self._enable_ttl:
+            return []
+        removed = gc_expired_facts(self, self._ttl_registry)
+        # Clean up original confidence records for GC'd facts
+        for fid in removed:
+            self._original_confidences.pop(fid, None)
+        return removed
 
     # -- Stats & lifecycle -----------------------------------------------------
 
