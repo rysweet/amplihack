@@ -1,0 +1,33 @@
+"""TUI data types -- display-oriented view models for fleet dashboard.
+
+Public API:
+    SessionView: Display-oriented view of a single session.
+    VMView: Display-oriented view of a single VM.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+
+
+@dataclass
+class SessionView:
+    """Display-oriented view of a single session."""
+
+    vm_name: str
+    session_name: str
+    status: str = "unknown"  # thinking, working, idle, shell, empty, error, completed
+    branch: str = ""
+    pr: str = ""
+    last_line: str = ""
+    repo: str = ""
+
+
+@dataclass
+class VMView:
+    """Display-oriented view of a single VM."""
+
+    name: str
+    region: str = ""
+    is_running: bool = True
+    sessions: list[SessionView] = field(default_factory=list)

@@ -213,3 +213,153 @@ class TestFleetDashboardSummary:
         text = dashboard.summary()
         assert "FLEET DASHBOARD" in text
         assert "Projects: 0" in text
+
+
+# ────────────────────────────────────────────
+# Additional coverage: fleet_dashboard.py (78% -> target 80%+)
+# ────────────────────────────────────────────
+
+
+class TestFleetDashboardUpdateFromState:
+    """Tests for update_from_state cost calculation."""
+
+    def test_update_cost_for_running_vms(self):
+        """Cost should be calculated based on hours active."""
+        from amplihack.fleet.fleet_state import FleetState, VMInfo
+
+        dashboard = FleetDashboard()
+        proj = dashboard.add_project(repo_url="https://github.com/org/repo")
+        proj.vms = ["vm-1"]
+        proj.started_at = datetime(2025, 6, 15, 12, 0, 0)
+
+        state = FleetState()
+        state.vms = [
+            VMInfo(name="vm-1", session_name="vm-1", status="Running"),
+        ]
+
+        dashboard.update_from_state(state)
+
+        # Should have a cost > 0 since vm-1 is running
+        assert proj.estimated_cost_usd > 0.0
+
+    def test_update_cost_for_stopped_vms(self):
+        """Stopped VMs should not contribute to cost."""
+        from amplihack.fleet.fleet_state import FleetState, VMInfo
+
+        dashboard = FleetDashboard()
+        proj = dashboard.add_project(repo_url="https://github.com/org/repo")
+        proj.vms = ["vm-1"]
+        proj.started_at = datetime.now()
+
+        state = FleetState()
+        state.vms = [
+            VMInfo(name="vm-1", session_name="vm-1", status="Stopped"),
+        ]
+
+        dashboard.update_from_state(state)
+
+        assert proj.estimated_cost_usd == 0.0
+
+    def test_update_cost_no_started_at(self):
+        """Without started_at, default to 1 hour."""
+        from amplihack.fleet.fleet_state import FleetState, VMInfo
+        from amplihack.fleet.fleet_dashboard import DEFAULT_COST_PER_HOUR
+
+        dashboard = FleetDashboard()
+        proj = dashboard.add_project(repo_url="https://github.com/org/repo")
+        proj.vms = ["vm-1"]
+        proj.started_at = None
+
+        state = FleetState()
+        state.vms = [
+            VMInfo(name="vm-1", session_name="vm-1", status="Running"),
+        ]
+
+        dashboard.update_from_state(state)
+
+        assert proj.estimated_cost_usd == round(DEFAULT_COST_PER_HOUR, 2)
+
+    def test_update_cost_vm_not_in_state(self):
+        """VMs not found in state should not contribute cost."""
+        from amplihack.fleet.fleet_state import FleetState
+
+        dashboard = FleetDashboard()
+        proj = dashboard.add_project(repo_url="https://github.com/org/repo")
+        proj.vms = ["nonexistent-vm"]
+
+        state = FleetState()
+        state.vms = []
+
+        dashboard.update_from_state(state)
+
+        assert proj.estimated_cost_usd == 0.0
+
+
+class TestFleetDashboardPersistence:
+    """Additional persistence tests."""
+
+    def test_load_corrupt_file(self, tmp_path):
+        """Corrupt JSON file should not crash, creates backup."""
+        path = tmp_path / "dashboard.json"
+        path.write_text("not valid json{{{")
+
+        dashboard = FleetDashboard(persist_path=path)
+        assert dashboard.projects == []
+        # Backup file should exist
+        backup = path.with_suffix(".json.bak")
+        assert backup.exists()
+
+    def test_load_valid_data(self, tmp_path):
+        """Valid JSON with proper dict entries loads correctly."""
+        path = tmp_path / "dashboard.json"
+        path.write_text('[{"repo_url": "https://github.com/org/repo", "name": "repo"}]')
+
+        dashboard = FleetDashboard(persist_path=path)
+        assert len(dashboard.projects) == 1
+        assert dashboard.projects[0].repo_url == "https://github.com/org/repo"
+
+    def test_add_project_duplicate_returns_existing(self):
+        """Adding duplicate project returns the existing one."""
+        dashboard = FleetDashboard()
+        proj1 = dashboard.add_project(repo_url="https://github.com/org/repo")
+        proj2 = dashboard.add_project(repo_url="https://github.com/org/repo")
+        assert proj1 is proj2
+        assert len(dashboard.projects) == 1
+
+    def test_remove_project_success(self):
+        """Remove existing project returns True."""
+        dashboard = FleetDashboard()
+        dashboard.add_project(repo_url="https://github.com/org/repo")
+        assert dashboard.remove_project("repo") is True
+        assert len(dashboard.projects) == 0
+
+    def test_remove_project_not_found(self):
+        """Remove nonexistent project returns False."""
+        dashboard = FleetDashboard()
+        assert dashboard.remove_project("nonexistent") is False
+
+
+class TestFleetDashboardProgressBar:
+    """Tests for _progress_bar helper."""
+
+    def test_progress_bar_zero(self):
+        dashboard = FleetDashboard()
+        bar = dashboard._progress_bar(0.0)
+        assert "0%" in bar
+        assert bar.startswith("[")
+
+    def test_progress_bar_half(self):
+        dashboard = FleetDashboard()
+        bar = dashboard._progress_bar(0.5)
+        assert "50%" in bar
+
+    def test_progress_bar_full(self):
+        dashboard = FleetDashboard()
+        bar = dashboard._progress_bar(1.0)
+        assert "100%" in bar
+
+    def test_progress_bar_custom_width(self):
+        dashboard = FleetDashboard()
+        bar = dashboard._progress_bar(0.5, width=10)
+        # 5 filled + 5 empty = 10 chars inside brackets
+        assert len(bar.split("]")[0].split("[")[1]) == 10

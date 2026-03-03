@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import click
 import pytest
 from click.testing import CliRunner
 
@@ -752,3 +753,290 @@ class TestFleetProjectHelp:
         assert "add" in result.output
         assert "list" in result.output
         assert "remove" in result.output
+
+
+# ---------------------------------------------------------------------------
+# Additional coverage: fleet_cli.py (67% -> target 80%+)
+# ---------------------------------------------------------------------------
+
+
+class TestFleetTuiCommand:
+    """Tests for fleet tui subcommand."""
+
+    def test_tui_launches_dashboard(self, runner):
+        """fleet tui should launch the Textual TUI dashboard."""
+        mock_module = MagicMock()
+        with patch.dict(
+            "sys.modules",
+            {"amplihack.fleet.fleet_tui_dashboard": mock_module},
+        ):
+            result = runner.invoke(fleet_cli, ["tui"], catch_exceptions=False)
+            assert result.exit_code == 0
+            mock_module.run_dashboard.assert_called_once_with(interval=30)
+
+    def test_tui_custom_interval(self, runner):
+        """fleet tui --interval 10 should pass interval to dashboard."""
+        mock_module = MagicMock()
+        with patch.dict(
+            "sys.modules",
+            {"amplihack.fleet.fleet_tui_dashboard": mock_module},
+        ):
+            result = runner.invoke(fleet_cli, ["tui", "--interval", "10"], catch_exceptions=False)
+            assert result.exit_code == 0
+            mock_module.run_dashboard.assert_called_once_with(interval=10)
+
+
+class TestFleetDefaultCommand:
+    """Tests for fleet (no subcommand) behavior."""
+
+    def test_default_uses_interval_30(self, runner):
+        """Default (no subcommand) should use interval=30."""
+        mock_module = MagicMock()
+        with patch.dict(
+            "sys.modules",
+            {"amplihack.fleet.fleet_tui_dashboard": mock_module},
+        ):
+            result = runner.invoke(fleet_cli, [], catch_exceptions=False)
+            assert result.exit_code == 0
+            mock_module.run_dashboard.assert_called_once_with(interval=30)
+
+
+class TestValidateVmNameCli:
+    """Tests for _validate_vm_name_cli Click callback."""
+
+    def test_valid_name_passes(self, runner):
+        """Valid VM name should pass validation."""
+        from amplihack.fleet.fleet_cli import _validate_vm_name_cli
+        result = _validate_vm_name_cli(None, None, "valid-vm-name")
+        assert result == "valid-vm-name"
+
+    def test_none_passes(self, runner):
+        """None value should pass (optional argument)."""
+        from amplihack.fleet.fleet_cli import _validate_vm_name_cli
+        result = _validate_vm_name_cli(None, None, None)
+        assert result is None
+
+    def test_invalid_name_raises_bad_parameter(self, runner):
+        """Invalid VM name should raise click.BadParameter."""
+        import click
+        from amplihack.fleet.fleet_cli import _validate_vm_name_cli
+        with pytest.raises(click.BadParameter, match="Invalid VM name"):
+            _validate_vm_name_cli(None, None, "bad name!@#")
+
+
+class TestCreateFleetCli:
+    """Tests for create_fleet_cli function."""
+
+    def test_returns_click_group(self):
+        """create_fleet_cli should return the fleet Click group."""
+        from amplihack.fleet.fleet_cli import create_fleet_cli
+        cli = create_fleet_cli()
+        assert isinstance(cli, click.Group)
+        assert cli.name == "fleet"
+
+
+# ---------------------------------------------------------------------------
+# Additional coverage: _cli_commands.py (71% -> target 80%+)
+# ---------------------------------------------------------------------------
+
+
+class TestFleetDryRun:
+    """Tests for fleet dry-run command."""
+
+    @patch("amplihack.fleet._cli_commands.FleetState")
+    def test_dry_run_no_managed_vms(self, MockState, runner):
+        """dry-run with no managed VMs should show message."""
+        mock_state = MagicMock()
+        mock_state.managed_vms.return_value = []
+        mock_state.vms = []
+        MockState.return_value = mock_state
+
+        result = runner.invoke(fleet_cli, ["dry-run"], catch_exceptions=False)
+        assert result.exit_code == 0
+        assert "No managed VMs found" in result.output
+
+    @patch("amplihack.fleet._cli_commands.FleetState")
+    def test_dry_run_no_sessions(self, MockState, runner):
+        """dry-run with VMs but no sessions should show message."""
+        mock_vm = MagicMock()
+        mock_vm.name = "vm-1"
+        mock_vm.is_running = True
+        mock_vm.tmux_sessions = []
+
+        mock_state = MagicMock()
+        mock_state.managed_vms.return_value = [mock_vm]
+        mock_state.vms = [mock_vm]
+        mock_state.poll_tmux_sessions.return_value = []
+        MockState.return_value = mock_state
+
+        result = runner.invoke(fleet_cli, ["dry-run"], catch_exceptions=False)
+        assert result.exit_code == 0
+        assert "No sessions found" in result.output
+
+    @patch("amplihack.fleet._cli_commands.SessionReasoner")
+    @patch("amplihack.fleet._cli_commands.auto_detect_backend")
+    @patch("amplihack.fleet._cli_commands.FleetState")
+    def test_dry_run_with_sessions(self, MockState, mock_detect, MockSR, runner):
+        """dry-run with sessions should reason about each."""
+        from amplihack.fleet.fleet_state import TmuxSessionInfo
+
+        mock_session = TmuxSessionInfo(session_name="work-1", vm_name="vm-1")
+        mock_vm = MagicMock()
+        mock_vm.name = "vm-1"
+        mock_vm.is_running = True
+        mock_vm.tmux_sessions = [mock_session]
+
+        mock_state = MagicMock()
+        mock_state.managed_vms.return_value = [mock_vm]
+        mock_state.vms = [mock_vm]
+        MockState.return_value = mock_state
+
+        mock_backend = MagicMock()
+        mock_detect.return_value = mock_backend
+
+        mock_reasoner = MagicMock()
+        mock_reasoner.dry_run_report.return_value = "Dry Run Report"
+        MockSR.return_value = mock_reasoner
+
+        result = runner.invoke(fleet_cli, ["dry-run"], catch_exceptions=False)
+        assert result.exit_code == 0
+
+
+class TestFleetCopilotCommand:
+    """Tests for fleet copilot command."""
+
+    def test_copilot_once_mode(self, runner):
+        """fleet copilot --goal 'test' --once should run once."""
+        with patch("amplihack.fleet._cli_commands.SessionCopilot") as MockCopilot:
+            mock_copilot = MagicMock()
+            mock_suggestion = MagicMock()
+            mock_suggestion.progress_pct = 50
+            mock_suggestion.timestamp.strftime.return_value = "12:00:00"
+            mock_suggestion.summary.return_value = "Suggestion summary"
+            mock_suggestion.action = "wait"
+            mock_copilot.suggest.return_value = mock_suggestion
+            MockCopilot.return_value = mock_copilot
+
+            result = runner.invoke(
+                fleet_cli,
+                ["copilot", "--goal", "Fix auth module", "--once"],
+                catch_exceptions=False,
+            )
+            assert result.exit_code == 0
+            assert "Co-pilot active" in result.output
+            assert "Fix auth module" in result.output
+
+    def test_copilot_mark_complete(self, runner):
+        """Copilot with mark_complete action should exit with success message."""
+        with patch("amplihack.fleet._cli_commands.SessionCopilot") as MockCopilot:
+            mock_copilot = MagicMock()
+            mock_suggestion = MagicMock()
+            mock_suggestion.progress_pct = 100
+            mock_suggestion.timestamp.strftime.return_value = "12:05:00"
+            mock_suggestion.summary.return_value = "Goal achieved"
+            mock_suggestion.action = "mark_complete"
+            mock_copilot.suggest.return_value = mock_suggestion
+            MockCopilot.return_value = mock_copilot
+
+            result = runner.invoke(
+                fleet_cli,
+                ["copilot", "--goal", "Deploy app", "--once"],
+                catch_exceptions=False,
+            )
+            assert result.exit_code == 0
+            assert "Goal achieved!" in result.output
+
+    def test_copilot_none_progress(self, runner):
+        """Copilot with None progress_pct should show 'unknown'."""
+        with patch("amplihack.fleet._cli_commands.SessionCopilot") as MockCopilot:
+            mock_copilot = MagicMock()
+            mock_suggestion = MagicMock()
+            mock_suggestion.progress_pct = None
+            mock_suggestion.timestamp.strftime.return_value = "12:00:00"
+            mock_suggestion.summary.return_value = "Suggestion"
+            mock_suggestion.action = "wait"
+            mock_copilot.suggest.return_value = mock_suggestion
+            MockCopilot.return_value = mock_copilot
+
+            result = runner.invoke(
+                fleet_cli,
+                ["copilot", "--goal", "Test", "--once"],
+                catch_exceptions=False,
+            )
+            assert result.exit_code == 0
+            assert "unknown" in result.output
+
+
+class TestFleetVmNameValidation:
+    """VM name validation in commands."""
+
+    def test_watch_invalid_vm_name(self, runner):
+        """Watch with invalid VM name should fail."""
+        result = runner.invoke(fleet_cli, ["watch", "bad vm!@#", "session"])
+        assert result.exit_code != 0
+
+    def test_auth_invalid_vm_name(self, runner):
+        """Auth with invalid VM name should fail."""
+        result = runner.invoke(fleet_cli, ["auth", "bad vm!@#"])
+        assert result.exit_code != 0
+
+
+# ---------------------------------------------------------------------------
+# fleet_cli.py internal helpers
+# ---------------------------------------------------------------------------
+
+
+class TestGetDirector:
+    """Tests for _get_director helper."""
+
+    @patch("amplihack.fleet.fleet_cli.FleetAdmiral")
+    @patch("amplihack.fleet.fleet_cli.TaskQueue")
+    def test_creates_director_with_defaults(self, MockQueue, MockAdmiral):
+        from amplihack.fleet.fleet_cli import _get_director
+
+        mock_admiral = MagicMock()
+        MockAdmiral.return_value = mock_admiral
+
+        director = _get_director()
+
+        assert director is mock_admiral
+        MockQueue.assert_called_once()
+        MockAdmiral.assert_called_once()
+        mock_admiral.exclude_vms.assert_called_once()
+
+
+class TestAdoptAllSessions:
+    """Tests for _adopt_all_sessions helper."""
+
+    @patch("amplihack.fleet.fleet_adopt.SessionAdopter")
+    def test_adopts_sessions_on_running_vms(self, MockAdopter):
+        from amplihack.fleet.fleet_cli import _adopt_all_sessions
+        from amplihack.fleet.fleet_state import VMInfo
+
+        mock_adopter = MagicMock()
+        mock_adopter.adopt_sessions.return_value = [MagicMock()]
+        MockAdopter.return_value = mock_adopter
+
+        mock_director = MagicMock()
+        mock_director.fleet_state.managed_vms.return_value = [
+            VMInfo(name="vm-1", session_name="vm-1", status="Running"),
+            VMInfo(name="vm-2", session_name="vm-2", status="Stopped"),
+        ]
+
+        _adopt_all_sessions(mock_director)
+
+        # Only running VM should be adopted
+        assert mock_adopter.adopt_sessions.call_count == 1
+
+    @patch("amplihack.fleet.fleet_adopt.SessionAdopter")
+    def test_adopts_zero_when_no_sessions(self, MockAdopter):
+        from amplihack.fleet.fleet_cli import _adopt_all_sessions
+
+        mock_adopter = MagicMock()
+        mock_adopter.adopt_sessions.return_value = []
+        MockAdopter.return_value = mock_adopter
+
+        mock_director = MagicMock()
+        mock_director.fleet_state.managed_vms.return_value = []
+
+        _adopt_all_sessions(mock_director)
