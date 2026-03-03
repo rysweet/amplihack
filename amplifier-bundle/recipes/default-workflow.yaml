@@ -1,6 +1,6 @@
 name: "default-workflow"
 description: "Complete 23-step development workflow (Steps 0-22) with full agent orchestration"
-version: "2.1.0"
+version: "2.2.0"
 author: "Amplihack Team"
 tags: ["development", "feature", "bugfix", "refactoring", "standard", "full-workflow"]
 
@@ -76,6 +76,7 @@ context:
   pr_feedback_changes: ""
   philosophy_check: ""
   final_cleanup: ""
+  quality_audit_results: ""
   ci_status: ""
 
 steps:
@@ -127,6 +128,7 @@ steps:
       echo "    19c: Zero-BS Verification"
       echo "    19d: Verification Gate"
       echo "  Step 20: Final Cleanup"
+      echo "  Step 20c: Quality Audit Loop (3+ cycles, multi-agent validation)"
       echo "  Step 21: Convert PR to Ready"
       echo "  Step 22: Ensure PR Mergeable"
       echo ""
@@ -1433,6 +1435,77 @@ steps:
     output: "cleanup_push_result"
 
   # ==========================================================================
+  # STEP 20c: QUALITY AUDIT LOOP
+  # Runs quality-audit-cycle: seek → multi-agent validate → fix → recurse.
+  # Minimum 3 iterations with escalating depth. Continues if >3 medium or
+  # any high/critical severity findings remain after cycle 3.
+  # Placed AFTER philosophy compliance and cleanup, BEFORE marking PR ready.
+  # Added per issues #2805, #2809, #2810.
+  # ==========================================================================
+  - id: "step-20c-quality-audit"
+    agent: "amplihack:core:reviewer"
+    prompt: |
+      # Step 20c: Quality Audit Loop
+
+      **Requirements:** {{final_requirements}}
+      **PR URL:** {{pr_url}}
+      **Repository:** {{repo_path}}
+
+      Run a comprehensive, iterative quality audit on all files changed in
+      this PR. This step follows the quality-audit-cycle recipe (v3.0).
+
+      NOTE: When recipe-in-recipe support is available (see issue #2821),
+      this step should use `type: "recipe"` with `recipe: "quality-audit-cycle"`.
+      Until then, execute the audit inline following these instructions.
+
+      ## Execution: Run 3+ Audit Cycles
+
+      For each cycle (minimum 3, maximum 6):
+
+      ### A. SEEK — Scan changed files for issues in 9 categories:
+      1. Security (hardcoded secrets, missing input validation)
+      2. Reliability (missing timeouts, bare except clauses)
+      3. Dead Code (unused imports, unreachable branches)
+      4. Test Gaps (files without tests, tests without assertions)
+      5. Doc Gaps (public functions without docstrings)
+      6. Silent Fallbacks (except:pass, broad catches returning defaults)
+      7. Error Swallowing (catch blocks with no logging/re-raise)
+      8. Structural Issues (files >500 LOC, functions >50 lines, nesting >4)
+      9. Documentation (point-in-time content, unprofessional tone like
+         pirate speak "fer"/"ye"/"arr", quality/correctness vs code)
+
+      Escalate depth each cycle: cycle 1 = broad scan, cycle 2 = deeper,
+      cycle 3+ = challenge assumptions, examine module interactions.
+
+      ### B. VALIDATE — For each finding, verify by reading actual code.
+      Deploy 3 independent validation perspectives:
+      - Technical merits check
+      - Skeptical verification (assume findings are wrong until proven)
+      - Adversarial review (look for reasons the finding is incorrect)
+      A finding is confirmed only if ≥2 perspectives agree.
+
+      ### C. FIX — Fix all confirmed findings:
+      1. Understand the finding and its context
+      2. Write or update tests that verify the fix
+      3. Implement the minimal fix
+      4. Run tests to verify nothing is broken
+
+      ### D. DECIDE — Continue or stop:
+      - Below cycle 3: always continue
+      - At cycle 3+: stop if ≤3 medium findings and no high/critical
+      - At cycle 6: always stop (safety valve)
+
+      ## After All Cycles: Self-Improvement
+
+      Step back and ask: "How else would you improve this code?"
+      Look for systemic issues, architectural improvements, and patterns
+      the audit missed. Fix any CRITICAL improvements found.
+
+      **Output:** "QUALITY AUDIT: CLEAN" if final cycle has no confirmed
+      findings, otherwise list remaining findings and fixes applied.
+    output: "quality_audit_results"
+
+  # ==========================================================================
   # STEP 21: CONVERT PR TO READY FOR REVIEW
   # Convert draft PR to ready-for-review.
   # ==========================================================================
@@ -1446,6 +1519,7 @@ steps:
       echo "Philosophy check: {{philosophy_check}}" && \
       echo "Patterns check: {{patterns_check}}" && \
       echo "Cleanup: {{final_cleanup}}" && \
+      echo "Quality audit: {{quality_audit_results}}" && \
       echo "" && \
       echo "--- Converting PR to Ready ---" && \
       gh pr ready 2>&1 | cat && \
@@ -1461,6 +1535,7 @@ steps:
       - [x] Code review addressed
       - [x] Philosophy compliance verified
       - [x] Final cleanup complete
+      - [x] Quality audit passed
 
       Ready for merge approval." 2>&1 | cat && \
       echo "" && \
