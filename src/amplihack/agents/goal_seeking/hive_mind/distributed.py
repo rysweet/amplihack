@@ -34,6 +34,7 @@ except ImportError:
     FederatedGraphStore = None  # type: ignore[assignment,misc]
     KuzuGraphStore = None  # type: ignore[assignment,misc]
 
+from .constants import DEFAULT_TRUST_SCORE, MAX_TRUST_SCORE
 from .event_bus import BusEvent, EventBus, LocalEventBus, make_event
 
 # Kuzu default max_db_size is 8TB which can cause Mmap failures when many
@@ -383,7 +384,7 @@ class HiveCoordinator:
     enables expertise routing without shared storage.
     """
 
-    DEFAULT_TRUST = 1.0
+    DEFAULT_TRUST = DEFAULT_TRUST_SCORE
     _MAX_CONTRADICTIONS = 10_000
 
     def __init__(self) -> None:
@@ -548,7 +549,7 @@ class HiveCoordinator:
             delta: Amount to add (positive) or subtract (negative).
         """
         current = self._trust.get(agent_id, self.DEFAULT_TRUST)
-        self._trust[agent_id] = max(0.0, min(2.0, current + delta))
+        self._trust[agent_id] = max(0.0, min(MAX_TRUST_SCORE, current + delta))
 
     def report_contradiction(self, fact_a: dict, fact_b: dict) -> None:
         """Report a detected contradiction between two agents' facts.
