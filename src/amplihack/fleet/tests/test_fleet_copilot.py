@@ -92,6 +92,16 @@ class TestExtractLastOutput:
         result = _extract_last_output("\n".join(entries))
         assert len(result) == 5000
 
+    def test_returns_only_last_assistant_message(self):
+        entries = [
+            json.dumps({"type": "assistant", "message": {"content": "first message"}}),
+            json.dumps({"type": "human", "message": {"content": "user input"}}),
+            json.dumps({"type": "assistant", "message": {"content": "second message"}}),
+        ]
+        result = _extract_last_output("\n".join(entries))
+        assert result == "second message"
+        assert "first message" not in result
+
 
 class TestBuildRichContext:
     """build_rich_context assembles first message + summary + recent."""

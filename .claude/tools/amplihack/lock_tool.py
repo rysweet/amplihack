@@ -42,7 +42,7 @@ def create_lock() -> int:
             print("Lock was already active")
             return 0
 
-        fd = os.open(str(LOCK_FILE), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        fd = os.open(str(LOCK_FILE), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
         os.write(fd, f"locked_at: {datetime.now().isoformat()}\n".encode())
         os.close(fd)
 

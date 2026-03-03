@@ -45,7 +45,14 @@ class LockModeHook(Hook):
     def _get_goal(self) -> str:
         try:
             if _GOAL_FILE.exists():
-                return _GOAL_FILE.read_text().strip()
+                content = _GOAL_FILE.read_text().strip()
+                # Sanitize: strip XML-like tags to prevent prompt injection
+                content = content.replace("<", "&lt;").replace(">", "&gt;")
+                # Length limit: prevent oversized goal from flooding LLM context
+                if len(content) > 2000:
+                    logger.warning("Goal file too long (%d chars), truncating to 2000", len(content))
+                    content = content[:2000]
+                return content
         except Exception as exc:
             logger.warning("Cannot read goal file: %s", exc)
         return ""

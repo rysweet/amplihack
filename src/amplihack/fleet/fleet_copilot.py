@@ -290,13 +290,12 @@ def _summarize_entries(lines: list[str]) -> str:
 
 
 def _extract_last_output(transcript_text: str) -> str:
-    """Extract the last meaningful output from the JSONL transcript.
+    """Extract the most recent assistant output from the JSONL transcript.
 
-    Walks ALL entries in reverse and collects assistant text blocks.
-    Returns the full combined output — no truncation.
+    Walks entries in reverse and returns text from the LAST assistant message
+    only. This is what infer_agent_status() needs to classify the current state.
     """
     lines = transcript_text.strip().split("\n") if transcript_text else []
-    output_parts: list[str] = []
 
     for line in reversed(lines):
         try:
@@ -304,17 +303,21 @@ def _extract_last_output(transcript_text: str) -> str:
         except (json.JSONDecodeError, ValueError):
             continue
 
-        msg_type = entry.get("type", "")
-        if msg_type == "assistant":
-            content = entry.get("message", {}).get("content", [])
-            if isinstance(content, list):
-                for block in content:
-                    if isinstance(block, dict) and block.get("type") == "text":
-                        output_parts.append(block.get("text", ""))
-            elif isinstance(content, str):
-                output_parts.append(content)
+        if entry.get("type") != "assistant":
+            continue
 
-    return "\n".join(reversed(output_parts))
+        content = entry.get("message", {}).get("content", [])
+        if isinstance(content, list):
+            parts = []
+            for block in content:
+                if isinstance(block, dict) and block.get("type") == "text":
+                    parts.append(block.get("text", ""))
+            if parts:
+                return "\n".join(parts)
+        elif isinstance(content, str) and content:
+            return content
+
+    return ""
 
 
 @dataclass
@@ -388,8 +391,8 @@ class SessionCopilot:
             logger.error("Co-pilot reasoning failed: %s", exc)
             return CopilotSuggestion(
                 action="wait",
-                reasoning=f"Reasoning error: {exc}",
-                confidence=0.3,
+                reasoning="Internal reasoning error — see logs",
+                confidence=0.0,
             )
 
     def _summarize_transcript(self, transcript: str) -> str:
