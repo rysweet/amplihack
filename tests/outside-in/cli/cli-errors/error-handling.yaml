@@ -1,0 +1,49 @@
+# CLI Error Handling Test - cli.py
+# Auto-generated outside-in test scenario
+
+scenario:
+  name: "CLI Error Handling - cli.py"
+  description: |
+    Verifies that cli.py CLI handles invalid input gracefully with clear error messages
+    and appropriate exit codes.
+  type: cli
+  level: 2
+  tags: [cli, error-handling, resilience, auto-generated]
+
+  prerequisites:
+    - "src/amplihack/cli.py binary exists and is executable"
+
+  steps:
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["nonexistent-command"]
+      description: "Run with invalid command"
+      timeout: 10s
+
+    - action: verify_output
+      matches: "(error|unknown|invalid|not found)"
+      case_sensitive: false
+      timeout: 5s
+      description: "Should show error for unknown command"
+
+    - action: verify_exit_code
+      expected: 1
+      description: "Should exit with non-zero code"
+
+
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["list", "--invalid-flag-xyz"]
+      description: "Run with invalid flag"
+      timeout: 10s
+
+    - action: verify_output
+      matches: "(error|unknown|unrecognized|invalid)"
+      case_sensitive: false
+      timeout: 5s
+      description: "Should reject unknown flag"
+
+  cleanup:
+    - action: stop_application
+      force: true
+      description: "Ensure process is terminated"

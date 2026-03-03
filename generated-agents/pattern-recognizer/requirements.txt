@@ -1,2 +1,0 @@
-# Code Pattern Recognizer Agent Dependencies
-# No external dependencies beyond Python stdlib and amplihack-memory-lib

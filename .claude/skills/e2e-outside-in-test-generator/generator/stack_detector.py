@@ -265,7 +265,7 @@ async def analyze_database(project_root: Path) -> dict:
 
     return {
         "type": db_type,
-        "schema_files": schema_files[:5],  # Limit to first 5
+        "schema_files": schema_files,
         "models": [],  # Model extraction from schema is complex
     }
 
@@ -360,7 +360,7 @@ async def _detect_api_endpoints(project_root: Path, framework: str) -> list[APIE
     if framework == "fastapi":
         # Look for FastAPI route decorators
         api_files = find_files(project_root, "*.py")
-        for api_file in api_files[:20]:  # Limit search
+        for api_file in api_files:
             try:
                 content = read_file(api_file)
                 # Match @app.get("/path"), @router.post("/path"), etc.
@@ -382,7 +382,7 @@ async def _detect_api_endpoints(project_root: Path, framework: str) -> list[APIE
     elif framework == "express":
         # Look for Express route definitions
         api_files = find_files(project_root, "*.js") + find_files(project_root, "*.ts")
-        for api_file in api_files[:20]:
+        for api_file in api_files:
             try:
                 content = read_file(api_file)
                 # Match app.get('/path'), router.post('/path'), etc.
@@ -467,7 +467,7 @@ def _detect_backend_auth(project_root: Path) -> str:
         Auth mechanism name
     """
     auth_files = find_files(project_root, "*auth*.py") + find_files(project_root, "*auth*.ts")
-    for auth_file in auth_files[:5]:
+    for auth_file in auth_files:
         try:
             content = read_file(auth_file)
             if "JWT" in content or "jwt" in content:

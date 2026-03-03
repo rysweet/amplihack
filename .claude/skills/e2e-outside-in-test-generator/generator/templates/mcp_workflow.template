@@ -1,0 +1,35 @@
+# MCP Multi-Tool Workflow Test
+# Auto-generated outside-in test scenario
+
+scenario:
+  name: "MCP Workflow - {workflow_name}"
+  description: |
+    Verifies a multi-tool MCP workflow by calling tools in sequence
+    and validating the combined output.
+  type: mcp
+  level: 2
+  tags: [mcp, workflow, multi-tool, auto-generated]
+
+  prerequisites:
+    - "MCP server is available via {transport} transport"
+
+  environment:
+    variables:
+      MCP_TRANSPORT: "{transport}"
+
+  steps:
+    - action: mcp_connect
+      command: "{server_command}"
+      args: [{server_args}]
+      transport: "{transport}"
+      description: "Connect to MCP server"
+      timeout: 15s
+
+{workflow_steps}
+    - action: mcp_disconnect
+      description: "Disconnect from MCP server"
+
+  cleanup:
+    - action: mcp_disconnect
+      force: true
+      description: "Ensure MCP connection is closed"
