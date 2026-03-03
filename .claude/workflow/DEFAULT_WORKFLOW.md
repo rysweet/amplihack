@@ -154,6 +154,7 @@ Step 5: Research and Design - Use architect agent for solution design
 Step 16: Review the PR - MANDATORY code review
 Step 17: Implement Review Feedback - MANDATORY
 Step 19: Outside-In Testing in Real Environment - MANDATORY
+Step 20c: Quality Audit Loop (3+ cycles, multi-agent validation)
 ...
 Step 22: Ensure PR is Mergeable - TASK COMPLETION POINT
 ```
@@ -924,6 +925,92 @@ Add this section to your PR description:
 
 - [ ] Ensure any cleanup agent changes get committed, validated by pre-commit, pushed to remote
 - [ ] Add a comment to the PR about any work the Cleanup agent did
+
+### Step 20c: Quality Audit Loop
+
+**Added per issues #2805, #2809, #2810.**
+
+Invoke the **quality-audit-workflow** skill to run a comprehensive, iterative quality audit on all files changed in this PR. This is the last substantive check before the PR is marked ready.
+
+#### Loop Structure
+
+```
+Cycle 1: SEEK → VALIDATE (3 agents) → FIX → decision
+Cycle 2: SEEK (deeper) → VALIDATE → FIX → decision
+Cycle 3: SEEK (deepest) → VALIDATE → FIX → decision
+...continues if thresholds not met, up to 6 cycles
+```
+
+**Minimum 3 cycles.** Continue past 3 if:
+- Any **critical** or **high** severity findings remain, OR
+- More than **3 medium** severity findings remain
+
+Each cycle escalates depth: look with fresh eyes, dig deeper, challenge prior findings.
+
+#### 9 Audit Categories
+
+**Code Quality:**
+
+- [ ] **Security**: Hardcoded secrets, missing input validation
+- [ ] **Reliability**: Missing timeouts, bare except clauses
+- [ ] **Dead Code**: Unused imports, unreachable branches, stale TODOs
+- [ ] **Test Gaps**: Files without tests, tests without assertions
+- [ ] **Doc Gaps**: Public functions without docstrings
+
+**Anti-Degradation (#2805, #2810):**
+
+- [ ] **Silent Fallbacks**: `except: pass`, broad catches returning defaults silently, fallback chains masking failures, `or default_value` hiding upstream errors
+- [ ] **Error Swallowing**: `except` blocks with no logging/re-raise, error-to-None transforms, catch-all discarding exceptions, functions returning True/False instead of raising
+
+**Structural (#2809):**
+
+- [ ] **Structural Issues**: Files >500 LOC, functions >50 lines, nesting >4 levels, >5 parameters, circular imports
+
+**Documentation Audit:**
+
+- [ ] **Point-in-time removal**: Remove ALL temporal content — status updates, session notes, "as of today", "we just finished". Docs must read correctly years after being written.
+- [ ] **Professional tone**: No pirate speak ("fer"/"ye"/"yer"/"arr"/"matey"), no chatbot artifacts ("Sure!", "Great question!"), no informal language in shipped documentation.
+- [ ] **Quality review**: Organization, comprehensiveness, clarity, navigation, correctness vs actual code behavior.
+
+#### Multi-Agent Validation
+
+Every finding is independently validated by **3 separate agents**:
+1. **Analyzer** — evaluates on technical merits
+2. **Reviewer** — skeptically verifies by reading actual code
+3. **Architect** — adversarial review, looks for reasons finding is wrong
+
+A finding is **confirmed** only if ≥2 of 3 agents agree. This eliminates false positives.
+
+#### Fix Process
+
+All confirmed findings are fixed using the full **DEFAULT_WORKFLOW** approach:
+1. Understand the finding and its context
+2. Write or update tests that verify the fix
+3. Implement the minimal fix
+4. Verify the fix doesn't break existing tests
+
+#### Completion Criteria
+
+- [ ] Minimum 3 audit cycles completed
+- [ ] Final cycle: 0 critical/high findings, ≤3 medium findings
+- [ ] All confirmed findings fixed with tests
+- [ ] Documentation passes tone and durability checks
+- [ ] Results documented: "QUALITY AUDIT: CLEAN" or remaining findings listed
+
+#### Self-Improvement Review
+
+After all audit cycles complete, step back and ask:
+
+> **"How else would you improve this code?"**
+
+- [ ] Look for systemic issues the audit missed
+- [ ] Identify architectural improvements that prevent recurring findings
+- [ ] Check if fixes introduced new issues
+- [ ] Find cross-cutting concerns that should be standardized
+- [ ] Fix any **CRITICAL** improvements found immediately
+- [ ] Document **ADVISORY** improvements as follow-up issues
+
+**Cannot proceed to Step 21 without completing the quality audit loop.**
 
 ### Step 21: Convert PR to Ready for Review
 
