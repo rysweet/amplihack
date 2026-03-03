@@ -351,7 +351,7 @@ steps:
   # ==========================================================================
   - id: "self-improve"
     type: "bash"
-    condition: "{{self_improve}} == 'true'"
+    condition: "self_improve == 'true'"
     command: |
       echo "=== Step 6: Self-Improvement Loop ==="
       echo "Max iterations: {{max_iterations}}"
