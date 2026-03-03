@@ -7,7 +7,7 @@ Philosophy:
 - Declarative controller for desired-state reconciliation
 
 Production modules (re-exported here):
-    HiveGraph, InMemoryHiveGraph, PeerHiveGraph: Graph protocol + backends
+    HiveGraph, InMemoryHiveGraph: Graph protocol + backends
     BusEvent, EventBus, LocalEventBus, etc.: Transport-agnostic event bus
     AgentNode, HiveCoordinator, DistributedHiveMind: Distributed hive mind
     HiveController, HiveManifest, etc.: Declarative reconciliation controller
@@ -77,14 +77,6 @@ try:
 except ImportError:
     pass
 
-try:
-    from .peer_hive import PeerHiveGraph
-
-    __all__ += [
-        "PeerHiveGraph",
-    ]
-except ImportError:
-    pass
 
 # Desired-state HiveController (production)
 try:

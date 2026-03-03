@@ -1,10 +1,7 @@
 """HiveGraph -- Protocol for distributed hive mind graph backends.
 
 Supports multiple implementations:
-- InMemoryHiveGraph: testing (no network)
-- PeerHiveGraph: agents ARE the store (Raft consensus via pysyncobj)
-- ArangoHiveGraph: ArangoDB cluster (future)
-- RedisHiveGraph: Redis Cluster (future)
+- InMemoryHiveGraph: in-process dict-based implementation
 
 Also supports federation: trees of hive minds where a hive can
 contain sub-hives, with fact escalation and query routing up/down
@@ -21,7 +18,7 @@ Public API (the "studs"):
     HiveFact: Fact node dataclass
     HiveEdge: Edge dataclass
     HiveGraph: Protocol defining the contract
-    InMemoryHiveGraph: Dict-based implementation for testing
+    InMemoryHiveGraph: Dict-based implementation
     create_hive_graph: Factory for backend selection
 """
 
@@ -1047,10 +1044,9 @@ def create_hive_graph(backend: str = "memory", **config: Any) -> HiveGraph:
     """Factory for HiveGraph backends.
 
     Args:
-        backend: Backend type: "memory", "p2p".
+        backend: Backend type: "memory".
         **config: Backend-specific configuration.
             For "memory": hive_id (str)
-            For "p2p": hive_id (str), self_address (str), peer_addresses (list[str])
 
     Returns:
         A HiveGraph implementation.
@@ -1060,11 +1056,7 @@ def create_hive_graph(backend: str = "memory", **config: Any) -> HiveGraph:
     """
     if backend == "memory":
         return InMemoryHiveGraph(hive_id=config.get("hive_id", "test-hive"))
-    if backend == "p2p":
-        from .peer_hive import PeerHiveGraph
-
-        return PeerHiveGraph(**config)
-    raise ValueError(f"Unknown backend: {backend!r}. Available: memory, p2p")
+    raise ValueError(f"Unknown backend: {backend!r}. Available: memory")
 
 
 __all__ = [
