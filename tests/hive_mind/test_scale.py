@@ -14,6 +14,10 @@ from __future__ import annotations
 import random
 import time
 
+from amplihack.agents.goal_seeking.hive_mind.constants import (
+    DEFAULT_MAX_AGE_HOURS,
+    SECONDS_PER_HOUR,
+)
 from amplihack.agents.goal_seeking.hive_mind.gossip import (
     GossipProtocol,
     convergence_check,
@@ -112,7 +116,8 @@ class TestFederatedGroups:
         results = root.query_federated("alpha", limit=200)
         groups_found = {g for g in range(4) if any(f"grp{g}" in f.content for f in results)}
         assert groups_found == {0, 1, 2, 3}, f"Missing groups: {set(range(4)) - groups_found}"
-        assert len(results) >= 100  # substantial coverage of 200
+        # All 200 facts have unique content, so no dedup collisions
+        assert len(results) == 200
 
         # Query from child[0] should find child[2] facts via parent
         cross = children[0].query_federated("grp2", limit=200)
@@ -191,8 +196,9 @@ class TestTTLGarbageCollection:
                 )
 
                 if f < 25:
-                    # Backdate to 25 hours ago (exceeds 24-hour max age)
-                    hive._ttl_registry[fact_id].created_at = now - 25 * 3600
+                    # Backdate past the max age so GC treats these as expired
+                    expired_age = (DEFAULT_MAX_AGE_HOURS + 1) * SECONDS_PER_HOUR
+                    hive._ttl_registry[fact_id].created_at = now - expired_age
                     expired_ids.add(fact_id)
                 else:
                     fresh_ids.add(fact_id)
