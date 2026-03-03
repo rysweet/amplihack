@@ -288,40 +288,31 @@ class FleetAdmiral:
                 )
 
                 # Persist failure learning to amplihack memory
-                try:
-                    from amplihack.memory.discoveries import store_discovery
+                from amplihack.memory.discoveries import store_discovery
 
-                    store_discovery(
-                        content=f"Fleet action {action.action_type.value} failed on {action.vm_name}: {outcome}",
-                        category="fleet-failure",
-                        summary=f"{action.action_type.value} failed on {action.vm_name}",
-                    )
-                except ImportError:
-                    pass  # Memory lib not available — graceful degradation
+                store_discovery(
+                    content=f"Fleet action {action.action_type.value} failed on {action.vm_name}: {outcome}",
+                    category="fleet-failure",
+                    summary=f"{action.action_type.value} failed on {action.vm_name}",
+                )
             else:
                 self._stats["successes"] += 1
 
                 # Persist success patterns for high-value actions
                 if action.action_type.value in ("start_agent", "reassign_task"):
-                    try:
-                        from amplihack.memory.discoveries import store_discovery
+                    from amplihack.memory.discoveries import store_discovery
 
-                        store_discovery(
-                            content=f"Fleet action {action.action_type.value} succeeded on {action.vm_name}: {outcome}",
-                            category="fleet-success",
-                            summary=f"{action.action_type.value} on {action.vm_name} succeeded",
-                        )
-                    except ImportError:
-                        pass
+                    store_discovery(
+                        content=f"Fleet action {action.action_type.value} succeeded on {action.vm_name}: {outcome}",
+                        category="fleet-success",
+                        summary=f"{action.action_type.value} on {action.vm_name} succeeded",
+                    )
 
     def recall_learnings(self, limit: int = 5) -> list[dict]:
         """Retrieve recent fleet learnings from amplihack memory."""
-        try:
-            from amplihack.memory.discoveries import get_recent_discoveries
+        from amplihack.memory.discoveries import get_recent_discoveries
 
-            return get_recent_discoveries(days=30, limit=limit)
-        except ImportError:
-            return []
+        return get_recent_discoveries(days=30, limit=limit)
 
     def status_report(self) -> str:
         """Generate human-readable status report."""

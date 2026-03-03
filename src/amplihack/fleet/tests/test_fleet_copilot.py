@@ -154,13 +154,20 @@ class TestSessionCopilot:
         assert suggestion.confidence >= 0.9
 
     def test_suggest_with_no_transcript(self, tmp_path: Path):
-        """With no transcript, co-pilot should still return something."""
+        """With no transcript, co-pilot reasons about empty context."""
+        mock_decision = MagicMock()
+        mock_decision.action = "wait"
+        mock_decision.input_text = ""
+        mock_decision.reasoning = "No transcript data"
+        mock_decision.confidence = 0.5
+
+        mock_reasoner = MagicMock()
+        mock_reasoner.reason.return_value = mock_decision
+
         copilot = SessionCopilot(goal="Fix the bug", _transcript_dir=str(tmp_path))
-        # Patch out the reasoner to avoid needing a real LLM
-        copilot.reasoner = None
+        copilot.reasoner = mock_reasoner
         suggestion = copilot.suggest()
-        # With empty transcript and no reasoner, should escalate
-        assert suggestion.action in ("wait", "escalate")
+        assert suggestion.action == "wait"
 
     def test_blocks_dangerous_input(self, tmp_path: Path):
         """Co-pilot should block dangerous suggestions."""

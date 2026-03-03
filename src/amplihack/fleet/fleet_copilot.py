@@ -195,17 +195,14 @@ class SessionCopilot:
     """
 
     goal: str = ""
-    reasoner: SessionReasoner | None = None
+    reasoner: SessionReasoner | None = None  # Set in __post_init__ if not provided
     _suggestions: list[CopilotSuggestion] = field(default_factory=list)
     _transcript_dir: str | None = None
 
     def __post_init__(self):
         if self.reasoner is None:
-            try:
-                backend = auto_detect_backend()
-                self.reasoner = SessionReasoner(backend=backend, dry_run=True)
-            except RuntimeError:
-                logger.warning("No LLM backend available for co-pilot")
+            backend = auto_detect_backend()
+            self.reasoner = SessionReasoner(backend=backend, dry_run=True)
 
     def suggest(self) -> CopilotSuggestion:
         """Read the local transcript and suggest the next action.
@@ -242,13 +239,6 @@ class SessionCopilot:
             agent_status=status,
             task_prompt=self.goal,
         )
-
-        if self.reasoner is None:
-            return CopilotSuggestion(
-                action="escalate",
-                reasoning="No LLM backend configured for co-pilot reasoning",
-                confidence=1.0,
-            )
 
         # Use the reasoner's LLM call with our co-pilot prompt
         try:

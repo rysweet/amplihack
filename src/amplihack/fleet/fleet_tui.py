@@ -346,7 +346,7 @@ class FleetTUI:
         Returns (formatted_string, raw_visible_length).
         """
         icon_char = STATUS_ICONS_UTF8.get(sess.status, "\u25cb")
-        _fallback, color, label = STATUS_MAP.get(sess.status, ("o", DIM, sess.status))
+        _ascii_icon, color, label = STATUS_MAP.get(sess.status, ("o", DIM, sess.status))
 
         # Build the right-side info: status label + branch/PR + last_line
         status_label = label.upper()
@@ -425,7 +425,7 @@ class FleetTUI:
 
         Strategy:
         1. Try azlin Python API (VMManager.list_vms) -- most reliable
-        2. Fallback: azlin CLI text output parsed from table
+        2. Strategy 2: azlin CLI text output parsed from table
         """
         # Strategy 1: az vm list (Azure CLI with JSON — fast, no Bastion tunnels)
         try:

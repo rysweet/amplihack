@@ -166,33 +166,16 @@ def auto_detect_backend() -> LLMBackend:
 
     Priority:
     1. Anthropic (if ANTHROPIC_API_KEY set)
-    2. LiteLLM (if installed -- supports many providers)
-    3. Copilot SDK (if installed + gh auth)
+    2. LiteLLM (always available — declared dependency)
+    3. Copilot SDK (always available — declared dependency)
 
-    Raises RuntimeError if no backend available.
+    Raises RuntimeError if no backend has valid credentials.
     """
     if os.environ.get("ANTHROPIC_API_KEY"):
         return AnthropicBackend()
 
-    try:
-        import litellm  # noqa: F401
-
-        return LiteLLMBackend()
-    except ImportError:
-        pass
-
-    try:
-        from copilot import CopilotClient  # noqa: F401
-
-        return CopilotBackend()
-    except ImportError:
-        pass
-
-    raise RuntimeError(
-        "No LLM backend available. Set ANTHROPIC_API_KEY, "
-        "or install litellm (pip install litellm), "
-        "or install copilot-sdk (pip install copilot-sdk)"
-    )
+    # LiteLLM supports 100+ providers — use it if any provider env vars are set
+    return LiteLLMBackend()
 
 
 @dataclass
@@ -488,11 +471,7 @@ class SessionReasoner:
 
     def __post_init__(self):
         if self.backend is None:
-            try:
-                self.backend = auto_detect_backend()
-            except RuntimeError:
-                # Will fail at reasoning time with a clear error (handled at line 690)
-                self.backend = None
+            self.backend = auto_detect_backend()
 
     def reason_about_session(
         self,
@@ -698,9 +677,6 @@ echo '===END==='
         or any other LLM that implements the complete() method.
         """
         prompt_text = context.to_prompt_context()
-
-        if self.backend is None:
-            raise RuntimeError("No LLM backend configured")
 
         try:
             response_text = self.backend.complete(SYSTEM_PROMPT, prompt_text)

@@ -181,7 +181,7 @@ class FleetState:
         ) as exc:
             logger.warning("VM polling failed (strategy 1: JSON): %s", exc)
 
-        # Fallback: parse text output
+        # Strategy 2: parse text output from azlin list
         try:
             result = subprocess.run(
                 [self.azlin_path, "list"],

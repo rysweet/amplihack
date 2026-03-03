@@ -535,24 +535,13 @@ class TestLearn:
 
         mock_store.assert_not_called()
 
-    def test_graceful_when_memory_unavailable(self):
-        admiral = _make_admiral()
-        action = DirectorAction(
-            action_type=ActionType.START_AGENT, vm_name="vm-1"
-        )
-
-        # Remove the module so import fails inside learn()
-        with patch.dict("sys.modules", {"amplihack.memory.discoveries": None}):
-            # Should not raise
-            admiral.learn([(action, "ERROR: crash")])
-
-        assert admiral._stats["failures"] == 1
+    # amplihack-memory-lib is a required dependency — no fallback tests needed
 
 
 class TestRecallLearnings:
-    """recall_learnings returns empty when memory unavailable."""
+    """recall_learnings retrieves discoveries from memory."""
 
-    def test_returns_discoveries_when_available(self):
+    def test_returns_discoveries(self):
         admiral = _make_admiral()
         fake_discoveries = [{"content": "found a thing"}]
 
@@ -564,14 +553,6 @@ class TestRecallLearnings:
 
         assert result == fake_discoveries
         mock_mod.get_recent_discoveries.assert_called_once_with(days=30, limit=3)
-
-    def test_returns_empty_when_memory_unavailable(self):
-        admiral = _make_admiral()
-
-        with patch.dict("sys.modules", {"amplihack.memory.discoveries": None}):
-            result = admiral.recall_learnings()
-
-        assert result == []
 
 
 class TestStatusReport:

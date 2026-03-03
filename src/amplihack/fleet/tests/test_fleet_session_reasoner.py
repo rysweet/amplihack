@@ -514,9 +514,8 @@ class TestLLMBackends:
             backend = auto_detect_backend()
             assert isinstance(backend, AnthropicBackend)
 
-    def test_auto_detect_without_any_backend(self):
-        """auto_detect_backend raises RuntimeError when no backend is available."""
+    def test_auto_detect_always_returns_backend(self):
+        """auto_detect_backend always returns a backend (litellm is a base dependency)."""
         with patch.dict(os.environ, {}, clear=True):
-            with patch.dict("sys.modules", {"litellm": None, "copilot": None}):
-                with pytest.raises(RuntimeError, match="No LLM backend available"):
-                    auto_detect_backend()
+            backend = auto_detect_backend()
+            assert backend is not None
