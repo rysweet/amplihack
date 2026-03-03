@@ -13,6 +13,8 @@ from amplihack.fleet._tui_classify import classify_status
 from amplihack.fleet._tui_data import SessionView
 from amplihack.fleet._validation import validate_session_name
 
+__all__ = ["parse_session_output", "parse_vm_text"]
+
 logger = logging.getLogger(__name__)
 
 

@@ -3,6 +3,8 @@
 Extracted to keep the main dashboard module under 300 lines.
 """
 
+__all__ = ["APP_CSS"]
+
 APP_CSS = """
 Screen {
     layout: vertical;

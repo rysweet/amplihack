@@ -6,6 +6,8 @@ Public API:
 
 from __future__ import annotations
 
+__all__ = ["classify_status"]
+
 
 def classify_status(tmux_text: str) -> str:
     # NOTE: This is a simplified status classifier for TUI display purposes.

@@ -19,6 +19,8 @@ from textual.worker import get_current_worker
 if TYPE_CHECKING:
     from amplihack.fleet.fleet_tui import SessionView, VMView
 
+__all__ = ["_CachedSession", "build_rows_and_cache", "_RefreshMixin"]
+
 logger = logging.getLogger(__name__)
 
 

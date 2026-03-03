@@ -30,6 +30,8 @@ from amplihack.fleet.fleet_session_reasoner import SessionReasoner
 from amplihack.fleet.fleet_state import FleetState
 from amplihack.fleet.fleet_tasks import TaskPriority, TaskQueue
 
+__all__ = ["register_commands", "COPILOT_LOCK_DIR", "COPILOT_LOG_DIR"]
+
 logger = logging.getLogger(__name__)
 
 # Module-level references set by register_commands().

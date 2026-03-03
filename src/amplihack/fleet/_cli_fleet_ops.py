@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import click
 
+__all__ = ["register_fleet_ops"]
+
 
 def register_fleet_ops(fleet_cli: click.Group) -> None:
     """Register fleet operation commands (start, run-once, dry-run, report).

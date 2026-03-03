@@ -12,6 +12,8 @@ from datetime import datetime
 
 from amplihack.fleet._validation import validate_session_name, validate_vm_name
 
+__all__ = ["SessionContext", "SessionDecision"]
+
 
 @dataclass
 class SessionContext:

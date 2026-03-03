@@ -10,6 +10,8 @@ import sys
 
 import click
 
+__all__ = ["register_session_ops"]
+
 
 def register_session_ops(fleet_cli: click.Group) -> None:
     """Register session operation commands (watch, snapshot, adopt, observe, auth).

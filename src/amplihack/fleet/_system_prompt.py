@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+__all__ = ["SYSTEM_PROMPT", "SYSTEM_PROMPT_BASE"]
+
 
 def _load_strategy_dictionary() -> str:
     """Load the strategy dictionary if available."""

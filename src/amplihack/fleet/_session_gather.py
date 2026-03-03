@@ -15,6 +15,8 @@ import subprocess
 from amplihack.fleet._session_context import SessionContext
 from amplihack.fleet._status import infer_agent_status
 
+__all__ = ["gather_context", "parse_context_output"]
+
 
 def gather_context(
     azlin_path: str,

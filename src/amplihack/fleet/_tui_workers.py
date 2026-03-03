@@ -22,6 +22,8 @@ from amplihack.fleet._backends import AnthropicBackend
 from amplihack.fleet._session_context import SessionDecision
 from amplihack.fleet.fleet_session_reasoner import SessionReasoner
 
+__all__ = ["_WorkersMixin"]
+
 logger = logging.getLogger(__name__)
 
 

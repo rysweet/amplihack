@@ -10,6 +10,8 @@ import json
 
 import click
 
+__all__ = ["register_copilot_ops"]
+
 
 def register_copilot_ops(fleet_cli: click.Group) -> None:
     """Register copilot operation commands (copilot-status, copilot-log).

@@ -28,6 +28,8 @@ from amplihack.fleet.fleet_session_reasoner import SessionDecision
 if TYPE_CHECKING:
     from amplihack.fleet._tui_refresh import _CachedSession
 
+__all__ = ["_ActionsMixin"]
+
 logger = logging.getLogger(__name__)
 
 
