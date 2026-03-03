@@ -69,13 +69,18 @@ class HiveLearningAgentAdapter(AgentAdapter):
         model: str,
         storage_path: Path,
         hive_store: Any | None = None,
+        prompt_variant: int | None = None,
     ):
+        kwargs: dict[str, Any] = {}
+        if prompt_variant is not None:
+            kwargs["prompt_variant"] = prompt_variant
         self._agent = LearningAgent(
             agent_name=agent_name,
             model=model,
             storage_path=storage_path,
             use_hierarchical=True,
             hive_store=hive_store,
+            **kwargs,
         )
         self._model = model
 
@@ -410,6 +415,12 @@ def main() -> None:
         help="Comma-separated conditions to run",
     )
     parser.add_argument("--output", type=str, default="", help="Output JSON path")
+    parser.add_argument(
+        "--prompt-variant",
+        type=int,
+        default=None,
+        help="Prompt variant number (1-5) for testing different system prompts",
+    )
     parser.add_argument(
         "--parallel-workers",
         type=int,

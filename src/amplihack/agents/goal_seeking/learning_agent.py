@@ -86,6 +86,7 @@ class LearningAgent:
         storage_path: Path | None = None,
         use_hierarchical: bool = False,
         hive_store: object | None = None,
+        prompt_variant: int | None = None,
     ):
         """Initialize learning agent.
 
@@ -100,6 +101,10 @@ class LearningAgent:
                 and the shared hive, enabling cross-agent knowledge sharing.
                 Accepts any object with query_facts() or query_federated() methods
                 (e.g., InMemoryHiveGraph, HiveGraphStore, FederatedGraphStore).
+            prompt_variant: Optional prompt variant number (1-5). When set, loads
+                the system prompt from prompts/variants/variant_{N}_{style}.md
+                instead of the default synthesis_system.md. Used to test different
+                prompting strategies in eval experiments.
 
         Note:
             Requires OPENAI_API_KEY or appropriate provider key to be set.
@@ -107,6 +112,10 @@ class LearningAgent:
         self.agent_name = agent_name
         self.model = model or os.environ.get("EVAL_MODEL", "claude-opus-4-6")
         self.use_hierarchical = use_hierarchical
+        self.prompt_variant = prompt_variant
+        self._variant_system_prompt: str | None = None
+        if prompt_variant is not None:
+            self._variant_system_prompt = self._load_variant_prompt(prompt_variant)
 
         # Initialize memory based on mode
         # Prefer CognitiveMemory (6-type) if available, fall back to HierarchicalMemory
@@ -178,6 +187,46 @@ class LearningAgent:
         # Solution D: Pre-snapshot holder - set by eval harness before parallel
         # evaluation so all threads use the same consistent fact snapshot.
         self._pre_snapshot_facts: list[dict[str, Any]] | None = None
+
+    @staticmethod
+    def _load_variant_prompt(variant_num: int) -> str:
+        """Load a prompt variant from the variants directory.
+
+        Args:
+            variant_num: Variant number (1-5)
+
+        Returns:
+            The variant system prompt text
+
+        Raises:
+            FileNotFoundError: If variant file doesn't exist
+        """
+        variant_names = {
+            1: "variant_1_minimal",
+            2: "variant_2_basic",
+            3: "variant_3_structured",
+            4: "variant_4_detailed",
+            5: "variant_5_expert",
+        }
+        name = variant_names.get(variant_num)
+        if name is None:
+            raise ValueError(f"Invalid prompt variant: {variant_num}. Must be 1-5.")
+        variant_path = Path(__file__).parent / "prompts" / "variants" / f"{name}.md"
+        if not variant_path.exists():
+            raise FileNotFoundError(f"Prompt variant not found: {variant_path}")
+        text = variant_path.read_text()
+        # Strip markdown header
+        lines = text.split("\n")
+        content_lines = []
+        past_header = False
+        for line in lines:
+            if not past_header and line.startswith("#"):
+                continue
+            if not past_header and line.strip() == "":
+                continue
+            past_header = True
+            content_lines.append(line)
+        return "\n".join(content_lines).strip()
 
     def learn_from_content(self, content: str) -> dict[str, Any]:
         """Learn from content by extracting and storing facts.
@@ -2626,7 +2675,7 @@ Knowledge Overview (what was learned):
                 messages=[
                     {
                         "role": "system",
-                        "content": load_prompt("synthesis_system"),
+                        "content": self._variant_system_prompt or load_prompt("synthesis_system"),
                     },
                     {"role": "user", "content": prompt},
                 ],
