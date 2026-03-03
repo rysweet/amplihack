@@ -1,7 +1,7 @@
 ---
 name: lock
-version: 2.0.0
-description: Enable continuous work mode — dumb or smart co-pilot
+version: 3.0.0
+description: Enable autonomous co-pilot mode — agent formulates goal and works until done
 triggers:
   - "Enable continuous work mode"
   - "Work autonomously"
@@ -10,108 +10,74 @@ triggers:
   - "Work toward this goal"
 ---
 
-# Lock: Enable Continuous Work Mode
+# Lock: Autonomous Co-Pilot Mode
 
-**Purpose**: Enable continuous work mode to prevent Claude from stopping until explicitly unlocked.
-
-**Two modes:**
-
-1. **Dumb mode** (no goal): Injects "continue" on every turn. Cheap, fast, no reasoning.
-2. **Smart co-pilot mode** (with `--goal`): Uses SessionCopilot LLM reasoning to suggest contextual next actions, track progress, and auto-disable on goal completion or escalation.
-
-**Usage**: `amplihack:lock [optional lock message]` or `amplihack:lock --goal "your objective"`
-
-When locked, Claude will use the Bash tool to run the amplihack lock tool:
-
-**Basic usage (dumb mode — bare continue):**
-
-```bash
-python .claude/tools/amplihack/lock_tool.py lock
-```
-
-**With custom instruction (dumb mode with focus):**
-
-```bash
-python .claude/tools/amplihack/lock_tool.py lock --message "Focus on security fixes first"
-```
-
-**Smart co-pilot mode (LLM-reasoned guidance):**
-
-```bash
-python .claude/tools/amplihack/lock_tool.py lock --goal "Fix the auth bug, write tests, create PR"
-```
-
-**Combined (goal + message):**
-
-```bash
-python .claude/tools/amplihack/lock_tool.py lock --goal "Implement OAuth2 login" --message "Use PKCE flow"
-```
-
-## Smart Co-Pilot Mode
-
-When `--goal` is provided, the hook uses `SessionCopilot` from the fleet module to:
-
-- **Read the session transcript** and detect the current agent status
-- **Reason about the next action** using LLM-powered analysis
-- **Inject specific guidance** instead of generic "continue"
-- **Track progress** toward the stated goal
-- **Auto-disable** when the goal is achieved (`mark_complete`)
-- **Escalate** to the human when the co-pilot is uncertain
-
-The co-pilot actions:
-| Action | Behavior |
-|--------|----------|
-| `send_input` (confidence >= 0.6) | Injects reasoned next step |
-| `wait` | Agent is working — no intervention |
-| `mark_complete` | Goal achieved — auto-disables lock |
-| `escalate` | Needs human — auto-disables lock |
-
-## Custom Continuation Messages
-
-The optional `--message` flag provides a custom instruction that Claude sees when attempting to stop.
-
-**Example custom messages:**
-
-```
-"Focus on security fixes first, then performance optimizations"
-"Check all API endpoints for authentication issues"
-"Run full test suite after each change"
-```
-
-**Note**: Messages are limited to 1000 characters.
-
----
+**Purpose**: Enable autonomous co-pilot mode. The agent formulates a goal from the user's natural language, defines what "done" looks like, and works until the goal is achieved or it needs human help.
 
 ## Instructions
 
-Use the Bash tool to run the lock tool. Parse the user's command to determine if they provided a goal, a message, or both.
+When the user invokes this command:
 
-**If the user provides a goal (smart mode):**
+### Step 1: Formulate the goal
 
-```bash
-python .claude/tools/amplihack/lock_tool.py lock --goal "user's goal here"
-```
+Read the user's message. From their natural language, formulate:
 
-**If the user provides just a message (dumb mode):**
+1. **Goal**: A clear, specific objective statement
+2. **Definition of Done**: Concrete criteria for when the goal is achieved (e.g. "tests pass", "PR created", "file exists with X content")
 
-```bash
-python .claude/tools/amplihack/lock_tool.py lock --message "user's message here"
-```
-
-**If the user provides both:**
+Write both to the goal file as a single document:
 
 ```bash
-python .claude/tools/amplihack/lock_tool.py lock --goal "user's goal" --message "user's focus"
+mkdir -p .claude/runtime/locks
 ```
 
-**If the user provides nothing (plain dumb mode):**
+Then use the Write tool to create `.claude/runtime/locks/.lock_goal` with content like:
+
+```
+Goal: [clear objective from user's words]
+
+Definition of Done:
+- [concrete criterion 1]
+- [concrete criterion 2]
+- [concrete criterion 3]
+```
+
+### Step 2: Enable lock
 
 ```bash
 python .claude/tools/amplihack/lock_tool.py lock
 ```
 
-**Lock files:**
+### Step 3: Begin working
 
-- Lock flag: `.claude/runtime/locks/.lock_active`
-- Custom message: `.claude/runtime/locks/.lock_message`
-- Goal (smart mode): `.claude/runtime/locks/.lock_goal`
+Immediately start working toward the goal. Do not ask for confirmation. The LockModeHook will use SessionCopilot to monitor progress and provide guidance on each turn.
+
+## How it works
+
+1. The hook fires on every `provider:request` event
+2. SessionCopilot reads the session transcript and reasons about progress
+3. If the agent is working — no intervention
+4. If the agent is idle — injects specific next-step guidance
+5. If the goal is achieved — auto-disables lock mode
+6. If stuck — auto-disables and escalates to the user
+
+## Disabling
+
+Lock mode auto-disables when:
+- Goal is achieved (`mark_complete`)
+- Co-pilot needs human help (`escalate`)
+- User runs `/amplihack:unlock`
+
+## Examples
+
+User says: "fix the auth bug and make sure tests pass"
+→ Agent writes goal: "Fix the authentication bug. Definition of Done: auth tests pass, no regressions in test suite."
+→ Agent enables lock, starts working.
+
+User says: "implement OAuth2 login and create a PR"
+→ Agent writes goal: "Implement OAuth2 login flow. Definition of Done: OAuth2 endpoint works, tests cover happy path and error cases, PR created on GitHub."
+→ Agent enables lock, starts working.
+
+User says: "keep going"
+→ Agent writes goal: "Continue working on the current task until all pending items are complete. Definition of Done: all TODO items resolved, tests pass."
+→ Agent enables lock, continues.
