@@ -55,10 +55,7 @@ class LockModeHook(Hook):
         try:
             goal_file = _lock_dir() / ".lock_goal"
             if goal_file.exists():
-                content = goal_file.read_text().strip()
-                # Sanitize: strip XML-like tags to prevent prompt injection
-                content = content.replace("<", "&lt;").replace(">", "&gt;")
-                return content
+                return goal_file.read_text().strip()
         except Exception as exc:
             logger.warning("Cannot read goal file: %s", exc)
         return ""
@@ -86,15 +83,13 @@ class LockModeHook(Hook):
         if not goal:
             goal = "Continue working on the current task until complete."
 
-        directive = f"""<system-directive source="amplihack-copilot">
-## Autonomous Co-Pilot Active
-
-**Goal:** {goal}
-
-Continue working toward this goal. The session co-pilot is monitoring your
-progress via the Stop hook and will provide guidance when you stop.
-Do not ask the user if you should continue — just keep working.
-</system-directive>"""
+        # Load directive template from file — keeps prompts out of code
+        prompt_file = _get_project_root() / "src" / "amplihack" / "fleet" / "prompts" / "lock_mode_directive.prompt"
+        try:
+            directive = prompt_file.read_text(encoding="utf-8").strip().format(goal=goal)
+        except (FileNotFoundError, OSError):
+            # Fallback if prompt file not found (e.g. installed as package)
+            directive = f"Autonomous Co-Pilot Active. Goal: {goal}. Continue working."
 
         return HookResult(
             action="inject_context",

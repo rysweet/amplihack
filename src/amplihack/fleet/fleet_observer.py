@@ -21,6 +21,16 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from amplihack.fleet._constants import (
+    CONFIDENCE_COMPLETION,
+    CONFIDENCE_DEFAULT_RUNNING,
+    CONFIDENCE_ERROR,
+    CONFIDENCE_IDLE,
+    CONFIDENCE_RUNNING,
+    CONFIDENCE_UNKNOWN,
+    DEFAULT_CAPTURE_LINES,
+    DEFAULT_STUCK_THRESHOLD_SECONDS,
+)
 from amplihack.fleet._defaults import get_azlin_path
 from amplihack.fleet._validation import validate_vm_name
 from amplihack.fleet.fleet_state import AgentStatus, TmuxSessionInfo
@@ -100,10 +110,10 @@ class FleetObserver:
     """
 
     azlin_path: str = field(default_factory=get_azlin_path)
-    capture_lines: int = 5000  # Capture full terminal scrollback
+    capture_lines: int = DEFAULT_CAPTURE_LINES
     _previous_captures: dict[str, str] = field(default_factory=dict)
     _last_change_time: dict[str, float] = field(default_factory=dict)
-    stuck_threshold_seconds: float = 300.0  # 5 minutes without change = stuck
+    stuck_threshold_seconds: float = DEFAULT_STUCK_THRESHOLD_SECONDS
 
     def observe_session(self, vm_name: str, session_name: str) -> ObservationResult:
         """Observe a single tmux session and classify agent state.
@@ -195,12 +205,12 @@ class FleetObserver:
         # 1. Completion patterns
         for pattern in COMPLETION_PATTERNS:
             if re.search(pattern, combined, re.IGNORECASE):
-                return AgentStatus.COMPLETED, 0.9, pattern
+                return AgentStatus.COMPLETED, CONFIDENCE_COMPLETION, pattern
 
         # 2. Error patterns
         for pattern in ERROR_PATTERNS:
             if re.search(pattern, combined, re.IGNORECASE):
-                return AgentStatus.ERROR, 0.85, pattern
+                return AgentStatus.ERROR, CONFIDENCE_ERROR, pattern
 
         # 3. Running patterns (checked BEFORE stuck so active work isn't
         #    misclassified as stuck when output hasn't changed yet)
@@ -209,12 +219,12 @@ class FleetObserver:
                 # Update change tracking so running sessions reset the timer
                 self._last_change_time[key] = time.monotonic()
                 self._previous_captures[key] = combined
-                return AgentStatus.RUNNING, 0.8, pattern
+                return AgentStatus.RUNNING, CONFIDENCE_RUNNING, pattern
 
         # 4. Waiting for input (checked BEFORE stuck — more specific)
         for pattern in WAITING_PATTERNS:
             if re.search(pattern, combined, re.IGNORECASE | re.MULTILINE):
-                return AgentStatus.WAITING_INPUT, 0.8, pattern
+                return AgentStatus.WAITING_INPUT, CONFIDENCE_RUNNING, pattern
 
         # 5. Check for stuck (no output change) — after running and waiting
         now = time.monotonic()
@@ -223,7 +233,7 @@ class FleetObserver:
             last_change = self._last_change_time.get(key, now)
             if now - last_change > self.stuck_threshold_seconds:
                 self._previous_captures[key] = combined
-                return AgentStatus.STUCK, 0.8, "no_output_change"
+                return AgentStatus.STUCK, CONFIDENCE_RUNNING, "no_output_change"
         else:
             self._last_change_time[key] = now
         self._previous_captures[key] = combined
@@ -232,10 +242,10 @@ class FleetObserver:
         last_line = lines[-1].strip() if lines else ""
         for pattern in IDLE_PATTERNS:
             if re.search(pattern, last_line):
-                return AgentStatus.IDLE, 0.7, pattern
+                return AgentStatus.IDLE, CONFIDENCE_IDLE, pattern
 
         # Default: if there's recent output, assume running
         if len(combined.strip()) > 50:
-            return AgentStatus.RUNNING, 0.5, "has_output"
+            return AgentStatus.RUNNING, CONFIDENCE_DEFAULT_RUNNING, "has_output"
 
-        return AgentStatus.UNKNOWN, 0.3, ""
+        return AgentStatus.UNKNOWN, CONFIDENCE_UNKNOWN, ""
