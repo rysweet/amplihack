@@ -10,6 +10,7 @@ from amplihack.fleet.fleet_copilot import (
     CopilotSuggestion,
     SessionCopilot,
     _extract_last_output,
+    build_rich_context,
     read_local_transcript,
 )
 
@@ -90,6 +91,70 @@ class TestExtractLastOutput:
         ]
         result = _extract_last_output("\n".join(entries))
         assert len(result) == 5000
+
+
+class TestBuildRichContext:
+    """build_rich_context assembles first message + summary + recent."""
+
+    def test_empty_transcript(self):
+        assert build_rich_context("") == ""
+
+    def test_includes_first_user_message(self):
+        entries = [
+            json.dumps({"type": "human", "message": {"content": "Fix the auth bug"}}),
+            json.dumps({"type": "assistant", "message": {"content": "On it"}}),
+            json.dumps({"type": "tool_use", "name": "Read", "message": {"content": ""}}),
+        ]
+        result = build_rich_context("\n".join(entries))
+        assert "ORIGINAL USER REQUEST" in result
+        assert "Fix the auth bug" in result
+
+    def test_small_transcript_no_summary(self):
+        """Transcripts that fit entirely should have no summary section."""
+        entries = [
+            json.dumps({"type": "human", "message": {"content": "hello"}}),
+            json.dumps({"type": "assistant", "message": {"content": "hi"}}),
+        ]
+        result = build_rich_context("\n".join(entries), recent_message_count=500)
+        assert "SESSION HISTORY" not in result
+        assert "RECENT CONTEXT" in result
+
+    def test_large_transcript_has_summary(self):
+        """Large transcripts should include a summarized middle section."""
+        entries = [
+            json.dumps({"type": "human", "message": {"content": "Original request"}}),
+        ]
+        # Add 600 tool_use entries in the middle
+        for i in range(600):
+            entries.append(json.dumps({"type": "tool_use", "name": "Bash", "message": {"content": f"cmd {i}"}}))
+        # Add recent entries
+        entries.append(json.dumps({"type": "assistant", "message": {"content": "Done with everything"}}))
+
+        result = build_rich_context("\n".join(entries), recent_message_count=100)
+        assert "ORIGINAL USER REQUEST" in result
+        assert "Original request" in result
+        assert "SESSION HISTORY" in result
+        assert "RECENT CONTEXT" in result
+
+    def test_preserves_full_recent_entries(self):
+        """Recent entries should not be truncated."""
+        entries = []
+        for i in range(200):
+            entries.append(json.dumps({"type": "assistant", "message": {"content": f"message-{i}"}}))
+
+        result = build_rich_context("\n".join(entries), recent_message_count=200)
+        assert "message-0" in result
+        assert "message-199" in result
+
+    def test_first_user_message_with_list_content(self):
+        entries = [
+            json.dumps({
+                "type": "human",
+                "message": {"content": [{"type": "text", "text": "Build OAuth2 login"}]},
+            }),
+        ]
+        result = build_rich_context("\n".join(entries))
+        assert "Build OAuth2 login" in result
 
 
 class TestCopilotSuggestion:

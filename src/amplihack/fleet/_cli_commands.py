@@ -15,12 +15,9 @@ from typing import Any, Callable
 
 import click
 
-import time
-
 from amplihack.fleet._cli_fleet_ops import register_fleet_ops
 from amplihack.fleet._cli_session_ops import register_session_ops
 from amplihack.fleet.fleet_auth import AuthPropagator
-from amplihack.fleet.fleet_copilot import SessionCopilot
 from amplihack.fleet.fleet_observer import FleetObserver
 from amplihack.fleet.fleet_session_reasoner import (
     AnthropicBackend,
@@ -164,42 +161,6 @@ def register_commands(
 
         graph = FleetGraph(persist_path=_default_graph_path)
         click.echo(graph.summary())
-
-    # ------------------------------------------------------------------
-    # fleet copilot
-    # ------------------------------------------------------------------
-
-    @fleet_cli.command("copilot")
-    @click.option("--goal", "-g", required=True, help="Goal for the co-pilot to work toward")
-    @click.option("--once", is_flag=True, help="Run once and exit (default: continuous loop)")
-    @click.option("--interval", "-i", default=15, help="Seconds between checks (continuous mode)")
-    def copilot_mode(goal: str, once: bool, interval: int):
-        """Run local session co-pilot -- autonomous goal-seeking agent helper.
-
-        Watches the local Claude Code transcript and suggests/injects actions
-        to keep the session moving toward the stated goal.
-        """
-        copilot = SessionCopilot(goal=goal)
-        click.echo(f"Co-pilot active | Goal: {goal}")
-        click.echo(f"Mode: {'single check' if once else f'continuous ({interval}s interval)'}")
-        click.echo("---")
-
-        while True:
-            suggestion = copilot.suggest()
-            progress_str = f"{suggestion.progress_pct}%" if suggestion.progress_pct is not None else "unknown"
-            click.echo(
-                f"\n[{suggestion.timestamp.strftime('%H:%M:%S')}] Progress: {progress_str}"
-            )
-            click.echo(suggestion.summary())
-
-            if suggestion.action == "mark_complete":
-                click.echo("\nGoal achieved!")
-                break
-
-            if once:
-                break
-
-            time.sleep(interval)
 
     # ------------------------------------------------------------------
     # fleet project (group + subcommands)
