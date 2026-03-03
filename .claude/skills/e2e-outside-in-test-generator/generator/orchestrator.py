@@ -1,18 +1,37 @@
 """Main orchestrator for E2E test generation.
 
-Coordinates all 4 phases of test generation:
-1. Stack detection
-2. Infrastructure setup
-3. Test generation
-4. Coverage audit
+Coordinates test generation for multiple app types:
+- Web apps: Playwright tests (original behavior)
+- CLI apps: Gadugi YAML scenarios from command definitions
+- TUI apps: Gadugi YAML scenarios from widget/navigation analysis
+- APIs: Gadugi YAML scenarios from OpenAPI/Swagger specs
+- MCPs: Gadugi YAML scenarios from tool definitions
+
+Phases:
+1. App type detection (or use explicit type)
+2. Config detection (stack for web, CLI/TUI/API/MCP config)
+3. Infrastructure setup (web only) or output dir creation
+4. Test generation (dispatched by app type)
+5. Coverage audit
 """
 
 import time
 from pathlib import Path
 
+from .api_test_generator import generate_api_tests
+from .app_type_detector import (
+    detect_api_config,
+    detect_app_type,
+    detect_cli_config,
+    detect_mcp_config,
+    detect_tui_config,
+)
+from .cli_test_generator import generate_cli_tests
 from .coverage_audit import audit_coverage
 from .infrastructure_setup import setup_infrastructure
+from .mcp_test_generator import generate_mcp_tests
 from .models import (
+    AppType,
     E2EGeneratorError,
     GenerationConfig,
     TestGenerationResult,
@@ -20,6 +39,174 @@ from .models import (
 from .stack_detector import detect_stack_sync
 from .template_manager import TemplateManager
 from .test_generator import generate_all_tests
+from .tui_test_generator import generate_tui_tests
+from .utils import ensure_directory
+
+
+def generate_tests(
+    project_root: Path,
+    app_type: str | None = None,
+    config: GenerationConfig | None = None,
+) -> TestGenerationResult:
+    """Unified entry point for test generation across all app types.
+
+    Auto-detects the app type or uses the explicitly specified type,
+    then dispatches to the appropriate generator.
+
+    Args:
+        project_root: Path to project root directory
+        app_type: Explicit app type ("web", "cli", "tui", "api", "mcp") or None for auto-detect
+        config: Optional generation configuration
+
+    Returns:
+        TestGenerationResult with success status, test count, bugs, coverage
+    """
+    start_time = time.time()
+
+    if config is None:
+        config = GenerationConfig()
+
+    try:
+        # Phase 1: Detect app type
+        detected_type = detect_app_type(project_root, app_type)
+        print(f"Detected app type: {detected_type.value}")
+
+        # Phase 2+3+4: Dispatch to appropriate generator
+        _GENERATORS = {
+            AppType.CLI: _generate_cli,
+            AppType.TUI: _generate_tui,
+            AppType.API: _generate_api,
+            AppType.MCP: _generate_mcp,
+        }
+
+        generator = _GENERATORS.get(detected_type)
+        if generator:
+            return generator(project_root, config, start_time)
+        # Default: web (includes AppType.WEB and any unknown)
+        return generate_e2e_tests(project_root, config)
+
+    except E2EGeneratorError as e:
+        return TestGenerationResult(
+            success=False,
+            total_tests=0,
+            bugs_found=[],
+            coverage_report=None,  # type: ignore
+            execution_time=time.time() - start_time,
+            error=str(e),
+        )
+    except Exception as e:
+        return TestGenerationResult(
+            success=False,
+            total_tests=0,
+            bugs_found=[],
+            coverage_report=None,  # type: ignore
+            execution_time=time.time() - start_time,
+            error=f"Unexpected error: {e}",
+        )
+
+
+def _generate_cli(
+    project_root: Path, config: GenerationConfig, start_time: float
+) -> TestGenerationResult:
+    """Generate CLI test scenarios."""
+    print("Phase 1/3: Detecting CLI configuration...")
+    cli_config = detect_cli_config(project_root)
+    print(f"  Framework: {cli_config.framework}, Commands: {len(cli_config.commands)}")
+
+    print("Phase 2/3: Generating CLI test scenarios...")
+    output_dir = project_root / config.output_dir
+    ensure_directory(output_dir)
+    template_mgr = TemplateManager()
+    generated_tests = generate_cli_tests(cli_config, template_mgr, output_dir)
+    total_tests = sum(t.test_count for t in generated_tests)
+    print(f"  Generated: {total_tests} test scenarios")
+
+    print("Phase 3/3: Coverage summary...")
+    return TestGenerationResult(
+        success=True,
+        total_tests=total_tests,
+        bugs_found=[],
+        coverage_report=None,  # type: ignore
+        execution_time=time.time() - start_time,
+    )
+
+
+def _generate_tui(
+    project_root: Path, config: GenerationConfig, start_time: float
+) -> TestGenerationResult:
+    """Generate TUI test scenarios."""
+    print("Phase 1/3: Detecting TUI configuration...")
+    tui_config = detect_tui_config(project_root)
+    print(f"  Framework: {tui_config.framework}, Widgets: {len(tui_config.widgets)}")
+
+    print("Phase 2/3: Generating TUI test scenarios...")
+    output_dir = project_root / config.output_dir
+    ensure_directory(output_dir)
+    template_mgr = TemplateManager()
+    generated_tests = generate_tui_tests(tui_config, template_mgr, output_dir)
+    total_tests = sum(t.test_count for t in generated_tests)
+    print(f"  Generated: {total_tests} test scenarios")
+
+    print("Phase 3/3: Coverage summary...")
+    return TestGenerationResult(
+        success=True,
+        total_tests=total_tests,
+        bugs_found=[],
+        coverage_report=None,  # type: ignore
+        execution_time=time.time() - start_time,
+    )
+
+
+def _generate_api(
+    project_root: Path, config: GenerationConfig, start_time: float
+) -> TestGenerationResult:
+    """Generate API test scenarios."""
+    print("Phase 1/3: Detecting API configuration...")
+    api_config = detect_api_config(project_root)
+    print(f"  Spec: {api_config.spec_format}, Endpoints: {len(api_config.endpoints)}")
+
+    print("Phase 2/3: Generating API test scenarios...")
+    output_dir = project_root / config.output_dir
+    ensure_directory(output_dir)
+    template_mgr = TemplateManager()
+    generated_tests = generate_api_tests(api_config, template_mgr, output_dir)
+    total_tests = sum(t.test_count for t in generated_tests)
+    print(f"  Generated: {total_tests} test scenarios")
+
+    print("Phase 3/3: Coverage summary...")
+    return TestGenerationResult(
+        success=True,
+        total_tests=total_tests,
+        bugs_found=[],
+        coverage_report=None,  # type: ignore
+        execution_time=time.time() - start_time,
+    )
+
+
+def _generate_mcp(
+    project_root: Path, config: GenerationConfig, start_time: float
+) -> TestGenerationResult:
+    """Generate MCP test scenarios."""
+    print("Phase 1/3: Detecting MCP configuration...")
+    mcp_config = detect_mcp_config(project_root)
+    print(f"  Tools: {len(mcp_config.tools)}, Transport: {mcp_config.transport}")
+
+    print("Phase 2/3: Generating MCP test scenarios...")
+    output_dir = project_root / config.output_dir
+    ensure_directory(output_dir)
+    template_mgr = TemplateManager()
+    generated_tests = generate_mcp_tests(mcp_config, template_mgr, output_dir)
+    total_tests = sum(t.test_count for t in generated_tests)
+    print(f"  Generated: {total_tests} test scenarios")
+
+    print("Phase 3/3: Coverage summary...")
+    return TestGenerationResult(
+        success=True,
+        total_tests=total_tests,
+        bugs_found=[],
+        coverage_report=None,  # type: ignore
+        execution_time=time.time() - start_time,
+    )
 
 
 def generate_e2e_tests(
@@ -68,16 +255,6 @@ def generate_e2e_tests(
             coverage_report=None,  # type: ignore
             execution_time=0.0,
             error="workers MUST be 1 (MANDATORY requirement)",
-        )
-
-    if config.output_dir != "e2e":
-        return TestGenerationResult(
-            success=False,
-            total_tests=0,
-            bugs_found=[],
-            coverage_report=None,  # type: ignore
-            execution_time=0.0,
-            error="output_dir MUST be 'e2e' not 'tests/e2e' (MANDATORY requirement)",
         )
 
     try:

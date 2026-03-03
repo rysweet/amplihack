@@ -1,0 +1,390 @@
+# CLI Integration Test - Multi-Command Workflow
+# Auto-generated outside-in test scenario
+
+scenario:
+  name: "CLI Integration - Multi-Command Workflow"
+  description: |
+    Verifies that multiple CLI commands can be executed in sequence
+    as part of a typical workflow.
+  type: cli
+  level: 2
+  tags: [cli, integration, workflow, auto-generated]
+
+  prerequisites:
+    - "src/amplihack/cli.py binary exists and is executable"
+
+  steps:
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["list"]
+      description: "Step 1: Run list"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "list should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["enable"]
+      description: "Step 2: Run enable"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "enable should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["disable"]
+      description: "Step 3: Run disable"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "disable should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["validate"]
+      description: "Step 4: Run validate"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "validate should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["add"]
+      description: "Step 5: Run add"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "add should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["remove"]
+      description: "Step 6: Run remove"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "remove should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["show"]
+      description: "Step 7: Run show"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "show should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["export"]
+      description: "Step 8: Run export"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "export should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["import"]
+      description: "Step 9: Run import"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "import should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["generate"]
+      description: "Step 10: Run generate"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "generate should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["test"]
+      description: "Step 11: Run test"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "test should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["package"]
+      description: "Step 12: Run package"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "package should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["distribute"]
+      description: "Step 13: Run distribute"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "distribute should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["pipeline"]
+      description: "Step 14: Run pipeline"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "pipeline should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["install"]
+      description: "Step 15: Run install"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "install should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["uninstall"]
+      description: "Step 16: Run uninstall"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "uninstall should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["claude"]
+      description: "Step 17: Run claude"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "claude should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["copilot"]
+      description: "Step 18: Run copilot"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "copilot should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["codex"]
+      description: "Step 19: Run codex"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "codex should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["_local_install"]
+      description: "Step 20: Run _local_install"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "_local_install should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["plugin"]
+      description: "Step 21: Run plugin"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "plugin should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["memory"]
+      description: "Step 22: Run memory"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "memory should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["tree"]
+      description: "Step 23: Run tree"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "tree should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["new"]
+      description: "Step 24: Run new"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "new should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["recipe"]
+      description: "Step 25: Run recipe"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "recipe should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["run"]
+      description: "Step 26: Run run"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "run should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["mode"]
+      description: "Step 27: Run mode"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "mode should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["detect"]
+      description: "Step 28: Run detect"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "detect should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["init"]
+      description: "Step 29: Run init"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "init should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["search"]
+      description: "Step 30: Run search"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "search should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["lock"]
+      description: "Step 31: Run lock"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "lock should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["unlock"]
+      description: "Step 32: Run unlock"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "unlock should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["check"]
+      description: "Step 33: Run check"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "check should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["diagnose"]
+      description: "Step 34: Run diagnose"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "diagnose should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["analyze"]
+      description: "Step 35: Run analyze"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "analyze should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["stats"]
+      description: "Step 36: Run stats"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "stats should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["files"]
+      description: "Step 37: Run files"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "files should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["functions"]
+      description: "Step 38: Run functions"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "functions should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["classes"]
+      description: "Step 39: Run classes"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "classes should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["callers"]
+      description: "Step 40: Run callers"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "callers should succeed"
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["callees"]
+      description: "Step 41: Run callees"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "callees should succeed"
+
+  cleanup:
+    - action: stop_application
+      force: true
+      description: "Ensure process is terminated"

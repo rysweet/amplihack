@@ -42,6 +42,36 @@ pytest tests/test_example.py
 pytest -v
 ```
 
+#### Interpreting Test Results
+
+**What success looks like:**
+```
+==================== 237 passed in 45.2s ====================
+```
+All tests passing means your changes don't break existing functionality.
+
+**What failure looks like:**
+```
+======================== FAILURES ========================
+___________________________ TestClass.test_method _______________________
+...
+FAILED tests/test_example.py::TestClass::test_method
+```
+A failure means something isn't working as expected. Don't panic — this is normal during development.
+
+**Common causes of test failures:**
+
+1. **Missing environment variables** — Copy `.env.example` to `.env` and add your API keys
+2. **Missing dependencies** — Run `uv sync` to install all dependencies
+3. **Import errors** — Run `uv sync` first; if still failing, check the error message for missing packages
+
+**Debugging tips:**
+- Run with `-v` flag for detailed output: `pytest -v`
+- Run a single test file to isolate issues: `pytest tests/test_example.py`
+- Check the error traceback — it usually points to the exact line failing
+
+**Expected runtime:** Full test suite takes ~2-3 minutes on typical hardware
+
 ### Building Documentation
 
 ```bash

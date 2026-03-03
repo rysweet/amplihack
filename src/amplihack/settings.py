@@ -53,6 +53,17 @@ SETTINGS_TEMPLATE = {
                 ]
             }
         ],
+        "PreToolUse": [
+            {
+                "matcher": "*",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "$HOME/.amplihack/.claude/tools/amplihack/hooks/pre_tool_use.py",
+                    }
+                ],
+            }
+        ],
         "PostToolUse": [
             {
                 "matcher": "*",
@@ -63,6 +74,26 @@ SETTINGS_TEMPLATE = {
                     }
                 ],
             }
+        ],
+        "UserPromptSubmit": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "$HOME/.amplihack/.claude/tools/amplihack/hooks/workflow_classification_reminder.py",
+                        "timeout": 5,
+                    }
+                ]
+            },
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "$HOME/.amplihack/.claude/tools/amplihack/hooks/user_prompt_submit.py",
+                        "timeout": 10,
+                    }
+                ]
+            },
         ],
         "PreCompact": [
             {
@@ -145,42 +176,51 @@ def update_hook_paths(settings, hook_system, hooks_to_update, hooks_dir_path):
             os.path.expanduser(os.path.expandvars(f"{hooks_dir_path}/{hook_file}"))
         )
 
-        if hook_type not in settings.get("hooks", {}):
-            # Add missing hook configuration
-            if "hooks" not in settings:
-                settings["hooks"] = {}
+        if "hooks" not in settings:
+            settings["hooks"] = {}
 
-            # Create hook config based on type
-            hook_config = {
-                "type": "command",
-                "command": hook_path,
-            }
-            if timeout:
-                hook_config["timeout"] = timeout
+        # Build the hook config entry
+        hook_config = {
+            "type": "command",
+            "command": hook_path,
+        }
+        if timeout:
+            hook_config["timeout"] = timeout
 
-            # Wrap in matcher or plain structure
-            wrapper = (
-                {"matcher": matcher, "hooks": [hook_config]}
-                if matcher
-                else {"hooks": [hook_config]}
-            )
+        wrapper = (
+            {"matcher": matcher, "hooks": [hook_config]} if matcher else {"hooks": [hook_config]}
+        )
+
+        if hook_type not in settings["hooks"]:
+            # New hook type — add it
             settings["hooks"][hook_type] = [wrapper]
             hooks_updated += 1
         else:
-            # Update existing hook paths
+            # Hook type exists — check if THIS specific file is already present
+            # Match by both basename AND system directory to prevent cross-system overwrites
+            found = False
             hook_configs = settings["hooks"][hook_type]
             for config in hook_configs:
                 if "hooks" in config:
                     for hook in config["hooks"]:
-                        if "command" in hook and hook_system in hook["command"]:
-                            # Update hook path only if changed
-                            old_cmd = hook["command"]
-                            if old_cmd != hook_path:
+                        cmd = hook.get("command", "")
+                        # Match: same basename AND same system ownership
+                        if os.path.basename(cmd) == hook_file and hook_system in cmd:
+                            found = True
+                            if cmd != hook_path:
                                 hook["command"] = hook_path
                                 if timeout and "timeout" not in hook:
                                     hook["timeout"] = timeout
                                 hooks_updated += 1
                                 print(f"  🔄 Updated {hook_type} hook path")
+                            break
+                if found:
+                    break
+
+            if not found:
+                # This hook file is not yet configured — append it
+                settings["hooks"][hook_type].append(wrapper)
+                hooks_updated += 1
 
     return hooks_updated
 

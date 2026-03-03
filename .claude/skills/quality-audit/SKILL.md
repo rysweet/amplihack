@@ -1,8 +1,9 @@
 ---
-name: quality-audit-workflow
-description: Comprehensive codebase quality audit with parallel agent orchestration, GitHub issue creation, automated PR generation per issue, and PM-prioritized recommendations. Use for code review, refactoring audits, technical debt analysis, module quality assessment, or codebase health checks.
-source_urls:
-  - https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices
+name: quality-audit
+description: Iterative codebase quality audit with multi-agent validation and escalating-depth SEEK/VALIDATE/FIX/RECURSE cycle. Use for quality audit, code audit, codebase review, technical debt audit, refactoring opportunities, module quality check, or architecture review.
+metadata:
+  version: "3.0"
+  author: amplihack
 ---
 
 # Quality Audit Workflow
@@ -98,47 +99,56 @@ This workflow ruthlessly applies:
 - **Module Size Limits**: Target <300 LOC per module
 - **Single Responsibility**: One purpose per brick
 - **Zero-BS**: No stubs, no TODOs, no dead code
+- **Anti-Fallback** (#2805, #2810): Detect silent degradation and error swallowing patterns
+- **Structural Analysis** (#2809): Flag oversized files, deeply nested code, and tangled dependencies
 
-## Navigation Guide
+## Detection Categories
 
-### When to Read Supporting Files
+### Standard Categories
 
-**reference.md** - Read when you need:
+| Category     | What It Detects                                              |
+| ------------ | ------------------------------------------------------------ |
+| Security     | Hardcoded secrets, missing input validation                  |
+| Reliability  | Missing timeouts, bare except clauses                        |
+| Dead Code    | Unused imports, unreachable branches, stale TODOs            |
+| Test Gaps    | Files without tests, tests without assertions                |
+| Doc Gaps     | Public functions without docstrings, outdated docs           |
 
-- Detailed phase execution steps
-- Agent-to-phase mappings
-- Codebase division strategies
-- Issue template formats
+### Extended Categories
 
-**examples.md** - Read when you need:
+| Category           | What It Detects                                              |
+| ------------------ | ------------------------------------------------------------ |
+| Silent Fallbacks   | `except: pass`, broad catches that return defaults silently, fallback chains that mask failures |
+| Error Swallowing   | Catch blocks with no logging/re-raise, error-to-None transforms, catch-all discarding exceptions |
+| Structural Issues  | Files >500 LOC, functions >50 lines, nesting >4 levels, >5 parameters, circular imports |
+| Documentation      | Point-in-time content, unprofessional tone (pirate speak, chatbot artifacts), quality/correctness gaps |
+| Hardcoded Limits   | Non-configurable numeric caps (`[:N]`, `max_X = N`), silent truncation without logging, data loss from processing limits |
 
-- Working audit examples
-- Sample issue/PR formats
-- Real-world usage patterns
-- Output format examples
+## Multi-Agent Validation (v3.0)
 
-## Seek/Validate/Fix/Recurse Loop (v2.0)
+Every finding is validated by **3 independent agents** (analyzer, reviewer, architect). A finding is confirmed only if ≥2 agents agree. This eliminates false positives before any fixes are attempted.
 
-The quality-audit-cycle recipe now supports automatic recursion:
+## Iterative Loop with Escalating Depth (v3.0)
 
 ```
-Cycle 1: SEEK → VALIDATE → FIX → decision
-Cycle 2: SEEK → VALIDATE → FIX → decision  (if fixes were applied)
-Cycle 3: SEEK → VALIDATE → FIX → decision  (if fixes were applied)
-...until clean pass or max_cycles reached
+Cycle 1: SEEK → VALIDATE (3 agents) → FIX → decision
+Cycle 2: SEEK (deeper) → VALIDATE → FIX → decision
+Cycle 3: SEEK (deepest) → VALIDATE → FIX → decision
+...continues if thresholds not met
 ```
 
-**Key features:**
+**Loop rules:**
 
-- Each finding is independently validated before fixing (prevents false positives)
-- Findings marked as false positives are skipped
-- The loop stops when no fixes are applied (clean pass) or max_cycles is reached
-- Each cycle reports: issues found, validated, fixed, remaining
+- Minimum **3 cycles** always run
+- Continue past 3 if: any high/critical findings remain, or >3 medium findings
+- Maximum **6 cycles** (safety valve)
+- Each cycle: fresh eyes, dig deeper, challenge prior findings
+- Fixes use the full **DEFAULT_WORKFLOW** approach (understand → test → implement → verify)
 
 **Run via recipe:**
 
 ```bash
-amplihack recipe execute quality-audit-cycle.yaml --context '{"target_path": "src/amplihack", "max_cycles": "3"}'
+amplihack recipe execute quality-audit-cycle.yaml --context '{"target_path": "src/amplihack", "min_cycles": "3", "max_cycles": "6"}'
 ```
 
 ## Configuration
