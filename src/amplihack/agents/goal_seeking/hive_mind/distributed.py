@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 import time
 from collections import OrderedDict
 
@@ -91,8 +92,12 @@ def _make_sized_cognitive_memory(
     db = kuzu.Database(str(path), max_db_size=max_db_size)
     conn = kuzu.Connection(db)
 
-    # Build the CognitiveMemory without calling __init__ (to avoid opening
-    # a second kuzu.Database at the same path).
+    # FRAGILE: Build the CognitiveMemory without calling __init__ to control
+    # max_db_size (avoids opening a second kuzu.Database at the same path).
+    # If CognitiveMemory.__init__ signature changes, this will break.
+    # Requires amplihack-memory-lib with CognitiveMemory attributes:
+    #   agent_name, db_path, _db, _conn, WORKING_MEMORY_CAPACITY,
+    #   _sensory_order, _temporal_index, _initialize_schema, _load_max_order
     mem = object.__new__(CognitiveMemory)
     mem.agent_name = agent_name.strip()
     mem.db_path = path
@@ -152,6 +157,7 @@ class AgentNode:
         self.domain = domain
         self.db_dir = db_dir
         self.memory = _make_sized_cognitive_memory(agent_id, db_dir, max_db_size)
+        self._lock = threading.Lock()
         self._event_bus: EventBus | None = None
         self._coordinator: HiveCoordinator | None = None
         # Bounded dedup tracker: OrderedDict preserves insertion order so
@@ -302,27 +308,28 @@ class AgentNode:
         Returns:
             True if incorporated, False if rejected (duplicate or self-event).
         """
-        if event.event_id in self._incorporated_events:
-            return False
-        if event.source_agent == self.agent_id:
-            return False
+        with self._lock:
+            if event.event_id in self._incorporated_events:
+                return False
+            if event.source_agent == self.agent_id:
+                return False
 
-        payload = event.payload
-        peer_confidence = payload.get("confidence", 0.5) * 0.9
-        peer_tags = list(payload.get("tags", []))
-        peer_tags.append(f"from:{event.source_agent}")
+            payload = event.payload
+            peer_confidence = payload.get("confidence", 0.5) * 0.9
+            peer_tags = list(payload.get("tags", []))
+            peer_tags.append(f"from:{event.source_agent}")
 
-        self.memory.store_fact(
-            concept=payload.get("concept", ""),
-            content=payload.get("content", ""),
-            confidence=peer_confidence,
-            tags=peer_tags,
-        )
-        # Add to bounded dedup tracker, evicting oldest if at capacity.
-        self._incorporated_events[event.event_id] = None
-        if len(self._incorporated_events) > _MAX_INCORPORATED_EVENTS:
-            self._incorporated_events.popitem(last=False)  # evict oldest
-        return True
+            self.memory.store_fact(
+                concept=payload.get("concept", ""),
+                content=payload.get("content", ""),
+                confidence=peer_confidence,
+                tags=peer_tags,
+            )
+            # Add to bounded dedup tracker, evicting oldest if at capacity.
+            self._incorporated_events[event.event_id] = None
+            if len(self._incorporated_events) > _MAX_INCORPORATED_EVENTS:
+                self._incorporated_events.popitem(last=False)  # evict oldest
+            return True
 
     def join_hive(self, event_bus: EventBus, coordinator: HiveCoordinator) -> None:
         """Join the hive mind network.
@@ -388,6 +395,7 @@ class HiveCoordinator:
     _MAX_CONTRADICTIONS = 10_000
 
     def __init__(self) -> None:
+        self._lock = threading.Lock()
         # agent_id -> {domain, joined_at, fact_count, topics}
         self._agents: dict[str, dict] = {}
         # topic -> set of agent_ids -- who knows about what
@@ -404,20 +412,21 @@ class HiveCoordinator:
             agent_id: Unique identifier for the agent.
             domain: Domain of expertise.
         """
-        self._agents[agent_id] = {
-            "domain": domain,
-            "joined_at": time.time(),
-            "fact_count": 0,
-            "topics": set(),
-        }
-        self._trust[agent_id] = self.DEFAULT_TRUST
+        with self._lock:
+            self._agents[agent_id] = {
+                "domain": domain,
+                "joined_at": time.time(),
+                "fact_count": 0,
+                "topics": set(),
+            }
+            self._trust[agent_id] = self.DEFAULT_TRUST
 
-        # Index domain as expertise
-        if domain:
-            for keyword in domain.lower().split():
-                if keyword not in self._expertise:
-                    self._expertise[keyword] = set()
-                self._expertise[keyword].add(agent_id)
+            # Index domain as expertise
+            if domain:
+                for keyword in domain.lower().split():
+                    if keyword not in self._expertise:
+                        self._expertise[keyword] = set()
+                    self._expertise[keyword].add(agent_id)
 
     def unregister_agent(self, agent_id: str) -> None:
         """Remove an agent from the hive. Its local DB is unaffected.
@@ -425,13 +434,14 @@ class HiveCoordinator:
         Args:
             agent_id: Agent to remove.
         """
-        self._agents.pop(agent_id, None)
-        self._trust.pop(agent_id, None)
-        # Clean up expertise index
-        for topic, agents in list(self._expertise.items()):
-            agents.discard(agent_id)
-            if not agents:
-                del self._expertise[topic]
+        with self._lock:
+            self._agents.pop(agent_id, None)
+            self._trust.pop(agent_id, None)
+            # Clean up expertise index
+            for topic, agents in list(self._expertise.items()):
+                agents.discard(agent_id)
+                if not agents:
+                    del self._expertise[topic]
 
     def get_experts(self, topic: str) -> list[str]:
         """Which agents know about this topic?
@@ -445,23 +455,24 @@ class HiveCoordinator:
         topic_lower = topic.lower()
         matching_agents: set[str] = set()
 
-        # Match against expertise keywords
-        for keyword, agents in self._expertise.items():
-            if topic_lower in keyword or keyword in topic_lower:
-                matching_agents.update(agents)
+        with self._lock:
+            # Match against expertise keywords
+            for keyword, agents in self._expertise.items():
+                if topic_lower in keyword or keyword in topic_lower:
+                    matching_agents.update(agents)
 
-        # Also check agent domains directly
-        for agent_id, info in self._agents.items():
-            domain = info.get("domain", "").lower()
-            if topic_lower in domain or domain in topic_lower:
-                matching_agents.add(agent_id)
+            # Also check agent domains directly
+            for agent_id, info in self._agents.items():
+                domain = info.get("domain", "").lower()
+                if topic_lower in domain or domain in topic_lower:
+                    matching_agents.add(agent_id)
 
-        # Sort by trust descending
-        return sorted(
-            matching_agents,
-            key=lambda a: self._trust.get(a, 0.0),
-            reverse=True,
-        )
+            # Sort by trust descending
+            return sorted(
+                matching_agents,
+                key=lambda a: self._trust.get(a, 0.0),
+                reverse=True,
+            )
 
     def route_query(self, query: str) -> list[str]:
         """Route a query to the most relevant agents.
@@ -476,38 +487,47 @@ class HiveCoordinator:
             Ordered list of agent_ids (most relevant first).
         """
         keywords = [w.strip().lower() for w in query.split() if w.strip()]
-        if not keywords:
-            return list(self._agents.keys())
+        with self._lock:
+            if not keywords:
+                return list(self._agents.keys())
 
-        # Collect agents matching any keyword, tracking match count
-        agent_scores: dict[str, int] = {}
-        for kw in keywords:
-            experts = self.get_experts(kw)
-            for agent_id in experts:
-                agent_scores[agent_id] = agent_scores.get(agent_id, 0) + 1
-
-        # Also check topics each agent has reported facts about
-        for agent_id, info in self._agents.items():
-            topics = info.get("topics", set())
+            # Collect agents matching any keyword, tracking match count
+            agent_scores: dict[str, int] = {}
             for kw in keywords:
-                for topic in topics:
-                    if kw in topic.lower():
-                        agent_scores[agent_id] = agent_scores.get(agent_id, 0) + 1
+                # Inline expertise matching (avoid re-acquiring lock via get_experts)
+                kw_agents: set[str] = set()
+                for keyword, agents in self._expertise.items():
+                    if kw in keyword or keyword in kw:
+                        kw_agents.update(agents)
+                for agent_id, info in self._agents.items():
+                    domain = info.get("domain", "").lower()
+                    if kw in domain or domain in kw:
+                        kw_agents.add(agent_id)
+                for agent_id in kw_agents:
+                    agent_scores[agent_id] = agent_scores.get(agent_id, 0) + 1
 
-        if not agent_scores:
-            # No specific experts -- return all agents sorted by trust
+            # Also check topics each agent has reported facts about
+            for agent_id, info in self._agents.items():
+                topics = info.get("topics", set())
+                for kw in keywords:
+                    for topic in topics:
+                        if kw in topic.lower():
+                            agent_scores[agent_id] = agent_scores.get(agent_id, 0) + 1
+
+            if not agent_scores:
+                # No specific experts -- return all agents sorted by trust
+                return sorted(
+                    self._agents.keys(),
+                    key=lambda a: self._trust.get(a, 0.0),
+                    reverse=True,
+                )
+
+            # Sort by match count * trust
             return sorted(
-                self._agents.keys(),
-                key=lambda a: self._trust.get(a, 0.0),
+                agent_scores.keys(),
+                key=lambda a: agent_scores[a] * self._trust.get(a, 1.0),
                 reverse=True,
             )
-
-        # Sort by match count * trust
-        return sorted(
-            agent_scores.keys(),
-            key=lambda a: agent_scores[a] * self._trust.get(a, 1.0),
-            reverse=True,
-        )
 
     def report_fact(self, agent_id: str, concept: str) -> None:
         """Agent reports it has learned a fact about a concept.
@@ -518,16 +538,17 @@ class HiveCoordinator:
             agent_id: The reporting agent.
             concept: The concept the fact is about.
         """
-        if agent_id not in self._agents:
-            return
-        self._agents[agent_id]["fact_count"] = self._agents[agent_id].get("fact_count", 0) + 1
-        self._agents[agent_id].setdefault("topics", set()).add(concept.lower())
+        with self._lock:
+            if agent_id not in self._agents:
+                return
+            self._agents[agent_id]["fact_count"] = self._agents[agent_id].get("fact_count", 0) + 1
+            self._agents[agent_id].setdefault("topics", set()).add(concept.lower())
 
-        # Update expertise index
-        for keyword in concept.lower().split():
-            if keyword not in self._expertise:
-                self._expertise[keyword] = set()
-            self._expertise[keyword].add(agent_id)
+            # Update expertise index
+            for keyword in concept.lower().split():
+                if keyword not in self._expertise:
+                    self._expertise[keyword] = set()
+                self._expertise[keyword].add(agent_id)
 
     def check_trust(self, agent_id: str) -> float:
         """Get trust score for an agent.
@@ -538,7 +559,8 @@ class HiveCoordinator:
         Returns:
             Trust score (default 1.0, range [0.0, 2.0]).
         """
-        return self._trust.get(agent_id, 0.0)
+        with self._lock:
+            return self._trust.get(agent_id, 0.0)
 
     def update_trust(self, agent_id: str, delta: float) -> None:
         """Adjust an agent's trust score.
@@ -547,8 +569,9 @@ class HiveCoordinator:
             agent_id: Agent to update.
             delta: Amount to add (positive) or subtract (negative).
         """
-        current = self._trust.get(agent_id, self.DEFAULT_TRUST)
-        self._trust[agent_id] = max(0.0, min(MAX_TRUST_SCORE, current + delta))
+        with self._lock:
+            current = self._trust.get(agent_id, self.DEFAULT_TRUST)
+            self._trust[agent_id] = max(0.0, min(MAX_TRUST_SCORE, current + delta))
 
     def report_contradiction(self, fact_a: dict, fact_b: dict) -> None:
         """Report a detected contradiction between two agents' facts.
@@ -557,17 +580,18 @@ class HiveCoordinator:
             fact_a: First fact dict (must include source_agent, content).
             fact_b: Second fact dict (must include source_agent, content).
         """
-        self._contradictions.append(
-            {
-                "fact_a": fact_a,
-                "fact_b": fact_b,
-                "detected_at": time.time(),
-                "resolved": False,
-            }
-        )
-        # Cap the list to prevent unbounded growth, keeping most recent
-        if len(self._contradictions) > self._MAX_CONTRADICTIONS:
-            self._contradictions = self._contradictions[-self._MAX_CONTRADICTIONS :]
+        with self._lock:
+            self._contradictions.append(
+                {
+                    "fact_a": fact_a,
+                    "fact_b": fact_b,
+                    "detected_at": time.time(),
+                    "resolved": False,
+                }
+            )
+            # Cap the list to prevent unbounded growth, keeping most recent
+            if len(self._contradictions) > self._MAX_CONTRADICTIONS:
+                self._contradictions = self._contradictions[-self._MAX_CONTRADICTIONS :]
 
     def resolve_contradiction(self, index: int) -> bool:
         """Mark a contradiction as resolved by index.
@@ -578,10 +602,11 @@ class HiveCoordinator:
         Returns:
             True if the contradiction was marked resolved, False if index is out of range.
         """
-        if 0 <= index < len(self._contradictions):
-            self._contradictions[index]["resolved"] = True
-            return True
-        return False
+        with self._lock:
+            if 0 <= index < len(self._contradictions):
+                self._contradictions[index]["resolved"] = True
+                return True
+            return False
 
     def get_hive_stats(self) -> dict:
         """Stats about the hive.
@@ -590,22 +615,23 @@ class HiveCoordinator:
             Dict with agent_count, agents, total_facts, expertise_topics,
             contradictions_count. All values are JSON-serializable.
         """
-        total_facts = sum(info.get("fact_count", 0) for info in self._agents.values())
-        return {
-            "agent_count": len(self._agents),
-            "agents": {
-                aid: {
-                    "domain": info["domain"],
-                    "trust": self._trust.get(aid, 0.0),
-                    "fact_count": info.get("fact_count", 0),
-                    "topics": sorted(info.get("topics", set())),
-                }
-                for aid, info in self._agents.items()
-            },
-            "total_facts_reported": total_facts,
-            "expertise_topics": sorted(self._expertise.keys()),
-            "contradictions_count": len(self._contradictions),
-        }
+        with self._lock:
+            total_facts = sum(info.get("fact_count", 0) for info in self._agents.values())
+            return {
+                "agent_count": len(self._agents),
+                "agents": {
+                    aid: {
+                        "domain": info["domain"],
+                        "trust": self._trust.get(aid, 0.0),
+                        "fact_count": info.get("fact_count", 0),
+                        "topics": sorted(info.get("topics", set())),
+                    }
+                    for aid, info in self._agents.items()
+                },
+                "total_facts_reported": total_facts,
+                "expertise_topics": sorted(self._expertise.keys()),
+                "contradictions_count": len(self._contradictions),
+            }
 
 
 # ---------------------------------------------------------------------------

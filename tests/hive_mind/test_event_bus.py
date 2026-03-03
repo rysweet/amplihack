@@ -12,14 +12,10 @@ live infrastructure. LocalEventBus is the primary test target.
 from __future__ import annotations
 
 import json
-import sys
 import threading
 import time
-from pathlib import Path
 
 import pytest
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
 from amplihack.agents.goal_seeking.hive_mind.event_bus import (
     BusEvent,

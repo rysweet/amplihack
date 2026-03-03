@@ -36,12 +36,12 @@ from pathlib import Path
 # Path setup
 # ---------------------------------------------------------------------------
 
-_MEMORY_LIB_PATH = "/home/azureuser/src/amplihack-memory-lib-real/src"
-if _MEMORY_LIB_PATH not in sys.path:
+_MEMORY_LIB_PATH = os.environ.get("AMPLIHACK_MEMORY_LIB_PATH", "")
+if _MEMORY_LIB_PATH and _MEMORY_LIB_PATH not in sys.path:
     sys.path.insert(0, _MEMORY_LIB_PATH)
 
-_AMPLIHACK_PATH = "/home/azureuser/src/amplihack5/src"
-if _AMPLIHACK_PATH not in sys.path:
+_AMPLIHACK_PATH = os.environ.get("AMPLIHACK_SRC_PATH", "")
+if _AMPLIHACK_PATH and _AMPLIHACK_PATH not in sys.path:
     sys.path.insert(0, _AMPLIHACK_PATH)
 
 import kuzu  # type: ignore[import-not-found]

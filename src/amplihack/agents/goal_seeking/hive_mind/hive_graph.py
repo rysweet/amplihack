@@ -51,14 +51,6 @@ logger = logging.getLogger(__name__)
 
 # Graceful imports for retrieval pipeline modules
 try:
-    from .embeddings import EmbeddingGenerator as _EmbeddingGeneratorType
-
-    _HAS_EMBEDDINGS = True
-except ImportError:
-    _EmbeddingGeneratorType = None  # type: ignore[assignment,misc]
-    _HAS_EMBEDDINGS = False
-
-try:
     from .reranker import hybrid_score_weighted, rrf_merge
 
     _HAS_RERANKER = True
@@ -577,14 +569,21 @@ class InMemoryHiveGraph:
             return self._keyword_query(query, limit)
 
     def _cosine_sim(self, a: list[float], b: list[float]) -> float:
-        """Compute cosine similarity between two vectors."""
+        """Compute cosine similarity between two vectors.
+
+        Raises:
+            ValueError: If vectors have different lengths (indicates a bug --
+                embeddings from the same model must have identical dimensions).
+        """
         import math
 
-        if len(a) != len(b) or not a:
-            # Pad shorter vector
-            max_len = max(len(a), len(b))
-            a = a + [0.0] * (max_len - len(a))
-            b = b + [0.0] * (max_len - len(b))
+        if not a or not b:
+            return 0.0
+        if len(a) != len(b):
+            raise ValueError(
+                f"Vector dimension mismatch: {len(a)} vs {len(b)}. "
+                "Embeddings from the same model must have identical dimensions."
+            )
         dot = sum(x * y for x, y in zip(a, b, strict=False))
         norm_a = math.sqrt(sum(x * x for x in a))
         norm_b = math.sqrt(sum(x * x for x in b))
@@ -1015,7 +1014,8 @@ class InMemoryHiveGraph:
             Dict mapping peer hive_id to list of shared fact_ids.
             Empty dict if gossip module unavailable.
         """
-        self._gossip_peers = list(peers)
+        with self._lock:
+            self._gossip_peers = list(peers)
         if not _HAS_GOSSIP:
             return {}
         return _run_gossip_round(self, peers)
@@ -1031,11 +1031,12 @@ class InMemoryHiveGraph:
         """
         if not self._enable_ttl:
             return []
-        removed = gc_expired_facts(self, self._ttl_registry)
-        # Clean up original confidence records for GC'd facts
-        for fid in removed:
-            self._original_confidences.pop(fid, None)
-        return removed
+        with self._lock:
+            removed = gc_expired_facts(self, self._ttl_registry)
+            # Clean up original confidence records for GC'd facts
+            for fid in removed:
+                self._original_confidences.pop(fid, None)
+            return removed
 
     # -- Stats & lifecycle -----------------------------------------------------
 
