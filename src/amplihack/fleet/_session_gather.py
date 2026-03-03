@@ -96,7 +96,11 @@ echo '===END==='
         if result.returncode == 0:
             parse_context_output(result.stdout, context)
 
-    except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
+    except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "Context gathering failed for %s/%s: %s", vm_name, session_name, exc
+        )
         context.agent_status = "unreachable"
 
     return context

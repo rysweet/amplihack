@@ -74,7 +74,8 @@ class _WorkersMixin:
             )
             if result.returncode == 0:
                 capture_text = result.stdout
-        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
+        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
+            logger.warning("Failed to capture tmux output for %s/%s: %s", vm_name, session_name, exc)
             capture_text = "(failed to capture tmux output)"
         if worker.is_cancelled:
             return

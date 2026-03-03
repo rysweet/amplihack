@@ -14,6 +14,7 @@ Public API:
 
 from __future__ import annotations
 
+import logging
 import re
 import shlex
 import subprocess
@@ -23,6 +24,8 @@ from amplihack.fleet._defaults import get_azlin_path
 from amplihack.fleet._validation import validate_vm_name
 
 __all__ = ["RepoSetup", "SetupResult"]
+
+logger = logging.getLogger(__name__)
 
 _URL_SCHEME_RE = re.compile(r"^(https?://|git@|ssh://)")
 
@@ -113,8 +116,7 @@ class RepoSetup:
             )
 
         except subprocess.TimeoutExpired:
-            import logging as _log
-            _log.getLogger(__name__).warning("Repo setup timed out for %s on %s", repo_url, vm_name)
+            logger.warning("Repo setup timed out for %s on %s", repo_url, vm_name)
             return SetupResult(
                 vm_name=vm_name,
                 repo_url=repo_url,

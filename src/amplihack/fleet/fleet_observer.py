@@ -170,7 +170,8 @@ class FleetObserver:
         try:
             validate_session_name(session_name)
         except ValueError:
-            return None  # Reject unsafe session names
+            logger.warning("Rejecting unsafe session name for pane capture: %r", session_name)
+            return None
 
         cmd = f"tmux capture-pane -t {shlex.quote(session_name)} -p -S -{self.capture_lines} 2>/dev/null"
         try:
@@ -183,7 +184,7 @@ class FleetObserver:
             if result.returncode == 0:
                 return result.stdout
         except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
-            logger.debug("Capture pane failed for %s/%s: %s", vm_name, session_name, exc)
+            logger.warning("Capture pane failed for %s/%s: %s", vm_name, session_name, exc)
         return None
 
     def _classify_output(

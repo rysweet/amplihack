@@ -143,8 +143,9 @@ class FleetTUI:
                 if ready:
                     ch = sys.stdin.read(1)
                     return ch
-            except (OSError, ValueError):
-                # stdin closed or invalid fd
+            except (OSError, ValueError) as exc:
+                # stdin closed or invalid fd -- fall back to sleeping
+                logging.getLogger(__name__).warning("stdin select failed, falling back to sleep: %s", exc)
                 time.sleep(min(1.0, remaining))
         return None
 
@@ -191,9 +192,9 @@ class FleetTUI:
         except ValueError:
             pass  # No resource group configured -- fall through to azlin CLI
         except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
-            logging.getLogger(__name__).debug("az vm list failed: %s", exc)
+            logging.getLogger(__name__).warning("az vm list failed: %s", exc)
         except (json.JSONDecodeError, KeyError, TypeError) as exc:
-            logging.getLogger(__name__).debug("az vm list parse error: %s", exc)
+            logging.getLogger(__name__).warning("az vm list parse error: %s", exc)
 
         # Strategy 2: azlin CLI text output
         try:
@@ -206,7 +207,7 @@ class FleetTUI:
             if result.returncode == 0:
                 return parse_vm_text(result.stdout)
         except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
-            logging.getLogger(__name__).debug("azlin list failed: %s", exc)
+            logging.getLogger(__name__).warning("azlin list failed: %s", exc)
 
         logging.getLogger(__name__).warning("All VM polling strategies failed")
         print(
@@ -281,7 +282,7 @@ done
             if result.returncode == 0:
                 return parse_session_output(vm_name, result.stdout)
         except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
-            logging.getLogger(__name__).debug("Poll VM %s failed: %s", vm_name, exc)
+            logging.getLogger(__name__).warning("Poll VM %s failed: %s", vm_name, exc)
 
         return []
 

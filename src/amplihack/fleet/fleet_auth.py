@@ -10,6 +10,7 @@ Public API:
 
 from __future__ import annotations
 
+import logging
 import re
 import shlex
 import subprocess
@@ -21,6 +22,8 @@ from amplihack.fleet._defaults import get_azlin_path
 from amplihack.fleet._validation import validate_vm_name
 
 __all__ = ["AuthPropagator", "AuthResult", "GitHubIdentity"]
+
+logger = logging.getLogger(__name__)
 
 _CHMOD_MODE_RE = re.compile(r"^[0-7]{3,4}$")
 
@@ -142,8 +145,7 @@ class AuthPropagator:
                 )
                 results[service] = result.returncode == 0
             except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
-                import logging
-                logging.getLogger(__name__).debug("verify_auth %s failed for %s: %s", service, vm_name, exc)
+                logger.warning("verify_auth %s failed for %s: %s", service, vm_name, exc)
                 results[service] = False
 
         return results
@@ -262,8 +264,7 @@ class AuthPropagator:
             )
 
         except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as e:
-            import logging as _log
-            _log.getLogger(__name__).debug("switch_github_identity failed for %s: %s", vm_name, e)
+            logger.warning("switch_github_identity failed for %s: %s", vm_name, e)
             return AuthResult(
                 service="github-identity",
                 vm_name=vm_name,
@@ -285,8 +286,7 @@ class AuthPropagator:
             if result.returncode == 0 and result.stdout.strip():
                 return [u.strip() for u in result.stdout.strip().split("\n") if u.strip()]
         except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
-            import logging
-            logging.getLogger(__name__).debug("list_github_identities failed for %s: %s", vm_name, exc)
+            logger.warning("list_github_identities failed for %s: %s", vm_name, exc)
         return []
 
     def _remote_exec(self, vm_name: str, command: str) -> subprocess.CompletedProcess:

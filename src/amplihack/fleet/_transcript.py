@@ -60,7 +60,8 @@ def read_local_transcript(
         for jsonl_file in search_dir.glob("*/*.jsonl"):
             try:
                 mtime = jsonl_file.stat().st_mtime
-            except OSError:
+            except OSError as exc:
+                logger.warning("Cannot stat transcript file %s: %s", jsonl_file, exc)
                 continue
             if mtime > latest_mtime:
                 latest_mtime = mtime

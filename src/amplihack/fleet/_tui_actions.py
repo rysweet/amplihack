@@ -139,15 +139,15 @@ class _ActionsMixin(_WorkersMixin):
         self.query_one("#tabs", TabbedContent).active = "fleet-tab"
         try:
             self.query_one("#session-table", DataTable).focus()
-        except Exception:
-            logger.warning("Could not focus session table after returning to fleet")
+        except Exception as exc:
+            logger.warning("Could not focus session table after returning to fleet: %s", exc)
 
     def action_tab_fleet(self) -> None:
         self.query_one("#tabs", TabbedContent).active = "fleet-tab"
         try:
             self.query_one("#session-table", DataTable).focus()
-        except Exception:
-            logger.warning("Could not focus session table in fleet tab")
+        except Exception as exc:
+            logger.warning("Could not focus session table in fleet tab: %s", exc)
 
     def action_tab_detail(self) -> None:
         tabs = self.query_one("#tabs", TabbedContent)

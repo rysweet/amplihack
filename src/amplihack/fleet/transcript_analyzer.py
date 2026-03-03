@@ -14,9 +14,12 @@ Public API:
 from __future__ import annotations
 
 import json
+import logging
 import subprocess
 from datetime import datetime
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 from amplihack.fleet._transcript_report import (
     ALL_EXPECTED_STEPS,
@@ -52,7 +55,8 @@ def gather_local_transcripts() -> list[Path]:
     def _safe_mtime(p: Path) -> float:
         try:
             return p.stat().st_mtime
-        except (OSError, FileNotFoundError):
+        except (OSError, FileNotFoundError) as exc:
+            logger.warning("Cannot stat transcript file %s: %s", p, exc)
             return 0.0
 
     return sorted(projects_dir.rglob("*.jsonl"), key=_safe_mtime, reverse=True)
@@ -81,7 +85,8 @@ def gather_remote_transcripts(
                 results[vm] = json.loads(proc.stdout.strip())
             else:
                 results[vm] = []
-        except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError):
+        except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError) as exc:
+            logger.warning("Remote transcript gather failed for %s: %s", vm, exc)
             results[vm] = []
 
     return results
@@ -162,7 +167,8 @@ class TranscriptAnalyzer:
                         self._extract_assistant_patterns(entry, report, transcript_has_step)
                     elif entry_type == "user":
                         self._extract_user_patterns(entry, report)
-        except (OSError, PermissionError):
+        except (OSError, PermissionError) as exc:
+            logger.warning("Cannot read transcript file %s: %s", path, exc)
             return
 
         for step in transcript_has_step:

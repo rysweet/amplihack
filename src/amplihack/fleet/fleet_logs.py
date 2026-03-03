@@ -116,7 +116,7 @@ class LogReader:
 
         except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
             import logging
-            logging.getLogger(__name__).debug("read_session_log failed for %s: %s", vm_name, exc)
+            logging.getLogger(__name__).warning("read_session_log failed for %s: %s", vm_name, exc)
             return None
 
     def read_all_sessions(self, vm_name: str) -> list[SessionSummary]:
@@ -159,13 +159,18 @@ done
             )
 
             if result.returncode != 0:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "read_all_sessions command failed for %s (rc=%d): %s",
+                    vm_name, result.returncode, result.stderr[:200] if result.stderr else "",
+                )
                 return []
 
             return self._parse_all_logs_output(result.stdout)
 
         except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
             import logging
-            logging.getLogger(__name__).debug("read_all_sessions failed for %s: %s", vm_name, exc)
+            logging.getLogger(__name__).warning("read_all_sessions failed for %s: %s", vm_name, exc)
             return []
 
     def _build_log_reader_command(self, project_path: str, tail_lines: int) -> str:
@@ -228,7 +233,9 @@ print(json.dumps(stats))
                     errors=stats.get("errors", []),
                     files_modified=stats.get("files", []),
                 )
-            except (json.JSONDecodeError, KeyError):
+            except (json.JSONDecodeError, KeyError) as exc:
+                import logging
+                logging.getLogger(__name__).warning("Failed to parse log summary line: %s", exc)
                 continue
         return None
 
@@ -253,6 +260,8 @@ print(json.dumps(stats))
                         pr_urls=stats.get("prs", []),
                     )
                 )
-            except (json.JSONDecodeError, KeyError):
+            except (json.JSONDecodeError, KeyError) as exc:
+                import logging
+                logging.getLogger(__name__).warning("Failed to parse session log entry: %s", exc)
                 continue
         return summaries

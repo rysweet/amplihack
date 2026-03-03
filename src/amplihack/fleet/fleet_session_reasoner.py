@@ -138,7 +138,11 @@ class SessionReasoner:
                     decision_data["confidence"] = max(
                         0.0, min(1.0, float(decision_data["confidence"]))
                     )
-                except (TypeError, ValueError):
+                except (TypeError, ValueError) as exc:
+                    logger.warning(
+                        "LLM returned unparseable confidence value %r: %s",
+                        decision_data.get("confidence"), exc,
+                    )
                     decision_data["confidence"] = 0.5
             if not isinstance(decision_data.get("input_text", ""), str):
                 decision_data["input_text"] = ""
@@ -155,6 +159,7 @@ class SessionReasoner:
             )
 
         except NotImplementedError:
+            logger.warning("LLM backend not implemented for session %s/%s", context.vm_name, context.session_name)
             return SessionDecision(
                 session_name=context.session_name,
                 vm_name=context.vm_name,
@@ -163,6 +168,7 @@ class SessionReasoner:
                 confidence=0.0,
             )
         except Exception as e:
+            logger.warning("LLM reasoning failed for session %s/%s: %s", context.vm_name, context.session_name, e)
             return SessionDecision(
                 session_name=context.session_name,
                 vm_name=context.vm_name,

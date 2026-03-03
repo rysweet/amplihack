@@ -97,7 +97,10 @@ class CopilotBackend:
             try:
                 await asyncio.wait_for(done.wait(), timeout=SUBPROCESS_TIMEOUT_SECONDS)
             except TimeoutError:
-                pass
+                import logging as _logging
+                _logging.getLogger(__name__).warning(
+                    "Copilot session timed out after %ds", SUBPROCESS_TIMEOUT_SECONDS
+                )
 
             await session.destroy()
             return "".join(response_parts)

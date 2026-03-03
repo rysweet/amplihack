@@ -7,9 +7,13 @@ Public API:
 
 from __future__ import annotations
 
+import logging
+
 from amplihack.fleet._tui_classify import classify_status
 from amplihack.fleet._tui_data import SessionView
 from amplihack.fleet._validation import validate_session_name
+
+logger = logging.getLogger(__name__)
 
 
 def parse_session_output(vm_name: str, output: str) -> list[SessionView]:
@@ -33,6 +37,7 @@ def parse_session_output(vm_name: str, output: str) -> list[SessionView]:
         try:
             validate_session_name(session_name)
         except ValueError:
+            logger.warning("Skipping invalid session name in TUI parser: %r", session_name)
             continue
 
         view = SessionView(vm_name=vm_name, session_name=session_name)
