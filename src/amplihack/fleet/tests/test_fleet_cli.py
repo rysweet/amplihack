@@ -772,7 +772,7 @@ class TestFleetTuiCommand:
         ):
             result = runner.invoke(fleet_cli, ["tui"], catch_exceptions=False)
             assert result.exit_code == 0
-            mock_module.run_dashboard.assert_called_once_with(interval=30)
+            mock_module.run_dashboard.assert_called_once_with(interval=30, capture_lines=5000)
 
     def test_tui_custom_interval(self, runner):
         """fleet tui --interval 10 should pass interval to dashboard."""
@@ -783,14 +783,26 @@ class TestFleetTuiCommand:
         ):
             result = runner.invoke(fleet_cli, ["tui", "--interval", "10"], catch_exceptions=False)
             assert result.exit_code == 0
-            mock_module.run_dashboard.assert_called_once_with(interval=10)
+            mock_module.run_dashboard.assert_called_once_with(interval=10, capture_lines=5000)
+
+    def test_tui_custom_capture_lines(self, runner):
+        """fleet tui --capture-lines 10000 should pass to dashboard."""
+        mock_module = MagicMock()
+        with patch.dict(
+            "sys.modules",
+            {"amplihack.fleet.fleet_tui_dashboard": mock_module},
+        ):
+            result = runner.invoke(fleet_cli, ["tui", "--capture-lines", "10000"], catch_exceptions=False)
+            assert result.exit_code == 0
+            mock_module.run_dashboard.assert_called_once_with(interval=30, capture_lines=10000)
 
 
 class TestFleetDefaultCommand:
     """Tests for fleet (no subcommand) behavior."""
 
-    def test_default_uses_interval_30(self, runner):
-        """Default (no subcommand) should use interval=30."""
+    def test_default_uses_constant_interval(self, runner):
+        """Default (no subcommand) should use DEFAULT_DASHBOARD_REFRESH_SECONDS."""
+        from amplihack.fleet._constants import DEFAULT_DASHBOARD_REFRESH_SECONDS
         mock_module = MagicMock()
         with patch.dict(
             "sys.modules",
@@ -798,7 +810,7 @@ class TestFleetDefaultCommand:
         ):
             result = runner.invoke(fleet_cli, [], catch_exceptions=False)
             assert result.exit_code == 0
-            mock_module.run_dashboard.assert_called_once_with(interval=30)
+            mock_module.run_dashboard.assert_called_once_with(interval=DEFAULT_DASHBOARD_REFRESH_SECONDS)
 
 
 class TestValidateVmNameCli:

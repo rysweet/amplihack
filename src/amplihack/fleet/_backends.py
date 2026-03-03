@@ -16,6 +16,8 @@ from __future__ import annotations
 import os
 from typing import Protocol
 
+from amplihack.fleet._constants import SUBPROCESS_TIMEOUT_SECONDS
+
 __all__ = [
     "LLMBackend",
     "AnthropicBackend",
@@ -92,7 +94,7 @@ class CopilotBackend:
             await session.send({"prompt": f"{system_prompt}\n\n{user_prompt}"})
 
             try:
-                await asyncio.wait_for(done.wait(), timeout=60)
+                await asyncio.wait_for(done.wait(), timeout=SUBPROCESS_TIMEOUT_SECONDS)
             except TimeoutError:
                 pass
 

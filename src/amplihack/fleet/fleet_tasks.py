@@ -20,6 +20,8 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 
+from amplihack.fleet._constants import DEFAULT_MAX_TURNS
+
 __all__ = ["TaskQueue", "FleetTask", "TaskStatus", "TaskPriority"]
 
 
@@ -55,7 +57,7 @@ class FleetTask:
     status: TaskStatus = TaskStatus.QUEUED
     agent_command: str = "claude"  # claude, amplifier, copilot
     agent_mode: str = "auto"  # auto, ultrathink
-    max_turns: int = 20
+    max_turns: int = DEFAULT_MAX_TURNS
     protected: bool = False  # Deep work mode — never preempt or mark as stuck
 
     # Assignment tracking
@@ -132,7 +134,7 @@ class FleetTask:
             status=TaskStatus(data.get("status", "queued")),
             agent_command=data.get("agent_command", "claude"),
             agent_mode=data.get("agent_mode", "auto"),
-            max_turns=data.get("max_turns", 20),
+            max_turns=data.get("max_turns", DEFAULT_MAX_TURNS),
             protected=data.get("protected", False),
             assigned_vm=data.get("assigned_vm"),
             assigned_session=data.get("assigned_session"),
@@ -179,7 +181,7 @@ class TaskQueue:
         priority: TaskPriority = TaskPriority.MEDIUM,
         agent_command: str = "claude",
         agent_mode: str = "auto",
-        max_turns: int = 20,
+        max_turns: int = DEFAULT_MAX_TURNS,
     ) -> FleetTask:
         """Create and add a new task."""
         task = FleetTask(

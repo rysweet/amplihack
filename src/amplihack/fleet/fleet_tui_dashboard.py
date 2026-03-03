@@ -34,6 +34,7 @@ from textual.widgets import (
     TextArea,
 )
 
+from amplihack.fleet._constants import DEFAULT_DASHBOARD_REFRESH_SECONDS
 from amplihack.fleet._tui_actions import _ActionsMixin
 from amplihack.fleet._tui_refresh import _CachedSession, _RefreshMixin
 from amplihack.fleet._tui_styles import APP_CSS
@@ -119,7 +120,7 @@ class FleetDashboardApp(_ActionsMixin, _RefreshMixin, App):
 
     def __init__(
         self,
-        refresh_interval: int = 30,
+        refresh_interval: int = DEFAULT_DASHBOARD_REFRESH_SECONDS,
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
@@ -235,11 +236,17 @@ class FleetDashboardApp(_ActionsMixin, _RefreshMixin, App):
 # ---------------------------------------------------------------------------
 
 
-def run_dashboard(interval: int = 30) -> None:
+def run_dashboard(
+    interval: int = DEFAULT_DASHBOARD_REFRESH_SECONDS,
+    capture_lines: int | None = None,
+) -> None:
     """Launch the interactive fleet dashboard.
 
     Args:
         interval: Auto-refresh interval in seconds.
+        capture_lines: Terminal scrollback capture depth (passed to FleetTUI).
     """
     app = FleetDashboardApp(refresh_interval=interval)
+    if capture_lines is not None and hasattr(app, '_fleet'):
+        app._fleet.capture_lines = capture_lines
     app.run()
