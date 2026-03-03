@@ -93,56 +93,7 @@ results = security.query_federated("server database port", limit=10)
 print(f"\nSecurity hive found {len(results)} results across federation")
 ```
 
-## 3. P2P with Raft Consensus (PeerHiveGraph)
-
-For distributed deployments where agents ARE the store. Uses pysyncobj for
-Raft consensus — no single point of failure.
-
-```bash
-pip install pysyncobj
-```
-
-```python
-from amplihack.agents.goal_seeking.hive_mind.hive_graph import create_hive_graph
-
-# Create 3 Raft peers (run each in a separate process for real use)
-peer1 = create_hive_graph("p2p",
-    hive_id="peer-1",
-    self_address="localhost:4321",
-    peer_addresses=["localhost:4322", "localhost:4323"],
-)
-peer2 = create_hive_graph("p2p",
-    hive_id="peer-2",
-    self_address="localhost:4322",
-    peer_addresses=["localhost:4321", "localhost:4323"],
-)
-peer3 = create_hive_graph("p2p",
-    hive_id="peer-3",
-    self_address="localhost:4323",
-    peer_addresses=["localhost:4321", "localhost:4322"],
-)
-
-# Write to the leader (Raft elects one automatically)
-import time
-time.sleep(2)  # Wait for leader election
-
-peer1.register_agent("agent_a", domain="biology")
-peer1.promote_fact("agent_a", HiveFact(
-    fact_id="", content="DNA stores genetic information",
-    concept="genetics", confidence=0.99,
-))
-
-# Query any peer — Raft replication ensures consistency
-time.sleep(1)
-results = peer2.query_facts("DNA genetics")
-print(f"Peer2 found: {len(results)} results")
-
-# Clean up
-for p in [peer1, peer2, peer3]:
-    p.close()
-```
-
-## 4. LearningAgent with Hive Store (Recommended)
+## 3. LearningAgent with Hive Store (Recommended)
 
 Connect a real LLM-backed LearningAgent to a shared hive for distributed memory.
 Facts learned by the agent are auto-promoted to the hive; queries merge local + hive facts.
@@ -195,7 +146,7 @@ AND promotes it to the hive. When `search()` or `get_all_facts()` is called
 (inside `answer_question`), it queries both local Kuzu and the hive, deduplicates
 by content, and returns merged results.
 
-## 5. Distributed Agents with Kuzu (Full Stack)
+## 4. Distributed Agents with Kuzu (Full Stack)
 
 Each agent owns its own Kuzu database. A shared HiveGraphStore acts as the
 federation layer. FederatedGraphStore composes local + hive for unified queries.
@@ -227,7 +178,7 @@ print(f"Found: {results}")
 agent_a.close()
 ```
 
-## 6. Deploy to Azure
+## 5. Deploy to Azure
 
 The deploy script provisions everything idempotently:
 
@@ -267,7 +218,7 @@ export HIVE_AGENT_COUNT=10               # Default: 20
 export HIVE_IMAGE_TAG="v2"               # Default: latest
 ```
 
-## 7. Running the LearningAgent Eval
+## 6. Running the LearningAgent Eval
 
 Compare single vs flat-sharing vs federated using real LLM agents:
 
@@ -298,7 +249,7 @@ uv run python experiments/hive_mind/run_full_distributed_eval.py
 ## Architecture
 
 ```
-         Root Hive (InMemoryHiveGraph or PeerHiveGraph)
+         Root Hive (InMemoryHiveGraph)
         ┌────┼────────┐─────────┐
     People Tech  Data  Ops  Misc
      Hive  Hive  Hive  Hive  Hive
@@ -319,7 +270,6 @@ uv run python experiments/hive_mind/run_full_distributed_eval.py
 | File                                         | Purpose                                           |
 | -------------------------------------------- | ------------------------------------------------- |
 | `src/.../hive_mind/hive_graph.py`            | HiveGraph protocol, InMemoryHiveGraph, federation |
-| `src/.../hive_mind/peer_hive.py`             | PeerHiveGraph (Raft consensus via pysyncobj)      |
 | `src/.../hive_mind/controller.py`            | HiveController (desired-state YAML manifests)     |
 | `src/.../hive_mind/distributed.py`           | AgentNode, HiveCoordinator                        |
 | `src/.../hive_mind/event_bus.py`             | EventBus protocol + Local/Azure SB/Redis backends |

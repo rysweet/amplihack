@@ -729,7 +729,7 @@ class TestFactory:
             create_hive_graph("nonexistent")
 
     def test_unknown_backend_error_message(self):
-        with pytest.raises(ValueError, match="Available: memory, p2p"):
+        with pytest.raises(ValueError, match="Available: memory"):
             create_hive_graph("redis")
 
 

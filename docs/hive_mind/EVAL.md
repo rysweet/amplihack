@@ -1,4 +1,4 @@
-# Distributed Hive Mind — Evaluation Guide
+# Distributed Hive Mind — Evaluation Methodology
 
 ## Overview
 
@@ -11,16 +11,7 @@ Each agent uses:
 - **LLM synthesis** (~2 calls per question) for answer generation
 - **Hybrid grading** (deterministic rubric + LLM judgment) for scoring
 
-## The LearningAgent Eval
-
-### Script
-
-```bash
-uv run python experiments/hive_mind/run_learning_agent_hive_eval.py \
-  --turns 100 --questions 20 --agents 5 --groups 2
-```
-
-### Three Conditions
+## The Three Conditions
 
 | Condition     | Agents | Hive Topology                   | What It Tests                                  |
 | ------------- | ------ | ------------------------------- | ---------------------------------------------- |
@@ -28,15 +19,15 @@ uv run python experiments/hive_mind/run_learning_agent_hive_eval.py \
 | **HIVE_FLAT** | N      | Single shared InMemoryHiveGraph | Does flat sharing help? (round-robin learning) |
 | **HIVE_FED**  | N      | M groups in federation tree     | Does federation add value over flat?           |
 
-### How It Works
+## How It Works
 
-1. **Data generation**: `generate_dialogue(num_turns=100)` creates 100 deterministic content turns across 12 information blocks (people, infrastructure, security, etc.)
+1. **Data generation**: `generate_dialogue(num_turns=N)` creates deterministic content turns across 12 information blocks (people, infrastructure, security, etc.)
 2. **Learning phase**: Each turn is fed to `agent.learn_from_content(content)` which triggers LLM fact extraction. In multi-agent modes, turns are distributed round-robin.
 3. **Auto-promotion**: `CognitiveAdapter.store_fact()` automatically promotes every stored fact to the shared hive. Other agents see these facts when they query.
 4. **Quiz phase**: `agent.answer_question(question)` synthesizes answers using LLM from both local memory and hive facts.
 5. **Grading**: Hybrid deterministic (rubric keywords) + LLM judgment on 5 dimensions.
 
-### Key Architecture: CognitiveAdapter Hive Integration
+## Key Architecture: CognitiveAdapter Hive Integration
 
 ```
 learn_from_content(content)
@@ -53,12 +44,24 @@ answer_question(question)
   → LLM synthesizes answer from merged facts
 ```
 
-### Expected Timing
+## Running the Eval
 
-| Turns | Questions | LLM Calls/Condition | Time/Condition (Sonnet) |
-| ----- | --------- | ------------------- | ----------------------- |
-| 100   | 20        | ~340                | 5-10 min                |
-| 1000  | 100       | ~3400               | 50-100 min              |
+### CLI Usage
+
+```bash
+# Full 3-condition eval (single + flat + federated)
+PYTHONPATH=src uv run python experiments/hive_mind/run_learning_agent_hive_eval.py \
+  --turns 100 --questions 20 --agents 5 --groups 2
+
+# Single condition only (faster iteration)
+uv run python experiments/hive_mind/run_learning_agent_hive_eval.py \
+  --turns 50 --questions 10 --conditions single
+
+# Specify model and output path
+uv run python experiments/hive_mind/run_learning_agent_hive_eval.py \
+  --model claude-sonnet-4-5-20250929 --turns 100 --questions 20 \
+  --output /tmp/eval_results.json
+```
 
 ### CLI Options
 
@@ -72,6 +75,13 @@ answer_question(question)
 --output PATH      Output JSON path
 --parallel-workers Workers for Q&A grading (default: 5)
 ```
+
+### Expected Timing
+
+| Turns | Questions | LLM Calls/Condition | Approx Time/Condition |
+| ----- | --------- | ------------------- | --------------------- |
+| 100   | 20        | ~340                | 5-10 min              |
+| 1000  | 100       | ~3400               | 50-100 min            |
 
 ## Scoring Dimensions
 
@@ -87,29 +97,37 @@ Each question is graded on 5 dimensions (0.0 to 1.0):
 
 Overall score = average across all dimensions for all questions.
 
-## Azure Deployment Eval
+## Eval Pipeline Architecture
 
-### Agent Runner (v2.0 — LearningAgent)
-
-The Azure agent runner (`experiments/hive_mind/agent_runner.py`) now wraps a real LearningAgent:
-
-- `/learn` endpoint: feeds raw content to `agent.learn_from_content()` (LLM extraction)
-- `/query` endpoint: calls `agent.answer_question()` (LLM synthesis)
-- Service Bus propagates facts between containers
-- Each container has its own Kuzu DB + shared hive store
-
-```bash
-# Deploy
-bash experiments/hive_mind/deploy_azure_hive.sh
-
-# Check status
-bash experiments/hive_mind/deploy_azure_hive.sh --status
-
-# Run eval
-bash experiments/hive_mind/deploy_azure_hive.sh --eval
-
-# Cleanup
-bash experiments/hive_mind/deploy_azure_hive.sh --cleanup
+```
+┌──────────────────────┐
+│  generate_dialogue()  │  Deterministic content generation
+│  (12 info blocks)     │  across domains (people, infra, security...)
+└──────────┬───────────┘
+           │
+           ▼
+┌──────────────────────┐
+│   Learning Phase      │  Round-robin distribution to N agents
+│   learn_from_content  │  LLM extraction → local Kuzu + hive
+└──────────┬───────────┘
+           │
+           ▼
+┌──────────────────────┐
+│   Quiz Phase          │  20 questions across 10 categories
+│   answer_question     │  LLM synthesis from local + hive facts
+└──────────┬───────────┘
+           │
+           ▼
+┌──────────────────────┐
+│   Grading Phase       │  5 dimensions per question
+│   Deterministic + LLM │  Hybrid rubric-based scoring
+└──────────┬───────────┘
+           │
+           ▼
+┌──────────────────────┐
+│   Output JSON         │  Per-condition scores, category breakdown,
+│   (result file)       │  per-question details, timing, fact counts
+└──────────────────────┘
 ```
 
 ## Interpreting Results
@@ -136,36 +154,52 @@ bash experiments/hive_mind/deploy_azure_hive.sh --cleanup
 }
 ```
 
-### Results (2026-03-02, 100 turns, 20 questions, Sonnet 4.5)
+### What to Look For
 
-| Condition  | Agents | Score      | Time   | Hive Facts |
-| ---------- | ------ | ---------- | ------ | ---------- |
-| **Single** | 1      | **96.75%** | 18 min | 0          |
-| **Flat**   | 5      | **98.9%**  | 21 min | 519        |
-| Federated  | 5 (2g) | 63.4%      | 22 min | 510        |
+- **Single vs Flat**: Flat should equal or beat single — sharing adds knowledge coverage
+- **Flat vs Federated**: Federation may lag flat due to multi-pool scoring; check per-category for where gaps appear
+- **Category breakdown**: Identifies which question types benefit most from sharing (e.g., incident tracking, cross-reference)
+- **Hive fact counts**: Higher counts in federated (broadcast copies) vs flat (one shared pool)
 
-**Key findings:**
+### Question Categories
 
-- **Flat sharing beats single agent by +2.15pp** — hive sharing provides genuine value
-- Flat excels at incident tracking (50% → 97.5%) where cross-agent facts help
-- **Federated underperforms** due to needle-in-haystack failures (0%) — the tree
-  traversal drops facts that flat sharing preserves
-- Federation penalty comes from requiring cross-group traversal which limits per-group results
+| Category                 | What It Tests                            |
+| ------------------------ | ---------------------------------------- |
+| needle_in_haystack       | Finding specific facts in large corpus   |
+| temporal_evolution       | Understanding time-ordered changes       |
+| numerical_precision      | Exact numbers, ports, versions           |
+| cross_reference          | Connecting facts from different domains  |
+| meta_memory              | Self-awareness of what agent has learned |
+| source_attribution       | Citing where facts originated            |
+| infrastructure_knowledge | Server/network/deployment facts          |
+| security_log_analysis    | Security event interpretation            |
+| distractor_resistance    | Ignoring irrelevant information          |
+| incident_tracking        | Following incident timelines             |
 
-### Category Breakdown
+## Azure Deployment Eval
 
-| Category                 | Single | Flat  | Federated |
-| ------------------------ | ------ | ----- | --------- |
-| needle_in_haystack       | 100%   | 100%  | 0%        |
-| temporal_evolution       | 100%   | 100%  | 100%      |
-| numerical_precision      | 100%   | 100%  | 33.3%     |
-| cross_reference          | 100%   | 100%  | 75%       |
-| meta_memory              | 100%   | 100%  | 100%      |
-| source_attribution       | 100%   | 97.5% | 81.8%     |
-| infrastructure_knowledge | 100%   | 100%  | 100%      |
-| security_log_analysis    | 100%   | 100%  | 100%      |
-| distractor_resistance    | 92.5%  | 92.5% | 77.5%     |
-| incident_tracking        | 50%    | 97.5% | 100%      |
+### Agent Runner
+
+The Azure agent runner (`experiments/hive_mind/agent_runner.py`) wraps a real LearningAgent:
+
+- `/learn` endpoint: feeds raw content to `agent.learn_from_content()` (LLM extraction)
+- `/query` endpoint: calls `agent.answer_question()` (LLM synthesis)
+- Service Bus propagates facts between containers
+- Each container has its own Kuzu DB + shared hive store
+
+```bash
+# Deploy
+bash experiments/hive_mind/deploy_azure_hive.sh
+
+# Check status
+bash experiments/hive_mind/deploy_azure_hive.sh --status
+
+# Run eval
+bash experiments/hive_mind/deploy_azure_hive.sh --eval
+
+# Cleanup
+bash experiments/hive_mind/deploy_azure_hive.sh --cleanup
+```
 
 ## Known Limitations
 

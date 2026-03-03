@@ -1,8 +1,8 @@
-# Hive Mind Architecture: How Facts Flow
+# Hive Mind Architecture
 
-This document explains the exact code and data paths for the three eval
-conditions (single, flat, federated), why they produce different scores,
-and how the Azure deployment maps to these patterns.
+This document explains the data structures, algorithms, and code paths that
+compose the hive mind system. It covers fact flow, retrieval, replication, and
+lifecycle management.
 
 ## The Three Eval Topologies
 
@@ -21,7 +21,7 @@ and how the Azure deployment maps to these patterns.
 └─────────────────────────────┘
 ```
 
-One agent learns all 100 turns. All facts in one Kuzu DB. No hive involved.
+One agent learns all turns. All facts in one Kuzu DB. No hive involved.
 
 ### Flat: N Agents, One Shared Hive
 
@@ -43,12 +43,8 @@ One agent learns all 100 turns. All facts in one Kuzu DB. No hive involved.
      └──────────────────────────────────────────────────────┘
 ```
 
-**How it works:**
-
-- All 5 agents share the SAME Python object reference
-- `store_fact()` → auto-promotes → fact lands in the ONE shared dict
-- `search()` → `_search_hive()` → `query_facts()` on the ONE shared dict
-- Every agent sees every fact immediately — no traversal needed
+All agents share the SAME Python object reference. `store_fact()` auto-promotes
+and the fact lands in one shared dict. Every agent sees every fact immediately.
 
 ### Federated: N Agents, M Group Hives + Root
 
@@ -68,9 +64,6 @@ One agent learns all 100 turns. All facts in one Kuzu DB. No hive involved.
     │ InMemoryHiveGraph     │   │ InMemoryHiveGraph     │
     │ ("group-0")           │   │ ("group-1")           │
     │ _parent = root        │   │ _parent = root        │
-    │ _facts = { group-0's  │   │ _facts = { group-1's  │
-    │   promoted facts +    │   │   promoted facts +    │
-    │   broadcast copies }  │   │   broadcast copies }  │
     └───┬──────┬──────┬─────┘   └───┬──────┬────────────┘
         │      │      │             │      │
    ┌────┴┐ ┌──┴──┐ ┌─┴───┐   ┌────┴┐ ┌──┴──┐
@@ -79,212 +72,202 @@ One agent learns all 100 turns. All facts in one Kuzu DB. No hive involved.
    └─────┘ └─────┘ └─────┘   └─────┘ └─────┘
 ```
 
-**How it works:**
+Agents in each group share a group-level hive. High-confidence facts (≥ 0.9)
+broadcast to all groups via the root. Cross-group queries use `query_federated()`
+which recursively traverses the tree.
 
-- Agents 0-2 share `group-0` hive; Agents 3-4 share `group-1` hive
-- `store_fact()` → auto-promotes → fact lands in the GROUP's dict
-- If confidence >= 0.9: group calls `root.broadcast_fact()` → root pushes
-  to ALL children (including the originating group)
-- `search()` → `_search_hive()` → `query_federated()` which recursively
-  traverses root + all children
+## Retrieval Pipeline
 
-## The Fact Lifecycle: Step by Step
+### Vector Search + Keyword Fallback
+
+`query_facts()` uses a two-tier retrieval strategy:
+
+1. **Vector search (primary)**: When an `embedding_generator` is available,
+   embed the query and compute cosine similarity against all fact embeddings.
+   Score via `hybrid_score_weighted()`:
+
+   ```
+   score = 0.5 * semantic_similarity + 0.3 * confirmation_count + 0.2 * source_trust
+   ```
+
+2. **Keyword fallback**: When embeddings are unavailable or vector search fails,
+   fall back to Jaccard word-overlap scoring:
+
+   ```
+   score = keyword_hits + confidence * 0.01
+   ```
+
+The vector path produces higher-quality results for semantic queries while
+keyword fallback ensures the system always returns results.
+
+### RRF Federation Merge
+
+Federated queries (`query_federated()`) collect results from each hive in
+the tree, then apply **Reciprocal Rank Fusion (RRF)** to merge multiple
+ranked lists:
+
+```
+Phase 1: Collect — query each hive (local, parent, children)
+         No per-hive cap; domain-routed children get 3x limit
+
+Phase 2: Deduplicate — by content string
+
+Phase 3: Global rerank — RRF merge of keyword-ranked + confidence-ranked lists
+         Falls back to keyword-only sorting if RRF unavailable
+```
+
+Domain routing gives priority to children whose agents have domains matching
+the query keywords, ensuring domain-relevant groups contribute more facts.
+
+## CRDTs (Conflict-Free Replicated Data Types)
+
+CRDTs enable eventual consistency between hive replicas without coordination.
+
+### ORSet (Observed-Remove Set) — Fact Membership
+
+Tracks which facts exist in the hive. Each `promote_fact()` adds the fact_id
+to the ORSet; each `retract_fact()` tombstones it. Merge is union of
+element-tag pairs and tombstones. Add-wins semantics: a concurrent add and
+remove results in the element being present.
+
+```python
+# On promote:  self._fact_set.add(fact.fact_id)
+# On retract:  self._fact_set.remove(fact_id)
+# On merge:    self._fact_set.merge(other._fact_set)
+```
+
+### LWWRegister (Last-Writer-Wins Register) — Agent Trust
+
+Each agent's trust score is stored in an LWWRegister. On merge, the register
+with the later timestamp wins. Deterministic tiebreaking by value ensures
+convergence regardless of merge order.
+
+```python
+# On update_trust:  self._trust_registers[agent_id].set(trust, time.time())
+# On merge:         self._trust_registers[agent_id].merge(other._trust_registers[agent_id])
+```
+
+### merge_state()
+
+`InMemoryHiveGraph.merge_state(other)` merges CRDTs from another replica:
+
+1. Merge ORSets (fact membership)
+2. Copy HiveFact objects for new fact_ids
+3. Sync fact status with ORSet membership (add-wins)
+4. Merge LWWRegisters and update agent trust values
+
+## Gossip Protocol
+
+Epidemic-style fact dissemination between hive peers.
+
+### How It Works
+
+1. **Peer selection**: Trust-weighted random selection (configurable fanout,
+   default 2 peers per round)
+2. **Fact selection**: Top-K facts by confidence above minimum threshold
+   (default top 10, min confidence 0.3)
+3. **Deduplication**: Skip facts the peer already has (content-based check)
+4. **Relay agent**: Facts are promoted into the peer via a `__gossip_{hive_id}__`
+   relay agent
+5. **Loop prevention**: Gossip-received facts are tagged `gossip_from:{hive_id}`
+   and excluded from re-gossip
+
+### Auto-Gossip on Promote
+
+When `enable_gossip=True` and peers are registered (via a prior `run_gossip()`
+call), each `promote_fact()` automatically gossips new facts to known peers.
+Gossip copies and broadcast copies are excluded from auto-gossip to prevent
+infinite loops.
+
+### Convergence Measurement
+
+`convergence_check(hives)` measures knowledge overlap across multiple hives:
+
+- Returns fraction of total unique fact content shared by ALL hives
+- 0.0 = no overlap, 1.0 = identical knowledge
+
+## Fact TTL and Garbage Collection
+
+### Confidence Decay
+
+When `enable_ttl=True`, facts lose confidence over time via exponential decay:
+
+```
+confidence_decayed = confidence_original × e^(-decay_rate × elapsed_hours)
+```
+
+Default decay rate is 0.01 per hour. Decay is applied at query time (lazy),
+not stored permanently. The original confidence is preserved so that repeated
+queries do not compound the decay.
+
+### Garbage Collection
+
+`gc()` removes facts older than the TTL threshold (default 24 hours):
+
+1. Iterates the TTL registry
+2. Facts exceeding max age are retracted via `retract_fact()`
+3. TTL entries and original confidence records are cleaned up
+4. Returns list of garbage-collected fact_ids
+
+When TTL is disabled, `gc()` is a no-op returning an empty list.
+
+## The Fact Lifecycle
 
 ### Step 1: Learning (same in all modes)
 
 ```
 learn_from_content("Server prod-01 runs PostgreSQL on port 5432")
   │
-  ├─→ LLM call #1: extract temporal metadata
-  ├─→ LLM call #2: extract structured facts as JSON
-  │     → [{"context": "infrastructure", "fact": "Server prod-01 runs PostgreSQL on port 5432", "confidence": 0.85}]
-  ├─→ LLM call #3: summary concept map
+  ├→ LLM call #1: extract temporal metadata
+  ├→ LLM call #2: extract structured facts as JSON
+  │     → [{"context": "infrastructure", "fact": "Server prod-01...", "confidence": 0.85}]
+  ├→ LLM call #3: summary concept map
   │
-  └─→ For each extracted fact:
+  └→ For each extracted fact:
         CognitiveAdapter.store_fact("infrastructure", "Server prod-01...", 0.85)
           │
-          ├─→ Store in local Kuzu DB
-          └─→ _promote_to_hive()  ←── THIS IS WHERE MODES DIVERGE
+          ├→ Store in local Kuzu DB
+          └→ _promote_to_hive()  ←── THIS IS WHERE MODES DIVERGE
 ```
 
 ### Step 2: Promotion (mode-dependent)
 
-**Flat mode** — `_promote_to_hive()` calls `flat_hive.promote_fact()`:
+**Flat mode** — fact lands directly in the one shared dict. All agents see it
+on the next query.
 
-```
-fact (conf=0.85)
-  │
-  └─→ flat_hive._facts["hf_abc123"] = fact
-      └─→ DONE. Fact immediately in the shared dict.
-          All 5 agents will see it on next query.
-```
-
-**Federated mode** — `_promote_to_hive()` calls `group_hive.promote_fact()`:
-
-```
-fact (conf=0.85)
-  │
-  └─→ group_0._facts["hf_abc123"] = fact
-      │
-      ├─→ Check: confidence (0.85) >= 0.9?  NO
-      │   → No broadcast. Fact stays in group-0 only.
-      │
-      └─→ Other groups can still find it via query_federated()
-          traversal, but it requires keyword matching.
-```
-
-```
-fact (conf=0.95)   ← high confidence triggers broadcast
-  │
-  └─→ group_0._facts["hf_def456"] = fact
-      │
-      ├─→ Check: confidence (0.95) >= 0.9?  YES
-      ├─→ Check: has parent?  YES (root_hive)
-      ├─→ Check: is broadcast copy?  NO (no broadcast_from: tag)
-      │
-      └─→ root_hive.broadcast_fact(fact)
-            │
-            ├─→ group_0._facts["hf_xxx001"] = copy (tagged broadcast_from:root)
-            └─→ group_1._facts["hf_xxx002"] = copy (tagged broadcast_from:root)
-                 └─→ group_1.promote_fact() called
-                     → Check: is broadcast copy? YES → no re-broadcast
-```
+**Federated mode** — fact lands in the group hive. If confidence ≥ 0.9, it
+broadcasts to all sibling groups via the root. Facts below the threshold stay
+in their group but are still reachable via `query_federated()` tree traversal.
 
 ### Step 3: Query (mode-dependent)
 
-**Flat mode** — `_search_hive()` calls `query_facts()`:
+**Flat mode** — `query_facts()` scores every fact in the one shared pool and
+returns top-K.
 
-```
-answer_question("What port does PostgreSQL run on?")
-  │
-  ├─→ CognitiveAdapter.search("PostgreSQL port")
-  │     ├─→ Local Kuzu DB search
-  │     └─→ _search_hive("PostgreSQL port")
-  │           └─→ flat_hive.query_facts("PostgreSQL port", limit=50)
-  │                 │
-  │                 └─→ Score EVERY fact in flat_hive._facts
-  │                     by keyword overlap with "postgresql port"
-  │                     → Return top 50 matches
-  │
-  └─→ LLM synthesize answer from merged local + hive results
-```
-
-**Federated mode** — `_search_hive()` calls `query_federated()`:
-
-```
-answer_question("What port does PostgreSQL run on?")
-  │
-  ├─→ CognitiveAdapter.search("PostgreSQL port")
-  │     ├─→ Local Kuzu DB search
-  │     └─→ _search_hive("PostgreSQL port")
-  │           └─→ group_1.query_federated("PostgreSQL port", limit=50)
-  │                 │
-  │                 ├─→ group_1.query_facts()  ← local group search
-  │                 │
-  │                 ├─→ root.query_federated()  ← traverse up
-  │                 │     ├─→ root.query_facts()
-  │                 │     └─→ group_0.query_federated()  ← traverse sibling
-  │                 │           └─→ group_0.query_facts()
-  │                 │
-  │                 └─→ MERGE + DEDUP by content
-  │                     → GLOBAL RERANK by keyword score
-  │                     → Return top 50 matches
-  │
-  └─→ LLM synthesize answer from merged local + hive results
-```
-
-## Why Federated Scores Differ from Flat
-
-### The Scoring Asymmetry
-
-Both modes can theoretically see all facts. The difference is HOW facts are
-scored and collected:
-
-```
-FLAT: One pool of 519 facts → ONE keyword scoring pass → top K
-
-FEDERATED: Three pools scored SEPARATELY, then merged:
-  group-0: ~260 facts → keyword score within pool → top internal_limit
-  group-1: ~260 facts → keyword score within pool → top internal_limit
-  root:    broadcast copies → keyword score within pool → top internal_limit
-  ──────────────────────────────────────────────────────────────────
-  MERGE + GLOBAL RERANK → top K
-```
-
-**The subtle problem**: keyword scoring in `query_facts()` uses:
-
-```python
-score = keyword_hits + confidence * 0.01
-```
-
-A fact scoring 3rd in one group might score 1st globally. If `internal_limit`
-is too low, it gets dropped from the group's results before global reranking.
-
-### The 0.9 Confidence Threshold
-
-Facts with confidence < 0.9 are NOT broadcast. They stay in their group only.
-They're still findable via `query_federated` tree traversal, but they must
-match the query keywords to appear in the group's `query_facts()` results.
-
-```
-Confidence >= 0.9:  GROUP → ROOT → ALL SIBLINGS (broadcast)
-                    + findable via query_federated
-
-Confidence < 0.9:   GROUP only (no broadcast)
-                    + findable via query_federated IF keywords match
-```
-
-This means federated mode has a **recall gap** for low-confidence facts in
-cross-group queries where the keywords don't match strongly.
-
-### The Remaining 2.6pp Gap
-
-After all 5 proposals, federated (96.6%) is still 2.6pp below flat (99.2%).
-The remaining gap comes from:
-
-1. **incident_tracking category**: 50% in federated vs 100% in flat. This is
-   a single question where the relevant fact has low confidence and sits in a
-   different group than the querying agent. The keyword matching at the group
-   level drops it before global reranking sees it.
-
-2. **Duplicate noise**: Broadcast copies create ~2.6x more facts in federated
-   (1343 hive facts vs 518 in flat). More facts = more noise in keyword
-   scoring = slightly lower precision.
+**Federated mode** — `query_federated()` recursively queries local group,
+parent, and sibling groups, then applies RRF global reranking across all
+collected facts.
 
 ## Azure Deployment Architecture
-
-The Azure deployment runs 21 containers, each with its own `agent_runner.py`
-process wrapping a LearningAgent.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                  Azure Container Apps Environment           │
-│                  (hive-mind-eval-rg, eastus)                │
 │                                                             │
 │  ┌─────────┐ ┌─────────┐ ┌─────────┐     ┌─────────┐      │
-│  │biology_1│ │biology_2│ │chem_1   │ ... │adversary│      │
-│  │:8080    │ │:8080    │ │:8080    │     │:8080    │      │
-│  │         │ │         │ │         │     │         │      │
-│  │Learning │ │Learning │ │Learning │     │Learning │      │
-│  │Agent    │ │Agent    │ │Agent    │     │Agent    │      │
-│  │  │      │ │  │      │ │  │      │     │  │      │      │
-│  │  ↓      │ │  ↓      │ │  ↓      │     │  ↓      │      │
-│  │Kuzu DB  │ │Kuzu DB  │ │Kuzu DB  │     │Kuzu DB  │      │
-│  │  +      │ │  +      │ │  +      │     │  +      │      │
-│  │InMemory │ │InMemory │ │InMemory │     │InMemory │      │
-│  │HiveGraph│ │HiveGraph│ │HiveGraph│     │HiveGraph│      │
+│  │ Agent 1 │ │ Agent 2 │ │ Agent 3 │ ... │ Agent N │      │
+│  │ :8080   │ │ :8080   │ │ :8080   │     │ :8080   │      │
+│  │ Learning│ │ Learning│ │ Learning│     │ Learning│      │
+│  │ Agent   │ │ Agent   │ │ Agent   │     │ Agent   │      │
+│  │ Kuzu DB │ │ Kuzu DB │ │ Kuzu DB │     │ Kuzu DB │      │
+│  │ + Hive  │ │ + Hive  │ │ + Hive  │     │ + Hive  │      │
 │  └────┬────┘ └────┬────┘ └────┬────┘     └────┬────┘      │
-│       │           │           │                │           │
 │       └─────┬─────┴─────┬─────┴────────┬───────┘           │
-│             │           │              │                    │
 │             ▼           ▼              ▼                    │
 │  ┌──────────────────────────────────────────────┐          │
 │  │        Azure Service Bus (Standard)          │          │
 │  │        Topic: "hive-events"                  │          │
-│  │        21 subscriptions (one per agent)       │          │
-│  │                                               │          │
-│  │  Event: FACT_PROMOTED                        │          │
-│  │  { content, concept, confidence, group }     │          │
+│  │        N subscriptions (one per agent)       │          │
 │  └──────────────────────────────────────────────┘          │
 │                                                             │
 │  ┌──────────────────┐  ┌───────────────────┐               │
@@ -294,45 +277,9 @@ process wrapping a LearningAgent.
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Azure Fact Distribution: Service Bus
-
-In Azure, containers can't share Python objects. Instead:
-
-```
-Agent A learns fact
-  │
-  ├─→ Store in local Kuzu DB + InMemoryHiveGraph
-  │
-  └─→ Publish FACT_PROMOTED event to Service Bus
-        │
-        ├─→ Agent B's poll thread receives event
-        │     └─→ group filter check (federated mode)
-        │     └─→ hive.promote_fact() into B's InMemoryHiveGraph
-        │
-        ├─→ Agent C's poll thread receives event
-        │     └─→ ... same
-        │
-        └─→ All agents eventually have the fact in their local hive
-```
-
-**Key difference from local eval**: In Azure, EVERY fact is propagated to
-EVERY agent via Service Bus (after a 2-second poll delay). There's no
-federation tree — each container has an independent InMemoryHiveGraph.
-The Service Bus acts as a flat broadcast layer.
-
-### Federated Mode in Azure
-
-When `/set_group` is called on containers, the poll thread filters facts
-by group:
-
-```python
-if _hive_group and fact_group and fact_group != _hive_group:
-    continue  # Different group, skip
-```
-
-This creates federated behavior: agents only incorporate facts from their
-own group via the event bus. Cross-group queries require the eval script
-to query agents in other groups explicitly.
+In Azure, containers can't share Python objects. Service Bus acts as the
+broadcast layer — each `FACT_PROMOTED` event propagates to all agents (with
+optional group filtering for federated mode).
 
 ## Data Flow Summary
 
@@ -356,29 +303,21 @@ Query path:          Local Kuzu       Local Kuzu       Local Kuzu
                                                          → root
                                                          → sibling groups
 
-Scoring:             Single pool      Single pool      Per-group pools
-                                                       → global rerank
-
-Azure equivalent:    1 container      N containers     N containers
-                                     + Service Bus     + Service Bus
-                                     (broadcast all)   + group filtering
+Retrieval:           Keyword only     Vector + keyword  Vector + keyword
+                                     (single pool)     (per-pool → RRF merge)
 ```
 
-## Why Flat ≈ Federated (After Proposals)
+## Key Files
 
-The 5 proposals closed the gap from 35.5pp to 2.6pp by addressing each
-failure mode:
-
-| Problem                             | Proposal                   | Effect                            |
-| ----------------------------------- | -------------------------- | --------------------------------- |
-| Per-hive cap drops facts            | P1: Remove 2000 cap        | Global rerank sees all candidates |
-| Per-hive scoring misses global best | P2: Two-phase rerank       | Single global scoring pass        |
-| Wrong group queried first           | P3: Domain routing         | Priority groups get 3x limit      |
-| Facts stuck in one group            | P4: Broadcast ≥0.9         | High-confidence facts everywhere  |
-| Adapter uses local query            | P5: Prefer query_federated | Tree traversal by default         |
-
-The remaining 2.6pp gap is inherent to having multiple scoring pools: even
-with global reranking, per-pool keyword scoring can drop marginal facts
-before they reach the merge step. The only way to achieve perfect parity
-would be to collect ALL facts from ALL hives without any per-pool filtering —
-which is equivalent to flat mode.
+| File                                  | Purpose                                       |
+| ------------------------------------- | --------------------------------------------- |
+| `src/.../hive_mind/hive_graph.py`     | HiveGraph protocol, InMemoryHiveGraph         |
+| `src/.../hive_mind/crdt.py`           | GSet, ORSet, LWWRegister implementations      |
+| `src/.../hive_mind/gossip.py`         | Gossip protocol and convergence measurement   |
+| `src/.../hive_mind/fact_lifecycle.py` | FactTTL, confidence decay, garbage collection |
+| `src/.../hive_mind/embeddings.py`     | EmbeddingGenerator (sentence-transformers)    |
+| `src/.../hive_mind/reranker.py`       | hybrid_score_weighted, rrf_merge              |
+| `src/.../hive_mind/controller.py`     | HiveController (desired-state YAML manifests) |
+| `src/.../hive_mind/distributed.py`    | AgentNode, HiveCoordinator                    |
+| `src/.../hive_mind/event_bus.py`      | EventBus protocol + Local/Azure SB/Redis      |
+| `src/.../cognitive_adapter.py`        | CognitiveAdapter (local Kuzu + hive bridge)   |
