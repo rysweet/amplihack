@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from amplihack.fleet._tui_classify import classify_status
 from amplihack.fleet._tui_data import SessionView
+from amplihack.fleet._validation import validate_session_name
 
 
 def parse_session_output(vm_name: str, output: str) -> list[SessionView]:
@@ -28,6 +29,11 @@ def parse_session_output(vm_name: str, output: str) -> list[SessionView]:
         header_end = part.index("===")
         session_name = part[:header_end].strip()
         rest = part[header_end + 3 :]
+
+        try:
+            validate_session_name(session_name)
+        except ValueError:
+            continue
 
         view = SessionView(vm_name=vm_name, session_name=session_name)
 

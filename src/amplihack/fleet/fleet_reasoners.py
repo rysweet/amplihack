@@ -274,7 +274,9 @@ class CoordinationReasoner:
                 ],
                 "updated_at": datetime.now().isoformat(),
             }
-            coord_file.write_text(json.dumps(coord_data, indent=2))
+            tmp = coord_file.with_suffix(".tmp")
+            tmp.write_text(json.dumps(coord_data, indent=2))
+            tmp.rename(coord_file)
 
         return []  # Side-effect only — no admiral actions
 

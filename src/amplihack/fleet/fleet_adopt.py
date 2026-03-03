@@ -200,6 +200,12 @@ echo "===DONE==="
                 if current:
                     sessions.append(current)
                 session_name = line[len("===SESSION:") : -len("===")]
+                try:
+                    validate_session_name(session_name)
+                except ValueError:
+                    logger.warning("Skipping invalid session name from SSH output: %r", session_name)
+                    current = None
+                    continue
                 current = AdoptedSession(vm_name=vm_name, session_name=session_name)
 
             elif current:
