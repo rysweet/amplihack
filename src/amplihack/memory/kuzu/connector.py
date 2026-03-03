@@ -8,6 +8,7 @@ Data is stored in a local directory and persists between sessions.
 """
 
 import logging
+import time
 from pathlib import Path
 from typing import Any
 
@@ -109,12 +110,49 @@ class KuzuConnector:
         # Ensure parent directory exists (kuzu creates the db directory itself)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Open database
-        self._db = kuzu.Database(str(self.db_path), read_only=self.read_only)
+        # Open database with retry for lock contention (concurrent hooks may race)
+        self._db = self._open_with_retry(self.db_path, self.read_only)
         self._conn = kuzu.Connection(self._db)
 
         logger.debug("Connected to Kùzu database: %s", self.db_path)
         return self
+
+    @staticmethod
+    def _open_with_retry(
+        db_path: Path, read_only: bool = False, max_retries: int = 3, base_delay: float = 0.2
+    ) -> "kuzu.Database":
+        """Open Kuzu database with exponential backoff on lock contention.
+
+        Kuzu only allows single-process access. Concurrent hooks (e.g.,
+        duplicate SessionStart hooks) can race on the same DB file.
+
+        Args:
+            db_path: Path to database directory
+            read_only: Open in read-only mode
+            max_retries: Maximum retry attempts
+            base_delay: Initial delay in seconds (doubles each retry)
+
+        Returns:
+            Open kuzu.Database instance
+        """
+        last_error = None
+        for attempt in range(max_retries + 1):
+            try:
+                return kuzu.Database(str(db_path), read_only=read_only)
+            except RuntimeError as e:
+                last_error = e
+                if "Could not set lock on file" not in str(e):
+                    raise
+                if attempt < max_retries:
+                    delay = base_delay * (2**attempt)
+                    logger.warning(
+                        "Kuzu DB locked (attempt %d/%d), retrying in %.1fs",
+                        attempt + 1,
+                        max_retries + 1,
+                        delay,
+                    )
+                    time.sleep(delay)
+        raise last_error  # type: ignore[misc]
 
     def close(self) -> None:
         """Close connection to Kùzu database."""
