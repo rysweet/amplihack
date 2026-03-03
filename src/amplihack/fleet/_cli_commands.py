@@ -1,7 +1,7 @@
 """Fleet CLI commands -- subcommands for the fleet Click group.
 
-All command handler functions live here (or in _cli_fleet_ops / _cli_session_ops).
-They are registered onto the fleet_cli group by register_commands() called from fleet_cli.py.
+All command handler functions live here or in sub-modules:
+  _cli_fleet_ops, _cli_session_ops, _cli_copilot_ops.
 
 This module should NOT be imported directly by external code -- use
 fleet_cli.py's create_fleet_cli() instead.
@@ -9,24 +9,24 @@ fleet_cli.py's create_fleet_cli() instead.
 
 from __future__ import annotations
 
-import json
 import logging
 from pathlib import Path
 from typing import Any, Callable
 
 import click
 
+from amplihack.fleet._cli_copilot_ops import register_copilot_ops
 from amplihack.fleet._cli_fleet_ops import register_fleet_ops
 from amplihack.fleet._cli_session_ops import register_session_ops
 from amplihack.fleet.fleet_auth import AuthPropagator
 from amplihack.fleet.fleet_observer import FleetObserver
-from amplihack.fleet.fleet_session_reasoner import (
+from amplihack.fleet._backends import (
     AnthropicBackend,
     CopilotBackend,
     LiteLLMBackend,
-    SessionReasoner,
     auto_detect_backend,
 )
+from amplihack.fleet.fleet_session_reasoner import SessionReasoner
 from amplihack.fleet.fleet_state import FleetState
 from amplihack.fleet.fleet_tasks import TaskPriority, TaskQueue
 
@@ -98,6 +98,7 @@ def register_commands(
     # so test patches on _cli_commands._get_director etc. work correctly.
     register_fleet_ops(fleet_cli)
     register_session_ops(fleet_cli)
+    register_copilot_ops(fleet_cli)
 
     # ------------------------------------------------------------------
     # fleet dashboard
@@ -268,70 +269,3 @@ def register_commands(
         else:
             click.echo(f"Project not found: {name}")
 
-    # ------------------------------------------------------------------
-    # fleet copilot-status
-    # ------------------------------------------------------------------
-
-    @fleet_cli.command("copilot-status")
-    def copilot_status():
-        """Show current copilot lock/goal state."""
-        lock_dir = COPILOT_LOCK_DIR if COPILOT_LOCK_DIR is not None else _copilot_lock_dir()
-        lock_file = lock_dir / ".lock_active"
-        goal_file = lock_dir / ".lock_goal"
-
-        if not lock_file.exists():
-            click.echo("Copilot: not active")
-            return
-
-        if goal_file.exists():
-            goal_text = goal_file.read_text().strip()
-            click.echo(f"Copilot: active")
-            click.echo(f"Goal: {goal_text}")
-        else:
-            click.echo("Copilot: active (no goal)")
-
-    # ------------------------------------------------------------------
-    # fleet copilot-log
-    # ------------------------------------------------------------------
-
-    @fleet_cli.command("copilot-log")
-    @click.option("--tail", default=0, type=int, help="Show last N entries only")
-    def copilot_log(tail):
-        """Show copilot decision history."""
-        log_dir = COPILOT_LOG_DIR if COPILOT_LOG_DIR is not None else _copilot_log_dir()
-        decisions_file = log_dir / "decisions.jsonl"
-
-        if not decisions_file.exists():
-            click.echo("No decisions recorded.")
-            return
-
-        text = decisions_file.read_text().strip()
-        if not text:
-            click.echo("No decisions recorded.")
-            return
-
-        lines = text.splitlines()
-        entries = []
-        for line in lines:
-            line = line.strip()
-            if line:
-                try:
-                    entries.append(json.loads(line))
-                except json.JSONDecodeError:
-                    click.echo(f"  (skipped malformed entry)", err=True)
-
-        if not entries:
-            click.echo("No decisions recorded.")
-            return
-
-        if tail > 0:
-            entries = entries[-tail:]
-
-        for entry in entries:
-            ts = entry.get("timestamp", "?")
-            action = entry.get("action", "?")
-            reasoning = entry.get("reasoning", "")
-            confidence = entry.get("confidence", "")
-            click.echo(f"[{ts}] {action} (confidence={confidence})")
-            if reasoning:
-                click.echo(f"  {reasoning}")

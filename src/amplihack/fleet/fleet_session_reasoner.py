@@ -1,18 +1,6 @@
-"""Per-session reasoning loop -- the admiral's brain for each agent session.
+"""Per-session reasoning loop -- PERCEIVE/REASON/ACT/LEARN for each agent session.
 
-For each session, the admiral:
-1. PERCEIVE: Capture tmux pane + read JSONL transcript
-2. REASON: Use Anthropic SDK to decide what action to take
-3. ACT: Inject keystrokes via tmux send-keys (or show in dry-run)
-4. LEARN: Record the decision and its outcome
-
-The key insight: the admiral doesn't just OBSERVE sessions -- it DRIVES them
-by typing into the TUI when agents need input, get stuck, or need redirection.
-
-Public API:
-    SessionReasoner: Per-session reasoning engine
-    SessionContext: Gathered context for a single session
-    SessionDecision: What the admiral decided to do
+Public API: SessionReasoner, SessionContext, SessionDecision
 """
 
 from __future__ import annotations
@@ -23,18 +11,11 @@ import shlex
 import subprocess
 from dataclasses import dataclass, field
 
-from amplihack.fleet._backends import (
-    AnthropicBackend,
-    CopilotBackend,
-    LiteLLMBackend,
-    LLMBackend,
-    auto_detect_backend,
-)
+from amplihack.fleet._backends import LLMBackend, auto_detect_backend
 from amplihack.fleet._constants import MIN_CONFIDENCE_RESTART, MIN_CONFIDENCE_SEND
 from amplihack.fleet._defaults import get_azlin_path
 from amplihack.fleet._session_context import SessionContext, SessionDecision
 from amplihack.fleet._session_gather import gather_context
-from amplihack.fleet._status import infer_agent_status
 from amplihack.fleet._system_prompt import SYSTEM_PROMPT
 from amplihack.fleet._validation import (
     is_dangerous_input,
@@ -48,13 +29,6 @@ __all__ = [
     "SessionReasoner",
     "SessionContext",
     "SessionDecision",
-    # Re-exported for backward compatibility
-    "LLMBackend",
-    "AnthropicBackend",
-    "CopilotBackend",
-    "LiteLLMBackend",
-    "auto_detect_backend",
-    "infer_agent_status",
 ]
 
 
@@ -127,19 +101,9 @@ class SessionReasoner:
             decisions.append(decision)
         return decisions
 
-    # Delegation methods for backward compatibility (used by tests)
     def _gather_context(self, vm_name, session_name, task_prompt, project_priorities):
         """Delegate to standalone gather_context."""
         return gather_context(self.azlin_path, vm_name, session_name, task_prompt, project_priorities)
-
-    def _parse_context_output(self, output, context):
-        """Delegate to standalone parse_context_output."""
-        from amplihack.fleet._session_gather import parse_context_output as _parse
-        _parse(output, context)
-
-    def _infer_status(self, tmux_text):
-        """Delegate to module-level infer_agent_status."""
-        return infer_agent_status(tmux_text)
 
     def reason(self, context: SessionContext) -> SessionDecision:
         """Public entry point for LLM-based reasoning about a session context."""

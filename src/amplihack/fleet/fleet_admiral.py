@@ -10,90 +10,33 @@ This is the central control plane for fleet orchestration.
 
 Public API:
     FleetAdmiral: Autonomous fleet management agent
+    ActionType: Re-exported from _admiral_types
+    DirectorAction: Re-exported from _admiral_types
+    DirectorLog: Re-exported from _admiral_types
 """
 
 from __future__ import annotations
 
-import json
 import logging
-import shlex
-import subprocess
 import time
 from dataclasses import dataclass, field
-from datetime import datetime
-from enum import Enum
 from pathlib import Path
 
+from amplihack.fleet._admiral_actions import execute_action
+from amplihack.fleet._admiral_types import ActionType, DirectorAction, DirectorLog
 from amplihack.fleet._constants import (
     DEFAULT_MAX_AGENTS_PER_VM,
     DEFAULT_POLL_INTERVAL_SECONDS,
-    SUBPROCESS_TIMEOUT_KILL_SECONDS,
-    SUBPROCESS_TIMEOUT_SECONDS,
 )
 from amplihack.fleet._defaults import get_azlin_path
-from amplihack.fleet._validation import validate_session_name, validate_vm_name
 from amplihack.fleet.fleet_auth import AuthPropagator
 from amplihack.fleet.fleet_observer import FleetObserver
 from amplihack.fleet.fleet_state import FleetState
-from amplihack.fleet.fleet_tasks import FleetTask, TaskQueue, TaskStatus
+from amplihack.fleet.fleet_tasks import TaskQueue
 
-__all__ = ["FleetAdmiral"]
+__all__ = ["FleetAdmiral", "ActionType", "DirectorAction", "DirectorLog"]
 
 logger = logging.getLogger(__name__)
-
-
-class ActionType(Enum):
-    """Types of actions the admiral can take."""
-
-    START_AGENT = "start_agent"
-    STOP_AGENT = "stop_agent"
-    REASSIGN_TASK = "reassign_task"
-    MARK_COMPLETE = "mark_complete"
-    MARK_FAILED = "mark_failed"
-    REPORT = "report"
-    PROPAGATE_AUTH = "propagate_auth"
-
-
-@dataclass
-class DirectorAction:
-    """A single action decided by the admiral."""
-
-    action_type: ActionType
-    task: FleetTask | None = None
-    vm_name: str | None = None
-    session_name: str | None = None
-    reason: str = ""
-    timestamp: datetime = field(default_factory=datetime.now)
-
-
-@dataclass
-class DirectorLog:
-    """Record of admiral decisions and outcomes."""
-
-    actions: list[dict] = field(default_factory=list)
-    persist_path: Path | None = None
-
-    def record(self, action: DirectorAction, outcome: str) -> None:
-        """Record an action and its outcome."""
-        entry = {
-            "timestamp": action.timestamp.isoformat(),
-            "action": action.action_type.value,
-            "vm": action.vm_name,
-            "session": action.session_name,
-            "task_id": action.task.id if action.task else None,
-            "reason": action.reason,
-            "outcome": outcome,
-        }
-        self.actions.append(entry)
-        self._save()
-
-    def _save(self) -> None:
-        if self.persist_path:
-            self.persist_path.parent.mkdir(parents=True, exist_ok=True)
-            # Atomic write: temp file then rename
-            tmp = self.persist_path.with_suffix(".tmp")
-            tmp.write_text(json.dumps(self.actions, indent=2))
-            tmp.rename(self.persist_path)
 
 
 @dataclass
@@ -123,7 +66,7 @@ class FleetAdmiral:
     )
 
     def __post_init__(self):
-        # Lazy import to avoid circular dependency (fleet_reasoners imports from fleet_admiral)
+        # Lazy import to avoid circular dependency (fleet_reasoners imports from _admiral_types)
         from amplihack.fleet.fleet_reasoners import (
             BatchAssignReasoner,
             CoordinationReasoner,
@@ -278,6 +221,10 @@ class FleetAdmiral:
 
         return results
 
+    def _execute_action(self, action: DirectorAction) -> str:
+        """Dispatch a single action to the appropriate executor."""
+        return execute_action(action, self.azlin_path, self.task_queue, self._auth)
+
     def learn(self, results: list[tuple[DirectorAction, str]]) -> None:
         """Track action outcomes and persist learnings to amplihack memory.
 
@@ -340,130 +287,3 @@ class FleetAdmiral:
             f"{self._stats['failures']} failures",
         ]
         return "\n".join(lines)
-
-    def _execute_action(self, action: DirectorAction) -> str:
-        """Execute a single action."""
-        if action.action_type == ActionType.START_AGENT:
-            return self._start_agent(action)
-        if action.action_type == ActionType.MARK_COMPLETE:
-            return self._mark_complete(action)
-        if action.action_type == ActionType.MARK_FAILED:
-            return self._mark_failed(action)
-        if action.action_type == ActionType.REASSIGN_TASK:
-            return self._reassign_task(action)
-        if action.action_type == ActionType.PROPAGATE_AUTH:
-            return self._propagate_auth(action)
-        return f"Unknown action: {action.action_type}"
-
-    def _start_agent(self, action: DirectorAction) -> str:
-        """Start a coding agent in a tmux session on a VM."""
-        task = action.task
-        if not task:
-            return "ERROR: No task provided"
-
-        vm_name = action.vm_name
-        if not vm_name:
-            return "ERROR: No VM name provided"
-        session_name = action.session_name or f"fleet-{task.id}"
-        validate_vm_name(vm_name)
-        validate_session_name(session_name)
-
-        # Validate agent command and mode against allowlist (security: prevent injection)
-        valid_agents = {"claude", "amplifier", "copilot"}
-        valid_modes = {"auto", "ultrathink"}
-        if task.agent_command not in valid_agents:
-            return f"ERROR: Invalid agent command: {task.agent_command!r}"
-        if task.agent_mode not in valid_modes:
-            return f"ERROR: Invalid agent mode: {task.agent_mode!r}"
-        if not isinstance(task.max_turns, int) or task.max_turns < 1 or task.max_turns > 1000:
-            return f"ERROR: Invalid max_turns: {task.max_turns!r}"
-
-        # Build the tmux command to start an agent
-        safe_session = shlex.quote(session_name)
-        safe_prompt = shlex.quote(task.prompt)
-        safe_agent = shlex.quote(task.agent_command)
-        safe_mode = shlex.quote(task.agent_mode)
-        safe_turns = shlex.quote(str(int(task.max_turns)))
-
-        # Create tmux session and start agent
-        setup_cmd = (
-            f"tmux new-session -d -s {safe_session} && "
-            f"tmux send-keys -t {safe_session} "
-            f"'amplihack {safe_agent} --{safe_mode} "
-            f"--max-turns {safe_turns} "
-            f"-- -p {safe_prompt}' C-m"
-        )
-
-        try:
-            result = subprocess.run(
-                [self.azlin_path, "connect", vm_name, "--no-tmux", "--", setup_cmd],
-                capture_output=True,
-                text=True,
-                timeout=SUBPROCESS_TIMEOUT_SECONDS,
-            )
-
-            if result.returncode == 0:
-                task.assign(vm_name, session_name)
-                task.start()
-                self.task_queue.save()
-                return f"Agent started: {session_name} on {vm_name}"
-            return f"ERROR: Failed to start agent: {result.stderr[:200]}"
-
-        except subprocess.TimeoutExpired:
-            return "ERROR: Timeout starting agent"
-        except (subprocess.SubprocessError, FileNotFoundError) as e:
-            return f"ERROR: {e}"
-
-    def _mark_complete(self, action: DirectorAction) -> str:
-        """Mark a task as completed."""
-        if action.task:
-            action.task.complete(result="Detected as completed by observer")
-        self.task_queue.save()
-        return "Task marked complete"
-
-    def _mark_failed(self, action: DirectorAction) -> str:
-        """Mark a task as failed."""
-        if action.task:
-            action.task.fail(error=action.reason)
-        self.task_queue.save()
-        return f"Task marked failed: {action.reason}"
-
-    def _reassign_task(self, action: DirectorAction) -> str:
-        """Stop stuck agent and requeue task."""
-        if action.task and action.vm_name and action.session_name:
-            validate_vm_name(action.vm_name)
-            # Kill the stuck session
-            kill_cmd = (
-                f"tmux kill-session -t {shlex.quote(action.session_name)} 2>/dev/null || true"
-            )
-            try:
-                subprocess.run(
-                    [self.azlin_path, "connect", action.vm_name, "--no-tmux", "--", kill_cmd],
-                    capture_output=True,
-                    text=True,
-                    timeout=SUBPROCESS_TIMEOUT_KILL_SECONDS,
-                )
-            except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as e:
-                logger.warning(
-                    "Failed to kill stuck session %s on %s: %s",
-                    action.session_name,
-                    action.vm_name,
-                    e,
-                )
-
-            # Requeue the task
-            action.task.status = TaskStatus.QUEUED
-            action.task.assigned_vm = None
-            action.task.assigned_session = None
-            self.task_queue.save()
-            return "Stuck agent killed, task requeued"
-
-        return "ERROR: Missing task/vm/session for reassignment"
-
-    def _propagate_auth(self, action: DirectorAction) -> str:
-        """Propagate auth tokens to a VM."""
-        if action.vm_name:
-            results = self._auth.propagate_all(action.vm_name)
-            success = sum(1 for r in results if r.success)
-            return f"Auth propagated: {success}/{len(results)} services"
-        return "ERROR: No VM specified"

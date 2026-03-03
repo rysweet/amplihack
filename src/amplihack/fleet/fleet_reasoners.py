@@ -1,37 +1,29 @@
 """Composable reasoning functions for the fleet admiral.
 
 Each reasoner takes fleet state + task queue and returns DirectorActions.
-Reasoners run in priority order as a chain. This replaces the monolithic
-`reason()` method with pluggable, testable decision functions.
+Reasoners run in priority order as a chain.
 
-Four built-in reasoners:
-1. LifecycleReasoner: Completions, failures, stuck detection (with protected tasks)
+Built-in reasoners:
+1. LifecycleReasoner: Completions, failures, stuck detection
 2. PreemptionReasoner: Emergency priority escalation
-3. CoordinationReasoner: Shared context for investigation tasks
-4. BatchAssignReasoner: Context-aware batch assignment (replaces greedy 1-at-a-time)
-
-Adding a new reasoner: implement the 3-arg reason() method and append to the chain.
+3. CoordinationReasoner: Inter-agent context sharing (in _coordination.py)
+4. BatchAssignReasoner: Context-aware batch assignment
 
 Public API:
-    ReasonerChain: Ordered chain of reasoners
-    LifecycleReasoner: Task lifecycle management
-    PreemptionReasoner: Priority preemption for emergencies
-    CoordinationReasoner: Inter-agent context sharing
-    BatchAssignReasoner: Smart batch task assignment
+    ReasonerChain, LifecycleReasoner, PreemptionReasoner,
+    CoordinationReasoner (re-exported), BatchAssignReasoner
 """
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
-from datetime import datetime
-from pathlib import Path
 from typing import Protocol
 
 from amplihack.fleet._constants import DEFAULT_STUCK_THRESHOLD_SECONDS
-from amplihack.fleet.fleet_admiral import ActionType, DirectorAction
+from amplihack.fleet._coordination import CoordinationReasoner
+from amplihack.fleet._admiral_types import ActionType, DirectorAction
 from amplihack.fleet.fleet_state import AgentStatus, FleetState
-from amplihack.fleet.fleet_tasks import FleetTask, TaskPriority, TaskQueue, TaskStatus
+from amplihack.fleet.fleet_tasks import TaskPriority, TaskQueue, TaskStatus
 
 __all__ = [
     "ReasonerChain",
@@ -222,63 +214,6 @@ class PreemptionReasoner:
             )
 
         return actions
-
-
-@dataclass
-class CoordinationReasoner:
-    """Manages shared context for agents working on related tasks.
-
-    Writes coordination files so agents investigating the same codebase
-    can see what others are working on and avoid duplication.
-
-    Note: Coordination files are designed to be read by agents via shared
-    NFS mount. This is not dead code -- it is infrastructure for multi-agent
-    awareness across VMs.
-    """
-
-    coordination_dir: Path = field(
-        default_factory=lambda: Path.home() / ".amplihack" / "fleet" / "coordination"
-    )
-
-    def reason(
-        self,
-        state: FleetState,
-        queue: TaskQueue,
-        prior_actions: list[DirectorAction],
-    ) -> list[DirectorAction]:
-        self.coordination_dir.mkdir(parents=True, exist_ok=True)
-
-        # Group active tasks by repo (lightweight context sharing)
-        repo_groups: dict[str, list[FleetTask]] = {}
-        for task in queue.active_tasks():
-            if task.repo_url:
-                repo_groups.setdefault(task.repo_url, []).append(task)
-
-        # Write coordination files for repos with multiple active agents
-        for repo_url, tasks in repo_groups.items():
-            if len(tasks) < 2:
-                continue
-
-            safe_key = repo_url.split("/")[-1].replace(".git", "")
-            coord_file = self.coordination_dir / f"{safe_key}.json"
-            coord_data = {
-                "repo": repo_url,
-                "active_agents": [
-                    {
-                        "task_id": t.id,
-                        "prompt": t.prompt,
-                        "vm": t.assigned_vm,
-                        "session": t.assigned_session,
-                    }
-                    for t in tasks
-                ],
-                "updated_at": datetime.now().isoformat(),
-            }
-            tmp = coord_file.with_suffix(".tmp")
-            tmp.write_text(json.dumps(coord_data, indent=2))
-            tmp.rename(coord_file)
-
-        return []  # Side-effect only — no admiral actions
 
 
 @dataclass

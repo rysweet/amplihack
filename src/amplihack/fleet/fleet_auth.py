@@ -1,15 +1,7 @@
 """Auth propagation across VMs with multi-identity support.
 
-Copies authentication tokens from source machine to target VMs:
-- GitHub CLI auth (~/.config/gh/hosts.yml) with multi-account support
-- Azure CLI tokens (~/.azure/)
-- Claude Code API key (~/.claude.json)
-
-Supports multiple GitHub identities — each VM/project can use a different
-GitHub account via `gh auth switch --user <account>`.
-
-Uses azlin cp for secure file transfer, with shared NFS as recommended
-transport for credential files that azlin blocks by design.
+Copies GitHub CLI, Azure CLI, and Claude Code tokens to target VMs via
+azlin cp. Supports multiple GitHub identities per VM via ``gh auth switch``.
 
 Public API:
     AuthPropagator: Copies auth tokens to target VMs
@@ -105,13 +97,7 @@ class AuthPropagator:
     def propagate_all(self, vm_name: str, services: list[str] | None = None) -> list[AuthResult]:
         """Copy all auth tokens to a target VM.
 
-        Args:
-            vm_name: Target VM name (must be running in azlin fleet)
-            services: Optional list of services to propagate. Defaults to all.
-                     Options: "github", "azure", "claude"
-
-        Returns:
-            List of AuthResult for each service
+        Services: "github", "azure", "claude" (default: all).
         """
         if services is None:
             services = list(AUTH_FILES.keys())
@@ -165,90 +151,11 @@ class AuthPropagator:
     def propagate_all_bundled(self, vm_name: str) -> AuthResult:
         """Copy all auth tokens as a single tar bundle.
 
-        More efficient than per-file transfer since it uses only 2 Bastion
-        tunnel connections (1 for copy, 1 for extract) instead of N.
-
-        Note: azlin cp blocks credential filenames, so we bundle them
-        under a neutral name (fleet-auth-bundle.tar.gz).
+        Delegates to _auth_bundle module for the tar-bundle strategy.
         """
-        validate_vm_name(vm_name)
-        import tarfile
-        import tempfile
+        from amplihack.fleet._auth_bundle import propagate_all_bundled
 
-        start = time.monotonic()
-        files_to_bundle = []
-
-        for service_files in AUTH_FILES.values():
-            for file_info in service_files:
-                src = Path(file_info["src"]).expanduser()
-                if src.exists():
-                    files_to_bundle.append(
-                        (str(src), file_info["dest"], file_info.get("mode", "600"))
-                    )
-
-        if not files_to_bundle:
-            return AuthResult(
-                service="all",
-                vm_name=vm_name,
-                success=False,
-                error="No auth files found locally",
-                duration_seconds=time.monotonic() - start,
-            )
-
-        # Create tar bundle with neutral name
-        bundle_path = Path(tempfile.gettempdir()) / "fleet-auth-bundle.tar.gz"
-        try:
-            with tarfile.open(bundle_path, "w:gz") as tar:
-                for src_path, dest_path, _ in files_to_bundle:
-                    # Store relative to home
-                    arcname = dest_path.replace("~/", "")
-                    if ".." in arcname or arcname.startswith("/"):
-                        continue  # Skip unsafe paths
-                    tar.add(src_path, arcname=arcname)
-
-            # Copy bundle (neutral filename bypasses azlin credential check)
-            result = subprocess.run(
-                [self.azlin_path, "cp", str(bundle_path), f"{vm_name}:~/fleet-auth-bundle.tar.gz"],
-                capture_output=True,
-                text=True,
-                timeout=120,
-            )
-
-            if result.returncode != 0:
-                return AuthResult(
-                    service="all",
-                    vm_name=vm_name,
-                    success=False,
-                    error=f"Failed to copy bundle: {result.stderr[:200]}",
-                    duration_seconds=time.monotonic() - start,
-                )
-
-            # Extract on remote and set permissions
-            perms_cmds = []
-            for _, dest_path, mode in files_to_bundle:
-                _validate_chmod_mode(mode)
-                perms_cmds.append(f"chmod {mode} ~/{dest_path.replace('~/', '')} 2>/dev/null")
-
-            extract_cmd = (
-                "cd ~ && tar --no-absolute-names -xzf fleet-auth-bundle.tar.gz && "
-                + " && ".join(perms_cmds)
-                + " && rm -f fleet-auth-bundle.tar.gz && echo 'AUTH_OK'"
-            )
-            result = self._remote_exec(vm_name, extract_cmd)
-
-            success = "AUTH_OK" in (result.stdout or "")
-            files_copied = [Path(src).name for src, _, _ in files_to_bundle]
-
-            return AuthResult(
-                service="all",
-                vm_name=vm_name,
-                success=success,
-                files_copied=files_copied,
-                duration_seconds=time.monotonic() - start,
-            )
-
-        finally:
-            bundle_path.unlink(missing_ok=True)
+        return propagate_all_bundled(vm_name, self.azlin_path, self._remote_exec)
 
     def _propagate_service(self, vm_name: str, service: str) -> AuthResult:
         """Copy auth files for a single service to target VM."""

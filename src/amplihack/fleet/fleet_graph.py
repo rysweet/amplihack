@@ -1,30 +1,19 @@
-"""Fleet knowledge graph — relationships between projects, tasks, agents, VMs, PRs.
+"""Fleet knowledge graph -- lightweight JSON adjacency graph for fleet relationships.
 
-Lightweight JSON-based adjacency graph that the director uses to:
-- Track which agent is working on which task on which VM
-- Detect task dependencies (task B depends on task A's output)
-- Find related tasks across projects
-- Prevent conflicting file modifications
-- Track PR review relationships
-
-Uses simple JSON persistence — not a full graph DB. The user is building
-a "hive mind memory" that may replace this; keep it lightweight.
-
-Public API:
-    FleetGraph: Relationship tracking between fleet entities
-    GraphNode: Single entity in the graph
-    GraphEdge: Relationship between two entities
-    NodeType: Types of entities in the fleet graph
-    EdgeType: Types of relationships between entities
+Public API: FleetGraph, GraphNode, GraphEdge, NodeType, EdgeType
 """
 
 from __future__ import annotations
 
 import json
+import logging
+import shutil
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 __all__ = ["FleetGraph", "GraphNode", "GraphEdge", "NodeType", "EdgeType"]
 
@@ -95,8 +84,6 @@ class FleetGraph:
             self.load()
 
     class _BatchContext:
-        """Context manager that defers _save() calls until exit."""
-
         def __init__(self, graph: FleetGraph):
             self._graph = graph
 
@@ -181,10 +168,7 @@ class FleetGraph:
     # --- Fleet-specific queries ---
 
     def detect_conflicts(self, task_id: str) -> list[str]:
-        """Find tasks that modify the same files as the given task.
-
-        Returns IDs of conflicting tasks.
-        """
+        """Find tasks that modify the same files as the given task."""
         my_files = set(self.neighbors(task_id, EdgeType.MODIFIES))
         if not my_files:
             return []
@@ -222,11 +206,10 @@ class FleetGraph:
 
     def summary(self) -> str:
         """Human-readable graph summary."""
-        type_counts = {}
+        type_counts: dict[str, int] = {}
         for node in self.nodes.values():
             type_counts[node.node_type.value] = type_counts.get(node.node_type.value, 0) + 1
-
-        edge_counts = {}
+        edge_counts: dict[str, int] = {}
         for edge in self.edges:
             edge_counts[edge.edge_type.value] = edge_counts.get(edge.edge_type.value, 0) + 1
 
@@ -251,8 +234,7 @@ class FleetGraph:
         if not self.persist_path:
             return
         if getattr(self, '_load_failed', False):
-            import logging
-            logging.getLogger(__name__).error("Refusing to save — load failed for %s. Fix the .bak file manually.", self.persist_path)
+            logger.error("Refusing to save — load failed for %s. Fix the .bak file manually.", self.persist_path)
             return
         self.persist_path.parent.mkdir(parents=True, exist_ok=True)
         data = {
@@ -285,10 +267,7 @@ class FleetGraph:
         try:
             data = json.loads(self.persist_path.read_text())
         except json.JSONDecodeError:
-            import logging
-            import shutil
-
-            logging.getLogger(__name__).warning(f"Corrupt graph file: {self.persist_path} — creating backup")
+            logger.warning(f"Corrupt graph file: {self.persist_path} — creating backup")
             backup = self.persist_path.with_suffix(".json.bak")
             shutil.copy2(self.persist_path, backup)
             self._load_failed = True
@@ -303,9 +282,7 @@ class FleetGraph:
                     metadata=ndata.get("metadata", {}),
                 )
             except (KeyError, TypeError, ValueError) as e:
-                import logging
-
-                logging.getLogger(__name__).warning(f"Skipping corrupt graph node {nid}: {e}")
+                logger.warning(f"Skipping corrupt graph node {nid}: {e}")
         self.edges = []
         for edata in data.get("edges", []):
             try:
@@ -318,6 +295,4 @@ class FleetGraph:
                     )
                 )
             except (KeyError, TypeError, ValueError) as e:
-                import logging
-
-                logging.getLogger(__name__).warning(f"Skipping corrupt graph edge: {e}")
+                logger.warning(f"Skipping corrupt graph edge: {e}")
