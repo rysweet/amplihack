@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 __all__ = [
+    "AnalysisReport",
     "format_report",
     "SKILL_RE",
     "SKILL_INVOKE_RE",
