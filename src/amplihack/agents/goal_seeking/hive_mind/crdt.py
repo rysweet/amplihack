@@ -43,7 +43,9 @@ class GSet:
             return item in self._items
 
     def merge(self, other: GSet) -> None:
-        with self._lock, other._lock:
+        # Deterministic lock ordering by id() to prevent deadlock
+        first, second = (self, other) if id(self) < id(other) else (other, self)
+        with first._lock, second._lock:
             self._items |= other._items
 
     @property
@@ -99,7 +101,9 @@ class ORSet:
             return bool(tags - dead)
 
     def merge(self, other: ORSet) -> None:
-        with self._lock, other._lock:
+        # Deterministic lock ordering by id() to prevent deadlock
+        first, second = (self, other) if id(self) < id(other) else (other, self)
+        with first._lock, second._lock:
             for item, tags in other._elements.items():
                 self._elements.setdefault(item, set()).update(tags)
             for item, tags in other._tombstones.items():
@@ -161,7 +165,9 @@ class LWWRegister:
             return self._entry.value if self._entry else None
 
     def merge(self, other: LWWRegister) -> None:
-        with self._lock, other._lock:
+        # Deterministic lock ordering by id() to prevent deadlock
+        first, second = (self, other) if id(self) < id(other) else (other, self)
+        with first._lock, second._lock:
             if other._entry is None:
                 return
             if self._entry is None:

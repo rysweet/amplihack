@@ -285,7 +285,7 @@ def stats():
         try:
             agent_stats = _agent.get_memory_stats()
         except Exception:
-            pass
+            logger.warning("Failed to get agent memory stats", exc_info=True)
 
     hive_stats = {}
     if _hive is not None:

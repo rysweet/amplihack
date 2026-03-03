@@ -115,14 +115,25 @@ class EmbeddingGenerator:
         """Compute cosine similarity between two normalized vectors.
 
         Since embeddings are L2-normalized, cosine similarity = dot product.
+
+        Raises:
+            ImportError: If numpy is not installed.
         """
+        if not HAS_NUMPY:
+            raise ImportError("numpy is required for cosine_similarity")
         return float(np.dot(a, b))
 
     @staticmethod
     def cosine_similarity_batch(
         query: NDArray[np.float32], candidates: list[NDArray[np.float32]]
     ) -> list[float]:
-        """Compute cosine similarity between query and multiple candidates."""
+        """Compute cosine similarity between query and multiple candidates.
+
+        Raises:
+            ImportError: If numpy is not installed.
+        """
+        if not HAS_NUMPY:
+            raise ImportError("numpy is required for cosine_similarity_batch")
         if not candidates:
             return []
         matrix = np.stack(candidates)

@@ -33,13 +33,6 @@ try:
 except ImportError:
     HAS_COGNITIVE_MEMORY = False
 
-try:
-    import amplihack_memory.graph  # type: ignore[import-not-found]  # noqa: F401
-
-    HAS_FEDERATED = True
-except ImportError:
-    HAS_FEDERATED = False
-
 # Graceful imports for retrieval pipeline modules
 try:
     from .hive_mind.quality import score_content_quality
@@ -116,7 +109,7 @@ class CognitiveAdapter:
             # Fallback to HierarchicalMemory
             from .hierarchical_memory import HierarchicalMemory
 
-            logger.error(
+            logger.warning(
                 "CognitiveMemory not available, falling back to HierarchicalMemory. "
                 "Install amplihack-memory-lib for full 6-type cognitive capabilities."
             )
@@ -205,6 +198,7 @@ class CognitiveAdapter:
         if not hasattr(self._hive_store, "promote_fact"):
             return
         # Quality gate: reject low-quality content before promoting
+        # Use getattr with default since tests may bypass __init__ via __new__
         quality_threshold = getattr(self, "_quality_threshold", DEFAULT_QUALITY_THRESHOLD)
         if _HAS_QUALITY and quality_threshold > 0:
             try:
@@ -527,8 +521,6 @@ class CognitiveAdapter:
 
     def store_episode(self, content: str, source_label: str = "") -> str:
         """Store an episode (raw source content)."""
-        if self._cognitive:
-            return self.memory.store_episode(content=content, source_label=source_label)
         return self.memory.store_episode(content=content, source_label=source_label)
 
     # ------------------------------------------------------------------

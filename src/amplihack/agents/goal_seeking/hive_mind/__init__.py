@@ -13,6 +13,10 @@ Production modules (re-exported here):
     HiveController, HiveManifest, etc.: Declarative reconciliation controller
 """
 
+import logging as _logging
+
+_logger = _logging.getLogger(__name__)
+
 __all__: list[str] = []
 
 # Transport-agnostic Event Bus (production)
@@ -37,7 +41,7 @@ try:
         "make_event",
     ]
 except ImportError:
-    pass
+    _logger.debug("event_bus module not available")
 
 # Distributed Hive Mind (production)
 try:
@@ -53,7 +57,7 @@ try:
         "HiveCoordinator",
     ]
 except ImportError:
-    pass
+    _logger.debug("distributed module not available")
 
 # HiveGraph Protocol & InMemory/P2P backends (production)
 try:
@@ -75,7 +79,7 @@ try:
         "create_hive_graph",
     ]
 except ImportError:
-    pass
+    _logger.debug("hive_graph module not available")
 
 
 # Desired-state HiveController (production)
@@ -104,4 +108,4 @@ try:
         "InMemoryGraphStore",
     ]
 except ImportError:
-    pass
+    _logger.debug("controller module not available")

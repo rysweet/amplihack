@@ -186,14 +186,11 @@ def hybrid_score(
 # Reciprocal Rank Fusion
 # ---------------------------------------------------------------------------
 
-# Standard RRF constant (Cormack et al., 2009)
-_RRF_K = RRF_K
-
 
 def rrf_merge(
     *ranked_lists: list[Any],
     key: str = "fact_id",
-    k: int = _RRF_K,
+    k: int = RRF_K,
     limit: int = 20,
 ) -> list[ScoredFact]:
     """Merge multiple ranked lists using Reciprocal Rank Fusion.

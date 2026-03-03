@@ -288,6 +288,13 @@ def _tokenize(text: str) -> set[str]:
     return {w.lower() for w in text.split() if len(w) > 1}
 
 
+def _federated_keyword_score(fact: Any, keywords: set[str]) -> float:
+    """Compute keyword-based score for federated query re-ranking."""
+    fact_words = _tokenize(f"{fact.content} {fact.concept}")
+    hits = len(keywords & fact_words)
+    return hits + fact.confidence * CONFIDENCE_SCORE_BOOST
+
+
 def _word_overlap(a: str, b: str) -> float:
     """Compute Jaccard word overlap between two strings."""
     words_a = _tokenize(a)
@@ -497,27 +504,35 @@ class InMemoryHiveGraph:
                 except Exception:
                     logger.debug("Failed to generate embedding for fact %s", fact.fact_id)
 
+            # Snapshot state under lock for thread-safe post-lock operations
+            fact_tags = list(fact.tags)
+            fact_confidence = fact.confidence
+            parent_ref = self._parent
+            broadcast_threshold = self._broadcast_threshold
+            gossip_enabled = self._enable_gossip
+            gossip_peers = list(self._gossip_peers) if self._gossip_peers else []
+
         # Proposal 4: Auto-replicate high-confidence facts to sibling groups.
         # Guard: only broadcast original facts (not already-broadcast copies)
         # to prevent infinite recursion (child->parent->child->...).
         is_broadcast_copy = any(
             t.startswith(BROADCAST_TAG_PREFIX) or t.startswith(ESCALATION_TAG_PREFIX)
-            for t in fact.tags
+            for t in fact_tags
         )
         if (
-            fact.confidence >= self._broadcast_threshold
-            and self._parent is not None
+            fact_confidence >= broadcast_threshold
+            and parent_ref is not None
             and not is_broadcast_copy
         ):
             self.escalate_fact(fact)
-            self._parent.broadcast_fact(fact)
+            parent_ref.broadcast_fact(fact)
 
         # Auto-gossip on promote when gossip is enabled
-        if self._enable_gossip and self._gossip_peers:
-            is_gossip_copy = any(t.startswith(GOSSIP_TAG_PREFIX) for t in fact.tags)
+        if gossip_enabled and gossip_peers:
+            is_gossip_copy = any(t.startswith(GOSSIP_TAG_PREFIX) for t in fact_tags)
             if not is_gossip_copy and not is_broadcast_copy:
                 try:
-                    _run_gossip_round(self, self._gossip_peers)
+                    _run_gossip_round(self, gossip_peers)
                 except Exception:
                     logger.debug("Auto-gossip failed for fact %s", fact_id)
 
@@ -899,13 +914,9 @@ class InMemoryHiveGraph:
         has_multi_source = len(children) > 0 or parent is not None
         if keywords and _HAS_RERANKER and has_multi_source:
             try:
-
-                def _keyword_score(fact: HiveFact) -> float:
-                    fact_words = _tokenize(f"{fact.content} {fact.concept}")
-                    hits = len(keywords & fact_words)
-                    return hits + fact.confidence * 0.01
-
-                keyword_ranked = sorted(results, key=lambda f: -_keyword_score(f))
+                keyword_ranked = sorted(
+                    results, key=lambda f: -_federated_keyword_score(f, keywords)
+                )
                 confidence_ranked = sorted(results, key=lambda f: -f.confidence)
                 scored_facts = rrf_merge(
                     keyword_ranked,
@@ -916,21 +927,9 @@ class InMemoryHiveGraph:
                 results = [sf.fact for sf in scored_facts]
             except Exception:
                 logger.debug("RRF merge failed, falling back to keyword re-ranking")
-
-                def _global_score(fact: HiveFact) -> float:
-                    fact_words = _tokenize(f"{fact.content} {fact.concept}")
-                    hits = len(keywords & fact_words)
-                    return hits + fact.confidence * 0.01
-
-                results.sort(key=lambda f: (-_global_score(f), -f.confidence))
+                results.sort(key=lambda f: (-_federated_keyword_score(f, keywords), -f.confidence))
         elif keywords:
-
-            def _global_score_fb(fact: HiveFact) -> float:
-                fact_words = _tokenize(f"{fact.content} {fact.concept}")
-                hits = len(keywords & fact_words)
-                return hits + fact.confidence * 0.01
-
-            results.sort(key=lambda f: (-_global_score_fb(f), -f.confidence))
+            results.sort(key=lambda f: (-_federated_keyword_score(f, keywords), -f.confidence))
         else:
             results.sort(key=lambda f: -f.confidence)
 
