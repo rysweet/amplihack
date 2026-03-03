@@ -31,7 +31,7 @@ import tty
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from amplihack.fleet._constants import DEFAULT_TUI_REFRESH_SECONDS, SUBPROCESS_TIMEOUT_SECONDS
+from amplihack.fleet._constants import DEFAULT_CAPTURE_LINES, DEFAULT_TUI_REFRESH_SECONDS, SUBPROCESS_TIMEOUT_SECONDS
 from amplihack.fleet._defaults import DEFAULT_EXCLUDE_VMS, get_azlin_path
 from amplihack.fleet._tui_classify import classify_status
 from amplihack.fleet._tui_data import SessionView, VMView
@@ -55,6 +55,7 @@ class FleetTUI:
 
     azlin_path: str = field(default_factory=get_azlin_path)
     refresh_interval: int = DEFAULT_TUI_REFRESH_SECONDS
+    capture_lines: int = DEFAULT_CAPTURE_LINES
     exclude_vms: set[str] = field(default_factory=lambda: set(DEFAULT_EXCLUDE_VMS))
 
     def run(self, once: bool = False) -> None:
@@ -256,9 +257,9 @@ fi
 for SESS in $SESSIONS; do
     echo "===SESSION:${SESS}==="
 
-    # Capture last 15 lines of the pane
+    # Capture pane output
     echo "---CAPTURE---"
-    tmux capture-pane -t "$SESS" -p -S -15 2>/dev/null || echo "(empty)"
+    tmux capture-pane -t "$SESS" -p -S -__CAPTURE_DEPTH__ 2>/dev/null || echo "(empty)"
 
     # Get working directory and git info
     echo "---GIT---"
@@ -276,6 +277,7 @@ for SESS in $SESSIONS; do
     echo "---END---"
 done
 """
+        gather_cmd = gather_cmd.replace("__CAPTURE_DEPTH__", str(self.capture_lines))
         try:
             result = subprocess.run(
                 [self.azlin_path, "connect", vm_name, "--no-tmux", "--", gather_cmd],

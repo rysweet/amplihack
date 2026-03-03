@@ -27,6 +27,7 @@ import click
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
+from amplihack.fleet._constants import DEFAULT_CAPTURE_LINES, DEFAULT_DASHBOARD_REFRESH_SECONDS
 from amplihack.fleet._defaults import DEFAULT_EXCLUDE_VMS, get_azlin_path
 from amplihack.fleet._validation import validate_vm_name
 from amplihack.fleet.fleet_admiral import FleetAdmiral
@@ -154,8 +155,8 @@ def status():
 
 
 @fleet_cli.command("tui")
-@click.option("--interval", default=30, help="Refresh interval in seconds")
-@click.option("--capture-lines", default=5000, type=int, help="Terminal scrollback capture depth")
+@click.option("--interval", default=DEFAULT_DASHBOARD_REFRESH_SECONDS, help="Refresh interval in seconds")
+@click.option("--capture-lines", default=DEFAULT_CAPTURE_LINES, type=int, help="Terminal scrollback capture depth")
 def tui(interval, capture_lines):
     """Interactive fleet dashboard (Textual TUI).
 

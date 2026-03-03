@@ -16,6 +16,12 @@ def register_fleet_ops(fleet_cli: click.Group) -> None:
     _cli_commands at call time so tests can patch them.
     """
     import amplihack.fleet._cli_commands as _cmd
+    from amplihack.fleet._constants import (
+        DEFAULT_CAPTURE_LINES,
+        DEFAULT_MAX_AGENTS_PER_VM,
+        DEFAULT_POLL_INTERVAL_SECONDS,
+        DEFAULT_STUCK_THRESHOLD_SECONDS,
+    )
 
     # ------------------------------------------------------------------
     # fleet start
@@ -23,19 +29,18 @@ def register_fleet_ops(fleet_cli: click.Group) -> None:
 
     @fleet_cli.command("start")
     @click.option("--max-cycles", default=0, help="Max admiral cycles (0 = unlimited)")
-    @click.option("--interval", default=60, help="Poll interval in seconds")
+    @click.option("--interval", default=int(DEFAULT_POLL_INTERVAL_SECONDS), help="Poll interval in seconds")
     @click.option("--adopt", is_flag=True, help="Adopt existing sessions at startup")
-    @click.option("--stuck-threshold", default=300, type=float, help="Seconds without change before session is stuck")
-    @click.option("--max-agents-per-vm", default=3, type=int, help="Max concurrent agents per VM")
-    @click.option("--capture-lines", default=5000, type=int, help="Terminal scrollback capture depth")
+    @click.option("--stuck-threshold", default=DEFAULT_STUCK_THRESHOLD_SECONDS, type=float, help="Seconds without change before session is stuck")
+    @click.option("--max-agents-per-vm", default=DEFAULT_MAX_AGENTS_PER_VM, type=int, help="Max concurrent agents per VM")
+    @click.option("--capture-lines", default=DEFAULT_CAPTURE_LINES, type=int, help="Terminal scrollback capture depth")
     def start(max_cycles, interval, adopt, stuck_threshold, max_agents_per_vm, capture_lines):
         """Start autonomous fleet admiral loop."""
         director = _cmd._get_director()
         director.poll_interval_seconds = interval
         director.max_agents_per_vm = max_agents_per_vm
-        if hasattr(director, 'observer') and director.observer:
-            director.observer.stuck_threshold_seconds = stuck_threshold
-            director.observer.capture_lines = capture_lines
+        director.observer.stuck_threshold_seconds = stuck_threshold
+        director.observer.capture_lines = capture_lines
 
         if adopt:
             _cmd._adopt_all_sessions(director)

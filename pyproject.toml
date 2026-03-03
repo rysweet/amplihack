@@ -125,6 +125,7 @@ include = ["amplihack*"]
 # commands/, skills/, agents/ are also copied to package root for plugin discovery
 amplihack = [
     "prompts/*.md",
+    "fleet/prompts/*.prompt",
     "utils/uvx_settings_template.json",
     ".claude/**/*",
     ".claude/**/.gitkeep",
