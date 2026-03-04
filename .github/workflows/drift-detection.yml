@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   check-drift:
-    name: Check skill/agent drift
+    name: Check skill/agent/hooks drift
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
