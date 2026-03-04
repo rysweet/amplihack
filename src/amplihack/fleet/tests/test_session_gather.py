@@ -88,11 +88,34 @@ class TestGatherContextSuccess:
         assert "--no-tmux" in args
 
     @patch("amplihack.fleet._session_gather.subprocess.run")
-    def test_nonzero_returncode_leaves_context_unparsed(self, mock_run):
-        """When SSH returns non-zero, context is not parsed (fields stay empty)."""
+    def test_nonzero_returncode_with_markers_still_parses(self, mock_run):
+        """When SSH returns non-zero but markers are present, context is parsed.
+
+        azlin returns non-zero on SSH key sync warnings even when the command
+        succeeds — so we parse output when session markers are found.
+        """
         mock_run.return_value = MagicMock(
             returncode=1,
             stdout="===TMUX===\nsome output\n===END===",
+            stderr="SSH key sync warning",
+        )
+
+        ctx = gather_context(
+            azlin_path="/usr/bin/azlin",
+            vm_name="devy",
+            session_name="task-1",
+            task_prompt="task",
+            project_priorities="",
+        )
+
+        assert ctx.tmux_capture == "some output"
+
+    @patch("amplihack.fleet._session_gather.subprocess.run")
+    def test_nonzero_returncode_without_markers_leaves_unparsed(self, mock_run):
+        """When SSH returns non-zero and no markers, context stays empty."""
+        mock_run.return_value = MagicMock(
+            returncode=1,
+            stdout="Connection refused",
             stderr="Connection refused",
         )
 

@@ -19,11 +19,20 @@ logger = logging.getLogger(__name__)
 
 
 def parse_session_output(vm_name: str, output: str) -> list[SessionView]:
-    """Parse the compound tmux output for a VM into SessionView objects."""
+    """Parse the compound tmux output for a VM into SessionView objects.
+
+    Handles noisy PTY output where captured tmux pane content may contain
+    marker strings from previous test runs.  Deduplicates by session name,
+    keeping the first (most complete) occurrence.
+    """
     sessions: list[SessionView] = []
 
-    if "===NO_SESSIONS===" in output:
+    # Only treat as "no sessions" when there are no real session markers.
+    # PTY output can include marker text from captured terminal content.
+    if "===NO_SESSIONS===" in output and "===SESSION:" not in output:
         return sessions
+
+    seen_names: set[str] = set()
 
     # Split by session markers
     parts = output.split("===SESSION:")
@@ -36,15 +45,26 @@ def parse_session_output(vm_name: str, output: str) -> list[SessionView]:
         session_name = part[:header_end].strip()
         rest = part[header_end + 3 :]
 
-        # Accept all session names from tmux for display purposes.
-        # Names like "(none)" are valid tmux output — don't reject them.
-        if not session_name:
+        # Filter out invalid session names.  PTY output captures pane content
+        # which may contain literal marker text like ===SESSION:${SESS}===.
+        # Names with $, {, }, or other shell metacharacters are noise.
+        if not session_name or any(c in session_name for c in "${}\\`"):
             continue
+
+        # Skip duplicates — PTY output captures pane content which may
+        # contain ===SESSION:name=== markers from previous test runs.
+        if session_name in seen_names:
+            continue
+        seen_names.add(session_name)
 
         view = SessionView(vm_name=vm_name, session_name=session_name)
 
-        # Extract capture
-        if "---CAPTURE---" in rest and "---GIT---" in rest:
+        # Parse capture and git sections if markers are present.
+        has_capture = "---CAPTURE---" in rest
+        has_git = "---GIT---" in rest
+        has_end = "---END---" in rest
+
+        if has_capture and has_git:
             capture_start = rest.index("---CAPTURE---") + len("---CAPTURE---")
             capture_end = rest.index("---GIT---")
             capture = rest[capture_start:capture_end].strip()
@@ -62,10 +82,9 @@ def parse_session_output(vm_name: str, output: str) -> list[SessionView]:
             else:
                 view.status = "empty"
 
-        # Extract git info
-        if "---GIT---" in rest:
+            # Extract git info
             git_start = rest.index("---GIT---") + len("---GIT---")
-            git_end = rest.index("---END---") if "---END---" in rest else len(rest)
+            git_end = rest.index("---END---") if has_end else len(rest)
             git_section = rest[git_start:git_end].strip()
 
             for line in git_section.split("\n"):
@@ -74,6 +93,9 @@ def parse_session_output(vm_name: str, output: str) -> list[SessionView]:
                     view.branch = line[7:]
                 elif line.startswith("PR:"):
                     view.pr = line[3:]
+        elif not has_capture and not has_git:
+            # No markers at all — likely noise from captured pane content.
+            view.status = "unknown"
 
         sessions.append(view)
 

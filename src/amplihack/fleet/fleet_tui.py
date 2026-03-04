@@ -244,40 +244,30 @@ class FleetTUI:
         Falls back to a pseudo-TTY (virtual TTY) when standard subprocess
         fails — Bastion-tunnelled SSH often requires a TTY to complete.
         """
-        # Compound command: list sessions, then capture each pane + git info
-        gather_cmd = r"""
-# List tmux sessions
-SESSIONS=$(tmux list-sessions -F '#{session_name}' 2>/dev/null)
-if [ -z "$SESSIONS" ]; then
-    echo '===NO_SESSIONS==='
-    exit 0
-fi
-
-for SESS in $SESSIONS; do
-    echo "===SESSION:${SESS}==="
-
-    # Capture pane output
-    echo "---CAPTURE---"
-    tmux capture-pane -t "$SESS" -p -S -__CAPTURE_DEPTH__ 2>/dev/null || echo "(empty)"
-
-    # Get working directory and git info
-    echo "---GIT---"
-    CWD=$(tmux display-message -t "$SESS" -p '#{pane_current_path}' 2>/dev/null)
-    if [ -n "$CWD" ] && [ -d "$CWD/.git" ]; then
-        cd "$CWD" 2>/dev/null
-        BRANCH=$(git branch --show-current 2>/dev/null)
-        echo "BRANCH:${BRANCH}"
-        # Check for open PR
-        PR=$(git log --oneline -1 --format='%s' 2>/dev/null | grep -oP 'PR #\K\d+' || true)
-        if [ -n "$PR" ]; then
-            echo "PR:#${PR}"
-        fi
-    fi
-    echo "---END---"
-done
-"""
+        # Compound command: list sessions, then capture each pane + git info.
+        # IMPORTANT: Every statement ends with `;` so the script works even
+        # when newlines are stripped (azlin -> SSH -> bash -c collapses them).
+        gather_cmd = (
+            'SESSIONS=$(tmux list-sessions -F "#{session_name}" 2>/dev/null); '
+            'if [ -z "$SESSIONS" ]; then echo "===NO_SESSIONS==="; exit 0; fi; '
+            "for SESS in $SESSIONS; do "
+            'echo "===SESSION:${SESS}==="; '
+            'echo "---CAPTURE---"; '
+            'tmux capture-pane -t "$SESS" -p -S -__CAPTURE_DEPTH__ 2>/dev/null || echo "(empty)"; '
+            'echo "---GIT---"; '
+            'CWD=$(tmux display-message -t "$SESS" -p "#{pane_current_path}" 2>/dev/null); '
+            'if [ -n "$CWD" ] && [ -d "$CWD/.git" ]; then '
+            'cd "$CWD" 2>/dev/null; '
+            'BRANCH=$(git branch --show-current 2>/dev/null); '
+            'echo "BRANCH:${BRANCH}"; '
+            "PR=$(git log --oneline -1 --format='%s' 2>/dev/null | grep -oP 'PR #\\K\\d+' || true); "
+            'if [ -n "$PR" ]; then echo "PR:#${PR}"; fi; '
+            "fi; "
+            'echo "---END---"; '
+            "done"
+        )
         gather_cmd = gather_cmd.replace("__CAPTURE_DEPTH__", str(int(self.capture_lines)))
-        cmd = [self.azlin_path, "connect", vm_name, "--no-tmux", "--", gather_cmd]
+        cmd = [self.azlin_path, "connect", vm_name, "--no-tmux", "--yes", "--", gather_cmd]
 
         # Strategy 1: standard subprocess (fast when SSH keys are cached)
         output = self._run_ssh_cmd(cmd)

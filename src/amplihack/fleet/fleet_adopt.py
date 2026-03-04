@@ -20,6 +20,7 @@ import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from amplihack.fleet._constants import SUBPROCESS_TIMEOUT_SECONDS
 from amplihack.fleet._defaults import get_azlin_path
 from amplihack.fleet._validation import validate_session_name, validate_vm_name
 from amplihack.fleet.fleet_tasks import TaskPriority, TaskQueue
@@ -65,11 +66,14 @@ class SessionAdopter:
 
         try:
             result = subprocess.run(
-                [self.azlin_path, "connect", vm_name, "--no-tmux", "--", discover_cmd],
+                [self.azlin_path, "connect", vm_name, "--no-tmux", "--yes", "--", discover_cmd],
                 capture_output=True,
                 text=True,
-                timeout=60,
+                timeout=SUBPROCESS_TIMEOUT_SECONDS,
             )
+
+            if "===SESSION:" in result.stdout or "===DONE===" in result.stdout:
+                return self._parse_discovery_output(vm_name, result.stdout)
 
             if result.returncode != 0:
                 logger.warning("Session discovery command failed for %s (rc=%d): %s", vm_name, result.returncode, result.stderr[:200])
@@ -128,65 +132,30 @@ class SessionAdopter:
         return adopted
 
     def _build_discover_command(self) -> str:
-        """Build a compound SSH command that discovers all session contexts."""
-        return """
-# List all tmux sessions with their current pane commands
-for session in $(tmux list-sessions -F '#{session_name}' 2>/dev/null); do
-    echo "===SESSION:$session==="
+        """Build a compound SSH command that discovers all session contexts.
 
-    # Get current working directory of the session's active pane
-    CWD=$(tmux display-message -t "$session" -p '#{pane_current_path}' 2>/dev/null)
-    echo "CWD:$CWD"
-
-    # Get the running command in the pane
-    CMD=$(tmux display-message -t "$session" -p '#{pane_current_command}' 2>/dev/null)
-    echo "CMD:$CMD"
-
-    # Get git info if in a git repo
-    if [ -n "$CWD" ] && [ -d "$CWD/.git" ]; then
-        BRANCH=$(cd "$CWD" && git branch --show-current 2>/dev/null)
-        REMOTE=$(cd "$CWD" && git remote get-url origin 2>/dev/null)
-        echo "BRANCH:$BRANCH"
-        echo "REPO:$REMOTE"
-    fi
-
-    # Capture last 5 lines of pane for context
-    echo "PANE_START"
-    tmux capture-pane -t "$session" -p -S -5 2>/dev/null | tail -5
-    echo "PANE_END"
-
-    # Check for Claude Code JSONL logs
-    if [ -n "$CWD" ]; then
-        # Find most recent JSONL in the Claude projects dir
-        PROJECT_KEY=$(echo "$CWD" | sed 's|/|-|g')
-        JSONL=$(ls -t ~/.claude/projects/$PROJECT_KEY/*.jsonl 2>/dev/null | head -1)
-        if [ -n "$JSONL" ]; then
-            echo "JSONL:$JSONL"
-            # Get last few meaningful entries (assistant messages, pr-links)
-            tail -50 "$JSONL" 2>/dev/null | python3 -c "
-import sys, json
-for line in sys.stdin:
-    try:
-        obj = json.loads(line)
-        t = obj.get('type','')
-        if t == 'pr-link':
-            print(f'PR:{obj.get(\"url\",\"\")}'[:200])
-        elif t == 'assistant':
-            msg = obj.get('message',{})
-            content = msg.get('content','')
-            if isinstance(content, list):
-                for c in content:
-                    if isinstance(c, dict) and c.get('type') == 'text':
-                        text = c.get('text','')[:100]
-                        if text: print(f'LAST_MSG:{text}')
-                        break
-    except Exception: pass
-" 2>/dev/null | tail -3
-        fi
-    fi
-done
-echo "===DONE==="
-"""
+        Uses semicolons at statement boundaries so the script works even when
+        newlines are stripped (azlin -> SSH -> bash -c collapses them).
+        """
+        return (
+            'for session in $(tmux list-sessions -F "#{session_name}" 2>/dev/null); do '
+            'echo "===SESSION:$session==="; '
+            'CWD=$(tmux display-message -t "$session" -p "#{pane_current_path}" 2>/dev/null); '
+            'echo "CWD:$CWD"; '
+            'CMD=$(tmux display-message -t "$session" -p "#{pane_current_command}" 2>/dev/null); '
+            'echo "CMD:$CMD"; '
+            'if [ -n "$CWD" ] && [ -d "$CWD/.git" ]; then '
+            'BRANCH=$(cd "$CWD" && git branch --show-current 2>/dev/null); '
+            'REMOTE=$(cd "$CWD" && git remote get-url origin 2>/dev/null); '
+            'echo "BRANCH:$BRANCH"; '
+            'echo "REPO:$REMOTE"; '
+            "fi; "
+            'echo "PANE_START"; '
+            'tmux capture-pane -t "$session" -p -S -5 2>/dev/null | tail -5; '
+            'echo "PANE_END"; '
+            "done; "
+            'echo "===DONE==="'
+        )
 
     def _parse_discovery_output(self, vm_name: str, output: str) -> list[AdoptedSession]:
         """Parse the compound discovery output into AdoptedSession records."""
