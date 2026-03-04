@@ -153,18 +153,38 @@ steps:
 
 ### Step Fields
 
-| Field        | Type        | Required | Description                                                  |
-| ------------ | ----------- | -------- | ------------------------------------------------------------ |
-| `id`         | string      | Yes      | Unique step identifier within the recipe                     |
-| `agent`      | string      | No       | Agent reference in `namespace:name` format                   |
-| `type`       | string      | No       | `agent` (default when `agent` or `prompt` present) or `bash` |
-| `prompt`     | string      | No       | Prompt template sent to the agent                            |
-| `command`    | string      | No       | Shell command (when `type: bash`)                            |
-| `output`     | string      | No       | Context key to store step result under                       |
-| `condition`  | string      | No       | Python expression; step skips when false                     |
-| `parse_json` | bool        | No       | Parse stdout as JSON and store as dict in context            |
-| `mode`       | string      | No       | Agent mode hint (e.g. `ANALYZE`, `DESIGN`)                   |
-| `timeout`    | int or None | No       | Timeout in seconds for bash steps (default: None = no timeout) |
+| Field        | Type        | Required | Description                                                                    |
+| ------------ | ----------- | -------- | ------------------------------------------------------------------------------ |
+| `id`         | string      | Yes      | Unique step identifier within the recipe                                       |
+| `agent`      | string      | No       | Agent reference in `namespace:name` format                                     |
+| `type`       | string      | No       | `agent` (default when `agent`/`prompt` present), `bash`, or `recipe`          |
+| `prompt`     | string      | No       | Prompt template sent to the agent                                              |
+| `command`    | string      | No       | Shell command (when `type: bash`)                                              |
+| `recipe`     | string      | No       | Sub-recipe name to invoke (when `type: recipe`)                                |
+| `context`    | dict        | No       | Extra context key/value pairs merged into the sub-recipe (when `type: recipe`) |
+| `output`     | string      | No       | Context key to store step result under                                         |
+| `condition`  | string      | No       | Python expression; step skips when false                                       |
+| `parse_json` | bool        | No       | Parse stdout as JSON and store as dict in context                              |
+| `mode`       | string      | No       | Agent mode hint (e.g. `ANALYZE`, `DESIGN`)                                     |
+| `timeout`    | int or None | No       | Timeout in seconds for bash steps (default: None = no timeout)                 |
+
+### Recipe Step (`type: recipe`)
+
+A `recipe` step invokes another recipe as a sub-step, enabling composition of complex workflows from simpler building blocks.
+
+```yaml
+steps:
+  - id: run-quality-audit
+    type: recipe
+    recipe: quality-audit-cycle
+    context:
+      target_path: src/amplihack
+    output: quality_audit_results
+```
+
+**Recursion guard**: Sub-recipes can themselves contain `recipe` steps (up to a maximum depth of 3). Deeper nesting raises an error to prevent infinite loops.
+
+**Context merging**: The sub-recipe starts with a copy of the current context, then the step-level `context` dict is merged on top. Mutations inside the sub-recipe do not propagate back to the parent recipe.
 
 ### Bash Step Timeouts
 

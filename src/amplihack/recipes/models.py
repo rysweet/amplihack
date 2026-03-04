@@ -16,6 +16,7 @@ class StepType(enum.Enum):
 
     BASH = "bash"
     AGENT = "agent"
+    RECIPE = "recipe"
 
 
 class StepStatus(enum.Enum):
@@ -44,6 +45,8 @@ class Step:
     working_dir: str | None = None
     timeout: int | None = None
     auto_stage: bool | None = None  # None = inherit from runner default
+    recipe: str | None = None  # Sub-recipe name (for StepType.RECIPE)
+    sub_context: dict[str, Any] | None = None  # Context to merge into sub-recipe
 
 
 @dataclass
