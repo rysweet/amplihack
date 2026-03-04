@@ -7,7 +7,10 @@ Skills and agents exist in up to 3 locations that must stay in sync:
   3. docs/claude/skills/ and docs/claude/agents/ (documentation, optional)
 
 This script compares checksums between these locations and reports any drift.
-Exits non-zero if drift is detected.
+
+Severity levels:
+  - MISSING/EXTRA: printed as warnings, do NOT cause exit 1 (intentional structural differences)
+  - CHANGED: printed as errors, cause exit 1 (content drift must be fixed)
 
 References: https://github.com/microsoft/amplihack/issues/2820
 """
@@ -54,19 +57,24 @@ def compare_directories(
     target_dir: Path,
     source_label: str,
     target_label: str,
-) -> list[str]:
-    """Compare two directories and return a list of drift descriptions.
+) -> tuple[list[str], list[str]]:
+    """Compare two directories and return (warnings, errors).
 
     source_dir is treated as the source of truth.
+
+    Returns:
+        warnings: MISSING and EXTRA files (structural differences, not failures)
+        errors: CHANGED files (content drift, causes exit 1)
     """
-    drifts = []
+    warnings: list[str] = []
+    errors: list[str] = []
 
     if not source_dir.is_dir():
-        return drifts
+        return warnings, errors
 
     if not target_dir.is_dir():
         # Target doesn't exist at all -- not an error if it's optional (docs)
-        return drifts
+        return warnings, errors
 
     source_files = collect_files(source_dir)
     target_files = collect_files(target_dir)
@@ -74,78 +82,92 @@ def compare_directories(
     source_keys = set(source_files.keys())
     target_keys = set(target_files.keys())
 
-    # Files only in source (missing from target)
+    # Files only in source (missing from target) -- structural difference, warn only
     for rel in sorted(source_keys - target_keys):
-        drifts.append(f"  MISSING in {target_label}: {rel}")
+        warnings.append(f"  MISSING in {target_label}: {rel}")
 
-    # Files only in target (extra in target)
+    # Files only in target (extra in target) -- structural difference, warn only
     for rel in sorted(target_keys - source_keys):
-        drifts.append(f"  EXTRA in {target_label}: {rel}")
+        warnings.append(f"  EXTRA in {target_label}: {rel}")
 
-    # Files in both -- compare checksums
+    # Files in both -- compare checksums (content drift is an error)
     for rel in sorted(source_keys & target_keys):
         src_hash = file_checksum(source_files[rel])
         tgt_hash = file_checksum(target_files[rel])
         if src_hash != tgt_hash:
-            drifts.append(f"  CHANGED: {rel}")
+            errors.append(f"  CHANGED: {rel}")
 
-    return drifts
+    return warnings, errors
 
 
 def main() -> int:
     repo_root = Path(__file__).resolve().parent.parent
-    all_drifts: list[tuple[str, list[str]]] = []
+    all_warnings: list[tuple[str, list[str]]] = []
+    all_errors: list[tuple[str, list[str]]] = []
 
     # --- Skills ---
     skills_source = repo_root / ".claude" / "skills"
     skills_bundle = repo_root / "amplifier-bundle" / "skills"
     skills_docs = repo_root / "docs" / "claude" / "skills"
 
-    drifts = compare_directories(
+    warnings, errors = compare_directories(
         skills_source, skills_bundle, ".claude/skills", "amplifier-bundle/skills"
     )
-    if drifts:
-        all_drifts.append(
-            (".claude/skills vs amplifier-bundle/skills", drifts)
-        )
+    if warnings:
+        all_warnings.append((".claude/skills vs amplifier-bundle/skills", warnings))
+    if errors:
+        all_errors.append((".claude/skills vs amplifier-bundle/skills", errors))
 
-    drifts = compare_directories(
+    warnings, errors = compare_directories(
         skills_source, skills_docs, ".claude/skills", "docs/claude/skills"
     )
-    if drifts:
-        all_drifts.append((".claude/skills vs docs/claude/skills", drifts))
+    if warnings:
+        all_warnings.append((".claude/skills vs docs/claude/skills", warnings))
+    if errors:
+        all_errors.append((".claude/skills vs docs/claude/skills", errors))
 
     # --- Agents ---
     agents_source = repo_root / ".claude" / "agents"
     agents_bundle = repo_root / "amplifier-bundle" / "agents"
 
-    drifts = compare_directories(
+    warnings, errors = compare_directories(
         agents_source, agents_bundle, ".claude/agents", "amplifier-bundle/agents"
     )
-    if drifts:
-        all_drifts.append(
-            (".claude/agents vs amplifier-bundle/agents", drifts)
+    if warnings:
+        all_warnings.append((".claude/agents vs amplifier-bundle/agents", warnings))
+    if errors:
+        all_errors.append((".claude/agents vs amplifier-bundle/agents", errors))
+
+    # --- Report warnings (MISSING/EXTRA) ---
+    if all_warnings:
+        total_warnings = sum(len(items) for _, items in all_warnings)
+        print(f"WARNING: {total_warnings} structural difference(s) found (MISSING/EXTRA).")
+        print("These are intentional and do not cause failure.\n")
+        for header, items in all_warnings:
+            print(f"[{header}]")
+            for item in items:
+                print(item)
+            print()
+
+    # --- Report errors (CHANGED) ---
+    if all_errors:
+        total_errors = sum(len(items) for _, items in all_errors)
+        print(f"ERROR: {total_errors} file(s) have content drift (CHANGED). These must be fixed.\n")
+        for header, items in all_errors:
+            print(f"[{header}]")
+            for item in items:
+                print(item)
+            print()
+        print(
+            "Source of truth is .claude/skills/ and .claude/agents/. "
+            "Copy changed files to the other locations to fix."
         )
+        return 1
 
-    # --- Report ---
-    if not all_drifts:
+    if not all_warnings and not all_errors:
         print("No drift detected. All locations are in sync.")
-        return 0
 
-    print("Drift detected between the following locations:\n")
-    for header, items in all_drifts:
-        print(f"[{header}]")
-        for item in items:
-            print(item)
-        print()
-
-    total = sum(len(items) for _, items in all_drifts)
-    print(f"Total: {total} file(s) out of sync.")
-    print(
-        "Source of truth is .claude/skills/ and .claude/agents/. "
-        "Copy changed files to the other locations to fix."
-    )
-    return 1
+    return 0
 
 
 if __name__ == "__main__":

@@ -12,12 +12,22 @@ systematic software engineering.
 uvx --from git+https://github.com/rysweet/amplihack amplihack claude
 ```
 
+---
+
+**New to amplihack?** Start with [Quick Start](#quick-start), then [Core Concepts](#core-concepts), then [Configuration](#configuration).
+
+**Want to contribute?** Go to [Development](#development) and [CONTRIBUTING.md](CONTRIBUTING.md).
+
+**Already familiar?** Check out [Features](#features) and [Documentation Navigator](#documentation-navigator).
+
+---
+
 ## Table of Contents
 
 - [Why amplihack?](#why-amplihack)
 - [Quick Start](#quick-start)
 - [Core Concepts](#core-concepts)
-- [Feature Catalog](#feature-catalog)
+- [Features](#features)
 - [Configuration](#configuration)
 - [Documentation Navigator](#documentation-navigator)
 - [Development](#development)

@@ -1023,7 +1023,7 @@ result = agent.run("How do I use agent sdk tools?")
 ```python
 agent = Agent(
     model="claude-sonnet-4-5-20250929",
-    skills=["agent-sdk", "python-expert"]  # Explicitly activate skills
+    skills=["claude-agent-sdk", "python-expert"]  # Explicitly activate skills
 )
 ```
 
