@@ -1,4 +1,4 @@
-"""Session operations CLI commands -- watch, snapshot, adopt, observe, auth.
+"""Session operations CLI commands -- watch, snapshot, adopt, observe, auth, sweep.
 
 Registered by _cli_commands.register_commands().
 This module should NOT be imported directly by external code.
@@ -10,7 +10,87 @@ import sys
 
 import click
 
-__all__ = ["register_session_ops"]
+__all__ = ["register_session_ops", "format_sweep_report"]
+
+
+def format_sweep_report(
+    all_vms: list,
+    decisions: list[dict],
+    adopted_count: int,
+    skip_adopt: bool,
+) -> str:
+    """Format the sweep report as indented plain text.
+
+    Args:
+        all_vms: List of VMView objects from FleetTUI.refresh_all().
+        decisions: List of decision dicts from reasoning phase.
+        adopted_count: Number of sessions adopted (0 if skipped).
+        skip_adopt: Whether adoption was skipped.
+
+    Returns:
+        Formatted plain text report string.
+    """
+    lines: list[str] = []
+    lines.append("")
+    lines.append("=" * 60)
+    lines.append("FLEET SWEEP REPORT")
+    lines.append("=" * 60)
+
+    running_vms = [v for v in all_vms if v.is_running]
+    total_sessions = sum(len(v.sessions) for v in running_vms)
+    active_sessions = sum(
+        1
+        for v in running_vms
+        for s in v.sessions
+        if s.status in ("thinking", "working", "running", "waiting_input")
+    )
+    idle_sessions = sum(
+        1 for v in running_vms for s in v.sessions if s.status == "idle"
+    )
+
+    lines.append("")
+    lines.append(f"Running VMs: {len(running_vms)}")
+    lines.append(f"Total sessions: {total_sessions}")
+    lines.append(f"Active sessions: {active_sessions}")
+    lines.append(f"Idle sessions: {idle_sessions}")
+    if not skip_adopt:
+        lines.append(f"Adopted: {adopted_count}")
+
+    lines.append("")
+    lines.append("--- Per-VM Summary ---")
+
+    for vm in sorted(running_vms, key=lambda v: v.name):
+        lines.append("")
+        lines.append(f"  {vm.name} ({vm.region}):")
+        for sess in vm.sessions:
+            lines.append(
+                f"    {sess.session_name:25s} [{sess.status:12s}] "
+                f"branch={sess.branch or 'n/a'}"
+            )
+            for d in decisions:
+                if d["vm"] == vm.name and d["session"] == sess.session_name:
+                    if "error" in d:
+                        lines.append(f"      Admiral: ERROR - {d['error'][:80]}")
+                    else:
+                        conf = d.get("confidence", 0)
+                        lines.append(
+                            f"      Admiral: {d['action']} (conf={conf:.0%})"
+                        )
+                        reasoning = d.get("reasoning", "")
+                        if reasoning:
+                            lines.append(f"      Reason: {reasoning[:100]}")
+                    break
+
+    lines.append("")
+    lines.append("--- Decisions Summary ---")
+    action_counts: dict[str, int] = {}
+    for d in decisions:
+        action = d.get("action", "unknown")
+        action_counts[action] = action_counts.get(action, 0) + 1
+    for action, count in sorted(action_counts.items()):
+        lines.append(f"  {action}: {count}")
+
+    return "\n".join(lines)
 
 
 def register_session_ops(fleet_cli: click.Group) -> None:
@@ -195,3 +275,143 @@ def register_session_ops(fleet_cli: click.Group) -> None:
                 click.echo("  Last output:")
                 for line in obs.last_output_lines[-5:]:
                     click.echo(f"    | {line[:120]}")
+
+    # ------------------------------------------------------------------
+    # fleet sweep
+    # ------------------------------------------------------------------
+
+    @fleet_cli.command("sweep")
+    @click.option("--vm", default=None, help="Filter to a single VM (default: all)")
+    @click.option("--skip-adopt", is_flag=True, help="Reason about sessions without adopting them first")
+    @click.option("--save", "save_path", default=None, type=click.Path(), help="Save JSON report to file")
+    def sweep(vm, skip_adopt, save_path):
+        """Discover sessions, adopt them, dry-run reason, and show a report.
+
+        Combines fleet discovery, session adoption, and admiral dry-run
+        reasoning into a single pipeline.  If no ANTHROPIC_API_KEY is set,
+        shows session states without LLM reasoning.
+        """
+        import json
+        import os
+        import time
+        from pathlib import Path
+
+        import amplihack.fleet._backends as _backends_mod
+        import amplihack.fleet.fleet_adopt as _adopt_mod
+        import amplihack.fleet.fleet_session_reasoner as _reasoner_mod
+        import amplihack.fleet.fleet_tui as _tui_mod
+
+        # -- Phase 1: Discovery --
+        click.echo("Phase 1: Discovering fleet sessions...")
+        tui = _tui_mod.FleetTUI()
+        all_vms = tui.refresh_all()
+
+        if vm:
+            all_vms = [v for v in all_vms if v.name == vm]
+            if not all_vms:
+                click.echo(f"VM not found: {vm}")
+                return
+
+        running_vms = [v for v in all_vms if v.is_running and v.sessions]
+        total_sessions = sum(len(v.sessions) for v in running_vms)
+        click.echo(
+            f"Found {len(all_vms)} VMs, {total_sessions} sessions "
+            f"on {len(running_vms)} running VMs"
+        )
+
+        if not running_vms:
+            click.echo("No running VMs with sessions found.")
+            return
+
+        # -- Phase 2: Adoption (unless --skip-adopt) --
+        adopted_count = 0
+        if not skip_adopt:
+            click.echo("\nPhase 2: Adopting sessions...")
+            adopter = _adopt_mod.SessionAdopter(azlin_path=_cmd._get_azlin())
+            queue = _cmd.TaskQueue(persist_path=_cmd._default_queue_path)
+
+            for v in running_vms:
+                try:
+                    adopted = adopter.adopt_sessions(v.name, queue)
+                    adopted_count += len(adopted)
+                    if adopted:
+                        click.echo(f"  {v.name}: adopted {len(adopted)} sessions")
+                except Exception as exc:
+                    click.echo(f"  {v.name}: adoption error -- {exc}")
+            click.echo(f"Total adopted: {adopted_count}")
+        else:
+            click.echo("\nPhase 2: Skipped (--skip-adopt)")
+
+        # -- Phase 3: Dry-run reasoning --
+        click.echo("\nPhase 3: Reasoning about sessions...")
+        api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+        has_llm = bool(api_key)
+
+        decisions: list[dict] = []
+        if has_llm:
+            backend = _backends_mod.auto_detect_backend()
+            reasoner = _reasoner_mod.SessionReasoner(
+                azlin_path=_cmd._get_azlin(),
+                backend=backend,
+                dry_run=True,
+            )
+            for v in running_vms:
+                for sess in v.sessions:
+                    click.echo(f"  Reasoning: {v.name}/{sess.session_name}...")
+                    try:
+                        decision = reasoner.reason_about_session(
+                            vm_name=v.name,
+                            session_name=sess.session_name,
+                        )
+                        decisions.append({
+                            "vm": v.name,
+                            "session": sess.session_name,
+                            "status": sess.status,
+                            "branch": sess.branch,
+                            "pr": sess.pr,
+                            "action": decision.action,
+                            "confidence": decision.confidence,
+                            "reasoning": decision.reasoning,
+                            "input_text": decision.input_text,
+                        })
+                    except Exception as exc:
+                        decisions.append({
+                            "vm": v.name,
+                            "session": sess.session_name,
+                            "status": sess.status,
+                            "error": str(exc),
+                        })
+        else:
+            click.echo("  No ANTHROPIC_API_KEY -- showing session states without LLM reasoning")
+            for v in running_vms:
+                for sess in v.sessions:
+                    decisions.append({
+                        "vm": v.name,
+                        "session": sess.session_name,
+                        "status": sess.status,
+                        "branch": sess.branch,
+                        "pr": sess.pr,
+                        "action": "N/A (no API key)",
+                        "confidence": 0.0,
+                        "reasoning": "LLM reasoning skipped -- no ANTHROPIC_API_KEY",
+                    })
+
+        # -- Phase 4: Report --
+        report_text = format_sweep_report(
+            all_vms, decisions, adopted_count, skip_adopt
+        )
+        click.echo(report_text)
+
+        # -- Optional: Save JSON --
+        if save_path:
+            report_data = {
+                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                "running_vms": len(running_vms),
+                "total_sessions": total_sessions,
+                "adopted_count": adopted_count,
+                "skip_adopt": skip_adopt,
+                "has_llm": has_llm,
+                "decisions": decisions,
+            }
+            Path(save_path).write_text(json.dumps(report_data, indent=2))
+            click.echo(f"\nJSON report saved to: {save_path}")
