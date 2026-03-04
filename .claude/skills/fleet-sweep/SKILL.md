@@ -1,78 +1,89 @@
 ---
 name: fleet-sweep
 description: |
-  Discover all fleet VMs and sessions, adopt them, run dry-run admiral reasoning,
-  and display a status report. Use when: the user asks what their agents are doing,
-  wants a fleet overview, or says "sweep", "scan fleet", "fleet report", "fleet status
-  with reasoning", or "what are my agents doing".
+  Fleet overview and admiral control. Two commands:
+  - `fleet sweep`: Dry-run — discover, adopt, reason, show report (safe, read-only)
+  - `fleet advance`: Live — reason and EXECUTE actions on sessions (sends input, restarts)
+  Use when: user asks what agents are doing, wants fleet status, says "sweep",
+  "advance the fleet", "send next steps", or "what are my agents doing".
 ---
 
-# Fleet Sweep
+# Fleet Sweep & Advance
 
-Discover, adopt, reason about, and report on all fleet sessions in one command.
+Two commands for fleet-wide session management:
+- **sweep** — Read-only scan with dry-run reasoning (safe)
+- **advance** — Live execution of admiral decisions (sends input, restarts agents)
 
 ## When to Use
 
-- User asks "what are my agents doing?"
-- User wants a fleet-wide status report with reasoning
-- User says "sweep the fleet" or "scan all sessions"
-- User wants to adopt existing sessions and see what the admiral would do
+| User says | Command |
+|-----------|---------|
+| "what are my agents doing?" | `fleet sweep` |
+| "scan the fleet" / "fleet status" | `fleet sweep` |
+| "advance the fleet" / "send next steps" | `fleet advance` |
+| "have the admiral act on sessions" | `fleet advance` |
+| "nudge the stuck agents" | `fleet advance --confirm` |
 
-## How to Run
-
-Execute via Bash:
+## fleet sweep (dry-run)
 
 ```bash
 fleet sweep [OPTIONS]
+  --vm VM_NAME       Filter to a single VM
+  --skip-adopt       Skip adoption, just discover and reason
+  --save PATH        Save JSON report to file
 ```
 
-### Options
+Safe, read-only. Shows what the admiral *would* do without acting.
+Works without `ANTHROPIC_API_KEY` (shows session states only).
 
-| Flag | Description |
-|------|-------------|
-| `--vm VM_NAME` | Filter to a single VM (default: all) |
-| `--skip-adopt` | Skip adoption, just discover and reason |
-| `--save PATH` | Save JSON report to a file |
+## fleet advance (live)
+
+```bash
+fleet advance [OPTIONS]
+  --vm VM_NAME       Filter to a single VM
+  --confirm          Prompt before each action
+  --save PATH        Save JSON report to file
+```
+
+**Requires `ANTHROPIC_API_KEY`**. Actually executes admiral decisions:
+- `send_input` — types text into the session's tmux pane
+- `restart` — sends Ctrl-C and re-runs last command
+- `wait` / `escalate` / `mark_complete` — no-op (logged only)
+
+Safety enforced by SessionReasoner:
+- Confidence < 60% suppresses `send_input`
+- Confidence < 80% suppresses `restart`
+- Dangerous input patterns are blocked and escalated
 
 ### Examples
 
 ```bash
-# Full sweep: discover, adopt, reason, report
-fleet sweep
+# Let the admiral act on all sessions
+fleet advance
 
-# Quick scan without adopting sessions
-fleet sweep --skip-adopt
+# Review each action before executing
+fleet advance --confirm
 
-# Sweep a single VM
-fleet sweep --vm dev
+# Advance a single VM only
+fleet advance --vm dev
 
-# Save results for later analysis
-fleet sweep --save /tmp/fleet-report.json
+# Save execution log
+fleet advance --save /tmp/advance-log.json
 ```
 
-## What It Does
+## Interpreting Actions
 
-1. **Discover** -- Polls all VMs through Bastion SSH, finds tmux sessions
-2. **Adopt** -- Brings discovered sessions under fleet task management
-3. **Reason** -- Runs dry-run admiral reasoning per session (requires `ANTHROPIC_API_KEY`)
-4. **Report** -- Displays plain text summary with per-session status, actions, and reasoning
-
-If `ANTHROPIC_API_KEY` is not set, the report shows session states without LLM reasoning.
-
-## Interpreting the Report
-
-- **wait**: Agent is working normally, no intervention needed
-- **send_input**: Admiral suggests sending input to the session
-- **escalate**: Session needs human attention
-- **mark_complete**: Agent finished its task
-- **N/A (no API key)**: LLM reasoning was skipped
+| Action | What happens |
+|--------|-------------|
+| **wait** | No-op. Agent is working fine. |
+| **send_input** | Text typed into the tmux pane via `tmux send-keys`. |
+| **restart** | Ctrl-C twice, then re-runs last command (`!!`). |
+| **escalate** | No-op. Flagged for human review. |
+| **mark_complete** | No-op. Task recorded as done. |
 
 ## Implementation
 
-This skill runs the `fleet sweep` CLI command defined in
-`src/amplihack/fleet/_cli_session_ops.py`. It uses:
-
-- `FleetTUI.refresh_all()` for discovery
-- `SessionAdopter` for adoption
-- `SessionReasoner(dry_run=True)` for reasoning
-- `format_sweep_report()` for the text report
+Both commands are in `src/amplihack/fleet/_cli_session_ops.py`:
+- `fleet sweep` uses `SessionReasoner(dry_run=True)`
+- `fleet advance` uses `SessionReasoner(dry_run=False)`
+- Reports: `format_sweep_report()` and `format_advance_report()`

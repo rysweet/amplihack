@@ -210,7 +210,7 @@ class SessionReasoner:
                 cmd = f"tmux send-keys -t {safe_session} {shlex.quote(line)} Enter"
                 try:
                     subprocess.run(
-                        [self.azlin_path, "connect", decision.vm_name, "--no-tmux", "--", cmd],
+                        [self.azlin_path, "connect", decision.vm_name, "--no-tmux", "--yes", "--", cmd],
                         capture_output=True,
                         text=True,
                         timeout=30,
@@ -231,7 +231,7 @@ class SessionReasoner:
             )
             try:
                 subprocess.run(
-                    [self.azlin_path, "connect", decision.vm_name, "--no-tmux", "--", cmd],
+                    [self.azlin_path, "connect", decision.vm_name, "--no-tmux", "--yes", "--", cmd],
                     capture_output=True,
                     text=True,
                     timeout=30,

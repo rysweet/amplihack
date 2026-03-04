@@ -1,4 +1,4 @@
-"""Session operations CLI commands -- watch, snapshot, adopt, observe, auth, sweep.
+"""Session operations CLI commands -- watch, snapshot, adopt, observe, auth, sweep, advance.
 
 Registered by _cli_commands.register_commands().
 This module should NOT be imported directly by external code.
@@ -10,7 +10,7 @@ import sys
 
 import click
 
-__all__ = ["register_session_ops", "format_sweep_report"]
+__all__ = ["register_session_ops", "format_sweep_report", "format_advance_report"]
 
 
 def format_sweep_report(
@@ -93,8 +93,58 @@ def format_sweep_report(
     return "\n".join(lines)
 
 
+def format_advance_report(
+    decisions: list[dict],
+    executed: list[dict],
+) -> str:
+    """Format the advance report showing what was decided and executed.
+
+    Args:
+        decisions: List of decision dicts from reasoning phase.
+        executed: List of execution result dicts (vm, session, action, executed, error).
+
+    Returns:
+        Formatted plain text report string.
+    """
+    lines: list[str] = []
+    lines.append("")
+    lines.append("=" * 60)
+    lines.append("FLEET ADVANCE REPORT")
+    lines.append("=" * 60)
+
+    lines.append("")
+    lines.append(f"Sessions analyzed: {len(decisions)}")
+
+    action_counts: dict[str, int] = {}
+    for d in decisions:
+        action = d.get("action", "unknown")
+        action_counts[action] = action_counts.get(action, 0) + 1
+    for action, count in sorted(action_counts.items()):
+        lines.append(f"  {action}: {count}")
+
+    if executed:
+        lines.append("")
+        lines.append("--- Actions Executed ---")
+        for ex in executed:
+            status = "OK" if ex.get("executed") else "SKIPPED"
+            if ex.get("error"):
+                status = "ERROR"
+            lines.append(
+                f"  [{status}] {ex['vm']}/{ex['session']}: "
+                f"{ex['action']}"
+            )
+            if ex.get("input_text"):
+                lines.append(f"    Input: {ex['input_text'][:80]}")
+            if ex.get("error"):
+                lines.append(f"    Error: {ex['error'][:80]}")
+            if ex.get("reasoning"):
+                lines.append(f"    Reason: {ex['reasoning'][:100]}")
+
+    return "\n".join(lines)
+
+
 def register_session_ops(fleet_cli: click.Group) -> None:
-    """Register session operation commands (watch, snapshot, adopt, observe, auth).
+    """Register session operation commands (watch, snapshot, adopt, observe, auth, sweep, advance).
 
     All module-level references and class lookups go through _cmd so that
     tests can patch _cli_commands.FleetState, _cli_commands.AuthPropagator, etc.
@@ -412,6 +462,149 @@ def register_session_ops(fleet_cli: click.Group) -> None:
                 "skip_adopt": skip_adopt,
                 "has_llm": has_llm,
                 "decisions": decisions,
+            }
+            Path(save_path).write_text(json.dumps(report_data, indent=2))
+            click.echo(f"\nJSON report saved to: {save_path}")
+
+    # ------------------------------------------------------------------
+    # fleet advance
+    # ------------------------------------------------------------------
+
+    @fleet_cli.command("advance")
+    @click.option("--vm", default=None, help="Filter to a single VM (default: all)")
+    @click.option("--confirm", is_flag=True, help="Prompt before each action (default: auto-execute)")
+    @click.option("--save", "save_path", default=None, type=click.Path(), help="Save JSON report to file")
+    def advance(vm, confirm, save_path):
+        """Run the fleet admiral LIVE — reason and execute actions on sessions.
+
+        Unlike 'sweep' (dry-run only), this command actually sends input
+        to sessions, restarts stuck agents, and marks tasks complete.
+
+        Requires ANTHROPIC_API_KEY (or another LLM backend).
+        Safety: confidence thresholds and dangerous-input blocklists
+        are enforced by SessionReasoner.
+        """
+        import json
+        import os
+        import time
+        from pathlib import Path
+
+        import amplihack.fleet._backends as _backends_mod
+        import amplihack.fleet.fleet_session_reasoner as _reasoner_mod
+        import amplihack.fleet.fleet_tui as _tui_mod
+
+        # -- Check LLM backend --
+        api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+        if not api_key:
+            click.echo("ERROR: ANTHROPIC_API_KEY required for live admiral execution.")
+            click.echo("Set it in your environment and retry.")
+            return
+
+        # -- Phase 1: Discovery --
+        click.echo("Phase 1: Discovering fleet sessions...")
+        tui = _tui_mod.FleetTUI()
+        all_vms = tui.refresh_all()
+
+        if vm:
+            all_vms = [v for v in all_vms if v.name == vm]
+            if not all_vms:
+                click.echo(f"VM not found: {vm}")
+                return
+
+        running_vms = [v for v in all_vms if v.is_running and v.sessions]
+        total_sessions = sum(len(v.sessions) for v in running_vms)
+        click.echo(f"Found {total_sessions} sessions on {len(running_vms)} running VMs")
+
+        if not running_vms:
+            click.echo("No running VMs with sessions found.")
+            return
+
+        # -- Phase 2: Reason and execute --
+        click.echo("\nPhase 2: Reasoning and executing actions...")
+        backend = _backends_mod.auto_detect_backend()
+        reasoner = _reasoner_mod.SessionReasoner(
+            azlin_path=_cmd._get_azlin(),
+            backend=backend,
+            dry_run=False,
+        )
+
+        decisions: list[dict] = []
+        executed: list[dict] = []
+
+        for v in running_vms:
+            for sess in v.sessions:
+                click.echo(f"\n  [{v.name}/{sess.session_name}] reasoning...")
+                try:
+                    decision = reasoner.reason_about_session(
+                        vm_name=v.name,
+                        session_name=sess.session_name,
+                    )
+                    d = {
+                        "vm": v.name,
+                        "session": sess.session_name,
+                        "status": sess.status,
+                        "branch": sess.branch,
+                        "action": decision.action,
+                        "confidence": decision.confidence,
+                        "reasoning": decision.reasoning,
+                        "input_text": decision.input_text,
+                    }
+                    decisions.append(d)
+
+                    # Show what happened
+                    action_label = decision.action
+                    if decision.action in ("wait", "escalate", "mark_complete"):
+                        click.echo(f"    -> {action_label} (no-op, conf={decision.confidence:.0%})")
+                        executed.append({**d, "executed": False})
+                    elif decision.action == "send_input":
+                        preview = decision.input_text[:60].replace("\n", " ")
+                        if confirm:
+                            click.echo(f"    -> send_input: \"{preview}\" (conf={decision.confidence:.0%})")
+                            if not click.confirm("    Execute?", default=True):
+                                click.echo("    Skipped.")
+                                executed.append({**d, "executed": False})
+                                continue
+                        else:
+                            click.echo(f"    -> SENT: \"{preview}\" (conf={decision.confidence:.0%})")
+                        executed.append({**d, "executed": True})
+                    elif decision.action == "restart":
+                        if confirm:
+                            click.echo(f"    -> restart session (conf={decision.confidence:.0%})")
+                            if not click.confirm("    Execute?", default=False):
+                                click.echo("    Skipped.")
+                                executed.append({**d, "executed": False})
+                                continue
+                        else:
+                            click.echo(f"    -> RESTARTED (conf={decision.confidence:.0%})")
+                        executed.append({**d, "executed": True})
+
+                except Exception as exc:
+                    click.echo(f"    -> ERROR: {exc}")
+                    decisions.append({
+                        "vm": v.name,
+                        "session": sess.session_name,
+                        "status": sess.status,
+                        "error": str(exc),
+                    })
+                    executed.append({
+                        "vm": v.name,
+                        "session": sess.session_name,
+                        "action": "error",
+                        "error": str(exc),
+                        "executed": False,
+                    })
+
+        # -- Phase 3: Report --
+        report_text = format_advance_report(decisions, executed)
+        click.echo(report_text)
+
+        # -- Optional: Save JSON --
+        if save_path:
+            report_data = {
+                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                "total_sessions": total_sessions,
+                "decisions": decisions,
+                "executed": executed,
             }
             Path(save_path).write_text(json.dumps(report_data, indent=2))
             click.echo(f"\nJSON report saved to: {save_path}")

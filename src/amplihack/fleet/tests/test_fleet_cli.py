@@ -58,6 +58,7 @@ class TestFleetHelp:
             "graph",
             "dashboard",
             "project",
+            "advance",
             "report",
             "sweep",
             "tui",
@@ -1339,4 +1340,120 @@ class TestFleetSweep:
         assert result.exit_code == 0
         assert "--vm" in result.output
         assert "--skip-adopt" in result.output
+        assert "--save" in result.output
+
+
+# ---------------------------------------------------------------------------
+# fleet advance
+# ---------------------------------------------------------------------------
+
+
+class TestFormatAdvanceReport:
+    """Tests for the standalone format_advance_report function."""
+
+    def test_empty_decisions(self):
+        from amplihack.fleet._cli_session_ops import format_advance_report
+
+        report = format_advance_report([], [])
+        assert "FLEET ADVANCE REPORT" in report
+        assert "Sessions analyzed: 0" in report
+
+    def test_report_with_executed_actions(self):
+        from amplihack.fleet._cli_session_ops import format_advance_report
+
+        decisions = [
+            {"vm": "v1", "session": "s1", "action": "send_input", "confidence": 0.9},
+            {"vm": "v1", "session": "s2", "action": "wait", "confidence": 1.0},
+        ]
+        executed = [
+            {"vm": "v1", "session": "s1", "action": "send_input", "executed": True, "input_text": "hello"},
+            {"vm": "v1", "session": "s2", "action": "wait", "executed": False},
+        ]
+        report = format_advance_report(decisions, executed)
+        assert "send_input: 1" in report
+        assert "wait: 1" in report
+        assert "[OK]" in report
+        assert "[SKIPPED]" in report
+
+    def test_report_with_error(self):
+        from amplihack.fleet._cli_session_ops import format_advance_report
+
+        decisions = [{"vm": "v1", "session": "s1", "action": "error"}]
+        executed = [{"vm": "v1", "session": "s1", "action": "error", "error": "timeout", "executed": False}]
+        report = format_advance_report(decisions, executed)
+        assert "[ERROR]" in report
+        assert "timeout" in report
+
+
+class TestFleetAdvance:
+    """Tests for the fleet advance CLI command."""
+
+    def test_advance_no_api_key(self, runner):
+        env = {k: v for k, v in __import__("os").environ.items() if k != "ANTHROPIC_API_KEY"}
+        with patch.dict("os.environ", env, clear=True):
+            result = runner.invoke(fleet_cli, ["advance"], catch_exceptions=False)
+        assert result.exit_code == 0
+        assert "ANTHROPIC_API_KEY required" in result.output
+
+    @patch("amplihack.fleet.fleet_tui.FleetTUI")
+    def test_advance_no_running_vms(self, MockTUI, runner):
+        mock_tui = MagicMock()
+        mock_tui.refresh_all.return_value = []
+        MockTUI.return_value = mock_tui
+
+        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"}):
+            result = runner.invoke(fleet_cli, ["advance"], catch_exceptions=False)
+        assert result.exit_code == 0
+        assert "No running VMs" in result.output
+
+    @patch("amplihack.fleet.fleet_session_reasoner.SessionReasoner")
+    @patch("amplihack.fleet._backends.auto_detect_backend")
+    @patch("amplihack.fleet.fleet_tui.FleetTUI")
+    def test_advance_executes_decisions(self, MockTUI, MockBackend, MockReasoner, runner):
+        from amplihack.fleet._tui_data import SessionView, VMView
+
+        sess = SessionView(vm_name="vm-1", session_name="s1", status="idle", branch="main")
+        vm = VMView(name="vm-1", region="eastus", is_running=True, sessions=[sess])
+        mock_tui = MagicMock()
+        mock_tui.refresh_all.return_value = [vm]
+        MockTUI.return_value = mock_tui
+
+        mock_decision = MagicMock()
+        mock_decision.action = "wait"
+        mock_decision.confidence = 0.95
+        mock_decision.reasoning = "Agent is fine"
+        mock_decision.input_text = ""
+        mock_reasoner = MagicMock()
+        mock_reasoner.reason_about_session.return_value = mock_decision
+        MockReasoner.return_value = mock_reasoner
+
+        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"}):
+            result = runner.invoke(fleet_cli, ["advance"], catch_exceptions=False)
+
+        assert result.exit_code == 0
+        assert "FLEET ADVANCE REPORT" in result.output
+        assert "wait" in result.output
+
+    @patch("amplihack.fleet.fleet_tui.FleetTUI")
+    def test_advance_vm_filter(self, MockTUI, runner):
+        from amplihack.fleet._tui_data import SessionView, VMView
+
+        vm1 = VMView(name="vm-1", region="", is_running=True,
+                     sessions=[SessionView(vm_name="vm-1", session_name="s1", status="idle")])
+        vm2 = VMView(name="vm-2", region="", is_running=True,
+                     sessions=[SessionView(vm_name="vm-2", session_name="s2", status="idle")])
+        mock_tui = MagicMock()
+        mock_tui.refresh_all.return_value = [vm1, vm2]
+        MockTUI.return_value = mock_tui
+
+        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"}):
+            result = runner.invoke(fleet_cli, ["advance", "--vm", "nonexistent"], catch_exceptions=False)
+        assert result.exit_code == 0
+        assert "VM not found" in result.output
+
+    def test_advance_help(self, runner):
+        result = runner.invoke(fleet_cli, ["advance", "--help"], catch_exceptions=False)
+        assert result.exit_code == 0
+        assert "--vm" in result.output
+        assert "--confirm" in result.output
         assert "--save" in result.output
