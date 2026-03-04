@@ -702,5 +702,273 @@ class TestFormulaCorrectness:
         assert calculate_recommended_limit(127) == 32512
 
 
+# =============================================================================
+# PERSISTENCE TESTS (config file read/write)
+# =============================================================================
+
+
+class TestConfigPersistence:
+    """Test config file persistence for NODE_OPTIONS preference."""
+
+    def test_get_config_path_returns_amplihack_config(self):
+        """Test that get_config_path returns ~/.amplihack/config."""
+        from pathlib import Path
+
+        from amplihack.launcher.memory_config import get_config_path
+
+        path = get_config_path()
+        assert path.name == "config"
+        assert path.parent.name == ".amplihack"
+        assert path.parent.parent == Path.home()
+
+    def test_load_user_preference_returns_none_when_no_file(self, tmp_path):
+        """Test load_user_preference returns None when config does not exist."""
+        from unittest.mock import patch
+
+        from amplihack.launcher.memory_config import load_user_preference
+
+        fake_config = tmp_path / ".amplihack" / "config"
+        with patch("amplihack.launcher.memory_config.get_config_path", return_value=fake_config):
+            result = load_user_preference()
+        assert result is None
+
+    def test_load_user_preference_returns_saved_value(self, tmp_path):
+        """Test load_user_preference returns saved preference from config file."""
+        import json
+        from unittest.mock import patch
+
+        from amplihack.launcher.memory_config import load_user_preference
+
+        fake_config = tmp_path / "config"
+        fake_config.write_text(
+            json.dumps({"node_options_consent": True, "node_options_limit_mb": 8192}),
+            encoding="utf-8",
+        )
+        with patch("amplihack.launcher.memory_config.get_config_path", return_value=fake_config):
+            result = load_user_preference()
+        assert result is not None
+        assert result["node_options_consent"] is True
+        assert result["node_options_limit_mb"] == 8192
+
+    def test_save_user_preference_creates_config_file(self, tmp_path):
+        """Test save_user_preference creates config file with correct values."""
+        import json
+        from unittest.mock import patch
+
+        from amplihack.launcher.memory_config import save_user_preference
+
+        fake_config = tmp_path / ".amplihack" / "config"
+        with patch("amplihack.launcher.memory_config.get_config_path", return_value=fake_config):
+            save_user_preference(True, 8192)
+
+        assert fake_config.exists()
+        data = json.loads(fake_config.read_text(encoding="utf-8"))
+        assert data["node_options_consent"] is True
+        assert data["node_options_limit_mb"] == 8192
+
+    def test_save_user_preference_creates_parent_directory(self, tmp_path):
+        """Test save_user_preference creates ~/.amplihack directory if missing."""
+        from unittest.mock import patch
+
+        from amplihack.launcher.memory_config import save_user_preference
+
+        fake_config = tmp_path / "new_dir" / "config"
+        assert not fake_config.parent.exists()
+        with patch("amplihack.launcher.memory_config.get_config_path", return_value=fake_config):
+            save_user_preference(False, 8192)
+        assert fake_config.parent.exists()
+        assert fake_config.exists()
+
+    def test_save_user_preference_preserves_existing_keys(self, tmp_path):
+        """Test save_user_preference merges with existing config keys."""
+        import json
+        from unittest.mock import patch
+
+        from amplihack.launcher.memory_config import save_user_preference
+
+        fake_config = tmp_path / "config"
+        fake_config.write_text(json.dumps({"other_key": "value"}), encoding="utf-8")
+        with patch("amplihack.launcher.memory_config.get_config_path", return_value=fake_config):
+            save_user_preference(True, 16384)
+
+        data = json.loads(fake_config.read_text(encoding="utf-8"))
+        assert data["other_key"] == "value"
+        assert data["node_options_consent"] is True
+
+    def test_load_user_preference_returns_none_for_malformed_config(self, tmp_path):
+        """Test load_user_preference returns None for malformed config file."""
+        from unittest.mock import patch
+
+        from amplihack.launcher.memory_config import load_user_preference
+
+        fake_config = tmp_path / "config"
+        fake_config.write_text("not valid json", encoding="utf-8")
+        with patch("amplihack.launcher.memory_config.get_config_path", return_value=fake_config):
+            result = load_user_preference()
+        assert result is None
+
+    def test_load_user_preference_returns_none_when_key_missing(self, tmp_path):
+        """Test load_user_preference returns None when node_options_consent key absent."""
+        import json
+        from unittest.mock import patch
+
+        from amplihack.launcher.memory_config import load_user_preference
+
+        fake_config = tmp_path / "config"
+        fake_config.write_text(json.dumps({"some_other_key": 42}), encoding="utf-8")
+        with patch("amplihack.launcher.memory_config.get_config_path", return_value=fake_config):
+            result = load_user_preference()
+        assert result is None
+
+
+class TestFirstRunVsReturningUser:
+    """Test first-run prompts user; returning user gets info message only."""
+
+    def test_first_run_prompts_user_and_saves_preference(self, tmp_path):
+        """First run: no config exists → user is prompted → preference is saved."""
+        import json
+        from unittest.mock import patch
+
+        from amplihack.launcher.memory_config import get_memory_config
+
+        fake_config = tmp_path / ".amplihack" / "config"
+        mock_meminfo = "MemTotal:       32768000 kB\n"  # 32 GB
+
+        with patch("pathlib.Path.exists", side_effect=lambda self=None: False if str(self) == str(fake_config) else True):
+            pass  # complex mock, use simpler approach below
+
+        with (
+            patch("amplihack.launcher.memory_config.get_config_path", return_value=fake_config),
+            patch("amplihack.launcher.memory_config.load_user_preference", return_value=None),
+            patch("amplihack.launcher.memory_config.save_user_preference") as mock_save,
+            patch("pathlib.Path.exists", return_value=True),
+            patch("pathlib.Path.read_text", return_value=mock_meminfo),
+            patch("sys.stdin.isatty", return_value=True),
+            patch("builtins.input", return_value="y"),
+        ):
+            config = get_memory_config()
+
+        assert config is not None
+        assert config.get("returning_user") is not True  # first run
+        assert config.get("user_consent") is True
+        mock_save.assert_called_once_with(True, config["recommended_limit_mb"])
+
+    def test_returning_user_skips_prompt(self, tmp_path):
+        """Returning user: config exists → no prompt → returning_user flag set."""
+        from unittest.mock import patch
+
+        from amplihack.launcher.memory_config import get_memory_config
+
+        saved_pref = {"node_options_consent": True, "node_options_limit_mb": 8192}
+        mock_meminfo = "MemTotal:       32768000 kB\n"
+
+        with (
+            patch("amplihack.launcher.memory_config.load_user_preference", return_value=saved_pref),
+            patch("pathlib.Path.exists", return_value=True),
+            patch("pathlib.Path.read_text", return_value=mock_meminfo),
+            patch("builtins.input") as mock_input,
+        ):
+            config = get_memory_config()
+
+        assert config is not None
+        assert config.get("returning_user") is True
+        assert config.get("user_consent") is True
+        mock_input.assert_not_called()  # no prompt on returning user
+
+    def test_returning_user_declined_skips_prompt(self, tmp_path):
+        """Returning user who declined: skips prompt, consent=False preserved."""
+        from unittest.mock import patch
+
+        from amplihack.launcher.memory_config import get_memory_config
+
+        saved_pref = {"node_options_consent": False, "node_options_limit_mb": 8192}
+        mock_meminfo = "MemTotal:       32768000 kB\n"
+
+        with (
+            patch("amplihack.launcher.memory_config.load_user_preference", return_value=saved_pref),
+            patch("pathlib.Path.exists", return_value=True),
+            patch("pathlib.Path.read_text", return_value=mock_meminfo),
+            patch("builtins.input") as mock_input,
+        ):
+            config = get_memory_config()
+
+        assert config is not None
+        assert config.get("returning_user") is True
+        assert config.get("user_consent") is False
+        mock_input.assert_not_called()
+
+    def test_display_memory_config_returning_user_shows_info_message(self, tmp_path, capsys):
+        """display_memory_config emits info message for returning user."""
+        from unittest.mock import patch
+
+        from amplihack.launcher.memory_config import display_memory_config
+
+        fake_config = tmp_path / ".amplihack" / "config"
+        config = {
+            "node_options": "--max-old-space-size=8192",
+            "recommended_limit_mb": 8192,
+            "user_consent": True,
+            "returning_user": True,
+        }
+
+        with patch("amplihack.launcher.memory_config.get_config_path", return_value=fake_config):
+            display_memory_config(config)
+
+        captured = capsys.readouterr()
+        assert "8192" in captured.out
+        assert "saved preference" in captured.out
+        assert str(fake_config) in captured.out
+
+    def test_display_memory_config_returning_user_declined_shows_info_message(self, tmp_path, capsys):
+        """display_memory_config emits info message when returning user had declined."""
+        from unittest.mock import patch
+
+        from amplihack.launcher.memory_config import display_memory_config
+
+        fake_config = tmp_path / ".amplihack" / "config"
+        config = {
+            "node_options": "--max-old-space-size=8192",
+            "recommended_limit_mb": 8192,
+            "user_consent": False,
+            "returning_user": True,
+        }
+
+        with patch("amplihack.launcher.memory_config.get_config_path", return_value=fake_config):
+            display_memory_config(config)
+
+        captured = capsys.readouterr()
+        assert "skipped" in captured.out.lower() or "skip" in captured.out.lower()
+        assert "saved preference" in captured.out
+
+    def test_display_memory_config_first_run_consent_shows_checkmark(self, capsys):
+        """display_memory_config shows ✓ on first run with consent."""
+        from amplihack.launcher.memory_config import display_memory_config
+
+        config = {
+            "node_options": "--max-old-space-size=8192",
+            "recommended_limit_mb": 8192,
+            "user_consent": True,
+            "returning_user": False,
+        }
+        display_memory_config(config)
+        captured = capsys.readouterr()
+        assert "✓" in captured.out
+        assert "8192" in captured.out
+
+    def test_display_memory_config_first_run_declined_shows_cross(self, capsys):
+        """display_memory_config shows ✗ on first run when user declined."""
+        from amplihack.launcher.memory_config import display_memory_config
+
+        config = {
+            "node_options": "--max-old-space-size=8192",
+            "recommended_limit_mb": 8192,
+            "user_consent": False,
+            "returning_user": False,
+        }
+        display_memory_config(config)
+        captured = capsys.readouterr()
+        assert "✗" in captured.out
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "--tb=short"])
