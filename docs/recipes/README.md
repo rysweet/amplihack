@@ -160,8 +160,8 @@ steps:
 | `type`       | string      | No       | `agent` (default when `agent`/`prompt` present), `bash`, or `recipe`          |
 | `prompt`     | string      | No       | Prompt template sent to the agent                                              |
 | `command`    | string      | No       | Shell command (when `type: bash`)                                              |
-| `recipe`     | string      | No       | Sub-recipe name to invoke (when `type: recipe`)                                |
-| `context`    | dict        | No       | Extra context key/value pairs merged into the sub-recipe (when `type: recipe`) |
+| `recipe`     | string      | No       | Sub-recipe name to invoke (when `type: recipe`, added in v0.9.0)              |
+| `sub_context`| dict        | No       | Extra context key/value pairs merged into the sub-recipe (when `type: recipe`, renamed from `context` in PR #2862) |
 | `output`     | string      | No       | Context key to store step result under                                         |
 | `condition`  | string      | No       | Python expression; step skips when false                                       |
 | `parse_json` | bool        | No       | Parse stdout as JSON and store as dict in context                              |
@@ -170,21 +170,36 @@ steps:
 
 ### Recipe Step (`type: recipe`)
 
-A `recipe` step invokes another recipe as a sub-step, enabling composition of complex workflows from simpler building blocks.
+**Added in v0.9.0 (PR #2862)**: A `recipe` step invokes another recipe as a sub-step, enabling composition of complex workflows from simpler building blocks.
 
 ```yaml
 steps:
   - id: run-quality-audit
     type: recipe
     recipe: quality-audit-cycle
-    context:
+    sub_context:
       target_path: src/amplihack
+      severity_threshold: medium
     output: quality_audit_results
 ```
 
-**Recursion guard**: Sub-recipes can themselves contain `recipe` steps (up to a maximum depth of 3). Deeper nesting raises an error to prevent infinite loops.
+**Key Features:**
 
-**Context merging**: The sub-recipe starts with a copy of the current context, then the step-level `context` dict is merged on top. Mutations inside the sub-recipe do not propagate back to the parent recipe.
+- **Modular Composition**: Break complex workflows into reusable sub-recipes
+- **Recursion Guard**: Sub-recipes can contain `recipe` steps up to `MAX_RECIPE_DEPTH = 3` levels deep
+- **Context Isolation**: Sub-recipes start with a copy of the parent context, merged with `sub_context` values
+- **Output Propagation**: Results from sub-recipe execution are stored in the parent's context via the `output` field
+
+**Context Merging**: The sub-recipe receives:
+1. A copy of the current parent context
+2. Merged with the step-level `sub_context` dict
+3. Mutations inside the sub-recipe do not propagate back to the parent
+
+**Implementation Details** (PR #2862):
+- New `StepType.RECIPE` enum value in `src/amplihack/recipes/models.py`
+- `Step` dataclass extended with `recipe` and `sub_context` fields
+- `RecipeRunner._execute_sub_recipe()` method handles recursive execution
+- Maximum depth enforced by `MAX_RECIPE_DEPTH = 3` constant
 
 ### Bash Step Timeouts
 

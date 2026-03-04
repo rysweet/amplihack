@@ -394,6 +394,155 @@ echo $NODE_OPTIONS
 
 ---
 
+## Persistent Configuration (v0.9.0+)
+
+**Added in PR #2860**: Memory preferences now persist across sessions in `~/.amplihack/config`.
+
+### How It Works
+
+**First Run**:
+1. amplihack prompts for NODE_OPTIONS consent (existing behavior)
+2. Your answer is saved to `~/.amplihack/config` (JSON format)
+3. Settings applied immediately
+
+**Returning User**:
+1. No prompt appears
+2. Informational message shows saved settings and config path
+3. Settings applied from config file
+
+### Configuration File Format
+
+**Location**: `~/.amplihack/config`
+
+**Format** (JSON):
+```json
+{
+  "node_options_consent": true,
+  "node_options_limit_mb": 8192
+}
+```
+
+### Managing Persistent Settings
+
+#### View Current Settings
+
+```bash
+cat ~/.amplihack/config
+```
+
+**Example output**:
+```json
+{
+  "node_options_consent": true,
+  "node_options_limit_mb": 8192
+}
+```
+
+#### Change Memory Limit
+
+Edit `~/.amplihack/config`:
+
+```bash
+# Increase to 16GB
+echo '{"node_options_consent": true, "node_options_limit_mb": 16384}' > ~/.amplihack/config
+```
+
+Or use your preferred editor:
+
+```bash
+nano ~/.amplihack/config
+# or
+vim ~/.amplihack/config
+```
+
+#### Disable Memory Configuration
+
+Set `node_options_consent` to `false`:
+
+```bash
+echo '{"node_options_consent": false, "node_options_limit_mb": 0}' > ~/.amplihack/config
+```
+
+#### Reset to Defaults (Re-prompt)
+
+Delete the config file to trigger a new prompt:
+
+```bash
+rm ~/.amplihack/config
+```
+
+Next launch will prompt again and save your answer.
+
+#### Preserve Other Settings
+
+The config file preserves unknown keys, so you can add custom settings:
+
+```json
+{
+  "node_options_consent": true,
+  "node_options_limit_mb": 8192,
+  "custom_setting": "my_value",
+  "project_defaults": {
+    "timeout": 300
+  }
+}
+```
+
+amplihack only reads/writes `node_options_consent` and `node_options_limit_mb` — other keys remain untouched.
+
+### Interaction with Environment Variables
+
+**Priority Order** (highest to lowest):
+
+1. **`AMPLIHACK_SKIP_MEMORY_CONFIG`** - Skip entirely (ignores config file)
+2. **`AMPLIHACK_MEMORY_AUTO_REJECT`** - Reject updates (ignores config file)
+3. **`AMPLIHACK_MEMORY_AUTO_ACCEPT`** - Accept updates (ignores config file)
+4. **Config file** (`~/.amplihack/config`) - Persistent user preference
+5. **Interactive prompt** - Only if config file doesn't exist
+
+**Example**:
+
+```bash
+# Config file says consent=true, limit=8192
+cat ~/.amplihack/config
+# {"node_options_consent": true, "node_options_limit_mb": 8192}
+
+# Environment variable overrides config file
+export AMPLIHACK_MEMORY_AUTO_REJECT=true
+amplihack
+# Result: Memory config skipped (env var wins)
+
+# Without environment variable
+unset AMPLIHACK_MEMORY_AUTO_REJECT
+amplihack
+# Result: 8192MB applied from config file (no prompt)
+```
+
+### Migration from Environment Variables
+
+If you were using environment variables, you can convert to config file:
+
+**Before** (environment variables):
+```bash
+export AMPLIHACK_MEMORY_AUTO_ACCEPT=true
+```
+
+**After** (config file):
+```bash
+# Create config file once
+echo '{"node_options_consent": true, "node_options_limit_mb": 8192}' > ~/.amplihack/config
+
+# Remove from shell profile
+# (no longer needed in ~/.bashrc or ~/.zshrc)
+```
+
+**Benefits**:
+- No need to export variables in every shell
+- Settings persist across terminals and reboots
+- Easier to modify (edit JSON file vs. shell profile)
+
+---
+
 ## See Also
 
 - [Memory Configuration Consent Feature](../features/memory-consent-prompt.md) - Complete feature documentation
