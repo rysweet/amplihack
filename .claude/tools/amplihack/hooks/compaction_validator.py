@@ -31,7 +31,7 @@ import logging
 import re
 from pathlib import Path
 
-from compaction_context import CompactionContext, ValidationResult, _parse_timestamp_age
+from compaction_context import CompactionContext, ValidationResult
 
 __all__ = [
     "CompactionValidator",
@@ -40,6 +40,8 @@ __all__ = [
 ]
 
 logger = logging.getLogger(__name__)
+
+_TODO_PATTERN = re.compile(r"TODO:\s*(.+?)(?:\n|$)", re.IGNORECASE)
 
 
 class CompactionValidator:
@@ -86,7 +88,11 @@ class CompactionValidator:
             return CompactionContext()
 
         # Filter events for this session
-        session_events = [e for e in events_data if e.get("session_id") == session_id]
+        if not isinstance(events_data, list):
+            return CompactionContext()
+        session_events = [
+            e for e in events_data if isinstance(e, dict) and e.get("session_id") == session_id
+        ]
 
         if not session_events:
             return CompactionContext()
@@ -114,6 +120,7 @@ class CompactionValidator:
             transcript_path = Path(transcript_path_str)
 
             # Security: Check for path traversal
+            resolved_path = None
             try:
                 resolved_path = transcript_path.resolve()
                 if not resolved_path.is_relative_to(self.project_root.resolve()):
@@ -122,14 +129,16 @@ class CompactionValidator:
                     return context
             except (ValueError, OSError) as exc:
                 logger.warning("Could not resolve transcript path %r: %s", transcript_path_str, exc)
+                return context
 
             # Load transcript
             try:
-                if transcript_path.exists():
-                    with open(transcript_path) as f:
-                        context.pre_compaction_transcript = json.load(f)
-            except (json.JSONDecodeError, OSError) as exc:
-                logger.warning("Could not load pre-compaction transcript %r: %s", transcript_path_str, exc)
+                with open(resolved_path) as f:
+                    context.pre_compaction_transcript = json.load(f)
+            except (FileNotFoundError, json.JSONDecodeError, OSError) as exc:
+                logger.warning(
+                    "Could not load pre-compaction transcript %r: %s", transcript_path_str, exc
+                )
 
         return context
 
@@ -239,16 +248,11 @@ class CompactionValidator:
         def extract_todos(transcript: list[dict]) -> set[str]:
             """Extract TODO items from transcript."""
             todos = set()
-            todo_pattern = re.compile(r"TODO:\s*(.+?)(?:\n|$)", re.IGNORECASE)
-
             for message in transcript:
                 content = message.get("content", "")
                 if isinstance(content, str):
-                    matches = todo_pattern.findall(content)
-                    for match in matches:
-                        # Normalize whitespace
+                    for match in _TODO_PATTERN.findall(content):
                         todos.add(match.strip())
-
             return todos
 
         pre_todos = extract_todos(pre_compaction)
@@ -355,7 +359,7 @@ class CompactionValidator:
             ValidationResult indicating if recent context intact
         """
         messages_removed = context.messages_removed
-        post_content = [msg.get("content", "") for msg in post_compaction]
+        post_content = {msg.get("content", "") for msg in post_compaction if isinstance(msg.get("content"), str) and msg.get("content")}
 
         # Strategy depends on transcript size
         if len(pre_compaction) < 20:
@@ -373,8 +377,8 @@ class CompactionValidator:
         if not messages_to_check:
             return ValidationResult(passed=True)
 
-        # Check which messages are in post
-        check_content = [msg.get("content", "") for msg in messages_to_check]
+        # Check which messages are in post (skip non-string/empty content to avoid false positives)
+        check_content = [msg.get("content", "") for msg in messages_to_check if isinstance(msg.get("content"), str) and msg.get("content")]
         preserved_count = sum(1 for content in check_content if content in post_content)
 
         # Calculate preservation rate
