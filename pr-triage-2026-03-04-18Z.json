@@ -1,0 +1,22 @@
+{
+  "timestamp": "2026-03-04T18:58:57Z",
+  "workflow_run": "22684405845",
+  "triaged_prs": [
+    {
+      "number": 2873,
+      "title": "[docs] Daily documentation update for merged PRs (2026-03-04)",
+      "author": "github-actions[bot]",
+      "risk": "LOW",
+      "priority": "LOW",
+      "status": "open",
+      "mergeable": true,
+      "recommendations": ["wait_for_ci", "auto_merge_when_ready"]
+    }
+  ],
+  "summary": {
+    "total_agent_prs": 1,
+    "by_risk": {"low": 1, "medium": 0, "high": 0},
+    "by_priority": {"low": 1, "medium": 0, "high": 0},
+    "by_status": {"ready_for_review": 1, "draft": 0}
+  }
+}
