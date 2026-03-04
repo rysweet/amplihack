@@ -11,11 +11,13 @@ Recipe Runner includes enhanced discovery diagnostics to help troubleshoot recip
 Recipes are discovered in this priority order:
 
 1. **Installed Package Path** - `site-packages/amplihack/amplifier-bundle/recipes/` (for pip-installed amplihack)
-2. **Repository Root** - `amplifier-bundle/recipes/` (for editable installs)
+2. **Repository Root** - repo-root `amplifier-bundle/recipes/` (resolved via `Path(__file__)`, for editable installs)
 3. **Global Installation** - `~/.amplihack/.claude/recipes/` (user-installed recipes)
-4. **Project-local** - `.claude/recipes/` (project-specific recipes, can override)
+4. **CWD Bundle** - `amplifier-bundle/recipes/` (CWD-relative, legacy compatibility)
+5. **CWD Source** - `src/amplihack/amplifier-bundle/recipes/` (CWD-relative, development)
+6. **Project-local** - `.claude/recipes/` (project-specific recipes, can override)
 
-**Why this matters**: When amplihack is pip-installed and you run from any directory, the installed package path is the only reliable location for bundled recipes. CWD-relative paths fail when running from other projects.
+**Why this matters**: When amplihack is pip-installed and you run from any directory, the installed package path (1) is the only reliable location for bundled recipes. CWD-relative paths (4, 5) only work when running from the amplihack repo directory.
 
 ### Debug Logging
 

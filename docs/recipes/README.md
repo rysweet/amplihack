@@ -259,10 +259,12 @@ Recipes live in `~/.amplihack/.claude/recipes/`. Run `amplihack recipe list` to 
 
 The Recipe Runner automatically discovers recipes from these standard directories (in priority order):
 
-1. **Installed Package Path** — `site-packages/amplihack/amplifier-bundle/recipes/` (absolute path, works after pip install from any directory)
-2. **Repository Root** — `amplifier-bundle/recipes/` (for development/editable installs)
+1. **Installed Package Path** — `site-packages/amplihack/amplifier-bundle/recipes/` (absolute, works from any directory)
+2. **Repository Root** — repo-root `amplifier-bundle/recipes/` (resolved via `Path(__file__)`, for editable installs)
 3. **User-Installed** — `~/.amplihack/.claude/recipes/` (custom user recipes)
-4. **Project-Specific** — `.claude/recipes/` (project-local recipes, can override)
+4. **CWD Bundle** — `amplifier-bundle/recipes/` (CWD-relative, legacy compatibility)
+5. **CWD Source** — `src/amplihack/amplifier-bundle/recipes/` (CWD-relative, development)
+6. **Project-Specific** — `.claude/recipes/` (project-local recipes, can override)
 
 Later directories override earlier ones when recipe names collide. All bundled recipes are automatically available after pip install without additional configuration.
 
