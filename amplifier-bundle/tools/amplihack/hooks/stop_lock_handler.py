@@ -138,7 +138,7 @@ def increment_lock_counter(hook: "HookProcessor", session_id: str) -> int:
         hook.log(f"Lock mode invocation count: {new_count}")
         return new_count
 
-    except Exception as e:
+    except (OSError, ValueError) as e:
         hook.log(f"Failed to update lock counter: {e}", "WARNING")
         return 0
 

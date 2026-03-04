@@ -42,7 +42,7 @@ def should_run_power_steering(hook: "HookProcessor") -> bool:
 
         return True
 
-    except Exception as e:
+    except (ImportError, AttributeError, OSError) as e:
         hook.log(
             f"[CAUSE] Exception during power-steering status check. [IMPACT] Power-steering will not run this session. [ACTION] Failing open to allow normal stop. Error: {e}",
             "WARNING",
@@ -86,7 +86,7 @@ def increment_power_steering_counter(hook: "HookProcessor", session_id: str) -> 
         counter_file.write_text(str(new_count))
         return new_count
 
-    except Exception as e:
+    except (OSError, ValueError) as e:
         hook.log(f"Failed to update power-steering counter: {e}", "WARNING")
         return 0
 
