@@ -1,0 +1,33 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# System dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl git build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install core Python dependencies
+# Install from feature branch which includes hive_mind modules
+RUN pip install --no-cache-dir \
+    "amplihack @ git+https://github.com/rysweet/amplihack.git@feat/hive-mind-experiments" \
+    azure-servicebus \
+    kuzu \
+    httpx \
+    uvicorn \
+    fastapi
+
+# Copy the agent entrypoint and evaluation modules
+COPY experiments/hive_mind/ /app/hive_mind/
+COPY src/amplihack/agents/goal_seeking/hive_mind/ /app/hive_mind_core/
+
+# Copy the agent runner script
+COPY experiments/hive_mind/agent_runner.py /app/agent_runner.py
+
+# Health check endpoint
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+EXPOSE 8080
+
+CMD ["python3", "/app/agent_runner.py"]
