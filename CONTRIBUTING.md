@@ -18,7 +18,7 @@ Thank you for your interest in contributing to amplihack! This guide will help y
 git clone https://github.com/<your-username>/amplihack.git
 cd amplihack
 
-# 2. Install dependencies with uv
+# 2. Install all dependencies (dev + runtime) into a local .venv
 uv sync
 
 # 3. Install pre-commit hooks
