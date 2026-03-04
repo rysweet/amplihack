@@ -10,12 +10,14 @@ Recipe Runner includes enhanced discovery diagnostics to help troubleshoot recip
 
 Recipes are discovered in this priority order:
 
-1. `~/.amplihack/.claude/recipes/` - Global installation (always checked first)
-2. `amplifier-bundle/recipes/` - Bundled recipes
-3. `src/amplihack/amplifier-bundle/recipes/` - Source recipes
-4. `.claude/recipes/` - Project-local recipes (can override)
+1. **Installed Package Path** - `site-packages/amplihack/amplifier-bundle/recipes/` (for pip-installed amplihack)
+2. **Repository Root** - repo-root `amplifier-bundle/recipes/` (resolved via `Path(__file__)`, for editable installs)
+3. **Global Installation** - `~/.amplihack/.claude/recipes/` (user-installed recipes)
+4. **CWD Bundle** - `amplifier-bundle/recipes/` (CWD-relative, legacy compatibility)
+5. **CWD Source** - `src/amplihack/amplifier-bundle/recipes/` (CWD-relative, development)
+6. **Project-local** - `.claude/recipes/` (project-specific recipes, can override)
 
-**Why this matters**: In /tmp clones or subprocess environments, only the global installation exists. Checking it first ensures recipes are always found.
+**Why this matters**: When amplihack is pip-installed and you run from any directory, the installed package path (1) is the only reliable location for bundled recipes. CWD-relative paths (4, 5) only work when running from the amplihack repo directory.
 
 ### Debug Logging
 
@@ -53,6 +55,12 @@ else:
 
 ## Common Issues
 
+### Issue: "No recipes discovered" when running from different directory
+
+**Symptom**: `list_recipes()` returns empty list when running from a project other than amplihack's repo
+**Cause**: Discovery used only CWD-relative paths before version 0.9.0
+**Solution**: Upgrade to amplihack >= 0.9.0 which includes absolute package paths in discovery
+
 ### Issue: "No recipes discovered" in /tmp clone
 
 **Symptom**: `list_recipes()` returns empty list
@@ -65,7 +73,16 @@ else:
 **Cause**: Local recipe overriding global recipe
 **Solution**: Enable debug logging to see which path won
 
-## Fixed in Version 0.5.32
+## Version History
+
+### Version 0.9.0 (March 2026)
+
+- Issue #2812, PR #2813: Recipe discovery now includes installed package path
+- Absolute paths resolved via `Path(__file__)` work for wheel installs
+- Recipes discoverable from any working directory after pip install
+- Added `_PACKAGE_BUNDLE_DIR` and `_REPO_ROOT_BUNDLE_DIR` search paths
+
+### Version 0.5.32
 
 - Issue #2381: Recipe discovery now works in /tmp clones
 - Global recipes prioritized for subprocess isolation

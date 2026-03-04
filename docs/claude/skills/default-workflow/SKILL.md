@@ -2,13 +2,10 @@
 name: default-workflow
 version: 1.0.0
 description: Development workflow for features, bugs, refactoring. Auto-activates for multi-file implementations.
-DEPRECATED: true
-deprecation_notice: |
-  This skill is DEPRECATED as of 2025-11-26.
-  Workflow selection is now handled directly in CLAUDE.md via the
-  "MANDATORY: Workflow Selection" section. Read the workflow file
-  directly instead of using this skill wrapper.
-auto_activates: []
+auto_activates:
+  - "implement feature spanning multiple files"
+  - "complex integration across components"
+  - "refactor affecting 5+ files"
 explicit_triggers:
   - /ultrathink
   - /amplihack:default-workflow

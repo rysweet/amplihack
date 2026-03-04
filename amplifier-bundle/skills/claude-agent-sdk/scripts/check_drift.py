@@ -17,7 +17,6 @@ import json
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 # Check for requests library
 try:
@@ -128,7 +127,7 @@ def check_source_drift(source: dict) -> dict:
     }
 
 
-def check_all_drift(metadata_path: Path) -> dict[str, Any]:
+def check_all_drift(metadata_path: Path) -> dict[str, any]:
     """
     Check drift for all sources in metadata.
 

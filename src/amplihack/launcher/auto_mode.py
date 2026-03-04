@@ -5,6 +5,7 @@ import json
 import os
 import platform
 import re
+import shutil
 import subprocess
 import sys
 import threading
@@ -967,6 +968,21 @@ Current Turn: {self.turn}/{self.max_turns}"""
 
             self.log(f"Traceback: {traceback.format_exc()}", level="ERROR")
 
+            # Provide actionable guidance for binary/process errors
+            error_str = str(e).lower()
+            if any(
+                keyword in error_str
+                for keyword in ("no such file", "not found", "enoent", "spawn", "exec")
+            ):
+                self.log(
+                    "This error may indicate the 'claude' CLI binary is missing or "
+                    "not on PATH.\n"
+                    "  Install:  npm install -g @anthropic-ai/claude-code\n"
+                    "  Verify:   claude --version\n"
+                    "  PATH:     Ensure the npm global bin directory is on your PATH.",
+                    level="ERROR",
+                )
+
             # Log error event
             self.json_logger.log_event(
                 "error",
@@ -1408,6 +1424,15 @@ Current Turn: {turn}/{self.max_turns}"""
         # Memory: store initial goal + recall past experiences
         if self.memory:
             self.memory.store_goal(self.prompt)
+
+        # Pre-flight check: verify claude CLI binary is available
+        if not shutil.which("claude"):
+            raise FileNotFoundError(
+                "The 'claude' CLI binary is required but was not found on PATH.\n"
+                "The Claude Agent SDK depends on the Claude Code CLI.\n"
+                "Install it with:  npm install -g @anthropic-ai/claude-code\n"
+                "Then verify with:  claude --version"
+            )
 
         # Initialize options for potential forking
         options = ClaudeAgentOptions(
