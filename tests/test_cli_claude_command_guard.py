@@ -66,12 +66,24 @@ def _apply_patches(extra_patches: dict | None = None):
     mock_strategy_manager = MagicMock()
     mock_strategy_manager.determine_target.return_value = mock_copy_strategy
 
-    # These are local imports inside main(), so patch at their source modules
+    # Patch at the modules where the functions are actually used.
+    # After the cli.py split (issue #2845), code is spread across cli_*.py modules.
     patches = {
         "amplihack.cli.is_uvx_deployment": MagicMock(return_value=True),
-        "amplihack.cli.cleanup_legacy_skills": MagicMock(),
+        # Staging patches - mock at source, import destinations, and re-export aliases
+        "amplihack.cli_staging.ensure_amplihack_staged": MagicMock(),
+        "amplihack.cli_sdk_commands.ensure_amplihack_staged": MagicMock(),
+        "amplihack.cli._ensure_amplihack_staged": MagicMock(),
+        "amplihack.cli_staging.cleanup_legacy_skills": MagicMock(),
+        "amplihack.cli_staging.is_uvx_deployment": MagicMock(return_value=True),
+        "amplihack.cli_plugin.is_uvx_deployment": MagicMock(return_value=True),
         "amplihack.safety.GitConflictDetector": MagicMock(return_value=mock_detector),
         "amplihack.safety.SafeCopyStrategy": MagicMock(return_value=mock_strategy_manager),
+        # Plugin installation mocks - patch at source since they're lazy-imported
+        "amplihack.cli_plugin.configure_amplihack_marketplace": mock_configure,
+        "amplihack.utils.claude_cli.get_claude_cli_path": mock_get_cli,
+        "amplihack.cli_plugin.subprocess.run": mock_subprocess_run,
+        # Backward-compat aliases patched on cli module for assertion checks
         "amplihack.cli._configure_amplihack_marketplace": mock_configure,
         "amplihack.cli.get_claude_cli_path": mock_get_cli,
         "amplihack.cli.subprocess.run": mock_subprocess_run,

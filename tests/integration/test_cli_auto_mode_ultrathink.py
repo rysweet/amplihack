@@ -20,7 +20,7 @@ import pytest
 @pytest.fixture
 def mock_auto_mode():
     """Mock AutoMode class for integration tests."""
-    with patch("amplihack.cli.AutoMode") as mock:
+    with patch("amplihack.launcher.auto_mode.AutoMode") as mock:
         instance = MagicMock()
         instance.run.return_value = 0
         mock.return_value = instance
@@ -234,7 +234,7 @@ def test_integration_auto_014_prompt_extraction_first_p_flag():
     """INTEGRATION-AUTO-014: Prompt is extracted from first -p flag."""
     from amplihack.cli import handle_auto_mode
 
-    with patch("amplihack.cli.AutoMode") as mock_auto:
+    with patch("amplihack.launcher.auto_mode.AutoMode") as mock_auto:
         mock_auto.return_value.run.return_value = 0
 
         args = argparse.Namespace(auto=True, max_turns=10, ui=False)
@@ -251,7 +251,7 @@ def test_integration_auto_015_prompt_flag_at_end():
     """INTEGRATION-AUTO-015: -p flag can be at end of cmd_args."""
     from amplihack.cli import handle_auto_mode
 
-    with patch("amplihack.cli.AutoMode") as mock_auto:
+    with patch("amplihack.launcher.auto_mode.AutoMode") as mock_auto:
         mock_auto.return_value.run.return_value = 0
 
         args = argparse.Namespace(auto=True, max_turns=10, ui=False)
@@ -272,7 +272,7 @@ def test_integration_auto_016_full_workflow_with_transformation():
     """INTEGRATION-AUTO-016: Full workflow from CLI args to AutoMode."""
     from amplihack.cli import ensure_ultrathink_command, handle_auto_mode
 
-    with patch("amplihack.cli.AutoMode") as mock_auto:
+    with patch("amplihack.launcher.auto_mode.AutoMode") as mock_auto:
         mock_auto.return_value.run.return_value = 0
 
         # Simulate user input
@@ -310,7 +310,7 @@ def test_integration_auto_018_whitespace_only_prompt_error():
     """INTEGRATION-AUTO-018: Whitespace-only prompt treated as empty."""
     from amplihack.cli import handle_auto_mode
 
-    with patch("amplihack.cli.AutoMode") as mock_auto:
+    with patch("amplihack.launcher.auto_mode.AutoMode") as mock_auto:
         args = argparse.Namespace(auto=True, max_turns=10, ui=False)
         cmd_args = ["-p", "   \t\n   "]
 
@@ -356,7 +356,7 @@ def test_integration_auto_021_auto_mode_import_error():
     """INTEGRATION-AUTO-021: Handle AutoMode import errors gracefully."""
     from amplihack.cli import handle_auto_mode
 
-    with patch("amplihack.cli.AutoMode", side_effect=ImportError("AutoMode not found")):
+    with patch("amplihack.launcher.auto_mode.AutoMode", side_effect=ImportError("AutoMode not found")):
         args = argparse.Namespace(auto=True, max_turns=10, ui=False)
         cmd_args = ["-p", "implement feature"]
 
@@ -369,7 +369,7 @@ def test_integration_auto_022_auto_mode_runtime_error():
     """INTEGRATION-AUTO-022: Handle AutoMode runtime errors."""
     from amplihack.cli import handle_auto_mode
 
-    with patch("amplihack.cli.AutoMode") as mock_auto:
+    with patch("amplihack.launcher.auto_mode.AutoMode") as mock_auto:
         mock_auto.return_value.run.side_effect = RuntimeError("AutoMode failed")
 
         args = argparse.Namespace(auto=True, max_turns=10, ui=False)
@@ -384,7 +384,7 @@ def test_integration_auto_023_missing_prompt_value():
     """INTEGRATION-AUTO-023: -p flag with no value."""
     from amplihack.cli import handle_auto_mode
 
-    with patch("amplihack.cli.AutoMode") as mock_auto:
+    with patch("amplihack.launcher.auto_mode.AutoMode") as mock_auto:
         args = argparse.Namespace(auto=True, max_turns=10, ui=False)
         cmd_args = ["-p"]  # Missing value after -p
 
