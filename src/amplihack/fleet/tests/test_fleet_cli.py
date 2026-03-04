@@ -59,6 +59,7 @@ class TestFleetHelp:
             "dashboard",
             "project",
             "report",
+            "sweep",
             "tui",
         ]
         for cmd in expected_commands:
@@ -1127,3 +1128,215 @@ class TestFleetCopilotLog:
 
         assert result.exit_code == 0
         assert "no decisions" in result.output.lower()
+
+
+# ---------------------------------------------------------------------------
+# fleet sweep
+# ---------------------------------------------------------------------------
+
+
+class TestFormatSweepReport:
+    """Tests for the standalone format_sweep_report function."""
+
+    def test_empty_vms_produces_header(self):
+        from amplihack.fleet._cli_session_ops import format_sweep_report
+
+        report = format_sweep_report([], [], 0, False)
+        assert "FLEET SWEEP REPORT" in report
+        assert "Running VMs: 0" in report
+        assert "Total sessions: 0" in report
+
+    def test_report_with_sessions_and_decisions(self):
+        from amplihack.fleet._cli_session_ops import format_sweep_report
+        from amplihack.fleet._tui_data import SessionView, VMView
+
+        sess = SessionView(
+            vm_name="vm-1", session_name="dev-1",
+            status="thinking", branch="feat/auth",
+        )
+        vm = VMView(name="vm-1", region="eastus", is_running=True, sessions=[sess])
+        decisions = [{
+            "vm": "vm-1", "session": "dev-1", "status": "thinking",
+            "branch": "feat/auth", "action": "wait",
+            "confidence": 0.9, "reasoning": "Agent is thinking",
+        }]
+        report = format_sweep_report([vm], decisions, 1, False)
+        assert "vm-1" in report
+        assert "dev-1" in report
+        assert "wait" in report
+        assert "Adopted: 1" in report
+
+    def test_skip_adopt_omits_adopted_count(self):
+        from amplihack.fleet._cli_session_ops import format_sweep_report
+
+        report = format_sweep_report([], [], 0, True)
+        assert "Adopted:" not in report
+
+    def test_decision_with_error(self):
+        from amplihack.fleet._cli_session_ops import format_sweep_report
+        from amplihack.fleet._tui_data import SessionView, VMView
+
+        sess = SessionView(vm_name="vm-1", session_name="s1", status="error")
+        vm = VMView(name="vm-1", region="", is_running=True, sessions=[sess])
+        decisions = [{"vm": "vm-1", "session": "s1", "status": "error", "error": "Connection refused"}]
+        report = format_sweep_report([vm], decisions, 0, False)
+        assert "ERROR" in report
+        assert "Connection refused" in report
+
+    def test_action_summary_counts(self):
+        from amplihack.fleet._cli_session_ops import format_sweep_report
+
+        decisions = [
+            {"vm": "v", "session": "a", "action": "wait", "confidence": 0.9},
+            {"vm": "v", "session": "b", "action": "wait", "confidence": 0.8},
+            {"vm": "v", "session": "c", "action": "send_input", "confidence": 0.7},
+        ]
+        report = format_sweep_report([], decisions, 0, False)
+        assert "wait: 2" in report
+        assert "send_input: 1" in report
+
+
+class TestFleetSweep:
+    """Tests for the fleet sweep CLI command."""
+
+    @patch("amplihack.fleet.fleet_tui.FleetTUI")
+    def test_sweep_no_running_vms(self, MockFleetTUI, runner):
+        mock_tui = MagicMock()
+        mock_tui.refresh_all.return_value = []
+        MockFleetTUI.return_value = mock_tui
+
+        result = runner.invoke(fleet_cli, ["sweep"], catch_exceptions=False)
+        assert result.exit_code == 0
+        assert "No running VMs" in result.output
+
+    @patch("amplihack.fleet.fleet_session_reasoner.SessionReasoner")
+    @patch("amplihack.fleet._backends.auto_detect_backend")
+    @patch("amplihack.fleet.fleet_adopt.SessionAdopter")
+    @patch("amplihack.fleet.fleet_tui.FleetTUI")
+    def test_sweep_full_pipeline(self, MockTUI, MockAdopter, MockBackend, MockReasoner, runner):
+        from amplihack.fleet._tui_data import SessionView, VMView
+
+        sess = SessionView(
+            vm_name="vm-1", session_name="work-1",
+            status="thinking", branch="feat/x",
+        )
+        vm = VMView(name="vm-1", region="eastus", is_running=True, sessions=[sess])
+        mock_tui = MagicMock()
+        mock_tui.refresh_all.return_value = [vm]
+        MockTUI.return_value = mock_tui
+
+        mock_adopter = MagicMock()
+        mock_adopter.adopt_sessions.return_value = [MagicMock()]
+        MockAdopter.return_value = mock_adopter
+
+        mock_decision = MagicMock()
+        mock_decision.action = "wait"
+        mock_decision.confidence = 0.95
+        mock_decision.reasoning = "Agent is working"
+        mock_decision.input_text = ""
+        mock_reasoner = MagicMock()
+        mock_reasoner.reason_about_session.return_value = mock_decision
+        MockReasoner.return_value = mock_reasoner
+
+        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"}):
+            result = runner.invoke(fleet_cli, ["sweep"], catch_exceptions=False)
+
+        assert result.exit_code == 0
+        assert "FLEET SWEEP REPORT" in result.output
+        assert "vm-1" in result.output
+
+    @patch("amplihack.fleet.fleet_tui.FleetTUI")
+    def test_sweep_vm_filter(self, MockTUI, runner):
+        from amplihack.fleet._tui_data import SessionView, VMView
+
+        vm1 = VMView(
+            name="vm-1", region="eastus", is_running=True,
+            sessions=[SessionView(vm_name="vm-1", session_name="s1", status="idle")],
+        )
+        vm2 = VMView(
+            name="vm-2", region="westus", is_running=True,
+            sessions=[SessionView(vm_name="vm-2", session_name="s2", status="idle")],
+        )
+        mock_tui = MagicMock()
+        mock_tui.refresh_all.return_value = [vm1, vm2]
+        MockTUI.return_value = mock_tui
+
+        with patch.dict("os.environ", {}, clear=False):
+            result = runner.invoke(
+                fleet_cli, ["sweep", "--vm", "vm-1", "--skip-adopt"],
+                catch_exceptions=False,
+            )
+        assert result.exit_code == 0
+        assert "vm-1" in result.output
+
+    @patch("amplihack.fleet.fleet_tui.FleetTUI")
+    def test_sweep_skip_adopt(self, MockTUI, runner):
+        from amplihack.fleet._tui_data import SessionView, VMView
+
+        vm = VMView(
+            name="vm-1", region="", is_running=True,
+            sessions=[SessionView(vm_name="vm-1", session_name="s1", status="idle")],
+        )
+        mock_tui = MagicMock()
+        mock_tui.refresh_all.return_value = [vm]
+        MockTUI.return_value = mock_tui
+
+        result = runner.invoke(
+            fleet_cli, ["sweep", "--skip-adopt"], catch_exceptions=False,
+        )
+        assert result.exit_code == 0
+        assert "Skipped" in result.output
+
+    @patch("amplihack.fleet.fleet_tui.FleetTUI")
+    def test_sweep_no_api_key_fallback(self, MockTUI, runner):
+        from amplihack.fleet._tui_data import SessionView, VMView
+
+        vm = VMView(
+            name="vm-1", region="", is_running=True,
+            sessions=[SessionView(vm_name="vm-1", session_name="s1", status="thinking", branch="main")],
+        )
+        mock_tui = MagicMock()
+        mock_tui.refresh_all.return_value = [vm]
+        MockTUI.return_value = mock_tui
+
+        env = {k: v for k, v in __import__("os").environ.items() if k != "ANTHROPIC_API_KEY"}
+        with patch.dict("os.environ", env, clear=True):
+            result = runner.invoke(
+                fleet_cli, ["sweep", "--skip-adopt"], catch_exceptions=False,
+            )
+        assert result.exit_code == 0
+        assert "no ANTHROPIC_API_KEY" in result.output
+        assert "N/A" in result.output
+
+    @patch("amplihack.fleet.fleet_tui.FleetTUI")
+    def test_sweep_save_json(self, MockTUI, runner, tmp_path):
+        import json
+
+        from amplihack.fleet._tui_data import SessionView, VMView
+
+        vm = VMView(
+            name="vm-1", region="", is_running=True,
+            sessions=[SessionView(vm_name="vm-1", session_name="s1", status="idle")],
+        )
+        mock_tui = MagicMock()
+        mock_tui.refresh_all.return_value = [vm]
+        MockTUI.return_value = mock_tui
+
+        save_file = str(tmp_path / "report.json")
+        result = runner.invoke(
+            fleet_cli,
+            ["sweep", "--skip-adopt", "--save", save_file],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0
+        assert (tmp_path / "report.json").exists()
+        data = json.loads((tmp_path / "report.json").read_text())
+        assert "decisions" in data
+        assert "timestamp" in data
+
+    def test_sweep_help(self, runner):
+        result = runner.invoke(fleet_cli, ["sweep", "--help"], catch_exceptions=False)
+        assert result.exit_code == 0
+        assert "--vm" in result.output
+        assert "--skip-adopt" in result.output
+        assert "--save" in result.output
