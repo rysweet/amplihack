@@ -12,12 +12,22 @@ systematic software engineering.
 uvx --from git+https://github.com/rysweet/amplihack amplihack claude
 ```
 
+---
+
+**New to amplihack?** Start with [Quick Start](#quick-start), then [Core Concepts](#core-concepts), then [Configuration](#configuration).
+
+**Want to contribute?** Go to [Development](#development) and [CONTRIBUTING.md](CONTRIBUTING.md).
+
+**Already familiar?** Check out [Features](#features) and [Documentation Navigator](#documentation-navigator).
+
+---
+
 ## Table of Contents
 
 - [Why amplihack?](#why-amplihack)
 - [Quick Start](#quick-start)
 - [Core Concepts](#core-concepts)
-- [Feature Catalog](#feature-catalog)
+- [Features](#features)
 - [Configuration](#configuration)
 - [Documentation Navigator](#documentation-navigator)
 - [Development](#development)
@@ -62,6 +72,8 @@ Detailed setup:
 
 ### Installation
 
+Install the prerequisites above first, then choose an option below.
+
 **Option 1: Zero-Install** (try before you commit)
 
 ```bash
@@ -74,6 +86,8 @@ uvx --from git+https://github.com/rysweet/amplihack amplihack amplifier
 # Launch with GitHub Copilot
 uvx --from git+https://github.com/rysweet/amplihack amplihack copilot
 ```
+
+This launches an interactive Claude Code session enhanced with amplihack's workflows, specialized agents, and development tools. You'll get a CLI prompt where you can describe tasks and the framework orchestrates their execution.
 
 **Option 2: Global Install** (for daily use)
 
@@ -123,8 +137,7 @@ cd /path/to/my/project
 Add user authentication with OAuth2 support
 ```
 
-The `/dev` command automatically classifies your task, detects parallel
-workstreams, and orchestrates execution.
+The `/dev` command is amplihack's primary entry point for development tasks. It automatically classifies your task, detects parallel workstreams, and orchestrates execution through the 23-step default workflow.
 
 ### Developer Quick Example
 

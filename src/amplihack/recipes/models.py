@@ -16,6 +16,7 @@ class StepType(enum.Enum):
 
     BASH = "bash"
     AGENT = "agent"
+    RECIPE = "recipe"
 
 
 class StepStatus(enum.Enum):
@@ -44,6 +45,8 @@ class Step:
     working_dir: str | None = None
     timeout: int | None = None
     auto_stage: bool | None = None  # None = inherit from runner default
+    recipe: str | None = None  # Sub-recipe name (for StepType.RECIPE)
+    sub_context: dict[str, Any] | None = None  # Context to merge into sub-recipe
 
 
 @dataclass
@@ -68,15 +71,37 @@ class StepResult:
     output: str = ""
     error: str = ""
 
+    def __str__(self) -> str:
+        """Return a human-readable summary of the step result."""
+        line = f"[{self.status.value:>9}] {self.step_id}"
+        if self.error:
+            line += f" -- error: {self.error}"
+        return line
+
 
 @dataclass
 class RecipeResult:
-    """Result of executing an entire recipe."""
+    """Result of executing an entire recipe.
+
+    Use attribute access for structured data:
+        result.success, result.step_results, result.context
+
+    Use str(result) for a human-readable summary (also enables safe
+    string slicing like ``str(result)[:500]``).
+    """
 
     recipe_name: str
     success: bool
     step_results: list[StepResult] = field(default_factory=list)
     context: dict[str, Any] = field(default_factory=dict)
+
+    def __str__(self) -> str:
+        """Return a human-readable summary of the recipe execution."""
+        status = "SUCCESS" if self.success else "FAILED"
+        lines = [f"Recipe '{self.recipe_name}': {status}"]
+        for step_result in self.step_results:
+            lines.append(f"  {step_result}")
+        return "\n".join(lines)
 
 
 class StepExecutionError(Exception):

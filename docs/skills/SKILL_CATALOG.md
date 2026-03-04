@@ -218,6 +218,48 @@ Detailed instructions for Claude on how to use this skill...
 Concrete examples with input/output...
 ```
 
+### YAML Frontmatter Requirements
+
+**Critical**: The YAML frontmatter MUST:
+
+1. Start at the **first line** of SKILL.md (no title or content before `---`)
+2. Use proper `---` delimiters (not code blocks like ````yaml`)
+3. Contain no HTML comments within the YAML section
+4. Include at minimum: `name` and `description` fields
+
+**Common Mistakes Fixed in v0.9.0** (PR #2811):
+
+- ❌ Metadata in `````yaml` code block instead of frontmatter
+- ❌ Title heading before frontmatter
+- ❌ HTML comments (`<!-- -->`) inside YAML
+- ❌ Missing frontmatter entirely
+
+**Example of Correct Format**:
+
+```yaml
+---
+name: example-skill
+description: |
+  A clear description of what this skill does.
+---
+
+# Example Skill
+
+Content starts after the frontmatter...
+```
+
+**Example of Incorrect Format**:
+
+```yaml
+# Example Skill  ← WRONG: Title before frontmatter
+
+---
+name: example-skill
+<!-- This is a comment -->  ← WRONG: HTML in YAML
+description: Example
+---
+```
+
 ## Quality Standards
 
 All skills meet these quality standards:

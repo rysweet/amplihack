@@ -1,7 +1,7 @@
 """Agent resolver for mapping agent references to system prompt content.
 
-Resolves references like ``amplihack:builder`` to the markdown content of the
-corresponding agent definition file.
+Resolves references like ``amplihack:builder`` or ``amplihack:core:architect``
+to the markdown content of the corresponding agent definition file.
 """
 
 from __future__ import annotations
@@ -46,7 +46,9 @@ class AgentResolver:
         """Resolve an agent reference to its system prompt content.
 
         Args:
-            agent_ref: Reference in ``namespace:name`` format (e.g. ``amplihack:builder``).
+            agent_ref: Reference in ``namespace:name`` or
+                ``namespace:category:name`` format
+                (e.g. ``amplihack:builder`` or ``amplihack:core:architect``).
 
         Returns:
             The full text content of the agent's markdown definition file.
@@ -60,29 +62,41 @@ class AgentResolver:
                 f"Agent reference must be in 'namespace:name' format, got: '{agent_ref}'"
             )
 
-        namespace, name = agent_ref.split(":", 1)
+        parts = agent_ref.split(":")
 
-        # Validate that namespace and name are simple identifiers to prevent
-        # path traversal attacks (e.g. "../../etc:passwd" or "ns:../../secret").
-        if not _SAFE_NAME_RE.match(namespace):
+        # Validate every segment to prevent path traversal
+        for part in parts:
+            if not _SAFE_NAME_RE.match(part):
+                raise ValueError(
+                    f"Invalid agent reference segment '{part}': must contain only "
+                    "alphanumeric characters, hyphens, and underscores"
+                )
+
+        if len(parts) == 3:
+            # namespace:category:name (e.g. amplihack:core:architect)
+            namespace, category, name = parts
+        elif len(parts) == 2:
+            # namespace:name (e.g. amplihack:builder)
+            namespace, name = parts
+            category = None
+        else:
             raise ValueError(
-                f"Invalid agent namespace '{namespace}': must contain only "
-                "alphanumeric characters, hyphens, and underscores"
-            )
-        if not _SAFE_NAME_RE.match(name):
-            raise ValueError(
-                f"Invalid agent name '{name}': must contain only "
-                "alphanumeric characters, hyphens, and underscores"
+                f"Agent reference must be 'namespace:name' or "
+                f"'namespace:category:name', got: '{agent_ref}'"
             )
 
-        # Candidate relative paths to try within each search directory
-        candidates = [
+        # Build candidate paths. When category is explicit, try it first.
+        candidates: list[Path] = []
+        if category:
+            candidates.append(Path(namespace) / category / f"{name}.md")
+            candidates.append(Path(category) / f"{name}.md")
+        candidates.extend([
             Path(namespace) / "core" / f"{name}.md",
             Path(namespace) / "specialized" / f"{name}.md",
             Path("core") / f"{name}.md",
             Path("specialized") / f"{name}.md",
             Path(f"{name}.md"),
-        ]
+        ])
 
         searched: list[str] = []
         for base in self._search_paths:

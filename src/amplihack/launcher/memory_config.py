@@ -19,8 +19,12 @@ Public API (the "studs"):
     should_warn_about_limit: Check if memory limit is below minimum
     prompt_user_consent: Prompt user for consent to update memory
     get_memory_config: Main entry point - get complete memory configuration
+    get_config_path: Return path to the ~/.amplihack/config file
+    load_user_preference: Load saved NODE_OPTIONS preference from config
+    save_user_preference: Persist user's NODE_OPTIONS preference to config
 """
 
+import json
 import logging
 import math
 import os
@@ -52,6 +56,9 @@ __all__ = [
     "is_interactive_terminal",
     "parse_consent_response",
     "get_user_input_with_timeout",
+    "get_config_path",
+    "load_user_preference",
+    "save_user_preference",
 ]
 
 
@@ -614,6 +621,73 @@ def prompt_user_consent(
         return default_response
 
 
+def get_config_path() -> Path:
+    """Return the path to the ~/.amplihack/config file.
+
+    Returns:
+        Path to the config file (~/.amplihack/config)
+
+    Example:
+        >>> path = get_config_path()
+        >>> path.name
+        'config'
+    """
+    return Path.home() / ".amplihack" / "config"
+
+
+def load_user_preference() -> dict[str, Any] | None:
+    """Load saved NODE_OPTIONS preference from ~/.amplihack/config.
+
+    Returns:
+        Dict with 'node_options_consent' (bool) and 'node_options_limit_mb' (int)
+        if a preference was saved, otherwise None.
+
+    Example:
+        >>> pref = load_user_preference()
+        >>> pref  # None if no saved preference, else {'node_options_consent': True, ...}
+    """
+    config_path = get_config_path()
+    if not config_path.exists():
+        return None
+    try:
+        data = json.loads(config_path.read_text(encoding="utf-8"))
+        if "node_options_consent" not in data:
+            return None
+        return data
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
+def save_user_preference(consent: bool, limit_mb: int) -> None:
+    """Persist user's NODE_OPTIONS preference to ~/.amplihack/config.
+
+    Creates the ~/.amplihack directory if it does not exist.
+    Merges with any existing config keys so other settings are preserved.
+
+    Args:
+        consent: True if user accepted the memory configuration, False if declined
+        limit_mb: The memory limit in MB that was shown/applied
+
+    Example:
+        >>> save_user_preference(True, 8192)
+    """
+    config_path = get_config_path()
+    try:
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        # Load existing config to preserve other keys
+        existing: dict[str, Any] = {}
+        if config_path.exists():
+            try:
+                existing = json.loads(config_path.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, OSError):
+                existing = {}
+        existing["node_options_consent"] = consent
+        existing["node_options_limit_mb"] = limit_mb
+        config_path.write_text(json.dumps(existing, indent=2), encoding="utf-8")
+    except OSError as e:
+        logging.getLogger(__name__).warning(f"Failed to save memory config preference: {e}")
+
+
 def get_memory_config(existing_node_options: str | None = None) -> dict[str, Any] | None:
     """Get complete memory configuration.
 
@@ -641,6 +715,9 @@ def get_memory_config(existing_node_options: str | None = None) -> dict[str, Any
         >>> assert 'system_ram_gb' in config
         >>> assert 'recommended_limit_mb' in config
     """
+    # Check for a saved user preference (returning user)
+    saved_pref = load_user_preference()
+
     # Detect system RAM
     ram_gb = detect_system_ram_gb()
 
@@ -677,18 +754,25 @@ def get_memory_config(existing_node_options: str | None = None) -> dict[str, Any
             f"Performance may be degraded on systems with less than 8GB RAM."
         )
 
-    # Prompt for user consent if we're changing the memory limit
-    # or if no limit is currently set
-    should_prompt = current_limit_mb is None or current_limit_mb != recommended_limit_mb
+    if saved_pref is not None:
+        # Returning user: skip prompt, use saved consent
+        config["user_consent"] = saved_pref["node_options_consent"]
+        config["returning_user"] = True
+    else:
+        # First run: prompt for user consent if we're changing the memory limit
+        # or if no limit is currently set
+        should_prompt = current_limit_mb is None or current_limit_mb != recommended_limit_mb
 
-    if should_prompt:
-        try:
-            # Try to prompt (will work in interactive mode)
-            user_consented = prompt_user_consent(config)
-            config["user_consent"] = user_consented
-        except (EOFError, OSError):
-            # Non-interactive mode or input not available
-            config["user_consent"] = None
+        if should_prompt:
+            try:
+                # Try to prompt (will work in interactive mode)
+                user_consented = prompt_user_consent(config)
+                config["user_consent"] = user_consented
+                # Persist the preference so we don't ask again
+                save_user_preference(user_consented, recommended_limit_mb)
+            except (EOFError, OSError):
+                # Non-interactive mode or input not available
+                config["user_consent"] = None
 
     # Merge options
     merged_options = merge_node_options(parsed_options, recommended_limit_mb)
@@ -700,20 +784,41 @@ def get_memory_config(existing_node_options: str | None = None) -> dict[str, Any
 def display_memory_config(config: dict[str, Any]) -> None:
     """Display memory configuration on launch (concise single-line output).
 
-    Shows either success (✓) or declined (✗) status based on user_consent.
+    For first-run: shows either success (✓) or declined (✗) status.
+    For returning users: shows informational message with saved setting and
+    instructions for how to change it.
 
     Args:
         config: Memory configuration from get_memory_config() with:
             - node_options: The NODE_OPTIONS value being set
             - user_consent: True if user accepted, False if declined, None if not prompted
             - recommended_limit_mb: The memory limit value (for extraction)
+            - returning_user: True if preference was loaded from saved config
     """
     # Extract the memory limit value from node_options
     node_options = config.get("node_options", "")
     recommended_limit = config.get("recommended_limit_mb")
-
-    # Determine if user consented (True), declined (False), or wasn't prompted (None)
     user_consent = config.get("user_consent")
+    returning_user = config.get("returning_user", False)
+
+    if returning_user:
+        # Returning user: emit informational message only, no prompt
+        config_path = get_config_path()
+        if user_consent is False:
+            print(
+                f"ℹ NODE_OPTIONS memory config: skipped (saved preference). "
+                f"To change: edit {config_path}"
+            )
+        else:
+            if "--max-old-space-size=" in node_options:
+                value = node_options.split("--max-old-space-size=")[1].split()[0]
+            else:
+                value = recommended_limit
+            print(
+                f"ℹ NODE_OPTIONS=--max-old-space-size={value} (saved preference). "
+                f"To change: edit {config_path}"
+            )
+        return
 
     if user_consent is False:
         # User explicitly declined
