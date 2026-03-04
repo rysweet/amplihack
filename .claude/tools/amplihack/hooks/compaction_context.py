@@ -5,30 +5,39 @@ Extracted from compaction_validator.py to keep that module under 310 lines.
 """
 
 import logging
-import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 logger = logging.getLogger(__name__)
 
+_STALENESS_THRESHOLD_HOURS = 24
+
 
 def _parse_timestamp_age(timestamp: str) -> tuple[float, bool]:
     """Parse timestamp and calculate age in hours and staleness.
+
+    Security hardening:
+    - Rejects non-string input and strings longer than 35 characters
+    - Clamps future timestamps (negative age) to 0.0 unconditionally
+    - Rejects implausible ages older than 10 years (87600 hours)
 
     Args:
         timestamp: ISO 8601 timestamp string (with or without timezone)
 
     Returns:
         Tuple of (age_hours, is_stale) where is_stale means > 24 hours old.
-        Returns (0.0, False) if timestamp cannot be parsed.
+        Returns (0.0, False) if timestamp cannot be parsed or fails validation.
     """
+    # Security: reject non-string and oversized inputs
+    if not isinstance(timestamp, str) or len(timestamp) > 35:
+        return (0.0, False)
+
     try:
-        # Parse timestamp
-        timestamp_str = timestamp.replace("Z", "")
+        # Parse timestamp — handle Z-suffix and offset-aware forms
         if "+" in timestamp or timestamp.endswith("Z"):
             event_time = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
         else:
-            event_time = datetime.fromisoformat(timestamp_str)
+            event_time = datetime.fromisoformat(timestamp)
 
         # Get current time in UTC
         now = datetime.now(UTC)
@@ -37,9 +46,17 @@ def _parse_timestamp_age(timestamp: str) -> tuple[float, bool]:
         if event_time.tzinfo is None:
             event_time = event_time.replace(tzinfo=UTC)
 
-        age_delta = now - event_time
-        age_hours = age_delta.total_seconds() / 3600
-        is_stale = age_hours > 24
+        age_hours = (now - event_time).total_seconds() / 3600
+
+        # Clamp negative ages (future timestamps / clock skew) to zero
+        if age_hours < 0:
+            age_hours = 0.0
+
+        # Reject implausible ages older than 10 years
+        if age_hours > 87600:
+            return (0.0, False)
+
+        is_stale = age_hours > _STALENESS_THRESHOLD_HOURS
         return (age_hours, is_stale)
     except (ValueError, AttributeError):
         # Fail-open: Can't parse timestamp
