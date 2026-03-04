@@ -1,7 +1,7 @@
 # Makefile for Scenarios Directory Pattern Tools
 # Provides easy access to production-ready scenario tools
 
-.PHONY: help analyze-codebase scenarios-help list-scenarios docs-serve docs-build docs-deploy
+.PHONY: help analyze-codebase scenarios-help list-scenarios docs-serve docs-build docs-deploy check-drift verify-hooks-symlink
 
 # Default target - show help
 help:
@@ -158,3 +158,26 @@ docs-deploy:
 	@echo "🚀 Deploying documentation to GitHub Pages..."
 	@mkdocs gh-deploy --force
 	@echo "✅ Documentation deployed successfully"
+
+# Drift Detection
+# ===============
+
+# Run drift detection for skills, agents, and hooks
+check-drift:
+	@python scripts/check_drift.py
+
+# Verify hooks symlink is intact
+verify-hooks-symlink:
+	@if [ -L "amplifier-bundle/tools/amplihack/hooks" ]; then \
+		target=$$(readlink amplifier-bundle/tools/amplihack/hooks); \
+		if [ "$$target" = "../../../.claude/tools/amplihack/hooks" ]; then \
+			echo "OK: hooks symlink is correct"; \
+		else \
+			echo "ERROR: hooks symlink points to $$target (expected ../../../.claude/tools/amplihack/hooks)"; \
+			exit 1; \
+		fi; \
+	else \
+		echo "ERROR: amplifier-bundle/tools/amplihack/hooks is not a symlink"; \
+		echo "Fix: rm -rf amplifier-bundle/tools/amplihack/hooks && ln -s ../../../.claude/tools/amplihack/hooks amplifier-bundle/tools/amplihack/hooks"; \
+		exit 1; \
+	fi

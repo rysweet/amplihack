@@ -1,18 +1,24 @@
 #!/usr/bin/env python3
-"""Detect drift between triplicated skill and agent files.
+"""Detect drift between triplicated skill and agent files, and verify hooks symlink.
 
 Skills and agents exist in up to 3 locations that must stay in sync:
   1. .claude/skills/ and .claude/agents/amplihack/ (source of truth)
   2. amplifier-bundle/skills/ and amplifier-bundle/agents/ (distribution)
   3. docs/claude/skills/ and docs/claude/agents/ (documentation, optional)
 
+Hooks: .claude/tools/amplihack/hooks/ is the canonical source of truth.
+  amplifier-bundle/tools/amplihack/hooks is a symlink to the canonical location.
+  This script verifies the symlink is intact.
+
 This script compares checksums between these locations and reports any drift.
 
 Severity levels:
   - MISSING/EXTRA: printed as warnings, do NOT cause exit 1 (intentional structural differences)
   - CHANGED: printed as errors, cause exit 1 (content drift must be fixed)
+  - SYMLINK BROKEN: printed as error, causes exit 1 (hooks symlink must point to .claude/)
 
 References: https://github.com/microsoft/amplihack/issues/2820
+            https://github.com/microsoft/amplihack/issues/2845
 """
 
 import hashlib
@@ -138,6 +144,42 @@ def main() -> int:
     if errors:
         all_errors.append((".claude/agents vs amplifier-bundle/agents", errors))
 
+    # --- Hooks symlink verification ---
+    hooks_symlink = repo_root / "amplifier-bundle" / "tools" / "amplihack" / "hooks"
+    hooks_canonical = repo_root / ".claude" / "tools" / "amplihack" / "hooks"
+    expected_target = "../../../.claude/tools/amplihack/hooks"
+
+    if hooks_symlink.is_symlink():
+        actual_target = str(hooks_symlink.readlink())
+        if actual_target != expected_target:
+            all_errors.append((
+                "hooks symlink target",
+                [f"  Expected: {expected_target}", f"  Actual: {actual_target}"],
+            ))
+        elif not hooks_symlink.resolve().is_dir():
+            all_errors.append((
+                "hooks symlink resolution",
+                [f"  Symlink exists but target does not resolve to a directory"],
+            ))
+        else:
+            print("Hooks symlink OK: amplifier-bundle/tools/amplihack/hooks -> .claude/tools/amplihack/hooks")
+    elif hooks_symlink.is_dir():
+        # Directory exists instead of symlink -- drift has occurred
+        all_errors.append((
+            "hooks symlink missing",
+            [
+                "  amplifier-bundle/tools/amplihack/hooks/ is a directory, not a symlink.",
+                "  It should be a symlink to ../../../.claude/tools/amplihack/hooks",
+                "  Run: rm -rf amplifier-bundle/tools/amplihack/hooks && "
+                "ln -s ../../../.claude/tools/amplihack/hooks amplifier-bundle/tools/amplihack/hooks",
+            ],
+        ))
+    elif not hooks_symlink.exists():
+        all_errors.append((
+            "hooks symlink missing",
+            [f"  amplifier-bundle/tools/amplihack/hooks does not exist at all"],
+        ))
+
     # --- Report warnings (MISSING/EXTRA) ---
     if all_warnings:
         total_warnings = sum(len(items) for _, items in all_warnings)
@@ -159,7 +201,7 @@ def main() -> int:
                 print(item)
             print()
         print(
-            "Source of truth is .claude/skills/ and .claude/agents/. "
+            "Source of truth is .claude/skills/, .claude/agents/, and .claude/tools/amplihack/hooks/. "
             "Copy changed files to the other locations to fix."
         )
         return 1
