@@ -1,11 +1,13 @@
 name: "quality-audit-cycle"
 description: |
   Quality audit with seek/validate/fix/recurse loop.
-  Runs audit → multi-agent validate → fix (via DEFAULT_WORKFLOW) → re-audit.
+  Runs audit → multi-agent validate → fix ALL → verify fixes → re-audit.
   Minimum 3 cycles. Continues if cycle 3 finds >3 medium or any high severity.
   Each cycle escalates depth: fresh eyes, dig deeper, challenge prior findings.
   Includes documentation audit (durability, tone, quality).
-version: "3.0.0"
+  RULE: Every cycle must fix ALL confirmed findings before moving to next cycle.
+  No partial cycles allowed (#2842).
+version: "4.0.0"
 author: "Amplihack Team"
 tags: ["quality", "audit", "eval", "improvement", "recursive"]
 
@@ -15,13 +17,17 @@ recursion:
   max_total_steps: 60
 
 context:
-  # Path to audit
+  # Path to audit (structured input per #2843)
   target_path: "src/amplihack"
 
-  # Configuration
+  # Configuration (structured inputs per #2843)
   min_cycles: "3"
   max_cycles: "6"
   validation_threshold: "2"
+  severity_threshold: "medium"
+  module_loc_limit: "300"
+  fix_all_per_cycle: "true"
+  categories: "security,reliability,dead_code,silent_fallbacks,error_swallowing,structural,hardcoded_limits,test_gaps,doc_gaps,documentation"
 
   # Output directory
   output_dir: "./eval_results/quality_audit"
@@ -30,6 +36,7 @@ context:
   audit_findings: ""
   validated_findings: ""
   fix_results: ""
+  fix_verification: ""
   cycle_number: "1"
   cycle_history: ""
   recurse_decision: ""
@@ -47,6 +54,9 @@ steps:
 
       **Target Path:** {{target_path}}
       **Cycle:** {{cycle_number}} (escalating depth — look with fresh eyes)
+      **Severity Threshold:** {{severity_threshold}} (only report findings at or above this severity)
+      **Module LOC Limit:** {{module_loc_limit}} (flag modules exceeding this)
+      **Categories:** {{categories}}
 
       **Depth instructions based on cycle:**
       - Cycle 1: Scan broadly for the most obvious issues.
@@ -319,6 +329,12 @@ steps:
       **Validation Results:** {{validated_findings}}
       **Target Path:** {{target_path}}
 
+      **MANDATORY RULE (fix_all_per_cycle={{fix_all_per_cycle}}):** You MUST fix
+      ALL confirmed findings in this cycle. No partial fixes. No deferring to
+      "follow-up". No stopping after fixing only high-severity items. Every
+      confirmed finding from this cycle's validation must be addressed before
+      this step is complete. This is a hard requirement per issue #2842.
+
       Fix ALL confirmed findings (verdict: "confirmed"). Skip false positives.
 
       **For each confirmed finding, follow the full DEFAULT_WORKFLOW approach:**
@@ -328,20 +344,24 @@ steps:
       4. Verify the fix doesn't break existing tests
       5. Verify the fix addresses the finding
 
-      **Priority order:**
+      **Priority order (but ALL must be fixed):**
       1. Critical findings (security, silent security degradation)
       2. High findings (error swallowing in critical paths, reliability)
       3. Medium findings (general fallbacks, structural issues)
       4. Low findings (documentation tone, minor structural)
 
       **Rules:**
-      - Fix each finding completely — no partial fixes
+      - Fix EVERY confirmed finding — no exceptions, no partial cycles (#2842)
+      - Do NOT defer any findings to "follow-up issues" or "next cycle"
       - Verify each fix with relevant tests
       - For documentation findings: make the fix durable (no temporal language)
       - Create a commit for the batch of fixes
+      - If a finding truly cannot be fixed (e.g., requires external dependency
+        change), document WHY with specific technical reasoning — "low priority"
+        is not a valid reason to skip
 
       End with STATUS: COMPLETE if all confirmed findings fixed,
-      STATUS: PARTIAL if some remain.
+      STATUS: PARTIAL if some remain (with reasons for each unfixed finding).
 
       Output as JSON:
       ```json
@@ -361,7 +381,66 @@ steps:
     output: "fix_results"
 
   # ========================================================================
-  # STEP 4b: ACCUMULATE CYCLE HISTORY
+  # STEP 4b: VERIFY ALL FIXES — Enforce fix-all-per-cycle rule (#2842)
+  # Compares confirmed findings against fix results to ensure nothing was
+  # skipped. Fails the cycle if any confirmed finding was not addressed.
+  # ========================================================================
+  - id: "verify-fixes"
+    type: "bash"
+    condition: "validated_findings and fix_results"
+    command: |
+      VALIDATED='{{validated_findings}}'
+      FIX_RESULTS='{{fix_results}}'
+      FIX_ALL='{{fix_all_per_cycle}}'
+
+      python3 -c "
+      import json, sys
+
+      fix_all = '$FIX_ALL'.lower() == 'true'
+
+      try:
+          validated = json.loads('''$VALIDATED''')
+          fixes = json.loads('''$FIX_RESULTS''')
+      except json.JSONDecodeError as e:
+          # If we can't parse, report but don't block
+          print(f'WARNING: Could not parse JSON for fix verification: {e}')
+          print('VERIFY: SKIP (unparseable)')
+          sys.exit(0)
+
+      confirmed_ids = set()
+      for v in validated.get('validated', []):
+          if v.get('verdict') == 'confirmed':
+              confirmed_ids.add(v.get('finding_id'))
+
+      fixed_ids = set()
+      for f in fixes.get('fixes_applied', []):
+          fixed_ids.add(f.get('finding_id'))
+
+      skipped_ids = set()
+      for s in fixes.get('fixes_skipped', []):
+          skipped_ids.add(s.get('finding_id'))
+
+      unfixed = confirmed_ids - fixed_ids - skipped_ids
+      total_confirmed = len(confirmed_ids)
+      total_fixed = len(fixed_ids)
+
+      print(f'Confirmed findings: {total_confirmed}')
+      print(f'Fixed: {total_fixed}')
+      print(f'Skipped (false positive): {len(skipped_ids)}')
+      print(f'Unfixed: {len(unfixed)}')
+
+      if unfixed and fix_all:
+          print(f'VERIFY: FAIL — {len(unfixed)} confirmed findings not fixed: {sorted(unfixed)}')
+          print('The fix-all-per-cycle rule requires ALL confirmed findings to be addressed.')
+      elif total_fixed == total_confirmed:
+          print('VERIFY: PASS — all confirmed findings fixed')
+      else:
+          print(f'VERIFY: PASS — {total_fixed}/{total_confirmed} fixed, rest skipped as false positive')
+      "
+    output: "fix_verification"
+
+  # ========================================================================
+  # STEP 4c: ACCUMULATE CYCLE HISTORY
   # Appends this cycle's confirmed findings to cycle_history so subsequent
   # SEEK steps know what has already been found and fixed.
   # ========================================================================
@@ -394,8 +473,15 @@ steps:
       MIN_CYCLES='{{min_cycles}}'
       MAX_CYCLES='{{max_cycles}}'
       VALIDATED='{{validated_findings}}'
+      FIX_VERIFY='{{fix_verification}}'
 
       echo "Cycle $CYCLE complete."
+
+      # Check if fix verification failed (unfixed findings remain)
+      if echo "$FIX_VERIFY" | grep -q "VERIFY: FAIL"; then
+        echo "WARNING: Fix verification failed — not all findings were fixed this cycle."
+        echo "Per #2842, all confirmed findings must be fixed before cycle is complete."
+      fi
 
       # Hard stop at max_cycles
       if [ "$CYCLE" -ge "$MAX_CYCLES" ]; then
@@ -412,7 +498,9 @@ steps:
         exit 0
       fi
 
-      # Past minimum — check severity thresholds using Python for robust JSON parsing
+      # Past minimum — decide based on whether NEW findings emerged this cycle (#2842)
+      # The decision should be: did this cycle find new issues? If yes, continue.
+      # NOT: are there old unfixed issues remaining?
       read -r HIGH_COUNT CRITICAL_COUNT MEDIUM_COUNT CONFIRMED <<< $(python3 -c "
       import json, sys
       try:
@@ -427,18 +515,18 @@ steps:
           print('0 0 0 0')
       ")
 
-      echo "Confirmed findings: $CONFIRMED (critical=$CRITICAL_COUNT, high=$HIGH_COUNT, medium=$MEDIUM_COUNT)"
+      echo "New findings this cycle: $CONFIRMED (critical=$CRITICAL_COUNT, high=$HIGH_COUNT, medium=$MEDIUM_COUNT)"
 
       if [ "$CRITICAL_COUNT" -gt 0 ] || [ "$HIGH_COUNT" -gt 0 ]; then
         NEXT_CYCLE=$((CYCLE + 1))
-        echo "High/critical findings remain. Running cycle $NEXT_CYCLE."
+        echo "High/critical NEW findings emerged. Running cycle $NEXT_CYCLE."
         echo "CONTINUE:$NEXT_CYCLE"
       elif [ "$MEDIUM_COUNT" -gt 3 ]; then
         NEXT_CYCLE=$((CYCLE + 1))
-        echo "More than 3 medium findings. Running cycle $NEXT_CYCLE."
+        echo "More than 3 medium NEW findings. Running cycle $NEXT_CYCLE."
         echo "CONTINUE:$NEXT_CYCLE"
       else
-        echo "Quality thresholds met (≤3 medium, no high/critical). Stopping."
+        echo "Quality thresholds met (≤3 new medium, no new high/critical). Stopping."
         echo "STOP"
       fi
     output: "recurse_decision"
