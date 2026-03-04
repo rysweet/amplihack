@@ -1,0 +1,18 @@
+{
+  "auto-workflow": "f044fd4ae7e65800",
+  "cascade-workflow": "ee2ce111ae5d88ef",
+  "consensus-workflow": "a67e8e4dc1e5b8a3",
+  "debate-workflow": "ec18196f313439e7",
+  "default-workflow": "658aacd0507071d0",
+  "domain-agent-eval": "2cea1e684b0f50c5",
+  "guide": "3a317f9f004c1ddb",
+  "investigation-workflow": "15207822e0bafb58",
+  "long-horizon-memory-eval": "909f406862750f81",
+  "n-version-workflow": "c6f26f4217285d5e",
+  "qa-workflow": "99eb59c337fe12c5",
+  "quality-audit-cycle": "44ae487f43bac841",
+  "sdk-comparison": "e644801df4c13bcc",
+  "self-improvement-loop": "387fbb52144ab4a7",
+  "smart-orchestrator": "50fccc4505e421a2",
+  "verification-workflow": "108ae11f0e26a39d"
+}

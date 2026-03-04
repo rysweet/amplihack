@@ -1,5 +1,5 @@
 ---
-name: "Goal-Seeking Agent Pattern"
+name: goal-seeking-agent-pattern
 version: 1.0.0
 description: |
   Guides architects on when and how to use goal-seeking agents as a design pattern.
