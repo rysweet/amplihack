@@ -1,11 +1,11 @@
 ---
 name: transcript-viewer
-version: 1.1.0
+version: 1.2.0
 description: |
   Convert and browse session transcripts as HTML or Markdown.
   Supports Claude Code JSONL logs (auto-saved to ~/.claude/projects/) and
-  GitHub Copilot CLI markdown exports (created via /share markdown).
-  Auto-detects log source based on file format and context.
+  GitHub Copilot CLI JSONL logs (auto-saved to ~/.copilot/session-state/*/events.jsonl).
+  Auto-detects log source based on available directories and file format.
   Supports viewing the current session, a specific session by ID, agent background task
   output files, or all project sessions with optional date-range filtering.
 auto_activate_keywords:
@@ -29,6 +29,7 @@ auto_activate_keywords:
   - "show copilot session"
   - "copilot history"
   - "copilot export"
+  - "copilot events"
 priority_score: 35.0
 evaluation_criteria:
   frequency: MEDIUM
@@ -54,7 +55,7 @@ maturity: production
 This skill converts and browses session transcripts from two supported tools:
 
 - **Claude Code** — JSONL logs auto-saved to `~/.claude/projects/`
-- **GitHub Copilot CLI** — Markdown exports created via `/share markdown <file>`
+- **GitHub Copilot CLI** — JSONL logs auto-saved to `~/.copilot/session-state/*/events.jsonl`
 
 It provides four browsing modes:
 
@@ -66,24 +67,48 @@ It provides four browsing modes:
 ## Tool Context Auto-Detection
 
 Before browsing, detect which tool is active to set default log paths.
-This uses the same env var markers as `src/amplihack/hooks/launcher_detector.py`:
+Prefer directory-based detection (more reliable than env vars); fall back to env vars
+from `src/amplihack/hooks/launcher_detector.py` when directories don't exist:
 
 ```bash
-if [[ -n "${CLAUDE_CODE_SESSION:-}${CLAUDE_SESSION_ID:-}${ANTHROPIC_API_KEY:-}" ]]; then
+# Primary: directory-based detection (most reliable)
+if [[ -d "$HOME/.copilot/session-state" ]]; then
+  # Check if there are any sessions present
+  COPILOT_SESSIONS=$(ls -d "$HOME/.copilot/session-state/"*/ 2>/dev/null | wc -l)
+  CLAUDE_SESSIONS=$(ls "$HOME/.claude/projects/"*/*.jsonl 2>/dev/null | wc -l)
+  if [[ "$COPILOT_SESSIONS" -gt 0 && "$CLAUDE_SESSIONS" -eq 0 ]]; then
+    TOOL_CONTEXT="copilot"
+    DEFAULT_LOG_DIR="$HOME/.copilot/session-state"
+  elif [[ "$CLAUDE_SESSIONS" -gt 0 ]]; then
+    TOOL_CONTEXT="claude-code"
+    DEFAULT_LOG_DIR="$HOME/.claude/projects"
+  else
+    # Both dirs exist but empty — use env vars to decide
+    TOOL_CONTEXT="claude-code"
+    DEFAULT_LOG_DIR="$HOME/.claude/projects"
+  fi
+elif [[ -d "$HOME/.claude/projects" ]]; then
+  TOOL_CONTEXT="claude-code"
+  DEFAULT_LOG_DIR="$HOME/.claude/projects"
+# Fallback: env var detection (same vars as launcher_detector.py)
+elif [[ -n "${CLAUDE_CODE_SESSION:-}${CLAUDE_SESSION_ID:-}${ANTHROPIC_API_KEY:-}" ]]; then
   TOOL_CONTEXT="claude-code"
   DEFAULT_LOG_DIR="$HOME/.claude/projects"
 elif [[ -n "${GITHUB_COPILOT_TOKEN:-}${COPILOT_SESSION:-}" ]]; then
   # Note: GITHUB_TOKEN is intentionally excluded — it's too generic and
   # appears in non-Copilot CI contexts, causing false positives.
-  # launcher_detector.py includes it but the skill omits it for safety.
   TOOL_CONTEXT="copilot"
-  DEFAULT_LOG_DIR=""  # Copilot has no auto-saved logs; see Copilot section
+  DEFAULT_LOG_DIR="$HOME/.copilot/session-state"
 else
   # Default to claude-code — safe fallback (most users)
   TOOL_CONTEXT="claude-code"
   DEFAULT_LOG_DIR="$HOME/.claude/projects"
 fi
 ```
+
+When both `~/.copilot/session-state/` and `~/.claude/projects/` exist with sessions,
+offer the user a choice: "Found sessions for both Claude Code and GitHub Copilot CLI.
+Which would you like to browse? [1] Claude Code  [2] GitHub Copilot CLI"
 
 The user can always override with an explicit path.
 
@@ -183,14 +208,28 @@ Do not attempt to install it automatically.
 
 **What to do**:
 
-1. Find the most recently modified JSONL file under `.claude/projects/` or the path
-   returned by:
+For **Claude Code** (`TOOL_CONTEXT="claude-code"`):
+
+1. Find the most recently modified JSONL file under `~/.claude/projects/`:
    ```bash
    ls -t ~/.claude/projects/*/*.jsonl 2>/dev/null | head -1
    ```
 2. Run:
    ```bash
    $CCL <path-to-jsonl> --format markdown
+   ```
+3. Display the Markdown output inline.
+
+For **GitHub Copilot CLI** (`TOOL_CONTEXT="copilot"`):
+
+1. Find the most recently modified session directory under `~/.copilot/session-state/`:
+   ```bash
+   ls -dt ~/.copilot/session-state/*/ 2>/dev/null | head -1
+   ```
+2. Read its `events.jsonl`:
+   ```bash
+   LATEST_SESSION=$(ls -dt ~/.copilot/session-state/*/ 2>/dev/null | head -1)
+   $CCL "${LATEST_SESSION}events.jsonl" --format markdown
    ```
 3. Display the Markdown output inline.
 
@@ -214,6 +253,8 @@ Do not attempt to install it automatically.
 
 **What to do**:
 
+For **Claude Code** (`TOOL_CONTEXT="claude-code"`):
+
 1. Search for the JSONL file matching the session ID:
    ```bash
    find ~/.claude/projects -name "*.jsonl" | xargs grep -l "<SESSION_ID>" 2>/dev/null | head -1
@@ -230,6 +271,29 @@ Do not attempt to install it automatically.
    ```
    No session found with ID: <SESSION_ID>
    Available sessions: run "view all sessions" to list them.
+   ```
+
+For **GitHub Copilot CLI** (`TOOL_CONTEXT="copilot"`):
+
+1. The session ID is the directory name under `~/.copilot/session-state/`. Check directly:
+   ```bash
+   SESSION_DIR="$HOME/.copilot/session-state/<SESSION_ID>"
+   if [[ -d "$SESSION_DIR" ]]; then
+     EVENTS_FILE="$SESSION_DIR/events.jsonl"
+   fi
+   ```
+   If the full ID is not known, search for a partial match:
+   ```bash
+   ls -d ~/.copilot/session-state/*/ 2>/dev/null | grep "<SESSION_ID>"
+   ```
+2. Run:
+   ```bash
+   $CCL "$EVENTS_FILE" --format markdown
+   ```
+3. Display the output. If no directory matches, report:
+   ```
+   No Copilot session found with ID: <SESSION_ID>
+   Available sessions: run "browse all sessions" to list them.
    ```
 
 ### Mode 3: Agent Background Task Output
@@ -262,6 +326,8 @@ Do not attempt to install it automatically.
 
 **What to do**:
 
+For **Claude Code** (`TOOL_CONTEXT="claude-code"`):
+
 1. List all JSONL files under `~/.claude/projects/`:
    ```bash
    find ~/.claude/projects -name "*.jsonl" -printf "%T@ %p\n" 2>/dev/null \
@@ -275,11 +341,40 @@ Do not attempt to install it automatically.
    ```
 3. Print a summary table:
    ```
-   Available Sessions
-   ==================
-   #   Date                  File
+   Available Sessions (Claude Code)
+   =================================
+   #   Date                  Session ID / File
    1   2025-11-23 19:32:36   ~/.claude/projects/foo/abc123.jsonl
    2   2025-11-22 14:10:05   ~/.claude/projects/foo/def456.jsonl
+   ...
+   ```
+4. Offer to open a specific session: "Enter a number to view that session."
+
+For **GitHub Copilot CLI** (`TOOL_CONTEXT="copilot"`):
+
+1. List all session directories under `~/.copilot/session-state/` sorted by modification time:
+   ```bash
+   ls -dt ~/.copilot/session-state/*/ 2>/dev/null
+   ```
+2. For each session directory, read its `events.jsonl` to extract the timestamp:
+   ```bash
+   for session_dir in $(ls -dt ~/.copilot/session-state/*/); do
+     session_id=$(basename "$session_dir")
+     events_file="$session_dir/events.jsonl"
+     if [[ -f "$events_file" ]]; then
+       timestamp=$(head -1 "$events_file" | python3 -c \
+         "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('timestamp',''))" 2>/dev/null)
+       echo "$timestamp  $session_id"
+     fi
+   done
+   ```
+3. Print a summary table:
+   ```
+   Available Sessions (GitHub Copilot CLI)
+   ========================================
+   #   Date                  Session ID
+   1   2025-11-23 19:32:36   abc1234567890abcdef1234567890abcd
+   2   2025-11-22 14:10:05   def4567890abcdef1234567890abcdef
    ...
    ```
 4. Offer to open a specific session: "Enter a number to view that session."
@@ -326,78 +421,63 @@ The user can request HTML explicitly: "view transcript as HTML" or "export to HT
 
 ## GitHub Copilot CLI Support
 
-### Key Difference: No Automatic Log Persistence
+### Automatic Log Persistence
 
-GitHub Copilot CLI does **not** automatically save session transcripts to disk. Unlike
-Claude Code (which auto-saves every session to `~/.claude/projects/*.jsonl`), Copilot CLI
-keeps sessions **in memory only** during the session.
-
-There is **no** `~/.copilot/logs/` or `~/.local/share/github-copilot-cli/` directory.
-Copilot does not have a `log` or `transcript` subcommand.
-
-### How to Export a Copilot Session
-
-To preserve a Copilot session, use the `/share` command **within the Copilot CLI**:
+GitHub Copilot CLI **automatically saves** session data to disk at:
 
 ```
-# In Copilot CLI:
-/share markdown ./my-session.md    # Export to a local markdown file
-/share gist                        # Export to a GitHub gist
+~/.copilot/session-state/{session-id}/
 ```
 
-The exported file is plain Markdown with this structure:
+Each session directory contains:
+- `events.jsonl` — JSONL session history (similar format to Claude Code logs)
+- `workspace.yaml` — session metadata (working directory, session ID, etc.)
+- `plan.md` — implementation plan for the session
+- `checkpoints/` — compaction history (older event snapshots)
 
-```markdown
-# Copilot Session Export
+Legacy sessions may also exist at `~/.copilot/history-session-state/`.
 
-**Date**: 2025-11-23 19:32:36
-**Session ID**: copilot-session-xyz789
+### JSONL Format
 
----
+Copilot `events.jsonl` contains one JSON object per line, similar to Claude Code format:
 
-**User**: Fix the authentication bug in login.py
-
-**Copilot**: I'll examine the file and fix the authentication bug...
-
----
+```json
+{"type":"user","message":{"role":"user","content":[{"type":"text","text":"Fix the bug"}]},"timestamp":"2025-11-23T19:32:36Z","sessionId":"abc1234567890"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"I'll examine the file..."}]},"timestamp":"2025-11-23T19:32:40Z","sessionId":"abc1234567890"}
 ```
 
-### Viewing a Copilot Export
+`claude-code-log` handles parsing these files since the format is compatible.
 
-When the user provides a `.md` file exported from Copilot:
+### Viewing a Copilot Session
 
-1. Detect the format:
+When the user wants to view a Copilot session (by directory detection or explicit path):
+
+1. Locate the `events.jsonl` for the session:
    ```bash
-   if grep -q "Copilot Session Export\|copilot-session" "$FILE" 2>/dev/null; then
-     FORMAT="copilot-markdown"
-   fi
+   # Current session (most recent)
+   LATEST_SESSION=$(ls -dt ~/.copilot/session-state/*/ 2>/dev/null | head -1)
+   EVENTS_FILE="${LATEST_SESSION}events.jsonl"
+
+   # Specific session by ID
+   EVENTS_FILE="$HOME/.copilot/session-state/<SESSION_ID>/events.jsonl"
    ```
-2. Display it directly (it is already human-readable Markdown — no `claude-code-log` needed):
+2. Run:
    ```bash
-   cat "$FILE"
+   $CCL "$EVENTS_FILE" --format markdown
    ```
-3. Optionally extract a summary of turns:
-   ```bash
-   echo "=== Session Summary ==="
-   grep -E "^\*\*User\*\*:|^\*\*Copilot\*\*:" "$FILE" | head -20
-   ```
+3. Display the output inline.
 
-### Running Under Copilot — Guidance Message
+### Detecting Available Sessions
 
-If the skill detects `$GITHUB_COPILOT_TOKEN` or `$COPILOT_SESSION` is set (Copilot context)
-and no explicit file path is given, display this guidance and stop:
+To check if Copilot sessions exist:
 
-```
-GitHub Copilot CLI does not automatically save session transcripts.
-
-To view a Copilot session:
-1. While in Copilot CLI, export the session:
-     /share markdown ./session.md
-2. Then run:
-     view transcript ./session.md
-
-For sessions with full automatic archiving, use Claude Code instead:
-  /amplihack:transcripts
+```bash
+if [[ -d "$HOME/.copilot/session-state" ]]; then
+  SESSION_COUNT=$(ls -d "$HOME/.copilot/session-state/"*/ 2>/dev/null | wc -l)
+  if [[ "$SESSION_COUNT" -gt 0 ]]; then
+    echo "Found $SESSION_COUNT Copilot session(s)"
+  fi
+fi
 ```
 
 ## Full Workflow
@@ -405,33 +485,35 @@ For sessions with full automatic archiving, use Claude Code instead:
 When the user invokes this skill, follow this decision tree:
 
 ```
-0. Detect tool context (uses launcher_detector.py env var conventions):
-   - CLAUDE_CODE_SESSION / CLAUDE_SESSION_ID / ANTHROPIC_API_KEY set → claude-code
-   - GITHUB_COPILOT_TOKEN / COPILOT_SESSION set → copilot (no auto-logs; guide to /share)
-   - Neither set → default to claude-code (safe fallback)
+0. Detect tool context (directory-based first, then env var fallback):
+   - ~/.copilot/session-state/ exists with sessions → copilot
+   - ~/.claude/projects/ exists with sessions       → claude-code
+   - Both exist with sessions → offer user a choice
+   - Directory detection fails, use env vars:
+     - CLAUDE_CODE_SESSION / CLAUDE_SESSION_ID / ANTHROPIC_API_KEY set → claude-code
+     - GITHUB_COPILOT_TOKEN / COPILOT_SESSION set → copilot
+   - Neither → default to claude-code (safe fallback)
 
 1. Detect CCL (which claude-code-log / npx fallback)
    → If missing: show install instructions and STOP
-   → Not needed for copilot-markdown files (skip CCL check for those)
+   → Required for ALL modes (both Claude Code and Copilot use JSONL format)
 
 2. If user provides an explicit file path:
    a. Detect its format (detect_log_format function above)
-   b. copilot-markdown → display directly, skip CCL
-   c. jsonl → pass to $CCL
-   d. unknown → warn and display raw
+   b. jsonl or events.jsonl → pass to $CCL
+   c. unknown → warn and display raw
 
 3. Determine mode from user message:
    - mentions "current" or no session specified → Mode 1 (Current Session)
    - mentions a session ID or hash             → Mode 2 (Specific Session)
    - mentions "agent" or "background"          → Mode 3 (Agent Output)
    - mentions "all", "browse", "list"          → Mode 4 (All Sessions)
-   - in Copilot context with no file → show /share guidance and STOP
 
 4. Determine output format:
    - "as HTML" or "export HTML" → html
    - default                    → markdown
 
-5. Execute the appropriate mode and display results.
+5. Execute the appropriate mode (using TOOL_CONTEXT to choose correct paths) and display results.
 ```
 
 ## Error Handling
@@ -445,7 +527,8 @@ When the user invokes this skill, follow this decision tree:
 | Empty JSONL file | "Session file is empty — no messages to display." |
 | Date range produces no results | "No sessions found between <start> and <end>." |
 | `claude-code-log` returns non-zero exit | Display stderr and suggest `--help` |
-| Copilot context, no file given | Show `/share` guidance and stop |
+| `~/.copilot/session-state/` exists but empty | "No Copilot sessions found. Start a session with GitHub Copilot CLI to create logs." |
+| Copilot session dir exists but no events.jsonl | "Session directory found but events.jsonl is missing at <path>" |
 | Unknown file format | Warn user and display raw content |
 
 ## Implementation Notes
@@ -467,51 +550,50 @@ Claude Code session JSONL files contain one JSON object per line:
 
 `claude-code-log` handles parsing; this skill does not re-implement it.
 
-### Copilot Markdown Structure
+### Copilot JSONL Structure (GitHub Copilot CLI)
 
-Copilot CLI `/share markdown` exports look like:
+Copilot CLI `events.jsonl` files contain one JSON object per line, stored at
+`~/.copilot/session-state/{session-id}/events.jsonl`:
 
-```markdown
-# Copilot Session Export
-
-**Date**: <timestamp>
-**Session ID**: <id>
-
----
-
-**User**: <user message>
-
-**Copilot**: <assistant response>
-
----
+```json
+{"type":"user","message":{"role":"user","content":[{"type":"text","text":"..."}]},"timestamp":"...","sessionId":"..."}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"..."}]},"timestamp":"...","sessionId":"..."}
 ```
 
-Turns are separated by `---` horizontal rules. No external tool needed to read these.
+The format is compatible with `claude-code-log`. Additional per-session files:
+- `workspace.yaml` — session metadata
+- `plan.md` — implementation plan
+- `checkpoints/` — compaction history (older snapshots)
+
+Legacy sessions may be stored at `~/.copilot/history-session-state/` with the same structure.
 
 ### Philosophy Alignment
 
-- **Thin wrapper**: Delegates to `claude-code-log` for JSONL; displays Markdown directly
-- **Graceful degradation**: Clear error messages when tool is missing or Copilot has no logs
+- **Thin wrapper**: Delegates to `claude-code-log` for all JSONL (both Claude Code and Copilot)
+- **Graceful degradation**: Clear error messages when tool is missing or no sessions found
 - **Single responsibility**: Only views/converts transcripts, never modifies them
 - **No hidden state**: All file paths are shown to the user
 
 ## Limitations
 
-- Requires `claude-code-log` (npm) or `npx` to convert Claude Code JSONL to HTML/Markdown
-- Copilot CLI does not auto-save sessions; users must use `/share` to export first
+- Requires `claude-code-log` (npm) or `npx` to convert JSONL (both Claude Code and Copilot) to HTML/Markdown
 - Cannot view transcripts from remote machines
 - Date filtering relies on filesystem modification times, not session timestamps
 - `--summary` flag availability depends on `claude-code-log` version
+- Legacy Copilot sessions in `~/.copilot/history-session-state/` are not auto-discovered (must use explicit path)
+- When both Claude Code and Copilot sessions exist, the skill prompts the user to choose rather than merging them
 
 ## Quick Reference
 
 | User says | Tool | Mode | Command |
 |-----------|------|------|---------|
 | "view current transcript" | Claude Code | Current session | `$CCL <latest.jsonl> --format markdown` |
-| "show session abc123" | Claude Code | Specific session | `$CCL <abc123.jsonl> --format markdown` |
+| "show session abc123" | Claude Code | Specific session | `$CCL ~/.claude/projects/**/*abc123*.jsonl --format markdown` |
 | "view agent output" | Claude Code | Agent output | `cat .agent-step-*.log` or `$CCL *.jsonl` |
 | "browse all sessions" | Claude Code | All sessions | list + summarize all `~/.claude/projects/**/*.jsonl` |
 | "view transcript as HTML" | Claude Code | Any + HTML | `$CCL <file> --format html > /tmp/view.html` |
 | "last 7 days" (with browse) | Claude Code | Date filter | `find ... -mtime -7` |
-| "view copilot session ./s.md" | Copilot | Explicit file | `cat ./s.md` (already Markdown) |
-| "show copilot transcript" | Copilot | No file | Show `/share` guidance and stop |
+| "view current copilot session" | Copilot | Current session | `$CCL ~/.copilot/session-state/<latest>/events.jsonl --format markdown` |
+| "show copilot session abc123" | Copilot | Specific session | `$CCL ~/.copilot/session-state/abc123/events.jsonl --format markdown` |
+| "browse copilot sessions" | Copilot | All sessions | list dirs in `~/.copilot/session-state/`, show session IDs |
+| "view copilot session as HTML" | Copilot | Any + HTML | `$CCL <events.jsonl> --format html > /tmp/view.html` |

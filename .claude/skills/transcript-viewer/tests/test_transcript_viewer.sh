@@ -24,27 +24,13 @@ make_jsonl() {
 JSONL
 }
 
-make_copilot_markdown() {
+make_copilot_events_jsonl() {
   local path="$1"
   mkdir -p "$(dirname "$path")"
-  cat >"$path" <<'MARKDOWN'
-# Copilot Session Export
-
-**Date**: 2025-11-23 19:32:36
-**Session ID**: copilot-session-xyz789
-
----
-
-**User**: Fix the authentication bug in login.py
-
-**Copilot**: I'll examine the file and fix the authentication bug...
-
----
-
-**User**: Thank you, that looks good.
-
-**Copilot**: You're welcome! The fix replaces the insecure comparison with a constant-time check.
-MARKDOWN
+  cat >"$path" <<'JSONL'
+{"type":"user","message":{"role":"user","content":[{"type":"text","text":"Fix the authentication bug"}]},"timestamp":"2025-11-23T19:32:36Z","sessionId":"copilot-session-xyz789"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"I'll examine the file and fix the authentication bug..."}]},"timestamp":"2025-11-23T19:32:40Z","sessionId":"copilot-session-xyz789"}
+JSONL
 }
 
 # ─── Test 1: SKILL.md exists and has valid YAML frontmatter fields ──────────
@@ -131,10 +117,10 @@ else
   fail "SKILL.md missing npx fallback install instruction"
 fi
 
-# ─── Test 5: Current session — find latest JSONL ─────────────────────────────
+# ─── Test 5: Current session — find latest JSONL (Claude Code path) ──────────
 
 echo ""
-echo "Test 5: Mode 1 — current session file detection"
+echo "Test 5: Mode 1 — Claude Code current session file detection"
 
 FAKE_HOME="$TMPDIR_TEST/home"
 mkdir -p "$FAKE_HOME/.claude/projects/myproject"
@@ -146,36 +132,103 @@ make_jsonl "$JSONL2"
 
 LATEST=$(ls -t "$FAKE_HOME/.claude/projects"/*/*.jsonl 2>/dev/null | head -1)
 if [[ "$LATEST" == "$JSONL2" ]]; then
-  pass "mode 1: correctly identifies latest JSONL as session2.jsonl"
+  pass "mode 1 (claude-code): correctly identifies latest JSONL as session2.jsonl"
 else
-  fail "mode 1: expected $JSONL2, got $LATEST"
+  fail "mode 1 (claude-code): expected $JSONL2, got $LATEST"
 fi
 
-# ─── Test 6: Specific session ID search ──────────────────────────────────────
+# ─── Test 6: Current session — find latest events.jsonl (Copilot path) ───────
 
 echo ""
-echo "Test 6: Mode 2 — find session by ID"
+echo "Test 6: Mode 1 — Copilot current session detection via ~/.copilot/session-state/"
+
+COPILOT_STATE_DIR="$FAKE_HOME/.copilot/session-state"
+SESSION_ID_1="abc1234567890abcdef1234567890abc"
+SESSION_ID_2="def4567890abcdef1234567890abcdef"
+
+mkdir -p "$COPILOT_STATE_DIR/$SESSION_ID_1"
+mkdir -p "$COPILOT_STATE_DIR/$SESSION_ID_2"
+
+make_copilot_events_jsonl "$COPILOT_STATE_DIR/$SESSION_ID_1/events.jsonl"
+sleep 0.1
+make_copilot_events_jsonl "$COPILOT_STATE_DIR/$SESSION_ID_2/events.jsonl"
+
+LATEST_COPILOT_SESSION=$(ls -dt "$COPILOT_STATE_DIR"/*/ 2>/dev/null | head -1)
+LATEST_EVENTS="${LATEST_COPILOT_SESSION}events.jsonl"
+
+if [[ -f "$LATEST_EVENTS" ]]; then
+  pass "mode 1 (copilot): latest session dir found with events.jsonl"
+else
+  fail "mode 1 (copilot): events.jsonl not found in latest session dir ($LATEST_EVENTS)"
+fi
+
+LATEST_SESSION_ID=$(basename "$LATEST_COPILOT_SESSION")
+if [[ "$LATEST_SESSION_ID" == "$SESSION_ID_2" ]]; then
+  pass "mode 1 (copilot): correctly identifies latest session as $SESSION_ID_2"
+else
+  fail "mode 1 (copilot): expected $SESSION_ID_2, got $LATEST_SESSION_ID"
+fi
+
+# ─── Test 7: Specific session ID search (Claude Code) ─────────────────────────
+
+echo ""
+echo "Test 7: Mode 2 — Claude Code find session by ID"
 
 TARGET_ID="abc123"
 FOUND=$(grep -rl "\"sessionId\":\"$TARGET_ID\"" "$FAKE_HOME/.claude/projects" 2>/dev/null | head -1)
 if [[ -n "$FOUND" ]]; then
-  pass "mode 2: found session file containing ID $TARGET_ID"
+  pass "mode 2 (claude-code): found session file containing ID $TARGET_ID"
 else
-  fail "mode 2: could not find session file for ID $TARGET_ID"
+  fail "mode 2 (claude-code): could not find session file for ID $TARGET_ID"
 fi
 
 MISSING_ID="zzznope"
 NOT_FOUND=$(grep -rl "\"sessionId\":\"$MISSING_ID\"" "$FAKE_HOME/.claude/projects" 2>/dev/null | head -1 || true)
 if [[ -z "$NOT_FOUND" ]]; then
-  pass "mode 2: correctly returns nothing for unknown ID $MISSING_ID"
+  pass "mode 2 (claude-code): correctly returns nothing for unknown ID $MISSING_ID"
 else
-  fail "mode 2: unexpected match for $MISSING_ID"
+  fail "mode 2 (claude-code): unexpected match for $MISSING_ID"
 fi
 
-# ─── Test 7: Agent output detection ──────────────────────────────────────────
+# ─── Test 8: Specific session ID search (Copilot path) ────────────────────────
 
 echo ""
-echo "Test 7: Mode 3 — agent background task output"
+echo "Test 8: Mode 2 — Copilot find session by directory ID"
+
+# Copilot sessions are found by directory name under ~/.copilot/session-state/
+COPILOT_SESSION_DIR="$COPILOT_STATE_DIR/$SESSION_ID_1"
+if [[ -d "$COPILOT_SESSION_DIR" ]]; then
+  COPILOT_EVENTS="$COPILOT_SESSION_DIR/events.jsonl"
+  if [[ -f "$COPILOT_EVENTS" ]]; then
+    pass "mode 2 (copilot): found events.jsonl for session $SESSION_ID_1"
+  else
+    fail "mode 2 (copilot): events.jsonl missing for session $SESSION_ID_1"
+  fi
+else
+  fail "mode 2 (copilot): session directory $SESSION_ID_1 not found"
+fi
+
+# Test partial ID match
+PARTIAL_ID="abc12345"
+PARTIAL_MATCH=$(ls -d "$COPILOT_STATE_DIR"/*/ 2>/dev/null | grep "$PARTIAL_ID" | head -1 || true)
+if [[ -n "$PARTIAL_MATCH" ]]; then
+  pass "mode 2 (copilot): partial ID '$PARTIAL_ID' matches session directory"
+else
+  fail "mode 2 (copilot): could not find session with partial ID '$PARTIAL_ID'"
+fi
+
+MISSING_COPILOT_ID="zzznope-session-xxx"
+NOT_FOUND_COPILOT=$(ls -d "$COPILOT_STATE_DIR/$MISSING_COPILOT_ID" 2>/dev/null || true)
+if [[ -z "$NOT_FOUND_COPILOT" ]]; then
+  pass "mode 2 (copilot): correctly returns nothing for unknown session ID"
+else
+  fail "mode 2 (copilot): unexpected match for $MISSING_COPILOT_ID"
+fi
+
+# ─── Test 9: Agent output detection ──────────────────────────────────────────
+
+echo ""
+echo "Test 9: Mode 3 — agent background task output"
 
 AGENT_DIR="$TMPDIR_TEST/workdir"
 mkdir -p "$AGENT_DIR"
@@ -197,22 +250,48 @@ else
   fail "mode 3: unexpected agent files found in empty dir"
 fi
 
-# ─── Test 8: All sessions listing ────────────────────────────────────────────
+# ─── Test 10: All sessions listing (Claude Code) ──────────────────────────────
 
 echo ""
-echo "Test 8: Mode 4 — list all sessions"
+echo "Test 10: Mode 4 — list all Claude Code sessions"
 
 ALL_FILES=$(find "$FAKE_HOME/.claude/projects" -name "*.jsonl" 2>/dev/null | wc -l)
 if [[ "$ALL_FILES" -eq 2 ]]; then
-  pass "mode 4: found correct number of sessions (2)"
+  pass "mode 4 (claude-code): found correct number of sessions (2)"
 else
-  fail "mode 4: expected 2 sessions, found $ALL_FILES"
+  fail "mode 4 (claude-code): expected 2 sessions, found $ALL_FILES"
 fi
 
-# ─── Test 9: Date-range filtering ────────────────────────────────────────────
+# ─── Test 11: All sessions listing (Copilot path) ─────────────────────────────
 
 echo ""
-echo "Test 9: Date-range filtering"
+echo "Test 11: Mode 4 — list all Copilot sessions from ~/.copilot/session-state/"
+
+COPILOT_SESSION_COUNT=$(ls -d "$COPILOT_STATE_DIR"/*/ 2>/dev/null | wc -l)
+if [[ "$COPILOT_SESSION_COUNT" -eq 2 ]]; then
+  pass "mode 4 (copilot): found correct number of Copilot sessions (2)"
+else
+  fail "mode 4 (copilot): expected 2 sessions, found $COPILOT_SESSION_COUNT"
+fi
+
+# Each session directory should have an events.jsonl
+COPILOT_EVENTS_COUNT=0
+for session_dir in "$COPILOT_STATE_DIR"/*/; do
+  if [[ -f "${session_dir}events.jsonl" ]]; then
+    COPILOT_EVENTS_COUNT=$((COPILOT_EVENTS_COUNT+1))
+  fi
+done
+
+if [[ "$COPILOT_EVENTS_COUNT" -eq 2 ]]; then
+  pass "mode 4 (copilot): all Copilot sessions have events.jsonl"
+else
+  fail "mode 4 (copilot): expected 2 events.jsonl files, found $COPILOT_EVENTS_COUNT"
+fi
+
+# ─── Test 12: Date-range filtering ────────────────────────────────────────────
+
+echo ""
+echo "Test 12: Date-range filtering"
 
 # Create files with different timestamps
 OLD="$FAKE_HOME/.claude/projects/myproject/old.jsonl"
@@ -233,10 +312,10 @@ else
   fail "date filter: expected 3 total files, found $ALL_FILES_NOW"
 fi
 
-# ─── Test 10: HTML output path construction ───────────────────────────────────
+# ─── Test 13: HTML output path construction ───────────────────────────────────
 
 echo ""
-echo "Test 10: HTML output path"
+echo "Test 13: HTML output path"
 
 HTML_OUTPUT="/tmp/transcript-view.html"
 # Verify the path is mentioned in SKILL.md
@@ -246,10 +325,10 @@ else
   fail "SKILL.md does not mention HTML output path"
 fi
 
-# ─── Test 11: JSONL sample parse (basic structure) ───────────────────────────
+# ─── Test 14: JSONL sample parse (basic structure, Claude Code) ───────────────
 
 echo ""
-echo "Test 11: JSONL basic parse"
+echo "Test 14: JSONL basic parse (Claude Code format)"
 
 SAMPLE="$TMPDIR_TEST/sample.jsonl"
 make_jsonl "$SAMPLE"
@@ -257,40 +336,187 @@ make_jsonl "$SAMPLE"
 LINE1=$(head -1 "$SAMPLE")
 TYPE=$(echo "$LINE1" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('type',''))" 2>/dev/null)
 if [[ "$TYPE" == "user" ]]; then
-  pass "JSONL: first line has type=user"
+  pass "JSONL (claude-code): first line has type=user"
 else
-  fail "JSONL: expected type=user, got '$TYPE'"
+  fail "JSONL (claude-code): expected type=user, got '$TYPE'"
 fi
 
 SESSION_ID=$(echo "$LINE1" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('sessionId',''))" 2>/dev/null)
 if [[ "$SESSION_ID" == "abc123" ]]; then
-  pass "JSONL: sessionId correctly parsed as abc123"
+  pass "JSONL (claude-code): sessionId correctly parsed as abc123"
 else
-  fail "JSONL: expected sessionId=abc123, got '$SESSION_ID'"
+  fail "JSONL (claude-code): expected sessionId=abc123, got '$SESSION_ID'"
 fi
 
-# ─── Test 12: Auto-detection — JSONL vs Markdown ─────────────────────────────
+# ─── Test 15: JSONL sample parse (Copilot events.jsonl format) ────────────────
 
 echo ""
-echo "Test 12: Auto-detection of log format (JSONL vs Copilot markdown)"
+echo "Test 15: JSONL basic parse (Copilot events.jsonl format)"
 
-JSONL_SAMPLE="$TMPDIR_TEST/detect.jsonl"
-MD_SAMPLE="$TMPDIR_TEST/copilot-session.md"
-make_jsonl "$JSONL_SAMPLE"
-make_copilot_markdown "$MD_SAMPLE"
+COPILOT_SAMPLE="$COPILOT_STATE_DIR/$SESSION_ID_1/events.jsonl"
+
+COPILOT_LINE1=$(head -1 "$COPILOT_SAMPLE")
+COPILOT_TYPE=$(echo "$COPILOT_LINE1" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('type',''))" 2>/dev/null)
+if [[ "$COPILOT_TYPE" == "user" ]]; then
+  pass "JSONL (copilot): first line has type=user"
+else
+  fail "JSONL (copilot): expected type=user, got '$COPILOT_TYPE'"
+fi
+
+COPILOT_SESSION_ID_VAL=$(echo "$COPILOT_LINE1" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('sessionId',''))" 2>/dev/null)
+if [[ "$COPILOT_SESSION_ID_VAL" == "copilot-session-xyz789" ]]; then
+  pass "JSONL (copilot): sessionId correctly parsed as copilot-session-xyz789"
+else
+  fail "JSONL (copilot): expected sessionId=copilot-session-xyz789, got '$COPILOT_SESSION_ID_VAL'"
+fi
+
+# ─── Test 16: Auto-detection — directory-based (Copilot vs Claude Code) ───────
+
+echo ""
+echo "Test 16: Auto-detection of tool context (directory-based)"
 
 # Detection logic mirrors what the skill documents
+detect_tool_context_dir() {
+  local home="$1"
+  local copilot_sessions=0
+  local claude_sessions=0
+
+  if [[ -d "$home/.copilot/session-state" ]]; then
+    copilot_sessions=$(ls -d "$home/.copilot/session-state/"*/ 2>/dev/null | wc -l)
+  fi
+  if [[ -d "$home/.claude/projects" ]]; then
+    claude_sessions=$(ls "$home/.claude/projects/"*/*.jsonl 2>/dev/null | wc -l || true)
+  fi
+
+  if [[ "$copilot_sessions" -gt 0 && "$claude_sessions" -eq 0 ]]; then
+    echo "copilot"
+  elif [[ "$claude_sessions" -gt 0 && "$copilot_sessions" -eq 0 ]]; then
+    echo "claude-code"
+  elif [[ "$claude_sessions" -gt 0 && "$copilot_sessions" -gt 0 ]]; then
+    echo "both"
+  else
+    echo "none"
+  fi
+}
+
+# Scenario 1: Only Copilot sessions exist
+ONLY_COPILOT_HOME="$TMPDIR_TEST/only-copilot-home"
+mkdir -p "$ONLY_COPILOT_HOME/.copilot/session-state/session-aaa"
+make_copilot_events_jsonl "$ONLY_COPILOT_HOME/.copilot/session-state/session-aaa/events.jsonl"
+
+CONTEXT_ONLY_COPILOT=$(detect_tool_context_dir "$ONLY_COPILOT_HOME")
+if [[ "$CONTEXT_ONLY_COPILOT" == "copilot" ]]; then
+  pass "auto-detect (dir): only ~/.copilot/session-state/ → copilot"
+else
+  fail "auto-detect (dir): expected copilot, got '$CONTEXT_ONLY_COPILOT'"
+fi
+
+# Scenario 2: Only Claude Code sessions exist
+ONLY_CLAUDE_HOME="$TMPDIR_TEST/only-claude-home"
+mkdir -p "$ONLY_CLAUDE_HOME/.claude/projects/myproject"
+make_jsonl "$ONLY_CLAUDE_HOME/.claude/projects/myproject/session.jsonl"
+
+CONTEXT_ONLY_CLAUDE=$(detect_tool_context_dir "$ONLY_CLAUDE_HOME")
+if [[ "$CONTEXT_ONLY_CLAUDE" == "claude-code" ]]; then
+  pass "auto-detect (dir): only ~/.claude/projects/ → claude-code"
+else
+  fail "auto-detect (dir): expected claude-code, got '$CONTEXT_ONLY_CLAUDE'"
+fi
+
+# Scenario 3: Both directories exist with sessions → offer choice
+BOTH_HOME="$TMPDIR_TEST/both-home"
+mkdir -p "$BOTH_HOME/.copilot/session-state/session-bbb"
+make_copilot_events_jsonl "$BOTH_HOME/.copilot/session-state/session-bbb/events.jsonl"
+mkdir -p "$BOTH_HOME/.claude/projects/myproject"
+make_jsonl "$BOTH_HOME/.claude/projects/myproject/session.jsonl"
+
+CONTEXT_BOTH=$(detect_tool_context_dir "$BOTH_HOME")
+if [[ "$CONTEXT_BOTH" == "both" ]]; then
+  pass "auto-detect (dir): both directories exist → 'both' (user choice needed)"
+else
+  fail "auto-detect (dir): expected 'both', got '$CONTEXT_BOTH'"
+fi
+
+# Scenario 4: Neither directory → return none (fallback to env vars)
+EMPTY_HOME="$TMPDIR_TEST/empty-home"
+mkdir -p "$EMPTY_HOME"
+
+CONTEXT_NONE=$(detect_tool_context_dir "$EMPTY_HOME")
+if [[ "$CONTEXT_NONE" == "none" ]]; then
+  pass "auto-detect (dir): no directories → 'none' (env var fallback applies)"
+else
+  fail "auto-detect (dir): expected 'none', got '$CONTEXT_NONE'"
+fi
+
+# ─── Test 17: Auto-detection — env var fallback ────────────────────────────────
+
+echo ""
+echo "Test 17: Auto-detection — env var fallback (when directories not present)"
+
+detect_tool_context_env() {
+  if [[ -n "${CLAUDE_CODE_SESSION:-}${CLAUDE_SESSION_ID:-}${ANTHROPIC_API_KEY:-}" ]]; then
+    echo "claude-code"
+  elif [[ -n "${GITHUB_COPILOT_TOKEN:-}${COPILOT_SESSION:-}" ]]; then
+    echo "copilot"
+  else
+    echo "claude-code"  # safe fallback
+  fi
+}
+
+CONTEXT_DEFAULT=$(detect_tool_context_env)
+if [[ "$CONTEXT_DEFAULT" == "claude-code" ]]; then
+  pass "env-var fallback: no vars set → claude-code (safe fallback)"
+else
+  fail "env-var fallback: expected claude-code, got '$CONTEXT_DEFAULT'"
+fi
+
+CONTEXT_CC=$(CLAUDE_CODE_SESSION=test-session-id detect_tool_context_env)
+if [[ "$CONTEXT_CC" == "claude-code" ]]; then
+  pass "env-var fallback: CLAUDE_CODE_SESSION set → claude-code"
+else
+  fail "env-var fallback: expected claude-code, got '$CONTEXT_CC'"
+fi
+
+CONTEXT_CP=$(GITHUB_COPILOT_TOKEN=ghu_test123 detect_tool_context_env)
+if [[ "$CONTEXT_CP" == "copilot" ]]; then
+  pass "env-var fallback: GITHUB_COPILOT_TOKEN set → copilot"
+else
+  fail "env-var fallback: expected copilot, got '$CONTEXT_CP'"
+fi
+
+CONTEXT_CS=$(COPILOT_SESSION=copilot-session-abc detect_tool_context_env)
+if [[ "$CONTEXT_CS" == "copilot" ]]; then
+  pass "env-var fallback: COPILOT_SESSION set → copilot"
+else
+  fail "env-var fallback: expected copilot, got '$CONTEXT_CS'"
+fi
+
+# ─── Test 18: SKILL.md documents Copilot log location ─────────────────────────
+
+echo ""
+echo "Test 18: SKILL.md documents Copilot JSONL log location"
+
+if grep -q "session-state" "$SKILL_FILE"; then
+  pass "SKILL.md documents ~/.copilot/session-state/ path"
+else
+  fail "SKILL.md missing ~/.copilot/session-state/ documentation"
+fi
+
+if grep -q "events.jsonl" "$SKILL_FILE"; then
+  pass "SKILL.md documents events.jsonl file name"
+else
+  fail "SKILL.md missing events.jsonl documentation"
+fi
+
+# ─── Test 19: Unknown format detection ────────────────────────────────────────
+
+echo ""
+echo "Test 19: Unknown format detection"
+
 detect_format() {
   local file="$1"
   if [[ "$file" == *.jsonl ]]; then
     echo "jsonl"
-  elif [[ "$file" == *.md ]]; then
-    # Only match specific Copilot export headers — not generic "/share" text
-    if grep -q "Copilot Session Export\|copilot-session" "$file" 2>/dev/null; then
-      echo "copilot-markdown"
-    else
-      echo "markdown"
-    fi
   elif [[ "$file" == *.log ]]; then
     local first_char
     first_char=$(head -c 1 "$file" 2>/dev/null)
@@ -309,147 +535,6 @@ detect_format() {
     fi
   fi
 }
-
-FORMAT_JSONL=$(detect_format "$JSONL_SAMPLE")
-if [[ "$FORMAT_JSONL" == "jsonl" ]]; then
-  pass "auto-detect: .jsonl file identified as jsonl format"
-else
-  fail "auto-detect: expected jsonl, got '$FORMAT_JSONL'"
-fi
-
-FORMAT_MD=$(detect_format "$MD_SAMPLE")
-if [[ "$FORMAT_MD" == "copilot-markdown" ]]; then
-  pass "auto-detect: copilot markdown export identified as copilot-markdown"
-else
-  fail "auto-detect: expected copilot-markdown, got '$FORMAT_MD'"
-fi
-
-# ─── Test 13: Copilot context detection via environment variable ──────────────
-
-echo ""
-echo "Test 13: Copilot context detection via launcher_detector.py env var conventions"
-
-# Mirrors detect_log_format logic in SKILL.md, using same var names as
-# src/amplihack/hooks/launcher_detector.py LAUNCHER_MARKERS
-detect_tool_context() {
-  if [[ -n "${CLAUDE_CODE_SESSION:-}${CLAUDE_SESSION_ID:-}${ANTHROPIC_API_KEY:-}" ]]; then
-    echo "claude-code"
-  elif [[ -n "${GITHUB_COPILOT_TOKEN:-}${COPILOT_SESSION:-}" ]]; then
-    echo "copilot"
-  else
-    # Default to claude-code — safe fallback
-    echo "claude-code"
-  fi
-}
-
-# Default (no special env vars set) — should return claude-code (safe fallback)
-CONTEXT_DEFAULT=$(detect_tool_context)
-if [[ "$CONTEXT_DEFAULT" == "claude-code" ]]; then
-  pass "context detection: default context is 'claude-code' (safe fallback, no env vars)"
-else
-  fail "context detection: expected claude-code default, got '$CONTEXT_DEFAULT'"
-fi
-
-# Simulate Claude Code context via CLAUDE_CODE_SESSION
-CONTEXT_CC=$(CLAUDE_CODE_SESSION=test-session-id detect_tool_context)
-if [[ "$CONTEXT_CC" == "claude-code" ]]; then
-  pass "context detection: CLAUDE_CODE_SESSION set → claude-code"
-else
-  fail "context detection: expected claude-code, got '$CONTEXT_CC'"
-fi
-
-# Simulate Copilot context via GITHUB_COPILOT_TOKEN
-CONTEXT_CP=$(GITHUB_COPILOT_TOKEN=ghu_test123 detect_tool_context)
-if [[ "$CONTEXT_CP" == "copilot" ]]; then
-  pass "context detection: GITHUB_COPILOT_TOKEN set → copilot"
-else
-  fail "context detection: expected copilot, got '$CONTEXT_CP'"
-fi
-
-# Simulate Copilot context via COPILOT_SESSION
-CONTEXT_CS=$(COPILOT_SESSION=copilot-session-abc detect_tool_context)
-if [[ "$CONTEXT_CS" == "copilot" ]]; then
-  pass "context detection: COPILOT_SESSION set → copilot"
-else
-  fail "context detection: expected copilot, got '$CONTEXT_CS'"
-fi
-
-# ─── Test 14: Copilot markdown parse — extract turns ─────────────────────────
-
-echo ""
-echo "Test 14: Copilot markdown export — parse conversation turns"
-
-MD_FILE="$TMPDIR_TEST/copilot-export.md"
-make_copilot_markdown "$MD_FILE"
-
-USER_COUNT=$(grep -c "^\*\*User\*\*:" "$MD_FILE" 2>/dev/null || true)
-COPILOT_COUNT=$(grep -c "^\*\*Copilot\*\*:" "$MD_FILE" 2>/dev/null || true)
-
-if [[ "$USER_COUNT" -eq 2 ]]; then
-  pass "copilot-md: found 2 user turns"
-else
-  fail "copilot-md: expected 2 user turns, found $USER_COUNT"
-fi
-
-if [[ "$COPILOT_COUNT" -eq 2 ]]; then
-  pass "copilot-md: found 2 copilot turns"
-else
-  fail "copilot-md: expected 2 copilot turns, found $COPILOT_COUNT"
-fi
-
-# ─── Test 15: Copilot context — SKILL.md has /share guidance ─────────────────
-
-echo ""
-echo "Test 15: SKILL.md provides /share guidance for Copilot users"
-
-if grep -q "/share" "$SKILL_FILE"; then
-  pass "SKILL.md mentions /share command for Copilot export"
-else
-  fail "SKILL.md missing /share command guidance for Copilot users"
-fi
-
-if grep -q "copilot" "$SKILL_FILE" && grep -q "markdown" "$SKILL_FILE"; then
-  pass "SKILL.md addresses Copilot markdown export"
-else
-  fail "SKILL.md missing Copilot markdown export documentation"
-fi
-
-# ─── Test 16: SKILL.md documents Copilot log location (no auto-save) ─────────
-
-echo ""
-echo "Test 16: SKILL.md documents that Copilot has no auto-save logs"
-
-if grep -qi "no.*auto\|not.*auto\|does not.*save\|no.*persist\|no.*log" "$SKILL_FILE"; then
-  pass "SKILL.md documents Copilot has no automatic log persistence"
-else
-  fail "SKILL.md missing documentation of Copilot's no-auto-save behavior"
-fi
-
-# ─── Test 17: False-positive guard — .md with /share but NOT a Copilot export ──
-
-echo ""
-echo "Test 17: No false-positive detection for .md files containing /share text"
-
-NON_COPILOT_MD="$TMPDIR_TEST/readme.md"
-cat >"$NON_COPILOT_MD" <<'MARKDOWN'
-# Developer Notes
-
-To export your AI session, use /share markdown ./output.md in the CLI tool.
-
-This is a regular documentation file with no special session headers.
-MARKDOWN
-
-FORMAT_NON_COPILOT=$(detect_format "$NON_COPILOT_MD")
-if [[ "$FORMAT_NON_COPILOT" == "markdown" ]]; then
-  pass "false-positive guard: .md with '/share' text but no export header → markdown (not copilot-markdown)"
-else
-  fail "false-positive guard: expected 'markdown', got '$FORMAT_NON_COPILOT'"
-fi
-
-# ─── Test 18: Unknown format detection ────────────────────────────────────────
-
-echo ""
-echo "Test 18: Unknown format detection"
 
 # A file with no recognized extension and plain text content
 PLAIN_FILE="$TMPDIR_TEST/somefile.txt"
@@ -482,6 +567,34 @@ if [[ "$FORMAT_JSONL_LOG" == "jsonl" ]]; then
   pass "jsonl .log: JSONL-format .log file returns 'jsonl'"
 else
   fail "jsonl .log: expected 'jsonl', got '$FORMAT_JSONL_LOG'"
+fi
+
+# events.jsonl (Copilot) detected as jsonl format
+COPILOT_EVENTS_SAMPLE="$TMPDIR_TEST/events.jsonl"
+make_copilot_events_jsonl "$COPILOT_EVENTS_SAMPLE"
+
+FORMAT_COPILOT_EVENTS=$(detect_format "$COPILOT_EVENTS_SAMPLE")
+if [[ "$FORMAT_COPILOT_EVENTS" == "jsonl" ]]; then
+  pass "copilot events.jsonl: correctly identified as jsonl format"
+else
+  fail "copilot events.jsonl: expected 'jsonl', got '$FORMAT_COPILOT_EVENTS'"
+fi
+
+# ─── Test 20: SKILL.md documents Copilot workspace.yaml and plan.md ──────────
+
+echo ""
+echo "Test 20: SKILL.md documents Copilot session structure"
+
+if grep -q "workspace.yaml" "$SKILL_FILE"; then
+  pass "SKILL.md documents workspace.yaml in Copilot session"
+else
+  fail "SKILL.md missing workspace.yaml documentation"
+fi
+
+if grep -q "plan.md" "$SKILL_FILE"; then
+  pass "SKILL.md documents plan.md in Copilot session"
+else
+  fail "SKILL.md missing plan.md documentation"
 fi
 
 # ─── Summary ──────────────────────────────────────────────────────────────────
