@@ -11,7 +11,7 @@ from .considerations import (
     PowerSteeringResult,
 )
 from .main_checker import PowerSteeringChecker, check_session, is_disabled
-from .sdk_calls import SDK_AVAILABLE, _timeout, analyze_consideration  # noqa: F401
+from .sdk_calls import SDK_AVAILABLE, _timeout, analyze_consideration
 
 __all__ = [
     "PowerSteeringChecker",
@@ -21,6 +21,7 @@ __all__ = [
     "PowerSteeringRedirect",
     "SDK_AVAILABLE",
     "_timeout",
+    "analyze_consideration",
     "check_session",
     "is_disabled",
 ]

@@ -18,7 +18,9 @@ import yaml
 
 # Package imports must be done relative to avoid issues when this module
 # is the entry point
-sys.path.insert(0, str(Path(__file__).parent.parent))
+_hook_dir = str(Path(__file__).parent.parent)
+if _hook_dir not in sys.path:
+    sys.path.insert(0, _hook_dir)
 
 # Import git utilities for worktree detection
 try:
@@ -40,6 +42,7 @@ from .considerations import (
 from .progress_tracking import (
     MAX_LINE_BYTES,
     ProgressTrackingMixin,
+    _validate_session_id,
 )
 from .result_formatting import (
     TURN_STATE_AVAILABLE,
@@ -1129,6 +1132,9 @@ class PowerSteeringChecker(
             details: Violation details
             session_id: Session identifier
         """
+        if not _validate_session_id(session_id):
+            self._log(f"Invalid session_id rejected in _log_violation: {session_id!r}", "WARNING")
+            return
         try:
             log_file = self.runtime_dir / session_id / "violations.json"
             log_file.parent.mkdir(parents=True, exist_ok=True)
