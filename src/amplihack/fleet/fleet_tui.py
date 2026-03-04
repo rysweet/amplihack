@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from amplihack.fleet._constants import DEFAULT_CAPTURE_LINES, DEFAULT_TUI_REFRESH_SECONDS, SUBPROCESS_TIMEOUT_SECONDS
-from amplihack.fleet._defaults import DEFAULT_EXCLUDE_VMS, get_azlin_path
+from amplihack.fleet._defaults import DEFAULT_EXCLUDE_VMS, ensure_azlin_context, get_azlin_path
 from amplihack.fleet._tui_classify import classify_status
 from amplihack.fleet._tui_data import SessionView, VMView
 from amplihack.fleet._tui_parsers import parse_session_output, parse_vm_text
@@ -45,6 +45,9 @@ class FleetTUI:
     refresh_interval: int = DEFAULT_TUI_REFRESH_SECONDS
     capture_lines: int = DEFAULT_CAPTURE_LINES
     exclude_vms: set[str] = field(default_factory=lambda: set(DEFAULT_EXCLUDE_VMS))
+
+    def __post_init__(self) -> None:
+        ensure_azlin_context(self.azlin_path)
 
     def run(self, once: bool = False) -> None:
         """Main TUI loop with non-blocking keyboard input.
@@ -238,6 +241,8 @@ class FleetTUI:
         """Poll a single VM for its tmux sessions and capture status info.
 
         Uses a single SSH call with a compound command to minimize latency.
+        Falls back to a pseudo-TTY (virtual TTY) when standard subprocess
+        fails — Bastion-tunnelled SSH often requires a TTY to complete.
         """
         # Compound command: list sessions, then capture each pane + git info
         gather_cmd = r"""
@@ -272,19 +277,111 @@ for SESS in $SESSIONS; do
 done
 """
         gather_cmd = gather_cmd.replace("__CAPTURE_DEPTH__", str(int(self.capture_lines)))
-        try:
-            result = subprocess.run(
-                [self.azlin_path, "connect", vm_name, "--no-tmux", "--", gather_cmd],
-                capture_output=True,
-                text=True,
-                timeout=SUBPROCESS_TIMEOUT_SECONDS,
-            )
-            if result.returncode == 0:
-                return parse_session_output(vm_name, result.stdout)
-        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
-            logging.getLogger(__name__).warning("Poll VM %s failed: %s", vm_name, exc)
+        cmd = [self.azlin_path, "connect", vm_name, "--no-tmux", "--", gather_cmd]
+
+        # Strategy 1: standard subprocess (fast when SSH keys are cached)
+        output = self._run_ssh_cmd(cmd)
+        if output is not None:
+            return parse_session_output(vm_name, output)
+
+        # Strategy 2: virtual TTY — Bastion SSH often needs a PTY
+        output = self._run_ssh_cmd_pty(cmd)
+        if output is not None:
+            return parse_session_output(vm_name, output)
 
         return []
+
+    def _run_ssh_cmd(self, cmd: list[str]) -> str | None:
+        """Run SSH command with standard subprocess. Returns output or None."""
+        try:
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=SUBPROCESS_TIMEOUT_SECONDS,
+            )
+            if "===SESSION:" in result.stdout or "===NO_SESSIONS===" in result.stdout:
+                return result.stdout
+            if result.returncode != 0:
+                logging.getLogger(__name__).debug(
+                    "SSH cmd returned %d (no session markers)", result.returncode,
+                )
+        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
+            logging.getLogger(__name__).debug("SSH subprocess failed: %s", exc)
+        return None
+
+    def _run_ssh_cmd_pty(self, cmd: list[str]) -> str | None:
+        """Run SSH command with a virtual PTY (for Bastion-tunnelled SSH).
+
+        Azure Bastion SSH tunnelling requires a pseudo-terminal to
+        complete the connection handshake.  This method allocates a PTY,
+        auto-accepts the Bastion confirmation prompt, and captures output.
+        """
+        import os as _os
+        import pty as _pty
+
+        try:
+            master_fd, slave_fd = _pty.openpty()
+            proc = subprocess.Popen(
+                cmd,
+                stdin=slave_fd,
+                stdout=slave_fd,
+                stderr=slave_fd,
+                close_fds=True,
+            )
+            _os.close(slave_fd)
+
+            output_chunks: list[bytes] = []
+            deadline = time.monotonic() + SUBPROCESS_TIMEOUT_SECONDS
+            bastion_answered = False
+
+            while time.monotonic() < deadline:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+                try:
+                    ready, _, _ = select.select([master_fd], [], [], min(2.0, remaining))
+                    if ready:
+                        chunk = _os.read(master_fd, 4096)
+                        if not chunk:
+                            break
+                        output_chunks.append(chunk)
+
+                        # Auto-accept Bastion confirmation prompt
+                        if not bastion_answered and b"[Y/n]" in chunk:
+                            _os.write(master_fd, b"y\n")
+                            bastion_answered = True
+
+                    elif proc.poll() is not None:
+                        # Process exited, drain remaining output
+                        while True:
+                            try:
+                                ready2, _, _ = select.select([master_fd], [], [], 0.5)
+                                if ready2:
+                                    chunk = _os.read(master_fd, 4096)
+                                    if not chunk:
+                                        break
+                                    output_chunks.append(chunk)
+                                else:
+                                    break
+                            except OSError:
+                                break
+                        break
+                except OSError:
+                    break
+
+            _os.close(master_fd)
+
+            if proc.poll() is None:
+                proc.kill()
+                proc.wait(timeout=5)
+
+            text = b"".join(output_chunks).decode("utf-8", errors="replace")
+            if "===SESSION:" in text or "===NO_SESSIONS===" in text:
+                return text
+            logging.getLogger(__name__).debug(
+                "PTY SSH returned no session markers (%d bytes)", len(text),
+            )
+        except Exception as exc:
+            logging.getLogger(__name__).warning("PTY SSH failed: %s", exc)
+        return None
 
 
 

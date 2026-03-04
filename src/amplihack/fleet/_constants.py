@@ -21,7 +21,7 @@ CONFIDENCE_COPILOT_WAIT = 0.95   # Copilot fast-path wait confidence
 # ── Time / Duration ────────────────────────────────────────────────────
 DEFAULT_STUCK_THRESHOLD_SECONDS = 300.0  # 5 minutes without change = stuck
 DEFAULT_POLL_INTERVAL_SECONDS = 60.0     # Fleet admiral poll interval
-SUBPROCESS_TIMEOUT_SECONDS = 60          # SSH/subprocess timeout
+SUBPROCESS_TIMEOUT_SECONDS = 120         # SSH/subprocess timeout (Bastion tunnels need ~90s)
 SUBPROCESS_TIMEOUT_KILL_SECONDS = 30     # Shorter timeout for kill operations
 DEFAULT_TUI_REFRESH_SECONDS = 60         # Simple TUI refresh interval
 DEFAULT_DASHBOARD_REFRESH_SECONDS = 30   # Interactive dashboard refresh
@@ -59,6 +59,7 @@ __all__ = [
     "DEFAULT_TUI_REFRESH_SECONDS",
     "DEFAULT_DASHBOARD_REFRESH_SECONDS",
     "DEFAULT_CAPTURE_LINES",
+    "DEFAULT_DETAIL_CAPTURE_LINES",
     "DEFAULT_RECENT_MESSAGE_COUNT",
     "DEFAULT_MAX_AGENTS_PER_VM",
     "DEFAULT_MAX_TURNS",
