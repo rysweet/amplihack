@@ -16,6 +16,7 @@ from typing import Any
 
 from amplihack.recipes.agent_resolver import AgentNotFoundError, AgentResolver
 from amplihack.recipes.context import RecipeContext
+from amplihack.recipes.discovery import find_recipe
 from amplihack.recipes.models import (
     Recipe,
     RecipeResult,
@@ -25,6 +26,8 @@ from amplihack.recipes.models import (
     StepStatus,
     StepType,
 )
+
+MAX_RECIPE_DEPTH = 3
 
 logger = logging.getLogger(__name__)
 
@@ -89,12 +92,14 @@ class RecipeRunner:
         working_dir: str = ".",
         dry_run: bool = False,
         auto_stage: bool = True,
+        _depth: int = 0,
     ) -> None:
         self._adapter = adapter
         self._agent_resolver = agent_resolver or AgentResolver()
         self._working_dir = working_dir
         self._default_dry_run = dry_run
         self._auto_stage = auto_stage
+        self._depth = _depth
 
     def execute(
         self,
@@ -368,9 +373,66 @@ class RecipeRunner:
         logger.warning("All JSON extraction strategies failed for step '%s'", step_id)
         return None
 
+    def _execute_sub_recipe(self, step: Step, ctx: RecipeContext) -> str:
+        """Execute a sub-recipe step with context merging and recursion depth guard.
+
+        Raises:
+            StepExecutionError: If recursion depth exceeds MAX_RECIPE_DEPTH or
+                the sub-recipe name is missing/not found.
+        """
+        from amplihack.recipes.parser import RecipeParser
+
+        if self._depth >= MAX_RECIPE_DEPTH:
+            raise StepExecutionError(
+                step.id,
+                f"Maximum recipe recursion depth ({MAX_RECIPE_DEPTH}) exceeded. "
+                "Check for circular recipe references.",
+            )
+
+        recipe_name = step.recipe
+        if not recipe_name:
+            raise StepExecutionError(step.id, "Recipe step is missing the 'recipe' field")
+
+        path = find_recipe(recipe_name)
+        if path is None:
+            raise StepExecutionError(step.id, f"Sub-recipe '{recipe_name}' not found")
+
+        sub_recipe = RecipeParser().parse_file(path)
+
+        # Merge: current context + step-level sub_context overrides
+        merged: dict[str, Any] = dict(ctx.to_dict())
+        if step.sub_context:
+            merged.update(step.sub_context)
+
+        sub_runner = RecipeRunner(
+            adapter=self._adapter,
+            agent_resolver=self._agent_resolver,
+            working_dir=self._working_dir,
+            dry_run=self._default_dry_run,
+            auto_stage=self._auto_stage,
+            _depth=self._depth + 1,
+        )
+        sub_result = sub_runner.execute(sub_recipe, user_context=merged)
+
+        if not sub_result.success:
+            raise StepExecutionError(
+                step.id,
+                f"Sub-recipe '{recipe_name}' failed",
+            )
+
+        logger.info(
+            "Sub-recipe '%s' completed successfully (depth %d)",
+            recipe_name,
+            self._depth + 1,
+        )
+        return str(sub_result)
+
     def _dispatch_step(self, step: Step, ctx: RecipeContext) -> str:
         """Route step execution to the correct adapter method."""
         working_dir = step.working_dir or self._working_dir
+
+        if step.step_type == StepType.RECIPE:
+            return self._execute_sub_recipe(step, ctx)
 
         if step.step_type == StepType.BASH:
             # Use shell-safe rendering to prevent injection via template values.

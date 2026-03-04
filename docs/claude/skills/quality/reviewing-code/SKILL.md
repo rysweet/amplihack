@@ -1,5 +1,5 @@
 ---
-name: "Reviewing Code"
+name: reviewing-code
 description: "Performs systematic code review checking for correctness, maintainability, security, and best practices. Activates when user requests review, before creating PRs, or when significant code changes are ready. Ensures quality gates are met before code proceeds to production."
 allowed-tools: ["Read", "Grep", "Glob", "Bash"]
 ---

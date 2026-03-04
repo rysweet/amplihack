@@ -82,7 +82,7 @@ class AgentMemory:
         self._safe_add(
             ExperienceType.INSIGHT,
             context="Clarified objective",
-            outcome=objective[:500],
+            outcome=str(objective)[:500],
             confidence=0.9,
             tags=["objective", "turn_1"],
         )
@@ -92,7 +92,7 @@ class AgentMemory:
         self._safe_add(
             ExperienceType.PATTERN,
             context="Execution plan",
-            outcome=plan[:500],
+            outcome=str(plan)[:500],
             confidence=0.8,
             tags=["plan", "turn_2"],
         )
@@ -102,7 +102,7 @@ class AgentMemory:
         self._safe_add(
             ExperienceType.SUCCESS,
             context=f"Turn {turn} execution",
-            outcome=output[:500],
+            outcome=str(output)[:500],
             confidence=0.7,
             tags=[f"turn_{turn}", "execution"],
         )
@@ -112,7 +112,7 @@ class AgentMemory:
         self._safe_add(
             ExperienceType.INSIGHT,
             context=f"Turn {turn} evaluation",
-            outcome=eval_result[:500],
+            outcome=str(eval_result)[:500],
             confidence=0.8,
             tags=[f"turn_{turn}", "evaluation"],
         )
@@ -122,7 +122,7 @@ class AgentMemory:
         self._safe_add(
             ExperienceType.INSIGHT,
             context="Session summary and learnings",
-            outcome=summary[:500],
+            outcome=str(summary)[:500],
             confidence=0.9,
             tags=["learning", "session_end"],
         )

@@ -1108,7 +1108,13 @@ class KuzuBackend:
                 params["offset"] = query.offset
 
         # Execute query
-        result = self.connection.execute(cypher, params)
+        try:
+            result = self.connection.execute(cypher, params)
+        except Exception as e:
+            if "does not exist" in str(e):
+                # Table not yet created (e.g. DB has code graph schema only)
+                return []
+            raise
 
         # Convert to MemoryEntry objects
         memories = []
