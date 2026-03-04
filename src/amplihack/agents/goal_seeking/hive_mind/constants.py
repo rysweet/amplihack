@@ -82,6 +82,19 @@ GOSSIP_RELAY_AGENT_PREFIX = "__gossip_"
 # Models
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# DHT / Distributed Hive
+# ---------------------------------------------------------------------------
+
+DEFAULT_REPLICATION_FACTOR = 3
+DEFAULT_QUERY_FANOUT = 5
+KUZU_BUFFER_POOL_SIZE = 256 * 1024 * 1024  # 256MB per agent (not 80% of system RAM)
+KUZU_MAX_DB_SIZE = 1 * 1024 * 1024 * 1024  # 1GB (not 8TB default)
+
+# ---------------------------------------------------------------------------
+# Models
+# ---------------------------------------------------------------------------
+
 DEFAULT_EMBEDDING_MODEL = "BAAI/bge-base-en-v1.5"
 DEFAULT_CROSS_ENCODER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 DEFAULT_EXPANSION_MODEL = "claude-haiku-4-5-20251001"
@@ -98,6 +111,10 @@ __all__ = [
     "DEFAULT_CONTRADICTION_OVERLAP",
     "DEFAULT_CROSS_ENCODER_MODEL",
     "DEFAULT_EMBEDDING_MODEL",
+    "DEFAULT_QUERY_FANOUT",
+    "DEFAULT_REPLICATION_FACTOR",
+    "KUZU_BUFFER_POOL_SIZE",
+    "KUZU_MAX_DB_SIZE",
     "DEFAULT_EXPANSION_MODEL",
     "DEFAULT_FACT_TTL_SECONDS",
     "DEFAULT_GOSSIP_FANOUT",

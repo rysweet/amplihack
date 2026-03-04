@@ -21,7 +21,12 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from .hive_mind.constants import DEFAULT_CONFIDENCE_GATE, DEFAULT_QUALITY_THRESHOLD
+from .hive_mind.constants import (
+    DEFAULT_CONFIDENCE_GATE,
+    DEFAULT_QUALITY_THRESHOLD,
+    KUZU_BUFFER_POOL_SIZE,
+    KUZU_MAX_DB_SIZE,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +103,31 @@ class CognitiveAdapter:
             kuzu_path = db_path / "kuzu_db"
             if not kuzu_path.exists():
                 kuzu_path.parent.mkdir(parents=True, exist_ok=True)
-            self.memory = CognitiveMemory(agent_name=agent_name, db_path=str(kuzu_path))
+
+            # Patch Kuzu Database to use bounded buffer pool.
+            # CognitiveMemory calls kuzu.Database() with defaults that
+            # allocate ~80% of system RAM and 8TB mmap per DB. With 100
+            # agents this exhausts virtual memory. We limit each DB to
+            # 256MB buffer pool and 1GB max size.
+            import kuzu as _kuzu
+
+            _orig_db_init = _kuzu.Database.__init__
+
+            def _bounded_db_init(
+                self_db, database_path=None, **kwargs
+            ):
+                kwargs.setdefault("buffer_pool_size", KUZU_BUFFER_POOL_SIZE)
+                kwargs.setdefault("max_db_size", KUZU_MAX_DB_SIZE)
+                _orig_db_init(self_db, database_path, **kwargs)
+
+            _kuzu.Database.__init__ = _bounded_db_init
+            try:
+                self.memory = CognitiveMemory(
+                    agent_name=agent_name, db_path=str(kuzu_path)
+                )
+            finally:
+                _kuzu.Database.__init__ = _orig_db_init
+
             self._cognitive = True
         else:
             if require_cognitive:
