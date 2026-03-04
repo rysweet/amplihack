@@ -512,11 +512,9 @@ class SdkCallsMixin:
                     )
                 except Exception as e:
                     # SDK failed - log to stderr and fall through to fallback
-                    import sys
-
                     error_msg = f"[Power Steering SDK Error] {consideration['id']}: {e!s}\n"
-                    sys.stderr.write(error_msg)
-                    sys.stderr.flush()
+                    _sys.stderr.write(error_msg)
+                    _sys.stderr.flush()
 
                     self._log(
                         f"SDK error for consideration '{consideration['id']}': {e}",

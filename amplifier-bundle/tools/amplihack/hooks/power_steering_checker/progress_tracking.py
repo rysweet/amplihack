@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import re
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
@@ -83,8 +84,6 @@ def _write_with_retry(
     Raises:
         OSError: If all retries exhausted (fail-open: caller should handle)
     """
-    import sys
-
     retry_delay = WRITE_RETRY_INITIAL_DELAY
 
     for attempt in range(max_retries):
@@ -504,7 +503,7 @@ class ProgressTrackingMixin:
 
         except OSError as e:
             # Fail-open: Don't block user if we can't save redirect
-            self._log(f"Failed to save redirect: {e}", "ERROR")
+            self._log(f"Failed to save redirect: {e}", "ERROR", exc_info=True)
 
     def _emit_progress(
         self,
@@ -539,6 +538,9 @@ class ProgressTrackingMixin:
             session_id: Session identifier
             summary: Summary content
         """
+        if not _validate_session_id(session_id):
+            self._log(f"Invalid session_id rejected in _write_summary: {session_id!r}", "WARNING")
+            return
         try:
             summary_dir = self.runtime_dir / session_id
             summary_path = summary_dir / "summary.md"
