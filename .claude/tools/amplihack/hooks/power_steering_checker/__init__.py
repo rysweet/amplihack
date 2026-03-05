@@ -4,6 +4,10 @@ Re-exports the public API for backward compatibility.
 Callers using `from power_steering_checker import X` continue to work unchanged.
 """
 
+from .checks_ci_pr import ChecksCiPrMixin
+from .checks_docs import ChecksDocsMixin
+from .checks_quality import ChecksQualityMixin
+from .checks_workflow import ChecksWorkflowMixin
 from .considerations import (
     CheckerResult,
     ConsiderationAnalysis,
@@ -25,10 +29,16 @@ from .sdk_calls import (
     _timeout,
     analyze_consideration,
 )
+from .session_detection import SessionDetectionMixin
+from .transcript_helpers import TranscriptHelpersMixin
 
 __all__ = [
     "CHECKER_TIMEOUT",
     "CheckerResult",
+    "ChecksCiPrMixin",
+    "ChecksDocsMixin",
+    "ChecksQualityMixin",
+    "ChecksWorkflowMixin",
     "ConsiderationAnalysis",
     "MAX_TRANSCRIPT_LINES",
     "PARALLEL_TIMEOUT",
@@ -36,6 +46,8 @@ __all__ = [
     "PowerSteeringRedirect",
     "PowerSteeringResult",
     "SDK_AVAILABLE",
+    "SessionDetectionMixin",
+    "TranscriptHelpersMixin",
     "_timeout",
     "_write_with_retry",
     "analyze_consideration",
