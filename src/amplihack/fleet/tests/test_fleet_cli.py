@@ -1289,7 +1289,7 @@ class TestFleetSweep:
         assert "Skipped" in result.output
 
     @patch("amplihack.fleet.fleet_tui.FleetTUI")
-    def test_sweep_no_api_key_fallback(self, MockTUI, runner):
+    def test_sweep_no_api_key_errors(self, MockTUI, runner):
         from amplihack.fleet._tui_data import SessionView, VMView
 
         vm = VMView(
@@ -1306,8 +1306,7 @@ class TestFleetSweep:
                 fleet_cli, ["sweep", "--skip-adopt"], catch_exceptions=False,
             )
         assert result.exit_code == 0
-        assert "no ANTHROPIC_API_KEY" in result.output
-        assert "N/A" in result.output
+        assert "ANTHROPIC_API_KEY required" in result.output
 
     @patch("amplihack.fleet.fleet_tui.FleetTUI")
     def test_sweep_save_json(self, MockTUI, runner, tmp_path):
