@@ -136,3 +136,226 @@
 {"date":"2026-03-02","timestamp":1772469062,"metrics":{"size":{"total_loc":1041718,"source_loc":0,"test_loc":227766,"total_files":2945,"avg_file_size":353,"large_files":234,"loc_by_language":{"Python":455063,"Go":0,"JavaScript/TypeScript":2388,"Markdown":544921,"YAML":23890,"Shell":6619,"JSON":8837,"total":1041718},"loc_by_directory":[{"dir":".claude","code":396182,"files":1126},{"dir":"docs","code":391655,"files":1033},{"dir":"amplifier-bundle","code":285579,"files":748},{"dir":"tests","code":174843,"files":557},{"dir":"src","code":131737,"files":503},{"dir":"Specs","code":47675,"files":87},{"dir":"scripts","code":13955,"files":48},{"dir":"generated-agents","code":10455,"files":45},{"dir":"worktrees","code":8667,"files":18},{"dir":"amplihack-memory-lib","code":7680,"files":26}]},"quality":{"quality_score":24.62071021140078,"quality_components":{"test_coverage":0.0,"code_organization":13.999999999999998,"documentation":0,"churn_stability":7.5,"comment_density":3.1207102114007816},"comment_lines":32509,"comment_ratio":0.03120710211400782},"tests":{"test_loc":227766,"test_files":575,"test_to_source_ratio":0},"churn":{"source":{"files_modified":933,"lines_added":110929,"lines_deleted":44091,"net_change":66838},"lock_files":{"files_modified":3,"lines_added":17,"lines_deleted":8,"net_change":9},"commits":102},"workflows":{"total_workflows":25,"lock_files":17},"docs":{"docs_count":683,"docs_loc":0,"code_to_docs_ratio":0}}}
 {"date": "2026-03-03", "timestamp": 1772555691, "metrics": {"size": {"total_loc": 1492578, "total_files": 4208, "by_language": {"Go": {"loc": 0, "files": 0}, "Python": {"loc": 627387, "files": 1993}, "JavaScript": {"loc": 3413, "files": 5}, "TypeScript": {"loc": 264, "files": 1}, "Markdown": {"loc": 817026, "files": 1925}, "YAML": {"loc": 35577, "files": 224}, "Shell": {"loc": 8911, "files": 60}}, "by_directory": [{"directory": "Specs/", "loc": 47124, "files": 87}, {"directory": "agents/", "loc": 11077, "files": 47}, {"directory": "amplifier-bundle/", "loc": 267295, "files": 748}, {"directory": "amplifier-module-orchestrator-amplihack/", "loc": 538, "files": 6}, {"directory": "amplihack-logparse/", "loc": 2414, "files": 18}, {"directory": "amplihack-memory-lib/", "loc": 7680, "files": 26}, {"directory": "archive/", "loc": 138, "files": 2}, {"directory": "commands/", "loc": 9650, "files": 48}, {"directory": "docker/", "loc": 95, "files": 3}, {"directory": "docs/", "loc": 384300, "files": 1033}, {"directory": "examples/", "loc": 1365, "files": 6}, {"directory": "proxy/", "loc": 1829, "files": 7}, {"directory": "scripts/", "loc": 14035, "files": 54}, {"directory": "skills/", "loc": 220690, "files": 580}, {"directory": "src/", "loc": 127581, "files": 504}, {"directory": "tests/", "loc": 172019, "files": 607}, {"directory": "tools/", "loc": 165, "files": 5}, {"directory": "worktrees/", "loc": 8667, "files": 18}]}, "quality": {"quality_score": 62.75706864230881, "score_breakdown": {"test_coverage": 30, "code_organization": 5, "documentation": 19.851156857464066, "churn_stability": 5, "comment_density": 2.905911784844745}, "large_files": 844, "avg_file_size": 369}, "tests": {"test_files": 1150, "test_loc": 362727, "source_loc": 351166, "test_to_source_ratio": 1.03}, "churn": {"source": {"files_modified": 579, "commits": 109, "lines_added": 57955, "lines_deleted": 59264, "net_change": -1309}, "lock_files": {"files_modified": 2, "lines_added": 11, "lines_deleted": 2, "net_change": 9}}, "workflows": {"total_workflows": 53, "lock_files": 17, "github_workflows": 34}, "docs": {"doc_files": 683, "doc_loc": 296294}, "comments": {"total_comments": 43373, "go": 0, "python": 43065, "javascript": 308}}}
 {"date": "2026-03-04", "timestamp": 1772642089, "metrics": {"size": {"total_loc": 1531869, "total_files": 4415, "avg_file_size": 346.9691959229898, "large_files": 0, "languages": {"Python": 659354, "Go": 0, "JavaScript": 3413, "TypeScript": 264, "Shell": 10403, "Markdown": 815447, "YAML": 35669, "JSON": 7319}}, "quality": {"comment_lines": 52000, "comment_ratio": 0.034, "quality_score": 61.74386426419757}, "tests": {"test_lines_of_code": 379277, "source_loc": 1152592, "test_to_source_ratio": 0.32906440440329277}, "churn": {"source": {"files_modified": 1318, "commits": 0, "lines_added": 99580, "lines_deleted": 76913, "net_change": 22667}, "lock_files": {"files_modified": 6, "lines_added": 15, "lines_deleted": 1, "net_change": 14}}, "workflows": {"total_workflows": 0, "lock_files": 0}, "docs": {"doc_files": 0, "doc_loc": 0, "code_to_docs_ratio": 0}}}
+{
+  "date": "2026-03-05",
+  "timestamp": 1772733647,
+  "metrics": {
+    "size": {
+      "lines_of_code_total": 844565,
+      "loc_by_language": {
+        "Makefile": {
+          "lines": 144,
+          "files": 1,
+          "comments": 0,
+          "blanks": 16
+        },
+        "JSON": {
+          "lines": 5831,
+          "files": 60,
+          "comments": 0,
+          "blanks": 6
+        },
+        "Python": {
+          "lines": 385221,
+          "files": 1646,
+          "comments": 35515,
+          "blanks": 103267
+        },
+        "Markdown": {
+          "lines": 401864,
+          "files": 1368,
+          "comments": 0,
+          "blanks": 157240
+        },
+        "YAML": {
+          "lines": 43748,
+          "files": 164,
+          "comments": 0,
+          "blanks": 5072
+        },
+        "Shell": {
+          "lines": 5893,
+          "files": 45,
+          "comments": 926,
+          "blanks": 1292
+        },
+        "JavaScript": {
+          "lines": 1864,
+          "files": 4,
+          "comments": 208,
+          "blanks": 316
+        }
+      },
+      "loc_by_directory": {
+        ".": {
+          "loc": 2030,
+          "files": 10
+        },
+        "experiments": {
+          "loc": 11360,
+          "files": 19
+        },
+        "tests": {
+          "loc": 132805,
+          "files": 607
+        },
+        "amplifier-module-orchestrator-amplihack": {
+          "loc": 406,
+          "files": 6
+        },
+        "docker": {
+          "loc": 77,
+          "files": 2
+        },
+        "archive": {
+          "loc": 94,
+          "files": 2
+        },
+        "docs": {
+          "loc": 278541,
+          "files": 995
+        },
+        ".github": {
+          "loc": 37924,
+          "files": 140
+        },
+        "worktrees": {
+          "loc": 17,
+          "files": 1
+        },
+        "proxy": {
+          "loc": 1266,
+          "files": 3
+        },
+        "amplihack-logparse": {
+          "loc": 382,
+          "files": 2
+        },
+        "src": {
+          "loc": 123646,
+          "files": 634
+        },
+        "amplifier-bundle": {
+          "loc": 209148,
+          "files": 723
+        },
+        "Specs": {
+          "loc": 33782,
+          "files": 79
+        },
+        "scripts": {
+          "loc": 11372,
+          "files": 54
+        },
+        "examples": {
+          "loc": 1121,
+          "files": 6
+        },
+        "tools": {
+          "loc": 594,
+          "files": 5
+        }
+      }
+    },
+    "quality": {
+      "comment_ratio": 0.0434,
+      "comment_lines": 36649,
+      "average_file_size": 257.6,
+      "large_files_over_500": 338,
+      "total_files": 3279,
+      "quality_score": 60.4
+    },
+    "tests": {
+      "test_files": 646,
+      "test_lines_of_code": 169944,
+      "test_to_source_ratio": 0.252
+    },
+    "churn": {
+      "source": {
+        "files_modified": 828,
+        "commits": 107,
+        "lines_added": 100956,
+        "lines_deleted": 76840,
+        "net_change": 24116,
+        "most_active_files": [
+          {
+            "file": "src/amplihack/agents/goal_seeking/learning_agent.py",
+            "added": 3830,
+            "deleted": 3316,
+            "net": 514
+          },
+          {
+            "file": "src/amplihack/agents/goal_seeking/_hierarchical_memory_local.py",
+            "added": 2442,
+            "deleted": 2367,
+            "net": 75
+          },
+          {
+            "file": "src/amplihack/proxy/integrated_proxy.py",
+            "added": 114,
+            "deleted": 2838,
+            "net": -2724
+          },
+          {
+            "file": "src/amplihack/agents/teaching/generator_teacher.py",
+            "added": 2,
+            "deleted": 2744,
+            "net": -2742
+          },
+          {
+            "file": "src/amplihack/.claude/context/DISCOVERIES.md",
+            "added": 0,
+            "deleted": 2426,
+            "net": -2426
+          },
+          {
+            "file": "src/amplihack/amplifier-bundle/context/DISCOVERIES.md",
+            "added": 0,
+            "deleted": 2426,
+            "net": -2426
+          },
+          {
+            "file": "amplihack-memory-lib/src/amplihack_memory/cognitive_memory.py",
+            "added": 1199,
+            "deleted": 1199,
+            "net": 0
+          },
+          {
+            "file": "docs/research/FINAL_SYNTHESIS_MEMORY_KNOWLEDGE_SYSTEM.md",
+            "added": 0,
+            "deleted": 1950,
+            "net": -1950
+          },
+          {
+            "file": "docs/research/KNOWLEDGE_GRAPH_SYSTEMS_RESEARCH_2025.md",
+            "added": 0,
+            "deleted": 1901,
+            "net": -1901
+          },
+          {
+            "file": "src/amplihack/agents/goal_seeking/agentic_loop.py",
+            "added": 897,
+            "deleted": 896,
+            "net": 1
+          }
+        ]
+      },
+      "lock_files": {
+        "files_modified": 4,
+        "lines_added": 15,
+        "lines_deleted": 1,
+        "net_change": 14
+      }
+    },
+    "workflows": {
+      "total_workflows": 20,
+      "compiled_workflows": 17,
+      "average_workflow_size": 315.6
+    },
+    "docs": {
+      "doc_files": 675,
+      "doc_loc": 208387,
+      "code_to_docs_ratio": 4.05
+    }
+  }
+}
