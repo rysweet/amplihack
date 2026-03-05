@@ -381,6 +381,161 @@ amplihack fleet auth devo --services github azure claude
 
 This copies credential files to the target VM and verifies they work.
 
+## Using Fleet from Claude Code or Copilot CLI
+
+The `/fleet` skill lets you manage your fleet directly from a Claude Code or Copilot CLI conversation, without switching to a separate terminal.
+
+### Invoking the Skill
+
+Type `/fleet` followed by a command:
+
+```
+/fleet sweep
+/fleet advance
+/fleet status
+```
+
+Or just describe what you want — Claude will pick the right command:
+
+```
+"What are my agents doing?"        → fleet sweep
+"Send next steps to all sessions"  → fleet advance
+"Advance the stuck session on dev" → fleet advance --vm dev --session stuck-session
+```
+
+### Fleet Sweep (Dry-Run Scan)
+
+`/fleet sweep` discovers all VMs and sessions, runs admiral reasoning, and shows a report with three sections:
+
+**1. Status Table** — one row per session:
+
+```
+  VM           Session                Status     Action           Conf
+  --------------------------------------------------------------------
+  dev          [>] cybergym-intg      running    wait             100%
+  dev          [.] parallel-deploy-wk idle       send_input        90%
+  deva         [X] qa                 shell      send_input        90%
+  devy         [~] agent-kgpacks      thinking   wait             100%
+```
+
+Status icons: `[~]` thinking, `[>]` running, `[.]` idle, `[X]` dead, `[Z]` suspended, `[!]` error, `[+]` completed, `[?]` waiting input.
+
+**2. Session Summaries** — admiral reasoning + proposed input:
+
+```
+  dev/parallel-deploy-wk:
+    Deployment succeeded. Agent needs to create a PR with results.
+    >> "Great! The deployment completed successfully in ~21 minutes."
+
+  deva/qa:
+    Claude crashed with malformed args. Need to relaunch.
+    >> "claude --dangerously-skip-permissions --model opus[1m]"
+```
+
+**3. Next Steps** — copy-pasteable commands:
+
+```
+  # Act on all sessions at once:
+  fleet advance
+
+  # Advance dev/parallel-deploy-wk only:
+  fleet advance --vm dev --session parallel-deploy-wk
+  #   >> "Great! The deployment completed successfully..."
+
+  # deva/qa is dead — inspect:
+  fleet watch deva qa
+```
+
+### Fleet Advance (Live Execution)
+
+`/fleet advance` reasons about sessions and **executes** the admiral's decisions:
+
+```
+/fleet advance                                        # All sessions
+/fleet advance --confirm                              # Review each before executing
+/fleet advance --vm dev --session parallel-deploy-wk  # Single session only
+```
+
+What happens for each action type:
+
+| Action | What the admiral does |
+|--------|---------------------|
+| `wait` | Nothing — agent is working fine |
+| `send_input` | Types text into the tmux pane |
+| `restart` | Sends Ctrl-C twice, then re-runs last command |
+| `escalate` | Flags for human review, no action taken |
+| `mark_complete` | Records task as done |
+
+Safety is enforced automatically:
+- `send_input` requires confidence >= 60%
+- `restart` requires confidence >= 80%
+- Dangerous patterns (rm -rf, force push, etc.) are blocked
+
+### Filtering to One Session
+
+Both sweep and advance support `--vm` and `--session` filters:
+
+```
+# Sweep one VM (faster — only one Bastion tunnel):
+/fleet sweep --vm dev --skip-adopt
+
+# Sweep one session (fastest — ~2 min):
+/fleet sweep --vm dev --session cybergym-intg --skip-adopt
+
+# Advance one session:
+/fleet advance --vm dev --session cybergym-intg
+
+# Advance one session with confirmation:
+/fleet advance --vm deva --session qa --confirm
+```
+
+### Typical Workflow
+
+1. **Sweep first** to see the fleet state:
+   ```
+   /fleet sweep
+   ```
+
+2. **Review** the report — check which sessions need action
+
+3. **Advance specific sessions** you agree with:
+   ```
+   /fleet advance --vm dev --session parallel-deploy-wk
+   ```
+
+4. **Or advance all** if the admiral's proposals look good:
+   ```
+   /fleet advance --confirm
+   ```
+
+5. **Check on individual sessions** that need attention:
+   ```
+   /fleet watch deva qa
+   ```
+
+### Saving Reports
+
+Both commands support `--save` to write a JSON report:
+
+```
+/fleet sweep --save /tmp/fleet-report.json
+/fleet advance --save /tmp/advance-log.json
+```
+
+### Session State Detection
+
+The fleet system detects five distinct session states:
+
+| State | What it means | How detected |
+|-------|--------------|--------------|
+| **thinking** | Agent is actively processing | `●` tool call indicator, streaming output |
+| **running** | Agent producing output | Status bar shows `(running)` |
+| **idle** | Agent at `❯` prompt, waiting | Claude Code prompt with no input |
+| **shell** | Agent dead, back at `$` prompt | Bare bash prompt, no claude/node process |
+| **suspended** | Agent backgrounded but alive | Bash prompt but claude/node process still running |
+
+The suspended state is detected by checking for live `claude` or `node` processes as children of the tmux pane. This catches sessions where the agent was backgrounded with Ctrl-Z or the Claude Code background feature.
+
 ## Next Steps
 
 - Read the [Architecture](./ARCHITECTURE.md) document to understand how the modules fit together
