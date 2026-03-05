@@ -47,39 +47,71 @@ def format_sweep_report(
     idle_sessions = sum(
         1 for v in running_vms for s in v.sessions if s.status == "idle"
     )
+    shell_sessions = sum(
+        1 for v in running_vms for s in v.sessions if s.status == "shell"
+    )
 
     lines.append("")
     lines.append(f"Running VMs: {len(running_vms)}")
     lines.append(f"Total sessions: {total_sessions}")
-    lines.append(f"Active sessions: {active_sessions}")
-    lines.append(f"Idle sessions: {idle_sessions}")
+    lines.append(f"Active: {active_sessions}  Idle: {idle_sessions}  Dead: {shell_sessions}")
     if not skip_adopt:
         lines.append(f"Adopted: {adopted_count}")
 
     lines.append("")
-    lines.append("--- Per-VM Summary ---")
+    lines.append("--- Per-Session Detail ---")
 
     for vm in sorted(running_vms, key=lambda v: v.name):
         lines.append("")
         lines.append(f"  {vm.name} ({vm.region}):")
         for sess in vm.sessions:
-            lines.append(
-                f"    {sess.session_name:25s} [{sess.status:12s}] "
-                f"branch={sess.branch or 'n/a'}"
-            )
-            for d in decisions:
-                if d["vm"] == vm.name and d["session"] == sess.session_name:
-                    if "error" in d:
-                        lines.append(f"      Admiral: ERROR - {d['error'][:80]}")
-                    else:
-                        conf = d.get("confidence", 0)
-                        lines.append(
-                            f"      Admiral: {d['action']} (conf={conf:.0%})"
-                        )
-                        reasoning = d.get("reasoning", "")
-                        if reasoning:
-                            lines.append(f"      Reason: {reasoning[:100]}")
+            # Find matching decision
+            d = None
+            for dd in decisions:
+                if dd["vm"] == vm.name and dd["session"] == sess.session_name:
+                    d = dd
                     break
+
+            status_icon = {
+                "thinking": "~",
+                "running": ">",
+                "idle": ".",
+                "shell": "X",
+                "error": "!",
+                "completed": "+",
+                "waiting_input": "?",
+                "unknown": "-",
+            }.get(sess.status, "-")
+
+            action_str = ""
+            if d and "error" not in d:
+                conf = d.get("confidence", 0)
+                action_str = f"{d['action']} ({conf:.0%})"
+            elif d and "error" in d:
+                action_str = f"ERROR"
+
+            lines.append(
+                f"    [{status_icon}] {sess.session_name:20s} "
+                f"{sess.status:12s} {action_str}"
+            )
+
+            # Branch
+            if sess.branch:
+                lines.append(f"        branch: {sess.branch}")
+
+            # Session summary (reasoning from admiral) or error
+            if d:
+                if "error" in d:
+                    lines.append(f"        error: {d['error'][:120]}")
+                else:
+                    reasoning = d.get("reasoning", "")
+                    if reasoning:
+                        lines.append(f"        summary: {reasoning[:120]}")
+
+                    # Proposed input
+                    input_text = d.get("input_text", "")
+                    if input_text:
+                        lines.append(f"        input: \"{input_text[:100]}\"")
 
     lines.append("")
     lines.append("--- Decisions Summary ---")

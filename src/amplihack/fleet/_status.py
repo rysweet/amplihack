@@ -26,7 +26,8 @@ def infer_agent_status(tmux_text: str) -> str:
         "thinking" -- Agent is actively processing (LLM call, tool running)
         "running" -- Agent producing output or status bar shows active
         "waiting_input" -- Agent needs user input (Y/n, permission prompt)
-        "idle" -- At prompt with no input, bare shell prompt
+        "idle" -- Agent at its prompt (❯) with no input
+        "shell" -- Bare shell prompt ($), agent is dead/crashed
         "error" -- Error indicators in output
         "completed" -- Goal achieved or PR created
         "unknown" -- Cannot determine status
@@ -105,11 +106,12 @@ def infer_agent_status(tmux_text: str) -> str:
     if has_prompt and prompt_line_text:
         return "thinking"
 
-    # IDLE detection for bare prompts
+    # IDLE detection: agent at its prompt (❯) vs bare shell ($)
     if has_prompt and not prompt_line_text:
         return "idle"
+    # Bare shell prompt = agent is dead/crashed, back at bash
     if last_line_lower.endswith("$ ") or last_line_lower.endswith("$"):
-        return "idle"
+        return "shell"
 
     # WAITING_INPUT detection
     if any(p in combined_lower for p in ["y/n]", "yes/no", "[y/n", "(yes/no)"]):
