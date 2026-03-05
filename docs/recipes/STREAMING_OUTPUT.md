@@ -67,7 +67,6 @@ def execute_agent_step(self, prompt: str, ...) -> str:
 
 Same pattern as CLISubprocessAdapter, plus:
 
-- Unsets `CLAUDECODE` environment variable to allow nested sessions
 - Uses isolated temporary directories for each invocation
 - Properly cleans up resources after execution
 
@@ -129,7 +128,7 @@ Comprehensive tests verify:
 - Background thread monitors progress
 - Heartbeat printed on idle
 - Thread stops and cleans up properly
-- CLAUDECODE unset in nested sessions
+- Child environment cleaned via shared utility
 
 See `tests/unit/recipes/test_streaming_adapters.py` for complete test coverage.
 
