@@ -106,3 +106,18 @@ Execute via Bash:
 ```bash
 fleet <command> [options]
 ```
+
+## Presenting Results
+
+After running `fleet sweep` or `fleet advance`, present the output to the user as:
+
+1. **Summary table** — reformat the CLI output into a clean markdown table with columns:
+   VM | Session | Status | Action | Conf | Summary
+
+2. **Proposed inputs** — for any `send_input` decisions, show what the admiral wants to send
+
+3. **Follow-up commands** — always end with the actionable next steps from the report:
+   - `fleet advance` to execute all admiral decisions
+   - `fleet advance --confirm` to review each before executing
+   - `fleet watch <vm> <session>` to inspect specific sessions
+   - `fleet advance --vm <vm>` to act on a single VM

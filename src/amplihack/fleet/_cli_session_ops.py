@@ -58,75 +58,107 @@ def format_sweep_report(
     if not skip_adopt:
         lines.append(f"Adopted: {adopted_count}")
 
-    lines.append("")
-    lines.append("--- Per-Session Detail ---")
-
+    # Build flat session list with decisions
+    rows: list[dict] = []
     for vm in sorted(running_vms, key=lambda v: v.name):
-        lines.append("")
-        lines.append(f"  {vm.name} ({vm.region}):")
         for sess in vm.sessions:
-            # Find matching decision
             d = None
             for dd in decisions:
                 if dd["vm"] == vm.name and dd["session"] == sess.session_name:
                     d = dd
                     break
 
-            # Determine display status: shell + agent alive = suspended
             display_status = sess.status
             if sess.status == "shell" and getattr(sess, "agent_alive", False):
                 display_status = "suspended"
 
-            status_icon = {
-                "thinking": "~",
-                "running": ">",
-                "idle": ".",
-                "shell": "X",
-                "suspended": "Z",
-                "error": "!",
-                "completed": "+",
-                "waiting_input": "?",
-                "unknown": "-",
+            icon = {
+                "thinking": "~", "running": ">", "idle": ".",
+                "shell": "X", "suspended": "Z", "error": "!",
+                "completed": "+", "waiting_input": "?", "unknown": "-",
             }.get(display_status, "-")
 
-            action_str = ""
+            action = d.get("action", "?") if d and "error" not in d else ("ERR" if d else "?")
+            conf = d.get("confidence", 0) if d and "error" not in d else 0
+            reasoning = ""
+            input_text = ""
             if d and "error" not in d:
-                conf = d.get("confidence", 0)
-                action_str = f"{d['action']} ({conf:.0%})"
-            elif d and "error" in d:
-                action_str = "ERROR"
+                reasoning = d.get("reasoning", "")
+                input_text = d.get("input_text", "")
+            elif d:
+                reasoning = d.get("error", "")
 
-            lines.append(
-                f"    [{status_icon}] {sess.session_name:20s} "
-                f"{display_status:12s} {action_str}"
-            )
+            rows.append({
+                "vm": vm.name, "session": sess.session_name,
+                "icon": icon, "status": display_status,
+                "branch": sess.branch or "",
+                "action": action, "conf": conf,
+                "summary": reasoning, "input": input_text,
+            })
 
-            # Branch
-            if sess.branch:
-                lines.append(f"        branch: {sess.branch}")
-
-            # Session summary (reasoning from admiral) or error
-            if d:
-                if "error" in d:
-                    lines.append(f"        error: {d['error'][:120]}")
-                else:
-                    reasoning = d.get("reasoning", "")
-                    if reasoning:
-                        lines.append(f"        summary: {reasoning[:120]}")
-
-                    # Proposed input
-                    input_text = d.get("input_text", "")
-                    if input_text:
-                        lines.append(f"        input: \"{input_text[:100]}\"")
-
+    # Table
     lines.append("")
-    lines.append("--- Decisions Summary ---")
+    lines.append(
+        f"  {'VM':12s} {'Session':20s}    {'Status':10s} {'Action':14s} "
+        f"{'Summary'}"
+    )
+    lines.append("  " + "-" * 100)
+
+    for r in rows:
+        conf_str = f"{r['conf']:.0%}" if r['conf'] else ""
+        action_str = f"{r['action']:6s} {conf_str:>4s}" if r['action'] else ""
+        summary = r["summary"][:60] if r["summary"] else ""
+        lines.append(
+            f"  {r['vm']:12s} [{r['icon']}] {r['session']:18s} "
+            f"{r['status']:10s} {action_str:14s} "
+            f"{summary}"
+        )
+
+    # Decision counts
+    lines.append("")
     action_counts: dict[str, int] = {}
-    for d in decisions:
-        action = d.get("action", "unknown")
-        action_counts[action] = action_counts.get(action, 0) + 1
-    for action, count in sorted(action_counts.items()):
-        lines.append(f"  {action}: {count}")
+    for r in rows:
+        action_counts[r["action"]] = action_counts.get(r["action"], 0) + 1
+    counts_str = "  ".join(f"{a}: {c}" for a, c in sorted(action_counts.items()))
+    lines.append(f"  Decisions: {counts_str}")
+
+    # Actionable follow-up commands
+    actionable = [r for r in rows if r["action"] in ("send_input", "restart")]
+    completable = [r for r in rows if r["action"] == "mark_complete"]
+    dead = [r for r in rows if r["status"] in ("shell", "error")]
+
+    if actionable or completable or dead:
+        lines.append("")
+        lines.append("--- Follow-Up Commands ---")
+
+        if actionable:
+            lines.append("")
+            lines.append("  # Execute all admiral actions (send_input/restart):")
+            lines.append("  fleet advance")
+            lines.append("")
+            lines.append("  # Execute with confirmation before each action:")
+            lines.append("  fleet advance --confirm")
+
+            for r in actionable:
+                if r["input"]:
+                    lines.append("")
+                    lines.append(f"  # {r['vm']}/{r['session']} ({r['action']}):")
+                    lines.append(f"  #   \"{r['input'][:90]}\"")
+
+        if completable:
+            lines.append("")
+            for r in completable:
+                lines.append(f"  # Mark {r['vm']}/{r['session']} complete")
+
+        if dead:
+            lines.append("")
+            for r in dead:
+                lines.append(
+                    f"  # Restart dead session {r['vm']}/{r['session']}:"
+                )
+                lines.append(
+                    f"  fleet watch {r['vm']} {r['session']}"
+                )
 
     return "\n".join(lines)
 

@@ -1181,20 +1181,27 @@ class TestFormatSweepReport:
         vm = VMView(name="vm-1", region="", is_running=True, sessions=[sess])
         decisions = [{"vm": "vm-1", "session": "s1", "status": "error", "error": "Connection refused"}]
         report = format_sweep_report([vm], decisions, 0, False)
-        assert "ERROR" in report
+        assert "ERR" in report
         assert "Connection refused" in report
 
     def test_action_summary_counts(self):
         from amplihack.fleet._cli_session_ops import format_sweep_report
+        from amplihack.fleet._tui_data import SessionView, VMView
 
+        vm = VMView(name="v", region="", is_running=True, sessions=[
+            SessionView(vm_name="v", session_name="a", status="running"),
+            SessionView(vm_name="v", session_name="b", status="running"),
+            SessionView(vm_name="v", session_name="c", status="idle"),
+        ])
         decisions = [
             {"vm": "v", "session": "a", "action": "wait", "confidence": 0.9},
             {"vm": "v", "session": "b", "action": "wait", "confidence": 0.8},
-            {"vm": "v", "session": "c", "action": "send_input", "confidence": 0.7},
+            {"vm": "v", "session": "c", "action": "send_input", "confidence": 0.7, "input_text": "hello"},
         ]
-        report = format_sweep_report([], decisions, 0, False)
+        report = format_sweep_report([vm], decisions, 0, False)
         assert "wait: 2" in report
         assert "send_input: 1" in report
+        assert "fleet advance" in report
 
 
 class TestFleetSweep:
