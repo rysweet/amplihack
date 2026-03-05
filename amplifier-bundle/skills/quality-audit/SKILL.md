@@ -1,8 +1,8 @@
 ---
 name: quality-audit
-description: Iterative codebase quality audit with multi-agent validation and escalating-depth SEEK/VALIDATE/FIX/RECURSE cycle. Use for quality audit, code audit, codebase review, technical debt audit, refactoring opportunities, module quality check, or architecture review.
+description: Iterative codebase quality audit with multi-agent validation and escalating-depth SEEK/VALIDATE/FIX/RECURSE cycle. Enforces fix-all-per-cycle rule — every confirmed finding must be fixed before moving to the next cycle. Use for quality audit, code audit, codebase review, technical debt audit, refactoring opportunities, module quality check, or architecture review.
 metadata:
-  version: "3.0"
+  version: "4.0"
   author: amplihack
 ---
 
@@ -140,10 +140,19 @@ Cycle 3: SEEK (deepest) → VALIDATE → FIX → decision
 **Loop rules:**
 
 - Minimum **3 cycles** always run
-- Continue past 3 if: any high/critical findings remain, or >3 medium findings
+- Continue past 3 if: any high/critical NEW findings emerged, or >3 medium NEW findings
 - Maximum **6 cycles** (safety valve)
 - Each cycle: fresh eyes, dig deeper, challenge prior findings
 - Fixes use the full **DEFAULT_WORKFLOW** approach (understand → test → implement → verify)
+- **Fix-all-per-cycle rule (#2842):** Every confirmed finding in a cycle MUST be
+  fixed before the cycle is complete. No partial cycles. No deferring findings to
+  "follow-up issues" or "next cycle". If SEEK finds issues, FIX must address ALL
+  of them.
+- **Loop decision based on NEW findings (#2842):** The decision to continue is
+  based on whether the current cycle discovered NEW issues, not whether old issues
+  remain unfixed (they shouldn't — the fix-all rule prevents that).
+- **Fix verification step:** After fixes, a verification step compares confirmed
+  findings against fix results to ensure nothing was skipped.
 
 **Run via recipe:**
 
@@ -153,18 +162,41 @@ amplihack recipe execute quality-audit-cycle.yaml --context '{"target_path": "sr
 
 ## Configuration
 
-Override defaults via environment or prompt:
+Override defaults via recipe context or environment:
 
-**Core Settings**:
+**Structured Inputs (recipe context, per #2843)**:
+
+| Input                  | Default    | Description                                            |
+| ---------------------- | ---------- | ------------------------------------------------------ |
+| `target_path`          | `src/amplihack` | Directory to audit                                |
+| `min_cycles`           | `3`        | Minimum audit cycles                                   |
+| `max_cycles`           | `6`        | Maximum cycles (safety valve)                          |
+| `validation_threshold` | `2`        | Min validators that must agree (out of 3)              |
+| `severity_threshold`   | `medium`   | Minimum severity to report                             |
+| `module_loc_limit`     | `300`      | Flag modules exceeding this LOC                        |
+| `fix_all_per_cycle`    | `true`     | Must fix ALL findings before next cycle (#2842)        |
+| `categories`           | (all)      | Comma-separated list of categories to check            |
+
+**Available Categories**: `security`, `reliability`, `dead_code`, `silent_fallbacks`,
+`error_swallowing`, `structural`, `hardcoded_limits`, `test_gaps`, `doc_gaps`, `documentation`
+
+**Example invocation**:
+
+```bash
+amplihack recipe execute quality-audit-cycle.yaml --context '{
+  "target_path": "src/amplihack/fleet",
+  "min_cycles": "3",
+  "max_cycles": "6",
+  "severity_threshold": "medium",
+  "module_loc_limit": "300",
+  "fix_all_per_cycle": "true",
+  "categories": "security,reliability,dead_code,silent_fallbacks,error_swallowing"
+}'
+```
+
+**Core Settings (environment)**:
 
 - `AUDIT_PARALLEL_LIMIT`: Max concurrent worktrees (default: 8)
-- `AUDIT_SEVERITY_THRESHOLD`: Minimum severity to create issue (default: medium)
-- `AUDIT_MODULE_LOC_LIMIT`: Flag modules exceeding this LOC (default: 300)
-
-**Recurse Loop Settings** (v2.0):
-
-- `max_cycles`: Maximum audit cycles before stopping (default: 3)
-- `validation_threshold`: Minimum validators that must agree (default: 2)
 
 **Phase 3.5 Validation Settings**:
 
