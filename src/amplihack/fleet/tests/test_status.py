@@ -116,14 +116,14 @@ class TestIdleStatus:
     """Tests for IDLE detection."""
 
     def test_bare_shell_prompt_with_trailing_space(self):
-        """Dollar-sign prompt with trailing space is idle."""
+        """Dollar-sign prompt = shell (agent dead/crashed)."""
         text = "last command output\nuser@host:~$ "
-        assert infer_agent_status(text) == "idle"
+        assert infer_agent_status(text) == "shell"
 
     def test_bare_shell_prompt_no_trailing_space(self):
-        """Dollar-sign prompt without trailing space is idle."""
+        """Dollar-sign prompt without trailing space = shell."""
         text = "output\nuser@host:~$"
-        assert infer_agent_status(text) == "idle"
+        assert infer_agent_status(text) == "shell"
 
     def test_claude_prompt_empty(self):
         """Empty Claude prompt (no typed input) is idle."""

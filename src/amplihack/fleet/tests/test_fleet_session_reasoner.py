@@ -185,9 +185,10 @@ class TestSessionReasonerStatusInference:
         reasoner = SessionReasoner(dry_run=True)
         assert infer_agent_status("PR #42 created successfully") == "completed"
 
-    def test_infer_idle_shell_prompt(self):
+    def test_infer_shell_prompt(self):
+        """Bare shell prompt ($) means agent is dead, distinct from idle (❯)."""
         reasoner = SessionReasoner(dry_run=True)
-        assert infer_agent_status("azureuser@vm:~/code$ ") == "idle"
+        assert infer_agent_status("azureuser@vm:~/code$ ") == "shell"
 
     def test_infer_running_output(self):
         reasoner = SessionReasoner(dry_run=True)
@@ -373,9 +374,10 @@ class TestSessionReasonerStatusInference:
         reasoner = SessionReasoner(dry_run=True)
         assert infer_agent_status("GOAL_STATUS: ACHIEVED") == "completed"
 
-    def test_idle_bare_shell(self):
+    def test_shell_bare_prompt(self):
+        """Bare shell prompt = shell (agent dead), not idle."""
         reasoner = SessionReasoner(dry_run=True)
-        assert infer_agent_status("user@host:~/code$") == "idle"
+        assert infer_agent_status("user@host:~/code$") == "shell"
 
     def test_thinking_fast_path_skips_llm(self):
         """When status is thinking, the LLM call is skipped entirely."""
