@@ -96,22 +96,18 @@ def format_sweep_report(
                 "summary": reasoning, "input": input_text,
             })
 
-    # Table
+    # Table — status + action
     lines.append("")
     lines.append(
-        f"  {'VM':12s} {'Session':20s}    {'Status':10s} {'Action':14s} "
-        f"{'Summary'}"
+        f"  {'VM':12s} {'Session':22s} {'Status':10s} {'Action':15s} {'Conf':>5s}"
     )
-    lines.append("  " + "-" * 100)
+    lines.append("  " + "-" * 68)
 
     for r in rows:
         conf_str = f"{r['conf']:.0%}" if r['conf'] else ""
-        action_str = f"{r['action']:6s} {conf_str:>4s}" if r['action'] else ""
-        summary = r["summary"][:60] if r["summary"] else ""
         lines.append(
             f"  {r['vm']:12s} [{r['icon']}] {r['session']:18s} "
-            f"{r['status']:10s} {action_str:14s} "
-            f"{summary}"
+            f"{r['status']:10s} {r['action']:15s} {conf_str:>5s}"
         )
 
     # Decision counts
@@ -121,6 +117,18 @@ def format_sweep_report(
         action_counts[r["action"]] = action_counts.get(r["action"], 0) + 1
     counts_str = "  ".join(f"{a}: {c}" for a, c in sorted(action_counts.items()))
     lines.append(f"  Decisions: {counts_str}")
+
+    # Session summaries (separate section)
+    sessions_with_summary = [r for r in rows if r["summary"]]
+    if sessions_with_summary:
+        lines.append("")
+        lines.append("--- Session Summaries ---")
+        for r in sessions_with_summary:
+            lines.append(f"  {r['vm']}/{r['session']}:")
+            lines.append(f"    {r['summary'][:140]}")
+            if r["input"]:
+                lines.append(f"    >> \"{r['input'][:120]}\"")
+            lines.append("")
 
     # Actionable follow-up commands
     actionable = [r for r in rows if r["action"] in ("send_input", "restart")]
