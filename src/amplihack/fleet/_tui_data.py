@@ -19,6 +19,7 @@ class SessionView:
     vm_name: str
     session_name: str
     status: str = "unknown"  # thinking, working, idle, shell, empty, error, completed
+    agent_alive: bool = False  # True if claude/node process found as child of pane
     branch: str = ""
     pr: str = ""
     last_line: str = ""

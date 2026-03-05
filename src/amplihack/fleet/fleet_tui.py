@@ -263,6 +263,16 @@ class FleetTUI:
             "PR=$(git log --oneline -1 --format='%s' 2>/dev/null | grep -oP 'PR #\\K\\d+' || true); "
             'if [ -n "$PR" ]; then echo "PR:#${PR}"; fi; '
             "fi; "
+            # Check for live agent process (claude/node) as child of pane
+            'echo "---PROC---"; '
+            'PANEPID=$(tmux display-message -t "$SESS" -p "#{pane_pid}" 2>/dev/null); '
+            'if [ -n "$PANEPID" ]; then '
+            'SID=$(ps -o sid= -p $PANEPID 2>/dev/null); '
+            'if [ -n "$SID" ]; then '
+            'ps --no-headers -o comm -g $SID 2>/dev/null | grep -qE "^(claude|node)$" '
+            '&& echo "AGENT:alive" || echo "AGENT:none"; '
+            "else echo 'AGENT:none'; fi; "
+            "else echo 'AGENT:none'; fi; "
             'echo "---END---"; '
             "done"
         )

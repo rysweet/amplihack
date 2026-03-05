@@ -82,9 +82,15 @@ def parse_session_output(vm_name: str, output: str) -> list[SessionView]:
             else:
                 view.status = "empty"
 
-            # Extract git info
+            # Extract git info (between ---GIT--- and ---PROC--- or ---END---)
             git_start = rest.index("---GIT---") + len("---GIT---")
-            git_end = rest.index("---END---") if has_end else len(rest)
+            has_proc = "---PROC---" in rest
+            if has_proc:
+                git_end = rest.index("---PROC---")
+            elif has_end:
+                git_end = rest.index("---END---")
+            else:
+                git_end = len(rest)
             git_section = rest[git_start:git_end].strip()
 
             for line in git_section.split("\n"):
@@ -93,6 +99,14 @@ def parse_session_output(vm_name: str, output: str) -> list[SessionView]:
                     view.branch = line[7:]
                 elif line.startswith("PR:"):
                     view.pr = line[3:]
+
+            # Extract agent process status
+            if has_proc:
+                proc_start = rest.index("---PROC---") + len("---PROC---")
+                proc_end = rest.index("---END---") if has_end else len(rest)
+                proc_section = rest[proc_start:proc_end].strip()
+                view.agent_alive = "AGENT:alive" in proc_section
+
         elif not has_capture and not has_git:
             # No markers at all — likely noise from captured pane content.
             view.status = "unknown"

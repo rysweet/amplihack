@@ -72,27 +72,33 @@ def format_sweep_report(
                     d = dd
                     break
 
+            # Determine display status: shell + agent alive = suspended
+            display_status = sess.status
+            if sess.status == "shell" and getattr(sess, "agent_alive", False):
+                display_status = "suspended"
+
             status_icon = {
                 "thinking": "~",
                 "running": ">",
                 "idle": ".",
                 "shell": "X",
+                "suspended": "Z",
                 "error": "!",
                 "completed": "+",
                 "waiting_input": "?",
                 "unknown": "-",
-            }.get(sess.status, "-")
+            }.get(display_status, "-")
 
             action_str = ""
             if d and "error" not in d:
                 conf = d.get("confidence", 0)
                 action_str = f"{d['action']} ({conf:.0%})"
             elif d and "error" in d:
-                action_str = f"ERROR"
+                action_str = "ERROR"
 
             lines.append(
                 f"    [{status_icon}] {sess.session_name:20s} "
-                f"{sess.status:12s} {action_str}"
+                f"{display_status:12s} {action_str}"
             )
 
             # Branch
