@@ -338,8 +338,9 @@ def register_session_ops(fleet_cli: click.Group) -> None:
         """Discover sessions, adopt them, dry-run reason, and show a report.
 
         Combines fleet discovery, session adoption, and admiral dry-run
-        reasoning into a single pipeline.  If no ANTHROPIC_API_KEY is set,
-        shows session states without LLM reasoning.
+        reasoning into a single pipeline.
+
+        Requires ANTHROPIC_API_KEY (or another LLM backend).
         """
         import json
         import os
@@ -393,57 +394,46 @@ def register_session_ops(fleet_cli: click.Group) -> None:
             click.echo("\nPhase 2: Skipped (--skip-adopt)")
 
         # -- Phase 3: Dry-run reasoning --
-        click.echo("\nPhase 3: Reasoning about sessions...")
         api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-        has_llm = bool(api_key)
+        if not api_key:
+            click.echo("\nERROR: ANTHROPIC_API_KEY required for fleet reasoning.")
+            click.echo("Set it in your environment and retry.")
+            return
+
+        click.echo("\nPhase 3: Reasoning about sessions...")
+        backend = _backends_mod.auto_detect_backend()
+        reasoner = _reasoner_mod.SessionReasoner(
+            azlin_path=_cmd._get_azlin(),
+            backend=backend,
+            dry_run=True,
+        )
 
         decisions: list[dict] = []
-        if has_llm:
-            backend = _backends_mod.auto_detect_backend()
-            reasoner = _reasoner_mod.SessionReasoner(
-                azlin_path=_cmd._get_azlin(),
-                backend=backend,
-                dry_run=True,
-            )
-            for v in running_vms:
-                for sess in v.sessions:
-                    click.echo(f"  Reasoning: {v.name}/{sess.session_name}...")
-                    try:
-                        decision = reasoner.reason_about_session(
-                            vm_name=v.name,
-                            session_name=sess.session_name,
-                        )
-                        decisions.append({
-                            "vm": v.name,
-                            "session": sess.session_name,
-                            "status": sess.status,
-                            "branch": sess.branch,
-                            "pr": sess.pr,
-                            "action": decision.action,
-                            "confidence": decision.confidence,
-                            "reasoning": decision.reasoning,
-                            "input_text": decision.input_text,
-                        })
-                    except Exception as exc:
-                        decisions.append({
-                            "vm": v.name,
-                            "session": sess.session_name,
-                            "status": sess.status,
-                            "error": str(exc),
-                        })
-        else:
-            click.echo("  No ANTHROPIC_API_KEY -- showing session states without LLM reasoning")
-            for v in running_vms:
-                for sess in v.sessions:
+        for v in running_vms:
+            for sess in v.sessions:
+                click.echo(f"  Reasoning: {v.name}/{sess.session_name}...")
+                try:
+                    decision = reasoner.reason_about_session(
+                        vm_name=v.name,
+                        session_name=sess.session_name,
+                    )
                     decisions.append({
                         "vm": v.name,
                         "session": sess.session_name,
                         "status": sess.status,
                         "branch": sess.branch,
                         "pr": sess.pr,
-                        "action": "N/A (no API key)",
-                        "confidence": 0.0,
-                        "reasoning": "LLM reasoning skipped -- no ANTHROPIC_API_KEY",
+                        "action": decision.action,
+                        "confidence": decision.confidence,
+                        "reasoning": decision.reasoning,
+                        "input_text": decision.input_text,
+                    })
+                except Exception as exc:
+                    decisions.append({
+                        "vm": v.name,
+                        "session": sess.session_name,
+                        "status": sess.status,
+                        "error": str(exc),
                     })
 
         # -- Phase 4: Report --
@@ -460,7 +450,6 @@ def register_session_ops(fleet_cli: click.Group) -> None:
                 "total_sessions": total_sessions,
                 "adopted_count": adopted_count,
                 "skip_adopt": skip_adopt,
-                "has_llm": has_llm,
                 "decisions": decisions,
             }
             Path(save_path).write_text(json.dumps(report_data, indent=2))
