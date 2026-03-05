@@ -141,17 +141,18 @@ def format_sweep_report(
 
         if actionable:
             lines.append("")
-            lines.append("  # Execute all admiral actions (send_input/restart):")
+            lines.append("  # Execute all admiral actions:")
             lines.append("  fleet advance")
             lines.append("")
-            lines.append("  # Execute with confirmation before each action:")
+            lines.append("  # With confirmation before each:")
             lines.append("  fleet advance --confirm")
 
             for r in actionable:
+                lines.append("")
+                lines.append(f"  # {r['vm']}/{r['session']} only:")
+                lines.append(f"  fleet advance --vm {r['vm']} --session {r['session']}")
                 if r["input"]:
-                    lines.append("")
-                    lines.append(f"  # {r['vm']}/{r['session']} ({r['action']}):")
-                    lines.append(f"  #   \"{r['input'][:90]}\"")
+                    lines.append(f"  #   >> \"{r['input'][:90]}\"")
 
         if completable:
             lines.append("")
@@ -161,12 +162,8 @@ def format_sweep_report(
         if dead:
             lines.append("")
             for r in dead:
-                lines.append(
-                    f"  # Restart dead session {r['vm']}/{r['session']}:"
-                )
-                lines.append(
-                    f"  fleet watch {r['vm']} {r['session']}"
-                )
+                lines.append(f"  # Inspect dead session {r['vm']}/{r['session']}:")
+                lines.append(f"  fleet watch {r['vm']} {r['session']}")
 
     return "\n".join(lines)
 
@@ -410,13 +407,16 @@ def register_session_ops(fleet_cli: click.Group) -> None:
 
     @fleet_cli.command("sweep")
     @click.option("--vm", default=None, help="Filter to a single VM (default: all)")
+    @click.option("--session", "session_filter", default=None, help="Filter to a single session name (use with --vm)")
     @click.option("--skip-adopt", is_flag=True, help="Reason about sessions without adopting them first")
     @click.option("--save", "save_path", default=None, type=click.Path(), help="Save JSON report to file")
-    def sweep(vm, skip_adopt, save_path):
+    def sweep(vm, session_filter, skip_adopt, save_path):
         """Discover sessions, adopt them, dry-run reason, and show a report.
 
         Combines fleet discovery, session adoption, and admiral dry-run
         reasoning into a single pipeline.
+
+        Target a single session: fleet sweep --vm dev --session cybergym-intg
 
         Requires ANTHROPIC_API_KEY (or another LLM backend).
         """
@@ -442,6 +442,15 @@ def register_session_ops(fleet_cli: click.Group) -> None:
                 return
 
         running_vms = [v for v in all_vms if v.is_running and v.sessions]
+
+        if session_filter:
+            for v in running_vms:
+                v.sessions = [s for s in v.sessions if s.session_name == session_filter]
+            running_vms = [v for v in running_vms if v.sessions]
+            if not running_vms:
+                click.echo(f"Session not found: {session_filter}")
+                return
+
         total_sessions = sum(len(v.sessions) for v in running_vms)
         click.echo(
             f"Found {len(all_vms)} VMs, {total_sessions} sessions "
@@ -539,13 +548,16 @@ def register_session_ops(fleet_cli: click.Group) -> None:
 
     @fleet_cli.command("advance")
     @click.option("--vm", default=None, help="Filter to a single VM (default: all)")
+    @click.option("--session", "session_filter", default=None, help="Filter to a single session name (use with --vm)")
     @click.option("--confirm", is_flag=True, help="Prompt before each action (default: auto-execute)")
     @click.option("--save", "save_path", default=None, type=click.Path(), help="Save JSON report to file")
-    def advance(vm, confirm, save_path):
+    def advance(vm, session_filter, confirm, save_path):
         """Run the fleet admiral LIVE — reason and execute actions on sessions.
 
         Unlike 'sweep' (dry-run only), this command actually sends input
         to sessions, restarts stuck agents, and marks tasks complete.
+
+        Target a single session: fleet advance --vm dev --session cybergym-intg
 
         Requires ANTHROPIC_API_KEY (or another LLM backend).
         Safety: confidence thresholds and dangerous-input blocklists
@@ -579,6 +591,16 @@ def register_session_ops(fleet_cli: click.Group) -> None:
                 return
 
         running_vms = [v for v in all_vms if v.is_running and v.sessions]
+
+        # Filter to a single session if specified
+        if session_filter:
+            for v in running_vms:
+                v.sessions = [s for s in v.sessions if s.session_name == session_filter]
+            running_vms = [v for v in running_vms if v.sessions]
+            if not running_vms:
+                click.echo(f"Session not found: {session_filter}")
+                return
+
         total_sessions = sum(len(v.sessions) for v in running_vms)
         click.echo(f"Found {total_sessions} sessions on {len(running_vms)} running VMs")
 

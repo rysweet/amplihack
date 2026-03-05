@@ -82,8 +82,8 @@ Invoke as `/fleet <command>` or just describe what you want and Claude will pick
 ## Key Options
 
 ```
-fleet sweep   [--vm VM] [--skip-adopt] [--save PATH]
-fleet advance [--vm VM] [--confirm] [--save PATH]
+fleet sweep   [--vm VM] [--session NAME] [--skip-adopt] [--save PATH]
+fleet advance [--vm VM] [--session NAME] [--confirm] [--save PATH]
 fleet dry-run [--vm VM ...] [--backend auto|anthropic|copilot|litellm]
 fleet adopt   <vm> [--sessions s1 s2]
 fleet watch   <vm> <session> [--lines 30]
