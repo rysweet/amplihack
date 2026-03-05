@@ -13,11 +13,15 @@ Use auto_backend for automatic backend selection:
         results = conn.execute_query("MATCH (n) RETURN count(n)")
 """
 
+from .config import MemoryConfig
 from .database import MemoryDatabase
+from .facade import Memory
 from .manager import MemoryManager
 from .models import MemoryEntry, MemoryType, SessionInfo
 
 __all__ = [
+    "Memory",
+    "MemoryConfig",
     "MemoryDatabase",
     "MemoryEntry",
     "MemoryManager",
