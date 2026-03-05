@@ -1,0 +1,272 @@
+{
+  "timestamp": "2026-03-05T13:09:51Z",
+  "workflow_run": "22719381000",
+  "total_prs_analyzed": 8,
+  "prs": [
+    {
+      "number": 2883,
+      "title": "fix: remove CLAUDECODE env var detection, centralize stripping",
+      "created_at": "2026-03-05T03:40:48Z",
+      "type": "bugfix",
+      "scope": "core",
+      "risk": "LOW",
+      "priority": "HIGH",
+      "impact_score": 75,
+      "metrics": {
+        "additions": 106,
+        "deletions": 134,
+        "files_changed": 16,
+        "commits": 2,
+        "age_hours": 9.5
+      },
+      "risk_factors": [
+        "16 files touched but net reduction (-28 LOC)",
+        "Removes scattered env var checks - simplification",
+        "Centralized utility reduces duplication"
+      ],
+      "recommendation": "FAST_TRACK",
+      "next_actions": [
+        "Wait for CI to pass",
+        "Quick review of centralized env utility",
+        "Merge if tests green"
+      ],
+      "rationale": "Bug fix that simplifies codebase, small scope, recent"
+    },
+    {
+      "number": 2881,
+      "title": "fix: make .claude/ hooks canonical, replace amplifier-bundle/ copy with symlink",
+      "created_at": "2026-03-04T16:52:10Z",
+      "type": "bugfix",
+      "scope": "infrastructure",
+      "risk": "HIGH",
+      "priority": "HIGH",
+      "impact_score": 85,
+      "metrics": {
+        "additions": 71,
+        "deletions": 28298,
+        "files_changed": 67,
+        "commits": 2,
+        "age_hours": 20.3
+      },
+      "risk_factors": [
+        "28k LOC deletions - mostly duplicate files",
+        "Symlink introduction - cross-platform concerns",
+        "67 files changed - wide surface area",
+        "Hook system modification - critical path"
+      ],
+      "recommendation": "CAREFUL_REVIEW",
+      "next_actions": [
+        "Verify symlink works on all platforms in CI",
+        "Confirm hooks still execute correctly",
+        "Check test coverage validates symlink behavior"
+      ],
+      "rationale": "Fixes duplication but high risk due to symlink and deletions"
+    },
+    {
+      "number": 2877,
+      "title": "refactor: split cli.py into focused modules (#2845)",
+      "created_at": "2026-03-04T07:06:37Z",
+      "type": "refactor",
+      "scope": "core",
+      "risk": "MEDIUM",
+      "priority": "HIGH",
+      "impact_score": 70,
+      "metrics": {
+        "additions": 2129,
+        "deletions": 1753,
+        "files_changed": 10,
+        "commits": 2,
+        "age_hours": 30
+      },
+      "risk_factors": [
+        "Core CLI refactoring - entry point changes",
+        "Import path changes need compatibility verification",
+        "Claims backward compatibility - needs test validation"
+      ],
+      "recommendation": "TEST_COVERAGE_REVIEW",
+      "next_actions": [
+        "Verify all import paths work",
+        "Run CLI integration tests",
+        "Check for performance regression"
+      ],
+      "rationale": "Quality audit refactor, medium risk, needs thorough testing"
+    },
+    {
+      "number": 2876,
+      "title": "feat: distributed hive mind with DHT sharding",
+      "created_at": "2026-03-04T07:02:43Z",
+      "type": "feature",
+      "scope": "experimental",
+      "risk": "LOW",
+      "priority": "LOW",
+      "impact_score": 45,
+      "metrics": {
+        "additions": 1522,
+        "deletions": 3,
+        "files_changed": 8,
+        "commits": 2,
+        "age_hours": 30
+      },
+      "risk_factors": [
+        "New feature, not on critical path",
+        "Experimental DHT implementation",
+        "Self-contained addition"
+      ],
+      "recommendation": "DEFER",
+      "next_actions": [
+        "Wait for CI completion",
+        "Merge after higher priority PRs",
+        "Low urgency - experimental feature"
+      ],
+      "rationale": "Experimental feature, low priority, defer until higher priority work done"
+    },
+    {
+      "number": 2872,
+      "title": "refactor: split power_steering_checker.py 5063 LOC into 5 modules (issue #2845)",
+      "created_at": "2026-03-04T05:06:12Z",
+      "type": "refactor",
+      "scope": "core",
+      "risk": "EXTREME",
+      "priority": "HIGH",
+      "impact_score": 90,
+      "metrics": {
+        "additions": 61750,
+        "deletions": 30557,
+        "files_changed": 342,
+        "commits": 9,
+        "age_hours": 32
+      },
+      "risk_factors": [
+        "EXTREME: 342 files changed - largest refactor in repo history",
+        "92k total line changes - massive scope",
+        "Power steering critical runtime component",
+        "9 commits suggest iterative changes"
+      ],
+      "recommendation": "BLOCK_UNTIL_CI_AND_DECOMPOSE",
+      "next_actions": [
+        "MUST wait for CI success",
+        "Consider breaking into 3-5 smaller PRs",
+        "Each module should be separate PR for review",
+        "High risk requires incremental merge strategy"
+      ],
+      "rationale": "Too large to review safely, needs decomposition into smaller PRs"
+    },
+    {
+      "number": 2870,
+      "title": "refactor: split stop.py 766 LOC into 3 modules, fix ImportError/except/counter bugs (#2845)",
+      "created_at": "2026-03-04T04:48:56Z",
+      "type": "refactor+bugfix",
+      "scope": "core",
+      "risk": "MEDIUM",
+      "priority": "HIGH",
+      "impact_score": 75,
+      "metrics": {
+        "additions": 1858,
+        "deletions": 676,
+        "files_changed": 8,
+        "commits": 5,
+        "age_hours": 32.4
+      },
+      "risk_factors": [
+        "Stop/cleanup path - failure affects cleanup",
+        "Bug fixes mixed with refactoring",
+        "5 commits suggest iterative fixes"
+      ],
+      "recommendation": "REVIEW_AFTER_CI",
+      "next_actions": [
+        "Wait for CI to pass",
+        "Review stop logic carefully",
+        "Validate cleanup behavior in error scenarios"
+      ],
+      "rationale": "Core cleanup path, medium risk, needs careful validation"
+    },
+    {
+      "number": 2867,
+      "title": "refactor: extract CompactionContext/ValidationResult to compaction_context.py (issue #2845)",
+      "created_at": "2026-03-04T03:53:12Z",
+      "type": "refactor",
+      "scope": "context",
+      "risk": "LOW",
+      "priority": "MEDIUM",
+      "impact_score": 60,
+      "metrics": {
+        "additions": 1478,
+        "deletions": 157,
+        "files_changed": 11,
+        "commits": 6,
+        "age_hours": 33.3
+      },
+      "risk_factors": [
+        "Context/validation system refactor",
+        "6 commits suggest multiple iterations",
+        "Fixes silent error handling (good)"
+      ],
+      "recommendation": "STANDARD_REVIEW",
+      "next_actions": [
+        "Review extracted module structure",
+        "Verify error logging improvements",
+        "Check backward compatibility"
+      ],
+      "rationale": "Clean refactor with improvements, medium priority"
+    },
+    {
+      "number": 2727,
+      "title": "feat: Fleet Orchestration — autonomous multi-VM coding agent management",
+      "created_at": "2026-02-28T22:28:00Z",
+      "type": "feature",
+      "scope": "major",
+      "risk": "EXTREME",
+      "priority": "MEDIUM",
+      "impact_score": 95,
+      "metrics": {
+        "additions": 26064,
+        "deletions": 562,
+        "files_changed": 120,
+        "commits": 105,
+        "age_hours": 111
+      },
+      "risk_factors": [
+        "EXTREME: 120 files, 26k+ additions - major feature",
+        "105 commits - long-running development",
+        "Fleet orchestration is new architecture",
+        "Multi-VM coordination - high complexity",
+        "4+ days old - potential merge conflicts"
+      ],
+      "recommendation": "STALE_REQUIRES_REBASE",
+      "next_actions": [
+        "Rebase on current main",
+        "Break into smaller feature PRs if possible",
+        "Requires extensive review and testing",
+        "Consider feature flag for gradual rollout"
+      ],
+      "rationale": "Major feature, 4+ days old, needs rebase and decomposition"
+    }
+  ],
+  "summary": {
+    "high_risk_prs": 2,
+    "medium_risk_prs": 3,
+    "low_risk_prs": 3,
+    "stale_prs": 1,
+    "total_changes": {
+      "additions": 94978,
+      "deletions": 62130,
+      "files": 632
+    },
+    "primary_concerns": [
+      "PR #2872 (342 files) and #2727 (120 files) too large for safe review",
+      "PR #2727 is 4+ days old - likely needs rebase",
+      "PR #2881 has massive deletions (28k) - needs careful validation"
+    ],
+    "recommended_merge_order": [
+      2883,
+      2867,
+      2870,
+      2877,
+      2881,
+      2876,
+      2872,
+      2727
+    ],
+    "notes": "Most PRs part of issue #2845 quality audit. PRs #2872 and #2727 should be decomposed into smaller units."
+  }
+}
