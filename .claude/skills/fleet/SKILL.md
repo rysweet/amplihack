@@ -1,66 +1,108 @@
 ---
 name: fleet
 description: |
-  Fleet management commands for multi-VM coding agent orchestration.
-  Invoked as `/fleet <command>`. Available commands: sweep, advance.
-  Use when: user asks about fleet status, agent progress, wants to scan
-  sessions, advance the fleet, or says "what are my agents doing".
+  Fleet orchestration for distributed coding agents across Azure VMs.
+  Invoked as `/fleet <command>`. Covers all fleet operations: status, sweep,
+  advance, adopt, watch, snapshot, dry-run, start, add-task, queue, auth,
+  dashboard, tui, and more. Use when: user mentions fleet, agents, VMs,
+  sessions, or asks "what are my agents doing".
 ---
 
 # /fleet
 
-Fleet management skill. Invoke as `/fleet <command>`.
+Fleet orchestration — manage coding agents (Claude Code, Copilot, Amplifier) running across multiple Azure VMs via azlin.
 
-## Commands
+Invoke as `/fleet <command>` or just describe what you want and Claude will pick the right command.
 
-### /fleet sweep
+## All Commands
 
-Discover sessions, adopt them, run dry-run reasoning, show report. **Read-only — no actions executed.**
+### Status & Monitoring
 
-```bash
-fleet sweep [--vm VM] [--skip-adopt] [--save PATH]
-```
+| Command | What it does |
+|---------|-------------|
+| `fleet status` | Quick text overview of all VMs and sessions |
+| `fleet sweep` | Discover, adopt, dry-run reason, show report |
+| `fleet snapshot` | Point-in-time capture of all managed sessions |
+| `fleet watch <vm> <session>` | Live snapshot of a single session |
+| `fleet observe <vm>` | Observe sessions with pattern classification |
+| `fleet tui` | Interactive Textual TUI dashboard |
 
-### /fleet advance
+### Admiral Control
 
-Discover sessions, reason, and **execute** admiral decisions (send input, restart agents).
+| Command | What it does |
+|---------|-------------|
+| `fleet advance` | **LIVE** — reason and execute actions on sessions |
+| `fleet dry-run` | Show what the admiral would do (no action) |
+| `fleet run-once` | Single PERCEIVE->REASON->ACT cycle |
+| `fleet start` | Run autonomous admiral loop |
 
-```bash
-fleet advance [--vm VM] [--confirm] [--save PATH]
-```
+### Session Management
 
-Both commands require `ANTHROPIC_API_KEY`.
+| Command | What it does |
+|---------|-------------|
+| `fleet adopt <vm>` | Bring existing tmux sessions under management |
+| `fleet auth <vm>` | Propagate auth tokens (GitHub, Azure, Claude) |
+
+### Task Management
+
+| Command | What it does |
+|---------|-------------|
+| `fleet add-task "prompt"` | Queue work for the fleet |
+| `fleet queue` | Show task queue |
+| `fleet dashboard` | Project-level tracking |
+| `fleet report` | Generate fleet status report |
+
+### Projects & Knowledge
+
+| Command | What it does |
+|---------|-------------|
+| `fleet project add/list/remove` | Manage fleet projects |
+| `fleet graph` | Fleet knowledge graph summary |
+
+### Co-Pilot
+
+| Command | What it does |
+|---------|-------------|
+| `fleet copilot-status` | Show copilot lock/goal state |
+| `fleet copilot-log` | Show copilot decision history |
 
 ## Quick Reference
 
-| Intent | Command |
-|--------|---------|
+| User says | Command |
+|-----------|---------|
 | "What are my agents doing?" | `fleet sweep` |
-| "Send next steps to sessions" | `fleet advance` |
+| "Show me the fleet" | `fleet status` |
+| "Send next steps to all sessions" | `fleet advance` |
 | "Advance but let me review each" | `fleet advance --confirm` |
-| "Just scan one VM" | `fleet sweep --vm dev` |
+| "Watch what dev/cybergym is doing" | `fleet watch dev cybergym` |
+| "Add auth to the new VM" | `fleet auth <vm>` |
+| "Queue this task for the fleet" | `fleet add-task "prompt"` |
+| "Open the dashboard" | `fleet tui` |
 
-## Actions
+## Key Options
 
-| Action | sweep | advance |
-|--------|-------|---------|
-| **wait** | Reported | No-op |
-| **send_input** | Reported | Types into tmux pane |
-| **restart** | Reported | Ctrl-C + re-runs last cmd |
-| **escalate** | Reported | No-op (flagged for human) |
+```
+fleet sweep   [--vm VM] [--skip-adopt] [--save PATH]
+fleet advance [--vm VM] [--confirm] [--save PATH]
+fleet dry-run [--vm VM ...] [--backend auto|anthropic|copilot|litellm]
+fleet adopt   <vm> [--sessions s1 s2]
+fleet watch   <vm> <session> [--lines 30]
+fleet auth    <vm> [--services github azure claude]
+fleet add-task "prompt" [--priority high] [--repo URL]
+fleet start   [--interval 300] [--max-cycles 10]
+```
 
-## Safety (advance only)
+## Environment
 
-- Confidence < 60% suppresses `send_input`
-- Confidence < 80% suppresses `restart`
-- Dangerous input patterns blocked
-- `--confirm` prompts before each action
+| Variable | Required for |
+|----------|-------------|
+| `AZLIN_PATH` | All commands (auto-detected if azlin on PATH) |
+| `ANTHROPIC_API_KEY` | sweep, advance, dry-run, run-once, start |
 
 ## How to Run
 
-Execute the command via Bash. Example:
+Execute via Bash:
 
 ```bash
-fleet sweep --skip-adopt
-fleet advance --confirm --save /tmp/advance.json
+fleet <command> [options]
 ```
