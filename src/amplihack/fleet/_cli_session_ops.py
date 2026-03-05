@@ -135,35 +135,46 @@ def format_sweep_report(
     completable = [r for r in rows if r["action"] == "mark_complete"]
     dead = [r for r in rows if r["status"] in ("shell", "error")]
 
-    if actionable or completable or dead:
+    lines.append("")
+    lines.append("--- Next Steps ---")
+
+    if actionable:
         lines.append("")
-        lines.append("--- Follow-Up Commands ---")
+        lines.append("  # Act on all sessions at once:")
+        lines.append("  fleet advance")
+        lines.append("")
+        lines.append("  # Review each action before executing:")
+        lines.append("  fleet advance --confirm")
 
-        if actionable:
+        for r in actionable:
             lines.append("")
-            lines.append("  # Execute all admiral actions:")
-            lines.append("  fleet advance")
-            lines.append("")
-            lines.append("  # With confirmation before each:")
-            lines.append("  fleet advance --confirm")
+            lines.append(f"  # Advance {r['vm']}/{r['session']} only:")
+            lines.append(f"  fleet advance --vm {r['vm']} --session {r['session']}")
+            if r["input"]:
+                lines.append(f"  #   >> \"{r['input'][:90]}\"")
 
-            for r in actionable:
-                lines.append("")
-                lines.append(f"  # {r['vm']}/{r['session']} only:")
-                lines.append(f"  fleet advance --vm {r['vm']} --session {r['session']}")
-                if r["input"]:
-                    lines.append(f"  #   >> \"{r['input'][:90]}\"")
+    if completable:
+        lines.append("")
+        for r in completable:
+            lines.append(f"  # {r['vm']}/{r['session']} is done — mark complete")
 
-        if completable:
-            lines.append("")
-            for r in completable:
-                lines.append(f"  # Mark {r['vm']}/{r['session']} complete")
+    if dead:
+        lines.append("")
+        for r in dead:
+            lines.append(f"  # {r['vm']}/{r['session']} is dead — inspect:")
+            lines.append(f"  fleet watch {r['vm']} {r['session']}")
 
-        if dead:
-            lines.append("")
-            for r in dead:
-                lines.append(f"  # Inspect dead session {r['vm']}/{r['session']}:")
-                lines.append(f"  fleet watch {r['vm']} {r['session']}")
+    if not actionable and not completable and not dead:
+        lines.append("")
+        lines.append("  All sessions are active — no actions needed.")
+
+    # Always show general hints
+    lines.append("")
+    lines.append("  # Other useful commands:")
+    lines.append("  fleet sweep --vm <vm> --session <name>   # Sweep one session")
+    lines.append("  fleet watch <vm> <session>               # Live terminal snapshot")
+    lines.append("  fleet status                             # Quick fleet overview")
+    lines.append("  fleet advance --vm <vm>                  # Advance one VM")
 
     return "\n".join(lines)
 
