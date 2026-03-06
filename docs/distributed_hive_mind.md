@@ -132,6 +132,8 @@ Coordinates between HashRing and ShardStores. Routes facts to shard owners durin
 
 Space-efficient probabilistic set membership. Each agent maintains a bloom filter of its fact IDs. During gossip, agents exchange bloom filters and pull missing facts. 1KB for 1000 facts at 1% false positive rate.
 
+**Important:** Gossip exchanges full graph nodes (not flat string facts), preserving all metadata (confidence, timestamps, embeddings). When a new agent joins, a full shard rebuild is triggered to redistribute facts from existing agents to the new ring position.
+
 ### DistributedHiveGraph (`distributed_hive_graph.py`)
 
 Drop-in replacement for `InMemoryHiveGraph`. Implements the `HiveGraph` protocol using DHT sharding internally. Supports federation, gossip, and all existing hive operations.
@@ -167,19 +169,23 @@ The fix: `CognitiveAdapter` monkey-patches `kuzu.Database.__init__` to bound eac
 
 ## Eval Results
 
-| Condition | Model | Score | Notes |
-|-----------|-------|-------|-------|
-| Single agent | Sonnet 4.5 | 94.1% | Baseline (21.7h) |
-| Federated v1 (naive) | Sonnet 4.5 | 40.0% | Longest-answer-wins |
-| Federated v3 (routing) | Sonnet 4.5 | 73.8% | Single run, consensus+routing |
-| Federated 3-rep median | Sonnet 4.5 | 34.9% | High variance (23-83%), routing bug |
-| Federated 3-rep median | Opus 4.5 | 3.6% | Rate limit errors masked |
+| Condition | Model | Score | Std Dev | Notes |
+|-----------|-------|-------|---------|-------|
+| Single agent | Sonnet 4.5 | 94.1% | — | Baseline, 5000 turns, 21.7h |
+| Federated smoke (10 agents) | Sonnet 4.5 | 65.7% | 6.7% | Best multi-agent result, low variance |
+| Federated full (100 agents) | Sonnet 4.5 | 45.8% | 21.7% | Routing precision degrades at scale |
+| Federated v1 (naive) | Sonnet 4.5 | 40.0% | — | Longest-answer-wins merge |
+| Federated broken routing | Sonnet 4.5 | 34.9% | 31.2% | Root hive empty, random fallback |
+| Parallel learning speedup | — | 9x | — | 10 workers: 21.6h → 2.4h |
 
-### Known Issues (as of 2026-03-05)
+**Key insight:** Routing precision degrades at 100-agent scale (45.8% median, 21.7% stddev vs 65.7% at 10 agents). The 28.4-point gap vs single-agent baseline is the primary open problem.
+
+### Known Issues (as of 2026-03-06)
 
 1. **Empty root hive**: Facts go to group hives but routing queries root hive (empty). Falls back to random agents.
 2. **Swallowed errors**: `_synthesize_with_llm()` catches all exceptions silently, masking rate limits as "internal error".
-3. **High variance**: Random agent selection (from bug #1) causes 31% stddev across runs.
+3. **Routing precision degradation**: At 100-agent scale, semantic routing loses precision, causing 21.7% stddev.
+4. **High variance**: Random agent selection (from bug #1) causes 31% stddev across runs.
 
 ## Related
 
@@ -311,15 +317,15 @@ Each agent will then:
 
 For cloud-scale deployments (100+ agents), use the `deploy/azure_hive/` scripts.
 
-**Infrastructure provisioned by `deploy.sh` / `main.bicep`:**
+**Infrastructure provisioned by `deploy/azure_hive/deploy.sh` / `main.bicep`:**
 
 | Resource | Purpose |
 |---|---|
-| Azure Container Registry | Stores the amplihack agent Docker image |
-| Service Bus Namespace + Topic + Subscriptions | Event transport for NetworkGraphStore |
-| Azure Storage Account + File Share | Persistent Kuzu databases per agent |
-| Container Apps Environment | Managed container runtime |
-| N Container Apps | Each app hosts up to 5 agent containers |
+| Azure Container Registry (`hivacrhivemind.azurecr.io`) | Stores the amplihack agent Docker image |
+| Service Bus Namespace (`hive-sb-dj2qo2w7vu5zi`) + Topic `hive-graph` + 100 subscriptions | Event transport for NetworkGraphStore |
+| Azure Storage Account (`hivesadj2qo2w7vu5zi`) + File Share | Provisioned for persistence; **not mounted for Kuzu** (POSIX lock limitation) |
+| Container Apps Environment | Managed container runtime (westus2, hive-mind-rg) |
+| N Container Apps (`amplihive-app-0`…`amplihive-app-N`) | Each app hosts up to 5 agent containers |
 
 **Deploy a 20-agent hive to Azure:**
 
@@ -334,10 +340,12 @@ bash deploy/azure_hive/deploy.sh
 ```
 
 This will:
-1. Create resource group `hive-mind-rg` in `eastus`
-2. Build and push the Docker image to ACR
-3. Deploy Bicep template: Service Bus, File Share, Container Apps Environment
-4. Launch 4 Container Apps with 5 agents each (20 total)
+1. Create resource group `hive-mind-rg` in `westus2`
+2. Build and push the Docker image to ACR (`hivacrhivemind.azurecr.io`)
+3. Deploy Bicep template: Service Bus namespace `hive-sb-dj2qo2w7vu5zi`, Storage account `hivesadj2qo2w7vu5zi`, Container Apps Environment
+4. Launch 4 Container Apps (`amplihive-app-0` through `amplihive-app-3`) with 5 agents each (20 total)
+
+> **Note:** Azure Files (`hivesadj2qo2w7vu5zi`) is provisioned for persistence but is **not used for Kuzu databases** due to POSIX advisory lock limitations on Azure Files. Agents use the `simple` (in-memory) backend in containers; `kuzu` is only used for local development.
 
 **Check deployment status:**
 
@@ -375,16 +383,27 @@ FROM python:3.11-slim
 CMD ["python3", "/app/agent_entrypoint.py"]
 ```
 
-**Scaling to 100 agents:**
+**Scaling to 100 agents (production deployment):**
 
 ```bash
 export HIVE_AGENT_COUNT=100
-export HIVE_AGENTS_PER_APP=5   # 20 Container Apps
+export HIVE_AGENTS_PER_APP=5   # 20 Container Apps: amplihive-app-0 through amplihive-app-19
 bash deploy/azure_hive/deploy.sh
 ```
 
-Bicep automatically calculates `appCount = ceil(agentCount / agentsPerApp)` and
-creates the corresponding Container Apps with correct agent indices.
+Bicep automatically calculates `appCount = ceil(agentCount / agentsPerApp)` and creates the corresponding Container Apps with correct agent indices (`agent-0` through `agent-99`).
+
+**Actual Azure deployment (westus2, hive-mind-rg):**
+
+| Resource | Name |
+|---|---|
+| Container Apps | `amplihive-app-0` … `amplihive-app-19` (20 total) |
+| Agents | `agent-0` … `agent-99` (100 total, 5 per app) |
+| ACR | `hivacrhivemind.azurecr.io` |
+| Service Bus namespace | `hive-sb-dj2qo2w7vu5zi` |
+| Service Bus topic | `hive-graph` (100 subscriptions, one per agent) |
+| Storage account | `hivesadj2qo2w7vu5zi` (Azure Files — provisioned, not used for Kuzu) |
+| Shard backend in containers | `simple` (in-memory) — Kuzu disabled due to POSIX lock limitation on Azure Files |
 
 ---
 
