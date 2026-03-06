@@ -345,7 +345,7 @@ This will:
 3. Deploy Bicep template: Service Bus namespace `hive-sb-dj2qo2w7vu5zi`, Storage account `hivesadj2qo2w7vu5zi`, Container Apps Environment
 4. Launch 4 Container Apps (`amplihive-app-0` through `amplihive-app-3`) with 5 agents each (20 total)
 
-> **Note:** Azure Files (`hivesadj2qo2w7vu5zi`) is provisioned for persistence but is **not used for Kuzu databases** due to POSIX advisory lock limitations on Azure Files. Agents use the `simple` (in-memory) backend in containers; `kuzu` is only used for local development.
+> **Note:** Containers now use **ephemeral volumes** (`EmptyDir`) at `/data` so Kuzu can acquire POSIX advisory file locks. Azure Files (SMB) does not support POSIX file locks. Agents use the `cognitive` (Kuzu) backend identically in containers and local development.
 
 **Check deployment status:**
 
@@ -402,8 +402,8 @@ Bicep automatically calculates `appCount = ceil(agentCount / agentsPerApp)` and 
 | ACR | `hivacrhivemind.azurecr.io` |
 | Service Bus namespace | `hive-sb-dj2qo2w7vu5zi` |
 | Service Bus topic | `hive-graph` (100 subscriptions, one per agent) |
-| Storage account | `hivesadj2qo2w7vu5zi` (Azure Files — provisioned, not used for Kuzu) |
-| Shard backend in containers | `simple` (in-memory) — Kuzu disabled due to POSIX lock limitation on Azure Files |
+| Volume type | Ephemeral (`EmptyDir`) — POSIX lock compatible, Kuzu works in containers |
+| Memory backend | `cognitive` (Kuzu) — identical to local development |
 
 ---
 

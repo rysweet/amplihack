@@ -35,7 +35,7 @@ class Memory:
     Args:
         agent_name: Unique identifier for this agent's memory partition.
         topology: "single" (default) or "distributed".
-        backend: "cognitive" (default), "hierarchical", or "simple".
+        backend: "cognitive" (default) or "hierarchical".
         storage_path: Override storage directory.
         shared_hive: Existing hive instance to join (distributed topology).
         model: Optional model name for cognitive backend.
@@ -128,9 +128,7 @@ class Memory:
         self._graph_store = self._build_graph_store(cfg)
 
         # --- Adapter setup ---
-        if cfg.backend == "simple":
-            self._adapter = _SimpleBackend()
-        elif cfg.backend == "hierarchical":
+        if cfg.backend == "hierarchical":
             self._adapter = self._build_hierarchical(cfg)
         else:
             self._adapter = self._build_cognitive(cfg)
@@ -173,29 +171,31 @@ class Memory:
             store.add_agent(cfg.agent_name)
             return store
 
-        if cfg.backend == "simple":
+        # cognitive (default) — use Kuzu if available, fall back to InMemory with warning
+        try:
+            from pathlib import Path as _Path
+
+            from .kuzu_store import KuzuGraphStore
+
+            db_path = _Path(cfg.storage_path) / "graph_store" if cfg.storage_path else None
+            buffer_bytes = cfg.kuzu_buffer_pool_mb * 1024 * 1024
+            local: GraphStore = KuzuGraphStore(
+                db_path=db_path,
+                buffer_pool_size=buffer_bytes,
+            )
+        except ImportError:
             from .memory_store import InMemoryGraphStore
-            local: GraphStore = InMemoryGraphStore()
-        else:
-            # cognitive (default) — use Kuzu if available
-            try:
-                from pathlib import Path as _Path
 
-                from .kuzu_store import KuzuGraphStore
-
-                db_path = _Path(cfg.storage_path) / "graph_store" if cfg.storage_path else None
-                buffer_bytes = cfg.kuzu_buffer_pool_mb * 1024 * 1024
-                local = KuzuGraphStore(
-                    db_path=db_path,
-                    buffer_pool_size=buffer_bytes,
-                )
-            except ImportError:
-                from .memory_store import InMemoryGraphStore
-                local = InMemoryGraphStore()
+            logger.warning(
+                "Memory[%s]: KuzuGraphStore unavailable (ImportError), falling back to InMemoryGraphStore",
+                cfg.agent_name,
+            )
+            local = InMemoryGraphStore()
 
         # Wrap with NetworkGraphStore if a non-local transport is configured
         if transport != "local":
             from .network_store import NetworkGraphStore
+
             return NetworkGraphStore(
                 agent_id=cfg.agent_name or "agent",
                 local_store=local,
@@ -300,10 +300,6 @@ class Memory:
 
         content = content.strip()
 
-        if isinstance(self._adapter, _SimpleBackend):
-            self._adapter.remember(content)
-            return
-
         # CognitiveAdapter / HierarchicalMemory — use store_fact
         if hasattr(self._adapter, "store_fact"):
             # Use "general" as a catch-all concept; the content is the fact.
@@ -326,9 +322,6 @@ class Memory:
         """
         if not question or not question.strip():
             return []
-
-        if isinstance(self._adapter, _SimpleBackend):
-            return self._adapter.recall(question, limit)
 
         # CognitiveAdapter / HierarchicalMemory
         if hasattr(self._adapter, "search"):
@@ -362,10 +355,6 @@ class Memory:
             "backend": self._cfg.backend,
             "topology": self._cfg.topology,
         }
-
-        if isinstance(self._adapter, _SimpleBackend):
-            result["fact_count"] = len(self._adapter._facts)
-            return result
 
         if hasattr(self._adapter, "get_statistics"):
             try:
@@ -431,30 +420,6 @@ class Memory:
 
     def __exit__(self, *args: Any) -> None:
         self.close()
-
-
-class _SimpleBackend:
-    """Minimal in-memory dict backend for backend=simple."""
-
-    def __init__(self) -> None:
-        self._facts: list[str] = []
-
-    def remember(self, content: str) -> None:
-        if content not in self._facts:
-            self._facts.append(content)
-
-    def recall(self, question: str, limit: int = 20) -> list[str]:
-        q_words = set(question.lower().split())
-        scored: list[tuple[int, str]] = []
-        for fact in self._facts:
-            hits = sum(1 for w in q_words if w in fact.lower())
-            if hits > 0:
-                scored.append((hits, fact))
-        scored.sort(key=lambda x: x[0], reverse=True)
-        return [f for _, f in scored[:limit]]
-
-    def close(self) -> None:
-        pass
 
 
 __all__ = ["Memory"]

@@ -5,9 +5,13 @@
 //   - Log Analytics workspace
 //   - Container Apps Environment (Consumption tier)
 //   - Service Bus Namespace + Topic + Subscriptions (one per agent)
-//   - Storage Account + File Share (for Kuzu persistence)
 //   - N Container Apps (ceil(agentCount / agentsPerApp) apps, each with
 //     up to agentsPerApp agent containers)
+//
+// Note: Ephemeral volumes are used for Kuzu persistence (/data). Azure Files
+// (SMB) is NOT used because it does not support the POSIX advisory file locks
+// that Kuzu requires. Ephemeral volumes fully support POSIX locks during
+// container lifetime.
 //
 // Usage:
 //   az deployment group create \
@@ -45,8 +49,8 @@ param agentPromptBase string = 'You are a distributed hive mind agent.'
 param memoryTransport string = 'azure_service_bus'
 
 @description('Memory backend type')
-@allowed(['simple', 'cognitive'])
-param memoryBackend string = 'simple'
+@allowed(['cognitive', 'hierarchical'])
+param memoryBackend string = 'cognitive'
 
 // ---------- Naming ----------
 var suffix = uniqueString(resourceGroup().id)
@@ -55,8 +59,6 @@ var logAnalyticsName = 'hive-logs-${suffix}'
 var envName = 'hive-env-${hiveName}'
 var sbNamespaceName = 'hive-sb-${suffix}'
 var sbTopicName = 'hive-graph'
-var storageAccountName = 'hivesa${suffix}'
-var fileShareName = 'hive-data'
 var appCount = (agentCount + agentsPerApp - 1) / agentsPerApp
 
 // ---------- Container Registry ----------
@@ -115,32 +117,6 @@ resource sbSubscriptions 'Microsoft.ServiceBus/namespaces/topics/subscriptions@2
   }
 ]
 
-// ---------- Storage Account + File Share (Kuzu persistence) ----------
-resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
-  name: storageAccountName
-  location: location
-  sku: { name: 'Standard_LRS' }
-  kind: 'StorageV2'
-  properties: {
-    accessTier: 'Hot'
-    minimumTlsVersion: 'TLS1_2'
-    allowBlobPublicAccess: false
-  }
-}
-
-resource fileService 'Microsoft.Storage/storageAccounts/fileServices@2023-01-01' = {
-  name: 'default'
-  parent: storageAccount
-}
-
-resource fileShare 'Microsoft.Storage/storageAccounts/fileServices/shares@2023-01-01' = {
-  name: fileShareName
-  parent: fileService
-  properties: {
-    shareQuota: 100
-  }
-}
-
 // ---------- Container Apps Environment ----------
 resource containerEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
   name: envName
@@ -162,21 +138,10 @@ resource containerEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
   }
 }
 
-// Mount the Azure File Share in the environment
-resource envStorage 'Microsoft.App/managedEnvironments/storages@2024-03-01' = {
-  name: 'hive-data-storage'
-  parent: containerEnv
-  properties: {
-    azureFile: {
-      accountName: storageAccount.name
-      accountKey: storageAccount.listKeys().keys[0].value
-      shareName: fileShareName
-      accessMode: 'ReadWrite'
-    }
-  }
-}
-
-// ---------- Container Apps (5 agents per app) ----------
+// ---------- Container Apps (agentsPerApp agents per app) ----------
+// Uses ephemeral (EmptyDir) volumes at /data so Kuzu can acquire POSIX
+// advisory file locks. Azure Files (SMB) does not support POSIX file locks
+// and would cause Kuzu to fail at startup.
 var sbConnectionString = listKeys('${sbNamespace.id}/AuthorizationRules/RootManageSharedAccessKey', '2022-10-01-preview').primaryConnectionString
 var acrCredentials = empty(acrName) ? acr.listCredentials() : acrExisting.listCredentials()
 var resolvedImage = empty(image) ? '${acrNameResolved}.azurecr.io/amplihive:latest' : image
@@ -185,7 +150,6 @@ resource containerApps 'Microsoft.App/containerApps@2024-03-01' = [
   for appIdx in range(0, appCount): {
     name: '${hiveName}-app-${appIdx}'
     location: location
-    dependsOn: [envStorage]
     properties: {
       managedEnvironmentId: containerEnv.id
       workloadProfileName: 'Consumption'
@@ -216,8 +180,7 @@ resource containerApps 'Microsoft.App/containerApps@2024-03-01' = [
         volumes: [
           {
             name: 'hive-data'
-            storageType: 'AzureFile'
-            storageName: 'hive-data-storage'
+            storageType: 'EmptyDir'
           }
         ]
         containers: [
@@ -278,6 +241,5 @@ resource containerApps 'Microsoft.App/containerApps@2024-03-01' = [
 // ---------- Outputs ----------
 output acrLoginServer string = empty(acrName) ? acr.properties.loginServer : acrExisting.properties.loginServer
 output sbNamespaceFqdn string = sbNamespace.properties.serviceBusEndpoint
-output storageAccountName string = storageAccount.name
 output containerAppNames array = [for appIdx in range(0, appCount): '${hiveName}-app-${appIdx}']
 output sbConnectionStringSecretName string = 'sb-connection-string'
