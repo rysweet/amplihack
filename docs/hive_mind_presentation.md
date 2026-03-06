@@ -580,10 +580,10 @@ The hive mind supports a full fact lifecycle. Facts enter through promotion -- t
 |----------|----------------|
 | Azure Container Registry | `hivacrhivemind.azurecr.io` — agent Docker images |
 | Azure Service Bus | `hive-sb-dj2qo2w7vu5zi`, topic `hive-graph`, 100 subscriptions |
-| Azure Storage | `hivesadj2qo2w7vu5zi` — Azure Files (provisioned; **not used for Kuzu** due to POSIX lock limitation) |
 | Container Apps Environment | Managed container runtime |
 | Container Apps | `amplihive-app-0`…`amplihive-app-19` (20 apps × 5 agents = 100 agents) |
-| Shard backend | `simple` (in-memory) in containers; `kuzu` for local dev only |
+| Volume type | Ephemeral (`EmptyDir`) — POSIX lock compatible, Kuzu works in containers |
+| Memory backend | `cognitive` (Kuzu) — identical to local development |
 
 **Transports:**
 

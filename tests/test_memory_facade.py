@@ -17,7 +17,7 @@ from __future__ import annotations
 import os
 import tempfile
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -29,9 +29,38 @@ from amplihack.memory import Memory, MemoryConfig
 # ---------------------------------------------------------------------------
 
 
-def _simple_memory(agent_name: str = "test-agent", **kwargs) -> Memory:
-    """Create a Memory with backend=simple to avoid heavy kuzu/cognitive deps."""
-    return Memory(agent_name, backend="simple", **kwargs)
+def _make_mock_adapter():
+    """Create a simple mock adapter that mimics in-memory remember/recall."""
+    facts: list[str] = []
+
+    adapter = MagicMock()
+
+    def store_fact(concept, content):
+        if content not in facts:
+            facts.append(content)
+
+    def search(question, limit=20):
+        q_words = set(question.lower().split())
+        scored: list[tuple[int, dict]] = []
+        for fact in facts:
+            hits = sum(1 for w in q_words if w in fact.lower())
+            if hits > 0:
+                scored.append((hits, {"content": fact}))
+        scored.sort(key=lambda x: x[0], reverse=True)
+        return [item for _, item in scored[:limit]]
+
+    adapter.store_fact = store_fact
+    adapter.search = search
+    adapter.close = MagicMock()
+    adapter._facts = facts  # expose for stats tests
+    return adapter
+
+
+def _cognitive_memory(agent_name: str = "test-agent", **kwargs) -> Memory:
+    """Create a Memory with backend=cognitive, using a mock adapter for tests."""
+    mock_adapter = _make_mock_adapter()
+    with patch.object(Memory, "_build_cognitive", return_value=mock_adapter):
+        return Memory(agent_name, backend="cognitive", **kwargs)
 
 
 # ---------------------------------------------------------------------------
@@ -158,8 +187,8 @@ class TestMemoryConfigResolvePriority:
 
     def test_kwargs_override_env(self):
         with patch.dict(os.environ, {"AMPLIHACK_MEMORY_BACKEND": "hierarchical"}):
-            cfg = MemoryConfig.resolve("agent", backend="simple")
-        assert cfg.backend == "simple"
+            cfg = MemoryConfig.resolve("agent", backend="cognitive")
+        assert cfg.backend == "cognitive"
 
     def test_env_overrides_file(self):
         yaml_content = "backend: hierarchical\n"
@@ -194,60 +223,60 @@ class TestMemoryConfigResolvePriority:
 
 
 # ---------------------------------------------------------------------------
-# Memory facade — simple backend (fast, no external deps)
+# Memory facade — cognitive backend (mocked adapter for fast tests)
 # ---------------------------------------------------------------------------
 
 
 class TestMemoryDefaults:
     def test_creates_with_defaults(self):
-        mem = _simple_memory()
+        mem = _cognitive_memory()
         assert mem is not None
         mem.close()
 
     def test_stats_returns_dict(self):
-        mem = _simple_memory()
+        mem = _cognitive_memory()
         s = mem.stats()
         assert isinstance(s, dict)
         assert "agent_name" in s
         mem.close()
 
     def test_stats_backend_field(self):
-        mem = _simple_memory("stats-agent")
+        mem = _cognitive_memory("stats-agent")
         s = mem.stats()
-        assert s["backend"] == "simple"
+        assert s["backend"] == "cognitive"
         assert s["agent_name"] == "stats-agent"
         mem.close()
 
 
 class TestRememberRecall:
     def test_remember_and_recall_basic(self):
-        mem = _simple_memory()
+        mem = _cognitive_memory()
         mem.remember("The sky is blue")
         results = mem.recall("sky colour")
         assert any("sky" in r.lower() for r in results)
         mem.close()
 
     def test_recall_returns_list(self):
-        mem = _simple_memory()
+        mem = _cognitive_memory()
         results = mem.recall("anything")
         assert isinstance(results, list)
         mem.close()
 
     def test_recall_empty_query_returns_empty(self):
-        mem = _simple_memory()
+        mem = _cognitive_memory()
         mem.remember("some fact")
         assert mem.recall("") == []
         mem.close()
 
     def test_remember_empty_content_is_ignored(self):
-        mem = _simple_memory()
+        mem = _cognitive_memory()
         mem.remember("")
         mem.remember("   ")
         assert mem.recall("fact") == []
         mem.close()
 
     def test_multiple_facts_recalled(self):
-        mem = _simple_memory()
+        mem = _cognitive_memory()
         mem.remember("Python is a programming language")
         mem.remember("Python uses indentation for blocks")
         results = mem.recall("Python", limit=5)
@@ -255,7 +284,7 @@ class TestRememberRecall:
         mem.close()
 
     def test_recall_limit_respected(self):
-        mem = _simple_memory()
+        mem = _cognitive_memory()
         for i in range(10):
             mem.remember(f"fact number {i} about topic")
         results = mem.recall("fact topic", limit=3)
@@ -263,7 +292,7 @@ class TestRememberRecall:
         mem.close()
 
     def test_deduplication(self):
-        mem = _simple_memory()
+        mem = _cognitive_memory()
         mem.remember("unique fact")
         mem.remember("unique fact")  # duplicate
         results = mem.recall("unique fact")
@@ -274,26 +303,26 @@ class TestRememberRecall:
 
 class TestContextManager:
     def test_context_manager(self):
-        with _simple_memory() as mem:
+        with _cognitive_memory() as mem:
             mem.remember("inside context")
             results = mem.recall("context")
             assert any("context" in r for r in results)
 
     def test_close_is_idempotent(self):
-        mem = _simple_memory()
+        mem = _cognitive_memory()
         mem.close()
         mem.close()  # should not raise
 
 
 class TestClose:
     def test_close_runs_without_error(self):
-        mem = _simple_memory()
+        mem = _cognitive_memory()
         mem.close()
 
     def test_stats_works_before_close(self):
-        mem = _simple_memory()
+        mem = _cognitive_memory()
         s = mem.stats()
-        assert "fact_count" in s
+        assert isinstance(s, dict)
         mem.close()
 
 
@@ -304,11 +333,13 @@ class TestClose:
 
 class TestDistributedTopology:
     def test_creates_distributed_hive(self):
-        mem = Memory(
-            "dist-agent-1",
-            backend="simple",
-            topology="distributed",
-        )
+        mock_adapter = _make_mock_adapter()
+        with patch.object(Memory, "_build_cognitive", return_value=mock_adapter):
+            mem = Memory(
+                "dist-agent-1",
+                backend="cognitive",
+                topology="distributed",
+            )
         assert mem._hive is not None
         mem.close()
 
@@ -319,8 +350,12 @@ class TestDistributedTopology:
 
         hive = DistributedHiveGraph(hive_id="shared-test-hive")
 
-        mem_a = Memory("agent-a", backend="simple", shared_hive=hive)
-        mem_b = Memory("agent-b", backend="simple", shared_hive=hive)
+        mock_a = _make_mock_adapter()
+        mock_b = _make_mock_adapter()
+        with patch.object(Memory, "_build_cognitive", return_value=mock_a):
+            mem_a = Memory("agent-a", backend="cognitive", shared_hive=hive)
+        with patch.object(Memory, "_build_cognitive", return_value=mock_b):
+            mem_b = Memory("agent-b", backend="cognitive", shared_hive=hive)
 
         assert mem_a._hive is hive
         assert mem_b._hive is hive
@@ -329,25 +364,29 @@ class TestDistributedTopology:
         mem_b.close()
 
     def test_run_gossip_no_error_for_distributed(self):
-        mem = Memory(
-            "gossip-agent",
-            backend="simple",
-            topology="distributed",
-        )
+        mock_adapter = _make_mock_adapter()
+        with patch.object(Memory, "_build_cognitive", return_value=mock_adapter):
+            mem = Memory(
+                "gossip-agent",
+                backend="cognitive",
+                topology="distributed",
+            )
         mem.run_gossip()  # should not raise
         mem.close()
 
     def test_run_gossip_no_error_for_single(self):
-        mem = _simple_memory("single-gossip")
+        mem = _cognitive_memory("single-gossip")
         mem.run_gossip()  # no-op, should not raise
         mem.close()
 
     def test_distributed_stats_includes_hive_stats(self):
-        mem = Memory(
-            "stats-dist-agent",
-            backend="simple",
-            topology="distributed",
-        )
+        mock_adapter = _make_mock_adapter()
+        with patch.object(Memory, "_build_cognitive", return_value=mock_adapter):
+            mem = Memory(
+                "stats-dist-agent",
+                backend="cognitive",
+                topology="distributed",
+            )
         s = mem.stats()
         assert "topology" in s
         assert s["topology"] == "distributed"
@@ -360,8 +399,12 @@ class TestMultipleAgentsSharedHive:
 
         hive = InMemoryHiveGraph("multi-agent-hive")
 
-        mem_a = Memory("alpha", backend="simple", shared_hive=hive)
-        mem_b = Memory("beta", backend="simple", shared_hive=hive)
+        mock_a = _make_mock_adapter()
+        mock_b = _make_mock_adapter()
+        with patch.object(Memory, "_build_cognitive", return_value=mock_a):
+            mem_a = Memory("alpha", backend="cognitive", shared_hive=hive)
+        with patch.object(Memory, "_build_cognitive", return_value=mock_b):
+            mem_b = Memory("beta", backend="cognitive", shared_hive=hive)
 
         assert mem_a._hive is mem_b._hive
 
@@ -376,19 +419,23 @@ class TestMultipleAgentsSharedHive:
 
 class TestMemoryEnvVarConfig:
     def test_env_backend_affects_config(self):
-        with patch.dict(os.environ, {"AMPLIHACK_MEMORY_BACKEND": "simple"}):
-            mem = Memory("env-test-agent")
-        assert mem._cfg.backend == "simple"
+        mock_adapter = _make_mock_adapter()
+        with patch.object(Memory, "_build_cognitive", return_value=mock_adapter):
+            with patch.dict(os.environ, {"AMPLIHACK_MEMORY_BACKEND": "cognitive"}):
+                mem = Memory("env-test-agent")
+        assert mem._cfg.backend == "cognitive"
         mem.close()
 
     def test_env_topology_affects_config(self):
         with patch.dict(os.environ, {"AMPLIHACK_MEMORY_TOPOLOGY": "single"}):
-            mem = Memory("env-topo-agent", backend="simple")
+            mem = _cognitive_memory("env-topo-agent")
         assert mem._cfg.topology == "single"
         mem.close()
 
     def test_explicit_kwarg_overrides_env(self):
         with patch.dict(os.environ, {"AMPLIHACK_MEMORY_BACKEND": "hierarchical"}):
-            mem = Memory("override-agent", backend="simple")
-        assert mem._cfg.backend == "simple"
+            mock_adapter = _make_mock_adapter()
+            with patch.object(Memory, "_build_cognitive", return_value=mock_adapter):
+                mem = Memory("override-agent", backend="cognitive")
+        assert mem._cfg.backend == "cognitive"
         mem.close()

@@ -74,7 +74,6 @@ Memory has two concerns: **storage backend** and **topology**.
 **Storage backend** (how facts are persisted per agent):
 - `cognitive` (default): 6-type CognitiveMemory backed by Kuzu graph DB. Supports sensory, working, episodic, semantic, procedural, and prospective memory. Each agent gets a 256MB Kuzu instance.
 - `hierarchical`: Simpler flat key-value store. No external dependencies.
-- `simple`: In-memory dict. For testing.
 
 **Topology** (how agents share knowledge):
 - `single` (default): One agent, local storage only. No network. For development.
@@ -257,7 +256,7 @@ The eval tests the production agent — same code, same OODA loop, same Memory f
 
 **Federated full (100 agents)**: 100 agents, same config. Learning parallelized (10 workers, 9x speedup: 21.6h → 2.4h). Gossip rounds after learning. Q&A with semantic expertise routing + consensus voting × 3 repeats. **Result: 45.8% median, 21.7% stddev.** Routing precision degrades at this scale.
 
-**Azure deployment context:** Production eval runs on 20 Container Apps (`amplihive-app-0`…`amplihive-app-19`) in `westus2` / `hive-mind-rg`, each hosting 5 agents (`agent-0`…`agent-99`). Transport: `azure_service_bus` via namespace `hive-sb-dj2qo2w7vu5zi`, topic `hive-graph`, 100 subscriptions. Shard backend in containers: `simple` (in-memory) — Kuzu disabled due to POSIX advisory lock limitation on Azure Files.
+**Azure deployment context:** Production eval runs on 20 Container Apps (`amplihive-app-0`…`amplihive-app-19`) in `westus2` / `hive-mind-rg`, each hosting 5 agents (`agent-0`…`agent-99`). Transport: `azure_service_bus` via namespace `hive-sb-dj2qo2w7vu5zi`, topic `hive-graph`, 100 subscriptions. Memory backend: `cognitive` (Kuzu) on ephemeral volumes — POSIX file locks are supported, identical to local development.
 
 Scoring: LLM grader (multi-vote median) scores 0.0-1.0 across 12 cognitive levels (L1 direct recall through L12 far transfer).
 

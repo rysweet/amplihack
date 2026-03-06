@@ -5,7 +5,7 @@
 #   - Resource group
 #   - Azure Container Registry (ACR)
 #   - Azure Service Bus namespace + topic + subscriptions
-#   - Azure Storage Account + File Share (for Kuzu persistence)
+#   - Azure Storage Account + File Share (legacy; ephemeral volumes now used for Kuzu)
 #   - Container Apps Environment
 #   - N Container Apps (ceil(HIVE_AGENT_COUNT / 5) apps, 5 agents each)
 #
@@ -47,7 +47,7 @@ AGENT_COUNT="${HIVE_AGENT_COUNT:-5}"
 AGENTS_PER_APP="${HIVE_AGENTS_PER_APP:-5}"
 IMAGE_TAG="${HIVE_IMAGE_TAG:-latest}"
 TRANSPORT="${HIVE_TRANSPORT:-azure_service_bus}"
-MEMORY_BACKEND="${HIVE_MEMORY_BACKEND:-simple}"
+MEMORY_BACKEND="${HIVE_MEMORY_BACKEND:-cognitive}"
 AGENT_PROMPT_BASE="${HIVE_AGENT_PROMPT_BASE:-You are a distributed hive mind agent.}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

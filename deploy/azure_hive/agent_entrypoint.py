@@ -8,7 +8,7 @@ Environment variables:
     AMPLIHACK_AGENT_NAME           -- unique agent identifier (required)
     AMPLIHACK_AGENT_PROMPT         -- agent system prompt
     AMPLIHACK_AGENT_TOPOLOGY       -- topology label (e.g. "hive", "ring")
-    AMPLIHACK_MEMORY_BACKEND       -- "simple" | "cognitive" (default: simple)
+    AMPLIHACK_MEMORY_BACKEND       -- "cognitive" | "hierarchical" (default: cognitive)
     AMPLIHACK_MEMORY_TRANSPORT     -- "local" | "redis" | "azure_service_bus"
     AMPLIHACK_MEMORY_CONNECTION_STRING -- Service Bus or Redis connection string
     AMPLIHACK_MEMORY_STORAGE_PATH  -- storage path for memory data
@@ -38,7 +38,7 @@ def main() -> None:
 
     agent_prompt = os.environ.get("AMPLIHACK_AGENT_PROMPT", f"You are agent {agent_name}.")
     topology = os.environ.get("AMPLIHACK_AGENT_TOPOLOGY", "hive")
-    backend = os.environ.get("AMPLIHACK_MEMORY_BACKEND", "simple")
+    backend = os.environ.get("AMPLIHACK_MEMORY_BACKEND", "cognitive")
     transport = os.environ.get("AMPLIHACK_MEMORY_TRANSPORT", "local")
     connection_string = os.environ.get("AMPLIHACK_MEMORY_CONNECTION_STRING", "")
     storage_path = os.environ.get(
@@ -71,7 +71,7 @@ def main() -> None:
         memory = Memory(
             agent_name,
             topology="distributed",
-            backend="simple",
+            backend="cognitive",
             memory_transport=transport,
             memory_connection_string=connection_string,
             storage_path=storage_path,

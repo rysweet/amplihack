@@ -720,7 +720,7 @@ The `Memory` facade selects transport at construction time via config-driven top
 
 **Production topology (Azure):** 20 Container Apps (`amplihive-app-0`…`amplihive-app-19`), 100 agents (`agent-0`…`agent-99`, 5 per container). Service Bus namespace `hive-sb-dj2qo2w7vu5zi`, topic `hive-graph`, 100 subscriptions (one per agent). Each agent's `NetworkGraphStore` wraps a local `InMemoryGraphStore` and publishes `create_node` / `search_query` events to the topic. Cross-container OODA memory sharing flows through Service Bus; intra-container agents share in-process.
 
-**Backend selection:** In containers the shard backend is `simple` (in-memory). Kuzu is disabled because Azure Files (`hivesadj2qo2w7vu5zi`) does not support POSIX advisory locks required by Kuzu. Kuzu is used only in local development where native filesystem locks work correctly.
+**Backend selection:** Containers use `cognitive` (Kuzu) on ephemeral volumes (`EmptyDir`). Ephemeral volumes support POSIX advisory file locks, so Kuzu works identically in containers and local development. Azure Files (SMB) is no longer used for Kuzu persistence.
 
 ---
 
