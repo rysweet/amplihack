@@ -82,8 +82,8 @@ Invoke as `/fleet <command>` or just describe what you want and Claude will pick
 ## Key Options
 
 ```
-fleet sweep   [--vm VM] [--session NAME] [--skip-adopt] [--save PATH]
-fleet advance [--vm VM] [--session NAME] [--confirm] [--save PATH]
+fleet sweep   [--session vm:session] [--vm VM] [--skip-adopt] [--save PATH]
+fleet advance [--session vm:session] [--vm VM] [--confirm] [--save PATH]
 fleet dry-run [--vm VM ...] [--backend auto|anthropic|copilot|litellm]
 fleet adopt   <vm> [--sessions s1 s2]
 fleet watch   <vm> <session> [--lines 30]
@@ -117,7 +117,7 @@ After running `fleet sweep` or `fleet advance`, present the output to the user a
 2. **Proposed inputs** — for any `send_input` decisions, show what the admiral wants to send
 
 3. **Follow-up commands** — always end with the actionable next steps from the report:
-   - `fleet advance` to execute all admiral decisions
+   - `fleet advance` to send next command to all sessions
    - `fleet advance --confirm` to review each before executing
+   - `fleet advance --session vm:session` to advance one specific session
    - `fleet watch <vm> <session>` to inspect specific sessions
-   - `fleet advance --vm <vm>` to act on a single VM

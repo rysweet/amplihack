@@ -13,6 +13,17 @@ import click
 __all__ = ["register_session_ops", "format_sweep_report", "format_advance_report"]
 
 
+def _parse_session_target(session_str: str) -> tuple[str | None, str]:
+    """Parse a session target in 'vm:session' or plain 'session' format.
+
+    Returns (vm_name, session_name). vm_name is None if not specified.
+    """
+    if ":" in session_str:
+        vm, _, session = session_str.partition(":")
+        return (vm.strip() or None, session.strip())
+    return (None, session_str.strip())
+
+
 def format_sweep_report(
     all_vms: list,
     decisions: list[dict],
@@ -140,7 +151,7 @@ def format_sweep_report(
 
     if actionable:
         lines.append("")
-        lines.append("  # Act on all sessions at once:")
+        lines.append("  # Send next command to all sessions:")
         lines.append("  fleet advance")
         lines.append("")
         lines.append("  # Review each action before executing:")
@@ -149,7 +160,7 @@ def format_sweep_report(
         for r in actionable:
             lines.append("")
             lines.append(f"  # Advance {r['vm']}/{r['session']} only:")
-            lines.append(f"  fleet advance --vm {r['vm']} --session {r['session']}")
+            lines.append(f"  fleet advance --session {r['vm']}:{r['session']}")
             if r["input"]:
                 lines.append(f"  #   >> \"{r['input'][:90]}\"")
 
@@ -171,10 +182,11 @@ def format_sweep_report(
     # Always show general hints
     lines.append("")
     lines.append("  # Other useful commands:")
-    lines.append("  fleet sweep --vm <vm> --session <name>   # Sweep one session")
+    lines.append("  fleet advance                            # Send next command to all sessions")
+    lines.append("  fleet advance --session <vm>:<session>   # Advance one session")
+    lines.append("  fleet sweep --session <vm>:<session>     # Sweep one session")
     lines.append("  fleet watch <vm> <session>               # Live terminal snapshot")
     lines.append("  fleet status                             # Quick fleet overview")
-    lines.append("  fleet advance --vm <vm>                  # Advance one VM")
 
     return "\n".join(lines)
 
@@ -418,16 +430,16 @@ def register_session_ops(fleet_cli: click.Group) -> None:
 
     @fleet_cli.command("sweep")
     @click.option("--vm", default=None, help="Filter to a single VM (default: all)")
-    @click.option("--session", "session_filter", default=None, help="Filter to a single session name (use with --vm)")
+    @click.option("--session", "session_target", default=None, help="Target session as vm:session (e.g., dev:cybergym-intg)")
     @click.option("--skip-adopt", is_flag=True, help="Reason about sessions without adopting them first")
     @click.option("--save", "save_path", default=None, type=click.Path(), help="Save JSON report to file")
-    def sweep(vm, session_filter, skip_adopt, save_path):
+    def sweep(vm, session_target, skip_adopt, save_path):
         """Discover sessions, adopt them, dry-run reason, and show a report.
 
         Combines fleet discovery, session adoption, and admiral dry-run
         reasoning into a single pipeline.
 
-        Target a single session: fleet sweep --vm dev --session cybergym-intg
+        Target a single session: fleet sweep --session dev:cybergym-intg
 
         Requires ANTHROPIC_API_KEY (or another LLM backend).
         """
@@ -440,6 +452,13 @@ def register_session_ops(fleet_cli: click.Group) -> None:
         import amplihack.fleet.fleet_adopt as _adopt_mod
         import amplihack.fleet.fleet_session_reasoner as _reasoner_mod
         import amplihack.fleet.fleet_tui as _tui_mod
+
+        # Parse --session (vm:session format sets vm implicitly)
+        session_filter = None
+        if session_target:
+            target_vm, session_filter = _parse_session_target(session_target)
+            if target_vm:
+                vm = target_vm
 
         # -- Phase 1: Discovery --
         click.echo("Phase 1: Discovering fleet sessions...")
@@ -459,7 +478,7 @@ def register_session_ops(fleet_cli: click.Group) -> None:
                 v.sessions = [s for s in v.sessions if s.session_name == session_filter]
             running_vms = [v for v in running_vms if v.sessions]
             if not running_vms:
-                click.echo(f"Session not found: {session_filter}")
+                click.echo(f"Session not found: {session_target}")
                 return
 
         total_sessions = sum(len(v.sessions) for v in running_vms)
@@ -559,16 +578,16 @@ def register_session_ops(fleet_cli: click.Group) -> None:
 
     @fleet_cli.command("advance")
     @click.option("--vm", default=None, help="Filter to a single VM (default: all)")
-    @click.option("--session", "session_filter", default=None, help="Filter to a single session name (use with --vm)")
+    @click.option("--session", "session_target", default=None, help="Target session as vm:session (e.g., dev:cybergym-intg)")
     @click.option("--confirm", is_flag=True, help="Prompt before each action (default: auto-execute)")
     @click.option("--save", "save_path", default=None, type=click.Path(), help="Save JSON report to file")
-    def advance(vm, session_filter, confirm, save_path):
+    def advance(vm, session_target, confirm, save_path):
         """Run the fleet admiral LIVE — reason and execute actions on sessions.
 
         Unlike 'sweep' (dry-run only), this command actually sends input
         to sessions, restarts stuck agents, and marks tasks complete.
 
-        Target a single session: fleet advance --vm dev --session cybergym-intg
+        Target a single session: fleet advance --session dev:cybergym-intg
 
         Requires ANTHROPIC_API_KEY (or another LLM backend).
         Safety: confidence thresholds and dangerous-input blocklists
@@ -582,6 +601,13 @@ def register_session_ops(fleet_cli: click.Group) -> None:
         import amplihack.fleet._backends as _backends_mod
         import amplihack.fleet.fleet_session_reasoner as _reasoner_mod
         import amplihack.fleet.fleet_tui as _tui_mod
+
+        # Parse --session (vm:session format sets vm implicitly)
+        session_filter = None
+        if session_target:
+            target_vm, session_filter = _parse_session_target(session_target)
+            if target_vm:
+                vm = target_vm
 
         # -- Check LLM backend --
         api_key = os.environ.get("ANTHROPIC_API_KEY", "")
@@ -603,13 +629,12 @@ def register_session_ops(fleet_cli: click.Group) -> None:
 
         running_vms = [v for v in all_vms if v.is_running and v.sessions]
 
-        # Filter to a single session if specified
         if session_filter:
             for v in running_vms:
                 v.sessions = [s for s in v.sessions if s.session_name == session_filter]
             running_vms = [v for v in running_vms if v.sessions]
             if not running_vms:
-                click.echo(f"Session not found: {session_filter}")
+                click.echo(f"Session not found: {session_target}")
                 return
 
         total_sessions = sum(len(v.sessions) for v in running_vms)

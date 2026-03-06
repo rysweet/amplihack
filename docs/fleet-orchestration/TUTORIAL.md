@@ -400,7 +400,7 @@ Or just describe what you want — Claude will pick the right command:
 ```
 "What are my agents doing?"        → fleet sweep
 "Send next steps to all sessions"  → fleet advance
-"Advance the stuck session on dev" → fleet advance --vm dev --session stuck-session
+"Advance the stuck session on dev" → fleet advance --session dev:stuck-session
 ```
 
 ### Fleet Sweep (Dry-Run Scan)
@@ -439,7 +439,7 @@ Status icons: `[~]` thinking, `[>]` running, `[.]` idle, `[X]` dead, `[Z]` suspe
   fleet advance
 
   # Advance dev/parallel-deploy-wk only:
-  fleet advance --vm dev --session parallel-deploy-wk
+  fleet advance --session dev:parallel-deploy-wk
   #   >> "Great! The deployment completed successfully..."
 
   # deva/qa is dead — inspect:
@@ -453,7 +453,7 @@ Status icons: `[~]` thinking, `[>]` running, `[.]` idle, `[X]` dead, `[Z]` suspe
 ```
 /fleet advance                                        # All sessions
 /fleet advance --confirm                              # Review each before executing
-/fleet advance --vm dev --session parallel-deploy-wk  # Single session only
+/fleet advance --session dev:parallel-deploy-wk  # Single session only
 ```
 
 What happens for each action type:
@@ -480,13 +480,13 @@ Both sweep and advance support `--vm` and `--session` filters:
 /fleet sweep --vm dev --skip-adopt
 
 # Sweep one session (fastest — ~2 min):
-/fleet sweep --vm dev --session cybergym-intg --skip-adopt
+/fleet sweep --session dev:cybergym-intg --skip-adopt
 
 # Advance one session:
-/fleet advance --vm dev --session cybergym-intg
+/fleet advance --session dev:cybergym-intg
 
 # Advance one session with confirmation:
-/fleet advance --vm deva --session qa --confirm
+/fleet advance --session deva:qa --confirm
 ```
 
 ### Typical Workflow
@@ -500,7 +500,7 @@ Both sweep and advance support `--vm` and `--session` filters:
 
 3. **Advance specific sessions** you agree with:
    ```
-   /fleet advance --vm dev --session parallel-deploy-wk
+   /fleet advance --session dev:parallel-deploy-wk
    ```
 
 4. **Or advance all** if the admiral's proposals look good:
