@@ -1603,29 +1603,11 @@ def main(argv: list[str] | None = None) -> int:
             from .memory.cli_visualize import visualize_memory_tree
             from .memory.models import MemoryType
 
-            # Select backend
-            if args.backend == "kuzu":
-                try:
-                    import asyncio
+            # Select backend (SQLite only; use KuzuGraphStore for graph storage)
+            from .memory.database import MemoryDatabase
 
-                    from .memory.backends.kuzu_backend import KuzuBackend
-
-                    backend = KuzuBackend()
-                    asyncio.run(backend.initialize())
-                except ImportError:
-                    print(
-                        "Error: Kùzu backend not available. Kuzu should be installed automatically with amplihack."
-                    )
-                    print("Fallin' back to SQLite backend...")
-                    from .memory.database import MemoryDatabase
-
-                    backend = MemoryDatabase()
-                    backend.initialize()
-            else:
-                from .memory.database import MemoryDatabase
-
-                backend = MemoryDatabase()
-                backend.initialize()
+            backend = MemoryDatabase()
+            backend.initialize()
 
             # Convert type string to enum if provided
             memory_type = None
@@ -1702,40 +1684,8 @@ def main(argv: list[str] | None = None) -> int:
                 return 1
 
         if args.memory_command == "clean":
-            from .memory.cli_cleanup import cleanup_memory_sessions
-
-            # Select backend
-            if args.backend == "kuzu":
-                try:
-                    import asyncio
-
-                    from .memory.backends.kuzu_backend import KuzuBackend
-
-                    backend = KuzuBackend()
-                    asyncio.run(backend.initialize())
-                except ImportError:
-                    print("Error: Kùzu backend not available. Install with: pip install amplihack")
-                    return 1
-            else:
-                from .memory.database import MemoryDatabase
-
-                backend = MemoryDatabase()
-                backend.initialize()
-
-            # Run cleanup
-            result = cleanup_memory_sessions(
-                backend=backend,
-                pattern=args.pattern,
-                dry_run=not args.no_dry_run,
-                confirm=args.confirm,
-            )
-
-            # Cleanup backend
-            if hasattr(backend, "close"):
-                backend.close()
-
-            # Return non-zero if there were errors
-            return 1 if result["errors"] > 0 else 0
+            print("The 'memory clean' command has been removed. Use the database directly to clean up sessions.")
+            return 1
 
         create_parser().print_help()
         return 1

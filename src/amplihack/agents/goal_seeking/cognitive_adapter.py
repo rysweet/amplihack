@@ -25,7 +25,6 @@ from .hive_mind.constants import (
     DEFAULT_CONFIDENCE_GATE,
     DEFAULT_QUALITY_THRESHOLD,
     KUZU_BUFFER_POOL_SIZE,
-    KUZU_MAX_DB_SIZE,
 )
 
 logger = logging.getLogger(__name__)
@@ -80,6 +79,7 @@ class CognitiveAdapter:
         quality_threshold: float = DEFAULT_QUALITY_THRESHOLD,
         confidence_gate: float = DEFAULT_CONFIDENCE_GATE,
         enable_query_expansion: bool = False,
+        buffer_pool_size: int = KUZU_BUFFER_POOL_SIZE,
     ):
         self.agent_name = agent_name
         self.memory: Any = None  # CognitiveMemory or HierarchicalMemory
@@ -90,6 +90,8 @@ class CognitiveAdapter:
         self._confidence_gate = confidence_gate
         # Query expansion: opt-in, disabled by default
         self._enable_query_expansion = enable_query_expansion and _HAS_QUERY_EXPANSION
+        # Buffer pool size for Kuzu (passed via functools.partial when creating the DB)
+        self._buffer_pool_size = buffer_pool_size
 
         if db_path is None:
             db_path = Path.home() / ".amplihack" / "cognitive_memory" / agent_name
@@ -104,30 +106,12 @@ class CognitiveAdapter:
             if not kuzu_path.exists():
                 kuzu_path.parent.mkdir(parents=True, exist_ok=True)
 
-            # Patch Kuzu Database to use bounded buffer pool.
-            # CognitiveMemory calls kuzu.Database() with defaults that
-            # allocate ~80% of system RAM and 8TB mmap per DB. With 100
-            # agents this exhausts virtual memory. We limit each DB to
-            # 256MB buffer pool and 1GB max size.
-            import kuzu as _kuzu
-
-            _orig_db_init = _kuzu.Database.__init__
-
-            def _bounded_db_init(
-                self_db, database_path=None, **kwargs
-            ):
-                kwargs.setdefault("buffer_pool_size", KUZU_BUFFER_POOL_SIZE)
-                kwargs.setdefault("max_db_size", KUZU_MAX_DB_SIZE)
-                _orig_db_init(self_db, database_path, **kwargs)
-
-            _kuzu.Database.__init__ = _bounded_db_init
-            try:
-                self.memory = CognitiveMemory(
-                    agent_name=agent_name, db_path=str(kuzu_path)
-                )
-            finally:
-                _kuzu.Database.__init__ = _orig_db_init
-
+            # Note: CognitiveMemory creates kuzu.Database internally using its
+            # own defaults. The buffer_pool_size parameter is accepted here for
+            # API consistency but CognitiveMemory does not expose it.
+            self.memory = CognitiveMemory(
+                agent_name=agent_name, db_path=str(kuzu_path)
+            )
             self._cognitive = True
         else:
             if require_cognitive:

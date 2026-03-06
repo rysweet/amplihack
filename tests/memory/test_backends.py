@@ -1,4 +1,4 @@
-"""Tests fer backend abstraction layer.
+"""Tests for backend abstraction layer.
 
 Verifies:
 - Backend protocol implementation
@@ -13,11 +13,9 @@ from pathlib import Path
 
 import pytest
 
-from amplihack.memory.backends import BackendType, SQLiteBackend, create_backend
+from amplihack.memory.sqlite_backend import SQLiteBackend, create_backend
 from amplihack.memory.coordinator import MemoryCoordinator, StorageRequest
-from amplihack.memory.models import MemoryEntry
-from amplihack.memory.models import MemoryType as OldMemoryType
-from amplihack.memory.types import MemoryType
+from amplihack.memory.models import MemoryEntry, MemoryType
 
 
 class TestBackendSelection:
@@ -28,7 +26,7 @@ class TestBackendSelection:
         backend = create_backend()
         assert backend is not None
         capabilities = backend.get_capabilities()
-        assert capabilities.backend_name in ["sqlite", "kuzu"]
+        assert capabilities.backend_name == "sqlite"
 
     def test_explicit_sqlite_backend(self):
         """Can explicitly request SQLite backend."""
@@ -36,21 +34,11 @@ class TestBackendSelection:
         capabilities = backend.get_capabilities()
         assert capabilities.backend_name == "sqlite"
 
-    def test_explicit_sqlite_backend_enum(self):
-        """Can request SQLite using enum."""
-        backend = create_backend(backend_type=BackendType.SQLITE)
+    def test_unsupported_backend_falls_back_to_sqlite(self):
+        """Unsupported backend type logs a warning and falls back to SQLite."""
+        backend = create_backend(backend_type="neo4j")
         capabilities = backend.get_capabilities()
         assert capabilities.backend_name == "sqlite"
-
-    def test_invalid_backend_type_raises_error(self):
-        """Invalid backend type should raise ValueError."""
-        with pytest.raises(ValueError, match="Invalid backend type"):
-            create_backend(backend_type="invalid")
-
-    def test_neo4j_backend_not_implemented_yet(self):
-        """Neo4j backend should raise NotImplementedError."""
-        with pytest.raises(NotImplementedError, match="Neo4j backend not yet implemented"):
-            create_backend(backend_type="neo4j")
 
     def test_backend_with_custom_path(self):
         """Can create backend with custom database path."""
@@ -108,9 +96,9 @@ class TestSQLiteBackend:
                 id="test-123",
                 session_id="session-1",
                 agent_id="agent-1",
-                memory_type=OldMemoryType.CONVERSATION,
+                memory_type=MemoryType.CONVERSATION,
                 title="Test Memory",
-                content="This be a test memory",
+                content="This is a test memory",
                 metadata={"new_memory_type": MemoryType.EPISODIC.value},
                 created_at=datetime.now(),
                 accessed_at=datetime.now(),
@@ -124,7 +112,7 @@ class TestSQLiteBackend:
             retrieved = await backend.get_memory_by_id("test-123")
             assert retrieved is not None
             assert retrieved.id == "test-123"
-            assert retrieved.content == "This be a test memory"
+            assert retrieved.content == "This is a test memory"
 
 
 class TestCoordinatorBackendIntegration:
@@ -132,7 +120,7 @@ class TestCoordinatorBackendIntegration:
 
     @pytest.mark.asyncio
     async def test_coordinator_uses_backend(self):
-        """Coordinator can use backend fer storage/retrieval."""
+        """Coordinator can use backend for storage/retrieval."""
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create coordinator with SQLite backend
             coordinator = MemoryCoordinator(backend_type="sqlite", db_path=Path(tmpdir) / "test.db")
@@ -140,7 +128,7 @@ class TestCoordinatorBackendIntegration:
 
             # Store a memory
             request = StorageRequest(
-                content="Test memory content fer backend integration",
+                content="Test memory content for backend integration",
                 memory_type=MemoryType.EPISODIC,
             )
 
@@ -177,7 +165,7 @@ class TestCoordinatorBackendIntegration:
 
         # Should have created a backend (either Kùzu or SQLite)
         backend_info = coordinator.get_backend_info()
-        assert backend_info["backend_name"] in ["sqlite", "kuzu"]
+        assert backend_info["backend_name"] == "sqlite"
 
 
 if __name__ == "__main__":

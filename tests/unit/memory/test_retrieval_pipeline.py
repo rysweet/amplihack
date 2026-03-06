@@ -1,7 +1,7 @@
-"""Unit tests fer memory retrieval pipeline logic.
+"""Unit tests for memory retrieval pipeline logic.
 
 Tests retrieval pipeline that selects and formats relevant memories
-within token budget fer context injection.
+within token budget for context injection.
 
 Philosophy:
 - Test retrieval logic in isolation (mock DB)
@@ -23,7 +23,7 @@ try:
         RetrievalQuery,
         RetrievalResult,
     )
-    from amplihack.memory.types import MemoryEntry, MemoryType
+    from amplihack.memory.models import MemoryEntry, MemoryType
 except ImportError:
     pytest.skip("Retrieval pipeline not implemented yet", allow_module_level=True)
 
@@ -85,7 +85,7 @@ class TestRetrievalQuery:
         assert query.time_range[1] == now
 
     def test_retrieval_query_with_context(self):
-        """Query can include context fer better matching."""
+        """Query can include context for better matching."""
         query = RetrievalQuery(
             query_text="Fix authentication bug",
             token_budget=5000,
@@ -180,14 +180,14 @@ class TestRetrievalPipeline:
 
     @pytest.fixture
     def mock_db(self):
-        """Mock database fer testing."""
+        """Mock database for testing."""
         db = Mock()
         db.search.return_value = []
         return db
 
     @pytest.fixture
     def sample_memories(self):
-        """Sample memories fer testing."""
+        """Sample memories for testing."""
         return [
             MemoryEntry(
                 id="mem-1",
@@ -219,7 +219,7 @@ class TestRetrievalPipeline:
 
     @pytest.mark.asyncio
     async def test_retrieve_relevant_memories(self, mock_db, sample_memories):
-        """Retrieve relevant memories fer query."""
+        """Retrieve relevant memories for query."""
         mock_db.search.return_value = sample_memories
         pipeline = RetrievalPipeline(database=mock_db)
 
@@ -399,7 +399,7 @@ class TestRetrievalResult:
 
 
 class TestContextFormatter:
-    """Test context formatting fer injection."""
+    """Test context formatting for injection."""
 
     def test_format_memories_fer_injection(self):
         """Format memories into context string."""

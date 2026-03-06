@@ -1,6 +1,6 @@
-"""Memory coordinator - main interface fer 5-type memory system.
+"""Memory coordinator - main interface for 5-type memory system.
 
-Coordinates storage and retrieval with multi-agent review fer quality control.
+Coordinates storage and retrieval with multi-agent review for quality control.
 
 Philosophy:
 - Ruthless simplicity: Clear coordinator interface
@@ -20,9 +20,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
-from .backends import MemoryBackend, create_backend
-from .models import MemoryEntry
-from .types import MemoryType
+from .models import MemoryEntry, MemoryType
+from .sqlite_backend import MemoryBackend, create_backend
 
 logger = logging.getLogger(__name__)
 
@@ -71,9 +70,9 @@ class RetrievalQuery:
 class MemoryCoordinator:
     """Coordinates memory storage and retrieval with quality control.
 
-    Main interface fer the 5-type memory system. Handles:
-    - Multi-agent review fer storage quality
-    - Token budget enforcement fer retrieval
+    Main interface for the 5-type memory system. Handles:
+    - Multi-agent review for storage quality
+    - Token budget enforcement for retrieval
     - Performance monitoring (<50ms retrieval, <500ms storage)
     """
 
@@ -102,7 +101,7 @@ class MemoryCoordinator:
             >>> await coordinator.initialize()
 
             >>> # Use custom backend instance
-            >>> from .backends import SQLiteBackend
+            >>> from .sqlite_backend import SQLiteBackend
             >>> backend = SQLiteBackend(db_path="/tmp/memory.db")
             >>> await backend.initialize()
             >>> coordinator = MemoryCoordinator(backend=backend)
@@ -151,13 +150,13 @@ class MemoryCoordinator:
                 self._stats["total_rejected"] += 1
                 return None
 
-            # 2. Check fer duplicates
+            # 2. Check for duplicates
             if await self._is_duplicate(request.content):
                 logger.debug(f"Rejected duplicate content: {request.content[:50]}")
                 self._stats["total_rejected"] += 1
                 return None
 
-            # 3. Multi-agent review fer quality
+            # 3. Multi-agent review for quality
             importance_score = await self._review_quality(request)
             if importance_score < 5:  # Threshold: 5/10
                 logger.debug(f"Rejected low-quality content (score={importance_score})")
@@ -312,7 +311,7 @@ class MemoryCoordinator:
         """
         target_session = session_id or self.session_id
         try:
-            # Query fer WORKING type memories
+            # Query for WORKING type memories
             from .models import MemoryQuery
 
             query = MemoryQuery(
@@ -322,7 +321,7 @@ class MemoryCoordinator:
 
             memories = await self.backend.retrieve_memories(query)
 
-            # Filter fer WORKING type (stored in metadata)
+            # Filter for WORKING type (stored in metadata)
             working_memories = [
                 m for m in memories if m.metadata.get("new_memory_type") == MemoryType.WORKING.value
             ]
@@ -332,7 +331,7 @@ class MemoryCoordinator:
                 await self.backend.delete_memory(memory.id)
 
             logger.info(
-                f"Cleared {len(working_memories)} working memories fer session {target_session}"
+                f"Cleared {len(working_memories)} working memories for session {target_session}"
             )
 
         except Exception as e:
@@ -340,7 +339,7 @@ class MemoryCoordinator:
             raise  # Propagate exception - don't swallow
 
     async def clear_all(self, session_id: str | None = None):
-        """Clear all memories fer current session.
+        """Clear all memories for current session.
 
         Args:
             session_id: Session to clear (defaults to current session)
@@ -375,7 +374,7 @@ class MemoryCoordinator:
                     )
                 await self.backend.delete_memory(memory.id)
 
-            logger.info(f"Cleared all {len(memories)} memories fer session {target_session}")
+            logger.info(f"Cleared all {len(memories)} memories for session {target_session}")
 
         except Exception as e:
             logger.error(f"Error clearing all memories: {e}")
@@ -397,7 +396,7 @@ class MemoryCoordinator:
 
             memories = await self.backend.retrieve_memories(query)
 
-            # Filter fer WORKING type with matching task_id
+            # Filter for WORKING type with matching task_id
             task_memories = [
                 m
                 for m in memories
@@ -409,7 +408,7 @@ class MemoryCoordinator:
             for memory in task_memories:
                 await self.backend.delete_memory(memory.id)
 
-            logger.info(f"Cleared {len(task_memories)} working memories fer task {task_id}")
+            logger.info(f"Cleared {len(task_memories)} working memories for task {task_id}")
 
         except Exception as e:
             logger.error(f"Error marking task complete: {e}")
@@ -496,15 +495,15 @@ class MemoryCoordinator:
         content_prefix = content[:100] if len(content) >= 100 else content
         content_suffix = content[-100:] if len(content) >= 100 else content
 
-        # Query backend fer potential duplicates
+        # Query backend for potential duplicates
         from .models import MemoryQuery
 
         # For now, retrieve all memories from current session and check manually
-        # TODO: Add content_hash to MemoryQuery fer more efficient duplicate detection
+        # TODO: Add content_hash to MemoryQuery for more efficient duplicate detection
         query = MemoryQuery(session_id=self.session_id, limit=1000)
         memories = await self.backend.retrieve_memories(query)
 
-        # Check fer exact duplicates
+        # Check for exact duplicates
         for memory in memories:
             existing_content = memory.content
 
@@ -520,10 +519,10 @@ class MemoryCoordinator:
         return False
 
     async def _invoke_agent(self, prompt: str) -> dict[str, Any]:
-        """Invoke agent fer review (can be mocked in tests).
+        """Invoke agent for review (can be mocked in tests).
 
         Args:
-            prompt: Prompt fer agent
+            prompt: Prompt for agent
 
         Returns:
             Agent response dict with quality score
@@ -596,7 +595,7 @@ class MemoryCoordinator:
         Returns:
             Importance score (0-10)
 
-        Uses 3 agents fer consensus (accepts if ≥2/3 agree it's valuable).
+        Uses 3 agents for consensus (accepts if ≥2/3 agree it's valuable).
         """
         try:
             prompt = f"""Review this memory for importance (0-10 scale):
@@ -675,7 +674,7 @@ Return: {{"importance_score": <number>, "reasoning": "<brief reason>"}}
         return content[:50].strip()
 
     def _convert_to_old_type(self, new_type: MemoryType):
-        """Convert new 5-type system to old type system fer database.
+        """Convert new 5-type system to old type system for database.
 
         Temporary adapter until full migration.
         """
@@ -738,7 +737,7 @@ Return: {{"importance_score": <number>, "reasoning": "<brief reason>"}}
     async def _enrich_with_code_context(self, memories: list[MemoryEntry]) -> list[MemoryEntry]:
         """Enrich memories with related code context.
 
-        Queries Kuzu graph fer code files and functions linked to each memory
+        Queries Kuzu graph for code files and functions linked to each memory
         via RELATES_TO_FILE_* and RELATES_TO_FUNCTION_* relationships.
 
         Args:
@@ -755,23 +754,14 @@ Return: {{"importance_score": <number>, "reasoning": "<brief reason>"}}
             logger.debug("Backend does not support graph queries, skipping code context")
             return memories
 
-        # Check if backend has code graph integration (Kuzu-specific)
-        try:
-            # Attempt to access Kuzu-specific code graph
-            from .backends.kuzu_backend import KuzuBackend
-
-            if not isinstance(self.backend, KuzuBackend):
-                logger.debug("Backend is not KuzuBackend, skipping code context")
-                return memories
-
-            # Get code graph instance
-            code_graph = self.backend.get_code_graph()
-            if code_graph is None:
-                logger.debug("Code graph not initialized, skipping code context")
-                return memories
-
-        except (ImportError, AttributeError) as e:
-            logger.debug(f"Code graph not available: {e}")
+        # Check if backend has code graph integration
+        code_graph = getattr(self.backend, "get_code_graph", None)
+        if code_graph is None:
+            logger.debug("Backend has no code graph support, skipping code context")
+            return memories
+        code_graph = self.backend.get_code_graph()
+        if code_graph is None:
+            logger.debug("Code graph not initialized, skipping code context")
             return memories
 
         # Enrich each memory with code context
@@ -794,7 +784,7 @@ Return: {{"importance_score": <number>, "reasoning": "<brief reason>"}}
         return memories
 
     def _format_code_context(self, context: dict[str, Any]) -> str:
-        """Format code context into readable text fer LLM consumption.
+        """Format code context into readable text for LLM consumption.
 
         Args:
             context: Code context dictionary from query_code_context()

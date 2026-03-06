@@ -1,4 +1,4 @@
-"""Unit tests fer memory storage pipeline logic.
+"""Unit tests for memory storage pipeline logic.
 
 Tests storage pipeline that reviews content with multiple agents
 before persisting to database.
@@ -25,7 +25,7 @@ try:
         StorageRequest,
         StorageResult,
     )
-    from amplihack.memory.types import MemoryType
+    from amplihack.memory.models import MemoryType
 except ImportError:
     pytest.skip("Storage pipeline not implemented yet", allow_module_level=True)
 
@@ -210,12 +210,12 @@ class TestStoragePipeline:
 
     @pytest.fixture
     def mock_db(self):
-        """Mock database fer testing."""
+        """Mock database for testing."""
         return Mock()
 
     @pytest.fixture
     def mock_task_tool(self):
-        """Mock Task tool fer agent invocation."""
+        """Mock Task tool for agent invocation."""
         return AsyncMock()
 
     def test_storage_pipeline_creation(self, mock_db):
@@ -225,7 +225,7 @@ class TestStoragePipeline:
 
     @pytest.mark.asyncio
     async def test_store_with_review_invokes_agents(self, mock_db, mock_task_tool):
-        """Storage pipeline invokes multiple agents fer review."""
+        """Storage pipeline invokes multiple agents for review."""
         pipeline = StoragePipeline(database=mock_db)
 
         # Mock agent responses
@@ -300,7 +300,7 @@ class TestStoragePipeline:
 
     @pytest.mark.asyncio
     async def test_store_parallel_agent_review(self, mock_db):
-        """Agent reviews execute in parallel fer performance."""
+        """Agent reviews execute in parallel for performance."""
         import time
 
         pipeline = StoragePipeline(database=mock_db)
@@ -322,7 +322,7 @@ class TestStoragePipeline:
             # With 3 agents @ 100ms each:
             # Sequential: ~300ms
             # Parallel: ~100ms
-            # Allow some overhead but should be <200ms fer parallel
+            # Allow some overhead but should be <200ms for parallel
             assert duration < 0.2
 
     @pytest.mark.asyncio
@@ -382,7 +382,7 @@ class TestStorageResult:
     """Test StorageResult data structure."""
 
     def test_storage_result_success(self):
-        """StorageResult fer successful storage."""
+        """StorageResult for successful storage."""
         result = StorageResult(
             stored=True,
             memory_id="mem-123",
@@ -396,7 +396,7 @@ class TestStorageResult:
         assert len(result.reviews) == 1
 
     def test_storage_result_rejection(self):
-        """StorageResult fer rejected content."""
+        """StorageResult for rejected content."""
         result = StorageResult(
             stored=False,
             rejection_reason="below_threshold",

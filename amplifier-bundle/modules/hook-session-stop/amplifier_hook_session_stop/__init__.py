@@ -179,7 +179,7 @@ class SessionStopHook(Hook):
                 coordinator = self._get_memory_coordinator(session_id)
                 if coordinator:
                     try:
-                        from amplihack.memory.types import MemoryType
+                        from amplihack.memory.models import MemoryType
 
                         # Store learning as SEMANTIC memory (reusable knowledge)
                         learning_content = f"Agent {agent_type}: {agent_output[:500]}"

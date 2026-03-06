@@ -1,4 +1,4 @@
-"""End-to-end tests fer LSP detection and configuration.
+"""End-to-end tests for LSP detection and configuration.
 
 Tests complete LSP workflows from outside-in perspective:
 - Language detection
@@ -199,12 +199,12 @@ class TestLSPConfiguration:
         assert harness.verify_lsp_config_exists("typescript")
 
     def test_configure_multi_language_lsp(self, harness):
-        """Test configurin' LSP fer multiple languages.
+        """Test configurin' LSP for multiple languages.
 
         Workflow:
         1. Create multi-language project
         2. Configure LSP
-        3. Verify configs created fer all languages
+        3. Verify configs created for all languages
         """
         harness.create_multi_language_project()
 
@@ -217,11 +217,11 @@ class TestLSPConfiguration:
         assert harness.verify_lsp_config_exists("rust")
 
     def test_configure_specific_language(self, harness):
-        """Test configurin' LSP fer specific language.
+        """Test configurin' LSP for specific language.
 
         Workflow:
         1. Create multi-language project
-        2. Configure LSP fer Python only
+        2. Configure LSP for Python only
         3. Verify only Python config created
         """
         harness.create_multi_language_project()
@@ -235,7 +235,7 @@ class TestLSPConfiguration:
         assert not harness.verify_lsp_config_exists("rust")
 
     def test_configure_invalid_language(self, harness):
-        """Test configurin' LSP fer invalid language.
+        """Test configurin' LSP for invalid language.
 
         Workflow:
         1. Try to configure unsupported language

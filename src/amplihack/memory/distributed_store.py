@@ -149,6 +149,13 @@ class DistributedGraphStore:
                 db_path=shard_path,
                 buffer_pool_size=self._kuzu_buffer_pool_mb * 1024 * 1024,
             )
+        logger.warning(
+            "DistributedGraphStore: no persistent shard backend configured "
+            "(shard_backend=%r, storage_path=%r); using InMemoryGraphStore. "
+            "Data will be lost on restart.",
+            self._shard_backend,
+            self._storage_path,
+        )
         return InMemoryGraphStore()
 
     def add_agent(self, agent_id: str) -> None:

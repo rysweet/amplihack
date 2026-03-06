@@ -208,44 +208,16 @@ class Memory:
     def _build_cognitive(self, cfg: MemoryConfig) -> Any:
         """Create a CognitiveAdapter with the resolved config."""
         from amplihack.agents.goal_seeking.cognitive_adapter import CognitiveAdapter
-        from amplihack.agents.goal_seeking.hive_mind.constants import (
-            KUZU_BUFFER_POOL_SIZE,
-            KUZU_MAX_DB_SIZE,
-        )
 
         db_path = Path(cfg.storage_path) if cfg.storage_path else None
+        buffer_pool_size = cfg.kuzu_buffer_pool_mb * 1024 * 1024
 
-        buffer_bytes = cfg.kuzu_buffer_pool_mb * 1024 * 1024
-
-        # Apply monkey-patch for bounded Kuzu buffer pool before construction
-        try:
-            import kuzu as _kuzu
-
-            _orig_db_init = _kuzu.Database.__init__
-
-            def _bounded_db_init(self_db, database_path=None, **kw):
-                kw.setdefault("buffer_pool_size", buffer_bytes)
-                kw.setdefault("max_db_size", KUZU_MAX_DB_SIZE)
-                _orig_db_init(self_db, database_path, **kw)
-
-            _kuzu.Database.__init__ = _bounded_db_init
-            try:
-                adapter = CognitiveAdapter(
-                    agent_name=cfg.agent_name,
-                    db_path=db_path,
-                    hive_store=self._hive,
-                )
-            finally:
-                _kuzu.Database.__init__ = _orig_db_init
-        except ImportError:
-            # kuzu not installed — CognitiveAdapter will fall back internally
-            adapter = CognitiveAdapter(
-                agent_name=cfg.agent_name,
-                db_path=db_path,
-                hive_store=self._hive,
-            )
-
-        return adapter
+        return CognitiveAdapter(
+            agent_name=cfg.agent_name,
+            db_path=db_path,
+            hive_store=self._hive,
+            buffer_pool_size=buffer_pool_size,
+        )
 
     def _build_hierarchical(self, cfg: MemoryConfig) -> Any:
         """Create a HierarchicalMemory instance."""

@@ -1,4 +1,4 @@
-"""Storage pipeline fer 5-type memory system.
+"""Storage pipeline for 5-type memory system.
 
 Re-exports StorageRequest from coordinator.
 

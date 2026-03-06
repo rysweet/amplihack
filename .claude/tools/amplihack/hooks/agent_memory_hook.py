@@ -112,7 +112,7 @@ async def inject_memory_for_agents(
     try:
         # Import memory coordinator (lazy import to avoid startup overhead)
         from amplihack.memory.coordinator import MemoryCoordinator, RetrievalQuery
-        from amplihack.memory.types import MemoryType
+        from amplihack.memory.models import MemoryType
 
         # Initialize coordinator with session_id
         coordinator = MemoryCoordinator(session_id=session_id or "hook_session")
@@ -198,7 +198,7 @@ async def extract_learnings_from_conversation(
     try:
         # Import memory coordinator (lazy import)
         from amplihack.memory.coordinator import MemoryCoordinator, StorageRequest
-        from amplihack.memory.types import MemoryType
+        from amplihack.memory.models import MemoryType
 
         # Initialize coordinator with session_id
         coordinator = MemoryCoordinator(session_id=session_id or "hook_session")
