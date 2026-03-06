@@ -9,6 +9,8 @@ Public API:
 
 from __future__ import annotations
 
+import logging
+import re
 import shlex
 import subprocess
 
@@ -91,8 +93,7 @@ def gather_context(
             parse_context_output(result.stdout, context)
 
     except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
-        import logging as _logging
-        _logging.getLogger(__name__).warning(
+        logging.getLogger(__name__).warning(
             "Context gathering failed for %s/%s: %s", vm_name, session_name, exc
         )
         context.agent_status = "unreachable"
@@ -160,8 +161,6 @@ def parse_context_output(output: str, context: SessionContext) -> None:
                     if "PR_CREATED:" in line:
                         context.pr_url = line.split("PR_CREATED:")[-1].strip()
                     elif "pull/" in line and "github.com" in line:
-                        # Extract PR URL from text
-                        import re
                         pr_match = re.search(r'https://github\.com/[^\s"]+/pull/\d+', line)
                         if pr_match:
                             context.pr_url = pr_match.group(0)

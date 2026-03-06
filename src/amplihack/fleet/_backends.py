@@ -16,7 +16,7 @@ from __future__ import annotations
 import os
 from typing import Protocol
 
-from amplihack.fleet._constants import SUBPROCESS_TIMEOUT_SECONDS
+from amplihack.fleet._constants import DEFAULT_LLM_MAX_TOKENS, SUBPROCESS_TIMEOUT_SECONDS
 
 __all__ = [
     "LLMBackend",
@@ -36,9 +36,15 @@ class LLMBackend(Protocol):
 class AnthropicBackend:
     """Anthropic SDK backend."""
 
-    def __init__(self, model: str = "claude-sonnet-4-20250514", api_key: str = ""):
+    def __init__(
+        self,
+        model: str = "claude-sonnet-4-20250514",
+        api_key: str = "",
+        max_tokens: int = DEFAULT_LLM_MAX_TOKENS,
+    ):
         self.model = model
         self.api_key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
+        self.max_tokens = max_tokens
 
     def complete(self, system_prompt: str, user_prompt: str) -> str:
         import anthropic
@@ -46,7 +52,7 @@ class AnthropicBackend:
         client = anthropic.Anthropic(api_key=self.api_key)
         response = client.messages.create(
             model=self.model,
-            max_tokens=500,
+            max_tokens=self.max_tokens,
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
         )
@@ -116,8 +122,9 @@ class LiteLLMBackend:
     Set model via constructor: "gpt-4o", "claude-sonnet-4-20250514", "ollama/llama3", etc.
     """
 
-    def __init__(self, model: str = "gpt-4o"):
+    def __init__(self, model: str = "gpt-4o", max_tokens: int = DEFAULT_LLM_MAX_TOKENS):
         self.model = model
+        self.max_tokens = max_tokens
 
     def complete(self, system_prompt: str, user_prompt: str) -> str:
         import litellm
@@ -128,7 +135,7 @@ class LiteLLMBackend:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            max_tokens=500,
+            max_tokens=self.max_tokens,
         )
         choices = getattr(response, "choices", [])
         if choices:

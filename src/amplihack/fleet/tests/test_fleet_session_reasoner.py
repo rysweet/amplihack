@@ -588,7 +588,7 @@ class TestAnthropicBackend:
         assert result == "Hello from Claude"
         mock_client.messages.create.assert_called_once_with(
             model=backend.model,
-            max_tokens=500,
+            max_tokens=backend.max_tokens,
             system="system prompt",
             messages=[{"role": "user", "content": "user prompt"}],
         )
@@ -690,7 +690,7 @@ class TestLiteLLMBackendComplete:
                 {"role": "system", "content": "system prompt"},
                 {"role": "user", "content": "user prompt"},
             ],
-            max_tokens=500,
+            max_tokens=backend.max_tokens,
         )
 
     def test_complete_empty_choices(self):
@@ -977,7 +977,7 @@ class TestExecuteDecision:
         assert mock_run.called
 
     def test_execute_send_input_dangerous_blocked(self):
-        """Dangerous input text is blocked and action escalated."""
+        """Dangerous input text is blocked — new escalate decision appended."""
         mock = MockBackend()
         reasoner = SessionReasoner(backend=mock, dry_run=False)
 
@@ -993,8 +993,12 @@ class TestExecuteDecision:
             reasoner._execute_decision(decision)
 
         mock_run.assert_not_called()
-        assert decision.action == "escalate"
-        assert "BLOCKED" in decision.reasoning
+        # Original decision is NOT mutated (fix #9 from quality audit)
+        assert decision.action == "send_input"
+        # A new escalate decision is appended to the decisions list
+        assert len(reasoner._decisions) == 1
+        assert reasoner._decisions[0].action == "escalate"
+        assert "BLOCKED" in reasoner._decisions[0].reasoning
 
     def test_execute_send_input_multiline(self):
         """Multi-line input sends each line separately."""

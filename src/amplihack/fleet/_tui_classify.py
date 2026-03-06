@@ -6,6 +6,8 @@ Public API:
 
 from __future__ import annotations
 
+from amplihack.fleet._constants import MIN_SUBSTANTIAL_OUTPUT_LEN
+
 __all__ = ["classify_status"]
 
 
@@ -83,7 +85,7 @@ def classify_status(tmux_text: str) -> str:
         return "idle"
 
     # --- Default: running if there is substantial output ---
-    if len(combined.strip()) > 50:
+    if len(combined.strip()) > MIN_SUBSTANTIAL_OUTPUT_LEN:
         return "running"
 
     return "unknown"
