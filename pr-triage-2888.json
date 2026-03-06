@@ -1,0 +1,35 @@
+{
+  "pr_number": 2888,
+  "title": "[docs] docs: add template variable quoting guidance based on PR #2887",
+  "author": "github-actions[bot]",
+  "created_at": "2026-03-06T06:39:26Z",
+  "triage_date": "2026-03-06T06:57:16Z",
+  "category": "documentation",
+  "risk_level": "LOW",
+  "risk_score": 1,
+  "risk_factors": [
+    "Documentation-only change (low risk)",
+    "No test changes"
+  ],
+  "priority": "LOW",
+  "priority_score": 2,
+  "priority_factors": [
+    "Documentation update",
+    "Automated PR - needs validation"
+  ],
+  "recommended_action": "AUTO_MERGE_CANDIDATE",
+  "action_details": "Low-risk documentation change, suitable for automated merge",
+  "changes": {
+    "additions": 294,
+    "deletions": 1,
+    "changed_files": 4,
+    "files": [
+      "docs/recipes/README.md",
+      "docs/recipes/RECENT_FIXES_MARCH_2026.md",
+      "docs/recipes/template-variables-troubleshooting.md",
+      "docs/reference/recipe-cli-reference.md"
+    ]
+  },
+  "checks_status": "pending",
+  "mergeable": true
+}
