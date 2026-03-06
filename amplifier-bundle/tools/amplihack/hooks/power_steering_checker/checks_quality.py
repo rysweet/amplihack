@@ -1,6 +1,5 @@
 """Quality checks mixin - checks for code quality and philosophy compliance."""
 
-import os
 import re
 
 # Constants for quality checks
@@ -236,34 +235,31 @@ class ChecksQualityMixin:
         return False
 
     def _check_agent_unnecessary_questions(self, transcript: list[dict], session_id: str) -> bool:
-        """Check if agent asked unnecessary questions instead of proceeding autonomously.
+        """Check if agent asked unnecessary questions instead of proceeding.
 
-        Detects use of AskUserQuestion tool, which is the concrete signal that the
-        agent stopped to ask the user something. Simple question marks in prose
-        (explanations, documentation, rhetorical questions) are NOT counted.
+        Detects questions that could have been inferred from context.
 
         Args:
             transcript: List of message dictionaries
             session_id: Session identifier
 
         Returns:
-            True if no excessive questioning, False if agent over-asked
+            True if no unnecessary questions, False otherwise
         """
-        # Count actual AskUserQuestion tool invocations (the concrete signal)
-        ask_user_count = 0
+        # Count questions asked by assistant (question marks in text)
+        assistant_questions = 0
         for msg in transcript:
-            if msg.get("type") == "assistant" and "message" in msg:
-                content = msg["message"].get("content", [])
+            if msg.get("type") == "assistant":
+                content = msg.get("message", {}).get("content", [])
                 if isinstance(content, list):
                     for block in content:
-                        if isinstance(block, dict) and block.get("type") == "tool_use":
-                            if block.get("name") == "AskUserQuestion":
-                                ask_user_count += 1
+                        if isinstance(block, dict) and block.get("type") == "text":
+                            text = str(block.get("text", ""))
+                            # Count question marks in assistant responses
+                            assistant_questions += text.count("?")
 
-        # More than 3 explicit AskUserQuestion invocations suggests the agent
-        # was not working autonomously. This avoids false positives from
-        # question marks in prose, documentation, or code comments.
-        if ask_user_count > MAX_ASK_USER_COUNT:
+        # Heuristic: If assistant asked more than 3 questions, might be excessive
+        if assistant_questions > MAX_ASK_USER_COUNT:
             return False
 
         return True
@@ -421,27 +417,17 @@ class ChecksQualityMixin:
     def _check_unrelated_changes(self, transcript: list[dict], session_id: str) -> bool:
         """Check if there are unrelated changes in PR.
 
-        Detects scope creep by checking if files span too many unrelated
-        top-level directories. A focused change should touch files in 1-3
-        related directories. Touching 6+ distinct top-level directories
-        suggests scope creep.
-
-        Previous heuristic (>20 files = scope creep) was replaced because
-        file count has no correlation with relatedness — a legitimate refactor
-        can touch 50 files in one module while a 5-file change can span
-        unrelated areas.
+        Detects scope creep and unrelated modifications.
 
         Args:
             transcript: List of message dictionaries
             session_id: Session identifier
 
         Returns:
-            True if changes appear focused, False if too scattered
+            True if no unrelated changes, False if scope creep detected
         """
-        # Collect distinct top-level project directories of modified files
-        top_dirs = set()
-        project_root_str = str(self.project_root)
-
+        # Check files modified
+        files_modified = []
         for msg in transcript:
             if msg.get("type") == "assistant" and "message" in msg:
                 content = msg["message"].get("content", [])
@@ -450,20 +436,10 @@ class ChecksQualityMixin:
                         if isinstance(block, dict) and block.get("type") == "tool_use":
                             if block.get("name") in ["Write", "Edit"]:
                                 file_path = block.get("input", {}).get("file_path", "")
-                                if not file_path:
-                                    continue
-                                # Convert to project-relative path
-                                try:
-                                    rel = os.path.relpath(file_path, project_root_str)
-                                except ValueError:
-                                    continue  # Different drives on Windows
-                                parts = rel.split(os.sep)
-                                # Skip paths outside project (.. prefix)
-                                if parts and parts[0] != ".." and len(parts) >= 2:
-                                    top_dirs.add(parts[0])
+                                files_modified.append(file_path.lower())
 
-        # 6+ distinct top-level project directories suggests scattered changes
-        if len(top_dirs) >= 6:
+        # Heuristic: If more than 20 files modified, might have scope creep
+        if len(files_modified) > 20:
             return False
 
         return True

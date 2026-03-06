@@ -688,6 +688,51 @@ class PowerSteeringChecker(
                 transcript, session_id, session_type, progress_callback
             )
 
+            # 5a. Deterministic override: run heuristics for considerations where the
+            # heuristic is more reliable than SDK (e.g. todos_complete).
+            # If heuristic returns False for a consideration that SDK passed (True),
+            # override the result. This prevents SDK fail-open from masking real failures.
+            # Note: This is done AFTER _analyze_considerations (not inside it) so that
+            # the SDK-first architecture is preserved in _check_single_consideration_async.
+            for cid, result in list(analysis.results.items()):
+                if result.satisfied:
+                    checker_name = ""
+                    # Find the checker for this consideration
+                    for c in self.considerations:
+                        if c.get("id") == cid:
+                            checker_name = c.get("checker", "")
+                            break
+                    if checker_name and hasattr(self, checker_name) and callable(
+                        getattr(self, checker_name)
+                    ):
+                        try:
+                            heuristic_func = getattr(self, checker_name)
+                            heuristic_satisfied = heuristic_func(transcript, session_id)
+                            if not heuristic_satisfied:
+                                # Heuristic says NOT satisfied - override SDK result
+                                from .considerations import CheckerResult as _CheckerResult
+                                overridden = _CheckerResult(
+                                    consideration_id=cid,
+                                    satisfied=False,
+                                    reason="Deterministic heuristic: not satisfied",
+                                    severity=result.severity,
+                                    recovery_steps=result.recovery_steps,
+                                )
+                                # Remove old result and add overridden one
+                                del analysis.results[cid]
+                                analysis.results[cid] = overridden
+                                if result.severity == "blocker":
+                                    analysis.failed_blockers.append(overridden)
+                                else:
+                                    analysis.failed_warnings.append(overridden)
+                        except Exception as e:
+                            # Fail-open: keep SDK result on any heuristic error
+                            self._log(
+                                f"Deterministic override error for '{cid}' (fail-open): {e}",
+                                "WARNING",
+                                exc_info=True,
+                            )
+
             # 5b. Delta analysis: Check if NEW content addresses previous failures
             addressed_concerns: dict[str, str] = {}
             user_claims: list[str] = []
