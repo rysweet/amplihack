@@ -196,6 +196,13 @@ class ShardStore:
         self._lock = threading.Lock()
         self._facts: dict[str, ShardFact] = {}  # fact_id → ShardFact
         self._content_index: dict[str, str] = {}  # content_hash → fact_id (dedup)
+        self._summary_embedding: Any = None  # numpy array or None (running average)
+        self._embedding_count: int = 0  # n for running average denominator
+        self._embedding_generator: Any = None  # callable: str → array
+
+    def set_embedding_generator(self, gen: Any) -> None:
+        """Set the embedding generator for computing shard summary embeddings."""
+        self._embedding_generator = gen
 
     def store(self, fact: ShardFact) -> bool:
         """Store a fact in this shard. Returns False if duplicate."""
@@ -205,7 +212,27 @@ class ShardStore:
                 return False
             self._facts[fact.fact_id] = fact
             self._content_index[content_hash] = fact.fact_id
-            return True
+
+        # Update running-average summary embedding outside main lock
+        if self._embedding_generator is not None:
+            try:
+                new_emb = self._embedding_generator(fact.content)
+                if new_emb is not None:
+                    import numpy as np
+                    new_emb = np.array(new_emb, dtype=float)
+                    with self._lock:
+                        n = self._embedding_count
+                        if self._summary_embedding is None:
+                            self._summary_embedding = new_emb.copy()
+                        else:
+                            self._summary_embedding = (
+                                self._summary_embedding * n + new_emb
+                            ) / (n + 1)
+                        self._embedding_count += 1
+            except Exception:
+                pass
+
+        return True
 
     def get(self, fact_id: str) -> ShardFact | None:
         """Get a fact by ID."""
@@ -276,15 +303,25 @@ class DHTRouter:
         self._embedding_generator: Any = None
 
     def set_embedding_generator(self, gen: Any) -> None:
-        """Set the embedding generator for semantic routing."""
+        """Set the embedding generator for semantic routing.
+
+        Propagates to all existing and future shards so they can compute
+        running-average summary embeddings on each store() call.
+        """
         self._embedding_generator = gen
+        with self._lock:
+            for shard in self._shards.values():
+                shard.set_embedding_generator(gen)
 
     def add_agent(self, agent_id: str) -> ShardStore:
         """Add an agent to the DHT. Returns its shard store."""
         self.ring.add_agent(agent_id)
         with self._lock:
             if agent_id not in self._shards:
-                self._shards[agent_id] = ShardStore(agent_id)
+                shard = ShardStore(agent_id)
+                if self._embedding_generator is not None:
+                    shard.set_embedding_generator(self._embedding_generator)
+                self._shards[agent_id] = shard
             return self._shards[agent_id]
 
     def remove_agent(self, agent_id: str) -> list[ShardFact]:
@@ -305,6 +342,8 @@ class DHTRouter:
         """Store a fact on the appropriate shard owner(s).
 
         Routes via consistent hashing. Replicates to R agents.
+        Passes embedding_generator to each shard so they can update their
+        running-average summary embedding for semantic routing.
         Returns list of agent_ids that stored the fact.
         """
         key = _content_key(fact.content)
@@ -315,8 +354,12 @@ class DHTRouter:
 
         for agent_id in owners:
             shard = self.get_shard(agent_id)
-            if shard and shard.store(fact):
-                stored_on.append(agent_id)
+            if shard:
+                # Ensure shard has the embedding generator (e.g. if set after add_agent)
+                if self._embedding_generator is not None and shard._embedding_generator is None:
+                    shard.set_embedding_generator(self._embedding_generator)
+                if shard.store(fact):
+                    stored_on.append(agent_id)
 
         if stored_on:
             logger.debug(
@@ -372,13 +415,47 @@ class DHTRouter:
     ) -> list[str]:
         """Select which agents to query based on content routing.
 
-        Strategy:
-        1. DHT lookup for the full query key → shard owners
-        2. DHT lookup for each individual word → broader coverage
-        3. For small hives (<20 agents), scan all non-empty shards
+        Strategy (in order of preference):
+        1. Semantic routing: embed question, rank shards by cosine similarity
+           (used when embedding_generator is set and shards have embeddings)
+        2. DHT lookup for the full query key → shard owners
+        3. DHT lookup for each individual word → broader coverage
+        4. For small hives (<20 agents), scan all non-empty shards
         """
         all_agents = self.ring.agent_ids
         max_targets = self._query_fanout * 3
+
+        # ── Semantic routing ────────────────────────────────────────────────
+        if self._embedding_generator is not None:
+            try:
+                import numpy as np
+
+                query_emb = self._embedding_generator(query_text)
+                if query_emb is not None:
+                    q = np.array(query_emb, dtype=float)
+                    q_norm = np.linalg.norm(q)
+                    if q_norm > 0:
+                        scored: list[tuple[float, str]] = []
+                        with self._lock:
+                            for agent_id in all_agents:
+                                shard = self._shards.get(agent_id)
+                                if (
+                                    shard
+                                    and shard.fact_count > 0
+                                    and shard._summary_embedding is not None
+                                ):
+                                    s = shard._summary_embedding
+                                    s_norm = np.linalg.norm(s)
+                                    if s_norm > 0:
+                                        sim = float(np.dot(q, s) / (q_norm * s_norm))
+                                        scored.append((sim, agent_id))
+
+                        if scored:
+                            scored.sort(key=lambda x: x[0], reverse=True)
+                            return [aid for _, aid in scored[:max_targets]]
+            except Exception:
+                pass
+        # ── Keyword routing (fallback) ───────────────────────────────────────
 
         # Small hive optimization: just scan everything
         if len(all_agents) <= 20:

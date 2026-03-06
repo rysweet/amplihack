@@ -274,6 +274,9 @@ class LearningAgent:
         if not source_label:
             source_label = content[:60].strip()
 
+        # OBSERVE: store content in OODA loop, check prior knowledge
+        self.loop.observe(content[:500])
+
         # In hierarchical mode, store episode first for provenance tracking
         episode_id = ""
         if self.use_hierarchical and hasattr(self.memory, "store_episode"):
@@ -285,7 +288,7 @@ class LearningAgent:
             except Exception as e:
                 logger.warning("Failed to store episode for provenance: %s", e)
 
-        # Use LLM to extract facts (pass temporal metadata for conditional hints)
+        # ACT: Use LLM to extract facts (pass temporal metadata for conditional hints)
         facts = self._extract_facts_with_llm(content, temporal_meta)
 
         # Store each fact
@@ -329,6 +332,14 @@ class LearningAgent:
         # Generate and store a summary concept map for knowledge organization
         if facts and stored_count > 0:
             self._store_summary_concept_map(content, facts, episode_id)
+
+        # LEARN: record the learning episode via the OODA loop
+        self.loop.learn(
+            perception=content[:500],
+            reasoning="Extracted facts from content",
+            action={"action": "learn", "params": {"stored": stored_count}},
+            outcome=f"Extracted {len(facts)} facts, stored {stored_count}",
+        )
 
         return {
             "facts_extracted": len(facts),
@@ -511,7 +522,11 @@ class LearningAgent:
         if not question or not question.strip():
             return "Error: Question is empty"
 
-        # Step 1: Intent detection -- single LLM call to classify the question
+        # ── OODA: OBSERVE ────────────────────────────────────────────────────
+        # Ingest the question and recall any prior answers from Memory facade.
+        self.loop.observe(question)
+
+        # Step 1 / OODA ORIENT (start): Intent detection -- single LLM call
         intent = self._detect_intent(question)
         intent_type = intent.get("intent", "simple_recall")
 
@@ -734,7 +749,8 @@ class LearningAgent:
             except Exception as e:
                 logger.warning("Temporal code generation failed: %s", e)
 
-        # Step 3: Synthesize answer with intent-aware prompting
+        # ── OODA: DECIDE ─────────────────────────────────────────────────────
+        # Synthesize answer from the oriented world model (relevant_facts).
         answer = self._synthesize_with_llm(
             question=question,
             context=relevant_facts,
@@ -757,7 +773,8 @@ class LearningAgent:
                 total_facts_collected=len(relevant_facts),
             )
 
-        # Store the question-answer pair as a learning (truncate to fit).
+        # ── OODA: ACT ────────────────────────────────────────────────────────
+        # Return the answer and remember the Q&A pair for future recall.
         # Solution B: Skip Q&A store when called from answer_question_agentic
         # to reduce concurrent DB writes during parallel evaluation. The agentic
         # caller will store its own final answer after refinement if needed.
@@ -768,6 +785,8 @@ class LearningAgent:
                 confidence=0.7,
                 tags=["q_and_a", question_level.lower()],
             )
+            # Also remember via OODA loop for Memory facade integration
+            self.loop.observe(f"Q: {question[:200]} A: {answer[:300]}")
 
         if return_trace:
             return answer, reasoning_trace
