@@ -242,58 +242,33 @@ class ChecksCiPrMixin:
     def _check_review_responses(self, transcript: list[dict], session_id: str) -> bool:
         """Check if PR review comments were addressed.
 
-        Only triggers when there is concrete evidence of actual PR review activity
-        (gh pr review, gh api for PR comments, reviewer requested changes). Does NOT
-        trigger on the generic word 'review' in user messages, which caused widespread
-        false positives.
+        Verifies reviewer feedback was acknowledged and resolved.
 
         Args:
             transcript: List of message dictionaries
             session_id: Session identifier
 
         Returns:
-            True if reviews addressed or no PR reviews exist, False if unaddressed
+            True if reviews addressed or no reviews, False if unaddressed feedback
         """
-        # Look for concrete PR review signals in tool calls, not generic keywords.
-        # These indicate actual GitHub PR review comments exist.
-        pr_review_command_patterns = [
-            "gh pr review",
-            "requested changes",
-            "changes_requested",
-            "reviewer comment",
-            "review comment",
-        ]
-        has_pr_reviews = False
+        # Look for review-related activity in user messages
+        review_keywords = ["review", "feedback", "comment", "requested changes"]
+        has_reviews = False
 
         for msg in transcript:
-            # Check Bash tool calls for PR review commands
-            if msg.get("type") == "assistant" and "message" in msg:
-                content = msg["message"].get("content", [])
-                if isinstance(content, list):
-                    for block in content:
-                        if isinstance(block, dict) and block.get("type") == "tool_use":
-                            if block.get("name") == "Bash":
-                                command = block.get("input", {}).get("command", "").lower()
-                                if any(p in command for p in pr_review_command_patterns):
-                                    has_pr_reviews = True
-                                    break
-                                # Narrow gh api match: only review/comment endpoints
-                                if "gh api repos/" in command and (
-                                    "/reviews" in command or "/comments" in command
-                                ):
-                                    has_pr_reviews = True
-                                    break
-            # Check tool results for review-related output
-            if msg.get("type") == "tool_result":
-                output = str(msg.get("message", {}).get("content", "")).lower()
-                if "requested changes" in output or "changes_requested" in output:
-                    has_pr_reviews = True
+            if msg.get("type") == "user":
+                content = str(msg.get("message", {}).get("content", "")).lower()
+                if any(keyword in content for keyword in review_keywords):
+                    has_reviews = True
+                    break
 
-        if not has_pr_reviews:
-            return True  # No PR reviews to address
+        if not has_reviews:
+            return True  # No reviews to address
 
-        # Look for response indicators showing reviews were handled
-        response_keywords = ["addressed", "fixed", "updated", "resolved", "pushed"]
+        # Look for response indicators
+        response_keywords = ["addressed", "fixed", "updated", "changed", "resolved"]
+        has_responses = False
+
         for msg in transcript:
             if msg.get("type") == "assistant":
                 content = msg.get("message", {}).get("content", [])
@@ -302,9 +277,10 @@ class ChecksCiPrMixin:
                         if isinstance(block, dict) and block.get("type") == "text":
                             text = str(block.get("text", "")).lower()
                             if any(keyword in text for keyword in response_keywords):
-                                return True
+                                has_responses = True
+                                break
 
-        return False
+        return has_responses
 
     def _check_branch_rebase(self, transcript: list[dict], session_id: str) -> bool:
         """Check if branch needs rebase on main.

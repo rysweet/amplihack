@@ -258,17 +258,12 @@ class ChecksWorkflowMixin:
         return True
 
     def _check_next_steps(self, transcript: list[dict], session_id: str) -> bool:
-        """Check that work is complete with NO remaining next steps (Issue #2196 - Enhanced).
+        """Check that work is complete with NO remaining next steps.
 
-        UPDATED LOGIC (Issue #2196):
-        - Uses regex patterns to detect STRUCTURED next steps (bulleted lists)
-        - Handles negation ("no next steps", "no remaining work")
-        - Ignores status observations ("CI pending", "waiting for")
-        - Prevents false positives on completion statements
-
-        INVERTED LOGIC: If the agent mentions concrete next steps in structured format,
-        work is incomplete. Simple keywords without structure are ignored to prevent
-        false positives.
+        INVERTED LOGIC: If the agent mentions "next steps", "remaining work", or
+        similar phrases in their final messages, that means they're acknowledging
+        there's MORE work to do. This check FAILS when next steps are found,
+        prompting the agent to continue working until no next steps remain.
 
         Args:
             transcript: List of message dictionaries
@@ -278,7 +273,35 @@ class ChecksWorkflowMixin:
             True if NO next steps found (work is complete)
             False if next steps ARE found (work is incomplete - should continue)
         """
-        # Check RECENT assistant messages (last 10) for structured next steps
+        # Keywords that indicate incomplete work
+        incomplete_work_keywords = [
+            "next steps",
+            "next step",
+            "follow-up",
+            "follow up",
+            "future work",
+            "remaining work",
+            "remaining tasks",
+            "still need to",
+            "still needs to",
+            "todo",
+            "to-do",
+            "to do",
+            "left to do",
+            "more to do",
+            "additional work",
+            "further work",
+            "outstanding",
+            "not yet complete",
+            "not yet done",
+            "incomplete",
+            "pending",
+            "planned for later",
+            "deferred",
+        ]
+
+        # Check RECENT assistant messages (last 10) for incomplete work indicators
+        # These are where the agent would summarize before stopping
         recent_messages = [m for m in transcript[-20:] if m.get("type") == "assistant"][-10:]
 
         for msg in reversed(recent_messages):
@@ -286,39 +309,14 @@ class ChecksWorkflowMixin:
             if isinstance(content, list):
                 for block in content:
                     if isinstance(block, dict) and block.get("type") == "text":
-                        text = str(block.get("text", ""))
-
-                        # First check for negation patterns (completion statements)
-                        # These should PASS the check (return True)
-                        # Use module-level pre-compiled _NEGATION_PATTERNS
-                        negation_matched = any(p.search(text) for p in _NEGATION_PATTERNS)
-                        if negation_matched:
-                            self._log(
-                                "Completion statement found: negation pattern matched",
-                                "INFO",
-                            )
-                            continue
-
-                        # Check for STRUCTURED next steps (bulleted/numbered lists)
-                        # These indicate CONCRETE remaining work
-                        # Use module-level pre-compiled _NEXT_STEPS_PATTERNS
-                        for pattern in _NEXT_STEPS_PATTERNS:
-                            if pattern.search(text):
-                                # Before flagging, check if ALL bullet items are
-                                # user-handoff or deferred-to-issue patterns
-                                text_lower = text.lower()
-                                is_handoff = any(hp.search(text_lower) for hp in _HANDOFF_PATTERNS)
-                                if is_handoff:
-                                    self._log(
-                                        "Structured list detected but contains handoff/deferred items - treating as complete",
-                                        "INFO",
-                                    )
-                                    continue  # Skip this match, not real remaining work
+                        text = str(block.get("text", "")).lower()
+                        for keyword in incomplete_work_keywords:
+                            if keyword in text:
                                 self._log(
-                                    f"Structured next steps found: pattern '{pattern.pattern}' - agent should continue",
+                                    f"Incomplete work indicator found: '{keyword}' - agent should continue",
                                     "INFO",
                                 )
-                                return False  # Work is INCOMPLETE (concrete next steps exist)
+                                return False  # Work is INCOMPLETE
 
-        # No structured next steps found - work is complete
+        # No incomplete work indicators found - work is complete
         return True

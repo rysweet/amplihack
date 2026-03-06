@@ -25,9 +25,8 @@ class ChecksDocsMixin:
     def _check_documentation_updates(self, transcript: list[dict], session_id: str) -> bool:
         """Check if relevant documentation files were updated.
 
-        Only flags missing docs when PUBLIC-FACING code was changed (commands,
-        skills, CLIs, public APIs). Internal code changes (hooks, utilities,
-        tests, configs) do not require documentation updates.
+        Looks for Write/Edit operations on documentation files when code changes
+        are present.
 
         Args:
             transcript: List of message dictionaries
@@ -36,7 +35,8 @@ class ChecksDocsMixin:
         Returns:
             True if docs updated or not applicable, False if needed but missing
         """
-        public_code_modified = False
+        # Check if code changes were made
+        code_files_modified = False
         doc_files_modified = False
 
         for msg in transcript:
@@ -48,36 +48,18 @@ class ChecksDocsMixin:
                             tool_name = block.get("name", "")
                             if tool_name in ["Write", "Edit"]:
                                 tool_input = block.get("input", {})
-                                file_path = tool_input.get("file_path", "").lower()
+                                file_path = tool_input.get("file_path", "")
 
-                                # Only flag public-facing code changes
-                                is_code = any(
-                                    file_path.endswith(ext) for ext in self.CODE_FILE_EXTENSIONS
-                                )
-                                is_public = any(
-                                    indicator in file_path
-                                    for indicator in self.PUBLIC_CODE_INDICATORS
-                                )
-                                # __init__.py is public only inside public dirs
-                                if "__init__.py" in file_path and any(
-                                    d in file_path
-                                    for d in ["/commands/", "/skills/", "/scenarios/"]
-                                ):
-                                    is_public = True
-                                if is_code and is_public:
-                                    public_code_modified = True
+                                # Check for code files using class constant
+                                if any(ext in file_path for ext in self.CODE_FILE_EXTENSIONS):
+                                    code_files_modified = True
 
                                 # Check for doc files using class constant
-                                if any(
-                                    file_path.endswith(ext)
-                                    if ext.startswith(".")
-                                    else ext in file_path
-                                    for ext in self.DOC_FILE_EXTENSIONS
-                                ):
+                                if any(ext in file_path for ext in self.DOC_FILE_EXTENSIONS):
                                     doc_files_modified = True
 
-        # Only flag if public-facing code was changed without doc updates
-        if public_code_modified and not doc_files_modified:
+        # If code was modified but no docs updated, flag as issue
+        if code_files_modified and not doc_files_modified:
             return False
 
         return True
