@@ -38,7 +38,7 @@ class AnthropicBackend:
 
     def __init__(
         self,
-        model: str = "claude-sonnet-4-20250514",
+        model: str = "claude-opus-4-6",
         api_key: str = "",
         max_tokens: int = DEFAULT_LLM_MAX_TOKENS,
     ):
@@ -119,7 +119,7 @@ class LiteLLMBackend:
 
     Requires: pip install litellm
     Works with: OpenAI, Anthropic, Azure, Copilot, Ollama, etc.
-    Set model via constructor: "gpt-4o", "claude-sonnet-4-20250514", "ollama/llama3", etc.
+    Set model via constructor: "gpt-4o", "claude-opus-4-6", "ollama/llama3", etc.
     """
 
     def __init__(self, model: str = "gpt-4o", max_tokens: int = DEFAULT_LLM_MAX_TOKENS):

@@ -546,7 +546,7 @@ class TestAnthropicBackend:
         """Test default model and empty api_key."""
         with patch.dict(os.environ, {}, clear=True):
             backend = AnthropicBackend()
-            assert backend.model == "claude-sonnet-4-20250514"
+            assert backend.model == "claude-opus-4-6"
             assert backend.api_key == ""
 
     def test_init_with_explicit_api_key(self):

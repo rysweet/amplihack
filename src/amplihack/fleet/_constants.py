@@ -38,7 +38,7 @@ DEFAULT_MAX_AGENTS_PER_VM = 3      # Max concurrent agents per VM
 DEFAULT_MAX_TURNS = 20             # Default task max turns
 
 # ── LLM ──────────────────────────────────────────────────────────────
-DEFAULT_LLM_MAX_TOKENS = 4096     # ~40% of model output limit for reasoning
+DEFAULT_LLM_MAX_TOKENS = 128000   # Max output tokens for admiral reasoning
 MIN_SUBSTANTIAL_OUTPUT_LEN = 50   # Chars threshold for "has substantial output"
 
 # ── Health Thresholds ─────────────────────────────────────────────────
