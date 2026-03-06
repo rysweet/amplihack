@@ -182,6 +182,26 @@ class GraphStore(Protocol):
         """Release any resources held by the backend."""
         ...
 
+    def get_all_node_ids(self, table: str | None = None) -> set[str]:
+        """Get all node IDs, optionally filtered by table."""
+        ...
+
+    def export_nodes(self, node_ids: list[str] | None = None) -> list[tuple[str, str, dict]]:
+        """Export nodes as (table, node_id, properties) tuples."""
+        ...
+
+    def export_edges(self, node_ids: list[str] | None = None) -> list[tuple[str, str, str, dict]]:
+        """Export edges as (rel_type, from_id, to_id, properties) tuples."""
+        ...
+
+    def import_nodes(self, nodes: list[tuple[str, str, dict]]) -> int:
+        """Import nodes. Returns count of new nodes stored (skips duplicates)."""
+        ...
+
+    def import_edges(self, edges: list[tuple[str, str, str, dict]]) -> int:
+        """Import edges. Returns count stored."""
+        ...
+
 
 __all__ = [
     "GraphStore",

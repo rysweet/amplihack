@@ -145,6 +145,64 @@ def _test_create_and_get_edges(store: GraphStore) -> None:
     assert any(e.get("to_id") == id2 for e in edges)
 
 
+def _test_delete_edge(store: GraphStore) -> None:
+    store.ensure_rel_table(
+        "RELATED_TO",
+        "semantic_memory",
+        "semantic_memory",
+        schema={"weight": "DOUBLE", "relation_type": "STRING"},
+    )
+    id1 = store.create_node("semantic_memory", _make_semantic_node(concept="X"))
+    id2 = store.create_node("semantic_memory", _make_semantic_node(concept="Y"))
+    store.create_edge(
+        "RELATED_TO",
+        "semantic_memory", id1,
+        "semantic_memory", id2,
+        {"weight": 1.0, "relation_type": "link"},
+    )
+    # Edge exists before deletion
+    edges_before = store.get_edges(id1, "RELATED_TO", direction="out")
+    assert any(e.get("to_id") == id2 for e in edges_before), "Edge must exist before deletion"
+
+    store.delete_edge("RELATED_TO", id1, id2)
+    edges_after = store.get_edges(id1, "RELATED_TO", direction="out")
+    assert not any(e.get("to_id") == id2 for e in edges_after), "Edge must be gone after deletion"
+
+
+def _test_get_edges_directions(store: GraphStore) -> None:
+    store.ensure_rel_table(
+        "RELATED_TO",
+        "semantic_memory",
+        "semantic_memory",
+        schema={"weight": "DOUBLE", "relation_type": "STRING"},
+    )
+    id1 = store.create_node("semantic_memory", _make_semantic_node(concept="src"))
+    id2 = store.create_node("semantic_memory", _make_semantic_node(concept="dst"))
+    store.create_edge(
+        "RELATED_TO",
+        "semantic_memory", id1,
+        "semantic_memory", id2,
+        {"weight": 0.5, "relation_type": "dir_test"},
+    )
+
+    # direction='out': only edges leaving id1
+    out_edges = store.get_edges(id1, "RELATED_TO", direction="out")
+    assert len(out_edges) >= 1
+    assert all(e.get("from_id") == id1 for e in out_edges)
+
+    # direction='in': only edges arriving at id2
+    in_edges = store.get_edges(id2, "RELATED_TO", direction="in")
+    assert len(in_edges) >= 1
+    assert all(e.get("to_id") == id2 for e in in_edges)
+
+    # direction='both': edges where id1 or id2 appear on either side
+    both_edges_id1 = store.get_edges(id1, "RELATED_TO", direction="both")
+    assert len(both_edges_id1) >= 1
+
+    both_edges_id2 = store.get_edges(id2, "RELATED_TO", direction="both")
+    assert len(both_edges_id2) >= 1
+
+
 def _test_ensure_table_idempotent(store: GraphStore) -> None:
     """Calling ensure_table twice must not raise."""
     store.ensure_table("semantic_memory", SEMANTIC_SCHEMA)
@@ -220,6 +278,12 @@ class TestInMemoryGraphStore:
     def test_create_and_get_edges(self, in_memory_store):
         _test_create_and_get_edges(in_memory_store)
 
+    def test_delete_edge(self, in_memory_store):
+        _test_delete_edge(in_memory_store)
+
+    def test_get_edges_directions(self, in_memory_store):
+        _test_get_edges_directions(in_memory_store)
+
     def test_ensure_table_idempotent(self, in_memory_store):
         _test_ensure_table_idempotent(in_memory_store)
 
@@ -250,6 +314,12 @@ class TestKuzuGraphStore:
 
     def test_create_and_get_edges(self, kuzu_store):
         _test_create_and_get_edges(kuzu_store)
+
+    def test_delete_edge(self, kuzu_store):
+        _test_delete_edge(kuzu_store)
+
+    def test_get_edges_directions(self, kuzu_store):
+        _test_get_edges_directions(kuzu_store)
 
     def test_ensure_table_idempotent(self, kuzu_store):
         _test_ensure_table_idempotent(kuzu_store)
@@ -348,6 +418,173 @@ class TestDistributedGraphStore:
         retrieved_ids = {n["node_id"] for n in all_nodes}
         for nid in node_ids:
             assert nid in retrieved_ids, f"Node {nid} missing from query_nodes results"
+
+
+# ---------------------------------------------------------------------------
+# Export / import and gossip tests
+# ---------------------------------------------------------------------------
+
+
+def test_export_import_nodes():
+    """Export nodes from one store and import into a fresh store."""
+    store = InMemoryGraphStore()
+    store.ensure_table("semantic_memory", SEMANTIC_SCHEMA)
+    id1 = store.create_node("semantic_memory", _make_semantic_node("a", "sky"))
+    id2 = store.create_node("semantic_memory", _make_semantic_node("b", "sea"))
+
+    exported = store.export_nodes()
+    assert len(exported) == 2
+
+    fresh = InMemoryGraphStore()
+    fresh.ensure_table("semantic_memory", SEMANTIC_SCHEMA)
+    count = fresh.import_nodes(exported)
+    assert count == 2
+
+    node = fresh.get_node("semantic_memory", id1)
+    assert node is not None
+    assert node["concept"] == "sky"
+
+    node2 = fresh.get_node("semantic_memory", id2)
+    assert node2 is not None
+    assert node2["concept"] == "sea"
+
+    # Re-importing same nodes should be skipped (dedup)
+    count2 = fresh.import_nodes(exported)
+    assert count2 == 0
+
+
+def test_export_import_edges():
+    """Export edges from one store and import into a fresh store."""
+    store = InMemoryGraphStore()
+    store.ensure_table("semantic_memory", SEMANTIC_SCHEMA)
+    store.ensure_rel_table("RELATED_TO", "semantic_memory", "semantic_memory")
+
+    id1 = store.create_node("semantic_memory", _make_semantic_node("a", "A"))
+    id2 = store.create_node("semantic_memory", _make_semantic_node("a", "B"))
+    store.create_edge("RELATED_TO", "semantic_memory", id1, "semantic_memory", id2)
+
+    edges = store.export_edges()
+    assert len(edges) == 1
+    assert edges[0][0] == "RELATED_TO"
+    assert edges[0][1] == id1
+    assert edges[0][2] == id2
+
+    fresh = InMemoryGraphStore()
+    fresh.ensure_table("semantic_memory", SEMANTIC_SCHEMA)
+    fresh.import_nodes(store.export_nodes())
+    count = fresh.import_edges(edges)
+    assert count == 1
+
+    fresh_edges = fresh.get_edges(id1, "RELATED_TO", direction="out")
+    assert len(fresh_edges) >= 1
+    assert any(e.get("to_id") == id2 for e in fresh_edges)
+
+    # Re-importing same edge should be skipped
+    count2 = fresh.import_edges(edges)
+    assert count2 == 0
+
+
+def test_gossip_full_nodes():
+    """Gossip propagates full node data between shards."""
+    from amplihack.memory.distributed_store import DistributedGraphStore
+
+    store = DistributedGraphStore(
+        replication_factor=1,
+        query_fanout=5,
+        shard_factory=InMemoryGraphStore,
+    )
+    store.add_agent("agent-0")
+    store.add_agent("agent-1")
+    store.ensure_table("semantic_memory", SEMANTIC_SCHEMA)
+
+    # Create a node — with replication_factor=1 it lands on exactly 1 shard
+    nid = store.create_node("semantic_memory", _make_semantic_node("a", "gossip-test"))
+
+    # Confirm it's on exactly 1 shard initially
+    shards_with_node = [
+        s for s in store._all_shards()
+        if s.store.get_node("semantic_memory", nid) is not None
+    ]
+    assert len(shards_with_node) == 1
+
+    # Run gossip — the other shard should receive the node
+    store.run_gossip_round()
+
+    shards_after = [
+        s for s in store._all_shards()
+        if s.store.get_node("semantic_memory", nid) is not None
+    ]
+    assert len(shards_after) == 2, "After gossip, both shards should have the node"
+
+    # Verify properties are intact
+    for shard in shards_after:
+        node = shard.store.get_node("semantic_memory", nid)
+        assert node["concept"] == "gossip-test"
+
+
+def test_gossip_edges():
+    """Gossip propagates edges between shards."""
+    from amplihack.memory.distributed_store import DistributedGraphStore
+
+    store = DistributedGraphStore(
+        replication_factor=1,
+        query_fanout=5,
+        shard_factory=InMemoryGraphStore,
+    )
+    store.add_agent("agent-0")
+    store.add_agent("agent-1")
+    store.ensure_table("semantic_memory", SEMANTIC_SCHEMA)
+    store.ensure_rel_table("RELATED_TO", "semantic_memory", "semantic_memory")
+
+    id1 = store.create_node("semantic_memory", _make_semantic_node("a", "X"))
+    id2 = store.create_node("semantic_memory", _make_semantic_node("a", "Y"))
+    store.create_edge("RELATED_TO", "semantic_memory", id1, "semantic_memory", id2)
+
+    # Run gossip twice to cover both directions
+    store.run_gossip_round()
+    store.run_gossip_round()
+
+    # Both shards should now have both nodes
+    for shard in store._all_shards():
+        for nid in [id1, id2]:
+            assert shard.store.get_node("semantic_memory", nid) is not None
+
+    # Edge should be present via the distributed store
+    all_edges = store.get_edges(id1, "RELATED_TO", direction="out")
+    assert len(all_edges) >= 1
+    assert any(e.get("to_id") == id2 for e in all_edges)
+
+
+def test_rebuild_on_join():
+    """New agent joining with existing data triggers shard rebuild."""
+    from amplihack.memory.distributed_store import DistributedGraphStore
+
+    store = DistributedGraphStore(
+        replication_factor=1,
+        query_fanout=5,
+        shard_factory=InMemoryGraphStore,
+    )
+    store.add_agent("agent-0")
+    store.add_agent("agent-1")
+    store.ensure_table("semantic_memory", SEMANTIC_SCHEMA)
+
+    # Store several nodes across existing agents
+    for i in range(6):
+        store.create_node("semantic_memory", _make_semantic_node("a", f"concept-{i}"))
+
+    # With replication_factor=1, total placements == 6
+    total_before = sum(
+        len(s.store.get_all_node_ids()) for s in store._all_shards()
+    )
+    assert total_before == 6, f"Expected 6 total node placements, got {total_before}"
+
+    # Add a new agent — should trigger rebuild_shard
+    store.add_agent("agent-new")
+
+    new_shard = next(s for s in store._all_shards() if s.agent_id == "agent-new")
+    assert len(new_shard.store.get_all_node_ids()) > 0, (
+        "New agent shard should be populated via rebuild_shard"
+    )
 
 
 def test_distributed_with_kuzu_shards():

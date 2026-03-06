@@ -68,6 +68,8 @@ class KuzuGraphStore:
         self._known_rel_tables: set[str] = set()
         # Cache schemas for coercion
         self._schemas: dict[str, dict[str, str]] = {}
+        # rel_type -> (from_table, to_table) for import_edges
+        self._rel_table_map: dict[str, tuple[str, str]] = {}
 
     # ------------------------------------------------------------------
     # Helpers
@@ -158,6 +160,7 @@ class KuzuGraphStore:
             )
         self._execute(query)
         self._known_rel_tables.add(rel_type)
+        self._rel_table_map[rel_type] = (from_table, to_table)
 
     # ------------------------------------------------------------------
     # Node operations
@@ -282,17 +285,23 @@ class KuzuGraphStore:
     ) -> list[dict[str, Any]]:
         rel_pattern = f"[r:{rel_type}]" if rel_type else "[r]"
         if direction == "out":
-            pattern = f"(n)-{rel_pattern}->(m)"
+            query = (
+                f"MATCH (n)-{rel_pattern}->(m) "
+                f"WHERE n.node_id = $node_id "
+                f"RETURN r, n.node_id AS from_id, m.node_id AS to_id"
+            )
         elif direction == "in":
-            pattern = f"(n)<-{rel_pattern}-(m)"
+            query = (
+                f"MATCH (m)-{rel_pattern}->(n) "
+                f"WHERE n.node_id = $node_id "
+                f"RETURN r, m.node_id AS from_id, n.node_id AS to_id"
+            )
         else:
-            pattern = f"(n)-{rel_pattern}-(m)"
-
-        query = (
-            f"MATCH {pattern} "
-            f"WHERE n.node_id = $node_id "
-            f"RETURN r, n.node_id AS from_id, m.node_id AS to_id"
-        )
+            query = (
+                f"MATCH (n)-{rel_pattern}-(m) "
+                f"WHERE n.node_id = $node_id "
+                f"RETURN r, n.node_id AS from_id, m.node_id AS to_id"
+            )
         result = self._execute(query, {"node_id": node_id})
         rows = []
         if result:
@@ -322,6 +331,83 @@ class KuzuGraphStore:
             f"DELETE r"
         )
         self._execute(query, {"from_id": from_id, "to_id": to_id})
+
+    # ------------------------------------------------------------------
+    # Export / import helpers (for gossip and shard rebuild)
+    # ------------------------------------------------------------------
+
+    def get_all_node_ids(self, table: str | None = None) -> set[str]:
+        """Get all node IDs, optionally filtered by table."""
+        node_ids: set[str] = set()
+        tables = [table] if table else list(self._known_tables)
+        for tbl in tables:
+            if tbl not in self._known_tables:
+                continue
+            query = f"MATCH (n:{tbl}) RETURN n.node_id"
+            result = self._execute(query)
+            if result:
+                while result.has_next():
+                    row = result.get_next()
+                    if row and row[0] is not None:
+                        node_ids.add(str(row[0]))
+        return node_ids
+
+    def export_nodes(self, node_ids: list[str] | None = None) -> list[tuple[str, str, dict]]:
+        """Export nodes as (table, node_id, properties) tuples."""
+        result = []
+        id_set = set(node_ids) if node_ids is not None else None
+        for tbl in list(self._known_tables):
+            nodes = self.query_nodes(tbl, limit=100_000)
+            for node in nodes:
+                nid = node.get("node_id", "")
+                if id_set is None or nid in id_set:
+                    result.append((tbl, nid, dict(node)))
+        return result
+
+    def export_edges(self, node_ids: list[str] | None = None) -> list[tuple[str, str, str, dict]]:
+        """Export edges as (rel_type, from_id, to_id, properties) tuples."""
+        result = []
+        id_set = set(node_ids) if node_ids is not None else None
+        for rel_type in list(self._known_rel_tables):
+            query = f"MATCH (a)-[r:{rel_type}]->(b) RETURN a.node_id, b.node_id"
+            res = self._execute(query)
+            if res:
+                while res.has_next():
+                    row = res.get_next()
+                    from_id, to_id = str(row[0]), str(row[1])
+                    if id_set is None or from_id in id_set or to_id in id_set:
+                        result.append((rel_type, from_id, to_id, {}))
+        return result
+
+    def import_nodes(self, nodes: list[tuple[str, str, dict]]) -> int:
+        """Import nodes. Returns count of new nodes stored (skips duplicates)."""
+        count = 0
+        for table, node_id, props in nodes:
+            if table not in self._known_tables:
+                continue
+            if self.get_node(table, node_id) is None:
+                self.create_node(table, dict(props))
+                count += 1
+        return count
+
+    def import_edges(self, edges: list[tuple[str, str, str, dict]]) -> int:
+        """Import edges. Returns count stored."""
+        count = 0
+        for rel_type, from_id, to_id, props in edges:
+            if rel_type not in self._known_rel_tables:
+                continue
+            from_table, to_table = self._rel_table_map.get(rel_type, ("", ""))
+            if not from_table:
+                continue
+            check_q = (
+                f"MATCH (a:{from_table})-[r:{rel_type}]->(b:{to_table}) "
+                f"WHERE a.node_id = $fid AND b.node_id = $tid RETURN r LIMIT 1"
+            )
+            res = self._execute(check_q, {"fid": from_id, "tid": to_id})
+            if not self._result_to_dicts(res):
+                self.create_edge(rel_type, from_table, from_id, to_table, to_id, props or None)
+                count += 1
+        return count
 
     # ------------------------------------------------------------------
     # Lifecycle

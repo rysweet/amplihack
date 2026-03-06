@@ -193,6 +193,68 @@ class InMemoryGraphStore:
         pass
 
     # ------------------------------------------------------------------
+    # Export / import helpers (for gossip and shard rebuild)
+    # ------------------------------------------------------------------
+
+    def get_all_node_ids(self, table: str | None = None) -> set[str]:
+        """Get all node IDs, optionally filtered by table."""
+        with self._lock:
+            if table:
+                return set(self._nodes.get(table, {}).keys())
+            return {nid for tbl in self._nodes.values() for nid in tbl}
+
+    def export_nodes(self, node_ids: list[str] | None = None) -> list[tuple[str, str, dict]]:
+        """Export nodes as (table, node_id, properties) tuples."""
+        result = []
+        with self._lock:
+            for table, nodes in self._nodes.items():
+                for nid, props in nodes.items():
+                    if node_ids is None or nid in set(node_ids):
+                        result.append((table, nid, dict(props)))
+        return result
+
+    def export_edges(self, node_ids: list[str] | None = None) -> list[tuple[str, str, str, dict]]:
+        """Export edges as (rel_type, from_id, to_id, properties) tuples."""
+        result = []
+        with self._lock:
+            id_set = set(node_ids) if node_ids else None
+            for edge in self._edges:
+                if id_set is None or edge["from_id"] in id_set or edge["to_id"] in id_set:
+                    result.append((edge["rel_type"], edge["from_id"], edge["to_id"], edge.get("properties", {})))
+        return result
+
+    def import_nodes(self, nodes: list[tuple[str, str, dict]]) -> int:
+        """Import nodes. Returns count of new nodes stored (skips duplicates)."""
+        count = 0
+        with self._lock:
+            for table, node_id, props in nodes:
+                if table not in self._nodes:
+                    self._nodes[table] = {}
+                if node_id not in self._nodes[table]:
+                    self._nodes[table][node_id] = dict(props)
+                    count += 1
+        return count
+
+    def import_edges(self, edges: list[tuple[str, str, str, dict]]) -> int:
+        """Import edges. Returns count stored."""
+        count = 0
+        with self._lock:
+            existing = {(e["rel_type"], e["from_id"], e["to_id"]) for e in self._edges}
+            for rel_type, from_id, to_id, props in edges:
+                if (rel_type, from_id, to_id) not in existing:
+                    self._edges.append({
+                        "rel_type": rel_type,
+                        "from_id": from_id,
+                        "from_table": "",
+                        "to_id": to_id,
+                        "to_table": "",
+                        "properties": props,
+                    })
+                    existing.add((rel_type, from_id, to_id))
+                    count += 1
+        return count
+
+    # ------------------------------------------------------------------
     # Introspection helpers (for testing / distributed shard access)
     # ------------------------------------------------------------------
 
