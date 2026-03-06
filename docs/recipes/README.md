@@ -21,6 +21,7 @@ Complete documentation for using the Recipe Runner:
 - **[Recipe CLI Commands How-To](../howto/recipe-cli-commands.md)** - Task-oriented guide for using recipe commands
 - **[Recipe CLI Reference](../reference/recipe-cli-reference.md)** - Complete command-line reference with all options and exit codes
 - **[Recipe CLI Examples](cli-examples.md)** - Real-world usage scenarios (development, testing, CI/CD, team workflows)
+- **[Template Variables Troubleshooting](template-variables-troubleshooting.md)** - Common issues with `{{variable}}` expansion and bash escaping
 
 ## Why It Exists
 
@@ -214,6 +215,27 @@ Use `{{variable}}` to inject context values or previous step outputs into prompt
 - `{{repo_path}}` -- from context
 - `{{clarified_requirements}}` -- output from a prior step stored via `output` field
 - `{{nested.key}}` -- dot notation for nested dict values (from `parse_json` steps)
+
+#### Shell Escaping in Bash Steps
+
+**Important**: The recipe runner automatically applies proper shell escaping to all template variables in bash steps via `shlex.quote()`. Never manually quote template variables with single or double quotes.
+
+````yaml
+# ✅ CORRECT - let render_shell() handle quoting
+- id: process-json
+  type: bash
+  command: |
+    export DATA={{json_output}}
+    python3 -c "import os, json; print(json.loads(os.environ['DATA']))"
+
+# ❌ INCORRECT - manual quotes cause double-quoting
+- id: process-json
+  type: bash
+  command: |
+    export DATA='{{json_output}}'  # Creates ''{"json":"data"}'' → breaks bash
+````
+
+**Why This Matters**: Manual quotes around `{{variables}}` result in double-quoting (both your quotes and automatic `shlex.quote()`), causing bash to misinterpret structured data like JSON as shell commands. This was fixed in PR #2887 for the `quality-audit-cycle` recipe.
 
 ## SDK Adapters
 
