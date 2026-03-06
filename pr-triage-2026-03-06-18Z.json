@@ -1,0 +1,35 @@
+{
+  "timestamp": "2026-03-06T18:55:07Z",
+  "workflow_run": "22777458826",
+  "agent": "rysweet",
+  "total_open_prs": 8,
+  "agent_created_prs": 1,
+  "triaged_prs": [
+    {
+      "number": 2888,
+      "title": "[docs] docs: add template variable quoting guidance based on PR #2887",
+      "author": "github-actions[bot]",
+      "created_at": "2026-03-06T06:39:26Z",
+      "category": "documentation",
+      "risk_level": "low",
+      "risk_score": 1,
+      "priority": "low",
+      "priority_score": 2,
+      "recommendation": "AUTO_MERGE_CANDIDATE",
+      "status": "clean",
+      "mergeable": true,
+      "files_changed": 4,
+      "additions": 294,
+      "deletions": 1,
+      "labels": ["documentation", "automation", "triage:low-risk", "triage:auto-merge-candidate", "triage:complete"],
+      "ci_status": "pending",
+      "previous_triage": "2026-03-06T07:00:07Z",
+      "notes": "Already triaged. Documentation-only change following Diátaxis framework. Safe for auto-merge once CI passes."
+    }
+  ],
+  "summary": {
+    "action_required": false,
+    "all_prs_triaged": true,
+    "notes": "Single agent-created PR (#2888) already triaged with low risk, pending CI. No immediate action required."
+  }
+}
