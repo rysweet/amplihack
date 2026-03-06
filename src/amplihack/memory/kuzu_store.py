@@ -63,6 +63,8 @@ class KuzuGraphStore:
         import kuzu
 
         db_arg = str(db_path) if db_path is not None else None
+        if db_path is not None:
+            Path(db_path).mkdir(parents=True, exist_ok=True)  # Create dirs before Kuzu init
         self._db = kuzu.Database(
             db_arg,
             buffer_pool_size=buffer_pool_size,
