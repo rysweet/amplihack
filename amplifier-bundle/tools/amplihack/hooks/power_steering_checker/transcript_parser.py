@@ -88,6 +88,13 @@ def detect_transcript_format(first_line: str) -> str:
     if "content" in obj and "message" not in obj and "type" not in obj:
         return "copilot"
 
+    # Real Copilot format: dotted "type" field (user.message, assistant.message, session.start, ...)
+    type_val = obj.get("type", "")
+    if isinstance(type_val, str) and "." in type_val:
+        prefix = type_val.split(".", 1)[0]
+        if prefix in ("user", "assistant", "session"):
+            return "copilot"
+
     # Default: Claude Code format (also matches Copilot when it uses the same structure)
     return "claude_code"
 
@@ -172,6 +179,50 @@ def normalize_copilot_event(obj: dict) -> dict | None:
     Returns:
         Normalized dict in Claude Code format, or None to skip this line.
     """
+    # Handle real Copilot format: dotted "type" field with "data" sub-object
+    # e.g. {"type": "user.message", "data": {"content": "..."}, "timestamp": "...", ...}
+    dotted_type = obj.get("type", "")
+    if isinstance(dotted_type, str) and "." in dotted_type:
+        # Lifecycle/session events → skip
+        if dotted_type in (
+            "session.start",
+            "session.model_change",
+            "assistant.turn_start",
+            "assistant.turn_end",
+            "session.shutdown",
+        ):
+            return None
+
+        data = obj.get("data", {})
+        timestamp = obj.get("timestamp", "")
+        session_id = data.get("sessionId", "")
+
+        if dotted_type == "user.message":
+            raw_content = data.get("content", "")
+            content_blocks = _normalize_copilot_content(raw_content)
+            return {
+                "type": "user",
+                "message": {"role": "user", "content": content_blocks},
+                "timestamp": timestamp,
+                "sessionId": session_id,
+            }
+
+        if dotted_type == "assistant.message":
+            raw_content = data.get("content", "")
+            content_blocks = _normalize_copilot_content(raw_content)
+            tool_requests = data.get("toolRequests", [])
+            if tool_requests and isinstance(tool_requests, list):
+                content_blocks.extend(_normalize_copilot_tool_calls(tool_requests))
+            return {
+                "type": "assistant",
+                "message": {"role": "assistant", "content": content_blocks},
+                "timestamp": timestamp,
+                "sessionId": session_id,
+            }
+
+        # Unknown dotted type → skip
+        return None
+
     event_type = obj.get("event", "")
     role = obj.get("role", "")
 
