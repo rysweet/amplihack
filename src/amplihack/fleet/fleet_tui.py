@@ -19,7 +19,7 @@ import tty
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from amplihack.fleet._constants import DEFAULT_CAPTURE_LINES, DEFAULT_TUI_REFRESH_SECONDS, SUBPROCESS_TIMEOUT_SECONDS
+from amplihack.fleet._constants import AZ_CLI_TIMEOUT_SECONDS, DEFAULT_CAPTURE_LINES, DEFAULT_TUI_REFRESH_SECONDS, MAX_CAPTURE_LINES, SUBPROCESS_TIMEOUT_SECONDS
 from amplihack.fleet._defaults import DEFAULT_EXCLUDE_VMS, ensure_azlin_context, get_azlin_path
 from amplihack.fleet._tui_classify import classify_status
 from amplihack.fleet._tui_data import SessionView, VMView
@@ -47,6 +47,7 @@ class FleetTUI:
     exclude_vms: set[str] = field(default_factory=lambda: set(DEFAULT_EXCLUDE_VMS))
 
     def __post_init__(self) -> None:
+        self.capture_lines = max(1, min(self.capture_lines, MAX_CAPTURE_LINES))
         ensure_azlin_context(self.azlin_path)
 
     def run(self, once: bool = False) -> None:
@@ -179,7 +180,7 @@ class FleetTUI:
                 ["az", "vm", "list", "--resource-group", rg, "--show-details", "--output", "json"],
                 capture_output=True,
                 text=True,
-                timeout=30,
+                timeout=AZ_CLI_TIMEOUT_SECONDS,
             )
             if result.returncode == 0 and result.stdout.strip():
                 vms_data = json.loads(result.stdout)
@@ -379,7 +380,7 @@ class FleetTUI:
             logging.getLogger(__name__).debug(
                 "PTY SSH returned no session markers (%d bytes)", len(text),
             )
-        except Exception as exc:
+        except (OSError, subprocess.SubprocessError) as exc:
             logging.getLogger(__name__).warning("PTY SSH failed: %s", exc)
         return None
 

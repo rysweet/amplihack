@@ -9,6 +9,8 @@ Public API:
 
 from __future__ import annotations
 
+from amplihack.fleet._constants import MIN_SUBSTANTIAL_OUTPUT_LEN
+
 __all__ = ["infer_agent_status"]
 
 
@@ -133,7 +135,7 @@ def infer_agent_status(tmux_text: str) -> str:
             return "completed"
 
     # Default: assume running if substantial output
-    if len(combined.strip()) > 50:
+    if len(combined.strip()) > MIN_SUBSTANTIAL_OUTPUT_LEN:
         return "running"
 
     return "unknown"

@@ -1295,8 +1295,11 @@ class TestFleetScout:
         assert result.exit_code == 0
         assert "Skipped" in result.output
 
+    @patch("amplihack.fleet.fleet_session_reasoner.SessionReasoner")
+    @patch("amplihack.fleet._backends.auto_detect_backend")
     @patch("amplihack.fleet.fleet_tui.FleetTUI")
-    def test_scout_no_api_key_errors(self, MockTUI, runner):
+    def test_scout_no_api_key_uses_fallback(self, MockTUI, MockBackend, MockReasoner, runner):
+        """Without ANTHROPIC_API_KEY, auto_detect_backend falls back to LiteLLM."""
         from amplihack.fleet._tui_data import SessionView, VMView
 
         vm = VMView(
@@ -1307,13 +1310,22 @@ class TestFleetScout:
         mock_tui.refresh_all.return_value = [vm]
         MockTUI.return_value = mock_tui
 
+        mock_decision = MagicMock()
+        mock_decision.action = "wait"
+        mock_decision.confidence = 1.0
+        mock_decision.reasoning = "thinking"
+        mock_decision.input_text = ""
+        mock_reasoner = MagicMock()
+        mock_reasoner.reason_about_session.return_value = mock_decision
+        MockReasoner.return_value = mock_reasoner
+
         env = {k: v for k, v in __import__("os").environ.items() if k != "ANTHROPIC_API_KEY"}
         with patch.dict("os.environ", env, clear=True):
             result = runner.invoke(
                 fleet_cli, ["scout", "--skip-adopt"], catch_exceptions=False,
             )
         assert result.exit_code == 0
-        assert "ANTHROPIC_API_KEY required" in result.output
+        assert "FLEET SCOUT REPORT" in result.output
 
     @patch("amplihack.fleet.fleet_tui.FleetTUI")
     def test_scout_save_json(self, MockTUI, runner, tmp_path):
@@ -1394,12 +1406,35 @@ class TestFormatAdvanceReport:
 class TestFleetAdvance:
     """Tests for the fleet advance CLI command."""
 
-    def test_advance_no_api_key(self, runner):
+    @patch("amplihack.fleet.fleet_session_reasoner.SessionReasoner")
+    @patch("amplihack.fleet._backends.auto_detect_backend")
+    @patch("amplihack.fleet.fleet_tui.FleetTUI")
+    def test_advance_no_api_key_uses_fallback(self, MockTUI, MockBackend, MockReasoner, runner):
+        """Without ANTHROPIC_API_KEY, auto_detect_backend falls back to LiteLLM."""
+        from amplihack.fleet._tui_data import SessionView, VMView
+
+        vm = VMView(
+            name="vm-1", region="", is_running=True,
+            sessions=[SessionView(vm_name="vm-1", session_name="s1", status="idle")],
+        )
+        mock_tui = MagicMock()
+        mock_tui.refresh_all.return_value = [vm]
+        MockTUI.return_value = mock_tui
+
+        mock_decision = MagicMock()
+        mock_decision.action = "wait"
+        mock_decision.confidence = 0.9
+        mock_decision.reasoning = "idle"
+        mock_decision.input_text = ""
+        mock_reasoner = MagicMock()
+        mock_reasoner.reason_about_session.return_value = mock_decision
+        MockReasoner.return_value = mock_reasoner
+
         env = {k: v for k, v in __import__("os").environ.items() if k != "ANTHROPIC_API_KEY"}
         with patch.dict("os.environ", env, clear=True):
             result = runner.invoke(fleet_cli, ["advance"], catch_exceptions=False)
         assert result.exit_code == 0
-        assert "ANTHROPIC_API_KEY required" in result.output
+        assert "FLEET ADVANCE REPORT" in result.output
 
     @patch("amplihack.fleet.fleet_tui.FleetTUI")
     def test_advance_no_running_vms(self, MockTUI, runner):

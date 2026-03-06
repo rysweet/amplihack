@@ -511,12 +511,6 @@ def register_session_ops(fleet_cli: click.Group) -> None:
             click.echo("\nPhase 2: Skipped (--skip-adopt)")
 
         # -- Phase 3: Dry-run reasoning --
-        api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-        if not api_key:
-            click.echo("\nERROR: ANTHROPIC_API_KEY required for fleet reasoning.")
-            click.echo("Set it in your environment and retry.")
-            return
-
         click.echo("\nPhase 3: Reasoning about sessions...")
         backend = _backends_mod.auto_detect_backend()
         reasoner = _reasoner_mod.SessionReasoner(
@@ -608,13 +602,6 @@ def register_session_ops(fleet_cli: click.Group) -> None:
             target_vm, session_filter = _parse_session_target(session_target)
             if target_vm:
                 vm = target_vm
-
-        # -- Check LLM backend --
-        api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-        if not api_key:
-            click.echo("ERROR: ANTHROPIC_API_KEY required for live admiral execution.")
-            click.echo("Set it in your environment and retry.")
-            return
 
         # -- Phase 1: Discovery --
         click.echo("Phase 1: Discovering fleet sessions...")

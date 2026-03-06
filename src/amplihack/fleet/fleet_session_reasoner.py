@@ -12,7 +12,7 @@ import subprocess
 from dataclasses import dataclass, field
 
 from amplihack.fleet._backends import LLMBackend, auto_detect_backend
-from amplihack.fleet._constants import MIN_CONFIDENCE_RESTART, MIN_CONFIDENCE_SEND
+from amplihack.fleet._constants import MIN_CONFIDENCE_RESTART, MIN_CONFIDENCE_SEND, SSH_ACTION_TIMEOUT_SECONDS
 from amplihack.fleet._defaults import get_azlin_path
 from amplihack.fleet._session_context import SessionContext, SessionDecision
 from amplihack.fleet._session_gather import gather_context
@@ -167,13 +167,22 @@ class SessionReasoner:
                 reasoning="LLM backend not implemented",
                 confidence=0.0,
             )
-        except Exception as e:
-            logger.warning("LLM reasoning failed for session %s/%s: %s", context.vm_name, context.session_name, e)
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
+            logger.warning("LLM response parse error for %s/%s: %s", context.vm_name, context.session_name, e)
             return SessionDecision(
                 session_name=context.session_name,
                 vm_name=context.vm_name,
                 action="escalate",
-                reasoning=f"LLM call failed: {e}",
+                reasoning=f"LLM response parse error: {type(e).__name__}",
+                confidence=0.0,
+            )
+        except Exception as e:
+            logger.error("LLM call failed for %s/%s: %s", context.vm_name, context.session_name, type(e).__name__)
+            return SessionDecision(
+                session_name=context.session_name,
+                vm_name=context.vm_name,
+                action="escalate",
+                reasoning=f"LLM call failed: {type(e).__name__}",
                 confidence=0.0,
             )
 
@@ -197,11 +206,18 @@ class SessionReasoner:
         if decision.action == "restart" and decision.confidence < MIN_CONFIDENCE_RESTART:
             return
 
-        # H10: Dangerous input blocklist -- block before sending
+        # H10: Dangerous input blocklist -- block before sending.
+        # Returns a NEW decision instead of mutating the original.
         if decision.action == "send_input" and decision.input_text:
             if is_dangerous_input(decision.input_text):
-                decision.action = "escalate"
-                decision.reasoning = f"BLOCKED: Input contains dangerous pattern. Original: {decision.input_text[:100]}"
+                blocked = SessionDecision(
+                    session_name=decision.session_name,
+                    vm_name=decision.vm_name,
+                    action="escalate",
+                    reasoning=f"BLOCKED: Input contains dangerous pattern. Original: {decision.input_text[:100]}",
+                    confidence=decision.confidence,
+                )
+                self._decisions.append(blocked)
                 return
 
         if decision.action == "send_input" and decision.input_text:
@@ -213,7 +229,7 @@ class SessionReasoner:
                         [self.azlin_path, "connect", decision.vm_name, "--no-tmux", "--yes", "--", cmd],
                         capture_output=True,
                         text=True,
-                        timeout=30,
+                        timeout=SSH_ACTION_TIMEOUT_SECONDS,
                     )
                 except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
                     logger.warning(
@@ -224,17 +240,17 @@ class SessionReasoner:
                     )
 
         elif decision.action == "restart":
+            # Send Ctrl-C to interrupt, then send Enter to get a fresh prompt.
+            # Does NOT use !! (history re-execution) — that blindly re-runs
+            # whatever was last in the shell history, which could be anything.
             safe_session = shlex.quote(decision.session_name)
-            cmd = (
-                f"tmux send-keys -t {safe_session} C-c C-c && sleep 1 && tmux send-keys -t {safe_session} '!!'"
-                + " Enter"
-            )
+            cmd = f"tmux send-keys -t {safe_session} C-c C-c"
             try:
                 subprocess.run(
                     [self.azlin_path, "connect", decision.vm_name, "--no-tmux", "--yes", "--", cmd],
                     capture_output=True,
                     text=True,
-                    timeout=30,
+                    timeout=SSH_ACTION_TIMEOUT_SECONDS,
                 )
             except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
                 logger.warning(

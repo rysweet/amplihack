@@ -23,15 +23,23 @@ DEFAULT_STUCK_THRESHOLD_SECONDS = 300.0  # 5 minutes without change = stuck
 DEFAULT_POLL_INTERVAL_SECONDS = 60.0     # Fleet admiral poll interval
 SUBPROCESS_TIMEOUT_SECONDS = 120         # SSH/subprocess timeout (Bastion tunnels need ~90s)
 SUBPROCESS_TIMEOUT_KILL_SECONDS = 30     # Shorter timeout for kill operations
+SSH_ACTION_TIMEOUT_SECONDS = 30          # Timeout for send_input/restart SSH actions
+AZ_CLI_TIMEOUT_SECONDS = 30             # az vm list is fast (no Bastion tunnel)
+CLI_WATCH_TIMEOUT_SECONDS = 60          # fleet watch tmux capture timeout
 DEFAULT_TUI_REFRESH_SECONDS = 60         # Simple TUI refresh interval
 DEFAULT_DASHBOARD_REFRESH_SECONDS = 30   # Interactive dashboard refresh
 
 # ── Capacity ───────────────────────────────────────────────────────────
 DEFAULT_CAPTURE_LINES = 50         # Terminal scrollback for fleet poll (per-VM, runs often)
 DEFAULT_DETAIL_CAPTURE_LINES = 500 # Deeper capture for session detail view (on-demand)
+MAX_CAPTURE_LINES = 10000          # Upper bound for capture_lines parameter
 DEFAULT_RECENT_MESSAGE_COUNT = 500 # Recent transcript entries for rich context
 DEFAULT_MAX_AGENTS_PER_VM = 3      # Max concurrent agents per VM
 DEFAULT_MAX_TURNS = 20             # Default task max turns
+
+# ── LLM ──────────────────────────────────────────────────────────────
+DEFAULT_LLM_MAX_TOKENS = 4096     # ~40% of model output limit for reasoning
+MIN_SUBSTANTIAL_OUTPUT_LEN = 50   # Chars threshold for "has substantial output"
 
 # ── Health Thresholds ─────────────────────────────────────────────────
 MEMORY_HEALTHY_MAX_PCT = 95.0      # Below this = healthy
@@ -68,4 +76,10 @@ __all__ = [
     "MEMORY_ATTENTION_THRESHOLD_PCT",
     "DISK_ATTENTION_THRESHOLD_PCT",
     "DEFAULT_COST_PER_HOUR",
+    "SSH_ACTION_TIMEOUT_SECONDS",
+    "AZ_CLI_TIMEOUT_SECONDS",
+    "CLI_WATCH_TIMEOUT_SECONDS",
+    "MAX_CAPTURE_LINES",
+    "DEFAULT_LLM_MAX_TOKENS",
+    "MIN_SUBSTANTIAL_OUTPUT_LEN",
 ]
