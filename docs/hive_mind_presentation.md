@@ -296,35 +296,47 @@ Retrieval integrates with the OODA loop at every phase. Observe uses remember an
 
 ---
 
-## Slide 11: Single-Agent Memory (94.1% Results)
+## Slide 11: Single-Agent Memory (90.47% Results)
 
 ### Single-Agent Memory -- Baseline Performance
 
-**Eval: 5000-turn long-horizon memory evaluation (L1-L12)**
+**Eval: 5000-turn long-horizon memory evaluation (15 categories, seed 42)**
 
 | Metric | Value |
 |--------|-------|
-| **Score** | **94.1%** |
-| **Model** | claude-sonnet-4-5-20250929 |
-| **Duration** | 21.6 hours |
-| **Memory backend** | CognitiveAdapter + KuzuGraphStore |
-| **Turns** | 5000 (learn + answer interleaved) |
-| **Complexity levels** | L1 (recall) through L12 (multi-hop synthesis) |
+| **Score** | **90.47%** |
+| **Dataset** | `5000t-seed42-v1.0` (2026-02-24) |
+| **Memory backend** | LearningAgent (CognitiveMemory + KuzuGraphStore) |
+| **Turns** | 5000 — 762 facts extracted across 12 information blocks |
+| **Questions** | 100 across 15 categories (L1 recall → temporal trap) |
+| **Memory stats** | 10,854 semantic + 5,000 episodic = 15,854 total nodes |
 
 - Single agent learns from content, then answers questions
-- Memory stores ~thousands of facts across 6 cognitive types
-- LLM synthesizes answers from retrieved fact context
+- Memory stores facts across 6 cognitive types (sensory, working, episodic, semantic, procedural, prospective)
+- Hybrid retrieval: vector similarity (BAAI/bge-base-en-v1.5) + keyword fallback
 - **This is the ceiling** -- a single agent with all facts locally
 
-**Why 94.1% and not 100%?**
-- Some L10-L12 questions require connecting 5+ facts across domains
-- Retrieval sometimes misses the right combination of facts
-- LLM synthesis occasionally fails on complex multi-hop chains
+**Category highlights (median-of-3 grading):**
+
+| Category | Score |
+|---|---|
+| cross_reference | 100% |
+| distractor_resistance | 100% |
+| infrastructure_knowledge | 100% |
+| needle_in_haystack | 100% |
+| adversarial_distractor | 89.6% |
+| temporal_evolution | 89.7% |
+| temporal_trap | 53.3% ← hardest |
+
+**Why 90.47% and not 100%?**
+- `temporal_trap` (53.3%) — contradictory time-ordered facts with misleading cues
+- `incident_tracking` (83.8%) — multi-step incident timelines across many turns
+- Retrieval occasionally misses the right fact combination for L10-L12 questions
 
 ---
 
 **Speaker Notes:**
-Our baseline: a single agent scores 94.1% on the 5000-turn eval. This is the gold standard. One agent, all facts stored locally in CognitiveAdapter backed by KuzuGraphStore. It took 21.6 hours to run on Claude Sonnet 4.5. The agent handles 12 complexity levels, from simple recall to multi-hop synthesis requiring 5+ connected facts. The 5.9% gap comes from retrieval imprecision on the hardest questions and occasional LLM synthesis failures on complex reasoning chains. This 94.1% is our target ceiling for the distributed case -- the question is: can multiple agents sharing memory approach this number?
+Our baseline: a single agent scores 90.47% on the 5000-turn eval (dataset 5000t-seed42-v1.0, February 2026). This is the gold standard. One LearningAgent with CognitiveMemory backed by KuzuGraphStore, 762 extracted facts, 15,854 memory nodes. The grader uses median-of-3 voting to reduce LLM noise. The 9.53% gap is dominated by `temporal_trap` questions (53.3%) -- deliberately misleading time-ordered facts. This 90.47% is our target ceiling for the distributed case: can multiple agents sharing knowledge approach this number?
 
 ---
 
@@ -472,7 +484,7 @@ This is the full architecture. The DHT uses a consistent hash ring with 64 virtu
 ---
 
 **Speaker Notes:**
-Our evaluation methodology is rigorous. The 5000-turn eval has a learning phase where the agent ingests content and extracts facts, and a question phase where it answers questions at 12 complexity levels. We tested six configurations. Single agent is the 94.1% baseline. Federated v1 naive was our first attempt at multi-agent -- it used longest-answer-wins as the merge strategy, which turned out to be a terrible heuristic. Federated broken routing exposed a bug where facts went to group hives but queries hit the empty root hive, falling back to random agent selection. Federated single DHT uses one DistributedHiveGraph without the federation tree. Federated semantic+OODA integrates the OODA loop with semantic routing. Smoke test validates 10 agents quickly. We run 3+ replications and report medians with standard deviation.
+Our evaluation methodology is rigorous. The 5000-turn eval has a learning phase where the agent ingests content and extracts facts, and a question phase where it answers questions at 12 complexity levels. We tested six configurations. Single agent is the 90.47% baseline (dataset 5000t-seed42-v1.0, median-of-3 grading). Federated v1 naive was our first attempt at multi-agent -- it used longest-answer-wins as the merge strategy, which turned out to be a terrible heuristic. Federated broken routing exposed a bug where facts went to group hives but queries hit the empty root hive, falling back to random agent selection. Federated single DHT uses one DistributedHiveGraph without the federation tree. Federated semantic+OODA integrates the OODA loop with semantic routing. Smoke test validates 10 agents quickly. We run 3+ replications and report medians with standard deviation.
 
 ---
 
@@ -482,10 +494,10 @@ Our evaluation methodology is rigorous. The 5000-turn eval has a learning phase 
 
 | Condition | Median Score | Std Dev | Notes |
 |-----------|-------------|---------|-------|
-| **Single agent** | **94.1%** | — | Baseline, 5000 turns, 21.7h |
+| **Single agent** | **90.47%** | — | Baseline, 5000t-seed42-v1.0, median-of-3 |
 | **Federated 10 agents (smoke)** | **65.7%** | **6.7%** | Best multi-agent result, low variance |
 | Federated 100 agents (full) | 45.8% | 21.7% | Routing precision degrades at scale |
-| Federated single DHT | 47.2% | — | One DHT, no federation tree |
+| Federated single DHT | 47.2% | — | One DistributedHiveGraph, no federation tree |
 | Federated v1 naive | 40.0% | — | Longest-answer-wins merge |
 | Federated broken routing | 34.9% | 31.2% | Root hive empty, random fallback |
 
@@ -493,7 +505,7 @@ Our evaluation methodology is rigorous. The 5000-turn eval has a learning phase 
 graph LR
     subgraph "Performance Gap"
         direction TB
-        S["Single Agent<br/>94.1%"]
+        S["Single Agent<br/>90.47%"]
         SM["Smoke 10 agents<br/>65.7%"]
         SO["Semantic+OODA<br/>45.8%"]
         SD["Single DHT<br/>47.2%"]
@@ -503,18 +515,19 @@ graph LR
 ```
 
 **Key findings:**
-- **Gap:** Best multi-agent (65.7%) vs single agent (94.1%) = 28.4 point gap
+- **Gap:** Best multi-agent (65.7%) vs single agent (90.47%) = 24.77 point gap
 - **Scale insight:** Routing precision degrades at 100-agent scale (45.8% median, 21.7% stddev vs 65.7% at 10 agents)
 - **Variance kills:** Broken routing had 31.2% stddev -- results range from 23% to 83%
 - **Smoke test wins:** Lowest variance (6.7% stddev) and highest median
-- **Learning speedup:** 9x with 10 parallel workers (21.6h -> 2.4h)
-- **Scale fix works:** 100 agents: 12.3s creation, 4.8GB RSS (was OOM crash)
-- **Quality:** 103 tests passing; 13 audit findings fixed (security, thread safety, API consistency)
+- **Single DHT:** 47.2% — one DistributedHiveGraph for all agents, no federation tree overhead
+- **Learning speedup:** 9x with 10 parallel workers (parallel learning with DistributedHiveGraph)
+- **Scale fix works:** 100 agents: 12.3s creation, 4.8GB RSS (was OOM crash with InMemoryHiveGraph)
+- **Quality:** Grading uses median-of-3 voting per dimension to reduce LLM noise
 
 ---
 
 **Speaker Notes:**
-Here are all the results. The single agent at 94.1% is the gold standard. Our first federated attempt scored only 40% -- longest-answer-wins is a terrible merge strategy. The broken routing variant was worse at 34.9% median with massive 31.2% standard deviation -- the root hive was empty because facts only went to group hives, so queries fell back to random agents. The single DHT (no federation tree) scored 47.2%. Semantic+OODA integration scored 45.8% with 21.7% stddev. The best multi-agent result was the smoke test with 10 agents at 65.7% median and only 6.7% stddev. There is a 28.4 point gap between the best multi-agent result and the single-agent baseline. On the positive side, the scale engineering works: 100 agents create in 12.3 seconds using 4.8GB RSS (previously this was an OOM crash), and learning is 9x faster with 10 parallel workers.
+Here are all the results. The single agent at 90.47% is the gold standard (dataset 5000t-seed42-v1.0, scored with median-of-3 grading). Our first federated attempt scored only 40% -- longest-answer-wins is a terrible merge strategy. The broken routing variant was worse at 34.9% median with massive 31.2% standard deviation -- the root hive was empty because facts only went to group hives, so queries fell back to random agents. The single DistributedHiveGraph (no federation tree) scored 47.2%. Semantic+OODA integration scored 45.8% with 21.7% stddev. The best multi-agent result was the smoke test with 10 agents at 65.7% median and only 6.7% stddev. There is a 24.77 point gap between the best multi-agent result and the single-agent baseline. On the positive side, the scale engineering works: 100 agents create in 12.3 seconds using 4.8GB RSS (previously this was an OOM crash with InMemoryHiveGraph), and learning is 9x faster with 10 parallel workers using DistributedHiveGraph.
 
 ---
 
@@ -598,7 +611,7 @@ Orchestration is managed through the amplihack-hive CLI. You create a hive confi
 
 ### Next Steps / Future Work
 
-**Closing the 28.4-point gap (65.7% -> 94.1%):**
+**Closing the 24.77-point gap (65.7% -> 90.47%):**
 
 1. **Fix root hive routing** -- Facts go to group hives but queries hit empty root. Route queries to groups directly or ensure facts escalate properly
 2. **Fix swallowed errors** -- `_synthesize_with_llm()` catches all exceptions silently, masking rate limits as "internal error"
