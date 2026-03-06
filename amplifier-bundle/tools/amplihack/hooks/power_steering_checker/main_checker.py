@@ -54,6 +54,7 @@ from .sdk_calls import (
     SdkCallsMixin,
     _timeout,
 )
+from .transcript_parser import parse_transcript
 
 # Import turn-aware state management (needed by check() method directly)
 try:
@@ -1120,7 +1121,12 @@ class PowerSteeringChecker(
             return False
 
     def _load_transcript(self, transcript_path: Path) -> list[dict]:
-        """Load transcript from JSONL file with size limits.
+        """Load transcript from JSONL file with size limits and format auto-detection.
+
+        Supports both Claude Code JSONL format (~/.claude/projects/*/*.jsonl) and
+        GitHub Copilot CLI events.jsonl format (~/.copilot/session-state/{id}/events.jsonl).
+        The format is auto-detected from the first line; Copilot events are normalized
+        into the same list[dict] shape expected by all checker methods.
 
         Args:
             transcript_path: Path to transcript file
@@ -1130,7 +1136,6 @@ class PowerSteeringChecker(
 
         Raises:
             OSError: If file cannot be read
-            json.JSONDecodeError: If JSONL is malformed
             ValueError: If transcript path is outside project root (security check)
         """
         # Security: Validate transcript path is within project root
@@ -1139,8 +1144,9 @@ class PowerSteeringChecker(
                 f"Transcript path {transcript_path} is outside project root {self.project_root}"
             )
 
-        messages = []
+        lines = []
         truncated = False
+        line_num = 0
 
         with open(transcript_path) as f:
             for line_num, line in enumerate(f, 1):
@@ -1149,23 +1155,32 @@ class PowerSteeringChecker(
                     truncated = True
                     break
 
-                line = line.strip()
-                if not line:
+                stripped = line.strip()
+                if not stripped:
                     continue
                 # REQ-SEC-3: Skip oversized lines to prevent memory exhaustion
-                if len(line.encode("utf-8")) > MAX_LINE_BYTES:
+                if len(stripped.encode("utf-8")) > MAX_LINE_BYTES:
                     self._log(
                         f"Skipping oversized transcript line {line_num} "
-                        f"({len(line)} chars, limit {MAX_LINE_BYTES} bytes)",
+                        f"({len(stripped)} chars, limit {MAX_LINE_BYTES} bytes)",
                         "WARNING",
                     )
                     continue
-                messages.append(json.loads(line))
+                lines.append(stripped)
 
         if truncated:
             self._log(
                 f"Transcript truncated at {MAX_TRANSCRIPT_LINES} lines (original: {line_num})",
                 "WARNING",
+            )
+
+        # Auto-detect format and parse (normalizes Copilot events if needed)
+        fmt, messages = parse_transcript(lines)
+        if fmt == "copilot":
+            self._log(
+                f"Copilot transcript format detected in {transcript_path.name}; "
+                f"normalized {len(messages)} events to Claude Code format",
+                "INFO",
             )
 
         return messages

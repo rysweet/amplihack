@@ -31,6 +31,13 @@ from .sdk_calls import (
 )
 from .session_detection import SessionDetectionMixin
 from .transcript_helpers import TranscriptHelpersMixin
+from .transcript_parser import (
+    detect_transcript_format,
+    normalize_copilot_event,
+    parse_copilot_transcript,
+    parse_claude_code_transcript,
+    parse_transcript,
+)
 
 __all__ = [
     "CHECKER_TIMEOUT",
@@ -52,6 +59,11 @@ __all__ = [
     "_write_with_retry",
     "analyze_consideration",
     "check_session",
+    "detect_transcript_format",
     "get_shared_runtime_dir",
     "is_disabled",
+    "normalize_copilot_event",
+    "parse_claude_code_transcript",
+    "parse_copilot_transcript",
+    "parse_transcript",
 ]
