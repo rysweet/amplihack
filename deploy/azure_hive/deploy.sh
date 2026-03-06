@@ -47,6 +47,7 @@ AGENT_COUNT="${HIVE_AGENT_COUNT:-5}"
 AGENTS_PER_APP="${HIVE_AGENTS_PER_APP:-5}"
 IMAGE_TAG="${HIVE_IMAGE_TAG:-latest}"
 TRANSPORT="${HIVE_TRANSPORT:-azure_service_bus}"
+MEMORY_BACKEND="${HIVE_MEMORY_BACKEND:-simple}"
 AGENT_PROMPT_BASE="${HIVE_AGENT_PROMPT_BASE:-You are a distributed hive mind agent.}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -189,6 +190,7 @@ DEPLOY_OUTPUT=$(az deployment group create \
     acrName="${ACR_NAME}" \
     anthropicApiKey="${ANTHROPIC_API_KEY}" \
     memoryTransport="${TRANSPORT}" \
+    memoryBackend="${MEMORY_BACKEND}" \
     agentPromptBase="${AGENT_PROMPT_BASE}" \
   --output json)
 
