@@ -129,6 +129,41 @@ def main() -> None:
         logger.debug("Error closing memory", exc_info=True)
 
 
+def _handle_event(agent_name: str, event: object, memory: object) -> None:
+    """Dispatch an incoming event to the appropriate handler.
+
+    Currently handled event types:
+        LEARN_CONTENT -- extract and store the content payload in memory.
+
+    All other event types are stored as generic event records.
+    """
+    event_type = getattr(event, "event_type", None) or (
+        event.get("event_type") if isinstance(event, dict) else None
+    )
+    payload = getattr(event, "payload", None) or (
+        event.get("payload") if isinstance(event, dict) else {}
+    )
+
+    if event_type == "LEARN_CONTENT":
+        content = (payload or {}).get("content", "")
+        turn = (payload or {}).get("turn", "?")
+        if content:
+            logger.info(
+                "Agent %s learning content (turn=%s): %s...",
+                agent_name,
+                turn,
+                content[:80],
+            )
+            memory.remember(f"[LEARN_CONTENT turn={turn}] {content}")
+        else:
+            logger.warning(
+                "Agent %s received LEARN_CONTENT event with empty content payload",
+                agent_name,
+            )
+    else:
+        memory.remember(f"Event received: {event}")
+
+
 def _ooda_tick(agent_name: str, agent_prompt: str, memory: object, tick: int) -> None:
     """Single OODA loop tick — poll for incoming events and process them.
 
@@ -142,7 +177,7 @@ def _ooda_tick(agent_name: str, agent_prompt: str, memory: object, tick: int) ->
         events = memory.receive_events() if hasattr(memory, "receive_events") else []
         for event in events:
             logger.info("Agent %s received event: %s", agent_name, event)
-            memory.remember(f"Event received: {event}")
+            _handle_event(agent_name, event, memory)
     except Exception:
         logger.debug("Event receive failed", exc_info=True)
 

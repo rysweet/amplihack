@@ -457,7 +457,76 @@ This is the full architecture. The DHT uses a consistent hash ring with 64 virtu
 
 ---
 
-## Slide 15: Memory Evaluations -- Approach
+## Slide 15: Hive Assembly
+
+### Hive Assembly
+
+How a distributed hive bootstraps from zero agents to a fully operational shared-memory network:
+
+```mermaid
+sequenceDiagram
+    participant C as Coordinator (amplihack-hive start)
+    participant A0 as Agent 0
+    participant A1 as Agent 1
+    participant A2 as Agent 2
+    participant SB as Azure Service Bus
+
+    C->>A0: spawn container, AMPLIHACK_AGENT_NAME=agent-0
+    A0->>A0: Memory.init() — KuzuGraphStore, local ring
+    A0->>SB: subscribe(agent-0)
+    A0-->>C: /tmp/.agent_ready
+
+    C->>A1: spawn container, AMPLIHACK_AGENT_NAME=agent-1
+    A1->>A1: Memory.init() — join DHT ring
+    A1->>SB: subscribe(agent-1)
+    A1->>A0: gossip HELLO — exchange bloom filters
+    A0->>A1: shard transfer (ring rebalance)
+    A1-->>C: /tmp/.agent_ready
+
+    C->>A2: spawn container, AMPLIHACK_AGENT_NAME=agent-2
+    A2->>A2: Memory.init() — join DHT ring
+    A2->>SB: subscribe(agent-2)
+    A2->>A0: gossip HELLO
+    A2->>A1: gossip HELLO
+    A0->>A2: shard transfer
+    A1->>A2: shard transfer
+    A2-->>C: /tmp/.agent_ready
+
+    Note over A0,A2: Hive assembled — ring stable, shards balanced
+
+    C->>SB: publish LEARN_CONTENT (feed_content.py)
+    SB->>A0: deliver LEARN_CONTENT
+    SB->>A1: deliver LEARN_CONTENT
+    SB->>A2: deliver LEARN_CONTENT
+    A0->>A0: memory.remember(content)
+    A1->>A1: memory.remember(content)
+    A2->>A2: memory.remember(content)
+```
+
+**Assembly phases:**
+
+| Phase | Action | Trigger |
+|-------|--------|---------|
+| **1. Bootstrap** | First agent initialises empty local DHT ring | Container start |
+| **2. Join** | New agent computes ring position, announces HELLO via gossip | Container start |
+| **3. Rebalance** | Existing agents transfer shard ownership to newcomer | HELLO receipt |
+| **4. Convergence** | Bloom filter exchange propagates knowledge of all shards | Gossip rounds (O(log N)) |
+| **5. Ready** | Agent writes `/tmp/.agent_ready` sentinel; coordinator proceeds | Ring stable |
+| **6. Content ingestion** | `feed_content.py` publishes LEARN_CONTENT events; all agents ingest in parallel | External feed |
+
+**Key invariants during assembly:**
+- No facts are lost during rebalance — shard transfer is copy-then-delete, not move
+- Agents that join mid-ingestion catch up via gossip within O(log N) rounds
+- Service Bus topic subscription is created before the first gossip round completes
+
+---
+
+**Speaker Notes:**
+Hive assembly follows a predictable six-phase sequence. The first agent starts alone and owns the entire hash ring. Each subsequent agent computes its ring position, sends HELLO gossip to peers, and triggers a shard rebalance — existing agents hand off ownership of the keyspace range that the newcomer now covers. Bloom filter exchange lets agents discover which facts they are missing and pull them from peers. Once an agent's ring view stabilises, it writes the ready sentinel that the coordinator waits for before sending the next container start. Content ingestion begins immediately after all agents are ready: `feed_content.py` sends LEARN_CONTENT events to the Service Bus topic, and all subscribed agents ingest them in parallel — achieving N-way learning speedup with zero coordination overhead during the ingestion phase itself.
+
+---
+
+## Slide 16: Memory Evaluations -- Approach
 
 ### Memory Evaluations -- Approach
 
@@ -492,7 +561,7 @@ Our evaluation methodology is rigorous. The 5000-turn eval has a learning phase 
 
 ---
 
-## Slide 16: Evaluations -- Results
+## Slide 17: Evaluations -- Results
 
 ### Evaluations -- Results
 
@@ -540,7 +609,7 @@ Here are all the results. The latest single agent run scores 93.1% on 5000t-seed
 
 ---
 
-## Slide 17: Hive Mind -- Behaviors and Skills
+## Slide 18: Hive Mind -- Behaviors and Skills
 
 ### Hive Mind -- Behaviors and Skills
 
@@ -572,7 +641,7 @@ The hive mind supports a full fact lifecycle. Facts enter through promotion -- t
 
 ---
 
-## Slide 18: Hive Mind -- Orchestration and Coordination
+## Slide 19: Hive Mind -- Orchestration and Coordination
 
 ### Hive Mind -- Orchestration and Coordination
 
@@ -616,7 +685,7 @@ Orchestration is managed through the amplihack-hive CLI. You create a hive confi
 
 ---
 
-## Slide 19: Next Steps / Future Work
+## Slide 20: Next Steps / Future Work
 
 ### Next Steps / Future Work
 
