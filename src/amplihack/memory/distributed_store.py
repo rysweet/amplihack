@@ -20,9 +20,12 @@ Usage:
 from __future__ import annotations
 
 import hashlib
+import logging
 import threading
 import uuid
 from typing import Any, Callable
+
+logger = logging.getLogger(__name__)
 
 from amplihack.agents.goal_seeking.hive_mind.bloom import BloomFilter
 from amplihack.agents.goal_seeking.hive_mind.dht import HashRing
@@ -55,6 +58,11 @@ class _AgentShard:
         with self._lock:
             return self._bloom.might_contain(node_id)
 
+    def get_summary_embedding(self) -> Any:
+        """Return the current summary embedding under lock."""
+        with self._lock:
+            return self._summary_embedding
+
     def update_embedding(self, embedding: Any) -> None:
         if embedding is None:
             return
@@ -70,8 +78,10 @@ class _AgentShard:
                         self._summary_embedding * n + emb
                     ) / (n + 1)
                 self._embedding_count += 1
+        except ImportError:
+            logger.warning("numpy not available for shard embedding computation")
         except Exception:
-            pass
+            logger.debug("Failed to update shard embedding", exc_info=True)
 
 
 # ---------------------------------------------------------------------------
@@ -115,6 +125,8 @@ class DistributedGraphStore:
         self._embedding_generator = embedding_generator
         self._shards: dict[str, _AgentShard] = {}
         self._lock = threading.RLock()
+        # node_id -> content_key mapping for correct shard rebuild routing
+        self._node_content_keys: dict[str, str] = {}
 
     # ------------------------------------------------------------------
     # Agent management
@@ -188,7 +200,7 @@ class DistributedGraphStore:
     def _query_targets(self) -> list[str]:
         """Return agents to fan out a query to (up to query_fanout)."""
         all_ids = self._ring.agent_ids
-        return all_ids[: self._query_fanout * 3]
+        return all_ids[: self._query_fanout]
 
     def _semantic_targets(self, text: str) -> list[str]:
         """Pick top-K shards via cosine similarity on summary embeddings."""
@@ -205,14 +217,14 @@ class DistributedGraphStore:
                 return []
             scored: list[tuple[float, str]] = []
             with self._lock:
-                for agent_id, shard in self._shards.items():
-                    with shard._lock:
-                        s = shard._summary_embedding
-                    if s is not None:
-                        s_norm = float(np.linalg.norm(s))
-                        if s_norm > 0:
-                            sim = float(np.dot(q, s) / (q_norm * s_norm))
-                            scored.append((sim, agent_id))
+                shards_snapshot = list(self._shards.items())
+            for agent_id, shard in shards_snapshot:
+                s = shard.get_summary_embedding()
+                if s is not None:
+                    s_norm = float(np.linalg.norm(s))
+                    if s_norm > 0:
+                        sim = float(np.dot(q, s) / (q_norm * s_norm))
+                        scored.append((sim, agent_id))
             scored.sort(reverse=True)
             return [aid for _, aid in scored[: self._query_fanout]]
         except Exception:
@@ -246,6 +258,7 @@ class DistributedGraphStore:
         props["node_id"] = node_id
 
         key = self._content_key(props)
+        self._node_content_keys[node_id] = key  # Store routing key for rebuild_shard
         owners = self._owners_for_key(key)
 
         # Update embedding for semantic routing
@@ -460,9 +473,10 @@ class DistributedGraphStore:
             if not peer_node_ids:
                 continue
             # Pull nodes that the DHT ring assigns to this agent
+            # Use stored _content_key for correct routing (same key used at create_node time)
             nodes_for_agent = [
                 nid for nid in peer_node_ids
-                if agent_id in self._owners_for_key(nid)
+                if agent_id in self._owners_for_key(self._node_content_keys.get(nid, nid))
             ]
             if not nodes_for_agent:
                 continue
@@ -485,7 +499,7 @@ class DistributedGraphStore:
             try:
                 shard.store.close()
             except Exception:
-                pass
+                logger.debug("Error closing shard %s", shard.agent_id, exc_info=True)
 
     # ------------------------------------------------------------------
     # Stats

@@ -9,10 +9,13 @@ Resolution order (highest to lowest priority):
 
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 _DEFAULT_BACKEND = "cognitive"
@@ -73,15 +76,24 @@ class MemoryConfig:
 
         kuzu_mb = os.environ.get("AMPLIHACK_MEMORY_KUZU_BUFFER_MB")
         if kuzu_mb is not None:
-            kwargs["kuzu_buffer_pool_mb"] = int(kuzu_mb)
+            try:
+                kwargs["kuzu_buffer_pool_mb"] = int(kuzu_mb)
+            except ValueError:
+                logger.warning("Invalid value for AMPLIHACK_MEMORY_KUZU_BUFFER_MB: %s", kuzu_mb)
 
         replication = os.environ.get("AMPLIHACK_MEMORY_REPLICATION")
         if replication is not None:
-            kwargs["replication_factor"] = int(replication)
+            try:
+                kwargs["replication_factor"] = int(replication)
+            except ValueError:
+                logger.warning("Invalid value for AMPLIHACK_MEMORY_REPLICATION: %s", replication)
 
         fanout = os.environ.get("AMPLIHACK_MEMORY_QUERY_FANOUT")
         if fanout is not None:
-            kwargs["query_fanout"] = int(fanout)
+            try:
+                kwargs["query_fanout"] = int(fanout)
+            except ValueError:
+                logger.warning("Invalid value for AMPLIHACK_MEMORY_QUERY_FANOUT: %s", fanout)
 
         gossip = os.environ.get("AMPLIHACK_MEMORY_GOSSIP")
         if gossip is not None:
@@ -89,7 +101,10 @@ class MemoryConfig:
 
         gossip_rounds = os.environ.get("AMPLIHACK_MEMORY_GOSSIP_ROUNDS")
         if gossip_rounds is not None:
-            kwargs["gossip_rounds"] = int(gossip_rounds)
+            try:
+                kwargs["gossip_rounds"] = int(gossip_rounds)
+            except ValueError:
+                logger.warning("Invalid value for AMPLIHACK_MEMORY_GOSSIP_ROUNDS: %s", gossip_rounds)
 
         shard_backend = os.environ.get("AMPLIHACK_MEMORY_SHARD_BACKEND")
         if shard_backend is not None:
@@ -169,7 +184,10 @@ class MemoryConfig:
         for field_name, (env_key, converter) in _env_map.items():
             raw = os.environ.get(env_key)
             if raw is not None:
-                setattr(cfg, field_name, converter(raw))
+                try:
+                    setattr(cfg, field_name, converter(raw))
+                except ValueError:
+                    logger.warning("Invalid value for %s: %s", env_key, raw)
 
         gossip_raw = os.environ.get("AMPLIHACK_MEMORY_GOSSIP")
         if gossip_raw is not None:

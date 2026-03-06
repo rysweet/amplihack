@@ -213,14 +213,23 @@ class InMemoryGraphStore:
                         result.append((table, nid, dict(props)))
         return result
 
-    def export_edges(self, node_ids: list[str] | None = None) -> list[tuple[str, str, str, dict]]:
-        """Export edges as (rel_type, from_id, to_id, properties) tuples."""
+    def export_edges(self, node_ids: list[str] | None = None) -> list[tuple[str, str, str, str, str, dict]]:
+        """Export edges as (rel_type, from_table, from_id, to_table, to_id, properties) tuples."""
         result = []
         with self._lock:
             id_set = set(node_ids) if node_ids else None
             for edge in self._edges:
                 if id_set is None or edge["from_id"] in id_set or edge["to_id"] in id_set:
-                    result.append((edge["rel_type"], edge["from_id"], edge["to_id"], edge.get("properties", {})))
+                    structural = {"rel_type", "from_table", "from_id", "to_table", "to_id"}
+                    props = {k: v for k, v in edge.items() if k not in structural}
+                    result.append((
+                        edge["rel_type"],
+                        edge.get("from_table", ""),
+                        edge["from_id"],
+                        edge.get("to_table", ""),
+                        edge["to_id"],
+                        props,
+                    ))
         return result
 
     def import_nodes(self, nodes: list[tuple[str, str, dict]]) -> int:
@@ -235,21 +244,23 @@ class InMemoryGraphStore:
                     count += 1
         return count
 
-    def import_edges(self, edges: list[tuple[str, str, str, dict]]) -> int:
+    def import_edges(self, edges: list[tuple[str, str, str, str, str, dict]]) -> int:
         """Import edges. Returns count stored."""
         count = 0
         with self._lock:
             existing = {(e["rel_type"], e["from_id"], e["to_id"]) for e in self._edges}
-            for rel_type, from_id, to_id, props in edges:
+            for rel_type, from_table, from_id, to_table, to_id, props in edges:
                 if (rel_type, from_id, to_id) not in existing:
-                    self._edges.append({
+                    edge: dict[str, Any] = {
                         "rel_type": rel_type,
                         "from_id": from_id,
-                        "from_table": "",
+                        "from_table": from_table,
                         "to_id": to_id,
-                        "to_table": "",
-                        "properties": props,
-                    })
+                        "to_table": to_table,
+                    }
+                    if props:
+                        edge.update(props)
+                    self._edges.append(edge)
                     existing.add((rel_type, from_id, to_id))
                     count += 1
         return count

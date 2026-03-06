@@ -465,9 +465,11 @@ def test_export_import_edges():
 
     edges = store.export_edges()
     assert len(edges) == 1
-    assert edges[0][0] == "RELATED_TO"
-    assert edges[0][1] == id1
-    assert edges[0][2] == id2
+    assert edges[0][0] == "RELATED_TO"   # rel_type
+    assert edges[0][1] == "semantic_memory"  # from_table
+    assert edges[0][2] == id1            # from_id
+    assert edges[0][3] == "semantic_memory"  # to_table
+    assert edges[0][4] == id2            # to_id
 
     fresh = InMemoryGraphStore()
     fresh.ensure_table("semantic_memory", SEMANTIC_SCHEMA)
