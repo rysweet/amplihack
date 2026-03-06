@@ -7,9 +7,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl git build-essential ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Install amplihack and required dependencies
-# Install deps sequentially to avoid resolver conflicts
-RUN pip install --no-cache-dir "amplihack @ git+https://github.com/rysweet/amplihack.git@feat/distributed-hive-mind" && \
+# Copy full source tree and install from source so agents/ is included
+COPY . /build
+RUN cd /build && pip install --no-cache-dir . && \
     pip install --no-cache-dir kuzu && \
     pip install --no-cache-dir sentence-transformers && \
     pip install --no-cache-dir azure-servicebus redis pyyaml
