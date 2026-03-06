@@ -20,7 +20,7 @@ RUN useradd -m -s /bin/bash amplihack-agent \
     && chown -R amplihack-agent:amplihack-agent /app /data
 
 # Copy entrypoint
-COPY agent_entrypoint.py /app/agent_entrypoint.py
+COPY deploy/azure_hive/agent_entrypoint.py /app/agent_entrypoint.py
 
 USER amplihack-agent
 ENV HOME=/home/amplihack-agent
