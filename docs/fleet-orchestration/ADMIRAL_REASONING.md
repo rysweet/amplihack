@@ -131,13 +131,13 @@ The system prompt also includes the **Strategy Dictionary** — a reference of 2
 
 The admiral supports multiple LLM backends via a protocol interface:
 
-| Backend | Model | Detection |
-|---------|-------|-----------|
-| `AnthropicBackend` | claude-sonnet-4 | `ANTHROPIC_API_KEY` set |
-| `CopilotBackend` | gpt-4o | Copilot SDK available |
-| `LiteLLMBackend` | any | Fallback (100+ providers) |
+| Backend | Default Model | Max Tokens | Detection |
+|---------|--------------|------------|-----------|
+| `AnthropicBackend` | claude-opus-4-6 | 128,000 | `ANTHROPIC_API_KEY` set |
+| `CopilotBackend` | gpt-4o | — | Copilot SDK available |
+| `LiteLLMBackend` | gpt-4o | 128,000 | Fallback (100+ providers) |
 
-`auto_detect_backend()` checks for `ANTHROPIC_API_KEY` first, then falls back to LiteLLM.
+`auto_detect_backend()` checks for `ANTHROPIC_API_KEY` first, then falls back to LiteLLM. Max tokens is configurable via `DEFAULT_LLM_MAX_TOKENS` in `_constants.py`.
 
 ### Response Parsing
 
@@ -211,18 +211,20 @@ Before executing any action, multiple safety checks are applied:
 | `escalate` | none | Always safe |
 | `mark_complete` | none | No side effects |
 
-**Dangerous input blocklist** — if `input_text` matches any pattern, the action is converted to `escalate`:
+**Dangerous input blocklist** — 60 regex patterns across 10 threat categories. If `input_text` matches any pattern, the action is converted to `escalate`:
 
-| Pattern | What it blocks |
-|---------|---------------|
-| `rm -rf`, `rm -r /` | Recursive deletion |
-| `rmdir /` | Root directory removal |
-| `git push --force`, `git push -f` | Force push |
-| `git reset --hard` | Hard reset |
-| `DROP TABLE`, `DROP DATABASE` | Database destruction |
-| `DELETE FROM`, `TRUNCATE TABLE` | Data deletion |
-| `> /dev/sda`, `mkfs.` | Disk destruction |
-| `:(){ :|:&};:` | Fork bomb |
+| Category | Example patterns |
+|----------|-----------------|
+| File system destruction | `rm -rf`, `rm -r /`, `shred`, `dd if=` |
+| Git destructive | `git push --force`, `git reset --hard`, `git clean -fd` |
+| SQL destructive | `DROP TABLE`, `DELETE FROM`, `TRUNCATE TABLE` |
+| Remote code execution | `curl\|sh`, `wget\|sh`, `python -c`, `eval(`, `node -e` |
+| Reverse shells | `nc -e`, `bash -i >& /dev/tcp`, `socat` |
+| Privilege escalation | `sudo`, `chmod +s`, `chmod 777`, `chown root` |
+| Credential access | `cat /etc/shadow`, `cat ~/.ssh/id_`, `printenv`, `ANTHROPIC_API_KEY` |
+| Persistence | `crontab`, `> ~/.bashrc`, `systemctl enable` |
+| Data exfiltration | `scp`, `rsync`, `base64\|curl` |
+| Resource exhaustion | Fork bomb variants |
 
 **Input sanitization**: All session names and VM names are validated against regex (`[a-zA-Z0-9_.-]`). Input text is passed through `shlex.quote()` before SSH execution.
 
@@ -250,8 +252,8 @@ The decision is appended to the reasoner's `_decisions` list. This enables:
 
 | Command | dry_run | Scope | Loop |
 |---------|---------|-------|------|
-| `fleet scout` | Yes | All sessions (or `--vm`/`--session` filtered) | Single pass |
-| `fleet advance` | No | All sessions (or `--vm`/`--session` filtered) | Single pass |
+| `fleet scout` | Yes | All sessions (or `--session vm:name` filtered) | Single pass |
+| `fleet advance` | No | All sessions (or `--session vm:name` filtered) | Single pass |
 | `fleet dry-run` | Yes | Managed sessions (`--vm` filtered) | Single pass |
 | `fleet run-once` | No | All managed sessions | Single cycle |
 | `fleet start` | No | All managed sessions | Continuous at interval |
@@ -282,9 +284,12 @@ All tunable values are in `_constants.py`:
 
 | Constant | Value | Purpose |
 |----------|-------|---------|
+| `DEFAULT_LLM_MAX_TOKENS` | 128,000 | Max output tokens for reasoning |
 | `MIN_CONFIDENCE_SEND` | 0.6 | Minimum confidence to send input |
 | `MIN_CONFIDENCE_RESTART` | 0.8 | Minimum confidence to restart |
 | `SUBPROCESS_TIMEOUT_SECONDS` | 120 | SSH timeout (Bastion needs ~90s) |
+| `SSH_ACTION_TIMEOUT_SECONDS` | 30 | send_input/restart SSH timeout |
+| `AZ_CLI_TIMEOUT_SECONDS` | 30 | az vm list timeout (no Bastion) |
 | `DEFAULT_POLL_INTERVAL_SECONDS` | 60 | Admiral loop interval |
 | `DEFAULT_CAPTURE_LINES` | 50 | TUI dashboard capture depth |
 | `DEFAULT_DETAIL_CAPTURE_LINES` | 500 | Detail view capture depth |

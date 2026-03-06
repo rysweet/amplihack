@@ -99,6 +99,14 @@ fleet start   [--interval 300] [--max-cycles 10]
 | `AZLIN_PATH` | All commands (auto-detected if azlin on PATH) |
 | `ANTHROPIC_API_KEY` | scout, advance, dry-run, run-once, start |
 
+## Admiral Configuration
+
+- **Model**: Claude Opus 4.6 (`claude-opus-4-6`)
+- **Max output tokens**: 128,000
+- **Context gathered per session**: full tmux scrollback + first 50 & last 200 transcript messages
+- **Safety**: 60 dangerous-input patterns blocked, confidence thresholds (60% send_input, 80% restart)
+- **Docs**: `docs/fleet-orchestration/ADMIRAL_REASONING.md`
+
 ## How to Run
 
 Execute via Bash:
