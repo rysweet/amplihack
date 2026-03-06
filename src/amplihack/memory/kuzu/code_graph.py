@@ -137,12 +137,15 @@ class KuzuCodeGraph:
             """,
             """
             CREATE REL TABLE IF NOT EXISTS CLASS_DEFINED_IN (
-                FROM CodeClass TO CodeFile
+                FROM CodeClass TO CodeFile,
+                line_number INT64 DEFAULT 0
             )
             """,
             """
             CREATE REL TABLE IF NOT EXISTS METHOD_OF (
-                FROM CodeFunction TO CodeClass
+                FROM CodeFunction TO CodeClass,
+                method_type STRING DEFAULT 'instance',
+                visibility STRING DEFAULT 'public'
             )
             """,
             """
@@ -169,8 +172,8 @@ class KuzuCodeGraph:
             """
             CREATE REL TABLE IF NOT EXISTS IMPORTS (
                 FROM CodeFile TO CodeFile,
-                symbol STRING,
-                alias STRING
+                import_type STRING DEFAULT '',
+                alias STRING DEFAULT ''
             )
             """,
         ]
@@ -446,11 +449,12 @@ class KuzuCodeGraph:
                             """
                             MATCH (c:CodeClass {class_id: $class_id})
                             MATCH (cf:CodeFile {file_id: $file_id})
-                            CREATE (c)-[:CLASS_DEFINED_IN]->(cf)
+                            CREATE (c)-[:CLASS_DEFINED_IN {line_number: $line_number}]->(cf)
                             """,
                             {
                                 "class_id": class_id,
                                 "file_id": file_path,
+                                "line_number": cls.get("line_number", 0),
                             },
                         )
 

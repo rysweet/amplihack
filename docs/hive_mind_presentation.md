@@ -22,18 +22,22 @@ Welcome. This presentation covers the distributed hive mind architecture -- a sy
 ### What is a Goal-Seeking Agent?
 
 - An autonomous agent that pursues objectives through iterative reasoning
-- Follows the **PERCEIVE -> REASON -> ACT -> LEARN** loop (agentic loop)
+- Follows the **OBSERVE -> ORIENT -> PERCEIVE -> REASON -> ACT -> LEARN** loop, driven by `run_iteration()`
 - Uses LLM-powered reasoning to plan, execute actions, and synthesize answers
 - Handles question complexity levels: L1 (Recall) through L12+ (Multi-hop synthesis)
 - Actions include: read content, search memory, synthesize answers, calculate, code generation
 
 ```mermaid
 graph LR
-    P["PERCEIVE<br/>Observe environment"] --> R["REASON<br/>Plan next action"]
+    OB["OBSERVE<br/>remember + recall context"] --> OR["ORIENT<br/>recall domain knowledge"]
+    OR --> P["PERCEIVE<br/>combine observation + memory"]
+    P --> R["REASON<br/>LLM decides action"]
     R --> A["ACT<br/>Execute action"]
     A --> L["LEARN<br/>Store outcome"]
-    L --> P
+    L --> OB
 ```
+
+_Source: [`src/amplihack/agents/goal_seeking/agentic_loop.py`](../src/amplihack/agents/goal_seeking/agentic_loop.py) — methods: `observe`, `orient`, `perceive`, `reason`, `act`, `learn`, `run_iteration`_
 
 ---
 
@@ -494,8 +498,10 @@ Our evaluation methodology is rigorous. The 5000-turn eval has a learning phase 
 
 | Condition | Median Score | Std Dev | Notes |
 |-----------|-------------|---------|-------|
-| **Single agent** | **90.47%** | — | Baseline, 5000t-seed42-v1.0, median-of-3 |
-| **Federated 10 agents (smoke)** | **65.7%** | **6.7%** | Best multi-agent result, low variance |
+| **Single agent (latest)** | **93.1%** | — | Latest run, 5000t-seed42-v1.0, median-of-3 |
+| Single agent (prior) | 90.47% | — | Previous baseline |
+| **Federated 10 agents (latest)** | **53.3%** | — | Latest 10-agent federated result |
+| Federated 10 agents (smoke, prior) | 65.7% | 6.7% | Prior best multi-agent result, low variance |
 | Federated 100 agents (full) | 45.8% | 21.7% | Routing precision degrades at scale |
 | Federated single DHT | 47.2% | — | One DistributedHiveGraph, no federation tree |
 | Federated v1 naive | 40.0% | — | Longest-answer-wins merge |
@@ -505,8 +511,10 @@ Our evaluation methodology is rigorous. The 5000-turn eval has a learning phase 
 graph LR
     subgraph "Performance Gap"
         direction TB
-        S["Single Agent<br/>90.47%"]
-        SM["Smoke 10 agents<br/>65.7%"]
+        S["Single Agent (latest)<br/>93.1%"]
+        SP["Single Agent (prior)<br/>90.47%"]
+        SM["Federated 10 agents (latest)<br/>53.3%"]
+        SMP["Smoke 10 agents (prior)<br/>65.7%"]
         SO["Semantic+OODA<br/>45.8%"]
         SD["Single DHT<br/>47.2%"]
         FN["Naive v1<br/>40.0%"]
@@ -515,10 +523,11 @@ graph LR
 ```
 
 **Key findings:**
-- **Gap:** Best multi-agent (65.7%) vs single agent (90.47%) = 24.77 point gap
-- **Scale insight:** Routing precision degrades at 100-agent scale (45.8% median, 21.7% stddev vs 65.7% at 10 agents)
+- **Latest gap:** Best multi-agent (53.3%) vs single agent (93.1%) = 39.8 point gap
+- **Single agent improved:** 90.47% → 93.1% (+2.63 points) with latest run
+- **Federated regression:** 10-agent federated dropped from 65.7% to 53.3% — routing/merge issues under investigation
+- **Scale insight:** Routing precision degrades at 100-agent scale (45.8% median, 21.7% stddev)
 - **Variance kills:** Broken routing had 31.2% stddev -- results range from 23% to 83%
-- **Smoke test wins:** Lowest variance (6.7% stddev) and highest median
 - **Single DHT:** 47.2% — one DistributedHiveGraph for all agents, no federation tree overhead
 - **Learning speedup:** 9x with 10 parallel workers (parallel learning with DistributedHiveGraph)
 - **Scale fix works:** 100 agents: 12.3s creation, 4.8GB RSS (was OOM crash with InMemoryHiveGraph)
@@ -527,7 +536,7 @@ graph LR
 ---
 
 **Speaker Notes:**
-Here are all the results. The single agent at 90.47% is the gold standard (dataset 5000t-seed42-v1.0, scored with median-of-3 grading). Our first federated attempt scored only 40% -- longest-answer-wins is a terrible merge strategy. The broken routing variant was worse at 34.9% median with massive 31.2% standard deviation -- the root hive was empty because facts only went to group hives, so queries fell back to random agents. The single DistributedHiveGraph (no federation tree) scored 47.2%. Semantic+OODA integration scored 45.8% with 21.7% stddev. The best multi-agent result was the smoke test with 10 agents at 65.7% median and only 6.7% stddev. There is a 24.77 point gap between the best multi-agent result and the single-agent baseline. On the positive side, the scale engineering works: 100 agents create in 12.3 seconds using 4.8GB RSS (previously this was an OOM crash with InMemoryHiveGraph), and learning is 9x faster with 10 parallel workers using DistributedHiveGraph.
+Here are all the results. The latest single agent run scores 93.1% on 5000t-seed42-v1.0 (up from the prior 90.47% baseline), scored with median-of-3 grading. The latest 10-agent federated result is 53.3% -- a regression from the prior 65.7% smoke test, under investigation. Our first federated attempt scored only 40% -- longest-answer-wins is a terrible merge strategy. The broken routing variant was worse at 34.9% median with massive 31.2% standard deviation -- the root hive was empty because facts only went to group hives, so queries fell back to random agents. The single DistributedHiveGraph (no federation tree) scored 47.2%. Semantic+OODA integration scored 45.8% with 21.7% stddev. The current gap between the best multi-agent result (53.3%) and the latest single-agent score (93.1%) is 39.8 points. On the positive side, the scale engineering works: 100 agents create in 12.3 seconds using 4.8GB RSS (previously this was an OOM crash with InMemoryHiveGraph), and learning is 9x faster with 10 parallel workers using DistributedHiveGraph.
 
 ---
 

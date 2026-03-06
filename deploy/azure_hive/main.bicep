@@ -8,10 +8,10 @@
 //   - N Container Apps (ceil(agentCount / agentsPerApp) apps, each with
 //     up to agentsPerApp agent containers)
 //
-// Note: Ephemeral volumes are used for Kuzu persistence (/data). Azure Files
-// (SMB) is NOT used because it does not support the POSIX advisory file locks
-// that Kuzu requires. Ephemeral volumes fully support POSIX locks during
-// container lifetime.
+// Note: Azure Managed Disk (Premium_LRS) volumes are used for Kuzu persistence
+// (/data). Direct block storage (managed disk) fully supports POSIX advisory
+// file locks that Kuzu requires, and provides persistent storage across
+// container restarts (unlike ephemeral volumes).
 //
 // Usage:
 //   az deployment group create \
@@ -51,6 +51,9 @@ param memoryTransport string = 'azure_service_bus'
 @description('Memory backend type')
 @allowed(['cognitive', 'hierarchical'])
 param memoryBackend string = 'cognitive'
+
+@description('Managed disk size in GB per container app (for Kuzu block storage)')
+param diskSizeGb int = 32
 
 // ---------- Naming ----------
 var suffix = uniqueString(resourceGroup().id)
@@ -138,10 +141,27 @@ resource containerEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
   }
 }
 
+// ---------- Managed Disks (one per Container App for Kuzu block storage) ----------
+// Premium_LRS managed disks provide direct block storage with full POSIX advisory
+// file lock support, enabling Kuzu to operate correctly and persist data across
+// container restarts.
+resource hiveDisks 'Microsoft.Compute/disks@2023-10-02' = [
+  for appIdx in range(0, appCount): {
+    name: '${hiveName}-disk-${appIdx}'
+    location: location
+    sku: { name: 'Premium_LRS' }
+    properties: {
+      diskSizeGB: diskSizeGb
+      creationData: { createOption: 'Empty' }
+      osType: null
+    }
+  }
+]
+
 // ---------- Container Apps (agentsPerApp agents per app) ----------
-// Uses ephemeral (EmptyDir) volumes at /data so Kuzu can acquire POSIX
-// advisory file locks. Azure Files (SMB) does not support POSIX file locks
-// and would cause Kuzu to fail at startup.
+// Uses Azure Managed Disk (AzureDisk) volumes at /data for persistent block
+// storage. Managed disks support POSIX advisory file locks required by Kuzu
+// and provide durable storage across container restarts.
 var sbConnectionString = listKeys('${sbNamespace.id}/AuthorizationRules/RootManageSharedAccessKey', '2022-10-01-preview').primaryConnectionString
 var acrCredentials = empty(acrName) ? acr.listCredentials() : acrExisting.listCredentials()
 var resolvedImage = empty(image) ? '${acrNameResolved}.azurecr.io/amplihive:latest' : image
@@ -180,7 +200,8 @@ resource containerApps 'Microsoft.App/containerApps@2024-03-01' = [
         volumes: [
           {
             name: 'hive-data'
-            storageType: 'EmptyDir'
+            storageType: 'AzureDisk'
+            storageName: '${hiveName}-disk-${appIdx}'
           }
         ]
         containers: [

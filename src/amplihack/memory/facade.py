@@ -139,13 +139,20 @@ class Memory:
         conn_str = getattr(cfg, "memory_connection_string", "") or ""
 
         if cfg.topology == "distributed":
-            # When a non-local transport is configured, wrap an InMemoryGraphStore
+            # When a non-local transport is configured, wrap a KuzuGraphStore
             # in NetworkGraphStore so all agents share knowledge via the bus.
             if transport != "local":
-                from .memory_store import InMemoryGraphStore
+                from pathlib import Path as _Path
+
+                from .kuzu_store import KuzuGraphStore
                 from .network_store import NetworkGraphStore
 
-                local_base: GraphStore = InMemoryGraphStore()
+                db_path = _Path(cfg.storage_path) / "graph_store" if cfg.storage_path else None
+                buffer_bytes = cfg.kuzu_buffer_pool_mb * 1024 * 1024
+                local_base: GraphStore = KuzuGraphStore(
+                    db_path=db_path,
+                    buffer_pool_size=buffer_bytes,
+                )
                 logger.info(
                     "Memory[%s]: distributed topology via NetworkGraphStore (transport=%s)",
                     cfg.agent_name,
@@ -171,26 +178,17 @@ class Memory:
             store.add_agent(cfg.agent_name)
             return store
 
-        # cognitive (default) — use Kuzu if available, fall back to InMemory with warning
-        try:
-            from pathlib import Path as _Path
+        # cognitive (default) — requires Kuzu; raises ImportError if unavailable
+        from pathlib import Path as _Path
 
-            from .kuzu_store import KuzuGraphStore
+        from .kuzu_store import KuzuGraphStore
 
-            db_path = _Path(cfg.storage_path) / "graph_store" if cfg.storage_path else None
-            buffer_bytes = cfg.kuzu_buffer_pool_mb * 1024 * 1024
-            local: GraphStore = KuzuGraphStore(
-                db_path=db_path,
-                buffer_pool_size=buffer_bytes,
-            )
-        except ImportError:
-            from .memory_store import InMemoryGraphStore
-
-            logger.warning(
-                "Memory[%s]: KuzuGraphStore unavailable (ImportError), falling back to InMemoryGraphStore",
-                cfg.agent_name,
-            )
-            local = InMemoryGraphStore()
+        db_path = _Path(cfg.storage_path) / "graph_store" if cfg.storage_path else None
+        buffer_bytes = cfg.kuzu_buffer_pool_mb * 1024 * 1024
+        local: GraphStore = KuzuGraphStore(
+            db_path=db_path,
+            buffer_pool_size=buffer_bytes,
+        )
 
         # Wrap with NetworkGraphStore if a non-local transport is configured
         if transport != "local":

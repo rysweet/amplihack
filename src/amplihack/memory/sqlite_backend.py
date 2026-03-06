@@ -120,6 +120,10 @@ class SQLiteBackend:
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(self._executor, self.database.get_stats)
 
+    def get_code_graph(self):
+        """Return None — SQLite backend has no code graph support."""
+        return None
+
     async def close(self) -> None:
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(self._executor, self.database.close)
