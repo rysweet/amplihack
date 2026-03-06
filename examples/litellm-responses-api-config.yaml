@@ -1,0 +1,67 @@
+# LiteLLM Configuration Example: Azure Responses API
+# Note: This config is mainly for reference. Responses API endpoints use direct Azure calls.
+# URL-based detection: Proxy detects "/responses" and routes directly to Azure, bypassing LiteLLM
+
+model_list:
+  - model_name: gpt-5-codex
+    litellm_params:
+      # Note: This won't be used for Responses API routing
+      # The proxy detects "/responses" and calls Azure directly
+      model: openai/gpt-5-codex
+      api_base: https://your-resource.cognitiveservices.azure.com/openai/responses
+      api_key: your-azure-api-key-here # pragma: allowlist secret
+      api_version: 2025-04-01-preview
+      max_tokens: 512000
+      timeout: 300
+
+  # Alternative Claude models for Responses API
+  - model_name: claude-3-5-sonnet-20241022
+    litellm_params:
+      model: anthropic/claude-3-5-sonnet-20241022
+      # Responses API endpoint - simpler URL structure
+      api_base: https://your-resource.cognitiveservices.azure.com/openai/responses
+      api_key: your-azure-api-key-here # pragma: allowlist secret
+      api_version: 2025-04-01-preview
+      max_tokens: 200000
+      timeout: 300
+
+general_settings:
+  # Disable database features
+  store_model_in_db: false
+
+  # Authentication settings
+  disable_auth: true
+
+  # Health check
+  health_check_api: true
+
+  # Disable telemetry
+  disable_spend_logs: true
+  disable_key_name_checks: true
+
+litellm_settings:
+  # Core settings
+  telemetry: false
+  set_verbose: false
+  drop_params: true
+
+  # Disable callbacks
+  success_callback: []
+  failure_callback: []
+# IMPORTANT: Routing Behavior
+#
+# When OPENAI_BASE_URL contains "/responses":
+# - Proxy detects Responses API endpoint
+# - Routes directly to Azure Responses API (bypasses LiteLLM)
+# - Optimized for Claude models and tool calling
+# - Enhanced streaming with tool execution support
+#
+# Models that work well with Responses API:
+# - gpt-5-codex (recommended for GPT models)
+# - claude-3-5-sonnet-20241022
+# - claude-3-5-haiku-20241022
+#
+# Usage:
+# 1. Set OPENAI_BASE_URL to a "/responses" endpoint in your .env
+# 2. The proxy will automatically use direct Azure calls
+# 3. This LiteLLM config serves as backup/reference only
