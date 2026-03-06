@@ -61,6 +61,8 @@ class Memory:
         query_fanout: int | None = None,
         gossip_enabled: bool | None = None,
         gossip_rounds: int | None = None,
+        memory_transport: str | None = None,
+        memory_connection_string: str | None = None,
         **kwargs: Any,
     ) -> None:
         self._agent_name = agent_name
@@ -87,6 +89,10 @@ class Memory:
             explicit["gossip_enabled"] = gossip_enabled
         if gossip_rounds is not None:
             explicit["gossip_rounds"] = gossip_rounds
+        if memory_transport is not None:
+            explicit["memory_transport"] = memory_transport
+        if memory_connection_string is not None:
+            explicit["memory_connection_string"] = memory_connection_string
         explicit.update(kwargs)
 
         self._cfg = MemoryConfig.resolve(agent_name, **explicit)
@@ -140,23 +146,37 @@ class Memory:
 
         if cfg.backend == "simple":
             from .memory_store import InMemoryGraphStore
-            return InMemoryGraphStore()
+            local: GraphStore = InMemoryGraphStore()
+        else:
+            # cognitive (default) — use Kuzu if available
+            try:
+                from pathlib import Path as _Path
 
-        # cognitive (default) — use Kuzu if available
-        try:
-            from pathlib import Path as _Path
+                from .kuzu_store import KuzuGraphStore
 
-            from .kuzu_store import KuzuGraphStore
+                db_path = _Path(cfg.storage_path) / "graph_store" if cfg.storage_path else None
+                buffer_bytes = cfg.kuzu_buffer_pool_mb * 1024 * 1024
+                local = KuzuGraphStore(
+                    db_path=db_path,
+                    buffer_pool_size=buffer_bytes,
+                )
+            except ImportError:
+                from .memory_store import InMemoryGraphStore
+                local = InMemoryGraphStore()
 
-            db_path = _Path(cfg.storage_path) / "graph_store" if cfg.storage_path else None
-            buffer_bytes = cfg.kuzu_buffer_pool_mb * 1024 * 1024
-            return KuzuGraphStore(
-                db_path=db_path,
-                buffer_pool_size=buffer_bytes,
+        # Wrap with NetworkGraphStore if a non-local transport is configured
+        transport = getattr(cfg, "memory_transport", "local")
+        conn_str = getattr(cfg, "memory_connection_string", "")
+        if transport and transport != "local":
+            from .network_store import NetworkGraphStore
+            return NetworkGraphStore(
+                agent_id=cfg.agent_name or "agent",
+                local_store=local,
+                transport=transport,
+                connection_string=conn_str,
             )
-        except ImportError:
-            from .memory_store import InMemoryGraphStore
-            return InMemoryGraphStore()
+
+        return local
 
     def _build_cognitive(self, cfg: MemoryConfig) -> Any:
         """Create a CognitiveAdapter with the resolved config."""
