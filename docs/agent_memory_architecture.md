@@ -195,6 +195,8 @@ Falls back to keyword-based DHT routing if embeddings are unavailable.
 
 Agents periodically exchange bloom filter summaries of their shard contents. Each bloom filter is ~1KB for 1000 facts at 1% false positive rate. Missing facts are pulled from peers. Convergence is O(log N) rounds.
 
+**Gossip exchanges full graph nodes** (not flat string facts), preserving all metadata: confidence scores, timestamps, embeddings, and relationship edges. When a new agent joins the ring, a full shard rebuild is triggered — existing agents redistribute facts to cover the new ring position.
+
 ### Replication & Fault Tolerance
 
 Every fact exists on R=3 agents. If an agent leaves, orphaned facts are automatically redistributed to the next agents on the ring.
@@ -249,9 +251,13 @@ An agent's **local CognitiveMemory** contains facts it learned directly. The **D
 
 The eval tests the production agent — same code, same OODA loop, same Memory facade.
 
-**Single condition**: 1 agent with `Memory("agent", topology="single")`. Learns all 5000 turns. Answers 100 questions × 3 repeats. Reports median.
+**Single condition**: 1 agent with `Memory("agent", topology="single")`. Learns all 5000 turns. Answers 100 questions × 3 repeats. Reports median. **Result: 94.1% (21.7h).**
 
-**Federated condition**: 100 agents with `Memory("agent_N", topology="distributed", shared_hive=hive)`. Turns distributed round-robin (50 per agent). Learning parallelized (10 workers, 9x speedup). Gossip rounds after learning. Q&A with semantic expertise routing + consensus voting × 3 repeats. Reports median.
+**Federated smoke (10 agents)**: 10 agents with `Memory("agent_N", topology="distributed", shared_hive=hive)`. Turns distributed round-robin. Q&A with semantic routing × 3 repeats. **Result: 65.7% median, 6.7% stddev.** Best multi-agent result.
+
+**Federated full (100 agents)**: 100 agents, same config. Learning parallelized (10 workers, 9x speedup: 21.6h → 2.4h). Gossip rounds after learning. Q&A with semantic expertise routing + consensus voting × 3 repeats. **Result: 45.8% median, 21.7% stddev.** Routing precision degrades at this scale.
+
+**Azure deployment context:** Production eval runs on 20 Container Apps (`amplihive-app-0`…`amplihive-app-19`) in `westus2` / `hive-mind-rg`, each hosting 5 agents (`agent-0`…`agent-99`). Transport: `azure_service_bus` via namespace `hive-sb-dj2qo2w7vu5zi`, topic `hive-graph`, 100 subscriptions. Shard backend in containers: `simple` (in-memory) — Kuzu disabled due to POSIX advisory lock limitation on Azure Files.
 
 Scoring: LLM grader (multi-vote median) scores 0.0-1.0 across 12 cognitive levels (L1 direct recall through L12 far transfer).
 
@@ -317,6 +323,19 @@ NetworkGraphStore                    NetworkGraphStore
 3. **`_process_incoming`** — background thread polls the event bus and applies remote
    `create_node` / `create_edge` events to the local store, and responds to
    `search_query` events with local results.
+
+### GraphStore Backends
+
+The `GraphStore` protocol has four implementations:
+
+| Backend | Use Case | Persistence | Transport |
+|---------|----------|-------------|-----------|
+| `KuzuGraphStore` | Single agent, local dev | Disk (Kuzu DB) | None |
+| `InMemoryGraphStore` | Testing, containers | RAM only | None |
+| `DistributedGraphStore` | Multi-agent, single process | RAM (DHT shards) | In-process |
+| `NetworkGraphStore` | Multi-machine, production | Local store + Service Bus events | azure_service_bus / redis / local |
+
+`NetworkGraphStore` wraps any local store (typically `InMemoryGraphStore` in containers) and replicates writes/searches over the configured transport. In Azure Container Apps, each agent uses `InMemoryGraphStore` locally, with `azure_service_bus` for cross-container sync.
 
 ### Configuration
 

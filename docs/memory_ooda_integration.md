@@ -2,7 +2,7 @@
 
 **Status:** Design / Investigation
 **Branch:** feat/distributed-hive-mind
-**Date:** 2026-03-05
+**Date:** 2026-03-06
 
 ---
 
@@ -706,5 +706,23 @@ The facade abstracts over `CognitiveAdapter` (6-type memory), `HierarchicalMemor
 
 ---
 
+---
+
+## Appendix: Transport Topology
+
+The `Memory` facade selects transport at construction time via config-driven topology. The transport determines how agents share knowledge:
+
+| Transport | OODA Integration | Scale | Latency |
+|-----------|-----------------|-------|---------|
+| `local` | In-process queue; all agents share one Python process | 1 machine | Microseconds |
+| `redis` | Redis pub/sub; agents on same network | 10s of agents | <1ms |
+| `azure_service_bus` | Service Bus topic/subscriptions; cross-machine | 100s of agents | 10–100ms |
+
+**Production topology (Azure):** 20 Container Apps (`amplihive-app-0`…`amplihive-app-19`), 100 agents (`agent-0`…`agent-99`, 5 per container). Service Bus namespace `hive-sb-dj2qo2w7vu5zi`, topic `hive-graph`, 100 subscriptions (one per agent). Each agent's `NetworkGraphStore` wraps a local `InMemoryGraphStore` and publishes `create_node` / `search_query` events to the topic. Cross-container OODA memory sharing flows through Service Bus; intra-container agents share in-process.
+
+**Backend selection:** In containers the shard backend is `simple` (in-memory). Kuzu is disabled because Azure Files (`hivesadj2qo2w7vu5zi`) does not support POSIX advisory locks required by Kuzu. Kuzu is used only in local development where native filesystem locks work correctly.
+
+---
+
 *Investigation only — no code changes were made to agent files.*
-*Generated: 2026-03-05*
+*Updated: 2026-03-06*

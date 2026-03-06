@@ -428,7 +428,8 @@ graph TB
 
 **Key parameters:**
 - **DHT:** Consistent hash ring, 64 virtual nodes per agent, R=3 replication
-- **Gossip:** Bloom filter exchange, O(log N) convergence, 1KB/1000 facts
+- **Gossip:** Bloom filter exchange, O(log N) convergence, 1KB/1000 facts; exchanges full graph nodes (not flat facts), preserving all metadata
+- **Agent join:** Triggers full shard rebuild — existing agents redistribute facts to cover the new ring position
 - **Kuzu fix:** Default 80% RAM + 8TB mmap per DB. Bounded to 256MB buffer pool + 1GB max per agent
 - **Federation:** Facts with confidence >= 0.9 escalate to root, root broadcasts to all groups
 - **Query:** Hash key terms -> fan-out to K shard owners -> RRF merge results
@@ -481,12 +482,12 @@ Our evaluation methodology is rigorous. The 5000-turn eval has a learning phase 
 
 | Condition | Median Score | Std Dev | Notes |
 |-----------|-------------|---------|-------|
-| **Single agent** | **94.1%** | -- | Baseline, 21.6h duration |
-| Federated v1 naive | 40.0% | -- | Longest-answer-wins merge |
+| **Single agent** | **94.1%** | — | Baseline, 5000 turns, 21.7h |
+| **Federated 10 agents (smoke)** | **65.7%** | **6.7%** | Best multi-agent result, low variance |
+| Federated 100 agents (full) | 45.8% | 21.7% | Routing precision degrades at scale |
+| Federated single DHT | 47.2% | — | One DHT, no federation tree |
+| Federated v1 naive | 40.0% | — | Longest-answer-wins merge |
 | Federated broken routing | 34.9% | 31.2% | Root hive empty, random fallback |
-| Federated single DHT | 47.2% | -- | One DHT, no federation tree |
-| Federated semantic+OODA | 45.8% | 21.7% | OODA integration, semantic routing |
-| Smoke test 10 agents | 65.7% | 6.7% | Best multi-agent result |
 
 ```mermaid
 graph LR
@@ -503,10 +504,12 @@ graph LR
 
 **Key findings:**
 - **Gap:** Best multi-agent (65.7%) vs single agent (94.1%) = 28.4 point gap
+- **Scale insight:** Routing precision degrades at 100-agent scale (45.8% median, 21.7% stddev vs 65.7% at 10 agents)
 - **Variance kills:** Broken routing had 31.2% stddev -- results range from 23% to 83%
 - **Smoke test wins:** Lowest variance (6.7% stddev) and highest median
 - **Learning speedup:** 9x with 10 parallel workers (21.6h -> 2.4h)
 - **Scale fix works:** 100 agents: 12.3s creation, 4.8GB RSS (was OOM crash)
+- **Quality:** 103 tests passing; 13 audit findings fixed (security, thread safety, API consistency)
 
 ---
 
@@ -558,15 +561,16 @@ The hive mind supports a full fact lifecycle. Facts enter through promotion -- t
 - `status` -- check agent health and fact counts
 - `stop` -- graceful shutdown
 
-**Azure deployment:**
+**Azure deployment (westus2 / hive-mind-rg):**
 
-| Resource | Purpose |
-|----------|---------|
-| Azure Container Registry | Agent Docker images |
-| Azure Service Bus | Event transport (topic: `hive-graph`) |
-| Azure Files | Persistent Kuzu DBs per agent |
+| Resource | Name / Purpose |
+|----------|----------------|
+| Azure Container Registry | `hivacrhivemind.azurecr.io` — agent Docker images |
+| Azure Service Bus | `hive-sb-dj2qo2w7vu5zi`, topic `hive-graph`, 100 subscriptions |
+| Azure Storage | `hivesadj2qo2w7vu5zi` — Azure Files (provisioned; **not used for Kuzu** due to POSIX lock limitation) |
 | Container Apps Environment | Managed container runtime |
-| Container Apps (N) | Each hosts up to 5 agent containers |
+| Container Apps | `amplihive-app-0`…`amplihive-app-19` (20 apps × 5 agents = 100 agents) |
+| Shard backend | `simple` (in-memory) in containers; `kuzu` for local dev only |
 
 **Transports:**
 
