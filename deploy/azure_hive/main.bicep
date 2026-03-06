@@ -44,6 +44,10 @@ param agentPromptBase string = 'You are a distributed hive mind agent.'
 @allowed(['local', 'redis', 'azure_service_bus'])
 param memoryTransport string = 'azure_service_bus'
 
+@description('Memory backend type')
+@allowed(['simple', 'cognitive'])
+param memoryBackend string = 'simple'
+
 // ---------- Naming ----------
 var suffix = uniqueString(resourceGroup().id)
 var acrNameResolved = empty(acrName) ? 'acr${suffix}' : acrName
@@ -232,6 +236,10 @@ resource containerApps 'Microsoft.App/containerApps@2024-03-01' = [
               {
                 name: 'AMPLIHACK_AGENT_PROMPT'
                 value: '${agentPromptBase} You are agent ${appIdx * agentsPerApp + agentOffset}.'
+              }
+              {
+                name: 'AMPLIHACK_MEMORY_BACKEND'
+                value: memoryBackend
               }
               {
                 name: 'AMPLIHACK_MEMORY_TRANSPORT'
