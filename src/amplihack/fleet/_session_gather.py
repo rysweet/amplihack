@@ -38,11 +38,14 @@ def gather_context(
     # so the script works even when newlines are stripped by SSH.
     sess = shlex.quote(session_name)
     gather_cmd = (
+        # Full tmux scrollback capture (no line limit)
         f'echo "===TMUX==="; '
-        f"tmux capture-pane -t {sess} -p -S -40 2>/dev/null || echo 'NO_SESSION'; "
+        f"tmux capture-pane -t {sess} -p -S - 2>/dev/null || echo 'NO_SESSION'; "
+        # Working directory
         f'echo "===CWD==="; '
         f'CWD=$(tmux display-message -t {sess} -p "#{{pane_current_path}}" 2>/dev/null); '
         f'echo "$CWD"; '
+        # Git state
         f'echo "===GIT==="; '
         f'if [ -n "$CWD" ] && [ -d "$CWD/.git" ]; then '
         f'cd "$CWD"; '
@@ -50,7 +53,27 @@ def gather_context(
         f'echo "REMOTE:$(git remote get-url origin 2>/dev/null)"; '
         f"echo \"MODIFIED:$(git diff --name-only HEAD 2>/dev/null | head -10 | tr '\\n' ',')\"; "
         f"fi; "
+        # Transcript: first 50 + last 200 lines of user/assistant messages
+        # from the most recent JSONL in ~/.claude/projects/<project-key>/
         f'echo "===TRANSCRIPT==="; '
+        f'if [ -n "$CWD" ]; then '
+        f'PKEY=$(echo "$CWD" | sed "s|/|-|g"); '
+        f'JSONL=$(ls -t "$HOME/.claude/projects/$PKEY/"*.jsonl 2>/dev/null | head -1); '
+        f'if [ -n "$JSONL" ]; then '
+        # Extract user/assistant text lines via grep + sed (no python needed)
+        f"MSGS=$(grep -E '\"type\":\"(user|assistant)\"' \"$JSONL\" 2>/dev/null "
+        f"| grep -oP '\"text\":\"[^\"]*\"' "
+        f"| sed 's/\"text\":\"//;s/\"$//' "
+        f"| grep -v '^$'); "
+        f'TOTAL=$(echo "$MSGS" | wc -l); '
+        f'echo "TRANSCRIPT_LINES:$TOTAL"; '
+        # First 50 lines (early context — what the user asked for)
+        f'echo "---EARLY---"; '
+        f'echo "$MSGS" | head -50; '
+        # Last 200 lines (recent activity)
+        f'echo "---RECENT---"; '
+        f'echo "$MSGS" | tail -200; '
+        f"fi; fi; "
         f'echo "===END==="'
     )
 
@@ -106,10 +129,39 @@ def parse_context_output(output: str, context: SessionContext) -> None:
                     context.files_modified = files
 
         elif label == "TRANSCRIPT" and i + 1 < len(sections):
-            transcript = sections[i + 1].strip()
-            if transcript:
-                context.transcript_summary = transcript
-                # Check for PR link in transcript
-                for line in transcript.split("\n"):
-                    if line.startswith("PR_CREATED:"):
-                        context.pr_url = line[11:]
+            raw_transcript = sections[i + 1].strip()
+            if raw_transcript:
+                # Parse early + recent sections
+                parts_text = raw_transcript
+                early = ""
+                recent = ""
+                if "---EARLY---" in parts_text and "---RECENT---" in parts_text:
+                    early_start = parts_text.index("---EARLY---") + len("---EARLY---")
+                    recent_start = parts_text.index("---RECENT---")
+                    early = parts_text[early_start:recent_start].strip()
+                    recent = parts_text[recent_start + len("---RECENT---"):].strip()
+                elif parts_text:
+                    recent = parts_text
+
+                # Combine: early context + separator + recent activity
+                transcript_parts = []
+                if early:
+                    transcript_parts.append("=== Session start ===")
+                    transcript_parts.append(early)
+                if recent:
+                    if early:
+                        transcript_parts.append("\n=== Recent activity ===")
+                    transcript_parts.append(recent)
+
+                context.transcript_summary = "\n".join(transcript_parts)
+
+                # Check for PR links in transcript
+                for line in context.transcript_summary.split("\n"):
+                    if "PR_CREATED:" in line:
+                        context.pr_url = line.split("PR_CREATED:")[-1].strip()
+                    elif "pull/" in line and "github.com" in line:
+                        # Extract PR URL from text
+                        import re
+                        pr_match = re.search(r'https://github\.com/[^\s"]+/pull/\d+', line)
+                        if pr_match:
+                            context.pr_url = pr_match.group(0)
