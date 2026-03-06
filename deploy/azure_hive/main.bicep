@@ -181,6 +181,7 @@ resource containerApps 'Microsoft.App/containerApps@2024-03-01' = [
   for appIdx in range(0, appCount): {
     name: '${hiveName}-app-${appIdx}'
     location: location
+    dependsOn: [envStorage]
     properties: {
       managedEnvironmentId: containerEnv.id
       workloadProfileName: 'Consumption'
