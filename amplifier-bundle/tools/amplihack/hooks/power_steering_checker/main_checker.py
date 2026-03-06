@@ -152,8 +152,9 @@ class PowerSteeringChecker(
         # Ensure runtime directory exists
         try:
             self.runtime_dir.mkdir(parents=True, exist_ok=True)
-        except OSError:
-            pass  # Fail-open: Continue even if directory creation fails
+        except OSError as e:
+            # Fail-open: Continue even if directory creation fails, but log for observability
+            logger.warning("Power-steering runtime dir creation failed: %s", e)
 
         # Load configuration
         self.config = self._load_config()

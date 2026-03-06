@@ -405,8 +405,7 @@ class ChecksQualityMixin:
             if msg.get("type") == "tool_result":
                 output = str(msg.get("message", {}).get("content", ""))
                 # Match pytest-style "N passed" or "N tests passed"
-                import re as _re
-                match = _re.search(r"(\d+)\s+passed", output, _re.IGNORECASE)
+                match = re.search(r"(\d+)\s+passed", output, re.IGNORECASE)
                 if match:
                     count = int(match.group(1))
                     if count >= MIN_SHORTCUT_USAGE_COUNT:

@@ -178,12 +178,6 @@ class ChecksDocsMixin:
             if not new_features:
                 return True
 
-            # Edge case 2: Docs-only session (no code files modified)
-            # But NOT if the "docs" are actually feature definitions (.md files
-            # in commands/agents/skills) — those ARE the feature, not just docs
-            if self._is_docs_only_session(transcript) and not new_features:
-                return True
-
             # Edge case 3: Internal changes (tools/, tests/, etc.)
             # If all features are in internal paths, pass
             internal_paths = [".claude/tools/", "tests/", ".claude/runtime/"]
