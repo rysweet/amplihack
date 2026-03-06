@@ -194,7 +194,7 @@ Loads a recipe and executes each step in order:
 
 - Agent steps call AI agents via SDK adapter
 - Bash steps execute shell commands
-- Template variables in prompts/commands expand from context
+- Template variables in prompts/commands expand from context (automatically shell-escaped in bash steps via `shlex.quote()`)
 - Step outputs store in context for later steps
 - Steps with conditions may skip based on previous results
 

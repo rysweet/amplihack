@@ -136,6 +136,50 @@ complete-session: COMPLETED
 **Documentation Updated**:
 - [Skill Catalog](../skills/SKILL_CATALOG.md#yaml-frontmatter-requirements)
 
+### Bash Template Variable Quoting (PR #2887)
+
+**Problem**: Bash steps in `quality-audit-cycle.yaml` failed with JSON parsing errors when template variables contained JSON output from Python scripts.
+
+**Root Cause**: Manual single quotes around template variables in YAML (`'{{var}}'`) caused double-quoting:
+- Recipe YAML: `export VALIDATED='{{validated_findings}}'`
+- `render_shell()` already applies `shlex.quote()` to all template variables
+- Result: `export VALIDATED=''{"json":"data"}''` → bash interprets JSON as commands
+
+**Solution**: Removed redundant single quotes from all bash step template variables in `quality-audit-cycle.yaml`:
+- Changed: `export VALIDATED='{{validated_findings}}'`
+- To: `export VALIDATED={{validated_findings}}`
+
+**Affected Steps**:
+- `verify-fixes` (step 4b) - 3 template variables
+- `accumulate-history` (step 4c) - 3 template variables
+- `recurse-decision` (step 5) - 4 template variables
+
+**Impact**:
+- Quality audit cycle now correctly passes JSON between Python scripts
+- Bash no longer misinterprets structured data as commands
+- Template variable quoting handled consistently by `render_shell()`
+
+**Best Practice**: Never manually quote template variables in bash steps - the recipe runner's `render_shell()` automatically applies proper shell escaping via `shlex.quote()`.
+
+**Example (Correct Usage)**:
+````yaml
+steps:
+  - id: process-data
+    type: bash
+    command: |
+      export DATA={{json_output}}
+      python3 - <<'PYEOF'
+      import json, os
+      data = json.loads(os.environ.get('DATA', '{}'))
+      print(data)
+      PYEOF
+    output: processed_data
+````
+
+**Documentation Updated**:
+- [Recipe YAML Format - Template Variables](./README.md#template-variables)
+- [Template Variables Troubleshooting](./template-variables-troubleshooting.md) - New comprehensive troubleshooting guide
+
 ## Version History
 
 All fixes released in **amplihack v0.9.0** (March 2026):
@@ -144,6 +188,7 @@ All fixes released in **amplihack v0.9.0** (March 2026):
 - **Bash Timeouts** (PR #2807) - Removed hardcoded 120s limit
 - **Adapter Selection** (PR #2804) - Auto-detection for Claude Code
 - **Skill Frontmatter** (PR #2811) - Fixed YAML validation issues
+- **Bash Template Quoting** (PR #2887) - Fixed double-quoting in quality-audit-cycle
 
 ## See Also
 
