@@ -498,8 +498,8 @@ class MemoryCoordinator:
         # Query backend for potential duplicates
         from .models import MemoryQuery
 
-        # For now, retrieve all memories from current session and check manually
-        # TODO: Add content_hash to MemoryQuery for more efficient duplicate detection
+        # Retrieve all memories from current session and check manually.
+        # A content_hash index on MemoryQuery would make this O(1) instead of O(n).
         query = MemoryQuery(session_id=self.session_id, limit=1000)
         memories = await self.backend.retrieve_memories(query)
 
