@@ -2,7 +2,7 @@
 name: fleet
 description: |
   Fleet orchestration for distributed coding agents across Azure VMs.
-  Invoked as `/fleet <command>`. Covers all fleet operations: status, sweep,
+  Invoked as `/fleet <command>`. Covers all fleet operations: status, scout,
   advance, adopt, watch, snapshot, dry-run, start, add-task, queue, auth,
   dashboard, tui, and more. Use when: user mentions fleet, agents, VMs,
   sessions, or asks "what are my agents doing".
@@ -21,7 +21,7 @@ Invoke as `/fleet <command>` or just describe what you want and Claude will pick
 | Command | What it does |
 |---------|-------------|
 | `fleet status` | Quick text overview of all VMs and sessions |
-| `fleet sweep` | Discover, adopt, dry-run reason, show report |
+| `fleet scout` | Discover, adopt, dry-run reason, show report |
 | `fleet snapshot` | Point-in-time capture of all managed sessions |
 | `fleet watch <vm> <session>` | Live snapshot of a single session |
 | `fleet observe <vm>` | Observe sessions with pattern classification |
@@ -70,7 +70,7 @@ Invoke as `/fleet <command>` or just describe what you want and Claude will pick
 
 | User says | Command |
 |-----------|---------|
-| "What are my agents doing?" | `fleet sweep` |
+| "What are my agents doing?" | `fleet scout` |
 | "Show me the fleet" | `fleet status` |
 | "Send next steps to all sessions" | `fleet advance` |
 | "Advance but let me review each" | `fleet advance --confirm` |
@@ -82,7 +82,7 @@ Invoke as `/fleet <command>` or just describe what you want and Claude will pick
 ## Key Options
 
 ```
-fleet sweep   [--session vm:session] [--vm VM] [--skip-adopt] [--save PATH]
+fleet scout   [--session vm:session] [--vm VM] [--skip-adopt] [--save PATH]
 fleet advance [--session vm:session] [--vm VM] [--confirm] [--save PATH]
 fleet dry-run [--vm VM ...] [--backend auto|anthropic|copilot|litellm]
 fleet adopt   <vm> [--sessions s1 s2]
@@ -97,7 +97,7 @@ fleet start   [--interval 300] [--max-cycles 10]
 | Variable | Required for |
 |----------|-------------|
 | `AZLIN_PATH` | All commands (auto-detected if azlin on PATH) |
-| `ANTHROPIC_API_KEY` | sweep, advance, dry-run, run-once, start |
+| `ANTHROPIC_API_KEY` | scout, advance, dry-run, run-once, start |
 
 ## How to Run
 
@@ -109,7 +109,7 @@ fleet <command> [options]
 
 ## Presenting Results
 
-After running `fleet sweep` or `fleet advance`, present the output to the user as:
+After running `fleet scout` or `fleet advance`, present the output to the user as:
 
 1. **Summary table** — reformat the CLI output into a clean markdown table with columns:
    VM | Session | Status | Action | Conf | Summary

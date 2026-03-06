@@ -1,4 +1,4 @@
-"""Session operations CLI commands -- watch, snapshot, adopt, observe, auth, sweep, advance.
+"""Session operations CLI commands -- watch, snapshot, adopt, observe, auth, scout, advance.
 
 Registered by _cli_commands.register_commands().
 This module should NOT be imported directly by external code.
@@ -10,7 +10,7 @@ import sys
 
 import click
 
-__all__ = ["register_session_ops", "format_sweep_report", "format_advance_report"]
+__all__ = ["register_session_ops", "format_scout_report", "format_advance_report"]
 
 
 def _parse_session_target(session_str: str) -> tuple[str | None, str]:
@@ -24,13 +24,13 @@ def _parse_session_target(session_str: str) -> tuple[str | None, str]:
     return (None, session_str.strip())
 
 
-def format_sweep_report(
+def format_scout_report(
     all_vms: list,
     decisions: list[dict],
     adopted_count: int,
     skip_adopt: bool,
 ) -> str:
-    """Format the sweep report as indented plain text.
+    """Format the scout report as indented plain text.
 
     Args:
         all_vms: List of VMView objects from FleetTUI.refresh_all().
@@ -44,7 +44,7 @@ def format_sweep_report(
     lines: list[str] = []
     lines.append("")
     lines.append("=" * 60)
-    lines.append("FLEET SWEEP REPORT")
+    lines.append("FLEET SCOUT REPORT")
     lines.append("=" * 60)
 
     running_vms = [v for v in all_vms if v.is_running]
@@ -184,7 +184,7 @@ def format_sweep_report(
     lines.append("  # Other useful commands:")
     lines.append("  fleet advance                            # Send next command to all sessions")
     lines.append("  fleet advance --session <vm>:<session>   # Advance one session")
-    lines.append("  fleet sweep --session <vm>:<session>     # Sweep one session")
+    lines.append("  fleet scout --session <vm>:<session>     # Scout one session")
     lines.append("  fleet watch <vm> <session>               # Live terminal snapshot")
     lines.append("  fleet status                             # Quick fleet overview")
 
@@ -242,7 +242,7 @@ def format_advance_report(
 
 
 def register_session_ops(fleet_cli: click.Group) -> None:
-    """Register session operation commands (watch, snapshot, adopt, observe, auth, sweep, advance).
+    """Register session operation commands (watch, snapshot, adopt, observe, auth, scout, advance).
 
     All module-level references and class lookups go through _cmd so that
     tests can patch _cli_commands.FleetState, _cli_commands.AuthPropagator, etc.
@@ -425,21 +425,21 @@ def register_session_ops(fleet_cli: click.Group) -> None:
                     click.echo(f"    | {line[:120]}")
 
     # ------------------------------------------------------------------
-    # fleet sweep
+    # fleet scout
     # ------------------------------------------------------------------
 
-    @fleet_cli.command("sweep")
+    @fleet_cli.command("scout")
     @click.option("--vm", default=None, help="Filter to a single VM (default: all)")
     @click.option("--session", "session_target", default=None, help="Target session as vm:session (e.g., dev:cybergym-intg)")
     @click.option("--skip-adopt", is_flag=True, help="Reason about sessions without adopting them first")
     @click.option("--save", "save_path", default=None, type=click.Path(), help="Save JSON report to file")
-    def sweep(vm, session_target, skip_adopt, save_path):
+    def scout(vm, session_target, skip_adopt, save_path):
         """Discover sessions, adopt them, dry-run reason, and show a report.
 
         Combines fleet discovery, session adoption, and admiral dry-run
         reasoning into a single pipeline.
 
-        Target a single session: fleet sweep --session dev:cybergym-intg
+        Target a single session: fleet scout --session dev:cybergym-intg
 
         Requires ANTHROPIC_API_KEY (or another LLM backend).
         """
@@ -554,7 +554,7 @@ def register_session_ops(fleet_cli: click.Group) -> None:
                     })
 
         # -- Phase 4: Report --
-        report_text = format_sweep_report(
+        report_text = format_scout_report(
             all_vms, decisions, adopted_count, skip_adopt
         )
         click.echo(report_text)
@@ -584,7 +584,7 @@ def register_session_ops(fleet_cli: click.Group) -> None:
     def advance(vm, session_target, confirm, save_path):
         """Run the fleet admiral LIVE — reason and execute actions on sessions.
 
-        Unlike 'sweep' (dry-run only), this command actually sends input
+        Unlike 'scout' (dry-run only), this command actually sends input
         to sessions, restarts stuck agents, and marks tasks complete.
 
         Target a single session: fleet advance --session dev:cybergym-intg

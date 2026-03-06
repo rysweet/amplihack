@@ -151,7 +151,7 @@ The LLM returns JSON (possibly wrapped in markdown). The admiral:
 
 ## Phase 3: ACT
 
-### Dry-Run Mode (fleet sweep)
+### Dry-Run Mode (fleet scout)
 
 In dry-run, the decision is displayed but not executed:
 
@@ -250,15 +250,15 @@ The decision is appended to the reasoner's `_decisions` list. This enables:
 
 | Command | dry_run | Scope | Loop |
 |---------|---------|-------|------|
-| `fleet sweep` | Yes | All sessions (or `--vm`/`--session` filtered) | Single pass |
+| `fleet scout` | Yes | All sessions (or `--vm`/`--session` filtered) | Single pass |
 | `fleet advance` | No | All sessions (or `--vm`/`--session` filtered) | Single pass |
 | `fleet dry-run` | Yes | Managed sessions (`--vm` filtered) | Single pass |
 | `fleet run-once` | No | All managed sessions | Single cycle |
 | `fleet start` | No | All managed sessions | Continuous at interval |
 
-The key difference between `sweep`/`advance` and `dry-run`/`run-once`/`start`:
+The key difference between `scout`/`advance` and `dry-run`/`run-once`/`start`:
 
-- **sweep/advance** use `FleetTUI.refresh_all()` for discovery (sees all VMs including excluded ones) and `SessionReasoner` directly
+- **scout/advance** use `FleetTUI.refresh_all()` for discovery (sees all VMs including excluded ones) and `SessionReasoner` directly
 - **dry-run/run-once/start** use `FleetAdmiral` which has its own reasoner chain (lifecycle, preemption, coordination, batch-assign) and only operates on managed VMs
 
 ## Key Files
@@ -273,7 +273,7 @@ The key difference between `sweep`/`advance` and `dry-run`/`run-once`/`start`:
 | `_backends.py` | `AnthropicBackend`, `CopilotBackend`, `LiteLLMBackend` |
 | `_validation.py` | Input sanitization + dangerous pattern blocklist |
 | `_constants.py` | Confidence thresholds, timeouts, capacity limits |
-| `_cli_session_ops.py` | `sweep` + `advance` CLI commands + report formatting |
+| `_cli_session_ops.py` | `scout` + `advance` CLI commands + report formatting |
 | `fleet_admiral.py` | `FleetAdmiral` — autonomous loop with multi-reasoner chain |
 
 ## Configuration

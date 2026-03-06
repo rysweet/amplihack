@@ -390,7 +390,7 @@ The `/fleet` skill lets you manage your fleet directly from a Claude Code or Cop
 Type `/fleet` followed by a command:
 
 ```
-/fleet sweep
+/fleet scout
 /fleet advance
 /fleet status
 ```
@@ -398,14 +398,14 @@ Type `/fleet` followed by a command:
 Or just describe what you want — Claude will pick the right command:
 
 ```
-"What are my agents doing?"        → fleet sweep
+"What are my agents doing?"        → fleet scout
 "Send next steps to all sessions"  → fleet advance
 "Advance the stuck session on dev" → fleet advance --session dev:stuck-session
 ```
 
-### Fleet Sweep (Dry-Run Scan)
+### Fleet Scout (Dry-Run Scan)
 
-`/fleet sweep` discovers all VMs and sessions, runs admiral reasoning, and shows a report with three sections:
+`/fleet scout` discovers all VMs and sessions, runs admiral reasoning, and shows a report with three sections:
 
 **1. Status Table** — one row per session:
 
@@ -473,14 +473,14 @@ Safety is enforced automatically:
 
 ### Filtering to One Session
 
-Both sweep and advance support `--vm` and `--session` filters:
+Both scout and advance support `--vm` and `--session` filters:
 
 ```
 # Sweep one VM (faster — only one Bastion tunnel):
-/fleet sweep --vm dev --skip-adopt
+/fleet scout --vm dev --skip-adopt
 
 # Sweep one session (fastest — ~2 min):
-/fleet sweep --session dev:cybergym-intg --skip-adopt
+/fleet scout --session dev:cybergym-intg --skip-adopt
 
 # Advance one session:
 /fleet advance --session dev:cybergym-intg
@@ -493,7 +493,7 @@ Both sweep and advance support `--vm` and `--session` filters:
 
 1. **Sweep first** to see the fleet state:
    ```
-   /fleet sweep
+   /fleet scout
    ```
 
 2. **Review** the report — check which sessions need action
@@ -518,7 +518,7 @@ Both sweep and advance support `--vm` and `--session` filters:
 Both commands support `--save` to write a JSON report:
 
 ```
-/fleet sweep --save /tmp/fleet-report.json
+/fleet scout --save /tmp/fleet-report.json
 /fleet advance --save /tmp/advance-log.json
 ```
 
