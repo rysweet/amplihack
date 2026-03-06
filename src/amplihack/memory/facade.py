@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any
 
 from .config import MemoryConfig
+from .graph_store import GraphStore
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +93,7 @@ class Memory:
 
         self._hive: Any = None
         self._adapter: Any = None
+        self._graph_store: GraphStore | None = None
 
         self._setup()
 
@@ -110,6 +112,9 @@ class Memory:
             # Caller supplied a hive directly
             self._hive = cfg.shared_hive
 
+        # --- GraphStore setup ---
+        self._graph_store = self._build_graph_store(cfg)
+
         # --- Adapter setup ---
         if cfg.backend == "simple":
             self._adapter = _SimpleBackend()
@@ -117,6 +122,40 @@ class Memory:
             self._adapter = self._build_hierarchical(cfg)
         else:
             self._adapter = self._build_cognitive(cfg)
+
+    def _build_graph_store(self, cfg: "MemoryConfig") -> "GraphStore":
+        """Construct the appropriate GraphStore for the resolved config."""
+        if cfg.topology == "distributed":
+            from .distributed_store import DistributedGraphStore
+            from .memory_store import InMemoryGraphStore
+
+            store = DistributedGraphStore(
+                replication_factor=cfg.replication_factor,
+                query_fanout=cfg.query_fanout,
+                shard_factory=InMemoryGraphStore,
+            )
+            store.add_agent(cfg.agent_name)
+            return store
+
+        if cfg.backend == "simple":
+            from .memory_store import InMemoryGraphStore
+            return InMemoryGraphStore()
+
+        # cognitive (default) — use Kuzu if available
+        try:
+            from pathlib import Path as _Path
+
+            from .kuzu_store import KuzuGraphStore
+
+            db_path = _Path(cfg.storage_path) / "graph_store" if cfg.storage_path else None
+            buffer_bytes = cfg.kuzu_buffer_pool_mb * 1024 * 1024
+            return KuzuGraphStore(
+                db_path=db_path,
+                buffer_pool_size=buffer_bytes,
+            )
+        except ImportError:
+            from .memory_store import InMemoryGraphStore
+            return InMemoryGraphStore()
 
     def _build_cognitive(self, cfg: MemoryConfig) -> Any:
         """Create a CognitiveAdapter with the resolved config."""
@@ -194,6 +233,11 @@ class Memory:
     # Public API
     # ------------------------------------------------------------------
 
+    @property
+    def graph_store(self) -> "GraphStore | None":
+        """Return the underlying GraphStore for direct graph operations."""
+        return self._graph_store
+
     def remember(self, content: str) -> None:
         """Store a piece of knowledge.
 
@@ -252,6 +296,11 @@ class Memory:
                 self._adapter.close()
             except Exception:
                 logger.debug("Error closing adapter", exc_info=True)
+        if self._graph_store is not None:
+            try:
+                self._graph_store.close()
+            except Exception:
+                logger.debug("Error closing graph_store", exc_info=True)
         if self._hive is not None and hasattr(self._hive, "close"):
             try:
                 self._hive.close()
