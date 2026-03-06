@@ -1,0 +1,18 @@
+{
+  "debugger": "vsdbg",
+  "default_port": null,
+  "file_extensions": [".cs", ".csx", ".vb"],
+  "manifest_files": [".csproj", ".sln", ".fsproj", ".vbproj"],
+  "description": ".NET debugger using Visual Studio debugger (vsdbg)",
+  "config": {
+    "name": ".NET: Debug Current Project",
+    "type": "coreclr",
+    "request": "launch",
+    "program": "${project_dir}/bin/Debug/net6.0/${entry_point}.dll",
+    "cwd": "${project_dir}"
+  },
+  "commands": {
+    "install": "# Install via: dotnet tool install -g vsdbg",
+    "verify": "dotnet --version"
+  }
+}

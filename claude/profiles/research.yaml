@@ -1,0 +1,39 @@
+version: "1.0"
+name: "research"
+description: "Investigation and analysis profile"
+
+components:
+  commands:
+    include:
+      - "amplihack:ultrathink"
+      - "amplihack:knowledge-builder"
+      - "amplihack:expert-panel"
+
+  context:
+    include:
+      - "PHILOSOPHY.md"
+      - "PROJECT.md"
+
+  agents:
+    include:
+      - "architect"
+      - "analyzer"
+      - "knowledge-archaeologist"
+      - "patterns"
+      - "*-analyst"
+
+  skills:
+    include_categories:
+      - "research"
+      - "analysis"
+
+metadata:
+  author: "amplihack"
+  version: "1.0.0"
+  tags: ["research", "investigation", "analysis"]
+  created: "2025-11-22T00:00:00Z"
+  updated: "2025-11-22T00:00:00Z"
+
+performance:
+  lazy_load_skills: true
+  cache_ttl: 3600

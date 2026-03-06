@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "/home/azureuser/src/amplihack/scripts/validate_gh_pages_links.py", line 31, in <module>
+    from bs4 import BeautifulSoup
+ModuleNotFoundError: No module named 'bs4'
