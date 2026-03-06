@@ -1498,3 +1498,198 @@ class TestFleetAdvance:
         assert "--vm" in result.output
         assert "--confirm" in result.output
         assert "--save" in result.output
+
+
+# ---------------------------------------------------------------------------
+# T1: _parse_session_target -- pure function tests
+# ---------------------------------------------------------------------------
+
+
+class TestParseSessionTarget:
+    """_parse_session_target parses 'vm:session' and plain 'session' formats."""
+
+    def test_vm_colon_session(self):
+        """'vm:session' should return (vm, session)."""
+        from amplihack.fleet._cli_session_ops import _parse_session_target
+
+        vm, session = _parse_session_target("vm:session")
+        assert vm == "vm"
+        assert session == "session"
+
+    def test_plain_session(self):
+        """'session' without colon should return (None, session)."""
+        from amplihack.fleet._cli_session_ops import _parse_session_target
+
+        vm, session = _parse_session_target("session")
+        assert vm is None
+        assert session == "session"
+
+    def test_colon_prefix_session(self):
+        """':session' should return (None, session) -- empty vm is treated as None."""
+        from amplihack.fleet._cli_session_ops import _parse_session_target
+
+        vm, session = _parse_session_target(":session")
+        assert vm is None
+        assert session == "session"
+
+    def test_vm_colon_session_with_spaces(self):
+        """'vm: session' with spaces should strip both parts."""
+        from amplihack.fleet._cli_session_ops import _parse_session_target
+
+        vm, session = _parse_session_target("vm: session")
+        assert vm == "vm"
+        assert session == "session"
+
+    def test_empty_string(self):
+        """Empty string should return (None, '')."""
+        from amplihack.fleet._cli_session_ops import _parse_session_target
+
+        vm, session = _parse_session_target("")
+        assert vm is None
+        assert session == ""
+
+
+# ---------------------------------------------------------------------------
+# T6: format_scout_report -- suspended status display
+# ---------------------------------------------------------------------------
+
+
+class TestFormatScoutReportSuspended:
+    """format_scout_report shows 'suspended' with [Z] for shell+agent_alive sessions."""
+
+    def test_shell_agent_alive_shows_suspended(self):
+        """SessionView with status='shell' and agent_alive=True should display as 'suspended' with [Z]."""
+        from amplihack.fleet._cli_session_ops import format_scout_report
+        from amplihack.fleet._tui_data import SessionView, VMView
+
+        sess = SessionView(
+            vm_name="dev",
+            session_name="cybergym",
+            status="shell",
+            agent_alive=True,
+            branch="main",
+        )
+        vm = VMView(name="dev", region="westus2", is_running=True, sessions=[sess])
+
+        decision = {
+            "vm": "dev",
+            "session": "cybergym",
+            "status": "shell",
+            "branch": "main",
+            "action": "wait",
+            "confidence": 0.9,
+            "reasoning": "Agent suspended, waiting",
+            "input_text": "",
+        }
+
+        report = format_scout_report(
+            all_vms=[vm],
+            decisions=[decision],
+            adopted_count=0,
+            skip_adopt=True,
+        )
+
+        assert "suspended" in report
+        assert "[Z]" in report
+        # Should NOT show as "shell" since agent_alive overrides
+        # The display_status is changed to "suspended" so [X] (shell icon) should not appear
+        lines_with_cybergym = [l for l in report.split("\n") if "cybergym" in l]
+        for line in lines_with_cybergym:
+            assert "[X]" not in line, "Shell icon [X] should not appear for suspended sessions"
+
+    def test_shell_agent_dead_shows_shell(self):
+        """SessionView with status='shell' and agent_alive=False should display as 'shell' with [X]."""
+        from amplihack.fleet._cli_session_ops import format_scout_report
+        from amplihack.fleet._tui_data import SessionView, VMView
+
+        sess = SessionView(
+            vm_name="dev",
+            session_name="cybergym",
+            status="shell",
+            agent_alive=False,
+            branch="main",
+        )
+        vm = VMView(name="dev", region="westus2", is_running=True, sessions=[sess])
+
+        decision = {
+            "vm": "dev",
+            "session": "cybergym",
+            "status": "shell",
+            "branch": "main",
+            "action": "restart",
+            "confidence": 0.8,
+            "reasoning": "Agent dead",
+            "input_text": "",
+        }
+
+        report = format_scout_report(
+            all_vms=[vm],
+            decisions=[decision],
+            adopted_count=0,
+            skip_adopt=True,
+        )
+
+        assert "[X]" in report
+        lines_with_cybergym = [l for l in report.split("\n") if "cybergym" in l]
+        for line in lines_with_cybergym:
+            assert "[Z]" not in line, "Suspended icon [Z] should not appear for dead sessions"
+
+
+# ---------------------------------------------------------------------------
+# T7: _parse_session_target at CLI level for --session flag
+# ---------------------------------------------------------------------------
+
+
+class TestScoutSessionFilter:
+    """fleet scout --session dev:cybergym should parse and filter correctly."""
+
+    @patch("amplihack.fleet.fleet_tui.FleetTUI")
+    def test_scout_session_flag_filters_correctly(self, MockTUI, runner):
+        """--session dev:cybergym should set vm='dev' and filter to session 'cybergym'."""
+        from amplihack.fleet._tui_data import SessionView, VMView
+
+        sess_match = SessionView(vm_name="dev", session_name="cybergym", status="idle")
+        sess_other = SessionView(vm_name="dev", session_name="other-sess", status="idle")
+        vm_dev = VMView(name="dev", region="westus2", is_running=True, sessions=[sess_match, sess_other])
+        vm_prod = VMView(name="prod", region="eastus", is_running=True,
+                         sessions=[SessionView(vm_name="prod", session_name="work", status="idle")])
+
+        mock_tui = MagicMock()
+        mock_tui.refresh_all.return_value = [vm_dev, vm_prod]
+        MockTUI.return_value = mock_tui
+
+        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"}):
+            result = runner.invoke(
+                fleet_cli,
+                ["scout", "--session", "dev:cybergym", "--skip-adopt"],
+                catch_exceptions=False,
+            )
+
+        assert result.exit_code == 0
+        # Report should mention cybergym
+        assert "cybergym" in result.output
+        # Should NOT show sessions from other VMs or other sessions on same VM
+        assert "other-sess" not in result.output
+        assert "prod" not in result.output or "VM not found" not in result.output
+
+    @patch("amplihack.fleet.fleet_tui.FleetTUI")
+    def test_scout_session_not_found(self, MockTUI, runner):
+        """--session dev:nonexistent should print 'Session not found'."""
+        from amplihack.fleet._tui_data import SessionView, VMView
+
+        vm = VMView(name="dev", region="westus2", is_running=True,
+                    sessions=[SessionView(vm_name="dev", session_name="real-sess", status="idle")])
+
+        mock_tui = MagicMock()
+        mock_tui.refresh_all.return_value = [vm]
+        MockTUI.return_value = mock_tui
+
+        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"}):
+            result = runner.invoke(
+                fleet_cli,
+                ["scout", "--session", "dev:nonexistent", "--skip-adopt"],
+                catch_exceptions=False,
+            )
+
+        assert result.exit_code == 0
+        assert "Session not found" in result.output

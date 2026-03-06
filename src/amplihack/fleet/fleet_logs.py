@@ -19,6 +19,7 @@ Public API:
 from __future__ import annotations
 
 import json
+import logging
 import shlex
 import subprocess
 from dataclasses import dataclass, field
@@ -27,6 +28,8 @@ from amplihack.fleet._defaults import get_azlin_path
 from amplihack.fleet._validation import validate_vm_name
 
 __all__ = ["LogReader", "SessionSummary"]
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -115,8 +118,7 @@ class LogReader:
             return self._parse_log_summary(result.stdout)
 
         except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
-            import logging
-            logging.getLogger(__name__).warning("read_session_log failed for %s: %s", vm_name, exc)
+            logger.warning("read_session_log failed for %s: %s", vm_name, exc)
             return None
 
     def read_all_sessions(self, vm_name: str) -> list[SessionSummary]:
@@ -143,7 +145,7 @@ with open(sys.argv[1]) as f:
             if 'sessionId' in obj: stats['session'] = obj['sessionId']
             if 'gitBranch' in obj and obj['gitBranch']: stats['branch'] = obj['gitBranch']
             if 'cwd' in obj and obj['cwd']: stats['cwd'] = obj['cwd']
-        except Exception: pass
+        except Exception as exc: print(f'Skipped malformed entry: {exc}', file=sys.stderr)
 print(json.dumps(stats))
 " "$LATEST" 2>/dev/null
     fi
@@ -159,8 +161,7 @@ done
             )
 
             if result.returncode != 0:
-                import logging
-                logging.getLogger(__name__).warning(
+                logger.warning(
                     "read_all_sessions command failed for %s (rc=%d): %s",
                     vm_name, result.returncode, result.stderr[:200] if result.stderr else "",
                 )
@@ -169,8 +170,7 @@ done
             return self._parse_all_logs_output(result.stdout)
 
         except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
-            import logging
-            logging.getLogger(__name__).warning("read_all_sessions failed for %s: %s", vm_name, exc)
+            logger.warning("read_all_sessions failed for %s: %s", vm_name, exc)
             return []
 
     def _build_log_reader_command(self, project_path: str, tail_lines: int) -> str:
@@ -208,7 +208,7 @@ for line in sys.stdin:
         if 'sessionId' in obj: stats['session'] = obj['sessionId']
         if 'gitBranch' in obj and obj['gitBranch']: stats['branch'] = obj['gitBranch']
         if 'cwd' in obj and obj['cwd']: stats['cwd'] = obj['cwd']
-    except Exception: pass
+    except Exception as exc: print(f'Skipped malformed entry: {{exc}}', file=sys.stderr)
 print(json.dumps(stats))
 " 2>/dev/null
 """
@@ -234,8 +234,7 @@ print(json.dumps(stats))
                     files_modified=stats.get("files", []),
                 )
             except (json.JSONDecodeError, KeyError) as exc:
-                import logging
-                logging.getLogger(__name__).warning("Failed to parse log summary line: %s", exc)
+                logger.warning("Failed to parse log summary line: %s", exc)
                 continue
         return None
 
@@ -261,7 +260,6 @@ print(json.dumps(stats))
                     )
                 )
             except (json.JSONDecodeError, KeyError) as exc:
-                import logging
-                logging.getLogger(__name__).warning("Failed to parse session log entry: %s", exc)
+                logger.warning("Failed to parse session log entry: %s", exc)
                 continue
         return summaries

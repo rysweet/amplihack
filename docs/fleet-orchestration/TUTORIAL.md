@@ -418,7 +418,7 @@ Or just describe what you want — Claude will pick the right command:
   devy         [~] agent-kgpacks      thinking   wait             100%
 ```
 
-Status icons: `[~]` thinking, `[>]` running, `[.]` idle, `[X]` dead, `[Z]` suspended, `[!]` error, `[+]` completed, `[?]` waiting input.
+Status icons: `[~]` thinking, `[>]` running, `[.]` idle, `[X]` shell (dead agent), `[Z]` suspended, `[!]` error, `[+]` completed, `[?]` waiting input.
 
 **2. Session Summaries** — admiral reasoning + proposed input:
 
@@ -476,10 +476,10 @@ Safety is enforced automatically:
 Both scout and advance support `--vm` and `--session` filters:
 
 ```
-# Sweep one VM (faster — only one Bastion tunnel):
+# Scout one VM (faster — only one Bastion tunnel):
 /fleet scout --vm dev --skip-adopt
 
-# Sweep one session (fastest — ~2 min):
+# Scout one session (fastest — ~2 min):
 /fleet scout --session dev:cybergym-intg --skip-adopt
 
 # Advance one session:
@@ -491,7 +491,7 @@ Both scout and advance support `--vm` and `--session` filters:
 
 ### Typical Workflow
 
-1. **Sweep first** to see the fleet state:
+1. **Scout first** to see the fleet state:
    ```
    /fleet scout
    ```
@@ -524,7 +524,7 @@ Both commands support `--save` to write a JSON report:
 
 ### Session State Detection
 
-The fleet system detects five distinct session states:
+The fleet system detects eight distinct session states:
 
 | State | What it means | How detected |
 |-------|--------------|--------------|
@@ -533,8 +533,13 @@ The fleet system detects five distinct session states:
 | **idle** | Agent at `❯` prompt, waiting | Claude Code prompt with no input |
 | **shell** | Agent dead, back at `$` prompt | Bare bash prompt, no claude/node process |
 | **suspended** | Agent backgrounded but alive | Bash prompt but claude/node process still running |
+| **error** | Error detected in session | `error:`, `traceback`, `fatal:`, `panic:` in output |
+| **completed** | Agent finished its task | `GOAL_STATUS: ACHIEVED`, PR created/merged |
+| **waiting_input** | Agent needs user input | `[Y/n]`, `⏵⏵ bypass`, prompt ending in `?` |
 
 The suspended state is detected by checking for live `claude` or `node` processes as children of the tmux pane. This catches sessions where the agent was backgrounded with Ctrl-Z or the Claude Code background feature.
+
+The `unknown` state may appear when detection patterns do not match any known status. This is treated as requiring manual inspection.
 
 ## Next Steps
 

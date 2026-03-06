@@ -70,9 +70,6 @@ etc.) regardless of LLM confidence.
 **Confidence thresholds**: Actions require minimum confidence of 0.6 to execute.
 Restart actions require 0.8. Below-threshold decisions are logged but not acted on.
 
-**Confidence thresholds**: Actions require minimum confidence of 0.6 to execute.
-Restart actions require 0.8. Below-threshold decisions are logged but not acted on.
-
 ## Modules
 
 The fleet package contains 19 source files (17 functional modules, 1 package
@@ -161,6 +158,26 @@ amplihack fleet auth vm         # Propagate auth tokens to a VM
 amplihack fleet graph           # Show knowledge graph summary
 amplihack fleet report          # Generate fleet status report
 ```
+
+### Session Targeting
+
+Use `--session vm:session` to target a specific session across scout, advance,
+and dry-run commands:
+
+```bash
+amplihack fleet scout --session dev:cybergym-intg
+amplihack fleet advance --session dev:parallel-deploy-wk
+```
+
+### Default LLM Configuration
+
+| Setting | Value |
+|---------|-------|
+| Model | `claude-opus-4-6` |
+| Max output tokens | 128,000 |
+
+These defaults are defined in `_constants.py` and can be overridden via the
+`--backend` flag or environment variables.
 
 ## Session Adoption
 
