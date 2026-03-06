@@ -56,6 +56,7 @@ class MemoryConfig:
     shard_backend: str = _DEFAULT_SHARD_BACKEND  # "memory" or "kuzu"
     memory_transport: str = _DEFAULT_MEMORY_TRANSPORT  # "local" | "redis" | "azure_service_bus"
     memory_connection_string: str = _DEFAULT_MEMORY_CONNECTION_STRING
+    domain_expertise: str = ""  # free-form domain tags for agent expertise routing
 
     @classmethod
     def from_env(cls) -> "MemoryConfig":
@@ -122,6 +123,10 @@ class MemoryConfig:
         if conn_str is not None:
             kwargs["memory_connection_string"] = conn_str
 
+        domain = os.environ.get("AMPLIHACK_MEMORY_DOMAIN_EXPERTISE")
+        if domain is not None:
+            kwargs["domain_expertise"] = domain
+
         return cls(**kwargs)
 
     @classmethod
@@ -146,7 +151,7 @@ class MemoryConfig:
 
         kwargs: dict[str, Any] = {}
         _str_fields = ("backend", "topology", "storage_path", "model", "shard_backend",
-                       "memory_transport", "memory_connection_string")
+                       "memory_transport", "memory_connection_string", "domain_expertise")
         _int_fields = ("kuzu_buffer_pool_mb", "replication_factor", "query_fanout", "gossip_rounds")
         _bool_fields = ("gossip_enabled",)
 
@@ -195,6 +200,7 @@ class MemoryConfig:
             "shard_backend": ("AMPLIHACK_MEMORY_SHARD_BACKEND", str),
             "memory_transport": ("AMPLIHACK_MEMORY_TRANSPORT", str),
             "memory_connection_string": ("AMPLIHACK_MEMORY_CONNECTION_STRING", str),
+            "domain_expertise": ("AMPLIHACK_MEMORY_DOMAIN_EXPERTISE", str),
         }
         for field_name, (env_key, converter) in _env_map.items():
             raw = os.environ.get(env_key)

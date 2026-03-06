@@ -127,6 +127,8 @@ class DistributedGraphStore:
         self._lock = threading.RLock()
         # node_id -> content_key mapping for correct shard rebuild routing
         self._node_content_keys: dict[str, str] = {}
+        # Per-fact embedding index: node_id -> embedding vector
+        self._fact_index: dict[str, Any] = {}
 
     # ------------------------------------------------------------------
     # Agent management
@@ -271,6 +273,10 @@ class DistributedGraphStore:
         else:
             emb = None
 
+        if emb is not None:
+            with self._lock:
+                self._fact_index[node_id] = emb
+
         for agent_id in owners:
             shard = self._get_shard(agent_id)
             if shard is not None:
@@ -280,6 +286,11 @@ class DistributedGraphStore:
                     shard.update_embedding(emb)
 
         return node_id
+
+    def get_fact_embedding(self, node_id: str) -> Any:
+        """Return the stored embedding for a specific fact, or None if not indexed."""
+        with self._lock:
+            return self._fact_index.get(node_id)
 
     def get_node(self, table: str, node_id: str) -> dict[str, Any] | None:
         # Try shards that bloom filter says might contain this node

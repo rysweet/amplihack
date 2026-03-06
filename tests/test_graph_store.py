@@ -589,6 +589,40 @@ def test_rebuild_on_join():
     )
 
 
+def test_per_fact_embedding_index():
+    """DistributedGraphStore maintains a per-fact embedding index (issue #2893)."""
+    from amplihack.memory.distributed_store import DistributedGraphStore
+
+    call_count = [0]
+
+    def embed(text: str) -> list[float]:
+        call_count[0] += 1
+        h = abs(hash(text)) % 1000
+        return [float(h), float(h + 1), float(h + 2)]
+
+    store = DistributedGraphStore(
+        replication_factor=1,
+        shard_factory=InMemoryGraphStore,
+        embedding_generator=embed,
+    )
+    store.add_agent("agent-0")
+    store.ensure_table("semantic_memory", SEMANTIC_SCHEMA)
+
+    nid = store.create_node("semantic_memory", _make_semantic_node("a", "fact-embed"))
+
+    # Embedding should be indexed per-fact
+    emb = store.get_fact_embedding(nid)
+    assert emb is not None, "Per-fact embedding must be stored in the index"
+    assert len(emb) == 3
+
+    # Node without embedding_generator has no index entry
+    store2 = DistributedGraphStore(replication_factor=1, shard_factory=InMemoryGraphStore)
+    store2.add_agent("agent-0")
+    store2.ensure_table("semantic_memory", SEMANTIC_SCHEMA)
+    nid2 = store2.create_node("semantic_memory", _make_semantic_node("b", "no-embed"))
+    assert store2.get_fact_embedding(nid2) is None
+
+
 def test_distributed_with_kuzu_shards():
     """DistributedGraphStore with kuzu shard_backend persists nodes across reopen."""
     pytest.importorskip("kuzu")

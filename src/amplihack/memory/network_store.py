@@ -50,6 +50,38 @@ _OP_SEARCH_QUERY = "network_graph.search_query"
 _OP_SEARCH_RESPONSE = "network_graph.search_response"
 
 
+class AgentRegistry:
+    """Thread-safe registry of known agents for service discovery.
+
+    NetworkGraphStore instances can share a registry to discover peers
+    without relying on the transport layer alone.
+    """
+
+    def __init__(self) -> None:
+        self._agents: dict[str, dict[str, Any]] = {}
+        self._lock = threading.Lock()
+
+    def register(self, agent_id: str, metadata: dict[str, Any] | None = None) -> None:
+        """Register an agent with optional metadata."""
+        with self._lock:
+            self._agents[agent_id] = metadata or {}
+
+    def unregister(self, agent_id: str) -> None:
+        """Remove an agent from the registry."""
+        with self._lock:
+            self._agents.pop(agent_id, None)
+
+    def list_agents(self) -> list[str]:
+        """Return a list of all registered agent IDs."""
+        with self._lock:
+            return list(self._agents.keys())
+
+    def get(self, agent_id: str) -> dict[str, Any] | None:
+        """Return metadata for a registered agent, or None if not found."""
+        with self._lock:
+            return self._agents.get(agent_id)
+
+
 class NetworkGraphStore:
     """GraphStore that wraps a local store and replicates over a network transport.
 
@@ -60,6 +92,7 @@ class NetworkGraphStore:
         connection_string: Connection string for Azure Service Bus or Redis URL.
         topic_name: Service Bus topic name (default: "hive-graph").
         search_timeout: Seconds to wait for remote search responses.
+        agent_registry: Optional shared AgentRegistry for peer discovery.
     """
 
     def __init__(
@@ -70,11 +103,15 @@ class NetworkGraphStore:
         connection_string: str = "",
         topic_name: str = "hive-graph",
         search_timeout: float = _SEARCH_TIMEOUT,
+        agent_registry: AgentRegistry | None = None,
     ) -> None:
         self._agent_id = agent_id
         self._local = local_store
         self._transport = transport
         self._search_timeout = search_timeout
+        self._agent_registry = agent_registry
+        if agent_registry is not None:
+            agent_registry.register(agent_id)
 
         # Pending search queries: query_id -> threading.Event + results list
         self._pending_searches: dict[str, dict[str, Any]] = {}
@@ -298,6 +335,8 @@ class NetworkGraphStore:
     def close(self) -> None:
         """Stop background thread and close bus + local store."""
         self._running = False
+        if self._agent_registry is not None:
+            self._agent_registry.unregister(self._agent_id)
         try:
             self._bus.unsubscribe(self._agent_id)
         except Exception:
@@ -437,4 +476,4 @@ class NetworkGraphStore:
         return merged
 
 
-__all__ = ["NetworkGraphStore"]
+__all__ = ["AgentRegistry", "NetworkGraphStore"]
