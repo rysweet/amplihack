@@ -10,6 +10,7 @@ import pytest
 
 from amplihack.memory.memory_store import InMemoryGraphStore
 from amplihack.memory.network_store import (
+    AgentRegistry,
     NetworkGraphStore,
     _OP_CREATE_EDGE,
     _OP_CREATE_NODE,
@@ -231,6 +232,87 @@ class TestNetworkGraphStoreProcessIncoming:
         store.close()
 
 
+class TestAgentRegistry:
+    """Tests for AgentRegistry (issue #2890)."""
+
+    def test_register_and_list(self):
+        registry = AgentRegistry()
+        registry.register("agent-1")
+        registry.register("agent-2", {"domain": "biology"})
+        agents = registry.list_agents()
+        assert "agent-1" in agents
+        assert "agent-2" in agents
+
+    def test_unregister(self):
+        registry = AgentRegistry()
+        registry.register("agent-x")
+        registry.unregister("agent-x")
+        assert "agent-x" not in registry.list_agents()
+
+    def test_unregister_nonexistent_is_safe(self):
+        registry = AgentRegistry()
+        registry.unregister("never-registered")  # should not raise
+
+    def test_get_metadata(self):
+        registry = AgentRegistry()
+        registry.register("agent-m", {"role": "coordinator"})
+        meta = registry.get("agent-m")
+        assert meta == {"role": "coordinator"}
+
+    def test_get_unknown_returns_none(self):
+        registry = AgentRegistry()
+        assert registry.get("missing") is None
+
+    def test_network_store_registers_on_init(self):
+        registry = AgentRegistry()
+        store = NetworkGraphStore(
+            agent_id="agent-reg",
+            local_store=InMemoryGraphStore(),
+            transport="local",
+            agent_registry=registry,
+        )
+        assert "agent-reg" in registry.list_agents()
+        store.close()
+
+    def test_network_store_unregisters_on_close(self):
+        registry = AgentRegistry()
+        store = NetworkGraphStore(
+            agent_id="agent-close",
+            local_store=InMemoryGraphStore(),
+            transport="local",
+            agent_registry=registry,
+        )
+        store.close()
+        assert "agent-close" not in registry.list_agents()
+
+    def test_network_store_no_registry_works_normally(self):
+        store = NetworkGraphStore(
+            agent_id="agent-noreg",
+            local_store=InMemoryGraphStore(),
+            transport="local",
+        )
+        node_id = store.create_node("t", {"content": "hello"})
+        assert store.get_node("t", node_id) is not None
+        store.close()
+
+    def test_multiple_stores_share_registry(self):
+        registry = AgentRegistry()
+        s1 = NetworkGraphStore(
+            agent_id="s1", local_store=InMemoryGraphStore(), transport="local",
+            agent_registry=registry,
+        )
+        s2 = NetworkGraphStore(
+            agent_id="s2", local_store=InMemoryGraphStore(), transport="local",
+            agent_registry=registry,
+        )
+        assert set(registry.list_agents()) == {"s1", "s2"}
+        s1.close()
+        assert "s1" not in registry.list_agents()
+        assert "s2" in registry.list_agents()
+        s2.close()
+        assert registry.list_agents() == []
+
+
 class TestMemoryConfigTransport:
     """Tests for env var integration in MemoryConfig."""
 
@@ -258,3 +340,40 @@ class TestMemoryConfigTransport:
         cfg = MemoryConfig()
         assert cfg.memory_transport == "local"
         assert cfg.memory_connection_string == ""
+
+
+class TestMemoryConfigDomainExpertise:
+    """Tests for domain_expertise field on MemoryConfig (issue #2891)."""
+
+    def test_default_domain_expertise_is_empty(self):
+        from amplihack.memory.config import MemoryConfig
+
+        cfg = MemoryConfig()
+        assert cfg.domain_expertise == ""
+
+    def test_from_env_reads_domain_expertise(self, monkeypatch):
+        monkeypatch.setenv("AMPLIHACK_MEMORY_DOMAIN_EXPERTISE", "biology genetics")
+        from amplihack.memory.config import MemoryConfig
+
+        cfg = MemoryConfig.from_env()
+        assert cfg.domain_expertise == "biology genetics"
+
+    def test_resolve_reads_domain_expertise_from_env(self, monkeypatch):
+        monkeypatch.setenv("AMPLIHACK_MEMORY_DOMAIN_EXPERTISE", "chemistry materials")
+        from amplihack.memory.config import MemoryConfig
+
+        cfg = MemoryConfig.resolve("test-agent")
+        assert cfg.domain_expertise == "chemistry materials"
+
+    def test_explicit_kwarg_overrides_env(self, monkeypatch):
+        monkeypatch.setenv("AMPLIHACK_MEMORY_DOMAIN_EXPERTISE", "env-domain")
+        from amplihack.memory.config import MemoryConfig
+
+        cfg = MemoryConfig.resolve("agent", domain_expertise="kwarg-domain")
+        assert cfg.domain_expertise == "kwarg-domain"
+
+    def test_domain_expertise_set_directly(self):
+        from amplihack.memory.config import MemoryConfig
+
+        cfg = MemoryConfig(domain_expertise="physics astronomy")
+        assert cfg.domain_expertise == "physics astronomy"
