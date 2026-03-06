@@ -13,10 +13,17 @@ Requires kuzu to be installed (`uv add kuzu`).
 
 from __future__ import annotations
 
+import re
 import threading
 import uuid
 from pathlib import Path
 from typing import Any
+
+
+def _validate_identifier(name: str) -> None:
+    """Validate that name is a safe Cypher identifier to prevent injection."""
+    if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", name):
+        raise ValueError(f"Invalid identifier: {name!r}")
 
 
 # Kuzu type → Python type coercion helpers
@@ -127,6 +134,7 @@ class KuzuGraphStore:
     def ensure_table(self, table: str, schema: dict[str, str]) -> None:
         if table in self._known_tables:
             return
+        _validate_identifier(table)
         # Build column definitions
         cols = ", ".join(f"{col} {dtype}" for col, dtype in schema.items())
         # node_id is always the primary key
@@ -147,6 +155,9 @@ class KuzuGraphStore:
     ) -> None:
         if rel_type in self._known_rel_tables:
             return
+        _validate_identifier(rel_type)
+        _validate_identifier(from_table)
+        _validate_identifier(to_table)
         if schema:
             cols = ", ".join(f"{col} {dtype}" for col, dtype in schema.items())
             query = (
@@ -167,6 +178,7 @@ class KuzuGraphStore:
     # ------------------------------------------------------------------
 
     def create_node(self, table: str, properties: dict[str, Any]) -> str:
+        _validate_identifier(table)
         node_id = properties.get("node_id") or str(uuid.uuid4())
         props = dict(properties)
         props["node_id"] = node_id
@@ -174,23 +186,20 @@ class KuzuGraphStore:
         schema = self._schemas.get(table, {})
         coerced = {k: _coerce(v, schema.get(k, "STRING")) for k, v in props.items()}
 
-        # Build CREATE query
-        col_names = ", ".join(coerced.keys())
-        param_refs = ", ".join(f"${k}" for k in coerced.keys())
-        query = f"CREATE (:{table} {{{col_names}: [{param_refs}]}})"
-        # Kùzu uses positional params via dict — use property map syntax instead
         prop_str = ", ".join(f"{k}: ${k}" for k in coerced.keys())
         query = f"CREATE (:{table} {{{prop_str}}})"
         self._execute(query, coerced)
         return node_id
 
     def get_node(self, table: str, node_id: str) -> dict[str, Any] | None:
+        _validate_identifier(table)
         query = f"MATCH (n:{table}) WHERE n.node_id = $node_id RETURN n"
         result = self._execute(query, {"node_id": node_id})
         rows = self._result_to_dicts(result)
         return rows[0] if rows else None
 
     def update_node(self, table: str, node_id: str, properties: dict[str, Any]) -> None:
+        _validate_identifier(table)
         schema = self._schemas.get(table, {})
         set_clauses = []
         params: dict[str, Any] = {"node_id": node_id}
@@ -205,6 +214,7 @@ class KuzuGraphStore:
         self._execute(query, params)
 
     def delete_node(self, table: str, node_id: str) -> None:
+        _validate_identifier(table)
         query = f"MATCH (n:{table}) WHERE n.node_id = $node_id DETACH DELETE n"
         self._execute(query, {"node_id": node_id})
 
@@ -214,6 +224,7 @@ class KuzuGraphStore:
         filters: dict[str, Any] | None = None,
         limit: int = 100,
     ) -> list[dict[str, Any]]:
+        _validate_identifier(table)
         if filters:
             where, params = self._build_where(filters)
             query = f"MATCH (n:{table}) WHERE {where} RETURN n LIMIT {limit}"
@@ -230,6 +241,7 @@ class KuzuGraphStore:
         fields: list[str] | None = None,
         limit: int = 20,
     ) -> list[dict[str, Any]]:
+        _validate_identifier(table)
         schema = self._schemas.get(table, {})
         search_fields = fields or [
             col for col, dtype in schema.items()
@@ -260,6 +272,9 @@ class KuzuGraphStore:
         to_id: str,
         properties: dict[str, Any] | None = None,
     ) -> None:
+        _validate_identifier(rel_type)
+        _validate_identifier(from_table)
+        _validate_identifier(to_table)
         params: dict[str, Any] = {"from_id": from_id, "to_id": to_id}
         if properties:
             prop_str = ", ".join(f"{k}: ${k}" for k in properties.keys())
@@ -283,6 +298,8 @@ class KuzuGraphStore:
         rel_type: str | None = None,
         direction: str = "out",
     ) -> list[dict[str, Any]]:
+        if rel_type is not None:
+            _validate_identifier(rel_type)
         rel_pattern = f"[r:{rel_type}]" if rel_type else "[r]"
         if direction == "out":
             query = (
@@ -325,6 +342,7 @@ class KuzuGraphStore:
         return rows
 
     def delete_edge(self, rel_type: str, from_id: str, to_id: str) -> None:
+        _validate_identifier(rel_type)
         query = (
             f"MATCH (a)-[r:{rel_type}]->(b) "
             f"WHERE a.node_id = $from_id AND b.node_id = $to_id "
@@ -343,6 +361,7 @@ class KuzuGraphStore:
         for tbl in tables:
             if tbl not in self._known_tables:
                 continue
+            _validate_identifier(tbl)
             query = f"MATCH (n:{tbl}) RETURN n.node_id"
             result = self._execute(query)
             if result:
@@ -357,6 +376,7 @@ class KuzuGraphStore:
         result = []
         id_set = set(node_ids) if node_ids is not None else None
         for tbl in list(self._known_tables):
+            _validate_identifier(tbl)
             nodes = self.query_nodes(tbl, limit=100_000)
             for node in nodes:
                 nid = node.get("node_id", "")
@@ -364,11 +384,13 @@ class KuzuGraphStore:
                     result.append((tbl, nid, dict(node)))
         return result
 
-    def export_edges(self, node_ids: list[str] | None = None) -> list[tuple[str, str, str, dict]]:
-        """Export edges as (rel_type, from_id, to_id, properties) tuples."""
+    def export_edges(self, node_ids: list[str] | None = None) -> list[tuple[str, str, str, str, str, dict]]:
+        """Export edges as (rel_type, from_table, from_id, to_table, to_id, properties) tuples."""
         result = []
         id_set = set(node_ids) if node_ids is not None else None
         for rel_type in list(self._known_rel_tables):
+            _validate_identifier(rel_type)
+            from_table, to_table = self._rel_table_map.get(rel_type, ("", ""))
             query = f"MATCH (a)-[r:{rel_type}]->(b) RETURN a.node_id, b.node_id"
             res = self._execute(query)
             if res:
@@ -376,7 +398,7 @@ class KuzuGraphStore:
                     row = res.get_next()
                     from_id, to_id = str(row[0]), str(row[1])
                     if id_set is None or from_id in id_set or to_id in id_set:
-                        result.append((rel_type, from_id, to_id, {}))
+                        result.append((rel_type, from_table, from_id, to_table, to_id, {}))
         return result
 
     def import_nodes(self, nodes: list[tuple[str, str, dict]]) -> int:
@@ -390,13 +412,15 @@ class KuzuGraphStore:
                 count += 1
         return count
 
-    def import_edges(self, edges: list[tuple[str, str, str, dict]]) -> int:
+    def import_edges(self, edges: list[tuple[str, str, str, str, str, dict]]) -> int:
         """Import edges. Returns count stored."""
         count = 0
-        for rel_type, from_id, to_id, props in edges:
+        for rel_type, from_table, from_id, to_table, to_id, props in edges:
             if rel_type not in self._known_rel_tables:
                 continue
-            from_table, to_table = self._rel_table_map.get(rel_type, ("", ""))
+            _validate_identifier(rel_type)
+            if not from_table:
+                from_table, to_table = self._rel_table_map.get(rel_type, ("", ""))
             if not from_table:
                 continue
             check_q = (

@@ -230,14 +230,17 @@ class DistributedHiveGraph:
         shard_facts = self._router.query(query, limit=limit)
         return [self._shard_to_hive_fact(sf) for sf in shard_facts]
 
-    def retract_fact(self, fact_id: str) -> None:
-        """Retract a fact across all shards holding a replica."""
+    def retract_fact(self, fact_id: str) -> bool:
+        """Retract a fact across all shards holding a replica. Returns True if found."""
+        retracted = False
         for agent_id in self._router.get_all_agents():
             shard = self._router.get_shard(agent_id)
             if shard:
                 sf = shard.get(fact_id)
                 if sf:
                     sf.tags.append("retracted")
+                    retracted = True
+        return retracted
 
     # -- HiveGraph protocol: graph edges --------------------------------------
 
@@ -281,8 +284,8 @@ class DistributedHiveGraph:
 
     # -- HiveGraph protocol: expertise routing --------------------------------
 
-    def route_query(self, query: str) -> list[HiveAgent]:
-        """Find agents with expertise relevant to query."""
+    def route_query(self, query: str) -> list[str]:
+        """Find agent IDs with expertise relevant to query."""
         query_words = set(query.lower().split())
         scored: list[tuple[float, HiveAgent]] = []
 
@@ -296,7 +299,7 @@ class DistributedHiveGraph:
                     scored.append((overlap, agent))
 
         scored.sort(key=lambda x: x[0], reverse=True)
-        return [a for _, a in scored]
+        return [a.agent_id for _, a in scored]
 
     # -- Federation -----------------------------------------------------------
 
@@ -305,6 +308,33 @@ class DistributedHiveGraph:
 
     def add_child(self, child: DistributedHiveGraph) -> None:
         self._children.append(child)
+
+    def escalate_fact(self, fact: HiveFact) -> bool:
+        """Escalate a fact to the parent hive. Returns True if parent exists."""
+        if not self._parent:
+            return False
+        self._escalate_to_parent(fact)
+        return True
+
+    def broadcast_fact(self, fact: HiveFact) -> int:
+        """Promote a fact to all child hives. Returns count of children promoted to."""
+        count = 0
+        for child in self._children:
+            relay_id = f"__relay_{self._hive_id}__"
+            if not child.get_agent(relay_id):
+                child.register_agent(relay_id, domain="relay")
+            promoted = HiveFact(
+                fact_id=uuid.uuid4().hex[:FACT_ID_HEX_LENGTH],
+                content=fact.content,
+                concept=fact.concept,
+                confidence=fact.confidence,
+                source_agent=relay_id,
+                tags=[*fact.tags, f"{BROADCAST_TAG_PREFIX}{self._hive_id}"],
+                created_at=fact.created_at,
+            )
+            child.promote_fact(relay_id, promoted)
+            count += 1
+        return count
 
     def _escalate_to_parent(self, fact: HiveFact) -> None:
         """Escalate a high-confidence fact to the parent hive."""

@@ -229,8 +229,10 @@ class ShardStore:
                                 self._summary_embedding * n + new_emb
                             ) / (n + 1)
                         self._embedding_count += 1
+            except ImportError:
+                logger.warning("numpy not available for shard embedding computation")
             except Exception:
-                pass
+                logger.debug("Failed to update shard summary embedding", exc_info=True)
 
         return True
 
@@ -254,6 +256,8 @@ class ShardStore:
         scored: list[tuple[float, ShardFact]] = []
         with self._lock:
             for fact in self._facts.values():
+                if "retracted" in fact.tags:
+                    continue
                 content_lower = fact.content.lower()
                 hits = sum(1 for t in terms if t in content_lower)
                 if hits > 0:
@@ -277,6 +281,11 @@ class ShardStore:
     def fact_count(self) -> int:
         with self._lock:
             return len(self._facts)
+
+    def get_summary_embedding(self) -> Any:
+        """Return the current summary embedding under lock."""
+        with self._lock:
+            return self._summary_embedding
 
     def get_content_hashes(self) -> set[str]:
         """Get content hashes for dedup/gossip comparison."""
@@ -437,14 +446,11 @@ class DHTRouter:
                     if q_norm > 0:
                         scored: list[tuple[float, str]] = []
                         with self._lock:
-                            for agent_id in all_agents:
-                                shard = self._shards.get(agent_id)
-                                if (
-                                    shard
-                                    and shard.fact_count > 0
-                                    and shard._summary_embedding is not None
-                                ):
-                                    s = shard._summary_embedding
+                            shards_snapshot = list(self._shards.items())
+                        for agent_id, shard in shards_snapshot:
+                            if shard.fact_count > 0:
+                                s = shard.get_summary_embedding()
+                                if s is not None:
                                     s_norm = np.linalg.norm(s)
                                     if s_norm > 0:
                                         sim = float(np.dot(q, s) / (q_norm * s_norm))
@@ -453,8 +459,10 @@ class DHTRouter:
                         if scored:
                             scored.sort(key=lambda x: x[0], reverse=True)
                             return [aid for _, aid in scored[:max_targets]]
+            except ImportError:
+                logger.warning("numpy not available for semantic routing")
             except Exception:
-                pass
+                logger.debug("Semantic routing failed, falling back to keyword routing", exc_info=True)
         # ── Keyword routing (fallback) ───────────────────────────────────────
 
         # Small hive optimization: just scan everything
