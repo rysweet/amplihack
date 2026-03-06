@@ -53,7 +53,7 @@ var sbNamespaceName = 'hive-sb-${suffix}'
 var sbTopicName = 'hive-graph'
 var storageAccountName = 'hivesa${suffix}'
 var fileShareName = 'hive-data'
-var appCount = int(ceil(float(agentCount) / float(agentsPerApp)))
+var appCount = (agentCount + agentsPerApp - 1) / agentsPerApp
 
 // ---------- Container Registry ----------
 resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' = if (empty(acrName)) {
