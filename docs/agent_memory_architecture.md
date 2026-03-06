@@ -290,3 +290,64 @@ amplihack-memory-lib/
 └── src/amplihack_memory/
     └── cognitive_memory.py                # 6-type Kuzu-backed memory
 ```
+
+---
+
+## NetworkGraphStore — Network-Replicated GraphStore
+
+`NetworkGraphStore` (added in `feat/distributed-hive-mind`) is a drop-in `GraphStore`
+that wraps any local store and replicates writes and searches over a network transport.
+
+### How it works
+
+```
+Agent A                              Agent B
+────────────────────                 ────────────────────
+NetworkGraphStore                    NetworkGraphStore
+  └── InMemoryGraphStore               └── InMemoryGraphStore
+        ▲  write locally                     ▲  apply remote write
+        │                                    │
+        └──── event_bus.publish ────────────► └── _process_incoming thread
+                                              └── responds to search queries
+```
+
+1. **`create_node`** — stores locally, then publishes `network_graph.create_node` event.
+2. **`search_nodes`** — searches locally, publishes `network_graph.search_query`, waits
+   up to `search_timeout` seconds for remote responses, returns merged/deduplicated results.
+3. **`_process_incoming`** — background thread polls the event bus and applies remote
+   `create_node` / `create_edge` events to the local store, and responds to
+   `search_query` events with local results.
+
+### Configuration
+
+```python
+from amplihack.memory.network_store import NetworkGraphStore
+from amplihack.memory.memory_store import InMemoryGraphStore
+
+store = NetworkGraphStore(
+    agent_id="agent_0",
+    local_store=InMemoryGraphStore(),
+    transport="azure_service_bus",          # "local" | "redis" | "azure_service_bus"
+    connection_string="Endpoint=sb://...",
+    topic_name="hive-graph",                # optional, default: "hive-graph"
+    search_timeout=3.0,                     # seconds to wait for remote responses
+)
+```
+
+Or via `Memory` facade using env vars:
+
+```bash
+export AMPLIHACK_MEMORY_TRANSPORT=azure_service_bus
+export AMPLIHACK_MEMORY_CONNECTION_STRING="Endpoint=sb://..."
+```
+
+```python
+mem = Memory("agent_0")  # auto-wraps with NetworkGraphStore
+```
+
+### Environment variables
+
+| Variable | Description | Default |
+|---|---|---|
+| `AMPLIHACK_MEMORY_TRANSPORT` | Transport: `local`, `redis`, `azure_service_bus` | `local` |
+| `AMPLIHACK_MEMORY_CONNECTION_STRING` | Service Bus connection string or Redis URL | `""` |
