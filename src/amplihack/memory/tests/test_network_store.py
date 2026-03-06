@@ -377,3 +377,109 @@ class TestMemoryConfigDomainExpertise:
 
         cfg = MemoryConfig(domain_expertise="physics astronomy")
         assert cfg.domain_expertise == "physics astronomy"
+
+
+class TestLearnContentReceiver:
+    """Tests for LEARN_CONTENT event buffering and receive_events()."""
+
+    def test_receive_events_empty_initially(self):
+        store = _make_store()
+        events = store.receive_events()
+        assert events == []
+        store.close()
+
+    def test_learn_content_buffered_by_handle_event(self):
+        from amplihack.agents.goal_seeking.hive_mind.event_bus import make_event
+
+        store = _make_store()
+        event = make_event(
+            "LEARN_CONTENT",
+            "feed-content",
+            {"content": "The sky is blue", "turn": 1},
+        )
+        store._handle_event(event)
+        events = store.receive_events()
+        assert len(events) == 1
+        assert events[0].event_type == "LEARN_CONTENT"
+        assert events[0].payload["content"] == "The sky is blue"
+        assert events[0].payload["turn"] == 1
+        store.close()
+
+    def test_receive_events_drains_queue(self):
+        from amplihack.agents.goal_seeking.hive_mind.event_bus import make_event
+
+        store = _make_store()
+        for i in range(3):
+            store._handle_event(
+                make_event("LEARN_CONTENT", "feed", {"content": f"fact {i}", "turn": i})
+            )
+        first_drain = store.receive_events()
+        assert len(first_drain) == 3
+        # Second drain should be empty
+        second_drain = store.receive_events()
+        assert second_drain == []
+        store.close()
+
+    def test_unrecognised_event_types_are_ignored(self):
+        from amplihack.agents.goal_seeking.hive_mind.event_bus import make_event
+
+        store = _make_store()
+        store._handle_event(
+            make_event("SOME_UNKNOWN_TYPE", "other", {"data": "irrelevant"})
+        )
+        events = store.receive_events()
+        assert events == []
+        store.close()
+
+    def test_multiple_learn_content_events_accumulate(self):
+        from amplihack.agents.goal_seeking.hive_mind.event_bus import make_event
+
+        store = _make_store()
+        contents = ["fact A", "fact B", "fact C", "fact D", "fact E"]
+        for i, content in enumerate(contents):
+            store._handle_event(
+                make_event("LEARN_CONTENT", "feed", {"content": content, "turn": i})
+            )
+        events = store.receive_events()
+        assert len(events) == len(contents)
+        retrieved = [e.payload["content"] for e in events]
+        assert retrieved == contents
+        store.close()
+
+
+class TestMemoryFacadeReceiveEvents:
+    """Tests for Memory.receive_events() delegating to NetworkGraphStore."""
+
+    def test_receive_events_returns_empty_for_local_transport(self):
+        from amplihack.memory.facade import Memory
+
+        mem = Memory("test-agent-recv", topology="single", backend="cognitive")
+        # local transport — no NetworkGraphStore, so receive_events() returns []
+        events = mem.receive_events()
+        assert events == []
+        mem.close()
+
+    def test_receive_events_delegates_to_network_store(self):
+        from amplihack.agents.goal_seeking.hive_mind.event_bus import make_event
+        from amplihack.memory.network_store import NetworkGraphStore
+        from amplihack.memory.memory_store import InMemoryGraphStore
+
+        ns = NetworkGraphStore(
+            agent_id="facade-agent",
+            local_store=InMemoryGraphStore(),
+            transport="local",
+        )
+        # Inject a LEARN_CONTENT event directly
+        ns._handle_event(
+            make_event("LEARN_CONTENT", "feed", {"content": "Neurons fire", "turn": 5})
+        )
+
+        # Patch the graph_store on a Memory instance
+        from amplihack.memory.facade import Memory
+        mem = Memory("facade-agent", topology="single", backend="cognitive")
+        mem._graph_store = ns
+
+        events = mem.receive_events()
+        assert len(events) == 1
+        assert events[0].payload["content"] == "Neurons fire"
+        mem.close()

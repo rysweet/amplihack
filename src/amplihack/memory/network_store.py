@@ -117,6 +117,10 @@ class NetworkGraphStore:
         self._pending_searches: dict[str, dict[str, Any]] = {}
         self._pending_lock = threading.Lock()
 
+        # Buffered LEARN_CONTENT events waiting to be drained via receive_events()
+        self._learn_events: list[Any] = []
+        self._learn_lock = threading.Lock()
+
         # Build the event bus
         self._bus = self._create_bus(transport, connection_string, topic_name)
         self._bus.subscribe(agent_id)
@@ -434,6 +438,30 @@ class NetworkGraphStore:
             if pending is not None:
                 pending["results"].extend(results)
                 pending["event"].set()
+
+        elif op == "LEARN_CONTENT":
+            # Buffer for the OODA loop to drain via receive_events()
+            with self._learn_lock:
+                self._learn_events.append(event)
+            logger.debug(
+                "Buffered LEARN_CONTENT event from %s (queue depth=%d)",
+                event.source_agent,
+                len(self._learn_events),
+            )
+
+    def receive_events(self) -> list[Any]:
+        """Drain and return all buffered LEARN_CONTENT events.
+
+        Called by the Memory facade so the OODA loop can process incoming
+        learning events published by external agents or feed_content.py.
+
+        Returns:
+            List of BusEvent objects (LEARN_CONTENT type), oldest first.
+        """
+        with self._learn_lock:
+            events = list(self._learn_events)
+            self._learn_events.clear()
+        return events
 
     # ------------------------------------------------------------------
     # Helpers

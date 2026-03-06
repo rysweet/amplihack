@@ -300,6 +300,21 @@ class Memory:
 
         return []
 
+    def receive_events(self) -> list[Any]:
+        """Drain and return all pending LEARN_CONTENT events from the network transport.
+
+        Called by the OODA loop in agent_entrypoint.py so that incoming
+        LEARN_CONTENT messages published to the Service Bus are surfaced for
+        processing via memory.remember().
+
+        Returns:
+            List of BusEvent objects. Empty list when no transport is active
+            or no events are pending.
+        """
+        if self._graph_store is not None and hasattr(self._graph_store, "receive_events"):
+            return self._graph_store.receive_events()
+        return []
+
     def close(self) -> None:
         """Release all resources."""
         if self._adapter is not None and hasattr(self._adapter, "close"):
