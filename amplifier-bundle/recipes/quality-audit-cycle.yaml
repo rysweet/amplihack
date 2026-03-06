@@ -389,18 +389,20 @@ steps:
     type: "bash"
     condition: "validated_findings and fix_results"
     command: |
-      VALIDATED='{{validated_findings}}'
-      FIX_RESULTS='{{fix_results}}'
-      FIX_ALL='{{fix_all_per_cycle}}'
+      # Use environment variables to pass JSON safely — avoids bash interpreting
+      # JSON double-quotes as string terminators inside python3 -c "..." (#2872).
+      export VALIDATED='{{validated_findings}}'
+      export FIX_RESULTS='{{fix_results}}'
+      export FIX_ALL='{{fix_all_per_cycle}}'
 
-      python3 -c "
-      import json, sys
+      python3 - <<'PYEOF'
+      import json, sys, os
 
-      fix_all = '$FIX_ALL'.lower() == 'true'
+      fix_all = os.environ.get('FIX_ALL', '').lower() == 'true'
 
       try:
-          validated = json.loads('''$VALIDATED''')
-          fixes = json.loads('''$FIX_RESULTS''')
+          validated = json.loads(os.environ.get('VALIDATED', '{}'))
+          fixes = json.loads(os.environ.get('FIX_RESULTS', '{}'))
       except json.JSONDecodeError as e:
           # If we can't parse, report but don't block
           print(f'WARNING: Could not parse JSON for fix verification: {e}')
@@ -436,7 +438,7 @@ steps:
           print('VERIFY: PASS — all confirmed findings fixed')
       else:
           print(f'VERIFY: PASS — {total_fixed}/{total_confirmed} fixed, rest skipped as false positive')
-      "
+      PYEOF
     output: "fix_verification"
 
   # ========================================================================
