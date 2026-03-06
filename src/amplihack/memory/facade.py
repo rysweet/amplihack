@@ -111,8 +111,14 @@ class Memory:
         """Build backend adapter and hive (if distributed)."""
         cfg = self._cfg
 
-        # --- Hive setup (distributed topology) ---
-        if cfg.topology == "distributed":
+        # Determine if we are using a network transport for distribution.
+        # When a non-local transport is configured, NetworkGraphStore handles
+        # cross-agent replication, so we skip the legacy DistributedHiveGraph.
+        _transport = getattr(cfg, "memory_transport", "local") or "local"
+        _use_network = _transport != "local"
+
+        # --- Hive setup (distributed topology, local transport only) ---
+        if cfg.topology == "distributed" and not _use_network:
             self._hive = self._build_hive(cfg)
         elif cfg.shared_hive is not None:
             # Caller supplied a hive directly
@@ -131,7 +137,30 @@ class Memory:
 
     def _build_graph_store(self, cfg: "MemoryConfig") -> "GraphStore":
         """Construct the appropriate GraphStore for the resolved config."""
+        transport = getattr(cfg, "memory_transport", "local") or "local"
+        conn_str = getattr(cfg, "memory_connection_string", "") or ""
+
         if cfg.topology == "distributed":
+            # When a non-local transport is configured, wrap an InMemoryGraphStore
+            # in NetworkGraphStore so all agents share knowledge via the bus.
+            if transport != "local":
+                from .memory_store import InMemoryGraphStore
+                from .network_store import NetworkGraphStore
+
+                local_base: GraphStore = InMemoryGraphStore()
+                logger.info(
+                    "Memory[%s]: distributed topology via NetworkGraphStore (transport=%s)",
+                    cfg.agent_name,
+                    transport,
+                )
+                return NetworkGraphStore(
+                    agent_id=cfg.agent_name or "agent",
+                    local_store=local_base,
+                    transport=transport,
+                    connection_string=conn_str,
+                )
+
+            # Fallback: legacy DHT-based sharded store (local transport only)
             from .distributed_store import DistributedGraphStore
 
             store = DistributedGraphStore(
@@ -165,9 +194,7 @@ class Memory:
                 local = InMemoryGraphStore()
 
         # Wrap with NetworkGraphStore if a non-local transport is configured
-        transport = getattr(cfg, "memory_transport", "local")
-        conn_str = getattr(cfg, "memory_connection_string", "")
-        if transport and transport != "local":
+        if transport != "local":
             from .network_store import NetworkGraphStore
             return NetworkGraphStore(
                 agent_id=cfg.agent_name or "agent",

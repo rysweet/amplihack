@@ -70,6 +70,8 @@ def main() -> None:
 
         memory = Memory(
             agent_name,
+            topology="distributed",
+            backend="simple",
             memory_transport=transport,
             memory_connection_string=connection_string,
             storage_path=storage_path,
