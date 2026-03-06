@@ -27,8 +27,8 @@ from typing import Any, Callable
 
 logger = logging.getLogger(__name__)
 
-from amplihack.agents.goal_seeking.hive_mind.bloom import BloomFilter
-from amplihack.agents.goal_seeking.hive_mind.dht import HashRing
+from amplihack.memory.bloom import BloomFilter
+from amplihack.memory.hash_ring import HashRing
 
 from .memory_store import InMemoryGraphStore
 
