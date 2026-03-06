@@ -144,6 +144,13 @@ class DistributedGraphStore:
             if agent_id not in self._shards:
                 store = self._make_shard_store(agent_id)
                 self._shards[agent_id] = _AgentShard(agent_id, store)
+        # If other agents already have data, populate this shard from peers
+        has_peers_with_data = any(
+            s.agent_id != agent_id and s._bloom.count > 0
+            for s in self._all_shards()
+        )
+        if has_peers_with_data:
+            self.rebuild_shard(agent_id)
 
     def remove_agent(self, agent_id: str) -> None:
         """Remove an agent from the ring."""
@@ -404,22 +411,70 @@ class DistributedGraphStore:
     # ------------------------------------------------------------------
 
     def run_gossip_round(self) -> dict[str, int]:
-        """Exchange bloom filters between random shard pairs.
+        """Exchange full graph nodes between shards via bloom filter gossip.
 
-        Returns a dict of {agent_id: missing_count} for diagnostics.
+        For each consecutive shard pair (A, B):
+          1. A's bloom filter identifies which of B's node_ids are missing from A.
+          2. B exports those nodes/edges and A imports them.
+        Returns dict of {agent_id: nodes_received}.
         """
         all_shards = self._all_shards()
         if len(all_shards) < 2:
             return {}
 
         stats: dict[str, int] = {}
-        # Simple round-robin: each shard gossips with the next
         for i in range(len(all_shards)):
             shard_a = all_shards[i]
             shard_b = all_shards[(i + 1) % len(all_shards)]
-            # This is intentionally lightweight — just track counts
-            stats[shard_a.agent_id] = shard_a._bloom.count
+
+            b_node_ids = shard_b.store.get_all_node_ids()
+            missing_from_a = [nid for nid in b_node_ids if not shard_a.might_contain(nid)]
+
+            if missing_from_a:
+                nodes = shard_b.store.export_nodes(missing_from_a)
+                edges = shard_b.store.export_edges(missing_from_a)
+                imported = shard_a.store.import_nodes(nodes)
+                shard_a.store.import_edges(edges)
+                for nid in missing_from_a:
+                    shard_a.track_node(nid)
+                stats[shard_a.agent_id] = imported
+            else:
+                stats[shard_a.agent_id] = 0
+
         return stats
+
+    def rebuild_shard(self, agent_id: str) -> int:
+        """Rebuild a shard by pulling data from peer shards via DHT ring.
+
+        Returns total nodes imported.
+        """
+        shard = self._get_shard(agent_id)
+        if shard is None:
+            return 0
+
+        total_imported = 0
+        for peer_shard in self._all_shards():
+            if peer_shard.agent_id == agent_id:
+                continue
+            peer_node_ids = list(peer_shard.store.get_all_node_ids())
+            if not peer_node_ids:
+                continue
+            # Pull nodes that the DHT ring assigns to this agent
+            nodes_for_agent = [
+                nid for nid in peer_node_ids
+                if agent_id in self._owners_for_key(nid)
+            ]
+            if not nodes_for_agent:
+                continue
+            nodes = peer_shard.store.export_nodes(nodes_for_agent)
+            edges = peer_shard.store.export_edges(nodes_for_agent)
+            imported = shard.store.import_nodes(nodes)
+            shard.store.import_edges(edges)
+            for nid in nodes_for_agent:
+                shard.track_node(nid)
+            total_imported += imported
+
+        return total_imported
 
     # ------------------------------------------------------------------
     # Lifecycle
