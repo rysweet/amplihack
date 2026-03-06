@@ -896,3 +896,176 @@ class TestRunTui:
 
             MockTUI.assert_called_once_with(refresh_interval=45)
             mock_instance.run.assert_called_once_with(once=True)
+
+
+# ---------------------------------------------------------------------------
+# T2: agent_alive detection via ---PROC--- section
+# ---------------------------------------------------------------------------
+
+
+class TestAgentAliveDetection:
+    """parse_session_output sets agent_alive from ---PROC--- section."""
+
+    def test_agent_alive_true_when_agent_alive_in_proc(self) -> None:
+        """AGENT:alive in ---PROC--- section sets agent_alive=True."""
+        long_line = "x" * 60
+        output = (
+            f"===SESSION:work-1===\n"
+            f"---CAPTURE---\n"
+            f"Building project...\n"
+            f"Step 1\n"
+            f"{long_line}\n"
+            f"---GIT---\n"
+            f"BRANCH:main\n"
+            f"---PROC---\n"
+            f"AGENT:alive\n"
+            f"---END---\n"
+        )
+        sessions = parse_session_output("vm-1", output)
+        assert len(sessions) == 1
+        assert sessions[0].agent_alive is True
+
+    def test_agent_alive_false_when_agent_none_in_proc(self) -> None:
+        """AGENT:none in ---PROC--- section leaves agent_alive=False."""
+        long_line = "x" * 60
+        output = (
+            f"===SESSION:work-1===\n"
+            f"---CAPTURE---\n"
+            f"Building project...\n"
+            f"Step 1\n"
+            f"{long_line}\n"
+            f"---GIT---\n"
+            f"BRANCH:main\n"
+            f"---PROC---\n"
+            f"AGENT:none\n"
+            f"---END---\n"
+        )
+        sessions = parse_session_output("vm-1", output)
+        assert len(sessions) == 1
+        assert sessions[0].agent_alive is False
+
+    def test_agent_alive_false_without_proc_section(self) -> None:
+        """No ---PROC--- section leaves agent_alive=False (default)."""
+        long_line = "x" * 60
+        output = (
+            f"===SESSION:work-1===\n"
+            f"---CAPTURE---\n"
+            f"Building project...\n"
+            f"Step 1\n"
+            f"{long_line}\n"
+            f"---GIT---\n"
+            f"BRANCH:main\n"
+            f"---END---\n"
+        )
+        sessions = parse_session_output("vm-1", output)
+        assert len(sessions) == 1
+        assert sessions[0].agent_alive is False
+
+
+# ---------------------------------------------------------------------------
+# T3: Session deduplication by session name
+# ---------------------------------------------------------------------------
+
+
+class TestSessionDedup:
+    """parse_session_output deduplicates by session name, keeping first occurrence."""
+
+    def test_duplicate_session_names_keep_first(self) -> None:
+        """Two ===SESSION:foo=== markers should produce only 1 SessionView."""
+        long_line = "x" * 60
+        output = (
+            f"===SESSION:foo===\n"
+            f"---CAPTURE---\n"
+            f"First occurrence output\n"
+            f"{long_line}\n"
+            f"---GIT---\n"
+            f"BRANCH:feat/first\n"
+            f"---END---\n"
+            f"===SESSION:foo===\n"
+            f"---CAPTURE---\n"
+            f"Second occurrence output\n"
+            f"{long_line}\n"
+            f"---GIT---\n"
+            f"BRANCH:feat/second\n"
+            f"---END---\n"
+        )
+        sessions = parse_session_output("vm-1", output)
+        assert len(sessions) == 1
+        assert sessions[0].session_name == "foo"
+        # First occurrence is kept, so branch should be from first
+        assert sessions[0].branch == "feat/first"
+
+
+# ---------------------------------------------------------------------------
+# T5: Shell metachar filtering in session names
+# ---------------------------------------------------------------------------
+
+
+class TestShellMetacharFiltering:
+    """parse_session_output filters out session names containing shell metacharacters."""
+
+    def test_dollar_brace_session_name_filtered(self) -> None:
+        """Session name with ${SESS} should be filtered out."""
+        output = (
+            "===SESSION:${SESS}===\n"
+            "---CAPTURE---\n"
+            "noise\n"
+            "---GIT---\n"
+            "---END---\n"
+        )
+        sessions = parse_session_output("vm-1", output)
+        assert len(sessions) == 0
+
+    def test_backslash_session_name_filtered(self) -> None:
+        r"""Session name with backslash should be filtered out."""
+        output = (
+            "===SESSION:bad\\name===\n"
+            "---CAPTURE---\n"
+            "noise\n"
+            "---GIT---\n"
+            "---END---\n"
+        )
+        sessions = parse_session_output("vm-1", output)
+        assert len(sessions) == 0
+
+    def test_backtick_session_name_filtered(self) -> None:
+        """Session name with backtick should be filtered out."""
+        output = (
+            "===SESSION:`cmd`===\n"
+            "---CAPTURE---\n"
+            "noise\n"
+            "---GIT---\n"
+            "---END---\n"
+        )
+        sessions = parse_session_output("vm-1", output)
+        assert len(sessions) == 0
+
+    def test_valid_name_not_filtered(self) -> None:
+        """Valid session names should pass through the filter."""
+        long_line = "x" * 60
+        output = (
+            f"===SESSION:valid-name===\n"
+            f"---CAPTURE---\n"
+            f"real output\n"
+            f"{long_line}\n"
+            f"---GIT---\n"
+            f"BRANCH:main\n"
+            f"---END---\n"
+        )
+        sessions = parse_session_output("vm-1", output)
+        assert len(sessions) == 1
+        assert sessions[0].session_name == "valid-name"
+
+    def test_mixed_valid_and_invalid_names(self) -> None:
+        """Only valid names should survive when mixed with metachar names."""
+        long_line = "x" * 60
+        output = (
+            f"===SESSION:${{SESS}}===\n"
+            f"---CAPTURE---\nnoise\n---GIT---\n---END---\n"
+            f"===SESSION:good-sess===\n"
+            f"---CAPTURE---\nreal output\n{long_line}\n"
+            f"---GIT---\nBRANCH:main\n---END---\n"
+        )
+        sessions = parse_session_output("vm-1", output)
+        assert len(sessions) == 1
+        assert sessions[0].session_name == "good-sess"

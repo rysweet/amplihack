@@ -282,3 +282,76 @@ class TestParseContextOutput:
         output = "===GIT===\nMODIFIED:\n===END===\n"
         parse_context_output(output, ctx)
         assert ctx.files_modified == []
+
+
+# ---------------------------------------------------------------------------
+# T4: Transcript ---EARLY--- / ---RECENT--- parsing
+# ---------------------------------------------------------------------------
+
+
+class TestTranscriptEarlyRecentParsing:
+    """parse_context_output splits transcript into early + recent sections."""
+
+    def test_early_and_recent_sections(self):
+        """Output with ---EARLY--- and ---RECENT--- markers produces both sections."""
+        ctx = SessionContext(vm_name="devy", session_name="task-1")
+        output = (
+            "===TRANSCRIPT===\n"
+            "TRANSCRIPT_LINES:250\n"
+            "---EARLY---\n"
+            "early text line 1\n"
+            "early text line 2\n"
+            "---RECENT---\n"
+            "recent text line 1\n"
+            "recent text line 2\n"
+            "===END===\n"
+        )
+        parse_context_output(output, ctx)
+
+        assert "early text line 1" in ctx.transcript_summary
+        assert "early text line 2" in ctx.transcript_summary
+        assert "recent text line 1" in ctx.transcript_summary
+        assert "recent text line 2" in ctx.transcript_summary
+        # Early section should be prefixed with session start marker
+        assert "Session start" in ctx.transcript_summary
+        # Recent section should be prefixed with recent activity marker
+        assert "Recent activity" in ctx.transcript_summary
+
+    def test_recent_only_no_early_marker(self):
+        """Output without ---EARLY--- marker should just use the text as recent."""
+        ctx = SessionContext(vm_name="devy", session_name="task-1")
+        output = (
+            "===TRANSCRIPT===\n"
+            "just recent text here\n"
+            "more recent text\n"
+            "===END===\n"
+        )
+        parse_context_output(output, ctx)
+
+        assert "just recent text here" in ctx.transcript_summary
+        assert "more recent text" in ctx.transcript_summary
+        # Should NOT contain early/recent section markers since there is no split
+        assert "Session start" not in ctx.transcript_summary
+
+    def test_empty_transcript_section(self):
+        """Empty TRANSCRIPT section should leave transcript_summary empty."""
+        ctx = SessionContext(vm_name="devy", session_name="task-1")
+        output = "===TRANSCRIPT===\n\n===END===\n"
+        parse_context_output(output, ctx)
+        assert ctx.transcript_summary == ""
+
+    def test_early_section_empty_recent_populated(self):
+        """---EARLY--- with no content between it and ---RECENT--- should still parse recent."""
+        ctx = SessionContext(vm_name="devy", session_name="task-1")
+        output = (
+            "===TRANSCRIPT===\n"
+            "---EARLY---\n"
+            "---RECENT---\n"
+            "only recent content\n"
+            "===END===\n"
+        )
+        parse_context_output(output, ctx)
+
+        assert "only recent content" in ctx.transcript_summary
+        # Early is empty so "Session start" section header should not appear
+        # (because early string is empty after strip)

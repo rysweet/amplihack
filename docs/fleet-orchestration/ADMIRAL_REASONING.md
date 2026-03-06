@@ -211,7 +211,7 @@ Before executing any action, multiple safety checks are applied:
 | `escalate` | none | Always safe |
 | `mark_complete` | none | No side effects |
 
-**Dangerous input blocklist** — 60 regex patterns across 10 threat categories. If `input_text` matches any pattern, the action is converted to `escalate`:
+**Dangerous input blocklist** — 57 regex patterns across 10 threat categories. If `input_text` matches any pattern, the action is converted to `escalate`:
 
 | Category | Example patterns |
 |----------|-----------------|

@@ -24,6 +24,63 @@ def _parse_session_target(session_str: str) -> tuple[str | None, str]:
     return (None, session_str.strip())
 
 
+def _discover_sessions(session_target, vm, _tui_mod):
+    """Shared Phase 1 discovery for scout and advance commands.
+
+    Parses --session target, creates FleetTUI, refreshes all VMs,
+    filters by VM and session name, and guards against empty results.
+
+    Args:
+        session_target: Optional 'vm:session' string from --session flag.
+        vm: Optional VM name filter from --vm flag.
+        _tui_mod: The fleet_tui module (for FleetTUI construction).
+
+    Returns:
+        Tuple of (all_vms, running_vms, session_filter) on success,
+        or None if no running VMs with sessions were found (after printing
+        an appropriate message via click.echo).
+    """
+    import click
+
+    session_filter = None
+    if session_target:
+        target_vm, session_filter = _parse_session_target(session_target)
+        if target_vm:
+            vm = target_vm
+
+    click.echo("Phase 1: Discovering fleet sessions...")
+    tui = _tui_mod.FleetTUI()
+    all_vms = tui.refresh_all()
+
+    if vm:
+        all_vms = [v for v in all_vms if v.name == vm]
+        if not all_vms:
+            click.echo(f"VM not found: {vm}")
+            return None
+
+    running_vms = [v for v in all_vms if v.is_running and v.sessions]
+
+    if session_filter:
+        for v in running_vms:
+            v.sessions = [s for s in v.sessions if s.session_name == session_filter]
+        running_vms = [v for v in running_vms if v.sessions]
+        if not running_vms:
+            click.echo(f"Session not found: {session_target}")
+            return None
+
+    total_sessions = sum(len(v.sessions) for v in running_vms)
+    click.echo(
+        f"Found {len(all_vms)} VMs, {total_sessions} sessions "
+        f"on {len(running_vms)} running VMs"
+    )
+
+    if not running_vms:
+        click.echo("No running VMs with sessions found.")
+        return None
+
+    return all_vms, running_vms, session_filter
+
+
 def format_scout_report(
     all_vms: list,
     decisions: list[dict],
@@ -265,6 +322,7 @@ def register_session_ops(fleet_cli: click.Group) -> None:
         import shlex
         import subprocess
 
+        from amplihack.fleet._constants import CLI_WATCH_TIMEOUT_SECONDS
         from amplihack.fleet._validation import validate_session_name
 
         validate_session_name(session_name)
@@ -275,7 +333,7 @@ def register_session_ops(fleet_cli: click.Group) -> None:
                 [_cmd._get_azlin(), "connect", vm_name, "--no-tmux", "--", cmd],
                 capture_output=True,
                 text=True,
-                timeout=60,
+                timeout=CLI_WATCH_TIMEOUT_SECONDS,
             )
             if result.returncode == 0:
                 click.echo(f"--- {vm_name}/{session_name} ---")
@@ -453,43 +511,12 @@ def register_session_ops(fleet_cli: click.Group) -> None:
         import amplihack.fleet.fleet_session_reasoner as _reasoner_mod
         import amplihack.fleet.fleet_tui as _tui_mod
 
-        # Parse --session (vm:session format sets vm implicitly)
-        session_filter = None
-        if session_target:
-            target_vm, session_filter = _parse_session_target(session_target)
-            if target_vm:
-                vm = target_vm
-
         # -- Phase 1: Discovery --
-        click.echo("Phase 1: Discovering fleet sessions...")
-        tui = _tui_mod.FleetTUI()
-        all_vms = tui.refresh_all()
-
-        if vm:
-            all_vms = [v for v in all_vms if v.name == vm]
-            if not all_vms:
-                click.echo(f"VM not found: {vm}")
-                return
-
-        running_vms = [v for v in all_vms if v.is_running and v.sessions]
-
-        if session_filter:
-            for v in running_vms:
-                v.sessions = [s for s in v.sessions if s.session_name == session_filter]
-            running_vms = [v for v in running_vms if v.sessions]
-            if not running_vms:
-                click.echo(f"Session not found: {session_target}")
-                return
-
-        total_sessions = sum(len(v.sessions) for v in running_vms)
-        click.echo(
-            f"Found {len(all_vms)} VMs, {total_sessions} sessions "
-            f"on {len(running_vms)} running VMs"
-        )
-
-        if not running_vms:
-            click.echo("No running VMs with sessions found.")
+        discovery = _discover_sessions(session_target, vm, _tui_mod)
+        if discovery is None:
             return
+        all_vms, running_vms, session_filter = discovery
+        total_sessions = sum(len(v.sessions) for v in running_vms)
 
         # -- Phase 2: Adoption (unless --skip-adopt) --
         adopted_count = 0
@@ -596,40 +623,12 @@ def register_session_ops(fleet_cli: click.Group) -> None:
         import amplihack.fleet.fleet_session_reasoner as _reasoner_mod
         import amplihack.fleet.fleet_tui as _tui_mod
 
-        # Parse --session (vm:session format sets vm implicitly)
-        session_filter = None
-        if session_target:
-            target_vm, session_filter = _parse_session_target(session_target)
-            if target_vm:
-                vm = target_vm
-
         # -- Phase 1: Discovery --
-        click.echo("Phase 1: Discovering fleet sessions...")
-        tui = _tui_mod.FleetTUI()
-        all_vms = tui.refresh_all()
-
-        if vm:
-            all_vms = [v for v in all_vms if v.name == vm]
-            if not all_vms:
-                click.echo(f"VM not found: {vm}")
-                return
-
-        running_vms = [v for v in all_vms if v.is_running and v.sessions]
-
-        if session_filter:
-            for v in running_vms:
-                v.sessions = [s for s in v.sessions if s.session_name == session_filter]
-            running_vms = [v for v in running_vms if v.sessions]
-            if not running_vms:
-                click.echo(f"Session not found: {session_target}")
-                return
-
-        total_sessions = sum(len(v.sessions) for v in running_vms)
-        click.echo(f"Found {total_sessions} sessions on {len(running_vms)} running VMs")
-
-        if not running_vms:
-            click.echo("No running VMs with sessions found.")
+        discovery = _discover_sessions(session_target, vm, _tui_mod)
+        if discovery is None:
             return
+        all_vms, running_vms, session_filter = discovery
+        total_sessions = sum(len(v.sessions) for v in running_vms)
 
         # -- Phase 2: Reason and execute --
         click.echo("\nPhase 2: Reasoning and executing actions...")

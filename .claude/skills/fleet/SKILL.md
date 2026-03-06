@@ -104,8 +104,21 @@ fleet start   [--interval 300] [--max-cycles 10]
 - **Model**: Claude Opus 4.6 (`claude-opus-4-6`)
 - **Max output tokens**: 128,000
 - **Context gathered per session**: full tmux scrollback + first 50 & last 200 transcript messages
-- **Safety**: 60 dangerous-input patterns blocked, confidence thresholds (60% send_input, 80% restart)
+- **Safety**: 57 dangerous-input patterns blocked, confidence thresholds (60% send_input, 80% restart)
 - **Docs**: `docs/fleet-orchestration/ADMIRAL_REASONING.md`
+
+## Status Icons
+
+| Icon | Status | Meaning |
+|------|--------|---------|
+| `[~]` | thinking | Agent is actively processing |
+| `[>]` | running | Agent producing output |
+| `[.]` | idle | Agent at prompt, waiting for direction |
+| `[X]` | shell (dead agent) | No agent detected in this session |
+| `[Z]` | suspended | Agent backgrounded but alive |
+| `[!]` | error | Error detected in session output |
+| `[+]` | completed | Agent finished its task |
+| `[?]` | waiting input | Agent asked a question, awaiting response |
 
 ## How to Run
 

@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from textual import work
-from textual.widgets import DataTable, Static
+from textual.widgets import DataTable, Static, TabbedContent
 from textual.worker import get_current_worker
 
 if TYPE_CHECKING:
