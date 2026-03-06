@@ -348,3 +348,61 @@ class TestDistributedGraphStore:
         retrieved_ids = {n["node_id"] for n in all_nodes}
         for nid in node_ids:
             assert nid in retrieved_ids, f"Node {nid} missing from query_nodes results"
+
+
+def test_distributed_with_kuzu_shards():
+    """DistributedGraphStore with kuzu shard_backend persists nodes across reopen."""
+    pytest.importorskip("kuzu")
+    from amplihack.memory.distributed_store import DistributedGraphStore
+    from amplihack.memory.graph_store import SEMANTIC_SCHEMA
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        node_ids = []
+
+        # --- First open: create store, add 3 agents, store SemanticMemory nodes ---
+        store = DistributedGraphStore(
+            replication_factor=1,
+            query_fanout=5,
+            shard_backend="kuzu",
+            storage_path=tmpdir,
+            kuzu_buffer_pool_mb=32,
+        )
+        for i in range(3):
+            store.add_agent(f"agent-{i}")
+
+        store.ensure_table("semantic_memory", SEMANTIC_SCHEMA)
+
+        for i in range(3):
+            nid = store.create_node("semantic_memory", {
+                "agent_name": f"agent-{i}",
+                "concept": f"concept-{i}",
+                "content": f"persisted fact number {i}",
+                "confidence": 0.9,
+                "source": "kuzu-test",
+                "timestamp": float(i),
+            })
+            node_ids.append(nid)
+
+        store.close()
+
+        # --- Second open: reopen from same paths, verify nodes survived ---
+        store2 = DistributedGraphStore(
+            replication_factor=1,
+            query_fanout=5,
+            shard_backend="kuzu",
+            storage_path=tmpdir,
+            kuzu_buffer_pool_mb=32,
+        )
+        for i in range(3):
+            store2.add_agent(f"agent-{i}")
+
+        store2.ensure_table("semantic_memory", SEMANTIC_SCHEMA)
+
+        for nid in node_ids:
+            node = store2.get_node("semantic_memory", nid)
+            assert node is not None, f"Node {nid} should survive store reopen"
+            assert "persisted fact" in node.get("content", ""), (
+                f"Node content not preserved: {node}"
+            )
+
+        store2.close()

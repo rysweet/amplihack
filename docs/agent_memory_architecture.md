@@ -95,6 +95,7 @@ memory:
   query_fanout: 5
   gossip_enabled: true
   gossip_rounds: 3
+  shard_backend: memory  # "memory" (default) or "kuzu"
 ```
 
 Or via env vars for containers:
@@ -103,7 +104,12 @@ Or via env vars for containers:
 AMPLIHACK_MEMORY_BACKEND=cognitive
 AMPLIHACK_MEMORY_TOPOLOGY=distributed
 AMPLIHACK_MEMORY_REPLICATION=3
+AMPLIHACK_MEMORY_SHARD_BACKEND=kuzu
 ```
+
+**Shard backend guidance:**
+- `shard_backend: memory` (default) — DHT shards are held in-memory dicts. Fast, zero dependencies, but data is lost on restart. Use for development, testing, and short-lived multi-agent sessions.
+- `shard_backend: kuzu` — DHT shards are persisted to Kuzu databases under `{storage_path}/shards/{agent_id}/`. Survives restarts and supports larger datasets. Use for production distributed deployments where cross-agent facts must persist across process boundaries.
 
 ## Cognitive Memory Model
 
@@ -233,10 +239,10 @@ An agent's **local CognitiveMemory** contains facts it learned directly. The **D
 | Aspect | CognitiveMemory (local) | DistributedHiveGraph (shared) |
 |--------|------------------------|-------------------------------|
 | Scope | One agent's knowledge | All agents' knowledge |
-| Storage | Kuzu graph DB (256MB) | In-memory ShardStore dicts |
+| Storage | Kuzu graph DB (256MB) | In-memory dicts (default) or Kuzu shards (shard_backend=kuzu) |
 | Structure | 6 typed memory types + relationships | Flat facts with tags + embeddings |
 | Search | Concept + keyword + similarity graph traversal | Semantic embed → cosine sim → shard lookup |
-| Persistence | Disk (Kuzu files) | In-memory (lost on restart) |
+| Persistence | Disk (Kuzu files) | In-memory (lost on restart) or disk with shard_backend=kuzu |
 | Purpose | Deep personal knowledge with reasoning structure | Fast cross-agent fact sharing and routing |
 
 ## Eval Harness

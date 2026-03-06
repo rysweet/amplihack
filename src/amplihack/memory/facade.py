@@ -127,12 +127,13 @@ class Memory:
         """Construct the appropriate GraphStore for the resolved config."""
         if cfg.topology == "distributed":
             from .distributed_store import DistributedGraphStore
-            from .memory_store import InMemoryGraphStore
 
             store = DistributedGraphStore(
                 replication_factor=cfg.replication_factor,
                 query_fanout=cfg.query_fanout,
-                shard_factory=InMemoryGraphStore,
+                shard_backend=cfg.shard_backend,
+                storage_path=cfg.storage_path or "/tmp/amplihack-shards",
+                kuzu_buffer_pool_mb=cfg.kuzu_buffer_pool_mb,
             )
             store.add_agent(cfg.agent_name)
             return store

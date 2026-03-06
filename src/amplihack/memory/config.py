@@ -23,6 +23,7 @@ _DEFAULT_QUERY_FANOUT = 5
 _DEFAULT_GOSSIP_ENABLED = True
 _DEFAULT_GOSSIP_ROUNDS = 3
 _DEFAULT_MODEL = None
+_DEFAULT_SHARD_BACKEND = "memory"
 
 
 def _default_config_path() -> Path:
@@ -47,6 +48,7 @@ class MemoryConfig:
     query_fanout: int = _DEFAULT_QUERY_FANOUT
     gossip_enabled: bool = _DEFAULT_GOSSIP_ENABLED
     gossip_rounds: int = _DEFAULT_GOSSIP_ROUNDS
+    shard_backend: str = _DEFAULT_SHARD_BACKEND  # "memory" or "kuzu"
 
     @classmethod
     def from_env(cls) -> "MemoryConfig":
@@ -89,6 +91,10 @@ class MemoryConfig:
         if gossip_rounds is not None:
             kwargs["gossip_rounds"] = int(gossip_rounds)
 
+        shard_backend = os.environ.get("AMPLIHACK_MEMORY_SHARD_BACKEND")
+        if shard_backend is not None:
+            kwargs["shard_backend"] = shard_backend
+
         return cls(**kwargs)
 
     @classmethod
@@ -112,7 +118,7 @@ class MemoryConfig:
             data = yaml.safe_load(fh) or {}
 
         kwargs: dict[str, Any] = {}
-        _str_fields = ("backend", "topology", "storage_path", "model")
+        _str_fields = ("backend", "topology", "storage_path", "model", "shard_backend")
         _int_fields = ("kuzu_buffer_pool_mb", "replication_factor", "query_fanout", "gossip_rounds")
         _bool_fields = ("gossip_enabled",)
 
@@ -158,6 +164,7 @@ class MemoryConfig:
             "replication_factor": ("AMPLIHACK_MEMORY_REPLICATION", int),
             "query_fanout": ("AMPLIHACK_MEMORY_QUERY_FANOUT", int),
             "gossip_rounds": ("AMPLIHACK_MEMORY_GOSSIP_ROUNDS", int),
+            "shard_backend": ("AMPLIHACK_MEMORY_SHARD_BACKEND", str),
         }
         for field_name, (env_key, converter) in _env_map.items():
             raw = os.environ.get(env_key)

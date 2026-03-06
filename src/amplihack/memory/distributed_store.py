@@ -1,7 +1,7 @@
 """DistributedGraphStore — DHT-sharded GraphStore implementation.
 
 Shards graph nodes across a consistent hash ring of agent-owned
-InMemoryGraphStore (or custom) shards. Supports:
+InMemoryGraphStore or KuzuGraphStore (configurable) shards. Supports:
 
 - Replication: each node stored on R shard owners
 - Semantic routing: embed text → cosine sim → top K shards for search
@@ -86,6 +86,12 @@ class DistributedGraphStore:
         replication_factor: Number of shard owners per node.
         query_fanout: Max shards to query per search/query_nodes call.
         shard_factory: Callable returning a fresh GraphStore for each agent shard.
+            Takes precedence over shard_backend when provided.
+        shard_backend: "memory" (default) or "kuzu". Controls which store type
+            is created per agent when shard_factory is not set.
+        storage_path: Base directory for kuzu shard databases.
+            Shards are created at {storage_path}/shards/{agent_id}.
+        kuzu_buffer_pool_mb: Buffer pool in MB for each kuzu shard (default 256).
         embedding_generator: Optional callable str → array for semantic routing.
     """
 
@@ -93,13 +99,19 @@ class DistributedGraphStore:
         self,
         replication_factor: int = 3,
         query_fanout: int = 5,
-        shard_factory: Callable[[], Any] = InMemoryGraphStore,
+        shard_factory: Callable[[], Any] | None = None,
+        shard_backend: str = "memory",
+        storage_path: str = "/tmp/amplihack-shards",
+        kuzu_buffer_pool_mb: int = 256,
         embedding_generator: Any = None,
     ) -> None:
         self._ring = HashRing(replication_factor=replication_factor)
         self._replication_factor = replication_factor
         self._query_fanout = query_fanout
         self._shard_factory = shard_factory
+        self._shard_backend = shard_backend
+        self._storage_path = storage_path
+        self._kuzu_buffer_pool_mb = kuzu_buffer_pool_mb
         self._embedding_generator = embedding_generator
         self._shards: dict[str, _AgentShard] = {}
         self._lock = threading.RLock()
@@ -108,12 +120,29 @@ class DistributedGraphStore:
     # Agent management
     # ------------------------------------------------------------------
 
+    def _make_shard_store(self, agent_id: str) -> Any:
+        """Create a shard store for the given agent."""
+        if self._shard_factory is not None:
+            return self._shard_factory()
+        if self._shard_backend == "kuzu":
+            from pathlib import Path
+
+            from .kuzu_store import KuzuGraphStore
+
+            shard_path = Path(self._storage_path) / "shards" / agent_id
+            shard_path.parent.mkdir(parents=True, exist_ok=True)
+            return KuzuGraphStore(
+                db_path=shard_path,
+                buffer_pool_size=self._kuzu_buffer_pool_mb * 1024 * 1024,
+            )
+        return InMemoryGraphStore()
+
     def add_agent(self, agent_id: str) -> None:
         """Register an agent (creates a shard store for it)."""
         self._ring.add_agent(agent_id)
         with self._lock:
             if agent_id not in self._shards:
-                store = self._shard_factory()
+                store = self._make_shard_store(agent_id)
                 self._shards[agent_id] = _AgentShard(agent_id, store)
 
     def remove_agent(self, agent_id: str) -> None:
