@@ -104,7 +104,6 @@ fi
 # ============================================================
 
 require_cmd az
-require_cmd docker
 [[ -n "${ANTHROPIC_API_KEY:-}" ]] || die "ANTHROPIC_API_KEY env var is required."
 
 # ============================================================
@@ -149,16 +148,27 @@ IMAGE="${ACR_LOGIN_SERVER}/${HIVE_NAME}:${IMAGE_TAG}"
 # ============================================================
 
 if [[ "$MODE" == "all" || "$MODE" == "build" ]]; then
-  log "Building Docker image ${IMAGE}..."
-  docker build \
-    --file "${SCRIPT_DIR}/Dockerfile" \
-    --tag "${IMAGE}" \
-    "${REPO_ROOT}"
-
-  log "Pushing image to ACR ${ACR_LOGIN_SERVER}..."
-  az acr login --name "${ACR_NAME}"
-  docker push "${IMAGE}"
-  log "Image pushed: ${IMAGE}"
+  if command -v docker >/dev/null 2>&1; then
+    log "Building Docker image locally..."
+    docker build --file "${SCRIPT_DIR}/Dockerfile" --tag "${IMAGE}" "${REPO_ROOT}"
+    log "Pushing image to ACR..."
+    az acr login --name "${ACR_NAME}"
+    docker push "${IMAGE}"
+  else
+    log "Docker not available, using ACR remote build..."
+    az acr build \
+      --registry "${ACR_NAME}" \
+      --image "${HIVE_NAME}:${IMAGE_TAG}" \
+      --file "${SCRIPT_DIR}/Dockerfile" \
+      "${REPO_ROOT}" \
+      --no-logs 2>/dev/null || \
+    az acr build \
+      --registry "${ACR_NAME}" \
+      --image "${HIVE_NAME}:${IMAGE_TAG}" \
+      --file "${SCRIPT_DIR}/Dockerfile" \
+      "${REPO_ROOT}"
+  fi
+  log "Image available: ${IMAGE}"
 fi
 
 [[ "$MODE" == "build" ]] && exit 0
