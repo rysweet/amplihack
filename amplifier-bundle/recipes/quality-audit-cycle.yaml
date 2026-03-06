@@ -391,9 +391,9 @@ steps:
     command: |
       # Use environment variables to pass JSON safely — avoids bash interpreting
       # JSON double-quotes as string terminators inside python3 -c "..." (#2872).
-      export VALIDATED='{{validated_findings}}'
-      export FIX_RESULTS='{{fix_results}}'
-      export FIX_ALL='{{fix_all_per_cycle}}'
+      export VALIDATED={{validated_findings}}
+      export FIX_RESULTS={{fix_results}}
+      export FIX_ALL={{fix_all_per_cycle}}
 
       python3 - <<'PYEOF'
       import json, sys, os
@@ -449,9 +449,9 @@ steps:
   - id: "accumulate-history"
     type: "bash"
     command: |
-      CYCLE='{{cycle_number}}'
-      CURRENT_HISTORY='{{cycle_history}}'
-      FINDINGS='{{validated_findings}}'
+      CYCLE={{cycle_number}}
+      CURRENT_HISTORY={{cycle_history}}
+      FINDINGS={{validated_findings}}
 
       if [ -z "$CURRENT_HISTORY" ]; then
         echo "--- Cycle $CYCLE findings ---"
@@ -471,11 +471,11 @@ steps:
   - id: "recurse-decision"
     type: "bash"
     command: |
-      CYCLE='{{cycle_number}}'
-      MIN_CYCLES='{{min_cycles}}'
-      MAX_CYCLES='{{max_cycles}}'
-      VALIDATED='{{validated_findings}}'
-      FIX_VERIFY='{{fix_verification}}'
+      CYCLE={{cycle_number}}
+      MIN_CYCLES={{min_cycles}}
+      MAX_CYCLES={{max_cycles}}
+      VALIDATED={{validated_findings}}
+      FIX_VERIFY={{fix_verification}}
 
       echo "Cycle $CYCLE complete."
 
