@@ -64,7 +64,11 @@ class KuzuGraphStore:
 
         db_arg = str(db_path) if db_path is not None else None
         if db_path is not None:
-            Path(db_path).parent.mkdir(parents=True, exist_ok=True)  # Create parent dirs before Kuzu init
+            p = Path(db_path)
+            # Kuzu creates its own db directory; remove empty stale dir if present
+            if p.is_dir() and not any(p.iterdir()):
+                p.rmdir()
+            p.parent.mkdir(parents=True, exist_ok=True)
         self._db = kuzu.Database(
             db_arg,
             buffer_pool_size=buffer_pool_size,
