@@ -187,6 +187,21 @@ def _handle_event(agent_name: str, event: object, memory: object) -> None:
                 agent_name,
             )
 
+    elif event_type in ("QUERY_RESPONSE", "network_graph.search_response"):
+        # Response events emitted by the graph store auto-handler or by other
+        # agents replying to a search query.  The NetworkGraphStore handles
+        # these internally (waking pending search waiters); there is nothing
+        # further for the OODA loop to do.  Explicitly acknowledge here so the
+        # event does not fall through to memory.remember() and pollute the
+        # cognitive store with raw response payloads.
+        query_id = (payload or {}).get("query_id", "")
+        logger.debug(
+            "Agent %s received %s (query_id=%s) from graph store auto-handler — acknowledged",
+            agent_name,
+            event_type,
+            query_id,
+        )
+
     else:
         memory.remember(f"Event received: {event}")
 

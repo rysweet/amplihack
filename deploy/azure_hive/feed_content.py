@@ -31,60 +31,80 @@ logging.basicConfig(
 logger = logging.getLogger("feed_content")
 
 # ---------------------------------------------------------------------------
-# Sample learning content — varied facts for hive ingestion
+# Security analyst scenario content — loaded from amplihack_eval
 # ---------------------------------------------------------------------------
-_CONTENT_POOL = [
-    "The mitochondria is the powerhouse of the cell, producing ATP via oxidative phosphorylation.",
-    "Photosynthesis converts light energy into chemical energy stored as glucose.",
-    "DNA encodes genetic information using four nucleotide bases: A, T, C, G.",
-    "RNA polymerase transcribes DNA into messenger RNA during gene expression.",
-    "The human brain contains approximately 86 billion neurons.",
-    "Neurons communicate via electrochemical signals across synaptic junctions.",
-    "The speed of light in a vacuum is approximately 299,792,458 metres per second.",
-    "General relativity describes gravity as the curvature of spacetime caused by mass.",
-    "Quantum entanglement allows correlated measurement outcomes regardless of distance.",
-    "The Heisenberg uncertainty principle limits simultaneous precision of position and momentum.",
-    "Water has a specific heat capacity of 4,186 J/(kg·K), making it an excellent thermal buffer.",
-    "The boiling point of water at sea level is 100 °C (212 °F).",
-    "Plate tectonics explains the movement of Earth's lithospheric plates.",
-    "The Cambrian explosion approximately 541 million years ago saw rapid diversification of life.",
-    "CRISPR-Cas9 is a molecular tool for precise genome editing in living cells.",
-    "The blockchain is an append-only distributed ledger secured by cryptographic hashes.",
-    "Neural networks learn by adjusting synaptic weights via gradient descent.",
-    "The transformer architecture underpins most modern large language models.",
-    "Attention mechanisms allow models to weigh the relevance of different input tokens.",
-    "Retrieval-augmented generation (RAG) combines external knowledge retrieval with LLM generation.",
-    "The Turing test evaluates a machine's ability to exhibit human-like conversation.",
-    "Von Neumann architecture separates memory from processing units.",
-    "Moore's Law historically described a doubling of transistor density every ~18 months.",
-    "TCP/IP is the fundamental protocol suite for internet communication.",
-    "TLS encrypts network traffic to prevent eavesdropping and tampering.",
-    "The CAP theorem states that distributed systems can guarantee only two of: Consistency, Availability, Partition tolerance.",
-    "Consistent hashing distributes load across nodes while minimising redistribution on topology changes.",
-    "Bloom filters provide probabilistic set membership testing with controllable false-positive rates.",
-    "CRDTs (Conflict-free Replicated Data Types) enable eventual consistency without coordination.",
-    "The OODA loop (Observe, Orient, Decide, Act) models rapid iterative decision-making.",
-    "Distributed hash tables (DHTs) enable decentralised key-value lookups across peer networks.",
-    "Gossip protocols propagate information in O(log N) rounds through random peer exchange.",
-    "The Byzantine fault tolerance problem addresses consensus in the presence of malicious nodes.",
-    "Raft is a consensus algorithm designed to be more understandable than Paxos.",
-    "Azure Service Bus provides reliable cloud messaging with at-least-once delivery guarantees.",
-    "Azure Container Apps simplifies deployment of containerised microservices with built-in scaling.",
-    "Kuzu is an embeddable graph database optimised for in-process analytical workloads.",
-    "Knowledge graphs represent entities as nodes and relationships as typed edges.",
-    "Semantic similarity can be measured by the cosine distance between embedding vectors.",
-    "Reciprocal Rank Fusion (RRF) merges ranked lists from multiple retrieval sources.",
-    "The six-type cognitive memory model maps to human memory: sensory, working, episodic, semantic, procedural, prospective.",
-    "Episodic memory records autobiographical events with temporal context.",
-    "Semantic memory stores distilled, language-independent knowledge.",
-    "Working memory has bounded capacity and holds the currently active task context.",
-    "Prospective memory encodes future-oriented trigger-action pairs.",
-    "Procedural memory captures reusable step-by-step procedures.",
-    "Agent specialisation improves recall by routing queries to domain-expert nodes.",
-    "The hive mind architecture allows multiple AI agents to share a distributed memory graph.",
-    "Federation organises agents into groups, each with its own DHT, connected by a root hive.",
-    "Replication factor R=3 ensures fact availability even if two hive nodes fail simultaneously.",
+
+# Fallback hardcoded security pool used when amplihack_eval is unavailable.
+_SECURITY_CONTENT_FALLBACK = [
+    "The Log4Shell vulnerability (CVE-2021-44228) had a CVSS score of 10.0.",
+    "The SolarWinds attack compromised 18,000 organizations in 2020.",
+    "Supply chain attacks increased 742% between 2019 and 2022.",
+    "Hardware security keys provide the strongest form of 2FA.",
+    "Memory-safe languages prevent 70% of security vulnerabilities.",
+    "Brute force attack detected from 192.168.1.45: 847 failed SSH login attempts targeting admin accounts over 12 minutes.",
+    "C2 beacon traffic detected from 172.16.0.100 (svc_backup) to 185.220.101.45 on port 443 using HTTPS tunneling.",
+    "Supply chain attack detected: malicious npm package event-stream@5.0.0 with crypto-mining payload found in CI pipeline.",
+    "CVE-2024-3094 (xz-utils/sshd backdoor) detected on build servers; attacker used DNS tunneling via *.tunnel.attacker.net.",
+    "SSRF vulnerability exploited in web application: attacker accessed AWS metadata endpoint http://169.254.169.254/latest/meta-data/.",
+    "Insider threat indicator: bulk download of 15,234 sensitive documents by user jsmith detected; DLP policy triggered.",
+    "INC-2024-001: Ransomware attack on production database servers; 3 servers encrypted; status: contained; CVE-2024-21626 involved.",
+    "INC-2024-002: Data exfiltration via C2 server 185.220.101.45; 2.3GB exfiltrated; breach notification sent to 15,000 customers; status: remediated.",
+    "INC-2024-003: APT29 (state-sponsored) supply chain attack; TTPs matched APT29; involved event-stream npm package, crypto mining on CI server, DNS tunneling, and xz-utils backdoor (CVE-2024-3094).",
+    "INC-2024-004: Insider threat - bulk document download by jsmith; 15,234 documents over 4 hours; employee terminated; status: resolved.",
+    "INC-2024-005: SSRF vulnerability exploitation leading to cloud metadata access; patched same day; no data exfiltration confirmed.",
+    "Post-incident review complete; MFA enforced for all admin accounts after INC-2024-001 ransomware attack.",
+    "All encrypted files restored from backup; attacker C2 server 185.220.101.45 blocked at firewall after INC-2024-002.",
+    "Brute force attack on RDP services from multiple IPs; 10,432 attempts over 3 hours; blocked by WAF rate limiting.",
+    "Privilege escalation attempt from 192.168.1.45 after successful SSH login; attacker gained root via sudo misconfiguration.",
+    "DNS tunneling detected using *.tunnel.attacker.net domains; associated with APT29 campaign INC-2024-003.",
+    "CVSS v3.1 base score uses Attack Vector, Attack Complexity, Privileges Required, User Interaction, Scope, and three CIA impact metrics.",
+    "APT29 (Cozy Bear) is a Russian state-sponsored threat actor known for supply chain attacks and stealthy long-term persistence.",
+    "Ransomware incident response playbook: isolate affected systems, preserve evidence, notify stakeholders, restore from clean backups, patch vulnerabilities.",
+    "IOC correlation links 192.168.1.45 (SSH brute force), 185.220.101.45 (C2 server), event-stream@5.0.0 (malicious npm), and tunnel.attacker.net (DNS C2).",
 ]
+
+
+def _build_security_content_pool() -> list[str]:
+    """Build the security analyst content pool from amplihack_eval.
+
+    Calls generate_dialogue(num_turns=300, seed=42) and filters turns
+    to the security_logs and incidents blocks (block_name in
+    {"security_logs", "incidents"}).  Falls back to
+    _SECURITY_CONTENT_FALLBACK if amplihack_eval is unavailable or
+    returns no security turns.
+
+    Returns:
+        List of content strings suitable for LEARN_CONTENT events.
+    """
+    try:
+        from amplihack_eval.data import generate_dialogue
+
+        ground_truth = generate_dialogue(num_turns=300, seed=42)
+        security_turns = [
+            t.content
+            for t in ground_truth.turns
+            if t.block_name in ("security_logs", "incidents") and t.content
+        ]
+        if security_turns:
+            logger.info(
+                "feed_content: loaded %d security turns from amplihack_eval",
+                len(security_turns),
+            )
+            return security_turns
+        logger.warning(
+            "feed_content: amplihack_eval returned no security turns for num_turns=300; "
+            "using fallback pool"
+        )
+    except Exception:
+        logger.warning(
+            "feed_content: could not load security content from amplihack_eval; "
+            "using fallback pool",
+            exc_info=True,
+        )
+    return list(_SECURITY_CONTENT_FALLBACK)
+
+
+_CONTENT_POOL: list[str] = _build_security_content_pool()
 
 
 def _build_event(content: str, source_agent: str, turn: int) -> dict:
