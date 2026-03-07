@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
-"""query_hive.py -- Query the live Azure Hive Mind for Q&A evaluation.
+"""query_hive.py -- Query the live Azure Hive Mind with security analyst Q&A evaluation.
 
 Sends a network_graph.search_query event to the live Azure hive agents via
 Azure Service Bus and collects their network_graph.search_response replies.
+
+Uses amplihack_eval to generate security analyst scenario questions (via
+generate_dialogue and generate_questions) and grade answers semantically
+(via grade_answer).
 
 The live hive runs 20 Container App agents (agent-0 .. agent-19) that each
 hold a shard of the distributed knowledge graph. This script acts as an
@@ -42,11 +46,11 @@ Use --seed to populate via the Service Bus before running --run-eval.
 
 Usage
 -----
-    # Seed the live hive and run Q&A eval
+    # Seed the live hive and run security analyst Q&A eval
     python experiments/hive_mind/query_hive.py --seed --run-eval --output results.json
 
     # Single query (after seeding)
-    python experiments/hive_mind/query_hive.py --query "What is Newton's second law?"
+    python experiments/hive_mind/query_hive.py --query "What CVE was used in the supply chain attack?"
 
     # Demo mode: run eval locally with DistributedHiveGraph (no Azure needed)
     python experiments/hive_mind/query_hive.py --demo
@@ -61,11 +65,13 @@ Environment Variables
     HIVE_SUBSCRIPTION       Subscription name for receiving responses
                             (default: eval-query-agent)
     HIVE_TIMEOUT            Response wait timeout in seconds (default: 10)
+    ANTHROPIC_API_KEY       Required for grade_answer semantic grading
 
 Prerequisites
 -------------
-    pip install azure-servicebus
+    pip install azure-servicebus amplihack-agent-eval anthropic
     export HIVE_CONNECTION_STRING="Endpoint=sb://..."
+    export ANTHROPIC_API_KEY="sk-ant-..."
 """
 
 from __future__ import annotations
@@ -101,76 +107,86 @@ _OP_SEARCH_RESPONSE = "network_graph.search_response"
 _OP_CREATE_NODE = "network_graph.create_node"
 
 # ---------------------------------------------------------------------------
-# Fact corpus: matches feed_content.py + classic science facts
-# (used for both seeding and demo mode)
+# Security analyst fact corpus (for seeding the hive)
+# Generated from amplihack_eval.data.generate_dialogue security blocks
 # ---------------------------------------------------------------------------
 
 _FACT_CORPUS: list[dict[str, str]] = [
-    # Biology
-    {"concept": "cells", "content": "Cells are the fundamental units of life and contain organelles."},
-    {"concept": "dna", "content": "DNA encodes genetic information using four nucleotide bases: A, T, C, G."},
-    {"concept": "proteins", "content": "Proteins are chains of amino acids and act as biological catalysts called enzymes."},
-    {"concept": "photosynthesis", "content": "Photosynthesis converts CO2 and water into glucose using light energy stored as chemical energy."},
-    {"concept": "cells", "content": "The mitochondria is the powerhouse of the cell producing ATP via oxidative phosphorylation."},
-    # Chemistry
-    {"concept": "water", "content": "Water molecule is H2O with bent geometry and high specific heat capacity."},
-    {"concept": "bonds", "content": "Covalent bonds share electron pairs between atoms; ionic bonds form between oppositely charged ions."},
-    {"concept": "acids", "content": "pH measures hydrogen ion concentration on a log scale; acids donate protons per Bronsted-Lowry theory."},
-    {"concept": "water", "content": "Water boiling point at sea level is 100 degrees Celsius or 212 Fahrenheit."},
-    {"concept": "bonds", "content": "Hydrogen bonds are weak intermolecular forces important in protein and DNA structure."},
-    # Physics
-    {"concept": "mechanics", "content": "Newton second law states F equals ma where F is force mass times acceleration."},
-    {"concept": "waves", "content": "The speed of light in a vacuum is approximately 299792458 metres per second."},
-    {"concept": "relativity", "content": "E equals mc squared relates mass and energy via the speed of light squared."},
-    {"concept": "gravity", "content": "Gravitational force is proportional to mass product; Earth surface gravity is approximately 9.81 m per s squared."},
-    {"concept": "quantum", "content": "Heisenberg uncertainty principle limits simultaneous precision of position and momentum."},
-    # Mathematics
-    {"concept": "geometry", "content": "Pythagorean theorem states a squared plus b squared equals c squared for right triangles."},
-    {"concept": "calculus", "content": "Derivatives measure instantaneous rate of change; integrals compute area under curves."},
-    {"concept": "geometry", "content": "Pi is the ratio of circumference to diameter of a circle approximately 3.14159."},
-    {"concept": "statistics", "content": "Mean is the sum of values divided by count; standard deviation measures spread around the mean."},
-    {"concept": "number_theory", "content": "There are infinitely many prime numbers; every integer has a unique prime factorization."},
-    # Computer Science
-    {"concept": "algorithms", "content": "Binary search runs in O log n time by halving the search space each iteration."},
-    {"concept": "databases", "content": "ACID properties ensure transaction reliability: Atomicity Consistency Isolation Durability."},
-    {"concept": "distributed", "content": "CAP theorem states distributed systems can guarantee only two of Consistency Availability Partition tolerance."},
-    {"concept": "data_structures", "content": "Hash tables provide O 1 average lookup time using hash functions for key-value storage."},
-    {"concept": "distributed", "content": "Consistent hashing distributes load across nodes while minimising redistribution on topology changes."},
-    # Hive mind (from feed_content.py)
-    {"concept": "hive", "content": "The hive mind architecture allows multiple AI agents to share a distributed memory graph."},
-    {"concept": "gossip", "content": "Gossip protocols propagate information in O log N rounds through random peer exchange."},
-    {"concept": "dht", "content": "Distributed hash tables DHTs enable decentralised key-value lookups across peer networks."},
-    {"concept": "bloom", "content": "Bloom filters provide probabilistic set membership testing with controllable false-positive rates."},
-    {"concept": "raft", "content": "Raft is a consensus algorithm designed to be more understandable than Paxos."},
+    # Security incidents and CVEs
+    {"concept": "log4shell", "content": "The Log4Shell vulnerability (CVE-2021-44228) had a CVSS score of 10.0."},
+    {"concept": "solarwinds", "content": "The SolarWinds attack compromised 18,000 organizations in 2020."},
+    {"concept": "supply_chain", "content": "Supply chain attacks increased 742% between 2019 and 2022."},
+    {"concept": "2fa", "content": "Hardware security keys provide the strongest form of 2FA."},
+    {"concept": "memory_safety", "content": "Memory-safe languages prevent 70% of security vulnerabilities."},
+    # Security log events
+    {"concept": "brute_force", "content": "Brute force attack detected from 192.168.1.45: 847 failed SSH login attempts targeting admin accounts over 12 minutes."},
+    {"concept": "c2_traffic", "content": "C2 beacon traffic detected from 172.16.0.100 (svc_backup) to 185.220.101.45 on port 443 using HTTPS tunneling."},
+    {"concept": "supply_chain_attack", "content": "Supply chain attack detected: malicious npm package event-stream@5.0.0 with crypto-mining payload found in CI pipeline."},
+    {"concept": "xz_backdoor", "content": "CVE-2024-3094 (xz-utils/sshd backdoor) detected on build servers; attacker used DNS tunneling via *.tunnel.attacker.net."},
+    {"concept": "ssrf", "content": "SSRF vulnerability exploited in web application: attacker accessed AWS metadata endpoint http://169.254.169.254/latest/meta-data/."},
+    {"concept": "insider_threat", "content": "Insider threat indicator: bulk download of 15,234 sensitive documents by user jsmith detected; DLP policy triggered."},
+    # Incident reports
+    {"concept": "inc_2024_001", "content": "INC-2024-001: Ransomware attack on production database servers; 3 servers encrypted; status: contained; CVE-2024-21626 involved."},
+    {"concept": "inc_2024_002", "content": "INC-2024-002: Data exfiltration via C2 server 185.220.101.45; 2.3GB exfiltrated; breach notification sent to 15,000 customers; status: remediated."},
+    {"concept": "inc_2024_003", "content": "INC-2024-003: APT29 (state-sponsored) supply chain attack; TTPs matched APT29; involved event-stream npm package, crypto mining on CI server, DNS tunneling, and xz-utils backdoor (CVE-2024-3094)."},
+    {"concept": "inc_2024_004", "content": "INC-2024-004: Insider threat - bulk document download by jsmith; 15,234 documents over 4 hours; employee terminated; status: resolved."},
+    {"concept": "inc_2024_005", "content": "INC-2024-005: SSRF vulnerability exploitation leading to cloud metadata access; patched same day; no data exfiltration confirmed."},
+    # Infrastructure security
+    {"concept": "mfa_enforcement", "content": "Post-incident review complete; MFA enforced for all admin accounts after INC-2024-001 ransomware attack."},
+    {"concept": "firewall_block", "content": "All encrypted files restored from backup; attacker C2 server 185.220.101.45 blocked at firewall after INC-2024-002."},
+    {"concept": "rdp_brute_force", "content": "Brute force attack on RDP services from multiple IPs; 10,432 attempts over 3 hours; blocked by WAF rate limiting."},
+    {"concept": "privilege_escalation", "content": "Privilege escalation attempt from 192.168.1.45 after successful SSH login; attacker gained root via sudo misconfiguration."},
+    {"concept": "dns_tunneling", "content": "DNS tunneling detected using *.tunnel.attacker.net domains; associated with APT29 campaign INC-2024-003."},
+    # Security knowledge base
+    {"concept": "cvss_scoring", "content": "CVSS v3.1 base score uses Attack Vector, Attack Complexity, Privileges Required, User Interaction, Scope, and three CIA impact metrics."},
+    {"concept": "apt29", "content": "APT29 (Cozy Bear) is a Russian state-sponsored threat actor known for supply chain attacks and stealthy long-term persistence."},
+    {"concept": "ransomware_response", "content": "Ransomware incident response playbook: isolate affected systems, preserve evidence, notify stakeholders, restore from clean backups, patch vulnerabilities."},
+    {"concept": "ioc_correlation", "content": "IOC correlation links 192.168.1.45 (SSH brute force), 185.220.101.45 (C2 server), event-stream@5.0.0 (malicious npm), and tunnel.attacker.net (DNS C2)."},
 ]
 
 # ---------------------------------------------------------------------------
-# Q&A evaluation dataset
+# Security analyst Q&A evaluation dataset
+# Generated dynamically from amplihack_eval.data.generate_dialogue/generate_questions
 # ---------------------------------------------------------------------------
 
-# Each entry: (domain, question, expected_keywords)
-QA_EVAL_DATASET: list[tuple[str, str, list[str]]] = [
-    # Biology
-    ("biology", "What are cells made of?", ["unit", "life"]),
-    ("biology", "How does DNA store information?", ["nucleotide", "genetic"]),
-    ("biology", "What do enzymes do?", ["catalyst", "protein"]),
-    # Chemistry
-    ("chemistry", "What is the structure of water?", ["H2O", "bent"]),
-    ("chemistry", "How do covalent bonds work?", ["electron", "share"]),
-    ("chemistry", "What does pH measure?", ["hydrogen", "concentration"]),
-    # Physics
-    ("physics", "What is Newton's second law?", ["F", "ma"]),
-    ("physics", "What is the speed of light?", ["299792"]),
-    ("physics", "What does E=mc^2 mean?", ["mass", "energy"]),
-    # Mathematics
-    ("mathematics", "What is the Pythagorean theorem?", ["a squared", "b squared", "c squared"]),
-    ("mathematics", "What does a derivative measure?", ["rate", "change"]),
-    ("mathematics", "What is Pi?", ["circumference", "diameter"]),
-    # Computer Science
-    ("computer_science", "What is the time complexity of binary search?", ["log", "n"]),
-    ("computer_science", "What are ACID properties?", ["transaction", "reliab"]),
-    ("computer_science", "What does CAP theorem state?", ["consistency", "partition"]),
-]
+def _load_security_questions() -> list[Any]:
+    """Load security analyst scenario questions from amplihack_eval.
+
+    Uses generate_dialogue (300 turns) to produce a security-rich dialogue
+    covering security_logs (turns ~210-240) and incidents (turns ~240-264).
+    Then uses generate_questions to extract questions and filters to
+    security-relevant categories (seclog_*, incident_*).
+
+    Returns:
+        List of amplihack_eval Question objects with text and expected_answer.
+    """
+    try:
+        from amplihack_eval.data import generate_dialogue, generate_questions
+    except ImportError:
+        logger.warning("amplihack_eval not available; using built-in security questions")
+        return []
+
+    ground_truth = generate_dialogue(num_turns=300, seed=42)
+    all_questions = generate_questions(ground_truth, num_questions=100)
+
+    # Filter to security analyst scenario questions
+    security_prefixes = ("seclog_", "incident_")
+    return [
+        q for q in all_questions
+        if any(q.question_id.startswith(pfx) for pfx in security_prefixes)
+    ]
+
+
+# Lazy-loaded security questions (populated on first use)
+_SECURITY_QUESTIONS: list[Any] | None = None
+
+
+def _get_security_questions() -> list[Any]:
+    """Return cached security questions, loading them on first call."""
+    global _SECURITY_QUESTIONS
+    if _SECURITY_QUESTIONS is None:
+        _SECURITY_QUESTIONS = _load_security_questions()
+    return _SECURITY_QUESTIONS
 
 
 # ---------------------------------------------------------------------------
@@ -470,9 +486,10 @@ class HiveQueryClient:
 
 
 def run_demo_eval(output_path: str | None = None) -> dict[str, Any]:
-    """Run the Q&A eval against a local in-memory DistributedHiveGraph.
+    """Run the security analyst Q&A eval against a local in-memory DistributedHiveGraph.
 
-    Populates the hive with _FACT_CORPUS, then scores QA_EVAL_DATASET.
+    Populates the hive with security analyst facts from _FACT_CORPUS, then
+    evaluates security scenario questions from amplihack_eval using grade_answer.
     This demonstrates the hive query protocol without Azure connectivity.
 
     Args:
@@ -481,12 +498,18 @@ def run_demo_eval(output_path: str | None = None) -> dict[str, Any]:
     Returns:
         Results dict.
     """
+    security_questions = _get_security_questions()
     print("=" * 70)
-    print("HIVE Q&A EVAL (DEMO — local DistributedHiveGraph)")
+    print("HIVE SECURITY ANALYST Q&A EVAL (DEMO — local DistributedHiveGraph)")
     print(f"Facts in corpus: {len(_FACT_CORPUS)}")
-    print(f"Questions: {len(QA_EVAL_DATASET)}")
+    print(f"Security questions: {len(security_questions)}")
     print("=" * 70)
     print()
+
+    if not security_questions:
+        print("WARNING: No security questions loaded from amplihack_eval.")
+        print("Ensure amplihack-agent-eval is installed: pip install amplihack-agent-eval")
+        return {}
 
     # Import hive mind components
     try:
@@ -502,9 +525,9 @@ def run_demo_eval(output_path: str | None = None) -> dict[str, Any]:
     # Build a 5-agent distributed hive
     hive = DistributedHiveGraph(hive_id="demo-eval", replication_factor=3, query_fanout=5)
     for i in range(5):
-        hive.register_agent(f"agent-{i}", domain="general")
+        hive.register_agent(f"agent-{i}", domain="security")
 
-    # Seed facts into the hive
+    # Seed security facts into the hive
     for fact_dict in _FACT_CORPUS:
         fact = HiveFact(
             fact_id="",
@@ -513,39 +536,40 @@ def run_demo_eval(output_path: str | None = None) -> dict[str, Any]:
             confidence=0.95,
             source_agent="eval-seed",
         )
-        # Distribute across agents round-robin
-        for i in range(5):
-            hive.promote_fact(f"agent-{i}", fact)
-            break  # just one agent per fact for DHT routing
+        hive.promote_fact("agent-0", fact)
 
     t0 = time.time()
     results: list[dict[str, Any]] = []
-    by_domain: dict[str, list[bool]] = {}
+    by_category: dict[str, list[float]] = {}
 
-    print(f"{'Domain':20s} {'Hit':5s} {'Results':8s} | Question")
+    print(f"{'Category':20s} {'Score':6s} {'Results':8s} | Question")
     print("-" * 70)
 
-    for domain, question, keywords in QA_EVAL_DATASET:
-        facts = hive.query_facts(question, limit=10)
+    for q in security_questions:
+        facts = hive.query_facts(q.text, limit=10)
         result_dicts = [
             {"content": f.content, "concept": f.concept, "confidence": f.confidence}
             for f in facts
         ]
-        hit = _score_response(result_dicts, keywords)
-        by_domain.setdefault(domain, []).append(hit)
+        actual = _format_hive_results(result_dicts)
+        grade = _grade_hive_answer(q.text, q.expected_answer, actual)
+        score = grade["score"]
+        by_category.setdefault(q.category, []).append(score)
 
-        status = "HIT " if hit else "MISS"
         print(
-            f"  {domain:18s} {status} {len(facts):3d} results"
-            f" | {question[:42]}"
+            f"  {q.category[:18]:18s} {score:.2f}  {len(facts):3d} results"
+            f" | {q.text[:42]}"
         )
 
         results.append(
             {
-                "domain": domain,
-                "question": question,
-                "expected_keywords": keywords,
-                "hit": hit,
+                "question_id": q.question_id,
+                "category": q.category,
+                "question": q.text,
+                "expected_answer": q.expected_answer,
+                "actual_answer": actual,
+                "score": score,
+                "reasoning": grade["reasoning"],
                 "result_count": len(facts),
                 "top_results": result_dicts[:3],
             }
@@ -553,38 +577,37 @@ def run_demo_eval(output_path: str | None = None) -> dict[str, Any]:
 
     elapsed = time.time() - t0
     total = len(results)
-    hits = sum(1 for r in results if r["hit"])
+    avg_score = sum(r["score"] for r in results) / total if total else 0.0
 
-    domain_scores = {
-        d: {"hits": sum(v), "total": len(v), "pct": 100 * sum(v) / len(v)}
-        for d, v in by_domain.items()
+    category_scores = {
+        c: {"avg_score": round(sum(v) / len(v), 3), "count": len(v)}
+        for c, v in by_category.items()
     }
 
     print("-" * 70)
     print()
     print("=" * 70)
-    print("RESULTS (DEMO MODE)")
+    print("RESULTS (DEMO MODE — Security Analyst Eval)")
     print("=" * 70)
-    print(f"  Overall:   {hits}/{total} ({100 * hits / total:.1f}%)")
+    print(f"  Overall avg score: {avg_score:.3f} ({total} questions)")
     print()
-    print("  By domain:")
-    for d, s in sorted(domain_scores.items()):
-        print(f"    {d:20s}: {s['hits']}/{s['total']} ({s['pct']:.0f}%)")
+    print("  By category:")
+    for c, s in sorted(category_scores.items()):
+        print(f"    {c:20s}: avg={s['avg_score']:.3f} ({s['count']} questions)")
     print(f"\n  Total time: {elapsed:.2f}s")
     print("=" * 70)
 
     output = {
-        "mode": "demo_local",
+        "mode": "demo_local_security",
         "summary": {
             "total_questions": total,
-            "hits": hits,
-            "accuracy_pct": round(100 * hits / total, 2),
+            "avg_score": round(avg_score, 3),
             "elapsed_s": round(elapsed, 2),
             "hive_type": "DistributedHiveGraph (local)",
             "agents": 5,
             "facts_seeded": len(_FACT_CORPUS),
         },
-        "domain_scores": domain_scores,
+        "category_scores": category_scores,
         "questions": results,
     }
 
@@ -598,8 +621,60 @@ def run_demo_eval(output_path: str | None = None) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# Keyword scoring helper
+# Grading helpers
 # ---------------------------------------------------------------------------
+
+
+def _format_hive_results(results: list[dict[str, Any]]) -> str:
+    """Format hive search results into a text answer for grading."""
+    if not results:
+        return ""
+    parts = []
+    for r in results[:5]:
+        content = r.get("content", r.get("outcome", ""))
+        concept = r.get("concept", r.get("context", ""))
+        if content:
+            parts.append(f"{content} [{concept}]" if concept else content)
+    return " | ".join(parts)
+
+
+def _grade_hive_answer(question: str, expected: str, actual: str) -> dict[str, Any]:
+    """Grade a hive answer using amplihack_eval.grade_answer with keyword fallback.
+
+    Attempts semantic grading via grade_answer (requires ANTHROPIC_API_KEY).
+    Falls back to keyword-based scoring if grading fails.
+
+    Args:
+        question: The question asked.
+        expected: Expected answer string.
+        actual: Actual answer from hive results.
+
+    Returns:
+        Dict with 'score' (0.0-1.0) and 'reasoning' string.
+    """
+    if not actual:
+        return {"score": 0.0, "reasoning": "No results returned by hive"}
+
+    try:
+        from amplihack_eval import grade_answer
+        result = grade_answer(
+            question=question,
+            expected=expected,
+            actual=actual,
+            level="L1",
+        )
+        return {"score": result.score, "reasoning": result.reasoning}
+    except Exception as exc:
+        logger.debug("grade_answer failed, falling back to keyword scoring: %s", exc)
+        # Keyword fallback: extract key terms from expected answer
+        keywords = [w for w in expected.lower().split() if len(w) > 4][:5]
+        actual_lower = actual.lower()
+        matched = sum(1 for kw in keywords if kw in actual_lower)
+        score = matched / len(keywords) if keywords else 0.0
+        return {
+            "score": round(score, 3),
+            "reasoning": f"[keyword fallback] {matched}/{len(keywords)} keywords matched",
+        }
 
 
 def _score_response(results: list[dict[str, Any]], keywords: list[str]) -> bool:
@@ -624,10 +699,11 @@ def run_eval(
     table: str = "hive_facts",
     output_path: str | None = None,
 ) -> dict[str, Any]:
-    """Run the Q&A eval dataset against the live hive.
+    """Run the security analyst Q&A eval against the live hive.
 
-    Queries each question in QA_EVAL_DATASET, scores the response using
-    keyword matching, and reports accuracy per domain and overall.
+    Loads security scenario questions from amplihack_eval (generate_dialogue +
+    generate_questions), queries the live hive for each, and grades responses
+    using amplihack_eval.grade_answer for semantic scoring.
 
     Args:
         client: Connected HiveQueryClient instance.
@@ -635,51 +711,62 @@ def run_eval(
         output_path: Optional path to write JSON results.
 
     Returns:
-        Results dict with per-question and aggregate scores.
+        Results dict with per-question scores and aggregate summary.
     """
+    security_questions = _get_security_questions()
+
     print("=" * 70)
-    print("LIVE AZURE HIVE Q&A EVAL")
+    print("LIVE AZURE HIVE — SECURITY ANALYST Q&A EVAL")
     print(f"Hive: hive-sb-dj2qo2w7vu5zi / topic: {client._topic_name}")
     print(f"Table: {table}")
-    print(f"Questions: {len(QA_EVAL_DATASET)}")
+    print(f"Security questions: {len(security_questions)}")
     print(f"Timeout per query: {client._timeout}s")
     print("=" * 70)
     print()
 
+    if not security_questions:
+        print("WARNING: No security questions loaded from amplihack_eval.")
+        print("Ensure amplihack-agent-eval is installed.")
+        return {}
+
     t0 = time.time()
     results: list[dict[str, Any]] = []
-    by_domain: dict[str, list[bool]] = {}
+    by_category: dict[str, list[float]] = {}
 
-    print(f"{'Domain':20s} {'Hit':5s} {'Results':8s} | Question")
+    print(f"{'Category':20s} {'Score':6s} {'Results':8s} | Question")
     print("-" * 70)
 
-    for domain, question, keywords in QA_EVAL_DATASET:
+    for q in security_questions:
         t_q = time.time()
-        hive_results = client.query(question, table=table, limit=10)
-        hit = _score_response(hive_results, keywords)
+        hive_results = client.query(q.text, table=table, limit=10)
+        actual = _format_hive_results(hive_results)
+        grade = _grade_hive_answer(q.text, q.expected_answer, actual)
+        score = grade["score"]
         elapsed_q = time.time() - t_q
 
-        by_domain.setdefault(domain, []).append(hit)
+        by_category.setdefault(q.category, []).append(score)
 
-        status = "HIT " if hit else "MISS"
         print(
-            f"  {domain:18s} {status} {len(hive_results):3d} results"
-            f" | {question[:42]}"
+            f"  {q.category[:18]:18s} {score:.2f}  {len(hive_results):3d} results"
+            f" | {q.text[:42]}"
         )
         logger.debug(
-            "Q: %r → %d results in %.2fs, hit=%s",
-            question,
+            "Q: %r → %d results in %.2fs, score=%.2f",
+            q.text,
             len(hive_results),
             elapsed_q,
-            hit,
+            score,
         )
 
         results.append(
             {
-                "domain": domain,
-                "question": question,
-                "expected_keywords": keywords,
-                "hit": hit,
+                "question_id": q.question_id,
+                "category": q.category,
+                "question": q.text,
+                "expected_answer": q.expected_answer,
+                "actual_answer": actual,
+                "score": score,
+                "reasoning": grade["reasoning"],
                 "result_count": len(hive_results),
                 "top_results": hive_results[:3],
                 "elapsed_s": round(elapsed_q, 2),
@@ -688,45 +775,44 @@ def run_eval(
 
     elapsed = time.time() - t0
     total = len(results)
-    hits = sum(1 for r in results if r["hit"])
+    avg_score = sum(r["score"] for r in results) / total if total else 0.0
 
-    domain_scores = {
-        d: {"hits": sum(v), "total": len(v), "pct": 100 * sum(v) / len(v)}
-        for d, v in by_domain.items()
+    category_scores = {
+        c: {"avg_score": round(sum(v) / len(v), 3), "count": len(v)}
+        for c, v in by_category.items()
     }
 
     print("-" * 70)
     print()
     print("=" * 70)
-    print("RESULTS (LIVE HIVE)")
+    print("RESULTS (LIVE HIVE — Security Analyst Eval)")
     print("=" * 70)
-    print(f"  Overall:   {hits}/{total} ({100 * hits / total:.1f}%)")
+    print(f"  Overall avg score: {avg_score:.3f} ({total} questions)")
     print()
-    print("  By domain:")
-    for d, s in sorted(domain_scores.items()):
-        print(f"    {d:20s}: {s['hits']}/{s['total']} ({s['pct']:.0f}%)")
+    print("  By category:")
+    for c, s in sorted(category_scores.items()):
+        print(f"    {c:20s}: avg={s['avg_score']:.3f} ({s['count']} questions)")
     print(f"\n  Total time: {elapsed:.2f}s")
     print("=" * 70)
 
-    if hits == 0:
+    if avg_score == 0.0:
         print()
-        print("NOTE: 0 results from live hive. This typically means agents'")
-        print("NetworkGraphStore has not been seeded. Run with --seed first:")
+        print("NOTE: Score 0.0 — likely the hive has not been seeded yet.")
+        print("Run with --seed first:")
         print("  python experiments/hive_mind/query_hive.py --seed --run-eval")
 
     output = {
-        "mode": "live",
+        "mode": "live_security",
         "summary": {
             "total_questions": total,
-            "hits": hits,
-            "accuracy_pct": round(100 * hits / total, 2),
+            "avg_score": round(avg_score, 3),
             "elapsed_s": round(elapsed, 2),
             "hive_namespace": "hive-sb-dj2qo2w7vu5zi",
             "topic": client._topic_name,
             "timeout_s": client._timeout,
             "table": table,
         },
-        "domain_scores": domain_scores,
+        "category_scores": category_scores,
         "questions": results,
     }
 
@@ -753,13 +839,13 @@ Examples:
   # Demo mode (local, no Azure needed):
   python query_hive.py --demo
 
-  # Seed live hive then run eval:
+  # Seed live hive with security facts then run security analyst eval:
   python query_hive.py --seed --run-eval --output results.json
 
-  # Single query against live hive (after seeding):
-  python query_hive.py --query "What is Newton's second law?"
+  # Single security query against live hive (after seeding):
+  python query_hive.py --query "What CVE was used in the supply chain attack?"
 
-  # Diagnose live hive (may return 0 if not seeded):
+  # Diagnose live hive (may return low scores if not seeded):
   python query_hive.py --run-eval
 """,
     )
@@ -853,9 +939,9 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         if args.seed:
-            print(f"Seeding {len(_FACT_CORPUS)} facts into live hive (table={args.table})...")
+            print(f"Seeding {len(_FACT_CORPUS)} security analyst facts into live hive (table={args.table})...")
             n = client.seed_facts(table=args.table)
-            print(f"Seeded {n} facts. Waiting 5s for propagation...")
+            print(f"Seeded {n} security facts. Waiting 5s for propagation...")
             time.sleep(5)
 
         if args.run_eval:
