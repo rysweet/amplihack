@@ -12,13 +12,33 @@ Public API:
 
 from __future__ import annotations
 
+import re
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 
-__all__ = ["Project", "load_projects", "save_projects", "merge_projects"]
+import tomli_w
 
-DEFAULT_PROJECTS_PATH = Path.home() / ".amplihack" / "fleet" / "projects.toml"
+from amplihack.fleet._constants import DEFAULT_PROJECTS_PATH
+
+__all__ = [
+    "Project",
+    "load_projects",
+    "save_projects",
+    "merge_projects",
+    "validate_repo_url",
+    "DEFAULT_PROJECTS_PATH",
+]
+
+_PROJECT_NAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$")
+_REPO_URL_RE = re.compile(
+    r"^(https://github\.com/[\w.-]+/[\w.-]+(?:\.git)?|[\w.-]+/[\w.-]+)$"
+)
+
+
+def validate_repo_url(url: str) -> bool:
+    """Check repo_url is a valid GitHub HTTPS URL or owner/repo shorthand."""
+    return bool(_REPO_URL_RE.match(url))
 
 
 @dataclass
@@ -31,6 +51,13 @@ class Project:
     priority: str = "medium"  # low, medium, high
     objectives: list[dict] = field(default_factory=list)
     # Each objective: {"number": int, "title": str, "state": str, "url": str}
+
+    def __post_init__(self) -> None:
+        if not _PROJECT_NAME_RE.match(self.name):
+            raise ValueError(
+                f"Invalid project name {self.name!r}: "
+                "must match ^[a-zA-Z0-9][a-zA-Z0-9_-]*$"
+            )
 
     def add_objective(self, number: int, title: str, state: str = "open", url: str = "") -> dict:
         """Add or update an objective (GitHub issue)."""
@@ -81,8 +108,14 @@ def load_projects(path: Path | None = None) -> dict[str, Project]:
     path = path or DEFAULT_PROJECTS_PATH
     if not path.exists():
         return {}
-    with open(path, "rb") as f:
-        data = tomllib.load(f)
+    try:
+        with open(path, "rb") as f:
+            data = tomllib.load(f)
+    except tomllib.TOMLDecodeError as exc:
+        import logging
+
+        logging.getLogger(__name__).warning("Failed to parse %s: %s", path, exc)
+        return {}
     projects: dict[str, Project] = {}
     for name, pdata in data.get("project", {}).items():
         projects[name] = Project.from_dict(name, pdata)
@@ -93,24 +126,36 @@ def save_projects(projects: dict[str, Project], path: Path | None = None) -> Non
     """Write projects to a TOML file."""
     path = path or DEFAULT_PROJECTS_PATH
     path.parent.mkdir(parents=True, exist_ok=True)
-    lines: list[str] = []
+
+    # Validate all project names before writing
+    for name in projects:
+        if not _PROJECT_NAME_RE.match(name):
+            raise ValueError(
+                f"Invalid project name {name!r}: "
+                "must match ^[a-zA-Z0-9][a-zA-Z0-9_-]*$"
+            )
+
+    doc: dict = {"project": {}}
     for name, proj in sorted(projects.items()):
-        lines.append(f"[project.{name}]")
-        lines.append(f'repo_url = "{proj.repo_url}"')
+        entry: dict = {
+            "repo_url": proj.repo_url,
+            "priority": proj.priority,
+        }
         if proj.identity:
-            lines.append(f'identity = "{proj.identity}"')
-        lines.append(f'priority = "{proj.priority}"')
+            entry["identity"] = proj.identity
         if proj.objectives:
-            lines.append("")
-            for obj in proj.objectives:
-                lines.append(f"[[project.{name}.objectives]]")
-                lines.append(f"number = {obj['number']}")
-                lines.append(f'title = "{obj["title"]}"')
-                lines.append(f'state = "{obj.get("state", "open")}"')
-                if obj.get("url"):
-                    lines.append(f'url = "{obj["url"]}"')
-        lines.append("")
-    path.write_text("\n".join(lines))
+            entry["objectives"] = [
+                {
+                    "number": obj["number"],
+                    "title": obj["title"],
+                    "state": obj.get("state", "open"),
+                    **({"url": obj["url"]} if obj.get("url") else {}),
+                }
+                for obj in proj.objectives
+            ]
+        doc["project"][name] = entry
+
+    path.write_bytes(tomli_w.dumps(doc).encode())
 
 
 def merge_projects(
@@ -132,10 +177,15 @@ def merge_projects(
             continue
         proj = local[name]
         for obj in objectives:
+            # Sanitize remote data
+            title = re.sub(r"[\x00-\x1f\x7f]", "", str(obj.get("title", "")))[:256]
+            state = str(obj.get("state", "open")).strip().lower()
+            if state not in ("open", "closed"):
+                state = "open"
             proj.add_objective(
                 number=obj["number"],
-                title=obj["title"],
-                state=obj.get("state", "open"),
+                title=title,
+                state=state,
                 url=obj.get("url", ""),
             )
     return local
