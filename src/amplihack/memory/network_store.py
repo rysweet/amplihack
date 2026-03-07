@@ -643,7 +643,7 @@ class NetworkGraphStore:
             results: List of recalled fact strings from cognitive memory.
         """
         self._publish(
-            _OP_QUERY_RESPONSE,
+            _OP_SEARCH_RESPONSE,
             {
                 "query_id": query_id,
                 "question": question,
@@ -711,7 +711,7 @@ class NetworkGraphStore:
             )
             return
         self._publish(
-            _OP_QUERY_RESPONSE,
+            _OP_SEARCH_RESPONSE,
             {
                 "query_id": query_id,
                 "question": question,
