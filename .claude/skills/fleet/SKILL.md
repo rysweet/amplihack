@@ -73,7 +73,7 @@ Invoke as `/fleet <command>` or just describe what you want and Claude will pick
 | "What are my agents doing?" | `fleet scout` |
 | "Show me the fleet" | `fleet status` |
 | "Send next steps to all sessions" | `fleet advance` |
-| "Advance but let me review each" | `fleet advance --confirm` |
+| "Advance without confirmation" | `fleet advance --force` |
 | "Watch what dev/cybergym is doing" | `fleet watch dev cybergym` |
 | "Add auth to the new VM" | `fleet auth <vm>` |
 | "Queue this task for the fleet" | `fleet add-task "prompt"` |
@@ -82,8 +82,8 @@ Invoke as `/fleet <command>` or just describe what you want and Claude will pick
 ## Key Options
 
 ```
-fleet scout   [--session vm:session] [--vm VM] [--skip-adopt] [--save PATH]
-fleet advance [--session vm:session] [--vm VM] [--confirm] [--save PATH]
+fleet scout   [--session vm:session] [--vm VM] [--skip-adopt] [--incremental] [--save PATH]
+fleet advance [--session vm:session] [--vm VM] [--force] [--save PATH]
 fleet dry-run [--vm VM ...] [--backend auto|anthropic|copilot|litellm]
 fleet adopt   <vm> [--sessions s1 s2]
 fleet watch   <vm> <session> [--lines 30]
@@ -102,9 +102,9 @@ fleet start   [--interval 300] [--max-cycles 10]
 ## Admiral Configuration
 
 - **Model**: Claude Opus 4.6 (`claude-opus-4-6`)
-- **Max output tokens**: 128,000
+- **Max output tokens**: 8,192 (reasoning JSON, cost-controlled)
 - **Context gathered per session**: full tmux scrollback + first 50 & last 200 transcript messages
-- **Safety**: 57 dangerous-input patterns blocked, confidence thresholds (60% send_input, 80% restart)
+- **Safety**: 57 dangerous-input patterns blocked (with safe allow-list), confidence thresholds (60% send_input, 80% restart), --confirm default on advance
 - **Docs**: `docs/fleet-orchestration/ADMIRAL_REASONING.md`
 
 ## Status Icons

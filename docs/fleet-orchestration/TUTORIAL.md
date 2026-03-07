@@ -451,8 +451,8 @@ Status icons: `[~]` thinking, `[>]` running, `[.]` idle, `[X]` shell (dead agent
 `/fleet advance` reasons about sessions and **executes** the admiral's decisions:
 
 ```
-/fleet advance                                        # All sessions
-/fleet advance --confirm                              # Review each before executing
+/fleet advance                                        # All sessions (confirms each action by default)
+/fleet advance --force                                # Skip confirmation, auto-execute all
 /fleet advance --session dev:parallel-deploy-wk  # Single session only
 ```
 
@@ -503,15 +503,25 @@ Both scout and advance support `--vm` and `--session` filters:
    /fleet advance --session dev:parallel-deploy-wk
    ```
 
-4. **Or advance all** if the admiral's proposals look good:
+4. **Or advance all** if the admiral's proposals look good (auto-confirms each):
    ```
-   /fleet advance --confirm
+   /fleet advance --force
    ```
 
 5. **Check on individual sessions** that need attention:
    ```
    /fleet watch deva qa
    ```
+
+### Incremental Scout
+
+After the first scout, results are saved to `~/.amplihack/fleet/last_scout.json`. On subsequent runs, use `--incremental` to skip LLM reasoning for sessions whose status hasn't changed:
+
+```
+/fleet scout --incremental
+```
+
+This dramatically reduces LLM costs when most sessions are stable.
 
 ### Saving Reports
 
