@@ -21,12 +21,28 @@ __all__ = [
     "validate_session_name",
     "is_dangerous_input",
     "DANGEROUS_PATTERNS",
+    "SAFE_INPUT_PATTERNS",
     "VM_NAME_RE",
     "SESSION_NAME_RE",
 ]
 
 VM_NAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$")
 SESSION_NAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,127}$")
+
+# --- Safety: safe input allow-list ---
+# Inputs matching these patterns skip the blocklist entirely.
+# These are common safe operations that may accidentally trigger blocklist
+# patterns (e.g., "y" matching nothing dangerous, Claude Code commands).
+SAFE_INPUT_PATTERNS = [
+    re.compile(r"^[yYnN]$"),                         # Single y/n confirmation
+    re.compile(r"^(yes|no)$", re.IGNORECASE),         # Full yes/no
+    re.compile(r"^/[a-z]"),                            # Slash commands (/dev, /help, etc.)
+    re.compile(r"^(exit|quit|q)$", re.IGNORECASE),    # Exit commands
+    re.compile(r"^\d+$"),                              # Pure numeric input (menu selection)
+    re.compile(r"^(git status|git log|git diff|git branch)"),  # Safe git read-only commands
+    re.compile(r"^(ls|pwd|wc|which)\b"),  # Safe read-only shell (no cat/echo — can redirect)
+    re.compile(r"^(pytest|make|npm test|npm run|cargo test)"),  # Test/build commands
+]
 
 # --- Safety: dangerous input blocklist (H10) ---
 # Uses regex with word boundaries to prevent bypass via case/syntax variations.
@@ -116,5 +132,11 @@ def validate_session_name(name: str) -> str:
 
 
 def is_dangerous_input(text: str) -> bool:
-    """Check if input text contains dangerous patterns."""
+    """Check if input text contains dangerous patterns.
+
+    Safe patterns (SAFE_INPUT_PATTERNS) are checked first and skip the
+    blocklist entirely. This prevents false positives on common operations.
+    """
+    if any(pattern.search(text) for pattern in SAFE_INPUT_PATTERNS):
+        return False
     return any(pattern.search(text) for pattern in DANGEROUS_PATTERNS)
