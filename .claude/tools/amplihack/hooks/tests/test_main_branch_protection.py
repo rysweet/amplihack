@@ -819,40 +819,43 @@ class TestErrorMessage:
 
 
 class TestFileSynchronization:
-    """Test that both file copies remain synchronized.
+    """Test that amplifier-bundle/hooks is a symlink to .claude/hooks.
 
-    CRITICAL: Both .claude/tools/amplihack/hooks/pre_tool_use.py
-    and amplifier-bundle/tools/amplihack/hooks/pre_tool_use.py
-    must be byte-identical.
-
-    TDD: This test will FAIL if files are not synchronized.
+    amplifier-bundle/tools/amplihack/hooks/ is a symlink to
+    .claude/tools/amplihack/hooks/ — the canonical source of truth.
+    Files are always identical because they are the same inode.
     """
 
+    def test_bundle_hooks_is_symlink_to_claude_hooks(self):
+        """Test that amplifier-bundle/hooks is a symlink to .claude/hooks."""
+        bundle_hooks = Path("amplifier-bundle/tools/amplihack/hooks")
+        canonical_hooks = Path(".claude/tools/amplihack/hooks")
+
+        assert canonical_hooks.exists(), "Canonical hooks directory missing"
+        assert bundle_hooks.is_symlink(), (
+            "amplifier-bundle/tools/amplihack/hooks must be a symlink to "
+            ".claude/tools/amplihack/hooks"
+        )
+        assert bundle_hooks.resolve() == canonical_hooks.resolve(), (
+            "amplifier-bundle/tools/amplihack/hooks symlink must resolve to "
+            ".claude/tools/amplihack/hooks"
+        )
+
     def test_workspace_and_bundle_files_are_identical(self):
-        """Test that workspace and bundle copies are byte-identical.
+        """Test that workspace and bundle pre_tool_use.py are identical.
 
-        This is a critical requirement - both files must be updated
-        identically in a single commit.
-
-        TDD: WILL FAIL until both files are updated identically.
+        With the symlink in place, both paths resolve to the same file.
         """
         workspace_file = Path(".claude/tools/amplihack/hooks/pre_tool_use.py")
         bundle_file = Path("amplifier-bundle/tools/amplihack/hooks/pre_tool_use.py")
 
-        # Both files must exist
         assert workspace_file.exists(), "Workspace file missing"
         assert bundle_file.exists(), "Bundle file missing"
 
-        # Read both files
-        workspace_content = workspace_file.read_text()
-        bundle_content = bundle_file.read_text()
-
-        # Must be byte-identical
-        assert workspace_content == bundle_content, (
+        assert workspace_file.read_text() == bundle_file.read_text(), (
             "Files are not identical!\n"
             "workspace: .claude/tools/amplihack/hooks/pre_tool_use.py\n"
             "bundle: amplifier-bundle/tools/amplihack/hooks/pre_tool_use.py\n"
-            "\nBoth files must be updated identically."
         )
 
 
