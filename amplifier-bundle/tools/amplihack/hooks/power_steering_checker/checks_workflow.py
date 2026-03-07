@@ -120,6 +120,54 @@ class ChecksWorkflowMixin:
             self._log(f"Error in _check_workflow_invocation: {e}", "WARNING", exc_info=True)
             return True
 
+    def _check_skill_invocation(self, transcript: list[dict], session_id: str) -> bool:
+        """Check if a requested skill was actually invoked.
+
+        If the session was started with a slash command (indicated by a
+        <command-name> tag in the transcript), verify the Skill tool was
+        called for that skill. If no command-name tag exists, the check
+        is automatically satisfied (no skill was requested). (Issue #2914)
+
+        Args:
+            transcript: List of message dictionaries
+            session_id: Session identifier
+
+        Returns:
+            True if no skill was requested or if the requested skill was invoked
+        """
+        # Find <command-name> tag in user messages
+        requested_skill = None
+        for msg in transcript:
+            if msg.get("type") != "user":
+                continue
+            content_str = str(msg.get("message", {}).get("content", ""))
+            match = re.search(r"<command-name>/?([\w:.-]+)</command-name>", content_str)
+            if match:
+                requested_skill = match.group(1)
+                break
+
+        if not requested_skill:
+            return True  # No skill requested — check not applicable
+
+        # Check if the Skill tool was called for this skill
+        for msg in transcript:
+            if msg.get("type") != "assistant":
+                continue
+            content = msg.get("message", {}).get("content", [])
+            if not isinstance(content, list):
+                continue
+            for block in content:
+                if not isinstance(block, dict) or block.get("type") != "tool_use":
+                    continue
+                if block.get("name") == "Skill":
+                    invoked = block.get("input", {}).get("skill", "")
+                    if invoked == requested_skill:
+                        self._log(f"Skill '{requested_skill}' was invoked", "DEBUG")
+                        return True
+
+        self._log(f"Skill '{requested_skill}' was requested but not invoked", "WARNING")
+        return False
+
     def _check_no_direct_main_commit(self, transcript: list[dict], session_id: str) -> bool:
         """Check that the agent did not commit directly to main.
 
