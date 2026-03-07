@@ -31,6 +31,7 @@ class SessionContext:
     pr_url: str = ""
     task_prompt: str = ""  # Original task assigned to this session
     project_priorities: str = ""  # Fleet-level priorities
+    health_summary: str = ""  # VM health metrics from fleet_health.py
 
     def __post_init__(self):
         validate_vm_name(self.vm_name)
@@ -57,6 +58,9 @@ class SessionContext:
 
         parts.append("\nCurrent terminal output (full scrollback):")
         parts.append(self.tmux_capture if self.tmux_capture else "(empty)")
+
+        if self.health_summary:
+            parts.append(f"\nVM health: {self.health_summary}")
 
         if self.project_priorities:
             parts.append(f"\nProject priorities: {self.project_priorities}")

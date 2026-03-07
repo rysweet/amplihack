@@ -87,7 +87,13 @@ def gather_context(
         f'echo "---RECENT---"; '
         f'echo "$MSGS" | tail -200; '
         f"fi; fi; "
-        f'echo "===END==="'
+        # Lightweight VM health (memory + disk) for reasoning context
+        'echo "===HEALTH==="; '
+        'MEM=$(free -m 2>/dev/null | grep Mem | awk \'{printf "%.0f", $3/$2*100}\'); '
+        'DISK=$(df -h / 2>/dev/null | tail -1 | awk \'{print $5}\' | tr -d "%"); '
+        'LOAD=$(cat /proc/loadavg 2>/dev/null | awk \'{print $1}\'); '
+        'echo "mem=${MEM:-?}% disk=${DISK:-?}% load=${LOAD:-?}"; '
+        'echo "===END==="'
     )
 
     try:
@@ -182,3 +188,8 @@ def parse_context_output(output: str, context: SessionContext) -> None:
                         pr_match = re.search(r'https://github\.com/[^\s"]+/pull/\d+', line)
                         if pr_match:
                             context.pr_url = pr_match.group(0)
+
+        elif label == "HEALTH" and i + 1 < len(sections):
+            health_text = sections[i + 1].strip()
+            if health_text:
+                context.health_summary = health_text
