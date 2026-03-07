@@ -307,7 +307,19 @@ def register_commands(
         if not title and proj.repo_url:
             import subprocess
 
+            from amplihack.fleet._projects import validate_repo_url
+
+            if not validate_repo_url(proj.repo_url):
+                click.echo(f"Invalid repo_url for {project_name}: {proj.repo_url}")
+                click.echo("Expected: https://github.com/owner/repo or owner/repo")
+                return
+
             try:
+                if proj.identity:
+                    subprocess.run(
+                        ["gh", "auth", "switch", "--user", proj.identity],
+                        capture_output=True, text=True, timeout=10,
+                    )
                 result = subprocess.run(
                     ["gh", "issue", "view", str(issue_number),
                      "--repo", proj.repo_url, "--json", "title,url",
@@ -319,8 +331,8 @@ def register_commands(
                     title = lines[0]
                     if not url and len(lines) > 1:
                         url = lines[1]
-            except (subprocess.TimeoutExpired, FileNotFoundError):
-                pass
+            except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
+                click.echo(f"Warning: could not fetch issue from GitHub: {exc}")
 
         if not title:
             title = f"Issue #{issue_number}"
@@ -348,7 +360,19 @@ def register_commands(
             click.echo(f"Project {project_name} has no repo_url -- cannot query GitHub.")
             return
 
+        from amplihack.fleet._projects import validate_repo_url
+
+        if not validate_repo_url(proj.repo_url):
+            click.echo(f"Invalid repo_url for {project_name}: {proj.repo_url}")
+            click.echo("Expected: https://github.com/owner/repo or owner/repo")
+            return
+
         try:
+            if proj.identity:
+                subprocess.run(
+                    ["gh", "auth", "switch", "--user", proj.identity],
+                    capture_output=True, text=True, timeout=10,
+                )
             result = subprocess.run(
                 ["gh", "issue", "list", "--repo", proj.repo_url,
                  "--label", label, "--json", "number,title,state,url",
