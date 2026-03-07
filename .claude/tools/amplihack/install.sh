@@ -10,6 +10,21 @@ if [ -d "./tmpamplihack" ]; then
   exit 1
 fi
 
+# Ensure tmux is installed (required for recipe runner execution)
+if ! command -v tmux &>/dev/null; then
+  echo "tmux not found — installing (required for recipe runner)..."
+  if command -v apt-get &>/dev/null; then
+    sudo apt-get install -y tmux 2>/dev/null || echo "Warning: could not install tmux. Install manually: sudo apt-get install tmux"
+  elif command -v brew &>/dev/null; then
+    brew install tmux 2>/dev/null || echo "Warning: could not install tmux. Install manually: brew install tmux"
+  elif command -v dnf &>/dev/null; then
+    sudo dnf install -y tmux 2>/dev/null || echo "Warning: could not install tmux. Install manually: sudo dnf install tmux"
+  else
+    echo "Warning: tmux not found and no supported package manager detected."
+    echo "Install tmux manually — it is required for recipe runner execution."
+  fi
+fi
+
 echo "Cloning amplihack from $AMPLIHACK_INSTALL_LOCATION..."
 git clone $AMPLIHACK_INSTALL_LOCATION ./tmpamplihack
 
