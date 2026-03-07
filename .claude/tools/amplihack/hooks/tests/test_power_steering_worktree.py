@@ -235,7 +235,7 @@ class TestPowerSteeringCheckerDisabledCheck(unittest.TestCase):
                 os.chdir(tmp_dir)
 
                 with patch(
-                    "power_steering_checker.get_shared_runtime_dir",
+                    "power_steering_checker.main_checker.get_shared_runtime_dir",
                     return_value=str(Path(tmp_dir) / "main" / ".claude" / "runtime"),
                 ):
                     result = is_disabled()
@@ -260,7 +260,9 @@ class TestPowerSteeringCheckerDisabledCheck(unittest.TestCase):
             # Setup: .disabled in shared runtime dir
             main_runtime = Path(tmp_dir) / "main_repo" / ".claude" / "runtime"
             main_runtime.mkdir(parents=True)
-            disabled_file = main_runtime / ".disabled"
+            ps_runtime = main_runtime / "power-steering"
+            ps_runtime.mkdir(parents=True)
+            disabled_file = ps_runtime / ".disabled"
             disabled_file.touch()
 
             worktree_dir = Path(tmp_dir) / "worktree"
@@ -271,7 +273,7 @@ class TestPowerSteeringCheckerDisabledCheck(unittest.TestCase):
                 os.chdir(worktree_dir)
 
                 with patch(
-                    "power_steering_checker.get_shared_runtime_dir", return_value=str(main_runtime)
+                    "power_steering_checker.main_checker.get_shared_runtime_dir", return_value=str(main_runtime)
                 ):
                     result = is_disabled()
 
@@ -304,7 +306,7 @@ class TestPowerSteeringCheckerDisabledCheck(unittest.TestCase):
                 os.chdir(worktree_dir)
 
                 with patch(
-                    "power_steering_checker.get_shared_runtime_dir", return_value=str(main_runtime)
+                    "power_steering_checker.main_checker.get_shared_runtime_dir", return_value=str(main_runtime)
                 ):
                     result = is_disabled()
 
@@ -333,7 +335,7 @@ class TestPowerSteeringCheckerDisabledCheck(unittest.TestCase):
                 os.chdir(worktree_dir)
 
                 with patch(
-                    "power_steering_checker.get_shared_runtime_dir",
+                    "power_steering_checker.main_checker.get_shared_runtime_dir",
                     side_effect=Exception("Git error"),
                 ):
                     result = is_disabled()
@@ -489,7 +491,7 @@ class TestWorktreeDisabledFileIntegration(unittest.TestCase):
             with (
                 patch("os.getcwd", return_value=str(worktree_dir)),
                 patch(
-                    "power_steering_checker.get_shared_runtime_dir", return_value=str(main_runtime)
+                    "power_steering_checker.main_checker.get_shared_runtime_dir", return_value=str(main_runtime)
                 ),
             ):
                 result = is_disabled()
@@ -521,14 +523,16 @@ class TestWorktreeDisabledFileIntegration(unittest.TestCase):
             worktree_dir = Path(tmp_dir) / "worktrees" / "feat-branch"
             worktree_dir.mkdir(parents=True)
 
-            # User creates .disabled in main repo runtime
-            disabled_file = main_runtime / ".disabled"
+            # User creates .disabled in main repo runtime power-steering subdir
+            ps_runtime = main_runtime / "power-steering"
+            ps_runtime.mkdir(parents=True, exist_ok=True)
+            disabled_file = ps_runtime / ".disabled"
             disabled_file.touch()
 
             with (
                 patch("os.getcwd", return_value=str(worktree_dir)),
                 patch(
-                    "power_steering_checker.get_shared_runtime_dir", return_value=str(main_runtime)
+                    "power_steering_checker.main_checker.get_shared_runtime_dir", return_value=str(main_runtime)
                 ),
             ):
                 result = is_disabled()
@@ -696,8 +700,9 @@ class TestPowerSteeringWorktreeE2E(unittest.TestCase):
                 # Initially not disabled
                 self.assertFalse(is_disabled())
 
-                # User creates .disabled in main repo
-                (main_runtime / ".disabled").touch()
+                # User creates .disabled in main repo power-steering subdir
+                (main_runtime / "power-steering").mkdir(parents=True, exist_ok=True)
+                (main_runtime / "power-steering" / ".disabled").touch()
 
                 # Now disabled
                 self.assertTrue(is_disabled())

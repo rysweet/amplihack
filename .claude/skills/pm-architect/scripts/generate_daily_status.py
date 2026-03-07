@@ -8,8 +8,12 @@ daily status reports with insights, blockers, and recommendations.
 
 import asyncio
 import json
+import os
 import sys
 from pathlib import Path
+
+# Unset CLAUDECODE to prevent nested session errors when spawning Claude CLI subprocesses
+os.environ.pop("CLAUDECODE", None)
 
 # Try to import Claude SDK
 try:
