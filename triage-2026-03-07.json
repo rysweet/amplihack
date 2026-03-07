@@ -1,0 +1,71 @@
+{
+  "2918": {
+    "title": "feat: power-steering SDK abstraction \u2014 auto-select Claude or Copilot SDK",
+    "category": "Enhancement",
+    "type": "refactoring",
+    "scope": "power-steering",
+    "risk": "medium-risk",
+    "complexity": "medium",
+    "impact": "high",
+    "testing": "needs-testing",
+    "review_type": "needs-review",
+    "priority": "high",
+    "rationale": {
+      "category": "New SDK abstraction layer for multi-launcher support",
+      "risk": "Medium - new abstraction but well-isolated, +303/-229 LOC changes",
+      "complexity": "Medium - new module but simple delegation pattern",
+      "impact": "High - enables Copilot CLI users to use power-steering",
+      "testing": "Needs testing - new SDK abstraction requires validation",
+      "priority": "High - unblocks Copilot CLI compatibility"
+    },
+    "files_changed": 5,
+    "additions": 303,
+    "deletions": 229
+  },
+  "2916": {
+    "title": "fix: power-steering incorrectly blocks Q&A/PM sessions with dev checks",
+    "category": "Bugfix",
+    "type": "false-positive-fix",
+    "scope": "power-steering",
+    "risk": "low-risk",
+    "complexity": "low",
+    "impact": "medium",
+    "testing": "needs-testing",
+    "review_type": "needs-review",
+    "priority": "medium",
+    "rationale": {
+      "category": "Fixes false positives during investigation/PM sessions",
+      "risk": "Low - removes checks from INVESTIGATION sessions, adds skill check",
+      "complexity": "Low - config changes + one new check function",
+      "impact": "Medium - improves PM/investigation UX, reduces interruptions",
+      "testing": "Needs testing - validate no false positives on PM sessions",
+      "priority": "Medium - quality of life improvement"
+    },
+    "files_changed": 5,
+    "additions": 149,
+    "deletions": 7
+  },
+  "2915": {
+    "title": "fix: add OPERATIONS session type to prevent power-steering false positives on PM sessions",
+    "category": "Bugfix",
+    "type": "session-type-classification",
+    "scope": "power-steering",
+    "risk": "medium-risk",
+    "complexity": "medium",
+    "impact": "medium",
+    "testing": "has-tests",
+    "review_type": "needs-review",
+    "priority": "medium",
+    "rationale": {
+      "category": "New OPERATIONS session type for PM/planning work",
+      "risk": "Medium - changes session detection logic, +1038/-35 LOC",
+      "complexity": "Medium - new session type + detection keywords + 18 tests",
+      "impact": "Medium - fixes false positives, improves classification",
+      "testing": "Has tests - 18 new tests in test_power_steering_operations_sessions.py",
+      "priority": "Medium - improves classification accuracy"
+    },
+    "files_changed": 4,
+    "additions": 1038,
+    "deletions": 35
+  }
+}
