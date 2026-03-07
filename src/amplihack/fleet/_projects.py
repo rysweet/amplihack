@@ -17,8 +17,6 @@ import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 
-import tomli_w
-
 from amplihack.fleet._constants import DEFAULT_PROJECTS_PATH
 
 __all__ = [
@@ -154,6 +152,8 @@ def save_projects(projects: dict[str, Project], path: Path | None = None) -> Non
                 for obj in proj.objectives
             ]
         doc["project"][name] = entry
+
+    import tomli_w  # lazy import — keeps module importable without tomli_w installed
 
     path.write_bytes(tomli_w.dumps(doc).encode())
 
