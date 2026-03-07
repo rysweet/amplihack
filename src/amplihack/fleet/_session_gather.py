@@ -62,6 +62,9 @@ def gather_context(
         f'echo "BRANCH:$(git branch --show-current 2>/dev/null)"; '
         f'echo "REMOTE:$(git remote get-url origin 2>/dev/null)"; '
         f"echo \"MODIFIED:$(git diff --name-only HEAD 2>/dev/null | head -10 | tr '\\n' ',')\"; "
+        # PR URL detection via gh CLI (more reliable than parsing git log)
+        f'PRURL=$(gh pr list --head "$(git branch --show-current 2>/dev/null)" --json url --jq ".[0].url" 2>/dev/null); '
+        f'if [ -n "$PRURL" ]; then echo "PR_URL:$PRURL"; fi; '
         f"fi; "
         # Transcript: first 50 + last 200 lines of user/assistant messages
         # from the most recent JSONL in ~/.claude/projects/<project-key>/
@@ -141,6 +144,8 @@ def parse_context_output(output: str, context: SessionContext) -> None:
                 elif line.startswith("MODIFIED:"):
                     files = [f.strip() for f in line[9:].split(",") if f.strip()]
                     context.files_modified = files
+                elif line.startswith("PR_URL:"):
+                    context.pr_url = line[7:].strip()
 
         elif label == "TRANSCRIPT" and i + 1 < len(sections):
             raw_transcript = sections[i + 1].strip()
