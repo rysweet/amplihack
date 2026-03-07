@@ -24,6 +24,7 @@ class SessionView:
     pr: str = ""
     last_line: str = ""
     repo: str = ""
+    tmux_capture: str = ""  # Raw tmux pane text from Phase 1, cached for Phase 3 reasoning
 
 
 @dataclass

@@ -554,6 +554,7 @@ def register_session_ops(fleet_cli: click.Group) -> None:
                     decision = reasoner.reason_about_session(
                         vm_name=v.name,
                         session_name=sess.session_name,
+                        cached_tmux_capture=sess.tmux_capture,
                     )
                     decisions.append({
                         "vm": v.name,
