@@ -17,6 +17,7 @@ from amplihack.fleet._projects import (
     load_projects,
     merge_projects,
     save_projects,
+    validate_repo_url,
 )
 
 
@@ -107,6 +108,15 @@ class TestProject:
         assert proj.priority == "medium"
         assert proj.objectives == []
 
+    def test_validate_repo_url(self):
+        assert validate_repo_url("https://github.com/org/repo") is True
+        assert validate_repo_url("https://github.com/org/repo.git") is True
+        assert validate_repo_url("org/repo") is True
+        assert validate_repo_url("not a url") is False
+        assert validate_repo_url("ftp://example.com/repo") is False
+        assert validate_repo_url("") is False
+        assert validate_repo_url("https://github.com/org/repo; rm -rf /") is False
+
     def test_objectives_default_independent(self):
         """Each instance gets its own objectives list."""
         p1 = Project(name="a")
@@ -166,6 +176,61 @@ class TestProjectsIO:
         save_projects({}, path)
         loaded = load_projects(path)
         assert loaded == {}
+
+    def test_toml_special_characters_roundtrip(self, tmp_path: Path):
+        """Titles with quotes, backslashes, and equals signs survive roundtrip."""
+        path = tmp_path / "projects.toml"
+        tricky_titles = [
+            'Fix "quoted" strings',
+            "Backslash \\ in path",
+            "Equals = sign",
+            "Newline \\n literal",
+            "Tab\\there",
+            'Mixed "quotes" and = signs',
+        ]
+        projects = {
+            "myapp": Project(
+                name="myapp",
+                repo_url="https://github.com/org/myapp",
+                objectives=[
+                    {"number": i + 1, "title": t, "state": "open", "url": ""}
+                    for i, t in enumerate(tricky_titles)
+                ],
+            ),
+        }
+        save_projects(projects, path)
+        loaded = load_projects(path)
+        assert len(loaded["myapp"].objectives) == len(tricky_titles)
+        for orig, loaded_obj in zip(tricky_titles, loaded["myapp"].objectives):
+            assert loaded_obj["title"] == orig, f"Mismatch for {orig!r}"
+
+    def test_load_corrupt_toml_returns_empty(self, tmp_path: Path):
+        """Corrupt TOML file returns empty dict instead of crashing."""
+        path = tmp_path / "projects.toml"
+        path.write_text("this is not valid toml [[[")
+        loaded = load_projects(path)
+        assert loaded == {}
+
+    def test_invalid_project_name_rejected(self):
+        """Project names must match ^[a-zA-Z0-9][a-zA-Z0-9_-]*$."""
+        with pytest.raises(ValueError, match="Invalid project name"):
+            Project(name="bad name with spaces")
+        with pytest.raises(ValueError, match="Invalid project name"):
+            Project(name="-starts-with-dash")
+        with pytest.raises(ValueError, match="Invalid project name"):
+            Project(name="has/slash")
+
+    def test_save_rejects_invalid_project_name(self, tmp_path: Path):
+        """save_projects validates names even when bypassing __post_init__."""
+        path = tmp_path / "projects.toml"
+        proj = Project.__new__(Project)
+        proj.name = "bad name"
+        proj.repo_url = ""
+        proj.identity = ""
+        proj.priority = "medium"
+        proj.objectives = []
+        with pytest.raises(ValueError, match="Invalid project name"):
+            save_projects({"bad name": proj}, path)
 
 
 class TestMergeProjects:
