@@ -162,8 +162,8 @@ def _handle_event(agent_name: str, event: object, memory: object) -> None:
                 agent_name,
             )
 
-    elif event_type == "QUERY":
-        query_id = (payload or {}).get("query_id", "")
+    elif event_type in ("QUERY", "network_graph.search_query"):
+        query_id = (payload or {}).get("query_id", "") or (payload or {}).get("request_id", "")
         question = (payload or {}).get("question", "") or (payload or {}).get("text", "")
         if question:
             logger.info(
