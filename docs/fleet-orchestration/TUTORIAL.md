@@ -32,7 +32,16 @@ Before you begin, you need:
 
 3. **Coding agents running in tmux** on those VMs. Each VM should have one or more tmux sessions with Claude Code, Copilot, or Amplifier running inside them. The fleet admiral observes and manages these sessions.
 
-4. **An Anthropic API key** set in your environment. The admiral uses Claude to reason about what each agent session needs:
+4. **tmux** installed locally. The recipe runner uses tmux sessions for long-running workstreams that can take hours. The install script auto-installs it, or:
+
+   ```bash
+   # Ubuntu/Debian
+   sudo apt-get install tmux
+   # macOS
+   brew install tmux
+   ```
+
+5. **An Anthropic API key** set in your environment. The admiral uses Claude Opus to reason about what each agent session needs:
 
    ```bash
    export ANTHROPIC_API_KEY=sk-ant-...

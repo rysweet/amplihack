@@ -71,6 +71,12 @@ class ClaudeSDKAdapter:
 
         options = ClaudeAgentOptions(model=self._model)
 
+        # Unset CLAUDECODE so nested Claude Code sessions can launch.
+        # The parent session sets this, and child sessions refuse to start
+        # if it's present (to prevent accidental nesting that crashes).
+        import os as _os
+        _os.environ.pop("CLAUDECODE", None)
+
         # sdk.query() is an async generator (AsyncIterator[Message]), not a
         # coroutine.  We must iterate it to collect messages and extract the
         # final ResultMessage.
