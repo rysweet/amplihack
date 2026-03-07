@@ -1,6 +1,8 @@
 # Claude Code Hook System
 
-This directory contains the hook system for Claude Code, which allows for customization and monitoring of the Claude Code runtime environment.
+This directory (`.claude/tools/amplihack/hooks/`) is the **canonical source of truth** for all hook files.
+
+`amplifier-bundle/tools/amplihack/hooks/` is a symlink to this directory — always edit files here.
 
 ## Overview
 
