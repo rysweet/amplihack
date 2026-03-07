@@ -5,7 +5,7 @@
 #   - Resource group
 #   - Azure Container Registry (ACR)
 #   - Azure Service Bus namespace + topic + subscriptions
-#   - Azure Storage Account + File Share (legacy; ephemeral volumes now used for Kuzu)
+#   - EmptyDir volumes for Kuzu (POSIX locks required, Azure Files SMB unsupported)
 #   - Container Apps Environment
 #   - N Container Apps (ceil(HIVE_AGENT_COUNT / 5) apps, 5 agents each)
 #
@@ -26,7 +26,7 @@
 # Environment variable overrides:
 #   HIVE_NAME              -- Hive name (default: amplihive)
 #   HIVE_RESOURCE_GROUP    -- Resource group (default: hive-mind-rg)
-#   HIVE_LOCATION          -- Azure region (default: eastus)
+#   HIVE_LOCATION          -- Azure region (default: westus2)
 #   HIVE_AGENT_COUNT       -- Total agents (default: 5)
 #   HIVE_AGENTS_PER_APP    -- Agents per Container App (default: 5)
 #   HIVE_ACR_NAME          -- ACR name override (auto-generated if empty)
@@ -42,7 +42,7 @@ set -euo pipefail
 
 HIVE_NAME="${HIVE_NAME:-amplihive}"
 RESOURCE_GROUP="${HIVE_RESOURCE_GROUP:-hive-mind-rg}"
-LOCATION="${HIVE_LOCATION:-eastus}"
+LOCATION="${HIVE_LOCATION:-westus2}"
 AGENT_COUNT="${HIVE_AGENT_COUNT:-5}"
 AGENTS_PER_APP="${HIVE_AGENTS_PER_APP:-5}"
 IMAGE_TAG="${HIVE_IMAGE_TAG:-latest}"
@@ -175,6 +175,38 @@ fi
 [[ "$MODE" == "build" ]] && exit 0
 
 # ============================================================
+# Clean deploy: tear down ALL existing Container Apps
+# ============================================================
+# Every deploy is from scratch — no mixing old and new revisions.
+# Bicep cannot guarantee in-place updates clear stale code, so we
+# delete all apps first and let Bicep recreate them fresh.
+
+log "Checking for existing Container Apps to tear down..."
+EXISTING_APPS=$(az containerapp list \
+  --resource-group "${RESOURCE_GROUP}" \
+  --query "[?starts_with(name, '${HIVE_NAME}')].name" \
+  -o tsv 2>/dev/null || true)
+
+if [[ -n "${EXISTING_APPS}" ]]; then
+  log "Tearing down existing Container Apps (clean deploy)..."
+  for APP_NAME in ${EXISTING_APPS}; do
+    log "  Deleting ${APP_NAME}..."
+    az containerapp delete \
+      --name "${APP_NAME}" \
+      --resource-group "${RESOURCE_GROUP}" \
+      --yes --no-wait 2>/dev/null || true
+  done
+  # Wait for all deletions to complete
+  log "Waiting for Container App deletions to complete..."
+  for APP_NAME in ${EXISTING_APPS}; do
+    while az containerapp show --name "${APP_NAME}" --resource-group "${RESOURCE_GROUP}" &>/dev/null; do
+      sleep 5
+    done
+  done
+  log "All existing Container Apps deleted."
+fi
+
+# ============================================================
 # Provision infrastructure via Bicep
 # ============================================================
 
@@ -184,6 +216,7 @@ DEPLOY_OUTPUT=$(az deployment group create \
   --template-file "${SCRIPT_DIR}/main.bicep" \
   --parameters \
     hiveName="${HIVE_NAME}" \
+    location="${LOCATION}" \
     agentCount="${AGENT_COUNT}" \
     agentsPerApp="${AGENTS_PER_APP}" \
     image="${IMAGE}" \
