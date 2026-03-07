@@ -133,6 +133,19 @@ class Memory:
         else:
             self._adapter = self._build_cognitive(cfg)
 
+        # --- Wire recall_fn: fix dual-storage path ---
+        # NetworkGraphStore's search_query handler searches its own Kuzu DB
+        # (populated only via CREATE_NODE replication).  LEARN_CONTENT facts go
+        # into the CognitiveAdapter's Kuzu DB instead.  Setting recall_fn on the
+        # NetworkGraphStore makes search_query route through the correct store.
+        if _use_network and hasattr(self._graph_store, "recall_fn"):
+            if self._adapter is not None and hasattr(self._adapter, "search"):
+                self._graph_store.recall_fn = self._adapter.search
+                logger.info(
+                    "Memory[%s]: wired NetworkGraphStore.recall_fn → CognitiveAdapter.search",
+                    cfg.agent_name,
+                )
+
     def _build_graph_store(self, cfg: "MemoryConfig") -> "GraphStore":
         """Construct the appropriate GraphStore for the resolved config."""
         transport = getattr(cfg, "memory_transport", "local") or "local"

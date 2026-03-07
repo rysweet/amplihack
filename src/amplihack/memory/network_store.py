@@ -32,7 +32,7 @@ import logging
 import threading
 import time
 import uuid
-from typing import Any
+from typing import Any, Callable
 
 from .graph_store import GraphStore
 
@@ -109,12 +109,17 @@ class NetworkGraphStore:
         topic_name: str = "hive-graph",
         search_timeout: float = _SEARCH_TIMEOUT,
         agent_registry: AgentRegistry | None = None,
+        recall_fn: Callable[[str, int], list[dict[str, Any]]] | None = None,
     ) -> None:
         self._agent_id = agent_id
         self._local = local_store
         self._transport = transport
         self._search_timeout = search_timeout
         self._agent_registry = agent_registry
+        # Optional recall function that queries the cognitive adapter's Kuzu DB.
+        # Set via NetworkGraphStore.recall_fn = adapter.search after construction
+        # so that search_query events route through the populated memory store.
+        self._recall_fn: Callable[[str, int], list[dict[str, Any]]] | None = recall_fn
         if agent_registry is not None:
             agent_registry.register(agent_id)
 
@@ -142,6 +147,26 @@ class NetworkGraphStore:
             name=f"network-graph-{agent_id}",
         )
         self._thread.start()
+
+    # ------------------------------------------------------------------
+    # recall_fn property — wires cognitive memory into search_query handler
+    # ------------------------------------------------------------------
+
+    @property
+    def recall_fn(self) -> Callable[[str, int], list[dict[str, Any]]] | None:
+        """Callable that queries the CognitiveAdapter's Kuzu store.
+
+        When set, _handle_query_event() calls this in addition to (or instead
+        of) searching the local graph store, so that LEARN_CONTENT facts stored
+        in the cognitive memory are surfaced in response to search_query events.
+
+        Signature: fn(query: str, limit: int) -> list[dict[str, Any]]
+        """
+        return self._recall_fn
+
+    @recall_fn.setter
+    def recall_fn(self, fn: Callable[[str, int], list[dict[str, Any]]] | None) -> None:
+        self._recall_fn = fn
 
     # ------------------------------------------------------------------
     # Bus factory
@@ -534,25 +559,54 @@ class NetworkGraphStore:
         )
 
     def _handle_query_event(self, query_id: str, question: str) -> None:
-        """Auto-respond to a QUERY event using local graph store search.
+        """Auto-respond to a QUERY event using Kuzu memory search.
 
-        Searches across known tables in the local store and publishes a
-        QUERY_RESPONSE. This runs in the background thread for fast response.
+        When a recall_fn is wired (pointing to CognitiveAdapter.search), it
+        queries the cognitive Kuzu store which holds LEARN_CONTENT facts.
+        Falls back to searching the local graph store tables directly.
 
         Args:
             query_id: The query_id from the incoming QUERY event.
             question: The question text to search for.
         """
         results: list[dict[str, Any]] = []
+
+        # Primary path: delegate to recall_fn (CognitiveAdapter → Kuzu)
+        if self._recall_fn is not None:
+            try:
+                cognitive_hits = self._recall_fn(question, 10)
+                for r in cognitive_hits:
+                    # Normalise cognitive adapter dicts to graph node format
+                    content = r.get("outcome") or r.get("content") or r.get("fact") or ""
+                    if content:
+                        results.append(
+                            {
+                                "content": content,
+                                "concept": r.get("context") or r.get("concept") or "",
+                                "confidence": r.get("confidence", 0.8),
+                                "node_id": r.get("experience_id") or r.get("node_id") or "",
+                                "source": self._agent_id,
+                            }
+                        )
+                logger.debug(
+                    "recall_fn returned %d results for query_id=%s",
+                    len(results),
+                    query_id,
+                )
+            except Exception:
+                logger.debug("recall_fn failed for query_id=%s", query_id, exc_info=True)
+
+        # Fallback / supplemental: local graph store tables
         for table in _QUERY_SEARCH_TABLES:
             try:
                 hits = self._local.search_nodes(table, question, limit=5)
                 results.extend(hits)
             except Exception:
                 logger.debug("search_nodes failed for table=%s", table, exc_info=True)
+
         if not results:
             logger.debug(
-                "QUERY query_id=%s: no graph results, skipping auto-response",
+                "QUERY query_id=%s: no results from recall_fn or graph store",
                 query_id,
             )
             return
@@ -563,13 +617,14 @@ class NetworkGraphStore:
                 "question": question,
                 "results": results,
                 "responder": self._agent_id,
-                "source": "graph_store",
+                "source": "kuzu" if self._recall_fn is not None else "graph_store",
             },
         )
         logger.debug(
-            "Auto-responded to QUERY query_id=%s with %d graph results",
+            "Auto-responded to QUERY query_id=%s with %d results (recall_fn=%s)",
             query_id,
             len(results),
+            self._recall_fn is not None,
         )
 
     # ------------------------------------------------------------------
