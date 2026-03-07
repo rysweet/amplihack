@@ -4,8 +4,16 @@ All thresholds, timeouts, and capacity values used across the fleet module.
 Import from here instead of hardcoding in individual files.
 
 Public API:
-    Confidence thresholds, timing constants, capacity defaults, health thresholds.
+    Confidence thresholds, timing constants, capacity defaults, health thresholds,
+    default file paths.
 """
+
+from pathlib import Path
+
+# ── File Paths ────────────────────────────────────────────────────────
+DEFAULT_FLEET_DIR = Path.home() / ".amplihack" / "fleet"
+DEFAULT_PROJECTS_PATH = DEFAULT_FLEET_DIR / "projects.toml"
+DEFAULT_LAST_SCOUT_PATH = DEFAULT_FLEET_DIR / "last_scout.json"
 
 # ── Confidence Thresholds ──────────────────────────────────────────────
 MIN_CONFIDENCE_SEND = 0.6        # Minimum confidence to inject a send_input action
@@ -84,4 +92,7 @@ __all__ = [
     "DEFAULT_LLM_MAX_TOKENS",
     "TRANSCRIPT_MAX_TOKENS",
     "MIN_SUBSTANTIAL_OUTPUT_LEN",
+    "DEFAULT_FLEET_DIR",
+    "DEFAULT_PROJECTS_PATH",
+    "DEFAULT_LAST_SCOUT_PATH",
 ]
