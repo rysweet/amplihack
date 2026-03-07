@@ -32,7 +32,7 @@ except ImportError:
 _COPILOT_SDK_OK = False
 try:
     from copilot import CopilotClient  # type: ignore[import-not-found]
-    from copilot.types import SessionConfig, SystemMessageAppendConfig  # type: ignore[import-not-found]
+    from copilot.types import MessageOptions, SessionConfig  # type: ignore[import-not-found]
 
     _COPILOT_SDK_OK = True
 except ImportError:
@@ -116,28 +116,25 @@ async def _query_claude(prompt: str, project_root: Path) -> str:
 
 
 async def _query_copilot(prompt: str, project_root: Path) -> str:
-    """Query via GitHub Copilot SDK."""
-    config = SessionConfig(
-        systemMessageAppendConfig=SystemMessageAppendConfig(
-            appendText=prompt,
-        ),
-    )
+    """Query via GitHub Copilot SDK.
 
-    response_parts: list[str] = []
-    async with asyncio.timeout(QUERY_TIMEOUT):
-        async with CopilotClient() as client:
-            session = await client.create_session(config)
-            result = await session.send_message(prompt)
-            # Extract text from Copilot response
-            if hasattr(result, "text"):
-                response_parts.append(result.text)
-            elif hasattr(result, "content"):
-                content = result.content
-                if isinstance(content, str):
-                    response_parts.append(content)
-                elif isinstance(content, list):
-                    for block in content:
-                        text = getattr(block, "text", block) if hasattr(block, "text") else str(block)
-                        response_parts.append(text)
-
-    return "".join(response_parts)
+    CopilotClient methods are async coroutines. Create a session,
+    send_and_wait for the response, then extract text from the event.
+    """
+    client = CopilotClient()
+    try:
+        await client.start()
+        session = await client.create_session(SessionConfig())
+        async with asyncio.timeout(QUERY_TIMEOUT):
+            event = await session.send_and_wait(
+                MessageOptions(prompt=prompt),
+                timeout=float(QUERY_TIMEOUT),
+            )
+        if event and hasattr(event, "data") and event.data:
+            return event.data.content or ""
+        return ""
+    finally:
+        try:
+            await client.stop()
+        except Exception:
+            pass
