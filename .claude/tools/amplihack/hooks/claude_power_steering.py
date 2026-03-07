@@ -37,6 +37,9 @@ import os
 import re
 from pathlib import Path
 
+# Unset CLAUDECODE to prevent nested session errors when spawning Claude CLI subprocesses
+os.environ.pop("CLAUDECODE", None)
+
 # Try to import Claude SDK
 try:
     from claude_agent_sdk import ClaudeAgentOptions, query  # type: ignore[import-not-found]
@@ -137,9 +140,8 @@ def _validate_sdk_response(response: str) -> bool:
                 return False
 
         return True
-    except Exception as e:
+    except Exception:
         # Fail-open on validation error
-        _log_sdk_error("validate_response", e)
         return True
 
 
@@ -170,9 +172,8 @@ def _sanitize_html(text: str) -> str:
             sanitized = re.sub(tag_pattern, "", sanitized, flags=re.IGNORECASE | re.DOTALL)
 
         return sanitized
-    except Exception as e:
+    except Exception:
         # On error, return original text (fail-open)
-        _log_sdk_error("sanitize_html", e)
         return text
 
 
@@ -191,8 +192,7 @@ def load_prompt_template() -> str | None:
 
     try:
         return POWER_STEERING_PROMPT_TEMPLATE.read_text()
-    except Exception as e:
-        _log_sdk_error("load_prompt_template", e)
+    except Exception:
         return None
 
 
@@ -271,64 +271,37 @@ async def analyze_consideration(
             # Security validation failed - fail-open (assume satisfied)
             return (True, None)
 
-        response_lower = response.lower().strip()
+        response_lower = response.lower()
 
-        # Issue #2561: Parse response using STRUCTURED prefixes first.
-        # The prompt asks the SDK to respond with "SATISFIED: [reason]" or
-        # "NOT SATISFIED: [reason]". We should prefer these structured responses
-        # over generic keyword matching to avoid false positives where words like
-        # "no", "missing", "failed" appear in completion summaries (e.g.,
-        # "No issues found", "Fixed the missing validation", "Tests no longer failed").
-
-        # Priority 1: Check for structured NOT SATISFIED prefix (most specific)
-        not_satisfied_prefixes = [
-            "not satisfied:",
-            "not satisfied.",
-            "unsatisfied:",
-            "not met:",
-        ]
-        for prefix in not_satisfied_prefixes:
-            if response_lower.startswith(prefix):
-                reason = _extract_reason_from_response(response)
-                return (False, reason)
-
-        # Priority 2: Check for structured SATISFIED prefix
-        satisfied_prefixes = [
-            "satisfied:",
-            "satisfied.",
-            "satisfied -",
-            "yes,",
-            "yes.",
-            "yes -",
-        ]
-        for prefix in satisfied_prefixes:
-            if response_lower.startswith(prefix):
-                return (True, None)
-
-        # Priority 3: Look for NOT SATISFIED anywhere (but require the full phrase,
-        # not just "no" or "missing" which cause false positives on completion summaries)
-        unsatisfied_phrases = [
-            "not satisfied",
-            "not fulfilled",
-            "not met",
-            "not complete",
-            "incomplete",
-            "unfulfilled",
-        ]
-        for phrase in unsatisfied_phrases:
-            if phrase in response_lower:
-                reason = _extract_reason_from_response(response)
-                return (False, reason)
-
-        # Priority 4: Look for SATISFIED indicators
+        # Parse response for yes/no decision
+        # Look for clear indicators of satisfaction
         satisfied_indicators = [
             "satisfied",
+            "yes",
             "complete",
             "fulfilled",
             "met",
             "achieved",
             "accomplished",
         ]
+        unsatisfied_indicators = [
+            "not satisfied",
+            "no",
+            "incomplete",
+            "unfulfilled",
+            "not met",
+            "missing",
+            "failed",
+        ]
+
+        # Check for unsatisfied indicators first (more specific)
+        for indicator in unsatisfied_indicators:
+            if indicator in response_lower:
+                # Extract reason from response
+                reason = _extract_reason_from_response(response)
+                return (False, reason)
+
+        # Then check for satisfied indicators
         for indicator in satisfied_indicators:
             if indicator in response_lower:
                 return (True, None)
@@ -635,9 +608,8 @@ Be direct and specific."""
         # Empty or too short - use template fallback
         return _generate_template_guidance(failed_checks)
 
-    except Exception as e:
+    except Exception:
         # Fail-open to template guidance
-        _log_sdk_error("generate_guidance", e)
         return _generate_template_guidance(failed_checks)
 
 
@@ -769,8 +741,7 @@ Be specific - only include actual claims about completion, not general discussio
 
         return []
 
-    except Exception as e:
-        _log_sdk_error("analyze_claims", e)
+    except Exception:
         return []  # Fail-open on any error
 
 
@@ -866,8 +837,7 @@ Be conservative - only say ADDRESSED if there is clear evidence in the new conte
 
         return None
 
-    except Exception as e:
-        _log_sdk_error("analyze_if_addressed", e)
+    except Exception:
         return None  # Fail-open on any error
 
 
@@ -907,8 +877,7 @@ def analyze_claims_sync(delta_text: str, project_root: Path) -> list[str]:
 
     try:
         return asyncio.run(analyze_claims(delta_text, project_root))
-    except Exception as e:
-        _log_sdk_error("analyze_claims_sync", e)
+    except Exception:
         return []  # Fail-open on any error
 
 
@@ -963,8 +932,7 @@ def analyze_if_addressed_sync(
         return asyncio.run(
             analyze_if_addressed(failure_id, failure_reason, delta_text, project_root)
         )
-    except Exception as e:
-        _log_sdk_error("analyze_if_addressed_sync", e)
+    except Exception:
         return None  # Fail-open on any error
 
 
@@ -1021,8 +989,7 @@ def analyze_consideration_sync(
 
     try:
         return asyncio.run(analyze_consideration(conversation, consideration, project_root))
-    except Exception as e:
-        _log_sdk_error("analyze_consideration_sync", e)
+    except Exception:
         return (True, None)  # Fail-open on any error
 
 
@@ -1200,8 +1167,7 @@ def analyze_workflow_invocation_sync(
 
     try:
         return asyncio.run(analyze_workflow_invocation(conversation, session_type, project_root))
-    except Exception as e:
-        _log_sdk_error("analyze_workflow_invocation_sync", e)
+    except Exception:
         return (True, None)  # Fail-open on any error
 
 

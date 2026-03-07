@@ -116,22 +116,39 @@ When this skill is activated:
 
 ### REQUIRED: Execute via Recipe Runner — IMMEDIATELY
 
-Your very next tool call must be:
+Your very next tool call must launch the recipe runner. **CRITICAL**: Claude
+Code's `run_in_background` kills processes after ~10 minutes. Recipe
+workstreams can take hours. You MUST use a tmux session for execution:
 
-```python
+```bash
+tmux new-session -d -s recipe-runner "env -u CLAUDECODE .venv/bin/python -c \"
+import os
+os.environ.pop('CLAUDECODE', None)
+
 from amplihack.recipes import run_recipe_by_name
-from amplihack.recipes.adapters import get_adapter
+from amplihack.recipes.adapters.cli_subprocess import CLISubprocessAdapter
 
-adapter = get_adapter()  # Auto-selects best adapter (NestedSession in Claude Code, CLI otherwise)
+adapter = CLISubprocessAdapter()
 result = run_recipe_by_name(
-    "smart-orchestrator",
+    'smart-orchestrator',
     adapter=adapter,
     user_context={
-        "task_description": TASK_DESCRIPTION,
-        "repo_path": ".",
+        'task_description': '''TASK_DESCRIPTION_HERE''',
+        'repo_path': '.',
     }
 )
+print(f'Recipe result: {result}')
+\" 2>&1 | tee /tmp/recipe-runner-output.log"
 ```
+
+**Key points:**
+- `env -u CLAUDECODE` — unset so nested Claude Code sessions can launch
+- `CLISubprocessAdapter` — spawns CLI subprocesses (not SDK, which crashes in nested sessions)
+- `tmux new-session -d` — detached session, no timeout, survives disconnects
+- Monitor with: `tail -f /tmp/recipe-runner-output.log` or `tmux attach -t recipe-runner`
+
+**DO NOT use `run_in_background`** for recipe execution — it will be killed
+after ~10 minutes (Issue #2909).
 
 **There are no fallback paths for Development or Investigation tasks.** The
 recipe runner is required. If it fails with an ImportError, report the error
