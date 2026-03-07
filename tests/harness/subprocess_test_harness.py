@@ -1,4 +1,4 @@
-"""Subprocess-based test harness fer outside-in plugin testin'.
+"""Subprocess-based test harness for outside-in plugin testin'.
 import sys
 
 Philosophy:
@@ -70,7 +70,7 @@ class SubprocessResult:
         """Assert text appears in stdout.
 
         Args:
-            text: Text to search fer
+            text: Text to search for
             message: Custom error message
 
         Raises:
@@ -83,7 +83,7 @@ class SubprocessResult:
         """Assert text appears in stderr.
 
         Args:
-            text: Text to search fer
+            text: Text to search for
             message: Custom error message
 
         Raises:
@@ -94,7 +94,7 @@ class SubprocessResult:
 
 
 class PluginTestHarness:
-    """Test harness fer plugin lifecycle testin'.
+    """Test harness for plugin lifecycle testin'.
 
     Tests plugin installation, configuration, and uninstallation
     from outside-in perspective.
@@ -110,8 +110,8 @@ class PluginTestHarness:
         """Initialize plugin test harness.
 
         Args:
-            plugin_dir: Directory fer plugin installation (default: temp dir)
-            timeout: Timeout in seconds fer commands (default: 60)
+            plugin_dir: Directory for plugin installation (default: temp dir)
+            timeout: Timeout in seconds for commands (default: 60)
         """
         self.plugin_dir = plugin_dir or Path(tempfile.mkdtemp(prefix="plugin_test_"))
         self.timeout = timeout
@@ -334,7 +334,7 @@ class PluginTestHarness:
         Returns:
             Plugin name if found
         """
-        # Look fer lines like "Installed plugin: my-plugin"
+        # Look for lines like "Installed plugin: my-plugin"
         for line in stdout.split("\n"):
             if "installed plugin:" in line.lower():
                 parts = line.split(":")
@@ -344,7 +344,7 @@ class PluginTestHarness:
 
 
 class HookTestHarness:
-    """Test harness fer hook protocol testin'.
+    """Test harness for hook protocol testin'.
 
     Tests hook execution, error handlin', and lifecycle from
     outside-in perspective.
@@ -360,7 +360,7 @@ class HookTestHarness:
 
         Args:
             project_dir: Project directory (default: temp dir)
-            timeout: Timeout in seconds fer commands (default: 30)
+            timeout: Timeout in seconds for commands (default: 30)
         """
         self.project_dir = project_dir or Path(tempfile.mkdtemp(prefix="hook_test_"))
         self.timeout = timeout
@@ -503,7 +503,7 @@ class HookTestHarness:
 
 
 class LSPTestHarness:
-    """Test harness fer LSP detection testin'.
+    """Test harness for LSP detection testin'.
 
     Tests language detection and LSP configuration generation
     from outside-in perspective.
@@ -520,30 +520,30 @@ class LSPTestHarness:
 
         Args:
             project_dir: Project directory (default: temp dir)
-            timeout: Timeout in seconds fer commands (default: 30)
+            timeout: Timeout in seconds for commands (default: 30)
         """
         self.project_dir = project_dir or Path(tempfile.mkdtemp(prefix="lsp_test_"))
         self.timeout = timeout
 
     def create_python_project(self) -> None:
-        """Create a Python project fer testin'."""
+        """Create a Python project for testin'."""
         (self.project_dir / "main.py").write_text("print('Hello, World!')")
         (self.project_dir / "pyproject.toml").write_text("[tool.poetry]\nname = 'test'")
 
     def create_typescript_project(self) -> None:
-        """Create a TypeScript project fer testin'."""
+        """Create a TypeScript project for testin'."""
         (self.project_dir / "index.ts").write_text("const x: string = 'test';")
         (self.project_dir / "tsconfig.json").write_text('{"compilerOptions": {}}')
 
     def create_rust_project(self) -> None:
-        """Create a Rust project fer testin'."""
+        """Create a Rust project for testin'."""
         src_dir = self.project_dir / "src"
         src_dir.mkdir(exist_ok=True)
         (src_dir / "main.rs").write_text('fn main() { println!("Hello"); }')
         (self.project_dir / "Cargo.toml").write_text('[package]\nname = "test"')
 
     def create_multi_language_project(self) -> None:
-        """Create a multi-language project fer testin'."""
+        """Create a multi-language project for testin'."""
         self.create_python_project()
         self.create_typescript_project()
         self.create_rust_project()
@@ -590,7 +590,7 @@ class LSPTestHarness:
             )
 
     def configure_lsp(self, languages: list[str] | None = None) -> SubprocessResult:
-        """Configure LSP fer detected languages.
+        """Configure LSP for detected languages.
 
         Args:
             languages: Specific languages to configure (default: auto-detect)
@@ -637,7 +637,7 @@ class LSPTestHarness:
             )
 
     def verify_lsp_config_exists(self, language: str) -> bool:
-        """Verify LSP config was created fer language.
+        """Verify LSP config was created for language.
 
         Args:
             language: Language name

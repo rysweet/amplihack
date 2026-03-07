@@ -1,4 +1,4 @@
-"""Terminal tree visualization fer Kùzu memory graph.
+"""Terminal tree visualization for Kùzu memory graph.
 
 Provides Rich-based tree display of memory hierarchies with color-coding,
 emojis, and importance scores.
@@ -14,7 +14,7 @@ Public API:
     visualize_memory_tree_async: Async visualization function
     build_memory_tree: Build Rich Tree from backend data (async)
     format_importance_score: Format importance score as stars
-    get_memory_emoji: Get emoji fer memory type
+    get_memory_emoji: Get emoji for memory type
 """
 
 import asyncio
@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_memory_emoji(memory_type: MemoryType) -> str:
-    """Get emoji fer memory type.
+    """Get emoji for memory type.
 
     Maps old 6-type system to new 5-type visual system.
 
@@ -47,7 +47,7 @@ def get_memory_emoji(memory_type: MemoryType) -> str:
         memory_type: Type of memory
 
     Returns:
-        Emoji string fer the type
+        Emoji string for the type
     """
     emoji_map = {
         MemoryType.CONVERSATION: "📝",  # Episodic-like
@@ -95,7 +95,7 @@ async def build_memory_tree_async(
         depth: Maximum tree depth (optional)
 
     Returns:
-        Rich Tree ready fer display (or None if Rich not available)
+        Rich Tree ready for display (or None if Rich not available)
 
     Raises:
         ImportError: If Rich library not installed
@@ -140,7 +140,7 @@ async def build_memory_tree_async(
                 f"[blue]{session.session_id}[/blue] ({session.memory_count} memories)"
             )
 
-            # Query memories fer this session
+            # Query memories for this session
             query = MemoryQuery(
                 session_id=session.session_id,
                 memory_type=memory_type,
@@ -246,7 +246,7 @@ async def visualize_memory_tree_async(
         ImportError: If Rich library not installed
 
     Example:
-        >>> from amplihack.memory.backends.kuzu_backend import KuzuBackend
+        >>> from amplihack.memory.kuzu_store import KuzuGraphStore
         >>> backend = KuzuBackend()
         >>> await visualize_memory_tree_async(backend)
 
@@ -301,7 +301,7 @@ def build_memory_tree(
         depth: Maximum tree depth (optional)
 
     Returns:
-        Rich Tree ready fer display (or None if Rich not available)
+        Rich Tree ready for display (or None if Rich not available)
 
     Raises:
         ImportError: If Rich library not installed
@@ -336,7 +336,7 @@ def visualize_memory_tree(
         ImportError: If Rich library not installed
 
     Example:
-        >>> from amplihack.memory.backends.kuzu_backend import KuzuBackend
+        >>> from amplihack.memory.kuzu_store import KuzuGraphStore
         >>> backend = KuzuBackend()
         >>> visualize_memory_tree(backend)
 

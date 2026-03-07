@@ -167,6 +167,7 @@ class AgenticLoop:
         memory_retriever,
         model: str = DEFAULT_MODEL,
         max_iterations: int = 10,
+        memory: Any = None,
     ):
         """Initialize agentic loop.
 
@@ -176,6 +177,9 @@ class AgenticLoop:
             memory_retriever: MemoryRetriever instance
             model: LLM model to use (litellm format)
             max_iterations: Maximum iterations per goal
+            memory: Optional Memory facade instance (from amplihack.memory.facade).
+                When provided, perceive() uses memory.remember/recall and learn()
+                uses memory.remember() instead of memory_retriever.store_fact().
 
         Raises:
             ValueError: If agent_name is empty
@@ -189,9 +193,50 @@ class AgenticLoop:
         self.model = model
         self.max_iterations = max_iterations
         self.iteration_count = 0
+        self._memory = memory  # Optional Memory facade
+
+    def observe(self, observation: str) -> str:
+        """OBSERVE phase: ingest an observation and recall immediate context.
+
+        Stores the observation via Memory facade (if available) and returns
+        any prior knowledge recalled for that observation.
+
+        Args:
+            observation: Raw input/content to observe
+
+        Returns:
+            String of recalled prior context (empty when none found)
+        """
+        if self._memory is not None:
+            self._memory.remember(observation)
+            recalled = self._memory.recall(observation, limit=3)
+            return "\n".join(recalled) if recalled else ""
+        return ""
+
+    def orient(self, query: str = "") -> str:
+        """ORIENT phase: build a world model from domain knowledge.
+
+        Recalls similar past situations and domain knowledge via Memory facade
+        (if available) to construct a world model for the current context.
+
+        Args:
+            query: Query to use for recalling relevant knowledge
+
+        Returns:
+            World model string assembled from recalled knowledge
+        """
+        if self._memory is not None:
+            recalled = self._memory.recall(query, limit=5)
+            return "\n".join(recalled) if recalled else ""
+        return ""
 
     def perceive(self, observation: str, goal: str) -> str:
         """PERCEIVE phase: Observe environment and retrieve relevant memory.
+
+        Internally calls observe() (remember + recall immediate context) and
+        orient() (recall domain knowledge + build world model) when a Memory
+        facade is configured.  Falls back to memory_retriever keyword search
+        for backward compatibility when no Memory facade is set.
 
         Args:
             observation: Current observation/input
@@ -200,17 +245,27 @@ class AgenticLoop:
         Returns:
             Perception string combining observation and relevant memory
         """
-        # Search memory for relevant experiences
-        relevant_memories = self.memory_retriever.search(query=observation, limit=3)
+        # OBSERVE: store observation, recall immediate context
+        prior_context = self.observe(observation)
 
-        # Build perception
+        # ORIENT: build world model from domain knowledge
+        world_model = self.orient(observation)
+
+        # Build perception string
         perception = f"Goal: {goal}\n"
         perception += f"Observation: {observation}\n"
 
-        if relevant_memories:
-            perception += "\nRelevant past experiences:\n"
-            for i, mem in enumerate(relevant_memories, 1):
-                perception += f"{i}. {mem['context']} → {mem['outcome']}\n"
+        if prior_context or world_model:
+            combined = "\n".join(filter(None, [prior_context, world_model]))
+            if combined:
+                perception += f"\nPrior knowledge:\n{combined}\n"
+        else:
+            # Fall back to original memory_retriever search (no Memory facade)
+            relevant_memories = self.memory_retriever.search(query=observation, limit=3)
+            if relevant_memories:
+                perception += "\nRelevant past experiences:\n"
+                for i, mem in enumerate(relevant_memories, 1):
+                    perception += f"{i}. {mem['context']} → {mem['outcome']}\n"
 
         return perception
 
@@ -320,6 +375,10 @@ Respond in this JSON format:
     def learn(self, perception: str, reasoning: str, action: dict[str, Any], outcome: Any) -> str:
         """LEARN phase: Store experience in memory.
 
+        When a Memory facade is configured, stores the outcome summary via
+        memory.remember().  Otherwise falls back to memory_retriever.store_fact()
+        for backward compatibility.
+
         Args:
             perception: What was observed
             reasoning: How the agent reasoned
@@ -334,19 +393,24 @@ Respond in this JSON format:
         if isinstance(outcome, dict) and "error" in outcome:
             success = False
 
-        # Build context and learning
+        # Build outcome summary
         context = f"{perception}\nReasoning: {reasoning}"
         learning = f"Action: {action['action']} with {action.get('params', {})}\n"
         learning += f"Outcome: {outcome}"
+        outcome_summary = learning[:500]
 
-        # Store in memory
-        confidence = 0.9 if success else 0.5
-        self.memory_retriever.store_fact(
-            context=context[:500],  # Limit context length
-            fact=learning[:500],
-            confidence=confidence,
-            tags=[action["action"], "agent_loop"],
-        )
+        if self._memory is not None:
+            # Use Memory facade — remember() handles storage internally
+            self._memory.remember(outcome_summary)
+        else:
+            # Fall back to memory_retriever (backward compat)
+            confidence = 0.9 if success else 0.5
+            self.memory_retriever.store_fact(
+                context=context[:500],
+                fact=outcome_summary,
+                confidence=confidence,
+                tags=[action["action"], "agent_loop"],
+            )
 
         return learning
 

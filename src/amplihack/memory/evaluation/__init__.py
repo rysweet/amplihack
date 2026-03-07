@@ -1,6 +1,6 @@
-"""Evaluation framework fer memory backend quality and performance.
+"""Evaluation framework for memory backend quality and performance.
 
-Provides comprehensive metrics fer comparing memory backends:
+Provides comprehensive metrics for comparing memory backends:
 - Quality: Relevance, precision, recall, ranking
 - Performance: Latency, throughput, scalability
 - Reliability: Data integrity, concurrent safety
@@ -8,7 +8,7 @@ Provides comprehensive metrics fer comparing memory backends:
 Philosophy:
 - Evidence-based: Real benchmark data, not guesswork
 - Comprehensive: All three evaluation dimensions
-- Fair comparison: Same test data fer all backends
+- Fair comparison: Same test data for all backends
 
 Public API:
     QualityEvaluator: Measures retrieval quality

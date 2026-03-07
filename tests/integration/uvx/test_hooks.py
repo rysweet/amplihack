@@ -23,7 +23,7 @@ from .harness import (
     uvx_launch_with_test_project,
 )
 
-# Git reference to test (customize fer yer branch)
+# Git reference to test (customize for yer branch)
 GIT_REF = "feat/issue-1948-plugin-architecture"
 TIMEOUT = 60  # 60 seconds per test
 

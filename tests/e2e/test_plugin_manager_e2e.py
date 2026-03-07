@@ -1,4 +1,4 @@
-"""End-to-end tests fer plugin manager lifecycle.
+"""End-to-end tests for plugin manager lifecycle.
 
 Tests complete plugin workflows from outside-in perspective:
 - Install -> Configure -> Use -> Uninstall
@@ -38,7 +38,7 @@ class TestPluginLifecycle:
         (plugin_dir / "manifest.json").write_text("""{
             "name": "sample-plugin",
             "version": "1.0.0",
-            "description": "Sample plugin fer testin'"
+            "description": "Sample plugin for testin'"
         }""")
 
         # Install plugin

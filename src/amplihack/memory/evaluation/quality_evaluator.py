@@ -1,4 +1,4 @@
-"""Quality evaluator fer memory retrieval.
+"""Quality evaluator for memory retrieval.
 
 Measures how well backends retrieve relevant memories:
 - Relevance: How relevant are retrieved memories?
@@ -9,7 +9,7 @@ Measures how well backends retrieve relevant memories:
 Philosophy:
 - Ground truth: Test set with known relevant memories
 - Comprehensive: Multiple query types and memory types
-- Fair: Same test data fer all backends
+- Fair: Same test data for all backends
 
 Public API:
     QualityEvaluator: Main evaluator class
@@ -21,7 +21,7 @@ from dataclasses import dataclass
 
 from ..coordinator import MemoryCoordinator, RetrievalQuery, StorageRequest
 from ..models import MemoryEntry
-from ..types import MemoryType
+from ..models import MemoryType
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +104,7 @@ class QualityEvaluator:
             )
             retrieved_memories = await self.coordinator.retrieve(query)
 
-            # Calculate metrics fer this query
+            # Calculate metrics for this query
             retrieved_ids = {m.id for m in retrieved_memories}
             relevant_ids = set(test_query.relevant_memory_ids)
 
@@ -180,7 +180,7 @@ class QualityEvaluator:
         dcg = 0.0
         for i, memory in enumerate(retrieved_memories):
             if memory.id in relevant_ids:
-                # Relevance = 1 fer relevant, 0 fer non-relevant
+                # Relevance = 1 for relevant, 0 for non-relevant
                 relevance = 1.0
                 # Discount by position (log2(i+2) because i starts at 0)
                 dcg += relevance / (i + 2).bit_length()
@@ -196,7 +196,7 @@ class QualityEvaluator:
         return 0.0
 
     async def create_test_set(self, num_memories: int = 50) -> list[QueryTestCase]:
-        """Create a standard test set fer evaluation.
+        """Create a standard test set for evaluation.
 
         Creates diverse memories and queries to test retrieval quality.
 

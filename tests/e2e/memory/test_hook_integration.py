@@ -1,4 +1,4 @@
-"""End-to-end tests fer hook integration with memory system.
+"""End-to-end tests for hook integration with memory system.
 
 Tests automatic memory operations triggered by hooks:
 - UserPromptSubmit: Inject relevant memories
@@ -27,7 +27,7 @@ try:
 
     from amplihack.memory.coordinator import MemoryCoordinator
     from amplihack.memory.database import MemoryDatabase
-    from amplihack.memory.types import MemoryType
+    from amplihack.memory.models import MemoryType
 except ImportError:
     pytest.skip("Memory hooks not implemented yet", allow_module_level=True)
 
@@ -98,7 +98,7 @@ class TestUserPromptSubmitHook:
 
     @pytest.mark.asyncio
     async def test_hook_respects_token_budget(self, hook, coordinator, mock_agents, temp_db):
-        """Hook respects token budget fer injection."""
+        """Hook respects token budget for injection."""
         with patch("amplihack.memory.storage_pipeline.Task", mock_agents):
             # Store many large memories
             from amplihack.memory.storage_pipeline import StorageRequest
@@ -128,7 +128,7 @@ class TestUserPromptSubmitHook:
     async def test_hook_no_injection_fer_irrelevant_prompt(
         self, hook, coordinator, mock_agents, temp_db
     ):
-        """Hook does not inject fer irrelevant prompts."""
+        """Hook does not inject for irrelevant prompts."""
         with patch("amplihack.memory.storage_pipeline.Task", mock_agents):
             # Store memories about CI
             from amplihack.memory.storage_pipeline import StorageRequest
@@ -217,7 +217,7 @@ class TestSessionStopHook:
 
     @pytest.mark.asyncio
     async def test_hook_stores_episodic_memories(self, hook, coordinator, mock_agents):
-        """Hook stores episodic memories fer conversations."""
+        """Hook stores episodic memories for conversations."""
         with patch("amplihack.memory.storage_pipeline.Task", mock_agents):
             session_data = {
                 "session_id": "test-123",
@@ -232,7 +232,7 @@ class TestSessionStopHook:
 
             await hook.on_session_stop(session_data)
 
-            # Query fer episodic memories
+            # Query for episodic memories
             from amplihack.memory.retrieval_pipeline import RetrievalQuery
 
             query = RetrievalQuery(
@@ -384,7 +384,7 @@ class TestTodoWriteCompleteHook:
     async def test_hook_creates_prospective_memory_fer_follow_up(
         self, hook, coordinator, mock_agents
     ):
-        """Hook creates prospective memory fer follow-up tasks."""
+        """Hook creates prospective memory for follow-up tasks."""
         with patch("amplihack.memory.storage_pipeline.Task", mock_agents):
             # Task with follow-up
             task_data = {
@@ -412,7 +412,7 @@ class TestTodoWriteCompleteHook:
 
 
 class TestHookIntegrationPerformance:
-    """Test performance requirements fer hook integration."""
+    """Test performance requirements for hook integration."""
 
     @pytest.mark.asyncio
     async def test_user_prompt_hook_low_overhead(self, coordinator, mock_agents, temp_db):

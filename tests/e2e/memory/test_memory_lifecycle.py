@@ -1,4 +1,4 @@
-"""End-to-end tests fer complete memory lifecycle.
+"""End-to-end tests for complete memory lifecycle.
 
 Tests complete flow: Store → Retrieve → Clear
 with real database and mocked agents.
@@ -22,7 +22,7 @@ try:
         StorageRequest,
     )
     from amplihack.memory.database import MemoryDatabase
-    from amplihack.memory.types import MemoryType
+    from amplihack.memory.models import MemoryType
 except ImportError:
     pytest.skip("Memory system not implemented yet", allow_module_level=True)
 
@@ -30,7 +30,7 @@ except ImportError:
 # Module-level fixtures used by all test classes
 @pytest.fixture
 def temp_db(tmp_path):
-    """Create temporary database fer testing."""
+    """Create temporary database for testing."""
     db_path = tmp_path / "test_memory.db"
     db = MemoryDatabase(db_path)
     db.initialize()
@@ -40,10 +40,10 @@ def temp_db(tmp_path):
 
 @pytest.fixture
 def coordinator(tmp_path):
-    """Create memory coordinator with isolated Kùzu backend fer each test."""
-    from amplihack.memory.backends import create_backend
+    """Create memory coordinator with isolated Kùzu backend for each test."""
+    from amplihack.memory.sqlite_backend import create_backend
 
-    # Create isolated Kùzu backend with unique temp path fer each test
+    # Create isolated Kùzu backend with unique temp path for each test
     kuzu_db_path = tmp_path / "test_kuzu.db"
     backend = create_backend(backend_type="kuzu", db_path=kuzu_db_path)
 
@@ -53,7 +53,7 @@ def coordinator(tmp_path):
 
 @pytest.fixture
 def mock_agents():
-    """Mock agent responses fer consistent testing."""
+    """Mock agent responses for consistent testing."""
     mock_invoke = AsyncMock()
     # Default to high-quality reviews
     mock_invoke.return_value = {
@@ -226,15 +226,15 @@ class TestMemoryPersistence:
 
     @pytest.fixture
     def db_path(self, tmp_path):
-        """Database path fer testing persistence."""
+        """Database path for testing persistence."""
         return tmp_path / "persistent_memory.db"
 
     @pytest.mark.asyncio
     async def test_memories_persist_across_sessions(self, db_path, mock_agents):
         """Memories persist when coordinator is recreated."""
-        from amplihack.memory.backends import create_backend
+        from amplihack.memory.sqlite_backend import create_backend
 
-        # Use same session ID fer both coordinators to test persistence
+        # Use same session ID for both coordinators to test persistence
         test_session_id = "persistence-test-session"
 
         # Session 1: Store memory
@@ -250,7 +250,7 @@ class TestMemoryPersistence:
             memory_id = await coordinator1.store(request)
             assert memory_id is not None
 
-        # Close session 1 (not needed fer Kùzu, but good practice)
+        # Close session 1 (not needed for Kùzu, but good practice)
         # backend1 doesn't have close() method currently
 
         # Session 2: Retrieve memory (new coordinator, same DB path, same session ID)

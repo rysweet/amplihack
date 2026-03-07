@@ -82,6 +82,30 @@ except ImportError:
     _logger.debug("hive_graph module not available")
 
 
+# DHT-based Distributed Hive Graph (production)
+try:
+    from .distributed_hive_graph import DistributedHiveGraph
+
+    __all__ += ["DistributedHiveGraph"]
+except ImportError:
+    _logger.debug("distributed_hive_graph module not available")
+
+# DHT routing and shard storage
+try:
+    from .dht import DHTRouter, HashRing, ShardFact, ShardStore
+
+    __all__ += ["DHTRouter", "HashRing", "ShardFact", "ShardStore"]
+except ImportError:
+    _logger.debug("dht module not available")
+
+# Bloom filter for gossip
+try:
+    from .bloom import BloomFilter
+
+    __all__ += ["BloomFilter"]
+except ImportError:
+    _logger.debug("bloom module not available")
+
 # Desired-state HiveController (production)
 try:
     from .controller import (

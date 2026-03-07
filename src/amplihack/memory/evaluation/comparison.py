@@ -5,7 +5,7 @@ Runs full evaluation across all backends and generates reports.
 Philosophy:
 - Comprehensive: All three evaluation dimensions
 - Fair: Same test data for all backends
-- Actionable: Clear recommendations fer use cases
+- Actionable: Clear recommendations for use cases
 
 Public API:
     BackendComparison: Main comparison class
@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from ..backends import create_backend
+from ..sqlite_backend import create_backend
 from ..coordinator import MemoryCoordinator
 from .performance_evaluator import PerformanceEvaluator, PerformanceMetrics
 from .quality_evaluator import QualityEvaluator, QualityMetrics

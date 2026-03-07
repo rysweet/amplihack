@@ -1,4 +1,4 @@
-"""Integration tests fer complete retrieval flow.
+"""Integration tests for complete retrieval flow.
 
 Tests end-to-end retrieval from query through relevance scoring
 to context formatting.
@@ -22,7 +22,7 @@ try:
         RetrievalPipeline,
         RetrievalQuery,
     )
-    from amplihack.memory.types import MemoryEntry, MemoryType
+    from amplihack.memory.models import MemoryEntry, MemoryType
 except ImportError:
     pytest.skip("Memory system not implemented yet", allow_module_level=True)
 
@@ -84,7 +84,7 @@ class TestRetrievalFlowIntegration:
 
     @pytest.mark.asyncio
     async def test_retrieve_relevant_memories_fer_query(self, temp_db):
-        """Retrieve relevant memories fer specific query."""
+        """Retrieve relevant memories for specific query."""
         pipeline = RetrievalPipeline(database=temp_db)
 
         query = RetrievalQuery(
@@ -206,7 +206,7 @@ class TestRetrievalFlowIntegration:
 
     @pytest.mark.asyncio
     async def test_retrieve_empty_fer_no_matches(self, temp_db):
-        """Retrieval returns empty fer no matches."""
+        """Retrieval returns empty for no matches."""
         pipeline = RetrievalPipeline(database=temp_db)
 
         query = RetrievalQuery(
@@ -221,7 +221,7 @@ class TestRetrievalFlowIntegration:
 
     @pytest.mark.asyncio
     async def test_retrieve_formatted_context(self, temp_db):
-        """Retrieval provides formatted context fer injection."""
+        """Retrieval provides formatted context for injection."""
         pipeline = RetrievalPipeline(database=temp_db)
 
         query = RetrievalQuery(
@@ -493,8 +493,8 @@ class TestRetrievalContextFormatting:
         # Count tokens in formatted context
         tokens = TokenCounter.count(formatted)
 
-        # Should stay within budget (allow small overhead fer formatting)
-        assert tokens <= 550  # 10% overhead allowed fer labels/formatting
+        # Should stay within budget (allow small overhead for formatting)
+        assert tokens <= 550  # 10% overhead allowed for labels/formatting
 
 
 class TestRetrievalErrorHandling:

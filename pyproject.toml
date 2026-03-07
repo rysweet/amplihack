@@ -5,7 +5,8 @@ backend-path = ["."]
 
 [project]
 name = "amplihack"
-version = "0.5.114"
+
+version = "0.5.115"
 description = "Amplifier bundle for agentic coding with comprehensive skills, recipes, and workflows"
 requires-python = ">=3.11"
 dependencies = [
@@ -105,6 +106,7 @@ blarify-all = [
 
 [project.scripts]
 amplihack = "amplihack:main"
+amplihack-hive = "amplihack.cli.hive:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

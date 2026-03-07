@@ -1,0 +1,449 @@
+{
+  "mode": "live_security",
+  "summary": {
+    "total_questions": 13,
+    "avg_score": 0.254,
+    "elapsed_s": 107.58,
+    "hive_namespace": "hive-sb-dj2qo2w7vu5zi",
+    "topic": "hive-graph",
+    "timeout_s": 25.0,
+    "table": "hive_facts"
+  },
+  "category_scores": {
+    "security_log_analysis": {
+      "avg_score": 0.214,
+      "count": 7
+    },
+    "incident_tracking": {
+      "avg_score": 0.3,
+      "count": 6
+    }
+  },
+  "questions": [
+    {
+      "question_id": "seclog_01",
+      "category": "security_log_analysis",
+      "question": "How many failed SSH logins came from IP 192.168.1.45?",
+      "expected_answer": "6 failed SSH logins (3 as admin, 3 as root) before a successful login as admin",
+      "actual_answer": "Security log [2024-03-15 14:23:01]: Failed SSH login from 192.168.1.45 (user: admin, severity: medium). [security_logs_000] | Security log [2024-03-15 14:23:05]: Failed SSH login from 192.168.1.45 (user: root, severity: high). [security_logs_001] | Security log [2024-03-15 14:23:08]: Failed SSH login from 192.168.1.45 (user: admin, severity: medium). [security_logs_002] | Security log [2024-03-15 14:23:12]: Failed SSH login from 192.168.1.45 (user: root, severity: high). [security_logs_003] | Security log [2024-03-15 14:23:15]: Failed SSH login from 192.168.1.45 (user: admin, severity: medium). [security_logs_004]",
+      "score": 0.5,
+      "reasoning": "The agent correctly identified 5 failed SSH login attempts from IP 192.168.1.45 and provided detailed log entries. However, the expected answer indicates there were 6 failed logins (3 as admin, 3 as root). The agent's data shows only 5 failed attempts (3 as admin, 2 as root) and does not mention the subsequent successful login. This is a significant gap in the count, missing one failed login attempt and the successful login context.",
+      "result_count": 20,
+      "top_results": [
+        {
+          "_id": {
+            "offset": 0,
+            "table": 0
+          },
+          "_label": "hive_facts",
+          "concept": "security_logs_000",
+          "content": "Security log [2024-03-15 14:23:01]: Failed SSH login from 192.168.1.45 (user: admin, severity: medium).",
+          "confidence": "0.95",
+          "source": "eval-seed",
+          "node_id": "74537069af50"
+        },
+        {
+          "_id": {
+            "offset": 1,
+            "table": 0
+          },
+          "_label": "hive_facts",
+          "concept": "security_logs_001",
+          "content": "Security log [2024-03-15 14:23:05]: Failed SSH login from 192.168.1.45 (user: root, severity: high).",
+          "confidence": "0.95",
+          "source": "eval-seed",
+          "node_id": "7cb8aa1f7843"
+        },
+        {
+          "_id": {
+            "offset": 2,
+            "table": 0
+          },
+          "_label": "hive_facts",
+          "concept": "security_logs_002",
+          "content": "Security log [2024-03-15 14:23:08]: Failed SSH login from 192.168.1.45 (user: admin, severity: medium).",
+          "confidence": "0.95",
+          "source": "eval-seed",
+          "node_id": "a9a5207203e6"
+        }
+      ],
+      "elapsed_s": 11.8
+    },
+    {
+      "question_id": "seclog_02",
+      "category": "security_log_analysis",
+      "question": "What was the brute force attack pattern from 192.168.1.45?",
+      "expected_answer": "6 failed SSH logins alternating between admin and root users within seconds (14:23:01 to 14:23:18), followed by a successful login as admin at 14:23:22, then a privilege escalation attempt at 14:30:00",
+      "actual_answer": "Security log [2024-03-15 14:23:01]: Failed SSH login from 192.168.1.45 (user: admin, severity: medium). [security_logs_000] | Security log [2024-03-15 14:23:05]: Failed SSH login from 192.168.1.45 (user: root, severity: high). [security_logs_001] | Security log [2024-03-15 14:23:08]: Failed SSH login from 192.168.1.45 (user: admin, severity: medium). [security_logs_002] | Security log [2024-03-15 14:23:12]: Failed SSH login from 192.168.1.45 (user: root, severity: high). [security_logs_003] | Security log [2024-03-15 14:23:15]: Failed SSH login from 192.168.1.45 (user: admin, severity: medium). [security_logs_004]",
+      "score": 0.5,
+      "reasoning": "The agent correctly identifies 5 failed SSH login attempts from 192.168.1.45 alternating between admin and root users, with accurate timestamps from 14:23:01 to 14:23:15. However, it's missing the 6th failed login at 14:23:18, the successful login as admin at 14:23:22, and the privilege escalation attempt at 14:30:00. The agent provides relevant content showing the brute force pattern but has significant gaps in the complete attack sequence.",
+      "result_count": 18,
+      "top_results": [
+        {
+          "_id": {
+            "offset": 0,
+            "table": 0
+          },
+          "_label": "hive_facts",
+          "concept": "security_logs_000",
+          "content": "Security log [2024-03-15 14:23:01]: Failed SSH login from 192.168.1.45 (user: admin, severity: medium).",
+          "confidence": "0.95",
+          "source": "eval-seed",
+          "node_id": "74537069af50"
+        },
+        {
+          "_id": {
+            "offset": 1,
+            "table": 0
+          },
+          "_label": "hive_facts",
+          "concept": "security_logs_001",
+          "content": "Security log [2024-03-15 14:23:05]: Failed SSH login from 192.168.1.45 (user: root, severity: high).",
+          "confidence": "0.95",
+          "source": "eval-seed",
+          "node_id": "7cb8aa1f7843"
+        },
+        {
+          "_id": {
+            "offset": 2,
+            "table": 0
+          },
+          "_label": "hive_facts",
+          "concept": "security_logs_002",
+          "content": "Security log [2024-03-15 14:23:08]: Failed SSH login from 192.168.1.45 (user: admin, severity: medium).",
+          "confidence": "0.95",
+          "source": "eval-seed",
+          "node_id": "a9a5207203e6"
+        }
+      ],
+      "elapsed_s": 5.14
+    },
+    {
+      "question_id": "seclog_03",
+      "category": "security_log_analysis",
+      "question": "What ports were scanned by 10.0.0.50?",
+      "expected_answer": "Ports 22, 80, 443, 3306, 5432, 8080, 8443",
+      "actual_answer": "",
+      "score": 0.0,
+      "reasoning": "No results returned by hive",
+      "result_count": 0,
+      "top_results": [],
+      "elapsed_s": 2.53
+    },
+    {
+      "question_id": "seclog_04",
+      "category": "security_log_analysis",
+      "question": "What malware was detected on 10.0.0.5 and what lateral movement technique was used?",
+      "expected_answer": "Cobalt Strike beacon was detected in /tmp/.hidden/payload.exe. Lateral movement via PsExec targeting 10.0.0.6 and 10.0.0.7",
+      "actual_answer": "Security log [2024-03-15 15:00:00]: Port scan detected from 10.0.0.50 (user: N/A, severity: high). ports scanned: 22,80,443,3306,5432,8080,8443. [security_logs_008] | Security log [2024-03-15 15:05:00]: SQL injection attempt from 10.0.0.50 (user: N/A, severity: critical). target: /api/v1/users?id=1 OR 1=1. [security_logs_009] | Security log [2024-03-15 15:10:00]: WAF blocked request from 10.0.0.50 (user: N/A, severity: medium). rule: OWASP-CRS-942100. [security_logs_010] | Security log [2024-03-16 09:05:00]: RDP brute force detected from 192.168.2.10 (user: N/A, severity: critical). attempts: 150. [security_logs_018] | Security log [2024-03-16 10:00:00]: Malware signature detected from 10.0.0.5 (user: N/A, severity: critical). malware: Cobalt Strike beacon. file: /tmp/.hidden/payload.exe. [security_logs_019]",
+      "score": 0.5,
+      "reasoning": "The agent correctly identified the malware (Cobalt Strike beacon) and file location (/tmp/.hidden/payload.exe) on 10.0.0.5, but completely failed to answer the second part of the question about the lateral movement technique. The expected answer indicates PsExec was used to target 10.0.0.6 and 10.0.0.7, but the agent provided only raw security logs without extracting or mentioning this critical information. This is a significant gap in a two-part L1 recall question.",
+      "result_count": 20,
+      "top_results": [
+        {
+          "_id": {
+            "offset": 8,
+            "table": 0
+          },
+          "_label": "hive_facts",
+          "concept": "security_logs_008",
+          "content": "Security log [2024-03-15 15:00:00]: Port scan detected from 10.0.0.50 (user: N/A, severity: high). ports scanned: 22,80,443,3306,5432,8080,8443.",
+          "confidence": "0.95",
+          "source": "eval-seed",
+          "node_id": "8cf8f6737ff5"
+        },
+        {
+          "_id": {
+            "offset": 9,
+            "table": 0
+          },
+          "_label": "hive_facts",
+          "concept": "security_logs_009",
+          "content": "Security log [2024-03-15 15:05:00]: SQL injection attempt from 10.0.0.50 (user: N/A, severity: critical). target: /api/v1/users?id=1 OR 1=1.",
+          "confidence": "0.95",
+          "source": "eval-seed",
+          "node_id": "a83223fcd4fb"
+        },
+        {
+          "_id": {
+            "offset": 10,
+            "table": 0
+          },
+          "_label": "hive_facts",
+          "concept": "security_logs_010",
+          "content": "Security log [2024-03-15 15:10:00]: WAF blocked request from 10.0.0.50 (user: N/A, severity: medium). rule: OWASP-CRS-942100.",
+          "confidence": "0.95",
+          "source": "eval-seed",
+          "node_id": "f48b2fa5c0e7"
+        }
+      ],
+      "elapsed_s": 14.52
+    },
+    {
+      "question_id": "seclog_06",
+      "category": "security_log_analysis",
+      "question": "What data exfiltration indicators were detected?",
+      "expected_answer": "2.3GB data transfer from 172.16.0.100 to external IP 185.220.101.45, anomalous DNS query to data.exfil.evil.com, connection to known C2 server at 185.220.101.45",
+      "actual_answer": "",
+      "score": 0.0,
+      "reasoning": "No results returned by hive",
+      "result_count": 0,
+      "top_results": [],
+      "elapsed_s": 1.27
+    },
+    {
+      "question_id": "seclog_07",
+      "category": "security_log_analysis",
+      "question": "What supply chain attack was detected and what CVE was involved?",
+      "expected_answer": "Malicious dependency in event-stream@5.0.0 package, and CVE-2024-3094 (xz-utils/sshd backdoor)",
+      "actual_answer": "Security log [2024-03-16 14:00:00]: Database dump detected from 10.0.0.10 (user: db_readonly, severity: critical). tables: users,credentials,api_keys. [security_logs_024] | Security log [2024-03-17 00:00:00]: Crypto mining process detected from 10.0.0.11 (user: N/A, severity: high). process: xmrig. cpu usage: 95%. [security_logs_025] | Security log [2024-03-17 09:00:00]: SIEM correlation alert from 10.0.0.13 (user: N/A, severity: critical). rule: APT-CHAIN-001. related events: brute_force,lateral_movement,data_exfil. [security_logs_028] | Security log [2024-03-17 10:00:00]: Phishing email detected from 10.0.5.1 (user: hr_inbox, severity: high). subject: Urgent: Update your credentials. sender: support@1egit-company.com. [security_logs_029] | Incident Report INC-2024-001: Ransomware attempt on file server. Status: contained. Severity: critical. Affected systems: FS-01, FS-02, BACKUP-01. IOCs: 185.220.101.45, evil.com, payload.exe, Cobalt Strike. CVEs: CVE-2024-21626. Timeline: 2024-03-17 19:00: Ransomware behavior detected on FS-01; 2024-03-17 19:15: Incident declared, SOC notified; 2024-03-17 19:30: FS-01 isolated from network. [incidents_030]",
+      "score": 0.0,
+      "reasoning": "The agent's answer does not address the question. The expected answer requires identifying a supply chain attack involving the event-stream@5.0.0 package and CVE-2024-3094 (xz-utils/sshd backdoor). Instead, the agent provided unrelated security logs about database dumps, crypto mining, phishing emails, and a ransomware incident with CVE-2024-21626. This is a different CVE and incident type entirely, with no mention of supply chain attacks, event-stream, or the xz-utils backdoor.",
+      "result_count": 19,
+      "top_results": [
+        {
+          "_id": {
+            "offset": 11,
+            "table": 0
+          },
+          "_label": "hive_facts",
+          "concept": "security_logs_024",
+          "content": "Security log [2024-03-16 14:00:00]: Database dump detected from 10.0.0.10 (user: db_readonly, severity: critical). tables: users,credentials,api_keys.",
+          "confidence": "0.95",
+          "source": "eval-seed",
+          "node_id": "484078dae27b"
+        },
+        {
+          "_id": {
+            "offset": 12,
+            "table": 0
+          },
+          "_label": "hive_facts",
+          "concept": "security_logs_025",
+          "content": "Security log [2024-03-17 00:00:00]: Crypto mining process detected from 10.0.0.11 (user: N/A, severity: high). process: xmrig. cpu usage: 95%.",
+          "confidence": "0.95",
+          "source": "eval-seed",
+          "node_id": "abdf7b555ffd"
+        },
+        {
+          "_id": {
+            "offset": 15,
+            "table": 0
+          },
+          "_label": "hive_facts",
+          "concept": "security_logs_028",
+          "content": "Security log [2024-03-17 09:00:00]: SIEM correlation alert from 10.0.0.13 (user: N/A, severity: critical). rule: APT-CHAIN-001. related events: brute_force,lateral_movement,data_exfil.",
+          "confidence": "0.95",
+          "source": "eval-seed",
+          "node_id": "1b83ea993a15"
+        }
+      ],
+      "elapsed_s": 12.13
+    },
+    {
+      "question_id": "seclog_08",
+      "category": "security_log_analysis",
+      "question": "What phishing attempt was detected and who was targeted?",
+      "expected_answer": "Phishing email to hr_inbox with subject 'Urgent: Update your credentials' from support@1egit-company.com (note the '1' instead of 'l')",
+      "actual_answer": "",
+      "score": 0.0,
+      "reasoning": "No results returned by hive",
+      "result_count": 0,
+      "top_results": [],
+      "elapsed_s": 1.72
+    },
+    {
+      "question_id": "incident_01",
+      "category": "incident_tracking",
+      "question": "What is the current status of INC-2024-001?",
+      "expected_answer": "Closed. The ransomware attempt was contained, files restored from backup, attacker C2 blocked, and post-incident review completed with MFA enforced for all admin accounts.",
+      "actual_answer": "Agent identity: agent-79. Role: You are a distributed hive mind agent. You are agent 79. | [LEARN_CONTENT turn=29] Security log [2024-03-17 10:00:00]: Phishing email detected from 10.0.5.1 (user: hr_inbox, severity: high). subject: Urgent: Update your credentials. sender: support@1egit-company.com. | [LEARN_CONTENT turn=30] Incident Report INC-2024-001: Ransomware attempt on file server. Status: contained. Severity: critical. Affected systems: FS-01, FS-02, BACKUP-01. IOCs: 185.220.101.45, evil.com, payload.exe, Cobalt Strike. CVEs: CVE-2024-21626. Timeline: 2024-03-17 19:00: Ransomware behavior detected on FS-01; 2024-03-17 19:15: Incident declared, SOC notified; 2024-03-17 19:30: FS-01 isolated from network. | [LEARN_CONTENT turn=31] Incident Report INC-2024-002: Data exfiltration via compromised service account. Status: active. Severity: critical. Affected systems: DB-PROD-01, API-GW-01. IOCs: 172.16.0.100, data.exfil.evil.com, svc_backup. CVEs: None identified. Timeline: 2024-03-16 02:00: Large data transfer detected from DB-PROD-01; 2024-03-16 02:20: C2 connection confirmed to 185.220.101.45; 2024-03-16 03:00: svc_backup account disabled. | [LEARN_CONTENT turn=32] Incident Report INC-2024-003: APT campaign targeting development infrastructure. Status: active. Severity: critical. Affected systems: CI-SERVER-01, GIT-01, DEV-WORKSTATION-12. IOCs: event-stream@5.0.0, tunnel.attacker.net, xmrig. CVEs: CVE-2024-3094. Timeline: 2024-03-17 16:00: Supply chain compromise detected in event-stream package; 2024-03-17 16:30: CI-SERVER-01 found running crypto miner; 2024-03-17 17:00: DNS tunneling from GIT-01 confirmed.",
+      "score": 0.5,
+      "reasoning": "The agent correctly identifies INC-2024-001 as a ransomware attempt with severity critical and affected systems, and states status as 'contained'. However, the expected answer indicates the status should be 'Closed' with additional details about files restored from backup, attacker C2 blocked, and post-incident review completed with MFA enforcement. The agent only provided partial information from an earlier stage of the incident (turn 30) showing 'contained' status, missing the closure details and remediation actions. This represents significant gaps in the complete status update.",
+      "result_count": 10,
+      "top_results": [
+        {
+          "content": "Agent identity: agent-79. Role: You are a distributed hive mind agent. You are agent 79."
+        },
+        {
+          "content": "[LEARN_CONTENT turn=29] Security log [2024-03-17 10:00:00]: Phishing email detected from 10.0.5.1 (user: hr_inbox, severity: high). subject: Urgent: Update your credentials. sender: support@1egit-company.com."
+        },
+        {
+          "content": "[LEARN_CONTENT turn=30] Incident Report INC-2024-001: Ransomware attempt on file server. Status: contained. Severity: critical. Affected systems: FS-01, FS-02, BACKUP-01. IOCs: 185.220.101.45, evil.com, payload.exe, Cobalt Strike. CVEs: CVE-2024-21626. Timeline: 2024-03-17 19:00: Ransomware behavior detected on FS-01; 2024-03-17 19:15: Incident declared, SOC notified; 2024-03-17 19:30: FS-01 isolated from network."
+        }
+      ],
+      "elapsed_s": 22.93
+    },
+    {
+      "question_id": "incident_02",
+      "category": "incident_tracking",
+      "question": "Which incident involved data exfiltration and how many customers were affected?",
+      "expected_answer": "INC-2024-002: Data exfiltration via compromised svc_backup service account. 2.3GB exfiltrated, breach notification sent to 15,000 affected customers.",
+      "actual_answer": "Security log [2024-03-16 02:00:00]: Large data transfer from 172.16.0.100 (user: svc_backup, severity: high). bytes transferred: 2.3GB. destination: external_ip:185.220.101.45. [security_logs_011] | Security log [2024-03-16 02:15:00]: Anomalous DNS query from 172.16.0.100 (user: svc_backup, severity: high). query: data.exfil.evil.com. [security_logs_012] | Security log [2024-03-16 14:00:00]: Database dump detected from 10.0.0.10 (user: db_readonly, severity: critical). tables: users,credentials,api_keys. [security_logs_024] | Security log [2024-03-17 09:00:00]: SIEM correlation alert from 10.0.0.13 (user: N/A, severity: critical). rule: APT-CHAIN-001. related events: brute_force,lateral_movement,data_exfil. [security_logs_028] | Incident Report INC-2024-001: Ransomware attempt on file server. Status: contained. Severity: critical. Affected systems: FS-01, FS-02, BACKUP-01. IOCs: 185.220.101.45, evil.com, payload.exe, Cobalt Strike. CVEs: CVE-2024-21626. Timeline: 2024-03-17 19:00: Ransomware behavior detected on FS-01; 2024-03-17 19:15: Incident declared, SOC notified; 2024-03-17 19:30: FS-01 isolated from network. [incidents_030]",
+      "score": 0.3,
+      "reasoning": "The agent provided security logs showing data exfiltration activities (2.3GB transfer from svc_backup account) and mentions incident INC-2024-001, but this incident is about ransomware, not data exfiltration. The agent failed to identify INC-2024-002 as the correct incident and completely missed the key information about 15,000 affected customers requiring breach notification. While some relevant technical details about exfiltration are present, the agent did not answer the core question about which incident number involved data exfiltration and how many customers were affected.",
+      "result_count": 33,
+      "top_results": [
+        {
+          "_id": {
+            "offset": 11,
+            "table": 0
+          },
+          "_label": "hive_facts",
+          "concept": "security_logs_011",
+          "content": "Security log [2024-03-16 02:00:00]: Large data transfer from 172.16.0.100 (user: svc_backup, severity: high). bytes transferred: 2.3GB. destination: external_ip:185.220.101.45.",
+          "confidence": "0.95",
+          "source": "eval-seed",
+          "node_id": "ff04b566e82e"
+        },
+        {
+          "_id": {
+            "offset": 12,
+            "table": 0
+          },
+          "_label": "hive_facts",
+          "concept": "security_logs_012",
+          "content": "Security log [2024-03-16 02:15:00]: Anomalous DNS query from 172.16.0.100 (user: svc_backup, severity: high). query: data.exfil.evil.com.",
+          "confidence": "0.95",
+          "source": "eval-seed",
+          "node_id": "1721e9ad7037"
+        },
+        {
+          "_id": {
+            "offset": 24,
+            "table": 0
+          },
+          "_label": "hive_facts",
+          "concept": "security_logs_024",
+          "content": "Security log [2024-03-16 14:00:00]: Database dump detected from 10.0.0.10 (user: db_readonly, severity: critical). tables: users,credentials,api_keys.",
+          "confidence": "0.95",
+          "source": "eval-seed",
+          "node_id": "484078dae27b"
+        }
+      ],
+      "elapsed_s": 12.19
+    },
+    {
+      "question_id": "incident_03",
+      "category": "incident_tracking",
+      "question": "What APT group was attributed to the development infrastructure attack?",
+      "expected_answer": "INC-2024-003: TTPs matched APT29 (likely state-sponsored). The attack involved supply chain compromise (event-stream), crypto mining on CI server, DNS tunneling, and xz-utils backdoor (CVE-2024-3094).",
+      "actual_answer": "",
+      "score": 0.0,
+      "reasoning": "No results returned by hive",
+      "result_count": 0,
+      "top_results": [],
+      "elapsed_s": 2.02
+    },
+    {
+      "question_id": "incident_04",
+      "category": "incident_tracking",
+      "question": "How was the AWS key exposure in INC-2024-004 resolved?",
+      "expected_answer": "Key immediately revoked, CloudTrail audit showed key was used 3 times before revocation but no customer data was accessed (only listed buckets). Git-secrets hook deployed to all repos with mandatory pre-commit scanning.",
+      "actual_answer": "Security log [2024-03-16 14:00:00]: Database dump detected from 10.0.0.10 (user: db_readonly, severity: critical). tables: users,credentials,api_keys. [security_logs_024] | Incident Report INC-2024-004: Cloud credential exposure in public repository. Status: active. Severity: high. Affected systems: AWS-PROD-ACCOUNT, S3-CUSTOMER-DATA. IOCs: AKIA*, prod-customer-data. CVEs: None identified. Timeline: 2024-03-17 12:00: AWS key found in public GitHub repository; 2024-03-17 12:05: Key immediately revoked via AWS console; 2024-03-17 12:15: CloudTrail audit initiated for key usage. [incidents_033] | Incident update INC-2024-004: Status changed from active to investigating. Detail: Key was used 3 times from unknown IP before revocation. [incidents_038] | Incident update INC-2024-004: Status changed from investigating to contained. Detail: S3 access logs show no customer data accessed; key only listed buckets. [incidents_045] | Incident update INC-2024-004: Status changed from contained to closed. Detail: Git-secrets hook deployed to all repos; mandatory pre-commit scanning. [incidents_050]",
+      "score": 1.0,
+      "reasoning": "The agent's answer contains all key resolution steps from the expected answer: immediate key revocation, CloudTrail audit showing 3 uses before revocation, confirmation that no customer data was accessed (only bucket listing), and deployment of git-secrets hooks with mandatory pre-commit scanning. The agent includes additional contextual information (timestamps, status changes, IPs) from the incident logs, but the core resolution details are complete and accurate.",
+      "result_count": 34,
+      "top_results": [
+        {
+          "_id": {
+            "offset": 24,
+            "table": 0
+          },
+          "_label": "hive_facts",
+          "concept": "security_logs_024",
+          "content": "Security log [2024-03-16 14:00:00]: Database dump detected from 10.0.0.10 (user: db_readonly, severity: critical). tables: users,credentials,api_keys.",
+          "confidence": "0.95",
+          "source": "eval-seed",
+          "node_id": "04c6eb74fc49"
+        },
+        {
+          "_id": {
+            "offset": 33,
+            "table": 0
+          },
+          "_label": "hive_facts",
+          "concept": "incidents_033",
+          "content": "Incident Report INC-2024-004: Cloud credential exposure in public repository. Status: active. Severity: high. Affected systems: AWS-PROD-ACCOUNT, S3-CUSTOMER-DATA. IOCs: AKIA*, prod-customer-data. CVEs: None identified. Timeline: 2024-03-17 12:00: AWS key found in public GitHub repository; 2024-03-17 12:05: Key immediately revoked via AWS console; 2024-03-17 12:15: CloudTrail audit initiated for key usage.",
+          "confidence": "0.95",
+          "source": "eval-seed",
+          "node_id": "69dc3b28e153"
+        },
+        {
+          "_id": {
+            "offset": 38,
+            "table": 0
+          },
+          "_label": "hive_facts",
+          "concept": "incidents_038",
+          "content": "Incident update INC-2024-004: Status changed from active to investigating. Detail: Key was used 3 times from unknown IP before revocation.",
+          "confidence": "0.95",
+          "source": "eval-seed",
+          "node_id": "700bcb2981a6"
+        }
+      ],
+      "elapsed_s": 10.78
+    },
+    {
+      "question_id": "incident_05",
+      "category": "incident_tracking",
+      "question": "Which incidents have CVEs associated with them?",
+      "expected_answer": "INC-2024-001 has CVE-2024-21626, and INC-2024-003 has CVE-2024-3094 (xz-utils backdoor)",
+      "actual_answer": "",
+      "score": 0.0,
+      "reasoning": "No results returned by hive",
+      "result_count": 0,
+      "top_results": [],
+      "elapsed_s": 4.06
+    },
+    {
+      "question_id": "incident_06",
+      "category": "incident_tracking",
+      "question": "What was the timeline of the insider threat incident?",
+      "expected_answer": "INC-2024-006: DLP alert at 14:00 for bulk download of 500+ sensitive documents, account suspended at 14:30, HR/Legal notified and device confiscated at 15:00. User had resigned 2 weeks prior and was downloading competitor-sensitive data. Legal action initiated.",
+      "actual_answer": "Incident Report INC-2024-001: Ransomware attempt on file server. Status: contained. Severity: critical. Affected systems: FS-01, FS-02, BACKUP-01. IOCs: 185.220.101.45, evil.com, payload.exe, Cobalt Strike. CVEs: CVE-2024-21626. Timeline: 2024-03-17 19:00: Ransomware behavior detected on FS-01; 2024-03-17 19:15: Incident declared, SOC notified; 2024-03-17 19:30: FS-01 isolated from network. [incidents_030] | Incident Report INC-2024-002: Data exfiltration via compromised service account. Status: active. Severity: critical. Affected systems: DB-PROD-01, API-GW-01. IOCs: 172.16.0.100, data.exfil.evil.com, svc_backup. CVEs: None identified. Timeline: 2024-03-16 02:00: Large data transfer detected from DB-PROD-01; 2024-03-16 02:20: C2 connection confirmed to 185.220.101.45; 2024-03-16 03:00: svc_backup account disabled. [incidents_031] | Incident Report INC-2024-003: APT campaign targeting development infrastructure. Status: active. Severity: critical. Affected systems: CI-SERVER-01, GIT-01, DEV-WORKSTATION-12. IOCs: event-stream@5.0.0, tunnel.attacker.net, xmrig. CVEs: CVE-2024-3094. Timeline: 2024-03-17 16:00: Supply chain compromise detected in event-stream package; 2024-03-17 16:30: CI-SERVER-01 found running crypto miner; 2024-03-17 17:00: DNS tunneling from GIT-01 confirmed. [incidents_032] | Incident Report INC-2024-004: Cloud credential exposure in public repository. Status: active. Severity: high. Affected systems: AWS-PROD-ACCOUNT, S3-CUSTOMER-DATA. IOCs: AKIA*, prod-customer-data. CVEs: None identified. Timeline: 2024-03-17 12:00: AWS key found in public GitHub repository; 2024-03-17 12:05: Key immediately revoked via AWS console; 2024-03-17 12:15: CloudTrail audit initiated for key usage. [incidents_033] | Incident Report INC-2024-005: Brute force attack on RDP services. Status: contained. Severity: high. Affected systems: JUMP-01, TERM-SERVER-01. IOCs: 192.168.2.10, 0.0.0.0/0:3389. CVEs: None identified. Timeline: 2024-03-16 09:00: Firewall rule change detected: RDP opened to internet; 2024-03-16 09:05: 150 RDP brute force attempts detected; 2024-03-16 09:10: Firewall rule reverted; RDP restricted to VPN only. [incidents_034]",
+      "score": 0.0,
+      "reasoning": "The agent provided information about incidents INC-2024-001 through INC-2024-005, but the question specifically asked about the insider threat incident, which according to the expected answer is INC-2024-006. The agent's answer contains no information about INC-2024-006, the DLP alert, bulk document download, account suspension, HR/Legal notification, or any details about a resigning employee downloading competitor-sensitive data. This is completely unrelated information.",
+      "result_count": 51,
+      "top_results": [
+        {
+          "_id": {
+            "offset": 30,
+            "table": 0
+          },
+          "_label": "hive_facts",
+          "concept": "incidents_030",
+          "content": "Incident Report INC-2024-001: Ransomware attempt on file server. Status: contained. Severity: critical. Affected systems: FS-01, FS-02, BACKUP-01. IOCs: 185.220.101.45, evil.com, payload.exe, Cobalt Strike. CVEs: CVE-2024-21626. Timeline: 2024-03-17 19:00: Ransomware behavior detected on FS-01; 2024-03-17 19:15: Incident declared, SOC notified; 2024-03-17 19:30: FS-01 isolated from network.",
+          "confidence": "0.95",
+          "source": "eval-seed",
+          "node_id": "ceaa2563397e"
+        },
+        {
+          "_id": {
+            "offset": 31,
+            "table": 0
+          },
+          "_label": "hive_facts",
+          "concept": "incidents_031",
+          "content": "Incident Report INC-2024-002: Data exfiltration via compromised service account. Status: active. Severity: critical. Affected systems: DB-PROD-01, API-GW-01. IOCs: 172.16.0.100, data.exfil.evil.com, svc_backup. CVEs: None identified. Timeline: 2024-03-16 02:00: Large data transfer detected from DB-PROD-01; 2024-03-16 02:20: C2 connection confirmed to 185.220.101.45; 2024-03-16 03:00: svc_backup account disabled.",
+          "confidence": "0.95",
+          "source": "eval-seed",
+          "node_id": "f801ac31f1cd"
+        },
+        {
+          "_id": {
+            "offset": 32,
+            "table": 0
+          },
+          "_label": "hive_facts",
+          "concept": "incidents_032",
+          "content": "Incident Report INC-2024-003: APT campaign targeting development infrastructure. Status: active. Severity: critical. Affected systems: CI-SERVER-01, GIT-01, DEV-WORKSTATION-12. IOCs: event-stream@5.0.0, tunnel.attacker.net, xmrig. CVEs: CVE-2024-3094. Timeline: 2024-03-17 16:00: Supply chain compromise detected in event-stream package; 2024-03-17 16:30: CI-SERVER-01 found running crypto miner; 2024-03-17 17:00: DNS tunneling from GIT-01 confirmed.",
+          "confidence": "0.95",
+          "source": "eval-seed",
+          "node_id": "043bbe9f8253"
+        }
+      ],
+      "elapsed_s": 6.49
+    }
+  ]
+}

@@ -15,7 +15,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from amplihack.memory.coordinator import MemoryCoordinator, RetrievalQuery, StorageRequest
-from amplihack.memory.types import MemoryType
+from amplihack.memory.models import MemoryType
 
 
 async def demo_code_context_injection():
@@ -28,7 +28,7 @@ async def demo_code_context_injection():
     # Create coordinator with Kuzu backend
     print("1. Initializing memory coordinator with Kuzu backend...")
     try:
-        from amplihack.memory.backends import create_backend
+        from amplihack.memory.sqlite_backend import create_backend
 
         backend = create_backend("kuzu", db_path="/tmp/demo_code_context.db")
         coordinator = MemoryCoordinator(backend=backend)
@@ -54,7 +54,7 @@ async def demo_code_context_injection():
             content="Learned that Kuzu uses Cypher-like query syntax for graph traversal",
             memory_type=MemoryType.SEMANTIC,
             metadata={
-                "file": "src/amplihack/memory/backends/kuzu_backend.py",
+                "file": "src/amplihack/memory/kuzu_store.py",
                 "topic": "graph queries",
             },
         ),
@@ -62,7 +62,7 @@ async def demo_code_context_injection():
             content="Procedure: Always validate input parameters before executing Kuzu queries",
             memory_type=MemoryType.PROCEDURAL,
             metadata={
-                "file": "src/amplihack/memory/backends/kuzu_backend.py",
+                "file": "src/amplihack/memory/kuzu_store.py",
                 "category": "best_practices",
             },
         ),
