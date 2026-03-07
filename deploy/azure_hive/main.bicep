@@ -58,7 +58,7 @@ var suffix = uniqueString(resourceGroup().id)
 var acrNameResolved = empty(acrName) ? 'acr${suffix}' : acrName
 var logAnalyticsName = 'hive-logs-${suffix}'
 var envName = 'hive-env-${hiveName}'
-var sbNamespaceName = 'hive-sb-${suffix}'
+var sbNamespaceName = 'hive-sb-prem-${suffix}'
 var sbTopicName = 'hive-graph'
 var appCount = (agentCount + agentsPerApp - 1) / agentsPerApp
 
@@ -98,6 +98,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
   properties: {
     minimumTlsVersion: 'TLS1_2'
     supportsHttpsTrafficOnly: true
+    allowBlobPublicAccess: false
   }
 }
 
