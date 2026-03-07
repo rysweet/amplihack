@@ -40,14 +40,14 @@ except ImportError:
 
 # --- Launcher detection -------------------------------------------------------
 
-_detector_cache: object | None = None
+_detector_cache: str | None = None
 
 
 def _detect_launcher(project_root: Path) -> str:
     """Detect launcher type, cached per process."""
     global _detector_cache
     if _detector_cache is not None:
-        return _detector_cache  # type: ignore[return-value]
+        return _detector_cache
     try:
         sys.path.insert(0, str(Path(__file__).parents[3] / "src" / "amplihack"))
         from amplihack.context.adaptive.detector import LauncherDetector
