@@ -18,7 +18,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -361,21 +361,14 @@ class TestBug3FailureReasonExtraction(unittest.TestCase):
         shutil.rmtree(self.temp_dir)
 
     @patch("claude_power_steering.CLAUDE_SDK_AVAILABLE", True)
-    @patch("claude_power_steering.query")
+    @patch("claude_power_steering.query_llm", new_callable=AsyncMock)
     def test_analyze_consideration_returns_tuple(self, mock_query):
         """Test that analyze_consideration returns Tuple[bool, Optional[str]]."""
         # Import here to get patched version
         from claude_power_steering import analyze_consideration
 
         # Mock SDK response with NOT SATISFIED
-        async def mock_response(*args, **kwargs):
-            class MockMessage:
-                def __init__(self, text):
-                    self.text = text
-
-            yield MockMessage("NOT SATISFIED: Missing tests")
-
-        mock_query.return_value = mock_response()
+        mock_query.return_value = "NOT SATISFIED: Missing tests"
 
         consideration = {
             "id": "test_check",
@@ -398,18 +391,12 @@ class TestBug3FailureReasonExtraction(unittest.TestCase):
         self.assertIsInstance(reason, (str, type(None)), "Second element should be str or None")
 
     @patch("claude_power_steering.CLAUDE_SDK_AVAILABLE", True)
-    @patch("claude_power_steering.query")
+    @patch("claude_power_steering.query_llm", new_callable=AsyncMock)
     def test_reason_extracted_when_check_fails(self, mock_query):
         """Test that reason is extracted when check fails."""
         from claude_power_steering import analyze_consideration
 
-        async def mock_response(*args, **kwargs):
-            class MockMessage:
-                text = "NOT SATISFIED: TodoWrite shows 3 incomplete tasks"
-
-            yield MockMessage()
-
-        mock_query.return_value = mock_response()
+        mock_query.return_value = "NOT SATISFIED: TodoWrite shows 3 incomplete tasks"
 
         consideration = {
             "id": "todos_complete",
@@ -429,20 +416,13 @@ class TestBug3FailureReasonExtraction(unittest.TestCase):
         self.assertIn("incomplete", reason.lower(), "Reason should mention incomplete tasks")
 
     @patch("claude_power_steering.CLAUDE_SDK_AVAILABLE", True)
-    @patch("claude_power_steering.query")
+    @patch("claude_power_steering.query_llm", new_callable=AsyncMock)
     def test_reason_truncated_to_200_chars(self, mock_query):
         """Test that reason is truncated to 200 characters."""
         from claude_power_steering import analyze_consideration
 
         long_reason = "NOT SATISFIED: " + ("A" * 300)  # 313 chars total
-
-        async def mock_response(*args, **kwargs):
-            class MockMessage:
-                text = long_reason
-
-            yield MockMessage()
-
-        mock_query.return_value = mock_response()
+        mock_query.return_value = long_reason
 
         consideration = {
             "id": "test_check",
@@ -461,18 +441,12 @@ class TestBug3FailureReasonExtraction(unittest.TestCase):
         self.assertLessEqual(len(reason), 200, "Reason should be truncated to 200 chars")
 
     @patch("claude_power_steering.CLAUDE_SDK_AVAILABLE", True)
-    @patch("claude_power_steering.query")
+    @patch("claude_power_steering.query_llm", new_callable=AsyncMock)
     def test_reason_none_when_check_passes(self, mock_query):
         """Test that reason is None when check passes."""
         from claude_power_steering import analyze_consideration
 
-        async def mock_response(*args, **kwargs):
-            class MockMessage:
-                text = "SATISFIED: All tests passed successfully"
-
-            yield MockMessage()
-
-        mock_query.return_value = mock_response()
+        mock_query.return_value = "SATISFIED: All tests passed successfully"
 
         consideration = {
             "id": "local_testing",
@@ -520,19 +494,12 @@ class TestBug4FinalGuidanceGeneration(unittest.TestCase):
             self.fail("generate_final_guidance function should exist")
 
     @patch("claude_power_steering.CLAUDE_SDK_AVAILABLE", True)
-    @patch("claude_power_steering.query")
+    @patch("claude_power_steering.query_llm", new_callable=AsyncMock)
     def test_generate_final_guidance_calls_sdk(self, mock_query):
         """Test that generate_final_guidance calls SDK with failed checks and reasons."""
         from claude_power_steering import generate_final_guidance
 
-        # Mock SDK response
-        async def mock_response(*args, **kwargs):
-            class MockMessage:
-                text = "Complete the remaining TODOs and run tests locally."
-
-            yield MockMessage()
-
-        mock_query.return_value = mock_response()
+        mock_query.return_value = "Complete the remaining TODOs and run tests locally."
 
         failed_checks = [
             ("todos_complete", "3 tasks remain incomplete"),
@@ -551,18 +518,12 @@ class TestBug4FinalGuidanceGeneration(unittest.TestCase):
         self.assertGreater(len(guidance), 0, "Guidance should not be empty")
 
     @patch("claude_power_steering.CLAUDE_SDK_AVAILABLE", True)
-    @patch("claude_power_steering.query")
+    @patch("claude_power_steering.query_llm", new_callable=AsyncMock)
     def test_generate_final_guidance_includes_failure_context(self, mock_query):
         """Test that generate_final_guidance includes actual failure context in prompt."""
         from claude_power_steering import generate_final_guidance
 
-        async def mock_response(*args, **kwargs):
-            class MockMessage:
-                text = "Fix the failing checks"
-
-            yield MockMessage()
-
-        mock_query.return_value = mock_response()
+        mock_query.return_value = "Fix the failing checks"
 
         failed_checks = [
             ("ci_status", "CI checks failing on test_module.py"),
@@ -574,7 +535,7 @@ class TestBug4FinalGuidanceGeneration(unittest.TestCase):
 
         # Verify the prompt passed to SDK includes the failure info
         call_args = mock_query.call_args
-        prompt = call_args[1]["prompt"]  # Get keyword argument 'prompt'
+        prompt = call_args[0][0]  # First positional arg to query_llm(prompt, project_root)
 
         self.assertIn("ci_status", prompt, "Prompt should include check ID")
         self.assertIn("failing", prompt.lower(), "Prompt should include failure reason")
@@ -604,18 +565,12 @@ class TestBug4FinalGuidanceGeneration(unittest.TestCase):
         self.assertIn("local_testing", guidance, "Should mention failed check")
 
     @patch("claude_power_steering.CLAUDE_SDK_AVAILABLE", True)
-    @patch("claude_power_steering.query")
+    @patch("claude_power_steering.query_llm", new_callable=AsyncMock)
     def test_generate_final_guidance_is_specific_not_generic(self, mock_query):
         """Test that guidance is specific to actual failures, not generic advice."""
         from claude_power_steering import generate_final_guidance
 
-        async def mock_response(*args, **kwargs):
-            class MockMessage:
-                text = "You need to complete the 3 incomplete TODOs and run pytest locally."
-
-            yield MockMessage()
-
-        mock_query.return_value = mock_response()
+        mock_query.return_value = "You need to complete the 3 incomplete TODOs and run pytest locally."
 
         failed_checks = [
             ("todos_complete", "3 incomplete tasks"),
@@ -633,16 +588,13 @@ class TestBug4FinalGuidanceGeneration(unittest.TestCase):
         self.assertIn("pytest", guidance.lower(), "Should mention specific tool from reason")
 
     @patch("claude_power_steering.CLAUDE_SDK_AVAILABLE", True)
-    @patch("claude_power_steering.query")
+    @patch("claude_power_steering.query_llm", new_callable=AsyncMock)
     def test_generate_final_guidance_sdk_failure_uses_template(self, mock_query):
         """Test that SDK failure falls back to template guidance."""
         from claude_power_steering import generate_final_guidance
 
         # Make SDK raise exception
-        async def failing_response(*args, **kwargs):
-            raise RuntimeError("SDK timeout")
-
-        mock_query.side_effect = failing_response
+        mock_query.side_effect = RuntimeError("SDK timeout")
 
         failed_checks = [
             ("ci_status", "CI failing"),
