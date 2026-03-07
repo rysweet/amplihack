@@ -1,0 +1,546 @@
+name: "oxidizer-workflow"
+description: |
+  Automated Python-to-Rust migration workflow. Treats the Python codebase as
+  the living specification and iteratively converges toward full Rust parity
+  through a goal-seeking loop with quality gates.
+
+  Phases: Analysis → Scaffolding → Test Extraction → Core-Out Implementation →
+  Comparison Loop → Convergence.
+
+  Code implementation steps delegate to default-workflow for actual code changes.
+  Each iteration passes through quality-audit-cycle before merging.
+version: "1.0.0"
+author: "Amplihack Team"
+tags: ["oxidizer", "migration", "python-to-rust", "goal-seeking"]
+
+recursion:
+  max_depth: 5
+  max_total_steps: 80
+
+context:
+  # Required inputs
+  task_description: ""
+  repo_path: "."
+  python_package_path: ""         # e.g. "src/amplihack/recipes"
+  rust_target_path: ""            # e.g. "rust/recipe-runner-rs"
+  rust_repo_name: ""              # e.g. "amplihack-recipe-runner-rs"
+  rust_repo_org: ""               # e.g. "rysweet" (GitHub org/user)
+
+  # Phase 1 outputs
+  dependency_graph: ""
+  feature_catalog: ""
+  test_coverage_report: ""
+  migration_priority: ""
+
+  # Phase 2 outputs
+  cargo_workspace_path: ""
+  ci_config_path: ""
+
+  # Phase 3 outputs
+  rust_test_plan: ""
+  agentic_scenarios: ""
+  scorecard: ""
+
+  # Phase 4-6 iteration state
+  current_module: ""
+  implementation_result: ""
+  comparison_result: ""
+  parity_percentage: "0"
+  iteration_number: "1"
+  max_iterations: "20"
+  quality_audit_result: ""
+  convergence_status: "NOT_CONVERGED"
+
+  # Goal-seeking loop state
+  round_result: ""
+  reflection: ""
+
+steps:
+  # ========================================================================
+  # PHASE 1: ANALYSIS
+  # Map Python modules, dependencies, CLI commands, test coverage
+  # ========================================================================
+
+  - id: "phase-1-analyze"
+    type: "agent"
+    agent: "amplihack:core:analyzer"
+    prompt: |
+      # Oxidizer Phase 1: Analysis
+
+      Analyze the Python codebase for migration to Rust.
+
+      **Python Package Path:** {{python_package_path}}
+      **Repository:** {{repo_path}}
+
+      Produce a comprehensive analysis:
+
+      1. **Dependency Graph**: Map all Python modules, their imports, and
+         inter-module dependencies. Identify leaf modules (no internal deps)
+         vs hub modules (many dependents).
+
+      2. **Feature Catalog**: List all public APIs, CLI commands/subcommands,
+         flags, and their behaviors. Include function signatures.
+
+      3. **Test Coverage**: Measure existing test coverage. Identify untested
+         code paths and gaps.
+
+      4. **External Integrations**: Catalog external service integrations
+         (APIs, databases, cloud SDKs, subprocess calls).
+
+      5. **Migration Priority Order**: Recommend which modules to port first
+         (leaf modules first, then work inward). Rank by:
+         - Dependency count (fewer deps = easier to port)
+         - Complexity (LOC, cyclomatic complexity)
+         - Test coverage (better covered = safer to port)
+
+      6. **Rust Ecosystem Mapping**: For each Python dependency used, identify
+         the Rust equivalent crate. Flag any with no good Rust equivalent.
+
+      **Output as JSON**:
+      ```json
+      {
+        "dependency_graph": {"module_name": ["dep1", "dep2"]},
+        "feature_catalog": [{"module": "...", "functions": [...], "cli_commands": [...]}],
+        "test_coverage": {"overall": "X%", "per_module": {...}},
+        "external_integrations": [...],
+        "migration_priority": ["module1", "module2", "..."],
+        "rust_mapping": {"python_dep": "rust_crate"}
+      }
+      ```
+    output: "analysis_json"
+    parse_json: true
+
+  - id: "extract-analysis"
+    type: "bash"
+    command: |
+      echo '{{analysis_json}}' | python3 -c "
+      import sys, json
+      data = json.load(sys.stdin)
+      print(json.dumps(data.get('migration_priority', [])))" 2>/dev/null || echo '[]'
+    output: "migration_priority"
+
+  # ========================================================================
+  # PHASE 2: RUST SCAFFOLDING
+  # Create Cargo workspace mirroring Python structure
+  # ========================================================================
+
+  - id: "phase-2-scaffold"
+    type: "recipe"
+    recipe: "default-workflow"
+    sub_context:
+      task_description: |
+        Create a Rust Cargo workspace for the project '{{rust_repo_name}}'.
+
+        Based on the analysis of the Python package at {{python_package_path}}:
+        {{analysis_json}}
+
+        Tasks:
+        1. If repo '{{rust_repo_name}}' doesn't exist yet, create it:
+           gh repo create {{rust_repo_org}}/{{rust_repo_name}} --public --clone
+        2. Create a Cargo workspace with modules mirroring the Python structure
+        3. Set up a shared CI config (GitHub Actions) that builds both Python and Rust
+        4. Add common dependencies to Cargo.toml:
+           - serde + serde_json + serde_yaml (serialization)
+           - clap (CLI parsing)
+           - tokio (async runtime)
+           - anyhow + thiserror (error handling)
+           - regex (pattern matching)
+        5. Create a README.md documenting the migration status
+        6. Ensure both versions can read the same config/recipe YAML files
+
+        The Cargo workspace should be at: {{rust_target_path}}
+      repo_path: "{{repo_path}}"
+    output: "scaffold_result"
+
+  # ========================================================================
+  # PHASE 3: TEST EXTRACTION
+  # Convert Python tests to Rust, create agentic scenarios, build scorecard
+  # ========================================================================
+
+  - id: "phase-3-extract-tests"
+    type: "recipe"
+    recipe: "default-workflow"
+    sub_context:
+      task_description: |
+        Extract and convert tests from the Python codebase to Rust for the
+        '{{rust_repo_name}}' migration.
+
+        Python package: {{python_package_path}}
+        Rust workspace: {{rust_target_path}}
+        Analysis: {{analysis_json}}
+
+        Tasks:
+        1. Convert Python unit tests to Rust #[test] equivalents:
+           - Map pytest fixtures to rstest
+           - Map unittest.mock to mockall
+           - Map assertion patterns to Rust assert! macros
+        2. Convert integration tests to Rust integration tests
+        3. Create shared agentic test scenarios (YAML) that run against both
+           the Python and Rust versions with identical inputs/outputs
+        4. Create the Feature Scorecard as a JSON file (scorecard.json):
+           ```json
+           {
+             "features": [
+               {
+                 "name": "feature_name",
+                 "module": "module_name",
+                 "has_test": true/false,
+                 "passes_python": true/false,
+                 "passes_rust": false,
+                 "exec_time_python": null,
+                 "exec_time_rust": null,
+                 "notes": ""
+               }
+             ],
+             "parity_percentage": 0,
+             "last_updated": "ISO-8601"
+           }
+           ```
+        5. Verify all extracted tests pass against the Python version (baseline)
+      repo_path: "{{repo_path}}"
+    output: "test_extraction_result"
+
+  # ========================================================================
+  # PHASE 4: CORE-OUT IMPLEMENTATION (Goal-Seeking Loop)
+  # Port modules from inside-out, using default-workflow for each module
+  # ========================================================================
+
+  - id: "phase-4-select-next-module"
+    type: "agent"
+    agent: "amplihack:core:architect"
+    prompt: |
+      # Oxidizer Phase 4: Select Next Module to Port
+
+      **Migration Priority Order:** {{migration_priority}}
+      **Current Scorecard:** {{scorecard}}
+      **Iteration:** {{iteration_number}}
+      **Previous Implementation Results:** {{implementation_result}}
+
+      Select the next highest-priority module to port from Python to Rust.
+      Consider:
+      1. Migration priority order (leaf modules first)
+      2. Current scorecard gaps (what's not yet ported?)
+      3. Dependencies (don't port a module before its dependencies)
+
+      **Output as JSON**:
+      ```json
+      {
+        "module_name": "the_module_to_port",
+        "reason": "why this module is next",
+        "dependencies_ported": true,
+        "estimated_complexity": "low|medium|high"
+      }
+      ```
+    output: "next_module_json"
+    parse_json: true
+    condition: "convergence_status != 'CONVERGED'"
+
+  - id: "extract-module-name"
+    type: "bash"
+    command: |
+      echo '{{next_module_json}}' | python3 -c "
+      import sys, json
+      data = json.load(sys.stdin)
+      print(data.get('module_name', ''))" 2>/dev/null || echo ''
+    output: "current_module"
+    condition: "convergence_status != 'CONVERGED'"
+
+  # Delegate actual code implementation to default-workflow
+  - id: "phase-4-implement-module"
+    type: "recipe"
+    recipe: "default-workflow"
+    sub_context:
+      task_description: |
+        Port the Python module '{{current_module}}' to Rust as part of the
+        {{rust_repo_name}} migration.
+
+        **Python Source:** {{python_package_path}}/{{current_module}}
+        **Rust Target:** {{rust_target_path}}
+        **Analysis:** {{analysis_json}}
+
+        Requirements:
+        1. Read the Python module source code thoroughly
+        2. Write idiomatic Rust code — don't transliterate Python line-by-line
+        3. Use Rust equivalents for Python patterns:
+           - dataclasses → structs with #[derive(Debug, Clone, Serialize, Deserialize)]
+           - dict → HashMap or custom structs
+           - list → Vec
+           - Optional → Option
+           - exceptions → Result<T, Error> with thiserror
+           - f-strings → format!()
+        4. Implement all public functions from the Python module
+        5. Write Rust #[test] for each function
+        6. Ensure the Rust module passes all extracted tests
+        7. Do NOT delete or modify the Python source
+      repo_path: "{{repo_path}}"
+    output: "implementation_result"
+    condition: "convergence_status != 'CONVERGED'"
+
+  # ========================================================================
+  # PHASE 5: COMPARISON LOOP
+  # Automated parity checking after each module port
+  # ========================================================================
+
+  - id: "phase-5-compare"
+    type: "agent"
+    agent: "amplihack:core:reviewer"
+    prompt: |
+      # Oxidizer Phase 5: Parity Comparison
+
+      Compare the Python and Rust implementations after porting '{{current_module}}'.
+
+      **Python Package:** {{python_package_path}}
+      **Rust Workspace:** {{rust_target_path}}
+      **Module Just Ported:** {{current_module}}
+
+      Run these comparisons:
+      1. **Feature Completeness**: Does the Rust module support all functions/APIs
+         from the Python module? List any missing.
+      2. **Test Results**: Run tests for both versions. Report pass/fail for each.
+      3. **Output Comparison**: For key functions, compare output for identical inputs.
+      4. **Performance**: If measurable, compare execution times.
+
+      Update the scorecard with results.
+
+      **Output as JSON**:
+      ```json
+      {
+        "module": "{{current_module}}",
+        "feature_completeness": {"total": N, "ported": M, "missing": [...]},
+        "tests": {"python_pass": N, "rust_pass": M, "rust_fail": [...]},
+        "output_matches": true/false,
+        "performance": {"python_ms": N, "rust_ms": M},
+        "scorecard_update": {...},
+        "parity_percentage": N
+      }
+      ```
+    output: "comparison_result"
+    parse_json: true
+    condition: "convergence_status != 'CONVERGED'"
+
+  - id: "extract-parity"
+    type: "bash"
+    command: |
+      echo '{{comparison_result}}' | python3 -c "
+      import sys, json
+      data = json.load(sys.stdin)
+      print(data.get('parity_percentage', 0))" 2>/dev/null || echo '0'
+    output: "parity_percentage"
+    condition: "convergence_status != 'CONVERGED'"
+
+  # Quality gate: run quality audit after each implementation iteration
+  - id: "phase-5-quality-gate"
+    type: "recipe"
+    recipe: "quality-audit-cycle"
+    sub_context:
+      target_path: "{{rust_target_path}}"
+      min_cycles: "1"
+      max_cycles: "2"
+    condition: "convergence_status != 'CONVERGED'"
+
+  # ========================================================================
+  # PHASE 6: CONVERGENCE CHECK
+  # Goal-seeking loop: continue until 100% parity or max iterations
+  # ========================================================================
+
+  - id: "phase-6-convergence-check"
+    type: "agent"
+    agent: "amplihack:core:reviewer"
+    prompt: |
+      # Oxidizer Phase 6: Convergence Check
+
+      **Current Parity:** {{parity_percentage}}%
+      **Iteration:** {{iteration_number}} of {{max_iterations}}
+      **Scorecard:** {{scorecard}}
+      **Latest Comparison:** {{comparison_result}}
+
+      Evaluate whether the migration has converged:
+      1. Is parity at 100%? → CONVERGED
+      2. Are there remaining modules to port? → NOT_CONVERGED
+      3. Has max_iterations been reached? → CONVERGED (with gaps noted)
+
+      **Output as JSON**:
+      ```json
+      {
+        "convergence_status": "CONVERGED" | "NOT_CONVERGED",
+        "parity_percentage": N,
+        "remaining_modules": [...],
+        "recommendation": "what to do next",
+        "iteration_number": N
+      }
+      ```
+    output: "convergence_json"
+    parse_json: true
+
+  - id: "extract-convergence"
+    type: "bash"
+    command: |
+      echo '{{convergence_json}}' | python3 -c "
+      import sys, json
+      data = json.load(sys.stdin)
+      print(data.get('convergence_status', 'NOT_CONVERGED'))" 2>/dev/null || echo 'NOT_CONVERGED'
+    output: "convergence_status"
+
+  - id: "increment-iteration"
+    type: "bash"
+    command: |
+      echo $(({{iteration_number}} + 1))
+    output: "iteration_number"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+
+  # Loop back to Phase 4 if not converged
+  - id: "loop-phase-4-select"
+    type: "agent"
+    agent: "amplihack:core:architect"
+    prompt: |
+      # Oxidizer Iteration {{iteration_number}}: Select Next Module
+
+      **Migration Priority:** {{migration_priority}}
+      **Current Scorecard:** {{scorecard}}
+      **Convergence Status:** {{convergence_status}}
+      **Previous Comparison:** {{comparison_result}}
+
+      Select the next module with the largest remaining parity delta.
+
+      **Output as JSON**:
+      ```json
+      {
+        "module_name": "next_module",
+        "reason": "why",
+        "dependencies_ported": true
+      }
+      ```
+    output: "next_module_json"
+    parse_json: true
+    condition: "convergence_status == 'NOT_CONVERGED'"
+
+  - id: "loop-extract-module"
+    type: "bash"
+    command: |
+      echo '{{next_module_json}}' | python3 -c "
+      import sys, json
+      data = json.load(sys.stdin)
+      print(data.get('module_name', ''))" 2>/dev/null || echo ''
+    output: "current_module"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+
+  - id: "loop-implement"
+    type: "recipe"
+    recipe: "default-workflow"
+    sub_context:
+      task_description: |
+        Port the Python module '{{current_module}}' to Rust (iteration {{iteration_number}}).
+
+        **Python Source:** {{python_package_path}}/{{current_module}}
+        **Rust Target:** {{rust_target_path}}
+        **Previous Comparison Gaps:** {{comparison_result}}
+
+        Focus on closing the parity gap identified in the comparison.
+        Write idiomatic Rust, not Python-in-Rust. Include tests.
+      repo_path: "{{repo_path}}"
+    output: "implementation_result"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+
+  - id: "loop-compare"
+    type: "agent"
+    agent: "amplihack:core:reviewer"
+    prompt: |
+      # Oxidizer Iteration {{iteration_number}}: Parity Comparison
+
+      Compare Python and Rust after porting '{{current_module}}'.
+
+      **Python:** {{python_package_path}}
+      **Rust:** {{rust_target_path}}
+
+      Check feature completeness, test results, output comparison, performance.
+      Update scorecard.
+
+      **Output as JSON**:
+      ```json
+      {
+        "module": "{{current_module}}",
+        "feature_completeness": {"total": 0, "ported": 0, "missing": []},
+        "tests": {"python_pass": 0, "rust_pass": 0, "rust_fail": []},
+        "parity_percentage": 0
+      }
+      ```
+    output: "comparison_result"
+    parse_json: true
+    condition: "convergence_status == 'NOT_CONVERGED'"
+
+  - id: "loop-extract-parity"
+    type: "bash"
+    command: |
+      echo '{{comparison_result}}' | python3 -c "
+      import sys, json
+      data = json.load(sys.stdin)
+      print(data.get('parity_percentage', 0))" 2>/dev/null || echo '0'
+    output: "parity_percentage"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+
+  - id: "loop-quality-gate"
+    type: "recipe"
+    recipe: "quality-audit-cycle"
+    sub_context:
+      target_path: "{{rust_target_path}}"
+      min_cycles: "1"
+      max_cycles: "2"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+
+  - id: "loop-convergence"
+    type: "agent"
+    agent: "amplihack:core:reviewer"
+    prompt: |
+      # Oxidizer Iteration {{iteration_number}}: Convergence Re-Check
+
+      **Current Parity:** {{parity_percentage}}%
+      **Iteration:** {{iteration_number}} of {{max_iterations}}
+      **Latest Comparison:** {{comparison_result}}
+
+      Has convergence been achieved? Output JSON:
+      ```json
+      {
+        "convergence_status": "CONVERGED" | "NOT_CONVERGED",
+        "parity_percentage": 0,
+        "remaining_modules": [],
+        "recommendation": ""
+      }
+      ```
+    output: "convergence_json"
+    parse_json: true
+    condition: "convergence_status == 'NOT_CONVERGED'"
+
+  - id: "loop-extract-convergence"
+    type: "bash"
+    command: |
+      echo '{{convergence_json}}' | python3 -c "
+      import sys, json
+      data = json.load(sys.stdin)
+      print(data.get('convergence_status', 'NOT_CONVERGED'))" 2>/dev/null || echo 'NOT_CONVERGED'
+    output: "convergence_status"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+
+  # ========================================================================
+  # FINAL SUMMARY
+  # ========================================================================
+
+  - id: "final-summary"
+    type: "agent"
+    agent: "amplihack:core:reviewer"
+    prompt: |
+      # Oxidizer Migration Complete
+
+      **Final Parity:** {{parity_percentage}}%
+      **Total Iterations:** {{iteration_number}}
+      **Convergence Status:** {{convergence_status}}
+      **Final Scorecard:** {{scorecard}}
+
+      Produce a final migration report:
+      1. Summary of what was ported
+      2. Final scorecard with all features
+      3. Performance comparison (Python vs Rust)
+      4. Any remaining gaps or known issues
+      5. Recommendations for deprecating the Python version
+
+      Format as a markdown report suitable for a GitHub issue comment.
+    output: "final_report"
