@@ -231,6 +231,112 @@ class TestNetworkGraphStoreProcessIncoming:
         assert response_events[0][1]["query_id"] == "qid-123"
         store.close()
 
+    def test_handle_search_query_buffered_for_ooda_loop(self):
+        """search_query events must be buffered so the OODA loop can process them."""
+        from amplihack.agents.goal_seeking.hive_mind.event_bus import make_event
+
+        store = _make_store()
+        event = make_event(
+            _OP_SEARCH_QUERY,
+            "other-agent",
+            {
+                "query_id": "qid-ooda",
+                "table": "semantic_memory",
+                "text": "test query",
+                "fields": None,
+                "limit": 5,
+            },
+        )
+        store._handle_event(event)
+        # The OODA loop should be able to drain this via receive_query_events()
+        buffered = store.receive_query_events()
+        assert len(buffered) == 1
+        assert buffered[0].event_type == _OP_SEARCH_QUERY
+        assert buffered[0].payload["query_id"] == "qid-ooda"
+        store.close()
+
+    def test_handle_search_query_uses_recall_fn(self):
+        """search_query handler must call recall_fn to surface LEARN_CONTENT facts."""
+        from amplihack.agents.goal_seeking.hive_mind.event_bus import make_event
+
+        store = _make_store()
+        # Install a mock recall_fn simulating CognitiveAdapter.search
+        cognitive_fact = {"content": "cognitive fact about sky", "confidence": 0.9}
+        store.recall_fn = lambda text, limit: [cognitive_fact]
+
+        published = []
+        original_publish = store._publish
+
+        def capture_publish(event_type, payload):
+            published.append((event_type, payload))
+            original_publish(event_type, payload)
+
+        store._publish = capture_publish
+
+        event = make_event(
+            _OP_SEARCH_QUERY,
+            "other-agent",
+            {
+                "query_id": "qid-recall",
+                "table": "semantic_memory",
+                "text": "sky",
+                "fields": None,
+                "limit": 10,
+            },
+        )
+        store._handle_event(event)
+
+        response_events = [(t, p) for t, p in published if t == _OP_SEARCH_RESPONSE]
+        assert len(response_events) == 1
+        results = response_events[0][1]["results"]
+        contents = [r.get("content", "") for r in results]
+        assert any("cognitive fact about sky" in c for c in contents), (
+            f"recall_fn result not in response: {contents}"
+        )
+        store.close()
+
+    def test_handle_search_query_merges_local_and_cognitive_results(self):
+        """search_query response must merge both local graph and cognitive results."""
+        from amplihack.agents.goal_seeking.hive_mind.event_bus import make_event
+
+        store = _make_store()
+        store._local.create_node(
+            "semantic_memory", {"node_id": "local-1", "content": "local graph fact"}
+        )
+        store.recall_fn = lambda text, limit: [
+            {"content": "cognitive memory fact", "confidence": 0.8}
+        ]
+
+        published = []
+        original_publish = store._publish
+
+        def capture_publish(event_type, payload):
+            published.append((event_type, payload))
+            original_publish(event_type, payload)
+
+        store._publish = capture_publish
+
+        event = make_event(
+            _OP_SEARCH_QUERY,
+            "other-agent",
+            {
+                "query_id": "qid-merge",
+                "table": "semantic_memory",
+                "text": "fact",
+                "fields": None,
+                "limit": 10,
+            },
+        )
+        store._handle_event(event)
+
+        response_events = [(t, p) for t, p in published if t == _OP_SEARCH_RESPONSE]
+        assert len(response_events) == 1
+        results = response_events[0][1]["results"]
+        contents = " ".join(r.get("content", "") for r in results)
+        assert "local graph fact" in contents, f"local result missing: {results}"
+        assert "cognitive memory fact" in contents, f"cognitive result missing: {results}"
+        store.close()
+
 
 class TestAgentRegistry:
     """Tests for AgentRegistry (issue #2890)."""
