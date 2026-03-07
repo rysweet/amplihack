@@ -374,6 +374,42 @@ class PowerSteeringChecker:
         "what changed",
     ]
 
+    # Keywords that indicate PM/Operations/Planning sessions (fixes #2913)
+    # When found in early user messages, session is classified as OPERATIONS.
+    # These sessions involve reading data (backlogs, issues, roadmaps) to produce
+    # planning output - they do NOT require development workflow checks.
+    # Checked BEFORE investigation tool-usage heuristics to prevent misclassification.
+    OPERATIONS_KEYWORDS = [
+        "prioritize",
+        "prioritise",
+        "backlog",
+        "roadmap",
+        "sprint",
+        "triage",
+        "pm-architect",
+        "project management",
+        "project manager",
+        "product management",
+        "product manager",
+        "stakeholder",
+        "milestone",
+        "epic",
+        "user story",
+        "acceptance criteria",
+        "release plan",
+        "capacity planning",
+        "grooming",
+        "scrum",
+        "kanban",
+        "planning session",
+        "prioritization",
+        "work items",
+        "issues to work on",
+        "what should we work on",
+        "what to work on",
+        "what should i work on",
+    ]
+
     # Keywords that indicate investigation/troubleshooting sessions
     # When found in early user messages, session is classified as INVESTIGATION
     # regardless of tool usage patterns (fixes #1604)
@@ -801,6 +837,32 @@ class PowerSteeringChecker:
                     summary=None,
                 )
 
+            # 4b2. Issue #2561: Small completed session auto-pass
+            # One-line bug fixes and trivial sessions should not be subjected to
+            # full 21-check analysis which causes false-positive blocking loops.
+            # Detect sessions with minimal edits and completion signals, and auto-pass
+            # checks that are not applicable to the actual scope of work performed.
+            if self._is_small_completed_session(transcript):
+                self._log(
+                    "Small completed session detected - auto-approving (Issue #2561)",
+                    "INFO",
+                )
+                self._emit_progress(
+                    progress_callback,
+                    "small_session_autopass",
+                    "Small completed session - checks auto-passed",
+                    {"session_type": session_type},
+                )
+                if turn_state_manager and turn_state:
+                    turn_state = turn_state_manager.record_approval(turn_state)
+                    turn_state_manager.save_state(turn_state)
+                return PowerSteeringResult(
+                    decision="approve",
+                    reasons=["small_completed_session"],
+                    continuation_prompt=None,
+                    summary=None,
+                )
+
             # 4c. State-based verification (Issue #1962 - robust fallback for post-compaction)
             # When compaction is detected, supplement transcript analysis with actual state checks
             # This provides ground truth even when transcript history is incomplete
@@ -1106,6 +1168,14 @@ class PowerSteeringChecker:
                     "complete",
                     "Power-steering analysis complete - all checks passed (first stop - displaying results)",
                 )
+
+                # Fix for Issue #2473: Record turn state approval on first-stop visibility.
+                # Previously, turn state was incremented but never approved/blocked on this path,
+                # leaving it in an ambiguous state that could cause premature auto-approve
+                # thresholds on subsequent stops if _already_ran() fails.
+                if turn_state_manager and turn_state:
+                    turn_state = turn_state_manager.record_approval(turn_state)
+                    turn_state_manager.save_state(turn_state)
 
                 # Format results for inclusion in continuation_prompt
                 # This ensures results are visible even when stderr is not shown
@@ -1983,6 +2053,39 @@ class PowerSteeringChecker:
 
         return False
 
+    def _has_operations_keywords(self, transcript: list[dict]) -> bool:
+        """Check user messages for PM/planning/operations keywords (fixes #2913).
+
+        PM/Operations sessions (e.g. /pm-architect, backlog triage, sprint planning)
+        involve reading many files without writing code. Without this check they would
+        be misclassified as INVESTIGATION by the tool-usage heuristic, triggering
+        irrelevant development checks (workflow_invocation, next_steps, documentation_updates).
+
+        Args:
+            transcript: List of message dictionaries
+
+        Returns:
+            True if operations/PM keywords found in early user messages
+        """
+        # Check first 5 user messages for operations keywords
+        user_messages = [m for m in transcript if m.get("type") == "user"][:5]
+
+        if not user_messages:
+            return False
+
+        for msg in user_messages:
+            content = str(msg.get("message", {}).get("content", "")).lower()
+
+            for keyword in self.OPERATIONS_KEYWORDS:
+                if keyword in content:
+                    self._log(
+                        f"Operations/PM keyword '{keyword}' found in user message",
+                        "DEBUG",
+                    )
+                    return True
+
+        return False
+
     def detect_session_type(self, transcript: list[dict]) -> str:
         """Detect session type for selective consideration application.
 
@@ -1992,24 +2095,47 @@ class PowerSteeringChecker:
         - INFORMATIONAL: Q&A, help queries, capability questions
         - MAINTENANCE: Documentation and configuration updates only
         - INVESTIGATION: Exploration, analysis, troubleshooting, and debugging
+        - OPERATIONS: PM/planning/backlog triage - skip development workflow checks
 
-        Detection Priority (UPDATED for Issue #2196):
-        1. Environment override (AMPLIHACK_SESSION_TYPE)
-        2. Simple task keywords (cleanup, fetch, workspace) - highest priority heuristic
-        3. Tool usage patterns (code changes, tests, etc.) - CONCRETE EVIDENCE
-        4. Investigation keywords in user messages - TIEBREAKER ONLY
+        Detection Priority (UPDATED for Issue #2196, #2913, documented in Issue #2633):
+        1. Environment override (AMPLIHACK_SESSION_TYPE) - absolute override
+        2. Empty transcript -> INFORMATIONAL (fail-open)
+        3. SIMPLE keywords (cleanup, fetch, sync, workspace) - highest keyword priority
+        4. DEVELOPMENT signals via tool usage (code file Write/Edit, test execution,
+           PR creation/edit) - concrete evidence overrides all keywords
+        5. OPERATIONS keywords (prioritize, backlog, roadmap, sprint, triage, etc.) -
+           checked BEFORE investigation keywords to prevent PM sessions from being
+           misclassified (fixes #2913)
+        6. INVESTIGATION keywords (investigate, analyze, debug, etc.) - only when
+           NO code modifications and NO operations keywords are present
+        7. INFORMATIONAL indicators (high question density, no Write/Edit tools)
+        8. INVESTIGATION via tool patterns (multiple Read/Grep without Write/Edit)
+        9. MAINTENANCE indicators (doc/config-only modifications, git-only operations)
+        10. Default: INFORMATIONAL (fail-open, conservative)
 
-        Tool usage patterns now take priority over keywords because they provide
-        concrete evidence of the session's actual work. Keywords like "analyze and fix"
-        are ambiguous, but Write/Edit tools with code changes are definitive signals
-        of DEVELOPMENT work. Investigation keywords are only checked as a fallback
-        when tool patterns are ambiguous (fixes #2196).
+        Multi-Keyword Priority (Issue #2633):
+        When a user message contains keywords from multiple session types, the
+        priority above determines the winner. Key rules:
+        - SIMPLE keywords ALWAYS win over other keywords (checked first)
+        - DEVELOPMENT is determined by tool usage, NOT keywords. Words like
+          "implement" or "build" do not trigger DEVELOPMENT without actual
+          code-modifying tool usage (Write/Edit of .py/.js/.ts/etc files)
+        - INVESTIGATION keywords only apply when there are no code modifications.
+          Code changes (even with "investigate" in the message) -> DEVELOPMENT
+        - Investigation keywords DO take priority over doc/config-only changes
+          (writing to .md files with "investigate" keyword -> INVESTIGATION)
+
+        Tool usage patterns take priority over keywords because they provide
+        concrete evidence of the session's actual work. Keywords like "analyze
+        and fix" are ambiguous, but Write/Edit tools with code changes are
+        definitive signals of DEVELOPMENT work (fixes #2196).
 
         Args:
             transcript: List of message dictionaries
 
         Returns:
-            Session type string: "SIMPLE", "DEVELOPMENT", "INFORMATIONAL", "MAINTENANCE", or "INVESTIGATION"
+            Session type string: "SIMPLE", "DEVELOPMENT", "INFORMATIONAL",
+            "MAINTENANCE", "INVESTIGATION", or "OPERATIONS"
         """
         # Check for environment override first
         env_override = os.getenv("AMPLIHACK_SESSION_TYPE", "").upper()
@@ -2019,6 +2145,7 @@ class PowerSteeringChecker:
             "INFORMATIONAL",
             "MAINTENANCE",
             "INVESTIGATION",
+            "OPERATIONS",
         ]:
             self._log(f"Session type overridden by environment: {env_override}", "INFO")
             return env_override
@@ -2105,10 +2232,12 @@ class PowerSteeringChecker:
                             if "git commit" in command or "git push" in command:
                                 git_operations = True
 
-        # Decision logic (REFINED for Issue #2196):
-        # 1. Investigation keywords checked early BUT can be overridden by CODE modifications
-        # 2. CODE modifications (code files) take priority → DEVELOPMENT
-        # 3. NON-CODE modifications (docs, configs, git) DON'T override investigation keywords
+        # Decision logic (REFINED for Issues #2196, #2913):
+        # 1. CODE modifications (code files) take priority → DEVELOPMENT
+        # 2. OPERATIONS keywords (prioritize, backlog, roadmap, etc.) → OPERATIONS
+        #    Checked BEFORE investigation keywords to prevent PM sessions from being
+        #    classified as INVESTIGATION when they use words like "analyze" (fixes #2913)
+        # 3. Investigation keywords (only when NO code modifications) → INVESTIGATION
         # 4. Default to INFORMATIONAL (fail-open)
 
         # Check for investigation keywords early
@@ -2122,6 +2251,14 @@ class PowerSteeringChecker:
             # Strong signal: Write/Edit of CODE files, tests run, PR creation/editing
             self._log("Session classified as DEVELOPMENT via CODE modification patterns", "INFO")
             return "DEVELOPMENT"
+
+        # OPERATIONS: PM/planning keywords detected (fixes #2913)
+        # Check BEFORE investigation keywords: "Analyze the roadmap" should be OPERATIONS,
+        # not INVESTIGATION. OPERATIONS takes priority over investigation keywords but NOT
+        # over DEVELOPMENT (code changes override everything except SIMPLE).
+        if self._has_operations_keywords(transcript):
+            self._log("Session classified as OPERATIONS via PM/planning keyword detection", "INFO")
+            return "OPERATIONS"
 
         # INVESTIGATION: Keywords found and NO code modifications
         # This handles "investigate X", "how does X work", "troubleshoot Y" with:
@@ -2160,7 +2297,7 @@ class PowerSteeringChecker:
         """Get considerations applicable to a specific session type.
 
         Args:
-            session_type: Session type ("SIMPLE", "DEVELOPMENT", "INFORMATIONAL", "MAINTENANCE", "INVESTIGATION")
+            session_type: Session type ("SIMPLE", "DEVELOPMENT", "INFORMATIONAL", "MAINTENANCE", "INVESTIGATION", "OPERATIONS")
 
         Returns:
             List of consideration dictionaries applicable to this session type
@@ -2248,6 +2385,72 @@ class PowerSteeringChecker:
 
         return False
 
+    def _is_small_completed_session(self, transcript: list[dict]) -> bool:
+        """Detect small completed sessions that should auto-pass (Issue #2561).
+
+        One-line bug fixes and trivial changes should not be subjected to full
+        21-check analysis which causes false-positive blocking loops. This method
+        detects sessions where:
+        1. Few file edits were made (1-3 Write/Edit operations)
+        2. The most recent assistant message contains completion signals
+
+        Args:
+            transcript: List of message dictionaries
+
+        Returns:
+            True if session is a small completed task, False otherwise
+        """
+        # Count Write/Edit operations in the session
+        write_edit_count = 0
+        for msg in transcript:
+            if msg.get("type") == "assistant" and "message" in msg:
+                content = msg["message"].get("content", [])
+                if not isinstance(content, list):
+                    continue
+                for block in content:
+                    if isinstance(block, dict) and block.get("type") == "tool_use":
+                        if block.get("name") in ("Write", "Edit"):
+                            write_edit_count += 1
+
+        # Not a small session if many edits were made
+        if write_edit_count > 3:
+            return False
+
+        # Must have at least one edit (otherwise it's a Q&A, handled elsewhere)
+        if write_edit_count == 0:
+            return False
+
+        # Check the last few assistant messages for completion signals
+        recent_assistant = [m for m in transcript[-10:] if m.get("type") == "assistant"][-5:]
+
+        completion_signals = [
+            r"(?:fix|bug\s*fix|change|update|patch)\s+(?:has been|is)\s+(?:applied|complete|done|merged)",
+            r"(?:task|issue|bug|fix|work)\s+(?:is\s+)?(?:complete|done|finished|resolved)",
+            r"successfully\s+(?:fixed|resolved|completed|implemented|applied)",
+            r"(?:pr|pull\s+request|commit)\s+(?:created|merged|submitted|pushed)",
+            r"(?:pushed|committed)\s+(?:the\s+)?(?:fix|change|update|patch)",
+            r"all\s+(?:done|complete|finished)",
+            r"(?:has|have)\s+been\s+(?:completed|fixed|resolved|implemented)",
+            r"the\s+(?:fix|change|bug\s*fix|update|patch)\s+(?:is|was)\s+(?:applied|pushed|committed|merged)",
+        ]
+
+        for msg in reversed(recent_assistant):
+            content = msg.get("message", {}).get("content", [])
+            if not isinstance(content, list):
+                continue
+            for block in content:
+                if isinstance(block, dict) and block.get("type") == "text":
+                    text = str(block.get("text", ""))
+                    for pattern in completion_signals:
+                        if re.search(pattern, text, re.IGNORECASE):
+                            self._log(
+                                f"Small completed session: {write_edit_count} edits with completion signal",
+                                "INFO",
+                            )
+                            return True
+
+        return False
+
     def _create_passing_analysis(
         self,
         original_analysis: ConsiderationAnalysis,
@@ -2278,8 +2481,19 @@ class PowerSteeringChecker:
                     severity=old_result.severity,
                 )
 
-        # Create new analysis with modified results
-        return ConsiderationAnalysis(results=modified_results)
+        # Create new analysis with modified results and rebuild failed lists
+        # Fix for Issue #2473: Previously, failed_blockers and failed_warnings
+        # defaulted to empty lists, creating inconsistent state where results
+        # dict contained unsatisfied items but the lists were empty. This caused
+        # _format_results_text() and display_all_results() to show false failures.
+        new_analysis = ConsiderationAnalysis(results=modified_results)
+        for result in modified_results.values():
+            if not result.satisfied:
+                if result.severity == "blocker":
+                    new_analysis.failed_blockers.append(result)
+                else:
+                    new_analysis.failed_warnings.append(result)
+        return new_analysis
 
     def _convert_to_failure_evidence(
         self,
@@ -4018,11 +4232,14 @@ class PowerSteeringChecker:
     def _check_next_steps(self, transcript: list[dict], session_id: str) -> bool:
         """Check that work is complete with NO remaining next steps (Issue #2196 - Enhanced).
 
-        UPDATED LOGIC (Issue #2196):
+        UPDATED LOGIC (Issue #2196, #2561):
         - Uses regex patterns to detect STRUCTURED next steps (bulleted lists)
         - Handles negation ("no next steps", "no remaining work")
         - Ignores status observations ("CI pending", "waiting for")
         - Prevents false positives on completion statements
+        - Issue #2561: Detects completion summaries (past-tense bullet lists describing
+          what WAS done, not what NEEDS to be done) to prevent false-positive loops
+          on completed one-line bug fixes.
 
         INVERTED LOGIC: If the agent mentions concrete next steps in structured format,
         work is incomplete. Simple keywords without structure are ignored to prevent
@@ -4051,6 +4268,19 @@ class PowerSteeringChecker:
             r"nothing\s+(?:left|remaining|outstanding)",
         ]
 
+        # Issue #2561: Completion summary HEADER patterns with bullet structure.
+        # These have DIFFERENT header keywords than next-steps patterns (e.g.,
+        # "Summary:" vs "Next steps:") and are safe to check before structural
+        # next-steps detection to prevent false positives where a bullet-list
+        # summary of completed work is mistaken for remaining action items.
+        # IMPORTANT: Only patterns with `:` + bullet structure go here.
+        # Standalone phrases like "work is done" MUST NOT go here because they
+        # can co-occur with structural next steps in the same message (e.g.,
+        # "Current work done. Next steps:\n- ..." should still FAIL).
+        completion_header_patterns = [
+            r"(?:summary|changes\s+made|what\s+(?:was|i)\s+(?:done|did|changed|fixed)|completed|accomplished):\s*[\r\n]+\s*[-•*\d.]",
+        ]
+
         # Check RECENT assistant messages (last 10) for structured next steps
         recent_messages = [m for m in transcript[-20:] if m.get("type") == "assistant"][-10:]
 
@@ -4075,6 +4305,25 @@ class PowerSteeringChecker:
 
                         # Skip structured detection for this message if negation matched
                         if negation_matched:
+                            continue
+
+                        # Issue #2561: Check for completion summary HEADERS before
+                        # structural next-steps detection. Only headers with specific
+                        # completion keywords (Summary:, Changes made:, etc.) followed
+                        # by bullet lists are safe to skip here. These have different
+                        # keywords than the next-steps patterns, so no ambiguity.
+                        completion_header_matched = False
+                        for pattern in completion_header_patterns:
+                            if re.search(pattern, text, re.IGNORECASE):
+                                self._log(
+                                    "Completion summary header found: status confirmation, not action items (Issue #2561)",
+                                    "INFO",
+                                )
+                                completion_header_matched = True
+                                break
+
+                        # Skip structural next-steps detection if completion header matched
+                        if completion_header_matched:
                             continue
 
                         # Check for STRUCTURED next steps (bulleted/numbered lists)

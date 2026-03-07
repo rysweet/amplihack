@@ -374,6 +374,42 @@ class PowerSteeringChecker:
         "what changed",
     ]
 
+    # Keywords that indicate PM/Operations/Planning sessions (fixes #2913)
+    # When found in early user messages, session is classified as OPERATIONS.
+    # These sessions involve reading data (backlogs, issues, roadmaps) to produce
+    # planning output - they do NOT require development workflow checks.
+    # Checked BEFORE investigation tool-usage heuristics to prevent misclassification.
+    OPERATIONS_KEYWORDS = [
+        "prioritize",
+        "prioritise",
+        "backlog",
+        "roadmap",
+        "sprint",
+        "triage",
+        "pm-architect",
+        "project management",
+        "project manager",
+        "product management",
+        "product manager",
+        "stakeholder",
+        "milestone",
+        "epic",
+        "user story",
+        "acceptance criteria",
+        "release plan",
+        "capacity planning",
+        "grooming",
+        "scrum",
+        "kanban",
+        "planning session",
+        "prioritization",
+        "work items",
+        "issues to work on",
+        "what should we work on",
+        "what to work on",
+        "what should i work on",
+    ]
+
     # Keywords that indicate investigation/troubleshooting sessions
     # When found in early user messages, session is classified as INVESTIGATION
     # regardless of tool usage patterns (fixes #1604)
@@ -2017,6 +2053,39 @@ class PowerSteeringChecker:
 
         return False
 
+    def _has_operations_keywords(self, transcript: list[dict]) -> bool:
+        """Check user messages for PM/planning/operations keywords (fixes #2913).
+
+        PM/Operations sessions (e.g. /pm-architect, backlog triage, sprint planning)
+        involve reading many files without writing code. Without this check they would
+        be misclassified as INVESTIGATION by the tool-usage heuristic, triggering
+        irrelevant development checks (workflow_invocation, next_steps, documentation_updates).
+
+        Args:
+            transcript: List of message dictionaries
+
+        Returns:
+            True if operations/PM keywords found in early user messages
+        """
+        # Check first 5 user messages for operations keywords
+        user_messages = [m for m in transcript if m.get("type") == "user"][:5]
+
+        if not user_messages:
+            return False
+
+        for msg in user_messages:
+            content = str(msg.get("message", {}).get("content", "")).lower()
+
+            for keyword in self.OPERATIONS_KEYWORDS:
+                if keyword in content:
+                    self._log(
+                        f"Operations/PM keyword '{keyword}' found in user message",
+                        "DEBUG",
+                    )
+                    return True
+
+        return False
+
     def detect_session_type(self, transcript: list[dict]) -> str:
         """Detect session type for selective consideration application.
 
@@ -2026,19 +2095,23 @@ class PowerSteeringChecker:
         - INFORMATIONAL: Q&A, help queries, capability questions
         - MAINTENANCE: Documentation and configuration updates only
         - INVESTIGATION: Exploration, analysis, troubleshooting, and debugging
+        - OPERATIONS: PM/planning/backlog triage - skip development workflow checks
 
-        Detection Priority (UPDATED for Issue #2196, documented in Issue #2633):
+        Detection Priority (UPDATED for Issue #2196, #2913, documented in Issue #2633):
         1. Environment override (AMPLIHACK_SESSION_TYPE) - absolute override
         2. Empty transcript -> INFORMATIONAL (fail-open)
         3. SIMPLE keywords (cleanup, fetch, sync, workspace) - highest keyword priority
         4. DEVELOPMENT signals via tool usage (code file Write/Edit, test execution,
-           PR creation/edit) - concrete evidence overrides investigation keywords
-        5. INVESTIGATION keywords (investigate, analyze, debug, etc.) - only when
-           NO code modifications are present
-        6. INFORMATIONAL indicators (high question density, no Write/Edit tools)
-        7. INVESTIGATION via tool patterns (multiple Read/Grep without Write/Edit)
-        8. MAINTENANCE indicators (doc/config-only modifications, git-only operations)
-        9. Default: INFORMATIONAL (fail-open, conservative)
+           PR creation/edit) - concrete evidence overrides all keywords
+        5. OPERATIONS keywords (prioritize, backlog, roadmap, sprint, triage, etc.) -
+           checked BEFORE investigation keywords to prevent PM sessions from being
+           misclassified (fixes #2913)
+        6. INVESTIGATION keywords (investigate, analyze, debug, etc.) - only when
+           NO code modifications and NO operations keywords are present
+        7. INFORMATIONAL indicators (high question density, no Write/Edit tools)
+        8. INVESTIGATION via tool patterns (multiple Read/Grep without Write/Edit)
+        9. MAINTENANCE indicators (doc/config-only modifications, git-only operations)
+        10. Default: INFORMATIONAL (fail-open, conservative)
 
         Multi-Keyword Priority (Issue #2633):
         When a user message contains keywords from multiple session types, the
@@ -2062,7 +2135,7 @@ class PowerSteeringChecker:
 
         Returns:
             Session type string: "SIMPLE", "DEVELOPMENT", "INFORMATIONAL",
-            "MAINTENANCE", or "INVESTIGATION"
+            "MAINTENANCE", "INVESTIGATION", or "OPERATIONS"
         """
         # Check for environment override first
         env_override = os.getenv("AMPLIHACK_SESSION_TYPE", "").upper()
@@ -2072,6 +2145,7 @@ class PowerSteeringChecker:
             "INFORMATIONAL",
             "MAINTENANCE",
             "INVESTIGATION",
+            "OPERATIONS",
         ]:
             self._log(f"Session type overridden by environment: {env_override}", "INFO")
             return env_override
@@ -2158,10 +2232,12 @@ class PowerSteeringChecker:
                             if "git commit" in command or "git push" in command:
                                 git_operations = True
 
-        # Decision logic (REFINED for Issue #2196):
-        # 1. Investigation keywords checked early BUT can be overridden by CODE modifications
-        # 2. CODE modifications (code files) take priority → DEVELOPMENT
-        # 3. NON-CODE modifications (docs, configs, git) DON'T override investigation keywords
+        # Decision logic (REFINED for Issues #2196, #2913):
+        # 1. CODE modifications (code files) take priority → DEVELOPMENT
+        # 2. OPERATIONS keywords (prioritize, backlog, roadmap, etc.) → OPERATIONS
+        #    Checked BEFORE investigation keywords to prevent PM sessions from being
+        #    classified as INVESTIGATION when they use words like "analyze" (fixes #2913)
+        # 3. Investigation keywords (only when NO code modifications) → INVESTIGATION
         # 4. Default to INFORMATIONAL (fail-open)
 
         # Check for investigation keywords early
@@ -2175,6 +2251,14 @@ class PowerSteeringChecker:
             # Strong signal: Write/Edit of CODE files, tests run, PR creation/editing
             self._log("Session classified as DEVELOPMENT via CODE modification patterns", "INFO")
             return "DEVELOPMENT"
+
+        # OPERATIONS: PM/planning keywords detected (fixes #2913)
+        # Check BEFORE investigation keywords: "Analyze the roadmap" should be OPERATIONS,
+        # not INVESTIGATION. OPERATIONS takes priority over investigation keywords but NOT
+        # over DEVELOPMENT (code changes override everything except SIMPLE).
+        if self._has_operations_keywords(transcript):
+            self._log("Session classified as OPERATIONS via PM/planning keyword detection", "INFO")
+            return "OPERATIONS"
 
         # INVESTIGATION: Keywords found and NO code modifications
         # This handles "investigate X", "how does X work", "troubleshoot Y" with:
@@ -2213,7 +2297,7 @@ class PowerSteeringChecker:
         """Get considerations applicable to a specific session type.
 
         Args:
-            session_type: Session type ("SIMPLE", "DEVELOPMENT", "INFORMATIONAL", "MAINTENANCE", "INVESTIGATION")
+            session_type: Session type ("SIMPLE", "DEVELOPMENT", "INFORMATIONAL", "MAINTENANCE", "INVESTIGATION", "OPERATIONS")
 
         Returns:
             List of consideration dictionaries applicable to this session type
