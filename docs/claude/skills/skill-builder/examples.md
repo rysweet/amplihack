@@ -117,8 +117,106 @@ Identifies gaps in test coverage and recommends additional test cases.
 
 **Expected Output**:
 
+`.claude/agents/amplihack/specialized/dependency-analyzer.md`:
+
+```markdown
+---
+role: dependency-analyzer
+description: Analyzes project dependencies, detects version conflicts, and identifies security vulnerabilities across npm, pip, cargo, and other package managers
+---
+
+# Dependency Analyzer Agent
+
+## Role
+
+Specialized agent for comprehensive dependency analysis and conflict resolution.
+
+## When to Invoke
+
+- Dependency conflicts blocking development
+- Security audit of dependencies required
+- Version compatibility analysis needed
+- License compliance checking
+- Before major version upgrades
+
+## Capabilities
+
+1. **Conflict Detection**: Identifies version mismatches and incompatible requirements
+2. **Security Scanning**: Checks for known CVEs and vulnerabilities
+3. **License Analysis**: Validates license compatibility and compliance
+4. **Update Recommendations**: Suggests safe upgrade paths
+5. **Transitive Analysis**: Maps complete dependency trees
+
+## Analysis Process
+
+### Step 1: Discover Dependencies
+
+Scan project for dependency files:
+
+- package.json, package-lock.json (npm)
+- requirements.txt, Pipfile, pyproject.toml (Python)
+- Cargo.toml, Cargo.lock (Rust)
+- go.mod, go.sum (Go)
+
+### Step 2: Build Dependency Graph
+
+Map direct and transitive dependencies with version constraints.
+
+### Step 3: Detect Conflicts
+
+Identify:
+
+- Version mismatches between direct dependencies
+- Incompatible transitive dependencies
+- Circular dependencies
+- Missing peer dependencies
+
+### Step 4: Security Audit
+
+Check each dependency against:
+
+- npm audit / pip-audit / cargo audit
+- Known CVE databases
+- GitHub security advisories
+
+### Step 5: Generate Report
+
+Provide:
+
+- Conflict summary with resolution suggestions
+- Security vulnerabilities with severity ratings
+- License compatibility matrix
+- Safe upgrade path recommendations
+
+## Output Format
+
+**Conflict Report**:
 ```
-.claude/agents/amplihack/specialized/dependency-analyzer.md
+
+CONFLICTS FOUND:
+
+- package-a@1.0 requires foo@^2.0
+- package-b@2.0 requires foo@^3.0
+  RESOLUTION: Upgrade package-a to 2.0 (compatible with foo@^3.0)
+
+```
+
+**Security Report**:
+```
+
+VULNERABILITIES:
+
+- axios@0.21.0: CVE-2021-3749 (HIGH)
+  Fix: Upgrade to axios@0.21.2+
+
+```
+
+## Integration
+
+Works with:
+- ci-diagnostic-workflow (pre-push dependency checks)
+- security agent (vulnerability assessment)
+- pre-commit-diagnostic (local validation)
 ```
 
 ### Example 4: Scenario Tool Skill
@@ -133,13 +231,153 @@ Identifies gaps in test coverage and recommends additional test cases.
 
 **Expected Output**:
 
+`.claude/scenarios/code-reviewer/code_reviewer.py`:
+
+```python
+#!/usr/bin/env python3
+"""Automated code review with security and quality checks."""
+
+import argparse
+import sys
+from pathlib import Path
+from dataclasses import dataclass
+from typing import List
+
+
+@dataclass
+class ReviewResult:
+    """Results from reviewing a single file."""
+
+    file_path: Path
+    issues: List[str]
+    security_concerns: List[str]
+    quality_score: float
+
+
+def review_file(file_path: Path) -> ReviewResult:
+    """Review a single file for security and quality issues."""
+    issues = []
+    security_concerns = []
+
+    content = file_path.read_text()
+
+    # Security checks
+    if "eval(" in content:
+        security_concerns.append("Code injection risk: eval() detected")
+    if "exec(" in content:
+        security_concerns.append("Code execution risk: exec() detected")
+
+    # Quality checks
+    lines = content.split("\n")
+    if len(lines) > 500:
+        issues.append(f"File too large: {len(lines)} lines (recommend < 500)")
+
+    # Calculate quality score
+    quality_score = 100.0
+    quality_score -= len(issues) * 5
+    quality_score -= len(security_concerns) * 10
+
+    return ReviewResult(
+        file_path=file_path,
+        issues=issues,
+        security_concerns=security_concerns,
+        quality_score=max(0.0, quality_score),
+    )
+
+
+def main():
+    """Main entry point."""
+    parser = argparse.ArgumentParser(
+        description="Automated code review with security and quality checks"
+    )
+    parser.add_argument("target", help="File or directory to review")
+    parser.add_argument(
+        "--format", choices=["text", "json"], default="text", help="Output format"
+    )
+    args = parser.parse_args()
+
+    target = Path(args.target)
+    if not target.exists():
+        print(f"Error: {target} not found", file=sys.stderr)
+        sys.exit(1)
+
+    # Collect files to review
+    files = [target] if target.is_file() else list(target.rglob("*.py"))
+
+    # Review each file
+    results = [review_file(f) for f in files]
+
+    # Display results
+    for result in results:
+        print(f"\n{result.file_path}")
+        print(f"Quality Score: {result.quality_score:.1f}/100")
+        if result.security_concerns:
+            print("Security Concerns:")
+            for concern in result.security_concerns:
+                print(f"  - {concern}")
+        if result.issues:
+            print("Issues:")
+            for issue in result.issues:
+                print(f"  - {issue}")
+
+
+if __name__ == "__main__":
+    main()
 ```
-.claude/scenarios/code-reviewer/
-├── README.md
-├── HOW_TO_CREATE_YOUR_OWN.md
-├── code_reviewer.py
-├── tests/
-└── examples/
+
+`.claude/scenarios/code-reviewer/README.md`:
+
+````markdown
+# Code Reviewer
+
+Automated code review with security and quality checks.
+
+## Features
+
+- Security vulnerability detection (eval, exec, SQL injection patterns)
+- Code quality metrics (file size, complexity, style)
+- Multiple output formats (text, JSON)
+- Recursive directory scanning
+
+## Installation
+
+```bash
+# From amplihack repository root
+pip install -e .
+```
+````
+
+## Usage
+
+```bash
+# Review single file
+python .claude/scenarios/code-reviewer/code_reviewer.py file.py
+
+# Review directory
+python .claude/scenarios/code-reviewer/code_reviewer.py ./src/
+
+# JSON output
+python .claude/scenarios/code-reviewer/code_reviewer.py ./src/ --format json
+```
+
+## Output
+
+```
+./src/module.py
+Quality Score: 95.0/100
+Issues:
+  - Function too complex: calculate_metrics (20 branches)
+```
+
+## Integration
+
+Add to Makefile:
+
+```makefile
+review-code:
+	python .claude/scenarios/code-reviewer/code_reviewer.py $(TARGET)
+```
+
 ```
 
 ---
@@ -153,22 +391,26 @@ Identifies gaps in test coverage and recommends additional test cases.
 **Natural Language** (skill auto-activates):
 
 ```
+
 User: "I need to build a skill that calculates financial ratios like ROE and P/E"
-skill-builder: *activates automatically*
-               "I'll help you create that financial analysis skill..."
+skill-builder: _activates automatically_
+"I'll help you create that financial analysis skill..."
+
 ```
 
 **Generated Structure**:
 
 ```
+
 .claude/skills/financial-analyzer/
-├── SKILL.md              # Core instructions (<5K tokens)
-├── reference.md          # Detailed formulas and methodologies
-├── examples.md           # Sample analyses
+├── SKILL.md # Core instructions (<5K tokens)
+├── reference.md # Detailed formulas and methodologies
+├── examples.md # Sample analyses
 └── scripts/
-    ├── calculate.py      # Ratio calculations
-    └── validate.py       # Input validation
-```
+├── calculate.py # Ratio calculations
+└── validate.py # Input validation
+
+````
 
 **SKILL.md** (Progressive Disclosure):
 
@@ -204,7 +446,7 @@ For detailed formulas and methodologies, see [reference.md](./reference.md).
 For usage examples, see [examples.md](./examples.md).
 
 [Core workflow steps...]
-```
+````
 
 ### Example 6: Read-Only Skill with Security
 

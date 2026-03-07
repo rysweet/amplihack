@@ -37,6 +37,9 @@ import os
 import re
 from pathlib import Path
 
+# Unset CLAUDECODE to prevent nested session errors when spawning Claude CLI subprocesses
+os.environ.pop("CLAUDECODE", None)
+
 # Try to import Claude SDK
 try:
     from claude_agent_sdk import ClaudeAgentOptions, query  # type: ignore[import-not-found]

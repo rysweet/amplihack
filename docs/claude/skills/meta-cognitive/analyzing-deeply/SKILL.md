@@ -1,5 +1,5 @@
 ---
-name: "Analyzing Problems Deeply"
+name: analyzing-deeply
 description: "Performs deep structured analysis on complex or ambiguous problems. Activates when problems are unclear, have multiple perspectives, or require careful thinking before proceeding. Uses ultrathink methodology for systematic exploration of problem space."
 ---
 

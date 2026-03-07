@@ -153,17 +153,58 @@ steps:
 
 ### Step Fields
 
-| Field        | Type   | Required | Description                                                  |
-| ------------ | ------ | -------- | ------------------------------------------------------------ |
-| `id`         | string | Yes      | Unique step identifier within the recipe                     |
-| `agent`      | string | No       | Agent reference in `namespace:name` format                   |
-| `type`       | string | No       | `agent` (default when `agent` or `prompt` present) or `bash` |
-| `prompt`     | string | No       | Prompt template sent to the agent                            |
-| `command`    | string | No       | Shell command (when `type: bash`)                            |
-| `output`     | string | No       | Context key to store step result under                       |
-| `condition`  | string | No       | Python expression; step skips when false                     |
-| `parse_json` | bool   | No       | Parse stdout as JSON and store as dict in context            |
-| `mode`       | string | No       | Agent mode hint (e.g. `ANALYZE`, `DESIGN`)                   |
+| Field        | Type        | Required | Description                                                                    |
+| ------------ | ----------- | -------- | ------------------------------------------------------------------------------ |
+| `id`         | string      | Yes      | Unique step identifier within the recipe                                       |
+| `agent`      | string      | No       | Agent reference in `namespace:name` format                                     |
+| `type`       | string      | No       | `agent` (default when `agent`/`prompt` present), `bash`, or `recipe`          |
+| `prompt`     | string      | No       | Prompt template sent to the agent                                              |
+| `command`    | string      | No       | Shell command (when `type: bash`)                                              |
+| `recipe`     | string      | No       | Sub-recipe name to invoke (when `type: recipe`)                                |
+| `context`    | dict        | No       | Extra context key/value pairs merged into the sub-recipe (when `type: recipe`) |
+| `output`     | string      | No       | Context key to store step result under                                         |
+| `condition`  | string      | No       | Python expression; step skips when false                                       |
+| `parse_json` | bool        | No       | Parse stdout as JSON and store as dict in context                              |
+| `mode`       | string      | No       | Agent mode hint (e.g. `ANALYZE`, `DESIGN`)                                     |
+| `timeout`    | int or None | No       | Timeout in seconds for bash steps (default: None = no timeout)                 |
+
+### Recipe Step (`type: recipe`)
+
+A `recipe` step invokes another recipe as a sub-step, enabling composition of complex workflows from simpler building blocks.
+
+```yaml
+steps:
+  - id: run-quality-audit
+    type: recipe
+    recipe: quality-audit-cycle
+    context:
+      target_path: src/amplihack
+    output: quality_audit_results
+```
+
+**Recursion guard**: Sub-recipes can themselves contain `recipe` steps (up to a maximum depth of 3). Deeper nesting raises an error to prevent infinite loops.
+
+**Context merging**: The sub-recipe starts with a copy of the current context, then the step-level `context` dict is merged on top. Mutations inside the sub-recipe do not propagate back to the parent recipe.
+
+### Bash Step Timeouts
+
+Bash steps have no timeout by default (timeout: None), allowing long-running operations to complete naturally. Optionally specify a timeout in seconds:
+
+```yaml
+steps:
+  - id: run-tests
+    type: bash
+    command: "cd {{repo_path}} && python -m pytest tests/ -x"
+    timeout: 300 # 5-minute timeout for long test suites
+    output: test_output
+
+  - id: git-operations
+    type: bash
+    command: "git fetch origin && git rebase origin/main"
+    # No timeout specified = runs until completion
+```
+
+**Note**: Agent steps have never had timeouts and continue to run until the agent completes.
 
 ### Template Variables
 
@@ -238,12 +279,16 @@ Recipes live in `~/.amplihack/.claude/recipes/`. Run `amplihack recipe list` to 
 
 The Recipe Runner automatically discovers recipes from these standard directories (in priority order):
 
-1. `amplifier-bundle/recipes/` — bundled recipes from Microsoft Amplifier
-2. `src/amplihack/amplifier-bundle/recipes/` — package-embedded recipes
-3. `~/.amplihack/.claude/recipes/` — user-installed recipes
-4. `.claude/recipes/` — project-specific recipes
+1. **Installed Package Path** — `site-packages/amplihack/amplifier-bundle/recipes/` (absolute, works from any directory)
+2. **Repository Root** — repo-root `amplifier-bundle/recipes/` (resolved via `Path(__file__)`, for editable installs)
+3. **User-Installed** — `~/.amplihack/.claude/recipes/` (custom user recipes)
+4. **CWD Bundle** — `amplifier-bundle/recipes/` (CWD-relative, legacy compatibility)
+5. **CWD Source** — `src/amplihack/amplifier-bundle/recipes/` (CWD-relative, development)
+6. **Project-Specific** — `.claude/recipes/` (project-local recipes, can override)
 
-Later directories override earlier ones when recipe names collide. All bundled recipes are automatically available without additional installation.
+Later directories override earlier ones when recipe names collide. All bundled recipes are automatically available after pip install without additional configuration.
+
+**Key Feature (v0.9.0)**: Recipe discovery now includes the installed package's absolute path, resolved via `Path(__file__)`. This ensures all 16 bundled recipes are discoverable when you run amplihack from any working directory, not just from the amplihack repository itself.
 
 ```python
 from amplihack.recipes import list_recipes, find_recipe

@@ -133,6 +133,8 @@ class RecipeParser:
             "working_dir",
             "timeout",
             "auto_stage",
+            "recipe",
+            "context",
         }
     )
 
@@ -153,6 +155,8 @@ class RecipeParser:
                 warnings.append(f"Step '{step.id}': agent step is missing a 'prompt' field")
             if step.step_type == StepType.BASH and not step.command:
                 warnings.append(f"Step '{step.id}': bash step is missing a 'command' field")
+            if step.step_type == StepType.RECIPE and not step.recipe:
+                warnings.append(f"Step '{step.id}': recipe step is missing a 'recipe' field")
 
         # Check for unrecognized fields if raw YAML is provided
         if raw_yaml is not None:
@@ -192,6 +196,8 @@ class RecipeParser:
             working_dir=raw.get("working_dir"),
             timeout=raw.get("timeout"),
             auto_stage=raw.get("auto_stage"),
+            recipe=raw.get("recipe"),
+            sub_context=raw.get("context") if isinstance(raw.get("context"), dict) else None,
         )
 
     def _infer_step_type(self, raw: dict[str, Any]) -> StepType:
@@ -207,6 +213,9 @@ class RecipeParser:
         explicit = raw.get("type")
         if explicit:
             return StepType(explicit.lower())
+
+        if "recipe" in raw:
+            return StepType.RECIPE
 
         if "agent" in raw:
             return StepType.AGENT
