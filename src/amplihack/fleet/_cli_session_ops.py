@@ -490,8 +490,9 @@ def register_session_ops(fleet_cli: click.Group) -> None:
     @click.option("--vm", default=None, help="Filter to a single VM (default: all)")
     @click.option("--session", "session_target", default=None, help="Target session as vm:session (e.g., dev:cybergym-intg)")
     @click.option("--skip-adopt", is_flag=True, help="Reason about sessions without adopting them first")
+    @click.option("--incremental", is_flag=True, help="Only re-reason sessions whose status changed since last scout")
     @click.option("--save", "save_path", default=None, type=click.Path(), help="Save JSON report to file")
-    def scout(vm, session_target, skip_adopt, save_path):
+    def scout(vm, session_target, skip_adopt, incremental, save_path):
         """Discover sessions, adopt them, dry-run reason, and show a report.
 
         Combines fleet discovery, session adoption, and admiral dry-run
@@ -538,6 +539,18 @@ def register_session_ops(fleet_cli: click.Group) -> None:
             click.echo("\nPhase 2: Skipped (--skip-adopt)")
 
         # -- Phase 3: Dry-run reasoning --
+        # Load previous scout results for incremental mode
+        prev_statuses: dict[str, str] = {}
+        if incremental:
+            last_scout_path = Path.home() / ".amplihack" / "fleet" / "last_scout.json"
+            if last_scout_path.exists():
+                try:
+                    prev_data = json.loads(last_scout_path.read_text())
+                    prev_statuses = prev_data.get("session_statuses", {})
+                    click.echo(f"\nIncremental mode: loaded {len(prev_statuses)} previous statuses")
+                except (json.JSONDecodeError, KeyError):
+                    click.echo("\nIncremental mode: could not load previous scout, running full")
+
         click.echo("\nPhase 3: Reasoning about sessions...")
         backend = _backends_mod.auto_detect_backend()
         reasoner = _reasoner_mod.SessionReasoner(
@@ -549,6 +562,18 @@ def register_session_ops(fleet_cli: click.Group) -> None:
         decisions: list[dict] = []
         for v in running_vms:
             for sess in v.sessions:
+                # Incremental: skip sessions whose status hasn't changed
+                session_key = f"{v.name}/{sess.session_name}"
+                if incremental and prev_statuses.get(session_key) == sess.status:
+                    click.echo(f"  Skipping (unchanged): {session_key} [{sess.status}]")
+                    # Carry forward previous decision if available
+                    prev_decisions = prev_data.get("decisions", []) if prev_statuses else []
+                    prev_d = next((d for d in prev_decisions if d.get("vm") == v.name and d.get("session") == sess.session_name), None)
+                    if prev_d:
+                        decisions.append(prev_d)
+                    else:
+                        decisions.append({"vm": v.name, "session": sess.session_name, "status": sess.status, "action": "wait", "confidence": 0.5, "reasoning": "Unchanged since last scout"})
+                    continue
                 click.echo(f"  Reasoning: {v.name}/{sess.session_name}...")
                 try:
                     decision = reasoner.reason_about_session(
@@ -581,17 +606,27 @@ def register_session_ops(fleet_cli: click.Group) -> None:
         )
         click.echo(report_text)
 
-        # -- Optional: Save JSON --
+        # -- Always save last scout results for incremental re-use --
+        last_scout_path = Path.home() / ".amplihack" / "fleet" / "last_scout.json"
+        last_scout_path.parent.mkdir(parents=True, exist_ok=True)
+        last_scout_data = {
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+            "running_vms": len(running_vms),
+            "total_sessions": total_sessions,
+            "adopted_count": adopted_count,
+            "skip_adopt": skip_adopt,
+            "decisions": decisions,
+            "session_statuses": {
+                f"{v.name}/{s.session_name}": s.status
+                for v in running_vms
+                for s in v.sessions
+            },
+        }
+        last_scout_path.write_text(json.dumps(last_scout_data, indent=2))
+
+        # -- Optional: Save JSON to custom path --
         if save_path:
-            report_data = {
-                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
-                "running_vms": len(running_vms),
-                "total_sessions": total_sessions,
-                "adopted_count": adopted_count,
-                "skip_adopt": skip_adopt,
-                "decisions": decisions,
-            }
-            Path(save_path).write_text(json.dumps(report_data, indent=2))
+            Path(save_path).write_text(json.dumps(last_scout_data, indent=2))
             click.echo(f"\nJSON report saved to: {save_path}")
 
     # ------------------------------------------------------------------
