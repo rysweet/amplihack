@@ -83,6 +83,20 @@ def main() -> None:
     # Store the agent's initial context
     memory.remember(f"Agent identity: {agent_name}. Role: {agent_prompt}")
 
+    # Build LearningAgent for LLM-backed answer synthesis on QUERY events
+    from pathlib import Path
+
+    from amplihack.agents.goal_seeking.learning_agent import LearningAgent
+
+    _storage = Path(storage_path)
+    _storage.mkdir(parents=True, exist_ok=True)
+    learning_agent = LearningAgent(
+        agent_name=agent_name,
+        storage_path=_storage,
+        use_hierarchical=True,
+    )
+    logger.info("LearningAgent initialized for agent %s", agent_name)
+
     logger.info(
         "Agent %s memory initialized and entering OODA loop",
         agent_name,
@@ -111,7 +125,7 @@ def main() -> None:
 
     while not shutdown[0]:
         try:
-            _ooda_tick(agent_name, agent_prompt, memory, loop_count)
+            _ooda_tick(agent_name, agent_prompt, memory, loop_count, learning_agent)
             loop_count += 1
         except Exception:
             logger.exception("Error in OODA loop tick for agent %s", agent_name)
@@ -129,12 +143,14 @@ def main() -> None:
         logger.debug("Error closing memory", exc_info=True)
 
 
-def _handle_event(agent_name: str, event: object, memory: object) -> None:
+def _handle_event(
+    agent_name: str, event: object, memory: object, learning_agent: object = None
+) -> None:
     """Dispatch an incoming event to the appropriate handler.
 
     Handled event types:
         LEARN_CONTENT -- extract and store the content payload in memory.
-        QUERY         -- recall relevant facts from memory and publish a response.
+        QUERY         -- answer via LearningAgent.answer_question() and publish response.
 
     All other event types are stored as generic event records.
     """
@@ -167,19 +183,37 @@ def _handle_event(agent_name: str, event: object, memory: object) -> None:
         question = (payload or {}).get("question", "") or (payload or {}).get("text", "")
         if question:
             logger.info(
-                "Agent %s handling QUERY (id=%s): %s...",
+                "Agent %s handling QUERY via LearningAgent (id=%s): %s...",
                 agent_name,
                 query_id,
                 question[:80],
             )
-            results = memory.recall(question, limit=10) if hasattr(memory, "recall") else []
+            answer = ""
+            if learning_agent is not None and hasattr(learning_agent, "answer_question"):
+                try:
+                    result = learning_agent.answer_question(question)
+                    answer = result[0] if isinstance(result, tuple) else str(result)
+                except Exception:
+                    logger.exception(
+                        "Agent %s LearningAgent.answer_question failed for query %s",
+                        agent_name,
+                        query_id,
+                    )
+            else:
+                # Fallback: raw keyword recall when no LearningAgent is available
+                results = memory.recall(question, limit=10) if hasattr(memory, "recall") else []
+                answer = "; ".join(
+                    r.get("content", str(r)) if isinstance(r, dict) else str(r)
+                    for r in results
+                )
+            results = [{"content": answer, "source": agent_name}] if answer else []
             if hasattr(memory, "send_query_response"):
                 memory.send_query_response(query_id, question, results)
             logger.info(
-                "Agent %s published QUERY_RESPONSE (id=%s): %d results",
+                "Agent %s published QUERY_RESPONSE (id=%s) via LearningAgent: %d chars",
                 agent_name,
                 query_id,
-                len(results),
+                len(answer),
             )
         else:
             logger.warning(
@@ -206,7 +240,13 @@ def _handle_event(agent_name: str, event: object, memory: object) -> None:
         memory.remember(f"Event received: {event}")
 
 
-def _ooda_tick(agent_name: str, agent_prompt: str, memory: object, tick: int) -> None:
+def _ooda_tick(
+    agent_name: str,
+    agent_prompt: str,
+    memory: object,
+    tick: int,
+    learning_agent: object = None,
+) -> None:
     """Single OODA loop tick — poll for incoming events and process them.
 
     Observe: Check for new messages/events from other agents.
@@ -219,7 +259,7 @@ def _ooda_tick(agent_name: str, agent_prompt: str, memory: object, tick: int) ->
         events = memory.receive_events() if hasattr(memory, "receive_events") else []
         for event in events:
             logger.info("Agent %s received event: %s", agent_name, event)
-            _handle_event(agent_name, event, memory)
+            _handle_event(agent_name, event, memory, learning_agent)
     except Exception:
         logger.debug("Event receive failed", exc_info=True)
 
@@ -230,7 +270,7 @@ def _ooda_tick(agent_name: str, agent_prompt: str, memory: object, tick: int) ->
         )
         for event in query_events:
             logger.info("Agent %s received QUERY event: %s", agent_name, event)
-            _handle_event(agent_name, event, memory)
+            _handle_event(agent_name, event, memory, learning_agent)
     except Exception:
         logger.debug("Query event receive failed", exc_info=True)
 

@@ -39,17 +39,19 @@ class TestAgentEntrypoint:
             mod.main()
         assert exc_info.value.code == 1
 
-    def test_main_initializes_memory(self, monkeypatch):
+    def test_main_initializes_memory(self, monkeypatch, tmp_path):
         monkeypatch.setenv("AMPLIHACK_AGENT_NAME", "test-agent")
         monkeypatch.setenv("AMPLIHACK_MEMORY_TRANSPORT", "local")
+        monkeypatch.setenv("AMPLIHACK_MEMORY_STORAGE_PATH", str(tmp_path / "test-agent"))
 
         mock_memory_instance = MagicMock()
         mock_memory_instance.stats.return_value = {"fact_count": 0}
         mock_memory_instance.recall.return_value = []
 
+        mock_learning_agent = MagicMock()
+
         # Make the OODA loop exit after one iteration
         call_count = [0]
-        original_sleep = time.sleep
 
         def fast_sleep(secs):
             call_count[0] += 1
@@ -59,12 +61,16 @@ class TestAgentEntrypoint:
         mod = _load_entrypoint()
 
         with patch("amplihack.memory.facade.Memory", return_value=mock_memory_instance):
-            with patch.object(mod, "_ooda_tick") as mock_tick:
-                with patch("time.sleep", side_effect=fast_sleep):
-                    try:
-                        mod.main()
-                    except (KeyboardInterrupt, SystemExit):
-                        pass
+            with patch(
+                "amplihack.agents.goal_seeking.learning_agent.LearningAgent",
+                return_value=mock_learning_agent,
+            ):
+                with patch.object(mod, "_ooda_tick") as mock_tick:
+                    with patch("time.sleep", side_effect=fast_sleep):
+                        try:
+                            mod.main()
+                        except (KeyboardInterrupt, SystemExit):
+                            pass
 
         # Memory should have been constructed
         mock_memory_instance.remember.assert_called()
@@ -87,6 +93,61 @@ class TestAgentEntrypoint:
         # Tick 10 should call stats again
         mod._ooda_tick("agent", "prompt", mock_mem, 10)
         mock_mem.stats.assert_called_once()
+
+    def test_handle_query_event_uses_learning_agent(self):
+        """QUERY events should invoke LearningAgent.answer_question, not memory.recall."""
+        mod = _load_entrypoint()
+        mock_mem = MagicMock()
+        mock_mem.recall.return_value = []
+
+        mock_agent = MagicMock()
+        mock_agent.answer_question.return_value = "42 is the answer"
+
+        query_event = {
+            "event_type": "QUERY",
+            "payload": {"query_id": "qid-1", "question": "What is 6 times 7?"},
+        }
+        mod._handle_event("agent", query_event, mock_mem, mock_agent)
+
+        mock_agent.answer_question.assert_called_once_with("What is 6 times 7?")
+        mock_mem.recall.assert_not_called()
+
+    def test_handle_query_event_without_learning_agent_falls_back(self):
+        """Without a LearningAgent, QUERY events fall back to memory.recall."""
+        mod = _load_entrypoint()
+        mock_mem = MagicMock()
+        mock_mem.recall.return_value = [{"content": "fallback answer"}]
+
+        query_event = {
+            "event_type": "QUERY",
+            "payload": {"query_id": "qid-2", "question": "Some question?"},
+        }
+        mod._handle_event("agent", query_event, mock_mem, None)
+
+        mock_mem.recall.assert_called_once()
+
+    def test_handle_event_passes_learning_agent_from_ooda_tick(self):
+        """_ooda_tick forwards the learning_agent to _handle_event."""
+        mod = _load_entrypoint()
+        mock_mem = MagicMock()
+        mock_mem.receive_events.return_value = [
+            {"event_type": "QUERY", "payload": {"query_id": "q1", "question": "test?"}}
+        ]
+        mock_mem.receive_query_events.return_value = []
+        mock_mem.recall.return_value = []
+
+        mock_agent = MagicMock()
+        mock_agent.answer_question.return_value = "test answer"
+
+        mod._ooda_tick("agent", "prompt", mock_mem, 5, mock_agent)
+
+        mock_agent.answer_question.assert_called_once_with("test?")
+        # memory.recall is still called for the "recent context" observation step,
+        # but NOT for the QUERY answer path (that uses LearningAgent)
+        for call_args in mock_mem.recall.call_args_list:
+            assert call_args != (("test?",), {"limit": 10}), (
+                "memory.recall should not be called with the query question"
+            )
 
 
 class TestDockerfile:
