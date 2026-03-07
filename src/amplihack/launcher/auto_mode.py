@@ -19,6 +19,9 @@ if platform.system() != "Windows":
 else:
     pty = None
 
+# Unset CLAUDECODE to prevent nested session errors when spawning Claude CLI subprocesses
+os.environ.pop("CLAUDECODE", None)
+
 # Try to import Claude SDK, fall back gracefully
 try:
     from claude_agent_sdk import ClaudeAgentOptions, query  # type: ignore
