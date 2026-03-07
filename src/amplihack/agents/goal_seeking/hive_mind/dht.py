@@ -242,16 +242,33 @@ class ShardStore:
             return self._facts.get(fact_id)
 
     def search(self, query: str, limit: int = 20) -> list[ShardFact]:
-        """Keyword search across shard facts."""
-        query_words = set(query.lower().split())
+        """Keyword search with substring matching and n-gram overlap scoring.
+
+        Uses a comprehensive stop word list to filter noise terms, substring
+        matching (including prefix variants like "login"/"logins"), and a
+        bigram bonus to reward phrase-level matches over scattered hits.
+        Punctuation is stripped from query words so "INC-2024-001?" matches
+        facts containing "INC-2024-001".
+        """
+        query_lower = query.lower()
+        # Strip trailing punctuation (e.g. "?" from questions) from each word
+        q_raw_words = [w.strip("?.,!;:'\"()[]") for w in query_lower.split() if w.strip("?.,!;:'\"()[]")]
         stop_words = {
             "the", "a", "an", "is", "are", "was", "were", "what", "how",
             "does", "do", "and", "or", "of", "in", "to", "for", "with",
-            "on", "at", "by", "from", "that", "this", "it",
+            "on", "at", "by", "from", "that", "this", "it", "as", "be",
+            "been", "has", "have", "had", "will", "would", "could", "should",
+            "did", "which", "who", "when", "where", "why", "any", "some",
+            "all", "both", "each", "few", "more", "most", "other", "such",
+            "into", "through", "during", "before", "after", "than", "then",
+            "these", "those", "there", "their", "they", "its",
         }
-        terms = query_words - stop_words
+        terms = {w for w in q_raw_words if w not in stop_words and len(w) > 1}
         if not terms:
-            terms = query_words
+            terms = set(q_raw_words)
+
+        # Precompute bigrams from query for phrase-match bonus
+        q_bigrams = set(zip(q_raw_words, q_raw_words[1:]))
 
         scored: list[tuple[float, ShardFact]] = []
         with self._lock:
@@ -259,10 +276,37 @@ class ShardStore:
                 if "retracted" in fact.tags:
                     continue
                 content_lower = fact.content.lower()
-                hits = sum(1 for t in terms if t in content_lower)
-                if hits > 0:
-                    score = hits + fact.confidence * 0.01
-                    scored.append((score, fact))
+                content_words = content_lower.split()
+                content_word_set = set(content_words)
+
+                # Substring hits: exact substring match OR prefix overlap for
+                # morphological variants (e.g. "login" matches "logins" and vice versa).
+                # Specific identifiers (IP addresses, CVE IDs, incident numbers) that
+                # contain digits get 3x weight since they are highly discriminative.
+                hits = 0.0
+                for t in terms:
+                    weight = 5.0 if any(ch.isdigit() for ch in t) else 1.0
+                    if t in content_lower:
+                        hits += weight
+                    else:
+                        # Partial credit for prefix overlap (min length 4)
+                        if len(t) >= 4 and any(
+                            w.startswith(t) or t.startswith(w)
+                            for w in content_word_set
+                            if len(w) >= 4
+                        ):
+                            hits += weight * 0.5
+
+                if hits <= 0:
+                    continue
+
+                # Bigram bonus: reward facts that share consecutive phrase matches
+                fact_bigrams = set(zip(content_words, content_words[1:]))
+                bigram_hits = sum(1 for bg in q_bigrams if bg in fact_bigrams)
+                bigram_bonus = bigram_hits * 0.3
+
+                score = hits + bigram_bonus + fact.confidence * 0.01
+                scored.append((score, fact))
 
         scored.sort(key=lambda x: x[0], reverse=True)
         return [f for _, f in scored[:limit]]
@@ -409,13 +453,30 @@ class DHTRouter:
                     seen_content.add(content_hash)
                     all_results.append(fact)
 
-        # Sort by relevance (keyword hits + confidence)
-        query_words = set(query_text.lower().split())
-        all_results.sort(
-            key=lambda f: sum(1 for w in query_words if w in f.content.lower())
-            + f.confidence * 0.01,
-            reverse=True,
-        )
+        # Sort by relevance: substring hits + bigram bonus + confidence
+        q_lower = query_text.lower()
+        # Strip punctuation from words so "INC-2024-001?" matches "INC-2024-001"
+        q_words = [w.strip("?.,!;:'\"()[]") for w in q_lower.split() if w.strip("?.,!;:'\"()[]")]
+        q_bigrams = set(zip(q_words, q_words[1:]))
+        stop_words = {
+            "the", "a", "an", "is", "are", "was", "were", "what", "how",
+            "does", "do", "and", "or", "of", "in", "to", "for", "with",
+            "on", "at", "by", "from", "that", "this", "it",
+        }
+        search_terms = {w for w in q_words if w not in stop_words and len(w) > 1} or set(q_words)
+
+        def _relevance(f: ShardFact) -> float:
+            c_lower = f.content.lower()
+            c_words = c_lower.split()
+            # Specific identifiers (contain digits: IPs, CVEs, incident IDs) get 5x weight
+            hits = sum(
+                (5.0 if any(ch.isdigit() for ch in t) else 1.0)
+                for t in search_terms if t in c_lower
+            )
+            bigram_bonus = sum(0.3 for bg in q_bigrams if bg in set(zip(c_words, c_words[1:])))
+            return hits + bigram_bonus + f.confidence * 0.01
+
+        all_results.sort(key=_relevance, reverse=True)
 
         return all_results[:limit]
 

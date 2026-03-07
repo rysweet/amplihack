@@ -502,15 +502,24 @@ class NetworkGraphStore:
                 len(self._query_events),
             )
 
-            # Search local graph store (gracefully handle missing table)
-            try:
-                results = self._local.search_nodes(table, text, fields, limit)
-            except Exception:
-                logger.debug(
-                    "[%s] search_nodes failed for table=%s (table may not exist yet)",
-                    self._agent_id, table, exc_info=True,
-                )
-                results = []
+            # Search local graph store: try specified table + all known tables
+            # so that facts stored under different table names are still reachable.
+            results = []
+            seen_ids: set[str] = set()
+            for search_table in ([table] + [t for t in _QUERY_SEARCH_TABLES if t != table]):
+                try:
+                    hits = self._local.search_nodes(search_table, text, fields, limit)
+                    for h in hits:
+                        nid = h.get("node_id", "")
+                        key = nid if nid else str(h.get("content", ""))
+                        if key and key not in seen_ids:
+                            seen_ids.add(key)
+                            results.append(h)
+                except Exception:
+                    logger.debug(
+                        "[%s] search_nodes failed for table=%s (table may not exist yet)",
+                        self._agent_id, search_table, exc_info=True,
+                    )
             logger.debug(
                 "[%s] search_query query_id=%s: local graph store returned %d result(s)",
                 self._agent_id, query_id, len(results),
@@ -681,7 +690,8 @@ class NetworkGraphStore:
         """Auto-respond to a QUERY event using Kuzu memory search.
 
         When a recall_fn is wired (pointing to CognitiveAdapter.search), it
-        queries the cognitive Kuzu store which holds LEARN_CONTENT facts.
+        queries the cognitive Kuzu store which holds LEARN_CONTENT facts using
+        substring and n-gram matching across all stored content.
         Falls back to searching the local graph store tables directly.
 
         Args:
@@ -715,11 +725,18 @@ class NetworkGraphStore:
             except Exception:
                 logger.debug("recall_fn failed for query_id=%s", query_id, exc_info=True)
 
-        # Fallback / supplemental: local graph store tables
+        # Fallback / supplemental: search all tables in local graph store.
+        # This covers content not in the cognitive adapter (e.g. create_node replication)
+        # and ensures recall even when the recall_fn search is too restrictive.
+        seen_content = {r.get("content", "") for r in results if r.get("content")}
         for table in _QUERY_SEARCH_TABLES:
             try:
                 hits = self._local.search_nodes(table, question, limit=5)
-                results.extend(hits)
+                for h in hits:
+                    c = h.get("content", "")
+                    if c and c not in seen_content:
+                        seen_content.add(c)
+                        results.append(h)
             except Exception:
                 logger.debug("search_nodes failed for table=%s", table, exc_info=True)
 
