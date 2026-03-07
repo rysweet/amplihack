@@ -360,8 +360,50 @@ class HiveQueryClient:
         text: str,
         table: str = "hive_facts",
         limit: int = 20,
+        max_retries: int = 2,
+        retry_backoff: float = 2.0,
     ) -> list[dict[str, Any]]:
         """Query the live hive for facts matching `text`.
+
+        Publishes a search_query event and waits up to self._timeout seconds
+        for agent responses. Retries up to max_retries times with exponential
+        backoff if 0 results are returned.
+
+        Args:
+            text: The search query text.
+            table: Graph table to search (default: hive_facts).
+            limit: Max results per agent.
+            max_retries: Number of retry attempts when 0 results returned.
+            retry_backoff: Base backoff in seconds between retries (doubled each attempt).
+
+        Returns:
+            Deduplicated list of matching fact dicts, sorted by confidence.
+        """
+        attempt = 0
+        backoff = retry_backoff
+        while True:
+            results = self._query_once(text=text, table=table, limit=limit)
+            if results or attempt >= max_retries:
+                if attempt > 0 and not results:
+                    logger.warning(
+                        "Query returned 0 results after %d retries: %r", attempt, text
+                    )
+                return results
+            attempt += 1
+            logger.debug(
+                "Query returned 0 results (attempt %d/%d), retrying in %.1fs: %r",
+                attempt, max_retries, backoff, text,
+            )
+            time.sleep(backoff)
+            backoff *= 2
+
+    def _query_once(
+        self,
+        text: str,
+        table: str = "hive_facts",
+        limit: int = 20,
+    ) -> list[dict[str, Any]]:
+        """Execute a single query round-trip to the hive.
 
         Publishes a search_query event and waits up to self._timeout seconds
         for agent responses.
@@ -680,10 +722,10 @@ def _format_hive_results(results: list[dict[str, Any]]) -> str:
 
 
 def _grade_hive_answer(question: str, expected: str, actual: str) -> dict[str, Any]:
-    """Grade a hive answer using amplihack_eval.grade_answer with keyword fallback.
+    """Grade a hive answer using amplihack_eval.core.grader.grade_answer (LLM grading).
 
-    Attempts semantic grading via grade_answer (requires ANTHROPIC_API_KEY).
-    Falls back to keyword-based scoring if grading fails.
+    Uses semantic LLM grading via grade_answer (requires ANTHROPIC_API_KEY).
+    Returns score=0.0 if grading fails or actual is empty.
 
     Args:
         question: The question asked.
@@ -697,7 +739,7 @@ def _grade_hive_answer(question: str, expected: str, actual: str) -> dict[str, A
         return {"score": 0.0, "reasoning": "No results returned by hive"}
 
     try:
-        from amplihack_eval import grade_answer
+        from amplihack_eval.core.grader import grade_answer
         result = grade_answer(
             question=question,
             expected=expected,
@@ -706,28 +748,8 @@ def _grade_hive_answer(question: str, expected: str, actual: str) -> dict[str, A
         )
         return {"score": result.score, "reasoning": result.reasoning}
     except Exception as exc:
-        logger.debug("grade_answer failed, falling back to keyword scoring: %s", exc)
-        # Keyword fallback: extract key terms from expected answer
-        keywords = [w for w in expected.lower().split() if len(w) > 4][:5]
-        actual_lower = actual.lower()
-        matched = sum(1 for kw in keywords if kw in actual_lower)
-        score = matched / len(keywords) if keywords else 0.0
-        return {
-            "score": round(score, 3),
-            "reasoning": f"[keyword fallback] {matched}/{len(keywords)} keywords matched",
-        }
-
-
-def _score_response(results: list[dict[str, Any]], keywords: list[str]) -> bool:
-    """Return True if any result contains all expected keywords (case-insensitive)."""
-    for r in results:
-        content = (
-            r.get("content", r.get("outcome", r.get("concept", ""))) + " "
-            + r.get("concept", "")
-        ).lower()
-        if all(kw.lower() in content for kw in keywords):
-            return True
-    return False
+        logger.warning("grade_answer failed: %s", exc)
+        return {"score": 0.0, "reasoning": f"LLM grading failed: {exc}"}
 
 
 # ---------------------------------------------------------------------------
