@@ -53,15 +53,17 @@ def main() -> None:
     )
     model = os.environ.get("AMPLIHACK_MODEL") or os.environ.get("EVAL_MODEL") or None
 
-    # Gracefully handle missing azure-servicebus package
+    # Verify required transport package is installed — no silent fallbacks
     if transport == "azure_service_bus":
         try:
             import azure.servicebus  # noqa: F401
         except ImportError:
-            logger.warning(
-                "azure-servicebus package not installed; falling back to local transport"
+            logger.error(
+                "azure-servicebus package not installed but transport=%s. "
+                "Install it or fix the Docker image. No fallback.",
+                transport,
             )
-            transport = "local"
+            sys.exit(1)
 
     logger.info(
         "Starting agent: name=%s topology=%s transport=%s backend=%s",
