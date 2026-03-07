@@ -42,6 +42,7 @@ class VMOptions:
     no_reuse: bool = False
     keep_vm: bool = False
     azlin_extra_args: list | None = None  # Pass-through for any azlin parameters
+    tunnel_port: int | None = None  # Reuse existing bastion tunnel on this local port
 
 
 class Orchestrator:
