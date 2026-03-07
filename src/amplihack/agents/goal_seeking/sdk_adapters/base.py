@@ -323,6 +323,10 @@ class GoalSeekingAgent(ABC):
             return {"error": "Content cannot be empty"}
         content = content[:50_000]
 
+        # Require memory to be initialized before attempting to learn
+        if not self.memory:
+            return {"error": "Memory not initialized"}
+
         # Use LearningAgent for proper LLM-based fact extraction
         la = self._get_learning_agent()
         if la:

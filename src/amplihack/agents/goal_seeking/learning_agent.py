@@ -326,7 +326,7 @@ class LearningAgent:
                 self.memory.store_fact(**store_kwargs)
                 stored_count += 1
             except Exception as e:
-                logger.debug("Failed to store fact: %s", e)
+                logger.warning("Failed to store fact: %s", e)
                 continue
 
         # Generate and store a summary concept map for knowledge organization
@@ -466,7 +466,6 @@ class LearningAgent:
         "contradiction_resolution",
         "multi_source_synthesis",
         "causal_counterfactual",
-        "mathematical_computation",
     }
 
     # Aggregation intents: routed to Cypher graph queries instead of text search
@@ -672,7 +671,11 @@ class LearningAgent:
         # a large KB. Only filter out DB-stored SUMMARY nodes (context == "SUMMARY")
         # which are different from tiered retrieval summaries.
         if intent_type == "meta_memory":
-            relevant_facts = [f for f in relevant_facts if f.get("context", "") != "SUMMARY"]
+            relevant_facts = [
+                f for f in relevant_facts
+                if f.get("context", "") != "SUMMARY"
+                and "summary" not in (f.get("tags") or [])
+            ]
 
         # Always rerank by query relevance first to prioritize the most relevant facts.
         # For large fact sets (>80), this ensures we trim noise, not signal.

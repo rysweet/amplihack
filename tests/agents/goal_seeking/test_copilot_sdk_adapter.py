@@ -506,13 +506,23 @@ class TestFactory:
 
     @patch(f"{_P}.HAS_COPILOT_SDK", True)
     def test_factory_default_is_microsoft(self):
+        import amplihack.agents.goal_seeking.sdk_adapters.microsoft_sdk as _ms
         from amplihack.agents.goal_seeking.sdk_adapters.factory import create_agent
         from amplihack.agents.goal_seeking.sdk_adapters.microsoft_sdk import (
             MicrosoftGoalSeekingAgent,
         )
+        from unittest.mock import MagicMock
 
         _key = "test-key"  # pragma: allowlist secret
-        with patch.dict(os.environ, {"OPENAI_API_KEY": _key}):
+        _mock_agent = MagicMock()
+        _mock_agent.create_session.return_value = MagicMock()
+        with (
+            patch.object(_ms, "_HAS_AGENT_FRAMEWORK", True),
+            patch.object(_ms, "AFAgent", MagicMock(return_value=_mock_agent)),
+            patch.object(_ms, "AFFunctionTool", MagicMock()),
+            patch.object(_ms, "OpenAIChatClient", MagicMock()),
+            patch.dict(os.environ, {"OPENAI_API_KEY": _key}),
+        ):
             agent = create_agent(name="default-test", enable_memory=False)
             assert isinstance(agent, MicrosoftGoalSeekingAgent)
 
