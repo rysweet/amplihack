@@ -14,7 +14,14 @@ Complete API reference for the `power_steering_checker` package.
 .claude/tools/amplihack/hooks/power_steering_checker/
 ```
 
-It is structured as five focused modules assembled by a re-exporting `__init__.py` that preserves full backward compatibility with the previous single-file layout.
+**Recent Refactoring (v0.10.0, 2026-03-07)**: Split from a monolithic 5,063-line `power_steering_checker.py` into 12 focused modules (largest: 1,217 lines). The refactoring includes:
+- Modular architecture with clear separation of concerns
+- Copilot CLI transcript support (auto-detects both Claude Code and GitHub Copilot CLI formats)
+- CLAUDECODE environment variable properly unset to prevent nested session errors
+- 191 tests passing (121 existing + 48 parser + 22 Copilot e2e)
+- Full backward compatibility via re-exporting `__init__.py`
+
+See [power_steering_checker package README](../../.claude/tools/amplihack/hooks/power_steering_checker/README.md) for module details.
 
 ---
 
