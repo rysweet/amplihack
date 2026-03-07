@@ -27,8 +27,16 @@ def gather_context(
     session_name: str,
     task_prompt: str,
     project_priorities: str,
+    cached_tmux_capture: str = "",
 ) -> SessionContext:
-    """PERCEIVE: Gather all context for a session in minimal SSH calls."""
+    """PERCEIVE: Gather all context for a session in minimal SSH calls.
+
+    Args:
+        cached_tmux_capture: Pre-collected tmux output from Phase 1 (scout discovery).
+            When provided, the SSH call still runs to collect git/transcript context,
+            but the tmux capture section is replaced with the cached version,
+            avoiding a redundant SSH poll of the same pane content.
+    """
     context = SessionContext(
         vm_name=vm_name,
         session_name=session_name,
@@ -97,6 +105,11 @@ def gather_context(
             "Context gathering failed for %s/%s: %s", vm_name, session_name, exc
         )
         context.agent_status = "unreachable"
+
+    # Override with cached tmux capture from Phase 1 discovery (avoids double-poll)
+    if cached_tmux_capture:
+        context.tmux_capture = cached_tmux_capture
+        context.agent_status = infer_agent_status(cached_tmux_capture)
 
     return context
 

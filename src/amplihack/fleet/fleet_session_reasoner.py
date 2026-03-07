@@ -56,10 +56,16 @@ class SessionReasoner:
         session_name: str,
         task_prompt: str = "",
         project_priorities: str = "",
+        cached_tmux_capture: str = "",
     ) -> SessionDecision:
-        """Full reasoning loop for a single session."""
+        """Full reasoning loop for a single session.
+
+        Args:
+            cached_tmux_capture: Pre-collected tmux output from Phase 1 discovery.
+                Passed through to gather_context to avoid re-polling the same pane.
+        """
         # 1. PERCEIVE
-        context = self._gather_context(vm_name, session_name, task_prompt, project_priorities)
+        context = self._gather_context(vm_name, session_name, task_prompt, project_priorities, cached_tmux_capture)
 
         # 2. REASON -- fast-path: skip LLM call if agent is actively thinking
         if context.agent_status == "thinking":
@@ -101,9 +107,9 @@ class SessionReasoner:
             decisions.append(decision)
         return decisions
 
-    def _gather_context(self, vm_name, session_name, task_prompt, project_priorities):
+    def _gather_context(self, vm_name, session_name, task_prompt, project_priorities, cached_tmux_capture=""):
         """Delegate to standalone gather_context."""
-        return gather_context(self.azlin_path, vm_name, session_name, task_prompt, project_priorities)
+        return gather_context(self.azlin_path, vm_name, session_name, task_prompt, project_priorities, cached_tmux_capture=cached_tmux_capture)
 
     def reason(self, context: SessionContext) -> SessionDecision:
         """Public entry point for LLM-based reasoning about a session context."""

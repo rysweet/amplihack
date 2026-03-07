@@ -70,6 +70,7 @@ def parse_session_output(vm_name: str, output: str) -> list[SessionView]:
 
             if capture and capture != "(empty)":
                 view.status = classify_status(capture)
+                view.tmux_capture = capture  # Cache for Phase 3 reasoning
                 # Get last meaningful line for display
                 meaningful_lines = [
                     l.strip()
