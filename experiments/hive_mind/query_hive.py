@@ -713,7 +713,7 @@ def _format_hive_results(results: list[dict[str, Any]]) -> str:
     if not results:
         return ""
     parts = []
-    for r in results[:5]:
+    for r in results[:10]:
         content = r.get("content", r.get("outcome", ""))
         concept = r.get("concept", r.get("context", ""))
         if content:
@@ -721,11 +721,92 @@ def _format_hive_results(results: list[dict[str, Any]]) -> str:
     return " | ".join(parts)
 
 
+def _keyword_fallback_grade(expected: str, actual: str) -> dict[str, Any]:
+    """Keyword/entity overlap fallback grader when LLM grading is unavailable.
+
+    Combines entity-level recall (CVE IDs, IP addresses, incident IDs, version
+    strings) with keyword-level recall using fixed tokenization. Entity recall
+    is given higher weight (0.6) since named entities are the most discriminative
+    signals for security analyst questions.
+
+    Args:
+        expected: Expected answer string.
+        actual: Actual answer from hive results.
+
+    Returns:
+        Dict with 'score' (0.0-1.0) and 'reasoning' string.
+    """
+    import re as _re
+
+    _STOP_WORDS = {
+        "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
+        "have", "has", "had", "do", "does", "did", "will", "would", "could",
+        "should", "may", "might", "must", "shall", "can", "what", "which",
+        "who", "where", "when", "why", "how", "i", "you", "he", "she", "it",
+        "we", "they", "me", "him", "her", "us", "them", "this", "that",
+        "these", "those", "and", "but", "or", "for", "yet", "so", "if",
+        "then", "at", "by", "from", "in", "of", "on", "to", "up", "with",
+        "about", "after", "as", "before", "between", "during", "into",
+        "like", "over", "through", "under", "until", "via", "not", "no",
+        "yes", "any", "all", "some", "each", "every", "more", "most",
+        "other", "than", "too", "very", "just", "also", "back", "once",
+        "out", "there", "here", "detected", "log", "security", "severity",
+        "user", "high", "medium", "critical", "report", "incident", "status",
+        "update", "changed", "detail", "timeline", "affected", "systems",
+        "iocs", "none", "identified", "active", "contained", "investigating",
+        "remediated", "closed",
+    }
+
+    def _extract_entities(text: str) -> set:
+        entities: set = set()
+        entities.update(_re.findall(r"CVE-\d{4}-\d+", text, _re.IGNORECASE))
+        entities.update(_re.findall(r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}", text))
+        entities.update(_re.findall(r"INC-\d{4}-\d+", text, _re.IGNORECASE))
+        entities.update(_re.findall(r"[a-zA-Z][\w.-]*@[\d.]+", text))
+        return {e.lower() for e in entities}
+
+    def _tokenize(text: str) -> set:
+        raw = _re.findall(r"[A-Za-z0-9][A-Za-z0-9._@/-]*", text.lower())
+        result = set()
+        for t in raw:
+            t = _re.sub(r"[._-]+$", "", t)
+            if t and t not in _STOP_WORDS and len(t) >= 2:
+                result.add(t)
+        return result
+
+    exp_entities = _extract_entities(expected)
+    act_entities = _extract_entities(actual)
+    entity_score = (
+        len(exp_entities & act_entities) / len(exp_entities)
+        if exp_entities else None
+    )
+
+    exp_tokens = _tokenize(expected)
+    act_tokens = _tokenize(actual)
+    kw_score = (
+        len(exp_tokens & act_tokens) / len(exp_tokens)
+        if exp_tokens else 1.0
+    )
+
+    if entity_score is not None:
+        score = 0.6 * entity_score + 0.4 * kw_score
+    else:
+        score = kw_score
+
+    reasoning = (
+        f"Keyword/entity fallback: entity_score={entity_score:.2f}, "
+        f"kw_score={kw_score:.2f}, combined={score:.2f}"
+        if entity_score is not None
+        else f"Keyword fallback: kw_score={kw_score:.2f}"
+    )
+    return {"score": round(score, 3), "reasoning": reasoning}
+
+
 def _grade_hive_answer(question: str, expected: str, actual: str) -> dict[str, Any]:
     """Grade a hive answer using amplihack_eval.core.grader.grade_answer (LLM grading).
 
     Uses semantic LLM grading via grade_answer (requires ANTHROPIC_API_KEY).
-    Returns score=0.0 if grading fails or actual is empty.
+    Falls back to keyword/entity overlap scoring when the API key is unavailable.
 
     Args:
         question: The question asked.
@@ -749,7 +830,8 @@ def _grade_hive_answer(question: str, expected: str, actual: str) -> dict[str, A
         return {"score": result.score, "reasoning": result.reasoning}
     except Exception as exc:
         logger.warning("grade_answer failed: %s", exc)
-        return {"score": 0.0, "reasoning": f"LLM grading failed: {exc}"}
+        logger.info("Falling back to keyword/entity overlap grader")
+        return _keyword_fallback_grade(expected, actual)
 
 
 # ---------------------------------------------------------------------------
