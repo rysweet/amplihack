@@ -13,14 +13,14 @@ vars are propagated so child processes respect recursion depth limits.
 
 from __future__ import annotations
 
-import os
 import shutil
 import subprocess
 import tempfile
 import threading
 import time
-import uuid
 from pathlib import Path
+
+from amplihack.recipes.adapters.env import build_child_env
 
 _NON_INTERACTIVE_FOOTER = (
     "\n\nIMPORTANT: Proceed autonomously. Do not ask questions. "
@@ -190,24 +190,12 @@ class CLISubprocessAdapter:
 
     @staticmethod
     def _build_child_env() -> dict[str, str]:
-        """Build environment for child processes.
+        """Build a clean environment for child processes.
 
-        - Removes CLAUDECODE so nested Claude sessions work.
-        - Propagates session tree env vars, incrementing depth by 1.
-        - Generates a tree ID if none exists.
+        Delegates to the shared ``build_child_env()`` utility which strips
+        CLAUDECODE and propagates session-tree context.
         """
-        child_env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
-
-        # Propagate session tree context (#2758)
-        current_depth = int(os.environ.get("AMPLIHACK_SESSION_DEPTH", "0"))
-        tree_id = os.environ.get("AMPLIHACK_TREE_ID") or uuid.uuid4().hex[:8]
-
-        child_env["AMPLIHACK_TREE_ID"] = tree_id
-        child_env["AMPLIHACK_SESSION_DEPTH"] = str(current_depth + 1)
-        child_env["AMPLIHACK_MAX_DEPTH"] = os.environ.get("AMPLIHACK_MAX_DEPTH", "3")
-        child_env["AMPLIHACK_MAX_SESSIONS"] = os.environ.get("AMPLIHACK_MAX_SESSIONS", "10")
-
-        return child_env
+        return build_child_env()
 
     def is_available(self) -> bool:
         """Check if the CLI tool is on the PATH."""
