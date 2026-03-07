@@ -27,6 +27,14 @@ _NON_INTERACTIVE_FOOTER = (
     "Make reasonable decisions and continue."
 )
 
+# Prompts larger than this threshold (in bytes) are passed via stdin instead
+# of as a -p argument to avoid the OS ARG_MAX limit (E2BIG / "Argument list too
+# long").  ARG_MAX is typically 128 KB on Linux and 2 MB on macOS; 100 KB gives
+# comfortable headroom while still allowing the fast no-file path for normal
+# prompts.  Large workstream round_*_result values in the summarize step are the
+# primary trigger (issue #2921).
+_ARG_MAX_SAFE = 100_000
+
 
 class CLISubprocessAdapter:
     """Adapter that uses CLI subprocess calls as the execution backend.
@@ -78,23 +86,43 @@ class CLISubprocessAdapter:
             # Append non-interactive footer so nested sessions never ask
             # interactive questions and hang waiting for input (#2464).
             prompt = prompt + _NON_INTERACTIVE_FOOTER
-            cmd = [self._cli, "-p", prompt]
 
             # Write output to a temp file so we can tail it
             output_dir = Path(actual_cwd) / ".recipe-output"
             output_dir.mkdir(parents=True, exist_ok=True)
             output_file = output_dir / f"agent-step-{int(time.time())}.log"
 
+            # Build command and stdin source.  For large prompts pass via stdin
+            # to avoid the OS ARG_MAX limit (E2BIG, "Argument list too long").
+            # The claude CLI accepts `claude -p -` to read the prompt from stdin,
+            # which sidesteps the kernel execve() argument-size cap entirely.
+            # Small prompts keep the existing inline `-p <prompt>` behaviour for
+            # performance (no file I/O required).
+            prompt_bytes = prompt.encode()
+            if len(prompt_bytes) > _ARG_MAX_SAFE:
+                prompt_file = output_dir / "prompt.txt"
+                prompt_file.write_bytes(prompt_bytes)
+                cmd = [self._cli, "-p", "-"]
+                stdin_src = open(prompt_file, "rb")  # noqa: SIM115
+            else:
+                cmd = [self._cli, "-p", prompt]
+                stdin_src = None
+
             # Launch process - no timeout
             child_env = self._build_child_env()
-            with open(output_file, "w") as log_fh:
-                proc = subprocess.Popen(
-                    cmd,
-                    stdout=log_fh,
-                    stderr=subprocess.STDOUT,
-                    cwd=actual_cwd,
-                    env=child_env,
-                )
+            try:
+                with open(output_file, "w") as log_fh:
+                    proc = subprocess.Popen(
+                        cmd,
+                        stdin=stdin_src,
+                        stdout=log_fh,
+                        stderr=subprocess.STDOUT,
+                        cwd=actual_cwd,
+                        env=child_env,
+                    )
+            finally:
+                if stdin_src is not None:
+                    stdin_src.close()
 
             # Background thread tails the log so callers see progress
             stop_event = threading.Event()
