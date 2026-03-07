@@ -3,14 +3,15 @@
 // Resources created:
 //   - Container Registry (Basic, admin-enabled for image pull)
 //   - Log Analytics workspace
-//   - Container Apps Environment (Consumption tier)
-//   - Service Bus Namespace + Topic + Subscriptions (one per agent)
+//   - Storage Account + Azure File Share (persistent /data volumes)
+//   - Container Apps Environment (Consumption tier) with Azure Files storage
+//   - Service Bus Namespace (Premium) + Topic + Subscriptions (one per agent)
 //   - N Container Apps (ceil(agentCount / agentsPerApp) apps, each with
 //     up to agentsPerApp agent containers)
 //
-// Note: EmptyDir ephemeral volumes are used for /data (Kuzu storage).
-// Managed disk (AzureDisk) storageType is not supported on Consumption
-// workload profiles; EmptyDir provides ephemeral per-replica storage.
+// Note: Azure Files persistent volumes are used for /data (Kuzu storage).
+// This replaces the former EmptyDir approach: data persists across restarts.
+// Run deploy/azure_hive/cleanup_volumes.sh to purge agent data shares.
 //
 // Usage:
 //   az deployment group create \
@@ -85,13 +86,36 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   }
 }
 
-// ---------- Service Bus ----------
+// ---------- Storage Account (persistent Azure Files volumes for Kuzu) ----------
+var storageAccountName = 'hivesa${suffix}'
+var fileShareName = 'hive-data'
+
+resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
+  name: storageAccountName
+  location: location
+  sku: { name: 'Standard_LRS' }
+  kind: 'StorageV2'
+  properties: {
+    minimumTlsVersion: 'TLS1_2'
+    supportsHttpsTrafficOnly: true
+  }
+}
+
+resource fileShare 'Microsoft.Storage/storageAccounts/fileServices/shares@2023-01-01' = {
+  name: '${storageAccount.name}/default/${fileShareName}'
+  properties: {
+    shareQuota: 100
+  }
+}
+
+// ---------- Service Bus (Premium for production workloads) ----------
 resource sbNamespace 'Microsoft.ServiceBus/namespaces@2022-10-01-preview' = {
   name: sbNamespaceName
   location: location
   sku: {
-    name: 'Standard'
-    tier: 'Standard'
+    name: 'Premium'
+    tier: 'Premium'
+    capacity: 1
   }
 }
 
@@ -118,6 +142,8 @@ resource sbSubscriptions 'Microsoft.ServiceBus/namespaces/topics/subscriptions@2
 ]
 
 // ---------- Container Apps Environment ----------
+var storageAccountKey = storageAccount.listKeys().keys[0].value
+
 resource containerEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
   name: envName
   location: location
@@ -138,10 +164,23 @@ resource containerEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
   }
 }
 
+// Link Azure Files storage to Container Apps Environment for persistent volumes
+resource envStorage 'Microsoft.App/managedEnvironments/storages@2024-03-01' = {
+  name: 'hive-data-storage'
+  parent: containerEnv
+  properties: {
+    azureFile: {
+      accountName: storageAccount.name
+      accountKey: storageAccountKey
+      shareName: fileShareName
+      accessMode: 'ReadWrite'
+    }
+  }
+}
+
 // ---------- Container Apps (agentsPerApp agents per app) ----------
-// Uses EmptyDir ephemeral volumes at /data for Kuzu storage.
-// EmptyDir is supported on Consumption workload profiles; data is
-// scoped to the replica lifetime.
+// Uses Azure Files persistent volumes at /data for Kuzu storage.
+// Data persists across container restarts and replica replacements.
 var sbConnectionString = listKeys('${sbNamespace.id}/AuthorizationRules/RootManageSharedAccessKey', '2022-10-01-preview').primaryConnectionString
 var acrCredentials = empty(acrName) ? acr.listCredentials() : acrExisting.listCredentials()
 var resolvedImage = empty(image) ? '${acrNameResolved}.azurecr.io/amplihive:latest' : image
@@ -180,7 +219,8 @@ resource containerApps 'Microsoft.App/containerApps@2024-03-01' = [
         volumes: [
           {
             name: 'hive-data'
-            storageType: 'EmptyDir'
+            storageType: 'AzureFile'
+            storageName: envStorage.name
           }
         ]
         containers: [
@@ -243,3 +283,5 @@ output acrLoginServer string = empty(acrName) ? acr.properties.loginServer : acr
 output sbNamespaceFqdn string = sbNamespace.properties.serviceBusEndpoint
 output containerAppNames array = [for appIdx in range(0, appCount): '${hiveName}-app-${appIdx}']
 output sbConnectionStringSecretName string = 'sb-connection-string'
+output storageAccountName string = storageAccount.name
+output fileShareName string = fileShareName
