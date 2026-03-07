@@ -1,0 +1,222 @@
+{
+  "mode": "live",
+  "summary": {
+    "total_questions": 15,
+    "hits": 0,
+    "accuracy_pct": 0.0,
+    "elapsed_s": 225.8,
+    "hive_namespace": "hive-sb-dj2qo2w7vu5zi",
+    "topic": "hive-graph",
+    "timeout_s": 15.0,
+    "table": "hive_facts"
+  },
+  "domain_scores": {
+    "biology": {
+      "hits": 0,
+      "total": 3,
+      "pct": 0.0
+    },
+    "chemistry": {
+      "hits": 0,
+      "total": 3,
+      "pct": 0.0
+    },
+    "physics": {
+      "hits": 0,
+      "total": 3,
+      "pct": 0.0
+    },
+    "mathematics": {
+      "hits": 0,
+      "total": 3,
+      "pct": 0.0
+    },
+    "computer_science": {
+      "hits": 0,
+      "total": 3,
+      "pct": 0.0
+    }
+  },
+  "questions": [
+    {
+      "domain": "biology",
+      "question": "What are cells made of?",
+      "expected_keywords": [
+        "unit",
+        "life"
+      ],
+      "hit": false,
+      "result_count": 0,
+      "top_results": [],
+      "elapsed_s": 15.05
+    },
+    {
+      "domain": "biology",
+      "question": "How does DNA store information?",
+      "expected_keywords": [
+        "nucleotide",
+        "genetic"
+      ],
+      "hit": false,
+      "result_count": 0,
+      "top_results": [],
+      "elapsed_s": 15.05
+    },
+    {
+      "domain": "biology",
+      "question": "What do enzymes do?",
+      "expected_keywords": [
+        "catalyst",
+        "protein"
+      ],
+      "hit": false,
+      "result_count": 0,
+      "top_results": [],
+      "elapsed_s": 15.05
+    },
+    {
+      "domain": "chemistry",
+      "question": "What is the structure of water?",
+      "expected_keywords": [
+        "H2O",
+        "bent"
+      ],
+      "hit": false,
+      "result_count": 0,
+      "top_results": [],
+      "elapsed_s": 15.05
+    },
+    {
+      "domain": "chemistry",
+      "question": "How do covalent bonds work?",
+      "expected_keywords": [
+        "electron",
+        "share"
+      ],
+      "hit": false,
+      "result_count": 0,
+      "top_results": [],
+      "elapsed_s": 15.06
+    },
+    {
+      "domain": "chemistry",
+      "question": "What does pH measure?",
+      "expected_keywords": [
+        "hydrogen",
+        "concentration"
+      ],
+      "hit": false,
+      "result_count": 0,
+      "top_results": [],
+      "elapsed_s": 15.05
+    },
+    {
+      "domain": "physics",
+      "question": "What is Newton's second law?",
+      "expected_keywords": [
+        "F",
+        "ma"
+      ],
+      "hit": false,
+      "result_count": 0,
+      "top_results": [],
+      "elapsed_s": 15.06
+    },
+    {
+      "domain": "physics",
+      "question": "What is the speed of light?",
+      "expected_keywords": [
+        "299792"
+      ],
+      "hit": false,
+      "result_count": 0,
+      "top_results": [],
+      "elapsed_s": 15.05
+    },
+    {
+      "domain": "physics",
+      "question": "What does E=mc^2 mean?",
+      "expected_keywords": [
+        "mass",
+        "energy"
+      ],
+      "hit": false,
+      "result_count": 0,
+      "top_results": [],
+      "elapsed_s": 15.05
+    },
+    {
+      "domain": "mathematics",
+      "question": "What is the Pythagorean theorem?",
+      "expected_keywords": [
+        "a squared",
+        "b squared",
+        "c squared"
+      ],
+      "hit": false,
+      "result_count": 0,
+      "top_results": [],
+      "elapsed_s": 15.05
+    },
+    {
+      "domain": "mathematics",
+      "question": "What does a derivative measure?",
+      "expected_keywords": [
+        "rate",
+        "change"
+      ],
+      "hit": false,
+      "result_count": 0,
+      "top_results": [],
+      "elapsed_s": 15.06
+    },
+    {
+      "domain": "mathematics",
+      "question": "What is Pi?",
+      "expected_keywords": [
+        "circumference",
+        "diameter"
+      ],
+      "hit": false,
+      "result_count": 0,
+      "top_results": [],
+      "elapsed_s": 15.05
+    },
+    {
+      "domain": "computer_science",
+      "question": "What is the time complexity of binary search?",
+      "expected_keywords": [
+        "log",
+        "n"
+      ],
+      "hit": false,
+      "result_count": 0,
+      "top_results": [],
+      "elapsed_s": 15.05
+    },
+    {
+      "domain": "computer_science",
+      "question": "What are ACID properties?",
+      "expected_keywords": [
+        "transaction",
+        "reliab"
+      ],
+      "hit": false,
+      "result_count": 0,
+      "top_results": [],
+      "elapsed_s": 15.06
+    },
+    {
+      "domain": "computer_science",
+      "question": "What does CAP theorem state?",
+      "expected_keywords": [
+        "consistency",
+        "partition"
+      ],
+      "hit": false,
+      "result_count": 0,
+      "top_results": [],
+      "elapsed_s": 15.05
+    }
+  ]
+}
