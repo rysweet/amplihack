@@ -548,8 +548,18 @@ Hive assembly follows a predictable six-phase sequence. The first agent starts a
 | Federated semantic+OODA | OODA-integrated retrieval, semantic routing | 45.8% |
 | Smoke test 10 agents | 10 agents, distributed hive, quick validation | 58.8% |
 | **Distributed final (100 agents)** | **Full distributed eval, production DHT** | **71–79% (avg 75%)** |
+| **Live Azure Hive (3-repeat)** | **query_hive.py --repeats 3, security analyst eval** | **86.5% median ± 10.1% stddev** |
 
 **Score progression (distributed hive, iteration over eval runs):** 0% → 34.9% → 40% → 47% → 58.8% → **79%**
+
+**3-Repeat Results (query_hive.py --run-eval --repeats 3):**
+
+| Metric | Value |
+|--------|-------|
+| Median score | **86.5%** |
+| Std deviation | **10.1%** |
+| Runs | 3 |
+| Eval | Live Azure Hive — security analyst Q&A |
 
 **Methodology:**
 - 3+ replications per condition (median reported)
