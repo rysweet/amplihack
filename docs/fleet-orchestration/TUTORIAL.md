@@ -349,6 +349,44 @@ amplihack fleet graph
 
 Shows the relationship graph between projects, tasks, agents, VMs, and PRs. Useful for understanding what depends on what.
 
+### Project and Objective Tracking
+
+Register projects and track GitHub issues as fleet objectives:
+
+```bash
+# Register a project
+amplihack fleet project add https://github.com/org/myapp --name myapp --priority high
+
+# List registered projects
+amplihack fleet project list
+
+# Track a specific issue as an objective
+amplihack fleet project add-issue myapp 42 --title "Add authentication"
+
+# Sync objectives from GitHub issues labeled 'fleet-objective'
+amplihack fleet project track-issue myapp --label fleet-objective
+
+# Remove a project
+amplihack fleet project remove myapp
+```
+
+Objectives are stored in `~/.amplihack/fleet/projects.toml` and enriched during scout with live GitHub issue state. The scout report groups sessions by project and shows open objectives:
+
+```
+--- By Project ---
+
+  [myapp]
+    objective #42: Add authentication
+    objective #43: Fix login flow
+    dev/auth-session [running] -> wait
+    dev/login-fix [idle] -> send_input
+
+  [unassigned]
+    deva/qa [shell] -> restart
+```
+
+The SSH gather phase also queries `gh issue list --label fleet-objective` on each VM to discover objectives from the remote repository, merging them with locally registered objectives.
+
 ## Environment Variables
 
 | Variable | Purpose | Default |

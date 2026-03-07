@@ -211,6 +211,29 @@ def register_scout_advance_ops(fleet_cli: click.Group) -> None:
                         "error": str(exc),
                     })
 
+        # -- Phase 3b: Enrich decisions with project info --
+        try:
+            from amplihack.fleet._projects import load_projects
+            _proj_registry = load_projects()
+        except Exception:
+            _proj_registry = {}
+
+        # Build repo-to-project lookup from running VMs
+        for d in decisions:
+            d.setdefault("project", "")
+            # Try to match via session's repo URL (from branch/repo info)
+            for v in running_vms:
+                for sess in v.sessions:
+                    if d["vm"] == v.name and d["session"] == sess.session_name:
+                        repo = getattr(sess, "repo", "") or ""
+                        for pname, proj in _proj_registry.items():
+                            if proj.repo_url and repo and proj.repo_url.rstrip("/") == repo.rstrip("/"):
+                                d["project"] = pname
+                                d["objectives"] = [
+                                    o for o in proj.objectives
+                                    if o.get("state", "open") == "open"
+                                ]
+
         # -- Phase 4: Report --
         report_text = format_scout_report(
             all_vms, decisions, adopted_count, skip_adopt

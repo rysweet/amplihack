@@ -76,6 +76,33 @@ class TestSessionContextConstruction:
         ctx1.files_modified.append("file.py")
         assert ctx2.files_modified == []
 
+    def test_project_fields_default(self):
+        """project_name and project_objectives default to empty."""
+        ctx = SessionContext(vm_name="devy", session_name="s1")
+        assert ctx.project_name == ""
+        assert ctx.project_objectives == []
+
+    def test_project_fields_populated(self):
+        """project_name and project_objectives can be set."""
+        ctx = SessionContext(
+            vm_name="devy",
+            session_name="s1",
+            project_name="myapp",
+            project_objectives=[
+                {"number": 1, "title": "Add auth", "state": "open"},
+                {"number": 2, "title": "Fix bug", "state": "closed"},
+            ],
+        )
+        assert ctx.project_name == "myapp"
+        assert len(ctx.project_objectives) == 2
+
+    def test_project_objectives_default_independent(self):
+        """Each instance gets its own project_objectives list."""
+        ctx1 = SessionContext(vm_name="devy", session_name="s1")
+        ctx2 = SessionContext(vm_name="devy", session_name="s2")
+        ctx1.project_objectives.append({"number": 1, "title": "X", "state": "open"})
+        assert ctx2.project_objectives == []
+
 
 # ---------------------------------------------------------------------------
 # SessionContext.to_prompt_context
@@ -154,6 +181,30 @@ class TestSessionContextToPromptContext:
         output = ctx.to_prompt_context()
         assert "hello world" in output
         assert "(empty)" not in output
+
+    def test_includes_project_and_objectives(self):
+        """When project_name and objectives are set, they appear in output."""
+        ctx = SessionContext(
+            vm_name="devy",
+            session_name="task-1",
+            project_name="myapp",
+            project_objectives=[
+                {"number": 1, "title": "Add auth", "state": "open"},
+                {"number": 2, "title": "Done task", "state": "closed"},
+            ],
+        )
+        output = ctx.to_prompt_context()
+        assert "Project: myapp" in output
+        assert "#1: Add auth" in output
+        # Closed objectives should NOT appear under "Open objectives"
+        assert "#2: Done task" not in output
+
+    def test_no_project_omits_section(self):
+        """When project_name is empty, project section is omitted."""
+        ctx = SessionContext(vm_name="devy", session_name="task-1")
+        output = ctx.to_prompt_context()
+        assert "Project:" not in output
+        assert "Open objectives:" not in output
 
 
 # ---------------------------------------------------------------------------

@@ -93,6 +93,8 @@ def format_scout_report(
                 "branch": sess.branch or "",
                 "action": action, "conf": conf,
                 "summary": reasoning, "input": input_text,
+                "project": d.get("project", "") if d else "",
+                "objectives": d.get("objectives", []) if d else [],
             })
 
     # Table — status + action
@@ -116,6 +118,36 @@ def format_scout_report(
         action_counts[r["action"]] = action_counts.get(r["action"], 0) + 1
     counts_str = "  ".join(f"{a}: {c}" for a, c in sorted(action_counts.items()))
     lines.append(f"  Decisions: {counts_str}")
+
+    # Group by project (if decisions carry project info)
+    project_rows: dict[str, list[dict]] = {}
+    unassigned_rows: list[dict] = []
+    for r in rows:
+        proj = r.get("project", "")
+        if proj:
+            project_rows.setdefault(proj, []).append(r)
+        else:
+            unassigned_rows.append(r)
+
+    if project_rows:
+        lines.append("")
+        lines.append("--- By Project ---")
+        for proj_name, proj_sessions in sorted(project_rows.items()):
+            objectives = proj_sessions[0].get("objectives", [])
+            lines.append(f"\n  [{proj_name}]")
+            if objectives:
+                for o in objectives:
+                    lines.append(f"    objective #{o['number']}: {o['title']}")
+            for r in proj_sessions:
+                lines.append(
+                    f"    {r['vm']}/{r['session']} [{r['status']}] -> {r['action']}"
+                )
+        if unassigned_rows:
+            lines.append(f"\n  [unassigned]")
+            for r in unassigned_rows:
+                lines.append(
+                    f"    {r['vm']}/{r['session']} [{r['status']}] -> {r['action']}"
+                )
 
     # Session summaries (separate section)
     sessions_with_summary = [r for r in rows if r["summary"]]

@@ -225,6 +225,21 @@ def register_commands(
             name=name,
             priority=priority,
         )
+
+        # Also register in projects.toml for objective tracking
+        from amplihack.fleet._projects import Project as TomlProject
+        from amplihack.fleet._projects import load_projects, save_projects
+
+        toml_projects = load_projects()
+        if proj.name not in toml_projects:
+            toml_projects[proj.name] = TomlProject(
+                name=proj.name,
+                repo_url=repo_url,
+                identity=identity,
+                priority=priority,
+            )
+            save_projects(toml_projects)
+
         click.echo(f"Added project: {proj.name}")
         click.echo(f"  Repo: {proj.repo_url}")
         if identity:
@@ -272,4 +287,96 @@ def register_commands(
             click.echo(f"Removed project: {name}")
         else:
             click.echo(f"Project not found: {name}")
+
+    @project.command("add-issue")
+    @click.argument("project_name")
+    @click.argument("issue_number", type=int)
+    @click.option("--title", default="", help="Issue title (fetched from GH if omitted)")
+    @click.option("--url", default="", help="Issue URL")
+    def project_add_issue(project_name, issue_number, title, url):
+        """Track a GitHub issue as a project objective."""
+        from amplihack.fleet._projects import load_projects, save_projects
+
+        projects = load_projects()
+        if project_name not in projects:
+            click.echo(f"Project not found: {project_name}")
+            click.echo("Use 'fleet project add <repo_url> --name <name>' to register first.")
+            return
+
+        proj = projects[project_name]
+        if not title and proj.repo_url:
+            import subprocess
+
+            try:
+                result = subprocess.run(
+                    ["gh", "issue", "view", str(issue_number),
+                     "--repo", proj.repo_url, "--json", "title,url",
+                     "--jq", '.title + "\\n" + .url'],
+                    capture_output=True, text=True, timeout=15,
+                )
+                if result.returncode == 0 and result.stdout.strip():
+                    lines = result.stdout.strip().split("\n")
+                    title = lines[0]
+                    if not url and len(lines) > 1:
+                        url = lines[1]
+            except (subprocess.TimeoutExpired, FileNotFoundError):
+                pass
+
+        if not title:
+            title = f"Issue #{issue_number}"
+
+        proj.add_objective(number=issue_number, title=title, url=url)
+        save_projects(projects)
+        click.echo(f"Added objective to {project_name}: #{issue_number} {title}")
+
+    @project.command("track-issue")
+    @click.argument("project_name")
+    @click.option("--label", default="fleet-objective", help="GitHub label to filter")
+    def project_track_issue(project_name, label):
+        """Sync objectives from GitHub issues with a label."""
+        import subprocess
+
+        from amplihack.fleet._projects import load_projects, save_projects
+
+        projects = load_projects()
+        if project_name not in projects:
+            click.echo(f"Project not found: {project_name}")
+            return
+
+        proj = projects[project_name]
+        if not proj.repo_url:
+            click.echo(f"Project {project_name} has no repo_url -- cannot query GitHub.")
+            return
+
+        try:
+            result = subprocess.run(
+                ["gh", "issue", "list", "--repo", proj.repo_url,
+                 "--label", label, "--json", "number,title,state,url",
+                 "--jq", '.[]|[.number,.title,.state,.url]|@tsv'],
+                capture_output=True, text=True, timeout=15,
+            )
+        except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
+            click.echo(f"Failed to query GitHub: {exc}")
+            return
+
+        if result.returncode != 0:
+            click.echo(f"gh issue list failed: {result.stderr.strip()}")
+            return
+
+        count = 0
+        for line in result.stdout.strip().split("\n"):
+            if not line.strip():
+                continue
+            parts = line.split("\t")
+            if len(parts) < 2:
+                continue
+            number = int(parts[0])
+            issue_title = parts[1]
+            state = parts[2] if len(parts) > 2 else "open"
+            issue_url = parts[3] if len(parts) > 3 else ""
+            proj.add_objective(number=number, title=issue_title, state=state, url=issue_url)
+            count += 1
+
+        save_projects(projects)
+        click.echo(f"Synced {count} objectives for {project_name} (label: {label})")
 

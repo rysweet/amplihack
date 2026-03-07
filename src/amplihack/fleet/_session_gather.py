@@ -21,6 +21,23 @@ from amplihack.fleet._status import infer_agent_status
 __all__ = ["gather_context", "parse_context_output"]
 
 
+def _match_project(repo_url: str) -> tuple[str, list[dict]]:
+    """Match a repo URL to a registered project and return (name, objectives).
+
+    Returns ("", []) if no match.
+    """
+    try:
+        from amplihack.fleet._projects import load_projects
+    except Exception:
+        return ("", [])
+
+    projects = load_projects()
+    for name, proj in projects.items():
+        if proj.repo_url and repo_url and proj.repo_url.rstrip("/") == repo_url.rstrip("/"):
+            return (name, proj.objectives)
+    return ("", [])
+
+
 def gather_context(
     azlin_path: str,
     vm_name: str,
@@ -93,6 +110,14 @@ def gather_context(
         'DISK=$(df -h / 2>/dev/null | tail -1 | awk \'{print $5}\' | tr -d "%"); '
         'LOAD=$(cat /proc/loadavg 2>/dev/null | awk \'{print $1}\'); '
         'echo "mem=${MEM:-?}% disk=${DISK:-?}% load=${LOAD:-?}"; '
+        # Fleet objectives from GitHub issues (if gh is available and repo has the label)
+        'echo "===OBJECTIVES==="; '
+        'if [ -n "$CWD" ] && command -v gh >/dev/null 2>&1; then '
+        'REMOTE=$(cd "$CWD" 2>/dev/null && git remote get-url origin 2>/dev/null); '
+        'if [ -n "$REMOTE" ]; then '
+        'gh issue list --repo "$REMOTE" --label fleet-objective '
+        '--json number,title,state --jq \'.[]|[.number,.title,.state]|@tsv\' 2>/dev/null; '
+        'fi; fi; '
         'echo "===END==="'
     )
 
@@ -193,3 +218,29 @@ def parse_context_output(output: str, context: SessionContext) -> None:
             health_text = sections[i + 1].strip()
             if health_text:
                 context.health_summary = health_text
+
+        elif label == "OBJECTIVES" and i + 1 < len(sections):
+            obj_text = sections[i + 1].strip()
+            if obj_text:
+                for line in obj_text.split("\n"):
+                    parts = line.strip().split("\t")
+                    if len(parts) >= 2:
+                        try:
+                            context.project_objectives.append({
+                                "number": int(parts[0]),
+                                "title": parts[1],
+                                "state": parts[2] if len(parts) > 2 else "open",
+                            })
+                        except (ValueError, IndexError):
+                            continue
+
+    # Enrich with local project data after parsing repo_url
+    if context.repo_url:
+        proj_name, local_objs = _match_project(context.repo_url)
+        if proj_name:
+            context.project_name = proj_name
+            # Merge local objectives with remote (remote takes precedence)
+            remote_nums = {o["number"] for o in context.project_objectives}
+            for lo in local_objs:
+                if lo["number"] not in remote_nums:
+                    context.project_objectives.append(lo)

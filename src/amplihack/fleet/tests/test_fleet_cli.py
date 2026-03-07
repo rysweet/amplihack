@@ -68,6 +68,21 @@ class TestFleetHelp:
 
 
 # ---------------------------------------------------------------------------
+# fleet project subcommands
+# ---------------------------------------------------------------------------
+
+
+class TestFleetProjectSubcommands:
+    """Verify the project group exposes all expected subcommands."""
+
+    def test_project_help_lists_subcommands(self, runner):
+        result = runner.invoke(fleet_cli, ["project", "--help"], catch_exceptions=False)
+        assert result.exit_code == 0
+        for cmd in ["add", "list", "remove", "add-issue", "track-issue"]:
+            assert cmd in result.output, f"Missing project subcommand: {cmd}"
+
+
+# ---------------------------------------------------------------------------
 # fleet (no subcommand) — defaults to TUI, falls back gracefully
 # ---------------------------------------------------------------------------
 

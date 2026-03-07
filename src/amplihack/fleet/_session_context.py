@@ -32,6 +32,9 @@ class SessionContext:
     task_prompt: str = ""  # Original task assigned to this session
     project_priorities: str = ""  # Fleet-level priorities
     health_summary: str = ""  # VM health metrics from fleet_health.py
+    project_name: str = ""  # Name of the project this session belongs to
+    project_objectives: list[dict] = field(default_factory=list)
+    # Each objective: {"number": int, "title": str, "state": str}
 
     def __post_init__(self):
         validate_vm_name(self.vm_name)
@@ -61,6 +64,15 @@ class SessionContext:
 
         if self.health_summary:
             parts.append(f"\nVM health: {self.health_summary}")
+
+        if self.project_name:
+            parts.append(f"\nProject: {self.project_name}")
+            if self.project_objectives:
+                open_objs = [o for o in self.project_objectives if o.get("state", "open") == "open"]
+                if open_objs:
+                    parts.append("Open objectives:")
+                    for o in open_objs:
+                        parts.append(f"  - #{o['number']}: {o['title']}")
 
         if self.project_priorities:
             parts.append(f"\nProject priorities: {self.project_priorities}")

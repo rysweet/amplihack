@@ -355,3 +355,71 @@ class TestTranscriptEarlyRecentParsing:
         assert "only recent content" in ctx.transcript_summary
         # Early is empty so "Session start" section header should not appear
         # (because early string is empty after strip)
+
+
+# ---------------------------------------------------------------------------
+# OBJECTIVES section parsing
+# ---------------------------------------------------------------------------
+
+
+class TestObjectivesParsing:
+    """Tests for parsing the ===OBJECTIVES=== section."""
+
+    def test_parses_objectives_from_tsv(self):
+        """TSV-formatted objectives are parsed into project_objectives."""
+        ctx = SessionContext(vm_name="devy", session_name="task-1")
+        output = (
+            "===OBJECTIVES===\n"
+            "42\tAdd authentication\tOPEN\n"
+            "43\tFix login flow\tOPEN\n"
+            "===END===\n"
+        )
+        parse_context_output(output, ctx)
+        assert len(ctx.project_objectives) == 2
+        assert ctx.project_objectives[0]["number"] == 42
+        assert ctx.project_objectives[0]["title"] == "Add authentication"
+        assert ctx.project_objectives[1]["number"] == 43
+
+    def test_empty_objectives_section(self):
+        """Empty OBJECTIVES section leaves project_objectives empty."""
+        ctx = SessionContext(vm_name="devy", session_name="task-1")
+        output = "===OBJECTIVES===\n\n===END===\n"
+        parse_context_output(output, ctx)
+        assert ctx.project_objectives == []
+
+    def test_malformed_lines_skipped(self):
+        """Lines without proper format are skipped."""
+        ctx = SessionContext(vm_name="devy", session_name="task-1")
+        output = (
+            "===OBJECTIVES===\n"
+            "not-a-number\tBad line\n"
+            "42\tGood line\tOPEN\n"
+            "\n"
+            "===END===\n"
+        )
+        parse_context_output(output, ctx)
+        assert len(ctx.project_objectives) == 1
+        assert ctx.project_objectives[0]["number"] == 42
+
+    @patch("amplihack.fleet._session_gather._match_project")
+    def test_enriches_with_local_project(self, mock_match):
+        """After parsing repo_url, context is enriched with local project data."""
+        mock_match.return_value = ("myapp", [
+            {"number": 99, "title": "Local objective", "state": "open"},
+        ])
+
+        ctx = SessionContext(vm_name="devy", session_name="task-1")
+        output = (
+            "===GIT===\n"
+            "REMOTE:https://github.com/org/myapp\n"
+            "===OBJECTIVES===\n"
+            "42\tRemote objective\tOPEN\n"
+            "===END===\n"
+        )
+        parse_context_output(output, ctx)
+
+        assert ctx.project_name == "myapp"
+        # Should have both remote and local objectives
+        numbers = {o["number"] for o in ctx.project_objectives}
+        assert 42 in numbers
+        assert 99 in numbers

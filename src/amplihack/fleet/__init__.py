@@ -24,6 +24,7 @@ Public API (the "studs"):
     RepoSetup: Automated workspace preparation
 """
 
+from amplihack.fleet._projects import Project, load_projects, save_projects
 from amplihack.fleet.fleet_admiral import FleetAdmiral
 from amplihack.fleet.fleet_adopt import SessionAdopter
 from amplihack.fleet.fleet_auth import AuthPropagator, AuthResult, GitHubIdentity
@@ -70,4 +71,7 @@ __all__ = [
     "VMInfo",
     "SessionCopilot",
     "CopilotSuggestion",
+    "Project",
+    "load_projects",
+    "save_projects",
 ]

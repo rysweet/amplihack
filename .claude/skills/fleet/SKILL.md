@@ -57,6 +57,8 @@ Invoke as `/fleet <command>` or just describe what you want and Claude will pick
 | Command | What it does |
 |---------|-------------|
 | `fleet project add/list/remove` | Manage fleet projects |
+| `fleet project add-issue <proj> <num>` | Track a GitHub issue as a project objective |
+| `fleet project track-issue <proj>` | Sync objectives from GitHub issues by label |
 | `fleet graph` | Fleet knowledge graph summary |
 
 ### Co-Pilot
@@ -77,6 +79,8 @@ Invoke as `/fleet <command>` or just describe what you want and Claude will pick
 | "Watch what dev/cybergym is doing" | `fleet watch dev cybergym` |
 | "Add auth to the new VM" | `fleet auth <vm>` |
 | "Queue this task for the fleet" | `fleet add-task "prompt"` |
+| "Track issue #42 for myapp" | `fleet project add-issue myapp 42` |
+| "Sync objectives from GitHub" | `fleet project track-issue myapp` |
 | "Open the dashboard" | `fleet tui` |
 
 ## Key Options
