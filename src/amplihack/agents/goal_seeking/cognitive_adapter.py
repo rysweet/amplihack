@@ -29,6 +29,57 @@ from .hive_mind.constants import (
 
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# Stop words for query filtering (improves search precision)
+# ---------------------------------------------------------------------------
+_QUERY_STOP_WORDS = frozenset({
+    "what", "is", "the", "a", "an", "are", "was", "were", "how",
+    "does", "do", "and", "or", "of", "in", "to", "for", "with",
+    "on", "at", "by", "from", "that", "this", "it", "as", "be",
+    "been", "has", "have", "had", "will", "would", "could", "should",
+    "did", "which", "who", "when", "where", "why", "any", "some",
+    "all", "both", "each", "few", "more", "most", "other", "such",
+    "into", "through", "during", "before", "after", "than", "then",
+    "these", "those", "there", "their", "they", "its", "our", "your",
+    "my", "we", "i", "you", "he", "she", "me", "him", "her", "them",
+    "used", "found", "given", "made", "came", "went", "said", "got",
+})
+
+
+def _filter_stop_words(query: str) -> str:
+    """Return query with stop words removed, preserving meaningful terms."""
+    words = [w.strip("?.,!;:'\"()[]") for w in query.lower().split()]
+    filtered = [w for w in words if w and w not in _QUERY_STOP_WORDS and len(w) > 1]
+    return " ".join(filtered) if filtered else query.lower()
+
+
+def _ngram_overlap_score(query: str, text: str) -> float:
+    """Score text by unigram + bigram overlap with query (after stop word removal).
+
+    Returns a float in [0, 1] where higher = more overlap.
+    """
+    q_words = [w.strip("?.,!;:'\"") for w in query.lower().split()]
+    t_words = text.lower().split()
+
+    # Unigram overlap (stop-word filtered)
+    q_terms = {w for w in q_words if w and w not in _QUERY_STOP_WORDS and len(w) > 1}
+    t_set = set(t_words)
+    # Also check substring containment for partial matches (e.g. "login" in "logins")
+    unigram_hits = sum(
+        1 for t in q_terms
+        if t in t_set or any(w.startswith(t) or t.startswith(w) for w in t_set if len(w) > 2)
+    )
+    unigram = unigram_hits / max(1, len(q_terms)) if q_terms else 0.0
+
+    # Bigram overlap
+    q_bigrams = list(zip(q_words, q_words[1:]))
+    t_bigrams = set(zip(t_words, t_words[1:]))
+    bigram_hits = sum(1 for bg in q_bigrams if bg in t_bigrams)
+    bigram = bigram_hits / max(1, len(q_bigrams)) if q_bigrams else 0.0
+
+    return unigram * 0.65 + bigram * 0.35
+
+
 # Try importing CognitiveMemory, fall back to HierarchicalMemory
 try:
     from amplihack_memory.cognitive_memory import CognitiveMemory  # type: ignore[import-not-found]
@@ -256,22 +307,51 @@ class CognitiveAdapter:
     ) -> list[dict[str, Any]]:
         """Search memory and return flat list of result dicts.
 
+        Uses substring matching with n-gram overlap re-ranking for improved recall.
+        Stop words are filtered before querying the backend to reduce noise.
+        Falls back to full-corpus scan with n-gram ranking when filtered search
+        returns no results so that all stored content is always reachable.
+
         When a hive_store is connected, searches both local memory and
         the shared hive, deduplicates by content, and returns merged results.
         """
         if not query or not query.strip():
             return []
 
+        # Filter stop words for more targeted backend search
+        filtered_query = _filter_stop_words(query)
+        search_q = filtered_query if filtered_query.strip() else query.strip()
+
         if self._cognitive:
+            # Request extra candidates so n-gram re-ranking has more to work with
             results = self.memory.search_facts(
-                query=query.strip(), limit=limit, min_confidence=min_confidence
+                query=search_q, limit=limit * 3, min_confidence=min_confidence
             )
             local_results = [self._semantic_fact_to_dict(r) for r in results]
+            # Fallback: scan all stored content when filtered search returns nothing
+            if not local_results:
+                all_facts = self.memory.get_all_facts(limit=limit * 5)
+                local_results = [self._semantic_fact_to_dict(r) for r in all_facts]
         else:
-            subgraph = self.memory.retrieve_subgraph(query=query.strip(), max_nodes=limit)
+            subgraph = self.memory.retrieve_subgraph(query=search_q, max_nodes=limit * 3)
             local_results = [
                 self._node_to_dict(n) for n in subgraph.nodes if n.confidence >= min_confidence
             ]
+            # Fallback: scan all stored content when filtered search returns nothing
+            if not local_results and hasattr(self.memory, "get_all_knowledge"):
+                nodes = self.memory.get_all_knowledge(limit=limit * 5)
+                local_results = [self._node_to_dict(n) for n in nodes]
+
+        # Re-rank by n-gram overlap with original query for relevance ordering
+        if local_results:
+            scored = []
+            for r in local_results:
+                content = r.get("outcome", r.get("content", ""))
+                concept = r.get("context", r.get("concept", ""))
+                score = _ngram_overlap_score(query, f"{concept} {content}")
+                scored.append((score, r))
+            scored.sort(key=lambda x: x[0], reverse=True)
+            local_results = [r for _, r in scored[:limit]]
 
         if self._hive_store is None:
             return local_results
