@@ -7,8 +7,6 @@ This module should NOT be imported directly by external code.
 
 from __future__ import annotations
 
-import sys
-
 import click
 
 from amplihack.fleet._cli_formatters import format_advance_report, format_scout_report
@@ -121,6 +119,7 @@ def register_scout_advance_ops(fleet_cli: click.Group) -> None:
         import amplihack.fleet.fleet_adopt as _adopt_mod
         import amplihack.fleet.fleet_session_reasoner as _reasoner_mod
         import amplihack.fleet.fleet_tui as _tui_mod
+        from amplihack.fleet._constants import DEFAULT_LAST_SCOUT_PATH
 
         # -- Phase 1: Discovery --
         discovery = _discover_sessions(session_target, vm, _tui_mod)
@@ -153,7 +152,7 @@ def register_scout_advance_ops(fleet_cli: click.Group) -> None:
         prev_statuses: dict[str, str] = {}
         prev_data: dict = {}
         if incremental:
-            last_scout_path = Path.home() / ".amplihack" / "fleet" / "last_scout.json"
+            last_scout_path = DEFAULT_LAST_SCOUT_PATH
             if last_scout_path.exists():
                 try:
                     prev_data = json.loads(last_scout_path.read_text())
@@ -215,7 +214,7 @@ def register_scout_advance_ops(fleet_cli: click.Group) -> None:
         try:
             from amplihack.fleet._projects import load_projects
             _proj_registry = load_projects()
-        except Exception:
+        except (OSError, ValueError, KeyError):
             _proj_registry = {}
 
         # Build repo-to-project lookup from running VMs
@@ -241,7 +240,7 @@ def register_scout_advance_ops(fleet_cli: click.Group) -> None:
         click.echo(report_text)
 
         # -- Always save last scout results for incremental re-use --
-        last_scout_path = Path.home() / ".amplihack" / "fleet" / "last_scout.json"
+        last_scout_path = DEFAULT_LAST_SCOUT_PATH
         last_scout_path.parent.mkdir(parents=True, exist_ok=True)
         last_scout_data = {
             "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),

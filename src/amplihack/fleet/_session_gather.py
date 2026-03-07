@@ -28,7 +28,7 @@ def _match_project(repo_url: str) -> tuple[str, list[dict]]:
     """
     try:
         from amplihack.fleet._projects import load_projects
-    except Exception:
+    except (ImportError, OSError):
         return ("", [])
 
     projects = load_projects()
@@ -226,10 +226,16 @@ def parse_context_output(output: str, context: SessionContext) -> None:
                     parts = line.strip().split("\t")
                     if len(parts) >= 2:
                         try:
+                            # Sanitize remote data: strip control chars, truncate, validate state
+                            raw_title = re.sub(r"[\x00-\x1f\x7f]", "", parts[1])[:256]
+                            raw_state = parts[2] if len(parts) > 2 else "open"
+                            raw_state = raw_state.strip().lower()
+                            if raw_state not in ("open", "closed"):
+                                raw_state = "open"
                             context.project_objectives.append({
                                 "number": int(parts[0]),
-                                "title": parts[1],
-                                "state": parts[2] if len(parts) > 2 else "open",
+                                "title": raw_title,
+                                "state": raw_state,
                             })
                         except (ValueError, IndexError):
                             continue
