@@ -370,6 +370,25 @@ amplihack fleet project track-issue myapp --label fleet-objective
 amplihack fleet project remove myapp
 ```
 
+The `projects.toml` file stores project configuration:
+
+```toml
+[project.myapp]
+repo_url = "https://github.com/org/myapp"
+identity = "user1"
+priority = "high"
+
+[[project.myapp.objectives]]
+number = 42
+title = "Add authentication"
+state = "open"
+url = "https://github.com/org/myapp/issues/42"
+
+[project.lib]
+repo_url = "https://github.com/org/lib"
+priority = "low"
+```
+
 Objectives are stored in `~/.amplihack/fleet/projects.toml` and enriched during scout with live GitHub issue state. The scout report groups sessions by project and shows open objectives:
 
 ```

@@ -134,6 +134,7 @@ fleet start   [--interval 300] [--max-cycles 10]
 - **Health metrics in reasoning**: `fleet_health.py` wired into `SessionContext` for admiral decisions
 - **Unified status classifier**: Single canonical classifier in `_status.py` (no dual TUI/CLI divergence)
 - **Modular CLI**: Commands split across `_cli_session_ops.py`, `_cli_scout_advance.py`, `_cli_formatters.py` (each under 400 LOC)
+- **Project grouping**: Scout report groups sessions by registered project with open objectives displayed
 
 ## How to Run
 
