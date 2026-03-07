@@ -108,41 +108,81 @@ _OP_CREATE_NODE = "network_graph.create_node"
 
 # ---------------------------------------------------------------------------
 # Security analyst fact corpus (for seeding the hive)
-# Generated from amplihack_eval.data.generate_dialogue security blocks
+# Dynamically loaded from amplihack_eval.data.generate_dialogue security blocks
+# so that seeded facts match the eval questions generated from the same corpus.
 # ---------------------------------------------------------------------------
 
-_FACT_CORPUS: list[dict[str, str]] = [
-    # Security incidents and CVEs
+_FACT_CORPUS_FALLBACK: list[dict[str, str]] = [
+    # Security incidents and CVEs (static fallback when amplihack_eval unavailable)
     {"concept": "log4shell", "content": "The Log4Shell vulnerability (CVE-2021-44228) had a CVSS score of 10.0."},
     {"concept": "solarwinds", "content": "The SolarWinds attack compromised 18,000 organizations in 2020."},
     {"concept": "supply_chain", "content": "Supply chain attacks increased 742% between 2019 and 2022."},
-    {"concept": "2fa", "content": "Hardware security keys provide the strongest form of 2FA."},
-    {"concept": "memory_safety", "content": "Memory-safe languages prevent 70% of security vulnerabilities."},
-    # Security log events
     {"concept": "brute_force", "content": "Brute force attack detected from 192.168.1.45: 847 failed SSH login attempts targeting admin accounts over 12 minutes."},
     {"concept": "c2_traffic", "content": "C2 beacon traffic detected from 172.16.0.100 (svc_backup) to 185.220.101.45 on port 443 using HTTPS tunneling."},
     {"concept": "supply_chain_attack", "content": "Supply chain attack detected: malicious npm package event-stream@5.0.0 with crypto-mining payload found in CI pipeline."},
     {"concept": "xz_backdoor", "content": "CVE-2024-3094 (xz-utils/sshd backdoor) detected on build servers; attacker used DNS tunneling via *.tunnel.attacker.net."},
-    {"concept": "ssrf", "content": "SSRF vulnerability exploited in web application: attacker accessed AWS metadata endpoint http://169.254.169.254/latest/meta-data/."},
     {"concept": "insider_threat", "content": "Insider threat indicator: bulk download of 15,234 sensitive documents by user jsmith detected; DLP policy triggered."},
-    # Incident reports
     {"concept": "inc_2024_001", "content": "INC-2024-001: Ransomware attack on production database servers; 3 servers encrypted; status: contained; CVE-2024-21626 involved."},
     {"concept": "inc_2024_002", "content": "INC-2024-002: Data exfiltration via C2 server 185.220.101.45; 2.3GB exfiltrated; breach notification sent to 15,000 customers; status: remediated."},
     {"concept": "inc_2024_003", "content": "INC-2024-003: APT29 (state-sponsored) supply chain attack; TTPs matched APT29; involved event-stream npm package, crypto mining on CI server, DNS tunneling, and xz-utils backdoor (CVE-2024-3094)."},
-    {"concept": "inc_2024_004", "content": "INC-2024-004: Insider threat - bulk document download by jsmith; 15,234 documents over 4 hours; employee terminated; status: resolved."},
-    {"concept": "inc_2024_005", "content": "INC-2024-005: SSRF vulnerability exploitation leading to cloud metadata access; patched same day; no data exfiltration confirmed."},
-    # Infrastructure security
-    {"concept": "mfa_enforcement", "content": "Post-incident review complete; MFA enforced for all admin accounts after INC-2024-001 ransomware attack."},
-    {"concept": "firewall_block", "content": "All encrypted files restored from backup; attacker C2 server 185.220.101.45 blocked at firewall after INC-2024-002."},
-    {"concept": "rdp_brute_force", "content": "Brute force attack on RDP services from multiple IPs; 10,432 attempts over 3 hours; blocked by WAF rate limiting."},
-    {"concept": "privilege_escalation", "content": "Privilege escalation attempt from 192.168.1.45 after successful SSH login; attacker gained root via sudo misconfiguration."},
-    {"concept": "dns_tunneling", "content": "DNS tunneling detected using *.tunnel.attacker.net domains; associated with APT29 campaign INC-2024-003."},
-    # Security knowledge base
-    {"concept": "cvss_scoring", "content": "CVSS v3.1 base score uses Attack Vector, Attack Complexity, Privileges Required, User Interaction, Scope, and three CIA impact metrics."},
     {"concept": "apt29", "content": "APT29 (Cozy Bear) is a Russian state-sponsored threat actor known for supply chain attacks and stealthy long-term persistence."},
     {"concept": "ransomware_response", "content": "Ransomware incident response playbook: isolate affected systems, preserve evidence, notify stakeholders, restore from clean backups, patch vulnerabilities."},
     {"concept": "ioc_correlation", "content": "IOC correlation links 192.168.1.45 (SSH brute force), 185.220.101.45 (C2 server), event-stream@5.0.0 (malicious npm), and tunnel.attacker.net (DNS C2)."},
 ]
+
+
+def _build_eval_seed_facts() -> list[dict[str, str]]:
+    """Build seed facts from amplihack_eval security/incident dialogue turns.
+
+    Uses the same generate_dialogue(num_turns=300, seed=42) call that generates
+    eval questions, ensuring seeded facts match what the questions ask about.
+
+    Returns:
+        List of fact dicts with 'concept' and 'content' keys, one per dialogue turn,
+        falling back to _FACT_CORPUS_FALLBACK if amplihack_eval is unavailable.
+    """
+    try:
+        from amplihack_eval.data import generate_dialogue
+    except ImportError:
+        logger.warning("amplihack_eval not available; using fallback seed corpus")
+        return list(_FACT_CORPUS_FALLBACK)
+
+    ground_truth = generate_dialogue(num_turns=300, seed=42)
+    security_turns = [
+        t for t in ground_truth.turns
+        if t.block_name in ("security_logs", "incidents") and t.content
+    ]
+    if not security_turns:
+        logger.warning("generate_dialogue returned no security turns; using fallback seed corpus")
+        return list(_FACT_CORPUS_FALLBACK)
+
+    facts: list[dict[str, str]] = []
+    for idx, turn in enumerate(security_turns):
+        # Derive a concept key from the block and turn index
+        concept = f"{turn.block_name}_{idx:03d}"
+        facts.append({
+            "concept": concept,
+            "content": turn.content,
+            "confidence": "0.95",
+        })
+
+    logger.info(
+        "Built %d seed facts from amplihack_eval generate_dialogue (security_logs + incidents)",
+        len(facts),
+    )
+    return facts
+
+
+# Lazy-loaded seed facts (populated on first use of --seed)
+_FACT_CORPUS: list[dict[str, str]] | None = None
+
+
+def _get_fact_corpus() -> list[dict[str, str]]:
+    """Return cached seed facts, building them from eval on first call."""
+    global _FACT_CORPUS
+    if _FACT_CORPUS is None:
+        _FACT_CORPUS = _build_eval_seed_facts()
+    return _FACT_CORPUS
 
 # ---------------------------------------------------------------------------
 # Security analyst Q&A evaluation dataset
@@ -278,7 +318,7 @@ class HiveQueryClient:
         """
         from azure.servicebus import ServiceBusMessage
 
-        corpus = facts or _FACT_CORPUS
+        corpus = facts if facts is not None else _get_fact_corpus()
         count = 0
         for fact in corpus:
             node_id = uuid.uuid4().hex[:12]
@@ -501,7 +541,8 @@ def run_demo_eval(output_path: str | None = None) -> dict[str, Any]:
     security_questions = _get_security_questions()
     print("=" * 70)
     print("HIVE SECURITY ANALYST Q&A EVAL (DEMO — local DistributedHiveGraph)")
-    print(f"Facts in corpus: {len(_FACT_CORPUS)}")
+    fact_corpus = _get_fact_corpus()
+    print(f"Facts in corpus: {len(fact_corpus)}")
     print(f"Security questions: {len(security_questions)}")
     print("=" * 70)
     print()
@@ -528,7 +569,7 @@ def run_demo_eval(output_path: str | None = None) -> dict[str, Any]:
         hive.register_agent(f"agent-{i}", domain="security")
 
     # Seed security facts into the hive
-    for fact_dict in _FACT_CORPUS:
+    for fact_dict in fact_corpus:
         fact = HiveFact(
             fact_id="",
             content=fact_dict["content"],
@@ -605,7 +646,7 @@ def run_demo_eval(output_path: str | None = None) -> dict[str, Any]:
             "elapsed_s": round(elapsed, 2),
             "hive_type": "DistributedHiveGraph (local)",
             "agents": 5,
-            "facts_seeded": len(_FACT_CORPUS),
+            "facts_seeded": len(fact_corpus),
         },
         "category_scores": category_scores,
         "questions": results,
@@ -939,8 +980,9 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         if args.seed:
-            print(f"Seeding {len(_FACT_CORPUS)} security analyst facts into live hive (table={args.table})...")
-            n = client.seed_facts(table=args.table)
+            seed_corpus = _get_fact_corpus()
+            print(f"Seeding {len(seed_corpus)} security analyst facts into live hive (table={args.table})...")
+            n = client.seed_facts(facts=seed_corpus, table=args.table)
             print(f"Seeded {n} security facts. Waiting 5s for propagation...")
             time.sleep(5)
 

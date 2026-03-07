@@ -444,6 +444,18 @@ class NetworkGraphStore:
             table = payload.get("table", "")
             props = payload.get("properties", {})
             if table and props:
+                # Auto-create the table if it doesn't exist yet, inferring schema
+                # from property keys so that create_node doesn't fail with
+                # "Table X does not exist" on first use.
+                try:
+                    schema = {k: "STRING" for k in props if k != "node_id"}
+                    schema["node_id"] = "STRING"
+                    self._local.ensure_table(table, schema)
+                except Exception:
+                    logger.debug(
+                        "[%s] ensure_table failed for table=%s (may already exist)",
+                        self._agent_id, table, exc_info=True,
+                    )
                 # Only apply if we don't already have this node
                 node_id = props.get("node_id")
                 if node_id and self._local.get_node(table, node_id) is None:
@@ -490,8 +502,15 @@ class NetworkGraphStore:
                 len(self._query_events),
             )
 
-            # Search local graph store
-            results = self._local.search_nodes(table, text, fields, limit)
+            # Search local graph store (gracefully handle missing table)
+            try:
+                results = self._local.search_nodes(table, text, fields, limit)
+            except Exception:
+                logger.debug(
+                    "[%s] search_nodes failed for table=%s (table may not exist yet)",
+                    self._agent_id, table, exc_info=True,
+                )
+                results = []
             logger.debug(
                 "[%s] search_query query_id=%s: local graph store returned %d result(s)",
                 self._agent_id, query_id, len(results),
