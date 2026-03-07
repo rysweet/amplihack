@@ -268,12 +268,12 @@ class TestTempDirCleanup:
         )
 
 
-class TestCLAUDECODEEnvRemoval:
-    """Verify CLAUDECODE is still removed from child environment."""
+class TestEnvCleanup:
+    """Verify child environment is cleaned of blocked variables."""
 
     @patch("amplihack.recipes.adapters.cli_subprocess.subprocess.Popen")
-    def test_claudecode_removed_from_agent_env(self, mock_popen: MagicMock, tmp_path: Path) -> None:
-        """CLAUDECODE env var must not be passed to child agent processes."""
+    def test_claudecode_stripped_from_agent_env(self, mock_popen: MagicMock, tmp_path: Path) -> None:
+        """CLAUDECODE must be stripped from child agent process environment."""
         mock_proc = MagicMock()
         mock_proc.wait.return_value = None
         mock_proc.returncode = 0
@@ -300,8 +300,8 @@ class TestCLAUDECODEEnvRemoval:
         assert "CLAUDECODE" not in child_env
 
     @patch("subprocess.run")
-    def test_claudecode_removed_from_bash_env(self, mock_run: MagicMock) -> None:
-        """CLAUDECODE env var must not be passed to child bash processes."""
+    def test_claudecode_stripped_from_bash_env(self, mock_run: MagicMock) -> None:
+        """CLAUDECODE must be stripped from child bash process environment."""
         mock_run.return_value = MagicMock(returncode=0, stdout="ok", stderr="")
 
         adapter = CLISubprocessAdapter()

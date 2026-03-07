@@ -101,9 +101,9 @@ class TestParallelOrchestrator:
         assert "CLISubprocessAdapter" in launcher_content
         assert "default-workflow" in launcher_content
 
-        # Verify run.sh unsets CLAUDECODE
+        # Verify run.sh sets session tree vars
         run_content = (ws_dir / "run.sh").read_text()
-        assert "unset CLAUDECODE" in run_content
+        assert "AMPLIHACK_TREE_ID" in run_content
 
     @patch("orchestrator.subprocess.run")
     def test_add_classic_mode(self, mock_run, tmp_path):
@@ -138,7 +138,6 @@ class TestParallelOrchestrator:
 
         # Verify run.sh uses amplihack claude
         run_content = (ws_dir / "run.sh").read_text()
-        assert "unset CLAUDECODE" in run_content
         assert "amplihack claude" in run_content
 
     @patch("orchestrator.subprocess.run")

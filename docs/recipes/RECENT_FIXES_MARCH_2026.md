@@ -70,12 +70,13 @@ steps:
 
 **Root Cause**: Dev-orchestrator skill doc called `ClaudeSDKAdapter()` directly instead of using adapter auto-detection.
 
-**Solution**: Changed to `get_adapter()` which auto-selects `NestedSessionAdapter` when `CLAUDECODE` env is set.
+**Solution**: Changed to `get_adapter()` which auto-selects the best available adapter.
 
 **Impact**:
 - Recipe runner works correctly inside Claude Code sessions
 - Adapter selection now context-aware
 - All 20 smart-orchestrator steps complete successfully
+- CLAUDECODE env var is stripped from all child processes via centralized `build_child_env()` utility
 
 **Additional Fixes in Same PR**:
 1. **Bash heredoc quoting** (#2764): Template variables like `{{decomposition_json}}` broke bash when Claude's output contained single quotes. Fixed using `<<'EOFDECOMP'` (quoted delimiter prevents special char interpretation).

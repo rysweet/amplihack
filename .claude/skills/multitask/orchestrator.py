@@ -190,7 +190,7 @@ class ParallelOrchestrator:
         """Write launcher files for recipe-based execution.
 
         Creates a Python script that uses run_recipe_by_name() with
-        CLISubprocessAdapter, and a shell wrapper that unsets CLAUDECODE.
+        CLISubprocessAdapter, and a shell wrapper that sets session tree vars.
         """
         # Python launcher that uses Recipe Runner directly
         launcher_py = ws.work_dir / "launcher.py"
@@ -240,7 +240,7 @@ class ParallelOrchestrator:
         )
         launcher_py.chmod(0o755)
 
-        # Shell wrapper: unset CLAUDECODE and propagate session tree context
+        # Shell wrapper: propagate session tree context
         # AMPLIHACK_TREE_ID and AMPLIHACK_SESSION_DEPTH are inherited from the
         # parent environment (set by the recipe that invoked this orchestrator).
         # This ensures the session tree depth limit is enforced in child recipes.
@@ -260,7 +260,6 @@ class ParallelOrchestrator:
             textwrap.dedent(f"""\
             #!/bin/bash
             cd {safe_work_dir}
-            unset CLAUDECODE  # Allow nested Claude sessions
             # Propagate session tree context so child recipes obey depth limits
             export AMPLIHACK_TREE_ID={safe_tree}
             export AMPLIHACK_SESSION_DEPTH={safe_depth}
@@ -298,7 +297,6 @@ class ParallelOrchestrator:
             textwrap.dedent(f"""\
             #!/bin/bash
             cd {_safe_work_dir}
-            unset CLAUDECODE
             export AMPLIHACK_TREE_ID={_safe_tree}
             export AMPLIHACK_SESSION_DEPTH={_safe_depth}
             export AMPLIHACK_MAX_DEPTH={_safe_max_depth}

@@ -9,7 +9,7 @@
 orchestrator.py (ParallelOrchestrator)
     |
     +---> Workstream 1: /tmp/ws-123/
-    |         run.sh -> unset CLAUDECODE -> launcher.py
+    |         run.sh -> launcher.py
     |         launcher.py -> run_recipe_by_name("default-workflow", adapter, context)
     |         CLISubprocessAdapter -> claude -p (per recipe step)
     |
@@ -114,19 +114,13 @@ If `amplihack` package is not importable in the clone environment, `launcher.py`
 
 To use classic mode as fallback, specify `--mode classic` when invoking the orchestrator.
 
-## Environment Variables
-
-| Variable     | Effect                                                           |
-| ------------ | ---------------------------------------------------------------- |
-| `CLAUDECODE` | Unset in workstream subprocesses to allow nested Claude sessions |
-
 ## File Layout Per Workstream
 
 ```
 /tmp/amplihack-workstreams/
   ws-123/           # Clone of feat/my-feature branch
     launcher.py     # Recipe runner invocation (recipe mode)
-    run.sh          # Shell wrapper (unsets CLAUDECODE)
+    run.sh          # Shell wrapper (sets session tree vars)
     TASK.md         # Task description (classic mode only)
     ...             # Full repo clone
   log-123.txt       # Combined stdout/stderr log

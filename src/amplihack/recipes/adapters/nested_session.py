@@ -1,15 +1,12 @@
 """Nested session adapter for recipe execution inside Claude Code.
 
-Enables Recipe Runner to work when already inside a Claude Code session by:
-1. Unsetting CLAUDECODE environment variable
-2. Using isolated temporary directories for each agent invocation
-3. Streaming output with progress monitoring (no hard timeout)
-4. Cleaning up resources after execution
+Uses isolated temporary directories for each agent invocation, streams
+output with progress monitoring (no hard timeout), and cleans up
+resources after execution.
 """
 
 from __future__ import annotations
 
-import os
 import shutil
 import subprocess
 import tempfile
@@ -17,17 +14,14 @@ import threading
 import time
 from pathlib import Path
 
+from amplihack.recipes.adapters.env import build_child_env
+
 
 class NestedSessionAdapter:
-    """Adapter that allows nested Claude Code sessions.
+    """Adapter for running nested Claude Code sessions.
 
-    Solves the "cannot launch Claude Code inside Claude Code" error by:
-    - Unsetting CLAUDECODE before spawning subprocess
-    - Using isolated temp directories for each agent call
-    - Streaming output with a monitoring thread (no hard timeout)
-    - Proper cleanup of resources
-
-    Based on the pattern from multitask skill (.claude/skills/multitask/orchestrator.py)
+    Uses isolated temp directories for each agent call, streams output
+    with a monitoring thread (no hard timeout), and cleans up resources.
     """
 
     def __init__(
@@ -53,9 +47,7 @@ class NestedSessionAdapter:
         Runs without a hard timeout. Output is streamed to a log file
         and tailed by a background thread for progress monitoring.
         """
-        # Prepare environment without CLAUDECODE
-        env = os.environ.copy()
-        env.pop("CLAUDECODE", None)
+        env = build_child_env()
 
         # Prepare working directory
         temp_dir = None
