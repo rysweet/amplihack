@@ -444,3 +444,109 @@ az containerapp logs show \
   --resource-group hive-mind-rg \
   --follow
 ```
+
+---
+
+## Q&A Eval Against the Live Azure Hive
+
+`experiments/hive_mind/query_hive.py` provides a standalone client and eval
+runner for testing the **live** hive deployment. It uses the same
+`network_graph.search_query` / `network_graph.search_response` protocol that
+the agents themselves use, without requiring any local agent instances.
+
+### How It Works
+
+```
+query_hive.py ──publishes──► hive-graph topic (Azure Service Bus)
+                                     │
+                    ┌────────────────┼────────────────┐
+                    ▼                ▼                ▼
+              agent-0 sub      agent-1 sub   …  agent-19 sub
+              (Container App)  (Container App)   (Container App)
+                    │                │                │
+                    └────────────────┼────────────────┘
+                                     ▼
+                          eval-query-agent sub
+                          (responses collected here)
+```
+
+1. `query_hive.py` publishes a `network_graph.search_query` event to the topic.
+2. Each live agent receives it via its subscription, searches local memory, and
+   publishes a `network_graph.search_response`.
+3. Responses arrive on the `eval-query-agent` subscription and are merged.
+
+### Prerequisites
+
+```bash
+pip install azure-servicebus
+```
+
+The `eval-query-agent` subscription must exist on the `hive-graph` topic:
+
+```bash
+az servicebus topic subscription create \
+  --resource-group hive-mind-rg \
+  --namespace-name hive-sb-dj2qo2w7vu5zi \
+  --topic-name hive-graph \
+  --name eval-query-agent \
+  --max-delivery-count 1 \
+  --default-message-time-to-live P1D
+```
+
+### Running the Q&A Eval
+
+```bash
+# Run built-in 15-question eval suite
+python experiments/hive_mind/query_hive.py --run-eval
+
+# Save results to JSON
+python experiments/hive_mind/query_hive.py --run-eval --output results.json
+
+# Single ad-hoc query
+python experiments/hive_mind/query_hive.py --query "What is Newton's second law?"
+
+# Increase timeout for cold-started agents
+python experiments/hive_mind/query_hive.py --run-eval --timeout 15
+```
+
+### Environment Variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `HIVE_CONNECTION_STRING` | embedded | Azure Service Bus connection string |
+| `HIVE_TOPIC` | `hive-graph` | Topic name |
+| `HIVE_SUBSCRIPTION` | `eval-query-agent` | Subscription for receiving responses |
+| `HIVE_TIMEOUT` | `10` | Wait timeout per query (seconds) |
+
+### Eval Dataset
+
+The built-in dataset covers 15 questions across 5 domains (3 per domain):
+biology, chemistry, physics, mathematics, computer_science. Scoring uses
+keyword matching — a question is a **hit** if at least one returned fact
+contains all expected keywords.
+
+### Programmatic Usage
+
+```python
+from experiments.hive_mind.query_hive import HiveQueryClient, _score_response
+
+client = HiveQueryClient(timeout=10)
+results = client.query("What is Newton's second law?")
+hit = _score_response(results, ["F", "ma"])
+print(f"Hit: {hit}, Results: {len(results)}")
+client.close()
+```
+
+### Live Hive Resources
+
+| Resource | Name |
+|---|---|
+| Resource group | `hive-mind-rg` |
+| Service Bus | `hive-sb-dj2qo2w7vu5zi` |
+| Topic | `hive-graph` |
+| Eval subscription | `eval-query-agent` |
+| Agent subscriptions | `agent-0` … `agent-19` |
+| Container Apps | `amplihive-app-0` … `amplihive-app-19` |
+
+See also: `amplihack-agent-eval/docs/azure-hive-qa-eval.md` for the full
+tutorial including troubleshooting and custom dataset instructions.
