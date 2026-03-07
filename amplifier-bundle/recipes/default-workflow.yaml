@@ -1089,19 +1089,30 @@ steps:
   # ==========================================================================
   - id: "step-17a-compliance-verification"
     type: "bash"
+    # FIX (#2925): Previously this step only echoed instructions without
+    # checking anything — it was a no-op that never enforced step-13 completion.
+    # Now it reads local_testing_gate (step-13 output) and FAILS hard if the
+    # gate is empty, blocking the review phase until testing is done.
     command: |
       echo "=== Step 17a: Step 13 Compliance Verification ===" && \
       echo "" && \
-      echo "Checking PR description for Step 13 Local Testing Results..." && \
+      GATE_OUTPUT={{local_testing_gate}} && \
+      if [ -z "$GATE_OUTPUT" ] || [ "$GATE_OUTPUT" = "''" ]; then \
+        echo "COMPLIANCE FAILURE: Step 13 (outside-in testing) produced no output." && \
+        echo "" && \
+        echo "The outside-in testing step (step-13-local-testing) must be completed" && \
+        echo "before the PR review phase can begin." && \
+        echo "" && \
+        echo "Required: Invoke the outside-in-testing skill and document at least" && \
+        echo "2 test scenarios in the PR description under 'Step 13: Local Testing Results'." && \
+        exit 1 ; \
+      fi && \
+      echo "Compliance check: local_testing_gate is populated." && \
       echo "" && \
-      echo "Verify:" && \
-      echo "  - [ ] PR description has 'Step 13: Local Testing Results' section" && \
-      echo "  - [ ] Section contains actual test execution evidence" && \
+      echo "Verify PR description contains 'Step 13: Local Testing Results' section" && \
+      echo "with actual test execution evidence (not just planning)." && \
       echo "" && \
-      echo "If missing: BLOCK review, comment on PR, request test results." && \
-      echo "No approval path - testing must be completed." && \
-      echo "" && \
-      echo "=== Compliance Check Complete ==="
+      echo "=== Compliance Check PASSED ==="
     output: "step_13_compliance_check"
 
   - id: "step-17b-reviewer-agent"
