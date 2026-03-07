@@ -257,12 +257,42 @@ class KuzuGraphStore:
             # No schema info — fall back to node_id search
             search_fields = ["node_id"]
 
-        contains_clauses = [
-            f"CONTAINS(n.{f}, $text)" for f in search_fields
-        ]
-        where = " OR ".join(contains_clauses)
-        query = f"MATCH (n:{table}) WHERE {where} RETURN n LIMIT {limit}"
-        result = self._execute(query, {"text": text})
+        # Tokenise the query into up to 6 meaningful keywords (len >= 3) so
+        # that full natural-language questions still find relevant nodes even
+        # when no node contains the entire question as a literal substring.
+        # This mirrors SemanticMemory.search_facts keyword tokenisation.
+        _STOP = frozenset(
+            {"what", "was", "the", "did", "how", "who", "why", "are", "is",
+             "it", "in", "on", "at", "of", "to", "and", "or", "not", "for",
+             "with", "from", "that", "this", "a", "an", "by", "be", "has",
+             "had", "have", "does", "were", "been", "being", "do", "its"}
+        )
+        tokens = [
+            w.strip("?.,!;:'\"").lower()
+            for w in text.split()
+            if len(w.strip("?.,!;:'\"")) >= 3
+            and w.strip("?.,!;:'\"").lower() not in _STOP
+        ][:6]
+
+        if tokens:
+            params: dict[str, Any] = {"lim": limit}
+            kw_clauses: list[str] = []
+            for i, tok in enumerate(tokens):
+                pname = f"kw{i}"
+                params[pname] = tok
+                field_clauses = [f"lower(n.{f}) CONTAINS lower(${pname})" for f in search_fields]
+                kw_clauses.append("(" + " OR ".join(field_clauses) + ")")
+            where = " OR ".join(kw_clauses)
+            query = f"MATCH (n:{table}) WHERE {where} RETURN n LIMIT $lim"
+            result = self._execute(query, params)
+        else:
+            # Fallback to exact substring match when no usable tokens
+            result = self._execute(
+                f"MATCH (n:{table}) WHERE "
+                + " OR ".join(f"CONTAINS(n.{f}, $text)" for f in search_fields)
+                + " RETURN n LIMIT $lim",
+                {"text": text, "lim": limit},
+            )
         return self._result_to_dicts(result)
 
     # ------------------------------------------------------------------
