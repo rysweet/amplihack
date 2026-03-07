@@ -1,1 +1,2 @@
 {"pr_number": 2873, "title": "[docs] Daily documentation update for merged PRs (2026-03-04)", "author": "github-actions[bot]", "category": "documentation", "risk_level": "low", "risk_score": 2, "priority": "low", "priority_score": 3, "complexity": "low", "complexity_score": 2, "merge_ready": false, "timestamp": "2026-03-05T06:59:00Z"}
+{"timestamp":"2026-03-07T12:56:27Z","workflow_run":"22799435243","pr":2911,"risk":"low","category":"documentation","recommendation":"auto-merge-candidate","status":"already_triaged"}
