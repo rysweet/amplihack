@@ -315,6 +315,38 @@ class Memory:
             return self._graph_store.receive_events()
         return []
 
+    def receive_query_events(self) -> list[Any]:
+        """Drain and return all pending QUERY events from the network transport.
+
+        Called by the OODA loop in agent_entrypoint.py so that incoming
+        QUERY messages can be processed via memory.recall() and responded to.
+
+        Returns:
+            List of BusEvent objects (QUERY type). Empty list when no transport
+            is active or no query events are pending.
+        """
+        if self._graph_store is not None and hasattr(self._graph_store, "receive_query_events"):
+            return self._graph_store.receive_query_events()
+        return []
+
+    def send_query_response(
+        self,
+        query_id: str,
+        question: str,
+        results: list[str],
+    ) -> None:
+        """Publish a QUERY_RESPONSE with cognitive memory recall results.
+
+        Called by the OODA loop after processing a QUERY event via recall().
+
+        Args:
+            query_id: The query_id from the original QUERY event.
+            question: The question that was asked.
+            results: Recalled fact strings from this agent's cognitive memory.
+        """
+        if self._graph_store is not None and hasattr(self._graph_store, "send_query_response"):
+            self._graph_store.send_query_response(query_id, question, results)
+
     def close(self) -> None:
         """Release all resources."""
         if self._adapter is not None and hasattr(self._adapter, "close"):
