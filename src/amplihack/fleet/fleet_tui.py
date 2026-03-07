@@ -16,6 +16,7 @@ import sys
 import termios
 import time
 import tty
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -156,9 +157,37 @@ class FleetTUI:
     def refresh_all(self) -> list[VMView]:
         """Poll all VMs including excluded ones (for 'All Sessions' tab).
 
+        Uses ThreadPoolExecutor to poll VMs concurrently, reducing
+        wall-clock time from O(N * SSH_timeout) to O(SSH_timeout).
+
         Returns a list of VMView objects sorted by VM name.
         """
-        return list(self.refresh_iter(exclude=False))
+        vm_list = self._get_vm_list()
+        if not vm_list:
+            return []
+
+        vms_to_poll: list[tuple[str, str, bool]] = sorted(vm_list, key=lambda x: x[0])
+        results: list[VMView] = []
+
+        def _poll_one(entry: tuple[str, str, bool]) -> VMView:
+            vm_name, region, is_running = entry
+            vm_view = VMView(name=vm_name, region=region, is_running=is_running)
+            if is_running:
+                vm_view.sessions = self._poll_vm(vm_name)
+            return vm_view
+
+        # Poll VMs concurrently — each SSH call is I/O-bound
+        with ThreadPoolExecutor(max_workers=min(8, len(vms_to_poll))) as executor:
+            futures = {executor.submit(_poll_one, entry): entry for entry in vms_to_poll}
+            for future in as_completed(futures):
+                try:
+                    results.append(future.result())
+                except Exception as exc:
+                    entry = futures[future]
+                    logging.getLogger(__name__).warning("Failed to poll VM %s: %s", entry[0], exc)
+                    results.append(VMView(name=entry[0], region=entry[1], is_running=entry[2]))
+
+        return sorted(results, key=lambda v: v.name)
 
     # ------------------------------------------------------------------
     # Data gathering: azlin + tmux polling
