@@ -120,6 +120,17 @@ fleet start   [--interval 300] [--max-cycles 10]
 | `[+]` | completed | Agent finished its task |
 | `[?]` | waiting input | Agent asked a question, awaiting response |
 
+## Performance & Architecture
+
+- **Parallel VM polling**: `FleetTUI.refresh_all()` uses `ThreadPoolExecutor` for concurrent SSH — 3-5x faster on large fleets
+- **Cached SSH output**: Scout caches Phase 1 tmux captures for Phase 3 reasoning (no double-poll)
+- **Incremental scout**: `--incremental` flag skips unchanged sessions using `~/.amplihack/fleet/last_scout.json`
+- **Bastion tunnel reuse**: Reuses existing SSH tunnels via `get_existing_tunnels()` instead of creating new ones
+- **PR URL detection**: Uses `gh pr list` on remote VM for reliable PR detection from git state
+- **Health metrics in reasoning**: `fleet_health.py` wired into `SessionContext` for admiral decisions
+- **Unified status classifier**: Single canonical classifier in `_status.py` (no dual TUI/CLI divergence)
+- **Modular CLI**: Commands split across `_cli_session_ops.py`, `_cli_scout_advance.py`, `_cli_formatters.py` (each under 400 LOC)
+
 ## How to Run
 
 Execute via Bash:

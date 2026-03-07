@@ -1,7 +1,7 @@
 """Fleet CLI commands -- subcommands for the fleet Click group.
 
 All command handler functions live here or in sub-modules:
-  _cli_fleet_ops, _cli_session_ops, _cli_copilot_ops.
+  _cli_fleet_ops, _cli_session_ops, _cli_scout_advance, _cli_copilot_ops.
 
 This module should NOT be imported directly by external code -- use
 fleet_cli.py's create_fleet_cli() instead.
@@ -17,6 +17,7 @@ import click
 
 from amplihack.fleet._cli_copilot_ops import register_copilot_ops
 from amplihack.fleet._cli_fleet_ops import register_fleet_ops
+from amplihack.fleet._cli_scout_advance import register_scout_advance_ops
 from amplihack.fleet._cli_session_ops import register_session_ops
 from amplihack.fleet.fleet_auth import AuthPropagator
 from amplihack.fleet.fleet_observer import FleetObserver
@@ -100,6 +101,7 @@ def register_commands(
     # so test patches on _cli_commands._get_director etc. work correctly.
     register_fleet_ops(fleet_cli)
     register_session_ops(fleet_cli)
+    register_scout_advance_ops(fleet_cli)
     register_copilot_ops(fleet_cli)
 
     # ------------------------------------------------------------------
