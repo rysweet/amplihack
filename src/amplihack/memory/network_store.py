@@ -399,18 +399,37 @@ class NetworkGraphStore:
 
         - CREATE_NODE: apply write to local store
         - CREATE_EDGE: apply edge to local store
-        - SEARCH_QUERY: run local search, publish SEARCH_RESPONSE
+        - SEARCH_QUERY: run local+cognitive search, publish SEARCH_RESPONSE, buffer for OODA
         - SEARCH_RESPONSE: wake up any waiting search_nodes() call
+        - LEARN_CONTENT: buffer for OODA loop
+        - QUERY: buffer for OODA loop + auto-respond via recall_fn
         """
         while self._running:
             try:
                 events = self._bus.poll(self._agent_id)
+                if events:
+                    logger.debug(
+                        "[%s] _process_incoming: polled %d event(s): %s",
+                        self._agent_id,
+                        len(events),
+                        [e.event_type for e in events],
+                    )
                 for event in events:
+                    logger.info(
+                        "[%s] incoming event type=%r source=%r",
+                        self._agent_id,
+                        event.event_type,
+                        event.source_agent,
+                    )
                     try:
                         self._handle_event(event)
                     except Exception:
-                        logger.debug(
-                            "Error handling event %s", event.event_type, exc_info=True
+                        logger.warning(
+                            "[%s] Error handling event type=%r from=%r",
+                            self._agent_id,
+                            event.event_type,
+                            event.source_agent,
+                            exc_info=True,
                         )
             except Exception:
                 logger.debug("Error polling bus", exc_info=True)
@@ -454,8 +473,71 @@ class NetworkGraphStore:
             fields = payload.get("fields")
             limit = payload.get("limit", 20)
             if not query_id or not table:
+                logger.warning(
+                    "[%s] search_query missing query_id or table, dropping (query_id=%r table=%r)",
+                    self._agent_id, query_id, table,
+                )
                 return
+
+            # Buffer for OODA loop so agent_entrypoint can also handle it via recall()
+            with self._query_lock:
+                self._query_events.append(event)
+            logger.debug(
+                "[%s] Buffered search_query event from %s (query_id=%s queue_depth=%d)",
+                self._agent_id,
+                event.source_agent,
+                query_id,
+                len(self._query_events),
+            )
+
+            # Search local graph store
             results = self._local.search_nodes(table, text, fields, limit)
+            logger.debug(
+                "[%s] search_query query_id=%s: local graph store returned %d result(s)",
+                self._agent_id, query_id, len(results),
+            )
+
+            # Also search via recall_fn (CognitiveAdapter → Kuzu) when available
+            # This is the path where LEARN_CONTENT facts live
+            if self._recall_fn is not None:
+                try:
+                    cognitive_hits = self._recall_fn(text, limit)
+                    before = len(results)
+                    seen_ids = {r.get("node_id") for r in results if r.get("node_id")}
+                    for r in cognitive_hits:
+                        content = r.get("outcome") or r.get("content") or r.get("fact") or ""
+                        if not content:
+                            continue
+                        node_id = r.get("experience_id") or r.get("node_id") or ""
+                        if node_id and node_id in seen_ids:
+                            continue
+                        if node_id:
+                            seen_ids.add(node_id)
+                        results.append(
+                            {
+                                "content": content,
+                                "concept": r.get("context") or r.get("concept") or "",
+                                "confidence": r.get("confidence", 0.8),
+                                "node_id": node_id,
+                                "source": self._agent_id,
+                            }
+                        )
+                    logger.debug(
+                        "[%s] search_query query_id=%s: recall_fn added %d cognitive result(s) "
+                        "(total=%d)",
+                        self._agent_id, query_id, len(results) - before, len(results),
+                    )
+                except Exception:
+                    logger.debug(
+                        "[%s] recall_fn failed for search_query query_id=%s",
+                        self._agent_id, query_id, exc_info=True,
+                    )
+
+            logger.info(
+                "[%s] search_query query_id=%s text=%r: responding with %d result(s) "
+                "(recall_fn=%s)",
+                self._agent_id, query_id, text, len(results), self._recall_fn is not None,
+            )
             self._publish(
                 _OP_SEARCH_RESPONSE,
                 {
@@ -472,6 +554,15 @@ class NetworkGraphStore:
             if pending is not None:
                 pending["results"].extend(results)
                 pending["event"].set()
+                logger.debug(
+                    "[%s] search_response query_id=%s: received %d result(s) from %s",
+                    self._agent_id, query_id, len(results), event.source_agent,
+                )
+            else:
+                logger.debug(
+                    "[%s] search_response query_id=%s: no pending waiter (already timed out?)",
+                    self._agent_id, query_id,
+                )
 
         elif op == "LEARN_CONTENT":
             # Buffer for the OODA loop to drain via receive_events()
@@ -488,7 +579,8 @@ class NetworkGraphStore:
             with self._query_lock:
                 self._query_events.append(event)
             logger.debug(
-                "Buffered QUERY event from %s (queue depth=%d)",
+                "[%s] Buffered QUERY event from %s (queue depth=%d)",
+                self._agent_id,
                 event.source_agent,
                 len(self._query_events),
             )
@@ -497,6 +589,14 @@ class NetworkGraphStore:
             question = payload.get("question", "") or payload.get("text", "")
             if query_id and question:
                 self._handle_query_event(query_id, question)
+
+        else:
+            logger.debug(
+                "[%s] _handle_event: unrecognised event type=%r from=%r — ignored",
+                self._agent_id,
+                op,
+                event.source_agent,
+            )
 
     def receive_events(self) -> list[Any]:
         """Drain and return all buffered LEARN_CONTENT events.
