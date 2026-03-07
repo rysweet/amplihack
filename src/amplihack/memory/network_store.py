@@ -48,6 +48,11 @@ _OP_CREATE_NODE = "network_graph.create_node"
 _OP_CREATE_EDGE = "network_graph.create_edge"
 _OP_SEARCH_QUERY = "network_graph.search_query"
 _OP_SEARCH_RESPONSE = "network_graph.search_response"
+_OP_QUERY = "QUERY"
+_OP_QUERY_RESPONSE = "QUERY_RESPONSE"
+
+# Tables searched when handling a QUERY event
+_QUERY_SEARCH_TABLES = ["semantic_memory", "hive_facts", "episodic_memory", "general"]
 
 
 class AgentRegistry:
@@ -120,6 +125,10 @@ class NetworkGraphStore:
         # Buffered LEARN_CONTENT events waiting to be drained via receive_events()
         self._learn_events: list[Any] = []
         self._learn_lock = threading.Lock()
+
+        # Buffered QUERY events waiting to be drained via receive_query_events()
+        self._query_events: list[Any] = []
+        self._query_lock = threading.Lock()
 
         # Build the event bus
         self._bus = self._create_bus(transport, connection_string, topic_name)
@@ -449,6 +458,21 @@ class NetworkGraphStore:
                 len(self._learn_events),
             )
 
+        elif op == _OP_QUERY:
+            # Buffer for the OODA loop to drain via receive_query_events()
+            with self._query_lock:
+                self._query_events.append(event)
+            logger.debug(
+                "Buffered QUERY event from %s (queue depth=%d)",
+                event.source_agent,
+                len(self._query_events),
+            )
+            # Also auto-respond with local graph search results
+            query_id = payload.get("query_id", "")
+            question = payload.get("question", "") or payload.get("text", "")
+            if query_id and question:
+                self._handle_query_event(query_id, question)
+
     def receive_events(self) -> list[Any]:
         """Drain and return all buffered LEARN_CONTENT events.
 
@@ -462,6 +486,85 @@ class NetworkGraphStore:
             events = list(self._learn_events)
             self._learn_events.clear()
         return events
+
+    def receive_query_events(self) -> list[Any]:
+        """Drain and return all buffered QUERY events.
+
+        Called by the Memory facade so the OODA loop can process incoming
+        QUERY messages and generate responses via the agent's cognitive memory.
+
+        Returns:
+            List of BusEvent objects (QUERY type), oldest first.
+        """
+        with self._query_lock:
+            events = list(self._query_events)
+            self._query_events.clear()
+        return events
+
+    def send_query_response(
+        self,
+        query_id: str,
+        question: str,
+        results: list[str],
+    ) -> None:
+        """Publish a QUERY_RESPONSE event with cognitive memory recall results.
+
+        Called by the OODA loop after the agent runs memory.recall() on a
+        received QUERY event.
+
+        Args:
+            query_id: The query_id from the original QUERY event.
+            question: The question that was asked.
+            results: List of recalled fact strings from cognitive memory.
+        """
+        self._publish(
+            _OP_QUERY_RESPONSE,
+            {
+                "query_id": query_id,
+                "question": question,
+                "results": [{"content": r} for r in results],
+                "responder": self._agent_id,
+                "source": "cognitive_memory",
+            },
+        )
+        logger.debug(
+            "Published QUERY_RESPONSE for query_id=%s with %d results",
+            query_id,
+            len(results),
+        )
+
+    def _handle_query_event(self, query_id: str, question: str) -> None:
+        """Auto-respond to a QUERY event using local graph store search.
+
+        Searches across known tables in the local store and publishes a
+        QUERY_RESPONSE. This runs in the background thread for fast response.
+
+        Args:
+            query_id: The query_id from the incoming QUERY event.
+            question: The question text to search for.
+        """
+        results: list[dict[str, Any]] = []
+        for table in _QUERY_SEARCH_TABLES:
+            try:
+                hits = self._local.search_nodes(table, question, limit=5)
+                results.extend(hits)
+            except Exception:
+                logger.debug("search_nodes failed for table=%s", table, exc_info=True)
+        self._publish(
+            _OP_QUERY_RESPONSE,
+            {
+                "query_id": query_id,
+                "question": question,
+                "results": results,
+                "responder": self._agent_id,
+                "source": "graph_store",
+            },
+        )
+        logger.debug(
+            "Auto-responded to QUERY query_id=%s with %d graph results",
+            query_id,
+            len(results),
+        )
 
     # ------------------------------------------------------------------
     # Helpers

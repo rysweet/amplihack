@@ -132,8 +132,9 @@ def main() -> None:
 def _handle_event(agent_name: str, event: object, memory: object) -> None:
     """Dispatch an incoming event to the appropriate handler.
 
-    Currently handled event types:
+    Handled event types:
         LEARN_CONTENT -- extract and store the content payload in memory.
+        QUERY         -- recall relevant facts from memory and publish a response.
 
     All other event types are stored as generic event records.
     """
@@ -160,6 +161,32 @@ def _handle_event(agent_name: str, event: object, memory: object) -> None:
                 "Agent %s received LEARN_CONTENT event with empty content payload",
                 agent_name,
             )
+
+    elif event_type == "QUERY":
+        query_id = (payload or {}).get("query_id", "")
+        question = (payload or {}).get("question", "") or (payload or {}).get("text", "")
+        if question:
+            logger.info(
+                "Agent %s handling QUERY (id=%s): %s...",
+                agent_name,
+                query_id,
+                question[:80],
+            )
+            results = memory.recall(question, limit=10) if hasattr(memory, "recall") else []
+            if hasattr(memory, "send_query_response"):
+                memory.send_query_response(query_id, question, results)
+            logger.info(
+                "Agent %s published QUERY_RESPONSE (id=%s): %d results",
+                agent_name,
+                query_id,
+                len(results),
+            )
+        else:
+            logger.warning(
+                "Agent %s received QUERY event with no question in payload",
+                agent_name,
+            )
+
     else:
         memory.remember(f"Event received: {event}")
 
@@ -172,7 +199,7 @@ def _ooda_tick(agent_name: str, agent_prompt: str, memory: object, tick: int) ->
     Decide:  Determine if any action is needed.
     Act:     Store decisions or trigger downstream effects.
     """
-    # Observe: check for incoming events
+    # Observe: check for incoming LEARN_CONTENT events
     try:
         events = memory.receive_events() if hasattr(memory, "receive_events") else []
         for event in events:
@@ -180,6 +207,17 @@ def _ooda_tick(agent_name: str, agent_prompt: str, memory: object, tick: int) ->
             _handle_event(agent_name, event, memory)
     except Exception:
         logger.debug("Event receive failed", exc_info=True)
+
+    # Observe: check for incoming QUERY events
+    try:
+        query_events = (
+            memory.receive_query_events() if hasattr(memory, "receive_query_events") else []
+        )
+        for event in query_events:
+            logger.info("Agent %s received QUERY event: %s", agent_name, event)
+            _handle_event(agent_name, event, memory)
+    except Exception:
+        logger.debug("Query event receive failed", exc_info=True)
 
     if tick % 10 == 0:
         # Every 10 ticks, log memory statistics
