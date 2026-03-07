@@ -251,3 +251,7 @@ register_commands(
 def create_fleet_cli() -> click.Group:
     """Create and return the fleet CLI group."""
     return fleet_cli
+
+
+if __name__ == "__main__":
+    fleet_cli()
