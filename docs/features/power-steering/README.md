@@ -423,7 +423,20 @@ gh pr view --json statusCheckRollup
 ```
 .claude/tools/amplihack/
 ├── hooks/
-│   ├── power_steering_checker.py      # Core checker logic
+│   ├── power_steering_checker/        # Modular checker package
+│   │   ├── __init__.py                # Public API re-exports
+│   │   ├── main_checker.py            # PowerSteeringChecker orchestration (1,217 lines)
+│   │   ├── considerations.py          # Dataclasses + ConsiderationsMixin
+│   │   ├── sdk_calls.py               # SdkCallsMixin + SDK integration
+│   │   ├── progress_tracking.py       # ProgressTrackingMixin + state I/O
+│   │   ├── result_formatting.py       # ResultFormattingMixin + output generation
+│   │   ├── checks_ci_pr.py            # CI/PR-specific checks
+│   │   ├── checks_docs.py             # Documentation checks
+│   │   ├── checks_quality.py          # Code quality checks
+│   │   ├── checks_workflow.py         # Workflow adherence checks
+│   │   ├── session_detection.py       # Session type detection
+│   │   ├── transcript_parser.py       # Transcript parsing (Claude Code + Copilot CLI)
+│   │   └── transcript_helpers.py      # Transcript utility functions
 │   ├── power_steering_state.py        # State management
 │   └── templates/
 │       └── power_steering_prompt.txt  # User-facing messages
@@ -431,6 +444,13 @@ gh pr view --json statusCheckRollup
 └── context/
     └── USER_PREFERENCES.md            # User preferences
 ```
+
+**Architecture Highlights**:
+- **Modular Design**: Split from monolithic 5,063-line file into 12 focused modules (largest: 1,217 lines)
+- **Backward Compatible**: All existing imports continue to work via `__init__.py` re-exports
+- **Copilot CLI Support**: Auto-detects and parses both Claude Code and GitHub Copilot CLI transcripts (real `events.jsonl` format)
+- **Import-Time Safe**: CLAUDECODE environment variable unset to prevent nested session errors in SDK calls
+- **Independently Testable**: 191 unit/integration tests (121 existing + 48 parser + 22 Copilot e2e)
 
 ### Checker Methods
 
@@ -443,6 +463,15 @@ gh pr view --json statusCheckRollup
 | `_check_workflow_complete()` | Validate workflow steps | Workflow step markers |
 
 **Generic checker**: For custom considerations, uses keyword extraction and transcript search.
+
+**Module Responsibilities**:
+- `considerations.py` — Data models + consideration loading/evaluation
+- `sdk_calls.py` — Claude SDK integration + parallel analysis + timeouts
+- `progress_tracking.py` — State persistence + redirect records + compaction
+- `result_formatting.py` — Text formatting + output generation
+- `main_checker.py` — Orchestration + public API
+
+See [power_steering_checker package README](../../../.claude/tools/amplihack/hooks/power_steering_checker/README.md) for detailed module documentation.
 
 ### State Management
 
@@ -505,7 +534,33 @@ Power-Steering maintains minimal state:
 
 ## Changelog
 
-### v0.10.0 (Planned)
+### v0.10.0 (2026-03-07)
+
+**Refactored** (PR #2910):
+
+- **Modular Architecture**: Split monolithic `power_steering_checker.py` (5,063 lines) into 12 focused modules
+  - Largest module: `main_checker.py` at 1,217 lines (76% reduction)
+  - Improved maintainability and testability
+  - All existing imports remain backward compatible via `__init__.py` re-exports
+- **Copilot CLI Support**: Auto-detection and parsing of GitHub Copilot CLI transcripts
+  - Supports real `events.jsonl` format
+  - Verified against 5 real Copilot CLI sessions
+  - 48 new parser tests + 22 Copilot e2e tests
+- **SDK Integration Fix**: CLAUDECODE environment variable now properly unset to prevent nested session errors
+  - Affects all Claude SDK subprocess calls
+  - Applied to both `.claude/` and `amplifier-bundle/` copies
+
+**Testing**:
+
+- 191 unit/integration tests passing (121 existing + 48 parser + 22 Copilot e2e)
+- Quality audit cycle completed (3-agent validation)
+
+**Fixed** (PR #2887, #2886):
+
+- Bash template quoting in quality-audit-cycle (double-quote escaping issue)
+- JSON-as-commands execution in verify-fixes step
+
+### v0.9.2 (Planned)
 
 **Added**:
 
