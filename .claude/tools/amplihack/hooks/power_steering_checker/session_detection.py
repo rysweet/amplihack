@@ -89,6 +89,41 @@ class SessionDetectionMixin:
         "what changed",
     ]
 
+    # Keywords that indicate PM/Operations/Planning sessions (fixes #2913/#2914)
+    # When found in early user messages, session is classified as OPERATIONS.
+    # These sessions involve reading data (backlogs, issues, roadmaps) to produce
+    # planning output - they do NOT require development workflow checks.
+    # Checked BEFORE investigation tool-usage heuristics to prevent misclassification.
+    OPERATIONS_KEYWORDS = [
+        "prioritize",
+        "prioritise",
+        "backlog",
+        "roadmap",
+        "sprint",
+        "triage",
+        "pm-architect",
+        "project management",
+        "project manager",
+        "product management",
+        "product manager",
+        "milestone",
+        "epic",
+        "user story",
+        "release plan",
+        "capacity planning",
+        "scrum",
+        "kanban",
+        "planning session",
+        "prioritization",
+        "work items",
+        "what should we work on",
+        "what to work on",
+        "what should i work on",
+        "next steps",
+        "determine next steps",
+        "survey the project",
+    ]
+
     # Keywords that indicate investigation/troubleshooting sessions
     # When found in early user messages, session is classified as INVESTIGATION
     # regardless of tool usage patterns (fixes #1604)
@@ -254,12 +289,14 @@ class SessionDetectionMixin:
         - INFORMATIONAL: Q&A, help queries, capability questions
         - MAINTENANCE: Documentation and configuration updates only
         - INVESTIGATION: Exploration, analysis, troubleshooting, and debugging
+        - OPERATIONS: PM/planning/backlog triage - skip development workflow checks (fixes #2913)
 
-        Detection Priority (UPDATED for Issue #2196):
+        Detection Priority (UPDATED for Issue #2196, #2913):
         1. Environment override (AMPLIHACK_SESSION_TYPE)
         2. Simple task keywords (cleanup, fetch, workspace) - highest priority heuristic
-        3. Tool usage patterns (code changes, tests, etc.) - CONCRETE EVIDENCE
-        4. Investigation keywords in user messages - TIEBREAKER ONLY
+        3. OPERATIONS keywords (prioritize, backlog, roadmap, sprint) - before tool analysis
+        4. Tool usage patterns (code changes, tests, etc.) - CONCRETE EVIDENCE
+        5. Investigation keywords in user messages - TIEBREAKER ONLY
 
         Tool usage patterns now take priority over keywords because they provide
         concrete evidence of the session's actual work. Keywords like "analyze and fix"
@@ -281,6 +318,7 @@ class SessionDetectionMixin:
             "INFORMATIONAL",
             "MAINTENANCE",
             "INVESTIGATION",
+            "OPERATIONS",
         ]:
             self._log(f"Session type overridden by environment: {env_override}", "INFO")
             return env_override
@@ -309,6 +347,25 @@ class SessionDetectionMixin:
         if found_simple:
             self._log("Session classified as SIMPLE via keyword detection", "INFO")
             return "SIMPLE"
+
+        # OPERATIONS: PM/planning/backlog triage sessions (fixes #2913/#2914)
+        # Check before tool usage analysis to prevent PM sessions from being
+        # misclassified as INVESTIGATION by Read/Grep heuristics.
+        found_operations = False
+        for msg in user_messages[:5]:
+            content = str(msg.get("message", {}).get("content", "")).lower()
+            for keyword in self.OPERATIONS_KEYWORDS:
+                if keyword in content:
+                    self._log(
+                        f"Operations/PM keyword '{keyword}' found in user message", "DEBUG"
+                    )
+                    found_operations = True
+                    break
+            if found_operations:
+                break
+        if found_operations:
+            self._log("Session classified as OPERATIONS via keyword detection", "INFO")
+            return "OPERATIONS"
 
         # Count questions in user messages for INFORMATIONAL detection
         question_count = sum(
@@ -444,15 +501,16 @@ class SessionDetectionMixin:
         """Get considerations applicable to a specific session type.
 
         Args:
-            session_type: Session type ("SIMPLE", "DEVELOPMENT", "INFORMATIONAL", "MAINTENANCE", "INVESTIGATION")
+            session_type: Session type ("SIMPLE", "DEVELOPMENT", "INFORMATIONAL", "MAINTENANCE", "INVESTIGATION", "OPERATIONS")
 
         Returns:
             List of consideration dictionaries applicable to this session type
         """
-        # SIMPLE sessions skip ALL considerations - they are routine maintenance tasks
-        # like cleanup, fetch, sync, workspace management that don't need verification
-        if session_type == "SIMPLE":
-            self._log("SIMPLE session - skipping all considerations", "INFO")
+        # SIMPLE and OPERATIONS sessions skip ALL considerations
+        # SIMPLE: routine maintenance (cleanup, fetch, sync)
+        # OPERATIONS: PM/planning sessions that don't modify code (fixes #2913)
+        if session_type in ("SIMPLE", "OPERATIONS"):
+            self._log(f"{session_type} session - skipping all considerations", "INFO")
             return []
 
         # Filter considerations based on session type

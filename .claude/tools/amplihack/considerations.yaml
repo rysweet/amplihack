@@ -21,6 +21,7 @@
 #   - INFORMATIONAL: Q&A, help queries, capability questions (minimal checks)
 #   - MAINTENANCE: Documentation and configuration updates only
 #   - INVESTIGATION: Read-only exploration and analysis
+#   - OPERATIONS: PM/planning/backlog triage - skips all checks (fixes #2913)
 #
 # Categories:
 #   1. Session Completion & Progress
