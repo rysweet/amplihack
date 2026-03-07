@@ -527,9 +527,7 @@ class TestEndToEndExitTiming:
             del os.environ["AMPLIHACK_SHUTDOWN_IN_PROGRESS"]
 
     @pytest.mark.slow
-    @patch("claude_power_steering.CLAUDE_SDK_AVAILABLE", True)
-    @patch("claude_power_steering.query")
-    def test_no_timing_regression_during_normal_operation(self, mock_query):
+    def test_no_timing_regression_during_normal_operation(self):
         """E2E: Normal operation timing should not regress from shutdown checks.
 
         Verifies that adding is_shutting_down() checks does not slow down
@@ -539,12 +537,6 @@ class TestEndToEndExitTiming:
         # ARRANGE - ensure NOT shutting down
         if "AMPLIHACK_SHUTDOWN_IN_PROGRESS" in os.environ:
             del os.environ["AMPLIHACK_SHUTDOWN_IN_PROGRESS"]
-
-        # Mock SDK to return quickly (isolate shutdown check overhead)
-        async def mock_query_response(*args, **kwargs):
-            yield MagicMock(text="SATISFIED: All good")
-
-        mock_query.return_value = mock_query_response()
 
         # ACT
         start_time = time.time()
