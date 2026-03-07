@@ -114,8 +114,33 @@ class StopHook(HookProcessor):
             # Get session ID for per-session tracking
             session_id = self._get_current_session_id()
 
-            # Increment lock mode counter
-            self._increment_lock_counter(session_id)
+            # Increment lock mode counter and check safety valve (fixes #2874)
+            lock_count = self._increment_lock_counter(session_id)
+
+            # Safety valve: After MAX_LOCK_ITERATIONS consecutive blocks,
+            # auto-approve to prevent infinite loops where the agent has
+            # nothing left to do but keeps getting blocked.
+            max_iterations = int(os.environ.get("AMPLIHACK_MAX_LOCK_ITERATIONS", "50"))
+            if lock_count >= max_iterations:
+                self.log(
+                    f"SAFETY VALVE: Lock mode hit {lock_count} iterations "
+                    f"(max={max_iterations}). Auto-approving to prevent infinite loop.",
+                    "WARNING",
+                )
+                self.save_metric("lock_safety_valve_triggered", 1)
+                # Remove lock file to prevent re-triggering on next stop
+                try:
+                    self.lock_flag.unlink()
+                    self.log("Lock file removed by safety valve")
+                except OSError as e:
+                    self.log(f"Could not remove lock file: {e}", "WARNING")
+                print(
+                    f"\n⚠️  Lock mode safety valve triggered after {lock_count} iterations. "
+                    "Lock has been automatically disabled. Use /amplihack:lock to re-enable.",
+                    file=sys.stderr,
+                )
+                self.log("=== STOP HOOK ENDED (decision: approve - safety valve) ===")
+                return {"decision": "approve"}
 
             # Read custom continuation prompt or use default
             continuation_prompt = self.read_continuation_prompt()
