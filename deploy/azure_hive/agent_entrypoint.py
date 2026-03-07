@@ -2,7 +2,12 @@
 """Agent entrypoint for Azure Container Apps hive deployment.
 
 Reads environment variables and starts the OODA loop with
-Memory-backed persistence.
+LearningAgent-backed learning and answering.
+
+The agent IS a LearningAgent:
+  - learning_agent.learn_from_content(...)  replaces memory.remember(...)
+  - learning_agent.answer_question(...)     replaces memory.recall(...)
+  - Memory is retained only for event transport (receive_events, send_query_response).
 
 Environment variables:
     AMPLIHACK_AGENT_NAME           -- unique agent identifier (required)
@@ -64,7 +69,26 @@ def main() -> None:
         backend,
     )
 
-    # Build Memory backing
+    # Build LearningAgent — the agent IS a LearningAgent (not a separate memory object).
+    # learn_from_content() replaces memory.remember(); answer_question() replaces memory.recall().
+    from pathlib import Path
+
+    from amplihack.agents.goal_seeking.learning_agent import LearningAgent
+
+    _storage = Path(storage_path)
+    _storage.mkdir(parents=True, exist_ok=True)
+    try:
+        learning_agent = LearningAgent(
+            agent_name=agent_name,
+            storage_path=_storage,
+            use_hierarchical=True,
+        )
+    except Exception:
+        logger.exception("Failed to initialize LearningAgent for agent %s", agent_name)
+        sys.exit(1)
+    logger.info("LearningAgent initialized for agent %s", agent_name)
+
+    # Build Memory — retained for event transport only (receive_events, send_query_response).
     try:
         from amplihack.memory.facade import Memory
 
@@ -77,25 +101,11 @@ def main() -> None:
             storage_path=storage_path,
         )
     except Exception:
-        logger.exception("Failed to initialize Memory for agent %s", agent_name)
+        logger.exception("Failed to initialize Memory transport for agent %s", agent_name)
         sys.exit(1)
 
-    # Store the agent's initial context
-    memory.remember(f"Agent identity: {agent_name}. Role: {agent_prompt}")
-
-    # Build LearningAgent for LLM-backed answer synthesis on QUERY events
-    from pathlib import Path
-
-    from amplihack.agents.goal_seeking.learning_agent import LearningAgent
-
-    _storage = Path(storage_path)
-    _storage.mkdir(parents=True, exist_ok=True)
-    learning_agent = LearningAgent(
-        agent_name=agent_name,
-        storage_path=_storage,
-        use_hierarchical=True,
-    )
-    logger.info("LearningAgent initialized for agent %s", agent_name)
+    # Store the agent's initial context via LearningAgent
+    learning_agent.learn_from_content(f"Agent identity: {agent_name}. Role: {agent_prompt}")
 
     logger.info(
         "Agent %s memory initialized and entering OODA loop",
@@ -138,21 +148,30 @@ def main() -> None:
 
     logger.info("Agent %s shutting down after %d loops", agent_name, loop_count)
     try:
+        learning_agent.close()
+    except Exception:
+        logger.debug("Error closing LearningAgent", exc_info=True)
+    try:
         memory.close()
     except Exception:
-        logger.debug("Error closing memory", exc_info=True)
+        logger.debug("Error closing memory transport", exc_info=True)
 
 
 def _handle_event(
-    agent_name: str, event: object, memory: object, learning_agent: object = None
+    agent_name: str, event: object, memory: object, learning_agent: object
 ) -> None:
     """Dispatch an incoming event to the appropriate handler.
 
     Handled event types:
-        LEARN_CONTENT -- extract and store the content payload in memory.
-        QUERY         -- answer via LearningAgent.answer_question() and publish response.
+        LEARN_CONTENT -- learn content via learning_agent.learn_from_content().
+        QUERY         -- answer via learning_agent.answer_question() and publish response.
 
-    All other event types are stored as generic event records.
+    All other event types are stored via learning_agent.learn_from_content().
+
+    Args:
+        learning_agent: LearningAgent instance (required). The agent IS a LearningAgent.
+            learn_from_content() replaces memory.remember(); answer_question() replaces memory.recall().
+        memory: Used for transport only (send_query_response).
     """
     event_type = getattr(event, "event_type", None) or (
         event.get("event_type") if isinstance(event, dict) else None
@@ -171,7 +190,7 @@ def _handle_event(
                 turn,
                 content[:80],
             )
-            memory.remember(f"[LEARN_CONTENT turn={turn}] {content}")
+            learning_agent.learn_from_content(content)
         else:
             logger.warning(
                 "Agent %s received LEARN_CONTENT event with empty content payload",
@@ -189,22 +208,14 @@ def _handle_event(
                 question[:80],
             )
             answer = ""
-            if learning_agent is not None and hasattr(learning_agent, "answer_question"):
-                try:
-                    result = learning_agent.answer_question(question)
-                    answer = result[0] if isinstance(result, tuple) else str(result)
-                except Exception:
-                    logger.exception(
-                        "Agent %s LearningAgent.answer_question failed for query %s",
-                        agent_name,
-                        query_id,
-                    )
-            else:
-                # Fallback: raw keyword recall when no LearningAgent is available
-                results = memory.recall(question, limit=10) if hasattr(memory, "recall") else []
-                answer = "; ".join(
-                    r.get("content", str(r)) if isinstance(r, dict) else str(r)
-                    for r in results
+            try:
+                result = learning_agent.answer_question(question)
+                answer = result[0] if isinstance(result, tuple) else str(result)
+            except Exception:
+                logger.exception(
+                    "Agent %s LearningAgent.answer_question failed for query %s",
+                    agent_name,
+                    query_id,
                 )
             results = [{"content": answer, "source": agent_name}] if answer else []
             if hasattr(memory, "send_query_response"):
@@ -226,8 +237,8 @@ def _handle_event(
         # agents replying to a search query.  The NetworkGraphStore handles
         # these internally (waking pending search waiters); there is nothing
         # further for the OODA loop to do.  Explicitly acknowledge here so the
-        # event does not fall through to memory.remember() and pollute the
-        # cognitive store with raw response payloads.
+        # event does not fall through to learning_agent.learn_from_content() and
+        # pollute the cognitive store with raw response payloads.
         query_id = (payload or {}).get("query_id", "")
         logger.debug(
             "Agent %s received %s (query_id=%s) from graph store auto-handler — acknowledged",
@@ -237,7 +248,7 @@ def _handle_event(
         )
 
     else:
-        memory.remember(f"Event received: {event}")
+        learning_agent.learn_from_content(f"Event received: {event}")
 
 
 def _ooda_tick(
@@ -245,7 +256,7 @@ def _ooda_tick(
     agent_prompt: str,
     memory: object,
     tick: int,
-    learning_agent: object = None,
+    learning_agent: object,
 ) -> None:
     """Single OODA loop tick — poll for incoming events and process them.
 
@@ -282,13 +293,13 @@ def _ooda_tick(
         except Exception:
             logger.debug("Could not retrieve stats", exc_info=True)
 
-    # Observe: recall recent context
+    # Observe: log LearningAgent memory stats for diagnostics
     try:
-        recent = memory.recall(agent_name, limit=5) if hasattr(memory, "recall") else []
-        if recent:
-            logger.debug("Agent %s recent context: %d items", agent_name, len(recent))
+        la_stats = learning_agent.get_memory_stats() if hasattr(learning_agent, "get_memory_stats") else {}
+        if la_stats:
+            logger.debug("Agent %s LearningAgent memory stats: %s", agent_name, la_stats)
     except Exception:
-        logger.debug("Recall failed", exc_info=True)
+        logger.debug("LearningAgent get_memory_stats failed", exc_info=True)
 
 
 if __name__ == "__main__":
