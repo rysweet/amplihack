@@ -462,7 +462,7 @@ What happens for each action type:
 |--------|---------------------|
 | `wait` | Nothing — agent is working fine |
 | `send_input` | Types text into the tmux pane |
-| `restart` | Sends Ctrl-C twice, then re-runs last command |
+| `restart` | Sends Ctrl-C twice to interrupt stuck process |
 | `escalate` | Flags for human review, no action taken |
 | `mark_complete` | Records task as done |
 

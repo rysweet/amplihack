@@ -187,12 +187,11 @@ azlin connect $VM --no-tmux --yes -- \
   tmux send-keys -t '$SESSION' '$LINE' Enter
 ```
 
-**restart**: Sends Ctrl-C twice (kill running process), waits 1 second, then re-runs the last command:
+**restart**: Sends Ctrl-C twice to interrupt the stuck process. Does NOT re-run the last command (the `!!` history re-execution was removed as a security fix — it would blindly re-run whatever was last in the shell history):
 
 ```bash
 azlin connect $VM --no-tmux --yes -- \
-  tmux send-keys -t '$SESSION' C-c C-c && sleep 1 && \
-  tmux send-keys -t '$SESSION' '!!' Enter
+  tmux send-keys -t '$SESSION' C-c C-c
 ```
 
 **wait, escalate, mark_complete**: No SSH command sent. Decision is logged only.
