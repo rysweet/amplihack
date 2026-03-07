@@ -72,7 +72,7 @@ Restart actions require 0.8. Below-threshold decisions are logged but not acted 
 
 ## Modules
 
-The fleet package contains 19 source files (17 functional modules, 1 package
+The fleet package contains 20 source files (18 functional modules, 1 package
 init, 1 CLI entry point):
 
 ### Core Loop
@@ -114,7 +114,7 @@ init, 1 CLI entry point):
 
 | Module | File | Purpose |
 |--------|------|---------|
-| `fleet_tui` | `fleet_tui.py` | Standard-library terminal dashboard. Uses ANSI escape codes for rendering, `select()` for input, `termios` for raw mode. No external dependencies. Shows VM status, session states, and agent activity. |
+| `fleet_tui` | `fleet_tui.py` | Standard-library terminal dashboard. Uses ANSI escape codes for rendering, `select()` for input, `termios` for raw mode. `refresh_all()` uses ThreadPoolExecutor for concurrent VM polling. Caches Bastion tunnels for reuse. No external dependencies beyond standard library. |
 | `fleet_tui_dashboard` | `fleet_tui_dashboard.py` | Interactive Textual-based dashboard (requires `amplihack[fleet-tui]`). Three-tab interface: Fleet Overview (session table + preview), Session Detail (full tmux capture + admiral proposal), Action Editor (edit and apply actions). Auto-refreshes via background workers. |
 | `fleet_cli` | `fleet_cli.py` | Click-based CLI entry point. Registers all subcommands (status, dashboard, tui, add-task, start, run-once, watch, snapshot, adopt, report, auth, observe, dry-run, graph, queue). Default command (no subcommand) launches the TUI dashboard. |
 
@@ -174,7 +174,8 @@ amplihack fleet advance --session dev:parallel-deploy-wk
 | Setting | Value |
 |---------|-------|
 | Model | `claude-opus-4-6` |
-| Max output tokens | 128,000 |
+| Max output tokens | 8,192 (reasoning JSON) |
+| Max transcript tokens | 128,000 (input context) |
 
 These defaults are defined in `_constants.py` and can be overridden via the
 `--backend` flag or environment variables.
@@ -201,6 +202,7 @@ Fleet state is stored under `~/.amplihack/fleet/`:
 | `task_queue.json` | Priority-ordered task queue |
 | `dashboard.json` | Project metrics and cost tracking |
 | `graph.json` | Knowledge graph (projects, tasks, VMs, PRs) |
+| `last_scout.json` | Last scout results for incremental mode |
 | `logs/` | Admiral decision logs |
 
 ## Constraints

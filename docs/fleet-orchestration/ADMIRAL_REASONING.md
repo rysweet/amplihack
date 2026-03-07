@@ -43,6 +43,8 @@ A single SSH command connects to the VM through Azure Bastion and gathers everyt
 | **Git branch** | `git branch --show-current` | branch name |
 | **Git remote** | `git remote get-url origin` | repo URL |
 | **Modified files** | `git diff --name-only HEAD` (first 10) | file list |
+| **PR URL** | `gh pr list --head <branch> --json url` | URL string |
+| **VM health** | `free -m`, `df -h /`, `/proc/loadavg` | mem/disk/load metrics |
 | **Agent process alive** | `ps -g $SID` checking for claude/node child | boolean |
 
 ### Transcript Location
@@ -131,13 +133,13 @@ The system prompt also includes the **Strategy Dictionary** — a reference of 2
 
 The admiral supports multiple LLM backends via a protocol interface:
 
-| Backend | Default Model | Max Tokens | Detection |
-|---------|--------------|------------|-----------|
-| `AnthropicBackend` | claude-opus-4-6 | 128,000 | `ANTHROPIC_API_KEY` set |
+| Backend | Default Model | Max Output Tokens | Detection |
+|---------|--------------|-------------------|-----------|
+| `AnthropicBackend` | claude-opus-4-6 | 8,192 | `ANTHROPIC_API_KEY` set |
 | `CopilotBackend` | gpt-4o | — | Copilot SDK available |
-| `LiteLLMBackend` | gpt-4o | 128,000 | Fallback (100+ providers) |
+| `LiteLLMBackend` | gpt-4o | 8,192 | Fallback (100+ providers) |
 
-`auto_detect_backend()` checks for `ANTHROPIC_API_KEY` first, then falls back to LiteLLM. Max tokens is configurable via `DEFAULT_LLM_MAX_TOKENS` in `_constants.py`.
+`auto_detect_backend()` checks for `ANTHROPIC_API_KEY` first, then falls back to LiteLLM. Max output tokens (`DEFAULT_LLM_MAX_TOKENS=8192`) is set low for cost control — reasoning JSON responses are small. Transcript input context can use up to `TRANSCRIPT_MAX_TOKENS=128000`.
 
 ### Response Parsing
 
@@ -210,7 +212,9 @@ Before executing any action, multiple safety checks are applied:
 | `escalate` | none | Always safe |
 | `mark_complete` | none | No side effects |
 
-**Dangerous input blocklist** — 57 regex patterns across 10 threat categories. If `input_text` matches any pattern, the action is converted to `escalate`:
+**Safe input allow-list** — Common safe operations (y/n, slash commands, git read-only, test commands) skip the blocklist entirely via `SAFE_INPUT_PATTERNS`, preventing false positives.
+
+**Dangerous input blocklist** — 57 regex patterns across 10 threat categories. If `input_text` matches any pattern (and is NOT on the safe allow-list), the action is converted to `escalate`:
 
 | Category | Example patterns |
 |----------|-----------------|
@@ -229,7 +233,7 @@ Before executing any action, multiple safety checks are applied:
 
 ### Confirmation Mode
 
-`fleet advance --confirm` prompts before each action:
+`fleet advance` prompts for confirmation by default. Use `--force` to skip:
 
 ```
   [dev/parallel-deploy-wk] reasoning...
@@ -274,7 +278,8 @@ The key difference between `scout`/`advance` and `dry-run`/`run-once`/`start`:
 | `_backends.py` | `AnthropicBackend`, `CopilotBackend`, `LiteLLMBackend` |
 | `_validation.py` | Input sanitization + dangerous pattern blocklist |
 | `_constants.py` | Confidence thresholds, timeouts, capacity limits |
-| `_cli_session_ops.py` | `scout` + `advance` CLI commands + report formatting |
+| `_cli_session_ops.py` | `scout` + `advance` CLI commands |
+| `_cli_formatters.py` | Report formatting (scout + advance reports) |
 | `fleet_admiral.py` | `FleetAdmiral` — autonomous loop with multi-reasoner chain |
 
 ## Configuration
@@ -283,7 +288,8 @@ All tunable values are in `_constants.py`:
 
 | Constant | Value | Purpose |
 |----------|-------|---------|
-| `DEFAULT_LLM_MAX_TOKENS` | 128,000 | Max output tokens for reasoning |
+| `DEFAULT_LLM_MAX_TOKENS` | 8,192 | Max output tokens for reasoning JSON (cost control) |
+| `TRANSCRIPT_MAX_TOKENS` | 128,000 | Max input tokens for transcript context |
 | `MIN_CONFIDENCE_SEND` | 0.6 | Minimum confidence to send input |
 | `MIN_CONFIDENCE_RESTART` | 0.8 | Minimum confidence to restart |
 | `SUBPROCESS_TIMEOUT_SECONDS` | 120 | SSH timeout (Bastion needs ~90s) |
