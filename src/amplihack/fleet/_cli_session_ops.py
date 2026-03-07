@@ -421,13 +421,16 @@ def register_session_ops(fleet_cli: click.Group) -> None:
     @fleet_cli.command("advance")
     @click.option("--vm", default=None, help="Filter to a single VM (default: all)")
     @click.option("--session", "session_target", default=None, help="Target session as vm:session (e.g., dev:cybergym-intg)")
-    @click.option("--confirm", is_flag=True, help="Prompt before each action (default: auto-execute)")
+    @click.option("--force", is_flag=True, help="Skip confirmation prompts (default: confirm before send_input)")
     @click.option("--save", "save_path", default=None, type=click.Path(), help="Save JSON report to file")
-    def advance(vm, session_target, confirm, save_path):
+    def advance(vm, session_target, force, save_path):
         """Run the fleet admiral LIVE — reason and execute actions on sessions.
 
         Unlike 'scout' (dry-run only), this command actually sends input
         to sessions, restarts stuck agents, and marks tasks complete.
+
+        By default, prompts for confirmation before send_input and restart
+        actions. Use --force to skip confirmation.
 
         Target a single session: fleet advance --session dev:cybergym-intg
 
@@ -452,6 +455,7 @@ def register_session_ops(fleet_cli: click.Group) -> None:
         total_sessions = sum(len(v.sessions) for v in running_vms)
 
         # -- Phase 2: Reason and execute --
+        confirm = not force  # Default: confirm before send_input/restart
         click.echo("\nPhase 2: Reasoning and executing actions...")
         backend = _backends_mod.auto_detect_backend()
         reasoner = _reasoner_mod.SessionReasoner(

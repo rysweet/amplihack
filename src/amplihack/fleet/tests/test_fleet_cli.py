@@ -1496,7 +1496,7 @@ class TestFleetAdvance:
         result = runner.invoke(fleet_cli, ["advance", "--help"], catch_exceptions=False)
         assert result.exit_code == 0
         assert "--vm" in result.output
-        assert "--confirm" in result.output
+        assert "--force" in result.output
         assert "--save" in result.output
 
 
