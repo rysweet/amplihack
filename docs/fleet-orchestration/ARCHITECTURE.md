@@ -72,7 +72,7 @@ Restart actions require 0.8. Below-threshold decisions are logged but not acted 
 
 ## Modules
 
-The fleet package contains 20 source files (18 functional modules, 1 package
+The fleet package contains 21 source files (19 functional modules, 1 package
 init, 1 CLI entry point):
 
 ### Core Loop
@@ -158,6 +158,11 @@ amplihack fleet dashboard       # Meta-project tracking view
 amplihack fleet auth vm         # Propagate auth tokens to a VM
 amplihack fleet graph           # Show knowledge graph summary
 amplihack fleet report          # Generate fleet status report
+amplihack fleet project add <url>  # Register a project for tracking
+amplihack fleet project list       # List registered projects
+amplihack fleet project add-issue <proj> <num>  # Track issue as objective
+amplihack fleet project track-issue <proj>      # Sync objectives from GitHub
+amplihack fleet project remove <name>           # Remove a project
 ```
 
 ### Session Targeting

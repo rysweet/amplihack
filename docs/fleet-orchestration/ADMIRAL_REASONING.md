@@ -46,6 +46,7 @@ A single SSH command connects to the VM through Azure Bastion and gathers everyt
 | **PR URL** | `gh pr list --head <branch> --json url` | URL string |
 | **VM health** | `free -m`, `df -h /`, `/proc/loadavg` | mem/disk/load metrics |
 | **Agent process alive** | `ps -g $SID` checking for claude/node child | boolean |
+| **Project objectives** | `gh issue list --label fleet-objective` on remote | issue list |
 
 ### Transcript Location
 
