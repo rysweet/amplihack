@@ -17,6 +17,7 @@ Environment variables:
     AMPLIHACK_MEMORY_TRANSPORT     -- "local" | "redis" | "azure_service_bus"
     AMPLIHACK_MEMORY_CONNECTION_STRING -- Service Bus or Redis connection string
     AMPLIHACK_MEMORY_STORAGE_PATH  -- storage path for memory data
+    AMPLIHACK_MODEL                -- LLM model for LearningAgent (e.g. "claude-sonnet-4-6")
     ANTHROPIC_API_KEY              -- required for LLM operations
 """
 
@@ -50,6 +51,7 @@ def main() -> None:
         "AMPLIHACK_MEMORY_STORAGE_PATH",
         f"/data/{agent_name}",
     )
+    model = os.environ.get("AMPLIHACK_MODEL") or os.environ.get("EVAL_MODEL") or None
 
     # Gracefully handle missing azure-servicebus package
     if transport == "azure_service_bus":
@@ -81,7 +83,8 @@ def main() -> None:
         learning_agent = LearningAgent(
             agent_name=agent_name,
             storage_path=_storage,
-            use_hierarchical=True,
+            use_hierarchical=False,
+            model=model,
         )
     except Exception:
         logger.exception("Failed to initialize LearningAgent for agent %s", agent_name)
@@ -103,6 +106,10 @@ def main() -> None:
     except Exception:
         logger.exception("Failed to initialize Memory transport for agent %s", agent_name)
         sys.exit(1)
+
+    # Share Kuzu storage: wire Memory facade's adapter to LearningAgent's MemoryRetriever
+    # so both the LearningAgent and Memory facade read/write the same Kuzu store.
+    memory._adapter = learning_agent.memory
 
     # Store the agent's initial context via LearningAgent
     learning_agent.learn_from_content(f"Agent identity: {agent_name}. Role: {agent_prompt}")
