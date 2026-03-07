@@ -350,6 +350,8 @@ def run_azure_test(
 
     try:
         for i, question in enumerate(questions, 1):
+            if i > 1:
+                time.sleep(3)  # Brief pause between queries to avoid Service Bus throttling
             t0 = time.time()
             responses = client.send_query(question)
             elapsed = time.time() - t0

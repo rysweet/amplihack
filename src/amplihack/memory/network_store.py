@@ -550,6 +550,12 @@ class NetworkGraphStore:
                 results.extend(hits)
             except Exception:
                 logger.debug("search_nodes failed for table=%s", table, exc_info=True)
+        if not results:
+            logger.debug(
+                "QUERY query_id=%s: no graph results, skipping auto-response",
+                query_id,
+            )
+            return
         self._publish(
             _OP_QUERY_RESPONSE,
             {
