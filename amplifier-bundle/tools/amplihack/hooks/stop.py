@@ -18,6 +18,9 @@ from typing import Any
 # Clean import structure
 sys.path.insert(0, str(Path(__file__).parent))
 
+# Import shared file locking utilities
+from file_lock_utils import acquire_file_lock
+
 # Import error protocol first for structured errors
 try:
     from error_protocol import HookError, HookErrorSeverity, HookImportError
@@ -64,6 +67,7 @@ class StopHook(HookProcessor):
     def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
         """Check lock flag and block stop if active.
         Run synchronous reflection analysis if enabled.
+        Execute Neo4j cleanup if appropriate.
 
         Args:
             input_data: Input from Claude Code
@@ -91,8 +95,12 @@ class StopHook(HookProcessor):
         self.log("=== STOP HOOK STARTED ===")
         self.log(f"Input keys: {list(input_data.keys())}")
 
+        # TOCTOU FIX: Use atomic stat() to check existence
         try:
-            lock_exists = self.lock_flag.exists()
+            self.lock_flag.stat()
+            lock_exists = True
+        except FileNotFoundError:
+            lock_exists = False
         except (PermissionError, OSError) as e:
             self.log(f"Cannot access lock file: {e}", "WARNING")
             self.log("=== STOP HOOK ENDED (fail-safe: approve) ===")
@@ -103,31 +111,38 @@ class StopHook(HookProcessor):
             self.log("Lock is active - blocking stop to continue working")
             self.save_metric("lock_blocks", 1)
 
+            # Get session ID for per-session tracking
             session_id = self._get_current_session_id()
-            self._increment_lock_counter(session_id)
 
-            # Check for goal file — if present, use SessionCopilot reasoning
-            goal_file = self.project_root / ".claude" / "runtime" / "locks" / ".lock_goal"
-            if goal_file.exists():
-                goal = goal_file.read_text().strip()
-                if goal:
-                    try:
-                        from copilot_stop_handler import get_copilot_continuation
-                        copilot_prompt = get_copilot_continuation(
-                            goal=goal,
-                            project_root=self.project_root,
-                            log_fn=self.log,
-                            metric_fn=self.save_metric,
-                        )
-                    except ImportError as exc:
-                        self.log(f"copilot_stop_handler import failed: {exc}", "WARNING")
-                        self.save_metric("copilot_import_errors", 1)
-                        copilot_prompt = None
-                    if copilot_prompt:
-                        self.log("=== STOP HOOK ENDED (decision: block - copilot reasoning) ===")
-                        return {"decision": "block", "reason": copilot_prompt}
+            # Increment lock mode counter and check safety valve (fixes #2874)
+            lock_count = self._increment_lock_counter(session_id)
 
-            # No goal or copilot unavailable — use default continuation
+            # Safety valve: After MAX_LOCK_ITERATIONS consecutive blocks,
+            # auto-approve to prevent infinite loops where the agent has
+            # nothing left to do but keeps getting blocked.
+            max_iterations = int(os.environ.get("AMPLIHACK_MAX_LOCK_ITERATIONS", "50"))
+            if lock_count >= max_iterations:
+                self.log(
+                    f"SAFETY VALVE: Lock mode hit {lock_count} iterations "
+                    f"(max={max_iterations}). Auto-approving to prevent infinite loop.",
+                    "WARNING",
+                )
+                self.save_metric("lock_safety_valve_triggered", 1)
+                # Remove lock file to prevent re-triggering on next stop
+                try:
+                    self.lock_flag.unlink()
+                    self.log("Lock file removed by safety valve")
+                except OSError as e:
+                    self.log(f"Could not remove lock file: {e}", "WARNING")
+                print(
+                    f"\n⚠️  Lock mode safety valve triggered after {lock_count} iterations. "
+                    "Lock has been automatically disabled. Use /amplihack:lock to re-enable.",
+                    file=sys.stderr,
+                )
+                self.log("=== STOP HOOK ENDED (decision: approve - safety valve) ===")
+                return {"decision": "approve"}
+
+            # Read custom continuation prompt or use default
             continuation_prompt = self.read_continuation_prompt()
 
             self.log("=== STOP HOOK ENDED (decision: block - lock active) ===")
@@ -136,7 +151,13 @@ class StopHook(HookProcessor):
                 "reason": continuation_prompt,
             }
 
-        # Neo4j cleanup removed (Week 7) - no cleanup needed for Kuzu backend
+        # Neo4j cleanup integration (runs before reflection to ensure database state is managed
+        # before any potentially long-running reflection analysis that might timeout the user)
+        self._handle_neo4j_cleanup()
+
+        # Neo4j learning capture (after cleanup, before reflection)
+        # Separated from cleanup for single responsibility and optional nature
+        self._handle_neo4j_learning()
 
         # Power-steering check (before reflection)
         if not lock_exists and self._should_run_power_steering():
@@ -157,7 +178,11 @@ class StopHook(HookProcessor):
                     from pathlib import Path
 
                     transcript_path = Path(transcript_path_str)
-                    session_id = self._get_current_session_id()
+                    # Use transcript filename stem as session ID (stable across stop invocations).
+                    # Fallback to _get_current_session_id() only if stem is unusable.
+                    # Fix for Issue #2548: timestamp-based IDs changed each invocation,
+                    # preventing _results_shown semaphore from being found on second stop.
+                    session_id = transcript_path.stem or self._get_current_session_id()
 
                     # Create progress tracker (auto-detects verbosity and pirate mode from preferences)
                     progress_tracker = ProgressTracker(project_root=self.project_root)
@@ -171,10 +196,35 @@ class StopHook(HookProcessor):
                     self._increment_power_steering_counter(session_id)
 
                     if ps_result.decision == "block":
-                        # Check if this is first stop (visibility feature)
+                        # Fix for Issue #2473: Distinguish between visibility block
+                        # (all checks passed) and failure block (actual issues found).
+                        # Previously, both returned decision="block" to Claude Code,
+                        # causing false failures when all checks actually passed.
+                        is_visibility_only = ps_result.is_first_stop and ps_result.reasons == [
+                            "first_stop_visibility"
+                        ]
+
+                        if is_visibility_only and ps_result.analysis:
+                            # FIRST STOP, ALL CHECKS PASSED: Display results but APPROVE
+                            # the stop. The results are shown via stderr for user visibility.
+                            # This prevents the false failure where the stop was blocked
+                            # even though all checks passed.
+                            self.log(
+                                "First stop - all checks passed, displaying results and approving"
+                            )
+                            progress_tracker.display_all_results(
+                                analysis=ps_result.analysis,
+                                considerations=ps_checker.considerations,
+                                is_first_stop=True,
+                            )
+                            self.save_metric("power_steering_first_stop_visibility", 1)
+                            self.log(
+                                "=== STOP HOOK ENDED (decision: approve - all checks passed) ==="
+                            )
+                            return {"decision": "approve"}
+
                         if ps_result.is_first_stop and ps_result.analysis:
-                            # FIRST STOP: Display all results for visibility
-                            # Note: Semaphore marking already done in checker to prevent race condition
+                            # FIRST STOP with actual failures: Block and display results
                             self.log(
                                 "First stop - displaying all consideration results for visibility"
                             )
@@ -183,9 +233,9 @@ class StopHook(HookProcessor):
                                 considerations=ps_checker.considerations,
                                 is_first_stop=True,
                             )
-                            self.save_metric("power_steering_first_stop_visibility", 1)
+                            self.save_metric("power_steering_blocks", 1)
                         else:
-                            # Subsequent stop with failures OR first stop with failures
+                            # Subsequent stop with failures
                             self.log("Power-steering blocking stop - work incomplete")
                             self.save_metric("power_steering_blocks", 1)
                             # Display final summary
@@ -307,19 +357,32 @@ class StopHook(HookProcessor):
             self.log("=== STOP HOOK ENDED (decision: approve - error occurred) ===")
             return {"decision": "approve"}
 
-    # Copilot logic extracted to copilot_stop_handler.py
+    def _is_neo4j_in_use(self) -> bool:
+        """Check if Neo4j service requires cleanup.
 
-    def _disable_lock_files(self) -> None:
-        """Remove lock and goal files to auto-disable lock mode."""
-        lock_dir = self.project_root / ".claude" / "runtime" / "locks"
-        for name in (".lock_active", ".lock_goal"):
-            f = lock_dir / name
-            try:
-                if f.exists():
-                    f.unlink()
-                    self.log(f"Removed {f}")
-            except OSError as exc:
-                self.log(f"Failed to remove {f}: {exc}", "WARNING")
+        Neo4j has been removed from amplihack. This method is preserved
+        as a no-op to maintain backward compatibility.
+
+        Returns:
+            bool: Always returns False (Neo4j not in use).
+        """
+        return False
+
+    def _handle_neo4j_cleanup(self) -> None:
+        """Handle Neo4j cleanup on session exit.
+
+        Neo4j has been removed from amplihack. This method is preserved
+        as a no-op to maintain backward compatibility with existing hooks.
+        """
+        self.log("Neo4j cleanup skipped - Neo4j removed from amplihack", "DEBUG")
+
+    def _handle_neo4j_learning(self) -> None:
+        """Handle Neo4j learning capture on session exit.
+
+        Neo4j has been removed from amplihack. This method is preserved
+        as a no-op to maintain backward compatibility with existing hooks.
+        """
+        self.log("Neo4j learning capture skipped - Neo4j removed from amplihack", "DEBUG")
 
     def read_continuation_prompt(self) -> str:
         """Read custom continuation prompt from file or return default.
@@ -327,13 +390,9 @@ class StopHook(HookProcessor):
         Returns:
             str: Custom prompt content or DEFAULT_CONTINUATION_PROMPT
         """
-        # Check if custom prompt file exists
-        if not self.continuation_prompt_file.exists():
-            self.log("No custom continuation prompt file - using default")
-            return DEFAULT_CONTINUATION_PROMPT
-
+        # TOCTOU FIX: Direct read with FileNotFoundError handling
         try:
-            # Read prompt content
+            # Read prompt content (atomic operation)
             content = self.continuation_prompt_file.read_text(encoding="utf-8").strip()
 
             # Check if empty
@@ -363,6 +422,9 @@ class StopHook(HookProcessor):
             self.log(f"Using custom continuation prompt ({content_len} chars)")
             return content
 
+        except FileNotFoundError:
+            self.log("No custom continuation prompt file - using default")
+            return DEFAULT_CONTINUATION_PROMPT
         except (PermissionError, OSError, UnicodeDecodeError) as e:
             self.log(f"Error reading custom prompt: {e} - using default", "WARNING")
             return DEFAULT_CONTINUATION_PROMPT
@@ -372,6 +434,8 @@ class StopHook(HookProcessor):
 
         Writes counter to .claude/runtime/power-steering/{session_id}/session_count
         for statusline to read. Session-specific like lock counter.
+
+        Uses file locking to prevent race conditions during concurrent increments.
 
         Args:
             session_id: Session identifier
@@ -390,18 +454,42 @@ class StopHook(HookProcessor):
             )
             counter_file.parent.mkdir(parents=True, exist_ok=True)
 
-            # Read current count (default to 0)
-            current_count = 0
-            if counter_file.exists():
-                try:
-                    current_count = int(counter_file.read_text().strip())
-                except (ValueError, OSError):
-                    current_count = 0
+            # Initialize file if it doesn't exist
+            if not counter_file.exists():
+                counter_file.write_text("0")
 
-            # Increment and write
-            new_count = current_count + 1
-            counter_file.write_text(str(new_count))
-            return new_count
+            # Read-modify-write with file locking
+            with open(counter_file, "r+") as f:
+                with acquire_file_lock(f, log=self.log) as locked:
+                    # Read current count
+                    try:
+                        f.seek(0)
+                        content = f.read().strip()
+                        current_count = int(content) if content else 0
+                    except (ValueError, OSError):
+                        current_count = 0
+
+                    # Increment
+                    new_count = current_count + 1
+
+                    # Write back
+                    f.seek(0)
+                    f.truncate()
+                    f.write(str(new_count))
+                    f.flush()
+
+                    if locked:
+                        self.log(
+                            f"Power-steering counter incremented to {new_count} (with lock)",
+                            "DEBUG",
+                        )
+                    else:
+                        self.log(
+                            f"Power-steering counter incremented to {new_count} (without lock)",
+                            "DEBUG",
+                        )
+
+                    return new_count
 
         except Exception as e:
             # Fail-safe: Don't break hook if counter write fails
@@ -410,6 +498,8 @@ class StopHook(HookProcessor):
 
     def _increment_lock_counter(self, session_id: str) -> int:
         """Increment lock mode invocation counter for session.
+
+        Uses file locking to prevent race conditions during concurrent increments.
 
         Args:
             session_id: Session identifier
@@ -428,20 +518,36 @@ class StopHook(HookProcessor):
             )
             counter_file.parent.mkdir(parents=True, exist_ok=True)
 
-            # Read current count (default to 0)
-            current_count = 0
-            if counter_file.exists():
-                try:
-                    current_count = int(counter_file.read_text().strip())
-                except (ValueError, OSError):
-                    current_count = 0
+            # Initialize file if it doesn't exist
+            if not counter_file.exists():
+                counter_file.write_text("0")
 
-            # Increment and write
-            new_count = current_count + 1
-            counter_file.write_text(str(new_count))
+            # Read-modify-write with file locking
+            with open(counter_file, "r+") as f:
+                with acquire_file_lock(f, log=self.log) as locked:
+                    # Read current count
+                    try:
+                        f.seek(0)
+                        content = f.read().strip()
+                        current_count = int(content) if content else 0
+                    except (ValueError, OSError):
+                        current_count = 0
 
-            self.log(f"Lock mode invocation count: {new_count}")
-            return new_count
+                    # Increment
+                    new_count = current_count + 1
+
+                    # Write back
+                    f.seek(0)
+                    f.truncate()
+                    f.write(str(new_count))
+                    f.flush()
+
+                    if locked:
+                        self.log(f"Lock mode invocation count: {new_count} (with lock)")
+                    else:
+                        self.log(f"Lock mode invocation count: {new_count} (without lock)")
+
+                    return new_count
 
         except Exception as e:
             # Fail-safe: Don't break hook if counter write fails
@@ -501,7 +607,7 @@ class StopHook(HookProcessor):
         # Load reflection config
         config_path = self.project_root / ".claude" / "tools" / "amplihack" / ".reflection_config"
         if not config_path.exists():
-            self.log("Reflection config not found - skipping reflection", "WARNING")
+            self.log("Reflection config not found - skipping reflection (opt-in feature)", "DEBUG")
             self.save_metric("reflection_no_config", 1)
             return False
 
@@ -708,7 +814,8 @@ class StopHook(HookProcessor):
 
                 task_slug = re.sub(r"[^a-z0-9]+", "-", first_sentence.lower()).strip("-")
                 task_slug = task_slug[:50]
-        except Exception:
+        except Exception as e:
+            self.log(f"Could not extract task slug from reflection, using 'session': {e}", "DEBUG")
             task_slug = "session"
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

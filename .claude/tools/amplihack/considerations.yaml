@@ -21,6 +21,7 @@
 #   - INFORMATIONAL: Q&A, help queries, capability questions (minimal checks)
 #   - MAINTENANCE: Documentation and configuration updates only
 #   - INVESTIGATION: Read-only exploration and analysis
+#   - OPERATIONS: PM/planning/backlog triage - skips all checks (fixes #2913)
 #
 # Categories:
 #   1. Session Completion & Progress
@@ -223,6 +224,29 @@
   checker: _check_workflow_invocation
   enabled: true
   applicable_session_types: ["DEVELOPMENT", "INVESTIGATION"]
+
+- id: skill_invocation
+  category: Workflow Process Adherence
+  question: If the session was started with a skill command (e.g. /pm-architect, /dev), did the agent actually invoke that skill using the Skill tool?
+  description: Detects when a user requests a skill via slash command but the agent bypasses it and responds directly without invoking the skill (Issue #2914)
+  severity: blocker
+  checker: _check_skill_invocation
+  enabled: true
+  applicable_session_types: ["DEVELOPMENT", "INVESTIGATION", "MAINTENANCE"]
+  guidance: |
+    Check if a <command-name> tag appears in the transcript (indicating the user
+    ran a slash command that maps to a skill). If so, check if the Skill tool
+    was called for that skill name.
+
+    SATISFIED when:
+    - No <command-name> tag in transcript (no skill was requested)
+    - A <command-name> tag exists AND the Skill tool was called for that skill
+    - The skill was loaded directly into the conversation (some skills inject
+      their content via the command system without needing a Skill tool call)
+
+    NOT SATISFIED when:
+    - A <command-name> tag exists but the agent never called the Skill tool
+      and instead responded directly, bypassing the skill entirely
 
 - id: no_direct_main_commit
   category: Workflow Process Adherence
