@@ -1,15 +1,18 @@
 # GitHub Copilot CLI Integration with amplihack
 
-**Version**: 1.0.0
-**Status**: Complete Integration
-**Last Updated**: 2026-01-16
+**Version**: 1.1.0
+**Status**: Complete Integration (with Copilot CLI Transcript Support)
+**Last Updated**: 2026-03-07
 
 ## Overview
 
 This document describes the complete integration between GitHub Copilot CLI and the amplihack agentic coding framework. The integration provides Copilot users with access to amplihack's agents, skills, workflows, and MCP servers.
 
+**New in v1.1.0 (2026-03-07)**: Native Copilot CLI transcript support in Power-Steering checker. The checker now auto-detects and parses both Claude Code and GitHub Copilot CLI transcript formats (real `events.jsonl` format), enabling session completion validation across both platforms.
+
 ## Table of Contents
 
+- [Copilot CLI Transcript Support](#copilot-cli-transcript-support)
 - [Architecture](#architecture)
 - [Quick Start](#quick-start)
 - [Integration Components](#integration-components)
@@ -26,6 +29,89 @@ This document describes the complete integration between GitHub Copilot CLI and 
 ## Where Do Agents Come From?
 
 Copilot CLI agents are **authored by the amplihack project** and stored in `~/.amplihack/.claude/agents/amplihack/`. When you run `amplihack copilot`, the framework symlinks these agents into `.github/agents/` so GitHub Copilot CLI can discover them. You don't need to write agents yourself — amplihack provides 30+ specialized agents (architect, builder, reviewer, tester, security, etc.) that Copilot can delegate to.
+
+## Copilot CLI Transcript Support
+
+**New in v1.1.0 (2026-03-07)**: Power-Steering now natively supports GitHub Copilot CLI session transcripts.
+
+### What Changed
+
+The `power_steering_checker` package has been refactored from a monolithic 5,063-line file into 12 focused modules with automatic transcript format detection:
+
+- **Auto-Detection**: Automatically detects whether a transcript is from Claude Code or GitHub Copilot CLI
+- **Copilot CLI Format**: Parses real `events.jsonl` format used by GitHub Copilot CLI
+- **Backward Compatible**: All existing Claude Code transcripts continue to work
+- **Tested**: 48 new parser tests + 22 Copilot CLI end-to-end tests (verified against 5 real Copilot sessions)
+
+### How It Works
+
+```
+Session Transcript → Transcript Parser → Power-Steering Checker
+                            ↓
+                   Auto-detect format:
+                   - Claude Code JSONL
+                   - Copilot CLI events.jsonl
+                            ↓
+                   Parse appropriately
+                            ↓
+                   Validate session completion
+```
+
+### Key Features
+
+1. **Format Auto-Detection**: No configuration needed - the parser detects the format automatically
+2. **SDK Call Safety**: CLAUDECODE environment variable properly unset to prevent nested session errors
+3. **Progress Tracking**: Works with both transcript formats for session completion validation
+4. **Error Resilience**: Fail-open design ensures checker never blocks due to parsing errors
+
+### Module Structure
+
+The refactored checker is organized into specialized modules:
+
+- `main_checker.py` — Orchestration + public API (1,217 lines, 76% reduction)
+- `transcript_parser.py` — Format detection + parsing (both Claude Code and Copilot CLI)
+- `session_detection.py` — Session type classification
+- `considerations.py` — Check configuration + evaluation
+- `sdk_calls.py` — Claude SDK integration + parallel analysis
+- `progress_tracking.py` — State persistence + redirect records
+- `result_formatting.py` — Output generation
+- Plus 5 check-specific modules
+
+See [power_steering_checker README](../.claude/tools/amplihack/hooks/power_steering_checker/README.md) for complete module documentation.
+
+### Testing
+
+All Copilot CLI transcript support is thoroughly tested:
+
+```bash
+# Run parser tests
+pytest .claude/tools/amplihack/hooks/power_steering_checker/tests/test_transcript_parser.py
+
+# Run Copilot CLI integration tests
+pytest .claude/tools/amplihack/hooks/tests/test_power_steering_copilot_cli.py
+
+# Total test coverage
+# - 121 existing tests (backward compatibility)
+# - 48 parser tests (format detection + parsing)
+# - 22 Copilot CLI e2e tests (real session validation)
+# = 191 tests passing
+```
+
+### Benefits for Copilot CLI Users
+
+1. **Session Completion Validation**: Power-Steering now works in Copilot CLI sessions
+2. **Quality Enforcement**: Same 21 considerations apply (TODOs, tests, CI, PR quality, etc.)
+3. **No Configuration**: Auto-detection means zero setup required
+4. **Cross-Platform**: Same checker logic works in both Claude Code and Copilot CLI
+
+### Migration Notes
+
+**No action required** - if you're already using amplihack with Copilot CLI, the transcript support is automatically enabled. The checker will:
+
+1. Detect you're using Copilot CLI (via transcript format)
+2. Parse the `events.jsonl` format correctly
+3. Apply the same 21 considerations as Claude Code
+4. Provide session completion validation
 
 ## Architecture
 

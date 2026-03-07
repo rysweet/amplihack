@@ -40,11 +40,11 @@ from pathlib import Path
 # Unset CLAUDECODE to prevent nested session errors when spawning Claude CLI subprocesses
 os.environ.pop("CLAUDECODE", None)
 
-# Try to import Claude SDK
+# Try to import SDK abstraction (auto-detects Claude or Copilot SDK)
 try:
-    from claude_agent_sdk import ClaudeAgentOptions, query  # type: ignore[import-not-found]
+    from power_steering_sdk import SDK_AVAILABLE as CLAUDE_SDK_AVAILABLE
+    from power_steering_sdk import query_llm
 
-    CLAUDE_SDK_AVAILABLE = True
 except ImportError:
     CLAUDE_SDK_AVAILABLE = False
 
@@ -239,31 +239,7 @@ async def analyze_consideration(
         return (True, None)  # Fail-open on prompt formatting error
 
     try:
-        options = ClaudeAgentOptions(
-            cwd=str(project_root),
-        )
-
-        # Query Claude with timeout
-        response_parts = []
-        async with asyncio.timeout(CHECKER_TIMEOUT):
-            async for message in query(prompt=prompt, options=options):
-                # Extract text from AssistantMessage content blocks
-                content = getattr(message, "content", None)
-                if content is not None:
-                    if isinstance(content, list):
-                        # AssistantMessage: content is list[ContentBlock]
-                        for block in content:
-                            text = getattr(block, "text", None)
-                            if isinstance(text, str):
-                                response_parts.append(text)
-                    elif isinstance(content, str):
-                        # UserMessage: content can be str
-                        response_parts.append(content)
-
-        # Join all parts
-        response = "".join(response_parts)
-
-        # Sanitize HTML before processing
+        response = await query_llm(prompt, project_root)
         response = _sanitize_html(response)
 
         # Validate response before processing
@@ -571,27 +547,7 @@ Example bad guidance:
 Be direct and specific."""
 
     try:
-        options = ClaudeAgentOptions(
-            cwd=str(project_root),
-        )
-
-        response_parts = []
-        async with asyncio.timeout(CHECKER_TIMEOUT):
-            async for message in query(prompt=prompt, options=options):
-                # Extract text from AssistantMessage content blocks
-                content = getattr(message, "content", None)
-                if content is not None:
-                    if isinstance(content, list):
-                        # AssistantMessage: content is list[ContentBlock]
-                        for block in content:
-                            text = getattr(block, "text", None)
-                            if isinstance(text, str):
-                                response_parts.append(text)
-                    elif isinstance(content, str):
-                        # UserMessage: content can be str
-                        response_parts.append(content)
-
-        guidance = "".join(response_parts).strip()
+        guidance = (await query_llm(prompt, project_root)).strip()
 
         # Sanitize HTML before processing
         guidance = _sanitize_html(guidance)
@@ -674,27 +630,7 @@ If no completion claims are found, respond with: []
 Be specific - only include actual claims about completion, not general discussion."""
 
     try:
-        options = ClaudeAgentOptions(
-            cwd=str(project_root),
-        )
-
-        response_parts = []
-        async with asyncio.timeout(CHECKER_TIMEOUT):
-            async for message in query(prompt=prompt, options=options):
-                # Extract text from AssistantMessage content blocks
-                content = getattr(message, "content", None)
-                if content is not None:
-                    if isinstance(content, list):
-                        # AssistantMessage: content is list[ContentBlock]
-                        for block in content:
-                            text = getattr(block, "text", None)
-                            if isinstance(text, str):
-                                response_parts.append(text)
-                    elif isinstance(content, str):
-                        # UserMessage: content can be str
-                        response_parts.append(content)
-
-        response = "".join(response_parts).strip()
+        response = (await query_llm(prompt, project_root)).strip()
 
         # Validate response before parsing
         if not _validate_sdk_response(response):
@@ -797,27 +733,7 @@ Look for:
 Be conservative - only say ADDRESSED if there is clear evidence in the new content."""
 
     try:
-        options = ClaudeAgentOptions(
-            cwd=str(project_root),
-        )
-
-        response_parts = []
-        async with asyncio.timeout(CHECKER_TIMEOUT):
-            async for message in query(prompt=prompt, options=options):
-                # Extract text from AssistantMessage content blocks
-                content = getattr(message, "content", None)
-                if content is not None:
-                    if isinstance(content, list):
-                        # AssistantMessage: content is list[ContentBlock]
-                        for block in content:
-                            text = getattr(block, "text", None)
-                            if isinstance(text, str):
-                                response_parts.append(text)
-                    elif isinstance(content, str):
-                        # UserMessage: content can be str
-                        response_parts.append(content)
-
-        response = "".join(response_parts).strip()
+        response = (await query_llm(prompt, project_root)).strip()
 
         # Sanitize HTML before processing
         response = _sanitize_html(response)
@@ -1056,29 +972,7 @@ Be conservative - default to INVOKED unless there is clear evidence of ad-hoc wo
 """
 
     try:
-        options = ClaudeAgentOptions(
-            cwd=str(project_root),
-        )
-
-        # Query Claude with timeout
-        response_parts = []
-        async with asyncio.timeout(CHECKER_TIMEOUT):
-            async for message in query(prompt=prompt, options=options):
-                # Extract text from AssistantMessage content blocks
-                content = getattr(message, "content", None)
-                if content is not None:
-                    if isinstance(content, list):
-                        # AssistantMessage: content is list[ContentBlock]
-                        for block in content:
-                            text = getattr(block, "text", None)
-                            if isinstance(text, str):
-                                response_parts.append(text)
-                    elif isinstance(content, str):
-                        # UserMessage: content can be str
-                        response_parts.append(content)
-
-        # Join all parts
-        response = "".join(response_parts)
+        response = await query_llm(prompt, project_root)
 
         # Sanitize HTML before processing
         response = _sanitize_html(response)
