@@ -539,14 +539,17 @@ Hive assembly follows a predictable six-phase sequence. The first agent starts a
 
 **Configurations tested:**
 
-| Config | Description |
-|--------|-------------|
-| Single agent | 1 agent, all facts local (baseline) |
-| Federated v1 naive | Multiple groups, longest-answer-wins merge |
-| Federated broken routing | Root hive empty, random agent fallback |
-| Federated single DHT | One DistributedHiveGraph, no federation tree |
-| Federated semantic+OODA | OODA-integrated retrieval, semantic routing |
-| Smoke test 10 agents | 10 agents, distributed hive, quick validation |
+| Config | Description | Score |
+|--------|-------------|-------|
+| Single agent | 1 agent, all facts local (baseline) | **93.9%** |
+| Federated v1 naive | Multiple groups, longest-answer-wins merge | 40.0% |
+| Federated broken routing | Root hive empty, random agent fallback | 34.9% |
+| Federated single DHT | One DistributedHiveGraph, no federation tree | 47.2% |
+| Federated semantic+OODA | OODA-integrated retrieval, semantic routing | 45.8% |
+| Smoke test 10 agents | 10 agents, distributed hive, quick validation | 58.8% |
+| **Distributed final (100 agents)** | **Full distributed eval, production DHT** | **71–79% (avg 75%)** |
+
+**Score progression (distributed hive, iteration over eval runs):** 0% → 34.9% → 40% → 47% → 58.8% → **79%**
 
 **Methodology:**
 - 3+ replications per condition (median reported)
@@ -644,6 +647,15 @@ The hive mind supports a full fact lifecycle. Facts enter through promotion -- t
 ## Slide 19: Hive Mind -- Orchestration and Coordination
 
 ### Hive Mind -- Orchestration and Coordination
+
+**Final Eval Results:**
+
+| Metric | Score |
+|--------|-------|
+| Single agent | **93.9%** |
+| Distributed 100-agent (range) | **71–79%** |
+| Distributed 100-agent (avg) | **75%** |
+| Score progression (0 → final) | **0% → 79%** |
 
 **CLI: `amplihack-hive`**
 - `create` -- generate hive config with N agents
