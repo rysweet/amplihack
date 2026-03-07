@@ -38,7 +38,8 @@ DEFAULT_MAX_AGENTS_PER_VM = 3      # Max concurrent agents per VM
 DEFAULT_MAX_TURNS = 20             # Default task max turns
 
 # ── LLM ──────────────────────────────────────────────────────────────
-DEFAULT_LLM_MAX_TOKENS = 128000   # Max output tokens for admiral reasoning
+DEFAULT_LLM_MAX_TOKENS = 8192     # Max output tokens for admiral reasoning JSON (cost control)
+TRANSCRIPT_MAX_TOKENS = 128000    # Max input tokens for transcript context (full scrollback)
 MIN_SUBSTANTIAL_OUTPUT_LEN = 50   # Chars threshold for "has substantial output"
 
 # ── Health Thresholds ─────────────────────────────────────────────────
@@ -81,5 +82,6 @@ __all__ = [
     "CLI_WATCH_TIMEOUT_SECONDS",
     "MAX_CAPTURE_LINES",
     "DEFAULT_LLM_MAX_TOKENS",
+    "TRANSCRIPT_MAX_TOKENS",
     "MIN_SUBSTANTIAL_OUTPUT_LEN",
 ]
