@@ -1,1 +1,0 @@
-"""SDK prompt templates."""

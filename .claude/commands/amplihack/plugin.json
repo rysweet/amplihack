@@ -1,8 +1,0 @@
-{
-  "name": "amplihack",
-  "description": "amplihack framework — structured agentic development workflows, commands and agents",
-  "version": "1.0.0",
-  "author": { "name": "amplihack" },
-  "license": "MIT",
-  "commands": ["./commands"]
-}
