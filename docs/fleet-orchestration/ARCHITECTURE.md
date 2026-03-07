@@ -109,6 +109,7 @@ init, 1 CLI entry point):
 | `fleet_results` | `fleet_results.py` | Structured outcome collection for the LEARN phase. Stores PR URLs, commit SHAs, test results, error summaries, and timing data as JSON per task. |
 | `fleet_dashboard` | `fleet_dashboard.py` | Meta-project tracking. Fleet-wide metrics: project count, agent utilization, cost estimates per VM, PR counts, completion rates, time-to-completion trends. |
 | `fleet_graph` | `fleet_graph.py` | Lightweight JSON knowledge graph. Tracks relationships between projects, tasks, agents, VMs, and PRs. Detects task dependencies and prevents conflicting file modifications. |
+| `_projects` | `_projects.py` | Project and objective tracking via `projects.toml`. `Project` dataclass with objectives (GitHub issues labeled `fleet-objective`). Read/write/merge functions. Scout enriches sessions with project context. |
 
 ### User Interface
 
@@ -203,6 +204,7 @@ Fleet state is stored under `~/.amplihack/fleet/`:
 | `dashboard.json` | Project metrics and cost tracking |
 | `graph.json` | Knowledge graph (projects, tasks, VMs, PRs) |
 | `last_scout.json` | Last scout results for incremental mode |
+| `projects.toml` | Project registry with objectives (GitHub issues) |
 | `logs/` | Admiral decision logs |
 
 ## Constraints
