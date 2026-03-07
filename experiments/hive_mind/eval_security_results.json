@@ -1,0 +1,180 @@
+{
+  "mode": "live_security",
+  "summary": {
+    "total_questions": 13,
+    "avg_score": 0.0,
+    "elapsed_s": 195.74,
+    "hive_namespace": "hive-sb-dj2qo2w7vu5zi",
+    "topic": "hive-graph",
+    "timeout_s": 15.0,
+    "table": "hive_facts"
+  },
+  "category_scores": {
+    "security_log_analysis": {
+      "avg_score": 0.0,
+      "count": 7
+    },
+    "incident_tracking": {
+      "avg_score": 0.0,
+      "count": 6
+    }
+  },
+  "questions": [
+    {
+      "question_id": "seclog_01",
+      "category": "security_log_analysis",
+      "question": "How many failed SSH logins came from IP 192.168.1.45?",
+      "expected_answer": "6 failed SSH logins (3 as admin, 3 as root) before a successful login as admin",
+      "actual_answer": "",
+      "score": 0.0,
+      "reasoning": "No results returned by hive",
+      "result_count": 0,
+      "top_results": [],
+      "elapsed_s": 15.06
+    },
+    {
+      "question_id": "seclog_02",
+      "category": "security_log_analysis",
+      "question": "What was the brute force attack pattern from 192.168.1.45?",
+      "expected_answer": "6 failed SSH logins alternating between admin and root users within seconds (14:23:01 to 14:23:18), followed by a successful login as admin at 14:23:22, then a privilege escalation attempt at 14:30:00",
+      "actual_answer": "",
+      "score": 0.0,
+      "reasoning": "No results returned by hive",
+      "result_count": 0,
+      "top_results": [],
+      "elapsed_s": 15.05
+    },
+    {
+      "question_id": "seclog_03",
+      "category": "security_log_analysis",
+      "question": "What ports were scanned by 10.0.0.50?",
+      "expected_answer": "Ports 22, 80, 443, 3306, 5432, 8080, 8443",
+      "actual_answer": "",
+      "score": 0.0,
+      "reasoning": "No results returned by hive",
+      "result_count": 0,
+      "top_results": [],
+      "elapsed_s": 15.05
+    },
+    {
+      "question_id": "seclog_04",
+      "category": "security_log_analysis",
+      "question": "What malware was detected on 10.0.0.5 and what lateral movement technique was used?",
+      "expected_answer": "Cobalt Strike beacon was detected in /tmp/.hidden/payload.exe. Lateral movement via PsExec targeting 10.0.0.6 and 10.0.0.7",
+      "actual_answer": "",
+      "score": 0.0,
+      "reasoning": "No results returned by hive",
+      "result_count": 0,
+      "top_results": [],
+      "elapsed_s": 15.07
+    },
+    {
+      "question_id": "seclog_06",
+      "category": "security_log_analysis",
+      "question": "What data exfiltration indicators were detected?",
+      "expected_answer": "2.3GB data transfer from 172.16.0.100 to external IP 185.220.101.45, anomalous DNS query to data.exfil.evil.com, connection to known C2 server at 185.220.101.45",
+      "actual_answer": "",
+      "score": 0.0,
+      "reasoning": "No results returned by hive",
+      "result_count": 0,
+      "top_results": [],
+      "elapsed_s": 15.05
+    },
+    {
+      "question_id": "seclog_07",
+      "category": "security_log_analysis",
+      "question": "What supply chain attack was detected and what CVE was involved?",
+      "expected_answer": "Malicious dependency in event-stream@5.0.0 package, and CVE-2024-3094 (xz-utils/sshd backdoor)",
+      "actual_answer": "",
+      "score": 0.0,
+      "reasoning": "No results returned by hive",
+      "result_count": 0,
+      "top_results": [],
+      "elapsed_s": 15.06
+    },
+    {
+      "question_id": "seclog_08",
+      "category": "security_log_analysis",
+      "question": "What phishing attempt was detected and who was targeted?",
+      "expected_answer": "Phishing email to hr_inbox with subject 'Urgent: Update your credentials' from support@1egit-company.com (note the '1' instead of 'l')",
+      "actual_answer": "",
+      "score": 0.0,
+      "reasoning": "No results returned by hive",
+      "result_count": 0,
+      "top_results": [],
+      "elapsed_s": 15.05
+    },
+    {
+      "question_id": "incident_01",
+      "category": "incident_tracking",
+      "question": "What is the current status of INC-2024-001?",
+      "expected_answer": "Closed. The ransomware attempt was contained, files restored from backup, attacker C2 blocked, and post-incident review completed with MFA enforced for all admin accounts.",
+      "actual_answer": "",
+      "score": 0.0,
+      "reasoning": "No results returned by hive",
+      "result_count": 0,
+      "top_results": [],
+      "elapsed_s": 15.05
+    },
+    {
+      "question_id": "incident_02",
+      "category": "incident_tracking",
+      "question": "Which incident involved data exfiltration and how many customers were affected?",
+      "expected_answer": "INC-2024-002: Data exfiltration via compromised svc_backup service account. 2.3GB exfiltrated, breach notification sent to 15,000 affected customers.",
+      "actual_answer": "",
+      "score": 0.0,
+      "reasoning": "No results returned by hive",
+      "result_count": 0,
+      "top_results": [],
+      "elapsed_s": 15.08
+    },
+    {
+      "question_id": "incident_03",
+      "category": "incident_tracking",
+      "question": "What APT group was attributed to the development infrastructure attack?",
+      "expected_answer": "INC-2024-003: TTPs matched APT29 (likely state-sponsored). The attack involved supply chain compromise (event-stream), crypto mining on CI server, DNS tunneling, and xz-utils backdoor (CVE-2024-3094).",
+      "actual_answer": "",
+      "score": 0.0,
+      "reasoning": "No results returned by hive",
+      "result_count": 0,
+      "top_results": [],
+      "elapsed_s": 15.06
+    },
+    {
+      "question_id": "incident_04",
+      "category": "incident_tracking",
+      "question": "How was the AWS key exposure in INC-2024-004 resolved?",
+      "expected_answer": "Key immediately revoked, CloudTrail audit showed key was used 3 times before revocation but no customer data was accessed (only listed buckets). Git-secrets hook deployed to all repos with mandatory pre-commit scanning.",
+      "actual_answer": "",
+      "score": 0.0,
+      "reasoning": "No results returned by hive",
+      "result_count": 0,
+      "top_results": [],
+      "elapsed_s": 15.05
+    },
+    {
+      "question_id": "incident_05",
+      "category": "incident_tracking",
+      "question": "Which incidents have CVEs associated with them?",
+      "expected_answer": "INC-2024-001 has CVE-2024-21626, and INC-2024-003 has CVE-2024-3094 (xz-utils backdoor)",
+      "actual_answer": "",
+      "score": 0.0,
+      "reasoning": "No results returned by hive",
+      "result_count": 0,
+      "top_results": [],
+      "elapsed_s": 15.05
+    },
+    {
+      "question_id": "incident_06",
+      "category": "incident_tracking",
+      "question": "What was the timeline of the insider threat incident?",
+      "expected_answer": "INC-2024-006: DLP alert at 14:00 for bulk download of 500+ sensitive documents, account suspended at 14:30, HR/Legal notified and device confiscated at 15:00. User had resigned 2 weeks prior and was downloading competitor-sensitive data. Legal action initiated.",
+      "actual_answer": "",
+      "score": 0.0,
+      "reasoning": "No results returned by hive",
+      "result_count": 0,
+      "top_results": [],
+      "elapsed_s": 15.05
+    }
+  ]
+}
