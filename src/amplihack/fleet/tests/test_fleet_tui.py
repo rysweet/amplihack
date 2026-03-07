@@ -370,10 +370,10 @@ class TestClassifyStatus:
         text = "last command output\nazureuser@vm:~$ "
         assert classify_status(text) == "shell"
 
-    def test_detects_shell_from_chevron_prompt(self) -> None:
-        """Claude Code chevron prompt without play button = shell."""
+    def test_detects_idle_from_chevron_prompt(self) -> None:
+        """Claude Code chevron prompt (❯) = idle (agent at prompt, not shell)."""
         text = "some output\n\u276f"
-        assert classify_status(text) == "shell"
+        assert classify_status(text) == "idle"
 
     def test_detects_idle_from_chevron_with_play_button(self) -> None:
         """Chevron prompt with play button in recent lines = idle."""
