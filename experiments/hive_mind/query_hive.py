@@ -58,6 +58,9 @@ Usage
     # Live diagnostic: connect, query, show what the live hive returns
     python experiments/hive_mind/query_hive.py --run-eval
 
+    # Run eval 3 times and report median + stddev of scores
+    python experiments/hive_mind/query_hive.py --run-eval --repeats 3
+
 Environment Variables
 ---------------------
     HIVE_CONNECTION_STRING  Azure Service Bus connection string (required)
@@ -80,6 +83,7 @@ import argparse
 import json
 import logging
 import os
+import statistics
 import sys
 import threading
 import time
@@ -992,6 +996,9 @@ Examples:
 
   # Diagnose live hive (may return low scores if not seeded):
   python query_hive.py --run-eval
+
+  # Run eval 3 times and report median + stddev:
+  python query_hive.py --run-eval --repeats 3
 """,
     )
     p.add_argument(
@@ -1056,6 +1063,13 @@ Examples:
         action="store_true",
         help="Enable debug logging.",
     )
+    p.add_argument(
+        "--repeats",
+        type=int,
+        default=1,
+        metavar="N",
+        help="Run the eval N times and report median and stddev of scores (default: 1).",
+    )
     return p
 
 
@@ -1071,7 +1085,39 @@ def main(argv: list[str] | None = None) -> int:
 
     # Demo mode — no Azure needed
     if args.demo:
-        run_demo_eval(output_path=args.output or None)
+        n = args.repeats
+        if n > 1:
+            scores = []
+            all_outputs = []
+            for i in range(n):
+                print(f"\n--- Repeat {i + 1}/{n} ---")
+                out = run_demo_eval(output_path=None)
+                avg = out.get("summary", {}).get("avg_score", 0.0)
+                scores.append(avg)
+                all_outputs.append(out)
+            med = statistics.median(scores)
+            std = statistics.stdev(scores) if len(scores) > 1 else 0.0
+            print(f"\n{'=' * 70}")
+            print(f"REPEATS SUMMARY ({n} runs)")
+            print(f"{'=' * 70}")
+            for i, s in enumerate(scores, 1):
+                print(f"  Run {i}: avg_score={s:.3f}")
+            print(f"  Median: {med:.3f}  StdDev: {std:.3f}")
+            print(f"{'=' * 70}")
+            if args.output:
+                summary_output = {
+                    "mode": "demo_repeats",
+                    "repeats": n,
+                    "scores": scores,
+                    "median": round(med, 3),
+                    "stddev": round(std, 3),
+                    "runs": all_outputs,
+                }
+                with open(args.output, "w") as fh:
+                    json.dump(summary_output, fh, indent=2)
+                print(f"\nResults written to: {args.output}")
+        else:
+            run_demo_eval(output_path=args.output or None)
         return 0
 
     # All other modes need a live client
@@ -1091,7 +1137,39 @@ def main(argv: list[str] | None = None) -> int:
             time.sleep(5)
 
         if args.run_eval:
-            run_eval(client, table=args.table, output_path=args.output or None)
+            n = args.repeats
+            if n > 1:
+                scores = []
+                all_outputs = []
+                for i in range(n):
+                    print(f"\n--- Repeat {i + 1}/{n} ---")
+                    out = run_eval(client, table=args.table, output_path=None)
+                    avg = out.get("summary", {}).get("avg_score", 0.0)
+                    scores.append(avg)
+                    all_outputs.append(out)
+                med = statistics.median(scores)
+                std = statistics.stdev(scores) if len(scores) > 1 else 0.0
+                print(f"\n{'=' * 70}")
+                print(f"REPEATS SUMMARY ({n} runs)")
+                print(f"{'=' * 70}")
+                for i, s in enumerate(scores, 1):
+                    print(f"  Run {i}: avg_score={s:.3f}")
+                print(f"  Median: {med:.3f}  StdDev: {std:.3f}")
+                print(f"{'=' * 70}")
+                if args.output:
+                    summary_output = {
+                        "mode": "live_repeats",
+                        "repeats": n,
+                        "scores": scores,
+                        "median": round(med, 3),
+                        "stddev": round(std, 3),
+                        "runs": all_outputs,
+                    }
+                    with open(args.output, "w") as fh:
+                        json.dump(summary_output, fh, indent=2)
+                    print(f"\nResults written to: {args.output}")
+            else:
+                run_eval(client, table=args.table, output_path=args.output or None)
             return 0
 
         if args.query:
