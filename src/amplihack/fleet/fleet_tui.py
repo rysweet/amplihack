@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from amplihack.fleet._constants import AZ_CLI_TIMEOUT_SECONDS, DEFAULT_CAPTURE_LINES, DEFAULT_TUI_REFRESH_SECONDS, MAX_CAPTURE_LINES, SUBPROCESS_TIMEOUT_SECONDS
-from amplihack.fleet._defaults import DEFAULT_EXCLUDE_VMS, ensure_azlin_context, get_azlin_path
+from amplihack.fleet._defaults import DEFAULT_EXCLUDE_VMS, ensure_azlin_context, get_azlin_path, get_existing_tunnels
 from amplihack.fleet._tui_classify import classify_status
 from amplihack.fleet._tui_data import SessionView, VMView
 from amplihack.fleet._tui_parsers import parse_session_output, parse_vm_text
@@ -50,6 +50,8 @@ class FleetTUI:
     def __post_init__(self) -> None:
         self.capture_lines = max(1, min(self.capture_lines, MAX_CAPTURE_LINES))
         ensure_azlin_context(self.azlin_path)
+        # Cache existing Bastion tunnels for reuse during polling
+        self._tunnels: dict[str, int] = get_existing_tunnels(self.azlin_path)
 
     def run(self, once: bool = False) -> None:
         """Main TUI loop with non-blocking keyboard input.
@@ -307,6 +309,18 @@ class FleetTUI:
             "done"
         )
         gather_cmd = gather_cmd.replace("__CAPTURE_DEPTH__", str(int(self.capture_lines)))
+
+        # Strategy 0: Reuse existing Bastion tunnel if available (fastest)
+        tunnel_port = self._tunnels.get(vm_name)
+        if tunnel_port:
+            direct_cmd = [
+                "ssh", "-p", str(tunnel_port), "-o", "StrictHostKeyChecking=no",
+                "-o", "ConnectTimeout=10", "azureuser@localhost", gather_cmd,
+            ]
+            output = self._run_ssh_cmd(direct_cmd)
+            if output is not None:
+                return parse_session_output(vm_name, output)
+
         cmd = [self.azlin_path, "connect", vm_name, "--no-tmux", "--yes", "--", gather_cmd]
 
         # Strategy 1: standard subprocess (fast when SSH keys are cached)

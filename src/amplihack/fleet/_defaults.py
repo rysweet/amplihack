@@ -9,7 +9,7 @@ import os
 import shutil
 import subprocess
 
-__all__ = ["get_azlin_path", "ensure_azlin_context", "DEFAULT_EXCLUDE_VMS"]
+__all__ = ["get_azlin_path", "ensure_azlin_context", "get_existing_tunnels", "DEFAULT_EXCLUDE_VMS"]
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +78,35 @@ def ensure_azlin_context(azlin_path: str) -> bool:
         logger.warning("Failed to auto-create azlin context: %s", exc)
 
     return False
+
+
+def get_existing_tunnels(azlin_path: str) -> dict[str, int]:
+    """Check for existing Bastion tunnels that can be reused.
+
+    Queries azlin for active SSH tunnels (via 'azlin list' output) and
+    returns a mapping of VM name -> local port for reusable connections.
+
+    Returns empty dict if azlin doesn't support tunnel listing or no
+    tunnels are active.
+    """
+    try:
+        result = subprocess.run(
+            [azlin_path, "list", "--output", "json"],
+            capture_output=True, text=True, timeout=15,
+        )
+        if result.returncode != 0 or not result.stdout.strip():
+            return {}
+
+        data = json.loads(result.stdout)
+        tunnels: dict[str, int] = {}
+        for vm in data if isinstance(data, list) else []:
+            name = vm.get("name", "")
+            port = vm.get("tunnel_port") or vm.get("local_port")
+            if name and port and isinstance(port, int):
+                tunnels[name] = port
+        return tunnels
+    except (subprocess.SubprocessError, FileNotFoundError, json.JSONDecodeError):
+        return {}
 
 
 # Shared VM exclusion set — VMs that should not be managed by default
