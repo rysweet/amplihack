@@ -1,0 +1,368 @@
+{
+  "timestamp": "2026-03-08T02:31:00Z",
+  "workflow_run": "22812170871",
+  "total_prs": 5,
+  "triaged_prs": 5,
+  "summary": {
+    "high_risk": 2,
+    "extreme_risk": 2,
+    "medium_risk": 1
+  },
+  "prs": [
+    {
+      "number": 2947,
+      "title": "feat: Rust recipe runner with transparent Python fallback",
+      "author": "rysweet",
+      "created_at": "2026-03-08T01:13:42Z",
+      "updated_at": "2026-03-08T01:39:03Z",
+      "url": "https://github.com/rysweet/amplihack/pull/2947",
+      "category": "feature",
+      "risk_level": "medium",
+      "priority": "high",
+      "recommendation": "needs-testing",
+      "changes": {
+        "additions": 1332,
+        "deletions": 3,
+        "files_changed": 6,
+        "key_files": [
+          "src/amplihack/recipes/rust_runner.py",
+          "src/amplihack/recipes/__init__.py",
+          ".gitignore"
+        ]
+      },
+      "ci_status": "pending",
+      "mergeable": false,
+      "mergeable_state": "unknown",
+      "draft": false,
+      "labels": [],
+      "analysis": {
+        "scope": "Adds Rust recipe runner with transparent fallback to Python implementation",
+        "impact": "high - modifies core recipe execution path",
+        "risk_factors": {
+          "code_impact": "high - changes recipe runner initialization and execution",
+          "test_impact": "unknown - no visible test additions in changed files",
+          "backward_compatibility": "good - transparent fallback to Python, opt-out available",
+          "security": "medium - executes external binary, needs path validation",
+          "complexity": "medium - new execution path with subprocess management"
+        },
+        "positive_indicators": [
+          "Transparent fallback preserves existing behavior",
+          "Opt-out mechanism (RECIPE_RUNNER_PREFER_PYTHON=1)",
+          "Zero breaking changes claimed",
+          "External Rust binary has 183 tests",
+          "100% feature parity + 12 additional features",
+          "Significant performance improvement (800ms → 5ms startup)",
+          "Well-documented integration"
+        ],
+        "concerns": [
+          "No tests visible in changed files (needs verification)",
+          "Security: subprocess execution of external binary",
+          "Path search includes user directories (~/.cargo/bin)",
+          "JSON parsing between Python and Rust boundary",
+          "Error handling at Python-Rust boundary needs review",
+          "CI status pending - no results yet",
+          "Very recent PR (< 2 hours old)",
+          "Large addition (1332 lines) suggests significant new code"
+        ],
+        "testing_recommendations": [
+          "Verify Python fallback works when Rust binary unavailable",
+          "Test RECIPE_RUNNER_PREFER_PYTHON=1 opt-out",
+          "Validate path search security (no code injection via PATH manipulation)",
+          "Test JSON parsing error handling",
+          "Verify behavior with malformed Rust binary output",
+          "Performance benchmarks",
+          "Integration tests with existing recipes"
+        ]
+      },
+      "triage_decision": {
+        "action": "needs_testing",
+        "confidence": "medium",
+        "rationale": "Solid architectural approach with good backward compatibility, but introduces subprocess execution with security implications. Needs thorough testing of fallback mechanism, error handling, and security validations before merge. CI results pending."
+      }
+    },
+    {
+      "number": 2941,
+      "title": "feat: integrate /top5 priority aggregation into pm-architect",
+      "author": "rysweet",
+      "created_at": "2026-03-07T23:45:15Z",
+      "updated_at": "2026-03-08T01:39:23Z",
+      "url": "https://github.com/rysweet/amplihack/pull/2941",
+      "category": "feature",
+      "risk_level": "medium",
+      "priority": "medium",
+      "recommendation": "needs-review",
+      "changes": {
+        "additions": 1014,
+        "deletions": 2,
+        "files_changed": 6,
+        "key_files": [
+          "pm-architect/scripts/generate_top5.py",
+          "pm-architect/SKILL.md"
+        ]
+      },
+      "ci_status": "unknown",
+      "mergeable": false,
+      "mergeable_state": "unknown",
+      "draft": false,
+      "labels": [],
+      "analysis": {
+        "scope": "Integrates top5 priority aggregation into pm-architect skill",
+        "impact": "medium - extends existing skill with new functionality",
+        "risk_factors": {
+          "code_impact": "medium - adds new script and patterns to existing skill",
+          "test_impact": "positive - includes 31 unit tests",
+          "backward_compatibility": "good - additive change, no breaking changes",
+          "security": "low - internal priority aggregation logic",
+          "complexity": "medium - new aggregation logic with tests"
+        },
+        "positive_indicators": [
+          "Includes 31 unit tests for new functionality",
+          "Additive change - no deletions to existing code",
+          "Architectural decision documented in PR",
+          "Adds explicit /top5 trigger",
+          "Integrates into existing skill rather than fragmenting",
+          "Well-documented patterns in SKILL.md"
+        ],
+        "concerns": [
+          "Moderate size (1014 additions)",
+          "CI status unknown",
+          "Very recent PR (< 3 hours old)",
+          "Architecture decision rationale needs review",
+          "Integration with existing pm-architect patterns unclear"
+        ],
+        "testing_recommendations": [
+          "Run the 31 included unit tests",
+          "Verify /top5 trigger activation",
+          "Test integration with existing pm-architect patterns",
+          "Validate priority aggregation logic",
+          "Test Daily Standup pattern (Pattern 6)"
+        ]
+      },
+      "triage_decision": {
+        "action": "needs_review",
+        "confidence": "medium",
+        "rationale": "Well-structured feature with good test coverage. Architecture decision to integrate into pm-architect rather than standalone is sound. Needs review of test results and integration patterns before merge."
+      }
+    },
+    {
+      "number": 2881,
+      "title": "fix: make .claude/ hooks canonical, replace amplifier-bundle/ copy with symlink",
+      "author": "rysweet",
+      "created_at": "2026-03-04T16:52:10Z",
+      "updated_at": "2026-03-07T06:53:45Z",
+      "url": "https://github.com/rysweet/amplihack/pull/2881",
+      "category": "refactoring",
+      "risk_level": "high",
+      "priority": "high",
+      "recommendation": "needs-testing",
+      "changes": {
+        "additions": 71,
+        "deletions": 28298,
+        "files_changed": 67,
+        "files_deleted": "~28000 (mostly duplicate hooks)"
+      },
+      "ci_status": "unknown",
+      "mergeable": false,
+      "mergeable_state": "unknown",
+      "draft": false,
+      "labels": [
+        "triage:complete",
+        "triage:needs-testing",
+        "triage:high-risk"
+      ],
+      "analysis": {
+        "scope": "Consolidates duplicate hooks by making .claude/ canonical and symlinking amplifier-bundle/",
+        "impact": "high - massive file deletion (28K lines across 67 files)",
+        "risk_factors": {
+          "code_impact": "high - replaces directory with symlink",
+          "test_impact": "high - hooks are critical path for tool execution",
+          "backward_compatibility": "high risk - symlink behavior differs across platforms",
+          "security": "medium - symlink target must be validated",
+          "complexity": "high - git symlink handling, platform differences"
+        },
+        "positive_indicators": [
+          "Fixes documented issue #2845",
+          "Eliminates duplicate code maintenance burden",
+          "Adds CI verification for symlink integrity",
+          "Already labeled triage:complete from previous review",
+          "Canonical source of truth pattern",
+          "Small code additions (71 lines)"
+        ],
+        "concerns": [
+          "MASSIVE deletion: 28,298 lines across 67 files",
+          "Symlink behavior varies across Windows/macOS/Linux",
+          "Git symlink handling can be problematic",
+          "Mergeable state unknown",
+          "Platform-specific testing required",
+          "Deployment scripts may need symlink support",
+          "Already labeled high-risk",
+          "4 days old - may need rebase"
+        ],
+        "testing_recommendations": [
+          "Test on all supported platforms (Windows, macOS, Linux)",
+          "Verify symlink resolution in amplifier-bundle context",
+          "Test git clone behavior with symlinks",
+          "Validate CI symlink verification script",
+          "Test installation/deployment processes",
+          "Verify hooks still execute correctly via symlink",
+          "Test Windows symlink support (requires admin/developer mode)"
+        ]
+      },
+      "triage_decision": {
+        "action": "needs_platform_testing",
+        "confidence": "medium",
+        "rationale": "Architecturally sound to eliminate duplication, but symlinks are notorious for platform-specific issues. The massive deletion is risky. Requires comprehensive platform testing before merge, especially on Windows. Already labeled high-risk appropriately."
+      }
+    },
+    {
+      "number": 2876,
+      "title": "feat: distributed hive mind with DHT sharding + improved eval recall (51.2% → ≥83.9%)",
+      "author": "rysweet",
+      "created_at": "2026-03-04T07:02:43Z",
+      "updated_at": "2026-03-08T01:52:29Z",
+      "draft": false,
+      "labels": [
+        "triage:complete",
+        "triage:extreme-risk",
+        "triage:needs-deep-review"
+      ],
+      "additions": 21225,
+      "deletions": 6206,
+      "changed_files": 146,
+      "mergeable_state": "dirty",
+      "head": "feat/distributed-hive-mind",
+      "base": "main",
+      "category": "feature",
+      "risk_level": "extreme",
+      "priority": "high",
+      "recommendation": "needs-deep-review",
+      "changes": {
+        "additions": 21225,
+        "deletions": 6206,
+        "files_changed": 146
+      },
+      "ci_status": "unknown",
+      "mergeable": false,
+      "analysis": {
+        "scope": "Major architectural change: distributed cognitive system with DHT sharding",
+        "impact": "extreme - rewrites core cognitive adapter and agent system",
+        "risk_factors": {
+          "code_impact": "extreme - 27K+ line changes across 146 files",
+          "test_impact": "unknown - needs verification of test coverage",
+          "backward_compatibility": "high risk - fundamental architecture change",
+          "security": "high - distributed system, network communication",
+          "complexity": "extreme - distributed systems, graph DB, eval improvements"
+        },
+        "positive_indicators": [
+          "Fixes three interconnected issues",
+          "Significant eval improvement (51.2% → 83.9%)",
+          "Already labeled and triaged as extreme-risk",
+          "4 days of updates showing active development"
+        ],
+        "concerns": [
+          "EXTREME scope: 21,225 additions, 6,206 deletions",
+          "146 files changed - nearly 15% of typical codebase",
+          "Mergeable state: DIRTY - merge conflicts exist",
+          "Distributed systems introduce new failure modes",
+          "DHT sharding adds significant complexity",
+          "Network communication security concerns",
+          "Database migration implications",
+          "Performance characteristics completely changed",
+          "Already labeled extreme-risk and needs-deep-review"
+        ],
+        "testing_recommendations": [
+          "Comprehensive distributed systems testing",
+          "Network partition handling",
+          "DHT consistency verification",
+          "Performance benchmarks at scale",
+          "Migration path testing",
+          "Backward compatibility layer testing",
+          "Security review of distributed communication",
+          "Eval benchmark verification"
+        ]
+      },
+      "triage_decision": {
+        "action": "needs_deep_review_and_rebase",
+        "confidence": "high",
+        "rationale": "This is a fundamental architectural change affecting core systems. The extreme scope and dirty merge state make this high-risk. Requires deep architectural review, comprehensive testing, and merge conflict resolution before considering merge. Already correctly labeled extreme-risk."
+      }
+    },
+    {
+      "number": 2727,
+      "title": "feat: Fleet Orchestration — autonomous multi-VM coding agent management",
+      "author": "rysweet",
+      "created_at": "2026-02-28T22:28:00Z",
+      "updated_at": "2026-03-08T02:10:39Z",
+      "draft": false,
+      "labels": [
+        "triage:complete",
+        "triage:extreme-risk",
+        "triage:needs-deep-review"
+      ],
+      "additions": 28667,
+      "deletions": 269,
+      "changed_files": 123,
+      "mergeable_state": "clean",
+      "head": "feat/fleet-orchestration",
+      "base": "main",
+      "category": "feature",
+      "risk_level": "extreme",
+      "priority": "high",
+      "recommendation": "needs-deep-review",
+      "changes": {
+        "additions": 28667,
+        "deletions": 269,
+        "files_changed": 123
+      },
+      "ci_status": "unknown",
+      "mergeable": true,
+      "analysis": {
+        "scope": "Multi-VM fleet orchestration with Azure Bastion integration",
+        "impact": "extreme - adds entirely new subsystem for fleet management",
+        "risk_factors": {
+          "code_impact": "extreme - 28,667 new lines across 123 files",
+          "test_impact": "unknown - needs test coverage verification",
+          "backward_compatibility": "medium - additive feature, but infrastructure dependencies",
+          "security": "high - SSH tunneling, Azure Bastion, multi-VM access",
+          "complexity": "extreme - distributed system, concurrent SSH, TUI interface"
+        },
+        "positive_indicators": [
+          "Fixes documented issue #2948",
+          "Clean mergeable state",
+          "8 days of development showing stability",
+          "Addresses specific bug: concurrent SSH polling interference",
+          "Adds hostname verification for tunnel isolation",
+          "Already labeled extreme-risk and needs-deep-review",
+          "Mostly additive (minimal deletions)"
+        ],
+        "concerns": [
+          "MASSIVE scope: 28,667 new lines",
+          "123 files changed",
+          "Azure-specific infrastructure dependencies",
+          "SSH tunnel management complexity",
+          "Concurrent execution challenges",
+          "TUI interface adds new dependencies",
+          "Multi-VM state synchronization",
+          "Security: SSH credential management",
+          "Already labeled extreme-risk",
+          "8 days old - may need rebase soon"
+        ],
+        "testing_recommendations": [
+          "Multi-VM concurrent execution testing",
+          "Azure Bastion tunnel isolation verification",
+          "Hostname verification testing",
+          "SSH credential security audit",
+          "TUI interface usability testing",
+          "Failure mode testing (VM unreachable, tunnel failure)",
+          "Resource cleanup testing",
+          "Performance testing with multiple VMs"
+        ]
+      },
+      "triage_decision": {
+        "action": "needs_deep_review",
+        "confidence": "high",
+        "rationale": "Major new feature adding fleet orchestration capabilities. While mergeable state is clean and it fixes a documented issue, the extreme scope (28K+ lines) and infrastructure dependencies require deep review. Security audit needed for SSH/tunnel management. Already correctly labeled extreme-risk."
+      }
+    }
+  ]
+}

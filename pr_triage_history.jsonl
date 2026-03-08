@@ -3,3 +3,4 @@
 {"timestamp":"2026-03-04T18:58:57Z","run":"22684405845","prs_triaged":1,"file":"pr-triage-2026-03-04-18Z.json"}
 {"timestamp":"2026-03-05T13:09:51Z","workflow_run":"22719381000","total_prs":8,"extreme_risk":2,"high_priority":5,"stale":1,"actions_taken":{"issues_created":3,"comments_added":7,"fast_track":1,"blocked":2}}
 {"timestamp":"2026-03-07T06:49:00Z","workflow_run":"22794120070","total_prs":9,"triaged":8,"extreme_risk":2,"high_risk":2,"medium_risk":2,"low_risk":3,"action":"triaged 8 PRs with labels and detailed comments"}
+{"timestamp":"2026-03-08T02:31:41Z","workflow_run":"22812170871","total_prs":5,"new_prs":2,"triaged":2,"labels_added":8,"comments_added":2,"risk_breakdown":{"extreme":2,"high":1,"medium":2},"priority_breakdown":{"high":4,"medium":1},"new_pr_numbers":[2947,2941],"existing_pr_numbers":[2881,2876,2727]}
