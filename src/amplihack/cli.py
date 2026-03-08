@@ -139,66 +139,12 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
     # --subprocess-safe: skip all staging/env mutations to avoid concurrent
     # write races when running as a delegate from another amplihack process
     # (e.g. multitask workstreams).  See issue #2567.
-    subprocess_safe = getattr(args, "subprocess_safe", False)
 
     from .launcher.session_tracker import SessionTracker
 
-    # Detect nesting BEFORE any .claude/ operations
-    original_cwd = None
-    nesting_result = None
-
-    if not subprocess_safe:
-        from .launcher.auto_stager import AutoStager
-        from .launcher.nesting_detector import NestingDetector
-
-        detector = NestingDetector()
-        nesting_result = detector.detect_nesting(Path.cwd(), sys.argv)
-
-        # Auto-stage if nested execution in source repo detected
-        if nesting_result.requires_staging:
-            print("\n🚨 SELF-MODIFICATION PROTECTION ACTIVATED")
-            print("   Running nested in amplihack source repository")
-            print("   Auto-staging .claude/ to temp directory for safety")
-
-            stager = AutoStager()
-            original_cwd = Path.cwd()
-            staging_result = stager.stage_for_nested_execution(
-                original_cwd, f"nested-{os.getpid()}"
-            )
-
-            print(f"   📁 Staged to: {staging_result.temp_root}")
-            print("   Your original .claude/ files are protected")
-
-            # CRITICAL: Change to temp directory so all .claude/ operations happen there
-            os.chdir(staging_result.temp_root)
-            print(f"   📂 CWD changed to: {staging_result.temp_root}\n")
-
-        # Ensure amplihack framework is staged to ~/.amplihack/.claude/
-        _ensure_amplihack_staged()
-
-        # Ensure Rust recipe runner is available
-        _ensure_rust_recipe_runner()
-
-        # Auto-install missing SDK dependencies (e.g. agent-framework)
-        # Uses --python sys.executable to target the running interpreter,
-        # critical when launched via uvx (ephemeral venv != project .venv).
-        try:
-            from .dep_check import ensure_sdk_deps
-
-            dep_result = ensure_sdk_deps()
-            if not dep_result.all_ok:
-                logger.warning("Some SDK deps could not be installed: %s", dep_result.missing)
-        except Exception as e:
-            logger.debug("SDK dep check skipped: %s", e)
-
-        # Prompt to re-enable power-steering if disabled (#2544)
-        try:
-            from .power_steering.re_enable_prompt import prompt_re_enable_if_disabled
-
-            prompt_re_enable_if_disabled()
-        except Exception as e:
-            # Fail-open: log error but continue
-            logger.debug(f"Error checking power-steering re-enable prompt: {e}")
+    # Run shared startup (nesting, staging, deps, power-steering)
+    _common_launcher_startup(args)
+    nesting_result = getattr(args, "_nesting_result", None)
 
     # Start session tracking
     tracker = SessionTracker()
@@ -1015,6 +961,81 @@ def _ensure_rust_recipe_runner() -> None:
         )
 
 
+def _common_launcher_startup(args: "argparse.Namespace") -> None:
+    """Run all shared startup initialization for launcher commands.
+
+    Consolidates initialization that must happen for every launcher path
+    (launch, claude, RustyClawd, copilot, codex, amplifier). Respects
+    --subprocess-safe to avoid concurrent write races (#2567).
+
+    Idempotent — safe to call multiple times (e.g. RustyClawd → launch_command).
+
+    Steps performed (in order):
+    1. Nesting detection and auto-staging
+    2. Framework staging (~/.amplihack/.claude/)
+    3. Rust recipe runner check
+    4. SDK dependency check
+    5. Power-steering re-enable prompt (#2544)
+    """
+    # Idempotency guard — skip if already run this process
+    if getattr(args, "_startup_done", False):
+        return
+    args._startup_done = True  # noqa: SLF001
+
+    subprocess_safe = getattr(args, "subprocess_safe", False)
+    if subprocess_safe:
+        return
+
+    # 1. Nesting detection — protect .claude/ when running in source repo
+    from .launcher.auto_stager import AutoStager
+    from .launcher.nesting_detector import NestingDetector
+
+    detector = NestingDetector()
+    nesting_result = detector.detect_nesting(Path.cwd(), sys.argv)
+
+    if nesting_result.requires_staging:
+        print("\n🚨 SELF-MODIFICATION PROTECTION ACTIVATED")
+        print("   Running nested in amplihack source repository")
+        print("   Auto-staging .claude/ to temp directory for safety")
+
+        stager = AutoStager()
+        staging_result = stager.stage_for_nested_execution(
+            Path.cwd(), f"nested-{os.getpid()}"
+        )
+
+        print(f"   📁 Staged to: {staging_result.temp_root}")
+        print("   Your original .claude/ files are protected")
+        os.chdir(staging_result.temp_root)
+        print(f"   📂 CWD changed to: {staging_result.temp_root}\n")
+
+    # Store nesting result on args for session tracking
+    args._nesting_result = nesting_result  # noqa: SLF001
+
+    # 2. Framework staging
+    _ensure_amplihack_staged()
+
+    # 3. Rust recipe runner
+    _ensure_rust_recipe_runner()
+
+    # 4. SDK dependency check
+    try:
+        from .dep_check import ensure_sdk_deps
+
+        dep_result = ensure_sdk_deps()
+        if not dep_result.all_ok:
+            logger.warning("Some SDK deps could not be installed: %s", dep_result.missing)
+    except Exception as e:
+        logger.debug("SDK dep check skipped: %s", e)
+
+    # 5. Power-steering re-enable prompt (#2544)
+    try:
+        from .power_steering.re_enable_prompt import prompt_re_enable_if_disabled
+
+        prompt_re_enable_if_disabled()
+    except Exception as e:
+        logger.debug(f"Error checking power-steering re-enable prompt: {e}")
+
+
 def _ensure_amplihack_staged() -> None:
     """Ensure .claude/ files are staged to ~/.amplihack/.claude/ for non-Claude commands.
 
@@ -1471,10 +1492,8 @@ def main(argv: list[str] | None = None) -> int:
         if getattr(args, "append", None):
             return handle_append_instruction(args)
 
-        # Ensure amplihack framework is staged (skip in subprocess-safe mode)
-        if not getattr(args, "subprocess_safe", False):
-            _ensure_amplihack_staged()
-            _ensure_rust_recipe_runner()
+        # Shared startup (nesting, staging, deps, power-steering)
+        _common_launcher_startup(args)
 
         # Force RustyClawd usage (Rust implementation of Claude Code)
         os.environ["AMPLIHACK_USE_RUSTYCLAWD"] = "1"
@@ -1498,10 +1517,8 @@ def main(argv: list[str] | None = None) -> int:
         if getattr(args, "append", None):
             return handle_append_instruction(args)
 
-        # Ensure amplihack framework is staged (skip in subprocess-safe mode)
-        if not getattr(args, "subprocess_safe", False):
-            _ensure_amplihack_staged()
-            _ensure_rust_recipe_runner()
+        # Shared startup (nesting, staging, deps, power-steering)
+        _common_launcher_startup(args)
 
         # Handle auto mode
         exit_code = handle_auto_mode("copilot", args, claude_args)
@@ -1523,10 +1540,8 @@ def main(argv: list[str] | None = None) -> int:
         if getattr(args, "append", None):
             return handle_append_instruction(args)
 
-        # Ensure amplihack framework is staged (skip in subprocess-safe mode)
-        if not getattr(args, "subprocess_safe", False):
-            _ensure_amplihack_staged()
-            _ensure_rust_recipe_runner()
+        # Shared startup (nesting, staging, deps, power-steering)
+        _common_launcher_startup(args)
 
         # Handle auto mode
         exit_code = handle_auto_mode("codex", args, claude_args)
@@ -1548,10 +1563,8 @@ def main(argv: list[str] | None = None) -> int:
         if getattr(args, "append", None):
             return handle_append_instruction(args)
 
-        # Ensure amplihack framework is staged (skip in subprocess-safe mode)
-        if not getattr(args, "subprocess_safe", False):
-            _ensure_amplihack_staged()
-            _ensure_rust_recipe_runner()
+        # Shared startup (nesting, staging, deps, power-steering)
+        _common_launcher_startup(args)
 
         # Environment setup
         if getattr(args, "no_reflection", False):
