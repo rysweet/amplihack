@@ -66,9 +66,7 @@ def run_gh(args: list[str], account: str | None = None) -> str | None:
 
     Returns stdout on success, None on failure.
     """
-    env = None
     if account:
-        # gh respects GH_TOKEN but switching is cleaner
         switch = subprocess.run(
             ["gh", "auth", "switch", "--user", account],
             capture_output=True, text=True, timeout=10,
@@ -80,7 +78,6 @@ def run_gh(args: list[str], account: str | None = None) -> str | None:
         result = subprocess.run(
             ["gh"] + args,
             capture_output=True, text=True, timeout=30,
-            env=env,
         )
         if result.returncode != 0:
             return None
@@ -91,24 +88,15 @@ def run_gh(args: list[str], account: str | None = None) -> str | None:
 
 def get_current_gh_account() -> str | None:
     """Get the currently active gh account."""
-    result = subprocess.run(
-        ["gh", "auth", "status"],
-        capture_output=True, text=True, timeout=10,
-    )
-    for line in result.stderr.splitlines() + result.stdout.splitlines():
-        if "Active account: true" in line:
-            # The account name is on the previous line
-            pass
-        if "Logged in to" in line and "Active account" not in line:
-            # Parse: "Logged in to github.com account USERNAME"
-            parts = line.strip().split("account ")
-            if len(parts) >= 2:
-                account = parts[1].split(" ")[0].strip()
-                # Check if next line says active
-                idx = (result.stderr + result.stdout).find(line)
-                remaining = (result.stderr + result.stdout)[idx + len(line):]
-                if "Active account: true" in remaining.split("\n")[0:2]:
-                    return account
+    try:
+        result = subprocess.run(
+            ["gh", "api", "user", "--jq", ".login"],
+            capture_output=True, text=True, timeout=10,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return result.stdout.strip()
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        pass
     return None
 
 
@@ -151,7 +139,7 @@ def fetch_github_issues(account: str, repos: list[str]) -> list[dict]:
             continue
 
         # Score by labels
-        labels = [l.lower() for l in item.get("labels", [])]
+        labels = [lbl.lower() for lbl in item.get("labels", [])]
         priority_score = 0.5  # default
         for label in labels:
             if label in PRIORITY_LABELS:
@@ -175,7 +163,7 @@ def fetch_github_issues(account: str, repos: list[str]) -> list[dict]:
         # Rationale
         reasons = []
         if priority_score >= 0.8:
-            reasons.append(f"labeled {', '.join(l for l in labels if l in PRIORITY_LABELS)}")
+            reasons.append(f"labeled {', '.join(lbl for lbl in labels if lbl in PRIORITY_LABELS)}")
         if days_stale > 7:
             reasons.append(f"stale {days_stale:.0f}d")
         if comments > 3:
@@ -242,7 +230,7 @@ def fetch_github_prs(account: str, repos: list[str]) -> list[dict]:
         base_score = 0.4 if is_draft else 0.7
 
         # Labels boost
-        labels = [l.lower() for l in item.get("labels", [])]
+        labels = [lbl.lower() for lbl in item.get("labels", [])]
         for label in labels:
             if label in PRIORITY_LABELS:
                 base_score = max(base_score, PRIORITY_LABELS[label])
@@ -266,7 +254,7 @@ def fetch_github_prs(account: str, repos: list[str]) -> list[dict]:
         if days_stale > 3:
             reasons.append(f"stale {days_stale:.0f}d")
         if labels:
-            relevant = [l for l in labels if l in PRIORITY_LABELS]
+            relevant = [lbl for lbl in labels if lbl in PRIORITY_LABELS]
             if relevant:
                 reasons.append(f"labeled {', '.join(relevant)}")
 
@@ -335,8 +323,10 @@ def extract_roadmap_goals(pm_dir: Path) -> list[str]:
         line = line.strip()
         if line.startswith("## ") or line.startswith("### "):
             goals.append(line.lstrip("#").strip())
-        elif line.startswith("- ") or line.startswith("* "):
-            goals.append(line.lstrip("-* ").strip())
+        elif line.startswith("- "):
+            goals.append(line.removeprefix("- ").strip())
+        elif line.startswith("* "):
+            goals.append(line.removeprefix("* ").strip())
 
     return goals
 

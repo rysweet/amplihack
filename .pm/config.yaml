@@ -1,0 +1,9 @@
+project_name: amplihack
+project_type: cli-tool
+primary_goals:
+  - Ship /top5 and /standup as pm-architect capabilities
+  - Integrate WorkIQ M365 data into priority scoring
+  - Support cross-project priority aggregation
+quality_bar: balanced
+initialized_at: "2026-03-07T15:00:00Z"
+version: "0.1.0"
