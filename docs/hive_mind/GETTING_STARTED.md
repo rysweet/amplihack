@@ -235,6 +235,47 @@ for agent in soc_agents + infra_agents:
 
 ---
 
+## Step 3b: Unified Orchestration (HiveMindOrchestrator)
+
+The `HiveMindOrchestrator` unifies all four layers (Storage, Transport,
+Discovery, Query) behind a single API with pluggable promotion policies.
+
+```python
+from amplihack.agents.goal_seeking.hive_mind import (
+    InMemoryHiveGraph, LocalEventBus, HiveMindOrchestrator, DefaultPromotionPolicy,
+)
+
+# Create the layers
+hive = InMemoryHiveGraph("my-hive")
+bus = LocalEventBus()
+hive.register_agent("agent_a")
+bus.subscribe("agent_a")
+
+# Compose them via the orchestrator
+orch = HiveMindOrchestrator(
+    agent_id="agent_a",
+    hive_graph=hive,
+    event_bus=bus,
+    policy=DefaultPromotionPolicy(promote_threshold=0.5),
+)
+
+# Store and promote: routes through Layer 1 → 2 → 3 automatically
+result = orch.store_and_promote("Biology", "DNA stores genetic information", 0.9)
+print(result)  # {'promoted': True, 'event_published': True, ...}
+
+# Query across all layers with deduplication
+facts = orch.query_unified("DNA genetics")
+print(f"Found {len(facts)} facts")
+
+# Cleanup
+orch.close()
+```
+
+For the full API and design rationale, see
+[MODULE_CREATION_GUIDE.md](MODULE_CREATION_GUIDE.md).
+
+---
+
 ## Step 4: Prompt Variants
 
 The LearningAgent supports 5 prompt variants that control the system prompt
