@@ -26,6 +26,7 @@ class StepStatus(enum.Enum):
     RUNNING = "running"
     COMPLETED = "completed"
     SKIPPED = "skipped"
+    DEGRADED = "degraded"
     FAILED = "failed"
 
 
@@ -41,6 +42,7 @@ class Step:
     output: str | None = None
     condition: str | None = None
     parse_json: bool = False
+    parse_json_required: bool = False
     mode: str | None = None
     working_dir: str | None = None
     timeout: int | None = None

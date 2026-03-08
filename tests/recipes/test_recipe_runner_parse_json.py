@@ -1,12 +1,14 @@
 """Tests for recipe runner parse_json fixes and child environment cleanup.
 
 Covers:
-1. parse_json with non-JSON output -> step FAILS (not silent degradation)
-2. parse_json with markdown-wrapped JSON -> extracts correctly
-3. parse_json with direct JSON -> works as before
-4. Condition with unparsed string context -> step FAILS with clear error
-5. Child environment is cleaned (CLAUDECODE stripped)
-6. All 15 recipe YAML files parse and dry-run without errors
+1. parse_json with non-JSON output -> step DEGRADES (stores raw, continues workflow)
+2. parse_json + parse_json_required with non-JSON output -> step FAILS
+3. parse_json with markdown-wrapped JSON -> extracts correctly
+4. parse_json with direct JSON -> works as before
+5. Condition with unparsed string context -> step FAILS with clear error
+6. Child environment is cleaned (CLAUDECODE stripped)
+7. All recipe YAML files parse and dry-run without errors
+8. Graceful fallback stores raw output in context for downstream steps
 """
 
 from __future__ import annotations
@@ -60,27 +62,50 @@ class TestParseJsonExtraction:
         assert result["outer"]["inner"] == "value"
 
 
-class TestParseJsonStepFailure:
-    """Test that parse_json=true steps FAIL when JSON can't be parsed."""
+class TestParseJsonGracefulFallback:
+    """Test that parse_json=true steps DEGRADE (not fail) when JSON can't be parsed."""
 
     def _make_runner(self):
         adapter = MagicMock()
         return RecipeRunner(adapter=adapter)
 
-    def _make_step(self, step_id="test-step", parse_json=True, output_name="result"):
+    def _make_step(
+        self,
+        step_id="test-step",
+        parse_json=True,
+        parse_json_required=False,
+        output_name="result",
+    ):
         return Step(
             id=step_id,
             step_type=StepType.AGENT,
             prompt="test prompt",
             output=output_name,
             parse_json=parse_json,
+            parse_json_required=parse_json_required,
         )
 
-    def test_parse_json_fails_on_non_json(self):
-        """Step must FAIL, not silently store raw string."""
+    def test_parse_json_degrades_on_non_json(self):
+        """Step must DEGRADE and store raw output when parse_json_required=false (default)."""
         runner = self._make_runner()
         runner._adapter.execute_agent_step = MagicMock(return_value="Not JSON at all")
         step = self._make_step()
+
+        from amplihack.recipes.context import RecipeContext
+
+        ctx = RecipeContext()
+        result = runner._execute_step(step, ctx, dry_run=False)
+
+        assert result.status == StepStatus.DEGRADED
+        assert "parse_json failed" in result.error
+        # Raw output should be stored in context for downstream steps
+        assert ctx.get("result") is not None
+
+    def test_parse_json_required_fails_on_non_json(self):
+        """Step must FAIL when parse_json_required=true and JSON can't be parsed."""
+        runner = self._make_runner()
+        runner._adapter.execute_agent_step = MagicMock(return_value="Not JSON at all")
+        step = self._make_step(parse_json_required=True)
 
         from amplihack.recipes.context import RecipeContext
 
@@ -119,6 +144,98 @@ class TestParseJsonStepFailure:
         stored = ctx.get("result")
         assert isinstance(stored, dict)
         assert stored["is_qa"] is True
+
+    def test_degraded_step_does_not_kill_workflow(self):
+        """A DEGRADED step should NOT stop the workflow (fail-fast only on FAILED)."""
+        from amplihack.recipes.models import Recipe
+
+        adapter = MagicMock()
+        adapter.execute_agent_step = MagicMock(
+            side_effect=[
+                "Not JSON at all",  # step1: will degrade (first attempt)
+                "Still not JSON",  # step1: retry also fails
+                "step2 output",  # step2: normal step
+            ]
+        )
+
+        step1 = Step(
+            id="step1",
+            step_type=StepType.AGENT,
+            prompt="give json",
+            output="data",
+            parse_json=True,
+            parse_json_required=False,
+        )
+        step2 = Step(
+            id="step2",
+            step_type=StepType.AGENT,
+            prompt="do something with {{data}}",
+            output="final",
+        )
+
+        recipe = Recipe(name="test-recipe", steps=[step1, step2])
+        runner = RecipeRunner(adapter=adapter)
+        result = runner.execute(recipe, user_context={})
+
+        assert result.success is True
+        assert result.step_results[0].status == StepStatus.DEGRADED
+        assert result.step_results[1].status == StepStatus.COMPLETED
+
+    def test_parse_json_required_kills_workflow(self):
+        """A FAILED step (parse_json_required=true) should stop the workflow."""
+        from amplihack.recipes.models import Recipe
+
+        adapter = MagicMock()
+        adapter.execute_agent_step = MagicMock(
+            side_effect=[
+                "Not JSON at all",  # step1: first attempt
+                "Still not JSON",  # step1: retry also fails
+            ]
+        )
+
+        step1 = Step(
+            id="step1",
+            step_type=StepType.AGENT,
+            prompt="give json",
+            output="data",
+            parse_json=True,
+            parse_json_required=True,
+        )
+        step2 = Step(
+            id="step2",
+            step_type=StepType.AGENT,
+            prompt="should not run",
+        )
+
+        recipe = Recipe(name="test-recipe", steps=[step1, step2])
+        runner = RecipeRunner(adapter=adapter)
+        result = runner.execute(recipe, user_context={})
+
+        assert result.success is False
+        assert len(result.step_results) == 1  # step2 never executed
+        assert result.step_results[0].status == StepStatus.FAILED
+
+    def test_degraded_stores_raw_output_in_context(self):
+        """When degraded, the raw string output should be stored in context."""
+        runner = self._make_runner()
+        raw_text = "Here is my analysis in prose form, not JSON"
+        runner._adapter.execute_agent_step = MagicMock(
+            side_effect=[
+                raw_text,  # First attempt
+                raw_text,  # Retry also returns prose
+            ]
+        )
+        step = self._make_step()
+
+        from amplihack.recipes.context import RecipeContext
+
+        ctx = RecipeContext()
+        result = runner._execute_step(step, ctx, dry_run=False)
+
+        assert result.status == StepStatus.DEGRADED
+        # The raw string should be accessible to downstream steps
+        stored = ctx.get("result")
+        assert stored == raw_text
 
 
 class TestConditionFailure:
@@ -248,15 +365,10 @@ class TestRecipeYAMLValidation:
         parser = RecipeParser()
         adapter = CLISubprocessAdapter(working_dir=".")
 
-        # Recipes with conditions on step outputs can fail dry-run because
-        # dry-run stores "[dry run]" strings, not real parsed objects.
-        # These are known limitations of dry-run mode, not recipe bugs.
         for path in self._get_recipe_files():
             recipe = parser.parse_file(path)
             runner = RecipeRunner(adapter=adapter)
 
-            # Dry-run now skips condition evaluation entirely, so all recipes
-            # should succeed in dry-run mode
             result = runner.execute(recipe, user_context={}, dry_run=True)
             assert result.success, f"Recipe '{recipe.name}' failed dry-run: " + "; ".join(
                 f"{sr.step_id}: {sr.error}"
@@ -275,24 +387,15 @@ class TestRecipeYAMLValidation:
         for path in self._get_recipe_files():
             recipe = parser.parse_file(path)
             defined_outputs = set()
-            # Context defaults are also valid variable sources
             context_keys = set(recipe.context.keys()) if recipe.context else set()
 
             for step in recipe.steps:
                 if step.condition:
-                    # Extract ROOT variable names from condition
-                    # "strategy.parallel_deployment.specialist_agent" → "strategy"
-                    # "'CONTINUE' in iteration_1" → "iteration_1"
-                    # "num_versions >= 4" → "num_versions"
                     vars_used = set()
-                    # Match the first identifier in a dotted chain
                     for match in re.findall(r"\b([a-zA-Z_]\w*)(?:\.\w+)+", step.condition):
                         vars_used.add(match)
-                    # Match standalone identifiers in 'X in Y' patterns
                     for match in re.findall(r"'[^']+'\s+in\s+(\w+)", step.condition):
                         vars_used.add(match)
-                    # Match standalone identifiers NOT preceded by a dot
-                    # (to avoid extracting nested attrs like .requires_debate)
                     for match in re.findall(r"(?<![.\w])([a-zA-Z_]\w+)\s*[=!><]+", step.condition):
                         vars_used.add(match)
 
@@ -332,19 +435,14 @@ class TestRecipeRunnerEndToEnd:
         parser = RecipeParser()
         recipe = parser.parse_file("amplifier-bundle/recipes/qa-workflow.yaml")
 
-        # Create adapter that returns proper JSON for classification step
         adapter = MagicMock()
         adapter.execute_agent_step = MagicMock(
             side_effect=[
-                # Step 1: classification - return valid JSON
                 '{"is_qa": true, "confidence": "high", "reasoning": "simple question", "suggested_workflow": "qa", "can_answer_directly": true}',
-                # Step 2: answer
                 "The answer is 42.",
-                # Step 3: escalation check - return valid JSON
                 '{"answer_complete": true, "escalation_needed": false, "escalation_reason": null, "suggested_workflow": "none", "follow_up_hint": null}',
             ]
         )
-        # compile-output is a bash step
         adapter.execute_bash_step = MagicMock(
             return_value='{"workflow": "qa-workflow", "status": "complete"}'
         )
@@ -371,11 +469,8 @@ class TestRecipeRunnerEndToEnd:
         adapter = MagicMock()
         adapter.execute_agent_step = MagicMock(
             side_effect=[
-                # Step 1: classification wrapped in markdown
                 'Here is my classification:\n```json\n{"is_qa": true, "confidence": "high", "reasoning": "simple", "suggested_workflow": "qa", "can_answer_directly": true}\n```',
-                # Step 2: answer
                 "42",
-                # Step 3: escalation
                 '```json\n{"answer_complete": true, "escalation_needed": false, "escalation_reason": null, "suggested_workflow": "none", "follow_up_hint": null}\n```',
             ]
         )
@@ -398,19 +493,26 @@ class TestRecipeRunnerEndToEnd:
 
 
 class TestParseJsonRetry:
-    """Test that parse_json retries once before failing."""
+    """Test that parse_json retries once before degrading or failing."""
 
     def _make_runner(self):
         adapter = MagicMock()
         return RecipeRunner(adapter=adapter)
 
-    def _make_step(self, step_id="test-step", parse_json=True, output_name="result"):
+    def _make_step(
+        self,
+        step_id="test-step",
+        parse_json=True,
+        parse_json_required=False,
+        output_name="result",
+    ):
         return Step(
             id=step_id,
             step_type=StepType.AGENT,
             prompt="test prompt",
             output=output_name,
             parse_json=parse_json,
+            parse_json_required=parse_json_required,
         )
 
     def test_retry_succeeds_on_second_attempt(self):
@@ -433,8 +535,8 @@ class TestParseJsonRetry:
         assert ctx.get("result") == {"key": "value"}
         assert runner._adapter.execute_agent_step.call_count == 2
 
-    def test_retry_fails_after_both_attempts(self):
-        """Both attempts return non-JSON -> step fails."""
+    def test_retry_degrades_after_both_attempts(self):
+        """Both attempts return non-JSON -> step degrades (default parse_json_required=false)."""
         runner = self._make_runner()
         runner._adapter.execute_agent_step = MagicMock(side_effect=["Not JSON", "Still not JSON"])
         step = self._make_step()
@@ -444,11 +546,25 @@ class TestParseJsonRetry:
         ctx = RecipeContext()
         result = runner._execute_step(step, ctx, dry_run=False)
 
+        assert result.status == StepStatus.DEGRADED
+        assert "parse_json failed" in result.error
+
+    def test_retry_fails_after_both_attempts_when_required(self):
+        """Both attempts return non-JSON + parse_json_required=true -> step fails."""
+        runner = self._make_runner()
+        runner._adapter.execute_agent_step = MagicMock(side_effect=["Not JSON", "Still not JSON"])
+        step = self._make_step(parse_json_required=True)
+
+        from amplihack.recipes.context import RecipeContext
+
+        ctx = RecipeContext()
+        result = runner._execute_step(step, ctx, dry_run=False)
+
         assert result.status == StepStatus.FAILED
         assert "retry" in result.error.lower()
 
-    def test_no_retry_for_bash_steps(self):
-        """Bash steps cannot be retried."""
+    def test_no_retry_for_bash_steps_degrades(self):
+        """Bash steps cannot be retried, degrade gracefully."""
         runner = self._make_runner()
         runner._adapter.execute_bash_step = MagicMock(return_value="Not JSON")
         step = Step(
@@ -457,6 +573,27 @@ class TestParseJsonRetry:
             command="echo hello",
             output="result",
             parse_json=True,
+        )
+
+        from amplihack.recipes.context import RecipeContext
+
+        ctx = RecipeContext()
+        result = runner._execute_step(step, ctx, dry_run=False)
+
+        assert result.status == StepStatus.DEGRADED
+        assert runner._adapter.execute_bash_step.call_count == 1
+
+    def test_no_retry_for_bash_steps_fails_when_required(self):
+        """Bash steps cannot be retried, fail when parse_json_required=true."""
+        runner = self._make_runner()
+        runner._adapter.execute_bash_step = MagicMock(return_value="Not JSON")
+        step = Step(
+            id="bash-step",
+            step_type=StepType.BASH,
+            command="echo hello",
+            output="result",
+            parse_json=True,
+            parse_json_required=True,
         )
 
         from amplihack.recipes.context import RecipeContext
