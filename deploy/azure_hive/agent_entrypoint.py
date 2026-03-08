@@ -11,6 +11,11 @@ Container Apps streams stdout to Log Analytics — the eval reads from there.
 
 No QUERY/QUERY_RESPONSE Service Bus round-trip for answers.
 
+v4 change: the OODA loop is now *event-driven* via ServiceBusInputSource.
+The agent wakes immediately when a message arrives on Service Bus instead of
+polling every 30 seconds.  The old timer-driven loop is preserved for local
+(non-Service-Bus) transport and as a fallback.
+
 Environment variables:
     AMPLIHACK_AGENT_NAME           -- unique agent identifier (required)
     AMPLIHACK_AGENT_PROMPT         -- agent system prompt
@@ -21,6 +26,8 @@ Environment variables:
     AMPLIHACK_MEMORY_STORAGE_PATH  -- storage path for memory data
     AMPLIHACK_MODEL                -- LLM model (e.g. "claude-sonnet-4-6")
     ANTHROPIC_API_KEY              -- required for LLM operations
+    AMPLIHACK_LOOP_INTERVAL        -- poll interval seconds (legacy path only, default 30)
+    AMPLIHACK_SB_TOPIC             -- Service Bus topic name (default: hive-events)
 """
 
 from __future__ import annotations
@@ -126,34 +133,63 @@ def main() -> None:
         pass
 
     # Handle graceful shutdown
-    shutdown = [False]
+    import threading
+
+    shutdown_event = threading.Event()
 
     def _handle_signal(signum, frame):
         logger.info("Agent %s received signal %s, shutting down", agent_name, signum)
-        shutdown[0] = True
+        shutdown_event.set()
 
     signal.signal(signal.SIGTERM, _handle_signal)
     signal.signal(signal.SIGINT, _handle_signal)
 
-    # OODA loop: Observe-Orient-Decide-Act
-    # Polls on a 30-second interval, checking for and processing incoming events.
-    loop_interval = int(os.environ.get("AMPLIHACK_LOOP_INTERVAL", "30"))
-    loop_count = 0
+    # ------------------------------------------------------------------
+    # Event-driven OODA loop (v4): use ServiceBusInputSource so the agent
+    # wakes immediately on message arrival — no 30-second sleep.
+    # Falls back to the legacy timer-driven path for non-Service-Bus transports.
+    # ------------------------------------------------------------------
 
-    while not shutdown[0]:
+    if transport == "azure_service_bus" and connection_string:
+        logger.info(
+            "Agent %s using event-driven ServiceBusInputSource (no polling sleep)",
+            agent_name,
+        )
+        from amplihack.agents.goal_seeking.input_source import ServiceBusInputSource
+
+        topic_name = os.environ.get("AMPLIHACK_SB_TOPIC", "hive-events")
+        input_source = ServiceBusInputSource(
+            connection_string=connection_string,
+            agent_name=agent_name,
+            topic_name=topic_name,
+            shutdown_event=shutdown_event,
+        )
         try:
-            _ooda_tick(agent_name, memory, loop_count, agent)
-            loop_count += 1
-        except Exception:
-            logger.exception("Error in OODA loop tick for agent %s", agent_name)
+            agent.run_ooda_loop(input_source)
+        finally:
+            input_source.close()
+    else:
+        # Legacy timer-driven path — preserved for local transport / v3 compat.
+        logger.info(
+            "Agent %s using legacy timer-driven OODA loop (transport=%s)",
+            agent_name,
+            transport,
+        )
+        loop_interval = int(os.environ.get("AMPLIHACK_LOOP_INTERVAL", "30"))
+        loop_count = 0
+        while not shutdown_event.is_set():
+            try:
+                _ooda_tick(agent_name, memory, loop_count, agent)
+                loop_count += 1
+            except Exception:
+                logger.exception("Error in OODA loop tick for agent %s", agent_name)
+            # Sleep in small increments to allow fast shutdown
+            for _ in range(loop_interval * 2):
+                if shutdown_event.is_set():
+                    break
+                time.sleep(0.5)
+        logger.info("Agent %s shutting down after %d loops", agent_name, loop_count)
 
-        # Sleep in small increments to allow fast shutdown
-        for _ in range(loop_interval * 2):
-            if shutdown[0]:
-                break
-            time.sleep(0.5)
-
-    logger.info("Agent %s shutting down after %d loops", agent_name, loop_count)
     try:
         agent.close()
     except Exception:

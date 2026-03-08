@@ -13,6 +13,11 @@ Public API (the "studs"):
         process(input) is the sole public entry point — no learn_from_content()
         or answer_question() methods are exposed.  The agent classifies input
         internally as "store" or "answer" and writes answers to stdout.
+        run_ooda_loop(input_source) drives the loop from any InputSource.
+    InputSource: Protocol for event-driven input (next() / close()).
+    ListInputSource: Wraps a list of strings (single-agent eval).
+    ServiceBusInputSource: Wraps Azure Service Bus with blocking receive.
+    StdinInputSource: Reads lines from stdin (interactive use).
     AgenticLoop: Main PERCEIVE->REASON->ACT->LEARN loop
     ActionExecutor: Tool registry with actions
     MemoryRetriever: Kuzu memory search interface (original)
@@ -29,6 +34,7 @@ Private implementation details (not part of the public API):
 """
 
 from .goal_seeking_agent import GoalSeekingAgent
+from .input_source import InputSource, ListInputSource, ServiceBusInputSource, StdinInputSource
 from .action_executor import ActionExecutor
 from .agentic_loop import (
     AgenticLoop,

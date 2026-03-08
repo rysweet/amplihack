@@ -1,0 +1,334 @@
+"""InputSource — event-driven input abstraction for the OODA loop.
+
+Design principle: from the agent OODA loop perspective, messages arriving
+from Service Bus should be NO DIFFERENT from messages the single agent
+receives as prompts.  Same inner loop, different implementations behind
+the interface, selected by config.
+
+Protocol:
+    next() -> str | None   — block until input is available, return it.
+                             Returns None to signal end-of-input (shut down).
+    close() -> None        — release resources.
+
+Implementations:
+    ListInputSource        — wraps a list of strings (single-agent eval).
+    ServiceBusInputSource  — wraps Azure Service Bus with blocking receive.
+    StdinInputSource       — reads lines from stdin (interactive use).
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import sys
+import threading
+from typing import Protocol, runtime_checkable
+
+logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Protocol
+# ---------------------------------------------------------------------------
+
+
+@runtime_checkable
+class InputSource(Protocol):
+    """Blocking input source for the OODA loop.
+
+    next() must block until a message is available and return it as a plain
+    string, or return None to signal end-of-input.  The OODA loop exits
+    when next() returns None.
+    """
+
+    def next(self) -> str | None:
+        """Return the next input string, blocking until one is available.
+
+        Returns:
+            Input text string, or None when the source is exhausted / closed.
+        """
+        ...
+
+    def close(self) -> None:
+        """Release any held resources (connections, file handles, threads)."""
+        ...
+
+
+# ---------------------------------------------------------------------------
+# ListInputSource
+# ---------------------------------------------------------------------------
+
+
+class ListInputSource:
+    """InputSource backed by a list of pre-loaded strings.
+
+    Designed for single-agent eval paths where all dialogue turns are known
+    upfront.  next() returns items immediately — no blocking, no sleeping.
+
+    Args:
+        turns: Sequence of input strings to iterate through.
+
+    Example:
+        >>> src = ListInputSource(["What is 2+2?", "Explain black holes."])
+        >>> src.next()
+        'What is 2+2?'
+        >>> src.next()
+        'Explain black holes.'
+        >>> src.next() is None
+        True
+    """
+
+    def __init__(self, turns: list[str]) -> None:
+        self._turns = list(turns)
+        self._index = 0
+        self._closed = False
+
+    def next(self) -> str | None:
+        """Return the next turn, or None when the list is exhausted."""
+        if self._closed or self._index >= len(self._turns):
+            return None
+        item = self._turns[self._index]
+        self._index += 1
+        return item
+
+    def close(self) -> None:
+        """Mark as closed; subsequent next() calls return None."""
+        self._closed = True
+
+    def __len__(self) -> int:
+        return len(self._turns)
+
+    def remaining(self) -> int:
+        """Return number of turns not yet consumed."""
+        return max(0, len(self._turns) - self._index)
+
+
+# ---------------------------------------------------------------------------
+# ServiceBusInputSource
+# ---------------------------------------------------------------------------
+
+
+def _extract_text_from_bus_event(event_type: str | None, payload: dict) -> str | None:
+    """Extract a plain input string from a BusEvent payload.
+
+    Returns None for lifecycle events that should not enter the OODA loop.
+    """
+    if event_type in ("AGENT_READY", "QUERY_RESPONSE", "network_graph.search_response"):
+        return None  # lifecycle / infrastructure — skip
+
+    if event_type == "FEED_COMPLETE":
+        total = payload.get("total_turns", "?")
+        return f"__FEED_COMPLETE__:{total}"
+
+    if event_type == "LEARN_CONTENT":
+        return payload.get("content") or None
+
+    if event_type in ("QUERY", "INPUT", "network_graph.search_query"):
+        return (
+            payload.get("question")
+            or payload.get("text")
+            or payload.get("content")
+            or None
+        )
+
+    # Generic fallback
+    for key in ("content", "text", "question", "message", "data"):
+        val = payload.get(key, "")
+        if val and isinstance(val, str):
+            return val
+
+    return None
+
+
+class ServiceBusInputSource:
+    """InputSource backed by an Azure Service Bus subscription.
+
+    Uses a blocking receive so the OODA loop wakes immediately on message
+    arrival instead of sleeping for a fixed interval.
+
+    The subscription name must equal ``agent_name`` (as provisioned by
+    ``deploy.sh`` / ``main.bicep``).
+
+    Args:
+        connection_string: Azure Service Bus connection string.
+        agent_name: Subscription name (== agent identifier).
+        topic_name: Service Bus topic name (default: ``"hive-events"``).
+        max_wait_time: Seconds to block waiting for a message per
+            receive call (default: 60).  A shorter value makes shutdown
+            more responsive.
+        shutdown_event: Optional threading.Event; when set, next() returns
+            None on the next receive timeout.
+
+    Example:
+        >>> src = ServiceBusInputSource(conn_str, "agent-0")
+        >>> while (text := src.next()) is not None:
+        ...     agent.process(text)
+        >>> src.close()
+    """
+
+    def __init__(
+        self,
+        connection_string: str,
+        agent_name: str,
+        topic_name: str = "hive-events",
+        max_wait_time: int = 60,
+        shutdown_event: threading.Event | None = None,
+    ) -> None:
+        try:
+            from azure.servicebus import ServiceBusClient
+        except ImportError as exc:
+            raise ImportError(
+                "azure-servicebus is required for ServiceBusInputSource. "
+                "Install with: pip install azure-servicebus"
+            ) from exc
+
+        self._agent_name = agent_name
+        self._topic_name = topic_name
+        self._max_wait_time = max_wait_time
+        self._shutdown = shutdown_event or threading.Event()
+        self._closed = False
+
+        self._client = ServiceBusClient.from_connection_string(connection_string)
+        self._receiver = self._client.get_subscription_receiver(
+            topic_name=topic_name,
+            subscription_name=agent_name,
+        )
+        logger.info(
+            "ServiceBusInputSource: connected to topic=%s subscription=%s",
+            topic_name,
+            agent_name,
+        )
+
+    def next(self) -> str | None:
+        """Block until a message arrives and return its text.
+
+        Returns None when the source is closed or the shutdown event is set.
+        FEED_COMPLETE is represented as the sentinel ``"__FEED_COMPLETE__:<n>"``.
+        Lifecycle-only events (AGENT_READY, QUERY_RESPONSE, etc.) are silently
+        skipped and the call blocks until the next content message.
+        """
+        if self._closed or self._shutdown.is_set():
+            return None
+
+        while not self._closed and not self._shutdown.is_set():
+            try:
+                messages = self._receiver.receive_messages(
+                    max_message_count=1,
+                    max_wait_time=self._max_wait_time,
+                )
+            except Exception:
+                if self._closed:
+                    return None
+                logger.debug("ServiceBusInputSource: receive error", exc_info=True)
+                continue
+
+            if not messages:
+                # Timed out — loop and try again (shutdown will break above)
+                continue
+
+            msg = messages[0]
+            try:
+                body = str(msg)
+                raw = json.loads(body)
+                event_type = raw.get("event_type")
+                payload = raw.get("payload", {})
+                text = _extract_text_from_bus_event(event_type, payload)
+                self._receiver.complete_message(msg)
+                if text is not None:
+                    logger.debug(
+                        "ServiceBusInputSource: event_type=%s len=%d",
+                        event_type,
+                        len(text),
+                    )
+                    return text
+                # Lifecycle event — silently skip, loop for next message
+                logger.debug(
+                    "ServiceBusInputSource: skipping lifecycle event_type=%s",
+                    event_type,
+                )
+            except Exception:
+                logger.warning(
+                    "ServiceBusInputSource: failed to parse message, dead-lettering",
+                    exc_info=True,
+                )
+                try:
+                    self._receiver.dead_letter_message(msg, reason="parse_error")
+                except Exception:
+                    logger.debug("dead-letter failed", exc_info=True)
+
+        return None
+
+    def signal_shutdown(self) -> None:
+        """Signal the source to stop on the next receive timeout."""
+        self._shutdown.set()
+
+    def close(self) -> None:
+        """Close the Service Bus receiver and client."""
+        self._closed = True
+        self._shutdown.set()
+        try:
+            self._receiver.close()
+        except Exception:
+            logger.debug("ServiceBusInputSource: error closing receiver", exc_info=True)
+        try:
+            self._client.close()
+        except Exception:
+            logger.debug("ServiceBusInputSource: error closing client", exc_info=True)
+        logger.info("ServiceBusInputSource: closed (agent=%s)", self._agent_name)
+
+
+# ---------------------------------------------------------------------------
+# StdinInputSource
+# ---------------------------------------------------------------------------
+
+
+class StdinInputSource:
+    """InputSource that reads lines from stdin.
+
+    Intended for interactive use and local testing.  Each non-empty line
+    becomes one input turn.  EOF (Ctrl-D) or a blank line signals end.
+
+    Args:
+        prompt: Optional prompt string printed before each read.
+        eof_on_empty: If True (default), an empty line signals end-of-input.
+
+    Example:
+        >>> src = StdinInputSource(prompt="> ")
+        >>> text = src.next()  # reads one line from stdin
+    """
+
+    def __init__(
+        self,
+        prompt: str = "",
+        eof_on_empty: bool = True,
+        stream=None,
+    ) -> None:
+        self._prompt = prompt
+        self._eof_on_empty = eof_on_empty
+        self._stream = stream or sys.stdin
+        self._closed = False
+
+    def next(self) -> str | None:
+        """Read and return the next non-empty line from stdin.
+
+        Returns None on EOF or empty input (when eof_on_empty is True).
+        """
+        if self._closed:
+            return None
+        try:
+            if self._prompt:
+                print(self._prompt, end="", flush=True)
+            line = self._stream.readline()
+        except (EOFError, OSError):
+            return None
+
+        if not line:  # EOF
+            return None
+        stripped = line.rstrip("\n")
+        if self._eof_on_empty and not stripped:
+            return None
+        return stripped
+
+    def close(self) -> None:
+        """Mark as closed; subsequent next() calls return None."""
+        self._closed = True
