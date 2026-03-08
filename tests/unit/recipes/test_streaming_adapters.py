@@ -309,6 +309,7 @@ class TestNestedSessionAdapterStreaming:
             assert "env" in popen_kwargs
             env = popen_kwargs["env"]
             assert "CLAUDECODE" not in env
+            assert "CLAUDE_CODE_ENTRYPOINT" not in env
             assert "PATH" in env  # Other vars preserved
 
     def test_execute_agent_step_streams_to_log(self) -> None:

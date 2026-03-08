@@ -25,11 +25,11 @@ __all__ = [
 
 def get_adapter(
     preference: str | None = None,
-) -> ClaudeSDKAdapter | CLISubprocessAdapter | NestedSessionAdapter:
+) -> ClaudeSDKAdapter | CLISubprocessAdapter:
     """Return the best available adapter, optionally preferring a specific backend.
 
     Args:
-        preference: Optional backend name (``"claude-sdk"``, ``"cli"``, ``"nested"``).
+        preference: Optional backend name (``"claude-sdk"``, ``"cli"``).
 
     Returns:
         An adapter instance.

@@ -1,4 +1,8 @@
-"""Outside-in test for NestedSessionAdapter - verify it works inside Claude Code session."""
+"""Outside-in test for NestedSessionAdapter and CLISubprocessAdapter.
+
+Verifies that agent steps run in isolated temp directories and that
+CLAUDECODE is stripped from the child env, which is the fix for issue #2758.
+"""
 
 import os
 import tempfile
@@ -22,7 +26,7 @@ def test_nested_session_adapter_basic():
 
     try:
         result = adapter.execute_agent_step(prompt=prompt)
-        print("✅ Agent execution succeeded!")
+        print("Agent execution succeeded!")
         print(f"Result: {result}")
 
         # Verify we got a response
@@ -52,7 +56,7 @@ def test_nested_session_adapter_bash():
     result = adapter.execute_bash_step(command='echo "Hello from bash"')
 
     assert result == "Hello from bash"
-    print(f"✅ Bash execution works: {result}")
+    print(f"Bash execution works: {result}")
 
 
 def test_nested_session_adapter_temp_dirs():
@@ -68,7 +72,7 @@ def test_nested_session_adapter_temp_dirs():
     # Execute agent step (creates temp dir)
     try:
         result = adapter.execute_agent_step(prompt="Say hello")
-        print("✅ Agent executed in temp dir")
+        print("Agent executed in temp dir")
     except Exception as e:
         print(f"Agent execution error (may be expected): {e}")
 
@@ -98,7 +102,7 @@ def test_nested_session_isolated_from_parent():
     """Test that nested session env does not leak back into the parent."""
     from amplihack.recipes.adapters.nested_session import NestedSessionAdapter
 
-    adapter = NestedSessionAdapter(use_temp_dirs=True)
+    from amplihack.recipes.adapters.cli_subprocess import CLISubprocessAdapter
 
     # Record parent env snapshot
     parent_env_snapshot = dict(os.environ)
@@ -118,9 +122,8 @@ def test_nested_session_isolated_from_parent():
 
 
 if __name__ == "__main__":
-    print("🧪 Running Outside-In Tests for NestedSessionAdapter\n")
+    print("Running Outside-In Tests for NestedSessionAdapter\n")
 
-    # Run tests
     tests = [
         ("Basic agent invocation", test_nested_session_adapter_basic),
         ("Bash step execution", test_nested_session_adapter_bash),
@@ -138,10 +141,10 @@ if __name__ == "__main__":
         print(f"{'=' * 60}")
         try:
             test_func()
-            print("✅ PASSED")
+            print("PASSED")
             passed += 1
         except Exception as e:
-            print(f"❌ FAILED: {e}")
+            print(f"FAILED: {e}")
             failed += 1
             import traceback
 

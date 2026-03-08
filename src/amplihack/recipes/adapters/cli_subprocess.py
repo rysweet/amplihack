@@ -77,10 +77,10 @@ class CLISubprocessAdapter:
         Raises:
             RuntimeError: If the CLI exits with a non-zero code.
         """
-        # Use a temp directory to avoid file races with the parent session (#2758).
-        # This matches the multitask orchestrator pattern.
-        temp_dir = tempfile.mkdtemp(prefix="recipe-agent-")
-        actual_cwd = temp_dir
+        # Run from the project directory with --subprocess-safe to prevent
+        # staging/env mutation races. The --subprocess-safe flag skips
+        # prepare_launch() which avoids settings.json write races (#2758).
+        actual_cwd = working_dir or self._working_dir
 
         try:
             # Append non-interactive footer so nested sessions never ask
@@ -148,8 +148,13 @@ class CLISubprocessAdapter:
                 )
             return stdout.strip()
         finally:
-            # Always clean up the temp directory
-            shutil.rmtree(temp_dir, ignore_errors=True)
+            # Clean up the output log file
+            try:
+                output_file.unlink(missing_ok=True)
+                if output_dir.exists() and not any(output_dir.iterdir()):
+                    output_dir.rmdir()
+            except OSError:
+                pass
 
     # ------------------------------------------------------------------
     # Bash steps - keep a timeout (these should be fast)

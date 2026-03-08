@@ -286,8 +286,24 @@ steps:
 
       # Generate branch name — use printf to safely capture the shlex-quoted value
       TASK_DESC=$(printf '%s' {{task_description}})
-      TASK_SLUG=$(echo "$TASK_DESC" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | sed 's/[^a-z0-9-]//g' | cut -c1-50)
+      # Sanitize: strip newlines/leading-trailing whitespace, lowercase, replace
+      # spaces and any char that is not alphanumeric/hyphen/underscore/dot with
+      # hyphens, collapse consecutive hyphens, truncate to 60 chars, strip
+      # trailing hyphens/dots.
+      TASK_SLUG=$(printf '%s' "$TASK_DESC" \
+        | tr '\n\r' ' ' \
+        | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' \
+        | tr '[:upper:]' '[:lower:]' \
+        | sed 's/[^a-z0-9_.-]/-/g' \
+        | sed 's/-\{2,\}/-/g' \
+        | cut -c1-60 \
+        | sed 's/[-.]$//')
       BRANCH_NAME="{{branch_prefix}}/issue-{{issue_number}}-${TASK_SLUG}"
+      # Validate with git check-ref-format; fall back to safe default if invalid
+      if ! git check-ref-format --branch "${BRANCH_NAME}" >/dev/null 2>&1; then
+        BRANCH_NAME="{{branch_prefix}}/issue-{{issue_number}}-task"
+        echo "Warning: generated branch name was invalid; using fallback: ${BRANCH_NAME}" >&2
+      fi
       WORKTREE_PATH="{{repo_path}}/worktrees/${BRANCH_NAME}"
 
       echo "Branch: ${BRANCH_NAME}" >&2

@@ -27,7 +27,8 @@ uvx --from git+https://github.com/rysweet/amplihack amplihack claude
 - [Why amplihack?](#why-amplihack)
 - [Quick Start](#quick-start)
 - [Core Concepts](#core-concepts)
-- [Features](#features)
+- [Feature Catalog](#feature-catalog)
+- [Fleet Management](#fleet-management)
 - [Configuration](#configuration)
 - [Documentation Navigator](#documentation-navigator)
 - [Development](#development)
@@ -337,6 +338,22 @@ Full reference: [docs/reference/recipe-cli-reference.md](docs/reference/recipe-c
   style, workflow)
 - **[Statusline](https://rysweet.github.io/amplihack/reference/STATUSLINE/)** —
   Real-time session info
+
+### Fleet Management
+
+Manage coding agents across multiple cloud VMs with an interactive dashboard.
+
+```bash
+amplihack fleet              # Interactive TUI dashboard
+amplihack fleet status       # Quick text overview
+amplihack fleet dry-run      # See what the admiral would do
+amplihack fleet adopt devo   # Bring existing sessions under management
+```
+
+Requires [azlin](https://github.com/rysweet/azlin) for VM management.
+Install with TUI: `pip install amplihack[fleet-tui]`
+
+See the [Fleet Tutorial](docs/fleet-orchestration/TUTORIAL.md) for full documentation.
 
 </details>
 

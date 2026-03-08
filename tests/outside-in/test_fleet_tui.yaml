@@ -1,0 +1,386 @@
+# Fleet TUI Outside-In Tests
+# Tests both variants: FleetTUI (ANSI) and FleetDashboardApp (Textual)
+# Based on 30 mapped user flows
+
+# ─── VARIANT 1: Simple ANSI TUI (fleet tui) ───────────────────────────
+
+scenario:
+  name: "Fleet TUI — Single snapshot mode"
+  description: "fleet tui --once prints one dashboard frame and exits"
+  type: tui
+
+  prerequisites:
+    - "fleet CLI available"
+    - "azlin binary accessible"
+
+  steps:
+    - action: launch
+      target: "uv run python -m amplihack.fleet.fleet_cli"
+      args: ["tui", "--once"]
+      timeout: 30
+
+    - action: verify_output
+      contains: "Fleet Dashboard"
+
+    - action: verify_output
+      contains: "Controls:"
+
+    - action: verify_exit_code
+      expected: 0
+
+
+scenario:
+  name: "Fleet TUI — Keyboard quit"
+  description: "Pressing q exits the TUI cleanly"
+  type: tui
+
+  steps:
+    - action: launch
+      target: "uv run python -m amplihack.fleet.fleet_cli"
+      args: ["tui", "--interval", "60"]
+      background: true
+      timeout: 10
+
+    - action: wait
+      seconds: 2
+
+    - action: send_input
+      value: "q"
+
+    - action: wait_for_exit
+      timeout: 5
+
+    - action: verify_exit_code
+      expected: 0
+
+
+scenario:
+  name: "Fleet TUI — Refresh cycle"
+  description: "Pressing r triggers immediate refresh"
+  type: tui
+
+  steps:
+    - action: launch
+      target: "uv run python -m amplihack.fleet.fleet_cli"
+      args: ["tui", "--interval", "300"]
+      background: true
+      timeout: 15
+
+    - action: wait
+      seconds: 2
+
+    - action: send_input
+      value: "r"
+
+    - action: wait
+      seconds: 3
+
+    - action: send_input
+      value: "q"
+
+    - action: wait_for_exit
+      timeout: 5
+
+
+# ─── VARIANT 2: Interactive Textual Dashboard (fleet tui2) ─────────────
+
+scenario:
+  name: "Fleet Dashboard — Launch and render"
+  description: "fleet tui2 launches the Textual dashboard with all tabs"
+  type: tui
+
+  prerequisites:
+    - "textual library installed"
+
+  steps:
+    - action: launch
+      target: "uv run python -m amplihack.fleet.fleet_cli"
+      args: ["tui2", "--interval", "60"]
+      background: true
+      timeout: 15
+
+    - action: wait
+      seconds: 3
+
+    - action: verify_screen
+      contains: "Fleet Overview"
+
+    - action: send_key
+      key: "q"
+
+    - action: wait_for_exit
+      timeout: 5
+
+
+scenario:
+  name: "Fleet Dashboard — Tab navigation"
+  description: "Keys 1-4 switch between Fleet, Detail, Editor, Projects tabs"
+  type: tui
+
+  steps:
+    - action: launch
+      target: "uv run python -m amplihack.fleet.fleet_cli"
+      args: ["tui2"]
+      background: true
+      timeout: 15
+
+    - action: wait
+      seconds: 3
+
+    # Start at Fleet Overview (tab 1)
+    - action: verify_screen
+      contains: "Fleet Overview"
+
+    # Switch to Session Detail (tab 2)
+    - action: send_key
+      key: "2"
+
+    - action: wait
+      seconds: 1
+
+    - action: verify_screen
+      contains: "Session Detail"
+
+    # Switch to Action Editor (tab 3)
+    - action: send_key
+      key: "3"
+
+    - action: wait
+      seconds: 1
+
+    - action: verify_screen
+      contains: "Action Editor"
+
+    # Switch to Projects (tab 4)
+    - action: send_key
+      key: "4"
+
+    - action: wait
+      seconds: 1
+
+    - action: verify_screen
+      contains: "Projects"
+
+    # Back to Fleet Overview (tab 1)
+    - action: send_key
+      key: "1"
+
+    - action: wait
+      seconds: 1
+
+    - action: verify_screen
+      contains: "Fleet Overview"
+
+    - action: send_key
+      key: "q"
+
+
+scenario:
+  name: "Fleet Dashboard — Force refresh"
+  description: "Pressing r triggers immediate fleet data refresh"
+  type: tui
+
+  steps:
+    - action: launch
+      target: "uv run python -m amplihack.fleet.fleet_cli"
+      args: ["tui2", "--interval", "300"]
+      background: true
+      timeout: 15
+
+    - action: wait
+      seconds: 3
+
+    - action: send_key
+      key: "r"
+
+    - action: wait
+      seconds: 2
+
+    - action: verify_screen
+      contains: "Updated"
+
+    - action: send_key
+      key: "q"
+
+
+scenario:
+  name: "Fleet Dashboard — Session table cursor navigation"
+  description: "Arrow keys move cursor in session table and update preview"
+  type: tui
+
+  steps:
+    - action: launch
+      target: "uv run python -m amplihack.fleet.fleet_cli"
+      args: ["tui2"]
+      background: true
+      timeout: 15
+
+    - action: wait
+      seconds: 5
+
+    # Move cursor down
+    - action: send_key
+      key: "down"
+
+    - action: wait
+      seconds: 1
+
+    # Move cursor down again
+    - action: send_key
+      key: "down"
+
+    - action: wait
+      seconds: 1
+
+    # Move cursor up
+    - action: send_key
+      key: "up"
+
+    - action: wait
+      seconds: 1
+
+    - action: send_key
+      key: "q"
+
+
+scenario:
+  name: "Fleet Dashboard — Open session detail with Enter"
+  description: "Pressing Enter on a selected session opens detail view"
+  type: tui
+
+  steps:
+    - action: launch
+      target: "uv run python -m amplihack.fleet.fleet_cli"
+      args: ["tui2"]
+      background: true
+      timeout: 15
+
+    - action: wait
+      seconds: 5
+
+    # Select first session and open detail
+    - action: send_key
+      key: "enter"
+
+    - action: wait
+      seconds: 2
+
+    - action: verify_screen
+      contains: "Session Detail"
+
+    # Go back with Escape
+    - action: send_key
+      key: "escape"
+
+    - action: wait
+      seconds: 1
+
+    - action: verify_screen
+      contains: "Fleet Overview"
+
+    - action: send_key
+      key: "q"
+
+
+scenario:
+  name: "Fleet Dashboard — Toggle pirate logo"
+  description: "Pressing l toggles the pirate ship ASCII art"
+  type: tui
+
+  steps:
+    - action: launch
+      target: "uv run python -m amplihack.fleet.fleet_cli"
+      args: ["tui2"]
+      background: true
+      timeout: 15
+
+    - action: wait
+      seconds: 3
+
+    # Toggle logo on
+    - action: send_key
+      key: "l"
+
+    - action: wait
+      seconds: 1
+
+    # Toggle logo off
+    - action: send_key
+      key: "l"
+
+    - action: wait
+      seconds: 1
+
+    - action: send_key
+      key: "q"
+
+
+scenario:
+  name: "Fleet Dashboard — New session form"
+  description: "Pressing n opens new session creation form"
+  type: tui
+
+  steps:
+    - action: launch
+      target: "uv run python -m amplihack.fleet.fleet_cli"
+      args: ["tui2"]
+      background: true
+      timeout: 15
+
+    - action: wait
+      seconds: 3
+
+    - action: send_key
+      key: "n"
+
+    - action: wait
+      seconds: 2
+
+    - action: verify_screen
+      contains: "Create Session"
+
+    - action: send_key
+      key: "q"
+
+
+scenario:
+  name: "Fleet Dashboard — Dry run reasoning"
+  description: "Pressing d in detail view triggers LLM dry-run reasoning"
+  type: tui
+
+  prerequisites:
+    - "ANTHROPIC_API_KEY set"
+
+  steps:
+    - action: launch
+      target: "uv run python -m amplihack.fleet.fleet_cli"
+      args: ["tui2"]
+      background: true
+      timeout: 30
+
+    - action: wait
+      seconds: 5
+
+    # Open detail
+    - action: send_key
+      key: "enter"
+
+    - action: wait
+      seconds: 2
+
+    # Trigger dry-run
+    - action: send_key
+      key: "d"
+
+    - action: wait
+      seconds: 10
+
+    # Should show reasoning result or API key error
+    - action: verify_screen
+      matches_any:
+        - "Action:"
+        - "Confidence:"
+        - "ANTHROPIC_API_KEY"
+
+    - action: send_key
+      key: "q"

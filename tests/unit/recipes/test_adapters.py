@@ -19,14 +19,21 @@ class TestCLISubprocessAdapter:
     """Test the CLI subprocess fallback adapter."""
 
     def test_init_defaults(self) -> None:
-        """Adapter initializes with default CLI tool."""
+        """Adapter initializes with default CLI tool (claude via amplihack)."""
         adapter = CLISubprocessAdapter()
-        assert adapter.name == "cli-subprocess (claude)"
+        assert adapter.name == "cli-subprocess (amplihack claude)"
 
     def test_init_custom_cli(self) -> None:
         """Adapter accepts custom CLI tool name."""
         adapter = CLISubprocessAdapter(cli="copilot")
-        assert adapter.name == "cli-subprocess (copilot)"
+        assert adapter.name == "cli-subprocess (amplihack copilot)"
+
+    def test_init_from_env(self) -> None:
+        """Adapter reads AMPLIHACK_AGENT from environment when cli is None."""
+        with patch.dict("os.environ", {"AMPLIHACK_AGENT": "copilot"}):
+            adapter = CLISubprocessAdapter()
+            assert adapter._cli == "copilot"
+            assert adapter.name == "cli-subprocess (amplihack copilot)"
 
     @patch("subprocess.run")
     def test_execute_bash_step_success(self, mock_run: MagicMock) -> None:
@@ -88,19 +95,21 @@ class TestCLISubprocessAdapter:
 
     @patch("shutil.which")
     def test_is_available_true(self, mock_which: MagicMock) -> None:
-        """is_available returns True when CLI is on PATH."""
-        mock_which.return_value = "/usr/bin/claude"
+        """is_available returns True when amplihack is on PATH."""
+        mock_which.return_value = "/usr/local/bin/amplihack"
 
         adapter = CLISubprocessAdapter(cli="claude")
         assert adapter.is_available() is True
+        mock_which.assert_called_with("amplihack")
 
     @patch("shutil.which")
     def test_is_available_false(self, mock_which: MagicMock) -> None:
-        """is_available returns False when CLI not found."""
+        """is_available returns False when amplihack not found."""
         mock_which.return_value = None
 
-        adapter = CLISubprocessAdapter(cli="nonexistent")
+        adapter = CLISubprocessAdapter(cli="claude")
         assert adapter.is_available() is False
+        mock_which.assert_called_with("amplihack")
 
 
 class TestClaudeSDKAdapter:
@@ -145,7 +154,7 @@ class TestGetAdapterFactory:
         """Preference='cli' returns CLISubprocessAdapter."""
         adapter = get_adapter(preference="cli")
         assert isinstance(adapter, CLISubprocessAdapter)
-        assert adapter.name.startswith("cli-subprocess")
+        assert adapter.name.startswith("cli-subprocess (amplihack")
 
     def test_preference_claude_sdk(self) -> None:
         """Preference='claude-sdk' returns ClaudeSDKAdapter."""

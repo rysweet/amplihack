@@ -376,9 +376,16 @@ class RecipeRunner:
     def _execute_sub_recipe(self, step: Step, ctx: RecipeContext) -> str:
         """Execute a sub-recipe step with context merging and recursion depth guard.
 
+        On failure, an agent recovery step is invoked to assess whether the
+        failure is recoverable and attempt to complete the work.  If recovery
+        succeeds the recovery output is returned.  If recovery fails or
+        reports the failure as unrecoverable, a StepExecutionError is raised
+        that includes both the original and recovery context.
+
         Raises:
-            StepExecutionError: If recursion depth exceeds MAX_RECIPE_DEPTH or
-                the sub-recipe name is missing/not found.
+            StepExecutionError: If recursion depth exceeds MAX_RECIPE_DEPTH,
+                the sub-recipe name is missing/not found, or both the
+                sub-recipe and the recovery agent fail.
         """
         from amplihack.recipes.parser import RecipeParser
 
@@ -415,9 +422,45 @@ class RecipeRunner:
         sub_result = sub_runner.execute(sub_recipe, user_context=merged)
 
         if not sub_result.success:
+            original_error = f"Sub-recipe '{recipe_name}' failed"
+
+            # Collect failure context from the sub-recipe result
+            failed_steps = [
+                sr for sr in sub_result.step_results if sr.status == StepStatus.FAILED
+            ]
+            failed_step_names = ", ".join(sr.step_id for sr in failed_steps)
+            partial_outputs = sub_result.output[:500] if sub_result.output else ""
+            if sub_result.output and len(sub_result.output) > 500:
+                partial_outputs += "... (truncated)"
+
+            logger.warning(
+                "Sub-recipe '%s' failed (step '%s'). Attempting agent recovery.",
+                recipe_name,
+                failed_step_names or "unknown",
+            )
+
+            recovery_result = self._attempt_agent_recovery(
+                step=step,
+                ctx=ctx,
+                sub_recipe_name=recipe_name,
+                error_message=original_error,
+                failed_step_names=failed_step_names,
+                partial_outputs=partial_outputs,
+            )
+
+            if recovery_result is not None:
+                logger.info(
+                    "Agent recovery succeeded for sub-recipe '%s' (step '%s')",
+                    recipe_name,
+                    step.id,
+                )
+                return recovery_result
+
+            # Recovery failed or reported unrecoverable — raise with full context
             raise StepExecutionError(
                 step.id,
-                f"Sub-recipe '{recipe_name}' failed",
+                f"{original_error}. Failed steps: [{failed_step_names}]. "
+                "Agent recovery also failed or reported unrecoverable.",
             )
 
         logger.info(
@@ -426,6 +469,97 @@ class RecipeRunner:
             self._depth + 1,
         )
         return str(sub_result)
+
+    def _attempt_agent_recovery(
+        self,
+        step: Step,
+        ctx: RecipeContext,
+        sub_recipe_name: str,
+        error_message: str,
+        failed_step_names: str,
+        partial_outputs: str,
+    ) -> str | None:
+        """Invoke an agent to assess and attempt recovery after a sub-recipe failure.
+
+        Builds a recovery prompt that includes failure context and partial
+        outputs, then dispatches to the adapter's execute_agent_step.  Returns
+        the agent's output string on success, or None if the recovery agent
+        cannot be invoked, raises an exception, or its response signals that
+        the failure is unrecoverable.
+
+        A response is considered unrecoverable when the agent explicitly
+        includes the token ``UNRECOVERABLE`` (case-insensitive) in its reply.
+        """
+        if self._adapter is None:
+            logger.warning("Cannot attempt agent recovery: no adapter configured")
+            return None
+
+        recovery_prompt = (
+            f"A sub-recipe execution failed and requires your assessment.\n\n"
+            f"Sub-recipe: {sub_recipe_name}\n"
+            f"Failed steps: {failed_step_names or 'unknown'}\n"
+            f"Error: {error_message}\n"
+            f"Partial outputs (first 500 chars):\n{partial_outputs}\n\n"
+            "Please assess whether this failure is recoverable:\n"
+            "1. If you can complete the work that the sub-recipe was supposed to do, "
+            "do so now and provide the result.\n"
+            "2. If the failure is not recoverable (missing prerequisites, "
+            "unresolvable conflicts, etc.), respond with 'UNRECOVERABLE: <reason>'.\n\n"
+            "Current context summary:\n"
+            f"{self._summarise_context(ctx)}"
+        )
+
+        working_dir = step.working_dir or self._working_dir
+
+        try:
+            recovery_output = self._adapter.execute_agent_step(
+                prompt=recovery_prompt,
+                working_dir=working_dir,
+            )
+        except Exception as exc:
+            logger.warning(
+                "Agent recovery invocation failed for sub-recipe '%s': %s",
+                sub_recipe_name,
+                exc,
+            )
+            return None
+
+        if not recovery_output:
+            logger.warning(
+                "Agent recovery returned empty output for sub-recipe '%s'",
+                sub_recipe_name,
+            )
+            return None
+
+        if "UNRECOVERABLE" in recovery_output.upper():
+            logger.warning(
+                "Agent recovery reported unrecoverable failure for sub-recipe '%s': %s",
+                sub_recipe_name,
+                recovery_output[:200],
+            )
+            return None
+
+        return recovery_output
+
+    _SENSITIVE_KEY_PATTERNS = frozenset({"token", "secret", "password", "key"})
+
+    @classmethod
+    def _summarise_context(cls, ctx: RecipeContext) -> str:
+        """Return a short human-readable summary of context keys and value previews.
+
+        Keys whose names contain sensitive patterns (token, secret, password, key)
+        are redacted to avoid leaking credentials into recovery prompts.
+        """
+        items = ctx.to_dict()
+        lines = []
+        for key, value in list(items.items())[:20]:  # cap at 20 keys
+            key_lower = key.lower()
+            if any(pat in key_lower for pat in cls._SENSITIVE_KEY_PATTERNS):
+                lines.append(f"  {key}: [REDACTED]")
+            else:
+                preview = str(value)[:80].replace("\n", " ")
+                lines.append(f"  {key}: {preview}")
+        return "\n".join(lines) if lines else "  (empty)"
 
     def _dispatch_step(self, step: Step, ctx: RecipeContext) -> str:
         """Route step execution to the correct adapter method."""
