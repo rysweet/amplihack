@@ -185,14 +185,14 @@ class TestAutoDetectBackend:
         backend = auto_detect_backend()
         assert isinstance(backend, AnthropicBackend)
 
-    def test_returns_litellm_when_no_key(self, monkeypatch):
-        """Returns LiteLLMBackend as fallback when no Anthropic key."""
+    def test_returns_copilot_when_no_key(self, monkeypatch):
+        """Returns CopilotBackend as fallback when no Anthropic key."""
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
         backend = auto_detect_backend()
-        assert isinstance(backend, LiteLLMBackend)
+        assert isinstance(backend, CopilotBackend)
 
     def test_empty_anthropic_key_falls_through(self, monkeypatch):
-        """Empty ANTHROPIC_API_KEY string falls through to LiteLLM."""
+        """Empty ANTHROPIC_API_KEY string falls through to CopilotBackend."""
         monkeypatch.setenv("ANTHROPIC_API_KEY", "")
         backend = auto_detect_backend()
-        assert isinstance(backend, LiteLLMBackend)
+        assert isinstance(backend, CopilotBackend)

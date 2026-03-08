@@ -748,17 +748,17 @@ class TestLiteLLMBackendComplete:
 class TestAutoDetectBackendEdgeCases:
     """Edge cases for auto_detect_backend."""
 
-    def test_no_env_returns_litellm(self):
-        """Without ANTHROPIC_API_KEY, returns LiteLLMBackend."""
+    def test_no_env_returns_copilot(self):
+        """Without ANTHROPIC_API_KEY, returns CopilotBackend."""
         with patch.dict(os.environ, {}, clear=True):
             backend = auto_detect_backend()
-            assert isinstance(backend, LiteLLMBackend)
+            assert isinstance(backend, CopilotBackend)
 
-    def test_empty_anthropic_key_returns_litellm(self):
-        """Empty ANTHROPIC_API_KEY is falsy, returns LiteLLMBackend."""
+    def test_empty_anthropic_key_returns_copilot(self):
+        """Empty ANTHROPIC_API_KEY is falsy, returns CopilotBackend."""
         with patch.dict(os.environ, {"ANTHROPIC_API_KEY": ""}):
             backend = auto_detect_backend()
-            assert isinstance(backend, LiteLLMBackend)
+            assert isinstance(backend, CopilotBackend)
 
 
 # ---------------------------------------------------------------------------

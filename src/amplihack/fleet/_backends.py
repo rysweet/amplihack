@@ -150,12 +150,12 @@ def auto_detect_backend() -> LLMBackend:
 
     Priority:
     1. Anthropic (if ANTHROPIC_API_KEY set)
-    2. LiteLLM (fallback -- always available as declared dependency)
+    2. Copilot (fallback -- uses GitHub Copilot subscription)
 
-    Always returns a backend; falls back to LiteLLMBackend.
+    Always returns a backend; falls back to CopilotBackend.
     """
     if os.environ.get("ANTHROPIC_API_KEY"):
         return AnthropicBackend()
 
-    # LiteLLM supports 100+ providers -- use it if any provider env vars are set
-    return LiteLLMBackend()
+    # Fall back to GitHub Copilot SDK when running under copilot (no Anthropic key)
+    return CopilotBackend()
