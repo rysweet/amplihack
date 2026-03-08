@@ -212,4 +212,4 @@ eval_progressive_example/
 generated-agents/
 
 # Rust recipe runner (separate repo)
-amplihack-recipe-runner-rs/
+amplihack-recipe-runner/

@@ -39,6 +39,7 @@ from amplihack.recipes.parser import RecipeParser
 from amplihack.recipes.runner import RecipeRunner
 
 from amplihack.recipes.rust_runner import (
+    RustRunnerNotFoundError,
     find_rust_binary,
     is_rust_runner_available,
     run_recipe_via_rust,
@@ -53,6 +54,7 @@ __all__ = [
     "RecipeRunner",
     "Recipe",
     "RecipeResult",
+    "RustRunnerNotFoundError",
     "Step",
     "StepExecutionError",
     "StepResult",
@@ -99,36 +101,51 @@ def run_recipe_by_name(
 ) -> RecipeResult:
     """Find a recipe by name, parse it, and execute it.
 
-    Prefers the Rust recipe runner (``recipe-runner-rs``) when available for
-    ~160x faster startup. Falls back to the Python runner transparently.
+    Engine selection (no fallbacks — chosen engine must succeed or fail):
 
-    Set ``RECIPE_RUNNER_RS_PATH`` to override the binary location, or
-    ``RECIPE_RUNNER_PREFER_PYTHON=1`` to skip the Rust runner entirely.
+    - ``RECIPE_RUNNER_ENGINE=rust`` → Rust binary only (fails if not installed)
+    - ``RECIPE_RUNNER_ENGINE=python`` → Python runner only
+    - Not set → auto-detect once: Rust if binary exists, Python otherwise.
+      Logs which engine was selected.
 
     Args:
         name: Recipe name (e.g. ``"default-workflow"``).
-        adapter: SDK adapter for step execution (used by Python fallback).
+        adapter: SDK adapter for step execution (used by Python engine).
         user_context: Context variable overrides.
         dry_run: If True, log steps without executing.
 
     Raises:
         FileNotFoundError: If no recipe with that name is found.
+        RustRunnerNotFoundError: If engine is 'rust' but binary is missing.
     """
     import os
 
-    # Try Rust runner first (unless explicitly disabled)
-    if not os.environ.get("RECIPE_RUNNER_PREFER_PYTHON"):
-        from amplihack.recipes.rust_runner import run_recipe_via_rust
+    engine = os.environ.get("RECIPE_RUNNER_ENGINE", "").lower()
 
-        rust_result = run_recipe_via_rust(
-            name=name,
-            user_context=user_context,
-            dry_run=dry_run,
-        )
-        if rust_result is not None:
-            return rust_result
+    if engine == "rust":
+        # Explicit Rust — no fallback
+        return run_recipe_via_rust(name=name, user_context=user_context, dry_run=dry_run)
 
-    # Fall back to Python runner
+    if engine == "python":
+        # Explicit Python — no Rust attempted
+        return _run_recipe_python(name, adapter, user_context, dry_run)
+
+    # Auto-detect: check once, commit to the result
+    if is_rust_runner_available():
+        import logging
+        logging.getLogger(__name__).info("Auto-detected Rust recipe runner — using it exclusively")
+        return run_recipe_via_rust(name=name, user_context=user_context, dry_run=dry_run)
+
+    return _run_recipe_python(name, adapter, user_context, dry_run)
+
+
+def _run_recipe_python(
+    name: str,
+    adapter: Any,
+    user_context: dict[str, Any] | None,
+    dry_run: bool,
+) -> RecipeResult:
+    """Execute a recipe using the Python runner."""
     path = find_recipe(name)
     if path is None:
         raise FileNotFoundError(f"Recipe '{name}' not found in any search directory")
