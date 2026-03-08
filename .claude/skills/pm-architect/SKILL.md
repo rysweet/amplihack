@@ -75,9 +75,9 @@ Create .pm/ structure, invoke roadmap-strategist for roadmap generation.
 
 ### Pattern 5: Top 5 Priorities (`/top5`)
 
-Run `scripts/generate_top5.py` to aggregate priorities across all four sub-skills into a strict ranked list. Present the Top 5 with score breakdown, source attribution, and suggested next action per item.
+Run `scripts/generate_top5.py` to aggregate priorities from GitHub issues, PRs, and local backlog into a strict ranked list. Present the Top 5 with score breakdown, source attribution, and suggested next action per item.
 
-Weights: backlog 35%, workstream urgency 25%, roadmap alignment 25%, delegation readiness 15%.
+Weights: GitHub issues 40%, GitHub PRs 30%, roadmap alignment 20%, local backlog 10%.
 
 ### Pattern 6: Daily Standup
 
