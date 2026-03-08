@@ -123,6 +123,13 @@ class TestFleetStatus:
         mock_state.refresh.assert_called_once()
         mock_state.summary.assert_called_once()
 
+    @patch("amplihack.fleet.fleet_cli._get_azlin", side_effect=ValueError("azlin not found"))
+    def test_status_without_azlin_fails_visibly(self, mock_azlin, runner):
+        """fleet status fails with clear error when azlin is not installed."""
+        result = runner.invoke(fleet_cli, ["status"])
+        assert result.exit_code == 1
+        assert "azlin not found" in result.output
+
 
 # ---------------------------------------------------------------------------
 # fleet add-task
@@ -1597,12 +1604,7 @@ class TestFormatScoutReportSuspended:
             "input_text": "",
         }
 
-        report = format_scout_report(
-            all_vms=[vm],
-            decisions=[decision],
-            adopted_count=0,
-            skip_adopt=True,
-        )
+        report = format_scout_report([vm], [decision], 0, True)
 
         assert "suspended" in report
         assert "[Z]" in report
@@ -1637,12 +1639,7 @@ class TestFormatScoutReportSuspended:
             "input_text": "",
         }
 
-        report = format_scout_report(
-            all_vms=[vm],
-            decisions=[decision],
-            adopted_count=0,
-            skip_adopt=True,
-        )
+        report = format_scout_report([vm], [decision], 0, True)
 
         assert "[X]" in report
         lines_with_cybergym = [l for l in report.split("\n") if "cybergym" in l]

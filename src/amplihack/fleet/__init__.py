@@ -45,7 +45,7 @@ from amplihack.fleet.fleet_setup import RepoSetup, SetupResult
 from amplihack.fleet.fleet_state import AgentStatus, FleetState, TmuxSessionInfo, VMInfo
 from amplihack.fleet.fleet_tasks import FleetTask, TaskPriority, TaskQueue, TaskStatus
 from ._cli_formatters import AdvanceResult, ScoutResult, format_advance_report, format_scout_report
-from ._cli_session_ops import (
+from ._session_lifecycle import (
     FleetConfig,
     FleetSession,
     get_fleet_session_status,

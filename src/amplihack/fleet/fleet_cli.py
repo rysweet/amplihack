@@ -209,7 +209,12 @@ def setup():
 @fleet_cli.command("status")
 def status():
     """Show current fleet state -- VMs, sessions, agents."""
-    state = FleetState(azlin_path=_get_azlin())
+    try:
+        azlin = _get_azlin()
+    except ValueError:
+        click.echo("Error: azlin not found. Install azlin or set AZLIN_PATH.", err=True)
+        raise SystemExit(1)
+    state = FleetState(azlin_path=azlin)
     state.exclude_vms(*EXISTING_VMS)
     state.refresh()
     click.echo(state.summary())
