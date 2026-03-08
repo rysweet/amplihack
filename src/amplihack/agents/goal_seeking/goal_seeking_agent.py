@@ -166,20 +166,9 @@ class GoalSeekingAgent:
         if is_question:
             self._decision = "answer"
         else:
-            # Use LearningAgent's intent detection for borderline cases
-            try:
-                intent_result = self._learning_agent._detect_intent(text[:500])
-                intent_type = intent_result.get("intent", "simple_recall")
-                # Any retrieval/synthesis intent → answer; store otherwise
-                ANSWER_INTENTS = {
-                    "simple_recall", "multi_source_synthesis", "causal_counterfactual",
-                    "incremental_update", "contradiction_resolution", "meta_memory",
-                    "temporal_reasoning", "relational_inference",
-                }
-                self._decision = "answer" if intent_type in ANSWER_INTENTS else "store"
-            except Exception:
-                logger.debug("decide() intent detection failed, defaulting to store", exc_info=True)
-                self._decision = "store"
+            # Not a question → store. No LLM call needed for classification.
+            # The intent detector is designed for questions, not content.
+            self._decision = "store"
 
         logger.debug("Agent %s decided: %s", self._agent_name, self._decision)
         return self._decision
