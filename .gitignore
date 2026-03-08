@@ -31,6 +31,7 @@ htmlcov/
 **/.metadata/versions.json
 
 # Project specific
+.pm/
 .test_state.json
 .requirements_extraction_state.json
 test_requirements*.md
