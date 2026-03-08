@@ -18,6 +18,7 @@ import re
 import secrets
 import subprocess
 import tempfile
+import time
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
@@ -134,11 +135,16 @@ class SessionManager:
     DEFAULT_COMMAND = "auto"
     DEFAULT_MAX_TURNS = 10
 
-    def __init__(self, state_file: Path | None = None):
+    # SSH output cache TTL in seconds. Discovery and reasoning phases run within
+    # this window and share the cached result instead of re-running SSH commands.
+    SSH_CACHE_TTL: float = 30.0
+
+    def __init__(self, state_file: Path | None = None, ssh_cache_ttl: float | None = None):
         """Initialize SessionManager.
 
         Args:
             state_file: Path to state file. Defaults to ~/.amplihack/remote-state.json
+            ssh_cache_ttl: TTL in seconds for SSH output cache. Defaults to SSH_CACHE_TTL.
 
         Raises:
             ValueError: If state file exists but contains corrupt JSON
@@ -149,6 +155,11 @@ class SessionManager:
         self._state_file = state_file
         self._sessions: dict[str, Session] = {}
         self._used_ids: set[str] = set()  # Track used IDs for uniqueness in same second
+
+        # Cache SSH command output between discovery and reasoning phases.
+        # Key: (vm_name, command), Value: (timestamp, output)
+        self._ssh_cache: dict[tuple[str, str], tuple[float, str]] = {}
+        self._ssh_cache_ttl: float = ssh_cache_ttl if ssh_cache_ttl is not None else self.SSH_CACHE_TTL
 
         self._load_state()
 
@@ -448,7 +459,11 @@ class SessionManager:
         return session.status
 
     def _execute_ssh_command(self, vm_name: str, command: str) -> str:
-        """Execute command on remote VM via SSH.
+        """Execute command on remote VM via SSH, with output caching.
+
+        Caches output for SSH_CACHE_TTL seconds so that discovery and reasoning
+        phases that run the same command in quick succession reuse the result
+        without re-running the SSH command.
 
         Uses azlin for SSH connectivity.
 
@@ -459,6 +474,17 @@ class SessionManager:
         Returns:
             Command output as string
         """
+        cache_key = (vm_name, command)
+        now = time.monotonic()
+
+        # Return cached result if within TTL
+        cached = self._ssh_cache.get(cache_key)
+        if cached is not None:
+            cached_at, cached_output = cached
+            if now - cached_at < self._ssh_cache_ttl:
+                logger.debug("SSH cache hit for VM '%s' (age=%.1fs)", vm_name, now - cached_at)
+                return cached_output
+
         try:
             result = subprocess.run(
                 ["azlin", "ssh", vm_name, "--", command],
@@ -466,7 +492,7 @@ class SessionManager:
                 text=True,
                 timeout=30,
             )
-            return result.stdout
+            output = result.stdout
         except subprocess.TimeoutExpired:
             logger.warning("SSH command to VM '%s' timed out after 30s", vm_name)
             return ""
@@ -476,6 +502,9 @@ class SessionManager:
         except Exception as e:
             logger.error("SSH command to VM '%s' failed: %s", vm_name, e)
             return ""
+
+        self._ssh_cache[cache_key] = (now, output)
+        return output
 
 
 __all__ = ["SessionStatus", "Session", "SessionManager"]
