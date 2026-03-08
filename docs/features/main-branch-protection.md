@@ -323,8 +323,8 @@ No. The protection is intentionally not configurable. If you have a legitimate u
 
 **Files Modified:**
 
-- `.claude/tools/amplihack/hooks/pre_tool_use.py` (workspace copy)
-- `amplifier-bundle/tools/amplihack/hooks/pre_tool_use.py` (bundle copy)
+- `.claude/tools/amplihack/hooks/pre_tool_use.py` (canonical source)
+- `amplifier-bundle/tools/amplihack/hooks/` (symlink → `.claude/tools/amplihack/hooks/`)
 
 **Dependencies:**
 
@@ -340,17 +340,16 @@ No. The protection is intentionally not configurable. If you have a legitimate u
 
 ### File Architecture
 
-This feature is implemented in **TWO identical files**:
+This feature has a **single canonical source**:
 
-- **Workspace copy**: `.claude/tools/amplihack/hooks/pre_tool_use.py`
+- **Canonical source**: `.claude/tools/amplihack/hooks/pre_tool_use.py`
   - Active in your local Claude Code workspace
   - Used when Claude Code runs in this project
-
-- **Bundle copy**: `amplifier-bundle/tools/amplihack/hooks/pre_tool_use.py`
   - Distributed with the amplihack bundle for other users
-  - Ensures all amplihack installations have this protection
 
-**Critical:** Both files must remain byte-identical to ensure consistent behavior across environments. When updating this feature, modify both files identically.
+- **Bundle path**: `amplifier-bundle/tools/amplihack/hooks/` is a symlink to `.claude/tools/amplihack/hooks/`
+  - Ensures zero duplication — both paths resolve to the same files
+  - Edit only `.claude/tools/amplihack/hooks/pre_tool_use.py`; the bundle path reflects changes immediately
 
 ### Security Considerations
 
@@ -493,8 +492,7 @@ This protection cannot be bypassed with --no-verify."""
 
 **Files Modified:**
 
-- `.claude/tools/amplihack/hooks/pre_tool_use.py`
-- `amplifier-bundle/tools/amplihack/hooks/pre_tool_use.py`
+- `.claude/tools/amplihack/hooks/pre_tool_use.py` (canonical — edit this only)
 
 ---
 
