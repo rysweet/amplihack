@@ -1,6 +1,37 @@
 # Recipe Runner
 
-A code-enforced workflow execution engine that reads declarative YAML recipe files and executes them step-by-step using AI agents. Unlike prompt-based workflow instructions that models can interpret loosely or skip, the Recipe Runner controls the execution loop in Python code -- making it physically impossible to skip steps.
+A code-enforced workflow execution engine that reads declarative YAML recipe files and executes them step-by-step using AI agents. Unlike prompt-based workflow instructions that models can interpret loosely or skip, the Recipe Runner controls the execution loop in compiled code — making it physically impossible to skip steps.
+
+**Standalone repo & docs**: [github.com/rysweet/amplihack-recipe-runner](https://github.com/rysweet/amplihack-recipe-runner) · [rysweet.github.io/amplihack-recipe-runner](https://rysweet.github.io/amplihack-recipe-runner/)
+
+## Engine Selection
+
+The recipe runner supports two engines. Set `RECIPE_RUNNER_ENGINE` to choose explicitly:
+
+| Value | Engine | Notes |
+|-------|--------|-------|
+| `rust` | [recipe-runner-rs](https://github.com/rysweet/amplihack-recipe-runner) | Standalone binary, ~5ms startup, 216 tests |
+| `python` | Built-in Python runner | No extra install needed |
+| *(not set)* | Auto-detect | Uses Rust if binary found in PATH, Python otherwise |
+
+```bash
+# Install the Rust binary
+cargo install --git https://github.com/rysweet/amplihack-recipe-runner
+
+# Or set path explicitly
+export RECIPE_RUNNER_RS_PATH=/path/to/recipe-runner-rs
+
+# Force a specific engine
+export RECIPE_RUNNER_ENGINE=rust   # or python
+```
+
+The Rust binary is automatically installed during `amplihack install` if `cargo` is available. To check or manually trigger installation:
+
+```python
+from amplihack.recipes import ensure_rust_recipe_runner
+
+ensure_rust_recipe_runner()  # Installs if missing, no-op if present
+```
 
 ## Contents
 
