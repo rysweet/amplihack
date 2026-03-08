@@ -12,9 +12,29 @@ import logging
 from amplihack.fleet._tui_classify import classify_status
 from amplihack.fleet._tui_data import SessionView
 
-__all__ = ["parse_session_output", "parse_vm_text"]
+__all__ = ["parse_hostname", "parse_session_output", "parse_vm_text"]
 
 logger = logging.getLogger(__name__)
+
+
+def parse_hostname(output: str) -> str | None:
+    """Extract the hostname from a ---HOST--- section in SSH output.
+
+    Returns the hostname string, or None if the section is missing.
+    """
+    marker = "---HOST---"
+    if marker not in output:
+        return None
+    start = output.index(marker) + len(marker)
+    # Hostname ends at the next marker (---) or end of output
+    rest = output[start:]
+    # Take text up to the next section marker
+    for end_marker in ("===SESSION:", "===NO_SESSIONS==="):
+        if end_marker in rest:
+            rest = rest[:rest.index(end_marker)]
+            break
+    hostname = rest.strip().split("\n")[0].strip()
+    return hostname if hostname else None
 
 
 def parse_session_output(vm_name: str, output: str) -> list[SessionView]:
