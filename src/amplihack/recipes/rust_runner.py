@@ -51,8 +51,10 @@ def find_rust_binary() -> str | None:
     Returns the path to the binary, or None if not found.
     """
     env_path = os.environ.get("RECIPE_RUNNER_RS_PATH")
-    if env_path and shutil.which(env_path):
-        return env_path
+    if env_path:
+        resolved = shutil.which(env_path)
+        if resolved:
+            return resolved
 
     for candidate in _binary_search_paths():
         resolved = shutil.which(candidate)

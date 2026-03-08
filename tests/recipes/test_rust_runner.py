@@ -42,11 +42,13 @@ from amplihack.recipes.models import StepStatus
 class TestFindRustBinary:
     """Tests for find_rust_binary()."""
 
-    @patch.dict("os.environ", {"RECIPE_RUNNER_RS_PATH": "/usr/local/bin/recipe-runner-rs"})
-    @patch("shutil.which", return_value="/usr/local/bin/recipe-runner-rs")
+    @patch.dict("os.environ", {"RECIPE_RUNNER_RS_PATH": "/custom/recipe-runner-rs"})
+    @patch("shutil.which", side_effect=lambda p: str(p) if str(p) == "/custom/recipe-runner-rs" else "/other/binary")
     def test_env_var_takes_priority(self, mock_which):
         result = find_rust_binary()
-        assert result == "/usr/local/bin/recipe-runner-rs"
+        assert result == "/custom/recipe-runner-rs"
+        # Verify which was only called once (env var path, not search paths)
+        mock_which.assert_called_once_with("/custom/recipe-runner-rs")
 
     @patch.dict("os.environ", {"RECIPE_RUNNER_RS_PATH": "/nonexistent/binary"})
     @patch("shutil.which", return_value=None)
