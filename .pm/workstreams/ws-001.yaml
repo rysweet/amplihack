@@ -1,0 +1,14 @@
+id: ws-001
+backlog_id: BL-006
+title: "Haymaker Event Bus Integration Tests"
+status: RUNNING
+agent: builder
+started_at: "2026-03-07T10:00:00Z"
+completed_at: null
+process_id: "tmux-haymaker-tests"
+elapsed_minutes: 180
+progress_notes:
+  - "Started test scaffolding"
+  - "Event bus mock created"
+last_activity: "2026-03-07T11:00:00Z"
+dependencies: []
