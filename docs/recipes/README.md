@@ -1,6 +1,62 @@
 # Recipe Runner
 
-A code-enforced workflow execution engine that reads declarative YAML recipe files and executes them step-by-step using AI agents. Unlike prompt-based workflow instructions that models can interpret loosely or skip, the Recipe Runner controls the execution loop in Python code -- making it physically impossible to skip steps.
+A code-enforced workflow execution engine that reads declarative YAML recipe files and executes them step-by-step using AI agents. Unlike prompt-based workflow instructions that models can interpret loosely or skip, the Recipe Runner controls the execution loop in compiled code — making it physically impossible to skip steps.
+
+**Standalone repo & docs**: [github.com/rysweet/amplihack-recipe-runner](https://github.com/rysweet/amplihack-recipe-runner) · [rysweet.github.io/amplihack-recipe-runner](https://rysweet.github.io/amplihack-recipe-runner/)
+
+## Engine Selection
+
+The recipe runner supports two engines. Set `RECIPE_RUNNER_ENGINE` to choose explicitly:
+
+| Value | Engine | Notes |
+|-------|--------|-------|
+| `rust` | [recipe-runner-rs](https://github.com/rysweet/amplihack-recipe-runner) | Standalone binary, ~5ms startup, comprehensive test suite |
+| `python` | Built-in Python runner | No extra install needed |
+| *(not set)* | Auto-detect | Uses Rust if binary found in PATH, Python otherwise |
+
+```bash
+# Install the Rust binary
+cargo install --git https://github.com/rysweet/amplihack-recipe-runner
+
+# Or set path explicitly
+export RECIPE_RUNNER_RS_PATH=/path/to/recipe-runner-rs
+
+# Force a specific engine
+export RECIPE_RUNNER_ENGINE=rust   # or python
+```
+
+The Rust binary is automatically installed during `amplihack install` if `cargo` is available. To check or manually trigger installation:
+
+```python
+from amplihack.recipes import ensure_rust_recipe_runner
+
+ensure_rust_recipe_runner()  # Installs if missing, no-op if present
+```
+
+## Engine Feature Comparison
+
+The Rust engine supports additional features not available in the Python engine:
+
+| Feature | Rust | Python |
+|---------|------|--------|
+| `parallel_group` | ✅ | ❌ |
+| `continue_on_error` | ✅ | ❌ |
+| `when_tags` | ✅ | ❌ |
+| `hooks` (pre/post/on_error) | ✅ | ❌ |
+| `extends` (inheritance) | ✅ | ❌ |
+| `recursion` config | ✅ | ❌ |
+
+Set `RECIPE_RUNNER_ENGINE=rust` to use the full feature set.
+
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `RECIPE_RUNNER_ENGINE` | (auto-detect) | Engine selection: `rust`, `python`, or unset |
+| `RECIPE_RUNNER_RS_PATH` | (auto) | Custom path to Rust binary |
+| `RECIPE_RUNNER_INSTALL_TIMEOUT` | 300 | Cargo install timeout (seconds) |
+| `RECIPE_RUNNER_RUN_TIMEOUT` | 3600 | Recipe execution timeout (seconds) |
+| `RUST_LOG` | (unset) | Rust binary log level (e.g., `debug`, `info`) |
 
 ## Contents
 
@@ -24,7 +80,7 @@ Complete documentation for using the Recipe Runner:
 
 ## Why It Exists
 
-Models frequently skip workflow steps when enforcement is purely prompt-based. A markdown file that says "you MUST follow all 22 steps" still relies on the model choosing to comply. The Recipe Runner moves enforcement from prompts to code: a Python `for` loop iterates over each step and calls the agent SDK, so the model never decides which step to run next.
+Models frequently skip workflow steps when enforcement is purely prompt-based. A markdown file that says "you MUST follow all 22 steps" still relies on the model choosing to comply. The Recipe Runner moves enforcement from prompts to compiled code — a deterministic loop iterates over each step and calls the agent SDK, so the model never decides which step to run next.
 
 **Prompt-based enforcement (before)**:
 
@@ -38,13 +94,13 @@ The model can read this instruction and still jump to implementation.
 
 **Code-enforced execution (after)**:
 
-```python
+```
 for step in recipe.steps:
     result = adapter.run(step.agent, step.prompt)
-    # The next step literally cannot start until this one completes
+    // The next step literally cannot start until this one completes
 ```
 
-The model executes within a single step. The Python loop controls progression.
+The model executes within a single step. The execution loop controls progression.
 
 ## Quick Start
 
@@ -258,7 +314,7 @@ Override with `--adapter <name>`.
 
 ## Available Recipes
 
-amplihack ships with 10 recipes covering the most common development workflows.
+amplihack ships with recipes covering the most common development workflows.
 
 | Recipe                  | Steps | Description                                             |
 | ----------------------- | ----- | ------------------------------------------------------- |

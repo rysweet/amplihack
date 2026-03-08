@@ -7,6 +7,7 @@ resources after execution.
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import tempfile
@@ -15,6 +16,11 @@ import time
 from pathlib import Path
 
 from amplihack.recipes.adapters.env import build_child_env
+
+_NON_INTERACTIVE_FOOTER = (
+    "\n\nIMPORTANT: Proceed autonomously. Do not ask questions. "
+    "Make reasonable decisions and continue."
+)
 
 
 class NestedSessionAdapter:
@@ -47,7 +53,20 @@ class NestedSessionAdapter:
         Runs without a hard timeout. Output is streamed to a log file
         and tailed by a background thread for progress monitoring.
         """
+        # Enforce max nesting depth
+        current_depth = int(os.environ.get("AMPLIHACK_SESSION_DEPTH", "0"))
+        max_depth = int(os.environ.get("AMPLIHACK_MAX_DEPTH", "3"))
+        if current_depth >= max_depth:
+            raise RuntimeError(
+                f"Maximum session nesting depth ({max_depth}) exceeded "
+                f"at depth {current_depth}. "
+                "Set AMPLIHACK_MAX_DEPTH to increase the limit."
+            )
+
         env = build_child_env()
+
+        # Append non-interactive footer to prompt
+        prompt = prompt + _NON_INTERACTIVE_FOOTER
 
         # Prepare working directory
         temp_dir = None

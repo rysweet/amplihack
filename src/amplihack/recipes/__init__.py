@@ -3,9 +3,10 @@
 Public API:
     - ``parse_recipe(yaml_content)`` -- shortcut to parse a YAML string
     - ``run_recipe(yaml_content, adapter, **kwargs)`` -- parse and execute in one call
+    - ``run_recipe_by_name(name, adapter, **kwargs)`` -- find, parse, and execute
     - ``list_recipes()`` -- discover all available recipes
     - ``find_recipe(name)`` -- find a recipe file by name
-    - ``RecipeRunner`` -- the core execution engine
+    - ``RecipeRunner`` -- the core execution engine (Python)
     - ``RecipeParser`` -- YAML-to-Recipe parser
     - ``RecipeContext`` -- template-rendering execution context
 """
@@ -38,6 +39,14 @@ from amplihack.recipes.models import (
 from amplihack.recipes.parser import RecipeParser
 from amplihack.recipes.runner import RecipeRunner
 
+from amplihack.recipes.rust_runner import (
+    RustRunnerNotFoundError,
+    ensure_rust_recipe_runner,
+    find_rust_binary,
+    is_rust_runner_available,
+    run_recipe_via_rust,
+)
+
 __all__ = [
     "AgentNotFoundError",
     "AgentResolver",
@@ -47,6 +56,7 @@ __all__ = [
     "RecipeRunner",
     "Recipe",
     "RecipeResult",
+    "RustRunnerNotFoundError",
     "Step",
     "StepExecutionError",
     "StepResult",
@@ -54,11 +64,15 @@ __all__ = [
     "StepType",
     "check_upstream_changes",
     "discover_recipes",
+    "ensure_rust_recipe_runner",
     "find_recipe",
+    "find_rust_binary",
+    "is_rust_runner_available",
     "list_recipes",
     "parse_recipe",
     "run_recipe",
     "run_recipe_by_name",
+    "run_recipe_via_rust",
     "sync_upstream",
     "update_manifest",
     "verify_global_installation",
@@ -90,15 +104,56 @@ def run_recipe_by_name(
 ) -> RecipeResult:
     """Find a recipe by name, parse it, and execute it.
 
+    Engine selection (no fallbacks — chosen engine must succeed or fail):
+
+    - ``RECIPE_RUNNER_ENGINE=rust`` → Rust binary only (fails if not installed)
+    - ``RECIPE_RUNNER_ENGINE=python`` → Python runner only
+    - Not set → auto-detect once: Rust if binary exists, Python otherwise.
+      Logs which engine was selected.
+
     Args:
         name: Recipe name (e.g. ``"default-workflow"``).
-        adapter: SDK adapter for step execution.
+        adapter: SDK adapter for step execution (used by Python engine).
         user_context: Context variable overrides.
         dry_run: If True, log steps without executing.
 
     Raises:
         FileNotFoundError: If no recipe with that name is found.
+        RustRunnerNotFoundError: If engine is 'rust' but binary is missing.
     """
+    import os
+
+    engine = os.environ.get("RECIPE_RUNNER_ENGINE", "").lower()
+    if engine and engine not in ("rust", "python"):
+        raise ValueError(
+            f"Invalid RECIPE_RUNNER_ENGINE='{engine}'. Must be 'rust', 'python', or unset for auto-detect."
+        )
+
+    if engine == "rust":
+        return run_recipe_via_rust(name=name, user_context=user_context, dry_run=dry_run)
+
+    if engine == "python":
+        return _run_recipe_python(name, adapter, user_context, dry_run)
+
+    # Auto-detect: check once, commit to the result, log clearly
+    import logging
+    _log = logging.getLogger(__name__)
+
+    if is_rust_runner_available():
+        _log.info("RECIPE_RUNNER_ENGINE not set — auto-selected 'rust' (binary found in PATH)")
+        return run_recipe_via_rust(name=name, user_context=user_context, dry_run=dry_run)
+
+    _log.info("RECIPE_RUNNER_ENGINE not set — auto-selected 'python' (rust binary not found)")
+    return _run_recipe_python(name, adapter, user_context, dry_run)
+
+
+def _run_recipe_python(
+    name: str,
+    adapter: Any,
+    user_context: dict[str, Any] | None,
+    dry_run: bool,
+) -> RecipeResult:
+    """Execute a recipe using the Python runner."""
     path = find_recipe(name)
     if path is None:
         raise FileNotFoundError(f"Recipe '{name}' not found in any search directory")
