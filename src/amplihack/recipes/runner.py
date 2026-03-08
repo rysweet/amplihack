@@ -430,6 +430,8 @@ class RecipeRunner:
             ]
             failed_step_names = ", ".join(sr.step_id for sr in failed_steps)
             partial_outputs = sub_result.output[:500] if sub_result.output else ""
+            if sub_result.output and len(sub_result.output) > 500:
+                partial_outputs += "... (truncated)"
 
             logger.warning(
                 "Sub-recipe '%s' failed (step '%s'). Attempting agent recovery.",
