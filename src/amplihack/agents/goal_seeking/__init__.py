@@ -9,17 +9,26 @@ Philosophy:
 - CognitiveMemory (6-type) for advanced cognitive capabilities
 
 Public API (the "studs"):
+    GoalSeekingAgent: Universal agent with OODA loop (observe/orient/decide/act).
+        process(input) is the sole public entry point — no learn_from_content()
+        or answer_question() methods are exposed.  The agent classifies input
+        internally as "store" or "answer" and writes answers to stdout.
     AgenticLoop: Main PERCEIVE->REASON->ACT->LEARN loop
     ActionExecutor: Tool registry with actions
     MemoryRetriever: Kuzu memory search interface (original)
-    LearningAgent: Generic agent for learning from content and answering questions
-    WikipediaLearningAgent: Backward-compatible alias for LearningAgent
     HierarchicalMemory: Graph-based hierarchical memory system
     FlatRetrieverAdapter: Backward-compatible adapter for HierarchicalMemory
     CognitiveAdapter: 6-type cognitive memory adapter
     GraphRAGRetriever: Graph RAG retriever for knowledge subgraphs
+
+Private implementation details (not part of the public API):
+    LearningAgent: Absorbed into Memory.store() and GoalSeekingAgent internals.
+        Still importable for backward compatibility but not listed in __all__.
+        New code should use GoalSeekingAgent.process() or Memory.store() instead.
+    WikipediaLearningAgent: Backward-compatible alias for LearningAgent.
 """
 
+from .goal_seeking_agent import GoalSeekingAgent
 from .action_executor import ActionExecutor
 from .agentic_loop import (
     AgenticLoop,
@@ -59,6 +68,8 @@ from .sub_agents import (
 WikipediaLearningAgent = LearningAgent
 
 __all__ = [
+    # Primary public API
+    "GoalSeekingAgent",
     "AgentSpawner",
     "AgenticLoop",
     "ActionExecutor",
@@ -74,11 +85,9 @@ __all__ = [
     "KnowledgeEdge",
     "KnowledgeNode",
     "KnowledgeSubgraph",
-    "LearningAgent",
     "MemoryCategory",
     "MemoryClassifier",
     "MemoryRetriever",
-    "WikipediaLearningAgent",
     "CoordinatorAgent",
     "MemoryAgent",
     "MultiAgentLearningAgent",
@@ -92,4 +101,7 @@ __all__ = [
     "get_sdk_tools",
     "import_memory",
     "inject_sdk_tools",
+    # Kept for backward compatibility but not part of the public API.
+    # New code should use GoalSeekingAgent.process() or Memory.store().
+    # LearningAgent and WikipediaLearningAgent are still importable directly.
 ]

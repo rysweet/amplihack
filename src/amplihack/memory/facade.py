@@ -100,6 +100,8 @@ class Memory:
         self._hive: Any = None
         self._adapter: Any = None
         self._graph_store: GraphStore | None = None
+        # Lazily created LearningAgent for LLM fact extraction in store()
+        self._learning_agent: Any = None
 
         self._setup()
 
@@ -289,6 +291,44 @@ class Memory:
             self._adapter.store_fact("general", content)
         else:
             logger.warning("Adapter %r has no store_fact method", type(self._adapter).__name__)
+
+    def store(self, content: str) -> dict[str, Any]:
+        """Store content with internal LLM fact extraction.
+
+        Unlike ``remember()`` which stores content verbatim, ``store()``
+        uses an LLM to extract structured facts from the content before
+        storing them.  This absorbs what ``LearningAgent.learn_from_content()``
+        previously did, so callers no longer need to import LearningAgent.
+
+        Args:
+            content: Free-text content (article, log entry, event text, etc.)
+
+        Returns:
+            Dict with ``facts_extracted`` and ``facts_stored`` counts.
+        """
+        if not content or not content.strip():
+            return {"facts_extracted": 0, "facts_stored": 0, "content_summary": ""}
+
+        agent = self._get_or_create_learning_agent()
+        return agent.learn_from_content(content)
+
+    def _get_or_create_learning_agent(self) -> Any:
+        """Return (lazily created) LearningAgent wired to this facade's adapter."""
+        if self._learning_agent is None:
+            from amplihack.agents.goal_seeking.learning_agent import LearningAgent  # noqa: PLC0415
+
+            self._learning_agent = LearningAgent(
+                agent_name=self._cfg.agent_name or self._agent_name,
+                model=self._cfg.model,
+                storage_path=Path(self._cfg.storage_path) if self._cfg.storage_path else None,
+                use_hierarchical=self._cfg.backend == "hierarchical",
+                hive_store=self._hive,
+            )
+            # Wire LearningAgent to use this facade's adapter so both
+            # store() and remember() write to the same underlying Kuzu DB.
+            if self._adapter is not None:
+                self._learning_agent.memory = self._adapter
+        return self._learning_agent
 
     def recall(self, question: str, limit: int = 20) -> list[str]:
         """Search memory for facts relevant to the question.
