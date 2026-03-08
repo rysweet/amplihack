@@ -5,6 +5,8 @@ Covers:
 - Recipe execution via Rust binary (run_recipe_via_rust)
 - JSON output parsing and error handling
 - Engine selection in run_recipe_by_name
+- Configurable timeouts
+- Empty step_results and exception paths
 """
 
 from __future__ import annotations
@@ -17,6 +19,11 @@ import pytest
 
 from amplihack.recipes.rust_runner import (
     RustRunnerNotFoundError,
+    _binary_search_paths,
+    _build_rust_command,
+    _execute_rust_command,
+    _find_rust_binary,
+    _redact_command_for_log,
     ensure_rust_recipe_runner,
     find_rust_binary,
     is_rust_runner_available,
@@ -170,7 +177,7 @@ class TestRunRecipeViaRust:
 
     @patch("amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs")
     @patch("subprocess.run")
-    def test_has_timeout(self, mock_run, mock_find):
+    def test_default_timeout(self, mock_run, mock_find):
         mock_run.return_value = subprocess.CompletedProcess(
             args=[], returncode=0,
             stdout=self._make_rust_output(),
@@ -178,6 +185,18 @@ class TestRunRecipeViaRust:
         )
         run_recipe_via_rust("test-recipe")
         assert mock_run.call_args[1].get("timeout") == 3600
+
+    @patch.dict("os.environ", {"RECIPE_RUNNER_RUN_TIMEOUT": "60"})
+    @patch("amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs")
+    @patch("subprocess.run")
+    def test_configurable_run_timeout(self, mock_run, mock_find):
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=[], returncode=0,
+            stdout=self._make_rust_output(),
+            stderr="",
+        )
+        run_recipe_via_rust("test-recipe")
+        assert mock_run.call_args[1].get("timeout") == 60
 
     @patch("amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs")
     @patch("subprocess.run")
@@ -219,6 +238,62 @@ class TestRunRecipeViaRust:
         assert result.step_results[1].status == StepStatus.SKIPPED
         assert result.step_results[2].status == StepStatus.FAILED
         assert result.step_results[3].status == StepStatus.FAILED  # unknown → FAILED
+
+    @patch("amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs")
+    @patch("subprocess.run")
+    def test_empty_step_results(self, mock_run, mock_find):
+        """PR-M5: Empty step_results produces a valid RecipeResult with no steps."""
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=[], returncode=0,
+            stdout=self._make_rust_output(steps=[]),
+            stderr="",
+        )
+        result = run_recipe_via_rust("test-recipe")
+        assert result.step_results == []
+        assert result.recipe_name == "test-recipe"
+
+    @patch("amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs")
+    @patch("subprocess.run", side_effect=OSError("No such file or directory"))
+    def test_oserror_during_subprocess(self, mock_run, mock_find):
+        """PR-M5: OSError during subprocess.run propagates cleanly."""
+        with pytest.raises(OSError, match="No such file or directory"):
+            run_recipe_via_rust("test-recipe")
+
+
+# ============================================================================
+# Helper function tests
+# ============================================================================
+
+
+class TestRedactCommandForLog:
+    """Tests for _redact_command_for_log()."""
+
+    def test_masks_set_values(self):
+        cmd = ["/bin/rr", "recipe", "--set", "api_key=secret123", "--dry-run"]
+        result = _redact_command_for_log(cmd)
+        assert "secret123" not in result
+        assert "api_key=***" in result
+        assert "--dry-run" in result
+
+    def test_no_set_flags(self):
+        cmd = ["/bin/rr", "recipe", "--dry-run"]
+        result = _redact_command_for_log(cmd)
+        assert result == "/bin/rr recipe --dry-run"
+
+
+class TestConfigurableTimeouts:
+    """Tests for configurable timeouts."""
+
+    @patch.dict("os.environ", {"RECIPE_RUNNER_INSTALL_TIMEOUT": "120"})
+    @patch("amplihack.recipes.rust_runner.is_rust_runner_available", return_value=False)
+    @patch("shutil.which", return_value="/usr/bin/cargo")
+    @patch("subprocess.run")
+    def test_install_timeout_from_env(self, mock_run, mock_which, mock_avail):
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=[], returncode=0, stdout="", stderr="",
+        )
+        ensure_rust_recipe_runner(quiet=True)
+        assert mock_run.call_args[1].get("timeout") == 120
 
 
 # ============================================================================

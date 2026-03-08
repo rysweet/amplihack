@@ -7,6 +7,7 @@ execution fails immediately with a clear error.
 
 from __future__ import annotations
 
+import functools
 import json
 import logging
 import os
@@ -19,12 +20,28 @@ from amplihack.recipes.models import RecipeResult, StepResult, StepStatus
 
 logger = logging.getLogger(__name__)
 
-# Known locations to search for the Rust binary
-_BINARY_SEARCH_PATHS = [
-    "recipe-runner-rs",  # PATH
-    str(Path.home() / ".cargo" / "bin" / "recipe-runner-rs"),
-    str(Path.home() / ".local" / "bin" / "recipe-runner-rs"),
-]
+
+@functools.lru_cache(maxsize=1)
+def _binary_search_paths() -> list[str]:
+    """Return known locations to search for the Rust binary.
+
+    Evaluated lazily on first call so Path.home() is only resolved when needed.
+    """
+    return [
+        "recipe-runner-rs",  # PATH
+        str(Path.home() / ".cargo" / "bin" / "recipe-runner-rs"),
+        str(Path.home() / ".local" / "bin" / "recipe-runner-rs"),
+    ]
+
+
+def _install_timeout() -> int:
+    """Return the install timeout in seconds (env-configurable)."""
+    return int(os.environ.get("RECIPE_RUNNER_INSTALL_TIMEOUT", "300"))
+
+
+def _run_timeout() -> int:
+    """Return the run timeout in seconds (env-configurable)."""
+    return int(os.environ.get("RECIPE_RUNNER_RUN_TIMEOUT", "3600"))
 
 
 def find_rust_binary() -> str | None:
@@ -37,7 +54,7 @@ def find_rust_binary() -> str | None:
     if env_path and shutil.which(env_path):
         return env_path
 
-    for candidate in _BINARY_SEARCH_PATHS:
+    for candidate in _binary_search_paths():
         resolved = shutil.which(candidate)
         if resolved:
             return resolved
@@ -86,12 +103,13 @@ def ensure_rust_recipe_runner(*, quiet: bool = False) -> bool:
     if not quiet:
         logger.info("Installing recipe-runner-rs from %s …", _REPO_URL)
 
+    timeout = _install_timeout()
     try:
         result = subprocess.run(
             [cargo, "install", "--git", _REPO_URL],
             capture_output=True,
             text=True,
-            timeout=300,
+            timeout=timeout,
         )
         if result.returncode == 0:
             if not quiet:
@@ -105,27 +123,35 @@ def ensure_rust_recipe_runner(*, quiet: bool = False) -> bool:
         )
         return False
     except subprocess.TimeoutExpired:
-        logger.warning("cargo install timed out after 300s")
+        logger.warning("cargo install timed out after %ds", timeout)
         return False
     except Exception as exc:
         logger.warning("cargo install failed: %s", exc)
         return False
 
 
-def run_recipe_via_rust(
-    name: str,
-    user_context: dict[str, Any] | None = None,
-    dry_run: bool = False,
-    recipe_dirs: list[str] | None = None,
-    working_dir: str = ".",
-    auto_stage: bool = True,
-) -> RecipeResult:
-    """Execute a recipe using the Rust binary.
+# -- Helpers for run_recipe_via_rust -----------------------------------------
 
-    Raises:
-        RustRunnerNotFoundError: If the binary is not installed.
-        RuntimeError: If the binary produces unparseable output.
-    """
+
+def _redact_command_for_log(cmd: list[str]) -> str:
+    """Build a log-safe command string with context values masked."""
+    parts: list[str] = []
+    mask_next = False
+    for token in cmd:
+        if mask_next:
+            key, _, _value = token.partition("=")
+            parts.append(f"{key}=***")
+            mask_next = False
+        elif token == "--set":
+            parts.append(token)
+            mask_next = True
+        else:
+            parts.append(token)
+    return " ".join(parts)
+
+
+def _find_rust_binary() -> str:
+    """Locate the Rust binary or raise ``RustRunnerNotFoundError``."""
     binary = find_rust_binary()
     if binary is None:
         raise RustRunnerNotFoundError(
@@ -133,7 +159,20 @@ def run_recipe_via_rust(
             "Install it: cargo install --git https://github.com/rysweet/amplihack-recipe-runner "
             "or set RECIPE_RUNNER_RS_PATH to the binary location."
         )
+    return binary
 
+
+def _build_rust_command(
+    binary: str,
+    name: str,
+    *,
+    working_dir: str,
+    dry_run: bool,
+    auto_stage: bool,
+    recipe_dirs: list[str] | None,
+    user_context: dict[str, Any] | None,
+) -> list[str]:
+    """Assemble the CLI command list for the Rust binary."""
     cmd = [binary, name, "--output-format", "json", "-C", working_dir]
 
     if dry_run:
@@ -155,17 +194,28 @@ def run_recipe_via_rust(
             else:
                 cmd.extend(["--set", f"{key}={value}"])
 
-    logger.info("Executing recipe '%s' via Rust binary: %s", name, " ".join(cmd))
+    return cmd
 
+
+_STATUS_MAP = {
+    "completed": StepStatus.COMPLETED,
+    "skipped": StepStatus.SKIPPED,
+    "failed": StepStatus.FAILED,
+    "pending": StepStatus.PENDING,
+    "running": StepStatus.RUNNING,
+}
+
+
+def _execute_rust_command(cmd: list[str], *, working_dir: str, name: str) -> RecipeResult:
+    """Run the Rust binary and parse its JSON output into a ``RecipeResult``."""
     result = subprocess.run(
         cmd,
         capture_output=True,
         text=True,
         cwd=working_dir,
-        timeout=3600,  # 1 hour hard limit — recipes can be long-running
+        timeout=_run_timeout(),
     )
 
-    # Parse JSON output
     try:
         data = json.loads(result.stdout)
     except (json.JSONDecodeError, TypeError):
@@ -179,25 +229,15 @@ def run_recipe_via_rust(
             f"{result.stdout[:500] if result.stdout else 'empty stdout'}"
         )
 
-    # Convert JSON output to RecipeResult
-    step_results = []
-    for sr in data.get("step_results", []):
-        status_str = sr.get("status", "failed").lower()
-        status_map = {
-            "completed": StepStatus.COMPLETED,
-            "skipped": StepStatus.SKIPPED,
-            "failed": StepStatus.FAILED,
-            "pending": StepStatus.PENDING,
-            "running": StepStatus.RUNNING,
-        }
-        step_results.append(
-            StepResult(
-                step_id=sr.get("step_id", "unknown"),
-                status=status_map.get(status_str, StepStatus.FAILED),
-                output=sr.get("output", ""),
-                error=sr.get("error", ""),
-            )
+    step_results = [
+        StepResult(
+            step_id=sr.get("step_id", "unknown"),
+            status=_STATUS_MAP.get(sr.get("status", "failed").lower(), StepStatus.FAILED),
+            output=sr.get("output", ""),
+            error=sr.get("error", ""),
         )
+        for sr in data.get("step_results", [])
+    ]
 
     return RecipeResult(
         recipe_name=data.get("recipe_name", name),
@@ -205,3 +245,41 @@ def run_recipe_via_rust(
         step_results=step_results,
         context=data.get("context", {}),
     )
+
+
+# -- Public entry point ------------------------------------------------------
+
+
+def run_recipe_via_rust(
+    name: str,
+    user_context: dict[str, Any] | None = None,
+    dry_run: bool = False,
+    recipe_dirs: list[str] | None = None,
+    working_dir: str = ".",
+    auto_stage: bool = True,
+) -> RecipeResult:
+    """Execute a recipe using the Rust binary.
+
+    Raises:
+        RustRunnerNotFoundError: If the binary is not installed.
+        RuntimeError: If the binary produces unparseable output.
+    """
+    binary = _find_rust_binary()
+
+    cmd = _build_rust_command(
+        binary,
+        name,
+        working_dir=working_dir,
+        dry_run=dry_run,
+        auto_stage=auto_stage,
+        recipe_dirs=recipe_dirs,
+        user_context=user_context,
+    )
+
+    logger.info(
+        "Executing recipe '%s' via Rust binary: %s",
+        name,
+        _redact_command_for_log(cmd),
+    )
+
+    return _execute_rust_command(cmd, working_dir=working_dir, name=name)
