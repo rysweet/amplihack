@@ -447,7 +447,9 @@ class SessionManager:
 
         return session.status
 
-    def _execute_ssh_command(self, vm_name: str, command: str) -> str:
+    def _execute_ssh_command(
+        self, vm_name: str, command: str, tunnel_port: int | None = None
+    ) -> str:
         """Execute command on remote VM via SSH.
 
         Uses azlin for SSH connectivity.
@@ -455,13 +457,15 @@ class SessionManager:
         Args:
             vm_name: Name of the VM
             command: Command to execute
+            tunnel_port: Local port of existing bastion tunnel to reuse (default: None)
 
         Returns:
             Command output as string
         """
+        port_args = ["--port", str(tunnel_port)] if tunnel_port is not None else []
         try:
             result = subprocess.run(
-                ["azlin", "ssh", vm_name, "--", command],
+                ["azlin", "ssh", *port_args, vm_name, "--", command],
                 capture_output=True,
                 text=True,
                 timeout=30,

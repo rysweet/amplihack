@@ -34,16 +34,18 @@ class Executor:
     and output capture.
     """
 
-    def __init__(self, vm: VM, timeout_minutes: int = 120):
+    def __init__(self, vm: VM, timeout_minutes: int = 120, tunnel_port: int | None = None):
         """Initialize executor.
 
         Args:
             vm: Target VM for execution
             timeout_minutes: Maximum execution time (default: 120)
+            tunnel_port: Local port of existing bastion tunnel to reuse (default: None)
         """
         self.vm = vm
         self.timeout_seconds = timeout_minutes * 60
         self.remote_workspace = "~/workspace"
+        self.tunnel_port = tunnel_port
 
     @staticmethod
     def _encode_b64(text: str) -> str:
@@ -58,6 +60,12 @@ class Executor:
             Base64-encoded string
         """
         return base64.b64encode(text.encode()).decode()
+
+    def _azlin_port_args(self) -> list[str]:
+        """Return --port flag args if tunnel_port is set, else empty list."""
+        if self.tunnel_port is not None:
+            return ["--port", str(self.tunnel_port)]
+        return []
 
     def transfer_context(self, archive_path: Path) -> bool:
         """Transfer context archive to remote VM.
@@ -93,7 +101,7 @@ class Executor:
                 start_time = time.time()
 
                 subprocess.run(
-                    ["azlin", "cp", archive_name, remote_path],
+                    ["azlin", "cp", *self._azlin_port_args(), archive_name, remote_path],
                     cwd=str(archive_dir),  # Run from archive directory
                     capture_output=True,
                     text=True,
@@ -230,7 +238,7 @@ amplihack claude --{command} --max-turns {max_turns} -- -p "$PROMPT"
 
         try:
             result = subprocess.run(
-                ["azlin", "connect", self.vm.name, setup_and_run],
+                ["azlin", "connect", *self._azlin_port_args(), self.vm.name, setup_and_run],
                 capture_output=True,
                 text=True,
                 timeout=self.timeout_seconds,
@@ -259,7 +267,7 @@ amplihack claude --{command} --max-turns {max_turns} -- -p "$PROMPT"
             # Try to terminate remote process
             try:
                 subprocess.run(
-                    ["azlin", "connect", self.vm.name, "pkill -TERM -f amplihack"],
+                    ["azlin", "connect", *self._azlin_port_args(), self.vm.name, "pkill -TERM -f amplihack"],
                     timeout=30,
                     capture_output=True,
                 )
@@ -314,7 +322,7 @@ fi
         try:
             # Create archive
             subprocess.run(
-                ["azlin", "connect", self.vm.name, create_archive],
+                ["azlin", "connect", *self._azlin_port_args(), self.vm.name, create_archive],
                 capture_output=True,
                 text=True,
                 timeout=60,
@@ -324,7 +332,7 @@ fi
             # Download archive (azlin cp requires relative paths)
             local_archive = local_dest / "logs.tar.gz"
             subprocess.run(
-                ["azlin", "cp", f"{self.vm.name}:~/logs.tar.gz", "logs.tar.gz"],
+                ["azlin", "cp", *self._azlin_port_args(), f"{self.vm.name}:~/logs.tar.gz", "logs.tar.gz"],
                 cwd=str(local_dest),  # Run from destination directory
                 capture_output=True,
                 text=True,
@@ -377,7 +385,7 @@ echo "Bundle created"
         try:
             # Create bundle
             subprocess.run(
-                ["azlin", "connect", self.vm.name, create_bundle],
+                ["azlin", "connect", *self._azlin_port_args(), self.vm.name, create_bundle],
                 capture_output=True,
                 text=True,
                 timeout=300,
@@ -387,7 +395,7 @@ echo "Bundle created"
             # Download bundle (azlin cp requires relative paths)
             local_bundle = local_dest / "results.bundle"
             subprocess.run(
-                ["azlin", "cp", f"{self.vm.name}:~/results.bundle", "results.bundle"],
+                ["azlin", "cp", *self._azlin_port_args(), f"{self.vm.name}:~/results.bundle", "results.bundle"],
                 cwd=str(local_dest),  # Run from destination directory
                 capture_output=True,
                 text=True,
@@ -536,7 +544,7 @@ echo "Tmux session {safe_session_id} started successfully"
 
         try:
             result = subprocess.run(
-                ["azlin", "connect", self.vm.name, setup_and_run],
+                ["azlin", "connect", *self._azlin_port_args(), self.vm.name, setup_and_run],
                 capture_output=True,
                 text=True,
                 timeout=600,  # 10 minutes for setup
@@ -588,7 +596,7 @@ echo "Tmux session {safe_session_id} started successfully"
 
         try:
             result = subprocess.run(
-                ["azlin", "connect", self.vm.name, check_command],
+                ["azlin", "connect", *self._azlin_port_args(), self.vm.name, check_command],
                 capture_output=True,
                 text=True,
                 timeout=30,
