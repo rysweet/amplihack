@@ -200,7 +200,8 @@ class RecipeRunner:
                 error=str(exc),
             )
 
-        # Optionally parse JSON output -- retry once then FAIL
+        # Optionally parse JSON output -- retry once then FAIL or DEGRADE
+        degraded = False
         if step.parse_json and output:
             parsed = self._parse_json_output(output, step.id)
             if parsed is not None:
@@ -218,29 +219,51 @@ class RecipeRunner:
                         output = parsed
                         logger.info("Step '%s': parse_json succeeded on retry.", step.id)
                     else:
+                        if step.parse_json_required:
+                            logger.error(
+                                "Step '%s': parse_json_required failed on retry. "
+                                "Raw output (first 200 chars): %s",
+                                step.id,
+                                str(retry_output)[:200],
+                            )
+                            return StepResult(
+                                step_id=step.id,
+                                status=StepStatus.FAILED,
+                                error="parse_json failed after retry: output is not valid JSON",
+                            )
+                        else:
+                            logger.warning(
+                                "Step '%s': parse_json failed on retry, storing raw output "
+                                "and continuing (parse_json_required=false). "
+                                "Raw output (first 200 chars): %s",
+                                step.id,
+                                str(retry_output)[:200],
+                            )
+                            output = retry_output
+                            degraded = True
+                else:
+                    if step.parse_json_required:
                         logger.error(
-                            "Step '%s': parse_json failed on retry. "
+                            "Step '%s': parse_json_required failed and retry not possible. "
                             "Raw output (first 200 chars): %s",
                             step.id,
-                            str(retry_output)[:200],
+                            str(output)[:200],
                         )
                         return StepResult(
                             step_id=step.id,
                             status=StepStatus.FAILED,
-                            error="parse_json failed after retry: output is not valid JSON",
+                            error="parse_json failed: output is not valid JSON",
                         )
-                else:
-                    logger.error(
-                        "Step '%s': parse_json failed and retry not possible. "
-                        "Raw output (first 200 chars): %s",
-                        step.id,
-                        str(output)[:200],
-                    )
-                    return StepResult(
-                        step_id=step.id,
-                        status=StepStatus.FAILED,
-                        error="parse_json failed: output is not valid JSON",
-                    )
+                    else:
+                        logger.warning(
+                            "Step '%s': parse_json failed, storing raw output "
+                            "and continuing (parse_json_required=false). "
+                            "Raw output (first 200 chars): %s",
+                            step.id,
+                            str(output)[:200],
+                        )
+                        # output stays as the raw string
+                        degraded = True
 
         # Store output in context
         if step.output:
@@ -250,12 +273,16 @@ class RecipeRunner:
         if step.step_type == StepType.AGENT:
             self._maybe_auto_stage(step, ctx)
 
+        step_status = StepStatus.DEGRADED if degraded else StepStatus.COMPLETED
         return StepResult(
             step_id=step.id,
-            status=StepStatus.COMPLETED,
+            status=step_status,
             output=json.dumps(output)
             if isinstance(output, (dict, list))
             else (str(output) if output else ""),
+            error="parse_json failed: raw output stored instead of parsed JSON"
+            if degraded
+            else "",
         )
 
     def _maybe_auto_stage(self, step: Step, ctx: RecipeContext) -> None:
