@@ -235,6 +235,39 @@ def run(turns: int, topic_name: str, source_agent: str, dry_run: bool) -> None:
 
     logger.info("feed_content: finished sending %d LEARN_CONTENT events", len(events))
 
+    # Send FEED_COMPLETE sentinel so agents know all content has been delivered
+    if connection_string:
+        _send_feed_complete(connection_string, topic_name, source_agent, len(events))
+
+
+def _send_feed_complete(
+    connection_string: str, topic_name: str, source_agent: str, total_turns: int
+) -> None:
+    """Publish a FEED_COMPLETE sentinel event after all content is sent."""
+    import json
+
+    from azure.servicebus import ServiceBusClient, ServiceBusMessage
+
+    event = {
+        "event_id": uuid.uuid4().hex,
+        "event_type": "FEED_COMPLETE",
+        "source_agent": source_agent,
+        "timestamp": time.time(),
+        "payload": {"total_turns": total_turns},
+    }
+    with ServiceBusClient.from_connection_string(connection_string) as client:
+        with client.get_topic_sender(topic_name=topic_name) as sender:
+            body = json.dumps(event, separators=(",", ":"))
+            msg = ServiceBusMessage(
+                body=body,
+                application_properties={
+                    "event_type": "FEED_COMPLETE",
+                    "source_agent": source_agent,
+                },
+            )
+            sender.send_messages(msg)
+    logger.info("feed_content: sent FEED_COMPLETE sentinel (total_turns=%d)", total_turns)
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(

@@ -1070,7 +1070,73 @@ Examples:
         metavar="N",
         help="Run the eval N times and report median and stddev of scores (default: 1).",
     )
+    p.add_argument(
+        "--wait-for-ready",
+        type=int,
+        default=0,
+        metavar="N",
+        help=(
+            "Wait for N AGENT_READY events before running eval. "
+            "Agents publish AGENT_READY after processing FEED_COMPLETE. "
+            "Use with --run-eval to trigger eval only after agents are done."
+        ),
+    )
+    p.add_argument(
+        "--ready-timeout",
+        type=int,
+        default=14400,
+        metavar="SECONDS",
+        help="Max seconds to wait for AGENT_READY events (default: 14400 = 4h).",
+    )
     return p
+
+
+def wait_for_agent_ready(
+    connection_string: str,
+    topic: str,
+    subscription: str,
+    expected_agents: int,
+    timeout: int = 14400,
+) -> set[str]:
+    """Block until *expected_agents* publish AGENT_READY, or timeout.
+
+    Listens on the given Service Bus subscription for AGENT_READY events.
+    Returns the set of agent names that reported ready.
+    """
+    from azure.servicebus import ServiceBusClient
+
+    ready_agents: set[str] = set()
+    deadline = time.time() + timeout
+
+    print(f"Waiting for {expected_agents} AGENT_READY events (timeout={timeout}s)...")
+
+    with ServiceBusClient.from_connection_string(connection_string) as client:
+        with client.get_subscription_receiver(
+            topic_name=topic,
+            subscription_name=subscription,
+            max_wait_time=30,
+        ) as receiver:
+            while len(ready_agents) < expected_agents and time.time() < deadline:
+                messages = receiver.receive_messages(max_message_count=50, max_wait_time=30)
+                for msg in messages:
+                    try:
+                        body = json.loads(str(msg))
+                        if body.get("event_type") == "AGENT_READY":
+                            agent_name = body.get("payload", {}).get("agent_name", "unknown")
+                            ready_agents.add(agent_name)
+                            print(
+                                f"  AGENT_READY from {agent_name} "
+                                f"({len(ready_agents)}/{expected_agents})"
+                            )
+                        receiver.complete_message(msg)
+                    except Exception:
+                        receiver.complete_message(msg)
+
+    print(
+        f"{'All' if len(ready_agents) >= expected_agents else 'Partial'} agents ready: "
+        f"{len(ready_agents)}/{expected_agents}"
+    )
+    return ready_agents
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -1135,6 +1201,15 @@ def main(argv: list[str] | None = None) -> int:
             n = client.seed_facts(facts=seed_corpus, table=args.table)
             print(f"Seeded {n} security facts. Waiting 5s for propagation...")
             time.sleep(5)
+
+        if args.wait_for_ready > 0:
+            wait_for_agent_ready(
+                connection_string=args.connection_string,
+                topic=args.topic,
+                subscription=args.subscription,
+                expected_agents=args.wait_for_ready,
+                timeout=args.ready_timeout,
+            )
 
         if args.run_eval:
             n = args.repeats
