@@ -904,21 +904,6 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
     # Register awesome-copilot marketplace extensions (best-effort, silent on failure)
     register_awesome_copilot_marketplace()
 
-    # Ensure Rust recipe runner is available
-    try:
-        from ..recipes.rust_runner import ensure_rust_recipe_runner
-
-        if ensure_rust_recipe_runner():
-            print("✓ Rust recipe runner available")
-        else:
-            print("⚠ Rust recipe runner not installed — install Rust (rustup.rs) and run:")
-            print("  cargo install --git https://github.com/rysweet/amplihack-recipe-runner")
-    except Exception as e:
-        import logging
-
-        logging.getLogger(__name__).warning(
-            "Could not check recipe-runner-rs: %s", e, exc_info=True,
-        )
 
     # Prompt to re-enable power-steering if disabled (#2544)
     try:

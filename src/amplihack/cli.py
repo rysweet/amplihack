@@ -176,6 +176,9 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
         # Ensure amplihack framework is staged to ~/.amplihack/.claude/
         _ensure_amplihack_staged()
 
+        # Ensure Rust recipe runner is available
+        _ensure_rust_recipe_runner()
+
         # Auto-install missing SDK dependencies (e.g. agent-framework)
         # Uses --python sys.executable to target the running interpreter,
         # critical when launched via uvx (ephemeral venv != project .venv).
@@ -992,6 +995,26 @@ def _fix_global_statusline_path() -> None:
             print(f"Warning: Could not update global statusline path: {e}")
 
 
+def _ensure_rust_recipe_runner() -> None:
+    """Ensure the Rust recipe runner binary is available.
+
+    Called during startup for all launcher paths. Non-fatal — logs a
+    warning if the binary cannot be installed or found.
+    """
+    try:
+        from .recipes.rust_runner import ensure_rust_recipe_runner
+
+        if ensure_rust_recipe_runner():
+            print("✓ Rust recipe runner available")
+        else:
+            print("⚠ Rust recipe runner not installed — install Rust (rustup.rs) and run:")
+            print("  cargo install --git https://github.com/rysweet/amplihack-recipe-runner")
+    except Exception as e:
+        logging.getLogger(__name__).warning(
+            "Could not check recipe-runner-rs: %s", e, exc_info=True,
+        )
+
+
 def _ensure_amplihack_staged() -> None:
     """Ensure .claude/ files are staged to ~/.amplihack/.claude/ for non-Claude commands.
 
@@ -1451,6 +1474,7 @@ def main(argv: list[str] | None = None) -> int:
         # Ensure amplihack framework is staged (skip in subprocess-safe mode)
         if not getattr(args, "subprocess_safe", False):
             _ensure_amplihack_staged()
+            _ensure_rust_recipe_runner()
 
         # Force RustyClawd usage (Rust implementation of Claude Code)
         os.environ["AMPLIHACK_USE_RUSTYCLAWD"] = "1"
@@ -1477,6 +1501,7 @@ def main(argv: list[str] | None = None) -> int:
         # Ensure amplihack framework is staged (skip in subprocess-safe mode)
         if not getattr(args, "subprocess_safe", False):
             _ensure_amplihack_staged()
+            _ensure_rust_recipe_runner()
 
         # Handle auto mode
         exit_code = handle_auto_mode("copilot", args, claude_args)
@@ -1501,6 +1526,7 @@ def main(argv: list[str] | None = None) -> int:
         # Ensure amplihack framework is staged (skip in subprocess-safe mode)
         if not getattr(args, "subprocess_safe", False):
             _ensure_amplihack_staged()
+            _ensure_rust_recipe_runner()
 
         # Handle auto mode
         exit_code = handle_auto_mode("codex", args, claude_args)
@@ -1525,6 +1551,7 @@ def main(argv: list[str] | None = None) -> int:
         # Ensure amplihack framework is staged (skip in subprocess-safe mode)
         if not getattr(args, "subprocess_safe", False):
             _ensure_amplihack_staged()
+            _ensure_rust_recipe_runner()
 
         # Environment setup
         if getattr(args, "no_reflection", False):
