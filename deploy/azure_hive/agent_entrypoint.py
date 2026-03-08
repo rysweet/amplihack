@@ -241,6 +241,44 @@ def _handle_event(
                 agent_name,
             )
 
+    elif event_type == "FEED_COMPLETE":
+        total_turns = (payload or {}).get("total_turns", "?")
+        logger.info(
+            "Agent %s received FEED_COMPLETE (total_turns=%s). Publishing AGENT_READY.",
+            agent_name,
+            total_turns,
+        )
+        # Publish AGENT_READY so the eval script knows this agent is done processing
+        import json
+        import uuid as _uuid
+
+        ready_event = {
+            "event_id": _uuid.uuid4().hex,
+            "event_type": "AGENT_READY",
+            "source_agent": agent_name,
+            "timestamp": time.time(),
+            "payload": {"agent_name": agent_name, "total_turns": total_turns},
+        }
+        if hasattr(memory, "_transport") and hasattr(memory._transport, "publish"):
+            from amplihack.agents.goal_seeking.hive_mind.event_bus import BusEvent
+
+            memory._transport.publish(
+                BusEvent(
+                    event_id=ready_event["event_id"],
+                    event_type="AGENT_READY",
+                    source_agent=agent_name,
+                    timestamp=ready_event["timestamp"],
+                    payload=ready_event["payload"],
+                )
+            )
+        elif hasattr(memory, "send_event"):
+            memory.send_event(json.dumps(ready_event))
+        logger.info("Agent %s published AGENT_READY", agent_name)
+
+    elif event_type in ("AGENT_READY",):
+        # Ignore AGENT_READY events from other agents
+        pass
+
     elif event_type in ("QUERY_RESPONSE", "network_graph.search_response"):
         # Response events emitted by the graph store auto-handler or by other
         # agents replying to a search query.  The NetworkGraphStore handles
