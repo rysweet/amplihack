@@ -14,6 +14,23 @@ from __future__ import annotations
 import subprocess
 import textwrap
 
+import pytest
+
+# Sanitization pipeline reproduced from default-workflow.yaml step-04-setup-worktree.
+# Defined at module level so textwrap.dedent() runs once, not once per test call.
+_SANITIZE_SCRIPT = textwrap.dedent(
+    r"""
+    printf '%s' "$TASK_DESC" \
+      | tr '\n\r' ' ' \
+      | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' \
+      | tr '[:upper:]' '[:lower:]' \
+      | sed 's/[^a-z0-9_.-]/-/g' \
+      | sed 's/-\{2,\}/-/g' \
+      | cut -c1-60 \
+      | sed 's/[-.]$//'
+    """
+).strip()
+
 
 def _sanitize(task_desc: str) -> str:
     """Run the sanitization pipeline from step-04 against task_desc.
@@ -28,20 +45,8 @@ def _sanitize(task_desc: str) -> str:
       7. cut to 60 chars
       8. sed strip trailing hyphens/dots
     """
-    script = textwrap.dedent(
-        r"""
-        printf '%s' "$TASK_DESC" \
-          | tr '\n\r' ' ' \
-          | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' \
-          | tr '[:upper:]' '[:lower:]' \
-          | sed 's/[^a-z0-9_.-]/-/g' \
-          | sed 's/-\{2,\}/-/g' \
-          | cut -c1-60 \
-          | sed 's/[-.]$//'
-        """
-    ).strip()
     result = subprocess.run(
-        ["bash", "-c", script],
+        ["bash", "-c", _SANITIZE_SCRIPT],
         input=None,
         capture_output=True,
         text=True,
@@ -158,21 +163,13 @@ class TestBranchNameSanitization:
         # Just verify it ran without error
         assert isinstance(slug, str)
 
-    def test_normal_description_passes_git_check_ref_format(self) -> None:
-        """A typical description produces a slug that passes git check-ref-format."""
-        desc = "add user profile page"
-        branch = f"feat/issue-42-{_sanitize(desc)}"
-        assert _validate_git_branch(branch), f"Branch '{branch}' failed git check-ref-format"
-
-    def test_description_with_newlines_passes_git_check_ref_format(self) -> None:
-        """A description with embedded newlines still produces a valid branch name."""
-        desc = "fix login\nbug with oauth2\n"
-        branch = f"feat/issue-99-{_sanitize(desc)}"
-        assert _validate_git_branch(branch), f"Branch '{branch}' failed git check-ref-format"
-
-    def test_long_description_passes_git_check_ref_format(self) -> None:
-        """A very long description is truncated to produce a valid branch name."""
-        desc = "implement comprehensive user authentication system with oauth2 saml and ldap"
-        branch = f"feat/issue-7-{_sanitize(desc)}"
-        assert len(branch) <= 75  # prefix + 60 slug chars
+    @pytest.mark.parametrize("desc,issue_num", [
+        ("add user profile page", 42),
+        ("fix login\nbug with oauth2\n", 99),
+        ("implement comprehensive user authentication system with oauth2 saml and ldap", 7),
+    ])
+    def test_passes_git_check_ref_format(self, desc: str, issue_num: int) -> None:
+        """All description types produce slugs that pass git check-ref-format."""
+        branch = f"feat/issue-{issue_num}-{_sanitize(desc)}"
+        assert len(branch) <= 75  # prefix + up to 60 slug chars
         assert _validate_git_branch(branch), f"Branch '{branch}' failed git check-ref-format"
