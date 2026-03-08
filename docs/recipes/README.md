@@ -33,6 +33,31 @@ from amplihack.recipes import ensure_rust_recipe_runner
 ensure_rust_recipe_runner()  # Installs if missing, no-op if present
 ```
 
+## Engine Feature Comparison
+
+The Rust engine supports additional features not available in the Python engine:
+
+| Feature | Rust | Python |
+|---------|------|--------|
+| `parallel_group` | ✅ | ❌ |
+| `continue_on_error` | ✅ | ❌ |
+| `when_tags` | ✅ | ❌ |
+| `hooks` (pre/post/on_error) | ✅ | ❌ |
+| `extends` (inheritance) | ✅ | ❌ |
+| `recursion` config | ✅ | ❌ |
+
+Set `RECIPE_RUNNER_ENGINE=rust` to use the full feature set.
+
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `RECIPE_RUNNER_ENGINE` | (auto-detect) | Engine selection: `rust`, `python`, or unset |
+| `RECIPE_RUNNER_RS_PATH` | (auto) | Custom path to Rust binary |
+| `RECIPE_RUNNER_INSTALL_TIMEOUT` | 300 | Cargo install timeout (seconds) |
+| `RECIPE_RUNNER_RUN_TIMEOUT` | 3600 | Recipe execution timeout (seconds) |
+| `RUST_LOG` | (unset) | Rust binary log level (e.g., `debug`, `info`) |
+
 ## Contents
 
 - [Why It Exists](#why-it-exists)
