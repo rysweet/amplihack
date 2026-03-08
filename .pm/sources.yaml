@@ -1,0 +1,18 @@
+github:
+  - account: rysweet
+    repos:
+      - amplihack
+      - azlin
+      - agent-haymaker
+      - haymaker-azure-workloads
+      - haymaker-m365-workloads
+      - haymaker-workload-starter
+      - amplihack-agent-eval
+      - amplihack-memory-lib
+      - azure-tenant-grapher
+      - agent-kgpacks
+      - gadugi-agentic-test
+  - account: rysweet_microsoft
+    repos:
+      - cloud-ecosystem-security/SedanDelivery
+      - cloud-ecosystem-security/cybergym

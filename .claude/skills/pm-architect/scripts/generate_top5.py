@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
-"""Aggregate priorities from PM sub-skills into a strict Top 5 ranked list.
+"""Aggregate priorities across GitHub accounts into a strict Top 5 ranked list.
 
-Queries backlog-curator, workstream-coordinator, roadmap-strategist, and
-work-delegator state to produce a unified priority ranking.
+Queries GitHub issues and PRs across configured accounts/repos, scores them
+by priority labels, staleness, blocking status, and roadmap alignment.
+
+Falls back to .pm/ YAML state if GitHub is unavailable or for enrichment.
 
 Usage:
-    python generate_top5.py [--project-root PATH]
+    python generate_top5.py [--project-root PATH] [--sources PATH]
 
 Returns JSON with top 5 priorities.
 """
 
 import argparse
 import json
+import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -21,12 +24,27 @@ import yaml
 
 
 # Aggregation weights
-WEIGHT_BACKLOG = 0.35
-WEIGHT_WORKSTREAM = 0.25
-WEIGHT_ROADMAP = 0.25
-WEIGHT_DELEGATION = 0.15
+WEIGHT_ISSUES = 0.40
+WEIGHT_PRS = 0.30
+WEIGHT_ROADMAP = 0.20
+WEIGHT_LOCAL = 0.10  # .pm/ overrides
 
 TOP_N = 5
+
+# Label-to-priority mapping
+PRIORITY_LABELS = {
+    "critical": 1.0,
+    "priority:critical": 1.0,
+    "high": 0.9,
+    "priority:high": 0.9,
+    "bug": 0.8,
+    "medium": 0.6,
+    "priority:medium": 0.6,
+    "enhancement": 0.5,
+    "feature": 0.5,
+    "low": 0.3,
+    "priority:low": 0.3,
+}
 
 
 def load_yaml(path: Path) -> dict[str, Any]:
@@ -37,11 +55,238 @@ def load_yaml(path: Path) -> dict[str, Any]:
         return yaml.safe_load(f) or {}
 
 
-def load_backlog_candidates(pm_dir: Path) -> list[dict]:
-    """Extract priority candidates from backlog.
+def load_sources(sources_path: Path) -> list[dict]:
+    """Load GitHub source configuration."""
+    data = load_yaml(sources_path)
+    return data.get("github", [])
 
-    Scores READY items using the same multi-criteria approach as backlog-curator.
+
+def run_gh(args: list[str], account: str | None = None) -> str | None:
+    """Run a gh CLI command, optionally switching account first.
+
+    Returns stdout on success, None on failure.
     """
+    env = None
+    if account:
+        # gh respects GH_TOKEN but switching is cleaner
+        switch = subprocess.run(
+            ["gh", "auth", "switch", "--user", account],
+            capture_output=True, text=True, timeout=10,
+        )
+        if switch.returncode != 0:
+            return None
+
+    try:
+        result = subprocess.run(
+            ["gh"] + args,
+            capture_output=True, text=True, timeout=30,
+            env=env,
+        )
+        if result.returncode != 0:
+            return None
+        return result.stdout.strip()
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return None
+
+
+def get_current_gh_account() -> str | None:
+    """Get the currently active gh account."""
+    result = subprocess.run(
+        ["gh", "auth", "status"],
+        capture_output=True, text=True, timeout=10,
+    )
+    for line in result.stderr.splitlines() + result.stdout.splitlines():
+        if "Active account: true" in line:
+            # The account name is on the previous line
+            pass
+        if "Logged in to" in line and "Active account" not in line:
+            # Parse: "Logged in to github.com account USERNAME"
+            parts = line.strip().split("account ")
+            if len(parts) >= 2:
+                account = parts[1].split(" ")[0].strip()
+                # Check if next line says active
+                idx = (result.stderr + result.stdout).find(line)
+                remaining = (result.stderr + result.stdout)[idx + len(line):]
+                if "Active account: true" in remaining.split("\n")[0:2]:
+                    return account
+    return None
+
+
+def fetch_github_issues(account: str, repos: list[str]) -> list[dict]:
+    """Fetch open issues for an account's repos from GitHub."""
+    candidates = []
+
+    # Use search API to get all issues at once
+    repo_qualifiers = " ".join(f"repo:{r}" if "/" in r else f"repo:{account}/{r}" for r in repos)
+    query = f"is:open is:issue {repo_qualifiers}"
+
+    jq_filter = (
+        '.items[] | {'
+        'repo: (.repository_url | split("/") | .[-2:] | join("/")),'
+        'title: .title,'
+        'labels: [.labels[].name],'
+        'created: .created_at,'
+        'updated: .updated_at,'
+        'number: .number,'
+        'comments: .comments'
+        '}'
+    )
+
+    output = run_gh(
+        ["api", "search/issues", "--method", "GET",
+         "-f", f"q={query}", "-f", "per_page=50",
+         "--jq", jq_filter],
+        account=account,
+    )
+
+    if not output:
+        return []
+
+    now = datetime.now(UTC)
+
+    for line in output.strip().splitlines():
+        try:
+            item = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+
+        # Score by labels
+        labels = [l.lower() for l in item.get("labels", [])]
+        priority_score = 0.5  # default
+        for label in labels:
+            if label in PRIORITY_LABELS:
+                priority_score = max(priority_score, PRIORITY_LABELS[label])
+
+        # Staleness boost: older updated = needs attention
+        try:
+            updated = datetime.fromisoformat(item["updated"].replace("Z", "+00:00"))
+            days_stale = (now - updated).total_seconds() / 86400
+        except (ValueError, KeyError):
+            days_stale = 0
+
+        staleness_score = min(days_stale / 14.0, 1.0)  # Max at 2 weeks
+
+        # Comment activity: more comments = more discussion = potentially blocked
+        comments = item.get("comments", 0)
+        activity_score = min(comments / 10.0, 1.0)
+
+        raw_score = (priority_score * 0.50 + staleness_score * 0.30 + activity_score * 0.20) * 100
+
+        # Rationale
+        reasons = []
+        if priority_score >= 0.8:
+            reasons.append(f"labeled {', '.join(l for l in labels if l in PRIORITY_LABELS)}")
+        if days_stale > 7:
+            reasons.append(f"stale {days_stale:.0f}d")
+        if comments > 3:
+            reasons.append(f"{comments} comments")
+        if not reasons:
+            reasons.append("open issue")
+
+        repo = item.get("repo", "")
+        candidates.append({
+            "title": f"[{repo}#{item['number']}] {item['title']}",
+            "source": "github_issue",
+            "raw_score": round(raw_score, 1),
+            "rationale": ", ".join(reasons),
+            "item_id": f"{repo}#{item['number']}",
+            "priority": "HIGH" if priority_score >= 0.8 else "MEDIUM" if priority_score >= 0.5 else "LOW",
+            "repo": repo,
+            "url": f"https://github.com/{repo}/issues/{item['number']}",
+        })
+
+    return candidates
+
+
+def fetch_github_prs(account: str, repos: list[str]) -> list[dict]:
+    """Fetch open PRs for an account's repos from GitHub."""
+    candidates = []
+
+    repo_qualifiers = " ".join(f"repo:{r}" if "/" in r else f"repo:{account}/{r}" for r in repos)
+    query = f"is:open is:pr {repo_qualifiers}"
+
+    jq_filter = (
+        '.items[] | {'
+        'repo: (.repository_url | split("/") | .[-2:] | join("/")),'
+        'title: .title,'
+        'labels: [.labels[].name],'
+        'created: .created_at,'
+        'updated: .updated_at,'
+        'number: .number,'
+        'draft: .draft,'
+        'comments: .comments'
+        '}'
+    )
+
+    output = run_gh(
+        ["api", "search/issues", "--method", "GET",
+         "-f", f"q={query}", "-f", "per_page=50",
+         "--jq", jq_filter],
+        account=account,
+    )
+
+    if not output:
+        return []
+
+    now = datetime.now(UTC)
+
+    for line in output.strip().splitlines():
+        try:
+            item = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+
+        is_draft = item.get("draft", False)
+
+        # PRs waiting for review are higher priority than drafts
+        base_score = 0.4 if is_draft else 0.7
+
+        # Labels boost
+        labels = [l.lower() for l in item.get("labels", [])]
+        for label in labels:
+            if label in PRIORITY_LABELS:
+                base_score = max(base_score, PRIORITY_LABELS[label])
+
+        # Staleness: PRs waiting for review get more urgent over time
+        try:
+            updated = datetime.fromisoformat(item["updated"].replace("Z", "+00:00"))
+            days_stale = (now - updated).total_seconds() / 86400
+        except (ValueError, KeyError):
+            days_stale = 0
+
+        staleness_score = min(days_stale / 7.0, 1.0)  # PRs stale faster (1 week max)
+
+        raw_score = (base_score * 0.60 + staleness_score * 0.40) * 100
+
+        reasons = []
+        if is_draft:
+            reasons.append("draft PR")
+        else:
+            reasons.append("awaiting review")
+        if days_stale > 3:
+            reasons.append(f"stale {days_stale:.0f}d")
+        if labels:
+            relevant = [l for l in labels if l in PRIORITY_LABELS]
+            if relevant:
+                reasons.append(f"labeled {', '.join(relevant)}")
+
+        repo = item.get("repo", "")
+        candidates.append({
+            "title": f"[{repo}#{item['number']}] {item['title']}",
+            "source": "github_pr",
+            "raw_score": round(raw_score, 1),
+            "rationale": ", ".join(reasons),
+            "item_id": f"{repo}#{item['number']}",
+            "priority": "HIGH" if base_score >= 0.8 else "MEDIUM",
+            "repo": repo,
+            "url": f"https://github.com/{repo}/pull/{item['number']}",
+        })
+
+    return candidates
+
+
+def load_local_overrides(pm_dir: Path) -> list[dict]:
+    """Load manually-added items from .pm/backlog for local enrichment."""
     backlog_data = load_yaml(pm_dir / "backlog" / "items.yaml")
     items = backlog_data.get("items", [])
     ready_items = [item for item in items if item.get("status") == "READY"]
@@ -52,94 +297,27 @@ def load_backlog_candidates(pm_dir: Path) -> list[dict]:
     for item in ready_items:
         priority = item.get("priority", "MEDIUM")
         priority_score = priority_map.get(priority, 0.5)
-
-        # Blocking score: count items that depend on this one
-        item_id = item["id"]
-        blocking_count = 0
-        for other in items:
-            if other["id"] == item_id:
-                continue
-            deps = other.get("dependencies", [])
-            if item_id in deps:
-                blocking_count += 1
-
-        total_items = max(len(items), 1)
-        blocking_score = min(blocking_count / max(total_items * 0.3, 1), 1.0)
-
-        # Ease score based on estimated hours
         hours = item.get("estimated_hours", 4)
-        if hours < 2:
-            ease_score = 1.0
-        elif hours <= 6:
-            ease_score = 0.6
-        else:
-            ease_score = 0.3
+        ease_score = 1.0 if hours < 2 else 0.6 if hours <= 6 else 0.3
 
-        raw_score = (priority_score * 0.40 + blocking_score * 0.30 + ease_score * 0.20 + priority_score * 0.10) * 100
+        raw_score = (priority_score * 0.60 + ease_score * 0.40) * 100
 
-        # Rationale
         reasons = []
         if priority == "HIGH":
             reasons.append("HIGH priority")
-        if blocking_count > 0:
-            reasons.append(f"unblocks {blocking_count} item(s)")
         if hours < 2:
             reasons.append("quick win")
         if not reasons:
-            reasons.append("good next step")
+            reasons.append("local backlog item")
 
         candidates.append({
-            "title": item.get("title", item_id),
-            "source": "backlog",
+            "title": item.get("title", item["id"]),
+            "source": "local",
             "raw_score": round(raw_score, 1),
             "rationale": ", ".join(reasons),
-            "item_id": item_id,
+            "item_id": item["id"],
             "priority": priority,
         })
-
-    return candidates
-
-
-def load_workstream_candidates(pm_dir: Path) -> list[dict]:
-    """Extract urgent items from workstream state.
-
-    Stalled or blocked workstreams become high-priority candidates.
-    """
-    workstreams_dir = pm_dir / "workstreams"
-    if not workstreams_dir.exists():
-        return []
-
-    candidates = []
-    now = datetime.now(UTC)
-
-    for ws_file in workstreams_dir.glob("ws-*.yaml"):
-        ws = load_yaml(ws_file)
-        if not ws or ws.get("status") != "RUNNING":
-            continue
-
-        last_activity = ws.get("last_activity")
-        if not last_activity:
-            continue
-
-        try:
-            last_dt = datetime.fromisoformat(last_activity.replace("Z", "+00:00"))
-            hours_idle = (now - last_dt).total_seconds() / 3600
-        except (ValueError, TypeError):
-            hours_idle = 0.0
-
-        # Stalled workstreams get urgency score proportional to idle time
-        if hours_idle > 1:
-            urgency = min(hours_idle / 4.0, 1.0)  # Max at 4 hours
-            raw_score = urgency * 100
-
-            candidates.append({
-                "title": f"Investigate stalled: {ws.get('title', ws.get('id', 'unknown'))}",
-                "source": "workstream",
-                "raw_score": round(raw_score, 1),
-                "rationale": f"no activity for {hours_idle:.1f} hours",
-                "item_id": ws.get("id", ""),
-                "priority": "HIGH" if hours_idle > 2 else "MEDIUM",
-            })
 
     return candidates
 
@@ -153,10 +331,8 @@ def extract_roadmap_goals(pm_dir: Path) -> list[str]:
     text = roadmap_path.read_text()
     goals = []
 
-    # Extract goals from markdown headers and bullet points
     for line in text.splitlines():
         line = line.strip()
-        # Match "## Goal: ...", "- Goal: ...", "* ..."
         if line.startswith("## ") or line.startswith("### "):
             goals.append(line.lstrip("#").strip())
         elif line.startswith("- ") or line.startswith("* "):
@@ -168,14 +344,13 @@ def extract_roadmap_goals(pm_dir: Path) -> list[str]:
 def score_roadmap_alignment(candidate: dict, goals: list[str]) -> float:
     """Score how well a candidate aligns with roadmap goals. Returns 0.0-1.0."""
     if not goals:
-        return 0.5  # Neutral when no goals defined
+        return 0.5
 
     title_lower = candidate["title"].lower()
     max_alignment = 0.0
 
     for goal in goals:
         goal_words = set(goal.lower().split())
-        # Remove common stop words
         goal_words -= {"the", "a", "an", "and", "or", "to", "for", "in", "of", "is", "with"}
         if not goal_words:
             continue
@@ -187,56 +362,23 @@ def score_roadmap_alignment(candidate: dict, goals: list[str]) -> float:
     return min(max_alignment, 1.0)
 
 
-def load_delegation_candidates(pm_dir: Path) -> list[dict]:
-    """Extract items from delegation state that need action."""
-    delegations_dir = pm_dir / "delegations"
-    if not delegations_dir.exists():
-        return []
-
-    candidates = []
-    for deleg_file in delegations_dir.glob("*.yaml"):
-        deleg = load_yaml(deleg_file)
-        if not deleg:
-            continue
-
-        status = deleg.get("status", "")
-        if status in ("PENDING", "READY"):
-            raw_score = 70.0 if status == "READY" else 50.0
-            candidates.append({
-                "title": f"Delegate: {deleg.get('title', deleg_file.stem)}",
-                "source": "delegation",
-                "raw_score": raw_score,
-                "rationale": f"delegation {status.lower()}, ready for assignment",
-                "item_id": deleg.get("id", deleg_file.stem),
-                "priority": "MEDIUM",
-            })
-
-    return candidates
-
-
 def aggregate_and_rank(
-    backlog: list[dict],
-    workstream: list[dict],
-    delegation: list[dict],
+    issues: list[dict],
+    prs: list[dict],
+    local: list[dict],
     goals: list[str],
     top_n: int = TOP_N,
 ) -> list[dict]:
-    """Aggregate candidates from all sources and rank by weighted score.
-
-    Each candidate's final score is computed as:
-        final = (source_weight * raw_score) + (roadmap_weight * alignment * 100)
-
-    where source_weight depends on which sub-skill produced the candidate.
-    """
+    """Aggregate candidates from all sources and rank by weighted score."""
     scored = []
 
     source_weights = {
-        "backlog": WEIGHT_BACKLOG,
-        "workstream": WEIGHT_WORKSTREAM,
-        "delegation": WEIGHT_DELEGATION,
+        "github_issue": WEIGHT_ISSUES,
+        "github_pr": WEIGHT_PRS,
+        "local": WEIGHT_LOCAL,
     }
 
-    all_candidates = backlog + workstream + delegation
+    all_candidates = issues + prs + local
 
     for candidate in all_candidates:
         source = candidate["source"]
@@ -246,7 +388,7 @@ def aggregate_and_rank(
         alignment = score_roadmap_alignment(candidate, goals)
         final_score = (source_weight * raw) + (WEIGHT_ROADMAP * alignment * 100)
 
-        scored.append({
+        entry = {
             "title": candidate["title"],
             "source": candidate["source"],
             "score": round(final_score, 1),
@@ -254,13 +396,17 @@ def aggregate_and_rank(
             "item_id": candidate.get("item_id", ""),
             "priority": candidate.get("priority", "MEDIUM"),
             "alignment": round(alignment, 2),
-        })
+        }
+        if "url" in candidate:
+            entry["url"] = candidate["url"]
+        if "repo" in candidate:
+            entry["repo"] = candidate["repo"]
 
-    # Sort by score descending, then by priority (HIGH first) for tiebreaking
+        scored.append(entry)
+
     priority_order = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
     scored.sort(key=lambda x: (-x["score"], priority_order.get(x["priority"], 1)))
 
-    # Take top N and assign ranks
     top = scored[:top_n]
     for i, item in enumerate(top):
         item["rank"] = i + 1
@@ -268,49 +414,76 @@ def aggregate_and_rank(
     return top
 
 
-def generate_top5(project_root: Path) -> dict:
-    """Generate the Top 5 priority list from all PM sub-skill state."""
+def generate_top5(project_root: Path, sources_path: Path | None = None) -> dict:
+    """Generate the Top 5 priority list from GitHub + local state."""
     pm_dir = project_root / ".pm"
 
-    if not pm_dir.exists():
-        return {
-            "top5": [],
-            "message": "No .pm/ directory found. Run pm-architect to initialize.",
-            "sources": {"backlog": 0, "workstream": 0, "roadmap_goals": 0, "delegation": 0},
-        }
+    if sources_path is None:
+        sources_path = pm_dir / "sources.yaml"
 
-    # Gather candidates from each source
-    backlog = load_backlog_candidates(pm_dir)
-    workstream = load_workstream_candidates(pm_dir)
-    goals = extract_roadmap_goals(pm_dir)
-    delegation = load_delegation_candidates(pm_dir)
+    # Load GitHub sources config
+    sources = load_sources(sources_path)
+
+    # Remember original account to restore after
+    original_account = get_current_gh_account()
+
+    # Fetch from GitHub
+    all_issues = []
+    all_prs = []
+    accounts_queried = []
+
+    for source in sources:
+        account = source.get("account", "")
+        repos = source.get("repos", [])
+        if not account or not repos:
+            continue
+
+        accounts_queried.append(account)
+        all_issues.extend(fetch_github_issues(account, repos))
+        all_prs.extend(fetch_github_prs(account, repos))
+
+    # Restore original account
+    if original_account and accounts_queried:
+        run_gh(["auth", "switch", "--user", original_account])
+
+    # Load local overrides
+    local = []
+    if pm_dir.exists():
+        local = load_local_overrides(pm_dir)
+
+    # Load roadmap goals
+    goals = extract_roadmap_goals(pm_dir) if pm_dir.exists() else []
 
     # Aggregate and rank
-    top5 = aggregate_and_rank(backlog, workstream, delegation, goals)
+    top5 = aggregate_and_rank(all_issues, all_prs, local, goals)
 
     return {
         "top5": top5,
         "sources": {
-            "backlog": len(backlog),
-            "workstream": len(workstream),
+            "github_issues": len(all_issues),
+            "github_prs": len(all_prs),
+            "local_items": len(local),
             "roadmap_goals": len(goals),
-            "delegation": len(delegation),
+            "accounts": accounts_queried,
         },
-        "total_candidates": len(backlog) + len(workstream) + len(delegation),
+        "total_candidates": len(all_issues) + len(all_prs) + len(local),
     }
 
 
 def main():
     """Main entry point."""
-    parser = argparse.ArgumentParser(description="Generate Top 5 priorities from PM state")
+    parser = argparse.ArgumentParser(description="Generate Top 5 priorities from GitHub + local state")
     parser.add_argument(
         "--project-root", type=Path, default=Path.cwd(), help="Project root directory"
+    )
+    parser.add_argument(
+        "--sources", type=Path, default=None, help="Path to sources.yaml (default: .pm/sources.yaml)"
     )
 
     args = parser.parse_args()
 
     try:
-        result = generate_top5(args.project_root)
+        result = generate_top5(args.project_root, args.sources)
         print(json.dumps(result, indent=2))
         return 0
     except Exception as e:
