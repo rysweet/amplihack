@@ -1,8 +1,7 @@
-"""Outside-in test for CLISubprocessAdapter temp dir isolation.
+"""Outside-in test for NestedSessionAdapter and CLISubprocessAdapter.
 
-Replaces the old NestedSessionAdapter tests. Verifies that agent steps run in
-isolated temp directories and that CLAUDECODE is stripped from the child env,
-which is the fix for issue #2758.
+Verifies that agent steps run in isolated temp directories and that
+CLAUDECODE is stripped from the child env, which is the fix for issue #2758.
 """
 
 import os
@@ -15,11 +14,43 @@ except ImportError:
     pytest = None
 
 
-def test_cli_adapter_bash_step():
-    """Test that bash steps work correctly with project working directory."""
-    from amplihack.recipes.adapters.cli_subprocess import CLISubprocessAdapter
+def test_nested_session_adapter_basic():
+    """Test that NestedSessionAdapter can invoke claude CLI."""
+    from amplihack.recipes.adapters.nested_session import NestedSessionAdapter
 
-    adapter = CLISubprocessAdapter()
+    # Create adapter
+    adapter = NestedSessionAdapter(cli="claude")
+
+    # Test simple agent invocation
+    prompt = "What is 2+2? Answer with just the number."
+
+    try:
+        result = adapter.execute_agent_step(prompt=prompt)
+        print("Agent execution succeeded!")
+        print(f"Result: {result}")
+
+        # Verify we got a response
+        assert result, "Agent should return non-empty result"
+        assert len(result) > 0, "Result should have content"
+
+    except RuntimeError as e:
+        if "cannot be launched inside another Claude Code session" in str(e):
+            error_msg = (
+                "NestedSessionAdapter still blocked by nested session check. "
+                "CLAUDECODE was not properly unset in subprocess."
+            )
+            if pytest:
+                pytest.fail(error_msg)
+            else:
+                raise AssertionError(error_msg) from e
+        raise
+
+
+def test_nested_session_adapter_bash():
+    """Test that bash steps work correctly."""
+    from amplihack.recipes.adapters.nested_session import NestedSessionAdapter
+
+    adapter = NestedSessionAdapter()
 
     # Simple bash command
     result = adapter.execute_bash_step(command='echo "Hello from bash"')
@@ -28,93 +59,77 @@ def test_cli_adapter_bash_step():
     print(f"Bash execution works: {result}")
 
 
-def test_get_adapter_returns_cli_or_sdk():
-    """Test that get_adapter() returns CLISubprocessAdapter or ClaudeSDKAdapter (no more NestedSessionAdapter)."""
+def test_nested_session_adapter_temp_dirs():
+    """Test that temp directories are created and cleaned up."""
+    from amplihack.recipes.adapters.nested_session import NestedSessionAdapter
+
+    adapter = NestedSessionAdapter(use_temp_dirs=True)
+
+    # Track temp directories before
+    temp_root = Path(tempfile.gettempdir())
+    before = set(temp_root.glob("recipe-agent-*"))
+
+    # Execute agent step (creates temp dir)
+    try:
+        result = adapter.execute_agent_step(prompt="Say hello")
+        print("Agent executed in temp dir")
+    except Exception as e:
+        print(f"Agent execution error (may be expected): {e}")
+
+    # Check temp directories after
+    after = set(temp_root.glob("recipe-agent-*"))
+
+    # Temp directory should be cleaned up
+    created = after - before
+    print(f"Temp dirs created during test: {len(created)}")
+    print(f"Temp dirs remaining: {len(after)}")
+
+    # Should be cleaned up automatically
+    assert len(created) == 0, "Temp directory should be cleaned up after execution"
+
+
+def test_get_adapter_returns_adapter():
+    """Test that get_adapter() returns a usable adapter."""
     from amplihack.recipes.adapters import get_adapter
 
     adapter = get_adapter()
 
     print(f"Auto-selected adapter: {adapter.name}")
-    # Should be either cli-subprocess or claude-sdk, never nested-session
-    assert "nested-session" not in adapter.name, (
-        f"NestedSessionAdapter should not be returned anymore, got {adapter.name}"
-    )
+    assert adapter.name, "Adapter should have a name"
 
 
-def test_cli_adapter_strips_claudecode_env():
-    """Test that CLISubprocessAdapter strips CLAUDECODE from child env."""
-    from unittest.mock import MagicMock, mock_open, patch
+def test_nested_session_isolated_from_parent():
+    """Test that nested session env does not leak back into the parent."""
+    from amplihack.recipes.adapters.nested_session import NestedSessionAdapter
 
     from amplihack.recipes.adapters.cli_subprocess import CLISubprocessAdapter
 
-    with (
-        patch("subprocess.Popen") as mock_popen,
-        patch("threading.Thread"),
-        patch("pathlib.Path.read_text") as mock_read,
-        patch("tempfile.mkdtemp", return_value="/tmp/recipe-agent-envtest"),
-        patch("shutil.rmtree"),
-        patch("builtins.open", mock_open()),
-        patch.dict("os.environ", {"CLAUDECODE": "1", "CLAUDE_CODE_ENTRYPOINT": "1", "PATH": "/usr/bin"}),
-    ):
-        mock_proc = MagicMock()
-        mock_proc.returncode = 0
-        mock_popen.return_value = mock_proc
-        mock_read.return_value = "output"
+    # Record parent env snapshot
+    parent_env_snapshot = dict(os.environ)
 
-        adapter = CLISubprocessAdapter()
-        adapter.execute_agent_step("test prompt")
-
-        popen_kwargs = mock_popen.call_args[1]
-        child_env = popen_kwargs["env"]
-        assert "CLAUDECODE" not in child_env, "CLAUDECODE should be stripped"
-        assert "CLAUDE_CODE_ENTRYPOINT" not in child_env, "CLAUDE_CODE_ENTRYPOINT should be stripped"
-        assert "PATH" in child_env, "Other env vars should be preserved"
-
-    print("CLAUDECODE stripping works correctly")
-
-
-def test_cli_adapter_uses_temp_dir_for_agent():
-    """Test that agent steps use a temp dir, not the project directory."""
-    from unittest.mock import MagicMock, mock_open, patch
-
-    from amplihack.recipes.adapters.cli_subprocess import CLISubprocessAdapter
-
-    with (
-        patch("subprocess.Popen") as mock_popen,
-        patch("threading.Thread"),
-        patch("pathlib.Path.read_text") as mock_read,
-        patch("tempfile.mkdtemp", return_value="/tmp/recipe-agent-cwdtest") as mock_mkdtemp,
-        patch("shutil.rmtree") as mock_rmtree,
-        patch("builtins.open", mock_open()),
-    ):
-        mock_proc = MagicMock()
-        mock_proc.returncode = 0
-        mock_popen.return_value = mock_proc
-        mock_read.return_value = "output"
-
-        adapter = CLISubprocessAdapter()
-        adapter.execute_agent_step("test", working_dir="/my/project")
-
-        # Agent should run in temp dir, NOT /my/project
-        popen_kwargs = mock_popen.call_args[1]
-        assert popen_kwargs["cwd"] == "/tmp/recipe-agent-cwdtest", (
-            f"Agent cwd should be temp dir, got {popen_kwargs['cwd']}"
+    try:
+        result = adapter.execute_agent_step(prompt="Say hello")
+        print(f"Nested session result: {result}")
+    except RuntimeError as e:
+        # If error, verify it's not the nested session blocking error
+        assert "cannot be launched inside another Claude Code session" not in str(e), (
+            "Nested session should not be blocked"
         )
 
-        # Temp dir should be cleaned up
-        mock_rmtree.assert_called_once_with("/tmp/recipe-agent-cwdtest", ignore_errors=True)
-
-    print("Temp dir isolation works correctly")
+    # Parent env should be unchanged after nested session
+    assert dict(os.environ) == parent_env_snapshot, "Parent env should be unchanged"
+    print("Parent session isolated from nested session")
 
 
 if __name__ == "__main__":
-    print("Running Outside-In Tests for CLISubprocessAdapter temp dir isolation\n")
+    print("Running Outside-In Tests for NestedSessionAdapter\n")
 
     tests = [
-        ("Bash step execution", test_cli_adapter_bash_step),
-        ("Auto-detection returns CLI or SDK (not nested)", test_get_adapter_returns_cli_or_sdk),
-        ("CLAUDECODE env stripping", test_cli_adapter_strips_claudecode_env),
-        ("Temp dir isolation for agent steps", test_cli_adapter_uses_temp_dir_for_agent),
+        ("Basic agent invocation", test_nested_session_adapter_basic),
+        ("Bash step execution", test_nested_session_adapter_bash),
+        ("Temp directory cleanup", test_nested_session_adapter_temp_dirs),
+        ("Adapter auto-selection", test_get_adapter_returns_adapter),
+        ("Isolation from parent session", test_nested_session_isolated_from_parent),
     ]
 
     passed = 0

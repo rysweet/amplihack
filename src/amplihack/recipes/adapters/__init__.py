@@ -1,7 +1,8 @@
 """Recipe execution adapters.
 
-Exports the SDKAdapter protocol and a factory function for selecting
-the best available adapter.
+Exports the SDKAdapter protocol, a factory function for selecting
+the best available adapter, and a shared utility for building clean
+child-process environments.
 """
 
 from __future__ import annotations
@@ -9,11 +10,15 @@ from __future__ import annotations
 from amplihack.recipes.adapters.base import SDKAdapter
 from amplihack.recipes.adapters.claude_sdk import ClaudeSDKAdapter
 from amplihack.recipes.adapters.cli_subprocess import CLISubprocessAdapter
+from amplihack.recipes.adapters.env import build_child_env
+from amplihack.recipes.adapters.nested_session import NestedSessionAdapter
 
 __all__ = [
     "SDKAdapter",
     "ClaudeSDKAdapter",
     "CLISubprocessAdapter",
+    "NestedSessionAdapter",
+    "build_child_env",
     "get_adapter",
 ]
 
@@ -23,24 +28,24 @@ def get_adapter(
 ) -> ClaudeSDKAdapter | CLISubprocessAdapter:
     """Return the best available adapter, optionally preferring a specific backend.
 
-    CLISubprocessAdapter handles all cases now, including nested Claude Code
-    sessions (agent steps run in isolated temp dirs, CLAUDECODE is stripped).
-
     Args:
         preference: Optional backend name (``"claude-sdk"``, ``"cli"``).
 
     Returns:
         An adapter instance.
     """
+    if preference == "nested":
+        return NestedSessionAdapter()
     if preference == "cli":
         return CLISubprocessAdapter()
     if preference == "claude-sdk":
         return ClaudeSDKAdapter()
 
-    # Try Claude SDK first
+    # Auto-detect best adapter
+    # Priority 1: try Claude SDK first
     claude = ClaudeSDKAdapter()
     if claude.is_available():
         return claude
 
-    # CLI fallback (handles nested sessions via temp dir isolation)
+    # Priority 2: CLI fallback
     return CLISubprocessAdapter()

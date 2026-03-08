@@ -53,6 +53,7 @@ def remote_cli():
 @click.option("--no-reuse", is_flag=True, help="Always provision fresh VM")
 @click.option("--timeout", default=120, type=int, help="Max execution time in minutes")
 @click.option("--region", default=None, help="Azure region")
+@click.option("--port", default=None, type=int, help="Reuse existing bastion tunnel on this local port")
 @click.argument("azlin_args", nargs=-1, type=click.UNPROCESSED)
 def remote_execute(
     command: str,
@@ -64,6 +65,7 @@ def remote_execute(
     no_reuse: bool,
     timeout: int,
     region: str | None,
+    port: int | None,
     azlin_args: tuple,
 ):
     """Execute amplihack command on remote Azure VM.
@@ -103,6 +105,7 @@ def remote_execute(
         no_reuse=no_reuse,
         keep_vm=keep_vm,
         azlin_extra_args=list(azlin_args) if azlin_args else None,
+        tunnel_port=port,
     )
 
     # Execute with progress reporting
@@ -184,7 +187,7 @@ def execute_remote_workflow(
 
             # Step 4: Transfer context
             click.echo("\n[4/7] Transferring context...")
-            executor = Executor(vm, timeout_minutes=timeout)
+            executor = Executor(vm, timeout_minutes=timeout, tunnel_port=vm_options.tunnel_port)
             executor.transfer_context(archive_path)
             click.echo("  \u2713 Context transferred")
 
@@ -403,7 +406,8 @@ def cmd_list(status: str | None, output_json: bool):
     help="VM size tier (s=1, m=2, l=4, xl=8 sessions) [default: l]",
 )
 @click.option("--region", default=None, help="Azure region")
-def cmd_start(prompts: tuple, command: str, max_turns: int, size: str, region: str | None):
+@click.option("--port", default=None, type=int, help="Reuse existing bastion tunnel on this local port")
+def cmd_start(prompts: tuple, command: str, max_turns: int, size: str, region: str | None, port: int | None):
     """Start one or more detached remote sessions.
 
     Usage: amplihack remote start [options] "<prompt1>" "<prompt2>" ...
@@ -501,7 +505,7 @@ def cmd_start(prompts: tuple, command: str, max_turns: int, size: str, region: s
 
                     # Step 3: Transfer context
                     click.echo("  → Transferring context...")
-                    executor = Executor(vm)
+                    executor = Executor(vm, tunnel_port=port)
                     executor.transfer_context(archive_path)
                     click.echo("  ✓ Context transferred")
 

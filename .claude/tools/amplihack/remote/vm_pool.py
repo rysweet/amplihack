@@ -363,6 +363,21 @@ class VMPoolManager:
             "vms": vms,
         }
 
+    def refresh_pool_statuses(self, max_workers: int = 10) -> dict[str, str]:
+        """Poll current Azure status of all VMs in the pool in parallel.
+
+        Uses ThreadPoolExecutor via the orchestrator to poll all VMs concurrently,
+        which is significantly faster than sequential polling for large pools.
+
+        Args:
+            max_workers: Maximum parallel workers for polling (default: 10)
+
+        Returns:
+            Dict mapping VM name to its current power state string
+        """
+        vm_names = list(self._pool.keys())
+        return self._orchestrator.poll_vm_statuses(vm_names, max_workers=max_workers)
+
     def cleanup_idle_vms(self, grace_period_minutes: int = 30) -> list[str]:
         """Cleanup idle VMs from pool.
 
