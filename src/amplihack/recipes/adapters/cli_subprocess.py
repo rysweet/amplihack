@@ -13,19 +13,27 @@ vars are propagated so child processes respect recursion depth limits.
 
 from __future__ import annotations
 
-import os
 import shutil
 import subprocess
 import tempfile
 import threading
 import time
-import uuid
 from pathlib import Path
+
+from amplihack.recipes.adapters.env import build_child_env
 
 _NON_INTERACTIVE_FOOTER = (
     "\n\nIMPORTANT: Proceed autonomously. Do not ask questions. "
     "Make reasonable decisions and continue."
 )
+
+# Prompts larger than this threshold (in bytes) are passed via stdin instead
+# of as a -p argument to avoid the OS ARG_MAX limit (E2BIG / "Argument list too
+# long").  ARG_MAX is typically 128 KB on Linux and 2 MB on macOS; 100 KB gives
+# comfortable headroom while still allowing the fast no-file path for normal
+# prompts.  Large workstream round_*_result values in the summarize step are the
+# primary trigger (issue #2921).
+_ARG_MAX_SAFE = 100_000
 
 
 class CLISubprocessAdapter:
@@ -78,24 +86,43 @@ class CLISubprocessAdapter:
             # Append non-interactive footer so nested sessions never ask
             # interactive questions and hang waiting for input (#2464).
             prompt = prompt + _NON_INTERACTIVE_FOOTER
-            # Use amplihack launcher with --subprocess-safe for proper nesting
-            cmd = ["amplihack", self._cli, "--subprocess-safe", "--", "-p", prompt]
 
             # Write output to a temp file so we can tail it
             output_dir = Path(actual_cwd) / ".recipe-output"
             output_dir.mkdir(parents=True, exist_ok=True)
             output_file = output_dir / f"agent-step-{int(time.time())}.log"
 
+            # Build command and stdin source.  For large prompts pass via stdin
+            # to avoid the OS ARG_MAX limit (E2BIG, "Argument list too long").
+            # The claude CLI accepts `claude -p -` to read the prompt from stdin,
+            # which sidesteps the kernel execve() argument-size cap entirely.
+            # Small prompts keep the existing inline `-p <prompt>` behaviour for
+            # performance (no file I/O required).
+            prompt_bytes = prompt.encode()
+            if len(prompt_bytes) > _ARG_MAX_SAFE:
+                prompt_file = output_dir / "prompt.txt"
+                prompt_file.write_bytes(prompt_bytes)
+                cmd = [self._cli, "-p", "-"]
+                stdin_src = open(prompt_file, "rb")  # noqa: SIM115
+            else:
+                cmd = [self._cli, "-p", prompt]
+                stdin_src = None
+
             # Launch process - no timeout
             child_env = self._build_child_env()
-            with open(output_file, "w") as log_fh:
-                proc = subprocess.Popen(
-                    cmd,
-                    stdout=log_fh,
-                    stderr=subprocess.STDOUT,
-                    cwd=actual_cwd,
-                    env=child_env,
-                )
+            try:
+                with open(output_file, "w") as log_fh:
+                    proc = subprocess.Popen(
+                        cmd,
+                        stdin=stdin_src,
+                        stdout=log_fh,
+                        stderr=subprocess.STDOUT,
+                        cwd=actual_cwd,
+                        env=child_env,
+                    )
+            finally:
+                if stdin_src is not None:
+                    stdin_src.close()
 
             # Background thread tails the log so callers see progress
             stop_event = threading.Event()
@@ -168,24 +195,12 @@ class CLISubprocessAdapter:
 
     @staticmethod
     def _build_child_env() -> dict[str, str]:
-        """Build environment for child processes.
+        """Build a clean environment for child processes.
 
-        - Removes CLAUDECODE so nested Claude sessions work.
-        - Propagates session tree env vars, incrementing depth by 1.
-        - Generates a tree ID if none exists.
+        Delegates to the shared ``build_child_env()`` utility which strips
+        CLAUDECODE and propagates session-tree context.
         """
-        child_env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
-
-        # Propagate session tree context (#2758)
-        current_depth = int(os.environ.get("AMPLIHACK_SESSION_DEPTH", "0"))
-        tree_id = os.environ.get("AMPLIHACK_TREE_ID") or uuid.uuid4().hex[:8]
-
-        child_env["AMPLIHACK_TREE_ID"] = tree_id
-        child_env["AMPLIHACK_SESSION_DEPTH"] = str(current_depth + 1)
-        child_env["AMPLIHACK_MAX_DEPTH"] = os.environ.get("AMPLIHACK_MAX_DEPTH", "3")
-        child_env["AMPLIHACK_MAX_SESSIONS"] = os.environ.get("AMPLIHACK_MAX_SESSIONS", "10")
-
-        return child_env
+        return build_child_env()
 
     def is_available(self) -> bool:
         """Check if the CLI tool is on the PATH."""

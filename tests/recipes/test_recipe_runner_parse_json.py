@@ -1,11 +1,11 @@
-"""Tests for recipe runner parse_json fixes and CLAUDECODE handling.
+"""Tests for recipe runner parse_json fixes and child environment cleanup.
 
 Covers:
-1. parse_json with non-JSON output → step FAILS (not silent degradation)
-2. parse_json with markdown-wrapped JSON → extracts correctly
-3. parse_json with direct JSON → works as before
-4. Condition with unparsed string context → step FAILS with clear error
-5. CLAUDECODE stripped from subprocess environment
+1. parse_json with non-JSON output -> step FAILS (not silent degradation)
+2. parse_json with markdown-wrapped JSON -> extracts correctly
+3. parse_json with direct JSON -> works as before
+4. Condition with unparsed string context -> step FAILS with clear error
+5. Child environment is cleaned (CLAUDECODE stripped)
 6. All 15 recipe YAML files parse and dry-run without errors
 """
 
@@ -171,8 +171,8 @@ class TestConditionFailure:
         assert result.status == StepStatus.COMPLETED
 
 
-class TestCLAUDECODEStripped:
-    """Test that CLAUDECODE is removed from subprocess environment."""
+class TestChildEnvCleanup:
+    """Test that CLAUDECODE is stripped from child process environment."""
 
     def test_claudecode_not_in_agent_step_env(self):
         from amplihack.recipes.adapters.cli_subprocess import CLISubprocessAdapter

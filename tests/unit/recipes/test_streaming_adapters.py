@@ -10,6 +10,7 @@ Tests the timeout removal and streaming output monitoring behavior:
 
 from __future__ import annotations
 
+import os
 import subprocess
 import tempfile
 import threading
@@ -287,17 +288,14 @@ class TestNestedSessionAdapterStreaming:
             mock_proc.wait.assert_called_once_with()
             assert result == "output"
 
-    def test_execute_agent_step_unsets_claudecode(self) -> None:
-        """CLAUDECODE and CLAUDE_CODE_ENTRYPOINT env vars are unset for nested sessions."""
+    def test_execute_agent_step_strips_claudecode(self) -> None:
+        """CLAUDECODE is stripped from child process environment."""
         with (
             patch("subprocess.Popen") as mock_popen,
             patch("threading.Thread"),
             patch("pathlib.Path.read_text") as mock_read,
-            patch("os.environ.copy") as mock_env_copy,
+            patch.dict(os.environ, {"CLAUDECODE": "1", "PATH": "/usr/bin"}, clear=False),
         ):
-            mock_env = {"CLAUDECODE": "1", "CLAUDE_CODE_ENTRYPOINT": "1", "PATH": "/usr/bin"}
-            mock_env_copy.return_value = mock_env.copy()
-
             mock_proc = MagicMock()
             mock_proc.returncode = 0
             mock_popen.return_value = mock_proc
@@ -306,7 +304,7 @@ class TestNestedSessionAdapterStreaming:
             adapter = NestedSessionAdapter(use_temp_dirs=False)
             adapter.execute_agent_step("prompt")
 
-            # Verify CLAUDECODE and CLAUDE_CODE_ENTRYPOINT were removed from env
+            # Verify CLAUDECODE was stripped from child env
             popen_kwargs = mock_popen.call_args[1]
             assert "env" in popen_kwargs
             env = popen_kwargs["env"]

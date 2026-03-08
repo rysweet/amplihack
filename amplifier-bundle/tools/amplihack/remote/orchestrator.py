@@ -7,6 +7,7 @@ import json
 import os
 import subprocess
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -42,6 +43,7 @@ class VMOptions:
     no_reuse: bool = False
     keep_vm: bool = False
     azlin_extra_args: list | None = None  # Pass-through for any azlin parameters
+    tunnel_port: int | None = None  # Reuse existing bastion tunnel on this local port
 
 
 class Orchestrator:
@@ -348,6 +350,74 @@ class Orchestrator:
                 print(f"Warning: {error_msg} for {vm.name}")
                 return False
             raise CleanupError(error_msg, context={"vm_name": vm.name})
+
+    def _poll_single_vm_status(self, vm_name: str) -> str:
+        """Poll the power state of a single VM via Azure CLI.
+
+        Args:
+            vm_name: Name of the VM to poll
+
+        Returns:
+            Power state string (e.g. "running", "deallocated", "stopped", "unknown")
+        """
+        try:
+            result = subprocess.run(
+                [
+                    "az",
+                    "vm",
+                    "get-instance-view",
+                    "--resource-group",
+                    "rysweet-linux-vm-pool",
+                    "--name",
+                    vm_name,
+                    "--query",
+                    "instanceView.statuses[?starts_with(code,'PowerState/')].displayStatus",
+                    "-o",
+                    "tsv",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                return result.stdout.strip().lower()
+            return "unknown"
+        except subprocess.TimeoutExpired:
+            return "unknown"
+        except Exception:
+            return "unknown"
+
+    def poll_vm_statuses(
+        self, vm_names: list[str], max_workers: int = 10
+    ) -> dict[str, str]:
+        """Poll status of multiple VMs in parallel using ThreadPoolExecutor.
+
+        Args:
+            vm_names: List of VM names to poll
+            max_workers: Maximum number of parallel workers (default: 10)
+
+        Returns:
+            Dict mapping VM name to its current power state string
+        """
+        if not vm_names:
+            return {}
+
+        results: dict[str, str] = {}
+        workers = min(max_workers, len(vm_names))
+
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            future_to_name = {
+                executor.submit(self._poll_single_vm_status, name): name
+                for name in vm_names
+            }
+            for future in as_completed(future_to_name):
+                vm_name = future_to_name[future]
+                try:
+                    results[vm_name] = future.result()
+                except Exception:
+                    results[vm_name] = "unknown"
+
+        return results
 
     def _parse_azlin_list_json(self, output: str) -> list[VM]:
         """Parse JSON output from azlin list."""
