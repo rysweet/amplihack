@@ -173,7 +173,8 @@ def _build_rust_command(
     user_context: dict[str, Any] | None,
 ) -> list[str]:
     """Assemble the CLI command list for the Rust binary."""
-    cmd = [binary, name, "--output-format", "json", "-C", working_dir]
+    abs_working_dir = str(Path(working_dir).resolve())
+    cmd = [binary, name, "--output-format", "json", "-C", abs_working_dir]
 
     if dry_run:
         cmd.append("--dry-run")
@@ -206,13 +207,12 @@ _STATUS_MAP = {
 }
 
 
-def _execute_rust_command(cmd: list[str], *, working_dir: str, name: str) -> RecipeResult:
+def _execute_rust_command(cmd: list[str], *, name: str) -> RecipeResult:
     """Run the Rust binary and parse its JSON output into a ``RecipeResult``."""
     result = subprocess.run(
         cmd,
         capture_output=True,
         text=True,
-        cwd=working_dir,
         timeout=_run_timeout(),
     )
 
@@ -282,4 +282,4 @@ def run_recipe_via_rust(
         _redact_command_for_log(cmd),
     )
 
-    return _execute_rust_command(cmd, working_dir=working_dir, name=name)
+    return _execute_rust_command(cmd, name=name)
