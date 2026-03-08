@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from generate_top5 import (
     PRIORITY_LABELS,
     aggregate_and_rank,
+    build_repo_summary,
     extract_roadmap_goals,
     fetch_github_issues,
     fetch_github_prs,
@@ -19,6 +20,7 @@ from generate_top5 import (
     load_local_overrides,
     load_sources,
     score_roadmap_alignment,
+    suggest_action,
 )
 
 
@@ -58,7 +60,7 @@ class TestFetchGithubIssues:
             assert result == []
 
     def test_parses_issue_data(self):
-        """Correctly parses gh API JSON output."""
+        """Correctly parses gh API JSON output with full metadata."""
         mock_output = json.dumps({
             "repo": "rysweet/amplihack",
             "title": "Fix auth bug",
@@ -71,10 +73,15 @@ class TestFetchGithubIssues:
         with patch("generate_top5.run_gh", return_value=mock_output):
             result = fetch_github_issues("rysweet", ["amplihack"])
             assert len(result) == 1
-            assert result[0]["source"] == "github_issue"
-            assert result[0]["priority"] == "HIGH"
-            assert "bug" in result[0]["rationale"]
-            assert result[0]["url"] == "https://github.com/rysweet/amplihack/issues/123"
+            item = result[0]
+            assert item["source"] == "github_issue"
+            assert item["priority"] == "HIGH"
+            assert item["url"] == "https://github.com/rysweet/amplihack/issues/123"
+            assert item["account"] == "rysweet"
+            assert item["labels"] == ["bug", "high"]
+            assert item["comments"] == 5
+            assert "score_breakdown" in item
+            assert "label_priority" in item["score_breakdown"]
 
     def test_priority_from_labels(self):
         """Labels correctly map to priority scores."""
@@ -86,7 +93,7 @@ class TestFetchGithubIssues:
         with patch("generate_top5.run_gh", return_value=mock_output):
             result = fetch_github_issues("r", ["a"])
             assert result[0]["priority"] == "HIGH"
-            assert result[0]["raw_score"] >= 50.0
+            assert result[0]["score_breakdown"]["label_priority"] == 1.0
 
     def test_staleness_boosts_score(self):
         """Older issues score higher due to staleness."""
@@ -105,6 +112,7 @@ class TestFetchGithubIssues:
             stale_item = next(c for c in result if "Stale" in c["title"])
             fresh_item = next(c for c in result if "Fresh" in c["title"])
             assert stale_item["raw_score"] > fresh_item["raw_score"]
+            assert stale_item["days_stale"] > fresh_item["days_stale"]
 
 
 class TestFetchGithubPrs:
@@ -133,17 +141,21 @@ class TestFetchGithubPrs:
             draft_item = next(c for c in result if "Draft" in c["title"])
             ready_item = next(c for c in result if "Ready" in c["title"])
             assert ready_item["raw_score"] > draft_item["raw_score"]
+            assert draft_item["is_draft"] is True
+            assert ready_item["is_draft"] is False
 
-    def test_pr_has_url(self):
-        """PRs include correct GitHub URL."""
+    def test_pr_has_url_and_metadata(self):
+        """PRs include correct GitHub URL and metadata."""
         mock = json.dumps({
-            "repo": "rysweet/amplihack", "title": "Fix stuff", "labels": [],
+            "repo": "rysweet/amplihack", "title": "Fix stuff", "labels": ["bug"],
             "created": "2026-03-07T00:00:00Z", "updated": "2026-03-07T00:00:00Z",
             "number": 42, "draft": False, "comments": 0,
         })
         with patch("generate_top5.run_gh", return_value=mock):
             result = fetch_github_prs("rysweet", ["amplihack"])
             assert result[0]["url"] == "https://github.com/rysweet/amplihack/pull/42"
+            assert result[0]["account"] == "rysweet"
+            assert result[0]["labels"] == ["bug"]
 
 
 class TestLoadLocalOverrides:
@@ -190,127 +202,183 @@ class TestScoreRoadmapAlignment:
     """Tests for roadmap alignment scoring."""
 
     def test_no_goals_returns_neutral(self):
-        """Returns 0.5 when no goals defined."""
-        candidate = {"title": "Something", "source": "github_issue"}
-        assert score_roadmap_alignment(candidate, []) == 0.5
+        assert score_roadmap_alignment({"title": "X", "source": "github_issue"}, []) == 0.5
 
     def test_matching_title_scores_high(self):
-        """Title matching goal words scores high."""
-        candidate = {"title": "Implement config parser", "source": "github_issue"}
-        goals = ["config parser implementation"]
-        score = score_roadmap_alignment(candidate, goals)
+        score = score_roadmap_alignment(
+            {"title": "Implement config parser", "source": "github_issue"},
+            ["config parser implementation"],
+        )
         assert score > 0.0
 
     def test_unrelated_title_scores_zero(self):
-        """Unrelated title scores zero."""
-        candidate = {"title": "Fix authentication bug", "source": "github_issue"}
-        goals = ["database migration tool"]
-        score = score_roadmap_alignment(candidate, goals)
+        score = score_roadmap_alignment(
+            {"title": "Fix authentication bug", "source": "github_issue"},
+            ["database migration tool"],
+        )
         assert score == 0.0
+
+
+class TestSuggestAction:
+    """Tests for action suggestion logic."""
+
+    def test_critical_issue(self):
+        action = suggest_action({"source": "github_issue", "labels": ["critical"]})
+        assert "immediately" in action.lower()
+
+    def test_bug_issue(self):
+        action = suggest_action({"source": "github_issue", "labels": ["bug"], "days_stale": 1})
+        assert "bug" in action.lower()
+
+    def test_stale_pr(self):
+        action = suggest_action({"source": "github_pr", "is_draft": False, "days_stale": 20})
+        assert "stale" in action.lower() or "merge" in action.lower()
+
+    def test_draft_pr(self):
+        action = suggest_action({"source": "github_pr", "is_draft": True, "days_stale": 1})
+        assert "draft" in action.lower()
+
+    def test_local_item(self):
+        action = suggest_action({"source": "local"})
+        assert "backlog" in action.lower()
 
 
 class TestAggregateAndRank:
     """Tests for the core aggregation and ranking logic."""
 
     def test_empty_input(self):
-        """Returns empty list when no candidates."""
-        result = aggregate_and_rank([], [], [], [])
-        assert result == []
+        top, near = aggregate_and_rank([], [], [], [])
+        assert top == []
+        assert near == []
 
     def test_returns_max_5(self):
-        """Never returns more than 5 items."""
         candidates = [
             {"title": f"Item {i}", "source": "github_issue", "raw_score": float(100 - i),
              "rationale": "test", "item_id": f"#{i}", "priority": "MEDIUM"}
             for i in range(10)
         ]
-        result = aggregate_and_rank(candidates, [], [], [])
-        assert len(result) == 5
+        top, near = aggregate_and_rank(candidates, [], [], [])
+        assert len(top) == 5
+        assert len(near) == 5
 
     def test_ranked_in_order(self):
-        """Items are ranked by descending score."""
         issues = [
             {"title": "Low", "source": "github_issue", "raw_score": 30.0,
              "rationale": "test", "item_id": "#1", "priority": "LOW"},
             {"title": "High", "source": "github_issue", "raw_score": 90.0,
              "rationale": "test", "item_id": "#2", "priority": "HIGH"},
         ]
-        result = aggregate_and_rank(issues, [], [], [])
-        assert result[0]["title"] == "High"
-        assert result[1]["title"] == "Low"
+        top, _ = aggregate_and_rank(issues, [], [], [])
+        assert top[0]["title"] == "High"
+        assert top[1]["title"] == "Low"
 
     def test_mixed_sources(self):
-        """Items from different sources are correctly weighted."""
-        issues = [
-            {"title": "Issue", "source": "github_issue", "raw_score": 80.0,
-             "rationale": "test", "item_id": "#1", "priority": "HIGH"},
-        ]
-        prs = [
-            {"title": "PR", "source": "github_pr", "raw_score": 80.0,
-             "rationale": "test", "item_id": "#2", "priority": "HIGH",
-             "url": "https://github.com/r/a/pull/2", "repo": "r/a"},
-        ]
-        local = [
-            {"title": "Local", "source": "local", "raw_score": 80.0,
-             "rationale": "test", "item_id": "BL-1", "priority": "MEDIUM"},
-        ]
-        result = aggregate_and_rank(issues, prs, local, [])
-        # Issues (0.40) > PRs (0.30) > Local (0.10) with same raw score
-        assert result[0]["source"] == "github_issue"
-        assert result[1]["source"] == "github_pr"
-        assert result[2]["source"] == "local"
+        issues = [{"title": "Issue", "source": "github_issue", "raw_score": 80.0,
+                    "rationale": "test", "item_id": "#1", "priority": "HIGH"}]
+        prs = [{"title": "PR", "source": "github_pr", "raw_score": 80.0,
+                "rationale": "test", "item_id": "#2", "priority": "HIGH",
+                "url": "https://github.com/r/a/pull/2", "repo": "r/a"}]
+        local = [{"title": "Local", "source": "local", "raw_score": 80.0,
+                  "rationale": "test", "item_id": "BL-1", "priority": "MEDIUM"}]
+        top, _ = aggregate_and_rank(issues, prs, local, [])
+        assert top[0]["source"] == "github_issue"
+        assert top[1]["source"] == "github_pr"
+        assert top[2]["source"] == "local"
 
     def test_roadmap_alignment_boosts_score(self):
-        """Items matching roadmap goals get higher scores."""
         issues = [
             {"title": "Implement config parser", "source": "github_issue", "raw_score": 50.0,
              "rationale": "test", "item_id": "#1", "priority": "MEDIUM"},
             {"title": "Fix random thing", "source": "github_issue", "raw_score": 50.0,
              "rationale": "test", "item_id": "#2", "priority": "MEDIUM"},
         ]
-        goals = ["config parser implementation"]
-        result = aggregate_and_rank(issues, [], [], goals)
-        config_item = next(r for r in result if "config" in r["title"].lower())
-        other_item = next(r for r in result if "random" in r["title"].lower())
+        top, _ = aggregate_and_rank(issues, [], [], ["config parser implementation"])
+        config_item = next(r for r in top if "config" in r["title"].lower())
+        other_item = next(r for r in top if "random" in r["title"].lower())
         assert config_item["score"] > other_item["score"]
 
     def test_tiebreak_by_priority(self):
-        """Equal scores are tiebroken by priority (HIGH first)."""
         issues = [
             {"title": "Low priority", "source": "github_issue", "raw_score": 50.0,
              "rationale": "test", "item_id": "#1", "priority": "LOW"},
             {"title": "High priority", "source": "github_issue", "raw_score": 50.0,
              "rationale": "test", "item_id": "#2", "priority": "HIGH"},
         ]
-        result = aggregate_and_rank(issues, [], [], [])
-        assert result[0]["priority"] == "HIGH"
-        assert result[1]["priority"] == "LOW"
+        top, _ = aggregate_and_rank(issues, [], [], [])
+        assert top[0]["priority"] == "HIGH"
+        assert top[1]["priority"] == "LOW"
 
     def test_preserves_url_and_repo(self):
-        """URL and repo fields are preserved in output."""
-        prs = [
-            {"title": "PR", "source": "github_pr", "raw_score": 80.0,
-             "rationale": "test", "item_id": "#1", "priority": "MEDIUM",
-             "url": "https://github.com/r/a/pull/1", "repo": "r/a"},
+        prs = [{"title": "PR", "source": "github_pr", "raw_score": 80.0,
+                "rationale": "test", "item_id": "#1", "priority": "MEDIUM",
+                "url": "https://github.com/r/a/pull/1", "repo": "r/a"}]
+        top, _ = aggregate_and_rank([], prs, [], [])
+        assert top[0]["url"] == "https://github.com/r/a/pull/1"
+        assert top[0]["repo"] == "r/a"
+
+    def test_items_have_action(self):
+        issues = [{"title": "Bug", "source": "github_issue", "raw_score": 80.0,
+                    "rationale": "test", "item_id": "#1", "priority": "HIGH",
+                    "labels": ["bug"], "days_stale": 5}]
+        top, _ = aggregate_and_rank(issues, [], [], [])
+        assert "action" in top[0]
+        assert len(top[0]["action"]) > 0
+
+    def test_near_misses_returned(self):
+        candidates = [
+            {"title": f"Item {i}", "source": "github_issue", "raw_score": float(100 - i),
+             "rationale": "test", "item_id": f"#{i}", "priority": "MEDIUM"}
+            for i in range(8)
         ]
-        result = aggregate_and_rank([], prs, [], [])
-        assert result[0]["url"] == "https://github.com/r/a/pull/1"
-        assert result[0]["repo"] == "r/a"
+        top, near = aggregate_and_rank(candidates, [], [], [])
+        assert len(top) == 5
+        assert len(near) == 3
+        assert near[0]["rank"] == 6
+
+
+class TestBuildRepoSummary:
+    """Tests for per-repo summary generation."""
+
+    def test_empty_candidates(self):
+        result = build_repo_summary([])
+        assert result["by_repo"] == {}
+        assert result["by_account"] == {}
+
+    def test_counts_by_repo(self):
+        candidates = [
+            {"source": "github_issue", "repo": "r/a", "account": "x", "priority": "HIGH"},
+            {"source": "github_issue", "repo": "r/a", "account": "x", "priority": "MEDIUM"},
+            {"source": "github_pr", "repo": "r/a", "account": "x", "priority": "MEDIUM"},
+            {"source": "github_issue", "repo": "r/b", "account": "x", "priority": "HIGH"},
+        ]
+        result = build_repo_summary(candidates)
+        assert result["by_repo"]["r/a"]["issues"] == 2
+        assert result["by_repo"]["r/a"]["prs"] == 1
+        assert result["by_repo"]["r/a"]["high_priority"] == 1
+        assert result["by_repo"]["r/b"]["issues"] == 1
+
+    def test_counts_by_account(self):
+        candidates = [
+            {"source": "github_issue", "repo": "r/a", "account": "alice", "priority": "HIGH"},
+            {"source": "github_pr", "repo": "r/b", "account": "bob", "priority": "MEDIUM"},
+        ]
+        result = build_repo_summary(candidates)
+        assert result["by_account"]["alice"]["issues"] == 1
+        assert result["by_account"]["bob"]["prs"] == 1
+        assert "r/a" in result["by_account"]["alice"]["repos"]
 
 
 class TestGenerateTop5:
     """Tests for the main generate_top5 function."""
 
     def test_no_sources_no_pm(self, project_root):
-        """Returns empty results when no sources and no .pm/."""
         with patch("generate_top5.get_current_gh_account", return_value="rysweet"):
             result = generate_top5(project_root)
             assert result["top5"] == []
+            assert result["near_misses"] == []
             assert result["total_candidates"] == 0
 
     def test_github_failure_falls_back_to_local(self, populated_pm):
-        """Still returns local items when GitHub is unavailable."""
-        # Write a minimal sources.yaml
         sources = {"github": [{"account": "test", "repos": ["test/repo"]}]}
         sources_path = populated_pm / "sources.yaml"
         with open(sources_path, "w") as f:
@@ -319,24 +387,24 @@ class TestGenerateTop5:
         with patch("generate_top5.run_gh", return_value=None), \
              patch("generate_top5.get_current_gh_account", return_value="test"):
             result = generate_top5(populated_pm.parent, sources_path)
-            # Should still have local items from populated_pm
             assert result["sources"]["local_items"] > 0
             assert result["sources"]["github_issues"] == 0
 
+    def test_output_has_summary(self):
+        with patch("generate_top5.get_current_gh_account", return_value="test"), \
+             patch("generate_top5.load_sources", return_value=[]):
+            result = generate_top5(Path("/nonexistent"))
+            assert "summary" in result
+            assert "near_misses" in result
+
     def test_items_have_required_fields(self):
-        """Each top5 item has all required fields."""
-        issues = [
-            {"title": "Test", "source": "github_issue", "raw_score": 80.0,
-             "rationale": "test", "item_id": "#1", "priority": "HIGH",
-             "url": "https://github.com/r/a/issues/1", "repo": "r/a"},
-        ]
-        with patch("generate_top5.load_sources", return_value=[]), \
-             patch("generate_top5.get_current_gh_account", return_value="test"):
-            # Directly test aggregation output format
-            result = aggregate_and_rank(issues, [], [], [])
-            required = {"rank", "title", "source", "score", "rationale", "priority"}
-            for item in result:
-                assert required.issubset(item.keys())
+        issues = [{"title": "Test", "source": "github_issue", "raw_score": 80.0,
+                    "rationale": "test", "item_id": "#1", "priority": "HIGH",
+                    "url": "https://github.com/r/a/issues/1", "repo": "r/a"}]
+        top, _ = aggregate_and_rank(issues, [], [], [])
+        required = {"rank", "title", "source", "score", "rationale", "priority", "action", "alignment"}
+        for item in top:
+            assert required.issubset(item.keys()), f"Missing: {required - item.keys()}"
 
 
 class TestPriorityLabels:
@@ -344,7 +412,6 @@ class TestPriorityLabels:
 
     def test_critical_is_highest(self):
         assert PRIORITY_LABELS["critical"] == 1.0
-        assert PRIORITY_LABELS["priority:critical"] == 1.0
 
     def test_bug_is_high(self):
         assert PRIORITY_LABELS["bug"] == 0.8
