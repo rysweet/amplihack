@@ -1140,6 +1140,17 @@ def wait_for_agent_ready(
 
 
 def main(argv: list[str] | None = None) -> int:
+    import warnings
+
+    warnings.warn(
+        "\n\nDEPRECATED: query_hive.py is superseded by the haymaker CLI extension.\n"
+        "Use instead:  haymaker hive eval --deployment-id <ID> --repeats <N> "
+        "[--wait-for-ready <M>]\n"
+        "This script will be removed in a future release.\n",
+        DeprecationWarning,
+        stacklevel=1,
+    )
+
     args = _build_parser().parse_args(argv)
 
     if args.verbose:

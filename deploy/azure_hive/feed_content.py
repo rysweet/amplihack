@@ -270,8 +270,19 @@ def _send_feed_complete(
 
 
 def main() -> None:
+    import warnings
+
+    warnings.warn(
+        "\n\nDEPRECATED: feed_content.py is superseded by the haymaker CLI extension.\n"
+        "Use instead:  haymaker hive feed --deployment-id <ID> --turns <N>\n"
+        "This script will be removed in a future release.\n",
+        DeprecationWarning,
+        stacklevel=1,
+    )
+
     parser = argparse.ArgumentParser(
-        description="Feed learning content into the distributed hive via Service Bus."
+        description="[DEPRECATED] Feed learning content into the distributed hive via Service Bus. "
+        "Use 'haymaker hive feed' instead."
     )
     parser.add_argument(
         "--turns",
