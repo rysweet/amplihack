@@ -974,6 +974,401 @@ def run_eval(
 
 
 # ---------------------------------------------------------------------------
+# OODA-based eval (v2): plain INPUT events → Log Analytics answer reads
+# ---------------------------------------------------------------------------
+# Design:
+#   - Questions are sent as plain INPUT events (same channel as content).
+#   - Agents process them through the OODA loop and write answers to stdout.
+#   - Container Apps streams stdout to Log Analytics.
+#   - The eval reads answers from Log Analytics — no Service Bus round-trip.
+#
+# This is the new preferred path.  The old search_query/search_response path
+# (HiveQueryClient / run_eval) is preserved for backward compatibility.
+# ---------------------------------------------------------------------------
+
+
+class OodaInputClient:
+    """Send plain INPUT events to the hive — no response subscription.
+
+    Questions are indistinguishable from content; agents classify them via
+    their OODA decide() and write answers to stdout (→ Log Analytics).
+
+    Args:
+        connection_string: Azure Service Bus connection string.
+        topic_name: Service Bus topic name (default: hive-graph).
+        agent_id: Source identity used in published events.
+    """
+
+    def __init__(
+        self,
+        connection_string: str = _DEFAULT_CONNECTION_STRING,
+        topic_name: str = _DEFAULT_TOPIC,
+        agent_id: str = "ooda-eval-client",
+    ) -> None:
+        try:
+            from azure.servicebus import ServiceBusClient as _SBClient
+        except ImportError as exc:
+            raise ImportError(
+                "azure-servicebus is required. Install with: pip install azure-servicebus"
+            ) from exc
+
+        self._connection_string = connection_string
+        self._topic_name = topic_name
+        self._agent_id = agent_id
+        self._client = _SBClient.from_connection_string(connection_string)
+        self._sender = self._client.get_topic_sender(topic_name=topic_name)
+
+    def send_input(self, text: str, event_type: str = "INPUT") -> str:
+        """Publish a plain INPUT event carrying *text*.
+
+        Args:
+            text: The question or content text to send.
+            event_type: Event type label (default: "INPUT").
+
+        Returns:
+            The event_id of the published message.
+        """
+        from azure.servicebus import ServiceBusMessage
+
+        event_id = uuid.uuid4().hex
+        payload = {
+            "event_id": event_id,
+            "event_type": event_type,
+            "source_agent": self._agent_id,
+            "timestamp": time.time(),
+            "payload": {
+                "content": text,
+                "text": text,
+            },
+        }
+        msg = ServiceBusMessage(
+            body=json.dumps(payload, separators=(",", ":")),
+            application_properties={
+                "event_type": event_type,
+                "source_agent": self._agent_id,
+            },
+        )
+        self._sender.send_messages(msg)
+        logger.debug("OodaInputClient: sent %s event (event_id=%s)", event_type, event_id)
+        return event_id
+
+    def close(self) -> None:
+        """Close Service Bus resources."""
+        try:
+            self._sender.close()
+        except Exception:
+            pass
+        try:
+            self._client.close()
+        except Exception:
+            pass
+
+
+def query_log_analytics_cli(
+    workspace_id: str,
+    query: str,
+    timespan_hours: int = 2,
+) -> list[str]:
+    """Run ``az monitor log-analytics query`` and return the Log_s column values.
+
+    Uses the ``az`` CLI so that no Azure SDK packages are required beyond the
+    Azure CLI itself (``az login`` or managed identity must already be active).
+
+    Args:
+        workspace_id: Log Analytics workspace ID (GUID).
+        query: KQL query string.
+        timespan_hours: Look-back window in hours (default: 2).
+
+    Returns:
+        List of ``Log_s`` (or first string column) values from the result rows.
+        Returns an empty list if the CLI call fails or returns no data.
+    """
+    import json as _json
+    import subprocess as _subprocess
+
+    iso_timespan = f"PT{timespan_hours}H"
+    cmd = [
+        "az", "monitor", "log-analytics", "query",
+        "--workspace", workspace_id,
+        "--analytics-query", query,
+        "--timespan", iso_timespan,
+        "--output", "json",
+    ]
+    try:
+        result = _subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        if result.returncode != 0:
+            logger.debug(
+                "az monitor log-analytics query failed (rc=%d): %s",
+                result.returncode,
+                result.stderr[:200],
+            )
+            return []
+        rows = _json.loads(result.stdout)
+        if not isinstance(rows, list):
+            return []
+        values: list[str] = []
+        for row in rows:
+            # Prefer Log_s column; fall back to first string-valued field
+            val = row.get("Log_s") or row.get("log_s") or ""
+            if not val:
+                for v in row.values():
+                    if isinstance(v, str) and v:
+                        val = v
+                        break
+            if val:
+                values.append(val)
+        return values
+    except Exception:
+        logger.debug("query_log_analytics_cli error", exc_info=True)
+        return []
+
+
+class LogAnalyticsAnswerReader:
+    """Poll Azure Log Analytics for agent stdout answers.
+
+    Container Apps streams stdout to Log Analytics as
+    ``ContainerAppConsoleLogs`` entries.  GoalSeekingAgent writes:
+
+        [<agent-name>] ANSWER: <answer text>
+
+    This reader polls for those lines matching a given question.
+
+    Args:
+        workspace_id: Log Analytics workspace ID (GUID).
+        container_app_name: Container App name prefix filter (optional).
+        poll_interval: Seconds between poll attempts (default: 5).
+        max_wait: Maximum seconds to wait for an answer (default: 60).
+    """
+
+    def __init__(
+        self,
+        workspace_id: str,
+        container_app_name: str = "",
+        poll_interval: float = 5.0,
+        max_wait: float = 60.0,
+    ) -> None:
+        try:
+            from azure.monitor.query import LogsQueryClient  # noqa: F401
+            from azure.identity import DefaultAzureCredential  # noqa: F401
+        except ImportError as exc:
+            raise ImportError(
+                "azure-monitor-query and azure-identity are required.\n"
+                "Install with: pip install azure-monitor-query azure-identity"
+            ) from exc
+
+        self._workspace_id = workspace_id
+        self._container_app_name = container_app_name
+        self._poll_interval = poll_interval
+        self._max_wait = max_wait
+
+    def wait_for_answer(self, question_hint: str, since_ts: float | None = None) -> str | None:
+        """Poll Log Analytics until an ANSWER line appears for the question.
+
+        Searches for stdout lines matching ``ANSWER:`` that were emitted after
+        *since_ts*.  Returns the first matching answer, or ``None`` on timeout.
+
+        Args:
+            question_hint: First ~40 chars of the question to narrow the search.
+            since_ts: Unix timestamp to search from (defaults to now - 120s).
+
+        Returns:
+            Answer text if found before timeout, else ``None``.
+        """
+        from azure.identity import DefaultAzureCredential
+        from azure.monitor.query import LogsQueryClient, LogsQueryStatus
+        import datetime
+
+        if since_ts is None:
+            since_ts = time.time() - 120.0
+
+        start_dt = datetime.datetime.fromtimestamp(since_ts, tz=datetime.timezone.utc)
+        end_dt = datetime.datetime.now(tz=datetime.timezone.utc)
+
+        hint_escaped = question_hint.replace("'", "\\'")[:40]
+        app_filter = f'| where ContainerAppName_s has "{self._container_app_name}"' if self._container_app_name else ""
+
+        credential = DefaultAzureCredential()
+        client = LogsQueryClient(credential)
+        deadline = time.time() + self._max_wait
+
+        while time.time() < deadline:
+            query = (
+                "ContainerAppConsoleLogs_CL"
+                f"{app_filter}"
+                f' | where Log_s has "ANSWER:"'
+                f' | where Log_s has "{hint_escaped}"'
+                " | order by TimeGenerated desc"
+                " | take 5"
+            )
+            try:
+                response = client.query_workspace(
+                    workspace_id=self._workspace_id,
+                    query=query,
+                    timespan=(start_dt, end_dt),
+                )
+                if response.status == LogsQueryStatus.SUCCESS:
+                    for row in (response.tables[0].rows if response.tables else []):
+                        log_line = str(row[0]) if row else ""
+                        if "ANSWER:" in log_line:
+                            # Extract answer after "ANSWER: "
+                            answer_start = log_line.index("ANSWER:") + len("ANSWER:")
+                            return log_line[answer_start:].strip()
+            except Exception:
+                logger.debug("Log Analytics query failed", exc_info=True)
+
+            time.sleep(self._poll_interval)
+            # Extend end_dt for next poll
+            end_dt = datetime.datetime.now(tz=datetime.timezone.utc)
+
+        return None
+
+
+def run_ooda_eval(
+    input_client: OodaInputClient,
+    workspace_id: str,
+    container_app_name: str = "",
+    answer_wait: float = 60.0,
+    output_path: str | None = None,
+) -> dict[str, Any]:
+    """Run the security analyst Q&A eval using the OODA input/log path.
+
+    Sends each question as a plain INPUT event and reads the answer from
+    Log Analytics (agent stdout), bypassing Service Bus response round-trips.
+
+    Prerequisites:
+        - Agents are already running with GoalSeekingAgent (OODA loop).
+        - Agents have already been fed the learning content.
+        - ``azure-monitor-query`` and ``azure-identity`` are installed.
+        - The calling process has Log Analytics Reader access.
+
+    Args:
+        input_client: OodaInputClient for sending questions.
+        workspace_id: Log Analytics workspace ID (GUID).
+        container_app_name: Container App name prefix for log filter.
+        answer_wait: Seconds to wait per question for an answer in logs.
+        output_path: Optional path to write JSON results.
+
+    Returns:
+        Results dict with per-question scores and aggregate summary.
+    """
+    security_questions = _get_security_questions()
+
+    print("=" * 70)
+    print("OODA EVAL — questions as INPUT events, answers from Log Analytics")
+    print(f"Log Analytics workspace: {workspace_id}")
+    print(f"Container app filter:    {container_app_name or '(all apps)'}")
+    print(f"Security questions:      {len(security_questions)}")
+    print(f"Answer wait per Q:       {answer_wait}s")
+    print("=" * 70)
+    print()
+
+    if not security_questions:
+        print("WARNING: No security questions loaded. Ensure amplihack-agent-eval is installed.")
+        return {}
+
+    try:
+        reader = LogAnalyticsAnswerReader(
+            workspace_id=workspace_id,
+            container_app_name=container_app_name,
+            max_wait=answer_wait,
+        )
+    except ImportError as exc:
+        print(f"ERROR: {exc}")
+        return {}
+
+    t0 = time.time()
+    results: list[dict[str, Any]] = []
+    by_category: dict[str, list[float]] = {}
+
+    print(f"{'Category':20s} {'Score':6s} {'Found':6s} | Question")
+    print("-" * 70)
+
+    for q in security_questions:
+        t_q = time.time()
+        since_ts = time.time()
+
+        # Send question as plain INPUT event
+        input_client.send_input(q.text, event_type="INPUT")
+
+        # Poll Log Analytics for the answer
+        actual = reader.wait_for_answer(q.text[:40], since_ts=since_ts) or ""
+        grade = _grade_hive_answer(q.text, q.expected_answer, actual)
+        score = grade["score"]
+        elapsed_q = time.time() - t_q
+
+        by_category.setdefault(q.category, []).append(score)
+
+        found_marker = "Y" if actual else "N"
+        print(
+            f"  {q.category[:18]:18s} {score:.2f}  {found_marker:5s}"
+            f" | {q.text[:42]}"
+        )
+
+        results.append(
+            {
+                "question_id": q.question_id,
+                "category": q.category,
+                "question": q.text,
+                "expected_answer": q.expected_answer,
+                "actual_answer": actual,
+                "score": score,
+                "reasoning": grade["reasoning"],
+                "answer_found": bool(actual),
+                "elapsed_s": round(elapsed_q, 2),
+            }
+        )
+
+    elapsed = time.time() - t0
+    total = len(results)
+    avg_score = sum(r["score"] for r in results) / total if total else 0.0
+
+    category_scores = {
+        c: {"avg_score": round(sum(v) / len(v), 3), "count": len(v)}
+        for c, v in by_category.items()
+    }
+
+    print("-" * 70)
+    print()
+    print("=" * 70)
+    print("RESULTS (OODA EVAL — Log Analytics answers)")
+    print("=" * 70)
+    print(f"  Overall avg score: {avg_score:.3f} ({total} questions)")
+    print(f"  Answers found:     {sum(1 for r in results if r['answer_found'])}/{total}")
+    print()
+    print("  By category:")
+    for c, s in sorted(category_scores.items()):
+        print(f"    {c:20s}: avg={s['avg_score']:.3f} ({s['count']} questions)")
+    print(f"\n  Total time: {elapsed:.2f}s")
+    print("=" * 70)
+
+    output = {
+        "mode": "ooda_log_analytics",
+        "summary": {
+            "total_questions": total,
+            "avg_score": round(avg_score, 3),
+            "answers_found": sum(1 for r in results if r["answer_found"]),
+            "elapsed_s": round(elapsed, 2),
+            "workspace_id": workspace_id,
+            "answer_wait_s": answer_wait,
+        },
+        "category_scores": category_scores,
+        "questions": results,
+    }
+
+    if output_path:
+        with open(output_path, "w") as fh:
+            json.dump(output, fh, indent=2)
+        print(f"\nResults written to: {output_path}")
+
+    return output
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -999,6 +1394,10 @@ Examples:
 
   # Run eval 3 times and report median + stddev:
   python query_hive.py --run-eval --repeats 3
+
+  # OODA eval: send questions as INPUT events, read answers from Log Analytics:
+  python query_hive.py --ooda-eval --workspace-id <WORKSPACE_GUID> \\
+      --container-app amplihack-hive --answer-wait 90 --output ooda_results.json
 """,
     )
     p.add_argument(
@@ -1057,6 +1456,41 @@ Examples:
         "--subscription",
         default=_DEFAULT_SUBSCRIPTION,
         help=f"Subscription for receiving responses (default: {_DEFAULT_SUBSCRIPTION}).",
+    )
+    p.add_argument(
+        "--ooda-eval",
+        action="store_true",
+        help=(
+            "Run the OODA-path eval: send questions as plain INPUT events and "
+            "read answers from Azure Log Analytics (stdout → Container Apps logs). "
+            "Requires --workspace-id. Uses azure-monitor-query SDK or az CLI fallback."
+        ),
+    )
+    p.add_argument(
+        "--workspace-id",
+        default=os.environ.get("LOG_ANALYTICS_WORKSPACE_ID", ""),
+        metavar="GUID",
+        help=(
+            "Log Analytics workspace ID for --ooda-eval answer retrieval. "
+            "Can also be set via LOG_ANALYTICS_WORKSPACE_ID env var."
+        ),
+    )
+    p.add_argument(
+        "--container-app",
+        default=os.environ.get("CONTAINER_APP_NAME", ""),
+        metavar="NAME",
+        help=(
+            "Container App name prefix to narrow Log Analytics log filter "
+            "(optional, used with --ooda-eval). "
+            "Can also be set via CONTAINER_APP_NAME env var."
+        ),
+    )
+    p.add_argument(
+        "--answer-wait",
+        type=float,
+        default=float(os.environ.get("OODA_ANSWER_WAIT", "60")),
+        metavar="SECONDS",
+        help="Seconds to wait per question for an ANSWER in Log Analytics (default: 60).",
     )
     p.add_argument(
         "--verbose", "-v",
@@ -1156,7 +1590,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.verbose:
         logging.getLogger("query_hive").setLevel(logging.DEBUG)
 
-    if not args.query and not args.run_eval and not args.seed and not args.demo:
+    if not args.query and not args.run_eval and not args.seed and not args.demo and not args.ooda_eval:
         _build_parser().print_help()
         return 0
 
@@ -1196,6 +1630,35 @@ def main(argv: list[str] | None = None) -> int:
         else:
             run_demo_eval(output_path=args.output or None)
         return 0
+
+    # OODA eval mode: send questions as plain INPUT events, read answers from Log Analytics
+    if args.ooda_eval:
+        if not args.workspace_id:
+            print(
+                "ERROR: --ooda-eval requires --workspace-id (or LOG_ANALYTICS_WORKSPACE_ID env var)."
+            )
+            return 1
+        if not args.connection_string:
+            print(
+                "ERROR: --ooda-eval requires a Service Bus connection string "
+                "(--connection-string or HIVE_CONNECTION_STRING env var)."
+            )
+            return 1
+        ooda_client = OodaInputClient(
+            connection_string=args.connection_string,
+            topic_name=args.topic,
+        )
+        try:
+            result = run_ooda_eval(
+                input_client=ooda_client,
+                workspace_id=args.workspace_id,
+                container_app_name=args.container_app,
+                answer_wait=args.answer_wait,
+                output_path=args.output or None,
+            )
+        finally:
+            ooda_client.close()
+        return 0 if result else 1
 
     # All other modes need a live client
     client = HiveQueryClient(

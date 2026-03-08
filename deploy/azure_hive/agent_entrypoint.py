@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """Agent entrypoint for Azure Container Apps hive deployment.
 
-Reads environment variables and starts the OODA loop with
-LearningAgent-backed learning and answering.
+Reads environment variables and starts the OODA loop with a GoalSeekingAgent.
 
-The agent IS a LearningAgent:
-  - learning_agent.learn_from_content(...)  replaces memory.remember(...)
-  - learning_agent.answer_question(...)     replaces memory.recall(...)
-  - Memory is retained only for event transport (receive_events, send_query_response).
+Architecture
+------------
+All Service Bus messages are uniform *input* fed to agent.process(input).
+The agent classifies internally (store vs answer) and writes answers to stdout.
+Container Apps streams stdout to Log Analytics — the eval reads from there.
+
+No QUERY/QUERY_RESPONSE Service Bus round-trip for answers.
 
 Environment variables:
     AMPLIHACK_AGENT_NAME           -- unique agent identifier (required)
@@ -17,7 +19,7 @@ Environment variables:
     AMPLIHACK_MEMORY_TRANSPORT     -- "local" | "redis" | "azure_service_bus"
     AMPLIHACK_MEMORY_CONNECTION_STRING -- Service Bus or Redis connection string
     AMPLIHACK_MEMORY_STORAGE_PATH  -- storage path for memory data
-    AMPLIHACK_MODEL                -- LLM model for LearningAgent (e.g. "claude-sonnet-4-6")
+    AMPLIHACK_MODEL                -- LLM model (e.g. "claude-sonnet-4-6")
     ANTHROPIC_API_KEY              -- required for LLM operations
 """
 
@@ -44,7 +46,6 @@ def main() -> None:
 
     agent_prompt = os.environ.get("AMPLIHACK_AGENT_PROMPT", f"You are agent {agent_name}.")
     topology = os.environ.get("AMPLIHACK_AGENT_TOPOLOGY", "hive")
-    backend = os.environ.get("AMPLIHACK_MEMORY_BACKEND", "cognitive")
     transport = os.environ.get("AMPLIHACK_MEMORY_TRANSPORT", "local")
     connection_string = os.environ.get("AMPLIHACK_MEMORY_CONNECTION_STRING", "")
     storage_path = os.environ.get(
@@ -66,34 +67,34 @@ def main() -> None:
             sys.exit(1)
 
     logger.info(
-        "Starting agent: name=%s topology=%s transport=%s backend=%s",
+        "Starting agent: name=%s topology=%s transport=%s",
         agent_name,
         topology,
         transport,
-        backend,
     )
 
-    # Build LearningAgent — the agent IS a LearningAgent (not a separate memory object).
-    # learn_from_content() replaces memory.remember(); answer_question() replaces memory.recall().
+    # Build GoalSeekingAgent — the single agent type with a pure OODA loop.
+    # All input (content or questions) goes through agent.process(input).
+    # Answers are written to stdout; Container Apps streams them to Log Analytics.
     from pathlib import Path
 
-    from amplihack.agents.goal_seeking.learning_agent import LearningAgent
+    from amplihack.agents.goal_seeking.goal_seeking_agent import GoalSeekingAgent
 
     _storage = Path(storage_path)
     _storage.mkdir(parents=True, exist_ok=True)
     try:
-        learning_agent = LearningAgent(
+        agent = GoalSeekingAgent(
             agent_name=agent_name,
             storage_path=_storage,
             use_hierarchical=False,
             model=model,
         )
     except Exception:
-        logger.exception("Failed to initialize LearningAgent for agent %s", agent_name)
+        logger.exception("Failed to initialize GoalSeekingAgent for agent %s", agent_name)
         sys.exit(1)
-    logger.info("LearningAgent initialized for agent %s", agent_name)
+    logger.info("GoalSeekingAgent initialized for agent %s", agent_name)
 
-    # Build Memory — retained for event transport only (receive_events, send_query_response).
+    # Build Memory facade — retained for event transport only (receive_events).
     try:
         from amplihack.memory.facade import Memory
 
@@ -109,17 +110,14 @@ def main() -> None:
         logger.exception("Failed to initialize Memory transport for agent %s", agent_name)
         sys.exit(1)
 
-    # Share Kuzu storage: wire Memory facade's adapter to LearningAgent's MemoryRetriever
-    # so both the LearningAgent and Memory facade read/write the same Kuzu store.
-    memory._adapter = learning_agent.memory
+    # Share Kuzu storage: wire Memory facade's adapter to GoalSeekingAgent's
+    # internal MemoryRetriever so both read/write the same Kuzu store.
+    memory._adapter = agent.memory
 
-    # Store the agent's initial context via LearningAgent
-    learning_agent.learn_from_content(f"Agent identity: {agent_name}. Role: {agent_prompt}")
+    # Store initial agent identity via OODA process()
+    agent.process(f"Agent identity: {agent_name}. Role: {agent_prompt}")
 
-    logger.info(
-        "Agent %s memory initialized and entering OODA loop",
-        agent_name,
-    )
+    logger.info("Agent %s memory initialized and entering OODA loop", agent_name)
 
     # Signal readiness
     try:
@@ -144,7 +142,7 @@ def main() -> None:
 
     while not shutdown[0]:
         try:
-            _ooda_tick(agent_name, agent_prompt, memory, loop_count, learning_agent)
+            _ooda_tick(agent_name, memory, loop_count, agent)
             loop_count += 1
         except Exception:
             logger.exception("Error in OODA loop tick for agent %s", agent_name)
@@ -157,30 +155,27 @@ def main() -> None:
 
     logger.info("Agent %s shutting down after %d loops", agent_name, loop_count)
     try:
-        learning_agent.close()
+        agent.close()
     except Exception:
-        logger.debug("Error closing LearningAgent", exc_info=True)
+        logger.debug("Error closing GoalSeekingAgent", exc_info=True)
     try:
         memory.close()
     except Exception:
         logger.debug("Error closing memory transport", exc_info=True)
 
 
-def _handle_event(
-    agent_name: str, event: object, memory: object, learning_agent: object
-) -> None:
-    """Dispatch an incoming event to the appropriate handler.
+def _handle_event(agent_name: str, event: object, memory: object, agent: object) -> None:
+    """Dispatch an incoming event to the GoalSeekingAgent OODA loop.
 
-    Handled event types:
-        LEARN_CONTENT -- learn content via learning_agent.learn_from_content().
-        QUERY         -- answer via learning_agent.answer_question() and publish response.
+    All event types are normalised to a plain input string and fed to
+    ``agent.process()``.  The agent classifies internally (store vs answer).
 
-    All other event types are stored via learning_agent.learn_from_content().
+    Special lifecycle events (FEED_COMPLETE, AGENT_READY, QUERY_RESPONSE)
+    are handled separately so they do not pollute the cognitive store.
 
     Args:
-        learning_agent: LearningAgent instance (required). The agent IS a LearningAgent.
-            learn_from_content() replaces memory.remember(); answer_question() replaces memory.recall().
-        memory: Used for transport only (send_query_response).
+        agent: GoalSeekingAgent instance.
+        memory: Memory facade used for transport only (AGENT_READY publish).
     """
     event_type = getattr(event, "event_type", None) or (
         event.get("event_type") if isinstance(event, dict) else None
@@ -189,66 +184,13 @@ def _handle_event(
         event.get("payload") if isinstance(event, dict) else {}
     )
 
-    if event_type == "LEARN_CONTENT":
-        content = (payload or {}).get("content", "")
-        turn = (payload or {}).get("turn", "?")
-        if content:
-            logger.info(
-                "Agent %s learning content (turn=%s): %s...",
-                agent_name,
-                turn,
-                content[:80],
-            )
-            learning_agent.learn_from_content(content)
-        else:
-            logger.warning(
-                "Agent %s received LEARN_CONTENT event with empty content payload",
-                agent_name,
-            )
-
-    elif event_type in ("QUERY", "network_graph.search_query"):
-        query_id = (payload or {}).get("query_id", "") or (payload or {}).get("request_id", "")
-        question = (payload or {}).get("question", "") or (payload or {}).get("text", "")
-        if question:
-            logger.info(
-                "Agent %s handling QUERY via LearningAgent (id=%s): %s...",
-                agent_name,
-                query_id,
-                question[:80],
-            )
-            answer = ""
-            try:
-                result = learning_agent.answer_question(question)
-                answer = result[0] if isinstance(result, tuple) else str(result)
-            except Exception:
-                logger.exception(
-                    "Agent %s LearningAgent.answer_question failed for query %s",
-                    agent_name,
-                    query_id,
-                )
-            results = [{"content": answer, "source": agent_name}] if answer else []
-            if hasattr(memory, "send_query_response"):
-                memory.send_query_response(query_id, question, results)
-            logger.info(
-                "Agent %s published QUERY_RESPONSE (id=%s) via LearningAgent: %d chars",
-                agent_name,
-                query_id,
-                len(answer),
-            )
-        else:
-            logger.warning(
-                "Agent %s received QUERY event with no question in payload",
-                agent_name,
-            )
-
-    elif event_type == "FEED_COMPLETE":
+    if event_type == "FEED_COMPLETE":
         total_turns = (payload or {}).get("total_turns", "?")
         logger.info(
             "Agent %s received FEED_COMPLETE (total_turns=%s). Publishing AGENT_READY.",
             agent_name,
             total_turns,
         )
-        # Publish AGENT_READY so the eval script knows this agent is done processing
         import json
         import uuid as _uuid
 
@@ -274,79 +216,109 @@ def _handle_event(
         elif hasattr(memory, "send_event"):
             memory.send_event(json.dumps(ready_event))
         logger.info("Agent %s published AGENT_READY", agent_name)
+        return
 
-    elif event_type in ("AGENT_READY",):
-        # Ignore AGENT_READY events from other agents
-        pass
+    if event_type in ("AGENT_READY",):
+        # Ignore heartbeat events from other agents
+        return
 
-    elif event_type in ("QUERY_RESPONSE", "network_graph.search_response"):
-        # Response events emitted by the graph store auto-handler or by other
-        # agents replying to a search query.  The NetworkGraphStore handles
-        # these internally (waking pending search waiters); there is nothing
-        # further for the OODA loop to do.  Explicitly acknowledge here so the
-        # event does not fall through to learning_agent.learn_from_content() and
-        # pollute the cognitive store with raw response payloads.
+    if event_type in ("QUERY_RESPONSE", "network_graph.search_response"):
+        # Graph store handles these internally; nothing for the OODA loop to do.
         query_id = (payload or {}).get("query_id", "")
         logger.debug(
-            "Agent %s received %s (query_id=%s) from graph store auto-handler — acknowledged",
+            "Agent %s received %s (query_id=%s) — acknowledged",
             agent_name,
             event_type,
             query_id,
         )
+        return
 
+    # --- All other event types: extract text and feed to OODA loop ---
+    input_text = _extract_input_text(event_type, payload, event)
+    if input_text:
+        logger.info(
+            "Agent %s processing input via OODA (event_type=%s, len=%d)",
+            agent_name,
+            event_type or "unknown",
+            len(input_text),
+        )
+        agent.process(input_text)
     else:
-        learning_agent.learn_from_content(f"Event received: {event}")
+        logger.warning(
+            "Agent %s received event with no extractable text (event_type=%s)",
+            agent_name,
+            event_type,
+        )
+
+
+def _extract_input_text(event_type: str | None, payload: dict | None, raw_event: object) -> str:
+    """Extract a plain input string from an event.
+
+    Handles known event shapes (LEARN_CONTENT, QUERY/INPUT) and falls back
+    to a string representation of the raw event.
+    """
+    payload = payload or {}
+
+    if event_type == "LEARN_CONTENT":
+        return payload.get("content", "")
+
+    if event_type in ("QUERY", "INPUT", "network_graph.search_query"):
+        # Prefer 'question' field; fall back to 'text'
+        return payload.get("question", "") or payload.get("text", "") or payload.get("content", "")
+
+    # Generic fallback: try common text fields, then stringify the event
+    for key in ("content", "text", "question", "message", "data"):
+        val = payload.get(key, "")
+        if val and isinstance(val, str):
+            return val
+
+    return f"Event received: {raw_event}"
 
 
 def _ooda_tick(
     agent_name: str,
-    agent_prompt: str,
     memory: object,
     tick: int,
-    learning_agent: object,
+    agent: object,
 ) -> None:
     """Single OODA loop tick — poll for incoming events and process them.
 
-    Observe: Check for new messages/events from other agents.
-    Orient:  Update internal state based on observations.
-    Decide:  Determine if any action is needed.
-    Act:     Store decisions or trigger downstream effects.
+    Observe: Receive messages/events from the transport.
+    Process: Feed each event's input text to agent.process() (OODA pipeline).
     """
-    # Observe: check for incoming LEARN_CONTENT events
+    # Receive general events (LEARN_CONTENT, INPUT, etc.)
     try:
         events = memory.receive_events() if hasattr(memory, "receive_events") else []
         for event in events:
             logger.info("Agent %s received event: %s", agent_name, event)
-            _handle_event(agent_name, event, memory, learning_agent)
+            _handle_event(agent_name, event, memory, agent)
     except Exception:
         logger.debug("Event receive failed", exc_info=True)
 
-    # Observe: check for incoming QUERY events
+    # Receive query events (QUERY / network_graph.search_query)
     try:
         query_events = (
             memory.receive_query_events() if hasattr(memory, "receive_query_events") else []
         )
         for event in query_events:
-            logger.info("Agent %s received QUERY event: %s", agent_name, event)
-            _handle_event(agent_name, event, memory, learning_agent)
+            logger.info("Agent %s received query event: %s", agent_name, event)
+            _handle_event(agent_name, event, memory, agent)
     except Exception:
         logger.debug("Query event receive failed", exc_info=True)
 
     if tick % 10 == 0:
-        # Every 10 ticks, log memory statistics
         try:
             stats = memory.stats() if hasattr(memory, "stats") else {}
             logger.info("Agent %s stats (tick=%d): %s", agent_name, tick, stats)
         except Exception:
             logger.debug("Could not retrieve stats", exc_info=True)
 
-    # Observe: log LearningAgent memory stats for diagnostics
     try:
-        la_stats = learning_agent.get_memory_stats() if hasattr(learning_agent, "get_memory_stats") else {}
+        la_stats = agent.get_memory_stats()
         if la_stats:
-            logger.debug("Agent %s LearningAgent memory stats: %s", agent_name, la_stats)
+            logger.debug("Agent %s memory stats: %s", agent_name, la_stats)
     except Exception:
-        logger.debug("LearningAgent get_memory_stats failed", exc_info=True)
+        logger.debug("get_memory_stats failed", exc_info=True)
 
 
 if __name__ == "__main__":

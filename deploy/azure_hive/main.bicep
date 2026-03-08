@@ -119,6 +119,17 @@ resource sbSubscriptions 'Microsoft.ServiceBus/namespaces/topics/subscriptions@2
   }
 ]
 
+// Eval subscription for query_hive.py to collect agent responses
+resource sbEvalSubscription 'Microsoft.ServiceBus/namespaces/topics/subscriptions@2022-10-01-preview' = {
+  name: 'eval-query-agent'
+  parent: sbTopic
+  properties: {
+    defaultMessageTimeToLive: 'PT1H'
+    lockDuration: 'PT30S'
+    maxDeliveryCount: 3
+  }
+}
+
 // ---------- Container Apps Environment ----------
 resource containerEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
   name: envName
