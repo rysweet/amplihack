@@ -1,9 +1,8 @@
 """Rust recipe runner integration.
 
-Delegates recipe execution to the ``recipe-runner-rs`` binary when available,
-providing ~160x faster startup and zero Python runtime dependencies.
-
-Falls back transparently to the Python runner when the binary is not installed.
+Delegates recipe execution to the ``recipe-runner-rs`` binary.
+No fallbacks — if the Rust engine is selected and the binary is missing,
+execution fails immediately with a clear error.
 """
 
 from __future__ import annotations
@@ -51,6 +50,10 @@ def is_rust_runner_available() -> bool:
     return find_rust_binary() is not None
 
 
+class RustRunnerNotFoundError(RuntimeError):
+    """Raised when the Rust recipe runner binary is required but not found."""
+
+
 def run_recipe_via_rust(
     name: str,
     user_context: dict[str, Any] | None = None,
@@ -58,18 +61,20 @@ def run_recipe_via_rust(
     recipe_dirs: list[str] | None = None,
     working_dir: str = ".",
     auto_stage: bool = True,
-) -> RecipeResult | None:
+) -> RecipeResult:
     """Execute a recipe using the Rust binary.
 
-    Returns a RecipeResult on success, or None if the Rust binary is not
-    available (caller should fall back to Python).
-
     Raises:
-        subprocess.SubprocessError: If the binary crashes unexpectedly.
+        RustRunnerNotFoundError: If the binary is not installed.
+        RuntimeError: If the binary produces unparseable output.
     """
     binary = find_rust_binary()
     if binary is None:
-        return None
+        raise RustRunnerNotFoundError(
+            "recipe-runner-rs binary not found. "
+            "Install it: cargo install --git https://github.com/rysweet/amplihack-recipe-runner "
+            "or set RECIPE_RUNNER_RS_PATH to the binary location."
+        )
 
     cmd = [binary, name, "--output-format", "json", "-C", working_dir]
 
@@ -94,42 +99,26 @@ def run_recipe_via_rust(
 
     logger.info("Executing recipe '%s' via Rust binary: %s", name, " ".join(cmd))
 
-    try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            cwd=working_dir,
-        )
-    except FileNotFoundError:
-        logger.warning("Rust binary disappeared during execution, falling back to Python")
-        return None
+    result = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        cwd=working_dir,
+    )
 
-    # Parse JSON output from Rust binary
+    # Parse JSON output
     try:
         data = json.loads(result.stdout)
     except (json.JSONDecodeError, TypeError):
         if result.returncode != 0:
-            logger.error(
-                "Rust recipe runner failed (exit %d): %s",
-                result.returncode,
-                result.stderr[:500] if result.stderr else "no stderr",
+            raise RuntimeError(
+                f"Rust recipe runner failed (exit {result.returncode}): "
+                f"{result.stderr[:1000] if result.stderr else 'no stderr'}"
             )
-            return RecipeResult(
-                recipe_name=name,
-                success=False,
-                step_results=[
-                    StepResult(
-                        step_id="rust-runner",
-                        status=StepStatus.FAILED,
-                        error=result.stderr[:1000] if result.stderr else "Unknown error",
-                    )
-                ],
-                context={},
-            )
-        # Non-JSON output with success exit code — unexpected
-        logger.warning("Rust binary returned non-JSON output, falling back to Python")
-        return None
+        raise RuntimeError(
+            f"Rust recipe runner returned unparseable output (exit {result.returncode}): "
+            f"{result.stdout[:500] if result.stdout else 'empty stdout'}"
+        )
 
     # Convert JSON output to RecipeResult
     step_results = []
