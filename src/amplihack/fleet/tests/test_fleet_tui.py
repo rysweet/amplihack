@@ -540,13 +540,13 @@ class TestRefreshExclude:
 
 
 class TestRefreshAll:
-    """refresh_all() includes all VMs without exclusion."""
+    """refresh_all() excludes shared-NFS VMs and deduplicates sessions."""
 
-    def test_includes_all_vms_including_excluded(self, tui: FleetTUI) -> None:
-        """refresh_all should include VMs that refresh() would exclude."""
+    def test_excludes_shared_nfs_vms(self, tui: FleetTUI) -> None:
+        """refresh_all should exclude VMs in exclude_vms (shared-NFS duplicates)."""
         vm_list = [
             ("included-vm", "westus", True),
-            ("excluded-vm", "eastus", True),  # Would be excluded by refresh()
+            ("excluded-vm", "eastus", True),  # In tui.exclude_vms
         ]
 
         with patch.object(tui, "_get_vm_list", return_value=vm_list), \
@@ -555,20 +555,20 @@ class TestRefreshAll:
 
         names = [v.name for v in result]
         assert "included-vm" in names
-        assert "excluded-vm" in names
+        assert "excluded-vm" not in names
 
-    def test_refresh_all_polls_running_vms(self, tui: FleetTUI) -> None:
-        """refresh_all should poll all running VMs, even excluded ones."""
+    def test_does_not_poll_excluded_vms(self, tui: FleetTUI) -> None:
+        """refresh_all should not poll VMs in exclude_vms."""
         vm_list = [
             ("excluded-vm", "eastus", True),
-            ("stopped-vm", "westus", False),
+            ("normal-vm", "westus", True),
         ]
 
         with patch.object(tui, "_get_vm_list", return_value=vm_list), \
              patch.object(tui, "_poll_vm", return_value=[]) as mock_poll:
             tui.refresh_all()
 
-        mock_poll.assert_called_once_with("excluded-vm")
+        mock_poll.assert_called_once_with("normal-vm")
 
     def test_refresh_all_results_sorted(self, tui: FleetTUI) -> None:
         """refresh_all results should also be sorted by name."""
@@ -584,8 +584,8 @@ class TestRefreshAll:
         names = [v.name for v in result]
         assert names == ["a-vm", "z-vm"]
 
-    def test_refresh_vs_refresh_all_exclude_difference(self, tui: FleetTUI) -> None:
-        """Direct comparison: refresh excludes, refresh_all does not."""
+    def test_refresh_and_refresh_all_both_exclude(self, tui: FleetTUI) -> None:
+        """Both refresh() and refresh_all() exclude shared-NFS VMs."""
         vm_list = [
             ("excluded-vm", "eastus", True),
             ("normal-vm", "westus", True),
@@ -600,7 +600,7 @@ class TestRefreshAll:
         refresh_all_names = {v.name for v in refresh_all_result}
 
         assert "excluded-vm" not in refresh_names
-        assert "excluded-vm" in refresh_all_names
+        assert "excluded-vm" not in refresh_all_names
         assert "normal-vm" in refresh_names
         assert "normal-vm" in refresh_all_names
 
@@ -1069,3 +1069,165 @@ class TestShellMetacharFiltering:
         sessions = parse_session_output("vm-1", output)
         assert len(sessions) == 1
         assert sessions[0].session_name == "good-sess"
+
+
+# ---------------------------------------------------------------------------
+# Hostname verification (issue #2948)
+# ---------------------------------------------------------------------------
+
+
+class TestParseHostname:
+    """parse_hostname extracts hostname from ---HOST--- section."""
+
+    def test_extracts_hostname(self) -> None:
+        """Should extract hostname from ---HOST--- section."""
+        from amplihack.fleet._tui_parsers import parse_hostname
+
+        output = "---HOST---\nmy-vm\n===SESSION:work===\n---CAPTURE---\nhi\n---GIT---\n---END---\n"
+        assert parse_hostname(output) == "my-vm"
+
+    def test_returns_none_without_host_section(self) -> None:
+        """Should return None when ---HOST--- is missing."""
+        from amplihack.fleet._tui_parsers import parse_hostname
+
+        output = "===SESSION:work===\n---CAPTURE---\nhi\n---GIT---\n---END---\n"
+        assert parse_hostname(output) is None
+
+    def test_extracts_hostname_before_no_sessions(self) -> None:
+        """Should extract hostname even when there are no sessions."""
+        from amplihack.fleet._tui_parsers import parse_hostname
+
+        output = "---HOST---\nmy-vm\n===NO_SESSIONS==="
+        assert parse_hostname(output) == "my-vm"
+
+    def test_returns_none_for_empty_hostname(self) -> None:
+        """Should return None when hostname is empty."""
+        from amplihack.fleet._tui_parsers import parse_hostname
+
+        output = "---HOST---\n\n===SESSION:work===\n"
+        assert parse_hostname(output) is None
+
+
+class TestHostnameVerification:
+    """_poll_vm discards sessions when hostname doesn't match VM name."""
+
+    def test_matching_hostname_returns_sessions(self, tui: FleetTUI) -> None:
+        """When hostname matches VM name, sessions are returned normally."""
+        active_output = "Active output " * 5
+        output = (
+            f"---HOST---\ntest-vm\n"
+            f"===SESSION:work-1===\n"
+            f"---CAPTURE---\n"
+            f"{active_output}\n"
+            f"---GIT---\n"
+            f"BRANCH:main\n"
+            f"---END---\n"
+        )
+        with patch("amplihack.fleet.fleet_tui.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout=output)
+            sessions = tui._poll_vm("test-vm")
+
+        assert len(sessions) == 1
+
+    def test_mismatched_hostname_returns_empty(self, tui: FleetTUI) -> None:
+        """When hostname doesn't match VM name, sessions are discarded."""
+        active_output = "Active output " * 5
+        output = (
+            f"---HOST---\nwrong-vm\n"
+            f"===SESSION:work-1===\n"
+            f"---CAPTURE---\n"
+            f"{active_output}\n"
+            f"---GIT---\n"
+            f"BRANCH:main\n"
+            f"---END---\n"
+        )
+        with patch("amplihack.fleet.fleet_tui.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout=output)
+            sessions = tui._poll_vm("test-vm")
+
+        assert sessions == []
+
+    def test_missing_hostname_returns_sessions(self, tui: FleetTUI) -> None:
+        """When ---HOST--- is absent (old gather_cmd), sessions still returned."""
+        active_output = "Active output " * 5
+        output = (
+            f"===SESSION:work-1===\n"
+            f"---CAPTURE---\n"
+            f"{active_output}\n"
+            f"---GIT---\n"
+            f"BRANCH:main\n"
+            f"---END---\n"
+        )
+        with patch("amplihack.fleet.fleet_tui.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout=output)
+            sessions = tui._poll_vm("test-vm")
+
+        assert len(sessions) == 1
+
+
+# ---------------------------------------------------------------------------
+# Session dedup across VMs (issue #2948)
+# ---------------------------------------------------------------------------
+
+
+class TestRefreshAllDedup:
+    """refresh_all deduplicates identical session sets across VMs."""
+
+    def test_dedup_clears_duplicate_session_sets(self, tui: FleetTUI) -> None:
+        """When two VMs return identical session names, the second gets cleared."""
+        vm_list = [
+            ("vm-a", "westus", True),
+            ("vm-b", "eastus", True),
+        ]
+
+        def poll_side_effect(vm_name: str) -> list[SessionView]:
+            # Both VMs return the same session names (Bastion interference)
+            return [
+                SessionView(vm_name=vm_name, session_name="work-1", status="running"),
+                SessionView(vm_name=vm_name, session_name="work-2", status="idle"),
+            ]
+
+        with patch.object(tui, "_get_vm_list", return_value=vm_list), \
+             patch.object(tui, "_poll_vm", side_effect=poll_side_effect):
+            result = tui.refresh_all()
+
+        # One VM keeps sessions, the other gets cleared
+        session_counts = [len(v.sessions) for v in result]
+        assert 2 in session_counts  # first VM keeps its sessions
+        assert 0 in session_counts  # second VM gets cleared
+
+    def test_dedup_keeps_distinct_session_sets(self, tui: FleetTUI) -> None:
+        """When VMs have different session names, all are kept."""
+        vm_list = [
+            ("vm-a", "westus", True),
+            ("vm-b", "eastus", True),
+        ]
+
+        def poll_side_effect(vm_name: str) -> list[SessionView]:
+            if vm_name == "vm-a":
+                return [SessionView(vm_name=vm_name, session_name="work-1")]
+            return [SessionView(vm_name=vm_name, session_name="work-2")]
+
+        with patch.object(tui, "_get_vm_list", return_value=vm_list), \
+             patch.object(tui, "_poll_vm", side_effect=poll_side_effect):
+            result = tui.refresh_all()
+
+        assert all(len(v.sessions) == 1 for v in result)
+
+    def test_dedup_ignores_vms_with_no_sessions(self, tui: FleetTUI) -> None:
+        """VMs with no sessions should not be affected by dedup."""
+        vm_list = [
+            ("vm-a", "westus", True),
+            ("vm-b", "eastus", False),
+        ]
+
+        with patch.object(tui, "_get_vm_list", return_value=vm_list), \
+             patch.object(tui, "_poll_vm", return_value=[
+                 SessionView(vm_name="vm-a", session_name="work-1"),
+             ]):
+            result = tui.refresh_all()
+
+        vm_a = next(v for v in result if v.name == "vm-a")
+        vm_b = next(v for v in result if v.name == "vm-b")
+        assert len(vm_a.sessions) == 1
+        assert len(vm_b.sessions) == 0

@@ -24,7 +24,7 @@ from amplihack.fleet._constants import AZ_CLI_TIMEOUT_SECONDS, DEFAULT_CAPTURE_L
 from amplihack.fleet._defaults import DEFAULT_EXCLUDE_VMS, ensure_azlin_context, get_azlin_path, get_existing_tunnels
 from amplihack.fleet._tui_classify import classify_status
 from amplihack.fleet._tui_data import SessionView, VMView
-from amplihack.fleet._tui_parsers import parse_session_output, parse_vm_text
+from amplihack.fleet._tui_parsers import parse_hostname, parse_session_output, parse_vm_text
 from amplihack.fleet._tui_render import (
     HIDE_CURSOR,
     SHOW_CURSOR,
@@ -196,7 +196,32 @@ class FleetTUI:
                     logging.getLogger(__name__).warning("Failed to poll VM %s: %s", entry[0], exc)
                     results.append(VMView(name=entry[0], region=entry[1], is_running=entry[2]))
 
-        return sorted(results, key=lambda v: v.name)
+        return sorted(self._dedup_sessions(results), key=lambda v: v.name)
+
+    @staticmethod
+    def _dedup_sessions(vms: list[VMView]) -> list[VMView]:
+        """Detect VMs that returned identical session sets and keep only the first.
+
+        When concurrent Bastion tunnels interfere, multiple VMs may return
+        the same tmux session data from a single host.  This pass computes
+        a fingerprint per VM (frozenset of session names) and clears
+        duplicates.
+        """
+        seen: dict[frozenset[str], str] = {}  # fingerprint → first vm name
+        for vm in vms:
+            if not vm.sessions:
+                continue
+            fingerprint = frozenset(s.session_name for s in vm.sessions)
+            if fingerprint in seen:
+                logging.getLogger(__name__).warning(
+                    "Duplicate session set on %s (same as %s) — clearing sessions",
+                    vm.name,
+                    seen[fingerprint],
+                )
+                vm.sessions = []
+            else:
+                seen[fingerprint] = vm.name
+        return vms
 
     # ------------------------------------------------------------------
     # Data gathering: azlin + tmux polling
@@ -287,6 +312,7 @@ class FleetTUI:
         # IMPORTANT: Every statement ends with `;` so the script works even
         # when newlines are stripped (azlin -> SSH -> bash -c collapses them).
         gather_cmd = (
+            'echo "---HOST---"; hostname; '
             'SESSIONS=$(tmux list-sessions -F "#{session_name}" 2>/dev/null); '
             'if [ -z "$SESSIONS" ]; then echo "===NO_SESSIONS==="; exit 0; fi; '
             "for SESS in $SESSIONS; do "
@@ -326,21 +352,36 @@ class FleetTUI:
             ]
             output = self._run_ssh_cmd(direct_cmd)
             if output is not None:
-                return parse_session_output(vm_name, output)
+                return self._parse_and_verify(vm_name, output)
 
         cmd = [self.azlin_path, "connect", vm_name, "--no-tmux", "--yes", "--", gather_cmd]
 
         # Strategy 1: standard subprocess (fast when SSH keys are cached)
         output = self._run_ssh_cmd(cmd)
         if output is not None:
-            return parse_session_output(vm_name, output)
+            return self._parse_and_verify(vm_name, output)
 
         # Strategy 2: virtual TTY — Bastion SSH often needs a PTY
         output = self._run_ssh_cmd_pty(cmd)
         if output is not None:
-            return parse_session_output(vm_name, output)
+            return self._parse_and_verify(vm_name, output)
 
         return []
+
+    def _parse_and_verify(self, vm_name: str, output: str) -> list[SessionView]:
+        """Parse SSH output and verify the hostname matches the expected VM.
+
+        When Azure Bastion tunnels interfere during concurrent polling,
+        multiple VMs can return data from the same host.  The ---HOST---
+        section lets us detect and discard misrouted responses.
+        """
+        host = parse_hostname(output)
+        if host is not None and host != vm_name:
+            logging.getLogger(__name__).warning(
+                "Hostname mismatch for %s: got '%s' — discarding sessions", vm_name, host,
+            )
+            return []
+        return parse_session_output(vm_name, output)
 
     def _run_ssh_cmd(self, cmd: list[str]) -> str | None:
         """Run SSH command with standard subprocess. Returns output or None."""
