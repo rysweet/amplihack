@@ -398,5 +398,6 @@ Key constants from `hive_mind/constants.py`:
 | `src/.../hive_mind/controller.py`     | HiveController (desired-state YAML manifests) |
 | `src/.../hive_mind/distributed.py`    | AgentNode, HiveCoordinator                    |
 | `src/.../hive_mind/event_bus.py`      | EventBus protocol + Local/Azure SB/Redis      |
+| `src/.../hive_mind/orchestrator.py`   | HiveMindOrchestrator (unified four-layer coordination) |
 | `src/.../hive_mind/constants.py`      | All shared constants and thresholds           |
 | `src/.../cognitive_adapter.py`        | CognitiveAdapter (local Kuzu + hive bridge)   |
