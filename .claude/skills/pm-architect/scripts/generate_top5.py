@@ -173,14 +173,25 @@ def fetch_github_issues(account: str, repos: list[str]) -> list[dict]:
 
         repo = item.get("repo", "")
         candidates.append({
-            "title": f"[{repo}#{item['number']}] {item['title']}",
+            "title": item["title"],
             "source": "github_issue",
             "raw_score": round(raw_score, 1),
+            "score_breakdown": {
+                "label_priority": round(priority_score, 2),
+                "staleness": round(staleness_score, 2),
+                "activity": round(activity_score, 2),
+            },
             "rationale": ", ".join(reasons),
             "item_id": f"{repo}#{item['number']}",
             "priority": "HIGH" if priority_score >= 0.8 else "MEDIUM" if priority_score >= 0.5 else "LOW",
             "repo": repo,
+            "account": account,
             "url": f"https://github.com/{repo}/issues/{item['number']}",
+            "labels": item.get("labels", []),
+            "created": item.get("created", ""),
+            "updated": item.get("updated", ""),
+            "days_stale": round(days_stale, 1),
+            "comments": comments,
         })
 
     return candidates
@@ -260,14 +271,24 @@ def fetch_github_prs(account: str, repos: list[str]) -> list[dict]:
 
         repo = item.get("repo", "")
         candidates.append({
-            "title": f"[{repo}#{item['number']}] {item['title']}",
+            "title": item["title"],
             "source": "github_pr",
             "raw_score": round(raw_score, 1),
+            "score_breakdown": {
+                "base_priority": round(base_score, 2),
+                "staleness": round(staleness_score, 2),
+            },
             "rationale": ", ".join(reasons),
             "item_id": f"{repo}#{item['number']}",
             "priority": "HIGH" if base_score >= 0.8 else "MEDIUM",
             "repo": repo,
+            "account": account,
             "url": f"https://github.com/{repo}/pull/{item['number']}",
+            "labels": item.get("labels", []),
+            "created": item.get("created", ""),
+            "updated": item.get("updated", ""),
+            "days_stale": round(days_stale, 1),
+            "is_draft": is_draft,
         })
 
     return candidates
@@ -352,14 +373,44 @@ def score_roadmap_alignment(candidate: dict, goals: list[str]) -> float:
     return min(max_alignment, 1.0)
 
 
+def suggest_action(candidate: dict) -> str:
+    """Suggest a concrete next action for a candidate."""
+    source = candidate["source"]
+    days_stale = candidate.get("days_stale", 0)
+    labels = candidate.get("labels", [])
+
+    if source == "github_pr":
+        if candidate.get("is_draft"):
+            return "Finish draft or close if abandoned"
+        if days_stale > 14:
+            return "Merge, close, or rebase — stale >2 weeks"
+        if days_stale > 7:
+            return "Review and merge or request changes"
+        return "Review PR"
+    elif source == "github_issue":
+        if any(lbl in ("critical", "priority:critical") for lbl in labels):
+            return "Fix immediately — critical severity"
+        if any(lbl in ("bug",) for lbl in labels):
+            return "Investigate and fix bug"
+        if days_stale > 30:
+            return "Triage: still relevant? Close or reprioritize"
+        return "Work on issue or delegate"
+    elif source == "local":
+        return "Pick up from local backlog"
+    return "Review"
+
+
 def aggregate_and_rank(
     issues: list[dict],
     prs: list[dict],
     local: list[dict],
     goals: list[str],
     top_n: int = TOP_N,
-) -> list[dict]:
-    """Aggregate candidates from all sources and rank by weighted score."""
+) -> tuple[list[dict], list[dict]]:
+    """Aggregate candidates from all sources and rank by weighted score.
+
+    Returns (top_n items, next 5 near-misses).
+    """
     scored = []
 
     source_weights = {
@@ -382,15 +433,19 @@ def aggregate_and_rank(
             "title": candidate["title"],
             "source": candidate["source"],
             "score": round(final_score, 1),
+            "raw_score": candidate["raw_score"],
+            "source_weight": source_weight,
             "rationale": candidate["rationale"],
             "item_id": candidate.get("item_id", ""),
             "priority": candidate.get("priority", "MEDIUM"),
             "alignment": round(alignment, 2),
+            "action": suggest_action(candidate),
         }
-        if "url" in candidate:
-            entry["url"] = candidate["url"]
-        if "repo" in candidate:
-            entry["repo"] = candidate["repo"]
+        # Preserve all metadata from the candidate
+        for key in ("url", "repo", "account", "labels", "created", "updated",
+                     "days_stale", "comments", "is_draft", "score_breakdown"):
+            if key in candidate:
+                entry[key] = candidate[key]
 
         scored.append(entry)
 
@@ -401,7 +456,47 @@ def aggregate_and_rank(
     for i, item in enumerate(top):
         item["rank"] = i + 1
 
-    return top
+    near_misses = scored[top_n:top_n + 5]
+    for i, item in enumerate(near_misses):
+        item["rank"] = top_n + i + 1
+
+    return top, near_misses
+
+
+def build_repo_summary(all_candidates: list[dict]) -> dict:
+    """Build a per-repo, per-account summary of open work."""
+    repos: dict[str, dict] = {}
+    accounts: dict[str, dict] = {}
+
+    for c in all_candidates:
+        repo = c.get("repo", "local")
+        account = c.get("account", "local")
+
+        if repo not in repos:
+            repos[repo] = {"issues": 0, "prs": 0, "high_priority": 0}
+        if account not in accounts:
+            accounts[account] = {"issues": 0, "prs": 0, "repos": set()}
+
+        if c["source"] == "github_issue":
+            repos[repo]["issues"] += 1
+            accounts[account]["issues"] += 1
+        elif c["source"] == "github_pr":
+            repos[repo]["prs"] += 1
+            accounts[account]["prs"] += 1
+
+        if c.get("priority") == "HIGH":
+            repos[repo]["high_priority"] += 1
+
+        accounts[account]["repos"].add(repo)
+
+    # Convert sets to lists for JSON serialization
+    for a in accounts.values():
+        a["repos"] = sorted(a["repos"])
+
+    # Sort repos by total open items descending
+    sorted_repos = dict(sorted(repos.items(), key=lambda x: -(x[1]["issues"] + x[1]["prs"])))
+
+    return {"by_repo": sorted_repos, "by_account": accounts}
 
 
 def generate_top5(project_root: Path, sources_path: Path | None = None) -> dict:
@@ -445,10 +540,14 @@ def generate_top5(project_root: Path, sources_path: Path | None = None) -> dict:
     goals = extract_roadmap_goals(pm_dir) if pm_dir.exists() else []
 
     # Aggregate and rank
-    top5 = aggregate_and_rank(all_issues, all_prs, local, goals)
+    all_candidates = all_issues + all_prs + local
+    top5, near_misses = aggregate_and_rank(all_issues, all_prs, local, goals)
+    summary = build_repo_summary(all_candidates)
 
     return {
         "top5": top5,
+        "near_misses": near_misses,
+        "summary": summary,
         "sources": {
             "github_issues": len(all_issues),
             "github_prs": len(all_prs),
@@ -456,7 +555,7 @@ def generate_top5(project_root: Path, sources_path: Path | None = None) -> dict:
             "roadmap_goals": len(goals),
             "accounts": accounts_queried,
         },
-        "total_candidates": len(all_issues) + len(all_prs) + len(local),
+        "total_candidates": len(all_candidates),
     }
 
 
