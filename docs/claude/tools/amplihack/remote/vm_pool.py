@@ -43,10 +43,10 @@ class VMSize(Enum):
 # Map VMSize to Azure VM SKUs
 # Each session gets 32GB RAM for optimal Claude Code performance
 _VMSIZE_TO_AZURE_SIZE = {
-    VMSize.S: "Standard_D8s_v3",  # 32GB RAM - 1 session × 32GB
-    VMSize.M: "Standard_E8s_v5",  # 64GB RAM - 2 sessions × 32GB
-    VMSize.L: "Standard_E16s_v5",  # 128GB RAM - 4 sessions × 32GB
-    VMSize.XL: "Standard_E32s_v5",  # 256GB RAM - 8 sessions × 32GB
+    VMSize.S: "Standard_D8s_v3",  # 32GB RAM - 1 session x 32GB
+    VMSize.M: "Standard_E8s_v5",  # 64GB RAM - 2 sessions x 32GB
+    VMSize.L: "Standard_E16s_v5",  # 128GB RAM - 4 sessions x 32GB
+    VMSize.XL: "Standard_E32s_v5",  # 256GB RAM - 8 sessions x 32GB
 }
 
 
@@ -362,6 +362,21 @@ class VMPoolManager:
             "available_capacity": available_capacity,
             "vms": vms,
         }
+
+    def refresh_pool_statuses(self, max_workers: int = 10) -> dict[str, str]:
+        """Poll current Azure status of all VMs in the pool in parallel.
+
+        Uses ThreadPoolExecutor via the orchestrator to poll all VMs concurrently,
+        which is significantly faster than sequential polling for large pools.
+
+        Args:
+            max_workers: Maximum parallel workers for polling (default: 10)
+
+        Returns:
+            Dict mapping VM name to its current power state string
+        """
+        vm_names = list(self._pool.keys())
+        return self._orchestrator.poll_vm_statuses(vm_names, max_workers=max_workers)
 
     def cleanup_idle_vms(self, grace_period_minutes: int = 30) -> list[str]:
         """Cleanup idle VMs from pool.
