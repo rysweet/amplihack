@@ -12,7 +12,9 @@ Covers:
 from __future__ import annotations
 
 import json
+import os
 import subprocess
+from unittest import mock
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -390,3 +392,28 @@ class TestEnsureRustRecipeRunner:
     @patch("subprocess.run", side_effect=subprocess.TimeoutExpired("cargo", 300))
     def test_cargo_install_timeout(self, mock_run, mock_which, mock_avail):
         assert ensure_rust_recipe_runner(quiet=True) is False
+
+
+# ============================================================================
+# Validation and edge-case tests (C2-PR-9, C2-PR-10)
+# ============================================================================
+
+
+class TestEngineValidation:
+    """C2-PR-9: Invalid engine value must raise ValueError."""
+
+    def test_invalid_engine_raises_valueerror(self):
+        from amplihack.recipes import run_recipe_by_name
+        with mock.patch.dict(os.environ, {"RECIPE_RUNNER_ENGINE": "rrust"}):
+            with pytest.raises(ValueError, match="Invalid RECIPE_RUNNER_ENGINE"):
+                run_recipe_by_name("test", adapter=MagicMock())
+
+
+class TestExecutionTimeout:
+    """C2-PR-10: TimeoutExpired during recipe execution must propagate."""
+
+    @patch("amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs")
+    @patch("subprocess.run", side_effect=subprocess.TimeoutExpired("recipe-runner", 3600))
+    def test_execution_timeout_propagates(self, mock_run, mock_find):
+        with pytest.raises(subprocess.TimeoutExpired):
+            run_recipe_via_rust(name="test", user_context={})

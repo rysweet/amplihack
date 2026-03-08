@@ -415,7 +415,10 @@ def _local_install(repo_root, profile_uri=None):
             print("   ⚠️  recipe-runner-rs not installed (Python runner will be used)")
             print("   Install manually: cargo install --git https://github.com/rysweet/amplihack-recipe-runner")
     except Exception as e:
-        print(f"   ⚠️  Could not check recipe-runner-rs: {e}")
+        import logging as _install_logging
+        _install_logging.getLogger(__name__).warning(
+            "Could not ensure recipe-runner-rs: %s", e, exc_info=True,
+        )
 
     # Step 7: Generate manifest for uninstall
     print("\n📝 Generating uninstall manifest:")

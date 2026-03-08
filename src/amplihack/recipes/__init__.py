@@ -124,6 +124,10 @@ def run_recipe_by_name(
     import os
 
     engine = os.environ.get("RECIPE_RUNNER_ENGINE", "").lower()
+    if engine and engine not in ("rust", "python"):
+        raise ValueError(
+            f"Invalid RECIPE_RUNNER_ENGINE='{engine}'. Must be 'rust', 'python', or unset for auto-detect."
+        )
 
     if engine == "rust":
         return run_recipe_via_rust(name=name, user_context=user_context, dry_run=dry_run)
