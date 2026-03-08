@@ -15,7 +15,13 @@ import subprocess
 import tempfile
 import threading
 import time
+import uuid
 from pathlib import Path
+
+_NON_INTERACTIVE_FOOTER = (
+    "\n\nIMPORTANT: Proceed autonomously. Do not ask questions. "
+    "Make reasonable decisions and continue."
+)
 
 
 class NestedSessionAdapter:
@@ -53,9 +59,8 @@ class NestedSessionAdapter:
         Runs without a hard timeout. Output is streamed to a log file
         and tailed by a background thread for progress monitoring.
         """
-        # Prepare environment without CLAUDECODE
-        env = os.environ.copy()
-        env.pop("CLAUDECODE", None)
+        # Prepare environment (remove CLAUDECODE, propagate session tree vars)
+        env = self._build_child_env()
 
         # Prepare working directory
         temp_dir = None
@@ -70,6 +75,9 @@ class NestedSessionAdapter:
         output_file = output_dir / f".agent-step-{int(time.time())}.log"
 
         try:
+            # Append non-interactive footer so nested sessions never ask
+            # interactive questions and hang waiting for input (#2464).
+            prompt = prompt + _NON_INTERACTIVE_FOOTER
             cmd = [self._cli, "-p", prompt]
 
             # Launch process - no timeout
@@ -146,6 +154,26 @@ class NestedSessionAdapter:
     @property
     def name(self) -> str:
         return f"nested-session ({self._cli})"
+
+    @staticmethod
+    def _build_child_env() -> dict[str, str]:
+        """Build environment for child processes.
+
+        - Removes CLAUDECODE so nested Claude sessions work.
+        - Propagates session tree env vars, incrementing depth by 1.
+        - Generates a tree ID if none exists.
+        """
+        child_env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
+
+        current_depth = int(os.environ.get("AMPLIHACK_SESSION_DEPTH", "0"))
+        tree_id = os.environ.get("AMPLIHACK_TREE_ID") or uuid.uuid4().hex[:8]
+
+        child_env["AMPLIHACK_TREE_ID"] = tree_id
+        child_env["AMPLIHACK_SESSION_DEPTH"] = str(current_depth + 1)
+        child_env["AMPLIHACK_MAX_DEPTH"] = os.environ.get("AMPLIHACK_MAX_DEPTH", "3")
+        child_env["AMPLIHACK_MAX_SESSIONS"] = os.environ.get("AMPLIHACK_MAX_SESSIONS", "10")
+
+        return child_env
 
     @staticmethod
     def _tail_output(path: Path, stop: threading.Event) -> None:
