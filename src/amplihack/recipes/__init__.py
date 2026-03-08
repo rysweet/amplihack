@@ -130,12 +130,15 @@ def run_recipe_by_name(
         # Explicit Python — no Rust attempted
         return _run_recipe_python(name, adapter, user_context, dry_run)
 
-    # Auto-detect: check once, commit to the result
+    # Auto-detect: check once, commit to the result, log clearly
+    import logging
+    _log = logging.getLogger(__name__)
+
     if is_rust_runner_available():
-        import logging
-        logging.getLogger(__name__).info("Auto-detected Rust recipe runner — using it exclusively")
+        _log.info("RECIPE_RUNNER_ENGINE not set — auto-selected 'rust' (binary found in PATH)")
         return run_recipe_via_rust(name=name, user_context=user_context, dry_run=dry_run)
 
+    _log.info("RECIPE_RUNNER_ENGINE not set — auto-selected 'python' (rust binary not found)")
     return _run_recipe_python(name, adapter, user_context, dry_run)
 
 

@@ -104,6 +104,7 @@ def run_recipe_via_rust(
         capture_output=True,
         text=True,
         cwd=working_dir,
+        timeout=3600,  # 1 hour hard limit — recipes can be long-running
     )
 
     # Parse JSON output
