@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_azlin_path() -> str:
-    """Resolve azlin binary path from AZLIN_PATH env var or PATH.
+    """Resolve azlin binary path from AZLIN_PATH env var, PATH, or known dev location.
 
     Raises ValueError if azlin cannot be found.
     """
@@ -25,6 +25,10 @@ def get_azlin_path() -> str:
     which_path = shutil.which("azlin")
     if which_path:
         return which_path
+    # Check known dev location (co-located azlin repo)
+    dev_path = os.path.expanduser("~/src/azlin/.venv/bin/azlin")
+    if os.path.isfile(dev_path) and os.access(dev_path, os.X_OK):
+        return dev_path
     raise ValueError(
         "azlin not found. Set AZLIN_PATH to the binary location.\n"
         "See: https://github.com/rysweet/azlin"

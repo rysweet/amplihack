@@ -51,35 +51,36 @@ class TestAnthropicBackend:
         backend = AnthropicBackend(api_key="sk-test")
         assert "claude" in backend.model
 
-    def test_complete_calls_sdk(self):
-        """complete() calls the Anthropic SDK and extracts text."""
+    def test_complete_calls_sdk_streaming(self):
+        """complete() uses streaming API and extracts final text."""
         mock_anthropic = MagicMock()
         mock_client = MagicMock()
         mock_anthropic.Anthropic.return_value = mock_client
 
-        mock_block = MagicMock()
-        mock_block.text = "The answer is 42"
-
-        mock_response = MagicMock()
-        mock_response.content = [mock_block]
-        mock_client.messages.create.return_value = mock_response
+        mock_stream = MagicMock()
+        mock_stream.__enter__ = MagicMock(return_value=mock_stream)
+        mock_stream.__exit__ = MagicMock(return_value=False)
+        mock_stream.get_final_text.return_value = "The answer is 42"
+        mock_client.messages.stream.return_value = mock_stream
 
         backend = AnthropicBackend(api_key="sk-test")
         with patch.dict("sys.modules", {"anthropic": mock_anthropic}):
             result = backend.complete("You are helpful", "What is 6*7?")
 
         assert result == "The answer is 42"
-        mock_client.messages.create.assert_called_once()
+        mock_client.messages.stream.assert_called_once()
 
-    def test_complete_empty_content(self):
-        """complete() returns empty string when response has no content."""
+    def test_complete_empty_response(self):
+        """complete() returns empty string when stream returns empty text."""
         mock_anthropic = MagicMock()
         mock_client = MagicMock()
         mock_anthropic.Anthropic.return_value = mock_client
 
-        mock_response = MagicMock()
-        mock_response.content = []
-        mock_client.messages.create.return_value = mock_response
+        mock_stream = MagicMock()
+        mock_stream.__enter__ = MagicMock(return_value=mock_stream)
+        mock_stream.__exit__ = MagicMock(return_value=False)
+        mock_stream.get_final_text.return_value = ""
+        mock_client.messages.stream.return_value = mock_stream
 
         backend = AnthropicBackend(api_key="sk-test")
         with patch.dict("sys.modules", {"anthropic": mock_anthropic}):

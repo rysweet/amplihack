@@ -50,16 +50,15 @@ class AnthropicBackend:
         import anthropic
 
         client = anthropic.Anthropic(api_key=self.api_key)
-        response = client.messages.create(
+        # Anthropic API requires streaming when max_tokens is high enough
+        # that the request could exceed 10 minutes.
+        with client.messages.stream(
             model=self.model,
             max_tokens=self.max_tokens,
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
-        )
-        if not response.content:
-            return ""
-        block = response.content[0]
-        return getattr(block, "text", "")
+        ) as stream:
+            return stream.get_final_text()
 
 
 class CopilotBackend:

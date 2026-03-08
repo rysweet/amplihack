@@ -568,15 +568,16 @@ class TestAnthropicBackend:
         assert backend.model == "claude-opus-4-20250514"
 
     def test_complete_success(self):
-        """Test complete() with mocked anthropic client."""
+        """Test complete() with mocked anthropic streaming client."""
         backend = AnthropicBackend(api_key="test-key")
-        mock_block = MagicMock()
-        mock_block.text = "Hello from Claude"
-        mock_response = MagicMock()
-        mock_response.content = [mock_block]
+
+        mock_stream = MagicMock()
+        mock_stream.__enter__ = MagicMock(return_value=mock_stream)
+        mock_stream.__exit__ = MagicMock(return_value=False)
+        mock_stream.get_final_text.return_value = "Hello from Claude"
 
         mock_client = MagicMock()
-        mock_client.messages.create.return_value = mock_response
+        mock_client.messages.stream.return_value = mock_stream
 
         mock_anthropic_module = MagicMock()
         mock_anthropic_module.Anthropic.return_value = mock_client
@@ -586,7 +587,7 @@ class TestAnthropicBackend:
             result = backend.complete("system prompt", "user prompt")
 
         assert result == "Hello from Claude"
-        mock_client.messages.create.assert_called_once_with(
+        mock_client.messages.stream.assert_called_once_with(
             model=backend.model,
             max_tokens=backend.max_tokens,
             system="system prompt",
@@ -594,32 +595,16 @@ class TestAnthropicBackend:
         )
 
     def test_complete_empty_response(self):
-        """Test complete() when response.content is empty."""
+        """Test complete() when stream returns empty text."""
         backend = AnthropicBackend(api_key="test-key")
-        mock_response = MagicMock()
-        mock_response.content = []
+
+        mock_stream = MagicMock()
+        mock_stream.__enter__ = MagicMock(return_value=mock_stream)
+        mock_stream.__exit__ = MagicMock(return_value=False)
+        mock_stream.get_final_text.return_value = ""
 
         mock_client = MagicMock()
-        mock_client.messages.create.return_value = mock_response
-
-        mock_anthropic_module = MagicMock()
-        mock_anthropic_module.Anthropic.return_value = mock_client
-
-        import sys
-        with patch.dict(sys.modules, {"anthropic": mock_anthropic_module}):
-            result = backend.complete("sys", "usr")
-
-        assert result == ""
-
-    def test_complete_block_without_text(self):
-        """Test complete() when block has no text attribute."""
-        backend = AnthropicBackend(api_key="test-key")
-        mock_block = MagicMock(spec=[])  # no attributes
-        mock_response = MagicMock()
-        mock_response.content = [mock_block]
-
-        mock_client = MagicMock()
-        mock_client.messages.create.return_value = mock_response
+        mock_client.messages.stream.return_value = mock_stream
 
         mock_anthropic_module = MagicMock()
         mock_anthropic_module.Anthropic.return_value = mock_client

@@ -33,7 +33,8 @@ class TestGetAzlinPath:
     def test_raises_when_not_found(self, monkeypatch):
         from amplihack.fleet._defaults import get_azlin_path
         monkeypatch.delenv("AZLIN_PATH", raising=False)
-        with patch("amplihack.fleet._defaults.shutil.which", return_value=None):
+        with patch("amplihack.fleet._defaults.shutil.which", return_value=None), \
+             patch("amplihack.fleet._defaults.os.path.isfile", return_value=False):
             with pytest.raises(ValueError, match="azlin not found"):
                 get_azlin_path()
 
