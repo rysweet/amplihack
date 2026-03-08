@@ -10,7 +10,7 @@ The recipe runner supports two engines. Set `RECIPE_RUNNER_ENGINE` to choose exp
 
 | Value | Engine | Notes |
 |-------|--------|-------|
-| `rust` | [recipe-runner-rs](https://github.com/rysweet/amplihack-recipe-runner) | Standalone binary, ~5ms startup, 216 tests |
+| `rust` | [recipe-runner-rs](https://github.com/rysweet/amplihack-recipe-runner) | Standalone binary, ~5ms startup, comprehensive test suite |
 | `python` | Built-in Python runner | No extra install needed |
 | *(not set)* | Auto-detect | Uses Rust if binary found in PATH, Python otherwise |
 
@@ -55,7 +55,7 @@ Complete documentation for using the Recipe Runner:
 
 ## Why It Exists
 
-Models frequently skip workflow steps when enforcement is purely prompt-based. A markdown file that says "you MUST follow all 22 steps" still relies on the model choosing to comply. The Recipe Runner moves enforcement from prompts to code: a Python `for` loop iterates over each step and calls the agent SDK, so the model never decides which step to run next.
+Models frequently skip workflow steps when enforcement is purely prompt-based. A markdown file that says "you MUST follow all 22 steps" still relies on the model choosing to comply. The Recipe Runner moves enforcement from prompts to compiled code — a deterministic loop iterates over each step and calls the agent SDK, so the model never decides which step to run next.
 
 **Prompt-based enforcement (before)**:
 
@@ -69,13 +69,13 @@ The model can read this instruction and still jump to implementation.
 
 **Code-enforced execution (after)**:
 
-```python
+```
 for step in recipe.steps:
     result = adapter.run(step.agent, step.prompt)
-    # The next step literally cannot start until this one completes
+    // The next step literally cannot start until this one completes
 ```
 
-The model executes within a single step. The Python loop controls progression.
+The model executes within a single step. The execution loop controls progression.
 
 ## Quick Start
 
@@ -289,7 +289,7 @@ Override with `--adapter <name>`.
 
 ## Available Recipes
 
-amplihack ships with 10 recipes covering the most common development workflows.
+amplihack ships with recipes covering the most common development workflows.
 
 | Recipe                  | Steps | Description                                             |
 | ----------------------- | ----- | ------------------------------------------------------- |
