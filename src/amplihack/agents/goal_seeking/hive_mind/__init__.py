@@ -106,6 +106,22 @@ try:
 except ImportError:
     _logger.debug("bloom module not available")
 
+# Unified orchestration layer (production)
+try:
+    from .orchestrator import (
+        DefaultPromotionPolicy,
+        HiveMindOrchestrator,
+        PromotionPolicy,
+    )
+
+    __all__ += [
+        "DefaultPromotionPolicy",
+        "HiveMindOrchestrator",
+        "PromotionPolicy",
+    ]
+except ImportError:
+    _logger.debug("orchestrator module not available")
+
 # Desired-state HiveController (production)
 try:
     from .controller import (
