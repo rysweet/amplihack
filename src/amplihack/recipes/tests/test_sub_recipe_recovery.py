@@ -11,6 +11,7 @@ before raising StepExecutionError.  These tests verify:
 
 from __future__ import annotations
 
+import contextlib
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -90,8 +91,6 @@ def _patch_sub_recipe(recipe_name: str, sub_result: RecipeResult):
     - RecipeParser  → returns a stub Recipe object
     - RecipeRunner.execute → returns sub_result
     """
-    import contextlib
-
     @contextlib.contextmanager
     def _cm():
         with patch("amplihack.recipes.runner.find_recipe", return_value="/fake/path.yaml"):
@@ -381,7 +380,8 @@ class TestAttemptAgentRecoveryDirect:
         )
         assert result is None
 
-    def test_recovery_prompt_includes_sub_recipe_name(self) -> None:
+    def test_recovery_prompt_includes_failure_context(self) -> None:
+        """Recovery prompt contains sub-recipe name, failed steps, and partial outputs."""
         adapter = MagicMock()
         adapter.execute_agent_step.return_value = "done"
 
@@ -392,43 +392,11 @@ class TestAttemptAgentRecoveryDirect:
             sub_recipe_name="important-recipe",
             error_message="exploded",
             failed_step_names="step-x, step-y",
-            partial_outputs="partial data here",
-        )
-
-        prompt = adapter.execute_agent_step.call_args.kwargs["prompt"]
-        assert "important-recipe" in prompt
-
-    def test_recovery_prompt_includes_failed_steps(self) -> None:
-        adapter = MagicMock()
-        adapter.execute_agent_step.return_value = "done"
-
-        runner = _make_runner(adapter)
-        runner._attempt_agent_recovery(
-            step=_make_step(),
-            ctx=_make_ctx(),
-            sub_recipe_name="r",
-            error_message="exploded",
-            failed_step_names="step-x, step-y",
-            partial_outputs="partial data here",
-        )
-
-        prompt = adapter.execute_agent_step.call_args.kwargs["prompt"]
-        assert "step-x" in prompt
-        assert "step-y" in prompt
-
-    def test_recovery_prompt_includes_partial_outputs(self) -> None:
-        adapter = MagicMock()
-        adapter.execute_agent_step.return_value = "done"
-
-        runner = _make_runner(adapter)
-        runner._attempt_agent_recovery(
-            step=_make_step(),
-            ctx=_make_ctx(),
-            sub_recipe_name="r",
-            error_message="exploded",
-            failed_step_names="step-a",
             partial_outputs="important partial output",
         )
 
         prompt = adapter.execute_agent_step.call_args.kwargs["prompt"]
+        assert "important-recipe" in prompt
+        assert "step-x" in prompt
+        assert "step-y" in prompt
         assert "important partial output" in prompt
