@@ -1,0 +1,29 @@
+{
+  "timestamp": "2026-03-08T12:57:00Z",
+  "workflow_run": "22821529045",
+  "total_agent_prs": 5,
+  "by_status": {
+    "triaged": 4,
+    "pending_triage": 1
+  },
+  "by_priority": {
+    "high": 4,
+    "medium": 1
+  },
+  "by_risk": {
+    "extreme": 2,
+    "high": 1,
+    "medium": 2
+  },
+  "prs_analyzed": [
+    {
+      "number": 2951,
+      "title": "feat: Rust recipe runner integration with engine selection",
+      "status": "newly_triaged",
+      "risk": "medium-high",
+      "priority": "medium",
+      "requires_immediate_action": true,
+      "blockers": ["merge_conflicts"]
+    }
+  ]
+}

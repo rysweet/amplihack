@@ -1,6 +1,6 @@
 {
-  "timestamp": "2026-03-08T02:31:00Z",
-  "workflow_run": "22812170871",
+  "timestamp": "2026-03-08T12:57:00Z",
+  "workflow_run": "22821529045",
   "total_agent_prs": 5,
   "by_status": {
     "triaged": 5,
@@ -15,5 +15,5 @@
     "high": 1,
     "medium": 2
   },
-  "latest_triage_file": "pr-triage-2026-03-08-02Z.json"
+  "latest_triage_file": "pr-triage-2026-03-08-12Z.json"
 }
