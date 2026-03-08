@@ -210,3 +210,6 @@ eval_results.json
 *_results/
 eval_progressive_example/
 generated-agents/
+
+# Rust recipe runner (separate repo)
+amplihack-recipe-runner-rs/

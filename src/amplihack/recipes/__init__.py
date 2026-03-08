@@ -38,6 +38,12 @@ from amplihack.recipes.models import (
 from amplihack.recipes.parser import RecipeParser
 from amplihack.recipes.runner import RecipeRunner
 
+from amplihack.recipes.rust_runner import (
+    find_rust_binary,
+    is_rust_runner_available,
+    run_recipe_via_rust,
+)
+
 __all__ = [
     "AgentNotFoundError",
     "AgentResolver",
@@ -55,10 +61,13 @@ __all__ = [
     "check_upstream_changes",
     "discover_recipes",
     "find_recipe",
+    "find_rust_binary",
+    "is_rust_runner_available",
     "list_recipes",
     "parse_recipe",
     "run_recipe",
     "run_recipe_by_name",
+    "run_recipe_via_rust",
     "sync_upstream",
     "update_manifest",
     "verify_global_installation",
@@ -90,15 +99,36 @@ def run_recipe_by_name(
 ) -> RecipeResult:
     """Find a recipe by name, parse it, and execute it.
 
+    Prefers the Rust recipe runner (``recipe-runner-rs``) when available for
+    ~160x faster startup. Falls back to the Python runner transparently.
+
+    Set ``RECIPE_RUNNER_RS_PATH`` to override the binary location, or
+    ``RECIPE_RUNNER_PREFER_PYTHON=1`` to skip the Rust runner entirely.
+
     Args:
         name: Recipe name (e.g. ``"default-workflow"``).
-        adapter: SDK adapter for step execution.
+        adapter: SDK adapter for step execution (used by Python fallback).
         user_context: Context variable overrides.
         dry_run: If True, log steps without executing.
 
     Raises:
         FileNotFoundError: If no recipe with that name is found.
     """
+    import os
+
+    # Try Rust runner first (unless explicitly disabled)
+    if not os.environ.get("RECIPE_RUNNER_PREFER_PYTHON"):
+        from amplihack.recipes.rust_runner import run_recipe_via_rust
+
+        rust_result = run_recipe_via_rust(
+            name=name,
+            user_context=user_context,
+            dry_run=dry_run,
+        )
+        if rust_result is not None:
+            return rust_result
+
+    # Fall back to Python runner
     path = find_recipe(name)
     if path is None:
         raise FileNotFoundError(f"Recipe '{name}' not found in any search directory")
