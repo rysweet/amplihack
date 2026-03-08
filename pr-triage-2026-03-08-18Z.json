@@ -1,0 +1,189 @@
+{
+  "timestamp": "2026-03-08T18:40:26Z",
+  "workflow_run": "22827330377",
+  "total_agent_prs": 4,
+  "prs_analyzed": [
+    {
+      "number": 2951,
+      "title": "feat: Rust recipe runner integration with engine selection",
+      "author": "rysweet",
+      "created_at": "2026-03-08T03:08:40Z",
+      "updated_at": "2026-03-08T18:27:52Z",
+      "age_hours": 15.5,
+      "category": "feature",
+      "risk_level": "high",
+      "priority": "medium-high",
+      "mergeable": false,
+      "draft": false,
+      "changed_files": 9,
+      "additions": 883,
+      "deletions": 13,
+      "commits": 6,
+      "blockers": ["merge_conflicts"],
+      "ci_status": "pending",
+      "key_observations": [
+        "Integrates Rust recipe runner with automatic engine selection",
+        "Has merge conflicts preventing auto-merge",
+        "Medium-sized change with 883 additions across 9 files",
+        "Recent PR (15.5 hours old) with active development",
+        "No CI checks configured (total_count: 0)"
+      ],
+      "recommended_action": "resolve_conflicts_then_review",
+      "reasoning": "High-impact feature requiring conflict resolution before merge consideration. Needs manual review due to integration complexity."
+    },
+    {
+      "number": 2941,
+      "title": "feat: integrate /top5 priority aggregation into pm-architect",
+      "author": "rysweet",
+      "created_at": "2026-03-07T23:45:15Z",
+      "updated_at": "2026-03-08T06:09:15Z",
+      "age_hours": 18.9,
+      "category": "feature",
+      "risk_level": "medium",
+      "priority": "high",
+      "mergeable": true,
+      "draft": false,
+      "changed_files": 18,
+      "additions": 1742,
+      "deletions": 2,
+      "commits": 6,
+      "blockers": [],
+      "ci_status": "pending",
+      "key_observations": [
+        "Only PR that is currently mergeable (no conflicts)",
+        "Adds top5 priority aggregation to pm-architect skill",
+        "Well-tested with 31 unit tests added",
+        "Large feature addition (1742 additions across 18 files)",
+        "No blocking issues identified"
+      ],
+      "recommended_action": "ready_for_merge",
+      "reasoning": "Clean, mergeable PR with comprehensive testing. Highest priority for merge as it's the only one without conflicts."
+    },
+    {
+      "number": 2876,
+      "title": "feat: distributed hive mind with DHT sharding + improved eval recall (51.2% → ≥83.9%)",
+      "author": "rysweet",
+      "created_at": "2026-03-04T07:02:43Z",
+      "updated_at": "2026-03-08T18:22:24Z",
+      "age_hours": 107.6,
+      "category": "feature",
+      "risk_level": "extreme",
+      "priority": "high",
+      "mergeable": false,
+      "draft": false,
+      "changed_files": 148,
+      "additions": 21728,
+      "deletions": 6210,
+      "commits": 70,
+      "blockers": ["merge_conflicts", "extreme_complexity"],
+      "ci_status": "pending",
+      "key_observations": [
+        "Massive PR: 148 files changed, 21K additions, 6K deletions, 70 commits",
+        "Complex distributed system changes (hive mind + DHT sharding)",
+        "4+ days old with ongoing updates",
+        "High risk due to scale and architectural impact",
+        "Fixes critical Kuzu DB silent failure issue"
+      ],
+      "recommended_action": "break_into_smaller_prs",
+      "reasoning": "Extreme risk level due to size and complexity. Should be decomposed into smaller, reviewable PRs: (1) Kuzu DB fix, (2) DHT sharding, (3) Eval improvements."
+    },
+    {
+      "number": 2727,
+      "title": "feat: Fleet Orchestration — autonomous multi-VM coding agent management",
+      "author": "rysweet",
+      "created_at": "2026-02-28T22:28:00Z",
+      "updated_at": "2026-03-08T13:05:44Z",
+      "age_hours": 187.2,
+      "category": "feature",
+      "risk_level": "extreme",
+      "priority": "medium",
+      "mergeable": false,
+      "draft": false,
+      "changed_files": 129,
+      "additions": 29695,
+      "deletions": 274,
+      "commits": 162,
+      "blockers": ["merge_conflicts", "extreme_complexity", "stale"],
+      "ci_status": "pending",
+      "key_observations": [
+        "Extremely large PR: 129 files, 30K additions, 162 commits",
+        "Complex fleet orchestration system for multi-VM management",
+        "Nearly 8 days old - becoming stale",
+        "102 comments indicating extensive review activity",
+        "High architectural impact"
+      ],
+      "recommended_action": "close_and_rebase_or_decompose",
+      "reasoning": "Massive, stale PR with extreme complexity. Likely needs to be closed and either: (1) rebased with conflict resolution, or (2) decomposed into focused PRs for gradual integration."
+    }
+  ],
+  "summary": {
+    "by_priority": {
+      "high": 2,
+      "medium-high": 1,
+      "medium": 1
+    },
+    "by_risk": {
+      "extreme": 2,
+      "high": 1,
+      "medium": 1
+    },
+    "by_mergeable": {
+      "true": 1,
+      "false": 3
+    },
+    "total_changed_files": 304,
+    "total_additions": 54048,
+    "total_deletions": 6499,
+    "total_commits": 244,
+    "avg_age_hours": 82.3,
+    "blockers_summary": {
+      "merge_conflicts": 3,
+      "extreme_complexity": 2,
+      "stale": 1
+    }
+  },
+  "critical_issues": [
+    {
+      "issue": "75% of agent PRs have merge conflicts",
+      "impact": "Blocks automated merging and requires manual intervention",
+      "recommendation": "Prioritize conflict resolution workflow or automated rebase strategy"
+    },
+    {
+      "issue": "50% of PRs are extremely large (>100 files, >20K additions)",
+      "impact": "Unreviewable scope increases risk and slows review process",
+      "recommendation": "Implement PR size limits and decomposition strategy for agent-created PRs"
+    },
+    {
+      "issue": "No CI checks configured (total_count: 0 for all PRs)",
+      "impact": "Cannot verify automated testing or quality gates",
+      "recommendation": "Configure CI/CD pipelines for automated validation"
+    },
+    {
+      "issue": "Average PR age is 3.4 days with oldest at 7.8 days",
+      "impact": "Long-lived branches accumulate more conflicts and become harder to merge",
+      "recommendation": "Establish SLA for agent PR review and merge decisions"
+    }
+  ],
+  "next_actions": [
+    {
+      "priority": 1,
+      "action": "Merge PR #2941",
+      "rationale": "Only mergeable PR without conflicts, well-tested, ready for integration"
+    },
+    {
+      "priority": 2,
+      "action": "Resolve conflicts for PR #2951",
+      "rationale": "Recent PR with manageable scope, high value for recipe runner integration"
+    },
+    {
+      "priority": 3,
+      "action": "Decompose or close PR #2876",
+      "rationale": "Extreme complexity requires focused review chunks; split into: Kuzu fix, DHT, eval"
+    },
+    {
+      "priority": 4,
+      "action": "Close and restart PR #2727",
+      "rationale": "Too stale and massive to salvage; needs fresh approach with incremental PRs"
+    }
+  ]
+}
