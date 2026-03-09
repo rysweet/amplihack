@@ -7,7 +7,7 @@ on:
 permissions:
   contents: read
   pull-requests: read
-engine: copilot
+engine: claude
 tools:
   github:
     lockdown: false
