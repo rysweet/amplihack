@@ -355,7 +355,8 @@ amplihack fleet adopt devo   # Bring existing sessions under management
 Requires [azlin](https://github.com/rysweet/azlin) for VM management.
 Install with TUI: `pip install amplihack[fleet-tui]`
 
-See the [Fleet Tutorial](docs/fleet-orchestration/TUTORIAL.md) for full documentation.
+See the [Fleet Tutorial](docs/fleet-orchestration/TUTORIAL.md) for full documentation, including:
+- [Scout vs Advance: exclude list semantics](docs/fleet-orchestration/TUTORIAL.md#fleet-scout-dry-run-scan) — scout shows ALL VMs (reconnaissance), advance respects the exclude list (admiral action)
 
 </details>
 
