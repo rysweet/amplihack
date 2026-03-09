@@ -294,9 +294,22 @@ steps:
       # not as inline template substitutions in single-quoted bash strings.
       #
       # Generate branch name — use printf to safely capture the shlex-quoted value
+      # Pipeline stages:
+      #   1. tr '\n\r' '  '  — CRLF normalisation: collapse multi-paragraph input to single line
+      #   2. tr '[:upper:]' '[:lower:]'  — lowercase
+      #   3. tr -s ' ' '-'  — squeeze runs of spaces into single hyphens
+      #   4. sed whitelist  — strip non-alnum-hyphen (security: removes $, `, ;, &, |)
+      #   5. sed collapse   — collapse consecutive hyphens (arises from stripped chars)
+      #   6. sed edge-trim  — strip leading/trailing hyphens
+      #   7. cut -c1-50     — hard truncation to 50 chars
       TASK_DESC=$(printf '%s' {{task_description}})
-      TASK_SLUG=$(echo "$TASK_DESC" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | sed 's/[^a-z0-9-]//g' | cut -c1-50)
+      TASK_SLUG=$(printf '%s' "$TASK_DESC" | tr '\n\r' '  ' | tr '[:upper:]' '[:lower:]' | tr -s ' ' '-' | sed 's/[^a-z0-9-]//g' | sed 's/-\{2,\}/-/g' | sed 's/^-//;s/-$//' | cut -c1-50)
       BRANCH_NAME="{{branch_prefix}}/issue-{{issue_number}}-${TASK_SLUG}"
+      # Validate with authoritative git ref checker; fall back to safe static name on failure
+      if ! git check-ref-format --branch "${BRANCH_NAME}" >/dev/null 2>&1; then
+        echo "WARNING: derived branch name '${BRANCH_NAME}' is invalid — falling back to task-unnamed" >&2
+        BRANCH_NAME="{{branch_prefix}}/task-unnamed"
+      fi
       WORKTREE_PATH="{{repo_path}}/worktrees/${BRANCH_NAME}"
 
       echo "Branch: ${BRANCH_NAME}" >&2
