@@ -9,7 +9,7 @@ permissions:
   issues: read
   pull-requests: read
 tracker-id: daily-syntax-error-quality
-engine: copilot
+engine: claude
 tools:
   github:
     lockdown: false
