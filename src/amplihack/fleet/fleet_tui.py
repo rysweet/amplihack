@@ -374,9 +374,13 @@ class FleetTUI:
         When Azure Bastion tunnels interfere during concurrent polling,
         multiple VMs can return data from the same host.  The ---HOST---
         section lets us detect and discard misrouted responses.
+
+        Uses prefix matching: azlin session names (e.g. "devr", "deva")
+        often differ from the actual hostname ("dev") by a suffix.
+        A response is accepted if either name starts with the other.
         """
         host = parse_hostname(output)
-        if host is not None and host != vm_name:
+        if host is not None and not (vm_name.startswith(host) or host.startswith(vm_name)):
             logging.getLogger(__name__).warning(
                 "Hostname mismatch for %s: got '%s' — discarding sessions", vm_name, host,
             )
