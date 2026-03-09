@@ -942,6 +942,7 @@ Cycle 3: SEEK (deepest) → VALIDATE → FIX → decision
 ```
 
 **Minimum 3 cycles.** Continue past 3 if:
+
 - Any **critical** or **high** severity findings remain, OR
 - More than **3 medium** severity findings remain
 
@@ -979,6 +980,7 @@ Each cycle escalates depth: look with fresh eyes, dig deeper, challenge prior fi
 #### Multi-Agent Validation
 
 Every finding is independently validated by **3 separate agents**:
+
 1. **Analyzer** — evaluates on technical merits
 2. **Reviewer** — skeptically verifies by reading actual code
 3. **Architect** — adversarial review, looks for reasons finding is wrong
@@ -988,6 +990,7 @@ A finding is **confirmed** only if ≥2 of 3 agents agree. This eliminates false
 #### Fix Process
 
 All confirmed findings are fixed using the full **DEFAULT_WORKFLOW** approach:
+
 1. Understand the finding and its context
 2. Write or update tests that verify the fix
 3. Implement the minimal fix

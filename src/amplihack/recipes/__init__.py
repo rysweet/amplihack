@@ -36,7 +36,6 @@ from amplihack.recipes.models import (
     StepType,
 )
 from amplihack.recipes.parser import RecipeParser
-
 from amplihack.recipes.rust_runner import (
     RustRunnerNotFoundError,
     ensure_rust_recipe_runner,

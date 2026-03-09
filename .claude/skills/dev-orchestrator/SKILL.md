@@ -142,6 +142,7 @@ print(f'Recipe result: {result}')
 ```
 
 **Key points:**
+
 - `env -u CLAUDECODE` — unset so nested Claude Code sessions can launch
 - `CLISubprocessAdapter` — spawns CLI subprocesses (not SDK, which crashes in nested sessions)
 - `tmux new-session -d` — detached session, no timeout, survives disconnects

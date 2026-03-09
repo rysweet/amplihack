@@ -326,13 +326,17 @@ def _find_binary_path(project_root: Path, language: str) -> str:
         for name in ["cli.py", "main.py", "app.py", "__main__.py"]:
             candidates = find_files(project_root, name)
             # Filter out vendor/node_modules directories
-            candidates = [c for c in candidates if not any(
-                skip in c.parts for skip in ("vendor", "node_modules", ".venv", "__pycache__")
-            )]
+            candidates = [
+                c
+                for c in candidates
+                if not any(
+                    skip in c.parts for skip in ("vendor", "node_modules", ".venv", "__pycache__")
+                )
+            ]
             if candidates:
                 return str(candidates[0].relative_to(project_root))
         return "python -m <module>"
-    elif language == "javascript":
+    if language == "javascript":
         pkg_json = project_root / "package.json"
         if pkg_json.exists():
             try:
@@ -346,16 +350,14 @@ def _find_binary_path(project_root: Path, language: str) -> str:
             except Exception:
                 pass
         return "node index.js"
-    elif language == "rust":
+    if language == "rust":
         return "cargo run --"
-    elif language == "go":
+    if language == "go":
         return "go run ."
     return "./<app>"
 
 
-def _extract_cli_commands(
-    project_root: Path, framework: str, language: str
-) -> list[CLICommand]:
+def _extract_cli_commands(project_root: Path, framework: str, language: str) -> list[CLICommand]:
     """Extract CLI commands from source code."""
     commands = []
     extensions = _language_extensions(language)
@@ -365,14 +367,22 @@ def _extract_cli_commands(
     for ext in extensions:
         all_files = find_files(project_root, f"*{ext}")
         # Filter out vendor/node_modules/dist directories
-        filtered = [f for f in all_files if not any(
-            skip in f.parts for skip in ("vendor", "node_modules", "dist", ".venv", "__pycache__")
-        )]
+        filtered = [
+            f
+            for f in all_files
+            if not any(
+                skip in f.parts
+                for skip in ("vendor", "node_modules", "dist", ".venv", "__pycache__")
+            )
+        ]
         # Sort: priority files first
-        prioritized = sorted(filtered, key=lambda f: (
-            0 if f.stem in priority_names else 1,
-            str(f),
-        ))
+        prioritized = sorted(
+            filtered,
+            key=lambda f: (
+                0 if f.stem in priority_names else 1,
+                str(f),
+            ),
+        )
         for f in prioritized:
             try:
                 content = read_file(f)
@@ -446,15 +456,7 @@ def _parse_commands_from_content(content: str, framework: str) -> list[CLIComman
         if commands:
             commands[-1].flags = flags
 
-    elif framework == "commander":
-        cmd_pattern = re.compile(
-            r"\.command\(['\"](\w+)['\"]",
-            re.MULTILINE,
-        )
-        for match in cmd_pattern.finditer(content):
-            commands.append(CLICommand(name=match.group(1)))
-
-    elif framework == "yargs":
+    elif framework == "commander" or framework == "yargs":
         cmd_pattern = re.compile(
             r"\.command\(['\"](\w+)['\"]",
             re.MULTILINE,
@@ -465,11 +467,11 @@ def _parse_commands_from_content(content: str, framework: str) -> list[CLIComman
     elif framework == "clap":
         # Rust clap: #[arg] or .arg(Arg::new("name"))
         cmd_pattern = re.compile(
-            r'Subcommand[^{]*\{([^}]+)\}',
+            r"Subcommand[^{]*\{([^}]+)\}",
             re.MULTILINE | re.DOTALL,
         )
         for match in cmd_pattern.finditer(content):
-            variants = re.findall(r'(\w+)', match.group(1))
+            variants = re.findall(r"(\w+)", match.group(1))
             for v in variants:
                 if v[0].isupper():
                     commands.append(CLICommand(name=v.lower()))
@@ -477,9 +479,7 @@ def _parse_commands_from_content(content: str, framework: str) -> list[CLIComman
     return commands
 
 
-def _extract_global_flags(
-    project_root: Path, framework: str, language: str
-) -> list[str]:
+def _extract_global_flags(project_root: Path, framework: str, language: str) -> list[str]:
     """Extract global flags from the CLI app."""
     # Common flags that most CLIs support
     return ["--help", "--version", "--verbose", "--quiet"]
@@ -492,19 +492,14 @@ def _has_interactive_mode(project_root: Path, language: str) -> bool:
         for f in _filter_vendor_files(find_files(project_root, f"*{ext}")):
             try:
                 content = read_file(f)
-                if any(
-                    marker in content
-                    for marker in ["interactive", "repl", "shell", "prompt"]
-                ):
+                if any(marker in content for marker in ["interactive", "repl", "shell", "prompt"]):
                     return True
             except Exception:
                 continue
     return False
 
 
-def _extract_tui_widgets(
-    project_root: Path, framework: str, language: str
-) -> list[TUIWidget]:
+def _extract_tui_widgets(project_root: Path, framework: str, language: str) -> list[TUIWidget]:
     """Extract TUI widgets from source code."""
     widgets = []
     extensions = _language_extensions(language)
@@ -549,9 +544,7 @@ def _extract_tui_widgets(
                 content = read_file(f)
                 for widget_name, widget_type in framework_widgets.items():
                     if widget_name in content:
-                        widgets.append(
-                            TUIWidget(name=widget_name, widget_type=widget_type)
-                        )
+                        widgets.append(TUIWidget(name=widget_name, widget_type=widget_type))
             except Exception:
                 continue
 
@@ -565,9 +558,7 @@ def _extract_tui_widgets(
     return unique
 
 
-def _extract_tui_screens(
-    project_root: Path, framework: str, language: str
-) -> list[str]:
+def _extract_tui_screens(project_root: Path, framework: str, language: str) -> list[str]:
     """Extract TUI screen names from source code."""
     screens = []
     extensions = _language_extensions(language)
@@ -602,16 +593,12 @@ def _extract_keyboard_shortcuts(
                 content = read_file(f)
                 if framework == "textual":
                     # BINDINGS = [Binding("q", "quit", "Quit")]
-                    pattern = re.compile(
-                        r'Binding\(["\'](\w+)["\'],\s*["\'](\w+)["\']'
-                    )
+                    pattern = re.compile(r'Binding\(["\'](\w+)["\'],\s*["\'](\w+)["\']')
                     for m in pattern.finditer(content):
                         shortcuts[m.group(1)] = m.group(2)
                 elif framework == "bubbletea":
                     # key.Matches(msg, "q") => quit
-                    pattern = re.compile(
-                        r'key\.Matches\(.*["\'](\w+)["\'].*\)'
-                    )
+                    pattern = re.compile(r'key\.Matches\(.*["\'](\w+)["\'].*\)')
                     for m in pattern.finditer(content):
                         shortcuts[m.group(1)] = m.group(1)
             except Exception:
@@ -739,9 +726,8 @@ def _extract_api_endpoints(spec_data: dict) -> list[APIEndpointSpec]:
 
 def _extract_auth_type(spec_data: dict) -> str:
     """Extract authentication type from API spec."""
-    security_schemes = (
-        spec_data.get("components", {}).get("securitySchemes", {})
-        or spec_data.get("securityDefinitions", {})
+    security_schemes = spec_data.get("components", {}).get("securitySchemes", {}) or spec_data.get(
+        "securityDefinitions", {}
     )
     if not isinstance(security_schemes, dict):
         return "none"
@@ -777,9 +763,7 @@ def _find_and_parse_mcp_config(project_root: Path) -> dict | None:
     if pkg_path.exists():
         try:
             data = json.loads(read_file(pkg_path))
-            if "mcpServers" in data or "@modelcontextprotocol" in str(
-                data.get("dependencies", {})
-            ):
+            if "mcpServers" in data or "@modelcontextprotocol" in str(data.get("dependencies", {})):
                 return {
                     "command": "node",
                     "args": [data.get("main", "index.js")],
@@ -821,8 +805,7 @@ def _extract_mcp_tools(mcp_data: dict, project_root: Path) -> list[MCPTool]:
                         name=tool_def.get("name", ""),
                         description=tool_def.get("description", ""),
                         input_schema=tool_def.get("inputSchema", {}),
-                        required_inputs=tool_def.get("inputSchema", {})
-                        .get("required", []),
+                        required_inputs=tool_def.get("inputSchema", {}).get("required", []),
                     )
                 )
 
@@ -833,7 +816,7 @@ def _extract_mcp_tools(mcp_data: dict, project_root: Path) -> list[MCPTool]:
                 content = read_file(f)
                 # @server.tool() or @mcp.tool()
                 pattern = re.compile(
-                    r'@(?:server|mcp)\.tool\(\)\s*(?:async\s+)?def\s+(\w+)',
+                    r"@(?:server|mcp)\.tool\(\)\s*(?:async\s+)?def\s+(\w+)",
                     re.MULTILINE,
                 )
                 for match in pattern.finditer(content):

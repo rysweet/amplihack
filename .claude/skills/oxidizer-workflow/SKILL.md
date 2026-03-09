@@ -32,12 +32,12 @@ is achieved, with quality audit and silent degradation checks on every iteration
 
 ## Required Inputs
 
-| Input | Example | Description |
-|-------|---------|-------------|
-| `python_package_path` | `src/amplihack/recipes` | Path to the Python package to migrate |
-| `rust_target_path` | `rust/recipe-runner` | Where to create the Rust project |
-| `rust_repo_name` | `amplihack-recipe-runner` | GitHub repo name for the Rust project |
-| `rust_repo_org` | `rysweet` | GitHub org or user for the repo |
+| Input                 | Example                   | Description                           |
+| --------------------- | ------------------------- | ------------------------------------- |
+| `python_package_path` | `src/amplihack/recipes`   | Path to the Python package to migrate |
+| `rust_target_path`    | `rust/recipe-runner`      | Where to create the Rust project      |
+| `rust_repo_name`      | `amplihack-recipe-runner` | GitHub repo name for the Rust project |
+| `rust_repo_org`       | `rysweet`                 | GitHub org or user for the repo       |
 
 ## Execution
 

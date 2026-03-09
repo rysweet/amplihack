@@ -146,7 +146,7 @@ class AgentMemory:
 
     def close(self) -> None:
         """Clean up the memory store (no-op if store has no close method)."""
-        pass  # ExperienceStore handles cleanup internally
+        # ExperienceStore handles cleanup internally
 
     def _safe_add(
         self,

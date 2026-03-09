@@ -206,8 +206,11 @@ class TestHelperPathImport(unittest.TestCase):
         """Verify the recipe's import pattern works: HELPER_PATH must be importable."""
         tools_dir = str(Path(__file__).parent.parent / "amplifier-bundle" / "tools")
         r = subprocess.run(
-            [sys.executable, "-c",
-             "import os,sys; sys.path.insert(0,os.path.dirname(os.environ['HELPER_PATH'])); import orch_helper; print('ok')"],
+            [
+                sys.executable,
+                "-c",
+                "import os,sys; sys.path.insert(0,os.path.dirname(os.environ['HELPER_PATH'])); import orch_helper; print('ok')",
+            ],
             env={**os.environ, "HELPER_PATH": f"{tools_dir}/orch_helper.py"},
             capture_output=True,
             text=True,

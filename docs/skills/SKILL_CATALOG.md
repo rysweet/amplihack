@@ -242,7 +242,6 @@ name: example-skill
 description: |
   A clear description of what this skill does.
 ---
-
 # Example Skill
 
 Content starts after the frontmatter...
@@ -252,7 +251,6 @@ Content starts after the frontmatter...
 
 ```yaml
 # Example Skill  ← WRONG: Title before frontmatter
-
 ---
 name: example-skill
 <!-- This is a comment -->  ← WRONG: HTML in YAML

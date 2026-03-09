@@ -106,23 +106,23 @@ This workflow ruthlessly applies:
 
 ### Standard Categories
 
-| Category     | What It Detects                                              |
-| ------------ | ------------------------------------------------------------ |
-| Security     | Hardcoded secrets, missing input validation                  |
-| Reliability  | Missing timeouts, bare except clauses                        |
-| Dead Code    | Unused imports, unreachable branches, stale TODOs            |
-| Test Gaps    | Files without tests, tests without assertions                |
-| Doc Gaps     | Public functions without docstrings, outdated docs           |
+| Category    | What It Detects                                    |
+| ----------- | -------------------------------------------------- |
+| Security    | Hardcoded secrets, missing input validation        |
+| Reliability | Missing timeouts, bare except clauses              |
+| Dead Code   | Unused imports, unreachable branches, stale TODOs  |
+| Test Gaps   | Files without tests, tests without assertions      |
+| Doc Gaps    | Public functions without docstrings, outdated docs |
 
 ### Extended Categories
 
-| Category           | What It Detects                                              |
-| ------------------ | ------------------------------------------------------------ |
-| Silent Fallbacks   | `except: pass`, broad catches that return defaults silently, fallback chains that mask failures |
-| Error Swallowing   | Catch blocks with no logging/re-raise, error-to-None transforms, catch-all discarding exceptions |
-| Structural Issues  | Files >500 LOC, functions >50 lines, nesting >4 levels, >5 parameters, circular imports |
-| Documentation      | Point-in-time content, unprofessional tone (pirate speak, chatbot artifacts), quality/correctness gaps |
-| Hardcoded Limits   | Non-configurable numeric caps (`[:N]`, `max_X = N`), silent truncation without logging, data loss from processing limits |
+| Category          | What It Detects                                                                                                          |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Silent Fallbacks  | `except: pass`, broad catches that return defaults silently, fallback chains that mask failures                          |
+| Error Swallowing  | Catch blocks with no logging/re-raise, error-to-None transforms, catch-all discarding exceptions                         |
+| Structural Issues | Files >500 LOC, functions >50 lines, nesting >4 levels, >5 parameters, circular imports                                  |
+| Documentation     | Point-in-time content, unprofessional tone (pirate speak, chatbot artifacts), quality/correctness gaps                   |
+| Hardcoded Limits  | Non-configurable numeric caps (`[:N]`, `max_X = N`), silent truncation without logging, data loss from processing limits |
 
 ## Multi-Agent Validation (v3.0)
 
@@ -166,16 +166,16 @@ Override defaults via recipe context or environment:
 
 **Structured Inputs (recipe context, per #2843)**:
 
-| Input                  | Default    | Description                                            |
-| ---------------------- | ---------- | ------------------------------------------------------ |
-| `target_path`          | `src/amplihack` | Directory to audit                                |
-| `min_cycles`           | `3`        | Minimum audit cycles                                   |
-| `max_cycles`           | `6`        | Maximum cycles (safety valve)                          |
-| `validation_threshold` | `2`        | Min validators that must agree (out of 3)              |
-| `severity_threshold`   | `medium`   | Minimum severity to report                             |
-| `module_loc_limit`     | `300`      | Flag modules exceeding this LOC                        |
-| `fix_all_per_cycle`    | `true`     | Must fix ALL findings before next cycle (#2842)        |
-| `categories`           | (all)      | Comma-separated list of categories to check            |
+| Input                  | Default         | Description                                     |
+| ---------------------- | --------------- | ----------------------------------------------- |
+| `target_path`          | `src/amplihack` | Directory to audit                              |
+| `min_cycles`           | `3`             | Minimum audit cycles                            |
+| `max_cycles`           | `6`             | Maximum cycles (safety valve)                   |
+| `validation_threshold` | `2`             | Min validators that must agree (out of 3)       |
+| `severity_threshold`   | `medium`        | Minimum severity to report                      |
+| `module_loc_limit`     | `300`           | Flag modules exceeding this LOC                 |
+| `fix_all_per_cycle`    | `true`          | Must fix ALL findings before next cycle (#2842) |
+| `categories`           | (all)           | Comma-separated list of categories to check     |
 
 **Available Categories**: `security`, `reliability`, `dead_code`, `silent_fallbacks`,
 `error_swallowing`, `structural`, `hardcoded_limits`, `test_gaps`, `doc_gaps`, `documentation`

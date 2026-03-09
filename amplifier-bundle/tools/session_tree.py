@@ -90,12 +90,24 @@ def _ensure_state_dir() -> None:
 
 def get_tree_context() -> dict:
     """Read current session tree context from environment."""
+    try:
+        depth = int(os.environ.get("AMPLIHACK_SESSION_DEPTH", "0"))
+    except ValueError:
+        depth = 0
+    try:
+        max_depth = int(os.environ.get("AMPLIHACK_MAX_DEPTH", str(DEFAULT_MAX_DEPTH)))
+    except ValueError:
+        max_depth = DEFAULT_MAX_DEPTH
+    try:
+        max_sessions = int(os.environ.get("AMPLIHACK_MAX_SESSIONS", str(DEFAULT_MAX_SESSIONS)))
+    except ValueError:
+        max_sessions = DEFAULT_MAX_SESSIONS
     return {
         "tree_id": os.environ.get("AMPLIHACK_TREE_ID", ""),
         "session_id": os.environ.get("AMPLIHACK_SESSION_ID", ""),
-        "depth": int(os.environ.get("AMPLIHACK_SESSION_DEPTH", "0")),
-        "max_depth": int(os.environ.get("AMPLIHACK_MAX_DEPTH", str(DEFAULT_MAX_DEPTH))),
-        "max_sessions": int(os.environ.get("AMPLIHACK_MAX_SESSIONS", str(DEFAULT_MAX_SESSIONS))),
+        "depth": depth,
+        "max_depth": max_depth,
+        "max_sessions": max_sessions,
     }
 
 
@@ -105,6 +117,7 @@ def get_tree_context() -> dict:
 
 
 def _state_path(tree_id: str) -> Path:
+    # TODO: move _ensure_state_dir() call to call sites to decouple path resolution from I/O
     _validate_tree_id(tree_id)
     _ensure_state_dir()
     # Belt-and-suspenders path traversal check
@@ -116,6 +129,7 @@ def _state_path(tree_id: str) -> Path:
 
 
 def _lock_path(tree_id: str) -> Path:
+    # TODO: move _ensure_state_dir() call to call sites to decouple path resolution from I/O
     _validate_tree_id(tree_id)
     _ensure_state_dir()
     return STATE_DIR / f"{tree_id}.lock"
@@ -175,7 +189,7 @@ def _load(tree_id: str) -> dict:
                 f"WARNING: session_tree: invalid schema for {tree_id!r}: "
                 f"'sessions' is {type(data.get('sessions')).__name__}, expected dict. "
                 "Treating as empty state.",
-                file=sys.stderr
+                file=sys.stderr,
             )
             return {"sessions": {}}
         return data
@@ -302,6 +316,8 @@ def register_session(
     """
     Register a session in the tree. Creates tree if it doesn't exist.
     Atomically checks capacity and depth limits while holding the lock.
+
+    Note: Registering an existing session ID overwrites the previous entry.
 
     Returns: {"tree_id": str, "depth": int, "session_id": str}
     """

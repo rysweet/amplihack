@@ -36,12 +36,23 @@ class TestDepthEnforcement(unittest.TestCase):
 
     def setUp(self):
         self._trees_created = []
+        # Isolate env vars so ambient values don't affect depth/session limits
+        self._saved_max_depth = os.environ.pop("AMPLIHACK_MAX_DEPTH", None)
+        self._saved_max_sessions = os.environ.pop("AMPLIHACK_MAX_SESSIONS", None)
+        self._saved_depth = os.environ.pop("AMPLIHACK_SESSION_DEPTH", None)
 
     def tearDown(self):
         for tree in self._trees_created:
             for suffix in (".json", ".lock"):
                 p = st.STATE_DIR / f"{tree}{suffix}"
                 p.unlink(missing_ok=True)
+        # Restore env vars
+        if self._saved_max_depth is not None:
+            os.environ["AMPLIHACK_MAX_DEPTH"] = self._saved_max_depth
+        if self._saved_max_sessions is not None:
+            os.environ["AMPLIHACK_MAX_SESSIONS"] = self._saved_max_sessions
+        if self._saved_depth is not None:
+            os.environ["AMPLIHACK_SESSION_DEPTH"] = self._saved_depth
 
     def _unique_tree(self) -> str:
         import uuid
@@ -468,8 +479,11 @@ class TestTTLPruning(unittest.TestCase):
         del state["sessions"]["no-ct"]["completed_at"]
         st._save(tree, state)  # triggers TTL; epoch default means always prunable
         state_after = st._load(tree)
-        self.assertNotIn("no-ct", state_after["sessions"],
-            "Completed session with missing completed_at must be pruned")
+        self.assertNotIn(
+            "no-ct",
+            state_after["sessions"],
+            "Completed session with missing completed_at must be pruned",
+        )
 
 
 class TestCLISubcommands(unittest.TestCase):
@@ -717,7 +731,6 @@ class TestGetStatusEdgeCases(unittest.TestCase):
     def test_status_for_never_registered_tree_returns_empty(self):
         """get_status for a tree with no state file must return empty lists."""
         import uuid
-
 
         tree = "test-never-" + uuid.uuid4().hex[:8]
         result = st.get_status(tree)

@@ -23,10 +23,10 @@ context:
   # Required inputs
   task_description: ""
   repo_path: "."
-  python_package_path: ""         # e.g. "src/amplihack/recipes"
-  rust_target_path: ""            # e.g. "rust/recipe-runner-rs"
-  rust_repo_name: ""              # e.g. "amplihack-recipe-runner-rs"
-  rust_repo_org: ""               # e.g. "rysweet" (GitHub org/user)
+  python_package_path: "" # e.g. "src/amplihack/recipes"
+  rust_target_path: "" # e.g. "rust/recipe-runner-rs"
+  rust_repo_name: "" # e.g. "amplihack-recipe-runner-rs"
+  rust_repo_org: "" # e.g. "rysweet" (GitHub org/user)
 
   # Phase 1 outputs
   analysis_json: ""

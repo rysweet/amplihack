@@ -39,7 +39,6 @@ from .considerations import (
     PowerSteeringResult,
     _env_int,
 )
-from .transcript_parser import parse_transcript
 from .progress_tracking import (
     MAX_LINE_BYTES,
     ProgressTrackingMixin,
@@ -55,6 +54,7 @@ from .sdk_calls import (
     SdkCallsMixin,
     _timeout,
 )
+from .transcript_parser import parse_transcript
 
 # Import turn-aware state management (needed by check() method directly)
 try:
@@ -486,8 +486,8 @@ class PowerSteeringChecker(
         self._evidence_results = []
 
         # Initialize turn state tracking (outside try block for fail-open)
-        turn_state: "PowerSteeringTurnState | None" = None
-        turn_state_manager: "TurnStateManager | None" = None
+        turn_state: PowerSteeringTurnState | None = None
+        turn_state_manager: TurnStateManager | None = None
 
         try:
             # Emit start event
@@ -703,8 +703,10 @@ class PowerSteeringChecker(
                         if c.get("id") == cid:
                             checker_name = c.get("checker", "")
                             break
-                    if checker_name and hasattr(self, checker_name) and callable(
-                        getattr(self, checker_name)
+                    if (
+                        checker_name
+                        and hasattr(self, checker_name)
+                        and callable(getattr(self, checker_name))
                     ):
                         try:
                             heuristic_func = getattr(self, checker_name)
@@ -712,6 +714,7 @@ class PowerSteeringChecker(
                             if not heuristic_satisfied:
                                 # Heuristic says NOT satisfied - override SDK result
                                 from .considerations import CheckerResult as _CheckerResult
+
                                 overridden = _CheckerResult(
                                     consideration_id=cid,
                                     satisfied=False,
@@ -737,7 +740,7 @@ class PowerSteeringChecker(
             # 5b. Delta analysis: Check if NEW content addresses previous failures
             addressed_concerns: dict[str, str] = {}
             user_claims: list[str] = []
-            delta_result: "DeltaAnalysisResult | None" = None
+            delta_result: DeltaAnalysisResult | None = None
 
             if (
                 TURN_STATE_AVAILABLE

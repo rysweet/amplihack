@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from amplihack.agents.domain_agents.skill_injector import (
     SkillInjector,
     code_smell_detector_tool,

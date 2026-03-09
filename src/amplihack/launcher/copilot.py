@@ -904,7 +904,6 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
     # Register awesome-copilot marketplace extensions (best-effort, silent on failure)
     register_awesome_copilot_marketplace()
 
-
     # Prompt to re-enable power-steering if disabled (#2544)
     try:
         from ..power_steering.re_enable_prompt import prompt_re_enable_if_disabled

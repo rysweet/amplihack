@@ -960,7 +960,9 @@ def _ensure_rust_recipe_runner() -> None:
             print("  cargo install --git https://github.com/rysweet/amplihack-recipe-runner")
     except Exception as e:
         logging.getLogger(__name__).warning(
-            "Could not check recipe-runner-rs: %s", e, exc_info=True,
+            "Could not check recipe-runner-rs: %s",
+            e,
+            exc_info=True,
         )
 
 
@@ -983,7 +985,7 @@ def _common_launcher_startup(args: "argparse.Namespace") -> None:
     # Idempotency guard — skip if already run this process
     if getattr(args, "_startup_done", False):
         return
-    args._startup_done = True  # noqa: SLF001
+    args._startup_done = True
 
     subprocess_safe = getattr(args, "subprocess_safe", False)
     if subprocess_safe:
@@ -1002,9 +1004,7 @@ def _common_launcher_startup(args: "argparse.Namespace") -> None:
         print("   Auto-staging .claude/ to temp directory for safety")
 
         stager = AutoStager()
-        staging_result = stager.stage_for_nested_execution(
-            Path.cwd(), f"nested-{os.getpid()}"
-        )
+        staging_result = stager.stage_for_nested_execution(Path.cwd(), f"nested-{os.getpid()}")
 
         print(f"   📁 Staged to: {staging_result.temp_root}")
         print("   Your original .claude/ files are protected")
@@ -1012,7 +1012,7 @@ def _common_launcher_startup(args: "argparse.Namespace") -> None:
         print(f"   📂 CWD changed to: {staging_result.temp_root}\n")
 
     # Store nesting result on args for session tracking
-    args._nesting_result = nesting_result  # noqa: SLF001
+    args._nesting_result = nesting_result
 
     # 2. Framework staging
     _ensure_amplihack_staged()
