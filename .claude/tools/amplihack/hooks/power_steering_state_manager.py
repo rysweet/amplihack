@@ -16,68 +16,37 @@ Public API (the "studs"):
     TurnStateManager: Manages loading/saving/incrementing turn state
 """
 
+import os
 import sys
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 
-# Import file locking utilities (for LOCKING_AVAILABLE check)
-try:
-    from . import file_lock_utils
-except ImportError:
-    import file_lock_utils
+# Ensure hooks directory is importable for both package and standalone execution
+_hooks_dir = os.path.dirname(os.path.abspath(__file__))
+if _hooks_dir not in sys.path:
+    sys.path.insert(0, _hooks_dir)
 
-# Import models
-try:
-    from .power_steering_models import (
-        BlockSnapshot,
-        FailureEvidence,
-        PowerSteeringTurnState,
-    )
-except ImportError:
-    from power_steering_models import (
-        BlockSnapshot,
-        FailureEvidence,
-        PowerSteeringTurnState,
-    )
-
-# Import I/O
-try:
-    from .power_steering_state_io import (
-        load_state_from_file,
-        save_state_to_file,
-        validate_state,
-    )
-except ImportError:
-    from power_steering_state_io import (
-        load_state_from_file,
-        save_state_to_file,
-        validate_state,
-    )
-
-# Import file locking for atomic operations
-try:
-    from .file_lock_utils import acquire_file_lock
-except ImportError:
-    from file_lock_utils import acquire_file_lock
-
-# Import constants
-try:
-    from .power_steering_constants import LOCK_TIMEOUT_SECONDS
-except ImportError:
-    from power_steering_constants import LOCK_TIMEOUT_SECONDS
+import file_lock_utils
+from file_lock_utils import acquire_file_lock
+from power_steering_models import (
+    BlockSnapshot,
+    FailureEvidence,
+    PowerSteeringTurnState,
+)
+from power_steering_state_io import (
+    load_state_from_file,
+    save_state_to_file,
+    validate_state,
+)
+from power_steering_constants import LOCK_TIMEOUT_SECONDS
 
 # Import git utilities for worktree detection (used by get_state_file_path)
 try:
-    from .git_utils import get_shared_runtime_dir as _module_get_shared_runtime_dir
-except ImportError:
-    try:
-        from git_utils import get_shared_runtime_dir as _module_get_shared_runtime_dir
-    except ImportError:
-
-        def _module_get_shared_runtime_dir(project_root):
-            """Fallback implementation when git_utils is unavailable."""
-            return str(Path(project_root) / ".claude" / "runtime")
+    from git_utils import get_shared_runtime_dir as _module_get_shared_runtime_dir
+except ImportError as e:
+    print(f"FATAL: Required dependency missing: {e}", file=sys.stderr)
+    raise
 
 
 __all__ = ["TurnStateManager"]
@@ -117,19 +86,15 @@ class TurnStateManager:
         self._previous_turn_count: int | None = None
         self._lock_timeout_seconds: float = LOCK_TIMEOUT_SECONDS
 
-        # Import DiagnosticLogger - try both relative and absolute imports
+        # Import DiagnosticLogger
         self._diagnostic_logger = None
         try:
-            from .power_steering_diagnostics import DiagnosticLogger
+            from power_steering_diagnostics import DiagnosticLogger
 
             self._diagnostic_logger = DiagnosticLogger(self.project_root, self.session_id, log)
-        except (ImportError, ValueError):
-            try:
-                from power_steering_diagnostics import DiagnosticLogger
-
-                self._diagnostic_logger = DiagnosticLogger(self.project_root, self.session_id, log)
-            except ImportError as e:
-                self.log(f"Warning: Could not load diagnostic logger: {e}")
+        except ImportError as e:
+            print(f"FATAL: Required dependency missing: {e}", file=sys.stderr)
+            raise
 
         # Log Windows degraded mode warning once during initialization
         if not file_lock_utils.LOCKING_AVAILABLE:
@@ -410,10 +375,7 @@ class TurnStateManager:
             if self._diagnostic_logger:
                 log_file = self._diagnostic_logger.get_log_file_path()
 
-                try:
-                    from .power_steering_diagnostics import detect_infinite_loop
-                except (ImportError, ValueError):
-                    from power_steering_diagnostics import detect_infinite_loop
+                from power_steering_diagnostics import detect_infinite_loop
 
                 result = detect_infinite_loop(log_file)
 

@@ -22,6 +22,7 @@ try:
 
     CLAUDE_SDK_AVAILABLE = True
 except ImportError:
+    print("WARNING: claude_agent_sdk not available - Claude reflection disabled", file=sys.stderr)
     CLAUDE_SDK_AVAILABLE = False
 
 # Repository constants
@@ -306,6 +307,7 @@ async def analyze_session_with_claude(
             preferences_file = FrameworkPathResolver.resolve_preferences_file()
         except ImportError:
             # Fallback to default location
+            print("WARNING: FrameworkPathResolver not available - using default preferences path", file=sys.stderr)
             preferences_file = project_root / ".claude" / "context" / "USER_PREFERENCES.md"
 
         if preferences_file and preferences_file.exists():
