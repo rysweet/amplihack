@@ -142,6 +142,9 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
 
     from .launcher.session_tracker import SessionTracker
 
+    # Capture CWD before startup (which may chdir during staging)
+    original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
+
     # Run shared startup (nesting, staging, deps, power-steering)
     _common_launcher_startup(args)
     nesting_result = getattr(args, "_nesting_result", None)
