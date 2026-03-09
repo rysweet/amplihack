@@ -306,48 +306,39 @@ class TestConfigurableTimeouts:
 
 
 class TestEngineSelection:
-    """Tests for run_recipe_by_name engine selection."""
+    """Tests for run_recipe_by_name — always uses Rust runner."""
 
-    @patch.dict("os.environ", {"RECIPE_RUNNER_ENGINE": "rust"})
     @patch("amplihack.recipes.run_recipe_via_rust")
-    def test_explicit_rust_engine(self, mock_rust):
+    def test_always_uses_rust(self, mock_rust):
+        from amplihack.recipes import run_recipe_by_name
+        mock_rust.return_value = MagicMock()
+        run_recipe_by_name("test")
+        mock_rust.assert_called_once()
+
+    @patch("amplihack.recipes.run_recipe_via_rust")
+    def test_adapter_kwarg_accepted_but_ignored(self, mock_rust):
         from amplihack.recipes import run_recipe_by_name
         mock_rust.return_value = MagicMock()
         run_recipe_by_name("test", adapter=MagicMock())
         mock_rust.assert_called_once()
 
-    @patch.dict("os.environ", {"RECIPE_RUNNER_ENGINE": "python"})
-    @patch("amplihack.recipes._run_recipe_python")
-    def test_explicit_python_engine(self, mock_python):
-        from amplihack.recipes import run_recipe_by_name
-        mock_python.return_value = MagicMock()
-        run_recipe_by_name("test", adapter=MagicMock())
-        mock_python.assert_called_once()
-
-    @patch.dict("os.environ", {}, clear=True)
-    @patch("amplihack.recipes.is_rust_runner_available", return_value=True)
-    @patch("amplihack.recipes.run_recipe_via_rust")
-    def test_auto_detect_prefers_rust(self, mock_rust, mock_avail):
-        from amplihack.recipes import run_recipe_by_name
-        mock_rust.return_value = MagicMock()
-        run_recipe_by_name("test", adapter=MagicMock())
-        mock_rust.assert_called_once()
-
-    @patch.dict("os.environ", {}, clear=True)
-    @patch("amplihack.recipes.is_rust_runner_available", return_value=False)
-    @patch("amplihack.recipes._run_recipe_python")
-    def test_auto_detect_uses_python_when_no_rust(self, mock_python, mock_avail):
-        from amplihack.recipes import run_recipe_by_name
-        mock_python.return_value = MagicMock()
-        run_recipe_by_name("test", adapter=MagicMock())
-        mock_python.assert_called_once()
-
-    @patch.dict("os.environ", {"RECIPE_RUNNER_ENGINE": "rust"})
     @patch("amplihack.recipes.run_recipe_via_rust", side_effect=RustRunnerNotFoundError("not found"))
-    def test_explicit_rust_fails_hard(self, mock_rust):
+    def test_rust_not_found_raises(self, mock_rust):
         from amplihack.recipes import run_recipe_by_name
         with pytest.raises(RustRunnerNotFoundError):
-            run_recipe_by_name("test", adapter=MagicMock())
+            run_recipe_by_name("test")
+
+    def test_python_runner_no_longer_importable(self):
+        with pytest.raises(ImportError):
+            from amplihack.recipes import RecipeRunner  # noqa: F401
+
+    def test_adapters_no_longer_importable(self):
+        with pytest.raises(ModuleNotFoundError):
+            from amplihack.recipes.adapters import CLISubprocessAdapter  # noqa: F401
+
+    def test_context_no_longer_importable(self):
+        with pytest.raises(ImportError):
+            from amplihack.recipes import context  # noqa: F401
 
 
 # ============================================================================
@@ -399,16 +390,6 @@ class TestEnsureRustRecipeRunner:
 # ============================================================================
 # Validation and edge-case tests (C2-PR-9, C2-PR-10)
 # ============================================================================
-
-
-class TestEngineValidation:
-    """C2-PR-9: Invalid engine value must raise ValueError."""
-
-    def test_invalid_engine_raises_valueerror(self):
-        from amplihack.recipes import run_recipe_by_name
-        with mock.patch.dict(os.environ, {"RECIPE_RUNNER_ENGINE": "rrust"}):
-            with pytest.raises(ValueError, match="Invalid RECIPE_RUNNER_ENGINE"):
-                run_recipe_by_name("test", adapter=MagicMock())
 
 
 class TestExecutionTimeout:
