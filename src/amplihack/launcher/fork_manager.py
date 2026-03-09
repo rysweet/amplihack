@@ -4,6 +4,7 @@ Monitors session duration and triggers SDK fork before hitting the
 69-minute (4129 seconds) hard limit.
 """
 
+import sys
 import threading
 import time
 from typing import Any
@@ -14,6 +15,7 @@ try:
 
     CLAUDE_SDK_AVAILABLE = True
 except ImportError:
+    print("WARNING: claude_agent_sdk not available, session forking disabled", file=sys.stderr)
     CLAUDE_SDK_AVAILABLE = False
     ClaudeAgentOptions = None  # type: ignore
 
