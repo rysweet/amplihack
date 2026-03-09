@@ -45,6 +45,7 @@ You should:
    - Turn Count: {turn_count}
    - Consecutive Blocks: {consecutive_blocks}
    - Session ID: {session_id}
+   - Tree Spawns: {total_spawns} / {max_tree_spawns} (when AMPLIHACK_TREE_ID is set, otherwise N/A)
 
    Infinite Loop Detection:
    - Counter Stall: {detected/not detected}

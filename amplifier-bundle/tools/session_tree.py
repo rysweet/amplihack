@@ -3,13 +3,14 @@
 Session tree management for amplihack orchestration.
 
 Prevents infinite recursion by tracking active sessions in a tree structure.
-Enforces max depth and max concurrent session limits.
+Enforces max depth, max concurrent session limits, and tree-wide total spawn cap.
 
 Environment variables:
-  AMPLIHACK_TREE_ID        - shared ID for this orchestration tree (auto-generated at root)
-  AMPLIHACK_SESSION_DEPTH  - current depth (0 at root, incremented by orchestrator)
-  AMPLIHACK_MAX_DEPTH      - max allowed depth (default: 3)
-  AMPLIHACK_MAX_SESSIONS   - max concurrent active sessions per tree (default: 10)
+  AMPLIHACK_TREE_ID           - shared ID for this orchestration tree (auto-generated at root)
+  AMPLIHACK_SESSION_DEPTH     - current depth (0 at root, incremented by orchestrator)
+  AMPLIHACK_MAX_DEPTH         - max allowed depth (default: 3)
+  AMPLIHACK_MAX_SESSIONS      - max concurrent active sessions per tree (default: 10)
+  AMPLIHACK_MAX_TREE_SPAWNS   - max total spawns across entire tree lifetime (default: 10)
 
 State file: /tmp/amplihack-session-trees/{tree_id}.json
 Lock file:  /tmp/amplihack-session-trees/{tree_id}.lock
@@ -45,6 +46,7 @@ from pathlib import Path
 
 DEFAULT_MAX_DEPTH = 3
 DEFAULT_MAX_SESSIONS = 10
+DEFAULT_MAX_TREE_SPAWNS = 10
 STATE_DIR = Path(os.environ.get("TMPDIR", "/tmp")) / "amplihack-session-trees"
 
 # Per-process thread lock for intra-process mutual exclusion.
@@ -102,12 +104,28 @@ def get_tree_context() -> dict:
         max_sessions = int(os.environ.get("AMPLIHACK_MAX_SESSIONS", str(DEFAULT_MAX_SESSIONS)))
     except ValueError:
         max_sessions = DEFAULT_MAX_SESSIONS
+    raw_max_tree_spawns = os.environ.get("AMPLIHACK_MAX_TREE_SPAWNS", "")
+    if raw_max_tree_spawns:
+        try:
+            max_tree_spawns = int(raw_max_tree_spawns)
+            if max_tree_spawns <= 0:
+                raise ValueError("must be positive")
+        except ValueError:
+            print(
+                f"WARNING: session_tree: invalid AMPLIHACK_MAX_TREE_SPAWNS={raw_max_tree_spawns!r}; "
+                f"falling back to default {DEFAULT_MAX_TREE_SPAWNS}",
+                file=sys.stderr,
+            )
+            max_tree_spawns = DEFAULT_MAX_TREE_SPAWNS
+    else:
+        max_tree_spawns = DEFAULT_MAX_TREE_SPAWNS
     return {
         "tree_id": os.environ.get("AMPLIHACK_TREE_ID", ""),
         "session_id": os.environ.get("AMPLIHACK_SESSION_ID", ""),
         "depth": depth,
         "max_depth": max_depth,
         "max_sessions": max_sessions,
+        "max_tree_spawns": max_tree_spawns,
     }
 
 
@@ -177,11 +195,23 @@ def _locked(tree_id: str, timeout: float = 10.0):
                 lock.unlink(missing_ok=True)
 
 
+_MAX_STATE_FILE_BYTES = 1024 * 1024  # 1 MB guard against memory exhaustion
+
+
 def _load(tree_id: str) -> dict:
     p = _state_path(tree_id)
     if not p.exists():
-        return {"sessions": {}}
+        return {"sessions": {}, "total_spawns": 0}
     try:
+        # 1 MB file-size guard before reading into memory
+        stat = p.stat()
+        if stat.st_size > _MAX_STATE_FILE_BYTES:
+            print(
+                f"WARNING: session_tree: state file for {tree_id!r} is {stat.st_size} bytes "
+                f"(> {_MAX_STATE_FILE_BYTES} limit); treating as empty state.",
+                file=sys.stderr,
+            )
+            return {"sessions": {}, "total_spawns": 0}
         data = json.loads(p.read_text())
         # Validate schema: sessions must be a dict
         if not isinstance(data.get("sessions"), dict):
@@ -191,12 +221,41 @@ def _load(tree_id: str) -> dict:
                 "Treating as empty state.",
                 file=sys.stderr,
             )
-            return {"sessions": {}}
+            return {"sessions": {}, "total_spawns": 0}
+        # Validate total_spawns: bool is subclass of int — check bool FIRST
+        raw_spawns = data.get("total_spawns", 0)
+        if isinstance(raw_spawns, bool):
+            print(
+                f"WARNING: session_tree: invalid total_spawns (bool) for {tree_id!r}; resetting to 0.",
+                file=sys.stderr,
+            )
+            data["total_spawns"] = 0
+        elif not isinstance(raw_spawns, int):
+            print(
+                f"WARNING: session_tree: invalid total_spawns type {type(raw_spawns).__name__!r} "
+                f"for {tree_id!r}; resetting to 0.",
+                file=sys.stderr,
+            )
+            data["total_spawns"] = 0
+        elif raw_spawns < 0:
+            print(
+                f"WARNING: session_tree: negative total_spawns={raw_spawns} for {tree_id!r}; "
+                "resetting to 0.",
+                file=sys.stderr,
+            )
+            data["total_spawns"] = 0
+        elif raw_spawns > 100000:
+            print(
+                f"WARNING: session_tree: total_spawns={raw_spawns} exceeds 100000 upper bound "
+                f"for {tree_id!r}; resetting to 0 to prevent DoS.",
+                file=sys.stderr,
+            )
+            data["total_spawns"] = 0
         return data
     except (json.JSONDecodeError, OSError) as e:
         # Log corruption — do not silently discard state
         print(f"WARNING: session_tree: corrupted state for {tree_id!r}: {e}", file=sys.stderr)
-        return {"sessions": {}}
+        return {"sessions": {}, "total_spawns": 0}
 
 
 def _save(
@@ -299,6 +358,20 @@ def check_can_spawn(tree_id: str | None = None, depth: int = -1) -> dict:
             "depth": depth,
         }
 
+    # Advisory tree-wide spawn cap check (non-atomic — register_session() is authoritative)
+    max_tree_spawns = ctx["max_tree_spawns"]
+    total_spawns = state.get("total_spawns", 0)
+    if total_spawns >= max_tree_spawns:
+        return {
+            "allowed": False,
+            "reason": (
+                f"max_tree_spawns={max_tree_spawns} reached (total_spawns={total_spawns}); "
+                "increase via AMPLIHACK_MAX_TREE_SPAWNS env var"
+            ),
+            "active_count": len(active),
+            "depth": depth,
+        }
+
     return {
         "allowed": True,
         "reason": "ok",
@@ -326,6 +399,7 @@ def register_session(
     depth = depth if depth >= 0 else ctx["depth"]
     max_sessions = ctx["max_sessions"]
     max_depth = ctx["max_depth"]
+    max_tree_spawns = ctx["max_tree_spawns"]
 
     with _locked(tree_id):
         state = _load(tree_id)
@@ -337,6 +411,14 @@ def register_session(
         if depth > max_depth:
             raise RuntimeError(f"depth={depth} exceeds max_depth={max_depth}")
 
+        # Tree-wide total spawn cap — prevents exponential fan-out across entire tree lifetime
+        total_spawns = state.get("total_spawns", 0)
+        if total_spawns >= max_tree_spawns:
+            raise RuntimeError(
+                f"max_tree_spawns={max_tree_spawns} reached (total_spawns={total_spawns}); "
+                "increase via AMPLIHACK_MAX_TREE_SPAWNS env var"
+            )
+
         state["sessions"][session_id] = {
             "depth": depth,
             "parent": parent_id,
@@ -346,6 +428,7 @@ def register_session(
         }
         if parent_id and parent_id in state["sessions"]:
             state["sessions"][parent_id].setdefault("children", []).append(session_id)
+        state["total_spawns"] = total_spawns + 1
         _save(tree_id, state)
 
     return {"tree_id": tree_id, "depth": depth, "session_id": session_id}
@@ -370,6 +453,7 @@ def complete_session(session_id: str, tree_id: str | None = None) -> None:
 def get_status(tree_id: str) -> dict:
     """Return current tree status summary."""
     _validate_tree_id(tree_id)
+    ctx = get_tree_context()
     state = _load(tree_id)
     sessions = state.get("sessions", {})
     active = [sid for sid, s in sessions.items() if s.get("status") == "active"]
@@ -379,6 +463,8 @@ def get_status(tree_id: str) -> dict:
         "active": active,
         "completed": completed,
         "depths": {sid: s.get("depth", 0) for sid, s in sessions.items()},
+        "total_spawns": state.get("total_spawns", 0),
+        "max_tree_spawns": ctx["max_tree_spawns"],
     }
 
 

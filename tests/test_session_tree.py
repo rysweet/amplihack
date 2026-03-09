@@ -10,6 +10,7 @@ import sys
 import threading
 import time
 import unittest
+import unittest.mock
 from pathlib import Path
 
 # Point at the amplifier-bundle tools directory
@@ -700,8 +701,9 @@ class TestCorruptedJsonRecovery(unittest.TestCase):
         (st.STATE_DIR / f"{tree}.json").write_text('{"sessions": "not_a_dict"}')
         result = st._load(tree)
         self.assertEqual(
-            result, {"sessions": {}}, "Schema-invalid state file must be treated as empty state"
+            result["sessions"], {}, "Schema-invalid state file must be treated as empty state"
         )
+        self.assertEqual(result["total_spawns"], 0, "total_spawns must default to 0 on empty state")
 
     def test_load_with_sessions_as_list_returns_empty_state(self):
         """When sessions is a list (wrong type), _load must return empty state."""
@@ -709,7 +711,8 @@ class TestCorruptedJsonRecovery(unittest.TestCase):
         st._ensure_state_dir()
         (st.STATE_DIR / f"{tree}.json").write_text('{"sessions": []}')
         result = st._load(tree)
-        self.assertEqual(result, {"sessions": {}})
+        self.assertEqual(result["sessions"], {})
+        self.assertEqual(result.get("total_spawns", 0), 0)
 
 
 class TestGetStatusEdgeCases(unittest.TestCase):
@@ -786,6 +789,237 @@ class TestStaleLockCleanup(unittest.TestCase):
 
         self.assertTrue(acquired, "Should have acquired lock after stale lock cleanup")
         self.assertFalse(lock_file.exists(), "Lock file should be removed after release")
+
+
+class TestTreeWideSpawnCounter(unittest.TestCase):
+    """Tree-wide total spawn counter — prevents exponential fan-out."""
+
+    def setUp(self):
+        self._trees = []
+
+    def tearDown(self):
+        for tree in self._trees:
+            for suffix in (".json", ".lock"):
+                (st.STATE_DIR / f"{tree}{suffix}").unlink(missing_ok=True)
+
+    def _tree(self, suffix=""):
+        import uuid
+
+        tid = f"tw-{uuid.uuid4().hex[:8]}{suffix}"
+        self._trees.append(tid)
+        return tid
+
+    def test_total_spawns_increments_on_register(self):
+        """Each register_session call increments total_spawns by 1."""
+        tree = self._tree()
+        with unittest.mock.patch.dict(
+            os.environ, {"AMPLIHACK_TREE_ID": tree, "AMPLIHACK_MAX_TREE_SPAWNS": "20"}
+        ):
+            st.register_session("s1", tree_id=tree, depth=0)
+            st.register_session("s2", tree_id=tree, depth=0)
+            st.register_session("s3", tree_id=tree, depth=0)
+        state = st._load(tree)
+        self.assertEqual(state["total_spawns"], 3)
+
+    def test_blocked_at_cap(self):
+        """register_session raises RuntimeError when total_spawns >= max_tree_spawns."""
+        tree = self._tree()
+        with unittest.mock.patch.dict(
+            os.environ, {"AMPLIHACK_TREE_ID": tree, "AMPLIHACK_MAX_TREE_SPAWNS": "3"}
+        ):
+            st.register_session("s1", tree_id=tree, depth=0)
+            st.register_session("s2", tree_id=tree, depth=0)
+            st.register_session("s3", tree_id=tree, depth=0)
+            with self.assertRaises(RuntimeError):
+                st.register_session("s4", tree_id=tree, depth=0)
+
+    def test_error_message_format(self):
+        """RuntimeError message must include AMPLIHACK_MAX_TREE_SPAWNS hint."""
+        tree = self._tree()
+        with unittest.mock.patch.dict(
+            os.environ, {"AMPLIHACK_TREE_ID": tree, "AMPLIHACK_MAX_TREE_SPAWNS": "1"}
+        ):
+            st.register_session("s1", tree_id=tree, depth=0)
+            try:
+                st.register_session("s2", tree_id=tree, depth=0)
+                self.fail("Expected RuntimeError")
+            except RuntimeError as e:
+                msg = str(e)
+                self.assertIn("max_tree_spawns=1", msg)
+                self.assertIn("AMPLIHACK_MAX_TREE_SPAWNS", msg)
+
+    def test_no_decrement_on_complete(self):
+        """Completing a session does NOT decrement total_spawns."""
+        tree = self._tree()
+        with unittest.mock.patch.dict(
+            os.environ, {"AMPLIHACK_TREE_ID": tree, "AMPLIHACK_MAX_TREE_SPAWNS": "20"}
+        ):
+            st.register_session("s1", tree_id=tree, depth=0)
+            st.complete_session("s1", tree_id=tree)
+        state = st._load(tree)
+        self.assertEqual(state["total_spawns"], 1)
+
+    def test_custom_env_var_cap(self):
+        """AMPLIHACK_MAX_TREE_SPAWNS env var overrides default cap."""
+        tree = self._tree()
+        with unittest.mock.patch.dict(
+            os.environ, {"AMPLIHACK_TREE_ID": tree, "AMPLIHACK_MAX_TREE_SPAWNS": "5"}
+        ):
+            for i in range(5):
+                st.register_session(f"s{i}", tree_id=tree, depth=0)
+            with self.assertRaises(RuntimeError) as cm:
+                st.register_session("s5", tree_id=tree, depth=0)
+        self.assertIn("5", str(cm.exception))
+
+    def test_concurrent_atomicity(self):
+        """8 concurrent threads with cap=5 must result in exactly 5 successes."""
+        tree = self._tree()
+        successes = []
+        errors = []
+        lock = threading.Lock()
+
+        def spawn():
+            with unittest.mock.patch.dict(
+                os.environ, {"AMPLIHACK_TREE_ID": tree, "AMPLIHACK_MAX_TREE_SPAWNS": "5"}
+            ):
+                import uuid
+
+                sid = uuid.uuid4().hex[:8]
+                try:
+                    st.register_session(sid, tree_id=tree, depth=0)
+                    with lock:
+                        successes.append(sid)
+                except RuntimeError:
+                    with lock:
+                        errors.append(sid)
+
+        threads = [threading.Thread(target=spawn) for _ in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        self.assertEqual(len(successes), 5, f"Expected 5 successes, got {len(successes)}")
+        state = st._load(tree)
+        self.assertEqual(state["total_spawns"], 5)
+
+    def test_get_status_exposes_total_spawns(self):
+        """get_status must include total_spawns and max_tree_spawns."""
+        tree = self._tree()
+        with unittest.mock.patch.dict(
+            os.environ, {"AMPLIHACK_TREE_ID": tree, "AMPLIHACK_MAX_TREE_SPAWNS": "20"}
+        ):
+            st.register_session("s1", tree_id=tree, depth=0)
+            status = st.get_status(tree)
+        self.assertIn("total_spawns", status)
+        self.assertIn("max_tree_spawns", status)
+        self.assertEqual(status["total_spawns"], 1)
+
+    def test_check_can_spawn_advisory_block(self):
+        """check_can_spawn returns allowed=False when at tree-wide cap."""
+        tree = self._tree()
+        with unittest.mock.patch.dict(
+            os.environ, {"AMPLIHACK_TREE_ID": tree, "AMPLIHACK_MAX_TREE_SPAWNS": "2"}
+        ):
+            st.register_session("s1", tree_id=tree, depth=0)
+            st.register_session("s2", tree_id=tree, depth=0)
+            result = st.check_can_spawn(tree_id=tree, depth=0)
+        self.assertFalse(result["allowed"])
+        self.assertIn("max_tree_spawns", result["reason"])
+
+    def test_counter_survives_ttl_pruning(self):
+        """total_spawns is preserved even after TTL pruning removes old sessions."""
+        tree = self._tree()
+        with unittest.mock.patch.dict(
+            os.environ, {"AMPLIHACK_TREE_ID": tree, "AMPLIHACK_MAX_TREE_SPAWNS": "20"}
+        ):
+            st.register_session("s1", tree_id=tree, depth=0)
+            st.complete_session("s1", tree_id=tree)
+            # Force TTL prune by saving with 0-hour cutoffs
+            with st._locked(tree):
+                state = st._load(tree)
+                st._save(tree, state, max_age_hours=0.0, active_max_age_hours=0.0)
+        state = st._load(tree)
+        # Sessions may be pruned, but total_spawns must remain
+        self.assertEqual(state["total_spawns"], 1)
+
+    def test_missing_tree_creates_counter_at_1(self):
+        """First register_session on a new tree sets total_spawns=1."""
+        tree = self._tree()
+        with unittest.mock.patch.dict(
+            os.environ, {"AMPLIHACK_TREE_ID": tree, "AMPLIHACK_MAX_TREE_SPAWNS": "20"}
+        ):
+            st.register_session("s1", tree_id=tree, depth=0)
+        state = st._load(tree)
+        self.assertEqual(state["total_spawns"], 1)
+
+
+class TestTreeSecurity(unittest.TestCase):
+    """Security properties of the tree-wide spawn counter."""
+
+    def setUp(self):
+        self._trees = []
+
+    def tearDown(self):
+        for tree in self._trees:
+            for suffix in (".json", ".lock"):
+                (st.STATE_DIR / f"{tree}{suffix}").unlink(missing_ok=True)
+
+    def _tree(self):
+        import uuid
+
+        tid = f"sec-{uuid.uuid4().hex[:8]}"
+        self._trees.append(tid)
+        return tid
+
+    def test_bool_total_spawns_rejected(self):
+        """bool total_spawns (True/False) must be reset to 0 — bool is subclass of int."""
+        tree = self._tree()
+        st._ensure_state_dir()
+        (st.STATE_DIR / f"{tree}.json").write_text('{"sessions": {}, "total_spawns": true}')
+        import contextlib
+        import io
+
+        buf = io.StringIO()
+        with contextlib.redirect_stderr(buf):
+            state = st._load(tree)
+        self.assertEqual(state["total_spawns"], 0)
+        self.assertIn("bool", buf.getvalue())
+
+    def test_oversized_total_spawns_rejected(self):
+        """total_spawns > 100000 must be reset to 0 to prevent DoS."""
+        tree = self._tree()
+        st._ensure_state_dir()
+        (st.STATE_DIR / f"{tree}.json").write_text('{"sessions": {}, "total_spawns": 999999}')
+        import contextlib
+        import io
+
+        buf = io.StringIO()
+        with contextlib.redirect_stderr(buf):
+            state = st._load(tree)
+        self.assertEqual(state["total_spawns"], 0)
+        self.assertIn("100000", buf.getvalue())
+
+    def test_tree_id_path_traversal_rejected(self):
+        """tree_id with path traversal sequences must be rejected."""
+        with self.assertRaises(ValueError):
+            st._validate_tree_id("../etc/passwd")
+        with self.assertRaises(ValueError):
+            st._validate_tree_id("")
+        with self.assertRaises(ValueError):
+            st._validate_tree_id("a" * 65)
+
+    def test_invalid_env_var_falls_back_to_default(self):
+        """Non-integer AMPLIHACK_MAX_TREE_SPAWNS must fall back to DEFAULT_MAX_TREE_SPAWNS."""
+        import contextlib
+        import io
+
+        buf = io.StringIO()
+        with unittest.mock.patch.dict(os.environ, {"AMPLIHACK_MAX_TREE_SPAWNS": "notanumber"}):
+            with contextlib.redirect_stderr(buf):
+                ctx = st.get_tree_context()
+        self.assertEqual(ctx["max_tree_spawns"], st.DEFAULT_MAX_TREE_SPAWNS)
+        self.assertIn("notanumber", buf.getvalue())
 
 
 if __name__ == "__main__":
