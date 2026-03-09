@@ -136,9 +136,14 @@ def parse_session_output(vm_name: str, output: str) -> list[SessionView]:
     return sessions
 
 
-def parse_vm_text(text: str) -> list[tuple[str, str, bool]]:
-    """Parse text table from azlin list."""
-    vms = []
+def parse_vm_text(text: str) -> list[tuple[str, str, bool, list[str]]]:
+    """Parse text table from azlin list.
+
+    Returns list of (name, region, is_running, session_names) tuples.
+    Session names come from the 'Tmux Sessions' column — comma-separated,
+    possibly spanning multiple rows (continuation rows have empty column 1).
+    """
+    vms: list[tuple[str, str, bool, list[str]]] = []
     lines = text.strip().split("\n")
     in_table = False
 
@@ -153,14 +158,26 @@ def parse_vm_text(text: str) -> list[tuple[str, str, bool]]:
 
         if "\u2502" in line or "|" in line:
             sep = "\u2502" if "\u2502" in line else "|"
-            parts = [p.strip() for p in line.split(sep) if p.strip()]
-            if len(parts) >= 4:
-                name = parts[0]
-                if not name:
-                    continue
-                status = parts[3] if len(parts) > 3 else ""
-                region = parts[5] if len(parts) > 5 else ""
-                is_running = "run" in status.lower()
-                vms.append((name, region, is_running))
+            parts = [p.strip() for p in line.split(sep)]
+            # Filter empty edge cells but keep internal empty cells
+            # The split produces: ['', 'devr', 'mem', 'Ubuntu', 'Ru…', '10.0.0.10', 'we…', '', '', '']
+            # We need to work with positional indices, not filter empties
+            non_edge = [p for i, p in enumerate(parts) if i > 0 and i < len(parts) - 1]
+            if len(non_edge) >= 4:
+                name = non_edge[0].strip()
+                tmux_col = non_edge[1].strip() if len(non_edge) > 1 else ""
+
+                if name:
+                    # New VM row
+                    status = non_edge[3] if len(non_edge) > 3 else ""
+                    region = non_edge[5] if len(non_edge) > 5 else ""
+                    is_running = "run" in status.lower()
+                    sessions = [s.strip().rstrip(",") for s in tmux_col.split(",") if s.strip() and s.strip().rstrip(",")]
+                    vms.append((name, region, is_running, sessions))
+                elif tmux_col and vms:
+                    # Continuation row — append session names to last VM
+                    prev_name, prev_region, prev_running, prev_sessions = vms[-1]
+                    extra = [s.strip().rstrip(",") for s in tmux_col.split(",") if s.strip() and s.strip().rstrip(",")]
+                    vms[-1] = (prev_name, prev_region, prev_running, prev_sessions + extra)
 
     return vms

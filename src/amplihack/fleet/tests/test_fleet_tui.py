@@ -156,26 +156,27 @@ class TestGetVmListJson:
     """_get_vm_list with successful az CLI JSON output."""
 
     def test_parses_json_output(self, tui: FleetTUI) -> None:
-        """Should parse az vm list JSON into (name, region, is_running) tuples."""
-        mock_result = MagicMock()
-        mock_result.returncode = 0
-        mock_result.stdout = AZ_VM_LIST_JSON
+        """Should parse az vm list JSON into (name, region, is_running, []) tuples."""
+        az_result = MagicMock()
+        az_result.returncode = 0
+        az_result.stdout = AZ_VM_LIST_JSON
 
-        with patch("amplihack.fleet.fleet_tui.subprocess.run", return_value=mock_result) as mock_run, \
+        azlin_result = MagicMock()
+        azlin_result.returncode = 1  # azlin list fails -> fall through to az
+
+        def side_effect(cmd, **kwargs):
+            if cmd[0] == "az":
+                return az_result
+            return azlin_result  # azlin list fails
+
+        with patch("amplihack.fleet.fleet_tui.subprocess.run", side_effect=side_effect) as mock_run, \
              patch.object(tui, "_read_azlin_resource_group", return_value="test-rg"):
             vms = tui._get_vm_list()
 
         assert len(vms) == 3
-        assert vms[0] == ("vm-alpha", "westus2", True)
-        assert vms[1] == ("vm-beta", "eastus", False)
-        assert vms[2] == ("vm-gamma", "westus2", True)
-
-        # Verify az CLI was called with correct args
-        call_args = mock_run.call_args_list[0]
-        cmd = call_args[0][0]
-        assert cmd[0] == "az"
-        assert "--resource-group" in cmd
-        assert "test-rg" in cmd
+        assert vms[0] == ("vm-alpha", "westus2", True, [])
+        assert vms[1] == ("vm-beta", "eastus", False, [])
+        assert vms[2] == ("vm-gamma", "westus2", True, [])
 
     def test_skips_vms_with_empty_name(self, tui: FleetTUI) -> None:
         """Should skip VM entries that have an empty name."""
@@ -183,11 +184,16 @@ class TestGetVmListJson:
             {"name": "", "location": "westus2", "powerState": "VM running"},
             {"name": "good-vm", "location": "eastus", "powerState": "VM running"},
         ])
-        mock_result = MagicMock()
-        mock_result.returncode = 0
-        mock_result.stdout = data
+        az_result = MagicMock()
+        az_result.returncode = 0
+        az_result.stdout = data
+        azlin_result = MagicMock()
+        azlin_result.returncode = 1
 
-        with patch("amplihack.fleet.fleet_tui.subprocess.run", return_value=mock_result), \
+        def side_effect(cmd, **kwargs):
+            return az_result if cmd[0] == "az" else azlin_result
+
+        with patch("amplihack.fleet.fleet_tui.subprocess.run", side_effect=side_effect), \
              patch.object(tui, "_read_azlin_resource_group", return_value="rg"):
             vms = tui._get_vm_list()
 
@@ -201,17 +207,32 @@ class TestGetVmListJson:
 
 
 class TestGetVmListFallback:
-    """_get_vm_list falls back to azlin list text when az CLI fails."""
+    """_get_vm_list tries azlin first, falls back to az CLI."""
 
-    def test_falls_back_to_azlin_text_on_json_error(self, tui: FleetTUI) -> None:
-        """When az CLI fails, should try azlin list and parse text output."""
-        az_result = MagicMock()
-        az_result.returncode = 1
-        az_result.stdout = ""
-
+    def test_azlin_list_is_preferred(self, tui: FleetTUI) -> None:
+        """azlin list is tried first (includes session names)."""
         azlin_result = MagicMock()
         azlin_result.returncode = 0
         azlin_result.stdout = AZLIN_LIST_TABLE
+
+        with patch("amplihack.fleet.fleet_tui.subprocess.run", return_value=azlin_result):
+            vms = tui._get_vm_list()
+
+        assert len(vms) == 2
+        assert vms[0][0] == "fleet-vm-1"
+        assert vms[0][2] is True  # Running
+        assert vms[0][3] == ["work"]  # Session names from azlin
+        assert vms[1][0] == "fleet-vm-2"
+        assert vms[1][2] is False  # Stopped
+
+    def test_falls_back_to_az_cli_when_azlin_fails(self, tui: FleetTUI) -> None:
+        """When azlin list fails, should fall back to az vm list."""
+        az_result = MagicMock()
+        az_result.returncode = 0
+        az_result.stdout = AZ_VM_LIST_JSON
+
+        azlin_result = MagicMock()
+        azlin_result.returncode = 1  # azlin fails
 
         def side_effect(cmd, **kwargs):
             if cmd[0] == "az":
@@ -222,36 +243,11 @@ class TestGetVmListFallback:
              patch.object(tui, "_read_azlin_resource_group", return_value="rg"):
             vms = tui._get_vm_list()
 
-        assert len(vms) == 2
-        assert vms[0][0] == "fleet-vm-1"
-        assert vms[0][2] is True  # Running
-        assert vms[1][0] == "fleet-vm-2"
-        assert vms[1][2] is False  # Stopped
-
-    def test_falls_back_on_az_timeout(self, tui: FleetTUI) -> None:
-        """When az CLI times out, should fall back to azlin text."""
-        azlin_result = MagicMock()
-        azlin_result.returncode = 0
-        azlin_result.stdout = AZLIN_LIST_TABLE
-
-        call_count = 0
-
-        def side_effect(cmd, **kwargs):
-            nonlocal call_count
-            call_count += 1
-            if cmd[0] == "az":
-                raise subprocess.TimeoutExpired(cmd="az", timeout=30)
-            return azlin_result
-
-        with patch("amplihack.fleet.fleet_tui.subprocess.run", side_effect=side_effect), \
-             patch.object(tui, "_read_azlin_resource_group", return_value="rg"):
-            vms = tui._get_vm_list()
-
-        assert len(vms) == 2
-        assert call_count == 2  # az failed, then azlin succeeded
+        assert len(vms) == 3
+        assert vms[0][3] == []  # az CLI has no session data
 
     def test_returns_empty_when_both_strategies_fail(self, tui: FleetTUI) -> None:
-        """When both az CLI and azlin fail, should return empty list."""
+        """When both azlin list and az CLI fail, should return empty list."""
         def side_effect(cmd, **kwargs):
             raise FileNotFoundError(f"{cmd[0]} not found")
 
@@ -275,8 +271,8 @@ class TestParseVmText:
         vms = parse_vm_text(AZLIN_LIST_TABLE)
 
         assert len(vms) == 2
-        assert vms[0] == ("fleet-vm-1", "westus2", True)
-        assert vms[1] == ("fleet-vm-2", "eastus", False)
+        assert vms[0] == ("fleet-vm-1", "westus2", True, ["work"])
+        assert vms[1] == ("fleet-vm-2", "eastus", False, ["idle"])
 
     def test_parses_pipe_separated_table(self) -> None:
         """Should handle ASCII pipe-delimited tables as well."""
@@ -937,29 +933,18 @@ class TestGetVmListNoResourceGroup:
 
         assert len(vms) == 2
 
-    def test_az_json_parse_error_falls_back(self, tui: FleetTUI) -> None:
-        """JSON parse error in az output falls back to azlin CLI."""
-        bad_json_result = MagicMock()
-        bad_json_result.returncode = 0
-        bad_json_result.stdout = "not valid json{{"
-
+    def test_azlin_tried_first_regardless_of_rg(self, tui: FleetTUI) -> None:
+        """azlin list is tried first even when resource group is configured."""
         azlin_result = MagicMock()
         azlin_result.returncode = 0
         azlin_result.stdout = AZLIN_LIST_TABLE
 
-        call_count = [0]
-
-        def side_effect(cmd, **kwargs):
-            call_count[0] += 1
-            if cmd[0] == "az":
-                return bad_json_result
-            return azlin_result
-
         with patch.object(tui, "_read_azlin_resource_group", return_value="rg"), \
-             patch("amplihack.fleet.fleet_tui.subprocess.run", side_effect=side_effect):
+             patch("amplihack.fleet.fleet_tui.subprocess.run", return_value=azlin_result):
             vms = tui._get_vm_list()
 
         assert len(vms) == 2
+        assert vms[0][3] == ["work"]  # Session names from azlin
 
 
 class TestRunTui:

@@ -113,7 +113,7 @@ class FleetTUI:
         """
         vm_list = self._get_vm_list()
 
-        for vm_name, region, is_running in sorted(vm_list, key=lambda x: x[0]):
+        for vm_name, region, is_running, *rest in sorted(vm_list, key=lambda x: x[0]):
             if exclude and vm_name in self.exclude_vms:
                 continue
 
@@ -157,10 +157,11 @@ class FleetTUI:
         return None
 
     def refresh_all(self, *, exclude: bool = True) -> list[VMView]:
-        """Poll VMs concurrently.
+        """Poll VMs using azlin data as source of truth for session discovery.
 
-        Uses ThreadPoolExecutor to poll VMs concurrently, reducing
-        wall-clock time from O(N * SSH_timeout) to O(SSH_timeout).
+        azlin list provides VM names AND tmux session names without SSH.
+        SSH polling only enriches sessions with pane content and git state.
+        If SSH returns different sessions (Bastion misroute), azlin's data wins.
 
         Args:
             exclude: If True (default), skip VMs in self.exclude_vms.
@@ -172,30 +173,64 @@ class FleetTUI:
         if not vm_list:
             return []
 
-        vms_to_poll: list[tuple[str, str, bool]] = sorted(
+        vms_to_poll = sorted(
             [v for v in vm_list if not exclude or v[0] not in self.exclude_vms],
             key=lambda x: x[0],
         )
         results: list[VMView] = []
 
-        def _poll_one(entry: tuple[str, str, bool]) -> VMView:
-            vm_name, region, is_running = entry
-            vm_view = VMView(name=vm_name, region=region, is_running=is_running)
-            if is_running:
-                vm_view.sessions = self._poll_vm(vm_name)
-            return vm_view
-
-        # Poll VMs sequentially to avoid Bastion tunnel collisions.
-        # Concurrent polling causes misrouted SSH when VMs share a subnet,
-        # which drops sessions from 3+ VMs. Correctness over speed.
         for entry in vms_to_poll:
-            try:
-                results.append(_poll_one(entry))
-            except Exception as exc:
-                logging.getLogger(__name__).warning("Failed to poll VM %s: %s", entry[0], exc)
-                results.append(VMView(name=entry[0], region=entry[1], is_running=entry[2]))
+            vm_name, region, is_running = entry[0], entry[1], entry[2]
+            azlin_sessions: list[str] = entry[3] if len(entry) > 3 else []
 
-        return sorted(self._dedup_sessions(results), key=lambda v: v.name)
+            vm_view = VMView(name=vm_name, region=region, is_running=is_running)
+
+            if is_running:
+                # SSH poll for pane content and git state
+                try:
+                    ssh_sessions = self._poll_vm(vm_name)
+                except Exception as exc:
+                    logging.getLogger(__name__).warning("Failed to poll VM %s: %s", vm_name, exc)
+                    ssh_sessions = []
+
+                ssh_names = {s.session_name for s in ssh_sessions}
+                azlin_names = set(azlin_sessions)
+
+                if azlin_names and ssh_names != azlin_names:
+                    # SSH and azlin disagree — likely Bastion misroute.
+                    # Use azlin's session list as truth, keep SSH data only
+                    # for sessions that match.
+                    if ssh_names and not ssh_names & azlin_names:
+                        logging.getLogger(__name__).warning(
+                            "SSH misroute on %s: azlin says %s, SSH returned %s — using azlin data",
+                            vm_name, sorted(azlin_names), sorted(ssh_names),
+                        )
+                    # Build sessions from azlin names, enriched with SSH data where available
+                    ssh_by_name = {s.session_name: s for s in ssh_sessions}
+                    vm_view.sessions = []
+                    for sess_name in azlin_sessions:
+                        if sess_name in ssh_by_name:
+                            vm_view.sessions.append(ssh_by_name[sess_name])
+                        else:
+                            # azlin knows this session but SSH didn't return it
+                            vm_view.sessions.append(SessionView(
+                                vm_name=vm_name,
+                                session_name=sess_name,
+                                status="unknown",
+                            ))
+                else:
+                    # SSH and azlin agree (or azlin had no session data)
+                    vm_view.sessions = ssh_sessions
+
+            results.append(vm_view)
+
+        # Dedup only when azlin didn't provide session names (az CLI fallback).
+        # When azlin is the source of truth, each VM's sessions are authoritative.
+        has_azlin_sessions = any(len(e) > 3 and e[3] for e in vms_to_poll)
+        if not has_azlin_sessions:
+            results = self._dedup_sessions(results)
+
+        return sorted(results, key=lambda v: v.name)
 
     @staticmethod
     def _dedup_sessions(vms: list[VMView]) -> list[VMView]:
@@ -226,16 +261,30 @@ class FleetTUI:
     # Data gathering: azlin + tmux polling
     # ------------------------------------------------------------------
 
-    def _get_vm_list(self) -> list[tuple[str, str, bool]]:
+    def _get_vm_list(self) -> list[tuple[str, str, bool, list[str]]]:
         """Get VM list from azlin.
 
-        Returns list of (name, region, is_running) tuples.
+        Returns list of (name, region, is_running, session_names) tuples.
+        session_names come from azlin's tmux session data (no SSH needed).
 
         Strategy:
-        1. Try az vm list (Azure CLI with JSON -- fast, no Bastion tunnels)
-        2. Fallback: azlin CLI text output parsed from table
+        1. azlin list (includes tmux session names -- preferred)
+        2. Fallback: az vm list (Azure CLI JSON -- no session data)
         """
-        # Strategy 1: az vm list (Azure CLI with JSON -- fast, no Bastion tunnels)
+        # Strategy 1: azlin CLI text output (includes session names)
+        try:
+            result = subprocess.run(
+                [self.azlin_path, "list"],
+                capture_output=True,
+                text=True,
+                timeout=SUBPROCESS_TIMEOUT_SECONDS,
+            )
+            if result.returncode == 0:
+                return parse_vm_text(result.stdout)
+        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
+            logging.getLogger(__name__).warning("azlin list failed: %s", exc)
+
+        # Strategy 2: az vm list (no session names available)
         try:
             rg = self._read_azlin_resource_group()
             result = subprocess.run(
@@ -251,33 +300,21 @@ class FleetTUI:
                         vm.get("name", ""),
                         vm.get("location", ""),
                         "running" in (vm.get("powerState", "") or "").lower(),
+                        [],  # No session data from az CLI
                     )
                     for vm in vms_data
                     if vm.get("name")
                 ]
         except ValueError:
-            pass  # No resource group configured -- fall through to azlin CLI
+            pass  # No resource group configured
         except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
             logging.getLogger(__name__).warning("az vm list failed: %s", exc)
         except (json.JSONDecodeError, KeyError, TypeError) as exc:
             logging.getLogger(__name__).warning("az vm list parse error: %s", exc)
 
-        # Strategy 2: azlin CLI text output
-        try:
-            result = subprocess.run(
-                [self.azlin_path, "list"],
-                capture_output=True,
-                text=True,
-                timeout=SUBPROCESS_TIMEOUT_SECONDS,
-            )
-            if result.returncode == 0:
-                return parse_vm_text(result.stdout)
-        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
-            logging.getLogger(__name__).warning("azlin list failed: %s", exc)
-
         logging.getLogger(__name__).warning("All VM polling strategies failed")
         print(
-            "ERROR: Could not retrieve VM list. Both 'az vm list' and 'azlin list' failed.\n"
+            "ERROR: Could not retrieve VM list. Both 'azlin list' and 'az vm list' failed.\n"
             "Check: az CLI login ('az login'), azlin config, and network connectivity.",
             file=sys.stderr,
         )
