@@ -76,6 +76,12 @@ Amplihack Strategy Awareness:
 - CI-diagnostic-workflow iterates fixes until PR is mergeable.
 - When confidence < 0.6, default to WAIT or ESCALATE, not SEND_INPUT.
 
+Empty/Dead Session Detection:
+- If terminal output is empty AND transcript is empty, the session is dead or unused.
+- Dead sessions get action=wait with reasoning explaining the session is empty.
+- NEVER send_input to a dead session -- there is no agent listening.
+- If status is "unknown" or "no_session" with no terminal content, choose WAIT.
+
 Guidelines:
 - If the agent is asking a question, answer it based on the task and project priorities
 - If the agent is waiting for permission (Y/n prompts), approve unless it's destructive
