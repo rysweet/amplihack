@@ -10,7 +10,6 @@ permissions:
 tools:
   github:
     mode: local
-    read-only: false
     toolsets: [default]
 if: needs.precompute.outputs.action != 'none'
 jobs:
