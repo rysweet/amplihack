@@ -196,6 +196,18 @@ class FleetTUI:
                     logging.getLogger(__name__).warning("Failed to poll VM %s: %s", entry[0], exc)
                     results.append(VMView(name=entry[0], region=entry[1], is_running=entry[2]))
 
+        # Retry: running VMs that got 0 sessions while others got sessions
+        # are likely Bastion misroutes. Retry them sequentially.
+        has_sessions = any(v.sessions for v in results)
+        if has_sessions:
+            retry = [v for v in results if v.is_running and not v.sessions]
+            if retry:
+                for vm_view in retry:
+                    entry = next((e for e in vms_to_poll if e[0] == vm_view.name), None)
+                    if entry:
+                        retried = _poll_one(entry)
+                        vm_view.sessions = retried.sessions
+
         return sorted(self._dedup_sessions(results), key=lambda v: v.name)
 
     @staticmethod
