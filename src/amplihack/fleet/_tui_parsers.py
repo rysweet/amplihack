@@ -171,7 +171,7 @@ def parse_vm_text(text: str) -> list[tuple[str, str, bool, list[str]]]:
                     # New VM row
                     status = non_edge[3] if len(non_edge) > 3 else ""
                     region = non_edge[5] if len(non_edge) > 5 else ""
-                    is_running = "run" in status.lower()
+                    is_running = status.lower().startswith("ru")
                     sessions = [s.strip().rstrip(",") for s in tmux_col.split(",") if s.strip() and s.strip().rstrip(",")]
                     vms.append((name, region, is_running, sessions))
                 elif tmux_col and vms:
