@@ -51,6 +51,12 @@ param memoryTransport string = 'azure_service_bus'
 @allowed(['cognitive', 'hierarchical'])
 param memoryBackend string = 'cognitive'
 
+@description('LLM model for agents (e.g. claude-sonnet-4-6, claude-opus-4-6)')
+param agentModel string = 'claude-sonnet-4-6'
+
+@description('Service Bus topic name — must match agent entrypoint AMPLIHACK_SB_TOPIC default')
+param sbTopicNameParam string = 'hive-events'
+
 
 // ---------- Naming ----------
 var suffix = uniqueString(resourceGroup().id)
@@ -58,7 +64,7 @@ var acrNameResolved = empty(acrName) ? 'acr${suffix}' : acrName
 var logAnalyticsName = 'hive-logs-${suffix}'
 var envName = 'hive-env-${hiveName}'
 var sbNamespaceName = 'hive-sb-prem-${suffix}'
-var sbTopicName = 'hive-graph'
+var sbTopicName = sbTopicNameParam
 var appCount = (agentCount + agentsPerApp - 1) / agentsPerApp
 
 // ---------- Container Registry ----------
@@ -228,6 +234,10 @@ resource containerApps 'Microsoft.App/containerApps@2024-03-01' = [
               {
                 name: 'AMPLIHACK_MEMORY_STORAGE_PATH'
                 value: '/data/agent-${appIdx * agentsPerApp + agentOffset}'
+              }
+              {
+                name: 'AMPLIHACK_MODEL'
+                value: agentModel
               }
               {
                 name: 'ANTHROPIC_API_KEY'
