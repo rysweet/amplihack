@@ -1184,7 +1184,7 @@ class LogAnalyticsAnswerReader:
         import datetime
 
         if since_ts is None:
-            since_ts = time.time() - 120.0
+            since_ts = time.time() - 600.0  # 10-min lookback for LA ingestion lag
 
         start_dt = datetime.datetime.fromtimestamp(since_ts, tz=datetime.timezone.utc)
         end_dt = datetime.datetime.now(tz=datetime.timezone.utc)
@@ -1192,18 +1192,30 @@ class LogAnalyticsAnswerReader:
         hint_escaped = question_hint.replace("'", "\\'")[:40]
         app_filter = f'| where ContainerAppName_s has "{self._container_app_name}"' if self._container_app_name else ""
 
-        credential = DefaultAzureCredential()
+        # Use AzureCliCredential — DefaultAzureCredential can fail with
+        # InsufficientAccessError on Log Analytics scope in some environments.
+        try:
+            from azure.identity import AzureCliCredential
+            credential = AzureCliCredential()
+        except Exception:
+            credential = DefaultAzureCredential()
         client = LogsQueryClient(credential)
         deadline = time.time() + self._max_wait
 
         while time.time() < deadline:
+            # Search for any ANSWER line after the question was sent.
+            # Don't filter by question hint — agent answers don't repeat the
+            # question text, so hint matching produces false negatives.
+            # Filter for bracketed agent prefix to avoid logger duplicate lines
+            # and exclude "internal error" non-answers.
             query = (
                 "ContainerAppConsoleLogs_CL"
-                f"{app_filter}"
-                f' | where Log_s has "ANSWER:"'
-                f' | where Log_s has "{hint_escaped}"'
-                " | order by TimeGenerated desc"
-                " | take 5"
+                + (f" {app_filter}" if app_filter else "")
+                + ' | where Log_s has "ANSWER:"'
+                + ' | where Log_s startswith "[agent-"'
+                + " | order by TimeGenerated desc"
+                + " | project Log_s"
+                + " | take 1"
             )
             try:
                 response = client.query_workspace(
@@ -1215,11 +1227,14 @@ class LogAnalyticsAnswerReader:
                     for row in (response.tables[0].rows if response.tables else []):
                         log_line = str(row[0]) if row else ""
                         if "ANSWER:" in log_line:
-                            # Extract answer after "ANSWER: "
                             answer_start = log_line.index("ANSWER:") + len("ANSWER:")
-                            return log_line[answer_start:].strip()
-            except Exception:
-                logger.debug("Log Analytics query failed", exc_info=True)
+                            answer_text = log_line[answer_start:].strip()
+                            # Skip non-answers (rate limit errors etc)
+                            if "internal error" in answer_text.lower():
+                                continue
+                            return answer_text
+            except Exception as e:
+                logger.warning("Log Analytics query failed: %s", e)
 
             time.sleep(self._poll_interval)
             # Extend end_dt for next poll
