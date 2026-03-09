@@ -493,9 +493,10 @@ steps:
       ISSUE_EOF
       )
 
-      # Create issue (outputs issue number)
+      # Create issue (truncate title to 200 chars)
+      ISSUE_TITLE=$(printf '%s' {{task_description}} | tr '\n\r' ' ' | cut -c1-200)
       gh issue create \
-        --title "{{task_description}}" \
+        --title "$ISSUE_TITLE" \
         --body "$ISSUE_BODY" \
         --label "consensus,{{criticality}}" 2>/dev/null || echo "Issue creation skipped (no gh CLI or not in repo)"
 
@@ -1510,9 +1511,10 @@ steps:
       # Stage all changes
       git add -A
 
-      # Create commit message
-      COMMIT_MSG=$(cat << 'COMMIT_EOF'
-      feat: {{task_description}}
+      # Create commit message (truncate title to 72 chars for git convention)
+      SHORT_DESC=$(printf '%s' {{task_description}} | tr '\n\r' ' ' | cut -c1-72)
+      COMMIT_MSG=$(cat << COMMIT_EOF
+      feat: ${SHORT_DESC}
 
       Implements {{final_requirements.task_summary}}
 
@@ -1582,8 +1584,9 @@ steps:
       PR_EOF
       )
 
+      PR_TITLE=$(printf '%s' {{task_description}} | tr '\n\r' ' ' | cut -c1-200)
       gh pr create \
-        --title "{{task_description}}" \
+        --title "$PR_TITLE" \
         --body "$PR_BODY" \
         --label "consensus-validated" 2>/dev/null || echo "PR creation prepared"
 

@@ -250,7 +250,7 @@ steps:
     command: |
       cd "{{repo_path}}" && \
       echo "=== Step 3: Creating GitHub Issue ===" && \
-      ISSUE_TITLE=$(printf '%s' {{task_description}}) && \
+      ISSUE_TITLE=$(printf '%s' {{task_description}} | tr '\n\r' '  ' | cut -c1-200) && \
       ISSUE_TASK=$(printf '%s' {{task_description}}) && \
       ISSUE_REQS=$(printf '%s' {{final_requirements}}) && \
       ISSUE_BODY=$(printf '## Task Description\n%s\n\n## Requirements\n%s\n\n## Acceptance Criteria\n- [ ] All explicit requirements met\n- [ ] Tests passing\n- [ ] Philosophy compliant\n- [ ] Documentation updated\n\n## Classification\nGenerated via default-workflow recipe\n' "$ISSUE_TASK" "$ISSUE_REQS") && \
@@ -1003,7 +1003,7 @@ steps:
       git add -A && \
       echo "" && \
       echo "--- Creating Commit ---" && \
-      COMMIT_TITLE=$(printf 'feat: %s' {{task_description}}) && \
+      COMMIT_TITLE=$(printf 'feat: %.72s' "$(printf '%s' {{task_description}} | tr '\n\r' ' ' | head -1)") && \
       COMMIT_MSG=$(printf '%s\n\nImplements issue #%s\n\nChanges:\n- Implementation as per design specification\n- Tests added for new functionality\n- Documentation updated\n\nCloses #%s' "$COMMIT_TITLE" {{issue_number}} {{issue_number}}) && \
       if [ -n "$(git diff --cached --name-only)" ]; then \
         git commit -m "$COMMIT_MSG" ; \
@@ -1030,7 +1030,7 @@ steps:
     command: |
       cd "{{worktree_setup.worktree_path}}" && \
       echo "=== Step 15: Creating Draft PR ===" && \
-      PR_TITLE=$(printf '%s' {{task_description}}) && \
+      PR_TITLE=$(printf '%s' {{task_description}} | tr '\n\r' ' ' | cut -c1-200) && \
       PR_TASK=$(printf '%s' {{task_description}}) && \
       PR_DESIGN=$(printf '%s' {{design_spec}}) && \
       PR_BODY=$(printf '## Summary\n%s\n\n## Issue\nCloses #%s\n\n## Changes\n%s\n\n## Testing\n- Unit tests added\n- Local testing completed\n- Pre-commit hooks pass\n\n## Checklist\n- [x] Tests pass\n- [x] Documentation updated\n- [x] No stubs or TODOs\n- [ ] Code review completed\n- [ ] Philosophy check passed\n\n---\n*This PR was created as a draft for review before merging.*\n' "$PR_TASK" {{issue_number}} "$PR_DESIGN") && \
