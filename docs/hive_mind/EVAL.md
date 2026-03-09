@@ -2,6 +2,9 @@
 
 > New to the hive mind? Start with [GETTING_STARTED.md](GETTING_STARTED.md) for
 > a step-by-step tutorial from single agent to Azure deployment.
+>
+> For complete eval instructions (how to run, generate reports, and interpret
+> results), see the **[amplihack-agent-eval documentation](https://rysweet.github.io/amplihack-agent-eval/)**.
 
 ## Overview
 
@@ -15,6 +18,7 @@ Each agent uses:
 - **LLM extraction** (~3 calls per content turn) for structured fact extraction
 - **LLM synthesis** (~2 calls per question) for answer generation
 - **Hybrid grading** (deterministic rubric + LLM judgment) for scoring
+- **Exponential backoff retry** on rate limits (5 retries, 2-32s delay)
 
 ## The Three Conditions
 
