@@ -1382,6 +1382,66 @@ class TestFleetScout:
         assert "--skip-adopt" in result.output
         assert "--save" in result.output
 
+    @patch("amplihack.fleet.fleet_tui.FleetTUI")
+    def test_scout_calls_refresh_all_with_exclude_false(self, MockFleetTUI, runner):
+        """Outside-in: scout is reconnaissance and must call refresh_all(exclude=False).
+
+        This is the core behavioral contract: scout shows ALL VMs including those
+        in the exclude list. Only admiral actions (advance, start, run-once)
+        should respect the exclude list.
+        """
+        mock_tui = MagicMock()
+        mock_tui.refresh_all.return_value = []
+        MockFleetTUI.return_value = mock_tui
+
+        runner.invoke(fleet_cli, ["scout"], catch_exceptions=False)
+
+        mock_tui.refresh_all.assert_called_once_with(exclude=False)
+
+    @patch("amplihack.fleet.fleet_session_reasoner.SessionReasoner")
+    @patch("amplihack.fleet._backends.auto_detect_backend")
+    @patch("amplihack.fleet.fleet_adopt.SessionAdopter")
+    @patch("amplihack.fleet.fleet_tui.FleetTUI")
+    def test_scout_sees_excluded_vm_sessions(self, MockTUI, MockAdopter, MockBackend, MockReasoner, runner):
+        """Outside-in: scout report must include sessions from excluded VMs.
+
+        When a VM is in the exclude list, scout must still discover and report
+        its sessions. The user needs full visibility for reconnaissance.
+        """
+        from amplihack.fleet._tui_data import SessionView, VMView
+
+        excluded_vm_sess = SessionView(
+            vm_name="excluded-vm", session_name="work-excluded",
+            status="thinking", branch="feat/secret",
+        )
+        excluded_vm = VMView(
+            name="excluded-vm", region="eastus", is_running=True,
+            sessions=[excluded_vm_sess],
+        )
+        mock_tui = MagicMock()
+        # refresh_all(exclude=False) returns ALL VMs including excluded ones
+        mock_tui.refresh_all.return_value = [excluded_vm]
+        MockTUI.return_value = mock_tui
+
+        mock_adopter = MagicMock()
+        mock_adopter.adopt_sessions.return_value = [MagicMock()]
+        MockAdopter.return_value = mock_adopter
+
+        mock_decision = MagicMock()
+        mock_decision.action = "wait"
+        mock_decision.confidence = 0.9
+        mock_decision.reasoning = "working"
+        mock_decision.input_text = ""
+        mock_reasoner = MagicMock()
+        mock_reasoner.reason_about_session.return_value = mock_decision
+        MockReasoner.return_value = mock_reasoner
+
+        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"}):
+            result = runner.invoke(fleet_cli, ["scout"], catch_exceptions=False)
+
+        assert result.exit_code == 0
+        assert "excluded-vm" in result.output, "Scout must report excluded VMs"
+
 
 # ---------------------------------------------------------------------------
 # fleet advance
@@ -1427,6 +1487,22 @@ class TestFormatAdvanceReport:
 
 class TestFleetAdvance:
     """Tests for the fleet advance CLI command."""
+
+    @patch("amplihack.fleet.fleet_tui.FleetTUI")
+    def test_advance_calls_refresh_all_with_exclude_true(self, MockFleetTUI, runner):
+        """Outside-in: advance is an admiral action and must call refresh_all(exclude=True).
+
+        Advance must respect the exclude list — it takes actions on sessions.
+        Only scout (reconnaissance) should bypass exclusions.
+        """
+        mock_tui = MagicMock()
+        mock_tui.refresh_all.return_value = []
+        MockFleetTUI.return_value = mock_tui
+
+        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"}):
+            runner.invoke(fleet_cli, ["advance"], catch_exceptions=False)
+
+        mock_tui.refresh_all.assert_called_once_with(exclude=True)
 
     @patch("amplihack.fleet.fleet_session_reasoner.SessionReasoner")
     @patch("amplihack.fleet._backends.auto_detect_backend")

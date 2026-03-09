@@ -606,6 +606,86 @@ class TestRefreshAll:
 
 
 # ---------------------------------------------------------------------------
+# Test 10b: Scout behavior — refresh_all(exclude=False) shows ALL VMs
+# ---------------------------------------------------------------------------
+# Outside-in behavioral tests: scout is reconnaissance, must see every VM
+# including those in the exclude list. Advance is an admiral action and must
+# respect the exclude list. These tests verify the behavioral contract from
+# the user's perspective (what the fleet commands actually do), not internals.
+# ---------------------------------------------------------------------------
+
+
+class TestScoutShowsAllVMs:
+    """Scout is reconnaissance: refresh_all(exclude=False) must return ALL VMs.
+
+    The key behavioral contract introduced in commit 637407ba:
+      - Scout calls refresh_all(exclude=False) → sees excluded VMs
+      - Advance calls refresh_all(exclude=True)  → respects exclude list
+    """
+
+    def test_refresh_all_exclude_false_includes_excluded_vms(self, tui: FleetTUI) -> None:
+        """Scout behavior: refresh_all(exclude=False) returns ALL VMs including excluded ones."""
+        vm_list = [
+            ("excluded-vm", "eastus", True),   # In tui.exclude_vms
+            ("normal-vm", "westus", True),
+        ]
+
+        with patch.object(tui, "_get_vm_list", return_value=vm_list), \
+             patch.object(tui, "_poll_vm", return_value=[]):
+            result = tui.refresh_all(exclude=False)
+
+        names = {v.name for v in result}
+        assert "excluded-vm" in names, "Scout must see excluded VMs (reconnaissance)"
+        assert "normal-vm" in names
+
+    def test_refresh_all_exclude_false_polls_excluded_vms(self, tui: FleetTUI) -> None:
+        """Scout polls excluded VMs too — exclude=False means no filtering."""
+        vm_list = [
+            ("excluded-vm", "eastus", True),
+            ("normal-vm", "westus", True),
+        ]
+
+        with patch.object(tui, "_get_vm_list", return_value=vm_list), \
+             patch.object(tui, "_poll_vm", return_value=[]) as mock_poll:
+            tui.refresh_all(exclude=False)
+
+        polled = {call.args[0] for call in mock_poll.call_args_list}
+        assert "excluded-vm" in polled, "Scout must poll excluded VMs"
+        assert "normal-vm" in polled
+
+    def test_refresh_all_exclude_true_still_skips_excluded_vms(self, tui: FleetTUI) -> None:
+        """Advance behavior: default refresh_all(exclude=True) still filters excluded VMs."""
+        vm_list = [
+            ("excluded-vm", "eastus", True),
+            ("normal-vm", "westus", True),
+        ]
+
+        with patch.object(tui, "_get_vm_list", return_value=vm_list), \
+             patch.object(tui, "_poll_vm", return_value=[]):
+            result = tui.refresh_all(exclude=True)
+
+        names = {v.name for v in result}
+        assert "excluded-vm" not in names, "Advance must not see excluded VMs"
+        assert "normal-vm" in names
+
+    def test_exclude_false_returns_more_vms_than_exclude_true(self, tui: FleetTUI) -> None:
+        """Scout (exclude=False) sees MORE VMs than advance (exclude=True) when exclusions exist."""
+        vm_list = [
+            ("excluded-vm", "eastus", True),
+            ("normal-vm", "westus", True),
+        ]
+
+        with patch.object(tui, "_get_vm_list", return_value=vm_list), \
+             patch.object(tui, "_poll_vm", return_value=[]):
+            scout_result = tui.refresh_all(exclude=False)
+            advance_result = tui.refresh_all(exclude=True)
+
+        assert len(scout_result) > len(advance_result), (
+            "Scout (exclude=False) must discover more VMs than advance (exclude=True)"
+        )
+
+
+# ---------------------------------------------------------------------------
 # Additional coverage: fleet_tui.py _parse_session_output tests
 # ---------------------------------------------------------------------------
 
