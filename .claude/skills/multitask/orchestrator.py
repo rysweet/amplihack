@@ -189,10 +189,9 @@ class ParallelOrchestrator:
     def _write_recipe_launcher(self, ws: Workstream) -> None:
         """Write launcher files for recipe-based execution.
 
-        Creates a Python script that uses run_recipe_by_name() with
-        CLISubprocessAdapter, and a shell wrapper that sets session tree vars.
+        Creates a Python script that uses run_recipe_by_name() via the Rust
+        recipe runner, and a shell wrapper that sets session tree vars.
         """
-        # Python launcher that uses Recipe Runner directly
         launcher_py = ws.work_dir / "launcher.py"
         # Use json.dumps for proper escaping of all special characters
         import json
@@ -202,7 +201,7 @@ class ParallelOrchestrator:
         launcher_py.write_text(
             textwrap.dedent(f"""\
             #!/usr/bin/env python3
-            \"\"\"Workstream launcher - recipe runner execution.\"\"\"
+            \"\"\"Workstream launcher - Rust recipe runner execution.\"\"\"
             import sys
             import logging
 
@@ -213,15 +212,12 @@ class ParallelOrchestrator:
 
             try:
                 from amplihack.recipes import run_recipe_by_name
-                from amplihack.recipes.adapters.cli_subprocess import CLISubprocessAdapter
             except ImportError:
                 print("ERROR: amplihack package not importable. Falling back to classic mode.")
                 sys.exit(2)
 
-            adapter = CLISubprocessAdapter(cli="claude", working_dir=".")
             result = run_recipe_by_name(
                 {safe_recipe},
-                adapter=adapter,
                 user_context={{
                     "task_description": {safe_task},
                     "repo_path": ".",
