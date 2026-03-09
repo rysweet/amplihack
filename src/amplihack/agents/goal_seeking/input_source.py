@@ -171,7 +171,7 @@ class ServiceBusInputSource:
         connection_string: str,
         agent_name: str,
         topic_name: str = "hive-events",
-        max_wait_time: int = 60,
+        max_wait_time: int = 300,
         shutdown_event: threading.Event | None = None,
     ) -> None:
         try:

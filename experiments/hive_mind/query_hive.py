@@ -1141,16 +1141,16 @@ class LogAnalyticsAnswerReader:
     Args:
         workspace_id: Log Analytics workspace ID (GUID).
         container_app_name: Container App name prefix filter (optional).
-        poll_interval: Seconds between poll attempts (default: 5).
-        max_wait: Maximum seconds to wait for an answer (default: 60).
+        poll_interval: Seconds between poll attempts (default: 10).
+        max_wait: Maximum seconds to wait for an answer (default: 600).
     """
 
     def __init__(
         self,
         workspace_id: str,
         container_app_name: str = "",
-        poll_interval: float = 5.0,
-        max_wait: float = 60.0,
+        poll_interval: float = 10.0,
+        max_wait: float = 600.0,
     ) -> None:
         try:
             from azure.monitor.query import LogsQueryClient  # noqa: F401
@@ -1503,9 +1503,9 @@ Examples:
     p.add_argument(
         "--answer-wait",
         type=float,
-        default=float(os.environ.get("OODA_ANSWER_WAIT", "60")),
+        default=float(os.environ.get("OODA_ANSWER_WAIT", "600")),
         metavar="SECONDS",
-        help="Seconds to wait per question for an ANSWER in Log Analytics (default: 60).",
+        help="Seconds to wait per question for an ANSWER in Log Analytics (default: 600).",
     )
     p.add_argument(
         "--verbose", "-v",
