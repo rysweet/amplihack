@@ -311,11 +311,18 @@ steps:
       # inlined into shell source.
       TASK_DESC=$(printf '%s' '{{task_description}}')
       TASK_SLUG=$(printf '%s' "$TASK_DESC" | tr '\n\r' '  ' | tr '[:upper:]' '[:lower:]' | tr -s ' ' '-' | sed 's/[^a-z0-9-]//g' | sed 's/-\{2,\}/-/g' | sed 's/^-//;s/-$//' | cut -c1-50 | sed 's/-$//')
-      BRANCH_NAME="{{branch_prefix}}/issue-{{issue_number}}-${TASK_SLUG}"
-      # Validate with authoritative git ref checker; fall back to safe unique name on failure
-      if ! git check-ref-format --branch "${BRANCH_NAME}" >/dev/null 2>&1; then
-        echo "WARNING: derived branch name '${BRANCH_NAME}' is invalid — falling back to task-unnamed" >&2
+      # Guard: empty slug (blank/all-symbol input) produces a trailing-hyphen branch that
+      # git check-ref-format accepts as valid but is undesirable. Catch it explicitly first.
+      if [ -z "$TASK_SLUG" ]; then
+        echo "WARNING: task_description produced an empty slug — falling back to task-unnamed" >&2
         BRANCH_NAME="{{branch_prefix}}/task-unnamed-$(date +%s)"
+      else
+        BRANCH_NAME="{{branch_prefix}}/issue-{{issue_number}}-${TASK_SLUG}"
+        # Validate with authoritative git ref checker; fall back to safe unique name on failure
+        if ! git check-ref-format --branch "${BRANCH_NAME}" >/dev/null 2>&1; then
+          echo "WARNING: derived branch name '${BRANCH_NAME}' is invalid — falling back to task-unnamed" >&2
+          BRANCH_NAME="{{branch_prefix}}/task-unnamed-$(date +%s)"
+        fi
       fi
       WORKTREE_PATH="{{repo_path}}/worktrees/${BRANCH_NAME}"
 
