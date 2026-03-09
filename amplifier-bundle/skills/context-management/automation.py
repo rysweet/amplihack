@@ -20,6 +20,7 @@ try:
         TokenMonitor,
     )
 except ImportError:
+    print("WARNING: context_management not available", file=sys.stderr)
     # Fallback for when running from hooks
     from .context_extractor import ContextExtractor
     from .context_rehydrator import ContextRehydrator
