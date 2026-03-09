@@ -113,5 +113,7 @@ def get_existing_tunnels(azlin_path: str) -> dict[str, int]:
         return {}
 
 
-# Shared VM exclusion set — VMs that should not be managed by default
-DEFAULT_EXCLUDE_VMS = {"devy", "devo", "devi", "deva", "amplihack", "seldon-vm"}
+# VMs excluded from admiral actions (advance/start/run-once).
+# Empty by default — all VMs are fleet-managed.
+# Scout always sees all VMs regardless of this list.
+DEFAULT_EXCLUDE_VMS: set[str] = set()
