@@ -7,6 +7,7 @@ on:
 permissions:
   contents: read
   actions: read
+engine: claude
 tools:
   github:
     mode: local

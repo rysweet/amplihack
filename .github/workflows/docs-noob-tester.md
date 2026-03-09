@@ -7,6 +7,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+engine: claude
 safe-outputs:
   create-issue:
     max: 10

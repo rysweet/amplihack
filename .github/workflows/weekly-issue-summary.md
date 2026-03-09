@@ -8,7 +8,7 @@ on:
 permissions:
   issues: read
 tracker-id: weekly-issue-summary
-engine: copilot
+engine: claude
 network:
   allowed:
     - defaults
