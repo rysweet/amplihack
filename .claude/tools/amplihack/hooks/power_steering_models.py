@@ -20,23 +20,22 @@ Public API (the "studs"):
 """
 
 import hashlib
+import os
+import sys
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import ClassVar
 
-# Import constants
-try:
-    from .power_steering_constants import (
-        LOOP_DETECTION_THRESHOLD,
-        MAX_CONSECUTIVE_BLOCKS,
-        WARNING_THRESHOLD,
-    )
-except ImportError:
-    from power_steering_constants import (
-        LOOP_DETECTION_THRESHOLD,
-        MAX_CONSECUTIVE_BLOCKS,
-        WARNING_THRESHOLD,
-    )
+# Ensure hooks directory is importable for both package and standalone execution
+_hooks_dir = os.path.dirname(os.path.abspath(__file__))
+if _hooks_dir not in sys.path:
+    sys.path.insert(0, _hooks_dir)
+
+from power_steering_constants import (
+    LOOP_DETECTION_THRESHOLD,
+    MAX_CONSECUTIVE_BLOCKS,
+    WARNING_THRESHOLD,
+)
 
 __all__ = [
     "FailureEvidence",

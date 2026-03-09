@@ -110,9 +110,7 @@ class ChecksWorkflowMixin:
 
         except ImportError:
             # SDK not available - fail open
-            sys.stderr.write(
-                "[Power Steering] claude_power_steering not available, skipping workflow check\n"
-            )
+            print("WARNING: claude_power_steering not available - skipping workflow check", file=sys.stderr)
             return True
         except Exception as e:
             # Fail-open on errors

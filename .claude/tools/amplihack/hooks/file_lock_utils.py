@@ -13,17 +13,17 @@ Public API (the "studs"):
     acquire_file_lock: Context manager for exclusive file locking
 """
 
+import sys
 import time
 from contextlib import contextmanager
 
 # Platform-specific imports (Windows compatibility)
-try:
+if sys.platform != 'win32':
     import fcntl
-
     LOCKING_AVAILABLE = True
-except ImportError:
-    # Windows doesn't have fcntl - graceful degradation
+else:
     LOCKING_AVAILABLE = False
+    print("WARNING: File locking not available on Windows - locking disabled", file=sys.stderr)
 
 __all__ = [
     "LOCKING_AVAILABLE",
