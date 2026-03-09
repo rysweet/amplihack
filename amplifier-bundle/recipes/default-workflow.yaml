@@ -284,6 +284,15 @@ steps:
       # Fetch latest refs
       git fetch origin main >&2
 
+      # NOTE: This slug pipeline is duplicated in consensus-workflow.yaml step3-setup-worktree
+      # with a 30-char limit instead of 50. If you update this pipeline (e.g. security patch),
+      # update consensus-workflow.yaml in the same commit. See Issue #2952 for context.
+      #
+      # ACTION REQUIRED: File a dedicated security issue to audit the recipe runner's
+      # template substitution engine for single-quote escaping (REQ-SEC-001 audit).
+      # Until confirmed safe, user-provided values should be injected as env vars,
+      # not as inline template substitutions in single-quoted bash strings.
+      #
       # Generate branch name — use printf to safely capture the shlex-quoted value
       TASK_DESC=$(printf '%s' {{task_description}})
       TASK_SLUG=$(echo "$TASK_DESC" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | sed 's/[^a-z0-9-]//g' | cut -c1-50)
