@@ -156,15 +156,15 @@ class FleetTUI:
                 time.sleep(min(1.0, remaining))
         return None
 
-    def refresh_all(self) -> list[VMView]:
-        """Poll all managed VMs (excluding shared-NFS duplicates).
+    def refresh_all(self, *, exclude: bool = True) -> list[VMView]:
+        """Poll VMs concurrently.
 
         Uses ThreadPoolExecutor to poll VMs concurrently, reducing
         wall-clock time from O(N * SSH_timeout) to O(SSH_timeout).
 
-        Excludes VMs in ``self.exclude_vms`` because those share NFS home
-        directories with other VMs, causing identical tmux sessions to
-        appear under multiple VM names.
+        Args:
+            exclude: If True (default), skip VMs in self.exclude_vms.
+                Set to False for reconnaissance (scout) to see all VMs.
 
         Returns a list of VMView objects sorted by VM name.
         """
@@ -173,7 +173,7 @@ class FleetTUI:
             return []
 
         vms_to_poll: list[tuple[str, str, bool]] = sorted(
-            [v for v in vm_list if v[0] not in self.exclude_vms],
+            [v for v in vm_list if not exclude or v[0] not in self.exclude_vms],
             key=lambda x: x[0],
         )
         results: list[VMView] = []

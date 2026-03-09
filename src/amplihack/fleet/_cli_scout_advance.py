@@ -25,7 +25,7 @@ def _parse_session_target(session_str: str) -> tuple[str | None, str]:
     return (None, session_str.strip())
 
 
-def _discover_sessions(session_target, vm, _tui_mod):
+def _discover_sessions(session_target, vm, _tui_mod, *, exclude: bool = False):
     """Shared Phase 1 discovery for scout and advance commands.
 
     Parses --session target, creates FleetTUI, refreshes all VMs,
@@ -35,6 +35,9 @@ def _discover_sessions(session_target, vm, _tui_mod):
         session_target: Optional 'vm:session' string from --session flag.
         vm: Optional VM name filter from --vm flag.
         _tui_mod: The fleet_tui module (for FleetTUI construction).
+        exclude: If True, skip VMs in the exclude list. Defaults to False
+            (scout shows all VMs). Set True for advance/start/run-once so
+            the exclude list is respected for admiral actions.
 
     Returns:
         Tuple of (all_vms, running_vms, session_filter) on success,
@@ -51,7 +54,7 @@ def _discover_sessions(session_target, vm, _tui_mod):
 
     click.echo("Phase 1: Discovering fleet sessions...")
     tui = _tui_mod.FleetTUI()
-    all_vms = tui.refresh_all()
+    all_vms = tui.refresh_all(exclude=exclude)
 
     if vm:
         all_vms = [v for v in all_vms if v.name == vm]
@@ -296,7 +299,8 @@ def register_scout_advance_ops(fleet_cli: click.Group) -> None:
         import amplihack.fleet.fleet_tui as _tui_mod
 
         # -- Phase 1: Discovery --
-        discovery = _discover_sessions(session_target, vm, _tui_mod)
+        # advance is an admiral action -- respect the exclude list
+        discovery = _discover_sessions(session_target, vm, _tui_mod, exclude=True)
         if discovery is None:
             return
         all_vms, running_vms, session_filter = discovery
