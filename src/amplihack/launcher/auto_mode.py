@@ -28,6 +28,7 @@ try:
 
     CLAUDE_SDK_AVAILABLE = True
 except ImportError:
+    print("WARNING: claude_agent_sdk not available", file=sys.stderr)
     CLAUDE_SDK_AVAILABLE = False
 
 # Try to import Rich for markdown rendering
@@ -37,6 +38,7 @@ try:
 
     RICH_AVAILABLE = True
 except ImportError:
+    print("WARNING: rich not available, markdown rendering disabled", file=sys.stderr)
     RICH_AVAILABLE = False
     Console = None
     Markdown = None

@@ -17,25 +17,18 @@ Public API (the "studs"):
     DeltaAnalyzer: Analyzes delta transcript since last block
 """
 
+import os
+import sys
 from collections.abc import Callable
 
-# Import models
-try:
-    from .power_steering_models import DeltaAnalysisResult, FailureEvidence
-except ImportError:
-    from power_steering_models import DeltaAnalysisResult, FailureEvidence
+# Ensure hooks directory is importable for both package and standalone execution
+_hooks_dir = os.path.dirname(os.path.abspath(__file__))
+if _hooks_dir not in sys.path:
+    sys.path.insert(0, _hooks_dir)
 
-# Import constants
-try:
-    from .power_steering_constants import CLAIM_KEYWORDS
-except ImportError:
-    from power_steering_constants import CLAIM_KEYWORDS
-
-# Import fallback heuristics
-try:
-    from .fallback_heuristics import AddressedChecker
-except ImportError:
-    from fallback_heuristics import AddressedChecker
+from power_steering_models import DeltaAnalysisResult, FailureEvidence
+from power_steering_constants import CLAIM_KEYWORDS
+from fallback_heuristics import AddressedChecker
 
 __all__ = ["DeltaAnalyzer"]
 

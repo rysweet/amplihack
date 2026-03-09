@@ -113,6 +113,9 @@ class ExecutionTierCascade:
             import_recipe_runner()
             return True
         except ImportError:
+            import sys
+
+            print("WARNING: Recipe Runner not available", file=sys.stderr)
             return False
 
     def is_recipe_runner_enabled(self) -> bool:
@@ -139,6 +142,9 @@ class ExecutionTierCascade:
             import_workflow_skills()
             return True
         except ImportError:
+            import sys
+
+            print("WARNING: Workflow Skills not available", file=sys.stderr)
             return False
 
     def is_markdown_available(self) -> bool:

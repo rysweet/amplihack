@@ -24,6 +24,7 @@ try:
     from amplihack.utils.paths import FrameworkPathResolver
 except ImportError:
     # Fallback imports for standalone execution
+    print("WARNING: Framework modules not available - running in standalone mode", file=sys.stderr)
     ContextPreserver = None
     FrameworkPathResolver = None
     migrate_global_hooks = None
@@ -128,7 +129,7 @@ class SessionStartHook(HookProcessor):
                 staged = stage_uvx_framework()
                 self.save_metric("uvx_staging_success", staged)
         except ImportError:
-            pass
+            print("WARNING: amplihack.utils.uvx_staging not available - UVX staging skipped", file=sys.stderr)
 
         # Settings.json initialization/merge with UVX template
         # Ensures statusLine and other critical configurations are present
@@ -152,6 +153,7 @@ class SessionStartHook(HookProcessor):
                 self.save_metric("settings_updated", False)
         except ImportError as e:
             self.log(f"UVXSettingsManager not available: {e}", "WARNING")
+            print(f"WARNING: UVXSettingsManager not available - settings merge skipped: {e}", file=sys.stderr)
             self.save_metric("settings_updated", False)
         except Exception as e:
             # Fail gracefully - don't break session start
@@ -206,6 +208,7 @@ class SessionStartHook(HookProcessor):
         except ImportError:
             # gitignore_checker not available (shouldn't happen)
             self.log("gitignore_checker module not found", "WARNING")
+            print("WARNING: gitignore_checker not available - .gitignore validation skipped", file=sys.stderr)
         except Exception as e:
             # Fail-safe: don't break session start
             self.log(f"Gitignore check failed (non-critical): {e}", "WARNING")
@@ -250,6 +253,7 @@ class SessionStartHook(HookProcessor):
                 context_parts.append("Check .claude/context/DISCOVERIES.md for recent insights.")
         except ImportError:
             # Fallback if memory module not available
+            print("WARNING: amplihack.memory.discoveries not available - using static discovery text", file=sys.stderr)
             context_parts.append("Check .claude/context/DISCOVERIES.md for recent insights.")
 
         # Inject code graph context if blarify index exists and DB is not locked

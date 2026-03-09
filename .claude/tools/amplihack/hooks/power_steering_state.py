@@ -29,57 +29,40 @@ Public API (the "studs"):
     LOCKING_AVAILABLE: Whether file locking is available on this platform
 """
 
+import os
+import sys
+
+# Ensure hooks directory is importable for both package and standalone execution
+_hooks_dir = os.path.dirname(os.path.abspath(__file__))
+if _hooks_dir not in sys.path:
+    sys.path.insert(0, _hooks_dir)
+
 # Re-export models
-try:
-    from .power_steering_models import (
-        BlockSnapshot,
-        DeltaAnalysisResult,
-        FailureEvidence,
-        PowerSteeringTurnState,
-    )
-except ImportError:
-    from power_steering_models import (
-        BlockSnapshot,
-        DeltaAnalysisResult,
-        FailureEvidence,
-        PowerSteeringTurnState,
-    )
+from power_steering_models import (
+    BlockSnapshot,
+    DeltaAnalysisResult,
+    FailureEvidence,
+    PowerSteeringTurnState,
+)
 
 # Re-export delta analyzer
-try:
-    from .power_steering_delta_analyzer import DeltaAnalyzer
-except ImportError:
-    from power_steering_delta_analyzer import DeltaAnalyzer
+from power_steering_delta_analyzer import DeltaAnalyzer
 
 # Re-export state manager
-try:
-    from .power_steering_state_manager import TurnStateManager
-except ImportError:
-    from power_steering_state_manager import TurnStateManager
+from power_steering_state_manager import TurnStateManager
 
 # Re-export LOCKING_AVAILABLE from file_lock_utils
-try:
-    from . import file_lock_utils
+import file_lock_utils
 
-    LOCKING_AVAILABLE = file_lock_utils.LOCKING_AVAILABLE
-except ImportError:
-    import file_lock_utils
-
-    LOCKING_AVAILABLE = file_lock_utils.LOCKING_AVAILABLE
+LOCKING_AVAILABLE = file_lock_utils.LOCKING_AVAILABLE
 
 # Re-export get_shared_runtime_dir for backward compatibility with tests
 # that patch "power_steering_state.get_shared_runtime_dir"
 try:
-    from .git_utils import get_shared_runtime_dir
-except ImportError:
-    try:
-        from git_utils import get_shared_runtime_dir
-    except ImportError:
-        from pathlib import Path
-
-        def get_shared_runtime_dir(project_root):
-            """Fallback implementation when git_utils is unavailable."""
-            return str(Path(project_root) / ".claude" / "runtime")
+    from git_utils import get_shared_runtime_dir
+except ImportError as e:
+    print(f"FATAL: Required dependency missing: {e}", file=sys.stderr)
+    raise
 
 
 __all__ = [

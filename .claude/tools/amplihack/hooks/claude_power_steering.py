@@ -35,18 +35,19 @@ Philosophy:
 import asyncio
 import os
 import re
+import sys
 from pathlib import Path
+
+# Ensure hooks directory is importable for both package and standalone execution
+_hooks_dir = os.path.dirname(os.path.abspath(__file__))
+if _hooks_dir not in sys.path:
+    sys.path.insert(0, _hooks_dir)
 
 # Unset CLAUDECODE to prevent nested session errors when spawning Claude CLI subprocesses
 os.environ.pop("CLAUDECODE", None)
 
-# Try to import SDK abstraction (auto-detects Claude or Copilot SDK)
-try:
-    from power_steering_sdk import SDK_AVAILABLE as CLAUDE_SDK_AVAILABLE
-    from power_steering_sdk import query_llm
-
-except ImportError:
-    CLAUDE_SDK_AVAILABLE = False
+from power_steering_sdk import SDK_AVAILABLE as CLAUDE_SDK_AVAILABLE
+from power_steering_sdk import query_llm
 
 # Template paths (relative to this file)
 TEMPLATE_DIR = Path(__file__).parent / "templates"

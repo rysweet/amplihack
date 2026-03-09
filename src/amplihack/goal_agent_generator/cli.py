@@ -14,6 +14,7 @@ from pathlib import Path
 try:
     import click
 except ImportError:
+    print("WARNING: click not available, CLI functionality limited", file=sys.stderr)
     click = None  # type: ignore[assignment]
 
 from .agent_assembler import AgentAssembler

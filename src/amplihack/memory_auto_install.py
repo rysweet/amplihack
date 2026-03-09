@@ -12,7 +12,9 @@ def ensure_memory_lib_installed() -> bool:
 
         return True  # Already installed
     except ImportError:
-        pass
+        import sys
+
+        print("WARNING: amplihack_memory not available, attempting auto-install", file=sys.stderr)
 
     # Not installed - auto-install
     import subprocess
