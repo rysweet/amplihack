@@ -211,9 +211,9 @@ def skipped_result() -> RecipeResult:
 
 @pytest.fixture
 def mock_recipe_runner() -> MagicMock:
-    """Mock RecipeRunner for testing command handlers."""
+    """Mock recipe runner for testing command handlers (legacy fixture)."""
     runner = MagicMock()
-    runner.execute = MagicMock()
+    runner.return_value = MagicMock()
     return runner
 
 

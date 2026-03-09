@@ -13,6 +13,7 @@ The amplihack framework requires the following tools. Each entry explains **what
 | **uv**      | latest         | Fast Python package installer | Installs amplihack itself and its Python dependencies |
 | **git**     | 2.0+           | Version control               | Branch management, PRs, and workflow automation       |
 | **claude**  | latest         | Claude Code CLI               | Core AI coding assistant that amplihack extends       |
+| **cargo**   | 1.70+          | Rust package manager          | Installs the Rust recipe runner for fast recipe execution. Install via [rustup.rs](https://rustup.rs/) |
 
 ## Quick Check
 
@@ -20,7 +21,7 @@ Before installing amplihack, verify your prerequisites with this script:
 
 ```bash
 # Copy-paste this into your terminal — no installation required
-node --version && npm --version && uv --version && git --version && echo "All prerequisites OK"
+node --version && npm --version && uv --version && git --version && cargo --version && echo "All prerequisites OK"
 ```
 
 After installing amplihack, running `amplihack` will also check for missing tools and display installation instructions.
@@ -48,6 +49,9 @@ brew install uv
 
 # git
 brew install git
+
+# Rust/cargo (for recipe runner)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
 #### Verify Installation
@@ -57,6 +61,7 @@ node --version   # Should show v18.x or higher
 npm --version    # Should show 9.x or higher
 uv --version     # Should show version info
 git --version    # Should show 2.x or higher
+cargo --version  # Should show 1.70 or higher
 ```
 
 ---
@@ -77,6 +82,9 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # git
 sudo apt install git
+
+# Rust/cargo (for recipe runner)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
 #### Fedora/RHEL/CentOS
@@ -90,6 +98,9 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # git
 sudo dnf install git
+
+# Rust/cargo (for recipe runner)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
 #### Arch Linux
@@ -103,6 +114,9 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # git
 sudo pacman -S git
+
+# Rust/cargo (for recipe runner)
+sudo pacman -S rust
 ```
 
 #### Verify Installation
@@ -112,6 +126,7 @@ node --version   # Should show v18.x or higher
 npm --version    # Should show 9.x or higher
 uv --version     # Should show version info
 git --version    # Should show 2.x or higher
+cargo --version  # Should show 1.70 or higher
 ```
 
 ---

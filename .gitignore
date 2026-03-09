@@ -31,6 +31,7 @@ htmlcov/
 **/.metadata/versions.json
 
 # Project specific
+.pm/
 .test_state.json
 .requirements_extraction_state.json
 test_requirements*.md
@@ -210,3 +211,6 @@ eval_results.json
 *_results/
 eval_progressive_example/
 generated-agents/
+
+# Rust recipe runner repo checkout
+amplihack-recipe-runner-rs/
