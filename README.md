@@ -65,6 +65,8 @@ high-quality code.
   supported)
 - **Runtime**: Python 3.12+, Node.js 18+
 - **Tools**: git, npm, uv ([astral.sh/uv](https://docs.astral.sh/uv/))
+- **Recommended**: Rust/cargo ([rustup.rs](https://rustup.rs/)) — required for
+  the Rust recipe runner
 - **Optional**: GitHub CLI (`gh`), Azure CLI (`az`)
 
 Detailed setup:

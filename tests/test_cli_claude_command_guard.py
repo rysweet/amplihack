@@ -70,6 +70,7 @@ def _apply_patches(extra_patches: dict | None = None):
     patches = {
         "amplihack.cli.is_uvx_deployment": MagicMock(return_value=True),
         "amplihack.cli.cleanup_legacy_skills": MagicMock(),
+        "amplihack.cli._common_launcher_startup": MagicMock(),
         "amplihack.safety.GitConflictDetector": MagicMock(return_value=mock_detector),
         "amplihack.safety.SafeCopyStrategy": MagicMock(return_value=mock_strategy_manager),
         "amplihack.cli._configure_amplihack_marketplace": mock_configure,
