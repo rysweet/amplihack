@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
 import threading
 import time
 from collections import OrderedDict
@@ -28,12 +29,14 @@ try:
 except ImportError:
     kuzu = None  # type: ignore[assignment]
     CognitiveMemory = None  # type: ignore[assignment,misc]
+    print("WARNING: kuzu/amplihack_memory.cognitive_memory not available", file=sys.stderr)
 
 try:
     from amplihack_memory.graph import FederatedGraphStore, KuzuGraphStore
 except ImportError:
     FederatedGraphStore = None  # type: ignore[assignment,misc]
     KuzuGraphStore = None  # type: ignore[assignment,misc]
+    print("WARNING: amplihack_memory.graph not available", file=sys.stderr)
 
 from .constants import DEFAULT_TRUST_SCORE, MAX_TRUST_SCORE, PEER_CONFIDENCE_DISCOUNT
 from .event_bus import BusEvent, EventBus, LocalEventBus, make_event

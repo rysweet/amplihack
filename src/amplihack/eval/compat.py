@@ -64,4 +64,6 @@ except ImportError:
     # amplihack-agent-eval not installed -- compat layer is a no-op.
     # Callers should guard with `if hasattr(compat, 'AgentAdapter')` or
     # catch ImportError when importing specific names.
-    pass
+    import sys
+
+    print("WARNING: amplihack_eval not available, eval compat layer is a no-op", file=sys.stderr)
