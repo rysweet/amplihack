@@ -54,17 +54,17 @@ param memoryBackend string = 'cognitive'
 @description('LLM model for agents (e.g. claude-sonnet-4-6, claude-opus-4-6)')
 param agentModel string = 'claude-sonnet-4-6'
 
-@description('Service Bus topic name — must match agent entrypoint AMPLIHACK_SB_TOPIC default')
-param sbTopicNameParam string = 'hive-events'
+@description('Service Bus topic name override (default: hive-events-<hiveName>)')
+param sbTopicNameParam string = ''
 
 
 // ---------- Naming ----------
 var suffix = uniqueString(resourceGroup().id)
+var sbTopicName = empty(sbTopicNameParam) ? 'hive-events-${hiveName}' : sbTopicNameParam
 var acrNameResolved = empty(acrName) ? 'acr${suffix}' : acrName
 var logAnalyticsName = 'hive-logs-${suffix}'
 var envName = 'hive-env-${hiveName}'
 var sbNamespaceName = 'hive-sb-prem-${suffix}'
-var sbTopicName = sbTopicNameParam
 var appCount = (agentCount + agentsPerApp - 1) / agentsPerApp
 
 // ---------- Container Registry ----------
@@ -240,6 +240,10 @@ resource containerApps 'Microsoft.App/containerApps@2024-03-01' = [
                 value: agentModel
               }
               {
+                name: 'AMPLIHACK_SB_TOPIC'
+                value: sbTopicName
+              }
+              {
                 name: 'ANTHROPIC_API_KEY'
                 secretRef: 'anthropic-api-key'
               }
@@ -266,3 +270,4 @@ output acrLoginServer string = empty(acrName) ? acr.properties.loginServer : acr
 output sbNamespaceFqdn string = sbNamespace.properties.serviceBusEndpoint
 output containerAppNames array = [for appIdx in range(0, appCount): '${hiveName}-app-${appIdx}']
 output sbConnectionStringSecretName string = 'sb-connection-string'
+output sbTopicNameOutput string = sbTopicName
