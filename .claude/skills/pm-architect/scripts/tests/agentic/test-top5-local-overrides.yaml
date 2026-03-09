@@ -1,0 +1,97 @@
+# Outside-in test for /top5 local backlog integration
+# Validates generate_top5.py incorporates .pm/backlog items and roadmap goals
+# into the priority ranking alongside (or instead of) GitHub data.
+
+scenario:
+  name: "Top 5 Priorities - Local Overrides and Roadmap Alignment"
+  description: |
+    Verifies that generate_top5.py reads .pm/backlog/items.yaml for local
+    priorities and .pm/roadmap.md for strategic alignment scoring.
+    Tests the full aggregation pipeline without requiring GitHub access.
+  type: cli
+  level: 2
+  tags: [cli, integration, top5, pm-architect, local, roadmap]
+
+  prerequisites:
+    - "Python 3.11+ is available"
+    - "PyYAML is installed"
+
+  steps:
+    # Setup local .pm/ state with backlog items and roadmap
+    - action: launch
+      target: "bash"
+      args:
+        - "-c"
+        - |
+          TMPDIR=$(mktemp -d) &&
+          mkdir -p "$TMPDIR/.pm/backlog" &&
+          cat > "$TMPDIR/.pm/backlog/items.yaml" << 'BACKLOG'
+          items:
+            - id: "local-001"
+              title: "Fix authentication timeout bug"
+              status: "READY"
+              priority: "HIGH"
+              estimated_hours: 1
+            - id: "local-002"
+              title: "Add dashboard metrics"
+              status: "READY"
+              priority: "MEDIUM"
+              estimated_hours: 4
+            - id: "local-003"
+              title: "Refactor logging module"
+              status: "IN_PROGRESS"
+              priority: "LOW"
+              estimated_hours: 8
+          BACKLOG
+          cat > "$TMPDIR/.pm/roadmap.md" << 'ROADMAP'
+          ## Q1 Goals
+          ### Improve authentication reliability
+          - Fix timeout and retry logic
+          ### Add observability dashboard
+          - Metrics and monitoring
+          ROADMAP
+          cat > "$TMPDIR/.pm/sources.yaml" << 'SOURCES'
+          github: []
+          SOURCES
+          python .claude/skills/pm-architect/scripts/generate_top5.py --project-root "$TMPDIR" --sources "$TMPDIR/.pm/sources.yaml"
+      description: "Run with local backlog items and roadmap goals, no GitHub sources"
+      timeout: 15s
+
+    # Verify local items appear in output
+    - action: verify_output
+      contains: "Fix authentication timeout bug"
+      timeout: 5s
+      description: "HIGH priority READY item appears in results"
+
+    - action: verify_output
+      contains: "Add dashboard metrics"
+      description: "MEDIUM priority READY item appears in results"
+
+    # IN_PROGRESS items should NOT appear (only READY items are loaded)
+    - action: verify_output
+      not_contains: "Refactor logging module"
+      description: "IN_PROGRESS item is excluded (only READY items loaded)"
+
+    # Verify source attribution
+    - action: verify_output
+      contains: '"source": "local"'
+      description: "Items attributed to local source"
+
+    # Verify roadmap goals were loaded
+    - action: verify_output
+      contains: '"roadmap_goals"'
+      description: "Roadmap goals count present in sources"
+
+    # Verify alignment scoring (auth bug should align with roadmap goal)
+    - action: verify_output
+      matches: '"alignment":\\s*[0-9]'
+      description: "Items have alignment scores"
+
+    - action: verify_exit_code
+      expected: 0
+      description: "Script exits cleanly"
+
+  cleanup:
+    - action: stop_application
+      force: true
+      description: "Ensure process is terminated"

@@ -404,6 +404,23 @@ def _local_install(repo_root, profile_uri=None):
 
     hooks_ok = verify_hooks()
 
+    # Step 6.5: Ensure Rust recipe runner binary
+    print("\n🦀 Ensuring Rust recipe runner:")
+    try:
+        from .recipes.rust_runner import ensure_rust_recipe_runner
+
+        if ensure_rust_recipe_runner():
+            print("   ✅ recipe-runner-rs is available")
+        else:
+            print("   ⚠️  recipe-runner-rs not installed (Python runner will be used)")
+            print("   Install manually: cargo install --git https://github.com/rysweet/amplihack-recipe-runner")
+    except Exception as e:
+        print(f"   ⚠️  recipe-runner-rs check failed: {e}")
+        import logging as _install_logging
+        _install_logging.getLogger(__name__).warning(
+            "Could not ensure recipe-runner-rs: %s", e, exc_info=True,
+        )
+
     # Step 7: Generate manifest for uninstall
     print("\n📝 Generating uninstall manifest:")
 

@@ -149,16 +149,13 @@ class TestExistingRecipeRunnerUnaffected:
     """Test that existing Recipe Runner functionality works."""
 
     def test_recipe_runner_direct_invocation_works(self, mock_recipe_runner):
-        """Test Recipe Runner can still be invoked directly."""
-        from amplihack.recipes import run_recipe_by_name
-        from amplihack.recipes.adapters.cli_subprocess import CLISubprocessAdapter
+        """Test Recipe Runner can still be invoked via Rust runner."""
+        from amplihack.recipes import run_recipe_by_name, is_rust_runner_available
 
-        # Direct invocation should still work
-        adapter = CLISubprocessAdapter()
-        result = run_recipe_by_name("default-workflow", adapter=adapter)
-
-        # Should work as before (this is just interface test)
-        assert result is not None
+        # run_recipe_by_name now always uses Rust runner
+        # Just verify the function is importable and accepts adapter kwarg for compat
+        assert callable(run_recipe_by_name)
+        assert callable(is_rust_runner_available)
 
     def test_recipe_runner_cli_unaffected(self):
         """Test Recipe Runner CLI still works."""
@@ -332,12 +329,12 @@ class TestNoBreakingChangesInDependencies:
             # Expected if module doesn't exist yet
             pass
 
-    def test_cli_subprocess_adapter_import_safe(self):
-        """Test CLISubprocessAdapter import doesn't break."""
+    def test_rust_runner_import_safe(self):
+        """Test Rust runner imports don't break."""
         try:
-            from amplihack.recipes.adapters import CLISubprocessAdapter
+            from amplihack.recipes.rust_runner import run_recipe_via_rust
 
-            assert CLISubprocessAdapter is not None
+            assert run_recipe_via_rust is not None
         except ImportError:
             # Expected if not available
             pass

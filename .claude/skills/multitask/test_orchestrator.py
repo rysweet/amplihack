@@ -252,5 +252,77 @@ class TestLauncherGeneration:
         assert os.access(run_sh, os.X_OK)
 
 
+class TestClassicLauncherNoMultilineArg:
+    """Tests that classic launcher -p argument is on a single line.
+
+    Regression test for issue #2946: multi-line -p argument causes the shell
+    to split the command at newlines, making amplihack claude wait on stdin
+    indefinitely.
+    """
+
+    def _create_classic_launcher(self, tmp_path, task="Implement feature"):
+        """Helper to create a classic launcher and return run.sh content."""
+        base = tmp_path / "ws"
+        base.mkdir()
+
+        orch = ParallelOrchestrator(
+            repo_url="https://example.com/repo.git",
+            tmp_base=str(base),
+            mode="classic",
+        )
+
+        ws_dir = base / "ws-1"
+
+        def _mock_run(*args, **kwargs):
+            # Simulate git clone by creating the work directory
+            cmd = args[0] if args else kwargs.get("args", [])
+            if isinstance(cmd, list) and "clone" in cmd:
+                ws_dir.mkdir(exist_ok=True)
+            return MagicMock(returncode=0, stdout="ref: refs/heads/main\tHEAD\n")
+
+        with patch("orchestrator.subprocess.run", side_effect=_mock_run):
+            ws = orch.add(issue=1, branch="feat/test", description="test", task=task)
+
+        return (ws.work_dir / "run.sh").read_text()
+
+    def test_p_flag_on_single_line(self, tmp_path):
+        """The -p argument and its value must be on the same line."""
+        content = self._create_classic_launcher(tmp_path)
+        for line in content.splitlines():
+            if "-p " in line:
+                # The line with -p must also contain the closing quote
+                assert line.count('"') >= 2, (
+                    f"The -p argument is split across lines, which causes "
+                    f"the shell to break the command. Line: {line!r}"
+                )
+                break
+        else:
+            raise AssertionError("No line with -p flag found in run.sh")
+
+    def test_no_bare_newline_in_p_argument(self, tmp_path):
+        """Ensure no unescaped newlines between -p and closing quote."""
+        content = self._create_classic_launcher(tmp_path)
+        # Find everything after '-p ' up to end of script
+        import re
+
+        match = re.search(r'-p\s+"([^"]*)"', content, re.DOTALL)
+        assert match is not None, "Could not find -p argument in run.sh"
+        p_value = match.group(1)
+        assert "\n" not in p_value, (
+            f"The -p argument value contains a newline, which will cause "
+            f"the shell to split the command: {p_value!r}"
+        )
+
+    def test_amplihack_claude_command_complete(self, tmp_path):
+        """The amplihack claude command must have all parts on one line."""
+        content = self._create_classic_launcher(tmp_path)
+        # Find the line with the amplihack claude command
+        cmd_lines = [l.strip() for l in content.splitlines() if "amplihack claude" in l]
+        assert len(cmd_lines) == 1, f"Expected 1 amplihack claude line, got {len(cmd_lines)}"
+        cmd = cmd_lines[0]
+        assert "@TASK.md" in cmd, "Command must reference @TASK.md"
+        assert cmd.endswith('"'), f"Command must end with closing quote, got: {cmd!r}"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
