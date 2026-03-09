@@ -524,6 +524,8 @@ steps:
 
       Commands to execute:
       ```bash
+      # NOTE: This pipeline mirrors default-workflow.yaml step-04-setup-worktree with a
+      # 30-char limit (vs 50). Keep both in sync on security patches. See Issue #2952.
       # Create branch name
       BRANCH_NAME="feat/consensus-$(echo '{{task_description}}' | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | cut -c1-30)"
 
