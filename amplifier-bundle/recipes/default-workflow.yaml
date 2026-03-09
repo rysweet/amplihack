@@ -302,13 +302,20 @@ steps:
       #   5. sed collapse   — collapse consecutive hyphens (arises from stripped chars)
       #   6. sed edge-trim  — strip leading/trailing hyphens
       #   7. cut -c1-50     — hard truncation to 50 chars
-      TASK_DESC=$(printf '%s' {{task_description}})
-      TASK_SLUG=$(printf '%s' "$TASK_DESC" | tr '\n\r' '  ' | tr '[:upper:]' '[:lower:]' | tr -s ' ' '-' | sed 's/[^a-z0-9-]//g' | sed 's/-\{2,\}/-/g' | sed 's/^-//;s/-$//' | cut -c1-50)
+      #   8. sed trailing   — strip trailing hyphen that cut can introduce at position 50
+      # NOTE (REQ-SEC-001, tracked in issue #2974): {{task_description}} is injected via
+      # text substitution before shell parsing. Single-quote wrapping below prevents
+      # word-splitting and glob expansion but does NOT protect against a single-quote
+      # character in the input (which would terminate the string prematurely). Issue #2974
+      # tracks migrating to env-var injection in the recipe runner so values are never
+      # inlined into shell source.
+      TASK_DESC=$(printf '%s' '{{task_description}}')
+      TASK_SLUG=$(printf '%s' "$TASK_DESC" | tr '\n\r' '  ' | tr '[:upper:]' '[:lower:]' | tr -s ' ' '-' | sed 's/[^a-z0-9-]//g' | sed 's/-\{2,\}/-/g' | sed 's/^-//;s/-$//' | cut -c1-50 | sed 's/-$//')
       BRANCH_NAME="{{branch_prefix}}/issue-{{issue_number}}-${TASK_SLUG}"
-      # Validate with authoritative git ref checker; fall back to safe static name on failure
+      # Validate with authoritative git ref checker; fall back to safe unique name on failure
       if ! git check-ref-format --branch "${BRANCH_NAME}" >/dev/null 2>&1; then
         echo "WARNING: derived branch name '${BRANCH_NAME}' is invalid — falling back to task-unnamed" >&2
-        BRANCH_NAME="{{branch_prefix}}/task-unnamed"
+        BRANCH_NAME="{{branch_prefix}}/task-unnamed-$(date +%s)"
       fi
       WORKTREE_PATH="{{repo_path}}/worktrees/${BRANCH_NAME}"
 

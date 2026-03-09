@@ -526,13 +526,16 @@ steps:
       ```bash
       # NOTE: This pipeline mirrors default-workflow.yaml step-04-setup-worktree with a
       # 30-char limit (vs 50). Keep both in sync on security patches. See Issue #2952.
+      # REQ-SEC-001 (tracked in #2974): single-quote wrapping mitigates word-splitting
+      # but does not prevent injection via single-quote chars in task_description.
+      # Full fix requires env-var injection in the recipe runner.
       # Create branch name
       TASK_DESC=$(printf '%s' '{{task_description}}')
-      TASK_SLUG=$(printf '%s' "$TASK_DESC" | tr '\n\r' '  ' | tr '[:upper:]' '[:lower:]' | tr -s ' ' '-' | sed 's/[^a-z0-9-]//g' | sed 's/-\{2,\}/-/g' | sed 's/^-//;s/-$//' | cut -c1-30)
+      TASK_SLUG=$(printf '%s' "$TASK_DESC" | tr '\n\r' '  ' | tr '[:upper:]' '[:lower:]' | tr -s ' ' '-' | sed 's/[^a-z0-9-]//g' | sed 's/-\{2,\}/-/g' | sed 's/^-//;s/-$//' | cut -c1-30 | sed 's/-$//')
       BRANCH_NAME="feat/consensus-${TASK_SLUG}"
       if ! git check-ref-format --branch "${BRANCH_NAME}" >/dev/null 2>&1; then
         echo "WARNING: derived branch name '${BRANCH_NAME}' is invalid — falling back to task-unnamed" >&2
-        BRANCH_NAME="feat/task-unnamed"
+        BRANCH_NAME="feat/task-unnamed-$(date +%s)"
       fi
 
       # Create worktree
