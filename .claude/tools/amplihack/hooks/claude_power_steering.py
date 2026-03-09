@@ -36,6 +36,7 @@ import asyncio
 import os
 import re
 import sys
+import uuid
 from pathlib import Path
 
 # Ensure hooks directory is importable for both package and standalone execution
@@ -46,8 +47,25 @@ if _hooks_dir not in sys.path:
 # Unset CLAUDECODE to prevent nested session errors when spawning Claude CLI subprocesses
 os.environ.pop("CLAUDECODE", None)
 
+# Ensure every process in this tree shares a stable tree ID.
+# setdefault is safe: if AMPLIHACK_TREE_ID was already exported by the parent
+# session (e.g. via session_tree.py register), we inherit it unchanged.
+os.environ.setdefault("AMPLIHACK_TREE_ID", uuid.uuid4().hex[:8])
+
 from power_steering_sdk import SDK_AVAILABLE as CLAUDE_SDK_AVAILABLE
 from power_steering_sdk import query_llm
+
+# Session tree spawn counter — limits tree-wide LLM calls to prevent runaway fan-out.
+# Fail-open: if session_tree is unavailable, all gates pass.
+try:
+    _tools_dir = str(Path(__file__).parent.parent.parent)
+    if _tools_dir not in sys.path:
+        sys.path.insert(0, _tools_dir)
+    from session_tree import increment_tree_spawn_count as _increment_tree_spawn_count
+
+    _SESSION_TREE_AVAILABLE = True
+except Exception:
+    _SESSION_TREE_AVAILABLE = False
 
 # Template paths (relative to this file)
 TEMPLATE_DIR = Path(__file__).parent / "templates"
@@ -89,6 +107,26 @@ __all__ = [
     "analyze_workflow_invocation_sync",
     "CLAUDE_SDK_AVAILABLE",
 ]
+
+
+def _gate_spawn() -> bool:
+    """Increment the tree-wide spawn counter and return True if the call is allowed.
+
+    Returns False if the tree spawn cap has been reached (caller should return its
+    fail-open value without calling query_llm).  Returns True on any unexpected
+    error other than the cap — fail-open means we never block work due to bugs.
+
+    Catch order: RuntimeError (cap exceeded) must come before Exception (other errors).
+    """
+    if not _SESSION_TREE_AVAILABLE:
+        return True
+    try:
+        _increment_tree_spawn_count()
+        return True
+    except RuntimeError:
+        return False
+    except Exception:
+        return True
 
 
 def is_shutting_down() -> bool:
@@ -240,6 +278,8 @@ async def analyze_consideration(
         return (True, None)  # Fail-open on prompt formatting error
 
     try:
+        if not _gate_spawn():
+            return (True, None)
         response = await query_llm(prompt, project_root)
         response = _sanitize_html(response)
 
@@ -548,6 +588,8 @@ Example bad guidance:
 Be direct and specific."""
 
     try:
+        if not _gate_spawn():
+            return _generate_template_guidance(failed_checks)
         guidance = (await query_llm(prompt, project_root)).strip()
 
         # Sanitize HTML before processing
@@ -631,6 +673,8 @@ If no completion claims are found, respond with: []
 Be specific - only include actual claims about completion, not general discussion."""
 
     try:
+        if not _gate_spawn():
+            return []
         response = (await query_llm(prompt, project_root)).strip()
 
         # Validate response before parsing
@@ -734,6 +778,8 @@ Look for:
 Be conservative - only say ADDRESSED if there is clear evidence in the new content."""
 
     try:
+        if not _gate_spawn():
+            return None
         response = (await query_llm(prompt, project_root)).strip()
 
         # Sanitize HTML before processing
@@ -973,6 +1019,8 @@ Be conservative - default to INVOKED unless there is clear evidence of ad-hoc wo
 """
 
     try:
+        if not _gate_spawn():
+            return (True, None)
         response = await query_llm(prompt, project_root)
 
         # Sanitize HTML before processing

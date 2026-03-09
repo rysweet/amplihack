@@ -45,7 +45,16 @@ from pathlib import Path
 
 DEFAULT_MAX_DEPTH = 3
 DEFAULT_MAX_SESSIONS = 10
+DEFAULT_MAX_TREE_SPAWNS = 50
 STATE_DIR = Path(os.environ.get("TMPDIR", "/tmp")) / "amplihack-session-trees"
+
+# Pre-resolved STATE_DIR string used for path-traversal guard in _state_path.
+# Computed once at module load to avoid repeated os.stat syscalls from Path.resolve().
+_STATE_DIR_STR = str(STATE_DIR.resolve())
+
+# Set to True after the first successful _ensure_state_dir() call so that
+# subsequent calls (3 per increment_tree_spawn_count) skip the mkdir+chmod syscalls.
+_STATE_DIR_READY = False
 
 # Per-process thread lock for intra-process mutual exclusion.
 # The O_EXCL file lock handles cross-process serialization.
@@ -75,12 +84,21 @@ def _validate_tree_id(tree_id: str) -> str:
 
 
 def _ensure_state_dir() -> None:
-    """Create state directory with restricted permissions (0o700)."""
+    """Create state directory with restricted permissions (0o700).
+
+    Uses a module-level flag to skip the mkdir+chmod syscalls after the first
+    successful call within this process.  The directory is long-lived in /tmp,
+    so repeated existence checks are pure overhead on the hot path.
+    """
+    global _STATE_DIR_READY
+    if _STATE_DIR_READY:
+        return
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     try:
         STATE_DIR.chmod(0o700)
     except OSError:
         pass  # Non-fatal if chmod fails (e.g., different owner)
+    _STATE_DIR_READY = True
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -90,12 +108,24 @@ def _ensure_state_dir() -> None:
 
 def get_tree_context() -> dict:
     """Read current session tree context from environment."""
+    try:
+        depth = int(os.environ.get("AMPLIHACK_SESSION_DEPTH", "0"))
+    except ValueError:
+        depth = 0
+    try:
+        max_depth = int(os.environ.get("AMPLIHACK_MAX_DEPTH", str(DEFAULT_MAX_DEPTH)))
+    except ValueError:
+        max_depth = DEFAULT_MAX_DEPTH
+    try:
+        max_sessions = int(os.environ.get("AMPLIHACK_MAX_SESSIONS", str(DEFAULT_MAX_SESSIONS)))
+    except ValueError:
+        max_sessions = DEFAULT_MAX_SESSIONS
     return {
         "tree_id": os.environ.get("AMPLIHACK_TREE_ID", ""),
         "session_id": os.environ.get("AMPLIHACK_SESSION_ID", ""),
-        "depth": int(os.environ.get("AMPLIHACK_SESSION_DEPTH", "0")),
-        "max_depth": int(os.environ.get("AMPLIHACK_MAX_DEPTH", str(DEFAULT_MAX_DEPTH))),
-        "max_sessions": int(os.environ.get("AMPLIHACK_MAX_SESSIONS", str(DEFAULT_MAX_SESSIONS))),
+        "depth": depth,
+        "max_depth": max_depth,
+        "max_sessions": max_sessions,
     }
 
 
@@ -107,10 +137,12 @@ def get_tree_context() -> dict:
 def _state_path(tree_id: str) -> Path:
     _validate_tree_id(tree_id)
     _ensure_state_dir()
-    # Belt-and-suspenders path traversal check
+    # _validate_tree_id enforces [a-zA-Z0-9_-]{1,64}, so '/' and '.' are impossible
+    # in tree_id.  The regex is therefore sufficient to prevent path traversal.
+    # We keep a belt-and-suspenders check using the module-level pre-resolved
+    # _STATE_DIR_STR to avoid two Path.resolve() syscalls on every call.
     candidate = (STATE_DIR / f"{tree_id}.json").resolve()
-    state_resolved = STATE_DIR.resolve()
-    if not str(candidate).startswith(str(state_resolved)):
+    if not str(candidate).startswith(_STATE_DIR_STR):
         raise ValueError(f"Path traversal detected for tree_id {tree_id!r}")
     return STATE_DIR / f"{tree_id}.json"
 
@@ -175,7 +207,7 @@ def _load(tree_id: str) -> dict:
                 f"WARNING: session_tree: invalid schema for {tree_id!r}: "
                 f"'sessions' is {type(data.get('sessions')).__name__}, expected dict. "
                 "Treating as empty state.",
-                file=sys.stderr
+                file=sys.stderr,
             )
             return {"sessions": {}}
         return data
@@ -275,20 +307,20 @@ def check_can_spawn(tree_id: str | None = None, depth: int = -1) -> dict:
 
     _validate_tree_id(tree_id)
     state = _load(tree_id)
-    active = [s for s in state["sessions"].values() if s.get("status") == "active"]
+    active_count = sum(1 for s in state["sessions"].values() if s.get("status") == "active")
 
-    if len(active) >= max_sessions:
+    if active_count >= max_sessions:
         return {
             "allowed": False,
-            "reason": f"max_sessions={max_sessions} reached ({len(active)} active)",
-            "active_count": len(active),
+            "reason": f"max_sessions={max_sessions} reached ({active_count} active)",
+            "active_count": active_count,
             "depth": depth,
         }
 
     return {
         "allowed": True,
         "reason": "ok",
-        "active_count": len(active),
+        "active_count": active_count,
         "depth": depth,
     }
 
@@ -303,6 +335,8 @@ def register_session(
     Register a session in the tree. Creates tree if it doesn't exist.
     Atomically checks capacity and depth limits while holding the lock.
 
+    Note: Registering an existing session ID overwrites the previous entry.
+
     Returns: {"tree_id": str, "depth": int, "session_id": str}
     """
     ctx = get_tree_context()
@@ -315,9 +349,9 @@ def register_session(
         state = _load(tree_id)
 
         # Atomic capacity and depth check (fixes TOCTOU from check_can_spawn)
-        active = [s for s in state["sessions"].values() if s.get("status") == "active"]
-        if len(active) >= max_sessions:
-            raise RuntimeError(f"max_sessions={max_sessions} reached ({len(active)} active)")
+        active_count = sum(1 for s in state["sessions"].values() if s.get("status") == "active")
+        if active_count >= max_sessions:
+            raise RuntimeError(f"max_sessions={max_sessions} reached ({active_count} active)")
         if depth > max_depth:
             raise RuntimeError(f"depth={depth} exceeds max_depth={max_depth}")
 
@@ -364,6 +398,68 @@ def get_status(tree_id: str) -> dict:
         "completed": completed,
         "depths": {sid: s.get("depth", 0) for sid, s in sessions.items()},
     }
+
+
+def increment_tree_spawn_count(tree_id: str | None = None) -> int:
+    """Atomically increment the tree-wide LLM spawn counter and return the new value.
+
+    Raises RuntimeError if the counter would exceed AMPLIHACK_MAX_TREE_SPAWNS (default 50).
+
+    This prevents exponential session fan-out: all sessions in a tree share a single
+    counter, so a runaway subagent storm is capped tree-wide rather than per-session.
+
+    Args:
+        tree_id: Tree ID. Falls back to AMPLIHACK_TREE_ID env var. If still unset,
+                 creates a new tree (same behaviour as register_session).
+
+    Returns:
+        New spawn count after increment.
+
+    Raises:
+        RuntimeError: If spawn count would exceed cap.
+    """
+    try:
+        max_spawns = int(os.environ.get("AMPLIHACK_MAX_TREE_SPAWNS", str(DEFAULT_MAX_TREE_SPAWNS)))
+    except ValueError:
+        max_spawns = DEFAULT_MAX_TREE_SPAWNS
+
+    ctx = get_tree_context()
+    tree_id = _validate_tree_id(tree_id or ctx["tree_id"] or uuid.uuid4().hex[:8])
+
+    with _locked(tree_id):
+        state = _load(tree_id)
+        current = state.get("spawn_count", 0)
+        if current >= max_spawns:
+            raise RuntimeError(
+                f"tree spawn cap reached: {current}/{max_spawns} LLM calls for tree {tree_id!r}"
+            )
+        state["spawn_count"] = current + 1
+        _save(tree_id, state)
+        return state["spawn_count"]
+
+
+def get_tree_spawn_count(tree_id: str | None = None) -> int:
+    """Advisory read of the tree-wide LLM spawn counter.
+
+    Returns 0 on any error (missing tree, corrupt state, etc.) — never raises.
+    This is intentionally non-atomic; use only for monitoring/logging.
+
+    Args:
+        tree_id: Tree ID. Falls back to AMPLIHACK_TREE_ID env var.
+
+    Returns:
+        Current spawn count, or 0 on any error.
+    """
+    try:
+        ctx = get_tree_context()
+        tid = tree_id or ctx["tree_id"]
+        if not tid:
+            return 0
+        _validate_tree_id(tid)
+        state = _load(tid)
+        return int(state.get("spawn_count", 0))
+    except Exception:
+        return 0
 
 
 # ─────────────────────────────────────────────────────────────────────────────
