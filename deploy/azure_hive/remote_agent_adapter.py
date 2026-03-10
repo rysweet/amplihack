@@ -225,7 +225,10 @@ class RemoteAgentAdapter:
             end_dt = datetime.datetime.now(tz=datetime.timezone.utc)
             start_dt = datetime.datetime.fromtimestamp(since_ts, tz=datetime.timezone.utc)
 
-            # Query for the NEWEST answer from this agent after since_ts
+            # Query for the NEWEST answer from this agent after since_ts.
+            # Use the logger-formatted line (not the print() line) because
+            # long answers get split across multiple Log_s rows by Container Apps.
+            # The logger line is always single-line: "INFO: Agent X ANSWER: ..."
             time_filter = f' | where TimeGenerated > datetime({since_dt_str})'
             if last_seen:
                 time_filter = f' | where TimeGenerated > datetime({last_seen})'
@@ -234,7 +237,7 @@ class RemoteAgentAdapter:
                 "ContainerAppConsoleLogs_CL"
                 f' | where ContainerName_s == "{agent_name}"'
                 ' | where Log_s has "ANSWER:"'
-                f' | where Log_s startswith "[{agent_name}]"'
+                f' | where Log_s has "Agent {agent_name} ANSWER:"'
                 + time_filter
                 + " | order by TimeGenerated desc"
                 + " | project TimeGenerated, Log_s"
@@ -253,9 +256,16 @@ class RemoteAgentAdapter:
                         ts_val = str(row[0])
                         log_line = str(row[1])
                         if "ANSWER:" in log_line:
-                            marker = "ANSWER: "
+                            # Logger format: "... INFO: Agent agent-X ANSWER: <full answer>"
+                            marker = f"Agent {agent_name} ANSWER: "
                             idx = log_line.find(marker)
-                            answer = log_line[idx + len(marker):].strip() if idx >= 0 else log_line
+                            if idx >= 0:
+                                answer = log_line[idx + len(marker):].strip()
+                            else:
+                                # Fallback to generic ANSWER: marker
+                                marker2 = "ANSWER: "
+                                idx2 = log_line.find(marker2)
+                                answer = log_line[idx2 + len(marker2):].strip() if idx2 >= 0 else log_line
                             if "internal error" not in answer.lower():
                                 # Record this answer's timestamp so we don't re-read it
                                 self._agent_answer_ts[agent_name] = ts_val
