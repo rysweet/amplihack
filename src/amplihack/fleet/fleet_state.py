@@ -251,6 +251,9 @@ class FleetState:
 
     def poll_tmux_sessions(self, vm_name: str) -> list[TmuxSessionInfo]:
         """Public wrapper for tmux session polling."""
+        from amplihack.fleet._validation import validate_vm_name
+
+        validate_vm_name(vm_name)
         return self._poll_tmux_sessions(vm_name)
 
     def _poll_tmux_sessions(self, vm_name: str) -> list[TmuxSessionInfo]:
