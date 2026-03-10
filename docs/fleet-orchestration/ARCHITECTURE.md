@@ -72,8 +72,8 @@ Restart actions require 0.8. Below-threshold decisions are logged but not acted 
 
 ## Modules
 
-The fleet package contains 21 source files (19 functional modules, 1 package
-init, 1 CLI entry point):
+The fleet package contains 54 source files (51 functional modules, 1 package
+init, 1 CLI entry point, 1 `__main__`):
 
 ### Core Loop
 
@@ -92,6 +92,7 @@ init, 1 CLI entry point):
 | `fleet_health` | `fleet_health.py` | Process-level health monitoring beyond tmux. Checks agent processes (pgrep), heartbeat files, memory usage, disk usage, and load average on each VM. |
 | `fleet_logs` | `fleet_logs.py` | Claude Code JSONL transcript reader. Extracts tasks, tool usage, PRs created, errors, token counts, and session duration from remote JSONL logs. Powers the LEARN phase. |
 | `transcript_analyzer` | `transcript_analyzer.py` | Cross-session transcript analysis. Gathers JSONL files from local machine and remote VMs, analyzes tool usage frequency, strategy patterns, agent invocations, and workflow compliance. |
+| `_vm_discovery` | `_vm_discovery.py` | VM discovery from azlin list, resource group config, session dedup. |
 
 ### Session Management
 
@@ -101,6 +102,7 @@ init, 1 CLI entry point):
 | `fleet_tasks` | `fleet_tasks.py` | Priority-ordered task queue with JSON persistence. Manages task lifecycle: queued -> assigned -> running -> completed/failed. Supports priority levels (critical, high, medium, low). |
 | `fleet_auth` | `fleet_auth.py` | Auth propagation with multi-GitHub identity support. Copies GitHub CLI, Azure CLI, and Claude API credentials to target VMs. Uses azlin cp for secure transfer. Supports per-VM GitHub account switching. |
 | `fleet_setup` | `fleet_setup.py` | Automated workspace preparation on remote VMs. Clones repositories, creates working branches, detects project type, installs dependencies, and verifies builds. |
+| `_session_lifecycle` | `_session_lifecycle.py` | Fleet session lifecycle (start, stop, scout, advance, persist). |
 
 ### Tracking and Knowledge
 
@@ -115,9 +117,11 @@ init, 1 CLI entry point):
 
 | Module | File | Purpose |
 |--------|------|---------|
-| `fleet_tui` | `fleet_tui.py` | Standard-library terminal dashboard. Uses ANSI escape codes for rendering, `select()` for input, `termios` for raw mode. `refresh_all()` uses ThreadPoolExecutor for concurrent VM polling. Caches Bastion tunnels for reuse. No external dependencies beyond standard library. |
+| `fleet_tui` | `fleet_tui.py` | Standard-library terminal dashboard. Uses ANSI escape codes for rendering, `select()` for input, `termios` for raw mode. `refresh_all()` uses sequential VM polling via azlin. Session discovery from azlin list (no SSH). Pane capture via sequential SSH. Caches Bastion tunnels for reuse. No external dependencies beyond standard library. |
 | `fleet_tui_dashboard` | `fleet_tui_dashboard.py` | Interactive Textual-based dashboard (requires `amplihack[fleet-tui]`). Three-tab interface: Fleet Overview (session table + preview), Session Detail (full tmux capture + admiral proposal), Action Editor (edit and apply actions). Auto-refreshes via background workers. |
 | `fleet_cli` | `fleet_cli.py` | Click-based CLI entry point. Registers all subcommands (status, dashboard, tui, add-task, start, run-once, watch, snapshot, adopt, report, auth, observe, dry-run, graph, queue). Default command (no subcommand) launches the TUI dashboard. |
+| `fleet_copilot` | `fleet_copilot.py` | Local session co-pilot, watches JSONL transcripts, suggests next actions. |
+| `_cli_formatters_legacy` | `_cli_formatters_legacy.py` | Legacy scout/advance report formatters. |
 
 ### Package
 
@@ -180,7 +184,7 @@ amplihack fleet advance --session dev:parallel-deploy-wk
 | Setting | Value |
 |---------|-------|
 | Model | `claude-opus-4-6` |
-| Max output tokens | 8,192 (reasoning JSON) |
+| Max output tokens | 128,000 (reasoning JSON) |
 | Max transcript tokens | 128,000 (input context) |
 
 These defaults are defined in `_constants.py` and can be overridden via the

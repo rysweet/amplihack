@@ -106,7 +106,7 @@ fleet start   [--interval 300] [--max-cycles 10]
 ## Admiral Configuration
 
 - **Model**: Claude Opus 4.6 (`claude-opus-4-6`)
-- **Max output tokens**: 8,192 (reasoning JSON, cost-controlled)
+- **Max output tokens**: 128,000 (reasoning JSON)
 - **Context gathered per session**: full tmux scrollback + first 50 & last 200 transcript messages
 - **Safety**: 57 dangerous-input patterns blocked (with safe allow-list), confidence thresholds (60% send_input, 80% restart), --confirm default on advance
 - **Docs**: `docs/fleet-orchestration/ADMIRAL_REASONING.md`
@@ -126,7 +126,7 @@ fleet start   [--interval 300] [--max-cycles 10]
 
 ## Performance & Architecture
 
-- **Parallel VM polling**: `FleetTUI.refresh_all()` uses `ThreadPoolExecutor` for concurrent SSH — 3-5x faster on large fleets
+- **Sequential VM polling**: Session discovery from `azlin list` (no SSH). Pane capture via sequential SSH
 - **Cached SSH output**: Scout caches Phase 1 tmux captures for Phase 3 reasoning (no double-poll)
 - **Incremental scout**: `--incremental` flag skips unchanged sessions using `~/.amplihack/fleet/last_scout.json`
 - **Bastion tunnel reuse**: Reuses existing SSH tunnels via `get_existing_tunnels()` instead of creating new ones
