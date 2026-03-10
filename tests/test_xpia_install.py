@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
 import platform
+import zipfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -16,6 +18,8 @@ from amplihack.security.xpia_install import (
     _get_target_triple,
     _get_installed_version,
     _get_latest_release_tag,
+    _safe_zip_extract,
+    _verify_checksum,
     ensure_xpia_binary,
     get_install_dir,
 )
@@ -189,11 +193,20 @@ class TestFindBinaryAutoInstall:
         from amplihack.security.rust_xpia import find_binary
 
         mock_ensure.return_value = tmp_path / "xpia-defend"
-        # Make all Path.is_file() return False for candidates
+        # auto_install=True required since default is now False
         with patch.object(Path, "is_file", return_value=False):
-            result = find_binary()
+            result = find_binary(auto_install=True)
             mock_ensure.assert_called_once()
             assert "xpia-defend" in result
+
+    @patch("shutil.which", return_value=None)
+    def test_no_auto_install_by_default(self, mock_which):
+        """find_binary() with default auto_install=False raises when binary not found."""
+        from amplihack.security.rust_xpia import RustXPIAError, find_binary
+
+        with patch.object(Path, "is_file", return_value=False):
+            with pytest.raises(RustXPIAError, match="not found"):
+                find_binary()
 
     @patch("shutil.which", return_value="/usr/bin/xpia-defend")
     def test_path_found_no_install(self, mock_which):
@@ -201,3 +214,73 @@ class TestFindBinaryAutoInstall:
 
         result = find_binary()
         assert result == "/usr/bin/xpia-defend"
+
+
+class TestVerifyChecksum:
+    """Test SHA256 checksum verification."""
+
+    def test_valid_checksum_passes(self, tmp_path):
+        asset = tmp_path / "test-asset.tar.gz"
+        asset.write_bytes(b"test binary content")
+        expected_hash = hashlib.sha256(b"test binary content").hexdigest()
+
+        checksums = tmp_path / "SHA256SUMS.txt"
+        checksums.write_text(f"{expected_hash}  test-asset.tar.gz\n")
+
+        # Should not raise
+        _verify_checksum(asset, checksums, "test-asset.tar.gz")
+
+    def test_invalid_checksum_raises(self, tmp_path):
+        asset = tmp_path / "test-asset.tar.gz"
+        asset.write_bytes(b"test binary content")
+
+        checksums = tmp_path / "SHA256SUMS.txt"
+        checksums.write_text("0000000000000000000000000000000000000000000000000000000000000000  test-asset.tar.gz\n")
+
+        with pytest.raises(XPIAInstallError, match="Checksum mismatch"):
+            _verify_checksum(asset, checksums, "test-asset.tar.gz")
+
+    def test_missing_checksums_file_raises(self, tmp_path):
+        asset = tmp_path / "test-asset.tar.gz"
+        asset.write_bytes(b"data")
+        missing = tmp_path / "SHA256SUMS.txt"
+
+        with pytest.raises(XPIAInstallError, match="SHA256SUMS.txt not found"):
+            _verify_checksum(asset, missing, "test-asset.tar.gz")
+
+    def test_asset_not_in_checksums_raises(self, tmp_path):
+        asset = tmp_path / "test-asset.tar.gz"
+        asset.write_bytes(b"data")
+        checksums = tmp_path / "SHA256SUMS.txt"
+        checksums.write_text("abcdef  other-asset.tar.gz\n")
+
+        with pytest.raises(XPIAInstallError, match="No checksum found"):
+            _verify_checksum(asset, checksums, "test-asset.tar.gz")
+
+
+class TestSafeZipExtract:
+    """Test path traversal protection in zip extraction."""
+
+    def test_normal_extraction_works(self, tmp_path):
+        zip_path = tmp_path / "test.zip"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            zf.writestr("xpia-defend.exe", b"binary data")
+
+        _safe_zip_extract(zip_path, "xpia-defend.exe", tmp_path)
+        assert (tmp_path / "xpia-defend.exe").exists()
+
+    def test_path_traversal_blocked(self, tmp_path):
+        zip_path = tmp_path / "malicious.zip"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            zf.writestr("../../../etc/passwd", b"malicious")
+
+        with pytest.raises(XPIAInstallError, match="Unsafe path"):
+            _safe_zip_extract(zip_path, "../../../etc/passwd", tmp_path)
+
+    def test_absolute_path_blocked(self, tmp_path):
+        zip_path = tmp_path / "malicious.zip"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            zf.writestr("/etc/passwd", b"malicious")
+
+        with pytest.raises(XPIAInstallError, match="Unsafe path"):
+            _safe_zip_extract(zip_path, "/etc/passwd", tmp_path)

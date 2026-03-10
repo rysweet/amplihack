@@ -85,8 +85,8 @@ class RustValidationResult:
         )
 
 
-def find_binary(*, auto_install: bool = True) -> str:
-    """Find the xpia-defend binary. Auto-installs from GitHub releases if missing.
+def find_binary(*, auto_install: bool = False) -> str:
+    """Find the xpia-defend binary.
 
     Search order:
     1. System PATH
@@ -95,7 +95,7 @@ def find_binary(*, auto_install: bool = True) -> str:
     4. /usr/local/bin/
     5. If not found and auto_install=True, download from GitHub releases
 
-    Raises RustXPIAError if not found and auto-install fails.
+    Raises RustXPIAError if not found and auto-install disabled or fails.
     """
     # Check PATH first
     path = shutil.which(BINARY_NAME)
