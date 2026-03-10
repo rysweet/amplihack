@@ -189,6 +189,40 @@ class LearningAgent:
         # evaluation so all threads use the same consistent fact snapshot.
         self._pre_snapshot_facts: list[dict[str, Any]] | None = None
 
+    def _llm_completion_with_retry(
+        self, messages: list, temperature: float = 0.0, max_retries: int = 5
+    ) -> str:
+        """Call litellm.completion with exponential backoff on rate limits.
+
+        Returns the response text content. Raises on non-rate-limit errors.
+        """
+        last_exception: Exception | None = None
+        for _retry_attempt in range(max_retries + 1):  # attempt 0 = first try
+            try:
+                response = litellm.completion(
+                    model=self.model,
+                    messages=messages,
+                    temperature=temperature,
+                )
+                return response.choices[0].message.content
+            except Exception as exc:
+                is_rate_limit = (
+                    isinstance(exc, litellm.RateLimitError)
+                    or "rate_limit" in str(exc).lower()
+                )
+                if not is_rate_limit or _retry_attempt >= max_retries:
+                    raise
+                delay = 2 ** _retry_attempt * 2  # 2, 4, 8, 16, 32
+                logger.warning(
+                    "Rate limited, retrying in %ds (attempt %d/%d)",
+                    delay,
+                    _retry_attempt,
+                    max_retries,
+                )
+                time.sleep(delay)
+                last_exception = exc
+        raise last_exception  # type: ignore[misc]
+
     @staticmethod
     def _load_variant_prompt(variant_num: int) -> str:
         """Load a prompt variant from the variants directory.
@@ -414,30 +448,13 @@ class LearningAgent:
         """
         prompt = _load_prompt("temporal_detection_user", content=content[:500])
         try:
-            last_exception = None
-            for _retry_attempt in range(6):  # attempt 0 = first try, 1-5 = retries
-                try:
-                    response = litellm.completion(
-                        model=self.model,
-                        messages=[
-                            {"role": "system", "content": load_prompt("temporal_detection_system")},
-                            {"role": "user", "content": prompt},
-                        ],
-                        temperature=0.0,
-                    )
-                    break  # success
-                except Exception as exc:
-                    is_rate_limit = isinstance(exc, litellm.RateLimitError) or "rate_limit" in str(exc).lower()
-                    if not is_rate_limit or _retry_attempt >= 5:
-                        raise
-                    delay = 2 ** _retry_attempt * 2  # 2, 4, 8, 16, 32
-                    logger.warning("Rate limited, retrying in %ds (attempt %d/5)", delay, _retry_attempt)
-                    time.sleep(delay)
-                    last_exception = exc
-            else:
-                raise last_exception  # type: ignore[misc]
-
-            response_text = response.choices[0].message.content.strip()
+            response_text = self._llm_completion_with_retry(
+                messages=[
+                    {"role": "system", "content": load_prompt("temporal_detection_system")},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.0,
+            ).strip()
 
             # Parse JSON response
             try:
@@ -2121,30 +2138,13 @@ class LearningAgent:
         )
 
         try:
-            last_exception = None
-            for _retry_attempt in range(6):  # attempt 0 = first try, 1-5 = retries
-                try:
-                    response = litellm.completion(
-                        model=self.model,
-                        messages=[
-                            {"role": "system", "content": load_prompt("fact_extraction_system")},
-                            {"role": "user", "content": prompt},
-                        ],
-                        temperature=0.3,
-                    )
-                    break  # success
-                except Exception as exc:
-                    is_rate_limit = isinstance(exc, litellm.RateLimitError) or "rate_limit" in str(exc).lower()
-                    if not is_rate_limit or _retry_attempt >= 5:
-                        raise
-                    delay = 2 ** _retry_attempt * 2  # 2, 4, 8, 16, 32
-                    logger.warning("Rate limited, retrying in %ds (attempt %d/5)", delay, _retry_attempt)
-                    time.sleep(delay)
-                    last_exception = exc
-            else:
-                raise last_exception  # type: ignore[misc]
-
-            response_text = response.choices[0].message.content
+            response_text = self._llm_completion_with_retry(
+                messages=[
+                    {"role": "system", "content": load_prompt("fact_extraction_system")},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.3,
+            )
 
             # Parse JSON
             try:
@@ -2721,33 +2721,16 @@ Knowledge Overview (what was learned):
         )
 
         try:
-            last_exception = None
-            for _retry_attempt in range(6):  # attempt 0 = first try, 1-5 = retries
-                try:
-                    response = litellm.completion(
-                        model=self.model,
-                        messages=[
-                            {
-                                "role": "system",
-                                "content": self._variant_system_prompt or load_prompt("synthesis_system"),
-                            },
-                            {"role": "user", "content": prompt},
-                        ],
-                        temperature=0.3,  # Lower temperature for more precise reasoning
-                    )
-                    break  # success
-                except Exception as exc:
-                    is_rate_limit = isinstance(exc, litellm.RateLimitError) or "rate_limit" in str(exc).lower()
-                    if not is_rate_limit or _retry_attempt >= 5:
-                        raise
-                    delay = 2 ** _retry_attempt * 2  # 2, 4, 8, 16, 32
-                    logger.warning("Rate limited, retrying in %ds (attempt %d/5)", delay, _retry_attempt)
-                    time.sleep(delay)
-                    last_exception = exc
-            else:
-                raise last_exception  # type: ignore[misc]
-
-            return response.choices[0].message.content.strip()
+            return self._llm_completion_with_retry(
+                messages=[
+                    {
+                        "role": "system",
+                        "content": self._variant_system_prompt or load_prompt("synthesis_system"),
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.3,
+            ).strip()
 
         except Exception as e:
             logger.error("LLM synthesis failed: %s", e)
