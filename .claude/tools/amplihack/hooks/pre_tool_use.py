@@ -477,7 +477,8 @@ For true emergencies, ask a human to override this protection.
             return ClaudeStrategy(self.project_root, self.log)
 
         except ImportError as e:
-            self.log(f"Adaptive strategy not available: {e}", "DEBUG")
+            self.log(f"Adaptive strategy not available: {e}", "WARNING")
+            print(f"WARNING: Adaptive strategy not available: {e}", file=sys.stderr)
             return None
 
 

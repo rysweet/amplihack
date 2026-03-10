@@ -446,6 +446,9 @@ class CLISubprocessAdapter:
                         )
             except ImportError:
                 # Fallback: parse ps output (Unix-like systems only)
+                import sys
+
+                print("WARNING: psutil not available, using ps fallback for process cleanup", file=sys.stderr)
                 if os.name != "nt":  # Not Windows
                     try:
                         ps_output = subprocess.check_output(

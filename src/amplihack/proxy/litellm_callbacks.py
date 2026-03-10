@@ -25,6 +25,9 @@ try:
 
     LITELLM_AVAILABLE = True
 except ImportError:
+    import sys
+
+    print("WARNING: litellm not available, trace callbacks disabled", file=sys.stderr)
     LITELLM_AVAILABLE = False
 
 from ..tracing.trace_logger import DEFAULT_TRACE_FILE, TraceLogger

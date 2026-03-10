@@ -8,6 +8,7 @@ Data is stored in a local directory and persists between sessions.
 """
 
 import logging
+import sys
 import time
 from pathlib import Path
 from typing import Any
@@ -17,6 +18,7 @@ try:
 
     KUZU_AVAILABLE = True
 except ImportError:
+    print("WARNING: kuzu not available", file=sys.stderr)
     KUZU_AVAILABLE = False
     kuzu = None  # type: ignore
 

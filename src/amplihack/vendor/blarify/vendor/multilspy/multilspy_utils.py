@@ -86,6 +86,9 @@ class PathUtils:
             from urllib.parse import unquote, urlparse
             from urllib.request import url2pathname
         except ImportError:
+            import sys
+
+            print("WARNING: urllib.parse not available, using legacy urllib", file=sys.stderr)
             # backwards compatability
             from urllib import unquote, url2pathname
 

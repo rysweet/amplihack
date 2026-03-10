@@ -39,6 +39,9 @@ def _is_uvx_mode() -> bool:
 
         return is_uvx_deployment()
     except ImportError:
+        import sys
+
+        print("WARNING: uvx_detection not available, using env var fallback", file=sys.stderr)
         # Fallback to environment variable check if uvx_detection not available
         return os.getenv("AMPLIHACK_UVX_MODE", "").lower() in ("1", "true", "yes")
 

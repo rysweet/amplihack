@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -39,7 +40,7 @@ try:
 
     _HAS_AGENT_FRAMEWORK = True
 except ImportError:
-    pass  # Checked in MicrosoftGoalSeekingAgent.__init__
+    print("WARNING: agent_framework not available", file=sys.stderr)
 
 
 # ---------------------------------------------------------------------------

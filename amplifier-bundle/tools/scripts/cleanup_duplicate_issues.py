@@ -54,7 +54,7 @@ try:
 
     SDK_AVAILABLE = True
 except ImportError as e:
-    print(f"Warning: Could not import semantic duplicate detector: {e}")
+    print(f"WARNING: semantic_duplicate_detector not available - duplicate cleanup disabled: {e}", file=sys.stderr)
     SDK_AVAILABLE = False
     # Define dummy types for type checking when SDK not available
     SemanticDuplicateDetector = None  # type: ignore[misc,assignment]

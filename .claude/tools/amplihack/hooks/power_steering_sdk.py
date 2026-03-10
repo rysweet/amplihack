@@ -25,7 +25,7 @@ try:
 
     _CLAUDE_SDK_OK = True
 except ImportError:
-    pass
+    print("WARNING: claude_agent_sdk not available - Claude SDK analysis disabled", file=sys.stderr)
 
 # --- GitHub Copilot SDK -------------------------------------------------------
 
@@ -36,7 +36,7 @@ try:
 
     _COPILOT_SDK_OK = True
 except ImportError:
-    pass
+    print("WARNING: copilot SDK not available - Copilot analysis disabled", file=sys.stderr)
 
 # --- Launcher detection -------------------------------------------------------
 

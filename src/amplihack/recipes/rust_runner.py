@@ -64,6 +64,60 @@ def find_rust_binary() -> str | None:
     return None
 
 
+# Minimum compatible recipe-runner-rs version (semver).
+MIN_RUNNER_VERSION = "0.1.0"
+
+
+def get_runner_version(binary: str | None = None) -> str | None:
+    """Return the version string of the installed recipe-runner-rs, or None."""
+    binary = binary or find_rust_binary()
+    if not binary:
+        return None
+    try:
+        result = subprocess.run(
+            [binary, "--version"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if result.returncode == 0:
+            # Format: "recipe-runner 0.1.0"
+            parts = result.stdout.strip().rsplit(" ", 1)
+            return parts[-1] if len(parts) >= 2 else result.stdout.strip()
+    except Exception:
+        pass
+    return None
+
+
+def _version_tuple(ver: str) -> tuple[int, ...]:
+    """Parse a semver string into a comparable tuple."""
+    return tuple(int(x) for x in ver.split(".") if x.isdigit())
+
+
+def check_runner_version(binary: str | None = None) -> bool:
+    """Check if the installed binary meets the minimum version requirement.
+
+    Returns True if version is compatible or cannot be determined (best-effort).
+    Returns False and logs a warning if the binary is too old.
+    """
+    version = get_runner_version(binary)
+    if version is None:
+        return True  # can't check, assume ok
+    try:
+        if _version_tuple(version) < _version_tuple(MIN_RUNNER_VERSION):
+            logger.warning(
+                "recipe-runner-rs version %s is older than minimum %s. "
+                "Update: cargo install --git %s",
+                version,
+                MIN_RUNNER_VERSION,
+                _REPO_URL,
+            )
+            return False
+    except (ValueError, TypeError):
+        return True  # unparseable version, assume ok
+    return True
+
+
 def is_rust_runner_available() -> bool:
     """Check if the Rust recipe runner binary is available."""
     return find_rust_binary() is not None
@@ -161,6 +215,7 @@ def _find_rust_binary() -> str:
             "Install it: cargo install --git https://github.com/rysweet/amplihack-recipe-runner "
             "or set RECIPE_RUNNER_RS_PATH to the binary location."
         )
+    check_runner_version(binary)
     return binary
 
 
@@ -252,6 +307,30 @@ def _execute_rust_command(cmd: list[str], *, name: str) -> RecipeResult:
 # -- Public entry point ------------------------------------------------------
 
 
+def _default_package_recipe_dirs() -> list[str]:
+    """Return bundled recipe directories visible to Python discovery.
+
+    In editable installs, ``src/amplihack/amplifier-bundle/recipes`` may exist
+    but only contain a subset of recipes, while the full bundle lives at the
+    repo root ``amplifier-bundle/recipes``.  The Rust runner needs both paths
+    to match Python-side discovery in real environments (issue #3002).
+    """
+    try:
+        from amplihack.recipes.discovery import _PACKAGE_BUNDLE_DIR, _REPO_ROOT_BUNDLE_DIR
+
+        dirs: list[str] = []
+        for candidate in (_PACKAGE_BUNDLE_DIR, _REPO_ROOT_BUNDLE_DIR):
+            if candidate.is_dir():
+                candidate_str = str(candidate)
+                if candidate_str not in dirs:
+                    dirs.append(candidate_str)
+        if dirs:
+            return dirs
+    except Exception:
+        pass
+    return []
+
+
 def run_recipe_via_rust(
     name: str,
     user_context: dict[str, Any] | None = None,
@@ -262,11 +341,22 @@ def run_recipe_via_rust(
 ) -> RecipeResult:
     """Execute a recipe using the Rust binary.
 
+    When *recipe_dirs* is ``None``, the installed Python package's bundled
+    recipe directory is automatically included so the Rust binary can
+    discover recipes that Python discovery already knows about.
+
     Raises:
         RustRunnerNotFoundError: If the binary is not installed.
         RuntimeError: If the binary produces unparseable output.
     """
     binary = _find_rust_binary()
+
+    # When no explicit recipe_dirs are provided, inject the package bundle
+    # directory so the Rust binary can find the same recipes as Python
+    # discovery.  This fixes the Python/Rust discovery mismatch (#3002).
+    effective_recipe_dirs = recipe_dirs
+    if effective_recipe_dirs is None:
+        effective_recipe_dirs = _default_package_recipe_dirs() or None
 
     cmd = _build_rust_command(
         binary,
@@ -274,7 +364,7 @@ def run_recipe_via_rust(
         working_dir=working_dir,
         dry_run=dry_run,
         auto_stage=auto_stage,
-        recipe_dirs=recipe_dirs,
+        recipe_dirs=effective_recipe_dirs,
         user_context=user_context,
     )
 
