@@ -183,12 +183,12 @@ class SessionReasoner:
                 confidence=0.0,
             )
         except Exception as e:
-            logger.error("LLM call failed for %s/%s: %s", context.vm_name, context.session_name, type(e).__name__)
+            logger.error("LLM call failed for %s/%s: %s: %s", context.vm_name, context.session_name, type(e).__name__, e)
             return SessionDecision(
                 session_name=context.session_name,
                 vm_name=context.vm_name,
                 action="escalate",
-                reasoning=f"LLM call failed: {type(e).__name__}",
+                reasoning=f"LLM call failed: {type(e).__name__}: {e}",
                 confidence=0.0,
             )
 

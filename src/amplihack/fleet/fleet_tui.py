@@ -169,6 +169,7 @@ class FleetTUI:
         """
         vm_list = get_vm_list(self.azlin_path)
         if not vm_list:
+            logging.getLogger(__name__).warning("No VMs found — check azlin config and network")
             return []
 
         vms_to_poll = sorted(
@@ -187,7 +188,7 @@ class FleetTUI:
                 # SSH poll for pane content and git state
                 try:
                     ssh_sessions = self._poll_vm(vm_name)
-                except Exception as exc:
+                except (subprocess.SubprocessError, OSError, ValueError) as exc:
                     logging.getLogger(__name__).warning("Failed to poll VM %s: %s", vm_name, exc)
                     ssh_sessions = []
 
