@@ -250,7 +250,7 @@ steps:
     command: |
       cd "{{repo_path}}" && \
       echo "=== Step 3: Creating GitHub Issue ===" && \
-      ISSUE_TITLE=$(printf '%s' {{task_description}}) && \
+      ISSUE_TITLE=$(printf '%s' {{task_description}} | tr '\n\r' '  ' | cut -c1-200) && \
       ISSUE_TASK=$(printf '%s' {{task_description}}) && \
       ISSUE_REQS=$(printf '%s' {{final_requirements}}) && \
       ISSUE_BODY=$(printf '## Task Description\n%s\n\n## Requirements\n%s\n\n## Acceptance Criteria\n- [ ] All explicit requirements met\n- [ ] Tests passing\n- [ ] Philosophy compliant\n- [ ] Documentation updated\n\n## Classification\nGenerated via default-workflow recipe\n' "$ISSUE_TASK" "$ISSUE_REQS") && \
@@ -284,10 +284,46 @@ steps:
       # Fetch latest refs
       git fetch origin main >&2
 
+      # NOTE: This slug pipeline is duplicated in consensus-workflow.yaml step3-setup-worktree
+      # with a 30-char limit instead of 50. If you update this pipeline (e.g. security patch),
+      # update consensus-workflow.yaml in the same commit. See Issue #2952 for context.
+      #
+      # ACTION REQUIRED: File a dedicated security issue to audit the recipe runner's
+      # template substitution engine for single-quote escaping (REQ-SEC-001 audit).
+      # Until confirmed safe, user-provided values should be injected as env vars,
+      # not as inline template substitutions in single-quoted bash strings.
+      #
       # Generate branch name — use printf to safely capture the shlex-quoted value
-      TASK_DESC=$(printf '%s' {{task_description}})
-      TASK_SLUG=$(echo "$TASK_DESC" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | sed 's/[^a-z0-9-]//g' | cut -c1-50)
-      BRANCH_NAME="{{branch_prefix}}/issue-{{issue_number}}-${TASK_SLUG}"
+      # Pipeline stages:
+      #   1. tr '\n\r' '  '  — CRLF normalisation: collapse multi-paragraph input to single line
+      #   2. tr '[:upper:]' '[:lower:]'  — lowercase
+      #   3. tr -s ' ' '-'  — squeeze runs of spaces into single hyphens
+      #   4. sed whitelist  — strip non-alnum-hyphen (security: removes $, `, ;, &, |)
+      #   5. sed collapse   — collapse consecutive hyphens (arises from stripped chars)
+      #   6. sed edge-trim  — strip leading/trailing hyphens
+      #   7. cut -c1-50     — hard truncation to 50 chars
+      #   8. sed trailing   — strip trailing hyphen that cut can introduce at position 50
+      # NOTE (REQ-SEC-001, tracked in issue #2974): {{task_description}} is injected via
+      # text substitution before shell parsing. Single-quote wrapping below prevents
+      # word-splitting and glob expansion but does NOT protect against a single-quote
+      # character in the input (which would terminate the string prematurely). Issue #2974
+      # tracks migrating to env-var injection in the recipe runner so values are never
+      # inlined into shell source.
+      TASK_DESC=$(printf '%s' '{{task_description}}')
+      TASK_SLUG=$(printf '%s' "$TASK_DESC" | tr '\n\r' '  ' | tr '[:upper:]' '[:lower:]' | tr -s ' ' '-' | sed 's/[^a-z0-9-]//g' | sed 's/-\{2,\}/-/g' | sed 's/^-//;s/-$//' | cut -c1-50 | sed 's/-$//')
+      # Guard: empty slug (blank/all-symbol input) produces a trailing-hyphen branch that
+      # git check-ref-format accepts as valid but is undesirable. Catch it explicitly first.
+      if [ -z "$TASK_SLUG" ]; then
+        echo "WARNING: task_description produced an empty slug — falling back to task-unnamed" >&2
+        BRANCH_NAME="{{branch_prefix}}/task-unnamed-$(date +%s)"
+      else
+        BRANCH_NAME="{{branch_prefix}}/issue-{{issue_number}}-${TASK_SLUG}"
+        # Validate with authoritative git ref checker; fall back to safe unique name on failure
+        if ! git check-ref-format --branch "${BRANCH_NAME}" >/dev/null 2>&1; then
+          echo "WARNING: derived branch name '${BRANCH_NAME}' is invalid — falling back to task-unnamed" >&2
+          BRANCH_NAME="{{branch_prefix}}/task-unnamed-$(date +%s)"
+        fi
+      fi
       WORKTREE_PATH="{{repo_path}}/worktrees/${BRANCH_NAME}"
 
       echo "Branch: ${BRANCH_NAME}" >&2
@@ -967,7 +1003,7 @@ steps:
       git add -A && \
       echo "" && \
       echo "--- Creating Commit ---" && \
-      COMMIT_TITLE=$(printf 'feat: %s' {{task_description}}) && \
+      COMMIT_TITLE=$(printf 'feat: %.72s' "$(printf '%s' {{task_description}} | tr '\n\r' ' ' | head -1)") && \
       COMMIT_MSG=$(printf '%s\n\nImplements issue #%s\n\nChanges:\n- Implementation as per design specification\n- Tests added for new functionality\n- Documentation updated\n\nCloses #%s' "$COMMIT_TITLE" {{issue_number}} {{issue_number}}) && \
       if [ -n "$(git diff --cached --name-only)" ]; then \
         git commit -m "$COMMIT_MSG" ; \
@@ -994,7 +1030,7 @@ steps:
     command: |
       cd "{{worktree_setup.worktree_path}}" && \
       echo "=== Step 15: Creating Draft PR ===" && \
-      PR_TITLE=$(printf '%s' {{task_description}}) && \
+      PR_TITLE=$(printf '%s' {{task_description}} | tr '\n\r' ' ' | cut -c1-200) && \
       PR_TASK=$(printf '%s' {{task_description}}) && \
       PR_DESIGN=$(printf '%s' {{design_spec}}) && \
       PR_BODY=$(printf '## Summary\n%s\n\n## Issue\nCloses #%s\n\n## Changes\n%s\n\n## Testing\n- Unit tests added\n- Local testing completed\n- Pre-commit hooks pass\n\n## Checklist\n- [x] Tests pass\n- [x] Documentation updated\n- [x] No stubs or TODOs\n- [ ] Code review completed\n- [ ] Philosophy check passed\n\n---\n*This PR was created as a draft for review before merging.*\n' "$PR_TASK" {{issue_number}} "$PR_DESIGN") && \

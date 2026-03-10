@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 from .base import AgentResult, AgentTool, GoalSeekingAgent, SDKType
@@ -109,6 +110,7 @@ class _MiniFrameworkAdapter(GoalSeekingAgent):
             )
         except ImportError:
             self._learning_agent = None
+            print("WARNING: WikipediaLearningAgent not available", file=sys.stderr)
 
     async def _run_sdk_agent(self, task: str, max_turns: int = 10) -> AgentResult:
         if not self._learning_agent:

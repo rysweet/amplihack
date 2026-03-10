@@ -55,6 +55,9 @@ def check_sdk_dep(import_name: str) -> bool:
         importlib.import_module(import_name)
         return True
     except ImportError:
+        import sys
+
+        print(f"WARNING: {import_name} not available", file=sys.stderr)
         return False
 
 

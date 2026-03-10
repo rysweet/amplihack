@@ -21,6 +21,7 @@ try:
 
     CLAUDE_SDK_AVAILABLE = True
 except ImportError:
+    print("WARNING: claude_agent_sdk not available", file=sys.stderr)
     CLAUDE_SDK_AVAILABLE = False
 
 

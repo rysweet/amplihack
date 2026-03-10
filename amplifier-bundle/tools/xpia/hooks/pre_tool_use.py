@@ -35,6 +35,8 @@ try:
     )
 except ImportError:
     # Mock classes for graceful degradation
+    print("WARNING: xpia_defense_interface not available - using mock classes", file=sys.stderr)
+
     class ContentType:
         COMMAND = "command"
 
