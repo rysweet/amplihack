@@ -99,7 +99,7 @@ that instructs Claude to invoke `Skill(skill="dev-orchestrator")` for dev/invest
 executes `run_recipe_by_name("smart-orchestrator")`.** If your runtime requires
 a `report_intent` call (e.g. Copilot CLI), emit it **in parallel** with the
 Bash launch — both tool calls in the same response. The constraint is that no
-*other* substantive action (reading files, calling TodoWrite, invoking Agent,
+_other_ substantive action (reading files, calling TodoWrite, invoking Agent,
 or typing a response) may precede or replace the Bash launch.
 
 If you find yourself doing anything else instead of launching the recipe
@@ -125,6 +125,8 @@ Code's `run_in_background` kills processes after ~10 minutes. Recipe
 workstreams can take hours. You MUST use a tmux session for execution:
 
 ```bash
+LOG_FILE=$(mktemp /tmp/recipe-runner-output.XXXXXX.log)
+chmod 600 "$LOG_FILE"
 tmux new-session -d -s recipe-runner "env -u CLAUDECODE PYTHONPATH=src python3 -c \"
 import os
 os.environ.pop('CLAUDECODE', None)
@@ -136,18 +138,23 @@ result = run_recipe_by_name(
     user_context={
         'task_description': '''TASK_DESCRIPTION_HERE''',
         'repo_path': '.',
-    }
+    },
+    progress=True,
 )
 print(f'Recipe result: {result}')
-\" 2>&1 | tee /tmp/recipe-runner-output.log"
+\" 2>&1 | tee \"$LOG_FILE\""
+echo \"Recipe runner log: $LOG_FILE\"
 ```
 
 **Key points:**
+
 - `env -u CLAUDECODE` — unset so nested Claude Code sessions can launch
 - `PYTHONPATH=src python3` — uses the interpreter on PATH while forcing imports from the checked-out repo source tree (do NOT hardcode `.venv/bin/python`)
 - `run_recipe_by_name` — delegates to the Rust binary; the adapter parameter is no longer needed
+- `progress=True` — streams recipe-runner stderr live so tmux logs show nested step activity
+- `chmod 600 "$LOG_FILE"` — keeps the tmux log private to the current user
 - `tmux new-session -d` — detached session, no timeout, survives disconnects
-- Monitor with: `tail -f /tmp/recipe-runner-output.log` or `tmux attach -t recipe-runner`
+- Monitor with: `tail -f "$LOG_FILE"` or `tmux attach -t recipe-runner`
 
 **Restarting a stale tmux session**: Some runtimes (e.g. Copilot CLI) block
 `tmux kill-session` because it does not target a numeric PID. Use one of these

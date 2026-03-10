@@ -203,13 +203,13 @@ def main():
     """Main hook execution.
 
     Claude Code PreToolUse hook protocol:
-    - Input: JSON with toolUse.name and toolUse.input
+    - Input: JSON on stdin with top-level keys:
+             tool_name, tool_input, session_id, cwd, hook_event_name, etc.
     - Output: {} to allow, {"permissionDecision": "deny", "message": "..."} to block
     - Exit 0 always (hook doesn't control exit code, output controls behavior)
     """
     try:
         # Parse input from Claude Code
-        # Input format: JSON with toolUse object containing name and input
         input_data = {}
         if len(sys.argv) > 1:
             # Command line argument
@@ -220,10 +220,9 @@ def main():
             if input_line:
                 input_data = json.loads(input_line)
 
-        # Extract tool information using correct Claude Code protocol
-        tool_use = input_data.get("toolUse", {})
-        tool_name = tool_use.get("name", "unknown")
-        parameters = tool_use.get("input", {})
+        # Claude Code sends top-level tool_name and tool_input
+        tool_name = input_data.get("tool_name", "")
+        parameters = input_data.get("tool_input", {})
 
         # Process the validation
         result = process_tool_use_request(tool_name, parameters)
