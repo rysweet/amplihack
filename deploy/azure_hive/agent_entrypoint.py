@@ -32,6 +32,7 @@ Environment variables:
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import signal
@@ -227,7 +228,6 @@ def _handle_event(agent_name: str, event: object, memory: object, agent: object)
             agent_name,
             total_turns,
         )
-        import json
         import uuid as _uuid
 
         ready_event = {
@@ -258,6 +258,10 @@ def _handle_event(agent_name: str, event: object, memory: object, agent: object)
         # Ignore heartbeat events from other agents
         return
 
+    if event_type == "EVAL_QUESTIONS":
+        _handle_eval_questions(agent_name, payload, agent)
+        return
+
     if event_type in ("QUERY_RESPONSE", "network_graph.search_response"):
         # Graph store handles these internally; nothing for the OODA loop to do.
         query_id = (payload or {}).get("query_id", "")
@@ -285,6 +289,92 @@ def _handle_event(agent_name: str, event: object, memory: object, agent: object)
             agent_name,
             event_type,
         )
+
+
+def _handle_eval_questions(
+    agent_name: str,
+    payload: dict,
+    agent: object,
+) -> None:
+    """Handle EVAL_QUESTIONS batch: call answer_question() locally for each question.
+
+    This bypasses the OODA loop entirely — answer_question() is called directly,
+    identical to how the single-agent eval works. Answers are published to the
+    eval-responses Service Bus topic for collection by the eval harness.
+    """
+    questions = payload.get("questions", [])
+    batch_id = payload.get("batch_id", "")
+    response_topic = payload.get("response_topic", "eval-responses")
+
+    if not questions:
+        logger.warning("Agent %s received EVAL_QUESTIONS with no questions", agent_name)
+        return
+
+    logger.info("Agent %s answering %d eval questions (batch=%s)", agent_name, len(questions), batch_id)
+
+    # Get connection string from env for publishing responses
+    conn_str = os.environ.get("AMPLIHACK_MEMORY_CONNECTION_STRING", "")
+
+    # Import ServiceBusClient for publishing responses
+    try:
+        from azure.servicebus import ServiceBusClient, ServiceBusMessage
+    except ImportError:
+        logger.error("azure-servicebus required for eval response publishing")
+        return
+
+    sb_client = None
+    sender = None
+    try:
+        if conn_str:
+            sb_client = ServiceBusClient.from_connection_string(conn_str)
+            sender = sb_client.get_topic_sender(topic_name=response_topic)
+
+        for q in questions:
+            q_id = q.get("question_id", "")
+            q_text = q.get("text", "")
+            event_id = q.get("event_id", "")
+
+            if not q_text:
+                continue
+
+            # Call answer_question() directly — identical to single-agent eval
+            try:
+                answer = agent.answer_question(q_text)
+                if isinstance(answer, tuple):
+                    answer = answer[0]
+            except Exception as e:
+                logger.warning("Agent %s failed to answer q=%s: %s", agent_name, q_id, e)
+                answer = f"Error: {e}"
+
+            logger.info("Agent %s answered q=%s: %s", agent_name, q_id, answer[:80] if answer else "(empty)")
+
+            # Also print to stdout for observability
+            print(f"[{agent_name}] EVAL_ANSWER [event_id={event_id}] [q={q_id}]: {answer}", flush=True)
+
+            # Publish to response topic
+            if sender:
+                try:
+                    response_msg = ServiceBusMessage(
+                        json.dumps({
+                            "event_type": "EVAL_ANSWER",
+                            "batch_id": batch_id,
+                            "event_id": event_id,
+                            "question_id": q_id,
+                            "agent_id": agent_name,
+                            "answer": answer,
+                        }),
+                        content_type="application/json",
+                    )
+                    sender.send_messages(response_msg)
+                except Exception as e:
+                    logger.warning("Failed to publish eval answer: %s", e)
+    finally:
+        if sender:
+            sender.close()
+        if sb_client:
+            sb_client.close()
+
+    logger.info("Agent %s completed %d eval questions", agent_name, len(questions))
 
 
 def _extract_input_text(event_type: str | None, payload: dict | None, raw_event: object) -> str:

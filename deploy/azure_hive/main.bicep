@@ -136,6 +136,27 @@ resource sbEvalSubscription 'Microsoft.ServiceBus/namespaces/topics/subscription
   }
 }
 
+// Eval response topic for distributed eval answer collection
+resource sbEvalResponseTopic 'Microsoft.ServiceBus/namespaces/topics@2022-10-01-preview' = {
+  name: 'eval-responses-${hiveName}'
+  parent: sbNamespace
+  properties: {
+    enablePartitioning: false
+    defaultMessageTimeToLive: 'PT1H'
+  }
+}
+
+// Single subscription for the eval harness to read answers
+resource sbEvalReaderSubscription 'Microsoft.ServiceBus/namespaces/topics/subscriptions@2022-10-01-preview' = {
+  name: 'eval-reader'
+  parent: sbEvalResponseTopic
+  properties: {
+    defaultMessageTimeToLive: 'PT1H'
+    lockDuration: 'PT30S'
+    maxDeliveryCount: 3
+  }
+}
+
 // ---------- Container Apps Environment ----------
 resource containerEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
   name: envName
@@ -271,3 +292,4 @@ output sbNamespaceFqdn string = sbNamespace.properties.serviceBusEndpoint
 output containerAppNames array = [for appIdx in range(0, appCount): '${hiveName}-app-${appIdx}']
 output sbConnectionStringSecretName string = 'sb-connection-string'
 output sbTopicNameOutput string = sbTopicName
+output evalResponseTopicName string = 'eval-responses-${hiveName}'
