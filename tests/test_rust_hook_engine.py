@@ -285,3 +285,87 @@ class TestStageHooksRustEngine:
         assert "user-prompt-submit" in content
         assert "python3" in content  # Python for workflow_classification_reminder
         assert "workflow_classification_reminder.py" in content
+
+
+class TestEngineSwitchAndQuoting:
+    """Tests for engine switch (RUST-03), path quoting (RUST-01/02), and error handling (RUST-07)."""
+
+    def test_switching_from_rust_to_python_replaces_hook(self, tmp_path):
+        """RUST-03: switching engine must replace, not duplicate, hooks."""
+        binary = tmp_path / "amplihack-hooks"
+        binary.write_text("#!/bin/sh")
+        binary.chmod(0o755)
+
+        hooks_dir = str(tmp_path / "hooks")
+        os.makedirs(hooks_dir, exist_ok=True)
+
+        settings = {}
+        hooks = [{"type": "PreToolUse", "file": "pre_tool_use.py", "matcher": "*"}]
+
+        # First: register with Rust engine
+        with patch("amplihack.settings.find_rust_hook_binary", return_value=str(binary)):
+            update_hook_paths(settings, "amplihack", hooks, hooks_dir, hook_engine="rust")
+
+        rust_cmd = settings["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
+        assert "amplihack-hooks" in rust_cmd
+
+        # Second: switch to Python engine — should replace, not duplicate
+        update_hook_paths(settings, "amplihack", hooks, hooks_dir, hook_engine="python")
+
+        all_commands = [
+            h.get("command", "")
+            for cfg in settings["hooks"]["PreToolUse"]
+            for h in cfg.get("hooks", [])
+        ]
+        assert len(all_commands) == 1, f"Expected 1 hook entry, got {len(all_commands)}: {all_commands}"
+        assert all_commands[0].endswith("pre_tool_use.py")
+
+    def test_binary_path_with_spaces(self, tmp_path):
+        """RUST-01/02: paths with spaces must be properly quoted."""
+        spaced_dir = tmp_path / "my app dir"
+        spaced_dir.mkdir()
+        binary = spaced_dir / "amplihack-hooks"
+        binary.write_text("#!/bin/sh")
+        binary.chmod(0o755)
+
+        # RUST-02: update_hook_paths uses shlex.quote
+        settings = {}
+        hooks = [{"type": "PreToolUse", "file": "pre_tool_use.py", "matcher": "*"}]
+        with patch("amplihack.settings.find_rust_hook_binary", return_value=str(binary)):
+            update_hook_paths(settings, "amplihack", hooks, "/some/dir", hook_engine="rust")
+
+        hook_cmd = settings["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
+        # shlex.quote wraps the path so spaces are safe
+        assert "my app dir" in hook_cmd
+        assert hook_cmd.startswith("'") or hook_cmd.startswith('"') or "\\ " in hook_cmd
+
+        # RUST-01: _generate_rust_wrapper quotes the binary
+        from amplihack.launcher.copilot import _generate_rust_wrapper
+        wrapper = _generate_rust_wrapper(
+            "pre-tool-use", ["pre_tool_use.py"], str(binary), RUST_HOOK_MAP
+        )
+        # The binary path should be quoted in the bash script
+        assert f'"{binary}"' in wrapper
+
+    def test_ensure_settings_rust_engine_missing_binary(self, tmp_path):
+        """RUST-07: ensure_settings_json returns False (not crash) when binary missing."""
+        from amplihack.settings import ensure_settings_json
+
+        with patch("amplihack.settings.get_hook_engine", return_value="rust"), \
+             patch("amplihack.settings.find_rust_hook_binary", return_value=None), \
+             patch("amplihack.settings.CLAUDE_DIR", str(tmp_path)), \
+             patch("amplihack.settings.HOME", str(tmp_path)):
+
+            # Create minimal settings file
+            settings_path = tmp_path / "settings.json"
+            settings_path.write_text("{}")
+
+            # Create hooks dir so validation passes
+            hooks_dir = tmp_path / ".amplihack" / ".claude" / "tools" / "amplihack" / "hooks"
+            hooks_dir.mkdir(parents=True)
+            from amplihack import HOOK_CONFIGS
+            for hook_info in HOOK_CONFIGS["amplihack"]:
+                (hooks_dir / hook_info["file"]).write_text("# stub")
+
+            result = ensure_settings_json()
+            assert result is False
