@@ -904,6 +904,18 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
     # Register awesome-copilot marketplace extensions (best-effort, silent on failure)
     register_awesome_copilot_marketplace()
 
+    # Ensure XPIA defender binary is installed
+    try:
+        from ..security.xpia_install import ensure_xpia_binary
+
+        binary_path = ensure_xpia_binary()
+        print(f"✓ XPIA security defender ready ({binary_path})")
+    except Exception as e:
+        import logging
+
+        logging.getLogger(__name__).warning("XPIA defender binary install failed: %s", e)
+        print(f"⚠ XPIA defender not available: {e}")
+
 
     # Prompt to re-enable power-steering if disabled (#2544)
     try:
