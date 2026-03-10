@@ -11,6 +11,7 @@ from amplihack.rust_trial import (
     TRIAL_HOME_ENV,
     _ensure_trial_copilot_config,
     _expected_release_asset_name,
+    _select_release_asset,
     _target_triple,
     build_trial_env,
     download_latest_release_binary,
@@ -59,6 +60,104 @@ def test_target_triple_for_current_platform():
     }
     assert _expected_release_asset_name().startswith("amplihack-")
     assert _expected_release_asset_name().endswith(".tar.gz")
+
+
+def test_select_release_asset_prefers_newest_snapshot_creation_time():
+    asset_name = _expected_release_asset_name()
+    tag_name, asset_url = _select_release_asset(
+        [
+            {
+                "tag_name": "snapshot-republished-old",
+                "created_at": "2026-03-02T12:00:00Z",
+                "published_at": "2026-03-06T12:00:00Z",
+                "assets": [
+                    {
+                        "name": asset_name,
+                        "browser_download_url": "https://example.invalid/old.tar.gz",
+                    }
+                ],
+            },
+            {
+                "tag_name": "snapshot-newer-build",
+                "created_at": "2026-03-05T12:00:00Z",
+                "published_at": "2026-03-05T12:00:00Z",
+                "assets": [
+                    {
+                        "name": asset_name,
+                        "browser_download_url": "https://example.invalid/new.tar.gz",
+                    }
+                ],
+            },
+        ]
+    )
+
+    assert tag_name == "snapshot-newer-build"
+    assert asset_url == "https://example.invalid/new.tar.gz"
+
+
+def test_select_release_asset_uses_publish_time_when_creation_time_missing():
+    asset_name = _expected_release_asset_name()
+    tag_name, asset_url = _select_release_asset(
+        [
+            {
+                "tag_name": "snapshot-earlier-publish",
+                "published_at": "2026-03-05T12:00:00Z",
+                "assets": [
+                    {
+                        "name": asset_name,
+                        "browser_download_url": "https://example.invalid/earlier.tar.gz",
+                    }
+                ],
+            },
+            {
+                "tag_name": "snapshot-later-publish",
+                "published_at": "2026-03-06T12:00:00Z",
+                "assets": [
+                    {
+                        "name": asset_name,
+                        "browser_download_url": "https://example.invalid/later.tar.gz",
+                    }
+                ],
+            },
+        ]
+    )
+
+    assert tag_name == "snapshot-later-publish"
+    assert asset_url == "https://example.invalid/later.tar.gz"
+
+
+def test_select_release_asset_skips_draft_releases():
+    asset_name = _expected_release_asset_name()
+    tag_name, asset_url = _select_release_asset(
+        [
+            {
+                "tag_name": "snapshot-draft",
+                "draft": True,
+                "created_at": "2026-03-07T12:00:00Z",
+                "published_at": "2026-03-07T12:00:00Z",
+                "assets": [
+                    {
+                        "name": asset_name,
+                        "browser_download_url": "https://example.invalid/draft.tar.gz",
+                    }
+                ],
+            },
+            {
+                "tag_name": "snapshot-public",
+                "created_at": "2026-03-06T12:00:00Z",
+                "published_at": "2026-03-06T12:00:00Z",
+                "assets": [
+                    {
+                        "name": asset_name,
+                        "browser_download_url": "https://example.invalid/public.tar.gz",
+                    }
+                ],
+            },
+        ]
+    )
+
+    assert tag_name == "snapshot-public"
+    assert asset_url == "https://example.invalid/public.tar.gz"
 
 
 def test_download_latest_release_binary_extracts_asset(tmp_path, monkeypatch):
