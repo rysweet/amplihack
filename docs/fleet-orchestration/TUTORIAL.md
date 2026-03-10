@@ -471,7 +471,7 @@ Or just describe what you want — Claude will pick the right command:
 
 ### Fleet Scout (Dry-Run Scan)
 
-`/fleet scout` is **reconnaissance** — it discovers ALL VMs and sessions including those in the exclude list (`DEFAULT_EXCLUDE_VMS`). This is intentional: you need full visibility to understand the fleet before deciding what to act on. The exclude list only applies to admiral actions (`advance`, `start`, `run-once`) which skip excluded VMs to avoid unintended interference with shared infrastructure.
+`/fleet scout` is **reconnaissance** — it discovers ALL VMs and sessions including those in the exclude list (`DEFAULT_EXCLUDE_VMS`). `DEFAULT_EXCLUDE_VMS` is empty by default (all VMs are fleet-managed). This is intentional: you need full visibility to understand the fleet before deciding what to act on. The exclude list only applies to admiral actions (`advance`, `start`, `run-once`) which skip excluded VMs to avoid unintended interference with shared infrastructure.
 
 `/fleet scout` discovers all VMs and sessions, runs admiral reasoning, and shows a report with three sections:
 

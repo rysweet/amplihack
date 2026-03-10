@@ -136,11 +136,11 @@ The admiral supports multiple LLM backends via a protocol interface:
 
 | Backend | Default Model | Max Output Tokens | Detection |
 |---------|--------------|-------------------|-----------|
-| `AnthropicBackend` | claude-opus-4-6 | 8,192 | `ANTHROPIC_API_KEY` set |
+| `AnthropicBackend` | claude-opus-4-6 | 128,000 | `ANTHROPIC_API_KEY` set (uses streaming API internally) |
 | `CopilotBackend` | gpt-4o | — | Copilot SDK available |
-| `LiteLLMBackend` | gpt-4o | 8,192 | Fallback (100+ providers) |
+| `LiteLLMBackend` | gpt-4o | 128,000 | Fallback (100+ providers) |
 
-`auto_detect_backend()` checks for `ANTHROPIC_API_KEY` first, then falls back to LiteLLM. Max output tokens (`DEFAULT_LLM_MAX_TOKENS=8192`) is set low for cost control — reasoning JSON responses are small. Transcript input context can use up to `TRANSCRIPT_MAX_TOKENS=128000`.
+`auto_detect_backend()` checks for `ANTHROPIC_API_KEY` first, then falls back to CopilotBackend. Max output tokens (`DEFAULT_LLM_MAX_TOKENS=128000`). Transcript input context can use up to `TRANSCRIPT_MAX_TOKENS=128000`.
 
 ### Response Parsing
 
@@ -289,7 +289,7 @@ All tunable values are in `_constants.py`:
 
 | Constant | Value | Purpose |
 |----------|-------|---------|
-| `DEFAULT_LLM_MAX_TOKENS` | 8,192 | Max output tokens for reasoning JSON (cost control) |
+| `DEFAULT_LLM_MAX_TOKENS` | 128,000 | Max output tokens for reasoning JSON |
 | `TRANSCRIPT_MAX_TOKENS` | 128,000 | Max input tokens for transcript context |
 | `MIN_CONFIDENCE_SEND` | 0.6 | Minimum confidence to send input |
 | `MIN_CONFIDENCE_RESTART` | 0.8 | Minimum confidence to restart |

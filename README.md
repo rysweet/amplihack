@@ -343,20 +343,31 @@ Full reference: [docs/reference/recipe-cli-reference.md](docs/reference/recipe-c
 
 ### Fleet Management
 
-Manage coding agents across multiple cloud VMs with an interactive dashboard.
+Manage coding agents (Claude Code, Copilot, Amplifier) running across multiple
+Azure VMs. The fleet admiral monitors sessions, reasons about what each agent
+needs, and can send commands autonomously.
 
 ```bash
 amplihack fleet              # Interactive TUI dashboard
+amplihack fleet scout        # Discover all VMs/sessions, dry-run reasoning
+amplihack fleet advance      # Send next commands to sessions (live)
 amplihack fleet status       # Quick text overview
-amplihack fleet dry-run      # See what the admiral would do
 amplihack fleet adopt devo   # Bring existing sessions under management
+amplihack fleet auth devo    # Propagate auth tokens to a VM
 ```
 
-Requires [azlin](https://github.com/rysweet/azlin) for VM management.
-Install with TUI: `pip install amplihack[fleet-tui]`
+**Key capabilities:**
+- **Scout** discovers all VMs and sessions via azlin (no SSH needed for discovery)
+- **Admiral reasoning** uses Claude Opus streaming to decide: wait, send\_input, restart, or escalate
+- **SessionCopilot** watches local sessions and auto-continues toward a goal (`/amplihack:lock`)
+- **Dual backend** — uses Anthropic API when available, falls back to GitHub Copilot SDK
+- **Safety** — 57 dangerous input patterns blocked, shell metacharacter rejection, confidence thresholds
 
-See the [Fleet Tutorial](docs/fleet-orchestration/TUTORIAL.md) for full documentation, including:
-- [Scout vs Advance: exclude list semantics](docs/fleet-orchestration/TUTORIAL.md#fleet-scout-dry-run-scan) — scout shows ALL VMs (reconnaissance), advance respects the exclude list (admiral action)
+Requires [azlin](https://github.com/rysweet/azlin) for VM management.
+
+See [Fleet Tutorial](docs/fleet-orchestration/TUTORIAL.md) |
+[Architecture](docs/fleet-orchestration/ARCHITECTURE.md) |
+[Admiral Reasoning](docs/fleet-orchestration/ADMIRAL_REASONING.md)
 
 </details>
 
