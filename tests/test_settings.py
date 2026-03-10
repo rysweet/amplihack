@@ -21,6 +21,7 @@ from amplihack.settings import (
     ensure_settings_json,
     update_hook_paths,
 )
+from amplihack import RUST_HOOK_MAP
 
 # =============================================================================
 # UNIT TESTS (60% - ~24 lines)
@@ -184,3 +185,49 @@ class TestCrossDirExecution:
             )
         finally:
             os.chdir(original_cwd)
+
+
+class TestHookSystemOwnership:
+    """AC1-03: hook_system ownership check must distinguish systems by tools/ prefix."""
+
+    def test_hook_system_ownership_check_distinguishes_systems(self, tmp_path):
+        """Ensure amplihack hooks don't falsely match paths containing 'amplihack' in parent dirs."""
+        # Create a hooks dir for a different system (xpia) that lives under ~/.amplihack/
+        xpia_hooks_dir = tmp_path / ".amplihack" / ".claude" / "tools" / "xpia" / "hooks"
+        xpia_hooks_dir.mkdir(parents=True)
+        (xpia_hooks_dir / "stop.py").write_text("# xpia stop hook")
+
+        amplihack_hooks_dir = tmp_path / ".amplihack" / ".claude" / "tools" / "amplihack" / "hooks"
+        amplihack_hooks_dir.mkdir(parents=True)
+        (amplihack_hooks_dir / "stop.py").write_text("# amplihack stop hook")
+
+        # Pre-populate settings with a xpia hook whose path contains "amplihack"
+        # (because it's under ~/.amplihack/.claude/tools/xpia/hooks/)
+        xpia_cmd = str(xpia_hooks_dir / "stop.py")
+        settings = {
+            "hooks": {
+                "Stop": [
+                    {
+                        "hooks": [
+                            {"type": "command", "command": xpia_cmd}
+                        ]
+                    }
+                ]
+            }
+        }
+
+        # Now update with amplihack hooks — should NOT match the xpia entry
+        hooks = [{"type": "Stop", "file": "stop.py"}]
+        update_hook_paths(settings, "amplihack", hooks, str(amplihack_hooks_dir))
+
+        # Should now have TWO entries: original xpia + new amplihack
+        all_commands = [
+            h.get("command", "")
+            for cfg in settings["hooks"]["Stop"]
+            for h in cfg.get("hooks", [])
+        ]
+        assert len(all_commands) == 2, (
+            f"Expected 2 hook entries (xpia + amplihack), got {len(all_commands)}: {all_commands}"
+        )
+        assert any("tools/xpia/" in c for c in all_commands), "xpia hook should remain untouched"
+        assert any("tools/amplihack/" in c for c in all_commands), "amplihack hook should be added"
