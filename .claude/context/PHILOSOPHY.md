@@ -6,6 +6,14 @@ This document outlines the core development philosophy that guides our approach 
 
 ### The Zen of Simple Code
 
+> **Quick Reference for Developers New to These Concepts:**
+> - **Wabi-sabi** = Japanese aesthetic valuing imperfection and simplicity
+> - **Zen-like minimalism** = Focus on essential, remove distractions
+> - **Occam's Razor** = Simple explanations are usually correct; don't overcomplicate
+> - **Vertical Slices** = Build complete features end-to-end, not layer by layer
+> - **Iterative Implementation** = Build incrementally, improve based on feedback
+> - **Ruthless Simplicity** = Aggressively remove anything unnecessary
+
 Our development philosophy embodies a Zen-like minimalism that values simplicity and clarity above all:
 
 - **Wabi-sabi philosophy**: Embracing simplicity and the essential. Each line serves a clear purpose without unnecessary embellishment.
@@ -15,6 +23,12 @@ Our development philosophy embodies a Zen-like minimalism that values simplicity
 - **Pragmatic trust**: We trust external systems enough to interact with them directly, handling failures as they occur rather than assuming they'll happen.
 
 ### The Brick Philosophy for AI Development
+
+> **Key Terms Explained:**
+> - **Brick** = A self-contained module with ONE clear responsibility (like a LEGO brick)
+> - **Stud** = The public interface/contract that other modules connect to
+> - **Regeneratable** = Can be rebuilt from scratch using AI without breaking the system
+> - **Isolated** = All code, tests, and fixtures live inside the module folder
 
 _"We provide the blueprint, and AI builds the product, one modular piece at a time."_
 
