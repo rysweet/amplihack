@@ -83,6 +83,9 @@ def run_recipe_by_name(
     name: str,
     user_context: dict[str, Any] | None = None,
     dry_run: bool = False,
+    recipe_dirs: list[str] | None = None,
+    working_dir: str = ".",
+    auto_stage: bool = True,
     **_kwargs: Any,
 ) -> RecipeResult:
     """Find a recipe by name and execute it via the Rust recipe runner.
@@ -94,8 +97,18 @@ def run_recipe_by_name(
         name: Recipe name (e.g. ``"default-workflow"``).
         user_context: Context variable overrides.
         dry_run: If True, log steps without executing.
+        recipe_dirs: Extra recipe search directories to pass to the Rust runner.
+        working_dir: Working directory for execution (default ``"."``).
+        auto_stage: Whether to auto-stage git changes (default True).
 
     Raises:
         RustRunnerNotFoundError: If the Rust binary is not installed.
     """
-    return run_recipe_via_rust(name=name, user_context=user_context, dry_run=dry_run)
+    return run_recipe_via_rust(
+        name=name,
+        user_context=user_context,
+        dry_run=dry_run,
+        recipe_dirs=recipe_dirs,
+        working_dir=working_dir,
+        auto_stage=auto_stage,
+    )

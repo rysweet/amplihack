@@ -322,6 +322,39 @@ class TestEngineSelection:
         run_recipe_by_name("test", adapter=MagicMock())
         mock_rust.assert_called_once()
 
+    @patch("amplihack.recipes.run_recipe_via_rust")
+    def test_forwards_recipe_dirs(self, mock_rust):
+        """Issue #3002: run_recipe_by_name must forward recipe_dirs."""
+        from amplihack.recipes import run_recipe_by_name
+        mock_rust.return_value = MagicMock()
+        run_recipe_by_name("test", recipe_dirs=["/custom/recipes"])
+        mock_rust.assert_called_once_with(
+            name="test",
+            user_context=None,
+            dry_run=False,
+            recipe_dirs=["/custom/recipes"],
+            working_dir=".",
+            auto_stage=True,
+        )
+
+    @patch("amplihack.recipes.run_recipe_via_rust")
+    def test_forwards_working_dir(self, mock_rust):
+        """Issue #3002: run_recipe_by_name must forward working_dir."""
+        from amplihack.recipes import run_recipe_by_name
+        mock_rust.return_value = MagicMock()
+        run_recipe_by_name("test", working_dir="/some/path")
+        _, kwargs = mock_rust.call_args
+        assert kwargs["working_dir"] == "/some/path"
+
+    @patch("amplihack.recipes.run_recipe_via_rust")
+    def test_forwards_auto_stage(self, mock_rust):
+        """Issue #3002: run_recipe_by_name must forward auto_stage."""
+        from amplihack.recipes import run_recipe_by_name
+        mock_rust.return_value = MagicMock()
+        run_recipe_by_name("test", auto_stage=False)
+        _, kwargs = mock_rust.call_args
+        assert kwargs["auto_stage"] is False
+
     @patch("amplihack.recipes.run_recipe_via_rust", side_effect=RustRunnerNotFoundError("not found"))
     def test_rust_not_found_raises(self, mock_rust):
         from amplihack.recipes import run_recipe_by_name
@@ -390,6 +423,74 @@ class TestEnsureRustRecipeRunner:
 # ============================================================================
 # Validation and edge-case tests (C2-PR-9, C2-PR-10)
 # ============================================================================
+
+
+class TestPackageBundleDirInjection:
+    """Issue #3002: run_recipe_via_rust auto-injects package bundle dir."""
+
+    @patch("amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs")
+    @patch("subprocess.run")
+    def test_auto_injects_package_bundle_dir(self, mock_run, mock_find):
+        """When recipe_dirs is None, the package bundle dir should be injected."""
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=[], returncode=0,
+            stdout=json.dumps({
+                "recipe_name": "test", "success": True,
+                "step_results": [], "context": {},
+            }),
+            stderr="",
+        )
+        with patch(
+            "amplihack.recipes.rust_runner._default_package_recipe_dirs",
+            return_value=["/pkg/amplihack/amplifier-bundle/recipes"],
+        ):
+            run_recipe_via_rust("test")
+        cmd = mock_run.call_args[0][0]
+        assert "-R" in cmd
+        idx = cmd.index("-R")
+        assert cmd[idx + 1] == "/pkg/amplihack/amplifier-bundle/recipes"
+
+    @patch("amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs")
+    @patch("subprocess.run")
+    def test_explicit_recipe_dirs_not_overridden(self, mock_run, mock_find):
+        """When recipe_dirs is provided explicitly, package dir is NOT injected."""
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=[], returncode=0,
+            stdout=json.dumps({
+                "recipe_name": "test", "success": True,
+                "step_results": [], "context": {},
+            }),
+            stderr="",
+        )
+        with patch(
+            "amplihack.recipes.rust_runner._default_package_recipe_dirs",
+            return_value=["/pkg/amplihack/amplifier-bundle/recipes"],
+        ):
+            run_recipe_via_rust("test", recipe_dirs=["/my/custom/dir"])
+        cmd = mock_run.call_args[0][0]
+        r_indices = [i for i, v in enumerate(cmd) if v == "-R"]
+        assert len(r_indices) == 1
+        assert cmd[r_indices[0] + 1] == "/my/custom/dir"
+
+    @patch("amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs")
+    @patch("subprocess.run")
+    def test_no_injection_when_package_dir_missing(self, mock_run, mock_find):
+        """When package bundle dir does not exist, no -R flag is added."""
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=[], returncode=0,
+            stdout=json.dumps({
+                "recipe_name": "test", "success": True,
+                "step_results": [], "context": {},
+            }),
+            stderr="",
+        )
+        with patch(
+            "amplihack.recipes.rust_runner._default_package_recipe_dirs",
+            return_value=[],
+        ):
+            run_recipe_via_rust("test")
+        cmd = mock_run.call_args[0][0]
+        assert "-R" not in cmd
 
 
 class TestExecutionTimeout:
