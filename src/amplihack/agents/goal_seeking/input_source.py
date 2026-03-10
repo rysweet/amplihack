@@ -214,7 +214,7 @@ class ServiceBusInputSource:
         while not self._closed and not self._shutdown.is_set():
             try:
                 messages = self._receiver.receive_messages(
-                    max_message_count=1,
+                    max_message_count=20,
                     max_wait_time=self._max_wait_time,
                 )
             except Exception:
@@ -224,50 +224,48 @@ class ServiceBusInputSource:
                 continue
 
             if not messages:
-                # Timed out — loop and try again (shutdown will break above)
                 continue
 
-            msg = messages[0]
-            try:
-                body = str(msg)
-                raw = json.loads(body)
-                event_type = raw.get("event_type")
-                payload = raw.get("payload", {})
-                # Skip messages targeted at a different agent
-                target = raw.get("target_agent", "") or payload.get("target_agent", "")
-                if target and target != self._agent_name:
-                    self._receiver.complete_message(msg)
-                    continue
-
-                text = _extract_text_from_bus_event(event_type, payload)
-                self._receiver.complete_message(msg)
-                # Store event metadata for correlation (eval answer publishing)
-                self._last_event_metadata = {
-                    "event_id": raw.get("event_id", ""),
-                    "event_type": event_type or "",
-                    "question_id": payload.get("question_id", ""),
-                }
-                if text is not None:
-                    logger.debug(
-                        "ServiceBusInputSource: event_type=%s len=%d",
-                        event_type,
-                        len(text),
-                    )
-                    return text
-                # Lifecycle event — silently skip, loop for next message
-                logger.debug(
-                    "ServiceBusInputSource: skipping lifecycle event_type=%s",
-                    event_type,
-                )
-            except Exception:
-                logger.warning(
-                    "ServiceBusInputSource: failed to parse message, dead-lettering",
-                    exc_info=True,
-                )
+            for msg in messages:
                 try:
-                    self._receiver.dead_letter_message(msg, reason="parse_error")
+                    body = str(msg)
+                    raw = json.loads(body)
+                    event_type = raw.get("event_type")
+                    payload = raw.get("payload", {})
+                    # Skip messages targeted at a different agent
+                    target = raw.get("target_agent", "") or payload.get("target_agent", "")
+                    if target and target != self._agent_name:
+                        self._receiver.complete_message(msg)
+                        continue
+
+                    text = _extract_text_from_bus_event(event_type, payload)
+                    self._receiver.complete_message(msg)
+                    if text is not None:
+                        # Only update metadata for messages we actually return
+                        self._last_event_metadata = {
+                            "event_id": raw.get("event_id", ""),
+                            "event_type": event_type or "",
+                            "question_id": payload.get("question_id", ""),
+                        }
+                        logger.debug(
+                            "ServiceBusInputSource: event_type=%s len=%d",
+                            event_type,
+                            len(text),
+                        )
+                        return text
+                    logger.debug(
+                        "ServiceBusInputSource: skipping lifecycle event_type=%s",
+                        event_type,
+                    )
                 except Exception:
-                    logger.debug("dead-letter failed", exc_info=True)
+                    logger.warning(
+                        "ServiceBusInputSource: failed to parse message, dead-lettering",
+                        exc_info=True,
+                    )
+                    try:
+                        self._receiver.dead_letter_message(msg, reason="parse_error")
+                    except Exception:
+                        logger.debug("dead-letter failed", exc_info=True)
 
         return None
 
