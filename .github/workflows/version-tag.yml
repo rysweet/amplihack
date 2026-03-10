@@ -76,19 +76,23 @@ jobs:
         env:
           TAG: ${{ steps.get-version.outputs.tag }}
           VERSION: ${{ steps.get-version.outputs.version }}
+          GH_ACTOR: ${{ github.actor }}
+          GH_SHA: ${{ github.sha }}
+          GH_WORKFLOW: ${{ github.workflow }}
         run: |
           # Configure git for GitHub Actions
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Create annotated tag
+          # Create annotated tag (use env vars instead of direct ${{ }} interpolation
+          # in run: blocks to avoid script injection — see GitHub Actions security docs)
           git tag -a "$TAG" -m "Release version $VERSION
 
           Auto-generated tag for version $VERSION
 
-          Created by: ${{ github.actor }}
-          Commit: ${{ github.sha }}
-          Workflow: ${{ github.workflow }}"
+          Created by: $GH_ACTOR
+          Commit: $GH_SHA
+          Workflow: $GH_WORKFLOW"
 
           # Push tag to repository
           git push origin "$TAG"
