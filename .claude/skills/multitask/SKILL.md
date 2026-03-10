@@ -100,10 +100,8 @@ Each workstream runs `run_recipe_by_name()` through a Python launcher:
 
 ```python
 from amplihack.recipes import run_recipe_by_name
-from amplihack.recipes.adapters.cli_subprocess import CLISubprocessAdapter
 
-adapter = CLISubprocessAdapter(cli="claude", working_dir=".")
-result = run_recipe_by_name("default-workflow", adapter=adapter,
+result = run_recipe_by_name("default-workflow",
     user_context={"task_description": task, "repo_path": "."})
 ```
 
