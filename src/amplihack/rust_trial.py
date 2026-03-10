@@ -208,14 +208,31 @@ def build_trial_env(trial_home: Path) -> dict[str, str]:
     """Create the isolated environment for the Rust CLI trial."""
     home = trial_home.expanduser().resolve()
     config_home = home / ".config"
+    npm_bin = home / ".npm-global" / "bin"
     home.mkdir(parents=True, exist_ok=True)
     config_home.mkdir(parents=True, exist_ok=True)
+    npm_bin.mkdir(parents=True, exist_ok=True)
 
     env = os.environ.copy()
     env["HOME"] = str(home)
     env["XDG_CONFIG_HOME"] = str(config_home)
     env[TRIAL_HOME_ENV] = str(home)
+    path_env = env.get("PATH", "")
+    env["PATH"] = f"{npm_bin}{os.pathsep}{path_env}" if path_env else str(npm_bin)
     return env
+
+
+def ensure_trial_dependencies(rust_args: Sequence[str], trial_home: Path, env: dict[str, str]) -> None:
+    """Install subcommand-specific dependencies inside the isolated trial home."""
+    if not rust_args or rust_args[0] != "copilot":
+        return
+
+    from .launcher.copilot import check_copilot, install_copilot
+
+    if check_copilot(env=env, home=trial_home):
+        return
+    if not install_copilot(env=env, home=trial_home):
+        raise RuntimeError("Failed to install GitHub Copilot CLI into the isolated trial home")
 
 
 def parse_trial_args(argv: Sequence[str]) -> tuple[Path, list[str]]:
@@ -251,6 +268,7 @@ def run_rust_trial(rust_args: Sequence[str], trial_home: Path) -> int:
     """Run the Rust CLI inside the isolated trial home."""
     binary = find_rust_cli_binary(trial_home)
     env = build_trial_env(trial_home)
+    ensure_trial_dependencies(rust_args, trial_home, env)
     print(
         f"[amplihack-rust-trial] Using isolated HOME={env['HOME']}",
         file=sys.stderr,
