@@ -253,6 +253,9 @@ for _region in "${_REGIONS[@]}"; do
       DEPLOY_RETRY_DELAY=$((DEPLOY_RETRY_DELAY * 2))
     else
       log "All ${DEPLOY_MAX_RETRIES} attempts failed in ${_region}."
+      # Clean up partial deployment before trying next region
+      log "Cleaning up partial resources in ${_region}..."
+      az containerapp env delete -n "hive-env-${HIVE_NAME}" -g "${RESOURCE_GROUP}" --yes 2>/dev/null || true
     fi
   done
 done

@@ -105,6 +105,8 @@ class UnifiedHiveMind:
         self._learn_counters: dict[str, int] = {}
         # Agent list
         self._agents: set[str] = set()
+        # Running total of events processed across all agents
+        self._total_events_processed: int = 0
 
     def register_agent(self, agent_id: str) -> None:
         """Register an agent in the hive mind."""
@@ -135,6 +137,13 @@ class UnifiedHiveMind:
             policy=policy,
         )
         self._orchestrators[agent_id] = orch
+
+        # Update all existing orchestrators with the new agent's graph
+        for existing_id, existing_orch in self._orchestrators.items():
+            if existing_id != agent_id:
+                existing_orch._peers = [
+                    g for aid, g in self._local_graphs.items() if aid != existing_id
+                ]
 
         # Subscribe to event bus
         self._event_bus.subscribe(agent_id)
@@ -276,7 +285,9 @@ class UnifiedHiveMind:
         stats: dict[str, int] = {}
         for agent_id, orch in self._orchestrators.items():
             results = orch.drain_events()
-            stats[agent_id] = len(results)
+            count = len(results)
+            stats[agent_id] = count
+            self._total_events_processed += count
 
         return stats
 
@@ -303,9 +314,7 @@ class UnifiedHiveMind:
             "agents": list(self._agents),
             "graph": graph_stats,
             "events": {
-                "total_events": sum(
-                    len(self._event_bus.poll(a)) for a in self._agents
-                ) if False else 0,  # Don't consume events
+                "total_events": self._total_events_processed,
                 "enabled": self._config.enable_events,
             },
             "gossip": {
