@@ -125,6 +125,16 @@ def main() -> None:
     # Store initial agent identity via OODA process()
     agent.process(f"Agent identity: {agent_name}. Role: {agent_prompt}")
 
+    # Install AnswerPublisher as stdout wrapper for eval answer correlation.
+    # The agent code is unchanged — it prints ANSWER lines normally. The wrapper
+    # detects them and publishes to the eval-responses topic with event_id.
+    response_topic = os.environ.get(
+        "AMPLIHACK_EVAL_RESPONSE_TOPIC",
+        f"eval-responses-{os.environ.get('AMPLIHACK_HIVE_NAME', 'default')}",
+    )
+    answer_publisher = AnswerPublisher(agent_name, connection_string, response_topic)
+    sys.stdout = answer_publisher
+
     logger.info("Agent %s memory initialized and entering OODA loop", agent_name)
 
     # Signal readiness
@@ -159,16 +169,21 @@ def main() -> None:
         from amplihack.agents.goal_seeking.input_source import ServiceBusInputSource
 
         topic_name = os.environ.get("AMPLIHACK_SB_TOPIC", "hive-events")
-        input_source = ServiceBusInputSource(
+        sb_source = ServiceBusInputSource(
             connection_string=connection_string,
             agent_name=agent_name,
             topic_name=topic_name,
             shutdown_event=shutdown_event,
         )
+        # Wrap the input source to set answer correlation context per message.
+        # The agent's OODA loop is unchanged — it calls input_source.next() and
+        # process(). The wrapper sets event_id on the AnswerPublisher (stdout)
+        # between next() and process() so the ANSWER line gets correlated.
+        input_source = _CorrelatingInputSource(sb_source, answer_publisher)
         try:
             agent.run_ooda_loop(input_source)
         finally:
-            input_source.close()
+            sb_source.close()
     else:
         # Legacy timer-driven path — preserved for local transport / v3 compat.
         logger.info(
@@ -195,6 +210,11 @@ def main() -> None:
         agent.close()
     except Exception:
         logger.debug("Error closing GoalSeekingAgent", exc_info=True)
+    try:
+        answer_publisher.close()
+        sys.stdout = answer_publisher._original_stdout
+    except Exception:
+        logger.debug("Error closing AnswerPublisher", exc_info=True)
     try:
         memory.close()
     except Exception:
@@ -258,10 +278,6 @@ def _handle_event(agent_name: str, event: object, memory: object, agent: object)
         # Ignore heartbeat events from other agents
         return
 
-    if event_type == "EVAL_QUESTIONS":
-        _handle_eval_questions(agent_name, payload, agent)
-        return
-
     if event_type in ("QUERY_RESPONSE", "network_graph.search_response"):
         # Graph store handles these internally; nothing for the OODA loop to do.
         query_id = (payload or {}).get("query_id", "")
@@ -291,90 +307,123 @@ def _handle_event(agent_name: str, event: object, memory: object, agent: object)
         )
 
 
-def _handle_eval_questions(
-    agent_name: str,
-    payload: dict,
-    agent: object,
-) -> None:
-    """Handle EVAL_QUESTIONS batch: call answer_question() locally for each question.
+class _CorrelatingInputSource:
+    """InputSource wrapper that sets AnswerPublisher context per message.
 
-    This bypasses the OODA loop entirely — answer_question() is called directly,
-    identical to how the single-agent eval works. Answers are published to the
-    eval-responses Service Bus topic for collection by the eval harness.
+    Delegates to the real ServiceBusInputSource. After each next() call,
+    reads the event metadata (event_id) and sets it on the AnswerPublisher
+    so the agent's ANSWER stdout line gets correlated.
+
+    The agent's OODA loop sees this as a normal InputSource — same interface.
     """
-    questions = payload.get("questions", [])
-    batch_id = payload.get("batch_id", "")
-    response_topic = payload.get("response_topic", "eval-responses")
 
-    if not questions:
-        logger.warning("Agent %s received EVAL_QUESTIONS with no questions", agent_name)
-        return
+    def __init__(self, source: object, publisher: "AnswerPublisher") -> None:
+        self._source = source
+        self._publisher = publisher
 
-    logger.info("Agent %s answering %d eval questions (batch=%s)", agent_name, len(questions), batch_id)
+    def next(self) -> str | None:
+        text = self._source.next()
+        # Set correlation context from the last received message
+        meta = getattr(self._source, "last_event_metadata", {})
+        event_id = meta.get("event_id", "")
+        question_id = meta.get("question_id", "")
+        if event_id:
+            self._publisher.set_context(event_id, question_id)
+        else:
+            self._publisher.clear_context()
+        return text
 
-    # Get connection string from env for publishing responses
-    conn_str = os.environ.get("AMPLIHACK_MEMORY_CONNECTION_STRING", "")
+    def close(self) -> None:
+        self._source.close()
 
-    # Import ServiceBusClient for publishing responses
-    try:
-        from azure.servicebus import ServiceBusClient, ServiceBusMessage
-    except ImportError:
-        logger.error("azure-servicebus required for eval response publishing")
-        return
+    def __getattr__(self, name):
+        return getattr(self._source, name)
 
-    sb_client = None
-    sender = None
-    try:
-        if conn_str:
-            sb_client = ServiceBusClient.from_connection_string(conn_str)
-            sender = sb_client.get_topic_sender(topic_name=response_topic)
 
-        for q in questions:
-            q_id = q.get("question_id", "")
-            q_text = q.get("text", "")
-            event_id = q.get("event_id", "")
+class AnswerPublisher:
+    """Intercepts ANSWER lines from stdout and publishes to a Service Bus response topic.
 
-            if not q_text:
-                continue
+    Installed as a stdout wrapper via DI. The agent code is unchanged — it prints
+    ANSWER lines to stdout as normal. This wrapper detects them and publishes
+    to the eval-responses topic with the current event_id for correlation.
 
-            # Call answer_question() directly — identical to single-agent eval
+    The current event_id is set by the entrypoint before calling agent.process(),
+    extracted from the incoming Service Bus message properties.
+    """
+
+    def __init__(self, agent_name: str, connection_string: str, response_topic: str):
+        self._agent_name = agent_name
+        self._current_event_id: str = ""
+        self._current_question_id: str = ""
+        self._original_stdout = sys.stdout
+        self._sender = None
+        self._sb_client = None
+
+        if connection_string:
             try:
-                answer = agent.answer_question(q_text)
-                if isinstance(answer, tuple):
-                    answer = answer[0]
+                from azure.servicebus import ServiceBusClient
+                self._sb_client = ServiceBusClient.from_connection_string(connection_string)
+                self._sender = self._sb_client.get_topic_sender(topic_name=response_topic)
+                logger.info("AnswerPublisher initialized for topic %s", response_topic)
             except Exception as e:
-                logger.warning("Agent %s failed to answer q=%s: %s", agent_name, q_id, e)
-                answer = f"Error: {e}"
+                logger.warning("AnswerPublisher: could not connect to response topic: %s", e)
 
-            logger.info("Agent %s answered q=%s: %s", agent_name, q_id, answer[:80] if answer else "(empty)")
+    def set_context(self, event_id: str, question_id: str = "") -> None:
+        """Set the current event_id for answer correlation."""
+        self._current_event_id = event_id
+        self._current_question_id = question_id
 
-            # Also print to stdout for observability
-            print(f"[{agent_name}] EVAL_ANSWER [event_id={event_id}] [q={q_id}]: {answer}", flush=True)
+    def clear_context(self) -> None:
+        """Clear correlation context after processing completes."""
+        self._current_event_id = ""
+        self._current_question_id = ""
 
-            # Publish to response topic
-            if sender:
-                try:
-                    response_msg = ServiceBusMessage(
-                        json.dumps({
-                            "event_type": "EVAL_ANSWER",
-                            "batch_id": batch_id,
-                            "event_id": event_id,
-                            "question_id": q_id,
-                            "agent_id": agent_name,
-                            "answer": answer,
-                        }),
-                        content_type="application/json",
-                    )
-                    sender.send_messages(response_msg)
-                except Exception as e:
-                    logger.warning("Failed to publish eval answer: %s", e)
-    finally:
-        if sender:
-            sender.close()
-        if sb_client:
-            sb_client.close()
+    def write(self, text: str) -> int:
+        """Intercept stdout writes. Publish ANSWER lines to response topic."""
+        # Always write to real stdout
+        result = self._original_stdout.write(text)
 
-    logger.info("Agent %s completed %d eval questions", agent_name, len(questions))
+        # Detect ANSWER lines and publish with correlation
+        if (
+            self._current_event_id
+            and self._sender
+            and f"[{self._agent_name}] ANSWER:" in text
+        ):
+            # Extract the answer text after "ANSWER: "
+            marker = "ANSWER: "
+            idx = text.find(marker)
+            answer = text[idx + len(marker):].strip() if idx >= 0 else text.strip()
+
+            try:
+                from azure.servicebus import ServiceBusMessage
+                msg = ServiceBusMessage(
+                    json.dumps({
+                        "event_type": "EVAL_ANSWER",
+                        "event_id": self._current_event_id,
+                        "question_id": self._current_question_id,
+                        "agent_id": self._agent_name,
+                        "answer": answer,
+                    }),
+                    content_type="application/json",
+                )
+                self._sender.send_messages(msg)
+            except Exception as e:
+                logger.debug("AnswerPublisher: failed to publish: %s", e)
+
+        return result
+
+    def flush(self) -> None:
+        self._original_stdout.flush()
+
+    def close(self) -> None:
+        if self._sender:
+            self._sender.close()
+        if self._sb_client:
+            self._sb_client.close()
+
+    # Forward all other attributes to the original stdout
+    def __getattr__(self, name):
+        return getattr(self._original_stdout, name)
 
 
 def _extract_input_text(event_type: str | None, payload: dict | None, raw_event: object) -> str:
