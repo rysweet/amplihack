@@ -412,8 +412,8 @@ def _local_install(repo_root, profile_uri=None):
         if ensure_rust_recipe_runner():
             print("   ✅ recipe-runner-rs is available")
         else:
-            print("   ⚠️  recipe-runner-rs not installed (Python runner will be used)")
-            print("   Install manually: cargo install --git https://github.com/rysweet/amplihack-recipe-runner")
+            print("   ❌ recipe-runner-rs not installed (recipe execution will fail without it)")
+            print("   Install: cargo install --git https://github.com/rysweet/amplihack-recipe-runner")
     except Exception as e:
         print(f"   ⚠️  recipe-runner-rs check failed: {e}")
         import logging as _install_logging
