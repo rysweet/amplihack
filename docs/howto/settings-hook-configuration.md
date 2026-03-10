@@ -167,6 +167,72 @@ python -m unittest tests.unit.test_validate_hook_paths
 python -m unittest discover -s tests -p "test_*settings*.py"
 ```
 
+## Rust Hook Engine (AMPLIHACK_HOOK_ENGINE=rust)
+
+**New in v0.9.0**: Amplihack supports a high-performance Rust backend for hook execution via the `AMPLIHACK_HOOK_ENGINE` environment variable.
+
+### Enabling the Rust Engine
+
+```bash
+export AMPLIHACK_HOOK_ENGINE=rust
+amplihack  # Hooks now use the Rust binary
+```
+
+When set, hooks are dispatched to the `amplihack-hooks` multicall binary instead of Python scripts.
+
+### Hook Mapping
+
+The following Python hooks have Rust equivalents:
+
+| Python Hook | Rust Subcommand |
+|---|---|
+| `pre_tool_use.py` | `amplihack-hooks pre-tool-use` |
+| `post_tool_use.py` | `amplihack-hooks post-tool-use` |
+| `session_start.py` | `amplihack-hooks session-start` |
+| `stop.py` | `amplihack-hooks stop` |
+
+Hooks without Rust equivalents (e.g., `workflow_classification_reminder.py`) continue to run as Python scripts regardless of the engine setting.
+
+### Binary Search Order
+
+`amplihack-hooks` is resolved in this priority order:
+
+1. `~/.amplihack/bin/amplihack-hooks` (installed binary — **takes priority**)
+2. `~/.cargo/bin/amplihack-hooks` (Cargo-built binary)
+
+Non-executable files at either location are skipped.
+
+### No Silent Fallback
+
+If `AMPLIHACK_HOOK_ENGINE=rust` is set but the binary is missing or not executable, the framework raises `FileNotFoundError`. There is no silent degradation to Python — this is intentional to prevent unexpected behavior.
+
+```
+FileNotFoundError: amplihack-hooks binary not found.
+Install the Rust binary or unset AMPLIHACK_HOOK_ENGINE.
+```
+
+### Mixed Environments
+
+Events with multiple hooks (e.g., `preToolUse`) may have both Rust and Python hooks registered. The engine handles this correctly — Rust hooks run via the binary, Python hooks run via `python3`.
+
+### Hook Ownership
+
+Hook paths are validated for ownership to prevent false matches. A hook path like `~/.amplihack/.claude/tools/xpia/hooks/` is correctly identified as an `xpia` hook, not an `amplihack` hook, even though `amplihack` appears in the path.
+
+### Generating Rust Wrapper Scripts
+
+When using the Copilot launcher with the Rust engine, wrapper scripts are generated automatically:
+
+```bash
+# Wrapper generated at staging time:
+#!/usr/bin/env bash
+exec '/home/user/.amplihack/bin/amplihack-hooks' pre-tool-use "$@"
+```
+
+Paths in wrapper scripts are quoted with `shlex.quote()` to protect against `$` expansion.
+
+---
+
 ## Related Documentation
 
 - Main README: Setup and installation guide
