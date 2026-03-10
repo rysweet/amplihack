@@ -121,7 +121,7 @@ Code's `run_in_background` kills processes after ~10 minutes. Recipe
 workstreams can take hours. You MUST use a tmux session for execution:
 
 ```bash
-tmux new-session -d -s recipe-runner "env -u CLAUDECODE python3 -c \"
+tmux new-session -d -s recipe-runner "env -u CLAUDECODE PYTHONPATH=src python3 -c \"
 import os
 os.environ.pop('CLAUDECODE', None)
 
@@ -140,7 +140,7 @@ print(f'Recipe result: {result}')
 
 **Key points:**
 - `env -u CLAUDECODE` — unset so nested Claude Code sessions can launch
-- `python3` — uses the interpreter on PATH (do NOT hardcode `.venv/bin/python`)
+- `PYTHONPATH=src python3` — uses the interpreter on PATH while forcing imports from the checked-out repo source tree (do NOT hardcode `.venv/bin/python`)
 - `run_recipe_by_name` — delegates to the Rust binary; the adapter parameter is no longer needed
 - `tmux new-session -d` — detached session, no timeout, survives disconnects
 - Monitor with: `tail -f /tmp/recipe-runner-output.log` or `tmux attach -t recipe-runner`

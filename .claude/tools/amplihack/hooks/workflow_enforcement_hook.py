@@ -367,7 +367,9 @@ if __name__ == "__main__":
     bash_evidence = {
         "toolUse": {
             "name": "Bash",
-            "input": {"command": "python3 -c 'from amplihack.recipes import run_recipe_by_name'"},
+            "input": {
+                "command": "PYTHONPATH=src python3 -c 'from amplihack.recipes import run_recipe_by_name'"
+            },
         },
         "result": {},
     }
