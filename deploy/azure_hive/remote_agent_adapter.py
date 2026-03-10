@@ -44,44 +44,46 @@ class RemoteAgentAdapter:
 
     Content is broadcast to all agents (LEARN_CONTENT events).
     Questions are sent to a single agent (round-robin) as INPUT events.
-    Answers are collected from the eval-responses topic with event_id correlation.
+    Answers are collected from Log Analytics (agent stdout → Container Apps logs).
     """
 
     def __init__(
         self,
         connection_string: str,
         input_topic: str = "hive-events",
-        response_topic: str = "eval-responses",
+        workspace_id: str = "",
         agent_count: int = 100,
         answer_timeout: float = 600.0,
+        response_topic: str = "",  # unused, kept for backward compat
     ) -> None:
         from azure.servicebus import ServiceBusClient
 
         self._conn_str = connection_string
         self._input_topic = input_topic
-        self._response_topic = response_topic
+        self._workspace_id = workspace_id
         self._agent_count = agent_count
         self._answer_timeout = answer_timeout
         self._learn_count = 0
         self._question_count = 0
+        self._closed = False
 
-        # Service Bus clients
+        # Service Bus client for sending
         self._client = ServiceBusClient.from_connection_string(connection_string)
         self._sender = self._client.get_topic_sender(topic_name=input_topic)
 
-        # Response listener runs in a background thread
-        self._pending_answers: dict[str, str] = {}  # event_id -> answer
-        self._answer_events: dict[str, threading.Event] = {}  # event_id -> signal
-        self._lock = threading.Lock()
-        self._closed = False
+        # Log Analytics client for reading answers
+        self._la_client = None
+        if workspace_id:
+            try:
+                from azure.identity import AzureCliCredential
+                from azure.monitor.query import LogsQueryClient
+                self._la_client = LogsQueryClient(AzureCliCredential())
+            except Exception as e:
+                logger.warning("RemoteAgentAdapter: LA client init failed: %s", e)
 
-        self._listener_thread = threading.Thread(
-            target=self._listen_for_answers, daemon=True
-        )
-        self._listener_thread.start()
         logger.info(
-            "RemoteAgentAdapter: input=%s response=%s agents=%d",
-            input_topic, response_topic, agent_count,
+            "RemoteAgentAdapter: input=%s workspace=%s agents=%d",
+            input_topic, workspace_id, agent_count,
         )
 
     def learn_from_content(self, content: str) -> dict[str, Any]:
@@ -107,25 +109,22 @@ class RemoteAgentAdapter:
         return {"facts_stored": 1, "event_id": event_id}
 
     def answer_question(self, question: str) -> str:
-        """Send question to one agent via INPUT event, wait for answer.
+        """Send question to one agent via INPUT event, poll LA for answer.
 
         The question goes through the agent's full OODA loop (observe → orient
-        → decide → act). The AnswerPublisher on the agent side publishes the
-        correlated answer to the response topic.
+        → decide → act). The agent prints the answer to stdout, which Container
+        Apps streams to Log Analytics. We poll LA for the ANSWER line from the
+        target agent.
         """
         from azure.servicebus import ServiceBusMessage
 
         event_id = uuid.uuid4().hex[:12]
-        # Round-robin agent selection
         target_agent = self._question_count % self._agent_count
+        target_name = f"agent-{target_agent}"
         self._question_count += 1
 
-        # Prepare answer event before sending (avoid race)
-        answer_event = threading.Event()
-        with self._lock:
-            self._answer_events[event_id] = answer_event
+        send_time = time.time()
 
-        # Send as INPUT event with event_id for correlation
         msg = ServiceBusMessage(
             json.dumps({
                 "event_type": "INPUT",
@@ -140,71 +139,68 @@ class RemoteAgentAdapter:
         )
         self._sender.send_messages(msg)
 
-        logger.debug(
-            "RemoteAgentAdapter: sent question to agent-%d (event_id=%s): %s",
-            target_agent, event_id, question[:60],
+        logger.info(
+            "RemoteAgentAdapter: sent question to %s: %s",
+            target_name, question[:60],
         )
 
-        # Wait for answer
-        if not answer_event.wait(timeout=self._answer_timeout):
-            logger.warning(
-                "RemoteAgentAdapter: timeout waiting for answer (event_id=%s, %ds)",
-                event_id, self._answer_timeout,
+        # Poll Log Analytics for the answer
+        if not self._la_client:
+            logger.warning("No LA client — cannot collect answer")
+            return "No answer (Log Analytics client not configured)"
+
+        return self._poll_la_for_answer(target_name, send_time)
+
+    def _poll_la_for_answer(self, agent_name: str, since_ts: float) -> str:
+        """Poll Log Analytics for an ANSWER line from a specific agent."""
+        import datetime
+        from azure.monitor.query import LogsQueryStatus
+
+        deadline = time.time() + self._answer_timeout
+        poll_interval = 10.0
+
+        while time.time() < deadline:
+            start_dt = datetime.datetime.fromtimestamp(
+                since_ts - 60, tz=datetime.timezone.utc  # 60s lookback buffer
             )
-            return "No answer received (timeout)"
+            end_dt = datetime.datetime.now(tz=datetime.timezone.utc)
 
-        with self._lock:
-            answer = self._pending_answers.pop(event_id, "No answer received")
-            self._answer_events.pop(event_id, None)
-
-        return answer
-
-    def _listen_for_answers(self) -> None:
-        """Background thread: subscribe to response topic and collect answers."""
-        try:
-            receiver = self._client.get_subscription_receiver(
-                topic_name=self._response_topic,
-                subscription_name="eval-reader",
-                max_wait_time=10,
+            query = (
+                "ContainerAppConsoleLogs_CL"
+                f' | where ContainerName_s == "{agent_name}"'
+                ' | where Log_s has "ANSWER:"'
+                f' | where Log_s startswith "[{agent_name}]"'
+                " | order by TimeGenerated desc"
+                " | project Log_s"
+                " | take 1"
             )
-        except Exception as e:
-            logger.error("RemoteAgentAdapter: failed to connect to response topic: %s", e)
-            return
 
-        logger.info("RemoteAgentAdapter: listening on %s/eval-reader", self._response_topic)
-
-        while not self._closed:
             try:
-                messages = receiver.receive_messages(
-                    max_message_count=50, max_wait_time=5,
+                response = self._la_client.query_workspace(
+                    workspace_id=self._workspace_id,
+                    query=query,
+                    timespan=(start_dt, end_dt),
                 )
-                for msg in messages:
-                    try:
-                        body = json.loads(str(msg))
-                        event_id = body.get("event_id", "")
-                        answer = body.get("answer", "")
+                if response.status == LogsQueryStatus.SUCCESS:
+                    if response.tables and response.tables[0].rows:
+                        log_line = str(response.tables[0].rows[0][0])
+                        if "ANSWER:" in log_line:
+                            marker = "ANSWER: "
+                            idx = log_line.find(marker)
+                            answer = log_line[idx + len(marker):].strip() if idx >= 0 else log_line
+                            if "internal error" not in answer.lower():
+                                logger.info(
+                                    "RemoteAgentAdapter: got answer from %s: %s",
+                                    agent_name, answer[:80],
+                                )
+                                return answer
+            except Exception as e:
+                logger.debug("LA poll failed: %s", e)
 
-                        with self._lock:
-                            if event_id in self._answer_events:
-                                self._pending_answers[event_id] = answer
-                                self._answer_events[event_id].set()
+            time.sleep(poll_interval)
 
-                        receiver.complete_message(msg)
-                    except Exception:
-                        logger.debug("Failed to parse response message", exc_info=True)
-                        try:
-                            receiver.complete_message(msg)
-                        except Exception:
-                            pass
-            except Exception:
-                if not self._closed:
-                    logger.debug("Response listener error", exc_info=True)
-                    time.sleep(1)
-
-        try:
-            receiver.close()
-        except Exception:
-            pass
+        logger.warning("RemoteAgentAdapter: timeout waiting for %s (%ds)", agent_name, self._answer_timeout)
+        return "No answer received (timeout)"
 
     def get_memory_stats(self) -> dict[str, Any]:
         """Return adapter stats (not agent memory stats)."""
@@ -226,5 +222,3 @@ class RemoteAgentAdapter:
             self._client.close()
         except Exception:
             pass
-        if self._listener_thread.is_alive():
-            self._listener_thread.join(timeout=5)
