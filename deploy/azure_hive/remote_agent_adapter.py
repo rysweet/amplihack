@@ -115,7 +115,14 @@ class RemoteAgentAdapter:
         → decide → act). The agent prints the answer to stdout, which Container
         Apps streams to Log Analytics. We poll LA for the ANSWER line from the
         target agent.
+
+        On the first question, waits for agents to finish processing content
+        by polling LA until LLM activity drops to near-zero.
         """
+        # On first question, wait for agents to finish processing content
+        if self._question_count == 0 and self._learn_count > 0:
+            self._wait_for_agents_idle()
+
         from azure.servicebus import ServiceBusMessage
 
         event_id = uuid.uuid4().hex[:12]
@@ -150,6 +157,52 @@ class RemoteAgentAdapter:
             return "No answer (Log Analytics client not configured)"
 
         return self._poll_la_for_answer(target_name, send_time)
+
+    def _wait_for_agents_idle(self) -> None:
+        """Wait for agents to finish processing content before asking questions."""
+        if not self._la_client:
+            logger.info("No LA client — waiting 5 min for agents to process content")
+            time.sleep(300)
+            return
+
+        import datetime
+        from azure.monitor.query import LogsQueryStatus
+
+        logger.info("Waiting for agents to finish processing %d content turns...", self._learn_count)
+        quiet_count = 0
+        quiet_threshold = 5  # 5 consecutive low-activity checks
+
+        while quiet_count < quiet_threshold:
+            try:
+                end_dt = datetime.datetime.now(tz=datetime.timezone.utc)
+                start_dt = end_dt - datetime.timedelta(minutes=2)
+                query = (
+                    "ContainerAppConsoleLogs_CL"
+                    " | where Log_s has 'Completed Call'"
+                    " | count"
+                )
+                response = self._la_client.query_workspace(
+                    workspace_id=self._workspace_id,
+                    query=query,
+                    timespan=(start_dt, end_dt),
+                )
+                count = 0
+                if response.status == LogsQueryStatus.SUCCESS and response.tables:
+                    for row in response.tables[0].rows:
+                        count = int(row[0]) if row else 0
+
+                if count < 20:
+                    quiet_count += 1
+                    logger.info("  Low activity: %d calls (quiet %d/%d)", count, quiet_count, quiet_threshold)
+                else:
+                    quiet_count = 0
+                    logger.info("  Agents processing: %d calls in 2min...", count)
+            except Exception as e:
+                logger.debug("LA poll during wait failed: %s", e)
+
+            time.sleep(30)
+
+        logger.info("Agents idle. Starting question phase.")
 
     def _poll_la_for_answer(self, agent_name: str, since_ts: float) -> str:
         """Poll Log Analytics for an ANSWER line from a specific agent."""
