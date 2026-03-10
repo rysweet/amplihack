@@ -88,26 +88,26 @@ def main():
     batch_id = uuid.uuid4().hex[:8]
     sent_events = {}  # event_id -> question object
 
+    # Send each question as a regular INPUT event (one per message).
+    # The agent processes it through its full OODA loop (observe → orient →
+    # decide → act). The event_id in the message body lets the AnswerPublisher
+    # correlate the ANSWER stdout line with this specific question.
     for agent_idx, agent_questions in batches.items():
-        agent_name = f"agent-{agent_idx}"
-        msg_body = json.dumps(
-            {
-                "event_type": "EVAL_QUESTIONS",
+        for aq in agent_questions:
+            msg_body = json.dumps({
+                "event_type": "INPUT",
+                "event_id": aq["event_id"],
                 "source_agent": "eval-harness",
                 "payload": {
-                    "questions": agent_questions,
-                    "batch_id": batch_id,
-                    "response_topic": args.response_topic,
+                    "question": aq["text"],
+                    "question_id": aq["question_id"],
                 },
-            }
-        )
-        msg = ServiceBusMessage(msg_body, content_type="application/json")
-        sender.send_messages(msg)
-
-        for aq in agent_questions:
+            })
+            msg = ServiceBusMessage(msg_body, content_type="application/json")
+            sender.send_messages(msg)
             sent_events[aq["event_id"]] = aq
 
-        logger.info("Sent %d questions to %s", len(agent_questions), agent_name)
+        logger.info("Sent %d questions to agent-%d", len(agent_questions), agent_idx)
 
     sender.close()
     logger.info("All questions sent (batch_id=%s). Waiting for answers...", batch_id)

@@ -185,6 +185,7 @@ class ServiceBusInputSource:
         self._agent_name = agent_name
         self._topic_name = topic_name
         self._max_wait_time = max_wait_time
+        self._last_event_metadata: dict[str, str] = {}
         self._shutdown = shutdown_event or threading.Event()
         self._closed = False
 
@@ -234,6 +235,12 @@ class ServiceBusInputSource:
                 payload = raw.get("payload", {})
                 text = _extract_text_from_bus_event(event_type, payload)
                 self._receiver.complete_message(msg)
+                # Store event metadata for correlation (eval answer publishing)
+                self._last_event_metadata = {
+                    "event_id": raw.get("event_id", ""),
+                    "event_type": event_type or "",
+                    "question_id": payload.get("question_id", ""),
+                }
                 if text is not None:
                     logger.debug(
                         "ServiceBusInputSource: event_type=%s len=%d",
@@ -257,6 +264,11 @@ class ServiceBusInputSource:
                     logger.debug("dead-letter failed", exc_info=True)
 
         return None
+
+    @property
+    def last_event_metadata(self) -> dict[str, str]:
+        """Metadata from the most recently received message (event_id, event_type, question_id)."""
+        return self._last_event_metadata
 
     def signal_shutdown(self) -> None:
         """Signal the source to stop on the next receive timeout."""
