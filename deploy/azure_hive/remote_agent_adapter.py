@@ -66,6 +66,8 @@ class RemoteAgentAdapter:
         self._learn_count = 0
         self._question_count = 0
         self._closed = False
+        # Track the timestamp of the last answer seen per agent to avoid stale results
+        self._agent_answer_ts: dict[str, str] = {}  # agent_name -> ISO timestamp of last answer
 
         # Service Bus client for sending
         self._client = ServiceBusClient.from_connection_string(connection_string)
@@ -205,27 +207,38 @@ class RemoteAgentAdapter:
         logger.info("Agents idle. Starting question phase.")
 
     def _poll_la_for_answer(self, agent_name: str, since_ts: float) -> str:
-        """Poll Log Analytics for an ANSWER line from a specific agent."""
+        """Poll Log Analytics for an ANSWER line from a specific agent after since_ts."""
         import datetime
         from azure.monitor.query import LogsQueryStatus
 
         deadline = time.time() + self._answer_timeout
-        poll_interval = 10.0
+        poll_interval = 15.0
+        # Use the send timestamp as the strict lower bound — no lookback
+        since_dt_str = datetime.datetime.fromtimestamp(
+            since_ts, tz=datetime.timezone.utc
+        ).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        # Also filter out any answer we've already seen from this agent
+        last_seen = self._agent_answer_ts.get(agent_name, "")
 
         while time.time() < deadline:
-            start_dt = datetime.datetime.fromtimestamp(
-                since_ts - 60, tz=datetime.timezone.utc  # 60s lookback buffer
-            )
             end_dt = datetime.datetime.now(tz=datetime.timezone.utc)
+            start_dt = datetime.datetime.fromtimestamp(since_ts, tz=datetime.timezone.utc)
+
+            # Query for the NEWEST answer from this agent after since_ts
+            time_filter = f' | where TimeGenerated > datetime({since_dt_str})'
+            if last_seen:
+                time_filter = f' | where TimeGenerated > datetime({last_seen})'
 
             query = (
                 "ContainerAppConsoleLogs_CL"
                 f' | where ContainerName_s == "{agent_name}"'
                 ' | where Log_s has "ANSWER:"'
                 f' | where Log_s startswith "[{agent_name}]"'
-                " | order by TimeGenerated desc"
-                " | project Log_s"
-                " | take 1"
+                + time_filter
+                + " | order by TimeGenerated desc"
+                + " | project TimeGenerated, Log_s"
+                + " | take 1"
             )
 
             try:
@@ -236,12 +249,16 @@ class RemoteAgentAdapter:
                 )
                 if response.status == LogsQueryStatus.SUCCESS:
                     if response.tables and response.tables[0].rows:
-                        log_line = str(response.tables[0].rows[0][0])
+                        row = response.tables[0].rows[0]
+                        ts_val = str(row[0])
+                        log_line = str(row[1])
                         if "ANSWER:" in log_line:
                             marker = "ANSWER: "
                             idx = log_line.find(marker)
                             answer = log_line[idx + len(marker):].strip() if idx >= 0 else log_line
                             if "internal error" not in answer.lower():
+                                # Record this answer's timestamp so we don't re-read it
+                                self._agent_answer_ts[agent_name] = ts_val
                                 logger.info(
                                     "RemoteAgentAdapter: got answer from %s: %s",
                                     agent_name, answer[:80],
