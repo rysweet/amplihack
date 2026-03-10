@@ -43,6 +43,7 @@ set -euo pipefail
 HIVE_NAME="${HIVE_NAME:-amplihive}"
 RESOURCE_GROUP="${HIVE_RESOURCE_GROUP:-hive-mind-rg}"
 LOCATION="${HIVE_LOCATION:-westus2}"
+FALLBACK_REGIONS="${HIVE_FALLBACK_REGIONS:-eastus,westus3,centralus}"
 AGENT_COUNT="${HIVE_AGENT_COUNT:-5}"
 AGENTS_PER_APP="${HIVE_AGENTS_PER_APP:-5}"
 IMAGE_TAG="${HIVE_IMAGE_TAG:-latest}"
@@ -211,25 +212,58 @@ fi
 # Provision infrastructure via Bicep
 # ============================================================
 
-log "Deploying Bicep template to ${RESOURCE_GROUP}..."
-DEPLOY_OUTPUT=$(az deployment group create \
-  --resource-group "${RESOURCE_GROUP}" \
-  --template-file "${SCRIPT_DIR}/main.bicep" \
-  --parameters \
-    hiveName="${HIVE_NAME}" \
-    location="${LOCATION}" \
-    agentCount="${AGENT_COUNT}" \
-    agentsPerApp="${AGENTS_PER_APP}" \
-    image="${IMAGE}" \
-    acrName="${ACR_NAME}" \
-    anthropicApiKey="${ANTHROPIC_API_KEY}" \
-    memoryTransport="${TRANSPORT}" \
-    memoryBackend="${MEMORY_BACKEND}" \
-    agentModel="${AGENT_MODEL}" \
-    agentPromptBase="${AGENT_PROMPT_BASE}" \
-  --output json)
+DEPLOY_MAX_RETRIES="${HIVE_DEPLOY_RETRIES:-3}"
+DEPLOY_REGIONS="${LOCATION},${FALLBACK_REGIONS}"
+DEPLOY_SUCCEEDED=false
 
-log "Bicep deployment complete."
+IFS=',' read -ra _REGIONS <<< "${DEPLOY_REGIONS}"
+for _region in "${_REGIONS[@]}"; do
+  _region=$(echo "${_region}" | tr -d ' ')
+  DEPLOY_RETRY_DELAY=30
+
+  # Update resource group location if switching regions
+  if [[ "${_region}" != "${LOCATION}" ]]; then
+    log "Primary region ${LOCATION} failed. Trying fallback region: ${_region}"
+    LOCATION="${_region}"
+  fi
+
+  for _deploy_attempt in $(seq 1 "${DEPLOY_MAX_RETRIES}"); do
+    log "Deploying Bicep to ${RESOURCE_GROUP} in ${_region} (attempt ${_deploy_attempt}/${DEPLOY_MAX_RETRIES})..."
+    DEPLOY_OUTPUT=$(az deployment group create \
+      --resource-group "${RESOURCE_GROUP}" \
+      --template-file "${SCRIPT_DIR}/main.bicep" \
+      --parameters \
+        hiveName="${HIVE_NAME}" \
+        location="${_region}" \
+        agentCount="${AGENT_COUNT}" \
+        agentsPerApp="${AGENTS_PER_APP}" \
+        image="${IMAGE}" \
+        acrName="${ACR_NAME}" \
+        anthropicApiKey="${ANTHROPIC_API_KEY}" \
+        memoryTransport="${TRANSPORT}" \
+        memoryBackend="${MEMORY_BACKEND}" \
+        agentModel="${AGENT_MODEL}" \
+        agentPromptBase="${AGENT_PROMPT_BASE}" \
+      --output json 2>&1) && { DEPLOY_SUCCEEDED=true; break 2; }
+
+    if [[ "${_deploy_attempt}" -lt "${DEPLOY_MAX_RETRIES}" ]]; then
+      log "Attempt ${_deploy_attempt} failed. Retrying in ${DEPLOY_RETRY_DELAY}s..."
+      log "Error: $(echo "${DEPLOY_OUTPUT}" | grep -o '"message":"[^"]*"' | head -1)"
+      sleep "${DEPLOY_RETRY_DELAY}"
+      DEPLOY_RETRY_DELAY=$((DEPLOY_RETRY_DELAY * 2))
+    else
+      log "All ${DEPLOY_MAX_RETRIES} attempts failed in ${_region}."
+    fi
+  done
+done
+
+if [[ "${DEPLOY_SUCCEEDED}" != "true" ]]; then
+  log "Deployment failed in all regions: ${DEPLOY_REGIONS}"
+  echo "${DEPLOY_OUTPUT}" >&2
+  exit 1
+fi
+
+log "Bicep deployment complete (region: ${LOCATION})."
 
 # Extract Service Bus connection string for reference
 SB_FQDN=$(echo "${DEPLOY_OUTPUT}" | python3 -c \
