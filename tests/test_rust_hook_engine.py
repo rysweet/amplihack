@@ -10,9 +10,6 @@ Covers:
 
 import json
 import os
-import stat
-import tempfile
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -178,8 +175,7 @@ class TestUpdateHookPathsRustEngine:
 
         with patch("amplihack.settings.find_rust_hook_binary", return_value=str(binary)):
             count = update_hook_paths(
-                settings, "amplihack", hooks, "/some/hooks/dir",
-                hook_engine="rust"
+                settings, "amplihack", hooks, "/some/hooks/dir", hook_engine="rust"
             )
 
         assert count == 1
@@ -195,16 +191,17 @@ class TestUpdateHookPathsRustEngine:
         settings = {}
         hooks = [
             {"type": "PreToolUse", "file": "pre_tool_use.py", "matcher": "*"},
-            {"type": "UserPromptSubmit", "file": "workflow_classification_reminder.py", "timeout": 5},
+            {
+                "type": "UserPromptSubmit",
+                "file": "workflow_classification_reminder.py",
+                "timeout": 5,
+            },
         ]
         hooks_dir = str(tmp_path / "hooks")
         os.makedirs(hooks_dir, exist_ok=True)
 
         with patch("amplihack.settings.find_rust_hook_binary", return_value=str(binary)):
-            count = update_hook_paths(
-                settings, "amplihack", hooks, hooks_dir,
-                hook_engine="rust"
-            )
+            count = update_hook_paths(settings, "amplihack", hooks, hooks_dir, hook_engine="rust")
 
         assert count == 2
         # PreToolUse should use Rust binary
@@ -223,20 +220,14 @@ class TestUpdateHookPathsRustEngine:
 
         with patch("amplihack.settings.find_rust_hook_binary", return_value=None):
             with pytest.raises(FileNotFoundError, match="amplihack-hooks binary not found"):
-                update_hook_paths(
-                    settings, "amplihack", hooks, "/some/dir",
-                    hook_engine="rust"
-                )
+                update_hook_paths(settings, "amplihack", hooks, "/some/dir", hook_engine="rust")
 
     def test_python_engine_works_unchanged(self, tmp_path):
         settings = {}
         hooks = [{"type": "PreToolUse", "file": "pre_tool_use.py", "matcher": "*"}]
         hooks_dir = str(tmp_path / "hooks")
 
-        count = update_hook_paths(
-            settings, "amplihack", hooks, hooks_dir,
-            hook_engine="python"
-        )
+        count = update_hook_paths(settings, "amplihack", hooks, hooks_dir, hook_engine="python")
 
         assert count == 1
         cmd = settings["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
@@ -371,7 +362,9 @@ class TestEngineSwitchAndQuoting:
             for cfg in settings["hooks"]["PreToolUse"]
             for h in cfg.get("hooks", [])
         ]
-        assert len(all_commands) == 1, f"Expected 1 hook entry, got {len(all_commands)}: {all_commands}"
+        assert len(all_commands) == 1, (
+            f"Expected 1 hook entry, got {len(all_commands)}: {all_commands}"
+        )
         assert all_commands[0].endswith("pre_tool_use.py")
 
     def test_binary_path_with_spaces(self, tmp_path):
@@ -395,11 +388,13 @@ class TestEngineSwitchAndQuoting:
 
         # RUST-01: _generate_rust_wrapper quotes the binary
         from amplihack.launcher.copilot import _generate_rust_wrapper
+
         wrapper = _generate_rust_wrapper(
             "pre-tool-use", ["pre_tool_use.py"], str(binary), RUST_HOOK_MAP
         )
         # The binary path should be shlex-quoted in the bash script
         import shlex
+
         assert shlex.quote(str(binary)) in wrapper
 
     def test_rust_wrapper_python_fallback_includes_repo_root(self):
@@ -414,21 +409,22 @@ class TestEngineSwitchAndQuoting:
             {},  # empty map → all files go to Python fallback
         )
         assert "REPO_ROOT" in wrapper
-        assert 'git rev-parse --show-toplevel' in wrapper
-        assert '/.claude/tools/amplihack/hooks/workflow_classification_reminder.py' in wrapper
+        assert "git rev-parse --show-toplevel" in wrapper
+        assert "/.claude/tools/amplihack/hooks/workflow_classification_reminder.py" in wrapper
         # Verify both branches: HOME-based and REPO_ROOT-based
-        assert 'AMPLIHACK_HOOKS' in wrapper
+        assert "AMPLIHACK_HOOKS" in wrapper
         assert 'elif [[ -n "$REPO_ROOT" ]]' in wrapper
 
     def test_ensure_settings_rust_engine_missing_binary(self, tmp_path):
         """RUST-07: ensure_settings_json returns False (not crash) when binary missing."""
         from amplihack.settings import ensure_settings_json
 
-        with patch("amplihack.settings.get_hook_engine", return_value="rust"), \
-             patch("amplihack.settings.find_rust_hook_binary", return_value=None), \
-             patch("amplihack.settings.CLAUDE_DIR", str(tmp_path)), \
-             patch("amplihack.settings.HOME", str(tmp_path)):
-
+        with (
+            patch("amplihack.settings.get_hook_engine", return_value="rust"),
+            patch("amplihack.settings.find_rust_hook_binary", return_value=None),
+            patch("amplihack.settings.CLAUDE_DIR", str(tmp_path)),
+            patch("amplihack.settings.HOME", str(tmp_path)),
+        ):
             # Create minimal settings file
             settings_path = tmp_path / "settings.json"
             settings_path.write_text("{}")
@@ -437,6 +433,7 @@ class TestEngineSwitchAndQuoting:
             hooks_dir = tmp_path / ".amplihack" / ".claude" / "tools" / "amplihack" / "hooks"
             hooks_dir.mkdir(parents=True)
             from amplihack import HOOK_CONFIGS
+
             for hook_info in HOOK_CONFIGS["amplihack"]:
                 (hooks_dir / hook_info["file"]).write_text("# stub")
 

@@ -175,8 +175,7 @@ def get_hook_engine():
     return engine
 
 
-def update_hook_paths(settings, hook_system, hooks_to_update, hooks_dir_path,
-                     hook_engine=None):
+def update_hook_paths(settings, hook_system, hooks_to_update, hooks_dir_path, hook_engine=None):
     """Update hook paths for a given hook system (amplihack or xpia).
 
     This function ensures all hook paths in settings.json are absolute paths,
@@ -272,7 +271,7 @@ def update_hook_paths(settings, hook_system, hooks_to_update, hooks_dir_path,
                                 print(f"  🔄 Updated {hook_type} hook path")
                             break
                         # Also match Rust commands being replaced (engine switch)
-                        elif "amplihack-hooks" in cmd:
+                        if "amplihack-hooks" in cmd:
                             rust_subcmd = RUST_HOOK_MAP.get(hook_file)
                             if rust_subcmd and rust_subcmd in cmd:
                                 found = True

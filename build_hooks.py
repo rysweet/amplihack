@@ -124,11 +124,13 @@ class _CustomBuildBackend:
             candidates.append(Path(env_dir) / binary_name)
 
         sibling_target = self.repo_root.parent / "amplihack-rs" / "target"
-        candidates.extend([
-            sibling_target / "release" / binary_name,
-            sibling_target / "debug" / binary_name,
-            Path.home() / ".cargo" / "bin" / binary_name,
-        ])
+        candidates.extend(
+            [
+                sibling_target / "release" / binary_name,
+                sibling_target / "debug" / binary_name,
+                Path.home() / ".cargo" / "bin" / binary_name,
+            ]
+        )
 
         on_path = shutil.which(binary_name)
         if on_path:
@@ -160,7 +162,9 @@ class _CustomBuildBackend:
             staged += 1
 
         if staged == 0:
-            print("Info: No Rust binaries staged; wheel will use Python-only packaging for binaries")
+            print(
+                "Info: No Rust binaries staged; wheel will use Python-only packaging for binaries"
+            )
 
     def _copy_plugin_manifest(self):
         """Copy .claude-plugin/ from repo root to src/amplihack/ for wheel inclusion."""

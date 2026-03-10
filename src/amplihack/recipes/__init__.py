@@ -37,7 +37,6 @@ from amplihack.recipes.models import (
     StepType,
 )
 from amplihack.recipes.parser import RecipeParser
-
 from amplihack.recipes.rust_runner import (
     RustRunnerNotFoundError,
     ensure_rust_recipe_runner,
@@ -87,6 +86,7 @@ def run_recipe_by_name(
     recipe_dirs: list[str] | None = None,
     working_dir: str = ".",
     auto_stage: bool = True,
+    progress: bool = False,
     **_kwargs: Any,
 ) -> RecipeResult:
     """Find a recipe by name and execute it via the Rust recipe runner.
@@ -101,6 +101,7 @@ def run_recipe_by_name(
         recipe_dirs: Extra recipe search directories to pass to the Rust runner.
         working_dir: Working directory for execution (default ``"."``).
         auto_stage: Whether to auto-stage git changes (default True).
+        progress: Whether to stream Rust runner progress output to stderr.
 
     Raises:
         RustRunnerNotFoundError: If the Rust binary is not installed.
@@ -115,4 +116,5 @@ def run_recipe_by_name(
         recipe_dirs=recipe_dirs,
         working_dir=working_dir,
         auto_stage=auto_stage,
+        progress=progress,
     )

@@ -39,7 +39,10 @@ if version:
             try:
                 import tomli as tomllib  # type: ignore
             except ImportError:
-                print("WARNING: tomli not available, version detection from pyproject.toml disabled", file=sys.stderr)
+                print(
+                    "WARNING: tomli not available, version detection from pyproject.toml disabled",
+                    file=sys.stderr,
+                )
                 tomllib = None  # type: ignore
 
         if tomllib:
@@ -168,8 +171,8 @@ def filecmp(f1, f2):
 def main():
     """Main CLI entry point."""
     # Ensure dependencies are installed at CLI startup (not import time)
-    from .memory_auto_install import ensure_memory_lib_installed
     from .copilot_auto_install import ensure_copilot_sdk_installed
+    from .memory_auto_install import ensure_memory_lib_installed
 
     ensure_memory_lib_installed()
     ensure_copilot_sdk_installed()
