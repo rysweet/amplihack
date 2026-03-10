@@ -142,26 +142,22 @@ def find_rust_hook_binary():
 
     Search order:
     1. PATH (via shutil.which)
-    2. ~/.amplihack/bin/amplihack-hooks
-    3. ~/.cargo/bin/amplihack-hooks
+    2. ~/.amplihack/.claude/bin/amplihack-hooks
+    3. ~/.amplihack/bin/amplihack-hooks (legacy)
+    4. ~/.cargo/bin/amplihack-hooks
 
     Returns:
         Absolute path to the binary, or None if not found.
     """
-    # 1. Check PATH
-    on_path = shutil.which("amplihack-hooks")
-    if on_path:
-        return os.path.abspath(on_path)
-
-    # 2. Check ~/.amplihack/bin/
-    amplihack_bin = os.path.expanduser("~/.amplihack/bin/amplihack-hooks")
-    if os.path.isfile(amplihack_bin) and os.access(amplihack_bin, os.X_OK):
-        return os.path.abspath(amplihack_bin)
-
-    # 3. Check ~/.cargo/bin/
-    cargo_bin = os.path.expanduser("~/.cargo/bin/amplihack-hooks")
-    if os.path.isfile(cargo_bin) and os.access(cargo_bin, os.X_OK):
-        return os.path.abspath(cargo_bin)
+    candidates = [
+        shutil.which("amplihack-hooks"),
+        os.path.expanduser("~/.amplihack/.claude/bin/amplihack-hooks"),
+        os.path.expanduser("~/.amplihack/bin/amplihack-hooks"),
+        os.path.expanduser("~/.cargo/bin/amplihack-hooks"),
+    ]
+    for candidate in candidates:
+        if candidate and os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+            return os.path.abspath(candidate)
 
     return None
 

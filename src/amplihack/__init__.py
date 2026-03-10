@@ -65,6 +65,7 @@ MANIFEST_JSON = os.path.join(CLAUDE_DIR, "install", "amplihack-manifest.json")
 
 # Essential directories that must be copied during installation
 ESSENTIAL_DIRS = [
+    "bin",  # Staged Rust binaries (amplihack, amplihack-hooks)
     "agents/amplihack",  # Specialized agents
     "commands/amplihack",  # Slash commands
     "tools/amplihack",  # Hooks and utilities
@@ -214,4 +215,3 @@ __all__ = [
     # Main
     "main",
 ]
-
