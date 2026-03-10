@@ -333,7 +333,7 @@ class TestEngineSelection:
             from amplihack.recipes import RecipeRunner  # noqa: F401
 
     def test_adapters_no_longer_importable(self):
-        with pytest.raises(ModuleNotFoundError):
+        with pytest.raises(ImportError):
             from amplihack.recipes.adapters import CLISubprocessAdapter  # noqa: F401
 
     def test_context_no_longer_importable(self):
