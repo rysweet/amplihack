@@ -114,6 +114,18 @@ HOOK_CONFIGS = {
     ],
 }
 
+# Maps Python hook filenames to Rust multicall subcommands (amplihack-hooks <subcommand>).
+# Hooks NOT in this map (e.g., workflow_classification_reminder.py) always use Python.
+RUST_HOOK_MAP = {
+    "session_start.py": "session-start",
+    "stop.py": "stop",
+    "session_stop.py": "session-stop",
+    "pre_tool_use.py": "pre-tool-use",
+    "post_tool_use.py": "post-tool-use",
+    "user_prompt_submit.py": "user-prompt-submit",
+    "pre_compact.py": "pre-compact",
+}
+
 # Import from focused modules
 from .hook_verification import verify_hooks
 from .install import (
