@@ -6,12 +6,16 @@ from unittest.mock import Mock
 
 import pytest
 
+from amplihack.recipes.models import RecipeResult
+
 
 @pytest.fixture
 def mock_recipe_runner():
     """Mock recipe runner for testing."""
     mock = Mock()
-    mock.run_recipe_by_name = Mock(return_value={"status": "success"})
+    mock.run_recipe_by_name = Mock(
+        return_value=RecipeResult(recipe_name="mock-recipe", success=True)
+    )
     mock.is_available = Mock(return_value=True)
     return mock
 

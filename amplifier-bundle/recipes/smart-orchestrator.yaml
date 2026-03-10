@@ -81,16 +81,19 @@ steps:
           echo "Set AMPLIHACK_HOME to your amplihack repo root, or run from within the repo." >&2
           exit 1
       fi
-      DECOMP_JSON=$(cat <<'EOFDECOMP'
+      _DECOMP_TMPFILE=$(mktemp)
+      trap 'rm -f "$_DECOMP_TMPFILE"' EXIT
+      cat > "$_DECOMP_TMPFILE" <<'__DECOMP_EOF__'
       {{decomposition_json}}
-      EOFDECOMP
-      )
-      export DECOMP_JSON HELPER_PATH
+      __DECOMP_EOF__
+      export DECOMP_TMPFILE="$_DECOMP_TMPFILE"
+      export HELPER_PATH
       python3 - <<'PYEOF'
       import sys, json, os, importlib.util
 
       helper_path = os.environ['HELPER_PATH']
-      decomp_json = os.environ['DECOMP_JSON']
+      with open(os.environ['DECOMP_TMPFILE']) as f:
+          decomp_json = f.read()
 
       spec = importlib.util.spec_from_file_location('orch_helper', helper_path)
       h = importlib.util.module_from_spec(spec); spec.loader.exec_module(h)
@@ -129,12 +132,20 @@ steps:
       )
       TASK_TYPE='{{task_type}}'
       HOOKS_DIR="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/amplihack/hooks"
-      export DECOMP_JSON HELPER_PATH TASK_TYPE HOOKS_DIR
+      _DECOMP_TMPFILE=$(mktemp)
+      trap 'rm -f "$_DECOMP_TMPFILE"' EXIT
+      cat > "$_DECOMP_TMPFILE" <<'__DECOMP_EOF__'
+      {{decomposition_json}}
+      __DECOMP_EOF__
+      export DECOMP_TMPFILE="$_DECOMP_TMPFILE"
+      export TASK_TYPE=$(printf '%s' {{task_type}})
+      export HELPER_PATH HOOKS_DIR
       python3 - <<'PYEOF'
       import os, sys, importlib.util
 
       helper_path = os.environ['HELPER_PATH']
-      decomp_json = os.environ['DECOMP_JSON']
+      with open(os.environ['DECOMP_TMPFILE']) as f:
+          decomp_json = f.read()
       task_type = os.environ['TASK_TYPE']
       hooks_dir = os.environ['HOOKS_DIR']
 
@@ -298,16 +309,19 @@ steps:
           echo "Set AMPLIHACK_HOME to your amplihack repo root, or run from within the repo." >&2
           exit 1
       fi
-      DECOMP_JSON=$(cat <<'EOFDECOMP'
+      _DECOMP_TMPFILE=$(mktemp)
+      trap 'rm -f "$_DECOMP_TMPFILE"' EXIT
+      cat > "$_DECOMP_TMPFILE" <<'__DECOMP_EOF__'
       {{decomposition_json}}
-      EOFDECOMP
-      )
-      export DECOMP_JSON HELPER_PATH
+      __DECOMP_EOF__
+      export DECOMP_TMPFILE="$_DECOMP_TMPFILE"
+      export HELPER_PATH
       python3 - <<'PYEOF'
       import json, os, re, tempfile, sys
       sys.path.insert(0, os.path.dirname(os.environ['HELPER_PATH']))
       import orch_helper
-      decomp = os.environ['DECOMP_JSON']
+      with open(os.environ['DECOMP_TMPFILE']) as f:
+          decomp = f.read()
       obj = orch_helper.extract_json(decomp)
       config = []
       for i, ws in enumerate(obj.get("workstreams", [])):

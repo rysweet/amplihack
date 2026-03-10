@@ -1,0 +1,99 @@
+scenario:
+  name: "Fleet TUI Dashboard - Smoke Test"
+  description: "Verify the fleet TUI launches, renders correctly, and responds to keyboard input"
+  type: tui
+  tags: [smoke, fleet, tui]
+  timeout: 30s
+
+  environment:
+    terminal_size: {width: 120, height: 35}
+    variables:
+      TERM: "xterm-256color"
+
+  prerequisites:
+    - "amplihack package installed with fleet-tui extra"
+    - "uv available on PATH"
+
+  steps:
+    # Step 1: Launch the TUI
+    - action: launch
+      target: "uv"
+      args: ["run", "fleet", "tui"]
+      description: "Launch fleet TUI dashboard"
+
+    # Step 2: Verify pirate ship logo appears
+    - action: wait_for_screen
+      contains: "A M P L I H A C K   F L E E T"
+      timeout: 10s
+      description: "Pirate ship logo with AMPLIHACK FLEET title should appear"
+
+    # Step 3: Verify tab bar renders
+    - action: verify_screen
+      contains: "Fleet Overview"
+      description: "Fleet Overview tab should be visible"
+
+    - action: verify_screen
+      contains: "Session Detail"
+      description: "Session Detail tab should be visible"
+
+    - action: verify_screen
+      contains: "Projects"
+      description: "Projects tab should be visible"
+
+    # Step 4: Verify footer keybindings render
+    - action: verify_screen
+      contains: "Quit"
+      description: "Footer should show Quit keybinding"
+
+    - action: verify_screen
+      contains: "Refresh"
+      description: "Footer should show Refresh keybinding"
+
+    # Step 5: Test 'l' key toggles logo
+    - action: send_keypress
+      value: "l"
+      description: "Press 'l' to toggle logo visibility"
+
+    - action: capture_screenshot
+      save_as: "after-logo-toggle.txt"
+      description: "Capture screen after logo toggle"
+
+    # Step 6: Test number key tab switching
+    - action: send_keypress
+      value: "2"
+      description: "Press '2' to switch to Session Detail tab"
+
+    - action: wait_for_screen
+      contains: "Select a session"
+      timeout: 3s
+      description: "Session Detail tab should show selection prompt"
+
+    - action: send_keypress
+      value: "1"
+      description: "Press '1' to go back to Fleet Overview"
+
+    - action: send_keypress
+      value: "4"
+      description: "Press '4' to switch to Projects tab"
+
+    - action: send_keypress
+      value: "1"
+      description: "Press '1' to go back to Fleet Overview"
+
+    # Step 7: Test Escape key
+    - action: send_keypress
+      value: "escape"
+      description: "Press Escape - should stay on Fleet Overview"
+
+    # Step 8: Test quit
+    - action: send_keypress
+      value: "q"
+      description: "Press 'q' to quit the application"
+
+    - action: verify_exit_code
+      expected: 0
+      description: "App should exit cleanly"
+
+  cleanup:
+    - action: stop_application
+      force: true
