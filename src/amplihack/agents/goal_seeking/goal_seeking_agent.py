@@ -195,7 +195,7 @@ class GoalSeekingAgent:
                 output = "Error: could not synthesize answer."
             # Write answer to stdout — Container Apps streams this to Log Analytics
             print(f"[{self._agent_name}] ANSWER: {output}", flush=True)
-            logger.info("Agent %s ANSWER: %s", self._agent_name, output[:200])
+            logger.info("Agent %s ANSWER: %s", self._agent_name, output)
 
         else:  # "store" (or empty / unknown)
             try:
