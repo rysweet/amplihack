@@ -1149,14 +1149,11 @@ class TestKnownFalsePositives:
     """
 
     @pytest.mark.parametrize("safe_content", [
-        pytest.param("Dan Brown wrote The Da Vinci Code",
-                     marks=pytest.mark.xfail(reason="RH001 \\bDAN\\b still matches proper name Dan", strict=True)),
+        "Dan Brown wrote The Da Vinci Code",
         "Jordan is a country in the Middle East",
         "dandelion flowers are beautiful in spring",
-        pytest.param("My colleague Dan reviewed the PR",
-                     marks=pytest.mark.xfail(reason="RH001 \\bDAN\\b still matches proper name Dan", strict=True)),
-        pytest.param("The Dan River flows through Virginia",
-                     marks=pytest.mark.xfail(reason="RH001 \\bDAN\\b still matches proper name Dan", strict=True)),
+        "My colleague Dan reviewed the PR",
+        "The Dan River flows through Virginia",
     ])
     def test_dan_name_false_positive(self, safe_content):
         result = run_in_pty([BINARY_NAME, "validate-content", "--content", safe_content])
@@ -1195,7 +1192,6 @@ class TestKnownFalsePositives:
         data = json.loads(result.stdout)
         assert len(data.get("threats", [])) == 0, "False positive: safe role claim triggers RH002"
 
-    @pytest.mark.xfail(reason="RH001 triggers on package name containing 'dan'", strict=True)
     def test_package_name_false_positive(self):
         result = run_in_pty([BINARY_NAME, "validate-bash",
                             "--command", "pip install dan-utils"])
@@ -1338,7 +1334,6 @@ class TestMoreFalsePositives:
         data = json.loads(result.stdout)
         assert data["is_valid"] is True, "Security discussion should not be blocked"
 
-    @pytest.mark.xfail(reason="RH001 triggers on Dan in prose context — issue #4", strict=True)
     def test_dan_in_prose_false_positive(self):
         result = run_in_pty([BINARY_NAME, "validate-content",
                             "--content", "The dancer named Dan performed a beautiful routine"])
