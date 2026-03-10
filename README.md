@@ -92,6 +92,27 @@ uvx --from git+https://github.com/rysweet/amplihack amplihack copilot
 
 This launches an interactive Claude Code session enhanced with amplihack's workflows, specialized agents, and development tools. You'll get a CLI prompt where you can describe tasks and the framework orchestrates their execution.
 
+### Trial the Rust CLI without replacing your current install
+
+Use the opt-in helper below to run the bundled Rust CLI under an isolated home
+directory. This keeps trial state out of your real `~/.claude` setup.
+
+```bash
+# Show the Rust CLI help in an isolated trial home
+uvx --from git+https://github.com/rysweet/amplihack amplihack-rust-trial --help
+
+# Try real commands without touching your current amplihack install
+uvx --from git+https://github.com/rysweet/amplihack amplihack-rust-trial recipe list
+uvx --from git+https://github.com/rysweet/amplihack amplihack-rust-trial mode detect
+
+# Use a custom sandbox if you want to keep a multi-day trial separate
+uvx --from git+https://github.com/rysweet/amplihack amplihack-rust-trial \
+  --trial-home ~/.amplihack-rust-e2e install
+```
+
+By default the helper stores trial state under `~/.amplihack-rust-trial` and
+does not change the default Python-based `amplihack` entrypoint.
+
 **Option 2: Global Install** (for daily use)
 
 ```bash
