@@ -378,8 +378,27 @@ class TestEngineSwitchAndQuoting:
         wrapper = _generate_rust_wrapper(
             "pre-tool-use", ["pre_tool_use.py"], str(binary), RUST_HOOK_MAP
         )
-        # The binary path should be quoted in the bash script
-        assert f'"{binary}"' in wrapper
+        # The binary path should be shlex-quoted in the bash script
+        import shlex
+        assert shlex.quote(str(binary)) in wrapper
+
+    def test_rust_wrapper_python_fallback_includes_repo_root(self):
+        """AC1-01: Python fallback in Rust wrapper must include REPO_ROOT git-based fallback."""
+        from amplihack.launcher.copilot import _generate_rust_wrapper
+
+        # Use a hook file that has NO Rust equivalent to force Python fallback
+        wrapper = _generate_rust_wrapper(
+            "post-tool-use",
+            ["workflow_classification_reminder.py"],
+            "/usr/bin/amplihack-hooks",
+            {},  # empty map → all files go to Python fallback
+        )
+        assert "REPO_ROOT" in wrapper
+        assert 'git rev-parse --show-toplevel' in wrapper
+        assert '/.claude/tools/amplihack/hooks/workflow_classification_reminder.py' in wrapper
+        # Verify both branches: HOME-based and REPO_ROOT-based
+        assert 'AMPLIHACK_HOOKS' in wrapper
+        assert 'elif [[ -n "$REPO_ROOT" ]]' in wrapper
 
     def test_ensure_settings_rust_engine_missing_binary(self, tmp_path):
         """RUST-07: ensure_settings_json returns False (not crash) when binary missing."""
