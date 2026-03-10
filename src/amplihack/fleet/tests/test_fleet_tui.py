@@ -1,8 +1,8 @@
 """Unit tests for FleetTUI data layer -- VM polling, status classification, config reading.
 
 Tests the non-rendering data methods of FleetTUI:
-- _read_azlin_resource_group: config.toml parsing
-- _get_vm_list: az CLI JSON parsing with azlin text fallback
+- read_azlin_resource_group: config.toml parsing (in _vm_discovery)
+- get_vm_list: az CLI JSON parsing with azlin text fallback (in _vm_discovery)
 - _parse_vm_text: azlin list table parsing
 - _classify_status: tmux output classification
 - refresh / refresh_all: orchestration with exclude filtering
@@ -27,6 +27,7 @@ import pytest
 from amplihack.fleet.fleet_tui import FleetTUI, VMView, SessionView
 from amplihack.fleet._tui_classify import classify_status
 from amplihack.fleet._tui_parsers import parse_session_output, parse_vm_text
+from amplihack.fleet._vm_discovery import get_vm_list, read_azlin_resource_group
 
 
 # ---------------------------------------------------------------------------
@@ -62,9 +63,9 @@ Fleet Status
 
 
 class TestReadAzlinResourceGroup:
-    """_read_azlin_resource_group config.toml parsing."""
+    """read_azlin_resource_group config.toml parsing."""
 
-    def test_reads_resource_group_from_config(self, tui: FleetTUI) -> None:
+    def test_reads_resource_group_from_config(self) -> None:
         """Should extract default_resource_group value from config.toml."""
         config_content = (
             '[azure]\n'
@@ -75,7 +76,7 @@ class TestReadAzlinResourceGroup:
         mock_path.exists.return_value = True
         mock_path.read_text.return_value = config_content
 
-        with patch("amplihack.fleet.fleet_tui.Path.home") as mock_home:
+        with patch("amplihack.fleet._vm_discovery.Path.home") as mock_home:
             mock_home.return_value.__truediv__ = lambda self, key: (
                 mock_path if key == ".azlin" else MagicMock()
             )
@@ -86,24 +87,24 @@ class TestReadAzlinResourceGroup:
             mock_home.return_value.__truediv__ = MagicMock(return_value=azlin_dir)
             azlin_dir.__truediv__ = MagicMock(return_value=mock_path)
 
-            result = tui._read_azlin_resource_group()
+            result = read_azlin_resource_group()
 
         assert result == "my-custom-rg"
 
-    def test_reads_single_quoted_value(self, tui: FleetTUI) -> None:
+    def test_reads_single_quoted_value(self) -> None:
         """Should handle single-quoted resource group values."""
         config_content = "default_resource_group = 'single-quoted-rg'\n"
         mock_path = MagicMock(spec=Path)
         mock_path.exists.return_value = True
         mock_path.read_text.return_value = config_content
 
-        with patch("amplihack.fleet.fleet_tui.Path.home") as mock_home:
+        with patch("amplihack.fleet._vm_discovery.Path.home") as mock_home:
             mock_home.return_value = MagicMock()
             azlin_dir = MagicMock()
             mock_home.return_value.__truediv__ = MagicMock(return_value=azlin_dir)
             azlin_dir.__truediv__ = MagicMock(return_value=mock_path)
 
-            result = tui._read_azlin_resource_group()
+            result = read_azlin_resource_group()
 
         assert result == "single-quoted-rg"
 
@@ -114,37 +115,37 @@ class TestReadAzlinResourceGroup:
 
 
 class TestReadAzlinResourceGroupDefault:
-    """_read_azlin_resource_group raises ValueError when config missing."""
+    """read_azlin_resource_group raises ValueError when config missing."""
 
-    def test_raises_when_file_missing(self, tui: FleetTUI) -> None:
+    def test_raises_when_file_missing(self) -> None:
         """Should raise ValueError when ~/.azlin/config.toml does not exist."""
         mock_path = MagicMock(spec=Path)
         mock_path.exists.return_value = False
 
-        with patch("amplihack.fleet.fleet_tui.Path.home") as mock_home:
+        with patch("amplihack.fleet._vm_discovery.Path.home") as mock_home:
             mock_home.return_value = MagicMock()
             azlin_dir = MagicMock()
             mock_home.return_value.__truediv__ = MagicMock(return_value=azlin_dir)
             azlin_dir.__truediv__ = MagicMock(return_value=mock_path)
 
             with pytest.raises(ValueError, match="No resource group configured"):
-                tui._read_azlin_resource_group()
+                read_azlin_resource_group()
 
-    def test_raises_when_no_matching_key(self, tui: FleetTUI) -> None:
+    def test_raises_when_no_matching_key(self) -> None:
         """Should raise ValueError when config exists but has no resource_group key."""
         config_content = "[azure]\nsubscription = \"abc\"\n"
         mock_path = MagicMock(spec=Path)
         mock_path.exists.return_value = True
         mock_path.read_text.return_value = config_content
 
-        with patch("amplihack.fleet.fleet_tui.Path.home") as mock_home:
+        with patch("amplihack.fleet._vm_discovery.Path.home") as mock_home:
             mock_home.return_value = MagicMock()
             azlin_dir = MagicMock()
             mock_home.return_value.__truediv__ = MagicMock(return_value=azlin_dir)
             azlin_dir.__truediv__ = MagicMock(return_value=mock_path)
 
             with pytest.raises(ValueError, match="No resource group configured"):
-                tui._read_azlin_resource_group()
+                read_azlin_resource_group()
 
 
 # ---------------------------------------------------------------------------
@@ -153,9 +154,9 @@ class TestReadAzlinResourceGroupDefault:
 
 
 class TestGetVmListJson:
-    """_get_vm_list with successful az CLI JSON output."""
+    """get_vm_list with successful az CLI JSON output."""
 
-    def test_parses_json_output(self, tui: FleetTUI) -> None:
+    def test_parses_json_output(self) -> None:
         """Should parse az vm list JSON into (name, region, is_running, []) tuples."""
         az_result = MagicMock()
         az_result.returncode = 0
@@ -169,16 +170,16 @@ class TestGetVmListJson:
                 return az_result
             return azlin_result  # azlin list fails
 
-        with patch("amplihack.fleet.fleet_tui.subprocess.run", side_effect=side_effect) as mock_run, \
-             patch.object(tui, "_read_azlin_resource_group", return_value="test-rg"):
-            vms = tui._get_vm_list()
+        with patch("amplihack.fleet._vm_discovery.subprocess.run", side_effect=side_effect), \
+             patch("amplihack.fleet._vm_discovery.read_azlin_resource_group", return_value="test-rg"):
+            vms = get_vm_list("/usr/bin/fake-azlin")
 
         assert len(vms) == 3
         assert vms[0] == ("vm-alpha", "westus2", True, [])
         assert vms[1] == ("vm-beta", "eastus", False, [])
         assert vms[2] == ("vm-gamma", "westus2", True, [])
 
-    def test_skips_vms_with_empty_name(self, tui: FleetTUI) -> None:
+    def test_skips_vms_with_empty_name(self) -> None:
         """Should skip VM entries that have an empty name."""
         data = json.dumps([
             {"name": "", "location": "westus2", "powerState": "VM running"},
@@ -193,9 +194,9 @@ class TestGetVmListJson:
         def side_effect(cmd, **kwargs):
             return az_result if cmd[0] == "az" else azlin_result
 
-        with patch("amplihack.fleet.fleet_tui.subprocess.run", side_effect=side_effect), \
-             patch.object(tui, "_read_azlin_resource_group", return_value="rg"):
-            vms = tui._get_vm_list()
+        with patch("amplihack.fleet._vm_discovery.subprocess.run", side_effect=side_effect), \
+             patch("amplihack.fleet._vm_discovery.read_azlin_resource_group", return_value="rg"):
+            vms = get_vm_list("/usr/bin/fake-azlin")
 
         assert len(vms) == 1
         assert vms[0][0] == "good-vm"
@@ -207,16 +208,16 @@ class TestGetVmListJson:
 
 
 class TestGetVmListFallback:
-    """_get_vm_list tries azlin first, falls back to az CLI."""
+    """get_vm_list tries azlin first, falls back to az CLI."""
 
-    def test_azlin_list_is_preferred(self, tui: FleetTUI) -> None:
+    def test_azlin_list_is_preferred(self) -> None:
         """azlin list is tried first (includes session names)."""
         azlin_result = MagicMock()
         azlin_result.returncode = 0
         azlin_result.stdout = AZLIN_LIST_TABLE
 
-        with patch("amplihack.fleet.fleet_tui.subprocess.run", return_value=azlin_result):
-            vms = tui._get_vm_list()
+        with patch("amplihack.fleet._vm_discovery.subprocess.run", return_value=azlin_result):
+            vms = get_vm_list("/usr/bin/fake-azlin")
 
         assert len(vms) == 2
         assert vms[0][0] == "fleet-vm-1"
@@ -225,7 +226,7 @@ class TestGetVmListFallback:
         assert vms[1][0] == "fleet-vm-2"
         assert vms[1][2] is False  # Stopped
 
-    def test_falls_back_to_az_cli_when_azlin_fails(self, tui: FleetTUI) -> None:
+    def test_falls_back_to_az_cli_when_azlin_fails(self) -> None:
         """When azlin list fails, should fall back to az vm list."""
         az_result = MagicMock()
         az_result.returncode = 0
@@ -239,21 +240,21 @@ class TestGetVmListFallback:
                 return az_result
             return azlin_result
 
-        with patch("amplihack.fleet.fleet_tui.subprocess.run", side_effect=side_effect), \
-             patch.object(tui, "_read_azlin_resource_group", return_value="rg"):
-            vms = tui._get_vm_list()
+        with patch("amplihack.fleet._vm_discovery.subprocess.run", side_effect=side_effect), \
+             patch("amplihack.fleet._vm_discovery.read_azlin_resource_group", return_value="rg"):
+            vms = get_vm_list("/usr/bin/fake-azlin")
 
         assert len(vms) == 3
         assert vms[0][3] == []  # az CLI has no session data
 
-    def test_returns_empty_when_both_strategies_fail(self, tui: FleetTUI) -> None:
+    def test_returns_empty_when_both_strategies_fail(self) -> None:
         """When both azlin list and az CLI fail, should return empty list."""
         def side_effect(cmd, **kwargs):
             raise FileNotFoundError(f"{cmd[0]} not found")
 
-        with patch("amplihack.fleet.fleet_tui.subprocess.run", side_effect=side_effect), \
-             patch.object(tui, "_read_azlin_resource_group", return_value="rg"):
-            vms = tui._get_vm_list()
+        with patch("amplihack.fleet._vm_discovery.subprocess.run", side_effect=side_effect), \
+             patch("amplihack.fleet._vm_discovery.read_azlin_resource_group", return_value="rg"):
+            vms = get_vm_list("/usr/bin/fake-azlin")
 
         assert vms == []
 
@@ -491,7 +492,7 @@ class TestRefreshExclude:
             ("another-vm", "westus", False),
         ]
 
-        with patch.object(tui, "_get_vm_list", return_value=vm_list), \
+        with patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list), \
              patch.object(tui, "_poll_vm", return_value=[]):
             result = tui.refresh()
 
@@ -507,7 +508,7 @@ class TestRefreshExclude:
             ("stopped-vm", "eastus", False),
         ]
 
-        with patch.object(tui, "_get_vm_list", return_value=vm_list), \
+        with patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list), \
              patch.object(tui, "_poll_vm", return_value=[]) as mock_poll:
             result = tui.refresh()
 
@@ -522,7 +523,7 @@ class TestRefreshExclude:
             ("middle-vm", "westus", False),
         ]
 
-        with patch.object(tui, "_get_vm_list", return_value=vm_list), \
+        with patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list), \
              patch.object(tui, "_poll_vm", return_value=[]):
             result = tui.refresh()
 
@@ -545,7 +546,7 @@ class TestRefreshAll:
             ("excluded-vm", "eastus", True),  # In tui.exclude_vms
         ]
 
-        with patch.object(tui, "_get_vm_list", return_value=vm_list), \
+        with patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list), \
              patch.object(tui, "_poll_vm", return_value=[]):
             result = tui.refresh_all()
 
@@ -560,7 +561,7 @@ class TestRefreshAll:
             ("normal-vm", "westus", True),
         ]
 
-        with patch.object(tui, "_get_vm_list", return_value=vm_list), \
+        with patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list), \
              patch.object(tui, "_poll_vm", return_value=[]) as mock_poll:
             tui.refresh_all()
 
@@ -573,7 +574,7 @@ class TestRefreshAll:
             ("a-vm", "eastus", True),
         ]
 
-        with patch.object(tui, "_get_vm_list", return_value=vm_list), \
+        with patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list), \
              patch.object(tui, "_poll_vm", return_value=[]):
             result = tui.refresh_all()
 
@@ -587,7 +588,7 @@ class TestRefreshAll:
             ("normal-vm", "westus", True),
         ]
 
-        with patch.object(tui, "_get_vm_list", return_value=vm_list), \
+        with patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list), \
              patch.object(tui, "_poll_vm", return_value=[]):
             refresh_result = tui.refresh()
             refresh_all_result = tui.refresh_all()
@@ -626,7 +627,7 @@ class TestScoutShowsAllVMs:
             ("normal-vm", "westus", True),
         ]
 
-        with patch.object(tui, "_get_vm_list", return_value=vm_list), \
+        with patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list), \
              patch.object(tui, "_poll_vm", return_value=[]):
             result = tui.refresh_all(exclude=False)
 
@@ -641,7 +642,7 @@ class TestScoutShowsAllVMs:
             ("normal-vm", "westus", True),
         ]
 
-        with patch.object(tui, "_get_vm_list", return_value=vm_list), \
+        with patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list), \
              patch.object(tui, "_poll_vm", return_value=[]) as mock_poll:
             tui.refresh_all(exclude=False)
 
@@ -656,7 +657,7 @@ class TestScoutShowsAllVMs:
             ("normal-vm", "westus", True),
         ]
 
-        with patch.object(tui, "_get_vm_list", return_value=vm_list), \
+        with patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list), \
              patch.object(tui, "_poll_vm", return_value=[]):
             result = tui.refresh_all(exclude=True)
 
@@ -671,7 +672,7 @@ class TestScoutShowsAllVMs:
             ("normal-vm", "westus", True),
         ]
 
-        with patch.object(tui, "_get_vm_list", return_value=vm_list), \
+        with patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list), \
              patch.object(tui, "_poll_vm", return_value=[]):
             scout_result = tui.refresh_all(exclude=False)
             advance_result = tui.refresh_all(exclude=True)
@@ -919,29 +920,29 @@ class TestPollVm:
 
 
 class TestGetVmListNoResourceGroup:
-    """_get_vm_list when no resource group is configured."""
+    """get_vm_list when no resource group is configured."""
 
-    def test_falls_back_when_no_rg(self, tui: FleetTUI) -> None:
+    def test_falls_back_when_no_rg(self) -> None:
         """No resource group should fall through to azlin CLI."""
         azlin_result = MagicMock()
         azlin_result.returncode = 0
         azlin_result.stdout = AZLIN_LIST_TABLE
 
-        with patch.object(tui, "_read_azlin_resource_group", side_effect=ValueError("no rg")), \
-             patch("amplihack.fleet.fleet_tui.subprocess.run", return_value=azlin_result):
-            vms = tui._get_vm_list()
+        with patch("amplihack.fleet._vm_discovery.read_azlin_resource_group", side_effect=ValueError("no rg")), \
+             patch("amplihack.fleet._vm_discovery.subprocess.run", return_value=azlin_result):
+            vms = get_vm_list("/usr/bin/fake-azlin")
 
         assert len(vms) == 2
 
-    def test_azlin_tried_first_regardless_of_rg(self, tui: FleetTUI) -> None:
+    def test_azlin_tried_first_regardless_of_rg(self) -> None:
         """azlin list is tried first even when resource group is configured."""
         azlin_result = MagicMock()
         azlin_result.returncode = 0
         azlin_result.stdout = AZLIN_LIST_TABLE
 
-        with patch.object(tui, "_read_azlin_resource_group", return_value="rg"), \
-             patch("amplihack.fleet.fleet_tui.subprocess.run", return_value=azlin_result):
-            vms = tui._get_vm_list()
+        with patch("amplihack.fleet._vm_discovery.read_azlin_resource_group", return_value="rg"), \
+             patch("amplihack.fleet._vm_discovery.subprocess.run", return_value=azlin_result):
+            vms = get_vm_list("/usr/bin/fake-azlin")
 
         assert len(vms) == 2
         assert vms[0][3] == ["work"]  # Session names from azlin
@@ -1252,7 +1253,7 @@ class TestRefreshAllDedup:
                 SessionView(vm_name=vm_name, session_name="work-2", status="idle"),
             ]
 
-        with patch.object(tui, "_get_vm_list", return_value=vm_list), \
+        with patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list), \
              patch.object(tui, "_poll_vm", side_effect=poll_side_effect):
             result = tui.refresh_all()
 
@@ -1273,7 +1274,7 @@ class TestRefreshAllDedup:
                 return [SessionView(vm_name=vm_name, session_name="work-1")]
             return [SessionView(vm_name=vm_name, session_name="work-2")]
 
-        with patch.object(tui, "_get_vm_list", return_value=vm_list), \
+        with patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list), \
              patch.object(tui, "_poll_vm", side_effect=poll_side_effect):
             result = tui.refresh_all()
 
@@ -1286,7 +1287,7 @@ class TestRefreshAllDedup:
             ("vm-b", "eastus", False),
         ]
 
-        with patch.object(tui, "_get_vm_list", return_value=vm_list), \
+        with patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list), \
              patch.object(tui, "_poll_vm", return_value=[
                  SessionView(vm_name="vm-a", session_name="work-1"),
              ]):

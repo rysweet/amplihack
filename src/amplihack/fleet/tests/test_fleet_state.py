@@ -46,11 +46,11 @@ class TestGetAzlinPath:
 
 
 class TestDefaultExcludeVms:
-    def test_contains_expected_vms(self):
+    def test_is_empty_set(self):
+        """DEFAULT_EXCLUDE_VMS is empty — all VMs are fleet-managed."""
         from amplihack.fleet._defaults import DEFAULT_EXCLUDE_VMS
-        assert "devy" in DEFAULT_EXCLUDE_VMS
-        assert "amplihack" in DEFAULT_EXCLUDE_VMS
         assert isinstance(DEFAULT_EXCLUDE_VMS, set)
+        assert len(DEFAULT_EXCLUDE_VMS) == 0
 
 
 class TestVMInfo:

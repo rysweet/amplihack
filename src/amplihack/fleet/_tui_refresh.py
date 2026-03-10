@@ -129,7 +129,8 @@ class _RefreshMixin:
         my_generation = self._refresh_generation
 
         try:
-            vm_list = self._fleet._get_vm_list()
+            from amplihack.fleet._vm_discovery import get_vm_list
+            vm_list = get_vm_list(self._fleet.azlin_path)
         except Exception as exc:
             logger.error("Phase 1 VM list fetch failed: %s", exc)
             self.call_from_thread(self.notify, f"VM list fetch failed: {exc}", severity="error")
