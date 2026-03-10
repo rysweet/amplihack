@@ -11,6 +11,7 @@ import sys
 import tarfile
 import urllib.request
 from collections.abc import Sequence
+from datetime import UTC, datetime
 from pathlib import Path
 
 TRIAL_HOME_ENV = "AMPLIHACK_RUST_TRIAL_HOME"
@@ -126,8 +127,12 @@ def _select_release_asset(releases: object) -> tuple[str, str]:
     if not isinstance(releases, list):
         raise FileNotFoundError("GitHub release response was not a list")
 
-    for release in releases:
+    matches: list[tuple[tuple[datetime, datetime, int], str, str]] = []
+
+    for index, release in enumerate(releases):
         if not isinstance(release, dict):
+            continue
+        if release.get("draft") is True:
             continue
         tag_name = release.get("tag_name")
         assets = release.get("assets", [])
@@ -139,13 +144,37 @@ def _select_release_asset(releases: object) -> tuple[str, str]:
             if asset.get("name") == asset_name and isinstance(
                 asset.get("browser_download_url"), str
             ):
-                return tag_name, asset["browser_download_url"]
+                matches.append(
+                    (_release_sort_key(release, index), tag_name, asset["browser_download_url"])
+                )
+                break
+
+    if matches:
+        _sort_key, tag_name, asset_url = max(matches, key=lambda match: match[0])
+        return tag_name, asset_url
 
     raise FileNotFoundError(
         f"No published amplihack-rs release contains asset {asset_name}. "
         "Wait for the snapshot release workflow to publish binaries, or set "
         "AMPLIHACK_RUST_TRIAL_BINARY explicitly."
     )
+
+
+def _release_sort_key(release: dict[str, object], index: int) -> tuple[datetime, datetime, int]:
+    created_at = _parse_release_timestamp(release.get("created_at"))
+    published_at = _parse_release_timestamp(release.get("published_at"))
+    # Prefer the newest actual snapshot build first; later publish time only
+    # breaks ties for releases created at the same instant.
+    return created_at, published_at, -index
+
+
+def _parse_release_timestamp(value: object) -> datetime:
+    if not isinstance(value, str) or not value:
+        return datetime.min.replace(tzinfo=UTC)
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return datetime.min.replace(tzinfo=UTC)
 
 
 def download_latest_release_binary(trial_home: Path) -> Path:
