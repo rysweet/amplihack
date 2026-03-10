@@ -9,6 +9,7 @@ from amplihack.rust_trial import (
     RUST_RELEASES_API,
     TRIAL_BINARY_ENV,
     TRIAL_HOME_ENV,
+    _ensure_trial_copilot_config,
     _expected_release_asset_name,
     _target_triple,
     build_trial_env,
@@ -129,6 +130,29 @@ def test_ensure_trial_dependencies_skips_non_copilot(tmp_path, monkeypatch):
     assert called == []
 
 
+def test_ensure_trial_copilot_config_creates_empty_config(tmp_path):
+    config_path = _ensure_trial_copilot_config(
+        trial_home=tmp_path / "trial-home",
+        source_home=tmp_path / "host-home",
+    )
+
+    assert config_path.read_text(encoding="utf-8") == "{}\n"
+
+
+def test_ensure_trial_copilot_config_copies_existing_host_config(tmp_path):
+    host_home = tmp_path / "host-home"
+    source_config = host_home / ".copilot" / "config.json"
+    source_config.parent.mkdir(parents=True, exist_ok=True)
+    source_config.write_text('{"installed_plugins":["amplihack"]}\n', encoding="utf-8")
+
+    config_path = _ensure_trial_copilot_config(
+        trial_home=tmp_path / "trial-home",
+        source_home=host_home,
+    )
+
+    assert config_path.read_text(encoding="utf-8") == '{"installed_plugins":["amplihack"]}\n'
+
+
 def test_ensure_trial_dependencies_installs_copilot_into_trial_home(tmp_path, monkeypatch):
     trial_home = tmp_path / "trial-home"
     env = build_trial_env(trial_home)
@@ -148,6 +172,7 @@ def test_ensure_trial_dependencies_installs_copilot_into_trial_home(tmp_path, mo
     assert captured["home"] == trial_home
     assert captured["env"] is env
     assert env["PATH"].split(":")[0] == str(trial_home / ".npm-global" / "bin")
+    assert (trial_home / ".copilot" / "config.json").is_file()
 
 
 def test_ensure_trial_dependencies_errors_when_copilot_install_fails(tmp_path, monkeypatch):
