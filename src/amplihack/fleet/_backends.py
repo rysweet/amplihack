@@ -64,7 +64,7 @@ class AnthropicBackend:
 class CopilotBackend:
     """GitHub Copilot SDK backend.
 
-    Requires: pip install copilot-sdk
+    Requires: pip install github-copilot-sdk
     Requires: GitHub Copilot subscription + gh auth login
     """
 
@@ -80,24 +80,32 @@ class CopilotBackend:
     async def _async_complete(self, system_prompt: str, user_prompt: str) -> str:
         import asyncio
 
-        from copilot import CopilotClient
+        from copilot import CopilotClient, PermissionHandler
 
         client = CopilotClient()
         await client.start()
 
         try:
-            session = await client.create_session({"model": self.model})
             response_parts: list[str] = []
             done = asyncio.Event()
 
+            session = await client.create_session({
+                "model": self.model,
+                "system_message": {"content": system_prompt},
+                "on_permission_request": PermissionHandler.approve_all,
+            })
+
             def on_event(event):
-                if event.type.value == "assistant.message":
-                    response_parts.append(event.data.content)
-                elif event.type.value == "session.idle":
+                etype = event.type.value if hasattr(event.type, "value") else str(event.type)
+                if etype == "assistant.message":
+                    content = getattr(event.data, "content", "") if hasattr(event, "data") else ""
+                    if content:
+                        response_parts.append(content)
+                elif etype == "session.idle":
                     done.set()
 
             session.on(on_event)
-            await session.send({"prompt": f"{system_prompt}\n\n{user_prompt}"})
+            await session.send({"prompt": user_prompt})
 
             try:
                 await asyncio.wait_for(done.wait(), timeout=SUBPROCESS_TIMEOUT_SECONDS)
