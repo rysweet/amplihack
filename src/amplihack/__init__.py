@@ -190,7 +190,9 @@ __all__ = [
     "main",
 ]
 
-# Auto-install memory library if needed (for learning agents)
+# Auto-install dependencies if needed
 from .memory_auto_install import ensure_memory_lib_installed
+from .copilot_auto_install import ensure_copilot_sdk_installed
 
 ensure_memory_lib_installed()
+ensure_copilot_sdk_installed()
