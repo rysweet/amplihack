@@ -13,6 +13,7 @@ from amplihack.rust_trial import (
     _target_triple,
     build_trial_env,
     download_latest_release_binary,
+    ensure_trial_dependencies,
     find_rust_cli_binary,
     main,
     parse_trial_args,
@@ -105,8 +106,63 @@ def test_build_trial_env_creates_isolated_dirs(tmp_path):
     env = build_trial_env(tmp_path / "trial-home")
     assert env["HOME"].endswith("trial-home")
     assert env["XDG_CONFIG_HOME"].endswith("trial-home/.config")
+    assert env["PATH"].split(":")[0].endswith("trial-home/.npm-global/bin")
     assert Path(env["HOME"]).is_dir()
     assert Path(env["XDG_CONFIG_HOME"]).is_dir()
+    assert Path(env["HOME"]).joinpath(".npm-global", "bin").is_dir()
+
+
+def test_ensure_trial_dependencies_skips_non_copilot(tmp_path, monkeypatch):
+    called: list[str] = []
+
+    monkeypatch.setattr(
+        "amplihack.launcher.copilot.check_copilot",
+        lambda **_kwargs: called.append("check") or False,
+    )
+    monkeypatch.setattr(
+        "amplihack.launcher.copilot.install_copilot",
+        lambda **_kwargs: called.append("install") or True,
+    )
+
+    ensure_trial_dependencies(["recipe", "list"], tmp_path / "trial-home", build_trial_env(tmp_path))
+
+    assert called == []
+
+
+def test_ensure_trial_dependencies_installs_copilot_into_trial_home(tmp_path, monkeypatch):
+    trial_home = tmp_path / "trial-home"
+    env = build_trial_env(trial_home)
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr("amplihack.launcher.copilot.check_copilot", lambda **_kwargs: False)
+
+    def fake_install(*, env, home):  # type: ignore[no-untyped-def]
+        captured["env"] = env
+        captured["home"] = home
+        return True
+
+    monkeypatch.setattr("amplihack.launcher.copilot.install_copilot", fake_install)
+
+    ensure_trial_dependencies(["copilot"], trial_home, env)
+
+    assert captured["home"] == trial_home
+    assert captured["env"] is env
+    assert env["PATH"].split(":")[0] == str(trial_home / ".npm-global" / "bin")
+
+
+def test_ensure_trial_dependencies_errors_when_copilot_install_fails(tmp_path, monkeypatch):
+    trial_home = tmp_path / "trial-home"
+    env = build_trial_env(trial_home)
+
+    monkeypatch.setattr("amplihack.launcher.copilot.check_copilot", lambda **_kwargs: False)
+    monkeypatch.setattr("amplihack.launcher.copilot.install_copilot", lambda **_kwargs: False)
+
+    try:
+        ensure_trial_dependencies(["copilot"], trial_home, env)
+    except RuntimeError as exc:
+        assert "Failed to install GitHub Copilot CLI" in str(exc)
+    else:
+        raise AssertionError("Expected ensure_trial_dependencies() to raise RuntimeError")
 
 
 def test_parse_trial_args_supports_custom_home():
