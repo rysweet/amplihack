@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import logging
 import re
+import sys
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -36,6 +37,7 @@ try:
 except ImportError:
     anthropic = None  # type: ignore[assignment]
     HAS_ANTHROPIC = False
+    print("WARNING: anthropic not available", file=sys.stderr)
 
 # Backward-compatible alias
 EXPANSION_MODEL = DEFAULT_EXPANSION_MODEL

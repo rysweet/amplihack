@@ -15,6 +15,7 @@ import html
 import json
 import re
 import signal
+import sys
 import unicodedata
 from datetime import datetime
 from typing import Any
@@ -25,6 +26,7 @@ from paths import get_project_root
 try:
     from amplihack.utils.paths import FrameworkPathResolver
 except ImportError:
+    print("WARNING: amplihack.utils.paths not available - FrameworkPathResolver disabled", file=sys.stderr)
     FrameworkPathResolver = None
 
 

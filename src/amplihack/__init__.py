@@ -15,6 +15,7 @@ Public API:
 """
 
 import os
+import sys
 from pathlib import Path
 
 # Read version from installed package metadata
@@ -22,6 +23,7 @@ try:
     from importlib.metadata import PackageNotFoundError, version
 except ImportError:
     # Python < 3.8 (shouldn't happen, but graceful fallback)
+    print("WARNING: importlib.metadata not available", file=sys.stderr)
     version = None  # type: ignore
     PackageNotFoundError = Exception  # type: ignore
 
@@ -33,9 +35,11 @@ if version:
         try:
             import tomllib  # Python 3.11+
         except ImportError:
+            print("WARNING: tomllib not available, trying tomli", file=sys.stderr)
             try:
                 import tomli as tomllib  # type: ignore
             except ImportError:
+                print("WARNING: tomli not available, version detection from pyproject.toml disabled", file=sys.stderr)
                 tomllib = None  # type: ignore
 
         if tomllib:

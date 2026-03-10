@@ -14,6 +14,8 @@ Public API:
 
 from __future__ import annotations
 
+import sys
+
 try:
     # Prefer the canonical implementation from amplihack-memory-lib
     from amplihack_memory.hierarchical_memory import (
@@ -38,6 +40,7 @@ except ImportError:
     )
 
     _SOURCE = "local"
+    print("WARNING: amplihack_memory not available, using local implementation", file=sys.stderr)
 
 
 __all__ = [

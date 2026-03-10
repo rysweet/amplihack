@@ -42,6 +42,7 @@ try:
 
     HAS_PSUTIL = True
 except ImportError:
+    print("WARNING: psutil not available, memory detection limited", file=sys.stderr)
     HAS_PSUTIL = False
 
 

@@ -688,6 +688,7 @@ class StopHook(HookProcessor):
                 f"[CAUSE] Cannot import claude_reflection module. [IMPACT] Reflection functionality unavailable. [ACTION] Check if claude_reflection.py exists and is accessible. Error: {e}",
                 "WARNING",
             )
+            print(f"WARNING: claude_reflection not available - reflection disabled: {e}", file=sys.stderr)
             self.save_metric("reflection_import_errors", 1)
             return None
 
@@ -883,7 +884,8 @@ After presenting the findings and getting the user's decision, you may proceed a
             return ClaudeStrategy(self.project_root, self.log)
 
         except ImportError as e:
-            self.log(f"Adaptive strategy not available: {e}", "DEBUG")
+            self.log(f"Adaptive strategy not available: {e}", "WARNING")
+            print(f"WARNING: Adaptive strategy not available: {e}", file=sys.stderr)
             return None
 
 

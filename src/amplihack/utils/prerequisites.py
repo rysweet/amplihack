@@ -38,6 +38,8 @@ from pathlib import Path
 try:
     from .claude_cli import get_claude_cli_path
 except ImportError:
+    print("WARNING: claude_cli module not available, using fallback", file=sys.stderr)
+
     # Fallback if import fails
     def get_claude_cli_path(auto_install: bool = True) -> str | None:
         return None
