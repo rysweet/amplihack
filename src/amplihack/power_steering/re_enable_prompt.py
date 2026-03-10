@@ -355,6 +355,10 @@ except ImportError:
 
         sys.path.pop(0)
     except ImportError:
+        import sys
+
+        print("WARNING: git_utils not available, using fallback runtime dir", file=sys.stderr)
+
         # Final fallback: use runtime relative to project root
         def get_shared_runtime_dir(project_root: Path) -> str:
             return str(project_root / ".claude" / "runtime")

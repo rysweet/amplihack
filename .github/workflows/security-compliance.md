@@ -17,7 +17,7 @@ on:
         default: "500"
 permissions:
   contents: read
-engine: copilot
+engine: claude
 safe-outputs:
   create-issue:
     expires: 2d

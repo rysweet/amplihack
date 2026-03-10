@@ -10,6 +10,7 @@ permissions:
   issues: read
   pull-requests: read
 
+engine: claude
 tracker-id: code-simplifier
 
 imports:

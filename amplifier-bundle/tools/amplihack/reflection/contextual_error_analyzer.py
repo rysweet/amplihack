@@ -9,6 +9,7 @@ import asyncio
 # Check SDK availability using importlib
 import importlib.util
 import json
+import sys
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any
@@ -19,6 +20,7 @@ try:
     from .security import filter_pattern_suggestion, sanitize_content
 except ImportError:
     # Fallback for testing or missing security module
+    print("WARNING: security module not available - using fallback sanitizers", file=sys.stderr)
     def sanitize_content(content: str, max_length: int = 5000) -> str:
         return content[:max_length] + "..." if len(content) > max_length else content
 

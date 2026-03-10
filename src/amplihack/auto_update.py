@@ -22,11 +22,13 @@ from pathlib import Path
 try:
     import requests
 except ImportError:
+    print("WARNING: requests not available, update checks disabled", file=sys.stderr)
     requests = None  # type: ignore
 
 try:
     from packaging.version import parse as parse_version
 except ImportError:
+    print("WARNING: packaging not available, version comparison disabled", file=sys.stderr)
     parse_version = None  # type: ignore
 
 logger = logging.getLogger(__name__)

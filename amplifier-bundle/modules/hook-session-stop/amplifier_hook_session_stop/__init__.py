@@ -42,6 +42,7 @@ if _CLAUDE_HOOKS.exists():
     except ImportError as e:
         _IMPORT_ERROR = str(e)
         logger.warning(f"SessionStopHook: Import failed - {e}")
+        print(f"WARNING: session_stop not available - session stop delegation disabled", file=sys.stderr)
 else:
     _IMPORT_ERROR = f"Claude hooks directory not found: {_CLAUDE_HOOKS}"
     logger.warning(_IMPORT_ERROR)
@@ -74,6 +75,7 @@ class SessionStopHook(Hook):
                     logger.info("SessionStopHook: Delegating to Claude Code hook")
                 except ImportError as e:
                     logger.warning(f"SessionStopHook: Claude Code delegation failed: {e}")
+                    print(f"WARNING: session_stop not available - Claude Code delegation disabled", file=sys.stderr)
                     self._session_stop_main = None
             else:
                 logger.info(f"SessionStopHook: Using fallback ({_IMPORT_ERROR})")
@@ -88,6 +90,7 @@ class SessionStopHook(Hook):
                 self._memory_coordinator = MemoryCoordinator(session_id=session_id)
             except ImportError as e:
                 logger.debug(f"MemoryCoordinator not available: {e}")
+                print(f"WARNING: amplihack.memory.coordinator not available - memory coordination disabled", file=sys.stderr)
                 self._memory_coordinator = False  # type: ignore[assignment]
         return self._memory_coordinator if self._memory_coordinator is not False else None
 
@@ -101,7 +104,7 @@ class SessionStopHook(Hook):
                 client.close()
                 logger.info("SessionStopHook: Neo4j connection closed")
         except ImportError:
-            pass  # Neo4j not available
+            print(f"WARNING: amplihack.memory.neo4j_client not available - Neo4j cleanup skipped", file=sys.stderr)
         except Exception as e:
             logger.debug(f"Neo4j cleanup failed: {e}")
 

@@ -16,6 +16,7 @@ Public API (the "studs"):
 from __future__ import annotations
 
 import logging
+import sys
 from typing import TYPE_CHECKING
 
 logger = logging.getLogger(__name__)
@@ -27,6 +28,7 @@ try:
 except ImportError:
     np = None  # type: ignore[assignment]
     HAS_NUMPY = False
+    print("WARNING: numpy not available", file=sys.stderr)
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -44,6 +46,7 @@ try:
 except ImportError:
     SentenceTransformer = None  # type: ignore[assignment,misc]
     HAS_SENTENCE_TRANSFORMERS = False
+    print("WARNING: sentence_transformers not available", file=sys.stderr)
 
 # Backward-compatible alias
 DEFAULT_MODEL = DEFAULT_EMBEDDING_MODEL

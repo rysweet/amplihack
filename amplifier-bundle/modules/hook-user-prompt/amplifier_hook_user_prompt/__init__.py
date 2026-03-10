@@ -38,6 +38,7 @@ if _CLAUDE_HOOKS.exists():
     except ImportError as e:
         _IMPORT_ERROR = str(e)
         logger.warning(f"UserPromptHook: Import failed - {e}")
+        print(f"WARNING: user_prompt_submit not available - user prompt delegation disabled", file=sys.stderr)
 else:
     _IMPORT_ERROR = f"Claude hooks directory not found: {_CLAUDE_HOOKS}"
     logger.warning(_IMPORT_ERROR)
@@ -81,6 +82,7 @@ class UserPromptHook(Hook):
                     logger.info("UserPromptHook: Delegating to Claude Code hook")
                 except ImportError as e:
                     logger.warning(f"UserPromptHook: Claude Code delegation failed: {e}")
+                    print(f"WARNING: user_prompt_submit not available - Claude Code delegation disabled", file=sys.stderr)
                     self._claude_hook = None
             else:
                 logger.info(f"UserPromptHook: Using fallback ({_IMPORT_ERROR})")

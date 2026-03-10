@@ -13,12 +13,14 @@ Public API (the "studs"):
 
 import json
 import os
+import shlex
+import shutil
 import sys
 import time
 from pathlib import Path
 
 # Import constants from package root
-from . import CLAUDE_DIR, HOME, HOOK_CONFIGS
+from . import CLAUDE_DIR, HOME, HOOK_CONFIGS, RUST_HOOK_MAP
 
 # Settings.json template with proper hook configuration
 SETTINGS_TEMPLATE = {
@@ -135,21 +137,59 @@ def validate_hook_paths(hook_system, hooks_to_validate, hooks_dir_path):
     return (len(missing_hooks) == 0, missing_hooks)
 
 
-def update_hook_paths(settings, hook_system, hooks_to_update, hooks_dir_path):
+def find_rust_hook_binary():
+    """Locate the amplihack-hooks Rust binary.
+
+    Search order:
+    1. PATH (via shutil.which)
+    2. ~/.amplihack/bin/amplihack-hooks
+    3. ~/.cargo/bin/amplihack-hooks
+
+    Returns:
+        Absolute path to the binary, or None if not found.
+    """
+    # 1. Check PATH
+    on_path = shutil.which("amplihack-hooks")
+    if on_path:
+        return os.path.abspath(on_path)
+
+    # 2. Check ~/.amplihack/bin/
+    amplihack_bin = os.path.expanduser("~/.amplihack/bin/amplihack-hooks")
+    if os.path.isfile(amplihack_bin) and os.access(amplihack_bin, os.X_OK):
+        return os.path.abspath(amplihack_bin)
+
+    # 3. Check ~/.cargo/bin/
+    cargo_bin = os.path.expanduser("~/.cargo/bin/amplihack-hooks")
+    if os.path.isfile(cargo_bin) and os.access(cargo_bin, os.X_OK):
+        return os.path.abspath(cargo_bin)
+
+    return None
+
+
+def get_hook_engine():
+    """Get the configured hook engine.
+
+    Returns "rust" or "python" based on AMPLIHACK_HOOK_ENGINE env var.
+    Default is "python" when unset.
+    """
+    engine = os.environ.get("AMPLIHACK_HOOK_ENGINE", "python").lower()
+    if engine not in ("python", "rust"):
+        print(f"  ⚠️  Unknown AMPLIHACK_HOOK_ENGINE={engine!r}, using 'python'", file=sys.stderr)
+        return "python"
+    return engine
+
+
+def update_hook_paths(settings, hook_system, hooks_to_update, hooks_dir_path,
+                     hook_engine=None):
     """Update hook paths for a given hook system (amplihack or xpia).
 
     This function ensures all hook paths in settings.json are absolute paths,
     enabling hooks to work from ANY working directory (cross-codebase functionality).
 
-    Path expansion behavior:
-    - Expands ~ (tilde) to user home directory via os.path.expanduser()
-    - Expands $VAR and ${VAR} environment variables via os.path.expandvars()
-    - Converts relative paths to absolute using os.path.join()
-
-    This is CRITICAL for cross-directory execution:
-    - Hooks must work when Claude Code runs from ANY codebase
-    - Relative paths would break when working directory changes
-    - Absolute paths guarantee hooks are always found
+    When hook_engine is "rust" and the hook has a Rust equivalent (per RUST_HOOK_MAP),
+    the command is set to the Rust multicall binary: ``<binary_path> <subcommand>``.
+    Hooks without a Rust equivalent (e.g., workflow_classification_reminder.py) still
+    use Python. If the Rust binary is not found, raises FileNotFoundError (NO fallback).
 
     Args:
         settings: Settings dictionary to update
@@ -157,10 +197,27 @@ def update_hook_paths(settings, hook_system, hooks_to_update, hooks_dir_path):
         hooks_to_update: List of dicts with keys: type, file, timeout (optional), matcher (optional)
         hooks_dir_path: MUST be absolute path to hooks directory after expansion
                        (e.g., "/home/user/.amplihack/.claude/tools/amplihack/hooks")
+        hook_engine: "rust" or "python" (default: from AMPLIHACK_HOOK_ENGINE env var)
 
     Returns:
         Number of hooks updated
+
+    Raises:
+        FileNotFoundError: If hook_engine is "rust" but amplihack-hooks binary not found
     """
+    if hook_engine is None:
+        hook_engine = get_hook_engine()
+
+    rust_binary = None
+    if hook_engine == "rust":
+        rust_binary = find_rust_hook_binary()
+        if rust_binary is None:
+            raise FileNotFoundError(
+                "AMPLIHACK_HOOK_ENGINE=rust but amplihack-hooks binary not found. "
+                "Install it from https://github.com/rysweet/amplihack-rs or set "
+                "AMPLIHACK_HOOK_ENGINE=python."
+            )
+
     hooks_updated = 0
 
     for hook_info in hooks_to_update:
@@ -169,12 +226,16 @@ def update_hook_paths(settings, hook_system, hooks_to_update, hooks_dir_path):
         timeout = hook_info.get("timeout")
         matcher = hook_info.get("matcher")
 
-        # CRITICAL: Path expansion ensures cross-directory execution
-        # Expand environment variables ($HOME) and user directory (~) to absolute paths
-        # This ensures hooks work from ANY working directory (cross-codebase functionality)
-        hook_path = os.path.abspath(
-            os.path.expanduser(os.path.expandvars(f"{hooks_dir_path}/{hook_file}"))
-        )
+        # Determine the hook command based on engine
+        rust_subcommand = RUST_HOOK_MAP.get(hook_file) if hook_engine == "rust" else None
+
+        if rust_subcommand and rust_binary:
+            hook_path = f"{shlex.quote(rust_binary)} {rust_subcommand}"
+        else:
+            # Python engine (or hook has no Rust equivalent)
+            hook_path = os.path.abspath(
+                os.path.expanduser(os.path.expandvars(f"{hooks_dir_path}/{hook_file}"))
+            )
 
         if "hooks" not in settings:
             settings["hooks"] = {}
@@ -205,7 +266,7 @@ def update_hook_paths(settings, hook_system, hooks_to_update, hooks_dir_path):
                     for hook in config["hooks"]:
                         cmd = hook.get("command", "")
                         # Match: same basename AND same system ownership
-                        if os.path.basename(cmd) == hook_file and hook_system in cmd:
+                        if os.path.basename(cmd) == hook_file and f"tools/{hook_system}/" in cmd:
                             found = True
                             if cmd != hook_path:
                                 hook["command"] = hook_path
@@ -214,6 +275,18 @@ def update_hook_paths(settings, hook_system, hooks_to_update, hooks_dir_path):
                                 hooks_updated += 1
                                 print(f"  🔄 Updated {hook_type} hook path")
                             break
+                        # Also match Rust commands being replaced (engine switch)
+                        elif "amplihack-hooks" in cmd:
+                            rust_subcmd = RUST_HOOK_MAP.get(hook_file)
+                            if rust_subcmd and rust_subcmd in cmd:
+                                found = True
+                                if cmd != hook_path:
+                                    hook["command"] = hook_path
+                                    if timeout and "timeout" not in hook:
+                                        hook["timeout"] = timeout
+                                    hooks_updated += 1
+                                    print(f"  🔄 Updated {hook_type} hook path")
+                                break
                 if found:
                     break
 
@@ -291,9 +364,13 @@ def ensure_settings_json():
         return False
 
     # Update amplihack hook paths (absolute paths for plugin mode compatibility)
-    hooks_updated += update_hook_paths(
-        settings, "amplihack", HOOK_CONFIGS["amplihack"], amplihack_hooks_abs
-    )
+    try:
+        hooks_updated += update_hook_paths(
+            settings, "amplihack", HOOK_CONFIGS["amplihack"], amplihack_hooks_abs
+        )
+    except FileNotFoundError as e:
+        print(f"  ❌ {e}", file=sys.stderr)
+        return False
 
     # Update XPIA hook paths if XPIA hooks directory exists (absolute paths for consistency)
     xpia_hooks_abs = os.path.join(HOME, ".amplihack", ".claude", "tools", "xpia", "hooks")

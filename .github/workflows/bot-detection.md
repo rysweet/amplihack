@@ -12,10 +12,10 @@ permissions:
   contents: read
   pull-requests: read
   actions: read
+engine: claude
 tools:
   github:
     mode: local
-    read-only: false
     toolsets: [default]
 if: needs.precompute.outputs.action != 'none'
 jobs:

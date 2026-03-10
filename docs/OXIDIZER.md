@@ -119,11 +119,9 @@ The oxidizer enforces strict standards:
 
 ```python
 from amplihack.recipes import run_recipe_by_name
-from amplihack.recipes.adapters.cli_subprocess import CLISubprocessAdapter
 
 result = run_recipe_by_name(
     "oxidizer-workflow",
-    adapter=CLISubprocessAdapter(),
     user_context={
         "python_package_path": "src/mypackage",
         "rust_target_path": "rust/mypackage",

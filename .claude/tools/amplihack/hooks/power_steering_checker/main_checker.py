@@ -25,11 +25,9 @@ if _hook_dir not in sys.path:
 # Import git utilities for worktree detection
 try:
     from git_utils import get_shared_runtime_dir
-except ImportError:
-
-    def get_shared_runtime_dir(project_root: str | Path) -> str:
-        """Fallback implementation when git_utils is unavailable."""
-        return str(Path(project_root) / ".claude" / "runtime")
+except ImportError as e:
+    print(f"FATAL: Required dependency missing: {e}", file=sys.stderr)
+    raise
 
 
 from .considerations import (
@@ -64,8 +62,10 @@ try:
         PowerSteeringTurnState,
         TurnStateManager,
     )
+    TURN_STATE_AVAILABLE = True
 except ImportError:
-    pass  # TURN_STATE_AVAILABLE=False handles this
+    TURN_STATE_AVAILABLE = False
+    print("WARNING: power_steering_state not available - turn-aware analysis disabled", file=sys.stderr)
 
 # Import SDK functions needed by check() (analyze_claims_sync etc.)
 try:
@@ -73,8 +73,10 @@ try:
         analyze_claims_sync,
         analyze_if_addressed_sync,
     )
+    SDK_AVAILABLE = True
 except ImportError:
-    pass  # SDK_AVAILABLE=False handles this
+    SDK_AVAILABLE = False
+    print("WARNING: claude_power_steering not available - SDK analysis disabled", file=sys.stderr)
 
 # Import CompletionEvidenceChecker for check() method
 try:
@@ -82,8 +84,10 @@ try:
         CompletionEvidenceChecker,
         EvidenceType,
     )
+    EVIDENCE_AVAILABLE = True
 except ImportError:
-    pass  # EVIDENCE_AVAILABLE=False handles this
+    EVIDENCE_AVAILABLE = False
+    print("WARNING: completion_evidence not available - evidence checking disabled", file=sys.stderr)
 
 logger = logging.getLogger(__name__)
 

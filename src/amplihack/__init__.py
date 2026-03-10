@@ -15,6 +15,7 @@ Public API:
 """
 
 import os
+import sys
 from pathlib import Path
 
 # Read version from installed package metadata
@@ -22,6 +23,7 @@ try:
     from importlib.metadata import PackageNotFoundError, version
 except ImportError:
     # Python < 3.8 (shouldn't happen, but graceful fallback)
+    print("WARNING: importlib.metadata not available", file=sys.stderr)
     version = None  # type: ignore
     PackageNotFoundError = Exception  # type: ignore
 
@@ -33,9 +35,11 @@ if version:
         try:
             import tomllib  # Python 3.11+
         except ImportError:
+            print("WARNING: tomllib not available, trying tomli", file=sys.stderr)
             try:
                 import tomli as tomllib  # type: ignore
             except ImportError:
+                print("WARNING: tomli not available, version detection from pyproject.toml disabled", file=sys.stderr)
                 tomllib = None  # type: ignore
 
         if tomllib:
@@ -108,6 +112,20 @@ HOOK_CONFIGS = {
         {"type": "PostToolUse", "file": "post_tool_use.py", "matcher": "*"},
         {"type": "PreToolUse", "file": "pre_tool_use.py", "matcher": "*"},
     ],
+}
+
+# Maps Python hook filenames to Rust multicall subcommands (amplihack-hooks <subcommand>).
+# Hooks NOT in this map (e.g., workflow_classification_reminder.py) always use Python.
+RUST_HOOK_MAP = {
+    "session_start.py": "session-start",
+    "stop.py": "stop",
+    # session_stop.py is used only in Copilot launcher wrappers (stage_hooks),
+    # not in Claude Code's HOOK_CONFIGS. Included here for Copilot rust engine path.
+    "session_stop.py": "session-stop",
+    "pre_tool_use.py": "pre-tool-use",
+    "post_tool_use.py": "post-tool-use",
+    "user_prompt_submit.py": "user-prompt-submit",
+    "pre_compact.py": "pre-compact",
 }
 
 # Import from focused modules

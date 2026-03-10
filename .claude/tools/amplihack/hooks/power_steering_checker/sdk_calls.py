@@ -2,6 +2,7 @@
 
 import asyncio
 import signal
+import sys
 from collections.abc import Callable
 from contextlib import contextmanager
 from datetime import datetime
@@ -28,6 +29,7 @@ try:
 except ImportError:
     analyze_consideration = None  # type: ignore[assignment]  # Available at module level for test patching
     _SDK_IMPORT_OK = False
+    print("WARNING: claude_power_steering not available - SDK analysis disabled", file=sys.stderr)
 
 # Public alias for backward compatibility and test imports
 SDK_AVAILABLE = _SDK_IMPORT_OK
@@ -39,6 +41,7 @@ try:
     _EVIDENCE_IMPORT_OK = True
 except ImportError:
     _EVIDENCE_IMPORT_OK = False
+    print("WARNING: completion_evidence not available - evidence checking disabled", file=sys.stderr)
 
 # Public alias
 EVIDENCE_AVAILABLE = _EVIDENCE_IMPORT_OK
@@ -50,6 +53,7 @@ try:
     _TURN_STATE_IMPORT_OK = True
 except ImportError:
     _TURN_STATE_IMPORT_OK = False
+    print("WARNING: power_steering_state not available - turn state tracking disabled", file=sys.stderr)
 
 
 @contextmanager

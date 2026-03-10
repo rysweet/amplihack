@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -31,7 +32,7 @@ try:
 
     _MEMORY_AVAILABLE = True
 except ImportError:
-    pass
+    print("WARNING: amplihack_memory not available, agent memory disabled", file=sys.stderr)
 
 
 class AgentMemory:
