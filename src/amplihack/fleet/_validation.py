@@ -131,12 +131,20 @@ def validate_session_name(name: str) -> str:
     return name
 
 
+_SHELL_METACHAR_RE = re.compile(r"[;|&`]|\$\(")
+
+
 def is_dangerous_input(text: str) -> bool:
     """Check if input text contains dangerous patterns.
 
-    Safe patterns (SAFE_INPUT_PATTERNS) are checked first and skip the
+    Shell metacharacters are rejected first to prevent safe-pattern bypass
+    via command chaining (e.g., "pytest; rm -rf /").
+
+    Safe patterns (SAFE_INPUT_PATTERNS) are checked next and skip the
     blocklist entirely. This prevents false positives on common operations.
     """
+    if _SHELL_METACHAR_RE.search(text):
+        return True
     if any(pattern.search(text) for pattern in SAFE_INPUT_PATTERNS):
         return False
     return any(pattern.search(text) for pattern in DANGEROUS_PATTERNS)

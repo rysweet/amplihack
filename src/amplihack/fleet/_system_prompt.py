@@ -29,6 +29,8 @@ def _load_strategy_dictionary() -> str:
                 in_index = False
             elif "DECISION QUICK-REFERENCE" in line:
                 in_quick_ref = True
+            elif in_quick_ref and line.startswith("## "):
+                in_quick_ref = False
 
             if in_index or in_quick_ref:
                 index_section.append(line)

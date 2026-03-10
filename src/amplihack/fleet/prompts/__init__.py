@@ -21,7 +21,8 @@ def load_prompt(name: str) -> str:
         FileNotFoundError: If the prompt file doesn't exist.
         ValueError: If the name contains path traversal or is absolute.
     """
-    if ".." in name or name.startswith("/"):
+    name_path = Path(name)
+    if name_path.is_absolute() or ".." in name_path.parts:
         raise ValueError(f"Invalid prompt name (path traversal rejected): {name!r}")
     path = (_PROMPTS_DIR / name).resolve()
     if not path.is_relative_to(_PROMPTS_DIR.resolve()):

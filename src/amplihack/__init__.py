@@ -166,6 +166,13 @@ def filecmp(f1, f2):
 
 def main():
     """Main CLI entry point."""
+    # Ensure dependencies are installed at CLI startup (not import time)
+    from .memory_auto_install import ensure_memory_lib_installed
+    from .copilot_auto_install import ensure_copilot_sdk_installed
+
+    ensure_memory_lib_installed()
+    ensure_copilot_sdk_installed()
+
     # Import and use the enhanced CLI
     from .cli import main as cli_main
 
@@ -208,9 +215,3 @@ __all__ = [
     "main",
 ]
 
-# Auto-install dependencies if needed
-from .memory_auto_install import ensure_memory_lib_installed
-from .copilot_auto_install import ensure_copilot_sdk_installed
-
-ensure_memory_lib_installed()
-ensure_copilot_sdk_installed()

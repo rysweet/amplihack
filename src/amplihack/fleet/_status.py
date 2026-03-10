@@ -60,7 +60,7 @@ def infer_agent_status(tmux_text: str) -> str:
     # THINKING/WORKING detection (highest priority)
     for line in last_lines:
         stripped = line.strip()
-        if stripped.startswith("\u00b7 ") or stripped.startswith("\u00b7 "):
+        if stripped.startswith("\u00b7 "):
             return "thinking"
 
     # Check last non-empty line for tool/streaming indicators
