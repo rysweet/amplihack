@@ -358,10 +358,10 @@ amplihack fleet auth devo    # Propagate auth tokens to a VM
 
 **Key capabilities:**
 - **Scout** discovers all VMs and sessions via azlin (no SSH needed for discovery)
-- **Admiral reasoning** uses Claude Opus streaming to decide: wait, send\_input, restart, or escalate
+- **Admiral reasoning** uses LLM streaming to decide: wait, send\_input, restart, or escalate
 - **SessionCopilot** watches local sessions and auto-continues toward a goal (`/amplihack:lock`)
 - **Dual backend** — uses Anthropic API when available, falls back to GitHub Copilot SDK
-- **Safety** — 57 dangerous input patterns blocked, shell metacharacter rejection, confidence thresholds
+- **Safety** — dangerous input patterns blocked, shell metacharacter rejection, confidence thresholds
 
 Requires [azlin](https://github.com/rysweet/azlin) for VM management.
 
