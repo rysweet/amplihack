@@ -85,8 +85,18 @@ class RustValidationResult:
         )
 
 
-def find_binary() -> str:
-    """Find the xpia-defend binary. Raises RustXPIAError if not found."""
+def find_binary(*, auto_install: bool = True) -> str:
+    """Find the xpia-defend binary. Auto-installs from GitHub releases if missing.
+
+    Search order:
+    1. System PATH
+    2. ~/.cargo/bin/
+    3. ~/.amplihack/bin/ (managed install location)
+    4. /usr/local/bin/
+    5. If not found and auto_install=True, download from GitHub releases
+
+    Raises RustXPIAError if not found and auto-install fails.
+    """
     # Check PATH first
     path = shutil.which(BINARY_NAME)
     if path:
@@ -95,15 +105,27 @@ def find_binary() -> str:
     # Check common install locations
     candidates = [
         Path.home() / ".cargo" / "bin" / BINARY_NAME,
+        Path.home() / ".amplihack" / "bin" / BINARY_NAME,
         Path("/usr/local/bin") / BINARY_NAME,
     ]
     for candidate in candidates:
         if candidate.is_file():
             return str(candidate)
 
+    # Auto-install from GitHub releases
+    if auto_install:
+        try:
+            from amplihack.security.xpia_install import ensure_xpia_binary
+
+            installed = ensure_xpia_binary()
+            return str(installed)
+        except Exception as e:
+            logger.warning("Auto-install of xpia-defend failed: %s", e)
+
     msg = (
         f"XPIA defender binary '{BINARY_NAME}' not found. "
-        f"Install with: cargo install --features cli --path <amplihack-xpia-defender>"
+        f"Install with: pip install amplihack (auto-installs), "
+        f"or cargo install --features cli --path <amplihack-xpia-defender>"
     )
     raise RustXPIAError(msg)
 
