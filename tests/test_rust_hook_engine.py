@@ -105,6 +105,40 @@ class TestFindRustHookBinary:
                 result = find_rust_hook_binary()
                 assert result is not None
 
+    def test_amplihack_bin_takes_priority_over_cargo_bin(self, tmp_path):
+        """~/.amplihack/bin should win over ~/.cargo/bin."""
+        amplihack_dir = tmp_path / ".amplihack" / "bin"
+        amplihack_dir.mkdir(parents=True)
+        amplihack_binary = amplihack_dir / "amplihack-hooks"
+        amplihack_binary.write_text("#!/bin/sh\necho amplihack")
+        amplihack_binary.chmod(0o755)
+
+        cargo_dir = tmp_path / ".cargo" / "bin"
+        cargo_dir.mkdir(parents=True)
+        cargo_binary = cargo_dir / "amplihack-hooks"
+        cargo_binary.write_text("#!/bin/sh\necho cargo")
+        cargo_binary.chmod(0o755)
+
+        with patch("shutil.which", return_value=None):
+            with patch("os.path.expanduser", side_effect=lambda p: str(tmp_path / p.lstrip("~/"))):
+                result = find_rust_hook_binary()
+                assert result is not None
+                assert ".amplihack" in result
+                assert ".cargo" not in result
+
+    def test_non_executable_file_skipped(self, tmp_path):
+        """A non-executable file at ~/.amplihack/bin/amplihack-hooks should be skipped."""
+        bin_dir = tmp_path / ".amplihack" / "bin"
+        bin_dir.mkdir(parents=True)
+        binary = bin_dir / "amplihack-hooks"
+        binary.write_text("#!/bin/sh\necho test")
+        binary.chmod(0o644)  # readable but NOT executable
+
+        with patch("shutil.which", return_value=None):
+            with patch("os.path.expanduser", side_effect=lambda p: str(tmp_path / p.lstrip("~/"))):
+                result = find_rust_hook_binary()
+                assert result is None
+
     def test_returns_none_when_not_found(self):
         with patch("shutil.which", return_value=None):
             with patch("os.path.expanduser", return_value="/nonexistent/path"):
