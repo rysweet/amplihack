@@ -86,6 +86,7 @@ class BackendDetector:
 
                 self._kuzu_available = True
             except ImportError:
+                print("WARNING: kuzu not available", file=sys.stderr)
                 self._kuzu_available = False
         return self._kuzu_available
 

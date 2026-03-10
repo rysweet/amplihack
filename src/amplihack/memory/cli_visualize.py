@@ -20,6 +20,7 @@ Public API:
 import asyncio
 import inspect
 import logging
+import sys
 from datetime import datetime
 from typing import Any
 
@@ -29,6 +30,7 @@ try:
 
     RICH_AVAILABLE = True
 except ImportError:
+    print("WARNING: rich not available, memory tree visualization disabled", file=sys.stderr)
     RICH_AVAILABLE = False
     Console = None  # type: ignore[assignment]
     Tree = None  # type: ignore[assignment]

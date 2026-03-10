@@ -38,6 +38,7 @@ if _CLAUDE_HOOKS.exists():
     except ImportError as e:
         _IMPORT_ERROR = str(e)
         logger.warning(f"AgentMemoryHook: Import failed - {e}")
+        print(f"WARNING: agent_memory_hook not available - memory delegation disabled", file=sys.stderr)
 else:
     _IMPORT_ERROR = f"Claude hooks directory not found: {_CLAUDE_HOOKS}"
     logger.warning(_IMPORT_ERROR)
@@ -139,6 +140,7 @@ class AgentMemoryHook(Hook):
 
         except ImportError as e:
             logger.warning(f"AgentMemoryHook: Import failed during execution - {e}")
+            print(f"WARNING: agent_memory_hook not available - memory injection disabled", file=sys.stderr)
         except Exception as e:
             logger.warning(f"AgentMemoryHook: Memory injection failed - {e}")
 
@@ -177,6 +179,7 @@ class AgentMemoryHook(Hook):
 
         except ImportError as e:
             logger.warning(f"AgentMemoryHook: Import failed during execution - {e}")
+            print(f"WARNING: agent_memory_hook not available - learning extraction disabled", file=sys.stderr)
         except Exception as e:
             logger.warning(f"AgentMemoryHook: Learning extraction failed - {e}")
 

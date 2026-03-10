@@ -15,7 +15,10 @@ try:
 except ImportError:
     # Fallback: use robust path resolution from amplihack.utils.paths
     import os
+    import sys as _sys
     from pathlib import Path
+
+    print("WARNING: ..paths not available - using fallback get_project_root", file=_sys.stderr)
 
     def get_project_root() -> Path:
         """Find project root using multi-strategy approach.

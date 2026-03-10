@@ -1,12 +1,16 @@
-"""Fleet CLI output formatters.
+"""CLI report formatters -- scout and advance report generation.
 
-Extracted from _cli_session_ops.py to separate formatting concerns.
+Extracted from _cli_session_ops.py to keep each module under 400 LOC.
 
 Defines the result dataclasses and formatting functions for fleet reports:
 - ScoutResult - data returned by scout agents
 - AdvanceResult - data returned by advance agents
 - format_scout_report() - format a ScoutResult for CLI output
 - format_advance_report() - format an AdvanceResult for CLI output
+
+Public API:
+    format_scout_report: Format scout results as plain text.
+    format_advance_report: Format advance results as plain text.
 """
 
 from __future__ import annotations
@@ -17,11 +21,18 @@ from typing import Any
 
 import yaml
 
+from amplihack.fleet._cli_formatters_legacy import (
+    _format_advance_report_legacy,
+    _format_scout_report_legacy,
+)
+
 # Truncation constants
 MAX_OUTPUT_LENGTH = 300
 MAX_FINDING_LENGTH = 150
 
 _VALID_FORMATS = ("table", "json", "yaml")
+
+__all__ = ["ScoutResult", "AdvanceResult", "format_scout_report", "format_advance_report"]
 
 
 @dataclass
@@ -55,65 +66,95 @@ class AdvanceResult:
 
 
 def format_scout_report(
-    result: ScoutResult,
-    format: str = "table",
-    verbose: bool = False,
+    result_or_all_vms,
+    format_or_decisions=None,
+    verbose_or_adopted_count=None,
+    skip_adopt=None,
+    *,
+    format: str | None = None,
+    verbose: bool | None = None,
+    all_vms=None,
+    decisions=None,
+    adopted_count=None,
 ) -> str:
     """Format scout agent analysis report.
 
-    Args:
-        result: Scout execution result
-        format: Output format (table/json/yaml)
-        verbose: Include full output without truncation
+    Supports two calling conventions:
+    1. New style: format_scout_report(result, format="table", verbose=False)
+    2. Legacy style: format_scout_report(all_vms, decisions, adopted_count, skip_adopt)
+       Or with keyword args: format_scout_report(all_vms=[...], decisions=[...], ...)
 
     Returns:
         Formatted string output
-
-    Raises:
-        ValueError: If format is invalid
     """
-    if format not in _VALID_FORMATS:
-        raise ValueError(f"Invalid format: {format}. Must be one of: {', '.join(_VALID_FORMATS)}")
-    if format == "json":
-        return _format_scout_json(result)
-    if format == "yaml":
-        return _format_scout_yaml(result)
-    return _format_scout_table(result, verbose)
+    # Support keyword-arg legacy call: format_scout_report(all_vms=[...], decisions=[...])
+    if all_vms is not None:
+        result_or_all_vms = all_vms
+        format_or_decisions = decisions
+        verbose_or_adopted_count = adopted_count if adopted_count is not None else 0
+
+    # Detect new-style call (ScoutResult instance)
+    if isinstance(result_or_all_vms, ScoutResult):
+        result = result_or_all_vms
+        fmt = format or (format_or_decisions if isinstance(format_or_decisions, str) else "table")
+        verbose_val = verbose if verbose is not None else (verbose_or_adopted_count if isinstance(verbose_or_adopted_count, bool) else False)
+        if fmt not in _VALID_FORMATS:
+            raise ValueError(f"Invalid format: {fmt}. Must be one of: {', '.join(_VALID_FORMATS)}")
+        if fmt == "json":
+            return _format_scout_json(result)
+        if fmt == "yaml":
+            return _format_scout_yaml(result)
+        return _format_scout_table(result, verbose_val)
+
+    # Legacy style call
+    all_vms_val = result_or_all_vms
+    decisions_val = format_or_decisions if format_or_decisions is not None else []
+    adopted_val = verbose_or_adopted_count if verbose_or_adopted_count is not None else 0
+    skip_adopt_val = skip_adopt if skip_adopt is not None else False
+    return _format_scout_report_legacy(all_vms_val, decisions_val, adopted_val, skip_adopt_val)
 
 
 def format_advance_report(
-    result: AdvanceResult,
-    format: str = "table",
-    verbose: bool = False,
+    result_or_decisions,
+    format_or_executed=None,
+    verbose=None,
+    *,
+    format: str | None = None,
 ) -> str:
     """Format advance agent execution report.
 
-    Args:
-        result: Advance execution result
-        format: Output format (table/json/yaml)
-        verbose: Include full output without truncation
+    Supports two calling conventions:
+    1. New style: format_advance_report(result, format="table", verbose=False)
+    2. Legacy style: format_advance_report(decisions, executed)
 
     Returns:
         Formatted string output
-
-    Raises:
-        ValueError: If format is invalid
     """
-    if format not in _VALID_FORMATS:
-        raise ValueError(f"Invalid format: {format}. Must be one of: {', '.join(_VALID_FORMATS)}")
-    if format == "json":
-        return _format_advance_json(result)
-    if format == "yaml":
-        return _format_advance_yaml(result)
-    return _format_advance_table(result, verbose)
+    # Detect new-style call (AdvanceResult instance)
+    if isinstance(result_or_decisions, AdvanceResult):
+        result = result_or_decisions
+        fmt = format or (format_or_executed if isinstance(format_or_executed, str) else "table")
+        verbose_val = verbose if isinstance(verbose, bool) else False
+        if fmt not in _VALID_FORMATS:
+            raise ValueError(f"Invalid format: {fmt}. Must be one of: {', '.join(_VALID_FORMATS)}")
+        if fmt == "json":
+            return _format_advance_json(result)
+        if fmt == "yaml":
+            return _format_advance_yaml(result)
+        return _format_advance_table(result, verbose_val)
+
+    # Legacy style call
+    decisions = result_or_decisions
+    executed = format_or_executed if format_or_executed is not None else []
+    return _format_advance_report_legacy(decisions, executed)
 
 
-# --- Scout formatters ---
+# --- Scout formatters (new style) ---
 
 
 def _format_scout_table(result: ScoutResult, verbose: bool) -> str:
     lines: list[str] = []
-    status_icon = "✓" if result.success else "✗"
+    status_icon = "+" if result.success else "X"
     lines.append(f"Scout Report [{status_icon}] Session: {result.session_id}")
     lines.append(f"  Task:    {result.task}")
     lines.append(f"  Agents:  {result.agents_used}")
@@ -159,12 +200,12 @@ def _scout_to_dict(result: ScoutResult) -> dict[str, Any]:
     }
 
 
-# --- Advance formatters ---
+# --- Advance formatters (new style) ---
 
 
 def _format_advance_table(result: AdvanceResult, verbose: bool) -> str:
     lines: list[str] = []
-    status_icon = "✓" if result.success else "✗"
+    status_icon = "+" if result.success else "X"
     lines.append(f"Advance Report [{status_icon}] Session: {result.session_id}")
     lines.append(f"  Task:         {result.task}")
     lines.append(f"  Agents:       {result.agents_used}")

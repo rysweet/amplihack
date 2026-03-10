@@ -20,6 +20,7 @@ try:
 
     TOOL_REGISTRY_AVAILABLE = True
 except ImportError:
+    print("WARNING: tool_registry not available - post-tool-use hooks disabled", file=sys.stderr)
     TOOL_REGISTRY_AVAILABLE = False
 
 
@@ -45,7 +46,8 @@ class PostToolUseHook(HookProcessor):
             register_context_hook()  # Registers with global registry
             self.log("Context management hook registered", "DEBUG")
         except ImportError as e:
-            self.log(f"Context management hook not available: {e}", "DEBUG")
+            self.log(f"Context management hook not available: {e}", "WARNING")
+            print(f"WARNING: context_automation_hook not available: {e}", file=sys.stderr)
 
         # Register blarify staleness detection hook
         try:
@@ -55,7 +57,8 @@ class PostToolUseHook(HookProcessor):
             register_blarify_staleness_hook()  # Registers with global registry
             self.log("Blarify staleness hook registered", "DEBUG")
         except ImportError as e:
-            self.log(f"Blarify staleness hook not available: {e}", "DEBUG")
+            self.log(f"Blarify staleness hook not available: {e}", "WARNING")
+            print(f"WARNING: blarify_staleness_hook not available: {e}", file=sys.stderr)
 
         # Register workflow enforcement hook (detects recipe runner bypass)
         try:
@@ -64,7 +67,8 @@ class PostToolUseHook(HookProcessor):
             register_workflow_enforcement_hook()
             self.log("Workflow enforcement hook registered", "DEBUG")
         except ImportError as e:
-            self.log(f"Workflow enforcement hook not available: {e}", "DEBUG")
+            self.log(f"Workflow enforcement hook not available: {e}", "WARNING")
+            print(f"WARNING: workflow_enforcement_hook not available: {e}", file=sys.stderr)
 
     def save_tool_metric(self, tool_name: str, duration_ms: int | None = None):
         """Save tool usage metric with structured data.
@@ -188,7 +192,8 @@ class PostToolUseHook(HookProcessor):
             return ClaudeStrategy(self.project_root, self.log)
 
         except ImportError as e:
-            self.log(f"Adaptive strategy not available: {e}", "DEBUG")
+            self.log(f"Adaptive strategy not available: {e}", "WARNING")
+            print(f"WARNING: Adaptive strategy not available: {e}", file=sys.stderr)
             return None
 
 
