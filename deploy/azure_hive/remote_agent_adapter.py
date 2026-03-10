@@ -82,20 +82,28 @@ class RemoteAgentAdapter:
         )
 
     def learn_from_content(self, content: str) -> dict[str, Any]:
-        """Send content to all agents via LEARN_CONTENT (broadcast).
+        """Send content to one agent (round-robin partition).
 
-        All agents learn all content. The hive mind additionally shares
-        knowledge between agents for cross-agent discovery.
+        5000 turns / 100 agents = 50 turns each. Each agent learns its
+        partition locally. The hive mind shares knowledge between agents
+        so any agent can answer questions about any content.
         """
         from azure.servicebus import ServiceBusMessage
 
         event_id = uuid.uuid4().hex[:12]
+        target_agent = self._learn_count % self._agent_count
+        target_name = f"agent-{target_agent}"
+
         msg = ServiceBusMessage(
             json.dumps({
                 "event_type": "LEARN_CONTENT",
                 "event_id": event_id,
+                "target_agent": target_name,
                 "source_agent": "eval-harness",
-                "payload": {"content": content},
+                "payload": {
+                    "content": content,
+                    "target_agent": target_name,
+                },
             }),
             content_type="application/json",
         )
@@ -103,7 +111,8 @@ class RemoteAgentAdapter:
         self._learn_count += 1
 
         if self._learn_count % 500 == 0:
-            logger.info("RemoteAgentAdapter: sent %d content turns", self._learn_count)
+            logger.info("RemoteAgentAdapter: sent %d content turns (%d per agent)",
+                        self._learn_count, self._learn_count // self._agent_count)
 
         return {"facts_stored": 1, "event_id": event_id}
 
@@ -171,21 +180,17 @@ class RemoteAgentAdapter:
     def _wait_for_agents_idle(self) -> None:
         """Wait for agents to finish processing content by polling subscription queue depth.
 
-        Checks each target agent's subscription message count. Questions are only
-        sent once the queue is empty (all content processed).
+        No timeout — waits until the queue is actually empty.
         """
         import subprocess
 
-        logger.info("Waiting for agents to process %d content turns...", self._learn_count)
+        logger.info("Waiting for agents to process %d content turns (%d per agent)...",
+                    self._learn_count, self._learn_count // max(1, self._agent_count))
 
-        # Poll subscription queue depth for agent-0 (representative sample)
-        max_wait = 1800  # 30 min max
-        deadline = time.time() + max_wait
         poll_interval = 30
 
-        while time.time() < deadline:
+        while True:
             try:
-                # Check agent-0's subscription depth as proxy for all agents
                 result = subprocess.run(
                     ["az", "servicebus", "topic", "subscription", "show",
                      "--namespace-name", self._sb_namespace,
@@ -202,14 +207,10 @@ class RemoteAgentAdapter:
                     return
                 elif count > 0:
                     logger.info("  Agent-0 queue: %d messages remaining...", count)
-                else:
-                    logger.info("  Could not read queue depth, waiting...")
             except Exception as e:
                 logger.debug("Queue depth check failed: %s", e)
 
             time.sleep(poll_interval)
-
-        logger.warning("Max wait reached (%ds). Starting questions anyway.", max_wait)
 
     def _listen_for_answers(self) -> None:
         """Background thread: subscribe to response topic and collect answers."""
