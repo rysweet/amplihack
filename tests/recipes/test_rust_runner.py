@@ -355,6 +355,19 @@ class TestEngineSelection:
         _, kwargs = mock_rust.call_args
         assert kwargs["auto_stage"] is False
 
+    @patch("amplihack.recipes.find_recipe", return_value="/pkg/recipes/default-workflow.yaml")
+    @patch("amplihack.recipes.run_recipe_via_rust")
+    def test_resolves_recipe_name_to_path_before_rust_call(self, mock_rust, mock_find):
+        """Issue #3002: resolve recipe names in Python before invoking Rust."""
+        from amplihack.recipes import run_recipe_by_name
+
+        mock_rust.return_value = MagicMock()
+        run_recipe_by_name("default-workflow")
+
+        mock_find.assert_called_once_with("default-workflow", None)
+        _, kwargs = mock_rust.call_args
+        assert kwargs["name"] == "/pkg/recipes/default-workflow.yaml"
+
     @patch("amplihack.recipes.run_recipe_via_rust", side_effect=RustRunnerNotFoundError("not found"))
     def test_rust_not_found_raises(self, mock_rust):
         from amplihack.recipes import run_recipe_by_name

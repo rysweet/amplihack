@@ -13,6 +13,7 @@ Public API:
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from amplihack.recipes.agent_resolver import AgentNotFoundError, AgentResolver
@@ -104,8 +105,11 @@ def run_recipe_by_name(
     Raises:
         RustRunnerNotFoundError: If the Rust binary is not installed.
     """
+    search_dirs = [Path(p) for p in recipe_dirs] if recipe_dirs else None
+    resolved = find_recipe(name, search_dirs)
+
     return run_recipe_via_rust(
-        name=name,
+        name=str(resolved) if resolved is not None else name,
         user_context=user_context,
         dry_run=dry_run,
         recipe_dirs=recipe_dirs,

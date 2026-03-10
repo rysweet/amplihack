@@ -308,16 +308,24 @@ def _execute_rust_command(cmd: list[str], *, name: str) -> RecipeResult:
 
 
 def _default_package_recipe_dirs() -> list[str]:
-    """Return the installed package's bundled recipe directory if it exists.
+    """Return bundled recipe directories visible to Python discovery.
 
-    This ensures the Rust binary can always find recipes bundled with the
-    Python package, fixing the Python/Rust discovery mismatch (issue #3002).
+    In editable installs, ``src/amplihack/amplifier-bundle/recipes`` may exist
+    but only contain a subset of recipes, while the full bundle lives at the
+    repo root ``amplifier-bundle/recipes``.  The Rust runner needs both paths
+    to match Python-side discovery in real environments (issue #3002).
     """
     try:
-        from amplihack.recipes.discovery import _PACKAGE_BUNDLE_DIR
+        from amplihack.recipes.discovery import _PACKAGE_BUNDLE_DIR, _REPO_ROOT_BUNDLE_DIR
 
-        if _PACKAGE_BUNDLE_DIR.is_dir():
-            return [str(_PACKAGE_BUNDLE_DIR)]
+        dirs: list[str] = []
+        for candidate in (_PACKAGE_BUNDLE_DIR, _REPO_ROOT_BUNDLE_DIR):
+            if candidate.is_dir():
+                candidate_str = str(candidate)
+                if candidate_str not in dirs:
+                    dirs.append(candidate_str)
+        if dirs:
+            return dirs
     except Exception:
         pass
     return []
