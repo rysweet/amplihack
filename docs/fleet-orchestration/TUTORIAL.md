@@ -49,19 +49,34 @@ Before you begin, you need:
 
 ## Installation
 
-Install amplihack with the TUI extra for the interactive dashboard:
+Fleet is a required part of amplihack — no optional extras needed:
 
 ```bash
-pip install amplihack[fleet-tui]
+pip install amplihack
 ```
 
-Or run directly from the repository without installing:
+## Using Fleet
+
+Fleet commands work in two ways:
+
+**From the shell:**
 
 ```bash
-uvx --from "git+https://github.com/rysweet/amplihack@feat/fleet-orchestration[fleet-tui]" amplihack fleet
+amplihack fleet status
+amplihack fleet scout
+amplihack fleet advance --session deva:rustyclawd
 ```
 
-The `fleet-tui` extra adds [Textual](https://textual.textualize.io/) for the interactive terminal dashboard. Without it, all text-based commands (`status`, `dry-run`, `watch`) still work.
+**From the Claude Code REPL (interactive session):**
+
+```
+/fleet scout
+/fleet advance --session deva:rustyclawd
+/fleet watch dev cybergym
+```
+
+The `/fleet` slash command is available in any amplihack-powered Claude Code or
+Copilot CLI session. It provides the same commands as the shell interface.
 
 ## First Run
 
