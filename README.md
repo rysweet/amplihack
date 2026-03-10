@@ -348,12 +348,17 @@ Azure VMs. The fleet admiral monitors sessions, reasons about what each agent
 needs, and can send commands autonomously.
 
 ```bash
+# From the shell:
 amplihack fleet              # Interactive TUI dashboard
 amplihack fleet scout        # Discover all VMs/sessions, dry-run reasoning
 amplihack fleet advance      # Send next commands to sessions (live)
 amplihack fleet status       # Quick text overview
 amplihack fleet adopt devo   # Bring existing sessions under management
 amplihack fleet auth devo    # Propagate auth tokens to a VM
+
+# From the Claude Code REPL (interactive session):
+/fleet scout                 # Same commands available as slash commands
+/fleet advance --session deva:rustyclawd
 ```
 
 **Key capabilities:**
