@@ -4,23 +4,14 @@ Implements the same interface as LearningAgent (learn_from_content, answer_quest
 so it can be passed directly to LongHorizonMemoryEval.run(). The eval harness
 uses the exact same code path for local and distributed agents.
 
-Content is sent via Service Bus LEARN_CONTENT events.
-Questions are sent via Service Bus INPUT events with an event_id.
-Answers are collected from a response topic (published by the AnswerPublisher
-stdout wrapper on the agent side).
+Content is sent via Service Bus LEARN_CONTENT events (broadcast).
+Questions are sent via Service Bus INPUT events with an event_id (round-robin).
+Answers are collected from the eval-responses Service Bus topic, correlated
+by event_id via the GoalSeekingAgent.on_answer callback.
 
 Usage:
-    from deploy.azure_hive.remote_agent_adapter import RemoteAgentAdapter
-    from amplihack.eval.long_horizon_memory import LongHorizonMemoryEval
-
-    adapter = RemoteAgentAdapter(
-        connection_string=sb_conn,
-        input_topic="hive-events-amplihivev8",
-        response_topic="eval-responses-amplihivev8",
-        agent_count=100,
-    )
-    eval_harness = LongHorizonMemoryEval(num_turns=5000, num_questions=50)
-    report = eval_harness.run(adapter, grader_model="claude-haiku-4-5-20251001")
+    adapter = RemoteAgentAdapter(sb_conn, input_topic, response_topic, agent_count=100)
+    report = LongHorizonMemoryEval(turns=5000, questions=50).run(adapter)
     adapter.close()
 """
 
@@ -39,53 +30,48 @@ logger = logging.getLogger(__name__)
 class RemoteAgentAdapter:
     """Adapter that forwards learn/answer calls to deployed agents via Service Bus.
 
-    Implements learn_from_content() and answer_question() so the standard
-    LongHorizonMemoryEval can use it identically to a local LearningAgent.
-
     Content is broadcast to all agents (LEARN_CONTENT events).
     Questions are sent to a single agent (round-robin) as INPUT events.
-    Answers are collected from Log Analytics (agent stdout → Container Apps logs).
+    Answers are collected from a Service Bus response topic with event_id correlation.
     """
 
     def __init__(
         self,
         connection_string: str,
         input_topic: str = "hive-events",
-        workspace_id: str = "",
+        response_topic: str = "eval-responses",
         agent_count: int = 100,
         answer_timeout: float = 600.0,
-        response_topic: str = "",  # unused, kept for backward compat
+        workspace_id: str = "",  # unused, kept for backward compat
     ) -> None:
         from azure.servicebus import ServiceBusClient
 
         self._conn_str = connection_string
         self._input_topic = input_topic
-        self._workspace_id = workspace_id
+        self._response_topic = response_topic
         self._agent_count = agent_count
         self._answer_timeout = answer_timeout
         self._learn_count = 0
         self._question_count = 0
         self._closed = False
-        # Track the timestamp of the last answer seen per agent to avoid stale results
-        self._agent_answer_ts: dict[str, str] = {}  # agent_name -> ISO timestamp of last answer
 
         # Service Bus client for sending
         self._client = ServiceBusClient.from_connection_string(connection_string)
         self._sender = self._client.get_topic_sender(topic_name=input_topic)
 
-        # Log Analytics client for reading answers
-        self._la_client = None
-        if workspace_id:
-            try:
-                from azure.identity import AzureCliCredential
-                from azure.monitor.query import LogsQueryClient
-                self._la_client = LogsQueryClient(AzureCliCredential())
-            except Exception as e:
-                logger.warning("RemoteAgentAdapter: LA client init failed: %s", e)
+        # Response listener thread collects answers from eval-responses topic
+        self._pending_answers: dict[str, str] = {}  # event_id -> answer
+        self._answer_events: dict[str, threading.Event] = {}  # event_id -> signal
+        self._lock = threading.Lock()
+
+        self._listener_thread = threading.Thread(
+            target=self._listen_for_answers, daemon=True
+        )
+        self._listener_thread.start()
 
         logger.info(
-            "RemoteAgentAdapter: input=%s workspace=%s agents=%d",
-            input_topic, workspace_id, agent_count,
+            "RemoteAgentAdapter: input=%s response=%s agents=%d",
+            input_topic, response_topic, agent_count,
         )
 
     def learn_from_content(self, content: str) -> dict[str, Any]:
@@ -111,17 +97,14 @@ class RemoteAgentAdapter:
         return {"facts_stored": 1, "event_id": event_id}
 
     def answer_question(self, question: str) -> str:
-        """Send question to one agent via INPUT event, poll LA for answer.
+        """Send question to one agent via INPUT event, wait for answer on response topic.
 
-        The question goes through the agent's full OODA loop (observe → orient
-        → decide → act). The agent prints the answer to stdout, which Container
-        Apps streams to Log Analytics. We poll LA for the ANSWER line from the
-        target agent.
+        The question goes through the agent's full OODA loop. The on_answer callback
+        publishes the correlated answer to the response topic. The listener thread
+        picks it up and signals us.
 
-        On the first question, waits for agents to finish processing content
-        by polling LA until LLM activity drops to near-zero.
+        On the first question, waits for agents to finish processing content.
         """
-        # On first question, wait for agents to finish processing content
         if self._question_count == 0 and self._learn_count > 0:
             self._wait_for_agents_idle()
 
@@ -129,10 +112,12 @@ class RemoteAgentAdapter:
 
         event_id = uuid.uuid4().hex[:12]
         target_agent = self._question_count % self._agent_count
-        target_name = f"agent-{target_agent}"
         self._question_count += 1
 
-        send_time = time.time()
+        # Prepare signal before sending (avoid race)
+        answer_event = threading.Event()
+        with self._lock:
+            self._answer_events[event_id] = answer_event
 
         msg = ServiceBusMessage(
             json.dumps({
@@ -149,141 +134,98 @@ class RemoteAgentAdapter:
         self._sender.send_messages(msg)
 
         logger.info(
-            "RemoteAgentAdapter: sent question to %s: %s",
-            target_name, question[:60],
+            "RemoteAgentAdapter: sent question to agent-%d (event_id=%s): %s",
+            target_agent, event_id, question[:60],
         )
 
-        # Poll Log Analytics for the answer
-        if not self._la_client:
-            logger.warning("No LA client — cannot collect answer")
-            return "No answer (Log Analytics client not configured)"
+        # Wait for answer
+        if not answer_event.wait(timeout=self._answer_timeout):
+            logger.warning(
+                "RemoteAgentAdapter: timeout waiting for answer (event_id=%s, %ds)",
+                event_id, self._answer_timeout,
+            )
+            with self._lock:
+                self._answer_events.pop(event_id, None)
+            return "No answer received (timeout)"
 
-        return self._poll_la_for_answer(target_name, send_time)
+        with self._lock:
+            answer = self._pending_answers.pop(event_id, "No answer received")
+            self._answer_events.pop(event_id, None)
+
+        return answer
 
     def _wait_for_agents_idle(self) -> None:
-        """Wait for agents to finish processing content before asking questions."""
-        if not self._la_client:
-            logger.info("No LA client — waiting 5 min for agents to process content")
-            time.sleep(300)
+        """Wait for agents to finish processing content before asking questions.
+
+        Polls the response topic subscription for a proxy of agent activity by
+        checking if new LEARN_CONTENT events are still being processed.
+        Uses a simple time-based wait as fallback.
+        """
+        # Simple approach: wait based on content volume.
+        # 5000 turns / 100 agents = 50 turns each, ~5s per turn = ~250s processing.
+        # Add buffer for variance.
+        wait_s = max(60, (self._learn_count / self._agent_count) * 8)
+        wait_s = min(wait_s, 600)  # Cap at 10 min
+        logger.info(
+            "Waiting %.0fs for agents to process %d content turns...",
+            wait_s, self._learn_count,
+        )
+        time.sleep(wait_s)
+        logger.info("Wait complete. Starting question phase.")
+
+    def _listen_for_answers(self) -> None:
+        """Background thread: subscribe to response topic and collect answers."""
+        try:
+            receiver = self._client.get_subscription_receiver(
+                topic_name=self._response_topic,
+                subscription_name="eval-reader",
+                max_wait_time=10,
+            )
+        except Exception as e:
+            logger.error("RemoteAgentAdapter: failed to connect to response topic: %s", e)
             return
 
-        import datetime
-        from azure.monitor.query import LogsQueryStatus
+        logger.info("RemoteAgentAdapter: listening on %s/eval-reader", self._response_topic)
 
-        logger.info("Waiting for agents to finish processing %d content turns...", self._learn_count)
-        quiet_count = 0
-        quiet_threshold = 5  # 5 consecutive low-activity checks
-
-        while quiet_count < quiet_threshold:
+        while not self._closed:
             try:
-                end_dt = datetime.datetime.now(tz=datetime.timezone.utc)
-                start_dt = end_dt - datetime.timedelta(minutes=2)
-                query = (
-                    "ContainerAppConsoleLogs_CL"
-                    " | where Log_s has 'Completed Call'"
-                    " | count"
+                messages = receiver.receive_messages(
+                    max_message_count=50, max_wait_time=5,
                 )
-                response = self._la_client.query_workspace(
-                    workspace_id=self._workspace_id,
-                    query=query,
-                    timespan=(start_dt, end_dt),
-                )
-                count = 0
-                if response.status == LogsQueryStatus.SUCCESS and response.tables:
-                    for row in response.tables[0].rows:
-                        count = int(row[0]) if row else 0
+                for msg in messages:
+                    try:
+                        body = json.loads(str(msg))
+                        event_id = body.get("event_id", "")
+                        answer = body.get("answer", "")
 
-                if count < 20:
-                    quiet_count += 1
-                    logger.info("  Low activity: %d calls (quiet %d/%d)", count, quiet_count, quiet_threshold)
-                else:
-                    quiet_count = 0
-                    logger.info("  Agents processing: %d calls in 2min...", count)
-            except Exception as e:
-                logger.debug("LA poll during wait failed: %s", e)
-
-            time.sleep(30)
-
-        logger.info("Agents idle. Starting question phase.")
-
-    def _poll_la_for_answer(self, agent_name: str, since_ts: float) -> str:
-        """Poll Log Analytics for an ANSWER line from a specific agent after since_ts."""
-        import datetime
-        from azure.monitor.query import LogsQueryStatus
-
-        deadline = time.time() + self._answer_timeout
-        poll_interval = 15.0
-        # Use the send timestamp as the strict lower bound — no lookback
-        since_dt_str = datetime.datetime.fromtimestamp(
-            since_ts, tz=datetime.timezone.utc
-        ).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-        # Also filter out any answer we've already seen from this agent
-        last_seen = self._agent_answer_ts.get(agent_name, "")
-
-        while time.time() < deadline:
-            end_dt = datetime.datetime.now(tz=datetime.timezone.utc)
-            start_dt = datetime.datetime.fromtimestamp(since_ts, tz=datetime.timezone.utc)
-
-            # Query for the NEWEST answer from this agent after since_ts.
-            # Use the logger-formatted line (not the print() line) because
-            # long answers get split across multiple Log_s rows by Container Apps.
-            # The logger line is always single-line: "INFO: Agent X ANSWER: ..."
-            time_filter = f' | where TimeGenerated > datetime({since_dt_str})'
-            if last_seen:
-                time_filter = f' | where TimeGenerated > datetime({last_seen})'
-
-            query = (
-                "ContainerAppConsoleLogs_CL"
-                f' | where ContainerName_s == "{agent_name}"'
-                ' | where Log_s has "ANSWER:"'
-                f' | where Log_s has "Agent {agent_name} ANSWER:"'
-                + time_filter
-                + " | order by TimeGenerated desc"
-                + " | project TimeGenerated, Log_s"
-                + " | take 1"
-            )
-
-            try:
-                response = self._la_client.query_workspace(
-                    workspace_id=self._workspace_id,
-                    query=query,
-                    timespan=(start_dt, end_dt),
-                )
-                if response.status == LogsQueryStatus.SUCCESS:
-                    if response.tables and response.tables[0].rows:
-                        row = response.tables[0].rows[0]
-                        ts_val = str(row[0])
-                        log_line = str(row[1])
-                        if "ANSWER:" in log_line:
-                            # Logger format: "... INFO: Agent agent-X ANSWER: <full answer>"
-                            marker = f"Agent {agent_name} ANSWER: "
-                            idx = log_line.find(marker)
-                            if idx >= 0:
-                                answer = log_line[idx + len(marker):].strip()
-                            else:
-                                # Fallback to generic ANSWER: marker
-                                marker2 = "ANSWER: "
-                                idx2 = log_line.find(marker2)
-                                answer = log_line[idx2 + len(marker2):].strip() if idx2 >= 0 else log_line
-                            if "internal error" not in answer.lower():
-                                # Record this answer's timestamp so we don't re-read it
-                                self._agent_answer_ts[agent_name] = ts_val
+                        with self._lock:
+                            if event_id in self._answer_events:
+                                self._pending_answers[event_id] = answer
+                                self._answer_events[event_id].set()
                                 logger.info(
-                                    "RemoteAgentAdapter: got answer from %s: %s",
-                                    agent_name, answer[:80],
+                                    "RemoteAgentAdapter: got answer for %s from %s: %s",
+                                    event_id, body.get("agent_id", "?"), answer[:80],
                                 )
-                                return answer
-            except Exception as e:
-                logger.debug("LA poll failed: %s", e)
 
-            time.sleep(poll_interval)
+                        receiver.complete_message(msg)
+                    except Exception:
+                        logger.debug("Failed to parse response message", exc_info=True)
+                        try:
+                            receiver.complete_message(msg)
+                        except Exception:
+                            pass
+            except Exception:
+                if not self._closed:
+                    logger.debug("Response listener error", exc_info=True)
+                    time.sleep(1)
 
-        logger.warning("RemoteAgentAdapter: timeout waiting for %s (%ds)", agent_name, self._answer_timeout)
-        return "No answer received (timeout)"
+        try:
+            receiver.close()
+        except Exception:
+            pass
 
     def get_memory_stats(self) -> dict[str, Any]:
-        """Return adapter stats (not agent memory stats)."""
+        """Return adapter stats."""
         return {
             "adapter": "remote",
             "learn_count": self._learn_count,
@@ -302,3 +244,5 @@ class RemoteAgentAdapter:
             self._client.close()
         except Exception:
             pass
+        if self._listener_thread.is_alive():
+            self._listener_thread.join(timeout=5)

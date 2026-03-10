@@ -42,7 +42,7 @@ def main():
     )
     p.add_argument("--connection-string", required=True, help="Service Bus connection string")
     p.add_argument("--input-topic", default="hive-events", help="Agent input topic")
-    p.add_argument("--workspace-id", default="", help="Log Analytics workspace ID for answer collection")
+    p.add_argument("--response-topic", default="eval-responses", help="Eval response topic")
     p.add_argument("--turns", type=int, default=300, help="Dialogue turns")
     p.add_argument("--questions", type=int, default=50, help="Number of questions")
     p.add_argument("--agents", type=int, default=100, help="Number of deployed agents")
@@ -52,21 +52,6 @@ def main():
     p.add_argument("--output", default="", help="Output JSON path")
     args = p.parse_args()
 
-    # Auto-detect workspace ID if not provided
-    workspace_id = args.workspace_id
-    if not workspace_id:
-        import subprocess
-        try:
-            result = subprocess.run(
-                ["az", "monitor", "log-analytics", "workspace", "list",
-                 "--query", "[0].customerId", "-o", "tsv"],
-                capture_output=True, text=True, timeout=30,
-            )
-            workspace_id = result.stdout.strip()
-            logger.info("Auto-detected workspace ID: %s", workspace_id)
-        except Exception:
-            logger.warning("Could not auto-detect workspace ID")
-
     # Import the adapter and the eval harness
     from remote_agent_adapter import RemoteAgentAdapter
     from amplihack.eval.long_horizon_memory import LongHorizonMemoryEval, _print_report
@@ -75,7 +60,7 @@ def main():
     adapter = RemoteAgentAdapter(
         connection_string=args.connection_string,
         input_topic=args.input_topic,
-        workspace_id=workspace_id,
+        response_topic=args.response_topic,
         agent_count=args.agents,
         answer_timeout=args.answer_timeout,
     )
