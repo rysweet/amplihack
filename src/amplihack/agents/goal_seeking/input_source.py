@@ -233,6 +233,12 @@ class ServiceBusInputSource:
                 raw = json.loads(body)
                 event_type = raw.get("event_type")
                 payload = raw.get("payload", {})
+                # Skip messages targeted at a different agent
+                target = raw.get("target_agent", "") or payload.get("target_agent", "")
+                if target and target != self._agent_name:
+                    self._receiver.complete_message(msg)
+                    continue
+
                 text = _extract_text_from_bus_event(event_type, payload)
                 self._receiver.complete_message(msg)
                 # Store event metadata for correlation (eval answer publishing)

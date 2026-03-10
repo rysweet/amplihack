@@ -119,14 +119,17 @@ class RemoteAgentAdapter:
         with self._lock:
             self._answer_events[event_id] = answer_event
 
+        target_name = f"agent-{target_agent}"
         msg = ServiceBusMessage(
             json.dumps({
                 "event_type": "INPUT",
                 "event_id": event_id,
+                "target_agent": target_name,
                 "source_agent": "eval-harness",
                 "payload": {
                     "question": question,
                     "question_id": f"q_{self._question_count}",
+                    "target_agent": target_name,
                 },
             }),
             content_type="application/json",
@@ -134,8 +137,8 @@ class RemoteAgentAdapter:
         self._sender.send_messages(msg)
 
         logger.info(
-            "RemoteAgentAdapter: sent question to agent-%d (event_id=%s): %s",
-            target_agent, event_id, question[:60],
+            "RemoteAgentAdapter: sent question to %s (event_id=%s): %s",
+            target_name, event_id, question[:60],
         )
 
         # Wait for answer
