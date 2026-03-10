@@ -1,5 +1,13 @@
 # amplihack
 
+> **Prerequisites** — Before you begin, you should be comfortable with:
+> - Basic command-line/terminal usage
+> - Git and GitHub fundamentals
+> - Python or Node.js ecosystem basics (package managers like uv/pip/npm)
+> - Understanding of what API keys and environment variables are
+>
+> Not sure? That's okay — check out our [Resources for Beginners](#resources-for-beginners) section below.
+
 Development framework for Claude Code, GitHub Copilot CLI, and Microsoft
 Amplifier. Adds structured workflows, persistent memory, specialized agents,
 goal-seeking capabilities, autonomous execution, and continuous improvement for
@@ -37,6 +45,19 @@ uvx --from git+https://github.com/rysweet/amplihack amplihack claude
 - [License](#license)
 
 ## Why amplihack?
+
+## 📚 Resources for Beginners
+
+New to some of these topics? Here are some resources to get you started:
+
+- **Terminal/Command Line**: [Introduction to the Command Line](https://flaviocopes.com/bash-basics/)
+- **Git & GitHub**: [GitHub Docs](https://docs.github.com/en/get-started)
+- **Python**: [Python.org Tutorial](https://docs.python.org/3/tutorial/)
+- **Node.js**: [Node.js Getting Started](https://nodejs.org/en/docs/guides/)
+- **API Keys**: [What is an API Key?](https://www.redhat.com/en/topics/security/what-is-api-key)
+- **Environment Variables**: [Env Var Basics](https://www.twilio.com/blog/environment-variables-python)
+
+---
 
 **The Problem**: Claude Code and GitHub Copilot CLI are barebones development
 tools. They provide a chat interface and model access, but no engineering system
