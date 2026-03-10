@@ -981,6 +981,27 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
     # Register awesome-copilot marketplace extensions (best-effort, silent on failure)
     register_awesome_copilot_marketplace()
 
+    # Ensure XPIA defender binary is installed (security-critical, fail-closed)
+    try:
+        from ..security.xpia_install import ensure_xpia_binary
+
+        binary_path = ensure_xpia_binary()
+        print(f"✓ XPIA security defender ready ({binary_path})")
+    except ImportError:
+        # Module not available — installer not yet integrated, warn but continue
+        import logging
+
+        logging.getLogger(__name__).warning("XPIA installer module not found")
+        print("⚠ XPIA defender installer not available (module missing)")
+    except Exception as e:
+        # Installation failed — warn loudly but don't block startup.
+        # The pre-tool-use hook will enforce fail-closed at validation time.
+        import logging
+
+        logging.getLogger(__name__).error("XPIA defender binary install failed: %s", e)
+        print(f"⚠ XPIA defender not installed: {e}")
+        print("  Security validation will block tool use until xpia-defend is available.")
+
     # Prompt to re-enable power-steering if disabled (#2544)
     try:
         from ..power_steering.re_enable_prompt import prompt_re_enable_if_disabled
