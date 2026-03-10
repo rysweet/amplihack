@@ -42,13 +42,20 @@ class RemoteAgentAdapter:
         response_topic: str = "eval-responses",
         agent_count: int = 100,
         answer_timeout: float = 600.0,
+        resource_group: str = "",
         workspace_id: str = "",  # unused, kept for backward compat
     ) -> None:
         from azure.servicebus import ServiceBusClient
+        import re
 
         self._conn_str = connection_string
         self._input_topic = input_topic
         self._response_topic = response_topic
+        self._resource_group = resource_group
+
+        # Extract SB namespace from connection string
+        ns_match = re.search(r'Endpoint=sb://([^.]+)\.', connection_string)
+        self._sb_namespace = ns_match.group(1) if ns_match else ""
         self._agent_count = agent_count
         self._answer_timeout = answer_timeout
         self._learn_count = 0
@@ -158,23 +165,47 @@ class RemoteAgentAdapter:
         return answer
 
     def _wait_for_agents_idle(self) -> None:
-        """Wait for agents to finish processing content before asking questions.
+        """Wait for agents to finish processing content by polling subscription queue depth.
 
-        Polls the response topic subscription for a proxy of agent activity by
-        checking if new LEARN_CONTENT events are still being processed.
-        Uses a simple time-based wait as fallback.
+        Checks each target agent's subscription message count. Questions are only
+        sent once the queue is empty (all content processed).
         """
-        # Simple approach: wait based on content volume.
-        # 5000 turns / 100 agents = 50 turns each, ~5s per turn = ~250s processing.
-        # Add buffer for variance.
-        wait_s = max(60, (self._learn_count / self._agent_count) * 8)
-        wait_s = min(wait_s, 600)  # Cap at 10 min
-        logger.info(
-            "Waiting %.0fs for agents to process %d content turns...",
-            wait_s, self._learn_count,
-        )
-        time.sleep(wait_s)
-        logger.info("Wait complete. Starting question phase.")
+        import subprocess
+
+        logger.info("Waiting for agents to process %d content turns...", self._learn_count)
+
+        # Poll subscription queue depth for agent-0 (representative sample)
+        max_wait = 1800  # 30 min max
+        deadline = time.time() + max_wait
+        poll_interval = 30
+
+        while time.time() < deadline:
+            try:
+                # Check agent-0's subscription depth as proxy for all agents
+                result = subprocess.run(
+                    ["az", "servicebus", "topic", "subscription", "show",
+                     "--namespace-name", self._sb_namespace,
+                     "--topic-name", self._input_topic,
+                     "--name", "agent-0",
+                     "--resource-group", self._resource_group,
+                     "--query", "countDetails.activeMessageCount",
+                     "-o", "tsv"],
+                    capture_output=True, text=True, timeout=30,
+                )
+                count = int(result.stdout.strip()) if result.stdout.strip().isdigit() else -1
+                if count == 0:
+                    logger.info("Agent queues empty. Starting question phase.")
+                    return
+                elif count > 0:
+                    logger.info("  Agent-0 queue: %d messages remaining...", count)
+                else:
+                    logger.info("  Could not read queue depth, waiting...")
+            except Exception as e:
+                logger.debug("Queue depth check failed: %s", e)
+
+            time.sleep(poll_interval)
+
+        logger.warning("Max wait reached (%ds). Starting questions anyway.", max_wait)
 
     def _listen_for_answers(self) -> None:
         """Background thread: subscribe to response topic and collect answers."""
