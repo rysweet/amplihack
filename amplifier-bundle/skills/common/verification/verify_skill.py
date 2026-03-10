@@ -33,7 +33,6 @@ def check_python_package(package: str) -> tuple[bool, str]:
         version = getattr(mod, "__version__", "unknown")
         return True, f"Installed (v{version})"
     except ImportError:
-        print(f"WARNING: {package} not available", file=sys.stderr)
         return False, "Not installed"
 
 
