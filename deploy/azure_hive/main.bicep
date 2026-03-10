@@ -265,6 +265,14 @@ resource containerApps 'Microsoft.App/containerApps@2024-03-01' = [
                 value: sbTopicName
               }
               {
+                name: 'AMPLIHACK_HIVE_NAME'
+                value: hiveName
+              }
+              {
+                name: 'AMPLIHACK_EVAL_RESPONSE_TOPIC'
+                value: 'eval-responses-${hiveName}'
+              }
+              {
                 name: 'ANTHROPIC_API_KEY'
                 secretRef: 'anthropic-api-key'
               }
