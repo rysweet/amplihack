@@ -9,6 +9,7 @@ import signal
 import subprocess
 import tempfile
 import threading
+from collections.abc import MutableMapping
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -443,7 +444,38 @@ def execute_update(install_method: str) -> bool:
         return False
 
 
-def check_copilot() -> bool:
+def _copilot_home(home: Path | None = None, env: MutableMapping[str, str] | None = None) -> Path:
+    """Resolve the home directory used for Copilot installation/discovery."""
+    if home is not None:
+        return home.expanduser().resolve()
+    if env is not None and env.get("HOME"):
+        return Path(env["HOME"]).expanduser().resolve()
+    return Path.home()
+
+
+def _copilot_npm_bin(home: Path | None = None, env: MutableMapping[str, str] | None = None) -> Path:
+    """Return the npm-global bin directory used for Copilot CLI installs."""
+    return _copilot_home(home=home, env=env) / ".npm-global" / "bin"
+
+
+def _ensure_copilot_bin_on_path(
+    env: MutableMapping[str, str] | None = None, home: Path | None = None
+) -> Path:
+    """Prepend the Copilot npm-global bin dir to PATH for the selected environment."""
+    target_env = os.environ if env is None else env
+    bin_path = _copilot_npm_bin(home=home, env=target_env)
+    current_path = target_env.get("PATH", "")
+    path_entries = [entry for entry in current_path.split(os.pathsep) if entry]
+    if str(bin_path) not in path_entries:
+        target_env["PATH"] = (
+            f"{bin_path}{os.pathsep}{current_path}" if current_path else str(bin_path)
+        )
+    return bin_path
+
+
+def check_copilot(
+    env: MutableMapping[str, str] | None = None, home: Path | None = None
+) -> bool:
     """Check if Copilot CLI is installed.
 
     Returns:
@@ -453,32 +485,44 @@ def check_copilot() -> bool:
         Handles FileNotFoundError (not installed), PermissionError (WSL),
         and TimeoutExpired (hanging command) gracefully.
     """
+    effective_env = os.environ if env is None else env
+    _ensure_copilot_bin_on_path(env=effective_env, home=home)
     try:
-        subprocess.run(["copilot", "--version"], capture_output=True, timeout=5, check=False)
+        kwargs = {"capture_output": True, "timeout": 5, "check": False}
+        if env is not None:
+            kwargs["env"] = effective_env
+        subprocess.run(["copilot", "--version"], **kwargs)
         return True
     except (FileNotFoundError, PermissionError, subprocess.TimeoutExpired):
         return False
 
 
-def install_copilot() -> bool:
+def install_copilot(
+    env: MutableMapping[str, str] | None = None, home: Path | None = None
+) -> bool:
     """Install GitHub Copilot CLI via npm to user-local directory."""
     print("Installing GitHub Copilot CLI...")
 
-    npm_prefix = Path.home() / ".npm-global"
+    effective_env = os.environ if env is None else env
+    npm_prefix = _copilot_home(home=home, env=effective_env) / ".npm-global"
     npm_prefix.mkdir(parents=True, exist_ok=True)
 
     try:
+        kwargs = {"check": False}
+        if env is not None:
+            kwargs["env"] = effective_env
         result = subprocess.run(
-            ["npm", "install", "-g", "--prefix", str(npm_prefix), "@github/copilot"], check=False
+            ["npm", "install", "-g", "--prefix", str(npm_prefix), "@github/copilot"], **kwargs
         )
         if result.returncode == 0:
             print("✓ Copilot CLI installed")
 
             # Add to PATH for current process
             bin_path = npm_prefix / "bin"
-            path_env = os.environ.get("PATH", "")
-            if str(bin_path) not in path_env:
-                os.environ["PATH"] = f"{bin_path}:{path_env}"
+            path_env = effective_env.get("PATH", "")
+            path_entries = [entry for entry in path_env.split(os.pathsep) if entry]
+            if str(bin_path) not in path_entries:
+                _ensure_copilot_bin_on_path(env=effective_env, home=home)
                 print(f"\n⚠️  Added to PATH for this session: {bin_path}")
                 print("   Add to ~/.bashrc or ~/.zshrc for persistence:")
                 print(f'   export PATH="{bin_path}:$PATH"')
