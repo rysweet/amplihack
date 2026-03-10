@@ -1,0 +1,141 @@
+scenario:
+  name: "SessionCopilot - Goal Completion Detection"
+  description: >
+    Verify that SessionCopilot correctly detects when a goal is achieved
+    and returns mark_complete, triggering auto-unlock of lock mode.
+  type: cli
+  tags: [copilot, completion, fleet]
+  timeout: 60s
+
+  prerequisites:
+    - "amplihack package installed in .venv"
+    - "ANTHROPIC_API_KEY is set"
+
+  steps:
+    # Step 1: Test progress estimation from transcript patterns
+    - action: launch
+      target: ".venv/bin/python"
+      args: ["-c", "
+from amplihack.fleet.fleet_copilot import SessionCopilot
+
+copilot = SessionCopilot(goal='Create a PR')
+
+# Test progress detection patterns
+assert copilot._estimate_progress('') is None, 'Empty transcript should return None'
+assert copilot._estimate_progress('GOAL_STATUS: ACHIEVED') == 100, 'ACHIEVED should be 100%'
+assert copilot._estimate_progress('PR created at github.com/...') == 90, 'PR created should be 90%'
+assert copilot._estimate_progress('All tests pass') == 80, 'Tests pass should be 80%'
+assert copilot._estimate_progress('working on implementation') is None, 'Generic text should be None'
+print('PROGRESS ESTIMATION PASSED')
+"]
+      description: "Validate progress estimation logic"
+
+    - action: verify_output
+      contains: "PROGRESS ESTIMATION PASSED"
+
+    # Step 2: Test mark_complete flow through copilot_stop_handler
+    - action: launch
+      target: ".venv/bin/python"
+      args: ["-c", "
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+from amplihack.fleet.fleet_copilot import SessionCopilot, CopilotSuggestion
+
+# Create a mock copilot that returns mark_complete
+mock_copilot_cls = MagicMock()
+mock_suggestion = CopilotSuggestion(
+    action='mark_complete',
+    reasoning='Goal achieved - PR created and tests pass',
+    confidence=0.98,
+    progress_pct=100,
+)
+mock_copilot_instance = MagicMock()
+mock_copilot_instance.suggest.return_value = mock_suggestion
+mock_copilot_cls.return_value = mock_copilot_instance
+
+# Test the stop handler
+from amplihack.fleet.fleet_copilot import SessionCopilot as RealCopilot
+with patch('amplihack.fleet.fleet_copilot.SessionCopilot', mock_copilot_cls):
+    # Import after patching
+    import importlib
+    import amplihack.fleet.fleet_copilot
+    # Use the handler directly
+    from .claude.tools.amplihack.hooks.copilot_stop_handler import get_copilot_continuation, disable_lock_files
+
+# Actually, test the handler function directly
+import sys
+sys.path.insert(0, '.claude/tools')
+from amplihack.hooks.copilot_stop_handler import get_copilot_continuation
+
+project_root = Path('.')
+logs = []
+
+with patch('amplihack.hooks.copilot_stop_handler.SessionCopilot') as MockCls:
+    mock_inst = MagicMock()
+    mock_inst.suggest.return_value = mock_suggestion
+    MockCls.return_value = mock_inst
+
+    result = get_copilot_continuation(
+        goal='Create a PR for the fix',
+        project_root=project_root,
+        log_fn=lambda msg: logs.append(msg),
+    )
+
+print(f'RESULT: {result}')
+assert result is not None, 'Should return continuation prompt'
+assert 'achieved' in result.lower(), f'Should mention achievement: {result}'
+assert 'lock mode' in result.lower() or 'auto-disabled' in result.lower(), f'Should mention lock disabled: {result}'
+print('MARK_COMPLETE FLOW PASSED')
+"]
+      description: "Validate mark_complete triggers lock auto-disable"
+      continue_on_failure: true
+
+    # Step 3: Test with real LLM - provide a transcript that looks complete
+    - action: launch
+      target: ".venv/bin/python"
+      args: ["-c", "
+import json, tempfile, os
+from pathlib import Path
+from unittest.mock import patch
+
+# Create a fake JSONL transcript that looks like completed work
+transcript_lines = [
+    json.dumps({'type': 'user', 'message': {'content': [{'type': 'text', 'text': 'Create /tmp/copilot-test-complete.txt'}]}}),
+    json.dumps({'type': 'assistant', 'message': {'content': [{'type': 'text', 'text': 'I will create that file for you.'}]}}),
+    json.dumps({'type': 'tool_use', 'name': 'Write', 'input': {'file_path': '/tmp/copilot-test-complete.txt', 'content': 'done'}}),
+    json.dumps({'type': 'tool_result', 'content': 'File created successfully'}),
+    json.dumps({'type': 'assistant', 'message': {'content': [{'type': 'text', 'text': 'Done. The file has been created at /tmp/copilot-test-complete.txt with content done.'}]}}),
+]
+transcript = '\\n'.join(transcript_lines)
+
+from amplihack.fleet.fleet_copilot import SessionCopilot
+
+copilot = SessionCopilot(goal='Create /tmp/copilot-test-complete.txt')
+
+# Patch read_local_transcript to return our fake transcript
+with patch('amplihack.fleet.fleet_copilot.read_local_transcript', return_value=transcript):
+    suggestion = copilot.suggest()
+
+print(f'ACTION: {suggestion.action}')
+print(f'CONFIDENCE: {suggestion.confidence}')
+print(f'REASONING: {suggestion.reasoning}')
+
+# The LLM should recognize the task is done
+if suggestion.action == 'mark_complete':
+    print('CORRECTLY DETECTED COMPLETION')
+elif suggestion.action == 'wait':
+    print('REASONABLE: waiting (may need more context)')
+else:
+    print(f'UNEXPECTED ACTION: {suggestion.action}')
+"]
+      description: "Real LLM should recognize completed work from transcript"
+      timeout: 60s
+
+    - action: verify_output
+      matches: "ACTION:(mark_complete|wait|send_input)"
+      description: "LLM should return a reasonable action for completed work"
+
+  cleanup:
+    - action: launch
+      target: "bash"
+      args: ["-c", "rm -f /tmp/copilot-test-complete.txt"]

@@ -1,0 +1,52 @@
+scenario:
+  name: "SessionCopilot - CopilotBackend (GitHub Copilot SDK)"
+  description: >
+    Test SessionCopilot using the CopilotBackend instead of AnthropicBackend.
+    When ANTHROPIC_API_KEY is absent, auto_detect_backend() returns
+    CopilotBackend which uses the GitHub Copilot SDK. This verifies the
+    copilot can reason using both LLM providers.
+  type: cli
+  tags: [copilot, copilot-sdk, fleet, backend]
+  timeout: 60s
+
+  prerequisites:
+    - "amplihack package installed in .venv"
+    - "GitHub Copilot subscription active (gh auth status)"
+    - "copilot-sdk pip package installed"
+
+  steps:
+    # Step 1: Verify auto_detect_backend returns CopilotBackend without Anthropic key
+    - action: launch
+      target: "bash"
+      args: ["-c", "unset ANTHROPIC_API_KEY && .venv/bin/python -c \"from amplihack.fleet._backends import auto_detect_backend, CopilotBackend; b = auto_detect_backend(); print(f'BACKEND: {type(b).__name__}'); assert isinstance(b, CopilotBackend), f'Expected CopilotBackend, got {type(b).__name__}'\""]
+      description: "Without ANTHROPIC_API_KEY, auto_detect_backend returns CopilotBackend"
+
+    - action: verify_output
+      contains: "BACKEND: CopilotBackend"
+
+    # Step 2: Verify auto_detect_backend returns AnthropicBackend with key
+    - action: launch
+      target: ".venv/bin/python"
+      args: ["-c", "from amplihack.fleet._backends import auto_detect_backend, AnthropicBackend; b = auto_detect_backend(); print(f'BACKEND: {type(b).__name__}'); assert isinstance(b, AnthropicBackend)"]
+      description: "With ANTHROPIC_API_KEY, auto_detect_backend returns AnthropicBackend"
+
+    - action: verify_output
+      contains: "BACKEND: AnthropicBackend"
+
+    # Step 3: Test SessionCopilot constructs with correct backend
+    - action: launch
+      target: ".venv/bin/python"
+      args: ["-c", "
+from amplihack.fleet.fleet_copilot import SessionCopilot
+copilot = SessionCopilot(goal='test goal')
+backend_name = type(copilot.reasoner.backend).__name__
+print(f'COPILOT_BACKEND: {backend_name}')
+# With ANTHROPIC_API_KEY set, should use Anthropic
+from amplihack.fleet._backends import AnthropicBackend
+assert isinstance(copilot.reasoner.backend, AnthropicBackend), f'Expected AnthropicBackend, got {backend_name}'
+print('BACKEND_CHECK_PASSED')
+"]
+      description: "SessionCopilot auto-selects the correct backend"
+
+    - action: verify_output
+      contains: "BACKEND_CHECK_PASSED"

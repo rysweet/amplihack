@@ -1,0 +1,93 @@
+scenario:
+  name: "SessionCopilot - Dangerous Input Blocking"
+  description: >
+    Verify that SessionCopilot refuses to inject dangerous commands.
+    The copilot's safety check uses is_dangerous_input() which blocks
+    57 dangerous patterns (rm -rf, force push, drop database, etc.).
+  type: cli
+  tags: [copilot, security, fleet]
+  timeout: 60s
+
+  prerequisites:
+    - "amplihack package installed in .venv"
+    - "ANTHROPIC_API_KEY is set"
+
+  steps:
+    # Step 1: Test is_dangerous_input directly with known dangerous patterns
+    - action: launch
+      target: ".venv/bin/python"
+      args: ["-c", "
+from amplihack.fleet._validation import is_dangerous_input
+dangerous = [
+    'rm -rf /',
+    'git push --force origin main',
+    'DROP TABLE users',
+    'sudo rm -rf /*',
+    'git reset --hard',
+    ':(){:|:&};:',
+]
+safe = [
+    'echo hello',
+    'git status',
+    'cat README.md',
+    'pytest tests/',
+]
+print('=== DANGEROUS ===')
+for cmd in dangerous:
+    result = is_dangerous_input(cmd)
+    status = 'BLOCKED' if result else 'ALLOWED'
+    print(f'{status}: {cmd}')
+    assert result, f'FAIL: Should block: {cmd}'
+print('=== SAFE ===')
+for cmd in safe:
+    result = is_dangerous_input(cmd)
+    status = 'BLOCKED' if result else 'ALLOWED'
+    print(f'{status}: {cmd}')
+    assert not result, f'FAIL: Should allow: {cmd}'
+print('ALL CHECKS PASSED')
+"]
+      description: "Validate dangerous input detection"
+
+    - action: verify_output
+      contains: "ALL CHECKS PASSED"
+      description: "All dangerous patterns must be blocked, safe patterns allowed"
+
+    # Step 2: Test that copilot escalates when suggestion contains dangerous input
+    - action: launch
+      target: ".venv/bin/python"
+      args: ["-c", "
+from amplihack.fleet.fleet_copilot import SessionCopilot, CopilotSuggestion
+from amplihack.fleet._validation import is_dangerous_input
+from unittest.mock import MagicMock, patch
+from amplihack.fleet._session_context import SessionDecision
+
+# Mock the reasoner to return a dangerous suggestion
+mock_reasoner = MagicMock()
+mock_decision = SessionDecision(
+    session_name='copilot',
+    vm_name='local',
+    action='send_input',
+    input_text='rm -rf / --no-preserve-root',
+    reasoning='Need to clean up disk space',
+    confidence=0.95,
+)
+mock_reasoner.reason.return_value = mock_decision
+
+copilot = SessionCopilot(goal='clean disk', reasoner=mock_reasoner)
+
+# Mock transcript reading to return something
+with patch('amplihack.fleet.fleet_copilot.read_local_transcript', return_value='user: clean disk'), \
+     patch('amplihack.fleet.fleet_copilot._infer_jsonl_status', return_value='idle'), \
+     patch('amplihack.fleet.fleet_copilot.build_rich_context', return_value='idle session'):
+    suggestion = copilot.suggest()
+
+print(f'ACTION: {suggestion.action}')
+print(f'REASONING: {suggestion.reasoning}')
+assert suggestion.action == 'escalate', f'Expected escalate, got {suggestion.action}'
+assert 'dangerous' in suggestion.reasoning.lower() or 'blocked' in suggestion.reasoning.lower(), f'Reasoning should mention blocking: {suggestion.reasoning}'
+print('DANGEROUS INPUT CORRECTLY BLOCKED')
+"]
+      description: "Copilot must escalate when LLM suggests dangerous input"
+
+    - action: verify_output
+      contains: "DANGEROUS INPUT CORRECTLY BLOCKED"
