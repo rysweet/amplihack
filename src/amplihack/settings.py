@@ -266,7 +266,7 @@ def update_hook_paths(settings, hook_system, hooks_to_update, hooks_dir_path,
                     for hook in config["hooks"]:
                         cmd = hook.get("command", "")
                         # Match: same basename AND same system ownership
-                        if os.path.basename(cmd) == hook_file and hook_system in cmd:
+                        if os.path.basename(cmd) == hook_file and f"tools/{hook_system}/" in cmd:
                             found = True
                             if cmd != hook_path:
                                 hook["command"] = hook_path
