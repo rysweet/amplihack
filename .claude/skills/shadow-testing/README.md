@@ -143,7 +143,7 @@ amplifier-shadow exec test "gadugi-agentic-test run test-scenario.yaml"
 amplifier-shadow extract test /evidence ./test-evidence
 ```
 
-See the `outside-in-testing` skill Level 4 for complete integration examples.
+See the `qa-team` skill Level 4 for complete integration examples (`outside-in-testing` remains an alias).
 
 ## Use Cases
 
@@ -223,7 +223,7 @@ Shadow environments use this architecture:
 
 ## Related Skills
 
-- **outside-in-testing** - Agentic behavior-driven tests (enhanced with Level 4 shadow integration)
+- **qa-team** - Agentic behavior-driven tests (legacy alias: `outside-in-testing`)
 - **test-gap-analyzer** - Find untested code paths
 - **philosophy-guardian** - Verify scripts follow ruthless simplicity
 
@@ -243,7 +243,7 @@ Shadow environments use this architecture:
 - Generalizable shell scripts for DIY setup
 - Docker Compose examples for all use cases
 - Multi-language support (Python, Node, Rust, Go)
-- Integration patterns with outside-in-testing
+- Integration patterns with qa-team / outside-in-testing alias
 - Philosophy alignment with ruthless simplicity
 
 ## Contributing

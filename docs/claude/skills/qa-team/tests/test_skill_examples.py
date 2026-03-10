@@ -1,5 +1,5 @@
 """
-Tests for outside-in-testing skill example YAML files.
+Tests for qa-team skill example YAML files.
 
 Validates that all example YAML files are:
 - Valid YAML syntax
@@ -276,6 +276,7 @@ class TestSkillStructure:
 
         # Check required frontmatter fields
         assert "name" in metadata, "Frontmatter missing 'name'"
+        assert metadata["name"] == "qa-team", "Frontmatter name should be 'qa-team'"
         assert "description" in metadata, "Frontmatter missing 'description'"
         assert "version" in metadata, "Frontmatter missing 'version'"
         assert "embedded_framework_version" in metadata, (

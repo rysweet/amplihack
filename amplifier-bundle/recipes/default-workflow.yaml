@@ -824,7 +824,7 @@ steps:
 
   # ==========================================================================
   # STEP 13: MANDATORY OUTSIDE-IN TESTING
-  # Use the outside-in-testing skill to test this PR as a user would from
+  # Use the qa-team skill (outside-in-testing alias supported) to test this PR as a user would from
   # the PR branch. No bash echo — the agent must actually execute the tests.
   # ==========================================================================
   - id: "step-13-local-testing"
@@ -836,7 +836,7 @@ steps:
       **Repository:** {{repo_path}}
       **Branch:** Run `git branch --show-current` to get the current branch name.
 
-      You MUST perform outside-in testing using the `outside-in-testing` skill
+      You MUST perform outside-in testing using the `qa-team` skill (`outside-in-testing` remains an alias)
       to verify this change as a real user would — from the PR branch, not just
       the working directory.
 
@@ -852,11 +852,11 @@ steps:
          git remote get-url origin
          ```
 
-      3. **Invoke the `outside-in-testing` skill** to generate and execute
+      3. **Invoke the `qa-team` skill** to generate and execute
          agentic outside-in tests for this change. Pass the PR branch name and
          repository URL so tests run against the actual branch:
          ```
-         Skill(skill="outside-in-testing")
+         Skill(skill="qa-team")
          ```
 
       4. **Execute at least 2 test scenarios:**
@@ -1061,10 +1061,10 @@ steps:
 
       ### Phase 1: Run Outside-In Tests
 
-      Use the `outside-in-testing` skill to test from the PR branch:
+      Use the `qa-team` skill to test from the PR branch (`outside-in-testing` alias also works):
 
       ```
-      Skill(skill="outside-in-testing")
+      Skill(skill="qa-team")
       ```
 
       Test using the PR branch:
@@ -1139,7 +1139,7 @@ steps:
         echo "The outside-in testing step (step-13-local-testing) must be completed" && \
         echo "before the PR review phase can begin." && \
         echo "" && \
-        echo "Required: Invoke the outside-in-testing skill and document at least" && \
+        echo "Required: Invoke the qa-team skill (outside-in-testing alias also works) and document at least" && \
         echo "2 test scenarios in the PR description under 'Step 13: Local Testing Results'." && \
         exit 1 ; \
       fi && \
