@@ -85,6 +85,51 @@ def test_launcher_handles_no_args(mock_project_root):
         assert result == 0
 
 
+def test_launcher_uses_autopilot_defaults(mock_project_root):
+    """Test launcher adds the default autopilot flags."""
+    with (
+        patch("amplihack.launcher.copilot.check_copilot", return_value=True),
+        patch("amplihack.launcher.copilot.get_copilot_directories", return_value=["/tmp/copilot"]),
+        patch("amplihack.launcher.copilot.subprocess.run") as mock_run,
+        patch("os.getcwd", return_value=str(mock_project_root)),
+    ):
+        mock_run.return_value.returncode = 0
+
+        launch_copilot(args=[])
+
+        cmd = mock_run.call_args[0][0]
+        assert cmd[:6] == [
+            "copilot",
+            "--allow-all-tools",
+            "--autopilot",
+            "--yolo",
+            "--max-autopilot-continues",
+            "100",
+        ]
+
+
+def test_launcher_treats_user_args_as_full_override(mock_project_root):
+    """Test explicit Copilot CLI args override the default autopilot flags."""
+    with (
+        patch("amplihack.launcher.copilot.check_copilot", return_value=True),
+        patch("amplihack.launcher.copilot.get_copilot_directories", return_value=["/tmp/copilot"]),
+        patch("amplihack.launcher.copilot.subprocess.run") as mock_run,
+        patch("os.getcwd", return_value=str(mock_project_root)),
+    ):
+        mock_run.return_value.returncode = 0
+
+        launch_copilot(args=["--max-autopilot-continues", "5", "-p", "hello"])
+
+        cmd = mock_run.call_args[0][0]
+        assert cmd[:2] == [
+            "copilot",
+            "--allow-all-tools",
+        ]
+        assert "--autopilot" not in cmd
+        assert "--yolo" not in cmd
+        assert cmd[-4:] == ["--max-autopilot-continues", "5", "-p", "hello"]
+
+
 def test_launcher_context_survives_copilot_failure(mock_project_root):
     """Test that context is written even if copilot fails."""
     with (
