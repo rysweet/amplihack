@@ -981,7 +981,6 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
     # Register awesome-copilot marketplace extensions (best-effort, silent on failure)
     register_awesome_copilot_marketplace()
 
-
     # Prompt to re-enable power-steering if disabled (#2544)
     try:
         from ..power_steering.re_enable_prompt import prompt_re_enable_if_disabled
@@ -1093,6 +1092,15 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
         "copilot",
         "--allow-all-tools",
     ]
+    if not args:
+        cmd.extend(
+            [
+                "--autopilot",
+                "--yolo",
+                "--max-autopilot-continues",
+                "100",
+            ]
+        )
     copilot_model = os.getenv("COPILOT_MODEL", "")
     if copilot_model:
         cmd.extend(["--model", copilot_model])
@@ -1104,6 +1112,8 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
     # Disable GitHub MCP server to save context tokens
     cmd.extend(["--disable-mcp-server", "github-mcp-server"])
 
+    # If the user passes Copilot CLI args after `--`, treat that as a full override
+    # of the default autopilot/yolo launch behavior.
     if args:
         cmd.extend(args)
 
