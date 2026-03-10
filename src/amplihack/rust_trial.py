@@ -222,6 +222,31 @@ def build_trial_env(trial_home: Path) -> dict[str, str]:
     return env
 
 
+def _ensure_trial_copilot_config(
+    trial_home: Path, source_home: Path | None = None
+) -> Path:
+    """Ensure the isolated trial home has a visible Copilot config file.
+
+    Copilot CLI interactive startup can hang with no visible terminal output when
+    ~/.copilot/config.json is missing in a brand-new HOME. Seed the trial home
+    from the user's existing config when available; otherwise create a minimal
+    empty config.
+    """
+    copilot_home = trial_home.expanduser().resolve() / ".copilot"
+    config_path = copilot_home / "config.json"
+    if config_path.exists():
+        return config_path
+
+    copilot_home.mkdir(parents=True, exist_ok=True)
+    host_home = Path.home() if source_home is None else source_home.expanduser().resolve()
+    source_config = host_home / ".copilot" / "config.json"
+    if source_config.is_file():
+        shutil.copy2(source_config, config_path)
+    else:
+        config_path.write_text("{}\n", encoding="utf-8")
+    return config_path
+
+
 def ensure_trial_dependencies(rust_args: Sequence[str], trial_home: Path, env: dict[str, str]) -> None:
     """Install subcommand-specific dependencies inside the isolated trial home."""
     if not rust_args or rust_args[0] != "copilot":
@@ -229,6 +254,7 @@ def ensure_trial_dependencies(rust_args: Sequence[str], trial_home: Path, env: d
 
     from .launcher.copilot import check_copilot, install_copilot
 
+    _ensure_trial_copilot_config(trial_home)
     if check_copilot(env=env, home=trial_home):
         return
     if not install_copilot(env=env, home=trial_home):
