@@ -13,6 +13,7 @@ Public API (the "studs"):
 
 import json
 import os
+import shlex
 import shutil
 import sys
 import time
@@ -229,7 +230,7 @@ def update_hook_paths(settings, hook_system, hooks_to_update, hooks_dir_path,
         rust_subcommand = RUST_HOOK_MAP.get(hook_file) if hook_engine == "rust" else None
 
         if rust_subcommand and rust_binary:
-            hook_path = f"{rust_binary} {rust_subcommand}"
+            hook_path = f"{shlex.quote(rust_binary)} {rust_subcommand}"
         else:
             # Python engine (or hook has no Rust equivalent)
             hook_path = os.path.abspath(
@@ -274,6 +275,18 @@ def update_hook_paths(settings, hook_system, hooks_to_update, hooks_dir_path,
                                 hooks_updated += 1
                                 print(f"  🔄 Updated {hook_type} hook path")
                             break
+                        # Also match Rust commands being replaced (engine switch)
+                        elif "amplihack-hooks" in cmd:
+                            rust_subcmd = RUST_HOOK_MAP.get(hook_file)
+                            if rust_subcmd and rust_subcmd in cmd:
+                                found = True
+                                if cmd != hook_path:
+                                    hook["command"] = hook_path
+                                    if timeout and "timeout" not in hook:
+                                        hook["timeout"] = timeout
+                                    hooks_updated += 1
+                                    print(f"  🔄 Updated {hook_type} hook path")
+                                break
                 if found:
                     break
 
@@ -351,9 +364,13 @@ def ensure_settings_json():
         return False
 
     # Update amplihack hook paths (absolute paths for plugin mode compatibility)
-    hooks_updated += update_hook_paths(
-        settings, "amplihack", HOOK_CONFIGS["amplihack"], amplihack_hooks_abs
-    )
+    try:
+        hooks_updated += update_hook_paths(
+            settings, "amplihack", HOOK_CONFIGS["amplihack"], amplihack_hooks_abs
+        )
+    except FileNotFoundError as e:
+        print(f"  ❌ {e}", file=sys.stderr)
+        return False
 
     # Update XPIA hook paths if XPIA hooks directory exists (absolute paths for consistency)
     xpia_hooks_abs = os.path.join(HOME, ".amplihack", ".claude", "tools", "xpia", "hooks")
