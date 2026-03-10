@@ -1,0 +1,54 @@
+{
+  "timestamp": "2026-03-10T03:00:00Z",
+  "run_id": "22884144151",
+  "prs": [
+    {
+      "number": 2996,
+      "title": "docs: Add explanations for philosophical concepts in PHILOSOPHY.md",
+      "author": "Ivan-houzhiwen",
+      "type": "docs",
+      "risk": "low",
+      "priority": "normal",
+      "recommendation": "ready-for-review",
+      "files_changed": 3,
+      "lines_added": 56,
+      "status": "triaged",
+      "created_at": "2026-03-10T01:46:53Z"
+    },
+    {
+      "number": 2992,
+      "title": "feat: add Rust XPIA subprocess bridge",
+      "author": "rysweet",
+      "type": "security-feature",
+      "risk": "high",
+      "priority": "high",
+      "recommendation": "needs-security-review",
+      "files_changed": 6,
+      "lines_added": 1999,
+      "status": "triaged",
+      "created_at": "2026-03-09T21:42:42Z"
+    },
+    {
+      "number": 2876,
+      "title": "feat: distributed hive mind with DHT sharding",
+      "author": "rysweet",
+      "type": "feature",
+      "risk": "extreme",
+      "priority": "high",
+      "recommendation": "needs-decomposition",
+      "status": "previously-triaged",
+      "labels": ["triage:complete", "triage:extreme-risk", "merge-conflicts"]
+    },
+    {
+      "number": 2727,
+      "title": "feat: Fleet Orchestration",
+      "author": "rysweet",
+      "type": "feature",
+      "risk": "extreme",
+      "priority": "low",
+      "recommendation": "recommend-close",
+      "status": "previously-triaged",
+      "labels": ["triage:complete", "stale", "recommend-close"]
+    }
+  ]
+}
