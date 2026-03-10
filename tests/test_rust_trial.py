@@ -6,9 +6,13 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from amplihack.rust_trial import (
+    RUST_RELEASES_API,
     TRIAL_BINARY_ENV,
     TRIAL_HOME_ENV,
+    _expected_release_asset_name,
+    _target_triple,
     build_trial_env,
+    download_latest_release_binary,
     find_rust_cli_binary,
     main,
     parse_trial_args,
@@ -25,7 +29,8 @@ def _write_executable(path: Path) -> Path:
 def test_find_rust_cli_binary_prefers_env_override(tmp_path, monkeypatch):
     binary = _write_executable(tmp_path / "custom-amplihack")
     monkeypatch.setenv(TRIAL_BINARY_ENV, str(binary))
-    result = find_rust_cli_binary()
+    monkeypatch.setattr("amplihack.rust_trial._is_rust_cli_binary", lambda candidate: candidate == binary)
+    result = find_rust_cli_binary(tmp_path / "trial")
     assert result == binary.resolve()
 
 
@@ -34,8 +39,51 @@ def test_find_rust_cli_binary_uses_bundled_binary(tmp_path, monkeypatch):
     monkeypatch.delenv(TRIAL_BINARY_ENV, raising=False)
     monkeypatch.setattr("amplihack.rust_trial._bundled_binary_path", lambda: binary)
     monkeypatch.setattr("amplihack.rust_trial.shutil.which", lambda _: None)
-    result = find_rust_cli_binary()
+    monkeypatch.setattr("amplihack.rust_trial._is_rust_cli_binary", lambda candidate: candidate == binary)
+    result = find_rust_cli_binary(tmp_path / "trial")
     assert result == binary.resolve()
+
+
+def test_target_triple_for_current_platform():
+    assert _target_triple() in {
+        "x86_64-unknown-linux-gnu",
+        "aarch64-unknown-linux-gnu",
+        "x86_64-apple-darwin",
+        "aarch64-apple-darwin",
+    }
+    assert _expected_release_asset_name().startswith("amplihack-")
+    assert _expected_release_asset_name().endswith(".tar.gz")
+
+
+def test_download_latest_release_binary_extracts_asset(tmp_path, monkeypatch):
+    release_tag = "snapshot-deadbeef"
+    archive_path = tmp_path / _expected_release_asset_name()
+
+    import tarfile
+
+    with tarfile.open(archive_path, "w:gz") as archive:
+        binary = _write_executable(tmp_path / "staged" / "amplihack")
+        archive.add(binary, arcname="amplihack")
+
+    monkeypatch.setattr(
+        "amplihack.rust_trial._github_json",
+        lambda url: (
+            [{"tag_name": release_tag, "assets": [{"name": _expected_release_asset_name(), "browser_download_url": "https://example.invalid/amplihack.tar.gz"}]}]
+            if url == RUST_RELEASES_API else []
+        ),
+    )
+    monkeypatch.setattr(
+        "amplihack.rust_trial._download_to_file",
+        lambda url, destination: destination.write_bytes(archive_path.read_bytes()),
+    )
+    monkeypatch.setattr(
+        "amplihack.rust_trial._is_rust_cli_binary",
+        lambda candidate: candidate.name == "amplihack" and candidate.exists(),
+    )
+
+    result = download_latest_release_binary(tmp_path / "trial-home")
+    assert result.name == "amplihack"
+    assert result.exists()
 
 
 def test_build_trial_env_creates_isolated_dirs(tmp_path):
@@ -71,7 +119,7 @@ def test_main_runs_rust_binary_in_isolated_home(tmp_path, monkeypatch, capsys):
         captured["check"] = check
         return SimpleNamespace(returncode=7)
 
-    monkeypatch.setattr("amplihack.rust_trial.find_rust_cli_binary", lambda: binary)
+    monkeypatch.setattr("amplihack.rust_trial.find_rust_cli_binary", lambda _trial_home: binary)
     monkeypatch.setattr("amplihack.rust_trial.subprocess.run", fake_run)
 
     exit_code = main(["--trial-home", str(tmp_path / "trial"), "recipe", "list"])
@@ -88,7 +136,10 @@ def test_main_runs_rust_binary_in_isolated_home(tmp_path, monkeypatch, capsys):
 
 
 def test_main_errors_loudly_when_binary_missing(capsys, monkeypatch):
-    monkeypatch.setattr("amplihack.rust_trial.find_rust_cli_binary", lambda: None)
+    def fail(_trial_home):  # type: ignore[no-untyped-def]
+        raise FileNotFoundError("Rust CLI binary not found")
+
+    monkeypatch.setattr("amplihack.rust_trial.find_rust_cli_binary", fail)
     exit_code = main(["recipe", "list"])
     assert exit_code == 1
     assert "Rust CLI binary not found" in capsys.readouterr().err

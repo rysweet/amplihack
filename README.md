@@ -100,19 +100,20 @@ where you can describe tasks and the framework orchestrates their execution.
 ### Trial the Rust CLI without replacing your current install
 
 Use the opt-in helper below to run the bundled Rust CLI under an isolated home
-directory. This keeps trial state out of your real `~/.claude` setup.
+directory. On a fresh machine, the helper downloads the latest compatible
+published `amplihack-rs` release binary automatically. Trial state stays out of
+your real `~/.claude` setup.
 
 ```bash
-# Show the Rust CLI help in an isolated trial home
-uvx --from git+https://github.com/rysweet/amplihack amplihack-rust-trial --help
+# Single-command fresh-machine flow
+uvx --from git+https://github.com/rysweet/amplihack \
+  amplihack-rust-trial \
+  --trial-home ~/.amplihack-rust-e2e \
+  copilot
 
-# Try real commands without touching your current amplihack install
+# Try specific commands without touching your current amplihack install
 uvx --from git+https://github.com/rysweet/amplihack amplihack-rust-trial recipe list
 uvx --from git+https://github.com/rysweet/amplihack amplihack-rust-trial mode detect
-
-# Use a custom sandbox if you want to keep a multi-day trial separate
-uvx --from git+https://github.com/rysweet/amplihack amplihack-rust-trial \
-  --trial-home ~/.amplihack-rust-e2e install
 ```
 
 By default the helper stores trial state under `~/.amplihack-rust-trial` and
