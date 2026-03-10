@@ -24,7 +24,11 @@ logger = logging.getLogger(__name__)
 # Try to import memory lib, degrade gracefully
 _MEMORY_AVAILABLE = False
 try:
-    from amplihack_memory import Experience, ExperienceStore, ExperienceType
+    from amplihack_memory import (  # type: ignore[import-not-found]
+        Experience,
+        ExperienceStore,
+        ExperienceType,
+    )
 
     _MEMORY_AVAILABLE = True
 except ImportError:
@@ -68,8 +72,24 @@ class AgentMemory:
             logger.debug(f"Failed to init memory: {e}")
             return None
 
+    @staticmethod
+    def _to_str(value: object) -> str:
+        """Coerce a value to ``str``.
+
+        Handles ``RecipeResult`` and other non-string objects that may be
+        passed by callers, preventing ``TypeError: ... not subscriptable``.
+        """
+        if isinstance(value, str):
+            return value
+        # RecipeResult exposes an .output property with aggregated step text
+        out = getattr(value, "output", None)
+        if isinstance(out, str):
+            return out
+        return str(value)
+
     def store_goal(self, goal: str) -> None:
         """Store the agent's goal at session start."""
+        goal = self._to_str(goal)
         self._safe_add(
             ExperienceType.INSIGHT,
             context=f"Goal: {goal[:500]}",
@@ -80,6 +100,7 @@ class AgentMemory:
 
     def store_objective(self, objective: str) -> None:
         """Store the clarified objective (after Turn 1)."""
+        objective = self._to_str(objective)
         self._safe_add(
             ExperienceType.INSIGHT,
             context="Clarified objective",
@@ -90,6 +111,7 @@ class AgentMemory:
 
     def store_plan(self, plan: str) -> None:
         """Store the execution plan (after Turn 2)."""
+        plan = self._to_str(plan)
         self._safe_add(
             ExperienceType.PATTERN,
             context="Execution plan",
@@ -100,6 +122,7 @@ class AgentMemory:
 
     def store_turn_result(self, turn: int, output: str) -> None:
         """Store execution output from a turn."""
+        output = self._to_str(output)
         self._safe_add(
             ExperienceType.SUCCESS,
             context=f"Turn {turn} execution",
@@ -110,6 +133,7 @@ class AgentMemory:
 
     def store_evaluation(self, turn: int, eval_result: str) -> None:
         """Store evaluation result from a turn."""
+        eval_result = self._to_str(eval_result)
         self._safe_add(
             ExperienceType.INSIGHT,
             context=f"Turn {turn} evaluation",
@@ -120,6 +144,7 @@ class AgentMemory:
 
     def store_learning(self, summary: str) -> None:
         """Store a session learning at completion."""
+        summary = self._to_str(summary)
         self._safe_add(
             ExperienceType.INSIGHT,
             context="Session summary and learnings",
@@ -147,7 +172,7 @@ class AgentMemory:
 
     def close(self) -> None:
         """Clean up the memory store (no-op if store has no close method)."""
-        pass  # ExperienceStore handles cleanup internally
+        # ExperienceStore handles cleanup internally
 
     def _safe_add(
         self,

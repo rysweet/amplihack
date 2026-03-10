@@ -27,7 +27,8 @@ uvx --from git+https://github.com/rysweet/amplihack amplihack claude
 - [Why amplihack?](#why-amplihack)
 - [Quick Start](#quick-start)
 - [Core Concepts](#core-concepts)
-- [Features](#features)
+- [Feature Catalog](#feature-catalog)
+- [Fleet Management](#fleet-management)
 - [Configuration](#configuration)
 - [Documentation Navigator](#documentation-navigator)
 - [Development](#development)
@@ -339,6 +340,34 @@ Full reference: [docs/reference/recipe-cli-reference.md](docs/reference/recipe-c
   style, workflow)
 - **[Statusline](https://rysweet.github.io/amplihack/reference/STATUSLINE/)** —
   Real-time session info
+
+### Fleet Management
+
+Manage coding agents (Claude Code, Copilot, Amplifier) running across multiple
+Azure VMs. The fleet admiral monitors sessions, reasons about what each agent
+needs, and can send commands autonomously.
+
+```bash
+amplihack fleet              # Interactive TUI dashboard
+amplihack fleet scout        # Discover all VMs/sessions, dry-run reasoning
+amplihack fleet advance      # Send next commands to sessions (live)
+amplihack fleet status       # Quick text overview
+amplihack fleet adopt devo   # Bring existing sessions under management
+amplihack fleet auth devo    # Propagate auth tokens to a VM
+```
+
+**Key capabilities:**
+- **Scout** discovers all VMs and sessions via azlin (no SSH needed for discovery)
+- **Admiral reasoning** uses LLM streaming to decide: wait, send\_input, restart, or escalate
+- **SessionCopilot** watches local sessions and auto-continues toward a goal (`/amplihack:lock`)
+- **Dual backend** — uses Anthropic API when available, falls back to GitHub Copilot SDK
+- **Safety** — dangerous input patterns blocked, shell metacharacter rejection, confidence thresholds
+
+Requires [azlin](https://github.com/rysweet/azlin) for VM management.
+
+See [Fleet Tutorial](docs/fleet-orchestration/TUTORIAL.md) |
+[Architecture](docs/fleet-orchestration/ARCHITECTURE.md) |
+[Admiral Reasoning](docs/fleet-orchestration/ADMIRAL_REASONING.md)
 
 </details>
 

@@ -1,0 +1,9 @@
+<system-directive source="amplihack-copilot">
+## Autonomous Co-Pilot Active
+
+**Goal:** {goal}
+
+Continue working toward this goal. The session co-pilot is monitoring your
+progress via the Stop hook and will provide guidance when you stop.
+Do not ask the user if you should continue — just keep working.
+</system-directive>

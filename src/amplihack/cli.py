@@ -804,6 +804,14 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     # Migrate to local command
     _ = mode_subparsers.add_parser("to-local", help="Create local .claude/ from plugin")
 
+    # Fleet management commands (delegates to Click CLI)
+    fleet_parser = subparsers.add_parser(
+        "fleet", help="Fleet orchestration — manage coding agents across VMs"
+    )
+    fleet_parser.add_argument(
+        "fleet_args", nargs=argparse.REMAINDER, help="Fleet subcommand and arguments"
+    )
+
     return parser
 
 
@@ -1924,6 +1932,13 @@ def main(argv: list[str] | None = None) -> int:
 
         create_parser().print_help()
         return 1
+
+    elif args.command == "fleet":
+        from amplihack.fleet.fleet_cli import fleet_cli
+
+        fleet_args = args.fleet_args if args.fleet_args else ["--help"]
+        fleet_cli(fleet_args, standalone_mode=False)
+        return 0
 
     else:
         create_parser().print_help()
