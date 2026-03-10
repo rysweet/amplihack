@@ -29,7 +29,9 @@ def _write_executable(path: Path) -> Path:
 def test_find_rust_cli_binary_prefers_env_override(tmp_path, monkeypatch):
     binary = _write_executable(tmp_path / "custom-amplihack")
     monkeypatch.setenv(TRIAL_BINARY_ENV, str(binary))
-    monkeypatch.setattr("amplihack.rust_trial._is_rust_cli_binary", lambda candidate: candidate == binary)
+    monkeypatch.setattr(
+        "amplihack.rust_trial._is_rust_cli_binary", lambda candidate: candidate == binary
+    )
     result = find_rust_cli_binary(tmp_path / "trial")
     assert result == binary.resolve()
 
@@ -39,7 +41,9 @@ def test_find_rust_cli_binary_uses_bundled_binary(tmp_path, monkeypatch):
     monkeypatch.delenv(TRIAL_BINARY_ENV, raising=False)
     monkeypatch.setattr("amplihack.rust_trial._bundled_binary_path", lambda: binary)
     monkeypatch.setattr("amplihack.rust_trial.shutil.which", lambda _: None)
-    monkeypatch.setattr("amplihack.rust_trial._is_rust_cli_binary", lambda candidate: candidate == binary)
+    monkeypatch.setattr(
+        "amplihack.rust_trial._is_rust_cli_binary", lambda candidate: candidate == binary
+    )
     result = find_rust_cli_binary(tmp_path / "trial")
     assert result == binary.resolve()
 
@@ -68,8 +72,19 @@ def test_download_latest_release_binary_extracts_asset(tmp_path, monkeypatch):
     monkeypatch.setattr(
         "amplihack.rust_trial._github_json",
         lambda url: (
-            [{"tag_name": release_tag, "assets": [{"name": _expected_release_asset_name(), "browser_download_url": "https://example.invalid/amplihack.tar.gz"}]}]
-            if url == RUST_RELEASES_API else []
+            [
+                {
+                    "tag_name": release_tag,
+                    "assets": [
+                        {
+                            "name": _expected_release_asset_name(),
+                            "browser_download_url": "https://example.invalid/amplihack.tar.gz",
+                        }
+                    ],
+                }
+            ]
+            if url == RUST_RELEASES_API
+            else []
         ),
     )
     monkeypatch.setattr(

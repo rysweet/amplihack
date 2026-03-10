@@ -24,7 +24,15 @@ def test_wheel_includes_claude_directory():
 
         # Build wheel using pyproject-build
         result = subprocess.run(
-            [sys.executable, "-m", "build", "--wheel", "--no-isolation", "--outdir", str(wheel_dir)],
+            [
+                sys.executable,
+                "-m",
+                "build",
+                "--wheel",
+                "--no-isolation",
+                "--outdir",
+                str(wheel_dir),
+            ],
             capture_output=True,
             text=True,
             timeout=120,

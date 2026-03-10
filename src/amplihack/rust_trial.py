@@ -10,8 +10,8 @@ import subprocess
 import sys
 import tarfile
 import urllib.request
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
 TRIAL_HOME_ENV = "AMPLIHACK_RUST_TRIAL_HOME"
 TRIAL_BINARY_ENV = "AMPLIHACK_RUST_TRIAL_BINARY"
@@ -93,7 +93,14 @@ def _expected_release_asset_name() -> str:
 
 
 def _release_cache_dir(trial_home: Path, tag_name: str) -> Path:
-    return trial_home.expanduser().resolve() / ".cache" / "amplihack-rust-trial" / "releases" / tag_name / _target_triple()
+    return (
+        trial_home.expanduser().resolve()
+        / ".cache"
+        / "amplihack-rust-trial"
+        / "releases"
+        / tag_name
+        / _target_triple()
+    )
 
 
 def _github_json(url: str) -> object:
@@ -129,7 +136,9 @@ def _select_release_asset(releases: object) -> tuple[str, str]:
         for asset in assets:
             if not isinstance(asset, dict):
                 continue
-            if asset.get("name") == asset_name and isinstance(asset.get("browser_download_url"), str):
+            if asset.get("name") == asset_name and isinstance(
+                asset.get("browser_download_url"), str
+            ):
                 return tag_name, asset["browser_download_url"]
 
     raise FileNotFoundError(
