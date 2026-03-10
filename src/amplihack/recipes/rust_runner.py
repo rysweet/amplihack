@@ -288,19 +288,19 @@ def _stream_process_output(process: subprocess.Popen[str]) -> tuple[str, str, in
             stderr_chunks.append(line)
             print(line, end="", file=sys.stderr, flush=True)
 
-    stdout_thread = threading.Thread(target=_drain_stdout, daemon=True)
-    stderr_thread = threading.Thread(target=_drain_stderr, daemon=True)
+    stdout_thread = threading.Thread(target=_drain_stdout)
+    stderr_thread = threading.Thread(target=_drain_stderr)
     stdout_thread.start()
     stderr_thread.start()
     try:
         returncode = process.wait(timeout=_run_timeout())
     except subprocess.TimeoutExpired:
-        if hasattr(process, "kill"):
-            process.kill()
+        process.kill()
+        process.wait()
         raise
     finally:
-        stdout_thread.join(timeout=1)
-        stderr_thread.join(timeout=1)
+        stdout_thread.join()
+        stderr_thread.join()
     return "".join(stdout_chunks), "".join(stderr_chunks), returncode
 
 
