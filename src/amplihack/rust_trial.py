@@ -6,8 +6,8 @@ import os
 import shutil
 import subprocess
 import sys
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
 TRIAL_HOME_ENV = "AMPLIHACK_RUST_TRIAL_HOME"
 TRIAL_BINARY_ENV = "AMPLIHACK_RUST_TRIAL_BINARY"
