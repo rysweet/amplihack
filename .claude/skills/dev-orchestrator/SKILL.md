@@ -99,7 +99,7 @@ that instructs Claude to invoke `Skill(skill="dev-orchestrator")` for dev/invest
 executes `run_recipe_by_name("smart-orchestrator")`.** If your runtime requires
 a `report_intent` call (e.g. Copilot CLI), emit it **in parallel** with the
 Bash launch — both tool calls in the same response. The constraint is that no
-*other* substantive action (reading files, calling TodoWrite, invoking Agent,
+_other_ substantive action (reading files, calling TodoWrite, invoking Agent,
 or typing a response) may precede or replace the Bash launch.
 
 If you find yourself doing anything else instead of launching the recipe
@@ -136,16 +136,19 @@ result = run_recipe_by_name(
     user_context={
         'task_description': '''TASK_DESCRIPTION_HERE''',
         'repo_path': '.',
-    }
+    },
+    progress=True,
 )
 print(f'Recipe result: {result}')
 \" 2>&1 | tee /tmp/recipe-runner-output.log"
 ```
 
 **Key points:**
+
 - `env -u CLAUDECODE` — unset so nested Claude Code sessions can launch
 - `PYTHONPATH=src python3` — uses the interpreter on PATH while forcing imports from the checked-out repo source tree (do NOT hardcode `.venv/bin/python`)
 - `run_recipe_by_name` — delegates to the Rust binary; the adapter parameter is no longer needed
+- `progress=True` — streams recipe-runner stderr live so tmux logs show nested step activity
 - `tmux new-session -d` — detached session, no timeout, survives disconnects
 - Monitor with: `tail -f /tmp/recipe-runner-output.log` or `tmux attach -t recipe-runner`
 
