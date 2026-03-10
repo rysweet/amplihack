@@ -125,15 +125,15 @@ def main() -> None:
     # Store initial agent identity via OODA process()
     agent.process(f"Agent identity: {agent_name}. Role: {agent_prompt}")
 
-    # Install AnswerPublisher as stdout wrapper for eval answer correlation.
-    # The agent code is unchanged — it prints ANSWER lines normally. The wrapper
-    # detects them and publishes to the eval-responses topic with event_id.
+    # Set up answer publisher for eval answer correlation via on_answer callback.
+    # The OODA loop fires on_answer(agent_name, answer) after each answer.
+    # The publisher publishes {event_id, answer} to the eval-responses topic.
     response_topic = os.environ.get(
         "AMPLIHACK_EVAL_RESPONSE_TOPIC",
         f"eval-responses-{os.environ.get('AMPLIHACK_HIVE_NAME', 'default')}",
     )
     answer_publisher = AnswerPublisher(agent_name, connection_string, response_topic)
-    sys.stdout = answer_publisher
+    agent.on_answer = answer_publisher.publish_answer
 
     logger.info("Agent %s memory initialized and entering OODA loop", agent_name)
 
@@ -212,7 +212,6 @@ def main() -> None:
         logger.debug("Error closing GoalSeekingAgent", exc_info=True)
     try:
         answer_publisher.close()
-        sys.stdout = answer_publisher._original_stdout
     except Exception:
         logger.debug("Error closing AnswerPublisher", exc_info=True)
     try:
@@ -341,21 +340,20 @@ class _CorrelatingInputSource:
 
 
 class AnswerPublisher:
-    """Intercepts ANSWER lines from stdout and publishes to a Service Bus response topic.
+    """Publishes agent answers to a Service Bus response topic for eval correlation.
 
-    Installed as a stdout wrapper via DI. The agent code is unchanged — it prints
-    ANSWER lines to stdout as normal. This wrapper detects them and publishes
-    to the eval-responses topic with the current event_id for correlation.
+    Connected to the GoalSeekingAgent via the on_answer callback. When the agent
+    produces an answer in act(), it calls on_answer(agent_name, answer). This
+    publisher wraps the answer with the current event_id and publishes to the
+    eval-responses topic.
 
-    The current event_id is set by the entrypoint before calling agent.process(),
-    extracted from the incoming Service Bus message properties.
+    The current event_id is set by _CorrelatingInputSource before each process() call.
     """
 
     def __init__(self, agent_name: str, connection_string: str, response_topic: str):
         self._agent_name = agent_name
         self._current_event_id: str = ""
         self._current_question_id: str = ""
-        self._original_stdout = sys.stdout
         self._sender = None
         self._sb_client = None
 
@@ -378,52 +376,33 @@ class AnswerPublisher:
         self._current_event_id = ""
         self._current_question_id = ""
 
-    def write(self, text: str) -> int:
-        """Intercept stdout writes. Publish ANSWER lines to response topic."""
-        # Always write to real stdout
-        result = self._original_stdout.write(text)
+    def publish_answer(self, agent_name: str, answer: str) -> None:
+        """Callback for GoalSeekingAgent.on_answer — publish correlated answer."""
+        if not self._current_event_id or not self._sender:
+            return
 
-        # Detect ANSWER lines and publish with correlation
-        if (
-            self._current_event_id
-            and self._sender
-            and f"[{self._agent_name}] ANSWER:" in text
-        ):
-            # Extract the answer text after "ANSWER: "
-            marker = "ANSWER: "
-            idx = text.find(marker)
-            answer = text[idx + len(marker):].strip() if idx >= 0 else text.strip()
-
-            try:
-                from azure.servicebus import ServiceBusMessage
-                msg = ServiceBusMessage(
-                    json.dumps({
-                        "event_type": "EVAL_ANSWER",
-                        "event_id": self._current_event_id,
-                        "question_id": self._current_question_id,
-                        "agent_id": self._agent_name,
-                        "answer": answer,
-                    }),
-                    content_type="application/json",
-                )
-                self._sender.send_messages(msg)
-            except Exception as e:
-                logger.debug("AnswerPublisher: failed to publish: %s", e)
-
-        return result
-
-    def flush(self) -> None:
-        self._original_stdout.flush()
+        try:
+            from azure.servicebus import ServiceBusMessage
+            msg = ServiceBusMessage(
+                json.dumps({
+                    "event_type": "EVAL_ANSWER",
+                    "event_id": self._current_event_id,
+                    "question_id": self._current_question_id,
+                    "agent_id": agent_name,
+                    "answer": answer,
+                }),
+                content_type="application/json",
+            )
+            self._sender.send_messages(msg)
+            logger.info("AnswerPublisher: published answer for event_id=%s", self._current_event_id)
+        except Exception as e:
+            logger.warning("AnswerPublisher: failed to publish: %s", e)
 
     def close(self) -> None:
         if self._sender:
             self._sender.close()
         if self._sb_client:
             self._sb_client.close()
-
-    # Forward all other attributes to the original stdout
-    def __getattr__(self, name):
-        return getattr(self._original_stdout, name)
 
 
 def _extract_input_text(event_type: str | None, payload: dict | None, raw_event: object) -> str:

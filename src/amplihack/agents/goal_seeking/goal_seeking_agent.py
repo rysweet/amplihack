@@ -83,6 +83,11 @@ class GoalSeekingAgent:
         self._oriented_facts: dict[str, Any] = {}
         self._decision: str = ""  # "store" | "answer"
 
+        # Optional callback fired after act() produces an answer.
+        # Set via DI by the entrypoint for distributed eval answer collection.
+        # Signature: on_answer(agent_name: str, answer: str) -> None
+        self.on_answer: Any | None = None
+
     # ------------------------------------------------------------------
     # OODA loop — public API
     # ------------------------------------------------------------------
@@ -196,6 +201,12 @@ class GoalSeekingAgent:
             # Write answer to stdout — Container Apps streams this to Log Analytics
             print(f"[{self._agent_name}] ANSWER: {output}", flush=True)
             logger.info("Agent %s ANSWER: %s", self._agent_name, output)
+            # Fire callback for distributed eval answer collection
+            if self.on_answer:
+                try:
+                    self.on_answer(self._agent_name, output)
+                except Exception:
+                    pass  # Never let callback errors break the OODA loop
 
         else:  # "store" (or empty / unknown)
             try:
