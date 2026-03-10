@@ -119,8 +119,8 @@ HOOK_CONFIGS = {
 RUST_HOOK_MAP = {
     "session_start.py": "session-start",
     "stop.py": "stop",
-    # session_stop.py is only used in Copilot launcher wrappers (stage_hooks),
-    # not in Claude Code's HOOK_CONFIGS. It exists here for the Copilot rust engine path.
+    # session_stop.py is used only in Copilot launcher wrappers (stage_hooks),
+    # not in Claude Code's HOOK_CONFIGS. Included here for Copilot rust engine path.
     "session_stop.py": "session-stop",
     "pre_tool_use.py": "pre-tool-use",
     "post_tool_use.py": "post-tool-use",
