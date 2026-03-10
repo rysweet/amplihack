@@ -49,6 +49,7 @@ def main():
     p.add_argument("--seed", type=int, default=42, help="Random seed")
     p.add_argument("--grader-model", default="claude-haiku-4-5-20251001")
     p.add_argument("--answer-timeout", type=float, default=600, help="Seconds to wait per answer")
+    p.add_argument("--resource-group", default="", help="Azure resource group (for queue depth polling)")
     p.add_argument("--output", default="", help="Output JSON path")
     args = p.parse_args()
 
@@ -63,6 +64,7 @@ def main():
         response_topic=args.response_topic,
         agent_count=args.agents,
         answer_timeout=args.answer_timeout,
+        resource_group=args.resource_group,
     )
 
     # Create the eval harness — IDENTICAL to single-agent
