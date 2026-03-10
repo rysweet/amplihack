@@ -195,6 +195,36 @@ class TestResultCollectorPersistence:
         collector = ResultCollector(results_dir=results_dir)
         assert collector.success_rate() == 0.0
 
+    def test_corrupt_index_creates_backup(self, tmp_path):
+        """Corrupt index.json should create a .json.bak backup."""
+        results_dir = tmp_path / "results"
+        results_dir.mkdir(parents=True)
+        index = results_dir / "index.json"
+        corrupt_content = "not valid json{{{"
+        index.write_text(corrupt_content)
+
+        ResultCollector(results_dir=results_dir)
+
+        backup = results_dir / "index.json.bak"
+        assert backup.exists(), "Backup file should be created"
+        assert backup.read_text() == corrupt_content
+
+    def test_load_failed_blocks_save(self, tmp_path):
+        """After corrupt load, _save_index should refuse to overwrite."""
+        results_dir = tmp_path / "results"
+        results_dir.mkdir(parents=True)
+        index = results_dir / "index.json"
+        index.write_text("corrupt{{{")
+
+        collector = ResultCollector(results_dir=results_dir)
+        assert collector._load_failed is True
+
+        # Try to record — should not corrupt the backup
+        collector.record(TaskResult(task_id="t1", status="success"))
+
+        # Index should still be corrupt (save was blocked)
+        assert index.read_text() == "corrupt{{{"
+
 
 # ────────────────────────────────────────────
 # E2E TESTS (10%) — summary
