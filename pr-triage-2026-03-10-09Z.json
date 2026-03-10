@@ -1,0 +1,90 @@
+{
+  "timestamp": "2026-03-10T09:15:00Z",
+  "run_id": "22904026449",
+  "prs": [
+    {
+      "number": 3019,
+      "title": "Split CLAUDE.md into DEVELOPER_GUIDE.md (Issue #2978)",
+      "author": "Yuan9527-ai",
+      "type": "docs-external-contributor",
+      "risk": "low",
+      "priority": "normal",
+      "recommendation": "needs-revision",
+      "files_changed": 1,
+      "lines_added": 60,
+      "ci": "gitguardian-passed",
+      "status": "triaged",
+      "created_at": "2026-03-10T09:06:35Z",
+      "notes": "External contributor. Adds DEVELOPER_GUIDE.md but does not modify CLAUDE.md as issue #2978 requires. Content is placeholder/generic. Branch is fork main (bad practice). Needs revision: content accuracy + actually split CLAUDE.md."
+    },
+    {
+      "number": 3017,
+      "title": "[docs] daily documentation update for 2026-03-10",
+      "author": "github-actions[bot]",
+      "type": "docs-automated",
+      "risk": "low",
+      "priority": "normal",
+      "recommendation": "auto-merge-candidate",
+      "files_changed": 2,
+      "lines_added": 126,
+      "ci": "gitguardian-passed",
+      "status": "triaged",
+      "created_at": "2026-03-10T06:41:42Z",
+      "expires": "2026-03-11T06:41:00Z",
+      "notes": "Automated daily docs update. Covers PRs #3013, #3012, #2999, #3003, #3005, #3009. Low risk, passes CI. Labels applied."
+    },
+    {
+      "number": 3016,
+      "title": "feat: add health_check module demonstrating brick philosophy",
+      "author": "rysweet",
+      "type": "feature",
+      "risk": "low",
+      "priority": "normal",
+      "recommendation": "ready-for-review",
+      "files_changed": 2,
+      "lines_added": 161,
+      "ci": "gitguardian-passed",
+      "status": "triaged",
+      "created_at": "2026-03-10T06:12:46Z",
+      "notes": "Small focused module (~120 lines) + 41 unit tests. Brick philosophy compliant. No external deps beyond stdlib. Labels applied."
+    },
+    {
+      "number": 2992,
+      "title": "feat: add Rust XPIA subprocess bridge",
+      "author": "rysweet",
+      "type": "security-feature",
+      "risk": "high",
+      "priority": "high",
+      "recommendation": "needs-security-review",
+      "files_changed": 6,
+      "lines_added": 1999,
+      "status": "previously-triaged",
+      "created_at": "2026-03-09T21:42:42Z",
+      "notes": "Security-critical subprocess bridge to Rust XPIA defender binary. Fail-closed design. Needs security review before merge."
+    },
+    {
+      "number": 2876,
+      "title": "feat: distributed hive mind with DHT sharding",
+      "author": "rysweet",
+      "type": "feature",
+      "risk": "extreme",
+      "priority": "high",
+      "recommendation": "needs-decomposition",
+      "status": "previously-triaged",
+      "labels": ["triage:complete", "triage:extreme-risk", "merge-conflicts"],
+      "notes": "Has merge conflicts. Needs decomposition into smaller PRs."
+    },
+    {
+      "number": 2727,
+      "title": "feat: Fleet Orchestration",
+      "author": "rysweet",
+      "type": "feature",
+      "risk": "extreme",
+      "priority": "low",
+      "recommendation": "recommend-close",
+      "status": "previously-triaged",
+      "labels": ["triage:complete", "stale", "recommend-close"],
+      "notes": "Stale, extreme risk. Recommend closing."
+    }
+  ]
+}
