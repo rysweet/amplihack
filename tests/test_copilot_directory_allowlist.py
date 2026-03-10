@@ -162,13 +162,26 @@ class TestCopilotCommandBuilding:
         assert len(directories) == 3
 
         # Build command as launch_copilot() would
-        cmd = ["copilot", "--allow-all-tools"]
+        cmd = [
+            "copilot",
+            "--allow-all-tools",
+            "--autopilot",
+            "--yolo",
+            "--max-autopilot-continues",
+            "100",
+        ]
         for dir_path in directories:
             cmd.extend(["--add-dir", dir_path])
 
         # Verify command structure
-        assert cmd[0] == "copilot"
-        assert cmd[1] == "--allow-all-tools"
+        assert cmd[:6] == [
+            "copilot",
+            "--allow-all-tools",
+            "--autopilot",
+            "--yolo",
+            "--max-autopilot-continues",
+            "100",
+        ]
         assert cmd.count("--add-dir") == 3
         assert str(home_dir) in cmd
         assert str(temp_dir) in cmd
@@ -193,7 +206,14 @@ class TestCopilotCommandBuilding:
         directories = get_copilot_directories()
 
         # Build command
-        cmd = ["copilot", "--allow-all-tools"]
+        cmd = [
+            "copilot",
+            "--allow-all-tools",
+            "--autopilot",
+            "--yolo",
+            "--max-autopilot-continues",
+            "100",
+        ]
         for dir_path in directories:
             cmd.extend(["--add-dir", dir_path])
 
