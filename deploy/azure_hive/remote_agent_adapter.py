@@ -82,7 +82,11 @@ class RemoteAgentAdapter:
         )
 
     def learn_from_content(self, content: str) -> dict[str, Any]:
-        """Send content to all agents via LEARN_CONTENT event (broadcast)."""
+        """Send content to all agents via LEARN_CONTENT (broadcast).
+
+        All agents learn all content. The hive mind additionally shares
+        knowledge between agents for cross-agent discovery.
+        """
         from azure.servicebus import ServiceBusMessage
 
         event_id = uuid.uuid4().hex[:12]
@@ -98,7 +102,7 @@ class RemoteAgentAdapter:
         self._sender.send_messages(msg)
         self._learn_count += 1
 
-        if self._learn_count % 100 == 0:
+        if self._learn_count % 500 == 0:
             logger.info("RemoteAgentAdapter: sent %d content turns", self._learn_count)
 
         return {"facts_stored": 1, "event_id": event_id}
