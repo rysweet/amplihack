@@ -307,6 +307,30 @@ def _execute_rust_command(cmd: list[str], *, name: str) -> RecipeResult:
 # -- Public entry point ------------------------------------------------------
 
 
+def _default_package_recipe_dirs() -> list[str]:
+    """Return bundled recipe directories visible to Python discovery.
+
+    In editable installs, ``src/amplihack/amplifier-bundle/recipes`` may exist
+    but only contain a subset of recipes, while the full bundle lives at the
+    repo root ``amplifier-bundle/recipes``.  The Rust runner needs both paths
+    to match Python-side discovery in real environments (issue #3002).
+    """
+    try:
+        from amplihack.recipes.discovery import _PACKAGE_BUNDLE_DIR, _REPO_ROOT_BUNDLE_DIR
+
+        dirs: list[str] = []
+        for candidate in (_PACKAGE_BUNDLE_DIR, _REPO_ROOT_BUNDLE_DIR):
+            if candidate.is_dir():
+                candidate_str = str(candidate)
+                if candidate_str not in dirs:
+                    dirs.append(candidate_str)
+        if dirs:
+            return dirs
+    except Exception:
+        pass
+    return []
+
+
 def run_recipe_via_rust(
     name: str,
     user_context: dict[str, Any] | None = None,
@@ -317,11 +341,22 @@ def run_recipe_via_rust(
 ) -> RecipeResult:
     """Execute a recipe using the Rust binary.
 
+    When *recipe_dirs* is ``None``, the installed Python package's bundled
+    recipe directory is automatically included so the Rust binary can
+    discover recipes that Python discovery already knows about.
+
     Raises:
         RustRunnerNotFoundError: If the binary is not installed.
         RuntimeError: If the binary produces unparseable output.
     """
     binary = _find_rust_binary()
+
+    # When no explicit recipe_dirs are provided, inject the package bundle
+    # directory so the Rust binary can find the same recipes as Python
+    # discovery.  This fixes the Python/Rust discovery mismatch (#3002).
+    effective_recipe_dirs = recipe_dirs
+    if effective_recipe_dirs is None:
+        effective_recipe_dirs = _default_package_recipe_dirs() or None
 
     cmd = _build_rust_command(
         binary,
@@ -329,7 +364,7 @@ def run_recipe_via_rust(
         working_dir=working_dir,
         dry_run=dry_run,
         auto_stage=auto_stage,
-        recipe_dirs=recipe_dirs,
+        recipe_dirs=effective_recipe_dirs,
         user_context=user_context,
     )
 
