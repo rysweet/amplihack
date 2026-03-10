@@ -22,6 +22,7 @@ Public API (the "studs"):
 from __future__ import annotations
 
 import logging
+import sys
 from dataclasses import dataclass
 from typing import Any
 
@@ -50,6 +51,7 @@ try:
 except ImportError:
     CrossEncoder = None  # type: ignore[assignment,misc]
     HAS_CROSS_ENCODER = False
+    print("WARNING: sentence_transformers.CrossEncoder not available", file=sys.stderr)
 
 
 # ---------------------------------------------------------------------------

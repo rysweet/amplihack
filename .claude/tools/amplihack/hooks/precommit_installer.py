@@ -24,8 +24,9 @@ try:
     from precommit_prefs import load_precommit_preference, save_precommit_preference
 
     PREFERENCES_AVAILABLE = True
-except ImportError:
+except ImportError as e:
     PREFERENCES_AVAILABLE = False
+    print(f"WARNING: precommit_prefs not available - preference management disabled: {e}", file=sys.stderr)
 
 
 class PrecommitInstallerHook(HookProcessor):

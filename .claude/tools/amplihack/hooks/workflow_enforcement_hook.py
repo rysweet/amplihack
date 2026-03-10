@@ -28,8 +28,9 @@ try:
     from tool_registry import HookResult, get_global_registry
 
     REGISTRY_AVAILABLE = True
-except ImportError:
+except ImportError as e:
     REGISTRY_AVAILABLE = False
+    print(f"WARNING: tool_registry not available - hook registration disabled: {e}", file=sys.stderr)
 
     # Stub so the module can still be imported for testing
     class HookResult:  # type: ignore[no-redef]
@@ -366,7 +367,9 @@ if __name__ == "__main__":
     bash_evidence = {
         "toolUse": {
             "name": "Bash",
-            "input": {"command": "python3 -c 'from amplihack.recipes import run_recipe_by_name'"},
+            "input": {
+                "command": "PYTHONPATH=src python3 -c 'from amplihack.recipes import run_recipe_by_name'"
+            },
         },
         "result": {},
     }

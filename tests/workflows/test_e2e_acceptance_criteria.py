@@ -54,14 +54,18 @@ class TestAcceptanceCriteriaScenario1:
 
     def test_scenario1_recipe_executes_23_steps(self, mock_recipe_runner):
         """Test that Recipe Runner executes all 23 workflow steps."""
+        from amplihack.recipes.models import RecipeResult, StepResult, StepStatus
         from amplihack.workflows.session_start_skill import SessionStartClassifierSkill
 
         # Mock recipe runner to return step execution details
-        mock_recipe_runner.run_recipe_by_name.return_value = {
-            "status": "success",
-            "steps_executed": 23,
-            "steps": [f"Step {i}" for i in range(23)],
-        }
+        mock_recipe_runner.run_recipe_by_name.return_value = RecipeResult(
+            recipe_name="default-workflow",
+            success=True,
+            step_results=[
+                StepResult(step_id=f"step-{i}", status=StepStatus.COMPLETED)
+                for i in range(23)
+            ],
+        )
 
         context = {
             "user_request": "Add authentication to the API",
