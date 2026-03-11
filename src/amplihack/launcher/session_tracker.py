@@ -156,6 +156,8 @@ class SessionTracker:
 
     def _end_session(self, session_id: str, status: str):
         """Internal: Mark session as ended with given status"""
+        self._ensure_runtime_dir()
+
         # Create a minimal entry to record the end
         # We don't need all fields since we're just updating status
         entry = {
