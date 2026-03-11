@@ -525,6 +525,9 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
+    # Version subcommand (matches Rust CLI)
+    subparsers.add_parser("version", help="Show amplihack version")
+
     # Install command (existing)
     subparsers.add_parser("install", help="Install amplihack agents and tools to ~/.claude")
 
@@ -1410,6 +1413,11 @@ def main(argv: list[str] | None = None) -> int:
 
     # Import the original functions for backward compatibility
     from . import _local_install, uninstall
+
+    if args.command == "version":
+        from . import __version__
+        print(f"amplihack {__version__}")
+        return 0
 
     if args.command == "install":
         # Use the existing install logic
