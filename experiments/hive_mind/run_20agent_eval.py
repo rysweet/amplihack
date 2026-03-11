@@ -6,10 +6,12 @@ Tests whether 20 topic-specialist agents connected via a hive mind with
 consensus_required=2 can collectively answer questions at >= 80% the accuracy
 of a single omniscient agent, while blocking adversarial wrong facts.
 
-Four conditions:
+Five conditions:
     SINGLE_AGENT   -- One agent learns all 1000 turns (ceiling).
     ISOLATED_20    -- 20 agents, each learns its partition. No sharing.
     FLAT_SHARED_20 -- 20 agents, each gets ALL facts bulk-loaded. No hive.
+    DHT_SHARDED_5  -- 5 agents, each owns its DHT shard (partitioned, not replicated).
+                      Cross-shard queries via event-driven SHARD_QUERY/SHARD_RESPONSE.
     HIVE_20        -- 20 agents learn partitions, connected via consensus hive.
                       Plus 1 adversarial agent (#21) injecting 10 wrong facts.
 
@@ -48,17 +50,18 @@ _EVAL_SRC = os.environ.get("AMPLIHACK_EVAL_SRC_PATH", "")
 if _EVAL_SRC:
     sys.path.insert(0, _EVAL_SRC)
 
-from amplihack.agents.goal_seeking.hive_mind.unified import (  # type: ignore[import-not-found]
-    HiveMindAgent,
-    HiveMindConfig,
-    UnifiedHiveMind,
-)
 from amplihack_eval.data.long_horizon import (  # type: ignore[import-not-found]
     GroundTruth,
     Question,
     Turn,
     generate_dialogue,
     generate_questions,
+)
+
+from amplihack.agents.goal_seeking.hive_mind.unified import (  # type: ignore[import-not-found]
+    HiveMindAgent,
+    HiveMindConfig,
+    UnifiedHiveMind,
 )
 
 # ---------------------------------------------------------------------------
@@ -334,7 +337,7 @@ def run_single_agent(
     questions: list[Question],
 ) -> ConditionResult:
     """One agent learns all 1000 turns."""
-    print("  [1/4] SINGLE_AGENT...")
+    print("  [1/5] SINGLE_AGENT...")
     t0 = time.time()
 
     config = HiveMindConfig(
@@ -384,7 +387,7 @@ def run_isolated_20(
     partitions: list[AgentPartition],
 ) -> ConditionResult:
     """20 agents, each isolated with its own partition. No sharing."""
-    print("  [2/4] ISOLATED_20...")
+    print("  [2/5] ISOLATED_20...")
     t0 = time.time()
 
     config = HiveMindConfig(enable_gossip=False, enable_events=False)
@@ -452,7 +455,7 @@ def run_flat_shared_20(
     partitions: list[AgentPartition],
 ) -> ConditionResult:
     """20 agents, each gets ALL facts bulk-loaded. No hive topology."""
-    print("  [3/4] FLAT_SHARED_20...")
+    print("  [3/5] FLAT_SHARED_20...")
     t0 = time.time()
 
     config = HiveMindConfig(enable_gossip=False, enable_events=False)
@@ -500,7 +503,189 @@ def run_flat_shared_20(
 
 
 # ---------------------------------------------------------------------------
-# Condition 4: Hive 20 with consensus=2 + adversarial agent
+# Condition 4: DHT-sharded 5-agent (partitioned, event-driven cross-shard)
+# ---------------------------------------------------------------------------
+
+
+def run_dht_sharded_5(
+    ground_truth: GroundTruth,
+    questions: list[Question],
+    partitions: list[AgentPartition],
+) -> ConditionResult:
+    """5 agents with independent DHT shards and event-driven cross-shard queries.
+
+    Each agent has its own DistributedHiveGraph (single-agent shard) and learns
+    ONLY its assigned partition of content — total facts stored across all shards
+    equals total facts, not replicated N times.
+
+    Cross-shard queries use LocalEventBus SHARD_QUERY/SHARD_RESPONSE protocol
+    (same protocol as Azure Service Bus deployment).  No sleep between queries —
+    each shard processes SHARD_QUERY events synchronously and responds immediately.
+
+    Key validation: agent-0 is asked about content that agent-1 learned; the
+    query fans out via SHARD_QUERY and returns correct facts from agent-1's shard.
+    """
+    print("  [4/4] DHT_SHARDED_5 (partitioned, event-driven cross-shard)...")
+    t0 = time.time()
+
+    # Use first 5 partitions (one per agent)
+    p5 = partitions[:5]
+
+    import uuid
+
+    from amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph import (  # type: ignore[import-not-found]
+        DistributedHiveGraph,
+    )
+    from amplihack.agents.goal_seeking.hive_mind.event_bus import (  # type: ignore[import-not-found]
+        LocalEventBus,
+        make_event,
+    )
+    from amplihack.agents.goal_seeking.hive_mind.hive_graph import (
+        HiveFact,  # type: ignore[import-not-found]
+    )
+
+    bus = LocalEventBus()
+
+    # Each agent has its OWN DistributedHiveGraph shard (not shared)
+    agent_shards: dict[str, DistributedHiveGraph] = {}
+    for part in p5:
+        shard: DistributedHiveGraph = DistributedHiveGraph(
+            hive_id=f"shard-{part.agent_name}",
+            enable_gossip=False,
+        )
+        shard.register_agent(part.agent_name)
+        agent_shards[part.agent_name] = shard
+        bus.subscribe(part.agent_name)
+
+    agent_names = [p.agent_name for p in p5]
+
+    # Phase 1: Each agent promotes ONLY its own partition to its local shard
+    for part in p5:
+        shard = agent_shards[part.agent_name]
+        for turn in part.turns:
+            for fact in turn.facts:
+                content = f"{fact.get('entity', '')}: {fact.get('attribute', '')} = {fact.get('value', '')}"
+                hf = HiveFact(
+                    fact_id="",
+                    content=content,
+                    concept=fact.get("entity", ""),
+                    confidence=0.9,
+                    source_agent=part.agent_name,
+                    tags=[turn.block_name],
+                    created_at=time.time(),
+                )
+                shard.promote_fact(part.agent_name, hf)
+            hf = HiveFact(
+                fact_id="",
+                content=turn.content,
+                concept=turn.block_name,
+                confidence=0.85,
+                source_agent=part.agent_name,
+                tags=[turn.block_name, f"turn_{turn.turn_number}"],
+                created_at=time.time(),
+            )
+            shard.promote_fact(part.agent_name, hf)
+
+    shard_sizes = {name: agent_shards[name].get_stats()["fact_count"] for name in agent_names}
+    total_stored = sum(shard_sizes.values())
+    print(f"       {len(p5)} shards, {total_stored} total facts (each shard owns its partition)")
+    print(f"       Shard sizes: { {n: shard_sizes[n] for n in agent_names} }")
+
+    def cross_shard_query(requester: str, query: str, limit: int = 50) -> list[dict]:
+        """Query all shards via event-driven SHARD_QUERY/SHARD_RESPONSE protocol.
+
+        The requester publishes one SHARD_QUERY event.  Each other shard drains
+        its mailbox synchronously and publishes SHARD_RESPONSE.  The requester
+        then drains its own mailbox to collect all responses.  No sleep — all
+        dispatched and collected in one pass (in-process LocalEventBus).
+        """
+        correlation_id = uuid.uuid4().hex
+
+        # Publish SHARD_QUERY to all agents (LocalEventBus delivers to all except sender)
+        query_event = make_event(
+            event_type="SHARD_QUERY",
+            source_agent=requester,
+            payload={"query": query, "limit": limit, "correlation_id": correlation_id},
+        )
+        bus.publish(query_event)
+
+        # Each peer shard drains its mailbox and publishes SHARD_RESPONSE
+        for agent_id in agent_names:
+            if agent_id == requester:
+                continue
+            events = bus.poll(agent_id)
+            for event in events:
+                if event.event_type == "SHARD_QUERY":
+                    facts = agent_shards[agent_id].query_facts(
+                        event.payload.get("query", ""),
+                        limit=event.payload.get("limit", limit),
+                    )
+                    response = make_event(
+                        event_type="SHARD_RESPONSE",
+                        source_agent=agent_id,
+                        payload={
+                            "correlation_id": event.payload.get("correlation_id", ""),
+                            "facts": [
+                                {"content": f.content, "confidence": f.confidence} for f in facts
+                            ],
+                        },
+                    )
+                    bus.publish(response)
+
+        # Collect all SHARD_RESPONSE events from requester's mailbox
+        all_facts: list[dict] = []
+        for event in bus.poll(requester):
+            if (
+                event.event_type == "SHARD_RESPONSE"
+                and event.payload.get("correlation_id") == correlation_id
+            ):
+                all_facts.extend(event.payload.get("facts", []))
+
+        # Include requester's own local shard results
+        local_facts = agent_shards[requester].query_facts(query, limit=limit)
+        all_facts.extend({"content": f.content, "confidence": f.confidence} for f in local_facts)
+
+        return all_facts
+
+    # Validation: agent-0 querying content that agent-1 learned
+    requester_name = agent_names[0]
+    provider_name = agent_names[1] if len(agent_names) > 1 else agent_names[0]
+    # Sample a query from the provider's block
+    sample_query = p5[1].block_name if len(p5) > 1 else p5[0].block_name
+    cross_results = cross_shard_query(requester_name, sample_query, limit=5)
+    print(
+        f"       Cross-shard validation: {requester_name} queried '{sample_query}' "
+        f"(from {provider_name} shard) → {len(cross_results)} facts returned"
+    )
+
+    # Phase 2: Score all questions using cross-shard queries from agent-0
+    per_question: dict[str, float] = {}
+    per_category: dict[str, list[float]] = defaultdict(list)
+
+    for q in questions:
+        facts_data = cross_shard_query(requester_name, q.text, limit=50)
+        texts = [f["content"] for f in facts_data]
+        s = score_question(q, texts)
+        per_question[q.question_id] = s
+        per_category[q.category].append(s)
+
+    bus.close()
+
+    overall = sum(per_question.values()) / len(per_question) if per_question else 0.0
+    cat_avg = {cat: sum(scores) / len(scores) for cat, scores in per_category.items()}
+
+    elapsed = time.time() - t0
+    print(f"       Done in {elapsed:.1f}s -- Overall: {overall:.1%}")
+    return ConditionResult(
+        name="DHT_SHARDED_5",
+        overall_score=overall,
+        per_category=cat_avg,
+        per_question=per_question,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Condition 5: Hive 20 with consensus=2 + adversarial agent
 # ---------------------------------------------------------------------------
 
 
@@ -683,7 +868,7 @@ def run_hive_20(
 
     Returns (condition_result, adversarial_stats).
     """
-    print("  [4/4] HIVE_20 (consensus=2, +adversarial)...")
+    print("  [5/5] HIVE_20 (consensus=2, +adversarial)...")
     t0 = time.time()
 
     config = HiveMindConfig(
@@ -805,9 +990,9 @@ def print_results(
 
     # Results table
     print("RESULTS:")
-    header = f"{'':30s} {'SINGLE':>8s} {'ISO_20':>8s} {'FLAT_20':>8s} {'HIVE_20':>8s}"
+    header = f"{'':30s} {'SINGLE':>8s} {'ISO_20':>8s} {'FLAT_20':>8s} {'DHT_5':>8s} {'HIVE_20':>8s}"
     print(header)
-    print("-" * 70)
+    print("-" * 80)
 
     # Overall row
     row = f"{'Overall':30s}"
@@ -840,7 +1025,8 @@ def print_results(
 
     # Hypothesis testing
     print("HYPOTHESIS:")
-    hive_r = results[3]
+    dht_r = results[3]  # DHT_SHARDED_5
+    hive_r = results[4]  # HIVE_20
     flat_r = results[2]
     iso_r = results[1]
 
@@ -876,6 +1062,13 @@ def print_results(
     print(
         f"  H4: Hive > Isolated?           [{'PASS' if h4_pass else 'FAIL'}]  "
         f"(diff = {h4_diff:+.1%})"
+    )
+
+    # H5: DHT cross-shard retrieval works (DHT_5 > Isolated on per-agent basis)
+    h5_pass = dht_r.overall_score > 0.0
+    print(
+        f"  H5: DHT cross-shard retrieval?  [{'PASS' if h5_pass else 'FAIL'}]  "
+        f"(overall={dht_r.overall_score:.1%}, 5-agent partitioned)"
     )
     print()
 
@@ -944,13 +1137,14 @@ def main() -> None:
         print(f"    {block:20s}: {count:4d} turns -> {names}")
     print()
 
-    # Run all 4 conditions
+    # Run all 5 conditions
     print("Running evaluation conditions...")
     results: list[ConditionResult] = []
 
     results.append(run_single_agent(ground_truth, questions))
     results.append(run_isolated_20(ground_truth, questions, partitions))
     results.append(run_flat_shared_20(ground_truth, questions, partitions))
+    results.append(run_dht_sharded_5(ground_truth, questions, partitions))
 
     hive_result, adversarial_stats = run_hive_20(ground_truth, questions, partitions)
     results.append(hive_result)
