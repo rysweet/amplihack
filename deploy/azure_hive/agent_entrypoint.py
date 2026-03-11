@@ -105,6 +105,8 @@ def _shard_query_listener(
                     transport.handle_shard_query(event)
                 elif event.event_type == "SHARD_RESPONSE":
                     transport.handle_shard_response(event)
+                elif event.event_type == "SHARD_STORE":
+                    transport.handle_shard_store(event)
         except Exception:
             logger.debug("Shard query listener error for %s", agent_id, exc_info=True)
     logger.info("Agent %s shard query listener exiting", agent_id)

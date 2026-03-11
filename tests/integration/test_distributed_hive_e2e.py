@@ -698,3 +698,141 @@ class TestGoalSeekingAgentOrientCrossAgent:
             shutdown.set()
             for t in listeners:
                 t.join(timeout=2.0)
+
+
+# ---------------------------------------------------------------------------
+# Phase 7: SHARD_STORE replication — every agent holds all facts
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture()
+def two_shard_cluster_all_peers():
+    """Two agents with cross-registration so replication can occur.
+
+    Each agent registers BOTH agents so promote_fact broadcasts SHARD_STORE
+    to peers. This mirrors the production _init_dht_hive() which registers
+    all N agents on each DHT.
+    """
+    bus = LocalEventBus()
+
+    sb_transport_0 = ServiceBusShardTransport(event_bus=bus, agent_id="agent-0")
+    dht_0 = DistributedHiveGraph(
+        hive_id="shard-agent-0", enable_gossip=False, transport=sb_transport_0
+    )
+    dht_0.register_agent("agent-0")
+    dht_0.register_agent("agent-1")
+    bus.subscribe("agent-0")
+
+    sb_transport_1 = ServiceBusShardTransport(event_bus=bus, agent_id="agent-1")
+    dht_1 = DistributedHiveGraph(
+        hive_id="shard-agent-1", enable_gossip=False, transport=sb_transport_1
+    )
+    dht_1.register_agent("agent-0")
+    dht_1.register_agent("agent-1")
+    bus.subscribe("agent-1")
+
+    yield {
+        "bus": bus,
+        "dht_0": dht_0,
+        "dht_1": dht_1,
+        "transport_0": sb_transport_0,
+        "transport_1": sb_transport_1,
+    }
+
+    bus.close()
+
+
+class TestShardStoreReplication:
+    """Verify SHARD_STORE replication: agent-0 promotes → agent-1 stores via handle_shard_store."""
+
+    def test_promote_broadcasts_shard_store_to_peers(self, two_shard_cluster_all_peers):
+        """promote_fact publishes SHARD_STORE events to all other registered agents."""
+        dht_0 = two_shard_cluster_all_peers["dht_0"]
+        bus = two_shard_cluster_all_peers["bus"]
+
+        fact = _make_fact("Sarah Chen was born on March 15", "people", "agent-0")
+        dht_0.promote_fact("agent-0", fact)
+
+        # agent-1's subscription should have received a SHARD_STORE event
+        events = bus.poll("agent-1")
+        shard_store_events = [e for e in events if e.event_type == "SHARD_STORE"]
+        assert len(shard_store_events) >= 1, (
+            f"Expected SHARD_STORE on agent-1's subscription, got: {[e.event_type for e in events]}"
+        )
+
+    def test_handle_shard_store_persists_replica(self, two_shard_cluster_all_peers):
+        """handle_shard_store stores the replicated fact in agent-1's local shard."""
+        dht_0 = two_shard_cluster_all_peers["dht_0"]
+        transport_1 = two_shard_cluster_all_peers["transport_1"]
+        bus = two_shard_cluster_all_peers["bus"]
+
+        fact = _make_fact("Sarah Chen was born on March 15", "people", "agent-0")
+        dht_0.promote_fact("agent-0", fact)
+
+        # Drain SHARD_STORE events from agent-1's subscription and process them
+        events = bus.poll("agent-1")
+        for event in events:
+            if event.event_type == "SHARD_STORE":
+                transport_1.handle_shard_store(event)
+
+        # Verify via transport_1's local_graph shard
+        local_graph = transport_1._local_graph
+        assert local_graph is not None
+        shard = local_graph._router.get_shard("agent-1")
+        assert shard is not None, "agent-1 shard missing from its own DHT router"
+        facts = shard.search("sarah chen")
+        assert any("Sarah Chen" in f.content for f in facts), (
+            f"Replicated fact not found in agent-1's shard after handle_shard_store. "
+            f"Shard has {shard.fact_count} facts."
+        )
+
+    def test_replication_via_listener_thread(self, two_shard_cluster_all_peers):
+        """Full end-to-end: promote on agent-0, listener processes SHARD_STORE, agent-1 can query."""
+        dht_0 = two_shard_cluster_all_peers["dht_0"]
+        transport_0 = two_shard_cluster_all_peers["transport_0"]
+        transport_1 = two_shard_cluster_all_peers["transport_1"]
+        bus = two_shard_cluster_all_peers["bus"]
+
+        shutdown = threading.Event()
+
+        # Start shard_query_listener for both agents (handles SHARD_STORE)
+        listener_0 = threading.Thread(
+            target=_shard_query_listener,
+            args=(transport_0, "agent-0", bus, shutdown),
+            daemon=True,
+        )
+        listener_1 = threading.Thread(
+            target=_shard_query_listener,
+            args=(transport_1, "agent-1", bus, shutdown),
+            daemon=True,
+        )
+        listener_0.start()
+        listener_1.start()
+
+        try:
+            # Agent-0 promotes a fact — SHARD_STORE goes to agent-1's subscription
+            fact = _make_fact("Lars Eriksson has a pet named Bjorn", "people", "agent-0")
+            dht_0.promote_fact("agent-0", fact)
+
+            # Wait for agent-1's shard_query_listener to process SHARD_STORE
+            local_graph_1 = transport_1._local_graph
+            shard_1 = local_graph_1._router.get_shard("agent-1") if local_graph_1 else None
+
+            deadline = time.time() + 5.0
+            while time.time() < deadline:
+                if shard_1 and shard_1.fact_count > 0:
+                    break
+                time.sleep(0.05)
+
+            assert shard_1 is not None and shard_1.fact_count > 0, (
+                "agent-1's shard empty after 5s — SHARD_STORE replication did not work"
+            )
+            facts = shard_1.search("lars eriksson")
+            assert any("Lars Eriksson" in f.content for f in facts), (
+                f"Replicated fact about Lars Eriksson not found in agent-1. "
+                f"Facts: {[f.content for f in shard_1.search('lars')]}"
+            )
+        finally:
+            shutdown.set()
+            listener_0.join(timeout=2.0)
+            listener_1.join(timeout=2.0)

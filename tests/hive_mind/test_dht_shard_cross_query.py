@@ -520,8 +520,13 @@ class TestPromoteFactStoresLocally:
             f"Shard contents: {[f.content for f in all_facts]}"
         )
 
-    def test_promote_fact_no_shard_store_event_on_bus(self):
-        """promote_fact with ServiceBusShardTransport never publishes SHARD_STORE to bus."""
+    def test_promote_fact_broadcasts_shard_store_to_peers(self):
+        """promote_fact with ServiceBusShardTransport publishes SHARD_STORE to all peer agents.
+
+        Full replication: every agent stores all facts so cross-shard queries are not
+        needed during question answering. This eliminates the 49% eval gap caused by
+        unreliable SHARD_QUERY/SHARD_RESPONSE round-trips.
+        """
         bus = LocalEventBus()
         bus.subscribe("agent-0")
         bus.subscribe("agent-1")
@@ -529,7 +534,7 @@ class TestPromoteFactStoresLocally:
 
         transport = ServiceBusShardTransport(event_bus=bus, agent_id="agent-0")
         dht = DistributedHiveGraph(
-            hive_id="test-no-store-event", enable_gossip=False, transport=transport
+            hive_id="test-replication", enable_gossip=False, transport=transport
         )
         for i in range(3):
             dht.register_agent(f"agent-{i}")
@@ -537,13 +542,18 @@ class TestPromoteFactStoresLocally:
         fact = _make_fact("Mars is the fourth planet", "astronomy", "agent-0")
         dht.promote_fact("agent-0", fact)
 
-        # No SHARD_STORE published to any subscriber
+        # SHARD_STORE published to each peer (agent-1 and agent-2)
         for sub in ["agent-1", "agent-2"]:
             events = bus.poll(sub)
             store_events = [e for e in events if e.event_type == "SHARD_STORE"]
-            assert store_events == [], (
-                f"Bug 1: SHARD_STORE published to {sub}. Events: {store_events}"
+            assert len(store_events) >= 1, (
+                f"Expected SHARD_STORE to {sub} for full replication, "
+                f"got events: {[e.event_type for e in events]}"
             )
+            # Verify the replicated fact content is correct
+            assert any(
+                e.payload.get("fact", {}).get("content") == fact.content for e in store_events
+            ), f"SHARD_STORE for {sub} missing correct fact content"
         bus.close()
 
 
