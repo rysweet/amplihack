@@ -1,14 +1,1 @@
-{
-  "timestamp": "2026-03-10T07:00:00Z",
-  "run": "22890863527",
-  "prs": 5,
-  "new": 2,
-  "ongoing": 1,
-  "stale": 2,
-  "risk": {
-    "low": 2,
-    "high": 1,
-    "extreme": 2
-  },
-  "file": "pr-triage-2026-03-10-07Z.json"
-}
+{"run":"22940758863","date":"2026-03-11","prs":{"3044":"low/draft","3043":"low/ready","3017":"stale","2876":"extreme/conflicts"}}
