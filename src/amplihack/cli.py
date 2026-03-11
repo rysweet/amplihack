@@ -1215,8 +1215,9 @@ def main(argv: list[str] | None = None) -> int:
     args, claude_args = parse_args_with_passthrough(argv)
 
     # Auto-install missing blarify dependencies (scip-python, typescript-language-server, etc.)
-    # Skip for non-launch commands to avoid unnecessary delays
-    if not hasattr(args, "command") or args.command in (None, "launch"):
+    # Skip for non-launch commands and non-interactive mode to avoid blocking
+    _noninteractive = os.environ.get("AMPLIHACK_NONINTERACTIVE", "").strip() in ("1", "true", "yes")
+    if not _noninteractive and (not hasattr(args, "command") or args.command in (None, "launch")):
         try:
             from .memory.kuzu.indexing.dependency_installer import DependencyInstaller
 
