@@ -81,7 +81,7 @@ class TestSessionTrackerInit:
         with patch.object(
             SessionTracker, "RUNTIME_LOG", test_dir / ".claude" / "runtime" / "sessions.jsonl"
         ):
-            tracker = SessionTracker()
+            SessionTracker()
             runtime_dir = test_dir / ".claude" / "runtime"
 
             # Manually create directory since we're testing
@@ -96,7 +96,7 @@ class TestSessionTrackerInit:
         runtime_dir.mkdir(parents=True, exist_ok=True)
 
         with patch.object(SessionTracker, "RUNTIME_LOG", runtime_dir / "sessions.jsonl"):
-            tracker = SessionTracker()
+            SessionTracker()
             assert runtime_dir.exists()
 
 
@@ -158,7 +158,7 @@ class TestSessionTrackerStart:
         with patch.object(SessionTracker, "RUNTIME_LOG", runtime_log):
             tracker = SessionTracker()
 
-            session_id = tracker.start_session(
+            tracker.start_session(
                 pid=12345,
                 launch_dir="/test/dir",
                 argv=["amplihack", "launch", "--auto"],
@@ -234,6 +234,42 @@ class TestSessionTrackerCrash:
             assert crash_entry["session_id"] == session_id
             assert crash_entry["status"] == "crashed"
             assert crash_entry["end_time"] is not None
+
+    def test_crash_session_without_prior_start_creates_dir(self, tmp_path):
+        """Regression test for issue #3053: crash_session must not raise
+        FileNotFoundError when .claude/runtime/ directory does not exist yet.
+
+        Previously _end_session opened the log file without calling
+        _ensure_runtime_dir(), crashing when the directory was absent.
+        """
+        # Point runtime log to a deeply nested path that does not exist yet
+        missing_dir = tmp_path / "missing" / "runtime"
+        runtime_log = missing_dir / "sessions.jsonl"
+
+        with patch.object(SessionTracker, "RUNTIME_LOG", runtime_log):
+            tracker = SessionTracker.__new__(SessionTracker)  # bypass __init__
+            # Should NOT raise FileNotFoundError (issue #3053)
+            tracker.crash_session("session-orphan")
+
+        assert runtime_log.exists(), "Runtime log should have been created"
+        content = runtime_log.read_text().strip()
+        entry = json.loads(content)
+        assert entry["session_id"] == "session-orphan"
+        assert entry["status"] == "crashed"
+
+    def test_end_session_without_runtime_dir(self, tmp_path):
+        """Regression test: _end_session must create the runtime dir if absent."""
+        missing_dir = tmp_path / "nonexistent" / "sub" / "runtime"
+        runtime_log = missing_dir / "sessions.jsonl"
+
+        with patch.object(SessionTracker, "RUNTIME_LOG", runtime_log):
+            tracker = SessionTracker.__new__(SessionTracker)
+            # Directly call _end_session - this was the crashing code path
+            tracker._end_session("session-test", "completed")
+
+        assert runtime_log.exists()
+        entry = json.loads(runtime_log.read_text().strip())
+        assert entry["status"] == "completed"
 
 
 # INTEGRATION TESTS (30%)

@@ -164,6 +164,10 @@ class SessionTracker:
             "end_time": time.time(),
         }
 
+        # Ensure runtime dir exists before writing (prevents FileNotFoundError
+        # when .claude/runtime/ has not been created yet, e.g. crash_session)
+        self._ensure_runtime_dir()
+
         # Append to JSONL
         with open(self.RUNTIME_LOG, "a") as f:
             f.write(json.dumps(entry) + "\n")
