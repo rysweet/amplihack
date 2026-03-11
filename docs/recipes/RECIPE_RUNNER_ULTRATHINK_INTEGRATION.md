@@ -487,7 +487,7 @@ result = sdk_adapter.invoke_agent(
 
 ```bash
 # Check if Recipe Runner module is installed
-python3 -c "from amplihack.recipes import run_recipe_by_name; print('Recipe Runner available')"
+PYTHONPATH=src python3 -c "from amplihack.recipes import run_recipe_by_name; print('Recipe Runner available')"
 
 # Check environment variable
 echo $AMPLIHACK_USE_RECIPES
@@ -711,7 +711,7 @@ export AMPLIHACK_USE_RECIPES=0
 # Then Recipe Runner is not installed or disabled
 
 # To verify Recipe Runner installation:
-python3 -c "from amplihack.recipes import run_recipe_by_name; print('Recipe Runner installed')"
+PYTHONPATH=src python3 -c "from amplihack.recipes import run_recipe_by_name; print('Recipe Runner installed')"
 ```
 
 ## Benefits of Recipe Runner Integration

@@ -528,6 +528,12 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     # Uninstall command (existing)
     subparsers.add_parser("uninstall", help="Remove amplihack agents and tools from ~/.claude")
 
+    # Update command
+    subparsers.add_parser(
+        "update",
+        help="Update amplihack, delegating to the Rust CLI when one is installed",
+    )
+
     # Launch command (new)
     launch_parser = subparsers.add_parser(
         "launch", help="Launch Claude Code with optional proxy configuration"
@@ -803,6 +809,14 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
 
     # Migrate to local command
     _ = mode_subparsers.add_parser("to-local", help="Create local .claude/ from plugin")
+
+    # Fleet management commands (delegates to Click CLI)
+    fleet_parser = subparsers.add_parser(
+        "fleet", help="Fleet orchestration — manage coding agents across VMs"
+    )
+    fleet_parser.add_argument(
+        "fleet_args", nargs=argparse.REMAINDER, help="Fleet subcommand and arguments"
+    )
 
     return parser
 
@@ -1151,6 +1165,8 @@ def main(argv: list[str] | None = None) -> int:
     Returns:
         Exit code.
     """
+    raw_args = sys.argv[1:] if argv is None else list(argv)
+
     # Platform compatibility check FIRST (fail-fast before any operations)
     from .launcher.platform_check import check_platform_compatibility
 
@@ -1160,7 +1176,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     # Auto-update check (only for uv tool installs, not uvx)
-    if not is_uvx_deployment():
+    if not is_uvx_deployment() and (not raw_args or raw_args[0] != "update"):
         from .auto_update import check_for_updates, prompt_and_upgrade
 
         try:
@@ -1407,6 +1423,11 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "uninstall":
         uninstall()
         return 0
+
+    elif args.command == "update":
+        from .auto_update import run_update_command
+
+        return run_update_command()
 
     elif args.command == "_local_install":
         _local_install(args.repo_root)
@@ -1924,6 +1945,13 @@ def main(argv: list[str] | None = None) -> int:
 
         create_parser().print_help()
         return 1
+
+    elif args.command == "fleet":
+        from amplihack.fleet.fleet_cli import fleet_cli
+
+        fleet_args = args.fleet_args if args.fleet_args else ["--help"]
+        fleet_cli(fleet_args, standalone_mode=False)
+        return 0
 
     else:
         create_parser().print_help()

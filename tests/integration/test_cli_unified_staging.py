@@ -466,6 +466,25 @@ class TestCopytreeManifestSyncBehavior:
         result = (dst_context / "PHILOSOPHY.md").read_text()
         assert result == "# Updated Philosophy", f"File not overwritten. Got: {result}"
 
+    def test_copytree_manifest_copies_bin_directory(self, tmp_path):
+        """Rust binaries under .claude/bin should be staged into ~/.amplihack/.claude/bin."""
+        from src.amplihack.install import copytree_manifest
+
+        src_dir = tmp_path / "src"
+        bin_dir = src_dir / ".claude" / "bin"
+        bin_dir.mkdir(parents=True)
+        binary = bin_dir / "amplihack-hooks"
+        binary.write_text("#!/bin/sh\necho hooks\n")
+        binary.chmod(0o755)
+
+        dst_dir = tmp_path / "dst"
+        copied = copytree_manifest(str(src_dir), str(dst_dir), ".claude")
+
+        staged_binary = dst_dir / "bin" / "amplihack-hooks"
+        assert "bin" in copied
+        assert staged_binary.exists()
+        assert os.access(staged_binary, os.X_OK)
+
 
 class TestStagingE2EBehavior:
     """End-to-end tests for staging behavior with real subprocess calls (optional)."""
@@ -485,4 +504,6 @@ class TestStagingE2EBehavior:
             assert (staging_dir / "agents").exists(), "agents/ directory missing after staging"
             assert (staging_dir / "skills").exists(), "skills/ directory missing after staging"
             assert (staging_dir / "tools").exists(), "tools/ directory missing after staging"
-            assert (staging_dir / "hooks").exists(), "hooks/ directory missing after staging"
+            assert (staging_dir / "tools" / "amplihack" / "hooks").exists(), (
+                "tools/amplihack/hooks directory missing after staging"
+            )

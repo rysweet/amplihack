@@ -69,6 +69,7 @@ AMPLIHACK_SKILLS: frozenset[str] = frozenset(
         "n-version-workflow",
         "novelist-analyst",
         "outside-in-testing",
+        "qa-team",
         "pdf",
         "philosopher-analyst",
         "philosophy-compliance-workflow",

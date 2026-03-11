@@ -771,7 +771,7 @@ Step 13 validates technical functionality locally. Step 19 validates real-world 
 
 **For CLI/TUI applications:**
 
-- [ ] Use `/outside-in-testing` skill for guided CLI/TUI testing workflow
+- [ ] Use `/qa-team` skill for guided CLI/TUI testing workflow (`/outside-in-testing` remains an alias)
 - [ ] Test in fresh terminal session with production-like environment
 - [ ] Execute actual commands with various flags and inputs
 - [ ] Verify output formatting and error messages match expectations

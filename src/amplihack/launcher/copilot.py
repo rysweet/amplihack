@@ -9,6 +9,7 @@ import signal
 import subprocess
 import tempfile
 import threading
+from collections.abc import MutableMapping
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -443,7 +444,38 @@ def execute_update(install_method: str) -> bool:
         return False
 
 
-def check_copilot() -> bool:
+def _copilot_home(home: Path | None = None, env: MutableMapping[str, str] | None = None) -> Path:
+    """Resolve the home directory used for Copilot installation/discovery."""
+    if home is not None:
+        return home.expanduser().resolve()
+    if env is not None and env.get("HOME"):
+        return Path(env["HOME"]).expanduser().resolve()
+    return Path.home()
+
+
+def _copilot_npm_bin(home: Path | None = None, env: MutableMapping[str, str] | None = None) -> Path:
+    """Return the npm-global bin directory used for Copilot CLI installs."""
+    return _copilot_home(home=home, env=env) / ".npm-global" / "bin"
+
+
+def _ensure_copilot_bin_on_path(
+    env: MutableMapping[str, str] | None = None, home: Path | None = None
+) -> Path:
+    """Prepend the Copilot npm-global bin dir to PATH for the selected environment."""
+    target_env = os.environ if env is None else env
+    bin_path = _copilot_npm_bin(home=home, env=target_env)
+    current_path = target_env.get("PATH", "")
+    path_entries = [entry for entry in current_path.split(os.pathsep) if entry]
+    if str(bin_path) not in path_entries:
+        target_env["PATH"] = (
+            f"{bin_path}{os.pathsep}{current_path}" if current_path else str(bin_path)
+        )
+    return bin_path
+
+
+def check_copilot(
+    env: MutableMapping[str, str] | None = None, home: Path | None = None
+) -> bool:
     """Check if Copilot CLI is installed.
 
     Returns:
@@ -453,32 +485,44 @@ def check_copilot() -> bool:
         Handles FileNotFoundError (not installed), PermissionError (WSL),
         and TimeoutExpired (hanging command) gracefully.
     """
+    effective_env = os.environ if env is None else env
+    _ensure_copilot_bin_on_path(env=effective_env, home=home)
     try:
-        subprocess.run(["copilot", "--version"], capture_output=True, timeout=5, check=False)
+        kwargs = {"capture_output": True, "timeout": 5, "check": False}
+        if env is not None:
+            kwargs["env"] = effective_env
+        subprocess.run(["copilot", "--version"], **kwargs)
         return True
     except (FileNotFoundError, PermissionError, subprocess.TimeoutExpired):
         return False
 
 
-def install_copilot() -> bool:
+def install_copilot(
+    env: MutableMapping[str, str] | None = None, home: Path | None = None
+) -> bool:
     """Install GitHub Copilot CLI via npm to user-local directory."""
     print("Installing GitHub Copilot CLI...")
 
-    npm_prefix = Path.home() / ".npm-global"
+    effective_env = os.environ if env is None else env
+    npm_prefix = _copilot_home(home=home, env=effective_env) / ".npm-global"
     npm_prefix.mkdir(parents=True, exist_ok=True)
 
     try:
+        kwargs = {"check": False}
+        if env is not None:
+            kwargs["env"] = effective_env
         result = subprocess.run(
-            ["npm", "install", "-g", "--prefix", str(npm_prefix), "@github/copilot"], check=False
+            ["npm", "install", "-g", "--prefix", str(npm_prefix), "@github/copilot"], **kwargs
         )
         if result.returncode == 0:
             print("✓ Copilot CLI installed")
 
             # Add to PATH for current process
             bin_path = npm_prefix / "bin"
-            path_env = os.environ.get("PATH", "")
-            if str(bin_path) not in path_env:
-                os.environ["PATH"] = f"{bin_path}:{path_env}"
+            path_env = effective_env.get("PATH", "")
+            path_entries = [entry for entry in path_env.split(os.pathsep) if entry]
+            if str(bin_path) not in path_entries:
+                _ensure_copilot_bin_on_path(env=effective_env, home=home)
                 print(f"\n⚠️  Added to PATH for this session: {bin_path}")
                 print("   Add to ~/.bashrc or ~/.zshrc for persistence:")
                 print(f'   export PATH="{bin_path}:$PATH"')
@@ -699,6 +743,9 @@ def stage_hooks(package_dir: Path, user_dir: Path) -> int:
         "post-tool-use": ["post_tool_use.py"],
         "user-prompt-submit": ["user_prompt_submit.py", "workflow_classification_reminder.py"],
     }
+    # pre-compact is NOT listed here — Copilot CLI does not support this event type.
+    # It is only available via Claude Code's settings.json (see HOOK_CONFIGS).
+
     # error-occurred is handled by the bash wrapper directly (no Python hook)
 
     staged = 0
@@ -788,19 +835,24 @@ def _generate_rust_wrapper(hook_name, py_files, rust_binary, rust_hook_map):
     if len(rust_commands) == 1 and not python_files:
         # Single Rust hook — use exec for exit code propagation
         _, subcmd = rust_commands[0]
+        quoted_binary = shlex.quote(rust_binary)
         return f"""#!/usr/bin/env bash
 # Copilot hook wrapper - generated by amplihack (rust engine)
-exec {rust_binary} {subcmd} "$@"
+exec {quoted_binary} {subcmd} "$@"
 """
 
     # Multi-command: capture stdin, pipe to each
+    quoted_binary = shlex.quote(rust_binary)
     blocks = []
     for _, subcmd in rust_commands:
-        blocks.append(f'echo "$INPUT" | {rust_binary} {subcmd} "$@" || true')
+        blocks.append(f'echo "$INPUT" | {quoted_binary} {subcmd} "$@" || true')
     for py_file in python_files:
         blocks.append(f"""AMPLIHACK_HOOKS="$HOME/.amplihack/.claude/tools/amplihack/hooks"
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || REPO_ROOT=""
 if [[ -f "${{AMPLIHACK_HOOKS}}/{py_file}" ]]; then
     echo "$INPUT" | python3 "${{AMPLIHACK_HOOKS}}/{py_file}" "$@" 2>/dev/null || true
+elif [[ -n "$REPO_ROOT" ]] && [[ -f "${{REPO_ROOT}}/.claude/tools/amplihack/hooks/{py_file}" ]]; then
+    echo "$INPUT" | python3 "${{REPO_ROOT}}/.claude/tools/amplihack/hooks/{py_file}" "$@" 2>/dev/null || true
 fi""")
 
     body = "\n\n".join(blocks)
@@ -973,6 +1025,26 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
     # Register awesome-copilot marketplace extensions (best-effort, silent on failure)
     register_awesome_copilot_marketplace()
 
+    # Ensure XPIA defender binary is installed (security-critical, fail-closed)
+    try:
+        from ..security.xpia_install import ensure_xpia_binary
+
+        binary_path = ensure_xpia_binary()
+        print(f"✓ XPIA security defender ready ({binary_path})")
+    except ImportError:
+        # Module not available — installer not yet integrated, warn but continue
+        import logging
+
+        logging.getLogger(__name__).warning("XPIA installer module not found")
+        print("⚠ XPIA defender installer not available (module missing)")
+    except Exception as e:
+        # Installation failed — warn loudly but don't block startup.
+        # The pre-tool-use hook will enforce fail-closed at validation time.
+        import logging
+
+        logging.getLogger(__name__).error("XPIA defender binary install failed: %s", e)
+        print(f"⚠ XPIA defender not installed: {e}")
+        print("  Security validation will block tool use until xpia-defend is available.")
 
     # Prompt to re-enable power-steering if disabled (#2544)
     try:
@@ -1085,6 +1157,15 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
         "copilot",
         "--allow-all-tools",
     ]
+    if not args:
+        cmd.extend(
+            [
+                "--autopilot",
+                "--yolo",
+                "--max-autopilot-continues",
+                "100",
+            ]
+        )
     copilot_model = os.getenv("COPILOT_MODEL", "")
     if copilot_model:
         cmd.extend(["--model", copilot_model])
@@ -1096,6 +1177,8 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
     # Disable GitHub MCP server to save context tokens
     cmd.extend(["--disable-mcp-server", "github-mcp-server"])
 
+    # If the user passes Copilot CLI args after `--`, treat that as a full override
+    # of the default autopilot/yolo launch behavior.
     if args:
         cmd.extend(args)
 

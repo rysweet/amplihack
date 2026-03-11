@@ -14,11 +14,14 @@ uvx --from git+https://github.com/rysweet/amplihack amplihack claude
 
 ---
 
-**New to amplihack?** Start with [Quick Start](#quick-start), then [Core Concepts](#core-concepts), then [Configuration](#configuration).
+**New to amplihack?** Start with [Quick Start](#quick-start), then
+[Core Concepts](#core-concepts), then [Configuration](#configuration).
 
-**Want to contribute?** Go to [Development](#development) and [CONTRIBUTING.md](CONTRIBUTING.md).
+**Want to contribute?** Go to [Development](#development) and
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
-**Already familiar?** Check out [Features](#features) and [Documentation Navigator](#documentation-navigator).
+**Already familiar?** Check out [Features](#features) and
+[Documentation Navigator](#documentation-navigator).
 
 ---
 
@@ -27,7 +30,8 @@ uvx --from git+https://github.com/rysweet/amplihack amplihack claude
 - [Why amplihack?](#why-amplihack)
 - [Quick Start](#quick-start)
 - [Core Concepts](#core-concepts)
-- [Features](#features)
+- [Feature Catalog](#feature-catalog)
+- [Fleet Management](#fleet-management)
 - [Configuration](#configuration)
 - [Documentation Navigator](#documentation-navigator)
 - [Development](#development)
@@ -89,7 +93,31 @@ uvx --from git+https://github.com/rysweet/amplihack amplihack amplifier
 uvx --from git+https://github.com/rysweet/amplihack amplihack copilot
 ```
 
-This launches an interactive Claude Code session enhanced with amplihack's workflows, specialized agents, and development tools. You'll get a CLI prompt where you can describe tasks and the framework orchestrates their execution.
+This launches an interactive Claude Code session enhanced with amplihack's
+workflows, specialized agents, and development tools. You'll get a CLI prompt
+where you can describe tasks and the framework orchestrates their execution.
+
+### Trial the Rust CLI without replacing your current install
+
+Use the opt-in helper below to run the bundled Rust CLI under an isolated home
+directory. On a fresh machine, the helper downloads the latest compatible
+published `amplihack-rs` release binary automatically. Trial state stays out of
+your real `~/.claude` setup.
+
+```bash
+# Single-command fresh-machine flow
+uvx --from git+https://github.com/rysweet/amplihack \
+  amplihack-rust-trial \
+  --trial-home ~/.amplihack-rust-e2e \
+  copilot
+
+# Try specific commands without touching your current amplihack install
+uvx --from git+https://github.com/rysweet/amplihack amplihack-rust-trial recipe list
+uvx --from git+https://github.com/rysweet/amplihack amplihack-rust-trial mode detect
+```
+
+By default the helper stores trial state under `~/.amplihack-rust-trial` and
+does not change the default Python-based `amplihack` entrypoint.
 
 **Option 2: Global Install** (for daily use)
 
@@ -139,7 +167,9 @@ cd /path/to/my/project
 Add user authentication with OAuth2 support
 ```
 
-The `/dev` command is amplihack's primary entry point for development tasks. It automatically classifies your task, detects parallel workstreams, and orchestrates execution through the 23-step default workflow.
+The `/dev` command is amplihack's primary entry point for development tasks. It
+automatically classifies your task, detects parallel workstreams, and
+orchestrates execution through the 23-step default workflow.
 
 ### Developer Quick Example
 
@@ -276,7 +306,8 @@ amplihack recipe run ./my-recipe.yaml --dry-run  # Preview execution
 amplihack recipe validate my-recipe.yaml         # Validate recipe syntax
 ```
 
-Full reference: [docs/reference/recipe-cli-reference.md](docs/reference/recipe-cli-reference.md)
+Full reference:
+[docs/reference/recipe-cli-reference.md](docs/reference/recipe-cli-reference.md)
 
 </details>
 
@@ -339,6 +370,45 @@ Full reference: [docs/reference/recipe-cli-reference.md](docs/reference/recipe-c
   style, workflow)
 - **[Statusline](https://rysweet.github.io/amplihack/reference/STATUSLINE/)** —
   Real-time session info
+
+### Fleet Management
+
+Manage coding agents (Claude Code, Copilot, Amplifier) running across multiple
+Azure VMs. The fleet admiral monitors sessions, reasons about what each agent
+needs, and can send commands autonomously.
+
+```bash
+# From the shell:
+amplihack fleet              # Interactive TUI dashboard
+amplihack fleet scout        # Discover all VMs/sessions, dry-run reasoning
+amplihack fleet advance      # Send next commands to sessions (live)
+amplihack fleet status       # Quick text overview
+amplihack fleet adopt devo   # Bring existing sessions under management
+amplihack fleet auth devo    # Propagate auth tokens to a VM
+
+# From the Claude Code REPL (interactive session):
+/fleet scout                 # Same commands available as slash commands
+/fleet advance --session deva:rustyclawd
+```
+
+**Key capabilities:**
+
+- **Scout** discovers all VMs and sessions via azlin (no SSH needed for
+  discovery)
+- **Admiral reasoning** uses LLM streaming to decide: wait, send_input, restart,
+  or escalate
+- **SessionCopilot** watches local sessions and auto-continues toward a goal
+  (`/amplihack:lock`)
+- **Dual backend** — uses Anthropic API when available, falls back to GitHub
+  Copilot SDK
+- **Safety** — dangerous input patterns blocked, shell metacharacter rejection,
+  confidence thresholds
+
+Requires [azlin](https://github.com/rysweet/azlin) for VM management.
+
+See [Fleet Tutorial](docs/fleet-orchestration/TUTORIAL.md) |
+[Architecture](docs/fleet-orchestration/ARCHITECTURE.md) |
+[Admiral Reasoning](docs/fleet-orchestration/ADMIRAL_REASONING.md)
 
 </details>
 

@@ -35,6 +35,7 @@ _NON_CLAUDE_COMMANDS = [
     "codex",
     "install",
     "uninstall",
+    "update",
     "uvx-help",
     "plugin",
     "memory",
