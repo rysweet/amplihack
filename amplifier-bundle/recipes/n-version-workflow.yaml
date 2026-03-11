@@ -171,8 +171,8 @@ steps:
       set -euo pipefail
 
       # Validate inputs
-      OUTPUT_DIR='{{output_dir}}'
-      NUM_VERSIONS='{{num_versions}}'
+      OUTPUT_DIR={{output_dir}}
+      NUM_VERSIONS={{num_versions}}
       case "$OUTPUT_DIR" in
         *'$('*|*'`'*|*';'*|*'|'*|*'&'*)
           echo '{"error": "Invalid characters in output_dir"}' && exit 1 ;;
@@ -201,8 +201,8 @@ steps:
       DIRECTORIES="$DIRECTORIES]"
 
       # Assign profiles based on strategy
-      PROFILE_STRATEGY='{{profile_strategy}}'
-      PROFILES_OVERRIDE='{{profiles_override}}'
+      PROFILE_STRATEGY={{profile_strategy}}
+      PROFILES_OVERRIDE={{profiles_override}}
 
       # Default profile rotation order
       DEFAULT_PROFILES=("conservative" "pragmatic" "minimalist" "innovative" "performance")
@@ -1209,7 +1209,7 @@ steps:
     command: |
       set -euo pipefail
 
-      OUTPUT_DIR='{{output_dir}}'
+      OUTPUT_DIR={{output_dir}}
       case "$OUTPUT_DIR" in
         *'$('*|*'`'*|*';'*|*'|'*|*'&'*)
           echo 'Invalid output_dir' && exit 1 ;;

@@ -178,7 +178,7 @@ steps:
               ))
 
           agent_name = '{{agent_name}}_$(date +%s)'
-          success, data = run_learning_subprocess(articles, agent_name, sdk='{{sdk}}')
+          success, data = run_learning_subprocess(articles, agent_name, sdk={{sdk}})
 
           if not success:
               errors += 1
