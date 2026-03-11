@@ -264,8 +264,10 @@ steps:
   - id: "step-03b-extract-issue-number"
     type: "bash"
     command: |
-      # Extract issue number from the creation output
-      echo "{{issue_creation}}" | grep -oE '[0-9]+' | tail -1
+      # Extract issue number from the GitHub URL in the creation output.
+      # Use 'issues/[0-9]+' pattern to avoid matching unrelated numbers
+      # (e.g. "Step 3" in the echo preamble).
+      echo "{{issue_creation}}" | grep -oE 'issues/[0-9]+' | grep -oE '[0-9]+' | tail -1
     output: "issue_number"
 
   # ==========================================================================
@@ -288,12 +290,12 @@ steps:
       # with a 30-char limit instead of 50. If you update this pipeline (e.g. security patch),
       # update consensus-workflow.yaml in the same commit. See Issue #2952 for context.
       #
-      # ACTION REQUIRED: File a dedicated security issue to audit the recipe runner's
-      # template substitution engine for single-quote escaping (REQ-SEC-001 audit).
-      # Until confirmed safe, user-provided values should be injected as env vars,
-      # not as inline template substitutions in single-quoted bash strings.
+      # Generate branch name from the RECIPE_VAR_task_description env var set by
+      # the Rust recipe runner. This avoids the single-quote escaping pitfall
+      # (REQ-SEC-001, tracked in issue #2974) where '{{task_description}}' inside
+      # single quotes was substituted with a literal $RECIPE_VAR reference that
+      # bash could not expand — producing a slug of "recipevartaskdescription".
       #
-      # Generate branch name — use printf to safely capture the shlex-quoted value
       # Pipeline stages:
       #   1. tr '\n\r' '  '  — CRLF normalisation: collapse multi-paragraph input to single line
       #   2. tr '[:upper:]' '[:lower:]'  — lowercase
@@ -303,13 +305,7 @@ steps:
       #   6. sed edge-trim  — strip leading/trailing hyphens
       #   7. cut -c1-50     — hard truncation to 50 chars
       #   8. sed trailing   — strip trailing hyphen that cut can introduce at position 50
-      # NOTE (REQ-SEC-001, tracked in issue #2974): {{task_description}} is injected via
-      # text substitution before shell parsing. Single-quote wrapping below prevents
-      # word-splitting and glob expansion but does NOT protect against a single-quote
-      # character in the input (which would terminate the string prematurely). Issue #2974
-      # tracks migrating to env-var injection in the recipe runner so values are never
-      # inlined into shell source.
-      TASK_DESC=$(printf '%s' '{{task_description}}')
+      TASK_DESC="$RECIPE_VAR_task_description"
       TASK_SLUG=$(printf '%s' "$TASK_DESC" | tr '\n\r' '  ' | tr '[:upper:]' '[:lower:]' | tr -s ' ' '-' | sed 's/[^a-z0-9-]//g' | sed 's/-\{2,\}/-/g' | sed 's/^-//;s/-$//' | cut -c1-50 | sed 's/-$//')
       # Guard: empty slug (blank/all-symbol input) produces a trailing-hyphen branch that
       # git check-ref-format accepts as valid but is undesirable. Catch it explicitly first.
