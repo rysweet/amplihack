@@ -369,10 +369,20 @@ def get_claude_cli_path(auto_install: bool = True) -> str | None:
 
     Args:
         auto_install: If True, attempt to install Claude CLI if not found.
+                      Forced to False when AMPLIHACK_NONINTERACTIVE=1.
 
     Returns:
         Path to claude binary if available, None if not found/installed.
     """
+    # In non-interactive mode, never auto-install (would block on network/prompts)
+    noninteractive = os.environ.get("AMPLIHACK_NONINTERACTIVE", "").strip() in (
+        "1",
+        "true",
+        "yes",
+    )
+    if noninteractive:
+        auto_install = False
+
     # First, try to find existing installation
     claude_path = _find_claude_in_common_locations()
 

@@ -865,8 +865,9 @@ def _configure_amplihack_marketplace() -> bool:
             }
 
             # Write atomically
-            with open(settings_path, "w") as f:
-                json.dump(settings, f, indent=2)
+            from .settings import write_json_atomic
+
+            write_json_atomic(settings_path, settings)
 
             if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
                 print(f"✅ Configured amplihack marketplace in {settings_path}")
@@ -945,9 +946,10 @@ def _fix_global_statusline_path() -> None:
             statusline_config["command"] = correct_command
             settings["statusLine"] = statusline_config
 
-            # Write updated settings
-            with open(global_settings_path, "w", encoding="utf-8") as f:
-                json.dump(settings, f, indent=2, ensure_ascii=False)
+            # Write updated settings atomically
+            from .settings import write_json_atomic
+
+            write_json_atomic(global_settings_path, settings)
 
             if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
                 print(f"✓ Updated statusline path in {global_settings_path}")

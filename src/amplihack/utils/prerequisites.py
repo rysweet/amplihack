@@ -269,15 +269,24 @@ class InteractiveInstaller:
         print("  - Modify system packages or configuration")
         print(f"\n{'=' * 70}\n")
 
-        while True:
-            response = (
-                input(f"Do you want to proceed with installing {tool}? [y/N]: ").strip().lower()
-            )
+        max_attempts = 5  # Prevent infinite loop
+        for _ in range(max_attempts):
+            try:
+                response = (
+                    input(f"Do you want to proceed with installing {tool}? [y/N]: ")
+                    .strip()
+                    .lower()
+                )
+            except (EOFError, OSError):
+                # stdin closed or not available - decline
+                return False
             if response in ["y", "yes"]:
                 return True
             if response in ["n", "no", ""]:
                 return False
             print("Please enter 'y' or 'n'")
+        # Exhausted attempts - decline
+        return False
 
     def _execute_install_command(self, command: list[str]) -> subprocess.CompletedProcess:
         """Execute installation command with interactive stdin.
@@ -292,6 +301,7 @@ class InteractiveInstaller:
             - No shell=True (prevents shell injection)
             - stdin=sys.stdin (allows password prompts)
             - List[str] command (no string interpolation)
+            - 120-second timeout prevents hanging
         """
         return subprocess.run(
             command,
@@ -299,6 +309,7 @@ class InteractiveInstaller:
             capture_output=True,
             text=True,
             check=False,  # Don't raise exception, handle errors explicitly
+            timeout=120,  # Prevent hanging in sandboxed environments
         )
 
     def _log_audit(self, entry: InstallationAuditEntry) -> None:
@@ -890,7 +901,8 @@ def check_prerequisites() -> bool:
     """Quick prerequisite check with automatic interactive installation.
 
     In interactive environments (TTY), prompts user to install missing tools.
-    In non-interactive environments (CI), prints manual instructions.
+    In non-interactive environments (CI/AMPLIHACK_NONINTERACTIVE=1), prints
+    manual instructions without attempting installation.
 
     Returns:
         True if all prerequisites available, False otherwise
@@ -904,8 +916,14 @@ def check_prerequisites() -> bool:
         >>> if not check_prerequisites():
         ...     sys.exit(1)
     """
+    # Respect AMPLIHACK_NONINTERACTIVE to avoid blocking in sandboxed environments
+    noninteractive = os.environ.get("AMPLIHACK_NONINTERACTIVE", "").strip() in (
+        "1",
+        "true",
+        "yes",
+    )
     checker = PrerequisiteChecker()
-    result = checker.check_and_install(interactive=True)
+    result = checker.check_and_install(interactive=not noninteractive)
     return result.all_available
 
 
