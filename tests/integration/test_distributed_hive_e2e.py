@@ -562,3 +562,87 @@ class TestFiveAgentCluster:
         # With Bug 1 fix: each agent stores locally → 5 facts total across local shards
         # Without fix: DHT would route to remote agents losing facts or doubling them
         assert total == 5, f"Expected 5 facts total (one per agent, no replication), got {total}"
+
+
+# ---------------------------------------------------------------------------
+# Phase 6: Full GoalSeekingAgent orient() cross-agent fact retrieval
+# ---------------------------------------------------------------------------
+
+
+class TestGoalSeekingAgentOrientCrossAgent:
+    """Criterion 6: agent-1's orient() surfaces facts stored by agent-0 via cross-shard query."""
+
+    def test_orient_surfaces_cross_agent_facts(self, five_agent_cluster):
+        """Full GoalSeekingAgent orient() path: agent-1 orient() retrieves agent-0's facts.
+
+        This validates the complete stack:
+          GoalSeekingAgent.orient()
+            -> CognitiveAdapter.search() -> _search_hive()
+            -> DistributedHiveGraph.query_facts()
+            -> DHTRouter._select_query_targets() fans out to all agents (Bug 2 fix)
+            -> SHARD_QUERY sent to agent-0 via ServiceBusShardTransport
+            -> agent-0 shard listener responds with SHARD_RESPONSE
+            -> agent-1 collects SHARD_RESPONSE and returns facts
+        """
+        dhts = five_agent_cluster["dhts"]
+        transports = five_agent_cluster["transports"]
+        bus = five_agent_cluster["bus"]
+        agent_names = five_agent_cluster["agent_names"]
+
+        # agent-0 promotes a fact (stored locally via Bug 1 fix)
+        dhts["agent-0"].promote_fact(
+            "agent-0",
+            _make_fact("Marie Curie discovered radium in 1898", "science", "agent-0"),
+        )
+
+        # Start shard listeners for all agents (including agent-0 which holds the fact)
+        shutdown = threading.Event()
+        listeners = []
+        for name in agent_names:
+            transport = transports[name]
+            agent_name = name
+
+            def make_loop(t, n, sb):
+                def loop():
+                    while not sb.is_set():
+                        for event in bus.poll(n):
+                            if event.event_type == "SHARD_QUERY":
+                                t.handle_shard_query(event)
+                            elif event.event_type == "SHARD_RESPONSE":
+                                t.handle_shard_response(event)
+                        time.sleep(0.005)
+
+                return loop
+
+            thread = threading.Thread(
+                target=make_loop(transport, agent_name, shutdown),
+                daemon=True,
+                name=f"listener-{agent_name}",
+            )
+            thread.start()
+            listeners.append(thread)
+
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                # Create GoalSeekingAgent for agent-1 using its distributed hive as hive_store
+                agent = GoalSeekingAgent(
+                    agent_name="agent-1",
+                    storage_path=Path(tmpdir),
+                    use_hierarchical=True,
+                    hive_store=dhts["agent-1"],
+                )
+
+                agent.observe("Who discovered radium?")
+                context = agent.orient()
+
+                facts = context.get("facts", [])
+                fact_text = " ".join(str(f) for f in facts)
+
+                assert "Marie Curie" in fact_text or "radium" in fact_text or "1898" in fact_text, (
+                    f"agent-1 orient() did not surface agent-0's fact about Marie Curie. "
+                    f"Got facts: {facts}"
+                )
+        finally:
+            shutdown.set()
+            for t in listeners:
+                t.join(timeout=2.0)
