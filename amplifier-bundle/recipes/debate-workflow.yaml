@@ -995,7 +995,7 @@ steps:
       set -euo pipefail
 
       # Create decisions directory if it doesn't exist
-      WORKING_DIR='{{working_dir}}'
+      WORKING_DIR={{working_dir}}
       mkdir -p "$WORKING_DIR"
 
       # Generate filename with date

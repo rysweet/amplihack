@@ -127,7 +127,7 @@ steps:
       {{decomposition_json}}
       EOFDECOMP
       )
-      TASK_TYPE='{{task_type}}'
+      TASK_TYPE={{task_type}}
       HOOKS_DIR="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/amplihack/hooks"
       export DECOMP_JSON HELPER_PATH TASK_TYPE HOOKS_DIR
       python3 - <<'PYEOF'
@@ -250,7 +250,7 @@ steps:
     type: "bash"
     condition: "'Development' in task_type or 'Investigation' in task_type"
     command: |
-      SESSION_JSON='{{session_info}}'
+      SESSION_JSON={{session_info}}
       # Extract status using shell grep — no Python subprocess needed
       if echo "$SESSION_JSON" | grep -qE '"status" *: *"ok"'; then
         echo "ALLOWED"
@@ -331,9 +331,9 @@ steps:
     condition: |
       ('Development' in task_type or 'Investigation' in task_type) and workstream_count != '1' and workstream_count != '' and 'ALLOWED' in recursion_guard and force_single_workstream != 'true'
     command: |
-      REPO_PATH='{{repo_path}}'
-      WS_FILE='{{workstreams_file}}'
-      SESSION_JSON='{{session_info}}'
+      REPO_PATH={{repo_path}}
+      WS_FILE={{workstreams_file}}
+      SESSION_JSON={{session_info}}
       # Parse tree_id, depth, and validate workstreams file in one Python subprocess.
       # Uses env vars instead of pipe+heredoc to avoid stdin conflict (issue #2581).
       export SESSION_JSON WS_FILE
@@ -401,7 +401,7 @@ steps:
   - id: "cleanup-helper"
     type: "bash"
     command: |
-      WS_FILE='{{workstreams_file}}'
+      WS_FILE={{workstreams_file}}
       [ -f "$WS_FILE" ] && rm -f "$WS_FILE"
       echo "ok"
     output: "cleanup_status"
@@ -621,7 +621,7 @@ steps:
   - id: "complete-session"
     type: "bash"
     command: |
-      SESSION_JSON='{{session_info}}'
+      SESSION_JSON={{session_info}}
       TREE_SCRIPT="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/session_tree.py"
       HOOKS_DIR="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/amplihack/hooks"
       # Parse session fields and clear workflow semaphore in one Python subprocess.
