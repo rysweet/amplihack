@@ -5,6 +5,9 @@ Complete reference fer `amplihack plugin` and `amplihack mode` commands.
 ## Quick Reference
 
 ```bash
+# Update amplihack
+amplihack update                      # Update to latest version
+
 # Plugin Management
 amplihack plugin install <source>     # Install plugin
 amplihack plugin uninstall <name>     # Remove plugin
@@ -15,6 +18,65 @@ amplihack mode status                 # Show current mode
 amplihack mode migrate-to-plugin      # Migrate to plugin
 amplihack mode migrate-to-local       # Create local .claude/
 ```
+
+## Update Command
+
+### `amplihack update`
+
+Update amplihack to the latest version using a hybrid Python+Rust strategy.
+
+**Synopsis:**
+
+```bash
+amplihack update
+```
+
+**Behavior:**
+
+amplihack selects the update strategy automatically:
+
+1. **Rust CLI installed** (detected at `~/.local/bin/amplihack` or `~/.cargo/bin/amplihack`): delegates the update to the Rust binary, which handles its own self-update. The delegation has a 300-second timeout.
+2. **Python-only install**: runs `uv tool upgrade amplihack`.
+
+**Examples:**
+
+```bash
+# Update to latest version
+amplihack update
+```
+
+**Output (Rust CLI present):**
+
+```
+Delegating update to Rust CLI at /home/user/.cargo/bin/amplihack
+```
+
+**Output (Python-only install, success):**
+
+```
+Updated Python amplihack.
+```
+
+**Output (failure):**
+
+```
+Update failed.
+If you installed the Rust CLI, run
+`cargo install --git https://github.com/rysweet/amplihack-rs amplihack --locked`
+and then `~/.cargo/bin/amplihack install`.
+```
+
+**Exit Codes:**
+
+- `0`: Update successful
+- `1`: Update failed (see printed message for details)
+
+**Notes:**
+
+- When amplihack is invoked as `amplihack update`, the background auto-update check is skipped to prevent recursion.
+- The 300-second timeout on Rust CLI delegation is generous to accommodate slow network downloads.
+
+---
 
 ## Plugin Commands
 
@@ -502,10 +564,13 @@ cd ~/any-project
 amplihack launch
 ```
 
-### Update Plugin
+### Update amplihack
 
 ```bash
-# Force reinstall with latest version
+# Update amplihack (detects Rust CLI or Python install automatically)
+amplihack update
+
+# Alternatively, force reinstall plugin with latest version
 amplihack plugin install --force https://github.com/rysweet/amplihack
 ```
 
