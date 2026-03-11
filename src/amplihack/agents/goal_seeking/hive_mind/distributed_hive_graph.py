@@ -237,6 +237,50 @@ class ServiceBusShardTransport:
         )
         self._bus.publish(store_event)
 
+    def handle_shard_store(self, event: Any) -> None:
+        """Store a replicated fact from an incoming SHARD_STORE event.
+
+        Called from the background shard-query listener thread when a peer
+        agent broadcasts a fact for replication. Stores the fact in this
+        agent's local shard so cross-shard queries are not needed later.
+
+        target_agent filter: only store if this event targets us or has no
+        target (broadcast). Avoids double-processing.
+        """
+        if self._local_graph is None:
+            return
+        payload = getattr(event, "payload", None) or {}
+        target_agent = payload.get("target_agent", "")
+        if target_agent and target_agent != self._agent_id:
+            return
+        fact_dict = payload.get("fact", {})
+        if not fact_dict.get("content"):
+            return
+
+        shard = self._local_graph._router.get_shard(self._agent_id)
+        if shard is None:
+            return
+        gen = self._local_graph._router._embedding_generator
+        if gen is not None and shard._embedding_generator is None:
+            shard.set_embedding_generator(gen)
+
+        replica = ShardFact(
+            fact_id=fact_dict.get("fact_id", ""),
+            content=fact_dict.get("content", ""),
+            concept=fact_dict.get("concept", ""),
+            confidence=fact_dict.get("confidence", 0.8),
+            source_agent=fact_dict.get("source_agent", event.source_agent),
+            tags=fact_dict.get("tags", []),
+        )
+        stored = shard.store(replica)
+        logger.debug(
+            "Agent %s stored replicated fact from %s (stored=%s, content=%.40s)",
+            self._agent_id,
+            event.source_agent,
+            stored,
+            replica.content,
+        )
+
     # -- Listener-side handlers (called by background thread) ----------------
 
     def handle_shard_query(self, event: Any) -> None:
@@ -477,14 +521,26 @@ class DistributedHiveGraph:
             created_at=fact.created_at,
         )
 
-        # Always store locally in the promoting agent's own shard.
-        # The promoting agent owns the facts it learns — the DHT ring position
-        # is set for consistency but storage never routes to remote agents.
+        # Store locally in the promoting agent's own shard (always local bypass).
         shard_fact.ring_position = 0  # Not used for routing here
-        owners = [agent_id]
         self._transport.store_on_shard(agent_id, shard_fact)
 
-        # Update bloom filters for targeted agents
+        # Replicate to all other registered agents so every agent holds all facts.
+        # This eliminates reliance on SHARD_QUERY round-trips when answering questions:
+        # any agent can answer any question from its local shard without cross-shard
+        # queries. For ServiceBusShardTransport, store_on_shard publishes a SHARD_STORE
+        # event; the peer's shard_query_listener calls handle_shard_store() to persist
+        # the replica in its local shard.
+        with self._lock:
+            peer_ids = [aid for aid in self._agents if aid != agent_id]
+        for peer_id in peer_ids:
+            try:
+                self._transport.store_on_shard(peer_id, shard_fact)
+            except Exception:
+                logger.debug("Failed to replicate fact to peer %s", peer_id, exc_info=True)
+
+        # Update bloom filters and counters
+        owners = [agent_id] + peer_ids
         with self._lock:
             for aid in owners:
                 if aid in self._bloom_filters:
