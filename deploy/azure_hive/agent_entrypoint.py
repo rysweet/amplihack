@@ -140,8 +140,12 @@ def _init_dht_hive(
         shard_bus = AzureServiceBusEventBus(connection_string, topic_name=shard_topic)
         shard_bus.subscribe(agent_name)
 
-        # Inject ServiceBusShardTransport into DistributedHiveGraph
-        sb_transport = ServiceBusShardTransport(event_bus=shard_bus, agent_id=agent_name)
+        # Inject ServiceBusShardTransport into DistributedHiveGraph.
+        # 10s timeout gives Azure Service Bus Standard SKU enough time to
+        # deliver SHARD_RESPONSE across agent boundaries under load.
+        sb_transport = ServiceBusShardTransport(
+            event_bus=shard_bus, agent_id=agent_name, timeout=10.0
+        )
         dht_graph = DistributedHiveGraph(
             hive_id=f"shard-{agent_name}",
             enable_gossip=False,  # Clean partition boundaries

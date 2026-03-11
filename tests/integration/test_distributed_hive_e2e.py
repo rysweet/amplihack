@@ -545,6 +545,58 @@ class TestFiveAgentCluster:
             for t in listeners:
                 t.join(timeout=2.0)
 
+    def test_target_agent_filter_prevents_wrong_agent_response(self, five_agent_cluster):
+        """Fix: handle_shard_query must ignore SHARD_QUERY not targeting this agent.
+
+        Without the target_agent filter all agents respond to every SHARD_QUERY.
+        On Azure Service Bus (Standard SKU) a wrong agent's empty response can
+        arrive first, wake done.wait(), and cause the correct agent's facts to
+        be dropped after pending[correlation_id] is removed.
+
+        This test sends a SHARD_QUERY targeting agent-0 and verifies that agents
+        1-4 do NOT publish a SHARD_RESPONSE for it.
+        """
+        transports = five_agent_cluster["transports"]
+        bus = five_agent_cluster["bus"]
+
+        # Send a SHARD_QUERY explicitly targeting agent-0
+        correlation_id = uuid.uuid4().hex
+        query_event = make_event(
+            event_type="SHARD_QUERY",
+            source_agent="agent-1",
+            payload={
+                "query": "test query",
+                "limit": 5,
+                "correlation_id": correlation_id,
+                "target_agent": "agent-0",  # ← only agent-0 should respond
+            },
+        )
+        bus.publish(query_event)
+
+        # Drain SHARD_QUERY from agents 1-4's mailboxes and call handle_shard_query
+        response_count = 0
+        for agent_id in ["agent-1", "agent-2", "agent-3", "agent-4"]:
+            for event in bus.poll(agent_id):
+                if event.event_type == "SHARD_QUERY":
+                    transports[agent_id].handle_shard_query(event)
+
+        # Collect SHARD_RESPONSE events from agent-1's mailbox
+        # (responses from agents 2-4 would go to agent-1 since it sent the query)
+        import time as _time
+
+        _time.sleep(0.05)  # allow any spurious publishes to arrive
+        for event in bus.poll("agent-1"):
+            if (
+                event.event_type == "SHARD_RESPONSE"
+                and event.payload.get("correlation_id") == correlation_id
+            ):
+                response_count += 1
+
+        assert response_count == 0, (
+            f"Non-targeted agents must NOT respond to SHARD_QUERY. "
+            f"Got {response_count} spurious SHARD_RESPONSE(s) from agents 1-4."
+        )
+
     def test_total_facts_equals_promoted_no_replication(self, five_agent_cluster):
         """Bug 1 fix: total facts across all shards == number promoted (no duplication)."""
         dhts = five_agent_cluster["dhts"]
