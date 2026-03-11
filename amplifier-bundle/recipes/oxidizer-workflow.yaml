@@ -127,7 +127,7 @@ steps:
   - id: "extract-analysis"
     type: "bash"
     command: |
-      echo '{{analysis_json}}' | python3 -c "
+      echo {{analysis_json}} | python3 -c "
       import sys, json
       data = json.load(sys.stdin)
       print(json.dumps(data.get('migration_priority', [])))" 2>/dev/null || echo '[]'
@@ -188,7 +188,7 @@ steps:
   - id: "extract-test-coverage"
     type: "bash"
     command: |
-      echo '{{test_completeness_result}}' | python3 -c "
+      echo {{test_completeness_result}} | python3 -c "
       import sys, json
       data = json.load(sys.stdin)
       pct = data.get('test_coverage_percentage', 0)
@@ -198,7 +198,7 @@ steps:
   - id: "check-test-sufficiency"
     type: "bash"
     command: |
-      echo '{{test_completeness_result}}' | python3 -c "
+      echo {{test_completeness_result}} | python3 -c "
       import sys, json
       data = json.load(sys.stdin)
       sufficient = data.get('coverage_sufficient', False)
@@ -385,7 +385,7 @@ steps:
     type: "bash"
     condition: "convergence_status != 'CONVERGED'"
     command: |
-      echo '{{next_module_json}}' | python3 -c "
+      echo {{next_module_json}} | python3 -c "
       import sys, json
       data = json.load(sys.stdin)
       print(data.get('module_name', ''))" 2>/dev/null || echo ''
@@ -481,7 +481,7 @@ steps:
     type: "bash"
     condition: "convergence_status != 'CONVERGED'"
     command: |
-      echo '{{comparison_result}}' | python3 -c "
+      echo {{comparison_result}} | python3 -c "
       import sys, json
       data = json.load(sys.stdin)
       print(data.get('parity_percentage', 0))" 2>/dev/null || echo '0'
@@ -632,7 +632,7 @@ steps:
   - id: "extract-convergence"
     type: "bash"
     command: |
-      echo '{{convergence_json}}' | python3 -c "
+      echo {{convergence_json}} | python3 -c "
       import sys, json
       data = json.load(sys.stdin)
       print(data.get('convergence_status', 'NOT_CONVERGED'))" 2>/dev/null || echo 'NOT_CONVERGED'
@@ -673,7 +673,7 @@ steps:
     type: "bash"
     condition: "convergence_status == 'NOT_CONVERGED'"
     command: |
-      echo '{{next_module_json}}' | python3 -c "
+      echo {{next_module_json}} | python3 -c "
       import sys, json; print(json.load(sys.stdin).get('module_name',''))" 2>/dev/null || echo ''
     output: "current_module"
 
@@ -708,7 +708,7 @@ steps:
     type: "bash"
     condition: "convergence_status == 'NOT_CONVERGED'"
     command: |
-      echo '{{comparison_result}}' | python3 -c "
+      echo {{comparison_result}} | python3 -c "
       import sys, json; print(json.load(sys.stdin).get('parity_percentage',0))" 2>/dev/null || echo '0'
     output: "parity_percentage"
 
@@ -764,7 +764,7 @@ steps:
     type: "bash"
     condition: "convergence_status == 'NOT_CONVERGED'"
     command: |
-      echo '{{convergence_json}}' | python3 -c "
+      echo {{convergence_json}} | python3 -c "
       import sys, json; print(json.load(sys.stdin).get('convergence_status','NOT_CONVERGED'))" 2>/dev/null || echo 'NOT_CONVERGED'
     output: "convergence_status"
 
@@ -790,7 +790,7 @@ steps:
     type: "bash"
     condition: "convergence_status == 'NOT_CONVERGED'"
     command: |
-      echo '{{next_module_json}}' | python3 -c "
+      echo {{next_module_json}} | python3 -c "
       import sys, json; print(json.load(sys.stdin).get('module_name',''))" 2>/dev/null || echo ''
     output: "current_module"
 
@@ -822,7 +822,7 @@ steps:
     type: "bash"
     condition: "convergence_status == 'NOT_CONVERGED'"
     command: |
-      echo '{{comparison_result}}' | python3 -c "
+      echo {{comparison_result}} | python3 -c "
       import sys, json; print(json.load(sys.stdin).get('parity_percentage',0))" 2>/dev/null || echo '0'
     output: "parity_percentage"
 
@@ -874,7 +874,7 @@ steps:
     type: "bash"
     condition: "convergence_status == 'NOT_CONVERGED'"
     command: |
-      echo '{{convergence_json}}' | python3 -c "
+      echo {{convergence_json}} | python3 -c "
       import sys, json; print(json.load(sys.stdin).get('convergence_status','NOT_CONVERGED'))" 2>/dev/null || echo 'NOT_CONVERGED'
     output: "convergence_status"
 
@@ -900,7 +900,7 @@ steps:
     type: "bash"
     condition: "convergence_status == 'NOT_CONVERGED'"
     command: |
-      echo '{{next_module_json}}' | python3 -c "
+      echo {{next_module_json}} | python3 -c "
       import sys, json; print(json.load(sys.stdin).get('module_name',''))" 2>/dev/null || echo ''
     output: "current_module"
 
@@ -932,7 +932,7 @@ steps:
     type: "bash"
     condition: "convergence_status == 'NOT_CONVERGED'"
     command: |
-      echo '{{comparison_result}}' | python3 -c "
+      echo {{comparison_result}} | python3 -c "
       import sys, json; print(json.load(sys.stdin).get('parity_percentage',0))" 2>/dev/null || echo '0'
     output: "parity_percentage"
 
@@ -984,7 +984,7 @@ steps:
     type: "bash"
     condition: "convergence_status == 'NOT_CONVERGED'"
     command: |
-      echo '{{convergence_json}}' | python3 -c "
+      echo {{convergence_json}} | python3 -c "
       import sys, json; print(json.load(sys.stdin).get('convergence_status','NOT_CONVERGED'))" 2>/dev/null || echo 'NOT_CONVERGED'
     output: "convergence_status"
 
@@ -1010,7 +1010,7 @@ steps:
     type: "bash"
     condition: "convergence_status == 'NOT_CONVERGED'"
     command: |
-      echo '{{next_module_json}}' | python3 -c "
+      echo {{next_module_json}} | python3 -c "
       import sys, json; print(json.load(sys.stdin).get('module_name',''))" 2>/dev/null || echo ''
     output: "current_module"
 
@@ -1042,7 +1042,7 @@ steps:
     type: "bash"
     condition: "convergence_status == 'NOT_CONVERGED'"
     command: |
-      echo '{{comparison_result}}' | python3 -c "
+      echo {{comparison_result}} | python3 -c "
       import sys, json; print(json.load(sys.stdin).get('parity_percentage',0))" 2>/dev/null || echo '0'
     output: "parity_percentage"
 
@@ -1095,7 +1095,7 @@ steps:
     type: "bash"
     condition: "convergence_status == 'NOT_CONVERGED'"
     command: |
-      echo '{{convergence_json}}' | python3 -c "
+      echo {{convergence_json}} | python3 -c "
       import sys, json; print(json.load(sys.stdin).get('convergence_status','NOT_CONVERGED'))" 2>/dev/null || echo 'NOT_CONVERGED'
     output: "convergence_status"
 
