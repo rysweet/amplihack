@@ -2069,45 +2069,63 @@ shadow.create(local_sources=["~/repos/lib:org/lib"])
 - Test automation patterns
 - Shadow environment testing methodology
 
-## Level 4: Parity Harness & Self-Improving Audit [LEVEL 4]
+## Level 4: A/B Comparison Harness & Self-Improving Audit [LEVEL 4]
 
-Reusable tools for validating CLI migration/rewrite parity. Extracted from a
-real-world Python→Rust migration that achieved 118/118 test parity + 619/619
-golden file parity.
+Reusable tools for running any two CLI implementations side-by-side and
+quantifying their behavioral differences. Works for any scenario where you
+need to compare two things:
+
+- **Migration parity**: Python→Rust, v1→v2, monolith→microservice
+- **A/B testing**: Compare two approaches to the same CLI
+- **Feature flag validation**: Same binary, different configs
+- **Version regression**: Compare release N with release N+1
+- **Canary validation**: Compare canary build against stable
 
 ### Tools
 
-Located in `.claude/scenarios/parity-harness/`:
+Located in `.claude/scenarios/ab-comparison/`:
 
 | File | Purpose |
 |------|---------|
-| `shadow_parity_harness.py` | Run two CLIs side-by-side in isolated sandboxes |
-| `parity_audit_cycle.py` | Self-improving loop: identify → categorize → fix → re-validate |
-| `PARITY_SCENARIO_FORMAT.md` | YAML scenario format specification |
-| `example_scenario.yaml` | Example scenario for a calculator CLI migration |
+| `ab_comparison_harness.py` | Run two CLIs side-by-side in isolated sandboxes |
+| `ab_audit_cycle.py` | Self-improving loop: identify → categorize → fix → re-validate |
+| `SCENARIO_FORMAT.md` | YAML scenario format specification |
+| `example_scenario.yaml` | Example scenario for a calculator CLI |
 
 ### Quick Start
 
 ```bash
-# Compare legacy Python CLI with new Rust binary
-python .claude/scenarios/parity-harness/shadow_parity_harness.py \
-    --legacy "python -m myapp.cli" \
-    --candidate "./target/debug/myapp" \
-    --scenario tests/parity/scenarios/*.yaml
+# Compare any two CLI implementations
+python .claude/scenarios/ab-comparison/ab_comparison_harness.py \
+    --a "python -m myapp.cli" \
+    --b "./target/debug/myapp" \
+    --scenario tests/scenarios/*.yaml
 
-# Shadow mode: log divergences without failing
-python .claude/scenarios/parity-harness/shadow_parity_harness.py \
-    --legacy "python -m myapp.cli" \
-    --candidate "./target/debug/myapp" \
-    --scenario tests/parity/scenarios/*.yaml \
+# A/B with feature flag
+python .claude/scenarios/ab-comparison/ab_comparison_harness.py \
+    --a "myapp --feature-flag=off" \
+    --b "myapp --feature-flag=on" \
+    --scenario tests/scenarios/regression.yaml
+
+# Shadow mode: log divergences without failing (for production rollout)
+python .claude/scenarios/ab-comparison/ab_comparison_harness.py \
+    --a "myapp-stable" \
+    --b "myapp-canary" \
+    --scenario tests/scenarios/*.yaml \
     --shadow-mode \
-    --shadow-log /tmp/divergences.jsonl
+    --shadow-log /tmp/canary-divergences.jsonl
 
-# Self-improving audit cycle
-python .claude/scenarios/parity-harness/parity_audit_cycle.py \
+# Self-improving audit cycle (iterate until convergence)
+python .claude/scenarios/ab-comparison/ab_audit_cycle.py \
+    --a "python -m myapp.cli" \
+    --b "./target/debug/myapp" \
+    --scenarios-dir tests/scenarios/
+
+# Legacy flags (--legacy/--candidate) also work
+python .claude/scenarios/ab-comparison/ab_comparison_harness.py \
     --legacy "python -m myapp.cli" \
     --candidate "./target/debug/myapp" \
-    --scenarios-dir tests/parity/scenarios/
+    --scenario tests/scenarios/*.yaml
 ```
 
 ### Scenario Format (Summary)
@@ -2116,7 +2134,7 @@ python .claude/scenarios/parity-harness/parity_audit_cycle.py \
 cases:
   - name: "unique-test-name"
     category: "install"                     # For audit grouping
-    argv: ["subcommand", "--flag"]          # Same args for both engines
+    argv: ["subcommand", "--flag"]          # Same args for both sides
     timeout: 15                             # Seconds
     env:
       PATH: "${SANDBOX_ROOT}/bin:${PATH}"   # Template variables
@@ -2131,11 +2149,11 @@ cases:
       - "jsonfs:path/to/file.json"         # JSON semantic comparison
 ```
 
-See `PARITY_SCENARIO_FORMAT.md` for the full specification.
+See `SCENARIO_FORMAT.md` for the full specification.
 
 ### Key Design Decisions
 
-1. **Isolated sandboxes**: Each engine gets its own HOME, TMPDIR, PATH. No
+1. **Isolated sandboxes**: Each side gets its own HOME, TMPDIR, PATH. No
    collisions between the two runs, or with the host.
 
 2. **JSON-semantic comparison**: `stdout` comparison parses both sides as JSON
@@ -2145,14 +2163,14 @@ See `PARITY_SCENARIO_FORMAT.md` for the full specification.
    that capture their args and env vars to files, then compare those files.
 
 4. **Timeout resilience**: Captures partial output on timeout (exit code 124)
-   instead of crashing the harness. Critical for testing launcher commands
-   that may hang in sandboxed environments.
+   instead of crashing the harness. Critical for testing commands that may
+   hang in sandboxed environments.
 
 5. **Shadow mode**: Logs divergences to append-only JSONL without failing the
    run. Use during rollout to monitor real workloads.
 
-6. **Audit categorization**: Groups failures by keyword inference (install,
-   launch, recipe, etc.) and generates prioritized fix workstream specs.
+6. **Audit categorization**: Groups divergences by keyword inference and
+   generates prioritized fix workstream specs.
 
 ### Self-Improvement Cycle Pattern
 
@@ -2170,14 +2188,14 @@ See `PARITY_SCENARIO_FORMAT.md` for the full specification.
 └──────┬──────┘
        ▼
 ┌─────────────┐
-│    FIX      │  Agent/human fixes code (using default-workflow)
+│    FIX      │  Agent/human fixes code
 └──────┬──────┘
        ▼
 ┌─────────────┐
-│ RE-VALIDATE │  Run audit again → check progress (5→2 failures)
+│ RE-VALIDATE │  Run audit again → check progress (5→2 divergences)
 └──────┬──────┘
        ▼
-      100%? ──no──→ back to FIX
+    Converged? ──no──→ back to FIX
        │
       yes
        ▼
@@ -2186,22 +2204,24 @@ See `PARITY_SCENARIO_FORMAT.md` for the full specification.
 
 ### Real-World Results
 
-Used for `amplihack-rs` validation (rysweet/amplihack-rs#25):
-- **118/118** parity tests across 12 tiers
+Used for `amplihack-rs` migration validation (rysweet/amplihack-rs#25):
+- **118/118** comparison tests across 12 tiers
 - **619/619** hook golden file tests
 - **9/9** shadow harness cases
 - 5 Python bugs discovered and fixed
 - 1 recipe orchestrator bug discovered and fixed
-- Full launcher parity achieved (flags, env vars, Python delegation)
+- Full launcher behavioral match achieved
 
 ## Changelog [LEVEL 3]
 
 ### Version 1.2.0 (2026-03-11)
 
-- **NEW**: Level 4 - Parity Harness & Self-Improving Audit
-- Generic `shadow_parity_harness.py` for any CLI migration
-- Generic `parity_audit_cycle.py` self-improvement loop
-- `PARITY_SCENARIO_FORMAT.md` YAML specification
+- **NEW**: Level 4 - A/B Comparison Harness & Self-Improving Audit
+- Generic `ab_comparison_harness.py` for any side-by-side CLI comparison
+  (migration parity, A/B testing, feature flags, version regression, canary)
+- Generic `ab_audit_cycle.py` self-improvement loop
+- `SCENARIO_FORMAT.md` YAML specification
+- Supports `--a`/`--b` flags (also `--legacy`/`--candidate` for backward compat)
 - Example scenario file
 - Extracted from amplihack-rs parity validation (118/118 tests)
 
