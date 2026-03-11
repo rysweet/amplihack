@@ -12,7 +12,10 @@ import threading
 import time
 import uuid
 
-from amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph import DistributedHiveGraph
+from amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph import (
+    DistributedHiveGraph,
+    ServiceBusShardTransport,
+)
 from amplihack.agents.goal_seeking.hive_mind.event_bus import LocalEventBus, make_event
 from amplihack.agents.goal_seeking.hive_mind.hive_graph import HiveFact
 
@@ -213,22 +216,28 @@ class TestDHTShardCrossQuery:
         assert any("cat" in t.lower() for t in texts_b), "Query B should find cat facts"
 
     def test_threaded_shard_query_listener(self):
-        """ShardQueryListener background thread handles SHARD_QUERY without sleep."""
-        from deploy.azure_hive.agent_entrypoint import ShardedHiveStore
+        """ServiceBusShardTransport background thread handles SHARD_QUERY without sleep."""
+        from amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph import (
+            ServiceBusShardTransport,
+        )
 
-        # Build a ShardedHiveStore backed by a DistributedHiveGraph
-        dht = DistributedHiveGraph(hive_id="shard-agent-0-threaded", enable_gossip=False)
+        # Build a DistributedHiveGraph with ServiceBusShardTransport (DI pattern)
+        bus2 = LocalEventBus()
+        bus2.subscribe("agent-0")
+        bus2.subscribe("requester")
+
+        sb_transport = ServiceBusShardTransport(event_bus=bus2, agent_id="agent-0")
+        dht = DistributedHiveGraph(
+            hive_id="shard-agent-0-threaded",
+            enable_gossip=False,
+            transport=sb_transport,
+        )
         dht.register_agent("agent-0")
         dht.promote_fact(
             "agent-0",
             _make_fact("The Eiffel Tower is in Paris", "landmarks", "agent-0"),
         )
 
-        bus2 = LocalEventBus()
-        bus2.subscribe("agent-0")
-        bus2.subscribe("requester")
-
-        store = ShardedHiveStore(dht, bus2, "agent-0")
         shutdown = threading.Event()
 
         # Start a shard listener that processes events with a tiny poll loop
@@ -237,9 +246,9 @@ class TestDHTShardCrossQuery:
                 events = bus2.poll("agent-0")
                 for event in events:
                     if event.event_type == "SHARD_QUERY":
-                        store.handle_shard_query(event)
+                        sb_transport.handle_shard_query(event)
                     elif event.event_type == "SHARD_RESPONSE":
-                        store.handle_shard_response(event)
+                        sb_transport.handle_shard_response(event)
                 # Minimal yield — not a timing assumption, just cooperative multitasking
                 time.sleep(0.005)
 
@@ -279,3 +288,187 @@ class TestDHTShardCrossQuery:
             shutdown.set()
             listener.join(timeout=1.0)
             bus2.close()
+
+
+class TestServiceBusShardTransport:
+    """Verify ServiceBusShardTransport using LocalEventBus as stand-in."""
+
+    def test_query_shard_local_bypass(self):
+        """query_shard on own agent_id queries local shard without bus round-trip."""
+        bus = LocalEventBus()
+        bus.subscribe("agent-0")
+
+        sb_transport = ServiceBusShardTransport(event_bus=bus, agent_id="agent-0")
+        dht = DistributedHiveGraph(
+            hive_id="test-local-bypass", enable_gossip=False, transport=sb_transport
+        )
+        dht.register_agent("agent-0")
+        dht.promote_fact(
+            "agent-0", _make_fact("Python is a programming language", "tech", "agent-0")
+        )
+
+        # Query via transport directly — should use local bypass
+        results = sb_transport.query_shard("agent-0", "Python programming", limit=5)
+        assert any("Python" in f.content for f in results), (
+            f"Local bypass query did not return expected fact. Got: {[f.content for f in results]}"
+        )
+        # No SHARD_QUERY published to bus
+        assert bus.poll("agent-0") == [], "Local bypass must not publish SHARD_QUERY"
+        bus.close()
+
+    def test_store_on_shard_local_bypass(self):
+        """store_on_shard on own agent_id stores locally without publishing SHARD_STORE."""
+        from amplihack.agents.goal_seeking.hive_mind.dht import ShardFact
+
+        bus = LocalEventBus()
+        bus.subscribe("agent-0")
+        bus.subscribe("observer")
+
+        sb_transport = ServiceBusShardTransport(event_bus=bus, agent_id="agent-0")
+        dht = DistributedHiveGraph(
+            hive_id="test-store-bypass", enable_gossip=False, transport=sb_transport
+        )
+        dht.register_agent("agent-0")
+
+        fact = ShardFact(
+            fact_id="sf-001",
+            content="Rust is memory-safe",
+            concept="tech",
+            confidence=0.9,
+            source_agent="agent-0",
+        )
+        sb_transport.store_on_shard("agent-0", fact)
+
+        # Fact is in the local shard
+        shard = dht._router.get_shard("agent-0")
+        assert shard is not None
+        stored = shard.get("sf-001")
+        assert stored is not None and "Rust" in stored.content
+
+        # No SHARD_STORE published
+        assert bus.poll("observer") == [], "Local store must not publish SHARD_STORE"
+        bus.close()
+
+    def test_handle_shard_query_publishes_response(self):
+        """handle_shard_query looks up local facts and publishes SHARD_RESPONSE."""
+        bus = LocalEventBus()
+        bus.subscribe("agent-0")
+        bus.subscribe("requester")
+
+        sb_transport = ServiceBusShardTransport(event_bus=bus, agent_id="agent-0")
+        dht = DistributedHiveGraph(
+            hive_id="test-handle-query", enable_gossip=False, transport=sb_transport
+        )
+        dht.register_agent("agent-0")
+        dht.promote_fact("agent-0", _make_fact("The Louvre is in Paris", "landmarks", "agent-0"))
+
+        # Simulate incoming SHARD_QUERY
+        correlation_id = uuid.uuid4().hex
+        query_event = make_event(
+            event_type="SHARD_QUERY",
+            source_agent="requester",
+            payload={"query": "Louvre Paris", "limit": 5, "correlation_id": correlation_id},
+        )
+        # agent-0 receives and handles it
+        sb_transport.handle_shard_query(query_event)
+
+        # requester should have a SHARD_RESPONSE in its mailbox
+        responses = [e for e in bus.poll("requester") if e.event_type == "SHARD_RESPONSE"]
+        assert len(responses) == 1
+        assert responses[0].payload["correlation_id"] == correlation_id
+        facts = responses[0].payload["facts"]
+        assert any("Louvre" in f["content"] or "Paris" in f["content"] for f in facts), (
+            f"SHARD_RESPONSE did not contain expected facts: {facts}"
+        )
+        bus.close()
+
+    def test_handle_shard_response_wakes_pending_query(self):
+        """handle_shard_response sets threading.Event for pending query_shard call."""
+        bus = LocalEventBus()
+        bus.subscribe("agent-1")
+
+        sb_transport = ServiceBusShardTransport(event_bus=bus, agent_id="agent-1")
+
+        # Register a pending correlation
+        correlation_id = uuid.uuid4().hex
+        done = threading.Event()
+        results: list[dict] = []
+        with sb_transport._pending_lock:
+            sb_transport._pending[correlation_id] = (done, results)
+
+        # Simulate incoming SHARD_RESPONSE
+        response_event = make_event(
+            event_type="SHARD_RESPONSE",
+            source_agent="agent-0",
+            payload={
+                "correlation_id": correlation_id,
+                "facts": [{"content": "Speed of light is 299792 km/s", "confidence": 0.95}],
+            },
+        )
+        sb_transport.handle_shard_response(response_event)
+
+        assert done.is_set(), "threading.Event must be set by handle_shard_response"
+        assert len(results) == 1
+        assert "299792" in results[0]["content"]
+        bus.close()
+
+    def test_remote_query_via_bus_round_trip(self):
+        """query_shard for a remote agent sends SHARD_QUERY and collects SHARD_RESPONSE."""
+        bus = LocalEventBus()
+        bus.subscribe("agent-0")
+        bus.subscribe("agent-1")
+
+        # agent-0: owns facts
+        sb_transport_0 = ServiceBusShardTransport(event_bus=bus, agent_id="agent-0")
+        dht_0 = DistributedHiveGraph(
+            hive_id="shard-a0", enable_gossip=False, transport=sb_transport_0
+        )
+        dht_0.register_agent("agent-0")
+        dht_0.promote_fact(
+            "agent-0", _make_fact("The Colosseum is in Rome", "landmarks", "agent-0")
+        )
+
+        # agent-1: querier with its own transport
+        sb_transport_1 = ServiceBusShardTransport(event_bus=bus, agent_id="agent-1", timeout=2.0)
+        dht_1 = DistributedHiveGraph(
+            hive_id="shard-a1", enable_gossip=False, transport=sb_transport_1
+        )
+        dht_1.register_agent("agent-1")
+
+        shutdown = threading.Event()
+
+        # Background listener for agent-0 — handles incoming SHARD_QUERY
+        def agent0_listener():
+            while not shutdown.is_set():
+                for event in bus.poll("agent-0"):
+                    if event.event_type == "SHARD_QUERY":
+                        sb_transport_0.handle_shard_query(event)
+                    elif event.event_type == "SHARD_RESPONSE":
+                        sb_transport_0.handle_shard_response(event)
+                time.sleep(0.005)
+
+        # Background listener for agent-1 — collects SHARD_RESPONSE
+        def agent1_listener():
+            while not shutdown.is_set():
+                for event in bus.poll("agent-1"):
+                    if event.event_type == "SHARD_RESPONSE":
+                        sb_transport_1.handle_shard_response(event)
+                time.sleep(0.005)
+
+        t0 = threading.Thread(target=agent0_listener, daemon=True)
+        t1 = threading.Thread(target=agent1_listener, daemon=True)
+        t0.start()
+        t1.start()
+
+        try:
+            # agent-1 queries agent-0's shard remotely
+            results = sb_transport_1.query_shard("agent-0", "Colosseum Rome", limit=5)
+            texts = [f.content for f in results]
+            assert any("Colosseum" in t or "Rome" in t for t in texts), (
+                f"Remote shard query did not return expected facts. Got: {texts}"
+            )
+        finally:
+            shutdown.set()
+            t0.join(timeout=1.0)
+            t1.join(timeout=1.0)
+            bus.close()

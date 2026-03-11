@@ -25,8 +25,12 @@ Philosophy:
 - O(K) query fan-out instead of O(N)
 - Reuses existing CRDT, RRF, and embedding infrastructure
 - Drop-in replacement for InMemoryHiveGraph protocol
+- Dependency injection for shard transport — agent code is transport-agnostic
 
 Public API:
+    ShardTransport: Protocol for pluggable shard routing
+    LocalShardTransport: In-process transport backed by DHTRouter
+    ServiceBusShardTransport: Azure Service Bus transport with correlation_id
     DistributedHiveGraph: HiveGraph protocol implementation using DHT
 """
 
@@ -36,10 +40,8 @@ import hashlib
 import logging
 import random
 import threading
-import time
 import uuid
-from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Protocol, runtime_checkable
 
 from .bloom import BloomFilter
 from .constants import (
@@ -47,14 +49,268 @@ from .constants import (
     DEFAULT_BROADCAST_THRESHOLD,
     DEFAULT_TRUST_SCORE,
     FACT_ID_HEX_LENGTH,
-    GOSSIP_TAG_PREFIX,
     MAX_TRUST_SCORE,
-    RRF_K,
 )
 from .dht import DEFAULT_REPLICATION_FACTOR, DHTRouter, ShardFact
 from .hive_graph import HiveAgent, HiveEdge, HiveFact
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# ShardTransport Protocol
+# ---------------------------------------------------------------------------
+
+
+@runtime_checkable
+class ShardTransport(Protocol):
+    """Protocol for pluggable shard routing.
+
+    Implementations route query_shard and store_on_shard operations to the
+    appropriate shard — in-process (LocalShardTransport) or over the network
+    (ServiceBusShardTransport). DistributedHiveGraph delegates all shard I/O
+    to the injected transport; it never branches on transport type.
+    """
+
+    def query_shard(self, agent_id: str, query: str, limit: int) -> list[ShardFact]:
+        """Query a specific agent's shard and return matching ShardFacts."""
+        ...
+
+    def store_on_shard(self, agent_id: str, fact: ShardFact) -> None:
+        """Store a fact on a specific agent's shard."""
+        ...
+
+
+# ---------------------------------------------------------------------------
+# LocalShardTransport — in-process, backed by DHTRouter
+# ---------------------------------------------------------------------------
+
+
+class LocalShardTransport:
+    """In-process shard transport that directly accesses DHTRouter shards.
+
+    No serialisation, no network — all shard I/O happens in the same process.
+    This is the default transport for local evaluation and testing.
+
+    Args:
+        router: The DHTRouter whose ShardStores this transport accesses.
+    """
+
+    def __init__(self, router: DHTRouter) -> None:
+        self._router = router
+
+    def query_shard(self, agent_id: str, query: str, limit: int) -> list[ShardFact]:
+        """Search a specific agent's shard directly."""
+        shard = self._router.get_shard(agent_id)
+        if shard is None:
+            return []
+        return shard.search(query, limit=limit)
+
+    def store_on_shard(self, agent_id: str, fact: ShardFact) -> None:
+        """Store a fact in a specific agent's shard directly."""
+        shard = self._router.get_shard(agent_id)
+        if shard is None:
+            return
+        # Mirror DHTRouter.store_fact: propagate embedding_generator if set
+        gen = self._router._embedding_generator
+        if gen is not None and shard._embedding_generator is None:
+            shard.set_embedding_generator(gen)
+        shard.store(fact)
+
+
+# ---------------------------------------------------------------------------
+# ServiceBusShardTransport — Azure Service Bus (or LocalEventBus stand-in)
+# ---------------------------------------------------------------------------
+
+
+class ServiceBusShardTransport:
+    """Shard transport that routes cross-shard operations via an event bus.
+
+    Uses SHARD_QUERY / SHARD_RESPONSE for reads and SHARD_STORE for writes.
+    Local shard access (agent_id == self._agent_id) bypasses the bus for
+    efficiency.
+
+    The transport must be bound to a DistributedHiveGraph via bind_local()
+    before handle_shard_query() can respond to incoming queries.
+    DistributedHiveGraph.__init__ calls bind_local(self) automatically when
+    a ServiceBusShardTransport is injected.
+
+    Args:
+        event_bus: Any EventBus implementation (AzureServiceBusEventBus or
+                   LocalEventBus for testing).
+        agent_id: This agent's own ID — determines which shard is "local".
+        timeout: Seconds to wait for a SHARD_RESPONSE (default 5.0).
+    """
+
+    def __init__(self, event_bus: Any, agent_id: str, timeout: float = 5.0) -> None:
+        self._bus = event_bus
+        self._agent_id = agent_id
+        self._timeout = timeout
+        # Pending cross-shard queries: correlation_id → (done_event, facts_list)
+        self._pending: dict[str, tuple[threading.Event, list]] = {}
+        self._pending_lock = threading.Lock()
+        self._local_graph: Any = None  # Bound by DistributedHiveGraph.__init__
+
+    def bind_local(self, graph: Any) -> None:
+        """Bind the DistributedHiveGraph that owns this transport's local shard."""
+        self._local_graph = graph
+
+    # -- ShardTransport protocol ---------------------------------------------
+
+    def query_shard(self, agent_id: str, query: str, limit: int) -> list[ShardFact]:
+        """Query a shard — local bypass for own shard, bus round-trip for remote."""
+        if agent_id == self._agent_id and self._local_graph is not None:
+            shard = self._local_graph._router.get_shard(agent_id)
+            if shard is None:
+                return []
+            return shard.search(query, limit=limit)
+
+        # Remote query: publish SHARD_QUERY and wait for SHARD_RESPONSE
+        correlation_id = uuid.uuid4().hex
+        done = threading.Event()
+        results: list[dict] = []
+        with self._pending_lock:
+            self._pending[correlation_id] = (done, results)
+
+        try:
+            from .event_bus import make_event
+
+            query_event = make_event(
+                event_type="SHARD_QUERY",
+                source_agent=self._agent_id,
+                payload={
+                    "query": query,
+                    "limit": limit,
+                    "correlation_id": correlation_id,
+                    "target_agent": agent_id,
+                },
+            )
+            self._bus.publish(query_event)
+            done.wait(timeout=self._timeout)
+        finally:
+            with self._pending_lock:
+                self._pending.pop(correlation_id, None)
+
+        return [
+            ShardFact(
+                fact_id=f.get("fact_id", ""),
+                content=f.get("content", ""),
+                concept=f.get("concept", ""),
+                confidence=f.get("confidence", 0.8),
+                source_agent=f.get("source_agent", ""),
+                tags=f.get("tags", []),
+            )
+            for f in results
+            if f.get("content")
+        ]
+
+    def store_on_shard(self, agent_id: str, fact: ShardFact) -> None:
+        """Store a fact — local bypass for own shard, SHARD_STORE for remote."""
+        if agent_id == self._agent_id and self._local_graph is not None:
+            shard = self._local_graph._router.get_shard(agent_id)
+            if shard is None:
+                return
+            gen = self._local_graph._router._embedding_generator
+            if gen is not None and shard._embedding_generator is None:
+                shard.set_embedding_generator(gen)
+            shard.store(fact)
+            return
+
+        # Remote store: publish SHARD_STORE
+        from .event_bus import make_event
+
+        store_event = make_event(
+            event_type="SHARD_STORE",
+            source_agent=self._agent_id,
+            payload={
+                "target_agent": agent_id,
+                "fact": {
+                    "fact_id": fact.fact_id,
+                    "content": fact.content,
+                    "concept": fact.concept,
+                    "confidence": fact.confidence,
+                    "source_agent": fact.source_agent,
+                    "tags": list(fact.tags),
+                },
+            },
+        )
+        self._bus.publish(store_event)
+
+    # -- Listener-side handlers (called by background thread) ----------------
+
+    def handle_shard_query(self, event: Any) -> None:
+        """Respond to an incoming SHARD_QUERY with a SHARD_RESPONSE.
+
+        Called from the background shard-query listener thread — event-driven,
+        no polling sleep. Queries the local graph and publishes the results.
+        """
+        if self._local_graph is None:
+            return
+        payload = getattr(event, "payload", None) or {}
+        query = payload.get("query", "")
+        limit = payload.get("limit", 20)
+        correlation_id = payload.get("correlation_id", "")
+        if not query or not correlation_id:
+            return
+
+        facts = self._local_graph.query_facts(query, limit=limit)
+        try:
+            from .event_bus import make_event
+
+            response = make_event(
+                event_type="SHARD_RESPONSE",
+                source_agent=self._agent_id,
+                payload={
+                    "correlation_id": correlation_id,
+                    "facts": [
+                        {
+                            "fact_id": f.fact_id,
+                            "content": f.content,
+                            "concept": f.concept,
+                            "confidence": f.confidence,
+                            "tags": list(getattr(f, "tags", [])),
+                        }
+                        for f in facts
+                    ],
+                },
+            )
+            self._bus.publish(response)
+            logger.debug(
+                "Agent %s responded to SHARD_QUERY correlation=%s with %d facts",
+                self._agent_id,
+                correlation_id,
+                len(facts),
+            )
+        except Exception:
+            logger.debug("Failed to publish SHARD_RESPONSE", exc_info=True)
+
+    def handle_shard_response(self, event: Any) -> None:
+        """Collect a SHARD_RESPONSE and wake the waiting query_shard() call.
+
+        Called from the background shard-query listener thread. Signals the
+        threading.Event so the blocked query_shard() returns without sleep.
+        """
+        payload = getattr(event, "payload", None) or {}
+        correlation_id = payload.get("correlation_id", "")
+        if not correlation_id:
+            return
+        with self._pending_lock:
+            pending = self._pending.get(correlation_id)
+        if pending:
+            done_event, results = pending
+            results.extend(payload.get("facts", []))
+            done_event.set()
+            logger.debug(
+                "Agent %s received SHARD_RESPONSE correlation=%s (%d facts)",
+                self._agent_id,
+                correlation_id,
+                len(payload.get("facts", [])),
+            )
+
+
+# ---------------------------------------------------------------------------
+# DistributedHiveGraph
+# ---------------------------------------------------------------------------
 
 
 class DistributedHiveGraph:
@@ -64,6 +320,11 @@ class DistributedHiveGraph:
     facts across agent shards via consistent hashing. No single agent
     holds all facts. Queries fan out to K relevant agents, not all N.
 
+    Shard routing is delegated to an injected ShardTransport, making the
+    graph transport-agnostic. Agent code is identical whether routing is
+    in-process (LocalShardTransport) or over Azure Service Bus
+    (ServiceBusShardTransport).
+
     Args:
         hive_id: Unique identifier for this hive
         replication_factor: Number of copies per fact (default 3)
@@ -71,6 +332,8 @@ class DistributedHiveGraph:
         embedding_generator: Optional embedding model for semantic routing
         enable_gossip: Enable bloom filter gossip for convergence
         broadcast_threshold: Confidence threshold for auto-broadcast (default 0.9)
+        transport: ShardTransport instance. If None, creates LocalShardTransport
+                   wrapping a new DHTRouter (backward-compatible default).
     """
 
     def __init__(
@@ -82,11 +345,12 @@ class DistributedHiveGraph:
         enable_gossip: bool = True,
         enable_ttl: bool = False,
         broadcast_threshold: float = DEFAULT_BROADCAST_THRESHOLD,
+        transport: ShardTransport | None = None,
     ):
         self._hive_id = hive_id or uuid.uuid4().hex[:12]
         self._lock = threading.Lock()
 
-        # DHT router handles sharding and query routing
+        # DHT router handles ring topology and query routing decisions
         self._router = DHTRouter(
             replication_factor=replication_factor,
             query_fanout=query_fanout,
@@ -114,6 +378,14 @@ class DistributedHiveGraph:
         # Fact counter for stats
         self._total_promotes = 0
 
+        # Shard transport — injected or defaulting to local in-process routing
+        self._transport: Any = (
+            transport if transport is not None else LocalShardTransport(self._router)
+        )
+        # Allow the transport to call back into this graph for local shard access
+        if hasattr(self._transport, "bind_local"):
+            self._transport.bind_local(self)
+
     # -- HiveGraph protocol: identity -----------------------------------------
 
     @property
@@ -130,9 +402,7 @@ class DistributedHiveGraph:
     ) -> None:
         """Register an agent in the hive and add to DHT ring."""
         with self._lock:
-            self._agents[agent_id] = HiveAgent(
-                agent_id=agent_id, domain=domain, trust=trust
-            )
+            self._agents[agent_id] = HiveAgent(agent_id=agent_id, domain=domain, trust=trust)
             self._bloom_filters[agent_id] = BloomFilter(expected_items=500)
         self._router.add_agent(agent_id)
         logger.debug("Registered agent %s in hive %s", agent_id, self._hive_id)
@@ -168,8 +438,8 @@ class DistributedHiveGraph:
     def promote_fact(self, agent_id: str, fact: HiveFact) -> str:
         """Promote a fact into the distributed hive.
 
-        Routes the fact to its shard owner(s) via DHT consistent hashing.
-        Replicates to R agents for fault tolerance.
+        Determines shard owners via DHT consistent hashing, then delegates
+        the actual storage to self._transport — no type conditionals.
         """
         # Generate fact_id if not set
         if not fact.fact_id:
@@ -188,12 +458,16 @@ class DistributedHiveGraph:
             created_at=fact.created_at,
         )
 
-        # Route to shard owners via DHT
-        stored_on = self._router.store_fact(shard_fact)
+        # Determine storage targets via DHT ring (also sets ring_position)
+        owners = self._router.get_storage_targets(shard_fact)
 
-        # Update bloom filters for agents that received the fact
+        # Delegate storage to the injected transport — no type conditionals
+        for owner_id in owners:
+            self._transport.store_on_shard(owner_id, shard_fact)
+
+        # Update bloom filters for targeted agents
         with self._lock:
-            for aid in stored_on:
+            for aid in owners:
                 if aid in self._bloom_filters:
                     self._bloom_filters[aid].add(fact.fact_id)
             # Update source agent's fact count
@@ -225,10 +499,69 @@ class DistributedHiveGraph:
     def query_facts(self, query: str, limit: int = 20) -> list[HiveFact]:
         """Query the distributed hive for matching facts.
 
-        Routes to relevant shard owners via DHT, merges results.
+        Determines target shards via DHT routing, then delegates each shard
+        query to self._transport — no type conditionals.
         """
-        shard_facts = self._router.query(query, limit=limit)
-        return [self._shard_to_hive_fact(sf) for sf in shard_facts]
+        targets = self._router.select_query_targets(query)
+
+        seen: set[str] = set()
+        results: list[ShardFact] = []
+        for agent_id in targets:
+            for fact in self._transport.query_shard(agent_id, query, limit):
+                # Deduplicate by content hash (mirrors DHTRouter.query)
+                h = hashlib.md5(fact.content.encode()).hexdigest()
+                if h not in seen:
+                    seen.add(h)
+                    results.append(fact)
+
+        # Re-rank: terms with digits (IDs, versions) weighted 5x; bigram bonus
+        import itertools
+
+        q_lower = query.lower()
+        q_words = [w.strip("?.,!;:'\"()[]") for w in q_lower.split() if w.strip("?.,!;:'\"()[]")]
+        q_bigrams = set(itertools.pairwise(q_words))
+        _stop = {
+            "the",
+            "a",
+            "an",
+            "is",
+            "are",
+            "was",
+            "were",
+            "what",
+            "how",
+            "does",
+            "do",
+            "and",
+            "or",
+            "of",
+            "in",
+            "to",
+            "for",
+            "with",
+            "on",
+            "at",
+            "by",
+            "from",
+            "that",
+            "this",
+            "it",
+        }
+        search_terms = {w for w in q_words if w not in _stop and len(w) > 1} or set(q_words)
+
+        def _relevance(f: ShardFact) -> float:
+            c_lower = f.content.lower()
+            c_words = c_lower.split()
+            hits = sum(
+                (5.0 if any(ch.isdigit() for ch in t) else 1.0)
+                for t in search_terms
+                if t in c_lower
+            )
+            bigram_bonus = sum(0.3 for bg in q_bigrams if bg in set(itertools.pairwise(c_words)))
+            return hits + bigram_bonus + f.confidence * 0.01
+
+        results.sort(key=_relevance, reverse=True)
+        return [self._shard_to_hive_fact(sf) for sf in results[:limit]]
 
     def retract_fact(self, fact_id: str) -> bool:
         """Retract a fact across all shards holding a replica. Returns True if found."""
@@ -248,9 +581,7 @@ class DistributedHiveGraph:
         with self._lock:
             self._edges.setdefault(edge.source_id, []).append(edge)
 
-    def get_edges(
-        self, node_id: str, edge_type: str | None = None
-    ) -> list[HiveEdge]:
+    def get_edges(self, node_id: str, edge_type: str | None = None) -> list[HiveEdge]:
         with self._lock:
             edges = self._edges.get(node_id, [])
             if edge_type:
@@ -259,9 +590,7 @@ class DistributedHiveGraph:
 
     # -- HiveGraph protocol: contradiction detection --------------------------
 
-    def check_contradictions(
-        self, content: str, concept: str = ""
-    ) -> list[HiveFact]:
+    def check_contradictions(self, content: str, concept: str = "") -> list[HiveFact]:
         """Check for contradicting facts across shards."""
         if concept:
             candidates = self.query_facts(concept, limit=50)
@@ -274,9 +603,7 @@ class DistributedHiveGraph:
             if fact.content == content:
                 continue
             fact_words = set(fact.content.lower().split())
-            overlap = len(content_words & fact_words) / max(
-                1, len(content_words | fact_words)
-            )
+            overlap = len(content_words & fact_words) / max(1, len(content_words | fact_words))
             if overlap > 0.4 and fact.content != content:
                 contradictions.append(fact)
 
@@ -394,8 +721,7 @@ class DistributedHiveGraph:
         query_words = set(query.lower().split())
         deduped.sort(
             key=lambda f: (
-                sum(1 for w in query_words if w in f.content.lower())
-                + f.confidence * 0.01
+                sum(1 for w in query_words if w in f.content.lower()) + f.confidence * 0.01
             ),
             reverse=True,
         )
@@ -528,7 +854,7 @@ class DistributedHiveGraph:
 
     def close(self) -> None:
         """Release resources."""
-        pass  # All in-memory, nothing to close
+        # All in-memory, nothing to close
 
     def gc(self) -> int:
         """Garbage collect expired facts. Returns count removed."""
@@ -561,4 +887,9 @@ class DistributedHiveGraph:
                 self._router.store_fact(fact)
 
 
-__all__ = ["DistributedHiveGraph"]
+__all__ = [
+    "DistributedHiveGraph",
+    "LocalShardTransport",
+    "ServiceBusShardTransport",
+    "ShardTransport",
+]
