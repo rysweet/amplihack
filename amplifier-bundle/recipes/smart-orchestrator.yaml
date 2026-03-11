@@ -130,7 +130,7 @@ steps:
       {{decomposition_json}}
       EOFDECOMP
       )
-      TASK_TYPE='{{task_type}}'
+      TASK_TYPE={{task_type}}
       HOOKS_DIR="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/amplihack/hooks"
       _DECOMP_TMPFILE=$(mktemp)
       trap 'rm -f "$_DECOMP_TMPFILE"' EXIT
@@ -348,8 +348,8 @@ steps:
     condition: |
       ('Development' in task_type or 'Investigation' in task_type) and workstream_count != '1' and workstream_count != '' and 'ALLOWED' in recursion_guard and force_single_workstream != 'true'
     command: |
-      REPO_PATH='{{repo_path}}'
-      WS_FILE='{{workstreams_file}}'
+      REPO_PATH={{repo_path}}
+      WS_FILE={{workstreams_file}}
       SESSION_JSON=$(cat <<'EOFSESSIONJSON'
       {{session_info}}
       EOFSESSIONJSON
@@ -421,7 +421,7 @@ steps:
   - id: "cleanup-helper"
     type: "bash"
     command: |
-      WS_FILE='{{workstreams_file}}'
+      WS_FILE={{workstreams_file}}
       [ -f "$WS_FILE" ] && rm -f "$WS_FILE"
       echo "ok"
     output: "cleanup_status"
