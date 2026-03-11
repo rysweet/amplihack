@@ -36,6 +36,7 @@ Public API:
 
 from __future__ import annotations
 
+import concurrent.futures
 import hashlib
 import logging
 import random
@@ -244,6 +245,12 @@ class ServiceBusShardTransport:
         Searches ONLY this agent's own local shard — never fans out via query_facts.
         Calling query_facts here would cause recursive SHARD_QUERY loops since
         query_facts itself publishes SHARD_QUERY events to all other agents.
+
+        target_agent filter: ignores queries not addressed to this agent.
+        Without this filter all agents respond to every SHARD_QUERY, causing
+        wrong-agent responses to arrive first on Azure Service Bus and the
+        correct agent's facts to be dropped after pending[correlation_id] is
+        removed (root cause of the 49% vs 90% eval gap).
         """
         if self._local_graph is None:
             return
@@ -251,6 +258,10 @@ class ServiceBusShardTransport:
         query = payload.get("query", "")
         limit = payload.get("limit", 20)
         correlation_id = payload.get("correlation_id", "")
+        target_agent = payload.get("target_agent", "")
+        # Only respond if this query targets us (or has no target — broadcast)
+        if target_agent and target_agent != self._agent_id:
+            return
         if not query or not correlation_id:
             return
 
@@ -507,20 +518,32 @@ class DistributedHiveGraph:
     def query_facts(self, query: str, limit: int = 20) -> list[HiveFact]:
         """Query the distributed hive for matching facts.
 
-        Determines target shards via DHT routing, then delegates each shard
-        query to self._transport — no type conditionals.
+        Determines target shards via DHT routing, then fans out to each shard
+        in parallel -- reduces total latency from N*timeout to max(timeout).
+        Each query_shard call is independent; results are merged and deduped.
         """
         targets = self._router.select_query_targets(query)
 
         seen: set[str] = set()
         results: list[ShardFact] = []
-        for agent_id in targets:
-            for fact in self._transport.query_shard(agent_id, query, limit):
-                # Deduplicate by content hash (mirrors DHTRouter.query)
-                h = hashlib.md5(fact.content.encode()).hexdigest()
-                if h not in seen:
-                    seen.add(h)
-                    results.append(fact)
+
+        # Parallel fan-out: query all shards concurrently instead of sequentially.
+        # With ServiceBus transport this reduces N*SB_latency to max(SB_latency).
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, len(targets))) as pool:
+            futures = {
+                pool.submit(self._transport.query_shard, agent_id, query, limit): agent_id
+                for agent_id in targets
+            }
+            for future in concurrent.futures.as_completed(futures):
+                try:
+                    for fact in future.result():
+                        # Deduplicate by content hash (mirrors DHTRouter.query)
+                        h = hashlib.md5(fact.content.encode()).hexdigest()
+                        if h not in seen:
+                            seen.add(h)
+                            results.append(fact)
+                except Exception:
+                    logger.debug("Shard query failed for agent %s", futures[future], exc_info=True)
 
         # Re-rank: terms with digits (IDs, versions) weighted 5x; bigram bonus
         import itertools
