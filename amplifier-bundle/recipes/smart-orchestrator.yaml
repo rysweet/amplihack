@@ -261,7 +261,10 @@ steps:
     type: "bash"
     condition: "'Development' in task_type or 'Investigation' in task_type"
     command: |
-      SESSION_JSON={{session_info}}
+      SESSION_JSON=$(cat <<'EOFSESSIONJSON'
+      {{session_info}}
+      EOFSESSIONJSON
+      )
       # Extract status using shell grep — no Python subprocess needed
       if echo "$SESSION_JSON" | grep -qE '"status" *: *"ok"'; then
         echo "ALLOWED"
@@ -347,7 +350,10 @@ steps:
     command: |
       REPO_PATH={{repo_path}}
       WS_FILE={{workstreams_file}}
-      SESSION_JSON={{session_info}}
+      SESSION_JSON=$(cat <<'EOFSESSIONJSON'
+      {{session_info}}
+      EOFSESSIONJSON
+      )
       # Parse tree_id, depth, and validate workstreams file in one Python subprocess.
       # Uses env vars instead of pipe+heredoc to avoid stdin conflict (issue #2581).
       export SESSION_JSON WS_FILE
@@ -635,7 +641,10 @@ steps:
   - id: "complete-session"
     type: "bash"
     command: |
-      SESSION_JSON={{session_info}}
+      SESSION_JSON=$(cat <<'EOFSESSIONJSON'
+      {{session_info}}
+      EOFSESSIONJSON
+      )
       TREE_SCRIPT="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/session_tree.py"
       HOOKS_DIR="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/amplihack/hooks"
       # Parse session fields and clear workflow semaphore in one Python subprocess.
