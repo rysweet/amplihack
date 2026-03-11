@@ -372,6 +372,46 @@ def _find_rust_cli() -> Path | None:
 
 _RUST_CLI_UPDATE_TIMEOUT = 300  # seconds; generous for slow downloads
 
+_SAFE_ARG_PATTERNS = [
+    "--auto",
+    "--max-turns",
+    "--ui",
+    "--no-reflection",
+    "--with-proxy-config",
+    "--checkout-repo",
+    "--docker",
+    "--",
+    "-p",
+    "-v",
+    "--verbose",
+    "--help",
+    "--version",
+]
+_SAFE_TOP_LEVEL_COMMANDS = {
+    "launch",
+    "claude",
+    "RustyClawd",
+    "copilot",
+    "codex",
+    "amplifier",
+    "uvx-help",
+    "plugin",
+    "memory",
+    "new",
+    "recipe",
+    "mode",
+    "fleet",
+    "install",
+    "uninstall",
+    "update",
+}
+_SAFE_SUBCOMMANDS = {
+    "plugin": {"install", "uninstall", "link", "verify"},
+    "memory": {"tree", "export", "import", "clean"},
+    "recipe": {"run", "list", "validate", "show"},
+    "mode": {"detect", "to-plugin", "to-local"},
+}
+
 
 def run_update_command() -> int:
     """Handle explicit `amplihack update` invocations.
@@ -422,47 +462,6 @@ def _restart_cli(args: list[str]) -> None:
     Raises:
         Does not return (exits process via sys.exit)
     """
-    # Whitelist safe arguments to prevent malicious flag injection
-    SAFE_ARG_PATTERNS = [
-        "--auto",
-        "--max-turns",
-        "--ui",
-        "--no-reflection",
-        "--with-proxy-config",
-        "--checkout-repo",
-        "--docker",
-        "--",
-        "-p",
-        "-v",
-        "--verbose",
-        "--help",
-        "--version",
-    ]
-    SAFE_TOP_LEVEL_COMMANDS = {
-        "launch",
-        "claude",
-        "RustyClawd",
-        "copilot",
-        "codex",
-        "amplifier",
-        "uvx-help",
-        "plugin",
-        "memory",
-        "new",
-        "recipe",
-        "mode",
-        "fleet",
-        "install",
-        "uninstall",
-        "update",
-    }
-    SAFE_SUBCOMMANDS = {
-        "plugin": {"install", "uninstall", "link", "verify"},
-        "memory": {"tree", "export", "import", "clean"},
-        "recipe": {"run", "list", "validate", "show"},
-        "mode": {"detect", "to-plugin", "to-local"},
-    }
-
     safe_args = []
     skip_next = False
     active_command = None
@@ -473,18 +472,18 @@ def _restart_cli(args: list[str]) -> None:
             continue
 
         # Check if this arg or its prefix is in whitelist
-        if any(arg.startswith(pattern) for pattern in SAFE_ARG_PATTERNS):
+        if any(arg.startswith(pattern) for pattern in _SAFE_ARG_PATTERNS):
             safe_args.append(arg)
             # If this flag expects a value, include next arg
             if arg in ["--max-turns", "--with-proxy-config", "--checkout-repo", "-p"]:
                 skip_next = True
-        elif not arg.startswith("-") and not safe_args and arg in SAFE_TOP_LEVEL_COMMANDS:
+        elif not arg.startswith("-") and not safe_args and arg in _SAFE_TOP_LEVEL_COMMANDS:
             safe_args.append(arg)
             active_command = arg
         elif (
             not arg.startswith("-")
             and active_command is not None
-            and arg in SAFE_SUBCOMMANDS.get(active_command, set())
+            and arg in _SAFE_SUBCOMMANDS.get(active_command, set())
         ):
             safe_args.append(arg)
         elif arg.startswith("-"):
@@ -493,7 +492,9 @@ def _restart_cli(args: list[str]) -> None:
     args = safe_args  # Use filtered args
 
     restart_target = _current_cli_path()
-    launch_argv = [str(restart_target), *args] if restart_target is not None else ["amplihack", *args]
+    launch_argv = (
+        [str(restart_target), *args] if restart_target is not None else ["amplihack", *args]
+    )
 
     try:
         subprocess.Popen(
