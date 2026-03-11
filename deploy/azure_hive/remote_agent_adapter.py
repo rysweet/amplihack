@@ -34,6 +34,8 @@ class RemoteAgentAdapter:
         response_topic: str,
         agent_count: int = 100,
         resource_group: str = "",
+        idle_wait_timeout: int = 0,
+        answer_timeout: int = 120,
     ) -> None:
         from azure.servicebus import ServiceBusClient
 
@@ -48,6 +50,8 @@ class RemoteAgentAdapter:
 
         self._learn_count = 0
         self._question_count = 0
+        self._idle_wait_timeout = idle_wait_timeout  # 0 means no timeout
+        self._answer_timeout = answer_timeout  # seconds to wait per answer (0 = no timeout)
         self._shutdown = threading.Event()
         self._idle_wait_done = threading.Event()  # Signals all threads that content processing is complete
 
@@ -168,8 +172,14 @@ class RemoteAgentAdapter:
             target_name, event_id, question[:60],
         )
 
-        # Wait for answer — no timeout
-        answer_event.wait()
+        # Wait for answer — optional timeout to prevent indefinite hangs
+        timeout = self._answer_timeout if self._answer_timeout > 0 else None
+        got_answer = answer_event.wait(timeout=timeout)
+        if not got_answer:
+            logger.warning(
+                "answer_question: timeout after %ds waiting for event_id=%s from %s",
+                self._answer_timeout, event_id, target_name,
+            )
 
         with self._answer_lock:
             answer = self._pending_answers.pop(event_id, "No answer received")
@@ -178,10 +188,15 @@ class RemoteAgentAdapter:
         return answer
 
     def _wait_for_agents_idle(self) -> None:
-        """Wait for agents to finish processing content. No timeout.
+        """Wait for agents to finish processing content.
 
         Polls the LAST agent's subscription (highest index, last to receive
-        its final partitioned message) until queue depth reaches 0.
+        its final partitioned message) until queue depth reaches 0 or
+        idle_wait_timeout seconds have elapsed (0 = no timeout).
+
+        If timeout is hit, logs a warning and proceeds to the question phase
+        with whatever state the agents have reached — partial results are
+        better than a hung eval.
         """
         last_agent = self._agent_count - 1
         agent_name = f"agent-{last_agent}"
@@ -190,8 +205,19 @@ class RemoteAgentAdapter:
                     self._learn_count, self._learn_count // max(1, self._agent_count), agent_name)
 
         poll_interval = 15
+        start_time = time.time()
 
         while True:
+            if self._idle_wait_timeout > 0:
+                elapsed = time.time() - start_time
+                if elapsed >= self._idle_wait_timeout:
+                    logger.warning(
+                        "idle_wait_timeout=%ds exceeded (elapsed=%.0fs). "
+                        "Proceeding to question phase — agents may not have fully processed all content.",
+                        self._idle_wait_timeout, elapsed,
+                    )
+                    return
+
             try:
                 result = subprocess.run(
                     ["az", "servicebus", "topic", "subscription", "show",
@@ -208,7 +234,13 @@ class RemoteAgentAdapter:
                     logger.info("Agent queues empty. Starting question phase.")
                     return
                 elif count > 0:
-                    logger.info("  %s queue: %d messages remaining...", agent_name, count)
+                    elapsed = time.time() - start_time
+                    remaining = (
+                        f", {self._idle_wait_timeout - elapsed:.0f}s until timeout"
+                        if self._idle_wait_timeout > 0 else ""
+                    )
+                    logger.info("  %s queue: %d messages remaining (elapsed=%.0fs%s)...",
+                                agent_name, count, elapsed, remaining)
             except Exception as e:
                 logger.warning("Queue depth check failed: %s", e)
 
