@@ -293,6 +293,10 @@ resource containerApps 'Microsoft.App/containerApps@2024-03-01' = [
                 value: hiveName
               }
               {
+                name: 'AMPLIHACK_AGENT_COUNT'
+                value: '${agentCount}'
+              }
+              {
                 name: 'AMPLIHACK_EVAL_RESPONSE_TOPIC'
                 value: 'eval-responses-${hiveName}'
               }
