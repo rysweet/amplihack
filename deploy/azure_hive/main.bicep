@@ -92,14 +92,13 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
 }
 
 
-// ---------- Service Bus (Premium for production workloads) ----------
+// ---------- Service Bus (Standard — Premium CBS auth fails in Container Apps) ----------
 resource sbNamespace 'Microsoft.ServiceBus/namespaces@2022-10-01-preview' = {
   name: sbNamespaceName
   location: location
   sku: {
-    name: 'Premium'
-    tier: 'Premium'
-    capacity: 1
+    name: 'Standard'
+    tier: 'Standard'
   }
 }
 
