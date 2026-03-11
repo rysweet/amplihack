@@ -153,7 +153,7 @@ steps:
       spec = importlib.util.spec_from_file_location('orch_helper', helper_path)
       h = importlib.util.module_from_spec(spec); spec.loader.exec_module(h)
       obj = h.extract_json(decomp_json)
-      count = max(1, len(obj.get("workstreams", [{}])))
+      count = max(1, len(obj.get("workstreams", [])))
 
       # Set workflow-active semaphore so the hook skips injection during execution
       try:
