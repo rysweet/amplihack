@@ -60,6 +60,24 @@ class TestCLIPlatformIntegration:
                 # Expected - version handling or other CLI logic
                 pass
 
+    def test_cli_dispatches_update_command(self):
+        """CLI routes explicit update requests to the update handler."""
+        compatible_result = PlatformCheckResult(
+            compatible=True, platform_name="Linux", is_wsl=False, message=""
+        )
+
+        with (
+            patch(
+                "amplihack.launcher.platform_check.check_platform_compatibility",
+                return_value=compatible_result,
+            ),
+            patch("amplihack.auto_update.run_update_command", return_value=0) as mock_update,
+        ):
+            exit_code = main(["update"])
+
+        assert exit_code == 0
+        mock_update.assert_called_once_with()
+
     def test_cli_prints_error_message_on_windows(self, capsys):
         """CLI prints helpful error message on Windows."""
         incompatible_result = PlatformCheckResult(
