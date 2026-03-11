@@ -288,7 +288,6 @@ steps:
     condition: |
       ('Development' in task_type or 'Investigation' in task_type) and ((workstream_count == '1' or workstream_count == '') or force_single_workstream == 'true')
     recipe: "default-workflow"
-    recovery_on_failure: true
     # No explicit context needed: task_description and repo_path flow through
     # from the parent smart-orchestrator context automatically via context merging
     # in _execute_sub_recipe().
@@ -408,7 +407,6 @@ steps:
     condition: |
       ('Development' in task_type or 'Investigation' in task_type) and 'BLOCKED' in recursion_guard and workstream_count != '1' and workstream_count != ''
     recipe: "default-workflow"
-    recovery_on_failure: true
     # No explicit context needed: task_description and repo_path flow through
     # from the parent smart-orchestrator context automatically.
     output: "round_1_result"
