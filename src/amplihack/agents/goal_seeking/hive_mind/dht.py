@@ -610,9 +610,11 @@ class DHTRouter:
         # ── Keyword routing (fallback) ───────────────────────────────────────
 
         # Small hive optimization: scan all non-empty shards.
-        # Only applies when ALL shards are local (in-process mode).
-        # In distributed mode, remote agents' shards aren't in self._shards,
-        # so we must use DHT routing to fan out to the correct shard owners.
+        # Only use the local shortcut when ALL agents have non-empty local shards
+        # (pure in-process mode where every ShardStore is local and populated).
+        # In distributed mode some agents have empty local shards even though
+        # they hold facts on their own remote DHT instance — fan out to ALL agents
+        # so the transport can route SHARD_QUERY to the right remote shard.
         if len(all_agents) <= 20:
             with self._lock:
                 local_targets = [
@@ -620,14 +622,11 @@ class DHTRouter:
                     for aid in all_agents
                     if aid in self._shards and self._shards[aid].fact_count > 0
                 ]
-            # If we have local shards for all agents, return them (in-process mode).
-            # If some agents are missing from _shards (distributed mode), fall through
-            # to DHT routing which handles remote agents via the transport.
-            if len(local_targets) == len(all_agents) or (
-                local_targets and len(self._shards) == len(all_agents)
-            ):
+            # Only skip remote fan-out when ALL agents have local non-empty shards.
+            if len(local_targets) == len(all_agents):
                 return local_targets
-            # Distributed mode: return ALL agents (let transport handle remote queries)
+            # Distributed mode (or partially populated): return ALL agents so the
+            # transport can issue SHARD_QUERY to agents whose local shards are empty.
             return list(all_agents)
 
         targets: list[str] = []
