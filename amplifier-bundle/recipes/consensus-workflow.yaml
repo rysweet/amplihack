@@ -527,11 +527,12 @@ steps:
       ```bash
       # NOTE: This pipeline mirrors default-workflow.yaml step-04-setup-worktree with a
       # 30-char limit (vs 50). Keep both in sync on security patches. See Issue #2952.
-      # REQ-SEC-001 (tracked in #2974): single-quote wrapping mitigates word-splitting
-      # but does not prevent injection via single-quote chars in task_description.
-      # Full fix requires env-var injection in the recipe runner.
+      # FIX (issue #3041): Use heredoc instead of single-quote wrapping.
       # Create branch name
-      TASK_DESC=$(printf '%s' '{{task_description}}')
+      TASK_DESC=$(cat <<'EOFTASKDESC'
+      {{task_description}}
+      EOFTASKDESC
+      )
       TASK_SLUG=$(printf '%s' "$TASK_DESC" | tr '\n\r' '  ' | tr '[:upper:]' '[:lower:]' | tr -s ' ' '-' | sed 's/[^a-z0-9-]//g' | sed 's/-\{2,\}/-/g' | sed 's/^-//;s/-$//' | cut -c1-30 | sed 's/-$//')
       # Guard: empty slug (blank/all-symbol input) produces a trailing-hyphen branch that
       # git check-ref-format accepts as valid but is undesirable. Catch it explicitly first.
