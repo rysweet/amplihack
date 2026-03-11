@@ -41,11 +41,6 @@ def _install_timeout() -> int:
     return int(os.environ.get("RECIPE_RUNNER_INSTALL_TIMEOUT", "300"))
 
 
-def _run_timeout() -> int:
-    """Return the run timeout in seconds (env-configurable)."""
-    return int(os.environ.get("RECIPE_RUNNER_RUN_TIMEOUT", "3600"))
-
-
 def find_rust_binary() -> str | None:
     """Find the recipe-runner-rs binary.
 
@@ -293,11 +288,7 @@ def _stream_process_output(process: subprocess.Popen[str]) -> tuple[str, str, in
     stdout_thread.start()
     stderr_thread.start()
     try:
-        returncode = process.wait(timeout=_run_timeout())
-    except subprocess.TimeoutExpired:
-        process.kill()
-        process.wait()
-        raise
+        returncode = process.wait()
     finally:
         stdout_thread.join()
         stderr_thread.join()
@@ -320,7 +311,6 @@ def _execute_rust_command(cmd: list[str], *, name: str, progress: bool) -> Recip
             cmd,
             capture_output=True,
             text=True,
-            timeout=_run_timeout(),
         )
         stdout = result.stdout
         stderr = result.stderr
