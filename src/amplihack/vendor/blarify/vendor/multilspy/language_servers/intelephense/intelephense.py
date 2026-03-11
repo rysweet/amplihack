@@ -5,6 +5,7 @@ import pathlib
 import pwd
 import shutil
 import stat
+import shlex
 import subprocess
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -57,8 +58,8 @@ class Intelephense(LanguageServer):
             for dependency in runtime_dependencies:
                 user = pwd.getpwuid(os.getuid()).pw_name
                 subprocess.run(
-                    dependency["command"],
-                    shell=True,
+                    shlex.split(dependency["command"]),
+                    shell=False,
                     check=True,
                     user=user,
                     cwd=php_ls_dir,
