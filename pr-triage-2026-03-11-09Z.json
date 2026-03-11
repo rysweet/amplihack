@@ -1,0 +1,48 @@
+{
+  "timestamp": "2026-03-11T09:00:00Z",
+  "run_id": "22954152767",
+  "prs_analyzed": 2,
+  "new_prs": 0,
+  "prs": [
+    {
+      "number": 3044,
+      "title": "[docs] docs: daily documentation update for 2026-03-11",
+      "author": "github-actions[bot]",
+      "type": "docs-automated",
+      "risk": "low",
+      "priority": "normal",
+      "recommendation": "auto-merge-candidate",
+      "files_changed": 2,
+      "lines_added": 149,
+      "status": "previously-triaged",
+      "draft": true,
+      "created_at": "2026-03-11T06:42:36Z",
+      "expires": "2026-03-12T06:42:00Z",
+      "labels": ["documentation", "automation"],
+      "notes": "Draft docs PR covering changelog v0.9.2 and PLUGIN_CLI_HELP.md update. Low risk, expires 2026-03-12. Auto-merge candidate once promoted from draft."
+    },
+    {
+      "number": 2876,
+      "title": "feat(hive): replace broadcast replication with proper DHT sharding",
+      "author": "rysweet",
+      "type": "feature",
+      "risk": "extreme",
+      "priority": "high",
+      "recommendation": "needs-decomposition",
+      "files_changed": 169,
+      "lines_added": 29793,
+      "lines_deleted": 6266,
+      "commits": 105,
+      "status": "previously-triaged",
+      "mergeable_state": "unknown",
+      "labels": ["needs-decomposition", "extreme-risk", "triage:complete", "triage:extreme-risk", "triage:needs-deep-review", "too-large", "merge-conflicts"],
+      "notes": "Long-standing extreme-risk PR. Fully triaged. 169 files, 105 commits. Requires decomposition into smaller PRs and conflict resolution before merge. No new action needed."
+    }
+  ],
+  "summary": {
+    "new_prs": 0,
+    "previously_triaged": 2,
+    "closed_since_last_run": ["#3043", "#3017"],
+    "action_required": false
+  }
+}
