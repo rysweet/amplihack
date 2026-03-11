@@ -2069,7 +2069,141 @@ shadow.create(local_sources=["~/repos/lib:org/lib"])
 - Test automation patterns
 - Shadow environment testing methodology
 
+## Level 4: Parity Harness & Self-Improving Audit [LEVEL 4]
+
+Reusable tools for validating CLI migration/rewrite parity. Extracted from a
+real-world Python→Rust migration that achieved 118/118 test parity + 619/619
+golden file parity.
+
+### Tools
+
+Located in `.claude/scenarios/parity-harness/`:
+
+| File | Purpose |
+|------|---------|
+| `shadow_parity_harness.py` | Run two CLIs side-by-side in isolated sandboxes |
+| `parity_audit_cycle.py` | Self-improving loop: identify → categorize → fix → re-validate |
+| `PARITY_SCENARIO_FORMAT.md` | YAML scenario format specification |
+| `example_scenario.yaml` | Example scenario for a calculator CLI migration |
+
+### Quick Start
+
+```bash
+# Compare legacy Python CLI with new Rust binary
+python .claude/scenarios/parity-harness/shadow_parity_harness.py \
+    --legacy "python -m myapp.cli" \
+    --candidate "./target/debug/myapp" \
+    --scenario tests/parity/scenarios/*.yaml
+
+# Shadow mode: log divergences without failing
+python .claude/scenarios/parity-harness/shadow_parity_harness.py \
+    --legacy "python -m myapp.cli" \
+    --candidate "./target/debug/myapp" \
+    --scenario tests/parity/scenarios/*.yaml \
+    --shadow-mode \
+    --shadow-log /tmp/divergences.jsonl
+
+# Self-improving audit cycle
+python .claude/scenarios/parity-harness/parity_audit_cycle.py \
+    --legacy "python -m myapp.cli" \
+    --candidate "./target/debug/myapp" \
+    --scenarios-dir tests/parity/scenarios/
+```
+
+### Scenario Format (Summary)
+
+```yaml
+cases:
+  - name: "unique-test-name"
+    category: "install"                     # For audit grouping
+    argv: ["subcommand", "--flag"]          # Same args for both engines
+    timeout: 15                             # Seconds
+    env:
+      PATH: "${SANDBOX_ROOT}/bin:${PATH}"   # Template variables
+    setup: |                                # Bash script run in both sandboxes
+      mkdir -p bin
+      echo '#!/bin/bash' > bin/stub && chmod +x bin/stub
+    compare:
+      - exit_code                           # Integer match
+      - stdout                              # Text or JSON-semantic
+      - stderr                              # Text match
+      - "fs:path/to/file"                  # File/dir hash comparison
+      - "jsonfs:path/to/file.json"         # JSON semantic comparison
+```
+
+See `PARITY_SCENARIO_FORMAT.md` for the full specification.
+
+### Key Design Decisions
+
+1. **Isolated sandboxes**: Each engine gets its own HOME, TMPDIR, PATH. No
+   collisions between the two runs, or with the host.
+
+2. **JSON-semantic comparison**: `stdout` comparison parses both sides as JSON
+   if possible, ignoring key ordering. Falls back to exact text if not JSON.
+
+3. **Stub binary pattern**: Test launcher behavior by providing fake binaries
+   that capture their args and env vars to files, then compare those files.
+
+4. **Timeout resilience**: Captures partial output on timeout (exit code 124)
+   instead of crashing the harness. Critical for testing launcher commands
+   that may hang in sandboxed environments.
+
+5. **Shadow mode**: Logs divergences to append-only JSONL without failing the
+   run. Use during rollout to monitor real workloads.
+
+6. **Audit categorization**: Groups failures by keyword inference (install,
+   launch, recipe, etc.) and generates prioritized fix workstream specs.
+
+### Self-Improvement Cycle Pattern
+
+```
+┌─────────────┐
+│  IDENTIFY   │  Run all scenarios, collect divergences
+└──────┬──────┘
+       ▼
+┌─────────────┐
+│ CATEGORIZE  │  Group by area: install (5), launch (3), recipe (1)
+└──────┬──────┘
+       ▼
+┌─────────────┐
+│  SPECIFY    │  Generate fix specs: [CRITICAL] fix-install, [HIGH] fix-launch
+└──────┬──────┘
+       ▼
+┌─────────────┐
+│    FIX      │  Agent/human fixes code (using default-workflow)
+└──────┬──────┘
+       ▼
+┌─────────────┐
+│ RE-VALIDATE │  Run audit again → check progress (5→2 failures)
+└──────┬──────┘
+       ▼
+      100%? ──no──→ back to FIX
+       │
+      yes
+       ▼
+     DONE
+```
+
+### Real-World Results
+
+Used for `amplihack-rs` validation (rysweet/amplihack-rs#25):
+- **118/118** parity tests across 12 tiers
+- **619/619** hook golden file tests
+- **9/9** shadow harness cases
+- 5 Python bugs discovered and fixed
+- 1 recipe orchestrator bug discovered and fixed
+- Full launcher parity achieved (flags, env vars, Python delegation)
+
 ## Changelog [LEVEL 3]
+
+### Version 1.2.0 (2026-03-11)
+
+- **NEW**: Level 4 - Parity Harness & Self-Improving Audit
+- Generic `shadow_parity_harness.py` for any CLI migration
+- Generic `parity_audit_cycle.py` self-improvement loop
+- `PARITY_SCENARIO_FORMAT.md` YAML specification
+- Example scenario file
+- Extracted from amplihack-rs parity validation (118/118 tests)
 
 ### Version 1.1.0 (2026-01-29)
 

@@ -1,0 +1,38 @@
+# Example parity scenario: Calculator CLI migration
+# Compares a Python calculator CLI with its Rust rewrite.
+#
+# Run with:
+#   python shadow_parity_harness.py \
+#     --legacy "python calculator.py" \
+#     --candidate "./calculator-rs" \
+#     --scenario example_scenario.yaml
+
+cases:
+  # Basic operations
+  - name: addition
+    argv: ["add", "2", "3"]
+    compare: ["stdout", "exit_code"]
+
+  - name: subtraction
+    argv: ["subtract", "10", "4"]
+    compare: ["stdout", "exit_code"]
+
+  # Error handling
+  - name: division-by-zero
+    argv: ["divide", "5", "0"]
+    compare: ["stderr", "exit_code"]
+
+  # Help text
+  - name: help-flag
+    argv: ["--help"]
+    compare: ["exit_code"]
+
+  # Version
+  - name: version
+    argv: ["version"]
+    compare: ["exit_code"]
+
+  # File output
+  - name: save-result
+    argv: ["add", "1", "1", "--output", "result.txt"]
+    compare: ["exit_code", "fs:result.txt"]
