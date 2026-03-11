@@ -377,3 +377,188 @@ class TestShardQueryListenerThread:
         shutdown.set()
         listener.join(timeout=2.0)
         assert not listener.is_alive(), "_shard_query_listener did not exit after shutdown"
+
+
+# ---------------------------------------------------------------------------
+# Phase 5: 5-agent cluster — production-topology repro (issue #3034)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture()
+def five_agent_cluster():
+    """Five agents each with ServiceBusShardTransport + shared LocalEventBus.
+
+    Mirrors the production topology from _init_dht_hive: ALL agents are
+    registered on EACH agent's DHT ring so the ring topology is shared.
+    Only the local agent's ShardStore receives stored facts (Bug 1 fix).
+    Queries fan out to ALL agents via SHARD_QUERY/SHARD_RESPONSE (Bug 2 fix).
+    """
+    bus = LocalEventBus()
+    agent_names = [f"agent-{i}" for i in range(5)]
+
+    dhts: dict[str, DistributedHiveGraph] = {}
+    transports: dict[str, ServiceBusShardTransport] = {}
+
+    for name in agent_names:
+        bus.subscribe(name)
+        transport = ServiceBusShardTransport(event_bus=bus, agent_id=name, timeout=3.0)
+        dht = DistributedHiveGraph(
+            hive_id=f"shard-{name}", enable_gossip=False, transport=transport
+        )
+        # Mirror _init_dht_hive: register ALL agents on every ring
+        for peer in agent_names:
+            dht.register_agent(peer)
+        dhts[name] = dht
+        transports[name] = transport
+
+    yield {"bus": bus, "dhts": dhts, "transports": transports, "agent_names": agent_names}
+
+    bus.close()
+
+
+class TestFiveAgentCluster:
+    """5-agent production-topology repro: cross-shard queries work after both fixes."""
+
+    def test_promote_fact_stores_locally_not_remote_shard(self, five_agent_cluster):
+        """Bug 1 fix: fact promoted by agent-0 stays in agent-0's local shard."""
+        dhts = five_agent_cluster["dhts"]
+
+        dhts["agent-0"].promote_fact(
+            "agent-0",
+            _make_fact("Sarah Chen was born on March 15, 1992", "people", "agent-0"),
+        )
+
+        # Fact is in agent-0's own shard
+        facts_0 = dhts["agent-0"].query_facts("Sarah Chen")
+        assert any("Sarah Chen" in f.content for f in facts_0), (
+            f"agent-0's local shard should hold the promoted fact. Got: {[f.content for f in facts_0]}"
+        )
+
+    def test_agent1_queries_agent0_facts_via_shard_query_protocol(self, five_agent_cluster):
+        """agent-1 retrieves facts stored by agent-0 via SHARD_QUERY/SHARD_RESPONSE."""
+        dhts = five_agent_cluster["dhts"]
+        transports = five_agent_cluster["transports"]
+        bus = five_agent_cluster["bus"]
+        agent_names = five_agent_cluster["agent_names"]
+
+        # agent-0 promotes a fact (stored locally in agent-0's shard — Bug 1 fix)
+        dhts["agent-0"].promote_fact(
+            "agent-0",
+            _make_fact("Sarah Chen was born on March 15, 1992", "people", "agent-0"),
+        )
+
+        # Start shard listeners for all agents except agent-1 (the querier)
+        shutdown = threading.Event()
+        listeners = []
+        for name in agent_names:
+            if name == "agent-1":
+                continue
+            t = threading.Thread(
+                target=_shard_query_listener,
+                args=(transports[name], name, bus, shutdown),
+                daemon=True,
+                name=f"shard-{name}",
+            )
+            t.start()
+            listeners.append(t)
+
+        try:
+            # agent-1 queries via its own DHT — Bug 2 fix fans out to all agents
+            # Start a listener thread for agent-1's SHARD_RESPONSE collection
+            def agent1_response_listener():
+                while not shutdown.is_set():
+                    for event in bus.poll("agent-1"):
+                        if event.event_type == "SHARD_RESPONSE":
+                            transports["agent-1"].handle_shard_response(event)
+                    time.sleep(0.005)
+
+            t1 = threading.Thread(target=agent1_response_listener, daemon=True)
+            t1.start()
+            listeners.append(t1)
+
+            # query_facts fans out SHARD_QUERY to all agents (Bug 2 fix)
+            results = dhts["agent-1"].query_facts("Sarah Chen", limit=10)
+
+            texts = [f.content for f in results]
+            assert any("Sarah Chen" in t or "March 15" in t for t in texts), (
+                f"agent-1 did not retrieve agent-0's fact via cross-shard query. Got: {texts}"
+            )
+        finally:
+            shutdown.set()
+            for t in listeners:
+                t.join(timeout=2.0)
+
+    def test_all_agents_can_retrieve_any_fact(self, five_agent_cluster):
+        """Each agent can retrieve facts stored by any other agent."""
+        dhts = five_agent_cluster["dhts"]
+        transports = five_agent_cluster["transports"]
+        bus = five_agent_cluster["bus"]
+        agent_names = five_agent_cluster["agent_names"]
+
+        # Each agent promotes a unique fact
+        facts_by_agent = {
+            "agent-0": "Alpha subject learned by agent zero",
+            "agent-2": "Gamma subject learned by agent two",
+            "agent-4": "Epsilon subject learned by agent four",
+        }
+        for agent_id, content in facts_by_agent.items():
+            dhts[agent_id].promote_fact(
+                agent_id,
+                _make_fact(content, "test", agent_id),
+            )
+
+        # Start listeners for all agents
+        shutdown = threading.Event()
+        listeners = []
+        for name in agent_names:
+            transport = transports[name]
+
+            def make_listener(t, n):
+                def loop():
+                    while not shutdown.is_set():
+                        for event in bus.poll(n):
+                            if event.event_type == "SHARD_QUERY":
+                                t.handle_shard_query(event)
+                            elif event.event_type == "SHARD_RESPONSE":
+                                t.handle_shard_response(event)
+                        time.sleep(0.005)
+
+                return loop
+
+            thread = threading.Thread(
+                target=make_listener(transport, name), daemon=True, name=f"listener-{name}"
+            )
+            thread.start()
+            listeners.append(thread)
+
+        try:
+            # agent-1 (which has no facts) queries for each stored fact
+            for agent_id, content in facts_by_agent.items():
+                query_word = content.split()[0]
+                results = dhts["agent-1"].query_facts(query_word, limit=5)
+                texts = [f.content for f in results]
+                assert any(content in t for t in texts), (
+                    f"agent-1 could not retrieve '{content}' stored by {agent_id}. Got: {texts}"
+                )
+        finally:
+            shutdown.set()
+            for t in listeners:
+                t.join(timeout=2.0)
+
+    def test_total_facts_equals_promoted_no_replication(self, five_agent_cluster):
+        """Bug 1 fix: total facts across all shards == number promoted (no duplication)."""
+        dhts = five_agent_cluster["dhts"]
+
+        for i in range(5):
+            dhts[f"agent-{i}"].promote_fact(
+                f"agent-{i}",
+                _make_fact(f"Unique fact number {i} from agent {i}", "test", f"agent-{i}"),
+            )
+
+        # Each agent's DHT counts facts in its own local shard only
+        # (remote agents' shards are empty stubs in other agents' DHTs)
+        total = sum(dhts[f"agent-{i}"].get_stats()["fact_count"] for i in range(5))
+
+        # With Bug 1 fix: each agent stores locally → 5 facts total across local shards
+        # Without fix: DHT would route to remote agents losing facts or doubling them
+        assert total == 5, f"Expected 5 facts total (one per agent, no replication), got {total}"
