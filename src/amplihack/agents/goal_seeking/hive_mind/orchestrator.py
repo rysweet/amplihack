@@ -45,7 +45,8 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 try:
-    from .gossip import GossipProtocol, run_gossip_round as _run_gossip_round
+    from .gossip import GossipProtocol  # noqa: F401 (used in docstrings)
+    from .gossip import run_gossip_round as _run_gossip_round
 
     _HAS_GOSSIP = True
 except ImportError:
@@ -279,11 +280,7 @@ class HiveMindOrchestrator:
                 logger.debug("Failed to publish FACT_PROMOTED event for %s", fact.fact_id)
 
         # Layer 3: Trigger gossip if policy allows and peers are available
-        if (
-            _HAS_GOSSIP
-            and self._peers
-            and self._policy.should_gossip(fact, self._agent_id)
-        ):
+        if _HAS_GOSSIP and self._peers and self._policy.should_gossip(fact, self._agent_id):
             try:
                 _run_gossip_round(self._hive_graph, self._peers, self._gossip_protocol)
                 gossip_triggered = True
@@ -338,9 +335,7 @@ class HiveMindOrchestrator:
         seen_hashes: set[str] = set()
         merged: list[HiveFact] = []
         for fact in local_results + federated_results:
-            content_hash = hashlib.md5(
-                fact.content.encode(), usedforsecurity=False
-            ).hexdigest()
+            content_hash = hashlib.md5(fact.content.encode(), usedforsecurity=False).hexdigest()
             if content_hash not in seen_hashes:
                 seen_hashes.add(content_hash)
                 merged.append(fact)
@@ -349,9 +344,7 @@ class HiveMindOrchestrator:
         if _HAS_RERANKER and len(merged) > 1:
             try:
                 by_confidence = sorted(merged, key=lambda f: -f.confidence)
-                scored = rrf_merge(
-                    by_confidence, by_confidence, key="fact_id", limit=len(merged)
-                )
+                scored = rrf_merge(by_confidence, by_confidence, key="fact_id", limit=len(merged))
                 merged = [sf.fact for sf in scored]
             except Exception:
                 merged.sort(key=lambda f: -f.confidence)
@@ -394,6 +387,14 @@ class HiveMindOrchestrator:
                 "reason": "not a FACT_PROMOTED event",
             }
 
+        # Skip self-published events to avoid duplicate storage
+        if event.source_agent == self._agent_id:
+            return {
+                "incorporated": False,
+                "fact_id": None,
+                "reason": "self-published event (skipped)",
+            }
+
         payload = event.payload
         content = payload.get("content", "")
         concept = payload.get("concept", "")
@@ -423,9 +424,7 @@ class HiveMindOrchestrator:
             return {
                 "incorporated": False,
                 "fact_id": None,
-                "reason": (
-                    f"below promotion threshold (confidence={discounted_confidence:.2f})"
-                ),
+                "reason": (f"below promotion threshold (confidence={discounted_confidence:.2f})"),
             }
 
         try:
@@ -469,9 +468,7 @@ class HiveMindOrchestrator:
             }
 
         try:
-            shared = _run_gossip_round(
-                self._hive_graph, self._peers, self._gossip_protocol
-            )
+            shared = _run_gossip_round(self._hive_graph, self._peers, self._gossip_protocol)
             return {
                 "facts_shared": shared,
                 "peers_contacted": len(shared),
@@ -502,7 +499,20 @@ class HiveMindOrchestrator:
             return results
 
         for event in events:
-            result = self.process_event(event)
+            try:
+                result = self.process_event(event)
+            except Exception:
+                logger.debug(
+                    "Failed to process event %s from %s, skipping",
+                    getattr(event, "event_id", "?"),
+                    getattr(event, "source_agent", "?"),
+                    exc_info=True,
+                )
+                result = {
+                    "incorporated": False,
+                    "fact_id": None,
+                    "reason": "processing error (event skipped)",
+                }
             results.append(result)
 
         return results

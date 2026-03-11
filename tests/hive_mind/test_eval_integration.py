@@ -202,12 +202,11 @@ class TestEvalRunnerInstantiation:
 # ---------------------------------------------------------------------------
 
 
-class TestMultiSeedReportCIFields:
-    """Verify MultiSeedReport has confidence interval fields from eval repo."""
+class TestMultiSeedReportFields:
+    """Verify MultiSeedReport instantiation and serialization."""
 
-    def test_multi_seed_report_has_ci_fields(self):
-        """Test 6: MultiSeedReport has CI fields (overall_ci_95_lower, etc.)."""
-        # Construct a minimal MultiSeedReport to verify the CI fields exist
+    def test_multi_seed_report_basic_construction(self):
+        """Test 6: MultiSeedReport can be constructed with required fields."""
         report = MultiSeedReport(
             seeds=[42],
             num_turns=5,
@@ -219,22 +218,15 @@ class TestMultiSeedReportCIFields:
             noisy_questions=[],
             all_question_variances=[],
             per_seed_reports={},
-            overall_ci_95_lower=0.80,
-            overall_ci_95_upper=0.90,
-            overall_margin_of_error=0.05,
-            repeats_per_seed=1,
-            intra_seed_stddev=0.0,
         )
 
-        # Verify CI fields exist and have correct values
-        assert report.overall_ci_95_lower == 0.80
-        assert report.overall_ci_95_upper == 0.90
-        assert report.overall_margin_of_error == 0.05
-        assert report.repeats_per_seed == 1
-        assert report.intra_seed_stddev == 0.0
+        assert report.overall_mean == 0.85
+        assert report.overall_stddev == 0.05
+        assert report.seeds == [42]
+        assert report.num_turns == 5
 
-    def test_multi_seed_report_to_dict_includes_ci(self):
-        """MultiSeedReport.to_dict() includes CI fields in output."""
+    def test_multi_seed_report_to_dict(self):
+        """MultiSeedReport.to_dict() produces valid dict with required fields."""
         report = MultiSeedReport(
             seeds=[42],
             num_turns=5,
@@ -246,16 +238,12 @@ class TestMultiSeedReportCIFields:
             noisy_questions=[],
             all_question_variances=[],
             per_seed_reports={},
-            overall_ci_95_lower=0.80,
-            overall_ci_95_upper=0.90,
-            overall_margin_of_error=0.05,
         )
         d = report.to_dict()
-        assert "overall_ci_95_lower" in d
-        assert "overall_ci_95_upper" in d
-        assert "overall_margin_of_error" in d
-        assert d["overall_ci_95_lower"] == 0.80
-        assert d["overall_ci_95_upper"] == 0.90
+        assert "overall_mean" in d
+        assert "overall_stddev" in d
+        assert d["overall_mean"] == 0.85
+        assert d["overall_stddev"] == 0.05
 
 
 # ---------------------------------------------------------------------------

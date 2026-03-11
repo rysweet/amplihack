@@ -136,6 +136,31 @@ resource sbEvalSubscription 'Microsoft.ServiceBus/namespaces/topics/subscription
   }
 }
 
+// DHT shard query topic for cross-agent knowledge retrieval.
+// Each agent listens here for SHARD_QUERY events from peers and responds
+// with SHARD_RESPONSE events.  No fact replication — each agent owns its shard.
+resource sbShardsTopic 'Microsoft.ServiceBus/namespaces/topics@2022-10-01-preview' = {
+  name: 'hive-shards-${hiveName}'
+  parent: sbNamespace
+  properties: {
+    enablePartitioning: false
+    defaultMessageTimeToLive: 'PT1H'
+  }
+}
+
+// Per-agent subscription on the shards topic for cross-shard queries
+resource sbShardsSubscriptions 'Microsoft.ServiceBus/namespaces/topics/subscriptions@2022-10-01-preview' = [
+  for i in range(0, agentCount): {
+    name: 'agent-${i}'
+    parent: sbShardsTopic
+    properties: {
+      defaultMessageTimeToLive: 'PT1H'
+      lockDuration: 'PT30S'
+      maxDeliveryCount: 3
+    }
+  }
+]
+
 // Eval response topic for distributed eval answer collection
 resource sbEvalResponseTopic 'Microsoft.ServiceBus/namespaces/topics@2022-10-01-preview' = {
   name: 'eval-responses-${hiveName}'
@@ -212,7 +237,7 @@ resource containerApps 'Microsoft.App/containerApps@2024-03-01' = [
           {
             server: '${acrNameResolved}.azurecr.io'
             username: acrCredentials.username
-            passwordSecretRef: 'acr-password'
+            passwordSecretRef: 'acr-password' // pragma: allowlist secret
           }
         ]
       }
@@ -250,7 +275,7 @@ resource containerApps 'Microsoft.App/containerApps@2024-03-01' = [
               }
               {
                 name: 'AMPLIHACK_MEMORY_CONNECTION_STRING'
-                secretRef: 'sb-connection-string'
+                secretRef: 'sb-connection-string' // pragma: allowlist secret
               }
               {
                 name: 'AMPLIHACK_MEMORY_STORAGE_PATH'
@@ -274,7 +299,7 @@ resource containerApps 'Microsoft.App/containerApps@2024-03-01' = [
               }
               {
                 name: 'ANTHROPIC_API_KEY'
-                secretRef: 'anthropic-api-key'
+                secretRef: 'anthropic-api-key' // pragma: allowlist secret
               }
             ]
             volumeMounts: [
