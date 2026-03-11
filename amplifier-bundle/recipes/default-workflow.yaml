@@ -265,7 +265,7 @@ steps:
     type: "bash"
     command: |
       # Extract issue number from the creation output
-      echo "{{issue_creation}}" | grep -oE '[0-9]+' | tail -1
+      echo "{{issue_creation}}" | grep -oE 'issues/[0-9]+' | grep -oE '[0-9]+' | tail -1
     output: "issue_number"
 
   # ==========================================================================
