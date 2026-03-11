@@ -280,114 +280,143 @@ class TestBicep:
         assert "sbShardsSubscriptions" in content
 
 
-class TestShardedHiveStore:
-    """Tests for the ShardedHiveStore DHT shard wrapper."""
+class TestServiceBusShardTransport:
+    """Tests for ServiceBusShardTransport DI pattern (replaces ShardedHiveStore)."""
 
-    def test_promote_fact_stores_locally_only(self):
-        """promote_fact stores in local shard only — no bus publish."""
+    def test_entrypoint_has_no_sharded_hive_store(self):
+        """ShardedHiveStore class must not exist in the updated entrypoint."""
         mod = _load_entrypoint()
+        assert not hasattr(mod, "ShardedHiveStore"), (
+            "ShardedHiveStore was deleted in v7 DI refactor — should not be present"
+        )
 
-        mock_graph = MagicMock()
-        mock_graph.promote_fact.return_value = "hf_abc123"
-        mock_bus = MagicMock()
-
-        store = mod.ShardedHiveStore(mock_graph, mock_bus, "agent-0")
-
-        mock_fact = MagicMock()
-        result = store.promote_fact("agent-0", mock_fact)
-
-        assert result == "hf_abc123"
-        mock_graph.promote_fact.assert_called_once_with("agent-0", mock_fact)
-        # No bus publish on promote — sharding, not replication
-        mock_bus.publish.assert_not_called()
-
-    def test_query_delegates_to_graph(self):
+    def test_init_dht_hive_exists(self):
+        """_init_dht_hive function must exist and return 3 values on success."""
         mod = _load_entrypoint()
-
-        mock_graph = MagicMock()
-        mock_graph.query_facts.return_value = ["fact1"]
-        mock_bus = MagicMock()
-
-        store = mod.ShardedHiveStore(mock_graph, mock_bus, "agent-0")
-        result = store.query_facts("DNA", limit=5)
-
-        assert result == ["fact1"]
-        mock_graph.query_facts.assert_called_once_with("DNA", limit=5)
-
-    def test_getattr_delegates_to_graph(self):
-        mod = _load_entrypoint()
-
-        mock_graph = MagicMock()
-        mock_graph.hive_id = "test-hive"
-        mock_bus = MagicMock()
-
-        store = mod.ShardedHiveStore(mock_graph, mock_bus, "agent-0")
-        assert store.hive_id == "test-hive"
+        assert hasattr(mod, "_init_dht_hive")
+        assert callable(mod._init_dht_hive)
 
     def test_handle_shard_query_publishes_response(self):
-        """handle_shard_query looks up local shard and publishes SHARD_RESPONSE."""
-        mod = _load_entrypoint()
+        """ServiceBusShardTransport.handle_shard_query looks up local shard and publishes SHARD_RESPONSE."""
+        from amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph import (
+            DistributedHiveGraph,
+            ServiceBusShardTransport,
+        )
+        from amplihack.agents.goal_seeking.hive_mind.event_bus import LocalEventBus
+        from amplihack.agents.goal_seeking.hive_mind.hive_graph import HiveFact
 
-        mock_graph = MagicMock()
-        mock_fact = MagicMock()
-        mock_fact.fact_id = "f1"
-        mock_fact.content = "Paris is the capital of France"
-        mock_fact.concept = "geography"
-        mock_fact.confidence = 0.9
-        mock_fact.tags = ["geo"]
-        mock_graph.query_facts.return_value = [mock_fact]
-        mock_bus = MagicMock()
+        bus = LocalEventBus()
+        bus.subscribe("agent-0")
+        bus.subscribe("requester")
 
-        store = mod.ShardedHiveStore(mock_graph, mock_bus, "agent-0")
+        sb_transport = ServiceBusShardTransport(event_bus=bus, agent_id="agent-0")
+        graph = DistributedHiveGraph(
+            hive_id="test-e-hq", enable_gossip=False, transport=sb_transport
+        )
+        graph.register_agent("agent-0")
+        graph.promote_fact(
+            "agent-0",
+            HiveFact(
+                fact_id="",
+                content="Paris is the capital of France",
+                concept="geography",
+                confidence=0.9,
+                source_agent="agent-0",
+                tags=["geo"],
+                created_at=0.0,
+            ),
+        )
 
-        from unittest.mock import MagicMock as MM
-
-        event = MM()
+        event = MagicMock()
         event.payload = {"query": "capital France", "limit": 5, "correlation_id": "corr-1"}
-        store.handle_shard_query(event)
+        sb_transport.handle_shard_query(event)
 
-        mock_bus.publish.assert_called_once()
-        published = mock_bus.publish.call_args[0][0]
-        assert published.event_type == "SHARD_RESPONSE"
+        responses = [e for e in bus.poll("requester") if e.event_type == "SHARD_RESPONSE"]
+        assert len(responses) == 1
+        published = responses[0]
         assert published.payload["correlation_id"] == "corr-1"
         assert any("Paris" in f["content"] for f in published.payload["facts"])
+        bus.close()
 
     def test_handle_shard_response_wakes_pending_query(self):
-        """handle_shard_response signals the threading.Event for pending queries."""
-        mod = _load_entrypoint()
+        """ServiceBusShardTransport.handle_shard_response signals threading.Event."""
+        from amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph import (
+            ServiceBusShardTransport,
+        )
+        from amplihack.agents.goal_seeking.hive_mind.event_bus import LocalEventBus
 
-        mock_graph = MagicMock()
-        mock_bus = MagicMock()
-        store = mod.ShardedHiveStore(mock_graph, mock_bus, "agent-0")
+        bus = LocalEventBus()
+        bus.subscribe("agent-0")
+
+        sb_transport = ServiceBusShardTransport(event_bus=bus, agent_id="agent-0")
 
         # Register a pending query
         done_event = threading.Event()
         results = []
-        with store._pending_lock:
-            store._pending["corr-2"] = (done_event, results)
+        with sb_transport._pending_lock:
+            sb_transport._pending["corr-2"] = (done_event, results)
 
-        from unittest.mock import MagicMock as MM
-
-        event = MM()
+        event = MagicMock()
         event.payload = {
             "correlation_id": "corr-2",
             "facts": [{"content": "test fact", "confidence": 0.9}],
         }
-        store.handle_shard_response(event)
+        sb_transport.handle_shard_response(event)
 
         assert done_event.is_set()
         assert len(results) == 1
         assert results[0]["content"] == "test fact"
+        bus.close()
+
+    def test_promote_fact_stores_locally_no_bus_publish(self):
+        """promote_fact stores in local shard only — no SHARD_STORE event published."""
+        from amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph import (
+            DistributedHiveGraph,
+            ServiceBusShardTransport,
+        )
+        from amplihack.agents.goal_seeking.hive_mind.event_bus import LocalEventBus
+        from amplihack.agents.goal_seeking.hive_mind.hive_graph import HiveFact
+
+        bus = LocalEventBus()
+        bus.subscribe("agent-0")
+        bus.subscribe("observer")
+
+        sb_transport = ServiceBusShardTransport(event_bus=bus, agent_id="agent-0")
+        graph = DistributedHiveGraph(
+            hive_id="test-promote-local", enable_gossip=False, transport=sb_transport
+        )
+        graph.register_agent("agent-0")
+
+        graph.promote_fact(
+            "agent-0",
+            HiveFact(
+                fact_id="",
+                content="Local fact no replication",
+                concept="test",
+                confidence=0.8,
+                source_agent="agent-0",
+                tags=[],
+                created_at=0.0,
+            ),
+        )
+
+        # No SHARD_STORE or SHARD_QUERY published to bus
+        assert bus.poll("observer") == [], "Local store must not broadcast to bus"
+        bus.close()
 
 
 class TestShardQueryListener:
-    """Tests for the background shard query listener thread."""
+    """Tests for the background _shard_query_listener thread (DI pattern).
+
+    The listener now takes a transport (ServiceBusShardTransport) instead of
+    a ShardedHiveStore wrapper.
+    """
 
     def test_listener_exits_on_shutdown(self):
         """Listener thread exits when shutdown_event is set."""
         mod = _load_entrypoint()
 
-        mock_store = MagicMock()
+        mock_transport = MagicMock()
         mock_bus = MagicMock()
         mock_bus.poll.return_value = []
 
@@ -395,10 +424,10 @@ class TestShardQueryListener:
         shutdown.set()  # Immediately signal shutdown
 
         # Should exit quickly without hanging
-        mod._shard_query_listener(mock_store, "agent-0", mock_bus, shutdown)
+        mod._shard_query_listener(mock_transport, "agent-0", mock_bus, shutdown)
 
     def test_listener_handles_shard_query_events(self):
-        """Listener dispatches SHARD_QUERY events to store.handle_shard_query."""
+        """Listener dispatches SHARD_QUERY events to transport.handle_shard_query."""
         mod = _load_entrypoint()
 
         from amplihack.agents.goal_seeking.hive_mind.event_bus import make_event
@@ -410,7 +439,7 @@ class TestShardQueryListener:
         )
 
         call_count = [0]
-        mock_store = MagicMock()
+        mock_transport = MagicMock()
         mock_bus = MagicMock()
         mock_bus.poll.side_effect = lambda _: [query_event] if call_count[0] == 0 else []
 
@@ -423,13 +452,13 @@ class TestShardQueryListener:
         t = threading.Thread(target=stop)
         t.start()
 
-        mod._shard_query_listener(mock_store, "agent-0", mock_bus, shutdown)
+        mod._shard_query_listener(mock_transport, "agent-0", mock_bus, shutdown)
         t.join()
 
-        mock_store.handle_shard_query.assert_called()
+        mock_transport.handle_shard_query.assert_called()
 
     def test_listener_handles_shard_response_events(self):
-        """Listener dispatches SHARD_RESPONSE events to store.handle_shard_response."""
+        """Listener dispatches SHARD_RESPONSE events to transport.handle_shard_response."""
         mod = _load_entrypoint()
 
         from amplihack.agents.goal_seeking.hive_mind.event_bus import make_event
@@ -440,7 +469,7 @@ class TestShardQueryListener:
             payload={"correlation_id": "corr-y", "facts": []},
         )
 
-        mock_store = MagicMock()
+        mock_transport = MagicMock()
         mock_bus = MagicMock()
         call_count = [0]
 
@@ -461,7 +490,7 @@ class TestShardQueryListener:
         t = threading.Thread(target=stop)
         t.start()
 
-        mod._shard_query_listener(mock_store, "agent-0", mock_bus, shutdown)
+        mod._shard_query_listener(mock_transport, "agent-0", mock_bus, shutdown)
         t.join()
 
-        mock_store.handle_shard_response.assert_called()
+        mock_transport.handle_shard_response.assert_called()
