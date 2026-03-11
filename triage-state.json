@@ -1,30 +1,44 @@
 {
-  "timestamp": "2026-02-28T00:35:21.619902+00:00",
-  "total_prs": 10,
+  "timestamp": "2026-03-11T00:00:00.000000+00:00",
+  "total_prs": 2,
   "categories": {
-    "new_ready_for_review": [
-      2659,
-      2658,
-      2657,
-      2653,
-      2579
-    ],
+    "new_ready_for_review": [3044],
     "auto_merge_candidates": [],
     "needs_ci": [],
-    "stale_draft": [
-      1784,
-      1376
-    ],
-    "needs_author": [
-      2609,
-      2515
-    ]
+    "stale_draft": [],
+    "needs_author": [],
+    "already_triaged": [2876]
   },
   "summary": {
-    "new_ready": 5,
+    "new_ready": 1,
     "auto_merge": 0,
     "needs_ci": 0,
-    "stale": 2,
-    "needs_author": 2
+    "stale": 0,
+    "needs_author": 0,
+    "already_triaged": 1
+  },
+  "pr_details": {
+    "3044": {
+      "title": "[docs] docs: daily documentation update for 2026-03-11",
+      "type": "documentation",
+      "risk": "low",
+      "priority": "medium",
+      "author": "github-actions[bot]",
+      "draft": true,
+      "expires": "2026-03-12",
+      "recommendation": "approve-and-merge",
+      "labels_added": ["triage:complete", "triage:low-risk", "triage:needs-review"]
+    },
+    "2876": {
+      "title": "feat(hive): replace broadcast replication with proper DHT sharding",
+      "type": "feature",
+      "risk": "extreme",
+      "priority": "high",
+      "author": "rysweet",
+      "draft": false,
+      "has_merge_conflicts": true,
+      "recommendation": "needs-decomposition",
+      "triage_status": "previously-triaged"
+    }
   }
 }
