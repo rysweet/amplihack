@@ -472,3 +472,161 @@ class TestServiceBusShardTransport:
             t0.join(timeout=1.0)
             t1.join(timeout=1.0)
             bus.close()
+
+
+# ---------------------------------------------------------------------------
+# Unit tests for Bug 1 fix (promote_fact stores locally) and
+# Bug 2 fix (_select_query_targets fans out to all agents in distributed mode)
+# ---------------------------------------------------------------------------
+
+
+class TestPromoteFactStoresLocally:
+    """Bug 1 fix: promote_fact always stores in the promoting agent's own shard."""
+
+    def test_single_agent_ring_stores_locally(self):
+        """With one agent on the ring, fact stays in that agent's shard."""
+        dht = DistributedHiveGraph(hive_id="test-single", enable_gossip=False)
+        dht.register_agent("agent-0")
+
+        fact = _make_fact("Water boils at 100C", "science", "agent-0")
+        dht.promote_fact("agent-0", fact)
+
+        results = dht.query_facts("water boils")
+        assert any("100" in f.content for f in results), (
+            f"Fact not found in single-agent ring. Got: {[f.content for f in results]}"
+        )
+
+    def test_multiagent_ring_stores_in_promoting_agent_shard(self):
+        """With 5 agents on the ring, fact stays in the promoting agent's shard.
+
+        This is the Bug 1 fix: before the fix, DHT would route to a hash-determined
+        owner which could be any of the 5 agents. After the fix, the fact is always
+        in the promoting agent's own shard regardless of DHT hash.
+        """
+        # Single DHT with all 5 agents registered (mirrors _init_dht_hive setup)
+        dht = DistributedHiveGraph(hive_id="test-multi", enable_gossip=False)
+        for i in range(5):
+            dht.register_agent(f"agent-{i}")
+
+        fact = _make_fact("Photosynthesis converts light to energy", "biology", "agent-2")
+        dht.promote_fact("agent-2", fact)
+
+        # The fact must be in agent-2's shard specifically
+        shard = dht._router.get_shard("agent-2")
+        assert shard is not None
+        all_facts = shard.get_all_facts()
+        assert any("Photosynthesis" in f.content for f in all_facts), (
+            "Bug 1: fact not in promoting agent's shard. "
+            f"Shard contents: {[f.content for f in all_facts]}"
+        )
+
+    def test_promote_fact_no_shard_store_event_on_bus(self):
+        """promote_fact with ServiceBusShardTransport never publishes SHARD_STORE to bus."""
+        bus = LocalEventBus()
+        bus.subscribe("agent-0")
+        bus.subscribe("agent-1")
+        bus.subscribe("agent-2")
+
+        transport = ServiceBusShardTransport(event_bus=bus, agent_id="agent-0")
+        dht = DistributedHiveGraph(
+            hive_id="test-no-store-event", enable_gossip=False, transport=transport
+        )
+        for i in range(3):
+            dht.register_agent(f"agent-{i}")
+
+        fact = _make_fact("Mars is the fourth planet", "astronomy", "agent-0")
+        dht.promote_fact("agent-0", fact)
+
+        # No SHARD_STORE published to any subscriber
+        for sub in ["agent-1", "agent-2"]:
+            events = bus.poll(sub)
+            store_events = [e for e in events if e.event_type == "SHARD_STORE"]
+            assert store_events == [], (
+                f"Bug 1: SHARD_STORE published to {sub}. Events: {store_events}"
+            )
+        bus.close()
+
+
+class TestDHTSelectQueryTargetsFix:
+    """Bug 2 fix: _select_query_targets returns all agents in distributed mode."""
+
+    def test_returns_all_agents_when_some_shards_empty(self):
+        """When only some shards are non-empty, all agents are returned for fan-out."""
+        from amplihack.agents.goal_seeking.hive_mind.dht import DHTRouter
+
+        router = DHTRouter(replication_factor=3, query_fanout=5)
+        for i in range(5):
+            router.add_agent(f"agent-{i}")
+
+        # Only agent-0 has facts
+        shard_0 = router.get_shard("agent-0")
+        from amplihack.agents.goal_seeking.hive_mind.dht import ShardFact
+
+        shard_0.store(
+            ShardFact(
+                fact_id="f1",
+                content="Test fact in agent-0",
+                concept="test",
+                source_agent="agent-0",
+            )
+        )
+
+        targets = router.select_query_targets("Test fact")
+        assert set(targets) == {f"agent-{i}" for i in range(5)}, (
+            f"Bug 2: expected all 5 agents for fan-out, got: {targets}"
+        )
+
+    def test_returns_only_nonempty_when_all_populated(self):
+        """In-process mode: when ALL shards have facts, return only non-empty (optimization)."""
+        from amplihack.agents.goal_seeking.hive_mind.dht import DHTRouter, ShardFact
+
+        router = DHTRouter(replication_factor=3, query_fanout=5)
+        for i in range(3):
+            router.add_agent(f"agent-{i}")
+
+        # All agents have facts
+        for i in range(3):
+            shard = router.get_shard(f"agent-{i}")
+            shard.store(
+                ShardFact(
+                    fact_id=f"f{i}",
+                    content=f"Fact {i} content",
+                    concept="test",
+                    source_agent=f"agent-{i}",
+                )
+            )
+
+        targets = router.select_query_targets("Fact content")
+        # All 3 agents have non-empty local shards → local shortcut applies
+        assert len(targets) == 3, f"Expected 3 targets (all populated), got: {targets}"
+
+    def test_distributed_mode_agent1_returns_all_agents_even_with_own_facts(self):
+        """Bug 2 fix: agent-1's DHT returns all agents even when agent-1 has local facts.
+
+        Before fix: 'local_targets and len(self._shards) == len(all_agents)' triggered
+        when agent-1 had some local facts and all ShardStores existed, returning only
+        agent-1's shard and missing remote facts from other agents.
+        """
+        from amplihack.agents.goal_seeking.hive_mind.dht import DHTRouter, ShardFact
+
+        router = DHTRouter(replication_factor=3, query_fanout=5)
+        for i in range(5):
+            router.add_agent(f"agent-{i}")
+
+        # Only agent-1 has facts locally (simulates distributed mode where
+        # other agents' shards are empty stubs, real facts on remote machines)
+        shard_1 = router.get_shard("agent-1")
+        shard_1.store(
+            ShardFact(
+                fact_id="local-fact",
+                content="Local fact in agent-1",
+                concept="test",
+                source_agent="agent-1",
+            )
+        )
+
+        targets = router.select_query_targets("local fact")
+        # Must include ALL 5 agents (not just agent-1) so remote shards are queried
+        assert set(targets) == {f"agent-{i}" for i in range(5)}, (
+            f"Bug 2: only returned {targets}, missing remote agents"
+        )

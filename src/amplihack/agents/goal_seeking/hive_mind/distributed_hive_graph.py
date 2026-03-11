@@ -241,8 +241,9 @@ class ServiceBusShardTransport:
     def handle_shard_query(self, event: Any) -> None:
         """Respond to an incoming SHARD_QUERY with a SHARD_RESPONSE.
 
-        Called from the background shard-query listener thread — event-driven,
-        no polling sleep. Queries the local graph and publishes the results.
+        Searches ONLY this agent's own local shard — never fans out via query_facts.
+        Calling query_facts here would cause recursive SHARD_QUERY loops since
+        query_facts itself publishes SHARD_QUERY events to all other agents.
         """
         if self._local_graph is None:
             return
@@ -253,7 +254,10 @@ class ServiceBusShardTransport:
         if not query or not correlation_id:
             return
 
-        facts = self._local_graph.query_facts(query, limit=limit)
+        # Direct local shard search — bypasses fan-out to prevent circular queries
+        shard = self._local_graph._router.get_shard(self._agent_id)
+        shard_facts = shard.search(query, limit=limit) if shard else []
+        facts = [self._local_graph._shard_to_hive_fact(sf) for sf in shard_facts]
         try:
             from .event_bus import make_event
 
@@ -438,8 +442,12 @@ class DistributedHiveGraph:
     def promote_fact(self, agent_id: str, fact: HiveFact) -> str:
         """Promote a fact into the distributed hive.
 
-        Determines shard owners via DHT consistent hashing, then delegates
-        the actual storage to self._transport — no type conditionals.
+        In distributed mode each agent IS the shard owner for facts it learns.
+        Storage is always local to the promoting agent — the DHT ring is used
+        only for query routing (fan-out), not for storage routing.
+
+        This avoids the lost-write problem where ServiceBusShardTransport would
+        publish a SHARD_STORE event to a remote agent that may not handle it.
         """
         # Generate fact_id if not set
         if not fact.fact_id:
@@ -458,12 +466,12 @@ class DistributedHiveGraph:
             created_at=fact.created_at,
         )
 
-        # Determine storage targets via DHT ring (also sets ring_position)
-        owners = self._router.get_storage_targets(shard_fact)
-
-        # Delegate storage to the injected transport — no type conditionals
-        for owner_id in owners:
-            self._transport.store_on_shard(owner_id, shard_fact)
+        # Always store locally in the promoting agent's own shard.
+        # The promoting agent owns the facts it learns — the DHT ring position
+        # is set for consistency but storage never routes to remote agents.
+        shard_fact.ring_position = 0  # Not used for routing here
+        owners = [agent_id]
+        self._transport.store_on_shard(agent_id, shard_fact)
 
         # Update bloom filters for targeted agents
         with self._lock:
