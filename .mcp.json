@@ -1,6 +1,7 @@
 {
   "mcpServers": {
     "workiq": {
+      "disabled": true,
       "command": "npx",
       "args": ["-y", "@microsoft/workiq", "mcp"]
     }

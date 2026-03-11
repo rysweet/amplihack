@@ -27,6 +27,16 @@ Query your Microsoft 365 workspace using natural language. Search emails, meetin
 
 ## Quick Start
 
+### 0. Enable MCP Server (Required First)
+
+The workiq MCP server is **disabled by default**. Enable it before use:
+
+```
+/mcp-manager
+```
+
+Select the `workiq` server and enable it, or manually set `"disabled": false` in `.mcp.json`.
+
 ### 1. Accept EULA (Required First)
 
 ```bash
