@@ -61,7 +61,17 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
 )
+# Suppress verbose azure SDK AMQP logs — they flood stdout and hide agent output
+logging.getLogger("azure.servicebus").setLevel(logging.WARNING)
+logging.getLogger("azure.servicebus._pyamqp").setLevel(logging.WARNING)
+logging.getLogger("uamqp").setLevel(logging.WARNING)
 logger = logging.getLogger("agent_entrypoint")
+
+# Early diagnostic: confirm entrypoint started (before any SB connections)
+print(f"[agent_entrypoint] Python {sys.version}", flush=True)
+print(
+    f"[agent_entrypoint] AGENT_NAME={os.environ.get('AMPLIHACK_AGENT_NAME', 'UNSET')}", flush=True
+)
 
 
 # ---------------------------------------------------------------------------
@@ -102,14 +112,16 @@ def _shard_query_listener(
 
 def _init_dht_hive(
     agent_name: str,
+    agent_count: int,
     connection_string: str,
     hive_name: str,
 ) -> tuple[object, object, object] | None:
     """Initialize the DHT shard store for this agent using DI pattern.
 
     Creates a ServiceBusShardTransport, injects it into DistributedHiveGraph,
-    and registers this agent.  The graph is passed directly as hive_store to
-    GoalSeekingAgent — no wrapper classes.
+    and registers ALL agents on the DHT ring so the router can route queries
+    to remote shards via Service Bus.  Only the local agent has a real
+    ShardStore; peer agents are ring positions that trigger SHARD_QUERY.
 
     Returns (dht_graph, shard_bus, sb_transport) or None if init fails.
     """
@@ -129,14 +141,19 @@ def _init_dht_hive(
         shard_bus.subscribe(agent_name)
 
         # Inject ServiceBusShardTransport into DistributedHiveGraph
-        # DistributedHiveGraph.__init__ calls sb_transport.bind_local(self)
         sb_transport = ServiceBusShardTransport(event_bus=shard_bus, agent_id=agent_name)
         dht_graph = DistributedHiveGraph(
             hive_id=f"shard-{agent_name}",
             enable_gossip=False,  # Clean partition boundaries
             transport=sb_transport,
         )
-        dht_graph.register_agent(agent_name)
+
+        # Register ALL agents on the DHT ring.  This is critical:
+        # the ring must know about all N agents so queries hash to the
+        # correct shard owner.  For remote agents, the transport routes
+        # via SHARD_QUERY on Service Bus.
+        for i in range(agent_count):
+            dht_graph.register_agent(f"agent-{i}")
 
         logger.info(
             "DHT shard initialized for agent %s on topic %s (DI transport)",
@@ -206,7 +223,8 @@ def main() -> None:
     sb_transport: Any | None = None
 
     if transport == "azure_service_bus" and connection_string:
-        result = _init_dht_hive(agent_name, connection_string, hive_name)
+        agent_count = int(os.environ.get("AMPLIHACK_AGENT_COUNT", "5"))
+        result = _init_dht_hive(agent_name, agent_count, connection_string, hive_name)
         if result:
             hive_store, hive_bus, sb_transport = result
 
