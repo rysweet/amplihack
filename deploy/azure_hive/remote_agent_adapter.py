@@ -43,13 +43,15 @@ class RemoteAgentAdapter:
         self._agent_count = agent_count
 
         # Extract SB namespace from connection string
-        ns_match = re.search(r'Endpoint=sb://([^.]+)\.', connection_string)
+        ns_match = re.search(r"Endpoint=sb://([^.]+)\.", connection_string)
         self._sb_namespace = ns_match.group(1) if ns_match else ""
 
         self._learn_count = 0
         self._question_count = 0
         self._shutdown = threading.Event()
-        self._idle_wait_done = threading.Event()  # Signals all threads that content processing is complete
+        self._idle_wait_done = (
+            threading.Event()
+        )  # Signals all threads that content processing is complete
 
         # Thread safety for counters and answer dict
         self._counter_lock = threading.Lock()
@@ -58,9 +60,12 @@ class RemoteAgentAdapter:
         if not resource_group:
             raise ValueError("resource_group is required for queue depth polling")
 
-        # Service Bus client
+        # Service Bus client — recreated on connection errors
+        self._connection_string = connection_string
+        self._input_topic = input_topic
         self._client = ServiceBusClient.from_connection_string(connection_string)
         self._sender = self._client.get_topic_sender(topic_name=input_topic)
+        self._sender_lock = threading.Lock()
 
         # Pending answers: event_id -> answer text
         self._pending_answers: dict[str, str] = {}
@@ -69,9 +74,7 @@ class RemoteAgentAdapter:
         # Listener liveness flag — fail fast if listener can't connect
         self._listener_alive = threading.Event()
 
-        self._listener_thread = threading.Thread(
-            target=self._listen_for_answers, daemon=True
-        )
+        self._listener_thread = threading.Thread(target=self._listen_for_answers, daemon=True)
         self._listener_thread.start()
 
         # Wait up to 30s for listener to connect
@@ -81,9 +84,49 @@ class RemoteAgentAdapter:
                 "Check that the topic and subscription exist."
             )
 
+    def _send_with_retry(self, msg: object, max_retries: int = 3) -> None:
+        """Send a message, reconnecting the sender on connection errors."""
+        for attempt in range(max_retries):
+            try:
+                with self._sender_lock:
+                    self._sender.send_messages(msg)
+                return
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    logger.warning(
+                        "SB send failed (attempt %d/%d): %s. Reconnecting...",
+                        attempt + 1,
+                        max_retries,
+                        e,
+                    )
+                    try:
+                        with self._sender_lock:
+                            try:
+                                self._sender.close()
+                            except Exception:
+                                pass
+                            try:
+                                self._client.close()
+                            except Exception:
+                                pass
+                            from azure.servicebus import ServiceBusClient
+
+                            self._client = ServiceBusClient.from_connection_string(
+                                self._connection_string
+                            )
+                            self._sender = self._client.get_topic_sender(
+                                topic_name=self._input_topic
+                            )
+                    except Exception as reconnect_err:
+                        logger.error("SB reconnect failed: %s", reconnect_err)
+                else:
+                    raise
+
         logger.info(
             "RemoteAgentAdapter: input=%s response=%s agents=%d",
-            input_topic, response_topic, agent_count,
+            input_topic,
+            response_topic,
+            agent_count,
         )
 
     def learn_from_content(self, content: str) -> dict[str, Any]:
@@ -103,23 +146,28 @@ class RemoteAgentAdapter:
         target_name = f"agent-{target_agent}"
 
         msg = ServiceBusMessage(
-            json.dumps({
-                "event_type": "LEARN_CONTENT",
-                "event_id": event_id,
-                "target_agent": target_name,
-                "source_agent": "eval-harness",
-                "payload": {
-                    "content": content,
+            json.dumps(
+                {
+                    "event_type": "LEARN_CONTENT",
+                    "event_id": event_id,
                     "target_agent": target_name,
-                },
-            }),
+                    "source_agent": "eval-harness",
+                    "payload": {
+                        "content": content,
+                        "target_agent": target_name,
+                    },
+                }
+            ),
             content_type="application/json",
         )
-        self._sender.send_messages(msg)
+        self._send_with_retry(msg)
 
         if learn_count % 500 == 0:
-            logger.info("RemoteAgentAdapter: sent %d content turns (%d per agent)",
-                        learn_count, learn_count // self._agent_count)
+            logger.info(
+                "RemoteAgentAdapter: sent %d content turns (%d per agent)",
+                learn_count,
+                learn_count // self._agent_count,
+            )
 
         return {"facts_stored": 1, "event_id": event_id}
 
@@ -148,24 +196,28 @@ class RemoteAgentAdapter:
             self._answer_events[event_id] = answer_event
 
         msg = ServiceBusMessage(
-            json.dumps({
-                "event_type": "INPUT",
-                "event_id": event_id,
-                "target_agent": target_name,
-                "source_agent": "eval-harness",
-                "payload": {
-                    "question": question,
-                    "question_id": f"q_{target_agent}_{event_id}",
+            json.dumps(
+                {
+                    "event_type": "INPUT",
+                    "event_id": event_id,
                     "target_agent": target_name,
-                },
-            }),
+                    "source_agent": "eval-harness",
+                    "payload": {
+                        "question": question,
+                        "question_id": f"q_{target_agent}_{event_id}",
+                        "target_agent": target_name,
+                    },
+                }
+            ),
             content_type="application/json",
         )
-        self._sender.send_messages(msg)
+        self._send_with_retry(msg)
 
         logger.info(
             "RemoteAgentAdapter: sent question to %s (event_id=%s): %s",
-            target_name, event_id, question[:60],
+            target_name,
+            event_id,
+            question[:60],
         )
 
         # Wait for answer — no timeout
@@ -186,28 +238,46 @@ class RemoteAgentAdapter:
         last_agent = self._agent_count - 1
         agent_name = f"agent-{last_agent}"
 
-        logger.info("Waiting for agents to process %d content turns (%d per agent). Polling %s...",
-                    self._learn_count, self._learn_count // max(1, self._agent_count), agent_name)
+        logger.info(
+            "Waiting for agents to process %d content turns (%d per agent). Polling %s...",
+            self._learn_count,
+            self._learn_count // max(1, self._agent_count),
+            agent_name,
+        )
 
         poll_interval = 15
 
         while True:
             try:
                 result = subprocess.run(
-                    ["az", "servicebus", "topic", "subscription", "show",
-                     "--namespace-name", self._sb_namespace,
-                     "--topic-name", self._input_topic,
-                     "--name", agent_name,
-                     "--resource-group", self._resource_group,
-                     "--query", "countDetails.activeMessageCount",
-                     "-o", "tsv"],
-                    capture_output=True, text=True, timeout=30,
+                    [
+                        "az",
+                        "servicebus",
+                        "topic",
+                        "subscription",
+                        "show",
+                        "--namespace-name",
+                        self._sb_namespace,
+                        "--topic-name",
+                        self._input_topic,
+                        "--name",
+                        agent_name,
+                        "--resource-group",
+                        self._resource_group,
+                        "--query",
+                        "countDetails.activeMessageCount",
+                        "-o",
+                        "tsv",
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
                 )
                 count = int(result.stdout.strip()) if result.stdout.strip().isdigit() else -1
                 if count == 0:
                     logger.info("Agent queues empty. Starting question phase.")
                     return
-                elif count > 0:
+                if count > 0:
                     logger.info("  %s queue: %d messages remaining...", agent_name, count)
             except Exception as e:
                 logger.warning("Queue depth check failed: %s", e)
@@ -232,7 +302,8 @@ class RemoteAgentAdapter:
         while not self._shutdown.is_set():
             try:
                 messages = receiver.receive_messages(
-                    max_message_count=50, max_wait_time=5,
+                    max_message_count=50,
+                    max_wait_time=5,
                 )
                 for msg in messages:
                     try:
@@ -246,7 +317,8 @@ class RemoteAgentAdapter:
                                 self._answer_events[event_id].set()
                                 logger.info(
                                     "RemoteAgentAdapter: got answer for %s from %s: %s",
-                                    event_id, body.get("agent_id", "?"),
+                                    event_id,
+                                    body.get("agent_id", "?"),
                                     answer[:80] if answer else "(empty)",
                                 )
                             else:
