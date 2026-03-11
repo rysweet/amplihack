@@ -1,0 +1,45 @@
+{
+  "timestamp": "2026-03-11T06:00:00Z",
+  "run_id": "22933685160",
+  "prs_analyzed": 2,
+  "new_prs": 0,
+  "prs": [
+    {
+      "number": 3017,
+      "title": "[docs] daily documentation update for 2026-03-10",
+      "author": "github-actions[bot]",
+      "type": "docs-automated",
+      "risk": "low",
+      "priority": "normal",
+      "recommendation": "auto-merge-candidate",
+      "files_changed": 2,
+      "lines_added": 126,
+      "ci": "gitguardian-passed",
+      "status": "previously-triaged",
+      "created_at": "2026-03-10T06:41:42Z",
+      "expires": "2026-03-11T06:41:00Z",
+      "notes": "Previously triaged as auto-merge-candidate. Expires 2026-03-11T06:41Z (today). If not merged, will auto-close."
+    },
+    {
+      "number": 2876,
+      "title": "feat: distributed hive mind with on_answer callback eval achieving single-agent parity",
+      "author": "rysweet",
+      "type": "feature",
+      "risk": "extreme",
+      "priority": "high",
+      "recommendation": "needs-decomposition",
+      "files_changed": 165,
+      "lines_added": 27384,
+      "status": "previously-triaged",
+      "mergeable_state": "dirty",
+      "labels": ["triage:complete", "triage:extreme-risk", "needs-decomposition", "merge-conflicts", "too-large"],
+      "notes": "Long-standing extreme-risk PR. Has merge conflicts (dirty). Last updated 2026-03-11T01:03:04Z. Requires decomposition into smaller PRs and conflict resolution."
+    }
+  ],
+  "summary": {
+    "new_prs": 0,
+    "previously_triaged": 2,
+    "merged_since_last_run": ["#3019", "#3016", "#2992"],
+    "action_required": false
+  }
+}

@@ -1,2 +1,2 @@
-2026-03-09T18:00:00Z run=22869793936
-#2989 new (draft, low-medium risk, READY_FOR_REVIEW after removing draft). #2876 decompose. #2727 close.
+2026-03-11T06:00:00Z run=22933685160
+#3017 expires today (auto-merge-candidate). #2876 still has merge conflicts, previously triaged as extreme-risk/needs-decomposition.
