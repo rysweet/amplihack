@@ -5,7 +5,7 @@ Covers:
 - Recipe execution via Rust binary (run_recipe_via_rust)
 - JSON output parsing and error handling
 - Engine selection in run_recipe_by_name
-- Configurable timeouts
+- Configurable install timeout
 - Empty step_results and exception paths
 """
 
@@ -206,7 +206,8 @@ class TestRunRecipeViaRust:
         "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
     )
     @patch("subprocess.run")
-    def test_default_timeout(self, mock_run, mock_find):
+    def test_no_run_timeout(self, mock_run, mock_find):
+        """Issue #3049: subprocess.run must NOT impose a timeout on recipe execution."""
         mock_run.return_value = subprocess.CompletedProcess(
             args=[],
             returncode=0,
@@ -214,22 +215,10 @@ class TestRunRecipeViaRust:
             stderr="",
         )
         run_recipe_via_rust("test-recipe")
-        assert mock_run.call_args[1].get("timeout") == 3600
-
-    @patch.dict("os.environ", {"RECIPE_RUNNER_RUN_TIMEOUT": "60"})
-    @patch(
-        "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
-    )
-    @patch("subprocess.run")
-    def test_configurable_run_timeout(self, mock_run, mock_find):
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=[],
-            returncode=0,
-            stdout=self._make_rust_output(),
-            stderr="",
+        assert "timeout" not in mock_run.call_args[1], (
+            "subprocess.run should not have a timeout kwarg — "
+            "the Rust binary manages its own per-step timeouts"
         )
-        run_recipe_via_rust("test-recipe")
-        assert mock_run.call_args[1].get("timeout") == 60
 
     @patch(
         "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
@@ -600,16 +589,19 @@ class TestPackageBundleDirInjection:
         assert "-R" not in cmd
 
 
-class TestExecutionTimeout:
-    """C2-PR-10: TimeoutExpired during recipe execution must propagate."""
+class TestNoRunTimeoutInSource:
+    """Issue #3049: The _run_timeout helper must not exist in the source."""
 
-    @patch(
-        "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
-    )
-    @patch("subprocess.run", side_effect=subprocess.TimeoutExpired("recipe-runner", 3600))
-    def test_execution_timeout_propagates(self, mock_run, mock_find):
-        with pytest.raises(subprocess.TimeoutExpired):
-            run_recipe_via_rust(name="test", user_context={})
+    def test_no_run_timeout_function_in_source(self):
+        """Verify _run_timeout() was removed from rust_runner.py."""
+        import inspect
+
+        import amplihack.recipes.rust_runner as mod
+
+        source = inspect.getsource(mod)
+        assert "_run_timeout" not in source, (
+            "_run_timeout should be removed — the Rust binary manages its own timeouts"
+        )
 
 
 class TestProgressStreaming:
@@ -658,4 +650,5 @@ class TestProgressStreaming:
         assert "--progress" in cmd
         assert result.success is True
         assert "▶ classify-and-decompose" in streamed_stderr.getvalue()
-        assert fake.timeout == 3600
+        # Issue #3049: no timeout should be passed to process.wait()
+        assert fake.timeout is None
