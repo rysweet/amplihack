@@ -16,11 +16,54 @@ import os
 import shlex
 import shutil
 import sys
+import tempfile
 import time
 from pathlib import Path
 
 # Import constants from package root
 from . import CLAUDE_DIR, HOME, HOOK_CONFIGS, RUST_HOOK_MAP
+
+
+def write_json_atomic(path, data, indent=2):
+    """Write JSON data to a file atomically to prevent data loss on crash.
+
+    Uses write-to-tempfile + fsync + os.replace pattern:
+    1. Writes to a temporary file in the same directory
+    2. Calls os.fsync() to ensure data is flushed to disk
+    3. Uses os.replace() to atomically swap the temp file into place
+
+    Args:
+        path: File path (str or Path) to write to
+        data: JSON-serializable data
+        indent: JSON indentation level (default 2)
+
+    Raises:
+        OSError: If the write or rename fails
+        TypeError: If data is not JSON-serializable
+    """
+    path = str(path)
+    dir_name = os.path.dirname(path) or "."
+
+    fd = None
+    tmp_path = None
+    try:
+        fd, tmp_path = tempfile.mkstemp(dir=dir_name, suffix=".tmp", prefix=".settings_")
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            fd = None  # os.fdopen takes ownership of the fd
+            json.dump(data, f, indent=indent)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, path)
+        tmp_path = None  # rename succeeded, don't clean up
+    finally:
+        if fd is not None:
+            os.close(fd)
+        if tmp_path is not None:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+
 
 # Settings.json template with proper hook configuration
 SETTINGS_TEMPLATE = {
@@ -110,6 +153,58 @@ SETTINGS_TEMPLATE = {
         ],
     },
 }
+
+
+def _strip_managed_hooks(hooks_dict):
+    """Remove amplihack/xpia-managed hook entries, preserving user-added hooks.
+
+    Identifies managed hooks by checking if the command path contains
+    'tools/amplihack/' or 'tools/xpia/' or unexpanded '$HOME' references.
+
+    Args:
+        hooks_dict: The hooks section of settings.json
+
+    Returns:
+        Cleaned hooks dict with only non-managed entries retained
+    """
+    managed_markers = ("tools/amplihack/", "tools/xpia/", "$HOME/.amplihack/")
+    cleaned = {}
+
+    for hook_type, hook_configs in hooks_dict.items():
+        kept = []
+        for config in hook_configs:
+            is_managed = False
+            for hook in config.get("hooks", []):
+                cmd = hook.get("command", "")
+                if any(marker in cmd for marker in managed_markers):
+                    is_managed = True
+                    break
+            if not is_managed:
+                kept.append(config)
+        if kept:
+            cleaned[hook_type] = kept
+
+    return cleaned
+
+
+def _filter_existing_hooks(hooks_list, hooks_dir_path):
+    """Filter hook configs to only those whose files exist on disk.
+
+    Args:
+        hooks_list: List of hook config dicts with 'file' key
+        hooks_dir_path: Absolute path to hooks directory
+
+    Returns:
+        List of hook configs where the referenced file exists
+    """
+    existing = []
+    for hook_info in hooks_list:
+        hook_file = hook_info["file"]
+        hook_path = os.path.join(hooks_dir_path, hook_file)
+        expanded_path = os.path.expanduser(os.path.expandvars(hook_path))
+        if os.path.exists(expanded_path):
+            existing.append(hook_info)
+    return existing
 
 
 def validate_hook_paths(hook_system, hooks_to_validate, hooks_dir_path):
@@ -344,6 +439,7 @@ def ensure_settings_json():
 
     # Validate amplihack hook paths before configuration
     hooks_updated = 0
+    has_missing_hooks = False
     amplihack_hooks_abs = os.path.join(HOME, ".amplihack", ".claude", "tools", "amplihack", "hooks")
 
     # Validate amplihack hooks exist
@@ -352,20 +448,37 @@ def ensure_settings_json():
     )
 
     if not all_valid:
-        print("  ❌ Hook validation failed - missing required hooks:")
+        has_missing_hooks = True
+        print("  ⚠️  Some hook files are missing:")
         for missing in missing_hooks:
             print(f"     • {missing}")
-        print("  💡 Please reinstall amplihack to restore missing hooks")
-        return False
+        print("  💡 Missing hooks will be skipped - reinstall amplihack to restore them")
 
-    # Update amplihack hook paths (absolute paths for plugin mode compatibility)
-    try:
-        hooks_updated += update_hook_paths(
-            settings, "amplihack", HOOK_CONFIGS["amplihack"], amplihack_hooks_abs
-        )
-    except FileNotFoundError as e:
-        print(f"  ❌ {e}", file=sys.stderr)
-        return False
+    # Filter hooks to only those whose files actually exist on disk
+    valid_amplihack_hooks = _filter_existing_hooks(HOOK_CONFIGS["amplihack"], amplihack_hooks_abs)
+
+    # Clear stale amplihack/xpia hook entries before writing valid ones.
+    # When settings were loaded from SETTINGS_TEMPLATE, the hooks dict contains
+    # entries with unexpanded $HOME paths that don't point to real files.
+    # Remove only amplihack/xpia-owned hooks; preserve any user-added custom hooks.
+    if "hooks" in settings:
+        settings["hooks"] = _strip_managed_hooks(settings["hooks"])
+    else:
+        settings["hooks"] = {}
+
+    if not valid_amplihack_hooks:
+        print("  ⚠️  No valid amplihack hook files found on disk")
+        print("  💡 Please reinstall amplihack to restore missing hooks")
+    else:
+        # Update amplihack hook paths (absolute paths for plugin mode compatibility)
+        # Only configure hooks whose files exist on disk
+        try:
+            hooks_updated += update_hook_paths(
+                settings, "amplihack", valid_amplihack_hooks, amplihack_hooks_abs
+            )
+        except FileNotFoundError as e:
+            print(f"  ❌ {e}", file=sys.stderr)
+            return False
 
     # Update XPIA hook paths if XPIA hooks directory exists (absolute paths for consistency)
     xpia_hooks_abs = os.path.join(HOME, ".amplihack", ".claude", "tools", "xpia", "hooks")
@@ -376,12 +489,16 @@ def ensure_settings_json():
         xpia_valid, xpia_missing = validate_hook_paths("xpia", HOOK_CONFIGS["xpia"], xpia_hooks_abs)
 
         if not xpia_valid:
-            print("  ⚠️  XPIA hook validation failed - missing hooks:")
+            has_missing_hooks = True
+            print("  ⚠️  Some XPIA hook files are missing:")
             for missing in xpia_missing:
                 print(f"     • {missing}")
-            print("  ⚠️  Skipping XPIA configuration - install XPIA properly to enable")
-        else:
-            xpia_updated = update_hook_paths(settings, "xpia", HOOK_CONFIGS["xpia"], xpia_hooks_abs)
+            print("  ⚠️  Missing XPIA hooks will be skipped")
+
+        # Filter to only existing XPIA hooks and configure them
+        valid_xpia_hooks = _filter_existing_hooks(HOOK_CONFIGS["xpia"], xpia_hooks_abs)
+        if valid_xpia_hooks:
+            xpia_updated = update_hook_paths(settings, "xpia", valid_xpia_hooks, xpia_hooks_abs)
             hooks_updated += xpia_updated
 
             if xpia_updated > 0:
@@ -398,10 +515,9 @@ def ensure_settings_json():
             if dir_name not in settings["permissions"]["additionalDirectories"]:
                 settings["permissions"]["additionalDirectories"].append(dir_name)
 
-    # Write updated settings
+    # Write updated settings atomically to prevent data loss on crash
     try:
-        with open(settings_path, "w", encoding="utf-8") as f:
-            json.dump(settings, f, indent=2)
+        write_json_atomic(settings_path, settings)
         print(f"  ✅ Settings updated ({hooks_updated} hooks configured)")
         return True
     except Exception as e:
@@ -409,4 +525,10 @@ def ensure_settings_json():
         return False
 
 
-__all__ = ["ensure_settings_json", "update_hook_paths", "validate_hook_paths", "SETTINGS_TEMPLATE"]
+__all__ = [
+    "ensure_settings_json",
+    "update_hook_paths",
+    "validate_hook_paths",
+    "write_json_atomic",
+    "SETTINGS_TEMPLATE",
+]

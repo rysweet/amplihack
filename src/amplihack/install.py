@@ -270,9 +270,10 @@ def get_all_files_and_dirs(root_dirs: list[str]) -> tuple[list[str], list[str]]:
 
 def write_manifest(files: list[str], dirs: list[str]) -> None:
     """Write manifest file with list of files and directories."""
+    from .settings import write_json_atomic
+
     os.makedirs(os.path.dirname(MANIFEST_JSON), exist_ok=True)
-    with open(MANIFEST_JSON, "w", encoding="utf-8") as f:
-        json.dump({"files": files, "dirs": dirs}, f, indent=2)
+    write_json_atomic(MANIFEST_JSON, {"files": files, "dirs": dirs})
 
 
 def _local_install(repo_root, profile_uri=None):
