@@ -664,9 +664,29 @@ class TestManualUpdateCommand:
             result = run_update_command()
 
         assert result == 0
-        mock_run.assert_called_once_with([str(rust_cli.resolve()), "update"], check=False)
+        mock_run.assert_called_once_with(
+            [str(rust_cli.resolve()), "update"],
+            check=False,
+            timeout=300,
+        )
         captured = capsys.readouterr()
         assert str(rust_cli.resolve()) in captured.out
+
+    @patch("amplihack.auto_update.subprocess.run")
+    def test_run_update_command_timeout_returns_error(self, mock_run, tmp_path, capsys):
+        cargo_bin = tmp_path / ".cargo" / "bin"
+        cargo_bin.mkdir(parents=True)
+        rust_cli = cargo_bin / "amplihack"
+        rust_cli.write_text("")
+        mock_run.side_effect = subprocess.TimeoutExpired(cmd=["amplihack", "update"], timeout=300)
+
+        with (
+            patch("amplihack.auto_update.Path.home", return_value=tmp_path),
+            patch("amplihack.auto_update._current_cli_path", return_value=None),
+        ):
+            result = run_update_command()
+
+        assert result == 1
 
     def test_run_update_command_falls_back_to_python_upgrade(self, capsys):
         with (

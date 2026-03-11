@@ -370,6 +370,9 @@ def _find_rust_cli() -> Path | None:
     return None
 
 
+_RUST_CLI_UPDATE_TIMEOUT = 300  # seconds; generous for slow downloads
+
+
 def run_update_command() -> int:
     """Handle explicit `amplihack update` invocations.
 
@@ -379,8 +382,20 @@ def run_update_command() -> int:
     rust_cli = _find_rust_cli()
     if rust_cli is not None:
         print(f"Delegating update to Rust CLI at {rust_cli}")
-        result = subprocess.run([str(rust_cli), "update"], check=False)
-        return result.returncode
+        try:
+            result = subprocess.run(
+                [str(rust_cli), "update"],
+                check=False,
+                timeout=_RUST_CLI_UPDATE_TIMEOUT,
+            )
+            return result.returncode
+        except subprocess.TimeoutExpired:
+            logger.error(
+                "Rust CLI update timed out after %ds. Try running '%s update' directly.",
+                _RUST_CLI_UPDATE_TIMEOUT,
+                rust_cli,
+            )
+            return 1
 
     if _run_upgrade():
         print("Updated Python amplihack.")
