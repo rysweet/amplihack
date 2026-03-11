@@ -2,6 +2,11 @@
 
 Detailed reference for amplihack commands. For quick overview, see CLAUDE.md.
 
+## /dev <task>
+
+Default execution mode for all non-trivial tasks. Formerly known as `/ultrathink`
+(deprecated — redirects to `/dev`).
+
 ## Session Tree Configuration (Recursion Guard)
 
 The dev-orchestrator enforces recursion limits via a session tree to prevent
