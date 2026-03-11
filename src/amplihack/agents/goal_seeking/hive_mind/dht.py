@@ -21,6 +21,7 @@ Public API:
 from __future__ import annotations
 
 import hashlib
+import itertools
 import logging
 import threading
 import time
@@ -219,15 +220,16 @@ class ShardStore:
                 new_emb = self._embedding_generator(fact.content)
                 if new_emb is not None:
                     import numpy as np
+
                     new_emb = np.array(new_emb, dtype=float)
                     with self._lock:
                         n = self._embedding_count
                         if self._summary_embedding is None:
                             self._summary_embedding = new_emb.copy()
                         else:
-                            self._summary_embedding = (
-                                self._summary_embedding * n + new_emb
-                            ) / (n + 1)
+                            self._summary_embedding = (self._summary_embedding * n + new_emb) / (
+                                n + 1
+                            )
                         self._embedding_count += 1
             except ImportError:
                 logger.warning("numpy not available for shard embedding computation")
@@ -252,23 +254,81 @@ class ShardStore:
         """
         query_lower = query.lower()
         # Strip trailing punctuation (e.g. "?" from questions) from each word
-        q_raw_words = [w.strip("?.,!;:'\"()[]") for w in query_lower.split() if w.strip("?.,!;:'\"()[]")]
+        q_raw_words = [
+            w.strip("?.,!;:'\"()[]") for w in query_lower.split() if w.strip("?.,!;:'\"()[]")
+        ]
         stop_words = {
-            "the", "a", "an", "is", "are", "was", "were", "what", "how",
-            "does", "do", "and", "or", "of", "in", "to", "for", "with",
-            "on", "at", "by", "from", "that", "this", "it", "as", "be",
-            "been", "has", "have", "had", "will", "would", "could", "should",
-            "did", "which", "who", "when", "where", "why", "any", "some",
-            "all", "both", "each", "few", "more", "most", "other", "such",
-            "into", "through", "during", "before", "after", "than", "then",
-            "these", "those", "there", "their", "they", "its",
+            "the",
+            "a",
+            "an",
+            "is",
+            "are",
+            "was",
+            "were",
+            "what",
+            "how",
+            "does",
+            "do",
+            "and",
+            "or",
+            "of",
+            "in",
+            "to",
+            "for",
+            "with",
+            "on",
+            "at",
+            "by",
+            "from",
+            "that",
+            "this",
+            "it",
+            "as",
+            "be",
+            "been",
+            "has",
+            "have",
+            "had",
+            "will",
+            "would",
+            "could",
+            "should",
+            "did",
+            "which",
+            "who",
+            "when",
+            "where",
+            "why",
+            "any",
+            "some",
+            "all",
+            "both",
+            "each",
+            "few",
+            "more",
+            "most",
+            "other",
+            "such",
+            "into",
+            "through",
+            "during",
+            "before",
+            "after",
+            "than",
+            "then",
+            "these",
+            "those",
+            "there",
+            "their",
+            "they",
+            "its",
         }
         terms = {w for w in q_raw_words if w not in stop_words and len(w) > 1}
         if not terms:
             terms = set(q_raw_words)
 
         # Precompute bigrams from query for phrase-match bonus
-        q_bigrams = set(zip(q_raw_words, q_raw_words[1:]))
+        q_bigrams = set(itertools.pairwise(q_raw_words))
 
         scored: list[tuple[float, ShardFact]] = []
         with self._lock:
@@ -301,7 +361,7 @@ class ShardStore:
                     continue
 
                 # Bigram bonus: reward facts that share consecutive phrase matches
-                fact_bigrams = set(zip(content_words, content_words[1:]))
+                fact_bigrams = set(itertools.pairwise(content_words))
                 bigram_hits = sum(1 for bg in q_bigrams if bg in fact_bigrams)
                 bigram_bonus = bigram_hits * 0.3
 
@@ -457,11 +517,33 @@ class DHTRouter:
         q_lower = query_text.lower()
         # Strip punctuation from words so "INC-2024-001?" matches "INC-2024-001"
         q_words = [w.strip("?.,!;:'\"()[]") for w in q_lower.split() if w.strip("?.,!;:'\"()[]")]
-        q_bigrams = set(zip(q_words, q_words[1:]))
+        q_bigrams = set(itertools.pairwise(q_words))
         stop_words = {
-            "the", "a", "an", "is", "are", "was", "were", "what", "how",
-            "does", "do", "and", "or", "of", "in", "to", "for", "with",
-            "on", "at", "by", "from", "that", "this", "it",
+            "the",
+            "a",
+            "an",
+            "is",
+            "are",
+            "was",
+            "were",
+            "what",
+            "how",
+            "does",
+            "do",
+            "and",
+            "or",
+            "of",
+            "in",
+            "to",
+            "for",
+            "with",
+            "on",
+            "at",
+            "by",
+            "from",
+            "that",
+            "this",
+            "it",
         }
         search_terms = {w for w in q_words if w not in stop_words and len(w) > 1} or set(q_words)
 
@@ -471,18 +553,17 @@ class DHTRouter:
             # Specific identifiers (contain digits: IPs, CVEs, incident IDs) get 5x weight
             hits = sum(
                 (5.0 if any(ch.isdigit() for ch in t) else 1.0)
-                for t in search_terms if t in c_lower
+                for t in search_terms
+                if t in c_lower
             )
-            bigram_bonus = sum(0.3 for bg in q_bigrams if bg in set(zip(c_words, c_words[1:])))
+            bigram_bonus = sum(0.3 for bg in q_bigrams if bg in set(itertools.pairwise(c_words)))
             return hits + bigram_bonus + f.confidence * 0.01
 
         all_results.sort(key=_relevance, reverse=True)
 
         return all_results[:limit]
 
-    def _select_query_targets(
-        self, query_text: str, asking_agent: str | None
-    ) -> list[str]:
+    def _select_query_targets(self, query_text: str, asking_agent: str | None) -> list[str]:
         """Select which agents to query based on content routing.
 
         Strategy (in order of preference):
@@ -523,14 +604,17 @@ class DHTRouter:
             except ImportError:
                 logger.warning("numpy not available for semantic routing")
             except Exception:
-                logger.debug("Semantic routing failed, falling back to keyword routing", exc_info=True)
+                logger.debug(
+                    "Semantic routing failed, falling back to keyword routing", exc_info=True
+                )
         # ── Keyword routing (fallback) ───────────────────────────────────────
 
         # Small hive optimization: just scan everything
         if len(all_agents) <= 20:
             with self._lock:
                 return [
-                    aid for aid in all_agents
+                    aid
+                    for aid in all_agents
                     if aid in self._shards and self._shards[aid].fact_count > 0
                 ]
 
@@ -556,6 +640,20 @@ class DHTRouter:
 
         return targets[:max_targets]
 
+    def get_storage_targets(self, fact: ShardFact) -> list[str]:
+        """Return agent IDs that should store this fact via DHT consistent hashing.
+
+        Sets fact.ring_position as a side effect (same as store_fact).
+        Does NOT perform the actual storage — use store_on_shard / store_fact for that.
+        """
+        key = _content_key(fact.content)
+        fact.ring_position = _hash_key(key)
+        return self.ring.get_agents(key)
+
+    def select_query_targets(self, query: str, asking_agent: str | None = None) -> list[str]:
+        """Public wrapper: select which agents to fan a query out to."""
+        return self._select_query_targets(query, asking_agent)
+
     def get_all_agents(self) -> list[str]:
         """Get all agent IDs in the DHT."""
         return self.ring.agent_ids
@@ -563,9 +661,7 @@ class DHTRouter:
     def get_stats(self) -> dict[str, Any]:
         """Get DHT statistics."""
         with self._lock:
-            shard_sizes = {
-                aid: shard.fact_count for aid, shard in self._shards.items()
-            }
+            shard_sizes = {aid: shard.fact_count for aid, shard in self._shards.items()}
         total_facts = sum(shard_sizes.values())
         return {
             "agent_count": self.ring.agent_count,
