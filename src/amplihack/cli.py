@@ -169,7 +169,10 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
         return result
     except Exception as e:
         logger.debug(f"Session {session_id} ended with error: {type(e).__name__}: {e}")
-        tracker.crash_session(session_id)
+        try:
+            tracker.crash_session(session_id)
+        except Exception as crash_err:
+            logger.debug(f"crash_session also failed: {crash_err}")
         raise
     finally:
         # Restore original CWD if we staged
