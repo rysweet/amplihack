@@ -49,6 +49,7 @@ class RemoteAgentAdapter:
         self._learn_count = 0
         self._question_count = 0
         self._shutdown = threading.Event()
+        self._idle_wait_done = threading.Event()  # Signals all threads that content processing is complete
 
         # Thread safety for counters and answer dict
         self._counter_lock = threading.Lock()
@@ -124,14 +125,17 @@ class RemoteAgentAdapter:
 
     def answer_question(self, question: str) -> str:
         """Send question to one agent, wait for answer. No timeout."""
-        # First question: wait for agents to finish processing content
+        # Wait for agents to finish processing content (blocks all threads)
+        if self._learn_count > 0 and not self._idle_wait_done.is_set():
+            with self._counter_lock:
+                # Double-check under lock — only one thread does the actual wait
+                if not self._idle_wait_done.is_set():
+                    self._wait_for_agents_idle()
+                    self._idle_wait_done.set()
+
         with self._counter_lock:
-            is_first = self._question_count == 0 and self._learn_count > 0
             target_agent = self._question_count % self._agent_count
             self._question_count += 1
-
-        if is_first:
-            self._wait_for_agents_idle()
 
         from azure.servicebus import ServiceBusMessage
 
