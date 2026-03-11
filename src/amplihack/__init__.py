@@ -39,7 +39,10 @@ if version:
             try:
                 import tomli as tomllib  # type: ignore
             except ImportError:
-                print("WARNING: tomli not available, version detection from pyproject.toml disabled", file=sys.stderr)
+                print(
+                    "WARNING: tomli not available, version detection from pyproject.toml disabled",
+                    file=sys.stderr,
+                )
                 tomllib = None  # type: ignore
 
         if tomllib:
@@ -65,6 +68,7 @@ MANIFEST_JSON = os.path.join(CLAUDE_DIR, "install", "amplihack-manifest.json")
 
 # Essential directories that must be copied during installation
 ESSENTIAL_DIRS = [
+    "bin",  # Staged Rust binaries (amplihack, amplihack-hooks)
     "agents/amplihack",  # Specialized agents
     "commands/amplihack",  # Slash commands
     "tools/amplihack",  # Hooks and utilities
@@ -119,6 +123,8 @@ HOOK_CONFIGS = {
 RUST_HOOK_MAP = {
     "session_start.py": "session-start",
     "stop.py": "stop",
+    # session_stop.py is used only in Copilot launcher wrappers (stage_hooks),
+    # not in Claude Code's HOOK_CONFIGS. Included here for Copilot rust engine path.
     "session_stop.py": "session-stop",
     "pre_tool_use.py": "pre-tool-use",
     "post_tool_use.py": "post-tool-use",
@@ -164,6 +170,13 @@ def filecmp(f1, f2):
 
 def main():
     """Main CLI entry point."""
+    # Ensure dependencies are installed at CLI startup (not import time)
+    from .copilot_auto_install import ensure_copilot_sdk_installed
+    from .memory_auto_install import ensure_memory_lib_installed
+
+    ensure_memory_lib_installed()
+    ensure_copilot_sdk_installed()
+
     # Import and use the enhanced CLI
     from .cli import main as cli_main
 
@@ -205,8 +218,3 @@ __all__ = [
     # Main
     "main",
 ]
-
-# Auto-install memory library if needed (for learning agents)
-from .memory_auto_install import ensure_memory_lib_installed
-
-ensure_memory_lib_installed()

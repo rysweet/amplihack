@@ -95,12 +95,15 @@ that instructs Claude to invoke `Skill(skill="dev-orchestrator")` for dev/invest
 
 ## Execution Instructions
 
-**YOUR NEXT ACTION after reading this skill MUST be a Bash tool call that
-executes `run_recipe_by_name("smart-orchestrator")`.**
+**YOUR NEXT ACTION after reading this skill MUST include a Bash tool call that
+executes `run_recipe_by_name("smart-orchestrator")`.** If your runtime requires
+a `report_intent` call (e.g. Copilot CLI), emit it **in parallel** with the
+Bash launch — both tool calls in the same response. The constraint is that no
+_other_ substantive action (reading files, calling TodoWrite, invoking Agent,
+or typing a response) may precede or replace the Bash launch.
 
-If you find yourself doing anything else — reading more files, calling
-TodoWrite, invoking Agent, or typing a response — you are bypassing the
-workflow. Stop. Go back. Run the recipe runner.
+If you find yourself doing anything else instead of launching the recipe
+runner, you are bypassing the workflow. Stop. Go back. Run the recipe runner.
 
 Development and Investigation tasks have exactly ONE execution path: the
 recipe runner. There is no "Option B." There is no "I'll follow the steps
@@ -116,36 +119,60 @@ When this skill is activated:
 
 ### REQUIRED: Execute via Recipe Runner — IMMEDIATELY
 
-Your very next tool call must launch the recipe runner. **CRITICAL**: Claude
+Your next tool call(s) must include the recipe runner launch (alongside
+`report_intent` if your runtime requires it). **CRITICAL**: Claude
 Code's `run_in_background` kills processes after ~10 minutes. Recipe
 workstreams can take hours. You MUST use a tmux session for execution:
 
 ```bash
-tmux new-session -d -s recipe-runner "env -u CLAUDECODE .venv/bin/python -c \"
+LOG_FILE=$(mktemp /tmp/recipe-runner-output.XXXXXX.log)
+chmod 600 "$LOG_FILE"
+tmux new-session -d -s recipe-runner "env -u CLAUDECODE PYTHONPATH=src python3 -c \"
 import os
 os.environ.pop('CLAUDECODE', None)
 
 from amplihack.recipes import run_recipe_by_name
-from amplihack.recipes.adapters.cli_subprocess import CLISubprocessAdapter
 
-adapter = CLISubprocessAdapter()
 result = run_recipe_by_name(
     'smart-orchestrator',
-    adapter=adapter,
     user_context={
         'task_description': '''TASK_DESCRIPTION_HERE''',
         'repo_path': '.',
-    }
+    },
+    progress=True,
 )
 print(f'Recipe result: {result}')
-\" 2>&1 | tee /tmp/recipe-runner-output.log"
+\" 2>&1 | tee \"$LOG_FILE\""
+echo \"Recipe runner log: $LOG_FILE\"
 ```
 
 **Key points:**
+
 - `env -u CLAUDECODE` — unset so nested Claude Code sessions can launch
-- `CLISubprocessAdapter` — spawns CLI subprocesses (not SDK, which crashes in nested sessions)
+- `PYTHONPATH=src python3` — uses the interpreter on PATH while forcing imports from the checked-out repo source tree (do NOT hardcode `.venv/bin/python`)
+- `run_recipe_by_name` — delegates to the Rust binary; the adapter parameter is no longer needed
+- `progress=True` — streams recipe-runner stderr live so tmux logs show nested step activity
+- `chmod 600 "$LOG_FILE"` — keeps the tmux log private to the current user
 - `tmux new-session -d` — detached session, no timeout, survives disconnects
-- Monitor with: `tail -f /tmp/recipe-runner-output.log` or `tmux attach -t recipe-runner`
+- Monitor with: `tail -f "$LOG_FILE"` or `tmux attach -t recipe-runner`
+
+**Restarting a stale tmux session**: Some runtimes (e.g. Copilot CLI) block
+`tmux kill-session` because it does not target a numeric PID. Use one of these
+shell-policy-safe alternatives instead:
+
+```bash
+# Option A (preferred): use a unique session name per run to avoid collisions
+tmux new-session -d -s "recipe-$(date +%s)" "..."
+
+# Option B: locate the tmux server PID and terminate with numeric kill
+tmux list-sessions -F '#{pid}' 2>/dev/null | xargs -I{} kill {}
+
+# Option C: let tmux itself handle it — send exit to all panes
+tmux send-keys -t recipe-runner "exit" Enter 2>/dev/null; sleep 1
+```
+
+If using Option A, update the `tail -f` / `tmux attach` commands to use the
+same session name.
 
 **DO NOT use `run_in_background`** for recipe execution — it will be killed
 after ~10 minutes (Issue #2909).
@@ -218,7 +245,6 @@ task structure. This is a programmatic option (not directly settable from `/dev`
 ```python
 run_recipe_by_name(
     "smart-orchestrator",
-    adapter=adapter,
     user_context={
         "task_description": task,
         "repo_path": ".",

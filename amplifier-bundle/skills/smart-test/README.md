@@ -94,7 +94,7 @@ User: Rebuild test mapping cache
 ## Related Skills
 
 - `test-gap-analyzer`: Find untested code
-- `outside-in-testing`: Create E2E tests
+- `qa-team`: Create E2E and parity tests (`outside-in-testing` alias supported)
 - `pre-commit-diagnostic`: Fix hook failures
 
 ---

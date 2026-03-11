@@ -28,7 +28,7 @@ invokes:
   - type: skill
     name: test-gap-analyzer
   - type: skill
-    name: outside-in-testing
+    name: qa-team
   - type: skill
     name: pre-commit-diagnostic
   - type: subagent
@@ -360,7 +360,7 @@ Works with existing pytest markers from pyproject.toml:
 ## Complementary Skills
 
 - **test-gap-analyzer**: Identifies missing tests
-- **outside-in-testing**: Creates E2E test scenarios
+- **qa-team**: Creates E2E and parity test scenarios (`outside-in-testing` alias supported)
 - **tester agent**: Writes new tests for gaps
 - **pre-commit-diagnostic**: Fixes pre-commit failures
 
