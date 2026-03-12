@@ -9,30 +9,36 @@ All Event Hubs messages are uniform *input* fed to agent.process(input).
 The agent classifies internally (store vs answer) and writes answers to stdout.
 Container Apps streams stdout to Log Analytics — the eval reads from there.
 
-v8 change: full migration to Azure Event Hubs — Service Bus removed entirely.
-EventHubsInputSource replaces ServiceBusInputSource for LEARN_CONTENT/INPUT
-messages.  EH producer replaces Service Bus for eval answer publishing.
+Transport: Azure Event Hubs (CBS-free AMQP — works reliably in Container Apps).
+  hive-events-{hiveName}     — LEARN_CONTENT, INPUT, FEED_COMPLETE, AGENT_READY
+  hive-shards-{hiveName}     — SHARD_QUERY, SHARD_RESPONSE (cross-shard DHT)
+  eval-responses-{hiveName}  — EVAL_ANSWER (agent answers to eval harness)
 
-Cross-shard queries use event-driven SHARD_QUERY/SHARD_RESPONSE on the
-``hive-shards-<hiveName>`` Event Hub.  A background _shard_query_listener
-thread listens for incoming SHARD_QUERY events and responds immediately with
-SHARD_RESPONSE events — no sleep or poll intervals.
+Each agent has a dedicated consumer group (cg-{agent_name}) for per-agent delivery.
+Client-side filtering by target_agent ensures messages reach the right agent.
+
+v4 change: the OODA loop is now *event-driven* via EventHubsInputSource.
+v6 change (issue #3034): proper DHT-based sharding via DistributedHiveGraph.
+v7 change: dependency injection for shard transport.
+v8 change: ALL transport moved from Azure Service Bus to Azure Event Hubs.
+  Service Bus CBS auth fails in Container Apps — EH works perfectly.
 
 Environment variables:
     AMPLIHACK_AGENT_NAME           -- unique agent identifier (required)
     AMPLIHACK_AGENT_PROMPT         -- agent system prompt
     AMPLIHACK_AGENT_TOPOLOGY       -- topology label (e.g. "hive", "ring")
     AMPLIHACK_MEMORY_BACKEND       -- "cognitive" | "hierarchical" (default: cognitive)
-    AMPLIHACK_MEMORY_TRANSPORT     -- "local" | "azure_event_hubs" (default: azure_event_hubs)
+    AMPLIHACK_MEMORY_TRANSPORT     -- "local" | "azure_event_hubs" (default: local)
+    AMPLIHACK_MEMORY_CONNECTION_STRING -- (unused for EH transport; kept for compat)
     AMPLIHACK_MEMORY_STORAGE_PATH  -- storage path for memory data
     AMPLIHACK_MODEL                -- LLM model (e.g. "claude-sonnet-4-6")
     ANTHROPIC_API_KEY              -- required for LLM operations
     AMPLIHACK_LOOP_INTERVAL        -- poll interval seconds (legacy path only, default 30)
-    AMPLIHACK_EH_CONNECTION_STRING -- Event Hubs namespace connection string (required)
-    AMPLIHACK_EH_NAME              -- Event Hub name for shard queries (default: hive-shards-<hiveName>)
+    AMPLIHACK_EH_CONNECTION_STRING -- Event Hubs namespace connection string (required for EH)
+    AMPLIHACK_EH_NAME              -- shard Event Hub name (default: hive-shards-{hiveName})
+    AMPLIHACK_EH_INPUT_HUB         -- input Event Hub name (default: hive-events-{hiveName})
+    AMPLIHACK_EVAL_RESPONSE_HUB    -- eval response Event Hub name (default: eval-responses-{hiveName})
     AMPLIHACK_HIVE_NAME            -- hive deployment name (for hub naming)
-    AMPLIHACK_EH_EVENTS_HUB        -- Event Hub name for input messages (default: hive-events-<hiveName>)
-    AMPLIHACK_EH_RESPONSES_HUB     -- Event Hub name for eval responses (default: eval-responses-<hiveName>)
 """
 
 from __future__ import annotations
@@ -50,11 +56,13 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
 )
+# Suppress verbose azure SDK AMQP logs — they flood stdout and hide agent output
 logging.getLogger("azure.eventhub").setLevel(logging.WARNING)
 logging.getLogger("azure.eventhub._pyamqp").setLevel(logging.WARNING)
 logging.getLogger("uamqp").setLevel(logging.WARNING)
 logger = logging.getLogger("agent_entrypoint")
 
+# Early diagnostic: confirm entrypoint started (before any connections)
 print(f"[agent_entrypoint] Python {sys.version}", flush=True)
 print(
     f"[agent_entrypoint] AGENT_NAME={os.environ.get('AMPLIHACK_AGENT_NAME', 'UNSET')}", flush=True
@@ -73,7 +81,22 @@ def _shard_query_listener(
     shutdown_event: threading.Event,
     agent: Any = None,
 ) -> None:
-    """Background thread: handle SHARD_QUERY and SHARD_RESPONSE events."""
+    """Background thread: handle SHARD_QUERY and SHARD_RESPONSE events.
+
+    Listens on the shard event bus for cross-shard queries.  When SHARD_QUERY
+    arrives, delegates to transport.handle_shard_query(event, agent=agent)
+    which searches via CognitiveAdapter if agent is provided, otherwise falls
+    back to direct ShardStore.search().  When SHARD_RESPONSE arrives,
+    delegates to transport.handle_shard_response() which wakes the pending
+    query_shard() call via threading.Event.
+
+    Polling strategy:
+    - EventHubsShardTransport: ``shard_bus`` is None; uses
+      ``transport.poll(agent_id)`` which blocks on the internal mailbox_ready
+      Event — no artificial sleep.
+    - ServiceBusShardTransport (legacy): ``shard_bus.poll(agent_id)`` blocks on
+      receive_messages(max_wait_time=5) — no artificial sleep.
+    """
     logger.info("Agent %s shard query listener started", agent_id)
     while not shutdown_event.is_set():
         try:
@@ -98,48 +121,87 @@ def _shard_query_listener(
 def _init_dht_hive(
     agent_name: str,
     agent_count: int,
+    connection_string: str,
     hive_name: str,
-    eh_connection_string: str,
-    eh_name: str,
+    eh_connection_string: str = "",
+    eh_name: str = "",
 ) -> tuple[object, object | None, object] | None:
-    """Initialize the DHT shard store for this agent using EH transport.
+    """Initialize the DHT shard store for this agent using DI pattern.
 
-    Uses EventHubsShardTransport exclusively.
-    Returns (dht_graph, None, eh_transport) or None if init fails.
+    Prefers EventHubsShardTransport when ``eh_connection_string`` and
+    ``eh_name`` are provided (Azure Event Hubs — reliable in Container Apps).
+    Falls back to ServiceBusShardTransport using the shard topic when
+    Event Hubs env vars are absent.
+
+    Registers ALL agents on the DHT ring so the router can route queries to
+    remote shards.  Only the local agent has a real ShardStore; peer agents
+    are ring positions that trigger SHARD_QUERY events.
+
+    Returns (dht_graph, shard_bus_or_None, transport) or None if init fails.
+    For EventHubsShardTransport, shard_bus is None (transport handles receiving).
     """
-    if not eh_connection_string or not eh_name:
-        logger.warning(
-            "AMPLIHACK_EH_CONNECTION_STRING or AMPLIHACK_EH_NAME not set — "
-            "running without cross-agent knowledge sharing"
-        )
-        return None
-
     try:
         from amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph import (
             DistributedHiveGraph,
-            EventHubsShardTransport,
         )
 
-        eh_transport = EventHubsShardTransport(
-            connection_string=eh_connection_string,
-            eventhub_name=eh_name,
-            agent_id=agent_name,
-            timeout=10.0,
+        if eh_connection_string and eh_name:
+            # ---- Event Hubs transport (preferred) ----
+            from amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph import (
+                EventHubsShardTransport,
+            )
+
+            eh_transport = EventHubsShardTransport(
+                connection_string=eh_connection_string,
+                eventhub_name=eh_name,
+                agent_id=agent_name,
+                timeout=10.0,
+            )
+            dht_graph = DistributedHiveGraph(
+                hive_id=f"shard-{agent_name}",
+                enable_gossip=False,
+                transport=eh_transport,
+            )
+            for i in range(agent_count):
+                dht_graph.register_agent(f"agent-{i}")
+
+            logger.info(
+                "DHT shard initialized for agent %s via Event Hubs '%s'",
+                agent_name,
+                eh_name,
+            )
+            return dht_graph, None, eh_transport
+
+        # ---- Service Bus transport (legacy fallback) ----
+        from amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph import (
+            ServiceBusShardTransport,
+        )
+        from amplihack.agents.goal_seeking.hive_mind.event_bus import (
+            AzureServiceBusEventBus,
+        )
+
+        shard_topic = f"hive-shards-{hive_name}"
+        shard_bus = AzureServiceBusEventBus(connection_string, topic_name=shard_topic)
+        shard_bus.subscribe(agent_name)
+
+        sb_transport = ServiceBusShardTransport(
+            event_bus=shard_bus, agent_id=agent_name, timeout=10.0
         )
         dht_graph = DistributedHiveGraph(
             hive_id=f"shard-{agent_name}",
             enable_gossip=False,
-            transport=eh_transport,
+            transport=sb_transport,
         )
+
         for i in range(agent_count):
             dht_graph.register_agent(f"agent-{i}")
 
         logger.info(
-            "DHT shard initialized for agent %s via Event Hubs '%s'",
+            "DHT shard initialized for agent %s on topic %s (Service Bus transport)",
             agent_name,
-            eh_name,
+            shard_topic,
         )
-        return dht_graph, None, eh_transport
+        return dht_graph, shard_bus, sb_transport
 
     except Exception:
         logger.warning(
@@ -164,7 +226,8 @@ def main() -> None:
 
     agent_prompt = os.environ.get("AMPLIHACK_AGENT_PROMPT", f"You are agent {agent_name}.")
     topology = os.environ.get("AMPLIHACK_AGENT_TOPOLOGY", "hive")
-    transport = os.environ.get("AMPLIHACK_MEMORY_TRANSPORT", "azure_event_hubs")
+    transport = os.environ.get("AMPLIHACK_MEMORY_TRANSPORT", "local")
+    connection_string = os.environ.get("AMPLIHACK_MEMORY_CONNECTION_STRING", "")
     storage_path = os.environ.get(
         "AMPLIHACK_MEMORY_STORAGE_PATH",
         f"/data/{agent_name}",
@@ -172,10 +235,11 @@ def main() -> None:
     model = os.environ.get("AMPLIHACK_MODEL") or os.environ.get("EVAL_MODEL") or None
     hive_name = os.environ.get("AMPLIHACK_HIVE_NAME", "default")
 
+    # Event Hubs connection string for all transport (input + shard + answers)
     eh_connection_string = os.environ.get("AMPLIHACK_EH_CONNECTION_STRING", "")
     eh_name = os.environ.get("AMPLIHACK_EH_NAME", f"hive-shards-{hive_name}")
-    eh_events_hub = os.environ.get("AMPLIHACK_EH_EVENTS_HUB", f"hive-events-{hive_name}")
-    eh_responses_hub = os.environ.get("AMPLIHACK_EH_RESPONSES_HUB", f"eval-responses-{hive_name}")
+    eh_input_hub = os.environ.get("AMPLIHACK_EH_INPUT_HUB", f"hive-events-{hive_name}")
+    eh_eval_hub = os.environ.get("AMPLIHACK_EVAL_RESPONSE_HUB", f"eval-responses-{hive_name}")
 
     logger.info(
         "Starting agent: name=%s topology=%s transport=%s",
@@ -186,6 +250,8 @@ def main() -> None:
 
     # ------------------------------------------------------------------
     # Initialize DHT shard store for cross-agent knowledge sharing.
+    # DI pattern: EventHubsShardTransport injected into DistributedHiveGraph.
+    # The graph is passed directly as hive_store — no wrapper classes.
     # ------------------------------------------------------------------
     hive_store: Any | None = None
     hive_bus: Any | None = None
@@ -196,14 +262,25 @@ def main() -> None:
         result = _init_dht_hive(
             agent_name,
             agent_count,
+            connection_string,
             hive_name,
             eh_connection_string=eh_connection_string,
             eh_name=eh_name,
         )
         if result:
             hive_store, hive_bus, shard_transport = result
+    elif transport == "azure_service_bus" and connection_string:
+        agent_count = int(os.environ.get("AMPLIHACK_AGENT_COUNT", "5"))
+        result = _init_dht_hive(
+            agent_name,
+            agent_count,
+            connection_string,
+            hive_name,
+        )
+        if result:
+            hive_store, hive_bus, shard_transport = result
 
-    # Build GoalSeekingAgent
+    # Build GoalSeekingAgent — the single agent type with a pure OODA loop.
     from pathlib import Path
 
     from amplihack.agents.goal_seeking.goal_seeking_agent import GoalSeekingAgent
@@ -227,7 +304,7 @@ def main() -> None:
         "dht-sharded" if hive_store else "none",
     )
 
-    # Build Memory facade — retained for event transport only.
+    # Build Memory facade — retained for event transport only (receive_events).
     try:
         from amplihack.memory.facade import Memory
 
@@ -236,27 +313,33 @@ def main() -> None:
             topology="distributed",
             backend="cognitive",
             memory_transport=transport,
-            memory_connection_string=eh_connection_string,
+            memory_connection_string=connection_string,
             storage_path=storage_path,
         )
     except Exception:
         logger.exception("Failed to initialize Memory transport for agent %s", agent_name)
         sys.exit(1)
 
+    # Share Kuzu storage: wire Memory facade's adapter to GoalSeekingAgent's
+    # internal MemoryRetriever so both read/write the same Kuzu store.
     memory._adapter = agent.memory
 
+    # Store initial agent identity via OODA process()
     agent.process(f"Agent identity: {agent_name}. Role: {agent_prompt}")
 
-    answer_publisher = AnswerPublisher(agent_name, eh_connection_string, eh_responses_hub)
+    # Set up answer publisher for eval answer correlation via on_answer callback.
+    answer_publisher = AnswerPublisher(agent_name, eh_connection_string, eh_eval_hub)
     agent.on_answer = answer_publisher.publish_answer
 
     logger.info("Agent %s memory initialized and entering OODA loop", agent_name)
 
+    # Signal readiness
     try:
         open("/tmp/.agent_ready", "w").close()
     except OSError:
         pass
 
+    # Handle graceful shutdown
     shutdown_event = threading.Event()
 
     def _handle_signal(signum, frame):
@@ -267,7 +350,7 @@ def main() -> None:
     signal.signal(signal.SIGINT, _handle_signal)
 
     # ------------------------------------------------------------------
-    # Start background shard query listener
+    # Start background shard query listener for cross-shard queries.
     # ------------------------------------------------------------------
     shard_query_thread = None
     if shard_transport and (hive_bus is not None or hasattr(shard_transport, "poll")):
@@ -281,12 +364,15 @@ def main() -> None:
         logger.info("Agent %s started shard query listener for cross-shard queries", agent_name)
 
     # ------------------------------------------------------------------
-    # Event-driven OODA loop via EventHubsInputSource
+    # Event-driven OODA loop: use EventHubsInputSource when EH vars are set.
+    # Falls back to the legacy timer-driven path for local transport.
     # ------------------------------------------------------------------
 
     if eh_connection_string:
         logger.info(
-            "Agent %s using event-driven EventHubsInputSource (no polling sleep)",
+            "Agent %s using event-driven EventHubsInputSource (hub=%s, cg=cg-%s)",
+            agent_name,
+            eh_input_hub,
             agent_name,
         )
         from amplihack.agents.goal_seeking.input_source import EventHubsInputSource
@@ -294,19 +380,24 @@ def main() -> None:
         eh_source = EventHubsInputSource(
             connection_string=eh_connection_string,
             agent_name=agent_name,
-            eventhub_name=eh_events_hub,
+            eventhub_name=eh_input_hub,
             shutdown_event=shutdown_event,
         )
+        # Wrap the input source to set answer correlation context per message.
         input_source = _CorrelatingInputSource(eh_source, answer_publisher)
         try:
-            agent.run_ooda_loop(input_source)
+            # Manual OODA loop to handle FEED_COMPLETE sentinel specially
+            _run_event_driven_loop(
+                agent_name, agent, input_source, answer_publisher, memory, shutdown_event
+            )
         finally:
             eh_source.close()
     else:
-        # Legacy timer-driven path — for local transport only.
+        # Legacy timer-driven path — preserved for local transport / v3 compat.
         logger.info(
-            "Agent %s using legacy timer-driven OODA loop (no EH vars set)",
+            "Agent %s using legacy timer-driven OODA loop (transport=%s)",
             agent_name,
+            transport,
         )
         loop_interval = int(os.environ.get("AMPLIHACK_LOOP_INTERVAL", "30"))
         loop_count = 0
@@ -354,8 +445,57 @@ def main() -> None:
         shard_query_thread.join(timeout=5.0)
 
 
+def _run_event_driven_loop(
+    agent_name: str,
+    agent: Any,
+    input_source: Any,
+    answer_publisher: Any,
+    memory: Any,
+    shutdown_event: threading.Event,
+) -> None:
+    """Event-driven OODA loop using EventHubsInputSource.
+
+    Processes each message from the input source. Handles FEED_COMPLETE
+    by publishing AGENT_READY to the eval-responses hub and continuing.
+    Returns when input_source.next() returns None (shutdown).
+    """
+
+    while not shutdown_event.is_set():
+        text = input_source.next()
+        if text is None:
+            logger.info("Agent %s input source exhausted, exiting OODA loop", agent_name)
+            break
+
+        if text.startswith("__FEED_COMPLETE__:"):
+            total_turns = text.split(":", 1)[1]
+            logger.info(
+                "Agent %s received FEED_COMPLETE (total_turns=%s). Publishing AGENT_READY.",
+                agent_name,
+                total_turns,
+            )
+            answer_publisher.publish_agent_ready(total_turns)
+            continue
+
+        logger.info("Agent %s processing input via OODA (len=%d)", agent_name, len(text))
+        try:
+            agent.process(text)
+        except Exception:
+            logger.exception("Error in OODA process for agent %s", agent_name)
+
+
 def _handle_event(agent_name: str, event: Any, memory: Any, agent: Any) -> None:
-    """Dispatch an incoming event to the GoalSeekingAgent OODA loop."""
+    """Dispatch an incoming event to the GoalSeekingAgent OODA loop.
+
+    All event types are normalised to a plain input string and fed to
+    ``agent.process()``.  The agent classifies internally (store vs answer).
+
+    Special lifecycle events (FEED_COMPLETE, AGENT_READY, QUERY_RESPONSE)
+    are handled separately so they do not pollute the cognitive store.
+
+    Args:
+        agent: GoalSeekingAgent instance.
+        memory: Memory facade used for transport only (AGENT_READY publish).
+    """
     event_type = getattr(event, "event_type", None) or (
         event.get("event_type") if isinstance(event, dict) else None
     )
@@ -427,9 +567,16 @@ def _handle_event(agent_name: str, event: Any, memory: Any, agent: Any) -> None:
 
 
 class _CorrelatingInputSource:
-    """InputSource wrapper that sets AnswerPublisher context per message."""
+    """InputSource wrapper that sets AnswerPublisher context per message.
 
-    def __init__(self, source: Any, publisher: AnswerPublisher) -> None:
+    Delegates to the real EventHubsInputSource. After each next() call,
+    reads the event metadata (event_id) and sets it on the AnswerPublisher
+    so the agent's ANSWER stdout line gets correlated.
+
+    The agent's OODA loop sees this as a normal InputSource — same interface.
+    """
+
+    def __init__(self, source: Any, publisher: Any) -> None:
         self._source = source
         self._publisher = publisher
 
@@ -454,31 +601,35 @@ class _CorrelatingInputSource:
 class AnswerPublisher:
     """Publishes agent answers to an Event Hubs response hub for eval correlation.
 
-    Connected to GoalSeekingAgent via the on_answer callback. When the agent
-    produces an answer, it calls on_answer(agent_name, answer). This publisher
-    wraps the answer with the current event_id and publishes to eval-responses hub.
+    Connected to the GoalSeekingAgent via the on_answer callback. When the agent
+    produces an answer in act(), it calls on_answer(agent_name, answer). This
+    publisher wraps the answer with the current event_id and publishes to the
+    eval-responses Event Hub.
+
+    Also publishes AGENT_READY events when FEED_COMPLETE is received, so the
+    eval harness knows when all agents are idle.
+
+    The current event_id is set by _CorrelatingInputSource before each process() call.
     """
 
-    def __init__(self, agent_name: str, eh_connection_string: str, responses_hub: str):
+    def __init__(self, agent_name: str, eh_connection_string: str, eval_hub_name: str):
         self._agent_name = agent_name
         self._current_event_id: str = ""
         self._current_question_id: str = ""
         self._eh_connection_string = eh_connection_string
-        self._responses_hub = responses_hub
+        self._eval_hub_name = eval_hub_name
 
-    def set_context(self, event_id: str, question_id: str = "") -> None:
-        self._current_event_id = event_id
-        self._current_question_id = question_id
+        if eh_connection_string:
+            logger.info("AnswerPublisher initialized for EH hub %s", eval_hub_name)
+        else:
+            logger.warning(
+                "AnswerPublisher: no EH connection string — answers will not be published"
+            )
 
-    def clear_context(self) -> None:
-        self._current_event_id = ""
-        self._current_question_id = ""
-
-    def publish_answer(self, agent_name: str, answer: str) -> None:
-        """Callback for GoalSeekingAgent.on_answer — publish correlated answer."""
-        if not self._current_event_id or not self._eh_connection_string:
+    def _publish_to_eh(self, payload: dict) -> None:
+        """Publish a JSON payload to the eval-responses Event Hub."""
+        if not self._eh_connection_string:
             return
-
         try:
             from azure.eventhub import (  # type: ignore[import-unresolved]
                 EventData,
@@ -486,28 +637,61 @@ class AnswerPublisher:
             )
 
             producer = EventHubProducerClient.from_connection_string(
-                self._eh_connection_string,
-                eventhub_name=self._responses_hub,
-            )
-            payload = json.dumps(
-                {
-                    "event_type": "EVAL_ANSWER",
-                    "event_id": self._current_event_id,
-                    "question_id": self._current_question_id,
-                    "agent_id": agent_name,
-                    "answer": answer,
-                }
+                self._eh_connection_string, eventhub_name=self._eval_hub_name
             )
             with producer:
-                batch = producer.create_batch(partition_key=agent_name)
-                batch.add(EventData(payload))
+                batch = producer.create_batch(partition_key=self._agent_name)
+                batch.add(EventData(json.dumps(payload)))
                 producer.send_batch(batch)
-            logger.info("AnswerPublisher: published answer for event_id=%s", self._current_event_id)
         except Exception as e:
-            logger.warning("AnswerPublisher: failed to publish: %s", e)
+            logger.warning("AnswerPublisher: failed to publish to EH: %s", e)
+
+    def set_context(self, event_id: str, question_id: str = "") -> None:
+        """Set the current event_id for answer correlation."""
+        self._current_event_id = event_id
+        self._current_question_id = question_id
+
+    def clear_context(self) -> None:
+        """Clear correlation context after processing completes."""
+        self._current_event_id = ""
+        self._current_question_id = ""
+
+    def publish_answer(self, agent_name: str, answer: str) -> None:
+        """Callback for GoalSeekingAgent.on_answer — publish correlated answer."""
+        if not self._current_event_id:
+            return
+
+        self._publish_to_eh(
+            {
+                "event_type": "EVAL_ANSWER",
+                "event_id": self._current_event_id,
+                "question_id": self._current_question_id,
+                "agent_id": agent_name,
+                "answer": answer,
+            }
+        )
+        logger.info("AnswerPublisher: published answer for event_id=%s", self._current_event_id)
+
+    def publish_agent_ready(self, total_turns: str) -> None:
+        """Publish AGENT_READY event to eval-responses hub.
+
+        Called when FEED_COMPLETE is received so the eval harness knows this
+        agent has finished processing all content.
+        """
+        import uuid as _uuid
+
+        self._publish_to_eh(
+            {
+                "event_type": "AGENT_READY",
+                "event_id": _uuid.uuid4().hex,
+                "agent_id": self._agent_name,
+                "total_turns": total_turns,
+            }
+        )
+        logger.info("AnswerPublisher: published AGENT_READY for agent=%s", self._agent_name)
 
     def close(self) -> None:
-        pass  # EH producer is created per-publish
+        """No persistent connection to close — producers are created per-send."""
 
 
 def _extract_input_text(event_type: str | None, payload: dict | None, raw_event: Any) -> str:
@@ -534,7 +718,10 @@ def _ooda_tick(
     tick: int,
     agent: Any,
 ) -> None:
-    """Single OODA loop tick — poll for incoming events and process them."""
+    """Single OODA loop tick — poll for incoming events and process them.
+
+    Used by the legacy timer-driven path (local transport / non-EH).
+    """
     try:
         events = memory.receive_events() if hasattr(memory, "receive_events") else []
         for event in events:
