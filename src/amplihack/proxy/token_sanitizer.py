@@ -39,8 +39,10 @@ class TokenSanitizer:
     # Order matters! More specific patterns first, then general patterns
     PATTERNS: ClassVar[list[tuple[str, str]]] = [
         # OpenAI API keys (6+ chars for flexibility in testing, real keys are 20+)
-        (r"sk-[a-zA-Z0-9_-]{6,}", "sk-***"),
+        # IMPORTANT: sk-proj- MUST come before sk- to prevent the shorter pattern
+        # from matching the prefix of a project key before the longer pattern can.
         (r"sk-proj-[a-zA-Z0-9_-]{6,}", "sk-proj-***"),
+        (r"sk-[a-zA-Z0-9_-]{6,}", "sk-***"),
         # GitHub tokens (made more flexible with 20+ characters instead of exact 36)
         (r"ghp_[a-zA-Z0-9_-]{20,}", "ghp_***"),  # Personal access token
         (r"gho_[a-zA-Z0-9_-]{20,}", "gho_***"),  # OAuth token
