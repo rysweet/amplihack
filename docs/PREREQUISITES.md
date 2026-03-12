@@ -14,6 +14,7 @@ The amplihack framework requires the following tools. Each entry explains **what
 | **git**     | 2.0+           | Version control               | Branch management, PRs, and workflow automation       |
 | **claude**  | latest         | Claude Code CLI               | Core AI coding assistant that amplihack extends       |
 | **cargo**   | 1.70+          | Rust package manager          | Installs the Rust recipe runner for fast recipe execution. Install via [rustup.rs](https://rustup.rs/) |
+| **tmux**    | 3.0+           | Terminal multiplexer          | **Required** for dev-orchestrator recipe runner: manages parallel workstream sessions. Without tmux, multi-workstream workflow execution fails. |
 
 ## Quick Check
 
@@ -21,7 +22,7 @@ Before installing amplihack, verify your prerequisites with this script:
 
 ```bash
 # Copy-paste this into your terminal — no installation required
-node --version && npm --version && uv --version && git --version && cargo --version && echo "All prerequisites OK"
+node --version && npm --version && uv --version && git --version && cargo --version && tmux -V && echo "All prerequisites OK"
 ```
 
 After installing amplihack, running `amplihack` will also check for missing tools and display installation instructions.
@@ -52,6 +53,9 @@ brew install git
 
 # Rust/cargo (for recipe runner)
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# tmux (required for dev-orchestrator parallel workstreams)
+brew install tmux
 ```
 
 #### Verify Installation
@@ -62,6 +66,7 @@ npm --version    # Should show 9.x or higher
 uv --version     # Should show version info
 git --version    # Should show 2.x or higher
 cargo --version  # Should show 1.70 or higher
+tmux -V          # Should show tmux 3.x or higher
 ```
 
 ---
@@ -85,6 +90,9 @@ sudo apt install git
 
 # Rust/cargo (for recipe runner)
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# tmux (required for dev-orchestrator parallel workstreams)
+sudo apt install tmux
 ```
 
 #### Fedora/RHEL/CentOS
@@ -101,6 +109,9 @@ sudo dnf install git
 
 # Rust/cargo (for recipe runner)
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# tmux (required for dev-orchestrator parallel workstreams)
+sudo dnf install tmux
 ```
 
 #### Arch Linux
@@ -117,6 +128,9 @@ sudo pacman -S git
 
 # Rust/cargo (for recipe runner)
 sudo pacman -S rust
+
+# tmux (required for dev-orchestrator parallel workstreams)
+sudo pacman -S tmux
 ```
 
 #### Verify Installation
@@ -127,6 +141,7 @@ npm --version    # Should show 9.x or higher
 uv --version     # Should show version info
 git --version    # Should show 2.x or higher
 cargo --version  # Should show 1.70 or higher
+tmux -V          # Should show tmux 3.x or higher
 ```
 
 ---
@@ -149,6 +164,9 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # git
 sudo apt install git
+
+# tmux (required for dev-orchestrator parallel workstreams)
+sudo apt install tmux
 ```
 
 #### After Installation
@@ -161,6 +179,7 @@ node --version
 npm --version
 uv --version
 git --version
+tmux -V
 ```
 
 ---
@@ -295,6 +314,24 @@ export UV_CACHE_DIR=/path/to/cache
 # Optional: Use specific Python version
 uv python install 3.12
 ```
+
+### tmux
+
+**Purpose:** Terminal multiplexer for managing multiple terminal sessions
+
+**Official Documentation:** https://github.com/tmux/tmux/wiki
+
+**Minimum Version:** 3.0
+
+**Why amplihack needs it:** The `dev-orchestrator` recipe runner uses tmux to manage parallel workstream sessions. When a task is decomposed into multiple independent workstreams (e.g., separate agents for different file sets), each workstream runs in its own tmux session. Without tmux, multi-workstream workflow execution fails with a missing-dependency error.
+
+**Verification:**
+
+```bash
+tmux -V  # Should show tmux 3.x or higher
+```
+
+---
 
 ### git
 
@@ -546,6 +583,13 @@ else
     echo "✗ claude: Not found"
 fi
 
+# Check tmux
+if command -v tmux &> /dev/null; then
+    echo "✓ tmux: $(tmux -V)"
+else
+    echo "✗ tmux: Not found (required for dev-orchestrator parallel workstreams)"
+fi
+
 echo
 echo "For installation instructions, see docs/PREREQUISITES.md"
 ```
@@ -577,4 +621,4 @@ If you encounter issues not covered in this guide:
 
 ---
 
-**Last Updated:** 2025-10-01
+**Last Updated:** 2026-03-12
