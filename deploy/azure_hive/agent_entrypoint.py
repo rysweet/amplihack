@@ -94,8 +94,6 @@ def _shard_query_listener(
     - EventHubsShardTransport: ``shard_bus`` is None; uses
       ``transport.poll(agent_id)`` which blocks on the internal mailbox_ready
       Event — no artificial sleep.
-    - ServiceBusShardTransport (legacy): ``shard_bus.poll(agent_id)`` blocks on
-      receive_messages(max_wait_time=5) — no artificial sleep.
     """
     logger.info("Agent %s shard query listener started", agent_id)
     while not shutdown_event.is_set():
@@ -128,80 +126,51 @@ def _init_dht_hive(
 ) -> tuple[object, object | None, object] | None:
     """Initialize the DHT shard store for this agent using DI pattern.
 
-    Prefers EventHubsShardTransport when ``eh_connection_string`` and
-    ``eh_name`` are provided (Azure Event Hubs — reliable in Container Apps).
-    Falls back to ServiceBusShardTransport using the shard topic when
-    Event Hubs env vars are absent.
+    Uses EventHubsShardTransport when ``eh_connection_string`` and
+    ``eh_name`` are provided (Azure Event Hubs — CBS-free, reliable in
+    Container Apps).  Returns None if Event Hubs env vars are absent.
 
     Registers ALL agents on the DHT ring so the router can route queries to
     remote shards.  Only the local agent has a real ShardStore; peer agents
     are ring positions that trigger SHARD_QUERY events.
 
-    Returns (dht_graph, shard_bus_or_None, transport) or None if init fails.
-    For EventHubsShardTransport, shard_bus is None (transport handles receiving).
+    Returns (dht_graph, None, transport) or None if init fails.
+    shard_bus is always None — EventHubsShardTransport handles receiving.
     """
     try:
         from amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph import (
             DistributedHiveGraph,
+            EventHubsShardTransport,
         )
 
-        if eh_connection_string and eh_name:
-            # ---- Event Hubs transport (preferred) ----
-            from amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph import (
-                EventHubsShardTransport,
-            )
-
-            eh_transport = EventHubsShardTransport(
-                connection_string=eh_connection_string,
-                eventhub_name=eh_name,
-                agent_id=agent_name,
-                timeout=10.0,
-            )
-            dht_graph = DistributedHiveGraph(
-                hive_id=f"shard-{agent_name}",
-                enable_gossip=False,
-                transport=eh_transport,
-            )
-            for i in range(agent_count):
-                dht_graph.register_agent(f"agent-{i}")
-
-            logger.info(
-                "DHT shard initialized for agent %s via Event Hubs '%s'",
+        if not (eh_connection_string and eh_name):
+            logger.warning(
+                "AMPLIHACK_EH_CONNECTION_STRING / AMPLIHACK_EH_SHARDS_HUB not set — "
+                "DHT shard disabled for agent %s",
                 agent_name,
-                eh_name,
             )
-            return dht_graph, None, eh_transport
+            return None
 
-        # ---- Service Bus transport (legacy fallback) ----
-        from amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph import (
-            ServiceBusShardTransport,
-        )
-        from amplihack.agents.goal_seeking.hive_mind.event_bus import (
-            AzureServiceBusEventBus,
-        )
-
-        shard_topic = f"hive-shards-{hive_name}"
-        shard_bus = AzureServiceBusEventBus(connection_string, topic_name=shard_topic)
-        shard_bus.subscribe(agent_name)
-
-        sb_transport = ServiceBusShardTransport(
-            event_bus=shard_bus, agent_id=agent_name, timeout=10.0
+        eh_transport = EventHubsShardTransport(
+            connection_string=eh_connection_string,
+            eventhub_name=eh_name,
+            agent_id=agent_name,
+            timeout=10.0,
         )
         dht_graph = DistributedHiveGraph(
             hive_id=f"shard-{agent_name}",
             enable_gossip=False,
-            transport=sb_transport,
+            transport=eh_transport,
         )
-
         for i in range(agent_count):
             dht_graph.register_agent(f"agent-{i}")
 
         logger.info(
-            "DHT shard initialized for agent %s on topic %s (Service Bus transport)",
+            "DHT shard initialized for agent %s via Event Hubs '%s'",
             agent_name,
-            shard_topic,
+            eh_name,
         )
-        return dht_graph, shard_bus, sb_transport
+        return dht_graph, None, eh_transport
 
     except Exception:
         logger.warning(
