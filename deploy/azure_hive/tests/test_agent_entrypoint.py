@@ -293,8 +293,8 @@ class TestBicep:
         assert "Microsoft.ServiceBus" not in content
 
 
-class TestServiceBusShardTransport:
-    """Tests for ServiceBusShardTransport DI pattern (replaces ShardedHiveStore)."""
+class TestShardTransport:
+    """Tests for EventHubsShardTransport DI pattern (injected into DistributedHiveGraph)."""
 
     def test_entrypoint_has_no_sharded_hive_store(self):
         """ShardedHiveStore class must not exist in the updated entrypoint."""
@@ -309,22 +309,42 @@ class TestServiceBusShardTransport:
         assert hasattr(mod, "_init_dht_hive")
         assert callable(mod._init_dht_hive)
 
+    def test_init_dht_hive_returns_none_without_eh_vars(self):
+        """_init_dht_hive returns None when EH env vars are absent (no SB fallback)."""
+        mod = _load_entrypoint()
+        result = mod._init_dht_hive(
+            agent_name="agent-0",
+            agent_count=1,
+            connection_string="",
+            hive_name="test-hive",
+            eh_connection_string="",
+            eh_name="",
+        )
+        assert result is None, "Must return None without EH vars — no Service Bus fallback"
+
     def test_handle_shard_query_publishes_response(self):
-        """ServiceBusShardTransport.handle_shard_query looks up local shard and publishes SHARD_RESPONSE."""
+        """EH transport handle_shard_query looks up local shard and publishes SHARD_RESPONSE."""
+        from unittest.mock import patch
+
         from amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph import (
             DistributedHiveGraph,
-            ServiceBusShardTransport,
+            EventHubsShardTransport,
         )
-        from amplihack.agents.goal_seeking.hive_mind.event_bus import LocalEventBus
+        from amplihack.agents.goal_seeking.hive_mind.event_bus import BusEvent
         from amplihack.agents.goal_seeking.hive_mind.hive_graph import HiveFact
 
-        bus = LocalEventBus()
-        bus.subscribe("agent-0")
-        bus.subscribe("requester")
+        # Use _start_receiving=False to skip background EH consumer thread
+        transport_0 = EventHubsShardTransport(
+            connection_string="dummy://", eventhub_name="hive-shards",
+            agent_id="agent-0", _start_receiving=False,
+        )
+        transport_req = EventHubsShardTransport(
+            connection_string="dummy://", eventhub_name="hive-shards",
+            agent_id="requester", _start_receiving=False,
+        )
 
-        sb_transport = ServiceBusShardTransport(event_bus=bus, agent_id="agent-0")
         graph = DistributedHiveGraph(
-            hive_id="test-e-hq", enable_gossip=False, transport=sb_transport
+            hive_id="test-e-hq", enable_gossip=False, transport=transport_0
         )
         graph.register_agent("agent-0")
         graph.promote_fact(
@@ -340,63 +360,79 @@ class TestServiceBusShardTransport:
             ),
         )
 
-        event = MagicMock()
-        event.payload = {"query": "capital France", "limit": 5, "correlation_id": "corr-1"}
-        sb_transport.handle_shard_query(event)
+        # Intercept _publish calls and inject into requester's mailbox
+        published: list[dict] = []
 
-        responses = [e for e in bus.poll("requester") if e.event_type == "SHARD_RESPONSE"]
+        def mock_publish(payload, partition_key=None):
+            published.append(payload)
+            evt = BusEvent(
+                event_id=payload.get("event_id", ""),
+                event_type=payload["event_type"],
+                source_agent=payload.get("source_agent", ""),
+                timestamp=payload.get("timestamp", 0.0),
+                payload=payload["payload"],
+            )
+            with transport_req._mailbox_lock:
+                transport_req._mailbox.append(evt)
+            transport_req._mailbox_ready.set()
+
+        transport_0._publish = mock_publish
+
+        event = MagicMock()
+        event.payload = {"query": "capital France", "limit": 5, "correlation_id": "corr-1",
+                         "target_agent": "agent-0"}
+        transport_0.handle_shard_query(event)
+
+        with transport_req._mailbox_lock:
+            responses = [e for e in transport_req._mailbox if e.event_type == "SHARD_RESPONSE"]
         assert len(responses) == 1
-        published = responses[0]
-        assert published.payload["correlation_id"] == "corr-1"
-        assert any("Paris" in f["content"] for f in published.payload["facts"])
-        bus.close()
+        assert responses[0].payload["correlation_id"] == "corr-1"
+        assert any("Paris" in f["content"] for f in responses[0].payload["facts"])
 
     def test_handle_shard_response_wakes_pending_query(self):
-        """ServiceBusShardTransport.handle_shard_response signals threading.Event."""
+        """EH transport handle_shard_response signals threading.Event."""
         from amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph import (
-            ServiceBusShardTransport,
+            EventHubsShardTransport,
         )
-        from amplihack.agents.goal_seeking.hive_mind.event_bus import LocalEventBus
 
-        bus = LocalEventBus()
-        bus.subscribe("agent-0")
+        transport = EventHubsShardTransport(
+            connection_string="dummy://", eventhub_name="hive-shards",
+            agent_id="agent-0", _start_receiving=False,
+        )
 
-        sb_transport = ServiceBusShardTransport(event_bus=bus, agent_id="agent-0")
-
-        # Register a pending query
         done_event = threading.Event()
         results = []
-        with sb_transport._pending_lock:
-            sb_transport._pending["corr-2"] = (done_event, results)
+        with transport._pending_lock:
+            transport._pending["corr-2"] = (done_event, results)
 
         event = MagicMock()
         event.payload = {
             "correlation_id": "corr-2",
             "facts": [{"content": "test fact", "confidence": 0.9}],
         }
-        sb_transport.handle_shard_response(event)
+        transport.handle_shard_response(event)
 
         assert done_event.is_set()
         assert len(results) == 1
         assert results[0]["content"] == "test fact"
-        bus.close()
 
-    def test_promote_fact_stores_locally_no_bus_publish(self):
-        """promote_fact stores in local shard only — no SHARD_STORE event published."""
+    def test_promote_fact_stores_locally_no_publish(self):
+        """promote_fact stores in local shard only — no EH publish."""
         from amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph import (
             DistributedHiveGraph,
-            ServiceBusShardTransport,
+            EventHubsShardTransport,
         )
-        from amplihack.agents.goal_seeking.hive_mind.event_bus import LocalEventBus
         from amplihack.agents.goal_seeking.hive_mind.hive_graph import HiveFact
 
-        bus = LocalEventBus()
-        bus.subscribe("agent-0")
-        bus.subscribe("observer")
+        transport = EventHubsShardTransport(
+            connection_string="dummy://", eventhub_name="hive-shards",
+            agent_id="agent-0", _start_receiving=False,
+        )
+        published: list[dict] = []
+        transport._publish = lambda payload, partition_key=None: published.append(payload)
 
-        sb_transport = ServiceBusShardTransport(event_bus=bus, agent_id="agent-0")
         graph = DistributedHiveGraph(
-            hive_id="test-promote-local", enable_gossip=False, transport=sb_transport
+            hive_id="test-promote-local", enable_gossip=False, transport=transport
         )
         graph.register_agent("agent-0")
 
@@ -413,16 +449,13 @@ class TestServiceBusShardTransport:
             ),
         )
 
-        # No SHARD_STORE or SHARD_QUERY published to bus
-        assert bus.poll("observer") == [], "Local store must not broadcast to bus"
-        bus.close()
+        assert published == [], "Local store must not publish to EH"
 
 
 class TestShardQueryListener:
     """Tests for the background _shard_query_listener thread (DI pattern).
 
-    The listener now takes a transport (ServiceBusShardTransport) instead of
-    a ShardedHiveStore wrapper.
+    The listener takes a transport (EventHubsShardTransport) injected via DI.
     """
 
     def test_listener_exits_on_shutdown(self):
