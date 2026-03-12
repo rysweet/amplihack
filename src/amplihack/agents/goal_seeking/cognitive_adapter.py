@@ -538,7 +538,10 @@ class CognitiveAdapter:
         (InMemoryHiveGraph tree traversal) → query_facts (local only).
         """
         if self._hive_store is None:
+            logger.info("_search_hive: no hive_store, skipping")
             return []
+
+        logger.info("_search_hive: querying hive for '%s' (limit=%d)", query[:80], limit)
 
         # Optional query expansion
         search_query = query

@@ -24,8 +24,6 @@ Backward compatibility:
 """
 
 import logging
-import os
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -104,7 +102,9 @@ class GoalSeekingAgent:
         self._current_input = input_data or ""
         self._oriented_facts = {}
         self._decision = ""
-        logger.debug("Agent %s observed input (%d chars)", self._agent_name, len(self._current_input))
+        logger.debug(
+            "Agent %s observed input (%d chars)", self._agent_name, len(self._current_input)
+        )
 
     def orient(self) -> dict[str, Any]:
         """Contextualise the observed input using memory recall.
@@ -128,17 +128,21 @@ class GoalSeekingAgent:
             memory = self._learning_agent.memory
             if hasattr(memory, "search"):
                 raw = memory.search(self._current_input[:200], limit=5)
-                facts = [r.get("fact", str(r)) if isinstance(r, dict) else str(r) for r in (raw or [])]
+                facts = [
+                    r.get("outcome", r.get("fact", str(r))) if isinstance(r, dict) else str(r)
+                    for r in (raw or [])
+                ]
             elif hasattr(memory, "search_facts"):
                 raw = memory.search_facts(self._current_input[:200], limit=5)
-                facts = [r.get("fact", str(r)) if isinstance(r, dict) else str(r) for r in (raw or [])]
+                facts = [
+                    r.get("outcome", r.get("fact", str(r))) if isinstance(r, dict) else str(r)
+                    for r in (raw or [])
+                ]
         except Exception:
             logger.debug("orient() memory recall failed", exc_info=True)
 
         self._oriented_facts = {"input": self._current_input, "facts": facts}
-        logger.debug(
-            "Agent %s oriented: %d recalled facts", self._agent_name, len(facts)
-        )
+        logger.debug("Agent %s oriented: %d recalled facts", self._agent_name, len(facts))
         return self._oriented_facts
 
     def decide(self) -> str:
@@ -159,14 +163,30 @@ class GoalSeekingAgent:
         # Fast path: interrogative signals → answer
         lower = text.lower()
         _QUESTION_PREFIXES = (
-            "what ", "who ", "when ", "where ", "why ", "how ", "which ",
-            "is ", "are ", "was ", "were ", "do ", "does ", "did ", "can ",
-            "could ", "should ", "would ", "will ", "has ", "have ", "had ",
+            "what ",
+            "who ",
+            "when ",
+            "where ",
+            "why ",
+            "how ",
+            "which ",
+            "is ",
+            "are ",
+            "was ",
+            "were ",
+            "do ",
+            "does ",
+            "did ",
+            "can ",
+            "could ",
+            "should ",
+            "would ",
+            "will ",
+            "has ",
+            "have ",
+            "had ",
         )
-        is_question = (
-            text.endswith("?")
-            or any(lower.startswith(p) for p in _QUESTION_PREFIXES)
-        )
+        is_question = text.endswith("?") or any(lower.startswith(p) for p in _QUESTION_PREFIXES)
 
         if is_question:
             self._decision = "answer"
@@ -305,15 +325,11 @@ class GoalSeekingAgent:
                 continue
 
             turn += 1
-            logger.debug(
-                "Agent %s OODA turn %d (len=%d)", self._agent_name, turn, len(text)
-            )
+            logger.debug("Agent %s OODA turn %d (len=%d)", self._agent_name, turn, len(text))
             try:
                 self.process(text)
             except Exception:
-                logger.exception(
-                    "Agent %s: process() failed on turn %d", self._agent_name, turn
-                )
+                logger.exception("Agent %s: process() failed on turn %d", self._agent_name, turn)
 
         logger.info("Agent %s OODA loop finished after %d turns", self._agent_name, turn)
 

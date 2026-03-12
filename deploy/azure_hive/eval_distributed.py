@@ -42,7 +42,9 @@ def main():
     p = argparse.ArgumentParser(
         description="Distributed eval — same harness as single-agent, remote agents via Event Hubs"
     )
-    p.add_argument("--connection-string", required=True, help="Event Hubs namespace connection string")
+    p.add_argument(
+        "--connection-string", required=True, help="Event Hubs namespace connection string"
+    )
     p.add_argument("--input-hub", default="hive-events", help="Agent input Event Hub name")
     p.add_argument("--response-hub", default="eval-responses", help="Eval response Event Hub name")
     p.add_argument("--turns", type=int, default=300, help="Dialogue turns")
@@ -51,11 +53,15 @@ def main():
     p.add_argument("--seed", type=int, default=42, help="Random seed")
     p.add_argument("--grader-model", default="claude-haiku-4-5-20251001")
     p.add_argument("--resource-group", default="", help="Azure resource group (optional, unused)")
+    p.add_argument(
+        "--answer-timeout", type=int, default=120, help="Seconds to wait per answer (0=no timeout)"
+    )
     p.add_argument("--output", default="", help="Output JSON path")
     args = p.parse_args()
 
     # Import the adapter and the eval harness
     from remote_agent_adapter import RemoteAgentAdapter
+
     from amplihack.eval.long_horizon_memory import LongHorizonMemoryEval, _print_report
 
     # Create the remote adapter — same interface as LearningAgent
@@ -65,6 +71,7 @@ def main():
         response_hub=args.response_hub,
         agent_count=args.agents,
         resource_group=args.resource_group,
+        answer_timeout=args.answer_timeout,
     )
 
     # Create the eval harness — IDENTICAL to single-agent
