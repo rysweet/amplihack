@@ -1,17 +1,24 @@
 """
-Outside-in behavioral tests for issue #3041: worktree step quoting fix.
+Outside-in behavioral tests for issues #3041 and #3087: worktree step quoting fix.
 
-The step-04-setup-worktree bash step in default-workflow.yaml broke when
-{{task_description}} contained single quotes or parentheses because the
-value was wrapped in single quotes. The fix uses a heredoc instead.
+The step-04-setup-worktree bash step in default-workflow.yaml broke in two ways:
 
-These tests simulate what the recipe runner does: template-substitute a
-task_description into the step-04 bash script, then execute the slug
-generation portion through bash and verify it produces a valid branch name.
+1. (#3041) Single-quote wrapping of {{task_description}} broke when the
+   value contained ' or ) characters, causing bash syntax errors.
+2. (#3087) The heredoc fix from #3041 used a single-quoted delimiter
+   (<<'EOFTASKDESC') which prevented the Rust recipe runner's env-var
+   expansion ($RECIPE_VAR_task_description), producing garbled branch
+   names like "feat/issue--recipevartaskdescription".
+
+These tests simulate what the Rust recipe runner does: replace {{var}} with
+$RECIPE_VAR_var, set the actual value as an environment variable, then
+execute the slug generation portion through bash.
 """
 
+import os
 import re
 import subprocess
+from pathlib import Path
 
 import yaml
 
@@ -19,7 +26,7 @@ import yaml
 # Helpers
 # ---------------------------------------------------------------------------
 
-WORKFLOW_PATH = "/home/azureuser/src/amplihack/amplifier-bundle/recipes/default-workflow.yaml"
+WORKFLOW_PATH = str(Path(__file__).resolve().parents[2] / "amplifier-bundle" / "recipes" / "default-workflow.yaml")
 
 # Template placeholders used by all scenarios
 DEFAULTS = {
@@ -86,38 +93,48 @@ def _extract_slug_script(full_command: str) -> str:
     return script
 
 
-def _build_test_script(task_description: str) -> str:
+def _build_test_script(task_description: str) -> tuple[str, dict[str, str]]:
     """
-    Build a bash script that simulates what the recipe runner produces
-    after template substitution, restricted to slug generation.
+    Build a bash script that simulates what the Rust recipe runner produces
+    after render_shell() template substitution, restricted to slug generation.
 
-    Returns a bash script that, when run, prints BRANCH_NAME on stdout.
+    The Rust runner converts {{var}} to $RECIPE_VAR_var and sets the actual
+    value as an environment variable. This function mimics that behavior.
+
+    Returns (script, env) where env contains the RECIPE_VAR_* variables.
     """
     raw_command = _load_step04_command()
     slug_script = _extract_slug_script(raw_command)
 
-    # Perform template substitution exactly as the recipe runner would:
-    # literal text replacement of {{placeholder}} with values.
+    # Simulate Rust render_shell(): replace {{var}} with $RECIPE_VAR_var
     script = slug_script
-    script = script.replace("{{task_description}}", task_description)
-    script = script.replace("{{repo_path}}", DEFAULTS["repo_path"])
-    script = script.replace("{{branch_prefix}}", DEFAULTS["branch_prefix"])
-    script = script.replace("{{issue_number}}", DEFAULTS["issue_number"])
+    script = script.replace("{{task_description}}", "$RECIPE_VAR_task_description")
+    script = script.replace("{{repo_path}}", "$RECIPE_VAR_repo_path")
+    script = script.replace("{{branch_prefix}}", "$RECIPE_VAR_branch_prefix")
+    script = script.replace("{{issue_number}}", "$RECIPE_VAR_issue_number")
+
+    # Build the env vars that the Rust runner would set
+    env = dict(os.environ)
+    env["RECIPE_VAR_task_description"] = task_description
+    env["RECIPE_VAR_repo_path"] = DEFAULTS["repo_path"]
+    env["RECIPE_VAR_branch_prefix"] = DEFAULTS["branch_prefix"]
+    env["RECIPE_VAR_issue_number"] = DEFAULTS["issue_number"]
 
     # Append a line that prints the branch name so we can capture it
     script += '\nprintf "%s" "$BRANCH_NAME"\n'
 
-    return script
+    return script, env
 
 
 def _run_slug_script(task_description: str) -> subprocess.CompletedProcess:
     """Run the slug-generation script for the given task description."""
-    script = _build_test_script(task_description)
+    script, env = _build_test_script(task_description)
     return subprocess.run(
         ["/bin/bash", "-c", script],
         capture_output=True,
         text=True,
         timeout=10,
+        env=env,
     )
 
 
@@ -209,8 +226,9 @@ class TestIssue3041WorktreeQuoting:
         assert VALID_BRANCH_RE.match(branch), f"Invalid branch name: {branch}"
 
     def test_dollar_signs(self):
-        """Dollar signs could trigger variable expansion — heredoc with
-        single-quoted delimiter (<<'EOF') should prevent this."""
+        """Dollar signs in the task description value are safe — the Rust runner
+        sets the value as an env var, and bash doesn't re-expand the result of
+        variable expansion inside heredocs."""
         result = _run_slug_script("Fix $HOME variable leak")
         assert result.returncode == 0, f"bash failed:\nstderr={result.stderr}"
         branch = result.stdout.strip()

@@ -1,14 +1,17 @@
-"""Tests for step-04-setup-worktree quoting safety (issue #3041).
+"""Tests for step-04-setup-worktree quoting safety (issues #3041, #3087).
 
 Verifies that:
-1. The bash script in step-04 uses heredoc (not single-quote wrapping)
-   to capture {{task_description}}, preventing syntax errors when the
-   value contains ', ), or other shell metacharacters.
-2. The same fix is applied in consensus-workflow.yaml step3-setup-worktree.
+1. The bash script in step-04 uses an UNQUOTED heredoc to capture
+   {{task_description}}, so that the Rust recipe runner's env-var
+   expansion ($RECIPE_VAR_task_description) works correctly (#3087).
+2. The same fix is applied in consensus-workflow.yaml step3-setup-worktree
+   (agent step uses single-quoted heredoc — correct for Jinja2 rendering).
 3. smart-orchestrator.yaml does NOT use recovery_on_failure (issue #3041:
    failures must be visible, not silently recovered).
 4. The heredoc pattern actually survives bash -n syntax checking with
    adversarial task descriptions that broke the old pattern.
+5. The Rust runner env-var pattern ($RECIPE_VAR_task_description) expands
+   correctly in unquoted heredocs, producing proper branch name slugs.
 """
 
 from __future__ import annotations
@@ -69,11 +72,17 @@ def _get_step(workflow, step_id: str) -> dict:
 class TestWorktreeStepUsesHeredoc:
     """Verify step-04 and consensus step3 use heredoc, not single-quote wrapping."""
 
-    def test_default_workflow_uses_heredoc(self, default_workflow):
+    def test_default_workflow_uses_unquoted_heredoc(self, default_workflow):
         step = _get_step(default_workflow, "step-04-setup-worktree")
         cmd = step.get("command", "")
-        assert "<<'EOFTASKDESC'" in cmd, (
-            "step-04-setup-worktree must use heredoc to capture task_description"
+        assert "<<EOFTASKDESC" in cmd, (
+            "step-04-setup-worktree must use unquoted heredoc so that the "
+            "Rust runner's $RECIPE_VAR_task_description env var expands"
+        )
+        assert "<<'EOFTASKDESC'" not in cmd, (
+            "step-04-setup-worktree must NOT use single-quoted heredoc — "
+            "it prevents env-var expansion, producing garbled branch names "
+            "(issue #3087)"
         )
 
     def test_default_workflow_no_single_quote_wrapping(self, default_workflow):
@@ -143,18 +152,23 @@ ADVERSARIAL_TASK_DESCRIPTIONS = [
 
 
 class TestHeredocBashSyntax:
-    """Verify the heredoc pattern produces valid bash with adversarial inputs.
+    """Verify the unquoted heredoc pattern works with Rust runner env vars.
 
-    Simulates what the recipe runner does: text-substitute {{task_description}}
-    then pass the resulting script to /bin/bash -c.
+    The Rust recipe runner converts {{task_description}} to
+    $RECIPE_VAR_task_description (an environment variable). The unquoted
+    heredoc allows bash to expand the variable, producing the actual value.
     """
 
     @pytest.mark.parametrize("name,task_desc", ADVERSARIAL_TASK_DESCRIPTIONS)
     def test_heredoc_syntax_valid(self, name, task_desc):
-        """Heredoc pattern must produce valid bash syntax for all inputs."""
-        # This is the heredoc pattern from the fixed step-04
+        """Unquoted heredoc with env var must produce valid bash syntax."""
+        # Simulate Rust runner: set env var, use unquoted heredoc
         script = (
-            f"TASK_DESC=$(cat <<'EOFTASKDESC'\n{task_desc}\nEOFTASKDESC\n)\necho \"$TASK_DESC\""
+            "TASK_DESC=$(cat <<EOFTASKDESC\n"
+            "$RECIPE_VAR_task_description\n"
+            "EOFTASKDESC\n"
+            ")\n"
+            'echo "$TASK_DESC"'
         )
         result = subprocess.run(
             ["/bin/bash", "-n", "-c", script],
@@ -167,25 +181,55 @@ class TestHeredocBashSyntax:
         )
 
     @pytest.mark.parametrize("name,task_desc", ADVERSARIAL_TASK_DESCRIPTIONS[:5])
-    def test_heredoc_captures_value(self, name, task_desc):
-        """Heredoc pattern must capture the exact task description value."""
+    def test_heredoc_captures_value_via_env_var(self, name, task_desc):
+        """Unquoted heredoc must expand env var to the actual task description."""
+        # Simulate what the Rust runner does: export RECIPE_VAR_task_description
         script = (
-            "TASK_DESC=$(cat <<'EOFTASKDESC'\n"
-            f"{task_desc}\n"
+            "TASK_DESC=$(cat <<EOFTASKDESC\n"
+            "$RECIPE_VAR_task_description\n"
             "EOFTASKDESC\n"
             ")\n"
             'printf "%s" "$TASK_DESC"'
         )
+        env = {"RECIPE_VAR_task_description": task_desc}
         result = subprocess.run(
             ["/bin/bash", "-c", script],
             capture_output=True,
             text=True,
             timeout=5,
+            env=env,
         )
         assert result.returncode == 0
         assert result.stdout == task_desc, (
             f"Heredoc did not capture value for {name!r}: "
             f"got {result.stdout!r}, expected {task_desc!r}"
+        )
+
+    def test_single_quoted_heredoc_would_fail(self):
+        """Regression guard: single-quoted heredoc blocks env var expansion.
+
+        This is the exact bug from issue #3087.
+        """
+        script = (
+            "TASK_DESC=$(cat <<'EOFTASKDESC'\n"
+            "$RECIPE_VAR_task_description\n"
+            "EOFTASKDESC\n"
+            ")\n"
+            'printf "%s" "$TASK_DESC"'
+        )
+        env = {"RECIPE_VAR_task_description": "Add user profile page"}
+        result = subprocess.run(
+            ["/bin/bash", "-c", script],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            env=env,
+        )
+        assert result.returncode == 0
+        # With single-quoted heredoc, the literal string is captured
+        assert result.stdout == "$RECIPE_VAR_task_description", (
+            "Single-quoted heredoc should NOT expand env vars — "
+            "this test guards against regression if someone re-adds quotes"
         )
 
     @pytest.mark.parametrize(
@@ -223,14 +267,14 @@ class TestHeredocBashSyntax:
 
 
 class TestSlugPipeline:
-    """Test the full slug pipeline with the heredoc fix."""
+    """Test the full slug pipeline with the unquoted heredoc + env var fix."""
 
     def test_slug_from_description_with_quotes(self):
-        """Full pipeline: task_desc with quotes produces valid slug."""
+        """Full pipeline: task_desc with quotes produces valid slug via env var."""
         task_desc = "Fix the user's profile page (broken layout)"
         script = (
-            "TASK_DESC=$(cat <<'EOFTASKDESC'\n"
-            f"{task_desc}\n"
+            "TASK_DESC=$(cat <<EOFTASKDESC\n"
+            "$RECIPE_VAR_task_description\n"
             "EOFTASKDESC\n"
             ")\n"
             "printf '%s' \"$TASK_DESC\" | tr '\\n\\r' '  ' | "
@@ -238,11 +282,13 @@ class TestSlugPipeline:
             "sed 's/[^a-z0-9-]//g' | sed 's/-\\{2,\\}/-/g' | "
             "sed 's/^-//;s/-$//' | cut -c1-50 | sed 's/-$//'"
         )
+        env = {"RECIPE_VAR_task_description": task_desc}
         result = subprocess.run(
             ["/bin/bash", "-c", script],
             capture_output=True,
             text=True,
             timeout=5,
+            env=env,
         )
         assert result.returncode == 0, f"Slug pipeline failed: {result.stderr}"
         slug = result.stdout.strip()
@@ -250,3 +296,31 @@ class TestSlugPipeline:
         assert "'" not in slug, "Slug should not contain quotes"
         assert "(" not in slug, "Slug should not contain parens"
         assert slug == "fix-the-users-profile-page-broken-layout"
+
+    def test_slug_not_garbled_with_env_var(self):
+        """Regression test for #3087: slug must not contain 'recipevartaskdescription'."""
+        task_desc = "Add user profile page"
+        script = (
+            "TASK_DESC=$(cat <<EOFTASKDESC\n"
+            "$RECIPE_VAR_task_description\n"
+            "EOFTASKDESC\n"
+            ")\n"
+            "printf '%s' \"$TASK_DESC\" | tr '\\n\\r' '  ' | "
+            "tr '[:upper:]' '[:lower:]' | tr -s ' ' '-' | "
+            "sed 's/[^a-z0-9-]//g' | sed 's/-\\{2,\\}/-/g' | "
+            "sed 's/^-//;s/-$//' | cut -c1-50 | sed 's/-$//'"
+        )
+        env = {"RECIPE_VAR_task_description": task_desc}
+        result = subprocess.run(
+            ["/bin/bash", "-c", script],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            env=env,
+        )
+        assert result.returncode == 0
+        slug = result.stdout.strip()
+        assert slug == "add-user-profile-page", f"Expected clean slug, got: {slug!r}"
+        assert "recipevartaskdescription" not in slug, (
+            "Slug contains literal env var name — heredoc is not expanding variables"
+        )
