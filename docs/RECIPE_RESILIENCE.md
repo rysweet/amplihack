@@ -253,6 +253,78 @@ partial output content (which may be sensitive) appearing in standard logs.
 
 ---
 
+## Recipe Variable Quoting Rules
+
+> **Added:** March 2026 (PRs #3043, #3055, #3057, #3082)
+
+A cluster of related bugs were fixed around how recipe YAML files must handle
+template variable substitution. These rules are now codified and tested.
+
+### Rule 1: Never single-quote template variables in shell steps
+
+`render_shell()` converts `{{var}}` to `"$RECIPE_VAR_var"` (already
+double-quoted). Wrapping with additional single quotes prevents shell expansion:
+
+```yaml
+# WRONG — single quotes block expansion
+- shell: task_desc='{{task_description}}' && echo $task_desc
+
+# CORRECT — render_shell double-quotes the expansion
+- shell: task_desc={{task_description}} && echo $task_desc
+```
+
+This affected 34 instances across 8 YAML workflow files before being fixed.
+
+### Rule 2: Use heredoc for values containing shell metacharacters
+
+Task descriptions and session JSON blobs frequently contain single quotes,
+parentheses, and other shell metacharacters. Use a heredoc pattern for these:
+
+```yaml
+# WRONG — breaks when task_description contains quotes or parentheses
+- shell: printf '%s' '{{task_description}}' > /tmp/task.txt
+
+# CORRECT — heredoc is injection-safe
+- shell: |
+    cat <<'EOFTASKDESC' > /tmp/task.txt
+    {{task_description}}
+    EOFTASKDESC
+```
+
+Applies to: `task_description`, `session_info`, and any value that may contain
+shell-unsafe characters.
+
+### Rule 3: Bool/String type coercion with `--set` and `force_single_workstream`
+
+The Rust recipe runner parses `--set key=true` as `Bool(true)`, but YAML
+defaults like `force_single_workstream: "false"` are `String("false")`. These
+types do not compare equal, causing `condition:` checks to silently fail.
+
+**Root cause (PR #3082):** `values_equal` in `recipe-runner-rs` lacked
+Bool/String cross-type coercion. The fix is in the Rust runner; however, recipe
+authors must understand the underlying semantics:
+
+```yaml
+# YAML default declared as string — legacy pattern, now coerced correctly
+force_single_workstream: "false"
+
+# Preferred: declare as unquoted boolean to match how --set passes values
+force_single_workstream: false
+```
+
+When passing via CLI:
+```bash
+amplihack run --set force_single_workstream=true  # Passes Bool(true)
+```
+
+Condition checks:
+```yaml
+- condition: "force_single_workstream == true"   # Works (Bool comparison)
+- condition: "force_single_workstream == 'true'" # Works (string comparison)
+```
+
+---
+
 ## Configuration
 
 Neither feature introduces new configuration knobs. The sanitization pipeline
