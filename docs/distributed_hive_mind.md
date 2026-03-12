@@ -8,16 +8,20 @@ The distributed hive mind replaces the centralized `InMemoryHiveGraph` for deplo
 
 ```mermaid
 graph TB
-    subgraph "Distributed Hash Ring"
+    subgraph "Distributed Hash Ring (pure DHT, O(F/N) per agent)"
         direction LR
         R["Hash Ring<br/>Facts hashed to positions<br/>Agents own keyspace ranges"]
     end
 
     subgraph "Agent Shards"
-        A0["Agent 0<br/>Shard: 50 facts<br/>Kuzu DB (256MB)"]
-        A1["Agent 1<br/>Shard: 48 facts<br/>Kuzu DB (256MB)"]
-        A2["Agent 2<br/>Shard: 52 facts<br/>Kuzu DB (256MB)"]
-        AN["Agent N<br/>Shard: 50 facts<br/>Kuzu DB (256MB)"]
+        A0["Agent 0<br/>Shard: ~F/N facts<br/>Kuzu DB (256MB)"]
+        A1["Agent 1<br/>Shard: ~F/N facts<br/>Kuzu DB (256MB)"]
+        A2["Agent 2<br/>Shard: ~F/N facts<br/>Kuzu DB (256MB)"]
+        AN["Agent N<br/>Shard: ~F/N facts<br/>Kuzu DB (256MB)"]
+    end
+
+    subgraph "Shard Transport (Event Hubs)"
+        EH["Azure Event Hubs<br/>Partition-key routing<br/>Per-agent consumer groups<br/>(cg-agent-N)"]
     end
 
     subgraph "Gossip Layer"
@@ -28,13 +32,36 @@ graph TB
     R --> A1
     R --> A2
     R --> AN
+    A0 <-.->|SHARD_QUERY / SHARD_RESPONSE| EH
+    A1 <-.->|SHARD_QUERY / SHARD_RESPONSE| EH
+    A2 <-.->|SHARD_QUERY / SHARD_RESPONSE| EH
+    AN <-.->|SHARD_QUERY / SHARD_RESPONSE| EH
     A0 <-.->|gossip| A1
     A1 <-.->|gossip| A2
     A2 <-.->|gossip| AN
 
     style R fill:#f9f,stroke:#333
     style G fill:#ff9,stroke:#333
+    style EH fill:#9cf,stroke:#333
 ```
+
+### Shard Transport: Event Hubs (as of 2026-03-12)
+
+Cross-shard queries travel over **Azure Event Hubs** via `EventHubsShardTransport` (replacing the former Service Bus shard topic). Key design points:
+
+| Aspect       | Detail                                                                                                                                                                                                    |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Routing      | `SHARD_QUERY` published with `partition_key=target_agent`; `SHARD_RESPONSE` with `partition_key=requesting_agent`                                                                                         |
+| Isolation    | Each agent reads from its own consumer group `cg-{agent_id}`                                                                                                                                              |
+| Correlation  | `correlation_id + threading.Event` — querying agent blocks in `query_shard()` until the response event fires or timeout expires                                                                           |
+| Local bypass | Queries to own shard bypass the network entirely (no EH round-trip)                                                                                                                                       |
+| Retrieval    | `handle_shard_query()` calls `agent.memory.search()` via `CognitiveAdapter` (n-gram overlap, reranking, semantic matching), falling back to raw `ShardStore.search()` when no agent instance is available |
+
+**Service Bus** is retained only for the main `hive-events` / `hive-graph` topic used by the gossip layer and `NetworkGraphStore`.
+
+### Pure DHT sharding (no broadcast replication)
+
+`promote_fact()` routes each fact to exactly the primary shard owner(s) determined by the DHT ring. The `SHARD_STORE` broadcast-to-all-agents loop (introduced in commit `e2da57e9`) was reverted — every agent holds only `O(F/N)` facts, not a full copy. Cross-shard retrieval is handled by the agentic search path described above.
 
 ## Query Flow
 
@@ -64,16 +91,20 @@ sequenceDiagram
     participant A as Agent 42
     participant LLM as LLM (extract facts)
     participant DHT as DHT Router
+    participant EH as Event Hubs
     participant S as Shard Owner (Agent 7)
 
     A->>LLM: learn_from_content("Sarah Chen birthday March 15")
     LLM-->>A: extracted facts
     A->>A: Store in local Kuzu DB
     A->>DHT: promote_fact(fact)
-    DHT->>DHT: Hash("sarah chen birthday") → position
-    DHT->>S: Store in Agent 7's shard (primary owner)
-    DHT->>S: Replicate to 2 more agents (R=3)
+    DHT->>DHT: Hash("sarah chen birthday") → ring position → Agent 7
+    DHT->>EH: SHARD_STORE (partition_key=agent-7)
+    EH->>S: deliver SHARD_STORE event
+    S->>S: store in local shard only (O(F/N))
 ```
+
+> **Note:** Facts are stored on the primary shard owner only (pure DHT). There is no broadcast replication to all agents.
 
 ## Federation
 
@@ -101,12 +132,12 @@ Facts with confidence >= 0.9 escalate from group hives to the root. Federated qu
 
 ## When to Use Which
 
-| Scenario | Implementation | Reason |
-|----------|---------------|--------|
-| < 20 agents | `InMemoryHiveGraph` | Simple, all facts in one dict |
-| 20-1000 agents | `DistributedHiveGraph` | DHT sharding, O(F/N) per agent |
-| Testing/dev | `InMemoryHiveGraph` | No setup overhead |
-| Production eval | `DistributedHiveGraph` | Avoids Kuzu mmap OOM |
+| Scenario        | Implementation         | Reason                         |
+| --------------- | ---------------------- | ------------------------------ |
+| < 20 agents     | `InMemoryHiveGraph`    | Simple, all facts in one dict  |
+| 20-1000 agents  | `DistributedHiveGraph` | DHT sharding, O(F/N) per agent |
+| Testing/dev     | `InMemoryHiveGraph`    | No setup overhead              |
+| Production eval | `DistributedHiveGraph` | Avoids Kuzu mmap OOM           |
 
 ## Components
 
@@ -138,15 +169,40 @@ Space-efficient probabilistic set membership. Each agent maintains a bloom filte
 
 Drop-in replacement for `InMemoryHiveGraph`. Implements the `HiveGraph` protocol using DHT sharding internally. Supports federation, gossip, and all existing hive operations.
 
+### EventHubsShardTransport (`distributed_hive_graph.py`)
+
+Implements the `ShardTransport` Protocol for cloud deployments. Uses `azure-eventhub` with partition-key routing:
+
+- `SHARD_QUERY` → `partition_key=target_agent` (routes to the owning agent's partition)
+- `SHARD_RESPONSE` → `partition_key=requesting_agent` (routes response back)
+- Per-agent consumer groups (`cg-{agent_id}`) for isolated consumption
+- `correlation_id + threading.Event` for synchronous `query_shard()` semantics
+- `handle_shard_query()` calls `agent.memory.search()` (CognitiveAdapter: n-gram, reranking, semantic) when an agent instance is bound; falls back to raw `ShardStore.search()`
+
+```python
+# Activated automatically when env vars are set (agent_entrypoint.py)
+transport = EventHubsShardTransport(
+    connection_string=os.environ["AMPLIHACK_EH_CONNECTION_STRING"],
+    eventhub_name=os.environ["AMPLIHACK_EH_NAME"],
+    agent_id="agent-3",
+)
+```
+
+For **local / unit tests**, use `LocalEventBus` (in-process) — no Azure credentials required.
+
+### ServiceBusShardTransport (`distributed_hive_graph.py`)
+
+**Retained for backward compatibility** and for the main `hive-events` / `hive-graph` gossip topic. Not used for shard queries in new deployments.
+
 ## Configuration
 
-| Constant | Default | Purpose |
-|----------|---------|---------|
-| `DEFAULT_REPLICATION_FACTOR` | 3 | Copies per fact across agents |
-| `DEFAULT_QUERY_FANOUT` | 5 | Max agents queried per request |
-| `KUZU_BUFFER_POOL_SIZE` | 256MB | Per-agent Kuzu memory limit |
-| `KUZU_MAX_DB_SIZE` | 1GB | Per-agent Kuzu max size |
-| `VIRTUAL_NODES_PER_AGENT` | 64 | Hash ring distribution granularity |
+| Constant                     | Default | Purpose                            |
+| ---------------------------- | ------- | ---------------------------------- |
+| `DEFAULT_REPLICATION_FACTOR` | 3       | Copies per fact across agents      |
+| `DEFAULT_QUERY_FANOUT`       | 5       | Max agents queried per request     |
+| `KUZU_BUFFER_POOL_SIZE`      | 256MB   | Per-agent Kuzu memory limit        |
+| `KUZU_MAX_DB_SIZE`           | 1GB     | Per-agent Kuzu max size            |
+| `VIRTUAL_NODES_PER_AGENT`    | 64      | Hash ring distribution granularity |
 
 ## Kuzu Buffer Pool Fix
 
@@ -160,23 +216,23 @@ The fix: `CognitiveAdapter` monkey-patches `kuzu.Database.__init__` to bound eac
 
 ## Performance
 
-| Metric | InMemoryHiveGraph | DistributedHiveGraph |
-|--------|-------------------|---------------------|
-| 100-agent creation | OOM crash | 12.3s, 4.8GB RSS |
-| Memory per agent | O(F) all facts | O(F/N) shard only |
-| Query fan-out | O(N) all agents | O(K) relevant agents |
-| Gossip convergence | N/A | O(log N) rounds |
+| Metric             | InMemoryHiveGraph | DistributedHiveGraph |
+| ------------------ | ----------------- | -------------------- |
+| 100-agent creation | OOM crash         | 12.3s, 4.8GB RSS     |
+| Memory per agent   | O(F) all facts    | O(F/N) shard only    |
+| Query fan-out      | O(N) all agents   | O(K) relevant agents |
+| Gossip convergence | N/A               | O(log N) rounds      |
 
 ## Eval Results
 
-| Condition | Model | Score | Std Dev | Notes |
-|-----------|-------|-------|---------|-------|
-| Single agent | Sonnet 4.5 | 94.1% | — | Baseline, 5000 turns, 21.7h |
-| Federated smoke (10 agents) | Sonnet 4.5 | 65.7% | 6.7% | Best multi-agent result, low variance |
-| Federated full (100 agents) | Sonnet 4.5 | 45.8% | 21.7% | Routing precision degrades at scale |
-| Federated v1 (naive) | Sonnet 4.5 | 40.0% | — | Longest-answer-wins merge |
-| Federated broken routing | Sonnet 4.5 | 34.9% | 31.2% | Root hive empty, random fallback |
-| Parallel learning speedup | — | 9x | — | 10 workers: 21.6h → 2.4h |
+| Condition                   | Model      | Score | Std Dev | Notes                                 |
+| --------------------------- | ---------- | ----- | ------- | ------------------------------------- |
+| Single agent                | Sonnet 4.5 | 94.1% | —       | Baseline, 5000 turns, 21.7h           |
+| Federated smoke (10 agents) | Sonnet 4.5 | 65.7% | 6.7%    | Best multi-agent result, low variance |
+| Federated full (100 agents) | Sonnet 4.5 | 45.8% | 21.7%   | Routing precision degrades at scale   |
+| Federated v1 (naive)        | Sonnet 4.5 | 40.0% | —       | Longest-answer-wins merge             |
+| Federated broken routing    | Sonnet 4.5 | 34.9% | 31.2%   | Root hive empty, random fallback      |
+| Parallel learning speedup   | —          | 9x    | —       | 10 workers: 21.6h → 2.4h              |
 
 **Key insight:** Routing precision degrades at 100-agent scale (45.8% median, 21.7% stddev vs 65.7% at 10 agents). The 28.4-point gap vs single-agent baseline is the primary open problem.
 
@@ -187,9 +243,18 @@ The fix: `CognitiveAdapter` monkey-patches `kuzu.Database.__init__` to bound eac
 3. **Routing precision degradation**: At 100-agent scale, semantic routing loses precision, causing 21.7% stddev.
 4. **High variance**: Random agent selection (from bug #1) causes 31% stddev across runs.
 
+### Fixes applied (2026-03-12, PR #3074)
+
+- **SHARD_STORE broadcast replication reverted** (commit `e2da57e9` reverted): pure DHT sharding restored — each agent holds O(F/N) facts, not a full copy.
+- **Cross-shard retrieval now uses CognitiveAdapter**: `handle_shard_query()` calls `agent.memory.search()` (n-gram overlap, reranking, semantic matching) instead of raw `ShardStore.search()`, improving retrieval precision.
+- **Service Bus shard topic removed**: SHARD_QUERY / SHARD_RESPONSE now route through Azure Event Hubs with partition-key isolation, eliminating cross-agent message bleed.
+
+> **Eval status**: Post-fix 5000-turn distributed eval results pending (requires Azure deployment).
+
 ## Related
 
-- PR #2876: DistributedHiveGraph implementation (amplihack)
+- PR #3074: Event Hubs shard transport + CognitiveAdapter cross-shard retrieval (amplihack, 2026-03-12)
+- PR #2876: DistributedHiveGraph initial implementation — pure DHT sharding (amplihack, superseded by #3074 for transport layer)
 - PR #17: Eval integration (amplihack-agent-eval, merged)
 - PR #11: Kuzu buffer_pool_size (amplihack-memory-lib, merged)
 - Issue #2871: Tracking issue
@@ -269,6 +334,7 @@ amplihack-hive status --hive my-hive
 ```
 
 Output:
+
 ```
 Hive: my-hive
 Transport: local
@@ -306,6 +372,7 @@ amplihack-hive create \
 ```
 
 Each agent will then:
+
 - Store facts locally in Kuzu
 - Publish `create_node` events to the Service Bus topic `hive-graph`
 - Receive and apply remote facts from other agents via background thread
@@ -319,18 +386,19 @@ For cloud-scale deployments (100+ agents), use the `deploy/azure_hive/` scripts.
 
 **Infrastructure provisioned by `deploy/azure_hive/deploy.sh` / `main.bicep`:**
 
-| Resource | Purpose |
-|---|---|
-| Azure Container Registry (`hivacrhivemind.azurecr.io`) | Stores the amplihack agent Docker image |
-| Service Bus Namespace (`hive-sb-dj2qo2w7vu5zi`) + Topic `hive-graph` + 100 subscriptions | Event transport for NetworkGraphStore |
-| Azure Storage Account (`hivesadj2qo2w7vu5zi`) + File Share | Provisioned for persistence; **not mounted for Kuzu** (POSIX lock limitation) |
-| Container Apps Environment | Managed container runtime (westus2, hive-mind-rg) |
-| N Container Apps (`amplihive-app-0`…`amplihive-app-N`) | Each app hosts up to 5 agent containers |
+| Resource                                                                                     | Purpose                                                                       |
+| -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Azure Container Registry (`hivacrhivemind.azurecr.io`)                                       | Stores the amplihack agent Docker image                                       |
+| **Event Hubs Namespace** + Event Hub `hive-shards-{hiveName}` + consumer groups `cg-agent-N` | **Shard transport** — SHARD_QUERY / SHARD_RESPONSE routing                    |
+| Service Bus Namespace (`hive-sb-dj2qo2w7vu5zi`) + Topic `hive-graph` + N subscriptions       | Gossip / `NetworkGraphStore` event transport (retained)                       |
+| Azure Storage Account (`hivesadj2qo2w7vu5zi`) + File Share                                   | Provisioned for persistence; **not mounted for Kuzu** (POSIX lock limitation) |
+| Container Apps Environment                                                                   | Managed container runtime (westus2, hive-mind-rg)                             |
+| N Container Apps (`amplihive-app-0`…`amplihive-app-N`)                                       | Each app hosts up to 5 agent containers                                       |
 
 **Deploy a 20-agent hive to Azure:**
 
 ```bash
-export ANTHROPIC_API_KEY="sk-ant-..."
+export ANTHROPIC_API_KEY="<your-api-key>"
 export HIVE_NAME="prod-hive"
 export HIVE_AGENT_COUNT=20
 export HIVE_AGENTS_PER_APP=5        # 4 Container Apps total
@@ -340,6 +408,7 @@ bash deploy/azure_hive/deploy.sh
 ```
 
 This will:
+
 1. Create resource group `hive-mind-rg` in `westus2`
 2. Build and push the Docker image to ACR (`hivacrhivemind.azurecr.io`)
 3. Deploy Bicep template: Service Bus namespace `hive-sb-dj2qo2w7vu5zi`, Storage account `hivesadj2qo2w7vu5zi`, Container Apps Environment
@@ -363,20 +432,24 @@ bash deploy/azure_hive/deploy.sh --cleanup
 
 Each container receives:
 
-| Variable | Value |
-|---|---|
-| `AMPLIHACK_AGENT_NAME` | `agent-N` (unique per container) |
-| `AMPLIHACK_AGENT_PROMPT` | Agent role prompt |
-| `AMPLIHACK_MEMORY_TRANSPORT` | `azure_service_bus` |
-| `AMPLIHACK_MEMORY_CONNECTION_STRING` | Service Bus connection string (from Key Vault secret) |
-| `AMPLIHACK_MEMORY_STORAGE_PATH` | `/data/agent-N` (on mounted Azure File Share) |
-| `ANTHROPIC_API_KEY` | From Container Apps secret |
+| Variable                             | Value                                                        |
+| ------------------------------------ | ------------------------------------------------------------ |
+| `AMPLIHACK_AGENT_NAME`               | `agent-N` (unique per container)                             |
+| `AMPLIHACK_AGENT_PROMPT`             | Agent role prompt                                            |
+| `AMPLIHACK_MEMORY_TRANSPORT`         | `azure_service_bus` (for gossip/hive-graph)                  |
+| `AMPLIHACK_MEMORY_CONNECTION_STRING` | Service Bus connection string (from Key Vault secret)        |
+| `AMPLIHACK_MEMORY_STORAGE_PATH`      | `/data/agent-N` (on mounted Azure File Share)                |
+| `AMPLIHACK_EH_CONNECTION_STRING`     | **Event Hubs** namespace connection string (shard transport) |
+| `AMPLIHACK_EH_NAME`                  | Event Hub name (`hive-shards-{hiveName}`)                    |
+| `ANTHROPIC_API_KEY`                  | From Container Apps secret                                   |
+
+When `AMPLIHACK_EH_CONNECTION_STRING` and `AMPLIHACK_EH_NAME` are set, `agent_entrypoint.py` automatically selects `EventHubsShardTransport`; otherwise it falls back to `ServiceBusShardTransport`.
 
 **Dockerfile highlights:**
 
 ```dockerfile
 FROM python:3.11-slim
-# installs amplihack + kuzu + sentence-transformers + azure-servicebus
+# installs amplihack + kuzu + sentence-transformers + azure-servicebus + azure-eventhub==5.11.7
 # non-root user: amplihack-agent
 # VOLUME /data  (Azure File Share mount)
 # HEALTHCHECK via /tmp/.agent_ready sentinel
@@ -395,25 +468,25 @@ Bicep automatically calculates `appCount = ceil(agentCount / agentsPerApp)` and 
 
 **Actual Azure deployment (westus2, hive-mind-rg):**
 
-| Resource | Name |
-|---|---|
-| Container Apps | `amplihive-app-0` … `amplihive-app-19` (20 total) |
-| Agents | `agent-0` … `agent-99` (100 total, 5 per app) |
-| ACR | `hivacrhivemind.azurecr.io` |
-| Service Bus namespace | `hive-sb-dj2qo2w7vu5zi` |
-| Service Bus topic | `hive-graph` (100 subscriptions, one per agent) |
-| Volume type | Ephemeral (`EmptyDir`) — POSIX lock compatible, Kuzu works in containers |
-| Memory backend | `cognitive` (Kuzu) — identical to local development |
+| Resource              | Name                                                                     |
+| --------------------- | ------------------------------------------------------------------------ |
+| Container Apps        | `amplihive-app-0` … `amplihive-app-19` (20 total)                        |
+| Agents                | `agent-0` … `agent-99` (100 total, 5 per app)                            |
+| ACR                   | `hivacrhivemind.azurecr.io`                                              |
+| Service Bus namespace | `hive-sb-dj2qo2w7vu5zi`                                                  |
+| Service Bus topic     | `hive-graph` (100 subscriptions, one per agent)                          |
+| Volume type           | Ephemeral (`EmptyDir`) — POSIX lock compatible, Kuzu works in containers |
+| Memory backend        | `cognitive` (Kuzu) — identical to local development                      |
 
 ---
 
 ### Choosing a transport
 
-| Transport | Use case | Latency | Scale |
-|---|---|---|---|
-| `local` | Development, single machine | Microseconds (in-process) | 1 machine |
-| `redis` | Multi-machine on same network | <1ms | 10s of agents |
-| `azure_service_bus` | Cloud, multi-region, production | 10-100ms | 100s of agents |
+| Transport           | Use case                        | Latency                   | Scale          |
+| ------------------- | ------------------------------- | ------------------------- | -------------- |
+| `local`             | Development, single machine     | Microseconds (in-process) | 1 machine      |
+| `redis`             | Multi-machine on same network   | <1ms                      | 10s of agents  |
+| `azure_service_bus` | Cloud, multi-region, production | 10-100ms                  | 100s of agents |
 
 ---
 
@@ -427,10 +500,13 @@ Service Bus subscriptions exist with the correct agent names.
 **High search latency**
 
 The default `search_timeout=3.0s` waits for remote responses. Reduce with:
+
 ```bash
 export AMPLIHACK_MEMORY_SEARCH_TIMEOUT=1.0
 ```
+
 Or set programmatically:
+
 ```python
 NetworkGraphStore(..., search_timeout=1.0)
 ```
@@ -438,6 +514,7 @@ NetworkGraphStore(..., search_timeout=1.0)
 **Container Apps not starting**
 
 Check logs:
+
 ```bash
 az containerapp logs show \
   --name prod-hive-app-0 \
@@ -511,12 +588,12 @@ python experiments/hive_mind/query_hive.py --run-eval --timeout 15
 
 ### Environment Variables
 
-| Variable | Default | Description |
-|---|---|---|
-| `HIVE_CONNECTION_STRING` | embedded | Azure Service Bus connection string |
-| `HIVE_TOPIC` | `hive-graph` | Topic name |
-| `HIVE_SUBSCRIPTION` | `eval-query-agent` | Subscription for receiving responses |
-| `HIVE_TIMEOUT` | `10` | Wait timeout per query (seconds) |
+| Variable                 | Default            | Description                          |
+| ------------------------ | ------------------ | ------------------------------------ |
+| `HIVE_CONNECTION_STRING` | embedded           | Azure Service Bus connection string  |
+| `HIVE_TOPIC`             | `hive-graph`       | Topic name                           |
+| `HIVE_SUBSCRIPTION`      | `eval-query-agent` | Subscription for receiving responses |
+| `HIVE_TIMEOUT`           | `10`               | Wait timeout per query (seconds)     |
 
 ### Eval Dataset
 
@@ -539,14 +616,14 @@ client.close()
 
 ### Live Hive Resources
 
-| Resource | Name |
-|---|---|
-| Resource group | `hive-mind-rg` |
-| Service Bus | `hive-sb-dj2qo2w7vu5zi` |
-| Topic | `hive-graph` |
-| Eval subscription | `eval-query-agent` |
-| Agent subscriptions | `agent-0` … `agent-19` |
-| Container Apps | `amplihive-app-0` … `amplihive-app-19` |
+| Resource            | Name                                   |
+| ------------------- | -------------------------------------- |
+| Resource group      | `hive-mind-rg`                         |
+| Service Bus         | `hive-sb-dj2qo2w7vu5zi`                |
+| Topic               | `hive-graph`                           |
+| Eval subscription   | `eval-query-agent`                     |
+| Agent subscriptions | `agent-0` … `agent-19`                 |
+| Container Apps      | `amplihive-app-0` … `amplihive-app-19` |
 
 See also: `amplihack-agent-eval/docs/azure-hive-qa-eval.md` for the full
 tutorial including troubleshooting and custom dataset instructions.
