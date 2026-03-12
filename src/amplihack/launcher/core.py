@@ -805,6 +805,14 @@ class ClaudeLauncher:
         if not self.prepare_launch():
             return 1
 
+        # Auto-update to latest version before launching (fixes #3097)
+        try:
+            from ..utils.claude_cli import ensure_latest_claude
+
+            ensure_latest_claude()
+        except Exception:
+            pass  # non-critical — continue with current version
+
         try:
             cmd = self.build_claude_command()
             print(f"Launching Claude with command: {' '.join(cmd)}")
