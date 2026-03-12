@@ -283,12 +283,17 @@ class ServiceBusShardTransport:
 
     # -- Listener-side handlers (called by background thread) ----------------
 
-    def handle_shard_query(self, event: Any) -> None:
+    def handle_shard_query(self, event: Any, agent: Any = None) -> None:
         """Respond to an incoming SHARD_QUERY with a SHARD_RESPONSE.
 
         Searches ONLY this agent's own local shard — never fans out via query_facts.
         Calling query_facts here would cause recursive SHARD_QUERY loops since
         query_facts itself publishes SHARD_QUERY events to all other agents.
+
+        If ``agent`` is provided and has a ``memory.search()`` method, searches
+        via the full CognitiveAdapter path (n-gram overlap, reranking, semantic
+        matching) instead of the primitive ShardStore.search(). This makes
+        cross-shard retrieval quality equal to local retrieval.
 
         target_agent filter: ignores queries not addressed to this agent.
         Without this filter all agents respond to every SHARD_QUERY, causing
@@ -309,10 +314,14 @@ class ServiceBusShardTransport:
         if not query or not correlation_id:
             return
 
-        # Direct local shard search — bypasses fan-out to prevent circular queries
-        shard = self._local_graph._router.get_shard(self._agent_id)
-        shard_facts = shard.search(query, limit=limit) if shard else []
-        facts = [self._local_graph._shard_to_hive_fact(sf) for sf in shard_facts]
+        # Prefer CognitiveAdapter search (full quality) over raw ShardStore
+        facts_payload = _search_for_shard_response(
+            query=query,
+            limit=limit,
+            agent=agent,
+            local_graph=self._local_graph,
+            agent_id=self._agent_id,
+        )
         try:
             from .event_bus import make_event
 
@@ -321,16 +330,7 @@ class ServiceBusShardTransport:
                 source_agent=self._agent_id,
                 payload={
                     "correlation_id": correlation_id,
-                    "facts": [
-                        {
-                            "fact_id": f.fact_id,
-                            "content": f.content,
-                            "concept": f.concept,
-                            "confidence": f.confidence,
-                            "tags": list(getattr(f, "tags", [])),
-                        }
-                        for f in facts
-                    ],
+                    "facts": facts_payload,
                 },
             )
             self._bus.publish(response)
@@ -338,7 +338,7 @@ class ServiceBusShardTransport:
                 "Agent %s responded to SHARD_QUERY correlation=%s with %d facts",
                 self._agent_id,
                 correlation_id,
-                len(facts),
+                len(facts_payload),
             )
         except Exception:
             logger.debug("Failed to publish SHARD_RESPONSE", exc_info=True)
@@ -365,6 +365,450 @@ class ServiceBusShardTransport:
                 correlation_id,
                 len(payload.get("facts", [])),
             )
+
+
+# ---------------------------------------------------------------------------
+# Shared helper: search for SHARD_RESPONSE facts (used by both transports)
+# ---------------------------------------------------------------------------
+
+
+def _search_for_shard_response(
+    query: str,
+    limit: int,
+    agent: Any,
+    local_graph: Any,
+    agent_id: str,
+) -> list[dict]:
+    """Return a list of fact dicts for inclusion in a SHARD_RESPONSE.
+
+    Tries agent.memory.search() (CognitiveAdapter path) first; falls back to
+    direct ShardStore.search() if the agent is None or raises an exception.
+    """
+    # CognitiveAdapter path: full n-gram + reranking + semantic quality
+    if agent is not None and hasattr(agent, "memory") and hasattr(agent.memory, "search"):
+        try:
+            mem_results = agent.memory.search(query, limit=limit)
+            return [
+                {
+                    "fact_id": getattr(f, "fact_id", ""),
+                    "content": getattr(f, "content", str(f)),
+                    "concept": getattr(f, "concept", ""),
+                    "confidence": float(getattr(f, "confidence", 0.8)),
+                    "source_agent": getattr(f, "source_agent", agent_id),
+                    "tags": list(getattr(f, "tags", [])),
+                }
+                for f in mem_results
+                if getattr(f, "content", "")
+            ]
+        except Exception:
+            logger.debug(
+                "CognitiveAdapter search failed for %s, falling back to shard",
+                agent_id,
+                exc_info=True,
+            )
+
+    # Fallback: raw ShardStore search (primitive keyword tokenisation)
+    shard = local_graph._router.get_shard(agent_id)
+    if not shard:
+        return []
+    shard_facts = shard.search(query, limit=limit)
+    hive_facts = [local_graph._shard_to_hive_fact(sf) for sf in shard_facts]
+    return [
+        {
+            "fact_id": f.fact_id,
+            "content": f.content,
+            "concept": f.concept,
+            "confidence": f.confidence,
+            "source_agent": f.source_agent,
+            "tags": list(getattr(f, "tags", [])),
+        }
+        for f in hive_facts
+    ]
+
+
+# ---------------------------------------------------------------------------
+# EventHubsShardTransport — Azure Event Hubs (partition-key routing)
+# ---------------------------------------------------------------------------
+
+
+class EventHubsShardTransport:
+    """Shard transport routing cross-shard operations via Azure Event Hubs.
+
+    Uses partition-key routing for delivery:
+    - SHARD_QUERY published with ``partition_key=target_agent`` so all queries
+      for a given agent consistently land on the same partition.
+    - SHARD_RESPONSE published with ``partition_key=requesting_agent`` so
+      responses route back to the querying agent's partition.
+
+    Each agent has a dedicated consumer group (``cg-{agent_id}``) that reads
+    from all partitions and filters by ``target_agent`` in the event body.
+    A background receive thread fills an internal mailbox; ``poll()`` drains
+    it for the ``_shard_query_listener``.
+
+    Correlation via ``correlation_id + threading.Event`` — same pattern as
+    ``ServiceBusShardTransport``.
+
+    ``handle_shard_query`` uses ``agent.memory.search()`` (CognitiveAdapter)
+    when an agent instance is provided, falling back to raw ShardStore search.
+
+    Args:
+        connection_string: Event Hubs namespace connection string.
+        eventhub_name: Name of the Event Hub (e.g. ``hive-shards``).
+        agent_id: This agent's own ID — determines which events to handle.
+        consumer_group: Consumer group name (default: ``cg-{agent_id}``).
+        timeout: Seconds to wait for SHARD_RESPONSE (default 5.0).
+        _start_receiving: Set False to skip the background receive thread
+            (useful for unit tests that drive the mailbox directly).
+    """
+
+    def __init__(
+        self,
+        connection_string: str,
+        eventhub_name: str,
+        agent_id: str,
+        consumer_group: str | None = None,
+        timeout: float = 5.0,
+        _start_receiving: bool = True,
+    ) -> None:
+        self._agent_id = agent_id
+        self._timeout = timeout
+        self._connection_string = connection_string
+        self._eventhub_name = eventhub_name
+        self._consumer_group = consumer_group or f"cg-{agent_id}"
+        self._local_graph: Any = None
+
+        # Pending cross-shard queries: correlation_id → (done_event, facts_list)
+        self._pending: dict[str, tuple[threading.Event, list]] = {}
+        self._pending_lock = threading.Lock()
+
+        # Mailbox: events targeted at this agent (filled by _receive_loop)
+        self._mailbox: list[Any] = []
+        self._mailbox_lock = threading.Lock()
+        self._mailbox_ready = threading.Event()
+
+        # Background receive thread
+        self._shutdown = threading.Event()
+        self._recv_thread = threading.Thread(
+            target=self._receive_loop,
+            daemon=True,
+            name=f"eh-recv-{agent_id}",
+        )
+        if _start_receiving:
+            self._recv_thread.start()
+
+    def bind_local(self, graph: Any) -> None:
+        """Bind the DistributedHiveGraph that owns this transport's local shard."""
+        self._local_graph = graph
+
+    # -- Background receive loop ---------------------------------------------
+
+    def _receive_loop(self) -> None:
+        """Receive Event Hubs events into the mailbox (runs in background thread)."""
+        import json
+
+        try:
+            from azure.eventhub import EventHubConsumerClient  # type: ignore[import-unresolved]
+        except ImportError:
+            logger.error(
+                "azure-eventhub not installed — EventHubsShardTransport cannot receive events"
+            )
+            return
+
+        def _on_event(partition_context: Any, event: Any) -> None:
+            if event is None or self._shutdown.is_set():
+                return
+            try:
+                data = json.loads(event.body_as_str())
+                event_type = data.get("event_type", "")
+                payload = data.get("payload", {})
+                target = payload.get("target_agent", "")
+                correlation_id = payload.get("correlation_id", "")
+
+                # Accept events explicitly addressed to this agent or SHARD_RESPONSE
+                # events for our pending correlations (partition_key already routes
+                # responses to our partition, so correlation filtering is sufficient).
+                if event_type == "SHARD_RESPONSE":
+                    with self._pending_lock:
+                        if correlation_id not in self._pending:
+                            return
+                elif target and target != self._agent_id:
+                    return
+
+                from .event_bus import BusEvent
+
+                bus_evt = BusEvent(
+                    event_id=data.get("event_id", uuid.uuid4().hex),
+                    event_type=event_type,
+                    source_agent=data.get("source_agent", ""),
+                    timestamp=data.get("timestamp", 0.0),
+                    payload=payload,
+                )
+                with self._mailbox_lock:
+                    self._mailbox.append(bus_evt)
+                self._mailbox_ready.set()
+                partition_context.update_checkpoint(event)
+            except Exception:
+                logger.debug("EH receive error for %s", self._agent_id, exc_info=True)
+
+        consumer = EventHubConsumerClient.from_connection_string(
+            self._connection_string,
+            consumer_group=self._consumer_group,
+            eventhub_name=self._eventhub_name,
+        )
+        try:
+            consumer.receive(on_event=_on_event, starting_position="-1")
+        except Exception:
+            if not self._shutdown.is_set():
+                logger.warning("EH consumer exited for %s", self._agent_id, exc_info=True)
+        finally:
+            try:
+                consumer.close()
+            except Exception:
+                pass
+
+    # -- Poll interface (used by _shard_query_listener) ----------------------
+
+    def poll(self, agent_id: str) -> list[Any]:
+        """Drain pending events from the mailbox (blocks up to 5 s for new events).
+
+        Compatible with ``EventBus.poll()`` so ``_shard_query_listener`` can use
+        the same polling loop regardless of transport type.
+        """
+        self._mailbox_ready.wait(timeout=5.0)
+        self._mailbox_ready.clear()
+        with self._mailbox_lock:
+            items = list(self._mailbox)
+            self._mailbox.clear()
+        return items
+
+    # -- Internal publish helper ---------------------------------------------
+
+    def _publish(self, payload: dict[str, Any], partition_key: str | None = None) -> None:
+        """Publish a JSON event to the Event Hub."""
+        import json
+
+        try:
+            from azure.eventhub import (  # type: ignore[import-unresolved]
+                EventData,
+                EventHubProducerClient,
+            )
+        except ImportError:
+            logger.error("azure-eventhub not installed — cannot publish to Event Hubs")
+            return
+
+        producer = EventHubProducerClient.from_connection_string(
+            self._connection_string, eventhub_name=self._eventhub_name
+        )
+        try:
+            with producer:
+                kwargs: dict[str, Any] = {}
+                if partition_key:
+                    kwargs["partition_key"] = partition_key
+                batch = producer.create_batch(**kwargs)
+                batch.add(EventData(json.dumps(payload)))
+                producer.send_batch(batch)
+        except Exception:
+            logger.warning("Failed to publish event to Event Hubs", exc_info=True)
+
+    # -- ShardTransport protocol ---------------------------------------------
+
+    def query_shard(self, agent_id: str, query: str, limit: int) -> list[ShardFact]:
+        """Query a shard — local bypass for own shard, EH round-trip for remote."""
+        if agent_id == self._agent_id and self._local_graph is not None:
+            shard = self._local_graph._router.get_shard(agent_id)
+            if shard is None:
+                return []
+            return shard.search(query, limit=limit)
+
+        # Remote query: publish SHARD_QUERY and wait for SHARD_RESPONSE
+        correlation_id = uuid.uuid4().hex
+        done = threading.Event()
+        results: list[dict] = []
+        with self._pending_lock:
+            self._pending[correlation_id] = (done, results)
+
+        try:
+            import time
+
+            self._publish(
+                {
+                    "event_id": uuid.uuid4().hex,
+                    "event_type": "SHARD_QUERY",
+                    "source_agent": self._agent_id,
+                    "timestamp": time.time(),
+                    "payload": {
+                        "query": query,
+                        "limit": limit,
+                        "correlation_id": correlation_id,
+                        "target_agent": agent_id,
+                    },
+                },
+                partition_key=agent_id,
+            )
+            done.wait(timeout=self._timeout)
+        finally:
+            with self._pending_lock:
+                self._pending.pop(correlation_id, None)
+
+        return [
+            ShardFact(
+                fact_id=f.get("fact_id", ""),
+                content=f.get("content", ""),
+                concept=f.get("concept", ""),
+                confidence=f.get("confidence", 0.8),
+                source_agent=f.get("source_agent", ""),
+                tags=f.get("tags", []),
+            )
+            for f in results
+            if f.get("content")
+        ]
+
+    def store_on_shard(self, agent_id: str, fact: ShardFact) -> None:
+        """Store a fact — local bypass for own shard, SHARD_STORE via EH for remote."""
+        if agent_id == self._agent_id and self._local_graph is not None:
+            shard = self._local_graph._router.get_shard(agent_id)
+            if shard is None:
+                return
+            gen = self._local_graph._router._embedding_generator
+            if gen is not None and shard._embedding_generator is None:
+                shard.set_embedding_generator(gen)
+            shard.store(fact)
+            return
+
+        import time
+
+        self._publish(
+            {
+                "event_id": uuid.uuid4().hex,
+                "event_type": "SHARD_STORE",
+                "source_agent": self._agent_id,
+                "timestamp": time.time(),
+                "payload": {
+                    "target_agent": agent_id,
+                    "fact": {
+                        "fact_id": fact.fact_id,
+                        "content": fact.content,
+                        "concept": fact.concept,
+                        "confidence": fact.confidence,
+                        "source_agent": fact.source_agent,
+                        "tags": list(fact.tags),
+                    },
+                },
+            },
+            partition_key=agent_id,
+        )
+
+    # -- Listener-side handlers (called by background thread via poll()) -----
+
+    def handle_shard_query(self, event: Any, agent: Any = None) -> None:
+        """Respond to SHARD_QUERY using CognitiveAdapter or local shard search.
+
+        If ``agent`` is provided and has a ``memory.search()`` method, searches
+        via the full CognitiveAdapter path instead of raw ShardStore.search().
+        Publishes SHARD_RESPONSE with ``partition_key=requesting_agent`` so the
+        response routes directly to the querying agent's partition.
+        """
+        if self._local_graph is None:
+            return
+        payload = getattr(event, "payload", None) or {}
+        query = payload.get("query", "")
+        limit = payload.get("limit", 20)
+        correlation_id = payload.get("correlation_id", "")
+        target_agent = payload.get("target_agent", "")
+        if target_agent and target_agent != self._agent_id:
+            return
+        if not query or not correlation_id:
+            return
+
+        facts_payload = _search_for_shard_response(
+            query=query,
+            limit=limit,
+            agent=agent,
+            local_graph=self._local_graph,
+            agent_id=self._agent_id,
+        )
+        import time
+
+        source_agent = getattr(event, "source_agent", "")
+        self._publish(
+            {
+                "event_id": uuid.uuid4().hex,
+                "event_type": "SHARD_RESPONSE",
+                "source_agent": self._agent_id,
+                "timestamp": time.time(),
+                "payload": {
+                    "correlation_id": correlation_id,
+                    "facts": facts_payload,
+                },
+            },
+            partition_key=source_agent,
+        )
+        logger.debug(
+            "Agent %s (EH) responded to SHARD_QUERY correlation=%s with %d facts",
+            self._agent_id,
+            correlation_id,
+            len(facts_payload),
+        )
+
+    def handle_shard_response(self, event: Any) -> None:
+        """Wake the pending query_shard() call when SHARD_RESPONSE arrives."""
+        payload = getattr(event, "payload", None) or {}
+        correlation_id = payload.get("correlation_id", "")
+        if not correlation_id:
+            return
+        with self._pending_lock:
+            pending = self._pending.get(correlation_id)
+        if pending:
+            done_event, results = pending
+            results.extend(payload.get("facts", []))
+            done_event.set()
+            logger.debug(
+                "Agent %s (EH) received SHARD_RESPONSE correlation=%s (%d facts)",
+                self._agent_id,
+                correlation_id,
+                len(payload.get("facts", [])),
+            )
+
+    def handle_shard_store(self, event: Any) -> None:
+        """Store a replicated fact from SHARD_STORE in the local shard."""
+        if self._local_graph is None:
+            return
+        payload = getattr(event, "payload", None) or {}
+        target_agent = payload.get("target_agent", "")
+        if target_agent and target_agent != self._agent_id:
+            return
+        fact_dict = payload.get("fact", {})
+        if not fact_dict.get("content"):
+            return
+
+        shard = self._local_graph._router.get_shard(self._agent_id)
+        if shard is None:
+            return
+        gen = self._local_graph._router._embedding_generator
+        if gen is not None and shard._embedding_generator is None:
+            shard.set_embedding_generator(gen)
+
+        replica = ShardFact(
+            fact_id=fact_dict.get("fact_id", ""),
+            content=fact_dict.get("content", ""),
+            concept=fact_dict.get("concept", ""),
+            confidence=fact_dict.get("confidence", 0.8),
+            source_agent=fact_dict.get("source_agent", getattr(event, "source_agent", "")),
+            tags=fact_dict.get("tags", []),
+        )
+        stored = shard.store(replica)
+        logger.debug(
+            "Agent %s (EH) stored replicated fact from %s (stored=%s, content=%.40s)",
+            self._agent_id,
+            getattr(event, "source_agent", "?"),
+            stored,
+            replica.content,
+        )
+
+    def close(self) -> None:
+        """Shut down the background receive thread."""
+        self._shutdown.set()
+        self._mailbox_ready.set()  # Unblock any waiting poll() call
 
 
 # ---------------------------------------------------------------------------
@@ -521,31 +965,16 @@ class DistributedHiveGraph:
             created_at=fact.created_at,
         )
 
-        # Store locally in the promoting agent's own shard (always local bypass).
+        # Store locally in the promoting agent's own shard (pure DHT sharding:
+        # each agent owns O(F/N) facts; cross-shard queries via CognitiveAdapter
+        # provide retrieval quality equal to local search without full replication).
         shard_fact.ring_position = 0  # Not used for routing here
         self._transport.store_on_shard(agent_id, shard_fact)
 
-        # Replicate to all other registered agents so every agent holds all facts.
-        # This eliminates reliance on SHARD_QUERY round-trips when answering questions:
-        # any agent can answer any question from its local shard without cross-shard
-        # queries. For ServiceBusShardTransport, store_on_shard publishes a SHARD_STORE
-        # event; the peer's shard_query_listener calls handle_shard_store() to persist
-        # the replica in its local shard.
+        # Update bloom filter and counters for the local shard only
         with self._lock:
-            peer_ids = [aid for aid in self._agents if aid != agent_id]
-        for peer_id in peer_ids:
-            try:
-                self._transport.store_on_shard(peer_id, shard_fact)
-            except Exception:
-                logger.debug("Failed to replicate fact to peer %s", peer_id, exc_info=True)
-
-        # Update bloom filters and counters
-        owners = [agent_id] + peer_ids
-        with self._lock:
-            for aid in owners:
-                if aid in self._bloom_filters:
-                    self._bloom_filters[aid].add(fact.fact_id)
-            # Update source agent's fact count
+            if agent_id in self._bloom_filters:
+                self._bloom_filters[agent_id].add(fact.fact_id)
             source = self._agents.get(agent_id)
             if source:
                 source.fact_count += 1
@@ -976,6 +1405,7 @@ class DistributedHiveGraph:
 
 __all__ = [
     "DistributedHiveGraph",
+    "EventHubsShardTransport",
     "LocalShardTransport",
     "ServiceBusShardTransport",
     "ShardTransport",

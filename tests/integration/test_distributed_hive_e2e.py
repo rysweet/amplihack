@@ -743,33 +743,55 @@ def two_shard_cluster_all_peers():
 
 
 class TestShardStoreReplication:
-    """Verify SHARD_STORE replication: agent-0 promotes → agent-1 stores via handle_shard_store."""
+    """Verify SHARD_STORE transport protocol: handle_shard_store persists replicated facts.
 
-    def test_promote_broadcasts_shard_store_to_peers(self, two_shard_cluster_all_peers):
-        """promote_fact publishes SHARD_STORE events to all other registered agents."""
+    Note: promote_fact no longer broadcasts SHARD_STORE events to peers (pure DHT
+    sharding — commit e2da57e9 reverted).  Cross-shard retrieval quality is achieved
+    via CognitiveAdapter.search() in handle_shard_query instead.  These tests verify
+    that the SHARD_STORE handler itself still works correctly for transports that
+    explicitly call store_on_shard() on a remote peer (e.g. for manual replication).
+    """
+
+    def test_promote_does_not_broadcast_shard_store_to_peers(self, two_shard_cluster_all_peers):
+        """promote_fact stores locally only — no SHARD_STORE broadcast (pure DHT sharding)."""
         dht_0 = two_shard_cluster_all_peers["dht_0"]
         bus = two_shard_cluster_all_peers["bus"]
 
         fact = _make_fact("Sarah Chen was born on March 15", "people", "agent-0")
         dht_0.promote_fact("agent-0", fact)
 
-        # agent-1's subscription should have received a SHARD_STORE event
+        # No SHARD_STORE events should be published (pure DHT sharding)
         events = bus.poll("agent-1")
         shard_store_events = [e for e in events if e.event_type == "SHARD_STORE"]
-        assert len(shard_store_events) >= 1, (
-            f"Expected SHARD_STORE on agent-1's subscription, got: {[e.event_type for e in events]}"
+        assert len(shard_store_events) == 0, (
+            f"promote_fact should not broadcast SHARD_STORE after revert of e2da57e9, "
+            f"got: {[e.event_type for e in events]}"
         )
 
     def test_handle_shard_store_persists_replica(self, two_shard_cluster_all_peers):
-        """handle_shard_store stores the replicated fact in agent-1's local shard."""
-        dht_0 = two_shard_cluster_all_peers["dht_0"]
+        """handle_shard_store stores a replicated fact in agent-1's local shard."""
         transport_1 = two_shard_cluster_all_peers["transport_1"]
         bus = two_shard_cluster_all_peers["bus"]
 
-        fact = _make_fact("Sarah Chen was born on March 15", "people", "agent-0")
-        dht_0.promote_fact("agent-0", fact)
+        # Manually publish a SHARD_STORE event (as a transport would do)
+        store_event = make_event(
+            event_type="SHARD_STORE",
+            source_agent="agent-0",
+            payload={
+                "target_agent": "agent-1",
+                "fact": {
+                    "fact_id": "test-fact-id",
+                    "content": "Sarah Chen was born on March 15",
+                    "concept": "people",
+                    "confidence": 0.9,
+                    "source_agent": "agent-0",
+                    "tags": ["people"],
+                },
+            },
+        )
+        bus.publish(store_event)
 
-        # Drain SHARD_STORE events from agent-1's subscription and process them
+        # Process the SHARD_STORE event
         events = bus.poll("agent-1")
         for event in events:
             if event.event_type == "SHARD_STORE":
@@ -786,53 +808,155 @@ class TestShardStoreReplication:
             f"Shard has {shard.fact_count} facts."
         )
 
-    def test_replication_via_listener_thread(self, two_shard_cluster_all_peers):
-        """Full end-to-end: promote on agent-0, listener processes SHARD_STORE, agent-1 can query."""
-        dht_0 = two_shard_cluster_all_peers["dht_0"]
-        transport_0 = two_shard_cluster_all_peers["transport_0"]
-        transport_1 = two_shard_cluster_all_peers["transport_1"]
-        bus = two_shard_cluster_all_peers["bus"]
 
+# ---------------------------------------------------------------------------
+# Phase 8: CognitiveAdapter cross-shard retrieval via handle_shard_query
+# ---------------------------------------------------------------------------
+
+
+class TestCognitiveAdapterCrossShardRetrieval:
+    """Verify that _shard_query_listener passes agent to handle_shard_query
+    so cross-shard queries use CognitiveAdapter.search() instead of raw ShardStore.
+    """
+
+    def test_handle_shard_query_uses_agent_memory_search(self, two_shard_cluster):
+        """handle_shard_query with agent uses agent.memory.search() (CognitiveAdapter path)."""
+        transport_0 = two_shard_cluster["transport_0"]
+        bus = two_shard_cluster["bus"]
+
+        # Create a mock agent whose memory.search() returns a known result
+        search_called_with: list[str] = []
+
+        class _MockMemory:
+            def search(self, query, limit=20):
+                search_called_with.append(query)
+                return [
+                    type(
+                        "Fact",
+                        (),
+                        {
+                            "fact_id": "ca-fact",
+                            "content": "CognitiveAdapter result: Sarah Chen born March 15",
+                            "concept": "people",
+                            "confidence": 0.95,
+                            "source_agent": "agent-0",
+                            "tags": [],
+                        },
+                    )()
+                ]
+
+        class _MockAgent:
+            memory = _MockMemory()
+
+        mock_agent = _MockAgent()
+        correlation_id = uuid.uuid4().hex
+        query_event = make_event(
+            event_type="SHARD_QUERY",
+            source_agent="agent-1",
+            payload={
+                "query": "Sarah Chen",
+                "limit": 5,
+                "correlation_id": correlation_id,
+                "target_agent": "agent-0",
+            },
+        )
+        bus.publish(query_event)
+
+        # Process via handle_shard_query with agent
+        for event in bus.poll("agent-0"):
+            if event.event_type == "SHARD_QUERY":
+                transport_0.handle_shard_query(event, agent=mock_agent)
+
+        assert search_called_with, "agent.memory.search() was never called"
+        assert search_called_with[0] == "Sarah Chen"
+
+        # Verify SHARD_RESPONSE contains CognitiveAdapter result
+        response_facts: list[dict] = []
+        for event in bus.poll("agent-1"):
+            if (
+                event.event_type == "SHARD_RESPONSE"
+                and event.payload.get("correlation_id") == correlation_id
+            ):
+                response_facts.extend(event.payload.get("facts", []))
+
+        texts = [f["content"] for f in response_facts]
+        assert any("CognitiveAdapter" in t for t in texts), (
+            f"CognitiveAdapter result missing from SHARD_RESPONSE. Got: {texts}"
+        )
+
+    def test_shard_query_listener_passes_agent_to_handle_shard_query(self, two_shard_cluster):
+        """_shard_query_listener passes the agent instance to handle_shard_query."""
+        transport_0 = two_shard_cluster["transport_0"]
+        bus = two_shard_cluster["bus"]
+
+        search_calls: list[str] = []
+
+        class _MockMemory:
+            def search(self, query, limit=20):
+                search_calls.append(query)
+                return [
+                    type(
+                        "F",
+                        (),
+                        {
+                            "fact_id": "f1",
+                            "content": "Lars Eriksson plays hockey",
+                            "concept": "sports",
+                            "confidence": 0.9,
+                            "source_agent": "agent-0",
+                            "tags": [],
+                        },
+                    )()
+                ]
+
+        class _MockAgent:
+            memory = _MockMemory()
+
+        mock_agent = _MockAgent()
         shutdown = threading.Event()
 
-        # Start shard_query_listener for both agents (handles SHARD_STORE)
         listener_0 = threading.Thread(
             target=_shard_query_listener,
-            args=(transport_0, "agent-0", bus, shutdown),
-            daemon=True,
-        )
-        listener_1 = threading.Thread(
-            target=_shard_query_listener,
-            args=(transport_1, "agent-1", bus, shutdown),
+            args=(transport_0, "agent-0", bus, shutdown, mock_agent),
             daemon=True,
         )
         listener_0.start()
-        listener_1.start()
 
         try:
-            # Agent-0 promotes a fact — SHARD_STORE goes to agent-1's subscription
-            fact = _make_fact("Lars Eriksson has a pet named Bjorn", "people", "agent-0")
-            dht_0.promote_fact("agent-0", fact)
+            # Agent-1 sends a SHARD_QUERY targeting agent-0
+            correlation_id = uuid.uuid4().hex
+            query_event = make_event(
+                event_type="SHARD_QUERY",
+                source_agent="agent-1",
+                payload={
+                    "query": "Lars Eriksson",
+                    "limit": 5,
+                    "correlation_id": correlation_id,
+                    "target_agent": "agent-0",
+                },
+            )
+            bus.publish(query_event)
 
-            # Wait for agent-1's shard_query_listener to process SHARD_STORE
-            local_graph_1 = transport_1._local_graph
-            shard_1 = local_graph_1._router.get_shard("agent-1") if local_graph_1 else None
-
-            deadline = time.time() + 5.0
-            while time.time() < deadline:
-                if shard_1 and shard_1.fact_count > 0:
-                    break
+            # Wait for the listener to process the event
+            deadline = time.time() + 3.0
+            while time.time() < deadline and not search_calls:
                 time.sleep(0.05)
 
-            assert shard_1 is not None and shard_1.fact_count > 0, (
-                "agent-1's shard empty after 5s — SHARD_STORE replication did not work"
-            )
-            facts = shard_1.search("lars eriksson")
-            assert any("Lars Eriksson" in f.content for f in facts), (
-                f"Replicated fact about Lars Eriksson not found in agent-1. "
-                f"Facts: {[f.content for f in shard_1.search('lars')]}"
+            assert search_calls, "agent.memory.search() not called by listener thread"
+
+            # Verify response came back
+            response_facts: list[dict] = []
+            for event in bus.poll("agent-1"):
+                if (
+                    event.event_type == "SHARD_RESPONSE"
+                    and event.payload.get("correlation_id") == correlation_id
+                ):
+                    response_facts.extend(event.payload.get("facts", []))
+
+            texts = [f["content"] for f in response_facts]
+            assert any("Lars Eriksson" in t for t in texts), (
+                f"CognitiveAdapter result missing from cross-shard response. Got: {texts}"
             )
         finally:
             shutdown.set()
             listener_0.join(timeout=2.0)
-            listener_1.join(timeout=2.0)

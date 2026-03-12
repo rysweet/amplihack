@@ -64,7 +64,9 @@ var sbTopicName = empty(sbTopicNameParam) ? 'hive-events-${hiveName}' : sbTopicN
 var acrNameResolved = empty(acrName) ? 'acr${suffix}' : acrName
 var logAnalyticsName = 'hive-logs-${suffix}'
 var envName = 'hive-env-${hiveName}'
-var sbNamespaceName = 'hive-sb-prem-${suffix}'
+var sbNamespaceName = 'hive-sb-${suffix}'
+var ehNamespaceName = 'hive-eh-${suffix}'
+var ehName = 'hive-shards-${hiveName}'
 var appCount = (agentCount + agentsPerApp - 1) / agentsPerApp
 
 // ---------- Container Registry ----------
@@ -92,7 +94,10 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
 }
 
 
-// ---------- Service Bus (Standard — Premium CBS auth fails in Container Apps) ----------
+// ---------- Service Bus (Standard — for hive-events topic only) ----------
+// Note: Service Bus is retained only for the main hive-events topic
+// (LEARN_CONTENT, INPUT, AGENT_READY) and eval response collection.
+// Shard transport (SHARD_QUERY/SHARD_RESPONSE) moved to Event Hubs below.
 resource sbNamespace 'Microsoft.ServiceBus/namespaces@2022-10-01-preview' = {
   name: sbNamespaceName
   location: location
@@ -135,31 +140,6 @@ resource sbEvalSubscription 'Microsoft.ServiceBus/namespaces/topics/subscription
   }
 }
 
-// DHT shard query topic for cross-agent knowledge retrieval.
-// Each agent listens here for SHARD_QUERY events from peers and responds
-// with SHARD_RESPONSE events.  No fact replication — each agent owns its shard.
-resource sbShardsTopic 'Microsoft.ServiceBus/namespaces/topics@2022-10-01-preview' = {
-  name: 'hive-shards-${hiveName}'
-  parent: sbNamespace
-  properties: {
-    enablePartitioning: false
-    defaultMessageTimeToLive: 'PT1H'
-  }
-}
-
-// Per-agent subscription on the shards topic for cross-shard queries
-resource sbShardsSubscriptions 'Microsoft.ServiceBus/namespaces/topics/subscriptions@2022-10-01-preview' = [
-  for i in range(0, agentCount): {
-    name: 'agent-${i}'
-    parent: sbShardsTopic
-    properties: {
-      defaultMessageTimeToLive: 'PT1H'
-      lockDuration: 'PT30S'
-      maxDeliveryCount: 3
-    }
-  }
-]
-
 // Eval response topic for distributed eval answer collection
 resource sbEvalResponseTopic 'Microsoft.ServiceBus/namespaces/topics@2022-10-01-preview' = {
   name: 'eval-responses-${hiveName}'
@@ -180,6 +160,45 @@ resource sbEvalReaderSubscription 'Microsoft.ServiceBus/namespaces/topics/subscr
     maxDeliveryCount: 3
   }
 }
+
+// ---------- Event Hubs (shard transport — replaces Service Bus shard topic) ----------
+// Event Hubs is more reliable than Service Bus Standard for container-to-container
+// messaging in Azure Container Apps (no CBS auth failures, no connection drops).
+// Each agent gets a dedicated consumer group for partition-key-routed delivery.
+resource ehNamespace 'Microsoft.EventHub/namespaces@2023-01-01-preview' = {
+  name: ehNamespaceName
+  location: location
+  sku: {
+    name: 'Standard'
+    tier: 'Standard'
+    capacity: 1
+  }
+  properties: {
+    isAutoInflateEnabled: false
+    maximumThroughputUnits: 0
+  }
+}
+
+// One Event Hub for all shard queries — partition-key routes to target agent
+resource ehShardsHub 'Microsoft.EventHub/namespaces/eventhubs@2023-01-01-preview' = {
+  name: ehName
+  parent: ehNamespace
+  properties: {
+    // N+4 partitions: agentCount partitions for agents, 4 spare for headroom.
+    // partition_key=agent-N routes consistently to one partition via hash.
+    partitionCount: agentCount + 4
+    messageRetentionInDays: 1
+  }
+}
+
+// Per-agent consumer group: each agent reads from its own consumer group
+// so it receives all events (filtering by target_agent happens client-side).
+resource ehConsumerGroups 'Microsoft.EventHub/namespaces/eventhubs/consumergroups@2023-01-01-preview' = [
+  for i in range(0, agentCount): {
+    name: 'cg-agent-${i}'
+    parent: ehShardsHub
+  }
+]
 
 // ---------- Container Apps Environment ----------
 resource containerEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
@@ -206,6 +225,7 @@ resource containerEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
 // Uses EmptyDir volumes at /data for Kuzu storage. Kuzu requires POSIX locks.
 // Data is ephemeral — every deploy is from scratch (content fed after deploy).
 var sbConnectionString = listKeys('${sbNamespace.id}/AuthorizationRules/RootManageSharedAccessKey', '2022-10-01-preview').primaryConnectionString
+var ehConnectionString = listKeys('${ehNamespace.id}/AuthorizationRules/RootManageSharedAccessKey', '2023-01-01-preview').primaryConnectionString
 var acrCredentials = empty(acrName) ? acr.listCredentials() : acrExisting.listCredentials()
 var resolvedImage = empty(image) ? '${acrNameResolved}.azurecr.io/amplihive:latest' : image
 
@@ -230,6 +250,10 @@ resource containerApps 'Microsoft.App/containerApps@2024-03-01' = [
           {
             name: 'sb-connection-string'
             value: memoryTransport == 'azure_service_bus' ? sbConnectionString : ''
+          }
+          {
+            name: 'eh-connection-string'
+            value: ehConnectionString
           }
         ]
         registries: [
@@ -301,6 +325,14 @@ resource containerApps 'Microsoft.App/containerApps@2024-03-01' = [
                 value: 'eval-responses-${hiveName}'
               }
               {
+                name: 'AMPLIHACK_EH_CONNECTION_STRING'
+                secretRef: 'eh-connection-string' // pragma: allowlist secret
+              }
+              {
+                name: 'AMPLIHACK_EH_NAME'
+                value: ehName
+              }
+              {
                 name: 'ANTHROPIC_API_KEY'
                 secretRef: 'anthropic-api-key' // pragma: allowlist secret
               }
@@ -329,3 +361,5 @@ output containerAppNames array = [for appIdx in range(0, appCount): '${hiveName}
 output sbConnectionStringSecretName string = 'sb-connection-string'
 output sbTopicNameOutput string = sbTopicName
 output evalResponseTopicName string = 'eval-responses-${hiveName}'
+output ehNamespaceName string = ehNamespaceName
+output ehName string = ehName
