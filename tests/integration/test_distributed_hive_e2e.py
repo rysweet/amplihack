@@ -3,16 +3,16 @@
 Validates the full data flow using proper DHT sharding (not replication):
   Agent-0 promotes facts to its local DistributedHiveGraph shard
   -> Agent-0 shard is queryable via SHARD_QUERY/SHARD_RESPONSE protocol
-  -> Agent-1 sends SHARD_QUERY via EventHubsShardTransport (bridged to LocalEventBus)
-  -> Agent-0's EventHubsShardTransport responds with SHARD_RESPONSE
+  -> Agent-1 sends SHARD_QUERY via EventHubsShardTransport (local bridge)
+  -> Agent-0's transport responds with SHARD_RESPONSE
   -> Agent-1 receives cross-shard facts without replication
 
 Key property: each agent stores only its DHT-assigned shard (O(F/N) per agent),
 not all facts replicated to every agent (O(F) per agent).
 
 All tests run locally with no Azure, no LLM, no network.
-Uses EventHubsShardTransport(_start_receiving=False) with a LocalEventBus bridge
-so _publish() routes through the in-memory bus instead of real Event Hubs.
+Uses LocalEventBus as an in-process publish/subscribe bridge for
+EventHubsShardTransport instances (replaces AzureServiceBus).
 
 DI pattern: EventHubsShardTransport injected into DistributedHiveGraph.
 Agent code is transport-agnostic — GoalSeekingAgent receives DistributedHiveGraph
@@ -44,32 +44,36 @@ from amplihack.agents.goal_seeking.hive_mind.event_bus import (
 from amplihack.agents.goal_seeking.hive_mind.hive_graph import HiveFact
 
 
-def _make_eh_transport(bus: LocalEventBus, agent_id: str) -> EventHubsShardTransport:
-    """Create an EventHubsShardTransport backed by LocalEventBus (no real Azure connection).
+def _make_eh_transport(bus: LocalEventBus, agent_id: str, timeout: float = 5.0) -> EventHubsShardTransport:
+    """Create EventHubsShardTransport wired to a LocalEventBus for in-process testing.
 
-    Replaces _publish with a bridge that routes events through the shared LocalEventBus,
-    enabling unit tests to drive the SHARD_QUERY/SHARD_RESPONSE protocol without Azure.
+    Uses ``_start_receiving=False`` to skip the background Azure EH consumer
+    thread.  ``_publish`` is monkey-patched to route events through the shared
+    LocalEventBus so tests can use ``bus.publish`` / ``bus.poll`` patterns
+    identical to the original ServiceBus-backed transport tests they replace.
     """
-    transport = EventHubsShardTransport(
-        connection_string="unused",
-        eventhub_name="unused",
+    t = EventHubsShardTransport(
+        connection_string="local://test",
+        eventhub_name="hive-shards-test",
         agent_id=agent_id,
         _start_receiving=False,
+        timeout=timeout,
     )
 
-    def _bridge_publish(payload, partition_key=None):
-        event = BusEvent(
-            event_id=payload.get("event_id", ""),
-            event_type=payload.get("event_type", ""),
+    def _publish(payload: dict, partition_key: str | None = None) -> None:
+        evt = BusEvent(
+            event_id=payload.get("event_id", uuid.uuid4().hex),
+            event_type=payload["event_type"],
             source_agent=payload.get("source_agent", ""),
-            timestamp=payload.get("timestamp", 0.0),
-            payload=payload.get("payload", {}),
+            timestamp=payload.get("timestamp", time.time()),
+            payload=payload["payload"],
         )
-        bus.publish(event)
+        bus.publish(evt)
 
-    transport._publish = _bridge_publish
-    return transport
+    t._publish = _publish  # type: ignore[method-assign]
+    t.poll = bus.poll  # type: ignore[method-assign]
 
+    return t
 
 # Load _shard_query_listener from the deploy entrypoint
 _ENTRYPOINT_PATH = (
@@ -104,25 +108,25 @@ def two_shard_cluster():
     """Two agents each with EventHubsShardTransport + DistributedHiveGraph and a shared bus.
 
     DI pattern: transport is injected into graph; graph passed directly as hive_store.
-    EventHubsShardTransport uses _start_receiving=False + LocalEventBus bridge for testing.
+    Uses LocalEventBus bridge so EH transports communicate in-process without Azure.
     """
     bus = LocalEventBus()
 
     # Agent-0: owns its DHT shard
-    bus.subscribe("agent-0")
     transport_0 = _make_eh_transport(bus, "agent-0")
     dht_0 = DistributedHiveGraph(
         hive_id="shard-agent-0", enable_gossip=False, transport=transport_0
     )
     dht_0.register_agent("agent-0")
+    bus.subscribe("agent-0")
 
     # Agent-1: owns its DHT shard
-    bus.subscribe("agent-1")
     transport_1 = _make_eh_transport(bus, "agent-1")
     dht_1 = DistributedHiveGraph(
         hive_id="shard-agent-1", enable_gossip=False, transport=transport_1
     )
     dht_1.register_agent("agent-1")
+    bus.subscribe("agent-1")
 
     yield {
         "bus": bus,
@@ -417,13 +421,13 @@ class TestShardQueryListenerThread:
 
 @pytest.fixture()
 def five_agent_cluster():
-    """Five agents each with EventHubsShardTransport + shared LocalEventBus.
+    """Five agents each with EventHubsShardTransport + shared LocalEventBus bridge.
 
     Mirrors the production topology from _init_dht_hive: ALL agents are
     registered on EACH agent's DHT ring so the ring topology is shared.
     Only the local agent's ShardStore receives stored facts (Bug 1 fix).
     Queries fan out to ALL agents via SHARD_QUERY/SHARD_RESPONSE (Bug 2 fix).
-    EventHubsShardTransport uses _start_receiving=False + LocalEventBus bridge.
+    Uses LocalEventBus bridge so EH transports communicate in-process without Azure.
     """
     bus = LocalEventBus()
     agent_names = [f"agent-{i}" for i in range(5)]
@@ -433,7 +437,7 @@ def five_agent_cluster():
 
     for name in agent_names:
         bus.subscribe(name)
-        transport = _make_eh_transport(bus, name)
+        transport = _make_eh_transport(bus, name, timeout=3.0)
         dht = DistributedHiveGraph(
             hive_id=f"shard-{name}", enable_gossip=False, transport=transport
         )
@@ -664,7 +668,7 @@ class TestGoalSeekingAgentOrientCrossAgent:
             -> CognitiveAdapter.search() -> _search_hive()
             -> DistributedHiveGraph.query_facts()
             -> DHTRouter._select_query_targets() fans out to all agents (Bug 2 fix)
-            -> SHARD_QUERY sent to agent-0 via EventHubsShardTransport
+            -> SHARD_QUERY sent to agent-0 via EventHubsShardTransport (local bridge)
             -> agent-0 shard listener responds with SHARD_RESPONSE
             -> agent-1 collects SHARD_RESPONSE and returns facts
         """
@@ -744,25 +748,25 @@ def two_shard_cluster_all_peers():
     Each agent registers BOTH agents so promote_fact broadcasts SHARD_STORE
     to peers. This mirrors the production _init_dht_hive() which registers
     all N agents on each DHT.
-    EventHubsShardTransport uses _start_receiving=False + LocalEventBus bridge.
+    Uses LocalEventBus bridge so EH transports communicate in-process without Azure.
     """
     bus = LocalEventBus()
 
-    bus.subscribe("agent-0")
     transport_0 = _make_eh_transport(bus, "agent-0")
     dht_0 = DistributedHiveGraph(
         hive_id="shard-agent-0", enable_gossip=False, transport=transport_0
     )
     dht_0.register_agent("agent-0")
     dht_0.register_agent("agent-1")
+    bus.subscribe("agent-0")
 
-    bus.subscribe("agent-1")
     transport_1 = _make_eh_transport(bus, "agent-1")
     dht_1 = DistributedHiveGraph(
         hive_id="shard-agent-1", enable_gossip=False, transport=transport_1
     )
     dht_1.register_agent("agent-0")
     dht_1.register_agent("agent-1")
+    bus.subscribe("agent-1")
 
     yield {
         "bus": bus,
