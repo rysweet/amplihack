@@ -17,6 +17,7 @@ Philosophy:
 
 from __future__ import annotations
 
+import itertools
 import logging
 from pathlib import Path
 from typing import Any
@@ -32,18 +33,94 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Stop words for query filtering (improves search precision)
 # ---------------------------------------------------------------------------
-_QUERY_STOP_WORDS = frozenset({
-    "what", "is", "the", "a", "an", "are", "was", "were", "how",
-    "does", "do", "and", "or", "of", "in", "to", "for", "with",
-    "on", "at", "by", "from", "that", "this", "it", "as", "be",
-    "been", "has", "have", "had", "will", "would", "could", "should",
-    "did", "which", "who", "when", "where", "why", "any", "some",
-    "all", "both", "each", "few", "more", "most", "other", "such",
-    "into", "through", "during", "before", "after", "than", "then",
-    "these", "those", "there", "their", "they", "its", "our", "your",
-    "my", "we", "i", "you", "he", "she", "me", "him", "her", "them",
-    "used", "found", "given", "made", "came", "went", "said", "got",
-})
+_QUERY_STOP_WORDS = frozenset(
+    {
+        "what",
+        "is",
+        "the",
+        "a",
+        "an",
+        "are",
+        "was",
+        "were",
+        "how",
+        "does",
+        "do",
+        "and",
+        "or",
+        "of",
+        "in",
+        "to",
+        "for",
+        "with",
+        "on",
+        "at",
+        "by",
+        "from",
+        "that",
+        "this",
+        "it",
+        "as",
+        "be",
+        "been",
+        "has",
+        "have",
+        "had",
+        "will",
+        "would",
+        "could",
+        "should",
+        "did",
+        "which",
+        "who",
+        "when",
+        "where",
+        "why",
+        "any",
+        "some",
+        "all",
+        "both",
+        "each",
+        "few",
+        "more",
+        "most",
+        "other",
+        "such",
+        "into",
+        "through",
+        "during",
+        "before",
+        "after",
+        "than",
+        "then",
+        "these",
+        "those",
+        "there",
+        "their",
+        "they",
+        "its",
+        "our",
+        "your",
+        "my",
+        "we",
+        "i",
+        "you",
+        "he",
+        "she",
+        "me",
+        "him",
+        "her",
+        "them",
+        "used",
+        "found",
+        "given",
+        "made",
+        "came",
+        "went",
+        "said",
+        "got",
+    }
+)
 
 
 def _filter_stop_words(query: str) -> str:
@@ -66,14 +143,15 @@ def _ngram_overlap_score(query: str, text: str) -> float:
     t_set = set(t_words)
     # Also check substring containment for partial matches (e.g. "login" in "logins")
     unigram_hits = sum(
-        1 for t in q_terms
+        1
+        for t in q_terms
         if t in t_set or any(w.startswith(t) or t.startswith(w) for w in t_set if len(w) > 2)
     )
     unigram = unigram_hits / max(1, len(q_terms)) if q_terms else 0.0
 
     # Bigram overlap
-    q_bigrams = list(zip(q_words, q_words[1:]))
-    t_bigrams = set(zip(t_words, t_words[1:]))
+    q_bigrams = list(itertools.pairwise(q_words))
+    t_bigrams = set(itertools.pairwise(t_words))
     bigram_hits = sum(1 for bg in q_bigrams if bg in t_bigrams)
     bigram = bigram_hits / max(1, len(q_bigrams)) if q_bigrams else 0.0
 
@@ -160,9 +238,7 @@ class CognitiveAdapter:
             # Note: CognitiveMemory creates kuzu.Database internally using its
             # own defaults. The buffer_pool_size parameter is accepted here for
             # API consistency but CognitiveMemory does not expose it.
-            self.memory = CognitiveMemory(
-                agent_name=agent_name, db_path=str(kuzu_path)
-            )
+            self.memory = CognitiveMemory(agent_name=agent_name, db_path=str(kuzu_path))
             self._cognitive = True
         else:
             if require_cognitive:
@@ -586,15 +662,25 @@ class CognitiveAdapter:
             limit: Maximum nodes to return per keyword
 
         Returns:
-            List of fact dicts matching any of the keywords
+            List of fact dicts matching any of the keywords, including
+            distributed hive results when a hive_store is connected.
         """
         if self._cognitive and hasattr(self.memory, "search_by_concept"):
             results = self.memory.search_by_concept(keywords=keywords, limit=limit)
-            return [self._semantic_fact_to_dict(r) for r in results]
-        if hasattr(self.memory, "search_by_concept"):
+            local_results: list[dict[str, Any]] = [self._semantic_fact_to_dict(r) for r in results]
+        elif hasattr(self.memory, "search_by_concept"):
             nodes = self.memory.search_by_concept(keywords=keywords, limit=limit)
-            return [self._node_to_dict(n) for n in nodes]
-        return []
+            local_results = [self._node_to_dict(n) for n in nodes]
+        else:
+            local_results = []
+
+        if self._hive_store is None:
+            return local_results
+
+        # Also search the distributed hive for facts not in local memory
+        query = " ".join(keywords[:4])
+        hive_results = self._search_hive(query, limit=limit)
+        return self._merge_results(local_results, hive_results, limit)
 
     def execute_aggregation(self, query_type: str, entity_filter: str = "") -> dict[str, Any]:
         """Execute Cypher aggregation query for meta-memory questions.

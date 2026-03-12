@@ -115,3 +115,20 @@ class TestHiveMerge:
         sky_facts = [r for r in results if "sky is blue" in r.get("fact", r.get("outcome", ""))]
         # Should be deduplicated (at most 1 local + 0 from hive since same content)
         assert len(sky_facts) <= 2
+
+
+class TestSearchByConceptHive:
+    """search_by_concept() must also search the distributed hive."""
+
+    def test_search_by_concept_finds_other_agents_facts(self, adapter_a, adapter_b, hive):
+        """Regression: search_by_concept was local-only, missing cross-shard facts.
+
+        When agent_a stores a fact and agent_b calls search_by_concept,
+        the result must contain agent_a's fact via the hive store.
+        """
+        adapter_a.store_fact("Personal Information", "Sarah Chen was born on March 15 1992")
+        results = adapter_b.search_by_concept(keywords=["Sarah Chen"], limit=10)
+        contents = [r.get("outcome", r.get("content", "")) for r in results]
+        assert any("Sarah" in c for c in contents), (
+            "search_by_concept should find hive facts from other agents; got: " + str(contents)
+        )
