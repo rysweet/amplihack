@@ -310,7 +310,7 @@ class TestOutputSafety(unittest.TestCase):
         """stdout contains exactly one non-empty line."""
         result = _run_cli(["amplifier-bundle/tools/orch_helper.py"])
         self.assertEqual(result.returncode, 0, result.stderr)
-        lines = [l for l in result.stdout.splitlines() if l.strip()]
+        lines = [ln for ln in result.stdout.splitlines() if ln.strip()]
         self.assertEqual(len(lines), 1, f"Expected 1 line, got: {result.stdout!r}")
 
     def test_output_is_absolute_path(self):
@@ -443,6 +443,313 @@ class TestOrchHelperImportRegression(unittest.TestCase):
             )
         finally:
             os.chdir(original_cwd)
+
+
+# ---------------------------------------------------------------------------
+# 12. Security hardening — SR-001 through SR-004 (TDD: tests written first)
+#
+# These tests define the security contract that the implementation MUST satisfy
+# after applying the hardening described in the design specification.
+#
+# Expected status before hardening:
+#   - test_rejects_single_dot_path_component   → FAIL (dot segment passes regex)
+#   - test_null_byte_caught_before_prefix       → FAIL (wrong error ordering)
+#   - test_safe_join_function_exists            → FAIL (_safe_join not defined)
+#   - test_safe_join_prevents_symlink_escape    → FAIL (no containment check)
+#
+# Expected status after hardening:
+#   - All four tests pass; all pre-existing tests still pass (no regressions)
+# ---------------------------------------------------------------------------
+class TestSecurityHardeningSR001SingleDot(unittest.TestCase):
+    """SR-001: Segment-level dotdot validation must also reject single-dot segments."""
+
+    def setUp(self):
+        self.validate = _load_module()._validate_relative_path
+
+    def test_rejects_single_dot_path_component(self):
+        """SR-001: A lone '.' segment is a no-op traversal and must be rejected.
+
+        Path.resolve() on 'amplifier-bundle/./tools/orch_helper.py' collapses the
+        dot, which is safe, but allowing '.' blurs the boundary check implemented
+        by segment-level validation.  The spec requires rejecting any segment that
+        is exactly '.' (in addition to '..').
+
+        EXPECTED TO FAIL until SR-001 hardening is applied.
+        """
+        with self.assertRaises(ValueError, msg="Single '.' path segment must be rejected"):
+            self.validate("amplifier-bundle/./tools/orch_helper.py")
+
+    def test_rejects_dotdot_inside_longer_segment_name_allowed(self):
+        """SR-001 boundary: '..hidden' is a filename, not a traversal — must be allowed.
+
+        Filenames that merely *start* with '..' (e.g. '..hidden') are not traversal
+        segments and must not be rejected by the segment-level check.
+        """
+        # Should NOT raise — '..hidden' is a valid filename component.
+        self.validate("amplifier-bundle/tools/..hidden")
+
+    def test_rejects_double_dot_as_standalone_final_segment(self):
+        """SR-001: '..' as the final path segment is rejected (existing + new test)."""
+        with self.assertRaises(ValueError):
+            self.validate("amplifier-bundle/tools/..")
+
+    def test_rejects_double_dot_surrounded_by_valid_segments(self):
+        """SR-001: '..' buried between valid segments is caught by segment scan."""
+        with self.assertRaises(ValueError):
+            self.validate("amplifier-bundle/tools/../tools/orch_helper.py")
+
+
+class TestSecurityHardeningSR003NullByteOrdering(unittest.TestCase):
+    """SR-003: Null byte must be caught as the FIRST validation step.
+
+    Ordering matters: if null byte snuck through before the prefix check it could
+    cause silent misbehaviour in downstream shell usage.  The implementation must
+    short-circuit on null byte *before* inspecting any other path property.
+    """
+
+    def setUp(self):
+        self.validate = _load_module()._validate_relative_path
+
+    def test_null_byte_caught_before_prefix_check(self):
+        r"""SR-003: '\x00amplifier-bundle/...' is rejected for null byte, not missing prefix.
+
+        Currently the code checks the 'amplifier-bundle/' prefix before the regex
+        allowlist, so '\x00amplifier-bundle/...' is rejected with a *prefix* error
+        rather than a null-byte error.  After hardening, the null byte is detected
+        first; the error message must NOT mention 'prefix' or 'amplifier-bundle'.
+
+        EXPECTED TO FAIL until SR-003 null-byte-first ordering is applied.
+        """
+        null_prefixed = "\x00amplifier-bundle/tools/orch_helper.py"
+        with self.assertRaises(ValueError) as ctx:
+            self.validate(null_prefixed)
+        error_msg = str(ctx.exception).lower()
+        self.assertNotIn(
+            "prefix",
+            error_msg,
+            "Null byte must be caught before the prefix check — "
+            "error message must not mention 'prefix'",
+        )
+        self.assertNotIn(
+            "amplifier-bundle",
+            error_msg,
+            "Null byte must be caught before the prefix check — "
+            "error message must not mention 'amplifier-bundle'",
+        )
+
+    def test_null_byte_mid_path_still_rejected(self):
+        r"""SR-003: Null byte in the middle of a valid-prefix path is also caught."""
+        with self.assertRaises(ValueError):
+            self.validate("amplifier-bundle/tools/\x00orch_helper.py")
+
+    def test_null_byte_rejected_via_python_api(self):
+        r"""SR-003: Python API rejects null byte in path with exit code 2 semantics.
+
+        Note: null bytes cannot be passed via OS argv (the kernel treats \x00 as
+        an argument terminator and subprocess.run raises ValueError).  This test
+        validates the Python API path, which is the attack surface that matters
+        for programmatic callers.
+        """
+        validate = _load_module()._validate_relative_path
+        with self.assertRaises(ValueError):
+            validate("amplifier-bundle/tools/\x00orch_helper.py")
+
+
+class TestSecurityHardeningSR004SafeJoin(unittest.TestCase):
+    """SR-004: _safe_join() containment check prevents symlink escape from base dir.
+
+    resolve_asset currently computes candidates with plain path arithmetic
+    (base / relative_path) and then calls candidate.exists().  If a symlink inside
+    the bundle directory points outside the base directory, candidate.resolve()
+    would silently escape the containment boundary.
+
+    The fix requires a _safe_join(base, relative) helper that:
+      1. Computes candidate = (base / relative).resolve()
+      2. Checks candidate.relative_to(base.resolve()) — raises ValueError on escape
+      3. Returns None if the path escapes, rather than raising
+
+    EXPECTED TO FAIL until SR-004 is implemented.
+    """
+
+    def setUp(self):
+        self.mod = _load_module()
+
+    def test_safe_join_function_exists(self):
+        """SR-004: _safe_join must be defined in the module (not yet present).
+
+        EXPECTED TO FAIL until the function is added.
+        """
+        self.assertTrue(
+            hasattr(self.mod, "_safe_join"),
+            "_safe_join function must exist in resolve_bundle_asset module (SR-004).\n"
+            "Add: def _safe_join(base: Path, relative: str) -> Path | None",
+        )
+
+    def test_safe_join_returns_path_for_legitimate_asset(self):
+        """SR-004: _safe_join must return a Path for a normal, non-escaping asset."""
+        mod = self.mod
+        if not hasattr(mod, "_safe_join"):
+            self.skipTest("_safe_join not implemented yet (SR-004)")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            base = Path(tmpdir)
+            (base / "amplifier-bundle" / "tools").mkdir(parents=True)
+            (base / "amplifier-bundle" / "tools" / "orch_helper.py").write_text("# stub")
+            result = mod._safe_join(base, "amplifier-bundle/tools/orch_helper.py")
+            self.assertIsNotNone(result, "_safe_join must return a Path for a legitimate asset")
+            self.assertIsInstance(result, Path)
+
+    def test_safe_join_returns_none_for_symlink_escape(self):
+        """SR-004: _safe_join must return None when a symlink points outside base.
+
+        Setup: base/amplifier-bundle/tools/escape -> /etc (outside base)
+        Expected: _safe_join(base, 'amplifier-bundle/tools/escape') returns None
+
+        EXPECTED TO FAIL until SR-004 containment check is added.
+        """
+        mod = self.mod
+        if not hasattr(mod, "_safe_join"):
+            self.skipTest("_safe_join not implemented yet (SR-004)")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            base = Path(tmpdir)
+            (base / "amplifier-bundle" / "tools").mkdir(parents=True)
+            # Symlink points outside the base directory.
+            escape_link = base / "amplifier-bundle" / "tools" / "escape"
+            escape_link.symlink_to("/etc")
+            result = mod._safe_join(base, "amplifier-bundle/tools/escape")
+            self.assertIsNone(
+                result,
+                "SR-004: _safe_join must return None when symlink escapes base dir, "
+                f"but returned {result!r}",
+            )
+
+    def test_safe_join_returns_none_for_double_dot_component(self):
+        """SR-004: _safe_join must return None when resolved path escapes via '..'."""
+        mod = self.mod
+        if not hasattr(mod, "_safe_join"):
+            self.skipTest("_safe_join not implemented yet (SR-004)")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            base = Path(tmpdir)
+            # Even without a symlink, a path with '..' can theoretically escape.
+            # _safe_join must catch this via relative_to() containment.
+            result = mod._safe_join(base, "amplifier-bundle/../../../etc/passwd")
+            self.assertIsNone(
+                result,
+                "SR-004: _safe_join must return None when resolved path escapes base dir",
+            )
+
+
+class TestSecurityHardeningSR002StdoutCleanliness(unittest.TestCase):
+    """SR-002: Searched filesystem paths must never appear on stdout.
+
+    stdout is the machine-readable channel.  Diagnostic information (candidate
+    search paths, AMPLIHACK_HOME warnings) must go to stderr only.
+    """
+
+    def test_stdout_empty_when_asset_not_found(self):
+        """SR-002: stdout is empty (exit 1) when asset does not exist anywhere."""
+        result = _run_cli(
+            ["amplifier-bundle/does-not-exist-xyz.py"],
+            env={"AMPLIHACK_HOME": "/nonexistent/path"},
+        )
+        self.assertEqual(result.returncode, 1, f"Expected exit 1, got {result.returncode}")
+        self.assertEqual(
+            result.stdout.strip(),
+            "",
+            f"stdout must be empty on not-found, got: {result.stdout!r}",
+        )
+
+    def test_error_details_on_stderr_not_stdout(self):
+        """SR-002: Error details appear on stderr, not stdout."""
+        result = _run_cli(
+            ["amplifier-bundle/does-not-exist-xyz.py"],
+            env={"AMPLIHACK_HOME": "/nonexistent/path"},
+        )
+        # stderr must contain something actionable.
+        self.assertGreater(
+            len(result.stderr.strip()),
+            0,
+            "stderr must contain error guidance when asset is not found",
+        )
+
+    def test_warning_for_invalid_amplihack_home_on_stderr_only(self):
+        """SR-002: Invalid AMPLIHACK_HOME warning goes to stderr, never stdout."""
+        result = _run_cli(
+            ["amplifier-bundle/tools/orch_helper.py"],
+            env={"AMPLIHACK_HOME": "/nonexistent/path/for/sr002/test"},
+        )
+        # The single stdout line must be ONLY the resolved path (or empty on not-found).
+        stdout_lines = [ln for ln in result.stdout.splitlines() if ln.strip()]
+        if stdout_lines:
+            # If found, the only stdout content must be the path.
+            self.assertEqual(
+                len(stdout_lines), 1, f"stdout must be one line, got: {result.stdout!r}"
+            )
+            resolved = Path(stdout_lines[0])
+            self.assertTrue(
+                resolved.is_absolute(), f"stdout must be an absolute path: {stdout_lines[0]!r}"
+            )
+
+    def test_amplihack_home_value_not_leaked_in_warning(self):
+        """SR-005/SR-002: The AMPLIHACK_HOME value must not appear in warning text."""
+        secret_path = "/very/secret/install/path/12345"
+        result = _run_cli(
+            ["amplifier-bundle/tools/orch_helper.py"],
+            env={"AMPLIHACK_HOME": secret_path},
+        )
+        self.assertNotIn(
+            secret_path,
+            result.stderr,
+            f"AMPLIHACK_HOME value {secret_path!r} must not be leaked in stderr output",
+        )
+        self.assertNotIn(
+            secret_path,
+            result.stdout,
+            f"AMPLIHACK_HOME value {secret_path!r} must not appear in stdout",
+        )
+
+
+class TestSecurityHardeningIntegration(unittest.TestCase):
+    """Integration tests confirming security hardening does not break functionality."""
+
+    def setUp(self):
+        self.mod = _load_module()
+        self.repo_root = str(Path(__file__).parent.parent)
+
+    def test_hardened_module_still_resolves_orch_helper(self):
+        """After hardening: orch_helper.py must still resolve correctly."""
+        resolved = self.mod.resolve_asset("amplifier-bundle/tools/orch_helper.py")
+        self.assertTrue(resolved.is_file(), f"orch_helper.py not found: {resolved}")
+
+    def test_hardened_module_valid_path_accepted(self):
+        """After hardening: deeply nested valid path is still accepted."""
+        # Should not raise for a well-formed path.
+        self.mod._validate_relative_path("amplifier-bundle/tools/amplihack/hooks/post-commit")
+
+    def test_hardened_module_exit_0_for_valid_asset(self):
+        """After hardening: CLI still exits 0 for known-good asset."""
+        result = _run_cli(["amplifier-bundle/tools/orch_helper.py"])
+        self.assertEqual(result.returncode, 0, f"Unexpected failure:\n{result.stderr}")
+
+    def test_all_sr001_sr004_exit_code_2_via_cli(self):
+        """SR-001/SR-004: Injection attempts that can reach the CLI produce exit code 2.
+
+        Note: null bytes (\x00) cannot be passed via OS argv — the kernel terminates
+        arguments at the first null byte, so subprocess.run raises ValueError before
+        the process starts.  Null-byte rejection is validated via the Python API in
+        TestSecurityHardeningSR003NullByteOrdering instead.
+        """
+        bad_paths = [
+            "amplifier-bundle/./tools/orch_helper.py",  # SR-001: dot segment
+        ]
+        for path in bad_paths:
+            with self.subTest(path=repr(path)):
+                result = _run_cli([path])
+                self.assertEqual(
+                    result.returncode,
+                    2,
+                    f"Expected exit 2 for {path!r}, got {result.returncode}.\n"
+                    f"stderr: {result.stderr!r}",
+                )
 
 
 if __name__ == "__main__":
