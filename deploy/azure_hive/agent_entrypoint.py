@@ -353,6 +353,7 @@ def main() -> None:
             agent_name=agent_name,
             eventhub_name=eh_input_hub,
             shutdown_event=shutdown_event,
+            starting_position="@latest",
         )
         # Wrap the input source to set answer correlation context per message.
         input_source = _CorrelatingInputSource(eh_source, answer_publisher)
