@@ -208,13 +208,13 @@ class KuzuConnector:
             else:
                 result = self._conn.execute(query)
 
-            # Convert results to list of dicts
+            # Convert results to list of dicts.
+            # Column names are constant for a given result set — fetch once
+            # outside the loop to avoid an O(rows) redundant call.
             records = []
+            col_names = result.get_column_names()
             while result.has_next():
                 row = result.get_next()
-                # Get column names
-                col_names = result.get_column_names()
-                # Create dict from row
                 record = dict(zip(col_names, row, strict=False))
                 records.append(record)
 

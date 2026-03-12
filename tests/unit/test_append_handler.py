@@ -107,8 +107,6 @@ class TestAppendInstructionsBasic:
         with patch("pathlib.Path.cwd", return_value=workspace):
             append_instructions(instruction)
 
-        after_time = datetime.now()
-
         # Check filename format
         md_files = list(append_dir.glob("*.md"))
         assert len(md_files) == 1
@@ -556,32 +554,3 @@ class TestAppendResult:
         assert "session_id" in result_dict
         assert result_dict["success"] is True
         assert result_dict["session_id"] == "auto_claude_123"
-
-
-class TestCLIIntegration:
-    """Test CLI --append flag integration (conceptual tests)."""
-
-    def test_cli_append_flag_exists(self):
-        """Test that --append flag is available in CLI.
-
-        This is a conceptual test - actual CLI testing would be in integration tests.
-        """
-        # Placeholder to guide implementation
-        # CLI should accept: amplihack --append "instruction text"
-        assert True, "CLI flag should be implemented"
-
-    def test_cli_append_with_session_id(self):
-        """Test that --append flag can accept optional session ID.
-
-        Conceptual test for CLI argument: amplihack --append "text" --session SESSION_ID
-        """
-        # Placeholder to guide implementation
-        assert True, "CLI should support --session flag"
-
-    def test_cli_append_help_text(self):
-        """Test that --append flag has proper help text.
-
-        Conceptual test for help documentation.
-        """
-        # Placeholder to guide implementation
-        assert True, "Help text should explain append functionality"

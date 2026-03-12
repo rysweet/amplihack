@@ -436,16 +436,18 @@ class Orchestrator:
         Returns:
             Ordered language list
         """
+        # Use a set for O(1) membership tests and O(1) discard, so the overall
+        # function is O(n + p) rather than O(n * p) with list.remove().
         ordered = []
-        remaining = list(languages)
+        remaining: set[str] = set(languages)
 
         for lang in priority_order:
             if lang in remaining:
                 ordered.append(lang)
-                remaining.remove(lang)
+                remaining.discard(lang)
 
-        # Add any remaining languages
-        ordered.extend(remaining)
+        # Preserve relative order of unprioritised languages (original list order)
+        ordered.extend(lang for lang in languages if lang in remaining)
 
         return ordered
 
