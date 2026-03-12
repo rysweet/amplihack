@@ -1,2 +1,1 @@
-2026-03-11T06:00:00Z run=22933685160
-#3017 expires today (auto-merge-candidate). #2876 still has merge conflicts, previously triaged as extreme-risk/needs-decomposition.
+2026-03-12T07:00:00Z #3084=medium-risk/high-priority/security #3085=low-risk/docs
