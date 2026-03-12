@@ -273,7 +273,9 @@ def main() -> None:
         "dht-sharded" if hive_store else "none",
     )
 
-    # Build Memory facade — retained for event transport only (receive_events).
+    # Build Memory facade — retained for Kuzu storage wiring only.
+    # Event Hubs handles all event transport now; the facade uses "local"
+    # transport since it no longer needs SB for receive_events().
     try:
         from amplihack.memory.facade import Memory
 
@@ -281,8 +283,8 @@ def main() -> None:
             agent_name,
             topology="distributed",
             backend="cognitive",
-            memory_transport=transport,
-            memory_connection_string=connection_string,
+            memory_transport="local",
+            memory_connection_string="",
             storage_path=storage_path,
         )
     except Exception:
