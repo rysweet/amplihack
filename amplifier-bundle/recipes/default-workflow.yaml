@@ -132,7 +132,10 @@ steps:
       echo "  Step 21: Convert PR to Ready"
       echo "  Step 22: Ensure PR Mergeable"
       echo ""
-      printf 'Task: %s\n' {{task_description}}
+      _TD_RAW=$(cat <<'EOFTASKDESC'
+      {{task_description}}
+      EOFTASKDESC
+      ) && printf 'Task: %s\n' "$_TD_RAW"
       printf 'Repository: %s\n' {{repo_path}}
     output: "workflow_init"
 
@@ -250,8 +253,12 @@ steps:
     command: |
       cd "{{repo_path}}" && \
       echo "=== Step 3: Creating GitHub Issue ===" && \
-      ISSUE_TITLE=$(printf '%s' {{task_description}}) && \
-      ISSUE_TASK=$(printf '%s' {{task_description}}) && \
+      _TD_RAW=$(cat <<'EOFTASKDESC'
+      {{task_description}}
+      EOFTASKDESC
+      ) && \
+      ISSUE_TITLE="$_TD_RAW" && \
+      ISSUE_TASK="$_TD_RAW" && \
       ISSUE_REQS=$(printf '%s' {{final_requirements}}) && \
       ISSUE_BODY=$(printf '## Task Description\n%s\n\n## Requirements\n%s\n\n## Acceptance Criteria\n- [ ] All explicit requirements met\n- [ ] Tests passing\n- [ ] Philosophy compliant\n- [ ] Documentation updated\n\n## Classification\nGenerated via default-workflow recipe\n' "$ISSUE_TASK" "$ISSUE_REQS") && \
       gh issue create \
@@ -285,7 +292,10 @@ steps:
       git fetch origin main >&2
 
       # Generate branch name — use printf to safely capture the shlex-quoted value
-      TASK_DESC=$(printf '%s' {{task_description}})
+      TASK_DESC=$(cat <<'EOFTASKDESC'
+      {{task_description}}
+      EOFTASKDESC
+      )
       TASK_SLUG=$(echo "$TASK_DESC" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | sed 's/[^a-z0-9-]//g' | cut -c1-50)
       BRANCH_NAME="{{branch_prefix}}/issue-{{issue_number}}-${TASK_SLUG}"
       WORKTREE_PATH="{{repo_path}}/worktrees/${BRANCH_NAME}"
@@ -967,7 +977,11 @@ steps:
       git add -A && \
       echo "" && \
       echo "--- Creating Commit ---" && \
-      COMMIT_TITLE=$(printf 'feat: %s' {{task_description}}) && \
+      _TD_RAW=$(cat <<'EOFTASKDESC'
+      {{task_description}}
+      EOFTASKDESC
+      ) && \
+      COMMIT_TITLE=$(printf 'feat: %s' "$_TD_RAW") && \
       COMMIT_MSG=$(printf '%s\n\nImplements issue #%s\n\nChanges:\n- Implementation as per design specification\n- Tests added for new functionality\n- Documentation updated\n\nCloses #%s' "$COMMIT_TITLE" {{issue_number}} {{issue_number}}) && \
       if [ -n "$(git diff --cached --name-only)" ]; then \
         git commit -m "$COMMIT_MSG" ; \
@@ -994,8 +1008,12 @@ steps:
     command: |
       cd "{{worktree_setup.worktree_path}}" && \
       echo "=== Step 15: Creating Draft PR ===" && \
-      PR_TITLE=$(printf '%s' {{task_description}}) && \
-      PR_TASK=$(printf '%s' {{task_description}}) && \
+      _TD_RAW=$(cat <<'EOFTASKDESC'
+      {{task_description}}
+      EOFTASKDESC
+      ) && \
+      PR_TITLE="$_TD_RAW" && \
+      PR_TASK="$_TD_RAW" && \
       PR_DESIGN=$(printf '%s' {{design_spec}}) && \
       PR_BODY=$(printf '## Summary\n%s\n\n## Issue\nCloses #%s\n\n## Changes\n%s\n\n## Testing\n- Unit tests added\n- Local testing completed\n- Pre-commit hooks pass\n\n## Checklist\n- [x] Tests pass\n- [x] Documentation updated\n- [x] No stubs or TODOs\n- [ ] Code review completed\n- [ ] Philosophy check passed\n\n---\n*This PR was created as a draft for review before merging.*\n' "$PR_TASK" {{issue_number}} "$PR_DESIGN") && \
       gh pr create --draft \
@@ -1593,7 +1611,10 @@ steps:
       echo "PR Status:" && \
       gh pr view --json state,mergeable,reviews,statusCheckRollup 2>&1 | cat && \
       echo "" && \
-      printf '=== Task: %s ===\n' {{task_description}} && \
+      _TD_RAW=$(cat <<'EOFTASKDESC'
+      {{task_description}}
+      EOFTASKDESC
+      ) && printf '=== Task: %s ===\n' "$_TD_RAW" && \
       printf '=== Issue: #%s ===\n' {{issue_number}} && \
       printf '=== PR: %s ===\n' {{pr_url}} && \
       echo "" && \
@@ -1607,7 +1628,10 @@ steps:
     type: "bash"
     parse_json: true
     command: |
-      export TASK_VAL=$(printf '%s' {{task_description}})
+      TASK_VAL=$(cat <<'EOFTASKDESC'
+      {{task_description}}
+      EOFTASKDESC
+      ) && export TASK_VAL
       export ISSUE_VAL=$(printf '%s' {{issue_number}})
       export PR_VAL=$(printf '%s' {{pr_url}})
       python3 << 'PYEOF'
