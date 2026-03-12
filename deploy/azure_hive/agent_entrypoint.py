@@ -84,25 +84,36 @@ def _shard_query_listener(
     agent_id: str,
     shard_bus: Any,
     shutdown_event: threading.Event,
+    agent: Any = None,
 ) -> None:
     """Background thread: handle SHARD_QUERY and SHARD_RESPONSE events.
 
     Listens on the shard event bus for cross-shard queries.  When SHARD_QUERY
-    arrives, delegates to transport.handle_shard_query() which queries the
-    local shard and responds immediately with SHARD_RESPONSE.  When
-    SHARD_RESPONSE arrives, delegates to transport.handle_shard_response()
-    which wakes the pending query_shard() call via threading.Event.
+    arrives, delegates to transport.handle_shard_query(event, agent=agent)
+    which searches via CognitiveAdapter if agent is provided, otherwise falls
+    back to direct ShardStore.search().  When SHARD_RESPONSE arrives,
+    delegates to transport.handle_shard_response() which wakes the pending
+    query_shard() call via threading.Event.
 
-    AzureServiceBusEventBus.poll() calls receive_messages(max_wait_time=5)
-    which blocks until messages arrive — no artificial sleep between polls.
+    Polling strategy:
+    - ServiceBusShardTransport: ``shard_bus.poll(agent_id)`` blocks on
+      receive_messages(max_wait_time=5) — no artificial sleep.
+    - EventHubsShardTransport: ``shard_bus`` is None; uses
+      ``transport.poll(agent_id)`` which blocks on the internal mailbox_ready
+      Event — no artificial sleep.
     """
     logger.info("Agent %s shard query listener started", agent_id)
     while not shutdown_event.is_set():
         try:
-            events = shard_bus.poll(agent_id)
+            if shard_bus is not None:
+                events = shard_bus.poll(agent_id)
+            elif hasattr(transport, "poll"):
+                events = transport.poll(agent_id)
+            else:
+                events = []
             for event in events:
                 if event.event_type == "SHARD_QUERY":
-                    transport.handle_shard_query(event)
+                    transport.handle_shard_query(event, agent=agent)
                 elif event.event_type == "SHARD_RESPONSE":
                     transport.handle_shard_response(event)
                 elif event.event_type == "SHARD_STORE":
@@ -117,19 +128,57 @@ def _init_dht_hive(
     agent_count: int,
     connection_string: str,
     hive_name: str,
-) -> tuple[object, object, object] | None:
+    eh_connection_string: str = "",
+    eh_name: str = "",
+) -> tuple[object, object | None, object] | None:
     """Initialize the DHT shard store for this agent using DI pattern.
 
-    Creates a ServiceBusShardTransport, injects it into DistributedHiveGraph,
-    and registers ALL agents on the DHT ring so the router can route queries
-    to remote shards via Service Bus.  Only the local agent has a real
-    ShardStore; peer agents are ring positions that trigger SHARD_QUERY.
+    Prefers EventHubsShardTransport when ``eh_connection_string`` and
+    ``eh_name`` are provided (Azure Event Hubs — more reliable in Container
+    Apps than Service Bus Standard).  Falls back to ServiceBusShardTransport
+    using the shard topic when Event Hubs env vars are absent.
 
-    Returns (dht_graph, shard_bus, sb_transport) or None if init fails.
+    Registers ALL agents on the DHT ring so the router can route queries to
+    remote shards.  Only the local agent has a real ShardStore; peer agents
+    are ring positions that trigger SHARD_QUERY events.
+
+    Returns (dht_graph, shard_bus_or_None, transport) or None if init fails.
+    For EventHubsShardTransport, shard_bus is None (transport handles receiving).
     """
     try:
         from amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph import (
             DistributedHiveGraph,
+        )
+
+        if eh_connection_string and eh_name:
+            # ---- Event Hubs transport (preferred) ----
+            from amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph import (
+                EventHubsShardTransport,
+            )
+
+            eh_transport = EventHubsShardTransport(
+                connection_string=eh_connection_string,
+                eventhub_name=eh_name,
+                agent_id=agent_name,
+                timeout=10.0,
+            )
+            dht_graph = DistributedHiveGraph(
+                hive_id=f"shard-{agent_name}",
+                enable_gossip=False,
+                transport=eh_transport,
+            )
+            for i in range(agent_count):
+                dht_graph.register_agent(f"agent-{i}")
+
+            logger.info(
+                "DHT shard initialized for agent %s via Event Hubs '%s'",
+                agent_name,
+                eh_name,
+            )
+            return dht_graph, None, eh_transport
+
+        # ---- Service Bus transport (fallback / backward-compat) ----
+        from amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph import (
             ServiceBusShardTransport,
         )
         from amplihack.agents.goal_seeking.hive_mind.event_bus import (
@@ -162,7 +211,7 @@ def _init_dht_hive(
             dht_graph.register_agent(f"agent-{i}")
 
         logger.info(
-            "DHT shard initialized for agent %s on topic %s (DI transport)",
+            "DHT shard initialized for agent %s on topic %s (Service Bus transport)",
             agent_name,
             shard_topic,
         )
@@ -221,18 +270,28 @@ def main() -> None:
 
     # ------------------------------------------------------------------
     # Initialize DHT shard store for cross-agent knowledge sharing.
-    # DI pattern: ServiceBusShardTransport injected into DistributedHiveGraph.
-    # The graph is passed directly as hive_store — no wrapper classes.
+    # DI pattern: EventHubsShardTransport (preferred) or ServiceBusShardTransport
+    # injected into DistributedHiveGraph.  The graph is passed directly as
+    # hive_store — no wrapper classes.
     # ------------------------------------------------------------------
     hive_store: Any | None = None
     hive_bus: Any | None = None
-    sb_transport: Any | None = None
+    shard_transport: Any | None = None
 
     if transport == "azure_service_bus" and connection_string:
         agent_count = int(os.environ.get("AMPLIHACK_AGENT_COUNT", "5"))
-        result = _init_dht_hive(agent_name, agent_count, connection_string, hive_name)
+        eh_connection_string = os.environ.get("AMPLIHACK_EH_CONNECTION_STRING", "")
+        eh_name = os.environ.get("AMPLIHACK_EH_NAME", f"hive-shards-{hive_name}")
+        result = _init_dht_hive(
+            agent_name,
+            agent_count,
+            connection_string,
+            hive_name,
+            eh_connection_string=eh_connection_string,
+            eh_name=eh_name,
+        )
         if result:
-            hive_store, hive_bus, sb_transport = result
+            hive_store, hive_bus, shard_transport = result
 
     # Build GoalSeekingAgent — the single agent type with a pure OODA loop.
     # All input (content or questions) goes through agent.process(input).
@@ -316,15 +375,18 @@ def main() -> None:
 
     # ------------------------------------------------------------------
     # Start background shard query listener for cross-shard queries.
-    # Handles incoming SHARD_QUERY events and responds with SHARD_RESPONSE.
-    # Delegates to sb_transport.handle_shard_query() / handle_shard_response().
-    # AzureServiceBusEventBus.poll() blocks on receive — no sleep intervals.
+    # Handles incoming SHARD_QUERY events and responds with SHARD_RESPONSE
+    # via the CognitiveAdapter (agent.memory.search) search path.
+    # - ServiceBusShardTransport: hive_bus.poll() blocks on receive_messages.
+    # - EventHubsShardTransport: hive_bus is None; transport.poll() blocks
+    #   on the internal mailbox_ready Event.
+    # No sleep intervals in either path.
     # ------------------------------------------------------------------
     shard_query_thread = None
-    if sb_transport and hive_bus:
+    if shard_transport and (hive_bus is not None or hasattr(shard_transport, "poll")):
         shard_query_thread = threading.Thread(
             target=_shard_query_listener,
-            args=(sb_transport, agent_name, hive_bus, shutdown_event),
+            args=(shard_transport, agent_name, hive_bus, shutdown_event, agent),
             daemon=True,
             name=f"shard-query-{agent_name}",
         )
@@ -404,6 +466,11 @@ def main() -> None:
             hive_bus.close()
         except Exception:
             logger.debug("Error closing shard event bus", exc_info=True)
+    if shard_transport and hasattr(shard_transport, "close"):
+        try:
+            shard_transport.close()
+        except Exception:
+            logger.debug("Error closing shard transport", exc_info=True)
 
     if shard_query_thread and shard_query_thread.is_alive():
         shard_query_thread.join(timeout=5.0)
