@@ -74,6 +74,21 @@ class TokenSanitizer:
         (r'"X-API-Key"\s*:\s*"[^"]+"', '"X-API-Key": "***"'),
     ]
 
+    # Pre-compiled patterns for performance: compiled once on first sanitize() call,
+    # then reused for every subsequent invocation. Avoids re-compiling 20+ regexes
+    # on every log line / request sanitization (O(1) compilation amortised).
+    _COMPILED_PATTERNS: ClassVar[list[tuple[re.Pattern[str], str]] | None] = None
+
+    @classmethod
+    def _get_compiled_patterns(cls) -> list[tuple[re.Pattern[str], str]]:
+        """Lazy-initialise and return the pre-compiled pattern list."""
+        if cls._COMPILED_PATTERNS is None:
+            cls._COMPILED_PATTERNS = [
+                (re.compile(pattern, re.IGNORECASE), replacement)
+                for pattern, replacement in cls.PATTERNS
+            ]
+        return cls._COMPILED_PATTERNS
+
     @classmethod
     def sanitize(cls, text: str | None) -> str:
         """
@@ -97,9 +112,9 @@ class TokenSanitizer:
 
         sanitized = str(text)
 
-        # Apply all patterns
-        for pattern, replacement in cls.PATTERNS:
-            sanitized = re.sub(pattern, replacement, sanitized, flags=re.IGNORECASE)
+        # Apply all pre-compiled patterns (zero regex compilations after first call)
+        for compiled, replacement in cls._get_compiled_patterns():
+            sanitized = compiled.sub(replacement, sanitized)
 
         return sanitized
 

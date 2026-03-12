@@ -523,6 +523,17 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
+    # --version flag: argparse action='version' exits 0 and prints the version string.
+    # This is distinct from the `version` subcommand below; flags and positional
+    # subcommands share no namespace, so there is no conflict.
+    from amplihack import __version__  # local import avoids circular dependency at module load
+
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"amplihack {__version__}",
+    )
+
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # Version subcommand (matches Rust CLI)
@@ -982,7 +993,9 @@ def _ensure_rust_recipe_runner() -> None:
             print("  cargo install --git https://github.com/rysweet/amplihack-recipe-runner")
     except Exception as e:
         logging.getLogger(__name__).warning(
-            "Could not check recipe-runner-rs: %s", e, exc_info=True,
+            "Could not check recipe-runner-rs: %s",
+            e,
+            exc_info=True,
         )
 
 
@@ -1005,7 +1018,7 @@ def _common_launcher_startup(args: "argparse.Namespace") -> None:
     # Idempotency guard — skip if already run this process
     if getattr(args, "_startup_done", False):
         return
-    args._startup_done = True  # noqa: SLF001
+    args._startup_done = True
 
     subprocess_safe = getattr(args, "subprocess_safe", False)
     if subprocess_safe:
@@ -1024,9 +1037,7 @@ def _common_launcher_startup(args: "argparse.Namespace") -> None:
         print("   Auto-staging .claude/ to temp directory for safety")
 
         stager = AutoStager()
-        staging_result = stager.stage_for_nested_execution(
-            Path.cwd(), f"nested-{os.getpid()}"
-        )
+        staging_result = stager.stage_for_nested_execution(Path.cwd(), f"nested-{os.getpid()}")
 
         print(f"   📁 Staged to: {staging_result.temp_root}")
         print("   Your original .claude/ files are protected")
@@ -1034,7 +1045,7 @@ def _common_launcher_startup(args: "argparse.Namespace") -> None:
         print(f"   📂 CWD changed to: {staging_result.temp_root}\n")
 
     # Store nesting result on args for session tracking
-    args._nesting_result = nesting_result  # noqa: SLF001
+    args._nesting_result = nesting_result
 
     # 2. Framework staging
     _ensure_amplihack_staged()
@@ -1417,6 +1428,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "version":
         from . import __version__
+
         print(f"amplihack {__version__}")
         return 0
 
@@ -1627,7 +1639,10 @@ def main(argv: list[str] | None = None) -> int:
         return launch_amplifier(args=claude_args or [])
 
     elif args.command == "uvx-help":
-        from .commands.uvx_helper import find_uvx_installation_path, print_uvx_usage_instructions
+        from .commands.uvx_helper import (  # type: ignore[reportMissingImports]
+            find_uvx_installation_path,
+            print_uvx_usage_instructions,
+        )
 
         if args.find_path:
             path = find_uvx_installation_path()
@@ -1964,7 +1979,7 @@ def main(argv: list[str] | None = None) -> int:
         from amplihack.fleet.fleet_cli import fleet_cli
 
         fleet_args = args.fleet_args if args.fleet_args else ["--help"]
-        fleet_cli(fleet_args, standalone_mode=False)
+        fleet_cli(fleet_args, standalone_mode=False)  # type: ignore[reportCallIssue]
         return 0
 
     else:
