@@ -190,13 +190,14 @@ class TestDeployScript:
         deploy_sh = Path(__file__).parent.parent / "deploy.sh"
         assert os.access(deploy_sh, os.X_OK)
 
-    def test_deploy_sh_provisions_service_bus(self):
+    def test_deploy_sh_provisions_event_hubs(self):
         deploy_sh = Path(__file__).parent.parent / "deploy.sh"
         content = deploy_sh.read_text()
         assert (
-            "ServiceBus" in content
-            or "servicebus" in content.lower()
-            or "service_bus" in content.lower()
+            "EventHub" in content
+            or "eventhub" in content.lower()
+            or "event_hub" in content.lower()
+            or "azure_event_hubs" in content.lower()
         )
 
     def test_deploy_sh_provisions_acr(self):
@@ -236,10 +237,10 @@ class TestBicep:
         content = bicep.read_text()
         assert "managedEnvironments" in content
 
-    def test_bicep_has_service_bus(self):
+    def test_bicep_has_event_hubs(self):
         bicep = Path(__file__).parent.parent / "main.bicep"
         content = bicep.read_text()
-        assert "ServiceBus" in content or "servicebus" in content.lower()
+        assert "EventHub" in content or "eventhub" in content.lower()
 
     def test_bicep_uses_emptydir_volumes(self):
         """Bicep uses EmptyDir volumes (Kuzu needs POSIX locks, not Azure Files SMB)."""
@@ -262,22 +263,34 @@ class TestBicep:
         content = bicep.read_text()
         assert "agentsPerApp" in content
 
-    def test_bicep_references_connection_string(self):
+    def test_bicep_references_eh_connection_string(self):
         bicep = Path(__file__).parent.parent / "main.bicep"
         content = bicep.read_text()
-        assert "AMPLIHACK_MEMORY_CONNECTION_STRING" in content
+        assert "AMPLIHACK_EH_CONNECTION_STRING" in content
 
-    def test_bicep_has_shards_topic(self):
-        """Bicep must declare hive-shards topic for cross-shard DHT queries."""
+    def test_bicep_has_shards_hub(self):
+        """Bicep must declare hive-shards Event Hub for cross-shard DHT queries."""
         bicep = Path(__file__).parent.parent / "main.bicep"
         content = bicep.read_text()
         assert "hive-shards-" in content
 
-    def test_bicep_has_shards_subscriptions(self):
-        """Bicep must declare per-agent subscriptions on the shards topic."""
+    def test_bicep_has_shards_consumer_groups(self):
+        """Bicep must declare per-agent consumer groups on the shards hub."""
         bicep = Path(__file__).parent.parent / "main.bicep"
         content = bicep.read_text()
-        assert "sbShardsSubscriptions" in content
+        assert "ehShardsConsumerGroups" in content
+
+    def test_bicep_has_eval_responses_hub(self):
+        """Bicep must declare eval-responses Event Hub for eval answer collection."""
+        bicep = Path(__file__).parent.parent / "main.bicep"
+        content = bicep.read_text()
+        assert "eval-responses-" in content
+
+    def test_bicep_no_service_bus(self):
+        """Bicep must NOT reference Service Bus — CBS auth fails in Container Apps."""
+        bicep = Path(__file__).parent.parent / "main.bicep"
+        content = bicep.read_text()
+        assert "Microsoft.ServiceBus" not in content
 
 
 class TestServiceBusShardTransport:

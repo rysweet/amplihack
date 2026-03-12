@@ -1,7 +1,7 @@
 """InputSource — event-driven input abstraction for the OODA loop.
 
 Design principle: from the agent OODA loop perspective, messages arriving
-from Service Bus should be NO DIFFERENT from messages the single agent
+from Event Hubs should be NO DIFFERENT from messages the single agent
 receives as prompts.  Same inner loop, different implementations behind
 the interface, selected by config.
 
@@ -11,17 +11,20 @@ Protocol:
     close() -> None        — release resources.
 
 Implementations:
-    ListInputSource        — wraps a list of strings (single-agent eval).
-    ServiceBusInputSource  — wraps Azure Service Bus with blocking receive.
-    StdinInputSource       — reads lines from stdin (interactive use).
+    ListInputSource         — wraps a list of strings (single-agent eval).
+    EventHubsInputSource    — wraps Azure Event Hubs with per-agent consumer group.
+    ServiceBusInputSource   — wraps Azure Service Bus (legacy; kept for compat).
+    StdinInputSource        — reads lines from stdin (interactive use).
 """
 
 from __future__ import annotations
 
 import json
 import logging
+import queue
 import sys
 import threading
+import uuid
 from typing import Protocol, runtime_checkable
 
 logger = logging.getLogger(__name__)
@@ -101,6 +104,199 @@ class ListInputSource:
     def remaining(self) -> int:
         """Return number of turns not yet consumed."""
         return max(0, len(self._turns) - self._index)
+
+
+# ---------------------------------------------------------------------------
+# EventHubsInputSource
+# ---------------------------------------------------------------------------
+
+
+class EventHubsInputSource:
+    """InputSource backed by Azure Event Hubs with a per-agent consumer group.
+
+    Uses a background receive thread that fills an internal queue.
+    ``next()`` blocks on the queue until a message is available or shutdown.
+
+    Events are filtered client-side by ``target_agent`` field so only
+    messages intended for this agent are returned to the OODA loop.
+
+    Args:
+        connection_string: Event Hubs namespace connection string.
+        agent_name: This agent's identifier — used to filter events by
+            ``target_agent`` and to derive the default consumer group name.
+        eventhub_name: Name of the Event Hub (default: ``"hive-events"``).
+        consumer_group: Consumer group override (default: ``cg-{agent_name}``).
+        shutdown_event: Optional threading.Event; when set, ``next()`` returns
+            None on the next queue timeout.
+
+    Example:
+        >>> src = EventHubsInputSource(conn_str, "agent-0", "hive-events-myhive")
+        >>> while (text := src.next()) is not None:
+        ...     agent.process(text)
+        >>> src.close()
+    """
+
+    def __init__(
+        self,
+        connection_string: str,
+        agent_name: str,
+        eventhub_name: str = "hive-events",
+        consumer_group: str | None = None,
+        shutdown_event: threading.Event | None = None,
+    ) -> None:
+        self._agent_name = agent_name
+        self._eventhub_name = eventhub_name
+        self._consumer_group = consumer_group or f"cg-{agent_name}"
+        self._last_event_metadata: dict[str, str] = {}
+        self._shutdown = shutdown_event or threading.Event()
+        self._closed = False
+
+        # Internal queue filled by the background receive thread
+        self._queue: queue.Queue[str | None] = queue.Queue()
+
+        # Consumer stored so close() can stop the blocking receive() call
+        self._consumer: object | None = None
+
+        self._recv_thread = threading.Thread(
+            target=self._receive_loop,
+            args=(connection_string,),
+            daemon=True,
+            name=f"eh-input-{agent_name}",
+        )
+        self._recv_thread.start()
+        logger.info(
+            "EventHubsInputSource: started consumer group=%s hub=%s agent=%s",
+            self._consumer_group,
+            eventhub_name,
+            agent_name,
+        )
+
+    def _receive_loop(self, connection_string: str) -> None:
+        """Background thread: receive events from Event Hubs into the queue."""
+        try:
+            from azure.eventhub import EventHubConsumerClient  # type: ignore[import-unresolved]
+        except ImportError:
+            logger.error(
+                "azure-eventhub not installed — EventHubsInputSource cannot receive events"
+            )
+            return
+
+        def _on_event(partition_context: object, event: object) -> None:
+            if event is None or self._closed or self._shutdown.is_set():
+                return
+            try:
+                from azure.eventhub import EventData  # noqa: F401  # type: ignore
+
+                body = getattr(event, "body_as_str", lambda: "")()
+                data = json.loads(body)
+                event_type = data.get("event_type")
+                payload = data.get("payload", {})
+                target = data.get("target_agent", "") or payload.get("target_agent", "")
+
+                # Filter by target_agent — skip events meant for another agent
+                if target and target != self._agent_name:
+                    if hasattr(partition_context, "update_checkpoint"):
+                        partition_context.update_checkpoint(event)  # type: ignore
+                    return
+
+                text = _extract_text_from_bus_event(event_type, payload)
+                if hasattr(partition_context, "update_checkpoint"):
+                    partition_context.update_checkpoint(event)  # type: ignore
+
+                if text is not None:
+                    self._last_event_metadata = {
+                        "event_id": data.get("event_id", ""),
+                        "event_type": event_type or "",
+                        "question_id": payload.get("question_id", ""),
+                    }
+                    logger.debug(
+                        "EventHubsInputSource: event_type=%s len=%d agent=%s",
+                        event_type,
+                        len(text),
+                        self._agent_name,
+                    )
+                    self._queue.put(text)
+                else:
+                    logger.debug(
+                        "EventHubsInputSource: skipping lifecycle event_type=%s",
+                        event_type,
+                    )
+            except Exception:
+                logger.debug(
+                    "EventHubsInputSource: error processing event for %s",
+                    self._agent_name,
+                    exc_info=True,
+                )
+
+        consumer = EventHubConsumerClient.from_connection_string(
+            connection_string,
+            consumer_group=self._consumer_group,
+            eventhub_name=self._eventhub_name,
+        )
+        self._consumer = consumer
+        try:
+            # starting_position="-1" means start from latest (not replaying history)
+            consumer.receive(on_event=_on_event, starting_position="-1")
+        except Exception:
+            if not self._closed and not self._shutdown.is_set():
+                logger.warning(
+                    "EventHubsInputSource: consumer exited for %s",
+                    self._agent_name,
+                    exc_info=True,
+                )
+        finally:
+            try:
+                consumer.close()
+            except Exception:
+                pass
+            self._consumer = None
+            # Unblock next() if it's waiting
+            self._queue.put(None)
+
+    def next(self) -> str | None:
+        """Block until a message arrives and return its text.
+
+        Returns None when closed or the shutdown event is set.
+        FEED_COMPLETE is represented as the sentinel ``"__FEED_COMPLETE__:<n>"``.
+        Events filtered out (AGENT_READY etc.) are silently skipped.
+        """
+        if self._closed or self._shutdown.is_set():
+            return None
+
+        while not self._closed and not self._shutdown.is_set():
+            try:
+                item = self._queue.get(timeout=1.0)
+                return item  # May be None (receive_loop ended)
+            except queue.Empty:
+                continue
+
+        return None
+
+    @property
+    def last_event_metadata(self) -> dict[str, str]:
+        """Metadata from the most recently received message (event_id, event_type, question_id)."""
+        return self._last_event_metadata
+
+    def signal_shutdown(self) -> None:
+        """Signal the source to stop on the next queue timeout."""
+        self._shutdown.set()
+
+    def close(self) -> None:
+        """Close the Event Hubs consumer and stop the background thread."""
+        self._closed = True
+        self._shutdown.set()
+        # Close the consumer to unblock the blocking receive() call
+        if self._consumer is not None:
+            try:
+                self._consumer.close()  # type: ignore
+            except Exception:
+                logger.debug("EventHubsInputSource: error closing consumer", exc_info=True)
+        # Unblock next() if waiting on the queue
+        try:
+            self._queue.put_nowait(None)
+        except queue.Full:
+            pass
+        logger.info("EventHubsInputSource: closed (agent=%s)", self._agent_name)
 
 
 # ---------------------------------------------------------------------------
