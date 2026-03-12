@@ -381,18 +381,23 @@ def _search_for_shard_response(
 ) -> list[dict]:
     """Return a list of fact dicts for inclusion in a SHARD_RESPONSE.
 
-    Tries agent.memory.search() (CognitiveAdapter path) first; falls back to
-    direct ShardStore.search() if the agent is None or raises an exception.
+    Uses agent.memory.search_local() (CognitiveAdapter LOCAL-ONLY path) to
+    avoid recursive SHARD_QUERY storms.  Falls back to direct ShardStore.search()
+    if the agent is None or raises an exception.
 
-    CognitiveAdapter.search() returns dicts with ``outcome``/``context``/
+    CRITICAL: Must NEVER call agent.memory.search() here — that triggers
+    _search_hive() → query_facts() → SHARD_QUERY to all agents → each agent
+    calls _search_for_shard_response() again → infinite recursion.
+
+    CognitiveAdapter.search_local() returns dicts with ``outcome``/``context``/
     ``confidence`` keys (not objects).  ShardFact objects use ``content``/
     ``concept`` attributes.  Both are handled here so the SHARD_RESPONSE
     always carries the actual fact text.
     """
-    # CognitiveAdapter path: full n-gram + reranking + semantic quality
-    if agent is not None and hasattr(agent, "memory") and hasattr(agent.memory, "search"):
+    # CognitiveAdapter LOCAL-ONLY path: n-gram + reranking, NO hive search
+    if agent is not None and hasattr(agent, "memory") and hasattr(agent.memory, "search_local"):
         try:
-            mem_results = agent.memory.search(query, limit=limit)
+            mem_results = agent.memory.search_local(query, limit=limit)
             facts = []
             for f in mem_results:
                 if isinstance(f, dict):
@@ -474,8 +479,10 @@ class EventHubsShardTransport:
     Correlation via ``correlation_id + threading.Event`` — same pattern as
     ``ServiceBusShardTransport``.
 
-    ``handle_shard_query`` uses ``agent.memory.search()`` (CognitiveAdapter)
-    when an agent instance is provided, falling back to raw ShardStore search.
+    ``handle_shard_query`` uses ``agent.memory.search_local()`` (CognitiveAdapter
+    LOCAL-ONLY search) when an agent instance is provided, falling back to raw
+    ShardStore search.  Must NEVER use ``agent.memory.search()`` — that triggers
+    recursive SHARD_QUERY storms via ``_search_hive()`` → ``query_facts()``.
 
     Args:
         connection_string: Event Hubs namespace connection string.

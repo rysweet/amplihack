@@ -720,7 +720,7 @@ class TestEventHubsShardTransportLocal:
         )
 
     def test_handle_shard_query_uses_cognitive_adapter_when_agent_provided(self):
-        """handle_shard_query with agent uses agent.memory.search() (CognitiveAdapter path)."""
+        """handle_shard_query with agent uses agent.memory.search_local() (LOCAL-ONLY path)."""
         from amplihack.agents.goal_seeking.hive_mind.event_bus import BusEvent
 
         transport = self._make_transport("agent-0")
@@ -729,7 +729,7 @@ class TestEventHubsShardTransportLocal:
         search_calls: list[str] = []
 
         class _MockMemory:
-            def search(self, query, limit=20):
+            def search_local(self, query, limit=20):
                 search_calls.append(query)
                 return [
                     type(
@@ -773,7 +773,7 @@ class TestEventHubsShardTransportLocal:
 
         transport.handle_shard_query(query_event, agent=_MockAgent())
 
-        assert search_calls, "agent.memory.search() was not called"
+        assert search_calls, "agent.memory.search_local() was not called"
         assert search_calls[0] == "quantum entanglement"
         response_events = [p for p in published if p.get("event_type") == "SHARD_RESPONSE"]
         assert len(response_events) == 1
@@ -796,7 +796,7 @@ class TestEventHubsShardTransportLocal:
         DistributedHiveGraph(hive_id="eh-ca-dict", enable_gossip=False, transport=transport)
 
         class _MockMemory:
-            def search(self, query, limit=20):
+            def search_local(self, query, limit=20):
                 # Real CognitiveAdapter returns dicts with outcome/context/confidence
                 return [
                     {
@@ -911,7 +911,7 @@ class TestServiceBusShardTransportCognitiveAdapter:
     """Verify handle_shard_query uses CognitiveAdapter when agent is provided."""
 
     def test_handle_shard_query_with_agent_uses_memory_search(self):
-        """handle_shard_query with agent uses agent.memory.search() not ShardStore."""
+        """handle_shard_query with agent uses agent.memory.search_local() not ShardStore."""
         bus = LocalEventBus()
         bus.subscribe("agent-0")
         bus.subscribe("agent-1")
@@ -925,7 +925,7 @@ class TestServiceBusShardTransportCognitiveAdapter:
         search_calls: list[str] = []
 
         class _MockMemory:
-            def search(self, query, limit=20):
+            def search_local(self, query, limit=20):
                 search_calls.append(query)
                 return [
                     type(
@@ -962,7 +962,7 @@ class TestServiceBusShardTransportCognitiveAdapter:
             if event.event_type == "SHARD_QUERY":
                 sb_transport.handle_shard_query(event, agent=_MockAgent())
 
-        assert search_calls, "agent.memory.search() was not called"
+        assert search_calls, "agent.memory.search_local() was not called"
         response_facts: list[dict] = []
         for event in bus.poll("agent-1"):
             if (
@@ -999,7 +999,7 @@ class TestSearchForShardResponse:
         ]
 
         class _MockMemory:
-            def search(self, query: str, limit: int = 20) -> list[dict]:
+            def search_local(self, query: str, limit: int = 20) -> list[dict]:
                 return cognitive_results
 
         class _MockAgent:

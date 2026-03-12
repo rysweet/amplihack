@@ -436,6 +436,53 @@ class CognitiveAdapter:
         hive_results = self._search_hive(query.strip(), limit=limit)
         return self._merge_results(local_results, hive_results, limit)
 
+    def search_local(
+        self,
+        query: str,
+        limit: int = 10,
+        min_confidence: float = 0.0,
+    ) -> list[dict[str, Any]]:
+        """Search LOCAL memory only — no hive/distributed query.
+
+        Used by shard query handlers to avoid recursive SHARD_QUERY storms:
+        when agent A queries agent B, agent B must search only its own local
+        memory, not trigger another round of distributed queries.
+        """
+        if not query or not query.strip():
+            return []
+
+        filtered_query = _filter_stop_words(query)
+        search_q = filtered_query if filtered_query.strip() else query.strip()
+
+        if self._cognitive:
+            results = self.memory.search_facts(
+                query=search_q, limit=limit * 3, min_confidence=min_confidence
+            )
+            local_results = [self._semantic_fact_to_dict(r) for r in results]
+            if not local_results:
+                all_facts = self.memory.get_all_facts(limit=limit * 5)
+                local_results = [self._semantic_fact_to_dict(r) for r in all_facts]
+        else:
+            subgraph = self.memory.retrieve_subgraph(query=search_q, max_nodes=limit * 3)
+            local_results = [
+                self._node_to_dict(n) for n in subgraph.nodes if n.confidence >= min_confidence
+            ]
+            if not local_results and hasattr(self.memory, "get_all_knowledge"):
+                nodes = self.memory.get_all_knowledge(limit=limit * 5)
+                local_results = [self._node_to_dict(n) for n in nodes]
+
+        if local_results:
+            scored = []
+            for r in local_results:
+                content = r.get("outcome", r.get("content", ""))
+                concept = r.get("context", r.get("concept", ""))
+                score = _ngram_overlap_score(query, f"{concept} {content}")
+                scored.append((score, r))
+            scored.sort(key=lambda x: x[0], reverse=True)
+            local_results = [r for _, r in scored[:limit]]
+
+        return local_results
+
     def get_all_facts(self, limit: int = 50) -> list[dict[str, Any]]:
         """Retrieve all facts without keyword filtering.
 
