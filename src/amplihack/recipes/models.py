@@ -136,7 +136,11 @@ class RecipeResult:
     def __str__(self) -> str:
         status = "SUCCESS" if self.success else "FAILED"
         step_count = len(self.step_results)
-        return f"RecipeResult({self.recipe_name}: {status}, {step_count} steps)"
+        base = f"RecipeResult({self.recipe_name}: {status}, {step_count} steps)"
+        if self.step_results:
+            step_lines = "\n  ".join(str(sr) for sr in self.step_results)
+            return f"{base}\n  {step_lines}"
+        return base
 
     def __getitem__(self, key: int | slice) -> str:
         """Support subscripting (e.g. ``result[:500]``) by delegating to ``.output``."""
