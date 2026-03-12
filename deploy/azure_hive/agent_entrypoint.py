@@ -444,7 +444,12 @@ def _run_event_driven_loop(
                 agent_name,
                 total_turns,
             )
-            answer_publisher.publish_agent_ready(total_turns)
+            # Extract run_id from the FEED_COMPLETE event metadata
+            run_id = ""
+            if hasattr(input_source, "_source"):
+                meta = getattr(input_source._source, "last_event_metadata", {})
+                run_id = meta.get("run_id", "")
+            answer_publisher.publish_agent_ready(total_turns, run_id=run_id)
             continue
 
         logger.info("Agent %s processing input via OODA (len=%d)", agent_name, len(text))
@@ -556,8 +561,9 @@ class _CorrelatingInputSource:
         meta = getattr(self._source, "last_event_metadata", {})
         event_id = meta.get("event_id", "")
         question_id = meta.get("question_id", "")
+        run_id = meta.get("run_id", "")
         if event_id:
-            self._publisher.set_context(event_id, question_id)
+            self._publisher.set_context(event_id, question_id, run_id=run_id)
         else:
             self._publisher.clear_context()
         return text
@@ -587,6 +593,7 @@ class AnswerPublisher:
         self._agent_name = agent_name
         self._current_event_id: str = ""
         self._current_question_id: str = ""
+        self._current_run_id: str = ""
         self._eh_connection_string = eh_connection_string
         self._eval_hub_name = eval_hub_name
 
@@ -598,34 +605,71 @@ class AnswerPublisher:
             )
 
     def _publish_to_eh(self, payload: dict) -> None:
-        """Publish a JSON payload to the eval-responses Event Hub."""
+        """Publish a JSON payload to the eval-responses Event Hub.
+
+        Retries up to 3 times with exponential backoff (1s, 2s, 4s) to handle
+        intermittent CBS auth failures.  Each retry creates a fresh producer so
+        a dead AMQP connection is never reused.  If all retries fail, the
+        payload is printed to stdout as a ``EVAL_ANSWER:`` or ``AGENT_READY:``
+        JSON line so Log Analytics can collect it as a fallback.
+        """
         if not self._eh_connection_string:
             return
-        try:
-            from azure.eventhub import (  # type: ignore[import-unresolved]
-                EventData,
-                EventHubProducerClient,
-            )
 
-            producer = EventHubProducerClient.from_connection_string(
-                self._eh_connection_string, eventhub_name=self._eval_hub_name
-            )
-            with producer:
-                batch = producer.create_batch(partition_key=self._agent_name)
-                batch.add(EventData(json.dumps(payload)))
-                producer.send_batch(batch)
-        except Exception as e:
-            logger.warning("AnswerPublisher: failed to publish to EH: %s", e)
+        max_retries = 3
+        backoff_seconds = [1, 2, 4]
+        last_exc: Exception | None = None
 
-    def set_context(self, event_id: str, question_id: str = "") -> None:
+        for attempt in range(1, max_retries + 1):
+            try:
+                from azure.eventhub import (  # type: ignore[import-unresolved]
+                    EventData,
+                    EventHubProducerClient,
+                )
+
+                producer = EventHubProducerClient.from_connection_string(
+                    self._eh_connection_string, eventhub_name=self._eval_hub_name
+                )
+                with producer:
+                    batch = producer.create_batch(partition_key=self._agent_name)
+                    batch.add(EventData(json.dumps(payload)))
+                    producer.send_batch(batch)
+                return  # success
+            except Exception as e:
+                last_exc = e
+                if attempt < max_retries:
+                    delay = backoff_seconds[attempt - 1]
+                    logger.warning(
+                        "AnswerPublisher: EH publish attempt %d/%d failed (%s), "
+                        "retrying in %ds with fresh producer",
+                        attempt,
+                        max_retries,
+                        e,
+                        delay,
+                    )
+                    time.sleep(delay)
+
+        # All retries exhausted — log at ERROR (this will hang the eval)
+        logger.error(
+            "AnswerPublisher: all %d EH publish attempts failed: %s", max_retries, last_exc
+        )
+
+        # Stdout fallback so Log Analytics can still capture the event
+        event_type = payload.get("event_type", "UNKNOWN")
+        fallback_line = json.dumps(payload, separators=(",", ":"))
+        print(f"{event_type}:{fallback_line}", flush=True)
+
+    def set_context(self, event_id: str, question_id: str = "", run_id: str = "") -> None:
         """Set the current event_id for answer correlation."""
         self._current_event_id = event_id
         self._current_question_id = question_id
+        self._current_run_id = run_id
 
     def clear_context(self) -> None:
         """Clear correlation context after processing completes."""
         self._current_event_id = ""
         self._current_question_id = ""
+        self._current_run_id = ""
 
     def publish_answer(self, agent_name: str, answer: str) -> None:
         """Callback for GoalSeekingAgent.on_answer — publish correlated answer."""
@@ -639,11 +683,12 @@ class AnswerPublisher:
                 "question_id": self._current_question_id,
                 "agent_id": agent_name,
                 "answer": answer,
+                "run_id": self._current_run_id,
             }
         )
         logger.info("AnswerPublisher: published answer for event_id=%s", self._current_event_id)
 
-    def publish_agent_ready(self, total_turns: str) -> None:
+    def publish_agent_ready(self, total_turns: str, run_id: str = "") -> None:
         """Publish AGENT_READY event to eval-responses hub.
 
         Called when FEED_COMPLETE is received so the eval harness knows this
@@ -657,6 +702,7 @@ class AnswerPublisher:
                 "event_id": _uuid.uuid4().hex,
                 "agent_id": self._agent_name,
                 "total_turns": total_turns,
+                "run_id": run_id or self._current_run_id,
             }
         )
         logger.info("AnswerPublisher: published AGENT_READY for agent=%s", self._agent_name)

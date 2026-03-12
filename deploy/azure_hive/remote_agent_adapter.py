@@ -64,6 +64,9 @@ class RemoteAgentAdapter:
         self._ready_lock = threading.Lock()
         self._all_agents_ready = threading.Event()
 
+        # Unique run_id to filter stale events from previous eval runs
+        self._run_id = uuid.uuid4().hex[:12]
+
         # Listener liveness flag — fail fast if listener can't connect
         self._listener_alive = threading.Event()
 
@@ -78,10 +81,11 @@ class RemoteAgentAdapter:
             )
 
         logger.info(
-            "RemoteAgentAdapter: input=%s response=%s agents=%d",
+            "RemoteAgentAdapter: input=%s response=%s agents=%d run_id=%s",
             input_hub,
             response_hub,
             agent_count,
+            self._run_id,
         )
 
     def _publish_event(self, payload: dict, partition_key: str) -> None:
@@ -90,6 +94,8 @@ class RemoteAgentAdapter:
             EventData,
             EventHubProducerClient,
         )
+
+        payload["run_id"] = self._run_id
 
         producer = EventHubProducerClient.from_connection_string(
             self._connection_string, eventhub_name=self._input_hub
@@ -265,6 +271,11 @@ class RemoteAgentAdapter:
                 body = json.loads(event.body_as_str())
                 event_type = body.get("event_type", "")
 
+                # Filter stale events from previous eval runs
+                run_id = body.get("run_id", "")
+                if run_id and run_id != self._run_id:
+                    return
+
                 if event_type == "AGENT_READY":
                     agent_id = body.get("agent_id", "")
                     if agent_id:
@@ -315,7 +326,7 @@ class RemoteAgentAdapter:
         logger.info("RemoteAgentAdapter: listening on '%s' (eval-reader)", self._response_hub)
 
         try:
-            consumer.receive(on_event=_on_event, starting_position="-1")
+            consumer.receive(on_event=_on_event, starting_position="@latest")
         except Exception:
             if not self._shutdown.is_set():
                 logger.debug("Response listener error", exc_info=True)
