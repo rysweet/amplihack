@@ -289,9 +289,10 @@ steps:
       # update consensus-workflow.yaml in the same commit. See Issue #2952 for context.
       #
       # Generate branch name from task description.
-      # FIX (issue #3041): Use heredoc instead of single-quote wrapping to safely
-      # capture {{task_description}} after template substitution. Single quotes broke
-      # when the value contained ' or ) characters, causing bash syntax errors.
+      # FIX (issue #3087): Use unquoted heredoc so that the Rust recipe runner's
+      # env-var expansion ($RECIPE_VAR_task_description) works correctly.
+      # Single-quoted heredoc (<<'EOF') prevented variable expansion, producing
+      # garbled branch names like "feat/issue--recipevartaskdescription".
       # Pipeline stages:
       #   1. tr '\n\r' '  '  — CRLF normalisation
       #   2. tr '[:upper:]' '[:lower:]'  — lowercase
@@ -301,7 +302,7 @@ steps:
       #   6. sed edge-trim  — strip leading/trailing hyphens
       #   7. cut -c1-50     — hard truncation to 50 chars
       #   8. sed trailing   — strip trailing hyphen from cut boundary
-      TASK_DESC=$(cat <<'EOFTASKDESC'
+      TASK_DESC=$(cat <<EOFTASKDESC
       {{task_description}}
       EOFTASKDESC
       )
