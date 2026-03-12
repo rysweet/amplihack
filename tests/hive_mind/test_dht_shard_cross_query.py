@@ -16,6 +16,7 @@ from typing import Any
 from amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph import (
     DistributedHiveGraph,
     ServiceBusShardTransport,
+    _search_for_shard_response,
 )
 from amplihack.agents.goal_seeking.hive_mind.event_bus import LocalEventBus, make_event
 from amplihack.agents.goal_seeking.hive_mind.hive_graph import HiveFact
@@ -975,3 +976,77 @@ class TestServiceBusShardTransportCognitiveAdapter:
             f"CognitiveAdapter result missing from SB SHARD_RESPONSE: {texts}"
         )
         bus.close()
+
+
+# ---------------------------------------------------------------------------
+# Direct _search_for_shard_response unit tests
+# ---------------------------------------------------------------------------
+
+
+class TestSearchForShardResponse:
+    """Verify _search_for_shard_response uses CognitiveAdapter when agent is provided."""
+
+    def test_shard_query_uses_cognitive_adapter_when_agent_provided(self):
+        """With a mock agent, _search_for_shard_response returns CognitiveAdapter results."""
+        cognitive_results = [
+            {
+                "outcome": "test fact",
+                "context": "test concept",
+                "confidence": 0.9,
+                "experience_id": "test-id",
+                "tags": [],
+            }
+        ]
+
+        class _MockMemory:
+            def search(self, query: str, limit: int = 20) -> list[dict]:
+                return cognitive_results
+
+        class _MockAgent:
+            memory = _MockMemory()
+
+        local_graph = DistributedHiveGraph(hive_id="shard-ca-unit", enable_gossip=False)
+        local_graph.register_agent("agent-0")
+        # Promote a shard fact so ShardStore fallback would return something different
+        local_graph.promote_fact(
+            "agent-0",
+            _make_fact("shard store fallback fact", "fallback", "agent-0"),
+        )
+
+        facts = _search_for_shard_response(
+            query="test query",
+            limit=5,
+            agent=_MockAgent(),
+            local_graph=local_graph,
+            agent_id="agent-0",
+        )
+
+        assert len(facts) == 1
+        assert facts[0]["content"] == "test fact"
+        assert facts[0]["concept"] == "test concept"
+        assert facts[0]["confidence"] == 0.9
+        assert facts[0]["fact_id"] == "test-id"
+        assert facts[0]["source_agent"] == "agent-0"
+
+    def test_shard_query_falls_back_to_shard_store_when_no_agent(self):
+        """With agent=None, _search_for_shard_response falls back to ShardStore."""
+        local_graph = DistributedHiveGraph(hive_id="shard-fb-unit", enable_gossip=False)
+        local_graph.register_agent("agent-0")
+        local_graph.promote_fact(
+            "agent-0",
+            _make_fact("fallback shard fact about dogs", "animals", "agent-0"),
+        )
+
+        facts = _search_for_shard_response(
+            query="dogs",
+            limit=5,
+            agent=None,
+            local_graph=local_graph,
+            agent_id="agent-0",
+        )
+
+        assert len(facts) >= 1
+        texts = [f["content"] for f in facts]
+        assert any("dogs" in t for t in texts), (
+            f"ShardStore fallback should find 'dogs' fact, got: {texts}"
+        )
