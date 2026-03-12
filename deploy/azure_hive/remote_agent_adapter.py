@@ -6,16 +6,18 @@ uses the exact same code path for local and distributed agents.
 
 Content is partitioned round-robin across agents (each agent learns N/agent_count turns).
 Questions are targeted to specific agents via target_agent field.
-Answers are collected from the eval-responses Service Bus topic, correlated
-by event_id via the GoalSeekingAgent.on_answer callback.
+Answers are collected from the eval-responses Event Hub, correlated by event_id.
+
+v2: Fully migrated from Service Bus to Azure Event Hubs (CBS-free AMQP transport).
+    - learn_from_content / answer_question publish via EventHubProducerClient
+    - _listen_for_answers consumes from eval-responses hub via EventHubConsumerClient
+    - _wait_for_agents_idle uses a time-based wait (EH has no direct queue-depth API)
 """
 
 from __future__ import annotations
 
 import json
 import logging
-import re
-import subprocess
 import threading
 import time
 import uuid
@@ -25,109 +27,68 @@ logger = logging.getLogger(__name__)
 
 
 class RemoteAgentAdapter:
-    """Adapter that forwards learn/answer calls to deployed agents via Service Bus."""
+    """Adapter that forwards learn/answer calls to deployed agents via Event Hubs."""
 
     def __init__(
         self,
-        connection_string: str,
-        input_topic: str,
-        response_topic: str,
+        eh_connection_string: str,
+        input_hub: str,
+        response_hub: str,
         agent_count: int = 100,
         resource_group: str = "",
     ) -> None:
-        from azure.servicebus import ServiceBusClient
+        from azure.eventhub import EventHubProducerClient  # type: ignore[import-unresolved]
 
-        self._input_topic = input_topic
-        self._response_topic = response_topic
+        self._eh_connection_string = eh_connection_string
+        self._input_hub = input_hub
+        self._response_hub = response_hub
         self._resource_group = resource_group
         self._agent_count = agent_count
-
-        # Extract SB namespace from connection string
-        ns_match = re.search(r"Endpoint=sb://([^.]+)\.", connection_string)
-        self._sb_namespace = ns_match.group(1) if ns_match else ""
 
         self._learn_count = 0
         self._question_count = 0
         self._shutdown = threading.Event()
-        self._idle_wait_done = (
-            threading.Event()
-        )  # Signals all threads that content processing is complete
+        self._idle_wait_done = threading.Event()
 
-        # Thread safety for counters and answer dict
         self._counter_lock = threading.Lock()
         self._answer_lock = threading.Lock()
 
-        if not resource_group:
-            raise ValueError("resource_group is required for queue depth polling")
-
-        # Service Bus client — recreated on connection errors
-        self._connection_string = connection_string
-        self._input_topic = input_topic
-        self._client = ServiceBusClient.from_connection_string(connection_string)
-        self._sender = self._client.get_topic_sender(topic_name=input_topic)
-        self._sender_lock = threading.Lock()
+        # EH producer for sending learn/question events
+        self._producer = EventHubProducerClient.from_connection_string(
+            eh_connection_string,
+            eventhub_name=input_hub,
+        )
+        self._producer_lock = threading.Lock()
 
         # Pending answers: event_id -> answer text
         self._pending_answers: dict[str, str] = {}
         self._answer_events: dict[str, threading.Event] = {}
 
-        # Listener liveness flag — fail fast if listener can't connect
         self._listener_alive = threading.Event()
-
         self._listener_thread = threading.Thread(target=self._listen_for_answers, daemon=True)
         self._listener_thread.start()
 
-        # Wait up to 30s for listener to connect
         if not self._listener_alive.wait(timeout=30):
             raise RuntimeError(
-                f"Failed to connect to response topic {response_topic}/eval-reader. "
-                "Check that the topic and subscription exist."
+                f"Failed to connect to response hub {response_hub}/cg-eval-reader. "
+                "Check that the hub and consumer group exist."
             )
-
-    def _send_with_retry(self, msg: object, max_retries: int = 3) -> None:
-        """Send a message, reconnecting the sender on connection errors."""
-        for attempt in range(max_retries):
-            try:
-                with self._sender_lock:
-                    self._sender.send_messages(msg)
-                return
-            except Exception as e:
-                if attempt < max_retries - 1:
-                    logger.warning(
-                        "SB send failed (attempt %d/%d): %s. Reconnecting...",
-                        attempt + 1,
-                        max_retries,
-                        e,
-                    )
-                    try:
-                        with self._sender_lock:
-                            try:
-                                self._sender.close()
-                            except Exception:
-                                pass
-                            try:
-                                self._client.close()
-                            except Exception:
-                                pass
-                            from azure.servicebus import ServiceBusClient
-
-                            self._client = ServiceBusClient.from_connection_string(
-                                self._connection_string
-                            )
-                            self._sender = self._client.get_topic_sender(
-                                topic_name=self._input_topic
-                            )
-                    except Exception as reconnect_err:
-                        logger.error("SB reconnect failed: %s", reconnect_err)
-                else:
-                    raise
 
         logger.info(
             "RemoteAgentAdapter: input=%s response=%s agents=%d",
-            input_topic,
-            response_topic,
+            input_hub,
+            response_hub,
             agent_count,
         )
+
+    def _send(self, payload: dict[str, Any], partition_key: str) -> None:
+        """Publish a JSON event to the input Event Hub."""
+        from azure.eventhub import EventData  # type: ignore[import-unresolved]
+
+        with self._producer_lock:
+            batch = self._producer.create_batch(partition_key=partition_key)
+            batch.add(EventData(json.dumps(payload)))
+            self._producer.send_batch(batch)
 
     def learn_from_content(self, content: str) -> dict[str, Any]:
         """Send content to one agent (round-robin partition).
@@ -136,8 +97,6 @@ class RemoteAgentAdapter:
         partition locally. The hive mind shares knowledge between agents
         so any agent can answer questions about any content.
         """
-        from azure.servicebus import ServiceBusMessage
-
         event_id = uuid.uuid4().hex[:12]
         with self._counter_lock:
             target_agent = self._learn_count % self._agent_count
@@ -145,22 +104,19 @@ class RemoteAgentAdapter:
             learn_count = self._learn_count
         target_name = f"agent-{target_agent}"
 
-        msg = ServiceBusMessage(
-            json.dumps(
-                {
-                    "event_type": "LEARN_CONTENT",
-                    "event_id": event_id,
+        self._send(
+            {
+                "event_type": "LEARN_CONTENT",
+                "event_id": event_id,
+                "target_agent": target_name,
+                "source_agent": "eval-harness",
+                "payload": {
+                    "content": content,
                     "target_agent": target_name,
-                    "source_agent": "eval-harness",
-                    "payload": {
-                        "content": content,
-                        "target_agent": target_name,
-                    },
-                }
-            ),
-            content_type="application/json",
+                },
+            },
+            partition_key=target_name,
         )
-        self._send_with_retry(msg)
 
         if learn_count % 500 == 0:
             logger.info(
@@ -173,10 +129,8 @@ class RemoteAgentAdapter:
 
     def answer_question(self, question: str) -> str:
         """Send question to one agent, wait for answer. No timeout."""
-        # Wait for agents to finish processing content (blocks all threads)
         if self._learn_count > 0 and not self._idle_wait_done.is_set():
             with self._counter_lock:
-                # Double-check under lock — only one thread does the actual wait
                 if not self._idle_wait_done.is_set():
                     self._wait_for_agents_idle()
                     self._idle_wait_done.set()
@@ -185,33 +139,27 @@ class RemoteAgentAdapter:
             target_agent = self._question_count % self._agent_count
             self._question_count += 1
 
-        from azure.servicebus import ServiceBusMessage
-
         event_id = uuid.uuid4().hex[:12]
         target_name = f"agent-{target_agent}"
 
-        # Register signal before sending
         answer_event = threading.Event()
         with self._answer_lock:
             self._answer_events[event_id] = answer_event
 
-        msg = ServiceBusMessage(
-            json.dumps(
-                {
-                    "event_type": "INPUT",
-                    "event_id": event_id,
+        self._send(
+            {
+                "event_type": "INPUT",
+                "event_id": event_id,
+                "target_agent": target_name,
+                "source_agent": "eval-harness",
+                "payload": {
+                    "question": question,
+                    "question_id": f"q_{target_agent}_{event_id}",
                     "target_agent": target_name,
-                    "source_agent": "eval-harness",
-                    "payload": {
-                        "question": question,
-                        "question_id": f"q_{target_agent}_{event_id}",
-                        "target_agent": target_name,
-                    },
-                }
-            ),
-            content_type="application/json",
+                },
+            },
+            partition_key=target_name,
         )
-        self._send_with_retry(msg)
 
         logger.info(
             "RemoteAgentAdapter: sent question to %s (event_id=%s): %s",
@@ -220,7 +168,6 @@ class RemoteAgentAdapter:
             question[:60],
         )
 
-        # Wait for answer — no timeout
         answer_event.wait()
 
         with self._answer_lock:
@@ -230,119 +177,83 @@ class RemoteAgentAdapter:
         return answer
 
     def _wait_for_agents_idle(self) -> None:
-        """Wait for agents to finish processing content. No timeout.
+        """Wait for agents to finish processing content.
 
-        Polls the LAST agent's subscription (highest index, last to receive
-        its final partitioned message) until queue depth reaches 0.
+        EH does not have a direct queue-depth API like Service Bus.
+        Strategy: wait a proportional delay based on content volume,
+        then optionally poll partition properties for lull detection.
+        Operators can tune AMPLIHACK_IDLE_WAIT_SECS env var.
         """
-        last_agent = self._agent_count - 1
-        agent_name = f"agent-{last_agent}"
+        import os
+
+        turns_per_agent = self._learn_count // max(1, self._agent_count)
+        default_wait = max(30, turns_per_agent * 2)
+        wait_secs = int(os.environ.get("AMPLIHACK_IDLE_WAIT_SECS", str(default_wait)))
 
         logger.info(
-            "Waiting for agents to process %d content turns (%d per agent). Polling %s...",
+            "Waiting %ds for agents to process %d content turns (%d per agent). "
+            "Set AMPLIHACK_IDLE_WAIT_SECS to override.",
+            wait_secs,
             self._learn_count,
-            self._learn_count // max(1, self._agent_count),
-            agent_name,
+            turns_per_agent,
         )
-
-        poll_interval = 15
-
-        while True:
-            try:
-                result = subprocess.run(
-                    [
-                        "az",
-                        "servicebus",
-                        "topic",
-                        "subscription",
-                        "show",
-                        "--namespace-name",
-                        self._sb_namespace,
-                        "--topic-name",
-                        self._input_topic,
-                        "--name",
-                        agent_name,
-                        "--resource-group",
-                        self._resource_group,
-                        "--query",
-                        "countDetails.activeMessageCount",
-                        "-o",
-                        "tsv",
-                    ],
-                    capture_output=True,
-                    text=True,
-                    timeout=30,
-                )
-                count = int(result.stdout.strip()) if result.stdout.strip().isdigit() else -1
-                if count == 0:
-                    logger.info("Agent queues empty. Starting question phase.")
-                    return
-                if count > 0:
-                    logger.info("  %s queue: %d messages remaining...", agent_name, count)
-            except Exception as e:
-                logger.warning("Queue depth check failed: %s", e)
-
-            time.sleep(poll_interval)
+        time.sleep(wait_secs)
+        logger.info("Agent idle wait complete. Starting question phase.")
 
     def _listen_for_answers(self) -> None:
-        """Background thread: collect answers from eval-responses topic."""
+        """Background thread: collect answers from eval-responses Event Hub."""
         try:
-            receiver = self._client.get_subscription_receiver(
-                topic_name=self._response_topic,
-                subscription_name="eval-reader",
-                max_wait_time=10,
+            from azure.eventhub import EventHubConsumerClient  # type: ignore[import-unresolved]
+
+            consumer = EventHubConsumerClient.from_connection_string(
+                self._eh_connection_string,
+                consumer_group="cg-eval-reader",
+                eventhub_name=self._response_hub,
             )
         except Exception as e:
-            logger.error("RemoteAgentAdapter: failed to connect to response topic: %s", e)
-            return  # _listener_alive never set — constructor will raise
+            logger.error("RemoteAgentAdapter: failed to connect to response hub: %s", e)
+            return
 
         self._listener_alive.set()
-        logger.info("RemoteAgentAdapter: listening on %s/eval-reader", self._response_topic)
+        logger.info("RemoteAgentAdapter: listening on %s/cg-eval-reader", self._response_hub)
 
-        while not self._shutdown.is_set():
+        def _on_event(partition_context, event) -> None:
+            if event is None or self._shutdown.is_set():
+                return
             try:
-                messages = receiver.receive_messages(
-                    max_message_count=50,
-                    max_wait_time=5,
-                )
-                for msg in messages:
-                    try:
-                        body = json.loads(str(msg))
-                        event_id = body.get("event_id", "")
-                        answer = body.get("answer", "")
+                body = json.loads(event.body_as_str())
+                event_id = body.get("event_id", "")
+                answer = body.get("answer", "")
 
-                        with self._answer_lock:
-                            if event_id in self._answer_events:
-                                self._pending_answers[event_id] = answer
-                                self._answer_events[event_id].set()
-                                logger.info(
-                                    "RemoteAgentAdapter: got answer for %s from %s: %s",
-                                    event_id,
-                                    body.get("agent_id", "?"),
-                                    answer[:80] if answer else "(empty)",
-                                )
-                            else:
-                                logger.warning(
-                                    "RemoteAgentAdapter: answer for unknown event_id=%s (stale?)",
-                                    event_id,
-                                )
-
-                        receiver.complete_message(msg)
-                    except Exception:
-                        logger.debug("Failed to parse response message", exc_info=True)
-                        try:
-                            receiver.complete_message(msg)
-                        except Exception:
-                            pass
+                with self._answer_lock:
+                    if event_id in self._answer_events:
+                        self._pending_answers[event_id] = answer
+                        self._answer_events[event_id].set()
+                        logger.info(
+                            "RemoteAgentAdapter: got answer for %s from %s: %s",
+                            event_id,
+                            body.get("agent_id", "?"),
+                            answer[:80] if answer else "(empty)",
+                        )
+                    else:
+                        logger.warning(
+                            "RemoteAgentAdapter: answer for unknown event_id=%s (stale?)",
+                            event_id,
+                        )
+                partition_context.update_checkpoint(event)
             except Exception:
-                if not self._shutdown.is_set():
-                    logger.debug("Response listener error", exc_info=True)
-                    time.sleep(1)
+                logger.debug("Failed to parse response message", exc_info=True)
 
         try:
-            receiver.close()
+            consumer.receive(on_event=_on_event, starting_position="-1")
         except Exception:
-            pass
+            if not self._shutdown.is_set():
+                logger.debug("Response listener error", exc_info=True)
+        finally:
+            try:
+                consumer.close()
+            except Exception:
+                pass
 
     def get_memory_stats(self) -> dict[str, Any]:
         """Return adapter stats."""
@@ -354,14 +265,10 @@ class RemoteAgentAdapter:
         }
 
     def close(self) -> None:
-        """Clean up Service Bus connections."""
+        """Clean up Event Hubs connections."""
         self._shutdown.set()
         try:
-            self._sender.close()
-        except Exception:
-            pass
-        try:
-            self._client.close()
+            self._producer.close()
         except Exception:
             pass
         if self._listener_thread.is_alive():

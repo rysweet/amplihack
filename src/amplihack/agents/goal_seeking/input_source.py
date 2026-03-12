@@ -124,12 +124,7 @@ def _extract_text_from_bus_event(event_type: str | None, payload: dict) -> str |
         return payload.get("content") or None
 
     if event_type in ("QUERY", "INPUT", "network_graph.search_query"):
-        return (
-            payload.get("question")
-            or payload.get("text")
-            or payload.get("content")
-            or None
-        )
+        return payload.get("question") or payload.get("text") or payload.get("content") or None
 
     # Generic fallback
     for key in ("content", "text", "question", "message", "data"):
@@ -291,6 +286,178 @@ class ServiceBusInputSource:
         except Exception:
             logger.debug("ServiceBusInputSource: error closing client", exc_info=True)
         logger.info("ServiceBusInputSource: closed (agent=%s)", self._agent_name)
+
+
+# ---------------------------------------------------------------------------
+# EventHubsInputSource
+# ---------------------------------------------------------------------------
+
+
+class EventHubsInputSource:
+    """InputSource backed by an Azure Event Hubs consumer group.
+
+    Receives messages from the ``hive-events-{hiveName}`` Event Hub using a
+    dedicated per-agent consumer group (``cg-{agent_name}``).  Each message is
+    filtered by ``target_agent`` so the agent only processes its own messages.
+
+    CBS-free AMQP transport — no Service Bus auth failures in Container Apps.
+
+    Args:
+        connection_string: Azure Event Hubs namespace connection string.
+        agent_name: This agent's identifier; also used to derive the consumer
+            group name as ``cg-{agent_name}``.
+        eventhub_name: Event Hub name (default: ``"hive-events"``).
+        consumer_group: Consumer group override (default: ``cg-{agent_name}``).
+        max_wait_time: Seconds to block waiting per receive call (default: 60).
+        shutdown_event: Optional threading.Event; when set, next() returns None.
+
+    Example:
+        >>> src = EventHubsInputSource(conn_str, "agent-0", "hive-events-myhive")
+        >>> while (text := src.next()) is not None:
+        ...     agent.process(text)
+        >>> src.close()
+    """
+
+    def __init__(
+        self,
+        connection_string: str,
+        agent_name: str,
+        eventhub_name: str = "hive-events",
+        consumer_group: str | None = None,
+        max_wait_time: int = 60,
+        shutdown_event: threading.Event | None = None,
+    ) -> None:
+        try:
+            from azure.eventhub import EventHubConsumerClient  # type: ignore[import-unresolved]
+        except ImportError as exc:
+            raise ImportError(
+                "azure-eventhub is required for EventHubsInputSource. "
+                "Install with: pip install azure-eventhub"
+            ) from exc
+
+        self._agent_name = agent_name
+        self._eventhub_name = eventhub_name
+        self._consumer_group = consumer_group or f"cg-{agent_name}"
+        self._max_wait_time = max_wait_time
+        self._last_event_metadata: dict[str, str] = {}
+        self._shutdown = shutdown_event or threading.Event()
+        self._closed = False
+
+        import queue as _queue
+
+        self._queue: _queue.Queue = _queue.Queue()
+
+        self._consumer = EventHubConsumerClient.from_connection_string(
+            connection_string,
+            consumer_group=self._consumer_group,
+            eventhub_name=eventhub_name,
+        )
+
+        self._recv_thread = threading.Thread(
+            target=self._receive_loop,
+            daemon=True,
+            name=f"eh-input-{agent_name}",
+        )
+        self._recv_thread.start()
+
+        logger.info(
+            "EventHubsInputSource: connected to hub=%s consumer_group=%s",
+            eventhub_name,
+            self._consumer_group,
+        )
+
+    def _receive_loop(self) -> None:
+        """Background thread: receive EH events and enqueue parsed text."""
+        import json as _json
+
+        def _on_event(partition_context, event) -> None:
+            if event is None or self._shutdown.is_set() or self._closed:
+                return
+            try:
+                raw = _json.loads(event.body_as_str())
+                event_type = raw.get("event_type")
+                payload = raw.get("payload", {})
+                target = raw.get("target_agent", "") or payload.get("target_agent", "")
+                if target and target != self._agent_name:
+                    partition_context.update_checkpoint(event)
+                    return
+
+                text = _extract_text_from_bus_event(event_type, payload)
+                if text is not None:
+                    metadata = {
+                        "event_id": raw.get("event_id", ""),
+                        "event_type": event_type or "",
+                        "question_id": payload.get("question_id", ""),
+                    }
+                    self._queue.put((text, metadata))
+                    logger.debug(
+                        "EventHubsInputSource: enqueued event_type=%s len=%d",
+                        event_type,
+                        len(text),
+                    )
+                else:
+                    logger.debug(
+                        "EventHubsInputSource: skipping lifecycle event_type=%s",
+                        event_type,
+                    )
+                partition_context.update_checkpoint(event)
+            except Exception:
+                logger.debug("EventHubsInputSource: parse error", exc_info=True)
+
+        try:
+            self._consumer.receive(
+                on_event=_on_event,
+                starting_position="-1",
+            )
+        except Exception:
+            if not self._closed and not self._shutdown.is_set():
+                logger.warning("EventHubsInputSource: receive loop exited", exc_info=True)
+        finally:
+            self._queue.put((None, {}))
+
+    def next(self) -> str | None:
+        """Block until a message arrives and return its text.
+
+        Returns None when the source is closed or the shutdown event is set.
+        FEED_COMPLETE is represented as the sentinel ``"__FEED_COMPLETE__:<n>"``.
+        """
+        import queue as _queue
+
+        if self._closed or self._shutdown.is_set():
+            return None
+
+        while not self._closed and not self._shutdown.is_set():
+            try:
+                item = self._queue.get(timeout=self._max_wait_time)
+                text, metadata = item
+                if text is None:
+                    return None
+                self._last_event_metadata = metadata
+                return text
+            except _queue.Empty:
+                continue
+
+        return None
+
+    @property
+    def last_event_metadata(self) -> dict[str, str]:
+        """Metadata from the most recently received message."""
+        return self._last_event_metadata
+
+    def signal_shutdown(self) -> None:
+        """Signal the source to stop."""
+        self._shutdown.set()
+
+    def close(self) -> None:
+        """Close the Event Hubs consumer."""
+        self._closed = True
+        self._shutdown.set()
+        try:
+            self._consumer.close()
+        except Exception:
+            logger.debug("EventHubsInputSource: error closing consumer", exc_info=True)
+        self._queue.put((None, {}))
+        logger.info("EventHubsInputSource: closed (agent=%s)", self._agent_name)
 
 
 # ---------------------------------------------------------------------------
