@@ -383,23 +383,49 @@ def _search_for_shard_response(
 
     Tries agent.memory.search() (CognitiveAdapter path) first; falls back to
     direct ShardStore.search() if the agent is None or raises an exception.
+
+    CognitiveAdapter.search() returns dicts with ``outcome``/``context``/
+    ``confidence`` keys (not objects).  ShardFact objects use ``content``/
+    ``concept`` attributes.  Both are handled here so the SHARD_RESPONSE
+    always carries the actual fact text.
     """
     # CognitiveAdapter path: full n-gram + reranking + semantic quality
     if agent is not None and hasattr(agent, "memory") and hasattr(agent.memory, "search"):
         try:
             mem_results = agent.memory.search(query, limit=limit)
-            return [
-                {
-                    "fact_id": getattr(f, "fact_id", ""),
-                    "content": getattr(f, "content", str(f)),
-                    "concept": getattr(f, "concept", ""),
-                    "confidence": float(getattr(f, "confidence", 0.8)),
-                    "source_agent": getattr(f, "source_agent", agent_id),
-                    "tags": list(getattr(f, "tags", [])),
-                }
-                for f in mem_results
-                if getattr(f, "content", "")
-            ]
+            facts = []
+            for f in mem_results:
+                if isinstance(f, dict):
+                    # CognitiveAdapter returns dicts: outcome/context/confidence keys
+                    content = f.get("outcome") or f.get("content", "")
+                    if not content:
+                        continue
+                    facts.append(
+                        {
+                            "fact_id": f.get("experience_id", ""),
+                            "content": content,
+                            "concept": f.get("context") or f.get("concept", ""),
+                            "confidence": float(f.get("confidence", 0.8)),
+                            "source_agent": agent_id,
+                            "tags": list(f.get("tags", [])),
+                        }
+                    )
+                else:
+                    # ShardFact or similar object with .content attribute
+                    content = getattr(f, "content", "")
+                    if not content:
+                        continue
+                    facts.append(
+                        {
+                            "fact_id": getattr(f, "fact_id", ""),
+                            "content": content,
+                            "concept": getattr(f, "concept", ""),
+                            "confidence": float(getattr(f, "confidence", 0.8)),
+                            "source_agent": getattr(f, "source_agent", agent_id),
+                            "tags": list(getattr(f, "tags", [])),
+                        }
+                    )
+            return facts
         except Exception:
             logger.debug(
                 "CognitiveAdapter search failed for %s, falling back to shard",

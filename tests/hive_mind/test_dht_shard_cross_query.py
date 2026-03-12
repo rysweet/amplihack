@@ -781,6 +781,73 @@ class TestEventHubsShardTransportLocal:
             f"CognitiveAdapter result missing from EH SHARD_RESPONSE: {facts}"
         )
 
+    def test_handle_shard_query_cognitive_adapter_dict_format(self):
+        """handle_shard_query correctly handles CognitiveAdapter dict results.
+
+        CognitiveAdapter.search() returns dicts with ``outcome``/``context``/
+        ``confidence`` keys.  Previously getattr(f, 'content', '') on a dict
+        returned '' causing ALL results to be filtered, producing empty
+        SHARD_RESPONSE and ~50% eval score vs 90%+ single-agent.
+        """
+        from amplihack.agents.goal_seeking.hive_mind.event_bus import BusEvent
+
+        transport = self._make_transport("agent-0")
+        DistributedHiveGraph(hive_id="eh-ca-dict", enable_gossip=False, transport=transport)
+
+        class _MockMemory:
+            def search(self, query, limit=20):
+                # Real CognitiveAdapter returns dicts with outcome/context/confidence
+                return [
+                    {
+                        "experience_id": "ca-dict-1",
+                        "outcome": "Sarah Chen was born on March 15 1992",
+                        "context": "Personal Information",
+                        "confidence": 0.92,
+                        "timestamp": "",
+                        "tags": ["birthday", "person"],
+                        "metadata": {},
+                    }
+                ]
+
+        class _MockAgent:
+            memory = _MockMemory()
+
+        correlation_id = uuid.uuid4().hex
+        query_event = BusEvent(
+            event_id=uuid.uuid4().hex,
+            event_type="SHARD_QUERY",
+            source_agent="agent-1",
+            timestamp=time.time(),
+            payload={
+                "query": "Sarah Chen birthday",
+                "limit": 5,
+                "correlation_id": correlation_id,
+                "target_agent": "agent-0",
+            },
+        )
+
+        published: list[dict] = []
+        transport._publish = lambda payload, partition_key=None: published.append(payload)
+        transport._local_graph = type(
+            "G",
+            (),
+            {"_router": type("R", (), {"get_shard": lambda self, aid: None})()},
+        )()
+
+        transport.handle_shard_query(query_event, agent=_MockAgent())
+
+        response_events = [p for p in published if p.get("event_type") == "SHARD_RESPONSE"]
+        assert response_events, "No SHARD_RESPONSE published"
+        facts = response_events[0].get("payload", {}).get("facts", [])
+        assert facts, (
+            "SHARD_RESPONSE has empty facts — dict results from CognitiveAdapter "
+            "are being dropped (regression in _search_for_shard_response)"
+        )
+        texts = [f["content"] for f in facts]
+        assert any("Sarah Chen" in t for t in texts), (
+            f"Expected 'Sarah Chen' fact in SHARD_RESPONSE, got: {texts}"
+        )
+
     def test_handle_shard_response_wakes_pending_query(self):
         """handle_shard_response sets the pending threading.Event."""
         from amplihack.agents.goal_seeking.hive_mind.event_bus import BusEvent
