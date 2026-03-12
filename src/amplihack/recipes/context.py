@@ -228,11 +228,19 @@ class RecipeContext:
         Top-level keys are included directly. Nested dicts are also exposed
         as dot-separated keys using a simple namespace object so that
         ``obj.flag`` works in expressions.
+
+        String values are stripped of trailing whitespace as defense-in-depth
+        against bash step outputs that include a trailing newline (issue #3058).
+        Bash commands always append a newline; without stripping, comparisons
+        like ``count != 1`` silently fail because the value is ``"1\\n"``.
         """
         namespace: dict[str, Any] = {}
         for key, value in self._data.items():
             if isinstance(value, dict):
                 namespace[key] = _DotDict(value)
+            elif isinstance(value, str):
+                # Strip trailing whitespace: bash stdout always ends with "\n"
+                namespace[key] = value.rstrip()
             else:
                 namespace[key] = value
         return namespace

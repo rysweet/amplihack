@@ -439,11 +439,16 @@ class RecipeRunner:
             # shlex.quote() wraps each interpolated value so shell metacharacters
             # in step outputs cannot escape the intended argument boundaries.
             rendered_command = ctx.render_shell(step.command or "")
-            return self._adapter.execute_bash_step(
+            raw_output = self._adapter.execute_bash_step(
                 rendered_command,
                 working_dir=working_dir,
                 timeout=step.timeout,
             )
+            # Strip trailing whitespace from bash output before storing in context.
+            # All bash commands produce output with a trailing newline; without
+            # stripping, conditions like ``workstream_count != 1`` compare against
+            # "1\n" which never equals "1" (fixes issue #3058).
+            return raw_output.rstrip() if isinstance(raw_output, str) else raw_output
 
         if step.step_type == StepType.AGENT:
             rendered_prompt = ctx.render(step.prompt or "")
