@@ -288,6 +288,9 @@ steps:
 
   - id: "execute-single-round-1"
     type: "recipe"
+    # NOTE: force_single_workstream may be Value::Bool(true) when set via CLI
+    # --set (parse_context_value coerces "true" -> Bool). The condition evaluator
+    # handles Bool/String cross-type coercion (fix #3069 in recipe-runner-rs).
     condition: |
       ('Development' in task_type or 'Investigation' in task_type) and ((workstream_count == '1' or workstream_count == '') or force_single_workstream == 'true')
     recipe: "default-workflow"
