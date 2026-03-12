@@ -75,10 +75,9 @@ steps:
   - id: "parse-decomposition"
     type: "bash"
     command: |
-      HELPER_PATH="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/orch_helper.py"
-      if [ ! -f "$HELPER_PATH" ]; then
-          echo "ERROR: orch_helper.py not found at: $HELPER_PATH" >&2
-          echo "Set AMPLIHACK_HOME to your amplihack repo root, or run from within the repo." >&2
+      HELPER_PATH=$(python3 -m amplihack.resolve_bundle_asset "amplifier-bundle/tools/orch_helper.py")
+      if [ $? -ne 0 ] || [ ! -f "$HELPER_PATH" ]; then
+          echo "ERROR: orch_helper.py not found. Set AMPLIHACK_HOME to your amplihack installation root." >&2
           exit 1
       fi
       export DECOMP_JSON=$(printf '%s' {{decomposition_json}})
@@ -118,8 +117,12 @@ steps:
   - id: "activate-workflow"
     type: "bash"
     command: |
-      HELPER_PATH="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/orch_helper.py"
-      HOOKS_DIR="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/amplihack/hooks"
+      HELPER_PATH=$(python3 -m amplihack.resolve_bundle_asset "amplifier-bundle/tools/orch_helper.py")
+      if [ $? -ne 0 ] || [ ! -f "$HELPER_PATH" ]; then
+          echo "ERROR: orch_helper.py not found. Set AMPLIHACK_HOME to your amplihack installation root." >&2
+          exit 1
+      fi
+      HOOKS_DIR=$(python3 -m amplihack.resolve_bundle_asset "amplifier-bundle/tools/amplihack/hooks" 2>/dev/null || echo '')
       export DECOMP_JSON=$(printf '%s' {{decomposition_json}})
       export TASK_TYPE=$(printf '%s' {{task_type}})
       export HELPER_PATH HOOKS_DIR
@@ -163,7 +166,7 @@ steps:
     type: "bash"
     condition: "'Development' in task_type or 'Investigation' in task_type or task_type == ''"
     command: |
-      TREE_SCRIPT="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/session_tree.py"
+      TREE_SCRIPT=$(python3 -m amplihack.resolve_bundle_asset "amplifier-bundle/tools/session_tree.py" 2>/dev/null || echo '')
       SESSION_ID=$(python3 -c "import uuid; print(uuid.uuid4().hex[:8])")
 
       if [ -f "$TREE_SCRIPT" ]; then
@@ -290,10 +293,9 @@ steps:
     condition: |
       ('Development' in task_type or 'Investigation' in task_type) and int(str(workstream_count).strip() or '1') > 1 and 'ALLOWED' in recursion_guard and force_single_workstream != 'true'
     command: |
-      HELPER_PATH="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/orch_helper.py"
-      if [ ! -f "$HELPER_PATH" ]; then
-          echo "ERROR: orch_helper.py not found at: $HELPER_PATH" >&2
-          echo "Set AMPLIHACK_HOME to your amplihack repo root, or run from within the repo." >&2
+      HELPER_PATH=$(python3 -m amplihack.resolve_bundle_asset "amplifier-bundle/tools/orch_helper.py")
+      if [ $? -ne 0 ] || [ ! -f "$HELPER_PATH" ]; then
+          echo "ERROR: orch_helper.py not found. Set AMPLIHACK_HOME to your amplihack installation root." >&2
           exit 1
       fi
       export DECOMP_JSON=$(printf '%s' {{decomposition_json}})
@@ -609,8 +611,8 @@ steps:
     type: "bash"
     command: |
       export SESSION_JSON=$(printf '%s' {{session_info}})
-      TREE_SCRIPT="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/session_tree.py"
-      HOOKS_DIR="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/amplihack/hooks"
+      TREE_SCRIPT=$(python3 -m amplihack.resolve_bundle_asset "amplifier-bundle/tools/session_tree.py" 2>/dev/null || echo '')
+      HOOKS_DIR=$(python3 -m amplihack.resolve_bundle_asset "amplifier-bundle/tools/amplihack/hooks" 2>/dev/null || echo '')
       # Parse session fields and clear workflow semaphore in one Python subprocess.
       # Uses env vars instead of pipe+heredoc to avoid stdin conflict (issue #2581).
       export HOOKS_DIR
