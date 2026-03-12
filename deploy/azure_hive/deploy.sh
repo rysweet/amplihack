@@ -4,10 +4,12 @@
 # Provisions:
 #   - Resource group
 #   - Azure Container Registry (ACR)
-#   - Azure Service Bus namespace + topic + subscriptions
+#   - Azure Event Hubs namespace + 3 hubs (hive-events, hive-shards, eval-responses)
 #   - EmptyDir volumes for Kuzu (POSIX locks required, Azure Files SMB unsupported)
 #   - Container Apps Environment
 #   - N Container Apps (ceil(HIVE_AGENT_COUNT / 5) apps, 5 agents each)
+#
+# NOTE: Service Bus removed — CBS auth fails in Container Apps. Using Event Hubs.
 #
 # Follows patterns from haymaker-workload-starter and experiments/hive_mind/deploy_azure_hive.sh.
 #
@@ -31,7 +33,7 @@
 #   HIVE_AGENTS_PER_APP    -- Agents per Container App (default: 5)
 #   HIVE_ACR_NAME          -- ACR name override (auto-generated if empty)
 #   HIVE_IMAGE_TAG         -- Docker image tag (default: latest)
-#   HIVE_TRANSPORT         -- Transport type (default: azure_service_bus)
+#   HIVE_TRANSPORT         -- Transport type (default: azure_event_hubs)
 #   HIVE_AGENT_PROMPT_BASE -- Base system prompt for agents
 
 set -euo pipefail
@@ -47,7 +49,7 @@ FALLBACK_REGIONS="${HIVE_FALLBACK_REGIONS:-eastus,westus3,centralus}"
 AGENT_COUNT="${HIVE_AGENT_COUNT:-5}"
 AGENTS_PER_APP="${HIVE_AGENTS_PER_APP:-5}"
 IMAGE_TAG="${HIVE_IMAGE_TAG:-latest}"
-TRANSPORT="${HIVE_TRANSPORT:-azure_service_bus}"
+TRANSPORT="${HIVE_TRANSPORT:-azure_event_hubs}"
 MEMORY_BACKEND="${HIVE_MEMORY_BACKEND:-cognitive}"
 AGENT_MODEL="${HIVE_AGENT_MODEL:-claude-sonnet-4-6}"
 AGENT_PROMPT_BASE="${HIVE_AGENT_PROMPT_BASE:-You are a distributed hive mind agent.}"
@@ -268,9 +270,9 @@ fi
 
 log "Bicep deployment complete (region: ${LOCATION})."
 
-# Extract Service Bus connection string for reference
-SB_FQDN=$(echo "${DEPLOY_OUTPUT}" | python3 -c \
-  "import json,sys; d=json.load(sys.stdin); print(d.get('properties',{}).get('outputs',{}).get('sbNamespaceFqdn',{}).get('value',''))" 2>/dev/null || echo "")
+# Extract Event Hubs namespace name for reference
+EH_NAMESPACE=$(echo "${DEPLOY_OUTPUT}" | python3 -c \
+  "import json,sys; d=json.load(sys.stdin); print(d.get('properties',{}).get('outputs',{}).get('ehNamespaceName',{}).get('value',''))" 2>/dev/null || echo "")
 
 # ============================================================
 # Summary
@@ -283,10 +285,11 @@ log "Hive '${HIVE_NAME}' deployment complete!"
 log "  Agents:         ${AGENT_COUNT}"
 log "  Container Apps: ${APP_COUNT} (${AGENTS_PER_APP} agents each)"
 log "  ACR:            ${ACR_LOGIN_SERVER}"
-log "  Transport:      ${TRANSPORT}"
-log "  SB Topic:       hive-events-${HIVE_NAME}"
-log "  Eval Topic:     eval-responses-${HIVE_NAME}"
-[[ -n "${SB_FQDN}" ]] && log "  Service Bus:    ${SB_FQDN}"
+log "  Transport:      ${TRANSPORT} (azure_event_hubs)"
+log "  EH Input Hub:   hive-events-${HIVE_NAME}"
+log "  EH Shards Hub:  hive-shards-${HIVE_NAME}"
+log "  EH Eval Hub:    eval-responses-${HIVE_NAME}"
+[[ -n "${EH_NAMESPACE}" ]] && log "  EH Namespace:   ${EH_NAMESPACE}"
 log "============================================"
 log "View app status: bash deploy/azure_hive/deploy.sh --status"
 log "Teardown:        bash deploy/azure_hive/deploy.sh --cleanup"

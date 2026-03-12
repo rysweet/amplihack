@@ -5,11 +5,17 @@
 //   - Log Analytics workspace
 //   - Container Apps Environment (Consumption tier)
 //   - Event Hubs Namespace (Standard, 1 TU) with 3 hubs:
-//       hive-events-{hiveName}   -- LEARN_CONTENT / INPUT messages (per-agent consumer groups)
-//       hive-shards-{hiveName}   -- SHARD_QUERY / SHARD_RESPONSE cross-shard DHT protocol
-//       eval-responses-{hiveName}-- EVAL_ANSWER answers from agents to eval harness
+//       hive-events-{hiveName}    — LEARN_CONTENT, INPUT, FEED_COMPLETE, AGENT_READY
+//       hive-shards-{hiveName}    — SHARD_QUERY, SHARD_RESPONSE (cross-shard DHT)
+//       eval-responses-{hiveName} — EVAL_ANSWER, AGENT_READY (eval harness)
+//   - Per-agent consumer groups on hive-events and eval-responses hubs
 //   - N Container Apps (ceil(agentCount / agentsPerApp) apps, each with
 //     up to agentsPerApp agent containers)
+//
+// NOTE: Service Bus has been removed entirely. Azure Service Bus CBS (Claims-Based
+// Security) AMQP authentication fails in Container Apps — agents could not receive
+// any messages. Event Hubs uses standard AMQP and works perfectly in Container Apps
+// (confirmed: OPENED, MAPPED, ATTACHED states in logs).
 //
 // Note: EmptyDir volumes used for /data (Kuzu storage). Kuzu requires POSIX
 // file locks which Azure Files SMB does not support. Every deploy is from
@@ -64,9 +70,9 @@ var acrNameResolved = empty(acrName) ? 'acr${suffix}' : acrName
 var logAnalyticsName = 'hive-logs-${suffix}'
 var envName = 'hive-env-${hiveName}'
 var ehNamespaceName = 'hive-eh-${suffix}'
-var ehEventsHubName = 'hive-events-${hiveName}'
-var ehShardsHubName = 'hive-shards-${hiveName}'
-var ehResponsesHubName = 'eval-responses-${hiveName}'
+var ehEventsHub = 'hive-events-${hiveName}'
+var ehShardsHub = 'hive-shards-${hiveName}'
+var ehEvalHub = 'eval-responses-${hiveName}'
 var appCount = (agentCount + agentsPerApp - 1) / agentsPerApp
 
 // ---------- Container Registry ----------
@@ -94,9 +100,9 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
 }
 
 
-// ---------- Event Hubs Namespace (Standard, 1 TU) ----------
-// Single namespace for all three hubs. CBS-free AMQP — no auth failures in
-// Container Apps unlike Azure Service Bus Standard.
+// ---------- Event Hubs (Standard — all hive transport) ----------
+// Event Hubs is used for ALL transport: input messages, shard queries, and eval responses.
+// No Service Bus — CBS auth fails in Container Apps regardless of SKU.
 resource ehNamespace 'Microsoft.EventHub/namespaces@2023-01-01-preview' = {
   name: ehNamespaceName
   location: location
@@ -111,10 +117,10 @@ resource ehNamespace 'Microsoft.EventHub/namespaces@2023-01-01-preview' = {
   }
 }
 
-// Hub 1: hive-events — receives LEARN_CONTENT / INPUT messages from eval harness.
-// Each agent gets a dedicated consumer group (cg-agent-N) for independent delivery.
-resource ehEventsHub 'Microsoft.EventHub/namespaces/eventhubs@2023-01-01-preview' = {
-  name: ehEventsHubName
+// Hub 1: hive-events — LEARN_CONTENT, INPUT, FEED_COMPLETE, AGENT_READY
+// Per-agent consumer groups for filtered delivery (client-side target_agent filter)
+resource ehEventsHubResource 'Microsoft.EventHub/namespaces/eventhubs@2023-01-01-preview' = {
+  name: ehEventsHub
   parent: ehNamespace
   properties: {
     partitionCount: agentCount + 4
@@ -122,35 +128,36 @@ resource ehEventsHub 'Microsoft.EventHub/namespaces/eventhubs@2023-01-01-preview
   }
 }
 
+// Per-agent consumer groups on hive-events: each agent reads from its own group
 resource ehEventsConsumerGroups 'Microsoft.EventHub/namespaces/eventhubs/consumergroups@2023-01-01-preview' = [
   for i in range(0, agentCount): {
     name: 'cg-agent-${i}'
-    parent: ehEventsHub
+    parent: ehEventsHubResource
   }
 ]
 
-// Hub 2: hive-shards — SHARD_QUERY / SHARD_RESPONSE cross-shard DHT protocol.
-// Each agent gets a dedicated consumer group for partition-key-routed delivery.
-resource ehShardsHub 'Microsoft.EventHub/namespaces/eventhubs@2023-01-01-preview' = {
-  name: ehShardsHubName
+// Hub 2: hive-shards — SHARD_QUERY, SHARD_RESPONSE (cross-shard DHT)
+resource ehShardsHubResource 'Microsoft.EventHub/namespaces/eventhubs@2023-01-01-preview' = {
+  name: ehShardsHub
   parent: ehNamespace
   properties: {
+    // N+4 partitions: agentCount partitions for agents, 4 spare for headroom.
     partitionCount: agentCount + 4
     messageRetentionInDays: 1
   }
 }
 
+// Per-agent consumer groups on hive-shards
 resource ehShardsConsumerGroups 'Microsoft.EventHub/namespaces/eventhubs/consumergroups@2023-01-01-preview' = [
   for i in range(0, agentCount): {
     name: 'cg-agent-${i}'
-    parent: ehShardsHub
+    parent: ehShardsHubResource
   }
 ]
 
-// Hub 3: eval-responses — agents publish EVAL_ANSWER events.
-// eval harness reads via cg-eval-reader consumer group.
-resource ehResponsesHub 'Microsoft.EventHub/namespaces/eventhubs@2023-01-01-preview' = {
-  name: ehResponsesHubName
+// Hub 3: eval-responses — EVAL_ANSWER, AGENT_READY (eval harness reads these)
+resource ehEvalHubResource 'Microsoft.EventHub/namespaces/eventhubs@2023-01-01-preview' = {
+  name: ehEvalHub
   parent: ehNamespace
   properties: {
     partitionCount: agentCount + 4
@@ -158,10 +165,19 @@ resource ehResponsesHub 'Microsoft.EventHub/namespaces/eventhubs@2023-01-01-prev
   }
 }
 
-resource ehResponsesEvalReader 'Microsoft.EventHub/namespaces/eventhubs/consumergroups@2023-01-01-preview' = {
-  name: 'cg-eval-reader'
-  parent: ehResponsesHub
+// Eval reader consumer group: used by RemoteAgentAdapter to collect answers
+resource ehEvalReaderGroup 'Microsoft.EventHub/namespaces/eventhubs/consumergroups@2023-01-01-preview' = {
+  name: 'eval-reader'
+  parent: ehEvalHubResource
 }
+
+// Per-agent consumer groups on eval-responses (for multi-harness scenarios)
+resource ehEvalConsumerGroups 'Microsoft.EventHub/namespaces/eventhubs/consumergroups@2023-01-01-preview' = [
+  for i in range(0, agentCount): {
+    name: 'cg-agent-${i}'
+    parent: ehEvalHubResource
+  }
+]
 
 // ---------- Container Apps Environment ----------
 resource containerEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
@@ -276,15 +292,15 @@ resource containerApps 'Microsoft.App/containerApps@2024-03-01' = [
               }
               {
                 name: 'AMPLIHACK_EH_NAME'
-                value: ehShardsHubName
+                value: ehShardsHub
               }
               {
-                name: 'AMPLIHACK_EH_EVENTS_HUB'
-                value: ehEventsHubName
+                name: 'AMPLIHACK_EH_INPUT_HUB'
+                value: ehEventsHub
               }
               {
-                name: 'AMPLIHACK_EH_RESPONSES_HUB'
-                value: ehResponsesHubName
+                name: 'AMPLIHACK_EVAL_RESPONSE_HUB'
+                value: ehEvalHub
               }
               {
                 name: 'ANTHROPIC_API_KEY'
@@ -311,8 +327,8 @@ resource containerApps 'Microsoft.App/containerApps@2024-03-01' = [
 // ---------- Outputs ----------
 output acrLoginServer string = empty(acrName) ? acr.properties.loginServer : acrExisting.properties.loginServer
 output containerAppNames array = [for appIdx in range(0, appCount): '${hiveName}-app-${appIdx}']
-output ehNamespaceName string = ehNamespaceName
-output ehEventsHubName string = ehEventsHubName
-output ehShardsHubName string = ehShardsHubName
-output ehResponsesHubName string = ehResponsesHubName
 output ehConnectionStringSecretName string = 'eh-connection-string'
+output ehNamespaceName string = ehNamespaceName
+output ehEventsHub string = ehEventsHub
+output ehShardsHub string = ehShardsHub
+output ehEvalHub string = ehEvalHub
