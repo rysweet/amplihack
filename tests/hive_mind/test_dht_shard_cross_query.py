@@ -11,6 +11,7 @@ from __future__ import annotations
 import threading
 import time
 import uuid
+from typing import Any
 
 from amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph import (
     DistributedHiveGraph,
@@ -520,12 +521,11 @@ class TestPromoteFactStoresLocally:
             f"Shard contents: {[f.content for f in all_facts]}"
         )
 
-    def test_promote_fact_broadcasts_shard_store_to_peers(self):
-        """promote_fact with ServiceBusShardTransport publishes SHARD_STORE to all peer agents.
+    def test_promote_fact_does_not_broadcast_shard_store(self):
+        """promote_fact stores locally only — no SHARD_STORE broadcast (pure DHT sharding).
 
-        Full replication: every agent stores all facts so cross-shard queries are not
-        needed during question answering. This eliminates the 49% eval gap caused by
-        unreliable SHARD_QUERY/SHARD_RESPONSE round-trips.
+        Commit e2da57e9 (full replication) reverted. Cross-shard retrieval quality
+        is now achieved via CognitiveAdapter.search() in handle_shard_query instead.
         """
         bus = LocalEventBus()
         bus.subscribe("agent-0")
@@ -534,7 +534,7 @@ class TestPromoteFactStoresLocally:
 
         transport = ServiceBusShardTransport(event_bus=bus, agent_id="agent-0")
         dht = DistributedHiveGraph(
-            hive_id="test-replication", enable_gossip=False, transport=transport
+            hive_id="test-no-replication", enable_gossip=False, transport=transport
         )
         for i in range(3):
             dht.register_agent(f"agent-{i}")
@@ -542,18 +542,14 @@ class TestPromoteFactStoresLocally:
         fact = _make_fact("Mars is the fourth planet", "astronomy", "agent-0")
         dht.promote_fact("agent-0", fact)
 
-        # SHARD_STORE published to each peer (agent-1 and agent-2)
+        # No SHARD_STORE events should be published to peers (pure DHT sharding)
         for sub in ["agent-1", "agent-2"]:
             events = bus.poll(sub)
             store_events = [e for e in events if e.event_type == "SHARD_STORE"]
-            assert len(store_events) >= 1, (
-                f"Expected SHARD_STORE to {sub} for full replication, "
-                f"got events: {[e.event_type for e in events]}"
+            assert len(store_events) == 0, (
+                f"promote_fact should NOT broadcast SHARD_STORE after revert of e2da57e9, "
+                f"got events to {sub}: {[e.event_type for e in events]}"
             )
-            # Verify the replicated fact content is correct
-            assert any(
-                e.payload.get("fact", {}).get("content") == fact.content for e in store_events
-            ), f"SHARD_STORE for {sub} missing correct fact content"
         bus.close()
 
 
@@ -640,3 +636,275 @@ class TestDHTSelectQueryTargetsFix:
         assert set(targets) == {f"agent-{i}" for i in range(5)}, (
             f"Bug 2: only returned {targets}, missing remote agents"
         )
+
+
+# ---------------------------------------------------------------------------
+# EventHubsShardTransport — local unit tests (no Azure connection needed)
+# ---------------------------------------------------------------------------
+
+
+class TestEventHubsShardTransportLocal:
+    """Unit tests for EventHubsShardTransport logic using _start_receiving=False.
+
+    Tests drive the internal mailbox directly, bypassing the background receive
+    thread so no azure-eventhub connection is required.
+    """
+
+    def _make_transport(self, agent_id: str) -> Any:
+        from amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph import (
+            EventHubsShardTransport,
+        )
+
+        return EventHubsShardTransport(
+            connection_string="Endpoint=sb://fake.servicebus.windows.net/;...",
+            eventhub_name="hive-shards-test",
+            agent_id=agent_id,
+            _start_receiving=False,  # Skip background thread — drive mailbox directly
+        )
+
+    def test_query_shard_local_bypass(self):
+        """query_shard on own agent_id queries local shard without publishing events."""
+        transport = self._make_transport("agent-0")
+        dht = DistributedHiveGraph(
+            hive_id="eh-local-bypass", enable_gossip=False, transport=transport
+        )
+        dht.register_agent("agent-0")
+        dht.promote_fact(
+            "agent-0",
+            _make_fact("Event Hubs is reliable", "azure", "agent-0"),
+        )
+
+        results = transport.query_shard("agent-0", "event hubs", limit=5)
+        assert any("Event Hubs" in f.content for f in results), (
+            f"Local bypass query returned no results: {[f.content for f in results]}"
+        )
+
+    def test_handle_shard_query_falls_back_to_shard_when_no_agent(self):
+        """handle_shard_query without agent falls back to direct ShardStore search."""
+        from amplihack.agents.goal_seeking.hive_mind.event_bus import BusEvent
+
+        transport = self._make_transport("agent-0")
+        dht = DistributedHiveGraph(hive_id="eh-fallback", enable_gossip=False, transport=transport)
+        dht.register_agent("agent-0")
+        dht.promote_fact(
+            "agent-0",
+            _make_fact("Canberra is the capital of Australia", "geography", "agent-0"),
+        )
+
+        correlation_id = uuid.uuid4().hex
+        query_event = BusEvent(
+            event_id=uuid.uuid4().hex,
+            event_type="SHARD_QUERY",
+            source_agent="agent-1",
+            timestamp=time.time(),
+            payload={
+                "query": "Canberra Australia",
+                "limit": 5,
+                "correlation_id": correlation_id,
+                "target_agent": "agent-0",
+            },
+        )
+
+        # Capture published events by patching _publish
+        published: list[dict] = []
+        transport._publish = lambda payload, partition_key=None: published.append(payload)
+
+        transport.handle_shard_query(query_event)  # No agent — falls back to shard
+
+        response_events = [p for p in published if p.get("event_type") == "SHARD_RESPONSE"]
+        assert len(response_events) == 1
+        facts = response_events[0]["payload"]["facts"]
+        assert any("Canberra" in f["content"] for f in facts), (
+            f"Fallback shard search did not return Canberra: {facts}"
+        )
+
+    def test_handle_shard_query_uses_cognitive_adapter_when_agent_provided(self):
+        """handle_shard_query with agent uses agent.memory.search() (CognitiveAdapter path)."""
+        from amplihack.agents.goal_seeking.hive_mind.event_bus import BusEvent
+
+        transport = self._make_transport("agent-0")
+        DistributedHiveGraph(hive_id="eh-ca", enable_gossip=False, transport=transport)
+
+        search_calls: list[str] = []
+
+        class _MockMemory:
+            def search(self, query, limit=20):
+                search_calls.append(query)
+                return [
+                    type(
+                        "F",
+                        (),
+                        {
+                            "fact_id": "ca-1",
+                            "content": "CognitiveAdapter: quantum entanglement explanation",
+                            "concept": "physics",
+                            "confidence": 0.95,
+                            "source_agent": "agent-0",
+                            "tags": [],
+                        },
+                    )()
+                ]
+
+        class _MockAgent:
+            memory = _MockMemory()
+
+        correlation_id = uuid.uuid4().hex
+        query_event = BusEvent(
+            event_id=uuid.uuid4().hex,
+            event_type="SHARD_QUERY",
+            source_agent="agent-1",
+            timestamp=time.time(),
+            payload={
+                "query": "quantum entanglement",
+                "limit": 5,
+                "correlation_id": correlation_id,
+                "target_agent": "agent-0",
+            },
+        )
+
+        published: list[dict] = []
+        transport._publish = lambda payload, partition_key=None: published.append(payload)
+        transport._local_graph = type(
+            "G",
+            (),
+            {"_router": type("R", (), {"get_shard": lambda self, aid: None})()},
+        )()
+
+        transport.handle_shard_query(query_event, agent=_MockAgent())
+
+        assert search_calls, "agent.memory.search() was not called"
+        assert search_calls[0] == "quantum entanglement"
+        response_events = [p for p in published if p.get("event_type") == "SHARD_RESPONSE"]
+        assert len(response_events) == 1
+        facts = response_events[0]["payload"]["facts"]
+        assert any("CognitiveAdapter" in f["content"] for f in facts), (
+            f"CognitiveAdapter result missing from EH SHARD_RESPONSE: {facts}"
+        )
+
+    def test_handle_shard_response_wakes_pending_query(self):
+        """handle_shard_response sets the pending threading.Event."""
+        from amplihack.agents.goal_seeking.hive_mind.event_bus import BusEvent
+
+        transport = self._make_transport("agent-1")
+
+        correlation_id = uuid.uuid4().hex
+        done = threading.Event()
+        results: list[dict] = []
+        with transport._pending_lock:
+            transport._pending[correlation_id] = (done, results)
+
+        response_event = BusEvent(
+            event_id=uuid.uuid4().hex,
+            event_type="SHARD_RESPONSE",
+            source_agent="agent-0",
+            timestamp=time.time(),
+            payload={
+                "correlation_id": correlation_id,
+                "facts": [{"content": "EH response fact", "confidence": 0.9}],
+            },
+        )
+        transport.handle_shard_response(response_event)
+
+        assert done.is_set(), "threading.Event must be set by handle_shard_response"
+        assert any("EH response fact" in r.get("content", "") for r in results)
+
+    def test_poll_drains_mailbox(self):
+        """poll() returns events added to the mailbox and resets mailbox_ready."""
+        from amplihack.agents.goal_seeking.hive_mind.event_bus import BusEvent
+
+        transport = self._make_transport("agent-0")
+
+        # Manually inject an event into the mailbox
+        fake_event = BusEvent(
+            event_id="test",
+            event_type="SHARD_QUERY",
+            source_agent="agent-1",
+            timestamp=time.time(),
+            payload={"query": "test", "limit": 5, "correlation_id": "abc"},
+        )
+        with transport._mailbox_lock:
+            transport._mailbox.append(fake_event)
+        transport._mailbox_ready.set()
+
+        events = transport.poll("agent-0")
+        assert len(events) == 1
+        assert events[0].event_type == "SHARD_QUERY"
+
+        # Mailbox should be empty now
+        assert transport._mailbox == []
+
+
+# ---------------------------------------------------------------------------
+# CognitiveAdapter cross-shard retrieval via ServiceBusShardTransport
+# ---------------------------------------------------------------------------
+
+
+class TestServiceBusShardTransportCognitiveAdapter:
+    """Verify handle_shard_query uses CognitiveAdapter when agent is provided."""
+
+    def test_handle_shard_query_with_agent_uses_memory_search(self):
+        """handle_shard_query with agent uses agent.memory.search() not ShardStore."""
+        bus = LocalEventBus()
+        bus.subscribe("agent-0")
+        bus.subscribe("agent-1")
+
+        sb_transport = ServiceBusShardTransport(event_bus=bus, agent_id="agent-0")
+        dht = DistributedHiveGraph(
+            hive_id="sb-ca-test", enable_gossip=False, transport=sb_transport
+        )
+        dht.register_agent("agent-0")
+
+        search_calls: list[str] = []
+
+        class _MockMemory:
+            def search(self, query, limit=20):
+                search_calls.append(query)
+                return [
+                    type(
+                        "F",
+                        (),
+                        {
+                            "fact_id": "sb-ca-1",
+                            "content": "CognitiveAdapter: Sahara is in Africa",
+                            "concept": "geography",
+                            "confidence": 0.92,
+                            "source_agent": "agent-0",
+                            "tags": [],
+                        },
+                    )()
+                ]
+
+        class _MockAgent:
+            memory = _MockMemory()
+
+        correlation_id = uuid.uuid4().hex
+        query_event = make_event(
+            event_type="SHARD_QUERY",
+            source_agent="agent-1",
+            payload={
+                "query": "Sahara Africa",
+                "limit": 5,
+                "correlation_id": correlation_id,
+                "target_agent": "agent-0",
+            },
+        )
+        bus.publish(query_event)
+
+        for event in bus.poll("agent-0"):
+            if event.event_type == "SHARD_QUERY":
+                sb_transport.handle_shard_query(event, agent=_MockAgent())
+
+        assert search_calls, "agent.memory.search() was not called"
+        response_facts: list[dict] = []
+        for event in bus.poll("agent-1"):
+            if (
+                event.event_type == "SHARD_RESPONSE"
+                and event.payload.get("correlation_id") == correlation_id
+            ):
+                response_facts.extend(event.payload.get("facts", []))
+
+        texts = [f["content"] for f in response_facts]
+        assert any("CognitiveAdapter" in t for t in texts), (
+            f"CognitiveAdapter result missing from SB SHARD_RESPONSE: {texts}"
+        )
+        bus.close()
