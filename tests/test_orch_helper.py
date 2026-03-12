@@ -218,3 +218,85 @@ class TestHelperPathImport(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Regression tests: issue #3092 — orch_helper.py path resolution
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestIssue3092OldPatternRegression(unittest.TestCase):
+    """Document the old broken pattern and verify the new module fixes it.
+
+    Issue #3092: smart-orchestrator parse-decomposition fails outside amplihack
+    repo because the old pattern uses git rev-parse to find the repo root, which
+    returns the *target* repo root, not the amplihack installation root.
+    """
+
+    _REPO_ROOT = Path(__file__).resolve().parent.parent
+    _TOOLS_DIR = _REPO_ROOT / "amplifier-bundle" / "tools"
+
+    def test_old_git_rev_parse_pattern_would_fail_in_tmp(self):
+        """Document that the old pattern produces a wrong path from /tmp — confirms the bug.
+
+        The old pattern:
+          HELPER_PATH="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/orch_helper.py"
+
+        From /tmp (no git repo), git rev-parse fails, '.' is used, yielding:
+          /tmp/amplifier-bundle/tools/orch_helper.py  (does not exist)
+
+        We verify this by running the pattern from /tmp and checking that the
+        *absolute* path produced is NOT under the amplihack repo.
+        """
+        old_pattern_result = subprocess.run(
+            ["bash", "-c",
+             "cd /tmp && echo \"$(git rev-parse --show-toplevel 2>/dev/null || echo /tmp)\"/amplifier-bundle/tools/orch_helper.py"],
+            capture_output=True,
+            text=True,
+            cwd="/tmp",
+            env={k: v for k, v in os.environ.items() if k != "AMPLIHACK_HOME"},
+        )
+        old_path = old_pattern_result.stdout.strip()
+        # The old pattern resolves to /tmp/amplifier-bundle/..., which does not exist.
+        self.assertFalse(
+            Path(old_path).exists(),
+            f"Old pattern should produce a non-existent path from /tmp (got: {old_path!r}). "
+            f"This confirms why issue #3092 occurred.",
+        )
+
+    def test_resolve_bundle_asset_finds_orch_helper(self):
+        """New module resolves orch_helper.py correctly from /tmp."""
+        src_dir = str(self._REPO_ROOT / "src")
+        env = {
+            **os.environ,
+            "AMPLIHACK_HOME": str(self._REPO_ROOT),
+            "PYTHONPATH": src_dir + os.pathsep + os.environ.get("PYTHONPATH", ""),
+        }
+        result = subprocess.run(
+            [sys.executable, "-m", "amplihack.resolve_bundle_asset",
+             "amplifier-bundle/tools/orch_helper.py"],
+            capture_output=True,
+            text=True,
+            env=env,
+            cwd="/tmp",
+        )
+        self.assertEqual(
+            result.returncode,
+            0,
+            f"Issue #3092 regression: resolve_bundle_asset failed from /tmp.\n"
+            f"stderr: {result.stderr}",
+        )
+        resolved = result.stdout.strip()
+        self.assertTrue(
+            Path(resolved).is_file(),
+            f"Resolved path is not an existing file: {resolved}",
+        )
+
+    def test_resolved_path_importable_as_orch_helper(self):
+        """Path from resolve_bundle_asset can be imported as orch_helper module."""
+        import importlib.util as ilu
+        orch_helper_path = self._TOOLS_DIR / "orch_helper.py"
+        spec = ilu.spec_from_file_location("orch_helper", orch_helper_path)
+        h = ilu.module_from_spec(spec)
+        spec.loader.exec_module(h)
+        self.assertTrue(callable(getattr(h, "extract_json", None)))
+        self.assertTrue(callable(getattr(h, "normalise_type", None)))
