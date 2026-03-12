@@ -523,15 +523,13 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
-    # --version flag: argparse action='version' exits 0 and prints the version string.
-    # This is distinct from the `version` subcommand below; flags and positional
-    # subcommands share no namespace, so there is no conflict.
     from amplihack import __version__  # local import avoids circular dependency at module load
 
     parser.add_argument(
         "--version",
         action="version",
         version=f"amplihack {__version__}",
+        help="Show amplihack version and exit",
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
