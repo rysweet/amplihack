@@ -500,6 +500,7 @@ class PrerequisiteChecker:
         "uv": "--version",
         "git": "--version",
         "rg": "--version",  # ripgrep - required for custom slash commands
+        "tmux": "-V",  # required for recipe runner workflow execution
     }
 
     # Optional tools (checked but not required)
@@ -516,6 +517,7 @@ class PrerequisiteChecker:
             "uv": "brew install uv",
             "git": "brew install git",
             "rg": "brew install ripgrep",
+            "tmux": "brew install tmux",
             "claude": "brew install --cask claude-code",
         },
         Platform.LINUX: {
@@ -524,6 +526,7 @@ class PrerequisiteChecker:
             "uv": "curl -LsSf https://astral.sh/uv/install.sh | sh",
             "git": "# Ubuntu/Debian:\nsudo apt install git\n# Fedora/RHEL:\nsudo dnf install git\n# Arch:\nsudo pacman -S git",
             "rg": "# Ubuntu/Debian:\nsudo apt install ripgrep\n# Fedora/RHEL:\nsudo dnf install ripgrep\n# Arch:\nsudo pacman -S ripgrep",
+            "tmux": "# Ubuntu/Debian:\nsudo apt install tmux\n# Fedora/RHEL:\nsudo dnf install tmux\n# Arch:\nsudo pacman -S tmux",
             "claude": "curl -fsSL https://claude.ai/install.sh | bash",
         },
         Platform.WSL: {
@@ -532,6 +535,7 @@ class PrerequisiteChecker:
             "uv": "curl -LsSf https://astral.sh/uv/install.sh | sh",
             "git": "sudo apt install git  # or your WSL distro's package manager",
             "rg": "sudo apt install ripgrep",
+            "tmux": "sudo apt install tmux",
             "claude": "curl -fsSL https://claude.ai/install.sh | bash",
         },
         Platform.WINDOWS: {
@@ -561,6 +565,7 @@ class PrerequisiteChecker:
             "uv": ["brew", "install", "uv"],
             "git": ["brew", "install", "git"],
             "rg": ["brew", "install", "ripgrep"],
+            "tmux": ["brew", "install", "tmux"],
             "claude": ["brew", "install", "--cask", "claude-code"],
         },
         Platform.LINUX: {
@@ -569,6 +574,7 @@ class PrerequisiteChecker:
             "uv": ["sh", "-c", "curl -LsSf https://astral.sh/uv/install.sh | sh"],
             "git": ["sudo", "apt", "install", "-y", "git"],
             "rg": ["sudo", "apt", "install", "-y", "ripgrep"],
+            "tmux": ["sudo", "apt", "install", "-y", "tmux"],
             "claude": ["sh", "-c", "curl -fsSL https://claude.ai/install.sh | bash"],
         },
         Platform.WSL: {
@@ -577,6 +583,7 @@ class PrerequisiteChecker:
             "uv": ["sh", "-c", "curl -LsSf https://astral.sh/uv/install.sh | sh"],
             "git": ["sudo", "apt", "install", "-y", "git"],
             "rg": ["sudo", "apt", "install", "-y", "ripgrep"],
+            "tmux": ["sudo", "apt", "install", "-y", "tmux"],
             "claude": ["sh", "-c", "curl -fsSL https://claude.ai/install.sh | bash"],
         },
         Platform.WINDOWS: {
@@ -597,6 +604,7 @@ class PrerequisiteChecker:
         "uv": "https://docs.astral.sh/uv/",
         "git": "https://git-scm.com/",
         "rg": "https://github.com/BurntSushi/ripgrep",
+        "tmux": "https://github.com/tmux/tmux",
         "claude": "https://code.claude.com/docs/en/setup",
     }
 
