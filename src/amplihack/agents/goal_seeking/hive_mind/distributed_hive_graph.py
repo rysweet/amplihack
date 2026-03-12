@@ -514,6 +514,11 @@ class EventHubsShardTransport:
         self._pending: dict[str, tuple[threading.Event, list]] = {}
         self._pending_lock = threading.Lock()
 
+        # Persistent producer — lazy-initialized, reused across all _publish()
+        # calls to avoid ~1.5s AMQP connection setup per publish.
+        self._producer: Any = None
+        self._producer_lock = threading.Lock()
+
         # Mailbox: events targeted at this agent (filled by _receive_loop)
         self._mailbox: list[Any] = []
         self._mailbox_lock = threading.Lock()
@@ -536,7 +541,12 @@ class EventHubsShardTransport:
     # -- Background receive loop ---------------------------------------------
 
     def _receive_loop(self) -> None:
-        """Receive Event Hubs events into the mailbox (runs in background thread)."""
+        """Receive Event Hubs events into the mailbox (runs in background thread).
+
+        SHARD_RESPONSE events are handled INLINE (not via mailbox) to eliminate
+        the latency of waiting for _shard_query_listener to poll. This wakes
+        the blocked query_shard() call immediately when the response arrives.
+        """
         import json
 
         try:
@@ -557,14 +567,27 @@ class EventHubsShardTransport:
                 target = payload.get("target_agent", "")
                 correlation_id = payload.get("correlation_id", "")
 
-                # Accept events explicitly addressed to this agent or SHARD_RESPONSE
-                # events for our pending correlations (partition_key already routes
-                # responses to our partition, so correlation filtering is sufficient).
+                # SHARD_RESPONSE: handle inline — wake query_shard() immediately
+                # instead of going through mailbox → poll → handle_shard_response.
                 if event_type == "SHARD_RESPONSE":
                     with self._pending_lock:
-                        if correlation_id not in self._pending:
-                            return
-                elif target and target != self._agent_id:
+                        pending = self._pending.get(correlation_id)
+                    if pending:
+                        done_event, results = pending
+                        results.extend(payload.get("facts", []))
+                        done_event.set()
+                        logger.info(
+                            "Agent %s received SHARD_RESPONSE correlation=%s (%d facts) [inline]",
+                            self._agent_id,
+                            correlation_id,
+                            len(payload.get("facts", [])),
+                        )
+                    partition_context.update_checkpoint(event)
+                    return
+
+                # Other events: filter by target, route to mailbox
+                if target and target != self._agent_id:
+                    partition_context.update_checkpoint(event)
                     return
 
                 from .event_bus import BusEvent
@@ -589,7 +612,10 @@ class EventHubsShardTransport:
             eventhub_name=self._eventhub_name,
         )
         try:
-            consumer.receive(on_event=_on_event, starting_position="-1")
+            # Use @latest to skip stale events from previous deployments.
+            # All agents start before the first question arrives (eval waits for
+            # AGENT_READY), so no live events are missed.
+            consumer.receive(on_event=_on_event, starting_position="@latest")
         except Exception:
             if not self._shutdown.is_set():
                 logger.warning("EH consumer exited for %s", self._agent_id, exc_info=True)
@@ -617,11 +643,15 @@ class EventHubsShardTransport:
     # -- Internal publish helper ---------------------------------------------
 
     def _publish(self, payload: dict[str, Any], partition_key: str | None = None) -> None:
-        """Publish a JSON event to the Event Hub."""
+        """Publish a JSON event to the Event Hub using a persistent producer.
+
+        Reuses a single EventHubProducerClient across all publish calls to
+        avoid ~1.5s AMQP connection setup per publish. Thread-safe via lock.
+        """
         import json
 
         try:
-            from azure.eventhub import (  # type: ignore[import-unresolved]
+            from azure.eventhub import (  # type: ignore[import-untyped]
                 EventData,
                 EventHubProducerClient,
             )
@@ -629,19 +659,41 @@ class EventHubsShardTransport:
             logger.error("azure-eventhub not installed — cannot publish to Event Hubs")
             return
 
-        producer = EventHubProducerClient.from_connection_string(
-            self._connection_string, eventhub_name=self._eventhub_name
-        )
-        try:
-            with producer:
+        event_type = payload.get("event_type", "?")
+        target = (payload.get("payload") or {}).get("target_agent", "")
+
+        with self._producer_lock:
+            try:
+                if self._producer is None:
+                    self._producer = EventHubProducerClient.from_connection_string(
+                        self._connection_string, eventhub_name=self._eventhub_name
+                    )
                 kwargs: dict[str, Any] = {}
                 if partition_key:
                     kwargs["partition_key"] = partition_key
-                batch = producer.create_batch(**kwargs)
+                batch = self._producer.create_batch(**kwargs)
                 batch.add(EventData(json.dumps(payload)))
-                producer.send_batch(batch)
-        except Exception:
-            logger.warning("Failed to publish event to Event Hubs", exc_info=True)
+                self._producer.send_batch(batch)
+                logger.info(
+                    "Agent %s published %s → %s (hub=%s)",
+                    self._agent_id,
+                    event_type,
+                    target or partition_key or "broadcast",
+                    self._eventhub_name,
+                )
+            except Exception:
+                logger.warning(
+                    "Agent %s failed to publish %s, resetting producer",
+                    self._agent_id,
+                    event_type,
+                    exc_info=True,
+                )
+                try:
+                    if self._producer is not None:
+                        self._producer.close()
+                except Exception:
+                    pass
+                self._producer = None
 
     # -- ShardTransport protocol ---------------------------------------------
 
@@ -651,7 +703,13 @@ class EventHubsShardTransport:
             shard = self._local_graph._router.get_shard(agent_id)
             if shard is None:
                 return []
-            return shard.search(query, limit=limit)
+            local_results = shard.search(query, limit=limit)
+            logger.info(
+                "Agent %s queried LOCAL shard → %d facts",
+                self._agent_id,
+                len(local_results),
+            )
+            return local_results
 
         # Remote query: publish SHARD_QUERY and wait for SHARD_RESPONSE
         correlation_id = uuid.uuid4().hex
@@ -663,6 +721,13 @@ class EventHubsShardTransport:
         try:
             import time
 
+            logger.info(
+                "Agent %s sending SHARD_QUERY → %s (query=%.60s, correlation=%s)",
+                self._agent_id,
+                agent_id,
+                query,
+                correlation_id[:12],
+            )
             self._publish(
                 {
                     "event_id": uuid.uuid4().hex,
@@ -678,7 +743,23 @@ class EventHubsShardTransport:
                 },
                 partition_key=agent_id,
             )
-            done.wait(timeout=self._timeout)
+            got_response = done.wait(timeout=self._timeout)
+            if got_response:
+                logger.info(
+                    "Agent %s got SHARD_RESPONSE from %s (%d facts, correlation=%s)",
+                    self._agent_id,
+                    agent_id,
+                    len(results),
+                    correlation_id[:12],
+                )
+            else:
+                logger.warning(
+                    "Agent %s SHARD_QUERY to %s TIMED OUT after %.1fs (correlation=%s)",
+                    self._agent_id,
+                    agent_id,
+                    self._timeout,
+                    correlation_id[:12],
+                )
         finally:
             with self._pending_lock:
                 self._pending.pop(correlation_id, None)
@@ -753,6 +834,15 @@ class EventHubsShardTransport:
         if not query or not correlation_id:
             return
 
+        source_agent = getattr(event, "source_agent", "")
+        logger.info(
+            "Agent %s handling SHARD_QUERY from %s (query=%.60s, correlation=%s)",
+            self._agent_id,
+            source_agent,
+            query,
+            correlation_id[:12],
+        )
+
         facts_payload = _search_for_shard_response(
             query=query,
             limit=limit,
@@ -762,7 +852,6 @@ class EventHubsShardTransport:
         )
         import time
 
-        source_agent = getattr(event, "source_agent", "")
         self._publish(
             {
                 "event_id": uuid.uuid4().hex,
@@ -776,15 +865,21 @@ class EventHubsShardTransport:
             },
             partition_key=source_agent,
         )
-        logger.debug(
-            "Agent %s (EH) responded to SHARD_QUERY correlation=%s with %d facts",
+        logger.info(
+            "Agent %s responded to SHARD_QUERY correlation=%s with %d facts → %s",
             self._agent_id,
-            correlation_id,
+            correlation_id[:12],
             len(facts_payload),
+            source_agent,
         )
 
     def handle_shard_response(self, event: Any) -> None:
-        """Wake the pending query_shard() call when SHARD_RESPONSE arrives."""
+        """Wake the pending query_shard() call when SHARD_RESPONSE arrives.
+
+        NOTE: With the inline _on_event optimization, most SHARD_RESPONSEs are
+        handled directly in _receive_loop and never reach this method. This is
+        kept as a fallback for non-EH transports that still route via mailbox.
+        """
         payload = getattr(event, "payload", None) or {}
         correlation_id = payload.get("correlation_id", "")
         if not correlation_id:
@@ -795,10 +890,10 @@ class EventHubsShardTransport:
             done_event, results = pending
             results.extend(payload.get("facts", []))
             done_event.set()
-            logger.debug(
-                "Agent %s (EH) received SHARD_RESPONSE correlation=%s (%d facts)",
+            logger.info(
+                "Agent %s received SHARD_RESPONSE correlation=%s (%d facts) [mailbox]",
                 self._agent_id,
-                correlation_id,
+                correlation_id[:12],
                 len(payload.get("facts", [])),
             )
 
@@ -839,9 +934,16 @@ class EventHubsShardTransport:
         )
 
     def close(self) -> None:
-        """Shut down the background receive thread."""
+        """Shut down the background receive thread and persistent producer."""
         self._shutdown.set()
         self._mailbox_ready.set()  # Unblock any waiting poll() call
+        with self._producer_lock:
+            if self._producer is not None:
+                try:
+                    self._producer.close()
+                except Exception:
+                    pass
+                self._producer = None
 
 
 # ---------------------------------------------------------------------------

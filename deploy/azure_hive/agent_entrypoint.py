@@ -155,7 +155,7 @@ def _init_dht_hive(
             connection_string=eh_connection_string,
             eventhub_name=eh_name,
             agent_id=agent_name,
-            timeout=10.0,
+            timeout=30.0,
         )
         dht_graph = DistributedHiveGraph(
             hive_id=f"shard-{agent_name}",

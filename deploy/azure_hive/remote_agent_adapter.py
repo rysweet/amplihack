@@ -39,6 +39,7 @@ class RemoteAgentAdapter:
         response_hub: str,
         agent_count: int = 100,
         resource_group: str = "",
+        answer_timeout: int = 120,
     ) -> None:
         self._connection_string = connection_string
         self._input_hub = input_hub
@@ -48,6 +49,7 @@ class RemoteAgentAdapter:
 
         self._learn_count = 0
         self._question_count = 0
+        self._answer_timeout = answer_timeout
         self._shutdown = threading.Event()
         self._idle_wait_done = threading.Event()
 
@@ -196,8 +198,14 @@ class RemoteAgentAdapter:
             question[:60],
         )
 
-        # Wait for answer — no timeout
-        answer_event.wait()
+        timeout = self._answer_timeout if self._answer_timeout > 0 else None
+        got_answer = answer_event.wait(timeout=timeout)
+        if not got_answer:
+            logger.warning(
+                "answer_question: timeout after %ds waiting for event_id=%s",
+                self._answer_timeout,
+                event_id,
+            )
 
         with self._answer_lock:
             answer = self._pending_answers.pop(event_id, "No answer received")
