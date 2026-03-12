@@ -180,6 +180,17 @@ class TestDockerfile:
         content = dockerfile.read_text()
         assert "agent_entrypoint.py" in content
 
+    def test_dockerfile_has_azure_eventhub(self):
+        dockerfile = Path(__file__).parent.parent / "Dockerfile"
+        content = dockerfile.read_text()
+        assert "azure-eventhub" in content
+
+    def test_dockerfile_no_azure_servicebus(self):
+        """azure-servicebus must not appear in Dockerfile — replaced by azure-eventhub."""
+        dockerfile = Path(__file__).parent.parent / "Dockerfile"
+        content = dockerfile.read_text()
+        assert "azure-servicebus" not in content
+
 
 class TestDeployScript:
     def test_deploy_sh_exists(self):
@@ -190,14 +201,11 @@ class TestDeployScript:
         deploy_sh = Path(__file__).parent.parent / "deploy.sh"
         assert os.access(deploy_sh, os.X_OK)
 
-    def test_deploy_sh_provisions_service_bus(self):
+    def test_deploy_sh_provisions_event_hubs(self):
         deploy_sh = Path(__file__).parent.parent / "deploy.sh"
         content = deploy_sh.read_text()
-        assert (
-            "ServiceBus" in content
-            or "servicebus" in content.lower()
-            or "service_bus" in content.lower()
-        )
+        # deploy.sh provisions via main.bicep which provisions Event Hubs
+        assert "eventhub" in content.lower() or "EventHub" in content or "main.bicep" in content
 
     def test_deploy_sh_provisions_acr(self):
         deploy_sh = Path(__file__).parent.parent / "deploy.sh"
@@ -236,10 +244,10 @@ class TestBicep:
         content = bicep.read_text()
         assert "managedEnvironments" in content
 
-    def test_bicep_has_service_bus(self):
+    def test_bicep_has_event_hubs(self):
         bicep = Path(__file__).parent.parent / "main.bicep"
         content = bicep.read_text()
-        assert "ServiceBus" in content or "servicebus" in content.lower()
+        assert "EventHub" in content or "eventhub" in content.lower()
 
     def test_bicep_uses_emptydir_volumes(self):
         """Bicep uses EmptyDir volumes (Kuzu needs POSIX locks, not Azure Files SMB)."""
@@ -262,10 +270,10 @@ class TestBicep:
         content = bicep.read_text()
         assert "agentsPerApp" in content
 
-    def test_bicep_references_connection_string(self):
+    def test_bicep_references_eh_connection_string(self):
         bicep = Path(__file__).parent.parent / "main.bicep"
         content = bicep.read_text()
-        assert "AMPLIHACK_MEMORY_CONNECTION_STRING" in content
+        assert "AMPLIHACK_EH_CONNECTION_STRING" in content
 
     def test_bicep_has_shards_topic(self):
         """Bicep must declare hive-shards topic for cross-shard DHT queries."""
@@ -273,15 +281,47 @@ class TestBicep:
         content = bicep.read_text()
         assert "hive-shards-" in content
 
-    def test_bicep_has_shards_subscriptions(self):
-        """Bicep must declare per-agent subscriptions on the shards topic."""
+    def test_bicep_has_shards_consumer_groups(self):
+        """Bicep must declare per-agent consumer groups on the shards Event Hub."""
         bicep = Path(__file__).parent.parent / "main.bicep"
         content = bicep.read_text()
-        assert "sbShardsSubscriptions" in content
+        assert "ehShardsConsumerGroups" in content or "cg-agent-" in content
 
 
-class TestServiceBusShardTransport:
-    """Tests for ServiceBusShardTransport DI pattern (replaces ShardedHiveStore)."""
+def _make_eh_transport_with_bus(bus, agent_id):
+    """Create an EventHubsShardTransport backed by LocalEventBus (no real Azure connection).
+
+    Replaces _publish with a bridge that routes events through the shared LocalEventBus,
+    enabling unit tests to drive the SHARD_QUERY/SHARD_RESPONSE protocol without Azure.
+    """
+    from amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph import (
+        EventHubsShardTransport,
+    )
+    from amplihack.agents.goal_seeking.hive_mind.event_bus import BusEvent
+
+    transport = EventHubsShardTransport(
+        connection_string="unused",
+        eventhub_name="unused",
+        agent_id=agent_id,
+        _start_receiving=False,
+    )
+
+    def _bridge_publish(payload, partition_key=None):
+        event = BusEvent(
+            event_id=payload.get("event_id", ""),
+            event_type=payload.get("event_type", ""),
+            source_agent=payload.get("source_agent", ""),
+            timestamp=payload.get("timestamp", 0.0),
+            payload=payload.get("payload", {}),
+        )
+        bus.publish(event)
+
+    transport._publish = _bridge_publish
+    return transport
+
+
+class TestShardTransport:
+    """Tests for EventHubsShardTransport DI pattern (replaces ServiceBusShardTransport)."""
 
     def test_entrypoint_has_no_sharded_hive_store(self):
         """ShardedHiveStore class must not exist in the updated entrypoint."""
@@ -297,10 +337,9 @@ class TestServiceBusShardTransport:
         assert callable(mod._init_dht_hive)
 
     def test_handle_shard_query_publishes_response(self):
-        """ServiceBusShardTransport.handle_shard_query looks up local shard and publishes SHARD_RESPONSE."""
+        """EventHubsShardTransport.handle_shard_query looks up local shard and publishes SHARD_RESPONSE."""
         from amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph import (
             DistributedHiveGraph,
-            ServiceBusShardTransport,
         )
         from amplihack.agents.goal_seeking.hive_mind.event_bus import LocalEventBus
         from amplihack.agents.goal_seeking.hive_mind.hive_graph import HiveFact
@@ -309,10 +348,8 @@ class TestServiceBusShardTransport:
         bus.subscribe("agent-0")
         bus.subscribe("requester")
 
-        sb_transport = ServiceBusShardTransport(event_bus=bus, agent_id="agent-0")
-        graph = DistributedHiveGraph(
-            hive_id="test-e-hq", enable_gossip=False, transport=sb_transport
-        )
+        transport = _make_eh_transport_with_bus(bus, "agent-0")
+        graph = DistributedHiveGraph(hive_id="test-e-hq", enable_gossip=False, transport=transport)
         graph.register_agent("agent-0")
         graph.promote_fact(
             "agent-0",
@@ -329,7 +366,8 @@ class TestServiceBusShardTransport:
 
         event = MagicMock()
         event.payload = {"query": "capital France", "limit": 5, "correlation_id": "corr-1"}
-        sb_transport.handle_shard_query(event)
+        event.source_agent = "requester"
+        transport.handle_shard_query(event)
 
         responses = [e for e in bus.poll("requester") if e.event_type == "SHARD_RESPONSE"]
         assert len(responses) == 1
@@ -339,29 +377,25 @@ class TestServiceBusShardTransport:
         bus.close()
 
     def test_handle_shard_response_wakes_pending_query(self):
-        """ServiceBusShardTransport.handle_shard_response signals threading.Event."""
-        from amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph import (
-            ServiceBusShardTransport,
-        )
+        """EventHubsShardTransport.handle_shard_response signals threading.Event."""
         from amplihack.agents.goal_seeking.hive_mind.event_bus import LocalEventBus
 
         bus = LocalEventBus()
         bus.subscribe("agent-0")
 
-        sb_transport = ServiceBusShardTransport(event_bus=bus, agent_id="agent-0")
+        transport = _make_eh_transport_with_bus(bus, "agent-0")
 
-        # Register a pending query
         done_event = threading.Event()
         results = []
-        with sb_transport._pending_lock:
-            sb_transport._pending["corr-2"] = (done_event, results)
+        with transport._pending_lock:
+            transport._pending["corr-2"] = (done_event, results)
 
         event = MagicMock()
         event.payload = {
             "correlation_id": "corr-2",
             "facts": [{"content": "test fact", "confidence": 0.9}],
         }
-        sb_transport.handle_shard_response(event)
+        transport.handle_shard_response(event)
 
         assert done_event.is_set()
         assert len(results) == 1
@@ -372,7 +406,6 @@ class TestServiceBusShardTransport:
         """promote_fact stores in local shard only — no SHARD_STORE event published."""
         from amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph import (
             DistributedHiveGraph,
-            ServiceBusShardTransport,
         )
         from amplihack.agents.goal_seeking.hive_mind.event_bus import LocalEventBus
         from amplihack.agents.goal_seeking.hive_mind.hive_graph import HiveFact
@@ -381,9 +414,9 @@ class TestServiceBusShardTransport:
         bus.subscribe("agent-0")
         bus.subscribe("observer")
 
-        sb_transport = ServiceBusShardTransport(event_bus=bus, agent_id="agent-0")
+        transport = _make_eh_transport_with_bus(bus, "agent-0")
         graph = DistributedHiveGraph(
-            hive_id="test-promote-local", enable_gossip=False, transport=sb_transport
+            hive_id="test-promote-local", enable_gossip=False, transport=transport
         )
         graph.register_agent("agent-0")
 
@@ -400,7 +433,6 @@ class TestServiceBusShardTransport:
             ),
         )
 
-        # No SHARD_STORE or SHARD_QUERY published to bus
         assert bus.poll("observer") == [], "Local store must not broadcast to bus"
         bus.close()
 
@@ -408,7 +440,7 @@ class TestServiceBusShardTransport:
 class TestShardQueryListener:
     """Tests for the background _shard_query_listener thread (DI pattern).
 
-    The listener now takes a transport (ServiceBusShardTransport) instead of
+    The listener now takes a transport (EventHubsShardTransport) instead of
     a ShardedHiveStore wrapper.
     """
 
