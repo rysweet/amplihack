@@ -11,6 +11,10 @@ Ahoy! This be where ye learn to keep yer ship secure from digital pirates.
 - [Security Recommendations](../SECURITY_RECOMMENDATIONS.md) - START HERE for security basics
 - [Security Context Preservation](../SECURITY_CONTEXT_PRESERVATION.md) - Maintain security through sessions
 
+**New in Issues #3045 and #3076:**
+
+- [Shell Injection in Recipes](./shell-injection-in-recipes.md) - Prevent CWE-78 injection via `{{task_description}}` in bash steps
+
 **New in PR #1925 (Issue #1922):**
 
 - [Token Sanitization Guide](./TOKEN_SANITIZATION_GUIDE.md) - Prevent token exposure in logs
@@ -88,6 +92,29 @@ Automatic secure permissions for sensitive files.
 - Automatic permission enforcement on save
 
 **Implementation**: `save_token()` in `src/amplihack/proxy/github_auth.py`
+
+### Recipe Shell Injection Prevention (NEW)
+
+Single-quoted heredoc capture neutralizes all shell metacharacters in template variable
+substitutions inside bash recipe steps.
+
+**Quick Start**:
+
+```yaml
+# Safe pattern for any {{task_description}} in a bash command: block
+_TD_RAW=$(cat <<'EOFTASKDESC'
+{{task_description}}
+EOFTASKDESC
+) && \
+gh issue create --title "$_TD_RAW"
+```
+
+**Vulnerability neutralized**: CWE-78 — `$(...)`, backticks, `$VAR`, quotes, backslashes in
+user-supplied task descriptions can no longer execute as shell commands.
+
+**Documentation**:
+
+- [Shell Injection in Recipes](./shell-injection-in-recipes.md) — Complete guide with patterns, verification commands, and CI lint rules
 
 ---
 
