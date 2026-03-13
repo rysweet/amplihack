@@ -16,6 +16,10 @@ import tempfile
 from datetime import datetime
 from unittest.mock import Mock, patch
 
+import pytest
+
+pytest.importorskip("kuzu")
+
 from src.amplihack.memory.models import MemoryEntry, MemoryQuery, MemoryType
 
 
@@ -33,7 +37,7 @@ class TestKuzuBackendNodeTypes:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             # Check that EpisodicMemory table creation was attempted
             calls = [str(call) for call in mock_conn.execute.call_args_list]
@@ -50,7 +54,7 @@ class TestKuzuBackendNodeTypes:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             calls = [str(call) for call in mock_conn.execute.call_args_list]
             assert any("SemanticMemory" in str(call) for call in calls)
@@ -66,7 +70,7 @@ class TestKuzuBackendNodeTypes:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             calls = [str(call) for call in mock_conn.execute.call_args_list]
             assert any("ProceduralMemory" in str(call) for call in calls)
@@ -82,7 +86,7 @@ class TestKuzuBackendNodeTypes:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             calls = [str(call) for call in mock_conn.execute.call_args_list]
             assert any("ProspectiveMemory" in str(call) for call in calls)
@@ -98,7 +102,7 @@ class TestKuzuBackendNodeTypes:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             calls = [str(call) for call in mock_conn.execute.call_args_list]
             assert any("WorkingMemory" in str(call) for call in calls)
@@ -118,7 +122,7 @@ class TestKuzuBackendRelationshipTypes:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             calls = [str(call) for call in mock_conn.execute.call_args_list]
             assert any("CONTAINS_EPISODIC" in str(call) for call in calls)
@@ -134,7 +138,7 @@ class TestKuzuBackendRelationshipTypes:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             calls = [str(call) for call in mock_conn.execute.call_args_list]
             expected_relationships = [
@@ -171,7 +175,7 @@ class TestKuzuBackendStoreMemoryRouting:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             memory = MemoryEntry(
                 id="test-1",
@@ -188,7 +192,7 @@ class TestKuzuBackendStoreMemoryRouting:
             # Reset mock to clear initialization calls
             mock_conn.execute.reset_mock()
 
-            backend.store_memory(memory)
+            backend._store_memory_sync(memory)
 
             # Check that EpisodicMemory node was created
             calls = [str(call) for call in mock_conn.execute.call_args_list]
@@ -205,7 +209,7 @@ class TestKuzuBackendStoreMemoryRouting:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             memory = MemoryEntry(
                 id="test-1",
@@ -220,7 +224,7 @@ class TestKuzuBackendStoreMemoryRouting:
             )
 
             mock_conn.execute.reset_mock()
-            backend.store_memory(memory)
+            backend._store_memory_sync(memory)
 
             calls = [str(call) for call in mock_conn.execute.call_args_list]
             assert any("SemanticMemory" in str(call) for call in calls)
@@ -236,7 +240,7 @@ class TestKuzuBackendStoreMemoryRouting:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             memory = MemoryEntry(
                 id="test-1",
@@ -251,7 +255,7 @@ class TestKuzuBackendStoreMemoryRouting:
             )
 
             mock_conn.execute.reset_mock()
-            backend.store_memory(memory)
+            backend._store_memory_sync(memory)
 
             calls = [str(call) for call in mock_conn.execute.call_args_list]
             assert any("ProceduralMemory" in str(call) for call in calls)
@@ -267,7 +271,7 @@ class TestKuzuBackendStoreMemoryRouting:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             memory = MemoryEntry(
                 id="test-1",
@@ -282,7 +286,7 @@ class TestKuzuBackendStoreMemoryRouting:
             )
 
             mock_conn.execute.reset_mock()
-            backend.store_memory(memory)
+            backend._store_memory_sync(memory)
 
             calls = [str(call) for call in mock_conn.execute.call_args_list]
             assert any("ProspectiveMemory" in str(call) for call in calls)
@@ -298,7 +302,7 @@ class TestKuzuBackendStoreMemoryRouting:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             memory = MemoryEntry(
                 id="test-1",
@@ -313,7 +317,7 @@ class TestKuzuBackendStoreMemoryRouting:
             )
 
             mock_conn.execute.reset_mock()
-            backend.store_memory(memory)
+            backend._store_memory_sync(memory)
 
             calls = [str(call) for call in mock_conn.execute.call_args_list]
             assert any("WorkingMemory" in str(call) for call in calls)
@@ -337,12 +341,12 @@ class TestKuzuBackendRetrieveMemoriesAcrossTypes:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             mock_conn.execute.reset_mock()
 
             query = MemoryQuery(session_id="session-1")
-            backend.retrieve_memories(query)
+            backend._retrieve_memories_sync(query)
 
             # Should query all node types or use UNION
             calls = [str(call) for call in mock_conn.execute.call_args_list]
@@ -364,13 +368,13 @@ class TestKuzuBackendRetrieveMemoriesAcrossTypes:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             mock_conn.execute.reset_mock()
 
             # Query only episodic memories
             query = MemoryQuery(memory_type=MemoryType.EPISODIC)
-            backend.retrieve_memories(query)
+            backend._retrieve_memories_sync(query)
 
             calls = [str(call) for call in mock_conn.execute.call_args_list]
             # Should only query EpisodicMemory when type is specified
@@ -393,7 +397,7 @@ class TestKuzuBackendSessionRelationships:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             memory = MemoryEntry(
                 id="test-1",
@@ -408,7 +412,7 @@ class TestKuzuBackendSessionRelationships:
             )
 
             mock_conn.execute.reset_mock()
-            backend.store_memory(memory)
+            backend._store_memory_sync(memory)
 
             calls = [str(call) for call in mock_conn.execute.call_args_list]
             # Should create CONTAINS_EPISODIC relationship
@@ -425,7 +429,7 @@ class TestKuzuBackendSessionRelationships:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             memory = MemoryEntry(
                 id="test-1",
@@ -440,7 +444,7 @@ class TestKuzuBackendSessionRelationships:
             )
 
             mock_conn.execute.reset_mock()
-            backend.store_memory(memory)
+            backend._store_memory_sync(memory)
 
             calls = [str(call) for call in mock_conn.execute.call_args_list]
             # Should create CONTAINS_WORKING relationship

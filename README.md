@@ -233,13 +233,13 @@ What happens:
 
 ## Core Concepts
 
-| Term | Definition |
-|------|-----------|
-| **Agent** | A specialized AI role (e.g., architect, builder, reviewer) with a defined responsibility |
-| **Workflow** | A structured step-by-step process that guides task execution (e.g., the 23-step DEFAULT_WORKFLOW) |
-| **Orchestrator** | Routes tasks to the right workflow and coordinates agents |
-| **Recipe** | A code-enforced workflow definition (YAML) that models cannot skip or shortcut |
-| **Skill** | A self-contained capability that auto-activates based on context (e.g., PDF processing, Azure admin) |
+| Term             | Definition                                                                                           |
+| ---------------- | ---------------------------------------------------------------------------------------------------- |
+| **Agent**        | A specialized AI role (e.g., architect, builder, reviewer) with a defined responsibility             |
+| **Workflow**     | A structured step-by-step process that guides task execution (e.g., the 23-step DEFAULT_WORKFLOW)    |
+| **Orchestrator** | Routes tasks to the right workflow and coordinates agents                                            |
+| **Recipe**       | A code-enforced workflow definition (YAML) that models cannot skip or shortcut                       |
+| **Skill**        | A self-contained capability that auto-activates based on context (e.g., PDF processing, Azure admin) |
 
 ### Philosophy
 
@@ -630,6 +630,11 @@ amplihack launch
 ```bash
 pytest tests/
 ```
+
+Some tests require optional dependencies (e.g. kuzu graph database). These skip
+gracefully when the dependency is absent via `pytest.importorskip`. See
+[docs/KUZU_TEST_CONFIGURATION.md](docs/KUZU_TEST_CONFIGURATION.md) for details
+on kuzu test isolation and the approved skip pattern.
 
 ## RustyClawd Integration
 
