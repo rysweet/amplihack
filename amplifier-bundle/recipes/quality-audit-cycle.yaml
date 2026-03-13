@@ -474,8 +474,20 @@ steps:
       CYCLE={{cycle_number}}
       MIN_CYCLES={{min_cycles}}
       MAX_CYCLES={{max_cycles}}
-      VALIDATED={{validated_findings}}
-      FIX_VERIFY={{fix_verification}}
+
+      # Write validated_findings to a temp file to avoid bash quoting issues
+      # with JSON containing spaces, quotes, and special characters (#3046).
+      _VALIDATED_TMPFILE=$(mktemp)
+      _FIX_VERIFY_TMPFILE=$(mktemp)
+      trap 'rm -f "$_VALIDATED_TMPFILE" "$_FIX_VERIFY_TMPFILE"' EXIT
+      cat > "$_VALIDATED_TMPFILE" <<'__VALIDATED_EOF__'
+      {{validated_findings}}
+      __VALIDATED_EOF__
+      cat > "$_FIX_VERIFY_TMPFILE" <<'__FIX_VERIFY_EOF__'
+      {{fix_verification}}
+      __FIX_VERIFY_EOF__
+
+      FIX_VERIFY=$(cat "$_FIX_VERIFY_TMPFILE")
 
       echo "Cycle $CYCLE complete."
 
@@ -503,10 +515,12 @@ steps:
       # Past minimum — decide based on whether NEW findings emerged this cycle (#2842)
       # The decision should be: did this cycle find new issues? If yes, continue.
       # NOT: are there old unfixed issues remaining?
+      export VALIDATED_FILE="$_VALIDATED_TMPFILE"
       read -r HIGH_COUNT CRITICAL_COUNT MEDIUM_COUNT CONFIRMED <<< $(python3 -c "
-      import json, sys
+      import json, sys, os
       try:
-          data = json.loads('''$VALIDATED''')
+          with open(os.environ['VALIDATED_FILE']) as f:
+              data = json.loads(f.read())
           validated = data.get('validated', [])
           high = sum(1 for v in validated if v.get('final_severity') == 'high' and v.get('verdict') == 'confirmed')
           critical = sum(1 for v in validated if v.get('final_severity') == 'critical' and v.get('verdict') == 'confirmed')
