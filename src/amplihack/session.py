@@ -53,7 +53,9 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
     # (e.g. multitask workstreams).  See issue #2567.
     subprocess_safe = getattr(args, "subprocess_safe", False)
 
-    from .launcher.session_tracker import SessionTracker  # noqa: F811 (shadows module-level import; needed for test mock resolution)
+    from .launcher.session_tracker import (
+        SessionTracker,
+    )
 
     # Detect nesting BEFORE any .claude/ operations
     original_cwd = None
@@ -88,7 +90,7 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
         # Ensure amplihack framework is staged to ~/.amplihack/.claude/
         _ensure_amplihack_staged()
 
-        # Auto-install missing SDK dependencies (e.g. agent-framework)
+        # Auto-install missing SDK dependencies (e.g. agent-framework-core)
         # Uses --python sys.executable to target the running interpreter,
         # critical when launched via uvx (ephemeral venv != project .venv).
         try:
@@ -254,7 +256,9 @@ def _launch_command_impl(
     return exit_code
 
 
-def handle_auto_mode(sdk: str, args: argparse.Namespace, cmd_args: list[str] | None) -> "int | None":
+def handle_auto_mode(
+    sdk: str, args: argparse.Namespace, cmd_args: list[str] | None
+) -> "int | None":
     """Handle auto mode for claude, copilot, or codex commands.
 
     Args:

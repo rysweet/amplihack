@@ -1,7 +1,7 @@
 """Tests for SDK dependency validation (dep_check module).
 
 Verifies that:
-1. agent-framework is importable (the actual fix for #2660)
+1. agent-framework-core is importable (the actual fix for #2660)
 2. validate_sdk_deps detects missing packages
 3. validate_sdk_deps passes when all deps are present
 4. check_sdk_dep returns correct bools
@@ -29,7 +29,7 @@ from amplihack.dep_check import (
 # 1. Real import tests (the actual #2660 fix verification)
 # ===========================================================================
 class TestAgentFrameworkInstalled:
-    """Verify agent-framework is actually importable after install."""
+    """Verify agent-framework-core is actually importable after install."""
 
     def test_agent_framework_importable(self):
         """Core test: import agent_framework must succeed."""
@@ -130,7 +130,7 @@ class TestSdkDependenciesRegistry:
         assert "agent_framework" in SDK_DEPENDENCIES
 
     def test_pip_name_correct(self):
-        assert SDK_DEPENDENCIES["agent_framework"] == "agent-framework"
+        assert SDK_DEPENDENCIES["agent_framework"] == "agent-framework-core"
 
 
 # ===========================================================================
@@ -205,8 +205,8 @@ class TestSdkAdapterImports:
         )
 
         assert _HAS_AGENT_FRAMEWORK is True, (
-            "agent-framework not detected by microsoft_sdk module. "
-            "Ensure agent-framework is installed."
+            "agent-framework-core not detected by microsoft_sdk module. "
+            "Ensure agent-framework-core is installed."
         )
 
     def test_factory_module_imports(self):

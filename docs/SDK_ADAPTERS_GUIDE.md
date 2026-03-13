@@ -250,7 +250,7 @@ async with client:
 ### Installation
 
 ```bash
-pip install agent-framework
+pip install agent-framework-core
 ```
 
 ### When to Use
@@ -295,7 +295,7 @@ Use `agent.reset_session()` to start a fresh conversation.
 
 **"agent-framework not installed"**
 
-- Install: `pip install agent-framework`
+- Install: `pip install agent-framework-core`
 - Verify: `python -c "from agent_framework import Agent; print('OK')"`
 
 **"OPENAI_API_KEY not set"**
