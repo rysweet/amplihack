@@ -159,6 +159,7 @@ nav:
           - CLI Reference: remote-sessions/CLI_REFERENCE.md
           - Tutorial: remote-sessions/TUTORIAL.md
   - Reference:
+      - Environment Variables: ENVIRONMENT_VARIABLES.md
       - Discoveries: claude/context/DISCOVERIES.md
       - Security: SECURITY_RECOMMENDATIONS.md
       - Testing: testing/README.md
