@@ -264,8 +264,13 @@ steps:
   - id: "step-03b-extract-issue-number"
     type: "bash"
     command: |
-      # Extract issue number from the creation output
-      echo "{{issue_creation}}" | grep -oE 'issues/[0-9]+' | grep -oE '[0-9]+' | tail -1
+      # Extract issue number from the gh issue create URL output.
+      # gh outputs: https://github.com/OWNER/REPO/issues/NUMBER
+      # Use head -1 to grab the first (just-created) issue URL, then strip
+      # the 'issues/' prefix to get the number.  The old pattern used
+      # 'grep [0-9]+ | tail -1' which captured wrong digits when the output
+      # contained multiple issue URLs or numeric fragments (#3022).
+      echo "{{issue_creation}}" | grep -oE 'issues/[0-9]+' | head -1 | sed 's|issues/||'
     output: "issue_number"
 
   # ==========================================================================
