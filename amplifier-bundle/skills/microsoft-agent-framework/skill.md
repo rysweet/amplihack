@@ -19,7 +19,7 @@ Microsoft Agent Framework is an open-source platform for building production AI 
 
 **Installation**:
 
-- Python: `pip install agent-framework --pre`
+- Python: `pip install agent-framework-core --pre`
 - C#: `dotnet add package Microsoft.Agents.AI --prerelease`
 
 **Repository**: https://github.com/microsoft/agent-framework (5.1k stars)
@@ -371,7 +371,7 @@ See `@integration/amplihack-integration.md` for complete patterns.
 
 ## Quick Start Workflow
 
-1. **Install**: `pip install agent-framework --pre` (Python) or `dotnet add package Microsoft.Agents.AI --prerelease` (C#)
+1. **Install**: `pip install agent-framework-core --pre` (Python) or `dotnet add package Microsoft.Agents.AI --prerelease` (C#)
 
 2. **Create Basic Agent**:
 
