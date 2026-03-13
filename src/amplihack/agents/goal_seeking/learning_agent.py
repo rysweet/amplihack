@@ -207,12 +207,11 @@ class LearningAgent:
                 return response.choices[0].message.content
             except Exception as exc:
                 is_rate_limit = (
-                    isinstance(exc, litellm.RateLimitError)
-                    or "rate_limit" in str(exc).lower()
+                    isinstance(exc, litellm.RateLimitError) or "rate_limit" in str(exc).lower()
                 )
                 if not is_rate_limit or _retry_attempt >= max_retries:
                     raise
-                delay = 2 ** _retry_attempt * 2  # 2, 4, 8, 16, 32
+                delay = 2**_retry_attempt * 2  # 2, 4, 8, 16, 32
                 logger.warning(
                     "Rate limited, retrying in %ds (attempt %d/%d)",
                     delay,
@@ -614,7 +613,7 @@ class LearningAgent:
                 else:
                     cached = getattr(self._thread_local, "_cached_all_facts", None)
                     if cached is None:
-                        cached = self.memory.get_all_facts(limit=15000)
+                        cached = self.memory.get_all_facts(limit=15000, query=question)
                     self._thread_local._cached_all_facts = cached
                     kb_size = len(cached)
                 if kb_size <= 500:
@@ -704,9 +703,9 @@ class LearningAgent:
         # which are different from tiered retrieval summaries.
         if intent_type == "meta_memory":
             relevant_facts = [
-                f for f in relevant_facts
-                if f.get("context", "") != "SUMMARY"
-                and "summary" not in (f.get("tags") or [])
+                f
+                for f in relevant_facts
+                if f.get("context", "") != "SUMMARY" and "summary" not in (f.get("tags") or [])
             ]
 
         # Always rerank by query relevance first to prioritize the most relevant facts.
@@ -1071,7 +1070,7 @@ class LearningAgent:
             all_facts = cached
             self._thread_local._cached_all_facts = None  # consume; one-shot per question
         else:
-            all_facts = self.memory.get_all_facts(limit=15000)
+            all_facts = self.memory.get_all_facts(limit=15000, query=question)
         kb_size = len(all_facts)
 
         if force_verbatim or kb_size <= 1000:
