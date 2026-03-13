@@ -8,6 +8,7 @@ to generate response for issues or PRs.
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -99,8 +100,9 @@ def run_auto_mode_delegation(
         Tuple of (success: bool, output: str)
     """
     try:
-        # Run amplihack auto mode
-        cmd = ["amplihack", "claude", "--auto", "--max-turns", str(max_turns), "--", "-p", prompt]
+        # Run amplihack auto mode with the active agent binary
+        agent_binary = os.environ.get("AMPLIHACK_AGENT_BINARY", "claude")
+        cmd = ["amplihack", agent_binary, "--auto", "--max-turns", str(max_turns), "--", "-p", prompt]
 
         result = subprocess.run(
             cmd,
