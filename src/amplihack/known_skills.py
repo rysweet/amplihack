@@ -46,6 +46,7 @@ AMPLIHACK_SKILLS: frozenset[str] = frozenset(
         "ethicist-analyst",
         "eval-recipes-runner",
         "futurist-analyst",
+        "gh-work-report",
         "github",
         "github-copilot-cli-expert",
         "github-copilot-sdk",
