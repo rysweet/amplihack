@@ -7,7 +7,7 @@ systematic software engineering.
 
 **📚 [View Full Documentation](https://rysweet.github.io/amplihack/)**
 
-**Requires**: Python 3.12+, Node.js 18+, git, [uv](https://docs.astral.sh/uv/).
+**Requires**: Python 3.11+, Node.js 18+, git, [uv](https://docs.astral.sh/uv/).
 macOS/Linux/WSL only.
 
 ```sh
@@ -70,7 +70,7 @@ high-quality code.
 
 - **Platform**: macOS, Linux, or Windows via WSL (native Windows is not
   supported)
-- **Runtime**: Python 3.12+, Node.js 18+
+- **Runtime**: Python 3.11+, Node.js 18+
 - **Tools**: git, npm, uv ([astral.sh/uv](https://docs.astral.sh/uv/))
 - **Recommended**: Rust/cargo ([rustup.rs](https://rustup.rs/)) — required for
   the Rust recipe runner
