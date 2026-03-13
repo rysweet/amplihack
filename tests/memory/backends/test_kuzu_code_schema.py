@@ -15,6 +15,10 @@ import tempfile
 from datetime import datetime
 from unittest.mock import Mock, patch
 
+import pytest
+
+pytest.importorskip("kuzu")
+
 from src.amplihack.memory.models import MemoryEntry, MemoryType
 
 
@@ -32,7 +36,7 @@ class TestKuzuCodeSchemaCreation:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             # Check that CodeFile table creation was attempted
             calls = [str(call) for call in mock_conn.execute.call_args_list]
@@ -61,7 +65,7 @@ class TestKuzuCodeSchemaCreation:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             calls = [str(call) for call in mock_conn.execute.call_args_list]
             assert any("Class" in str(call) and "NODE TABLE" in str(call) for call in calls), (
@@ -91,7 +95,7 @@ class TestKuzuCodeSchemaCreation:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             calls = [str(call) for call in mock_conn.execute.call_args_list]
             assert any("Function" in str(call) and "NODE TABLE" in str(call) for call in calls), (
@@ -121,7 +125,7 @@ class TestKuzuCodeSchemaCreation:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             calls = [str(call) for call in mock_conn.execute.call_args_list]
             expected_relationships = [
@@ -150,7 +154,7 @@ class TestKuzuCodeSchemaCreation:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             calls = [str(call) for call in mock_conn.execute.call_args_list]
 
@@ -184,7 +188,7 @@ class TestKuzuCodeSchemaCreation:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             calls = [str(call) for call in mock_conn.execute.call_args_list]
 
@@ -236,11 +240,11 @@ class TestKuzuCodeSchemaIdempotency:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
 
             # First initialization
-            backend.initialize()
+            backend._initialize_sync()
             first_call_count = mock_conn.execute.call_count
 
             # Second initialization - should succeed
-            backend.initialize()
+            backend._initialize_sync()
             second_call_count = mock_conn.execute.call_count
 
             # Both should execute SQL, demonstrating idempotency
@@ -258,7 +262,7 @@ class TestKuzuCodeSchemaIdempotency:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             calls = [str(call) for call in mock_conn.execute.call_args_list]
 
@@ -306,7 +310,7 @@ class TestKuzuCodeSchemaTableStructure:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             calls = [str(call) for call in mock_conn.execute.call_args_list]
             codefile_calls = [c for c in calls if "CodeFile" in str(c)]
@@ -340,7 +344,7 @@ class TestKuzuCodeSchemaTableStructure:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             calls = [str(call) for call in mock_conn.execute.call_args_list]
             class_calls = [c for c in calls if "Class" in str(c) and "NODE TABLE" in str(c)]
@@ -375,7 +379,7 @@ class TestKuzuCodeSchemaTableStructure:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             calls = [str(call) for call in mock_conn.execute.call_args_list]
             func_calls = [c for c in calls if "Function" in str(c) and "NODE TABLE" in str(c)]
@@ -414,7 +418,7 @@ class TestKuzuCodeSchemaTableStructure:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             calls = [str(call) for call in mock_conn.execute.call_args_list]
             link_calls = [c for c in calls if "RELATES_TO" in str(c)]
@@ -441,7 +445,7 @@ class TestKuzuCodeSchemaRegression:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             calls = [str(call) for call in mock_conn.execute.call_args_list]
 
@@ -470,7 +474,7 @@ class TestKuzuCodeSchemaRegression:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             calls = [str(call) for call in mock_conn.execute.call_args_list]
 
@@ -505,7 +509,7 @@ class TestKuzuCodeSchemaRegression:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             memory = MemoryEntry(
                 id="test-1",
@@ -520,7 +524,7 @@ class TestKuzuCodeSchemaRegression:
             )
 
             mock_conn.execute.reset_mock()
-            result = backend.store_memory(memory)
+            result = backend._store_memory_sync(memory)
 
             # Should successfully store memory
             assert result is True, "store_memory() failed after code schema addition"
@@ -551,7 +555,7 @@ class TestKuzuCodeSchemaQueryCatalog:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             # Query catalog for CodeFile table
             mock_conn.execute.reset_mock()
@@ -580,7 +584,7 @@ class TestKuzuCodeSchemaQueryCatalog:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             mock_conn.execute.reset_mock()
             mock_conn.execute.return_value = mock_result
@@ -624,7 +628,7 @@ class TestKuzuCodeSchemaPerformance:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
 
             start = time.time()
-            backend.initialize()
+            backend._initialize_sync()
             elapsed = time.time() - start
 
             # Should complete in <1s (mostly mock overhead, but tests contract)
@@ -643,7 +647,7 @@ class TestKuzuCodeSchemaPerformance:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             calls = [str(call) for call in mock_conn.execute.call_args_list]
 

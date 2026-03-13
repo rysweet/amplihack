@@ -14,6 +14,10 @@ from pathlib import Path
 
 import pytest
 
+# Skip this entire module if kuzu is not installed (CI without cmake, containers, etc.)
+# Must appear BEFORE the module-level KuzuBackend import which triggers `import kuzu`.
+pytest.importorskip("kuzu")
+
 from src.amplihack.memory.backends.kuzu_backend import KuzuBackend
 from src.amplihack.memory.models import MemoryEntry, MemoryQuery, MemoryType
 
@@ -30,9 +34,9 @@ def temp_db():
 def backend(temp_db):
     """Create and initialize a KuzuBackend instance."""
     backend = KuzuBackend(db_path=temp_db, enable_auto_linking=False)
-    backend.initialize()
+    backend._initialize_sync()
     yield backend
-    backend.close()
+    backend._close_sync()
 
 
 class TestSessionIsolation:
@@ -54,7 +58,7 @@ class TestSessionIsolation:
             created_at=now,
             accessed_at=now,
         )
-        backend.store_memory(memory1)
+        backend._store_memory_sync(memory1)
 
         # Create memories in session-2
         memory2 = MemoryEntry(
@@ -68,11 +72,11 @@ class TestSessionIsolation:
             created_at=now,
             accessed_at=now,
         )
-        backend.store_memory(memory2)
+        backend._store_memory_sync(memory2)
 
         # Query session-1 memories
         query1 = MemoryQuery(session_id="session-1", memory_type=MemoryType.EPISODIC)
-        results1 = backend.retrieve_memories(query1)
+        results1 = backend._retrieve_memories_sync(query1)
 
         # Should only get session-1 memory
         assert len(results1) == 1
@@ -81,7 +85,7 @@ class TestSessionIsolation:
 
         # Query session-2 memories
         query2 = MemoryQuery(session_id="session-2", memory_type=MemoryType.EPISODIC)
-        results2 = backend.retrieve_memories(query2)
+        results2 = backend._retrieve_memories_sync(query2)
 
         # Should only get session-2 memory
         assert len(results2) == 1
@@ -103,7 +107,7 @@ class TestSessionIsolation:
             created_at=now,
             accessed_at=now,
         )
-        backend.store_memory(memory1)
+        backend._store_memory_sync(memory1)
 
         memory2 = MemoryEntry(
             id="semantic-2",
@@ -116,16 +120,16 @@ class TestSessionIsolation:
             created_at=now,
             accessed_at=now,
         )
-        backend.store_memory(memory2)
+        backend._store_memory_sync(memory2)
 
         # Query each session
         query1 = MemoryQuery(session_id="session-1", memory_type=MemoryType.SEMANTIC)
-        results1 = backend.retrieve_memories(query1)
+        results1 = backend._retrieve_memories_sync(query1)
         assert len(results1) == 1
         assert results1[0].id == "semantic-1"
 
         query2 = MemoryQuery(session_id="session-2", memory_type=MemoryType.SEMANTIC)
-        results2 = backend.retrieve_memories(query2)
+        results2 = backend._retrieve_memories_sync(query2)
         assert len(results2) == 1
         assert results2[0].id == "semantic-2"
 
@@ -144,7 +148,7 @@ class TestSessionIsolation:
             created_at=now,
             accessed_at=now,
         )
-        backend.store_memory(memory1)
+        backend._store_memory_sync(memory1)
 
         memory2 = MemoryEntry(
             id="procedural-2",
@@ -157,15 +161,15 @@ class TestSessionIsolation:
             created_at=now,
             accessed_at=now,
         )
-        backend.store_memory(memory2)
+        backend._store_memory_sync(memory2)
 
         query1 = MemoryQuery(session_id="session-1", memory_type=MemoryType.PROCEDURAL)
-        results1 = backend.retrieve_memories(query1)
+        results1 = backend._retrieve_memories_sync(query1)
         assert len(results1) == 1
         assert results1[0].id == "procedural-1"
 
         query2 = MemoryQuery(session_id="session-2", memory_type=MemoryType.PROCEDURAL)
-        results2 = backend.retrieve_memories(query2)
+        results2 = backend._retrieve_memories_sync(query2)
         assert len(results2) == 1
         assert results2[0].id == "procedural-2"
 
@@ -184,7 +188,7 @@ class TestSessionIsolation:
             created_at=now,
             accessed_at=now,
         )
-        backend.store_memory(memory1)
+        backend._store_memory_sync(memory1)
 
         memory2 = MemoryEntry(
             id="prospective-2",
@@ -197,15 +201,15 @@ class TestSessionIsolation:
             created_at=now,
             accessed_at=now,
         )
-        backend.store_memory(memory2)
+        backend._store_memory_sync(memory2)
 
         query1 = MemoryQuery(session_id="session-1", memory_type=MemoryType.PROSPECTIVE)
-        results1 = backend.retrieve_memories(query1)
+        results1 = backend._retrieve_memories_sync(query1)
         assert len(results1) == 1
         assert results1[0].id == "prospective-1"
 
         query2 = MemoryQuery(session_id="session-2", memory_type=MemoryType.PROSPECTIVE)
-        results2 = backend.retrieve_memories(query2)
+        results2 = backend._retrieve_memories_sync(query2)
         assert len(results2) == 1
         assert results2[0].id == "prospective-2"
 
@@ -224,7 +228,7 @@ class TestSessionIsolation:
             created_at=now,
             accessed_at=now,
         )
-        backend.store_memory(memory1)
+        backend._store_memory_sync(memory1)
 
         memory2 = MemoryEntry(
             id="working-2",
@@ -237,15 +241,15 @@ class TestSessionIsolation:
             created_at=now,
             accessed_at=now,
         )
-        backend.store_memory(memory2)
+        backend._store_memory_sync(memory2)
 
         query1 = MemoryQuery(session_id="session-1", memory_type=MemoryType.WORKING)
-        results1 = backend.retrieve_memories(query1)
+        results1 = backend._retrieve_memories_sync(query1)
         assert len(results1) == 1
         assert results1[0].id == "working-1"
 
         query2 = MemoryQuery(session_id="session-2", memory_type=MemoryType.WORKING)
-        results2 = backend.retrieve_memories(query2)
+        results2 = backend._retrieve_memories_sync(query2)
         assert len(results2) == 1
         assert results2[0].id == "working-2"
 
@@ -265,7 +269,7 @@ class TestSessionIsolation:
             created_at=now,
             accessed_at=now,
         )
-        backend.store_memory(memory1)
+        backend._store_memory_sync(memory1)
 
         memory2 = MemoryEntry(
             id="episodic-2",
@@ -278,11 +282,11 @@ class TestSessionIsolation:
             created_at=now,
             accessed_at=now,
         )
-        backend.store_memory(memory2)
+        backend._store_memory_sync(memory2)
 
         # Query without session_id filter
         query = MemoryQuery(memory_type=MemoryType.EPISODIC)
-        results = backend.retrieve_memories(query)
+        results = backend._retrieve_memories_sync(query)
 
         # Should get memories from both sessions
         assert len(results) == 2
@@ -304,10 +308,10 @@ class TestSessionIsolation:
             created_at=now,
             accessed_at=now,
         )
-        backend.store_memory(memory)
+        backend._store_memory_sync(memory)
 
         # Retrieve by ID
-        retrieved = backend.get_memory_by_id("test-id")
+        retrieved = backend._get_memory_by_id_sync("test-id")
 
         assert retrieved is not None
         assert retrieved.session_id == "test-session"
@@ -329,7 +333,7 @@ class TestSessionIsolation:
             created_at=now,
             accessed_at=now,
         )
-        backend.store_memory(episodic1)
+        backend._store_memory_sync(episodic1)
 
         semantic1 = MemoryEntry(
             id="s1",
@@ -342,7 +346,7 @@ class TestSessionIsolation:
             created_at=now,
             accessed_at=now,
         )
-        backend.store_memory(semantic1)
+        backend._store_memory_sync(semantic1)
 
         # Create different types in session-2
         episodic2 = MemoryEntry(
@@ -356,7 +360,7 @@ class TestSessionIsolation:
             created_at=now,
             accessed_at=now,
         )
-        backend.store_memory(episodic2)
+        backend._store_memory_sync(episodic2)
 
         semantic2 = MemoryEntry(
             id="s2",
@@ -369,11 +373,11 @@ class TestSessionIsolation:
             created_at=now,
             accessed_at=now,
         )
-        backend.store_memory(semantic2)
+        backend._store_memory_sync(semantic2)
 
         # Query session-1 (all types)
         query1 = MemoryQuery(session_id="session-1")
-        results1 = backend.retrieve_memories(query1)
+        results1 = backend._retrieve_memories_sync(query1)
 
         # Should get 2 memories from session-1
         assert len(results1) == 2
@@ -383,7 +387,7 @@ class TestSessionIsolation:
 
         # Query session-2 (all types)
         query2 = MemoryQuery(session_id="session-2")
-        results2 = backend.retrieve_memories(query2)
+        results2 = backend._retrieve_memories_sync(query2)
 
         # Should get 2 memories from session-2
         assert len(results2) == 2

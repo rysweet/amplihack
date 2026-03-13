@@ -8,6 +8,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+pytest.importorskip("kuzu")
+
 
 class TestOpenDatabaseWithRetry:
     """Unit tests for the Kuzu DB retry logic."""
