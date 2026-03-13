@@ -467,8 +467,9 @@ def ensure_settings_json():
         settings["hooks"] = {}
 
     if not valid_amplihack_hooks:
-        print("  ⚠️  No valid amplihack hook files found on disk")
+        print("  ❌ No valid amplihack hook files found on disk")
         print("  💡 Please reinstall amplihack to restore missing hooks")
+        return False
     else:
         # Update amplihack hook paths (absolute paths for plugin mode compatibility)
         # Only configure hooks whose files exist on disk
