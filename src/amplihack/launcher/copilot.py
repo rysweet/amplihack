@@ -7,6 +7,7 @@ import shlex
 import shutil
 import signal
 import subprocess
+import sys
 import tempfile
 import threading
 from collections.abc import MutableMapping
@@ -246,9 +247,7 @@ def check_for_update(
         kwargs: dict = {"capture_output": True, "text": True, "timeout": 15, "check": False}
         if env is not None:
             kwargs["env"] = effective_env
-        latest_result = subprocess.run(
-            ["npm", "view", "@github/copilot", "version"], **kwargs
-        )
+        latest_result = subprocess.run(["npm", "view", "@github/copilot", "version"], **kwargs)
         if latest_result.returncode != 0:
             return None
 
@@ -491,9 +490,7 @@ def ensure_latest_copilot(
     except Exception as e:
         import logging
 
-        logging.getLogger(__name__).debug(
-            f"Copilot auto-update failed: {type(e).__name__}: {e}"
-        )
+        logging.getLogger(__name__).debug(f"Copilot auto-update failed: {type(e).__name__}: {e}")
         return False
 
 
@@ -526,9 +523,7 @@ def _ensure_copilot_bin_on_path(
     return bin_path
 
 
-def check_copilot(
-    env: MutableMapping[str, str] | None = None, home: Path | None = None
-) -> bool:
+def check_copilot(env: MutableMapping[str, str] | None = None, home: Path | None = None) -> bool:
     """Check if Copilot CLI is installed.
 
     Returns:
@@ -550,9 +545,7 @@ def check_copilot(
         return False
 
 
-def install_copilot(
-    env: MutableMapping[str, str] | None = None, home: Path | None = None
-) -> bool:
+def install_copilot(env: MutableMapping[str, str] | None = None, home: Path | None = None) -> bool:
     """Install GitHub Copilot CLI via npm to user-local directory."""
     print("Installing GitHub Copilot CLI...")
 
@@ -853,7 +846,8 @@ INPUT=$(cat)
 """
 
         wrapper_path.write_text(wrapper_content)
-        wrapper_path.chmod(0o755)
+        if sys.platform != "win32":
+            wrapper_path.chmod(0o755)
         staged += 1
 
     # Stage the error-occurred wrapper separately (no Python hook, uses inline fallback)
@@ -862,7 +856,8 @@ INPUT=$(cat)
         source_error = package_dir.parent.parent / ".github" / "hooks" / "error-occurred"
         if source_error.exists():
             shutil.copy2(source_error, error_wrapper)
-            error_wrapper.chmod(0o755)
+            if sys.platform != "win32":
+                error_wrapper.chmod(0o755)
             staged += 1
 
     return staged
