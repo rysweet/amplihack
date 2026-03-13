@@ -784,6 +784,18 @@ class LearningAgent:
                 logger.warning("Temporal code generation failed: %s", e)
 
         # ── OODA: DECIDE ─────────────────────────────────────────────────────
+        # Diagnostic: log retrieval result counts before synthesis
+        logger.info(
+            "RETRIEVAL_DIAG question=%.80s intent=%s facts_count=%d use_simple=%s",
+            question,
+            intent_type,
+            len(relevant_facts),
+            "true"
+            if intent_type in self.SIMPLE_INTENTS
+            or (not use_simple if "use_simple" in dir() else True)
+            else "false",
+        )
+
         # Synthesize answer from the oriented world model (relevant_facts).
         answer = self._synthesize_with_llm(
             question=question,
@@ -2698,6 +2710,31 @@ Knowledge Overview (what was learned):
             numerical_instructions = (
                 "\n\nSTEP-BY-STEP CALCULATION: Extract ALL relevant numbers. "
                 "Label each. Show each arithmetic step. Double-check result.\n"
+            )
+
+        # Diagnostic logging: surface what the LLM will see for debugging
+        # retrieval quality issues (e.g., needle_in_haystack failures).
+        _q_words = [w.lower().strip("?.,!") for w in question.split() if len(w) > 2]
+        _needle_matches = [
+            f
+            for f in context[:max_facts]
+            if any(w in f.get("outcome", "").lower() for w in _q_words)
+            or any(w in f.get("context", "").lower() for w in _q_words)
+        ]
+        logger.info(
+            "SYNTH_DIAG question=%.80s total_facts=%d matching_facts=%d first_3_contexts=%s",
+            question,
+            len(context[:max_facts]),
+            len(_needle_matches),
+            [f.get("context", "")[:60] for f in context[: min(3, len(context))]],
+        )
+        if _needle_matches:
+            logger.info(
+                "SYNTH_DIAG needle_hits: %s",
+                [
+                    (f.get("context", "")[:40], f.get("outcome", "")[:80])
+                    for f in _needle_matches[:5]
+                ],
             )
 
         prompt = _load_prompt(

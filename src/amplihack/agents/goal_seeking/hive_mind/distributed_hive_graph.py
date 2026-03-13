@@ -509,6 +509,7 @@ class EventHubsShardTransport:
         self._eventhub_name = eventhub_name
         self._consumer_group = consumer_group or f"cg-{agent_id}"
         self._local_graph: Any = None
+        self._local_agent: Any = None  # Bound via bind_agent() for LOCAL queries
 
         # Pending cross-shard queries: correlation_id → (done_event, facts_list)
         self._pending: dict[str, tuple[threading.Event, list]] = {}
@@ -537,6 +538,15 @@ class EventHubsShardTransport:
     def bind_local(self, graph: Any) -> None:
         """Bind the DistributedHiveGraph that owns this transport's local shard."""
         self._local_graph = graph
+
+    def bind_agent(self, agent: Any) -> None:
+        """Bind the GoalSeekingAgent for high-quality LOCAL shard queries.
+
+        When set, LOCAL shard queries in query_shard() use
+        _search_for_shard_response() (CognitiveAdapter n-gram + reranking)
+        instead of primitive ShardStore.search().
+        """
+        self._local_agent = agent
 
     # -- Background receive loop ---------------------------------------------
 
@@ -700,12 +710,41 @@ class EventHubsShardTransport:
     def query_shard(self, agent_id: str, query: str, limit: int) -> list[ShardFact]:
         """Query a shard — local bypass for own shard, EH round-trip for remote."""
         if agent_id == self._agent_id and self._local_graph is not None:
+            # Use CognitiveAdapter search (n-gram + reranking) for LOCAL shard
+            # when available — same quality as REMOTE shards get via
+            # handle_shard_query() → _search_for_shard_response().
+            if self._local_agent is not None:
+                fact_dicts = _search_for_shard_response(
+                    query=query,
+                    limit=limit,
+                    agent=self._local_agent,
+                    local_graph=self._local_graph,
+                    agent_id=agent_id,
+                )
+                logger.info(
+                    "Agent %s queried LOCAL shard (CognitiveAdapter) → %d facts",
+                    self._agent_id,
+                    len(fact_dicts),
+                )
+                # Convert dicts back to ShardFact for uniform return type
+                return [
+                    ShardFact(
+                        fact_id=d.get("fact_id", ""),
+                        content=d.get("content", ""),
+                        concept=d.get("concept", ""),
+                        confidence=d.get("confidence", 0.8),
+                        source_agent=d.get("source_agent", agent_id),
+                        tags=d.get("tags", []),
+                    )
+                    for d in fact_dicts
+                ]
+            # Fallback: raw ShardStore search (no agent bound)
             shard = self._local_graph._router.get_shard(agent_id)
             if shard is None:
                 return []
             local_results = shard.search(query, limit=limit)
             logger.info(
-                "Agent %s queried LOCAL shard → %d facts",
+                "Agent %s queried LOCAL shard (raw) → %d facts",
                 self._agent_id,
                 len(local_results),
             )
