@@ -60,7 +60,10 @@ def ensure_latest_codex() -> bool:
 
         latest_result = subprocess.run(
             ["npm", "view", "@openai/codex-cli", "version"],
-            capture_output=True, text=True, timeout=15, check=False,
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=False,
         )
         if latest_result.returncode != 0:
             return True
@@ -72,7 +75,10 @@ def ensure_latest_codex() -> bool:
         print(f"🔄 Codex CLI update available: {current} → {latest}")
         result = subprocess.run(
             ["npm", "install", "-g", "@openai/codex-cli"],
-            capture_output=True, text=True, timeout=120, check=False,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
         )
         if result.returncode == 0:
             post = _get_current_codex_version() or latest
@@ -215,7 +221,12 @@ def launch_codex(args: list[str] | None = None, interactive: bool = True) -> int
             # No -p flag, pass args as-is
             cmd.extend(args)
 
+    # Build explicit env with agent identity and home directory for Rust CLI parity
+    env = os.environ.copy()
+    env["AMPLIHACK_AGENT_BINARY"] = "codex"
+    env.setdefault("AMPLIHACK_HOME", os.path.expanduser("~/.amplihack"))
+
     # Launch using subprocess.run() for proper terminal handling
     # Note: os.execvp() doesn't work properly on Windows - it corrupts stdin/terminal state
-    result = subprocess.run(cmd, check=False)
+    result = subprocess.run(cmd, check=False, env=env)
     return result.returncode

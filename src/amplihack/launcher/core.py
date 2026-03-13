@@ -235,9 +235,8 @@ class ClaudeLauncher:
         Returns:
             True if all critical prerequisites available, False otherwise.
         """
-        import shutil
 
-        from ..utils.prerequisites import PrerequisiteChecker, safe_subprocess_call
+        from ..utils.prerequisites import PrerequisiteChecker
 
         checker = PrerequisiteChecker()
 
@@ -875,6 +874,10 @@ class ClaudeLauncher:
             # Set environment variables for UVX mode
             env = os.environ.copy()
 
+            # Set agent identity and home directory for Rust CLI parity
+            env["AMPLIHACK_AGENT_BINARY"] = "claude"
+            env.setdefault("AMPLIHACK_HOME", os.path.expanduser("~/.amplihack"))
+
             # Smart memory configuration
             from .memory_config import display_memory_config, get_memory_config
 
@@ -992,6 +995,10 @@ class ClaudeLauncher:
 
             # Set environment variables for UVX mode
             env = os.environ.copy()
+
+            # Set agent identity and home directory for Rust CLI parity
+            env["AMPLIHACK_AGENT_BINARY"] = "claude"
+            env.setdefault("AMPLIHACK_HOME", os.path.expanduser("~/.amplihack"))
 
             # Smart memory configuration
             from .memory_config import display_memory_config, get_memory_config
