@@ -40,7 +40,7 @@ ls .claude/agents/amplihack/
 
 ```bash
 # Install Agent Framework
-pip install agent-framework --pre
+pip install agent-framework-core --pre
 
 # Create Agent Framework structure
 mkdir -p src/agents

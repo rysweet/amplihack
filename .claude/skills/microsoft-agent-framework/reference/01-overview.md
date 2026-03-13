@@ -162,10 +162,10 @@ Create data workflows that:
 
 ```bash
 # Install preview version
-pip install agent-framework --pre
+pip install agent-framework-core --pre
 
 # With optional dependencies
-pip install agent-framework[openai,azure,telemetry] --pre
+pip install agent-framework-core[openai,azure,telemetry] --pre
 
 # Development install
 git clone https://github.com/microsoft/agent-framework.git
