@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 # SDK packages that MUST be importable for agent adapters to work.
 # Maps package import name -> pip install name for error messages.
 SDK_DEPENDENCIES: dict[str, str] = {
-    "agent_framework": "agent-framework",
+    "agent_framework": "agent-framework-core",
 }
 
 
@@ -102,7 +102,7 @@ def validate_sdk_deps(raise_on_missing: bool = True) -> DepCheckResult:
 def ensure_sdk_deps() -> DepCheckResult:
     """Check SDK deps and auto-install any that are missing.
 
-    For packages requiring pre-release versions (like agent-framework),
+    For packages requiring pre-release versions (like agent-framework-core),
     uses subprocess to run pip/uv install with pre-release flags.
 
     Uses ``--python sys.executable`` with uv to ensure packages are
@@ -128,8 +128,11 @@ def ensure_sdk_deps() -> DepCheckResult:
     installer = shutil.which("uv")
     if installer:
         base_cmd = [
-            installer, "pip", "install",
-            "--python", sys.executable,
+            installer,
+            "pip",
+            "install",
+            "--python",
+            sys.executable,
             "--prerelease=allow",
         ]
     else:
@@ -151,7 +154,9 @@ def ensure_sdk_deps() -> DepCheckResult:
             else:
                 logger.warning(
                     "Failed to install %s (exit %d): %s",
-                    pip_name, proc.returncode, proc.stderr[:200]
+                    pip_name,
+                    proc.returncode,
+                    proc.stderr[:200],
                 )
         except Exception as e:
             logger.warning("Failed to install %s: %s", pip_name, e)
@@ -165,6 +170,9 @@ def ensure_sdk_deps() -> DepCheckResult:
 
 
 __all__ = [
-    "validate_sdk_deps", "check_sdk_dep", "ensure_sdk_deps",
-    "DepCheckResult", "SDK_DEPENDENCIES",
+    "validate_sdk_deps",
+    "check_sdk_dep",
+    "ensure_sdk_deps",
+    "DepCheckResult",
+    "SDK_DEPENDENCIES",
 ]

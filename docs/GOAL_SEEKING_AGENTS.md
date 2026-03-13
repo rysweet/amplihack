@@ -438,7 +438,7 @@ agent = create_agent(name="x", sdk="mini")       # Lightweight mini-framework
 | Feature           | Copilot                          | Claude                               | Microsoft                            | Mini                                |
 | ----------------- | -------------------------------- | ------------------------------------ | ------------------------------------ | ----------------------------------- |
 | Default model     | gpt-4.1                          | claude-sonnet-4-5-20250929           | gpt-4o                               | (any via litellm)                   |
-| Install           | `pip install github-copilot-sdk` | `pip install claude-agent-sdk`       | `pip install agent-framework`        | No extra deps                       |
+| Install           | `pip install github-copilot-sdk` | `pip install claude-agent-sdk`       | `pip install agent-framework-core`   | No extra deps                       |
 | Native tools      | file_system, git, web_requests   | bash, read/write/edit, glob, grep    | (via FunctionTool)                   | read, search, synthesize, calculate |
 | Tool registration | Session config tools list        | Recreate agent with updated tools    | Recreate agent via FunctionTool      | Fixed tool set (no-op)              |
 | State management  | Session-based (lazy init)        | Per-run (ClaudeSDKClient)            | Session-based (Agent.create_session) | In-process                          |
