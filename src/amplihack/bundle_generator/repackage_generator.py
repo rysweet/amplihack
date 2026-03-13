@@ -429,10 +429,18 @@ class Repackager:
             self.log_warn("No tests found - skipping")
             return True
 
-        # Run pytest
+        # Run pytest.
+        # Pass AMPLIHACK_SKIP_KUZU_TESTS=1 so that kuzu-dependent tests
+        # (which require a running Kuzu database or cmake build toolchain)
+        # are excluded from collection.  This prevents hung pytest invocations
+        # in environments where Kuzu is not installed.
+        import os as _os
+        _pytest_env = dict(_os.environ)
+        _pytest_env["AMPLIHACK_SKIP_KUZU_TESTS"] = "1"
         result = subprocess.run(
             ["pytest", "tests/", "-v", "--tb=short"],
-            capture_output=False
+            capture_output=False,
+            env=_pytest_env,
         )
 
         if result.returncode == 0:
