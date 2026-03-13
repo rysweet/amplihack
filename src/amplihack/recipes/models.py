@@ -53,20 +53,21 @@ class Step:
 
         Returns True if the step should execute (condition is met or absent).
         The condition is a Python expression evaluated with *context* as the
-        namespace.  All values are coerced to strings before evaluation so
-        that ``force_single_workstream == 'true'`` works regardless of
-        whether the value arrived as ``bool`` or ``str`` (fix #3075).
+        namespace.  Booleans are coerced to lowercase strings so that
+        ``force_single_workstream == 'true'`` works regardless of whether the
+        value arrived as ``bool`` or ``str`` (fix #3075).  Numeric types are
+        kept as-is to support ``num_versions >= 4`` comparisons.
         """
         if not self.condition:
             return True
-        # Coerce every value to str so that bool/int values from user_context
-        # compare correctly against string literals in condition expressions.
-        str_ctx: dict[str, str] = {
-            k: str(v).lower() if isinstance(v, bool) else str(v)
+        # Coerce booleans to lowercase strings so recipe conditions like
+        # ``== 'true'`` work.  Keep numbers as-is for numeric comparisons.
+        eval_ctx: dict[str, Any] = {
+            k: str(v).lower() if isinstance(v, bool) else v
             for k, v in context.items()
         }
         try:
-            return bool(eval(self.condition.strip(), {"__builtins__": {}}, str_ctx))  # noqa: S307
+            return bool(eval(self.condition.strip(), {"__builtins__": {}}, eval_ctx))  # noqa: S307
         except Exception:
             return True  # if condition can't be evaluated, don't skip
 
