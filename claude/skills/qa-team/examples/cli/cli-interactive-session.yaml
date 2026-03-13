@@ -1,0 +1,237 @@
+# Level 2: CLI Interactive Session Test
+# This test verifies a multi-turn interactive CLI session with state management,
+# demonstrating how to test complex conversational interfaces.
+
+scenario:
+  name: "CLI Interactive Session - State Management"
+  description: |
+    Verifies CLI application maintains state across multiple commands in an
+    interactive session, including configuration, data manipulation, and query operations.
+  type: cli
+  level: 2
+
+  tags: [cli, interactive, stateful, session, intermediate]
+
+  prerequisites:
+    - "./data-tool binary exists"
+    - "Empty database state (no existing data)"
+
+  # Variables used throughout the test
+  variables:
+    dataset_name: "test_dataset"
+    initial_value: 100
+    updated_value: 250
+
+  steps:
+    # Initialize session
+    - action: launch
+      target: "./data-tool"
+      args: ["--interactive"]
+      description: "Launch data tool in interactive mode"
+      timeout: 5s
+
+    - action: wait_for_output
+      contains: "data-tool>"
+      timeout: 3s
+      description: "Wait for command prompt"
+
+    # Phase 1: Configuration
+    - action: send_input
+      value: "config set log_level debug\n"
+      description: "Configure logging level"
+
+    - action: verify_output
+      contains: "Configuration updated: log_level = debug"
+      timeout: 2s
+
+    - action: send_input
+      value: "config show\n"
+      description: "Verify configuration was saved"
+
+    - action: verify_output
+      contains: "log_level: debug"
+      timeout: 2s
+      description: "Configuration should persist"
+
+    # Phase 2: Data Creation
+    - action: send_input
+      value: "create dataset ${dataset_name}\n"
+      description: "Create new dataset using variable"
+
+    - action: verify_output
+      contains: "Dataset '${dataset_name}' created"
+      timeout: 2s
+
+    - action: send_input
+      value: "list datasets\n"
+      description: "List all datasets"
+
+    - action: verify_output
+      contains: "${dataset_name}"
+      timeout: 2s
+      description: "New dataset should appear in list"
+
+    # Phase 3: Data Manipulation
+    - action: send_input
+      value: "use ${dataset_name}\n"
+      description: "Switch to new dataset context"
+
+    - action: verify_output
+      contains: "Now using dataset: ${dataset_name}"
+      timeout: 2s
+
+    # Insert initial value
+    - action: send_input
+      value: "insert key1 ${initial_value}\n"
+      description: "Insert first key-value pair"
+
+    - action: verify_output
+      contains: "Inserted: key1 = ${initial_value}"
+      timeout: 2s
+
+    # Insert multiple values
+    - action: send_input
+      value: "insert key2 200\n"
+      description: "Insert second key-value pair"
+
+    - action: verify_output
+      contains: "Inserted: key2 = 200"
+      timeout: 2s
+
+    - action: send_input
+      value: "insert key3 300\n"
+      description: "Insert third key-value pair"
+
+    - action: verify_output
+      contains: "Inserted: key3 = 300"
+      timeout: 2s
+
+    # Phase 4: Query Operations
+    - action: send_input
+      value: "get key1\n"
+      description: "Retrieve first value"
+
+    - action: verify_output
+      contains: "key1 = ${initial_value}"
+      timeout: 2s
+      description: "Should return originally inserted value"
+
+    - action: send_input
+      value: "count\n"
+      description: "Count total entries"
+
+    - action: verify_output
+      contains: "Total entries: 3"
+      timeout: 2s
+      description: "Should count all inserted entries"
+
+    # Phase 5: Update Operation
+    - action: send_input
+      value: "update key1 ${updated_value}\n"
+      description: "Update first value"
+
+    - action: verify_output
+      contains: "Updated: key1 = ${updated_value}"
+      timeout: 2s
+
+    # Verify update persisted
+    - action: send_input
+      value: "get key1\n"
+      description: "Retrieve updated value"
+
+    - action: verify_output
+      contains: "key1 = ${updated_value}"
+      timeout: 2s
+      description: "Should return updated value, not original"
+
+    # Phase 6: Aggregation
+    - action: send_input
+      value: "sum\n"
+      description: "Calculate sum of all values"
+
+    - action: verify_output
+      contains: "Sum: 750"
+      timeout: 2s
+      description: "Should sum updated_value(250) + 200 + 300"
+
+    # Phase 7: History and Undo (advanced state management)
+    - action: send_input
+      value: "history\n"
+      description: "Show command history"
+
+    - action: verify_output
+      contains: "insert key1"
+      timeout: 2s
+      description: "History should include previous commands"
+
+    # Phase 8: Session info
+    - action: send_input
+      value: "session info\n"
+      description: "Display session information"
+
+    - action: verify_output
+      contains: "Active dataset: ${dataset_name}"
+      timeout: 2s
+      description: "Should show current context"
+
+    - action: verify_output
+      matches: "Commands executed: \\d+"
+      timeout: 2s
+      description: "Should track command count"
+
+    # Phase 9: Cleanup and exit
+    - action: send_input
+      value: "delete dataset ${dataset_name}\n"
+      description: "Clean up test dataset"
+
+    - action: verify_output
+      contains: "Dataset '${dataset_name}' deleted"
+      timeout: 2s
+
+    - action: send_input
+      value: "exit\n"
+      description: "Exit session"
+
+    - action: verify_exit_code
+      expected: 0
+
+  cleanup:
+    - action: capture_output
+      save_as: "interactive-session.txt"
+      description: "Save full session transcript"
+# Expected Evidence:
+# The test generates a complete session transcript showing:
+# - Configuration changes
+# - Dataset creation and selection
+# - Multiple data insertions
+# - Query operations returning correct values
+# - Update operations persisting
+# - Aggregate calculations
+# - Command history
+# - Session state information
+
+# Run Command:
+# gadugi-agentic-test run examples/cli/cli-interactive-session.yaml
+
+# Key Learning Points (Level 2):
+# 1. Variables (${var}) enable reusable, maintainable tests
+# 2. Tests can verify state persists across multiple operations
+# 3. Phase-based organization (comments) improves readability
+# 4. Verify both operations and their side effects
+# 5. Test creates and cleans up its own data
+# 6. Session transcripts provide complete audit trail
+
+# Testing Strategy:
+# This test follows the pattern:
+# 1. Setup (configuration)
+# 2. Create (data)
+# 3. Read (queries)
+# 4. Update (modifications)
+# 5. Verify (state checks)
+# 6. Cleanup (teardown)
+
+# Maintenance Tips:
+# - Update variables at top to change test data
+# - Add new operations as new phases
+# - Keep phases independent where possible
+# - Document expected calculations (sum example)
