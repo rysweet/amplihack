@@ -7,8 +7,11 @@ systematic software engineering.
 
 **📚 [View Full Documentation](https://rysweet.github.io/amplihack/)**
 
+**Requires**: Python 3.11+, Node.js 18+, git, [uv](https://docs.astral.sh/uv/).
+macOS/Linux/WSL only.
+
 ```sh
-# Quick start
+# Quick start — uvx is uv's package runner (like npx for Python)
 uvx --from git+https://github.com/rysweet/amplihack amplihack claude
 ```
 
@@ -67,7 +70,7 @@ high-quality code.
 
 - **Platform**: macOS, Linux, or Windows via WSL (native Windows is not
   supported)
-- **Runtime**: Python 3.12+, Node.js 18+
+- **Runtime**: Python 3.11+, Node.js 18+
 - **Tools**: git, npm, uv ([astral.sh/uv](https://docs.astral.sh/uv/))
 - **Recommended**: Rust/cargo ([rustup.rs](https://rustup.rs/)) — required for
   the Rust recipe runner
@@ -229,6 +232,14 @@ What happens:
 > natural language prompts are all you need.
 
 ## Core Concepts
+
+| Term | Definition |
+|------|-----------|
+| **Agent** | A specialized AI role (e.g., architect, builder, reviewer) with a defined responsibility |
+| **Workflow** | A structured step-by-step process that guides task execution (e.g., the 23-step DEFAULT_WORKFLOW) |
+| **Orchestrator** | Routes tasks to the right workflow and coordinates agents |
+| **Recipe** | A code-enforced workflow definition (YAML) that models cannot skip or shortcut |
+| **Skill** | A self-contained capability that auto-activates based on context (e.g., PDF processing, Azure admin) |
 
 ### Philosophy
 

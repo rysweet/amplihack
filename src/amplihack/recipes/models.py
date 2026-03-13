@@ -48,6 +48,29 @@ class Step:
     recipe: str | None = None  # Sub-recipe name (for StepType.RECIPE)
     sub_context: dict[str, Any] | None = None  # Context to merge into sub-recipe
 
+    def evaluate_condition(self, context: dict[str, Any]) -> bool:
+        """Evaluate the step condition against a context dict.
+
+        Returns True if the step should execute (condition is met or absent).
+        The condition is a Python expression evaluated with *context* as the
+        namespace.  Booleans are coerced to lowercase strings so that
+        ``force_single_workstream == 'true'`` works regardless of whether the
+        value arrived as ``bool`` or ``str`` (fix #3075).  Numeric types are
+        kept as-is to support ``num_versions >= 4`` comparisons.
+        """
+        if not self.condition:
+            return True
+        # Coerce booleans to lowercase strings so recipe conditions like
+        # ``== 'true'`` work.  Keep numbers as-is for numeric comparisons.
+        eval_ctx: dict[str, Any] = {
+            k: str(v).lower() if isinstance(v, bool) else v
+            for k, v in context.items()
+        }
+        try:
+            return bool(eval(self.condition.strip(), {"__builtins__": {}}, eval_ctx))  # noqa: S307
+        except Exception:
+            return True  # if condition can't be evaluated, don't skip
+
 
 @dataclass
 class Recipe:
@@ -113,7 +136,11 @@ class RecipeResult:
     def __str__(self) -> str:
         status = "SUCCESS" if self.success else "FAILED"
         step_count = len(self.step_results)
-        return f"RecipeResult({self.recipe_name}: {status}, {step_count} steps)"
+        base = f"RecipeResult({self.recipe_name}: {status}, {step_count} steps)"
+        if self.step_results:
+            step_lines = "\n  ".join(str(sr) for sr in self.step_results)
+            return f"{base}\n  {step_lines}"
+        return base
 
     def __getitem__(self, key: int | slice) -> str:
         """Support subscripting (e.g. ``result[:500]``) by delegating to ``.output``."""
