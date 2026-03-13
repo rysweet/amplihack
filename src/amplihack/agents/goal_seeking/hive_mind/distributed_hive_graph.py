@@ -511,6 +511,11 @@ class EventHubsShardTransport:
         self._local_graph: Any = None
         self._local_agent: Any = None  # Bound via bind_agent() for LOCAL queries
 
+        # Partition routing: each agent reads from a deterministic partition
+        # (agent_index % num_partitions) to avoid consumer-group load-balancer
+        # competition when multiple agents share a consumer group.
+        self._num_partitions: int | None = None
+
         # Pending cross-shard queries: correlation_id → (done_event, facts_list)
         self._pending: dict[str, tuple[threading.Event, list]] = {}
         self._pending_lock = threading.Lock()
@@ -547,6 +552,38 @@ class EventHubsShardTransport:
         instead of primitive ShardStore.search().
         """
         self._local_agent = agent
+
+    # -- Partition routing ---------------------------------------------------
+
+    @staticmethod
+    def _agent_index(agent_id: str) -> int:
+        """Extract numeric index from 'agent-N' format."""
+        try:
+            return int(agent_id.rsplit("-", 1)[-1])
+        except (ValueError, IndexError):
+            return abs(hash(agent_id))
+
+    def _get_num_partitions(self) -> int:
+        """Get partition count (cached). Falls back to 32 if query fails."""
+        if self._num_partitions is not None:
+            return self._num_partitions
+        try:
+            from azure.eventhub import EventHubConsumerClient  # type: ignore
+            c = EventHubConsumerClient.from_connection_string(
+                self._connection_string,
+                consumer_group=self._consumer_group,
+                eventhub_name=self._eventhub_name,
+            )
+            pids = c.get_partition_ids()
+            c.close()
+            self._num_partitions = len(pids)
+        except Exception:
+            self._num_partitions = 32
+        return self._num_partitions
+
+    def _target_partition(self, agent_id: str) -> str:
+        """Deterministic partition for an agent: agent_index % num_partitions."""
+        return str(self._agent_index(agent_id) % self._get_num_partitions())
 
     # -- Background receive loop ---------------------------------------------
 
@@ -622,10 +659,23 @@ class EventHubsShardTransport:
             eventhub_name=self._eventhub_name,
         )
         try:
-            # Use @latest to skip stale events from previous deployments.
-            # All agents start before the first question arrives (eval waits for
-            # AGENT_READY), so no live events are missed.
-            consumer.receive(on_event=_on_event, starting_position="@latest")
+            # Use explicit partition_id to avoid consumer-group load-balancer
+            # competition. When multiple agents share a consumer group, the
+            # load balancer distributes partitions, so each agent only sees
+            # events on its assigned partitions. By specifying partition_id,
+            # each agent reads exactly its own partition deterministically.
+            my_partition = self._target_partition(self._agent_id)
+            logger.info(
+                "Agent %s receiving from partition %s (cg=%s)",
+                self._agent_id,
+                my_partition,
+                self._consumer_group,
+            )
+            consumer.receive(
+                on_event=_on_event,
+                partition_id=my_partition,
+                starting_position="@latest",
+            )
         except Exception:
             if not self._shutdown.is_set():
                 logger.warning("EH consumer exited for %s", self._agent_id, exc_info=True)
@@ -657,6 +707,10 @@ class EventHubsShardTransport:
 
         Reuses a single EventHubProducerClient across all publish calls to
         avoid ~1.5s AMQP connection setup per publish. Thread-safe via lock.
+
+        When ``partition_key`` is an agent name (e.g. "agent-5"), the event is
+        routed to that agent's deterministic partition_id instead of relying on
+        Event Hubs' partition_key hash (which is opaque and unpredictable).
         """
         import json
 
@@ -672,6 +726,11 @@ class EventHubsShardTransport:
         event_type = payload.get("event_type", "?")
         target = (payload.get("payload") or {}).get("target_agent", "")
 
+        # Convert agent-name partition_key to explicit partition_id
+        route_partition_id: str | None = None
+        if partition_key and partition_key.startswith("agent-"):
+            route_partition_id = self._target_partition(partition_key)
+
         with self._producer_lock:
             try:
                 if self._producer is None:
@@ -679,17 +738,20 @@ class EventHubsShardTransport:
                         self._connection_string, eventhub_name=self._eventhub_name
                     )
                 kwargs: dict[str, Any] = {}
-                if partition_key:
+                if route_partition_id is not None:
+                    kwargs["partition_id"] = route_partition_id
+                elif partition_key:
                     kwargs["partition_key"] = partition_key
                 batch = self._producer.create_batch(**kwargs)
                 batch.add(EventData(json.dumps(payload)))
                 self._producer.send_batch(batch)
                 logger.info(
-                    "Agent %s published %s → %s (hub=%s)",
+                    "Agent %s published %s → %s (hub=%s, partition=%s)",
                     self._agent_id,
                     event_type,
                     target or partition_key or "broadcast",
                     self._eventhub_name,
+                    route_partition_id or "key:" + (partition_key or "none"),
                 )
             except Exception:
                 logger.warning(
