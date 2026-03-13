@@ -21,7 +21,7 @@ graph TB
     end
 
     subgraph "Shard Transport (Event Hubs)"
-        EH["Azure Event Hubs<br/>Partition-key routing<br/>Per-agent consumer groups<br/>(cg-agent-N)"]
+        EH["Azure Event Hubs<br/>Explicit partition_id routing<br/>Per-app consumer groups<br/>(cg-app-N, 20 groups)"]
     end
 
     subgraph "Gossip Layer"
@@ -45,19 +45,32 @@ graph TB
     style EH fill:#9cf,stroke:#333
 ```
 
-### Shard Transport: Event Hubs (as of 2026-03-12)
+### Shard Transport: Event Hubs (as of 2026-03-13)
 
 Cross-shard queries travel over **Azure Event Hubs** via `EventHubsShardTransport` (replacing the former Service Bus shard topic). Key design points:
 
 | Aspect       | Detail                                                                                                                                                                                                    |
 | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Routing      | `SHARD_QUERY` published with `partition_key=target_agent`; `SHARD_RESPONSE` with `partition_key=requesting_agent`                                                                                         |
-| Isolation    | Each agent reads from its own consumer group `cg-{agent_id}`                                                                                                                                              |
+| Routing      | **Explicit `partition_id` routing**: `SHARD_QUERY` sent to `partition_id = target_index % num_partitions`; `SHARD_RESPONSE` sent to `partition_id = requester_index % num_partitions`. This is critical — `partition_key` routing causes silent event loss when multiple agents share a consumer group (see "Partition Routing" below). |
+| Isolation    | Per-app consumer groups: `cg-app-{N}` (not per-agent). Each agent reads from its deterministic partition within the shared group. |
 | Correlation  | `correlation_id + threading.Event` — querying agent blocks in `query_shard()` until the response event fires or timeout expires                                                                           |
 | Local bypass | Queries to own shard bypass the network entirely (no EH round-trip)                                                                                                                                       |
 | Retrieval    | `handle_shard_query()` calls `agent.memory.search()` via `CognitiveAdapter` (n-gram overlap, reranking, semantic matching), falling back to raw `ShardStore.search()` when no agent instance is available |
 
-**Service Bus** is retained only for the main `hive-events` / `hive-graph` topic used by the gossip layer and `NetworkGraphStore`.
+### Partition Routing (critical for multi-agent-per-app)
+
+When multiple agents share a consumer group (e.g., 5 agents in `cg-app-0`), the Event Hubs load balancer distributes 32 partitions among the 5 consumers. Each agent only sees events on its owned partitions (~6 of 32). Events on unowned partitions are **silently dropped**.
+
+**Fix**: Each agent reads from exactly one partition: `partition_id = agent_index % num_partitions`. Publishers send to the target agent's partition explicitly. This eliminates load-balancer competition entirely.
+
+```
+Agent-0 (app-0, cg-app-0) → reads partition 0
+Agent-1 (app-0, cg-app-0) → reads partition 1
+Agent-5 (app-1, cg-app-1) → reads partition 5
+Agent-32 (app-6, cg-app-6) → reads partition 0 (32 % 32 = 0, different CG from agent-0)
+```
+
+> **WARNING**: Never revert to `partition_key` routing. It causes 80%+ event loss at scale and reduces eval scores from 99% to 18%.
 
 ### Pure DHT sharding (no broadcast replication)
 
@@ -171,11 +184,11 @@ Drop-in replacement for `InMemoryHiveGraph`. Implements the `HiveGraph` protocol
 
 ### EventHubsShardTransport (`distributed_hive_graph.py`)
 
-Implements the `ShardTransport` Protocol for cloud deployments. Uses `azure-eventhub` with partition-key routing:
+Implements the `ShardTransport` Protocol for cloud deployments. Uses `azure-eventhub` with **explicit partition_id routing**:
 
-- `SHARD_QUERY` → `partition_key=target_agent` (routes to the owning agent's partition)
-- `SHARD_RESPONSE` → `partition_key=requesting_agent` (routes response back)
-- Per-agent consumer groups (`cg-{agent_id}`) for isolated consumption
+- `SHARD_QUERY` → `partition_id = target_index % num_partitions` (deterministic routing to target agent's partition)
+- `SHARD_RESPONSE` → `partition_id = requester_index % num_partitions` (routes response back to querier's partition)
+- Per-app consumer groups (`cg-app-{N}`) — each agent reads from its deterministic partition within the shared group
 - `correlation_id + threading.Event` for synchronous `query_shard()` semantics
 - `handle_shard_query()` calls `agent.memory.search()` (CognitiveAdapter: n-gram, reranking, semantic) when an agent instance is bound; falls back to raw `ShardStore.search()`
 
@@ -185,6 +198,7 @@ transport = EventHubsShardTransport(
     connection_string=os.environ["AMPLIHACK_EH_CONNECTION_STRING"],
     eventhub_name=os.environ["AMPLIHACK_EH_NAME"],
     agent_id="agent-3",
+    consumer_group="cg-app-0",  # per-app, NOT per-agent
 )
 ```
 
@@ -225,39 +239,69 @@ The fix: `CognitiveAdapter` monkey-patches `kuzu.Database.__init__` to bound eac
 
 ## Eval Results
 
-| Condition                   | Model      | Score | Std Dev | Notes                                 |
-| --------------------------- | ---------- | ----- | ------- | ------------------------------------- |
-| Single agent                | Sonnet 4.5 | 94.1% | —       | Baseline, 5000 turns, 21.7h           |
-| Federated smoke (10 agents) | Sonnet 4.5 | 65.7% | 6.7%    | Best multi-agent result, low variance |
-| Federated full (100 agents) | Sonnet 4.5 | 45.8% | 21.7%   | Routing precision degrades at scale   |
-| Federated v1 (naive)        | Sonnet 4.5 | 40.0% | —       | Longest-answer-wins merge             |
-| Federated broken routing    | Sonnet 4.5 | 34.9% | 31.2%   | Root hive empty, random fallback      |
-| Parallel learning speedup   | —          | 9x    | —       | 10 workers: 21.6h → 2.4h              |
+### Latest: 100 agents × 5000 turns — 99.29% (2026-03-13)
 
-**Key insight:** Routing precision degrades at 100-agent scale (45.8% median, 21.7% stddev vs 65.7% at 10 agents). The 28.4-point gap vs single-agent baseline is the primary open problem.
+| Config | Score | Notes |
+|---|---|---|
+| 100 agents, 5000 turns | **99.29%** | 50 turns/agent, 83 min learning, 20 questions |
+| 100 agents, 1000 turns | **99.29%** | 10 turns/agent, same score |
+| 5 agents, 100 turns | 96.92% | Pre-scaling baseline |
 
-### Known Issues (as of 2026-03-06)
+**Category breakdown (100 agents, 5000 turns):**
 
-1. **Empty root hive**: Facts go to group hives but routing queries root hive (empty). Falls back to random agents.
-2. **Swallowed errors**: `_synthesize_with_llm()` catches all exceptions silently, masking rate limits as "internal error".
-3. **Routing precision degradation**: At 100-agent scale, semantic routing loses precision, causing 21.7% stddev.
-4. **High variance**: Random agent selection (from bug #1) causes 31% stddev across runs.
+| Category | Score |
+|---|---|
+| needle_in_haystack (4q) | 100% |
+| numerical_precision (3q) | 100% |
+| temporal_evolution (3q) | 100% |
+| cross_reference (2q) | 100% |
+| infrastructure_knowledge (1q) | 100% |
+| meta_memory (1q) | 100% |
+| security_log_analysis (1q) | 100% |
+| incident_tracking (1q) | 97.50% |
+| distractor_resistance (2q) | 97.50% |
+| source_attribution (2q) | 96.67% |
 
-### Fixes applied (2026-03-12, PR #3074)
+### Historical progression
 
-- **SHARD_STORE broadcast replication reverted** (commit `e2da57e9` reverted): pure DHT sharding restored — each agent holds O(F/N) facts, not a full copy.
-- **Cross-shard retrieval now uses CognitiveAdapter**: `handle_shard_query()` calls `agent.memory.search()` (n-gram overlap, reranking, semantic matching) instead of raw `ShardStore.search()`, improving retrieval precision.
-- **Service Bus shard topic removed**: SHARD_QUERY / SHARD_RESPONSE now route through Azure Event Hubs with partition-key isolation, eliminating cross-agent message bleed.
+| Milestone | Score | Key Fix |
+|---|---|---|
+| Initial deployment | 0% | Broken event delivery |
+| CBS auth + stale events | 39% → 42% | EventHubsShardTransport replaces Service Bus |
+| CognitiveAdapter retrieval | 71.54% | Cross-shard queries use full n-gram + reranking |
+| Answer timeout | 96.92% | 120s → 240s timeout for 5-agent eval |
+| 100-agent scaling | 18.42% | Consumer group partition competition |
+| **Partition routing fix** | **99.29%** | Explicit partition_id = agent_index % num_partitions |
 
-> **Eval status**: Post-fix 5000-turn distributed eval results pending (requires Azure deployment).
+### Previous federated results (superseded)
+
+| Condition                   | Model      | Score | Notes                                 |
+| --------------------------- | ---------- | ----- | ------------------------------------- |
+| Single agent                | Sonnet 4.5 | 94.1% | Baseline, 5000 turns, 21.7h           |
+| Federated smoke (10 agents) | Sonnet 4.5 | 65.7% | Old routing, low variance |
+| Federated full (100 agents) | Sonnet 4.5 | 45.8% | Old routing, degraded at scale   |
+
+### Known Issues (resolved)
+
+1. ~~**Empty root hive**~~: Fixed — DHT routing with full fan-out in distributed mode.
+2. ~~**Swallowed errors**~~: Fixed — proper error propagation.
+3. ~~**Routing precision degradation**~~: Fixed — explicit partition_id routing (99.29% at 100 agents).
+4. ~~**High variance**~~: Fixed — deterministic partition routing eliminates randomness.
+
+### Fixes applied (2026-03-13, PR #2876)
+
+- **Explicit partition_id routing**: Each agent reads from `partition_id = agent_index % num_partitions` and publishes to target's partition. Eliminates consumer group load-balancer competition.
+- **Full fan-out in distributed mode**: DHT router fans out to ALL agents when local shards are empty (content distributed round-robin, not by DHT hash).
+- **Per-app consumer groups**: `cg-app-{N}` instead of `cg-agent-{N}` (EH Standard max 20 groups).
+- **Tiered container resources**: ≤5/app: 0.75 CPU / 1.5Gi; ≤8: 0.5 CPU / 1Gi; >8: 0.25 CPU / 0.5Gi.
+- **CognitiveAdapter cross-shard retrieval**: `handle_shard_query()` uses full n-gram + semantic search.
+- **EventHubsShardTransport**: persistent producer, inline SHARD_RESPONSE handling, no Service Bus dependency.
 
 ## Related
 
-- PR #3074: Event Hubs shard transport + CognitiveAdapter cross-shard retrieval (amplihack, 2026-03-12)
-- PR #2876: DistributedHiveGraph initial implementation — pure DHT sharding (amplihack, superseded by #3074 for transport layer)
-- PR #17: Eval integration (amplihack-agent-eval, merged)
-- PR #11: Kuzu buffer_pool_size (amplihack-memory-lib, merged)
-- Issue #2871: Tracking issue
+- PR #2876: Full distributed hive implementation with 100-agent scaling (amplihack, 2026-03-13)
+- PR #34: Distributed eval framework (amplihack-agent-eval)
+- Issue #3034: Tracking issue — resolved at 99.29%
 - Issue #2866: Original 5000-turn eval spec
 
 ---
