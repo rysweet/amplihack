@@ -254,7 +254,7 @@ resource containerApps 'Microsoft.App/containerApps@2024-03-01' = [
           }
         ]
         containers: [
-          for agentOffset in range(0, agentsPerApp): {
+          for agentOffset in range(0, min(agentsPerApp, agentCount - appIdx * agentsPerApp)): {
             name: 'agent-${appIdx * agentsPerApp + agentOffset}'
             image: resolvedImage
             resources: {
