@@ -1,0 +1,530 @@
+{
+  "num_turns": 5000,
+  "num_questions": 20,
+  "total_facts_delivered": 764,
+  "learning_time_s": 4864.6,
+  "questioning_time_s": 176.46,
+  "grading_time_s": 14.2,
+  "overall_score": 0.9929,
+  "category_breakdown": [
+    {
+      "category": "cross_reference",
+      "num_questions": 2,
+      "avg_score": 1.0,
+      "min_score": 1.0,
+      "max_score": 1.0,
+      "dimension_averages": {
+        "factual_accuracy": 1.0,
+        "specificity": 1.0
+      }
+    },
+    {
+      "category": "distractor_resistance",
+      "num_questions": 2,
+      "avg_score": 0.975,
+      "min_score": 0.95,
+      "max_score": 1.0,
+      "dimension_averages": {
+        "factual_accuracy": 1.0,
+        "confidence_calibration": 0.9,
+        "specificity": 1.0
+      }
+    },
+    {
+      "category": "incident_tracking",
+      "num_questions": 1,
+      "avg_score": 0.975,
+      "min_score": 0.975,
+      "max_score": 0.975,
+      "dimension_averages": {
+        "factual_accuracy": 1.0,
+        "temporal_awareness": 0.95
+      }
+    },
+    {
+      "category": "infrastructure_knowledge",
+      "num_questions": 1,
+      "avg_score": 1.0,
+      "min_score": 1.0,
+      "max_score": 1.0,
+      "dimension_averages": {
+        "factual_accuracy": 1.0,
+        "specificity": 1.0
+      }
+    },
+    {
+      "category": "meta_memory",
+      "num_questions": 1,
+      "avg_score": 1.0,
+      "min_score": 1.0,
+      "max_score": 1.0,
+      "dimension_averages": {
+        "factual_accuracy": 1.0,
+        "specificity": 1.0
+      }
+    },
+    {
+      "category": "needle_in_haystack",
+      "num_questions": 4,
+      "avg_score": 1.0,
+      "min_score": 1.0,
+      "max_score": 1.0,
+      "dimension_averages": {
+        "factual_accuracy": 1.0,
+        "specificity": 1.0
+      }
+    },
+    {
+      "category": "numerical_precision",
+      "num_questions": 3,
+      "avg_score": 1.0,
+      "min_score": 1.0,
+      "max_score": 1.0,
+      "dimension_averages": {
+        "factual_accuracy": 1.0,
+        "specificity": 1.0
+      }
+    },
+    {
+      "category": "security_log_analysis",
+      "num_questions": 1,
+      "avg_score": 1.0,
+      "min_score": 1.0,
+      "max_score": 1.0,
+      "dimension_averages": {
+        "factual_accuracy": 1.0,
+        "specificity": 1.0
+      }
+    },
+    {
+      "category": "source_attribution",
+      "num_questions": 2,
+      "avg_score": 0.9667,
+      "min_score": 0.95,
+      "max_score": 0.9833,
+      "dimension_averages": {
+        "factual_accuracy": 1.0,
+        "source_attribution": 0.925,
+        "specificity": 1.0
+      }
+    },
+    {
+      "category": "temporal_evolution",
+      "num_questions": 3,
+      "avg_score": 1.0,
+      "min_score": 1.0,
+      "max_score": 1.0,
+      "dimension_averages": {
+        "factual_accuracy": 1.0,
+        "temporal_awareness": 1.0,
+        "specificity": 1.0
+      }
+    }
+  ],
+  "results": [
+    {
+      "question_id": "needle_01",
+      "question_text": "What is Sarah Chen's birthday?",
+      "category": "needle_in_haystack",
+      "expected_answer": "March 15",
+      "actual_answer": "Sarah Chen's birthday is **March 15**.",
+      "overall_score": 1.0,
+      "dimensions": [
+        {
+          "dimension": "factual_accuracy",
+          "score": 1.0,
+          "reasoning": "Matched 2/2 required keywords [median of 3 votes: 1.00, 1.00, 1.00]"
+        },
+        {
+          "dimension": "specificity",
+          "score": 1.0,
+          "reasoning": "Matched 2/2 required keywords [median of 3 votes: 1.00, 1.00, 1.00]"
+        }
+      ]
+    },
+    {
+      "question_id": "needle_02",
+      "question_text": "What allergy does James O'Brien have?",
+      "category": "needle_in_haystack",
+      "expected_answer": "gluten",
+      "actual_answer": "James O'Brien is allergic to **gluten**.",
+      "overall_score": 1.0,
+      "dimensions": [
+        {
+          "dimension": "factual_accuracy",
+          "score": 1.0,
+          "reasoning": "Matched 1/1 required keywords [median of 3 votes: 1.00, 1.00, 1.00]"
+        }
+      ]
+    },
+    {
+      "question_id": "needle_03",
+      "question_text": "What is Fatima Al-Hassan's hobby?",
+      "category": "needle_in_haystack",
+      "expected_answer": "calligraphy",
+      "actual_answer": "Fatima Al-Hassan's hobby is **calligraphy**.",
+      "overall_score": 1.0,
+      "dimensions": [
+        {
+          "dimension": "factual_accuracy",
+          "score": 1.0,
+          "reasoning": "Matched 1/1 required keywords [median of 3 votes: 1.00, 1.00, 1.00]"
+        }
+      ]
+    },
+    {
+      "question_id": "needle_04",
+      "question_text": "What degree does Yuki Tanaka hold?",
+      "category": "needle_in_haystack",
+      "expected_answer": "PhD Statistics from MIT",
+      "actual_answer": "Based on the relevant facts, Yuki Tanaka holds a **PhD in Statistics from MIT (Massachusetts Institute of Technology)**.",
+      "overall_score": 1.0,
+      "dimensions": [
+        {
+          "dimension": "factual_accuracy",
+          "score": 1.0,
+          "reasoning": "Matched 3/3 required keywords [median of 3 votes: 1.00, 1.00, 1.00]"
+        },
+        {
+          "dimension": "specificity",
+          "score": 1.0,
+          "reasoning": "Matched 3/3 required keywords [median of 3 votes: 1.00, 1.00, 1.00]"
+        }
+      ]
+    },
+    {
+      "question_id": "temporal_01",
+      "question_text": "What is the CURRENT deadline for Project Atlas?",
+      "category": "temporal_evolution",
+      "expected_answer": "September 20 (changed from August 3, which was changed from June 15)",
+      "actual_answer": "**The current deadline for Project Atlas is September 20.**\n\nThis is the third and final revised deadline, following two earlier changes: first from June 15, then to August 3, and finally to September 20 (due to a compliance review taking longer than expected).",
+      "overall_score": 1.0,
+      "dimensions": [
+        {
+          "dimension": "factual_accuracy",
+          "score": 1.0,
+          "reasoning": "Matched 2/2 required keywords [median of 3 votes: 1.00, 1.00, 1.00]"
+        },
+        {
+          "dimension": "temporal_awareness",
+          "score": 1.0,
+          "reasoning": "The answer demonstrates excellent temporal awareness by clearly identifying September 20 as the CURRENT deadline while explicitly acknowledging the historical progression (June 15 \u2192 August 3 \u2192 Septemb"
+        }
+      ]
+    },
+    {
+      "question_id": "temporal_02",
+      "question_text": "What was the ORIGINAL deadline for Project Atlas before any changes?",
+      "category": "temporal_evolution",
+      "expected_answer": "June 15",
+      "actual_answer": "The original deadline for Project Atlas was **June 15**.",
+      "overall_score": 1.0,
+      "dimensions": [
+        {
+          "dimension": "factual_accuracy",
+          "score": 1.0,
+          "reasoning": "Matched 2/2 required keywords [median of 3 votes: 1.00, 1.00, 1.00]"
+        },
+        {
+          "dimension": "temporal_awareness",
+          "score": 1.0,
+          "reasoning": "The answer correctly identifies and distinguishes the original deadline (June 15) from any subsequent changes. The use of 'original' in the response directly addresses the temporal distinction request"
+        }
+      ]
+    },
+    {
+      "question_id": "temporal_03",
+      "question_text": "How many times did the Project Atlas deadline change?",
+      "category": "temporal_evolution",
+      "expected_answer": "2 times (June 15 -> August 3 -> September 20)",
+      "actual_answer": "The Project Atlas deadline changed **2 times**:\n\n1. From **June 15** \u2192 **August 3** (first change)\n2. From **August 3** \u2192 **September 20** (second change)\n\nThis resulted in 3 total deadline dates, but 2 actual changes.",
+      "overall_score": 1.0,
+      "dimensions": [
+        {
+          "dimension": "factual_accuracy",
+          "score": 1.0,
+          "reasoning": "Matched 1/1 required keywords [median of 3 votes: 1.00, 1.00, 1.00]"
+        },
+        {
+          "dimension": "temporal_awareness",
+          "score": 1.0,
+          "reasoning": "The answer demonstrates excellent temporal awareness by clearly distinguishing between the sequence of deadlines (3 total dates) and the number of changes (2 transitions). It explicitly clarifies the "
+        },
+        {
+          "dimension": "specificity",
+          "score": 1.0,
+          "reasoning": "Matched 1/1 required keywords [median of 3 votes: 1.00, 1.00, 1.00]"
+        }
+      ]
+    },
+    {
+      "question_id": "numerical_01",
+      "question_text": "What was the server migration cost according to the internal audit?",
+      "category": "numerical_precision",
+      "expected_answer": "$450K",
+      "actual_answer": "The server migration cost according to the internal audit was **$450,000 (USD)**.",
+      "overall_score": 1.0,
+      "dimensions": [
+        {
+          "dimension": "factual_accuracy",
+          "score": 1.0,
+          "reasoning": "Matched 1/1 required keywords; +1 paraphrase bonus [median of 3 votes: 1.00, 1.00, 1.00]"
+        },
+        {
+          "dimension": "specificity",
+          "score": 1.0,
+          "reasoning": "Matched 1/1 required keywords; +1 paraphrase bonus [median of 3 votes: 1.00, 1.00, 1.00]"
+        }
+      ]
+    },
+    {
+      "question_id": "numerical_03",
+      "question_text": "What percentage over the original estimate was the Q2 marketing budget?",
+      "category": "numerical_precision",
+      "expected_answer": "15% (budget was $2.3M vs original estimate of $2.0M)",
+      "actual_answer": "The Q2 marketing budget was **15% over** the original estimate.\n\nUsing the pre-computed result: **(2.3 - 2.0) / 2.0 \u00d7 100 = 15%**\n\nThis means the actual Q2 marketing spend of **$2.3M** exceeded the original estimate of **$2.0M** by **$300,000 (or $0.3M)** \u2014 a 15% overage.",
+      "overall_score": 1.0,
+      "dimensions": [
+        {
+          "dimension": "factual_accuracy",
+          "score": 1.0,
+          "reasoning": "Matched 3/3 required keywords [median of 3 votes: 1.00, 1.00, 1.00]"
+        },
+        {
+          "dimension": "specificity",
+          "score": 1.0,
+          "reasoning": "Matched 3/3 required keywords [median of 3 votes: 1.00, 1.00, 1.00]"
+        }
+      ]
+    },
+    {
+      "question_id": "numerical_04",
+      "question_text": "What is the API response time at p95 and p99, and are both within target?",
+      "category": "numerical_precision",
+      "expected_answer": "p95: 245ms (target <300ms, within target), p99: 890ms (target <1000ms, within target)",
+      "actual_answer": "## API Response Time: p95 and p99\n\n### p95 Response Time\n- **Value:** 245ms\n- **Target threshold:** under 300ms\n- **Status:** \u2705 Within target \u2014 55ms of margin remaining\n\n### p99 Response Time\n- **Value:** 890ms\n- **Target threshold:** under 1000ms\n- **Status:** \u2705 Within target \u2014 110ms of headroom remaining\n\n### Summary\nBoth the p95 (245ms) and p99 (890ms) API response times are within their respective target thresholds. The p95 has a comfortable 55ms margin below the 300ms target, and the p99 ha",
+      "overall_score": 1.0,
+      "dimensions": [
+        {
+          "dimension": "factual_accuracy",
+          "score": 1.0,
+          "reasoning": "Matched 2/2 required keywords [median of 3 votes: 1.00, 1.00, 1.00]"
+        },
+        {
+          "dimension": "specificity",
+          "score": 1.0,
+          "reasoning": "Matched 2/2 required keywords [median of 3 votes: 1.00, 1.00, 1.00]"
+        }
+      ]
+    },
+    {
+      "question_id": "source_01",
+      "question_text": "What does the internal audit say the server migration cost was, versus the vendor invoice?",
+      "category": "source_attribution",
+      "expected_answer": "Internal audit: $450K; Vendor invoice: $387K. The $63K difference was consulting fees billed separately.",
+      "actual_answer": "Based on the facts provided:\n\n- **Internal audit figure:** $450,000\n- **Vendor invoice figure:** $387,000\n\nThe difference between the two is **$63,000**, which corresponds exactly to the consulting fees (billed separately by Accenture). The internal audit total of $450,000 represents the **combined** figure of the vendor invoice ($387,000) plus the consulting fees ($63,000), meaning the internal audit captured the full cost of the migration while the vendor invoice alone excluded the consulting ",
+      "overall_score": 0.95,
+      "dimensions": [
+        {
+          "dimension": "factual_accuracy",
+          "score": 1.0,
+          "reasoning": "Matched 3/3 required keywords [median of 3 votes: 1.00, 1.00, 1.00]"
+        },
+        {
+          "dimension": "source_attribution",
+          "score": 0.9,
+          "reasoning": "The answer correctly identifies and attributes the specific figures to their sources (Internal audit: $450K; Vendor invoice: $387K) and accurately explains the $63K difference as consulting fees. The "
+        }
+      ]
+    },
+    {
+      "question_id": "source_02",
+      "question_text": "What are the different claims about Q3 revenue and who made each claim?",
+      "category": "source_attribution",
+      "expected_answer": "Finance Department: $5.2M (includes deferred revenue); External Auditor: $4.8M (excludes deferred); Board Presentation: $5.0M (rounded, preliminary)",
+      "actual_answer": "## Q3 Revenue Claims\n\nThere are **three different claims** about Q3 revenue, each from a different source:\n\n1. **$4.8M** \u2014 According to the **External Auditor report** (Facts 105, 41). This figure **excludes deferred revenue recognition** (Fact 106).\n\n2. **$5.2M** \u2014 According to the **Finance Department report** (Facts 107, 109, 42). This figure **includes deferred revenue** (Facts 108, 109).\n\n3. **$5.0M** \u2014 According to a **Board Presentation** (Facts 112, 135, 84). This is described as a **rou",
+      "overall_score": 0.9833,
+      "dimensions": [
+        {
+          "dimension": "factual_accuracy",
+          "score": 1.0,
+          "reasoning": "Matched 3/3 required keywords [median of 3 votes: 1.00, 1.00, 1.00]"
+        },
+        {
+          "dimension": "source_attribution",
+          "score": 0.95,
+          "reasoning": "The answer excellently attributes each claim to its specific source with precise citations. It correctly identifies: (1) External Auditor report with fact references (105, 41, 106), (2) Finance Depart"
+        },
+        {
+          "dimension": "specificity",
+          "score": 1.0,
+          "reasoning": "Matched 3/3 required keywords [median of 3 votes: 1.00, 1.00, 1.00]"
+        }
+      ]
+    },
+    {
+      "question_id": "crossref_01",
+      "question_text": "Which project is Sarah Chen currently leading and what award did she receive?",
+      "category": "cross_reference",
+      "expected_answer": "Sarah Chen led Project Atlas to completion and received the Innovation Award. Lars Eriksson now leads the maintenance phase.",
+      "actual_answer": "Based on the facts provided, there is a leadership transition to note:\n\n- **Sarah Chen previously led Project Atlas** (a Cloud migration platform) and received the **Innovation Award** for leading it to completion.\n- **Lars Eriksson now leads** the maintenance phase of Project Atlas, having taken over after Sarah Chen received the Innovation Award.\n\nSo Sarah Chen is no longer actively leading Project Atlas \u2014 Lars Eriksson currently leads its maintenance phase. Sarah Chen's award was the **Innova",
+      "overall_score": 1.0,
+      "dimensions": [
+        {
+          "dimension": "factual_accuracy",
+          "score": 1.0,
+          "reasoning": "Matched 3/3 required keywords [median of 3 votes: 1.00, 1.00, 1.00]"
+        },
+        {
+          "dimension": "specificity",
+          "score": 1.0,
+          "reasoning": "Matched 3/3 required keywords [median of 3 votes: 1.00, 1.00, 1.00]"
+        }
+      ]
+    },
+    {
+      "question_id": "crossref_02",
+      "question_text": "Fatima Al-Hassan moved from one project to research. Who replaced her and on which project?",
+      "category": "cross_reference",
+      "expected_answer": "Fatima Al-Hassan was leading Project Echo. Yuki Tanaka replaced her when Fatima moved to the research division.",
+      "actual_answer": "**Yuki Tanaka** replaced Fatima Al-Hassan on **Project Echo**.\n\nFatima Al-Hassan was the original leader of Project Echo before transitioning to a research role. Yuki Tanaka was subsequently appointed as the new lead of Project Echo, taking over from Fatima Al-Hassan.",
+      "overall_score": 1.0,
+      "dimensions": [
+        {
+          "dimension": "factual_accuracy",
+          "score": 1.0,
+          "reasoning": "Matched 2/2 required keywords [median of 3 votes: 1.00, 1.00, 1.00]"
+        }
+      ]
+    },
+    {
+      "question_id": "distractor_01",
+      "question_text": "What is Priya Patel's allergy? Answer with ONLY the allergy information, ignoring any unrelated facts.",
+      "category": "distractor_resistance",
+      "expected_answer": "Priya Patel has no known allergies (none).",
+      "actual_answer": "Priya Patel has no known allergies.",
+      "overall_score": 0.95,
+      "dimensions": [
+        {
+          "dimension": "factual_accuracy",
+          "score": 1.0,
+          "reasoning": "Matched 1/1 required keywords; +2 paraphrase bonus [median of 3 votes: 1.00, 1.00, 1.00]"
+        },
+        {
+          "dimension": "confidence_calibration",
+          "score": 0.9,
+          "reasoning": "The answer presents the information as a definitive statement without hedging language, which is appropriate given that the expected answer confirms 'no known allergies.' The phrasing 'has no known al"
+        }
+      ]
+    },
+    {
+      "question_id": "distractor_02",
+      "question_text": "What is the sprint velocity? Do not include any random trivia in your answer.",
+      "category": "distractor_resistance",
+      "expected_answer": "47 points (team average over last 6 sprints)",
+      "actual_answer": "The sprint velocity is **47 points**, representing the team average over the last 6 sprints.",
+      "overall_score": 1.0,
+      "dimensions": [
+        {
+          "dimension": "factual_accuracy",
+          "score": 1.0,
+          "reasoning": "Matched 1/1 required keywords [median of 3 votes: 1.00, 1.00, 1.00]"
+        },
+        {
+          "dimension": "specificity",
+          "score": 1.0,
+          "reasoning": "Matched 1/1 required keywords [median of 3 votes: 1.00, 1.00, 1.00]"
+        }
+      ]
+    },
+    {
+      "question_id": "meta_01",
+      "question_text": "How many different projects have I told you about?",
+      "category": "meta_memory",
+      "expected_answer": "5 projects: Atlas, Beacon, Cascade, Delta, and Echo",
+      "actual_answer": "Based on scanning all the facts, I can identify the following distinct projects mentioned:\n\n1. **Project Atlas**\n2. **Project Beacon**\n3. **Project Echo**\n4. **Project Delta**\n5. **Project Cascade**\n\n**Total: 5 projects** have been mentioned.",
+      "overall_score": 1.0,
+      "dimensions": [
+        {
+          "dimension": "factual_accuracy",
+          "score": 1.0,
+          "reasoning": "Matched 6/6 required keywords [median of 3 votes: 1.00, 1.00, 1.00]"
+        },
+        {
+          "dimension": "specificity",
+          "score": 1.0,
+          "reasoning": "Matched 6/6 required keywords [median of 3 votes: 1.00, 1.00, 1.00]"
+        }
+      ]
+    },
+    {
+      "question_id": "seclog_01",
+      "question_text": "How many failed SSH logins came from IP 192.168.1.45?",
+      "category": "security_log_analysis",
+      "expected_answer": "6 failed SSH logins (3 as admin, 3 as root) before a successful login as admin",
+      "actual_answer": "Based on the facts provided, **6 failed SSH logins** came from IP 192.168.1.45.\n\nThis is confirmed by Fact #11, which records the outcome: **\"Action: learn with {'stored': 6}\"** after extracting facts about failed SSH login attempts from 192.168.1.45. The individual timestamps recorded across the facts (14:23:01, 14:23:05, 14:23:08, 14:23:12, 14:23:15, 14:23:18) also corroborate exactly 6 failed login events from that IP.",
+      "overall_score": 1.0,
+      "dimensions": [
+        {
+          "dimension": "factual_accuracy",
+          "score": 1.0,
+          "reasoning": "Matched 2/2 required keywords [median of 3 votes: 1.00, 1.00, 1.00]"
+        },
+        {
+          "dimension": "specificity",
+          "score": 1.0,
+          "reasoning": "Matched 2/2 required keywords [median of 3 votes: 1.00, 1.00, 1.00]"
+        }
+      ]
+    },
+    {
+      "question_id": "incident_01",
+      "question_text": "What is the current status of INC-2024-001?",
+      "category": "incident_tracking",
+      "expected_answer": "Closed. The ransomware attempt was contained, files restored from backup, attacker C2 blocked, and post-incident review completed with MFA enforced for all admin accounts.",
+      "actual_answer": "**The current status of INC-2024-001 is CLOSED.**\n\n**Chronological chain of status changes:**\n1. **Contained** \u2014 initial status as of 2024-03-17 (ransomware attempt on file server)\n2. **Investigating** \u2014 changed from 'contained' to 'investigating'\n3. **Remediated** \u2014 changed from 'investigating' to 'remediated' (encrypted files restored from backup; C2 infrastructure blocked at firewall)\n4. **Closed** \u2014 changed from 'remediated' to 'closed'\n\nA post-incident review was also completed following cl",
+      "overall_score": 0.975,
+      "dimensions": [
+        {
+          "dimension": "factual_accuracy",
+          "score": 1.0,
+          "reasoning": "Matched 1/1 required keywords; +1 paraphrase bonus [median of 3 votes: 1.00, 1.00, 1.00]"
+        },
+        {
+          "dimension": "temporal_awareness",
+          "score": 0.95,
+          "reasoning": "Excellent distinction between current status (CLOSED) and historical progression. The chronological chain clearly shows the temporal sequence of status changes from 2024-03-17 through final closure. C"
+        }
+      ]
+    },
+    {
+      "question_id": "infra_01",
+      "question_text": "Which subnet hosts the production Kubernetes cluster?",
+      "category": "infrastructure_knowledge",
+      "expected_answer": "The k8s-prod cluster (v1.29, 12 nodes) runs in the prod-app subnet (10.0.2.0/24)",
+      "actual_answer": "The production Kubernetes cluster ('k8s-prod') runs in the subnet named **'prod-app'** with IP range **10.0.2.0/24**.",
+      "overall_score": 1.0,
+      "dimensions": [
+        {
+          "dimension": "factual_accuracy",
+          "score": 1.0,
+          "reasoning": "Matched 3/3 required keywords [median of 3 votes: 1.00, 1.00, 1.00]"
+        },
+        {
+          "dimension": "specificity",
+          "score": 1.0,
+          "reasoning": "Matched 3/3 required keywords [median of 3 votes: 1.00, 1.00, 1.00]"
+        }
+      ]
+    }
+  ],
+  "memory_stats": {
+    "adapter": "remote",
+    "learn_count": 5000,
+    "question_count": 20,
+    "agent_count": 100
+  },
+  "eval_type": "distributed",
+  "agent_count": 100,
+  "input_hub": "hive-events-amplihive100"
+}
