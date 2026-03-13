@@ -1526,6 +1526,9 @@ def main(argv: list[str] | None = None) -> int:
         if getattr(args, "append", None):
             return handle_append_instruction(args)
 
+        # Set agent binary env var for recipe runner and sub-processes
+        os.environ["AMPLIHACK_AGENT_BINARY"] = "claude"
+
         # Claude is an alias for launch
         if is_uvx_deployment():
             claude_args = add_plugin_args_for_uvx(claude_args)
@@ -1541,6 +1544,9 @@ def main(argv: list[str] | None = None) -> int:
         # Handle append mode FIRST (before any other initialization)
         if getattr(args, "append", None):
             return handle_append_instruction(args)
+
+        # Set agent binary env var for recipe runner and sub-processes
+        os.environ["AMPLIHACK_AGENT_BINARY"] = "claude"  # RustyClawd uses claude binary
 
         # Shared startup (nesting, staging, deps, power-steering)
         _common_launcher_startup(args)
@@ -1567,6 +1573,9 @@ def main(argv: list[str] | None = None) -> int:
         if getattr(args, "append", None):
             return handle_append_instruction(args)
 
+        # Set agent binary env var for recipe runner and sub-processes
+        os.environ["AMPLIHACK_AGENT_BINARY"] = "copilot"
+
         # Shared startup (nesting, staging, deps, power-steering)
         _common_launcher_startup(args)
 
@@ -1590,6 +1599,9 @@ def main(argv: list[str] | None = None) -> int:
         if getattr(args, "append", None):
             return handle_append_instruction(args)
 
+        # Set agent binary env var for recipe runner and sub-processes
+        os.environ["AMPLIHACK_AGENT_BINARY"] = "codex"
+
         # Shared startup (nesting, staging, deps, power-steering)
         _common_launcher_startup(args)
 
@@ -1612,6 +1624,9 @@ def main(argv: list[str] | None = None) -> int:
         # Early exit: append mode
         if getattr(args, "append", None):
             return handle_append_instruction(args)
+
+        # Set agent binary env var for recipe runner and sub-processes
+        os.environ["AMPLIHACK_AGENT_BINARY"] = "claude"  # amplifier uses claude as underlying binary
 
         # Shared startup (nesting, staging, deps, power-steering)
         _common_launcher_startup(args)

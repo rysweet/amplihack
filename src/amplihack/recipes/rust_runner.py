@@ -240,6 +240,11 @@ def _build_rust_command(
     if progress:
         cmd.append("--progress")
 
+    # Forward active agent binary so the Rust runner spawns the correct agent
+    agent_binary = os.environ.get("AMPLIHACK_AGENT_BINARY")
+    if agent_binary:
+        cmd.extend(["--agent-binary", agent_binary])
+
     if recipe_dirs:
         for d in recipe_dirs:
             cmd.extend(["-R", d])
