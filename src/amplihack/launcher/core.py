@@ -785,9 +785,10 @@ class ClaudeLauncher:
             replace_in_hooks(settings["hooks"])
 
             if hooks_modified:
-                # Write back with absolute paths
-                with open(settings_file, "w") as f:
-                    json.dump(settings, f, indent=2)
+                # Write back with absolute paths (atomic to prevent data loss)
+                from ..settings import write_json_atomic
+
+                write_json_atomic(str(settings_file), settings)
                 print(f"✓ Fixed hook paths in {settings_file.relative_to(target_dir)}")
 
             return True
