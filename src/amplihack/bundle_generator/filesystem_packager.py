@@ -2,8 +2,10 @@
 
 import json
 import logging
+import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 from .documentation_generator import generate_instructions
@@ -67,6 +69,16 @@ class FilesystemPackager:
             "/var/folders/",  # macOS temp
             "/private/var/folders/",  # macOS temp (canonical)
         ]
+
+        # Add Windows temp directory patterns
+        if sys.platform == "win32":
+            for env_var in ("TEMP", "TMP", "LOCALAPPDATA"):
+                env_val = os.environ.get(env_var)
+                if env_val:
+                    allowed_temp_patterns.append(env_val.replace("\\", "/") + "/")
+                    allowed_temp_patterns.append(env_val + "\\")
+            allowed_temp_patterns.append(tempfile.gettempdir().replace("\\", "/") + "/")
+            allowed_temp_patterns.append(tempfile.gettempdir() + "\\")
 
         resolved_str = str(resolved)
         is_temp_dir = any(resolved_str.startswith(pattern) for pattern in allowed_temp_patterns)

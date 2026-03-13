@@ -95,8 +95,7 @@ class DockerManager:
             "--cpus",
             "2",  # Limit CPU to 2 cores
             # Run as current user for proper permissions
-            "--user",
-            f"{os.getuid()}:{os.getgid()}",
+            *(["--user", f"{os.getuid()}:{os.getgid()}"] if hasattr(os, "getuid") else []),
             # Mount workspace
             "-v",
             f"{work_dir}:/workspace",

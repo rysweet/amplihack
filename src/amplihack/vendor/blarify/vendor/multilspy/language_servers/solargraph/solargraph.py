@@ -10,6 +10,7 @@ import os
 import pathlib
 import stat
 import subprocess
+import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -108,7 +109,8 @@ class Solargraph(LanguageServer):
                 raise RuntimeError(f"Solargraph executable not found at {executeable_path}")
 
             # Ensure the executable has the right permissions
-            os.chmod(executeable_path, os.stat(executeable_path).st_mode | stat.S_IEXEC)
+            if sys.platform != "win32":
+                os.chmod(executeable_path, os.stat(executeable_path).st_mode | stat.S_IEXEC)
 
             return executeable_path
         except subprocess.CalledProcessError:

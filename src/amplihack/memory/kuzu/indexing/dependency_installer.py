@@ -427,7 +427,8 @@ class DependencyInstaller:
 exec dotnet {dest_dir / "ScipDotnet.dll"} "$@"
 """
                     )
-                    wrapper_script.chmod(0o755)
+                    if sys.platform != "win32":
+                        wrapper_script.chmod(0o755)
 
                     self._log(f"✅ Built and installed scip-dotnet to {wrapper_script}")
 
@@ -511,7 +512,8 @@ exec dotnet {dest_dir / "ScipDotnet.dll"} "$@"
                 return results
 
             # Make executable
-            scip_clang_path.chmod(0o755)
+            if sys.platform != "win32":
+                scip_clang_path.chmod(0o755)
 
             self._log("✅ Downloaded and installed scip-clang v0.3.2")
 

@@ -83,6 +83,8 @@ def _target_triple() -> str:
         suffix = "unknown-linux-gnu"
     elif sys.platform == "darwin":
         suffix = "apple-darwin"
+    elif sys.platform == "win32":
+        suffix = "pc-windows-msvc"
     else:
         raise RuntimeError(f"Unsupported platform for Rust trial helper: {sys.platform}")
 
@@ -251,9 +253,7 @@ def build_trial_env(trial_home: Path) -> dict[str, str]:
     return env
 
 
-def _ensure_trial_copilot_config(
-    trial_home: Path, source_home: Path | None = None
-) -> Path:
+def _ensure_trial_copilot_config(trial_home: Path, source_home: Path | None = None) -> Path:
     """Ensure the isolated trial home has a visible Copilot config file.
 
     Copilot CLI interactive startup can hang with no visible terminal output when
@@ -276,7 +276,9 @@ def _ensure_trial_copilot_config(
     return config_path
 
 
-def ensure_trial_dependencies(rust_args: Sequence[str], trial_home: Path, env: dict[str, str]) -> None:
+def ensure_trial_dependencies(
+    rust_args: Sequence[str], trial_home: Path, env: dict[str, str]
+) -> None:
     """Install subcommand-specific dependencies inside the isolated trial home."""
     if not rust_args or rust_args[0] != "copilot":
         return
