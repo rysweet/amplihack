@@ -1,6 +1,7 @@
 """Generate repackaging scripts for agent bundles."""
 
 import stat
+import sys
 from pathlib import Path
 
 from .models import AgentBundle
@@ -618,10 +619,11 @@ def make_executable(script_path: Path) -> None:
     if not script_path.exists():
         raise FileNotFoundError(f"Script not found: {script_path}")
 
-    # Add executable permission for owner, group, and others
-    current_permissions = script_path.stat().st_mode
-    new_permissions = current_permissions | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
-    script_path.chmod(new_permissions)
+    # Add executable permission for owner, group, and others (Unix only)
+    if sys.platform != "win32":
+        current_permissions = script_path.stat().st_mode
+        new_permissions = current_permissions | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
+        script_path.chmod(new_permissions)
 
 
 def sanitize_bundle_name(name: str) -> str:

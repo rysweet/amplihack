@@ -24,6 +24,7 @@ so missing setuptools import at runtime is expected and not an error.
 import os
 import shutil
 import stat
+import sys
 from pathlib import Path
 
 from setuptools import build_meta as _orig
@@ -157,8 +158,9 @@ class _CustomBuildBackend:
             target = bin_dest / binary_name
             print(f"Copying Rust binary {source} -> {target}")
             shutil.copy2(source, target)
-            current_mode = target.stat().st_mode
-            target.chmod(current_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+            if sys.platform != "win32":
+                current_mode = target.stat().st_mode
+                target.chmod(current_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
             staged += 1
 
         if staged == 0:

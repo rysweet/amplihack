@@ -2,11 +2,11 @@ import json
 import logging
 import os
 import pathlib
-import pwd
 import shutil
 import stat
 import shlex
 import subprocess
+import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -55,29 +55,34 @@ class Intelephense(LanguageServer):
 
         if not os.path.exists(php_ls_dir):
             os.makedirs(php_ls_dir, exist_ok=True)
+            run_kwargs: dict = {
+                "shell": False,
+                "check": True,
+                "cwd": php_ls_dir,
+                "stdout": subprocess.DEVNULL,
+                "stderr": subprocess.DEVNULL,
+            }
+            if hasattr(os, "getuid"):
+                import pwd
+                run_kwargs["user"] = pwd.getpwuid(os.getuid()).pw_name
             for dependency in runtime_dependencies:
-                user = pwd.getpwuid(os.getuid()).pw_name
                 subprocess.run(
                     shlex.split(dependency["command"]),
-                    shell=False,
-                    check=True,
-                    user=user,
-                    cwd=php_ls_dir,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
+                    **run_kwargs,
                 )
         intelephense_executable_path = os.path.join(
             php_ls_dir, "node_modules", ".bin", "intelephense"
         )
 
         assert os.path.exists(intelephense_executable_path)
-        os.chmod(
-            intelephense_executable_path,
-            os.stat(intelephense_executable_path).st_mode
-            | stat.S_IXUSR
-            | stat.S_IXGRP
-            | stat.S_IXOTH,
-        )
+        if sys.platform != "win32":
+            os.chmod(
+                intelephense_executable_path,
+                os.stat(intelephense_executable_path).st_mode
+                | stat.S_IXUSR
+                | stat.S_IXGRP
+                | stat.S_IXOTH,
+            )
 
         return f"{intelephense_executable_path} --stdio"
 
