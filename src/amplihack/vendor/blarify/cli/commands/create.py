@@ -5,6 +5,7 @@ import json
 import os
 import secrets
 import string
+import sys
 import time
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
@@ -55,7 +56,8 @@ def store_neo4j_credentials(creds: dict[str, str]) -> None:
     creds_file.parent.mkdir(exist_ok=True)
     with open(creds_file, "w") as f:
         json.dump(creds, f, indent=2)
-    creds_file.chmod(0o600)
+    if sys.platform != "win32":
+        creds_file.chmod(0o600)
 
 
 def display_neo4j_connection_info(
