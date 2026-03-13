@@ -99,8 +99,9 @@ def remove_hooks_from_settings():
 
     if removed_count > 0:
         try:
-            with open(settings_path, "w", encoding="utf-8") as f:
-                json.dump(settings, f, indent=2)
+            from .settings import write_json_atomic
+
+            write_json_atomic(str(settings_path), settings)
         except OSError as e:
             print(f"  ⚠️  Could not write settings.json: {e}")
             return 0
