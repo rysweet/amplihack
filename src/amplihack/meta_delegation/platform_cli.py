@@ -294,7 +294,7 @@ Focus on delivering working code that meets the stated requirements.""",
         prompt = self.format_prompt(goal, persona, kwargs.get("context", ""))
 
         # Build command - use amplihack with the active agent binary
-        agent_binary = os.environ.get("AMPLIHACK_AGENT_BINARY", "claude")
+        agent_binary = os.environ.get("AMPLIHACK_AGENT_BINARY") or "claude"
         command = ["amplihack", agent_binary, "--", "-p", prompt]
 
         # Add extra arguments if provided

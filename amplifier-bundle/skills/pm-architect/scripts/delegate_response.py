@@ -101,7 +101,7 @@ def run_auto_mode_delegation(
     """
     try:
         # Run amplihack auto mode with the active agent binary
-        agent_binary = os.environ.get("AMPLIHACK_AGENT_BINARY", "claude")
+        agent_binary = os.environ.get("AMPLIHACK_AGENT_BINARY") or "claude"
         cmd = ["amplihack", agent_binary, "--auto", "--max-turns", str(max_turns), "--", "-p", prompt]
 
         result = subprocess.run(

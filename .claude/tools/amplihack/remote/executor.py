@@ -230,7 +230,7 @@ fi
 PROMPT=$(echo '{encoded_prompt}' | base64 -d)
 
 # Run amplihack command
-amplihack claude --{command} --max-turns {max_turns} -- -p "$PROMPT"
+amplihack ${{AMPLIHACK_AGENT_BINARY:-claude}} --{command} --max-turns {max_turns} -- -p "$PROMPT"
 """
 
         # Execute with timeout
@@ -540,7 +540,7 @@ source ~/.amplihack-venv/bin/activate
 export ANTHROPIC_API_KEY=$(echo '{encoded_api_key}' | base64 -d)
 export NODE_OPTIONS='--max-old-space-size=32768'
 PROMPT=$(echo '{encoded_prompt}' | base64 -d)
-exec amplihack claude --{command} --max-turns {max_turns} -- -p "$PROMPT"
+exec amplihack ${{AMPLIHACK_AGENT_BINARY:-claude}} --{command} --max-turns {max_turns} -- -p "$PROMPT"
 AMPLIHACK_RUN_EOF
 chmod +x "$SCRIPT"
 
