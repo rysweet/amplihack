@@ -227,14 +227,23 @@ def test_command(args):
         logger.warning("No test files found in bundle")
         test_results["skipped"] = len(manifest["agents"])
     else:
-        # Run pytest on the tests directory
+        # Run pytest on the tests directory.
+        # Pass AMPLIHACK_SKIP_KUZU_TESTS=1 so that kuzu-dependent tests
+        # (which require a running Kuzu database or cmake build toolchain)
+        # are excluded from collection.  This prevents hung pytest invocations
+        # in environments where Kuzu is not installed.
         try:
+            import os as _os
+
+            _pytest_env = dict(_os.environ)
+            _pytest_env["AMPLIHACK_SKIP_KUZU_TESTS"] = "1"
             result = subprocess.run(
                 ["pytest", str(tests_dir), "-v", "--tb=short"],
                 check=False,
                 capture_output=True,
                 text=True,
                 timeout=60,
+                env=_pytest_env,
             )
 
             # Parse pytest output for results
