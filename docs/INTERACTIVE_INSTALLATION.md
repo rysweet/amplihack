@@ -23,6 +23,8 @@ The interactive installation feature extends the prerequisite checking system to
 - **Audit Logging**: All attempts logged to `~/.amplihack/.claude/runtime/logs/installation_audit.jsonl`
 - **TTY Detection**: Prevents installation in non-interactive environments
 - **CI Detection**: Automatically skips prompts in CI/CD environments
+- **`AMPLIHACK_NONINTERACTIVE` env var**: Set to `1` to explicitly disable all prompts
+  (see [Environment Variables](ENVIRONMENT_VARIABLES.md#amplihack_noninteractive))
 
 ### 3. Edge Case Handling
 
@@ -420,3 +422,5 @@ Potential improvements for future iterations:
 - **Tests**: `tests/test_interactive_installer.py`, `tests/test_prerequisites.py`
 - **Example**: `examples/interactive_install_demo.py`
 - **Audit Log**: `~/.claude/runtime/logs/installation_audit.jsonl`
+- **Environment Variables**: [ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md) — full
+  reference for `AMPLIHACK_NONINTERACTIVE`, `AMPLIHACK_AUTO_INSTALL`, and related vars
