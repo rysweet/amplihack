@@ -127,13 +127,13 @@ class GoalSeekingAgent:
         try:
             memory = self._learning_agent.memory
             if hasattr(memory, "search"):
-                raw = memory.search(self._current_input[:200], limit=5)
+                raw = memory.search(self._current_input[:200], limit=15)
                 facts = [
                     r.get("outcome", r.get("fact", str(r))) if isinstance(r, dict) else str(r)
                     for r in (raw or [])
                 ]
             elif hasattr(memory, "search_facts"):
-                raw = memory.search_facts(self._current_input[:200], limit=5)
+                raw = memory.search_facts(self._current_input[:200], limit=15)
                 facts = [
                     r.get("outcome", r.get("fact", str(r))) if isinstance(r, dict) else str(r)
                     for r in (raw or [])

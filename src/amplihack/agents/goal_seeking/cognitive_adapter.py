@@ -483,11 +483,18 @@ class CognitiveAdapter:
 
         return local_results
 
-    def get_all_facts(self, limit: int = 50) -> list[dict[str, Any]]:
+    def get_all_facts(self, limit: int = 50, query: str = "") -> list[dict[str, Any]]:
         """Retrieve all facts without keyword filtering.
 
         When a hive_store is connected, returns facts from both local
         memory and the shared hive, deduplicated by content.
+
+        Args:
+            limit: Maximum results to return.
+            query: Optional question text. When provided and hive is a
+                distributed graph, uses targeted ``_search_hive(query)``
+                instead of ``_get_all_hive_facts()`` (which sends an
+                empty-query ``query_facts("")`` that remote shards reject).
         """
         if self._cognitive:
             results = self.memory.get_all_facts(limit=limit)
@@ -499,7 +506,13 @@ class CognitiveAdapter:
         if self._hive_store is None:
             return local_results
 
-        hive_results = self._get_all_hive_facts(limit=limit)
+        if query and query.strip():
+            # Targeted hive search — works with DistributedHiveGraph where
+            # empty-query get_all_hive_facts returns nothing (remote shards
+            # reject SHARD_QUERY with empty query).
+            hive_results = self._search_hive(query.strip(), limit=limit)
+        else:
+            hive_results = self._get_all_hive_facts(limit=limit)
         return self._merge_results(local_results, hive_results, limit)
 
     @staticmethod
