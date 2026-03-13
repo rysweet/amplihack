@@ -297,7 +297,7 @@ class ParallelOrchestrator:
             export AMPLIHACK_SESSION_DEPTH={_safe_depth}
             export AMPLIHACK_MAX_DEPTH={_safe_max_depth}
             export AMPLIHACK_MAX_SESSIONS={_safe_max_sessions}
-            amplihack claude --subprocess-safe -- -p "@TASK.md Execute task autonomously following DEFAULT_WORKFLOW.md. NO QUESTIONS. Work through all steps. Create PR when complete."
+            amplihack ${{AMPLIHACK_AGENT_BINARY:-claude}} --subprocess-safe -- -p "@TASK.md Execute task autonomously following DEFAULT_WORKFLOW.md. NO QUESTIONS. Work through all steps. Create PR when complete."
             """)
         )
         run_sh.chmod(0o755)

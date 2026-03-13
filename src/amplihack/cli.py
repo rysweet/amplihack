@@ -523,15 +523,13 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
-    # --version flag: argparse action='version' exits 0 and prints the version string.
-    # This is distinct from the `version` subcommand below; flags and positional
-    # subcommands share no namespace, so there is no conflict.
     from amplihack import __version__  # local import avoids circular dependency at module load
 
     parser.add_argument(
         "--version",
         action="version",
         version=f"amplihack {__version__}",
+        help="Show amplihack version and exit",
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
@@ -1526,6 +1524,9 @@ def main(argv: list[str] | None = None) -> int:
         if getattr(args, "append", None):
             return handle_append_instruction(args)
 
+        # Set agent binary env var for recipe runner and sub-processes
+        os.environ["AMPLIHACK_AGENT_BINARY"] = "claude"
+
         # Claude is an alias for launch
         if is_uvx_deployment():
             claude_args = add_plugin_args_for_uvx(claude_args)
@@ -1541,6 +1542,9 @@ def main(argv: list[str] | None = None) -> int:
         # Handle append mode FIRST (before any other initialization)
         if getattr(args, "append", None):
             return handle_append_instruction(args)
+
+        # Set agent binary env var for recipe runner and sub-processes
+        os.environ["AMPLIHACK_AGENT_BINARY"] = "claude"  # RustyClawd uses claude binary
 
         # Shared startup (nesting, staging, deps, power-steering)
         _common_launcher_startup(args)
@@ -1567,6 +1571,9 @@ def main(argv: list[str] | None = None) -> int:
         if getattr(args, "append", None):
             return handle_append_instruction(args)
 
+        # Set agent binary env var for recipe runner and sub-processes
+        os.environ["AMPLIHACK_AGENT_BINARY"] = "copilot"
+
         # Shared startup (nesting, staging, deps, power-steering)
         _common_launcher_startup(args)
 
@@ -1590,6 +1597,9 @@ def main(argv: list[str] | None = None) -> int:
         if getattr(args, "append", None):
             return handle_append_instruction(args)
 
+        # Set agent binary env var for recipe runner and sub-processes
+        os.environ["AMPLIHACK_AGENT_BINARY"] = "codex"
+
         # Shared startup (nesting, staging, deps, power-steering)
         _common_launcher_startup(args)
 
@@ -1612,6 +1622,9 @@ def main(argv: list[str] | None = None) -> int:
         # Early exit: append mode
         if getattr(args, "append", None):
             return handle_append_instruction(args)
+
+        # Set agent binary env var for recipe runner and sub-processes
+        os.environ["AMPLIHACK_AGENT_BINARY"] = "claude"  # amplifier uses claude as underlying binary
 
         # Shared startup (nesting, staging, deps, power-steering)
         _common_launcher_startup(args)

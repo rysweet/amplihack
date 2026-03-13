@@ -363,9 +363,10 @@ def _fix_global_statusline_path() -> None:
             statusline_config["command"] = correct_command
             settings["statusLine"] = statusline_config
 
-            # Write updated settings
-            with open(global_settings_path, "w", encoding="utf-8") as f:
-                json.dump(settings, f, indent=2, ensure_ascii=False)
+            # Write updated settings (atomic to prevent data loss)
+            from .settings import write_json_atomic
+
+            write_json_atomic(str(global_settings_path), settings)
 
             if _DEBUG:
                 print(f"✓ Updated statusline path in {global_settings_path}")
