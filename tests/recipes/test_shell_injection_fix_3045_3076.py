@@ -184,19 +184,18 @@ class TestNoVulnerablePrintfPattern:
         """``{{task_description}}`` must not appear unquoted in bash commands.
 
         The only safe position for the template token is inside a heredoc body
-        delimited by a single-quoted sentinel (``<<'EOFTASKDESC'`` ... ``EOFTASKDESC``).
+        delimited by a sentinel (``<<'EOFTASKDESC'`` or ``<<EOFTASKDESC``).
+        Single-quoted heredocs are preferred (prevent shell expansion); unquoted
+        heredocs are acceptable when the Rust recipe runner requires env-var
+        expansion (e.g. step-04-setup-worktree, issue #3087).
         Any other occurrence is a CWE-78 injection vector.
         """
         violations = []
         for step_id, cmd in _bash_steps(default_workflow):
-            # Line-by-line heredoc body detection: walk the command text and
-            # track whether we are currently inside a heredoc body.  YAML block
-            # scalars may strip leading indentation, so we compare stripped lines
-            # against the sentinel.
             inside_heredoc = False
             lines_outside_heredoc = []
             for line in cmd.splitlines():
-                if "<<'EOFTASKDESC'" in line:
+                if "<<'EOFTASKDESC'" in line or "<<EOFTASKDESC" in line:
                     inside_heredoc = True
                     lines_outside_heredoc.append(line)
                     continue
@@ -225,10 +224,16 @@ class TestAllAffectedStepsUseHeredoc:
 
     @pytest.mark.parametrize("step_id", AFFECTED_STEP_IDS)
     def test_step_has_heredoc_capture(self, step_map, step_id):
-        """Step must contain ``$(cat <<'EOFTASKDESC'`` assignment."""
+        """Step must contain heredoc capture for task_description.
+
+        Single-quoted ``<<'EOFTASKDESC'`` is preferred. Unquoted ``<<EOFTASKDESC``
+        is acceptable for step-04-setup-worktree (Rust runner needs env-var
+        expansion, issue #3087) since the output goes through a sanitization
+        pipeline that strips all shell metacharacters.
+        """
         step = _get_step(step_map, step_id)
         cmd = step.get("command", "")
-        assert "<<'EOFTASKDESC'" in cmd, (
+        assert "<<'EOFTASKDESC'" in cmd or "<<EOFTASKDESC" in cmd, (
             f"Step '{step_id}' must use heredoc capture: "
             "TASK_DESC=$(cat <<'EOFTASKDESC'\\n{{task_description}}\\nEOFTASKDESC)"
         )
@@ -249,9 +254,9 @@ class TestAllAffectedStepsUseHeredoc:
         """``{{task_description}}`` must appear between the heredoc delimiters."""
         step = _get_step(step_map, step_id)
         cmd = step.get("command", "")
-        # Find heredoc block and confirm the token is inside it
+        # Find heredoc block — accept both quoted and unquoted delimiters
         match = re.search(
-            r"<<'EOFTASKDESC'\n(.*?)EOFTASKDESC", cmd, re.DOTALL
+            r"<<'?EOFTASKDESC'?\n(.*?)EOFTASKDESC", cmd, re.DOTALL
         )
         assert match is not None, (
             f"Step '{step_id}' has no complete heredoc block."
@@ -259,7 +264,7 @@ class TestAllAffectedStepsUseHeredoc:
         heredoc_body = match.group(1)
         assert "{{task_description}}" in heredoc_body, (
             f"Step '{step_id}' heredoc body does not contain {{{{task_description}}}}. "
-            "The template token must be inside the <<'EOFTASKDESC' body."
+            "The template token must be inside the heredoc body."
         )
 
 
@@ -807,12 +812,17 @@ class TestCIRegressionGuards:
         )
 
     def test_grep_confirms_heredoc_count_matches_affected_steps(self):
-        """grep must find exactly one heredoc open per affected step (7 total)."""
+        """grep must find exactly one heredoc open per affected step (7 total).
+
+        Counts both quoted (<<'EOFTASKDESC') and unquoted (<<EOFTASKDESC)
+        heredocs. Step-04-setup-worktree uses unquoted for Rust runner
+        compatibility (issue #3087).
+        """
         recipe_path = RECIPE_DIR / "default-workflow.yaml"
         if not recipe_path.exists():
             pytest.skip("default-workflow.yaml not found")
         result = subprocess.run(
-            ["grep", "-c", "<<'EOFTASKDESC'", str(recipe_path)],
+            ["grep", "-cE", r"<<'?EOFTASKDESC'?", str(recipe_path)],
             capture_output=True,
             text=True,
         )
