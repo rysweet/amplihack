@@ -1,0 +1,36 @@
+{
+  "last_run": "2026-03-13T07:00:00Z",
+  "triaged_prs": {
+    "3107": {
+      "title": "fix: use agent-framework-core instead of meta-package for SDK auto-install",
+      "risk": "low",
+      "status": "triage:complete",
+      "labels_applied": ["triage:complete", "triage:low-risk", "triage:needs-review"],
+      "recommendation": "Approve & Merge",
+      "comment_posted": true
+    },
+    "3106": {
+      "title": "[docs] add Environment Variables reference page",
+      "risk": "very-low",
+      "status": "triage:complete",
+      "draft": true,
+      "labels_applied": ["triage:complete", "triage:low-risk"],
+      "recommendation": "Review when ready (draft)",
+      "comment_posted": false
+    },
+    "3085": {
+      "title": "[docs] docs: daily documentation update for March 12 2026 merged PRs",
+      "risk": "low",
+      "status": "triage:complete",
+      "note": "Already triaged in prior run. Expired Mar 13 2026.",
+      "skipped": true
+    },
+    "2876": {
+      "title": "feat(hive): replace broadcast replication with proper DHT sharding (#3034)",
+      "risk": "extreme",
+      "status": "triage:complete",
+      "note": "Already triaged in prior run. Has merge-conflicts label.",
+      "skipped": true
+    }
+  }
+}
