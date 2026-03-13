@@ -42,6 +42,8 @@ Validate architectural decisions through amplihack's philosophy:
 3. **Modularity**: "Can this be a self-contained brick?"
 4. **Regenerability**: "Can AI rebuild this from a specification?"
 5. **Value**: "Does the complexity add proportional value?"
+6. **Error Visibility**: "Are all errors propagated visibly? Any swallowed exceptions or silent fallbacks?"
+7. **No Silent Degradation**: "Does any code path silently drop data, skip work, or substitute defaults?"
 
 ## Red Flags
 
@@ -52,6 +54,19 @@ Validate architectural decisions through amplihack's philosophy:
 - Future-proofing for hypothetical requirements
 - Tight coupling between modules
 - Unclear module boundaries or contracts
+
+**Forbidden Pattern Violations** (see `FORBIDDEN_PATTERNS.md`):
+
+- Error swallowing: catch/except blocks returning null, false, empty, or default values instead of propagating
+- Log-only catches: catching exceptions, logging them, but not re-throwing
+- Silent fallbacks: `??`, `.get()`, `||` substituting defaults for missing required values
+- Data loss: fire-and-forget async, unchecked HTTP responses, silent truncation
+- Shell anti-patterns: `|| true`, `>/dev/null 2>&1`, `set +e`, `|| fallback_command`
+- Retry exhaustion: retry loops that fall through silently after all attempts fail
+- Async misuse: `async void`, sync-over-async, unawaited coroutines/promises
+- Config divergence: deploy configs not matching what services read, missing env vars with silent defaults
+- Validation gaps: unvalidated user input, string interpolation in queries, unbounded queries
+- Health check dishonesty: reporting Degraded when Unhealthy, log-only error handling without metrics
 
 **Complexity Warning Signs**:
 
@@ -91,6 +106,10 @@ Validate architectural decisions through amplihack's philosophy:
 ### Concerns ⚠
 
 - [Philosophy violations needing attention]
+
+### Forbidden Pattern Violations ✗✗
+
+- [Error swallowing, silent fallbacks, data loss, shell anti-patterns — see FORBIDDEN_PATTERNS.md]
 
 ### Violations ✗
 

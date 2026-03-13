@@ -242,7 +242,7 @@ After investigation completes, continue with these tasks:
 - [ ] Simplify complex logic (without violating user specifications)
 - [ ] Ensure single responsibility principle
 - [ ] Verify no placeholders remain - no stubs, no TODOs, no swallowed exceptions, no unimplemented functions - follow the zero-BS principle.
-- [ ] **VALIDATE: All explicit user requirements still preserved** and still adhering to @~/.amplihack/.claude/context/PHILOSOPHY.md
+- [ ] **VALIDATE: All explicit user requirements still preserved** and still adhering to @~/.amplihack/.claude/context/PHILOSOPHY.md and @~/.amplihack/.claude/context/FORBIDDEN_PATTERNS.md
 
 ### Step 10: Review Pass Before Commit
 
@@ -250,9 +250,11 @@ After investigation completes, continue with these tasks:
 - [ ] **Use** security agent for security review
 - [ ] Check code quality and standards
 - [ ] Verify philosophy compliance with the philosophy-guardian agent
+- [ ] **Verify no Forbidden Pattern violations** — check against @~/.amplihack/.claude/context/FORBIDDEN_PATTERNS.md (error swallowing, silent fallbacks, data loss, shell anti-patterns, async misuse, config divergence, validation gaps, health check dishonesty)
 - [ ] Ensure adequate test coverage
 - [ ] Identify potential improvements
 - [ ] Ensure there are no TODOs, faked apis or faked data, stubs, or swallowed exceptions, no unimplemented functions - follow the zero-BS principle.
+- [ ] Ensure no Forbidden Pattern violations: no silent fallbacks, no `|| true`, no `>/dev/null 2>&1`, no fire-and-forget async, no unchecked HTTP responses, no log-only catches.
 
 ### Step 11: Incorporate Any Review Feedback
 
@@ -346,10 +348,12 @@ This ensures you see success messages, error details, and PR URLs.
 - [ ] **Use** security agent for security review
 - [ ] Check code quality and standards
 - [ ] Verify philosophy compliance
+- [ ] **Verify no Forbidden Pattern violations** (FORBIDDEN_PATTERNS.md)
 - [ ] Ensure adequate test coverage
 - [ ] Post review comments on PR
 - [ ] Identify potential improvements
 - [ ] Ensure there are no TODOs, stubs, or swallowed exceptions, no unimplemented functions - follow the zero-BS principle.
+- [ ] Ensure no Forbidden Pattern violations: no silent fallbacks, no `|| true`, no `>/dev/null 2>&1`, no fire-and-forget async, no unchecked HTTP responses, no log-only catches.
 - [ ] Always Post the review as a comment on the PR
 
 ### Step 17: Implement Review Feedback
