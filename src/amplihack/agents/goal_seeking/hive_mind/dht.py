@@ -609,47 +609,21 @@ class DHTRouter:
                 )
         # ── Keyword routing (fallback) ───────────────────────────────────────
 
-        # Small hive optimization: scan all non-empty shards.
-        # Only use the local shortcut when ALL agents have non-empty local shards
-        # (pure in-process mode where every ShardStore is local and populated).
-        # In distributed mode some agents have empty local shards even though
-        # they hold facts on their own remote DHT instance — fan out to ALL agents
-        # so the transport can route SHARD_QUERY to the right remote shard.
-        if len(all_agents) <= 20:
-            with self._lock:
-                local_targets = [
-                    aid
-                    for aid in all_agents
-                    if aid in self._shards and self._shards[aid].fact_count > 0
-                ]
-            # Only skip remote fan-out when ALL agents have local non-empty shards.
-            if len(local_targets) == len(all_agents):
-                return local_targets
-            # Distributed mode (or partially populated): return ALL agents so the
-            # transport can issue SHARD_QUERY to agents whose local shards are empty.
+        # In distributed mode, local shards are empty — content lives on remote
+        # agents. DHT key routing cannot find the right shard because content is
+        # distributed round-robin (not by consistent hash). Fan out to ALL agents
+        # and let each respond with its own local facts.
+        with self._lock:
+            local_targets = [
+                aid
+                for aid in all_agents
+                if aid in self._shards and self._shards[aid].fact_count > 0
+            ]
+        # If most local shards are empty, we're in distributed mode — fan out to all.
+        if len(local_targets) < len(all_agents):
             return list(all_agents)
-
-        targets: list[str] = []
-        seen: set[str] = set()
-
-        # Route via DHT: find shard owners for query key
-        key = _content_key(query_text)
-        dht_owners = self.ring.get_agents(key, n=self._query_fanout)
-        for agent_id in dht_owners:
-            if agent_id not in seen:
-                seen.add(agent_id)
-                targets.append(agent_id)
-
-        # Also try each individual word for broader coverage
-        words = [w for w in query_text.lower().split() if len(w) > 2]
-        for word in words:
-            owners = self.ring.get_agents(word, n=self.ring.replication_factor)
-            for agent_id in owners:
-                if agent_id not in seen and len(targets) < max_targets:
-                    seen.add(agent_id)
-                    targets.append(agent_id)
-
-        return targets[:max_targets]
+        # Pure in-process mode: all shards populated locally, return non-empty ones.
+        return local_targets
 
     def get_storage_targets(self, fact: ShardFact) -> list[str]:
         """Return agent IDs that should store this fact via DHT consistent hashing.
