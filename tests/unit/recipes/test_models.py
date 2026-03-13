@@ -54,11 +54,17 @@ class TestRecipeResultStr:
         assert "bad-recipe" in text
         assert "FAILED" in text
 
-    def test_str_includes_step_results(self) -> None:
+    def test_str_includes_step_count(self) -> None:
+        """RecipeResult.__str__ now returns summary format like 'RecipeResult(my-recipe: SUCCESS, 1 steps)'.
+
+        The old test asserted 'step-1' (the step_id) was in the output, but the new
+        __str__ implementation returns a compact summary string that includes the step
+        count rather than individual step IDs.
+        """
         step = StepResult(step_id="step-1", status=StepStatus.COMPLETED)
         result = RecipeResult(recipe_name="my-recipe", success=True, step_results=[step])
         text = str(result)
-        assert "step-1" in text
+        assert "1 steps" in text
 
     def test_str_is_sliceable(self) -> None:
         """str(RecipeResult)[:500] must not raise TypeError — this was the original bug."""

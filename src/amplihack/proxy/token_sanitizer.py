@@ -39,8 +39,10 @@ class TokenSanitizer:
     # Order matters! More specific patterns first, then general patterns
     PATTERNS: ClassVar[list[tuple[str, str]]] = [
         # OpenAI API keys (6+ chars for flexibility in testing, real keys are 20+)
-        (r"sk-[a-zA-Z0-9_-]{6,}", "sk-***"),
+        # IMPORTANT: sk-proj- MUST come before sk- to prevent the shorter pattern
+        # from matching the prefix of a project key before the longer pattern can.
         (r"sk-proj-[a-zA-Z0-9_-]{6,}", "sk-proj-***"),
+        (r"sk-[a-zA-Z0-9_-]{6,}", "sk-***"),
         # GitHub tokens (made more flexible with 20+ characters instead of exact 36)
         (r"ghp_[a-zA-Z0-9_-]{20,}", "ghp_***"),  # Personal access token
         (r"gho_[a-zA-Z0-9_-]{20,}", "gho_***"),  # OAuth token
@@ -72,6 +74,21 @@ class TokenSanitizer:
         (r'"X-API-Key"\s*:\s*"[^"]+"', '"X-API-Key": "***"'),
     ]
 
+    # Pre-compiled patterns for performance: compiled once on first sanitize() call,
+    # then reused for every subsequent invocation. Avoids re-compiling 20+ regexes
+    # on every log line / request sanitization (O(1) compilation amortised).
+    _COMPILED_PATTERNS: ClassVar[list[tuple[re.Pattern[str], str]] | None] = None
+
+    @classmethod
+    def _get_compiled_patterns(cls) -> list[tuple[re.Pattern[str], str]]:
+        """Lazy-initialise and return the pre-compiled pattern list."""
+        if cls._COMPILED_PATTERNS is None:
+            cls._COMPILED_PATTERNS = [
+                (re.compile(pattern, re.IGNORECASE), replacement)
+                for pattern, replacement in cls.PATTERNS
+            ]
+        return cls._COMPILED_PATTERNS
+
     @classmethod
     def sanitize(cls, text: str | None) -> str:
         """
@@ -95,9 +112,9 @@ class TokenSanitizer:
 
         sanitized = str(text)
 
-        # Apply all patterns
-        for pattern, replacement in cls.PATTERNS:
-            sanitized = re.sub(pattern, replacement, sanitized, flags=re.IGNORECASE)
+        # Apply all pre-compiled patterns (zero regex compilations after first call)
+        for compiled, replacement in cls._get_compiled_patterns():
+            sanitized = compiled.sub(replacement, sanitized)
 
         return sanitized
 
