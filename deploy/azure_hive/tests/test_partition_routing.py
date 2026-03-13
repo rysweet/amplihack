@@ -1,0 +1,433 @@
+"""Tests for partition routing and event handling in distributed_hive_graph.py and agent_entrypoint.py."""
+
+from __future__ import annotations
+
+import importlib.util
+import sys
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import pytest  # type: ignore[import-unresolved]
+
+# ---- distributed_hive_graph ----
+# We need to import it properly
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
+
+from amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph import (
+    EventHubsShardTransport,
+)
+
+# ---- agent_entrypoint ----
+_ENTRYPOINT_PATH = Path(__file__).parent.parent / "agent_entrypoint.py"
+
+
+def _load_entrypoint():
+    spec = importlib.util.spec_from_file_location("agent_entrypoint", _ENTRYPOINT_PATH)
+    assert spec is not None and spec.loader is not None
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+# ===========================================================================
+# EventHubsShardTransport — partition routing
+# ===========================================================================
+
+
+class TestAgentIndex:
+    """EventHubsShardTransport._agent_index() static method."""
+
+    def test_standard_agent_name(self):
+        assert EventHubsShardTransport._agent_index("agent-0") == 0
+        assert EventHubsShardTransport._agent_index("agent-42") == 42
+        assert EventHubsShardTransport._agent_index("agent-99") == 99
+
+    def test_multi_hyphen_name(self):
+        # rsplit("-", 1) takes the last segment
+        assert EventHubsShardTransport._agent_index("hive-agent-7") == 7
+
+    def test_non_numeric_name_uses_hash(self):
+        result = EventHubsShardTransport._agent_index("coordinator")
+        assert isinstance(result, int)
+        assert result >= 0
+
+    def test_empty_string_uses_hash(self):
+        result = EventHubsShardTransport._agent_index("")
+        assert isinstance(result, int)
+        assert result >= 0
+
+
+class TestTargetPartition:
+    """EventHubsShardTransport._target_partition() method."""
+
+    @patch.object(EventHubsShardTransport, "__init__", lambda self, **kw: None)
+    def _make_transport(self, num_partitions=32):
+        t = EventHubsShardTransport()  # type: ignore[call-arg]
+        t._num_partitions = num_partitions
+        t._connection_string = "fake"
+        t._consumer_group = "cg"
+        t._eventhub_name = "hub"
+        return t
+
+    def test_partition_wraps_around(self):
+        transport = self._make_transport(num_partitions=32)
+        assert transport._target_partition("agent-0") == "0"
+        assert transport._target_partition("agent-31") == "31"
+        assert transport._target_partition("agent-32") == "0"  # wraps
+        assert transport._target_partition("agent-33") == "1"
+
+    def test_partition_small_hub(self):
+        transport = self._make_transport(num_partitions=4)
+        assert transport._target_partition("agent-0") == "0"
+        assert transport._target_partition("agent-4") == "0"
+        assert transport._target_partition("agent-5") == "1"
+
+    def test_same_agent_always_same_partition(self):
+        transport = self._make_transport(num_partitions=16)
+        p1 = transport._target_partition("agent-42")
+        p2 = transport._target_partition("agent-42")
+        assert p1 == p2
+
+
+class TestGetNumPartitions:
+    """EventHubsShardTransport._get_num_partitions() method."""
+
+    @patch.object(EventHubsShardTransport, "__init__", lambda self, **kw: None)
+    def _make_transport(self):
+        t = EventHubsShardTransport()  # type: ignore[call-arg]
+        t._num_partitions = None
+        t._connection_string = "fake"
+        t._consumer_group = "cg"
+        t._eventhub_name = "hub"
+        return t
+
+    def test_cached_value_returned(self):
+        t = self._make_transport()
+        t._num_partitions = 16
+        assert t._get_num_partitions() == 16
+
+    def test_fallback_on_import_error(self):
+        t = self._make_transport()
+        with patch.dict("sys.modules", {"azure.eventhub": None}):
+            # Force import to fail
+            result = t._get_num_partitions()
+            assert result == 32  # default fallback
+
+    def test_caches_after_first_call(self):
+        t = self._make_transport()
+        t._num_partitions = None
+        # Simulate failure so it falls back to 32
+        with patch.dict("sys.modules", {"azure.eventhub": None}):
+            t._get_num_partitions()
+        assert t._num_partitions == 32
+        # Second call returns cached
+        assert t._get_num_partitions() == 32
+
+
+class TestPublishPartitionRouting:
+    """Verify _publish converts agent-N partition_key to explicit partition_id."""
+
+    @patch.object(EventHubsShardTransport, "__init__", lambda self, **kw: None)
+    def _make_transport(self):
+        import threading
+
+        t = EventHubsShardTransport()  # type: ignore[call-arg]
+        t._num_partitions = 32
+        t._connection_string = "fake"
+        t._consumer_group = "cg"
+        t._eventhub_name = "hub"
+        t._agent_id = "agent-0"
+        t._producer = None
+        t._producer_lock = threading.Lock()
+        t._shutdown = MagicMock()
+        t._shutdown.is_set.return_value = False
+        return t
+
+    def test_publish_uses_partition_id_for_agent_name(self):
+        transport = self._make_transport()
+
+        mock_producer = MagicMock()
+        mock_batch = MagicMock()
+        mock_producer.create_batch.return_value = mock_batch
+
+        with (
+            patch(
+                "azure.eventhub.EventHubProducerClient",
+            ) as MockProducer,
+            patch(
+                "azure.eventhub.EventData",
+            ) as MockEventData,
+        ):
+            MockProducer.from_connection_string.return_value = mock_producer
+            MockEventData.side_effect = lambda data: data
+
+            transport._publish(
+                {"event_type": "SHARD_QUERY", "payload": {"target_agent": "agent-5"}},
+                partition_key="agent-5",
+            )
+
+            # Should use partition_id=5 (not partition_key)
+            create_kwargs = mock_producer.create_batch.call_args[1]
+            assert "partition_id" in create_kwargs
+            assert create_kwargs["partition_id"] == "5"
+            assert "partition_key" not in create_kwargs
+
+    def test_publish_uses_partition_key_for_non_agent(self):
+        transport = self._make_transport()
+
+        mock_producer = MagicMock()
+        mock_batch = MagicMock()
+        mock_producer.create_batch.return_value = mock_batch
+
+        with (
+            patch(
+                "azure.eventhub.EventHubProducerClient",
+            ) as MockProducer,
+            patch(
+                "azure.eventhub.EventData",
+            ) as MockEventData,
+        ):
+            MockProducer.from_connection_string.return_value = mock_producer
+            MockEventData.side_effect = lambda data: data
+
+            transport._publish(
+                {"event_type": "SOME_EVENT", "payload": {}},
+                partition_key="broadcast-key",
+            )
+
+            create_kwargs = mock_producer.create_batch.call_args[1]
+            assert "partition_key" in create_kwargs
+            assert create_kwargs["partition_key"] == "broadcast-key"
+
+    def test_publish_resets_producer_on_send_failure(self):
+        transport = self._make_transport()
+
+        mock_producer = MagicMock()
+        mock_producer.create_batch.side_effect = ConnectionError("network down")
+
+        with (
+            patch(
+                "azure.eventhub.EventHubProducerClient",
+            ) as MockProducer,
+            patch(
+                "azure.eventhub.EventData",
+            ),
+        ):
+            MockProducer.from_connection_string.return_value = mock_producer
+
+            # Should not raise — logs warning and resets producer
+            transport._publish(
+                {"event_type": "SHARD_QUERY", "payload": {"target_agent": "agent-1"}},
+                partition_key="agent-1",
+            )
+            assert transport._producer is None
+
+
+# ===========================================================================
+# _extract_input_text
+# ===========================================================================
+
+
+class TestExtractInputText:
+    """Tests for agent_entrypoint._extract_input_text()."""
+
+    @pytest.fixture(autouse=True)
+    def _load(self):
+        self.mod = _load_entrypoint()
+        self.extract = self.mod._extract_input_text
+
+    def test_learn_content(self):
+        result = self.extract(
+            "LEARN_CONTENT",
+            {"content": "The sky is blue."},
+            {},
+        )
+        assert result == "The sky is blue."
+
+    def test_input_question(self):
+        result = self.extract(
+            "INPUT",
+            {"question": "What color is the sky?"},
+            {},
+        )
+        assert result == "What color is the sky?"
+
+    def test_query_question(self):
+        result = self.extract(
+            "QUERY",
+            {"question": "Who wrote Hamlet?"},
+            {},
+        )
+        assert result == "Who wrote Hamlet?"
+
+    def test_query_text_fallback(self):
+        result = self.extract(
+            "QUERY",
+            {"text": "search for something"},
+            {},
+        )
+        assert result == "search for something"
+
+    def test_query_content_fallback(self):
+        result = self.extract(
+            "QUERY",
+            {"content": "some content"},
+            {},
+        )
+        assert result == "some content"
+
+    def test_unknown_event_type_fallback_keys(self):
+        result = self.extract(
+            "CUSTOM_EVENT",
+            {"message": "hello from custom"},
+            {},
+        )
+        assert result == "hello from custom"
+
+    def test_unknown_event_type_data_key(self):
+        result = self.extract(
+            "CUSTOM_EVENT",
+            {"data": "raw data here"},
+            {},
+        )
+        assert result == "raw data here"
+
+    def test_empty_payload_returns_event_string(self):
+        raw = {"event_type": "EMPTY", "payload": {}}
+        result = self.extract("EMPTY", {}, raw)
+        assert "Event received:" in result
+
+    def test_none_payload_handled(self):
+        result = self.extract("WHATEVER", None, {"raw": "event"})
+        assert "Event received:" in result
+
+    def test_learn_content_empty_content(self):
+        result = self.extract("LEARN_CONTENT", {"content": ""}, {})
+        assert result == ""
+
+    def test_network_graph_search_query(self):
+        result = self.extract(
+            "network_graph.search_query",
+            {"question": "distributed search query"},
+            {},
+        )
+        assert result == "distributed search query"
+
+
+# ===========================================================================
+# _CorrelatingInputSource
+# ===========================================================================
+
+
+class TestCorrelatingInputSource:
+    def test_sets_context_on_next(self):
+        mod = _load_entrypoint()
+        cls = mod._CorrelatingInputSource
+
+        mock_source = MagicMock()
+        mock_source.next.return_value = "hello"
+        mock_source.last_event_metadata = {"event_id": "ev1", "question_id": "q1", "run_id": "r1"}
+
+        mock_publisher = MagicMock()
+        wrapper = cls(mock_source, mock_publisher)
+
+        result = wrapper.next()
+        assert result == "hello"
+        mock_publisher.set_context.assert_called_once_with("ev1", "q1", run_id="r1")
+
+    def test_clears_context_when_no_event_id(self):
+        mod = _load_entrypoint()
+        cls = mod._CorrelatingInputSource
+
+        mock_source = MagicMock()
+        mock_source.next.return_value = "data"
+        mock_source.last_event_metadata = {}
+
+        mock_publisher = MagicMock()
+        wrapper = cls(mock_source, mock_publisher)
+
+        wrapper.next()
+        mock_publisher.clear_context.assert_called_once()
+
+    def test_close_delegates(self):
+        mod = _load_entrypoint()
+        cls = mod._CorrelatingInputSource
+
+        mock_source = MagicMock()
+        mock_publisher = MagicMock()
+        wrapper = cls(mock_source, mock_publisher)
+
+        wrapper.close()
+        mock_source.close.assert_called_once()
+
+
+# ===========================================================================
+# _handle_event
+# ===========================================================================
+
+
+class TestHandleEvent:
+    def test_feed_complete_publishes_agent_ready(self):
+        mod = _load_entrypoint()
+
+        mock_agent = MagicMock()
+        mock_memory = MagicMock()
+        mock_transport = MagicMock()
+        mock_memory._transport = mock_transport
+
+        event = {
+            "event_type": "FEED_COMPLETE",
+            "payload": {"total_turns": 100},
+        }
+
+        mod._handle_event("agent-0", event, mock_memory, mock_agent)
+        # Should have published AGENT_READY via transport
+        mock_transport.publish.assert_called_once()
+        call_args = mock_transport.publish.call_args
+        bus_event = call_args[0][0]
+        assert bus_event.event_type == "AGENT_READY"
+
+    def test_agent_ready_ignored(self):
+        mod = _load_entrypoint()
+        mock_agent = MagicMock()
+        mock_memory = MagicMock()
+
+        event = {"event_type": "AGENT_READY", "payload": {}}
+        mod._handle_event("agent-0", event, mock_memory, mock_agent)
+        mock_agent.process.assert_not_called()
+
+    def test_query_response_ignored(self):
+        mod = _load_entrypoint()
+        mock_agent = MagicMock()
+        mock_memory = MagicMock()
+
+        event = {
+            "event_type": "QUERY_RESPONSE",
+            "payload": {"query_id": "q1"},
+        }
+        mod._handle_event("agent-0", event, mock_memory, mock_agent)
+        mock_agent.process.assert_not_called()
+
+    def test_input_event_calls_process(self):
+        mod = _load_entrypoint()
+        mock_agent = MagicMock()
+        mock_memory = MagicMock()
+
+        event = {
+            "event_type": "INPUT",
+            "payload": {"question": "What is 2+2?"},
+        }
+        mod._handle_event("agent-0", event, mock_memory, mock_agent)
+        mock_agent.process.assert_called_once_with("What is 2+2?")
+
+    def test_learn_content_calls_process(self):
+        mod = _load_entrypoint()
+        mock_agent = MagicMock()
+        mock_memory = MagicMock()
+
+        event = {
+            "event_type": "LEARN_CONTENT",
+            "payload": {"content": "The earth orbits the sun."},
+        }
+        mod._handle_event("agent-0", event, mock_memory, mock_agent)
+        mock_agent.process.assert_called_once_with("The earth orbits the sun.")

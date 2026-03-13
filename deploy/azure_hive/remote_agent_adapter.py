@@ -109,14 +109,21 @@ class RemoteAgentAdapter:
                 producer.send_batch(batch)
         except Exception:
             logger.warning("EH publish failed, retrying once", exc_info=True)
-            # One retry with a fresh producer
             producer2 = EventHubProducerClient.from_connection_string(
                 self._connection_string, eventhub_name=self._input_hub
             )
-            with producer2:
-                batch = producer2.create_batch(partition_key=partition_key)
-                batch.add(EventData(json.dumps(payload)))
-                producer2.send_batch(batch)
+            try:
+                with producer2:
+                    batch = producer2.create_batch(partition_key=partition_key)
+                    batch.add(EventData(json.dumps(payload)))
+                    producer2.send_batch(batch)
+            except Exception:
+                logger.error(
+                    "EH publish failed after retry (event_type=%s)",
+                    payload.get("event_type", "?"),
+                    exc_info=True,
+                )
+                raise
 
     def learn_from_content(self, content: str) -> dict[str, Any]:
         """Send content to one agent (round-robin partition).

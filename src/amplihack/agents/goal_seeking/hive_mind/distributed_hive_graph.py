@@ -569,6 +569,7 @@ class EventHubsShardTransport:
             return self._num_partitions
         try:
             from azure.eventhub import EventHubConsumerClient  # type: ignore
+
             c = EventHubConsumerClient.from_connection_string(
                 self._connection_string,
                 consumer_group=self._consumer_group,
@@ -745,14 +746,6 @@ class EventHubsShardTransport:
                 batch = self._producer.create_batch(**kwargs)
                 batch.add(EventData(json.dumps(payload)))
                 self._producer.send_batch(batch)
-                logger.info(
-                    "Agent %s published %s → %s (hub=%s, partition=%s)",
-                    self._agent_id,
-                    event_type,
-                    target or partition_key or "broadcast",
-                    self._eventhub_name,
-                    route_partition_id or "key:" + (partition_key or "none"),
-                )
             except Exception:
                 logger.warning(
                     "Agent %s failed to publish %s, resetting producer",
@@ -766,6 +759,15 @@ class EventHubsShardTransport:
                 except Exception:
                     pass
                 self._producer = None
+                return
+            logger.info(
+                "Agent %s published %s → %s (hub=%s, partition=%s)",
+                self._agent_id,
+                event_type,
+                target or partition_key or "broadcast",
+                self._eventhub_name,
+                route_partition_id or "key:" + (partition_key or "none"),
+            )
 
     # -- ShardTransport protocol ---------------------------------------------
 
