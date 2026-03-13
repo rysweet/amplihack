@@ -173,6 +173,19 @@ steps:
     output: "workstream_count"
 
   # ─────────────────────────────────────────────────────────────────────────
+  # Materialize user_context overrides into step outputs so they are
+  # available in condition evaluation (fix #3075 — Bug A).
+  # The Rust runner's --set flag updates template variables ({{...}}) but
+  # the condition evaluator only sees step outputs and initial context.
+  # This step bridges the gap by echoing the context value to stdout.
+  # ─────────────────────────────────────────────────────────────────────────
+  - id: "materialize-force-single-workstream"
+    type: "bash"
+    command: |
+      printf '%s' '{{force_single_workstream}}'
+    output: "force_single_workstream"
+
+  # ─────────────────────────────────────────────────────────────────────────
   # Setup: register this session in the session tree (atomic check+register)
   # Runs for Development and Investigation tasks before any workstream spawning.
   # session_info output format: JSON {"session_id":..,"tree_id":..,"depth":..,"status":..}
