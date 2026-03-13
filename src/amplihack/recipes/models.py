@@ -48,6 +48,28 @@ class Step:
     recipe: str | None = None  # Sub-recipe name (for StepType.RECIPE)
     sub_context: dict[str, Any] | None = None  # Context to merge into sub-recipe
 
+    def evaluate_condition(self, context: dict[str, Any]) -> bool:
+        """Evaluate the step condition against a context dict.
+
+        Returns True if the step should execute (condition is met or absent).
+        The condition is a Python expression evaluated with *context* as the
+        namespace.  All values are coerced to strings before evaluation so
+        that ``force_single_workstream == 'true'`` works regardless of
+        whether the value arrived as ``bool`` or ``str`` (fix #3075).
+        """
+        if not self.condition:
+            return True
+        # Coerce every value to str so that bool/int values from user_context
+        # compare correctly against string literals in condition expressions.
+        str_ctx: dict[str, str] = {
+            k: str(v).lower() if isinstance(v, bool) else str(v)
+            for k, v in context.items()
+        }
+        try:
+            return bool(eval(self.condition.strip(), {"__builtins__": {}}, str_ctx))  # noqa: S307
+        except Exception:
+            return True  # if condition can't be evaluated, don't skip
+
 
 @dataclass
 class Recipe:
