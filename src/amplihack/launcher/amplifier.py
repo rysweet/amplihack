@@ -332,9 +332,14 @@ def launch_amplifier(args: list[str] | None = None) -> int:
     if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
         print(f"Launching: {' '.join(cmd)}", file=sys.stderr)
 
+    # Build explicit env with agent identity and home directory for Rust CLI parity
+    env = os.environ.copy()
+    env["AMPLIHACK_AGENT_BINARY"] = "amplifier"
+    env.setdefault("AMPLIHACK_HOME", os.path.expanduser("~/.amplihack"))
+
     # Launch with error handling
     try:
-        result = subprocess.run(cmd, check=False)
+        result = subprocess.run(cmd, check=False, env=env)
         return result.returncode
     except FileNotFoundError:
         print("Error: amplifier command not found. Try reinstalling.")

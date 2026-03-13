@@ -246,9 +246,7 @@ def check_for_update(
         kwargs: dict = {"capture_output": True, "text": True, "timeout": 15, "check": False}
         if env is not None:
             kwargs["env"] = effective_env
-        latest_result = subprocess.run(
-            ["npm", "view", "@github/copilot", "version"], **kwargs
-        )
+        latest_result = subprocess.run(["npm", "view", "@github/copilot", "version"], **kwargs)
         if latest_result.returncode != 0:
             return None
 
@@ -491,9 +489,7 @@ def ensure_latest_copilot(
     except Exception as e:
         import logging
 
-        logging.getLogger(__name__).debug(
-            f"Copilot auto-update failed: {type(e).__name__}: {e}"
-        )
+        logging.getLogger(__name__).debug(f"Copilot auto-update failed: {type(e).__name__}: {e}")
         return False
 
 
@@ -526,9 +522,7 @@ def _ensure_copilot_bin_on_path(
     return bin_path
 
 
-def check_copilot(
-    env: MutableMapping[str, str] | None = None, home: Path | None = None
-) -> bool:
+def check_copilot(env: MutableMapping[str, str] | None = None, home: Path | None = None) -> bool:
     """Check if Copilot CLI is installed.
 
     Returns:
@@ -550,9 +544,7 @@ def check_copilot(
         return False
 
 
-def install_copilot(
-    env: MutableMapping[str, str] | None = None, home: Path | None = None
-) -> bool:
+def install_copilot(env: MutableMapping[str, str] | None = None, home: Path | None = None) -> bool:
     """Install GitHub Copilot CLI via npm to user-local directory."""
     print("Installing GitHub Copilot CLI...")
 
@@ -1225,7 +1217,12 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
     if args:
         cmd.extend(args)
 
+    # Build explicit env with agent identity and home directory for Rust CLI parity
+    env = os.environ.copy()
+    env["AMPLIHACK_AGENT_BINARY"] = "copilot"
+    env.setdefault("AMPLIHACK_HOME", os.path.expanduser("~/.amplihack"))
+
     # Launch using subprocess.run() for proper terminal handling
     # Note: os.execvp() doesn't work properly on Windows - it corrupts stdin/terminal state
-    result = subprocess.run(cmd, check=False)
+    result = subprocess.run(cmd, check=False, env=env)
     return result.returncode
