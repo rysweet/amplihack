@@ -281,9 +281,16 @@ def ensure_trial_dependencies(rust_args: Sequence[str], trial_home: Path, env: d
     if not rust_args or rust_args[0] != "copilot":
         return
 
-    from .launcher.copilot import check_copilot, install_copilot
+    from .launcher.copilot import check_copilot, ensure_latest_copilot, install_copilot
 
     _ensure_trial_copilot_config(trial_home)
+
+    # Update to latest if already installed (fixes #3097)
+    try:
+        ensure_latest_copilot(env=env, home=trial_home)
+    except Exception:
+        pass  # non-critical — continue with current version
+
     if check_copilot(env=env, home=trial_home):
         return
     if not install_copilot(env=env, home=trial_home):
