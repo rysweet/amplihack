@@ -295,6 +295,12 @@ def main() -> None:
     # internal MemoryRetriever so both read/write the same Kuzu store.
     memory._adapter = agent.memory
 
+    # Bind agent to shard transport so LOCAL shard queries use CognitiveAdapter
+    # (n-gram + reranking) instead of primitive ShardStore.search().
+    if shard_transport is not None and hasattr(shard_transport, "bind_agent"):
+        shard_transport.bind_agent(agent)
+        logger.info("Bound agent %s to shard transport for LOCAL queries", agent_name)
+
     # Store initial agent identity via OODA process()
     agent.process(f"Agent identity: {agent_name}. Role: {agent_prompt}")
 
