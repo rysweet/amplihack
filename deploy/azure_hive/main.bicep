@@ -250,8 +250,8 @@ resource containerApps 'Microsoft.App/containerApps@2024-03-01' = [
             name: 'agent-${appIdx * agentsPerApp + agentOffset}'
             image: resolvedImage
             resources: {
-              cpu: json('1.0')
-              memory: '2Gi'
+              cpu: json('0.75')
+              memory: '1.5Gi'
             }
             env: [
               {
