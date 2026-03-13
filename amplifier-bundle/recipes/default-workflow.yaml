@@ -1249,6 +1249,7 @@ steps:
       echo "  ✓ Did I invoke the REVIEWER agent? → Yes (output captured)" && \
       echo "  ✓ Did I invoke the SECURITY agent? → Yes (output captured)" && \
       echo "  ✓ Did I invoke the PHILOSOPHY-GUARDIAN agent? → Yes (output captured)" && \
+      echo "  ✓ Did I check for FORBIDDEN PATTERN violations? → Yes" && \
       echo "  ✓ Are all three reviews POSTED to the PR as comments?" && \
       echo "  ✓ All blocking issues have been addressed?" && \
       echo "" && \
@@ -1371,6 +1372,7 @@ steps:
       - [ ] Ruthless simplicity achieved
       - [ ] No over-engineering or unnecessary complexity
       - [ ] Implementation aligns with project philosophy
+      - [ ] No Forbidden Pattern violations (FORBIDDEN_PATTERNS.md): no error swallowing, no silent fallbacks, no data loss, no shell anti-patterns (|| true, >/dev/null), no async misuse, no config divergence, no validation gaps
       - [ ] All tests passing
       - [ ] Documentation complete and accurate
 
@@ -1389,6 +1391,7 @@ steps:
       - [ ] Architectural patterns followed
       - [ ] Code organization patterns maintained
       - [ ] No anti-patterns introduced
+      - [ ] No Forbidden Patterns (error swallowing, silent fallbacks, || true, >/dev/null, fire-and-forget async, unchecked HTTP responses, log-only catches)
 
       **Output:** Pattern compliance findings with any violations.
     output: "patterns_check"
@@ -1410,6 +1413,14 @@ steps:
       echo "--- Checking for stub indicators ---" && \
       (grep -r "NotImplementedError\|raise NotImplemented\|pass  # stub\|# TODO" --include="*.py" . 2>/dev/null || echo "None found") && \
       echo "" && \
+      echo "--- Checking for Forbidden Patterns ---" && \
+      echo "  Shell: || true, >/dev/null 2>&1, set +e" && \
+      (grep -rn "|| true\||| :\|>/dev/null 2>&1\|2>/dev/null\|&>/dev/null\|set +e" --include="*.sh" --include="*.bash" --include="Makefile" --include="Dockerfile" . 2>/dev/null || echo "  None found") && \
+      echo "  Python: bare except, except pass, return None in except" && \
+      (grep -rn "except:$\|except .*:.*pass$\|except.*:.*return None" --include="*.py" . 2>/dev/null || echo "  None found") && \
+      echo "  TypeScript/JS: empty catch, catch return undefined" && \
+      (grep -rn "catch.*{.*}$\|catch.*return undefined\|catch.*return \[\]" --include="*.ts" --include="*.js" . 2>/dev/null || echo "  None found") && \
+      echo "" && \
       echo "=== Zero-BS Verification Complete ==="
     output: "zero_bs_check"
 
@@ -1423,6 +1434,7 @@ steps:
       echo "  ✓ Did I invoke the REVIEWER agent for philosophy check?" && \
       echo "  ✓ Did I invoke the PATTERNS agent?" && \
       echo "  ✓ Did I complete the zero-BS verification?" && \
+      echo "  ✓ Did I check for Forbidden Pattern violations?" && \
       echo "  ✓ Are all findings documented?" && \
       echo "  ✓ Any issues found have been addressed?" && \
       echo "" && \
@@ -1452,10 +1464,11 @@ steps:
       Final quality pass:
 
       1. Review all changes for philosophy compliance WITHIN user constraints
-      2. Remove temporary artifacts or test files (unless user wanted them)
-      3. Eliminate unnecessary complexity (without violating requirements)
-      4. Verify module boundaries remain clean
-      5. Ensure zero dead code or stub implementations
+      2. Review all changes for Forbidden Pattern violations (FORBIDDEN_PATTERNS.md)
+      3. Remove temporary artifacts or test files (unless user wanted them)
+      4. Eliminate unnecessary complexity (without violating requirements)
+      5. Verify module boundaries remain clean
+      6. Ensure zero dead code or stub implementations
 
       **PR Cleanliness Final Check:**
       - [ ] Full diff review - all changes intentional

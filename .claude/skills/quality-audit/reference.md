@@ -148,6 +148,86 @@ Each agent MUST evaluate against PHILOSOPHY.md:
 - [ ] No swallowed exceptions
 - [ ] No TODO/FIXME in production code
 
+**Forbidden Pattern Checks** (see PHILOSOPHY.md § Forbidden Patterns):
+
+_Error Swallowing & Broad Catches_:
+
+- [ ] No `catch (Exception)` / `except Exception` / `catch (e)` blocks that return null, false, empty string, default, or empty collections
+- [ ] No catch blocks with only a log statement (no re-throw, no metric, no health impact)
+- [ ] No empty catch blocks (`catch { }`, `except: pass`, `catch (e) {}`)
+- [ ] No catch blocks that convert exceptions to boolean (return true/false)
+- [ ] No `#pragma warning disable CA1031` or equivalent without documented justification
+- [ ] No try/catch around initialization that falls back to a degraded state
+- [ ] No Go `_, err := ...` where err is ignored or only logged
+- [ ] No Rust `let _ = fallible()` discarding Results
+
+_Silent Fallbacks & Defaults_:
+
+- [ ] No null-coalescing (`??`, `or`, `||`) on values where the default silently changes behavior
+- [ ] No optional config patterns where missing config silently disables features
+- [ ] No `return null`/`return None`/`return undefined` in service methods where null means "feature didn't work"
+- [ ] No `if (string.IsNullOrEmpty(...)) return;` / `if not value: return` early returns that silently skip work
+- [ ] No `?.` / optional chaining that silently eats nulls in critical paths
+- [ ] No default parameter values that mask configuration issues
+- [ ] No `IsDevelopment()` / `DEBUG` / `NODE_ENV` guards that could accidentally apply in staging/production
+- [ ] No retry logic that eventually gives up silently (must re-throw last exception)
+- [ ] No circuit breakers that open without alerting
+
+_Data Loss & Result Dropping_:
+
+- [ ] No fire-and-forget async (`_ = Task()`, `asyncio.create_task()`, unhandled Promise, `go func()`)
+- [ ] No discarded return values from methods containing important results
+- [ ] No silent truncation (`.Take(N)`, `[:N]`, `.slice()`) without logging
+- [ ] No silent filtering (`.Where()`, list comprehensions) that drops items that should be processed
+- [ ] No background service exception handling that swallows and continues
+- [ ] No HTTP client calls that don't check response status
+- [ ] No `Task.WhenAll`/`Promise.all`/`asyncio.gather` where individual failures aren't checked
+- [ ] No broadcast/messaging failures silently swallowed
+
+_Shell Scripting Anti-Patterns_:
+
+- [ ] No `|| true` or `|| :` (suppressing exit codes)
+- [ ] No `> /dev/null 2>&1` or `2>/dev/null` or `&>/dev/null` (suppressing error output)
+- [ ] No `set +e` (disabling error checking)
+- [ ] No `|| fallback_command` (fallback is silent failure)
+- [ ] Every script starts with `set -euo pipefail`
+
+_Async & Concurrency Anti-Patterns_:
+
+- [ ] No `async void` methods (C#, except event handlers)
+- [ ] No `.Result` or `.Wait()` on tasks (sync-over-async deadlocks)
+- [ ] No shared mutable state accessed from multiple threads without synchronization
+- [ ] No ConcurrentDictionary check-then-act patterns (non-atomic)
+- [ ] No static state that breaks in multi-instance deployments
+- [ ] No CancellationToken not propagated to async calls
+- [ ] No Timer/CancellationTokenSource not disposed
+
+_Configuration Divergence_:
+
+- [ ] Env vars in deploy configs (docker-compose, AppHost, Bicep, k8s) match what services read
+- [ ] No services that expect config the infrastructure doesn't provide (null fallback)
+- [ ] No infrastructure providing config that services ignore (wasted/stale)
+
+_Data Integrity & Validation_:
+
+- [ ] No API endpoints accepting user input without validation
+- [ ] No string interpolation in queries (SQL, GraphQL, Cypher injection)
+- [ ] No missing pagination limits (unbounded queries)
+- [ ] No missing request size limits
+- [ ] No enum parsing from user input without validation
+- [ ] No missing null checks on deserialized objects from external sources
+- [ ] No DateTime handling without explicit UTC/timezone handling
+
+_Health Checks & Observability_:
+
+- [ ] Services with critical dependencies have health checks
+- [ ] Health checks report Unhealthy (not Degraded) for critical dependency failures
+- [ ] Background worker failures surface to health endpoints
+- [ ] No log-only error handling — errors must also produce metrics/counters
+- [ ] Permanent errors (malformed input) are dead-lettered, not retried
+- [ ] Transient errors are retried, not dead-lettered
+- [ ] No partial success marked as full success
+
 ### Step 2.4: Consolidate Findings
 
 ```python

@@ -382,7 +382,7 @@ Target Ratios:
 - [ ] Simplify complex logic (without violating user specifications)
 - [ ] Ensure single responsibility principle
 - [ ] Verify no placeholders remain - no stubs, no TODOs, no swallowed exceptions, no unimplemented functions - follow the zero-BS principle.
-- [ ] **VALIDATE: All explicit user requirements still preserved** and still adhering to @~/.amplihack/.claude/context/PHILOSOPHY.md
+- [ ] **VALIDATE: All explicit user requirements still preserved** and still adhering to @~/.amplihack/.claude/context/PHILOSOPHY.md and @~/.amplihack/.claude/context/FORBIDDEN_PATTERNS.md
 
 ### Step 10: Review Pass Before Commit
 
@@ -390,9 +390,11 @@ Target Ratios:
 - [ ] **Use** security agent for security review
 - [ ] Check code quality and standards
 - [ ] Verify philosophy compliance with the philosophy-guardian agent
+- [ ] **Verify no Forbidden Pattern violations** — check against @~/.amplihack/.claude/context/FORBIDDEN_PATTERNS.md (error swallowing, silent fallbacks, data loss, shell anti-patterns, async misuse, config divergence, validation gaps, health check dishonesty)
 - [ ] Ensure adequate test coverage
 - [ ] Identify potential improvements
 - [ ] Ensure there are no TODOs, faked apis or faked data, stubs, or swallowed exceptions, no unimplemented functions - follow the zero-BS principle.
+- [ ] Ensure no Forbidden Pattern violations: no silent fallbacks, no `|| true`, no `>/dev/null 2>&1`, no fire-and-forget async, no unchecked HTTP responses, no log-only catches.
 
 #### PR Cleanliness Check (Pre-Commit)
 
@@ -586,6 +588,7 @@ python .claude/scenarios/az-devops-tools/create_pr.py \
 - [ ] Ensure adequate test coverage
 - [ ] Identify potential improvements
 - [ ] Ensure there are no TODOs, stubs, or swallowed exceptions, no unimplemented functions - follow the zero-BS principle
+- [ ] Ensure no Forbidden Pattern violations (FORBIDDEN_PATTERNS.md): no silent fallbacks, no `|| true`, no `>/dev/null`, no fire-and-forget async, no log-only catches
 - [ ] **POST structured review findings to the PR** → Evidence: review comment link
 
 **Step 16c: Invoke security agent**
@@ -602,6 +605,7 @@ python .claude/scenarios/az-devops-tools/create_pr.py \
 - [ ] Verify ruthless simplicity achieved
 - [ ] Confirm bricks & studs pattern followed
 - [ ] Ensure zero-BS implementation
+- [ ] **Verify no Forbidden Pattern violations** (FORBIDDEN_PATTERNS.md)
 - [ ] **POST philosophy check to the PR** → Evidence: philosophy comment link
 
 **Step 16e: Address blocking issues**
@@ -879,6 +883,7 @@ Add this section to your PR description:
 - [ ] **CRITICAL: Provide cleanup agent with original user requirements AGAIN**
 - [ ] **Always use** cleanup agent for final quality pass
 - [ ] Review all changes for philosophy compliance WITHIN user constraints
+- [ ] Review all changes for Forbidden Pattern violations (FORBIDDEN_PATTERNS.md)
 - [ ] Remove any temporary artifacts or test files (unless user wanted them)
 - [ ] Eliminate unnecessary complexity (that doesn't violate user requirements)
 - [ ] Verify module boundaries remain clean
@@ -942,6 +947,7 @@ Cycle 3: SEEK (deepest) → VALIDATE → FIX → decision
 ```
 
 **Minimum 3 cycles.** Continue past 3 if:
+
 - Any **critical** or **high** severity findings remain, OR
 - More than **3 medium** severity findings remain
 
@@ -979,6 +985,7 @@ Each cycle escalates depth: look with fresh eyes, dig deeper, challenge prior fi
 #### Multi-Agent Validation
 
 Every finding is independently validated by **3 separate agents**:
+
 1. **Analyzer** — evaluates on technical merits
 2. **Reviewer** — skeptically verifies by reading actual code
 3. **Architect** — adversarial review, looks for reasons finding is wrong
@@ -988,6 +995,7 @@ A finding is **confirmed** only if ≥2 of 3 agents agree. This eliminates false
 #### Fix Process
 
 All confirmed findings are fixed using the full **DEFAULT_WORKFLOW** approach:
+
 1. Understand the finding and its context
 2. Write or update tests that verify the fix
 3. Implement the minimal fix
@@ -1036,6 +1044,7 @@ az repos pr update \
 - [ ] Verify all previous steps completed
 - [ ] Ensure all review feedback has been addressed
 - [ ] Confirm philosophy compliance check passed
+- [ ] Confirm Forbidden Pattern check passed
 - [ ] Add comment summarizing changes and readiness
 - [ ] Tag reviewers for final approval
 
