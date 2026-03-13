@@ -123,6 +123,7 @@ def _init_dht_hive(
     hive_name: str,
     eh_connection_string: str = "",
     eh_name: str = "",
+    consumer_group: str | None = None,
 ) -> tuple[object, object | None, object] | None:
     """Initialize the DHT shard store for this agent using DI pattern.
 
@@ -155,6 +156,7 @@ def _init_dht_hive(
             connection_string=eh_connection_string,
             eventhub_name=eh_name,
             agent_id=agent_name,
+            consumer_group=consumer_group,
             timeout=30.0,
         )
         dht_graph = DistributedHiveGraph(
@@ -210,6 +212,10 @@ def main() -> None:
     eh_input_hub = os.environ.get("AMPLIHACK_EH_INPUT_HUB", f"hive-events-{hive_name}")
     eh_eval_hub = os.environ.get("AMPLIHACK_EVAL_RESPONSE_HUB", f"eval-responses-{hive_name}")
 
+    # Per-app consumer group: cg-app-{N}. Falls back to cg-{agent_name} for <=20 agents.
+    app_index = os.environ.get("AMPLIHACK_APP_INDEX", "")
+    consumer_group = f"cg-app-{app_index}" if app_index else f"cg-{agent_name}"
+
     logger.info(
         "Starting agent: name=%s topology=%s transport=%s",
         agent_name,
@@ -235,6 +241,7 @@ def main() -> None:
             hive_name,
             eh_connection_string=eh_connection_string,
             eh_name=eh_name,
+            consumer_group=consumer_group,
         )
         if result:
             hive_store, hive_bus, shard_transport = result
@@ -347,10 +354,10 @@ def main() -> None:
 
     if eh_connection_string:
         logger.info(
-            "Agent %s using event-driven EventHubsInputSource (hub=%s, cg=cg-%s)",
+            "Agent %s using event-driven EventHubsInputSource (hub=%s, cg=%s)",
             agent_name,
             eh_input_hub,
-            agent_name,
+            consumer_group,
         )
         from amplihack.agents.goal_seeking.input_source import EventHubsInputSource
 
@@ -358,6 +365,7 @@ def main() -> None:
             connection_string=eh_connection_string,
             agent_name=agent_name,
             eventhub_name=eh_input_hub,
+            consumer_group=consumer_group,
             shutdown_event=shutdown_event,
             starting_position="@latest",
         )

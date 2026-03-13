@@ -103,35 +103,44 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
 // ---------- Event Hubs (Standard — all hive transport) ----------
 // Event Hubs is used for ALL transport: input messages, shard queries, and eval responses.
 // No Service Bus — CBS auth fails in Container Apps regardless of SKU.
+//
+// Scaling notes:
+//   - EH Standard max: 32 partitions per hub, 20 consumer groups per hub
+//   - For >20 agents: use per-app consumer groups (cg-app-{N}) with client-side
+//     target_agent filtering. Agents within the same app share one consumer group.
+//   - Auto-inflate enabled for large deployments (>20 agents).
+var ehPartitionCount = min(agentCount + 4, 32)
+var ehCapacity = agentCount <= 20 ? 1 : (agentCount <= 50 ? 2 : 4)
+
 resource ehNamespace 'Microsoft.EventHub/namespaces@2023-01-01-preview' = {
   name: ehNamespaceName
   location: location
   sku: {
     name: 'Standard'
     tier: 'Standard'
-    capacity: 1
+    capacity: ehCapacity
   }
   properties: {
-    isAutoInflateEnabled: false
-    maximumThroughputUnits: 0
+    isAutoInflateEnabled: agentCount > 20
+    maximumThroughputUnits: agentCount > 20 ? 10 : 0
   }
 }
 
 // Hub 1: hive-events — LEARN_CONTENT, INPUT, FEED_COMPLETE, AGENT_READY
-// Per-agent consumer groups for filtered delivery (client-side target_agent filter)
+// Per-app consumer groups with client-side target_agent filtering
 resource ehEventsHubResource 'Microsoft.EventHub/namespaces/eventhubs@2023-01-01-preview' = {
   name: ehEventsHub
   parent: ehNamespace
   properties: {
-    partitionCount: agentCount + 4
+    partitionCount: ehPartitionCount
     messageRetentionInDays: 1
   }
 }
 
-// Per-agent consumer groups on hive-events: each agent reads from its own group
+// Per-app consumer groups on hive-events (max appCount groups)
 resource ehEventsConsumerGroups 'Microsoft.EventHub/namespaces/eventhubs/consumergroups@2023-01-01-preview' = [
-  for i in range(0, agentCount): {
-    name: 'cg-agent-${i}'
+  for appIdx in range(0, appCount): {
+    name: 'cg-app-${appIdx}'
     parent: ehEventsHubResource
   }
 ]
@@ -141,16 +150,15 @@ resource ehShardsHubResource 'Microsoft.EventHub/namespaces/eventhubs@2023-01-01
   name: ehShardsHub
   parent: ehNamespace
   properties: {
-    // N+4 partitions: agentCount partitions for agents, 4 spare for headroom.
-    partitionCount: agentCount + 4
+    partitionCount: ehPartitionCount
     messageRetentionInDays: 1
   }
 }
 
-// Per-agent consumer groups on hive-shards
+// Per-app consumer groups on hive-shards
 resource ehShardsConsumerGroups 'Microsoft.EventHub/namespaces/eventhubs/consumergroups@2023-01-01-preview' = [
-  for i in range(0, agentCount): {
-    name: 'cg-agent-${i}'
+  for appIdx in range(0, appCount): {
+    name: 'cg-app-${appIdx}'
     parent: ehShardsHubResource
   }
 ]
@@ -160,7 +168,7 @@ resource ehEvalHubResource 'Microsoft.EventHub/namespaces/eventhubs@2023-01-01-p
   name: ehEvalHub
   parent: ehNamespace
   properties: {
-    partitionCount: agentCount + 4
+    partitionCount: ehPartitionCount
     messageRetentionInDays: 1
   }
 }
@@ -171,10 +179,10 @@ resource ehEvalReaderGroup 'Microsoft.EventHub/namespaces/eventhubs/consumergrou
   parent: ehEvalHubResource
 }
 
-// Per-agent consumer groups on eval-responses (for multi-harness scenarios)
+// Per-app consumer groups on eval-responses
 resource ehEvalConsumerGroups 'Microsoft.EventHub/namespaces/eventhubs/consumergroups@2023-01-01-preview' = [
-  for i in range(0, agentCount): {
-    name: 'cg-agent-${i}'
+  for appIdx in range(0, appCount): {
+    name: 'cg-app-${appIdx}'
     parent: ehEvalHubResource
   }
 ]
@@ -250,8 +258,8 @@ resource containerApps 'Microsoft.App/containerApps@2024-03-01' = [
             name: 'agent-${appIdx * agentsPerApp + agentOffset}'
             image: resolvedImage
             resources: {
-              cpu: json('0.75')
-              memory: '1.5Gi'
+              cpu: json(agentsPerApp <= 5 ? '0.75' : '0.25')
+              memory: agentsPerApp <= 5 ? '1.5Gi' : '0.5Gi'
             }
             env: [
               {
@@ -305,6 +313,10 @@ resource containerApps 'Microsoft.App/containerApps@2024-03-01' = [
               {
                 name: 'ANTHROPIC_API_KEY'
                 secretRef: 'anthropic-api-key' // pragma: allowlist secret
+              }
+              {
+                name: 'AMPLIHACK_APP_INDEX'
+                value: '${appIdx}'
               }
             ]
             volumeMounts: [
