@@ -72,8 +72,8 @@ def check_index_status(project_path: Path) -> IndexStatus:
     """
     project_path = Path(project_path).resolve()
 
-    # Count indexable source files
-    estimated_files = _count_source_files(project_path)
+    # Single-pass scan: count files and find newest mtime in one traversal.
+    estimated_files, newest_source_mtime = _scan_source_files(project_path)
 
     # Check if index exists
     index_file = project_path / ".amplihack" / "index.scip"
@@ -106,9 +106,6 @@ def check_index_status(project_path: Path) -> IndexStatus:
     index_mtime = index_file.stat().st_mtime
     last_indexed = datetime.fromtimestamp(index_mtime)
 
-    # Check if any source files are newer than index
-    newest_source_mtime = _get_newest_source_mtime(project_path)
-
     if newest_source_mtime is None:
         # No source files found
         return IndexStatus(
@@ -136,8 +133,48 @@ def check_index_status(project_path: Path) -> IndexStatus:
     )
 
 
+def _scan_source_files(project_path: Path) -> tuple[int, float | None]:
+    """Single-pass scan: count indexable files and find the newest mtime.
+
+    Combines the work of the former ``_count_source_files`` and
+    ``_get_newest_source_mtime`` into a single ``rglob`` traversal,
+    halving filesystem I/O on every staleness check.
+
+    Args:
+        project_path: Project root directory
+
+    Returns:
+        Tuple of (count, newest_mtime) where newest_mtime is None if no
+        indexable files were found.
+    """
+    count = 0
+    newest_mtime: float | None = None
+
+    try:
+        for item in project_path.rglob("*"):
+            # Skip ignored directories
+            if any(ignored in item.parts for ignored in IGNORED_DIRS):
+                continue
+
+            if item.is_file() and item.suffix in INDEXABLE_EXTENSIONS:
+                count += 1
+                try:
+                    mtime = item.stat().st_mtime
+                    if newest_mtime is None or mtime > newest_mtime:
+                        newest_mtime = mtime
+                except (PermissionError, OSError):
+                    continue
+    except (PermissionError, OSError):
+        pass
+
+    return count, newest_mtime
+
+
 def _count_source_files(project_path: Path) -> int:
     """Count source files that would be indexed.
+
+    Thin wrapper around ``_scan_source_files`` for backward compatibility
+    with any external callers.
 
     Args:
         project_path: Project root directory
@@ -145,26 +182,15 @@ def _count_source_files(project_path: Path) -> int:
     Returns:
         Count of indexable files
     """
-    count = 0
-
-    try:
-        for item in project_path.rglob("*"):
-            # Skip ignored directories
-            if any(ignored in item.parts for ignored in IGNORED_DIRS):
-                continue
-
-            # Count files with indexable extensions
-            if item.is_file() and item.suffix in INDEXABLE_EXTENSIONS:
-                count += 1
-    except (PermissionError, OSError):
-        # Skip files we can't access
-        pass
-
+    count, _ = _scan_source_files(project_path)
     return count
 
 
 def _get_newest_source_mtime(project_path: Path) -> float | None:
     """Get modification time of newest source file.
+
+    Thin wrapper around ``_scan_source_files`` for backward compatibility
+    with any external callers.
 
     Args:
         project_path: Project root directory
@@ -172,25 +198,5 @@ def _get_newest_source_mtime(project_path: Path) -> float | None:
     Returns:
         Newest mtime, or None if no source files
     """
-    newest_mtime = None
-
-    try:
-        for item in project_path.rglob("*"):
-            # Skip ignored directories
-            if any(ignored in item.parts for ignored in IGNORED_DIRS):
-                continue
-
-            # Check files with indexable extensions
-            if item.is_file() and item.suffix in INDEXABLE_EXTENSIONS:
-                try:
-                    mtime = item.stat().st_mtime
-                    if newest_mtime is None or mtime > newest_mtime:
-                        newest_mtime = mtime
-                except (PermissionError, OSError):
-                    # Skip files we can't access
-                    continue
-    except (PermissionError, OSError):
-        # Skip directories we can't access
-        pass
-
+    _, newest_mtime = _scan_source_files(project_path)
     return newest_mtime
