@@ -15,11 +15,13 @@ Philosophy:
 Public API:
     get_claude_cli_path: Get path to Claude CLI, optionally auto-installing
     ensure_claude_cli: Ensure Claude CLI is available, raise on failure
+    ensure_latest_claude: Auto-update Claude CLI to the latest version
 """
 
 __all__ = [
     "get_claude_cli_path",
     "ensure_claude_cli",
+    "ensure_latest_claude",
 ]
 
 import os
@@ -442,3 +444,99 @@ def ensure_claude_cli() -> str:
         )
 
     return claude_path
+
+
+def _get_current_claude_version(binary_path: str | None = None) -> str | None:
+    """Get the currently installed Claude CLI version.
+
+    Args:
+        binary_path: Path to the claude binary. If None, searches PATH.
+
+    Returns:
+        Version string (e.g. "1.2.3") or None if detection fails.
+    """
+    cmd = [binary_path or "claude", "--version"]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=10, check=False)
+        if result.returncode != 0 or not result.stdout.strip():
+            return None
+        import re
+
+        m = re.search(r"(\d+\.\d+\.\d+)", result.stdout)
+        return m.group(1) if m else None
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+        return None
+
+
+def _compare_versions(current: str, latest: str) -> bool:
+    """Return True if latest > current using semantic version comparison."""
+    try:
+        cur = tuple(int(x) for x in current.lstrip("v").split("."))
+        lat = tuple(int(x) for x in latest.lstrip("v").split("."))
+        return lat > cur
+    except (ValueError, AttributeError):
+        return False
+
+
+def ensure_latest_claude() -> bool:
+    """Auto-update Claude CLI to the latest version if an update is available.
+
+    Only updates npm-installed Claude CLI (prefix ~/.npm-global). System installs
+    (brew, apt, winget) are skipped since they use their own update mechanisms.
+
+    Set AMPLIHACK_SKIP_UPDATE=1 to bypass.
+
+    Returns:
+        True if up-to-date or updated successfully, False on failure.
+    """
+    if os.environ.get("AMPLIHACK_SKIP_UPDATE", "") == "1":
+        return True
+
+    claude_path = _find_claude_in_common_locations()
+    if not claude_path:
+        return True  # not installed yet — let ensure_claude_cli() handle it
+
+    # Only update npm-installed versions (those in ~/.npm-global)
+    user_npm_bin = Path.home() / ".npm-global" / "bin"
+    try:
+        if not Path(claude_path).resolve().is_relative_to(user_npm_bin.resolve()):
+            return True  # system install — skip (brew/apt/winget manage their own updates)
+    except (ValueError, OSError):
+        return True
+
+    try:
+        current = _get_current_claude_version(claude_path)
+        if current is None:
+            return True
+
+        npm_path = shutil.which("npm")
+        if not npm_path:
+            return True
+
+        latest_result = subprocess.run(
+            [npm_path, "view", "@anthropic-ai/claude-code", "version"],
+            capture_output=True, text=True, timeout=15, check=False,
+        )
+        if latest_result.returncode != 0:
+            return True
+
+        latest = latest_result.stdout.strip()
+        if not _compare_versions(current, latest):
+            return True  # already up-to-date
+
+        print(f"🔄 Claude Code update available: {current} → {latest}")
+        user_npm_dir = Path.home() / ".npm-global"
+        result = subprocess.run(
+            [npm_path, "install", "-g", "--prefix", str(user_npm_dir),
+             "@anthropic-ai/claude-code", "--ignore-scripts"],
+            capture_output=True, text=True, timeout=120, check=False,
+        )
+        if result.returncode == 0:
+            post = _get_current_claude_version(claude_path) or latest
+            print(f"✓ Claude Code updated to {post}")
+            return True
+
+        print(f"⚠ Claude Code update failed — continuing with current version: {result.stderr.strip()}")
+        return False
+    except Exception:
+        return False

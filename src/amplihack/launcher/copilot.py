@@ -194,43 +194,60 @@ def _compare_versions(current: str, latest: str) -> bool:
         return False
 
 
-def check_for_update() -> str | None:
+def _get_current_copilot_version(
+    env: MutableMapping[str, str] | None = None,
+    home: Path | None = None,
+) -> str | None:
+    """Get the currently installed Copilot CLI version.
+
+    Returns:
+        Version string (e.g. "1.4.0") or None if not installed / not parseable.
+    """
+    effective_env = os.environ if env is None else env
+    _ensure_copilot_bin_on_path(env=effective_env, home=home)
+    try:
+        kwargs: dict = {"capture_output": True, "text": True, "timeout": 10, "check": False}
+        if env is not None:
+            kwargs["env"] = effective_env
+        result = subprocess.run(["copilot", "--version"], **kwargs)
+        if result.returncode != 0:
+            return None
+        output = result.stdout.strip()
+        if "/" not in output:
+            return None
+        parts = output.split("/")
+        if len(parts) < 3:
+            return None
+        return parts[2].split()[0]
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError, IndexError):
+        return None
+
+
+def check_for_update(
+    env: MutableMapping[str, str] | None = None,
+    home: Path | None = None,
+) -> str | None:
     """Check if a newer version of Copilot CLI is available.
+
+    Args:
+        env: Environment mapping (defaults to os.environ).
+        home: Home directory for Copilot npm-global prefix.
 
     Returns:
         New version string if update available, None otherwise
     """
     try:
-        # Get current version
-        current_result = subprocess.run(
-            ["copilot", "--version"],
-            capture_output=True,
-            text=True,
-            timeout=1,
-            check=False,
-        )
-        if current_result.returncode != 0:
+        current_version = _get_current_copilot_version(env=env, home=home)
+        if current_version is None:
             return None
-
-        # Parse version from output: "@github/copilot/1.4.0 linux-x64 node-v20.10.0"
-        current_output = current_result.stdout.strip()
-        if "/" not in current_output:
-            return None
-
-        parts = current_output.split("/")
-        if len(parts) < 3:
-            return None
-
-        # Extract version from: "1.4.0 linux-x64..." -> "1.4.0"
-        current_version = parts[2].split()[0]
 
         # Get latest version from npm
+        effective_env = os.environ if env is None else env
+        kwargs: dict = {"capture_output": True, "text": True, "timeout": 15, "check": False}
+        if env is not None:
+            kwargs["env"] = effective_env
         latest_result = subprocess.run(
-            ["npm", "view", "@github/copilot", "version"],
-            capture_output=True,
-            text=True,
-            timeout=3,
-            check=False,
+            ["npm", "view", "@github/copilot", "version"], **kwargs
         )
         if latest_result.returncode != 0:
             return None
@@ -350,55 +367,53 @@ def prompt_user_to_update(new_version: str, install_method: str) -> bool:
     return user_input == "y"
 
 
-def execute_update(install_method: str) -> bool:
+def execute_update(
+    install_method: str,
+    env: MutableMapping[str, str] | None = None,
+    home: Path | None = None,
+) -> bool:
     """Execute Copilot CLI update based on installation method.
 
     Args:
         install_method: Installation method ('npm' or 'uvx')
+        env: Environment mapping (defaults to os.environ).
+        home: Home directory for npm-global prefix resolution.
 
     Returns:
         True if update succeeded, False otherwise
     """
+    effective_env = os.environ if env is None else env
+    _ensure_copilot_bin_on_path(env=effective_env, home=home)
+
     print(f"\n📦 Updating Copilot CLI via {install_method}...")
 
     try:
-        # Get current version before update
-        try:
-            pre_result = subprocess.run(
-                ["copilot", "--version"],
-                capture_output=True,
-                text=True,
-                timeout=2,
-                check=False,
-            )
-            pre_version = None
-            if pre_result.returncode == 0:
-                output = pre_result.stdout.strip()
-                if "/" in output:
-                    parts = output.split("/")
-                    if len(parts) >= 3:
-                        pre_version = parts[2].split()[0]
-        except (subprocess.TimeoutExpired, FileNotFoundError, IndexError):
-            pre_version = None
+        pre_version = _get_current_copilot_version(env=env, home=home)
 
         # Execute update command
+        run_kwargs: dict = {"check": False}
+        if env is not None:
+            run_kwargs["env"] = effective_env
+
         if install_method == "uvx":
-            # uvx update: run copilot with latest version
             result = subprocess.run(
                 ["uvx", "--from", "@github/copilot@latest", "copilot", "--version"],
                 capture_output=True,
                 text=True,
-                timeout=30,
-                check=False,
+                timeout=60,
+                **run_kwargs,
             )
         else:
-            # npm update
+            # npm update — use the same --prefix as install_copilot() so the
+            # binary lands in the correct npm-global directory.
+            npm_prefix = _copilot_home(home=home, env=effective_env) / ".npm-global"
+            npm_prefix.mkdir(parents=True, exist_ok=True)
             result = subprocess.run(
-                ["npm", "install", "-g", "@github/copilot"],
+                ["npm", "install", "-g", "--prefix", str(npm_prefix), "@github/copilot"],
                 capture_output=True,
                 text=True,
-                timeout=60,
-                check=False,
+                timeout=120,
+                **run_kwargs,
             )
 
         if result.returncode != 0:
@@ -406,28 +421,13 @@ def execute_update(install_method: str) -> bool:
             return False
 
         # Verify update by checking version
-        try:
-            post_result = subprocess.run(
-                ["copilot", "--version"],
-                capture_output=True,
-                text=True,
-                timeout=2,
-                check=False,
-            )
-            if post_result.returncode == 0:
-                output = post_result.stdout.strip()
-                if "/" in output:
-                    parts = output.split("/")
-                    if len(parts) >= 3:
-                        post_version = parts[2].split()[0]
-                        if pre_version and post_version != pre_version:
-                            print(f"✓ Updated from {pre_version} to {post_version}")
-                            return True
-                        if post_version:
-                            print(f"✓ Update complete (version: {post_version})")
-                            return True
-        except (subprocess.TimeoutExpired, FileNotFoundError, IndexError):
-            pass
+        post_version = _get_current_copilot_version(env=env, home=home)
+        if post_version:
+            if pre_version and post_version != pre_version:
+                print(f"✓ Updated from {pre_version} to {post_version}")
+            else:
+                print(f"✓ Update complete (version: {post_version})")
+            return True
 
         # If version check fails but update command succeeded
         print("✓ Update completed")
@@ -441,6 +441,59 @@ def execute_update(install_method: str) -> bool:
         return False
     except Exception as e:
         print(f"✗ Update failed: {e}")
+        return False
+
+
+def ensure_latest_copilot(
+    env: MutableMapping[str, str] | None = None,
+    home: Path | None = None,
+) -> bool:
+    """Ensure the latest Copilot CLI is installed, updating automatically if needed.
+
+    This is the primary pre-launch update gate. It runs without user prompts
+    so that new CLI flags (e.g. --autopilot) are always available.
+
+    Set AMPLIHACK_SKIP_UPDATE=1 to bypass the update check.
+
+    Args:
+        env: Environment mapping (defaults to os.environ).
+        home: Home directory for npm-global prefix resolution.
+
+    Returns:
+        True if copilot is up-to-date (or was successfully updated), False on
+        update failure (launch should still proceed with the current version).
+    """
+    effective_env = os.environ if env is None else env
+
+    if effective_env.get("AMPLIHACK_SKIP_UPDATE", "") == "1":
+        return True
+
+    _ensure_copilot_bin_on_path(env=effective_env, home=home)
+
+    # If copilot isn't installed at all, install_copilot() handles that separately
+    if not check_copilot(env=env, home=home):
+        return True  # let the caller's install_copilot() path handle this
+
+    try:
+        new_version = check_for_update(env=env, home=home)
+        if new_version is None:
+            return True  # already up-to-date (or couldn't check — don't block)
+
+        current = _get_current_copilot_version(env=env, home=home) or "unknown"
+        print(f"🔄 Copilot CLI update available: {current} → {new_version}")
+
+        install_method = detect_install_method()
+        if execute_update(install_method, env=env, home=home):
+            return True
+
+        print("⚠ Update failed — continuing with current version")
+        return False
+    except Exception as e:
+        import logging
+
+        logging.getLogger(__name__).debug(
+            f"Copilot auto-update failed: {type(e).__name__}: {e}"
+        )
         return False
 
 
@@ -984,22 +1037,12 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
     Returns:
         Exit code
     """
-    # Check for updates (non-blocking)
+    # Auto-update to latest version before launching (fixes #3097).
+    # This ensures new flags like --autopilot are always supported.
     try:
-        new_version = check_for_update()
-        if new_version:
-            install_method = detect_install_method()
-            if prompt_user_to_update(new_version, install_method):
-                # User wants to update
-                if execute_update(install_method):
-                    print("✓ Copilot CLI updated successfully")
-                else:
-                    print("⚠ Update failed - continuing with current version")
-    except Exception as e:
-        # Ignore update check failures — non-critical background operation
-        import logging
-
-        logging.getLogger(__name__).debug(f"Copilot update check failed: {type(e).__name__}: {e}")
+        ensure_latest_copilot()
+    except Exception:
+        pass  # non-critical — continue with current version
 
     # Ensure copilot is installed
     if not check_copilot():

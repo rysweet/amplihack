@@ -119,9 +119,10 @@ class TestCodexConfigure:
 class TestCodexLaunch:
     """Tests for launch_codex function."""
 
+    @patch("src.amplihack.launcher.codex.ensure_latest_codex")
     @patch("src.amplihack.launcher.codex.check_codex")
     @patch("subprocess.run")
-    def test_launch_codex_with_prompt(self, mock_run, mock_check):
+    def test_launch_codex_with_prompt(self, mock_run, mock_check, mock_update):
         """Test launching codex with a prompt."""
         mock_check.return_value = True
         mock_run.return_value = MagicMock(returncode=0)
@@ -133,9 +134,10 @@ class TestCodexLaunch:
         called_cmd = mock_run.call_args[0][0]
         assert called_cmd == ["codex", "exec", "test prompt"]
 
+    @patch("src.amplihack.launcher.codex.ensure_latest_codex")
     @patch("src.amplihack.launcher.codex.check_codex")
     @patch("subprocess.run")
-    def test_launch_codex_interactive(self, mock_run, mock_check):
+    def test_launch_codex_interactive(self, mock_run, mock_check, mock_update):
         """Test launching codex in interactive mode."""
         mock_check.return_value = True
         mock_run.return_value = MagicMock(returncode=0)
@@ -147,13 +149,14 @@ class TestCodexLaunch:
         called_cmd = mock_run.call_args[0][0]
         assert called_cmd == ["codex"]
 
+    @patch("src.amplihack.launcher.codex.ensure_latest_codex")
     @patch("src.amplihack.launcher.codex.check_codex")
     @patch("src.amplihack.launcher.codex.install_codex")
     @patch("src.amplihack.launcher.codex.configure_codex")
     @patch("subprocess.run")
-    def test_launch_codex_auto_install(self, mock_run, mock_configure, mock_install, mock_check):
+    def test_launch_codex_auto_install(self, mock_run, mock_configure, mock_install, mock_check, mock_update):
         """Test that codex is auto-installed if missing."""
-        mock_check.return_value = False
+        mock_check.side_effect = [False, True]  # Not installed first, then installed after install_codex
         mock_install.return_value = True
         mock_configure.return_value = True
         mock_run.return_value = MagicMock(returncode=0)
@@ -164,9 +167,10 @@ class TestCodexLaunch:
         mock_install.assert_called_once()
         mock_configure.assert_called_once()
 
+    @patch("src.amplihack.launcher.codex.ensure_latest_codex")
     @patch("src.amplihack.launcher.codex.check_codex")
     @patch("src.amplihack.launcher.codex.install_codex")
-    def test_launch_codex_install_failure(self, mock_install, mock_check):
+    def test_launch_codex_install_failure(self, mock_install, mock_check, mock_update):
         """Test handling of installation failure."""
         mock_check.return_value = False
         mock_install.return_value = False
@@ -175,9 +179,10 @@ class TestCodexLaunch:
 
         assert result == 1
 
+    @patch("src.amplihack.launcher.codex.ensure_latest_codex")
     @patch("src.amplihack.launcher.codex.check_codex")
     @patch("subprocess.run")
-    def test_launch_codex_execution_failure(self, mock_run, mock_check):
+    def test_launch_codex_execution_failure(self, mock_run, mock_check, mock_update):
         """Test handling of codex execution failure."""
         mock_check.return_value = True
         mock_run.return_value = MagicMock(returncode=127)
