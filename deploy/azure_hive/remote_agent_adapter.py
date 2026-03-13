@@ -39,7 +39,7 @@ class RemoteAgentAdapter:
         response_hub: str,
         agent_count: int = 100,
         resource_group: str = "",
-        answer_timeout: int = 120,
+        answer_timeout: int = 0,
     ) -> None:
         self._connection_string = connection_string
         self._input_hub = input_hub

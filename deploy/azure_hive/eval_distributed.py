@@ -54,7 +54,7 @@ def main():
     p.add_argument("--grader-model", default="claude-haiku-4-5-20251001")
     p.add_argument("--resource-group", default="", help="Azure resource group (optional, unused)")
     p.add_argument(
-        "--answer-timeout", type=int, default=120, help="Seconds to wait per answer (0=no timeout)"
+        "--answer-timeout", type=int, default=0, help="Seconds to wait per answer (0=no timeout)"
     )
     p.add_argument("--output", default="", help="Output JSON path")
     args = p.parse_args()
