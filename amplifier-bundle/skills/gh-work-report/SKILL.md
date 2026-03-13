@@ -103,7 +103,7 @@ gh search issues --author=@me --created=">YYYY-MM-DD" --limit 100 --json number,
 
 ```bash
 # For each active repo, check for releases
-gh api repos/{owner}/{repo}/releases --jq '.[].tag_name' 2>/dev/null | head -5
+gh api repos/{owner}/{repo}/releases --jq '.[].tag_name' | head -5
 ```
 
 ### Step 3: Combine and deduplicate
@@ -151,10 +151,21 @@ If yes, follow the infrastructure setup in `reference.md` § Infrastructure Setu
 ## Key Rules
 
 - **Never hardcode usernames** — always detect from `gh auth status`
+- **Never use fallbacks** — no silent defaults, no `2>/dev/null`, no hardcoded values. Errors must fail loud with descriptive messages.
+- **All charts must be code-generated** — every number in every chart and table must come from actual API data. Never fabricate or estimate chart data.
+- **4 query filters for complete PR coverage**: `created:>DATE` (new), `is:open` (all WIP), `merged:>DATE` (merged during window), `closed:>DATE` (closed during window). Deduplicate by URL.
+- **Clamp chart timelines** — Gantt and timeline charts must be scoped to the report window. Clamp start dates to `max(pr_date, window_start)`.
 - **Handle private repos gracefully** — note them but don't expose sensitive details unless the report itself is private
 - **Date math**: Use `date -d "$DAYS days ago" +%Y-%m-%d` (Linux) for the start date
 - **Rate limiting**: If `gh api` returns 403, wait and retry. Use `--paginate` for large result sets.
 - **Empty results are fine** — if an account has no activity, say so briefly and move on
+
+## Authentication & Automation
+
+- **Local (multi-account)**: Use `./run.sh [days]` which leverages `gh auth switch` across all locally authenticated accounts. This is the recommended approach for users with multiple accounts (e.g., public + EMU).
+- **GitHub Actions (single-account)**: Use the workflow templates with a PAT secret. A PAT is scoped to one identity and cannot cross accounts.
+- **Two-PAT approach**: For Actions across two accounts, use separate PAT secrets (`ACCOUNT1_PAT`, `ACCOUNT2_PAT`) with explicit `--header "authorization: token $PAT"` per API call.
+- **GitHub Pages is static only** — report generation must happen elsewhere (local script, Actions, gh-aw). Pages just serves the output.
 
 ## Reference Files
 

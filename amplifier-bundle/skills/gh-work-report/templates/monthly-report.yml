@@ -34,6 +34,7 @@ jobs:
       - name: Set up date range
         id: dates
         run: |
+          set -euo pipefail
           DAYS="${{ github.event.inputs.days || '30' }}"
           START_DATE=$(date -d "$DAYS days ago" +%Y-%m-%d)
           END_DATE=$(date +%Y-%m-%d)
@@ -46,6 +47,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.REPORT_TOKEN }}
         run: |
+          set -euo pipefail
           START="${{ steps.dates.outputs.start }}"
           mkdir -p /tmp/report-data
 
@@ -59,22 +61,31 @@ jobs:
                 }
               }
             }
-          }' --jq '.data.viewer.repositories.nodes[] | select(.pushedAt >= "'"$START"'")' > /tmp/report-data/repos.json 2>/dev/null || true
+          }' --jq '.data.viewer.repositories.nodes[] | select(.pushedAt >= "'"$START"'")' > /tmp/report-data/repos.json
 
           gh search prs --author=@me --created=">$START" --limit 500 \
             --json number,title,repository,state,createdAt,url,mergedAt \
-            > /tmp/report-data/prs-created.json 2>/dev/null || echo '[]' > /tmp/report-data/prs-created.json
+            > /tmp/report-data/prs-created.json
+
+          gh search prs --author=@me --state=open --limit 500 \
+            --json number,title,repository,state,createdAt,url,mergedAt \
+            > /tmp/report-data/prs-open.json
 
           gh search prs --author=@me --merged=">$START" --limit 500 \
             --json number,title,repository,state,createdAt,url,mergedAt \
-            > /tmp/report-data/prs-merged.json 2>/dev/null || echo '[]' > /tmp/report-data/prs-merged.json
+            > /tmp/report-data/prs-merged.json
+
+          gh search prs --author=@me --closed=">$START" --limit 500 \
+            --json number,title,repository,state,createdAt,url,mergedAt \
+            > /tmp/report-data/prs-closed.json
 
           gh search issues --author=@me --created=">$START" --limit 200 \
             --json number,title,repository,state,createdAt,url \
-            > /tmp/report-data/issues.json 2>/dev/null || echo '[]' > /tmp/report-data/issues.json
+            > /tmp/report-data/issues.json
 
       - name: Generate report
         run: |
+          set -euo pipefail
           START="${{ steps.dates.outputs.start }}"
           END="${{ steps.dates.outputs.end }}"
           DAYS="${{ steps.dates.outputs.days }}"
@@ -82,10 +93,10 @@ jobs:
           REPORT="docs/reports/$FILENAME"
           mkdir -p docs/reports
 
-          REPO_COUNT=$(cat /tmp/report-data/repos.json 2>/dev/null | wc -l || echo 0)
-          PR_CREATED=$(python3 -c "import json; print(len(json.load(open('/tmp/report-data/prs-created.json'))))" 2>/dev/null || echo 0)
-          PR_MERGED=$(python3 -c "import json; print(len(json.load(open('/tmp/report-data/prs-merged.json'))))" 2>/dev/null || echo 0)
-          ISSUES=$(python3 -c "import json; print(len(json.load(open('/tmp/report-data/issues.json'))))" 2>/dev/null || echo 0)
+          REPO_COUNT=$(cat /tmp/report-data/repos.json | wc -l)
+          PR_CREATED=$(python3 -c "import json; print(len(json.load(open('/tmp/report-data/prs-created.json'))))")
+          PR_MERGED=$(python3 -c "import json; print(len(json.load(open('/tmp/report-data/prs-merged.json'))))")
+          ISSUES=$(python3 -c "import json; print(len(json.load(open('/tmp/report-data/issues.json'))))")
 
           cat > "$REPORT" << EOF
           # GitHub Activity Report: ${START} → ${END}
@@ -115,22 +126,20 @@ jobs:
               repo = pr.get('repository', {})
               repo_name = repo.get('nameWithOwner', 'unknown') if isinstance(repo, dict) else str(repo)
               print(f'| [#{pr[\"number\"]}]({pr[\"url\"]}) | {pr[\"title\"]} | {repo_name} | {pr[\"state\"]} | {pr[\"createdAt\"][:10]} |')
-          " >> "$REPORT" 2>/dev/null || true
+          " >> "$REPORT"
 
           echo "" >> "$REPORT"
           echo "## Active Repositories" >> "$REPORT"
           echo "" >> "$REPORT"
           echo "| Repository | Description | Last Push |" >> "$REPORT"
           echo "|-----------|-------------|-----------|" >> "$REPORT"
-          cat /tmp/report-data/repos.json 2>/dev/null | python3 -c "
+          cat /tmp/report-data/repos.json | python3 -c "
           import json, sys
           for line in sys.stdin:
-              try:
-                  r = json.loads(line)
-                  desc = (r.get('description') or '—')[:60]
-                  print(f'| [{r[\"nameWithOwner\"]}]({r[\"url\"]}) | {desc} | {r[\"pushedAt\"][:10]} |')
-              except: pass
-          " >> "$REPORT" 2>/dev/null || true
+              r = json.loads(line)
+              desc = (r.get('description') or '—')[:60]
+              print(f'| [{r[\"nameWithOwner\"]}]({r[\"url\"]}) | {desc} | {r[\"pushedAt\"][:10]} |')
+          " >> "$REPORT"
 
           sed -i 's/^          //' "$REPORT"
 

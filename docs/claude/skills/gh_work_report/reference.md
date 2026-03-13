@@ -138,7 +138,7 @@ xychart-beta
 - **XY charts**: Use for daily/weekly commit activity. Aggregate by day of week for short periods, by week for 30+ day periods.
 - **Flowcharts**: Use sparingly — only to illustrate architecture changes when a project had significant structural work.
 
-Keep chart data realistic — pull actual counts from the gathered data.
+Keep chart data realistic — pull actual counts from the gathered data. **Never fabricate chart values.** Every number must trace back to real API data. If you don't have data for a chart, omit the chart entirely rather than estimating.
 
 ## gh CLI Command Patterns
 
