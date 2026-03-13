@@ -27,6 +27,7 @@ def _is_noninteractive() -> bool:
     Non-interactive mode is triggered by:
     - AMPLIHACK_NONINTERACTIVE=1 environment variable
     - No TTY on stdin (e.g., sandboxed/isolated environments)
+    - Sandboxed environment detected (isolated HOME, restricted PATH)
 
     In non-interactive mode, the launcher:
     - Skips interactive prompts
@@ -46,6 +47,44 @@ def _is_noninteractive() -> bool:
         if sys.stdin is None or not hasattr(sys.stdin, "isatty") or not sys.stdin.isatty():
             return True
     except (AttributeError, OSError):
+        return True
+
+    # Detect sandboxed environments (isolated HOME, restricted PATH)
+    if _is_sandboxed():
+        return True
+
+    return False
+
+
+def _is_sandboxed() -> bool:
+    """Detect sandboxed/isolated environments that may cause hangs.
+
+    Checks for:
+    - HOME pointing to a non-standard or missing directory
+    - PATH missing critical system directories (/usr/bin, /bin)
+    - CI/container environment variables
+
+    Returns:
+        True if a sandboxed environment is detected.
+    """
+    # CI/container environment markers
+    ci_vars = ("CI", "GITHUB_ACTIONS", "JENKINS_URL", "GITLAB_CI", "CODESPACES")
+    if any(os.environ.get(v) for v in ci_vars):
+        return True
+
+    # HOME doesn't exist or is not a writable directory
+    home = os.environ.get("HOME", "")
+    if not home or not os.path.isdir(home):
+        return True
+    try:
+        if not os.access(home, os.W_OK):
+            return True
+    except OSError:
+        return True
+
+    # PATH missing essential system directories
+    path = os.environ.get("PATH", "")
+    if not any(d in path for d in ("/usr/bin", "/bin")):
         return True
 
     return False
@@ -785,9 +824,10 @@ class ClaudeLauncher:
             replace_in_hooks(settings["hooks"])
 
             if hooks_modified:
-                # Write back with absolute paths
-                with open(settings_file, "w") as f:
-                    json.dump(settings, f, indent=2)
+                # Write back with absolute paths (atomic to prevent data loss)
+                from ..settings import write_json_atomic
+
+                write_json_atomic(str(settings_file), settings)
                 print(f"✓ Fixed hook paths in {settings_file.relative_to(target_dir)}")
 
             return True
@@ -806,12 +846,14 @@ class ClaudeLauncher:
             return 1
 
         # Auto-update to latest version before launching (fixes #3097)
-        try:
-            from ..utils.claude_cli import ensure_latest_claude
+        # Skip in non-interactive/sandboxed mode to avoid hangs
+        if not _is_noninteractive():
+            try:
+                from ..utils.claude_cli import ensure_latest_claude
 
-            ensure_latest_claude()
-        except Exception:
-            pass  # non-critical — continue with current version
+                ensure_latest_claude()
+            except Exception:
+                pass  # non-critical — continue with current version
 
         try:
             cmd = self.build_claude_command()

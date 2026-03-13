@@ -293,9 +293,10 @@ class HookMergeUtility:
         # Ensure parent directory exists
         self.settings_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Write with proper formatting
-        with open(self.settings_path, "w") as f:
-            json.dump(settings, f, indent=2)
+        # Write with proper formatting (atomic to prevent data loss)
+        from amplihack.settings import write_json_atomic
+
+        write_json_atomic(str(self.settings_path), settings)
 
         logger.info(f"Saved merged settings to {self.settings_path}")
 
