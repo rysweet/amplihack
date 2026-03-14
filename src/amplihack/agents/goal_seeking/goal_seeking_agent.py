@@ -50,7 +50,6 @@ class GoalSeekingAgent:
             env var or ``claude-opus-4-6``.
         storage_path: Override storage directory for memory.
         use_hierarchical: Pass through to LearningAgent backend selection.
-        hive_store: Shared hive graph store for distributed memory.
         prompt_variant: Variant number (1-5) for A/B prompt testing.
     """
 
@@ -60,8 +59,8 @@ class GoalSeekingAgent:
         model: str | None = None,
         storage_path: Path | None = None,
         use_hierarchical: bool = False,
-        hive_store: object | None = None,
         prompt_variant: int | None = None,
+        **kwargs: Any,
     ) -> None:
         # Import here to avoid circular imports and keep module-level import clean
         from .learning_agent import LearningAgent
@@ -72,7 +71,6 @@ class GoalSeekingAgent:
             model=model,
             storage_path=storage_path,
             use_hierarchical=use_hierarchical,
-            hive_store=hive_store,
             prompt_variant=prompt_variant,
         )
 
@@ -274,11 +272,14 @@ class GoalSeekingAgent:
 
         Order: observe → decide → orient (if answering) → act.
 
-        The decide step is pure heuristics (question marks, interrogative
+        The decide step uses pure heuristics (question marks, interrogative
         words) with no dependency on orient's memory recall.  By deciding
-        FIRST we skip the expensive distributed hive search (orient →
-        memory.search → SHARD_QUERY fan-out) for store operations, which
-        are ~50% of all inputs.
+        FIRST we can skip orient() for store operations — there is no value
+        in recalling context when the goal is simply to store a fact.
+
+        This optimisation applies equally to single-agent and distributed
+        topologies.  The agent is topology-unaware; it simply skips an
+        unnecessary memory search for store operations.
 
         Args:
             input_data: Raw input string.
@@ -288,16 +289,10 @@ class GoalSeekingAgent:
         """
         self.observe(input_data)
         self.decide()
-        # orient() is intentionally skipped for BOTH decisions:
-        #  - "store": no need to recall context when just storing facts
-        #  - "answer": answer_question() does its own retrieval via
-        #    get_all_facts(limit=15000, query=question), making orient()'s
-        #    search redundant.  In distributed mode, orient() fans out 99
-        #    SHARD_QUERYs whose results are never passed to answer_question().
-        #    Skipping eliminates ~500K useless SHARD_QUERYs per eval run.
-        # NOTE: orient() is still available for callers who use it
-        #  directly (e.g. single-agent tests).
-        self._oriented_facts = {"input": self._current_input, "facts": []}
+        if self._decision == "answer":
+            self.orient()
+        else:
+            self._oriented_facts = {"input": self._current_input, "facts": []}
         return self.act()
 
     # ------------------------------------------------------------------

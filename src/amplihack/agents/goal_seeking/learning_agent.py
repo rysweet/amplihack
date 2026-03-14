@@ -86,8 +86,8 @@ class LearningAgent:
         model: str | None = None,
         storage_path: Path | None = None,
         use_hierarchical: bool = False,
-        hive_store: object | None = None,
         prompt_variant: int | None = None,
+        **kwargs: Any,
     ):
         """Initialize learning agent.
 
@@ -97,18 +97,15 @@ class LearningAgent:
             storage_path: Custom storage path for memory
             use_hierarchical: If True, use HierarchicalMemory via FlatRetrieverAdapter.
                 If False, use original MemoryRetriever (backward compatible).
-            hive_store: Optional shared hive graph store for distributed memory.
-                When set, the agent's retrieval path queries both local memory
-                and the shared hive, enabling cross-agent knowledge sharing.
-                Accepts any object with query_facts() or query_federated() methods
-                (e.g., InMemoryHiveGraph, HiveGraphStore, FederatedGraphStore).
             prompt_variant: Optional prompt variant number (1-5). When set, loads
                 the system prompt from prompts/variants/variant_{N}_{style}.md
                 instead of the default synthesis_system.md. Used to test different
                 prompting strategies in eval experiments.
 
         Note:
-            Requires OPENAI_API_KEY or appropriate provider key to be set.
+            The memory backend is topology-unaware.  For distributed operation,
+            the caller wraps the memory backend with DistributedCognitiveMemory
+            (see agent_entrypoint.py).
         """
         self.agent_name = agent_name
         self.model = model or os.environ.get("EVAL_MODEL", "claude-opus-4-6")
@@ -125,7 +122,6 @@ class LearningAgent:
                 self.memory = CognitiveAdapter(
                     agent_name=agent_name,
                     db_path=storage_path,
-                    hive_store=hive_store,
                 )
             else:
                 self.memory = FlatRetrieverAdapter(
