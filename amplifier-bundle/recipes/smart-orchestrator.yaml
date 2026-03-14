@@ -136,6 +136,7 @@ steps:
       EOFDECOMP
       )
       TASK_TYPE={{task_type}}
+      FORCE_SINGLE={{force_single_workstream}}
       HOOKS_DIR=$(python3 -m amplihack.resolve_bundle_asset "amplifier-bundle/tools/amplihack/hooks" 2>/dev/null) || HOOKS_DIR=""
       _DECOMP_TMPFILE=$(mktemp)
       trap 'rm -f "$_DECOMP_TMPFILE"' EXIT
@@ -144,31 +145,43 @@ steps:
       __DECOMP_EOF__
       export DECOMP_TMPFILE="$_DECOMP_TMPFILE"
       export TASK_TYPE=$(printf '%s' {{task_type}})
+      export FORCE_SINGLE=$(printf '%s' "$FORCE_SINGLE")
       export HELPER_PATH HOOKS_DIR
       python3 - <<'PYEOF'
-      import os, sys, importlib.util
+      import os, sys, io, importlib.util
 
       helper_path = os.environ['HELPER_PATH']
       with open(os.environ['DECOMP_TMPFILE']) as f:
           decomp_json = f.read()
       task_type = os.environ['TASK_TYPE']
       hooks_dir = os.environ['HOOKS_DIR']
+      force_single = os.environ.get('FORCE_SINGLE', 'false').strip().lower() in ('true', '1')
 
       # Compute workstream count from decomposition JSON
       spec = importlib.util.spec_from_file_location('orch_helper', helper_path)
       h = importlib.util.module_from_spec(spec); spec.loader.exec_module(h)
       obj = h.extract_json(decomp_json)
-      count = max(1, len(obj.get("workstreams", [])))
+      raw_count = max(1, len(obj.get("workstreams", [])))
+
+      # Enforce force_single_workstream override (fix #3130)
+      count = 1 if force_single else raw_count
 
       # Set workflow-active semaphore so the hook skips injection during execution
+      # Redirect stdout during import to prevent pollution of captured output
+      _saved_stdout = sys.stdout
+      sys.stdout = io.StringIO()
       try:
           sys.path.insert(0, hooks_dir)
           from dev_intent_router import set_workflow_active
           set_workflow_active(task_type, count)
       except Exception:
           pass  # Hook may not exist in all environments
+      finally:
+          sys.stdout = _saved_stdout
 
       # Announce classification to stderr (visible to user, not captured as output)
+      if force_single and raw_count != count:
+          print(f"[dev-orchestrator] force_single_workstream=true — overriding {raw_count} workstreams to 1", file=sys.stderr)
       print(f"[dev-orchestrator] Classified as: {task_type} | Workstreams: {count} — starting execution...", file=sys.stderr)
 
       # Output workstream count (captured by recipe runner)
@@ -178,10 +191,11 @@ steps:
 
   # ─────────────────────────────────────────────────────────────────────────
   # Materialize user_context overrides into step outputs so they are
-  # available in condition evaluation (fix #3075 — Bug A).
+  # available in condition evaluation (fix #3075, #3130).
   # The Rust runner's --set flag updates template variables ({{...}}) but
   # the condition evaluator only sees step outputs and initial context.
   # This step bridges the gap by echoing the context value to stdout.
+  # NOTE: Use bare {{var}} — single-quoted '{{var}}' prevents expansion.
   # ─────────────────────────────────────────────────────────────────────────
   - id: "materialize-force-single-workstream"
     type: "bash"
