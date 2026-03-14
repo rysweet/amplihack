@@ -81,8 +81,8 @@ def get_runner_version(binary: str | None = None) -> str | None:
             # Format: "recipe-runner 0.1.0"
             parts = result.stdout.strip().rsplit(" ", 1)
             return parts[-1] if len(parts) >= 2 else result.stdout.strip()
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("Could not get runner version from %s: %s", binary, exc)
     return None
 
 
@@ -374,8 +374,8 @@ def _default_package_recipe_dirs() -> list[str]:
                     dirs.append(candidate_str)
         if dirs:
             return dirs
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("Could not resolve default recipe dirs: %s", exc)
     return []
 
 
