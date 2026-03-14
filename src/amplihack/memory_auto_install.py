@@ -11,10 +11,15 @@ def _is_arm64_interpreter() -> bool:
     return "ARM64" in sys.version or "aarch64" in sys.version
 
 
-def _find_x86_python() -> str | None:
-    """On Windows ARM64, find an x86_64 Python that can load kuzu's win_amd64 wheel."""
+def _find_x86_python() -> list[str] | None:
+    """On Windows ARM64, find an x86_64 Python that can load kuzu's win_amd64 wheel.
+
+    Returns:
+        A command list like ["C:\\...\\py.exe", "-3.13"] or None if not found.
+    """
     if sys.platform != "win32":
         return None
+    import re
     import shutil
     import subprocess
 
@@ -32,24 +37,25 @@ def _find_x86_python() -> str | None:
             capture_output=True, text=True, timeout=10,
         )
         # Look for a non-ARM64 Python (e.g., " -V:3.13  Python 3.13 (64-bit)")
+        # Version tags look like "-V:3.13" or "-3.13-64"
+        ver_pattern = re.compile(r"-(?:V:)?(\d+\.\d+)")
         for line in result.stdout.splitlines():
-            line = line.strip()
-            if not line or "arm64" in line.lower():
+            stripped = line.strip()
+            if not stripped or "arm64" in stripped.lower():
                 continue
-            # Extract version tag like "-V:3.13" or "-3.13"
-            for token in line.split():
-                if token.startswith("-V:") or token.startswith("-"):
-                    ver = token.replace("-V:", "-")
-                    # Verify it actually works
-                    check = subprocess.run(
-                        [py, ver, "-c", "import struct; print(struct.calcsize('P')*8)"],
-                        capture_output=True, text=True, timeout=10,
-                    )
-                    if check.returncode == 0 and "64" in check.stdout.strip():
-                        return f"{py} {ver}"
-                    break
-    except Exception:
-        pass
+            match = ver_pattern.search(stripped)
+            if not match:
+                continue
+            ver_tag = f"-{match.group(1)}"
+            # Verify this Python is actually a working 64-bit interpreter
+            check = subprocess.run(
+                [py, ver_tag, "-c", "import struct; print(struct.calcsize('P')*8)"],
+                capture_output=True, text=True, timeout=10,
+            )
+            if check.returncode == 0 and "64" in check.stdout.strip():
+                return [py, ver_tag]
+    except Exception as exc:
+        print(f"WARNING: Failed to enumerate Python installations: {exc}", file=sys.stderr)
     return None
 
 
@@ -83,16 +89,19 @@ def ensure_memory_lib_installed() -> bool:
     return _do_install([sys.executable, "-m", "pip"])
 
 
-def _install_via_x86_python(py_cmd: str) -> bool:
-    """Install amplihack-memory-lib using an x86_64 Python (for ARM64 Windows)."""
+def _install_via_x86_python(py_cmd: list[str]) -> bool:
+    """Install amplihack-memory-lib using an x86_64 Python (for ARM64 Windows).
+
+    Args:
+        py_cmd: Command list to invoke x86_64 Python, e.g. ["py", "-3.13"].
+    """
     import subprocess
 
-    print(f"📦 Installing amplihack-memory-lib via x86_64 Python ({py_cmd})...")
+    print(f"📦 Installing amplihack-memory-lib via x86_64 Python ({' '.join(py_cmd)})...")
 
-    parts = py_cmd.split()
     try:
         result = subprocess.run(
-            [*parts, "-m", "pip", "install",
+            [*py_cmd, "-m", "pip", "install",
              "git+https://github.com/rysweet/amplihack-memory-lib.git@v0.1.0",
              "--quiet"],
             capture_output=True, text=True, timeout=120,

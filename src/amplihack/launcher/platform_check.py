@@ -14,6 +14,7 @@ Public API (the "studs"):
 """
 
 import platform
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -43,10 +44,8 @@ def is_native_windows() -> bool:
 
     Example:
         >>> if is_native_windows():
-        ...     print("Please use WSL")
+        ...     print("Running on native Windows (partial support)")
     """
-    import sys
-
     # sys.platform is authoritative for the Python interpreter's platform.
     # On WSL, sys.platform == "linux" even though /proc/version contains
     # "microsoft". On native Windows Python, sys.platform == "win32" — even
