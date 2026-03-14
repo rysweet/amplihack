@@ -529,7 +529,7 @@ steps:
       # 30-char limit (vs 50). Keep both in sync on security patches. See Issue #2952.
       # FIX (issue #3041): Use heredoc instead of single-quote wrapping.
       # Create branch name
-      TASK_DESC=$(cat <<'EOFTASKDESC'
+      TASK_DESC=$(cat <<EOFTASKDESC
       {{task_description}}
       EOFTASKDESC
       )
