@@ -36,6 +36,12 @@ EMOJI = {
 # All other commands (copilot, amplifier, codex, etc.) skip it.
 _CLAUDE_COMMANDS = {None, "launch", "claude", "RustyClawd"}
 
+# Commands that launch a subordinate CLI/SDK and can safely receive unknown
+# arguments as passthrough. This lets `amplihack copilot --resume` behave like
+# `amplihack copilot -- --resume` while keeping strict parsing for management
+# commands such as `install`, `plugin`, and `memory`.
+_PASSTHROUGH_COMMANDS = _CLAUDE_COMMANDS | {"copilot", "codex", "amplifier"}
+
 
 def _debug_print(message: str) -> None:
     """Print debug message if AMPLIHACK_DEBUG is enabled.
@@ -404,7 +410,13 @@ def parse_args_with_passthrough(
         # No command and no claude args - show help
         pass
 
-    args = parser.parse_args(amplihack_args)
+    args, unknown_args = parser.parse_known_args(amplihack_args)
+
+    if unknown_args:
+        if args.command not in _PASSTHROUGH_COMMANDS:
+            parser.error(f"unrecognized arguments: {' '.join(unknown_args)}")
+        claude_args = unknown_args + claude_args
+
     return args, claude_args
 
 
@@ -1624,7 +1636,9 @@ def main(argv: list[str] | None = None) -> int:
             return handle_append_instruction(args)
 
         # Set agent binary env var for recipe runner and sub-processes
-        os.environ["AMPLIHACK_AGENT_BINARY"] = "claude"  # amplifier uses claude as underlying binary
+        os.environ["AMPLIHACK_AGENT_BINARY"] = (
+            "claude"  # amplifier uses claude as underlying binary
+        )
 
         # Shared startup (nesting, staging, deps, power-steering)
         _common_launcher_startup(args)
