@@ -34,6 +34,7 @@ Verifies (per spec):
 
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -234,8 +235,8 @@ class TestAllAffectedStepsUseHeredoc:
         step = _get_step(step_map, step_id)
         cmd = step.get("command", "")
         assert "<<'EOFTASKDESC'" in cmd or "<<EOFTASKDESC" in cmd, (
-            f"Step '{step_id}' must use heredoc capture: "
-            "TASK_DESC=$(cat <<'EOFTASKDESC'\\n{{task_description}}\\nEOFTASKDESC)"
+            f"Step '{step_id}' must use heredoc capture (via printenv fallback or direct): "
+            "printenv RECIPE_VAR_task_description ... || cat <<'EOFTASKDESC'"
         )
 
     @pytest.mark.parametrize("step_id", AFFECTED_STEP_IDS)
@@ -620,6 +621,98 @@ class TestHeredocBashSyntax:
                 "Backtick injection via old printf pattern did NOT execute — "
                 "threat model assumption may be wrong (environment may sandbox)"
             )
+
+
+# ---------------------------------------------------------------------------
+# 8b. Dual-path printenv || heredoc: Rust runner env-var + Python runner fallback
+# ---------------------------------------------------------------------------
+
+
+class TestDualPathPrintenvHeredoc:
+    """Verify the ``printenv RECIPE_VAR_* || cat <<'HEREDOC'`` pattern (issue #3117).
+
+    The Rust recipe runner sets ``RECIPE_VAR_<name>`` env vars and replaces
+    ``{{name}}`` with ``$RECIPE_VAR_<name>``.  Single-quoted heredocs prevent
+    env-var expansion, producing literal text.  The dual-path pattern fixes
+    this: ``printenv`` succeeds under Rust runner; ``cat <<'HEREDOC'`` fallback
+    is used by the Python runner (inline substitution, no env var set).
+    """
+
+    def test_printenv_path_captures_env_var(self):
+        """With RECIPE_VAR_* set (Rust runner), printenv returns the value."""
+        task = "Fix the user's profile page (broken)"
+        script = (
+            "TASK_DESC=$(printenv RECIPE_VAR_task_description 2>/dev/null || cat <<'EOFTASKDESC'\n"
+            "$RECIPE_VAR_task_description\n"
+            "EOFTASKDESC\n"
+            ")\n"
+            'printf "%s" "$TASK_DESC"'
+        )
+        result = subprocess.run(
+            ["/bin/bash", "-c", script],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            env={**os.environ, "RECIPE_VAR_task_description": task},
+        )
+        assert result.returncode == 0
+        assert result.stdout.strip() == task
+
+    def test_heredoc_fallback_without_env_var(self):
+        """Without RECIPE_VAR_* (Python runner), heredoc captures literal text."""
+        task = "Fix the user's profile page (broken)"
+        script = (
+            "TASK_DESC=$(printenv RECIPE_VAR_task_description 2>/dev/null || cat <<'EOFTASKDESC'\n"
+            f"{task}\n"
+            "EOFTASKDESC\n"
+            ")\n"
+            'printf "%s" "$TASK_DESC"'
+        )
+        env = {k: v for k, v in os.environ.items() if k != "RECIPE_VAR_task_description"}
+        result = subprocess.run(
+            ["/bin/bash", "-c", script],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            env=env,
+        )
+        assert result.returncode == 0
+        assert task in result.stdout
+
+    @pytest.mark.parametrize("name,task_desc", ADVERSARIAL_TASK_DESCRIPTIONS[:5])
+    def test_printenv_path_safe_with_adversarial_input(self, name, task_desc):
+        """Adversarial input in env var is safely captured via printenv."""
+        script = (
+            "TASK_DESC=$(printenv RECIPE_VAR_task_description 2>/dev/null || cat <<'EOFTASKDESC'\n"
+            "$RECIPE_VAR_task_description\n"
+            "EOFTASKDESC\n"
+            ")\n"
+            'printf "%s" "$TASK_DESC"'
+        )
+        result = subprocess.run(
+            ["/bin/bash", "-c", script],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            env={**os.environ, "RECIPE_VAR_task_description": task_desc},
+        )
+        assert result.returncode == 0
+        assert result.stdout.strip() == task_desc
+
+    def test_recipe_steps_use_printenv_pattern(self, default_workflow):
+        """All heredoc-protected steps (except step-04) use printenv || cat."""
+        for step in default_workflow.get("steps", []):
+            step_id = step.get("id", "")
+            if step_id not in AFFECTED_STEP_IDS:
+                continue
+            if step_id == "step-04-setup-worktree":
+                continue  # step-04 uses unquoted heredoc for Rust runner compat
+            cmd = step.get("command", "")
+            if "EOFTASKDESC" in cmd:
+                assert "printenv RECIPE_VAR_task_description" in cmd, (
+                    f"Step '{step_id}' should use printenv || cat pattern for "
+                    "Rust runner compatibility (issue #3117)"
+                )
 
 
 # ---------------------------------------------------------------------------
