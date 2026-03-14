@@ -108,49 +108,23 @@ def _safe_join(base: Path, relative: str) -> "Path | None":
         return None
 
 
-def _discover_cwd_search_bases() -> list[Path]:
-    """Return checkout roots inferred from the current working directory.
-
-    When `python -m amplihack.resolve_bundle_asset` resolves from an installed
-    package while the user is actually running inside a source checkout, the
-    package-relative search roots point at site-packages instead of the repo.
-    Walking the current directory and its parents lets local checkouts win
-    without requiring AMPLIHACK_HOME to be set manually.
-    """
-    search_bases: list[Path] = []
-    seen: set[Path] = set()
-
-    try:
-        cwd = Path.cwd().resolve()
-    except OSError:
-        return search_bases
-
-    for base in [cwd, *cwd.parents]:
-        if base in seen:
-            continue
-        seen.add(base)
-        if (base / "amplifier-bundle").is_dir():
-            search_bases.append(base)
-
-    return search_bases
-
-
 def resolve_asset(relative_path: str) -> Path:
     """Resolve a bundle asset to an absolute path.
 
     Searches candidate locations in priority order:
 
     1. ``$AMPLIHACK_HOME/<relative_path>`` — explicit environment override
-    2. ``<cwd-or-parent>/<relative_path>`` when running inside a source
-       checkout that contains ``amplifier-bundle/``
-    3. ``<pkg_dir>/<relative_path>`` — installed package (amplifier-bundle
+    2. ``<pkg_dir>/<relative_path>`` — installed package (amplifier-bundle
        is copied as package data by build_hooks.py)
-    4. ``<pkg_dir>.parent.parent/<relative_path>`` — editable install
+    3. ``<pkg_dir>.parent.parent/<relative_path>`` — editable install
        (``src/amplihack/`` → repo root has ``amplifier-bundle/``)
-    5. ``~/.amplihack/<relative_path>`` — user home installation
+    4. ``~/.amplihack/<relative_path>`` — user home installation
 
     Each candidate is checked via :func:`_safe_join` to ensure the resolved
     path does not escape the search root (SR-004 containment check).
+
+    To prefer a specific local checkout, set ``$AMPLIHACK_HOME`` to that
+    checkout's root directory.
 
     Args:
         relative_path: Bundle-relative path, e.g.
@@ -183,17 +157,14 @@ def resolve_asset(relative_path: str) -> Path:
                 file=sys.stderr,
             )
 
-    # 2. Running from a source checkout: prefer cwd/ancestor repo roots.
-    search_bases.extend(_discover_cwd_search_bases())
-
-    # 3. Installed package: amplifier-bundle/ is package data adjacent to this file.
+    # 2. Installed package: amplifier-bundle/ is package data adjacent to this file.
     search_bases.append(_PKG_DIR)
 
-    # 4. Editable install: this file is src/amplihack/resolve_bundle_asset.py,
+    # 3. Editable install: this file is src/amplihack/resolve_bundle_asset.py,
     #    so the repo root (which contains amplifier-bundle/) is two levels up.
     search_bases.append(_PKG_DIR.parent.parent)
 
-    # 5. User home installation.
+    # 4. User home installation.
     search_bases.append(_HOME_AMPLIHACK)
 
     for base in search_bases:
