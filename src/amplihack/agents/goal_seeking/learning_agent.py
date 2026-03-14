@@ -609,10 +609,11 @@ class LearningAgent:
                 else:
                     cached = getattr(self._thread_local, "_cached_all_facts", None)
                     if cached is None:
-                        # query kwarg only supported by CognitiveAdapter / DistributedCognitiveMemory
-                        if hasattr(self.memory, "local_search_facts"):
+                        # CognitiveAdapter.get_all_facts() always accepts query kwarg.
+                        # MemoryRetriever does not, so fall back gracefully.
+                        try:
                             cached = self.memory.get_all_facts(limit=15000, query=question)
-                        else:
+                        except TypeError:
                             cached = self.memory.get_all_facts(limit=15000)
                     self._thread_local._cached_all_facts = cached
                     kb_size = len(cached)
@@ -1082,10 +1083,11 @@ class LearningAgent:
             all_facts = cached
             self._thread_local._cached_all_facts = None  # consume; one-shot per question
         else:
-            # query kwarg only supported by CognitiveAdapter / DistributedCognitiveMemory
-            if hasattr(self.memory, "local_search_facts"):
+            # CognitiveAdapter.get_all_facts() always accepts query kwarg.
+            # MemoryRetriever does not, so fall back gracefully.
+            try:
                 all_facts = self.memory.get_all_facts(limit=15000, query=question)
-            else:
+            except TypeError:
                 all_facts = self.memory.get_all_facts(limit=15000)
         kb_size = len(all_facts)
 

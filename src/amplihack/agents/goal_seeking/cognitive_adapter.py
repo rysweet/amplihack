@@ -512,10 +512,11 @@ class CognitiveAdapter:
             query: Optional question text passed through to the memory backend.
         """
         if self._cognitive:
-            # DistributedCognitiveMemory accepts query; plain CognitiveMemory does not.
-            if hasattr(self.memory, "local_search_facts"):
+            # Pass query to memory backend. DistributedCognitiveMemory uses it
+            # for targeted hive queries; plain CognitiveMemory ignores it.
+            try:
                 results = self.memory.get_all_facts(limit=limit, query=query)
-            else:
+            except TypeError:
                 results = self.memory.get_all_facts(limit=limit)
             local_results = [self._semantic_fact_to_dict(r) for r in results]
         else:
