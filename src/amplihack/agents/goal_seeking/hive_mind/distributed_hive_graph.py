@@ -1270,6 +1270,16 @@ class DistributedHiveGraph:
 
         # Parallel fan-out: query all shards concurrently instead of sequentially.
         # With ServiceBus transport this reduces N*SB_latency to max(SB_latency).
+        #
+        # Each shard's search_local() returns results in semantic relevance
+        # order (CognitiveAdapter uses embeddings, entity extraction, graph
+        # traversal, and full-corpus fallback).  We preserve that ordering
+        # by assigning each result a position-based score: the first result
+        # from a shard gets score=1.0, second=0.99, etc.  This keeps the
+        # per-shard semantic ranking intact across the merge, instead of
+        # discarding it with a crude keyword re-ranker.
+        relevance_scores: dict[str, float] = {}  # content_hash → score
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, len(targets))) as pool:
             futures = {
                 pool.submit(self._transport.query_shard, agent_id, query, limit): agent_id
@@ -1280,11 +1290,18 @@ class DistributedHiveGraph:
                     shard_results = future.result()
                     if shard_results:
                         _responded += 1
-                    for fact in shard_results:
-                        # Deduplicate by content hash (mirrors DHTRouter.query)
+                    for rank, fact in enumerate(shard_results):
                         h = hashlib.md5(fact.content.encode()).hexdigest()
-                        if h not in seen:
+                        # Position-based score: preserves per-shard semantic ordering.
+                        # First result = 1.0, second = 0.99, etc. Duplicate facts
+                        # (same content on multiple shards) get the max score.
+                        pos_score = max(0.0, 1.0 - rank * 0.01)
+                        if h in seen:
+                            # Duplicate content — keep the higher relevance score
+                            relevance_scores[h] = max(relevance_scores.get(h, 0.0), pos_score)
+                        else:
                             seen.add(h)
+                            relevance_scores[h] = pos_score
                             results.append(fact)
                 except Exception:
                     _failed += 1
@@ -1306,53 +1323,14 @@ class DistributedHiveGraph:
         except ImportError:
             pass
 
-        # Re-rank: terms with digits (IDs, versions) weighted 5x; bigram bonus
-        import itertools
-
-        q_lower = query.lower()
-        q_words = [w.strip("?.,!;:'\"()[]") for w in q_lower.split() if w.strip("?.,!;:'\"()[]")]
-        q_bigrams = set(itertools.pairwise(q_words))
-        _stop = {
-            "the",
-            "a",
-            "an",
-            "is",
-            "are",
-            "was",
-            "were",
-            "what",
-            "how",
-            "does",
-            "do",
-            "and",
-            "or",
-            "of",
-            "in",
-            "to",
-            "for",
-            "with",
-            "on",
-            "at",
-            "by",
-            "from",
-            "that",
-            "this",
-            "it",
-        }
-        search_terms = {w for w in q_words if w not in _stop and len(w) > 1} or set(q_words)
-
-        def _relevance(f: ShardFact) -> float:
-            c_lower = f.content.lower()
-            c_words = c_lower.split()
-            hits = sum(
-                (5.0 if any(ch.isdigit() for ch in t) else 1.0)
-                for t in search_terms
-                if t in c_lower
-            )
-            bigram_bonus = sum(0.3 for bg in q_bigrams if bg in set(itertools.pairwise(c_words)))
-            return hits + bigram_bonus + f.confidence * 0.01
-
-        results.sort(key=_relevance, reverse=True)
+        # Sort by position-based relevance score (preserves per-shard
+        # semantic ordering) rather than crude keyword matching.
+        results.sort(
+            key=lambda f: relevance_scores.get(
+                hashlib.md5(f.content.encode()).hexdigest(), 0.0
+            ),
+            reverse=True,
+        )
         return [self._shard_to_hive_fact(sf) for sf in results[:limit]]
 
     def retract_fact(self, fact_id: str) -> bool:

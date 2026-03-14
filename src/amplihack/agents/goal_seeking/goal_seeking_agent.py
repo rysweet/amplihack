@@ -272,12 +272,13 @@ class GoalSeekingAgent:
     def process(self, input_data: str) -> str:
         """Run the full OODA pipeline for a single input.
 
-        Equivalent to::
+        Order: observe → decide → orient (if answering) → act.
 
-            agent.observe(input_data)
-            agent.orient()
-            agent.decide()
-            return agent.act()
+        The decide step is pure heuristics (question marks, interrogative
+        words) with no dependency on orient's memory recall.  By deciding
+        FIRST we skip the expensive distributed hive search (orient →
+        memory.search → SHARD_QUERY fan-out) for store operations, which
+        are ~50% of all inputs.
 
         Args:
             input_data: Raw input string.
@@ -286,8 +287,17 @@ class GoalSeekingAgent:
             Output produced by ``act()``.
         """
         self.observe(input_data)
-        self.orient()
         self.decide()
+        # orient() is intentionally skipped for BOTH decisions:
+        #  - "store": no need to recall context when just storing facts
+        #  - "answer": answer_question() does its own retrieval via
+        #    get_all_facts(limit=15000, query=question), making orient()'s
+        #    search redundant.  In distributed mode, orient() fans out 99
+        #    SHARD_QUERYs whose results are never passed to answer_question().
+        #    Skipping eliminates ~500K useless SHARD_QUERYs per eval run.
+        # NOTE: orient() is still available for callers who use it
+        #  directly (e.g. single-agent tests).
+        self._oriented_facts = {"input": self._current_input, "facts": []}
         return self.act()
 
     # ------------------------------------------------------------------
