@@ -173,6 +173,41 @@ class TestPackageInstallResolution(unittest.TestCase):
             resolved = mod.resolve_asset("amplifier-bundle/tools/orch_helper.py")
             self.assertTrue(resolved.is_file())
 
+    def test_running_inside_repo_prefers_cwd_checkout_over_home_install(self):
+        """A local checkout should beat ~/.amplihack even if Python imported an installed package."""
+        mod = self.mod
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            repo_root = tmp / "repo"
+            helper = repo_root / "amplifier-bundle" / "tools" / "orch_helper.py"
+            helper.parent.mkdir(parents=True)
+            helper.write_text("# local checkout helper\n")
+
+            fake_pkg_dir = tmp / "site-packages" / "amplihack"
+            fake_pkg_dir.mkdir(parents=True)
+
+            fake_home = tmp / "home-amplihack"
+            home_helper = fake_home / "amplifier-bundle" / "tools" / "orch_helper.py"
+            home_helper.parent.mkdir(parents=True)
+            home_helper.write_text("# home install helper\n")
+
+            old_pkg_dir = mod._PKG_DIR
+            old_home = mod._HOME_AMPLIHACK
+            old_cwd = Path.cwd()
+            try:
+                mod._PKG_DIR = fake_pkg_dir
+                mod._HOME_AMPLIHACK = fake_home
+                os.chdir(repo_root)
+                with patch.dict(os.environ, {}, clear=True):
+                    resolved = mod.resolve_asset("amplifier-bundle/tools/orch_helper.py")
+            finally:
+                mod._PKG_DIR = old_pkg_dir
+                mod._HOME_AMPLIHACK = old_home
+                os.chdir(old_cwd)
+
+        self.assertEqual(resolved, helper.resolve())
+
 
 # ---------------------------------------------------------------------------
 # 4. Regression: resolves correctly from outside the repo (issue #3092)
@@ -274,25 +309,37 @@ class TestNoValidPathFound(unittest.TestCase):
 
     def test_raises_file_not_found_when_no_candidate(self):
         """FileNotFoundError raised if asset doesn't exist in any location."""
-        with patch.object(self.mod, "_PKG_DIR", Path("/nonexistent/pkg")):
-            with patch.object(self.mod, "_HOME_AMPLIHACK", Path("/nonexistent/home")):
-                env = dict(os.environ)
-                env.pop("AMPLIHACK_HOME", None)
-                with patch.dict(os.environ, env, clear=True):
-                    with self.assertRaises(FileNotFoundError) as ctx:
-                        self.mod.resolve_asset("amplifier-bundle/tools/orch_helper.py")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            old_cwd = Path.cwd()
+            try:
+                os.chdir(tmpdir)
+                with patch.object(self.mod, "_PKG_DIR", Path("/nonexistent/pkg")):
+                    with patch.object(self.mod, "_HOME_AMPLIHACK", Path("/nonexistent/home")):
+                        env = dict(os.environ)
+                        env.pop("AMPLIHACK_HOME", None)
+                        with patch.dict(os.environ, env, clear=True):
+                            with self.assertRaises(FileNotFoundError) as ctx:
+                                self.mod.resolve_asset("amplifier-bundle/tools/orch_helper.py")
+            finally:
+                os.chdir(old_cwd)
         self.assertIn("AMPLIHACK_HOME", str(ctx.exception))
 
     def test_api_error_message_mentions_amplihack_home(self):
         """FileNotFoundError message mentions AMPLIHACK_HOME so the user knows how to fix."""
         mod = _load_module()
-        with patch.object(mod, "_PKG_DIR", Path("/nonexistent/pkg")):
-            with patch.object(mod, "_HOME_AMPLIHACK", Path("/nonexistent/home")):
-                env = dict(os.environ)
-                env.pop("AMPLIHACK_HOME", None)
-                with patch.dict(os.environ, env, clear=True):
-                    with self.assertRaises(FileNotFoundError) as ctx:
-                        mod.resolve_asset("amplifier-bundle/tools/orch_helper.py")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            old_cwd = Path.cwd()
+            try:
+                os.chdir(tmpdir)
+                with patch.object(mod, "_PKG_DIR", Path("/nonexistent/pkg")):
+                    with patch.object(mod, "_HOME_AMPLIHACK", Path("/nonexistent/home")):
+                        env = dict(os.environ)
+                        env.pop("AMPLIHACK_HOME", None)
+                        with patch.dict(os.environ, env, clear=True):
+                            with self.assertRaises(FileNotFoundError) as ctx:
+                                mod.resolve_asset("amplifier-bundle/tools/orch_helper.py")
+            finally:
+                os.chdir(old_cwd)
         self.assertIn(
             "AMPLIHACK_HOME",
             str(ctx.exception),
