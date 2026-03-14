@@ -30,6 +30,13 @@ from .cognitive_adapter import HAS_COGNITIVE_MEMORY, CognitiveAdapter
 from .flat_retriever_adapter import FlatRetrieverAdapter
 from .memory_retrieval import MemoryRetriever
 from .prompts import load_prompt, render_prompt
+from .retrieval_constants import (
+    MAX_RETRIEVAL_LIMIT,
+    SIMPLE_RETRIEVAL_THRESHOLD,
+    TIER1_VERBATIM_SIZE,
+    TIER2_ENTITY_SIZE,
+    VERBATIM_RETRIEVAL_THRESHOLD,
+)
 from .similarity import rerank_facts_by_query
 
 logger = logging.getLogger(__name__)
@@ -609,15 +616,12 @@ class LearningAgent:
                 else:
                     cached = getattr(self._thread_local, "_cached_all_facts", None)
                     if cached is None:
-                        # CognitiveAdapter.get_all_facts() always accepts query kwarg.
-                        # MemoryRetriever does not, so fall back gracefully.
-                        try:
-                            cached = self.memory.get_all_facts(limit=15000, query=question)
-                        except TypeError:
-                            cached = self.memory.get_all_facts(limit=15000)
+                        cached = self.memory.get_all_facts(
+                            limit=MAX_RETRIEVAL_LIMIT, query=question
+                        )
                     self._thread_local._cached_all_facts = cached
                     kb_size = len(cached)
-                if kb_size <= 500:
+                if kb_size <= SIMPLE_RETRIEVAL_THRESHOLD:
                     use_simple = True
 
             if use_simple:
@@ -1083,18 +1087,13 @@ class LearningAgent:
             all_facts = cached
             self._thread_local._cached_all_facts = None  # consume; one-shot per question
         else:
-            # CognitiveAdapter.get_all_facts() always accepts query kwarg.
-            # MemoryRetriever does not, so fall back gracefully.
-            try:
-                all_facts = self.memory.get_all_facts(limit=15000, query=question)
-            except TypeError:
-                all_facts = self.memory.get_all_facts(limit=15000)
+            all_facts = self.memory.get_all_facts(limit=MAX_RETRIEVAL_LIMIT, query=question)
         kb_size = len(all_facts)
 
-        if force_verbatim or kb_size <= 1000:
+        if force_verbatim or kb_size <= VERBATIM_RETRIEVAL_THRESHOLD:
             return all_facts
 
-        # Large KB (1000+ facts): use progressive summarization tiers
+        # Large KB: use progressive summarization tiers
         return self._tiered_retrieval(question, all_facts)
 
     def _tiered_retrieval(
@@ -1119,13 +1118,13 @@ class LearningAgent:
         kb_size = len(sorted_facts)
         result: list[dict[str, Any]] = []
 
-        # Tier 1: Most recent 200 facts - verbatim
-        tier1_facts = sorted_facts[max(0, kb_size - 200) :]
+        # Tier 1: Most recent TIER1_VERBATIM_SIZE facts - verbatim
+        tier1_facts = sorted_facts[max(0, kb_size - TIER1_VERBATIM_SIZE) :]
         result.extend(tier1_facts)
 
-        # Tier 2: Facts 201-1000 - entity-level summaries
-        tier2_start = max(0, kb_size - 1000)
-        tier2_end = max(0, kb_size - 200)
+        # Tier 2: Facts TIER1_VERBATIM_SIZE+1 to TIER2_ENTITY_SIZE - entity-level summaries
+        tier2_start = max(0, kb_size - TIER2_ENTITY_SIZE)
+        tier2_end = max(0, kb_size - TIER1_VERBATIM_SIZE)
         if tier2_end > tier2_start:
             tier2_facts = sorted_facts[tier2_start:tier2_end]
             tier2_summaries = self._summarize_old_facts(tier2_facts, level="entity")
