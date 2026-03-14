@@ -1,6 +1,9 @@
 ---
 name: azure-devops
-description: Complete Azure DevOps automation - boards, repos, pipelines, artifacts
+description: |
+  Complete Azure DevOps (ADO) automation — work items, boards, sprints, repos, pull requests,
+  pipelines, builds, artifacts. Use when user mentions ADO, work items, user stories, bugs,
+  sprints, builds, releases, or Azure DevOps URLs.
 version: 2.0.0
 type: skill
 auto_activate_keywords:

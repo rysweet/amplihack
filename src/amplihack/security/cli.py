@@ -15,6 +15,7 @@ try:
     from rich.table import Table  # type: ignore[import]
 except ImportError:
     # CLI dependencies not available - skip CLI functionality
+    print("WARNING: click/rich not available, security CLI disabled", file=sys.stderr)
     click = None  # type: ignore[assignment]
     Console = None  # type: ignore[assignment]
     Panel = None  # type: ignore[assignment]

@@ -8,13 +8,13 @@ from datetime import datetime
 from typing import Any
 
 import requests
-from blarify.repositories.graph_db_manager.dtos.code_node_dto import CodeNodeDto
-from blarify.repositories.version_control.abstract_version_controller import (
+from amplihack.vendor.blarify.repositories.graph_db_manager.dtos.code_node_dto import CodeNodeDto
+from amplihack.vendor.blarify.repositories.version_control.abstract_version_controller import (
     AbstractVersionController,
 )
-from blarify.repositories.version_control.dtos.blame_commit_dto import BlameCommitDto
-from blarify.repositories.version_control.dtos.blame_line_range_dto import BlameLineRangeDto
-from blarify.repositories.version_control.dtos.pull_request_info_dto import PullRequestInfoDto
+from amplihack.vendor.blarify.repositories.version_control.dtos.blame_commit_dto import BlameCommitDto
+from amplihack.vendor.blarify.repositories.version_control.dtos.blame_line_range_dto import BlameLineRangeDto
+from amplihack.vendor.blarify.repositories.version_control.dtos.pull_request_info_dto import PullRequestInfoDto
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 

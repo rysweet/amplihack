@@ -114,8 +114,33 @@ class StopHook(HookProcessor):
             # Get session ID for per-session tracking
             session_id = self._get_current_session_id()
 
-            # Increment lock mode counter
-            self._increment_lock_counter(session_id)
+            # Increment lock mode counter and check safety valve (fixes #2874)
+            lock_count = self._increment_lock_counter(session_id)
+
+            # Safety valve: After MAX_LOCK_ITERATIONS consecutive blocks,
+            # auto-approve to prevent infinite loops where the agent has
+            # nothing left to do but keeps getting blocked.
+            max_iterations = int(os.environ.get("AMPLIHACK_MAX_LOCK_ITERATIONS", "50"))
+            if lock_count >= max_iterations:
+                self.log(
+                    f"SAFETY VALVE: Lock mode hit {lock_count} iterations "
+                    f"(max={max_iterations}). Auto-approving to prevent infinite loop.",
+                    "WARNING",
+                )
+                self.save_metric("lock_safety_valve_triggered", 1)
+                # Remove lock file to prevent re-triggering on next stop
+                try:
+                    self.lock_flag.unlink()
+                    self.log("Lock file removed by safety valve")
+                except OSError as e:
+                    self.log(f"Could not remove lock file: {e}", "WARNING")
+                print(
+                    f"\n⚠️  Lock mode safety valve triggered after {lock_count} iterations. "
+                    "Lock has been automatically disabled. Use /amplihack:lock to re-enable.",
+                    file=sys.stderr,
+                )
+                self.log("=== STOP HOOK ENDED (decision: approve - safety valve) ===")
+                return {"decision": "approve"}
 
             # Read custom continuation prompt or use default
             continuation_prompt = self.read_continuation_prompt()
@@ -153,7 +178,11 @@ class StopHook(HookProcessor):
                     from pathlib import Path
 
                     transcript_path = Path(transcript_path_str)
-                    session_id = self._get_current_session_id()
+                    # Use transcript filename stem as session ID (stable across stop invocations).
+                    # Fallback to _get_current_session_id() only if stem is unusable.
+                    # Fix for Issue #2548: timestamp-based IDs changed each invocation,
+                    # preventing _results_shown semaphore from being found on second stop.
+                    session_id = transcript_path.stem or self._get_current_session_id()
 
                     # Create progress tracker (auto-detects verbosity and pirate mode from preferences)
                     progress_tracker = ProgressTracker(project_root=self.project_root)
@@ -167,10 +196,35 @@ class StopHook(HookProcessor):
                     self._increment_power_steering_counter(session_id)
 
                     if ps_result.decision == "block":
-                        # Check if this is first stop (visibility feature)
+                        # Fix for Issue #2473: Distinguish between visibility block
+                        # (all checks passed) and failure block (actual issues found).
+                        # Previously, both returned decision="block" to Claude Code,
+                        # causing false failures when all checks actually passed.
+                        is_visibility_only = ps_result.is_first_stop and ps_result.reasons == [
+                            "first_stop_visibility"
+                        ]
+
+                        if is_visibility_only and ps_result.analysis:
+                            # FIRST STOP, ALL CHECKS PASSED: Display results but APPROVE
+                            # the stop. The results are shown via stderr for user visibility.
+                            # This prevents the false failure where the stop was blocked
+                            # even though all checks passed.
+                            self.log(
+                                "First stop - all checks passed, displaying results and approving"
+                            )
+                            progress_tracker.display_all_results(
+                                analysis=ps_result.analysis,
+                                considerations=ps_checker.considerations,
+                                is_first_stop=True,
+                            )
+                            self.save_metric("power_steering_first_stop_visibility", 1)
+                            self.log(
+                                "=== STOP HOOK ENDED (decision: approve - all checks passed) ==="
+                            )
+                            return {"decision": "approve"}
+
                         if ps_result.is_first_stop and ps_result.analysis:
-                            # FIRST STOP: Display all results for visibility
-                            # Note: Semaphore marking already done in checker to prevent race condition
+                            # FIRST STOP with actual failures: Block and display results
                             self.log(
                                 "First stop - displaying all consideration results for visibility"
                             )
@@ -179,9 +233,9 @@ class StopHook(HookProcessor):
                                 considerations=ps_checker.considerations,
                                 is_first_stop=True,
                             )
-                            self.save_metric("power_steering_first_stop_visibility", 1)
+                            self.save_metric("power_steering_blocks", 1)
                         else:
-                            # Subsequent stop with failures OR first stop with failures
+                            # Subsequent stop with failures
                             self.log("Power-steering blocking stop - work incomplete")
                             self.save_metric("power_steering_blocks", 1)
                             # Display final summary
@@ -553,7 +607,7 @@ class StopHook(HookProcessor):
         # Load reflection config
         config_path = self.project_root / ".claude" / "tools" / "amplihack" / ".reflection_config"
         if not config_path.exists():
-            self.log("Reflection config not found - skipping reflection", "WARNING")
+            self.log("Reflection config not found - skipping reflection (opt-in feature)", "DEBUG")
             self.save_metric("reflection_no_config", 1)
             return False
 
@@ -634,6 +688,7 @@ class StopHook(HookProcessor):
                 f"[CAUSE] Cannot import claude_reflection module. [IMPACT] Reflection functionality unavailable. [ACTION] Check if claude_reflection.py exists and is accessible. Error: {e}",
                 "WARNING",
             )
+            print(f"WARNING: claude_reflection not available - reflection disabled: {e}", file=sys.stderr)
             self.save_metric("reflection_import_errors", 1)
             return None
 
@@ -760,7 +815,8 @@ class StopHook(HookProcessor):
 
                 task_slug = re.sub(r"[^a-z0-9]+", "-", first_sentence.lower()).strip("-")
                 task_slug = task_slug[:50]
-        except Exception:
+        except Exception as e:
+            self.log(f"Could not extract task slug from reflection, using 'session': {e}", "DEBUG")
             task_slug = "session"
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -828,7 +884,8 @@ After presenting the findings and getting the user's decision, you may proceed a
             return ClaudeStrategy(self.project_root, self.log)
 
         except ImportError as e:
-            self.log(f"Adaptive strategy not available: {e}", "DEBUG")
+            self.log(f"Adaptive strategy not available: {e}", "WARNING")
+            print(f"WARNING: Adaptive strategy not available: {e}", file=sys.stderr)
             return None
 
 

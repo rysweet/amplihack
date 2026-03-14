@@ -3,7 +3,7 @@
 Workflow Classification Reminder Hook - System reminder for topic boundary classification.
 
 Injects a system reminder when a new topic is detected, prompting the agent to classify
-the request into the appropriate workflow (Q&A, Investigation, or Default).
+the request into the appropriate workflow and route through dev-orchestrator.
 
 This hook fires on user.prompt.submitted and injects additionalContext as a system reminder.
 """
@@ -43,6 +43,21 @@ class WorkflowClassificationReminder(HookProcessor):
         session_id = self.get_session_id()
         return self._state_dir / f"{session_id}.json"
 
+    def _is_explicit_dev_command(self, user_prompt: str) -> bool:
+        """Check if the user explicitly invoked /dev (slash command).
+
+        When /dev is typed explicitly, the command file already loads with
+        recipe runner instructions. Injecting a classification reminder would
+        add competing instructions that confuse the model.
+        """
+        prompt_lower = user_prompt.strip().lower()
+        return (
+            prompt_lower.startswith("/dev ")
+            or prompt_lower == "/dev"
+            or prompt_lower.startswith("/amplihack:dev")
+            or prompt_lower.startswith("/.claude:amplihack:dev")
+        )
+
     def is_new_topic(self, user_prompt: str, input_data: dict) -> bool:
         """Detect if this is a new topic requiring classification.
 
@@ -53,6 +68,11 @@ class WorkflowClassificationReminder(HookProcessor):
         Returns:
             True if this appears to be a new topic
         """
+        # Skip classification when /dev is explicitly invoked — the command
+        # file already provides recipe runner instructions directly.
+        if self._is_explicit_dev_command(user_prompt):
+            return False
+
         # Always classify on first turn
         turn_count = input_data.get("turnCount", 0)
         if turn_count == 0 or turn_count == 1:
@@ -102,8 +122,8 @@ class WorkflowClassificationReminder(HookProcessor):
                 # If we classified within last 3 turns, assume same topic
                 if turn_count - last_turn <= 3:
                     return False
-            except Exception:
-                pass
+            except Exception as e:
+                self.log(f"Could not read classification state (using default): {e}", "DEBUG")
 
         # Default: treat as new topic to be safe
         return True
@@ -118,37 +138,24 @@ class WorkflowClassificationReminder(HookProcessor):
 
     def build_reminder(self, user_prompt: str) -> str:
         """Build the system reminder message."""
-        return f"""🎯 NEW TOPIC DETECTED - Workflow Classification Required
-
-Before proceeding, classify this request:
-
-User request: "{user_prompt[:100]}{"..." if len(user_prompt) > 100 else ""}"
-
-Quick classification (choose ONE):
-┌─────────────────────────────────────────────────────────────┐
-│ Q&A           → Simple question, no code changes            │
-│                 Keywords: "what is", "explain", "how do I"  │
-│                                                              │
-│ OPERATIONS    → Admin tasks, simple commands                │
-│                 Keywords: "cleanup", "delete old", "git status"│
-│                                                              │
-│ INVESTIGATION → Understanding/exploring code                │
-│                 Keywords: "investigate", "analyze", "how does"│
-│                                                              │
-│ DEFAULT       → Any code changes (features, bugs, refactor) │
-│                 Keywords: "implement", "add", "fix", "build"│
-└─────────────────────────────────────────────────────────────┘
-
-Required actions:
-1. Output: "WORKFLOW: [Q&A | OPERATIONS | INVESTIGATION | DEFAULT]"
-2. Output: "Reason: [one sentence]"
-3. For Q&A/INVESTIGATION/DEFAULT: Execute recipes tool
-   For OPERATIONS: Execute directly (no recipe needed)
-
-If uncertain, choose DEFAULT.
-
-DO NOT start implementation without classifying first.
-"""
+        truncated = user_prompt[:100] + ("..." if len(user_prompt) > 100 else "")
+        return (
+            f"NEW TOPIC DETECTED - Classify and Route\n\n"
+            f'Request: "{truncated}"\n\n'
+            "Classify (choose ONE):\n"
+            '  Q&A         -> "what is", "explain", "how do I"        -> respond directly\n'
+            '  OPERATIONS  -> "cleanup", "delete", "git status"       -> execute directly\n'
+            "  INVESTIGATION/DEVELOPMENT -> all other non-trivial work -> use dev-orchestrator\n\n"
+            "For INVESTIGATION or DEVELOPMENT tasks:\n"
+            '  Invoke Skill(skill="dev-orchestrator") -- the smart-orchestrator will:\n'
+            "    - Classify the task and formulate a clear goal\n"
+            "    - Detect parallel workstreams if task has independent components\n"
+            "    - Execute via recipe runner (single task or parallel workstreams)\n"
+            "    - Reflect on goal achievement\n\n"
+            "  Entry point: /dev <task description>\n"
+            "  (Legacy: /ultrathink is deprecated -- use /dev)\n\n"
+            "DO NOT start implementation without invoking dev-orchestrator first."
+        )
 
     def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
         """Process user prompt submit event.
@@ -159,8 +166,8 @@ DO NOT start implementation without classifying first.
         Returns:
             Additional context to inject (system reminder if new topic detected)
         """
-        # Extract user prompt
-        user_message = input_data.get("userMessage", "")
+        # Extract user prompt — Copilot uses "prompt", Claude Code uses "userMessage"
+        user_message = input_data.get("userMessage", "") or input_data.get("prompt", "")
         if isinstance(user_message, dict):
             user_prompt = user_message.get("text", "")
         else:

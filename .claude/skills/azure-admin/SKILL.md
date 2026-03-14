@@ -1,46 +1,12 @@
-# Azure Administration Skill
-
-## Skill Metadata
-
-```yaml
+---
 name: azure-admin
-version: 1.0.0
-category: cloud-infrastructure
-auto_activate_keywords:
-  - azure
-  - az cli
-  - azd
-  - entra id
-  - azure ad
-  - rbac
-  - azure resource
-  - subscription
-  - resource group
-  - service principal
-  - managed identity
-  - azure devops
-  - azure portal
-  - arm template
-  - bicep
-  - azure policy
-  - cost management
-  - azure mcp
-tags:
-  - cloud
-  - identity
-  - access-management
-  - devops
-  - infrastructure
-  - automation
-prerequisites:
-  - Azure subscription access
-  - Azure CLI installed (az)
-  - Basic understanding of cloud concepts
-related_skills:
-  - devops
-  - security
-  - infrastructure-as-code
-```
+description: |
+  Comprehensive Azure administration capabilities covering identity management,
+  resource orchestration, CLI tooling, and DevOps automation. Auto-activates for
+  Azure, az cli, azd, Entra ID, RBAC, and infrastructure tasks.
+---
+
+# Azure Administration Skill
 
 ## Overview
 

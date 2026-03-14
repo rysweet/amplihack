@@ -11,7 +11,7 @@ IMPORTANT: This registry is generated from the actual filesystem at
 # Generated from ~/.amplihack/.claude/skills/ filesystem contents
 AMPLIHACK_SKILLS: frozenset[str] = frozenset(
     [
-        "agent-sdk",
+        "claude-agent-sdk",
         "anthropologist-analyst",
         "azure-admin",
         "azure-devops",
@@ -46,6 +46,7 @@ AMPLIHACK_SKILLS: frozenset[str] = frozenset(
         "ethicist-analyst",
         "eval-recipes-runner",
         "futurist-analyst",
+        "gh-work-report",
         "github",
         "github-copilot-cli-expert",
         "github-copilot-sdk",
@@ -69,6 +70,7 @@ AMPLIHACK_SKILLS: frozenset[str] = frozenset(
         "n-version-workflow",
         "novelist-analyst",
         "outside-in-testing",
+        "qa-team",
         "pdf",
         "philosopher-analyst",
         "philosophy-compliance-workflow",
@@ -107,7 +109,7 @@ def is_amplihack_skill(skill_name: str) -> bool:
     """Check if skill name is managed by amplihack.
 
     Args:
-        skill_name: Directory name of skill (e.g., "agent-sdk")
+        skill_name: Directory name of skill (e.g., "claude-agent-sdk")
 
     Returns:
         True if skill is in amplihack registry (O(1) lookup)

@@ -1,0 +1,726 @@
+#!/usr/bin/env python3
+"""Parallel Workstream Orchestrator with Recipe Runner support.
+
+Executes multiple independent development tasks in parallel using subprocess
+isolation. Each workstream runs in a clean /tmp clone with its own execution
+context.
+
+Two execution modes:
+  - recipe (default): Uses Recipe Runner for code-enforced step ordering
+  - classic: Uses single Claude session with prompt-based workflow
+
+Usage:
+    python orchestrator.py workstreams.json
+    python orchestrator.py workstreams.json --mode classic
+    python orchestrator.py workstreams.json --recipe investigation-workflow
+"""
+
+import json
+import os
+import shlex
+import shutil
+import signal
+import subprocess
+import sys
+import textwrap
+import time
+from dataclasses import dataclass, field
+from datetime import datetime
+from pathlib import Path
+
+
+@dataclass
+class Workstream:
+    """A parallel workstream executing in a subprocess."""
+
+    issue: int
+    branch: str
+    description: str
+    task: str
+    recipe: str = "default-workflow"
+    work_dir: Path = field(default_factory=Path)
+    log_file: Path = field(default_factory=Path)
+    pid: int | None = None
+    start_time: float | None = None
+    end_time: float | None = None
+    exit_code: int | None = None
+
+    @property
+    def is_running(self) -> bool:
+        if self.pid is None:
+            return False
+        try:
+            os.kill(self.pid, 0)
+            return True
+        except OSError:
+            return False
+
+    @property
+    def runtime_seconds(self) -> float | None:
+        if self.start_time is None:
+            return None
+        end = self.end_time or time.time()
+        return end - self.start_time
+
+
+class ParallelOrchestrator:
+    """Orchestrates parallel workstream execution with Recipe Runner support."""
+
+    def __init__(
+        self,
+        repo_url: str,
+        tmp_base: str = "/tmp/amplihack-workstreams",
+        mode: str = "recipe",
+    ):
+        self.repo_url = repo_url
+        self.tmp_base = Path(tmp_base)
+        self.mode = mode
+        self.workstreams: list[Workstream] = []
+        self._processes: dict[int, subprocess.Popen] = {}
+        self._cleaned_up: set[int] = set()  # Track cleaned workstream issues
+        self._freed_bytes: int = 0  # Track total disk freed by auto-cleanup
+
+    def setup(self) -> None:
+        """Create clean temporary directory for workstreams and check disk space."""
+        if self.tmp_base.exists():
+            shutil.rmtree(self.tmp_base)
+        self.tmp_base.mkdir(parents=True)
+
+        # Check disk space and warn if low
+        self._check_disk_space()
+
+    def add(
+        self,
+        issue: int | str,
+        branch: str,
+        description: str,
+        task: str,
+        recipe: str = "default-workflow",
+    ) -> Workstream:
+        """Add a workstream. Clones from main and prepares execution files.
+
+        If issue is "TBD", auto-creates a GitHub issue using gh CLI.
+        """
+        # Auto-create issue if TBD
+        if str(issue).upper() == "TBD":
+            print(f"[TBD] Creating GitHub issue for: {description}...")
+            result = subprocess.run(
+                ["gh", "issue", "create", "--title", description, "--body", task],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            if result.returncode == 0:
+                # Extract issue number from URL like https://github.com/.../issues/123
+                url = result.stdout.strip()
+                issue = int(url.rstrip("/").split("/")[-1])
+                print(f"[{issue}] Created issue: {url}")
+            else:
+                # Fallback: use timestamp-based ID
+                issue = int(time.time()) % 100000
+                print(f"[{issue}] Could not create issue, using fallback ID")
+
+        # Validate issue is a positive integer to prevent path/shell injection
+        try:
+            issue = int(issue)
+            if issue <= 0:
+                raise ValueError(f"issue must be positive, got {issue}")
+        except (TypeError, ValueError) as e:
+            raise ValueError(f"Invalid issue number in workstream config: {issue!r}") from e
+
+        ws = Workstream(
+            issue=issue,
+            branch=branch,
+            description=description,
+            task=task,
+            recipe=recipe,
+        )
+        ws.work_dir = self.tmp_base / f"ws-{issue}"
+        ws.log_file = self.tmp_base / f"log-{issue}.txt"
+
+        # Clean up stale work dir from previous runs
+        if ws.work_dir.exists():
+            import shutil
+
+            shutil.rmtree(ws.work_dir)
+
+        # Detect the default branch of the remote repository
+        try:
+            default_branch_result = subprocess.run(
+                ["git", "ls-remote", "--symref", self.repo_url, "HEAD"],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            # Output: "ref: refs/heads/main\tHEAD" -> extract "main"
+            default_branch = "main"  # fallback
+            for line in default_branch_result.stdout.splitlines():
+                if line.startswith("ref: refs/heads/"):
+                    default_branch = line.split("refs/heads/")[1].split("\t")[0].strip()
+                    break
+        except Exception:
+            default_branch = "main"
+
+        print(f"[{issue}] Cloning default branch '{default_branch}' from remote...")
+        subprocess.run(
+            [
+                "git",
+                "clone",
+                "--depth=1",
+                f"--branch={default_branch}",
+                self.repo_url,
+                str(ws.work_dir),
+            ],
+            check=True,
+            capture_output=True,
+            timeout=120,
+        )
+        # Note: The workflow Step 4 will create the feature branch
+
+        # Write execution files based on mode
+        if self.mode == "recipe":
+            self._write_recipe_launcher(ws)
+        else:
+            self._write_classic_launcher(ws)
+
+        self.workstreams.append(ws)
+        return ws
+
+    def _write_recipe_launcher(self, ws: Workstream) -> None:
+        """Write launcher files for recipe-based execution.
+
+        Creates a Python script that uses run_recipe_by_name() via the Rust
+        recipe runner, and a shell wrapper that sets session tree vars.
+        """
+        launcher_py = ws.work_dir / "launcher.py"
+        # Use json.dumps for proper escaping of all special characters
+        import json
+
+        safe_task = json.dumps(ws.task)
+        safe_recipe = json.dumps(ws.recipe)
+        launcher_py.write_text(
+            textwrap.dedent(f"""\
+            #!/usr/bin/env python3
+            \"\"\"Workstream launcher - Rust recipe runner execution.\"\"\"
+            import sys
+            import logging
+
+            logging.basicConfig(
+                level=logging.INFO,
+                format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+            )
+
+            try:
+                from amplihack.recipes import run_recipe_by_name
+            except ImportError:
+                print("ERROR: amplihack package not importable. Falling back to classic mode.")
+                sys.exit(2)
+
+            result = run_recipe_by_name(
+                {safe_recipe},
+                user_context={{
+                    "task_description": {safe_task},
+                    "repo_path": ".",
+                }},
+            )
+
+            print()
+            print("=" * 60)
+            print("RECIPE EXECUTION RESULTS")
+            print("=" * 60)
+            for sr in result.step_results:
+                print(f"  [{{sr.status.value:>9}}] {{sr.step_id}}")
+            print(f"\\nOverall: {{'SUCCESS' if result.success else 'FAILED'}}")
+            sys.exit(0 if result.success else 1)
+            """)
+        )
+        launcher_py.chmod(0o755)
+
+        # Shell wrapper: propagate session tree context
+        # AMPLIHACK_TREE_ID and AMPLIHACK_SESSION_DEPTH are inherited from the
+        # parent environment (set by the recipe that invoked this orchestrator).
+        # This ensures the session tree depth limit is enforced in child recipes.
+        import uuid
+
+        current_depth = int(os.environ.get("AMPLIHACK_SESSION_DEPTH", "0"))
+        tree_id = os.environ.get("AMPLIHACK_TREE_ID") or uuid.uuid4().hex[:8]
+
+        safe_work_dir = shlex.quote(str(ws.work_dir))
+        safe_tree = shlex.quote(tree_id)
+        safe_depth = shlex.quote(str(current_depth + 1))
+        safe_max_depth = shlex.quote(os.environ.get("AMPLIHACK_MAX_DEPTH", "3"))
+        safe_max_sessions = shlex.quote(os.environ.get("AMPLIHACK_MAX_SESSIONS", "10"))
+
+        run_sh = ws.work_dir / "run.sh"
+        run_sh.write_text(
+            textwrap.dedent(f"""\
+            #!/bin/bash
+            cd {safe_work_dir}
+            # Propagate session tree context so child recipes obey depth limits
+            export AMPLIHACK_TREE_ID={safe_tree}
+            export AMPLIHACK_SESSION_DEPTH={safe_depth}
+            export AMPLIHACK_MAX_DEPTH={safe_max_depth}
+            export AMPLIHACK_MAX_SESSIONS={safe_max_sessions}
+            exec python3 launcher.py
+            """)
+        )
+        run_sh.chmod(0o755)
+
+    def _write_classic_launcher(self, ws: Workstream) -> None:
+        """Write launcher for classic single-session execution."""
+        # Task file
+        task_md = ws.work_dir / "TASK.md"
+        task_md.write_text(
+            f"# Issue #{ws.issue}\n\n{ws.task}\n\n"
+            f"Follow DEFAULT_WORKFLOW.md autonomously. "
+            f"NO QUESTIONS. Work through Steps 0-22. Create PR when complete."
+        )
+
+        # Shell launcher
+        import uuid as _uuid
+
+        _depth = int(os.environ.get("AMPLIHACK_SESSION_DEPTH", "0"))
+        _tree = os.environ.get("AMPLIHACK_TREE_ID") or _uuid.uuid4().hex[:8]
+
+        _safe_work_dir = shlex.quote(str(ws.work_dir))
+        _safe_tree = shlex.quote(_tree)
+        _safe_depth = shlex.quote(str(_depth + 1))
+        _safe_max_depth = shlex.quote(os.environ.get("AMPLIHACK_MAX_DEPTH", "3"))
+        _safe_max_sessions = shlex.quote(os.environ.get("AMPLIHACK_MAX_SESSIONS", "10"))
+
+        run_sh = ws.work_dir / "run.sh"
+        run_sh.write_text(
+            textwrap.dedent(f"""\
+            #!/bin/bash
+            cd {_safe_work_dir}
+            export AMPLIHACK_TREE_ID={_safe_tree}
+            export AMPLIHACK_SESSION_DEPTH={_safe_depth}
+            export AMPLIHACK_MAX_DEPTH={_safe_max_depth}
+            export AMPLIHACK_MAX_SESSIONS={_safe_max_sessions}
+            amplihack ${{AMPLIHACK_AGENT_BINARY:-claude}} --subprocess-safe -- -p "@TASK.md Execute task autonomously following DEFAULT_WORKFLOW.md. NO QUESTIONS. Work through all steps. Create PR when complete."
+            """)
+        )
+        run_sh.chmod(0o755)
+
+    def launch(self, ws: Workstream) -> None:
+        """Launch a single workstream subprocess."""
+        log_handle = ws.log_file.open("w")
+        proc = subprocess.Popen(
+            [str(ws.work_dir / "run.sh")],
+            stdout=log_handle,
+            stderr=subprocess.STDOUT,
+            cwd=ws.work_dir,
+        )
+        ws.pid = proc.pid
+        ws.start_time = time.time()
+        self._processes[ws.issue] = proc
+        print(f"[{ws.issue}] Launched PID {ws.pid} ({self.mode} mode)")
+
+    def launch_all(self) -> None:
+        """Launch all workstreams in parallel."""
+        for ws in self.workstreams:
+            self.launch(ws)
+        print(f"\n{len(self.workstreams)} workstreams launched in parallel ({self.mode} mode)")
+
+    def get_status(self) -> dict[str, list[int]]:
+        """Get current status of all workstreams."""
+        status: dict[str, list[int]] = {"running": [], "completed": [], "failed": []}
+
+        for ws in self.workstreams:
+            proc = self._processes.get(ws.issue)
+            if proc and proc.poll() is None:
+                status["running"].append(ws.issue)
+            elif proc:
+                ws.exit_code = proc.returncode
+                if ws.end_time is None:
+                    ws.end_time = time.time()
+                if ws.exit_code == 0:
+                    status["completed"].append(ws.issue)
+                else:
+                    status["failed"].append(ws.issue)
+            else:
+                status["failed"].append(ws.issue)
+
+        return status
+
+    def _cleanup_workstream_dir(self, ws: Workstream) -> None:
+        """Remove a completed workstream's work directory to free disk space.
+
+        Log files are preserved (they live in tmp_base, not work_dir).
+        This is the key fix for issue #2527 — without auto-cleanup, 60
+        workstreams consume ~90GB (1.5GB each) and fill the disk.
+        """
+        if ws.issue in self._cleaned_up:
+            return
+        if not ws.work_dir.exists():
+            self._cleaned_up.add(ws.issue)
+            return
+
+        # Measure size before deleting
+        dir_bytes = 0
+        for dirpath, _dirs, files in os.walk(ws.work_dir):
+            for f in files:
+                try:
+                    dir_bytes += os.path.getsize(os.path.join(dirpath, f))
+                except OSError:
+                    pass
+
+        shutil.rmtree(ws.work_dir, ignore_errors=True)
+        self._cleaned_up.add(ws.issue)
+        self._freed_bytes += dir_bytes
+        freed_mb = dir_bytes / (1024**2)
+        print(
+            f"[{ws.issue}] Cleaned up work dir ({freed_mb:.0f}MB freed, log preserved at {ws.log_file})"
+        )
+
+    def monitor(self, check_interval: int = 60, max_runtime: int = 7200) -> None:
+        """Monitor all workstreams until complete or timeout.
+
+        Auto-cleans completed workstream directories to prevent disk exhaustion.
+        """
+        start = time.time()
+
+        while time.time() - start < max_runtime:
+            status = self.get_status()
+
+            now = datetime.now().strftime("%H:%M:%S")
+            elapsed = int(time.time() - start)
+            print(f"\n[{now}] Status (elapsed: {elapsed}s):")
+            print(f"  Running:   {len(status['running'])} {status['running']}")
+            print(f"  Completed: {len(status['completed'])} {status['completed']}")
+            print(f"  Failed:    {len(status['failed'])} {status['failed']}")
+
+            # Auto-cleanup completed and failed workstream directories
+            for ws in self.workstreams:
+                if ws.issue not in self._cleaned_up and ws.exit_code is not None:
+                    self._cleanup_workstream_dir(ws)
+
+            if not status["running"]:
+                break
+
+            time.sleep(check_interval)
+
+        # Mark any still-running as timed out
+        for ws in self.workstreams:
+            proc = self._processes.get(ws.issue)
+            if proc and proc.poll() is None:
+                print(f"[{ws.issue}] Timed out after {max_runtime}s, terminating...")
+                proc.terminate()
+                try:
+                    proc.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                ws.exit_code = -1
+                ws.end_time = time.time()
+                self._cleanup_workstream_dir(ws)
+
+    def report(self) -> str:
+        """Generate final report."""
+        lines = [
+            "",
+            "=" * 70,
+            "PARALLEL WORKSTREAM REPORT",
+            f"Mode: {self.mode}",
+            "=" * 70,
+        ]
+
+        succeeded = 0
+        failed = 0
+
+        for ws in self.workstreams:
+            runtime = f"{ws.runtime_seconds:.0f}s" if ws.runtime_seconds else "N/A"
+            status = "OK" if ws.exit_code == 0 else f"FAILED (exit {ws.exit_code})"
+            if ws.exit_code == 0:
+                succeeded += 1
+            else:
+                failed += 1
+
+            lines.extend(
+                [
+                    f"\n[{ws.issue}] {ws.description}",
+                    f"  Branch:  {ws.branch}",
+                    f"  Status:  {status}",
+                    f"  Runtime: {runtime}",
+                    f"  Log:     {ws.log_file}",
+                ]
+            )
+
+        # Calculate remaining disk usage (after auto-cleanup)
+        disk_usage_gb, ws_count = self._calculate_disk_usage()
+        freed_gb = self._freed_bytes / (1024**3)
+
+        lines.extend(
+            [
+                "",
+                "-" * 70,
+                f"Total: {len(self.workstreams)} | Succeeded: {succeeded} | Failed: {failed}",
+                "",
+                "DISK MANAGEMENT:",
+                f"  Auto-cleaned: {len(self._cleaned_up)} workstream dirs ({freed_gb:.2f}GB freed)",
+                f"  Remaining on disk: {ws_count} dirs ({disk_usage_gb:.2f}GB)",
+                f"  Log files preserved at: {self.tmp_base}/log-*.txt",
+                "=" * 70,
+            ]
+        )
+
+        report_text = "\n".join(lines)
+        print(report_text)
+
+        # Write report to file
+        report_file = self.tmp_base / "REPORT.md"
+        report_file.write_text(report_text)
+        print(f"\nReport saved to: {report_file}")
+
+        return report_text
+
+    def _check_disk_space(self, min_free_gb: float = 5.0) -> None:
+        """Check available disk space and abort if critically low.
+
+        Threshold lowered from 10GB to 5GB because shallow clones (--depth=1)
+        use ~50MB each instead of ~1.5GB. Auto-cleanup reclaims space as
+        workstreams complete.
+        """
+        usage = shutil.disk_usage(self.tmp_base)
+        free_gb = usage.free / (1024**3)
+        total_gb = usage.total / (1024**3)
+        used_percent = (usage.used / usage.total) * 100
+
+        print("\nDisk Space Check:")
+        print(f"  Location: {self.tmp_base}")
+        print(f"  Free: {free_gb:.1f}GB / {total_gb:.1f}GB ({100 - used_percent:.1f}% available)")
+
+        if free_gb < min_free_gb:
+            # Non-interactive: fail loudly if disk is low, don't prompt
+            print(f"\n⚠  WARNING: Only {free_gb:.1f}GB free (threshold: {min_free_gb}GB)")
+            print("  Each shallow clone requires ~50MB. Clean up old workstreams to proceed:")
+            print(f"    rm -rf {self.tmp_base}/ws-*")
+            print("  Or set AMPLIHACK_SKIP_DISK_CHECK=1 to bypass this check.")
+            print()
+
+            if os.environ.get("AMPLIHACK_SKIP_DISK_CHECK") == "1":
+                print("Disk check bypassed via AMPLIHACK_SKIP_DISK_CHECK=1")
+                return
+
+            # In a TTY, prompt. In non-interactive context, abort.
+            if sys.stdin.isatty():
+                try:
+                    response = input("Continue anyway? (y/N): ").strip().lower()
+                    if response != "y":
+                        print("Aborted by user.")
+                        sys.exit(0)
+                except (EOFError, KeyboardInterrupt):
+                    print("\nAborted.")
+                    sys.exit(1)  # Exit code 1 (not 0) so recipe runner detects failure
+            else:
+                print("Non-interactive environment: aborting due to low disk space.")
+                print("Set AMPLIHACK_SKIP_DISK_CHECK=1 to proceed anyway.")
+                sys.exit(1)  # Exit code 1 so recipe runner step fails loudly
+
+    def _calculate_disk_usage(self) -> tuple[float, int]:
+        """Calculate total disk usage of all workstream directories.
+
+        Returns:
+            (total_size_gb, workstream_count)
+        """
+        total_bytes = 0
+        ws_count = 0
+
+        if not self.tmp_base.exists():
+            return (0.0, 0)
+
+        for item in self.tmp_base.iterdir():
+            if item.is_dir() and item.name.startswith("ws-"):
+                ws_count += 1
+                for dirpath, _dirnames, filenames in os.walk(item):
+                    for filename in filenames:
+                        filepath = os.path.join(dirpath, filename)
+                        try:
+                            total_bytes += os.path.getsize(filepath)
+                        except OSError:
+                            pass  # File disappeared or inaccessible
+
+        total_gb = total_bytes / (1024**3)
+        return (total_gb, ws_count)
+
+    def cleanup_running(self) -> None:
+        """Terminate all running workstreams."""
+        for ws in self.workstreams:
+            proc = self._processes.get(ws.issue)
+            if proc and proc.poll() is None:
+                print(f"[{ws.issue}] Terminating PID {ws.pid}...")
+                proc.terminate()
+                try:
+                    proc.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+
+    def cleanup_merged(self, config_path: str, dry_run: bool = False) -> None:
+        """Clean up workstreams whose PRs have been merged.
+
+        Args:
+            config_path: Path to original workstreams config file
+            dry_run: If True, only show what would be deleted without deleting
+        """
+        config = json.loads(Path(config_path).read_text())
+        deleted_count = 0
+        freed_gb = 0.0
+
+        print("\nChecking PR status for workstream cleanup...")
+
+        for item in config:
+            issue = item["issue"]
+            if str(issue).upper() == "TBD":
+                continue
+
+            # Check PR status using gh CLI
+            try:
+                result = subprocess.run(
+                    ["gh", "pr", "list", "--search", f"#{issue}", "--json", "number,state,merged"],
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                )
+                if result.returncode == 0:
+                    prs = json.loads(result.stdout)
+                    pr_merged = any(pr.get("merged") or pr.get("state") == "MERGED" for pr in prs)
+
+                    if pr_merged:
+                        ws_dir = self.tmp_base / f"ws-{issue}"
+                        if ws_dir.exists():
+                            # Calculate size before deleting
+                            dir_size = 0
+                            for dirpath, _dirs, files in os.walk(ws_dir):
+                                for f in files:
+                                    fp = os.path.join(dirpath, f)
+                                    try:
+                                        dir_size += os.path.getsize(fp)
+                                    except OSError:
+                                        pass
+                            size_gb = dir_size / (1024**3)
+
+                            if dry_run:
+                                print(f"  [DRY RUN] Would delete ws-{issue} ({size_gb:.2f}GB)")
+                            else:
+                                shutil.rmtree(ws_dir)
+                                print(f"  ✓ Deleted ws-{issue} (PR merged, freed {size_gb:.2f}GB)")
+                                deleted_count += 1
+                                freed_gb += size_gb
+                    else:
+                        print(f"  [SKIP] ws-{issue} (PR not merged yet)")
+                else:
+                    print(f"  [ERROR] Could not check PR status for #{issue}")
+            except Exception as e:
+                print(f"  [ERROR] Failed to process #{issue}: {e}")
+
+        print(f"\n{'DRY RUN ' if dry_run else ''}Summary:")
+        print(f"  Workstreams {'would be ' if dry_run else ''}deleted: {deleted_count}")
+        print(f"  Disk space {'would be ' if dry_run else ''}freed: {freed_gb:.2f}GB")
+
+        if dry_run and deleted_count > 0:
+            print("\nRun without --dry-run to actually delete these workstreams.")
+
+
+def run(config_path: str, mode: str = "recipe", recipe: str = "default-workflow") -> str:
+    """Main entry point for the orchestrator.
+
+    Args:
+        config_path: Path to JSON config file with workstream definitions.
+        mode: Execution mode - "recipe" (default) or "classic".
+        recipe: Recipe name for recipe mode (default: "default-workflow").
+
+    Returns:
+        Report text.
+    """
+    config = json.loads(Path(config_path).read_text())
+
+    # Detect repo URL from git remote
+    result = subprocess.run(
+        ["git", "remote", "get-url", "origin"],
+        capture_output=True,
+        text=True,
+        timeout=5,
+    )
+    repo_url = result.stdout.strip() if result.returncode == 0 else ""
+    if not repo_url:
+        print("ERROR: Could not determine repo URL from git remote.")
+        sys.exit(1)
+
+    orchestrator = ParallelOrchestrator(repo_url=repo_url, mode=mode)
+    orchestrator.setup()
+
+    for item in config:
+        orchestrator.add(
+            issue=item["issue"],
+            branch=item["branch"],
+            description=item.get("description", f"Issue #{item['issue']}"),
+            task=item["task"],
+            recipe=item.get("recipe", recipe),
+        )
+
+    # Handle SIGINT gracefully
+    def signal_handler(sig, frame):
+        print("\nInterrupted! Cleaning up workstreams...")
+        orchestrator.cleanup_running()
+        sys.exit(130)
+
+    signal.signal(signal.SIGINT, signal_handler)
+
+    orchestrator.launch_all()
+    orchestrator.monitor()
+    return orchestrator.report()
+
+
+def cleanup(config_path: str, dry_run: bool = False) -> None:
+    """Clean up workstreams with merged PRs.
+
+    Args:
+        config_path: Path to JSON config file with workstream definitions
+        dry_run: If True, show what would be deleted without deleting
+    """
+    # Detect repo URL
+    result = subprocess.run(
+        ["git", "remote", "get-url", "origin"],
+        capture_output=True,
+        text=True,
+        timeout=5,
+    )
+    repo_url = result.stdout.strip() if result.returncode == 0 else ""
+
+    orchestrator = ParallelOrchestrator(repo_url=repo_url)
+    orchestrator.cleanup_merged(config_path, dry_run=dry_run)
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Parallel Workstream Orchestrator")
+    parser.add_argument("config", help="Path to workstreams JSON config file")
+    parser.add_argument(
+        "--mode",
+        choices=["recipe", "classic"],
+        default="recipe",
+        help="Execution mode (default: recipe)",
+    )
+    parser.add_argument(
+        "--recipe",
+        default="default-workflow",
+        help="Recipe name for recipe mode (default: default-workflow)",
+    )
+    parser.add_argument(
+        "--cleanup",
+        action="store_true",
+        help="Clean up workstreams with merged PRs instead of running tasks",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be deleted without actually deleting (use with --cleanup)",
+    )
+    args = parser.parse_args()
+
+    if args.cleanup:
+        cleanup(args.config, dry_run=args.dry_run)
+    else:
+        if args.dry_run:
+            print("WARNING: --dry-run only works with --cleanup, ignoring")
+        run(args.config, mode=args.mode, recipe=args.recipe)

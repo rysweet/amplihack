@@ -1,0 +1,1823 @@
+"""Long-horizon memory stress test for goal-seeking agents.
+
+Philosophy:
+- 1000-turn dialogue tests memory at scale (not just short-horizon recall)
+- Deterministic data generation, reproducible results
+- Hybrid deterministic + LLM grading: rubric keywords scored without LLM,
+  judgment dimensions (confidence, source attribution) use LLM
+- Multi-vote grading for stability: grade N times, take median per dimension
+- Agent-agnostic: works with any LearningAgent-compatible interface
+
+Migration note:
+    The standalone ``amplihack-agent-eval`` package provides a superset of this
+    module. When installed, data types and runner are imported from the package
+    to ensure a single source of truth. When not installed, this module's local
+    implementations are used (backward compatible).
+
+Public API:
+    LongHorizonMemoryEval: Main evaluation class
+    EvalResult: Per-question result with scores
+    EvalReport: Aggregate report with breakdown by category
+
+Usage:
+    python -m amplihack.eval.long_horizon_memory --turns 100 --questions 20
+    python -m amplihack.eval.long_horizon_memory --turns 1000 --questions 100
+    python -m amplihack.eval.long_horizon_memory --sdk claude --grader-votes 5
+    python -m amplihack.eval.long_horizon_memory --turns 100 --questions 20 --parallel-workers 10
+
+    # Large-scale with subprocess segmentation (prevents OOM on 5000+ turns):
+    python -m amplihack.eval.long_horizon_memory --turns 5000 --segment-size 100
+"""
+
+from __future__ import annotations
+
+import argparse
+import gc
+import json
+import logging
+import os
+import re
+import statistics
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+
+# Requires amplihack-agent-eval package.
+# Install: pip install "amplihack-agent-eval @ git+https://github.com/rysweet/amplihack-agent-eval.git@main"
+try:
+    from amplihack_eval.data.long_horizon import (  # type: ignore[import-not-found]
+        GradingRubric,
+        GroundTruth,
+        Question,
+        generate_dialogue,
+        generate_questions,
+    )
+except ImportError:
+    raise ImportError(
+        "amplihack-agent-eval package is required but not installed. "
+        "Install with: pip install 'amplihack-agent-eval @ "
+        "git+https://github.com/rysweet/amplihack-agent-eval.git@main'"
+    )
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class DimensionScore:
+    """Score on a single dimension for a single question."""
+
+    dimension: str
+    score: float  # 0.0 to 1.0
+    reasoning: str = ""
+
+
+@dataclass
+class EvalResult:
+    """Result for a single question."""
+
+    question_id: str
+    question_text: str
+    category: str
+    expected_answer: str
+    actual_answer: str
+    dimensions: list[DimensionScore]
+    overall_score: float  # Average of dimension scores
+    grading_time_s: float = 0.0
+
+
+@dataclass
+class CategoryBreakdown:
+    """Aggregate scores for a question category."""
+
+    category: str
+    num_questions: int
+    avg_score: float
+    min_score: float
+    max_score: float
+    dimension_averages: dict[str, float] = field(default_factory=dict)
+
+
+@dataclass
+class EvalReport:
+    """Complete evaluation report."""
+
+    num_turns: int
+    num_questions: int
+    total_facts_delivered: int
+    learning_time_s: float
+    questioning_time_s: float
+    grading_time_s: float
+    overall_score: float
+    category_breakdown: list[CategoryBreakdown]
+    results: list[EvalResult]
+    memory_stats: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert report to dictionary for JSON serialization."""
+        return {
+            "num_turns": self.num_turns,
+            "num_questions": self.num_questions,
+            "total_facts_delivered": self.total_facts_delivered,
+            "learning_time_s": round(self.learning_time_s, 2),
+            "questioning_time_s": round(self.questioning_time_s, 2),
+            "grading_time_s": round(self.grading_time_s, 2),
+            "overall_score": round(self.overall_score, 4),
+            "category_breakdown": [
+                {
+                    "category": cb.category,
+                    "num_questions": cb.num_questions,
+                    "avg_score": round(cb.avg_score, 4),
+                    "min_score": round(cb.min_score, 4),
+                    "max_score": round(cb.max_score, 4),
+                    "dimension_averages": {
+                        k: round(v, 4) for k, v in cb.dimension_averages.items()
+                    },
+                }
+                for cb in self.category_breakdown
+            ],
+            "results": [
+                {
+                    "question_id": r.question_id,
+                    "question_text": r.question_text,
+                    "category": r.category,
+                    "expected_answer": r.expected_answer,
+                    "actual_answer": r.actual_answer[:500],
+                    "overall_score": round(r.overall_score, 4),
+                    "dimensions": [
+                        {
+                            "dimension": d.dimension,
+                            "score": round(d.score, 4),
+                            "reasoning": d.reasoning[:200],
+                        }
+                        for d in r.dimensions
+                    ],
+                }
+                for r in self.results
+            ],
+            "memory_stats": self.memory_stats,
+        }
+
+
+# Scoring dimensions
+ALL_DIMENSIONS = [
+    "factual_accuracy",
+    "specificity",
+    "temporal_awareness",
+    "source_attribution",
+    "confidence_calibration",
+]
+
+
+# Dimensions that can be graded deterministically when a rubric is present
+_DETERMINISTIC_DIMENSIONS = {"factual_accuracy", "specificity"}
+
+# Dimensions that always require LLM judgment
+_LLM_ONLY_DIMENSIONS = {"confidence_calibration", "source_attribution", "temporal_awareness"}
+
+
+def _deterministic_grade(
+    rubric: GradingRubric,
+    actual_answer: str,
+    dimensions: list[str],
+) -> dict[str, DimensionScore]:
+    """Grade deterministic dimensions using regex/string matching against rubric.
+
+    Returns a dict mapping dimension name -> DimensionScore for every dimension
+    in `dimensions` that can be scored deterministically. Dimensions not in
+    _DETERMINISTIC_DIMENSIONS are skipped (returned dict won't contain them).
+
+    Scoring logic:
+    - Start with keyword match ratio (required_keywords found / total required)
+    - Bonus +0.25 for each acceptable_paraphrase found (capped at 1.0)
+    - incorrect_patterns only zero the score when NONE of the required keywords
+      or paraphrases match. When the correct answer IS present alongside an
+      incorrect pattern (e.g. "increased from $1.2M to $1.4M"), the answer is
+      providing historical context, not a wrong answer.
+    """
+    answer_lower = actual_answer.lower()
+    scores: dict[str, DimensionScore] = {}
+
+    for dim in dimensions:
+        if dim not in _DETERMINISTIC_DIMENSIONS:
+            continue
+
+        # Keyword matching
+        matched = 0
+        if rubric.required_keywords:
+            matched = sum(
+                1
+                for kw in rubric.required_keywords
+                if re.search(re.escape(kw.lower()), answer_lower)
+            )
+            ratio = matched / len(rubric.required_keywords)
+        else:
+            ratio = 0.5  # No keywords = neutral
+
+        # Paraphrase bonus -- each paraphrase match adds 0.25 (a paraphrase IS
+        # a valid answer form, so it should carry significant weight). When NO
+        # keywords matched (ratio=0) but paraphrases did, the answer is still
+        # semantically correct.
+        paraphrase_hits = 0
+        if rubric.acceptable_paraphrases:
+            paraphrase_hits = sum(
+                1
+                for p in rubric.acceptable_paraphrases
+                if re.search(re.escape(p.lower()), answer_lower)
+            )
+            ratio = min(1.0, ratio + paraphrase_hits * 0.25)
+
+        # Check incorrect patterns AFTER keyword matching. Only skip incorrect
+        # check when ALL required keywords match (full correct answer present).
+        # Partial matches (some keywords) still get checked for incorrect patterns.
+        all_keywords_matched = rubric.required_keywords and matched == len(rubric.required_keywords)
+        has_full_correct = all_keywords_matched or paraphrase_hits > 0
+        if rubric.incorrect_patterns and not has_full_correct:
+            found_incorrect = any(
+                re.search(re.escape(pat.lower()), answer_lower) for pat in rubric.incorrect_patterns
+            )
+            if found_incorrect:
+                scores[dim] = DimensionScore(
+                    dimension=dim,
+                    score=0.0,
+                    reasoning="Answer contains incorrect pattern without correct keywords",
+                )
+                continue
+
+        reasoning_parts = []
+        if rubric.required_keywords:
+            reasoning_parts.append(
+                f"Matched {matched}/{len(rubric.required_keywords)} required keywords"
+            )
+        if rubric.acceptable_paraphrases and paraphrase_hits:
+            reasoning_parts.append(f"+{paraphrase_hits} paraphrase bonus")
+
+        scores[dim] = DimensionScore(
+            dimension=dim,
+            score=round(ratio, 4),
+            reasoning="; ".join(reasoning_parts) if reasoning_parts else "Deterministic score",
+        )
+
+    return scores
+
+
+def _grade_hybrid(
+    question: Question,
+    actual_answer: str,
+    dimensions: list[str],
+    grader_model: str = "",
+) -> list[DimensionScore]:
+    """Hybrid grading: deterministic for rubric-compatible dimensions, LLM for the rest.
+
+    If the question has a rubric, factual_accuracy and specificity are scored
+    deterministically. Remaining dimensions (temporal_awareness,
+    source_attribution, confidence_calibration) are sent to the LLM.
+    If no rubric exists, all dimensions go to LLM (backward compatible).
+    """
+    if not question.rubric:
+        return _grade_with_llm(question, actual_answer, dimensions, grader_model)
+
+    # Score deterministic dimensions
+    det_scores = _deterministic_grade(question.rubric, actual_answer, dimensions)
+
+    # Remaining dimensions need LLM
+    remaining = [d for d in dimensions if d not in det_scores]
+
+    if remaining:
+        llm_scores = _grade_with_llm(question, actual_answer, remaining, grader_model)
+        llm_map = {s.dimension: s for s in llm_scores}
+    else:
+        llm_map = {}
+
+    # Merge in original order
+    result: list[DimensionScore] = []
+    for dim in dimensions:
+        if dim in det_scores:
+            result.append(det_scores[dim])
+        elif dim in llm_map:
+            result.append(llm_map[dim])
+        else:
+            result.append(DimensionScore(dimension=dim, score=0.0, reasoning="Not graded"))
+
+    # Apply dimension weights from rubric if provided
+    if question.rubric.dimension_weights:
+        for ds in result:
+            if ds.dimension in question.rubric.dimension_weights:
+                w = question.rubric.dimension_weights[ds.dimension]
+                ds.score = round(ds.score * w, 4)
+                ds.reasoning += f" (weight={w})"
+
+    return result
+
+
+def _grade_multi_vote(
+    question: Question,
+    actual_answer: str,
+    dimensions: list[str],
+    grader_model: str = "",
+    num_votes: int = 3,
+) -> list[DimensionScore]:
+    """Grade with multiple votes and take median score per dimension.
+
+    Calls _grade_hybrid N times concurrently and returns the median score per
+    dimension. For N=1, this is equivalent to a single call (no overhead).
+    When N>1, votes are submitted to a ThreadPoolExecutor for parallel execution.
+    """
+    if num_votes <= 1:
+        return _grade_hybrid(question, actual_answer, dimensions, grader_model)
+
+    # Collect all vote results using parallel execution
+    all_votes: dict[str, list[float]] = {d: [] for d in dimensions}
+    all_reasoning: dict[str, list[str]] = {d: [] for d in dimensions}
+
+    def _do_vote() -> list[DimensionScore]:
+        return _grade_hybrid(question, actual_answer, dimensions, grader_model)
+
+    with ThreadPoolExecutor(max_workers=num_votes) as executor:
+        futures = [executor.submit(_do_vote) for _ in range(num_votes)]
+        for future in futures:
+            try:
+                scores = future.result()
+                for ds in scores:
+                    all_votes[ds.dimension].append(ds.score)
+                    all_reasoning[ds.dimension].append(ds.reasoning)
+            except Exception as e:
+                logger.warning("Grading vote failed: %s", e)
+                for dim in dimensions:
+                    all_votes[dim].append(0.0)
+                    all_reasoning[dim].append(f"Vote failed: {e}")
+
+    # Take median per dimension
+    result: list[DimensionScore] = []
+    for dim in dimensions:
+        votes = all_votes[dim]
+        median_score = statistics.median(votes) if votes else 0.0
+        # Pick reasoning from the vote closest to median
+        best_idx = min(range(len(votes)), key=lambda i: abs(votes[i] - median_score))
+        reasoning = all_reasoning[dim][best_idx]
+        reasoning += f" [median of {len(votes)} votes: {', '.join(f'{v:.2f}' for v in votes)}]"
+
+        result.append(
+            DimensionScore(
+                dimension=dim,
+                score=round(median_score, 4),
+                reasoning=reasoning,
+            )
+        )
+
+    return result
+
+
+def _grade_with_llm(
+    question: Question,
+    actual_answer: str,
+    dimensions: list[str],
+    grader_model: str = "",
+) -> list[DimensionScore]:
+    """Grade an answer on multiple dimensions using LLM.
+
+    Args:
+        question: The question with expected answer
+        actual_answer: Agent's actual answer
+        dimensions: Which dimensions to score
+        grader_model: Model to use for grading
+
+    Returns:
+        List of DimensionScore for each requested dimension
+    """
+    import anthropic  # type: ignore[import-untyped]
+
+    if not grader_model:
+        grader_model = os.environ.get("GRADER_MODEL", "claude-opus-4-6")
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        # Return zero scores if no API key
+        return [DimensionScore(dimension=d, score=0.0, reasoning="No API key") for d in dimensions]
+
+    client = anthropic.Anthropic(api_key=api_key)
+
+    dimension_descriptions = {
+        "factual_accuracy": "Is the answer factually correct? Does it match the expected answer on key facts?",
+        "specificity": "Does the answer include specific details (names, numbers, dates)?",
+        "temporal_awareness": "Does the answer correctly distinguish current vs historical values?",
+        "source_attribution": "Does the answer correctly attribute information to its source?",
+        "confidence_calibration": "Does the answer express appropriate confidence/uncertainty?",
+    }
+
+    dims_text = "\n".join(
+        f"- {d}: {dimension_descriptions.get(d, 'General quality')}" for d in dimensions
+    )
+
+    prompt = f"""Grade this answer on the following dimensions (0.0 to 1.0 each):
+
+{dims_text}
+
+Question: {question.text}
+Category: {question.category}
+
+Expected Answer: {question.expected_answer}
+
+Actual Answer: {actual_answer}
+
+Return ONLY a JSON object mapping each dimension to a score and reasoning:
+{{
+  "scores": {{
+    "factual_accuracy": {{"score": 0.85, "reasoning": "..."}},
+    ...
+  }}
+}}
+
+Scoring guide:
+- 1.0: Perfect or semantically equivalent
+- 0.8-0.9: Correct main points, minor differences
+- 0.5-0.7: Partially correct, missing key details
+- 0.2-0.4: Some relevant content, significant gaps
+- 0.0-0.1: Incorrect or irrelevant
+"""
+
+    try:
+        message = client.messages.create(
+            model=grader_model,
+            max_tokens=1000,
+            messages=[{"role": "user", "content": prompt}],
+        )
+
+        response_text = getattr(message.content[0], "text", "") or ""
+        response_text = response_text.strip()
+
+        # Parse JSON from response
+        result = _extract_json(response_text)
+        scores_dict = result.get("scores", result)
+
+        dimension_scores = []
+        for dim in dimensions:
+            if dim in scores_dict:
+                entry = scores_dict[dim]
+                if isinstance(entry, dict):
+                    dimension_scores.append(
+                        DimensionScore(
+                            dimension=dim,
+                            score=float(entry.get("score", 0.0)),
+                            reasoning=str(entry.get("reasoning", "")),
+                        )
+                    )
+                elif isinstance(entry, (int, float)):
+                    dimension_scores.append(
+                        DimensionScore(
+                            dimension=dim,
+                            score=float(entry),
+                            reasoning="",
+                        )
+                    )
+                else:
+                    dimension_scores.append(
+                        DimensionScore(
+                            dimension=dim,
+                            score=0.0,
+                            reasoning="Parse error",
+                        )
+                    )
+            else:
+                dimension_scores.append(
+                    DimensionScore(
+                        dimension=dim,
+                        score=0.0,
+                        reasoning="Not graded",
+                    )
+                )
+
+        return dimension_scores
+
+    except Exception as e:
+        logger.warning("Grading failed for %s: %s", question.question_id, e)
+        return [DimensionScore(dimension=d, score=0.0, reasoning=f"Error: {e}") for d in dimensions]
+
+
+def _extract_json(text: str) -> dict:
+    """Extract JSON from LLM response text."""
+    import re
+
+    stripped = text.strip()
+    try:
+        return json.loads(stripped)
+    except json.JSONDecodeError:
+        pass
+
+    fenced = re.search(r"```(?:json)?\s*\n?(.*?)\n?\s*```", stripped, re.DOTALL)
+    if fenced:
+        try:
+            return json.loads(fenced.group(1).strip())
+        except json.JSONDecodeError:
+            pass
+
+    brace_match = re.search(r"\{.*\}", stripped, re.DOTALL)
+    if brace_match:
+        try:
+            return json.loads(brace_match.group(0))
+        except json.JSONDecodeError:
+            pass
+
+    return {}
+
+
+class LongHorizonMemoryEval:
+    """1000-turn dialogue memory stress test.
+
+    Generates structured dialogue content, feeds it to an agent's learn method,
+    then quizzes the agent on details from various points in the conversation.
+
+    Grading uses a hybrid approach:
+    - Deterministic: factual_accuracy and specificity scored via rubric keywords
+    - LLM: temporal_awareness, source_attribution, confidence_calibration
+    - Multi-vote: each question graded N times, median score per dimension
+
+    Args:
+        num_turns: Number of dialogue turns (default 1000)
+        num_questions: Number of quiz questions (default 100)
+        seed: Random seed for reproducibility (default 42)
+        grader_votes: Number of grading votes per question (default 3)
+        parallel_workers: Number of parallel workers for question answering
+            and grading. Set to 1 for sequential execution (default 10, max 20).
+        flush_every: Flush agent memory every N turns during dialogue to cap
+            memory growth. 0 disables (default 0). Requires the agent to
+            expose a ``flush_memory()`` method (e.g. HierarchicalMemory).
+
+    Example:
+        >>> from amplihack.agents.goal_seeking.learning_agent import LearningAgent
+        >>> agent = LearningAgent("eval_agent", use_hierarchical=True)
+        >>> eval_obj = LongHorizonMemoryEval(num_turns=100, num_questions=20)
+        >>> report = eval_obj.run(agent)
+        >>> print(f"Overall score: {report.overall_score:.2%}")
+    """
+
+    def __init__(
+        self,
+        num_turns: int = 1000,
+        num_questions: int = 100,
+        seed: int = 42,
+        grader_votes: int = 3,
+        parallel_workers: int = 10,
+        flush_every: int = 0,
+        restart_every: int = 0,
+    ):
+        self.num_turns = num_turns
+        self.num_questions = num_questions
+        self.seed = seed
+        self.grader_votes = max(1, grader_votes)
+        self.parallel_workers = max(1, min(20, parallel_workers))
+        self.flush_every = max(0, flush_every)
+        self.restart_every = max(0, restart_every)
+        self.ground_truth: GroundTruth | None = None
+        self.questions: list[Question] = []
+
+    def generate(self) -> tuple[GroundTruth, list[Question]]:
+        """Generate dialogue and questions.
+
+        Returns:
+            Tuple of (GroundTruth, list[Question])
+        """
+        self.ground_truth = generate_dialogue(num_turns=self.num_turns, seed=self.seed)
+        assert self.ground_truth is not None
+        self.questions = generate_questions(self.ground_truth, num_questions=self.num_questions)
+        return self.ground_truth, self.questions
+
+    def run_dialogue(
+        self,
+        agent: Any,
+        ground_truth: GroundTruth | None = None,
+        agent_factory: Any | None = None,
+    ) -> float | tuple[float, Any]:
+        """Feed all turns to the agent's learning method.
+
+        When ``flush_every > 0`` and the agent exposes ``flush_memory()``,
+        the memory connection is periodically recycled to cap in-process
+        cache growth without losing any persisted data.
+
+        Args:
+            agent: Agent with learn_from_content(content) method
+            ground_truth: Override ground truth (uses self.ground_truth if None)
+            agent_factory: Optional callable that returns a fresh agent.
+                Required when restart_every > 0.  Signature: ``() -> agent``.
+
+        Returns:
+            When agent_factory is None: elapsed time in seconds (float).
+            When agent_factory is provided: tuple of (elapsed_seconds, final_agent)
+                so the caller can use the most recent agent instance.
+        """
+        gt = ground_truth or self.ground_truth
+        if gt is None:
+            raise ValueError("Must call generate() first or pass ground_truth")
+
+        flush_every = self.flush_every
+        can_flush = flush_every > 0 and hasattr(agent, "flush_memory")
+        if flush_every > 0 and not can_flush:
+            logger.warning(
+                "flush_every=%d but agent has no flush_memory(); disabling periodic flush",
+                flush_every,
+            )
+
+        restart_every = self.restart_every
+        can_restart = restart_every > 0 and agent_factory is not None
+
+        start = time.time()
+        total = len(gt.turns)
+        flushes = 0
+        restarts = 0
+
+        for i, turn in enumerate(gt.turns):
+            if not turn.content or not turn.content.strip():
+                continue
+
+            try:
+                agent.learn_from_content(turn.content)
+            except Exception as e:
+                logger.warning("Failed to learn turn %d: %s", i, e)
+
+            if (i + 1) % 50 == 0 or i == total - 1:
+                elapsed = time.time() - start
+                rate = (i + 1) / elapsed if elapsed > 0 else 0
+                logger.info(
+                    "Turn %d/%d (%.1f turns/s) - block: %s",
+                    i + 1,
+                    total,
+                    rate,
+                    turn.block_name,
+                )
+
+            # Periodic memory flush to cap cache growth
+            if can_flush and (i + 1) % flush_every == 0 and (i + 1) < total:
+                logger.info(
+                    "Flushing memory at turn %d/%d (flush #%d)",
+                    i + 1,
+                    total,
+                    flushes + 1,
+                )
+                try:
+                    agent.flush_memory()
+                except Exception as e:
+                    logger.warning("flush_memory failed at turn %d: %s", i + 1, e)
+                flushes += 1
+
+            # Periodic agent restart to free memory (issue #2566)
+            if can_restart and (i + 1) % restart_every == 0 and (i + 1) < total:
+                restarts += 1
+                logger.info(
+                    "Restarting agent at turn %d/%d (restart #%d)",
+                    i + 1,
+                    total,
+                    restarts,
+                )
+                try:
+                    agent.close()
+                except Exception as e:
+                    logger.warning("agent.close() failed at turn %d: %s", i + 1, e)
+                del agent
+                gc.collect()
+                assert agent_factory is not None  # guarded by can_restart
+                agent = agent_factory()
+
+        elapsed = time.time() - start
+        logger.info(
+            "Dialogue complete: %d turns in %.1fs (%d flushes, %d restarts)",
+            total,
+            elapsed,
+            flushes,
+            restarts,
+        )
+        if agent_factory is not None:
+            return elapsed, agent
+        return elapsed
+
+    def evaluate(
+        self,
+        agent: Any,
+        questions: list[Question] | None = None,
+        grader_model: str = "",
+    ) -> EvalReport:
+        """Ask questions and grade responses.
+
+        When parallel_workers > 1, questions are answered and graded concurrently
+        using a ThreadPoolExecutor. Results are collected in original question order
+        to ensure deterministic output regardless of worker count.
+
+        Args:
+            agent: Agent with answer_question(question) method
+            questions: Override questions (uses self.questions if None)
+            grader_model: Model for LLM grading
+
+        Returns:
+            EvalReport with all results
+        """
+        qs = questions or self.questions
+        if not qs:
+            raise ValueError("Must call generate() first or pass questions")
+
+        q_start = time.time()
+
+        if self.parallel_workers <= 1:
+            results = self._evaluate_sequential(qs, agent, grader_model)
+        else:
+            results = self._evaluate_parallel(qs, agent, grader_model)
+
+        q_elapsed = time.time() - q_start
+        grade_total = sum(r.grading_time_s for r in results)
+
+        # Build category breakdown
+        categories: dict[str, list[EvalResult]] = {}
+        for r in results:
+            categories.setdefault(r.category, []).append(r)
+
+        breakdown = []
+        for cat, cat_results in sorted(categories.items()):
+            scores = [r.overall_score for r in cat_results]
+            dim_avgs: dict[str, list[float]] = {}
+            for r in cat_results:
+                for d in r.dimensions:
+                    dim_avgs.setdefault(d.dimension, []).append(d.score)
+
+            breakdown.append(
+                CategoryBreakdown(
+                    category=cat,
+                    num_questions=len(cat_results),
+                    avg_score=sum(scores) / len(scores),
+                    min_score=min(scores),
+                    max_score=max(scores),
+                    dimension_averages={k: sum(v) / len(v) for k, v in dim_avgs.items()},
+                )
+            )
+
+        # Get memory stats
+        mem_stats: dict[str, Any] = {}
+        try:
+            mem_stats = agent.get_memory_stats()
+        except Exception:
+            pass
+
+        # Count facts delivered
+        total_facts = sum(
+            len(t.facts) for t in (self.ground_truth.turns if self.ground_truth else [])
+        )
+
+        overall_score = sum(r.overall_score for r in results) / len(results) if results else 0.0
+
+        return EvalReport(
+            num_turns=self.num_turns,
+            num_questions=len(results),
+            total_facts_delivered=total_facts,
+            learning_time_s=0.0,  # Set by caller
+            questioning_time_s=q_elapsed,
+            grading_time_s=grade_total,
+            overall_score=overall_score,
+            category_breakdown=breakdown,
+            results=results,
+            memory_stats=mem_stats,
+        )
+
+    def _evaluate_sequential(
+        self,
+        qs: list[Question],
+        agent: Any,
+        grader_model: str,
+    ) -> list[EvalResult]:
+        """Evaluate questions sequentially (parallel_workers=1)."""
+        results: list[EvalResult] = []
+        for i, q in enumerate(qs):
+            logger.info("Question %d/%d: %s", i + 1, len(qs), q.text[:60])
+            result = self._answer_and_grade_one(i, q, agent, grader_model, len(qs))
+            results.append(result)
+        return results
+
+    def _evaluate_parallel(
+        self,
+        qs: list[Question],
+        agent: Any,
+        grader_model: str,
+    ) -> list[EvalResult]:
+        """Evaluate questions in parallel using ThreadPoolExecutor.
+
+        Each worker answers one question and grades the response. Results are
+        collected into an ordered list matching the original question order.
+
+        Solution D: Before spawning workers, snapshot all facts once and inject
+        the snapshot into the underlying LearningAgent. This ensures every thread
+        sees the same consistent set of facts without racing on get_all_facts().
+        """
+        total = len(qs)
+        results: list[EvalResult | None] = [None] * total
+        completed = [0]
+        lock = threading.Lock()
+
+        # Solution D: Pre-snapshot all facts so parallel workers don't race on
+        # get_all_facts(). The snapshot is set as _pre_snapshot_facts on the
+        # LearningAgent and consumed by _simple_retrieval() in each worker.
+        #
+        # NOTE: _MiniAgentWrapper._agent IS a LearningAgent (has _pre_snapshot_facts).
+        # _SDKAgentWrapper._agent is a GoalSeekingAgent, which does NOT have
+        # _pre_snapshot_facts, so Solution D silently no-ops for SDK paths — those
+        # workers fall back to per-thread DB queries (still correct, just not pre-snapshotted).
+        _la = None
+        if hasattr(agent, "_agent"):
+            _la = (
+                agent._agent
+            )  # may be LearningAgent (_MiniAgentWrapper) or GoalSeekingAgent (_SDKAgentWrapper)
+        elif hasattr(agent, "memory") and hasattr(agent, "_pre_snapshot_facts"):
+            _la = agent  # bare LearningAgent
+        if _la is not None and hasattr(_la, "memory") and hasattr(_la.memory, "get_all_facts"):
+            try:
+                facts_snapshot = _la.memory.get_all_facts(limit=15000)
+                _la._pre_snapshot_facts = facts_snapshot
+                logger.info(
+                    "Solution D: pre-snapshot %d facts before parallel evaluation",
+                    len(facts_snapshot),
+                )
+            except Exception as e:
+                logger.warning("Solution D: pre-snapshot failed, workers will query DB: %s", e)
+
+        logger.info(
+            "Starting parallel evaluation: %d questions, %d workers",
+            total,
+            self.parallel_workers,
+        )
+
+        def _worker(idx: int, q: Question) -> None:
+            result = self._answer_and_grade_one(idx, q, agent, grader_model, total)
+            results[idx] = result
+            with lock:
+                completed[0] += 1
+                logger.info(
+                    "Completed %d/%d questions (%.0f%%)",
+                    completed[0],
+                    total,
+                    completed[0] / total * 100,
+                )
+
+        try:
+            with ThreadPoolExecutor(max_workers=self.parallel_workers) as executor:
+                futures = {executor.submit(_worker, i, q): i for i, q in enumerate(qs)}
+                for future in as_completed(futures):
+                    exc = future.exception()
+                    if exc is not None:
+                        idx = futures[future]
+                        logger.warning("Worker for question %d failed: %s", idx + 1, exc)
+                        q = qs[idx]
+                        results[idx] = EvalResult(
+                            question_id=q.question_id,
+                            question_text=q.text,
+                            category=q.category,
+                            expected_answer=q.expected_answer,
+                            actual_answer=f"Error: {exc}",
+                            dimensions=[
+                                DimensionScore(
+                                    dimension=d, score=0.0, reasoning=f"Worker error: {exc}"
+                                )
+                                for d in (q.scoring_dimensions or ["factual_accuracy"])
+                            ],
+                            overall_score=0.0,
+                            grading_time_s=0.0,
+                        )
+        finally:
+            # Solution D: Clear the pre-snapshot regardless of success/failure to
+            # prevent stale data from persisting across eval invocations.
+            if _la is not None and hasattr(_la, "_pre_snapshot_facts"):
+                _la._pre_snapshot_facts = None
+
+        return [r for r in results if r is not None]
+
+    def _answer_and_grade_one(
+        self,
+        idx: int,
+        q: Question,
+        agent: Any,
+        grader_model: str,
+        total: int,
+    ) -> EvalResult:
+        """Answer a single question and grade the response. Thread-safe."""
+        logger.info("Question %d/%d: %s", idx + 1, total, q.text[:60])
+
+        try:
+            answer = agent.answer_question(q.text)
+            if isinstance(answer, tuple):
+                answer = answer[0]
+        except Exception as e:
+            logger.warning("Agent failed to answer: %s", e)
+            answer = f"Error: {e}"
+
+        grade_start = time.time()
+        dimensions = q.scoring_dimensions or ["factual_accuracy"]
+        dim_scores = _grade_multi_vote(
+            q, answer, dimensions, grader_model, num_votes=self.grader_votes
+        )
+        grade_time = time.time() - grade_start
+
+        overall = sum(d.score for d in dim_scores) / len(dim_scores) if dim_scores else 0.0
+
+        result = EvalResult(
+            question_id=q.question_id,
+            question_text=q.text,
+            category=q.category,
+            expected_answer=q.expected_answer,
+            actual_answer=answer if isinstance(answer, str) else str(answer),
+            dimensions=dim_scores,
+            overall_score=overall,
+            grading_time_s=grade_time,
+        )
+
+        logger.info(
+            "  Score: %.2f | Answer: %s",
+            overall,
+            (answer[:80] if isinstance(answer, str) else str(answer)[:80]) + "...",
+        )
+
+        return result
+
+    def run(
+        self,
+        agent: Any,
+        grader_model: str = "",
+        agent_factory: Any | None = None,
+    ) -> EvalReport:
+        """Run the complete evaluation: generate, learn, quiz, grade.
+
+        Args:
+            agent: Agent with learn_from_content and answer_question methods
+            grader_model: Model for LLM grading
+            agent_factory: Optional callable ``() -> agent`` for periodic restart.
+                When provided with restart_every > 0, the agent is closed and
+                reopened every N turns to cap memory growth.
+
+        Returns:
+            Complete EvalReport
+        """
+        logger.info(
+            "Starting long-horizon memory eval: %d turns, %d questions",
+            self.num_turns,
+            self.num_questions,
+        )
+
+        # Step 1: Generate data
+        self.generate()
+        logger.info(
+            "Generated %d turns, %d questions",
+            len(self.ground_truth.turns) if self.ground_truth else 0,
+            len(self.questions),
+        )
+
+        # Step 2: Feed dialogue to agent (with optional periodic restart)
+        result = self.run_dialogue(agent, agent_factory=agent_factory)
+        if isinstance(result, tuple):
+            learning_time, agent = result
+        else:
+            learning_time = result
+
+        # Step 3: Quiz and grade
+        report = self.evaluate(agent, grader_model=grader_model)
+        report.learning_time_s = learning_time
+
+        logger.info(
+            "Evaluation complete: overall=%.2f%%, learning=%.1fs, grading=%.1fs",
+            report.overall_score * 100,
+            report.learning_time_s,
+            report.grading_time_s,
+        )
+
+        return report
+
+
+def _print_report(report: EvalReport) -> None:
+    """Print a human-readable summary of the evaluation report."""
+    print("\n" + "=" * 70)
+    print("LONG-HORIZON MEMORY EVALUATION REPORT")
+    print("=" * 70)
+    print(f"Turns: {report.num_turns} | Questions: {report.num_questions}")
+    print(f"Facts delivered: {report.total_facts_delivered}")
+    print(f"Learning time: {report.learning_time_s:.1f}s")
+    print(f"Question+Grading time: {report.questioning_time_s:.1f}s")
+    print(f"\nOVERALL SCORE: {report.overall_score:.2%}")
+    print()
+
+    print("CATEGORY BREAKDOWN:")
+    print("-" * 70)
+    print(f"{'Category':<25} {'Avg':>8} {'Min':>8} {'Max':>8} {'Count':>6}")
+    print("-" * 70)
+    for cb in report.category_breakdown:
+        print(
+            f"{cb.category:<25} {cb.avg_score:>7.2%} {cb.min_score:>7.2%} "
+            f"{cb.max_score:>7.2%} {cb.num_questions:>6}"
+        )
+    print("-" * 70)
+
+    print("\nDIMENSION AVERAGES BY CATEGORY:")
+    for cb in report.category_breakdown:
+        if cb.dimension_averages:
+            dims = ", ".join(f"{k}: {v:.2%}" for k, v in sorted(cb.dimension_averages.items()))
+            print(f"  {cb.category}: {dims}")
+
+    print("\nMEMORY STATS:")
+    for k, v in report.memory_stats.items():
+        print(f"  {k}: {v}")
+
+    # Show worst-performing questions
+    print("\nWORST 5 QUESTIONS:")
+    sorted_results = sorted(report.results, key=lambda r: r.overall_score)
+    for r in sorted_results[:5]:
+        print(f"  [{r.overall_score:.2%}] {r.question_text[:60]}")
+        print(f"    Expected: {r.expected_answer[:80]}")
+        print(f"    Got: {r.actual_answer[:80]}")
+        print()
+
+
+class _SDKAgentWrapper:
+    """Thin wrapper around GoalSeekingAgent for eval compatibility.
+
+    Since GoalSeekingAgent now has learn_from_content() and answer_question()
+    methods (delegating to an internal LearningAgent for LLM-based extraction),
+    this wrapper just forwards calls. It exists only to provide close() cleanup
+    and get_memory_stats() compatibility.
+    """
+
+    def __init__(self, sdk_agent: Any, answer_mode: str = "single-shot"):
+        self._agent = sdk_agent
+        self._answer_mode = answer_mode
+
+    def learn_from_content(self, content: str) -> dict[str, Any]:
+        """Forward to the SDK agent's learn_from_content method."""
+        return self._agent.learn_from_content(content)
+
+    def answer_question(self, question: str) -> str:
+        """Forward to the SDK agent's answer_question method."""
+        return self._agent.answer_question(question, answer_mode=self._answer_mode)
+
+    def get_memory_stats(self) -> dict[str, Any]:
+        """Get memory statistics."""
+        return self._agent.get_memory_stats()
+
+    def close(self) -> None:
+        """Close the underlying agent."""
+        if hasattr(self._agent, "close"):
+            try:
+                self._agent.close()
+            except Exception:
+                pass
+
+
+class _MiniAgentWrapper:
+    """Thin wrapper around LearningAgent that routes answer_mode.
+
+    When answer_mode is ``"agentic"``, calls ``answer_question_agentic()``
+    instead of the default single-shot ``answer_question()``.  All other
+    methods delegate directly to the underlying LearningAgent.
+    """
+
+    def __init__(self, learning_agent: Any, answer_mode: str = "single-shot"):
+        self._agent = learning_agent
+        self._answer_mode = answer_mode
+
+    def learn_from_content(self, content: str) -> dict[str, Any]:
+        """Forward to the LearningAgent's learn_from_content method."""
+        return self._agent.learn_from_content(content)
+
+    def answer_question(self, question: str) -> str:
+        """Route to single-shot or agentic answer based on mode."""
+        if self._answer_mode == "agentic":
+            return self._agent.answer_question_agentic(question)
+        result = self._agent.answer_question(question)
+        if isinstance(result, tuple):
+            return result[0]
+        return result
+
+    def get_memory_stats(self) -> dict[str, Any]:
+        """Get memory statistics."""
+        return self._agent.get_memory_stats()
+
+    def flush_memory(self) -> None:
+        """Forward flush_memory to underlying agent."""
+        if hasattr(self._agent, "flush_memory"):
+            self._agent.flush_memory()
+
+    def close(self) -> None:
+        """Close the underlying agent."""
+        if hasattr(self._agent, "close"):
+            try:
+                self._agent.close()
+            except Exception:
+                pass
+
+
+def _save_dialogue_json(gt: GroundTruth, path: Path) -> None:
+    """Save generated dialogue to JSON for subprocess segment workers."""
+    turns_data = []
+    for t in gt.turns:
+        turns_data.append(
+            {
+                "turn_number": t.turn_number,
+                "content": t.content,
+                "block": t.block,
+                "block_name": t.block_name,
+                "facts": t.facts if hasattr(t, "facts") else [],
+            }
+        )
+    with open(path, "w") as f:
+        json.dump(turns_data, f)
+    logger.info("Saved dialogue (%d turns) to %s", len(turns_data), path)
+
+
+def _load_dialogue_slice(path: Path, start: int, end: int) -> list[dict[str, Any]]:
+    """Load a slice of turns from a dialogue JSON file.
+
+    Args:
+        path: Path to dialogue JSON file
+        start: Start index (inclusive, 0-based)
+        end: End index (exclusive)
+
+    Returns:
+        List of turn dicts with 'content' key
+    """
+    with open(path) as f:
+        all_turns = json.load(f)
+    return all_turns[start:end]
+
+
+def _count_facts_in_db(db_path: Path) -> int:
+    """Count semantic facts in the Kuzu DB for early failure detection."""
+    try:
+        import kuzu  # type: ignore[import-not-found]
+
+        kuzu_path = db_path / "kuzu_db"
+        if not kuzu_path.exists():
+            kuzu_path = db_path
+        db = kuzu.Database(str(kuzu_path))
+        conn = kuzu.Connection(db)
+        result = conn.execute("MATCH (n:SemanticMemory) RETURN count(n)")
+        count = 0
+        if result.has_next():
+            count = result.get_next()[0]
+        del conn, db
+        return count
+    except Exception as e:
+        logger.warning("Could not count facts in DB at %s: %s", db_path, e)
+        return 0
+
+
+def _run_segmented_learning(args: argparse.Namespace) -> None:
+    """Orchestrate segmented learning by spawning subprocess workers.
+
+    For each segment of --segment-size turns, spawns a new Python process
+    that loads the dialogue slice, learns it, and exits. This frees ALL
+    native memory (Kuzu C++, aiohttp) between segments.
+    """
+    import subprocess
+    import sys
+
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    db_path = output_dir / "memory_db"
+    # Pre-create as directory so HierarchicalMemory uses db_path/kuzu_db
+    # (not a flat file), keeping consistent with --load-db expectations.
+    db_path.mkdir(parents=True, exist_ok=True)
+
+    # Step 1: Generate dialogue and save to JSON
+    logger.info("Generating %d-turn dialogue (seed=%d)...", args.turns, args.seed)
+    gt = generate_dialogue(num_turns=args.turns, seed=args.seed)
+    dialogue_path = output_dir / "dialogue.json"
+    _save_dialogue_json(gt, dialogue_path)
+
+    # Step 2: Run learning in segments
+    total = args.turns
+    seg_size = args.segment_size
+    num_segments = (total + seg_size - 1) // seg_size
+    agent_model = args.model or os.environ.get("EVAL_MODEL", "claude-opus-4-6")
+
+    logger.info(
+        "Segmented learning: %d turns in %d segments of %d",
+        total,
+        num_segments,
+        seg_size,
+    )
+
+    segment_start_time = time.time()
+    failed_segments: list[int] = []
+    for seg_idx in range(num_segments):
+        seg_start = seg_idx * seg_size
+        seg_end = min(seg_start + seg_size, total)
+
+        logger.info(
+            "[Segment %d/%d] turns %d:%d",
+            seg_idx + 1,
+            num_segments,
+            seg_start,
+            seg_end,
+        )
+
+        # Build subprocess command reusing this module
+        cmd = [
+            sys.executable,
+            "-m",
+            "amplihack.eval.long_horizon_memory",
+            "--turns",
+            str(total),
+            "--seed",
+            str(args.seed),
+            "--output-dir",
+            str(output_dir),
+            "--model",
+            agent_model,
+            "--sdk",
+            args.sdk,
+            "--dialogue-json",
+            str(dialogue_path),
+            "--turns-slice",
+            f"{seg_start}:{seg_end}",
+            "--skip-questions",
+        ]
+        if args.use_hierarchical:
+            cmd.append("--use-hierarchical")
+        if args.flush_every > 0:
+            cmd.extend(["--flush-every", str(args.flush_every)])
+        if getattr(args, "memory_type", "auto") != "auto":
+            cmd.extend(["--memory-type", args.memory_type])
+
+        # Retry once on failure, then skip the segment
+        max_attempts = 2
+        succeeded = False
+        for attempt in range(1, max_attempts + 1):
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode == 0:
+                succeeded = True
+                break
+            logger.warning(
+                "Segment %d attempt %d/%d failed (exit %d):\nstderr: %s",
+                seg_idx + 1,
+                attempt,
+                max_attempts,
+                result.returncode,
+                result.stderr[-500:] if result.stderr else "",
+            )
+
+        if succeeded:
+            logger.info("[Segment %d/%d] complete", seg_idx + 1, num_segments)
+        else:
+            logger.error(
+                "Segment %d failed after %d attempts, skipping turns %d:%d",
+                seg_idx + 1,
+                max_attempts,
+                seg_start,
+                seg_end,
+            )
+            failed_segments.append(seg_idx + 1)
+
+        # Early failure detection: after first segment completes, verify
+        # facts were actually stored. Catches schema mismatches silently
+        # swallowing store_fact errors (issue #2655).
+        if seg_idx == 0 and succeeded and args.sdk == "mini":
+            fact_count = _count_facts_in_db(db_path)
+            if fact_count == 0:
+                raise RuntimeError(
+                    f"ABORTING: First segment completed but 0 facts stored "
+                    f"in DB at {db_path}. This indicates a fundamental issue "
+                    f"with the memory backend (schema mismatch, silent store "
+                    f"failures, or wrong db_path). Check --memory-type "
+                    f"setting and ensure the DB schema is compatible."
+                )
+            logger.info(
+                "Early check: %d facts after first segment -- storage OK",
+                fact_count,
+            )
+
+    if failed_segments:
+        logger.warning(
+            "%d of %d segments failed and were skipped: %s",
+            len(failed_segments),
+            num_segments,
+            failed_segments,
+        )
+
+    learning_elapsed = time.time() - segment_start_time
+    logger.info(
+        "All %d segments complete in %.1fs. DB at %s",
+        num_segments,
+        learning_elapsed,
+        db_path,
+    )
+
+    # Step 3: Run questioning phase with the accumulated DB
+    logger.info("Starting questioning phase with %d questions...", args.questions)
+    questions_cmd = [
+        sys.executable,
+        "-m",
+        "amplihack.eval.long_horizon_memory",
+        "--turns",
+        str(total),
+        "--questions",
+        str(args.questions),
+        "--seed",
+        str(args.seed),
+        "--output-dir",
+        str(output_dir),
+        "--model",
+        agent_model,
+        "--grader-model",
+        args.grader_model or "",
+        "--sdk",
+        args.sdk,
+        "--grader-votes",
+        str(args.grader_votes),
+        "--parallel-workers",
+        str(args.parallel_workers),
+        "--skip-learning",
+        "--load-db",
+        str(db_path),
+    ]
+    if args.use_hierarchical:
+        questions_cmd.append("--use-hierarchical")
+    if args.verbose:
+        questions_cmd.append("--verbose")
+    answer_mode = getattr(args, "answer_mode", "single-shot")
+    if answer_mode != "single-shot":
+        questions_cmd.extend(["--answer-mode", answer_mode])
+    if getattr(args, "memory_type", "auto") != "auto":
+        questions_cmd.extend(["--memory-type", args.memory_type])
+
+    result = subprocess.run(questions_cmd)
+    if result.returncode != 0:
+        raise RuntimeError(f"Questioning phase failed with exit code {result.returncode}")
+
+
+def _run_segment_worker(args: argparse.Namespace) -> None:
+    """Subprocess worker: learn a slice of turns from a dialogue JSON, then exit.
+
+    This is invoked by _run_segmented_learning for each segment. The worker:
+    1. Loads turn slice from the dialogue JSON
+    2. Creates an agent connected to the shared DB
+    3. Learns the slice
+    4. Closes the agent and exits (freeing ALL native memory)
+    """
+    # Parse slice
+    parts = args.turns_slice.split(":")
+    if len(parts) != 2:
+        raise ValueError(f"--turns-slice must be START:END, got: {args.turns_slice}")
+    slice_start, slice_end = int(parts[0]), int(parts[1])
+
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    db_path = output_dir / "memory_db"
+    agent_model = args.model or os.environ.get("EVAL_MODEL", "claude-opus-4-6")
+
+    # Load dialogue slice from JSON
+    dialogue_path = Path(args.dialogue_json) if args.dialogue_json else output_dir / "dialogue.json"
+    if not dialogue_path.exists():
+        raise FileNotFoundError(f"Dialogue JSON not found: {dialogue_path}")
+
+    turns = _load_dialogue_slice(dialogue_path, slice_start, slice_end)
+    logger.info(
+        "Segment worker: turns %d:%d (%d turns), db=%s",
+        slice_start,
+        slice_end,
+        len(turns),
+        db_path,
+    )
+
+    # Create agent
+    agent_name = "long_horizon_eval"
+    if args.sdk == "mini":
+        from amplihack.agents.goal_seeking.learning_agent import LearningAgent
+
+        # When --memory-type is explicitly set, bypass auto-detection in
+        # LearningAgent.__init__ by passing use_hierarchical=False. This
+        # prevents CognitiveAdapter from polluting the Kuzu schema before
+        # we override with FlatRetrieverAdapter (schema mismatch = 0 facts).
+        memory_type = getattr(args, "memory_type", "auto")
+        init_hierarchical = args.use_hierarchical and memory_type == "auto"
+
+        agent = LearningAgent(
+            agent_name=agent_name,
+            model=agent_model,
+            storage_path=db_path,
+            use_hierarchical=init_hierarchical,
+        )
+
+        # Override memory backend if --memory-type specified
+        if memory_type == "hierarchical":
+            from amplihack.agents.goal_seeking.flat_retriever_adapter import (
+                FlatRetrieverAdapter,
+            )
+
+            try:
+                agent.memory.close()
+            except Exception:
+                pass
+            agent.memory = FlatRetrieverAdapter(agent_name=agent_name, db_path=db_path)
+            agent.use_hierarchical = True
+        elif memory_type == "cognitive":
+            from amplihack.agents.goal_seeking.cognitive_adapter import CognitiveAdapter
+
+            try:
+                agent.memory.close()
+            except Exception:
+                pass
+            agent.memory = CognitiveAdapter(agent_name=agent_name, db_path=db_path)
+            agent.use_hierarchical = True
+    else:
+        from amplihack.agents.goal_seeking.sdk_adapters.factory import create_agent
+
+        sdk_agent = create_agent(
+            name=agent_name,
+            sdk=args.sdk,
+            model=agent_model,
+            storage_path=db_path,
+            enable_memory=True,
+        )
+        agent = _SDKAgentWrapper(sdk_agent)
+
+    # Learn the slice
+    flush_every = args.flush_every if hasattr(args, "flush_every") else 0
+    can_flush = flush_every > 0 and hasattr(agent, "flush_memory")
+
+    try:
+        for i, turn in enumerate(turns):
+            content = turn.get("content", "")
+            if not content or not content.strip():
+                continue
+            try:
+                agent.learn_from_content(content)
+            except Exception as e:
+                logger.warning(
+                    "Failed to learn turn %d (global %d): %s",
+                    i,
+                    slice_start + i,
+                    e,
+                )
+
+            if can_flush and (i + 1) % flush_every == 0:
+                try:
+                    agent.flush_memory()  # type: ignore[union-attr]
+                except Exception:
+                    pass
+
+            if (i + 1) % 50 == 0 or i == len(turns) - 1:
+                logger.info(
+                    "  Turn %d/%d (global %d)",
+                    i + 1,
+                    len(turns),
+                    slice_start + i + 1,
+                )
+    finally:
+        try:
+            agent.close()
+        except Exception:
+            pass
+
+    logger.info("Segment worker complete: turns %d:%d", slice_start, slice_end)
+
+
+def main() -> None:
+    """CLI entry point for long-horizon memory evaluation."""
+    parser = argparse.ArgumentParser(
+        description="Long-horizon memory stress test for goal-seeking agents"
+    )
+    parser.add_argument(
+        "--turns", type=int, default=1000, help="Number of dialogue turns (default: 1000)"
+    )
+    parser.add_argument(
+        "--questions", type=int, default=100, help="Number of quiz questions (default: 100)"
+    )
+    parser.add_argument(
+        "--output-dir", type=str, default="/tmp/memory-eval", help="Output directory for results"
+    )
+    parser.add_argument(
+        "--model",
+        type=str,
+        default="",
+        help="LLM model for the agent (default: env EVAL_MODEL or claude-opus-4-6)",
+    )
+    parser.add_argument(
+        "--grader-model",
+        type=str,
+        default="",
+        help="LLM model for grading (default: env GRADER_MODEL or claude-opus-4-6)",
+    )
+    parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
+    parser.add_argument(
+        "--use-hierarchical",
+        action="store_true",
+        default=True,
+        help="Use hierarchical memory (default: True)",
+    )
+    parser.add_argument(
+        "--grader-votes",
+        type=int,
+        default=3,
+        help="Number of grading votes per question for multi-vote stability (default: 3)",
+    )
+    parser.add_argument(
+        "--sdk",
+        type=str,
+        default="mini",
+        choices=["mini", "claude", "copilot", "microsoft"],
+        help="SDK to use for the agent (default: mini = LearningAgent directly)",
+    )
+    parser.add_argument(
+        "--memory-type",
+        type=str,
+        default="auto",
+        choices=["auto", "hierarchical", "cognitive"],
+        help="Force memory backend: auto (prefer cognitive if available), "
+        "hierarchical (FlatRetrieverAdapter), cognitive (CognitiveAdapter). Default: auto.",
+    )
+    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose logging")
+    parser.add_argument(
+        "--skip-learning",
+        action="store_true",
+        default=False,
+        help="Skip the learning phase; use with --load-db to test questions against an existing memory DB",
+    )
+    parser.add_argument(
+        "--load-db",
+        type=str,
+        default="",
+        help="Path to an existing memory DB directory to load instead of creating a new one. "
+        "Copies the DB to the output directory before running.",
+    )
+    parser.add_argument(
+        "--parallel-workers",
+        type=int,
+        default=10,
+        help="Number of parallel workers for question answering/grading (1=sequential, max 20, default: 10)",
+    )
+    parser.add_argument(
+        "--flush-every",
+        type=int,
+        default=100,
+        help="Flush agent memory every N turns to cap cache growth. "
+        "0 disables. Agent must expose flush_memory() (default: 100).",
+    )
+    parser.add_argument(
+        "--restart-every",
+        type=int,
+        default=0,
+        help="Restart agent every N turns to free memory via del + gc.collect. "
+        "0 disables. Requires agent recreation (default: 0).",
+    )
+    parser.add_argument(
+        "--segment-size",
+        type=int,
+        default=0,
+        help="Run learning phase in subprocess segments of N turns each. "
+        "Each segment runs in a NEW Python process so native memory (Kuzu C++, "
+        "aiohttp) is fully freed between segments. 0 disables (default: 0).",
+    )
+    parser.add_argument(
+        "--turns-slice",
+        type=str,
+        default="",
+        help="Internal: learn only turns START:END from a pre-generated dialogue JSON. "
+        "Format: START:END (0-indexed, exclusive end). Used by --segment-size orchestrator.",
+    )
+    parser.add_argument(
+        "--dialogue-json",
+        type=str,
+        default="",
+        help="Internal: path to pre-generated dialogue JSON file. "
+        "Used with --turns-slice for subprocess segment workers.",
+    )
+    parser.add_argument(
+        "--skip-questions",
+        action="store_true",
+        default=False,
+        help="Skip the questioning phase (learn only). Used by segment workers.",
+    )
+    parser.add_argument(
+        "--answer-mode",
+        type=str,
+        default="single-shot",
+        choices=["single-shot", "agentic"],
+        help="Answer mode: single-shot (default, proven at 97.8%%) uses optimized "
+        "intent/retrieve/synthesize pipeline. agentic uses iterative "
+        "PERCEIVE->REASON->ACT->LEARN loop with tool use.",
+    )
+
+    args = parser.parse_args()
+
+    # Setup logging
+    log_level = logging.DEBUG if args.verbose else logging.INFO
+    logging.basicConfig(
+        level=log_level,
+        format="%(asctime)s %(name)s %(levelname)s: %(message)s",
+        datefmt="%H:%M:%S",
+    )
+
+    # MODE 1: Segmented orchestrator -- delegates learning to subprocess workers
+    if args.segment_size > 0 and not args.turns_slice:
+        _run_segmented_learning(args)
+        return
+
+    # MODE 2: Subprocess worker -- learn a slice of turns, then exit
+    if args.turns_slice:
+        _run_segment_worker(args)
+        return
+
+    # MODE 3: Normal (original behavior)
+
+    # Create output directory
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Set model if provided
+    agent_model = args.model or os.environ.get("EVAL_MODEL", "claude-opus-4-6")
+
+    # Create agent based on --sdk choice
+    logger.info(
+        "Creating agent with sdk=%s, model=%s, hierarchical=%s",
+        args.sdk,
+        agent_model,
+        args.use_hierarchical,
+    )
+
+    db_path = output_dir / "memory_db"
+
+    # Copy saved DB if --load-db is specified
+    if args.load_db:
+        import shutil
+
+        src_db = Path(args.load_db).resolve()
+        if not src_db.exists():
+            raise FileNotFoundError(f"--load-db path does not exist: {src_db}")
+        # Skip copy when src and dst are the same (e.g. segment orchestrator)
+        if src_db != db_path.resolve():
+            if db_path.exists():
+                if db_path.is_dir():
+                    shutil.rmtree(db_path)
+                else:
+                    db_path.unlink()
+            shutil.copytree(src_db, db_path)
+            logger.info("Loaded existing memory DB from %s -> %s", src_db, db_path)
+        else:
+            logger.info("Using existing memory DB in-place at %s", db_path)
+
+    # Determine agent name -- match the name used when the DB was created.
+    # When loading a pre-built DB, detect agent_id from the DB to avoid mismatch.
+    agent_name = "long_horizon_eval"
+    if args.load_db:
+        try:
+            import kuzu  # type: ignore[import-not-found]
+
+            _detect_db = kuzu.Database(str(db_path / "kuzu_db"))
+            _detect_conn = kuzu.Connection(_detect_db)
+            _result = _detect_conn.execute(
+                "MATCH (e:EpisodicMemory) RETURN DISTINCT e.agent_id LIMIT 1"
+            )
+            if _result.has_next():
+                agent_name = _result.get_next()[0]
+                logger.info("Detected agent_id from DB: %s", agent_name)
+            del _detect_conn, _detect_db
+        except Exception as _e:
+            logger.warning("Could not detect agent_id from DB: %s", _e)
+            agent_name = "long_horizon_eval_learning"
+
+    def _create_agent() -> Any:
+        """Factory to create (or recreate) the eval agent."""
+        if args.sdk == "mini":
+            from amplihack.agents.goal_seeking.learning_agent import LearningAgent
+
+            # Same fix as _run_segment_worker: bypass auto-detection when
+            # --memory-type is explicitly set to prevent schema conflicts.
+            memory_type = getattr(args, "memory_type", "auto")
+            init_hierarchical = args.use_hierarchical and memory_type == "auto"
+
+            agent = LearningAgent(
+                agent_name=agent_name,
+                model=agent_model,
+                storage_path=db_path,
+                use_hierarchical=init_hierarchical,
+            )
+
+            # Override memory backend if --memory-type specified
+            if memory_type == "hierarchical":
+                from amplihack.agents.goal_seeking.flat_retriever_adapter import (
+                    FlatRetrieverAdapter,
+                )
+
+                try:
+                    agent.memory.close()
+                except Exception:
+                    pass
+                agent.memory = FlatRetrieverAdapter(agent_name=agent_name, db_path=db_path)
+                agent.use_hierarchical = True
+                logger.info("Forced HierarchicalMemory via --memory-type=hierarchical")
+            elif memory_type == "cognitive":
+                from amplihack.agents.goal_seeking.cognitive_adapter import (
+                    CognitiveAdapter,
+                )
+
+                try:
+                    agent.memory.close()
+                except Exception:
+                    pass
+                agent.memory = CognitiveAdapter(agent_name=agent_name, db_path=db_path)
+                agent.use_hierarchical = True
+                logger.info("Forced CognitiveMemory via --memory-type=cognitive")
+
+            # Wrap mini agent to support answer_mode
+            answer_mode = getattr(args, "answer_mode", "single-shot")
+            return _MiniAgentWrapper(agent, answer_mode=answer_mode)
+        from amplihack.agents.goal_seeking.sdk_adapters.factory import create_agent
+
+        sdk_agent = create_agent(
+            name=agent_name,
+            sdk=args.sdk,
+            model=agent_model,
+            storage_path=db_path,
+            enable_memory=True,
+        )
+        answer_mode = getattr(args, "answer_mode", "single-shot")
+        return _SDKAgentWrapper(sdk_agent, answer_mode=answer_mode)
+
+    agent = _create_agent()
+
+    try:
+        # Run evaluation
+        evaluator = LongHorizonMemoryEval(
+            num_turns=args.turns,
+            num_questions=args.questions,
+            seed=args.seed,
+            grader_votes=args.grader_votes,
+            parallel_workers=args.parallel_workers,
+            flush_every=args.flush_every,
+            restart_every=args.restart_every,
+        )
+
+        # Provide agent_factory when restart_every is set
+        agent_factory = _create_agent if args.restart_every > 0 else None
+
+        if args.skip_learning:
+            # Skip learning: only generate data + questions, then quiz
+            evaluator.generate()
+            logger.info(
+                "SKIP-LEARNING mode: generated %d questions, using existing memory DB",
+                len(evaluator.questions),
+            )
+            report = evaluator.evaluate(agent, grader_model=args.grader_model)
+            report.learning_time_s = 0.0
+        elif args.skip_questions:
+            # Learn only, no questions (used by segment workers calling normal mode)
+            evaluator.generate()
+            evaluator.run_dialogue(agent, agent_factory=agent_factory)
+            logger.info("Learning-only mode complete")
+            return
+        else:
+            report = evaluator.run(
+                agent, grader_model=args.grader_model, agent_factory=agent_factory
+            )
+
+        # Print report
+        _print_report(report)
+
+        # Save JSON report
+        report_path = output_dir / "report.json"
+        with open(report_path, "w") as f:
+            json.dump(report.to_dict(), f, indent=2)
+        logger.info("Report saved to %s", report_path)
+
+        # Save ground truth for analysis
+        if evaluator.ground_truth:
+            gt_path = output_dir / "ground_truth.json"
+            gt_data = {
+                "num_turns": len(evaluator.ground_truth.turns),
+                "turns_with_facts": sum(1 for t in evaluator.ground_truth.turns if t.facts),
+                "total_facts": sum(len(t.facts) for t in evaluator.ground_truth.turns),
+                "current_values": evaluator.ground_truth.current_values,
+                "superseded_count": sum(
+                    len(v) for v in evaluator.ground_truth.superseded_values.values()
+                ),
+                "block_distribution": {},
+            }
+            for t in evaluator.ground_truth.turns:
+                gt_data["block_distribution"][t.block_name] = (
+                    gt_data["block_distribution"].get(t.block_name, 0) + 1
+                )
+            with open(gt_path, "w") as f:
+                json.dump(gt_data, f, indent=2)
+            logger.info("Ground truth saved to %s", gt_path)
+
+    finally:
+        agent.close()
+
+
+if __name__ == "__main__":
+    main()
+
+
+__all__ = [
+    "LongHorizonMemoryEval",
+    "EvalResult",
+    "EvalReport",
+    "CategoryBreakdown",
+    "DimensionScore",
+    "_deterministic_grade",
+    "_grade_hybrid",
+    "_grade_multi_vote",
+    "_save_dialogue_json",
+    "_load_dialogue_slice",
+]

@@ -1,0 +1,128 @@
+scenario:
+  name: "XPIA Hooks - Exception Handling Outside-In Tests"
+  description: |
+    Verifies that xpia pre_tool_use and post_tool_use hooks:
+    1. Operate correctly on valid inputs (no regressions)
+    2. Log exceptions to stderr when errors occur (new behavior)
+    3. Preserve fail-open semantics (exit 0, valid JSON output even on error)
+
+    These tests exercise the exception handling added in PR #EXCEPTION_HANDLING_PR.
+  type: cli
+  tags: [hooks, xpia, exception-handling, outside-in, regression]
+
+  prerequisites:
+    - "Python 3.11+ available"
+    - "Hook at .claude/tools/xpia/hooks/pre_tool_use.py exists"
+    - "Hook at .claude/tools/xpia/hooks/post_tool_use.py exists"
+
+  # --- pre_tool_use tests ---
+
+  steps:
+    # Test 1: Normal bash command - should process cleanly
+    - action: launch
+      target: "python"
+      args: [".claude/tools/xpia/hooks/pre_tool_use.py"]
+      description: "Invoke pre_tool_use with a normal Bash tool use"
+
+    - action: send_input
+      value: |
+        {"toolUse": {"name": "Bash", "input": {"command": "ls -la"}}}
+      description: "Valid Bash command JSON input"
+
+    - action: verify_output
+      matches: '^\{.*\}$'
+      description: "Must output valid JSON object on stdout"
+      timeout: 5s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "Must exit 0 (fail-open protocol)"
+
+    # Test 2: Invalid JSON input - top-level exception path
+    #         Should log to stderr AND output {} AND exit 0
+    - action: launch
+      target: "python"
+      args: [".claude/tools/xpia/hooks/pre_tool_use.py"]
+      description: "Invoke pre_tool_use with completely invalid JSON"
+
+    - action: send_input
+      value: "NOT VALID JSON {{{{"
+      description: "Malformed JSON triggers top-level except Exception"
+
+    - action: verify_output
+      contains: "{}"
+      stream: stdout
+      description: "Must output empty dict {} to stdout on error (fail-open)"
+      timeout: 5s
+
+    - action: verify_output
+      contains: "[xpia] pre_tool_use hook failed (fail-open)"
+      stream: stderr
+      description: "Must log the error to stderr (new exception logging behavior)"
+
+    - action: verify_exit_code
+      expected: 0
+      description: "Must exit 0 even on complete failure (fail-open)"
+
+    # Test 3: Normal post_tool_use - no regressions
+    - action: launch
+      target: "python"
+      args: [".claude/tools/xpia/hooks/post_tool_use.py"]
+      description: "Invoke post_tool_use with a normal result"
+
+    - action: send_input
+      value: |
+        {
+          "toolUse": {"name": "Bash", "input": {"command": "echo hello"}},
+          "toolResult": {"output": "hello\n", "error": ""}
+        }
+      description: "Valid post-tool result JSON"
+
+    - action: verify_output
+      matches: '^\{.*\}$'
+      stream: stdout
+      description: "Must output valid JSON on stdout"
+      timeout: 5s
+
+    - action: verify_exit_code
+      expected: 0
+
+    # Test 4: Verify log_security_event error is logged (not silently swallowed)
+    #         Force log failure by using a HOME with an unwritable xpia log path
+    - action: launch
+      target: "python"
+      args:
+        - "-c"
+        - |
+          import sys, os, tempfile, json, subprocess
+          # Create temp dir and make xpia log path exist as a FILE (not dir)
+          # so mkdir fails - this triggers the exception in log_security_event
+          with tempfile.TemporaryDirectory() as tmpdir:
+              xpia_log = os.path.join(tmpdir, '.claude', 'logs', 'xpia')
+              os.makedirs(os.path.dirname(xpia_log), exist_ok=True)
+              # Create it as a FILE so mkdir inside hook fails
+              open(xpia_log, 'w').close()
+              env = os.environ.copy()
+              env['HOME'] = tmpdir
+              inp = json.dumps({"toolUse": {"name": "Bash", "input": {"command": "ls"}}})
+              result = subprocess.run(
+                  [sys.executable, '.claude/tools/xpia/hooks/pre_tool_use.py'],
+                  input=inp, capture_output=True, text=True, env=env
+              )
+              print(result.stdout, end='')
+              print(result.stderr, end='', file=sys.stderr)
+              sys.exit(result.returncode)
+      description: "Force log_security_event to fail by blocking its log directory"
+
+    - action: verify_output
+      contains: "[xpia] Security event logging failed (non-fatal)"
+      stream: stderr
+      description: "Must log the security logging failure to stderr"
+      timeout: 10s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "Must still exit 0 (logging failure is non-fatal)"
+
+  cleanup:
+    - description: "No cleanup needed - hooks don't modify project state"

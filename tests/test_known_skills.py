@@ -24,7 +24,7 @@ class TestKnownSkillsRegistry:
     def test_registry_contains_expected_core_skills(self):
         """Test that registry contains known core skills."""
         expected_core_skills = {
-            "agent-sdk",
+            "claude-agent-sdk",
             "common",
             "development",
             "collaboration",
@@ -116,7 +116,7 @@ class TestIsAmplihackSkill:
 
     def test_known_skill_returns_true(self):
         """Test that known skills are recognized."""
-        assert is_amplihack_skill("agent-sdk") is True
+        assert is_amplihack_skill("claude-agent-sdk") is True
         assert is_amplihack_skill("common") is True
         assert is_amplihack_skill("default-workflow") is True
 
@@ -133,7 +133,7 @@ class TestIsAmplihackSkill:
     def test_case_sensitive(self):
         """Test that check is case-sensitive."""
         # Correct case
-        assert is_amplihack_skill("agent-sdk") is True
+        assert is_amplihack_skill("claude-agent-sdk") is True
         # Wrong case
         assert is_amplihack_skill("Agent-SDK") is False
         assert is_amplihack_skill("AGENT-SDK") is False
@@ -144,12 +144,12 @@ class TestIsAmplihackSkill:
 
         # Warm up
         for _ in range(1000):
-            is_amplihack_skill("agent-sdk")
+            is_amplihack_skill("claude-agent-sdk")
 
         # Time first element
         start = time.perf_counter()
         for _ in range(10000):
-            is_amplihack_skill("agent-sdk")
+            is_amplihack_skill("claude-agent-sdk")
         time_first = time.perf_counter() - start
 
         # Time last element

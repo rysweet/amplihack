@@ -1,6 +1,8 @@
 # Claude Code Hook System
 
-This directory contains the hook system for Claude Code, which allows for customization and monitoring of the Claude Code runtime environment.
+This directory (`.claude/tools/amplihack/hooks/`) is the **canonical source of truth** for all hook files.
+
+`amplifier-bundle/tools/amplihack/hooks/` is a symlink to this directory — always edit files here.
 
 ## Overview
 
@@ -37,6 +39,12 @@ The hook system uses a **unified HookProcessor** base class that provides common
 - **`pre_compact.py`** - Runs before context compaction
   - Manages context and prepares for compaction
   - Logs pre-compact events
+
+- **`pre_tool_use.py`** - Runs before each tool use (Bash only)
+  - **CWD deletion protection**: blocks `rm -rf` / `rmdir` on the current working directory or any parent
+  - **CWD rename/move protection**: blocks `mv` commands that would rename the CWD or any parent (prevents session crash from invalid CWD)
+  - **Main branch protection**: blocks `git commit` directly to `main` or `master`
+  - **No-verify bypass protection**: blocks `git commit --no-verify` and `git push --no-verify`
 
 ## Architecture
 

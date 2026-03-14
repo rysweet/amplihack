@@ -1,5 +1,6 @@
 """Tests for Copilot CLI launcher update functionality."""
 
+import json
 import platform
 import subprocess
 from unittest.mock import Mock, patch
@@ -10,8 +11,14 @@ from amplihack.launcher.copilot import (
     check_copilot,
     check_for_update,
     detect_install_method,
+    enable_awesome_copilot_mcp_server,
     execute_update,
+    generate_copilot_instructions,
     prompt_user_to_update,
+    register_awesome_copilot_marketplace,
+    register_copilot_plugin,
+    stage_agents,
+    stage_directory,
 )
 
 
@@ -350,4 +357,570 @@ class TestCheckCopilot:
         mock_run.side_effect = subprocess.TimeoutExpired("copilot", 5)
 
         result = check_copilot()
+        assert result is False
+
+
+class TestStageAgents:
+    """Tests for agent staging to ~/.copilot/agents/ (issue #2241)."""
+
+    def test_stages_agents_to_user_copilot_dir(self, tmp_path):
+        """Agents must be staged to ~/.copilot/agents/, not project-local."""
+        # Create fake source agents
+        source_dir = tmp_path / "source" / ".claude" / "agents" / "amplihack"
+        core_dir = source_dir / "core"
+        core_dir.mkdir(parents=True)
+        (core_dir / "architect.md").write_text("# Architect agent")
+        (core_dir / "builder.md").write_text("# Builder agent")
+        specialized_dir = source_dir / "specialized"
+        specialized_dir.mkdir(parents=True)
+        (specialized_dir / "security.md").write_text("# Security agent")
+
+        # Create fake copilot home
+        copilot_home = tmp_path / "copilot_home"
+
+        result = stage_agents(source_dir, copilot_home)
+
+        # Agents should be in copilot_home/agents/amplihack/ (flattened, namespaced)
+        agents_dir = copilot_home / "agents" / "amplihack"
+        assert agents_dir.exists()
+        assert (agents_dir / "architect.md").exists()
+        assert (agents_dir / "builder.md").exists()
+        assert (agents_dir / "security.md").exists()
+        assert result == 3
+
+    def test_stages_agents_flattened(self, tmp_path):
+        """Agent subdirectory structure should be flattened."""
+        source_dir = tmp_path / "source"
+        core_dir = source_dir / "core"
+        core_dir.mkdir(parents=True)
+        (core_dir / "architect.md").write_text("# Architect")
+        workflows_dir = source_dir / "workflows"
+        workflows_dir.mkdir(parents=True)
+        (workflows_dir / "improvement.md").write_text("# Improvement")
+
+        copilot_home = tmp_path / "copilot_home"
+
+        stage_agents(source_dir, copilot_home)
+
+        agents_dir = copilot_home / "agents" / "amplihack"
+        # All files flattened to single directory
+        assert (agents_dir / "architect.md").exists()
+        assert (agents_dir / "improvement.md").exists()
+        # No subdirectories under amplihack/
+        subdirs = [p for p in agents_dir.iterdir() if p.is_dir()]
+        assert len(subdirs) == 0
+
+    def test_cleans_stale_agents(self, tmp_path):
+        """Stale agents should be cleaned from amplihack namespace only."""
+        source_dir = tmp_path / "source" / "core"
+        source_dir.mkdir(parents=True)
+        (source_dir / "architect.md").write_text("# Architect")
+
+        copilot_home = tmp_path / "copilot_home"
+        agents_dir = copilot_home / "agents" / "amplihack"
+        agents_dir.mkdir(parents=True)
+        # Pre-existing stale agent in amplihack namespace
+        (agents_dir / "old-removed-agent.md").write_text("# Old agent")
+
+        # User agent outside amplihack namespace
+        user_agents_dir = copilot_home / "agents"
+        (user_agents_dir / "user-custom-agent.md").write_text("# User agent")
+
+        stage_agents(source_dir.parent, copilot_home)
+
+        assert (agents_dir / "architect.md").exists()
+        # Stale amplihack agent should be removed
+        assert not (agents_dir / "old-removed-agent.md").exists()
+        # User agent should be preserved
+        assert (user_agents_dir / "user-custom-agent.md").exists()
+
+    def test_handles_missing_source_dir(self, tmp_path):
+        """Returns 0 if source directory doesn't exist."""
+        source_dir = tmp_path / "nonexistent"
+        copilot_home = tmp_path / "copilot_home"
+
+        result = stage_agents(source_dir, copilot_home)
+        assert result == 0
+
+    def test_creates_agents_dir_if_missing(self, tmp_path):
+        """Creates ~/.copilot/agents/amplihack/ if it doesn't exist."""
+        source_dir = tmp_path / "source" / "core"
+        source_dir.mkdir(parents=True)
+        (source_dir / "test.md").write_text("# Test")
+
+        copilot_home = tmp_path / "copilot_home"
+        assert not copilot_home.exists()
+
+        stage_agents(source_dir.parent, copilot_home)
+
+        assert (copilot_home / "agents" / "amplihack").exists()
+
+
+class TestStageDirectory:
+    """Tests for generic directory staging (workflows, context, commands)."""
+
+    def test_stages_workflow_files(self, tmp_path):
+        """Workflow .md files must be staged to ~/.copilot/workflow/amplihack/."""
+        source = tmp_path / "workflow"
+        source.mkdir()
+        (source / "DEFAULT_WORKFLOW.md").write_text("# 23 steps")
+        (source / "INVESTIGATION_WORKFLOW.md").write_text("# 6 phases")
+
+        copilot_home = tmp_path / "copilot"
+        result = stage_directory(source, copilot_home, "workflow")
+
+        assert (copilot_home / "workflow" / "amplihack" / "DEFAULT_WORKFLOW.md").exists()
+        assert (copilot_home / "workflow" / "amplihack" / "INVESTIGATION_WORKFLOW.md").exists()
+        assert result == 2
+
+    def test_stages_context_files(self, tmp_path):
+        """Context .md files must be staged to ~/.copilot/context/amplihack/."""
+        source = tmp_path / "context"
+        source.mkdir()
+        (source / "PHILOSOPHY.md").write_text("# Ruthless Simplicity")
+        (source / "PATTERNS.md").write_text("# Brick & Studs")
+
+        copilot_home = tmp_path / "copilot"
+        result = stage_directory(source, copilot_home, "context")
+
+        assert (copilot_home / "context" / "amplihack" / "PHILOSOPHY.md").exists()
+        content = (copilot_home / "context" / "amplihack" / "PHILOSOPHY.md").read_text()
+        assert "Ruthless Simplicity" in content
+        assert result == 2
+
+    def test_stages_commands_flattened(self, tmp_path):
+        """Commands from subdirectories must be flattened to ~/.copilot/commands/amplihack/."""
+        source = tmp_path / "commands" / "amplihack"
+        source.mkdir(parents=True)
+        (source / "ultrathink.md").write_text("# Ultra-Think")
+        (source / "analyze.md").write_text("# Analyze")
+
+        copilot_home = tmp_path / "copilot"
+        result = stage_directory(source.parent, copilot_home, "commands")
+
+        assert (copilot_home / "commands" / "amplihack" / "ultrathink.md").exists()
+        assert (copilot_home / "commands" / "amplihack" / "analyze.md").exists()
+        assert result == 2
+
+    def test_handles_missing_source(self, tmp_path):
+        """Returns 0 if source directory doesn't exist."""
+        copilot_home = tmp_path / "copilot"
+        result = stage_directory(tmp_path / "nonexistent", copilot_home, "workflow")
+        assert result == 0
+
+    def test_cleans_stale_files(self, tmp_path):
+        """Old files in amplihack namespace should be cleaned, user files preserved."""
+        source = tmp_path / "workflow"
+        source.mkdir()
+        (source / "NEW.md").write_text("# New")
+
+        copilot_home = tmp_path / "copilot"
+        dest = copilot_home / "workflow" / "amplihack"
+        dest.mkdir(parents=True)
+        (dest / "OLD_REMOVED.md").write_text("# Gone")
+
+        # User file outside amplihack namespace
+        user_dest = copilot_home / "workflow"
+        (user_dest / "USER_WORKFLOW.md").write_text("# User workflow")
+
+        stage_directory(source, copilot_home, "workflow")
+
+        assert (dest / "NEW.md").exists()
+        # Stale amplihack file should be removed
+        assert not (dest / "OLD_REMOVED.md").exists()
+        # User file should be preserved
+        assert (user_dest / "USER_WORKFLOW.md").exists()
+
+
+class TestGenerateCopilotInstructions:
+    """Tests for copilot-instructions.md generation."""
+
+    def test_generates_instructions_file(self, tmp_path):
+        """Must create ~/.copilot/copilot-instructions.md."""
+        copilot_home = tmp_path / "copilot"
+        copilot_home.mkdir()
+
+        generate_copilot_instructions(copilot_home)
+
+        instructions = copilot_home / "copilot-instructions.md"
+        assert instructions.exists()
+
+    def test_instructions_reference_workflow_path(self, tmp_path):
+        """Instructions must tell copilot where workflows are."""
+        copilot_home = tmp_path / "copilot"
+        copilot_home.mkdir()
+
+        generate_copilot_instructions(copilot_home)
+
+        content = (copilot_home / "copilot-instructions.md").read_text()
+        assert "workflow" in content.lower()
+        assert "DEFAULT_WORKFLOW" in content
+
+    def test_instructions_reference_context_path(self, tmp_path):
+        """Instructions must tell copilot where context files are."""
+        copilot_home = tmp_path / "copilot"
+        copilot_home.mkdir()
+
+        generate_copilot_instructions(copilot_home)
+
+        content = (copilot_home / "copilot-instructions.md").read_text()
+        assert "context" in content.lower()
+        assert "PHILOSOPHY" in content
+
+    def test_instructions_reference_commands(self, tmp_path):
+        """Instructions must tell copilot about available commands."""
+        copilot_home = tmp_path / "copilot"
+        copilot_home.mkdir()
+
+        generate_copilot_instructions(copilot_home)
+
+        content = (copilot_home / "copilot-instructions.md").read_text()
+        assert "command" in content.lower()
+        assert "ultrathink" in content.lower()
+
+    def test_preserves_existing_user_content(self, tmp_path):
+        """Must NOT overwrite user's existing instructions."""
+        copilot_home = tmp_path / "copilot"
+        copilot_home.mkdir()
+        instructions = copilot_home / "copilot-instructions.md"
+        instructions.write_text("# My Custom Instructions\nAlways use TypeScript.\n")
+
+        generate_copilot_instructions(copilot_home)
+
+        content = instructions.read_text()
+        # User content preserved
+        assert "My Custom Instructions" in content
+        assert "Always use TypeScript" in content
+        # Amplihack section added
+        assert "Amplihack Framework" in content
+        assert "DEFAULT_WORKFLOW" in content
+
+    def test_updates_existing_amplihack_section(self, tmp_path):
+        """Must replace old amplihack section, not duplicate it."""
+        copilot_home = tmp_path / "copilot"
+        copilot_home.mkdir()
+        instructions = copilot_home / "copilot-instructions.md"
+        # Simulate file with user content + old amplihack section
+        instructions.write_text(
+            "# User stuff\n\n"
+            "<!-- AMPLIHACK_INSTRUCTIONS_START -->\nOLD CONTENT\n<!-- AMPLIHACK_INSTRUCTIONS_END -->\n"
+        )
+
+        generate_copilot_instructions(copilot_home)
+
+        content = instructions.read_text()
+        assert "User stuff" in content
+        assert "OLD CONTENT" not in content
+        assert "DEFAULT_WORKFLOW" in content
+        # Only one amplihack section
+        assert content.count("AMPLIHACK_INSTRUCTIONS_START") == 1
+
+    def test_auto_derives_workflow_step_count(self, tmp_path):
+        """Must auto-derive workflow step count from DEFAULT_WORKFLOW.md."""
+        copilot_home = tmp_path / "copilot"
+        workflow_dir = copilot_home / "workflow" / "amplihack"
+        workflow_dir.mkdir(parents=True)
+
+        # Create workflow with known number of steps (including decimal steps)
+        workflow_content = """
+name: DEFAULT_WORKFLOW
+
+### Step 0: First step
+### Step 1: Second step
+### Step 2: Third step
+### Step 2.5: Decimal step
+### Step 3: Fourth step
+"""
+        (workflow_dir / "DEFAULT_WORKFLOW.md").write_text(workflow_content)
+
+        generate_copilot_instructions(copilot_home)
+
+        content = (copilot_home / "copilot-instructions.md").read_text()
+        # Should contain auto-derived count (5 steps: 0, 1, 2, 2.5, 3)
+        assert "(5 steps)" in content
+        assert "(23 steps)" not in content  # Should not hard-code
+
+    def test_handles_missing_workflow_for_step_count(self, tmp_path):
+        """Must handle missing DEFAULT_WORKFLOW.md gracefully."""
+        copilot_home = tmp_path / "copilot"
+        copilot_home.mkdir()
+
+        generate_copilot_instructions(copilot_home)
+
+        content = (copilot_home / "copilot-instructions.md").read_text()
+        # Should fall back to generic description
+        assert "Standard development workflow" in content
+        # Should not crash or include step count if file missing
+        assert "DEFAULT_WORKFLOW" in content
+
+
+class TestEnableAwesomeCopilotMCPServer:
+    """Tests for awesome-copilot MCP server integration."""
+
+    @patch("shutil.which", return_value="/usr/bin/docker")
+    def test_adds_mcp_server_when_docker_available(self, _mock_which, tmp_path):
+        """MCP server config should be added when Docker is available."""
+        with patch("amplihack.launcher.copilot.Path.home", return_value=tmp_path):
+            mcp_dir = tmp_path / ".copilot" / "github-copilot"
+            mcp_dir.mkdir(parents=True)
+            mcp_file = mcp_dir / "mcp.json"
+            mcp_file.write_text('{"mcpServers": {}}')
+
+            result = enable_awesome_copilot_mcp_server()
+
+            assert result is True
+            config = json.loads(mcp_file.read_text())
+            assert "awesome-copilot" in config["mcpServers"]
+            assert config["mcpServers"]["awesome-copilot"]["command"] == "docker"
+
+    @patch("shutil.which", return_value=None)
+    def test_returns_false_when_no_docker(self, _mock_which):
+        """Should return False silently when Docker is not available."""
+        result = enable_awesome_copilot_mcp_server()
+        assert result is False
+
+    @patch("shutil.which", return_value="/usr/bin/docker")
+    def test_preserves_existing_mcp_config(self, _mock_which, tmp_path):
+        """Must not overwrite existing MCP server configurations."""
+        with patch("amplihack.launcher.copilot.Path.home", return_value=tmp_path):
+            mcp_dir = tmp_path / ".copilot" / "github-copilot"
+            mcp_dir.mkdir(parents=True)
+            mcp_file = mcp_dir / "mcp.json"
+            mcp_file.write_text('{"mcpServers": {"existing-server": {"type": "stdio"}}}')
+
+            enable_awesome_copilot_mcp_server()
+
+            config = json.loads(mcp_file.read_text())
+            assert "existing-server" in config["mcpServers"]
+            assert "awesome-copilot" in config["mcpServers"]
+
+    @patch("shutil.which", return_value="/usr/bin/docker")
+    def test_creates_config_from_scratch(self, _mock_which, tmp_path):
+        """Should create MCP config file if it doesn't exist."""
+        with patch("amplihack.launcher.copilot.Path.home", return_value=tmp_path):
+            result = enable_awesome_copilot_mcp_server()
+
+            assert result is True
+            mcp_file = tmp_path / ".copilot" / "github-copilot" / "mcp.json"
+            assert mcp_file.exists()
+
+
+class TestRegisterAwesomeCopilotMarketplace:
+    """Tests for awesome-copilot marketplace registration."""
+
+    @patch("subprocess.run")
+    def test_registers_marketplace_on_first_run(self, mock_run, tmp_path):
+        """Should run copilot plugin marketplace add on first launch."""
+        mock_run.return_value = Mock(returncode=0)
+        with patch("amplihack.launcher.copilot.Path.home", return_value=tmp_path):
+            (tmp_path / ".copilot").mkdir(parents=True)
+
+            result = register_awesome_copilot_marketplace()
+
+            assert result is True
+            mock_run.assert_called_once()
+            assert "marketplace" in str(mock_run.call_args)
+
+    @patch("subprocess.run")
+    def test_skips_if_already_registered(self, mock_run, tmp_path):
+        """Should not re-register if marker file exists."""
+        with patch("amplihack.launcher.copilot.Path.home", return_value=tmp_path):
+            marker = tmp_path / ".copilot" / "awesome-copilot-marketplace-registered"
+            marker.parent.mkdir(parents=True)
+            marker.write_text("registered\n")
+
+            result = register_awesome_copilot_marketplace()
+
+            assert result is True
+            mock_run.assert_not_called()
+
+    @patch("subprocess.run")
+    def test_handles_copilot_not_found(self, mock_run, tmp_path):
+        """Should return False if copilot CLI not available."""
+        mock_run.side_effect = FileNotFoundError()
+        with patch("amplihack.launcher.copilot.Path.home", return_value=tmp_path):
+            (tmp_path / ".copilot").mkdir(parents=True)
+
+            result = register_awesome_copilot_marketplace()
+
+            assert result is False
+
+    @patch("subprocess.run")
+    def test_creates_marker_on_success(self, mock_run, tmp_path):
+        """Marker file must be created after successful registration."""
+        mock_run.return_value = Mock(returncode=0)
+        with patch("amplihack.launcher.copilot.Path.home", return_value=tmp_path):
+            (tmp_path / ".copilot").mkdir(parents=True)
+
+            register_awesome_copilot_marketplace()
+
+            marker = tmp_path / ".copilot" / "awesome-copilot-marketplace-registered"
+            assert marker.exists()
+
+
+class TestRegisterCopilotPlugin:
+    """Tests for register_copilot_plugin (issue #2686 - proper plugin packaging)."""
+
+    def test_registers_plugin_in_config_json(self, tmp_path):
+        """Plugin must be registered in ~/.copilot/config.json under installed_plugins."""
+        source_commands = tmp_path / "commands" / "amplihack"
+        source_commands.mkdir(parents=True)
+        (source_commands / "dev.md").write_text("# Dev command")
+        (source_commands / "plugin.json").write_text(
+            '{"name": "amplihack", "version": "1.0.0", "commands": ["./commands"]}'
+        )
+
+        copilot_home = tmp_path / "copilot"
+
+        result = register_copilot_plugin(source_commands, copilot_home)
+
+        assert result is True
+        config_file = copilot_home / "config.json"
+        assert config_file.exists()
+        config = json.loads(config_file.read_text())
+        assert "installed_plugins" in config
+        plugin = next(p for p in config["installed_plugins"] if p["name"] == "amplihack")
+        assert plugin["marketplace"] == "local"
+        assert plugin["enabled"] is True
+        assert plugin["source"] == "local"
+
+    def test_copies_commands_to_installed_plugins(self, tmp_path):
+        """Command .md files must be copied to installed-plugins/amplihack@local/commands/."""
+        source_commands = tmp_path / "commands" / "amplihack"
+        source_commands.mkdir(parents=True)
+        (source_commands / "dev.md").write_text("# Dev")
+        (source_commands / "analyze.md").write_text("# Analyze")
+
+        copilot_home = tmp_path / "copilot"
+
+        register_copilot_plugin(source_commands, copilot_home)
+
+        plugin_commands = copilot_home / "installed-plugins" / "amplihack@local" / "commands"
+        assert (plugin_commands / "dev.md").exists()
+        assert (plugin_commands / "analyze.md").exists()
+
+    def test_copies_plugin_json_to_plugin_root(self, tmp_path):
+        """plugin.json must be copied to installed-plugins/amplihack@local/."""
+        source_commands = tmp_path / "commands" / "amplihack"
+        source_commands.mkdir(parents=True)
+        (source_commands / "dev.md").write_text("# Dev")
+        (source_commands / "plugin.json").write_text('{"name": "amplihack"}')
+
+        copilot_home = tmp_path / "copilot"
+
+        register_copilot_plugin(source_commands, copilot_home)
+
+        plugin_root = copilot_home / "installed-plugins" / "amplihack@local"
+        assert (plugin_root / "plugin.json").exists()
+        data = json.loads((plugin_root / "plugin.json").read_text())
+        assert data["name"] == "amplihack"
+
+    def test_idempotent_registration(self, tmp_path):
+        """Calling register twice must not duplicate plugin entry."""
+        source_commands = tmp_path / "commands" / "amplihack"
+        source_commands.mkdir(parents=True)
+        (source_commands / "dev.md").write_text("# Dev")
+
+        copilot_home = tmp_path / "copilot"
+
+        register_copilot_plugin(source_commands, copilot_home)
+        register_copilot_plugin(source_commands, copilot_home)
+
+        config = json.loads((copilot_home / "config.json").read_text())
+        amplihack_entries = [p for p in config["installed_plugins"] if p["name"] == "amplihack"]
+        assert len(amplihack_entries) == 1
+
+    def test_preserves_existing_plugins(self, tmp_path):
+        """Must not remove other plugins from config.json."""
+        source_commands = tmp_path / "commands" / "amplihack"
+        source_commands.mkdir(parents=True)
+        (source_commands / "dev.md").write_text("# Dev")
+
+        copilot_home = tmp_path / "copilot"
+        copilot_home.mkdir(parents=True)
+        existing_config = {"installed_plugins": [{"name": "other-plugin", "enabled": True}]}
+        (copilot_home / "config.json").write_text(json.dumps(existing_config))
+
+        register_copilot_plugin(source_commands, copilot_home)
+
+        config = json.loads((copilot_home / "config.json").read_text())
+        names = [p["name"] for p in config["installed_plugins"]]
+        assert "other-plugin" in names
+        assert "amplihack" in names
+
+    def test_plugin_entry_includes_installed_at(self, tmp_path):
+        """Plugin entry must include installed_at ISO timestamp (issue #2751).
+
+        Copilot CLI validates config.json with a strict schema that requires
+        installed_at as a string. Missing it causes:
+            "invalid_type: expected string, received undefined"
+        which breaks copilot CLI globally, not just for amplihack.
+        """
+        source_commands = tmp_path / "commands" / "amplihack"
+        source_commands.mkdir(parents=True)
+        (source_commands / "dev.md").write_text("# Dev command")
+
+        copilot_home = tmp_path / "copilot"
+
+        register_copilot_plugin(source_commands, copilot_home)
+
+        config = json.loads((copilot_home / "config.json").read_text())
+        plugin = next(p for p in config["installed_plugins"] if p["name"] == "amplihack")
+
+        # installed_at must exist and be a non-empty string
+        assert "installed_at" in plugin, "installed_at field missing from plugin entry"
+        assert isinstance(plugin["installed_at"], str), "installed_at must be a string"
+        assert len(plugin["installed_at"]) > 0, "installed_at must not be empty"
+
+        # Must be valid ISO 8601 format
+        from datetime import datetime
+
+        datetime.fromisoformat(plugin["installed_at"])  # Raises ValueError if invalid
+
+    def test_installed_at_updates_on_re_registration(self, tmp_path):
+        """Re-registration should update installed_at to current time."""
+        source_commands = tmp_path / "commands" / "amplihack"
+        source_commands.mkdir(parents=True)
+        (source_commands / "dev.md").write_text("# Dev")
+
+        copilot_home = tmp_path / "copilot"
+
+        # First registration
+        register_copilot_plugin(source_commands, copilot_home)
+        config1 = json.loads((copilot_home / "config.json").read_text())
+        plugin1 = next(p for p in config1["installed_plugins"] if p["name"] == "amplihack")
+        ts1 = plugin1["installed_at"]
+
+        # Second registration — installed_at should still be a valid timestamp
+        register_copilot_plugin(source_commands, copilot_home)
+        config2 = json.loads((copilot_home / "config.json").read_text())
+        plugin2 = next(p for p in config2["installed_plugins"] if p["name"] == "amplihack")
+        ts2 = plugin2["installed_at"]
+
+        # Both timestamps must be valid ISO 8601
+        from datetime import datetime
+
+        datetime.fromisoformat(ts1)
+        datetime.fromisoformat(ts2)
+
+    def test_returns_false_for_missing_source(self, tmp_path):
+        """Returns False if source directory does not exist."""
+        source_commands = tmp_path / "nonexistent"
+        copilot_home = tmp_path / "copilot"
+
+        result = register_copilot_plugin(source_commands, copilot_home)
+
+        assert result is False
+
+    def test_returns_false_for_empty_source(self, tmp_path):
+        """Returns False if source directory has no .md files."""
+        source_commands = tmp_path / "commands" / "amplihack"
+        source_commands.mkdir(parents=True)
+        # No .md files — only plugin.json
+        (source_commands / "plugin.json").write_text('{"name": "amplihack"}')
+
+        copilot_home = tmp_path / "copilot"
+
+        result = register_copilot_plugin(source_commands, copilot_home)
+
         assert result is False

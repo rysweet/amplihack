@@ -5,12 +5,14 @@ allowing blarify to store code graphs directly in Kuzu without requiring Neo4j.
 """
 
 import logging
+import time
 from pathlib import Path
-from typing import Any, LiteralString
+from typing import Any
+from typing_extensions import LiteralString  # Python 3.10 compatibility
 
 import kuzu
-from blarify.repositories.graph_db_manager.db_manager import ENVIRONMENT, AbstractDbManager
-from blarify.repositories.graph_db_manager.dtos.node_search_result_dto import (
+from amplihack.vendor.blarify.repositories.graph_db_manager.db_manager import ENVIRONMENT, AbstractDbManager
+from amplihack.vendor.blarify.repositories.graph_db_manager.dtos.node_search_result_dto import (
     ReferenceSearchResultDTO,
 )
 
@@ -66,9 +68,9 @@ class KuzuManager(AbstractDbManager):
 
         self.db_path = db_path
 
-        # Initialize Kuzu database (Kuzu creates directory if needed)
+        # Initialize Kuzu database with retry for lock contention
         try:
-            self.database = kuzu.Database(str(self.db_path))
+            self.database = self._open_with_retry(self.db_path)
             self.conn = kuzu.Connection(self.database)
             logger.info("Kuzu database initialized at %s", self.db_path)
 
@@ -78,6 +80,30 @@ class KuzuManager(AbstractDbManager):
         except Exception as e:
             logger.error("Failed to initialize Kuzu database: %s", e)
             raise
+
+    @staticmethod
+    def _open_with_retry(
+        db_path: Path, max_retries: int = 3, base_delay: float = 0.2
+    ) -> "kuzu.Database":
+        """Open Kuzu database with exponential backoff on lock contention."""
+        last_error = None
+        for attempt in range(max_retries + 1):
+            try:
+                return kuzu.Database(str(db_path))
+            except RuntimeError as e:
+                last_error = e
+                if "Could not set lock on file" not in str(e):
+                    raise
+                if attempt < max_retries:
+                    delay = base_delay * (2**attempt)
+                    logger.warning(
+                        "Kuzu DB locked (attempt %d/%d), retrying in %.1fs",
+                        attempt + 1,
+                        max_retries + 1,
+                        delay,
+                    )
+                    time.sleep(delay)
+        raise last_error  # type: ignore[misc]
 
     def _ensure_schema(self):
         """Ensure required node and relationship tables exist in Kuzu.

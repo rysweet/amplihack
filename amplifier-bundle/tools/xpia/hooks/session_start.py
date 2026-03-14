@@ -20,13 +20,18 @@ for parent in current.parents:
         project_root = parent
         break
 if project_root is None:
-    raise ImportError("Could not locate project root - missing .claude directory")
+    # Not in an amplihack project context (e.g. running from global settings).
+    # Fail-open: exit cleanly so Claude Code doesn't report a hook error.
+    print(json.dumps({}))
+    sys.exit(0)
 sys.path.insert(0, str(project_root / "src"))
 
 try:
     from amplihack.security.xpia_health import check_xpia_health
 except ImportError:
     # Graceful degradation if XPIA modules not available
+    print("WARNING: amplihack.security.xpia_health not available - XPIA health check disabled", file=sys.stderr)
+
     def check_xpia_health():
         return {"status": "not_available", "message": "XPIA modules not found"}
 

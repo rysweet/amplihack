@@ -1,0 +1,110 @@
+scenario:
+  name: "Lock Mode Co-Pilot Integration"
+  description: "Verify lock mode with goal enables co-pilot reasoning on stop"
+  type: cli
+
+  prerequisites:
+    - "Python 3.11+ available"
+    - "amplihack fleet module installed"
+
+  steps:
+    # Setup: ensure lock is not active
+    - action: launch
+      target: "python .claude/tools/amplihack/lock_tool.py unlock"
+
+    - action: verify_exit_code
+      expected: 0
+
+    # Write a goal file (simulating what the agent does)
+    - action: launch
+      target: "bash"
+      args: ["-c", "mkdir -p .claude/runtime/locks && echo 'Goal: Fix auth bug\n\nDefinition of Done:\n- Auth tests pass\n- No regressions' > .claude/runtime/locks/.lock_goal"]
+
+    - action: verify_exit_code
+      expected: 0
+
+    # Enable lock mode
+    - action: launch
+      target: "python .claude/tools/amplihack/lock_tool.py lock"
+
+    - action: verify_output
+      contains: "Lock enabled"
+
+    - action: verify_output
+      contains: "Goal: Fix auth bug"
+
+    # Check lock status shows goal
+    - action: launch
+      target: "python .claude/tools/amplihack/lock_tool.py check"
+
+    - action: verify_output
+      contains: "Lock is ACTIVE"
+
+    - action: verify_output
+      contains: "Fix auth bug"
+
+    # Verify goal file exists
+    - action: launch
+      target: "bash"
+      args: ["-c", "cat .claude/runtime/locks/.lock_goal"]
+
+    - action: verify_output
+      contains: "Definition of Done"
+
+    # Cleanup: unlock
+    - action: launch
+      target: "python .claude/tools/amplihack/lock_tool.py unlock"
+
+    - action: verify_output
+      contains: "Lock disabled"
+
+    # Verify goal file cleaned up
+    - action: launch
+      target: "bash"
+      args: ["-c", "test -f .claude/runtime/locks/.lock_goal && echo EXISTS || echo REMOVED"]
+
+    - action: verify_output
+      contains: "REMOVED"
+
+
+scenario:
+  name: "Lock Mode Co-Pilot — SessionCopilot suggest()"
+  description: "Verify SessionCopilot produces valid suggestions from transcript"
+  type: cli
+
+  prerequisites:
+    - "Python 3.11+ available"
+    - "amplihack fleet module importable"
+
+  steps:
+    - action: launch
+      target: "python"
+      args: ["-c", |
+        import json, tempfile, os
+        from pathlib import Path
+
+        # Create a fake transcript
+        tmpdir = tempfile.mkdtemp()
+        projdir = os.path.join(tmpdir, 'proj')
+        os.makedirs(projdir)
+        entries = [
+            json.dumps({"type": "human", "message": {"content": "Fix the auth bug"}}),
+            json.dumps({"type": "assistant", "message": {"content": [{"type": "text", "text": "I will fix the auth bug now."}]}}),
+            json.dumps({"type": "assistant", "message": {"content": [{"type": "text", "text": "GOAL_STATUS: ACHIEVED"}]}}),
+        ]
+        with open(os.path.join(projdir, 'session.jsonl'), 'w') as f:
+            f.write('\n'.join(entries))
+
+        from amplihack.fleet.fleet_copilot import build_rich_context
+        ctx = build_rich_context('\n'.join(entries))
+        assert 'ORIGINAL USER REQUEST' in ctx
+        assert 'Fix the auth bug' in ctx
+        assert 'GOAL_STATUS: ACHIEVED' in ctx
+        print('PASS: build_rich_context includes first message and recent context')
+      ]
+
+    - action: verify_output
+      contains: "PASS"
+
+    - action: verify_exit_code
+      expected: 0

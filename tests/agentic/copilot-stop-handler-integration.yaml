@@ -1,0 +1,88 @@
+scenario:
+  name: "SessionCopilot - Stop Handler Integration"
+  description: >
+    Test the full stop hook -> copilot -> suggestion -> continuation flow.
+    This tests copilot_stop_handler.py which is the glue between the
+    Claude Code Stop hook and SessionCopilot.
+  type: cli
+  tags: [copilot, integration, fleet, hooks]
+  timeout: 90s
+
+  prerequisites:
+    - "amplihack package installed in .venv"
+    - "ANTHROPIC_API_KEY is set"
+
+  steps:
+    # Step 1: Set up lock mode with goal
+    - action: launch
+      target: "bash"
+      args: ["-c", "mkdir -p .claude/runtime/locks && echo 'Write a Python function that adds two numbers' > .claude/runtime/locks/.lock_goal && touch .claude/runtime/locks/.lock_active"]
+      description: "Create lock files manually"
+
+    - action: verify_exit_code
+      expected: 0
+
+    # Step 2: Invoke the copilot stop handler directly
+    - action: launch
+      target: ".venv/bin/python"
+      args: ["-c", "
+import os, importlib.util
+os.environ['CLAUDE_PROJECT_DIR'] = os.getcwd()
+
+spec = importlib.util.spec_from_file_location(
+    'copilot_stop_handler',
+    '.claude/tools/amplihack/hooks/copilot_stop_handler.py'
+)
+handler = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(handler)
+
+from pathlib import Path
+logs = []
+
+result = handler.get_copilot_continuation(
+    goal='Write a Python function that adds two numbers',
+    project_root=Path('.'),
+    log_fn=lambda msg: logs.append(msg),
+)
+
+print('=== LOGS ===')
+for log in logs:
+    print(f'  {log}')
+print('=== RESULT ===')
+if result:
+    print(result[:500])
+    print('HANDLER RETURNED CONTINUATION')
+else:
+    print('HANDLER RETURNED NONE')
+"]
+      description: "Run copilot stop handler with real LLM"
+      timeout: 60s
+
+    - action: verify_output
+      contains: "HANDLER RETURNED CONTINUATION"
+      description: "Stop handler must return a continuation prompt"
+
+    - action: verify_output
+      matches: "Copilot suggestion: (send_input|wait|escalate|mark_complete)"
+      description: "Logs should show the copilot's decision"
+
+    # Step 3: Verify copilot decision log was written
+    - action: launch
+      target: "bash"
+      args: ["-c", "ls -la .claude/runtime/copilot-decisions/ 2>/dev/null && echo 'LOG_DIR_EXISTS' || echo 'NO_LOG_DIR'"]
+      description: "Check copilot decision log directory"
+
+    # Step 4: Verify copilot-log command shows the decision
+    - action: launch
+      target: ".venv/bin/python"
+      args: ["-m", "amplihack.fleet.fleet_cli", "copilot-log"]
+      description: "Fleet copilot-log should show recent decisions"
+      continue_on_failure: true
+
+    - action: verify_exit_code
+      expected: 0
+
+  cleanup:
+    - action: launch
+      target: "bash"
+      args: ["-c", "rm -f .claude/runtime/locks/.lock_active .claude/runtime/locks/.lock_goal"]

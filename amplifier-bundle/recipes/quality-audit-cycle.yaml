@@ -1,0 +1,643 @@
+name: "quality-audit-cycle"
+description: |
+  Quality audit with seek/validate/fix/recurse loop.
+  Runs audit → multi-agent validate → fix ALL → verify fixes → re-audit.
+  Minimum 3 cycles. Continues if cycle 3 finds >3 medium or any high severity.
+  Each cycle escalates depth: fresh eyes, dig deeper, challenge prior findings.
+  Includes documentation audit (durability, tone, quality).
+  RULE: Every cycle must fix ALL confirmed findings before moving to next cycle.
+  No partial cycles allowed (#2842).
+version: "4.0.0"
+author: "Amplihack Team"
+tags: ["quality", "audit", "eval", "improvement", "recursive"]
+
+# Recursion limits (safety valve per issue #2707)
+recursion:
+  max_depth: 8
+  max_total_steps: 60
+
+context:
+  # Path to audit (structured input per #2843)
+  target_path: "src/amplihack"
+
+  # Configuration (structured inputs per #2843)
+  min_cycles: "3"
+  max_cycles: "6"
+  validation_threshold: "2"
+  severity_threshold: "medium"
+  module_loc_limit: "300"
+  fix_all_per_cycle: "true"
+  categories: "security,reliability,dead_code,silent_fallbacks,error_swallowing,structural,hardcoded_limits,test_gaps,doc_gaps,documentation"
+
+  # Output directory
+  output_dir: "./eval_results/quality_audit"
+
+  # Internal state
+  audit_findings: ""
+  validated_findings: ""
+  fix_results: ""
+  fix_verification: ""
+  cycle_number: "1"
+  cycle_history: ""
+  recurse_decision: ""
+  self_improvement_results: ""
+
+steps:
+  # ========================================================================
+  # STEP 1: SEEK — Scan codebase for quality issues
+  # Each cycle escalates depth via cycle_number-aware instructions.
+  # ========================================================================
+  - id: "seek"
+    agent: "amplihack:core:reviewer"
+    prompt: |
+      # Quality Audit — Cycle {{cycle_number}} — SEEK
+
+      **Target Path:** {{target_path}}
+      **Cycle:** {{cycle_number}} (escalating depth — look with fresh eyes)
+      **Severity Threshold:** {{severity_threshold}} (only report findings at or above this severity)
+      **Module LOC Limit:** {{module_loc_limit}} (flag modules exceeding this)
+      **Categories:** {{categories}}
+
+      **Depth instructions based on cycle:**
+      - Cycle 1: Scan broadly for the most obvious issues.
+      - Cycle 2: Dig deeper. Look at code paths you may have skimmed.
+        Check edge cases and less-obvious patterns.
+      - Cycle 3+: Challenge your own assumptions. Look at this code as if
+        you have never seen it before. Be more detailed and thorough than
+        any previous cycle. Question whether "intentional" patterns are
+        actually correct. Examine interactions between modules, not just
+        individual files.
+
+      You are on cycle {{cycle_number}}. Follow the depth instruction above
+      that matches your cycle number (use "3+" for cycles 3 and beyond).
+
+      **Previous cycle findings (do NOT re-report these — find NEW issues):**
+      {{cycle_history}}
+
+      Conduct a focused quality audit. Scan for:
+
+      1. **Security**: Hardcoded secrets, missing input validation
+      2. **Reliability**: Missing timeouts on subprocess/network calls, bare except clauses
+      3. **Dead Code**: Unused imports, unreachable branches, stale TODOs
+      4. **Test Gaps**: Source files without test coverage, tests without assertions
+      5. **Doc Gaps**: Public functions without docstrings, outdated docs
+      6. **Silent Fallbacks** (#2810): Code that silently degrades instead of failing loudly:
+         - `except: pass` or `except Exception: pass`
+         - `except` blocks that return a default value without logging the error
+         - `try/except` that catches broadly (Exception, BaseException) and continues silently
+         - Fallback chains where failure of the primary path is invisible to the caller
+         - `or default_value` patterns that mask upstream failures
+      7. **Error Swallowing** (#2805): Patterns that catch errors but suppress them:
+         - `except` blocks with no logging, no re-raise, and no error propagation
+         - `try/except` that transforms errors into None/empty/default without recording why
+         - Catch-all handlers that discard the exception object (no `as e` or unused `e`)
+         - Functions that return success indicators (True/False) instead of raising on failure
+      8. **PR Structural Analysis** (#2809): Structural issues visible in code organization:
+         - Files exceeding 500 LOC (flag) or 300 LOC (warn)
+         - Functions/methods exceeding 50 lines
+         - Deeply nested code (>4 levels of indentation)
+         - High number of parameters (>5) on functions
+         - Circular or tangled import dependencies
+      9. **Documentation Audit**: Docs must be durable, professional, and correct:
+         a. **Point-in-time removal**: Remove ALL point-in-time status reports, update
+            logs, session notes, investigation diaries, and temporal references
+            (e.g., "as of today", "we just finished", "this week we"). Docs must
+            read correctly months or years after they are written.
+         b. **Professional tone**: Flag any informal, slang, or accidental language
+            issues. Check for pirate speak ("fer" instead of "for", "ye" instead
+            of "you", "yer" instead of "your", "arr", "matey", etc.), chatbot
+            artifacts ("Sure!", "Great question!", "Happy to help!"), and any
+            tone that would be unprofessional in shipped documentation.
+         c. **Quality review**: Evaluate organization, comprehensiveness, clarity,
+            ease of navigation, and correctness vs the actual code. Flag docs
+            that describe behavior the code doesn't implement, or code behavior
+            that docs don't cover.
+      10. **Hardcoded Limits** (#2822): Numeric constants used as processing caps:
+          - Slice patterns that silently truncate: `[:N]`, `[-N:]`, `[:N]`
+          - Named limits: `max_X = N`, `limit = N`, `MAX_X = N`
+          - Guard conditions: `if len(...) > N`, `if count > N`
+          - Distinguish: HIGH = data/processing truncation (data loss),
+            MEDIUM = incomplete data shown, LOW = display-only truncation
+          - Flag if the limit is not configurable (not a constructor param,
+            class attribute, or env var) and truncation is not logged
+
+      Use grep/read to verify each finding before reporting it.
+      Do NOT report speculative issues — only confirmed ones.
+      Do NOT re-report findings from previous cycles.
+
+      Output as JSON:
+      ```json
+      {
+        "cycle": {{cycle_number}},
+        "findings": [
+          {
+            "id": 1,
+            "category": "security|reliability|dead_code|test_gaps|doc_gaps|silent_fallback|error_swallowing|structural|documentation|hardcoded_limits",
+            "severity": "critical|high|medium|low",
+            "file": "path/to/file.py",
+            "line": 42,
+            "description": "what was found",
+            "evidence": "the actual code or grep output proving this",
+            "recommendation": "how to fix it"
+          }
+        ],
+        "summary": {"total": 0, "critical": 0, "high": 0, "medium": 0, "low": 0}
+      }
+      ```
+    output: "audit_findings"
+
+  # ========================================================================
+  # STEP 2: VALIDATE — Multi-agent independent validation
+  # Three agents review findings independently to weed out false positives.
+  # A finding must be confirmed by at least validation_threshold agents.
+  # NOTE: Recipe runner executes these sequentially. See issue #2821 for
+  # potential future parallel step support.
+  # ========================================================================
+  - id: "validate-agent-1"
+    agent: "amplihack:core:analyzer"
+    condition: "audit_findings and 'findings' in audit_findings"
+    prompt: |
+      # Quality Audit — Cycle {{cycle_number}} — VALIDATE (Agent 1 of 3)
+
+      You are an independent validator. You must evaluate EACH finding below
+      on its own merits. Do NOT defer to the original auditor — challenge
+      every claim.
+
+      **Findings to validate:**
+      {{audit_findings}}
+
+      For EACH finding:
+      1. Read the actual file and line mentioned
+      2. Determine if the issue is real (confirmed) or false positive
+      3. If real, confirm the severity is appropriate
+      4. Consider: is this truly a problem, or is it intentional design?
+
+      **Validation criteria:**
+      - "confirmed": The code has the issue as described
+      - "false_positive": The code doesn't actually have this issue
+      - "downgraded": Issue exists but severity should be lower
+
+      Output as JSON:
+      ```json
+      {
+        "validator": "agent-1",
+        "cycle": {{cycle_number}},
+        "validated": [
+          {
+            "finding_id": 1,
+            "verdict": "confirmed|false_positive|downgraded",
+            "new_severity": "critical|high|medium|low",
+            "reasoning": "why this verdict — be specific"
+          }
+        ],
+        "confirmed_count": 0,
+        "false_positive_count": 0
+      }
+      ```
+    output: "validation_agent_1"
+
+  - id: "validate-agent-2"
+    agent: "amplihack:core:reviewer"
+    condition: "audit_findings and 'findings' in audit_findings"
+    prompt: |
+      # Quality Audit — Cycle {{cycle_number}} — VALIDATE (Agent 2 of 3)
+
+      You are a second independent validator. Review each finding below.
+      Be skeptical — assume findings may be wrong until you verify them
+      yourself by reading the actual code.
+
+      **Findings to validate:**
+      {{audit_findings}}
+
+      For EACH finding:
+      1. Read the actual file and line mentioned
+      2. Verify independently — do not trust the original description
+      3. Check if the "fix" would actually improve the code or introduce risk
+      4. Consider context: is this pattern used deliberately elsewhere?
+
+      Output as JSON:
+      ```json
+      {
+        "validator": "agent-2",
+        "cycle": {{cycle_number}},
+        "validated": [
+          {
+            "finding_id": 1,
+            "verdict": "confirmed|false_positive|downgraded",
+            "new_severity": "critical|high|medium|low",
+            "reasoning": "why this verdict — be specific"
+          }
+        ],
+        "confirmed_count": 0,
+        "false_positive_count": 0
+      }
+      ```
+    output: "validation_agent_2"
+
+  - id: "validate-agent-3"
+    agent: "amplihack:core:architect"
+    condition: "audit_findings and 'findings' in audit_findings"
+    prompt: |
+      # Quality Audit — Cycle {{cycle_number}} — VALIDATE (Agent 3 of 3)
+
+      You are the third and final validator. Your role is adversarial —
+      actively look for reasons each finding might be WRONG. Only confirm
+      findings where the evidence is unambiguous.
+
+      **Findings to validate:**
+      {{audit_findings}}
+
+      For EACH finding:
+      1. Read the actual file and line mentioned
+      2. Look for reasons the pattern might be intentional
+      3. Check if "fixing" this would break something else
+      4. Evaluate whether the severity matches the actual risk
+
+      Output as JSON:
+      ```json
+      {
+        "validator": "agent-3",
+        "cycle": {{cycle_number}},
+        "validated": [
+          {
+            "finding_id": 1,
+            "verdict": "confirmed|false_positive|downgraded",
+            "new_severity": "critical|high|medium|low",
+            "reasoning": "why this verdict — be specific"
+          }
+        ],
+        "confirmed_count": 0,
+        "false_positive_count": 0
+      }
+      ```
+    output: "validation_agent_3"
+
+  # ========================================================================
+  # STEP 3: MERGE VALIDATIONS — Require majority agreement
+  # A finding is confirmed only if ≥2 of 3 validators agree.
+  # ========================================================================
+  - id: "merge-validations"
+    agent: "amplihack:core:architect"
+    condition: "validation_agent_1 or validation_agent_2 or validation_agent_3"
+    prompt: |
+      # Quality Audit — Cycle {{cycle_number}} — MERGE VALIDATIONS
+
+      Merge the three independent validation results. A finding is CONFIRMED
+      only if at least {{validation_threshold}} of 3 validators agree it is real
+      (verdict = "confirmed" or "downgraded"). Otherwise it is a FALSE POSITIVE.
+
+      **Validator 1:** {{validation_agent_1}}
+      **Validator 2:** {{validation_agent_2}}
+      **Validator 3:** {{validation_agent_3}}
+
+      For each finding:
+      1. Count votes: how many validators said confirmed/downgraded vs false_positive
+      2. If ≥{{validation_threshold}} confirm → CONFIRMED (use lowest severity among confirmers)
+      3. If <{{validation_threshold}} confirm → FALSE POSITIVE (majority ruled it out)
+
+      Output as JSON:
+      ```json
+      {
+        "cycle": {{cycle_number}},
+        "validated": [
+          {
+            "finding_id": 1,
+            "verdict": "confirmed|false_positive",
+            "final_severity": "critical|high|medium|low",
+            "votes": {"confirmed": 2, "false_positive": 1},
+            "reasoning": "majority rationale"
+          }
+        ],
+        "confirmed_count": 0,
+        "false_positive_count": 0,
+        "false_positive_rate": "0%"
+      }
+      ```
+    output: "validated_findings"
+
+  # ========================================================================
+  # STEP 4: FIX — Address confirmed findings using full DEFAULT_WORKFLOW
+  # Each validated finding is fixed via the complete development workflow.
+  # ========================================================================
+  - id: "fix"
+    agent: "amplihack:core:builder"
+    condition: "validated_findings and 'confirmed' in validated_findings"
+    prompt: |
+      # Quality Audit — Cycle {{cycle_number}} — FIX
+
+      **Audit Findings:** {{audit_findings}}
+      **Validation Results:** {{validated_findings}}
+      **Target Path:** {{target_path}}
+
+      **MANDATORY RULE (fix_all_per_cycle={{fix_all_per_cycle}}):** You MUST fix
+      ALL confirmed findings in this cycle. No partial fixes. No deferring to
+      "follow-up". No stopping after fixing only high-severity items. Every
+      confirmed finding from this cycle's validation must be addressed before
+      this step is complete. This is a hard requirement per issue #2842.
+
+      Fix ALL confirmed findings (verdict: "confirmed"). Skip false positives.
+
+      **For each confirmed finding, follow the full DEFAULT_WORKFLOW approach:**
+      1. Understand the finding and its context
+      2. Write or update tests that verify the fix
+      3. Implement the minimal fix
+      4. Verify the fix doesn't break existing tests
+      5. Verify the fix addresses the finding
+
+      **Priority order (but ALL must be fixed):**
+      1. Critical findings (security, silent security degradation)
+      2. High findings (error swallowing in critical paths, reliability)
+      3. Medium findings (general fallbacks, structural issues)
+      4. Low findings (documentation tone, minor structural)
+
+      **Rules:**
+      - Fix EVERY confirmed finding — no exceptions, no partial cycles (#2842)
+      - Do NOT defer any findings to "follow-up issues" or "next cycle"
+      - Verify each fix with relevant tests
+      - For documentation findings: make the fix durable (no temporal language)
+      - Create a commit for the batch of fixes
+      - If a finding truly cannot be fixed (e.g., requires external dependency
+        change), document WHY with specific technical reasoning — "low priority"
+        is not a valid reason to skip
+
+      End with STATUS: COMPLETE if all confirmed findings fixed,
+      STATUS: PARTIAL if some remain (with reasons for each unfixed finding).
+
+      Output as JSON:
+      ```json
+      {
+        "cycle": {{cycle_number}},
+        "fixes_applied": [
+          {"finding_id": 1, "file": "...", "change": "...", "test_verified": true}
+        ],
+        "fixes_skipped": [
+          {"finding_id": 2, "reason": "false positive per validation"}
+        ],
+        "total_fixed": 0,
+        "total_skipped": 0,
+        "status": "COMPLETE|PARTIAL"
+      }
+      ```
+    output: "fix_results"
+
+  # ========================================================================
+  # STEP 4b: VERIFY ALL FIXES — Enforce fix-all-per-cycle rule (#2842)
+  # Compares confirmed findings against fix results to ensure nothing was
+  # skipped. Fails the cycle if any confirmed finding was not addressed.
+  # ========================================================================
+  - id: "verify-fixes"
+    type: "bash"
+    condition: "validated_findings and fix_results"
+    command: |
+      # Use environment variables to pass JSON safely — avoids bash interpreting
+      # JSON double-quotes as string terminators inside python3 -c "..." (#2872).
+      export VALIDATED={{validated_findings}}
+      export FIX_RESULTS={{fix_results}}
+      export FIX_ALL={{fix_all_per_cycle}}
+
+      python3 - <<'PYEOF'
+      import json, sys, os
+
+      fix_all = os.environ.get('FIX_ALL', '').lower() == 'true'
+
+      try:
+          validated = json.loads(os.environ.get('VALIDATED', '{}'))
+          fixes = json.loads(os.environ.get('FIX_RESULTS', '{}'))
+      except json.JSONDecodeError as e:
+          # If we can't parse, report but don't block
+          print(f'WARNING: Could not parse JSON for fix verification: {e}')
+          print('VERIFY: SKIP (unparseable)')
+          sys.exit(0)
+
+      confirmed_ids = set()
+      for v in validated.get('validated', []):
+          if v.get('verdict') == 'confirmed':
+              confirmed_ids.add(v.get('finding_id'))
+
+      fixed_ids = set()
+      for f in fixes.get('fixes_applied', []):
+          fixed_ids.add(f.get('finding_id'))
+
+      skipped_ids = set()
+      for s in fixes.get('fixes_skipped', []):
+          skipped_ids.add(s.get('finding_id'))
+
+      unfixed = confirmed_ids - fixed_ids - skipped_ids
+      total_confirmed = len(confirmed_ids)
+      total_fixed = len(fixed_ids)
+
+      print(f'Confirmed findings: {total_confirmed}')
+      print(f'Fixed: {total_fixed}')
+      print(f'Skipped (false positive): {len(skipped_ids)}')
+      print(f'Unfixed: {len(unfixed)}')
+
+      if unfixed and fix_all:
+          print(f'VERIFY: FAIL — {len(unfixed)} confirmed findings not fixed: {sorted(unfixed)}')
+          print('The fix-all-per-cycle rule requires ALL confirmed findings to be addressed.')
+      elif total_fixed == total_confirmed:
+          print('VERIFY: PASS — all confirmed findings fixed')
+      else:
+          print(f'VERIFY: PASS — {total_fixed}/{total_confirmed} fixed, rest skipped as false positive')
+      PYEOF
+    output: "fix_verification"
+
+  # ========================================================================
+  # STEP 4c: ACCUMULATE CYCLE HISTORY
+  # Appends this cycle's confirmed findings to cycle_history so subsequent
+  # SEEK steps know what has already been found and fixed.
+  # ========================================================================
+  - id: "accumulate-history"
+    type: "bash"
+    command: |
+      CYCLE={{cycle_number}}
+      CURRENT_HISTORY={{cycle_history}}
+      FINDINGS={{validated_findings}}
+
+      if [ -z "$CURRENT_HISTORY" ]; then
+        echo "--- Cycle $CYCLE findings ---"
+        echo "$FINDINGS"
+      else
+        echo "$CURRENT_HISTORY"
+        echo ""
+        echo "--- Cycle $CYCLE findings ---"
+        echo "$FINDINGS"
+      fi
+    output: "cycle_history"
+
+  # ========================================================================
+  # STEP 5: RECURSE DECISION
+  # Minimum 3 cycles. Continue past 3 if >3 medium or any high/critical.
+  # ========================================================================
+  - id: "recurse-decision"
+    type: "bash"
+    command: |
+      CYCLE={{cycle_number}}
+      MIN_CYCLES={{min_cycles}}
+      MAX_CYCLES={{max_cycles}}
+
+      # Write validated_findings to a temp file to avoid bash quoting issues
+      # with JSON containing spaces, quotes, and special characters (#3046).
+      _VALIDATED_TMPFILE=$(mktemp)
+      _FIX_VERIFY_TMPFILE=$(mktemp)
+      trap 'rm -f "$_VALIDATED_TMPFILE" "$_FIX_VERIFY_TMPFILE"' EXIT
+      cat > "$_VALIDATED_TMPFILE" <<__VALIDATED_EOF__
+      {{validated_findings}}
+      __VALIDATED_EOF__
+      cat > "$_FIX_VERIFY_TMPFILE" <<__FIX_VERIFY_EOF__
+      {{fix_verification}}
+      __FIX_VERIFY_EOF__
+
+      FIX_VERIFY=$(cat "$_FIX_VERIFY_TMPFILE")
+
+      echo "Cycle $CYCLE complete."
+
+      # Check if fix verification failed (unfixed findings remain)
+      if echo "$FIX_VERIFY" | grep -q "VERIFY: FAIL"; then
+        echo "WARNING: Fix verification failed — not all findings were fixed this cycle."
+        echo "Per #2842, all confirmed findings must be fixed before cycle is complete."
+      fi
+
+      # Hard stop at max_cycles
+      if [ "$CYCLE" -ge "$MAX_CYCLES" ]; then
+        echo "Max cycles ($MAX_CYCLES) reached. Stopping."
+        echo "STOP"
+        exit 0
+      fi
+
+      # Must run at least min_cycles
+      if [ "$CYCLE" -lt "$MIN_CYCLES" ]; then
+        NEXT_CYCLE=$((CYCLE + 1))
+        echo "Below minimum cycles ($MIN_CYCLES). Running cycle $NEXT_CYCLE."
+        echo "CONTINUE:$NEXT_CYCLE"
+        exit 0
+      fi
+
+      # Past minimum — decide based on whether NEW findings emerged this cycle (#2842)
+      # The decision should be: did this cycle find new issues? If yes, continue.
+      # NOT: are there old unfixed issues remaining?
+      export VALIDATED_FILE="$_VALIDATED_TMPFILE"
+      read -r HIGH_COUNT CRITICAL_COUNT MEDIUM_COUNT CONFIRMED <<< $(python3 -c "
+      import json, sys, os
+      try:
+          with open(os.environ['VALIDATED_FILE']) as f:
+              data = json.loads(f.read())
+          validated = data.get('validated', [])
+          high = sum(1 for v in validated if v.get('final_severity') == 'high' and v.get('verdict') == 'confirmed')
+          critical = sum(1 for v in validated if v.get('final_severity') == 'critical' and v.get('verdict') == 'confirmed')
+          medium = sum(1 for v in validated if v.get('final_severity') == 'medium' and v.get('verdict') == 'confirmed')
+          confirmed = sum(1 for v in validated if v.get('verdict') == 'confirmed')
+          print(f'{high} {critical} {medium} {confirmed}')
+      except Exception:
+          print('0 0 0 0')
+      ")
+
+      echo "New findings this cycle: $CONFIRMED (critical=$CRITICAL_COUNT, high=$HIGH_COUNT, medium=$MEDIUM_COUNT)"
+
+      if [ "$CRITICAL_COUNT" -gt 0 ] || [ "$HIGH_COUNT" -gt 0 ]; then
+        NEXT_CYCLE=$((CYCLE + 1))
+        echo "High/critical NEW findings emerged. Running cycle $NEXT_CYCLE."
+        echo "CONTINUE:$NEXT_CYCLE"
+      elif [ "$MEDIUM_COUNT" -gt 3 ]; then
+        NEXT_CYCLE=$((CYCLE + 1))
+        echo "More than 3 medium NEW findings. Running cycle $NEXT_CYCLE."
+        echo "CONTINUE:$NEXT_CYCLE"
+      else
+        echo "Quality thresholds met (≤3 new medium, no new high/critical). Stopping."
+        echo "STOP"
+      fi
+    output: "recurse_decision"
+
+  # ========================================================================
+  # STEP 6: SUMMARY — Final report across all cycles
+  # ========================================================================
+  - id: "summary"
+    agent: "amplihack:core:architect"
+    prompt: |
+      # Quality Audit — Final Summary
+
+      **Cycles completed:** {{cycle_number}}
+      **Recurse decision:** {{recurse_decision}}
+
+      **Cycle {{cycle_number}} results:**
+      - Findings: {{audit_findings}}
+      - Validation: {{validated_findings}}
+      - Fixes: {{fix_results}}
+
+      Produce a concise final report:
+
+      1. Total issues found across all cycles
+      2. Total confirmed vs false positives (with false positive rate)
+      3. Total fixed
+      4. Remaining issues (if any)
+      5. Quality trajectory (improving? clean?)
+      6. Documentation audit summary (tone issues, point-in-time removals, quality gaps)
+      7. Recommendations for next steps
+
+      If the recurse decision is CONTINUE, note that more cycles are warranted
+      but the max was reached.
+    output: "summary"
+
+  # ========================================================================
+  # STEP 7: SELF-IMPROVEMENT — Step back and find what was missed
+  # Models the practice of asking "How else would you improve this?"
+  # after every audit. Identifies critical improvements the audit missed.
+  # ========================================================================
+  - id: "self-improvement"
+    agent: "amplihack:core:architect"
+    prompt: |
+      # Quality Audit — Self-Improvement Review
+
+      **Audit Summary:** {{summary}}
+      **Target Path:** {{target_path}}
+      **Cycles Completed:** {{cycle_number}}
+      **Fix Results:** {{fix_results}}
+
+      Step back from the details. You have just completed a multi-cycle
+      quality audit. Now ask yourself:
+
+      **"How else would you improve this code?"**
+
+      Consider:
+      1. What patterns did the audit miss entirely?
+      2. Are there systemic issues (not just individual findings)?
+      3. Are there architectural improvements that would prevent
+         entire categories of findings from recurring?
+      4. Did the fixes introduce any new issues?
+      5. Is there anything that looks "fine" but is actually fragile?
+      6. Are there cross-cutting concerns (logging, error handling,
+         configuration) that should be standardized?
+
+      Be specific. For each improvement identified:
+      - Classify as CRITICAL (must fix before shipping) or ADVISORY (should fix later)
+      - Provide the file, the issue, and the concrete fix
+      - Explain why the audit cycles missed it
+
+      If you find CRITICAL improvements, fix them now:
+      - Read the file, make the change, verify with tests
+      - Document what you fixed
+
+      Output:
+      - List of improvements found (critical and advisory)
+      - Any critical fixes applied
+      - "SELF-IMPROVEMENT: CLEAN" if no critical issues found
+    output: "self_improvement_results"
+
+output:
+  format: "markdown"
+  template: |
+    # Quality Audit Report
+
+    **Target**: {{target_path}}
+    **Cycles**: {{cycle_number}} of {{max_cycles}} (minimum: {{min_cycles}})
+    **Decision**: {{recurse_decision}}
+
+    ## Summary
+
+    {{summary}}
+
+    ## Self-Improvement Review
+
+    {{self_improvement_results}}
+
+    ---
+    *quality-audit-cycle v3.0.0*

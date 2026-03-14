@@ -493,9 +493,10 @@ steps:
       ISSUE_EOF
       )
 
-      # Create issue (outputs issue number)
+      # Create issue (truncate title to 200 chars)
+      ISSUE_TITLE=$(printf '%s' {{task_description}} | tr '\n\r' ' ' | cut -c1-200)
       gh issue create \
-        --title "{{task_description}}" \
+        --title "$ISSUE_TITLE" \
         --body "$ISSUE_BODY" \
         --label "consensus,{{criticality}}" 2>/dev/null || echo "Issue creation skipped (no gh CLI or not in repo)"
 
@@ -524,8 +525,27 @@ steps:
 
       Commands to execute:
       ```bash
+      # NOTE: This pipeline mirrors default-workflow.yaml step-04-setup-worktree with a
+      # 30-char limit (vs 50). Keep both in sync on security patches. See Issue #2952.
+      # FIX (issue #3041): Use heredoc instead of single-quote wrapping.
       # Create branch name
-      BRANCH_NAME="feat/consensus-$(echo '{{task_description}}' | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | cut -c1-30)"
+      TASK_DESC=$(cat <<EOFTASKDESC
+      {{task_description}}
+      EOFTASKDESC
+      )
+      TASK_SLUG=$(printf '%s' "$TASK_DESC" | tr '\n\r' '  ' | tr '[:upper:]' '[:lower:]' | tr -s ' ' '-' | sed 's/[^a-z0-9-]//g' | sed 's/-\{2,\}/-/g' | sed 's/^-//;s/-$//' | cut -c1-30 | sed 's/-$//')
+      # Guard: empty slug (blank/all-symbol input) produces a trailing-hyphen branch that
+      # git check-ref-format accepts as valid but is undesirable. Catch it explicitly first.
+      if [ -z "$TASK_SLUG" ]; then
+        echo "WARNING: task_description produced an empty slug — falling back to task-unnamed" >&2
+        BRANCH_NAME="feat/task-unnamed-$(date +%s)"
+      else
+        BRANCH_NAME="feat/consensus-${TASK_SLUG}"
+        if ! git check-ref-format --branch "${BRANCH_NAME}" >/dev/null 2>&1; then
+          echo "WARNING: derived branch name '${BRANCH_NAME}' is invalid — falling back to task-unnamed" >&2
+          BRANCH_NAME="feat/task-unnamed-$(date +%s)"
+        fi
+      fi
 
       # Create worktree
       git worktree add "{{worktree_dir}}/$BRANCH_NAME" -b "$BRANCH_NAME"
@@ -1492,9 +1512,10 @@ steps:
       # Stage all changes
       git add -A
 
-      # Create commit message
-      COMMIT_MSG=$(cat << 'COMMIT_EOF'
-      feat: {{task_description}}
+      # Create commit message (truncate title to 72 chars for git convention)
+      SHORT_DESC=$(printf '%s' {{task_description}} | tr '\n\r' ' ' | cut -c1-72)
+      COMMIT_MSG=$(cat << COMMIT_EOF
+      feat: ${SHORT_DESC}
 
       Implements {{final_requirements.task_summary}}
 
@@ -1564,8 +1585,9 @@ steps:
       PR_EOF
       )
 
+      PR_TITLE=$(printf '%s' {{task_description}} | tr '\n\r' ' ' | cut -c1-200)
       gh pr create \
-        --title "{{task_description}}" \
+        --title "$PR_TITLE" \
         --body "$PR_BODY" \
         --label "consensus-validated" 2>/dev/null || echo "PR creation prepared"
 

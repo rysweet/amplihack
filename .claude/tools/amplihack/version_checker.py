@@ -16,6 +16,7 @@ Public API (the "studs" that other modules connect to):
     check_version_mismatch: Compare versions and return VersionInfo
 """
 
+import importlib.metadata
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -50,22 +51,28 @@ class VersionInfo:
 def get_package_version() -> str:
     """Get the current package version.
 
-    Attempts to get the git commit hash from the package directory.
-    Falls back to "unknown" if git is not available or package is not in a git repo.
+    Tries (in order):
+    1. importlib.metadata (works for pip/UVX installs)
+    2. Git commit hash from package directory (works for dev installs)
+    Falls back to "unknown" if neither works.
 
     Returns:
-        Git commit hash (short form) or "unknown" if unavailable
+        Version string or "unknown" if unavailable
 
     Example:
         >>> version = get_package_version()
         >>> assert len(version) > 0
-        >>> # version is either a git hash like "9b0cac4" or "unknown"
     """
-    # Find package directory (where this file lives)
+    # Strategy 1: Use importlib.metadata (works for pip/UVX installs)
+    try:
+        return importlib.metadata.version("amplihack")
+    except importlib.metadata.PackageNotFoundError:
+        pass
+
+    # Strategy 2: Git commit hash from package directory (dev installs)
     package_path = Path(__file__).resolve().parent
 
     try:
-        # Try to get git commit hash from package directory
         result = subprocess.run(
             ["git", "rev-parse", "--short", "HEAD"],
             cwd=str(package_path),
@@ -77,18 +84,10 @@ def get_package_version() -> str:
         if result.returncode == 0 and result.stdout.strip():
             return result.stdout.strip()
 
-        # If git command failed, return unknown
-        return "unknown"
-
-    except FileNotFoundError:
-        # git not available
-        return "unknown"
-    except subprocess.TimeoutExpired:
-        # git command timed out
-        return "unknown"
     except Exception:
-        # Any other error - fail gracefully
-        return "unknown"
+        pass
+
+    return "unknown"
 
 
 def get_project_version(project_path: Path) -> str | None:

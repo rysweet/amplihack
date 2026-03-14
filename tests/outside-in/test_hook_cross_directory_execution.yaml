@@ -1,0 +1,108 @@
+scenario:
+  name: "Hook Path Configuration - Cross-Directory Execution"
+  description: "Verifies hooks work when amplihack runs from different working directories (cross-codebase functionality)"
+  type: cli
+  tags: [critical, hooks, cross-directory, integration]
+
+  prerequisites:
+    - "amplihack is installed (via pip or UVX)"
+    - "~/.amplihack/.claude/settings.json exists"
+
+  variables:
+    test_dir_1: "/tmp/test-amplihack-dir1"
+    test_dir_2: "${HOME}/test-amplihack-dir2"
+    test_dir_3: "${HOME}/.amplihack"
+
+  steps:
+    # Verify settings.json has absolute paths first
+    - action: launch
+      target: "python3"
+      args:
+        - "-c"
+        - "import json; f=open('${HOME}/.amplihack/.claude/settings.json'); s=json.load(f); hooks=[h['command'] for cfg in s['hooks'].values() for c in cfg for h in c['hooks']]; print('\\n'.join(hooks)); assert all(h.startswith('/') for h in hooks), 'All paths must be absolute'"
+      description: "Verify all hook paths are absolute before testing"
+      timeout: 10s
+
+    - action: verify_output
+      contains: "/.amplihack/.claude/tools/amplihack/hooks"
+      description: "Hook paths should contain absolute path"
+
+    - action: verify_exit_code
+      expected: 0
+      description: "Validation should pass"
+
+    # Test 1: Run from /tmp directory
+    - action: launch
+      target: "bash"
+      args:
+        - "-c"
+        - 'cd ${test_dir_1} 2>/dev/null || mkdir -p ${test_dir_1}; cd ${test_dir_1}; pwd; python3 -c ''import sys; sys.path.insert(0, "${PWD}/src"); from amplihack.settings import ensure_settings_json; print("CWD:", __import__("os").getcwd()); result = ensure_settings_json(); print("Result:", result)'''
+      description: "Test hook setup from /tmp directory"
+      timeout: 30s
+
+    - action: verify_output
+      contains: "${test_dir_1}"
+      description: "Should run from test directory 1"
+
+    - action: verify_output
+      contains: "Result: True"
+      description: "Settings configuration should succeed"
+
+    # Test 2: Run from home directory
+    - action: launch
+      target: "bash"
+      args:
+        - "-c"
+        - 'cd ${test_dir_2} 2>/dev/null || mkdir -p ${test_dir_2}; cd ${test_dir_2}; pwd; python3 -c ''import sys; sys.path.insert(0, "${PWD}/src"); from amplihack.settings import ensure_settings_json; print("CWD:", __import__("os").getcwd()); result = ensure_settings_json(); print("Result:", result)'''
+      description: "Test hook setup from home subdirectory"
+      timeout: 30s
+
+    - action: verify_output
+      contains: "${test_dir_2}"
+      description: "Should run from test directory 2"
+
+    - action: verify_output
+      contains: "Result: True"
+      description: "Settings configuration should succeed"
+
+    # Test 3: Run from ~/.amplihack directory
+    - action: launch
+      target: "bash"
+      args:
+        - "-c"
+        - 'cd ${test_dir_3}; pwd; python3 -c ''import sys; sys.path.insert(0, "${PWD}/src"); from amplihack.settings import ensure_settings_json; print("CWD:", __import__("os").getcwd()); result = ensure_settings_json(); print("Result:", result)'''
+      description: "Test hook setup from ~/.amplihack directory"
+      timeout: 30s
+
+    - action: verify_output
+      contains: "${test_dir_3}"
+      description: "Should run from test directory 3"
+
+    - action: verify_output
+      contains: "Result: True"
+      description: "Settings configuration should succeed from ANY directory"
+
+    # Final verification: All hook paths are still absolute after cross-directory runs
+    - action: launch
+      target: "python3"
+      args:
+        - "-c"
+        - "import json, os; f=open('${HOME}/.amplihack/.claude/settings.json'); s=json.load(f); hooks=[h['command'] for cfg in s['hooks'].values() for c in cfg for h in c['hooks']]; print('Final hook paths:'); [print(f'  {h}') for h in hooks]; assert all(os.path.isabs(h) for h in hooks), 'FAIL: Relative paths found'"
+      description: "Final verification - all paths remain absolute"
+      timeout: 10s
+
+    - action: verify_output
+      contains: "Final hook paths:"
+      description: "Should list all hook paths"
+
+    - action: verify_exit_code
+      expected: 0
+      description: "All paths should be absolute (no assertion error)"
+
+  cleanup:
+    - action: launch
+      target: "bash"
+      args:
+        - "-c"
+        - "rm -rf ${test_dir_1} ${test_dir_2}"
+      description: "Clean up test directories"

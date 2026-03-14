@@ -1,0 +1,22 @@
+{
+  "sources": [
+    {
+      "url": "https://example.com/ai-model-release",
+      "title": "Major AI Model Released by Tech Company",
+      "content": "TechCorp announced the release of their new AI model GPT-X on February 15, 2026. The model achieves 97% accuracy on standard benchmarks and will be available through their API starting next month. The company invested $50 million in development over two years.",
+      "published": "2026-02-15T10:00:00Z"
+    },
+    {
+      "url": "https://example.com/competitor-response",
+      "title": "Competitor Announces Similar Technology",
+      "content": "InnovatAI responded to TechCorp's release by unveiling their own model with 95% accuracy. The company claims their solution is more cost-effective and will launch in March 2026. Industry analysts predict increased competition in the AI sector.",
+      "published": "2026-02-15T14:30:00Z"
+    },
+    {
+      "url": "https://example.com/market-impact",
+      "title": "AI Market Grows Following Announcements",
+      "content": "The AI market is expected to grow by 40% this year following recent product releases. Experts believe these developments will transform healthcare and education sectors. Investment in AI startups reached record highs in Q1 2026.",
+      "published": "2026-02-16T09:00:00Z"
+    }
+  ]
+}

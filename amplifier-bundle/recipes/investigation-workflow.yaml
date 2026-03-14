@@ -841,7 +841,7 @@ steps:
   - id: "efficiency-report"
     type: "bash"
     command: |
-      START_TIME='{{tracking.start_time}}'
+      START_TIME={{tracking.start_time}}
       END_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
       # Calculate steps completed (each agent call = ~1-2 messages in ad-hoc)

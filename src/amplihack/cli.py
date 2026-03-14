@@ -6,6 +6,7 @@ import os
 import platform
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 from . import copytree_manifest
@@ -31,6 +32,68 @@ EMOJI = {
     "check": "[OK]" if IS_WINDOWS else "✓",
 }
 
+# Commands that require Claude Code plugin installation.
+# All other commands (copilot, amplifier, codex, etc.) skip it.
+_CLAUDE_COMMANDS = {None, "launch", "claude", "RustyClawd"}
+
+
+def _debug_print(message: str) -> None:
+    """Print debug message if AMPLIHACK_DEBUG is enabled.
+
+    Args:
+        message: Debug message to print
+    """
+    if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+        print(message)
+
+
+def _verify_claude_cli_ready(
+    claude_path: str, max_retries: int = 3, retry_delay: float = 0.5
+) -> bool:
+    """Verify Claude CLI is ready to use after installation.
+
+    On first install, the binary might need a moment to be fully available.
+    This function validates the binary is executable and working.
+
+    Args:
+        claude_path: Path to Claude CLI binary
+        max_retries: Maximum number of verification attempts
+        retry_delay: Delay in seconds between retries
+
+    Returns:
+        True if Claude CLI is ready, False otherwise
+    """
+    from .utils.prerequisites import safe_subprocess_call
+
+    for attempt in range(max_retries):
+        try:
+            returncode, stdout, stderr = safe_subprocess_call(
+                [claude_path, "--version"],
+                context="verifying Claude CLI is ready",
+                timeout=5,
+            )
+
+            if returncode == 0:
+                _debug_print(f"✅ Claude CLI verified ready: {stdout.strip()}")
+                return True
+
+            if attempt < max_retries - 1:
+                _debug_print(
+                    f"⏳ Claude CLI not ready yet (attempt {attempt + 1}/{max_retries}), retrying..."
+                )
+                time.sleep(retry_delay)
+
+        except Exception as e:
+            if attempt < max_retries - 1:
+                _debug_print(
+                    f"⏳ Claude CLI verification error (attempt {attempt + 1}/{max_retries}): {e}"
+                )
+                time.sleep(retry_delay)
+            else:
+                _debug_print(f"❌ Claude CLI verification failed after {max_retries} attempts: {e}")
+
+    return False
+
 
 def add_plugin_args_for_uvx(
     claude_args: list[str] | None = None, use_installed_plugin: bool = False
@@ -39,10 +102,10 @@ def add_plugin_args_for_uvx(
 
     Args:
         claude_args: Existing Claude arguments
-        use_installed_plugin: If True, don't add --plugin-dir (plugin installed via Claude Code)
+        use_installed_plugin: Deprecated parameter, kept for backward compatibility (ignored)
 
     Returns:
-        Updated arguments with plugin directory added (if needed)
+        Updated arguments with plugin directory added
     """
     if not is_uvx_deployment():
         return claude_args or []
@@ -54,16 +117,11 @@ def add_plugin_args_for_uvx(
     if "--add-dir" not in result_args:
         result_args = ["--add-dir", original_cwd] + result_args
 
-    # Add --plugin-dir ONLY if using directory copy (not installed plugin)
-    # When plugin is installed via `claude plugin install`, Claude Code auto-discovers it
-    plugin_installed = (
-        use_installed_plugin or os.environ.get("AMPLIHACK_PLUGIN_INSTALLED") == "true"
-    )
-
-    if not plugin_installed:
-        plugin_root = str(Path.home() / ".amplihack" / ".claude")
-        if "--plugin-dir" not in result_args:
-            result_args = ["--plugin-dir", plugin_root] + result_args
+    # ALWAYS add --plugin-dir for plugin discovery (simplified from complex conditional)
+    # Claude Code discovers plugins from ~/.amplihack/.claude regardless of installation method
+    plugin_root = str(Path.home() / ".amplihack" / ".claude")
+    if "--plugin-dir" not in result_args:
+        result_args = ["--plugin-dir", plugin_root] + result_args
 
     return result_args
 
@@ -78,34 +136,18 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
     Returns:
         Exit code.
     """
-    # Detect nesting BEFORE any .claude/ operations
-    from .launcher.auto_stager import AutoStager
-    from .launcher.nesting_detector import NestingDetector
+    # --subprocess-safe: skip all staging/env mutations to avoid concurrent
+    # write races when running as a delegate from another amplihack process
+    # (e.g. multitask workstreams).  See issue #2567.
+
     from .launcher.session_tracker import SessionTracker
 
-    detector = NestingDetector()
-    nesting_result = detector.detect_nesting(Path.cwd(), sys.argv)
+    # Capture CWD before startup (which may chdir during staging)
+    original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
 
-    # Auto-stage if nested execution in source repo detected
-    original_cwd = None
-    if nesting_result.requires_staging:
-        print("\n🚨 SELF-MODIFICATION PROTECTION ACTIVATED")
-        print("   Running nested in amplihack source repository")
-        print("   Auto-staging .claude/ to temp directory for safety")
-
-        stager = AutoStager()
-        original_cwd = Path.cwd()
-        staging_result = stager.stage_for_nested_execution(original_cwd, f"nested-{os.getpid()}")
-
-        print(f"   📁 Staged to: {staging_result.temp_root}")
-        print("   Your original .claude/ files are protected")
-
-        # CRITICAL: Change to temp directory so all .claude/ operations happen there
-        os.chdir(staging_result.temp_root)
-        print(f"   📂 CWD changed to: {staging_result.temp_root}\n")
-
-    # Ensure amplihack framework is staged to ~/.amplihack/.claude/
-    _ensure_amplihack_staged()
+    # Run shared startup (nesting, staging, deps, power-steering)
+    _common_launcher_startup(args)
+    nesting_result = getattr(args, "_nesting_result", None)
 
     # Start session tracking
     tracker = SessionTracker()
@@ -116,8 +158,8 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
         launch_dir=str(Path.cwd()),
         argv=sys.argv,
         is_auto_mode=is_auto_mode,
-        is_nested=nesting_result.is_nested,
-        parent_session_id=nesting_result.parent_session_id,
+        is_nested=nesting_result.is_nested if nesting_result else False,
+        parent_session_id=nesting_result.parent_session_id if nesting_result else None,
     )
 
     # Wrap execution in try/finally to ensure session is marked complete/crashed
@@ -125,8 +167,12 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
         result = _launch_command_impl(args, claude_args, session_id, tracker)
         tracker.complete_session(session_id)
         return result
-    except Exception:
-        tracker.crash_session(session_id)
+    except Exception as e:
+        logger.debug(f"Session {session_id} ended with error: {type(e).__name__}: {e}")
+        try:
+            tracker.crash_session(session_id)
+        except Exception as crash_err:
+            logger.debug(f"crash_session also failed: {crash_err}")
         raise
     finally:
         # Restore original CWD if we staged
@@ -402,6 +448,13 @@ def add_common_sdk_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Disable post-session reflection analysis. Reflection normally runs after sessions to capture insights and learnings.",
     )
+    parser.add_argument(
+        "--subprocess-safe",
+        action="store_true",
+        help="Skip all staging/env updates (staging, cleanup, settings sync). "
+        "Use when running as a subprocess delegate from an existing amplihack "
+        "session to avoid concurrent write races on ~/.amplihack/.claude/.",
+    )
 
 
 def add_claude_specific_args(parser: argparse.ArgumentParser) -> None:
@@ -470,13 +523,31 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
+    from amplihack import __version__  # local import avoids circular dependency at module load
+
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"amplihack {__version__}",
+        help="Show amplihack version and exit",
+    )
+
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
+
+    # Version subcommand (matches Rust CLI)
+    subparsers.add_parser("version", help="Show amplihack version")
 
     # Install command (existing)
     subparsers.add_parser("install", help="Install amplihack agents and tools to ~/.claude")
 
     # Uninstall command (existing)
     subparsers.add_parser("uninstall", help="Remove amplihack agents and tools from ~/.claude")
+
+    # Update command
+    subparsers.add_parser(
+        "update",
+        help="Update amplihack, delegating to the Rust CLI when one is installed",
+    )
 
     # Launch command (new)
     launch_parser = subparsers.add_parser(
@@ -585,6 +656,47 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         "--backend", choices=["kuzu", "sqlite"], default="kuzu", help="Memory backend to use"
     )
 
+    # Export subcommand
+    export_parser = memory_subparsers.add_parser(
+        "export", help="Export agent memory to a portable format"
+    )
+    export_parser.add_argument(
+        "--agent", required=True, help="Name of the agent whose memory to export"
+    )
+    export_parser.add_argument(
+        "--output", "-o", required=True, help="Output file path (.json) or directory (kuzu)"
+    )
+    export_parser.add_argument(
+        "--format",
+        "-f",
+        choices=["json", "kuzu"],
+        default="json",
+        help="Export format (default: json)",
+    )
+    export_parser.add_argument("--storage-path", help="Custom storage path for the agent's Kuzu DB")
+
+    # Import subcommand
+    import_parser = memory_subparsers.add_parser(
+        "import", help="Import memory from a portable format into an agent"
+    )
+    import_parser.add_argument(
+        "--agent", required=True, help="Name of the target agent to import into"
+    )
+    import_parser.add_argument(
+        "--input", "-i", required=True, help="Input file path (.json) or directory (kuzu)"
+    )
+    import_parser.add_argument(
+        "--format",
+        "-f",
+        choices=["json", "kuzu"],
+        default="json",
+        help="Import format (default: json)",
+    )
+    import_parser.add_argument(
+        "--merge", action="store_true", help="Merge into existing memory (default: replace)"
+    )
+    import_parser.add_argument("--storage-path", help="Custom storage path for the agent's Kuzu DB")
+
     # Clean subcommand
     clean_parser = memory_subparsers.add_parser(
         "clean",
@@ -615,6 +727,91 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         help="Skip confirmation prompt (use with --no-dry-run)",
     )
 
+    # Goal agent generator command
+    new_parser = subparsers.add_parser("new", help="Generate a new goal-seeking agent")
+    new_parser.add_argument("--file", "-f", required=True, type=Path, help="Path to prompt.md file")
+    new_parser.add_argument(
+        "--output", "-o", type=Path, help="Output directory (default: ./goal_agents)"
+    )
+    new_parser.add_argument("--name", "-n", help="Custom agent name (auto-generated if omitted)")
+    new_parser.add_argument(
+        "--skills-dir",
+        type=Path,
+        help="Custom skills directory (default: .claude/agents/amplihack)",
+    )
+    new_parser.add_argument("--enable-memory", action="store_true", help="Enable memory/learning")
+    new_parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
+    new_parser.add_argument(
+        "--sdk",
+        choices=["copilot", "claude", "microsoft", "mini"],
+        default="copilot",
+        help="SDK to use for agent execution (default: copilot)",
+    )
+    new_parser.add_argument(
+        "--multi-agent",
+        action="store_true",
+        help="Enable multi-agent architecture with coordinator, memory agent, and sub-agents",
+    )
+    new_parser.add_argument(
+        "--enable-spawning",
+        action="store_true",
+        help="Enable dynamic sub-agent spawning (requires --multi-agent)",
+    )
+
+    # Recipe commands
+    recipe_parser = subparsers.add_parser("recipe", help="Recipe management and execution commands")
+    recipe_subparsers = recipe_parser.add_subparsers(
+        dest="recipe_command", help="Recipe subcommands"
+    )
+
+    # Recipe run command
+    run_parser = recipe_subparsers.add_parser("run", help="Execute a recipe from YAML file")
+    run_parser.add_argument("recipe_path", help="Path to recipe YAML file")
+    run_parser.add_argument(
+        "-c",
+        "--context",
+        action="append",
+        nargs="+",
+        metavar="KEY=VALUE",
+        help="Set context variable (key=value). Values may contain special characters: -c 'task=Fix bug (#123)'",
+    )
+    run_parser.add_argument("--dry-run", action="store_true", help="Show what would be executed")
+    run_parser.add_argument("-v", "--verbose", action="store_true", help="Show detailed output")
+    run_parser.add_argument(
+        "-f", "--format", choices=["table", "json", "yaml"], default="table", help="Output format"
+    )
+    run_parser.add_argument("-w", "--working-dir", help="Working directory for execution")
+
+    # Recipe list command
+    list_parser = recipe_subparsers.add_parser("list", help="List available recipes")
+    list_parser.add_argument(
+        "recipe_dir",
+        nargs="?",
+        default=None,
+        help="Directory to search for recipes (default: search all known recipe directories)",
+    )
+    list_parser.add_argument(
+        "-f", "--format", choices=["table", "json", "yaml"], default="table", help="Output format"
+    )
+    list_parser.add_argument("-t", "--tags", action="append", help="Filter by tags")
+    list_parser.add_argument("-v", "--verbose", action="store_true", help="Show full details")
+
+    # Recipe validate command
+    validate_parser = recipe_subparsers.add_parser("validate", help="Validate a recipe YAML file")
+    validate_parser.add_argument("recipe_path", help="Path to recipe YAML file")
+    validate_parser.add_argument("-v", "--verbose", action="store_true", help="Show details")
+    validate_parser.add_argument(
+        "-f", "--format", choices=["table", "json", "yaml"], default="table", help="Output format"
+    )
+
+    # Recipe show command
+    show_parser = recipe_subparsers.add_parser("show", help="Show detailed recipe information")
+    show_parser.add_argument("recipe_path", help="Path to recipe YAML file")
+    show_parser.add_argument(
+        "-f", "--format", choices=["table", "json", "yaml"], default="table", help="Output format"
+    )
+    show_parser.add_argument("--no-steps", action="store_true", help="Hide step details")
+    show_parser.add_argument("--no-context", action="store_true", help="Hide context variables")
     # Mode detection commands
     mode_parser = subparsers.add_parser("mode", help="Claude installation mode commands")
     mode_subparsers = mode_parser.add_subparsers(dest="mode_command", help="Mode subcommands")
@@ -627,6 +824,14 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
 
     # Migrate to local command
     _ = mode_subparsers.add_parser("to-local", help="Create local .claude/ from plugin")
+
+    # Fleet management commands (delegates to Click CLI)
+    fleet_parser = subparsers.add_parser(
+        "fleet", help="Fleet orchestration — manage coding agents across VMs"
+    )
+    fleet_parser.add_argument(
+        "fleet_args", nargs=argparse.REMAINDER, help="Fleet subcommand and arguments"
+    )
 
     return parser
 
@@ -675,8 +880,9 @@ def _configure_amplihack_marketplace() -> bool:
             }
 
             # Write atomically
-            with open(settings_path, "w") as f:
-                json.dump(settings, f, indent=2)
+            from .settings import write_json_atomic
+
+            write_json_atomic(settings_path, settings)
 
             if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
                 print(f"✅ Configured amplihack marketplace in {settings_path}")
@@ -755,9 +961,10 @@ def _fix_global_statusline_path() -> None:
             statusline_config["command"] = correct_command
             settings["statusLine"] = statusline_config
 
-            # Write updated settings
-            with open(global_settings_path, "w", encoding="utf-8") as f:
-                json.dump(settings, f, indent=2, ensure_ascii=False)
+            # Write updated settings atomically
+            from .settings import write_json_atomic
+
+            write_json_atomic(global_settings_path, settings)
 
             if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
                 print(f"✓ Updated statusline path in {global_settings_path}")
@@ -766,6 +973,101 @@ def _fix_global_statusline_path() -> None:
         # Fail silently - don't break amplihack commands over this
         if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
             print(f"Warning: Could not update global statusline path: {e}")
+
+
+def _ensure_rust_recipe_runner() -> None:
+    """Ensure the Rust recipe runner binary is available.
+
+    Called during startup for all launcher paths. Non-fatal — logs a
+    warning if the binary cannot be installed or found.
+    """
+    try:
+        from .recipes.rust_runner import ensure_rust_recipe_runner
+
+        if ensure_rust_recipe_runner():
+            print("✓ Rust recipe runner available")
+        else:
+            print("⚠ Rust recipe runner not installed — install Rust (rustup.rs) and run:")
+            print("  cargo install --git https://github.com/rysweet/amplihack-recipe-runner")
+    except Exception as e:
+        logging.getLogger(__name__).warning(
+            "Could not check recipe-runner-rs: %s",
+            e,
+            exc_info=True,
+        )
+
+
+def _common_launcher_startup(args: "argparse.Namespace") -> None:
+    """Run all shared startup initialization for launcher commands.
+
+    Consolidates initialization that must happen for every launcher path
+    (launch, claude, RustyClawd, copilot, codex, amplifier). Respects
+    --subprocess-safe to avoid concurrent write races (#2567).
+
+    Idempotent — safe to call multiple times (e.g. RustyClawd → launch_command).
+
+    Steps performed (in order):
+    1. Nesting detection and auto-staging
+    2. Framework staging (~/.amplihack/.claude/)
+    3. Rust recipe runner check
+    4. SDK dependency check
+    5. Power-steering re-enable prompt (#2544)
+    """
+    # Idempotency guard — skip if already run this process
+    if getattr(args, "_startup_done", False):
+        return
+    args._startup_done = True
+
+    subprocess_safe = getattr(args, "subprocess_safe", False)
+    if subprocess_safe:
+        return
+
+    # 1. Nesting detection — protect .claude/ when running in source repo
+    from .launcher.auto_stager import AutoStager
+    from .launcher.nesting_detector import NestingDetector
+
+    detector = NestingDetector()
+    nesting_result = detector.detect_nesting(Path.cwd(), sys.argv)
+
+    if nesting_result.requires_staging:
+        print("\n🚨 SELF-MODIFICATION PROTECTION ACTIVATED")
+        print("   Running nested in amplihack source repository")
+        print("   Auto-staging .claude/ to temp directory for safety")
+
+        stager = AutoStager()
+        staging_result = stager.stage_for_nested_execution(Path.cwd(), f"nested-{os.getpid()}")
+
+        print(f"   📁 Staged to: {staging_result.temp_root}")
+        print("   Your original .claude/ files are protected")
+        os.chdir(staging_result.temp_root)
+        print(f"   📂 CWD changed to: {staging_result.temp_root}\n")
+
+    # Store nesting result on args for session tracking
+    args._nesting_result = nesting_result
+
+    # 2. Framework staging
+    _ensure_amplihack_staged()
+
+    # 3. Rust recipe runner
+    _ensure_rust_recipe_runner()
+
+    # 4. SDK dependency check
+    try:
+        from .dep_check import ensure_sdk_deps
+
+        dep_result = ensure_sdk_deps()
+        if not dep_result.all_ok:
+            logger.warning("Some SDK deps could not be installed: %s", dep_result.missing)
+    except Exception as e:
+        logger.debug("SDK dep check skipped: %s", e)
+
+    # 5. Power-steering re-enable prompt (#2544)
+    try:
+        from .power_steering.re_enable_prompt import prompt_re_enable_if_disabled
+
+        prompt_re_enable_if_disabled()
+    except Exception as e:
+        logger.debug(f"Error checking power-steering re-enable prompt: {e}")
 
 
 def _ensure_amplihack_staged() -> None:
@@ -836,8 +1138,39 @@ def _ensure_amplihack_staged() -> None:
     if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
         print(f"✓ Staged {len(copied)} directories to {staging_dir}")
 
+    # Configure Claude Code hooks in ~/.claude/settings.json
+    from .settings import ensure_settings_json
+
+    ensure_settings_json()
+
     # Fix global ~/.claude/settings.json statusline path if needed
     _fix_global_statusline_path()
+
+
+def _read_auto_update_preference(plugin_dir: str) -> bool:
+    """Check if user's auto_update preference is 'always'.
+
+    Reads from USER_PREFERENCES.md in the plugin directory. If set to 'always',
+    returns True to skip the conflict prompt and auto-approve overwrites.
+
+    Args:
+        plugin_dir: Path to the .claude plugin directory (e.g. ~/.amplihack/.claude)
+
+    Returns:
+        True if auto_update preference is 'always', False otherwise
+    """
+    try:
+        prefs_file = Path(plugin_dir) / "context" / "USER_PREFERENCES.md"
+        if not prefs_file.exists():
+            return False
+        content = prefs_file.read_text(encoding="utf-8")
+        lines = content.split("\n")
+        for i, line in enumerate(lines):
+            if line.strip() == "### Auto Update" and i + 2 < len(lines):
+                return lines[i + 2].strip().lower() == "always"
+    except Exception as e:
+        logger.debug(f"Could not read auto-update preference: {type(e).__name__}: {e}")
+    return False
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -849,6 +1182,8 @@ def main(argv: list[str] | None = None) -> int:
     Returns:
         Exit code.
     """
+    raw_args = sys.argv[1:] if argv is None else list(argv)
+
     # Platform compatibility check FIRST (fail-fast before any operations)
     from .launcher.platform_check import check_platform_compatibility
 
@@ -857,9 +1192,50 @@ def main(argv: list[str] | None = None) -> int:
         print(platform_result.message, file=sys.stderr)
         return 1
 
+    # Auto-update check (only for uv tool installs, not uvx)
+    if not is_uvx_deployment() and (not raw_args or raw_args[0] != "update"):
+        from .auto_update import check_for_updates, prompt_and_upgrade
+
+        try:
+            from . import __version__
+
+            cache_dir = Path.home() / ".amplihack" / "cache"
+            cache_dir.mkdir(parents=True, exist_ok=True)
+
+            update_info = check_for_updates(
+                current_version=__version__,
+                cache_dir=cache_dir,
+                check_interval_hours=24,
+                timeout_seconds=5,
+            )
+
+            if update_info and update_info.is_newer:
+                # Use sys.argv[1:] if argv is None, else argv
+                restart_args = sys.argv[1:] if argv is None else (argv if argv else [])
+                if prompt_and_upgrade(update_info, restart_args):
+                    # Upgraded and restarted, this process should exit
+                    return 0
+
+        except Exception as e:
+            logger.debug(f"Update check failed: {e}")
+
     # Parse arguments FIRST to determine which command is being run
     # This allows us to skip Claude Code plugin installation for amplifier command
     args, claude_args = parse_args_with_passthrough(argv)
+
+    # Auto-install missing blarify dependencies (scip-python, typescript-language-server, etc.)
+    # Skip for non-launch commands and non-interactive mode to avoid blocking
+    _noninteractive = os.environ.get("AMPLIHACK_NONINTERACTIVE", "").strip() in ("1", "true", "yes")
+    if not _noninteractive and (not hasattr(args, "command") or args.command in (None, "launch")):
+        try:
+            from .memory.kuzu.indexing.dependency_installer import DependencyInstaller
+
+            installer = DependencyInstaller(quiet=False)
+            installer.install_all_auto_installable()
+            installer.show_system_dependency_help()
+        except Exception as e:
+            # Don't fail startup if dependency installation fails
+            logger.warning(f"Failed to auto-install dependencies: {e}")
 
     # Initialize UVX staging if needed
     temp_claude_dir = None
@@ -879,11 +1255,15 @@ def main(argv: list[str] | None = None) -> int:
         # Plugin architecture: Deploy to centralized location ~/.amplihack/.claude/
         plugin_install_dir = os.path.join(os.path.expanduser("~"), ".amplihack", ".claude")
 
+        # Check user's auto_update preference to skip conflict prompt
+        auto_approve = _read_auto_update_preference(plugin_install_dir)
+
         strategy_manager = SafeCopyStrategy()
         copy_strategy = strategy_manager.determine_target(
             original_target=plugin_install_dir,
             has_conflicts=conflict_result.has_conflicts,
             conflicting_files=conflict_result.conflicting_files,
+            auto_approve=auto_approve,
         )
 
         # Bug #1 Fix: Respect user cancellation (Issue #1940)
@@ -906,101 +1286,109 @@ def main(argv: list[str] | None = None) -> int:
             print("UVX mode: Using plugin architecture")
             print(f"Working directory remains: {original_cwd}")
 
-        # Setup plugin architecture
-        # .claude-plugin is copied to src/amplihack/.claude-plugin/ by build_hooks.py
+        # Only install Claude Code plugin for Claude-specific commands.
+        # Non-Claude commands (copilot, amplifier, codex, etc.) skip this.
+        if args.command in _CLAUDE_COMMANDS:
+            # Setup plugin architecture
+            # .claude-plugin is copied to src/amplihack/.claude-plugin/ by build_hooks.py
 
-        # Setup amplihack plugin via Claude Code plugin system
-        # This uses extraKnownMarketplaces to enable: claude plugin install amplihack
-        if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-            print("📦 Setting up amplihack plugin")
+            # Setup amplihack plugin via Claude Code plugin system
+            # This uses extraKnownMarketplaces to enable: claude plugin install amplihack
+            if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+                print("📦 Setting up amplihack plugin")
 
-        # Step 1: Configure marketplace in Claude Code settings
-        if not _configure_amplihack_marketplace():
-            print("⚠️  Failed to configure amplihack marketplace")
-            print("   Falling back to directory copy mode")
-            temp_claude_dir = _fallback_to_directory_copy("Marketplace configuration failed")
-        else:
-            # Step 2: Install plugin using Claude CLI
-            claude_path = get_claude_cli_path(auto_install=True)
-            if not claude_path:
-                print("⚠️  Claude CLI not available")
+            # Step 1: Configure marketplace in Claude Code settings
+            if not _configure_amplihack_marketplace():
+                print("⚠️  Failed to configure amplihack marketplace")
                 print("   Falling back to directory copy mode")
-                temp_claude_dir = _fallback_to_directory_copy("Claude CLI not available")
+                temp_claude_dir = _fallback_to_directory_copy("Marketplace configuration failed")
             else:
-                # Fix EXDEV error: Use temp directory on same filesystem as ~/.claude/
-                # Claude Code uses fs.rename() which fails across different filesystems
-                claude_temp_dir = Path.home() / ".claude" / "temp"
-                claude_temp_dir.mkdir(parents=True, exist_ok=True)
-
-                # Set TMPDIR for subprocess to avoid cross-device rename errors
-                env = os.environ.copy()
-                env["TMPDIR"] = str(claude_temp_dir)
-
-                # Step 2a: Sync marketplace to known_marketplaces.json
-                # extraKnownMarketplaces in settings.json is for IDE, not CLI
-                # We need to explicitly add the marketplace for CLI to find it
-                marketplace_add_result = subprocess.run(
-                    [
-                        claude_path,
-                        "plugin",
-                        "marketplace",
-                        "add",
-                        "https://github.com/rysweet/amplihack",
-                    ],
-                    capture_output=True,
-                    text=True,
-                    timeout=60,
-                    check=False,
-                    env=env,
-                )
-
-                if marketplace_add_result.returncode != 0:
-                    if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                        print(
-                            f"⚠️  Marketplace add failed (may already exist): {marketplace_add_result.stderr}"
-                        )
-                else:
-                    if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                        print("✅ Amplihack marketplace added to known marketplaces")
-
-                # Step 2b: Install plugin from marketplace
-                result = subprocess.run(
-                    [claude_path, "plugin", "install", "amplihack"],
-                    capture_output=True,
-                    text=True,
-                    timeout=60,
-                    check=False,
-                    env=env,
-                )
-
-                if result.returncode != 0:
-                    print(f"⚠️  Plugin installation failed: {result.stderr}")
+                # Step 2: Install plugin using Claude CLI
+                claude_path = get_claude_cli_path(auto_install=True)
+                if not claude_path:
+                    print("⚠️  Claude CLI not available")
                     print("   Falling back to directory copy mode")
-                    temp_claude_dir = _fallback_to_directory_copy(
-                        f"Plugin install error: {result.stderr}"
-                    )
+                    temp_claude_dir = _fallback_to_directory_copy("Claude CLI not available")
                 else:
-                    if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                        print("✅ Amplihack plugin installed successfully")
-                        print(result.stdout)
-                    # Plugin installed successfully - Claude Code will auto-discover it
-                    # Don't pass --plugin-dir (set flag for add_plugin_args_for_uvx)
-                    temp_claude_dir = None
-                    os.environ["AMPLIHACK_PLUGIN_INSTALLED"] = "true"
+                    # Step 2a: Verify Claude CLI is ready before using it
+                    # On first install, binary might need a moment to be fully available
+                    if not _verify_claude_cli_ready(claude_path):
+                        print("⚠️  Claude CLI installed but not responding")
+                        print(
+                            "   This can happen on first install - the binary needs to initialize"
+                        )
+                        print("   Falling back to directory copy mode")
+                        temp_claude_dir = _fallback_to_directory_copy("Claude CLI not ready")
+                    else:
+                        # Fix EXDEV error: Use temp directory on same filesystem as ~/.claude/
+                        # Claude Code uses fs.rename() which fails across different filesystems
+                        claude_temp_dir = Path.home() / ".claude" / "temp"
+                        claude_temp_dir.mkdir(parents=True, exist_ok=True)
 
-                    # Set CLAUDE_PLUGIN_ROOT for hook resolution
-                    # When plugin installed via Claude Code, hooks use ${CLAUDE_PLUGIN_ROOT}
-                    # Point to where Claude Code installed the plugin
-                    installed_plugin_path = (
-                        Path.home()
-                        / ".claude"
-                        / "plugins"
-                        / "cache"
-                        / "amplihack"
-                        / "amplihack"
-                        / "0.9.0"
-                    )
-                    os.environ["CLAUDE_PLUGIN_ROOT"] = str(installed_plugin_path)
+                        # Set TMPDIR for subprocess to avoid cross-device rename errors
+                        env = os.environ.copy()
+                        env["TMPDIR"] = str(claude_temp_dir)
+
+                        # Step 2b: Sync marketplace to known_marketplaces.json
+                        # extraKnownMarketplaces in settings.json is for IDE, not CLI
+                        # We need to explicitly add the marketplace for CLI to find it
+                        marketplace_add_result = subprocess.run(
+                            [
+                                claude_path,
+                                "plugin",
+                                "marketplace",
+                                "add",
+                                "https://github.com/rysweet/amplihack",
+                            ],
+                            capture_output=True,
+                            text=True,
+                            timeout=60,
+                            check=False,
+                            env=env,
+                        )
+
+                        if marketplace_add_result.returncode != 0:
+                            _debug_print(
+                                f"⚠️  Marketplace add failed (may already exist): {marketplace_add_result.stderr}"
+                            )
+                        else:
+                            _debug_print("✅ Amplihack marketplace added to known marketplaces")
+
+                        # Step 2c: Install plugin from marketplace
+                        result = subprocess.run(
+                            [claude_path, "plugin", "install", "amplihack"],
+                            capture_output=True,
+                            text=True,
+                            timeout=60,
+                            check=False,
+                            env=env,
+                        )
+
+                        if result.returncode != 0:
+                            print(f"⚠️  Plugin installation failed: {result.stderr}")
+                            print("   Falling back to directory copy mode")
+                            temp_claude_dir = _fallback_to_directory_copy(
+                                f"Plugin install error: {result.stderr}"
+                            )
+                        else:
+                            _debug_print("✅ Amplihack plugin installed successfully")
+                            _debug_print(result.stdout)
+                            # Plugin installed successfully
+                            temp_claude_dir = None
+
+                            # Set CLAUDE_PLUGIN_ROOT for hook resolution
+                            # When plugin installed via Claude Code, hooks use ${CLAUDE_PLUGIN_ROOT}
+                            # Point to where Claude Code installed the plugin
+                            installed_plugin_path = (
+                                Path.home()
+                                / ".claude"
+                                / "plugins"
+                                / "cache"
+                                / "amplihack"
+                                / "amplihack"
+                                / "0.9.0"
+                            )
+                            os.environ["CLAUDE_PLUGIN_ROOT"] = str(installed_plugin_path)
 
         # Smart PROJECT.md initialization for UVX mode
         try:
@@ -1036,6 +1424,12 @@ def main(argv: list[str] | None = None) -> int:
     # Import the original functions for backward compatibility
     from . import _local_install, uninstall
 
+    if args.command == "version":
+        from . import __version__
+
+        print(f"amplihack {__version__}")
+        return 0
+
     if args.command == "install":
         # Use the existing install logic
         import tempfile
@@ -1053,6 +1447,11 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "uninstall":
         uninstall()
         return 0
+
+    elif args.command == "update":
+        from .auto_update import run_update_command
+
+        return run_update_command()
 
     elif args.command == "_local_install":
         _local_install(args.repo_root)
@@ -1125,6 +1524,9 @@ def main(argv: list[str] | None = None) -> int:
         if getattr(args, "append", None):
             return handle_append_instruction(args)
 
+        # Set agent binary env var for recipe runner and sub-processes
+        os.environ["AMPLIHACK_AGENT_BINARY"] = "claude"
+
         # Claude is an alias for launch
         if is_uvx_deployment():
             claude_args = add_plugin_args_for_uvx(claude_args)
@@ -1141,8 +1543,11 @@ def main(argv: list[str] | None = None) -> int:
         if getattr(args, "append", None):
             return handle_append_instruction(args)
 
-        # Ensure amplihack framework is staged
-        _ensure_amplihack_staged()
+        # Set agent binary env var for recipe runner and sub-processes
+        os.environ["AMPLIHACK_AGENT_BINARY"] = "claude"  # RustyClawd uses claude binary
+
+        # Shared startup (nesting, staging, deps, power-steering)
+        _common_launcher_startup(args)
 
         # Force RustyClawd usage (Rust implementation of Claude Code)
         os.environ["AMPLIHACK_USE_RUSTYCLAWD"] = "1"
@@ -1166,8 +1571,11 @@ def main(argv: list[str] | None = None) -> int:
         if getattr(args, "append", None):
             return handle_append_instruction(args)
 
-        # Ensure amplihack framework is staged
-        _ensure_amplihack_staged()
+        # Set agent binary env var for recipe runner and sub-processes
+        os.environ["AMPLIHACK_AGENT_BINARY"] = "copilot"
+
+        # Shared startup (nesting, staging, deps, power-steering)
+        _common_launcher_startup(args)
 
         # Handle auto mode
         exit_code = handle_auto_mode("copilot", args, claude_args)
@@ -1189,8 +1597,11 @@ def main(argv: list[str] | None = None) -> int:
         if getattr(args, "append", None):
             return handle_append_instruction(args)
 
-        # Ensure amplihack framework is staged
-        _ensure_amplihack_staged()
+        # Set agent binary env var for recipe runner and sub-processes
+        os.environ["AMPLIHACK_AGENT_BINARY"] = "codex"
+
+        # Shared startup (nesting, staging, deps, power-steering)
+        _common_launcher_startup(args)
 
         # Handle auto mode
         exit_code = handle_auto_mode("codex", args, claude_args)
@@ -1212,8 +1623,11 @@ def main(argv: list[str] | None = None) -> int:
         if getattr(args, "append", None):
             return handle_append_instruction(args)
 
-        # Ensure amplihack framework is staged
-        _ensure_amplihack_staged()
+        # Set agent binary env var for recipe runner and sub-processes
+        os.environ["AMPLIHACK_AGENT_BINARY"] = "claude"  # amplifier uses claude as underlying binary
+
+        # Shared startup (nesting, staging, deps, power-steering)
+        _common_launcher_startup(args)
 
         # Environment setup
         if getattr(args, "no_reflection", False):
@@ -1238,7 +1652,10 @@ def main(argv: list[str] | None = None) -> int:
         return launch_amplifier(args=claude_args or [])
 
     elif args.command == "uvx-help":
-        from .commands.uvx_helper import find_uvx_installation_path, print_uvx_usage_instructions
+        from .commands.uvx_helper import (  # type: ignore[reportMissingImports]
+            find_uvx_installation_path,
+            print_uvx_usage_instructions,
+        )
 
         if args.find_path:
             path = find_uvx_installation_path()
@@ -1335,6 +1752,61 @@ def main(argv: list[str] | None = None) -> int:
 
             return 0
 
+        if args.memory_command == "export":
+            from pathlib import Path as _Path
+
+            from .agents.goal_seeking.memory_export import export_memory
+
+            storage = _Path(args.storage_path) if args.storage_path else None
+            try:
+                result = export_memory(
+                    agent_name=args.agent,
+                    storage_path=storage,
+                    output_path=args.output,
+                    fmt=getattr(args, "format", "json"),
+                )
+                print(f"Exported memory for agent '{result['agent_name']}'")
+                print(f"  Format: {result['format']}")
+                print(f"  Output: {result['output_path']}")
+                if "file_size_bytes" in result:
+                    size_kb = result["file_size_bytes"] / 1024
+                    print(f"  Size: {size_kb:.1f} KB")
+                stats = result.get("statistics", {})
+                if stats:
+                    for key, val in stats.items():
+                        print(f"  {key}: {val}")
+                return 0
+            except Exception as e:
+                print(f"Error exporting memory: {e}")
+                return 1
+
+        if args.memory_command == "import":
+            from pathlib import Path as _Path
+
+            from .agents.goal_seeking.memory_export import import_memory
+
+            storage = _Path(args.storage_path) if args.storage_path else None
+            try:
+                result = import_memory(
+                    agent_name=args.agent,
+                    storage_path=storage,
+                    input_path=args.input,
+                    fmt=getattr(args, "format", "json"),
+                    merge=args.merge,
+                )
+                print(f"Imported memory into agent '{result['agent_name']}'")
+                print(f"  Format: {result['format']}")
+                print(f"  Source agent: {result.get('source_agent', 'N/A')}")
+                print(f"  Merge mode: {result['merge']}")
+                stats = result.get("statistics", {})
+                if stats:
+                    for key, val in stats.items():
+                        print(f"  {key}: {val}")
+                return 0
+            except Exception as e:
+                print(f"Error importing memory: {e}")
+                return 1
+
         if args.memory_command == "clean":
             from .memory.cli_cleanup import cleanup_memory_sessions
 
@@ -1374,6 +1846,73 @@ def main(argv: list[str] | None = None) -> int:
         create_parser().print_help()
         return 1
 
+    elif args.command == "new":
+        from .goal_agent_generator.cli import new_goal_agent
+
+        # Call the function directly (new_goal_agent is a Click command decorated function)
+        return new_goal_agent(
+            file=args.file,
+            output=args.output,
+            name=args.name,
+            skills_dir=args.skills_dir,
+            verbose=args.verbose,
+            enable_memory=args.enable_memory,
+            sdk=args.sdk,
+            multi_agent=args.multi_agent,
+            enable_spawning=args.enable_spawning,
+        )
+
+    elif args.command == "recipe":
+        from .recipe_cli.recipe_command import (
+            handle_list,
+            handle_run,
+            handle_show,
+            handle_validate,
+            parse_context_args,
+        )
+
+        if args.recipe_command == "run":
+            # Parse context arguments (key=value pairs)
+            context, errors = parse_context_args(args.context or [])
+            if errors:
+                for error in errors:
+                    print(f"Error: {error}", file=sys.stderr)
+                return 1
+
+            return handle_run(
+                recipe_path=args.recipe_path,
+                context=context,
+                dry_run=args.dry_run,
+                verbose=args.verbose,
+                format=args.format,
+                working_dir=args.working_dir,
+            )
+
+        if args.recipe_command == "list":
+            return handle_list(
+                recipe_dir=args.recipe_dir,
+                format=args.format,
+                tags=args.tags,
+                verbose=args.verbose,
+            )
+
+        if args.recipe_command == "validate":
+            return handle_validate(
+                recipe_path=args.recipe_path,
+                verbose=args.verbose,
+                format=args.format,
+            )
+
+        if args.recipe_command == "show":
+            return handle_show(
+                recipe_path=args.recipe_path,
+                format=args.format,
+                show_steps=not args.no_steps,
+                show_context=not args.no_context,
+            )
+
+        create_parser().print_help()
+        return 1
     elif args.command == "mode":
         from .mode_detector import MigrationHelper, ModeDetector
 
@@ -1448,6 +1987,13 @@ def main(argv: list[str] | None = None) -> int:
 
         create_parser().print_help()
         return 1
+
+    elif args.command == "fleet":
+        from amplihack.fleet.fleet_cli import fleet_cli
+
+        fleet_args = args.fleet_args if args.fleet_args else ["--help"]
+        fleet_cli(fleet_args, standalone_mode=False)  # type: ignore[reportCallIssue]
+        return 0
 
     else:
         create_parser().print_help()

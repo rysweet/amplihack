@@ -28,6 +28,7 @@ try:
 
     RICH_AVAILABLE = True
 except ImportError:
+    print("WARNING: rich not available, auto mode UI disabled", file=sys.stderr)
     RICH_AVAILABLE = False
     # Define placeholder types for type hints when Rich not available
     if not TYPE_CHECKING:

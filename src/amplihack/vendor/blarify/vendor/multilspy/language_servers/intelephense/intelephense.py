@@ -5,13 +5,14 @@ import pathlib
 import pwd
 import shutil
 import stat
+import shlex
 import subprocess
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from blarify.vendor.multilspy.language_server import LanguageServer
-from blarify.vendor.multilspy.lsp_protocol_handler.server import ProcessLaunchInfo
-from blarify.vendor.multilspy.multilspy_utils import PlatformUtils
+from amplihack.vendor.blarify.vendor.multilspy.language_server import LanguageServer
+from amplihack.vendor.blarify.vendor.multilspy.lsp_protocol_handler.server import ProcessLaunchInfo
+from amplihack.vendor.blarify.vendor.multilspy.multilspy_utils import PlatformUtils
 
 
 class Intelephense(LanguageServer):
@@ -57,8 +58,8 @@ class Intelephense(LanguageServer):
             for dependency in runtime_dependencies:
                 user = pwd.getpwuid(os.getuid()).pw_name
                 subprocess.run(
-                    dependency["command"],
-                    shell=True,
+                    shlex.split(dependency["command"]),
+                    shell=False,
                     check=True,
                     user=user,
                     cwd=php_ls_dir,

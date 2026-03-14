@@ -1,12 +1,12 @@
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Optional
 
-from blarify.code_hierarchy.languages.FoundRelationshipScope import FoundRelationshipScope
-from blarify.graph.node import NodeLabels
+from amplihack.vendor.blarify.code_hierarchy.languages.FoundRelationshipScope import FoundRelationshipScope
+from amplihack.vendor.blarify.graph.node import NodeLabels
 from tree_sitter import Node, Parser
 
 if TYPE_CHECKING:
-    from blarify.graph.relationship import RelationshipType
+    from ...graph.relationship import RelationshipType
 
 
 class BodyNodeNotFound(Exception):

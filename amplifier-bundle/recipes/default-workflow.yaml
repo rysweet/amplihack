@@ -1,6 +1,6 @@
 name: "default-workflow"
-description: "Complete 22-step development workflow (Steps 0-21) with full agent orchestration"
-version: "2.0.0"
+description: "Complete 23-step development workflow (Steps 0-22) with full agent orchestration"
+version: "2.2.0"
 author: "Amplihack Team"
 tags: ["development", "feature", "bugfix", "refactoring", "standard", "full-workflow"]
 
@@ -17,10 +17,11 @@ tags: ["development", "feature", "bugfix", "refactoring", "standard", "full-work
 #   2. Design (Steps 4-6)
 #   3. Implementation (Steps 7-9)
 #   4. Testing & Review (Steps 10-13)
-#   5. PR & Review (Steps 14-17)
-#   6. Merge (Steps 18-21)
+#   5. Version & PR (Steps 14-16)
+#   6. PR Review (Steps 17-18)
+#   7. Merge (Steps 19-22)
 #
-# MANDATORY STEPS: 0, 16, 17 - DO NOT SKIP
+# MANDATORY STEPS: 0, 14, 17, 18 - DO NOT SKIP
 #
 # Philosophy Alignment:
 #   - Ruthless Simplicity: Each step has single clear purpose
@@ -69,24 +70,28 @@ context:
   review_feedback: ""
   pr_url: ""
   pr_review: ""
+  pr_security_review: ""
+  pr_philosophy_review: ""
+  blocking_issues_addressed: ""
   pr_feedback_changes: ""
   philosophy_check: ""
   final_cleanup: ""
+  quality_audit_results: ""
   ci_status: ""
 
 steps:
   # ==========================================================================
   # STEP 0: WORKFLOW PREPARATION (MANDATORY - DO NOT SKIP)
-  # Creates tracking structure for all 22 workflow steps.
+  # Creates tracking structure for all 23 workflow steps.
   # CRITICAL: Must complete before ANY implementation work begins.
-  # Prevents "completion bias" - ensures mandatory review steps (10, 16-17) not skipped.
+  # Prevents "completion bias" - ensures mandatory review steps (0, 14, 17-18) not skipped.
   # ==========================================================================
   - id: "step-00-workflow-preparation"
     type: "bash"
     command: |
       echo "=== WORKFLOW PREPARATION COMPLETE ==="
       echo ""
-      echo "22-Step Workflow Initialized:"
+      echo "23-Step Workflow Initialized (with granular sub-steps for Steps 17-19):"
       echo "  Step 0: Workflow Preparation - CURRENT"
       echo "  Step 1: Prepare Workspace"
       echo "  Step 2: Rewrite/Clarify Requirements"
@@ -101,17 +106,41 @@ steps:
       echo "  Step 11: Incorporate Feedback"
       echo "  Step 12: Run Pre-commit Hooks"
       echo "  Step 13: Mandatory Local Testing"
-      echo "  Step 14: Commit and Push"
-      echo "  Step 15: Open PR as Draft"
-      echo "  Step 16: Review the PR (MANDATORY)"
-      echo "  Step 17: Implement Review Feedback (MANDATORY)"
-      echo "  Step 18: Philosophy Compliance Check"
-      echo "  Step 19: Final Cleanup"
-      echo "  Step 20: Convert PR to Ready"
-      echo "  Step 21: Ensure PR Mergeable"
+      echo "  Step 14: Bump Version (MANDATORY)"
+      echo "  Step 15: Commit and Push"
+      echo "  Step 16: Open PR as Draft"
+      echo "  Step 17: Review the PR (MANDATORY - 6 sub-steps with verification gate)"
+      echo "    17a: Step 13 Compliance Verification"
+      echo "    17b: Comprehensive Code Review (reviewer agent)"
+      echo "    17c: Security Review (security agent)"
+      echo "    17d: Philosophy Guardian Review (philosophy-guardian agent)"
+      echo "    17e: Address Blocking Issues (builder agent)"
+      echo "    17f: Verification Gate"
+      echo "  Step 18: Implement Review Feedback (MANDATORY - 5 sub-steps with verification gate)"
+      echo "    18a: Analyze Feedback"
+      echo "    18b: Implement Feedback (builder agent)"
+      echo "    18c: Push Changes"
+      echo "    18d: Respond to Comments"
+      echo "    18e: Verification Gate"
+      echo "  Step 19: Philosophy Compliance Check (4 sub-steps with verification gate)"
+      echo "    19a: Philosophy Review (reviewer agent)"
+      echo "    19b: Pattern Check (patterns agent)"
+      echo "    19c: Zero-BS Verification"
+      echo "    19d: Verification Gate"
+      echo "  Step 20: Final Cleanup"
+      echo "  Step 20c: Quality Audit Loop (3+ cycles, multi-agent validation)"
+      echo "  Step 21: Convert PR to Ready"
+      echo "  Step 22: Ensure PR Mergeable"
       echo ""
-      echo "Task: {{task_description}}"
-      echo "Repository: {{repo_path}}"
+      # FIX (issues #3045/#3076/#3117): unquoted heredoc for safe variable capture.
+      # Unquoted heredoc allows Rust runner env-var expansion ($RECIPE_VAR_*).
+      # Shell expansion is single-pass: expanded values are NOT re-processed.
+      TASK_DESC=$(cat <<EOFTASKDESC
+      {{task_description}}
+      EOFTASKDESC
+      )
+      printf 'Task: %s\n' "$TASK_DESC"
+      printf 'Repository: %s\n' {{repo_path}}
     output: "workflow_init"
 
   # ==========================================================================
@@ -122,7 +151,7 @@ steps:
   - id: "step-01-prepare-workspace"
     type: "bash"
     command: |
-      cd "{{repo_path}}" && \
+      cd {{repo_path}} && \
       echo "=== Step 1: Preparing Workspace ===" && \
       echo "" && \
       echo "Current directory: $(pwd)" && \
@@ -226,29 +255,24 @@ steps:
   - id: "step-03-create-issue"
     type: "bash"
     command: |
-      cd "{{repo_path}}" && \
+      cd {{repo_path}} && \
       echo "=== Step 3: Creating GitHub Issue ===" && \
-      ISSUE_BODY=$(cat << 'ISSUE_EOF'
-      ## Task Description
+      # FIX (#3045/#3076/#3117): unquoted heredoc — safe variable capture
+      TASK_DESC=$(cat <<EOFTASKDESC
       {{task_description}}
-
-      ## Requirements
-      {{final_requirements}}
-
-      ## Acceptance Criteria
-      - [ ] All explicit requirements met
-      - [ ] Tests passing
-      - [ ] Philosophy compliant
-      - [ ] Documentation updated
-
-      ## Classification
-      Generated via default-workflow recipe
-      ISSUE_EOF
+      EOFTASKDESC
       ) && \
+      ISSUE_TITLE=$(printf '%s' "$TASK_DESC" | tr '\n\r' '  ' | cut -c1-200) && \
+      ISSUE_TASK=$(printf '%s' "$TASK_DESC") && \
+      ISSUE_REQS=$(cat <<EOFREQS
+      {{final_requirements}}
+      EOFREQS
+      ) && \
+      ISSUE_BODY=$(printf '## Task Description\n%s\n\n## Requirements\n%s\n\n## Acceptance Criteria\n- [ ] All explicit requirements met\n- [ ] Tests passing\n- [ ] Philosophy compliant\n- [ ] Documentation updated\n\n## Classification\nGenerated via default-workflow recipe\n' "$ISSUE_TASK" "$ISSUE_REQS") && \
       gh issue create \
-        --title "{{task_description}}" \
+        --title "$ISSUE_TITLE" \
         --body "$ISSUE_BODY" \
-        --label "workflow:default" 2>&1 | cat
+        --label "workflow:default"
     output: "issue_creation"
     parse_json: false
 
@@ -256,42 +280,80 @@ steps:
     type: "bash"
     command: |
       # Extract issue number from the creation output
-      echo "{{issue_creation}}" | grep -oE '[0-9]+' | tail -1
+      echo {{issue_creation}} | grep -oE 'issues/[0-9]+' | grep -oE '[0-9]+' | tail -1
     output: "issue_number"
 
   # ==========================================================================
   # STEP 4: SETUP WORKTREE AND BRANCH
+  # Creates isolated worktree and outputs structured JSON for subsequent steps.
   # ==========================================================================
   - id: "step-04-setup-worktree"
-    agent: "amplihack:worktree-manager"
-    prompt: |
-      # Step 4: Setup Worktree and Branch
-
-      **Repository:** {{repo_path}}
-      **Issue Number:** {{issue_number}}
-      **Task:** {{task_description}}
-      **Branch Prefix:** {{branch_prefix}}
-
-      Create a git worktree for isolated development:
-
-      1. Create branch name: `{{branch_prefix}}/issue-{{issue_number}}-brief-description`
-      2. Create worktree in `./worktrees/{branch-name}`
-      3. Branch from up-to-date main
-      4. Push branch to remote with tracking
-
-      Commands to execute:
-      ```bash
+    type: "bash"
+    command: |
+      set -euo pipefail
       cd {{repo_path}}
-      git fetch origin main
-      BRANCH_NAME="{{branch_prefix}}/issue-{{issue_number}}-$(echo '{{task_description}}' | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | cut -c1-30)"
-      git worktree add "./worktrees/${BRANCH_NAME}" -b "${BRANCH_NAME}" origin/main
-      cd "./worktrees/${BRANCH_NAME}"
-      git push -u origin "${BRANCH_NAME}"
-      pwd
-      ```
 
-      Report the worktree path and branch name for subsequent steps.
+      echo "=== Step 4: Creating Worktree and Branch ===" >&2
+      echo "" >&2
+
+      # Fetch latest refs
+      git fetch origin main >&2
+
+      # NOTE: This slug pipeline is duplicated in consensus-workflow.yaml step3-setup-worktree
+      # with a 30-char limit instead of 50. If you update this pipeline (e.g. security patch),
+      # update consensus-workflow.yaml in the same commit. See Issue #2952 for context.
+      #
+      # Generate branch name from task description.
+      # FIX (issue #3087): Use UNQUOTED heredoc so the Rust recipe runner's
+      # env-var expansion ($RECIPE_VAR_task_description) works correctly.
+      # Single-quoted heredoc (<<'EOF') prevented variable expansion, producing
+      # garbled branch names like "feat/issue--recipevartaskdescription".
+      # Security note: the sanitization pipeline (tr -cd 'a-z0-9-') strips all
+      # shell metacharacters from the output, mitigating injection risk.
+      TASK_DESC=$(cat <<EOFTASKDESC
+      {{task_description}}
+      EOFTASKDESC
+      )
+      TASK_SLUG=$(printf '%s' "$TASK_DESC" | tr '\n\r' '  ' | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9-' | sed 's/-\{2,\}/-/g' | sed 's/^-//;s/-$//' | cut -c1-50 | sed 's/-$//')
+      # Guard: empty slug (blank/all-symbol input) produces a trailing-hyphen branch that
+      # git check-ref-format accepts as valid but is undesirable. Catch it explicitly first.
+      if [ -z "$TASK_SLUG" ]; then
+        echo "WARNING: task_description produced an empty slug — falling back to task-unnamed" >&2
+        BRANCH_NAME="{{branch_prefix}}/task-unnamed-$(date +%s)"
+      else
+        BRANCH_NAME="{{branch_prefix}}/issue-{{issue_number}}-${TASK_SLUG}"
+        # Validate with authoritative git ref checker; fall back to safe unique name on failure
+        if ! git check-ref-format --branch "${BRANCH_NAME}" >/dev/null 2>&1; then
+          echo "WARNING: derived branch name '${BRANCH_NAME}' is invalid — falling back to task-unnamed" >&2
+          BRANCH_NAME="{{branch_prefix}}/task-unnamed-$(date +%s)"
+        fi
+      fi
+      WORKTREE_PATH="{{repo_path}}/worktrees/${BRANCH_NAME}"
+
+      echo "Branch: ${BRANCH_NAME}" >&2
+      echo "Worktree: ${WORKTREE_PATH}" >&2
+      echo "" >&2
+
+      # Create worktree
+      git worktree add "${WORKTREE_PATH}" -b "${BRANCH_NAME}" origin/main >&2
+
+      # Push branch to remote with tracking
+      cd "${WORKTREE_PATH}"
+      git push -u origin "${BRANCH_NAME}" >&2
+
+      echo "" >&2
+      echo "=== Worktree Created Successfully ===" >&2
+
+      # Output structured JSON for subsequent steps
+      cat << EOF
+      {
+        "worktree_path": "${WORKTREE_PATH}",
+        "branch_name": "${BRANCH_NAME}",
+        "created": true
+      }
+      EOF
     output: "worktree_setup"
+    parse_json: true
 
   # ==========================================================================
   # STEP 5: RESEARCH AND DESIGN
@@ -321,7 +383,6 @@ steps:
 
   - id: "step-05b-api-design"
     agent: "amplihack:api-designer"
-    condition: "'API' in architecture_design or 'endpoint' in architecture_design"
     prompt: |
       # Step 5b: API Design (if applicable)
 
@@ -339,7 +400,6 @@ steps:
 
   - id: "step-05c-database-design"
     agent: "amplihack:database"
-    condition: "'database' in architecture_design or 'model' in architecture_design or 'schema' in architecture_design"
     prompt: |
       # Step 5c: Database Design (if applicable)
 
@@ -515,7 +575,6 @@ steps:
 
   - id: "step-08b-integration"
     agent: "amplihack:integration"
-    condition: "'external' in design_spec or 'integration' in design_spec or 'service' in design_spec"
     prompt: |
       # Step 8b: External Service Integration
 
@@ -530,6 +589,28 @@ steps:
 
       Skip if no external integrations are required.
     output: "integration_code"
+
+  # --------------------------------------------------------------------------
+  # CHECKPOINT: Stage implementation work to prevent loss if later steps fail
+  # --------------------------------------------------------------------------
+  - id: "checkpoint-after-implementation"
+    type: "bash"
+    command: |
+      cd {{worktree_setup.worktree_path}} 2>/dev/null || cd {{repo_path}} && \
+      echo "=== Checkpoint: Staging Implementation ===" && \
+      git add -A && \
+      STAGED=$(git diff --cached --name-only) && \
+      if [ -n "$STAGED" ]; then \
+        git commit -m "wip: checkpoint after implementation (steps 7-8)
+
+      Automatic checkpoint to preserve work in progress.
+      Tests and implementation saved before refactoring phase." && \
+        echo "Checkpoint commit created with $(wc -l <<< "$STAGED") file(s)" ; \
+      else \
+        echo "No changes to checkpoint" ; \
+      fi && \
+      echo "=== Checkpoint Complete ==="
+    output: "impl_checkpoint"
 
   # ==========================================================================
   # STEP 9: REFACTOR AND SIMPLIFY
@@ -688,6 +769,28 @@ steps:
       Output the updated implementation.
     output: "review_feedback"
 
+  # --------------------------------------------------------------------------
+  # CHECKPOINT: Stage review feedback changes before pre-commit hooks
+  # --------------------------------------------------------------------------
+  - id: "checkpoint-after-review-feedback"
+    type: "bash"
+    command: |
+      cd {{worktree_setup.worktree_path}} 2>/dev/null || cd {{repo_path}} && \
+      echo "=== Checkpoint: Staging Review Feedback ===" && \
+      git add -A && \
+      STAGED=$(git diff --cached --name-only) && \
+      if [ -n "$STAGED" ]; then \
+        git commit -m "wip: checkpoint after review feedback (steps 10-11)
+
+      Automatic checkpoint to preserve review-addressed changes.
+      Saved before running pre-commit hooks and tests." && \
+        echo "Checkpoint commit created with $(wc -l <<< "$STAGED") file(s)" ; \
+      else \
+        echo "No changes to checkpoint" ; \
+      fi && \
+      echo "=== Checkpoint Complete ==="
+    output: "review_checkpoint"
+
   # ==========================================================================
   # STEP 12: RUN TESTS AND PRE-COMMIT HOOKS
   # ==========================================================================
@@ -724,108 +827,351 @@ steps:
     output: "precommit_results"
 
   # ==========================================================================
-  # STEP 13: MANDATORY LOCAL TESTING
-  # Manual testing gate - document tests, suggest scenarios, wait for confirmation.
-  # Test like a user would - outside-in, not just unit tests.
+  # STEP 13: MANDATORY OUTSIDE-IN TESTING
+  # Use the qa-team skill (outside-in-testing alias supported) to test this PR as a user would from
+  # the PR branch. No bash echo — the agent must actually execute the tests.
   # ==========================================================================
   - id: "step-13-local-testing"
-    type: "bash"
-    command: |
-      echo "=== Step 13: Local Testing Gate ===" && \
-      echo "" && \
-      echo "MANUAL TESTING REQUIRED:" && \
-      echo "" && \
-      echo "Test scenarios to verify:" && \
-      echo "  1. Basic functionality - Simple use case" && \
-      echo "  2. Complex use cases - Edge cases and longer operations" && \
-      echo "  3. Integration points - External dependencies and APIs" && \
-      echo "  4. Regression check - Existing functionality still works" && \
-      echo "" && \
-      echo "Task: {{task_description}}" && \
-      echo "" && \
-      echo "Document test results for PR description." && \
-      echo "" && \
-      echo "=== Proceed when local testing is complete ==="
+    agent: "amplihack:builder"
+    prompt: |
+      # Step 13: Mandatory Outside-In Testing (CANNOT BE SKIPPED)
+
+      **Task:** {{task_description}}
+      **Repository:** {{repo_path}}
+      **Branch:** Run `git branch --show-current` to get the current branch name.
+
+      You MUST perform outside-in testing using the `qa-team` skill (`outside-in-testing` remains an alias)
+      to verify this change as a real user would — from the PR branch, not just
+      the working directory.
+
+      ## Required Actions
+
+      1. **Get the current branch name:**
+         ```bash
+         git branch --show-current
+         ```
+
+      2. **Get the remote URL (for uvx testing):**
+         ```bash
+         git remote get-url origin
+         ```
+
+      3. **Invoke the `qa-team` skill** to generate and execute
+         agentic outside-in tests for this change. Pass the PR branch name and
+         repository URL so tests run against the actual branch:
+         ```
+         Skill(skill="qa-team")
+         ```
+
+      4. **Execute at least 2 test scenarios:**
+         - **Scenario 1 (simple):** Test the most basic user-facing behaviour
+           introduced or changed by this PR.
+         - **Scenario 2 (complex):** Test an edge case, a longer operation, or
+           an integration point affected by this PR.
+
+         Test from the PR branch using the pattern:
+         ```bash
+         uvx --from git+<remote-url>@<branch-name> amplihack <command>
+         ```
+
+      5. **Document results** — write the following section into the PR
+         description (you will paste it in Step 16 when creating the PR):
+
+         ```
+         ## Step 13: Local Testing Results
+
+         ### Scenario 1 — <brief description>
+         Command: `uvx --from git+...@<branch> amplihack <command>`
+         Result: PASS / FAIL
+         Output: <key output lines>
+
+         ### Scenario 2 — <brief description>
+         Command: `uvx --from git+...@<branch> amplihack <command>`
+         Result: PASS / FAIL
+         Output: <key output lines>
+         ```
+
+      ## What Counts as Testing
+
+      - Running the actual changed code with test inputs via `uvx --from git+...`
+      - Verifying error messages, output format, and user experience
+      - Checking that existing functionality still works (regression check)
+
+      ## What Does NOT Count
+
+      - Planning tests without executing them
+      - CI/CD checks only (local execution required IN ADDITION)
+      - Assuming "documentation can't be tested"
+
+      Report the full test output and confirm both scenarios passed (or document
+      any failures with root cause analysis).
     output: "local_testing_gate"
 
   # ==========================================================================
-  # STEP 14: COMMIT AND PUSH
+  # STEP 14: BUMP VERSION IN PYPROJECT.TOML (MANDATORY - DO NOT SKIP)
+  # Before committing, bump version to reflect change type.
+  # CI will block PRs that don't bump version.
+  # Git tags are auto-created on merge matching the version.
+  # ==========================================================================
+  - id: "step-14-bump-version"
+    agent: "amplihack:architect"
+    prompt: |
+      # Step 14: Bump Version in pyproject.toml (MANDATORY - DO NOT SKIP)
+
+      **⚠️ MANDATORY - DO NOT SKIP ⚠️**
+
+      **REQUIRED FOR ALL PRs**
+
+      Before committing changes to git history, bump the version number in `pyproject.toml` to reflect the nature of your changes.
+
+      **Task:** {{task_description}}
+      **Repository:** {{repo_path}}
+
+      **Actions Required:**
+
+      1. **Review changes:** Run `git diff main...HEAD` to see all changes
+      2. **Classify change type:** Determine if this is PATCH, MINOR, or MAJOR
+      3. **Read current version:** Check `pyproject.toml` line 8
+      4. **Bump version appropriately:**
+         - **PATCH** (0.2.0 → 0.2.1): Bug fixes, documentation, minor improvements
+         - **MINOR** (0.2.0 → 0.3.0): New features, backward-compatible changes
+         - **MAJOR** (0.2.0 → 1.0.0): Breaking changes, major architecture changes
+      5. **Edit pyproject.toml:** Update the version line
+      6. **Verify:** Confirm the new version is correct
+
+      **Classification Examples:**
+
+      | Change Type | Example | Version Bump |
+      |-------------|---------|--------------|
+      | Bug fix | Fix authentication error handling | PATCH |
+      | Documentation | Update README with new examples | PATCH |
+      | New feature | Add auto-update check mechanism | MINOR |
+      | API change | Modify function signature (backward-compatible) | MINOR |
+      | Breaking change | Remove deprecated API | MAJOR |
+      | Refactor | Internal cleanup, no behavior change | PATCH |
+
+      **Commands to execute:**
+      ```bash
+      cd {{repo_path}}
+
+      # Show changes
+      git diff main...HEAD --stat
+
+      # Read current version
+      CURRENT_VERSION=$(grep -E '^version = ' pyproject.toml | head -1 | cut -d'"' -f2)
+      echo "Current version: $CURRENT_VERSION"
+
+      # Based on your classification, determine new version
+      # For PATCH: increment last number (0.2.0 → 0.2.1)
+      # For MINOR: increment middle, reset last (0.2.0 → 0.3.0)
+      # For MAJOR: increment first, reset others (0.2.0 → 1.0.0)
+
+      # Edit the file with new version
+      # sed -i 's/version = "X.Y.Z"/version = "NEW.VERSION"/' pyproject.toml
+
+      # Verify
+      grep -E '^version = ' pyproject.toml | head -1
+      ```
+
+      **Output JSON:**
+      ```json
+      {
+        "current_version": "X.Y.Z",
+        "new_version": "A.B.C",
+        "change_classification": "PATCH|MINOR|MAJOR",
+        "rationale": "explanation of why this version bump",
+        "changes_summary": "brief summary of what changed"
+      }
+      ```
+
+      **CI Enforcement:**
+      - PR will be blocked if version not bumped
+      - CI creates git tag (e.g., `v0.3.0`) on merge to main
+      - Tags enable `uv tool upgrade amplihack` to work correctly
+
+      **Important:** Version bump happens BEFORE commit (Step 15), so it's included in the main implementation commit.
+    output: "version_bump"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 15: COMMIT AND PUSH
   # Stage all changes, write detailed commit message, and push.
   # ==========================================================================
-  - id: "step-14-commit-push"
+  - id: "step-15-commit-push"
     type: "bash"
     command: |
-      cd "{{repo_path}}" && \
-      echo "=== Step 14: Commit and Push ===" && \
+      cd {{worktree_setup.worktree_path}} && \
+      echo "=== Step 15: Commit and Push ===" && \
       echo "" && \
       echo "--- Staging Changes ---" && \
       git add -A && \
       echo "" && \
       echo "--- Creating Commit ---" && \
-      git commit -m "feat: {{task_description}}
-
-      Implements issue #{{issue_number}}
-
-      Changes:
-      - Implementation as per design specification
-      - Tests added for new functionality
-      - Documentation updated
-
-      Closes #{{issue_number}}" && \
+      # FIX (#3045/#3076/#3117): unquoted heredoc — safe variable capture
+      TASK_DESC=$(cat <<EOFTASKDESC
+      {{task_description}}
+      EOFTASKDESC
+      ) && \
+      COMMIT_TITLE=$(printf 'feat: %.72s' "$(printf '%s' "$TASK_DESC" | tr '\n\r' ' ' | head -1)") && \
+      COMMIT_MSG=$(printf '%s\n\nImplements issue #%s\n\nChanges:\n- Implementation as per design specification\n- Tests added for new functionality\n- Documentation updated\n\nCloses #%s' "$COMMIT_TITLE" {{issue_number}} {{issue_number}}) && \
+      if [ -n "$(git diff --cached --name-only)" ]; then \
+        git commit -m "$COMMIT_MSG" ; \
+      else \
+        echo "WARNING: Nothing to commit - changes already committed" ; \
+      fi && \
       echo "" && \
       echo "--- Pushing to Remote ---" && \
-      git push && \
+      if git rev-list --count @{u}..HEAD 2>/dev/null | grep -qv '^0$'; then \
+        git push ; \
+      else \
+        echo "WARNING: Nothing to push - branch is up to date with remote" ; \
+      fi && \
       echo "" && \
       echo "=== Commit and Push Complete ==="
     output: "commit_result"
 
   # ==========================================================================
-  # STEP 15: OPEN PULL REQUEST AS DRAFT
+  # STEP 16: OPEN PULL REQUEST AS DRAFT
   # Create a draft PR with comprehensive description.
   # ==========================================================================
-  - id: "step-15-create-draft-pr"
+  - id: "step-16-create-draft-pr"
     type: "bash"
     command: |
-      cd "{{repo_path}}" && \
+      cd {{worktree_setup.worktree_path}} && \
       echo "=== Step 15: Creating Draft PR ===" && \
-      PR_BODY=$(cat << 'PR_EOF'
-      ## Summary
+      # FIX (#3045/#3076/#3117): unquoted heredoc — safe variable capture
+      TASK_DESC=$(cat <<EOFTASKDESC
       {{task_description}}
-
-      ## Issue
-      Closes #{{issue_number}}
-
-      ## Changes
-      {{design_spec}}
-
-      ## Testing
-      - Unit tests added
-      - Local testing completed
-      - Pre-commit hooks pass
-
-      ## Checklist
-      - [x] Tests pass
-      - [x] Documentation updated
-      - [x] No stubs or TODOs
-      - [ ] Code review completed
-      - [ ] Philosophy check passed
-
-      ---
-      *This PR was created as a draft for review before merging.*
-      PR_EOF
+      EOFTASKDESC
       ) && \
+      PR_TITLE=$(printf '%s' "$TASK_DESC" | tr '\n\r' ' ' | cut -c1-200) && \
+      PR_TASK=$(printf '%s' "$TASK_DESC") && \
+      PR_DESIGN=$(cat <<EOFDESIGN
+      {{design_spec}}
+      EOFDESIGN
+      ) && \
+      PR_BODY=$(printf '## Summary\n%s\n\n## Issue\nCloses #%s\n\n## Changes\n%s\n\n## Testing\n- Unit tests added\n- Local testing completed\n- Pre-commit hooks pass\n\n## Checklist\n- [x] Tests pass\n- [x] Documentation updated\n- [x] No stubs or TODOs\n- [ ] Code review completed\n- [ ] Philosophy check passed\n\n---\n*This PR was created as a draft for review before merging.*\n' "$PR_TASK" {{issue_number}} "$PR_DESIGN") && \
       gh pr create --draft \
-        --title "{{task_description}}" \
-        --body "$PR_BODY" 2>&1 | cat
+        --title "$PR_TITLE" \
+        --body "$PR_BODY"
     output: "pr_url"
 
   # ==========================================================================
-  # STEP 16: REVIEW THE PR (MANDATORY - DO NOT SKIP)
+  # STEP 16b: OUTSIDE-IN TESTING AND FIX LOOP
+  # After the PR is open, run outside-in tests from the PR branch.
+  # If failures are found, fix them and re-test in a loop until all pass.
   # ==========================================================================
-  - id: "step-16-review-pr"
+  - id: "step-16b-outside-in-fix-loop"
+    agent: "amplihack:builder"
+    prompt: |
+      # Step 16b: Outside-In Testing and Fix Loop (MANDATORY)
+
+      The PR is now open. You MUST test the change as a user would FROM THE PR BRANCH
+      and fix any problems found before proceeding to review.
+
+      **Task:** {{task_description}}
+      **PR URL:** {{pr_url}}
+      **Branch:** Run `git branch --show-current` to get branch name.
+      **Remote:** Run `git remote get-url origin` for the repo URL.
+
+      ## Required Actions
+
+      ### Phase 1: Run Outside-In Tests
+
+      Use the `qa-team` skill to test from the PR branch (`outside-in-testing` alias also works):
+
+      ```
+      Skill(skill="qa-team")
+      ```
+
+      Test using the PR branch:
+      ```bash
+      uvx --from git+<remote-url>@<branch-name> amplihack <command>
+      ```
+
+      Run at minimum:
+      1. **Simple scenario**: Basic user-facing behavior this PR changes
+      2. **Complex scenario**: Edge case or integration point affected
+
+      ### Phase 2: Fix Loop (if failures found)
+
+      If any test fails:
+
+      1. **Diagnose** the root cause from the test output
+      2. **Fix** the code in the current branch
+      3. **Commit and push** the fix:
+         ```bash
+         git add -A && git commit -m "fix: <describe the fix found during outside-in testing>"
+         git push
+         ```
+      4. **Re-run** the outside-in tests from the updated branch
+      5. **Repeat** until all tests pass (max 3 fix iterations)
+
+      If failures persist after 3 iterations, document them clearly and continue —
+      blocking is not acceptable, but honest documentation is required.
+
+      ### Phase 3: Update PR Description
+
+      After all tests pass (or after 3 iterations), update the PR description with
+      a "Step 16b: Outside-In Testing Results" section:
+
+      ```bash
+      gh pr edit {{pr_url}} --body "$(gh pr view {{pr_url}} --json body -q .body)
+
+      ## Step 16b: Outside-In Testing Results
+
+      ### Scenario 1 — <description>
+      Command: \`uvx --from git+...@<branch> amplihack <command>\`
+      Result: PASS
+      Output: <key output>
+
+      ### Scenario 2 — <description>
+      Command: \`uvx --from git+...@<branch> amplihack <command>\`
+      Result: PASS
+      Output: <key output>
+
+      Fix iterations: 0 (or N if fixes were required)
+      "
+      ```
+    output: "outside_in_fix_loop_results"
+
+  # ==========================================================================
+  # STEP 17: REVIEW THE PR (MANDATORY - DO NOT SKIP)
+  # Granular sub-steps with verification gates to prevent completion bias.
+  # Each sub-step invokes a specific agent and requires evidence.
+  # ==========================================================================
+  - id: "step-17a-compliance-verification"
+    type: "bash"
+    # FIX (#2925): Previously this step only echoed instructions without
+    # checking anything — it was a no-op that never enforced step-13 completion.
+    # Now it reads local_testing_gate (step-13 output) and FAILS hard if the
+    # gate is empty, blocking the review phase until testing is done.
+    command: |
+      echo "=== Step 17a: Step 13 Compliance Verification ===" && \
+      echo "" && \
+      GATE_OUTPUT={{local_testing_gate}} && \
+      if [ -z "$GATE_OUTPUT" ] || [ "$GATE_OUTPUT" = "''" ]; then \
+        echo "COMPLIANCE FAILURE: Step 13 (outside-in testing) produced no output." && \
+        echo "" && \
+        echo "The outside-in testing step (step-13-local-testing) must be completed" && \
+        echo "before the PR review phase can begin." && \
+        echo "" && \
+        echo "Required: Invoke the qa-team skill (outside-in-testing alias also works) and document at least" && \
+        echo "2 test scenarios in the PR description under 'Step 13: Local Testing Results'." && \
+        exit 1 ; \
+      fi && \
+      echo "Compliance check: local_testing_gate is populated." && \
+      echo "" && \
+      echo "Verify PR description contains 'Step 13: Local Testing Results' section" && \
+      echo "with actual test execution evidence (not just planning)." && \
+      echo "" && \
+      echo "=== Compliance Check PASSED ==="
+    output: "step_13_compliance_check"
+
+  - id: "step-17b-reviewer-agent"
     agent: "amplihack:reviewer"
     prompt: |
-      # Step 16: Review the PR (MANDATORY - DO NOT SKIP)
+      # Step 17b: Comprehensive Code Review (MANDATORY)
 
       **PR URL:** {{pr_url}}
       **Requirements:** {{final_requirements}}
@@ -835,119 +1181,293 @@ steps:
 
       **Review Checklist:**
       - [ ] Code quality and standards
-      - [ ] Philosophy compliance
       - [ ] Test coverage adequate
       - [ ] No TODOs, stubs, or swallowed exceptions
       - [ ] No unimplemented functions
+      - [ ] Logic correctness
+      - [ ] Edge case handling
 
       **Actions:**
       1. Perform comprehensive code review
       2. Identify issues and improvements
-      3. Post review comments on PR
+      3. **POST review comments on PR** (this is required evidence)
 
-      Output review summary for implementation.
+      **Output:** Structured review findings AND confirmation that review was posted to PR.
     output: "pr_review"
 
-  - id: "step-16b-security-pr-review"
+  - id: "step-17c-security-review"
     agent: "amplihack:security"
     prompt: |
-      # Step 16b: Security Review of PR
+      # Step 17c: Security Review (MANDATORY)
 
       **PR URL:** {{pr_url}}
       **Implementation:** {{review_feedback}}
+      **Previous Review:** {{pr_review}}
 
-      Final security review of the PR:
-      - Verify all security requirements met
-      - Check for any new vulnerabilities
-      - Confirm sensitive data handling
+      Security review of the PR:
+      - [ ] Verify all security requirements met
+      - [ ] Check for any new vulnerabilities
+      - [ ] Confirm sensitive data handling
+      - [ ] Review authentication/authorization if applicable
+      - [ ] Check for injection vulnerabilities
 
-      Post any security findings as PR comments.
+      **Actions:**
+      1. Perform security analysis
+      2. **POST security findings as PR comments** (this is required evidence)
+
+      **Output:** Security review findings AND confirmation that review was posted to PR.
     output: "pr_security_review"
 
-  # ==========================================================================
-  # STEP 17: IMPLEMENT REVIEW FEEDBACK (MANDATORY - DO NOT SKIP)
-  # ==========================================================================
-  - id: "step-17-implement-pr-feedback"
+  - id: "step-17d-philosophy-guardian"
+    agent: "amplihack:philosophy-guardian"
+    prompt: |
+      # Step 17d: Philosophy Guardian Review (MANDATORY)
+
+      **PR URL:** {{pr_url}}
+      **Implementation:** {{review_feedback}}
+      **Code Review:** {{pr_review}}
+
+      Philosophy compliance review:
+      - [ ] Ruthless simplicity achieved
+      - [ ] Bricks & studs pattern followed
+      - [ ] Zero-BS implementation (no stubs, faked APIs, swallowed exceptions)
+      - [ ] No over-engineering
+      - [ ] Clean module boundaries
+
+      **Actions:**
+      1. Verify philosophy compliance
+      2. **POST philosophy check as PR comment** (this is required evidence)
+
+      **Output:** Philosophy compliance status AND confirmation that review was posted to PR.
+    output: "pr_philosophy_review"
+
+  - id: "step-17e-address-blocking-issues"
     agent: "amplihack:builder"
     prompt: |
-      # Step 17: Implement Review Feedback (MANDATORY - DO NOT SKIP)
+      # Step 17e: Address Blocking Issues (MANDATORY)
 
       **PR Review:** {{pr_review}}
       **Security Review:** {{pr_security_review}}
+      **Philosophy Review:** {{pr_philosophy_review}}
+
+      Review all findings from Steps 16a-16d and address any blocking issues:
+
+      1. Identify blocking issues from each review
+      2. Implement fixes for each blocking issue
+      3. If issues found, re-run applicable reviews after fixing
+
+      **Output:** Summary of blocking issues found and how they were addressed.
+      If no blocking issues, state "No blocking issues found."
+    output: "blocking_issues_addressed"
+
+  - id: "step-17f-verification-gate"
+    type: "bash"
+    command: |
+      echo "=== STEP 17 VERIFICATION GATE ===" && \
+      echo "" && \
+      echo "Before proceeding, verify ALL of the following:" && \
+      echo "" && \
+      echo "  ✓ Did I invoke the REVIEWER agent? → Yes (output captured)" && \
+      echo "  ✓ Did I invoke the SECURITY agent? → Yes (output captured)" && \
+      echo "  ✓ Did I invoke the PHILOSOPHY-GUARDIAN agent? → Yes (output captured)" && \
+      echo "  ✓ Did I check for FORBIDDEN PATTERN violations? → Yes" && \
+      echo "  ✓ Are all three reviews POSTED to the PR as comments?" && \
+      echo "  ✓ All blocking issues have been addressed?" && \
+      echo "" && \
+      echo "If any verification fails, STOP and complete the missing step." && \
+      echo "" && \
+      echo "=== GATE PASSED - Proceed to Step 18 ==="
+    output: "step_17_gate_status"
+
+  # ==========================================================================
+  # STEP 18: IMPLEMENT REVIEW FEEDBACK (MANDATORY - DO NOT SKIP)
+  # Granular sub-steps to ensure thorough feedback implementation.
+  # ==========================================================================
+  - id: "step-18a-analyze-feedback"
+    agent: "amplihack:architect"
+    prompt: |
+      # Step 18a: Analyze Review Feedback (MANDATORY)
+
+      **PR Review:** {{pr_review}}
+      **Security Review:** {{pr_security_review}}
+      **Philosophy Review:** {{pr_philosophy_review}}
+
+      Analyze ALL feedback from Step 16 reviews:
+      1. Categorize each item: blocking issues vs. suggestions vs. questions
+      2. Prioritize blocking issues first
+      3. Create action plan for addressing each item
+
+      **Output:** Structured analysis of all feedback with action plan.
+    output: "feedback_analysis"
+
+  - id: "step-18b-implement-feedback"
+    agent: "amplihack:builder"
+    prompt: |
+      # Step 18b: Implement Review Feedback (MANDATORY)
+
+      **Feedback Analysis:** {{feedback_analysis}}
+      **PR Review:** {{pr_review}}
+      **Security Review:** {{pr_security_review}}
+      **Philosophy Review:** {{pr_philosophy_review}}
       **Current Implementation:** {{review_feedback}}
 
       **REQUIRED FOR ALL PRs** - Unaddressed feedback means the review was pointless.
 
       **Checklist:**
-      - [ ] Review ALL feedback comments
-      - [ ] Address each review comment
-      - [ ] Push updates to PR
-      - [ ] Respond to review comments
-      - [ ] Ensure all tests still pass
-      - [ ] Request re-review if needed
+      - [ ] Address EVERY blocking issue
+      - [ ] Address suggestions where appropriate
+      - [ ] For disagreements, document reasoning
+      - [ ] Ensure changes don't introduce new issues
 
-      Think carefully about each comment and decide how to address it.
-      If disagreeing, explain why in a comment.
-
-      Output updated implementation with summary of changes.
+      **Output:** Updated implementation with summary of changes for each feedback item.
     output: "pr_feedback_changes"
 
-  - id: "step-17b-push-feedback-changes"
+  - id: "step-18c-push-feedback-changes"
     type: "bash"
     command: |
-      cd "{{repo_path}}" && \
+      cd {{worktree_setup.worktree_path}} && \
       echo "=== Pushing Review Feedback Changes ===" && \
       git add -A && \
-      git commit -m "address review feedback
+      if [ -n "$(git diff --cached --name-only)" ]; then \
+        git commit -m "address review feedback
 
       - Implemented reviewer suggestions
       - Fixed identified issues
-      - Updated per security review" && \
-      git push && \
+      - Updated per security review
+      - Addressed philosophy compliance items" ; \
+      else \
+        echo "WARNING: Nothing to commit - feedback changes already committed" ; \
+      fi && \
+      if git rev-list --count @{u}..HEAD 2>/dev/null | grep -qv '^0$'; then \
+        git push ; \
+      else \
+        echo "WARNING: Nothing to push - branch is up to date with remote" ; \
+      fi && \
       echo "=== Changes Pushed ==="
     output: "feedback_push_result"
 
+  - id: "step-18d-respond-to-comments"
+    type: "bash"
+    command: |
+      echo "=== Responding to Review Comments ===" && \
+      echo "" && \
+      echo "Post responses to each review comment on the PR explaining:" && \
+      echo "  - What was done to address the feedback" && \
+      echo "  - Any disagreements with reasoning" && \
+      echo "" && \
+      echo "Use: gh pr comment <pr_number> --body 'Response text'" && \
+      echo "" && \
+      echo "=== Comment Responses Complete ==="
+    output: "comment_responses"
+
+  - id: "step-18e-verification-gate"
+    type: "bash"
+    command: |
+      echo "=== STEP 18 VERIFICATION GATE ===" && \
+      echo "" && \
+      echo "Before proceeding, verify ALL of the following:" && \
+      echo "" && \
+      echo "  ✓ Did I address EVERY feedback comment (not just some)?" && \
+      echo "  ✓ Did I respond to each comment on the PR?" && \
+      echo "  ✓ Did I use the builder agent for implementation changes?" && \
+      echo "  ✓ Are all tests still passing?" && \
+      echo "" && \
+      echo "If any verification fails, STOP and complete the missing step." && \
+      echo "" && \
+      echo "=== GATE PASSED - Proceed to Step 19 ==="
+    output: "step_18_gate_status"
+
   # ==========================================================================
-  # STEP 18: PHILOSOPHY COMPLIANCE CHECK
+  # STEP 19: PHILOSOPHY COMPLIANCE CHECK
+  # Granular sub-steps with verification gate to prevent completion bias.
   # ==========================================================================
-  - id: "step-18-philosophy-check"
+  - id: "step-19a-philosophy-check"
     agent: "amplihack:reviewer"
     prompt: |
-      # Step 18: Philosophy Compliance Check
+      # Step 19a: Philosophy Compliance Review (MANDATORY)
 
       **Implementation:** {{pr_feedback_changes}}
       **Requirements:** {{final_requirements}}
 
-      Final philosophy compliance verification:
-
+      Philosophy compliance verification:
       - [ ] Ruthless simplicity achieved
-      - [ ] Bricks & studs pattern followed
-      - [ ] Zero-BS implementation (no stubs, faked APIs, swallowed exceptions)
+      - [ ] No over-engineering or unnecessary complexity
+      - [ ] Implementation aligns with project philosophy
+      - [ ] No Forbidden Pattern violations (FORBIDDEN_PATTERNS.md): no error swallowing, no silent fallbacks, no data loss, no shell anti-patterns (|| true, >/dev/null), no async misuse, no config divergence, no validation gaps
       - [ ] All tests passing
       - [ ] Documentation complete and accurate
 
-      Report compliance status.
+      **Output:** Detailed philosophy compliance findings.
     output: "philosophy_check"
 
-  - id: "step-18b-patterns-check"
+  - id: "step-19b-patterns-check"
     agent: "amplihack:patterns"
     prompt: |
-      # Step 18b: Pattern Compliance Check
+      # Step 19b: Pattern Compliance Review (MANDATORY)
 
       **Implementation:** {{pr_feedback_changes}}
 
-      Verify pattern compliance:
-      - Design patterns used correctly
-      - Architectural patterns followed
-      - Code organization patterns
+      Pattern compliance verification:
+      - [ ] Design patterns used correctly
+      - [ ] Architectural patterns followed
+      - [ ] Code organization patterns maintained
+      - [ ] No anti-patterns introduced
+      - [ ] No Forbidden Patterns (error swallowing, silent fallbacks, || true, >/dev/null, fire-and-forget async, unchecked HTTP responses, log-only catches)
 
-      Report any pattern violations.
+      **Output:** Pattern compliance findings with any violations.
     output: "patterns_check"
 
+  - id: "step-19c-zero-bs-verification"
+    type: "bash"
+    command: |
+      echo "=== ZERO-BS VERIFICATION ===" && \
+      cd {{worktree_setup.worktree_path}} && \
+      echo "" && \
+      echo "Scanning for Zero-BS violations..." && \
+      echo "" && \
+      echo "--- Checking for TODO/FIXME comments ---" && \
+      (grep -r -E "(TODO|FIXME)" --include="*.py" --include="*.ts" --include="*.js" . 2>/dev/null || echo "None found") && \
+      echo "" && \
+      echo "--- Checking for stub indicators ---" && \
+      (grep -r -E "(NotImplementedError|raise NotImplemented|pass  # stub)" --include="*.py" . 2>/dev/null || echo "None found") && \
+      echo "" && \
+      echo "--- Checking for Forbidden Patterns ---" && \
+      echo "  Shell: || true, >/dev/null 2>&1, set +e" && \
+      (grep -rn "|| true\||| :\|>/dev/null 2>&1\|2>/dev/null\|&>/dev/null\|set +e" --include="*.sh" --include="*.bash" --include="Makefile" --include="Dockerfile" . 2>/dev/null || echo "  None found") && \
+      echo "  Python: bare except, except pass, return None in except" && \
+      (grep -rn "except:$\|except .*:.*pass$\|except.*:.*return None" --include="*.py" . 2>/dev/null || echo "  None found") && \
+      echo "  TypeScript/JS: empty catch, catch return undefined" && \
+      (grep -rn "catch.*{.*}$\|catch.*return undefined\|catch.*return \[\]" --include="*.ts" --include="*.js" . 2>/dev/null || echo "  None found") && \
+      echo "" && \
+      echo "=== Zero-BS Verification Complete ==="
+    output: "zero_bs_check"
+
+  - id: "step-19d-verification-gate"
+    type: "bash"
+    command: |
+      echo "=== STEP 19 VERIFICATION GATE ===" && \
+      echo "" && \
+      echo "Before proceeding, verify ALL of the following:" && \
+      echo "" && \
+      echo "  ✓ Did I invoke the REVIEWER agent for philosophy check?" && \
+      echo "  ✓ Did I invoke the PATTERNS agent?" && \
+      echo "  ✓ Did I complete the zero-BS verification?" && \
+      echo "  ✓ Did I check for Forbidden Pattern violations?" && \
+      echo "  ✓ Are all findings documented?" && \
+      echo "  ✓ Any issues found have been addressed?" && \
+      echo "" && \
+      echo "Philosophy check: {{philosophy_check}}" && \
+      echo "Patterns check: {{patterns_check}}" && \
+      echo "" && \
+      echo "If any verification fails, STOP and complete the missing step." && \
+      echo "" && \
+      echo "=== GATE PASSED - Proceed to Step 20 ==="
+    output: "step_19_gate_status"
+
   # ==========================================================================
-  # STEP 19: FINAL CLEANUP AND VERIFICATION
+  # STEP 20: FINAL CLEANUP AND VERIFICATION
   # ==========================================================================
-  - id: "step-19-final-cleanup"
+  - id: "step-20-final-cleanup"
     agent: "amplihack:cleanup"
     prompt: |
       # Step 19: Final Cleanup and Verification
@@ -962,10 +1482,11 @@ steps:
       Final quality pass:
 
       1. Review all changes for philosophy compliance WITHIN user constraints
-      2. Remove temporary artifacts or test files (unless user wanted them)
-      3. Eliminate unnecessary complexity (without violating requirements)
-      4. Verify module boundaries remain clean
-      5. Ensure zero dead code or stub implementations
+      2. Review all changes for Forbidden Pattern violations (FORBIDDEN_PATTERNS.md)
+      3. Remove temporary artifacts or test files (unless user wanted them)
+      4. Eliminate unnecessary complexity (without violating requirements)
+      5. Verify module boundaries remain clean
+      6. Ensure zero dead code or stub implementations
 
       **PR Cleanliness Final Check:**
       - [ ] Full diff review - all changes intentional
@@ -977,11 +1498,10 @@ steps:
       **FINAL CHECK:** All explicit user requirements preserved.
     output: "final_cleanup"
 
-  - id: "step-19b-push-cleanup"
+  - id: "step-20b-push-cleanup"
     type: "bash"
-    condition: "'changes made' in final_cleanup or 'updated' in final_cleanup"
     command: |
-      cd "{{repo_path}}" && \
+      cd {{worktree_setup.worktree_path}} && \
       echo "=== Pushing Cleanup Changes ===" && \
       git add -A && \
       git diff --cached --quiet || (git commit -m "final cleanup pass" && git push) && \
@@ -989,22 +1509,94 @@ steps:
     output: "cleanup_push_result"
 
   # ==========================================================================
-  # STEP 20: CONVERT PR TO READY FOR REVIEW
+  # STEP 20c: QUALITY AUDIT LOOP
+  # Runs quality-audit-cycle: seek → multi-agent validate → fix → recurse.
+  # Minimum 3 iterations with escalating depth. Continues if >3 medium or
+  # any high/critical severity findings remain after cycle 3.
+  # Placed AFTER philosophy compliance and cleanup, BEFORE marking PR ready.
+  # Added per issues #2805, #2809, #2810.
+  # ==========================================================================
+  - id: "step-20c-quality-audit"
+    agent: "amplihack:core:reviewer"
+    prompt: |
+      # Step 20c: Quality Audit Loop
+
+      **Requirements:** {{final_requirements}}
+      **PR URL:** {{pr_url}}
+      **Repository:** {{repo_path}}
+
+      Run a comprehensive, iterative quality audit on all files changed in
+      this PR. This step follows the quality-audit-cycle recipe (v3.0).
+
+      NOTE: When recipe-in-recipe support is available (see issue #2821),
+      this step should use `type: "recipe"` with `recipe: "quality-audit-cycle"`.
+      Until then, execute the audit inline following these instructions.
+
+      ## Execution: Run 3+ Audit Cycles
+
+      For each cycle (minimum 3, maximum 6):
+
+      ### A. SEEK — Scan changed files for issues in 9 categories:
+      1. Security (hardcoded secrets, missing input validation)
+      2. Reliability (missing timeouts, bare except clauses)
+      3. Dead Code (unused imports, unreachable branches)
+      4. Test Gaps (files without tests, tests without assertions)
+      5. Doc Gaps (public functions without docstrings)
+      6. Silent Fallbacks (except:pass, broad catches returning defaults)
+      7. Error Swallowing (catch blocks with no logging/re-raise)
+      8. Structural Issues (files >500 LOC, functions >50 lines, nesting >4)
+      9. Documentation (point-in-time content, unprofessional tone like
+         pirate speak "fer"/"ye"/"arr", quality/correctness vs code)
+
+      Escalate depth each cycle: cycle 1 = broad scan, cycle 2 = deeper,
+      cycle 3+ = challenge assumptions, examine module interactions.
+
+      ### B. VALIDATE — For each finding, verify by reading actual code.
+      Deploy 3 independent validation perspectives:
+      - Technical merits check
+      - Skeptical verification (assume findings are wrong until proven)
+      - Adversarial review (look for reasons the finding is incorrect)
+      A finding is confirmed only if ≥2 perspectives agree.
+
+      ### C. FIX — Fix all confirmed findings:
+      1. Understand the finding and its context
+      2. Write or update tests that verify the fix
+      3. Implement the minimal fix
+      4. Run tests to verify nothing is broken
+
+      ### D. DECIDE — Continue or stop:
+      - Below cycle 3: always continue
+      - At cycle 3+: stop if ≤3 medium findings and no high/critical
+      - At cycle 6: always stop (safety valve)
+
+      ## After All Cycles: Self-Improvement
+
+      Step back and ask: "How else would you improve this code?"
+      Look for systemic issues, architectural improvements, and patterns
+      the audit missed. Fix any CRITICAL improvements found.
+
+      **Output:** "QUALITY AUDIT: CLEAN" if final cycle has no confirmed
+      findings, otherwise list remaining findings and fixes applied.
+    output: "quality_audit_results"
+
+  # ==========================================================================
+  # STEP 21: CONVERT PR TO READY FOR REVIEW
   # Convert draft PR to ready-for-review.
   # ==========================================================================
-  - id: "step-20-pr-ready"
+  - id: "step-21-pr-ready"
     type: "bash"
     command: |
-      cd "{{repo_path}}" && \
+      cd {{worktree_setup.worktree_path}} && \
       echo "=== Step 20: Converting PR to Ready ===" && \
       echo "" && \
       echo "--- Verifying All Steps Complete ---" && \
       echo "Philosophy check: {{philosophy_check}}" && \
       echo "Patterns check: {{patterns_check}}" && \
       echo "Cleanup: {{final_cleanup}}" && \
+      echo "Quality audit: {{quality_audit_results}}" && \
       echo "" && \
       echo "--- Converting PR to Ready ---" && \
-      gh pr ready 2>&1 | cat && \
+      gh pr ready && \
       echo "" && \
       echo "--- Adding Ready Comment ---" && \
       gh pr comment --body "## Ready for Final Review
@@ -1017,16 +1609,17 @@ steps:
       - [x] Code review addressed
       - [x] Philosophy compliance verified
       - [x] Final cleanup complete
+      - [x] Quality audit passed
 
-      Ready for merge approval." 2>&1 | cat && \
+      Ready for merge approval." && \
       echo "" && \
       echo "=== PR Marked Ready ==="
     output: "pr_ready_result"
 
   # ==========================================================================
-  # STEP 21: ENSURE PR IS MERGEABLE
+  # STEP 22: ENSURE PR IS MERGEABLE
   # ==========================================================================
-  - id: "step-21-ensure-mergeable"
+  - id: "step-22-ensure-mergeable"
     agent: "amplihack:ci-diagnostic-workflow"
     prompt: |
       # Step 21: Ensure PR is Mergeable (TASK COMPLETION POINT)
@@ -1054,20 +1647,25 @@ steps:
       Task is complete when this step passes.
     output: "ci_status"
 
-  - id: "step-21b-final-status"
+  - id: "step-22b-final-status"
     type: "bash"
     command: |
-      cd "{{repo_path}}" && \
+      cd {{repo_path}} && \
       echo "=== WORKFLOW COMPLETE ===" && \
       echo "" && \
       echo "PR Status:" && \
-      gh pr view --json state,mergeable,reviews,statusCheckRollup 2>&1 | cat && \
+      gh pr view --json state,mergeable,reviews,statusCheckRollup && \
       echo "" && \
-      echo "=== Task: {{task_description}} ===" && \
-      echo "=== Issue: #{{issue_number}} ===" && \
-      echo "=== PR: {{pr_url}} ===" && \
+      # FIX (#3045/#3076/#3117): unquoted heredoc — safe variable capture
+      TASK_DESC=$(cat <<EOFTASKDESC
+      {{task_description}}
+      EOFTASKDESC
+      ) && \
+      printf '=== Task: %s ===\n' "$TASK_DESC" && \
+      printf '=== Issue: #%s ===\n' {{issue_number}} && \
+      printf '=== PR: %s ===\n' {{pr_url}} && \
       echo "" && \
-      echo "All 22 workflow steps completed successfully."
+      echo "All 23 workflow steps completed successfully."
     output: "final_status"
 
   # ==========================================================================
@@ -1077,30 +1675,41 @@ steps:
     type: "bash"
     parse_json: true
     command: |
-      cat << 'EOF'
-      {
-        "workflow": "default-workflow",
-        "version": "2.0.0",
-        "task": "{{task_description}}",
-        "issue_number": "{{issue_number}}",
-        "pr_url": "{{pr_url}}",
-        "status": "complete",
-        "steps_completed": 22,
-        "phases_completed": [
-          "requirements-clarification",
-          "design",
-          "implementation",
-          "testing",
-          "review",
-          "merge"
-        ],
-        "mandatory_steps_completed": {
-          "step_0_preparation": true,
-          "step_16_pr_review": true,
-          "step_17_implement_feedback": true
-        },
-        "philosophy_compliant": true,
-        "ready_to_merge": true
-      }
-      EOF
+      # FIX (#3045/#3076/#3117): unquoted heredoc — safe variable capture
+      TASK_DESC=$(cat <<EOFTASKDESC
+      {{task_description}}
+      EOFTASKDESC
+      )
+      TASK_VAL=$(printf '%s' "$TASK_DESC")
+      export TASK_VAL
+      # {{issue_number}} and {{pr_url}} are system-generated integers/URLs —
+      # no user-controlled metacharacters possible; heredoc not required.
+      ISSUE_VAL=$(printf '%s' {{issue_number}})
+      export ISSUE_VAL
+      PR_VAL=$(printf '%s' {{pr_url}})
+      export PR_VAL
+      python3 << 'PYEOF'
+      import json, os
+      print(json.dumps({
+          "workflow": "default-workflow",
+          "version": "2.0.0",
+          "task": os.environ.get("TASK_VAL", ""),
+          "issue_number": os.environ.get("ISSUE_VAL", ""),
+          "pr_url": os.environ.get("PR_VAL", ""),
+          "status": "complete",
+          "steps_completed": 23,
+          "phases_completed": [
+              "requirements-clarification", "design", "implementation",
+              "testing", "review", "merge"
+          ],
+          "mandatory_steps_completed": {
+              "step_0_preparation": True,
+              "step_14_version_bump": True,
+              "step_17_pr_review": True,
+              "step_18_implement_feedback": True
+          },
+          "philosophy_compliant": True,
+          "ready_to_merge": True
+      }, indent=2))
+      PYEOF
     output: "workflow_result"

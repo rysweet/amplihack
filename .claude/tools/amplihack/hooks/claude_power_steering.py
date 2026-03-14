@@ -35,15 +35,37 @@ Philosophy:
 import asyncio
 import os
 import re
+import sys
+import uuid
 from pathlib import Path
 
-# Try to import Claude SDK
-try:
-    from claude_agent_sdk import ClaudeAgentOptions, query
+# Ensure hooks directory is importable for both package and standalone execution
+_hooks_dir = os.path.dirname(os.path.abspath(__file__))
+if _hooks_dir not in sys.path:
+    sys.path.insert(0, _hooks_dir)
 
-    CLAUDE_SDK_AVAILABLE = True
-except ImportError:
-    CLAUDE_SDK_AVAILABLE = False
+# Unset CLAUDECODE to prevent nested session errors when spawning Claude CLI subprocesses
+os.environ.pop("CLAUDECODE", None)
+
+# Ensure every process in this tree shares a stable tree ID.
+# setdefault is safe: if AMPLIHACK_TREE_ID was already exported by the parent
+# session (e.g. via session_tree.py register), we inherit it unchanged.
+os.environ.setdefault("AMPLIHACK_TREE_ID", uuid.uuid4().hex[:8])
+
+from power_steering_sdk import SDK_AVAILABLE as CLAUDE_SDK_AVAILABLE
+from power_steering_sdk import query_llm
+
+# Session tree spawn counter — limits tree-wide LLM calls to prevent runaway fan-out.
+# Fail-open: if session_tree is unavailable, all gates pass.
+try:
+    _tools_dir = str(Path(__file__).parent.parent.parent)
+    if _tools_dir not in sys.path:
+        sys.path.insert(0, _tools_dir)
+    from session_tree import increment_tree_spawn_count as _increment_tree_spawn_count
+
+    _SESSION_TREE_AVAILABLE = True
+except Exception:
+    _SESSION_TREE_AVAILABLE = False
 
 # Template paths (relative to this file)
 TEMPLATE_DIR = Path(__file__).parent / "templates"
@@ -51,6 +73,9 @@ POWER_STEERING_PROMPT_TEMPLATE = TEMPLATE_DIR / "power_steering_prompt.txt"
 
 # Security constants
 MAX_SDK_RESPONSE_LENGTH = 5000
+MAX_CONVERSATION_SUMMARY_LENGTH = (
+    512_000  # Max chars for SDK conversation context (1M token window)
+)
 SUSPICIOUS_PATTERNS = [
     r"<script",
     r"javascript:",
@@ -78,8 +103,30 @@ __all__ = [
     "analyze_claims_sync",
     "analyze_if_addressed_sync",
     "analyze_consideration_sync",
+    "analyze_workflow_invocation",
+    "analyze_workflow_invocation_sync",
     "CLAUDE_SDK_AVAILABLE",
 ]
+
+
+def _gate_spawn() -> bool:
+    """Increment the tree-wide spawn counter and return True if the call is allowed.
+
+    Returns False if the tree spawn cap has been reached (caller should return its
+    fail-open value without calling query_llm).  Returns True on any unexpected
+    error other than the cap — fail-open means we never block work due to bugs.
+
+    Catch order: RuntimeError (cap exceeded) must come before Exception (other errors).
+    """
+    if not _SESSION_TREE_AVAILABLE:
+        return True
+    try:
+        _increment_tree_spawn_count()
+        return True
+    except RuntimeError:
+        return False
+    except Exception:
+        return True
 
 
 def is_shutting_down() -> bool:
@@ -231,23 +278,9 @@ async def analyze_consideration(
         return (True, None)  # Fail-open on prompt formatting error
 
     try:
-        options = ClaudeAgentOptions(
-            cwd=str(project_root),
-        )
-
-        # Query Claude with timeout
-        response_parts = []
-        async with asyncio.timeout(CHECKER_TIMEOUT):
-            async for message in query(prompt=prompt, options=options):
-                if hasattr(message, "text"):
-                    response_parts.append(message.text)
-                elif hasattr(message, "content"):
-                    response_parts.append(str(message.content))
-
-        # Join all parts
-        response = "".join(response_parts)
-
-        # Sanitize HTML before processing
+        if not _gate_spawn():
+            return (True, None)
+        response = await query_llm(prompt, project_root)
         response = _sanitize_html(response)
 
         # Validate response before processing
@@ -312,13 +345,24 @@ def _format_consideration_prompt(consideration: dict, conversation: list[dict]) 
     # Format conversation summary
     conv_summary = _format_conversation_summary(conversation)
 
+    # Build the evaluation guidance section
+    guidance = consideration.get("guidance", "")
+    guidance_section = ""
+    if guidance:
+        guidance_section = f"""
+## Evaluation Guidance (specific to this consideration)
+
+{guidance}
+"""
+
     # Simple inline prompt (no template file needed for fail-open behavior)
-    prompt = f"""You are analyzing a Claude Code session to determine if the following consideration is satisfied:
+    # Issue #2561: Enhanced prompt to distinguish completion summaries from action items
+    prompt = f"""You are analyzing a Claude Code session to determine if the following consideration is satisfied.
 
 **Consideration**: {consideration["question"]}
 **Description**: {consideration.get("description", consideration.get("question", ""))}
 **Category**: {consideration.get("category", "General")}
-
+{guidance_section}
 **Session Conversation** ({len(conversation)} messages):
 {conv_summary}
 
@@ -326,14 +370,18 @@ def _format_consideration_prompt(consideration: dict, conversation: list[dict]) 
 
 Analyze the conversation and determine if this consideration is satisfied.
 
+**General principles:**
+- A message that SUMMARIZES what was accomplished (past tense) is a COMPLETION CONFIRMATION, not remaining work.
+- Only flag as NOT SATISFIED if there is concrete evidence the consideration was violated.
+- For small sessions (few edits, one-line fixes), lean toward SATISFIED if the core task appears done.
+- If the consideration is not applicable to this session, respond SATISFIED.
+
 **Respond with ONE of:**
 - "SATISFIED: [brief reason]" if the consideration is met
 - "NOT SATISFIED: [brief reason]" if the consideration is not met
 
-Be direct and specific. Reference actual events from the conversation.
-Focus on evidence - what tools were used, what actions were taken, what the user and assistant discussed.
-
-If the consideration is not applicable to this session (e.g., no relevant work was done), respond with SATISFIED.
+Your response MUST start with either "SATISFIED:" or "NOT SATISFIED:".
+Be direct. Reference actual evidence from the conversation.
 """
 
     return prompt
@@ -346,7 +394,7 @@ def _extract_reason_from_response(response: str) -> str | None:
         response: Full SDK response text
 
     Returns:
-        Extracted reason string (truncated to 200 chars), or generic fallback
+        Full extracted reason string, or generic fallback
 
     Note:
         Looks for patterns like "NOT SATISFIED: reason" or "UNSATISFIED: reason"
@@ -414,19 +462,21 @@ def _log_sdk_error(consideration_id: str, error: Exception) -> None:
     sys.stderr.flush()
 
 
-def _format_conversation_summary(conversation: list[dict], max_length: int | None = None) -> str:
+def _format_conversation_summary(
+    conversation: list[dict], max_length: int = MAX_CONVERSATION_SUMMARY_LENGTH
+) -> str:
     """Format conversation summary for analysis.
 
     Args:
         conversation: List of message dicts
-        max_length: Optional maximum summary length (None = unlimited, includes all messages)
+        max_length: Maximum summary length in characters (default: 50000 to prevent oversized prompts)
 
     Returns:
         Formatted conversation summary
 
     Note:
-        All messages in the conversation are included in the analysis unless max_length is specified.
-        Individual messages longer than 500 chars are truncated for readability.
+        Individual messages longer than 500 chars are truncated for readability. The summary
+        is truncated at max_length characters to prevent oversized SDK prompts.
     """
     summary_parts = []
     current_length = 0
@@ -474,7 +524,7 @@ def _format_conversation_summary(conversation: list[dict], max_length: int | Non
         msg_summary = f"\n**Message {i + 1} ({role}):** {content_text}\n"
 
         # Only check length limit if max_length is specified
-        if max_length is not None and current_length + len(msg_summary) > max_length:
+        if current_length + len(msg_summary) > max_length:
             truncation_indicator = f"\n[... {len(conversation) - i} more messages ...]"
             # Only add truncation indicator if we have room for it
             if current_length + len(truncation_indicator) <= max_length:
@@ -538,19 +588,9 @@ Example bad guidance:
 Be direct and specific."""
 
     try:
-        options = ClaudeAgentOptions(
-            cwd=str(project_root),
-        )
-
-        response_parts = []
-        async with asyncio.timeout(CHECKER_TIMEOUT):
-            async for message in query(prompt=prompt, options=options):
-                if hasattr(message, "text"):
-                    response_parts.append(message.text)
-                elif hasattr(message, "content"):
-                    response_parts.append(str(message.content))
-
-        guidance = "".join(response_parts).strip()
+        if not _gate_spawn():
+            return _generate_template_guidance(failed_checks)
+        guidance = (await query_llm(prompt, project_root)).strip()
 
         # Sanitize HTML before processing
         guidance = _sanitize_html(guidance)
@@ -633,19 +673,9 @@ If no completion claims are found, respond with: []
 Be specific - only include actual claims about completion, not general discussion."""
 
     try:
-        options = ClaudeAgentOptions(
-            cwd=str(project_root),
-        )
-
-        response_parts = []
-        async with asyncio.timeout(CHECKER_TIMEOUT):
-            async for message in query(prompt=prompt, options=options):
-                if hasattr(message, "text"):
-                    response_parts.append(message.text)
-                elif hasattr(message, "content"):
-                    response_parts.append(str(message.content))
-
-        response = "".join(response_parts).strip()
+        if not _gate_spawn():
+            return []
+        response = (await query_llm(prompt, project_root)).strip()
 
         # Validate response before parsing
         if not _validate_sdk_response(response):
@@ -748,19 +778,9 @@ Look for:
 Be conservative - only say ADDRESSED if there is clear evidence in the new content."""
 
     try:
-        options = ClaudeAgentOptions(
-            cwd=str(project_root),
-        )
-
-        response_parts = []
-        async with asyncio.timeout(CHECKER_TIMEOUT):
-            async for message in query(prompt=prompt, options=options):
-                if hasattr(message, "text"):
-                    response_parts.append(message.text)
-                elif hasattr(message, "content"):
-                    response_parts.append(str(message.content))
-
-        response = "".join(response_parts).strip()
+        if not _gate_spawn():
+            return None
+        response = (await query_llm(prompt, project_root)).strip()
 
         # Sanitize HTML before processing
         response = _sanitize_html(response)
@@ -932,6 +952,164 @@ def analyze_consideration_sync(
 
     try:
         return asyncio.run(analyze_consideration(conversation, consideration, project_root))
+    except Exception:
+        return (True, None)  # Fail-open on any error
+
+
+async def analyze_workflow_invocation(
+    conversation: list[dict], session_type: str, project_root: Path
+) -> tuple[bool, str | None]:
+    """Use Claude SDK to analyze if workflow was properly invoked.
+
+    Context-aware analysis that understands multiple valid invocation patterns:
+    - Explicit Skill tool invocation (Skill("default-workflow"))
+    - Explicit Read tool invocation (Read(.claude/workflow/DEFAULT_WORKFLOW.md))
+    - Implicit step-by-step workflow following (shows systematic approach)
+    - Async completion (PR created for review, CI running)
+
+    Args:
+        conversation: Session messages (list of dicts)
+        session_type: Session type (DEVELOPMENT, INVESTIGATION, etc.)
+        project_root: Project root directory
+
+    Returns:
+        Tuple of (valid, reason):
+        - valid: True if workflow properly invoked or not required
+        - reason: String explanation if invalid, None if valid
+        (Fail-open: returns (True, None) on SDK unavailable or errors)
+
+    Note:
+        Only validates DEVELOPMENT and INVESTIGATION sessions.
+        Other session types return (True, None) immediately.
+    """
+    if not CLAUDE_SDK_AVAILABLE:
+        return (True, None)  # Fail-open if SDK unavailable
+
+    # Only validate DEVELOPMENT and INVESTIGATION sessions
+    if session_type not in ("DEVELOPMENT", "INVESTIGATION"):
+        return (True, None)
+
+    # Format conversation summary
+    conv_summary = _format_conversation_summary(conversation)
+
+    # Context-aware prompt that understands multiple valid patterns
+    prompt = f"""Analyze if the workflow was properly invoked in this session.
+
+**Session Type**: {session_type}
+
+**Session Conversation** ({len(conversation)} messages):
+{conv_summary}
+
+## Your Task
+
+Determine if the appropriate workflow was properly invoked. A workflow is INVOKED if ANY of these patterns are present:
+
+1. **Explicit Skill tool invocation**: Skill(skill="default-workflow") or Skill(skill="investigation-workflow")
+2. **Explicit Read tool invocation**: Read(.claude/workflow/DEFAULT_WORKFLOW.md) or INVESTIGATION_WORKFLOW.md
+3. **Implicit workflow following**: Claude systematically follows workflow steps (shows step-by-step execution)
+4. **Async completion pattern**: PR created for review with CI running (workflow continues asynchronously)
+
+**IMPORTANT**: Only flag as NOT INVOKED if there is NO evidence of ANY systematic workflow approach.
+
+**Respond with ONE of:**
+- "INVOKED: [brief evidence of which pattern was used]" if workflow was properly invoked
+- "NOT INVOKED: [brief reason]" if no workflow approach was used
+
+Be conservative - default to INVOKED unless there is clear evidence of ad-hoc work without systematic approach.
+"""
+
+    try:
+        if not _gate_spawn():
+            return (True, None)
+        response = await query_llm(prompt, project_root)
+
+        # Sanitize HTML before processing
+        response = _sanitize_html(response)
+
+        # Validate response before processing
+        if not _validate_sdk_response(response):
+            # Security validation failed - fail-open (assume valid)
+            return (True, None)
+
+        response_stripped = response.lstrip()
+        response_lower = response_stripped.lower()
+
+        # Check for NOT INVOKED indicator first to avoid matching "invoked" in "not invoked"
+        if response_lower.startswith("not invoked:") or response_lower.startswith("not invoked"):
+            # Extract reason from response
+            idx = response_lower.find("not invoked:")
+            if idx != -1:
+                reason = response_stripped[idx + 12 :].strip()
+                # Clean up and truncate
+                if reason and len(reason) > 10:
+                    return (False, reason[:200])
+            return (False, "Workflow not properly invoked")
+
+        # Check for INVOKED indicator
+        if response_lower.startswith("invoked:") or response_lower.startswith("invoked"):
+            return (True, None)
+
+        # Ambiguous response - fail-open (assume valid)
+        return (True, None)
+
+    except Exception as e:
+        # Log error and fail-open on any error
+        _log_sdk_error("workflow_invocation", e)
+        return (True, None)
+
+
+def analyze_workflow_invocation_sync(
+    conversation: list[dict], session_type: str, project_root: Path
+) -> tuple[bool, str | None]:
+    """Synchronous wrapper for analyze_workflow_invocation with shutdown detection.
+
+    During shutdown, returns (True, None) immediately to prevent asyncio hang.
+    Otherwise, runs async analysis to check if workflow was properly invoked.
+
+    Args:
+        conversation: Session messages
+        session_type: Session type (DEVELOPMENT, INVESTIGATION, etc.)
+        project_root: Project root
+
+    Returns:
+        Tuple of (valid, reason):
+        - valid: True if workflow properly invoked or not required
+        - reason: String explanation if invalid, None if valid
+        Returns (True, None) during shutdown
+
+    Shutdown Behavior:
+        When AMPLIHACK_SHUTDOWN_IN_PROGRESS=1, immediately returns (True, None)
+        without starting async operation. This prevents asyncio event loop hangs
+        during application teardown.
+
+        Fail-open philosophy: Assumes workflow is valid during shutdown
+        to never block the user from exiting.
+
+    Example:
+        >>> # Normal operation - runs full analysis
+        >>> conversation = [{"role": "user", "content": "Implement feature"}]
+        >>> valid, reason = analyze_workflow_invocation_sync(
+        ...     conversation, "DEVELOPMENT", Path.cwd()
+        ... )
+        >>> isinstance(valid, bool)
+        True
+
+        >>> # During shutdown - returns valid immediately
+        >>> os.environ["AMPLIHACK_SHUTDOWN_IN_PROGRESS"] = "1"
+        >>> valid, reason = analyze_workflow_invocation_sync(
+        ...     conversation, "DEVELOPMENT", Path.cwd()
+        ... )
+        >>> valid
+        True
+        >>> reason is None
+        True
+    """
+    # Shutdown check: bypass async operation during teardown
+    if is_shutting_down():
+        return (True, None)  # Fail-open: assume valid during shutdown
+
+    try:
+        return asyncio.run(analyze_workflow_invocation(conversation, session_type, project_root))
     except Exception:
         return (True, None)  # Fail-open on any error
 

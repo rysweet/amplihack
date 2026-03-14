@@ -1,5 +1,5 @@
 ---
-name: amplihack:reflect
+name: reflect
 version: 1.0.0
 description: Reflection and meta-cognitive analysis of sessions
 triggers:

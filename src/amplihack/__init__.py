@@ -15,7 +15,48 @@ Public API:
 """
 
 import os
+import sys
 from pathlib import Path
+
+# Read version from installed package metadata
+try:
+    from importlib.metadata import PackageNotFoundError, version
+except ImportError:
+    # Python < 3.8 (shouldn't happen, but graceful fallback)
+    print("WARNING: importlib.metadata not available", file=sys.stderr)
+    version = None  # type: ignore
+    PackageNotFoundError = Exception  # type: ignore
+
+if version:
+    try:
+        __version__ = version("amplihack")
+    except PackageNotFoundError:
+        # Fallback for development (not installed)
+        try:
+            import tomllib  # Python 3.11+
+        except ImportError:
+            print("WARNING: tomllib not available, trying tomli", file=sys.stderr)
+            try:
+                import tomli as tomllib  # type: ignore
+            except ImportError:
+                print(
+                    "WARNING: tomli not available, version detection from pyproject.toml disabled",
+                    file=sys.stderr,
+                )
+                tomllib = None  # type: ignore
+
+        if tomllib:
+            _pyproject_path = Path(__file__).parent.parent.parent / "pyproject.toml"
+            if _pyproject_path.exists():
+                with open(_pyproject_path, "rb") as f:
+                    _pyproject = tomllib.load(f)
+                    __version__ = _pyproject["project"]["version"]
+            else:
+                __version__ = "unknown"
+        else:
+            __version__ = "unknown"
+else:
+    __version__ = "unknown"
 
 # Core constants
 HOME = str(Path.home())
@@ -27,6 +68,7 @@ MANIFEST_JSON = os.path.join(CLAUDE_DIR, "install", "amplihack-manifest.json")
 
 # Essential directories that must be copied during installation
 ESSENTIAL_DIRS = [
+    "bin",  # Staged Rust binaries (amplihack, amplihack-hooks)
     "agents/amplihack",  # Specialized agents
     "commands/amplihack",  # Slash commands
     "tools/amplihack",  # Hooks and utilities
@@ -58,11 +100,15 @@ RUNTIME_DIRS = [
 ]
 
 # Hook configurations for amplihack and xpia systems
+# MUST match hooks.json - hooks.json is the canonical source of truth
 HOOK_CONFIGS = {
     "amplihack": [
         {"type": "SessionStart", "file": "session_start.py", "timeout": 10},
         {"type": "Stop", "file": "stop.py", "timeout": 120},
+        {"type": "PreToolUse", "file": "pre_tool_use.py", "matcher": "*"},
         {"type": "PostToolUse", "file": "post_tool_use.py", "matcher": "*"},
+        {"type": "UserPromptSubmit", "file": "user_prompt_submit.py", "timeout": 10},
+        {"type": "UserPromptSubmit", "file": "workflow_classification_reminder.py", "timeout": 5},
         {"type": "PreCompact", "file": "pre_compact.py", "timeout": 30},
     ],
     "xpia": [
@@ -70,6 +116,20 @@ HOOK_CONFIGS = {
         {"type": "PostToolUse", "file": "post_tool_use.py", "matcher": "*"},
         {"type": "PreToolUse", "file": "pre_tool_use.py", "matcher": "*"},
     ],
+}
+
+# Maps Python hook filenames to Rust multicall subcommands (amplihack-hooks <subcommand>).
+# Hooks NOT in this map (e.g., workflow_classification_reminder.py) always use Python.
+RUST_HOOK_MAP = {
+    "session_start.py": "session-start",
+    "stop.py": "stop",
+    # session_stop.py is used only in Copilot launcher wrappers (stage_hooks),
+    # not in Claude Code's HOOK_CONFIGS. Included here for Copilot rust engine path.
+    "session_stop.py": "session-stop",
+    "pre_tool_use.py": "pre-tool-use",
+    "post_tool_use.py": "post-tool-use",
+    "user_prompt_submit.py": "user-prompt-submit",
+    "pre_compact.py": "pre-compact",
 }
 
 # Import from focused modules
@@ -101,12 +161,22 @@ def filecmp(f1, f2):
             return False
         with open(f1, "rb") as file1, open(f2, "rb") as file2:
             return file1.read() == file2.read()
-    except Exception:
+    except Exception as e:
+        import logging
+
+        logging.getLogger(__name__).debug(f"File comparison failed for {f1}: {type(e).__name__}")
         return False
 
 
 def main():
     """Main CLI entry point."""
+    # Ensure dependencies are installed at CLI startup (not import time)
+    from .copilot_auto_install import ensure_copilot_sdk_installed
+    from .memory_auto_install import ensure_memory_lib_installed
+
+    ensure_memory_lib_installed()
+    ensure_copilot_sdk_installed()
+
     # Import and use the enhanced CLI
     from .cli import main as cli_main
 
@@ -115,6 +185,8 @@ def main():
 
 # Public API
 __all__ = [
+    # Version
+    "__version__",
     # Constants
     "HOME",
     "CLAUDE_DIR",

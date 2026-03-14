@@ -1,0 +1,45 @@
+# CLI Command Test - init
+# Auto-generated outside-in test scenario
+
+scenario:
+  name: "CLI Command - cli.py init"
+  description: |
+    Verifies that the 'init' command works correctly with valid arguments,
+    produces expected output, and handles basic error cases.
+  type: cli
+  level: 1
+  tags: [cli, command, init, auto-generated]
+
+  prerequisites:
+    - "src/amplihack/cli.py binary exists and is executable"
+
+  steps:
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["init"]
+      description: "Run init with valid arguments"
+      timeout: 15s
+
+    - action: verify_output
+      matches: "(.+)"
+      timeout: 10s
+      description: "Command should produce expected output"
+
+    - action: verify_exit_code
+      expected: 0
+      description: "Command should succeed with valid args"
+
+    - action: launch
+      target: "src/amplihack/cli.py"
+      args: ["init", "--project-root"]
+      description: "Run init with --project-root flag"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "Command with flag should succeed"
+
+  cleanup:
+    - action: stop_application
+      force: true
+      description: "Ensure process is terminated"

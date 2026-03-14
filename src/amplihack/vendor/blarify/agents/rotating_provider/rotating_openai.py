@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from blarify.agents.api_key_manager import APIKeyManager
-from blarify.agents.rotating_provider.rotating_providers import ErrorType, RotatingProviderBase
+from amplihack.vendor.blarify.agents.api_key_manager import APIKeyManager
+from amplihack.vendor.blarify.agents.rotating_provider.rotating_providers import ErrorType, RotatingProviderBase
 from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
 

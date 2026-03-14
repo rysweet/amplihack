@@ -17,6 +17,10 @@ import tempfile
 from datetime import datetime
 from unittest.mock import Mock, patch
 
+import pytest
+
+pytest.importorskip("kuzu")
+
 from src.amplihack.memory.models import MemoryEntry, MemoryType
 
 
@@ -54,7 +58,7 @@ class TestAutoLinkingBasics:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db", enable_auto_linking=True)
-            backend.initialize()
+            backend._initialize_sync()
 
             memory = MemoryEntry(
                 id="test-1",
@@ -71,7 +75,7 @@ class TestAutoLinkingBasics:
             mock_conn.execute.reset_mock()
             mock_conn.execute.side_effect = execute_side_effect
 
-            result = backend.store_memory(memory)
+            result = backend._store_memory_sync(memory)
 
             assert result is True, "store_memory() failed"
 
@@ -117,7 +121,7 @@ class TestAutoLinkingBasics:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db", enable_auto_linking=True)
-            backend.initialize()
+            backend._initialize_sync()
 
             memory = MemoryEntry(
                 id="test-2",
@@ -134,7 +138,7 @@ class TestAutoLinkingBasics:
             mock_conn.execute.reset_mock()
             mock_conn.execute.side_effect = execute_side_effect
 
-            result = backend.store_memory(memory)
+            result = backend._store_memory_sync(memory)
 
             assert result is True, "store_memory() failed"
 
@@ -161,7 +165,7 @@ class TestAutoLinkingBasics:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db", enable_auto_linking=False)
-            backend.initialize()
+            backend._initialize_sync()
 
             memory = MemoryEntry(
                 id="test-3",
@@ -176,7 +180,7 @@ class TestAutoLinkingBasics:
             )
 
             mock_conn.execute.reset_mock()
-            result = backend.store_memory(memory)
+            result = backend._store_memory_sync(memory)
 
             assert result is True, "store_memory() failed"
 
@@ -219,7 +223,7 @@ class TestAutoLinkingRelevanceScoring:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             memory = MemoryEntry(
                 id="test-4",
@@ -235,7 +239,7 @@ class TestAutoLinkingRelevanceScoring:
 
             mock_conn.execute.reset_mock()
             mock_conn.execute.side_effect = execute_side_effect
-            backend.store_memory(memory)
+            backend._store_memory_sync(memory)
 
             # Find CREATE statement for file link
             calls = [str(call) for call in mock_conn.execute.call_args_list]
@@ -274,7 +278,7 @@ class TestAutoLinkingRelevanceScoring:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             memory = MemoryEntry(
                 id="test-5",
@@ -290,7 +294,7 @@ class TestAutoLinkingRelevanceScoring:
 
             mock_conn.execute.reset_mock()
             mock_conn.execute.side_effect = execute_side_effect
-            backend.store_memory(memory)
+            backend._store_memory_sync(memory)
 
             # Find CREATE statement for function link
             calls = [str(call) for call in mock_conn.execute.call_args_list]
@@ -344,7 +348,7 @@ class TestAutoLinkingDeduplication:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             memory = MemoryEntry(
                 id="test-6",
@@ -361,7 +365,7 @@ class TestAutoLinkingDeduplication:
             # First storage - should create link
             mock_conn.execute.reset_mock()
             mock_conn.execute.side_effect = execute_side_effect
-            backend.store_memory(memory)
+            backend._store_memory_sync(memory)
 
             first_calls = [str(c) for c in mock_conn.execute.call_args_list]
             first_creates = [
@@ -372,7 +376,7 @@ class TestAutoLinkingDeduplication:
             # Second storage - should NOT create duplicate
             mock_conn.execute.reset_mock()
             mock_conn.execute.side_effect = execute_side_effect
-            backend.store_memory(memory)
+            backend._store_memory_sync(memory)
 
             second_calls = [str(c) for c in mock_conn.execute.call_args_list]
             second_creates = [
@@ -412,7 +416,7 @@ class TestAutoLinkingContextMetadata:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             memory = MemoryEntry(
                 id="test-7",
@@ -428,7 +432,7 @@ class TestAutoLinkingContextMetadata:
 
             mock_conn.execute.reset_mock()
             mock_conn.execute.side_effect = execute_side_effect
-            backend.store_memory(memory)
+            backend._store_memory_sync(memory)
 
             calls = [str(c) for c in mock_conn.execute.call_args_list]
             create_calls = [c for c in calls if "RELATES_TO_FILE" in str(c) and "CREATE" in str(c)]
@@ -465,7 +469,7 @@ class TestAutoLinkingContextMetadata:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             memory = MemoryEntry(
                 id="test-8",
@@ -481,7 +485,7 @@ class TestAutoLinkingContextMetadata:
 
             mock_conn.execute.reset_mock()
             mock_conn.execute.side_effect = execute_side_effect
-            backend.store_memory(memory)
+            backend._store_memory_sync(memory)
 
             calls = [str(c) for c in mock_conn.execute.call_args_list]
             create_calls = [
@@ -522,7 +526,7 @@ class TestAutoLinkingErrorHandling:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             memory = MemoryEntry(
                 id="test-9",
@@ -537,7 +541,7 @@ class TestAutoLinkingErrorHandling:
             )
 
             # Should succeed despite linking failure
-            result = backend.store_memory(memory)
+            result = backend._store_memory_sync(memory)
             assert result is True, "Memory storage failed when linking failed"
 
 
@@ -563,7 +567,7 @@ class TestAutoLinkingPerformance:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            backend.initialize()
+            backend._initialize_sync()
 
             memory = MemoryEntry(
                 id="test-10",
@@ -580,7 +584,7 @@ class TestAutoLinkingPerformance:
             mock_conn.execute.reset_mock()
 
             start = time.time()
-            backend.store_memory(memory)
+            backend._store_memory_sync(memory)
             elapsed = time.time() - start
 
             # Should complete in <100ms (mostly mock overhead)

@@ -30,9 +30,11 @@ SOFTWARE.
 """
 
 from enum import Enum, IntEnum, IntFlag
-from typing import Literal, NotRequired, Union
+from typing import Literal, Union
 
 from typing_extensions import TypedDict
+
+from typing_extensions import NotRequired  # Python 3.10 compatibility
 
 URI = str
 DocumentUri = str

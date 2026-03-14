@@ -885,3 +885,75 @@ def assert_subprocess_success(result):
         f"Stdout: {result.stdout}\n"
         f"Stderr: {result.stderr}"
     )
+
+
+# =============================================================================
+# Recipe CLI Test Fixtures
+# =============================================================================
+
+
+@pytest.fixture
+def recipe_dir(tmp_path: Path) -> Path:
+    """Create a temporary directory with test recipe YAML files.
+
+    Provides recipe files for testing:
+    - simple.yaml: Basic recipe with bash and agent steps
+    - agent.yaml: Recipe with agent steps
+    - invalid.yaml: Recipe with invalid YAML syntax
+
+    Args:
+        tmp_path: pytest tmp_path fixture
+
+    Returns:
+        Path to directory containing test recipe files
+    """
+    recipe_dir = tmp_path / "recipes"
+    recipe_dir.mkdir()
+
+    # Create simple.yaml - basic recipe for most tests
+    simple_yaml = recipe_dir / "simple.yaml"
+    simple_yaml.write_text("""name: simple-test
+description: A simple test recipe
+version: 1.0.0
+author: Test Author
+tags:
+  - test
+  - simple
+
+context:
+  greeting: hello
+
+steps:
+  - id: hello
+    type: bash
+    command: echo '{{greeting}}'
+    output: result
+""")
+
+    # Create agent.yaml - recipe with agent steps
+    agent_yaml = recipe_dir / "agent.yaml"
+    agent_yaml.write_text("""name: agent-test
+description: Recipe with agent steps
+version: 1.0.0
+tags:
+  - test
+  - agent
+
+steps:
+  - id: agent-step
+    agent: amplihack:builder
+    prompt: Build something
+    output: result
+""")
+
+    # Create invalid.yaml - invalid YAML for error tests
+    invalid_yaml = recipe_dir / "invalid.yaml"
+    invalid_yaml.write_text("""name: invalid
+description: Invalid recipe
+steps:
+  - id: bad
+    type: bash
+    # Missing required 'command' field
+""")
+
+    return recipe_dir

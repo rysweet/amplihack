@@ -4,6 +4,8 @@
 **Date**: 2025-11-03
 **Version**: 1.0
 
+> **See also**: [CognitiveMemory (6-type)](../amplihack-memory-lib/README.md) - The newer 6-type cognitive memory system (sensory, working, episodic, semantic, procedural, prospective) backed by Kuzu graph database. Added in amplihack-memory-lib v0.2.0 (#2574).
+
 ## Overview
 
 The agent memory integration enables amplihack agents to learn from past experiences and share knowledge across agent instances. This system:

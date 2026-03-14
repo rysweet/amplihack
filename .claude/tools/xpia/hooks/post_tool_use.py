@@ -21,7 +21,10 @@ for parent in current.parents:
         project_root = parent
         break
 if project_root is None:
-    raise ImportError("Could not locate project root - missing .claude directory")
+    # Not in an amplihack project context (e.g. running from global settings).
+    # Fail-open: exit cleanly so Claude Code doesn't report a hook error.
+    print(json.dumps({}))
+    sys.exit(0)
 sys.path.insert(0, str(project_root / "src"))
 sys.path.insert(0, str(project_root / "Specs"))
 
@@ -38,9 +41,9 @@ def log_security_event(event_type: str, data: dict) -> None:
     try:
         with open(log_file, "a") as f:
             f.write(json.dumps(log_entry) + "\n")
-    except Exception:
+    except Exception as e:
         # Don't fail post-processing if logging fails
-        pass
+        print(f"[xpia] Security event logging failed (non-fatal): {e}", file=sys.stderr)
 
 
 def analyze_command_output(command: str, output: str, error: str) -> dict[str, Any]:

@@ -3,11 +3,38 @@
 # if the AMPLIHACK_INSTALL_LOCATION variable is not set, default to https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding
 AMPLIHACK_INSTALL_LOCATION=${AMPLIHACK_INSTALL_LOCATION:-https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding}
 
+# Validate install URL is from a trusted GitHub org/repo
+ALLOWED_ORGS="rysweet|microsoft"
+if ! echo "$AMPLIHACK_INSTALL_LOCATION" | grep -qE "^https://github\.com/($ALLOWED_ORGS)/"; then
+  echo "ERROR: AMPLIHACK_INSTALL_LOCATION is not a trusted repository URL."
+  echo "  Got: $AMPLIHACK_INSTALL_LOCATION"
+  echo "  Allowed: https://github.com/{$ALLOWED_ORGS}/*"
+  echo ""
+  echo "If this is intentional, unset the variable to use the default:"
+  echo "  unset AMPLIHACK_INSTALL_LOCATION"
+  exit 1
+fi
+
 # clone the repository to a tmp local directory
 # make sure the dir does not exist first - exit if it does
 if [ -d "./tmpamplihack" ]; then
   echo "Error: ./tmpamplihack directory already exists. Please remove it and try again."
   exit 1
+fi
+
+# Ensure tmux is installed (required for recipe runner execution)
+if ! command -v tmux &>/dev/null; then
+  echo "tmux not found — installing (required for recipe runner)..."
+  if command -v apt-get &>/dev/null; then
+    sudo apt-get install -y tmux 2>/dev/null || echo "Warning: could not install tmux. Install manually: sudo apt-get install tmux"
+  elif command -v brew &>/dev/null; then
+    brew install tmux 2>/dev/null || echo "Warning: could not install tmux. Install manually: brew install tmux"
+  elif command -v dnf &>/dev/null; then
+    sudo dnf install -y tmux 2>/dev/null || echo "Warning: could not install tmux. Install manually: sudo dnf install tmux"
+  else
+    echo "Warning: tmux not found and no supported package manager detected."
+    echo "Install tmux manually — it is required for recipe runner execution."
+  fi
 fi
 
 echo "Cloning amplihack from $AMPLIHACK_INSTALL_LOCATION..."

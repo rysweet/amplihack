@@ -31,6 +31,7 @@ htmlcov/
 **/.metadata/versions.json
 
 # Project specific
+.pm/
 .test_state.json
 .requirements_extraction_state.json
 test_requirements*.md
@@ -54,6 +55,17 @@ build/
 dist/
 *.egg-info/
 .eggs/
+
+# Build artifacts copied by build_hooks.py (canonical sources are at repo root)
+src/amplihack/.claude/
+src/amplihack/amplifier-bundle/
+src/amplihack/.claude-plugin/
+src/amplihack/.github/
+src/amplihack/agents/
+src/amplihack/commands/
+src/amplihack/skills/
+src/amplihack/CLAUDE.md
+src/amplihack/AMPLIHACK.md
 
 # MkDocs
 site/
@@ -147,6 +159,13 @@ AGENTS.md
 *.env.litellm
 amplihack_litellm_proxy.env
 
+# Blarify/SCIP indexing artifacts
+index.scip
+.amplihack/kuzu_db
+.amplihack/kuzu_db.wal
+.amplihack/.blarify_jobs/
+empty-env.json
+
 # Common credential files
 credentials.json
 **/credentials.json
@@ -162,6 +181,7 @@ secrets.yml
 # Git worktrees (keep README.md only)
 worktrees/*
 !worktrees/README.md
+.claude/worktrees/
 wave16-dedup/
 wave17-dedup/
 wave*-dedup/
@@ -169,3 +189,28 @@ wave*-dedup/
 
 # Amplihack runtime directories (auto-generated)
 .claude/logs/
+
+# Point-in-time review documents (should not be committed)
+REVIEW_*.md
+AUTO_VERSION_CODE_REVIEW.md
+*_validation_*/
+
+# Ephemeral test scripts and build artifacts
+test-worktree-isolation.sh
+target/
+outputs/
+Specs/COMPLETE_SESSION_DOCUMENTATION.md
+Specs/INTENSIVE_MEMORY_EVAL_DESIGN.md
+Specs/MATRIX_EVAL_REPORT.md
+eval_data/
+debug_eval/
+
+# Eval results and generated agent artifacts (auto-generated outputs)
+eval_results.json
+*_eval_results/
+*_results/
+eval_progressive_example/
+generated-agents/
+
+# Rust recipe runner repo checkout
+amplihack-recipe-runner-rs/

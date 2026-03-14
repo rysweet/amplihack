@@ -86,9 +86,10 @@ def copytree_manifest(
         # Create parent directories if needed
         os.makedirs(os.path.dirname(target_dir), exist_ok=True)
 
-        # Remove existing target if it exists
-        if os.path.exists(target_dir):
-            shutil.rmtree(target_dir)
+        # Sync in-place using dirs_exist_ok=True instead of rmtree+copytree.
+        # This avoids concurrent-process races on the shared staging dir
+        # (see issue #2567) and is safe because copytree with dirs_exist_ok
+        # overwrites existing files while preserving the directory structure.
 
         # Copy the directory with optional file filtering
         try:
@@ -269,9 +270,10 @@ def get_all_files_and_dirs(root_dirs: list[str]) -> tuple[list[str], list[str]]:
 
 def write_manifest(files: list[str], dirs: list[str]) -> None:
     """Write manifest file with list of files and directories."""
+    from .settings import write_json_atomic
+
     os.makedirs(os.path.dirname(MANIFEST_JSON), exist_ok=True)
-    with open(MANIFEST_JSON, "w", encoding="utf-8") as f:
-        json.dump({"files": files, "dirs": dirs}, f, indent=2)
+    write_json_atomic(MANIFEST_JSON, {"files": files, "dirs": dirs})
 
 
 def _local_install(repo_root, profile_uri=None):
@@ -328,8 +330,8 @@ def _local_install(repo_root, profile_uri=None):
             sys.path.insert(0, profile_mgmt_dir)
 
         # Now import staging module (from tools/amplihack/)
-        from profile_management.staging import (
-            create_staging_manifest,  # type: ignore[import-not-found]
+        from profile_management.staging import (  # type: ignore[import-not-found]
+            create_staging_manifest,  # pyright: ignore[reportMissingImports]
         )
 
         manifest = create_staging_manifest(ESSENTIAL_DIRS, profile_uri)
@@ -402,6 +404,23 @@ def _local_install(repo_root, profile_uri=None):
     from .hook_verification import verify_hooks  # type: ignore[attr-defined]
 
     hooks_ok = verify_hooks()
+
+    # Step 6.5: Ensure Rust recipe runner binary
+    print("\n🦀 Ensuring Rust recipe runner:")
+    try:
+        from .recipes.rust_runner import ensure_rust_recipe_runner
+
+        if ensure_rust_recipe_runner():
+            print("   ✅ recipe-runner-rs is available")
+        else:
+            print("   ❌ recipe-runner-rs not installed (recipe execution will fail without it)")
+            print("   Install: cargo install --git https://github.com/rysweet/amplihack-recipe-runner")
+    except Exception as e:
+        print(f"   ⚠️  recipe-runner-rs check failed: {e}")
+        import logging as _install_logging
+        _install_logging.getLogger(__name__).warning(
+            "Could not ensure recipe-runner-rs: %s", e, exc_info=True,
+        )
 
     # Step 7: Generate manifest for uninstall
     print("\n📝 Generating uninstall manifest:")

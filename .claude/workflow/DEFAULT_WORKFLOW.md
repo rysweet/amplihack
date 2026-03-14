@@ -154,6 +154,7 @@ Step 5: Research and Design - Use architect agent for solution design
 Step 16: Review the PR - MANDATORY code review
 Step 17: Implement Review Feedback - MANDATORY
 Step 19: Outside-In Testing in Real Environment - MANDATORY
+Step 20c: Quality Audit Loop (3+ cycles, multi-agent validation)
 ...
 Step 22: Ensure PR is Mergeable - TASK COMPLETION POINT
 ```
@@ -381,7 +382,7 @@ Target Ratios:
 - [ ] Simplify complex logic (without violating user specifications)
 - [ ] Ensure single responsibility principle
 - [ ] Verify no placeholders remain - no stubs, no TODOs, no swallowed exceptions, no unimplemented functions - follow the zero-BS principle.
-- [ ] **VALIDATE: All explicit user requirements still preserved** and still adhering to @~/.amplihack/.claude/context/PHILOSOPHY.md
+- [ ] **VALIDATE: All explicit user requirements still preserved** and still adhering to @~/.amplihack/.claude/context/PHILOSOPHY.md and @~/.amplihack/.claude/context/FORBIDDEN_PATTERNS.md
 
 ### Step 10: Review Pass Before Commit
 
@@ -389,9 +390,11 @@ Target Ratios:
 - [ ] **Use** security agent for security review
 - [ ] Check code quality and standards
 - [ ] Verify philosophy compliance with the philosophy-guardian agent
+- [ ] **Verify no Forbidden Pattern violations** — check against @~/.amplihack/.claude/context/FORBIDDEN_PATTERNS.md (error swallowing, silent fallbacks, data loss, shell anti-patterns, async misuse, config divergence, validation gaps, health check dishonesty)
 - [ ] Ensure adequate test coverage
 - [ ] Identify potential improvements
 - [ ] Ensure there are no TODOs, faked apis or faked data, stubs, or swallowed exceptions, no unimplemented functions - follow the zero-BS principle.
+- [ ] Ensure no Forbidden Pattern violations: no silent fallbacks, no `|| true`, no `>/dev/null 2>&1`, no fire-and-forget async, no unchecked HTTP responses, no log-only catches.
 
 #### PR Cleanliness Check (Pre-Commit)
 
@@ -572,20 +575,60 @@ python .claude/scenarios/az-devops-tools/create_pr.py \
 - Quality gates exist for a reason - bypassing them introduces risk
 - Pattern of skipping reviews leads to technical debt accumulation
 
-**Review checklist:**
+**Step 16a: Step 13 Compliance Verification**
 
-- [ ] **⚠️ Step 13 Compliance Verification (MANDATORY)** - Verify PR description contains test results
-  - [ ] Check PR description has "Step 13: Local Testing Results" section with actual test execution evidence
-  - [ ] If missing: BLOCK review, comment on PR, request test results (no approval path - just do the testing)
+- [ ] Check PR description has "Step 13: Local Testing Results" section with actual test execution evidence
+- [ ] If missing: BLOCK review, comment on PR, request test results (no approval path - just do the testing)
+
+**Step 16b: Invoke reviewer agent**
+
 - [ ] **Always use** reviewer agent for comprehensive code review
   - **Alternative**: Use `/socratic-review` for dialogue-based review when learning is as important as fixing (mentoring, design documentation, complex code explanation)
-- [ ] **Use** security agent for security review
 - [ ] Check code quality and standards
-- [ ] Verify philosophy compliance
 - [ ] Ensure adequate test coverage
 - [ ] Identify potential improvements
-- [ ] Ensure there are no TODOs, stubs, or swallowed exceptions, no unimplemented functions - follow the zero-BS principle.
-- [ ] Post the review as a comment on the PR:
+- [ ] Ensure there are no TODOs, stubs, or swallowed exceptions, no unimplemented functions - follow the zero-BS principle
+- [ ] Ensure no Forbidden Pattern violations (FORBIDDEN_PATTERNS.md): no silent fallbacks, no `|| true`, no `>/dev/null`, no fire-and-forget async, no log-only catches
+- [ ] **POST structured review findings to the PR** → Evidence: review comment link
+
+**Step 16c: Invoke security agent**
+
+- [ ] **Use** security agent for security review
+- [ ] Verify no security vulnerabilities introduced
+- [ ] Check authentication/authorization if applicable
+- [ ] Verify sensitive data handling
+- [ ] **POST security review to the PR** → Evidence: security comment link
+
+**Step 16d: Invoke philosophy-guardian agent**
+
+- [ ] **Use** philosophy-guardian agent to verify philosophy compliance
+- [ ] Verify ruthless simplicity achieved
+- [ ] Confirm bricks & studs pattern followed
+- [ ] Ensure zero-BS implementation
+- [ ] **Verify no Forbidden Pattern violations** (FORBIDDEN_PATTERNS.md)
+- [ ] **POST philosophy check to the PR** → Evidence: philosophy comment link
+
+**Step 16e: Address blocking issues**
+
+- [ ] Review all findings from 16b, 16c, 16d
+- [ ] Address any blocking issues found before proceeding
+- [ ] If issues found, fix and re-run applicable reviews
+
+**Step 16f: Verification Gate**
+
+**🚨 VERIFICATION GATE - Before marking Step 16 complete, verify:**
+
+- [ ] Did I invoke the **reviewer** agent (not just code-review)?
+- [ ] Did I invoke the **security** agent?
+- [ ] Did I invoke the **philosophy-guardian** agent?
+- [ ] Are all three reviews **posted to the PR** as comments?
+- [ ] All blocking issues have been addressed?
+
+**Cannot proceed to Step 17 without completing this gate.**
+
+---
+
+\*\*Post reviews as comments on the PR:
 
 **For GitHub**:
 
@@ -611,13 +654,46 @@ az repos pr create-thread \
 - Indicates disrespect for reviewer's time and expertise
 - May block PR merge indefinitely
 
+**Step 17a: Review all feedback**
+
+- [ ] Gather all feedback comments from Step 16 reviews (reviewer, security, philosophy-guardian)
+- [ ] Think very carefully about each comment
+- [ ] Categorize: blocking issues vs. suggestions vs. questions
+
+**Step 17b: Address feedback with builder agent**
+
+- [ ] **Always use** builder agent to implement changes
+- [ ] **Use** relevant specialized agents for specific feedback types
+- [ ] Address each review comment substantively
+- [ ] For disagreements, explain reasoning in a PR comment
+
+**Step 17c: Push and respond**
+
+- [ ] Push updates to PR
+- [ ] Respond to each review comment with what was done
+- [ ] Post replies as comments on the PR
+
+**Step 17d: Verify and re-review if needed**
+
+- [ ] Ensure all tests still pass
+- [ ] Ensure PR is still mergeable
+- [ ] Request re-review if significant changes were made
+
+**Step 17e: Verification Gate**
+
+**🚨 VERIFICATION GATE - Before marking Step 17 complete, verify:**
+
+- [ ] Did I address EVERY feedback comment (not just some)?
+- [ ] Did I respond to each comment on the PR explaining what was done?
+- [ ] Did I use the builder agent for implementation changes?
+- [ ] Are all tests still passing?
+
+**Cannot proceed to Step 18 without completing this gate.**
+
+---
+
 **Feedback implementation checklist:**
 
-- [ ] Review all feedback comments, think very carefully about each one and decide how to address it (or if you should disagree, explain why in a comment)
-- [ ] **Always use** builder agent to implement changes
-- [ ] **Use** relevant specialized agents for specific feedback
-- [ ] Address each review comment
-- [ ] Push updates to PR
 - [ ] Respond to review comments by posting replies as comments on the PR:
 
 **For GitHub**:
@@ -640,13 +716,45 @@ az repos pr create-thread \
 
 ### Step 18: Philosophy Compliance Check
 
+**Step 18a: Invoke reviewer agent for philosophy check**
+
 - [ ] **Always use** reviewer agent for final philosophy check
+- [ ] Verify implementation aligns with project philosophy
+- [ ] Check for over-engineering or unnecessary complexity
+- [ ] **Document findings** → Evidence: philosophy review notes
+
+**Step 18b: Invoke patterns agent**
+
 - [ ] **Use** patterns agent to verify pattern compliance
+- [ ] Design patterns used correctly
+- [ ] Architectural patterns followed
+- [ ] Code organization patterns maintained
+- [ ] **Document findings** → Evidence: patterns review notes
+
+**Step 18c: Zero-BS verification**
+
 - [ ] Verify ruthless simplicity achieved
 - [ ] Confirm bricks & studs pattern followed
-- [ ] Ensure zero-BS implementation (no stubs, faked apis, swallowed exceptions, etc)
+- [ ] Ensure zero-BS implementation:
+  - No stubs
+  - No faked APIs or data
+  - No swallowed exceptions
+  - No TODO comments
+  - No unimplemented functions
 - [ ] Verify all tests passing
 - [ ] Check documentation completeness and accuracy
+
+**Step 18d: Verification Gate**
+
+**🚨 VERIFICATION GATE - Before marking Step 18 complete, verify:**
+
+- [ ] Did I invoke the **reviewer** agent for philosophy check?
+- [ ] Did I invoke the **patterns** agent?
+- [ ] Did I complete the zero-BS verification checklist?
+- [ ] Are all findings documented?
+- [ ] Any issues found have been addressed?
+
+**Cannot proceed to Step 19 without completing this gate.**
 
 ### Step 19: Outside-In Testing in Real Environment
 
@@ -667,7 +775,7 @@ Step 13 validates technical functionality locally. Step 19 validates real-world 
 
 **For CLI/TUI applications:**
 
-- [ ] Use `/outside-in-testing` skill for guided CLI/TUI testing workflow
+- [ ] Use `/qa-team` skill for guided CLI/TUI testing workflow (`/outside-in-testing` remains an alias)
 - [ ] Test in fresh terminal session with production-like environment
 - [ ] Execute actual commands with various flags and inputs
 - [ ] Verify output formatting and error messages match expectations
@@ -775,6 +883,7 @@ Add this section to your PR description:
 - [ ] **CRITICAL: Provide cleanup agent with original user requirements AGAIN**
 - [ ] **Always use** cleanup agent for final quality pass
 - [ ] Review all changes for philosophy compliance WITHIN user constraints
+- [ ] Review all changes for Forbidden Pattern violations (FORBIDDEN_PATTERNS.md)
 - [ ] Remove any temporary artifacts or test files (unless user wanted them)
 - [ ] Eliminate unnecessary complexity (that doesn't violate user requirements)
 - [ ] Verify module boundaries remain clean
@@ -822,6 +931,99 @@ Add this section to your PR description:
 - [ ] Ensure any cleanup agent changes get committed, validated by pre-commit, pushed to remote
 - [ ] Add a comment to the PR about any work the Cleanup agent did
 
+### Step 20c: Quality Audit Loop
+
+**Added per issues #2805, #2809, #2810.**
+
+Invoke the **quality-audit** skill to run a comprehensive, iterative quality audit on all files changed in this PR. This is the last substantive check before the PR is marked ready.
+
+#### Loop Structure
+
+```
+Cycle 1: SEEK → VALIDATE (3 agents) → FIX → decision
+Cycle 2: SEEK (deeper) → VALIDATE → FIX → decision
+Cycle 3: SEEK (deepest) → VALIDATE → FIX → decision
+...continues if thresholds not met, up to 6 cycles
+```
+
+**Minimum 3 cycles.** Continue past 3 if:
+
+- Any **critical** or **high** severity findings remain, OR
+- More than **3 medium** severity findings remain
+
+Each cycle escalates depth: look with fresh eyes, dig deeper, challenge prior findings.
+
+#### 9 Audit Categories
+
+**Code Quality:**
+
+- [ ] **Security**: Hardcoded secrets, missing input validation
+- [ ] **Reliability**: Missing timeouts, bare except clauses
+- [ ] **Dead Code**: Unused imports, unreachable branches, stale TODOs
+- [ ] **Test Gaps**: Files without tests, tests without assertions
+- [ ] **Doc Gaps**: Public functions without docstrings
+
+**Anti-Degradation (#2805, #2810):**
+
+- [ ] **Silent Fallbacks**: `except: pass`, broad catches returning defaults silently, fallback chains masking failures, `or default_value` hiding upstream errors
+- [ ] **Error Swallowing**: `except` blocks with no logging/re-raise, error-to-None transforms, catch-all discarding exceptions, functions returning True/False instead of raising
+
+**Structural (#2809):**
+
+- [ ] **Structural Issues**: Files >500 LOC, functions >50 lines, nesting >4 levels, >5 parameters, circular imports
+
+**Hardcoded Limits (#2822):**
+
+- [ ] **Hardcoded Limits**: Non-configurable numeric caps (`[:N]`, `max_X = N`, `if len() > N`), silent truncation without logging. Severity: HIGH = data loss, MEDIUM = incomplete data, LOW = display-only.
+
+**Documentation Audit:**
+
+- [ ] **Point-in-time removal**: Remove ALL temporal content — status updates, session notes, "as of today", "we just finished". Docs must read correctly years after being written.
+- [ ] **Professional tone**: No pirate speak ("fer"/"ye"/"yer"/"arr"/"matey"), no chatbot artifacts ("Sure!", "Great question!"), no informal language in shipped documentation.
+- [ ] **Quality review**: Organization, comprehensiveness, clarity, navigation, correctness vs actual code behavior.
+
+#### Multi-Agent Validation
+
+Every finding is independently validated by **3 separate agents**:
+
+1. **Analyzer** — evaluates on technical merits
+2. **Reviewer** — skeptically verifies by reading actual code
+3. **Architect** — adversarial review, looks for reasons finding is wrong
+
+A finding is **confirmed** only if ≥2 of 3 agents agree. This eliminates false positives.
+
+#### Fix Process
+
+All confirmed findings are fixed using the full **DEFAULT_WORKFLOW** approach:
+
+1. Understand the finding and its context
+2. Write or update tests that verify the fix
+3. Implement the minimal fix
+4. Verify the fix doesn't break existing tests
+
+#### Completion Criteria
+
+- [ ] Minimum 3 audit cycles completed
+- [ ] Final cycle: 0 critical/high findings, ≤3 medium findings
+- [ ] All confirmed findings fixed with tests
+- [ ] Documentation passes tone and durability checks
+- [ ] Results documented: "QUALITY AUDIT: CLEAN" or remaining findings listed
+
+#### Self-Improvement Review
+
+After all audit cycles complete, step back and ask:
+
+> **"How else would you improve this code?"**
+
+- [ ] Look for systemic issues the audit missed
+- [ ] Identify architectural improvements that prevent recurring findings
+- [ ] Check if fixes introduced new issues
+- [ ] Find cross-cutting concerns that should be standardized
+- [ ] Fix any **CRITICAL** improvements found immediately
+- [ ] Document **ADVISORY** improvements as follow-up issues
+
+**Cannot proceed to Step 21 without completing the quality audit loop.**
+
 ### Step 21: Convert PR to Ready for Review
 
 **For GitHub**:
@@ -842,6 +1044,7 @@ az repos pr update \
 - [ ] Verify all previous steps completed
 - [ ] Ensure all review feedback has been addressed
 - [ ] Confirm philosophy compliance check passed
+- [ ] Confirm Forbidden Pattern check passed
 - [ ] Add comment summarizing changes and readiness
 - [ ] Tag reviewers for final approval
 

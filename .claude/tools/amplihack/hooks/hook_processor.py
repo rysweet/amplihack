@@ -57,7 +57,8 @@ class HookProcessor(ABC):
             from paths import get_project_root
 
             self.project_root = get_project_root()
-        except ImportError:
+        except ImportError as e:
+            print(f"WARNING: paths module not available - using fallback root detection: {e}", file=sys.stderr)
             # Fallback: try to find project root by looking for .claude marker
             current = Path(__file__).resolve().parent
             found_root: Path | None = None

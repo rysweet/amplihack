@@ -18,6 +18,9 @@ else:
             StreamingResponse,  # type: ignore[import-untyped,import-not-found]
         )
     except ImportError:
+        import sys
+
+        print("WARNING: fastapi not available, log streaming disabled", file=sys.stderr)
         FastAPI = Response = StreamingResponse = None
 
 

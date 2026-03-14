@@ -51,8 +51,10 @@ jobs:
 
       - name: Install amplihack from branch
         run: |
-          # Install from the current branch
-          uvx --refresh --from git+https://github.com/${{ github.repository }}@${{ github.ref_name }} amplihack --help || true
+          # For PRs, use the head branch; for pushes, use the ref name
+          BRANCH="${{ github.head_ref || github.ref_name }}"
+          echo "Installing from branch: $BRANCH"
+          uvx --refresh --from "git+https://github.com/${{ github.repository }}@${BRANCH}" amplihack --help
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 
@@ -121,7 +123,7 @@ jobs:
           chmod +x run-plugin-test.sh
           ./run-plugin-test.sh || echo "Shell test failed (expected in CI without API key)"
         env:
-          PLUGIN_BRANCH: ${{ github.ref_name }}
+          PLUGIN_BRANCH: ${{ github.head_ref || github.ref_name }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         continue-on-error: true
 

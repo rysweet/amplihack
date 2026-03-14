@@ -114,7 +114,7 @@ steps:
     type: "bash"
     # Step 3: Commit - Commit the verified change and push to branch
     command: |
-      cd "{{repo_path}}" && \
+      cd {{repo_path}} && \
       echo "=== Step 3: Committing Changes ===" && \
       git status --short && \
       echo "" && \

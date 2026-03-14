@@ -24,6 +24,7 @@ try:
     from amplihack.utils.paths import FrameworkPathResolver
 except ImportError:
     # Fallback imports for standalone execution
+    print("WARNING: Framework modules not available - running in standalone mode", file=sys.stderr)
     ContextPreserver = None
     FrameworkPathResolver = None
     migrate_global_hooks = None
@@ -45,7 +46,8 @@ class SessionStartHook(HookProcessor):
         1. Version mismatch detection and auto-update
         2. Global hook migration (prevents duplicate hook execution)
         3. Original request capture for context preservation
-        4. Neo4j memory system startup (if enabled)
+        4. Neo4j memory system startup (removed - use Kuzu)
+        5. Blarify code graph indexing (on by default)
 
         Args:
             input_data: Input from Claude Code
@@ -127,7 +129,7 @@ class SessionStartHook(HookProcessor):
                 staged = stage_uvx_framework()
                 self.save_metric("uvx_staging_success", staged)
         except ImportError:
-            pass
+            print("WARNING: amplihack.utils.uvx_staging not available - UVX staging skipped", file=sys.stderr)
 
         # Settings.json initialization/merge with UVX template
         # Ensures statusLine and other critical configurations are present
@@ -151,6 +153,7 @@ class SessionStartHook(HookProcessor):
                 self.save_metric("settings_updated", False)
         except ImportError as e:
             self.log(f"UVXSettingsManager not available: {e}", "WARNING")
+            print(f"WARNING: UVXSettingsManager not available - settings merge skipped: {e}", file=sys.stderr)
             self.save_metric("settings_updated", False)
         except Exception as e:
             # Fail gracefully - don't break session start
@@ -175,6 +178,24 @@ class SessionStartHook(HookProcessor):
             self.log("Neo4j not enabled (Neo4j removed - use Kuzu instead)", "DEBUG")
             self.save_metric("neo4j_enabled", False)
 
+        # ═══════════════════════════════════════════════════════════════
+        # Blarify Code Graph Indexing (on by default, disable with env var)
+        # ═══════════════════════════════════════════════════════════════
+        blarify_disabled = os.environ.get("AMPLIHACK_DISABLE_BLARIFY") == "1"
+        blarify_indexing_active = False
+
+        if not blarify_disabled:
+            try:
+                from amplihack.memory.kuzu.session_integration import setup_blarify_indexing
+
+                blarify_indexing_active = setup_blarify_indexing(
+                    self.project_root, self.log, self.save_metric
+                )
+            except Exception as e:
+                # Fail gracefully - NEVER block session start
+                self.log(f"Blarify setup failed (non-critical): {e}", "WARNING")
+                self.save_metric("blarify_setup_error", True)
+
         # Check and update .gitignore for runtime directories
         try:
             from gitignore_checker import GitignoreChecker
@@ -187,6 +208,7 @@ class SessionStartHook(HookProcessor):
         except ImportError:
             # gitignore_checker not available (shouldn't happen)
             self.log("gitignore_checker module not found", "WARNING")
+            print("WARNING: gitignore_checker not available - .gitignore validation skipped", file=sys.stderr)
         except Exception as e:
             # Fail-safe: don't break session start
             self.log(f"Gitignore check failed (non-critical): {e}", "WARNING")
@@ -194,10 +216,24 @@ class SessionStartHook(HookProcessor):
         # Build context if needed
         context_parts = []
 
-        # Add project context
+        # Add project context (from PROJECT.md if available, otherwise generic)
         context_parts.append("## Project Context")
-        context_parts.append("This is the Microsoft Hackathon 2025 Agentic Coding project.")
-        context_parts.append("Focus on building AI-powered development tools.")
+        project_md = self.project_root / ".claude" / "context" / "PROJECT.md"
+        if project_md.exists():
+            try:
+                project_content = project_md.read_text().strip()
+                # Extract the first non-empty, non-header line as a summary
+                for line in project_content.splitlines():
+                    stripped = line.strip()
+                    if stripped and not stripped.startswith("#") and not stripped.startswith("---"):
+                        context_parts.append(stripped)
+                        break
+                else:
+                    context_parts.append("Project context loaded from PROJECT.md.")
+            except Exception:
+                context_parts.append("Project context available in .claude/context/PROJECT.md.")
+        else:
+            context_parts.append("Project context available in CLAUDE.md or .claude/context/PROJECT.md.")
 
         # Check for recent discoveries from memory
         context_parts.append("\n## Recent Learnings")
@@ -217,7 +253,21 @@ class SessionStartHook(HookProcessor):
                 context_parts.append("Check .claude/context/DISCOVERIES.md for recent insights.")
         except ImportError:
             # Fallback if memory module not available
+            print("WARNING: amplihack.memory.discoveries not available - using static discovery text", file=sys.stderr)
             context_parts.append("Check .claude/context/DISCOVERIES.md for recent insights.")
+
+        # Inject code graph context if blarify index exists and DB is not locked
+        if blarify_indexing_active:
+            self.log("Skipping code graph injection (background indexing in progress)")
+        else:
+            try:
+                from amplihack.memory.kuzu.session_integration import inject_code_graph_context
+
+                inject_code_graph_context(
+                    self.project_root, context_parts, self.log, self.save_metric
+                )
+            except Exception as e:
+                self.log(f"Code graph context injection failed: {e}", "WARNING")
 
         # Simplified preference file resolution
         preferences_file = (

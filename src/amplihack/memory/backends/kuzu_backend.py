@@ -26,6 +26,7 @@ Schema:
 import asyncio
 import json
 import logging
+import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
@@ -39,6 +40,12 @@ from ..models import MemoryEntry, MemoryQuery, MemoryType, SessionInfo
 from .base import BackendCapabilities
 
 logger = logging.getLogger(__name__)
+
+
+# Memory types whose schema includes expires_at column.
+# Derived from CREATE TABLE statements in _initialize_sync().
+# If you add expires_at to a new memory type, add it here.
+MEMORY_TYPES_WITH_EXPIRES_AT = frozenset(["EpisodicMemory", "ProspectiveMemory", "WorkingMemory"])
 
 
 class KuzuBackend:
@@ -68,8 +75,9 @@ class KuzuBackend:
         # Create parent directory if needed
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Create database connection (Kùzu creates the file)
-        self.database = kuzu.Database(str(self.db_path))
+        # Create database connection with retry for lock contention.
+        # Kuzu only allows single-process access; concurrent hooks may race.
+        self.database = self._open_database_with_retry(self.db_path)
         self.connection = kuzu.Connection(self.database)
 
         # Initialize code graph integration (lazy loaded)
@@ -77,6 +85,42 @@ class KuzuBackend:
 
         # Thread pool for async operations (4 workers for Kuzu's multi-threading)
         self._executor = ThreadPoolExecutor(max_workers=4)
+
+    @staticmethod
+    def _open_database_with_retry(
+        db_path: Path, max_retries: int = 3, base_delay: float = 0.2
+    ) -> "kuzu.Database":
+        """Open Kuzu database with exponential backoff retry on lock contention.
+
+        Args:
+            db_path: Path to Kuzu database directory
+            max_retries: Maximum number of retry attempts
+            base_delay: Initial delay in seconds (doubles each retry)
+
+        Returns:
+            Open kuzu.Database instance
+
+        Raises:
+            RuntimeError: If all retries fail
+        """
+        last_error = None
+        for attempt in range(max_retries + 1):
+            try:
+                return kuzu.Database(str(db_path))
+            except RuntimeError as e:
+                last_error = e
+                if "Could not set lock on file" not in str(e):
+                    raise  # Not a lock contention error — don't retry
+                if attempt < max_retries:
+                    delay = base_delay * (2**attempt)
+                    logger.warning(
+                        "Kuzu DB locked (attempt %d/%d), retrying in %.1fs",
+                        attempt + 1,
+                        max_retries + 1,
+                        delay,
+                    )
+                    time.sleep(delay)
+        raise last_error  # type: ignore[misc]
 
     def get_capabilities(self) -> BackendCapabilities:
         """Get Kùzu backend capabilities."""
@@ -1040,7 +1084,7 @@ class KuzuBackend:
             where_conditions.append("m.created_at <= $created_before")
             params["created_before"] = query.created_before
 
-        if not query.include_expired:
+        if not query.include_expired and node_label in MEMORY_TYPES_WITH_EXPIRES_AT:
             where_conditions.append("(m.expires_at IS NULL OR m.expires_at > $now)")
             params["now"] = datetime.now()
 
@@ -1064,7 +1108,13 @@ class KuzuBackend:
                 params["offset"] = query.offset
 
         # Execute query
-        result = self.connection.execute(cypher, params)
+        try:
+            result = self.connection.execute(cypher, params)
+        except Exception as e:
+            if "does not exist" in str(e):
+                # Table not yet created (e.g. DB has code graph schema only)
+                return []
+            raise
 
         # Convert to MemoryEntry objects
         memories = []
@@ -1278,31 +1328,35 @@ class KuzuBackend:
     def _cleanup_expired_sync(self) -> int:
         """Remove expired memory entries (sync helper).
 
+        Only queries memory types that have expires_at in their schema:
+        EpisodicMemory, ProspectiveMemory, WorkingMemory.
+
         Returns:
             Number of entries removed
 
         Performance: No strict limit (periodic maintenance)
         """
-        try:
-            result = self.connection.execute(
-                """
-                MATCH (m:Memory)
-                WHERE m.expires_at IS NOT NULL AND m.expires_at < $now
-                DELETE m
-                RETURN COUNT(m) AS deleted_count
-            """,
-                {"now": datetime.now()},
-            )
+        total_deleted = 0
+        for node_label in MEMORY_TYPES_WITH_EXPIRES_AT:
+            try:
+                result = self.connection.execute(
+                    f"""
+                    MATCH (m:{node_label})
+                    WHERE m.expires_at IS NOT NULL AND m.expires_at < $now
+                    DELETE m
+                    RETURN COUNT(m) AS deleted_count
+                """,
+                    {"now": datetime.now()},
+                )
 
-            if result.has_next():
-                row = result.get_next()
-                return row[0]
+                if result.has_next():
+                    row = result.get_next()
+                    total_deleted += row[0]
 
-            return 0
+            except Exception as e:
+                logger.error(f"Error cleaning up expired {node_label} from Kùzu: {e}")
 
-        except Exception as e:
-            logger.error(f"Error cleaning up expired memories from Kùzu: {e}")
-            return 0
+        return total_deleted
 
     async def cleanup_expired(self) -> int:
         """Remove expired memory entries.

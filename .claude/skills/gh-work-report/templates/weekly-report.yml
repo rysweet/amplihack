@@ -1,0 +1,222 @@
+name: Weekly GitHub Work Report
+
+on:
+  schedule:
+    # Every Monday at 08:00 UTC
+    - cron: '0 8 * * 1'
+  workflow_dispatch:
+    inputs:
+      days:
+        description: 'Number of days to cover (1, 5, 7, 30, 90)'
+        required: false
+        default: '7'
+        type: choice
+        options:
+          - '1'
+          - '5'
+          - '7'
+          - '30'
+          - '90'
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "report-generation"
+  cancel-in-progress: false
+
+jobs:
+  generate-report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up date range
+        id: dates
+        run: |
+          set -euo pipefail
+          DAYS="${{ github.event.inputs.days || '7' }}"
+          START_DATE=$(date -d "$DAYS days ago" +%Y-%m-%d)
+          END_DATE=$(date +%Y-%m-%d)
+          echo "days=$DAYS" >> "$GITHUB_OUTPUT"
+          echo "start=$START_DATE" >> "$GITHUB_OUTPUT"
+          echo "end=$END_DATE" >> "$GITHUB_OUTPUT"
+          echo "filename=report-${START_DATE}-to-${END_DATE}.md" >> "$GITHUB_OUTPUT"
+
+      - name: Gather repository data
+        env:
+          GH_TOKEN: ${{ secrets.REPORT_TOKEN }}
+        run: |
+          set -euo pipefail
+          START="${{ steps.dates.outputs.start }}"
+          END="${{ steps.dates.outputs.end }}"
+          mkdir -p /tmp/report-data
+
+          # Get repos with recent pushes
+          gh api graphql --paginate -f query='
+          query($cursor: String) {
+            viewer {
+              repositories(first: 100, after: $cursor, orderBy: {field: PUSHED_AT, direction: DESC}) {
+                pageInfo { hasNextPage endCursor }
+                nodes {
+                  nameWithOwner url description pushedAt homepageUrl isPrivate
+                }
+              }
+            }
+          }' --jq '.data.viewer.repositories.nodes[] | select(.pushedAt >= "'"$START"'")' > /tmp/report-data/repos.json
+
+          # Get PRs created in window
+          gh search prs --author=@me --created=">$START" --limit 200 \
+            --json number,title,repository,state,createdAt,url,mergedAt \
+            > /tmp/report-data/prs-created.json
+
+          # Get all open/WIP PRs (may predate window)
+          gh search prs --author=@me --state=open --limit 200 \
+            --json number,title,repository,state,createdAt,url,mergedAt \
+            > /tmp/report-data/prs-open.json
+
+          # Get PRs merged in window
+          gh search prs --author=@me --merged=">$START" --limit 200 \
+            --json number,title,repository,state,createdAt,url,mergedAt \
+            > /tmp/report-data/prs-merged.json
+
+          # Get PRs closed in window
+          gh search prs --author=@me --closed=">$START" --limit 200 \
+            --json number,title,repository,state,createdAt,url,mergedAt \
+            > /tmp/report-data/prs-closed.json
+
+          # Get issues
+          gh search issues --author=@me --created=">$START" --limit 100 \
+            --json number,title,repository,state,createdAt,url \
+            > /tmp/report-data/issues.json
+
+      - name: Generate report
+        run: |
+          set -euo pipefail
+          START="${{ steps.dates.outputs.start }}"
+          END="${{ steps.dates.outputs.end }}"
+          DAYS="${{ steps.dates.outputs.days }}"
+          FILENAME="${{ steps.dates.outputs.filename }}"
+          REPORT="docs/reports/$FILENAME"
+          mkdir -p docs/reports
+
+          # Count metrics
+          REPO_COUNT=$(cat /tmp/report-data/repos.json | wc -l)
+          PR_CREATED=$(python3 -c "import json; print(len(json.load(open('/tmp/report-data/prs-created.json'))))")
+          PR_MERGED=$(python3 -c "import json; print(len(json.load(open('/tmp/report-data/prs-merged.json'))))")
+          ISSUES=$(python3 -c "import json; print(len(json.load(open('/tmp/report-data/issues.json'))))")
+
+          cat > "$REPORT" << EOF
+          # GitHub Activity Report: ${START} → ${END}
+
+          > **Generated**: $(date +%Y-%m-%d)
+          > **Period**: ${DAYS} days
+
+          ## Activity Summary
+
+          | Metric | Count |
+          |--------|-------|
+          | Projects active | ${REPO_COUNT} |
+          | PRs created | ${PR_CREATED} |
+          | PRs merged | ${PR_MERGED} |
+          | Issues opened | ${ISSUES} |
+
+          ## Pull Requests
+
+          EOF
+
+          # Add PR table
+          echo "| # | Title | Repository | Status | Created |" >> "$REPORT"
+          echo "|---|-------|-----------|--------|---------|" >> "$REPORT"
+          python3 -c "
+          import json
+          prs = json.load(open('/tmp/report-data/prs-created.json'))
+          for pr in prs[:50]:
+              repo = pr.get('repository', {})
+              repo_name = repo.get('nameWithOwner', 'unknown') if isinstance(repo, dict) else str(repo)
+              print(f'| [#{pr[\"number\"]}]({pr[\"url\"]}) | {pr[\"title\"]} | {repo_name} | {pr[\"state\"]} | {pr[\"createdAt\"][:10]} |')
+          " >> "$REPORT"
+
+          echo "" >> "$REPORT"
+          echo "## Active Repositories" >> "$REPORT"
+          echo "" >> "$REPORT"
+          echo "| Repository | Description | Last Push |" >> "$REPORT"
+          echo "|-----------|-------------|-----------|" >> "$REPORT"
+          cat /tmp/report-data/repos.json | python3 -c "
+          import json, sys
+          for line in sys.stdin:
+              r = json.loads(line)
+              desc = (r.get('description') or '—')[:60]
+              print(f'| [{r[\"nameWithOwner\"]}]({r[\"url\"]}) | {desc} | {r[\"pushedAt\"][:10]} |')
+          " >> "$REPORT"
+
+          # Strip leading whitespace from heredoc
+          sed -i 's/^          //' "$REPORT"
+
+      - name: Update index page
+        run: |
+          python3 << 'PYEOF'
+          import os, re
+
+          reports_dir = "docs/reports"
+          reports = sorted(
+              [f for f in os.listdir(reports_dir) if f.endswith(".md") and f != ".gitkeep"],
+              reverse=True
+          )
+
+          index_items = []
+          for r in reports:
+              match = re.search(r"report-(\d{4}-\d{2}-\d{2})-to-(\d{4}-\d{2}-\d{2})", r)
+              if match:
+                  start, end = match.groups()
+                  index_items.append(f'<li><a href="reports/{r}">{start} → {end}</a></li>')
+
+          with open("docs/index.html", "r") as f:
+              html = f.read()
+
+          # Replace report list placeholder
+          list_html = "\n".join(index_items) if index_items else "<li>No reports yet</li>"
+          html = re.sub(
+              r"(<!-- REPORT_LIST_START -->).*?(<!-- REPORT_LIST_END -->)",
+              rf"\1\n{list_html}\n\2",
+              html,
+              flags=re.DOTALL
+          )
+
+          with open("docs/index.html", "w") as f:
+              f.write(html)
+          PYEOF
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/
+          git diff --staged --quiet || (git commit -m "📊 Report: ${{ steps.dates.outputs.start }} → ${{ steps.dates.outputs.end }}" && git push)
+
+  deploy-pages:
+    needs: generate-report
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

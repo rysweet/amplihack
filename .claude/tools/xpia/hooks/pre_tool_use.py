@@ -21,7 +21,10 @@ for parent in current.parents:
         project_root = parent
         break
 if project_root is None:
-    raise ImportError("Could not locate project root - missing .claude directory")
+    # Not in an amplihack project context (e.g. running from global settings).
+    # Fail-open: exit cleanly so Claude Code doesn't report a hook error.
+    print(json.dumps({}))
+    sys.exit(0)
 sys.path.insert(0, str(project_root / "src"))
 sys.path.insert(0, str(project_root / "Specs"))
 
@@ -55,9 +58,9 @@ def log_security_event(event_type: str, data: dict) -> None:
     try:
         with open(log_file, "a") as f:
             f.write(json.dumps(log_entry) + "\n")
-    except Exception:
+    except Exception as e:
         # Don't fail tool execution if logging fails
-        pass
+        print(f"[xpia] Security event logging failed (non-fatal): {e}", file=sys.stderr)
 
 
 def validate_bash_command(command: str, context: dict[str, Any]) -> dict[str, Any]:
@@ -200,13 +203,13 @@ def main():
     """Main hook execution.
 
     Claude Code PreToolUse hook protocol:
-    - Input: JSON with toolUse.name and toolUse.input
+    - Input: JSON on stdin with top-level keys:
+             tool_name, tool_input, session_id, cwd, hook_event_name, etc.
     - Output: {} to allow, {"permissionDecision": "deny", "message": "..."} to block
     - Exit 0 always (hook doesn't control exit code, output controls behavior)
     """
     try:
         # Parse input from Claude Code
-        # Input format: JSON with toolUse object containing name and input
         input_data = {}
         if len(sys.argv) > 1:
             # Command line argument
@@ -217,10 +220,9 @@ def main():
             if input_line:
                 input_data = json.loads(input_line)
 
-        # Extract tool information using correct Claude Code protocol
-        tool_use = input_data.get("toolUse", {})
-        tool_name = tool_use.get("name", "unknown")
-        parameters = tool_use.get("input", {})
+        # Claude Code sends top-level tool_name and tool_input
+        tool_name = input_data.get("tool_name", "")
+        parameters = input_data.get("tool_input", {})
 
         # Process the validation
         result = process_tool_use_request(tool_name, parameters)
@@ -231,9 +233,10 @@ def main():
         # Always exit 0 - the output JSON controls behavior, not exit code
         sys.exit(0)
 
-    except Exception:
+    except Exception as e:
         # Output empty dict to allow on error (fail-open)
         # This follows Claude Code protocol for graceful degradation
+        print(f"[xpia] pre_tool_use hook failed (fail-open): {e}", file=sys.stderr)
         print(json.dumps({}))
         sys.exit(0)
 

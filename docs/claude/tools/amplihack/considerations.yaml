@@ -1,7 +1,7 @@
 # Power-Steering Considerations Configuration
 # ============================================
 #
-# This file defines the 21 considerations used by power-steering mode to verify
+# This file defines the 24 considerations used by power-steering mode to verify
 # session completeness. Each consideration checks a specific aspect of the work.
 #
 # YAML Structure:
@@ -42,8 +42,8 @@
 
 - id: todos_complete
   category: Session Completion & Progress
-  question: Were all TODO items completed?
-  description: Verifies all TodoWrite items are marked as completed
+  question: Were all TodoWrite task items marked as completed before the session ended?
+  description: Verifies all tasks created with the TodoWrite tool are marked as completed, not left in pending or in-progress state
   severity: blocker
   checker: _check_todos_complete
   enabled: true
@@ -51,35 +51,95 @@
 
 - id: agent_unnecessary_questions
   category: Session Completion & Progress
-  question: Did agent ask unnecessary questions instead of proceeding?
-  description: Detects if agent asked user questions that could be inferred from context
+  question: Did the agent ask unnecessary clarifying questions at the stop event instead of proceeding autonomously with the task?
+  description: Detects if the agent stopped to ask the user questions that could have been reasonably inferred from context or resolved independently, rather than continuing to work autonomously
   severity: warning
   checker: _check_agent_unnecessary_questions
   enabled: true
   applicable_session_types: ["*"]
+  guidance: |
+    Look for the AskUserQuestion tool being used excessively. Count how many
+    times the agent invoked AskUserQuestion during the session.
+
+    This is NOT about question marks in prose. Agents naturally use question
+    marks in explanations ("Did you notice the change?") and documentation.
+    Those are fine.
+
+    What IS a problem:
+    - Agent used AskUserQuestion 4+ times in one session
+    - Agent asked about things it could have inferred (e.g., "which file?" when
+      there's only one relevant file)
+    - Agent asked permission to proceed between workflow steps instead of just
+      continuing
+
+    What is NOT a problem:
+    - 1-2 AskUserQuestion calls for genuinely ambiguous requirements
+    - Question marks in prose explanations
+    - Questions embedded in PR descriptions or test documentation
+    - The agent asking for clarification when the user's request was truly vague
+
+    Lean toward SATISFIED unless there's a clear pattern of excessive asking.
 
 - id: objective_completion
   category: Session Completion & Progress
-  question: Was original user objective fully accomplished?
-  description: Checks if the stated goal from first user message was achieved
+  question: Was the user's original request from the first message fully addressed, with all stated goals achieved and nothing left incomplete?
+  description: Checks if the goal stated in the first user message was fully accomplished, not just partially addressed or acknowledged
   severity: blocker
   checker: _check_objective_completion
   enabled: true
   applicable_session_types: ["*"]
+  guidance: |
+    Read the FIRST user message carefully to understand what was requested.
+    Then check if the session's work actually accomplished that request.
+
+    SATISFIED when:
+    - The user asked for X and X was done (PR created, code changed, question answered)
+    - The user asked for investigation and findings were reported
+    - The scope naturally evolved with user input and the final scope was completed
+
+    NOT SATISFIED when:
+    - User asked for 3 things and only 2 were done
+    - User asked for a PR and no PR was created
+    - Agent acknowledged the request but got sidetracked and never finished
+    - Work was started but not completed (partial implementation)
+
+    Be careful about scope evolution: if the user said "fix X" and during the
+    session they said "actually, also do Y", then both X and Y need to be done.
+    But if the user said "fix X" and the agent decided on its own to also do Y,
+    only X needs to be verified.
 
 - id: documentation_updates
   category: Session Completion & Progress
-  question: Were relevant documentation files updated?
-  description: Verifies README, docs, and inline documentation reflect changes
+  question: Were README files, docs directory, and inline documentation updated to accurately reflect the code changes made in this session?
+  description: Verifies that documentation was kept in sync with code changes - README, docs/, and docstrings updated as needed
   severity: warning
   checker: _check_documentation_updates
   enabled: true
   applicable_session_types: ["DEVELOPMENT", "MAINTENANCE", "INVESTIGATION"]
+  guidance: |
+    This check should only fire when PUBLIC-FACING code was changed.
+
+    Changes that DO need doc updates:
+    - New CLI commands or slash commands
+    - New user-facing features or skills
+    - Changes to public APIs or configuration formats
+    - Modified user-facing behavior or error messages
+
+    Changes that do NOT need doc updates:
+    - Internal refactors (hooks, utilities, internal modules)
+    - Bug fixes that don't change user-visible behavior
+    - Test file changes
+    - CI/CD configuration changes
+    - Dependency updates
+
+    If only internal code was modified, respond SATISFIED regardless of whether
+    docs were touched. This is a WARNING, not a blocker — don't block sessions
+    over documentation for internal changes.
 
 - id: tutorial_needed
   category: Session Completion & Progress
-  question: Does new feature need tutorial/how-to?
-  description: Identifies new features that should have usage examples
+  question: If a new user-facing feature was introduced this session, was a tutorial or how-to guide created to explain how to use it?
+  description: Identifies new user-facing features that lack usage examples or tutorials that would help users discover and adopt the feature
   severity: warning
   checker: _check_tutorial_needed
   enabled: true
@@ -87,8 +147,8 @@
 
 - id: feature_docs_discoverable
   category: Session Completion & Progress
-  question: Is feature documentation discoverable from multiple paths?
-  description: Verifies new features have docs discoverable from README and docs/ directory
+  question: Can documentation for any new features be found from both the project README and the docs/ directory, rather than only existing in a single hard-to-find location?
+  description: Verifies new feature documentation is discoverable via multiple entry points (README index, docs/ directory) so users can find it easily
   severity: warning
   checker: _check_feature_docs_discoverable
   enabled: true
@@ -96,8 +156,8 @@
 
 - id: presentation_needed
   category: Session Completion & Progress
-  question: Does work need presentation deck?
-  description: Checks if results should be presented to stakeholders
+  question: Does the completed work need a presentation deck to communicate results to stakeholders?
+  description: Checks if the scope of completed work warrants a stakeholder presentation that has not yet been created
   severity: warning
   checker: _check_presentation_needed
   enabled: false
@@ -105,39 +165,131 @@
 
 - id: next_steps
   category: Session Completion & Progress
-  question: Is work complete with no remaining next steps?
-  description: Blocks stopping if agent mentions "next steps" or "remaining work" - they must continue until no outstanding items remain
+  question: Did the agent complete all work without leaving unresolved next steps, remaining work items, or pending follow-ups that should have been finished before ending the session?
+  description: Blocks stopping if agent mentions "next steps" or "remaining work" in a way that indicates incomplete tasks - agent must continue until no outstanding items remain
   severity: blocker
   checker: _check_next_steps
   enabled: true
   applicable_session_types: ["DEVELOPMENT", "INVESTIGATION"]
+  guidance: |
+    This check is about distinguishing COMPLETION SUMMARIES from REMAINING WORK.
+
+    SATISFIED when the agent's final messages:
+    - Summarize what was accomplished ("Here's what I did: ...")
+    - List completed items in past tense ("Fixed X, Updated Y, Created Z")
+    - Say "no remaining work" or "all done"
+    - Describe PR contents or test results
+
+    NOT SATISFIED when the agent's final messages contain:
+    - Future-tense action items: "Next steps:\n- Deploy to staging\n- Update config"
+    - Explicit remaining work: "Still need to:\n- Fix the edge case\n- Add tests"
+    - Deferred items: "TODO: handle error case" or "Will address in follow-up"
+
+    CRITICAL false positive to avoid:
+    A bullet list summarizing COMPLETED work (past tense) is NOT "next steps".
+    "Changes made:\n- Fixed bug\n- Updated tests\n- Created PR" is a COMPLETION
+    SUMMARY, not remaining work. Do NOT flag this as unresolved next steps.
+
+    Also NOT a problem:
+    - "CI is running" (status observation, not remaining work)
+    - "PR ready for review" (awaiting human action, agent's job is done)
+    - "Waiting for approval" (expected end state per user preferences)
+
+    CRITICAL distinction — agent work vs user handoff:
+    Instructions directed at the USER ("You should review the PR", "When CI
+    passes, you can merge") are HANDOFF instructions, not remaining agent work.
+    Only flag as NOT SATISFIED if the agent describes work IT should have done
+    but did not. Deferring to a tracked issue ("Filed as #123 for follow-up")
+    is acceptable scope management, not incomplete work.
 
 - id: docs_organization
   category: Session Completion & Progress
-  question: Are investigation/session docs organized properly?
-  description: Verifies logs and documentation are in correct directories
+  question: Are session logs stored in .claude/runtime/logs/ and investigation documents placed in the correct docs/ subdirectory, following the project's documentation structure?
+  description: Verifies session logs and investigation artifacts are organized in their correct directories, not scattered in ad-hoc locations
   severity: warning
   checker: _check_docs_organization
   enabled: true
   applicable_session_types: ["MAINTENANCE", "INVESTIGATION"]
 
 # ============================================================================
-# CATEGORY 2: Workflow Process Adherence (2 considerations)
+# CATEGORY 2: Workflow Process Adherence (4 considerations)
 # ============================================================================
+
+- id: workflow_invocation
+  category: Workflow Process Adherence
+  question: Did the ultrathink-orchestrator explicitly invoke a workflow using either the Skill tool (for workflow skills) or the Read tool (to load a workflow markdown file), rather than skipping workflow invocation entirely?
+  description: Validates that ultrathink-orchestrator used either Skill tool to invoke a workflow skill or Read tool to load a workflow markdown file - not bypassing workflow invocation (Issue #2040)
+  severity: blocker
+  checker: _check_workflow_invocation
+  enabled: true
+  applicable_session_types: ["DEVELOPMENT", "INVESTIGATION"]
+
+- id: no_direct_main_commit
+  category: Workflow Process Adherence
+  question: Did all code commits go to a feature branch rather than directly to the main branch, with a PR created for review?
+  description: Verifies the agent did not bypass the PR workflow by committing directly to main - a mandatory user requirement that cannot be overridden
+  severity: blocker
+  checker: _check_no_direct_main_commit
+  enabled: true
+  applicable_session_types: ["DEVELOPMENT"]
+  guidance: |
+    This enforces a MANDATORY user preference: never commit directly to main.
+
+    Look for these specific signals in the transcript:
+    1. Did the agent create a feature branch (git checkout -b, git switch -c)?
+    2. Did commits happen on a non-main branch?
+    3. Was a PR created (gh pr create)?
+
+    SATISFIED when:
+    - Agent created a feature branch and committed there
+    - Agent created a PR for the changes
+    - No code changes were made (investigation/Q&A session)
+
+    NOT SATISFIED when:
+    - Agent ran "git commit" while on main/master branch
+    - Agent ran "git push origin main" with code changes
+    - Agent merged a PR without explicit user permission (look for user saying
+      "merge", "please merge", or "go ahead and merge")
+
+    This is a HARD rule — no exceptions, no rationalization.
 
 - id: dev_workflow_complete
   category: Workflow Process Adherence
-  question: Was full DEFAULT_WORKFLOW followed?
-  description: Checks for evidence of workflow steps (design, implement, test, review)
+  question: Were all required DEFAULT_WORKFLOW steps completed this session, including requirements clarification, design, implementation, testing, and PR creation?
+  description: Checks for evidence that all major workflow phases were executed (design, implement, test, review, PR) - not just some steps
   severity: blocker
   checker: _check_dev_workflow_complete
   enabled: true
   applicable_session_types: ["DEVELOPMENT"]
+  guidance: |
+    The DEFAULT_WORKFLOW has major phases. Look for evidence of EACH:
+
+    1. Requirements/Design: Agent used architect/analyzer agents (Task tool) or
+       discussed approach before coding
+    2. Implementation: Agent used Write/Edit tools to create or modify code
+    3. Testing: Agent ran tests via Bash (pytest, npm test, etc.)
+    4. Git operations: Agent created a branch, committed changes, pushed
+    5. PR creation: Agent ran "gh pr create"
+
+    SATISFIED when:
+    - All 5 phases have evidence in the transcript
+    - Small fixes may legitimately compress phases (design is implicit)
+    - Investigation-then-fix sessions where investigation served as design
+
+    NOT SATISFIED when:
+    - Agent wrote code but never ran tests
+    - Agent ran tests but never created a PR
+    - Agent created a PR but skipped testing entirely
+    - Major phases are completely absent from the transcript
+
+    For small, focused changes (one-line fix, config update), compress phases
+    proportionally. A 2-line bug fix doesn't need a formal design phase.
+    Judge by the spirit of the workflow, not rigid step counting.
 
 - id: investigation_docs
   category: Workflow Process Adherence
-  question: Were investigation findings documented?
-  description: Ensures exploration work is captured in persistent documentation
+  question: Were the findings from this investigation session captured in a persistent document in ~/.amplihack/.claude/docs/ or the project docs/ directory, so knowledge is retained across sessions?
+  description: Ensures that exploration work produces durable documentation rather than leaving findings only in the chat transcript where they will be lost
   severity: warning
   checker: _check_investigation_docs
   enabled: true
@@ -149,17 +301,38 @@
 
 - id: philosophy_compliance
   category: Code Quality & Philosophy Compliance
-  question: PHILOSOPHY adherence (zero-BS, no TODOs, no stubs)?
-  description: Detects anti-patterns like TODO comments, NotImplementedError, stub functions
+  question: Does all code written this session comply with the zero-BS philosophy, meaning no TODO comments, no NotImplementedError stubs, no placeholder functions, and no unimplemented code paths?
+  description: Detects anti-patterns violating the zero-BS philosophy - TODO comments, NotImplementedError, stub functions, pass-only implementations, and placeholder code
   severity: blocker
   checker: _check_philosophy_compliance
   enabled: true
   applicable_session_types: ["DEVELOPMENT", "MAINTENANCE"]
+  guidance: |
+    Look at Write and Edit tool calls for code anti-patterns. Focus on CODE
+    files (.py, .js, .ts, .rs, .go) — NOT documentation or configuration.
+
+    Violations (in code files only):
+    - "# TODO: ..." or "// TODO: ..." comments
+    - "# FIXME: ..." or "# XXX: ..."
+    - "raise NotImplementedError"
+    - Functions that are just "pass" or "..." with no implementation
+    - "# placeholder" or "# stub" comments
+
+    NOT violations:
+    - "TODO" appearing in .md documentation (discussing the philosophy itself)
+    - "TODO" in .yaml configuration (e.g., a consideration question about TODOs)
+    - "TODO" in test assertions that verify TODO detection
+    - Comments explaining WHY something was removed ("removed TODO that was here")
+    - "pass" in abstract base class methods (legitimate Python pattern)
+
+    This is about the AGENT's own code output. If the codebase already had TODOs
+    before this session, that's not the agent's fault — only check code the
+    agent WROTE or EDITED in this session.
 
 - id: shortcuts
   category: Code Quality & Philosophy Compliance
-  question: Were any quality shortcuts taken?
-  description: Identifies compromises like skipped error handling or incomplete validation
+  question: Did the implementation skip required error handling, input validation, or other quality requirements that were necessary to properly complete the task?
+  description: Identifies deliberate quality compromises - missing error handling, skipped input validation, incomplete edge case coverage, or deferred critical functionality
   severity: warning
   checker: _check_shortcuts
   enabled: true
@@ -171,21 +344,60 @@
 
 - id: local_testing
   category: Testing & Local Validation
-  question: Sure agent tested locally?
-  description: Verifies tests were executed and passed locally
+  question: Did the agent run the test suite locally (e.g., pytest, npm test, cargo test) and confirm all tests passed before declaring the work complete?
+  description: Verifies the agent actually executed tests and obtained passing results - not just wrote tests, but ran them and confirmed success locally
   severity: blocker
   checker: _check_local_testing
   enabled: true
   applicable_session_types: ["DEVELOPMENT"]
+  guidance: |
+    Look for Bash tool calls that executed test commands AND check their results.
+
+    SATISFIED when:
+    - Agent ran pytest/npm test/cargo test and output shows passing results
+    - Agent ran a validation script and confirmed it passed
+    - Agent used "uvx --from git+..." to test the installed package (outside-in)
+    - YAML/config-only changes where agent verified with "python -c 'import yaml; ...'"
+
+    NOT SATISFIED when:
+    - Agent wrote test files but never ran them
+    - Agent said "tests should pass" without actually running them
+    - Test commands were run but showed failures that were not addressed
+    - No test-related Bash commands appear in the transcript at all
+
+    Important edge cases:
+    - If the project has NO tests (no test files exist), this check should be
+      SATISFIED — you can't run tests that don't exist
+    - If the change is purely to YAML/docs/config and agent verified the files
+      parse correctly, that counts as testing
+    - "uv run pytest" and "python -m pytest" both count as test execution
 
 - id: interactive_testing
   category: Testing & Local Validation
-  question: Did agent test interactively beyond automated tests?
-  description: Checks for manual verification, edge case testing, UI validation
+  question: Did the agent manually verify the feature works end-to-end, test edge cases, or validate the user experience beyond just running automated tests?
+  description: Checks for manual verification steps - running the application, testing with real inputs, checking edge cases, validating UI/UX, or other non-automated validation
   severity: warning
   checker: _check_interactive_testing
   enabled: true
   applicable_session_types: ["DEVELOPMENT"]
+  guidance: |
+    Look for evidence the agent went beyond "run pytest" to actually try the
+    feature from a user's perspective.
+
+    SATISFIED when:
+    - Agent ran the CLI tool with real arguments and checked output
+    - Agent used "uvx --from git+..." to test the installed package
+    - Agent imported a module and called functions interactively
+    - Agent tested with edge case inputs (empty, large, malformed)
+    - Automated test count is substantial (10+ tests passing)
+
+    NOT SATISFIED when:
+    - Agent only ran "pytest" and nothing else
+    - No evidence of trying the actual user workflow
+    - Agent said it would test but never did
+
+    This is a WARNING, not a blocker. Be lenient — if the automated tests are
+    comprehensive, that's sufficient. This check is aspirational.
 
 # ============================================================================
 # CATEGORY 5: PR Content & Quality (4 considerations)
@@ -193,8 +405,8 @@
 
 - id: unrelated_changes
   category: PR Content & Quality
-  question: Are there unrelated changes in PR?
-  description: Detects scope creep and unrelated modifications
+  question: Does the PR contain changes to files or functionality that are unrelated to the stated objective of this session, indicating unintended scope creep?
+  description: Detects scope creep - changes to unrelated files, refactoring outside the task scope, or incidental modifications not needed to complete the stated goal
   severity: warning
   checker: _check_unrelated_changes
   enabled: true
@@ -202,8 +414,8 @@
 
 - id: root_pollution
   category: PR Content & Quality
-  question: Did PR pollute project root with new files?
-  description: Flags new top-level files that should be in subdirectories
+  question: Did the PR add new files directly to the project root directory that should instead be organized in appropriate subdirectories such as docs/, src/, or tests/?
+  description: Flags new top-level files that violate project organization - new files should go in appropriate subdirectories, not clutter the project root
   severity: warning
   checker: _check_root_pollution
   enabled: true
@@ -211,8 +423,8 @@
 
 - id: pr_description
   category: PR Content & Quality
-  question: Is PR description clear and complete?
-  description: Verifies PR has summary, test plan, and context
+  question: Does the PR description clearly explain what was changed, why the change was needed, and include a test plan that reviewers can follow to verify the work?
+  description: Verifies PR has all required sections - summary of changes, problem being solved, and a concrete test plan that reviewers can execute
   severity: warning
   checker: _check_pr_description
   enabled: true
@@ -220,8 +432,8 @@
 
 - id: review_responses
   category: PR Content & Quality
-  question: Were PR review comments addressed?
-  description: Checks if reviewer feedback was acknowledged and resolved
+  question: Were all existing reviewer comments on the PR either resolved with code changes or explicitly acknowledged with a response, rather than ignored before ending the session?
+  description: Checks if reviewer feedback was actively addressed - either by making the requested changes or by explaining why the suggestion was not incorporated
   severity: blocker
   checker: _check_review_responses
   enabled: true
@@ -233,8 +445,8 @@
 
 - id: ci_status
   category: CI/CD & Mergeability Status
-  question: CI passing/mergeable?
-  description: Verifies GitHub Actions or other CI checks are passing
+  question: Are all GitHub Actions CI checks passing and the PR in a mergeable state, with no failing required checks or unresolved merge conflicts?
+  description: Verifies all CI checks have passed and the PR is mergeable - checks GitHub Actions status, required status checks, and absence of merge conflicts
   severity: blocker
   checker: _check_ci_status
   enabled: true
@@ -242,8 +454,8 @@
 
 - id: branch_rebase
   category: CI/CD & Mergeability Status
-  question: Does branch need rebase on main?
-  description: Checks if branch is behind main and needs updating
+  question: Is the feature branch up-to-date with the main branch, or does it need to be rebased to incorporate recent changes and resolve potential conflicts?
+  description: Checks if the branch is behind main and needs rebasing to stay current with recent changes before the PR can be merged cleanly
   severity: warning
   checker: _check_branch_rebase
   enabled: true
@@ -251,8 +463,8 @@
 
 - id: ci_precommit_mismatch
   category: CI/CD & Mergeability Status
-  question: CI failures contradicting passing pre-commit?
-  description: Identifies divergence between local pre-commit and CI checks
+  question: Are there CI check failures that were not caught by local pre-commit hooks, indicating a divergence between local validation and the CI environment?
+  description: Identifies cases where CI fails on checks that passed locally, revealing gaps between the local pre-commit configuration and the CI validation environment
   severity: warning
   checker: _check_ci_precommit_mismatch
   enabled: true

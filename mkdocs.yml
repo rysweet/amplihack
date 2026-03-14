@@ -93,6 +93,7 @@ nav:
       - Pre-Commit Diagnostic: claude/agents/amplihack/specialized/pre-commit-diagnostic.md
       - CI Diagnostic: claude/agents/amplihack/specialized/ci-diagnostic-workflow.md
       - Fix Workflow: claude/agents/amplihack/specialized/fix-agent.md
+      - Oxidizer: OXIDIZER.md
   - Agents:
       - Overview: claude/agents/README.md
       - Core Agents:
@@ -133,11 +134,12 @@ nav:
   - Skills:
       - Overview: claude/skills/README.md
       - Available Skills:
-          - Agent SDK: claude/skills/agent-sdk/SKILL.md
+          - Agent SDK: claude/skills/claude-agent-sdk/SKILL.md
           - DOCX: claude/skills/docx/SKILL.md
           - PPTX: claude/skills/pptx/SKILL.md
           - XLSX: claude/skills/xlsx/SKILL.md
           - PDF: claude/skills/pdf/SKILL.md
+          - Oxidizer: claude/skills/oxidizer-workflow/SKILL.md
           - WorkIQ WSL: claude/skills/workiq-wsl/SKILL.md
   - Tools:
       - Scenarios Overview: claude/scenarios/README.md

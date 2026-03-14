@@ -15,13 +15,13 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import PurePath
 
-from blarify.vendor.multilspy.language_server import LanguageServer
-from blarify.vendor.multilspy.lsp_protocol_handler.lsp_types import InitializeParams
-from blarify.vendor.multilspy.lsp_protocol_handler.server import ProcessLaunchInfo
-from blarify.vendor.multilspy.multilspy_config import MultilspyConfig
-from blarify.vendor.multilspy.multilspy_logger import MultilspyLogger
-from blarify.vendor.multilspy.multilspy_settings import MultilspySettings
-from blarify.vendor.multilspy.multilspy_utils import FileUtils, PlatformUtils
+from amplihack.vendor.blarify.vendor.multilspy.language_server import LanguageServer
+from amplihack.vendor.blarify.vendor.multilspy.lsp_protocol_handler.lsp_types import InitializeParams
+from amplihack.vendor.blarify.vendor.multilspy.lsp_protocol_handler.server import ProcessLaunchInfo
+from amplihack.vendor.blarify.vendor.multilspy.multilspy_config import MultilspyConfig
+from amplihack.vendor.blarify.vendor.multilspy.multilspy_logger import MultilspyLogger
+from amplihack.vendor.blarify.vendor.multilspy.multilspy_settings import MultilspySettings
+from amplihack.vendor.blarify.vendor.multilspy.multilspy_utils import FileUtils, PlatformUtils
 
 
 @dataclasses.dataclass

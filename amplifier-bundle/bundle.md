@@ -70,7 +70,7 @@ skills:
   ultrathink-orchestrator: { path: skills/ultrathink-orchestrator/SKILL.md }
 
   # Technical skills (19)
-  agent-sdk: { path: skills/agent-sdk/SKILL.md }
+  agent-sdk: { path: skills/claude-agent-sdk/SKILL.md }
   azure-admin: { path: skills/azure-admin/SKILL.md }
   azure-devops: { path: skills/azure-devops/SKILL.md }
   azure-devops-cli: { path: skills/azure-devops-cli/skill.md }
@@ -86,6 +86,7 @@ skills:
   microsoft-agent-framework: { path: skills/microsoft-agent-framework/skill.md }
   module-spec-generator: { path: skills/module-spec-generator/SKILL.md }
   outside-in-testing: { path: skills/outside-in-testing/SKILL.md }
+  qa-team: { path: skills/qa-team/SKILL.md }
   remote-work: { path: skills/remote-work/SKILL.md }
   skill-builder: { path: skills/skill-builder/SKILL.md }
   test-gap-analyzer: { path: skills/test-gap-analyzer/SKILL.md }

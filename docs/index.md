@@ -123,6 +123,7 @@ amplihack copilot
 - [Memory Configuration Consent](features/memory-consent-prompt.md) - Intelligent memory settings with timeout protection
 - [Verify .claude/ Staging](howto/verify-claude-staging.md) - Check that framework files are properly staged
 - [Verify Framework Injection](howto/verify-framework-injection.md) - Check that AMPLIHACK.md injection is working
+- [Enable Blarify Code Indexing](howto/enable-blarify.md) - Opt-in code graph indexing with env var, non-interactive mode, and staleness detection
 
 ### Deployment
 
@@ -149,6 +150,8 @@ Understand the philosophy and architecture behind amplihack.
 - [Development Patterns](claude/context/PATTERNS.md) - Proven implementation patterns
 - [Unified Staging Architecture](concepts/unified-staging-architecture.md) - How .claude/ staging works across all commands
 - [Framework Injection Architecture](concepts/framework-injection-architecture.md) - How AMPLIHACK.md injection works
+- [How to Use Blarify Code Graph](howto/blarify-code-graph.md) - Enable, query, and configure
+- [Enable Blarify Code Indexing](howto/enable-blarify.md) - `AMPLIHACK_ENABLE_BLARIFY`, non-interactive skip, staleness detection
 - [Blarify Architecture](blarify_architecture.md) - Understanding the Blarify integration
 - [Documentation Knowledge Graph](documentation_knowledge_graph.md) - How docs connect
 
@@ -164,6 +167,25 @@ Understand the philosophy and architecture behind amplihack.
 ## 📋 Workflows
 
 Proven methodologies for consistent, high-quality results.
+
+### Automatic Workflow Classification ⭐ NEW
+
+**Mandatory at Session Start** (Issue #2353) - amplihack now automatically classifies your request and executes the appropriate workflow when you start a session:
+
+- **4-Way Classification**: Q&A, Operations, Investigation, or Development
+- **Recipe Runner Execution**: Code-enforced workflow steps with fail-fast behavior
+- **Graceful Fallback**: Recipe Runner → Workflow Skills → Markdown
+- **Explicit Command Bypass**: Commands like `/fix`, `/analyze` skip auto-classification
+
+**Quick Reference**:
+| Your Request | Classified As | Workflow | Steps |
+|--------------|---------------|----------|-------|
+| "What is..." | Q&A | Direct answer | 3 |
+| "Clean up..." | Operations | Direct execution | 1 |
+| "How does X work?" | Investigation | Deep exploration | 6 |
+| "Add feature X" | Development | Full workflow | 23 |
+
+**Implementation**: `src/amplihack/workflows/` - classifier, execution_tier_cascade, session_start modules
 
 ### Core Workflows
 
@@ -198,12 +220,41 @@ Document-Driven Development is a systematic methodology where documentation come
   - [Common Pitfalls](document_driven_development/reference/common_pitfalls.md) - What to avoid
   - [FAQ](document_driven_development/reference/faq.md) - Common questions
 
+### Recipe Runner
+
+Code-enforced workflow execution engine with declarative YAML recipes.
+
+- [Recipe Runner Overview](recipes/README.md) - Architecture, YAML format, and creating custom recipes
+- [UltraThink Recipe Runner Integration](recipes/RECIPE_RUNNER_ULTRATHINK_INTEGRATION.md) - How ultrathink uses Recipe Runner for code-enforced workflow execution
+- [Recipe CLI Commands How-To](howto/recipe-cli-commands.md) - Task-oriented guide for using recipe commands
+- [CLI Reference](reference/cli.md) - Top-level `amplihack` command, `--version` flag, global environment variables
+- [Recipe CLI Reference](reference/recipe-cli-reference.md) - Complete command-line documentation
+- [Token Sanitizer](reference/token-sanitizer.md) - Pattern ordering, audit labels, and custom patterns for secret redaction
+- [RecipeResult](reference/recipe-result.md) - `RecipeResult` and `StepResult` dataclasses, `str()` format, JSON serialisation
+- [AppendHandler](reference/append-handler.md) - `AppendResult` class, timestamp filename format, atomic file writes
+
+**Quick Start**:
+
+```bash
+# List available recipes
+amplihack recipe list
+
+# Execute a workflow recipe
+amplihack recipe run default-workflow \
+  --context '{"task_description": "Add user authentication", "repo_path": "."}'
+
+# Validate recipe YAML
+amplihack recipe validate my-workflow.yaml
+
+# Show recipe details
+amplihack recipe show default-workflow
+```
+
 ### Advanced Workflows
 
 - [N-Version Programming](claude/workflow/N_VERSION_WORKFLOW.md) - Multiple solutions for critical code
 - [Multi-Agent Debate](claude/workflow/DEBATE_WORKFLOW.md) - Structured decision-making
 - [Cascade Workflow](claude/workflow/CASCADE_WORKFLOW.md) - Graceful degradation patterns
-<!-- - [Workflow Enforcement](workflow-enforcement.md) - Ensure process compliance (Coming soon) -->
 
 ---
 
@@ -230,15 +281,71 @@ Specialized AI agents and tools for every development task.
 
 ### Goal-Seeking Agents
 
-**Autonomous agents that iterate toward objectives without stopping.**
+**Autonomous agents that learn, remember, teach, and apply knowledge across four SDK backends.**
 
-- [Goal Agent Generator Guide](GOAL_AGENT_GENERATOR_GUIDE.md) - Create custom goal-seeking agents
-- [Goal Agent Generator Presentation](GOAL_AGENT_GENERATOR_PRESENTATION.md) - Concept overview
-- [Goal Agent Generator Design](agent-bundle-generator-design.md) - Architecture and patterns
-- [Goal Agent Requirements](agent-bundle-generator-requirements.md) - Specifications
-- [Implementation Summary](goal_agent_generator/IMPLEMENTATION_SUMMARY.md) - Current status
+**📚 Tutorials (Learning-Oriented)**
 
-**Key Feature**: Goal-seeking agents work autonomously toward a defined objective, iterating and adapting without requiring user intervention at each step. Perfect for complex, open-ended tasks.
+- **[Goal-Seeking Agent Tutorial](tutorials/GOAL_SEEKING_AGENT_TUTORIAL.md)** - Interactive 10-lesson tutorial covering agent generation, SDK selection, multi-agent architecture, evaluations (L1-L12), and self-improvement loops
+
+**📖 How-To Guides (Problem-Oriented)**
+
+- [Goal Agent Generator Guide](GOAL_AGENT_GENERATOR_GUIDE.md) - Create custom goal-seeking agents with `amplihack new`
+- [SDK Adapters Guide](SDK_ADAPTERS_GUIDE.md) - Choose and configure Copilot, Claude, Microsoft, or Mini SDK backends
+
+**📋 Reference (Information-Oriented)**
+
+- **[Quick Reference Card](reference/goal-seeking-agents-quick-reference.md)** - Fast lookup: commands, SDK selection, eval levels, common patterns
+- [Eval System Architecture](EVAL_SYSTEM_ARCHITECTURE.md) - Progressive test suite (L1-L12), grading pipeline, domain agents, long-horizon memory eval, self-improvement runner
+- [Goal Agent Generator Design](agent-bundle-generator-design.md) - Architecture and design patterns
+- [Goal Agent Requirements](agent-bundle-generator-requirements.md) - Technical specifications
+- [Implementation Summary](goal_agent_generator/IMPLEMENTATION_SUMMARY.md) - Current implementation status
+
+**💡 Explanation (Understanding-Oriented)**
+
+- **[Comprehensive Guide](GOAL_SEEKING_AGENTS.md)** - Complete system overview: capabilities, architecture, memory systems, evaluation framework, and self-improvement
+- [Goal Agent Generator Presentation](GOAL_AGENT_GENERATOR_PRESENTATION.md) - High-level concept introduction
+
+**Key Features**:
+
+- **SDK-Agnostic**: Write once, run on Copilot, Claude, Microsoft Agent Framework, or lightweight mini-framework
+- **7 Learning Tools**: learn, search, explain, verify, find gaps, store, summary
+- **Progressive Eval (L1-L12)**: From simple recall to far transfer across domains
+- **3-Run Median Eval**: `--runs 3` for stable benchmarks (reduces LLM stochasticity)
+- **Multi-Vote Grading**: `--grader-votes 3` for noise reduction on ambiguous answers
+- **Teaching Evaluation**: Multi-turn teacher-student knowledge transfer (Chi 1994, Vygotsky ZPD)
+- **Self-Improvement Loop**: EVAL -> ANALYZE -> RESEARCH -> IMPROVE -> RE-EVAL -> DECIDE with automated error analysis
+- **5 Domain Agents**: Code Review, Meeting Synthesizer, Data Analysis, Document Creator, Project Planning
+- **Long-Horizon Memory Eval**: 1000-turn dialogue stress test
+- **Multi-SDK Comparison**: 4-way eval comparison via `sdk_eval_loop.py`
+- **Current Score**: 97.5% overall median (L1-L7, 3-run median, mini SDK)
+
+### Memory-Enabled Agents ⭐ NEW
+
+**Learning agents that improve through experience and persist knowledge across sessions.**
+
+- [Feature Overview](features/memory-enabled-agents.md) - What are memory-enabled agents and when to use them
+- [Getting Started Tutorial](tutorials/memory-enabled-agents-getting-started.md) - Create and run your first learning agent (30 minutes)
+- [API Reference](reference/memory-enabled-agents-api.md) - Complete technical documentation for amplihack-memory-lib
+- [Architecture Deep-Dive](concepts/memory-enabled-agents-architecture.md) - System design and technical details
+- [How-To: Integrate Memory](howto/integrate-memory-into-agents.md) - Add memory to existing agents
+- [How-To: Design Learning Metrics](howto/design-custom-learning-metrics.md) - Track domain-specific improvements
+- [How-To: Validate Learning](howto/validate-agent-learning.md) - Test learning behavior with gadugi-agentic-test
+
+**Key Features**:
+
+- **Standalone Library**: `pip install amplihack-memory-lib` - Use in any Python project
+- **Persistent Memory**: SQLite-based storage (no external database required)
+- **Pattern Recognition**: Automatically recognize recurring situations after 3 occurrences
+- **Learning Metrics**: Track runtime improvement, pattern recognition rate, confidence growth
+- **Four Experience Types**: SUCCESS, FAILURE, PATTERN, INSIGHT
+- **Validated Learning**: Test-driven validation ensures agents actually learn
+
+**Demonstration Agents**:
+
+1. **Documentation Analyzer** - Learns documentation quality patterns (MS Learn integration)
+2. **Code Pattern Recognizer** - Identifies reusable code patterns and abstractions
+3. **Bug Predictor** - Predicts likely bug locations based on learned characteristics
+4. **Performance Optimizer** - Learns performance anti-patterns and optimization techniques
 
 ### Meta-Agentic Task Delegation ⭐ NEW
 
@@ -364,6 +471,18 @@ Embedded graph-based memory using Kuzu (NO Neo4j required):
 - [Documentation Graph](doc_graph_quick_reference.md) - Navigate documentation connections
 - [Code Context Injection](memory/CODE_CONTEXT_INJECTION.md) - Link code to memories
 
+### Code Graph
+
+Query your codebase structure via the Kuzu graph database:
+
+- **[How to Use Blarify Code Graph](howto/blarify-code-graph.md)** - Enable, query, and configure
+
+```bash
+python -m amplihack.memory.kuzu.query_code_graph stats
+python -m amplihack.memory.kuzu.query_code_graph search <name>
+python -m amplihack.memory.kuzu.query_code_graph functions --file <path>
+```
+
 **Historical Research** (Neo4j was replaced with Kuzu in Week 7):
 
 - [Executive Summary](research/neo4j_memory_system/00-executive-summary/README.md)
@@ -382,8 +501,14 @@ Embedded graph-based memory using Kuzu (NO Neo4j required):
 ### External Knowledge
 
 - [External Knowledge Integration](external_knowledge_integration.md) - Import external data sources
-- [Blarify Integration](blarify_integration.md) - Code indexing with Kuzu (NO Neo4j)
-- [Blarify Quickstart](blarify_quickstart.md) - Get started with Blarify
+
+### Blarify Code Indexing
+
+Complete code indexing and analysis with multi-language support:
+
+- **[How to Use Blarify Code Graph](howto/blarify-code-graph.md)** - Enable, query, and configure code graph indexing
+- [Blarify Integration](blarify_integration.md) - Technical integration details
+- [Blarify Quickstart](blarify_quickstart.md) - Get started in 5 minutes
 
 ---
 
@@ -456,6 +581,10 @@ Advanced configuration, deployment patterns, and environment management.
 - [Azure Integration](AZURE_INTEGRATION.md) - Deploy to Azure cloud
 - [Test Azure Proxy](TEST_AZURE_PROXY.md) - Validate Azure proxy setup
 
+### Build System
+
+- [Plugin Directory Structure Fix](build_system/plugin-directory-structure-fix.md) - Automatic plugin discovery for UVX installations
+
 ### Remote Sessions
 
 - [Remote Sessions Overview](remote-sessions/README.md) - Execute on remote machines
@@ -509,6 +638,7 @@ Fix common issues and learn from past solutions.
 - [Discoveries](DISCOVERIES.md) - Known issues and solutions (CHECK HERE FIRST!)
 - [Troubleshooting Guides](troubleshooting/README.md) - Common problems and fixes
 - [Memory Consent Issues](troubleshooting/memory-consent-issues.md) - Fix prompt, timeout, and detection problems
+- [Memory-Enabled Agents Issues](troubleshooting/memory-enabled-agents.md) - Fix memory persistence, pattern recognition, and learning problems
 - [Platform Bridge Troubleshooting](troubleshooting/platform-bridge.md) - Fix platform detection and CLI issues
 - [Stop Hook Exit Hang](troubleshooting/stop-hook-exit-hang.md) - Fix 10-13s hang on exit (resolved v0.9.1)
 - [Tool Null Name Analysis](TOOL_NULL_NAME_ANALYSIS.md) - Debugging tool name issues
@@ -522,6 +652,7 @@ Fix common issues and learn from past solutions.
 
 ### How-To Guides
 
+- [Exception Handling](howto/exception-handling.md) - Implement proper error handling in amplihack code
 - [Configure Memory Consent](howto/configure-memory-consent.md) - Customize prompt behavior, timeouts, and CI/CD integration
 - [Configure Power-Steering Merge Preferences](howto/power-steering-merge-preferences.md) - Set up merge approval workflow
 - [Platform Bridge Quick Start](tutorials/platform-bridge-quickstart.md) - Learn the basics in 10 minutes
@@ -556,6 +687,7 @@ Quick references, guides, and additional resources.
 
 ### Quick References
 
+- [Exception Handling Reference](reference/exception-handling.md) - Complete exception hierarchy and patterns
 - [Command Selection Guide](commands/COMMAND_SELECTION_GUIDE.md) - Choose the right command
 - [Platform Bridge API Reference](reference/platform-bridge-api.md) - Complete API documentation
 - [Power Steering File Locking](reference/power-steering-file-locking.md) - Prevents counter race conditions

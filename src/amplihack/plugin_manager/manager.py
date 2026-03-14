@@ -189,8 +189,13 @@ class PluginManager:
                         )
 
                     source_path = temp_dir / plugin_name
-                except Exception:
-                    # Clean up temp directory on error
+                except Exception as e:
+                    # Clean up temp directory on error before re-raising
+                    import logging
+
+                    logging.getLogger(__name__).debug(
+                        f"Plugin git clone failed, cleaning up temp dir: {type(e).__name__}"
+                    )
                     if temp_cleanup_needed and temp_dir.exists():
                         shutil.rmtree(temp_dir)
                     raise

@@ -5,6 +5,7 @@ import json
 import os
 import platform
 import re
+import shutil
 import subprocess
 import sys
 import threading
@@ -18,21 +19,26 @@ if platform.system() != "Windows":
 else:
     pty = None
 
+# Unset CLAUDECODE to prevent nested session errors when spawning Claude CLI subprocesses
+os.environ.pop("CLAUDECODE", None)
+
 # Try to import Claude SDK, fall back gracefully
 try:
     from claude_agent_sdk import ClaudeAgentOptions, query  # type: ignore
 
     CLAUDE_SDK_AVAILABLE = True
 except ImportError:
+    print("WARNING: claude_agent_sdk not available", file=sys.stderr)
     CLAUDE_SDK_AVAILABLE = False
 
 # Try to import Rich for markdown rendering
 try:
-    from rich.console import Console
-    from rich.markdown import Markdown
+    from rich.console import Console  # pyright: ignore[reportMissingImports]
+    from rich.markdown import Markdown  # pyright: ignore[reportMissingImports]
 
     RICH_AVAILABLE = True
 except ImportError:
+    print("WARNING: rich not available, markdown rendering disabled", file=sys.stderr)
     RICH_AVAILABLE = False
     Console = None
     Markdown = None
@@ -97,12 +103,12 @@ class AutoMode:
     def __init__(
         self,
         sdk: str = "claude",
-        prompt: str = None,
+        prompt: str | None = None,
         max_turns: int = 10,
         working_dir: Path | None = None,
         ui_mode: bool = False,
         query_timeout_minutes: float | None = 30.0,
-        task: str = None,  # Alias for prompt (for testing)
+        task: str | None = None,  # Alias for prompt (for testing)
     ):
         """Initialize auto mode.
 
@@ -124,9 +130,9 @@ class AutoMode:
         # Ensure UTF-8 encoding for stdout/stderr on Windows
         if sys.platform == "win32":
             if hasattr(sys.stdout, "reconfigure"):
-                sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+                sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # pyright: ignore[reportAttributeAccessIssue]
             if hasattr(sys.stderr, "reconfigure"):
-                sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+                sys.stderr.reconfigure(encoding="utf-8", errors="replace")  # pyright: ignore[reportAttributeAccessIssue]
 
         self.sdk = sdk
         self.prompt = prompt
@@ -174,6 +180,17 @@ class AutoMode:
         # JSON logger for structured event logging
         self.json_logger = JsonLogger(self.log_dir)
 
+        # Agent memory (optional -- degrades gracefully if unavailable)
+        self.memory = None
+        try:
+            from amplihack.launcher.agent_memory import AgentMemory
+
+            self.memory = AgentMemory.create(agent_name=f"auto_{sdk}")
+            if self.memory:
+                self.log("Memory system initialized")
+        except Exception:
+            pass  # Memory is optional
+
         # Create directories for prompt injection feature
         self.append_dir = self.log_dir / "append"
         self.appended_dir = self.log_dir / "appended"
@@ -197,7 +214,7 @@ class AutoMode:
         # Initialize Rich console for markdown rendering
         if RICH_AVAILABLE:
             # Create console with UTF-8 encoding and markup enabled
-            self.console = Console(
+            self.console = Console(  # pyright: ignore[reportOptionalCall]
                 file=sys.stdout,
                 force_terminal=True,
                 markup=True,
@@ -828,11 +845,15 @@ Current Turn: {self.turn}/{self.max_turns}"""
                                     # Render markdown for Claude SDK output if Rich is available
                                     if self.console is not None:
                                         try:
-                                            md = Markdown(text)
+                                            md = Markdown(text)  # pyright: ignore[reportOptionalCall]
                                             self.console.print(md, end="")
                                             sys.stdout.flush()
-                                        except Exception:
+                                        except Exception as e:
                                             # Fallback to plain text if markdown rendering fails
+                                            self.log(
+                                                f"Markdown rendering failed, using plain text: {type(e).__name__}",
+                                                level="DEBUG",
+                                            )
                                             print(text, end="", flush=True)
                                     else:
                                         # No Rich available, print plain text
@@ -951,6 +972,21 @@ Current Turn: {self.turn}/{self.max_turns}"""
             import traceback
 
             self.log(f"Traceback: {traceback.format_exc()}", level="ERROR")
+
+            # Provide actionable guidance for binary/process errors
+            error_str = str(e).lower()
+            if any(
+                keyword in error_str
+                for keyword in ("no such file", "not found", "enoent", "spawn", "exec")
+            ):
+                self.log(
+                    "This error may indicate the 'claude' CLI binary is missing or "
+                    "not on PATH.\n"
+                    "  Install:  npm install -g @anthropic-ai/claude-code\n"
+                    "  Verify:   claude --version\n"
+                    "  PATH:     Ensure the npm global bin directory is on your PATH.",
+                    level="ERROR",
+                )
 
             # Log error event
             self.json_logger.log_event(
@@ -1160,6 +1196,14 @@ Current Turn: {self.turn}/{self.max_turns}"""
 
         self.run_hook("session_start")
 
+        # Memory: store initial goal
+        if self.memory:
+            self.memory.store_goal(self.prompt)
+            # Inject past experiences into context
+            past_context = self.memory.recall_relevant(self.prompt)
+            if past_context:
+                self.log(f"Memory: recalled {past_context.count(chr(10))} past experiences")
+
         try:
             # Turn 1: Clarify objective
             self.turn = 1
@@ -1184,6 +1228,10 @@ User Request:
                 if self.ui_enabled and hasattr(self, "state"):
                     self.state.update_status("error")
                 return 1
+
+            # Memory: store clarified objective
+            if self.memory:
+                self.memory.store_objective(objective)
 
             # Turn 2: Create plan
             self.turn = 2
@@ -1220,6 +1268,10 @@ Objective:
                 if self.ui_enabled and hasattr(self, "state"):
                     self.state.update_status("error")
                 return 1
+
+            # Memory: store execution plan
+            if self.memory:
+                self.memory.store_plan(plan)
 
             # Turns 3+: Execute and evaluate
             for turn in range(3, self.max_turns + 1):
@@ -1258,6 +1310,10 @@ Current Turn: {turn}/{self.max_turns}"""
                 if code != 0:
                     self.log(f"Warning: Execution returned exit code {code}")
 
+                # Memory: store execution result
+                if self.memory:
+                    self.memory.store_turn_result(turn, execution_output)
+
                 # Evaluate
                 self.log(f"--- {self._progress_str('Evaluating')} Evaluate ---")
                 eval_prompt = f"""{self._build_philosophy_context()}
@@ -1283,6 +1339,10 @@ Objective:
 Current Turn: {turn}/{self.max_turns}"""
 
                 code, eval_result = self.run_sdk(eval_prompt)
+
+                # Memory: store evaluation
+                if self.memory:
+                    self.memory.store_evaluation(turn, eval_result)
 
                 # Calculate and log turn duration
                 turn_duration = time.time() - turn_start_time
@@ -1326,10 +1386,16 @@ Current Turn: {turn}/{self.max_turns}"""
             )
             if code == 0:
                 print(summary)
+                # Memory: store session learning
+                if self.memory:
+                    self.memory.store_learning(summary)
             else:
                 self.log(f"Warning: Summary generation failed (exit {code})")
 
         finally:
+            # Memory: cleanup
+            if self.memory:
+                self.memory.close()
             self.run_hook("stop")
 
         return 0
@@ -1359,6 +1425,19 @@ Current Turn: {turn}/{self.max_turns}"""
             self.log(f"Transformed prompt for temp staging (target: {self.original_cwd_from_env})")
 
         self.run_hook("session_start")
+
+        # Memory: store initial goal + recall past experiences
+        if self.memory:
+            self.memory.store_goal(self.prompt)
+
+        # Pre-flight check: verify claude CLI binary is available
+        if not shutil.which("claude"):
+            raise FileNotFoundError(
+                "The 'claude' CLI binary is required but was not found on PATH.\n"
+                "The Claude Agent SDK depends on the Claude Code CLI.\n"
+                "Install it with:  npm install -g @anthropic-ai/claude-code\n"
+                "Then verify with:  claude --version"
+            )
 
         # Initialize options for potential forking
         options = ClaudeAgentOptions(
@@ -1408,6 +1487,10 @@ User Request:
                 if self.ui_enabled and hasattr(self, "state"):
                     self.state.update_status("error")
                 return 1
+
+            # Memory: store clarified objective
+            if self.memory:
+                self.memory.store_objective(objective)
 
             # Turn 2: Create plan
             self.turn = 2
@@ -1460,6 +1543,10 @@ Objective:
                 if self.ui_enabled and hasattr(self, "state"):
                     self.state.update_status("error")
                 return 1
+
+            # Memory: store execution plan
+            if self.memory:
+                self.memory.store_plan(plan)
 
             # Turns 3+: Execute and evaluate
             for turn in range(3, self.max_turns + 1):
@@ -1535,6 +1622,10 @@ Current Turn: {turn}/{self.max_turns}"""
                 if code != 0:
                     self.log(f"Warning: Execution returned exit code {code}")
 
+                # Memory: store execution result
+                if self.memory:
+                    self.memory.store_turn_result(turn, execution_output)
+
                 # Evaluate
                 self.message_capture.set_phase(
                     "evaluating", self.turn
@@ -1543,6 +1634,10 @@ Current Turn: {turn}/{self.max_turns}"""
                 eval_prompt = self._build_evaluation_prompt(self.message_capture)
 
                 code, eval_result = await self._run_turn_with_retry(eval_prompt, max_retries=3)
+
+                # Memory: store evaluation
+                if self.memory:
+                    self.memory.store_evaluation(turn, eval_result)
 
                 # Calculate and log turn duration
                 turn_duration = time.time() - turn_start_time
@@ -1595,10 +1690,17 @@ Current Turn: {turn}/{self.max_turns}"""
             )
             if code == 0:
                 print(summary)
+                # Memory: store session learning
+                if self.memory:
+                    self.memory.store_learning(summary)
             else:
                 self.log(f"Warning: Summary generation failed (exit {code})")
 
         finally:
+            # Memory: cleanup
+            if self.memory:
+                self.memory.close()
+
             # Export session transcript before stop hook
             self._export_session_transcript()
 
@@ -1639,8 +1741,10 @@ Current Turn: {turn}/{self.max_turns}"""
                     search_paths.append(builders_in_pkg)
             except (ValueError, OSError) as e:
                 self.log(f"Path validation failed in UVX: {type(e).__name__}", level="DEBUG")
-            except Exception:
-                pass
+            except Exception as e:
+                self.log(
+                    f"Unexpected error in UVX path discovery: {type(e).__name__}", level="DEBUG"
+                )
 
             # Path 2: Project root (local development)
             try:
@@ -1664,8 +1768,11 @@ Current Turn: {turn}/{self.max_turns}"""
                 self.log(
                     f"Path validation failed in project root: {type(e).__name__}", level="DEBUG"
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                self.log(
+                    f"Unexpected error in project root path discovery: {type(e).__name__}",
+                    level="DEBUG",
+                )
 
             # Load builder from first valid path
             ClaudeTranscriptBuilder = None

@@ -16,13 +16,67 @@ Comprehensive guide from basics to advanced topics. 60-90 minutes of hands-on le
 - All 8 workflow types
 - Prompting techniques
 - Autonomous work (auto mode, lock mode)
-- Goal-seeking agents
+- Goal-seeking agents overview
 - Advanced features (skills, hooks, memory)
 
 **Start Learning**:
 
 ```
 "Start the amplihack tutorial"
+```
+
+### 🤖 [Goal-Seeking Agent Tutorial](GOAL_SEEKING_AGENT_TUTORIAL.md)
+
+Complete hands-on guide to autonomous learning agents. Interactive 10-lesson curriculum with exercises, quizzes, and progressive skill building.
+
+**Topics Covered**:
+
+- Agent generation with `amplihack new`
+- SDK selection (Copilot, Claude, Microsoft, Mini)
+- Multi-agent architecture and dynamic spawning
+- Running evaluations (L1-L12)
+- Self-improvement loops (EVAL→ANALYZE→RESEARCH→IMPROVE)
+- Domain-specific agents and custom eval levels
+- Retrieval architecture and memory systems
+- Intent classification and mathematical reasoning
+- Patch proposers and reviewer voting
+- Cross-session memory persistence
+
+**Prerequisites**: Basic amplihack knowledge (complete Amplihack Tutorial first)
+
+**Duration**: 2-3 hours for full curriculum
+
+**Start Learning**:
+
+```python
+from amplihack.agents.teaching.generator_teacher import GeneratorTeacher
+teacher = GeneratorTeacher()
+content = teacher.teach_lesson("L01")
+print(content)
+```
+
+### [Dev Orchestrator Tutorial](dev-orchestrator-tutorial.md)
+
+Hands-on guide to `/dev` — the primary entry point for all development and
+investigation work. Covers single tasks, parallel workstreams, the goal-seeking
+loop, and output interpretation.
+
+**Topics Covered**:
+
+- Your first `/dev` command and reading the output
+- Parallel workstreams — when and how `/dev` splits tasks
+- Investigation + implementation pattern for unfamiliar code
+- The goal-seeking loop and automatic retry rounds
+- Troubleshooting common warnings and errors
+
+**Prerequisites**: amplihack installed, any git repository
+
+**Duration**: ~20 minutes
+
+**Start Learning**:
+
+```
+/dev fix the login timeout bug
 ```
 
 ---

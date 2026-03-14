@@ -21,7 +21,10 @@ for parent in current.parents:
         project_root = parent
         break
 if project_root is None:
-    raise ImportError("Could not locate project root - missing .claude directory")
+    # Not in an amplihack project context (e.g. running from global settings).
+    # Fail-open: exit cleanly so Claude Code doesn't report a hook error.
+    print(json.dumps({}))
+    sys.exit(0)
 sys.path.insert(0, str(project_root / "src"))
 sys.path.insert(0, str(project_root / "Specs"))
 
@@ -32,6 +35,8 @@ try:
     )
 except ImportError:
     # Mock classes for graceful degradation
+    print("WARNING: xpia_defense_interface not available - using mock classes", file=sys.stderr)
+
     class ContentType:
         COMMAND = "command"
 

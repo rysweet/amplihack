@@ -1,0 +1,94 @@
+scenario:
+  name: "Hook Path Migration - Automatic Upgrade"
+  description: "Verifies that amplihack automatically migrates legacy hook paths in settings.json from ~/.claude/tools/ to ~/.amplihack/.claude/tools/"
+  type: cli
+  tags: [smoke, critical, hooks, migration]
+
+  prerequisites:
+    - "amplihack package is installed"
+    - "Python 3.10+ available"
+
+  environment:
+    variables:
+      AMPLIHACK_TEST_MODE: "1"
+
+  steps:
+    # Step 1: Setup - Create legacy settings.json
+    - action: setup_legacy_settings
+      description: "Create test .claude/settings.json with old hook paths"
+      script: |
+        mkdir -p ./.test-claude
+        cat > ./.test-claude/settings.json << 'EOF'
+        {
+          "hooks": {
+            "SessionStart": [{
+              "hooks": [{
+                "type": "command",
+                "command": "$HOME/.claude/tools/amplihack/hooks/session_start.py",
+                "timeout": 10
+              }]
+            }]
+          }
+        }
+        EOF
+
+    # Step 2: Run migration by calling ensure_settings_json()
+    - action: launch
+      target: "python3"
+      args:
+        [
+          "-c",
+          "import sys; sys.path.insert(0, 'src'); from amplihack.settings import ensure_settings_json; ensure_settings_json()",
+        ]
+      cwd: "."
+      env:
+        HOME: "."
+        CLAUDE_DIR: "./.test-claude"
+
+    # Step 3: Verify migration message appears
+    - action: verify_output
+      contains: "🔄 Migrated"
+      timeout: 5s
+      description: "Should show migration message in console output"
+
+    - action: verify_output
+      contains: "legacy hook paths"
+      description: "Message should mention legacy paths"
+
+    # Step 4: Verify settings.json was updated
+    - action: verify_file_content
+      path: "./.test-claude/settings.json"
+      contains: ".amplihack/.claude/tools/amplihack/hooks/session_start.py"
+      description: "settings.json should now have correct path with .amplihack"
+
+    - action: verify_file_content
+      path: "./.test-claude/settings.json"
+      not_contains: "$HOME/.claude/tools/amplihack/hooks/session_start.py"
+      description: "Old path should be replaced, not added"
+
+    # Step 5: Verify idempotency - run again
+    - action: launch
+      target: "python3"
+      args:
+        [
+          "-c",
+          "import sys; sys.path.insert(0, 'src'); from amplihack.settings import ensure_settings_json; ensure_settings_json()",
+        ]
+      cwd: "."
+      env:
+        HOME: "."
+        CLAUDE_DIR: "./.test-claude"
+
+    - action: verify_output
+      not_contains: "🔄 Migrated"
+      description: "Second run should NOT show migration message (idempotent)"
+
+    # Step 6: Verify exit code (should succeed)
+    - action: verify_exit_code
+      expected: 0
+      description: "Migration should complete successfully"
+
+  cleanup:
+    - action: delete_directory
+      path: "./.test-claude"
+      description: "Remove test settings directory"

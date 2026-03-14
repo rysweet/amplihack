@@ -1,5 +1,5 @@
 ---
-name: amplihack:fix
+name: fix
 version: 2.0.0
 description: Fix command that integrates with DEFAULT_WORKFLOW for quality-focused issue resolution
 triggers:

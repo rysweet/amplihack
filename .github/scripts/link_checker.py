@@ -455,7 +455,7 @@ def main() -> int:
             print("\n--- Report follows ---")
             print(report)
 
-    return 0 if not result.broken_links else 1
+    return 0  # Always succeed - let workflow handle issue creation
 
 
 if __name__ == "__main__":

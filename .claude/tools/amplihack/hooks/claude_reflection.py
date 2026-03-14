@@ -9,8 +9,12 @@ AI-powered reflection.
 
 import asyncio
 import json
+import os
 import sys
 from pathlib import Path
+
+# Unset CLAUDECODE to prevent nested session errors when spawning Claude CLI subprocesses
+os.environ.pop("CLAUDECODE", None)
 
 # Try to import Claude SDK
 try:
@@ -18,6 +22,7 @@ try:
 
     CLAUDE_SDK_AVAILABLE = True
 except ImportError:
+    print("WARNING: claude_agent_sdk not available - Claude reflection disabled", file=sys.stderr)
     CLAUDE_SDK_AVAILABLE = False
 
 # Repository constants
@@ -302,6 +307,7 @@ async def analyze_session_with_claude(
             preferences_file = FrameworkPathResolver.resolve_preferences_file()
         except ImportError:
             # Fallback to default location
+            print("WARNING: FrameworkPathResolver not available - using default preferences path", file=sys.stderr)
             preferences_file = project_root / ".claude" / "context" / "USER_PREFERENCES.md"
 
         if preferences_file and preferences_file.exists():
@@ -368,19 +374,15 @@ The following preferences are REQUIRED and CANNOT be ignored:
         return None
 
 
-def _format_conversation_summary(conversation: list[dict], max_length: int | None = None) -> str:
+def _format_conversation_summary(conversation: list[dict], max_length: int = 5000) -> str:
     """Format conversation summary for analysis.
 
     Args:
         conversation: List of message dicts
-        max_length: Optional maximum summary length (None = unlimited, includes all messages)
+        max_length: Maximum summary length
 
     Returns:
         Formatted conversation summary
-
-    Note:
-        All messages in the conversation are included in the analysis unless max_length is specified.
-        Individual messages longer than 500 chars are truncated for readability.
     """
     summary_parts = []
     current_length = 0
@@ -389,18 +391,15 @@ def _format_conversation_summary(conversation: list[dict], max_length: int | Non
         role = msg.get("role", "unknown")
         content = str(msg.get("content", ""))
 
-        # Truncate long individual messages for readability
+        # Truncate long messages
         if len(content) > 500:
             content = content[:497] + "..."
 
         msg_summary = f"\n**Message {i + 1} ({role}):** {content}\n"
 
-        # Only check length limit if max_length is specified
-        if max_length is not None and current_length + len(msg_summary) > max_length:
-            truncation_indicator = f"\n[... {len(conversation) - i} more messages ...]"
-            # Only add truncation indicator if we have room for it
-            if current_length + len(truncation_indicator) <= max_length:
-                summary_parts.append(truncation_indicator)
+        # Check if adding this would exceed limit
+        if current_length + len(msg_summary) > max_length:
+            summary_parts.append(f"\n[... {len(conversation) - i} more messages ...]")
             break
 
         summary_parts.append(msg_summary)

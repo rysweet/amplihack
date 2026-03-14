@@ -15,11 +15,13 @@ Philosophy:
 Public API:
     get_claude_cli_path: Get path to Claude CLI, optionally auto-installing
     ensure_claude_cli: Ensure Claude CLI is available, raise on failure
+    ensure_latest_claude: Auto-update Claude CLI to the latest version
 """
 
 __all__ = [
     "get_claude_cli_path",
     "ensure_claude_cli",
+    "ensure_latest_claude",
 ]
 
 import os
@@ -39,6 +41,9 @@ def _is_uvx_mode() -> bool:
 
         return is_uvx_deployment()
     except ImportError:
+        import sys
+
+        print("WARNING: uvx_detection not available, using env var fallback", file=sys.stderr)
         # Fallback to environment variable check if uvx_detection not available
         return os.getenv("AMPLIHACK_UVX_MODE", "").lower() in ("1", "true", "yes")
 
@@ -74,21 +79,80 @@ def _configure_user_local_npm() -> dict[str, str]:
     return env
 
 
+def _update_shell_profile_path() -> bool:
+    """Append npm-global bin to shell profile so PATH persists across sessions.
+
+    Detects the user's shell from $SHELL and updates the appropriate profile
+    file (~/.zshrc for zsh, ~/.bashrc otherwise). Idempotent -- does nothing
+    if the export line is already present.
+
+    Returns:
+        True if the profile already contains the line or was updated successfully.
+        False if the profile could not be written.
+    """
+    shell = os.environ.get("SHELL", "")
+    if shell.endswith("/zsh") or shell.endswith("/zsh5"):
+        profile_path = Path.home() / ".zshrc"
+    else:
+        profile_path = Path.home() / ".bashrc"
+
+    # Validate profile_path is under user's home directory
+    home = Path.home()
+    try:
+        profile_path.resolve().relative_to(home.resolve())
+    except ValueError:
+        return False
+
+    export_line = 'export PATH="$HOME/.npm-global/bin:$PATH"'
+
+    # Check if already present
+    try:
+        if profile_path.exists():
+            content = profile_path.read_text()
+            if export_line in content:
+                return True
+        # Append the export line
+        with open(profile_path, "a") as f:
+            f.write(f"\n# Added by amplihack\n{export_line}\n")
+        return True
+    except (OSError, PermissionError):
+        return False
+
+
 def _find_claude_in_common_locations() -> str | None:
-    """Search for claude in PATH.
+    """Search for claude in PATH, falling back to known install location.
+
+    First checks PATH via shutil.which(). If not found, checks the known
+    npm-global install location directly. When the fallback location exists,
+    adds its directory to os.environ["PATH"] so subsequent calls succeed.
 
     Returns:
         Path to claude binary if found, None otherwise.
     """
     # Use shutil.which() to search PATH - this respects the user's environment
-    return shutil.which("claude")
+    found = shutil.which("claude")
+    if found:
+        return found
+
+    # Fallback: check the known user-local npm install location directly
+    npm_claude = Path.home() / ".npm-global" / "bin" / "claude"
+    if npm_claude.exists():
+        npm_bin = str(npm_claude.parent)
+        current_path = os.environ.get("PATH", "")
+        if npm_bin not in current_path:
+            os.environ["PATH"] = f"{npm_bin}:{current_path}"
+        return str(npm_claude)
+
+    return None
 
 
 def _print_manual_install_instructions():
     """Print manual installation instructions for Claude CLI."""
-    print('  export NPM_CONFIG_PREFIX="$HOME/.npm-global"')
-    print("  npm install -g @anthropic-ai/claude-code --ignore-scripts")
-    print('  export PATH="$HOME/.npm-global/bin:$PATH"')
+    print("  See https://code.claude.com/docs/en/setup for installation instructions")
+    print("  Recommended methods:")
+    print("    - macOS/Linux: curl -fsSL https://claude.ai/install.sh | bash")
+    print("    - macOS (Homebrew): brew install --cask claude-code")
+    print("    - Windows: winget install Anthropic.ClaudeCode")
 
 
 def _validate_claude_binary(claude_path: str) -> bool:
@@ -199,6 +263,10 @@ def _install_claude_cli() -> bool:
     user_npm_bin = Path.home() / ".npm-global" / "bin"
 
     print("Installing Claude CLI via npm (user-local)...")
+    print("NOTE: npm installation is deprecated. For production use, please use:")
+    print("  - macOS: brew install --cask claude-code")
+    print("  - Linux: curl -fsSL https://claude.ai/install.sh | bash")
+    print("  - Windows: winget install Anthropic.ClaudeCode")
     print(f"Target directory: {user_npm_bin}")
     print("Running: npm install -g @anthropic-ai/claude-code --ignore-scripts")
 
@@ -264,9 +332,14 @@ def _install_claude_cli() -> bool:
             print("✅ Claude CLI installed and validated successfully")
             print(f"Binary location: {expected_binary}")
 
-            # Remind user to add to shell profile for future sessions
-            print("\n💡 Add to your shell profile for future sessions:")
-            print('  export PATH="$HOME/.npm-global/bin:$PATH"')
+            # Auto-update shell profile so PATH persists across sessions
+            if _update_shell_profile_path():
+                print("\n✅ Shell profile updated. Restart your shell or run:")
+                print("  source ~/.bashrc  # or source ~/.zshrc")
+            else:
+                # Fallback to manual instructions if auto-update fails
+                print("\n💡 Add to your shell profile for future sessions:")
+                print('  export PATH="$HOME/.npm-global/bin:$PATH"')
 
             return True
 
@@ -298,10 +371,20 @@ def get_claude_cli_path(auto_install: bool = True) -> str | None:
 
     Args:
         auto_install: If True, attempt to install Claude CLI if not found.
+                      Forced to False when AMPLIHACK_NONINTERACTIVE=1.
 
     Returns:
         Path to claude binary if available, None if not found/installed.
     """
+    # In non-interactive mode, never auto-install (would block on network/prompts)
+    noninteractive = os.environ.get("AMPLIHACK_NONINTERACTIVE", "").strip() in (
+        "1",
+        "true",
+        "yes",
+    )
+    if noninteractive:
+        auto_install = False
+
     # First, try to find existing installation
     claude_path = _find_claude_in_common_locations()
 
@@ -353,9 +436,107 @@ def ensure_claude_cli() -> str:
     claude_path = get_claude_cli_path(auto_install=True)
 
     if not claude_path:
-        raise RuntimeError(
+        from ..exceptions import ClaudeBinaryNotFoundError
+
+        raise ClaudeBinaryNotFoundError(
             "Claude CLI not available and auto-installation failed. "
-            "Please install manually: npm install -g @anthropic-ai/claude-code"
+            "Please see https://code.claude.com/docs/en/setup for installation instructions"
         )
 
     return claude_path
+
+
+def _get_current_claude_version(binary_path: str | None = None) -> str | None:
+    """Get the currently installed Claude CLI version.
+
+    Args:
+        binary_path: Path to the claude binary. If None, searches PATH.
+
+    Returns:
+        Version string (e.g. "1.2.3") or None if detection fails.
+    """
+    cmd = [binary_path or "claude", "--version"]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=10, check=False)
+        if result.returncode != 0 or not result.stdout.strip():
+            return None
+        import re
+
+        m = re.search(r"(\d+\.\d+\.\d+)", result.stdout)
+        return m.group(1) if m else None
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+        return None
+
+
+def _compare_versions(current: str, latest: str) -> bool:
+    """Return True if latest > current using semantic version comparison."""
+    try:
+        cur = tuple(int(x) for x in current.lstrip("v").split("."))
+        lat = tuple(int(x) for x in latest.lstrip("v").split("."))
+        return lat > cur
+    except (ValueError, AttributeError):
+        return False
+
+
+def ensure_latest_claude() -> bool:
+    """Auto-update Claude CLI to the latest version if an update is available.
+
+    Only updates npm-installed Claude CLI (prefix ~/.npm-global). System installs
+    (brew, apt, winget) are skipped since they use their own update mechanisms.
+
+    Set AMPLIHACK_SKIP_UPDATE=1 to bypass.
+
+    Returns:
+        True if up-to-date or updated successfully, False on failure.
+    """
+    if os.environ.get("AMPLIHACK_SKIP_UPDATE", "") == "1":
+        return True
+
+    claude_path = _find_claude_in_common_locations()
+    if not claude_path:
+        return True  # not installed yet — let ensure_claude_cli() handle it
+
+    # Only update npm-installed versions (those in ~/.npm-global)
+    user_npm_bin = Path.home() / ".npm-global" / "bin"
+    try:
+        if not Path(claude_path).resolve().is_relative_to(user_npm_bin.resolve()):
+            return True  # system install — skip (brew/apt/winget manage their own updates)
+    except (ValueError, OSError):
+        return True
+
+    try:
+        current = _get_current_claude_version(claude_path)
+        if current is None:
+            return True
+
+        npm_path = shutil.which("npm")
+        if not npm_path:
+            return True
+
+        latest_result = subprocess.run(
+            [npm_path, "view", "@anthropic-ai/claude-code", "version"],
+            capture_output=True, text=True, timeout=15, check=False,
+        )
+        if latest_result.returncode != 0:
+            return True
+
+        latest = latest_result.stdout.strip()
+        if not _compare_versions(current, latest):
+            return True  # already up-to-date
+
+        print(f"🔄 Claude Code update available: {current} → {latest}")
+        user_npm_dir = Path.home() / ".npm-global"
+        result = subprocess.run(
+            [npm_path, "install", "-g", "--prefix", str(user_npm_dir),
+             "@anthropic-ai/claude-code", "--ignore-scripts"],
+            capture_output=True, text=True, timeout=120, check=False,
+        )
+        if result.returncode == 0:
+            post = _get_current_claude_version(claude_path) or latest
+            print(f"✓ Claude Code updated to {post}")
+            return True
+
+        print(f"⚠ Claude Code update failed — continuing with current version: {result.stderr.strip()}")
+        return False
+    except Exception:
+        return False
