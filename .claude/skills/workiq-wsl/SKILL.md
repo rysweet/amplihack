@@ -81,7 +81,7 @@ Windows host for sign-in. No extra setup needed — just approve the consent pro
 
 ## How It Works
 
-```
+```text
 WSL Copilot CLI session
      │
      ▼
@@ -179,7 +179,7 @@ When activated, perform these checks in order:
 
 Guide the user through setup:
 
-```
+```text
 It looks like you're in WSL but the Windows Copilot CLI isn't set up for WorkIQ yet.
 
 To set up M365 access from WSL:
