@@ -1,0 +1,33 @@
+{
+  "run": "23082764450",
+  "timestamp": "2026-03-14T07:00:00Z",
+  "open_prs": [
+    {
+      "number": 3124,
+      "title": "[docs] docs: recipe variable expansion reference + discoveries update",
+      "author": "github-actions[bot]",
+      "draft": true,
+      "labels": ["documentation", "automation"],
+      "risk": "low",
+      "category": "docs",
+      "files_changed": 3,
+      "additions": 234,
+      "expiry": "2026-03-15T06:39:00Z",
+      "recommendation": "review-and-merge",
+      "notes": "Automated doc PR capturing shell quoting discoveries from #3118-#3123. Expires tomorrow - needs timely review."
+    },
+    {
+      "number": 2876,
+      "title": "feat(hive): replace broadcast replication with proper DHT sharding",
+      "author": "rysweet",
+      "draft": false,
+      "labels": ["needs-decomposition", "extreme-risk", "triage:complete", "triage:extreme-risk", "triage:needs-deep-review", "too-large", "merge-conflicts"],
+      "risk": "extreme",
+      "category": "feature/architecture",
+      "status": "merge-conflicts",
+      "reviews": 0,
+      "recommendation": "needs-decomposition-and-conflict-resolution",
+      "notes": "Large architectural change (DHT sharding). Already labeled extreme-risk. Merge conflicts unresolved. No new activity since last triage."
+    }
+  ]
+}
