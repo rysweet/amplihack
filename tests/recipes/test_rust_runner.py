@@ -650,3 +650,142 @@ class TestProgressStreaming:
         assert "▶ classify-and-decompose" in streamed_stderr.getvalue()
         # Issue #3049: no timeout should be passed to process.wait()
         assert fake.timeout is None
+
+
+# ============================================================================
+# normalize_command_quoting and normalize_recipe_yaml
+# ============================================================================
+
+
+from amplihack.recipes.rust_runner import normalize_command_quoting, normalize_recipe_yaml
+
+
+class TestNormalizeCommandQuoting:
+    """Unit tests for normalize_command_quoting()."""
+
+    # --- double-quoted vars -------------------------------------------------
+
+    def test_double_quoted_var_stripped(self):
+        cmd = 'cd "{{repo_path}}"'
+        assert normalize_command_quoting(cmd) == "cd {{repo_path}}"
+
+    def test_double_quoted_var_multiple(self):
+        cmd = 'git -C "{{repo_path}}" checkout "{{branch}}"'
+        assert normalize_command_quoting(cmd) == "git -C {{repo_path}} checkout {{branch}}"
+
+    def test_double_quoted_var_in_assignment(self):
+        # "{{var}}" with extra content after the var inside the quotes is NOT
+        # normalised — the outer quotes don't exclusively wrap the var.
+        cmd = 'BRANCH="{{branch_prefix}}/main"'
+        assert normalize_command_quoting(cmd) == cmd  # unchanged
+
+    def test_double_quoted_standalone_var_in_assignment(self):
+        # "{{var}}" that exclusively wraps the var IS normalised.
+        cmd = 'BRANCH="{{branch_prefix}}"'
+        assert normalize_command_quoting(cmd) == "BRANCH={{branch_prefix}}"
+
+    # --- single-quoted vars -------------------------------------------------
+
+    def test_single_quoted_var_stripped(self):
+        cmd = "printf '%s' '{{force_single_workstream}}'"
+        assert normalize_command_quoting(cmd) == "printf '%s' {{force_single_workstream}}"
+
+    def test_single_quoted_var_in_subshell(self):
+        cmd = "FLAG=$(printf '%s' '{{flag_value}}')"
+        assert normalize_command_quoting(cmd) == "FLAG=$(printf '%s' {{flag_value}})"
+
+    # --- single-quoted heredocs ---------------------------------------------
+
+    def test_heredoc_single_quote_removed_when_body_has_var(self):
+        cmd = "cat <<'EOF'\nTask: {{task_description}}\nEOF"
+        result = normalize_command_quoting(cmd)
+        assert result == "cat <<EOF\nTask: {{task_description}}\nEOF"
+
+    def test_heredoc_single_quote_kept_when_body_has_no_var(self):
+        cmd = "cat <<'EOF'\nNo variables here\nEOF"
+        result = normalize_command_quoting(cmd)
+        assert result == cmd  # unchanged
+
+    def test_heredoc_with_multiple_vars(self):
+        cmd = "cat <<'BODY'\n{{title}}\n{{description}}\nBODY"
+        result = normalize_command_quoting(cmd)
+        assert result == "cat <<BODY\n{{title}}\n{{description}}\nBODY"
+
+    # --- no-op cases --------------------------------------------------------
+
+    def test_bare_var_unchanged(self):
+        cmd = "cd {{repo_path}}"
+        assert normalize_command_quoting(cmd) == cmd
+
+    def test_no_vars_unchanged(self):
+        cmd = "echo hello world"
+        assert normalize_command_quoting(cmd) == cmd
+
+    def test_unquoted_heredoc_unchanged(self):
+        cmd = "cat <<EOF\n{{task_description}}\nEOF"
+        assert normalize_command_quoting(cmd) == cmd
+
+    def test_partial_double_quote_not_stripped(self):
+        # "{{var}}/suffix" — the closing quote is not immediately after {{var}}
+        cmd = '"{{var}}/suffix"'
+        assert normalize_command_quoting(cmd) == cmd
+
+    def test_prefix_double_quote_not_stripped(self):
+        # "/prefix/{{var}}" — double quotes contain a prefix before the var
+        cmd = 'PATH="/base/{{var}}"'
+        assert normalize_command_quoting(cmd) == cmd  # unchanged; not exclusively a var
+
+
+class TestNormalizeRecipeYaml:
+    """Unit tests for normalize_recipe_yaml()."""
+
+    def test_double_quoted_var_in_command_fixed(self):
+        yaml_text = (
+            "name: test\n"
+            "steps:\n"
+            "  - id: step1\n"
+            '    command: cd "{{repo_path}}"\n'
+        )
+        result, changed = normalize_recipe_yaml(yaml_text)
+        assert changed is True
+        assert '"{{repo_path}}"' not in result
+        assert "{{repo_path}}" in result
+
+    def test_block_scalar_command_fixed(self):
+        yaml_text = (
+            "name: test\n"
+            "steps:\n"
+            "  - id: step1\n"
+            "    command: |\n"
+            "      cat <<'EOF'\n"
+            "      Task: {{task_description}}\n"
+            "      EOF\n"
+        )
+        result, changed = normalize_recipe_yaml(yaml_text)
+        assert changed is True
+        assert "<<'EOF'" not in result
+        assert "<<EOF" in result
+
+    def test_unchanged_when_no_issues(self):
+        yaml_text = (
+            "name: test\n"
+            "steps:\n"
+            "  - id: step1\n"
+            "    command: cd {{repo_path}}\n"
+        )
+        result, changed = normalize_recipe_yaml(yaml_text)
+        assert changed is False
+        assert result == yaml_text
+
+    def test_non_command_fields_not_modified(self):
+        yaml_text = (
+            "name: test\n"
+            "steps:\n"
+            "  - id: step1\n"
+            '    prompt: "{{task_description}}"\n'
+            "    command: cd {{repo_path}}\n"
+        )
+        result, changed = normalize_recipe_yaml(yaml_text)
+        assert changed is False
+        # prompt field must not be touched
+        assert '"{{task_description}}"' in result
