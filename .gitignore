@@ -210,3 +210,4 @@ eval_results.json
 *_results/
 eval_progressive_example/
 generated-agents/
+eval_500_turns_report.json

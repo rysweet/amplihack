@@ -526,7 +526,7 @@ class TestSolutionAThreadLocalCache:
         call_counter = [0]
         call_lock = threading.Lock()
 
-        def get_all_facts_mock(limit=15000):
+        def get_all_facts_mock(limit=15000, query=""):
             with call_lock:
                 call_counter[0] += 1
                 n = call_counter[0]

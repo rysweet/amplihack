@@ -609,7 +609,11 @@ class LearningAgent:
                 else:
                     cached = getattr(self._thread_local, "_cached_all_facts", None)
                     if cached is None:
-                        cached = self.memory.get_all_facts(limit=15000, query=question)
+                        # query kwarg only supported by CognitiveAdapter / DistributedCognitiveMemory
+                        if hasattr(self.memory, "local_search_facts"):
+                            cached = self.memory.get_all_facts(limit=15000, query=question)
+                        else:
+                            cached = self.memory.get_all_facts(limit=15000)
                     self._thread_local._cached_all_facts = cached
                     kb_size = len(cached)
                 if kb_size <= 500:
@@ -1078,7 +1082,11 @@ class LearningAgent:
             all_facts = cached
             self._thread_local._cached_all_facts = None  # consume; one-shot per question
         else:
-            all_facts = self.memory.get_all_facts(limit=15000, query=question)
+            # query kwarg only supported by CognitiveAdapter / DistributedCognitiveMemory
+            if hasattr(self.memory, "local_search_facts"):
+                all_facts = self.memory.get_all_facts(limit=15000, query=question)
+            else:
+                all_facts = self.memory.get_all_facts(limit=15000)
         kb_size = len(all_facts)
 
         if force_verbatim or kb_size <= 1000:
