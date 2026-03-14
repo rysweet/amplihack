@@ -433,7 +433,11 @@ class AutoModeUI:
         Runs in daemon mode and listens for single-character commands.
         Uses non-blocking stdin reading to avoid interfering with main thread.
         """
-        # Configure terminal for non-blocking, non-canonical mode
+        if sys.platform == "win32":
+            self._keyboard_listener_thread_windows()
+            return
+
+        # Unix: Configure terminal for non-blocking, non-canonical mode
         # This allows reading single characters without Enter
         import termios
         import tty
@@ -462,6 +466,21 @@ class AutoModeUI:
                     termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
                 except Exception:
                     pass
+
+    def _keyboard_listener_thread_windows(self):
+        """Windows implementation of keyboard listener using msvcrt."""
+        import msvcrt
+
+        try:
+            while not self._should_exit:
+                if msvcrt.kbhit():
+                    key = msvcrt.getwch()
+                    if key:
+                        self.handle_keyboard_input(key)
+                else:
+                    time.sleep(0.1)
+        except Exception as e:
+            self.state.add_log(f"Keyboard listener error: {e}")
 
     def run(self, update_interval: float = 0.1) -> None:
         """Main run loop - displays UI and handles keyboard input.

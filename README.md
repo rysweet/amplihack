@@ -37,6 +37,7 @@ uvx --from git+https://github.com/rysweet/amplihack amplihack claude
 - [Fleet Management](#fleet-management)
 - [Configuration](#configuration)
 - [Documentation Navigator](#documentation-navigator)
+- [Windows Support](#windows-support)
 - [Development](#development)
 - [RustyClawd Integration](#rustyclawd-integration)
 - [License](#license)
@@ -68,8 +69,8 @@ high-quality code.
 
 ### Prerequisites
 
-- **Platform**: macOS, Linux, or Windows via WSL (native Windows is not
-  supported)
+- **Platform**: macOS, Linux, or Windows via WSL. Native Windows has
+  [partial support](#windows-support).
 - **Runtime**: Python 3.11+, Node.js 18+
 - **Tools**: git, npm, uv ([astral.sh/uv](https://docs.astral.sh/uv/))
 - **Recommended**: Rust/cargo ([rustup.rs](https://rustup.rs/)) — required for
@@ -604,6 +605,42 @@ Custom workflows:
   Best practices and guidelines
 - **[Security Context Preservation](https://rysweet.github.io/amplihack/SECURITY_CONTEXT_PRESERVATION/)** -
   Context handling
+
+## Windows Support
+
+amplihack has partial support for Windows native (PowerShell). The recommended
+approach remains **WSL** for full compatibility, but core features work
+natively.
+
+| Feature                                         |        Windows Native        | WSL / macOS / Linux |
+| ----------------------------------------------- | :--------------------------: | :-----------------: |
+| Core CLI (`amplihack claude/copilot/amplifier`) |              ✅              |         ✅          |
+| Workflows & recipes                             |              ✅              |         ✅          |
+| Persistent memory                               |              ✅              |         ✅          |
+| Proxy (LiteLLM)                                 |              ✅              |         ✅          |
+| Fleet management (multi-VM)                     |    ❌ (requires tmux/SSH)    |         ✅          |
+| Rust recipe runner                              |        ⚠️ (untested)         |         ✅          |
+| Docker sandbox                                  | ⚠️ (Docker Desktop required) |         ✅          |
+
+**Installation on Windows native:**
+
+```powershell
+# Requires Python 3.11+, Node.js 18+, git, uv
+uvx --from git+https://github.com/rysweet/amplihack amplihack copilot
+```
+
+**Known limitations:**
+
+- Fleet commands (`amplihack fleet *`) are unavailable — they require tmux and
+  SSH, which are Linux/macOS only. Use WSL for fleet operations.
+- Some language server integrations (multilspy) may have reduced functionality.
+- File permission management (chmod) is a no-op on Windows.
+
+For full compatibility, use
+[WSL](https://learn.microsoft.com/en-us/windows/wsl/install).
+
+See [issue #3112](https://github.com/rysweet/amplihack/issues/3112) for the
+complete Windows compatibility tracker.
 
 ## Development
 
