@@ -177,10 +177,8 @@ same session name.
 **DO NOT use `run_in_background`** for recipe execution — it will be killed
 after ~10 minutes (Issue #2909).
 
-**There are no fallback paths for Development or Investigation tasks.** The
-recipe runner is required. If it fails with an ImportError, report the error
-to the user and stop. Do not silently fall back to direct skill invocation
-or manual classification.
+**The recipe runner is the required execution path for Development and
+Investigation tasks.** Always try `smart-orchestrator` first.
 
 **Common rationalizations that are NOT acceptable:**
 
@@ -194,12 +192,89 @@ or manual classification.
 - Q&A: Respond directly (analyzer agent)
 - Operations: Builder agent (direct execution, no workflow steps)
 
+### Error Recovery: Adaptive Strategy (NOT Silent Fallback)
+
+When `smart-orchestrator` fails, **failures must be visible and surfaced** —
+never swallowed or silently degraded. The recipe handles error recovery
+automatically via its built-in adaptive strategy steps, but if you observe
+a failure outside the recipe, follow this protocol:
+
+**1. Surface the error with full context:**
+
+Report the exact error, the step that failed, and the log output. Never say
+"something went wrong" — always include the specific failure details.
+
+**2. File a bug with reproduction details:**
+
+For infrastructure failures (import errors, missing env vars, binary not found,
+decomposition producing invalid output), file a GitHub issue:
+
+```bash
+gh issue create \
+  --title "smart-orchestrator infrastructure failure: <one-line summary>" \
+  --body "<full error context, reproduction command, env details>" \
+  --label "bug"
+```
+
+**3. Evaluate alternative strategies:**
+
+If `smart-orchestrator` fails at the infrastructure level (not because the task
+is wrong), you MAY invoke the specific workflow recipe directly. This is an
+**adaptive strategy** — it must be announced explicitly, not done silently:
+
+| Classification | Direct Recipe            | When Permitted                                      |
+| -------------- | ------------------------ | --------------------------------------------------- |
+| Investigation  | `investigation-workflow` | smart-orchestrator failed at parse/decompose/launch |
+| Development    | `default-workflow`       | smart-orchestrator failed at parse/decompose/launch |
+
+Example:
+
+```python
+# ANNOUNCE the strategy change first — never do this silently
+print("[ADAPTIVE] smart-orchestrator failed at parse-decomposition: <error>")
+print("[ADAPTIVE] Switching to direct investigation-workflow invocation")
+run_recipe_by_name("investigation-workflow", user_context={...}, progress=True)
+```
+
+**This is NOT a license to bypass smart-orchestrator.** Always try it first.
+Direct invocation is only permitted when smart-orchestrator fails at the
+infrastructure level. "The task seems simple" is NOT an infrastructure failure.
+
+**4. Detect hollow success:**
+
+A recipe can complete structurally (all steps exit 0) but produce empty or
+meaningless results — agents reporting "no codebase found" or reflection
+marking ACHIEVED when no work was done. After execution, check that:
+
+- Round results contain actual findings or code changes (not "I could not access...")
+- PR URLs or concrete outputs are present for Development tasks
+- At least one success criterion was verifiably evaluated
+
+If results are hollow, report this to the user with the specific empty outputs.
+Do not declare success when agents produced no meaningful work.
+
+### Required Environment Variables
+
+The recipe runner requires these environment variables to function:
+
+| Variable                   | Purpose                                           | Default       |
+| -------------------------- | ------------------------------------------------- | ------------- |
+| `AMPLIHACK_HOME`           | Root of amplihack installation (for asset lookup) | Auto-detected |
+| `AMPLIHACK_AGENT_BINARY`   | Which agent binary to use (claude, copilot, etc.) | `claude`      |
+| `AMPLIHACK_MAX_DEPTH`      | Max recursion depth for nested sessions           | `3`           |
+| `AMPLIHACK_NONINTERACTIVE` | Set to `1` to skip interactive prompts            | Unset         |
+
+If `AMPLIHACK_HOME` is not set and auto-detection fails, `parse-decomposition`
+and `activate-workflow` will fail with "orch_helper.py not found". Set it to
+the directory containing `amplifier-bundle/`.
+
 ### After Execution: Reflect and verify
 
 After execution completes, verify the goal was achieved. If not:
 
 - For missing information: ask the user
 - For fixable gaps: re-invoke with the remaining work description
+- For infrastructure failures: file a bug and try adaptive strategy
 
 ### Enforcement: PostToolUse Workflow Guard
 
@@ -314,9 +389,9 @@ Appears at the end of reflection steps:
 The goal-seeking loop uses GOAL_STATUS signals to decide whether to run round 2 or 3.
 
 **BLOCKED path (recursion guard)**: When multi-workstream spawning is blocked
-by the depth limit, the orchestrator falls back to single-session execution:
+by the depth limit, the orchestrator adapts to single-session execution:
 
 1. `announce-depth-limited` — prints a warning banner with remediation info
 2. `execute-single-fallback-blocked` — executes the full task as a single
-   builder agent session (same as single-workstream path, produces
-   `STATUS: COMPLETE` or `STATUS: CONTINUE`)
+   builder agent session (announced, not silent — the banner makes the
+   strategy change visible)
