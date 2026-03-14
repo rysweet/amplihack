@@ -3,7 +3,7 @@
 Detects native Windows (not WSL) and provides helpful guidance.
 
 Philosophy:
-- Ruthless simplicity: Direct platform.system() check
+- Ruthless simplicity: Direct sys.platform check
 - Zero-BS: Real working detection, no stubs
 - Clear error messages: Actionable guidance for users
 
