@@ -28,7 +28,7 @@
 #     - shared/mood.md
 #     - shared/reporting.md
 #
-# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"ae21992e9e1d4c2c7e90bbdcea2b19aa2842f5cd99f9e7f4a633e39953501f69","compiler_version":"v0.58.2","strict":true}
+# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"fbb9585c8194c5d9f42d5e8e136acbacd3df68f56bb597c1c46ad1e6ad0feef8","compiler_version":"v0.58.2","strict":true}
 
 name: "Daily Security Red Team Agent"
 "on":
@@ -746,7 +746,7 @@ jobs:
         # - mcp__github__search_pull_requests
         # - mcp__github__search_repositories
         # - mcp__github__search_users
-        timeout-minutes: 60
+        timeout-minutes: 90
         run: |
           set -o pipefail
           touch /tmp/gh-aw/agent-step-summary.md
@@ -1098,7 +1098,7 @@ jobs:
           GH_AW_CHECKOUT_PR_SUCCESS: ${{ needs.agent.outputs.checkout_pr_success }}
           GH_AW_GROUP_REPORTS: "false"
           GH_AW_FAILURE_REPORT_AS_ISSUE: "true"
-          GH_AW_TIMEOUT_MINUTES: "60"
+          GH_AW_TIMEOUT_MINUTES: "90"
         with:
           github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           script: |
