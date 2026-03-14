@@ -7,8 +7,11 @@ steps, recipes, results, and error types.
 from __future__ import annotations
 
 import enum
+import logging
 from dataclasses import dataclass, field
 from typing import Any
+
+log = logging.getLogger(__name__)
 
 
 class StepType(enum.Enum):
@@ -68,8 +71,13 @@ class Step:
         }
         try:
             return bool(eval(self.condition.strip(), {"__builtins__": {}}, eval_ctx))  # noqa: S307
-        except Exception:
-            return True  # if condition can't be evaluated, don't skip
+        except Exception as exc:
+            log.warning(
+                "Step condition %r could not be evaluated: %s — defaulting to True (step will run)",
+                self.condition,
+                exc,
+            )
+            return True
 
 
 @dataclass
