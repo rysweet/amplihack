@@ -172,17 +172,10 @@ def main():
     """Main CLI entry point."""
     from .launcher.platform_check import is_native_windows
 
-    if is_native_windows():
-        # On native Windows, skip auto-install of packages that require
-        # Unix build toolchains (e.g., kuzu/amplihack-memory-lib needs
-        # C++ compiler not typically available on Windows).
-        print(
-            "⚠️  Native Windows detected — skipping dependency auto-install.\n"
-            "   Some features (memory, fleet) are unavailable. Use WSL for full support.",
-            file=sys.stderr,
-        )
-    else:
-        # Ensure dependencies are installed at CLI startup (not import time)
+    if not is_native_windows():
+        # Ensure dependencies are installed at CLI startup (not import time).
+        # On native Windows, skip — these packages (kuzu, etc.) require
+        # C++ build toolchains not available on Windows.
         from .copilot_auto_install import ensure_copilot_sdk_installed
         from .memory_auto_install import ensure_memory_lib_installed
 

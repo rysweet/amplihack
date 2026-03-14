@@ -85,34 +85,20 @@ def check_platform_compatibility() -> PlatformCheckResult:
             except (OSError, PermissionError):
                 pass
 
-    # Native Windows detection
+    # Native Windows — partial support (PR #3127+)
+    # Core CLI works, but some features (fleet, memory/kuzu) are unavailable.
     if is_native_windows():
-        message = """
-╔══════════════════════════════════════════════════════════════════════╗
-║                    WINDOWS DETECTED                                  ║
-╚══════════════════════════════════════════════════════════════════════╝
-
-amplihack requires a Unix-like environment and does not run natively
-on Windows. Please use Windows Subsystem for Linux (WSL).
-
-┌─ Install WSL ────────────────────────────────────────────────────────┐
-│                                                                       │
-│  1. Open PowerShell or Command Prompt as Administrator               │
-│  2. Run: wsl --install                                               │
-│  3. Restart your computer                                            │
-│  4. Open WSL and install amplihack                                   │
-│                                                                       │
-│  For detailed instructions:                                          │
-│  https://learn.microsoft.com/en-us/windows/wsl/install               │
-│                                                                       │
-└───────────────────────────────────────────────────────────────────────┘
-
-After installing WSL, run amplihack from your WSL terminal.
-""".strip()
+        message = (
+            "⚠️  Native Windows detected — running with partial support.\n"
+            "   Unavailable features: fleet (requires tmux/SSH), "
+            "memory agents (kuzu doesn't build on Windows).\n"
+            "   For full support, use WSL: "
+            "https://learn.microsoft.com/en-us/windows/wsl/install"
+        )
 
         return PlatformCheckResult(
-            compatible=False,
-            platform_name="Windows (native)",
+            compatible=True,
+            platform_name="Windows (native, partial)",
             is_wsl=False,
             message=message,
         )
