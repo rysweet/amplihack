@@ -45,22 +45,18 @@ def is_native_windows() -> bool:
         >>> if is_native_windows():
         ...     print("Please use WSL")
     """
-    # Quick check: not Windows at all
-    if platform.system() != "Windows":
-        return False
+    import sys
 
-    # If /proc/version exists and contains "microsoft", it's WSL
-    proc_version = Path("/proc/version")
-    if proc_version.exists():
-        try:
-            content = proc_version.read_text().lower()
-            if "microsoft" in content or "wsl" in content:
-                return False  # WSL, not native Windows
-        except (OSError, PermissionError):
-            pass
+    # sys.platform is authoritative for the Python interpreter's platform.
+    # On WSL, sys.platform == "linux" even though /proc/version contains
+    # "microsoft". On native Windows Python, sys.platform == "win32" — even
+    # when the host has WSL installed (which makes /proc/version readable
+    # via Plan 9 filesystem interop).
+    if sys.platform == "win32":
+        return True
 
-    # If we get here, it's native Windows
-    return True
+    # Not Windows at all (Linux, macOS, etc.)
+    return False
 
 
 def check_platform_compatibility() -> PlatformCheckResult:
