@@ -86,12 +86,12 @@ def check_platform_compatibility() -> PlatformCheckResult:
                 pass
 
     # Native Windows — partial support (PR #3127+)
-    # Core CLI works, but some features (fleet, memory/kuzu) are unavailable.
+    # Core CLI works; fleet requires tmux/SSH. Memory/kuzu works on x86_64 Python.
     if is_native_windows():
         message = (
             "⚠️  Native Windows detected — running with partial support.\n"
-            "   Unavailable features: fleet (requires tmux/SSH), "
-            "memory agents (kuzu doesn't build on Windows).\n"
+            "   Unavailable features: fleet (requires tmux/SSH).\n"
+            "   On ARM64 Windows, use x86_64 Python for memory features (kuzu).\n"
             "   For full support, use WSL: "
             "https://learn.microsoft.com/en-us/windows/wsl/install"
         )

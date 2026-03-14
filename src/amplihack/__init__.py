@@ -170,17 +170,12 @@ def filecmp(f1, f2):
 
 def main():
     """Main CLI entry point."""
-    from .launcher.platform_check import is_native_windows
+    # Ensure dependencies are installed at CLI startup (not import time)
+    from .copilot_auto_install import ensure_copilot_sdk_installed
+    from .memory_auto_install import ensure_memory_lib_installed
 
-    if not is_native_windows():
-        # Ensure dependencies are installed at CLI startup (not import time).
-        # On native Windows, skip — these packages (kuzu, etc.) require
-        # C++ build toolchains not available on Windows.
-        from .copilot_auto_install import ensure_copilot_sdk_installed
-        from .memory_auto_install import ensure_memory_lib_installed
-
-        ensure_memory_lib_installed()
-        ensure_copilot_sdk_installed()
+    ensure_memory_lib_installed()
+    ensure_copilot_sdk_installed()
 
     # Import and use the enhanced CLI
     from .cli import main as cli_main
