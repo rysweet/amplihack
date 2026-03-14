@@ -140,6 +140,7 @@ nav:
           - XLSX: claude/skills/xlsx/SKILL.md
           - PDF: claude/skills/pdf/SKILL.md
           - Oxidizer: claude/skills/oxidizer-workflow/SKILL.md
+          - WorkIQ WSL: claude/skills/workiq-wsl/SKILL.md
   - Tools:
       - Scenarios Overview: claude/scenarios/README.md
       - Analyze Codebase: claude/scenarios/analyze-codebase/README.md
