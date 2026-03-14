@@ -186,7 +186,7 @@ steps:
   - id: "materialize-force-single-workstream"
     type: "bash"
     command: |
-      printf '%s' "{{force_single_workstream}}"
+      printf '%s' {{force_single_workstream}}
     output: "force_single_workstream"
 
   # ─────────────────────────────────────────────────────────────────────────
