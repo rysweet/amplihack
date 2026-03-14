@@ -11,9 +11,11 @@ import functools
 import json
 import logging
 import os
+import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 from pathlib import Path
 from typing import Any
@@ -352,6 +354,198 @@ def _execute_rust_command(cmd: list[str], *, name: str, progress: bool) -> Recip
     )
 
 
+# -- Recipe command normalization --------------------------------------------
+
+# Match a {{var}} placeholder where the var name is word characters only
+_VAR_PLACEHOLDER_PATTERN = re.compile(r"\{\{([\w_]+)\}\}")
+
+# Match "{{var}}" (double-quoted var)
+_DOUBLE_QUOTED_VAR = re.compile(r'"(\{\{[\w_]+\}\})"')
+
+# Match '{{var}}' (single-quoted var)
+_SINGLE_QUOTED_VAR = re.compile(r"'(\{\{[\w_]+\}\})'")
+
+# Match <<'DELIM' heredoc opener (single-quoted delimiter)
+_SINGLE_QUOTED_HEREDOC = re.compile(r"<<'(\w+)'")
+
+
+def normalize_command_quoting(cmd: str) -> str:
+    """Normalize ``{{var}}`` quoting in a recipe bash command string.
+
+    The Rust runner translates ``{{var}}`` to ``"$RECIPE_VAR_var"`` (with
+    double quotes) outside heredocs, and to ``$RECIPE_VAR_var`` (unquoted)
+    inside unquoted heredocs.  Common authoring mistakes produce broken shell:
+
+    * ``"{{var}}"`` → runner renders ``""$RECIPE_VAR_var""`` (doubled quotes)
+    * ``'{{var}}'`` → runner renders ``'"$RECIPE_VAR_var"'`` (literal quotes)
+    * ``<<'DELIM'`` heredoc with ``{{var}}`` in body → shell blocks expansion
+
+    This function normalises all three patterns to their canonical form so
+    authors can write natural commands without memorising quoting rules.
+
+    Args:
+        cmd: Raw bash command string from a recipe YAML ``command:`` field.
+
+    Returns:
+        Normalised command string.  Unchanged if no problematic patterns found.
+    """
+    # Fix 1: "{{var}}" → {{var}}  (runner adds its own double quotes)
+    cmd = _DOUBLE_QUOTED_VAR.sub(r"\1", cmd)
+
+    # Fix 2: '{{var}}' → {{var}}  (single quotes block runner's expansion)
+    cmd = _SINGLE_QUOTED_VAR.sub(r"\1", cmd)
+
+    # Fix 3: <<'DELIM' → <<DELIM when the heredoc body contains {{var}}
+    # Single-quoted heredocs block shell expansion of $RECIPE_VAR_* references.
+    # Allow optional leading whitespace on the closing delimiter line because
+    # YAML block scalars preserve indentation in the raw text.
+    def _fix_heredoc(m: re.Match) -> str:
+        delim = m.group(1)
+        opener_end = m.end()
+        # Find the closing delimiter on its own line (allow leading whitespace
+        # for YAML block scalar indentation)
+        close_re = re.compile(r"^[ \t]*" + re.escape(delim) + r"[ \t]*$", re.MULTILINE)
+        close_m = close_re.search(cmd, opener_end)
+        if close_m is None:
+            return m.group(0)  # malformed heredoc — leave unchanged
+        body = cmd[opener_end:close_m.start()]
+        if _VAR_PLACEHOLDER_PATTERN.search(body):
+            return f"<<{delim}"
+        return m.group(0)
+
+    cmd = _SINGLE_QUOTED_HEREDOC.sub(_fix_heredoc, cmd)
+    return cmd
+
+
+def normalize_recipe_yaml(yaml_content: str) -> tuple[str, bool]:
+    """Apply ``normalize_command_quoting`` to every bash ``command:`` field.
+
+    Operates on raw YAML text to preserve comments, whitespace, and block
+    scalars exactly.  Only the content of ``command:`` values is changed.
+
+    Args:
+        yaml_content: Raw text of a recipe YAML file.
+
+    Returns:
+        ``(normalised_content, changed)`` where *changed* is ``True`` when at
+        least one substitution was made.
+    """
+    # Split on lines that start a `command:` block scalar (``command: |``) or
+    # inline scalar (``command: single_line``).  We find each command value by
+    # locating the `command:` key and extracting its scalar content.
+    #
+    # Rather than a full YAML parse (which loses formatting), we use a careful
+    # line-by-line approach:
+    #   1. Detect a ``command:`` line.
+    #   2. Collect the scalar content (block literal or single-line).
+    #   3. Normalise it, replacing the original lines if changed.
+
+    lines = yaml_content.splitlines(keepends=True)
+    result: list[str] = []
+    changed = False
+    i = 0
+
+    # Regex: command: | or command: > (block scalar) or command: <value>
+    cmd_key_re = re.compile(r"^(\s*)command:\s*(.*)\n?$")
+
+    while i < len(lines):
+        line = lines[i]
+        m = cmd_key_re.match(line)
+        if m is None:
+            result.append(line)
+            i += 1
+            continue
+
+        indent = m.group(1)
+        rest = m.group(2).strip()
+
+        if rest in ("|", ">", "|-", ">-", "|+", ">+"):
+            # Block scalar: collect continuation lines
+            block_lines: list[str] = []
+            j = i + 1
+            while j < len(lines):
+                cont = lines[j]
+                # Continuation if line is blank or its leading whitespace is
+                # deeper than the command key's indentation level.
+                cont_indent_len = len(cont) - len(cont.lstrip())
+                if cont.strip() == "" or cont_indent_len > len(indent):
+                    block_lines.append(cont)
+                    j += 1
+                else:
+                    break
+
+            raw_block = "".join(block_lines)
+            normalised = normalize_command_quoting(raw_block)
+            if normalised != raw_block:
+                changed = True
+                result.append(line)
+                result.append(normalised)
+            else:
+                result.append(line)
+                result.extend(block_lines)
+            i = j
+        elif rest:
+            # Inline scalar
+            normalised = normalize_command_quoting(rest)
+            if normalised != rest:
+                changed = True
+                result.append(f"{indent}command: {normalised}\n")
+            else:
+                result.append(line)
+            i += 1
+        else:
+            # Empty value — nothing to normalise
+            result.append(line)
+            i += 1
+
+    return "".join(result), changed
+
+
+def _normalize_recipe_into_tmpdir(
+    name: str,
+    recipe_dirs: list[str],
+    tmp_dir: Path,
+) -> list[str]:
+    """If the named recipe has fixable quoting issues, write a normalised copy.
+
+    Searches *recipe_dirs* for ``{name}.yaml``, normalises its command fields,
+    and — when changes are needed — writes the fixed file to *tmp_dir*.  The
+    tmp_dir is then prepended to the returned recipe-dirs list so the Rust
+    binary discovers the normalised copy first.
+
+    Args:
+        name: Recipe name (no ``.yaml`` suffix).
+        recipe_dirs: Directories to search for the recipe.
+        tmp_dir: Writable directory for the normalised copy.
+
+    Returns:
+        Effective recipe-dirs list (tmp_dir prepended when a copy was written).
+    """
+    try:
+        from amplihack.recipes.discovery import find_recipe
+
+        recipe_path = find_recipe(name, [Path(d) for d in recipe_dirs])
+        if recipe_path is None:
+            return recipe_dirs
+
+        original = recipe_path.read_text(encoding="utf-8")
+        normalised, changed = normalize_recipe_yaml(original)
+
+        if not changed:
+            return recipe_dirs
+
+        staged = tmp_dir / recipe_path.name
+        staged.write_text(normalised, encoding="utf-8")
+        logger.debug(
+            "Normalised recipe '%s' for Rust runner (auto-fixed quoting patterns)", name
+        )
+        return [str(tmp_dir)] + list(recipe_dirs)
+
+    except Exception as exc:
+        logger.debug("Could not normalise recipe '%s': %s — using original", name, exc)
+        return recipe_dirs
+
+
 # -- Public entry point ------------------------------------------------------
 
 
@@ -407,21 +601,37 @@ def run_recipe_via_rust(
     if effective_recipe_dirs is None:
         effective_recipe_dirs = _default_package_recipe_dirs() or None
 
-    cmd = _build_rust_command(
-        binary,
-        name,
-        working_dir=working_dir,
-        dry_run=dry_run,
-        auto_stage=auto_stage,
-        progress=progress,
-        recipe_dirs=effective_recipe_dirs,
-        user_context=user_context,
-    )
+    # Auto-normalise the recipe's command quoting so recipe authors don't need
+    # to remember the Rust runner's quoting rules.  A normalised copy is written
+    # to a temp directory (which shadows the original) only when changes are
+    # needed; the temp dir is cleaned up after the run.
+    tmp_dir: tempfile.TemporaryDirectory | None = None
+    try:
+        if effective_recipe_dirs:
+            tmp_obj = tempfile.TemporaryDirectory(prefix="amplihack-recipe-norm-")
+            tmp_dir = tmp_obj
+            effective_recipe_dirs = _normalize_recipe_into_tmpdir(
+                name, effective_recipe_dirs, Path(tmp_obj.name)
+            )
 
-    logger.info(
-        "Executing recipe '%s' via Rust binary: %s",
-        name,
-        _redact_command_for_log(cmd),
-    )
+        cmd = _build_rust_command(
+            binary,
+            name,
+            working_dir=working_dir,
+            dry_run=dry_run,
+            auto_stage=auto_stage,
+            progress=progress,
+            recipe_dirs=effective_recipe_dirs,
+            user_context=user_context,
+        )
 
-    return _execute_rust_command(cmd, name=name, progress=progress)
+        logger.info(
+            "Executing recipe '%s' via Rust binary: %s",
+            name,
+            _redact_command_for_log(cmd),
+        )
+
+        return _execute_rust_command(cmd, name=name, progress=progress)
+    finally:
+        if tmp_dir is not None:
+            tmp_dir.cleanup()
