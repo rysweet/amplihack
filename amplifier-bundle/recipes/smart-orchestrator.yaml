@@ -81,7 +81,7 @@ steps:
       }
       _DECOMP_TMPFILE=$(mktemp)
       trap 'rm -f "$_DECOMP_TMPFILE"' EXIT
-      cat > "$_DECOMP_TMPFILE" <<'__DECOMP_EOF__'
+      cat > "$_DECOMP_TMPFILE" <<__DECOMP_EOF__
       {{decomposition_json}}
       __DECOMP_EOF__
       export DECOMP_TMPFILE="$_DECOMP_TMPFILE"
@@ -127,7 +127,7 @@ steps:
           echo "ERROR: orch_helper.py not found. Set AMPLIHACK_HOME to your amplihack installation root." >&2
           exit 1
       }
-      DECOMP_JSON=$(cat <<'EOFDECOMP'
+      DECOMP_JSON=$(cat <<EOFDECOMP
       {{decomposition_json}}
       EOFDECOMP
       )
@@ -135,7 +135,7 @@ steps:
       HOOKS_DIR=$(python3 -m amplihack.resolve_bundle_asset "amplifier-bundle/tools/amplihack/hooks" 2>/dev/null) || HOOKS_DIR=""
       _DECOMP_TMPFILE=$(mktemp)
       trap 'rm -f "$_DECOMP_TMPFILE"' EXIT
-      cat > "$_DECOMP_TMPFILE" <<'__DECOMP_EOF__'
+      cat > "$_DECOMP_TMPFILE" <<__DECOMP_EOF__
       {{decomposition_json}}
       __DECOMP_EOF__
       export DECOMP_TMPFILE="$_DECOMP_TMPFILE"
@@ -275,7 +275,7 @@ steps:
     type: "bash"
     condition: "'Development' in task_type or 'Investigation' in task_type"
     command: |
-      SESSION_JSON=$(cat <<'EOFSESSIONJSON'
+      SESSION_JSON=$(cat <<EOFSESSIONJSON
       {{session_info}}
       EOFSESSIONJSON
       )
@@ -328,7 +328,7 @@ steps:
       }
       _DECOMP_TMPFILE=$(mktemp)
       trap 'rm -f "$_DECOMP_TMPFILE"' EXIT
-      cat > "$_DECOMP_TMPFILE" <<'__DECOMP_EOF__'
+      cat > "$_DECOMP_TMPFILE" <<__DECOMP_EOF__
       {{decomposition_json}}
       __DECOMP_EOF__
       export DECOMP_TMPFILE="$_DECOMP_TMPFILE"
@@ -365,7 +365,7 @@ steps:
     command: |
       REPO_PATH={{repo_path}}
       WS_FILE={{workstreams_file}}
-      SESSION_JSON=$(cat <<'EOFSESSIONJSON'
+      SESSION_JSON=$(cat <<EOFSESSIONJSON
       {{session_info}}
       EOFSESSIONJSON
       )
@@ -656,7 +656,7 @@ steps:
   - id: "complete-session"
     type: "bash"
     command: |
-      SESSION_JSON=$(cat <<'EOFSESSIONJSON'
+      SESSION_JSON=$(cat <<EOFSESSIONJSON
       {{session_info}}
       EOFSESSIONJSON
       )

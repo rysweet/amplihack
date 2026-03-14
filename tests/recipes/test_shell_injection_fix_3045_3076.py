@@ -235,8 +235,8 @@ class TestAllAffectedStepsUseHeredoc:
         step = _get_step(step_map, step_id)
         cmd = step.get("command", "")
         assert "<<'EOFTASKDESC'" in cmd or "<<EOFTASKDESC" in cmd, (
-            f"Step '{step_id}' must use heredoc capture (via printenv fallback or direct): "
-            "printenv RECIPE_VAR_task_description ... || cat <<'EOFTASKDESC'"
+            f"Step '{step_id}' must use heredoc capture: "
+            "TASK_DESC=$(cat <<EOFTASKDESC\\n{{task_description}}\\nEOFTASKDESC)"
         )
 
     @pytest.mark.parametrize("step_id", AFFECTED_STEP_IDS)
@@ -624,25 +624,24 @@ class TestHeredocBashSyntax:
 
 
 # ---------------------------------------------------------------------------
-# 8b. Dual-path printenv || heredoc: Rust runner env-var + Python runner fallback
+# 8b. Unquoted heredoc env-var expansion (Rust runner compatibility, issue #3117)
 # ---------------------------------------------------------------------------
 
 
-class TestDualPathPrintenvHeredoc:
-    """Verify the ``printenv RECIPE_VAR_* || cat <<'HEREDOC'`` pattern (issue #3117).
+class TestUnquotedHeredocEnvVarExpansion:
+    """Verify unquoted heredocs expand ``$RECIPE_VAR_*`` env vars correctly.
 
     The Rust recipe runner sets ``RECIPE_VAR_<name>`` env vars and replaces
-    ``{{name}}`` with ``$RECIPE_VAR_<name>``.  Single-quoted heredocs prevent
-    env-var expansion, producing literal text.  The dual-path pattern fixes
-    this: ``printenv`` succeeds under Rust runner; ``cat <<'HEREDOC'`` fallback
-    is used by the Python runner (inline substitution, no env var set).
+    ``{{name}}`` with ``$RECIPE_VAR_<name>``.  Unquoted heredocs (``<<EOF``)
+    allow this expansion.  Shell expansion is single-pass: the expanded value
+    is NOT re-processed for metacharacters, making this safe.
     """
 
-    def test_printenv_path_captures_env_var(self):
-        """With RECIPE_VAR_* set (Rust runner), printenv returns the value."""
+    def test_env_var_expands_in_unquoted_heredoc(self):
+        """$RECIPE_VAR_* expands in unquoted heredoc (Rust runner path)."""
         task = "Fix the user's profile page (broken)"
         script = (
-            "TASK_DESC=$(printenv RECIPE_VAR_task_description 2>/dev/null || cat <<'EOFTASKDESC'\n"
+            "TASK_DESC=$(cat <<EOFTASKDESC\n"
             "$RECIPE_VAR_task_description\n"
             "EOFTASKDESC\n"
             ")\n"
@@ -658,32 +657,15 @@ class TestDualPathPrintenvHeredoc:
         assert result.returncode == 0
         assert result.stdout.strip() == task
 
-    def test_heredoc_fallback_without_env_var(self):
-        """Without RECIPE_VAR_* (Python runner), heredoc captures literal text."""
-        task = "Fix the user's profile page (broken)"
-        script = (
-            "TASK_DESC=$(printenv RECIPE_VAR_task_description 2>/dev/null || cat <<'EOFTASKDESC'\n"
-            f"{task}\n"
-            "EOFTASKDESC\n"
-            ")\n"
-            'printf "%s" "$TASK_DESC"'
-        )
-        env = {k: v for k, v in os.environ.items() if k != "RECIPE_VAR_task_description"}
-        result = subprocess.run(
-            ["/bin/bash", "-c", script],
-            capture_output=True,
-            text=True,
-            timeout=5,
-            env=env,
-        )
-        assert result.returncode == 0
-        assert task in result.stdout
-
     @pytest.mark.parametrize("name,task_desc", ADVERSARIAL_TASK_DESCRIPTIONS[:5])
-    def test_printenv_path_safe_with_adversarial_input(self, name, task_desc):
-        """Adversarial input in env var is safely captured via printenv."""
+    def test_env_var_safe_with_adversarial_input(self, name, task_desc):
+        """Adversarial input in env var is safely captured via unquoted heredoc.
+
+        Shell expansion is single-pass: even if the env var value contains
+        $(cmd) or backticks, they are NOT re-processed after expansion.
+        """
         script = (
-            "TASK_DESC=$(printenv RECIPE_VAR_task_description 2>/dev/null || cat <<'EOFTASKDESC'\n"
+            "TASK_DESC=$(cat <<EOFTASKDESC\n"
             "$RECIPE_VAR_task_description\n"
             "EOFTASKDESC\n"
             ")\n"
@@ -699,19 +681,21 @@ class TestDualPathPrintenvHeredoc:
         assert result.returncode == 0
         assert result.stdout.strip() == task_desc
 
-    def test_recipe_steps_use_printenv_pattern(self, default_workflow):
-        """All heredoc-protected steps (except step-04) use printenv || cat."""
+    def test_recipe_steps_use_unquoted_heredoc(self, default_workflow):
+        """All heredoc-protected steps use unquoted heredocs (no single-quotes)."""
         for step in default_workflow.get("steps", []):
             step_id = step.get("id", "")
             if step_id not in AFFECTED_STEP_IDS:
                 continue
-            if step_id == "step-04-setup-worktree":
-                continue  # step-04 uses unquoted heredoc for Rust runner compat
             cmd = step.get("command", "")
             if "EOFTASKDESC" in cmd:
-                assert "printenv RECIPE_VAR_task_description" in cmd, (
-                    f"Step '{step_id}' should use printenv || cat pattern for "
-                    "Rust runner compatibility (issue #3117)"
+                assert "<<EOFTASKDESC" in cmd, (
+                    f"Step '{step_id}' must use unquoted heredoc (<<EOFTASKDESC) "
+                    "for Rust runner env-var expansion (issue #3117)"
+                )
+                assert "<<'EOFTASKDESC'" not in cmd, (
+                    f"Step '{step_id}' must NOT use single-quoted heredoc — "
+                    "it blocks $RECIPE_VAR_* expansion (issue #3117)"
                 )
 
 

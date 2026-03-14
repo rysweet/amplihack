@@ -132,12 +132,10 @@ steps:
       echo "  Step 21: Convert PR to Ready"
       echo "  Step 22: Ensure PR Mergeable"
       echo ""
-      # FIX (issues #3045/#3076/#3117): dual-path variable capture.
-      # Rust runner: sets RECIPE_VAR_* env vars, replaces {{var}} with $RECIPE_VAR_var.
-      #   printenv succeeds → value captured without heredoc expansion issues.
-      # Python runner: does inline text substitution of {{var}}.
-      #   printenv fails → falls through to single-quoted heredoc (safe, no expansion).
-      TASK_DESC=$(printenv RECIPE_VAR_task_description 2>/dev/null || cat <<'EOFTASKDESC'
+      # FIX (issues #3045/#3076/#3117): unquoted heredoc for safe variable capture.
+      # Unquoted heredoc allows Rust runner env-var expansion ($RECIPE_VAR_*).
+      # Shell expansion is single-pass: expanded values are NOT re-processed.
+      TASK_DESC=$(cat <<EOFTASKDESC
       {{task_description}}
       EOFTASKDESC
       )
@@ -259,14 +257,14 @@ steps:
     command: |
       cd "{{repo_path}}" && \
       echo "=== Step 3: Creating GitHub Issue ===" && \
-      # FIX (issues #3045/#3076/#3117): dual-path variable capture
-      TASK_DESC=$(printenv RECIPE_VAR_task_description 2>/dev/null || cat <<'EOFTASKDESC'
+      # FIX (#3045/#3076/#3117): unquoted heredoc — safe variable capture
+      TASK_DESC=$(cat <<EOFTASKDESC
       {{task_description}}
       EOFTASKDESC
       ) && \
       ISSUE_TITLE=$(printf '%s' "$TASK_DESC" | tr '\n\r' '  ' | cut -c1-200) && \
       ISSUE_TASK=$(printf '%s' "$TASK_DESC") && \
-      ISSUE_REQS=$(printenv RECIPE_VAR_final_requirements 2>/dev/null || cat <<'EOFREQS'
+      ISSUE_REQS=$(cat <<EOFREQS
       {{final_requirements}}
       EOFREQS
       ) && \
@@ -1009,8 +1007,8 @@ steps:
       git add -A && \
       echo "" && \
       echo "--- Creating Commit ---" && \
-      # FIX (issues #3045/#3076/#3117): dual-path variable capture
-      TASK_DESC=$(printenv RECIPE_VAR_task_description 2>/dev/null || cat <<'EOFTASKDESC'
+      # FIX (#3045/#3076/#3117): unquoted heredoc — safe variable capture
+      TASK_DESC=$(cat <<EOFTASKDESC
       {{task_description}}
       EOFTASKDESC
       ) && \
@@ -1041,14 +1039,14 @@ steps:
     command: |
       cd "{{worktree_setup.worktree_path}}" && \
       echo "=== Step 15: Creating Draft PR ===" && \
-      # FIX (issues #3045/#3076/#3117): dual-path variable capture
-      TASK_DESC=$(printenv RECIPE_VAR_task_description 2>/dev/null || cat <<'EOFTASKDESC'
+      # FIX (#3045/#3076/#3117): unquoted heredoc — safe variable capture
+      TASK_DESC=$(cat <<EOFTASKDESC
       {{task_description}}
       EOFTASKDESC
       ) && \
       PR_TITLE=$(printf '%s' "$TASK_DESC" | tr '\n\r' ' ' | cut -c1-200) && \
       PR_TASK=$(printf '%s' "$TASK_DESC") && \
-      PR_DESIGN=$(printenv RECIPE_VAR_design_spec 2>/dev/null || cat <<'EOFDESIGN'
+      PR_DESIGN=$(cat <<EOFDESIGN
       {{design_spec}}
       EOFDESIGN
       ) && \
@@ -1658,8 +1656,8 @@ steps:
       echo "PR Status:" && \
       gh pr view --json state,mergeable,reviews,statusCheckRollup && \
       echo "" && \
-      # FIX (issues #3045/#3076/#3117): dual-path variable capture
-      TASK_DESC=$(printenv RECIPE_VAR_task_description 2>/dev/null || cat <<'EOFTASKDESC'
+      # FIX (#3045/#3076/#3117): unquoted heredoc — safe variable capture
+      TASK_DESC=$(cat <<EOFTASKDESC
       {{task_description}}
       EOFTASKDESC
       ) && \
@@ -1677,8 +1675,8 @@ steps:
     type: "bash"
     parse_json: true
     command: |
-      # FIX (issues #3045/#3076/#3117): dual-path variable capture
-      TASK_DESC=$(printenv RECIPE_VAR_task_description 2>/dev/null || cat <<'EOFTASKDESC'
+      # FIX (#3045/#3076/#3117): unquoted heredoc — safe variable capture
+      TASK_DESC=$(cat <<EOFTASKDESC
       {{task_description}}
       EOFTASKDESC
       )

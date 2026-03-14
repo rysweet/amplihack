@@ -480,10 +480,10 @@ steps:
       _VALIDATED_TMPFILE=$(mktemp)
       _FIX_VERIFY_TMPFILE=$(mktemp)
       trap 'rm -f "$_VALIDATED_TMPFILE" "$_FIX_VERIFY_TMPFILE"' EXIT
-      cat > "$_VALIDATED_TMPFILE" <<'__VALIDATED_EOF__'
+      cat > "$_VALIDATED_TMPFILE" <<__VALIDATED_EOF__
       {{validated_findings}}
       __VALIDATED_EOF__
-      cat > "$_FIX_VERIFY_TMPFILE" <<'__FIX_VERIFY_EOF__'
+      cat > "$_FIX_VERIFY_TMPFILE" <<__FIX_VERIFY_EOF__
       {{fix_verification}}
       __FIX_VERIFY_EOF__
 

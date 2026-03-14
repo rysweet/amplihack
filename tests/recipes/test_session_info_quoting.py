@@ -70,8 +70,8 @@ class TestSessionInfoNoSingleQuoteWrapping:
         """Each step that uses session_info must use heredoc assignment."""
         step = _get_step(smart_orchestrator, step_id)
         cmd = step.get("command", "")
-        assert "<<'EOFSESSIONJSON'" in cmd, (
-            f"Step '{step_id}' must use heredoc (<<'EOFSESSIONJSON') "
+        assert "<<EOFSESSIONJSON" in cmd, (
+            f"Step '{step_id}' must use heredoc (<<EOFSESSIONJSON) "
             "to capture session_info — not single-quote wrapping"
         )
 
@@ -106,7 +106,7 @@ class TestHeredocSessionInfoBashSyntax:
     @pytest.mark.parametrize("name,session_json", SAMPLE_SESSION_JSON_VALUES)
     def test_heredoc_syntax_valid(self, name, session_json):
         script = (
-            f"SESSION_JSON=$(cat <<'EOFSESSIONJSON'\n"
+            f"SESSION_JSON=$(cat <<EOFSESSIONJSON\n"
             f"{session_json}\n"
             f"EOFSESSIONJSON\n"
             f")\n"
@@ -125,7 +125,7 @@ class TestHeredocSessionInfoBashSyntax:
     @pytest.mark.parametrize("name,session_json", SAMPLE_SESSION_JSON_VALUES)
     def test_heredoc_captures_value(self, name, session_json):
         script = (
-            f"SESSION_JSON=$(cat <<'EOFSESSIONJSON'\n"
+            f"SESSION_JSON=$(cat <<EOFSESSIONJSON\n"
             f"{session_json}\n"
             f"EOFSESSIONJSON\n"
             f")\n"
@@ -147,7 +147,7 @@ class TestHeredocSessionInfoBashSyntax:
     def test_grep_works_with_heredoc(self, name, session_json):
         """The derive-recursion-guard grep must work with heredoc-assigned JSON."""
         script = (
-            f"SESSION_JSON=$(cat <<'EOFSESSIONJSON'\n"
+            f"SESSION_JSON=$(cat <<EOFSESSIONJSON\n"
             f"{session_json}\n"
             f"EOFSESSIONJSON\n"
             f")\n"
