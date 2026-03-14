@@ -160,6 +160,8 @@ nav:
           - Tutorial: remote-sessions/TUTORIAL.md
   - Reference:
       - Discoveries: claude/context/DISCOVERIES.md
+      - Recipe Variable Expansion: RECIPE_VARIABLE_EXPANSION.md
+      - Recipe Resilience: RECIPE_RESILIENCE.md
       - Security: SECURITY_RECOMMENDATIONS.md
       - Testing: testing/README.md
       - Troubleshooting: troubleshooting/README.md

@@ -6,6 +6,11 @@ This file documents non-obvious problems, solutions, and patterns discovered dur
 
 ## Table of Contents
 
+### March 2026
+
+- [Recipe Runner Shell Quoting Rules](#recipe-runner-shell-quoting-rules-2026-03-14)
+- [Classify-and-Decompose Agent Side Effects](#classify-and-decompose-agent-side-effects-2026-03-14)
+
 ### Recent (December 2025)
 
 - [Mandatory User Testing Validates Its Own Value](#mandatory-user-testing-validates-value-2025-12-02)
@@ -52,6 +57,96 @@ How was it resolved? Include code if relevant.
 
 What insights should be remembered?
 ```
+
+---
+
+## Recipe Runner Shell Quoting Rules (2026-03-14)
+
+### Problem
+
+Recipe YAML files use `{{var}}` placeholders for dynamic values. The Rust recipe
+runner translates these to `$RECIPE_VAR_var` env vars before execution. Several
+combinations of shell quoting caused silent expansion failures:
+
+1. Single-quoted heredocs (`<<'EOF'`) emitted literal `$RECIPE_VAR_*` text into
+   issue/PR bodies instead of the variable's value.
+2. Recipe authors wrapping `{{var}}` in double quotes (`"{{var}}"`) caused doubled
+   quote marks in rendered commands (`cd ""path""`), breaking execution.
+3. `printf '%s' '{{var}}'` with single quotes around `{{var}}` blocked expansion,
+   causing downstream condition checks to fail.
+
+### Root Cause
+
+The Rust runner sets env vars and performs `{{var}}` → `$RECIPE_VAR_var`
+substitution. Shell quoting rules then apply as normal:
+
+- **Single-quoted heredocs** (`<<'EOF'`): shell does not expand `$VAR` inside them.
+- **Double-quoting `{{var}}`**: the runner already wraps expanded refs with double
+  quotes; author-added quotes produce a doubled pair.
+- **Single-quoting `{{var}}` in printf**: same as single-quoted heredocs — shell
+  treats content as literal.
+
+### Solution
+
+Three quoting rules for recipe authors:
+
+1. **Heredocs with vars**: use unquoted `<<EOF`, never `<<'EOF'`
+2. **Vars in commands**: write `{{var}}` bare — no surrounding quotes; the runner
+   adds double quotes automatically
+3. **Vars in printf/assignments**: use `"{{var}}"` (double), never `'{{var}}'`
+   (single)
+
+### Key Learnings
+
+- The Rust runner's quoting layer and shell quoting interact; authors must not
+  duplicate the runner's own quoting.
+- Unquoted heredocs are safe because shell expansion is single-pass — user
+  content in `$RECIPE_VAR_*` is not re-processed for metacharacters.
+- See [Recipe Variable Expansion Reference](../../RECIPE_VARIABLE_EXPANSION.md)
+  for the complete rules and examples.
+
+---
+
+## Classify-and-Decompose Agent Side Effects (2026-03-14)
+
+### Problem
+
+The `classify-and-decompose` agent in `smart-orchestrator.yaml` was invoked to
+produce a structured orchestration plan. In at least one case it actually
+implemented the requested feature (1516 lines changed in 646 seconds) because
+the prompt described the goal without explicitly prohibiting coding activity.
+
+This mutated the repository during the classification phase, before the
+orchestrator had a chance to allocate workstreams, and left `force_single_workstream`
+evaluation in an inconsistent state (0 workstreams → "0 entries" error).
+
+### Root Cause
+
+General-purpose agents interpret prompts broadly. A prompt like "analyze and
+produce a plan for X" is interpreted as permission to also accomplish X if the
+agent believes doing so directly answers the request more efficiently.
+
+### Solution
+
+Add an explicit implementation prohibition to any agent prompt that is
+classification-only or planning-only:
+
+```yaml
+prompt: |
+  Analyze the task and produce a structured orchestration plan.
+
+  DO NOT implement, build, code, or make any changes to files.
+  Your output must be a plan only.
+```
+
+### Key Learnings
+
+- Classification and planning agents **always** need an explicit "DO NOT
+  implement" instruction. Implicit scope limitation is not reliable.
+- A missing `force_single_workstream` value or a quoting bug (single quotes
+  blocking expansion) can silently route to the parallel path with zero
+  workstreams, producing a confusing "0 entries" error rather than a clear
+  variable-not-set error.
 
 ---
 
