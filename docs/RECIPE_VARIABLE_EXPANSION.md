@@ -6,16 +6,13 @@ last_updated: 2026-03-14
 # Recipe Variable Expansion Reference
 
 This document explains how `{{var}}` template variables are expanded in amplihack
-recipe YAML files and the shell quoting rules that recipe authors must follow.
+recipe YAML files.
 
 ## Contents
 
 - [How Variable Expansion Works](#how-variable-expansion-works)
-- [Shell Quoting Rules](#shell-quoting-rules)
-  - [Heredocs](#heredocs)
-  - [Double-Quoting Variables](#double-quoting-variables)
-  - [printf and echo](#printf-and-echo)
-- [Common Mistakes](#common-mistakes)
+- [Automatic Quoting Normalisation](#automatic-quoting-normalisation)
+- [Canonical Patterns](#canonical-patterns)
 - [Agent Side-Effect Prevention](#agent-side-effect-prevention)
 - [Related Documentation](#related-documentation)
 
@@ -27,84 +24,73 @@ The Rust recipe runner translates `{{var}}` placeholders into shell environment
 variable references before executing each `command` block:
 
 ```
-{{var}}  →  $RECIPE_VAR_var
+{{var}}  →  "$RECIPE_VAR_var"   (outside heredocs, with double quotes)
+{{var}}  →  $RECIPE_VAR_var     (inside unquoted heredocs, no extra quotes)
 ```
 
 The environment variable `RECIPE_VAR_var` is set by the runner before the
 shell subprocess starts. The shell then expands it normally.
 
-**Python runner**: uses direct string interpolation (replaces `{{var}}` with
-the value before execution). Shell quoting rules below do not apply to the
-Python runner.
-
 ---
 
-## Shell Quoting Rules
+## Automatic Quoting Normalisation
 
-### Heredocs
+The Python runner wrapper (`rust_runner.py`) automatically normalises common
+quoting mistakes in recipe `command:` fields before invoking the Rust binary.
+Recipe authors can write natural commands; the following patterns are fixed
+transparently:
 
-**Rule**: Use unquoted heredocs (`<<EOF`) when the body contains `{{var}}`.
-Single-quoted heredocs (`<<'EOF'`) block all shell expansion.
+| Original (in YAML)         | Normalised to | Why |
+|----------------------------|---------------|-----|
+| `"{{var}}"`                | `{{var}}`     | Runner already adds double quotes; explicit quotes double them |
+| `'{{var}}'`                | `{{var}}`     | Single quotes block runner's `$RECIPE_VAR_*` expansion |
+| `<<'DELIM'` with `{{var}}` in body | `<<DELIM` | Single-quoted heredocs block shell expansion |
+
+### Example: before and after normalisation
 
 ```yaml
-# CORRECT — runner sets RECIPE_VAR_task_description; shell expands it
-command: |
-  cat <<EOF
-  Task: $RECIPE_VAR_task_description
-  EOF
-
-# WRONG — single quotes block expansion; literal $RECIPE_VAR_task_description emitted
+# Written by author (any of these forms)
+command: cd "{{repo_path}}"
+command: printf '%s' '{{force_single_workstream}}'
 command: |
   cat <<'EOF'
   Task: {{task_description}}
   EOF
-```
 
-Unquoted heredocs are safe because shell variable expansion is single-pass.
-When `$RECIPE_VAR_task_description` expands to user-supplied text, that text is
-**not** re-processed for shell metacharacters.
-
-### Double-Quoting Variables
-
-**Rule**: Do **not** add your own double quotes around `{{var}}` in commands.
-The Rust runner already wraps the expanded reference with double quotes.
-
-```yaml
-# CORRECT — runner renders: cd "$RECIPE_VAR_repo_path"
-command: cd {{repo_path}}
-
-# WRONG — runner renders: cd ""$RECIPE_VAR_repo_path""  (broken)
-command: cd "{{repo_path}}"
-```
-
-The runner's automatic quoting is sufficient and handles paths with spaces.
-Adding explicit double quotes produces doubled quote marks and breaks the
-command.
-
-### printf and echo
-
-**Rule**: When using `printf` or a subshell assignment, use **double** quotes
-around `{{var}}`, not single quotes.
-
-```yaml
-# CORRECT — shell expands $RECIPE_VAR_force_single_workstream inside double quotes
+# After automatic normalisation (what the Rust binary sees)
+command: cd {{repo_path}}          # runner renders: cd "$RECIPE_VAR_repo_path"
+command: printf '%s' {{force_single_workstream}}
 command: |
-  FLAG=$(printf '%s' "{{force_single_workstream}}")
-
-# WRONG — single quotes block expansion; literal text emitted
-command: |
-  FLAG=$(printf '%s' '{{force_single_workstream}}')
+  cat <<EOF
+  Task: {{task_description}}       # runner expands to $RECIPE_VAR_task_description
+  EOF
 ```
 
 ---
 
-## Common Mistakes
+## Canonical Patterns
 
-| Mistake | Symptom | Fix |
-|---------|---------|-----|
-| `<<'EOF'` heredoc with `{{var}}` | Literal `$RECIPE_VAR_*` appears in output (issue bodies, PR descriptions, etc.) | Change to `<<EOF` |
-| `"{{var}}"` in commands | Doubled quotes in rendered shell (`cd ""path""`) | Remove the surrounding double quotes |
-| `'{{var}}'` in printf/assignments | Variable not expanded; condition checks fail | Use `"{{var}}"` |
+While normalisation handles the common mistakes, the canonical forms are
+preferred in new recipes:
+
+```yaml
+# Paths and simple values — bare var, runner adds quotes
+command: cd {{repo_path}}
+
+# Heredocs — unquoted delimiter
+command: |
+  cat <<EOF
+  Task: {{task_description}}
+  EOF
+
+# printf / subshell — bare var
+command: |
+  FLAG=$(printf '%s' {{force_single_workstream}})
+```
+
+Unquoted heredocs are safe because shell variable expansion is single-pass:
+when `$RECIPE_VAR_task_description` expands, the resulting text is **not**
+re-processed for shell metacharacters.
 
 ---
 
