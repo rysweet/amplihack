@@ -12,9 +12,15 @@ sanitization pipeline in a subprocess.
 from __future__ import annotations
 
 import subprocess
+import sys
 import textwrap
 
 import pytest
+
+pytestmark = pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="Branch sanitization tests require bash (Unix-only)",
+)
 
 # Sanitization pipeline reproduced from default-workflow.yaml step-04-setup-worktree.
 # Defined at module level so textwrap.dedent() runs once, not once per test call.
@@ -94,7 +100,7 @@ class TestBranchNameSanitization:
         desc = "add user profile page"
         slug = _sanitize(desc)
         assert " " not in slug
-        assert "add-user-profile-page" == slug
+        assert slug == "add-user-profile-page"
 
     def test_special_chars_replaced_with_hyphens(self) -> None:
         """Characters that are not alphanumeric, hyphen, underscore, or dot become hyphens."""
@@ -134,7 +140,7 @@ class TestBranchNameSanitization:
         """Underscores are valid git ref chars and must be preserved."""
         desc = "fix_login_bug"
         slug = _sanitize(desc)
-        assert "fix_login_bug" == slug
+        assert slug == "fix_login_bug"
 
     def test_dot_preserved_mid_name(self) -> None:
         """Dots mid-name are preserved."""
@@ -163,11 +169,14 @@ class TestBranchNameSanitization:
         # Just verify it ran without error
         assert isinstance(slug, str)
 
-    @pytest.mark.parametrize("desc,issue_num", [
-        ("add user profile page", 42),
-        ("fix login\nbug with oauth2\n", 99),
-        ("implement comprehensive user authentication system with oauth2 saml and ldap", 7),
-    ])
+    @pytest.mark.parametrize(
+        "desc,issue_num",
+        [
+            ("add user profile page", 42),
+            ("fix login\nbug with oauth2\n", 99),
+            ("implement comprehensive user authentication system with oauth2 saml and ldap", 7),
+        ],
+    )
     def test_passes_git_check_ref_format(self, desc: str, issue_num: int) -> None:
         """All description types produce slugs that pass git check-ref-format."""
         branch = f"feat/issue-{issue_num}-{_sanitize(desc)}"
