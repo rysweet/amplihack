@@ -31,3 +31,15 @@ SEARCH_CANDIDATE_MULTIPLIER: int = 3
 # Multiplier for the broad full-scan fallback when keyword search returns
 # nothing.
 FALLBACK_SCAN_MULTIPLIER: int = 5
+
+# KB size threshold below (or equal to) which the strategy selector picks
+# SIMPLE_ALL (dump everything) vs TWO_PHASE.  Kept separate from
+# SIMPLE_RETRIEVAL_THRESHOLD (500) which governs learning_agent / cognitive
+# adapter paths; this tighter value (150) is used by MemoryAgent's own
+# strategy selector.
+MEMORY_AGENT_SMALL_KB_THRESHOLD: int = 150
+
+# Hard cap on the broad-search candidate set inside _two_phase_retrieve.
+# Prevents fetching an unbounded number of candidates even when max_facts
+# is very large.
+TWO_PHASE_BROAD_CAP: int = 200
