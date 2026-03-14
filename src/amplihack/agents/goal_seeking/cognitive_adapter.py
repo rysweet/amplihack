@@ -315,7 +315,8 @@ class CognitiveAdapter:
                 temporal_metadata=temporal_metadata,
             )
 
-        # Auto-promote to shared hive if connected
+        # Legacy: auto-promote when hive_store is set directly on CognitiveAdapter.
+        # New architecture: DistributedCognitiveMemory handles promotion transparently.
         self._promote_to_hive(context.strip(), fact.strip(), confidence, tags)
 
         return node_id
@@ -429,44 +430,11 @@ class CognitiveAdapter:
             scored.sort(key=lambda x: x[0], reverse=True)
             local_results = [r for _, r in scored[:limit]]
 
-        if self._hive_store is None:
-            try:
-                from amplihack.agents.goal_seeking.hive_mind.tracing import trace_log
-
-                trace_log(
-                    "search", "LOCAL-ONLY: %d results (no hive_store)", len(local_results)
-                )
-            except ImportError:
-                pass
-            return local_results
-
-        # Query hive and merge
-        try:
-            from amplihack.agents.goal_seeking.hive_mind.tracing import trace_log
-
-            trace_log(
-                "search",
-                "local=%d results, querying hive for: %.80s",
-                len(local_results),
-                query.strip()[:80],
-            )
-        except ImportError:
-            pass
-        hive_results = self._search_hive(query.strip(), limit=limit)
-        merged = self._merge_results(local_results, hive_results, limit)
-        try:
-            from amplihack.agents.goal_seeking.hive_mind.tracing import trace_log
-
-            trace_log(
-                "search",
-                "local=%d hive=%d merged=%d",
-                len(local_results),
-                len(hive_results),
-                len(merged),
-            )
-        except ImportError:
-            pass
-        return merged
+        # NOTE: When topology=distributed, self.memory is a
+        # DistributedCognitiveMemory whose search_facts() already fans out
+        # to the hive.  CognitiveAdapter is topology-unaware — no hive
+        # branching here.
+        return local_results
 
     def search_local(
         self,
@@ -479,28 +447,34 @@ class CognitiveAdapter:
         Used by shard query handlers to avoid recursive SHARD_QUERY storms:
         when agent A queries agent B, agent B must search only its own local
         memory, not trigger another round of distributed queries.
+
+        When self.memory is a DistributedCognitiveMemory, this bypasses it
+        and queries the underlying local CognitiveMemory directly.
         """
         if not query or not query.strip():
             return []
+
+        # Get the actual local backend — bypass DistributedCognitiveMemory
+        local_mem = getattr(self.memory, "_local", self.memory)
 
         filtered_query = _filter_stop_words(query)
         search_q = filtered_query if filtered_query.strip() else query.strip()
 
         if self._cognitive:
-            results = self.memory.search_facts(
+            results = local_mem.search_facts(
                 query=search_q, limit=limit * 3, min_confidence=min_confidence
             )
             local_results = [self._semantic_fact_to_dict(r) for r in results]
             if not local_results:
-                all_facts = self.memory.get_all_facts(limit=limit * 5)
+                all_facts = local_mem.get_all_facts(limit=limit * 5)
                 local_results = [self._semantic_fact_to_dict(r) for r in all_facts]
         else:
-            subgraph = self.memory.retrieve_subgraph(query=search_q, max_nodes=limit * 3)
+            subgraph = local_mem.retrieve_subgraph(query=search_q, max_nodes=limit * 3)
             local_results = [
                 self._node_to_dict(n) for n in subgraph.nodes if n.confidence >= min_confidence
             ]
-            if not local_results and hasattr(self.memory, "get_all_knowledge"):
-                nodes = self.memory.get_all_knowledge(limit=limit * 5)
+            if not local_results and hasattr(local_mem, "get_all_knowledge"):
+                nodes = local_mem.get_all_knowledge(limit=limit * 5)
                 local_results = [self._node_to_dict(n) for n in nodes]
 
         if local_results:
@@ -516,36 +490,29 @@ class CognitiveAdapter:
         return local_results
 
     def get_all_facts(self, limit: int = 50, query: str = "") -> list[dict[str, Any]]:
-        """Retrieve all facts without keyword filtering.
+        """Retrieve all facts.
 
-        When a hive_store is connected, returns facts from both local
-        memory and the shared hive, deduplicated by content.
+        When topology=distributed, self.memory is a DistributedCognitiveMemory
+        whose get_all_facts() transparently fans out to the hive.
+        CognitiveAdapter is topology-unaware.
 
         Args:
             limit: Maximum results to return.
-            query: Optional question text. When provided and hive is a
-                distributed graph, uses targeted ``_search_hive(query)``
-                instead of ``_get_all_hive_facts()`` (which sends an
-                empty-query ``query_facts("")`` that remote shards reject).
+            query: Optional question text passed through to the memory backend.
         """
         if self._cognitive:
-            results = self.memory.get_all_facts(limit=limit)
+            # Pass query kwarg only if the memory backend accepts it
+            # (DistributedCognitiveMemory does; plain CognitiveMemory doesn't)
+            try:
+                results = self.memory.get_all_facts(limit=limit, query=query)
+            except TypeError:
+                results = self.memory.get_all_facts(limit=limit)
             local_results = [self._semantic_fact_to_dict(r) for r in results]
         else:
             nodes = self.memory.get_all_knowledge(limit=limit)
             local_results = [self._node_to_dict(n) for n in nodes]
 
-        if self._hive_store is None:
-            return local_results
-
-        if query and query.strip():
-            # Targeted hive search — works with DistributedHiveGraph where
-            # empty-query get_all_hive_facts returns nothing (remote shards
-            # reject SHARD_QUERY with empty query).
-            hive_results = self._search_hive(query.strip(), limit=limit)
-        else:
-            hive_results = self._get_all_hive_facts(limit=limit)
-        return self._merge_results(local_results, hive_results, limit)
+        return local_results
 
     @staticmethod
     def _hive_fact_to_dict(
@@ -923,7 +890,13 @@ class CognitiveAdapter:
 
     @staticmethod
     def _semantic_fact_to_dict(fact: Any) -> dict[str, Any]:
-        """Convert CognitiveMemory SemanticFact to flat dict."""
+        """Convert CognitiveMemory SemanticFact (or dict) to flat dict.
+
+        Handles both SemanticFact objects (from local CognitiveMemory) and
+        plain dicts (from DistributedCognitiveMemory's hive merge).
+        """
+        if isinstance(fact, dict):
+            return fact
         return {
             "experience_id": fact.node_id,
             "context": fact.concept,

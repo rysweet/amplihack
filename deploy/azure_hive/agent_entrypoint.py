@@ -257,6 +257,7 @@ def main() -> None:
             hive_store, hive_bus, shard_transport = result
 
     # Build GoalSeekingAgent — the single agent type with a pure OODA loop.
+    # The agent is topology-unaware. Distributed memory is injected below.
     from pathlib import Path
 
     from amplihack.agents.goal_seeking.goal_seeking_agent import GoalSeekingAgent
@@ -269,16 +270,34 @@ def main() -> None:
             storage_path=_storage,
             use_hierarchical=True,
             model=model,
-            hive_store=hive_store,
         )
     except Exception:
         logger.exception("Failed to initialize GoalSeekingAgent for agent %s", agent_name)
         sys.exit(1)
-    logger.info(
-        "GoalSeekingAgent initialized for agent %s (hive_store=%s)",
-        agent_name,
-        "dht-sharded" if hive_store else "none",
-    )
+
+    # DI: wrap local memory with DistributedCognitiveMemory for distributed topology.
+    # The agent's OODA loop is IDENTICAL to single-agent — the memory backend
+    # transparently handles hive fan-out for search_facts/get_all_facts.
+    if hive_store is not None:
+        from amplihack.agents.goal_seeking.hive_mind.distributed_memory import (
+            DistributedCognitiveMemory,
+        )
+        local_memory = agent.memory.memory  # CognitiveAdapter.memory (CognitiveMemory)
+        distributed_memory = DistributedCognitiveMemory(
+            local_memory=local_memory,
+            hive_graph=hive_store,
+            agent_name=agent_name,
+        )
+        agent.memory.memory = distributed_memory  # Replace backend transparently
+        logger.info(
+            "Agent %s: memory wrapped with DistributedCognitiveMemory (topology=distributed)",
+            agent_name,
+        )
+    else:
+        logger.info(
+            "Agent %s: using local memory only (topology=single)",
+            agent_name,
+        )
 
     # Build Memory facade — retained for Kuzu storage wiring only.
     # Event Hubs handles all event transport now; the facade uses "local"
