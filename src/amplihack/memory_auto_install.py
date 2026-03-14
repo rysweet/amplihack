@@ -36,6 +36,8 @@ def _find_x86_python() -> list[str] | None:
             [py, "--list"],
             capture_output=True, text=True, timeout=10,
         )
+        if result.returncode != 0:
+            return None
         # Look for a non-ARM64 Python (e.g., " -V:3.13  Python 3.13 (64-bit)")
         # Version tags look like "-V:3.13" or "-3.13-64"
         ver_pattern = re.compile(r"-(?:V:)?(\d+\.\d+)")
@@ -94,6 +96,11 @@ def _install_via_x86_python(py_cmd: list[str]) -> bool:
 
     Args:
         py_cmd: Command list to invoke x86_64 Python, e.g. ["py", "-3.13"].
+
+    Returns:
+        False always — the library is installed into the x86_64 Python's
+        site-packages, not the current (ARM64) interpreter, so it cannot
+        be imported from this process.
     """
     import subprocess
 
@@ -127,7 +134,14 @@ def _install_via_x86_python(py_cmd: list[str]) -> bool:
 
 
 def _do_install(pip_cmd: list[str]) -> bool:
-    """Run pip install for amplihack-memory-lib."""
+    """Run pip install for amplihack-memory-lib.
+
+    Args:
+        pip_cmd: Base pip command list, e.g. [sys.executable, "-m", "pip"].
+
+    Returns:
+        True if installation succeeded and library is importable.
+    """
     import subprocess
 
     print("📦 Installing amplihack-memory-lib (required for learning agents)...")
@@ -143,7 +157,7 @@ def _do_install(pip_cmd: list[str]) -> bool:
         if result.returncode == 0:
             print("✅ amplihack-memory-lib installed successfully")
             return True
-        print(f"⚠️ Auto-install failed: {result.stderr}")
+        print(f"⚠️ Auto-install failed: {result.stderr[:300]}")
         print(
             "   Install manually: pip install git+https://github.com/rysweet/amplihack-memory-lib.git@v0.1.0"
         )
