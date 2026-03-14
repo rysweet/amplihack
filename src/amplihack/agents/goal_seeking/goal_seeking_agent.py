@@ -125,6 +125,12 @@ class GoalSeekingAgent:
         # Use LearningAgent's internal memory to recall relevant context
         facts: list[str] = []
         try:
+            from amplihack.agents.goal_seeking.hive_mind.tracing import trace_log
+
+            trace_log("orient", "searching memory for: %.120s", self._current_input[:200])
+        except ImportError:
+            pass
+        try:
             memory = self._learning_agent.memory
             if hasattr(memory, "search"):
                 raw = memory.search(self._current_input[:200], limit=15)
@@ -143,6 +149,14 @@ class GoalSeekingAgent:
 
         self._oriented_facts = {"input": self._current_input, "facts": facts}
         logger.debug("Agent %s oriented: %d recalled facts", self._agent_name, len(facts))
+        try:
+            from amplihack.agents.goal_seeking.hive_mind.tracing import trace_log
+
+            trace_log("orient", "recalled %d facts", len(facts))
+            if facts:
+                trace_log("orient", "top fact: %.120s", facts[0])
+        except ImportError:
+            pass
         return self._oriented_facts
 
     def decide(self) -> str:
@@ -212,6 +226,17 @@ class GoalSeekingAgent:
         output = ""
 
         if self._decision == "answer":
+            try:
+                from amplihack.agents.goal_seeking.hive_mind.tracing import trace_log
+
+                trace_log(
+                    "act",
+                    "ANSWERING with %d context facts: %.120s",
+                    len(self._oriented_facts.get("facts", [])),
+                    self._current_input[:120],
+                )
+            except ImportError:
+                pass
             try:
                 result = self._learning_agent.answer_question(text)
                 output = result[0] if isinstance(result, tuple) else str(result)

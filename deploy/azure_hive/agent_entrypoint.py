@@ -469,9 +469,26 @@ def _run_event_driven_loop(
 
         logger.info("Agent %s processing input via OODA (len=%d)", agent_name, len(text))
         try:
+            # Set trace context for correlation tracing
+            try:
+                from amplihack.agents.goal_seeking.hive_mind.tracing import clear_trace, set_trace
+
+                _event_id = ""
+                if hasattr(input_source, "_publisher"):
+                    _event_id = getattr(input_source._publisher, "_current_event_id", "")
+                set_trace(event_id=_event_id, agent=agent_name)
+            except ImportError:
+                pass
             agent.process(text)
         except Exception:
             logger.exception("Error in OODA process for agent %s", agent_name)
+        finally:
+            try:
+                from amplihack.agents.goal_seeking.hive_mind.tracing import clear_trace
+
+                clear_trace()
+            except ImportError:
+                pass
 
 
 def _handle_event(agent_name: str, event: Any, memory: Any, agent: Any) -> None:
