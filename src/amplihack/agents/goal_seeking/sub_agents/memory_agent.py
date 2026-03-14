@@ -20,7 +20,12 @@ import re
 from enum import Enum
 from typing import Any
 
-from ..retrieval_constants import MAX_RETRIEVAL_LIMIT
+from ..retrieval_constants import (
+    MAX_RETRIEVAL_LIMIT,
+    MEMORY_AGENT_SMALL_KB_THRESHOLD,
+    SEARCH_CANDIDATE_MULTIPLIER,
+    TWO_PHASE_BROAD_CAP,
+)
 from ..similarity import rerank_facts_by_query
 
 logger = logging.getLogger(__name__)
@@ -87,7 +92,7 @@ class MemoryAgent:
         kb_size = self._get_kb_size()
 
         # Small KB: dump everything
-        if kb_size <= 150:
+        if kb_size <= MEMORY_AGENT_SMALL_KB_THRESHOLD:
             return RetrievalStrategy.SIMPLE_ALL
 
         # Entity-centric: if question contains proper nouns
@@ -95,7 +100,7 @@ class MemoryAgent:
             return RetrievalStrategy.ENTITY_CENTRIC
 
         # Large KB with no entity reference: two-phase (keyword then rerank)
-        if kb_size > 150:
+        if kb_size > MEMORY_AGENT_SMALL_KB_THRESHOLD:
             return RetrievalStrategy.TWO_PHASE
 
         return RetrievalStrategy.FULL_TEXT
@@ -285,7 +290,7 @@ class MemoryAgent:
         Phase 2: Rerank candidates by query relevance, return top-k
         """
         # Phase 1: Broad keyword search
-        broad_limit = min(max_facts * 3, 200)
+        broad_limit = min(max_facts * SEARCH_CANDIDATE_MULTIPLIER, TWO_PHASE_BROAD_CAP)
         candidates = self.memory.search(query=question, limit=broad_limit)
 
         if not candidates:
