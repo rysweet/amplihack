@@ -430,11 +430,43 @@ class CognitiveAdapter:
             local_results = [r for _, r in scored[:limit]]
 
         if self._hive_store is None:
+            try:
+                from amplihack.agents.goal_seeking.hive_mind.tracing import trace_log
+
+                trace_log(
+                    "search", "LOCAL-ONLY: %d results (no hive_store)", len(local_results)
+                )
+            except ImportError:
+                pass
             return local_results
 
         # Query hive and merge
+        try:
+            from amplihack.agents.goal_seeking.hive_mind.tracing import trace_log
+
+            trace_log(
+                "search",
+                "local=%d results, querying hive for: %.80s",
+                len(local_results),
+                query.strip()[:80],
+            )
+        except ImportError:
+            pass
         hive_results = self._search_hive(query.strip(), limit=limit)
-        return self._merge_results(local_results, hive_results, limit)
+        merged = self._merge_results(local_results, hive_results, limit)
+        try:
+            from amplihack.agents.goal_seeking.hive_mind.tracing import trace_log
+
+            trace_log(
+                "search",
+                "local=%d hive=%d merged=%d",
+                len(local_results),
+                len(hive_results),
+                len(merged),
+            )
+        except ImportError:
+            pass
+        return merged
 
     def search_local(
         self,
@@ -589,8 +621,14 @@ class CognitiveAdapter:
         """Execute the actual hive search using the best available method."""
         # FederatedGraphStore.federated_query returns FederatedQueryResult
         if hasattr(self._hive_store, "federated_query"):
+            try:
+                from amplihack.agents.goal_seeking.hive_mind.tracing import trace_log
+
+                trace_log("_execute_hive_search", "using federated_query")
+            except ImportError:
+                pass
             fqr = self._hive_store.federated_query(query, limit=limit)
-            return [
+            results = [
                 self._hive_fact_to_dict(
                     content=r.get("content", ""),
                     concept=r.get("concept", ""),
@@ -600,10 +638,23 @@ class CognitiveAdapter:
                 )
                 for r in (fqr.results if hasattr(fqr, "results") else fqr)
             ]
+            try:
+                from amplihack.agents.goal_seeking.hive_mind.tracing import trace_log
+
+                trace_log("_execute_hive_search", "federated_query returned %d", len(results))
+            except ImportError:
+                pass
+            return results
         # Proposal 5: Prefer query_federated (tree traversal)
         if hasattr(self._hive_store, "query_federated"):
+            try:
+                from amplihack.agents.goal_seeking.hive_mind.tracing import trace_log
+
+                trace_log("_execute_hive_search", "using query_federated")
+            except ImportError:
+                pass
             facts = self._hive_store.query_federated(query, limit=limit)
-            return [
+            results = [
                 self._hive_fact_to_dict(
                     content=f.content,
                     concept=f.concept,
@@ -613,9 +664,28 @@ class CognitiveAdapter:
                 )
                 for f in facts
             ]
+            try:
+                from amplihack.agents.goal_seeking.hive_mind.tracing import trace_log
+
+                trace_log("_execute_hive_search", "query_federated returned %d", len(results))
+            except ImportError:
+                pass
+            return results
         # Fallback: local-only query (no federation)
         if hasattr(self._hive_store, "query_facts"):
+            try:
+                from amplihack.agents.goal_seeking.hive_mind.tracing import trace_log
+
+                trace_log("_execute_hive_search", "using query_facts (DHT fan-out)")
+            except ImportError:
+                pass
             facts = self._hive_store.query_facts(query, limit=limit)
+            try:
+                from amplihack.agents.goal_seeking.hive_mind.tracing import trace_log
+
+                trace_log("_execute_hive_search", "query_facts returned %d facts", len(facts))
+            except ImportError:
+                pass
             return [
                 self._hive_fact_to_dict(
                     content=f.content,
@@ -626,6 +696,12 @@ class CognitiveAdapter:
                 )
                 for f in facts
             ]
+        try:
+            from amplihack.agents.goal_seeking.hive_mind.tracing import trace_log
+
+            trace_log("_execute_hive_search", "NO search method found on hive_store!")
+        except ImportError:
+            pass
         return []
 
     def _get_all_hive_facts(self, limit: int = 50) -> list[dict[str, Any]]:

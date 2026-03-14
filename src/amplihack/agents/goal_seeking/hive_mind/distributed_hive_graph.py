@@ -1245,10 +1245,28 @@ class DistributedHiveGraph:
         in parallel -- reduces total latency from N*timeout to max(timeout).
         Each query_shard call is independent; results are merged and deduped.
         """
+        import time as _time
+
+        _qf_start = _time.monotonic()
         targets = self._router.select_query_targets(query)
+
+        try:
+            from .tracing import trace_log
+
+            trace_log(
+                "query_facts",
+                "fan-out to %d targets for: %.80s",
+                len(targets),
+                query[:80],
+            )
+        except ImportError:
+            pass
 
         seen: set[str] = set()
         results: list[ShardFact] = []
+        _responded = 0
+        _timed_out = 0
+        _failed = 0
 
         # Parallel fan-out: query all shards concurrently instead of sequentially.
         # With ServiceBus transport this reduces N*SB_latency to max(SB_latency).
@@ -1259,14 +1277,34 @@ class DistributedHiveGraph:
             }
             for future in concurrent.futures.as_completed(futures):
                 try:
-                    for fact in future.result():
+                    shard_results = future.result()
+                    if shard_results:
+                        _responded += 1
+                    for fact in shard_results:
                         # Deduplicate by content hash (mirrors DHTRouter.query)
                         h = hashlib.md5(fact.content.encode()).hexdigest()
                         if h not in seen:
                             seen.add(h)
                             results.append(fact)
                 except Exception:
+                    _failed += 1
                     logger.debug("Shard query failed for agent %s", futures[future], exc_info=True)
+
+        _qf_elapsed = _time.monotonic() - _qf_start
+        try:
+            from .tracing import trace_log
+
+            trace_log(
+                "query_facts",
+                "targets=%d responded=%d failed=%d unique_facts=%d elapsed=%.2fs",
+                len(targets),
+                _responded,
+                _failed,
+                len(results),
+                _qf_elapsed,
+            )
+        except ImportError:
+            pass
 
         # Re-rank: terms with digits (IDs, versions) weighted 5x; bigram bonus
         import itertools
