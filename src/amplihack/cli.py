@@ -1191,6 +1191,9 @@ def main(argv: list[str] | None = None) -> int:
     if not platform_result.compatible:
         print(platform_result.message, file=sys.stderr)
         return 1
+    elif platform_result.message:
+        # Partial support (e.g., native Windows) — warn but continue
+        print(platform_result.message, file=sys.stderr)
 
     # Auto-update check (only for uv tool installs, not uvx)
     if not is_uvx_deployment() and (not raw_args or raw_args[0] != "update"):
