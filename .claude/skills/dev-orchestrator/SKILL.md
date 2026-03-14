@@ -81,7 +81,7 @@ User request
 **Session tree enforcement** (prevents infinite recursion):
 
 - Each subprocess inherits `AMPLIHACK_TREE_ID`, `AMPLIHACK_SESSION_DEPTH`, `AMPLIHACK_MAX_DEPTH`
-- Depth >= 3: recursion guard blocks sub-workstream spawning, falls back to single-session
+- Depth >= 3: recursion guard blocks sub-workstream spawning, adapts to single-session
 - Max 10 concurrent sessions per tree; extras queue in FIFO order
 - State tracked in `/tmp/amplihack-session-trees/{tree_id}.json`
 
@@ -192,7 +192,7 @@ Investigation tasks.** Always try `smart-orchestrator` first.
 - Q&A: Respond directly (analyzer agent)
 - Operations: Builder agent (direct execution, no workflow steps)
 
-### Error Recovery: Adaptive Strategy (NOT Silent Fallback)
+### Error Recovery: Adaptive Strategy (NOT Degradation)
 
 When `smart-orchestrator` fails, **failures must be visible and surfaced** —
 never swallowed or silently degraded. The recipe handles error recovery

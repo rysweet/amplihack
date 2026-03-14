@@ -442,7 +442,7 @@ steps:
   # Uses default-workflow sub-recipe (same as primary path) so workflow
   # steps are enforced even when parallel spawning is blocked.
   # This is an ADAPTIVE strategy (announced via recursion_guard), not a
-  # silent fallback — the depth-limited banner makes the change visible.
+  # degradation — the depth-limited banner makes the change visible.
   # ─────────────────────────────────────────────────────────────────────────
 
   - id: "execute-single-fallback-blocked"

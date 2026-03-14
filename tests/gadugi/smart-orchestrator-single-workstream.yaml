@@ -1,0 +1,98 @@
+# Outside-in test: smart-orchestrator single-workstream routing (#3130)
+# Verifies that force_single_workstream=true correctly routes to single
+# workstream execution, and that the materialize step bridges the context
+# gap between --set variables and condition evaluation.
+
+scenario:
+  name: "Smart Orchestrator - Single Workstream Routing"
+  description: |
+    When a user invokes the smart-orchestrator with force_single_workstream=true,
+    the orchestrator must route to single-workstream execution regardless of how
+    many workstreams the decomposition step produces. This test verifies the fix
+    for issue #3130 where the flag was silently ignored.
+  type: cli
+  level: 2
+
+  tags: [orchestrator, routing, single-workstream, regression, issue-3130]
+
+  prerequisites:
+    - "recipe-runner-rs binary is available at ~/.cargo/bin/recipe-runner-rs"
+    - "amplifier-bundle/recipes/smart-orchestrator.yaml exists"
+    - "Python 3.10+ with amplihack package importable"
+
+  environment:
+    variables:
+      AMPLIHACK_MAX_DEPTH: "3"
+      PYTHONPATH: "src"
+
+  steps:
+    # Scenario 1: Dry-run with force_single_workstream=true
+    - action: launch
+      target: "~/.cargo/bin/recipe-runner-rs"
+      args:
+        - "amplifier-bundle/recipes/smart-orchestrator.yaml"
+        - "--dry-run"
+        - "--output-format=json"
+        - "--set"
+        - "task_description=build a webui and an api"
+        - "--set"
+        - "repo_path=."
+        - "--set"
+        - "force_single_workstream=true"
+      description: "Run smart-orchestrator dry-run with force_single_workstream=true"
+      timeout: 30s
+
+    # Verify materialize step runs and produces correct output
+    - action: verify_output
+      matches: "materialize-force-single-workstream.*completed"
+      description: "Materialize step must run and complete successfully"
+
+    # Verify the materialize step outputs 'true'
+    - action: verify_output
+      matches: "materialize-force-single-workstream.*output.*true"
+      description: "Materialize step must output the string 'true'"
+
+    # Verify single workstream path is activated (workstream_count = 1)
+    - action: verify_output
+      matches: "activate-workflow.*completed"
+      description: "Workflow activation step must complete"
+
+    # Scenario 2: Without force flag — multi-workstream task should decompose
+    - action: launch
+      target: "~/.cargo/bin/recipe-runner-rs"
+      args:
+        - "amplifier-bundle/recipes/smart-orchestrator.yaml"
+        - "--dry-run"
+        - "--output-format=json"
+        - "--set"
+        - "task_description=build a webui and an api"
+        - "--set"
+        - "repo_path=."
+        - "--set"
+        - "force_single_workstream=false"
+      description: "Run without force flag — multi-workstream should be possible"
+      timeout: 30s
+
+    - action: verify_output
+      matches: "materialize-force-single-workstream.*completed"
+      description: "Materialize step must still run when flag is false"
+
+  cleanup:
+    - action: capture_output
+      save_as: "single-workstream-routing-output.txt"
+      description: "Save full test output for debugging"
+
+# Expected Behavior:
+# - With force_single_workstream=true: orchestrator routes to single-workstream
+#   execution path regardless of decomposition output
+# - The materialize step bridges template variables to condition evaluation context
+# - Without the flag (or false): normal decomposition logic applies
+#
+# Root Cause (fixed):
+# The Rust runner's --set flag updates template variables ({{...}}) but the
+# condition evaluator only sees step outputs and initial context. A materialize
+# step was needed to bridge this gap by echoing {{force_single_workstream}} to
+# stdout with output: "force_single_workstream".
+#
+# Run Command:
+# gadugi-test run tests/gadugi/smart-orchestrator-single-workstream.yaml --verbose
