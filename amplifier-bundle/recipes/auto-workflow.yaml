@@ -29,7 +29,7 @@ steps:
   - id: "enable-lock-mode"
     type: "bash"
     command: |
-      cd "{{repo_path}}"
+      cd {{repo_path}}
       mkdir -p .claude/runtime/locks
       echo "$(date -Iseconds)" > .claude/runtime/locks/.lock_active
       echo "Auto-mode: {{task}}" | head -c 100 > .claude/runtime/locks/.lock_message
@@ -143,7 +143,7 @@ steps:
   - id: "disable-lock-mode"
     type: "bash"
     command: |
-      cd "{{repo_path}}"
+      cd {{repo_path}}
       rm -f .claude/runtime/locks/.lock_active
       rm -f .claude/runtime/locks/.lock_message
       echo "Lock mode disabled"

@@ -151,7 +151,7 @@ steps:
   - id: "step-01-prepare-workspace"
     type: "bash"
     command: |
-      cd "{{repo_path}}" && \
+      cd {{repo_path}} && \
       echo "=== Step 1: Preparing Workspace ===" && \
       echo "" && \
       echo "Current directory: $(pwd)" && \
@@ -255,7 +255,7 @@ steps:
   - id: "step-03-create-issue"
     type: "bash"
     command: |
-      cd "{{repo_path}}" && \
+      cd {{repo_path}} && \
       echo "=== Step 3: Creating GitHub Issue ===" && \
       # FIX (#3045/#3076/#3117): unquoted heredoc — safe variable capture
       TASK_DESC=$(cat <<EOFTASKDESC
@@ -280,7 +280,7 @@ steps:
     type: "bash"
     command: |
       # Extract issue number from the creation output
-      echo "{{issue_creation}}" | grep -oE 'issues/[0-9]+' | grep -oE '[0-9]+' | tail -1
+      echo {{issue_creation}} | grep -oE 'issues/[0-9]+' | grep -oE '[0-9]+' | tail -1
     output: "issue_number"
 
   # ==========================================================================
@@ -291,7 +291,7 @@ steps:
     type: "bash"
     command: |
       set -euo pipefail
-      cd "{{repo_path}}"
+      cd {{repo_path}}
 
       echo "=== Step 4: Creating Worktree and Branch ===" >&2
       echo "" >&2
@@ -596,7 +596,7 @@ steps:
   - id: "checkpoint-after-implementation"
     type: "bash"
     command: |
-      cd "{{worktree_setup.worktree_path}}" 2>/dev/null || cd "{{repo_path}}" && \
+      cd {{worktree_setup.worktree_path}} 2>/dev/null || cd {{repo_path}} && \
       echo "=== Checkpoint: Staging Implementation ===" && \
       git add -A && \
       STAGED=$(git diff --cached --name-only) && \
@@ -775,7 +775,7 @@ steps:
   - id: "checkpoint-after-review-feedback"
     type: "bash"
     command: |
-      cd "{{worktree_setup.worktree_path}}" 2>/dev/null || cd "{{repo_path}}" && \
+      cd {{worktree_setup.worktree_path}} 2>/dev/null || cd {{repo_path}} && \
       echo "=== Checkpoint: Staging Review Feedback ===" && \
       git add -A && \
       STAGED=$(git diff --cached --name-only) && \
@@ -1000,7 +1000,7 @@ steps:
   - id: "step-15-commit-push"
     type: "bash"
     command: |
-      cd "{{worktree_setup.worktree_path}}" && \
+      cd {{worktree_setup.worktree_path}} && \
       echo "=== Step 15: Commit and Push ===" && \
       echo "" && \
       echo "--- Staging Changes ---" && \
@@ -1037,7 +1037,7 @@ steps:
   - id: "step-16-create-draft-pr"
     type: "bash"
     command: |
-      cd "{{worktree_setup.worktree_path}}" && \
+      cd {{worktree_setup.worktree_path}} && \
       echo "=== Step 15: Creating Draft PR ===" && \
       # FIX (#3045/#3076/#3117): unquoted heredoc — safe variable capture
       TASK_DESC=$(cat <<EOFTASKDESC
@@ -1325,7 +1325,7 @@ steps:
   - id: "step-18c-push-feedback-changes"
     type: "bash"
     command: |
-      cd "{{worktree_setup.worktree_path}}" && \
+      cd {{worktree_setup.worktree_path}} && \
       echo "=== Pushing Review Feedback Changes ===" && \
       git add -A && \
       if [ -n "$(git diff --cached --name-only)" ]; then \
@@ -1421,7 +1421,7 @@ steps:
     type: "bash"
     command: |
       echo "=== ZERO-BS VERIFICATION ===" && \
-      cd "{{worktree_setup.worktree_path}}" && \
+      cd {{worktree_setup.worktree_path}} && \
       echo "" && \
       echo "Scanning for Zero-BS violations..." && \
       echo "" && \
@@ -1501,7 +1501,7 @@ steps:
   - id: "step-20b-push-cleanup"
     type: "bash"
     command: |
-      cd "{{worktree_setup.worktree_path}}" && \
+      cd {{worktree_setup.worktree_path}} && \
       echo "=== Pushing Cleanup Changes ===" && \
       git add -A && \
       git diff --cached --quiet || (git commit -m "final cleanup pass" && git push) && \
@@ -1586,7 +1586,7 @@ steps:
   - id: "step-21-pr-ready"
     type: "bash"
     command: |
-      cd "{{worktree_setup.worktree_path}}" && \
+      cd {{worktree_setup.worktree_path}} && \
       echo "=== Step 20: Converting PR to Ready ===" && \
       echo "" && \
       echo "--- Verifying All Steps Complete ---" && \
@@ -1650,7 +1650,7 @@ steps:
   - id: "step-22b-final-status"
     type: "bash"
     command: |
-      cd "{{repo_path}}" && \
+      cd {{repo_path}} && \
       echo "=== WORKFLOW COMPLETE ===" && \
       echo "" && \
       echo "PR Status:" && \
