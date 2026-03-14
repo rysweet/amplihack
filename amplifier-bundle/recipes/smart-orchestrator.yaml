@@ -41,6 +41,10 @@ steps:
       You are an intelligent task orchestrator. Analyze this request and produce a
       structured orchestration plan.
 
+      **IMPORTANT**: You are ONLY classifying and decomposing. Do NOT implement,
+      build, code, or make any changes. Do NOT create files, edit code, or run
+      commands. Your ONLY job is to output the JSON decomposition below.
+
       **REQUEST**: {{task_description}}
 
       Output:
@@ -182,7 +186,7 @@ steps:
   - id: "materialize-force-single-workstream"
     type: "bash"
     command: |
-      printf '%s' '{{force_single_workstream}}'
+      printf '%s' "{{force_single_workstream}}"
     output: "force_single_workstream"
 
   # ─────────────────────────────────────────────────────────────────────────
