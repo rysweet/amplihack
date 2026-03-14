@@ -32,7 +32,7 @@ def hive():
 @pytest.fixture
 def adapter_a(hive):
     with tempfile.TemporaryDirectory() as td:
-        a = CognitiveAdapter("agent_a", db_path=td, hive_store=hive)
+        a = CognitiveAdapter("agent_a", db_path=td)
         # Wrap with DistributedCognitiveMemory (same as production DI)
         a.memory = DistributedCognitiveMemory(
             local_memory=a.memory, hive_graph=hive, agent_name="agent_a"
@@ -44,7 +44,7 @@ def adapter_a(hive):
 @pytest.fixture
 def adapter_b(hive):
     with tempfile.TemporaryDirectory() as td:
-        a = CognitiveAdapter("agent_b", db_path=td, hive_store=hive)
+        a = CognitiveAdapter("agent_b", db_path=td)
         a.memory = DistributedCognitiveMemory(
             local_memory=a.memory, hive_graph=hive, agent_name="agent_b"
         )

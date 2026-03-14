@@ -454,19 +454,30 @@ class CognitiveAdapter:
         if not query or not query.strip():
             return []
 
-        # Get the actual local backend — bypass DistributedCognitiveMemory
-        local_mem = getattr(self.memory, "_local", self.memory)
+        # Use the public local_search_facts() when available (DistributedCognitiveMemory
+        # provides it to avoid the need for private-attribute access).
+        # Falls back to self.memory for single-agent topology (no wrapper).
+        local_mem = self.memory
+        use_local_search = hasattr(self.memory, "local_search_facts")
 
         filtered_query = _filter_stop_words(query)
         search_q = filtered_query if filtered_query.strip() else query.strip()
 
         if self._cognitive:
-            results = local_mem.search_facts(
-                query=search_q, limit=limit * 3, min_confidence=min_confidence
-            )
+            if use_local_search:
+                results = local_mem.local_search_facts(
+                    query=search_q, limit=limit * 3, min_confidence=min_confidence
+                )
+            else:
+                results = local_mem.search_facts(
+                    query=search_q, limit=limit * 3, min_confidence=min_confidence
+                )
             local_results = [self._semantic_fact_to_dict(r) for r in results]
             if not local_results:
-                all_facts = local_mem.get_all_facts(limit=limit * 5)
+                if use_local_search:
+                    all_facts = local_mem.local_get_all_facts(limit=limit * 5)
+                else:
+                    all_facts = local_mem.get_all_facts(limit=limit * 5)
                 local_results = [self._semantic_fact_to_dict(r) for r in all_facts]
         else:
             subgraph = local_mem.retrieve_subgraph(query=search_q, max_nodes=limit * 3)
@@ -501,11 +512,10 @@ class CognitiveAdapter:
             query: Optional question text passed through to the memory backend.
         """
         if self._cognitive:
-            # Pass query kwarg only if the memory backend accepts it
-            # (DistributedCognitiveMemory does; plain CognitiveMemory doesn't)
-            try:
+            # DistributedCognitiveMemory accepts query; plain CognitiveMemory does not.
+            if hasattr(self.memory, "local_search_facts"):
                 results = self.memory.get_all_facts(limit=limit, query=query)
-            except TypeError:
+            else:
                 results = self.memory.get_all_facts(limit=limit)
             local_results = [self._semantic_fact_to_dict(r) for r in results]
         else:
@@ -771,22 +781,17 @@ class CognitiveAdapter:
             List of fact dicts matching any of the keywords, including
             distributed hive results when a hive_store is connected.
         """
+        # NOTE: When topology=distributed, self.memory is a
+        # DistributedCognitiveMemory whose __getattr__ delegates
+        # search_by_concept to the local backend.  CognitiveAdapter is
+        # topology-unaware — no hive branching here.
         if self._cognitive and hasattr(self.memory, "search_by_concept"):
             results = self.memory.search_by_concept(keywords=keywords, limit=limit)
-            local_results: list[dict[str, Any]] = [self._semantic_fact_to_dict(r) for r in results]
-        elif hasattr(self.memory, "search_by_concept"):
+            return [self._semantic_fact_to_dict(r) for r in results]
+        if hasattr(self.memory, "search_by_concept"):
             nodes = self.memory.search_by_concept(keywords=keywords, limit=limit)
-            local_results = [self._node_to_dict(n) for n in nodes]
-        else:
-            local_results = []
-
-        if self._hive_store is None:
-            return local_results
-
-        # Also search the distributed hive for facts not in local memory
-        query = " ".join(keywords[:4])
-        hive_results = self._search_hive(query, limit=limit)
-        return self._merge_results(local_results, hive_results, limit)
+            return [self._node_to_dict(n) for n in nodes]
+        return []
 
     def execute_aggregation(self, query_type: str, entity_filter: str = "") -> dict[str, Any]:
         """Execute Cypher aggregation query for meta-memory questions.

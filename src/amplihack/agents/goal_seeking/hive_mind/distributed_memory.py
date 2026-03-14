@@ -106,6 +106,32 @@ class DistributedCognitiveMemory:
 
         return self._merge_fact_lists(local_results, hive_dicts, limit)
 
+    def search_by_concept(
+        self, keywords: list[str] | None = None, limit: int = 10, **kwargs: Any
+    ) -> list:
+        """Search by concept keywords across local memory + distributed hive.
+
+        Delegates to local backend's search_by_concept if available, then
+        queries hive with a combined keyword query and merges results.
+        """
+        if hasattr(self._local, "search_by_concept"):
+            local_results = self._local.search_by_concept(keywords=keywords, limit=limit, **kwargs)
+        else:
+            # CognitiveMemory doesn't have search_by_concept — use search_facts as fallback
+            query = " ".join(keywords[:4]) if keywords else ""
+            local_results = self._local.search_facts(query=query, limit=limit) if query else []
+
+        if keywords:
+            query = " ".join(keywords[:4])
+            hive_dicts = self._query_hive(query, limit=limit)
+        else:
+            hive_dicts = []
+
+        if not hive_dicts:
+            return local_results[:limit] if local_results else []
+
+        return self._merge_fact_lists(local_results, hive_dicts, limit)
+
     # ------------------------------------------------------------------
     # Writes: store locally + auto-promote to hive
     # ------------------------------------------------------------------
@@ -129,8 +155,33 @@ class DistributedCognitiveMemory:
         This makes DistributedCognitiveMemory a transparent proxy: any method
         not explicitly overridden (store_episode, push_working, get_statistics,
         retrieve_by_entity, search_by_concept, etc.) goes straight to local.
+
+        Dunder methods (except __getattr__ itself) are NOT delegated to avoid
+        interfering with pickle, copy, and other Python protocols.
         """
+        if name.startswith("__") and name.endswith("__"):
+            raise AttributeError(name)
         return getattr(self._local, name)
+
+    def local_search_facts(self, query: str, limit: int = 10, **kwargs: Any) -> list:
+        """Search ONLY the local memory backend — no distributed fan-out.
+
+        Used by shard query handlers to avoid recursive SHARD_QUERY storms:
+        when agent A queries agent B, agent B searches its own local memory
+        only, not triggering another round of distributed queries.
+        """
+        return self._local.search_facts(query, limit, **kwargs)
+
+    def local_get_all_facts(self, limit: int = 50, **kwargs: Any) -> list:
+        """Retrieve facts from ONLY the local memory backend."""
+        return self._local.get_all_facts(limit=limit, **kwargs)
+
+    def __repr__(self) -> str:
+        return (
+            f"DistributedCognitiveMemory(agent={self._agent_name!r}, "
+            f"local={type(self._local).__name__}, "
+            f"hive={type(self._hive).__name__ if self._hive else 'None'})"
+        )
 
     # ------------------------------------------------------------------
     # Internal: hive query + merge
@@ -147,6 +198,7 @@ class DistributedCognitiveMemory:
 
         try:
             from .tracing import trace_log
+
             trace_log("distributed_memory", "querying hive for: %.80s", query[:80])
         except ImportError:
             pass
@@ -157,6 +209,7 @@ class DistributedCognitiveMemory:
                 facts = self._hive.query_facts(query, limit=limit)
                 try:
                     from .tracing import trace_log
+
                     trace_log(
                         "distributed_memory",
                         "hive returned %d facts",
@@ -272,12 +325,13 @@ class DistributedCognitiveMemory:
         except ImportError:
             return
 
-        # Extract fact content from store_fact args/kwargs
-        # CognitiveMemory.store_fact(content, concept, confidence, tags, metadata)
-        content = kwargs.get("content", args[0] if len(args) > 0 else "")
-        concept = kwargs.get("concept", args[1] if len(args) > 1 else "")
+        # Extract fact content from store_fact args/kwargs.
+        # CognitiveMemory.store_fact(concept, content, confidence, source_id, tags, ...)
+        # CognitiveAdapter always calls with kwargs, but handle positional too.
+        concept = kwargs.get("concept", args[0] if len(args) > 0 else "")
+        content = kwargs.get("content", args[1] if len(args) > 1 else "")
         confidence = float(kwargs.get("confidence", args[2] if len(args) > 2 else 0.8))
-        tags = kwargs.get("tags", args[3] if len(args) > 3 else [])
+        tags = kwargs.get("tags", args[4] if len(args) > 4 else [])
 
         if not content:
             return
@@ -288,6 +342,7 @@ class DistributedCognitiveMemory:
                 from amplihack.agents.goal_seeking.content_quality import (
                     score_content_quality,
                 )
+
                 quality = score_content_quality(content, concept)
                 if quality < self._quality_threshold:
                     return

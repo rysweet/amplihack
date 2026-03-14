@@ -270,16 +270,21 @@ class GoalSeekingAgent:
     def process(self, input_data: str) -> str:
         """Run the full OODA pipeline for a single input.
 
-        Order: observe → decide → orient (if answering) → act.
+        Order: observe → triage → act.
 
-        The decide step uses pure heuristics (question marks, interrogative
-        words) with no dependency on orient's memory recall.  By deciding
-        FIRST we can skip orient() for store operations — there is no value
-        in recalling context when the goal is simply to store a fact.
+        The triage step (``decide()``) uses pure heuristics (question marks,
+        interrogative words) to classify the input as "store" or "answer".
 
-        This optimisation applies equally to single-agent and distributed
-        topologies.  The agent is topology-unaware; it simply skips an
-        unnecessary memory search for store operations.
+        ``orient()`` is intentionally skipped because ``answer_question()``
+        performs its own comprehensive retrieval internally.  Running orient
+        before act would duplicate that retrieval — identical cost in
+        single-agent mode, but a full distributed fan-out in hive mode.
+
+        Callers that need explicit orient can call the methods individually:
+        ``observe() → orient() → decide() → act()``.
+
+        This pipeline is topology-unaware: it behaves identically whether
+        the memory backend is local or distributed.
 
         Args:
             input_data: Raw input string.
@@ -289,10 +294,7 @@ class GoalSeekingAgent:
         """
         self.observe(input_data)
         self.decide()
-        if self._decision == "answer":
-            self.orient()
-        else:
-            self._oriented_facts = {"input": self._current_input, "facts": []}
+        self._oriented_facts = {"input": self._current_input, "facts": []}
         return self.act()
 
     # ------------------------------------------------------------------

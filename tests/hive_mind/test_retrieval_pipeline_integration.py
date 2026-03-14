@@ -301,6 +301,7 @@ class TestConfidenceGate:
             from amplihack.agents.goal_seeking.hive_mind.distributed_memory import (
                 DistributedCognitiveMemory,
             )
+
             adapter = CognitiveAdapter("agent_b", db_path=td)
             adapter.memory = DistributedCognitiveMemory(
                 local_memory=adapter.memory, hive_graph=hive, agent_name="agent_b"
@@ -324,14 +325,18 @@ class TestConfidenceGate:
             from amplihack.agents.goal_seeking.hive_mind.distributed_memory import (
                 DistributedCognitiveMemory,
             )
+
             adapter = CognitiveAdapter("agent_b", db_path=td)
             adapter.memory = DistributedCognitiveMemory(
                 local_memory=adapter.memory, hive_graph=hive, agent_name="agent_b"
             )
             results = adapter.search("DNA genetics", limit=10)
-            # With DistributedCognitiveMemory, all hive results are returned
-            # (confidence gating moved to the LLM reasoning layer)
+            # DistributedCognitiveMemory returns all hive results regardless of
+            # confidence — gating is the LLM's responsibility.
             assert isinstance(results, list)
+            assert any(
+                "DNA" in r.get("outcome", "") or "DNA" in r.get("content", "") for r in results
+            ), f"Expected low-confidence DNA fact in results but got: {results}"
             adapter.close()
 
     def test_confidence_gate_zero_disables(self, hive):
@@ -348,6 +353,7 @@ class TestConfidenceGate:
             from amplihack.agents.goal_seeking.hive_mind.distributed_memory import (
                 DistributedCognitiveMemory,
             )
+
             adapter = CognitiveAdapter("agent_b", db_path=td)
             adapter.memory = DistributedCognitiveMemory(
                 local_memory=adapter.memory, hive_graph=hive, agent_name="agent_b"
