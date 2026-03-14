@@ -511,7 +511,7 @@ steps:
       FORCE_SINGLE={{force_single_workstream}}
       GUARD={{recursion_guard}}
       RECIPE={{adaptive_recipe}}
-      TASK_DESC={{task_description}}
+      TASK_DESC=$(printf '%s' {{task_description}})
 
       # Build diagnostic body
       BODY=$(cat <<EOFBODY
@@ -615,7 +615,7 @@ steps:
       - Success criteria are marked met without evidence or verification
       - Agent output repeats the goal description without showing work done
 
-      If the result is a hollow success, mark as NOT_ACHIEVED and explain
+      If the result is a hollow success, use GOAL_STATUS: HOLLOW and explain
       what specific outputs are missing. Do NOT mark ACHIEVED when agents
       produced no meaningful work.
 
