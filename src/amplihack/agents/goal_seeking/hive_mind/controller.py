@@ -140,7 +140,7 @@ class InMemoryGraphStore:
         scored.sort(key=lambda x: (-x[0], -x[1].get("confidence", 0.0)))
         return [f for _, f in scored[:limit]]
 
-    def get_all_facts(self, limit: int = 500) -> list[dict]:
+    def get_all_facts(self, limit: int = 500, **kwargs: Any) -> list[dict]:
         """Return all stored facts."""
         return list(self._facts.values())[:limit]
 

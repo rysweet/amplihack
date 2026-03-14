@@ -20,6 +20,7 @@ import re
 from enum import Enum
 from typing import Any
 
+from ..retrieval_constants import MAX_RETRIEVAL_LIMIT
 from ..similarity import rerank_facts_by_query
 
 logger = logging.getLogger(__name__)
@@ -143,7 +144,7 @@ class MemoryAgent:
     def _get_kb_size(self) -> int:
         """Get the number of facts in the knowledge base."""
         if hasattr(self.memory, "get_all_facts"):
-            return len(self.memory.get_all_facts(limit=15000))
+            return len(self.memory.get_all_facts(limit=MAX_RETRIEVAL_LIMIT))
         return 0
 
     def _has_entity_reference(self, question: str) -> bool:

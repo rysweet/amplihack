@@ -27,6 +27,7 @@ from .hive_mind.constants import (
     DEFAULT_QUALITY_THRESHOLD,
     KUZU_BUFFER_POOL_SIZE,
 )
+from .retrieval_constants import FALLBACK_SCAN_MULTIPLIER, SEARCH_CANDIDATE_MULTIPLIER
 
 logger = logging.getLogger(__name__)
 
@@ -402,21 +403,25 @@ class CognitiveAdapter:
         if self._cognitive:
             # Request extra candidates so n-gram re-ranking has more to work with
             results = self.memory.search_facts(
-                query=search_q, limit=limit * 3, min_confidence=min_confidence
+                query=search_q,
+                limit=limit * SEARCH_CANDIDATE_MULTIPLIER,
+                min_confidence=min_confidence,
             )
             local_results = [self._semantic_fact_to_dict(r) for r in results]
             # Fallback: scan all stored content when filtered search returns nothing
             if not local_results:
-                all_facts = self.memory.get_all_facts(limit=limit * 5)
+                all_facts = self.memory.get_all_facts(limit=limit * FALLBACK_SCAN_MULTIPLIER)
                 local_results = [self._semantic_fact_to_dict(r) for r in all_facts]
         else:
-            subgraph = self.memory.retrieve_subgraph(query=search_q, max_nodes=limit * 3)
+            subgraph = self.memory.retrieve_subgraph(
+                query=search_q, max_nodes=limit * SEARCH_CANDIDATE_MULTIPLIER
+            )
             local_results = [
                 self._node_to_dict(n) for n in subgraph.nodes if n.confidence >= min_confidence
             ]
             # Fallback: scan all stored content when filtered search returns nothing
             if not local_results and hasattr(self.memory, "get_all_knowledge"):
-                nodes = self.memory.get_all_knowledge(limit=limit * 5)
+                nodes = self.memory.get_all_knowledge(limit=limit * FALLBACK_SCAN_MULTIPLIER)
                 local_results = [self._node_to_dict(n) for n in nodes]
 
         # Re-rank by n-gram overlap with original query for relevance ordering
@@ -466,26 +471,34 @@ class CognitiveAdapter:
         if self._cognitive:
             if use_local_search:
                 results = local_mem.local_search_facts(
-                    query=search_q, limit=limit * 3, min_confidence=min_confidence
+                    query=search_q,
+                    limit=limit * SEARCH_CANDIDATE_MULTIPLIER,
+                    min_confidence=min_confidence,
                 )
             else:
                 results = local_mem.search_facts(
-                    query=search_q, limit=limit * 3, min_confidence=min_confidence
+                    query=search_q,
+                    limit=limit * SEARCH_CANDIDATE_MULTIPLIER,
+                    min_confidence=min_confidence,
                 )
             local_results = [self._semantic_fact_to_dict(r) for r in results]
             if not local_results:
                 if use_local_search:
-                    all_facts = local_mem.local_get_all_facts(limit=limit * 5)
+                    all_facts = local_mem.local_get_all_facts(
+                        limit=limit * FALLBACK_SCAN_MULTIPLIER
+                    )
                 else:
-                    all_facts = local_mem.get_all_facts(limit=limit * 5)
+                    all_facts = local_mem.get_all_facts(limit=limit * FALLBACK_SCAN_MULTIPLIER)
                 local_results = [self._semantic_fact_to_dict(r) for r in all_facts]
         else:
-            subgraph = local_mem.retrieve_subgraph(query=search_q, max_nodes=limit * 3)
+            subgraph = local_mem.retrieve_subgraph(
+                query=search_q, max_nodes=limit * SEARCH_CANDIDATE_MULTIPLIER
+            )
             local_results = [
                 self._node_to_dict(n) for n in subgraph.nodes if n.confidence >= min_confidence
             ]
             if not local_results and hasattr(local_mem, "get_all_knowledge"):
-                nodes = local_mem.get_all_knowledge(limit=limit * 5)
+                nodes = local_mem.get_all_knowledge(limit=limit * FALLBACK_SCAN_MULTIPLIER)
                 local_results = [self._node_to_dict(n) for n in nodes]
 
         if local_results:
@@ -513,11 +526,8 @@ class CognitiveAdapter:
         """
         if self._cognitive:
             # Pass query to memory backend. DistributedCognitiveMemory uses it
-            # for targeted hive queries; plain CognitiveMemory ignores it.
-            try:
-                results = self.memory.get_all_facts(limit=limit, query=query)
-            except TypeError:
-                results = self.memory.get_all_facts(limit=limit)
+            # for targeted hive queries; plain CognitiveMemory accepts **kwargs.
+            results = self.memory.get_all_facts(limit=limit, query=query)
             local_results = [self._semantic_fact_to_dict(r) for r in results]
         else:
             nodes = self.memory.get_all_knowledge(limit=limit)
