@@ -179,3 +179,14 @@ repos:
         types: [python]
         pass_filenames: true
         exclude: '^(tests/.*\.py$|.*/tests/.*\.py$|scripts/test_.*\.py$|experiments/.*\.py$|src/amplihack/vendor/.*\.py$)'
+
+      # MCP config CI-compatibility check — prevents CI-incompatible servers
+      # (e.g. docker-mcp) from being committed without disabled:true.
+      # Root cause of rysweet/amplihack#3137 (Repo Guardian failed on PR #3136);
+      # prevention added in PR #3143.
+      - id: check-mcp-config
+        name: Validate .mcp.json for CI-compatible MCP servers
+        entry: python3 scripts/pre-commit/check_mcp_config.py
+        language: system
+        files: '^\.mcp\.json$'
+        pass_filenames: true
