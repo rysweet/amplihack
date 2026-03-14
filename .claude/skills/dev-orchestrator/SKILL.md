@@ -178,12 +178,74 @@ recipe execution — they may kill processes after a timeout. Use tmux instead.
 **The recipe runner is the required execution path for Development and
 Investigation tasks.** Always try `smart-orchestrator` first.
 
+**Required environment variables** for the recipe runner:
+
+- `AMPLIHACK_HOME` — must point to the amplihack repo root (e.g.,
+  `/home/user/src/amplihack`). The recipe runner uses this to find
+  `amplifier-bundle/tools/orch_helper.py` and other orchestrator scripts.
+- Unset `AMPLIHACK_AGENT_BINARY` — the Rust binary does not accept
+  `--agent-binary`; the Python wrapper passes it when this var is set,
+  causing exit code 2. Unset it in the `env` prefix.
+- Unset `CLAUDECODE` — required so nested Claude Code sessions can launch.
+
+Updated launch command with all required env vars:
+
+```bash
+LOG_FILE=$(mktemp /tmp/recipe-runner-output.XXXXXX.log)
+chmod 600 "$LOG_FILE"
+tmux new-session -d -s "recipe-$(date +%s)" \
+  "cd /path/to/repo && env -u CLAUDECODE -u AMPLIHACK_AGENT_BINARY \
+   AMPLIHACK_HOME=/path/to/amplihack PYTHONPATH=src \
+   python3 /path/to/recipe_script.py 2>&1 | tee $LOG_FILE"
+```
+
+**Fallback: Direct recipe invocation when smart-orchestrator fails.**
+
+Always try `smart-orchestrator` first — it handles classification, decomposition,
+and routing automatically. However, if `smart-orchestrator` fails at the
+**infrastructure level** (e.g., 0 workstreams from decomposition, missing env
+vars, Rust binary version mismatch), you MAY invoke the specific workflow
+recipe directly based on your classification:
+
+| Classification  | Direct Recipe              | When to Use                                |
+|-----------------|----------------------------|--------------------------------------------|
+| Investigation   | `investigation-workflow`   | smart-orchestrator decomposition failed    |
+| Development     | `default-workflow`         | smart-orchestrator decomposition failed    |
+| Q&A (complex)   | `qa-workflow`              | Q&A needing multi-step research            |
+| Consensus       | `consensus-workflow`       | Critical decisions needing validation      |
+
+Example:
+```python
+run_recipe_by_name("investigation-workflow", user_context={
+    'task_description': task, 'repo_path': '.',
+}, progress=True)
+```
+
+This is NOT a license to bypass `smart-orchestrator`. Only use direct
+invocation after `smart-orchestrator` has failed at an infrastructure level
+(not because the task seems "too simple" or "too specific").
+
+**Handling hollow success** (recipe completes but agents produce no findings):
+
+If a recipe returns SUCCESS but the agent outputs indicate the agents could
+not access the codebase or produced empty/generic results (e.g., "no codebase
+exists", "cannot proceed without a target"), this is a **hollow success**.
+In this case:
+
+1. Check that `repo_path` and `AMPLIHACK_HOME` are correct
+2. Verify the working directory in the tmux session is the repo root
+3. Retry with explicit file paths in the `task_description`
+4. If retries also produce hollow results, report the infrastructure
+   failure to the user with specifics
+
 **Common rationalizations that are NOT acceptable:**
 
 - "Let me first understand the codebase" — the recipe does that in Step 0
 - "I'll follow the workflow steps manually" — NO, the recipe enforces them
 - "The recipe runner might not work" — try it first, report errors if it fails
 - "This is a simple task" — simple or complex, the recipe runner handles both
+- "The recipe succeeded but didn't do anything useful, so I'll do it myself"
+  — this is hollow success; retry with better context first
 
 **Q&A and Operations only** may bypass the recipe runner:
 

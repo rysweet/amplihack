@@ -2,7 +2,7 @@
 
 Testing pyramid:
 - 60% Unit tests (fast, heavily mocked)
-- Platform detection logic
+- Platform detection logic (sys.platform based)
 - Message formatting
 - WSL detection
 """
@@ -17,67 +17,50 @@ from amplihack.launcher.platform_check import (
 
 
 class TestPlatformDetection:
-    """Test platform detection logic."""
+    """Test platform detection logic.
+
+    is_native_windows() uses sys.platform (not platform.system or /proc/version).
+    On native Windows Python: sys.platform == "win32".
+    On WSL Python: sys.platform == "linux".
+    """
 
     def test_detect_native_windows(self):
-        """Detect native Windows (not WSL)."""
-        with (
-            patch("platform.system", return_value="Windows"),
-            patch("pathlib.Path.exists", return_value=False),
-        ):
+        """Detect native Windows via sys.platform == 'win32'."""
+        with patch("amplihack.launcher.platform_check.sys") as mock_sys:
+            mock_sys.platform = "win32"
             assert is_native_windows() is True
 
-    def test_detect_wsl_via_proc_version(self):
-        """Detect WSL via /proc/version containing 'microsoft'."""
-        with (
-            patch("platform.system", return_value="Windows"),
-            patch("pathlib.Path.exists", return_value=True),
-            patch("pathlib.Path.read_text", return_value="Linux version 5.10.0-microsoft-standard"),
-        ):
+    def test_detect_linux_not_windows(self):
+        """Linux (including WSL) returns False — sys.platform is 'linux'."""
+        with patch("amplihack.launcher.platform_check.sys") as mock_sys:
+            mock_sys.platform = "linux"
             assert is_native_windows() is False
 
-    def test_detect_wsl_via_wsl_keyword(self):
-        """Detect WSL via /proc/version containing 'wsl'."""
-        with (
-            patch("platform.system", return_value="Windows"),
-            patch("pathlib.Path.exists", return_value=True),
-            patch("pathlib.Path.read_text", return_value="Linux version 5.15.0-1-wsl2"),
-        ):
+    def test_detect_macos_not_windows(self):
+        """macOS returns False — sys.platform is 'darwin'."""
+        with patch("amplihack.launcher.platform_check.sys") as mock_sys:
+            mock_sys.platform = "darwin"
             assert is_native_windows() is False
 
-    def test_detect_macos(self):
-        """macOS is not native Windows."""
-        with patch("platform.system", return_value="Darwin"):
+    def test_wsl_not_detected_as_native_windows(self):
+        """WSL Python has sys.platform == 'linux', not 'win32'."""
+        with patch("amplihack.launcher.platform_check.sys") as mock_sys:
+            mock_sys.platform = "linux"
             assert is_native_windows() is False
-
-    def test_detect_linux(self):
-        """Linux is not native Windows."""
-        with patch("platform.system", return_value="Linux"):
-            assert is_native_windows() is False
-
-    def test_handle_proc_version_read_error(self):
-        """Handle errors reading /proc/version gracefully."""
-        with (
-            patch("platform.system", return_value="Windows"),
-            patch("pathlib.Path.exists", return_value=True),
-            patch("pathlib.Path.read_text", side_effect=OSError("Permission denied")),
-        ):
-            # Should return True (native Windows) when can't confirm WSL
-            assert is_native_windows() is True
 
 
 class TestCompatibilityCheck:
     """Test check_platform_compatibility function."""
 
-    def test_native_windows_incompatible(self):
-        """Native Windows is incompatible."""
+    def test_native_windows_partial_support(self):
+        """Native Windows returns compatible=True with warning message."""
         with patch("amplihack.launcher.platform_check.is_native_windows", return_value=True):
             result = check_platform_compatibility()
-            assert result.compatible is False
-            assert result.platform_name == "Windows (native)"
+            assert result.compatible is True
+            assert result.platform_name == "Windows (native, partial)"
             assert result.is_wsl is False
-            assert "WSL" in result.message
-            assert "wsl --install" in result.message
+            assert result.message != ""
+            assert "partial support" in result.message
 
     def test_macos_compatible(self):
         """macOS is compatible."""
@@ -120,29 +103,26 @@ class TestCompatibilityCheck:
 
 
 class TestMessageContent:
-    """Test error message content and formatting."""
+    """Test warning message content for partial Windows support."""
 
-    def test_windows_message_contains_install_instructions(self):
-        """Windows error message includes WSL installation instructions."""
+    def test_windows_message_mentions_fleet_limitation(self):
+        """Windows warning mentions fleet is unavailable."""
         with patch("amplihack.launcher.platform_check.is_native_windows", return_value=True):
             result = check_platform_compatibility()
-            assert "wsl --install" in result.message
-            assert "PowerShell" in result.message
-            assert "Administrator" in result.message
+            assert "fleet" in result.message.lower()
 
     def test_windows_message_contains_documentation_link(self):
-        """Windows error message includes Microsoft documentation link."""
+        """Windows warning includes WSL documentation link."""
         with patch("amplihack.launcher.platform_check.is_native_windows", return_value=True):
             result = check_platform_compatibility()
             assert "https://learn.microsoft.com/en-us/windows/wsl/install" in result.message
 
-    def test_windows_message_explains_requirement(self):
-        """Windows error message explains Unix requirement."""
+    def test_windows_message_mentions_arm64_kuzu(self):
+        """Windows warning mentions ARM64 kuzu workaround."""
         with patch("amplihack.launcher.platform_check.is_native_windows", return_value=True):
             result = check_platform_compatibility()
-            assert (
-                "Unix-like environment" in result.message or "amplihack requires" in result.message
-            )
+            assert "ARM64" in result.message
+            assert "kuzu" in result.message
 
 
 class TestDataClass:

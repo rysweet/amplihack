@@ -3,7 +3,7 @@
 Detects native Windows (not WSL) and provides helpful guidance.
 
 Philosophy:
-- Ruthless simplicity: Direct platform.system() check
+- Ruthless simplicity: Direct sys.platform check
 - Zero-BS: Real working detection, no stubs
 - Clear error messages: Actionable guidance for users
 
@@ -14,6 +14,7 @@ Public API (the "studs"):
 """
 
 import platform
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -43,24 +44,18 @@ def is_native_windows() -> bool:
 
     Example:
         >>> if is_native_windows():
-        ...     print("Please use WSL")
+        ...     print("Running on native Windows (partial support)")
     """
-    # Quick check: not Windows at all
-    if platform.system() != "Windows":
-        return False
+    # sys.platform is authoritative for the Python interpreter's platform.
+    # On WSL, sys.platform == "linux" even though /proc/version contains
+    # "microsoft". On native Windows Python, sys.platform == "win32" — even
+    # when the host has WSL installed (which makes /proc/version readable
+    # via Plan 9 filesystem interop).
+    if sys.platform == "win32":
+        return True
 
-    # If /proc/version exists and contains "microsoft", it's WSL
-    proc_version = Path("/proc/version")
-    if proc_version.exists():
-        try:
-            content = proc_version.read_text().lower()
-            if "microsoft" in content or "wsl" in content:
-                return False  # WSL, not native Windows
-        except (OSError, PermissionError):
-            pass
-
-    # If we get here, it's native Windows
-    return True
+    # Not Windows at all (Linux, macOS, etc.)
+    return False
 
 
 def check_platform_compatibility() -> PlatformCheckResult:
@@ -89,34 +84,20 @@ def check_platform_compatibility() -> PlatformCheckResult:
             except (OSError, PermissionError):
                 pass
 
-    # Native Windows detection
+    # Native Windows — partial support (PR #3127+)
+    # Core CLI works; fleet requires tmux/SSH. Memory/kuzu works on x86_64 Python.
     if is_native_windows():
-        message = """
-╔══════════════════════════════════════════════════════════════════════╗
-║                    WINDOWS DETECTED                                  ║
-╚══════════════════════════════════════════════════════════════════════╝
-
-amplihack requires a Unix-like environment and does not run natively
-on Windows. Please use Windows Subsystem for Linux (WSL).
-
-┌─ Install WSL ────────────────────────────────────────────────────────┐
-│                                                                       │
-│  1. Open PowerShell or Command Prompt as Administrator               │
-│  2. Run: wsl --install                                               │
-│  3. Restart your computer                                            │
-│  4. Open WSL and install amplihack                                   │
-│                                                                       │
-│  For detailed instructions:                                          │
-│  https://learn.microsoft.com/en-us/windows/wsl/install               │
-│                                                                       │
-└───────────────────────────────────────────────────────────────────────┘
-
-After installing WSL, run amplihack from your WSL terminal.
-""".strip()
+        message = (
+            "⚠️  Native Windows detected — running with partial support.\n"
+            "   Unavailable features: fleet (requires tmux/SSH).\n"
+            "   On ARM64 Windows, use x86_64 Python for memory features (kuzu).\n"
+            "   For full support, use WSL: "
+            "https://learn.microsoft.com/en-us/windows/wsl/install"
+        )
 
         return PlatformCheckResult(
-            compatible=False,
-            platform_name="Windows (native)",
+            compatible=True,
+            platform_name="Windows (native, partial)",
             is_wsl=False,
             message=message,
         )
