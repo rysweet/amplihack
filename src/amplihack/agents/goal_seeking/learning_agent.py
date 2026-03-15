@@ -30,6 +30,13 @@ from .cognitive_adapter import HAS_COGNITIVE_MEMORY, CognitiveAdapter
 from .flat_retriever_adapter import FlatRetrieverAdapter
 from .memory_retrieval import MemoryRetriever
 from .prompts import load_prompt, render_prompt
+from .retrieval_constants import (
+    MAX_RETRIEVAL_LIMIT,
+    SIMPLE_RETRIEVAL_THRESHOLD,
+    TIER1_VERBATIM_SIZE,
+    TIER2_ENTITY_SIZE,
+    VERBATIM_RETRIEVAL_THRESHOLD,
+)
 from .similarity import rerank_facts_by_query
 
 logger = logging.getLogger(__name__)
@@ -614,10 +621,10 @@ class LearningAgent:
                 else:
                     cached = getattr(self._thread_local, "_cached_all_facts", None)
                     if cached is None:
-                        cached = self.memory.get_all_facts(limit=15000)
+                        cached = self.memory.get_all_facts(limit=MAX_RETRIEVAL_LIMIT)
                     self._thread_local._cached_all_facts = cached
                     kb_size = len(cached)
-                if kb_size <= 500:
+                if kb_size <= SIMPLE_RETRIEVAL_THRESHOLD:
                     use_simple = True
 
             if use_simple:
@@ -655,6 +662,31 @@ class LearningAgent:
         if not relevant_facts:
             logger.info("All retrieval empty; falling back to _simple_retrieval")
             relevant_facts = self._simple_retrieval(question)
+
+        # Criterion 2: ensure the original user question text is passed through the
+        # full answer path (cognitive_adapter → search_facts → _query_hive →
+        # distributed_hive_graph).  When the memory adapter exposes answer_question(),
+        # call it here so the hive receives the verbatim question as its search query
+        # rather than any OODA-internal derived string.  Results are merged with
+        # whatever local retrieval already found.
+        if hasattr(self.memory, "answer_question"):
+            try:
+                hive_facts = self.memory.answer_question(question, limit=20)
+                if hive_facts:
+                    existing_ids = {f.get("experience_id", "") for f in relevant_facts if f.get("experience_id")}
+                    for f in hive_facts:
+                        eid = f.get("experience_id", "")
+                        if not eid or eid not in existing_ids:
+                            if eid:
+                                existing_ids.add(eid)
+                            relevant_facts.append(f)
+                    logger.debug(
+                        "answer_question() hive merge: %d additional facts for question '%s'",
+                        len(hive_facts),
+                        question[:60],
+                    )
+            except Exception:
+                logger.debug("memory.answer_question() failed (non-fatal)", exc_info=True)
 
         if not relevant_facts:
             return "I don't have enough information to answer that question."
@@ -1059,7 +1091,7 @@ class LearningAgent:
                 "Using pre-snapshot facts (%d) for thread-safe retrieval",
                 len(self._pre_snapshot_facts),
             )
-            if force_verbatim or len(self._pre_snapshot_facts) <= 1000:
+            if force_verbatim or len(self._pre_snapshot_facts) <= VERBATIM_RETRIEVAL_THRESHOLD:
                 return list(self._pre_snapshot_facts)
             return self._tiered_retrieval(question, self._pre_snapshot_facts)
 
@@ -1071,10 +1103,10 @@ class LearningAgent:
             all_facts = cached
             self._thread_local._cached_all_facts = None  # consume; one-shot per question
         else:
-            all_facts = self.memory.get_all_facts(limit=15000)
+            all_facts = self.memory.get_all_facts(limit=MAX_RETRIEVAL_LIMIT)
         kb_size = len(all_facts)
 
-        if force_verbatim or kb_size <= 1000:
+        if force_verbatim or kb_size <= VERBATIM_RETRIEVAL_THRESHOLD:
             return all_facts
 
         # Large KB (1000+ facts): use progressive summarization tiers
@@ -1102,13 +1134,13 @@ class LearningAgent:
         kb_size = len(sorted_facts)
         result: list[dict[str, Any]] = []
 
-        # Tier 1: Most recent 200 facts - verbatim
-        tier1_facts = sorted_facts[max(0, kb_size - 200) :]
+        # Tier 1: Most recent TIER1_VERBATIM_SIZE facts - verbatim
+        tier1_facts = sorted_facts[max(0, kb_size - TIER1_VERBATIM_SIZE) :]
         result.extend(tier1_facts)
 
-        # Tier 2: Facts 201-1000 - entity-level summaries
-        tier2_start = max(0, kb_size - 1000)
-        tier2_end = max(0, kb_size - 200)
+        # Tier 2: Facts TIER1_VERBATIM_SIZE+1 .. TIER2_ENTITY_SIZE - entity-level summaries
+        tier2_start = max(0, kb_size - TIER2_ENTITY_SIZE)
+        tier2_end = max(0, kb_size - TIER1_VERBATIM_SIZE)
         if tier2_end > tier2_start:
             tier2_facts = sorted_facts[tier2_start:tier2_end]
             tier2_summaries = self._summarize_old_facts(tier2_facts, level="entity")
