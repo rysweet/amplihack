@@ -26,7 +26,7 @@ dependencies = [
     "rich>=13.0.0", # Required for --ui interactive TUI mode
     "azure-identity>=1.12.0", # Azure Service Principal authentication for remote execution
     "kuzu>=0.11.0", # Embedded graph database for memory system
-    "amplihack-memory-lib @ git+https://github.com/rysweet/amplihack-memory-lib.git@f332f38", # Standalone memory system with CognitiveMemory 6-type system (eval correctness + test fixes, PR #69)
+    "amplihack-memory-lib @ git+https://github.com/rysweet/amplihack-memory-lib.git@724378c93e68b144f5e98bc5a769ec1c31cfb5f3", # Standalone memory system with CognitiveMemory 6-type system (validated stack branch incl. compat fixes)
 
     # Blarify vendored code dependencies (using vendored copy in src/amplihack/vendor/blarify, not PyPI package)
     "json-repair>=0.47.7", # JSON repair for blarify LLM provider
