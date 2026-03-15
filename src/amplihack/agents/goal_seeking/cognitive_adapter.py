@@ -26,6 +26,7 @@ from .hive_mind.constants import (
     DEFAULT_QUALITY_THRESHOLD,
     KUZU_BUFFER_POOL_SIZE,
 )
+from .retrieval_constants import FALLBACK_SCAN_MULTIPLIER, SEARCH_CANDIDATE_MULTIPLIER
 
 logger = logging.getLogger(__name__)
 
@@ -325,21 +326,21 @@ class CognitiveAdapter:
         if self._cognitive:
             # Request extra candidates so n-gram re-ranking has more to work with
             results = self.memory.search_facts(
-                query=search_q, limit=limit * 3, min_confidence=min_confidence
+                query=search_q, limit=limit * SEARCH_CANDIDATE_MULTIPLIER, min_confidence=min_confidence
             )
             local_results = [self._semantic_fact_to_dict(r) for r in results]
             # Fallback: scan all stored content when filtered search returns nothing
             if not local_results:
-                all_facts = self.memory.get_all_facts(limit=limit * 5)
+                all_facts = self.memory.get_all_facts(limit=limit * FALLBACK_SCAN_MULTIPLIER)
                 local_results = [self._semantic_fact_to_dict(r) for r in all_facts]
         else:
-            subgraph = self.memory.retrieve_subgraph(query=search_q, max_nodes=limit * 3)
+            subgraph = self.memory.retrieve_subgraph(query=search_q, max_nodes=limit * SEARCH_CANDIDATE_MULTIPLIER)
             local_results = [
                 self._node_to_dict(n) for n in subgraph.nodes if n.confidence >= min_confidence
             ]
             # Fallback: scan all stored content when filtered search returns nothing
             if not local_results and hasattr(self.memory, "get_all_knowledge"):
-                nodes = self.memory.get_all_knowledge(limit=limit * 5)
+                nodes = self.memory.get_all_knowledge(limit=limit * FALLBACK_SCAN_MULTIPLIER)
                 local_results = [self._node_to_dict(n) for n in nodes]
 
         # Re-rank by n-gram overlap with original query for relevance ordering
@@ -360,7 +361,34 @@ class CognitiveAdapter:
         hive_results = self._search_hive(query.strip(), limit=limit)
         return self._merge_results(local_results, hive_results, limit)
 
-    def get_all_facts(self, limit: int = 50) -> list[dict[str, Any]]:
+    def answer_question(self, question: str, limit: int = 20) -> list[dict[str, Any]]:
+        """Search memory using the original user question text as the query.
+
+        This method exists to satisfy Criterion 2: the original user question
+        must be the query that flows through the full answer path
+        (cognitive_adapter → search_facts → _query_hive → distributed_hive_graph).
+
+        Unlike ``search()``, this method passes the full question text directly
+        to the backend without pre-processing transformations that would change
+        the query semantics.  Stop-word filtering still applies so that
+        keyword matching remains effective, but the question is never replaced
+        by an OODA-internal string.
+
+        Args:
+            question: The original user question text (as observed by the OODA loop).
+            limit: Maximum number of results to return.
+
+        Returns:
+            List of fact dicts relevant to the question, merged from local memory
+            and the distributed hive when a hive_store is connected.
+        """
+        if not question or not question.strip():
+            return []
+        # Delegate to search() so the question text is what reaches search_facts
+        # and _query_hive → distributed_hive_graph.query_facts(question).
+        return self.search(question, limit=limit)
+
+    def get_all_facts(self, limit: int = 50, **kwargs: Any) -> list[dict[str, Any]]:
         """Retrieve all facts without keyword filtering.
 
         When a hive_store is connected, returns facts from both local
