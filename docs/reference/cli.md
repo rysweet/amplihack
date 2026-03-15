@@ -61,6 +61,43 @@ See the documentation for each subcommand:
 
 ---
 
+## Argument Passthrough
+
+Subcommands that launch a subordinate CLI or SDK (*launch-style* commands) automatically
+forward unrecognised arguments to the underlying tool. You do not need an explicit `--`
+separator:
+
+```bash
+# Both are equivalent — --resume is forwarded to the Claude CLI
+amplihack copilot --resume
+amplihack copilot -- --resume
+```
+
+**Launch-style commands** (passthrough enabled): `launch`, `claude`, `copilot`,
+`codex`, `amplifier`
+
+**Management commands** (strict parsing, passthrough disabled): `install`,
+`plugin`, `memory`, `recipe`, and any other non-launch subcommands
+
+When a management command receives an unrecognised argument, amplihack exits
+with code 2 and prints an error:
+
+```
+amplihack install --resume
+# error: unrecognized arguments: --resume
+```
+
+Known amplihack flags are parsed normally before passthrough occurs — for
+example `--auto` is consumed by amplihack while the rest is forwarded:
+
+```bash
+amplihack copilot --auto --resume session-123
+# --auto  → amplihack sets auto mode
+# --resume session-123  → forwarded to copilot
+```
+
+---
+
 ## Exit Codes
 
 | Code | Meaning                                                               |
