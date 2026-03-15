@@ -8,9 +8,16 @@ description: |
   Every iteration passes through quality-audit-cycle AND silent-degradation-audit.
   Test coverage must be complete BEFORE any code porting begins.
 
+  EFFECTIVE RUST COMPLIANCE: All generated Rust code must follow the Effective
+  Rust guide (https://effective-rust.com/). Key rules enforced:
+  - No `unsafe` code unless absolutely required for FFI (Item 16)
+  - Use the type system to make invalid states unrepresentable (Items 1-6)
+  - Prefer channels over shared-state concurrency; avoid deadlocks (Item 17)
+  - Use clippy, fmt, Miri, cargo-deny, and CI integration (Items 29, 31, 32)
+
   Phases: Analysis → Test Completeness Gate → Scaffolding → Test Extraction →
   [Core-Out Implementation → Comparison → Quality Audit → Silent Degradation
-  Audit → Convergence Check] × N iterations until 100% parity.
+  Audit (incl. unsafe audit) → Convergence Check] × N iterations until 100% parity.
 version: "2.0.0"
 author: "Amplihack Team"
 tags: ["oxidizer", "migration", "python-to-rust", "goal-seeking", "zero-tolerance"]
@@ -23,10 +30,10 @@ context:
   # Required inputs
   task_description: ""
   repo_path: "."
-  python_package_path: ""         # e.g. "src/amplihack/recipes"
-  rust_target_path: ""            # e.g. "rust/recipe-runner"
-  rust_repo_name: ""              # e.g. "amplihack-recipe-runner"
-  rust_repo_org: ""               # e.g. "rysweet" (GitHub org/user)
+  python_package_path: "" # e.g. "src/amplihack/recipes"
+  rust_target_path: "" # e.g. "rust/recipe-runner"
+  rust_repo_name: "" # e.g. "amplihack-recipe-runner"
+  rust_repo_org: "" # e.g. "rysweet" (GitHub org/user)
 
   # Phase 1 outputs
   analysis_json: ""
@@ -280,6 +287,12 @@ steps:
         5. Create a README.md documenting the migration status
         6. Create a SCORECARD.json with all features from the feature catalog,
            all initially set to passes_rust: false
+        7. Configure Clippy lints in Cargo.toml or .clippy.toml:
+           - `#![deny(unsafe_code)]` in lib.rs/main.rs to forbid unsafe by default
+           - `#![warn(clippy::all, clippy::pedantic)]` for thorough linting
+           - Enable `unsafe_op_in_unsafe_fn` lint if any FFI is needed
+        8. Add a rust-toolchain.toml pinning a stable Rust version for CI reproducibility
+        9. Add `cargo-deny` config (deny.toml) for license and advisory checks
 
         The Cargo workspace should be at: {{rust_target_path}}
       repo_path: "{{repo_path}}"
@@ -412,17 +425,82 @@ steps:
         4. Write #[test] for EVERY function — not just happy paths but error cases too
         5. ALL previously extracted tests for this module MUST pass
         6. Run `cargo test` and verify zero failures
-        7. Run `cargo clippy` and fix all warnings
+        7. Run `cargo clippy -- -D warnings` and fix all warnings
         8. Do NOT delete or modify the Python source
         9. If the previous iteration had gaps, close ALL of them
+        10. **No `unsafe` code** — use safe abstractions from std/crates (see below)
+
+        ## Effective Rust Compliance (MANDATORY)
+
+        Follow these rules from the Effective Rust guide (https://effective-rust.com/):
+
+        ### Types — Make Invalid States Unrepresentable
+        - Use `enum` with data fields to encode state machines and variant behaviors
+          (e.g., `enum SchedulerState { Inert, Pending(HashSet<Job>), Running(...) }`)
+        - Use `Option<T>` for optional values — NEVER use sentinel values (-1, "", null)
+        - Use `Result<T, E>` for fallible operations — NEVER panic on expected errors
+        - Use the **newtype pattern** (`struct Miles(f64)`) for domain-specific semantics
+          to get compile-time unit/type safety
+        - Prefer `From`/`Into` trait conversions over `as` casts — `as` silently truncates
+        - Use `TryFrom`/`TryInto` when conversion can fail
+        - Use `thiserror` for library error enums; implement `Error`, `Display`, `Debug`
+        - Use `anyhow` for application-level error handling with context
+        - Replace Python `bool` parameters with descriptive enums
+          (e.g., `enum Sides { Both, Single }` instead of `both_sides: bool`)
+
+        ### Unsafe — Avoid Writing `unsafe` Code (Item 16)
+        - **DO NOT write `unsafe` blocks** unless absolutely required for FFI
+        - The standard library already provides safe abstractions: `Arc`, `Mutex`,
+          `Rc`, `RefCell`, `Pin`, atomics, `std::mem::{take, swap, replace}`
+        - Search crates.io for safe wrappers before reaching for `unsafe`
+        - If `unsafe` is unavoidable (FFI only):
+          * Isolate ALL `unsafe` in a dedicated wrapper module
+          * Add safety comments documenting preconditions and invariants
+          * Minimize the amount of code inside each `unsafe` block
+          * Enable the `unsafe_op_in_unsafe_fn` lint
+          * Run Miri (`cargo +nightly miri test`) over the unsafe code
+          * Write extra tests covering the unsafe boundaries
+          * Think carefully about multithreaded use
+
+        ### Parallelism — Fearless Concurrency (Item 17)
+        - Prefer **channels** (`std::sync::mpsc`) over shared-state concurrency
+          ("share memory by communicating, not communicate by sharing memory")
+        - When shared state is needed, use `Arc<Mutex<T>>` or `Arc<RwLock<T>>`
+        - **Group related data under a single lock** to prevent inconsistency:
+          WRONG: `players: Mutex<HashMap<...>>, games: Mutex<HashMap<...>>`
+          RIGHT: `state: Mutex<GameState>` where GameState holds both
+        - Keep lock scopes small — use helper methods that get/set under the lock
+        - **Never invoke closures with locks held** (future closures may deadlock)
+        - **Never return a `MutexGuard`** to a caller
+        - Prefer `parking_lot::Mutex` for performance-critical paths
+        - Use `Send` + `Sync` bounds correctly; understand that `Rc` is !Send,
+          `Cell`/`RefCell` are !Sync
+
+        ### Tooling — Use the Ecosystem (Items 29, 31, 32)
+        - `cargo clippy -- -D warnings` — treat all Clippy warnings as errors
+        - `cargo fmt --check` — enforce consistent formatting
+        - `cargo doc --no-deps` — verify documentation compiles and links resolve
+        - Consider `cargo-udeps` for unused dependency detection
+        - Consider `cargo-deny` for license, advisory, and duplicate checks
+        - Consider `cargo-tarpaulin` for code coverage measurement
+        - For benchmarks, use `criterion` crate with `std::hint::black_box`
 
         Python-to-Rust patterns:
-        - dataclasses → #[derive(Debug, Clone, Serialize, Deserialize)]
-        - dict → HashMap or typed structs
+        - dataclasses → #[derive(Debug, Clone, Serialize, Deserialize)] structs
+        - dict → HashMap or typed structs (prefer typed structs for known shapes)
         - Optional → Option<T>
-        - exceptions → Result<T, Error> with thiserror
+        - exceptions → Result<T, Error> with thiserror enum variants
         - list comprehension → .iter().map().collect()
-        - context managers → Drop trait or RAII
+        - context managers → Drop trait or RAII patterns
+        - bool parameters → descriptive enums (Sides::Both, not true)
+        - string-typed IDs → newtype wrappers (struct UserId(String))
+        - type aliases → newtype structs for type safety
+        - Python Union types → Rust enum with data fields
+        - Python @property → Rust methods (getters return &T or T)
+        - Python ABC → Rust trait
+        - try/except specific → match on Result + specific error variants
+        - logging → log crate (log::info!, log::error!, etc.)
+        - Python global mutable state → Arc<Mutex<T>> or once_cell/LazyLock
       repo_path: "{{repo_path}}"
     output: "implementation_result"
 
@@ -497,7 +575,7 @@ steps:
       min_cycles: "3"
       max_cycles: "6"
       severity_threshold: "medium"
-      categories: "security,reliability,dead_code,silent_fallbacks,error_swallowing,structural,hardcoded_limits,test_gaps"
+      categories: "security,reliability,dead_code,silent_fallbacks,error_swallowing,structural,hardcoded_limits,test_gaps,unsafe_code"
 
   # Silent degradation audit — catch things that "work" but produce wrong results
   - id: "phase-5-silent-degradation-audit"
@@ -514,7 +592,7 @@ steps:
       **Module Under Review:** {{current_module}}
       **Python Reference:** {{python_package_path}}/{{current_module}}
 
-      Check these 6 categories:
+      Check these 7 categories:
 
       1. **Dependency Failures**: What happens when external dependencies
          (subprocess calls, file I/O, network) fail? Does the Rust version
@@ -548,6 +626,21 @@ steps:
          - Functions that return Ok(()) or default values without real logic
          - todo!() or unimplemented!() behind conditional paths
          - Incomplete match arms that silently ignore variants
+
+      7. **Unsafe Code Audit**: Any `unsafe` blocks MUST be flagged and justified.
+         Per Effective Rust Item 16 (https://effective-rust.com/unsafe.html):
+         - Flag EVERY `unsafe` block found — each is a CRITICAL finding
+         - Check if the unsafe code can be replaced with safe abstractions
+           from std (Arc, Mutex, Pin, atomics, std::mem) or crates.io
+         - If `unsafe` is genuinely required (FFI), verify:
+           * It is isolated in a dedicated wrapper module
+           * Safety comments document preconditions and invariants
+           * The `unsafe_op_in_unsafe_fn` lint is enabled
+           * Miri has been run over the unsafe code
+           * Extra tests cover the unsafe boundaries
+           * Multithreaded safety has been considered
+         - `unsafe` blocks that can be eliminated are CRITICAL findings
+         - `unsafe` blocks that are justified but lack safety comments are HIGH
 
       **Output as JSON**:
       ```json
