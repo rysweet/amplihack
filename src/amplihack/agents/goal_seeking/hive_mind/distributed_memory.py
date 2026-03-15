@@ -219,75 +219,69 @@ class DistributedCognitiveMemory:
         except ImportError:
             pass
 
-        try:
-            # DistributedHiveGraph.query_facts returns list[HiveFact]
-            if hasattr(self._hive, "query_facts"):
-                facts = self._hive.query_facts(query, limit=limit)
-                try:
-                    from .tracing import trace_log
+        # DistributedHiveGraph.query_facts returns list[HiveFact]
+        if hasattr(self._hive, "query_facts"):
+            facts = self._hive.query_facts(query, limit=limit)
+            try:
+                from .tracing import trace_log
 
-                    trace_log(
-                        "distributed_memory",
-                        "hive returned %d facts",
-                        len(facts),
-                    )
-                except ImportError:
-                    pass
-                return [
-                    {
-                        "experience_id": getattr(f, "fact_id", ""),
-                        "context": getattr(f, "concept", ""),
-                        "outcome": getattr(f, "content", ""),
-                        "confidence": float(getattr(f, "confidence", 0.5)),
-                        "tags": list(getattr(f, "tags", [])),
-                        "metadata": {},
-                    }
-                    for f in facts
-                    if getattr(f, "content", "")
-                ]
-            # FederatedGraphStore fallback
-            if hasattr(self._hive, "federated_query"):
-                fqr = self._hive.federated_query(query, limit=limit)
-                results = fqr.results if hasattr(fqr, "results") else fqr
-                return [
-                    {
-                        "experience_id": "",
-                        "context": r.get("concept", ""),
-                        "outcome": r.get("content", ""),
-                        "confidence": float(r.get("confidence", 0.5)),
-                        "tags": list(r.get("tags", [])),
-                        "metadata": {},
-                    }
-                    for r in results
-                    if r.get("content")
-                ]
-        except Exception:
-            logger.debug("Hive query failed (non-fatal)", exc_info=True)
+                trace_log(
+                    "distributed_memory",
+                    "hive returned %d facts",
+                    len(facts),
+                )
+            except ImportError:
+                pass
+            return [
+                {
+                    "experience_id": getattr(f, "fact_id", ""),
+                    "context": getattr(f, "concept", ""),
+                    "outcome": getattr(f, "content", ""),
+                    "confidence": float(getattr(f, "confidence", 0.5)),
+                    "tags": list(getattr(f, "tags", [])),
+                    "metadata": {},
+                }
+                for f in facts
+                if getattr(f, "content", "")
+            ]
+        # FederatedGraphStore fallback
+        if hasattr(self._hive, "federated_query"):
+            fqr = self._hive.federated_query(query, limit=limit)
+            results = fqr.results if hasattr(fqr, "results") else fqr
+            return [
+                {
+                    "experience_id": "",
+                    "context": r.get("concept", ""),
+                    "outcome": r.get("content", ""),
+                    "confidence": float(r.get("confidence", 0.5)),
+                    "tags": list(r.get("tags", [])),
+                    "metadata": {},
+                }
+                for r in results
+                if r.get("content")
+            ]
         return []
 
     def _get_all_hive_facts(self, limit: int) -> list[dict[str, Any]]:
         """Get all facts from the hive (no query filter)."""
         if self._hive is None:
             return []
-        try:
-            if hasattr(self._hive, "get_all_facts"):
-                facts = self._hive.get_all_facts(limit=limit)
-                if facts and isinstance(facts[0], dict):
-                    return facts[:limit]
-                return [
-                    {
-                        "experience_id": getattr(f, "fact_id", ""),
-                        "context": getattr(f, "concept", ""),
-                        "outcome": getattr(f, "content", ""),
-                        "confidence": float(getattr(f, "confidence", 0.5)),
-                        "tags": list(getattr(f, "tags", [])),
-                        "metadata": {},
-                    }
-                    for f in facts[:limit]
-                    if getattr(f, "content", "")
-                ]
-        except Exception:
-            logger.debug("Hive get_all_facts failed (non-fatal)", exc_info=True)
+        if hasattr(self._hive, "get_all_facts"):
+            facts = self._hive.get_all_facts(limit=limit)
+            if facts and isinstance(facts[0], dict):
+                return facts[:limit]
+            return [
+                {
+                    "experience_id": getattr(f, "fact_id", ""),
+                    "context": getattr(f, "concept", ""),
+                    "outcome": getattr(f, "content", ""),
+                    "confidence": float(getattr(f, "confidence", 0.5)),
+                    "tags": list(getattr(f, "tags", [])),
+                    "metadata": {},
+                }
+                for f in facts[:limit]
+                if getattr(f, "content", "")
+            ]
         return []
 
     def _merge_fact_lists(
@@ -326,7 +320,9 @@ class DistributedCognitiveMemory:
                     score = self._relevance_score(r, query) if query else 0.0
                     scored.append((score, r))
 
-        scored.sort(key=lambda x: x[0], reverse=True)
+        # Primary sort: descending score. Secondary sort: ascending content string
+        # for a deterministic tiebreaker — same inputs always produce same output.
+        scored.sort(key=lambda x: (-x[0], self._extract_content(x[1])))
         return [r for _, r in scored[:limit]]
 
     @staticmethod
