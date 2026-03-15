@@ -204,6 +204,12 @@ class ParallelOrchestrator:
             \"\"\"Workstream launcher - Rust recipe runner execution.\"\"\"
             import sys
             import logging
+            from pathlib import Path
+
+            repo_root = Path(__file__).resolve().parent
+            src_path = repo_root / "src"
+            if src_path.exists():
+                sys.path.insert(0, str(src_path))
 
             logging.basicConfig(
                 level=logging.INFO,
