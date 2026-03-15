@@ -19,7 +19,7 @@ safe-outputs:
     title-prefix: "🚨 [SECURITY]"
     labels: ["security", "red-team"]
     max: 5
-timeout-minutes: 60
+timeout-minutes: 90
 imports:
   - shared/mood.md
   - shared/reporting.md
