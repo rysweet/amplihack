@@ -137,3 +137,19 @@ TOP_EXPERTS_COUNT: int = 3
 
 # Confidence discount applied to facts received from peer agents.
 PEER_CONFIDENCE_DISCOUNT: float = 0.9
+
+# ---------------------------------------------------------------------------
+# CognitiveMemory graph edge configuration
+# ---------------------------------------------------------------------------
+
+# Minimum Jaccard similarity score to create a SIMILAR_TO edge between facts.
+# Values below this keep the graph sparse; raise to require stronger similarity.
+SIMILARITY_THRESHOLD: float = 0.3
+
+# Maximum SIMILAR_TO edges created per node during store_fact().
+# Limits graph fan-out to avoid O(n²) edge explosion on large knowledge bases.
+MAX_EDGES_PER_NODE: int = 10
+
+# Hop depth for SIMILAR_TO graph traversal in search_facts().
+# 1 = direct neighbours only; 2 = also their neighbours (recommended).
+HOP_DEPTH: int = 2
