@@ -31,7 +31,16 @@ from .flat_retriever_adapter import FlatRetrieverAdapter
 from .memory_retrieval import MemoryRetriever
 from .prompts import load_prompt, render_prompt
 from .retrieval_constants import (
+    CONCEPT_EXACT_SEARCH_LIMIT,
+    CONCEPT_PHRASE_LIMIT,
+    CONCEPT_SEARCH_LIMIT,
+    CONFLICTING_TOPICS_LIMIT,
+    ENTITY_FACT_LIMIT,
+    ENTITY_ID_TEXT_SEARCH_LIMIT,
+    ENTITY_SEARCH_LIMIT,
+    INCIDENT_QUERY_SEARCH_LIMIT,
     MAX_RETRIEVAL_LIMIT,
+    MULTI_ENTITY_LIMIT,
     SIMPLE_RETRIEVAL_THRESHOLD,
     TIER1_VERBATIM_SIZE,
     TIER2_ENTITY_SIZE,
@@ -1268,7 +1277,7 @@ class LearningAgent:
                     results.append(
                         {
                             "context": "Meta-memory: Conflicting topics",
-                            "outcome": f"Topics with conflicting/updated information: {', '.join(topics[:20])}",
+                            "outcome": f"Topics with conflicting/updated information: {', '.join(topics[:CONFLICTING_TOPICS_LIMIT])}",
                             "confidence": 1.0,
                             "timestamp": "",
                             "tags": ["meta_memory", "contradictions"],
@@ -1407,7 +1416,7 @@ class LearningAgent:
         seen_ids: set[str] = set()
 
         for candidate in candidates:
-            entity_facts = self.memory.retrieve_by_entity(candidate, limit=80)
+            entity_facts = self.memory.retrieve_by_entity(candidate, limit=ENTITY_FACT_LIMIT)
             for fact in entity_facts:
                 fid = fact.get("experience_id", "")
                 if fid not in seen_ids:
@@ -1557,8 +1566,10 @@ class LearningAgent:
 
         # Try search_by_concept on HierarchicalMemory if available
         if hasattr(self.memory, "search_by_concept"):
-            for phrase in phrases[:8]:
-                concept_facts = self.memory.search_by_concept(keywords=[phrase], limit=15)
+            for phrase in phrases[:CONCEPT_PHRASE_LIMIT]:
+                concept_facts = self.memory.search_by_concept(
+                    keywords=[phrase], limit=CONCEPT_SEARCH_LIMIT
+                )
                 for fact in concept_facts:
                     fid = fact.get("experience_id", "")
                     if fid and fid not in seen_ids:
@@ -1566,8 +1577,8 @@ class LearningAgent:
                         all_facts.append(fact)
         else:
             # Fall back to regular search
-            for phrase in phrases[:8]:
-                results = self.memory.search(query=phrase, limit=15)
+            for phrase in phrases[:CONCEPT_PHRASE_LIMIT]:
+                results = self.memory.search(query=phrase, limit=CONCEPT_SEARCH_LIMIT)
                 for fact in results:
                     fid = fact.get("experience_id", "")
                     if fid and fid not in seen_ids:
@@ -1620,7 +1631,7 @@ class LearningAgent:
         is_incident_query = any(
             kw in q_lower for kw in ("incident", "cve", "vulnerability", "security")
         )
-        search_limit = 200 if is_incident_query else 100
+        search_limit = INCIDENT_QUERY_SEARCH_LIMIT if is_incident_query else ENTITY_SEARCH_LIMIT
 
         for entity_id in entity_ids:
             # Search by text content for any fact mentioning the entity ID
@@ -1649,7 +1660,9 @@ class LearningAgent:
             if is_incident_query and hasattr(self.memory, "search"):
                 # Use concept search if available for exact matching
                 if hasattr(self.memory, "search_by_concept"):
-                    concept_results = self.memory.search_by_concept(keywords=[entity_id], limit=50)
+                    concept_results = self.memory.search_by_concept(
+                        keywords=[entity_id], limit=CONCEPT_EXACT_SEARCH_LIMIT
+                    )
                     for node in concept_results:
                         # Convert KnowledgeNode to fact dict
                         fid = getattr(node, "node_id", "")
@@ -1716,7 +1729,7 @@ class LearningAgent:
         for entity in all_entities:
             # Try entity retrieval
             if hasattr(self.memory, "retrieve_by_entity"):
-                results = self.memory.retrieve_by_entity(entity, limit=40)
+                results = self.memory.retrieve_by_entity(entity, limit=MULTI_ENTITY_LIMIT)
                 for fact in results:
                     fid = fact.get("experience_id", "")
                     if fid and fid not in existing_ids:
@@ -1725,7 +1738,7 @@ class LearningAgent:
 
             # Also try text search for IDs
             if self._ENTITY_ID_PATTERN.match(entity) and hasattr(self.memory, "search"):
-                results = self.memory.search(query=entity, limit=20)
+                results = self.memory.search(query=entity, limit=ENTITY_ID_TEXT_SEARCH_LIMIT)
                 for fact in results:
                     fid = fact.get("experience_id", "")
                     if fid and fid not in existing_ids:

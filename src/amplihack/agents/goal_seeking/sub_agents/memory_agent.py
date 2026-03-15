@@ -21,9 +21,14 @@ from enum import Enum
 from typing import Any
 
 from ..retrieval_constants import (
+    AGGREGATION_FACTS_LIMIT,
+    CONCEPT_DISPLAY_LIMIT,
+    DEFAULT_TEMPORAL_INDEX,
+    ENTITY_DISPLAY_LIMIT,
     MAX_RETRIEVAL_LIMIT,
     MEMORY_AGENT_SMALL_KB_THRESHOLD,
     SEARCH_CANDIDATE_MULTIPLIER,
+    SIMPLE_RETRIEVE_DEFAULT_LIMIT,
     TWO_PHASE_BROAD_CAP,
 )
 from ..similarity import rerank_facts_by_query
@@ -165,7 +170,7 @@ class MemoryAgent:
     def _aggregation_retrieve(self, question: str, intent: dict[str, Any]) -> list[dict[str, Any]]:
         """Retrieve via Cypher aggregation for meta-memory questions."""
         if not hasattr(self.memory, "execute_aggregation"):
-            return self._simple_all_retrieve(question, 50)
+            return self._simple_all_retrieve(question, SIMPLE_RETRIEVE_DEFAULT_LIMIT)
 
         q_lower = question.lower()
         results: list[dict[str, Any]] = []
@@ -218,10 +223,10 @@ class MemoryAgent:
                 parts.append(f"Total facts: {total_agg['count']}")
             if entity_agg.get("items"):
                 parts.append(
-                    f"Entities ({len(entity_agg['items'])}): {', '.join(entity_agg['items'][:30])}"
+                    f"Entities ({len(entity_agg['items'])}): {', '.join(entity_agg['items'][:ENTITY_DISPLAY_LIMIT])}"
                 )
             if concept_agg.get("items"):
-                top = list(concept_agg["items"].items())[:20]
+                top = list(concept_agg["items"].items())[:CONCEPT_DISPLAY_LIMIT]
                 parts.append("Concepts: " + ", ".join(f"{c} ({n})" for c, n in top))
 
             if parts:
@@ -237,8 +242,8 @@ class MemoryAgent:
                 )
 
         # Also include regular facts for context
-        regular = self._simple_all_retrieve(question, 20)
-        results.extend(regular[:20])
+        regular = self._simple_all_retrieve(question, AGGREGATION_FACTS_LIMIT)
+        results.extend(regular[:AGGREGATION_FACTS_LIMIT])
         return results
 
     def _simple_all_retrieve(self, question: str, max_facts: int) -> list[dict[str, Any]]:
@@ -278,7 +283,11 @@ class MemoryAgent:
 
         def temporal_key(fact: dict) -> tuple:
             meta = fact.get("metadata", {})
-            t_idx = meta.get("temporal_index", 999999) if meta else 999999
+            t_idx = (
+                meta.get("temporal_index", DEFAULT_TEMPORAL_INDEX)
+                if meta
+                else DEFAULT_TEMPORAL_INDEX
+            )
             return (t_idx, fact.get("timestamp", ""))
 
         return sorted(facts, key=temporal_key)

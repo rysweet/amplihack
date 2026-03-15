@@ -27,6 +27,8 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from .retrieval_constants import ORIENT_SEARCH_LIMIT
+
 logger = logging.getLogger(__name__)
 
 # Minimal sentinel so orient/decide/act can be called without prior observe()
@@ -131,13 +133,13 @@ class GoalSeekingAgent:
         try:
             memory = self._learning_agent.memory
             if hasattr(memory, "search"):
-                raw = memory.search(self._current_input[:200], limit=15)
+                raw = memory.search(self._current_input[:200], limit=ORIENT_SEARCH_LIMIT)
                 facts = [
                     r.get("outcome", r.get("fact", str(r))) if isinstance(r, dict) else str(r)
                     for r in (raw or [])
                 ]
             elif hasattr(memory, "search_facts"):
-                raw = memory.search_facts(self._current_input[:200], limit=15)
+                raw = memory.search_facts(self._current_input[:200], limit=ORIENT_SEARCH_LIMIT)
                 facts = [
                     r.get("outcome", r.get("fact", str(r))) if isinstance(r, dict) else str(r)
                     for r in (raw or [])
@@ -270,21 +272,13 @@ class GoalSeekingAgent:
     def process(self, input_data: str) -> str:
         """Run the full OODA pipeline for a single input.
 
-        Order: observe → triage → act.
+        Order: observe → orient → decide → act.
 
-        The triage step (``decide()``) uses pure heuristics (question marks,
-        interrogative words) to classify the input as "store" or "answer".
-
-        ``orient()`` is intentionally skipped because ``answer_question()``
-        performs its own comprehensive retrieval internally.  Running orient
-        before act would duplicate that retrieval — identical cost in
-        single-agent mode, but a full distributed fan-out in hive mode.
-
-        Callers that need explicit orient can call the methods individually:
-        ``observe() → orient() → decide() → act()``.
-
-        This pipeline is topology-unaware: it behaves identically whether
-        the memory backend is local or distributed.
+        The full OODA loop is preserved so that orient() enriches the
+        agent's context with memory recall before decide() classifies
+        the input.  This is the same loop in both single-agent and
+        distributed topologies — the memory backend handles fan-out
+        transparently.
 
         Args:
             input_data: Raw input string.
@@ -293,8 +287,8 @@ class GoalSeekingAgent:
             Output produced by ``act()``.
         """
         self.observe(input_data)
+        self.orient()
         self.decide()
-        self._oriented_facts = {"input": self._current_input, "facts": []}
         return self.act()
 
     # ------------------------------------------------------------------

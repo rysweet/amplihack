@@ -27,7 +27,12 @@ from .hive_mind.constants import (
     DEFAULT_QUALITY_THRESHOLD,
     KUZU_BUFFER_POOL_SIZE,
 )
-from .retrieval_constants import FALLBACK_SCAN_MULTIPLIER, SEARCH_CANDIDATE_MULTIPLIER
+from .retrieval_constants import (
+    BIGRAM_WEIGHT,
+    FALLBACK_SCAN_MULTIPLIER,
+    SEARCH_CANDIDATE_MULTIPLIER,
+    UNIGRAM_WEIGHT,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -156,7 +161,7 @@ def _ngram_overlap_score(query: str, text: str) -> float:
     bigram_hits = sum(1 for bg in q_bigrams if bg in t_bigrams)
     bigram = bigram_hits / max(1, len(q_bigrams)) if q_bigrams else 0.0
 
-    return unigram * 0.65 + bigram * 0.35
+    return unigram * UNIGRAM_WEIGHT + bigram * BIGRAM_WEIGHT
 
 
 # Try importing CognitiveMemory, fall back to HierarchicalMemory
