@@ -44,6 +44,7 @@ import threading
 import uuid
 from typing import Any, Protocol, runtime_checkable
 
+from ..retrieval_constants import CONFIDENCE_SORT_WEIGHT, POSITION_SCORE_DECREMENT
 from .bloom import BloomFilter
 from .constants import (
     BROADCAST_TAG_PREFIX,
@@ -1295,7 +1296,7 @@ class DistributedHiveGraph:
                         # Position-based score: preserves per-shard semantic ordering.
                         # First result = 1.0, second = 0.99, etc. Duplicate facts
                         # (same content on multiple shards) get the max score.
-                        pos_score = max(0.0, 1.0 - rank * 0.01)
+                        pos_score = max(0.0, 1.0 - rank * POSITION_SCORE_DECREMENT)
                         if h in seen:
                             # Duplicate content — keep the higher relevance score
                             relevance_scores[h] = max(relevance_scores.get(h, 0.0), pos_score)
@@ -1326,9 +1327,7 @@ class DistributedHiveGraph:
         # Sort by position-based relevance score (preserves per-shard
         # semantic ordering) rather than crude keyword matching.
         results.sort(
-            key=lambda f: relevance_scores.get(
-                hashlib.md5(f.content.encode()).hexdigest(), 0.0
-            ),
+            key=lambda f: relevance_scores.get(hashlib.md5(f.content.encode()).hexdigest(), 0.0),
             reverse=True,
         )
         return [self._shard_to_hive_fact(sf) for sf in results[:limit]]
@@ -1491,7 +1490,8 @@ class DistributedHiveGraph:
         query_words = set(query.lower().split())
         deduped.sort(
             key=lambda f: (
-                sum(1 for w in query_words if w in f.content.lower()) + f.confidence * 0.01
+                sum(1 for w in query_words if w in f.content.lower())
+                + f.confidence * CONFIDENCE_SORT_WEIGHT
             ),
             reverse=True,
         )
