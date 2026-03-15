@@ -10,33 +10,16 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import stat
 import shutil
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 
-from amplihack.launcher.session_tracker import SessionEntry, SessionTracker
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-def _make_tracker(tmp_path: Path) -> tuple[SessionTracker, Path]:
-    """Return a (tracker, runtime_log_path) pair using a tmp dir."""
-    runtime_log = tmp_path / ".claude" / "runtime" / "sessions.jsonl"
-    with patch.object(SessionTracker, "RUNTIME_LOG", runtime_log):
-        tracker = SessionTracker.__new__(SessionTracker)
-        tracker.__class__ = SessionTracker
-        # Patch RUNTIME_LOG at instance level for persistence after context exit
-        tracker.__dict__  # ensure instance dict exists
-    # Re-create with patched class attribute
-    with patch.object(SessionTracker, "RUNTIME_LOG", runtime_log):
-        tracker = SessionTracker()
-    return tracker, runtime_log
+from amplihack.launcher.session_tracker import SessionTracker
 
 
 # ---------------------------------------------------------------------------
@@ -207,7 +190,6 @@ class TestOsErrorHandling:
 
     def test_oserror_logs_debug_message(self, tmp_path, caplog):
         """An OSError during mkdir is logged at DEBUG level before raising."""
-        import logging
         runtime_log = tmp_path / ".claude" / "runtime" / "sessions.jsonl"
 
         with patch.object(SessionTracker, "RUNTIME_LOG", runtime_log):
