@@ -21,8 +21,16 @@ regardless of topology.
 from __future__ import annotations
 
 import hashlib
+import itertools
 import logging
 from typing import Any
+
+from ..retrieval_constants import (
+    BIGRAM_WEIGHT,
+    HIVE_SEARCH_MULTIPLIER,
+    QUERY_KEYWORD_LIMIT,
+    UNIGRAM_WEIGHT,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +82,10 @@ class DistributedCognitiveMemory:
         """
         # Local search (fast, always available)
         local_results = self._local.search_facts(
-            query=query, limit=limit * 3, min_confidence=min_confidence, **kwargs
+            query=query,
+            limit=limit * HIVE_SEARCH_MULTIPLIER,
+            min_confidence=min_confidence,
+            **kwargs,
         )
 
         # Distributed search via hive transport
@@ -83,8 +94,8 @@ class DistributedCognitiveMemory:
         if not hive_dicts:
             return local_results[:limit] if local_results else []
 
-        # Merge: local results first (higher trust), then hive, dedup by content
-        return self._merge_fact_lists(local_results, hive_dicts, limit)
+        # Merge with relevance-aware ranking against query
+        return self._merge_fact_lists(local_results, hive_dicts, limit, query=query)
 
     def get_all_facts(self, limit: int = 50, **kwargs: Any) -> list:
         """Get all facts from local memory + distributed hive.
@@ -104,7 +115,7 @@ class DistributedCognitiveMemory:
         if not hive_dicts:
             return local_results
 
-        return self._merge_fact_lists(local_results, hive_dicts, limit)
+        return self._merge_fact_lists(local_results, hive_dicts, limit, query=query)
 
     def search_by_concept(
         self, keywords: list[str] | None = None, limit: int = 10, **kwargs: Any
@@ -118,11 +129,11 @@ class DistributedCognitiveMemory:
             local_results = self._local.search_by_concept(keywords=keywords, limit=limit, **kwargs)
         else:
             # CognitiveMemory doesn't have search_by_concept — use search_facts as fallback
-            query = " ".join(keywords[:4]) if keywords else ""
+            query = " ".join(keywords[:QUERY_KEYWORD_LIMIT]) if keywords else ""
             local_results = self._local.search_facts(query=query, limit=limit) if query else []
 
         if keywords:
-            query = " ".join(keywords[:4])
+            query = " ".join(keywords[:QUERY_KEYWORD_LIMIT])
             hive_dicts = self._query_hive(query, limit=limit)
         else:
             hive_dicts = []
@@ -130,7 +141,12 @@ class DistributedCognitiveMemory:
         if not hive_dicts:
             return local_results[:limit] if local_results else []
 
-        return self._merge_fact_lists(local_results, hive_dicts, limit)
+        return self._merge_fact_lists(
+            local_results,
+            hive_dicts,
+            limit,
+            query=" ".join(keywords[:QUERY_KEYWORD_LIMIT]) if keywords else "",
+        )
 
     # ------------------------------------------------------------------
     # Writes: store locally + auto-promote to hive
@@ -279,34 +295,82 @@ class DistributedCognitiveMemory:
         local_results: list,
         hive_dicts: list[dict[str, Any]],
         limit: int,
+        query: str = "",
     ) -> list:
         """Merge local CognitiveMemory results with hive dict results.
 
-        Local results are trusted first. Dedup by content text.
+        All facts — local and hive — are scored for relevance against
+        the query and sorted by score.  Dedup by content hash.  When no
+        query is available, local facts rank first as a tiebreaker.
+
         Returns a list in the same format as local_results (objects or dicts).
         """
         seen: set[str] = set()
-        merged: list = []
+        scored: list[tuple[float, Any]] = []
 
-        # Local first (higher trust, already in correct format)
         for r in local_results:
             content = self._extract_content(r)
             if content:
                 h = hashlib.md5(content.encode()).hexdigest()
                 if h not in seen:
                     seen.add(h)
-                    merged.append(r)
+                    score = self._relevance_score(r, query) if query else 1.0
+                    scored.append((score, r))
 
-        # Hive results (dict format)
         for r in hive_dicts:
             content = r.get("outcome", r.get("content", ""))
             if content:
                 h = hashlib.md5(content.encode()).hexdigest()
                 if h not in seen:
                     seen.add(h)
-                    merged.append(r)
+                    score = self._relevance_score(r, query) if query else 0.0
+                    scored.append((score, r))
 
-        return merged[:limit]
+        scored.sort(key=lambda x: x[0], reverse=True)
+        return [r for _, r in scored[:limit]]
+
+    @staticmethod
+    def _relevance_score(result: Any, query: str) -> float:
+        """Score a fact's relevance to a query using n-gram overlap.
+
+        Mirrors the scoring approach in CognitiveAdapter._ngram_overlap_score
+        so that local and hive facts are ranked on the same scale.
+        """
+        if not query:
+            return 0.0
+
+        # Extract text from result
+        if isinstance(result, dict):
+            content = result.get("outcome", result.get("content", ""))
+            concept = result.get("context", result.get("concept", ""))
+        else:
+            content = getattr(result, "content", getattr(result, "outcome", ""))
+            concept = getattr(result, "concept", getattr(result, "context", ""))
+
+        text = f"{concept} {content}".lower()
+        q_words = query.lower().split()
+        t_words = text.split()
+
+        if not q_words or not t_words:
+            return 0.0
+
+        # Unigram overlap
+        t_set = set(t_words)
+        q_terms = {w for w in q_words if len(w) > 1}
+        unigram_hits = sum(
+            1
+            for t in q_terms
+            if t in t_set or any(w.startswith(t) or t.startswith(w) for w in t_set if len(w) > 2)
+        )
+        unigram = unigram_hits / max(1, len(q_terms))
+
+        # Bigram overlap
+        q_bigrams = list(itertools.pairwise(q_words))
+        t_bigrams = set(itertools.pairwise(t_words))
+        bigram_hits = sum(1 for bg in q_bigrams if bg in t_bigrams)
+        bigram = bigram_hits / max(1, len(q_bigrams)) if q_bigrams else 0.0
+
+        return unigram * UNIGRAM_WEIGHT + bigram * BIGRAM_WEIGHT
 
     @staticmethod
     def _extract_content(result: Any) -> str:
