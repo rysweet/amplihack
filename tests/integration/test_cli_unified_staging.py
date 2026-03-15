@@ -485,6 +485,41 @@ class TestCopytreeManifestSyncBehavior:
         assert staged_binary.exists()
         assert os.access(staged_binary, os.X_OK)
 
+    def test_copytree_manifest_finds_repo_root_claude_from_src_amplihack(self, tmp_path):
+        """Editable checkout layout repo/src/amplihack should resolve repo-root .claude."""
+        from src.amplihack.install import copytree_manifest
+
+        repo_root = tmp_path / "repo"
+        package_dir = repo_root / "src" / "amplihack"
+        package_dir.mkdir(parents=True)
+
+        hooks_dir = repo_root / ".claude" / "tools" / "amplihack" / "hooks"
+        hooks_dir.mkdir(parents=True)
+        (hooks_dir / "session_start.py").write_text("print('hook')\n")
+
+        dst_dir = tmp_path / "dst"
+        copied = copytree_manifest(str(package_dir), str(dst_dir), ".claude")
+
+        assert "tools/amplihack" in copied
+        assert (dst_dir / "tools" / "amplihack" / "hooks" / "session_start.py").exists()
+
+    def test_copytree_manifest_reports_all_attempted_paths(self, tmp_path, capsys):
+        """Missing-source errors should show direct, parent, and grandparent candidates."""
+        from src.amplihack.install import copytree_manifest
+
+        repo_root = tmp_path / "repo" / "src" / "amplihack"
+        repo_root.mkdir(parents=True)
+        dst_dir = tmp_path / "dst"
+
+        copied = copytree_manifest(str(repo_root), str(dst_dir), ".claude")
+
+        captured = capsys.readouterr()
+        assert copied == []
+        assert "❌ .claude not found at:" in captured.out
+        assert str(repo_root / ".claude") in captured.out
+        assert str(repo_root.parent / ".claude") in captured.out
+        assert str(repo_root.parent.parent / ".claude") in captured.out
+
 
 class TestStagingE2EBehavior:
     """End-to-end tests for staging behavior with real subprocess calls (optional)."""
