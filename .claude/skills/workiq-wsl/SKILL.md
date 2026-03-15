@@ -204,6 +204,7 @@ To set up M365 access from WSL:
 
 ## Limitations
 
+- **Read-only** — WorkIQ can only **query** M365 data (emails, calendar, files). It cannot send messages, create events, or take actions. Use it for retrieval only.
 - **WSL-only** — Requires a Windows host with Copilot CLI installed. Does not work on native Linux or macOS.
 - **No session persistence** — Each query spawns a new Copilot CLI process. There is no conversational memory between queries.
 - **Startup latency** — Response time includes Copilot CLI startup + WorkIQ MCP server initialization (~10-30 seconds per query).
