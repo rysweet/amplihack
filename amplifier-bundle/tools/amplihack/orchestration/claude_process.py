@@ -199,12 +199,13 @@ class ClaudeProcess:
                 self.log(f"Error during termination: {e}", level="ERROR")
 
     def _build_command(self) -> list[str]:
-        """Build the Claude CLI command.
+        """Build the agent CLI command.
 
         Returns:
             Command as list of strings
         """
-        cmd = ["claude", "--dangerously-skip-permissions", "-p", self.prompt]
+        agent = os.environ.get("AMPLIHACK_AGENT_BINARY", "claude")
+        cmd = [agent, "--dangerously-skip-permissions", "-p", self.prompt]
 
         if self.model:
             cmd.extend(["--model", self.model])

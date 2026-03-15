@@ -8,13 +8,13 @@ from amplihack.knowledge_builder.kb_types import Question
 class QuestionGenerator:
     """Generates questions using Socratic method (3 levels deep)."""
 
-    def __init__(self, claude_cmd: str = "claude"):
+    def __init__(self, agent_cmd: str = "claude"):
         """Initialize question generator.
 
         Args:
-            claude_cmd: Claude command to use (default: "claude")
+            agent_cmd: Agent command to use (default: "claude")
         """
-        self.claude_cmd = claude_cmd
+        self.agent_cmd = agent_cmd
 
     def generate_initial_questions(self, topic: str) -> list[Question]:
         """Generate 10 initial questions about a topic.
@@ -35,7 +35,7 @@ Requirements:
 - No additional commentary"""
 
         result = subprocess.run(
-            [self.claude_cmd, "--dangerously-skip-permissions", "-p", prompt],
+            [self.agent_cmd, "--dangerously-skip-permissions", "-p", prompt],
             capture_output=True,
             text=True,
             check=False,
@@ -92,7 +92,7 @@ Requirements:
 - No additional commentary"""
 
         result = subprocess.run(
-            [self.claude_cmd, "--dangerously-skip-permissions", "-p", prompt],
+            [self.agent_cmd, "--dangerously-skip-permissions", "-p", prompt],
             capture_output=True,
             text=True,
             check=False,
