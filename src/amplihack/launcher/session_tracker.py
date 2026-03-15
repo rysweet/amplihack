@@ -12,10 +12,13 @@ Public API (the "studs"):
 """
 
 import json
+import logging
 import time
 import uuid
 from dataclasses import asdict, dataclass
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -77,10 +80,14 @@ class SessionTracker:
         """
         self._ensure_runtime_dir()
 
-    def _ensure_runtime_dir(self):
-        """Create .claude/runtime directory if it doesn't exist"""
+    def _ensure_runtime_dir(self) -> None:
+        """Ensure .claude/runtime/ exists; idempotent (exist_ok=True). Fixes #3053."""
         runtime_dir = self.RUNTIME_LOG.parent
-        runtime_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            runtime_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+        except OSError as e:
+            logger.debug('Failed to create runtime dir: %s', e)
+            raise RuntimeError('Session tracking unavailable') from None
 
     def start_session(
         self,
