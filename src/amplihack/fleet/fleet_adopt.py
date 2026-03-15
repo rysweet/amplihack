@@ -16,6 +16,7 @@ Public API:
 from __future__ import annotations
 
 import logging
+import os
 import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -76,7 +77,12 @@ class SessionAdopter:
                 return self._parse_discovery_output(vm_name, result.stdout)
 
             if result.returncode != 0:
-                logger.warning("Session discovery command failed for %s (rc=%d): %s", vm_name, result.returncode, result.stderr[:200])
+                logger.warning(
+                    "Session discovery command failed for %s (rc=%d): %s",
+                    vm_name,
+                    result.returncode,
+                    result.stderr[:200],
+                )
                 return []
 
             return self._parse_discovery_output(vm_name, result.stdout)
@@ -118,7 +124,8 @@ class SessionAdopter:
                 prompt=prompt,
                 repo_url=session.inferred_repo,
                 priority=TaskPriority.MEDIUM,
-                agent_command=session.agent_type or "claude",
+                agent_command=session.agent_type
+                or os.environ.get("AMPLIHACK_AGENT_BINARY", "claude"),
             )
             # Mark as already running (don't try to start it)
             task.assign(vm_name, session.session_name)
@@ -176,7 +183,9 @@ class SessionAdopter:
                 try:
                     validate_session_name(session_name)
                 except ValueError:
-                    logger.warning("Skipping invalid session name from SSH output: %r", session_name)
+                    logger.warning(
+                        "Skipping invalid session name from SSH output: %r", session_name
+                    )
                     current = None
                     continue
                 current = AdoptedSession(vm_name=vm_name, session_name=session_name)

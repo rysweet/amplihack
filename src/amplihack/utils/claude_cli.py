@@ -455,7 +455,7 @@ def _get_current_claude_version(binary_path: str | None = None) -> str | None:
     Returns:
         Version string (e.g. "1.2.3") or None if detection fails.
     """
-    cmd = [binary_path or "claude", "--version"]
+    cmd = [binary_path or os.environ.get("AMPLIHACK_AGENT_BINARY", "claude"), "--version"]
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=10, check=False)
         if result.returncode != 0 or not result.stdout.strip():
@@ -515,7 +515,10 @@ def ensure_latest_claude() -> bool:
 
         latest_result = subprocess.run(
             [npm_path, "view", "@anthropic-ai/claude-code", "version"],
-            capture_output=True, text=True, timeout=15, check=False,
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=False,
         )
         if latest_result.returncode != 0:
             return True
@@ -527,16 +530,28 @@ def ensure_latest_claude() -> bool:
         print(f"🔄 Claude Code update available: {current} → {latest}")
         user_npm_dir = Path.home() / ".npm-global"
         result = subprocess.run(
-            [npm_path, "install", "-g", "--prefix", str(user_npm_dir),
-             "@anthropic-ai/claude-code", "--ignore-scripts"],
-            capture_output=True, text=True, timeout=120, check=False,
+            [
+                npm_path,
+                "install",
+                "-g",
+                "--prefix",
+                str(user_npm_dir),
+                "@anthropic-ai/claude-code",
+                "--ignore-scripts",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
         )
         if result.returncode == 0:
             post = _get_current_claude_version(claude_path) or latest
             print(f"✓ Claude Code updated to {post}")
             return True
 
-        print(f"⚠ Claude Code update failed — continuing with current version: {result.stderr.strip()}")
+        print(
+            f"⚠ Claude Code update failed — continuing with current version: {result.stderr.strip()}"
+        )
         return False
     except Exception:
         return False

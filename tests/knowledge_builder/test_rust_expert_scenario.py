@@ -114,7 +114,7 @@ SOURCES:
 
         # Create knowledge builder for Rust
         topic = "Rust programming language tooling, ecosystem, and best practices"
-        builder = KnowledgeBuilder(topic=topic, claude_cmd="claude", output_base=tmp_path)
+        builder = KnowledgeBuilder(topic=topic, agent_cmd="claude", output_base=tmp_path)
 
         # Monkey-patch to generate fewer questions for faster testing
         original_generate = builder.question_gen.generate_initial_questions
@@ -228,7 +228,7 @@ SOURCES:
         mock_run.side_effect = self.mock_subprocess_rust(rust_mock_responses)
 
         topic = "Rust programming language tooling, ecosystem, and best practices"
-        builder = KnowledgeBuilder(topic=topic, claude_cmd="claude", output_base=tmp_path)
+        builder = KnowledgeBuilder(topic=topic, agent_cmd="claude", output_base=tmp_path)
 
         # Limit questions for speed
         original_generate = builder.question_gen.generate_initial_questions
@@ -277,7 +277,7 @@ SOURCES:
         mock_run.side_effect = self.mock_subprocess_rust(rust_mock_responses)
 
         topic = "Rust programming language tooling, ecosystem, and best practices"
-        builder = KnowledgeBuilder(topic=topic, claude_cmd="claude", output_base=tmp_path)
+        builder = KnowledgeBuilder(topic=topic, agent_cmd="claude", output_base=tmp_path)
 
         # Limit for speed
         original_generate = builder.question_gen.generate_initial_questions
