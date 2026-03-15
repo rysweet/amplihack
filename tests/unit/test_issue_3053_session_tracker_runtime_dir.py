@@ -7,13 +7,14 @@
 - TestSessionLifecycleWithoutPreExistingDir: full lifecycle without pre-existing dir
 - TestIssue3053Regression: E2E test - full lifecycle survives runtime dir deletion
 """
+
 from __future__ import annotations
 
 import json
 import logging
 import os
-import stat
 import shutil
+import stat
 from pathlib import Path
 from unittest.mock import patch
 
@@ -21,10 +22,10 @@ import pytest
 
 from amplihack.launcher.session_tracker import SessionTracker
 
-
 # ---------------------------------------------------------------------------
 # TestEnsureRuntimeDir
 # ---------------------------------------------------------------------------
+
 
 class TestEnsureRuntimeDir:
     """Tests for the _ensure_runtime_dir() guard."""
@@ -35,7 +36,7 @@ class TestEnsureRuntimeDir:
         assert not runtime_log.parent.exists(), "Precondition: dir must be absent"
 
         with patch.object(SessionTracker, "RUNTIME_LOG", runtime_log):
-            tracker = SessionTracker()
+            SessionTracker()
 
         assert runtime_log.parent.exists(), "_ensure_runtime_dir must create parent dir"
 
@@ -55,20 +56,36 @@ class TestEnsureRuntimeDir:
         runtime_log = tmp_path / ".claude" / "runtime" / "sessions.jsonl"
 
         with patch.object(SessionTracker, "RUNTIME_LOG", runtime_log):
-            tracker = SessionTracker()
+            SessionTracker()
 
         runtime_dir = runtime_log.parent
         actual_mode = stat.S_IMODE(runtime_dir.stat().st_mode)
-        assert actual_mode == 0o700, (
-            f"Expected mode 0o700, got 0o{actual_mode:o}"
-        )
+        assert actual_mode == 0o700, f"Expected mode 0o700, got 0o{actual_mode:o}"
+
+    def test_log_file_mode_is_0o600(self, tmp_path):
+        """Log file is created with mode 0o600 (owner read/write only)."""
+        runtime_log = tmp_path / ".claude" / "runtime" / "sessions.jsonl"
+
+        with patch.object(SessionTracker, "RUNTIME_LOG", runtime_log):
+            tracker = SessionTracker()
+            tracker.start_session(
+                pid=1,
+                launch_dir=str(tmp_path),
+                argv=["amplihack"],
+                is_auto_mode=False,
+                is_nested=False,
+                parent_session_id=None,
+            )
+
+        actual_mode = stat.S_IMODE(runtime_log.stat().st_mode)
+        assert actual_mode == 0o600, f"Expected log file mode 0o600, got 0o{actual_mode:o}"
 
     def test_creates_nested_parents(self, tmp_path):
         """_ensure_runtime_dir creates deeply nested parent dirs (parents=True)."""
         runtime_log = tmp_path / "a" / "b" / "c" / "d" / "sessions.jsonl"
 
         with patch.object(SessionTracker, "RUNTIME_LOG", runtime_log):
-            tracker = SessionTracker()
+            SessionTracker()
 
         assert runtime_log.parent.exists(), "Nested parent dirs must be created"
 
@@ -92,6 +109,7 @@ class TestEnsureRuntimeDir:
 # ---------------------------------------------------------------------------
 # TestEndSessionRuntimeDirMissing
 # ---------------------------------------------------------------------------
+
 
 class TestEndSessionRuntimeDirMissing:
     """_end_session() / complete_session() / crash_session() with no pre-existing dir."""
@@ -172,6 +190,7 @@ class TestEndSessionRuntimeDirMissing:
 # TestOsErrorHandling
 # ---------------------------------------------------------------------------
 
+
 class TestOsErrorHandling:
     """OSError from mkdir propagates as RuntimeError."""
 
@@ -224,6 +243,7 @@ class TestOsErrorHandling:
 # ---------------------------------------------------------------------------
 # TestSessionLifecycleWithoutPreExistingDir
 # ---------------------------------------------------------------------------
+
 
 class TestSessionLifecycleWithoutPreExistingDir:
     """Full lifecycle works correctly when .claude/runtime/ never existed."""
@@ -294,6 +314,7 @@ class TestSessionLifecycleWithoutPreExistingDir:
 # TestIssue3053Regression
 # ---------------------------------------------------------------------------
 
+
 class TestIssue3053Regression:
     """E2E regression test: full lifecycle survives runtime dir deletion mid-session."""
 
@@ -318,7 +339,7 @@ class TestIssue3053Regression:
             tracker.crash_session(sid)
 
         assert runtime_log.exists()
-        entries = [json.loads(l) for l in runtime_log.read_text().strip().splitlines()]
+        entries = [json.loads(line) for line in runtime_log.read_text().strip().splitlines()]
         assert entries[-1]["status"] == "crashed"
         assert entries[-1]["session_id"] == sid
 
@@ -360,7 +381,7 @@ class TestIssue3053Regression:
         assert runtime_log.exists(), "Log file must be re-created"
 
         # Only the completion entry should be present (start entry was lost with dir)
-        entries = [json.loads(l) for l in runtime_log.read_text().strip().splitlines()]
+        entries = [json.loads(line) for line in runtime_log.read_text().strip().splitlines()]
         assert len(entries) == 1
         assert entries[0]["session_id"] == sid
         assert entries[0]["status"] == "completed"
