@@ -68,10 +68,24 @@ def copytree_manifest(
 
 **Parameters:**
 
-- `source`: Source directory (package's `.claude/` directory)
+- `source`: Source directory — the package or editable-install root to search from
 - `dest`: Destination directory (`~/.amplihack/.claude/`)
 - `manifest`: Dictionary mapping subdirectories to glob patterns
 - `overwrite`: Whether to replace existing files (default: True)
+
+**Search Path Resolution:**
+
+`copytree_manifest()` searches three candidate locations in order, using the first
+that exists:
+
+1. `<source>/<rel_top>` — the path directly under the provided source root
+2. `<source>/../<rel_top>` — one level up (handles `package/.claude`)
+3. `<source>/../../<rel_top>` — two levels up (handles editable installs where
+   source is `repo/src/amplihack` and `.claude/` lives at the repo root)
+
+This means callers do not need to pre-resolve the repo root; passing the package
+directory is sufficient for both editable (`repo/src/amplihack`) and installed
+layouts.
 
 **Manifest Format:**
 
@@ -190,13 +204,24 @@ except PermissionError as e:
 
 ### Missing Source Files
 
+When no candidate path is found, `copytree_manifest()` prints each attempted
+path to help diagnose the root cause:
+
+```
+  ❌ .claude not found at:
+     /path/to/src/amplihack/.claude
+     /path/to/src/.claude
+     /path/to/.claude
+```
+
+An empty list is returned (no exception raised), so callers can detect failure
+by checking the return value:
+
 ```python
-try:
-    copytree_manifest(source, dest, STAGING_MANIFEST)
-except FileNotFoundError as e:
-    print(f"Error: Cannot find source files to stage")
-    print(f"Details: {e}")
-    print("This indicates a corrupted package installation")
+copied = copytree_manifest(source, dest, ".claude")
+if not copied:
+    print("Error: Cannot find source files to stage")
+    print("This indicates a corrupted package installation or wrong source path")
     sys.exit(1)
 ```
 

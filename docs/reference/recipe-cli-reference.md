@@ -53,7 +53,23 @@ amplihack recipe list [OPTIONS]
 
 ### Description
 
-Scans recipe discovery paths and displays all available recipes with their descriptions. Recipe discovery order (later paths override earlier):
+Scans recipe discovery paths and displays all available recipes with their descriptions.
+
+**Bundle asset resolution order** (first match wins):
+
+1. `$AMPLIHACK_HOME/<path>` — explicit environment override
+2. `<cwd-or-ancestor>/amplifier-bundle/` — local source checkout in or above
+   the working directory (preferred when running inside a repo clone)
+3. `<pkg_dir>/amplifier-bundle/` — installed package data
+4. `<pkg_dir>/../../amplifier-bundle/` — editable install (repo root)
+5. `~/.amplihack/amplifier-bundle/` — user home installation
+
+When running inside a source checkout (i.e. the current directory or any of its
+parents contains an `amplifier-bundle/` directory), the local checkout takes
+precedence over the installed package and `~/.amplihack`. This ensures that
+in-progress changes to recipes are picked up automatically without re-installing.
+
+**Recipe file discovery order** (later paths override earlier for name conflicts):
 
 1. `amplifier-bundle/recipes/` - Bundled recipes from Microsoft Amplifier
 2. `src/amplihack/amplifier-bundle/recipes/` - Package-embedded recipes
@@ -197,6 +213,11 @@ Loads a recipe and executes each step in order:
 - Template variables in prompts/commands expand from context
 - Step outputs store in context for later steps
 - Steps with conditions may skip based on previous results
+
+When recipes spawn subordinate processes (e.g. multitask parallel launchers),
+each launcher inserts the worktree's `src/` directory at the front of
+`sys.path`. This ensures in-progress local code is used even if an older
+version of amplihack is installed system-wide.
 
 Execution continues until:
 
