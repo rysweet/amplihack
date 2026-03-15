@@ -28,12 +28,12 @@ recipe-runner-rs amplifier-bundle/recipes/oxidizer-workflow.yaml \
 
 ## Required Context Variables
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `python_package_path` | Path to the Python package to migrate | `src/amplihack/recipes` |
-| `rust_target_path` | Where to create the Rust project | `rust/recipe-runner` |
-| `rust_repo_name` | GitHub repository name for the output | `amplihack-recipe-runner` |
-| `rust_repo_org` | GitHub org or user | `rysweet` |
+| Variable              | Description                           | Example                   |
+| --------------------- | ------------------------------------- | ------------------------- |
+| `python_package_path` | Path to the Python package to migrate | `src/amplihack/recipes`   |
+| `rust_target_path`    | Where to create the Rust project      | `rust/recipe-runner`      |
+| `rust_repo_name`      | GitHub repository name for the output | `amplihack-recipe-runner` |
+| `rust_repo_org`       | GitHub org or user                    | `rysweet`                 |
 
 ## Workflow Phases
 
@@ -112,8 +112,44 @@ The oxidizer enforces strict standards:
 - **Parity target is 100%** — anything less loops again
 - **Silent degradation audit** — catches lossy type conversions, missing error
   variants, dropped edge cases, and behavioral differences
+- **Unsafe code audit** — flags every `unsafe` block as a critical finding;
+  requires elimination or justification with safety comments and Miri testing
 - **Quality gate** — `cargo clippy -- -D warnings`, `cargo fmt --check`, full
   test suite must pass
+
+## Effective Rust Compliance
+
+All generated Rust code follows the [Effective Rust](https://effective-rust.com/)
+guide. Key rules enforced on every iteration:
+
+### Types (Items 1–6)
+
+- Use `enum` with data fields — make invalid states unrepresentable
+- `Option<T>` for optional values, never sentinel values
+- `Result<T, E>` for fallible ops, never panic on expected errors
+- Newtype pattern for domain semantics (`struct Miles(f64)`)
+- `From`/`Into` conversions over `as` casts
+- `thiserror` for library errors, `anyhow` for applications
+
+### Unsafe (Item 16)
+
+- `#![deny(unsafe_code)]` in lib.rs by default
+- If FFI requires `unsafe`: isolate in wrapper, add safety comments, run Miri
+- See <https://effective-rust.com/unsafe.html>
+
+### Parallelism (Item 17)
+
+- Prefer channels over shared state
+- `Arc<Mutex<T>>` with small lock scopes, single-lock grouping
+- Never invoke closures or return `MutexGuard` with locks held
+- See <https://effective-rust.com/deadlock.html>
+
+### Tooling (Items 29, 31, 32)
+
+- `cargo clippy -- -D warnings`, `cargo fmt`, `cargo doc`
+- `rust-toolchain.toml` for reproducible CI builds
+- `cargo-deny` for license/advisory checks, `cargo-udeps` for unused deps
+- See <https://effective-rust.com/use-tools.html>
 
 ## Using via Python API
 
