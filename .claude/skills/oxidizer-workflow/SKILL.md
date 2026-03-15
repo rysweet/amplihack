@@ -32,12 +32,12 @@ is achieved, with quality audit and silent degradation checks on every iteration
 
 ## Required Inputs
 
-| Input | Example | Description |
-|-------|---------|-------------|
-| `python_package_path` | `src/amplihack/recipes` | Path to the Python package to migrate |
-| `rust_target_path` | `rust/recipe-runner` | Where to create the Rust project |
-| `rust_repo_name` | `amplihack-recipe-runner` | GitHub repo name for the Rust project |
-| `rust_repo_org` | `rysweet` | GitHub org or user for the repo |
+| Input                 | Example                   | Description                           |
+| --------------------- | ------------------------- | ------------------------------------- |
+| `python_package_path` | `src/amplihack/recipes`   | Path to the Python package to migrate |
+| `rust_target_path`    | `rust/recipe-runner`      | Where to create the Rust project      |
+| `rust_repo_name`      | `amplihack-recipe-runner` | GitHub repo name for the Rust project |
+| `rust_repo_org`       | `rysweet`                 | GitHub org or user for the repo       |
 
 ## Execution
 
@@ -103,6 +103,57 @@ Final: Summary report with parity matrix
 - If max iterations reached without convergence, the final summary reports
   which modules are still incomplete
 
+## Recipe Location
+
+The oxidizer recipe is at:
+
+```
+amplifier-bundle/recipes/oxidizer-workflow.yaml
+```
+
+The recipe is the executable workflow — this skill is the discovery and activation
+layer. When investigating or customizing the workflow phases, agent prompts, or
+convergence rules, start with the recipe file above.
+
+## Effective Rust Compliance
+
+The oxidizer workflow enforces idiomatic Rust practices aligned with the
+[Effective Rust](https://effective-rust.com/) guide by David Drysdale. Key rules
+baked into every iteration:
+
+### Types (Items 1–6)
+
+- Use Rust's type system to make invalid states unrepresentable (`enum` with data)
+- Use `Option<T>` for optional values — never sentinel values like `-1` or `null`
+- Use `Result<T, E>` for fallible operations — never panic on expected errors
+- Use the newtype pattern for domain-specific semantics (units, IDs, validated strings)
+- Prefer `From`/`Into` conversions over `as` casts
+- Use `thiserror` for library error types, `anyhow` for application error handling
+
+### Unsafe (Item 16)
+
+- **Avoid writing `unsafe` code** — use standard library and crate abstractions instead
+- If `unsafe` is absolutely required (FFI), isolate it in a wrapper module with safety comments
+- Run [Miri](https://github.com/rust-lang/miri) over any `unsafe` code
+- Enable the `unsafe_op_in_unsafe_fn` lint
+
+### Parallelism (Item 17)
+
+- Prefer channels (`std::sync::mpsc`) over shared state when possible
+- Use `Arc<Mutex<T>>` for shared state — keep lock scopes small
+- Group related data under a single lock to prevent deadlocks
+- Never invoke closures or return `MutexGuard` with locks held
+- Include deadlock detection in CI (`parking_lot::deadlock`, ThreadSanitizer)
+
+### Tooling (Items 29, 31, 32)
+
+- `cargo clippy -- -D warnings` on every iteration
+- `cargo fmt --check` on every iteration
+- `cargo doc` to verify documentation compiles
+- `cargo-udeps` to detect unused dependencies
+- `cargo-deny` for license and advisory checks
+- `cargo bench` with `std::hint::black_box` for realistic benchmarks
+
 ## What Success Looks Like
 
 - Rust project builds cleanly (`cargo build`)
@@ -111,3 +162,5 @@ Final: Summary report with parity matrix
 - Formatted (`cargo fmt --check`)
 - Feature parity matrix shows 100% coverage
 - No silent degradation detected
+- Zero `unsafe` blocks (or justified, isolated, and Miri-tested)
+- Idiomatic Rust types — no sentinel values, no stringly-typed APIs

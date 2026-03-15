@@ -43,7 +43,7 @@ class TestKnowledgeBuilderIntegration:
         mock_run.side_effect = mock_subprocess
 
         # Run workflow
-        builder = KnowledgeBuilder(topic="Test Topic", claude_cmd="claude", output_base=tmp_path)
+        builder = KnowledgeBuilder(topic="Test Topic", agent_cmd="claude", output_base=tmp_path)
         output_dir = builder.build()
 
         # Verify output directory created
@@ -66,7 +66,7 @@ class TestKnowledgeBuilderIntegration:
         """Test that output directory is created with sanitized name."""
         builder = KnowledgeBuilder(
             topic="Test Topic: With Special!@#$% Characters",
-            claude_cmd="claude",
+            agent_cmd="claude",
             output_base=tmp_path,
         )
 
@@ -82,7 +82,7 @@ class TestKnowledgeBuilderIntegration:
         """Test error handling during workflow."""
         mock_run.return_value = MagicMock(returncode=1, stderr="Error")
 
-        builder = KnowledgeBuilder(topic="Test Topic", claude_cmd="claude", output_base=tmp_path)
+        builder = KnowledgeBuilder(topic="Test Topic", agent_cmd="claude", output_base=tmp_path)
 
         with pytest.raises(RuntimeError, match="Knowledge Builder failed"):
             builder.build()
@@ -125,7 +125,7 @@ class TestKnowledgeBuilderIntegration:
         mock_run.side_effect = mock_subprocess
 
         builder = KnowledgeBuilder(
-            topic="Quantum Computing", claude_cmd="claude", output_base=tmp_path
+            topic="Quantum Computing", agent_cmd="claude", output_base=tmp_path
         )
         output_dir = builder.build()
 

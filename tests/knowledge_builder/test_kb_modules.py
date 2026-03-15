@@ -20,7 +20,7 @@ class TestQuestionGenerator:
             stdout="\n".join([f"{i}. Question {i}?" for i in range(1, 11)]),
         )
 
-        gen = QuestionGenerator(claude_cmd="claude")
+        gen = QuestionGenerator(agent_cmd="claude")
         questions = gen.generate_initial_questions("Test Topic")
 
         assert len(questions) == 10
@@ -35,7 +35,7 @@ class TestQuestionGenerator:
             returncode=0, stdout="1. Follow-up 1?\n2. Follow-up 2?\n3. Follow-up 3?"
         )
 
-        gen = QuestionGenerator(claude_cmd="claude")
+        gen = QuestionGenerator(agent_cmd="claude")
         parent = Question(text="Parent question?", depth=0, parent_index=None)
         questions = gen.generate_socratic_questions(parent, 0)
 
@@ -46,7 +46,7 @@ class TestQuestionGenerator:
     @patch("subprocess.run")
     def test_max_depth_limit(self, mock_run):
         """Test that Socratic method stops at depth 3."""
-        gen = QuestionGenerator(claude_cmd="claude")
+        gen = QuestionGenerator(agent_cmd="claude")
         parent = Question(text="Deep question?", depth=3, parent_index=0)
         questions = gen.generate_socratic_questions(parent, 0)
 
@@ -65,7 +65,7 @@ class TestKnowledgeAcquirer:
             stdout="ANSWER: This is the answer.\nSOURCES:\n- https://example.com\n- https://test.org",
         )
 
-        acq = KnowledgeAcquirer(claude_cmd="claude")
+        acq = KnowledgeAcquirer(agent_cmd="claude")
         question = Question(text="What is this?", depth=0, parent_index=None)
         answer, sources = acq.answer_question(question, "Topic")
 
@@ -79,7 +79,7 @@ class TestKnowledgeAcquirer:
         """Test answering when no sources are provided."""
         mock_run.return_value = MagicMock(returncode=0, stdout="ANSWER: Just an answer.")
 
-        acq = KnowledgeAcquirer(claude_cmd="claude")
+        acq = KnowledgeAcquirer(agent_cmd="claude")
         question = Question(text="What?", depth=0, parent_index=None)
         answer, sources = acq.answer_question(question, "Topic")
 
@@ -91,7 +91,7 @@ class TestKnowledgeAcquirer:
         """Test handling of failed answer attempt."""
         mock_run.return_value = MagicMock(returncode=1, stderr="Error")
 
-        acq = KnowledgeAcquirer(claude_cmd="claude")
+        acq = KnowledgeAcquirer(agent_cmd="claude")
         question = Question(text="What?", depth=0, parent_index=None)
         answer, sources = acq.answer_question(question, "Topic")
 
