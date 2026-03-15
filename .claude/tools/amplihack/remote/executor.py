@@ -229,8 +229,12 @@ fi
 # Decode prompt from base64
 PROMPT=$(echo '{encoded_prompt}' | base64 -d)
 
-# Run amplihack command
-amplihack ${{AMPLIHACK_AGENT_BINARY:-claude}} --{command} --max-turns {max_turns} -- -p "$PROMPT"
+# Run amplihack command (AMPLIHACK_AGENT_BINARY set by launcher; defaults to claude)
+if [ -z "$AMPLIHACK_AGENT_BINARY" ]; then
+    echo "WARNING: AMPLIHACK_AGENT_BINARY not set, defaulting to claude" >&2
+    AMPLIHACK_AGENT_BINARY=claude
+fi
+amplihack "$AMPLIHACK_AGENT_BINARY" --{command} --max-turns {max_turns} -- -p "$PROMPT"
 """
 
         # Execute with timeout
@@ -267,7 +271,13 @@ amplihack ${{AMPLIHACK_AGENT_BINARY:-claude}} --{command} --max-turns {max_turns
             # Try to terminate remote process
             try:
                 subprocess.run(
-                    ["azlin", "connect", *self._azlin_port_args(), self.vm.name, "pkill -TERM -f amplihack"],
+                    [
+                        "azlin",
+                        "connect",
+                        *self._azlin_port_args(),
+                        self.vm.name,
+                        "pkill -TERM -f amplihack",
+                    ],
                     timeout=30,
                     capture_output=True,
                 )
@@ -332,7 +342,13 @@ fi
             # Download archive (azlin cp requires relative paths)
             local_archive = local_dest / "logs.tar.gz"
             subprocess.run(
-                ["azlin", "cp", *self._azlin_port_args(), f"{self.vm.name}:~/logs.tar.gz", "logs.tar.gz"],
+                [
+                    "azlin",
+                    "cp",
+                    *self._azlin_port_args(),
+                    f"{self.vm.name}:~/logs.tar.gz",
+                    "logs.tar.gz",
+                ],
                 cwd=str(local_dest),  # Run from destination directory
                 capture_output=True,
                 text=True,
@@ -395,7 +411,13 @@ echo "Bundle created"
             # Download bundle (azlin cp requires relative paths)
             local_bundle = local_dest / "results.bundle"
             subprocess.run(
-                ["azlin", "cp", *self._azlin_port_args(), f"{self.vm.name}:~/results.bundle", "results.bundle"],
+                [
+                    "azlin",
+                    "cp",
+                    *self._azlin_port_args(),
+                    f"{self.vm.name}:~/results.bundle",
+                    "results.bundle",
+                ],
                 cwd=str(local_dest),  # Run from destination directory
                 capture_output=True,
                 text=True,
@@ -540,7 +562,7 @@ source ~/.amplihack-venv/bin/activate
 export ANTHROPIC_API_KEY=$(echo '{encoded_api_key}' | base64 -d)
 export NODE_OPTIONS='--max-old-space-size=32768'
 PROMPT=$(echo '{encoded_prompt}' | base64 -d)
-exec amplihack ${{AMPLIHACK_AGENT_BINARY:-claude}} --{command} --max-turns {max_turns} -- -p "$PROMPT"
+exec amplihack "${{AMPLIHACK_AGENT_BINARY:-claude}}" --{command} --max-turns {max_turns} -- -p "$PROMPT"
 AMPLIHACK_RUN_EOF
 chmod +x "$SCRIPT"
 
