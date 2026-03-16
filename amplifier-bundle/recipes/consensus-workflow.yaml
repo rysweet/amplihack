@@ -1531,8 +1531,8 @@ steps:
       COMMIT_EOF
       )
 
-      git commit -m "$COMMIT_MSG" 2>/dev/null || echo "Commit prepared"
-      git pull --rebase 2>/dev/null && git push
+      git commit -m "$COMMIT_MSG"
+      git pull --rebase && git push
 
       echo '{"committed": true, "pushed": true}'
     output: "commit_result"
@@ -1815,8 +1815,8 @@ steps:
     command: |
       echo "Pushing review updates..."
       git add -A
-      git commit -m "Address PR review feedback" 2>/dev/null || true
-      git pull --rebase 2>/dev/null && git push
+      git commit -m "Address PR review feedback"
+      git pull --rebase && git push
       echo '{"updates_pushed": true}'
     output: "review_updates"
     parse_json: true
