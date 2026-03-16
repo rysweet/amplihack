@@ -165,6 +165,59 @@ class TestHiveMerge:
         assert results[0]["context"] == "Campaign"
         assert "ransomware" in results[0]["outcome"]
 
+    def test_plain_cognitive_backend_uses_search_facts_for_query(self):
+        """Plain CognitiveMemory should still use query-aware retrieval when available."""
+
+        class PlainCognitiveMemory:
+            def __init__(self) -> None:
+                self.get_all_calls: list[int] = []
+                self.search_calls: list[tuple[str, int]] = []
+
+            def get_all_facts(self, limit: int = 50):
+                self.get_all_calls.append(limit)
+                return [
+                    SimpleNamespace(
+                        node_id="sem-0",
+                        concept="Noise",
+                        content="Unrelated fact that should not be returned for the question",
+                        confidence=0.2,
+                        created_at="2024-03-01T00:00:00Z",
+                        tags=["noise"],
+                        metadata={},
+                    )
+                ]
+
+            def search_facts(self, query: str, limit: int = 10, min_confidence: float = 0.0):
+                self.search_calls.append((query, limit))
+                return [
+                    SimpleNamespace(
+                        node_id="sem-1",
+                        concept="Campaign",
+                        content="CAMP-1 objective was ransomware",
+                        confidence=0.9,
+                        created_at="2024-03-01T00:00:00Z",
+                        tags=["campaign"],
+                        metadata={"min_confidence": min_confidence},
+                    )
+                ]
+
+        adapter = CognitiveAdapter.__new__(CognitiveAdapter)
+        adapter.agent_name = "plain"
+        adapter.memory = PlainCognitiveMemory()
+        adapter._cognitive = True
+        adapter._hive_store = None
+        adapter._quality_threshold = 0.0
+        adapter._confidence_gate = 0.0
+        adapter._enable_query_expansion = False
+        adapter._buffer_pool_size = 0
+
+        results = adapter.get_all_facts(limit=7, query="What was CAMP-1?")
+
+        assert adapter.memory.search_calls == [("What was CAMP-1?", 7)]
+        assert adapter.memory.get_all_calls == []
+        assert results[0]["context"] == "Campaign"
+        assert "ransomware" in results[0]["outcome"]
+
 
 class TestSearchByConceptHive:
     """search_by_concept() must also search the distributed hive."""
