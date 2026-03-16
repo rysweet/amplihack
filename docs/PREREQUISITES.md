@@ -359,13 +359,13 @@ This requires explicit opt-in for security.
 
 **Purpose:** Enhanced debugging and traffic logging for Claude Code
 
-**Installation (Required):**
+**Installation (Optional):**
 
 ```bash
 npm install -g @mariozechner/claude-trace
 ```
 
-**Note:** This is a **required dependency** as of the simplified implementation. Install it during initial setup.
+**Note:** `claude-trace` is optional during initial setup. If you skip this step, amplihack installs it automatically the first time tracing is needed.
 
 **Documentation:** Part of claude-code ecosystem (https://github.com/mariozechner/claude-trace)
 
