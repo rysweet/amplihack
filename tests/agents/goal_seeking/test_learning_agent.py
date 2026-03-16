@@ -324,6 +324,11 @@ class TestLearningAgent:
             patch.object(agent, "_synthesize_with_llm", return_value="answer"),
             patch.object(
                 agent,
+                "_distributed_entity_id_retrieval",
+                side_effect=lambda question, facts: facts,
+            ),
+            patch.object(
+                agent,
                 "_entity_linked_retrieval",
                 side_effect=lambda question, facts, local_only=False: facts,
             ) as entity_linked,
@@ -347,6 +352,50 @@ class TestLearningAgent:
         assert entity_linked.call_args.kwargs["local_only"] is True
         assert multi_entity.call_args.kwargs["local_only"] is True
         assert keyword_expansion.call_args.kwargs["local_only"] is True
+
+    def test_answer_question_runs_exact_id_lookup_before_local_only_supplements(self, agent):
+        """Structured-ID questions get one exact-ID pass before local-only supplements."""
+        initial_facts = [
+            {"context": "Campaign", "outcome": "CAMP-2025-011 touched WS-01", "experience_id": "e1"}
+        ]
+
+        def simple_retrieval(question, force_verbatim=False):
+            agent._thread_local._last_simple_retrieval_exhaustive = False
+            return list(initial_facts)
+
+        agent.memory.search_local = MagicMock(return_value=[])
+
+        with (
+            patch.object(
+                agent,
+                "_detect_intent",
+                return_value={
+                    "intent": "temporal_comparison",
+                    "needs_temporal": False,
+                    "needs_math": False,
+                },
+            ),
+            patch.object(agent, "_simple_retrieval", side_effect=simple_retrieval),
+            patch.object(agent, "_synthesize_with_llm", return_value="answer"),
+            patch.object(
+                agent,
+                "_distributed_entity_id_retrieval",
+                side_effect=lambda question, facts: facts,
+            ) as distributed_entity_ids,
+            patch.object(
+                agent,
+                "_entity_linked_retrieval",
+                side_effect=lambda question, facts, local_only=False: facts,
+            ) as entity_linked,
+        ):
+            agent.answer_question(
+                "What was the objective of CAMP-2025-011?",
+                question_level="L3",
+                _skip_qanda_store=True,
+            )
+
+        distributed_entity_ids.assert_called_once()
+        assert entity_linked.call_args.kwargs["local_only"] is True
 
     def test_answer_question_skips_keyword_expansion_when_initial_retrieval_is_not_sparse(
         self, agent
@@ -763,6 +812,23 @@ class TestEntityLinkedRetrieval:
         }
         agent.memory.search_local.assert_called()
         agent.memory.search_by_concept_local.assert_called()
+
+    def test_distributed_entity_id_retrieval_uses_exact_id_search(self, agent):
+        """Exact-ID retrieval should issue one search per structured ID."""
+        remote_fact = {
+            "context": "Campaign",
+            "outcome": "CAMP-2025-011 used T1059.001",
+            "experience_id": "remote-1",
+        }
+        agent.memory.search = MagicMock(return_value=[remote_fact])
+
+        result = agent._distributed_entity_id_retrieval(
+            "What was the objective of CAMP-2025-011?",
+            [],
+        )
+
+        assert result == [remote_fact]
+        agent.memory.search.assert_called_once_with(query="CAMP-2025-011", limit=100)
 
 
 class TestMultiEntityRetrieval:

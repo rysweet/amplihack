@@ -694,6 +694,7 @@ class LearningAgent:
         # (e.g. INC-2024-001, CVE-2024-3094), search for ALL facts containing
         # those IDs to capture related facts stored under different contexts.
         if self._ENTITY_ID_PATTERN.search(question) and not exhaustive_retrieval:
+            relevant_facts = self._distributed_entity_id_retrieval(question, relevant_facts)
             relevant_facts = self._entity_linked_retrieval(
                 question,
                 relevant_facts,
@@ -1659,6 +1660,49 @@ class LearningAgent:
         if hasattr(self.memory, "retrieve_by_entity"):
             return self.memory.retrieve_by_entity(entity_name=entity_name, limit=limit)
         return []
+
+    def _distributed_entity_id_retrieval(
+        self, question: str, existing_facts: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """Add one exact-ID search pass before local-only supplemental retrieval.
+
+        The first broad retrieval pass keeps distributed question-level recall, but
+        campaign/incident-style eval questions often need an exact ID lookup as well.
+        We intentionally limit this to a single text-search pass per structured ID so
+        we restore recall without reopening the old multi-pass fan-out storm.
+        """
+        entity_ids = self._ENTITY_ID_PATTERN.findall(question)
+        if not entity_ids or not hasattr(self.memory, "search"):
+            return existing_facts
+
+        existing_ids = {
+            f.get("experience_id", "") for f in existing_facts if f.get("experience_id")
+        }
+        new_facts: list[dict[str, Any]] = []
+        q_lower = question.lower()
+        is_incident_query = any(
+            kw in q_lower for kw in ("incident", "cve", "vulnerability", "security")
+        )
+        search_limit = INCIDENT_QUERY_SEARCH_LIMIT if is_incident_query else ENTITY_SEARCH_LIMIT
+
+        for entity_id in entity_ids:
+            results = self._search_memory(entity_id, search_limit, local_only=False)
+            for fact in results:
+                fid = fact.get("experience_id", "")
+                if fid and fid not in existing_ids:
+                    existing_ids.add(fid)
+                    new_facts.append(fact)
+
+        if new_facts:
+            logger.info(
+                "Distributed entity-ID retrieval: %d IDs -> %d new facts (limit=%d) for '%s'",
+                len(entity_ids),
+                len(new_facts),
+                search_limit,
+                question[:60],
+            )
+
+        return existing_facts + new_facts
 
     def _entity_linked_retrieval(
         self,
