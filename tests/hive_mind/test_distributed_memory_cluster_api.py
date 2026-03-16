@@ -110,12 +110,19 @@ def test_cognitive_adapter_retrieve_by_entity_includes_remote_facts() -> None:
     assert hive.retrieve_by_entity_calls == [("Sarah Chen", 10)]
 
 
-def test_cognitive_adapter_execute_aggregation_combines_remote_and_local_state() -> None:
-    """Meta-memory aggregations must include remote results in distributed mode."""
+def test_cognitive_adapter_execute_aggregation_uses_local_shard_only() -> None:
+    """Meta-memory aggregations must use local shard only to avoid cross-shard storms.
+
+    Distributed aggregation fans out to all N agents with 60-second timeouts.
+    When N agents simultaneously answer meta-memory questions, every agent waits
+    for every other agent — an O(N²) deadlock.  Local-only aggregation prevents
+    the storm while still returning useful results from the local shard.
+    """
     adapter, hive = _make_adapter()
 
     result = adapter.execute_aggregation("list_entities", entity_filter="project")
 
-    assert result["count"] == 2
-    assert set(result["items"]) == {"Project Atlas", "Project Beacon"}
-    assert hive.execute_aggregation_calls == [("list_entities", "project")]
+    # Local result only — hive is NOT queried.
+    assert result["count"] == 1
+    assert result["items"] == ["Project Atlas"]
+    assert hive.execute_aggregation_calls == []

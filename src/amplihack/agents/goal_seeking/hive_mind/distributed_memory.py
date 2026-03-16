@@ -161,19 +161,22 @@ class DistributedCognitiveMemory:
         return self._merge_fact_lists(local_results, hive_dicts, limit, query=entity_name)
 
     def execute_aggregation(self, query_type: str, entity_filter: str = "") -> dict[str, Any]:
-        """Execute a cluster-wide aggregation for meta-memory questions."""
-        local_result: dict[str, Any] = {}
-        if hasattr(self._local, "execute_aggregation"):
-            local_result = self._local.execute_aggregation(
-                query_type=query_type,
-                entity_filter=entity_filter,
-            )
+        """Execute aggregation for meta-memory questions using local shard only.
 
-        hive_result = self._query_hive_aggregation(query_type, entity_filter)
-        if not hive_result:
-            return local_result
+        Cross-shard aggregation is intentionally skipped: when N agents simultaneously
+        answer meta-memory questions, distributed aggregation fans out to all N shards
+        with 60-second timeouts per shard. This creates an O(N²) deadlock where every
+        agent waits for every other agent — causing cascading timeouts and OOM restarts.
 
-        return self._merge_aggregation_results(query_type, local_result, hive_result)
+        Local-only aggregation avoids the storm. Each agent answers from its own shard,
+        which is consistent with best-effort semantics already used for query_facts.
+        """
+        if not hasattr(self._local, "execute_aggregation"):
+            return {}
+        return self._local.execute_aggregation(
+            query_type=query_type,
+            entity_filter=entity_filter,
+        )
 
     # ------------------------------------------------------------------
     # Writes: store locally + auto-promote to hive
