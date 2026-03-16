@@ -424,6 +424,166 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# Layer 7 Filesystem Contract Tests (v1.1.0)
+# ---------------------------------------------------------------------------
+
+echo ""
+echo "=== Layer 7 Filesystem Contract Tests ==="
+
+L7="${ATLAS}/layer7-service-components"
+
+if [[ ! -d "$L7" ]]; then
+    echo "FAIL: layer7-service-components/ directory does not exist"
+    FAIL=$((FAIL + 3))
+else
+    echo "PASS: layer7-service-components/ directory exists"
+    PASS=$((PASS + 1))
+
+    # Contract L7.1: README.md must exist
+    if [[ ! -f "${L7}/README.md" ]]; then
+        echo "FAIL: L7.1 layer7-service-components/README.md does not exist"
+        FAIL=$((FAIL + 1))
+    else
+        echo "PASS: L7.1 layer7-service-components/README.md exists"
+        PASS=$((PASS + 1))
+    fi
+
+    # Contract L7.2: At least one .mmd file must exist per service
+    mmd_count=$(find "$L7" -name "*.mmd" 2>/dev/null | wc -l)
+    if [[ "$mmd_count" -gt 0 ]]; then
+        echo "PASS: L7.2 at least one .mmd file exists in layer7-service-components/"
+        PASS=$((PASS + 1))
+    else
+        echo "FAIL: L7.2 no .mmd files found in layer7-service-components/"
+        FAIL=$((FAIL + 1))
+    fi
+
+    # Contract L7.3: Service diagram file names must match [a-zA-Z0-9_-]+ pattern (SEC-11)
+    invalid_names=()
+    while IFS= read -r -d '' mmd_file; do
+        basename_noext=$(basename "$mmd_file" .mmd)
+        if ! echo "$basename_noext" | grep -qP '^[a-zA-Z0-9_-]{1,64}$'; then
+            invalid_names+=("$basename_noext")
+        fi
+    done < <(find "$L7" -name "*.mmd" -print0 2>/dev/null)
+
+    if [[ "${#invalid_names[@]}" -eq 0 ]]; then
+        echo "PASS: L7.3 SEC-11 — all service diagram names match [a-zA-Z0-9_-]{1,64}"
+        PASS=$((PASS + 1))
+    else
+        echo "FAIL: L7.3 SEC-11 — invalid service names found: ${invalid_names[*]}"
+        FAIL=$((FAIL + 1))
+    fi
+
+    # Contract L7.4: Each .mmd file must be valid Mermaid (starts with graph TD or flowchart)
+    invalid_mmd=()
+    while IFS= read -r -d '' mmd_file; do
+        first_line=$(head -1 "$mmd_file" 2>/dev/null)
+        if ! echo "$first_line" | grep -qiP 'graph (TD|LR|BT|RL)|flowchart'; then
+            invalid_mmd+=("$(basename "$mmd_file")")
+        fi
+    done < <(find "$L7" -name "*.mmd" -print0 2>/dev/null)
+
+    if [[ "${#invalid_mmd[@]}" -eq 0 ]]; then
+        echo "PASS: L7.4 all .mmd files start with graph TD / flowchart"
+        PASS=$((PASS + 1))
+    else
+        echo "FAIL: L7.4 .mmd files do not start with graph TD: ${invalid_mmd[*]}"
+        FAIL=$((FAIL + 1))
+    fi
+fi
+
+# ---------------------------------------------------------------------------
+# Layer 8 Filesystem Contract Tests (v1.1.0)
+# ---------------------------------------------------------------------------
+
+echo ""
+echo "=== Layer 8 Filesystem Contract Tests ==="
+
+L8="${ATLAS}/layer8-ast-lsp-bindings"
+
+if [[ ! -d "$L8" ]]; then
+    echo "FAIL: layer8-ast-lsp-bindings/ directory does not exist"
+    FAIL=$((FAIL + 5))
+else
+    echo "PASS: layer8-ast-lsp-bindings/ directory exists"
+    PASS=$((PASS + 1))
+
+    # Contract L8.1: README.md must exist and have mode label on line 1
+    if [[ ! -f "${L8}/README.md" ]]; then
+        echo "FAIL: L8.1 layer8-ast-lsp-bindings/README.md does not exist"
+        FAIL=$((FAIL + 1))
+    else
+        first_line=$(head -1 "${L8}/README.md")
+        if echo "$first_line" | grep -qP '\*\*Mode:\*\*\s*(lsp-assisted|static-approximation)'; then
+            echo "PASS: L8.1 README.md line 1 contains valid **Mode:** label"
+            PASS=$((PASS + 1))
+        else
+            echo "FAIL: L8.1 README.md line 1 must be '**Mode:** lsp-assisted' or '**Mode:** static-approximation' — got: '$first_line'"
+            FAIL=$((FAIL + 1))
+        fi
+    fi
+
+    # Contract L8.2: symbol-references.mmd must exist
+    if [[ -f "${L8}/symbol-references.mmd" ]]; then
+        echo "PASS: L8.2 symbol-references.mmd exists"
+        PASS=$((PASS + 1))
+    else
+        echo "FAIL: L8.2 symbol-references.mmd does not exist"
+        FAIL=$((FAIL + 1))
+    fi
+
+    # Contract L8.3: dead-code.md must exist
+    if [[ -f "${L8}/dead-code.md" ]]; then
+        echo "PASS: L8.3 dead-code.md exists"
+        PASS=$((PASS + 1))
+    else
+        echo "FAIL: L8.3 dead-code.md does not exist"
+        FAIL=$((FAIL + 1))
+    fi
+
+    # Contract L8.4: mismatched-interfaces.md must exist
+    if [[ -f "${L8}/mismatched-interfaces.md" ]]; then
+        echo "PASS: L8.4 mismatched-interfaces.md exists"
+        PASS=$((PASS + 1))
+    else
+        echo "FAIL: L8.4 mismatched-interfaces.md does not exist"
+        FAIL=$((FAIL + 1))
+    fi
+
+    # Contract L8.5: dead-code.md must not contain absolute paths (SEC-16)
+    if [[ -f "${L8}/dead-code.md" ]]; then
+        if grep -qP '^/' "${L8}/dead-code.md" 2>/dev/null; then
+            echo "FAIL: L8.5 SEC-16 — absolute path found in dead-code.md"
+            FAIL=$((FAIL + 1))
+        else
+            echo "PASS: L8.5 SEC-16 — no absolute paths in dead-code.md"
+            PASS=$((PASS + 1))
+        fi
+    fi
+fi
+
+# ---------------------------------------------------------------------------
+# API-CONTRACTS.md v1.1.0 Error Code Tests
+# ---------------------------------------------------------------------------
+
+echo ""
+echo "=== API-CONTRACTS.md v1.1.0 Error Code Tests ==="
+
+SKILL_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+API_MD="${SKILL_DIR}/API-CONTRACTS.md"
+
+for code in "LAYER7_SOURCE_NOT_FOUND" "LAYER8_LSP_UNAVAILABLE" "DENSITY_THRESHOLD_EXCEEDED"; do
+    if grep -q "$code" "$API_MD" 2>/dev/null; then
+        echo "PASS: API-CONTRACTS.md contains error code: $code"
+        PASS=$((PASS + 1))
+    else
+        echo "FAIL: API-CONTRACTS.md missing error code: $code"
+        FAIL=$((FAIL + 1))
+    fi
+done
+
+# ---------------------------------------------------------------------------
 # Results
 # ---------------------------------------------------------------------------
 echo ""
@@ -431,6 +591,6 @@ echo "=================================="
 echo "Results: ${PASS} passed, ${FAIL} failed"
 echo "=================================="
 echo ""
-echo "NOTE: Failures are expected — TDD suite. Implement /code-atlas to pass."
+echo "NOTE: Atlas output tests require /code-atlas to have been run first."
 
 [[ $FAIL -eq 0 ]] && exit 0 || exit 1

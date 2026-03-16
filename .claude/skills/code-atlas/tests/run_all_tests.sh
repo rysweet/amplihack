@@ -11,14 +11,16 @@
 # Exit: 0 = all suites passed, non-zero = one or more failures
 #
 # Test Suites:
-#   1. test_staleness_triggers.sh  — Layer detection for all 6 layer patterns
-#   2. test_rebuild_script.sh      — rebuild-atlas-all.sh behaviors
-#   3. test_security_controls.sh   — SEC-01 through SEC-10 controls
-#   4. test_atlas_output_structure.sh — docs/atlas/ output directory structure
-#   5. test_layer_contracts.sh     — Per-layer content contracts
-#   6. test_bug_hunt_workflow.sh   — Two-pass bug hunt report format
-#   7. test_ci_workflow.sh         — CI YAML structure and script path checks
-#   8. test_publication_workflow.sh — SVG generation and GitHub Pages readiness
+#   1. test_staleness_triggers.sh       — Layer detection for all 8 layer patterns
+#   2. test_rebuild_script.sh           — rebuild-atlas-all.sh behaviors
+#   3. test_security_controls.sh        — SEC-01 through SEC-10 controls
+#   4. test_atlas_output_structure.sh   — docs/atlas/ output directory structure
+#   5. test_layer_contracts.sh          — Per-layer content contracts (Layers 1–8)
+#   6. test_bug_hunt_workflow.sh        — Three-pass bug hunt report format
+#   7. test_ci_workflow.sh              — CI YAML structure and script path checks
+#   8. test_publication_workflow.sh     — SVG generation and GitHub Pages readiness
+#   9. test_layer7_8.sh                 — Layer 7/8 output contracts + SEC-11/12/15/16
+#  10. test_no_silent_degradation.sh    — Density guard FORBIDDEN_PATTERNS §2 compliance
 
 # Intentionally omits -e: test failures must not abort the suite runner.
 # Individual test scripts use set -euo pipefail.
@@ -157,6 +159,20 @@ run_suite \
     "${SCRIPT_DIR}/test_publication_workflow.sh"
 
 # ---------------------------------------------------------------------------
+# Suite 9: Layer 7 and Layer 8 Contracts (v1.1.0)
+# ---------------------------------------------------------------------------
+run_suite \
+    "Layer 7 and 8 Contracts (service components + AST/LSP bindings)" \
+    "${SCRIPT_DIR}/test_layer7_8.sh"
+
+# ---------------------------------------------------------------------------
+# Suite 10: No Silent Degradation — FORBIDDEN_PATTERNS §2 Compliance (v1.1.0)
+# ---------------------------------------------------------------------------
+run_suite \
+    "No Silent Degradation (density guard + FORBIDDEN_PATTERNS §2)" \
+    "${SCRIPT_DIR}/test_no_silent_degradation.sh"
+
+# ---------------------------------------------------------------------------
 # Summary
 # ---------------------------------------------------------------------------
 echo ""
@@ -179,10 +195,12 @@ if [[ "$TOTAL_FAIL" -gt 0 ]]; then
     echo "  • test_layer_contracts.sh: docs/atlas/ doesn't exist (run /code-atlas first)"
     echo "  • test_publication_workflow.sh: SVGs not generated (run /code-atlas publish first)"
     echo "  • test_bug_hunt_workflow.sh: bug reports not generated (run /code-atlas first)"
+    echo "  • test_layer7_8.sh (output structure section): layer7/8 dirs not yet created (run /code-atlas first)"
+    echo "  • test_no_silent_degradation.sh: should pass on documentation alone (no atlas run needed)"
     echo ""
     echo "Unexpected failures need investigation."
     exit 1
 else
-    echo -e "${GREEN}All tests passed. Atlas skill is fully implemented.${RESET}"
+    echo -e "${GREEN}All 10 test suites passed. Atlas skill is fully implemented.${RESET}"
     exit 0
 fi
