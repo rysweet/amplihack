@@ -240,11 +240,6 @@ def _build_rust_command(
     if progress:
         cmd.append("--progress")
 
-    # Forward active agent binary so the Rust runner spawns the correct agent
-    agent_binary = os.environ.get("AMPLIHACK_AGENT_BINARY")
-    if agent_binary:
-        cmd.extend(["--agent-binary", agent_binary])
-
     if recipe_dirs:
         for d in recipe_dirs:
             cmd.extend(["-R", d])
@@ -379,6 +374,50 @@ def _default_package_recipe_dirs() -> list[str]:
     return []
 
 
+def _normalize_recipe_dirs(recipe_dirs: list[str] | None, *, working_dir: str) -> list[str] | None:
+    """Return absolute recipe directories rooted at ``working_dir`` when needed."""
+    if recipe_dirs is None:
+        return None
+
+    base_dir = Path(working_dir).resolve()
+    normalized: list[str] = []
+    for recipe_dir in recipe_dirs:
+        candidate = Path(recipe_dir)
+        if not candidate.is_absolute():
+            candidate = base_dir / candidate
+        normalized.append(str(candidate.resolve()))
+    return normalized
+
+
+def _resolve_recipe_target(
+    name: str,
+    *,
+    recipe_dirs: list[str] | None,
+    working_dir: str,
+) -> str:
+    """Resolve a recipe name to a concrete YAML path when Python discovery can find it."""
+    working_path = Path(working_dir).resolve()
+    candidate = Path(name)
+
+    if candidate.is_absolute():
+        return str(candidate.resolve())
+
+    if candidate.suffix in {".yaml", ".yml"} or os.sep in name or (os.altsep and os.altsep in name):
+        return str((working_path / candidate).resolve())
+
+    try:
+        from amplihack.recipes.discovery import find_recipe
+
+        search_dirs = [Path(d) for d in recipe_dirs] if recipe_dirs else None
+        resolved = find_recipe(name, search_dirs=search_dirs)
+        if resolved is not None:
+            return str(resolved.resolve())
+    except Exception as exc:
+        logger.debug("Could not resolve recipe path for %s: %s", name, exc)
+
+    return name
+
+
 def run_recipe_via_rust(
     name: str,
     user_context: dict[str, Any] | None = None,
@@ -403,13 +442,22 @@ def run_recipe_via_rust(
     # When no explicit recipe_dirs are provided, inject the package bundle
     # directory so the Rust binary can find the same recipes as Python
     # discovery.  This fixes the Python/Rust discovery mismatch (#3002).
-    effective_recipe_dirs = recipe_dirs
+    effective_recipe_dirs = _normalize_recipe_dirs(recipe_dirs, working_dir=working_dir)
     if effective_recipe_dirs is None:
-        effective_recipe_dirs = _default_package_recipe_dirs() or None
+        effective_recipe_dirs = _normalize_recipe_dirs(
+            _default_package_recipe_dirs() or None,
+            working_dir=working_dir,
+        )
+
+    resolved_name = _resolve_recipe_target(
+        name,
+        recipe_dirs=effective_recipe_dirs,
+        working_dir=working_dir,
+    )
 
     cmd = _build_rust_command(
         binary,
-        name,
+        resolved_name,
         working_dir=working_dir,
         dry_run=dry_run,
         auto_stage=auto_stage,
