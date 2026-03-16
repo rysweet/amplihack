@@ -7,8 +7,6 @@ Testing pyramid:
 
 from __future__ import annotations
 
-import pytest
-
 from amplihack.agents.goal_seeking.hive_mind.bloom import BloomFilter
 from amplihack.agents.goal_seeking.hive_mind.dht import (
     DHTRouter,
@@ -20,7 +18,6 @@ from amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph import (
     DistributedHiveGraph,
 )
 from amplihack.agents.goal_seeking.hive_mind.hive_graph import HiveFact
-
 
 # ============================================================================
 # HashRing tests
@@ -167,9 +164,7 @@ class TestDHTRouter:
         for i in range(5):
             router.add_agent(f"agent_{i}")
 
-        router.store_fact(
-            ShardFact(fact_id="f1", content="Sarah Chen birthday is March 15")
-        )
+        router.store_fact(ShardFact(fact_id="f1", content="Sarah Chen birthday is March 15"))
         results = router.query("Sarah Chen birthday")
         assert len(results) >= 1
         assert "Sarah" in results[0].content
@@ -227,6 +222,18 @@ class TestDistributedHiveGraph:
         assert post_conv >= pre_conv
         assert total_propagated > 0
 
+    def test_gossip_peer_selection_is_deterministic(self):
+        dhg = DistributedHiveGraph("test", replication_factor=1, enable_gossip=True)
+        for i in range(5):
+            dhg.register_agent(f"agent_{i}")
+
+        peers = ["agent_1", "agent_2", "agent_3", "agent_4"]
+        first = dhg._select_gossip_peers("agent_0", peers, 2)
+        second = dhg._select_gossip_peers("agent_0", list(reversed(peers)), 2)
+
+        assert first == second
+        assert len(first) == 2
+
     def test_federation(self):
         root = DistributedHiveGraph("root")
         child = DistributedHiveGraph("child")
@@ -278,7 +285,6 @@ class TestDistributedHiveGraph:
         dhg.register_agent("c")
 
         dhg.promote_fact("a", HiveFact(fact_id="", content="Fact to redistribute"))
-        pre_count = dhg.get_stats()["fact_count"]
 
         dhg.unregister_agent("a")
         post_count = dhg.get_stats()["fact_count"]
@@ -302,13 +308,11 @@ class TestDistributedHiveGraph:
 
 class TestIntegration:
     def test_federated_groups_with_gossip(self):
-        """Test the full federated topology: root + 5 groups × 4 agents."""
+        """Test the full federated topology: root + 5 groups x 4 agents."""
         root = DistributedHiveGraph("root", replication_factor=2)
         groups = []
         for g in range(5):
-            group = DistributedHiveGraph(
-                f"group-{g}", replication_factor=2, enable_gossip=True
-            )
+            group = DistributedHiveGraph(f"group-{g}", replication_factor=2, enable_gossip=True)
             group.set_parent(root)
             root.add_child(group)
             groups.append(group)

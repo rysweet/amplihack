@@ -14,8 +14,9 @@ Transport: Azure Event Hubs (CBS-free AMQP — works reliably in Container Apps)
   hive-shards-{hiveName}     — SHARD_QUERY, SHARD_RESPONSE (cross-shard DHT)
   eval-responses-{hiveName}  — EVAL_ANSWER (agent answers to eval harness)
 
-Each agent has a dedicated consumer group (cg-{agent_name}) for per-agent delivery.
-Client-side filtering by target_agent ensures messages reach the right agent.
+Agents may share a per-app consumer group (cg-app-{app_index}) on large hives.
+Delivery remains deterministic because the input source reads the agent's
+assigned partition explicitly; target_agent filtering is only a safety guard.
 
 v4 change: the OODA loop is now *event-driven* via EventHubsInputSource.
 v6 change (issue #3034): proper DHT-based sharding via DistributedHiveGraph.
@@ -152,12 +153,14 @@ def _init_dht_hive(
             )
             return None
 
+        shard_query_timeout = float(os.environ.get("AMPLIHACK_SHARD_QUERY_TIMEOUT_SECONDS", "60"))
+
         eh_transport = EventHubsShardTransport(
             connection_string=eh_connection_string,
             eventhub_name=eh_name,
             agent_id=agent_name,
             consumer_group=consumer_group,
-            timeout=30.0,
+            timeout=shard_query_timeout,
         )
         dht_graph = DistributedHiveGraph(
             hive_id=f"shard-{agent_name}",
@@ -212,7 +215,8 @@ def main() -> None:
     eh_input_hub = os.environ.get("AMPLIHACK_EH_INPUT_HUB", f"hive-events-{hive_name}")
     eh_eval_hub = os.environ.get("AMPLIHACK_EVAL_RESPONSE_HUB", f"eval-responses-{hive_name}")
 
-    # Per-app consumer group: cg-app-{N}. Falls back to cg-{agent_name} for <=20 agents.
+    # Per-app consumer groups are safe because EventHubsInputSource reads a
+    # deterministic per-agent partition within the shared group.
     app_index = os.environ.get("AMPLIHACK_APP_INDEX", "")
     consumer_group = f"cg-app-{app_index}" if app_index else f"cg-{agent_name}"
 
@@ -256,6 +260,13 @@ def main() -> None:
         if result:
             hive_store, hive_bus, shard_transport = result
 
+    if topology == "distributed" and hive_store is None:
+        logger.error(
+            "Agent %s requested distributed topology but distributed hive initialization failed",
+            agent_name,
+        )
+        sys.exit(1)
+
     # Build GoalSeekingAgent — the single agent type with a pure OODA loop.
     # The agent is topology-unaware. Distributed memory is injected below.
     from pathlib import Path
@@ -282,6 +293,7 @@ def main() -> None:
         from amplihack.agents.goal_seeking.hive_mind.distributed_memory import (
             DistributedCognitiveMemory,
         )
+
         local_memory = agent.memory.memory  # CognitiveAdapter.memory (CognitiveMemory)
         distributed_memory = DistributedCognitiveMemory(
             local_memory=local_memory,

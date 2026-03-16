@@ -6,7 +6,7 @@ uses the exact same code path for local and distributed agents.
 
 Transport: Azure Event Hubs (CBS-free AMQP — works reliably in Container Apps).
   - learn_from_content() sends LEARN_CONTENT events via EH producer,
-    partition_key=target_agent for consistent routing.
+    routed to the target agent's deterministic partition.
   - answer_question() sends INPUT events via EH producer,
     waits for EVAL_ANSWER on the eval-responses Event Hub.
   - _wait_for_agents_idle() sends FEED_COMPLETE to all agents and waits
@@ -68,6 +68,7 @@ class RemoteAgentAdapter:
 
         # Unique run_id to filter stale events from previous eval runs
         self._run_id = uuid.uuid4().hex[:12]
+        self._num_partitions: int | None = None
 
         # Listener liveness flag — fail fast if listener can't connect
         self._listener_alive = threading.Event()
@@ -90,6 +91,36 @@ class RemoteAgentAdapter:
             self._run_id,
         )
 
+    @staticmethod
+    def _agent_index(agent_id: str) -> int:
+        """Extract numeric index from ``agent-N`` names."""
+        try:
+            return int(agent_id.rsplit("-", 1)[-1])
+        except (ValueError, IndexError):
+            return abs(hash(agent_id))
+
+    def _get_num_partitions(self) -> int:
+        """Return the input hub partition count, caching the first result."""
+        if self._num_partitions is not None:
+            return self._num_partitions
+        try:
+            from azure.eventhub import EventHubConsumerClient  # type: ignore[import-unresolved]
+
+            consumer = EventHubConsumerClient.from_connection_string(
+                self._connection_string,
+                consumer_group="$Default",
+                eventhub_name=self._input_hub,
+            )
+            self._num_partitions = len(consumer.get_partition_ids())
+            consumer.close()
+        except Exception:
+            self._num_partitions = 32
+        return self._num_partitions
+
+    def _target_partition(self, agent_id: str) -> str:
+        """Deterministic partition for an agent: agent_index % num_partitions."""
+        return str(self._agent_index(agent_id) % self._get_num_partitions())
+
     def _publish_event(self, payload: dict, partition_key: str) -> None:
         """Publish a single JSON event to the input Event Hub."""
         from azure.eventhub import (  # type: ignore[import-unresolved]
@@ -98,13 +129,21 @@ class RemoteAgentAdapter:
         )
 
         payload["run_id"] = self._run_id
+        route_partition_id: str | None = None
+        if partition_key.startswith("agent-"):
+            route_partition_id = self._target_partition(partition_key)
 
         producer = EventHubProducerClient.from_connection_string(
             self._connection_string, eventhub_name=self._input_hub
         )
         try:
             with producer:
-                batch = producer.create_batch(partition_key=partition_key)
+                kwargs: dict[str, str] = {}
+                if route_partition_id is not None:
+                    kwargs["partition_id"] = route_partition_id
+                else:
+                    kwargs["partition_key"] = partition_key
+                batch = producer.create_batch(**kwargs)
                 batch.add(EventData(json.dumps(payload)))
                 producer.send_batch(batch)
         except Exception:
@@ -114,7 +153,12 @@ class RemoteAgentAdapter:
             )
             try:
                 with producer2:
-                    batch = producer2.create_batch(partition_key=partition_key)
+                    kwargs: dict[str, str] = {}
+                    if route_partition_id is not None:
+                        kwargs["partition_id"] = route_partition_id
+                    else:
+                        kwargs["partition_key"] = partition_key
+                    batch = producer2.create_batch(**kwargs)
                     batch.add(EventData(json.dumps(payload)))
                     producer2.send_batch(batch)
             except Exception:

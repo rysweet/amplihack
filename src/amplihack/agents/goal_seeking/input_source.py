@@ -12,7 +12,7 @@ Protocol:
 
 Implementations:
     ListInputSource         — wraps a list of strings (single-agent eval).
-    EventHubsInputSource    — wraps Azure Event Hubs with per-agent consumer group.
+    EventHubsInputSource    — wraps Azure Event Hubs with deterministic partition routing.
     ServiceBusInputSource   — wraps Azure Service Bus (legacy; kept for compat).
     StdinInputSource        — reads lines from stdin (interactive use).
 """
@@ -297,16 +297,18 @@ class ServiceBusInputSource:
 class EventHubsInputSource:
     """InputSource backed by an Azure Event Hubs consumer group.
 
-    Receives messages from the ``hive-events-{hiveName}`` Event Hub using a
-    dedicated per-agent consumer group (``cg-{agent_name}``).  Each message is
-    filtered by ``target_agent`` so the agent only processes its own messages.
+    Receives messages from the ``hive-events-{hiveName}`` Event Hub using either
+    a dedicated consumer group or a shared per-app consumer group. Shared groups
+    are only safe because the consumer reads a deterministic partition derived
+    from ``agent_name``; ``target_agent`` filtering remains a guardrail, not the
+    primary delivery mechanism.
 
     CBS-free AMQP transport — no Service Bus auth failures in Container Apps.
 
     Args:
         connection_string: Azure Event Hubs namespace connection string.
         agent_name: This agent's identifier; also used to derive the consumer
-            group name as ``cg-{agent_name}``.
+            group name as ``cg-{agent_name}`` when no override is provided.
         eventhub_name: Event Hub name (default: ``"hive-events"``).
         consumer_group: Consumer group override (default: ``cg-{agent_name}``).
         max_wait_time: Seconds to block waiting per receive call (default: 60).
@@ -342,6 +344,7 @@ class EventHubsInputSource:
         self._consumer_group = consumer_group or f"cg-{agent_name}"
         self._max_wait_time = max_wait_time
         self._starting_position = starting_position
+        self._num_partitions: int | None = None
         self._last_event_metadata: dict[str, str] = {}
         self._shutdown = shutdown_event or threading.Event()
         self._closed = False
@@ -368,6 +371,28 @@ class EventHubsInputSource:
             eventhub_name,
             self._consumer_group,
         )
+
+    @staticmethod
+    def _agent_index(agent_id: str) -> int:
+        """Extract numeric index from ``agent-N`` names."""
+        try:
+            return int(agent_id.rsplit("-", 1)[-1])
+        except (ValueError, IndexError):
+            return abs(hash(agent_id))
+
+    def _get_num_partitions(self) -> int:
+        """Return the input hub partition count, caching the first result."""
+        if self._num_partitions is not None:
+            return self._num_partitions
+        try:
+            self._num_partitions = len(self._consumer.get_partition_ids())
+        except Exception:
+            self._num_partitions = 32
+        return self._num_partitions
+
+    def _target_partition(self, agent_id: str) -> str:
+        """Deterministic partition for an agent: agent_index % num_partitions."""
+        return str(self._agent_index(agent_id) % self._get_num_partitions())
 
     def _receive_loop(self) -> None:
         """Background thread: receive EH events and enqueue parsed text."""
@@ -409,8 +434,16 @@ class EventHubsInputSource:
                 logger.debug("EventHubsInputSource: parse error", exc_info=True)
 
         try:
+            my_partition = self._target_partition(self._agent_name)
+            logger.info(
+                "EventHubsInputSource: agent=%s receiving partition=%s (cg=%s)",
+                self._agent_name,
+                my_partition,
+                self._consumer_group,
+            )
             self._consumer.receive(
                 on_event=_on_event,
+                partition_id=my_partition,
                 starting_position=self._starting_position,
             )
         except Exception:

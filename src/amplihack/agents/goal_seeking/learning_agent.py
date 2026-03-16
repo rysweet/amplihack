@@ -564,6 +564,8 @@ class LearningAgent:
         if not question or not question.strip():
             return "Error: Question is empty"
 
+        self._thread_local._last_simple_retrieval_exhaustive = False
+
         # ── OODA: OBSERVE ────────────────────────────────────────────────────
         # Ingest the question and recall any prior answers from Memory facade.
         self.loop.observe(question)
@@ -672,6 +674,10 @@ class LearningAgent:
         if not relevant_facts:
             return "I don't have enough information to answer that question."
 
+        exhaustive_retrieval = bool(
+            getattr(self._thread_local, "_last_simple_retrieval_exhaustive", False)
+        )
+
         # Filter out Q&A self-learning facts from retrieval -- they are stored
         # for cross-session learning but pollute within-session eval results.
         relevant_facts = [
@@ -685,12 +691,13 @@ class LearningAgent:
         # Entity-linked retrieval: when the question mentions structured IDs
         # (e.g. INC-2024-001, CVE-2024-3094), search for ALL facts containing
         # those IDs to capture related facts stored under different contexts.
-        if self._ENTITY_ID_PATTERN.search(question):
+        if self._ENTITY_ID_PATTERN.search(question) and not exhaustive_retrieval:
             relevant_facts = self._entity_linked_retrieval(question, relevant_facts)
 
         # Chain-aware multi-hop: when the question mentions 2+ named entities
         # or IDs, retrieve facts for each entity separately and merge.
-        relevant_facts = self._multi_entity_retrieval(question, relevant_facts)
+        if not exhaustive_retrieval:
+            relevant_facts = self._multi_entity_retrieval(question, relevant_facts)
 
         # For math/numerical and temporal questions on large KBs, supplement retrieval
         # with keyword-targeted search to recover exact numbers/temporal chains
@@ -700,7 +707,11 @@ class LearningAgent:
             "ratio_trend_analysis",
             "temporal_comparison",
         )
-        if intent_type in _supplement_intents and hasattr(self.memory, "search"):
+        if (
+            intent_type in _supplement_intents
+            and hasattr(self.memory, "search")
+            and not exhaustive_retrieval
+        ):
             existing_ids = {
                 f.get("experience_id", "") for f in relevant_facts if f.get("experience_id")
             }
@@ -1074,6 +1085,8 @@ class LearningAgent:
         Returns:
             List of fact dicts
         """
+        self._thread_local._last_simple_retrieval_exhaustive = False
+
         if not hasattr(self.memory, "get_all_facts"):
             return []
 
@@ -1084,7 +1097,11 @@ class LearningAgent:
                 "Using pre-snapshot facts (%d) for thread-safe retrieval",
                 len(self._pre_snapshot_facts),
             )
-            if force_verbatim or len(self._pre_snapshot_facts) <= 1000:
+            exhaustive = (
+                force_verbatim or len(self._pre_snapshot_facts) <= VERBATIM_RETRIEVAL_THRESHOLD
+            )
+            self._thread_local._last_simple_retrieval_exhaustive = exhaustive
+            if exhaustive:
                 return list(self._pre_snapshot_facts)
             return self._tiered_retrieval(question, self._pre_snapshot_facts)
 
@@ -1099,7 +1116,9 @@ class LearningAgent:
             all_facts = self.memory.get_all_facts(limit=MAX_RETRIEVAL_LIMIT, query=question)
         kb_size = len(all_facts)
 
-        if force_verbatim or kb_size <= VERBATIM_RETRIEVAL_THRESHOLD:
+        exhaustive = force_verbatim or kb_size <= VERBATIM_RETRIEVAL_THRESHOLD
+        self._thread_local._last_simple_retrieval_exhaustive = exhaustive
+        if exhaustive:
             return all_facts
 
         # Large KB: use progressive summarization tiers

@@ -16,9 +16,11 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 from amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph import (
     EventHubsShardTransport,
 )
+from amplihack.agents.goal_seeking.input_source import EventHubsInputSource
 
 # ---- agent_entrypoint ----
 _ENTRYPOINT_PATH = Path(__file__).parent.parent / "agent_entrypoint.py"
+_REMOTE_ADAPTER_PATH = Path(__file__).parent.parent / "remote_agent_adapter.py"
 
 
 def _load_entrypoint():
@@ -27,6 +29,18 @@ def _load_entrypoint():
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
+
+
+def _load_remote_agent_adapter():
+    spec = importlib.util.spec_from_file_location("remote_agent_adapter", _REMOTE_ADAPTER_PATH)
+    assert spec is not None and spec.loader is not None
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+_REMOTE_ADAPTER = _load_remote_agent_adapter()
+RemoteAgentAdapter = _REMOTE_ADAPTER.RemoteAgentAdapter
 
 
 # ===========================================================================
@@ -122,6 +136,40 @@ class TestGetNumPartitions:
         assert t._num_partitions == 32
         # Second call returns cached
         assert t._get_num_partitions() == 32
+
+
+class TestInputSourcePartitionRouting:
+    """EventHubsInputSource must read the agent's deterministic partition."""
+
+    @patch.object(EventHubsInputSource, "__init__", lambda self, *args, **kwargs: None)
+    def _make_source(self, agent_name="agent-5", num_partitions=32):
+        src = EventHubsInputSource()  # type: ignore[call-arg]
+        src._agent_name = agent_name
+        src._consumer_group = "cg-app-1"
+        src._eventhub_name = "hub"
+        src._num_partitions = num_partitions
+        src._starting_position = "@latest"
+        src._consumer = MagicMock()
+        src._consumer.get_partition_ids.return_value = [str(i) for i in range(num_partitions)]
+        src._shutdown = MagicMock()
+        src._shutdown.is_set.return_value = False
+        src._closed = False
+        src._queue = MagicMock()
+        return src
+
+    def test_target_partition_wraps(self):
+        src = self._make_source(agent_name="agent-33", num_partitions=32)
+        assert src._target_partition("agent-33") == "1"
+
+    def test_receive_uses_explicit_partition_id(self):
+        src = self._make_source(agent_name="agent-5")
+        src._consumer.receive.side_effect = lambda **_: None
+
+        src._receive_loop()
+
+        kwargs = src._consumer.receive.call_args.kwargs
+        assert kwargs["partition_id"] == "5"
+        assert kwargs["starting_position"] == "@latest"
 
 
 class TestPublishPartitionRouting:
@@ -221,6 +269,61 @@ class TestPublishPartitionRouting:
                 partition_key="agent-1",
             )
             assert transport._producer is None
+
+
+class TestRemoteAdapterPublishPartitionRouting:
+    """Verify RemoteAgentAdapter uses explicit partition routing for targeted input."""
+
+    @patch.object(RemoteAgentAdapter, "__init__", lambda self, **kw: None)
+    def _make_adapter(self):
+        adapter = RemoteAgentAdapter()  # type: ignore[call-arg]
+        adapter._num_partitions = 32
+        adapter._connection_string = "fake"
+        adapter._input_hub = "hive-events-test"
+        adapter._run_id = "run123"
+        return adapter
+
+    def test_publish_uses_partition_id_for_agent_name(self):
+        adapter = self._make_adapter()
+
+        mock_producer = MagicMock()
+        mock_producer.__enter__.return_value = mock_producer
+        mock_batch = MagicMock()
+        mock_producer.create_batch.return_value = mock_batch
+
+        with (
+            patch("azure.eventhub.EventHubProducerClient") as MockProducer,
+            patch("azure.eventhub.EventData") as MockEventData,
+        ):
+            MockProducer.from_connection_string.return_value = mock_producer
+            MockEventData.side_effect = lambda data: data
+
+            adapter._publish_event({"event_type": "INPUT"}, partition_key="agent-5")
+
+            create_kwargs = mock_producer.create_batch.call_args.kwargs
+            assert create_kwargs["partition_id"] == "5"
+            assert "partition_key" not in create_kwargs
+
+    def test_publish_uses_partition_key_for_non_agent_key(self):
+        adapter = self._make_adapter()
+
+        mock_producer = MagicMock()
+        mock_producer.__enter__.return_value = mock_producer
+        mock_batch = MagicMock()
+        mock_producer.create_batch.return_value = mock_batch
+
+        with (
+            patch("azure.eventhub.EventHubProducerClient") as MockProducer,
+            patch("azure.eventhub.EventData") as MockEventData,
+        ):
+            MockProducer.from_connection_string.return_value = mock_producer
+            MockEventData.side_effect = lambda data: data
+
+            adapter._publish_event({"event_type": "INPUT"}, partition_key="broadcast-key")
+
+            create_kwargs = mock_producer.create_batch.call_args.kwargs
+            assert create_kwargs["partition_key"] == "broadcast-key"
+            assert "partition_id" not in create_kwargs
 
 
 # ===========================================================================

@@ -106,8 +106,9 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
 //
 // Scaling notes:
 //   - EH Standard max: 32 partitions per hub, 20 consumer groups per hub
-//   - For >20 agents: use per-app consumer groups (cg-app-{N}) with client-side
-//     target_agent filtering. Agents within the same app share one consumer group.
+//   - For >20 agents: use per-app consumer groups (cg-app-{N}) with explicit
+//     partition routing/reads per target agent. target_agent filtering remains a
+//     safety check only; it is not sufficient on its own.
 //   - Auto-inflate enabled for large deployments (>20 agents).
 var ehPartitionCount = min(agentCount + 4, 32)
 var ehCapacity = agentCount <= 20 ? 1 : (agentCount <= 50 ? 2 : 4)
@@ -127,7 +128,7 @@ resource ehNamespace 'Microsoft.EventHub/namespaces@2023-01-01-preview' = {
 }
 
 // Hub 1: hive-events — LEARN_CONTENT, INPUT, FEED_COMPLETE, AGENT_READY
-// Per-app consumer groups with client-side target_agent filtering
+// Per-app consumer groups with explicit per-agent partition routing
 resource ehEventsHubResource 'Microsoft.EventHub/namespaces/eventhubs@2023-01-01-preview' = {
   name: ehEventsHub
   parent: ehNamespace
