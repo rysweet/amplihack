@@ -6,7 +6,7 @@ Thank you for your interest in contributing to amplihack! This guide will help y
 
 ### Prerequisites
 
-- **Python 3.12+**
+- **Python 3.11+**
 - **Node.js 18+**
 - **[uv](https://docs.astral.sh/uv/)** — fast Python package manager
 - **git**
