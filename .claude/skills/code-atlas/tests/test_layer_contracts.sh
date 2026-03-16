@@ -166,8 +166,8 @@ services:
 EOF
 
     cat > "$dir/.env.example" << 'EOF'
-DATABASE_URL=postgres://user:password@localhost/mydb
-JWT_SECRET=your-jwt-secret-here
+DATABASE_URL=postgres://user:password@localhost/mydb  # pragma: allowlist secret
+JWT_SECRET=your-jwt-secret-here  # pragma: allowlist secret
 REDIS_URL=redis://localhost:6379
 PORT=8080
 EOF

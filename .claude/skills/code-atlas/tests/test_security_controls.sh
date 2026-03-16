@@ -115,9 +115,9 @@ else
 
     # Create a fake .env with a real secret
     cat > "$tmpdir/.env" << 'EOF'
-DATABASE_URL=postgres://user:MYSECRETPASSWORD@localhost/db
-JWT_SECRET=supersecretjwtkey123
-REDIS_URL=redis://:REDISPASS@localhost:6379
+DATABASE_URL=postgres://user:MYSECRETPASSWORD@localhost/db  # pragma: allowlist secret
+JWT_SECRET=supersecretjwtkey123  # pragma: allowlist secret
+REDIS_URL=redis://:REDISPASS@localhost:6379  # pragma: allowlist secret
 EOF
 
     # Simulate what atlas layer6 should produce: keys ONLY
@@ -165,8 +165,8 @@ mkdir -p "$tmpdir/docs/atlas/layer6-inventory"
 # Intentionally bad output with a leaked secret (env-var assignment format triggers SEC-01)
 cat > "$tmpdir/docs/atlas/layer6-inventory/env-vars.md" << 'EOF'
 # Leaked secrets example (bad atlas output)
-JWT_SECRET=supersecretjwtkey123
-DATABASE_URL=postgres://user:MYSECRETPASSWORD@localhost/db
+JWT_SECRET=supersecretjwtkey123  # pragma: allowlist secret
+DATABASE_URL=postgres://user:MYSECRETPASSWORD@localhost/db  # pragma: allowlist secret
 EOF
 
 if [[ -f "$VALIDATE_SCRIPT" ]]; then
@@ -338,7 +338,7 @@ if [[ -f "$VALIDATE_SCRIPT" ]]; then
     # TEST-SEC-09-C: Validator rejects bug report with raw credentials
     cat > "$tmpdir/docs/atlas/bug-reports/bad-report.md" << 'EOF'
 # Bug
-Code quote: DATABASE_URL=postgres://user:MYSECRETPASSWORD@localhost/db
+Code quote: DATABASE_URL=postgres://user:MYSECRETPASSWORD@localhost/db  # pragma: allowlist secret
 EOF
     output=$(bash "$VALIDATE_SCRIPT" --atlas-dir "$tmpdir/docs/atlas" --strict 2>&1) && exit_val=0 || exit_val=$?
     assert_exit_code "SEC-09-C: validator catches credential in bug report (exit 1)" 1 "$exit_val" "$output"
