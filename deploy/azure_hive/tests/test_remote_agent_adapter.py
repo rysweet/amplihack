@@ -60,8 +60,13 @@ def _make_adapter(mod, agent_count=5, answer_timeout=0):
         adapter._idle_wait_done = threading.Event()
         adapter._counter_lock = threading.Lock()
         adapter._answer_lock = threading.Lock()
+        adapter._producer_lock = threading.Lock()
+        adapter._extractor_lock = threading.Lock()
         adapter._pending_answers = {}
         adapter._answer_events = {}
+        adapter._producer = None
+        adapter._fact_batch_extractor = None
+        adapter._fact_batch_extractor_dir = None
         adapter._online_agents = set()
         adapter._online_lock = threading.Lock()
         adapter._all_agents_online = threading.Event()
@@ -104,8 +109,6 @@ class TestPublishEvent:
         mock_producer = MagicMock()
         mock_batch = MagicMock()
         mock_producer.create_batch.return_value = mock_batch
-        mock_producer.__enter__ = MagicMock(return_value=mock_producer)
-        mock_producer.__exit__ = MagicMock(return_value=False)
 
         with (
             patch(
@@ -126,19 +129,43 @@ class TestPublishEvent:
             assert payload["run_id"] == "test_run_abc"
             mock_producer.send_batch.assert_called_once()
 
+    def test_publish_reuses_cached_producer(self):
+        mod = _load_module()
+        adapter = _make_adapter(mod)
+
+        mock_producer = MagicMock()
+        mock_batch = MagicMock()
+        mock_producer.create_batch.return_value = mock_batch
+
+        with (
+            patch(
+                "azure.eventhub.EventHubProducerClient",
+                create=True,
+            ) as MockProducer,
+            patch(
+                "azure.eventhub.EventData",
+                create=True,
+            ) as MockEventData,
+        ):
+            MockProducer.from_connection_string.return_value = mock_producer
+            MockEventData.side_effect = lambda data: data
+
+            adapter._publish_event({"event_type": "LEARN_CONTENT", "event_id": "abc"}, "agent-0")
+            adapter._publish_event({"event_type": "LEARN_CONTENT", "event_id": "def"}, "agent-1")
+
+        assert MockProducer.from_connection_string.call_count == 1
+        assert mock_producer.send_batch.call_count == 2
+
     def test_publish_retries_on_failure(self):
         mod = _load_module()
         adapter = _make_adapter(mod)
 
         # First producer fails, second succeeds
         mock_producer_fail = MagicMock()
-        mock_producer_fail.__enter__ = MagicMock(return_value=mock_producer_fail)
-        mock_producer_fail.__exit__ = MagicMock(return_value=False)
         mock_producer_fail.send_batch.side_effect = ConnectionError("EH down")
+        mock_producer_fail.create_batch.return_value = MagicMock()
 
         mock_producer_ok = MagicMock()
-        mock_producer_ok.__enter__ = MagicMock(return_value=mock_producer_ok)
-        mock_producer_ok.__exit__ = MagicMock(return_value=False)
         mock_batch = MagicMock()
         mock_producer_ok.create_batch.return_value = mock_batch
 
@@ -170,9 +197,8 @@ class TestPublishEvent:
 
         def make_failing_producer():
             p = MagicMock()
-            p.__enter__ = MagicMock(return_value=p)
-            p.__exit__ = MagicMock(return_value=False)
             p.send_batch.side_effect = ConnectionError("EH down")
+            p.create_batch.return_value = MagicMock()
             return p
 
         with (
@@ -242,19 +268,49 @@ class TestLearnFromContent:
         adapter = _make_adapter(mod, agent_count=3)
         adapter._startup_wait_done.set()
         adapter._replicate_learning_to_all_agents = True
+        adapter._prepare_fact_batch = MagicMock(
+            return_value={
+                "facts_extracted": 2,
+                "facts": [
+                    {
+                        "context": "Campaign",
+                        "fact": "CAMP-1 is active",
+                        "confidence": 0.9,
+                        "tags": [],
+                    },
+                    {
+                        "context": "Campaign",
+                        "fact": "CAMP-1 targets finance",
+                        "confidence": 0.8,
+                        "tags": [],
+                    },
+                ],
+                "summary_fact": None,
+                "content_summary": "Campaign content",
+                "perception": "Campaign content",
+                "episode_content": "Campaign content",
+                "source_label": "Campaign content",
+            }
+        )
 
-        published_keys = []
+        published_events = []
 
         def capture_publish(payload, partition_key):
-            published_keys.append(partition_key)
+            published_events.append((partition_key, payload))
 
         adapter._publish_event = capture_publish
 
         result = adapter.learn_from_content("content 0")
 
-        assert published_keys == ["agent-0", "agent-1", "agent-2"]
+        assert [partition_key for partition_key, _ in published_events] == [
+            "agent-0",
+            "agent-1",
+            "agent-2",
+        ]
+        assert all(payload["event_type"] == "STORE_FACT_BATCH" for _, payload in published_events)
+        assert all("fact_batch" in payload["payload"] for _, payload in published_events)
         assert adapter._learn_turn_counts == [1, 1, 1]
-        assert result["facts_stored"] == 1
+        assert result["facts_stored"] == 2
         assert result["replicated_to"] == 3
 
     def test_learn_increments_counter(self):

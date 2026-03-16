@@ -301,3 +301,42 @@ class TestGoalSeekingAgentProcessStore:
             "facts": [],
         }
         assert result == "Stored 2 facts from input."
+
+
+class TestGoalSeekingAgentFactBatch:
+    """Unit tests for GoalSeekingAgent fact-batch helpers."""
+
+    @pytest.fixture
+    def agent(self):
+        with patch(
+            "amplihack.agents.goal_seeking.goal_seeking_agent.GoalSeekingAgent.__init__",
+            lambda self, **kwargs: None,
+        ):
+            from amplihack.agents.goal_seeking.goal_seeking_agent import GoalSeekingAgent
+
+            ag = GoalSeekingAgent.__new__(GoalSeekingAgent)
+            ag._agent_name = "test_agent"
+            ag._learning_agent = MagicMock()
+            return ag
+
+    def test_prepare_fact_batch_delegates_to_learning_agent(self, agent):
+        expected = {"facts": [{"context": "Campaign", "fact": "CAMP-1 is active"}]}
+        agent._learning_agent.prepare_fact_batch.return_value = expected
+
+        result = agent.prepare_fact_batch("campaign content")
+
+        agent._learning_agent.prepare_fact_batch.assert_called_once_with("campaign content")
+        assert result == expected
+
+    def test_store_fact_batch_delegates_without_recording_learning(self, agent):
+        fact_batch = {"facts": [{"context": "Campaign", "fact": "CAMP-1 is active"}]}
+        expected = {"facts_stored": 1}
+        agent._learning_agent.store_fact_batch.return_value = expected
+
+        result = agent.store_fact_batch(fact_batch)
+
+        agent._learning_agent.store_fact_batch.assert_called_once_with(
+            fact_batch,
+            record_learning=False,
+        )
+        assert result == expected

@@ -326,6 +326,14 @@ class GoalSeekingAgent:
         self._decision = "store"
         return self.act()
 
+    def prepare_fact_batch(self, input_data: str) -> dict[str, Any]:
+        """Prepare a reusable fact batch from raw content."""
+        return self._learning_agent.prepare_fact_batch(input_data)
+
+    def store_fact_batch(self, batch: dict[str, Any]) -> dict[str, Any]:
+        """Store a prepared fact batch without re-running extraction."""
+        return self._learning_agent.store_fact_batch(batch, record_learning=False)
+
     # ------------------------------------------------------------------
     # Event-driven OODA loop
     # ------------------------------------------------------------------

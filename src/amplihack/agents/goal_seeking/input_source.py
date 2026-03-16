@@ -125,6 +125,9 @@ def _extract_text_from_bus_event(event_type: str | None, payload: dict) -> str |
     if event_type == "ONLINE_CHECK":
         return "__ONLINE_CHECK__"
 
+    if event_type == "STORE_FACT_BATCH":
+        return "__STORE_FACT_BATCH__"
+
     if event_type == "LEARN_CONTENT":
         return payload.get("content") or None
 
@@ -185,7 +188,7 @@ class ServiceBusInputSource:
         self._agent_name = agent_name
         self._topic_name = topic_name
         self._max_wait_time = max_wait_time
-        self._last_event_metadata: dict[str, str] = {}
+        self._last_event_metadata: dict[str, object] = {}
         self._shutdown = shutdown_event or threading.Event()
         self._closed = False
 
@@ -421,6 +424,7 @@ class EventHubsInputSource:
                         "event_type": event_type or "",
                         "question_id": payload.get("question_id", ""),
                         "run_id": raw.get("run_id", ""),
+                        "payload": payload,
                     }
                     self._queue.put((text, metadata))
                     logger.debug(
@@ -497,7 +501,7 @@ class EventHubsInputSource:
         return None
 
     @property
-    def last_event_metadata(self) -> dict[str, str]:
+    def last_event_metadata(self) -> dict[str, object]:
         """Metadata from the most recently received message."""
         return self._last_event_metadata
 

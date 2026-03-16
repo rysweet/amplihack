@@ -165,6 +165,72 @@ class TestAgentEntrypoint:
         agent.process_store.assert_called_once_with("What is Sarah Chen's birthday?")
         agent.process.assert_not_called()
 
+    def test_handle_store_fact_batch_uses_direct_storage_path(self):
+        mod = _load_entrypoint()
+        mock_mem = MagicMock()
+        mock_agent = MagicMock()
+        fact_batch = {
+            "facts": [
+                {"context": "Campaign", "fact": "CAMP-1 is active", "confidence": 0.9, "tags": []}
+            ],
+            "summary_fact": None,
+        }
+
+        learn_event = {
+            "event_type": "STORE_FACT_BATCH",
+            "payload": {"fact_batch": fact_batch},
+        }
+        mod._handle_event("agent", learn_event, mock_mem, mock_agent)
+
+        mock_agent.store_fact_batch.assert_called_once_with(fact_batch)
+        mock_agent.process_store.assert_not_called()
+        mock_agent.process.assert_not_called()
+
+    def test_run_event_driven_loop_uses_direct_storage_for_fact_batch(self):
+        mod = _load_entrypoint()
+        agent = MagicMock()
+        answer_publisher = MagicMock()
+        memory = MagicMock()
+        shutdown_event = threading.Event()
+        fact_batch = {
+            "facts": [
+                {"context": "Campaign", "fact": "CAMP-1 is active", "confidence": 0.9, "tags": []}
+            ],
+            "summary_fact": None,
+        }
+
+        class FakeInputSource:
+            def __init__(self):
+                self._source = self
+                self.last_event_metadata = {}
+                self._items = [
+                    (
+                        "__STORE_FACT_BATCH__",
+                        {"event_type": "STORE_FACT_BATCH", "payload": {"fact_batch": fact_batch}},
+                    ),
+                    (None, {}),
+                ]
+
+            def next(self):
+                text, meta = self._items.pop(0)
+                self.last_event_metadata = meta
+                if text is None:
+                    shutdown_event.set()
+                return text
+
+        mod._run_event_driven_loop(
+            "agent-0",
+            agent,
+            FakeInputSource(),
+            answer_publisher,
+            memory,
+            shutdown_event,
+        )
+
+        agent.store_fact_batch.assert_called_once_with(fact_batch)
+        agent.process_store.assert_not_called()
+        agent.process.assert_not_called()
+
     def test_run_event_driven_loop_publishes_agent_online_for_online_check(self):
         mod = _load_entrypoint()
         agent = MagicMock()

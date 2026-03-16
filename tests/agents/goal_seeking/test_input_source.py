@@ -11,10 +11,6 @@ Tests cover:
 from __future__ import annotations
 
 import io
-import json
-import threading
-import time
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -24,7 +20,6 @@ from amplihack.agents.goal_seeking.input_source import (
     StdinInputSource,
     _extract_text_from_bus_event,
 )
-
 
 # ---------------------------------------------------------------------------
 # ListInputSource tests
@@ -150,6 +145,10 @@ class TestExtractTextFromBusEvent:
     def test_feed_complete_returns_sentinel(self):
         result = _extract_text_from_bus_event("FEED_COMPLETE", {"total_turns": 5000})
         assert result == "__FEED_COMPLETE__:5000"
+
+    def test_store_fact_batch_returns_sentinel(self):
+        result = _extract_text_from_bus_event("STORE_FACT_BATCH", {"fact_batch": {"facts": []}})
+        assert result == "__STORE_FACT_BATCH__"
 
     def test_generic_event_falls_back_to_content_field(self):
         result = _extract_text_from_bus_event("UNKNOWN_TYPE", {"content": "generic"})

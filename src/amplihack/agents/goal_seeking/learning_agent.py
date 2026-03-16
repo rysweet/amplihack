@@ -298,116 +298,62 @@ class LearningAgent:
             ... )
             >>> print(result['facts_extracted'])  # 1
         """
-        if not content or not content.strip():
-            return {"facts_extracted": 0, "facts_stored": 0, "content_summary": "Empty content"}
+        batch = self.prepare_fact_batch(content)
+        return self.store_fact_batch(batch, record_learning=True)
 
-        # Input size limit to prevent memory exhaustion (security fix)
+    @staticmethod
+    def _truncate_learning_content(content: str) -> str:
+        """Trim oversized learning content to the safe maximum length."""
         max_content_length = 50_000
         if len(content) > max_content_length:
             logger.warning(
                 "Content truncated from %d to %d chars", len(content), max_content_length
             )
-            content = content[:max_content_length]
+            return content[:max_content_length]
+        return content
 
-        # Detect temporal metadata from content before extraction
-        temporal_meta = self._detect_temporal_metadata(content)
-
-        # Extract source label from content title if present
-        source_label = ""
+    @staticmethod
+    def _extract_source_label(content: str) -> str:
+        """Derive a stable source label from content title or leading text."""
         if content.startswith("Title: "):
             title_end = content.find("\n")
             if title_end > 0:
-                source_label = content[7:title_end].strip()
-        if not source_label:
-            source_label = content[:60].strip()
+                return content[7:title_end].strip()
+        return content[:60].strip()
 
-        # OBSERVE: store content in OODA loop, check prior knowledge
-        self.loop.observe(content[:500])
+    def _build_store_fact_kwargs(
+        self,
+        fact: dict[str, Any],
+        temporal_meta: dict[str, Any],
+        source_label: str,
+    ) -> dict[str, Any]:
+        """Build the final store_fact kwargs for one extracted fact."""
+        tags = fact.get("tags", ["learned"])
+        if temporal_meta.get("source_date"):
+            tags = list(tags) + [f"date:{temporal_meta['source_date']}"]
+        if temporal_meta.get("temporal_order"):
+            tags = list(tags) + [f"time:{temporal_meta['temporal_order']}"]
 
-        # In hierarchical mode, store episode first for provenance tracking
-        episode_id = ""
-        if self.use_hierarchical and hasattr(self.memory, "store_episode"):
-            try:
-                episode_id = self.memory.store_episode(
-                    content=content[:2000],
-                    source_label=source_label,
-                )
-            except Exception as e:
-                logger.warning("Failed to store episode for provenance: %s", e)
-
-        # ACT: Use LLM to extract facts (pass temporal metadata for conditional hints)
-        facts = self._extract_facts_with_llm(content, temporal_meta)
-
-        # Store each fact
-        stored_count = 0
-        for fact in facts:
-            try:
-                tags = fact.get("tags", ["learned"])
-                # Add temporal tags if temporal metadata detected
-                if temporal_meta.get("source_date"):
-                    tags = list(tags) + [f"date:{temporal_meta['source_date']}"]
-                if temporal_meta.get("temporal_order"):
-                    tags = list(tags) + [f"time:{temporal_meta['temporal_order']}"]
-
-                store_kwargs: dict[str, Any] = {
-                    "context": fact["context"],
-                    "fact": fact["fact"],
-                    "confidence": fact.get("confidence", 0.8),
-                    "tags": tags,
-                }
-                # Pass source_id for provenance when in hierarchical mode
-                if self.use_hierarchical and episode_id:
-                    store_kwargs["source_id"] = episode_id
-
-                # Attach temporal metadata for chronological sorting
-                # and source label for provenance tracking
-                if self.use_hierarchical:
-                    fact_metadata = {}
-                    if temporal_meta:
-                        fact_metadata.update(temporal_meta)
-                    if source_label:
-                        fact_metadata["source_label"] = source_label
-                    if fact_metadata:
-                        store_kwargs["temporal_metadata"] = fact_metadata
-
-                self.memory.store_fact(**store_kwargs)
-                stored_count += 1
-            except Exception as e:
-                logger.warning("Failed to store fact: %s", e)
-                continue
-
-        # Generate and store a summary concept map for knowledge organization
-        if facts and stored_count > 0:
-            self._store_summary_concept_map(content, facts, episode_id)
-
-        # LEARN: record the learning episode via the OODA loop
-        self.loop.learn(
-            perception=content[:500],
-            reasoning="Extracted facts from content",
-            action={"action": "learn", "params": {"stored": stored_count}},
-            outcome=f"Extracted {len(facts)} facts, stored {stored_count}",
-        )
-
-        return {
-            "facts_extracted": len(facts),
-            "facts_stored": stored_count,
-            "content_summary": content[:200],
+        store_kwargs: dict[str, Any] = {
+            "context": fact["context"],
+            "fact": fact["fact"],
+            "confidence": fact.get("confidence", 0.8),
+            "tags": tags,
         }
 
-    def _store_summary_concept_map(
-        self, content: str, facts: list[dict], episode_id: str = ""
-    ) -> None:
-        """Generate and store a summary concept map for knowledge organization.
+        if self.use_hierarchical:
+            fact_metadata = {}
+            if temporal_meta:
+                fact_metadata.update(temporal_meta)
+            if source_label:
+                fact_metadata["source_label"] = source_label
+            if fact_metadata:
+                store_kwargs["temporal_metadata"] = fact_metadata
 
-        Uses one LLM call to create a brief organizational overview of what
-        was learned from the content. Stored as a SUMMARY node to help the
-        agent explain the overall structure of its knowledge.
+        return store_kwargs
 
-        Args:
-            content: Original content that was learned
-            facts: List of extracted fact dicts
-            episode_id: Optional source episode ID
-        """
+    def _build_summary_store_kwargs(self, facts: list[dict[str, Any]]) -> dict[str, Any] | None:
+        """Generate SUMMARY-node store kwargs for a learned fact batch."""
         fact_list = "\n".join(
             f"- [{f.get('context', 'General')}] {f.get('fact', '')}" for f in facts[:15]
         )
@@ -427,22 +373,150 @@ class LearningAgent:
             )
 
             summary = response.choices[0].message.content.strip()
-
-            # Store as a special SUMMARY node
-            store_kwargs: dict[str, Any] = {
+            return {
                 "context": "SUMMARY",
                 "fact": summary,
                 "confidence": 0.95,
                 "tags": ["summary", "concept_map"],
             }
-            if self.use_hierarchical and episode_id:
-                store_kwargs["source_id"] = episode_id
-
-            self.memory.store_fact(**store_kwargs)
-            logger.debug("Stored summary concept map: %s", summary[:100])
-
         except Exception as e:
             logger.debug("Failed to generate summary concept map: %s", e)
+            return None
+
+    def prepare_fact_batch(self, content: str) -> dict[str, Any]:
+        """Extract a content batch once so peers can store facts directly.
+
+        The returned payload contains only direct-storage kwargs plus enough
+        provenance metadata for each receiving agent to store its own episode.
+        """
+        if not content or not content.strip():
+            return {
+                "facts_extracted": 0,
+                "facts": [],
+                "summary_fact": None,
+                "content_summary": "Empty content",
+                "perception": "",
+                "episode_content": "",
+                "source_label": "",
+            }
+
+        content = self._truncate_learning_content(content)
+        temporal_meta = self._detect_temporal_metadata(content)
+        source_label = self._extract_source_label(content)
+        facts = self._extract_facts_with_llm(content, temporal_meta)
+
+        prepared_facts: list[dict[str, Any]] = []
+        for fact in facts:
+            try:
+                prepared_facts.append(
+                    self._build_store_fact_kwargs(fact, temporal_meta, source_label)
+                )
+            except Exception as e:
+                logger.warning("Failed to prepare fact for storage: %s", e)
+                continue
+
+        summary_store_kwargs = None
+        if facts and prepared_facts:
+            summary_store_kwargs = self._build_summary_store_kwargs(facts)
+
+        return {
+            "facts_extracted": len(facts),
+            "facts": prepared_facts,
+            "summary_fact": summary_store_kwargs,
+            "content_summary": content[:200],
+            "perception": content[:500],
+            "episode_content": content[:2000]
+            if self.use_hierarchical and hasattr(self.memory, "store_episode")
+            else "",
+            "source_label": source_label,
+        }
+
+    def store_fact_batch(
+        self, batch: dict[str, Any], record_learning: bool = False
+    ) -> dict[str, Any]:
+        """Store a prepared fact batch without re-running extraction LLM calls."""
+        prepared_facts = [dict(fact) for fact in batch.get("facts", []) if isinstance(fact, dict)]
+        summary_fact = batch.get("summary_fact")
+        summary_store_kwargs = dict(summary_fact) if isinstance(summary_fact, dict) else None
+
+        if record_learning:
+            perception = str(batch.get("perception", ""))[:500]
+            if perception:
+                self.loop.observe(perception)
+
+        episode_id = ""
+        if self.use_hierarchical and hasattr(self.memory, "store_episode"):
+            episode_content = str(batch.get("episode_content", ""))
+            if episode_content:
+                try:
+                    episode_id = self.memory.store_episode(
+                        content=episode_content,
+                        source_label=str(batch.get("source_label", "")),
+                    )
+                except Exception as e:
+                    logger.warning("Failed to store episode for provenance: %s", e)
+
+        stored_count = 0
+        for store_kwargs in prepared_facts:
+            try:
+                if self.use_hierarchical and episode_id and "source_id" not in store_kwargs:
+                    store_kwargs["source_id"] = episode_id
+                self.memory.store_fact(**store_kwargs)
+                stored_count += 1
+            except Exception as e:
+                logger.warning("Failed to store fact: %s", e)
+                continue
+
+        if summary_store_kwargs:
+            try:
+                if self.use_hierarchical and episode_id and "source_id" not in summary_store_kwargs:
+                    summary_store_kwargs["source_id"] = episode_id
+                self.memory.store_fact(**summary_store_kwargs)
+            except Exception as e:
+                logger.debug("Failed to store summary concept map: %s", e)
+
+        if record_learning:
+            self.loop.learn(
+                perception=str(batch.get("perception", ""))[:500],
+                reasoning="Extracted facts from content",
+                action={"action": "learn", "params": {"stored": stored_count}},
+                outcome=(
+                    f"Extracted {int(batch.get('facts_extracted', len(prepared_facts)))} "
+                    f"facts, stored {stored_count}"
+                ),
+            )
+
+        return {
+            "facts_extracted": int(batch.get("facts_extracted", len(prepared_facts))),
+            "facts_stored": stored_count,
+            "content_summary": str(batch.get("content_summary", "")),
+        }
+
+    def _store_summary_concept_map(
+        self, content: str, facts: list[dict], episode_id: str = ""
+    ) -> None:
+        """Generate and store a summary concept map for knowledge organization.
+
+        Uses one LLM call to create a brief organizational overview of what
+        was learned from the content. Stored as a SUMMARY node to help the
+        agent explain the overall structure of its knowledge.
+
+        Args:
+            content: Original content that was learned
+            facts: List of extracted fact dicts
+            episode_id: Optional source episode ID
+        """
+        del content  # Summary depends only on extracted facts, not raw text.
+        store_kwargs = self._build_summary_store_kwargs(facts)
+        if store_kwargs is None:
+            return
+        try:
+            if self.use_hierarchical and episode_id:
+                store_kwargs["source_id"] = episode_id
+            self.memory.store_fact(**store_kwargs)
+            logger.debug("Stored summary concept map: %s", store_kwargs["fact"][:100])
+        except Exception as e:
+            logger.debug("Failed to store summary concept map: %s", e)
 
     def _detect_temporal_metadata(self, content: str) -> dict[str, Any]:
         """Detect dates and temporal markers in content using LLM.

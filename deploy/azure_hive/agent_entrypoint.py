@@ -557,6 +557,22 @@ def _run_event_driven_loop(
             answer_publisher.publish_agent_online(run_id=run_id)
             continue
 
+        if text == "__STORE_FACT_BATCH__":
+            fact_batch = {}
+            if hasattr(input_source, "_source"):
+                meta = getattr(input_source._source, "last_event_metadata", {})
+                payload = meta.get("payload", {})
+                if isinstance(payload, dict):
+                    fact_batch = payload.get("fact_batch", {}) or {}
+            fact_count = len(fact_batch.get("facts", [])) if isinstance(fact_batch, dict) else 0
+            logger.info(
+                "Agent %s storing pre-extracted fact batch (%d facts)",
+                agent_name,
+                fact_count,
+            )
+            agent.store_fact_batch(fact_batch if isinstance(fact_batch, dict) else {})
+            continue
+
         logger.info("Agent %s processing input via OODA (len=%d)", agent_name, len(text))
         try:
             # Set trace context for correlation tracing
@@ -641,6 +657,17 @@ def _handle_event(agent_name: str, event: Any, memory: Any, agent: Any) -> None:
         elif hasattr(memory, "send_event"):
             memory.send_event(json.dumps(ready_event))
         logger.info("Agent %s published AGENT_READY", agent_name)
+        return
+
+    if event_type == "STORE_FACT_BATCH":
+        fact_batch = payload.get("fact_batch", {}) if isinstance(payload, dict) else {}
+        fact_count = len(fact_batch.get("facts", [])) if isinstance(fact_batch, dict) else 0
+        logger.info(
+            "Agent %s storing pre-extracted fact batch (%d facts)",
+            agent_name,
+            fact_count,
+        )
+        agent.store_fact_batch(fact_batch if isinstance(fact_batch, dict) else {})
         return
 
     if event_type in ("AGENT_READY",):

@@ -23,9 +23,12 @@ from __future__ import annotations
 
 import json
 import logging
+import shutil
+import tempfile
 import threading
 import time
 import uuid
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -64,10 +67,15 @@ class RemoteAgentAdapter:
         # Thread safety for counters and answer dict
         self._counter_lock = threading.Lock()
         self._answer_lock = threading.Lock()
+        self._producer_lock = threading.Lock()
+        self._extractor_lock = threading.Lock()
 
         # Pending answers: event_id -> answer text
         self._pending_answers: dict[str, str] = {}
         self._answer_events: dict[str, threading.Event] = {}
+        self._producer: Any | None = None
+        self._fact_batch_extractor: Any | None = None
+        self._fact_batch_extractor_dir: Path | None = None
 
         # AGENT_READY tracking for _wait_for_agents_idle
         self._ready_agents: set[str] = set()
@@ -141,44 +149,36 @@ class RemoteAgentAdapter:
 
     def _publish_event(self, payload: dict, partition_key: str) -> None:
         """Publish a single JSON event to the input Event Hub."""
-        from azure.eventhub import (  # type: ignore[import-unresolved]
-            EventData,
-            EventHubProducerClient,
-        )
+        from azure.eventhub import EventData  # type: ignore[import-unresolved]
 
         payload["run_id"] = self._run_id
         route_partition_id: str | None = None
         if partition_key.startswith("agent-"):
             route_partition_id = self._target_partition(partition_key)
 
-        producer = EventHubProducerClient.from_connection_string(
-            self._connection_string, eventhub_name=self._input_hub
-        )
+        producer = self._get_producer()
         try:
-            with producer:
+            kwargs: dict[str, str] = {}
+            if route_partition_id is not None:
+                kwargs["partition_id"] = route_partition_id
+            else:
+                kwargs["partition_key"] = partition_key
+            batch = producer.create_batch(**kwargs)
+            batch.add(EventData(json.dumps(payload)))
+            producer.send_batch(batch)
+        except Exception:
+            logger.warning("EH publish failed, retrying once", exc_info=True)
+            self._reset_producer()
+            producer2 = self._get_producer()
+            try:
                 kwargs: dict[str, str] = {}
                 if route_partition_id is not None:
                     kwargs["partition_id"] = route_partition_id
                 else:
                     kwargs["partition_key"] = partition_key
-                batch = producer.create_batch(**kwargs)
+                batch = producer2.create_batch(**kwargs)
                 batch.add(EventData(json.dumps(payload)))
-                producer.send_batch(batch)
-        except Exception:
-            logger.warning("EH publish failed, retrying once", exc_info=True)
-            producer2 = EventHubProducerClient.from_connection_string(
-                self._connection_string, eventhub_name=self._input_hub
-            )
-            try:
-                with producer2:
-                    kwargs: dict[str, str] = {}
-                    if route_partition_id is not None:
-                        kwargs["partition_id"] = route_partition_id
-                    else:
-                        kwargs["partition_key"] = partition_key
-                    batch = producer2.create_batch(**kwargs)
-                    batch.add(EventData(json.dumps(payload)))
-                    producer2.send_batch(batch)
+                producer2.send_batch(batch)
             except Exception:
                 logger.error(
                     "EH publish failed after retry (event_type=%s)",
@@ -186,6 +186,49 @@ class RemoteAgentAdapter:
                     exc_info=True,
                 )
                 raise
+
+    def _get_producer(self) -> Any:
+        """Return a cached Event Hub producer, creating it lazily when needed."""
+        with self._producer_lock:
+            if self._producer is None:
+                from azure.eventhub import EventHubProducerClient  # type: ignore[import-unresolved]
+
+                self._producer = EventHubProducerClient.from_connection_string(
+                    self._connection_string,
+                    eventhub_name=self._input_hub,
+                )
+            return self._producer
+
+    def _reset_producer(self) -> None:
+        """Close and clear the cached Event Hub producer."""
+        with self._producer_lock:
+            producer = self._producer
+            self._producer = None
+        if producer is not None:
+            try:
+                producer.close()
+            except Exception:
+                logger.debug("Failed to close cached producer cleanly", exc_info=True)
+
+    def _get_fact_batch_extractor(self) -> Any:
+        """Return a reusable local extractor for replicated fact batches."""
+        with self._extractor_lock:
+            if self._fact_batch_extractor is None:
+                from amplihack.agents.goal_seeking.goal_seeking_agent import GoalSeekingAgent
+
+                extractor_dir = Path(tempfile.mkdtemp(prefix="amplihack-azure-fact-batch-"))
+                self._fact_batch_extractor_dir = extractor_dir
+                self._fact_batch_extractor = GoalSeekingAgent(
+                    agent_name="eval-harness-fact-extractor",
+                    storage_path=extractor_dir,
+                    use_hierarchical=True,
+                )
+            return self._fact_batch_extractor
+
+    def _prepare_fact_batch(self, content: str) -> dict[str, Any]:
+        """Prepare a direct-storage fact batch for replicated learning."""
+        extractor = self._get_fact_batch_extractor()
+        return extractor.prepare_fact_batch(content)
 
     def _wait_for_agents_online(self) -> None:
         """Wait until every target agent acknowledges ONLINE_CHECK.
@@ -262,23 +305,40 @@ class RemoteAgentAdapter:
                 target_agents = [target_agent]
                 self._learn_turn_counts[target_agent] += 1
 
+        fact_batch: dict[str, Any] | None = None
+        if self._replicate_learning_to_all_agents:
+            fact_batch = self._prepare_fact_batch(content)
+
         for agent_index in target_agents:
             target_name = self._agent_name(agent_index)
-            self._publish_event(
-                {
-                    "event_type": "LEARN_CONTENT",
+            payload = {
+                "event_type": "LEARN_CONTENT",
+                "event_id": event_id,
+                "target_agent": target_name,
+                "source_agent": "eval-harness",
+                "payload": {
+                    "content": content,
+                    "target_agent": target_name,
+                },
+            }
+            if self._replicate_learning_to_all_agents:
+                payload = {
+                    "event_type": "STORE_FACT_BATCH",
                     "event_id": event_id,
                     "target_agent": target_name,
                     "source_agent": "eval-harness",
                     "payload": {
-                        "content": content,
+                        "fact_batch": fact_batch,
                         "target_agent": target_name,
                     },
-                },
+                }
+            self._publish_event(
+                payload,
                 partition_key=target_name,
             )
 
-        if learn_count % 500 == 0:
+        log_every = 50 if self._replicate_learning_to_all_agents else 500
+        if learn_count % log_every == 0:
             if self._replicate_learning_to_all_agents:
                 logger.info(
                     "RemoteAgentAdapter: sent %d content turns (replicated to all %d agents)",
@@ -293,7 +353,7 @@ class RemoteAgentAdapter:
                 )
 
         return {
-            "facts_stored": 1,
+            "facts_stored": len((fact_batch or {}).get("facts", [])) if fact_batch else 1,
             "event_id": event_id,
             "replicated_to": len(target_agents),
         }
@@ -564,5 +624,17 @@ class RemoteAgentAdapter:
     def close(self) -> None:
         """Clean up Event Hubs connections."""
         self._shutdown.set()
+        self._reset_producer()
+        extractor = self._fact_batch_extractor
+        extractor_dir = self._fact_batch_extractor_dir
+        self._fact_batch_extractor = None
+        self._fact_batch_extractor_dir = None
+        if extractor is not None:
+            try:
+                extractor.close()
+            except Exception:
+                logger.debug("Failed to close fact batch extractor cleanly", exc_info=True)
+        if extractor_dir is not None:
+            shutil.rmtree(extractor_dir, ignore_errors=True)
         if self._listener_thread.is_alive():
             self._listener_thread.join(timeout=5)
