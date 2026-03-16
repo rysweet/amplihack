@@ -39,6 +39,7 @@ from .retrieval_constants import (
     ENTITY_ID_TEXT_SEARCH_LIMIT,
     ENTITY_SEARCH_LIMIT,
     INCIDENT_QUERY_SEARCH_LIMIT,
+    KEYWORD_EXPANSION_SPARSE_FACT_THRESHOLD,
     MAX_RETRIEVAL_LIMIT,
     MULTI_ENTITY_LIMIT,
     SIMPLE_RETRIEVAL_THRESHOLD,
@@ -677,6 +678,7 @@ class LearningAgent:
         exhaustive_retrieval = bool(
             getattr(self._thread_local, "_last_simple_retrieval_exhaustive", False)
         )
+        supplemental_local_only = hasattr(self.memory, "search_local")
 
         # Filter out Q&A self-learning facts from retrieval -- they are stored
         # for cross-session learning but pollute within-session eval results.
@@ -692,12 +694,20 @@ class LearningAgent:
         # (e.g. INC-2024-001, CVE-2024-3094), search for ALL facts containing
         # those IDs to capture related facts stored under different contexts.
         if self._ENTITY_ID_PATTERN.search(question) and not exhaustive_retrieval:
-            relevant_facts = self._entity_linked_retrieval(question, relevant_facts)
+            relevant_facts = self._entity_linked_retrieval(
+                question,
+                relevant_facts,
+                local_only=supplemental_local_only,
+            )
 
         # Chain-aware multi-hop: when the question mentions 2+ named entities
         # or IDs, retrieve facts for each entity separately and merge.
         if not exhaustive_retrieval:
-            relevant_facts = self._multi_entity_retrieval(question, relevant_facts)
+            relevant_facts = self._multi_entity_retrieval(
+                question,
+                relevant_facts,
+                local_only=supplemental_local_only,
+            )
 
         # For math/numerical and temporal questions on large KBs, supplement retrieval
         # with keyword-targeted search to recover exact numbers/temporal chains
@@ -711,11 +721,16 @@ class LearningAgent:
             intent_type in _supplement_intents
             and hasattr(self.memory, "search")
             and not exhaustive_retrieval
+            and len(relevant_facts) < KEYWORD_EXPANSION_SPARSE_FACT_THRESHOLD
         ):
             existing_ids = {
                 f.get("experience_id", "") for f in relevant_facts if f.get("experience_id")
             }
-            supplemental = self._keyword_expanded_retrieval(question, relevant_facts)
+            supplemental = self._keyword_expanded_retrieval(
+                question,
+                relevant_facts,
+                local_only=supplemental_local_only,
+            )
             for f in supplemental:
                 eid = f.get("experience_id", "")
                 if eid and eid not in existing_ids:
@@ -1615,8 +1630,41 @@ class LearningAgent:
     # Regex for structured entity IDs (e.g. INC-2024-001, CVE-2024-3094)
     _ENTITY_ID_PATTERN = re.compile(r"\b([A-Z]{2,5}-\d{4}-\d{2,5})\b")
 
+    def _search_memory(
+        self, query: str, limit: int, local_only: bool = False
+    ) -> list[dict[str, Any]]:
+        """Search memory, optionally forcing a local-only path."""
+        if local_only and hasattr(self.memory, "search_local"):
+            return self.memory.search_local(query=query, limit=limit)
+        if hasattr(self.memory, "search"):
+            return self.memory.search(query=query, limit=limit)
+        return []
+
+    def _search_by_concept_memory(
+        self, keywords: list[str], limit: int, local_only: bool = False
+    ) -> list[Any]:
+        """Search by concept, optionally forcing a local-only path."""
+        if local_only and hasattr(self.memory, "search_by_concept_local"):
+            return self.memory.search_by_concept_local(keywords=keywords, limit=limit)
+        if hasattr(self.memory, "search_by_concept"):
+            return self.memory.search_by_concept(keywords=keywords, limit=limit)
+        return []
+
+    def _retrieve_by_entity_memory(
+        self, entity_name: str, limit: int, local_only: bool = False
+    ) -> list[dict[str, Any]]:
+        """Retrieve entity-linked facts, optionally forcing a local-only path."""
+        if local_only and hasattr(self.memory, "retrieve_by_entity_local"):
+            return self.memory.retrieve_by_entity_local(entity_name=entity_name, limit=limit)
+        if hasattr(self.memory, "retrieve_by_entity"):
+            return self.memory.retrieve_by_entity(entity_name=entity_name, limit=limit)
+        return []
+
     def _entity_linked_retrieval(
-        self, question: str, existing_facts: list[dict[str, Any]]
+        self,
+        question: str,
+        existing_facts: list[dict[str, Any]],
+        local_only: bool = False,
     ) -> list[dict[str, Any]]:
         """Retrieve all facts linked to entity IDs found in the question.
 
@@ -1654,49 +1702,58 @@ class LearningAgent:
 
         for entity_id in entity_ids:
             # Search by text content for any fact mentioning the entity ID
-            if hasattr(self.memory, "search"):
-                results = self.memory.search(query=entity_id, limit=search_limit)
-                for fact in results:
-                    fid = fact.get("experience_id", "")
-                    if fid and fid not in existing_ids:
-                        existing_ids.add(fid)
-                        new_facts.append(fact)
+            results = self._search_memory(entity_id, search_limit, local_only=local_only)
+            for fact in results:
+                fid = fact.get("experience_id", "")
+                if fid and fid not in existing_ids:
+                    existing_ids.add(fid)
+                    new_facts.append(fact)
 
             # Also try entity retrieval if available (different index path)
-            if hasattr(self.memory, "retrieve_by_entity"):
-                results = self.memory.retrieve_by_entity(entity_id, limit=search_limit)
-                for fact in results:
-                    fid = fact.get("experience_id", "")
-                    if fid and fid not in existing_ids:
-                        existing_ids.add(fid)
-                        new_facts.append(fact)
+            results = self._retrieve_by_entity_memory(
+                entity_id,
+                search_limit,
+                local_only=local_only,
+            )
+            for fact in results:
+                fid = fact.get("experience_id", "")
+                if fid and fid not in existing_ids:
+                    existing_ids.add(fid)
+                    new_facts.append(fact)
 
             # Second targeted search: search for JUST the entity ID as an
             # exact string to find facts where the ID appears in a different
             # field (e.g., a CVE referenced in an incident fact's outcome).
             # This catches cross-entity associations that the first search
             # may miss due to embedding-based similarity ranking.
-            if is_incident_query and hasattr(self.memory, "search"):
+            if is_incident_query:
                 # Use concept search if available for exact matching
-                if hasattr(self.memory, "search_by_concept"):
-                    concept_results = self.memory.search_by_concept(
-                        keywords=[entity_id], limit=CONCEPT_EXACT_SEARCH_LIMIT
-                    )
-                    for node in concept_results:
-                        # Convert KnowledgeNode to fact dict
-                        fid = getattr(node, "node_id", "")
+                concept_results = self._search_by_concept_memory(
+                    keywords=[entity_id],
+                    limit=CONCEPT_EXACT_SEARCH_LIMIT,
+                    local_only=local_only,
+                )
+                for node in concept_results:
+                    if isinstance(node, dict):
+                        fid = node.get("experience_id", "")
                         if fid and fid not in existing_ids:
                             existing_ids.add(fid)
-                            new_facts.append(
-                                {
-                                    "context": getattr(node, "concept", ""),
-                                    "outcome": getattr(node, "content", ""),
-                                    "confidence": getattr(node, "confidence", 0.8),
-                                    "experience_id": fid,
-                                    "tags": getattr(node, "tags", []),
-                                    "metadata": getattr(node, "metadata", {}),
-                                }
-                            )
+                            new_facts.append(node)
+                        continue
+
+                    fid = getattr(node, "node_id", "")
+                    if fid and fid not in existing_ids:
+                        existing_ids.add(fid)
+                        new_facts.append(
+                            {
+                                "context": getattr(node, "concept", ""),
+                                "outcome": getattr(node, "content", ""),
+                                "confidence": getattr(node, "confidence", 0.8),
+                                "experience_id": fid,
+                                "tags": getattr(node, "tags", []),
+                                "metadata": getattr(node, "metadata", {}),
+                            }
+                        )
 
         if new_facts:
             logger.info(
@@ -1710,7 +1767,10 @@ class LearningAgent:
         return existing_facts + new_facts
 
     def _multi_entity_retrieval(
-        self, question: str, existing_facts: list[dict[str, Any]]
+        self,
+        question: str,
+        existing_facts: list[dict[str, Any]],
+        local_only: bool = False,
     ) -> list[dict[str, Any]]:
         """Chain-aware retrieval for questions mentioning multiple entities.
 
@@ -1747,17 +1807,24 @@ class LearningAgent:
 
         for entity in all_entities:
             # Try entity retrieval
-            if hasattr(self.memory, "retrieve_by_entity"):
-                results = self.memory.retrieve_by_entity(entity, limit=MULTI_ENTITY_LIMIT)
-                for fact in results:
-                    fid = fact.get("experience_id", "")
-                    if fid and fid not in existing_ids:
-                        existing_ids.add(fid)
-                        new_facts.append(fact)
+            results = self._retrieve_by_entity_memory(
+                entity,
+                MULTI_ENTITY_LIMIT,
+                local_only=local_only,
+            )
+            for fact in results:
+                fid = fact.get("experience_id", "")
+                if fid and fid not in existing_ids:
+                    existing_ids.add(fid)
+                    new_facts.append(fact)
 
             # Also try text search for IDs
-            if self._ENTITY_ID_PATTERN.match(entity) and hasattr(self.memory, "search"):
-                results = self.memory.search(query=entity, limit=ENTITY_ID_TEXT_SEARCH_LIMIT)
+            if self._ENTITY_ID_PATTERN.match(entity):
+                results = self._search_memory(
+                    entity,
+                    ENTITY_ID_TEXT_SEARCH_LIMIT,
+                    local_only=local_only,
+                )
                 for fact in results:
                     fid = fact.get("experience_id", "")
                     if fid and fid not in existing_ids:
@@ -2056,7 +2123,10 @@ class LearningAgent:
             return None
 
     def _keyword_expanded_retrieval(
-        self, question: str, existing_facts: list[dict[str, Any]]
+        self,
+        question: str,
+        existing_facts: list[dict[str, Any]],
+        local_only: bool = False,
     ) -> list[dict[str, Any]]:
         """Expand retrieval with LLM-generated keyword phrases when initial retrieval is sparse.
 
@@ -2111,7 +2181,7 @@ class LearningAgent:
             for phrase in phrases[:5]:
                 if not isinstance(phrase, str) or not phrase.strip():
                     continue
-                results = self.memory.search(query=phrase.strip(), limit=10)
+                results = self._search_memory(phrase.strip(), limit=10, local_only=local_only)
                 for fact in results:
                     eid = fact.get("experience_id", "")
                     if eid and eid not in seen_ids:

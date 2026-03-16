@@ -218,6 +218,24 @@ class DistributedCognitiveMemory:
         """
         return self._local.search_facts(query, limit, **kwargs)
 
+    def local_search_by_concept(
+        self, keywords: list[str] | None = None, limit: int = 10, **kwargs: Any
+    ) -> list:
+        """Search local concepts only, bypassing distributed fan-out."""
+        if hasattr(self._local, "search_by_concept"):
+            return self._local.search_by_concept(keywords=keywords, limit=limit, **kwargs)
+
+        query = " ".join(keywords[:QUERY_KEYWORD_LIMIT]) if keywords else ""
+        if not query:
+            return []
+        return self._local.search_facts(query=query, limit=limit, **kwargs)
+
+    def local_retrieve_by_entity(self, entity_name: str, limit: int = 50) -> list:
+        """Retrieve entity facts from the local backend only."""
+        if hasattr(self._local, "retrieve_by_entity"):
+            return self._local.retrieve_by_entity(entity_name=entity_name, limit=limit)
+        return []
+
     def local_get_all_facts(self, limit: int = 50, **kwargs: Any) -> list:
         """Retrieve facts from ONLY the local memory backend."""
         return self._local.get_all_facts(limit=limit, **kwargs)
