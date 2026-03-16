@@ -523,7 +523,7 @@ class TestHandleEvent:
         mod._handle_event("agent-0", event, mock_memory, mock_agent)
         mock_agent.process.assert_called_once_with("What is 2+2?")
 
-    def test_learn_content_calls_process(self):
+    def test_learn_content_calls_process_store(self):
         mod = _load_entrypoint()
         mock_agent = MagicMock()
         mock_memory = MagicMock()
@@ -533,4 +533,5 @@ class TestHandleEvent:
             "payload": {"content": "The earth orbits the sun."},
         }
         mod._handle_event("agent-0", event, mock_memory, mock_agent)
-        mock_agent.process.assert_called_once_with("The earth orbits the sun.")
+        mock_agent.process_store.assert_called_once_with("The earth orbits the sun.")
+        mock_agent.process.assert_not_called()

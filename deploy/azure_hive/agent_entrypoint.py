@@ -339,8 +339,8 @@ def main() -> None:
         shard_transport.bind_agent(agent)
         logger.info("Bound agent %s to shard transport for LOCAL queries", agent_name)
 
-    # Store initial agent identity via OODA process()
-    agent.process(f"Agent identity: {agent_name}. Role: {agent_prompt}")
+    # Store initial agent identity without routing it through question heuristics.
+    agent.process_store(f"Agent identity: {agent_name}. Role: {agent_prompt}")
 
     # Set up answer publisher for eval answer correlation via on_answer callback.
     answer_publisher = AnswerPublisher(agent_name, eh_connection_string, eh_eval_hub)
@@ -483,6 +483,11 @@ def _run_event_driven_loop(
             logger.info("Agent %s input source exhausted, exiting OODA loop", agent_name)
             break
 
+        metadata = {}
+        if hasattr(input_source, "_source"):
+            metadata = getattr(input_source._source, "last_event_metadata", {})
+        event_type = metadata.get("event_type", "")
+
         if text.startswith("__FEED_COMPLETE__:"):
             total_turns = text.split(":", 1)[1]
             logger.info(
@@ -510,7 +515,15 @@ def _run_event_driven_loop(
                 set_trace(event_id=_event_id, agent=agent_name)
             except ImportError:
                 pass
-            agent.process(text)
+            if event_type == "LEARN_CONTENT":
+                logger.info(
+                    "Agent %s storing LEARN_CONTENT via store-only path (len=%d)",
+                    agent_name,
+                    len(text),
+                )
+                agent.process_store(text)
+            else:
+                agent.process(text)
         except Exception:
             logger.exception("Error in OODA process for agent %s", agent_name)
         finally:
@@ -525,8 +538,9 @@ def _run_event_driven_loop(
 def _handle_event(agent_name: str, event: Any, memory: Any, agent: Any) -> None:
     """Dispatch an incoming event to the GoalSeekingAgent OODA loop.
 
-    All event types are normalised to a plain input string and fed to
-    ``agent.process()``.  The agent classifies internally (store vs answer).
+    Query inputs are fed to ``agent.process()`` while ``LEARN_CONTENT`` uses the
+    explicit store-only path so question-shaped content is still learned rather
+    than answered.
 
     Special lifecycle events (FEED_COMPLETE, AGENT_READY, QUERY_RESPONSE)
     are handled separately so they do not pollute the cognitive store.
@@ -596,7 +610,10 @@ def _handle_event(agent_name: str, event: Any, memory: Any, agent: Any) -> None:
             event_type or "unknown",
             len(input_text),
         )
-        agent.process(input_text)
+        if event_type == "LEARN_CONTENT":
+            agent.process_store(input_text)
+        else:
+            agent.process(input_text)
     else:
         logger.warning(
             "Agent %s received event with no extractable text (event_type=%s)",

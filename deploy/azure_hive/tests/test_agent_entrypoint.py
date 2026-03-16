@@ -114,20 +114,54 @@ class TestAgentEntrypoint:
         mock_agent.process.assert_called_once_with("What is 6 times 7?")
         mock_mem.recall.assert_not_called()
 
-    def test_handle_learn_content_uses_agent_process(self):
-        """LEARN_CONTENT events feed content to agent.process() via OODA loop."""
+    def test_handle_learn_content_uses_store_only_path(self):
+        """LEARN_CONTENT must use the store-only path even for question-like text."""
         mod = _load_entrypoint()
         mock_mem = MagicMock()
         mock_agent = MagicMock()
 
         learn_event = {
             "event_type": "LEARN_CONTENT",
-            "payload": {"turn": 1, "content": "The sky is blue."},
+            "payload": {"turn": 1, "content": "What is Sarah Chen's birthday?"},
         }
         mod._handle_event("agent", learn_event, mock_mem, mock_agent)
 
-        mock_agent.process.assert_called_once_with("The sky is blue.")
+        mock_agent.process_store.assert_called_once_with("What is Sarah Chen's birthday?")
+        mock_agent.process.assert_not_called()
         mock_mem.remember.assert_not_called()
+
+    def test_run_event_driven_loop_uses_store_only_path_for_learn_content(self):
+        mod = _load_entrypoint()
+        agent = MagicMock()
+        answer_publisher = MagicMock()
+        memory = MagicMock()
+        shutdown_event = threading.Event()
+
+        class FakeInputSource:
+            def __init__(self):
+                self._source = self
+                self.last_event_metadata = {}
+                self._items = [
+                    ("What is Sarah Chen's birthday?", {"event_type": "LEARN_CONTENT"}),
+                    (None, {}),
+                ]
+
+            def next(self):
+                text, meta = self._items.pop(0)
+                self.last_event_metadata = meta
+                return text
+
+        mod._run_event_driven_loop(
+            "agent-0",
+            agent,
+            FakeInputSource(),
+            answer_publisher,
+            memory,
+            shutdown_event,
+        )
+
+        agent.process_store.assert_called_once_with("What is Sarah Chen's birthday?")
+        agent.process.assert_not_called()
 
     def test_handle_event_passes_learning_agent_from_ooda_tick(self):
         """_ooda_tick forwards the learning_agent to _handle_event; memory.recall never called."""

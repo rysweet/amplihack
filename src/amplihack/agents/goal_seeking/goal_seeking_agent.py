@@ -18,6 +18,7 @@ Public API:
     decide()             → classify as "store" | "answer"
     act()                → execute decision, write output to stdout → str
     process(input_data)  → observe → orient → decide → act pipeline → str
+    process_store(input_data) → observe → force-store → act pipeline → str
 
 Backward compatibility:
     LearningAgent is NOT removed; existing callers continue to work unchanged.
@@ -309,6 +310,20 @@ class GoalSeekingAgent:
         self.observe(input_data)
         self.orient()
         self.decide()
+        return self.act()
+
+    def process_store(self, input_data: str) -> str:
+        """Store input explicitly without question classification or orient recall.
+
+        This is used when the transport already knows the payload is learning
+        content (for example ``LEARN_CONTENT`` events in the Azure hive). That
+        avoids misrouting question-shaped content into ``answer_question()`` and
+        avoids orient-time distributed recall that ``act()`` does not consume on
+        the store path.
+        """
+        self.observe(input_data)
+        self._oriented_facts = {"input": self._current_input, "facts": []}
+        self._decision = "store"
         return self.act()
 
     # ------------------------------------------------------------------
