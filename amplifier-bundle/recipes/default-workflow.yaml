@@ -1504,7 +1504,7 @@ steps:
       cd {{worktree_setup.worktree_path}} && \
       echo "=== Pushing Cleanup Changes ===" && \
       git add -A && \
-      git diff --cached --quiet || (git commit -m "final cleanup pass" && git pull --rebase 2>/dev/null ; git push) && \
+      git diff --cached --quiet || (git commit -m "final cleanup pass" && git pull --rebase 2>/dev/null && git push) && \
       echo "=== Cleanup Complete ==="
     output: "cleanup_push_result"
 
