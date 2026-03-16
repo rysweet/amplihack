@@ -120,16 +120,15 @@ When this skill is activated:
 ### REQUIRED: Execute via Recipe Runner — IMMEDIATELY
 
 Your next tool call(s) must include the recipe runner launch (alongside
-`report_intent` if your runtime requires it). **CRITICAL**: Claude
-Code's `run_in_background` kills processes after ~10 minutes. Recipe
-workstreams can take hours. You MUST use a tmux session for execution:
+`report_intent` if your runtime requires it). **CRITICAL**: Some agent
+runtimes kill background processes after a timeout. Recipe workstreams
+can take hours. You MUST use a tmux session for execution:
 
 ```bash
 LOG_FILE=$(mktemp /tmp/recipe-runner-output.XXXXXX.log)
 chmod 600 "$LOG_FILE"
-tmux new-session -d -s recipe-runner "env -u CLAUDECODE PYTHONPATH=src python3 -c \"
+tmux new-session -d -s recipe-runner "PYTHONPATH=src python3 -c \"
 import os
-os.environ.pop('CLAUDECODE', None)
 
 from amplihack.recipes import run_recipe_by_name
 
@@ -148,7 +147,6 @@ echo \"Recipe runner log: $LOG_FILE\"
 
 **Key points:**
 
-- `env -u CLAUDECODE` — unset so nested Claude Code sessions can launch
 - `PYTHONPATH=src python3` — uses the interpreter on PATH while forcing imports from the checked-out repo source tree (do NOT hardcode `.venv/bin/python`)
 - `run_recipe_by_name` — delegates to the Rust binary; the adapter parameter is no longer needed
 - `progress=True` — streams recipe-runner stderr live so tmux logs show nested step activity
@@ -174,8 +172,8 @@ tmux send-keys -t recipe-runner "exit" Enter 2>/dev/null; sleep 1
 If using Option A, update the `tail -f` / `tmux attach` commands to use the
 same session name.
 
-**DO NOT use `run_in_background`** for recipe execution — it will be killed
-after ~10 minutes (Issue #2909).
+**DO NOT use runtime-specific background APIs** (e.g. `run_in_background`) for
+recipe execution — they may kill processes after a timeout. Use tmux instead.
 
 **The recipe runner is the required execution path for Development and
 Investigation tasks.** Always try `smart-orchestrator` first.
@@ -257,12 +255,12 @@ Do not declare success when agents produced no meaningful work.
 
 The recipe runner requires these environment variables to function:
 
-| Variable                   | Purpose                                           | Default       |
-| -------------------------- | ------------------------------------------------- | ------------- |
-| `AMPLIHACK_HOME`           | Root of amplihack installation (for asset lookup) | Auto-detected |
-| `AMPLIHACK_AGENT_BINARY`   | Which agent binary to use (claude, copilot, etc.) | `claude`      |
-| `AMPLIHACK_MAX_DEPTH`      | Max recursion depth for nested sessions           | `3`           |
-| `AMPLIHACK_NONINTERACTIVE` | Set to `1` to skip interactive prompts            | Unset         |
+| Variable                   | Purpose                                           | Default         |
+| -------------------------- | ------------------------------------------------- | --------------- |
+| `AMPLIHACK_HOME`           | Root of amplihack installation (for asset lookup) | Auto-detected   |
+| `AMPLIHACK_AGENT_BINARY`   | Which agent binary to use (claude, copilot, etc.) | Set by launcher |
+| `AMPLIHACK_MAX_DEPTH`      | Max recursion depth for nested sessions           | `3`             |
+| `AMPLIHACK_NONINTERACTIVE` | Set to `1` to skip interactive prompts            | Unset           |
 
 If `AMPLIHACK_HOME` is not set and auto-detection fails, `parse-decomposition`
 and `activate-workflow` will fail with "orch_helper.py not found". Set it to
@@ -334,12 +332,12 @@ to block parallel spawning and fall back to single-session mode for all tasks:
 
 ```bash
 export AMPLIHACK_MAX_DEPTH=0  # set in your shell first
-/dev build a webui and an api  # then type in Claude Code
+/dev build a webui and an api  # then invoke /dev in your agent session
 ```
 
-Note: The env var must be set in your shell before starting Claude Code — it cannot
-be prefixed inline on the `/dev` command. This affects all depth checks, not just
-parallel workstream spawning.
+Note: The env var must be set in your shell before starting the agent session — it
+cannot be prefixed inline on the `/dev` command. This affects all depth checks, not
+just parallel workstream spawning.
 
 ## Canonical Sources
 
