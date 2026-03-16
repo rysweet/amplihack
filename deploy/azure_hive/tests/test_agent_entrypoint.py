@@ -149,6 +149,8 @@ class TestAgentEntrypoint:
             def next(self):
                 text, meta = self._items.pop(0)
                 self.last_event_metadata = meta
+                if text is None:
+                    shutdown_event.set()
                 return text
 
         mod._run_event_driven_loop(
@@ -182,6 +184,8 @@ class TestAgentEntrypoint:
             def next(self):
                 text, meta = self._items.pop(0)
                 self.last_event_metadata = meta
+                if text is None:
+                    shutdown_event.set()
                 return text
 
         mod._run_event_driven_loop(
@@ -194,6 +198,43 @@ class TestAgentEntrypoint:
         )
 
         answer_publisher.publish_agent_online.assert_called_once_with(run_id="run-123")
+        agent.process.assert_not_called()
+        agent.process_store.assert_not_called()
+
+    def test_run_event_driven_loop_ignores_transient_none_without_shutdown(self):
+        mod = _load_entrypoint()
+        agent = MagicMock()
+        answer_publisher = MagicMock()
+        memory = MagicMock()
+        shutdown_event = threading.Event()
+
+        class FakeInputSource:
+            def __init__(self):
+                self._source = self
+                self.last_event_metadata = {}
+                self._items = [
+                    (None, {}),
+                    ("__ONLINE_CHECK__", {"event_type": "ONLINE_CHECK", "run_id": "run-456"}),
+                ]
+
+            def next(self):
+                text, meta = self._items.pop(0)
+                self.last_event_metadata = meta
+                if text == "__ONLINE_CHECK__":
+                    shutdown_event.set()
+                return text
+
+        with patch.object(mod.time, "sleep", return_value=None):
+            mod._run_event_driven_loop(
+                "agent-0",
+                agent,
+                FakeInputSource(),
+                answer_publisher,
+                memory,
+                shutdown_event,
+            )
+
+        answer_publisher.publish_agent_online.assert_called_once_with(run_id="run-456")
         agent.process.assert_not_called()
         agent.process_store.assert_not_called()
 
