@@ -91,7 +91,9 @@ log_ok() {
 # Patterns that indicate a secret *value* (not just a key name reference)
 SECRET_VALUE_PATTERNS=(
     # env-var assignment: KEY=value (value is not a placeholder/empty)
-    '[A-Z_]{4,}=[A-Za-z0-9+/]{8,}'
+    '[A-Z_]{4,}=[A-Za-z0-9+/:@._-]{8,}'
+    # connection string with embedded credentials
+    '://[^:]+:[^@]{4,}@'
     # Common credential field names with an inline value
     '"(password|secret|token|api_key|apikey|access_key|private_key|client_secret)"[[:space:]]*:[[:space:]]*"[^"$<{]{4,}'
     # PEM header fragments
@@ -189,14 +191,34 @@ check_sec_05() {
             resolved_target="$link_target"
         fi
 
-        # Symlink must resolve to within the atlas directory
-        if [[ "$resolved_target" != "${atlas_realpath}"* ]]; then
+        # Symlink must resolve to within the atlas directory (trailing slash prevents prefix attacks)
+        if [[ "$resolved_target" != "${atlas_realpath%/}/"* && "$resolved_target" != "${atlas_realpath%/}" ]]; then
             log_violation "SEC-05" "$file" "Symlink escapes atlas boundary → ${resolved_target}"
             return
         fi
     fi
 
     log_ok "SEC-05" "$file"
+}
+
+# ---------------------------------------------------------------------------
+# YAML size pre-check — reject files over 10MB before any parser invocation
+# ---------------------------------------------------------------------------
+YAML_MAX_SIZE_BYTES=10485760  # 10MB
+
+check_yaml_size() {
+    local file="$1"
+    case "$file" in
+        *.yaml|*.yml)
+            local fsize
+            fsize=$(wc -c < "$file" 2>/dev/null || echo "0")
+            if [[ "$fsize" -gt "$YAML_MAX_SIZE_BYTES" ]]; then
+                log_violation "SEC-08" "$file" "YAML file exceeds 10MB size limit (${fsize} bytes) — skipping parse"
+                return 1
+            fi
+            ;;
+    esac
+    return 0
 }
 
 # ---------------------------------------------------------------------------
@@ -209,9 +231,14 @@ validate_file() {
     echo ""
     echo "Checking: ${file}"
 
+    # Size gate: skip further checks on oversized YAML files
+    if ! check_yaml_size "$file"; then
+        return
+    fi
+
+    check_sec_05    "$file"
     check_sec_01_09 "$file"
     check_sec_03_10 "$file"
-    check_sec_05    "$file"
 }
 
 # ---------------------------------------------------------------------------

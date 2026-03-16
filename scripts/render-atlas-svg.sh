@@ -235,7 +235,7 @@ while IFS= read -r -d '' mmd_file; do
     else
         (( ERRORS++ )) || true
     fi
-done < <(find "$ATLAS_DIR" -name '*.mmd' -print0 2>/dev/null)
+done < <(find "$ATLAS_DIR" -name '*.mmd' -not -type l -print0 2>/dev/null)
 
 # Render .dot files
 while IFS= read -r -d '' dot_file; do
@@ -244,7 +244,7 @@ while IFS= read -r -d '' dot_file; do
     else
         (( ERRORS++ )) || true
     fi
-done < <(find "$ATLAS_DIR" -name '*.dot' -print0 2>/dev/null)
+done < <(find "$ATLAS_DIR" -name '*.dot' -not -type l -print0 2>/dev/null)
 
 # Count skipped = files found but renderer absent
 MMD_COUNT=$(find "$ATLAS_DIR" -name '*.mmd' 2>/dev/null | wc -l | tr -d ' ')

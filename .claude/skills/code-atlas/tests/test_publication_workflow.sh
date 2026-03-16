@@ -13,6 +13,7 @@
 # Exit:  0 = all tests passed, non-zero = failures
 
 set -uo pipefail
+shopt -s globstar nullglob  # enable ** recursive globs; unmatched globs expand to nothing
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"

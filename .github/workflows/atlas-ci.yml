@@ -131,8 +131,8 @@ jobs:
           RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           STALE_LIST=$(grep 'STALE:' impact-report.txt | sed 's/^/- /' || true)
 
-          cat > /tmp/pr-comment.md <<EOF
-          ## 🗺️ Code Atlas Impact Detected
+          cat > ${RUNNER_TEMP}/pr-comment.md <<EOF
+          ## Code Atlas Impact Detected
 
           This PR modifies files tracked by the code atlas. The following layers will be stale after merge:
 
@@ -146,7 +146,7 @@ jobs:
           See [full impact report](${RUN_URL}) for details.
           EOF
 
-          bash scripts/github-api-adapter.sh post-pr-comment "$PR" /tmp/pr-comment.md \
+          bash scripts/github-api-adapter.sh post-pr-comment "$PR" ${RUNNER_TEMP}/pr-comment.md \
             || echo "::warning::Could not post PR comment (non-fatal). Check GH_TOKEN permissions."
 
       - name: Upload impact report
@@ -171,7 +171,6 @@ jobs:
         id: rebuild
         run: |
           bash scripts/rebuild-atlas-all.sh --ci
-          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
 
       - name: Validate atlas output (security check)
         if: success()
@@ -191,7 +190,7 @@ jobs:
         run: |
           RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-          cat > /tmp/issue-body.md <<EOF
+          cat > ${RUNNER_TEMP}/issue-body.md <<EOF
           ## Weekly Atlas Rebuild Failed
 
           The scheduled atlas rebuild preparation failed on $(date +%Y-%m-%d).
@@ -206,7 +205,7 @@ jobs:
 
           bash scripts/github-api-adapter.sh create-issue \
             "Weekly code atlas rebuild failed ($(date +%Y-%m-%d))" \
-            /tmp/issue-body.md \
+            ${RUNNER_TEMP}/issue-body.md \
             || gh issue create \
                  --title "Weekly code atlas rebuild failed ($(date +%Y-%m-%d))" \
                  --body "The scheduled atlas rebuild preparation failed. See workflow run: ${RUN_URL}" \

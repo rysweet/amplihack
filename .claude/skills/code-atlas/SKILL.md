@@ -488,33 +488,37 @@ The atlas is not just documentation — it is an **active investigation tool**. 
 
 ```bash
 # Extract all route handler signatures
+route_params=$(mktemp)
 grep -r "req\.body\|req\.params\|req\.query" --include="*.ts" src/ | \
-  sort > /tmp/route-params.txt
+  sort > "$route_params"
 
 # Extract DTO definitions
+dto_defs=$(mktemp)
 grep -r "interface.*Request\|class.*Dto" --include="*.ts" src/ | \
-  sort > /tmp/dto-defs.txt
+  sort > "$dto_defs"
 
 # Hunt: routes referencing fields not in DTOs
-diff <(grep "body\." /tmp/route-params.txt | sed 's/.*body\.\([a-z_]*\).*/\1/') \
-     <(grep -o '[a-z_]*:' /tmp/dto-defs.txt | tr -d ':' | sort -u)
+diff <(grep "body\." "$route_params" | sed 's/.*body\.\([a-z_]*\).*/\1/') \
+     <(grep -o '[a-z_]*:' "$dto_defs" | tr -d ':' | sort -u)
 ```
 
 **Step 1.2 — Orphaned Environment Variables** (Layer 1 × Layer 6b):
 
 ```bash
 # Find declared env vars
+used_env=$(mktemp)
 grep -r "process\.env\.\|os\.getenv\|os\.environ\|viper\.Get\|Getenv" \
   --include="*.ts" --include="*.py" --include="*.go" . | \
-  grep -oP '(?<=env\.)([A-Z_]+)' | sort -u > /tmp/used-env-vars.txt
+  grep -oP '(?<=env\.)([A-Z_]+)' | sort -u > "$used_env"
 
 # Compare with .env.example / documented vars
-cat .env.example | grep "^[A-Z]" | cut -d= -f1 | sort > /tmp/declared-env-vars.txt
+declared_env=$(mktemp)
+cat .env.example | grep "^[A-Z]" | cut -d= -f1 | sort > "$declared_env"
 
 # Orphaned: used but not declared
-comm -23 /tmp/used-env-vars.txt /tmp/declared-env-vars.txt
+comm -23 "$used_env" "$declared_env"
 # Undead: declared but never used
-comm -13 /tmp/used-env-vars.txt /tmp/declared-env-vars.txt
+comm -13 "$used_env" "$declared_env"
 ```
 
 **Step 1.3 — Dead Runtime Paths** (Layer 1 × Layer 3):
@@ -530,10 +534,12 @@ diff <(grep "label=" architecture/runtime-topology.dot | grep -oP '"[^"]*"' | so
 
 ```bash
 # Docs referencing routes that no longer exist
-grep -r "\/api\/" docs/ | grep -oP '(?<=`)(/api/[a-z/{}:]+)' | sort -u > /tmp/doc-routes.txt
+doc_routes=$(mktemp)
+grep -r "\/api\/" docs/ | grep -oP '(?<=`)(/api/[a-z/{}:]+)' | sort -u > "$doc_routes"
+code_routes=$(mktemp)
 grep -r "router\.\(get\|post\)" --include="*.ts" src/ | grep -oP "(?<=\")[/a-z:{}]+(?=\")" | \
-  sort -u > /tmp/code-routes.txt
-comm -23 /tmp/doc-routes.txt /tmp/code-routes.txt  # In docs, not in code = STALE
+  sort -u > "$code_routes"
+comm -23 "$doc_routes" "$code_routes"  # In docs, not in code = STALE
 ```
 
 **Bug Report Format** (per contradiction found):
@@ -661,7 +667,7 @@ jobs:
         id: stale
         run: |
           # Run staleness detection script
-          bash scripts/check-atlas-staleness.sh > stale-report.txt
+          bash scripts/check-atlas-staleness.sh --strict > stale-report.txt
           cat stale-report.txt
           echo "stale=$(wc -l < stale-report.txt)" >> $GITHUB_OUTPUT
 
