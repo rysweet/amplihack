@@ -626,6 +626,57 @@ class TestShardQueryListener:
 
         mock_transport.handle_shard_response.assert_called()
 
+    def test_listener_does_not_block_responses_behind_slow_queries(self):
+        """SHARD_QUERY handling should not block SHARD_RESPONSE dispatch in the same batch."""
+        mod = _load_entrypoint()
+
+        from amplihack.agents.goal_seeking.hive_mind.event_bus import make_event
+
+        query_event = make_event(
+            event_type="SHARD_QUERY",
+            source_agent="requester",
+            payload={"query": "slow", "limit": 5, "correlation_id": "corr-slow"},
+        )
+        response_event = make_event(
+            event_type="SHARD_RESPONSE",
+            source_agent="agent-1",
+            payload={"correlation_id": "corr-fast", "facts": []},
+        )
+
+        query_started = threading.Event()
+        release_query = threading.Event()
+        response_called = threading.Event()
+
+        mock_transport = MagicMock()
+        mock_bus = MagicMock()
+        mock_bus.poll.side_effect = [[query_event, response_event], []]
+
+        def handle_query(*_args, **_kwargs):
+            query_started.set()
+            assert release_query.wait(timeout=1.0)
+
+        def handle_response(_event):
+            response_called.set()
+
+        mock_transport.handle_shard_query.side_effect = handle_query
+        mock_transport.handle_shard_response.side_effect = handle_response
+
+        shutdown = threading.Event()
+        listener_thread = threading.Thread(
+            target=mod._shard_query_listener,
+            args=(mock_transport, "agent-0", mock_bus, shutdown),
+        )
+        listener_thread.start()
+
+        assert query_started.wait(timeout=1.0)
+        assert response_called.wait(timeout=1.0)
+
+        release_query.set()
+        shutdown.set()
+        listener_thread.join(timeout=1.0)
+
+        assert not listener_thread.is_alive()
+
 
 # ---------------------------------------------------------------------------
 # Question propagation: original question string reaches query_facts unchanged
