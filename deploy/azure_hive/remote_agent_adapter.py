@@ -459,6 +459,17 @@ class RemoteAgentAdapter:
                                 "RemoteAgentAdapter: answer for unknown event_id=%s (stale?)",
                                 event_id,
                             )
+                    if hasattr(partition_context, "update_checkpoint"):
+                        partition_context.update_checkpoint(event)
+                    return
+
+                if event_type == "AGENT_SHUTDOWN":
+                    logger.warning(
+                        "RemoteAgentAdapter: AGENT_SHUTDOWN from %s reason=%s detail=%s",
+                        body.get("agent_id", "?"),
+                        body.get("reason", ""),
+                        body.get("detail", ""),
+                    )
 
                 if hasattr(partition_context, "update_checkpoint"):
                     partition_context.update_checkpoint(event)

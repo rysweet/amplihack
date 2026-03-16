@@ -51,6 +51,7 @@ import signal
 import sys
 import threading
 import time
+from collections.abc import Callable
 from typing import Any
 
 logging.basicConfig(
@@ -357,8 +358,20 @@ def main() -> None:
     # Handle graceful shutdown
     shutdown_event = threading.Event()
 
+    shutdown_reported = threading.Event()
+
+    def _publish_shutdown_event(reason: str, detail: str = "", run_id: str = "") -> None:
+        if shutdown_reported.is_set():
+            return
+        shutdown_reported.set()
+        try:
+            answer_publisher.publish_agent_shutdown(reason=reason, detail=detail, run_id=run_id)
+        except Exception:
+            logger.exception("Agent %s failed to publish shutdown event", agent_name)
+
     def _handle_signal(signum, frame):
         logger.info("Agent %s received signal %s, shutting down", agent_name, signum)
+        _publish_shutdown_event(reason="signal", detail=f"signal={signum}")
         shutdown_event.set()
 
     signal.signal(signal.SIGTERM, _handle_signal)
@@ -405,7 +418,13 @@ def main() -> None:
         try:
             # Manual OODA loop to handle FEED_COMPLETE sentinel specially
             _run_event_driven_loop(
-                agent_name, agent, input_source, answer_publisher, memory, shutdown_event
+                agent_name,
+                agent,
+                input_source,
+                answer_publisher,
+                memory,
+                shutdown_event,
+                _publish_shutdown_event,
             )
         finally:
             eh_source.close()
@@ -469,6 +488,7 @@ def _run_event_driven_loop(
     answer_publisher: Any,
     memory: Any,
     shutdown_event: threading.Event,
+    publish_shutdown_event: Callable[[str, str, str], None] | None = None,
 ) -> None:
     """Event-driven OODA loop using EventHubsInputSource.
 
@@ -480,7 +500,17 @@ def _run_event_driven_loop(
     while not shutdown_event.is_set():
         text = input_source.next()
         if text is None:
+            run_id = ""
+            if hasattr(input_source, "_source"):
+                meta = getattr(input_source._source, "last_event_metadata", {})
+                run_id = meta.get("run_id", "")
             if shutdown_event.is_set():
+                if publish_shutdown_event is not None:
+                    publish_shutdown_event(
+                        "input_shutdown",
+                        "input_source returned None with shutdown_event set",
+                        run_id,
+                    )
                 logger.info("Agent %s input source exhausted, exiting OODA loop", agent_name)
                 break
             logger.warning(
@@ -816,6 +846,26 @@ class AnswerPublisher:
             }
         )
         logger.info("AnswerPublisher: published AGENT_ONLINE for agent=%s", self._agent_name)
+
+    def publish_agent_shutdown(self, reason: str, detail: str = "", run_id: str = "") -> None:
+        """Publish AGENT_SHUTDOWN event to eval-responses hub."""
+        import uuid as _uuid
+
+        self._publish_to_eh(
+            {
+                "event_type": "AGENT_SHUTDOWN",
+                "event_id": _uuid.uuid4().hex,
+                "agent_id": self._agent_name,
+                "reason": reason,
+                "detail": detail,
+                "run_id": run_id or self._current_run_id,
+            }
+        )
+        logger.info(
+            "AnswerPublisher: published AGENT_SHUTDOWN for agent=%s reason=%s",
+            self._agent_name,
+            reason,
+        )
 
     def close(self) -> None:
         """No persistent connection to close — producers are created per-send."""
