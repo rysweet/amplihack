@@ -144,6 +144,10 @@ WSL is detected automatically and will show appropriate Linux-based installation
 sudo apt update
 sudo apt install nodejs npm
 
+# Rust and cargo
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source $HOME/.cargo/env
+
 # uv
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
@@ -159,6 +163,7 @@ Restart your WSL terminal to ensure all tools are in your PATH:
 # Close and reopen your WSL terminal, then verify:
 node --version
 npm --version
+cargo --version
 uv --version
 git --version
 ```
