@@ -6,6 +6,7 @@ context building, session stop memory store bridge, uncommitted work detection.
 """
 
 import json
+from io import StringIO
 import os
 import sys
 import tempfile
@@ -74,6 +75,39 @@ class TestVersionCheck:
                 hook._check_version_mismatch()
             except Exception:
                 pass  # Expected if internal imports fail; the point is no crash
+
+    def test_noninteractive_version_prompt_skips_select(self, tmp_path):
+        hook = _make_session_start_hook(tmp_path)
+        version_info = MagicMock()
+        version_info.is_mismatched = True
+        version_info.package_commit = "pkg123"
+        version_info.project_commit = "proj456"
+
+        mock_stdin = MagicMock()
+        mock_stdin.isatty.return_value = False
+
+        with patch.dict(
+            "sys.modules",
+            {
+                "update_engine": MagicMock(perform_update=MagicMock()),
+                "update_prefs": MagicMock(
+                    load_update_preference=MagicMock(return_value=None),
+                    save_update_preference=MagicMock(),
+                ),
+                "version_checker": MagicMock(
+                    check_version_mismatch=MagicMock(return_value=version_info)
+                ),
+            },
+        ):
+            with patch("sys.stdin", mock_stdin):
+                with patch("select.select") as mock_select:
+                    with patch("sys.stderr", new_callable=StringIO) as stderr:
+                        hook._check_version_mismatch()
+
+        mock_select.assert_not_called()
+        hook.log.assert_any_call("Non-interactive session detected - skipping update prompt")
+        hook.save_metric.assert_any_call("version_prompt_skipped_non_interactive", True)
+        assert "Non-interactive session detected - skipping update prompt" in stderr.getvalue()
 
 
 # ============================================================================
