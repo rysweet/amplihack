@@ -9,6 +9,8 @@ Transport: Azure Event Hubs (CBS-free AMQP — works reliably in Container Apps)
     routed to the target agent's deterministic partition.
   - answer_question() sends INPUT events via EH producer,
     waits for EVAL_ANSWER on the eval-responses Event Hub.
+  - learn_from_content() first pings all agents with ONLINE_CHECK so feed
+    content is not published before every target agent is actually listening.
   - _wait_for_agents_idle() sends FEED_COMPLETE to all agents and waits
     for N AGENT_READY events on the eval-responses hub.
 
@@ -51,6 +53,7 @@ class RemoteAgentAdapter:
         self._question_count = 0
         self._answer_timeout = answer_timeout
         self._shutdown = threading.Event()
+        self._startup_wait_done = threading.Event()
         self._idle_wait_done = threading.Event()
 
         # Thread safety for counters and answer dict
@@ -65,6 +68,11 @@ class RemoteAgentAdapter:
         self._ready_agents: set[str] = set()
         self._ready_lock = threading.Lock()
         self._all_agents_ready = threading.Event()
+
+        # AGENT_ONLINE tracking for pre-feed startup synchronization
+        self._online_agents: set[str] = set()
+        self._online_lock = threading.Lock()
+        self._all_agents_online = threading.Event()
 
         # Unique run_id to filter stale events from previous eval runs
         self._run_id = uuid.uuid4().hex[:12]
@@ -169,6 +177,55 @@ class RemoteAgentAdapter:
                 )
                 raise
 
+    def _wait_for_agents_online(self) -> None:
+        """Wait until every target agent acknowledges ONLINE_CHECK.
+
+        This prevents the eval feed from starting while some agents are still
+        booting and not yet consuming their assigned Event Hubs partitions.
+        """
+        logger.info(
+            "Sending ONLINE_CHECK to all %d agents before feed phase...",
+            self._agent_count,
+        )
+
+        with self._online_lock:
+            self._online_agents.clear()
+            self._all_agents_online.clear()
+
+        poll_interval = 10
+        while True:
+            with self._online_lock:
+                missing_agents = [
+                    f"agent-{i}"
+                    for i in range(self._agent_count)
+                    if f"agent-{i}" not in self._online_agents
+                ]
+                online_count = self._agent_count - len(missing_agents)
+
+            if not missing_agents:
+                logger.info("All %d agents online. Starting feed phase.", self._agent_count)
+                return
+
+            for target_name in missing_agents:
+                self._publish_event(
+                    {
+                        "event_type": "ONLINE_CHECK",
+                        "event_id": uuid.uuid4().hex[:12],
+                        "target_agent": target_name,
+                        "source_agent": "eval-harness",
+                        "payload": {"target_agent": target_name},
+                    },
+                    partition_key=target_name,
+                )
+
+            logger.info(
+                "  %d/%d agents online, pinging missing agents: %s",
+                online_count,
+                self._agent_count,
+                ", ".join(missing_agents),
+            )
+            time.sleep(poll_interval)
+
     def learn_from_content(self, content: str) -> dict[str, Any]:
         """Send content to one agent (round-robin partition).
 
@@ -176,6 +233,12 @@ class RemoteAgentAdapter:
         partition locally. The hive mind shares knowledge between agents
         so any agent can answer questions about any content.
         """
+        if not self._startup_wait_done.is_set():
+            with self._counter_lock:
+                if not self._startup_wait_done.is_set():
+                    self._wait_for_agents_online()
+                    self._startup_wait_done.set()
+
         event_id = uuid.uuid4().hex[:12]
         with self._counter_lock:
             target_agent = self._learn_count % self._agent_count
@@ -270,33 +333,17 @@ class RemoteAgentAdapter:
         Sends FEED_COMPLETE to every agent, then waits for each to publish
         AGENT_READY on the eval-responses hub.  Event-driven — no polling.
         """
+        turns_per_agent = self._learn_count // max(1, self._agent_count)
         logger.info(
             "Sending FEED_COMPLETE to all %d agents (%d content turns each)...",
             self._agent_count,
-            self._learn_count // max(1, self._agent_count),
+            turns_per_agent,
         )
 
         # Reset ready tracking
         with self._ready_lock:
             self._ready_agents.clear()
             self._all_agents_ready.clear()
-
-        # Send FEED_COMPLETE to each agent
-        for i in range(self._agent_count):
-            target_name = f"agent-{i}"
-            self._publish_event(
-                {
-                    "event_type": "FEED_COMPLETE",
-                    "event_id": uuid.uuid4().hex[:12],
-                    "target_agent": target_name,
-                    "source_agent": "eval-harness",
-                    "payload": {
-                        "total_turns": self._learn_count // max(1, self._agent_count),
-                        "target_agent": target_name,
-                    },
-                },
-                partition_key=target_name,
-            )
 
         logger.info(
             "Waiting for %d AGENT_READY events on '%s'...",
@@ -308,15 +355,41 @@ class RemoteAgentAdapter:
         poll_interval = 15
         while True:
             with self._ready_lock:
-                ready_count = len(self._ready_agents)
+                missing_agents = [
+                    f"agent-{i}"
+                    for i in range(self._agent_count)
+                    if f"agent-{i}" not in self._ready_agents
+                ]
+                ready_count = self._agent_count - len(missing_agents)
             if ready_count >= self._agent_count:
                 logger.info("All %d agents ready. Starting question phase.", self._agent_count)
                 return
-            logger.info("  %d/%d agents ready, waiting...", ready_count, self._agent_count)
+
+            for target_name in missing_agents:
+                self._publish_event(
+                    {
+                        "event_type": "FEED_COMPLETE",
+                        "event_id": uuid.uuid4().hex[:12],
+                        "target_agent": target_name,
+                        "source_agent": "eval-harness",
+                        "payload": {
+                            "total_turns": turns_per_agent,
+                            "target_agent": target_name,
+                        },
+                    },
+                    partition_key=target_name,
+                )
+
+            logger.info(
+                "  %d/%d agents ready, re-sent FEED_COMPLETE to: %s",
+                ready_count,
+                self._agent_count,
+                ", ".join(missing_agents),
+            )
             time.sleep(poll_interval)
 
     def _listen_for_answers(self) -> None:
-        """Background thread: collect EVAL_ANSWER and AGENT_READY events from eval-responses hub."""
+        """Background thread: collect eval lifecycle and answer events."""
         try:
             from azure.eventhub import EventHubConsumerClient  # type: ignore[import-unresolved]
         except ImportError:
@@ -333,6 +406,22 @@ class RemoteAgentAdapter:
                 # Filter stale events from previous eval runs
                 run_id = body.get("run_id", "")
                 if run_id and run_id != self._run_id:
+                    return
+
+                if event_type == "AGENT_ONLINE":
+                    agent_id = body.get("agent_id", "")
+                    if agent_id:
+                        with self._online_lock:
+                            self._online_agents.add(agent_id)
+                            online_count = len(self._online_agents)
+                        logger.info(
+                            "RemoteAgentAdapter: AGENT_ONLINE from %s (%d/%d)",
+                            agent_id,
+                            online_count,
+                            self._agent_count,
+                        )
+                    if hasattr(partition_context, "update_checkpoint"):
+                        partition_context.update_checkpoint(event)
                     return
 
                 if event_type == "AGENT_READY":

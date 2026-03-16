@@ -503,6 +503,15 @@ def _run_event_driven_loop(
             answer_publisher.publish_agent_ready(total_turns, run_id=run_id)
             continue
 
+        if text == "__ONLINE_CHECK__":
+            logger.info("Agent %s received ONLINE_CHECK. Publishing AGENT_ONLINE.", agent_name)
+            run_id = ""
+            if hasattr(input_source, "_source"):
+                meta = getattr(input_source._source, "last_event_metadata", {})
+                run_id = meta.get("run_id", "")
+            answer_publisher.publish_agent_online(run_id=run_id)
+            continue
+
         logger.info("Agent %s processing input via OODA (len=%d)", agent_name, len(text))
         try:
             # Set trace context for correlation tracing
@@ -663,8 +672,8 @@ class AnswerPublisher:
     publisher wraps the answer with the current event_id and publishes to the
     eval-responses Event Hub.
 
-    Also publishes AGENT_READY events when FEED_COMPLETE is received, so the
-    eval harness knows when all agents are idle.
+    Also publishes AGENT_ONLINE and AGENT_READY events so the eval harness can
+    synchronize startup and feed-drain barriers.
 
     The current event_id is set by _CorrelatingInputSource before each process() call.
     """
@@ -786,6 +795,20 @@ class AnswerPublisher:
             }
         )
         logger.info("AnswerPublisher: published AGENT_READY for agent=%s", self._agent_name)
+
+    def publish_agent_online(self, run_id: str = "") -> None:
+        """Publish AGENT_ONLINE event to eval-responses hub."""
+        import uuid as _uuid
+
+        self._publish_to_eh(
+            {
+                "event_type": "AGENT_ONLINE",
+                "event_id": _uuid.uuid4().hex,
+                "agent_id": self._agent_name,
+                "run_id": run_id or self._current_run_id,
+            }
+        )
+        logger.info("AnswerPublisher: published AGENT_ONLINE for agent=%s", self._agent_name)
 
     def close(self) -> None:
         """No persistent connection to close — producers are created per-send."""

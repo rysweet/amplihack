@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
+import pytest  # type: ignore[import-unresolved]
 
 _ADAPTER_PATH = Path(__file__).parent.parent / "remote_agent_adapter.py"
 
@@ -53,15 +53,20 @@ def _make_adapter(mod, agent_count=5, answer_timeout=0):
         adapter._question_count = 0
         adapter._answer_timeout = answer_timeout
         adapter._shutdown = threading.Event()
+        adapter._startup_wait_done = threading.Event()
         adapter._idle_wait_done = threading.Event()
         adapter._counter_lock = threading.Lock()
         adapter._answer_lock = threading.Lock()
         adapter._pending_answers = {}
         adapter._answer_events = {}
+        adapter._online_agents = set()
+        adapter._online_lock = threading.Lock()
+        adapter._all_agents_online = threading.Event()
         adapter._ready_agents = set()
         adapter._ready_lock = threading.Lock()
         adapter._all_agents_ready = threading.Event()
         adapter._run_id = "test_run_abc"
+        adapter._num_partitions = 32
         adapter._listener_alive = threading.Event()
         adapter._listener_alive.set()
         adapter._listener_thread = MagicMock()
@@ -191,9 +196,22 @@ class TestPublishEvent:
 
 
 class TestLearnFromContent:
+    def test_first_learn_waits_for_online_agents_once(self):
+        mod = _load_module()
+        adapter = _make_adapter(mod, agent_count=2)
+        adapter._wait_for_agents_online = MagicMock()
+        adapter._publish_event = MagicMock()
+
+        adapter.learn_from_content("hello")
+        adapter.learn_from_content("world")
+
+        adapter._wait_for_agents_online.assert_called_once()
+        assert adapter._startup_wait_done.is_set()
+
     def test_round_robin_targets(self):
         mod = _load_module()
         adapter = _make_adapter(mod, agent_count=3)
+        adapter._startup_wait_done.set()
 
         published_keys = []
 
@@ -218,6 +236,7 @@ class TestLearnFromContent:
     def test_learn_increments_counter(self):
         mod = _load_module()
         adapter = _make_adapter(mod, agent_count=2)
+        adapter._startup_wait_done.set()
         adapter._publish_event = MagicMock()
 
         adapter.learn_from_content("hello")
@@ -266,6 +285,36 @@ class TestAnswerQuestion:
 
 
 class TestOnEvent:
+    def test_agent_online_tracked(self):
+        mod = _load_module()
+        adapter = _make_adapter(mod, agent_count=2)
+
+        body = json.dumps(
+            {
+                "event_type": "AGENT_ONLINE",
+                "agent_id": "agent-1",
+                "run_id": "test_run_abc",
+            }
+        )
+        mock_event = MagicMock()
+        mock_event.body_as_str.return_value = body
+
+        run_id = adapter._run_id
+
+        def on_event(partition_context, event):
+            if event is None:
+                return
+            data = json.loads(event.body_as_str())
+            rid = data.get("run_id", "")
+            if rid and rid != run_id:
+                return
+            if data.get("event_type", "") == "AGENT_ONLINE":
+                with adapter._online_lock:
+                    adapter._online_agents.add(data.get("agent_id", ""))
+
+        on_event(MagicMock(), mock_event)
+        assert "agent-1" in adapter._online_agents
+
     def test_agent_ready_tracked(self):
         mod = _load_module()
         adapter = _make_adapter(mod, agent_count=2)

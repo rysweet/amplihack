@@ -121,6 +121,9 @@ def _extract_text_from_bus_event(event_type: str | None, payload: dict) -> str |
         total = payload.get("total_turns", "?")
         return f"__FEED_COMPLETE__:{total}"
 
+    if event_type == "ONLINE_CHECK":
+        return "__ONLINE_CHECK__"
+
     if event_type == "LEARN_CONTENT":
         return payload.get("content") or None
 
