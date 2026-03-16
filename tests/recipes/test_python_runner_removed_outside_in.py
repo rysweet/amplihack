@@ -15,7 +15,6 @@ Test categories:
 """
 
 import importlib
-import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -66,13 +65,13 @@ class TestRecipeDryRunExecution:
             user_context={"task_description": "test orchestration", "repo_path": "."},
             dry_run=True,
         )
-        assert result.success, f"smart-orchestrator dry-run failed"
+        assert result.success, "smart-orchestrator dry-run failed"
         assert result.recipe_name == "smart-orchestrator"
         assert len(result.step_results) > 0
 
     def test_investigation_workflow_dry_run(self):
         """Investigation workflow recipe should execute via Rust."""
-        from amplihack.recipes import run_recipe_by_name, find_recipe
+        from amplihack.recipes import find_recipe, run_recipe_by_name
 
         # Only run if investigation-workflow recipe exists
         if find_recipe("investigation-workflow") is None:
@@ -96,17 +95,20 @@ class TestRecipeDiscoveryAndParsing:
 
     def test_list_recipes_finds_multiple(self):
         from amplihack.recipes import list_recipes
+
         recipes = list_recipes()
         assert len(recipes) >= 3, f"Expected at least 3 recipes, found {len(recipes)}"
 
     def test_find_default_workflow(self):
         from amplihack.recipes import find_recipe
+
         path = find_recipe("default-workflow")
         assert path is not None, "default-workflow recipe not found"
         assert Path(path).exists()
 
     def test_find_smart_orchestrator(self):
         from amplihack.recipes import find_recipe
+
         path = find_recipe("smart-orchestrator")
         assert path is not None, "smart-orchestrator recipe not found"
 
@@ -130,7 +132,7 @@ steps:
 
     def test_parse_real_recipe_file(self):
         """Parse a real recipe file from disk."""
-        from amplihack.recipes import find_recipe, RecipeParser
+        from amplihack.recipes import RecipeParser, find_recipe
 
         path = find_recipe("default-workflow")
         assert path is not None
@@ -162,15 +164,18 @@ class TestPythonRunnerRemoved:
 
     def test_no_recipe_runner_class(self):
         import amplihack.recipes as mod
+
         assert not hasattr(mod, "RecipeRunner")
 
     def test_no_recipe_context_class(self):
         import amplihack.recipes as mod
+
         assert not hasattr(mod, "RecipeContext")
 
     def test_no_run_recipe_shortcut(self):
         """The old run_recipe() that used Python runner is gone."""
         import amplihack.recipes as mod
+
         assert not hasattr(mod, "run_recipe")
 
     def test_source_files_deleted(self):
@@ -190,6 +195,7 @@ class TestBackwardCompatibility:
     @patch("amplihack.recipes.run_recipe_via_rust")
     def test_adapter_kwarg_accepted(self, mock_rust):
         from amplihack.recipes import run_recipe_by_name
+
         mock_rust.return_value = MagicMock()
         # Old code: run_recipe_by_name("x", adapter=CLISubprocessAdapter())
         run_recipe_by_name("test", adapter=MagicMock())
@@ -198,6 +204,7 @@ class TestBackwardCompatibility:
     @patch("amplihack.recipes.run_recipe_via_rust")
     def test_adapter_not_forwarded_to_rust(self, mock_rust):
         from amplihack.recipes import run_recipe_by_name
+
         mock_rust.return_value = MagicMock()
         run_recipe_by_name("test", adapter="should-be-ignored")
         call_kwargs = mock_rust.call_args[1]
@@ -213,7 +220,8 @@ class TestErrorBehavior:
     """Clear errors when Rust binary is missing."""
 
     def test_clear_error_when_rust_missing(self):
-        from amplihack.recipes import run_recipe_by_name, RustRunnerNotFoundError
+        from amplihack.recipes import RustRunnerNotFoundError, run_recipe_by_name
+
         with patch("amplihack.recipes.rust_runner.find_rust_binary", return_value=None):
             with pytest.raises(RustRunnerNotFoundError, match="recipe-runner-rs"):
                 run_recipe_by_name("default-workflow")
@@ -221,6 +229,7 @@ class TestErrorBehavior:
     def test_recipe_not_found_error(self):
         """Non-existent recipe should raise clear error from Rust runner."""
         from amplihack.recipes import run_recipe_by_name
+
         with pytest.raises((FileNotFoundError, RuntimeError)):
             run_recipe_by_name("nonexistent-recipe-xyz-12345")
 
@@ -235,6 +244,7 @@ class TestRustRunnerResultStructure:
 
     def test_result_has_recipe_name(self):
         from amplihack.recipes import run_recipe_by_name
+
         result = run_recipe_by_name(
             "default-workflow",
             user_context={"task_description": "test", "repo_path": "."},
@@ -245,6 +255,7 @@ class TestRustRunnerResultStructure:
 
     def test_result_has_step_results(self):
         from amplihack.recipes import run_recipe_by_name
+
         result = run_recipe_by_name(
             "default-workflow",
             user_context={"task_description": "test", "repo_path": "."},
@@ -257,6 +268,7 @@ class TestRustRunnerResultStructure:
 
     def test_result_has_success_flag(self):
         from amplihack.recipes import run_recipe_by_name
+
         result = run_recipe_by_name(
             "default-workflow",
             user_context={"task_description": "test", "repo_path": "."},

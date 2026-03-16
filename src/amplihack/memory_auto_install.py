@@ -34,7 +34,9 @@ def _find_x86_python() -> list[str] | None:
     try:
         result = subprocess.run(
             [py, "--list"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         if result.returncode != 0:
             return None
@@ -52,7 +54,9 @@ def _find_x86_python() -> list[str] | None:
             # Verify this Python is actually a working 64-bit interpreter
             check = subprocess.run(
                 [py, ver_tag, "-c", "import struct; print(struct.calcsize('P')*8)"],
-                capture_output=True, text=True, timeout=10,
+                capture_output=True,
+                text=True,
+                timeout=10,
             )
             if check.returncode == 0 and "64" in check.stdout.strip():
                 return [py, ver_tag]
@@ -108,10 +112,17 @@ def _install_via_x86_python(py_cmd: list[str]) -> bool:
 
     try:
         result = subprocess.run(
-            [*py_cmd, "-m", "pip", "install",
-             "git+https://github.com/rysweet/amplihack-memory-lib.git@v0.1.0",
-             "--quiet"],
-            capture_output=True, text=True, timeout=120,
+            [
+                *py_cmd,
+                "-m",
+                "pip",
+                "install",
+                "git+https://github.com/rysweet/amplihack-memory-lib.git@v0.1.0",
+                "--quiet",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=120,
         )
         if result.returncode == 0:
             print("✅ amplihack-memory-lib installed (x86_64 Python)")
@@ -148,10 +159,15 @@ def _do_install(pip_cmd: list[str]) -> bool:
 
     try:
         result = subprocess.run(
-            [*pip_cmd, "install",
-             "git+https://github.com/rysweet/amplihack-memory-lib.git@v0.1.0",
-             "--quiet"],
-            capture_output=True, text=True, timeout=120,
+            [
+                *pip_cmd,
+                "install",
+                "git+https://github.com/rysweet/amplihack-memory-lib.git@v0.1.0",
+                "--quiet",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=120,
         )
 
         if result.returncode == 0:

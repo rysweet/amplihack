@@ -48,12 +48,12 @@ The skill returns a **structured completion summary** and populates the filesyst
 
 ```yaml
 completion_summary:
-  layers_built: array<LayerID>         # Which layers were completed
-  diagrams_created: array<FilePath>    # Relative paths to .mmd/.dot/.svg files
-  inventory_tables: array<FilePath>    # Relative paths to .md inventory tables
-  bug_reports: array<BugReport>        # All findings (see §4)
-  staleness_triggers: array<Trigger>   # CI/staleness table for this codebase
-  errors: array<SkillError>            # Any non-fatal errors (see §5)
+  layers_built: array<LayerID> # Which layers were completed
+  diagrams_created: array<FilePath> # Relative paths to .mmd/.dot/.svg files
+  inventory_tables: array<FilePath> # Relative paths to .md inventory tables
+  bug_reports: array<BugReport> # All findings (see §4)
+  staleness_triggers: array<Trigger> # CI/staleness table for this codebase
+  errors: array<SkillError> # Any non-fatal errors (see §5)
 ```
 
 ### Invocation Examples
@@ -91,9 +91,9 @@ delegation_input:
   skill: "code-visualizer"
   task: "analyze-dependencies"
   payload:
-    module_paths: array<string>   # Python module paths to analyse
-    output_format: "mermaid"      # code-atlas always requests mermaid from this skill
-    check_staleness: boolean      # true if atlas already exists (incremental rebuild)
+    module_paths: array<string> # Python module paths to analyse
+    output_format: "mermaid" # code-atlas always requests mermaid from this skill
+    check_staleness: boolean # true if atlas already exists (incremental rebuild)
 ```
 
 **Expected output:**
@@ -150,12 +150,12 @@ Edge:
 
 **Expected output:**
 
-```yaml
+````yaml
 delegation_output:
-  mermaid_syntax: string     # Complete, valid mermaid block (without ``` fences)
-  diagram_type: DiagramType  # Confirmed type used
-  node_count: integer        # Actual nodes in output
-```
+  mermaid_syntax: string # Complete, valid mermaid block (without ``` fences)
+  diagram_type: DiagramType # Confirmed type used
+  node_count: integer # Actual nodes in output
+````
 
 **Contract guarantee:** The returned `mermaid_syntax` must be renderable by `mmdc` without error. If the diagram generator cannot produce valid syntax, it MUST return an error rather than invalid syntax.
 
@@ -164,6 +164,7 @@ delegation_output:
 ### 2c. `visualization-architect` Agent
 
 **When invoked:**
+
 - Layer 1 (runtime topology) — always, for service cluster layout
 - Any layer where DOT format is requested and node count > 20
 - Cross-layer overview diagrams
@@ -219,12 +220,10 @@ delegation_input:
   "language": "go",
   "modules": ["cmd/server", "internal/auth", "pkg/db"],
   "edges": [
-    {"from": "cmd/server", "to": "internal/auth", "type": "import"},
-    {"from": "internal/auth", "to": "pkg/db", "type": "import"}
+    { "from": "cmd/server", "to": "internal/auth", "type": "import" },
+    { "from": "internal/auth", "to": "pkg/db", "type": "import" }
   ],
-  "external_packages": [
-    {"name": "github.com/gin-gonic/gin", "version": "v1.9.1"}
-  ]
+  "external_packages": [{ "name": "github.com/gin-gonic/gin", "version": "v1.9.1" }]
 }
 ```
 
@@ -304,26 +303,26 @@ docs/atlas/
 **Route Inventory (Layer 3 — `inventory.md`):**
 
 ```markdown
-| Method | Path | Handler | Auth | Request DTO | Response DTO | Middleware |
-|--------|------|---------|------|-------------|--------------|------------|
-| POST   | /api/orders | OrderController.create | JWT | CreateOrderRequest | OrderResponse | rate-limit, validate |
+| Method | Path        | Handler                | Auth | Request DTO        | Response DTO  | Middleware           |
+| ------ | ----------- | ---------------------- | ---- | ------------------ | ------------- | -------------------- |
+| POST   | /api/orders | OrderController.create | JWT  | CreateOrderRequest | OrderResponse | rate-limit, validate |
 ```
 
 **Env Var Inventory (Layer 6b — `env-vars.md`):**
 
 ```markdown
-| Variable | Required | Default | Used By | Declared In |
-|----------|----------|---------|---------|-------------|
-| DATABASE_URL | yes | — | db/connection.go | .env.example |
-| REDIS_URL | no | redis://localhost | cache/client.go | .env.example |
+| Variable     | Required | Default           | Used By          | Declared In  |
+| ------------ | -------- | ----------------- | ---------------- | ------------ |
+| DATABASE_URL | yes      | —                 | db/connection.go | .env.example |
+| REDIS_URL    | no       | redis://localhost | cache/client.go  | .env.example |
 ```
 
 **Service Inventory (Layer 6a — `services.md`):**
 
 ```markdown
-| Service | Port | Protocol | Depends On | Health Check |
-|---------|------|----------|------------|--------------|
-| api-server | 8080 | HTTP | postgres, redis | GET /health |
+| Service    | Port | Protocol | Depends On      | Health Check |
+| ---------- | ---- | -------- | --------------- | ------------ |
+| api-server | 8080 | HTTP     | postgres, redis | GET /health  |
 ```
 
 ---
@@ -336,20 +335,20 @@ Every finding from Pass 1 or Pass 2 produces a `BugReport` object and a correspo
 
 ```typescript
 interface BugReport {
-  id: string;                    // Slug: "route-dto-mismatch-order-customerid"
-  title: string;                 // One sentence: "POST /api/orders handler reads undeclared field"
+  id: string; // Slug: "route-dto-mismatch-order-customerid"
+  title: string; // One sentence: "POST /api/orders handler reads undeclared field"
   severity: "critical" | "major" | "minor" | "info";
-  pass: 1 | 2;                   // Which bug-hunt pass found this
-  layers_involved: LayerID[];    // e.g. [3, 4]
-  evidence: Evidence[];          // Minimum 1 required
-  recommendation: string;        // One actionable sentence
+  pass: 1 | 2; // Which bug-hunt pass found this
+  layers_involved: LayerID[]; // e.g. [3, 4]
+  evidence: Evidence[]; // Minimum 1 required
+  recommendation: string; // One actionable sentence
 }
 
 interface Evidence {
   type: "code-quote" | "layer-reference" | "diagram-annotation";
-  file: string;                  // Relative path from codebase root
-  line?: number;                 // Specific line number (for code-quote only)
-  content: string;               // The actual quoted code or layer data
+  file: string; // Relative path from codebase root
+  line?: number; // Specific line number (for code-quote only)
+  content: string; // The actual quoted code or layer data
 }
 ```
 
@@ -357,7 +356,7 @@ interface Evidence {
 
 File: `docs/atlas/bug-reports/{YYYY-MM-DD}-{slug}.md`
 
-```markdown
+````markdown
 # Bug: {title}
 
 **Severity:** {severity}
@@ -372,16 +371,21 @@ File: `docs/atlas/bug-reports/{YYYY-MM-DD}-{slug}.md`
 ## Evidence
 
 ### Layer {N} truth: {layer_name}
+
 ```{language}
 {code_quote_or_data}
 ```
-*Source: `{file}:{line}`*
+````
+
+_Source: `{file}:{line}`_
 
 ### Layer {M} truth: {layer_name}
+
 ```{language}
 {code_quote_or_data}
 ```
-*Source: `{file}:{line}`*
+
+_Source: `{file}:{line}`_
 
 ## Contradiction
 
@@ -390,7 +394,8 @@ File: `docs/atlas/bug-reports/{YYYY-MM-DD}-{slug}.md`
 ## Recommendation
 
 {Actionable fix in one sentence.}
-```
+
+````
 
 ---
 
@@ -417,7 +422,7 @@ type ErrorCode =
   | "PUBLISH_FAILED"           // GitHub Pages push failed
   | "JOURNEY_UNDER_MINIMUM"    // Fewer than 3 journeys could be derived
   | "INCOMPLETE_INVENTORY";    // Required inventory columns are missing
-```
+````
 
 ### Error Response Examples
 
@@ -510,15 +515,15 @@ staleness_map:
 
 **Start at v1.0.0 and stay there as long as possible.**
 
-| Change Type | Action |
-|-------------|--------|
-| Add optional invocation parameter | Backward compatible — no version bump |
-| Add new layer ID (7+) | Backward compatible — no version bump |
-| Add new `ErrorCode` value | Backward compatible — no version bump |
-| Rename existing `docs/atlas/` subdirectory | **Breaking — bump to v2.0.0** |
-| Remove existing output artifact | **Breaking — bump to v2.0.0** |
-| Change `BugReport` required field names | **Breaking — bump to v2.0.0** |
-| Remove delegation contract | **Breaking — bump to v2.0.0** |
+| Change Type                                | Action                                |
+| ------------------------------------------ | ------------------------------------- |
+| Add optional invocation parameter          | Backward compatible — no version bump |
+| Add new layer ID (7+)                      | Backward compatible — no version bump |
+| Add new `ErrorCode` value                  | Backward compatible — no version bump |
+| Rename existing `docs/atlas/` subdirectory | **Breaking — bump to v2.0.0**         |
+| Remove existing output artifact            | **Breaking — bump to v2.0.0**         |
+| Change `BugReport` required field names    | **Breaking — bump to v2.0.0**         |
+| Remove delegation contract                 | **Breaking — bump to v2.0.0**         |
 
 **v2 trigger condition:** Any change to `docs/atlas/` layout or `BugReport` schema that breaks existing CI integrations.
 
@@ -526,12 +531,12 @@ staleness_map:
 
 ## 8. Contract Stability Guarantees
 
-| Contract | Stability | Notes |
-|----------|-----------|-------|
-| Skill invocation parameters | **Stable** | Additive only in v1.x |
-| `docs/atlas/` directory layout | **Stable** | Breaking = v2 |
-| `staleness-map.yaml` key names | **Stable** | `glob`, `layers_affected`, `rebuild_command` guaranteed |
-| `BugReport.id` format | **Stable** | `{topic}-{field-slug}` format guaranteed |
-| Inventory table column order | **Unstable** | Consumers MUST use column headers, not position |
-| Delegation input shapes | **Internal** | May change between minor versions |
-| Individual SVG filenames | **Stable** | `{layer-slug}/{diagram-name}.svg` guaranteed |
+| Contract                       | Stability    | Notes                                                   |
+| ------------------------------ | ------------ | ------------------------------------------------------- |
+| Skill invocation parameters    | **Stable**   | Additive only in v1.x                                   |
+| `docs/atlas/` directory layout | **Stable**   | Breaking = v2                                           |
+| `staleness-map.yaml` key names | **Stable**   | `glob`, `layers_affected`, `rebuild_command` guaranteed |
+| `BugReport.id` format          | **Stable**   | `{topic}-{field-slug}` format guaranteed                |
+| Inventory table column order   | **Unstable** | Consumers MUST use column headers, not position         |
+| Delegation input shapes        | **Internal** | May change between minor versions                       |
+| Individual SVG filenames       | **Stable**   | `{layer-slug}/{diagram-name}.svg` guaranteed            |

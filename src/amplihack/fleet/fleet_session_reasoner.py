@@ -12,7 +12,11 @@ import subprocess
 from dataclasses import dataclass, field
 
 from amplihack.fleet._backends import LLMBackend, auto_detect_backend
-from amplihack.fleet._constants import MIN_CONFIDENCE_RESTART, MIN_CONFIDENCE_SEND, SSH_ACTION_TIMEOUT_SECONDS
+from amplihack.fleet._constants import (
+    MIN_CONFIDENCE_RESTART,
+    MIN_CONFIDENCE_SEND,
+    SSH_ACTION_TIMEOUT_SECONDS,
+)
 from amplihack.fleet._defaults import get_azlin_path
 from amplihack.fleet._session_context import SessionContext, SessionDecision
 from amplihack.fleet._session_gather import gather_context
@@ -65,7 +69,9 @@ class SessionReasoner:
                 Passed through to gather_context to avoid re-polling the same pane.
         """
         # 1. PERCEIVE
-        context = self._gather_context(vm_name, session_name, task_prompt, project_priorities, cached_tmux_capture)
+        context = self._gather_context(
+            vm_name, session_name, task_prompt, project_priorities, cached_tmux_capture
+        )
 
         # 2. REASON -- fast-path: skip LLM call if agent is actively thinking
         if context.agent_status == "thinking":
@@ -107,9 +113,18 @@ class SessionReasoner:
             decisions.append(decision)
         return decisions
 
-    def _gather_context(self, vm_name, session_name, task_prompt, project_priorities, cached_tmux_capture=""):
+    def _gather_context(
+        self, vm_name, session_name, task_prompt, project_priorities, cached_tmux_capture=""
+    ):
         """Delegate to standalone gather_context."""
-        return gather_context(self.azlin_path, vm_name, session_name, task_prompt, project_priorities, cached_tmux_capture=cached_tmux_capture)
+        return gather_context(
+            self.azlin_path,
+            vm_name,
+            session_name,
+            task_prompt,
+            project_priorities,
+            cached_tmux_capture=cached_tmux_capture,
+        )
 
     def reason(self, context: SessionContext) -> SessionDecision:
         """Public entry point for LLM-based reasoning about a session context."""
@@ -147,7 +162,8 @@ class SessionReasoner:
                 except (TypeError, ValueError) as exc:
                     logger.warning(
                         "LLM returned unparseable confidence value %r: %s",
-                        decision_data.get("confidence"), exc,
+                        decision_data.get("confidence"),
+                        exc,
                     )
                     decision_data["confidence"] = 0.5
             if not isinstance(decision_data.get("input_text", ""), str):
@@ -165,7 +181,11 @@ class SessionReasoner:
             )
 
         except NotImplementedError:
-            logger.warning("LLM backend not implemented for session %s/%s", context.vm_name, context.session_name)
+            logger.warning(
+                "LLM backend not implemented for session %s/%s",
+                context.vm_name,
+                context.session_name,
+            )
             return SessionDecision(
                 session_name=context.session_name,
                 vm_name=context.vm_name,
@@ -174,7 +194,9 @@ class SessionReasoner:
                 confidence=0.0,
             )
         except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
-            logger.warning("LLM response parse error for %s/%s: %s", context.vm_name, context.session_name, e)
+            logger.warning(
+                "LLM response parse error for %s/%s: %s", context.vm_name, context.session_name, e
+            )
             return SessionDecision(
                 session_name=context.session_name,
                 vm_name=context.vm_name,
@@ -183,7 +205,13 @@ class SessionReasoner:
                 confidence=0.0,
             )
         except Exception as e:
-            logger.error("LLM call failed for %s/%s: %s: %s", context.vm_name, context.session_name, type(e).__name__, e)
+            logger.error(
+                "LLM call failed for %s/%s: %s: %s",
+                context.vm_name,
+                context.session_name,
+                type(e).__name__,
+                e,
+            )
             return SessionDecision(
                 session_name=context.session_name,
                 vm_name=context.vm_name,
@@ -232,12 +260,24 @@ class SessionReasoner:
                 cmd = f"tmux send-keys -t {safe_session} {shlex.quote(line)} Enter"
                 try:
                     subprocess.run(
-                        [self.azlin_path, "connect", decision.vm_name, "--no-tmux", "--yes", "--", cmd],
+                        [
+                            self.azlin_path,
+                            "connect",
+                            decision.vm_name,
+                            "--no-tmux",
+                            "--yes",
+                            "--",
+                            cmd,
+                        ],
                         capture_output=True,
                         text=True,
                         timeout=SSH_ACTION_TIMEOUT_SECONDS,
                     )
-                except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
+                except (
+                    subprocess.TimeoutExpired,
+                    subprocess.SubprocessError,
+                    FileNotFoundError,
+                ) as exc:
                     logger.warning(
                         "send_input failed for %s/%s: %s",
                         decision.vm_name,
@@ -258,7 +298,11 @@ class SessionReasoner:
                     text=True,
                     timeout=SSH_ACTION_TIMEOUT_SECONDS,
                 )
-            except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
+            except (
+                subprocess.TimeoutExpired,
+                subprocess.SubprocessError,
+                FileNotFoundError,
+            ) as exc:
                 logger.warning(
                     "restart failed for %s/%s: %s",
                     decision.vm_name,

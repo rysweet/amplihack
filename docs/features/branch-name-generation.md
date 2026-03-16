@@ -30,12 +30,12 @@ The result is always a branch name that:
 
 **Examples:**
 
-| `task_description`                                    | `branch_prefix` | `issue_number` | Generated branch                                                 |
-| ----------------------------------------------------- | --------------- | -------------- | ---------------------------------------------------------------- |
-| `Add user authentication`                             | `feat`          | `123`          | `feat/issue-123-add-user-authentication`                         |
-| `Fix the login bug\n\nUsers cannot log in on Safari.` | `fix`           | `456`          | `fix/issue-456-fix-the-login-bug-users-cannot-log-in-on-safari`  |
-| `Réfactoriser l'API d'authentification`               | `refactor`      | `789`          | `refactor/issue-789-rfactoriser-lapi-dauthentification`           |
-| `  ` (blank)                                          | `feat`          | `42`           | `feat/task-unnamed-<timestamp>` (fallback)                        |
+| `task_description`                                    | `branch_prefix` | `issue_number` | Generated branch                                                |
+| ----------------------------------------------------- | --------------- | -------------- | --------------------------------------------------------------- |
+| `Add user authentication`                             | `feat`          | `123`          | `feat/issue-123-add-user-authentication`                        |
+| `Fix the login bug\n\nUsers cannot log in on Safari.` | `fix`           | `456`          | `fix/issue-456-fix-the-login-bug-users-cannot-log-in-on-safari` |
+| `Réfactoriser l'API d'authentification`               | `refactor`      | `789`          | `refactor/issue-789-rfactoriser-lapi-dauthentification`         |
+| `  ` (blank)                                          | `feat`          | `42`           | `feat/task-unnamed-<timestamp>` (fallback)                      |
 
 ---
 
@@ -122,12 +122,12 @@ sed 's/[^a-z0-9-]//g; s/-\{2,\}/-/g; s/^-//; s/-$//'
 
 Four substitutions in one `sed` invocation:
 
-| Expression               | Effect                                              |
-| ------------------------ | --------------------------------------------------- |
-| `s/[^a-z0-9-]//g`        | Strips every character that is not `a-z`, `0-9`, or `-` |
-| `s/-\{2,\}/-/g`          | Collapses two-or-more consecutive hyphens to one    |
-| `s/^-//`                 | Strips a leading hyphen (would make an invalid ref) |
-| `s/-$//`                 | Strips a trailing hyphen (would make an invalid ref) |
+| Expression        | Effect                                                  |
+| ----------------- | ------------------------------------------------------- |
+| `s/[^a-z0-9-]//g` | Strips every character that is not `a-z`, `0-9`, or `-` |
+| `s/-\{2,\}/-/g`   | Collapses two-or-more consecutive hyphens to one        |
+| `s/^-//`          | Strips a leading hyphen (would make an invalid ref)     |
+| `s/-$//`          | Strips a trailing hyphen (would make an invalid ref)    |
 
 The whitelist expression (`[^a-z0-9-]`) also removes characters that could be interpreted as shell metacharacters (`$`, `` ` ``, `;`, `&`, `|`, `(`, `)`) — this stage is the primary command-injection defence.
 
@@ -180,23 +180,23 @@ On failure, the branch name falls back to `{{branch_prefix}}/task-unnamed-<unix-
 
 Branch name generation uses three context variables supplied when invoking the workflow:
 
-| Variable           | Required | Description                                  | Example              |
-| ------------------ | -------- | -------------------------------------------- | -------------------- |
-| `task_description` | Yes      | Human-readable description of the task       | `"Add OAuth support"` |
-| `issue_number`     | Yes      | Issue or ticket number (numeric or string)   | `"2952"`             |
-| `branch_prefix`    | Yes      | Git branch prefix (conventionally `feat`, `fix`, `docs`, `refactor`, `test`) | `"feat"` |
-| `repo_path`        | Yes      | Absolute path to the git repository          | `"/home/user/myapp"` |
+| Variable           | Required | Description                                                                  | Example               |
+| ------------------ | -------- | ---------------------------------------------------------------------------- | --------------------- |
+| `task_description` | Yes      | Human-readable description of the task                                       | `"Add OAuth support"` |
+| `issue_number`     | Yes      | Issue or ticket number (numeric or string)                                   | `"2952"`              |
+| `branch_prefix`    | Yes      | Git branch prefix (conventionally `feat`, `fix`, `docs`, `refactor`, `test`) | `"feat"`              |
+| `repo_path`        | Yes      | Absolute path to the git repository                                          | `"/home/user/myapp"`  |
 
 **Branch prefix conventions:**
 
-| Prefix     | Use for                          |
-| ---------- | -------------------------------- |
-| `feat`     | New features                     |
-| `fix`      | Bug fixes                        |
-| `docs`     | Documentation-only changes       |
+| Prefix     | Use for                                     |
+| ---------- | ------------------------------------------- |
+| `feat`     | New features                                |
+| `fix`      | Bug fixes                                   |
+| `docs`     | Documentation-only changes                  |
 | `refactor` | Code restructuring without behaviour change |
-| `test`     | Adding or updating tests         |
-| `chore`    | Build, tooling, dependency updates |
+| `test`     | Adding or updating tests                    |
+| `chore`    | Build, tooling, dependency updates          |
 
 ---
 
@@ -255,12 +255,12 @@ When `git check-ref-format --branch` rejects the generated name, the workflow us
 
 **Conditions that trigger the fallback:**
 
-| Condition | Example input | Fallback branch |
-| --------- | ------------- | --------------- |
-| `task_description` is empty or whitespace-only | `"   "` | `feat/task-unnamed-1741478400` (empty-slug guard fires before git check) |
-| Slug becomes empty after sanitisation (all-symbol input) | `"!!!???###"` | `feat/task-unnamed-1741478400` (empty-slug guard fires before git check) |
-| `branch_prefix` itself is invalid | `"feat name"` | `feat name/task-unnamed-...` (still invalid; `git worktree add` will fail — fix the prefix) |
-| `issue_number` is empty, producing `feat/issue--slug` | `""` | `feat/issue--slug` (git accepts double-hyphen; branch is created with this name) |
+| Condition                                                | Example input | Fallback branch                                                                             |
+| -------------------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------- |
+| `task_description` is empty or whitespace-only           | `"   "`       | `feat/task-unnamed-1741478400` (empty-slug guard fires before git check)                    |
+| Slug becomes empty after sanitisation (all-symbol input) | `"!!!???###"` | `feat/task-unnamed-1741478400` (empty-slug guard fires before git check)                    |
+| `branch_prefix` itself is invalid                        | `"feat name"` | `feat name/task-unnamed-...` (still invalid; `git worktree add` will fail — fix the prefix) |
+| `issue_number` is empty, producing `feat/issue--slug`    | `""`          | `feat/issue--slug` (git accepts double-hyphen; branch is created with this name)            |
 
 The Unix timestamp suffix ensures each fallback branch is unique, preventing "branch already exists" errors when the fallback fires on multiple consecutive runs (e.g., CI retrying a workflow with the same pathological input).
 
@@ -270,17 +270,17 @@ The Unix timestamp suffix ensures each fallback branch is unique, preventing "br
 
 The branch name pipeline provides several layers of protection against malicious or accidental input:
 
-| Threat | Mitigation |
-| ------ | ---------- |
-| Shell command injection via `task_description` | `printf '%s' '...'` renders in single quotes (prevents word-splitting and `$()` injection); `sed 's/[^a-z0-9-]//g'` removes all shell metacharacters from the slug |
-| Single-quote injection in `task_description` | **Known limitation (REQ-SEC-001, issue #2974):** a `'` in the input breaks the single-quote wrapping. Full mitigation requires env-var injection in the recipe runner (tracked in #2974) |
-| CRLF injection | `tr '\n\r' '  '` converts all line endings to spaces before any other processing |
-| Path traversal via `..` in branch name | `sed 's/[^a-z0-9-]//g'` removes `.` |
-| Branch name exceeding remote URL limits | `cut -c1-50` enforces a hard upper bound |
-| Trailing hyphen from `cut` truncation | `sed 's/-$//'` after `cut` strips any hyphen left at position 50 |
-| Invalid ref reaching `git worktree add` | `git check-ref-format --branch` validates before the git command runs |
-| Fallback branch collision (repeated failures) | Fallback name includes `$(date +%s)` Unix timestamp for uniqueness |
-| Secrets or PII leaking into git history | Warning message logs only the sanitised `BRANCH_NAME`, never the raw `task_description` |
+| Threat                                         | Mitigation                                                                                                                                                                               |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Shell command injection via `task_description` | `printf '%s' '...'` renders in single quotes (prevents word-splitting and `$()` injection); `sed 's/[^a-z0-9-]//g'` removes all shell metacharacters from the slug                       |
+| Single-quote injection in `task_description`   | **Known limitation (REQ-SEC-001, issue #2974):** a `'` in the input breaks the single-quote wrapping. Full mitigation requires env-var injection in the recipe runner (tracked in #2974) |
+| CRLF injection                                 | `tr '\n\r' '  '` converts all line endings to spaces before any other processing                                                                                                         |
+| Path traversal via `..` in branch name         | `sed 's/[^a-z0-9-]//g'` removes `.`                                                                                                                                                      |
+| Branch name exceeding remote URL limits        | `cut -c1-50` enforces a hard upper bound                                                                                                                                                 |
+| Trailing hyphen from `cut` truncation          | `sed 's/-$//'` after `cut` strips any hyphen left at position 50                                                                                                                         |
+| Invalid ref reaching `git worktree add`        | `git check-ref-format --branch` validates before the git command runs                                                                                                                    |
+| Fallback branch collision (repeated failures)  | Fallback name includes `$(date +%s)` Unix timestamp for uniqueness                                                                                                                       |
+| Secrets or PII leaking into git history        | Warning message logs only the sanitised `BRANCH_NAME`, never the raw `task_description`                                                                                                  |
 
 > **Important:** Branch names derived from `task_description` appear in git history, remote branch listings, pull request titles, and CI logs. Do not include secrets, passwords, API keys, or PII in `task_description`.
 
@@ -381,15 +381,15 @@ fi
 
 ### Acceptance criteria (issue #2952)
 
-| Criterion | How it is met |
-| --------- | -------------- |
-| No newlines in branch name | `tr '\n\r' '  '` (Stage 2) converts before any other transform |
-| Max 50 characters in slug | `cut -c1-50` (Stage 6) |
-| No trailing hyphen in slug | `sed 's/-$//'` (Stage 7) runs after `cut`; empty-slug guard (Stage 8) prevents the trailing-hyphen branch that `git check-ref-format` would otherwise accept |
-| `git check-ref-format` exits 0 | Empty-slug guard + `git check-ref-format` validation (Stage 8) |
-| Safe fallback on invalid name | Falls back to `{{branch_prefix}}/task-unnamed-<timestamp>` with stderr warning |
-| Fallback uniqueness | Timestamp suffix (`date +%s`) prevents collision when fallback fires on repeated runs |
-| Single-line short descriptions produce identical output | New stages 2–8 are no-ops on already-valid input |
+| Criterion                                               | How it is met                                                                                                                                                |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| No newlines in branch name                              | `tr '\n\r' '  '` (Stage 2) converts before any other transform                                                                                               |
+| Max 50 characters in slug                               | `cut -c1-50` (Stage 6)                                                                                                                                       |
+| No trailing hyphen in slug                              | `sed 's/-$//'` (Stage 7) runs after `cut`; empty-slug guard (Stage 8) prevents the trailing-hyphen branch that `git check-ref-format` would otherwise accept |
+| `git check-ref-format` exits 0                          | Empty-slug guard + `git check-ref-format` validation (Stage 8)                                                                                               |
+| Safe fallback on invalid name                           | Falls back to `{{branch_prefix}}/task-unnamed-<timestamp>` with stderr warning                                                                               |
+| Fallback uniqueness                                     | Timestamp suffix (`date +%s`) prevents collision when fallback fires on repeated runs                                                                        |
+| Single-line short descriptions produce identical output | New stages 2–8 are no-ops on already-valid input                                                                                                             |
 
 ---
 

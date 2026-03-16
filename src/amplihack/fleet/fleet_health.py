@@ -62,7 +62,11 @@ class VMHealth:
 
     @property
     def needs_attention(self) -> bool:
-        return self.memory_used_pct > MEMORY_ATTENTION_THRESHOLD_PCT or self.disk_used_pct > DISK_ATTENTION_THRESHOLD_PCT or not self.ssh_reachable
+        return (
+            self.memory_used_pct > MEMORY_ATTENTION_THRESHOLD_PCT
+            or self.disk_used_pct > DISK_ATTENTION_THRESHOLD_PCT
+            or not self.ssh_reachable
+        )
 
 
 @dataclass

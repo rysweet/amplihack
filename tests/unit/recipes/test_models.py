@@ -82,12 +82,14 @@ class TestRecipeResultStr:
 class TestEvaluateCondition:
     """Tests for Step.evaluate_condition() — condition evaluation with type coercion."""
 
-    def _step(self, condition: str) -> "Step":
+    def _step(self, condition: str) -> Step:
         from amplihack.recipes.models import Step, StepType
+
         return Step(id="test", step_type=StepType.BASH, condition=condition)
 
     def test_no_condition_returns_true(self) -> None:
         from amplihack.recipes.models import Step, StepType
+
         step = Step(id="test", step_type=StepType.BASH, condition=None)
         assert step.evaluate_condition({}) is True
 

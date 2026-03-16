@@ -66,11 +66,10 @@ class Step:
         # Coerce booleans to lowercase strings so recipe conditions like
         # ``== 'true'`` work.  Keep numbers as-is for numeric comparisons.
         eval_ctx: dict[str, Any] = {
-            k: str(v).lower() if isinstance(v, bool) else v
-            for k, v in context.items()
+            k: str(v).lower() if isinstance(v, bool) else v for k, v in context.items()
         }
         try:
-            return bool(eval(self.condition.strip(), {"__builtins__": {}}, eval_ctx))  # noqa: S307
+            return bool(eval(self.condition.strip(), {"__builtins__": {}}, eval_ctx))
         except Exception as exc:
             log.warning(
                 "Step condition %r could not be evaluated: %s — defaulting to True (step will run)",

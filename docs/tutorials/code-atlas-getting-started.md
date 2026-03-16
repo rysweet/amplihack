@@ -10,6 +10,7 @@ updated: 2026-03-16
 **What you'll learn:** How to build a complete code atlas, read each layer, find your first structural bug, and set up CI freshness detection.
 
 **Prerequisites:**
+
 - A repository with source code (Go, TypeScript, Python, .NET, or Rust)
 - Claude Code with the amplihack plugin installed
 - `git` available in your terminal
@@ -25,6 +26,7 @@ Build a complete code atlas for this repository
 ```
 
 The skill will:
+
 1. Detect your language(s) from build files and entry points
 2. Build 6 layers of architecture documentation
 3. Run a 2-pass bug hunt
@@ -55,6 +57,7 @@ The full build takes 2–5 minutes for a typical multi-service repository.
 Open `docs/atlas/layer1-runtime/topology.mmd` or `topology.svg`.
 
 This diagram shows:
+
 - Every service (box shape)
 - Every database and cache (cylinder shape)
 - Every connection between them (labeled arrows)
@@ -93,14 +96,15 @@ Open `docs/atlas/layer3-routing/inventory.md`.
 This table lists every HTTP route in your system:
 
 ```markdown
-| Method | Path | Handler | Auth | Request DTO | Response DTO |
-|--------|------|---------|------|-------------|--------------|
-| POST | /api/auth/login | AuthController.login | None | LoginRequest | TokenResponse |
-| GET | /api/users | UserController.list | JWT | — | UserListResponse |
-| POST | /api/orders | OrderController.create | JWT | CreateOrderRequest | OrderResponse |
+| Method | Path            | Handler                | Auth | Request DTO        | Response DTO     |
+| ------ | --------------- | ---------------------- | ---- | ------------------ | ---------------- |
+| POST   | /api/auth/login | AuthController.login   | None | LoginRequest       | TokenResponse    |
+| GET    | /api/users      | UserController.list    | JWT  | —                  | UserListResponse |
+| POST   | /api/orders     | OrderController.create | JWT  | CreateOrderRequest | OrderResponse    |
 ```
 
 **What to look for:**
+
 - Routes with no auth that should require it
 - Routes referencing DTOs that don't exist (bug!)
 - Routes documented but no longer in the code
@@ -113,7 +117,7 @@ After the atlas builds, check `docs/atlas/bug-reports/`. You may already have a 
 
 Bug reports look like this:
 
-```markdown
+````markdown
 # Bug: POST /api/orders handler reads undeclared field
 
 **Severity:** major
@@ -123,13 +127,17 @@ Bug reports look like this:
 ## Evidence
 
 ### Layer 3 truth: HTTP Routing
+
 ```go
 // src/handlers/orders.go:47
 customerId := req.Body.CustomerId  // accesses customerId
 ```
-*Source: `src/handlers/orders.go:47`*
+````
+
+_Source: `src/handlers/orders.go:47`_
 
 ### Layer 4 truth: Data Flow
+
 ```go
 // src/dtos/orders.go:12
 type CreateOrderRequest struct {
@@ -140,10 +148,13 @@ type CreateOrderRequest struct {
 ```
 
 ## Contradiction
+
 Layer 3 handler reads `customerId`; Layer 4 DTO does not declare it.
 
 ## Recommendation
+
 Add `CustomerId string` to `CreateOrderRequest` or remove the handler reference.
+
 ```
 
 **This is a real structural bug** — the kind that causes silent TypeErrors in production.
@@ -155,15 +166,17 @@ Add `CustomerId string` to `CreateOrderRequest` or remove the handler reference.
 Run:
 
 ```
+
 Set up CI staleness detection for the code atlas
-```
+
+````
 
 Or add the workflow manually:
 
 ```bash
 # Copy the workflow file (already created by the skill)
 cat .github/workflows/atlas-ci.yml
-```
+````
 
 The CI workflow runs `scripts/check-atlas-staleness.sh` on every push and reports which layers need rebuilding.
 
@@ -194,4 +207,4 @@ Now that you have a complete atlas:
 
 ---
 
-*This tutorial uses retcon documentation — commands and outputs reflect the intended behavior of the `/code-atlas` skill.*
+_This tutorial uses retcon documentation — commands and outputs reflect the intended behavior of the `/code-atlas` skill._

@@ -2,6 +2,7 @@
 
 Adds .claude/tools to sys.path so tests can import the remote module.
 """
+
 import sys
 from pathlib import Path
 

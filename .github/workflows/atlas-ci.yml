@@ -22,41 +22,41 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/**'
-      - 'services/**'
-      - 'apps/**'
-      - 'cmd/**'
-      - 'docker-compose*.yml'
-      - 'docker-compose*.yaml'
-      - '**/package.json'
-      - '**/go.mod'
-      - '**/*.csproj'
-      - '**/Cargo.toml'
-      - '**/requirements*.txt'
-      - '**/pyproject.toml'
-      - 'k8s/**'
-      - 'kubernetes/**'
-      - 'helm/**'
+      - "src/**"
+      - "services/**"
+      - "apps/**"
+      - "cmd/**"
+      - "docker-compose*.yml"
+      - "docker-compose*.yaml"
+      - "**/package.json"
+      - "**/go.mod"
+      - "**/*.csproj"
+      - "**/Cargo.toml"
+      - "**/requirements*.txt"
+      - "**/pyproject.toml"
+      - "k8s/**"
+      - "kubernetes/**"
+      - "helm/**"
 
   pull_request:
     branches: [main]
 
   schedule:
-    - cron: '0 6 * * 1'  # Every Monday at 06:00 UTC
+    - cron: "0 6 * * 1" # Every Monday at 06:00 UTC
 
   workflow_dispatch:
     inputs:
       force_full_rebuild:
-        description: 'Force full atlas rebuild (ignores staleness check)'
+        description: "Force full atlas rebuild (ignores staleness check)"
         required: false
-        default: 'false'
+        default: "false"
 
 jobs:
   # ---------------------------------------------------------------------------
   # Pattern 1: Post-merge staleness gate
   # ---------------------------------------------------------------------------
   atlas-staleness-gate:
-    name: 'Atlas Staleness Gate'
+    name: "Atlas Staleness Gate"
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
     steps:
@@ -93,7 +93,7 @@ jobs:
   # Pattern 2: PR architecture impact check
   # ---------------------------------------------------------------------------
   atlas-pr-impact:
-    name: 'Atlas PR Impact Check'
+    name: "Atlas PR Impact Check"
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     steps:
@@ -160,7 +160,7 @@ jobs:
   # Pattern 3: Scheduled full rebuild
   # ---------------------------------------------------------------------------
   atlas-scheduled-rebuild:
-    name: 'Scheduled Full Atlas Rebuild'
+    name: "Scheduled Full Atlas Rebuild"
     runs-on: ubuntu-latest
     if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.force_full_rebuild == 'true')
     steps:

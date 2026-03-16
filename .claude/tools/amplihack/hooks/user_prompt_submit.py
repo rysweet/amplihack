@@ -19,7 +19,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 try:
     from amplihack.utils.paths import FrameworkPathResolver
 except ImportError:
-    print("WARNING: FrameworkPathResolver not available - using fallback path resolution", file=sys.stderr)
+    print(
+        "WARNING: FrameworkPathResolver not available - using fallback path resolution",
+        file=sys.stderr,
+    )
     FrameworkPathResolver = None
 
 

@@ -9,18 +9,18 @@ This document defines the security controls that every implementation contributi
 
 ## Control Summary
 
-| Control | Severity | Area | Status |
-|---------|----------|------|--------|
-| SEC-01 | CRITICAL | Secret redaction — env var values | Required |
-| SEC-02 | CRITICAL | Path traversal prevention | Required |
-| SEC-03 | HIGH | XSS prevention — label sanitization | Required |
-| SEC-04 | HIGH | Safe config/manifest parsing | Required |
-| SEC-05 | HIGH | Output confinement to `docs/atlas/` | Required |
-| SEC-06 | HIGH | Shell injection prevention | Required |
-| SEC-07 | MEDIUM | Symlink attack prevention | Required |
-| SEC-08 | MEDIUM | Large file DoS prevention | Required |
-| SEC-09 | CRITICAL | Credential redaction in bug reports | Required |
-| SEC-10 | HIGH | DOT/Mermaid injection prevention | Required |
+| Control | Severity | Area                                | Status   |
+| ------- | -------- | ----------------------------------- | -------- |
+| SEC-01  | CRITICAL | Secret redaction — env var values   | Required |
+| SEC-02  | CRITICAL | Path traversal prevention           | Required |
+| SEC-03  | HIGH     | XSS prevention — label sanitization | Required |
+| SEC-04  | HIGH     | Safe config/manifest parsing        | Required |
+| SEC-05  | HIGH     | Output confinement to `docs/atlas/` | Required |
+| SEC-06  | HIGH     | Shell injection prevention          | Required |
+| SEC-07  | MEDIUM   | Symlink attack prevention           | Required |
+| SEC-08  | MEDIUM   | Large file DoS prevention           | Required |
+| SEC-09  | CRITICAL | Credential redaction in bug reports | Required |
+| SEC-10  | HIGH     | DOT/Mermaid injection prevention    | Required |
 
 ---
 
@@ -133,13 +133,13 @@ def redact_credentials(content: str) -> str:
 
 **Required escaping:**
 
-| Character | Escape |
-|-----------|--------|
-| `<` | `&lt;` |
-| `>` | `&gt;` |
-| `&` | `&amp;` |
-| `"` | `&quot;` |
-| `'` | `&#39;` |
+| Character | Escape   |
+| --------- | -------- |
+| `<`       | `&lt;`   |
+| `>`       | `&gt;`   |
+| `&`       | `&amp;`  |
+| `"`       | `&quot;` |
+| `'`       | `&#39;`  |
 
 **Implementation pattern:**
 
@@ -184,6 +184,7 @@ python3 -c "import yaml,sys; d=yaml.safe_load(sys.stdin); print(list(d.get('serv
 ```
 
 **Anti-pattern:**
+
 ```bash
 # UNSAFE — never source .env files
 source .env                # executes arbitrary code
@@ -309,14 +310,14 @@ All layer implementations MUST follow this pipeline order:
 
 ## Per-Language Safe Parsing
 
-| Source | Safe Method | Unsafe — Never Use |
-|--------|------------|-------------------|
-| `.env` files | `grep "^[A-Z_]" \| cut -d= -f1` | `source .env`, `eval $(cat .env)` |
-| `docker-compose.yml` | `yaml.safe_load()`, `yq e` | `yaml.load()`, bash eval |
-| `package.json` | `json.load()`, `jq` | `eval`, `require()` with untrusted paths |
-| Go source | Regex on file content | `go run` with untrusted code |
-| `.csproj` | `xml.etree.ElementTree.parse()` | `lxml` with `resolve_entities=True` |
-| Kubernetes Secrets | Extract `metadata.name` only | Never read `data:` or `stringData:` blocks |
+| Source               | Safe Method                     | Unsafe — Never Use                         |
+| -------------------- | ------------------------------- | ------------------------------------------ |
+| `.env` files         | `grep "^[A-Z_]" \| cut -d= -f1` | `source .env`, `eval $(cat .env)`          |
+| `docker-compose.yml` | `yaml.safe_load()`, `yq e`      | `yaml.load()`, bash eval                   |
+| `package.json`       | `json.load()`, `jq`             | `eval`, `require()` with untrusted paths   |
+| Go source            | Regex on file content           | `go run` with untrusted code               |
+| `.csproj`            | `xml.etree.ElementTree.parse()` | `lxml` with `resolve_entities=True`        |
+| Kubernetes Secrets   | Extract `metadata.name` only    | Never read `data:` or `stringData:` blocks |
 
 ---
 
@@ -337,4 +338,4 @@ Before any layer implementation is considered complete:
 
 ---
 
-*This document must be read before implementing Layer 1 (env discovery), Layer 3 (route extraction), Layer 6 (inventory tables), or the bug-hunting passes.*
+_This document must be read before implementing Layer 1 (env discovery), Layer 3 (route extraction), Layer 6 (inventory tables), or the bug-hunting passes._

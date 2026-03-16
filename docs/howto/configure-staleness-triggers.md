@@ -13,6 +13,7 @@ Staleness triggers define which file changes make each atlas layer outdated. The
 ## Where triggers are defined
 
 Two places (they must stay in sync):
+
 1. `scripts/check-atlas-staleness.sh` — the shell patterns used in CI
 2. `docs/atlas/staleness-map.yaml` — the canonical YAML map consumed by CI `paths:` filters
 
@@ -22,14 +23,14 @@ The YAML is the single source of truth. If you add a pattern, update both files.
 
 ## Default trigger table
 
-| File Pattern | Layer | Why |
-|-------------|-------|-----|
-| `docker-compose*.yml`, `k8s/**/*.yaml`, `kubernetes/**/*.yaml`, `helm/**/*.yaml` | 1 | Service topology changes |
-| `go.mod`, `package.json`, `*.csproj`, `Cargo.toml`, `requirements*.txt`, `pyproject.toml` | 2 | Dependency changes |
-| `*route*.ts`, `*route*.go`, `*controller*.go`, `*controller*.ts`, `*views*.py`, `*router*.ts`, `*handler*.go` | 3 | HTTP routing changes |
-| `*dto*.ts`, `*schema*.py`, `*_request.go`, `*_response.go`, `*types*.ts`, `*model*.go` | 4 | Data shape changes |
-| `*page*.tsx`, `*page*.ts`, `cmd/**/*.go`, `cli/**/*.py` | 5 | User-facing entry points |
-| `.env.example`, `services/*/README.md`, `apps/*/README.md` | 6 | Inventory changes |
+| File Pattern                                                                                                  | Layer | Why                      |
+| ------------------------------------------------------------------------------------------------------------- | ----- | ------------------------ |
+| `docker-compose*.yml`, `k8s/**/*.yaml`, `kubernetes/**/*.yaml`, `helm/**/*.yaml`                              | 1     | Service topology changes |
+| `go.mod`, `package.json`, `*.csproj`, `Cargo.toml`, `requirements*.txt`, `pyproject.toml`                     | 2     | Dependency changes       |
+| `*route*.ts`, `*route*.go`, `*controller*.go`, `*controller*.ts`, `*views*.py`, `*router*.ts`, `*handler*.go` | 3     | HTTP routing changes     |
+| `*dto*.ts`, `*schema*.py`, `*_request.go`, `*_response.go`, `*types*.ts`, `*model*.go`                        | 4     | Data shape changes       |
+| `*page*.tsx`, `*page*.ts`, `cmd/**/*.go`, `cli/**/*.py`                                                       | 5     | User-facing entry points |
+| `.env.example`, `services/*/README.md`, `apps/*/README.md`                                                    | 6     | Inventory changes        |
 
 ---
 
@@ -47,9 +48,9 @@ The YAML is the single source of truth. If you add a pattern, update both files.
 2. Edit `docs/atlas/staleness-map.yaml`, find the Layer 3 glob and add:
 
 ```yaml
-  - glob: "views/**/*.py"
-    layers_affected: [3]
-    rebuild_command: "/code-atlas layers=3"
+- glob: "views/**/*.py"
+  layers_affected: [3]
+  rebuild_command: "/code-atlas layers=3"
 ```
 
 3. Run the staleness test to verify:
@@ -65,9 +66,9 @@ bash .claude/skills/code-atlas/tests/test_staleness_triggers.sh
 If you only want to track changes in `services/billing/`:
 
 ```yaml
-  - glob: "services/billing/**/*.go"
-    layers_affected: [2, 3, 4]
-    rebuild_command: "/code-atlas codebase_path=services/billing layers=2,3,4"
+- glob: "services/billing/**/*.go"
+  layers_affected: [2, 3, 4]
+  rebuild_command: "/code-atlas codebase_path=services/billing layers=2,3,4"
 ```
 
 ---
