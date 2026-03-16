@@ -183,9 +183,10 @@ Investigation tasks.** Always try `smart-orchestrator` first.
 - `AMPLIHACK_HOME` — must point to the amplihack repo root (e.g.,
   `/home/user/src/amplihack`). The recipe runner uses this to find
   `amplifier-bundle/tools/orch_helper.py` and other orchestrator scripts.
-- Unset `AMPLIHACK_AGENT_BINARY` — the Rust binary does not accept
-  `--agent-binary`; the Python wrapper passes it when this var is set,
-  causing exit code 2. Unset it in the `env` prefix.
+- Preserve `AMPLIHACK_AGENT_BINARY` — nested workflow agents read this env var
+  to stay on the caller's active binary (for example, Copilot in Copilot CLI).
+  The Python wrapper no longer forwards the removed `--agent-binary` CLI flag,
+  so keeping this env var set is now the correct behavior.
 - Unset `CLAUDECODE` — required so nested Claude Code sessions can launch.
 
 Updated launch command with all required env vars:
@@ -194,7 +195,7 @@ Updated launch command with all required env vars:
 LOG_FILE=$(mktemp /tmp/recipe-runner-output.XXXXXX.log)
 chmod 600 "$LOG_FILE"
 tmux new-session -d -s "recipe-$(date +%s)" \
-  "cd /path/to/repo && env -u CLAUDECODE -u AMPLIHACK_AGENT_BINARY \
+  "cd /path/to/repo && env -u CLAUDECODE \
    AMPLIHACK_HOME=/path/to/amplihack PYTHONPATH=src \
    python3 /path/to/recipe_script.py 2>&1 | tee $LOG_FILE"
 ```

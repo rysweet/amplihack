@@ -20,14 +20,17 @@ OXIDIZER_DOC = REPO_ROOT / "docs" / "OXIDIZER.md"
 def test_dev_orchestrator_skill_uses_python3_and_no_stale_adapter_import():
     content = DEV_ORCHESTRATOR_SKILL.read_text()
 
-    assert "env -u CLAUDECODE PYTHONPATH=src python3 -c" in content
+    assert "PYTHONPATH=src python3 -c" in content
+    assert 'env -u CLAUDECODE \\' in content
+    assert "env -u CLAUDECODE -u AMPLIHACK_AGENT_BINARY" not in content
     assert "env -u CLAUDECODE .venv/bin/python -c" not in content
     assert "amplihack.recipes.adapters.cli_subprocess" not in content
     assert "CLISubprocessAdapter" not in content
+    assert "Preserve `AMPLIHACK_AGENT_BINARY`" in content
 
 
 def test_dev_orchestrator_shell_launch_works_from_repo_root():
-    command = """env -u CLAUDECODE PYTHONPATH=src python3 - <<'PY'
+    command = """env -u CLAUDECODE AMPLIHACK_AGENT_BINARY=copilot PYTHONPATH=src python3 - <<'PY'
 from amplihack.recipes import run_recipe_by_name
 result = run_recipe_by_name(
     'smart-orchestrator',
