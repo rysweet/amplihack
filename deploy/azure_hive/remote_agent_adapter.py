@@ -305,21 +305,38 @@ class RemoteAgentAdapter:
                 target_agents = [target_agent]
                 self._learn_turn_counts[target_agent] += 1
 
-        # In replicate mode, send LEARN_CONTENT (raw content) to all agents so
-        # each agent extracts facts independently in the container (no local
-        # LiteLLM calls in the eval harness, no STORE_FACT_BATCH ordering issues).
+        fact_batch: dict[str, Any] | None = None
+        if self._replicate_learning_to_all_agents:
+            # Pre-extract facts locally so agents just do a fast DB write.
+            # STORE_FACT_BATCH events are sent in order before FEED_COMPLETE.
+            # Agents defer AGENT_READY until all expected fact batches are stored
+            # (see expected_fact_batches in FEED_COMPLETE payload).
+            fact_batch = self._prepare_fact_batch(content)
+
         for agent_index in target_agents:
             target_name = self._agent_name(agent_index)
-            payload = {
-                "event_type": "LEARN_CONTENT",
-                "event_id": event_id,
-                "target_agent": target_name,
-                "source_agent": "eval-harness",
-                "payload": {
-                    "content": content,
+            if self._replicate_learning_to_all_agents:
+                payload = {
+                    "event_type": "STORE_FACT_BATCH",
+                    "event_id": event_id,
                     "target_agent": target_name,
-                },
-            }
+                    "source_agent": "eval-harness",
+                    "payload": {
+                        "fact_batch": fact_batch,
+                        "target_agent": target_name,
+                    },
+                }
+            else:
+                payload = {
+                    "event_type": "LEARN_CONTENT",
+                    "event_id": event_id,
+                    "target_agent": target_name,
+                    "source_agent": "eval-harness",
+                    "payload": {
+                        "content": content,
+                        "target_agent": target_name,
+                    },
+                }
             self._publish_event(
                 payload,
                 partition_key=target_name,
@@ -329,7 +346,7 @@ class RemoteAgentAdapter:
         if learn_count % log_every == 0:
             if self._replicate_learning_to_all_agents:
                 logger.info(
-                    "RemoteAgentAdapter: sent %d content turns (LEARN_CONTENT replicated to all %d agents)",
+                    "RemoteAgentAdapter: sent %d content turns (STORE_FACT_BATCH replicated to all %d agents)",
                     learn_count,
                     self._agent_count,
                 )
@@ -341,7 +358,7 @@ class RemoteAgentAdapter:
                 )
 
         return {
-            "facts_stored": 1,
+            "facts_stored": len((fact_batch or {}).get("facts", [])) if fact_batch else 1,
             "event_id": event_id,
             "replicated_to": len(target_agents),
         }
@@ -471,22 +488,29 @@ class RemoteAgentAdapter:
                     if 0 <= target_agent < len(self._learn_turn_counts)
                     else self._learn_count // max(1, self._agent_count)
                 )
-                # Include expected_learn_content so agents defer AGENT_READY until
-                # all LEARN_CONTENT events in their partition have been processed.
-                # For replicated mode all agents receive all turns; for round-robin
-                # each agent only receives a fraction.
-                expected_learn_content = total_turns
+                # Include expected event count so agents defer AGENT_READY until
+                # all queued events in their partition have been processed.
+                # - STORE_FACT_BATCH mode (replicate): agents get total_turns fact batches.
+                # - LEARN_CONTENT mode (round-robin): agents get total_turns learn events.
+                if self._replicate_learning_to_all_agents:
+                    feed_payload: dict[str, Any] = {
+                        "total_turns": total_turns,
+                        "target_agent": target_name,
+                        "expected_fact_batches": total_turns,
+                    }
+                else:
+                    feed_payload = {
+                        "total_turns": total_turns,
+                        "target_agent": target_name,
+                        "expected_learn_content": total_turns,
+                    }
                 self._publish_event(
                     {
                         "event_type": "FEED_COMPLETE",
                         "event_id": uuid.uuid4().hex[:12],
                         "target_agent": target_name,
                         "source_agent": "eval-harness",
-                        "payload": {
-                            "total_turns": total_turns,
-                            "target_agent": target_name,
-                            "expected_learn_content": expected_learn_content,
-                        },
+                        "payload": feed_payload,
                     },
                     partition_key=target_name,
                 )
