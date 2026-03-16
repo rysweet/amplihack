@@ -20,6 +20,8 @@
 #   7. test_ci_workflow.sh         — CI YAML structure and script path checks
 #   8. test_publication_workflow.sh — SVG generation and GitHub Pages readiness
 
+# Intentionally omits -e: test failures must not abort the suite runner.
+# Individual test scripts use set -euo pipefail.
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

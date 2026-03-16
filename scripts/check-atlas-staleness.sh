@@ -66,103 +66,130 @@ fi
 # Layer 6: .env.example, service README.md files
 # ---------------------------------------------------------------------------
 
-STALE_LAYERS=()
+# ---------------------------------------------------------------------------
+# Staleness detection — single pass over changed files
+#
+# Guard blocks skip pattern checks for layers already confirmed stale,
+# reducing work as layers are marked. The short-circuit break exits once
+# all 6 layers are stale so no further files need scanning.
+# ---------------------------------------------------------------------------
+declare -A STALE_SET=()
 
-check_layer() {
-    local layer="$1"
-    local label="$2"
-    local rebuild_cmd="$3"
-    local already_stale=false
+while IFS= read -r f; do
+    [[ -z "$f" ]] && continue
 
-    for f in $CHANGED_FILES; do
-        local matched=false
-        case "$layer" in
-            1)
-                [[ "$f" == *docker-compose*.yml ]] && matched=true
-                [[ "$f" == *docker-compose*.yaml ]] && matched=true
-                [[ "$f" == */k8s/*.yaml ]] && matched=true
-                [[ "$f" == k8s/*.yaml ]] && matched=true
-                [[ "$f" == kubernetes/*.yaml ]] && matched=true
-                [[ "$f" == */kubernetes/*.yaml ]] && matched=true
-                [[ "$f" == helm/*.yaml ]] && matched=true
-                [[ "$f" == helm/*/*.yaml ]] && matched=true
-                [[ "$f" == */helm/*.yaml ]] && matched=true
-                [[ "$f" == */helm/*/*.yaml ]] && matched=true
-                ;;
-            2)
-                [[ "$f" == go.mod ]] && matched=true
-                [[ "$f" == */go.mod ]] && matched=true
-                [[ "$f" == package.json ]] && matched=true
-                [[ "$f" == */package.json ]] && matched=true
-                [[ "$f" == *.csproj ]] && matched=true
-                [[ "$f" == Cargo.toml ]] && matched=true
-                [[ "$f" == */Cargo.toml ]] && matched=true
-                [[ "$f" == requirements*.txt ]] && matched=true
-                [[ "$f" == */requirements*.txt ]] && matched=true
-                [[ "$f" == pyproject.toml ]] && matched=true
-                [[ "$f" == */pyproject.toml ]] && matched=true
-                ;;
-            3)
-                [[ "$f" == *route*.ts ]] && matched=true
-                [[ "$f" == *route*.go ]] && matched=true
-                [[ "$f" == *controller*.go ]] && matched=true
-                [[ "$f" == *controller*.ts ]] && matched=true
-                [[ "$f" == *views*.py ]] && matched=true
-                [[ "$f" == *router*.ts ]] && matched=true
-                [[ "$f" == *router*.go ]] && matched=true
-                [[ "$f" == *handler*.go ]] && matched=true
-                ;;
-            4)
-                [[ "$f" == *dto*.ts ]] && matched=true
-                [[ "$f" == *schema*.py ]] && matched=true
-                [[ "$f" == *_request.go ]] && matched=true
-                [[ "$f" == *_response.go ]] && matched=true
-                [[ "$f" == *types*.ts ]] && matched=true
-                [[ "$f" == *model*.go ]] && matched=true
-                ;;
-            5)
-                [[ "$f" == *page*.tsx ]] && matched=true
-                [[ "$f" == *page*.ts ]] && matched=true
-                [[ "$f" == cmd/*.go ]] && matched=true
-                [[ "$f" == */cmd/*.go ]] && matched=true
-                [[ "$f" == cli/*.py ]] && matched=true
-                [[ "$f" == */cli/*.py ]] && matched=true
-                ;;
-            6)
-                [[ "$f" == .env.example ]] && matched=true
-                [[ "$f" == */.env.example ]] && matched=true
-                # Service-level README changes (not root README)
-                [[ "$f" == services/*/README.md ]] && matched=true
-                [[ "$f" == apps/*/README.md ]] && matched=true
-                ;;
-        esac
-
-        if [[ "$matched" == true && "$already_stale" == false ]]; then
-            echo "Layer ${layer} STALE: ${label} — triggered by: ${f}"
-            echo "  Rebuild: /code-atlas rebuild layer${layer}   # or: ${rebuild_cmd}"
-            STALE_LAYERS+=("$layer")
-            already_stale=true
+    # Layer 1: Runtime Topology
+    if [[ -z "${STALE_SET[1]:-}" ]]; then
+        if  [[ "$f" == *docker-compose*.yml  ]] || \
+            [[ "$f" == *docker-compose*.yaml ]] || \
+            [[ "$f" == */k8s/*.yaml          ]] || \
+            [[ "$f" == k8s/*.yaml            ]] || \
+            [[ "$f" == kubernetes/*.yaml     ]] || \
+            [[ "$f" == */kubernetes/*.yaml   ]] || \
+            [[ "$f" == helm/*.yaml           ]] || \
+            [[ "$f" == helm/*/*.yaml         ]] || \
+            [[ "$f" == */helm/*.yaml         ]] || \
+            [[ "$f" == */helm/*/*.yaml       ]]; then
+            printf 'Layer 1 STALE: Runtime Topology — triggered by: %q\n' "${f}"
+            echo "  Rebuild: /code-atlas rebuild layer1   # or: code-atlas rebuild layer1"
+            STALE_SET[1]=1
         fi
-    done
-}
+    fi
 
-check_layer 1 "Runtime Topology"       "code-atlas rebuild layer1"
-check_layer 2 "Compile-time Deps"      "code-atlas rebuild layer2"
-check_layer 3 "HTTP Routing"           "code-atlas rebuild layer3"
-check_layer 4 "Data Flows"             "code-atlas rebuild layer4"
-check_layer 5 "User Journey Scenarios" "code-atlas rebuild layer5"
-check_layer 6 "Exhaustive Inventory"   "code-atlas rebuild layer6"
+    # Layer 2: Compile-time Dependencies
+    if [[ -z "${STALE_SET[2]:-}" ]]; then
+        if  [[ "$f" == go.mod              ]] || \
+            [[ "$f" == */go.mod            ]] || \
+            [[ "$f" == package.json        ]] || \
+            [[ "$f" == */package.json      ]] || \
+            [[ "$f" == *.csproj            ]] || \
+            [[ "$f" == Cargo.toml          ]] || \
+            [[ "$f" == */Cargo.toml        ]] || \
+            [[ "$f" == requirements*.txt   ]] || \
+            [[ "$f" == */requirements*.txt ]] || \
+            [[ "$f" == pyproject.toml      ]] || \
+            [[ "$f" == */pyproject.toml    ]]; then
+            printf 'Layer 2 STALE: Compile-time Deps — triggered by: %q\n' "${f}"
+            echo "  Rebuild: /code-atlas rebuild layer2   # or: code-atlas rebuild layer2"
+            STALE_SET[2]=1
+        fi
+    fi
+
+    # Layer 3: HTTP Routing
+    if [[ -z "${STALE_SET[3]:-}" ]]; then
+        if  [[ "$f" == *route*.ts      ]] || \
+            [[ "$f" == *route*.go      ]] || \
+            [[ "$f" == *controller*.go ]] || \
+            [[ "$f" == *controller*.ts ]] || \
+            [[ "$f" == *views*.py      ]] || \
+            [[ "$f" == *router*.ts     ]] || \
+            [[ "$f" == *router*.go     ]] || \
+            [[ "$f" == *handler*.go    ]]; then
+            printf 'Layer 3 STALE: HTTP Routing — triggered by: %q\n' "${f}"
+            echo "  Rebuild: /code-atlas rebuild layer3   # or: code-atlas rebuild layer3"
+            STALE_SET[3]=1
+        fi
+    fi
+
+    # Layer 4: Data Flows
+    if [[ -z "${STALE_SET[4]:-}" ]]; then
+        if  [[ "$f" == *dto*.ts      ]] || \
+            [[ "$f" == *schema*.py   ]] || \
+            [[ "$f" == *_request.go  ]] || \
+            [[ "$f" == *_response.go ]] || \
+            [[ "$f" == *types*.ts    ]] || \
+            [[ "$f" == *model*.go    ]]; then
+            printf 'Layer 4 STALE: Data Flows — triggered by: %q\n' "${f}"
+            echo "  Rebuild: /code-atlas rebuild layer4   # or: code-atlas rebuild layer4"
+            STALE_SET[4]=1
+        fi
+    fi
+
+    # Layer 5: User Journey Scenarios
+    if [[ -z "${STALE_SET[5]:-}" ]]; then
+        if  [[ "$f" == *page*.tsx  ]] || \
+            [[ "$f" == *page*.ts   ]] || \
+            [[ "$f" == cmd/*.go    ]] || \
+            [[ "$f" == */cmd/*.go  ]] || \
+            [[ "$f" == cli/*.py    ]] || \
+            [[ "$f" == */cli/*.py  ]]; then
+            printf 'Layer 5 STALE: User Journey Scenarios — triggered by: %q\n' "${f}"
+            echo "  Rebuild: /code-atlas rebuild layer5   # or: code-atlas rebuild layer5"
+            STALE_SET[5]=1
+        fi
+    fi
+
+    # Layer 6: Exhaustive Inventory (service-level README changes, not root README)
+    if [[ -z "${STALE_SET[6]:-}" ]]; then
+        if  [[ "$f" == .env.example         ]] || \
+            [[ "$f" == */.env.example       ]] || \
+            [[ "$f" == services/*/README.md ]] || \
+            [[ "$f" == apps/*/README.md     ]]; then
+            printf 'Layer 6 STALE: Exhaustive Inventory — triggered by: %q\n' "${f}"
+            echo "  Rebuild: /code-atlas rebuild layer6   # or: code-atlas rebuild layer6"
+            STALE_SET[6]=1
+        fi
+    fi
+
+    # Short-circuit: all 6 layers stale — no further files need scanning
+    [[ ${#STALE_SET[@]} -eq 6 ]] && break
+
+done <<< "$CHANGED_FILES"
 
 # ---------------------------------------------------------------------------
 # Summary
 # ---------------------------------------------------------------------------
-if [[ ${#STALE_LAYERS[@]} -eq 0 ]]; then
+if [[ ${#STALE_SET[@]} -eq 0 ]]; then
     echo "Atlas is fresh. No stale layers detected."
     exit 0
 else
-    UNIQUE_LAYERS=($(printf '%s\n' "${STALE_LAYERS[@]}" | sort -u))
+    # Collect sorted stale layer numbers without spawning a subprocess
+    STALE_SORTED=()
+    for _k in 1 2 3 4 5 6; do
+        [[ -n "${STALE_SET[$_k]:-}" ]] && STALE_SORTED+=("$_k")
+    done
     echo ""
-    echo "Summary: ${#UNIQUE_LAYERS[@]} layer(s) stale: [${UNIQUE_LAYERS[*]}]"
+    echo "Summary: ${#STALE_SORTED[@]} layer(s) stale: [${STALE_SORTED[*]}]"
     echo "Run '/code-atlas rebuild all' to refresh the full atlas."
     exit 1
 fi

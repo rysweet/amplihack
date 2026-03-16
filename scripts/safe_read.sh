@@ -73,7 +73,9 @@ resolve_canonical() {
     if command -v realpath &>/dev/null; then
         realpath -m "$path" 2>/dev/null || echo ""
     elif command -v python3 &>/dev/null; then
-        python3 -c "import os; print(os.path.realpath('$path'))" 2>/dev/null || echo ""
+        python3 - "$path" <<'PYEOF' || echo ""
+import sys, os; print(os.path.realpath(sys.argv[1]))
+PYEOF
     else
         # Best-effort: resolve from PWD without following symlinks
         if [[ "$path" == /* ]]; then

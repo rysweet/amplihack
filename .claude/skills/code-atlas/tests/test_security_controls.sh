@@ -369,6 +369,67 @@ EOF
 fi
 
 # ============================================================================
+# SEC-04: Safe YAML Parsing (HIGH)
+# ============================================================================
+
+echo ""
+echo "=== SEC-04: Safe YAML Parsing ==="
+
+# TEST-SEC-04-A: Verify yaml.safe_load() is used instead of yaml.load()
+# Scan all Python source files under scripts/ and the skill directory for unsafe yaml.load usage
+REPO_ROOT_LOCAL="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
+
+unsafe_yaml_files=()
+while IFS= read -r pyfile; do
+    # Check for yaml.load( without safe_load — exclude safe_load lines
+    if grep -qP 'yaml\.load\s*\(' "$pyfile" 2>/dev/null; then
+        # Confirm it is NOT safe_load
+        if grep -P 'yaml\.load\s*\(' "$pyfile" 2>/dev/null | grep -qv 'safe_load'; then
+            unsafe_yaml_files+=("$pyfile")
+        fi
+    fi
+done < <(find "$REPO_ROOT_LOCAL/scripts" "$REPO_ROOT_LOCAL/.claude/skills/code-atlas" \
+    -name '*.py' 2>/dev/null)
+
+if [[ ${#unsafe_yaml_files[@]} -eq 0 ]]; then
+    echo "PASS: SEC-04-A: no yaml.load() (unsafe) calls found — yaml.safe_load() enforced"
+    PASS=$((PASS + 1))
+else
+    echo "FAIL: SEC-04-A: unsafe yaml.load() found in: ${unsafe_yaml_files[*]}"
+    FAIL=$((FAIL + 1))
+fi
+
+# ============================================================================
+# SEC-06: Shell Metacharacter Rejection (HIGH)
+# ============================================================================
+
+echo ""
+echo "=== SEC-06: Shell Metacharacter Rejection ==="
+
+if [[ -f "$SAFE_READ_SCRIPT" ]]; then
+    tmpdir=$(mktemp -d)
+    mkdir -p "$tmpdir/codebase"
+    echo "safe content" > "$tmpdir/codebase/safe.txt"
+
+    # TEST-SEC-06-A: Path with $() shell substitution is rejected
+    output=$(bash "$SAFE_READ_SCRIPT" '$tmpdir/codebase/$(whoami)' \
+        --boundary "$tmpdir/codebase" 2>&1) && exit_val=0 || exit_val=$?
+    assert_exit_code "SEC-06-A: path with \$() rejected (exit 1)" 1 "$exit_val" "$output"
+
+    # TEST-SEC-06-B: Path with backtick substitution is rejected
+    output=$(bash "$SAFE_READ_SCRIPT" '$tmpdir/codebase/`id`' \
+        --boundary "$tmpdir/codebase" 2>&1) && exit_val=0 || exit_val=$?
+    assert_exit_code "SEC-06-B: path with backtick rejected (exit 1)" 1 "$exit_val" "$output"
+
+    # TEST-SEC-06-C: Path with semicolon is rejected
+    output=$(bash "$SAFE_READ_SCRIPT" "$tmpdir/codebase/safe.txt;ls" \
+        --boundary "$tmpdir/codebase" 2>&1) && exit_val=0 || exit_val=$?
+    assert_exit_code "SEC-06-C: path with semicolon rejected (exit 1)" 1 "$exit_val" "$output"
+
+    rm -rf "$tmpdir"
+fi
+
+# ============================================================================
 # SEC-08: Large File DoS Prevention (MEDIUM)
 # ============================================================================
 

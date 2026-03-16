@@ -126,7 +126,7 @@ if [[ "$CI_MODE" == true ]]; then
     MISSING_LAYERS=()
     for layer in "${EXPECTED_LAYERS[@]}"; do
         layer_dir="${ATLAS_DIR}/${layer}"
-        if [[ ! -d "$layer_dir" ]] || [[ -z "$(ls -A "$layer_dir" 2>/dev/null)" ]]; then
+        if [[ ! -d "$layer_dir" ]] || ! compgen -G "${layer_dir}/*" > /dev/null 2>&1; then
             MISSING_LAYERS+=("$layer")
         fi
     done

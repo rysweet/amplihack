@@ -94,6 +94,25 @@ if [[ ! -f "$REBUILD_SCRIPT" ]]; then
 fi
 
 # ---------------------------------------------------------------------------
+# Shared base git repo — created once, copied per test to avoid repeated
+# git-init + git-commit overhead across the seven tests that need a valid repo.
+# ---------------------------------------------------------------------------
+_BASE_REPO=$(mktemp -d)
+git -C "$_BASE_REPO" init -q
+git -C "$_BASE_REPO" commit --allow-empty -q -m "init"
+
+# Clone (copy) the base repo into a fresh temp dir
+_fresh_repo() {
+    local d
+    d=$(mktemp -d)
+    cp -a "$_BASE_REPO/." "$d/"
+    echo "$d"
+}
+
+# Cleanup base repo on exit
+trap 'rm -rf "$_BASE_REPO"' EXIT
+
+# ---------------------------------------------------------------------------
 # Test 1: --help flag exits 0 and prints usage
 # ---------------------------------------------------------------------------
 output=$(bash "$REBUILD_SCRIPT" --help 2>&1)
@@ -121,9 +140,7 @@ rm -rf "$tmpdir"
 # ---------------------------------------------------------------------------
 # Test 4: Dry-run mode prints commands, makes no changes
 # ---------------------------------------------------------------------------
-tmpdir=$(mktemp -d)
-git -C "$tmpdir" init -q
-git -C "$tmpdir" commit --allow-empty -q -m "init"
+tmpdir=$(_fresh_repo)
 
 output=$(cd "$tmpdir" && bash "$REBUILD_SCRIPT" --dry-run 2>&1 || true)
 exit_code=$?
@@ -143,9 +160,7 @@ rm -rf "$tmpdir"
 # ---------------------------------------------------------------------------
 # Test 5: Interactive mode creates docs/atlas/ directory
 # ---------------------------------------------------------------------------
-tmpdir=$(mktemp -d)
-git -C "$tmpdir" init -q
-git -C "$tmpdir" commit --allow-empty -q -m "init"
+tmpdir=$(_fresh_repo)
 
 output=$(cd "$tmpdir" && bash "$REBUILD_SCRIPT" 2>&1 || true)
 exit_code=$?
@@ -165,9 +180,7 @@ rm -rf "$tmpdir"
 # ---------------------------------------------------------------------------
 # Test 6: Interactive mode writes .build-stamp file
 # ---------------------------------------------------------------------------
-tmpdir=$(mktemp -d)
-git -C "$tmpdir" init -q
-git -C "$tmpdir" commit --allow-empty -q -m "init"
+tmpdir=$(_fresh_repo)
 
 output=$(cd "$tmpdir" && bash "$REBUILD_SCRIPT" 2>&1 || true)
 
@@ -184,9 +197,7 @@ rm -rf "$tmpdir"
 # ---------------------------------------------------------------------------
 # Test 7: .build-stamp contains git commit hash and timestamp
 # ---------------------------------------------------------------------------
-tmpdir=$(mktemp -d)
-git -C "$tmpdir" init -q
-git -C "$tmpdir" commit --allow-empty -q -m "init"
+tmpdir=$(_fresh_repo)
 HEAD_HASH=$(git -C "$tmpdir" rev-parse HEAD)
 
 output=$(cd "$tmpdir" && bash "$REBUILD_SCRIPT" 2>&1 || true)
@@ -248,9 +259,7 @@ rm -rf "$tmpdir"
 # ---------------------------------------------------------------------------
 # Test 9: Output does not contain secret patterns
 # ---------------------------------------------------------------------------
-tmpdir=$(mktemp -d)
-git -C "$tmpdir" init -q
-git -C "$tmpdir" commit --allow-empty -q -m "init"
+tmpdir=$(_fresh_repo)
 # Create a fake .env with secrets
 echo "DATABASE_URL=postgres://user:SECRETPASSWORD@localhost/db" > "$tmpdir/.env"
 echo "JWT_SECRET=mysupersecretkey123" >> "$tmpdir/.env"
@@ -262,9 +271,7 @@ rm -rf "$tmpdir"
 # ---------------------------------------------------------------------------
 # Test 10: Interactive mode prints /code-atlas command instructions
 # ---------------------------------------------------------------------------
-tmpdir=$(mktemp -d)
-git -C "$tmpdir" init -q
-git -C "$tmpdir" commit --allow-empty -q -m "init"
+tmpdir=$(_fresh_repo)
 
 output=$(cd "$tmpdir" && bash "$REBUILD_SCRIPT" 2>&1 || true)
 assert_output_contains "interactive: prints code-atlas rebuild instruction" "/code-atlas\|code-atlas rebuild" "$output"
