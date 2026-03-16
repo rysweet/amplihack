@@ -320,7 +320,7 @@ assert_contains "L5: registration journey references user creation" \
     "${L5}/README.md"
 
 # Contract 5.3: Journey diagrams use valid Mermaid journey or flowchart syntax
-for journey_file in "${L5}"/journey-*.mmd 2>/dev/null; do
+for journey_file in "${L5}"/journey-*.mmd; do
     [[ -f "$journey_file" ]] || continue
     fname=$(basename "$journey_file")
     first_kw=$(head -3 "$journey_file" | grep -oE "^(journey|graph|flowchart|sequenceDiagram)" | head -1 || true)
@@ -394,7 +394,7 @@ else
     assert_contains "P1: bug entries reference layers" "[Ll]ayer [1-6]\|Layer[1-6]" "$P1"
 
     # Contract P1.5: Code evidence is included
-    assert_contains "P1: bug entries have code evidence" "Evidence\|code.quote\|Code quote\|```" "$P1"
+    assert_contains "P1: bug entries have code evidence" "Evidence\|code.quote\|Code quote\|code-block" "$P1"
 
     # Contract P1.6: No raw secret values in evidence
     assert_not_contains "P1 SEC-09: no raw passwords in bug report" "password.*=.*[a-zA-Z0-9]{8}" "$P1"
