@@ -1022,7 +1022,7 @@ steps:
       echo "" && \
       echo "--- Pushing to Remote ---" && \
       if git rev-list --count @{u}..HEAD 2>/dev/null | grep -qv '^0$'; then \
-        git pull --rebase 2>/dev/null ; git push ; \
+        git pull --rebase 2>/dev/null && git push ; \
       else \
         echo "WARNING: Nothing to push - branch is up to date with remote" ; \
       fi && \
@@ -1339,7 +1339,7 @@ steps:
         echo "WARNING: Nothing to commit - feedback changes already committed" ; \
       fi && \
       if git rev-list --count @{u}..HEAD 2>/dev/null | grep -qv '^0$'; then \
-        git pull --rebase 2>/dev/null ; git push ; \
+        git pull --rebase 2>/dev/null && git push ; \
       else \
         echo "WARNING: Nothing to push - branch is up to date with remote" ; \
       fi && \
