@@ -1,4 +1,4 @@
-"""Unit tests for GoalSeekingAgent.decide().
+"""Unit tests for GoalSeekingAgent decision and orient behavior.
 
 Covers:
 - Plain content text → 'store'
@@ -7,6 +7,7 @@ Covers:
 - Empty / None / whitespace-only input → 'store'
 - Text with '?' mid-sentence → 'answer'
 - Mixed edge cases
+- Question inputs skip duplicate orient-time memory recall
 """
 
 from unittest.mock import MagicMock, patch
@@ -217,3 +218,49 @@ class TestGoalSeekingAgentDecide:
         result2 = self._decide(agent, "What is the capital of France?")
         assert result1 == "store"
         assert result2 == "answer"
+
+
+class TestGoalSeekingAgentOrient:
+    """Unit tests for GoalSeekingAgent.orient()."""
+
+    @pytest.fixture
+    def agent(self):
+        with patch(
+            "amplihack.agents.goal_seeking.goal_seeking_agent.GoalSeekingAgent.__init__",
+            lambda self, **kwargs: None,
+        ):
+            from amplihack.agents.goal_seeking.goal_seeking_agent import GoalSeekingAgent
+
+            ag = GoalSeekingAgent.__new__(GoalSeekingAgent)
+            ag._agent_name = "test_agent"
+            ag._current_input = ""
+            ag._oriented_facts = {}
+            ag._decision = ""
+            ag._learning_agent = MagicMock()
+            return ag
+
+    def test_question_input_skips_duplicate_memory_search(self, agent):
+        memory = MagicMock()
+        agent._learning_agent.memory = memory
+        agent._current_input = "What is Sarah Chen's birthday?"
+
+        result = agent.orient()
+
+        memory.search.assert_not_called()
+        memory.search_facts.assert_not_called()
+        assert result == {"input": "What is Sarah Chen's birthday?", "facts": []}
+
+    def test_content_input_still_recalls_memory(self, agent):
+        from amplihack.agents.goal_seeking.goal_seeking_agent import ORIENT_SEARCH_LIMIT
+
+        memory = MagicMock()
+        memory.search.return_value = [{"outcome": "Known fact"}]
+        agent._learning_agent.memory = memory
+        agent._current_input = "Store this operational note."
+
+        result = agent.orient()
+
+        memory.search.assert_called_once_with(
+            "Store this operational note."[:200], limit=ORIENT_SEARCH_LIMIT
+        )
+        assert result == {"input": "Store this operational note.", "facts": ["Known fact"]}

@@ -33,6 +33,38 @@ logger = logging.getLogger(__name__)
 
 # Minimal sentinel so orient/decide/act can be called without prior observe()
 _NO_INPUT = object()
+_QUESTION_PREFIXES = (
+    "what ",
+    "who ",
+    "when ",
+    "where ",
+    "why ",
+    "how ",
+    "which ",
+    "is ",
+    "are ",
+    "was ",
+    "were ",
+    "do ",
+    "does ",
+    "did ",
+    "can ",
+    "could ",
+    "should ",
+    "would ",
+    "will ",
+    "has ",
+    "have ",
+    "had ",
+)
+
+
+def _looks_like_question(text: str) -> bool:
+    stripped = text.strip()
+    if not stripped:
+        return False
+    lower = stripped.lower()
+    return stripped.endswith("?") or any(lower.startswith(prefix) for prefix in _QUESTION_PREFIXES)
 
 
 class GoalSeekingAgent:
@@ -122,6 +154,19 @@ class GoalSeekingAgent:
             self._oriented_facts = {"input": "", "facts": []}
             return self._oriented_facts
 
+        # Questions will run the full answer_question() retrieval path during ACT.
+        # Recalling memory here would duplicate a full distributed search for every
+        # question without feeding that context into the actual answer synthesis.
+        if _looks_like_question(self._current_input):
+            self._oriented_facts = {"input": self._current_input, "facts": []}
+            try:
+                from amplihack.agents.goal_seeking.hive_mind.tracing import trace_log
+
+                trace_log("orient", "skipping duplicate memory recall for question input")
+            except ImportError:
+                pass
+            return self._oriented_facts
+
         # Use LearningAgent's internal memory to recall relevant context
         facts: list[str] = []
         try:
@@ -175,32 +220,7 @@ class GoalSeekingAgent:
             return self._decision
 
         # Fast path: interrogative signals → answer
-        lower = text.lower()
-        _QUESTION_PREFIXES = (
-            "what ",
-            "who ",
-            "when ",
-            "where ",
-            "why ",
-            "how ",
-            "which ",
-            "is ",
-            "are ",
-            "was ",
-            "were ",
-            "do ",
-            "does ",
-            "did ",
-            "can ",
-            "could ",
-            "should ",
-            "would ",
-            "will ",
-            "has ",
-            "have ",
-            "had ",
-        )
-        is_question = text.endswith("?") or any(lower.startswith(p) for p in _QUESTION_PREFIXES)
+        is_question = _looks_like_question(text)
 
         if is_question:
             self._decision = "answer"
