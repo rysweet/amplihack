@@ -120,16 +120,58 @@ When this skill is activated:
 ### REQUIRED: Execute via Recipe Runner — IMMEDIATELY
 
 Your next tool call(s) must include the recipe runner launch (alongside
-`report_intent` if your runtime requires it). **CRITICAL**: Some agent
-runtimes kill background processes after a timeout. Recipe workstreams
-can take hours. You MUST use a tmux session for execution:
+`report_intent` if your runtime requires it).
+
+#### Default: Direct Execution
+
+The recipe runner is a plain subprocess — it does **not** require tmux.
+Call `run_recipe_by_name()` directly:
+
+```bash
+cd /path/to/repo && env -u CLAUDECODE \
+  AMPLIHACK_HOME=/path/to/amplihack PYTHONPATH=src \
+  python3 -c "
+from amplihack.recipes import run_recipe_by_name
+
+result = run_recipe_by_name(
+    'smart-orchestrator',
+    user_context={
+        'task_description': '''TASK_DESCRIPTION_HERE''',
+        'repo_path': '.',
+    },
+    progress=True,
+)
+print(f'Recipe result: {result}')
+"
+```
+
+**Key points:**
+
+- `PYTHONPATH=src python3` — uses the interpreter on PATH while forcing imports from the checked-out repo source tree (do NOT hardcode `.venv/bin/python`)
+- `run_recipe_by_name` — delegates to the Rust binary via `subprocess.Popen`; no tmux involved
+- `progress=True` — streams recipe-runner stderr live so you see nested step activity
+- The recipe runner manages its own child processes (agent sessions, bash steps) as direct subprocesses
+
+This is the preferred execution mode for most scenarios. It is simpler, has
+no external dependencies beyond Python and the Rust binary, works on all
+platforms, and makes output capture straightforward.
+
+#### Durable Execution (tmux) — optional
+
+Use tmux **only** when:
+
+- The agent runtime may kill background processes after a timeout (e.g., some
+  Claude Code hosted environments)
+- You need to survive SSH disconnects or terminal closures
+- You want to detach and monitor a long-running recipe interactively
 
 ```bash
 LOG_FILE=$(mktemp /tmp/recipe-runner-output.XXXXXX.log)
 chmod 600 "$LOG_FILE"
-tmux new-session -d -s recipe-runner "PYTHONPATH=src python3 -c \"
-import os
-
+tmux new-session -d -s recipe-runner "cd /path/to/repo && \
+  env -u CLAUDECODE \
+  AMPLIHACK_HOME=/path/to/amplihack PYTHONPATH=src \
+  python3 -c \"
 from amplihack.recipes import run_recipe_by_name
 
 result = run_recipe_by_name(
@@ -142,14 +184,9 @@ result = run_recipe_by_name(
 )
 print(f'Recipe result: {result}')
 \" 2>&1 | tee \"$LOG_FILE\""
-echo \"Recipe runner log: $LOG_FILE\"
+echo "Recipe runner log: $LOG_FILE"
 ```
 
-**Key points:**
-
-- `PYTHONPATH=src python3` — uses the interpreter on PATH while forcing imports from the checked-out repo source tree (do NOT hardcode `.venv/bin/python`)
-- `run_recipe_by_name` — delegates to the Rust binary; the adapter parameter is no longer needed
-- `progress=True` — streams recipe-runner stderr live so tmux logs show nested step activity
 - `chmod 600 "$LOG_FILE"` — keeps the tmux log private to the current user
 - `tmux new-session -d` — detached session, no timeout, survives disconnects
 - Monitor with: `tail -f "$LOG_FILE"` or `tmux attach -t recipe-runner`
@@ -172,9 +209,6 @@ tmux send-keys -t recipe-runner "exit" Enter 2>/dev/null; sleep 1
 If using Option A, update the `tail -f` / `tmux attach` commands to use the
 same session name.
 
-**DO NOT use runtime-specific background APIs** (e.g. `run_in_background`) for
-recipe execution — they may kill processes after a timeout. Use tmux instead.
-
 **The recipe runner is the required execution path for Development and
 Investigation tasks.** Always try `smart-orchestrator` first.
 
@@ -189,17 +223,6 @@ Investigation tasks.** Always try `smart-orchestrator` first.
   so keeping this env var set is now the correct behavior.
 - Unset `CLAUDECODE` — required so nested Claude Code sessions can launch.
 
-Updated launch command with all required env vars:
-
-```bash
-LOG_FILE=$(mktemp /tmp/recipe-runner-output.XXXXXX.log)
-chmod 600 "$LOG_FILE"
-tmux new-session -d -s "recipe-$(date +%s)" \
-  "cd /path/to/repo && env -u CLAUDECODE \
-   AMPLIHACK_HOME=/path/to/amplihack PYTHONPATH=src \
-   python3 /path/to/recipe_script.py 2>&1 | tee $LOG_FILE"
-```
-
 **Fallback: Direct recipe invocation when smart-orchestrator fails.**
 
 Always try `smart-orchestrator` first — it handles classification, decomposition,
@@ -208,14 +231,15 @@ and routing automatically. However, if `smart-orchestrator` fails at the
 vars, Rust binary version mismatch), you MAY invoke the specific workflow
 recipe directly based on your classification:
 
-| Classification  | Direct Recipe              | When to Use                                |
-|-----------------|----------------------------|--------------------------------------------|
-| Investigation   | `investigation-workflow`   | smart-orchestrator decomposition failed    |
-| Development     | `default-workflow`         | smart-orchestrator decomposition failed    |
-| Q&A (complex)   | `qa-workflow`              | Q&A needing multi-step research            |
-| Consensus       | `consensus-workflow`       | Critical decisions needing validation      |
+| Classification | Direct Recipe            | When to Use                             |
+| -------------- | ------------------------ | --------------------------------------- |
+| Investigation  | `investigation-workflow` | smart-orchestrator decomposition failed |
+| Development    | `default-workflow`       | smart-orchestrator decomposition failed |
+| Q&A (complex)  | `qa-workflow`            | Q&A needing multi-step research         |
+| Consensus      | `consensus-workflow`     | Critical decisions needing validation   |
 
 Example:
+
 ```python
 run_recipe_by_name("investigation-workflow", user_context={
     'task_description': task, 'repo_path': '.',
@@ -234,7 +258,7 @@ exists", "cannot proceed without a target"), this is a **hollow success**.
 In this case:
 
 1. Check that `repo_path` and `AMPLIHACK_HOME` are correct
-2. Verify the working directory in the tmux session is the repo root
+2. Verify the working directory is the repo root
 3. Retry with explicit file paths in the `task_description`
 4. If retries also produce hollow results, report the infrastructure
    failure to the user with specifics
