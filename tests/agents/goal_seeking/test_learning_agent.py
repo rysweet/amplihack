@@ -241,6 +241,63 @@ class TestLearningAgent:
 
         assert answer is not None
 
+    def test_answer_question_skips_redundant_fanout_after_exhaustive_retrieval(self, agent):
+        """Small-KB exhaustive retrieval should not trigger extra distributed-style passes."""
+        agent.memory.store_fact(
+            context="Sarah Chen",
+            fact="Sarah Chen leads Project Atlas.",
+            confidence=0.9,
+        )
+        agent.memory.store_fact(
+            context="Marcus Rivera",
+            fact="Marcus Rivera collaborates with Sarah Chen.",
+            confidence=0.9,
+        )
+        agent.memory.store_fact(
+            context="Incident INC-2024-001",
+            fact="INC-2024-001 affected Project Atlas.",
+            confidence=0.9,
+        )
+
+        with (
+            patch.object(
+                agent,
+                "_detect_intent",
+                return_value={
+                    "intent": "temporal_comparison",
+                    "needs_temporal": False,
+                    "needs_math": False,
+                },
+            ),
+            patch.object(
+                agent,
+                "_synthesize_with_llm",
+                return_value="Sarah Chen and Marcus Rivera worked on Atlas.",
+            ),
+            patch.object(
+                agent,
+                "_entity_linked_retrieval",
+                side_effect=AssertionError("entity-linked retrieval should be skipped"),
+            ),
+            patch.object(
+                agent,
+                "_multi_entity_retrieval",
+                side_effect=AssertionError("multi-entity retrieval should be skipped"),
+            ),
+            patch.object(
+                agent,
+                "_keyword_expanded_retrieval",
+                side_effect=AssertionError("keyword-expanded retrieval should be skipped"),
+            ),
+        ):
+            answer = agent.answer_question(
+                "How did Sarah Chen and Marcus Rivera affect INC-2024-001 over time?",
+                question_level="L3",
+                _skip_qanda_store=True,
+            )
+
+        assert "Sarah Chen" in answer
+
     def test_get_memory_stats(self, agent):
         """Test getting memory statistics."""
         stats = agent.get_memory_stats()
