@@ -387,6 +387,82 @@ assert_file_contains "SKILL.md: bug evidence format defined" "[Ee]vidence\|code.
 SECURITY="${REPO_ROOT}/.claude/skills/code-atlas/SECURITY.md"
 assert_file_contains "SECURITY.md: SEC-01 secret redaction defined" "[Rr]edact\|REDACTED\|SEC-01" "$SECURITY"
 
+# 5.6: SKILL.md must define three-pass structure (v1.1.0)
+assert_file_contains "SKILL.md: Pass 3 defined" "[Pp]ass 3\|pass.3\|Pass 3" "$SKILL"
+
+# 5.7: SKILL.md must define JourneyVerdict
+assert_file_contains "SKILL.md: JourneyVerdict concept defined" "[Jj]ourney[Vv]erdict\|Journey.*Verdict\|PASS.*FAIL.*NEEDS_ATTENTION\|verdict.*journey" "$SKILL"
+
+# 5.8: SKILL.md Pass 3 must document per-journey verdict block format
+assert_file_contains "SKILL.md: verdict block format with PASS/FAIL/NEEDS_ATTENTION" "PASS | FAIL | NEEDS_ATTENTION\|PASS.*FAIL.*NEEDS_ATTENTION" "$SKILL"
+
+# 5.9: API-CONTRACTS.md must have pass: 1 | 2 | 3 in BugReport schema
+API_CONTRACTS="${REPO_ROOT}/.claude/skills/code-atlas/API-CONTRACTS.md"
+assert_file_contains "API-CONTRACTS.md: BugReport pass extended to 1|2|3" "pass.*1.*2.*3\|1 | 2 | 3" "$API_CONTRACTS"
+
+# ============================================================================
+# Test Group 6: Pass 3 Verdict Block Tests (v1.1.0)
+# ============================================================================
+
+echo ""
+echo "=== Pass 3 Verdict Block Tests (v1.1.0) ==="
+
+ATLAS="${REPO_ROOT}/docs/atlas"
+BUG_REPORTS="${ATLAS}/bug-reports"
+
+# 6.1: At least one pass3 report file should exist (requires atlas run)
+pass3_count=$(find "$BUG_REPORTS" -name "*pass3*" 2>/dev/null | wc -l)
+if [[ "$pass3_count" -gt 0 ]]; then
+    echo "PASS: 6.1 at least one pass3 bug report exists ($pass3_count files)"
+    PASS=$((PASS + 1))
+else
+    echo "FAIL: 6.1 no pass3 bug reports found in $BUG_REPORTS (run /code-atlas first)"
+    FAIL=$((FAIL + 1))
+fi
+
+# 6.2: Each pass3 report must contain a Journey: heading
+while IFS= read -r -d '' p3_file; do
+    assert_file_contains "6.2 pass3 report has Journey heading: $(basename "$p3_file")" \
+        "## Journey:" "$p3_file"
+done < <(find "$BUG_REPORTS" -name "*pass3*" -print0 2>/dev/null)
+
+# 6.3: Each pass3 report must contain a Verdict heading (PASS/FAIL/NEEDS_ATTENTION)
+while IFS= read -r -d '' p3_file; do
+    assert_file_contains "6.3 pass3 report has Verdict: $(basename "$p3_file")" \
+        "### Verdict:.*PASS\|### Verdict:.*FAIL\|### Verdict:.*NEEDS_ATTENTION" "$p3_file"
+done < <(find "$BUG_REPORTS" -name "*pass3*" -print0 2>/dev/null)
+
+# 6.4: Each pass3 report must contain status symbols ✅/❌/⚠️ in evidence table
+while IFS= read -r -d '' p3_file; do
+    assert_file_contains "6.4 pass3 report has status symbols: $(basename "$p3_file")" \
+        "✅\|❌\|⚠️" "$p3_file"
+done < <(find "$BUG_REPORTS" -name "*pass3*" -print0 2>/dev/null)
+
+# 6.5: Each pass3 report must contain a Verdict Rationale paragraph
+while IFS= read -r -d '' p3_file; do
+    assert_file_contains "6.5 pass3 report has Verdict Rationale: $(basename "$p3_file")" \
+        "\*\*Verdict Rationale:\*\*\|Verdict Rationale:" "$p3_file"
+done < <(find "$BUG_REPORTS" -name "*pass3*" -print0 2>/dev/null)
+
+# 6.6: SEC-16 — no absolute paths in pass3 evidence (relative paths only)
+while IFS= read -r -d '' p3_file; do
+    if grep -qP '^\| [^|]+ \| [^|]+ \| /' "$p3_file" 2>/dev/null; then
+        echo "FAIL: 6.6 SEC-16 — absolute path found in pass3 evidence: $(basename "$p3_file")"
+        FAIL=$((FAIL + 1))
+    else
+        echo "PASS: 6.6 SEC-16 — no absolute paths in evidence: $(basename "$p3_file")"
+        PASS=$((PASS + 1))
+    fi
+done < <(find "$BUG_REPORTS" -name "*pass3*" -print0 2>/dev/null)
+
+# 6.7: SKILL.md Pass 3 documents scenario deep-dive methodology
+assert_file_contains "6.7 SKILL.md Pass 3 documents scenario deep-dive" \
+    "[Ss]cenario.*[Dd]eep-[Dd]ive\|deep-dive\|deep dive" "$SKILL"
+
+# 6.8: API-CONTRACTS.md §4b contains JourneyVerdict schema
+assert_file_contains "6.8 API-CONTRACTS.md §4b contains JourneyVerdict schema" \
+    "JourneyVerdict\|journey_verdict" "$API_CONTRACTS"
+
 # ---------------------------------------------------------------------------
 # Results
 # ---------------------------------------------------------------------------
