@@ -5,7 +5,6 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
 import yaml
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -37,7 +36,10 @@ class TestLoadSources:
         sources = {
             "github": [
                 {"account": "rysweet", "repos": ["amplihack", "azlin"]},
-                {"account": "rysweet_microsoft", "repos": ["cloud-ecosystem-security/SedanDelivery"]},
+                {
+                    "account": "rysweet_microsoft",
+                    "repos": ["cloud-ecosystem-security/SedanDelivery"],
+                },
             ]
         }
         path = tmp_path / "sources.yaml"
@@ -61,15 +63,17 @@ class TestFetchGithubIssues:
 
     def test_parses_issue_data(self):
         """Correctly parses gh API JSON output with full metadata."""
-        mock_output = json.dumps({
-            "repo": "rysweet/amplihack",
-            "title": "Fix auth bug",
-            "labels": ["bug", "high"],
-            "created": "2026-03-01T00:00:00Z",
-            "updated": "2026-03-07T00:00:00Z",
-            "number": 123,
-            "comments": 5,
-        })
+        mock_output = json.dumps(
+            {
+                "repo": "rysweet/amplihack",
+                "title": "Fix auth bug",
+                "labels": ["bug", "high"],
+                "created": "2026-03-01T00:00:00Z",
+                "updated": "2026-03-07T00:00:00Z",
+                "number": 123,
+                "comments": 5,
+            }
+        )
         with patch("generate_top5.run_gh", return_value=mock_output):
             result = fetch_github_issues("rysweet", ["amplihack"])
             assert len(result) == 1
@@ -85,11 +89,17 @@ class TestFetchGithubIssues:
 
     def test_priority_from_labels(self):
         """Labels correctly map to priority scores."""
-        mock_output = json.dumps({
-            "repo": "r/a", "title": "Critical issue",
-            "labels": ["critical"], "created": "2026-03-07T00:00:00Z",
-            "updated": "2026-03-07T00:00:00Z", "number": 1, "comments": 0,
-        })
+        mock_output = json.dumps(
+            {
+                "repo": "r/a",
+                "title": "Critical issue",
+                "labels": ["critical"],
+                "created": "2026-03-07T00:00:00Z",
+                "updated": "2026-03-07T00:00:00Z",
+                "number": 1,
+                "comments": 0,
+            }
+        )
         with patch("generate_top5.run_gh", return_value=mock_output):
             result = fetch_github_issues("r", ["a"])
             assert result[0]["priority"] == "HIGH"
@@ -97,16 +107,28 @@ class TestFetchGithubIssues:
 
     def test_staleness_boosts_score(self):
         """Older issues score higher due to staleness."""
-        fresh = json.dumps({
-            "repo": "r/a", "title": "Fresh", "labels": [],
-            "created": "2026-03-07T00:00:00Z", "updated": "2026-03-07T00:00:00Z",
-            "number": 1, "comments": 0,
-        })
-        stale = json.dumps({
-            "repo": "r/a", "title": "Stale", "labels": [],
-            "created": "2026-01-01T00:00:00Z", "updated": "2026-01-01T00:00:00Z",
-            "number": 2, "comments": 0,
-        })
+        fresh = json.dumps(
+            {
+                "repo": "r/a",
+                "title": "Fresh",
+                "labels": [],
+                "created": "2026-03-07T00:00:00Z",
+                "updated": "2026-03-07T00:00:00Z",
+                "number": 1,
+                "comments": 0,
+            }
+        )
+        stale = json.dumps(
+            {
+                "repo": "r/a",
+                "title": "Stale",
+                "labels": [],
+                "created": "2026-01-01T00:00:00Z",
+                "updated": "2026-01-01T00:00:00Z",
+                "number": 2,
+                "comments": 0,
+            }
+        )
         with patch("generate_top5.run_gh", return_value=f"{fresh}\n{stale}"):
             result = fetch_github_issues("r", ["a"])
             stale_item = next(c for c in result if "Stale" in c["title"])
@@ -126,16 +148,30 @@ class TestFetchGithubPrs:
 
     def test_draft_pr_scores_lower(self):
         """Draft PRs score lower than non-drafts."""
-        draft = json.dumps({
-            "repo": "r/a", "title": "Draft PR", "labels": [],
-            "created": "2026-03-07T00:00:00Z", "updated": "2026-03-07T00:00:00Z",
-            "number": 1, "draft": True, "comments": 0,
-        })
-        ready = json.dumps({
-            "repo": "r/a", "title": "Ready PR", "labels": [],
-            "created": "2026-03-07T00:00:00Z", "updated": "2026-03-07T00:00:00Z",
-            "number": 2, "draft": False, "comments": 0,
-        })
+        draft = json.dumps(
+            {
+                "repo": "r/a",
+                "title": "Draft PR",
+                "labels": [],
+                "created": "2026-03-07T00:00:00Z",
+                "updated": "2026-03-07T00:00:00Z",
+                "number": 1,
+                "draft": True,
+                "comments": 0,
+            }
+        )
+        ready = json.dumps(
+            {
+                "repo": "r/a",
+                "title": "Ready PR",
+                "labels": [],
+                "created": "2026-03-07T00:00:00Z",
+                "updated": "2026-03-07T00:00:00Z",
+                "number": 2,
+                "draft": False,
+                "comments": 0,
+            }
+        )
         with patch("generate_top5.run_gh", return_value=f"{draft}\n{ready}"):
             result = fetch_github_prs("r", ["a"])
             draft_item = next(c for c in result if "Draft" in c["title"])
@@ -146,11 +182,18 @@ class TestFetchGithubPrs:
 
     def test_pr_has_url_and_metadata(self):
         """PRs include correct GitHub URL and metadata."""
-        mock = json.dumps({
-            "repo": "rysweet/amplihack", "title": "Fix stuff", "labels": ["bug"],
-            "created": "2026-03-07T00:00:00Z", "updated": "2026-03-07T00:00:00Z",
-            "number": 42, "draft": False, "comments": 0,
-        })
+        mock = json.dumps(
+            {
+                "repo": "rysweet/amplihack",
+                "title": "Fix stuff",
+                "labels": ["bug"],
+                "created": "2026-03-07T00:00:00Z",
+                "updated": "2026-03-07T00:00:00Z",
+                "number": 42,
+                "draft": False,
+                "comments": 0,
+            }
+        )
         with patch("generate_top5.run_gh", return_value=mock):
             result = fetch_github_prs("rysweet", ["amplihack"])
             assert result[0]["url"] == "https://github.com/rysweet/amplihack/pull/42"
@@ -170,7 +213,13 @@ class TestLoadLocalOverrides:
         """Loads READY items from backlog."""
         items = {
             "items": [
-                {"id": "BL-001", "title": "Task A", "status": "READY", "priority": "HIGH", "estimated_hours": 1},
+                {
+                    "id": "BL-001",
+                    "title": "Task A",
+                    "status": "READY",
+                    "priority": "HIGH",
+                    "estimated_hours": 1,
+                },
                 {"id": "BL-002", "title": "Task B", "status": "DONE", "priority": "HIGH"},
             ]
         }
@@ -253,8 +302,14 @@ class TestAggregateAndRank:
 
     def test_returns_max_5(self):
         candidates = [
-            {"title": f"Item {i}", "source": "github_issue", "raw_score": float(100 - i),
-             "rationale": "test", "item_id": f"#{i}", "priority": "MEDIUM"}
+            {
+                "title": f"Item {i}",
+                "source": "github_issue",
+                "raw_score": float(100 - i),
+                "rationale": "test",
+                "item_id": f"#{i}",
+                "priority": "MEDIUM",
+            }
             for i in range(10)
         ]
         top, near = aggregate_and_rank(candidates, [], [], [])
@@ -263,23 +318,60 @@ class TestAggregateAndRank:
 
     def test_ranked_in_order(self):
         issues = [
-            {"title": "Low", "source": "github_issue", "raw_score": 30.0,
-             "rationale": "test", "item_id": "#1", "priority": "LOW"},
-            {"title": "High", "source": "github_issue", "raw_score": 90.0,
-             "rationale": "test", "item_id": "#2", "priority": "HIGH"},
+            {
+                "title": "Low",
+                "source": "github_issue",
+                "raw_score": 30.0,
+                "rationale": "test",
+                "item_id": "#1",
+                "priority": "LOW",
+            },
+            {
+                "title": "High",
+                "source": "github_issue",
+                "raw_score": 90.0,
+                "rationale": "test",
+                "item_id": "#2",
+                "priority": "HIGH",
+            },
         ]
         top, _ = aggregate_and_rank(issues, [], [], [])
         assert top[0]["title"] == "High"
         assert top[1]["title"] == "Low"
 
     def test_mixed_sources(self):
-        issues = [{"title": "Issue", "source": "github_issue", "raw_score": 80.0,
-                    "rationale": "test", "item_id": "#1", "priority": "HIGH"}]
-        prs = [{"title": "PR", "source": "github_pr", "raw_score": 80.0,
-                "rationale": "test", "item_id": "#2", "priority": "HIGH",
-                "url": "https://github.com/r/a/pull/2", "repo": "r/a"}]
-        local = [{"title": "Local", "source": "local", "raw_score": 80.0,
-                  "rationale": "test", "item_id": "BL-1", "priority": "MEDIUM"}]
+        issues = [
+            {
+                "title": "Issue",
+                "source": "github_issue",
+                "raw_score": 80.0,
+                "rationale": "test",
+                "item_id": "#1",
+                "priority": "HIGH",
+            }
+        ]
+        prs = [
+            {
+                "title": "PR",
+                "source": "github_pr",
+                "raw_score": 80.0,
+                "rationale": "test",
+                "item_id": "#2",
+                "priority": "HIGH",
+                "url": "https://github.com/r/a/pull/2",
+                "repo": "r/a",
+            }
+        ]
+        local = [
+            {
+                "title": "Local",
+                "source": "local",
+                "raw_score": 80.0,
+                "rationale": "test",
+                "item_id": "BL-1",
+                "priority": "MEDIUM",
+            }
+        ]
         top, _ = aggregate_and_rank(issues, prs, local, [])
         assert top[0]["source"] == "github_issue"
         assert top[1]["source"] == "github_pr"
@@ -287,10 +379,22 @@ class TestAggregateAndRank:
 
     def test_roadmap_alignment_boosts_score(self):
         issues = [
-            {"title": "Implement config parser", "source": "github_issue", "raw_score": 50.0,
-             "rationale": "test", "item_id": "#1", "priority": "MEDIUM"},
-            {"title": "Fix random thing", "source": "github_issue", "raw_score": 50.0,
-             "rationale": "test", "item_id": "#2", "priority": "MEDIUM"},
+            {
+                "title": "Implement config parser",
+                "source": "github_issue",
+                "raw_score": 50.0,
+                "rationale": "test",
+                "item_id": "#1",
+                "priority": "MEDIUM",
+            },
+            {
+                "title": "Fix random thing",
+                "source": "github_issue",
+                "raw_score": 50.0,
+                "rationale": "test",
+                "item_id": "#2",
+                "priority": "MEDIUM",
+            },
         ]
         top, _ = aggregate_and_rank(issues, [], [], ["config parser implementation"])
         config_item = next(r for r in top if "config" in r["title"].lower())
@@ -299,35 +403,71 @@ class TestAggregateAndRank:
 
     def test_tiebreak_by_priority(self):
         issues = [
-            {"title": "Low priority", "source": "github_issue", "raw_score": 50.0,
-             "rationale": "test", "item_id": "#1", "priority": "LOW"},
-            {"title": "High priority", "source": "github_issue", "raw_score": 50.0,
-             "rationale": "test", "item_id": "#2", "priority": "HIGH"},
+            {
+                "title": "Low priority",
+                "source": "github_issue",
+                "raw_score": 50.0,
+                "rationale": "test",
+                "item_id": "#1",
+                "priority": "LOW",
+            },
+            {
+                "title": "High priority",
+                "source": "github_issue",
+                "raw_score": 50.0,
+                "rationale": "test",
+                "item_id": "#2",
+                "priority": "HIGH",
+            },
         ]
         top, _ = aggregate_and_rank(issues, [], [], [])
         assert top[0]["priority"] == "HIGH"
         assert top[1]["priority"] == "LOW"
 
     def test_preserves_url_and_repo(self):
-        prs = [{"title": "PR", "source": "github_pr", "raw_score": 80.0,
-                "rationale": "test", "item_id": "#1", "priority": "MEDIUM",
-                "url": "https://github.com/r/a/pull/1", "repo": "r/a"}]
+        prs = [
+            {
+                "title": "PR",
+                "source": "github_pr",
+                "raw_score": 80.0,
+                "rationale": "test",
+                "item_id": "#1",
+                "priority": "MEDIUM",
+                "url": "https://github.com/r/a/pull/1",
+                "repo": "r/a",
+            }
+        ]
         top, _ = aggregate_and_rank([], prs, [], [])
         assert top[0]["url"] == "https://github.com/r/a/pull/1"
         assert top[0]["repo"] == "r/a"
 
     def test_items_have_action(self):
-        issues = [{"title": "Bug", "source": "github_issue", "raw_score": 80.0,
-                    "rationale": "test", "item_id": "#1", "priority": "HIGH",
-                    "labels": ["bug"], "days_stale": 5}]
+        issues = [
+            {
+                "title": "Bug",
+                "source": "github_issue",
+                "raw_score": 80.0,
+                "rationale": "test",
+                "item_id": "#1",
+                "priority": "HIGH",
+                "labels": ["bug"],
+                "days_stale": 5,
+            }
+        ]
         top, _ = aggregate_and_rank(issues, [], [], [])
         assert "action" in top[0]
         assert len(top[0]["action"]) > 0
 
     def test_near_misses_returned(self):
         candidates = [
-            {"title": f"Item {i}", "source": "github_issue", "raw_score": float(100 - i),
-             "rationale": "test", "item_id": f"#{i}", "priority": "MEDIUM"}
+            {
+                "title": f"Item {i}",
+                "source": "github_issue",
+                "raw_score": float(100 - i),
+                "rationale": "test",
+                "item_id": f"#{i}",
+                "priority": "MEDIUM",
+            }
             for i in range(8)
         ]
         top, near = aggregate_and_rank(candidates, [], [], [])
@@ -384,25 +524,47 @@ class TestGenerateTop5:
         with open(sources_path, "w") as f:
             yaml.dump(sources, f)
 
-        with patch("generate_top5.run_gh", return_value=None), \
-             patch("generate_top5.get_current_gh_account", return_value="test"):
+        with (
+            patch("generate_top5.run_gh", return_value=None),
+            patch("generate_top5.get_current_gh_account", return_value="test"),
+        ):
             result = generate_top5(populated_pm.parent, sources_path)
             assert result["sources"]["local_items"] > 0
             assert result["sources"]["github_issues"] == 0
 
     def test_output_has_summary(self):
-        with patch("generate_top5.get_current_gh_account", return_value="test"), \
-             patch("generate_top5.load_sources", return_value=[]):
+        with (
+            patch("generate_top5.get_current_gh_account", return_value="test"),
+            patch("generate_top5.load_sources", return_value=[]),
+        ):
             result = generate_top5(Path("/nonexistent"))
             assert "summary" in result
             assert "near_misses" in result
 
     def test_items_have_required_fields(self):
-        issues = [{"title": "Test", "source": "github_issue", "raw_score": 80.0,
-                    "rationale": "test", "item_id": "#1", "priority": "HIGH",
-                    "url": "https://github.com/r/a/issues/1", "repo": "r/a"}]
+        issues = [
+            {
+                "title": "Test",
+                "source": "github_issue",
+                "raw_score": 80.0,
+                "rationale": "test",
+                "item_id": "#1",
+                "priority": "HIGH",
+                "url": "https://github.com/r/a/issues/1",
+                "repo": "r/a",
+            }
+        ]
         top, _ = aggregate_and_rank(issues, [], [], [])
-        required = {"rank", "title", "source", "score", "rationale", "priority", "action", "alignment"}
+        required = {
+            "rank",
+            "title",
+            "source",
+            "score",
+            "rationale",
+            "priority",
+            "action",
+            "alignment",
+        }
         for item in top:
             assert required.issubset(item.keys()), f"Missing: {required - item.keys()}"
 

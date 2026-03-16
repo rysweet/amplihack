@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import json
 import os
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -29,7 +28,6 @@ from amplihack.testing.send_input_allowlist import (
     validate_scenario_send_inputs,
     validate_send_input,
 )
-
 
 # --------------------------------------------------------------------------- #
 # Default safe patterns
@@ -96,8 +94,8 @@ class TestValidateSendInput:
 
     def test_safe_value_passes_without_confirm(self):
         """Safe patterns must not raise."""
-        validate_send_input("y")       # should not raise
-        validate_send_input("\n")      # should not raise
+        validate_send_input("y")  # should not raise
+        validate_send_input("\n")  # should not raise
         validate_send_input("exit\n")  # should not raise
 
     def test_unsafe_value_raises_without_confirm(self):
@@ -271,7 +269,7 @@ class _set_env:
         self._value = value
         self._old: str | None = None
 
-    def __enter__(self) -> "_set_env":
+    def __enter__(self) -> _set_env:
         self._old = os.environ.get(self._key)
         os.environ[self._key] = self._value
         return self

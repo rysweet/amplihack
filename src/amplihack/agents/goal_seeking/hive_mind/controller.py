@@ -25,9 +25,9 @@ from __future__ import annotations
 
 import logging
 import os
-import sys
 import re
 import shutil
+import sys
 import tempfile
 import time
 import uuid

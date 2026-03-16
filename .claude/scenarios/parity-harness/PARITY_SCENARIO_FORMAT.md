@@ -6,39 +6,39 @@ Declarative test scenarios for comparing two CLI implementations side-by-side.
 
 ```yaml
 cases:
-  - name: "unique-test-name"          # Required: unique identifier
-    category: "install"                # Optional: grouping for audit reports
-    argv: ["subcommand", "--flag"]     # Required: CLI arguments (same for both engines)
-    timeout: 30                        # Optional: seconds (default: 30)
-    stdin: "y\n"                       # Optional: stdin data
-    cwd: "subdir"                      # Optional: working directory relative to sandbox
-    env:                               # Optional: extra environment variables
+  - name: "unique-test-name" # Required: unique identifier
+    category: "install" # Optional: grouping for audit reports
+    argv: ["subcommand", "--flag"] # Required: CLI arguments (same for both engines)
+    timeout: 30 # Optional: seconds (default: 30)
+    stdin: "y\n" # Optional: stdin data
+    cwd: "subdir" # Optional: working directory relative to sandbox
+    env: # Optional: extra environment variables
       MY_VAR: "value"
-      PATH: "${SANDBOX_ROOT}/bin:${PATH}"  # Template variables supported
-    setup: |                           # Optional: bash setup script run in both sandboxes
+      PATH: "${SANDBOX_ROOT}/bin:${PATH}" # Template variables supported
+    setup: | # Optional: bash setup script run in both sandboxes
       mkdir -p bin
       cat > bin/stub <<'EOF'
       #!/usr/bin/env bash
       echo "stubbed"
       EOF
       chmod +x bin/stub
-    compare:                           # Optional: what to compare (default: all three)
-      - stdout                         # Compare stdout (JSON-semantic if both are valid JSON)
-      - stderr                         # Compare stderr text
-      - exit_code                      # Compare process exit codes
-      - "fs:path/to/file"             # Compare file content/existence
-      - "jsonfs:path/to/file.json"    # Compare JSON file (semantic, ignores key order)
+    compare: # Optional: what to compare (default: all three)
+      - stdout # Compare stdout (JSON-semantic if both are valid JSON)
+      - stderr # Compare stderr text
+      - exit_code # Compare process exit codes
+      - "fs:path/to/file" # Compare file content/existence
+      - "jsonfs:path/to/file.json" # Compare JSON file (semantic, ignores key order)
 ```
 
 ## Template Variables
 
 Available in `env` values and `setup` scripts:
 
-| Variable | Expands To |
-|----------|------------|
-| `${SANDBOX_ROOT}` | Sandbox root directory |
-| `${HOME}` | Sandbox home directory (`${SANDBOX_ROOT}/home`) |
-| `${PATH}` | Parent process PATH |
+| Variable          | Expands To                                      |
+| ----------------- | ----------------------------------------------- |
+| `${SANDBOX_ROOT}` | Sandbox root directory                          |
+| `${HOME}`         | Sandbox home directory (`${SANDBOX_ROOT}/home`) |
+| `${PATH}`         | Parent process PATH                             |
 
 ## Comparison Modes
 
@@ -55,6 +55,7 @@ Exact integer match.
 ### `fs:<relative-path>`
 
 Compares file or directory at the relative path within each sandbox:
+
 - Both missing → match
 - One missing → divergence
 - Both files → SHA-256 hash comparison
@@ -76,6 +77,7 @@ Each engine (legacy and candidate) gets its own sandbox:
 ```
 
 Environment is isolated:
+
 - `HOME`, `TMPDIR`, `TMP`, `TEMP` → sandbox paths
 - `GIT_AUTHOR_*`, `GIT_COMMITTER_*` → shadow identity
 - `PARITY_SHADOW_RUN=1` → flag for shadow-aware code

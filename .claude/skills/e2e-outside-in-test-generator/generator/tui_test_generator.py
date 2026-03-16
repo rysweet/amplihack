@@ -39,7 +39,9 @@ def _generate_tui_smoke_tests(
     tests_dir = output_dir / "tui-smoke"
     ensure_directory(tests_dir)
 
-    app_name = config.binary_path.split("/")[-1] if "/" in config.binary_path else config.binary_path
+    app_name = (
+        config.binary_path.split("/")[-1] if "/" in config.binary_path else config.binary_path
+    )
 
     # Build widget check steps
     widget_checks = ""
@@ -89,7 +91,9 @@ def _generate_tui_navigation_tests(
     tests_dir = output_dir / "tui-navigation"
     ensure_directory(tests_dir)
 
-    app_name = config.binary_path.split("/")[-1] if "/" in config.binary_path else config.binary_path
+    app_name = (
+        config.binary_path.split("/")[-1] if "/" in config.binary_path else config.binary_path
+    )
 
     # Build navigation steps from keyboard shortcuts
     nav_steps = ""
@@ -155,10 +159,9 @@ def _generate_tui_navigation_tests(
     test_file = tests_dir / "navigation.yaml"
     write_file(test_file, content)
 
-    shortcut_count = len([
-        k for k, v in config.keyboard_shortcuts.items()
-        if v not in ("quit", "exit", "close")
-    ])
+    shortcut_count = len(
+        [k for k, v in config.keyboard_shortcuts.items() if v not in ("quit", "exit", "close")]
+    )
     step_count = max(shortcut_count * 2, 6)  # At least 6 steps from default
 
     return [
@@ -179,7 +182,9 @@ def _generate_tui_form_tests(
     ensure_directory(tests_dir)
 
     generated = []
-    app_name = config.binary_path.split("/")[-1] if "/" in config.binary_path else config.binary_path
+    app_name = (
+        config.binary_path.split("/")[-1] if "/" in config.binary_path else config.binary_path
+    )
 
     # Find input widgets
     input_widgets = [w for w in config.widgets if w.widget_type == "input"]
@@ -275,7 +280,9 @@ def _generate_tui_interaction_tests(
     ensure_directory(tests_dir)
 
     generated = []
-    app_name = config.binary_path.split("/")[-1] if "/" in config.binary_path else config.binary_path
+    app_name = (
+        config.binary_path.split("/")[-1] if "/" in config.binary_path else config.binary_path
+    )
 
     # Generate tests for specific widget types
     widget_types_found = set(w.widget_type for w in config.widgets)

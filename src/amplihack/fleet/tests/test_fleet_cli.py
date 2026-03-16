@@ -398,9 +398,7 @@ class TestFleetProjectList:
         mock_dash.projects = []
         MockDashboard.return_value = mock_dash
 
-        result = runner.invoke(
-            fleet_cli, ["project", "list"], catch_exceptions=False
-        )
+        result = runner.invoke(fleet_cli, ["project", "list"], catch_exceptions=False)
         assert result.exit_code == 0
         assert "No projects registered" in result.output
 
@@ -423,9 +421,7 @@ class TestFleetProjectList:
         mock_dash.projects = [proj]
         MockDashboard.return_value = mock_dash
 
-        result = runner.invoke(
-            fleet_cli, ["project", "list"], catch_exceptions=False
-        )
+        result = runner.invoke(fleet_cli, ["project", "list"], catch_exceptions=False)
         assert result.exit_code == 0
         assert "Fleet Projects (1)" in result.output
         assert "repo" in result.output
@@ -441,9 +437,7 @@ class TestFleetProjectRemove:
         mock_dash.remove_project.return_value = True
         MockDashboard.return_value = mock_dash
 
-        result = runner.invoke(
-            fleet_cli, ["project", "remove", "my-repo"], catch_exceptions=False
-        )
+        result = runner.invoke(fleet_cli, ["project", "remove", "my-repo"], catch_exceptions=False)
         assert result.exit_code == 0
         assert "Removed project: my-repo" in result.output
 
@@ -537,9 +531,7 @@ class TestFleetStart:
         mock_director = MagicMock()
         mock_get_director.return_value = mock_director
 
-        result = runner.invoke(
-            fleet_cli, ["start", "--adopt"], catch_exceptions=False
-        )
+        result = runner.invoke(fleet_cli, ["start", "--adopt"], catch_exceptions=False)
         assert result.exit_code == 0
         mock_adopt.assert_called_once_with(mock_director)
 
@@ -581,7 +573,10 @@ class TestFleetWatch:
         assert result.exit_code == 0
         assert "Failed to capture" in result.output
 
-    @patch("subprocess.run", side_effect=__import__("subprocess").TimeoutExpired(cmd="azlin", timeout=60))
+    @patch(
+        "subprocess.run",
+        side_effect=__import__("subprocess").TimeoutExpired(cmd="azlin", timeout=60),
+    )
     def test_watch_timeout(self, mock_run, runner):
         result = runner.invoke(
             fleet_cli,
@@ -666,9 +661,7 @@ class TestFleetObserve:
     def test_observe_with_sessions(self, MockState, MockObserver, runner):
         from amplihack.fleet.fleet_state import AgentStatus, TmuxSessionInfo
 
-        mock_session = TmuxSessionInfo(
-            session_name="claude-1", vm_name="test-vm"
-        )
+        mock_session = TmuxSessionInfo(session_name="claude-1", vm_name="test-vm")
         mock_vm = MagicMock()
         mock_vm.name = "test-vm"
         mock_vm.tmux_sessions = [mock_session]
@@ -770,9 +763,7 @@ class TestFleetReport:
 
 class TestFleetProjectHelp:
     def test_project_help_shows_subcommands(self, runner):
-        result = runner.invoke(
-            fleet_cli, ["project", "--help"], catch_exceptions=False
-        )
+        result = runner.invoke(fleet_cli, ["project", "--help"], catch_exceptions=False)
         assert result.exit_code == 0
         assert "add" in result.output
         assert "list" in result.output
@@ -816,7 +807,9 @@ class TestFleetTuiCommand:
             "sys.modules",
             {"amplihack.fleet.fleet_tui_dashboard": mock_module},
         ):
-            result = runner.invoke(fleet_cli, ["tui", "--capture-lines", "10000"], catch_exceptions=False)
+            result = runner.invoke(
+                fleet_cli, ["tui", "--capture-lines", "10000"], catch_exceptions=False
+            )
             assert result.exit_code == 0
             mock_module.run_dashboard.assert_called_once_with(interval=30, capture_lines=10000)
 
@@ -827,6 +820,7 @@ class TestFleetDefaultCommand:
     def test_default_uses_constant_interval(self, runner):
         """Default (no subcommand) should use DEFAULT_DASHBOARD_REFRESH_SECONDS."""
         from amplihack.fleet._constants import DEFAULT_DASHBOARD_REFRESH_SECONDS
+
         mock_module = MagicMock()
         with patch.dict(
             "sys.modules",
@@ -834,7 +828,9 @@ class TestFleetDefaultCommand:
         ):
             result = runner.invoke(fleet_cli, [], catch_exceptions=False)
             assert result.exit_code == 0
-            mock_module.run_dashboard.assert_called_once_with(interval=DEFAULT_DASHBOARD_REFRESH_SECONDS)
+            mock_module.run_dashboard.assert_called_once_with(
+                interval=DEFAULT_DASHBOARD_REFRESH_SECONDS
+            )
 
 
 class TestValidateVmNameCli:
@@ -843,19 +839,23 @@ class TestValidateVmNameCli:
     def test_valid_name_passes(self, runner):
         """Valid VM name should pass validation."""
         from amplihack.fleet.fleet_cli import _validate_vm_name_cli
+
         result = _validate_vm_name_cli(None, None, "valid-vm-name")
         assert result == "valid-vm-name"
 
     def test_none_passes(self, runner):
         """None value should pass (optional argument)."""
         from amplihack.fleet.fleet_cli import _validate_vm_name_cli
+
         result = _validate_vm_name_cli(None, None, None)
         assert result is None
 
     def test_invalid_name_raises_bad_parameter(self, runner):
         """Invalid VM name should raise click.BadParameter."""
         import click
+
         from amplihack.fleet.fleet_cli import _validate_vm_name_cli
+
         with pytest.raises(click.BadParameter, match="Invalid VM name"):
             _validate_vm_name_cli(None, None, "bad name!@#")
 
@@ -866,6 +866,7 @@ class TestCreateFleetCli:
     def test_returns_click_group(self):
         """create_fleet_cli should return the fleet Click group."""
         from amplihack.fleet.fleet_cli import create_fleet_cli
+
         cli = create_fleet_cli()
         assert isinstance(cli, click.Group)
         assert cli.name == "fleet"
@@ -1084,20 +1085,24 @@ class TestFleetCopilotLog:
 
         decisions_file = tmp_path / "decisions.jsonl"
         entries = [
-            json.dumps({
-                "timestamp": "2026-03-03T10:00:00",
-                "action": "send_input",
-                "input_text": "continue",
-                "reasoning": "Agent is idle at prompt",
-                "confidence": 0.85,
-            }),
-            json.dumps({
-                "timestamp": "2026-03-03T10:05:00",
-                "action": "wait",
-                "input_text": "",
-                "reasoning": "Agent has a tool call in flight",
-                "confidence": 0.95,
-            }),
+            json.dumps(
+                {
+                    "timestamp": "2026-03-03T10:00:00",
+                    "action": "send_input",
+                    "input_text": "continue",
+                    "reasoning": "Agent is idle at prompt",
+                    "confidence": 0.85,
+                }
+            ),
+            json.dumps(
+                {
+                    "timestamp": "2026-03-03T10:05:00",
+                    "action": "wait",
+                    "input_text": "",
+                    "reasoning": "Agent has a tool call in flight",
+                    "confidence": 0.95,
+                }
+            ),
         ]
         decisions_file.write_text("\n".join(entries))
 
@@ -1115,12 +1120,14 @@ class TestFleetCopilotLog:
 
         decisions_file = tmp_path / "decisions.jsonl"
         entries = [
-            json.dumps({
-                "timestamp": f"2026-03-03T10:{i:02d}:00",
-                "action": f"action_{i}",
-                "reasoning": f"reason_{i}",
-                "confidence": 0.8,
-            })
+            json.dumps(
+                {
+                    "timestamp": f"2026-03-03T10:{i:02d}:00",
+                    "action": f"action_{i}",
+                    "reasoning": f"reason_{i}",
+                    "confidence": 0.8,
+                }
+            )
             for i in range(10)
         ]
         decisions_file.write_text("\n".join(entries))
@@ -1174,15 +1181,23 @@ class TestFormatScoutReport:
         from amplihack.fleet._tui_data import SessionView, VMView
 
         sess = SessionView(
-            vm_name="vm-1", session_name="dev-1",
-            status="thinking", branch="feat/auth",
+            vm_name="vm-1",
+            session_name="dev-1",
+            status="thinking",
+            branch="feat/auth",
         )
         vm = VMView(name="vm-1", region="eastus", is_running=True, sessions=[sess])
-        decisions = [{
-            "vm": "vm-1", "session": "dev-1", "status": "thinking",
-            "branch": "feat/auth", "action": "wait",
-            "confidence": 0.9, "reasoning": "Agent is thinking",
-        }]
+        decisions = [
+            {
+                "vm": "vm-1",
+                "session": "dev-1",
+                "status": "thinking",
+                "branch": "feat/auth",
+                "action": "wait",
+                "confidence": 0.9,
+                "reasoning": "Agent is thinking",
+            }
+        ]
         report = format_scout_report([vm], decisions, 1, False)
         assert "vm-1" in report
         assert "dev-1" in report
@@ -1201,7 +1216,9 @@ class TestFormatScoutReport:
 
         sess = SessionView(vm_name="vm-1", session_name="s1", status="error")
         vm = VMView(name="vm-1", region="", is_running=True, sessions=[sess])
-        decisions = [{"vm": "vm-1", "session": "s1", "status": "error", "error": "Connection refused"}]
+        decisions = [
+            {"vm": "vm-1", "session": "s1", "status": "error", "error": "Connection refused"}
+        ]
         report = format_scout_report([vm], decisions, 0, False)
         assert "ERR" in report
         assert "Connection refused" in report
@@ -1210,15 +1227,26 @@ class TestFormatScoutReport:
         from amplihack.fleet._cli_session_ops import format_scout_report
         from amplihack.fleet._tui_data import SessionView, VMView
 
-        vm = VMView(name="v", region="", is_running=True, sessions=[
-            SessionView(vm_name="v", session_name="a", status="running"),
-            SessionView(vm_name="v", session_name="b", status="running"),
-            SessionView(vm_name="v", session_name="c", status="idle"),
-        ])
+        vm = VMView(
+            name="v",
+            region="",
+            is_running=True,
+            sessions=[
+                SessionView(vm_name="v", session_name="a", status="running"),
+                SessionView(vm_name="v", session_name="b", status="running"),
+                SessionView(vm_name="v", session_name="c", status="idle"),
+            ],
+        )
         decisions = [
             {"vm": "v", "session": "a", "action": "wait", "confidence": 0.9},
             {"vm": "v", "session": "b", "action": "wait", "confidence": 0.8},
-            {"vm": "v", "session": "c", "action": "send_input", "confidence": 0.7, "input_text": "hello"},
+            {
+                "vm": "v",
+                "session": "c",
+                "action": "send_input",
+                "confidence": 0.7,
+                "input_text": "hello",
+            },
         ]
         report = format_scout_report([vm], decisions, 0, False)
         assert "wait: 2" in report
@@ -1247,8 +1275,10 @@ class TestFleetScout:
         from amplihack.fleet._tui_data import SessionView, VMView
 
         sess = SessionView(
-            vm_name="vm-1", session_name="work-1",
-            status="thinking", branch="feat/x",
+            vm_name="vm-1",
+            session_name="work-1",
+            status="thinking",
+            branch="feat/x",
         )
         vm = VMView(name="vm-1", region="eastus", is_running=True, sessions=[sess])
         mock_tui = MagicMock()
@@ -1280,11 +1310,15 @@ class TestFleetScout:
         from amplihack.fleet._tui_data import SessionView, VMView
 
         vm1 = VMView(
-            name="vm-1", region="eastus", is_running=True,
+            name="vm-1",
+            region="eastus",
+            is_running=True,
             sessions=[SessionView(vm_name="vm-1", session_name="s1", status="idle")],
         )
         vm2 = VMView(
-            name="vm-2", region="westus", is_running=True,
+            name="vm-2",
+            region="westus",
+            is_running=True,
             sessions=[SessionView(vm_name="vm-2", session_name="s2", status="idle")],
         )
         mock_tui = MagicMock()
@@ -1293,7 +1327,8 @@ class TestFleetScout:
 
         with patch.dict("os.environ", {}, clear=False):
             result = runner.invoke(
-                fleet_cli, ["scout", "--vm", "vm-1", "--skip-adopt"],
+                fleet_cli,
+                ["scout", "--vm", "vm-1", "--skip-adopt"],
                 catch_exceptions=False,
             )
         assert result.exit_code == 0
@@ -1304,7 +1339,9 @@ class TestFleetScout:
         from amplihack.fleet._tui_data import SessionView, VMView
 
         vm = VMView(
-            name="vm-1", region="", is_running=True,
+            name="vm-1",
+            region="",
+            is_running=True,
             sessions=[SessionView(vm_name="vm-1", session_name="s1", status="idle")],
         )
         mock_tui = MagicMock()
@@ -1312,7 +1349,9 @@ class TestFleetScout:
         MockTUI.return_value = mock_tui
 
         result = runner.invoke(
-            fleet_cli, ["scout", "--skip-adopt"], catch_exceptions=False,
+            fleet_cli,
+            ["scout", "--skip-adopt"],
+            catch_exceptions=False,
         )
         assert result.exit_code == 0
         assert "Skipped" in result.output
@@ -1325,8 +1364,12 @@ class TestFleetScout:
         from amplihack.fleet._tui_data import SessionView, VMView
 
         vm = VMView(
-            name="vm-1", region="", is_running=True,
-            sessions=[SessionView(vm_name="vm-1", session_name="s1", status="thinking", branch="main")],
+            name="vm-1",
+            region="",
+            is_running=True,
+            sessions=[
+                SessionView(vm_name="vm-1", session_name="s1", status="thinking", branch="main")
+            ],
         )
         mock_tui = MagicMock()
         mock_tui.refresh_all.return_value = [vm]
@@ -1344,7 +1387,9 @@ class TestFleetScout:
         env = {k: v for k, v in __import__("os").environ.items() if k != "ANTHROPIC_API_KEY"}
         with patch.dict("os.environ", env, clear=True):
             result = runner.invoke(
-                fleet_cli, ["scout", "--skip-adopt"], catch_exceptions=False,
+                fleet_cli,
+                ["scout", "--skip-adopt"],
+                catch_exceptions=False,
             )
         assert result.exit_code == 0
         assert "FLEET SCOUT REPORT" in result.output
@@ -1356,7 +1401,9 @@ class TestFleetScout:
         from amplihack.fleet._tui_data import SessionView, VMView
 
         vm = VMView(
-            name="vm-1", region="", is_running=True,
+            name="vm-1",
+            region="",
+            is_running=True,
             sessions=[SessionView(vm_name="vm-1", session_name="s1", status="idle")],
         )
         mock_tui = MagicMock()
@@ -1402,7 +1449,9 @@ class TestFleetScout:
     @patch("amplihack.fleet._backends.auto_detect_backend")
     @patch("amplihack.fleet.fleet_adopt.SessionAdopter")
     @patch("amplihack.fleet.fleet_tui.FleetTUI")
-    def test_scout_sees_excluded_vm_sessions(self, MockTUI, MockAdopter, MockBackend, MockReasoner, runner):
+    def test_scout_sees_excluded_vm_sessions(
+        self, MockTUI, MockAdopter, MockBackend, MockReasoner, runner
+    ):
         """Outside-in: scout report must include sessions from excluded VMs.
 
         When a VM is in the exclude list, scout must still discover and report
@@ -1411,11 +1460,15 @@ class TestFleetScout:
         from amplihack.fleet._tui_data import SessionView, VMView
 
         excluded_vm_sess = SessionView(
-            vm_name="excluded-vm", session_name="work-excluded",
-            status="thinking", branch="feat/secret",
+            vm_name="excluded-vm",
+            session_name="work-excluded",
+            status="thinking",
+            branch="feat/secret",
         )
         excluded_vm = VMView(
-            name="excluded-vm", region="eastus", is_running=True,
+            name="excluded-vm",
+            region="eastus",
+            is_running=True,
             sessions=[excluded_vm_sess],
         )
         mock_tui = MagicMock()
@@ -1466,7 +1519,13 @@ class TestFormatAdvanceReport:
             {"vm": "v1", "session": "s2", "action": "wait", "confidence": 1.0},
         ]
         executed = [
-            {"vm": "v1", "session": "s1", "action": "send_input", "executed": True, "input_text": "hello"},
+            {
+                "vm": "v1",
+                "session": "s1",
+                "action": "send_input",
+                "executed": True,
+                "input_text": "hello",
+            },
             {"vm": "v1", "session": "s2", "action": "wait", "executed": False},
         ]
         report = format_advance_report(decisions, executed)
@@ -1479,7 +1538,9 @@ class TestFormatAdvanceReport:
         from amplihack.fleet._cli_session_ops import format_advance_report
 
         decisions = [{"vm": "v1", "session": "s1", "action": "error"}]
-        executed = [{"vm": "v1", "session": "s1", "action": "error", "error": "timeout", "executed": False}]
+        executed = [
+            {"vm": "v1", "session": "s1", "action": "error", "error": "timeout", "executed": False}
+        ]
         report = format_advance_report(decisions, executed)
         assert "[ERROR]" in report
         assert "timeout" in report
@@ -1512,7 +1573,9 @@ class TestFleetAdvance:
         from amplihack.fleet._tui_data import SessionView, VMView
 
         vm = VMView(
-            name="vm-1", region="", is_running=True,
+            name="vm-1",
+            region="",
+            is_running=True,
             sessions=[SessionView(vm_name="vm-1", session_name="s1", status="idle")],
         )
         mock_tui = MagicMock()
@@ -1577,16 +1640,26 @@ class TestFleetAdvance:
     def test_advance_vm_filter(self, MockTUI, runner):
         from amplihack.fleet._tui_data import SessionView, VMView
 
-        vm1 = VMView(name="vm-1", region="", is_running=True,
-                     sessions=[SessionView(vm_name="vm-1", session_name="s1", status="idle")])
-        vm2 = VMView(name="vm-2", region="", is_running=True,
-                     sessions=[SessionView(vm_name="vm-2", session_name="s2", status="idle")])
+        vm1 = VMView(
+            name="vm-1",
+            region="",
+            is_running=True,
+            sessions=[SessionView(vm_name="vm-1", session_name="s1", status="idle")],
+        )
+        vm2 = VMView(
+            name="vm-2",
+            region="",
+            is_running=True,
+            sessions=[SessionView(vm_name="vm-2", session_name="s2", status="idle")],
+        )
         mock_tui = MagicMock()
         mock_tui.refresh_all.return_value = [vm1, vm2]
         MockTUI.return_value = mock_tui
 
         with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"}):
-            result = runner.invoke(fleet_cli, ["advance", "--vm", "nonexistent"], catch_exceptions=False)
+            result = runner.invoke(
+                fleet_cli, ["advance", "--vm", "nonexistent"], catch_exceptions=False
+            )
         assert result.exit_code == 0
         assert "VM not found" in result.output
 
@@ -1738,9 +1811,15 @@ class TestScoutSessionFilter:
 
         sess_match = SessionView(vm_name="dev", session_name="cybergym", status="idle")
         sess_other = SessionView(vm_name="dev", session_name="other-sess", status="idle")
-        vm_dev = VMView(name="dev", region="westus2", is_running=True, sessions=[sess_match, sess_other])
-        vm_prod = VMView(name="prod", region="eastus", is_running=True,
-                         sessions=[SessionView(vm_name="prod", session_name="work", status="idle")])
+        vm_dev = VMView(
+            name="dev", region="westus2", is_running=True, sessions=[sess_match, sess_other]
+        )
+        vm_prod = VMView(
+            name="prod",
+            region="eastus",
+            is_running=True,
+            sessions=[SessionView(vm_name="prod", session_name="work", status="idle")],
+        )
 
         mock_tui = MagicMock()
         mock_tui.refresh_all.return_value = [vm_dev, vm_prod]
@@ -1765,8 +1844,12 @@ class TestScoutSessionFilter:
         """--session dev:nonexistent should print 'Session not found'."""
         from amplihack.fleet._tui_data import SessionView, VMView
 
-        vm = VMView(name="dev", region="westus2", is_running=True,
-                    sessions=[SessionView(vm_name="dev", session_name="real-sess", status="idle")])
+        vm = VMView(
+            name="dev",
+            region="westus2",
+            is_running=True,
+            sessions=[SessionView(vm_name="dev", session_name="real-sess", status="idle")],
+        )
 
         mock_tui = MagicMock()
         mock_tui.refresh_all.return_value = [vm]

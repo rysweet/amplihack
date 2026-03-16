@@ -8,11 +8,11 @@ A code-enforced workflow execution engine that reads declarative YAML recipe fil
 
 The recipe runner supports two engines. Set `RECIPE_RUNNER_ENGINE` to choose explicitly:
 
-| Value | Engine | Notes |
-|-------|--------|-------|
-| `rust` | [recipe-runner-rs](https://github.com/rysweet/amplihack-recipe-runner) | Standalone binary, ~5ms startup, comprehensive test suite |
-| `python` | Built-in Python runner | No extra install needed |
-| *(not set)* | Auto-detect | Uses Rust if binary found in PATH, Python otherwise |
+| Value       | Engine                                                                 | Notes                                                     |
+| ----------- | ---------------------------------------------------------------------- | --------------------------------------------------------- |
+| `rust`      | [recipe-runner-rs](https://github.com/rysweet/amplihack-recipe-runner) | Standalone binary, ~5ms startup, comprehensive test suite |
+| `python`    | Built-in Python runner                                                 | No extra install needed                                   |
+| _(not set)_ | Auto-detect                                                            | Uses Rust if binary found in PATH, Python otherwise       |
 
 ```bash
 # Install the Rust binary
@@ -37,26 +37,26 @@ ensure_rust_recipe_runner()  # Installs if missing, no-op if present
 
 The Rust engine supports additional features not available in the Python engine:
 
-| Feature | Rust | Python |
-|---------|------|--------|
-| `parallel_group` | ✅ | ❌ |
-| `continue_on_error` | ✅ | ❌ |
-| `when_tags` | ✅ | ❌ |
-| `hooks` (pre/post/on_error) | ✅ | ❌ |
-| `extends` (inheritance) | ✅ | ❌ |
-| `recursion` config | ✅ | ❌ |
+| Feature                     | Rust | Python |
+| --------------------------- | ---- | ------ |
+| `parallel_group`            | ✅   | ❌     |
+| `continue_on_error`         | ✅   | ❌     |
+| `when_tags`                 | ✅   | ❌     |
+| `hooks` (pre/post/on_error) | ✅   | ❌     |
+| `extends` (inheritance)     | ✅   | ❌     |
+| `recursion` config          | ✅   | ❌     |
 
 Set `RECIPE_RUNNER_ENGINE=rust` to use the full feature set.
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `RECIPE_RUNNER_ENGINE` | (auto-detect) | Engine selection: `rust`, `python`, or unset |
-| `RECIPE_RUNNER_RS_PATH` | (auto) | Custom path to Rust binary |
-| `RECIPE_RUNNER_INSTALL_TIMEOUT` | 300 | Cargo install timeout (seconds) |
-| `RECIPE_RUNNER_RUN_TIMEOUT` | 3600 | Recipe execution timeout (seconds) |
-| `RUST_LOG` | (unset) | Rust binary log level (e.g., `debug`, `info`) |
+| Variable                        | Default       | Description                                   |
+| ------------------------------- | ------------- | --------------------------------------------- |
+| `RECIPE_RUNNER_ENGINE`          | (auto-detect) | Engine selection: `rust`, `python`, or unset  |
+| `RECIPE_RUNNER_RS_PATH`         | (auto)        | Custom path to Rust binary                    |
+| `RECIPE_RUNNER_INSTALL_TIMEOUT` | 300           | Cargo install timeout (seconds)               |
+| `RECIPE_RUNNER_RUN_TIMEOUT`     | 3600          | Recipe execution timeout (seconds)            |
+| `RUST_LOG`                      | (unset)       | Rust binary log level (e.g., `debug`, `info`) |
 
 ## Contents
 
@@ -213,7 +213,7 @@ steps:
 | ------------ | ----------- | -------- | ------------------------------------------------------------------------------ |
 | `id`         | string      | Yes      | Unique step identifier within the recipe                                       |
 | `agent`      | string      | No       | Agent reference in `namespace:name` format                                     |
-| `type`       | string      | No       | `agent` (default when `agent`/`prompt` present), `bash`, or `recipe`          |
+| `type`       | string      | No       | `agent` (default when `agent`/`prompt` present), `bash`, or `recipe`           |
 | `prompt`     | string      | No       | Prompt template sent to the agent                                              |
 | `command`    | string      | No       | Shell command (when `type: bash`)                                              |
 | `recipe`     | string      | No       | Sub-recipe name to invoke (when `type: recipe`)                                |

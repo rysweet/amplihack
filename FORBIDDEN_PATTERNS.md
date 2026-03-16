@@ -20,8 +20,8 @@ some_command || true
 success, making the pipeline appear healthy when it is not. Failures are
 invisible in logs and CI.
 
-**Correct pattern:** Let the command fail loudly, or handle the error
-explicitly with a meaningful message and non-zero exit.
+**Correct pattern:** Let the command fail loudly, or handle the error explicitly
+with a meaningful message and non-zero exit.
 
 ---
 
@@ -70,9 +70,9 @@ rebase progress output is noise. The push that follows must not suppress stderr.
 ```
 
 **Why forbidden:** The `;` separator is unconditional. If `git commit` or
-`git pull --rebase` fails, execution continues to `git push` regardless.
-This violates fail-fast: a push after a failed rebase can corrupt the remote
-branch or push stale content.
+`git pull --rebase` fails, execution continues to `git push` regardless. This
+violates fail-fast: a push after a failed rebase can corrupt the remote branch
+or push stale content.
 
 **Correct pattern:**
 
@@ -92,22 +92,22 @@ git <any-command> &>/dev/null
 ```
 
 **Why forbidden:** Git errors carry critical diagnostic information:
-authentication state, remote rejection reasons, merge conflicts, hook
-failures. Masking them delays diagnosis and can lead to data loss or
-silent divergence between local and remote state.
+authentication state, remote rejection reasons, merge conflicts, hook failures.
+Masking them delays diagnosis and can lead to data loss or silent divergence
+between local and remote state.
 
-**Rule of thumb:** If a git command can fail in a way that affects the
-integrity of the repository or the CI pipeline, it must fail loudly.
+**Rule of thumb:** If a git command can fail in a way that affects the integrity
+of the repository or the CI pipeline, it must fail loudly.
 
 ---
 
 ## Summary table
 
-| Pattern | Risk | Status |
-|---|---|---|
-| `git push \|\| true` | Silent push failure | FORBIDDEN |
-| `git push 2>/dev/null \|\| echo "..."` | Masked push error | FORBIDDEN |
-| `git push 2>/dev/null` | Suppressed auth/permission errors | FORBIDDEN |
-| `; git push` after fallible command in subshell | Push despite prior failure | FORBIDDEN |
-| `git pull --rebase 2>/dev/null` | Noisy rebase output suppressed | ALLOWED |
-| `git push -u origin <branch>` (initial tracking push) | No rebase needed | ALLOWED |
+| Pattern                                               | Risk                              | Status    |
+| ----------------------------------------------------- | --------------------------------- | --------- |
+| `git push \|\| true`                                  | Silent push failure               | FORBIDDEN |
+| `git push 2>/dev/null \|\| echo "..."`                | Masked push error                 | FORBIDDEN |
+| `git push 2>/dev/null`                                | Suppressed auth/permission errors | FORBIDDEN |
+| `; git push` after fallible command in subshell       | Push despite prior failure        | FORBIDDEN |
+| `git pull --rebase 2>/dev/null`                       | Noisy rebase output suppressed    | ALLOWED   |
+| `git push -u origin <branch>` (initial tracking push) | No rebase needed                  | ALLOWED   |

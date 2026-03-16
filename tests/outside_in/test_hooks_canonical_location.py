@@ -30,9 +30,7 @@ class TestSymlinkStructure:
     """Verify the symlink structure is correct."""
 
     def test_canonical_hooks_dir_exists(self):
-        assert CANONICAL_HOOKS.is_dir(), (
-            f"Canonical hooks directory missing: {CANONICAL_HOOKS}"
-        )
+        assert CANONICAL_HOOKS.is_dir(), f"Canonical hooks directory missing: {CANONICAL_HOOKS}"
 
     def test_bundle_hooks_is_symlink(self):
         assert BUNDLE_HOOKS.is_symlink(), (

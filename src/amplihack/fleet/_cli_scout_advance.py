@@ -74,8 +74,7 @@ def _discover_sessions(session_target, vm, _tui_mod, *, exclude: bool = False):
 
     total_sessions = sum(len(v.sessions) for v in running_vms)
     click.echo(
-        f"Found {len(all_vms)} VMs, {total_sessions} sessions "
-        f"on {len(running_vms)} running VMs"
+        f"Found {len(all_vms)} VMs, {total_sessions} sessions on {len(running_vms)} running VMs"
     )
 
     if not running_vms:
@@ -99,10 +98,23 @@ def register_scout_advance_ops(fleet_cli: click.Group) -> None:
 
     @fleet_cli.command("scout")
     @click.option("--vm", default=None, help="Filter to a single VM (default: all)")
-    @click.option("--session", "session_target", default=None, help="Target session as vm:session (e.g., dev:cybergym-intg)")
-    @click.option("--skip-adopt", is_flag=True, help="Reason about sessions without adopting them first")
-    @click.option("--incremental", is_flag=True, help="Only re-reason sessions whose status changed since last scout")
-    @click.option("--save", "save_path", default=None, type=click.Path(), help="Save JSON report to file")
+    @click.option(
+        "--session",
+        "session_target",
+        default=None,
+        help="Target session as vm:session (e.g., dev:cybergym-intg)",
+    )
+    @click.option(
+        "--skip-adopt", is_flag=True, help="Reason about sessions without adopting them first"
+    )
+    @click.option(
+        "--incremental",
+        is_flag=True,
+        help="Only re-reason sessions whose status changed since last scout",
+    )
+    @click.option(
+        "--save", "save_path", default=None, type=click.Path(), help="Save JSON report to file"
+    )
     def scout(vm, session_target, skip_adopt, incremental, save_path):
         """Discover sessions, adopt them, dry-run reason, and show a report.
 
@@ -114,7 +126,6 @@ def register_scout_advance_ops(fleet_cli: click.Group) -> None:
         Requires ANTHROPIC_API_KEY (or another LLM backend).
         """
         import json
-        import os
         import time
         from pathlib import Path
 
@@ -181,11 +192,27 @@ def register_scout_advance_ops(fleet_cli: click.Group) -> None:
                     click.echo(f"  Skipping (unchanged): {session_key} [{sess.status}]")
                     # Carry forward previous decision if available
                     prev_decisions = prev_data.get("decisions", []) if prev_statuses else []
-                    prev_d = next((d for d in prev_decisions if d.get("vm") == v.name and d.get("session") == sess.session_name), None)
+                    prev_d = next(
+                        (
+                            d
+                            for d in prev_decisions
+                            if d.get("vm") == v.name and d.get("session") == sess.session_name
+                        ),
+                        None,
+                    )
                     if prev_d:
                         decisions.append(prev_d)
                     else:
-                        decisions.append({"vm": v.name, "session": sess.session_name, "status": sess.status, "action": "wait", "confidence": 0.5, "reasoning": "Unchanged since last scout"})
+                        decisions.append(
+                            {
+                                "vm": v.name,
+                                "session": sess.session_name,
+                                "status": sess.status,
+                                "action": "wait",
+                                "confidence": 0.5,
+                                "reasoning": "Unchanged since last scout",
+                            }
+                        )
                     continue
                 click.echo(f"  Reasoning: {v.name}/{sess.session_name}...")
                 try:
@@ -194,28 +221,33 @@ def register_scout_advance_ops(fleet_cli: click.Group) -> None:
                         session_name=sess.session_name,
                         cached_tmux_capture=sess.tmux_capture,
                     )
-                    decisions.append({
-                        "vm": v.name,
-                        "session": sess.session_name,
-                        "status": sess.status,
-                        "branch": sess.branch,
-                        "pr": sess.pr,
-                        "action": decision.action,
-                        "confidence": decision.confidence,
-                        "reasoning": decision.reasoning,
-                        "input_text": decision.input_text,
-                    })
+                    decisions.append(
+                        {
+                            "vm": v.name,
+                            "session": sess.session_name,
+                            "status": sess.status,
+                            "branch": sess.branch,
+                            "pr": sess.pr,
+                            "action": decision.action,
+                            "confidence": decision.confidence,
+                            "reasoning": decision.reasoning,
+                            "input_text": decision.input_text,
+                        }
+                    )
                 except Exception as exc:
-                    decisions.append({
-                        "vm": v.name,
-                        "session": sess.session_name,
-                        "status": sess.status,
-                        "error": str(exc),
-                    })
+                    decisions.append(
+                        {
+                            "vm": v.name,
+                            "session": sess.session_name,
+                            "status": sess.status,
+                            "error": str(exc),
+                        }
+                    )
 
         # -- Phase 3b: Enrich decisions with project info --
         try:
             from amplihack.fleet._projects import load_projects
+
             _proj_registry = load_projects()
         except (OSError, ValueError, KeyError):
             _proj_registry = {}
@@ -229,17 +261,18 @@ def register_scout_advance_ops(fleet_cli: click.Group) -> None:
                     if d["vm"] == v.name and d["session"] == sess.session_name:
                         repo = getattr(sess, "repo", "") or ""
                         for pname, proj in _proj_registry.items():
-                            if proj.repo_url and repo and proj.repo_url.rstrip("/") == repo.rstrip("/"):
+                            if (
+                                proj.repo_url
+                                and repo
+                                and proj.repo_url.rstrip("/") == repo.rstrip("/")
+                            ):
                                 d["project"] = pname
                                 d["objectives"] = [
-                                    o for o in proj.objectives
-                                    if o.get("state", "open") == "open"
+                                    o for o in proj.objectives if o.get("state", "open") == "open"
                                 ]
 
         # -- Phase 4: Report --
-        report_text = format_scout_report(
-            all_vms, decisions, adopted_count, skip_adopt
-        )
+        report_text = format_scout_report(all_vms, decisions, adopted_count, skip_adopt)
         click.echo(report_text)
 
         # -- Always save last scout results for incremental re-use --
@@ -253,9 +286,7 @@ def register_scout_advance_ops(fleet_cli: click.Group) -> None:
             "skip_adopt": skip_adopt,
             "decisions": decisions,
             "session_statuses": {
-                f"{v.name}/{s.session_name}": s.status
-                for v in running_vms
-                for s in v.sessions
+                f"{v.name}/{s.session_name}": s.status for v in running_vms for s in v.sessions
             },
         }
         last_scout_path.write_text(json.dumps(last_scout_data, indent=2))
@@ -271,9 +302,20 @@ def register_scout_advance_ops(fleet_cli: click.Group) -> None:
 
     @fleet_cli.command("advance")
     @click.option("--vm", default=None, help="Filter to a single VM (default: all)")
-    @click.option("--session", "session_target", default=None, help="Target session as vm:session (e.g., dev:cybergym-intg)")
-    @click.option("--force", is_flag=True, help="Skip confirmation prompts (default: confirm before send_input)")
-    @click.option("--save", "save_path", default=None, type=click.Path(), help="Save JSON report to file")
+    @click.option(
+        "--session",
+        "session_target",
+        default=None,
+        help="Target session as vm:session (e.g., dev:cybergym-intg)",
+    )
+    @click.option(
+        "--force",
+        is_flag=True,
+        help="Skip confirmation prompts (default: confirm before send_input)",
+    )
+    @click.option(
+        "--save", "save_path", default=None, type=click.Path(), help="Save JSON report to file"
+    )
     def advance(vm, session_target, force, save_path):
         """Run the fleet admiral LIVE -- reason and execute actions on sessions.
 
@@ -290,7 +332,6 @@ def register_scout_advance_ops(fleet_cli: click.Group) -> None:
         are enforced by SessionReasoner.
         """
         import json
-        import os
         import time
         from pathlib import Path
 
@@ -347,13 +388,15 @@ def register_scout_advance_ops(fleet_cli: click.Group) -> None:
                     elif decision.action == "send_input":
                         preview = decision.input_text[:60].replace("\n", " ")
                         if confirm:
-                            click.echo(f"    -> send_input: \"{preview}\" (conf={decision.confidence:.0%})")
+                            click.echo(
+                                f'    -> send_input: "{preview}" (conf={decision.confidence:.0%})'
+                            )
                             if not click.confirm("    Execute?", default=True):
                                 click.echo("    Skipped.")
                                 executed.append({**d, "executed": False})
                                 continue
                         else:
-                            click.echo(f"    -> SENT: \"{preview}\" (conf={decision.confidence:.0%})")
+                            click.echo(f'    -> SENT: "{preview}" (conf={decision.confidence:.0%})')
                         executed.append({**d, "executed": True})
                     elif decision.action == "restart":
                         if confirm:
@@ -368,19 +411,23 @@ def register_scout_advance_ops(fleet_cli: click.Group) -> None:
 
                 except Exception as exc:
                     click.echo(f"    -> ERROR: {exc}")
-                    decisions.append({
-                        "vm": v.name,
-                        "session": sess.session_name,
-                        "status": sess.status,
-                        "error": str(exc),
-                    })
-                    executed.append({
-                        "vm": v.name,
-                        "session": sess.session_name,
-                        "action": "error",
-                        "error": str(exc),
-                        "executed": False,
-                    })
+                    decisions.append(
+                        {
+                            "vm": v.name,
+                            "session": sess.session_name,
+                            "status": sess.status,
+                            "error": str(exc),
+                        }
+                    )
+                    executed.append(
+                        {
+                            "vm": v.name,
+                            "session": sess.session_name,
+                            "action": "error",
+                            "error": str(exc),
+                            "executed": False,
+                        }
+                    )
 
         # -- Phase 3: Report --
         report_text = format_advance_report(decisions, executed)

@@ -470,16 +470,15 @@ def ensure_settings_json():
         print("  ❌ No valid amplihack hook files found on disk")
         print("  💡 Please reinstall amplihack to restore missing hooks")
         return False
-    else:
-        # Update amplihack hook paths (absolute paths for plugin mode compatibility)
-        # Only configure hooks whose files exist on disk
-        try:
-            hooks_updated += update_hook_paths(
-                settings, "amplihack", valid_amplihack_hooks, amplihack_hooks_abs
-            )
-        except FileNotFoundError as e:
-            print(f"  ❌ {e}", file=sys.stderr)
-            return False
+    # Update amplihack hook paths (absolute paths for plugin mode compatibility)
+    # Only configure hooks whose files exist on disk
+    try:
+        hooks_updated += update_hook_paths(
+            settings, "amplihack", valid_amplihack_hooks, amplihack_hooks_abs
+        )
+    except FileNotFoundError as e:
+        print(f"  ❌ {e}", file=sys.stderr)
+        return False
 
     # Update XPIA hook paths if XPIA hooks directory exists (absolute paths for consistency)
     xpia_hooks_abs = os.path.join(HOME, ".amplihack", ".claude", "tools", "xpia", "hooks")

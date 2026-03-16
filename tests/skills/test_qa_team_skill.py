@@ -4,7 +4,6 @@ from pathlib import Path
 
 import yaml
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SKILL_MIRRORS = [
     REPO_ROOT / ".claude" / "skills",
@@ -25,9 +24,7 @@ def load_frontmatter(path: Path) -> dict:
 
 def test_known_skills_registry_includes_qa_team():
     """The known-skills registry should expose qa-team as a first-class skill."""
-    known_skills = (REPO_ROOT / "src" / "amplihack" / "known_skills.py").read_text(
-        encoding="utf-8"
-    )
+    known_skills = (REPO_ROOT / "src" / "amplihack" / "known_skills.py").read_text(encoding="utf-8")
     assert '"qa-team"' in known_skills
     assert '"outside-in-testing"' in known_skills
 

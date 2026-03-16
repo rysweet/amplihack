@@ -159,7 +159,9 @@ class SessionManager:
         # Cache SSH command output between discovery and reasoning phases.
         # Key: (vm_name, command), Value: (timestamp, output)
         self._ssh_cache: dict[tuple[str, str], tuple[float, str]] = {}
-        self._ssh_cache_ttl: float = ssh_cache_ttl if ssh_cache_ttl is not None else self.SSH_CACHE_TTL
+        self._ssh_cache_ttl: float = (
+            ssh_cache_ttl if ssh_cache_ttl is not None else self.SSH_CACHE_TTL
+        )
 
         self._load_state()
 
