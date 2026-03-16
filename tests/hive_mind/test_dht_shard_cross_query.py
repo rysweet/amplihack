@@ -13,8 +13,11 @@ import time
 import uuid
 from typing import Any
 
+import pytest
+
 from amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph import (
     DistributedHiveGraph,
+    DistributedShardQueryError,
     ServiceBusShardTransport,
     _search_for_shard_response,
 )
@@ -240,6 +243,25 @@ class TestDHTShardCrossQuery:
             _make_fact("The Eiffel Tower is in Paris", "landmarks", "agent-0"),
         )
 
+        class _MockMemory:
+            def search_local(self, query, limit=20):
+                return [
+                    {
+                        "fact_id": "eiffel-1",
+                        "content": "The Eiffel Tower is in Paris",
+                        "concept": "landmarks",
+                        "confidence": 0.9,
+                        "source_agent": "agent-0",
+                        "tags": ["landmarks"],
+                    }
+                ]
+
+        class _MockAgent:
+            memory = _MockMemory()
+
+        bound_agent = _MockAgent()
+        sb_transport.bind_agent(bound_agent)
+
         shutdown = threading.Event()
 
         # Start a shard listener that processes events with a tiny poll loop
@@ -248,7 +270,7 @@ class TestDHTShardCrossQuery:
                 events = bus2.poll("agent-0")
                 for event in events:
                     if event.event_type == "SHARD_QUERY":
-                        sb_transport.handle_shard_query(event)
+                        sb_transport.handle_shard_query(event, agent=bound_agent)
                     elif event.event_type == "SHARD_RESPONSE":
                         sb_transport.handle_shard_response(event)
                 # Minimal yield — not a timing assumption, just cooperative multitasking
@@ -309,6 +331,24 @@ class TestServiceBusShardTransport:
             "agent-0", _make_fact("Python is a programming language", "tech", "agent-0")
         )
 
+        class _MockMemory:
+            def search_local(self, query, limit=20):
+                return [
+                    {
+                        "fact_id": "python-1",
+                        "content": "Python is a programming language",
+                        "concept": "tech",
+                        "confidence": 0.9,
+                        "source_agent": "agent-0",
+                        "tags": ["tech"],
+                    }
+                ]
+
+        class _MockAgent:
+            memory = _MockMemory()
+
+        sb_transport.bind_agent(_MockAgent())
+
         # Query via transport directly — should use local bypass
         results = sb_transport.query_shard("agent-0", "Python programming", limit=5)
         assert any("Python" in f.content for f in results), (
@@ -364,6 +404,25 @@ class TestServiceBusShardTransport:
         dht.register_agent("agent-0")
         dht.promote_fact("agent-0", _make_fact("The Louvre is in Paris", "landmarks", "agent-0"))
 
+        class _MockMemory:
+            def search_local(self, query, limit=20):
+                return [
+                    {
+                        "fact_id": "louvre-1",
+                        "content": "The Louvre is in Paris",
+                        "concept": "landmarks",
+                        "confidence": 0.9,
+                        "source_agent": "agent-0",
+                        "tags": ["landmarks"],
+                    }
+                ]
+
+        class _MockAgent:
+            memory = _MockMemory()
+
+        bound_agent = _MockAgent()
+        sb_transport.bind_agent(bound_agent)
+
         # Simulate incoming SHARD_QUERY
         correlation_id = uuid.uuid4().hex
         query_event = make_event(
@@ -372,7 +431,7 @@ class TestServiceBusShardTransport:
             payload={"query": "Louvre Paris", "limit": 5, "correlation_id": correlation_id},
         )
         # agent-0 receives and handles it
-        sb_transport.handle_shard_query(query_event)
+        sb_transport.handle_shard_query(query_event, agent=bound_agent)
 
         # requester should have a SHARD_RESPONSE in its mailbox
         responses = [e for e in bus.poll("requester") if e.event_type == "SHARD_RESPONSE"]
@@ -430,6 +489,25 @@ class TestServiceBusShardTransport:
             "agent-0", _make_fact("The Colosseum is in Rome", "landmarks", "agent-0")
         )
 
+        class _MockMemory:
+            def search_local(self, query, limit=20):
+                return [
+                    {
+                        "fact_id": "colosseum-1",
+                        "content": "The Colosseum is in Rome",
+                        "concept": "landmarks",
+                        "confidence": 0.9,
+                        "source_agent": "agent-0",
+                        "tags": ["landmarks"],
+                    }
+                ]
+
+        class _MockAgent:
+            memory = _MockMemory()
+
+        bound_agent = _MockAgent()
+        sb_transport_0.bind_agent(bound_agent)
+
         # agent-1: querier with its own transport
         sb_transport_1 = ServiceBusShardTransport(event_bus=bus, agent_id="agent-1", timeout=2.0)
         dht_1 = DistributedHiveGraph(
@@ -444,7 +522,7 @@ class TestServiceBusShardTransport:
             while not shutdown.is_set():
                 for event in bus.poll("agent-0"):
                     if event.event_type == "SHARD_QUERY":
-                        sb_transport_0.handle_shard_query(event)
+                        sb_transport_0.handle_shard_query(event, agent=bound_agent)
                     elif event.event_type == "SHARD_RESPONSE":
                         sb_transport_0.handle_shard_response(event)
                 time.sleep(0.005)
@@ -675,13 +753,31 @@ class TestEventHubsShardTransportLocal:
             _make_fact("Event Hubs is reliable", "azure", "agent-0"),
         )
 
+        class _MockMemory:
+            def search_local(self, query, limit=20):
+                return [
+                    {
+                        "fact_id": "eh-1",
+                        "content": "Event Hubs is reliable",
+                        "concept": "azure",
+                        "confidence": 0.9,
+                        "source_agent": "agent-0",
+                        "tags": ["azure"],
+                    }
+                ]
+
+        class _MockAgent:
+            memory = _MockMemory()
+
+        transport.bind_agent(_MockAgent())
+
         results = transport.query_shard("agent-0", "event hubs", limit=5)
         assert any("Event Hubs" in f.content for f in results), (
             f"Local bypass query returned no results: {[f.content for f in results]}"
         )
 
-    def test_handle_shard_query_falls_back_to_shard_when_no_agent(self):
-        """handle_shard_query without agent falls back to direct ShardStore search."""
+    def test_handle_shard_query_returns_error_when_no_agent(self):
+        """handle_shard_query without agent returns an explicit error payload."""
         from amplihack.agents.goal_seeking.hive_mind.event_bus import BusEvent
 
         transport = self._make_transport("agent-0")
@@ -710,14 +806,11 @@ class TestEventHubsShardTransportLocal:
         published: list[dict] = []
         transport._publish = lambda payload, partition_key=None: published.append(payload)
 
-        transport.handle_shard_query(query_event)  # No agent — falls back to shard
+        transport.handle_shard_query(query_event)  # No agent — now returns error
 
         response_events = [p for p in published if p.get("event_type") == "SHARD_RESPONSE"]
         assert len(response_events) == 1
-        facts = response_events[0]["payload"]["facts"]
-        assert any("Canberra" in f["content"] for f in facts), (
-            f"Fallback shard search did not return Canberra: {facts}"
-        )
+        assert "error" in response_events[0]["payload"]
 
     def test_handle_shard_query_uses_cognitive_adapter_when_agent_provided(self):
         """handle_shard_query with agent uses agent.memory.search_local() (LOCAL-ONLY path)."""
@@ -1028,8 +1121,8 @@ class TestSearchForShardResponse:
         assert facts[0]["fact_id"] == "test-id"
         assert facts[0]["source_agent"] == "agent-0"
 
-    def test_shard_query_falls_back_to_shard_store_when_no_agent(self):
-        """With agent=None, _search_for_shard_response falls back to ShardStore."""
+    def test_shard_query_raises_when_no_agent(self):
+        """With agent=None, _search_for_shard_response raises instead of hiding the problem."""
         local_graph = DistributedHiveGraph(hive_id="shard-fb-unit", enable_gossip=False)
         local_graph.register_agent("agent-0")
         local_graph.promote_fact(
@@ -1037,16 +1130,11 @@ class TestSearchForShardResponse:
             _make_fact("fallback shard fact about dogs", "animals", "agent-0"),
         )
 
-        facts = _search_for_shard_response(
-            query="dogs",
-            limit=5,
-            agent=None,
-            local_graph=local_graph,
-            agent_id="agent-0",
-        )
-
-        assert len(facts) >= 1
-        texts = [f["content"] for f in facts]
-        assert any("dogs" in t for t in texts), (
-            f"ShardStore fallback should find 'dogs' fact, got: {texts}"
-        )
+        with pytest.raises(DistributedShardQueryError, match="search_local"):
+            _search_for_shard_response(
+                query="dogs",
+                limit=5,
+                agent=None,
+                local_graph=local_graph,
+                agent_id="agent-0",
+            )

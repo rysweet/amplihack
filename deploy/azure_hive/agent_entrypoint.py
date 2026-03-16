@@ -256,6 +256,13 @@ def main() -> None:
         if result:
             hive_store, hive_bus, shard_transport = result
 
+    if topology == "distributed" and hive_store is None:
+        logger.error(
+            "Agent %s requested distributed topology but distributed hive initialization failed",
+            agent_name,
+        )
+        sys.exit(1)
+
     # Build GoalSeekingAgent — the single agent type with a pure OODA loop.
     # The agent is topology-unaware. Distributed memory is injected below.
     from pathlib import Path
@@ -282,6 +289,7 @@ def main() -> None:
         from amplihack.agents.goal_seeking.hive_mind.distributed_memory import (
             DistributedCognitiveMemory,
         )
+
         local_memory = agent.memory.memory  # CognitiveAdapter.memory (CognitiveMemory)
         distributed_memory = DistributedCognitiveMemory(
             local_memory=local_memory,
