@@ -1,0 +1,59 @@
+{
+  "run": "23159523538",
+  "timestamp": "2026-03-16T22:00:00Z",
+  "prs_analyzed": 9,
+  "prs_triaged": 6,
+  "results": {
+    "3203": {
+      "risk": "low",
+      "labels_added": ["triage:complete", "triage:low-risk", "documentation", "duplicate"],
+      "comment_added": true,
+      "notes": "Duplicate of #3199. Both fix Python 3.12+->3.11+ in CONTRIBUTING.md for issue #3190. Recommend close."
+    },
+    "3202": {
+      "risk": "low",
+      "labels_added": ["triage:complete", "triage:low-risk", "documentation"],
+      "comment_added": false,
+      "notes": "Docs fix: marks claude-trace as required in prerequisites checklist. Fixes #3191. Consistent approach (aligns with existing 'required dependency' section)."
+    },
+    "3201": {
+      "risk": "low",
+      "labels_added": ["triage:complete", "triage:low-risk", "documentation", "duplicate"],
+      "comment_added": true,
+      "notes": "Conflicts with #3202 (opposite approach to #3191). Marks claude-trace optional; #3202 marks it required. Recommend close #3201."
+    },
+    "3200": {
+      "risk": "low",
+      "labels_added": ["triage:complete", "triage:low-risk", "documentation"],
+      "comment_added": false,
+      "notes": "Docs fix: adds Rust/cargo install guidance to WSL Ubuntu section of PREREQUISITES.md. Fixes #3192. Clean, no conflicts."
+    },
+    "3199": {
+      "risk": "low",
+      "labels_added": ["triage:complete", "triage:low-risk", "documentation"],
+      "comment_added": false,
+      "notes": "Docs fix: Python 3.12+->3.11+ in CONTRIBUTING.md. Fixes #3190. Keep this; #3203 is duplicate."
+    },
+    "3197": {
+      "risk": "medium",
+      "labels_added": ["triage:complete", "triage:medium-risk", "bug", "triage:needs-review"],
+      "comment_added": false,
+      "notes": "DRAFT. Bug fix: recipe runner push fails when remote diverged during multi-step workflow. Adds git pull --rebase before 7 push steps in default-workflow.yaml and consensus-workflow.yaml. Fixes #3194. Validated via outside-in testing (recipe validate PASS). Needs review before undrafting."
+    },
+    "3189": {
+      "risk": "low",
+      "status": "already_triaged",
+      "notes": "Automated daily docs update. Expires Mar 17."
+    },
+    "3188": {
+      "risk": "medium",
+      "status": "already_triaged",
+      "notes": "Code-atlas skill. Draft."
+    },
+    "2876": {
+      "risk": "extreme",
+      "status": "already_triaged",
+      "notes": "DHT sharding. Merge conflicts. Needs decomposition."
+    }
+  }
+}
