@@ -50,8 +50,11 @@ def _make_adapter(mod, agent_count=5, answer_timeout=0):
         adapter._resource_group = ""
         adapter._agent_count = agent_count
         adapter._learn_count = 0
+        adapter._learn_turn_counts = [0 for _ in range(agent_count)]
         adapter._question_count = 0
         adapter._answer_timeout = answer_timeout
+        adapter._replicate_learning_to_all_agents = False
+        adapter._question_failover_retries = 0
         adapter._shutdown = threading.Event()
         adapter._startup_wait_done = threading.Event()
         adapter._idle_wait_done = threading.Event()
@@ -232,6 +235,27 @@ class TestLearnFromContent:
             "agent-1",
             "agent-2",
         ]
+        assert adapter._learn_turn_counts == [2, 2, 2]
+
+    def test_replicated_learning_targets_all_agents(self):
+        mod = _load_module()
+        adapter = _make_adapter(mod, agent_count=3)
+        adapter._startup_wait_done.set()
+        adapter._replicate_learning_to_all_agents = True
+
+        published_keys = []
+
+        def capture_publish(payload, partition_key):
+            published_keys.append(partition_key)
+
+        adapter._publish_event = capture_publish
+
+        result = adapter.learn_from_content("content 0")
+
+        assert published_keys == ["agent-0", "agent-1", "agent-2"]
+        assert adapter._learn_turn_counts == [1, 1, 1]
+        assert result["facts_stored"] == 1
+        assert result["replicated_to"] == 3
 
     def test_learn_increments_counter(self):
         mod = _load_module()
@@ -282,6 +306,23 @@ class TestAnswerQuestion:
 
         result = adapter.answer_question("will time out")
         assert result == "No answer received"
+
+    def test_answer_timeout_retries_next_agent(self):
+        mod = _load_module()
+        adapter = _make_adapter(mod, agent_count=3)
+        adapter._idle_wait_done.set()
+        adapter._question_failover_retries = 1
+
+        with patch.object(
+            adapter,
+            "_send_question_to_agent",
+            side_effect=["No answer received", "Recovered answer"],
+        ) as send_question:
+            result = adapter.answer_question("recover after timeout")
+
+        assert result == "Recovered answer"
+        assert send_question.call_args_list[0].args == ("recover after timeout", 0)
+        assert send_question.call_args_list[1].args == ("recover after timeout", 1)
 
 
 class TestOnEvent:

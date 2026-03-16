@@ -381,10 +381,17 @@ class TestDeployScript:
         content = deploy_sh.read_text()
         assert "containerapp" in content.lower() or "Container App" in content
 
-    def test_deploy_sh_groups_5_agents_per_app(self):
+    def test_deploy_sh_defaults_to_one_agent_per_app(self):
         deploy_sh = Path(__file__).parent.parent / "deploy.sh"
         content = deploy_sh.read_text()
-        assert "AGENTS_PER_APP" in content
+        assert 'AGENTS_PER_APP="${HIVE_AGENTS_PER_APP:-1}"' in content
+
+    def test_deploy_sh_exposes_distributed_retrieval_toggle(self):
+        deploy_sh = Path(__file__).parent.parent / "deploy.sh"
+        content = deploy_sh.read_text()
+        assert (
+            'ENABLE_DISTRIBUTED_RETRIEVAL="${HIVE_ENABLE_DISTRIBUTED_RETRIEVAL:-true}"' in content
+        )
 
     def test_deploy_sh_has_cleanup_mode(self):
         deploy_sh = Path(__file__).parent.parent / "deploy.sh"
@@ -428,10 +435,27 @@ class TestBicep:
         content = bicep.read_text()
         assert "agentsPerApp" in content
 
+    def test_bicep_defaults_to_one_agent_per_app(self):
+        bicep = Path(__file__).parent.parent / "main.bicep"
+        content = bicep.read_text()
+        assert "param agentsPerApp int = 1" in content
+
+    def test_bicep_single_agent_packing_uses_high_headroom(self):
+        bicep = Path(__file__).parent.parent / "main.bicep"
+        content = bicep.read_text()
+        assert "var perAgentCpu = json(agentsPerApp <= 1 ? '2.0'" in content
+        assert "var perAgentMemory = agentsPerApp <= 1 ? '4Gi'" in content
+
     def test_bicep_references_eh_connection_string(self):
         bicep = Path(__file__).parent.parent / "main.bicep"
         content = bicep.read_text()
         assert "AMPLIHACK_EH_CONNECTION_STRING" in content
+
+    def test_bicep_has_distributed_retrieval_toggle(self):
+        bicep = Path(__file__).parent.parent / "main.bicep"
+        content = bicep.read_text()
+        assert "enableDistributedRetrieval" in content
+        assert "AMPLIHACK_ENABLE_DISTRIBUTED_RETRIEVAL" in content
 
     def test_bicep_has_shards_hub(self):
         """Bicep must declare hive-shards Event Hub for cross-shard DHT queries."""
@@ -549,6 +573,38 @@ class TestShardTransport:
                                 mod.main()
 
         assert exc_info.value.code == 1
+
+    def test_main_skips_hive_init_when_distributed_retrieval_disabled(self, monkeypatch, tmp_path):
+        mod = _load_entrypoint()
+
+        monkeypatch.setenv("AMPLIHACK_AGENT_NAME", "agent-0")
+        monkeypatch.setenv("AMPLIHACK_EH_CONNECTION_STRING", "Endpoint=sb://dummy/")
+        monkeypatch.setenv("AMPLIHACK_EH_NAME", "hive-shards-test")
+        monkeypatch.setenv("AMPLIHACK_EH_INPUT_HUB", "hive-events-test")
+        monkeypatch.setenv("AMPLIHACK_MEMORY_STORAGE_PATH", str(tmp_path / "agent-0"))
+        monkeypatch.setenv("AMPLIHACK_ENABLE_DISTRIBUTED_RETRIEVAL", "false")
+
+        mock_agent = MagicMock()
+        mock_agent.memory = MagicMock()
+        mock_agent.memory.memory = MagicMock()
+        mock_input_source = MagicMock()
+
+        with patch.object(mod, "_init_dht_hive") as init_hive:
+            with patch(
+                "amplihack.agents.goal_seeking.goal_seeking_agent.GoalSeekingAgent",
+                return_value=mock_agent,
+            ):
+                with patch("amplihack.memory.facade.Memory", return_value=MagicMock()):
+                    with patch(
+                        "amplihack.agents.goal_seeking.input_source.EventHubsInputSource",
+                        return_value=mock_input_source,
+                    ):
+                        with patch.object(mod, "_run_event_driven_loop", side_effect=SystemExit(0)):
+                            with pytest.raises(SystemExit) as exc_info:
+                                mod.main()
+
+        assert exc_info.value.code == 0
+        init_hive.assert_not_called()
 
     def test_handle_shard_query_publishes_response(self):
         """EH transport handle_shard_query looks up local shard and publishes SHARD_RESPONSE."""

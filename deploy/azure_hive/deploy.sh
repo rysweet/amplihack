@@ -7,7 +7,7 @@
 #   - Azure Event Hubs namespace + 3 hubs (hive-events, hive-shards, eval-responses)
 #   - EmptyDir volumes for Kuzu (POSIX locks required, Azure Files SMB unsupported)
 #   - Container Apps Environment
-#   - N Container Apps (ceil(HIVE_AGENT_COUNT / 5) apps, 5 agents each)
+#   - N Container Apps (ceil(HIVE_AGENT_COUNT / HIVE_AGENTS_PER_APP) apps)
 #
 # NOTE: Service Bus removed — CBS auth fails in Container Apps. Using Event Hubs.
 #
@@ -30,7 +30,7 @@
 #   HIVE_RESOURCE_GROUP    -- Resource group (default: hive-mind-rg)
 #   HIVE_LOCATION          -- Azure region (default: westus2)
 #   HIVE_AGENT_COUNT       -- Total agents (default: 5)
-#   HIVE_AGENTS_PER_APP    -- Agents per Container App (default: 5)
+#   HIVE_AGENTS_PER_APP    -- Agents per Container App (default: 1)
 #   HIVE_ACR_NAME          -- ACR name override (auto-generated if empty)
 #   HIVE_IMAGE_TAG         -- Docker image tag (default: latest)
 #   HIVE_TRANSPORT         -- Transport type (default: azure_event_hubs)
@@ -47,12 +47,13 @@ RESOURCE_GROUP="${HIVE_RESOURCE_GROUP:-hive-mind-rg}"
 LOCATION="${HIVE_LOCATION:-westus2}"
 FALLBACK_REGIONS="${HIVE_FALLBACK_REGIONS:-eastus,westus3,centralus}"
 AGENT_COUNT="${HIVE_AGENT_COUNT:-5}"
-AGENTS_PER_APP="${HIVE_AGENTS_PER_APP:-5}"
+AGENTS_PER_APP="${HIVE_AGENTS_PER_APP:-1}"
 IMAGE_TAG="${HIVE_IMAGE_TAG:-latest}"
 TRANSPORT="${HIVE_TRANSPORT:-azure_event_hubs}"
 MEMORY_BACKEND="${HIVE_MEMORY_BACKEND:-cognitive}"
 AGENT_MODEL="${HIVE_AGENT_MODEL:-claude-sonnet-4-6}"
 AGENT_PROMPT_BASE="${HIVE_AGENT_PROMPT_BASE:-You are a distributed hive mind agent.}"
+ENABLE_DISTRIBUTED_RETRIEVAL="${HIVE_ENABLE_DISTRIBUTED_RETRIEVAL:-true}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
@@ -246,6 +247,7 @@ for _region in "${_REGIONS[@]}"; do
         memoryBackend="${MEMORY_BACKEND}" \
         agentModel="${AGENT_MODEL}" \
         agentPromptBase="${AGENT_PROMPT_BASE}" \
+        enableDistributedRetrieval="${ENABLE_DISTRIBUTED_RETRIEVAL}" \
       --output json 2>&1) && { DEPLOY_SUCCEEDED=true; break 2; }
 
     if [[ "${_deploy_attempt}" -lt "${DEPLOY_MAX_RETRIES}" ]]; then

@@ -47,10 +47,13 @@ def main():
     p.add_argument("--agents", type=int, default=100)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--answer-timeout", type=int, default=0)
+    p.add_argument("--replicate-learn-to-all-agents", action="store_true")
+    p.add_argument("--question-failover-retries", type=int, default=0)
     p.add_argument("--output", default="")
     args = p.parse_args()
 
     from remote_agent_adapter import RemoteAgentAdapter
+
     from amplihack.eval.security_log_eval import SecurityLogEval
 
     adapter = RemoteAgentAdapter(
@@ -59,6 +62,8 @@ def main():
         response_hub=args.response_hub,
         agent_count=args.agents,
         answer_timeout=args.answer_timeout,
+        replicate_learning_to_all_agents=args.replicate_learn_to_all_agents,
+        question_failover_retries=args.question_failover_retries,
     )
 
     eval_harness = SecurityLogEval(
@@ -77,6 +82,8 @@ def main():
     report_dict = report.to_dict()
     report_dict["agent_count"] = args.agents
     report_dict["input_hub"] = args.input_hub
+    report_dict["replicate_learn_to_all_agents"] = args.replicate_learn_to_all_agents
+    report_dict["question_failover_retries"] = args.question_failover_retries
     Path(output_path).write_text(json.dumps(report_dict, indent=2))
     logger.info("Report written to %s", output_path)
 
