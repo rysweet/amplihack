@@ -2,9 +2,11 @@
 
 These tests exercise the user-facing startup paths that previously regressed:
 
-1. The documented tmux launch snippet from ``dev-orchestrator`` must still
+1. The documented direct execution snippet from ``dev-orchestrator`` must
+   still work when adapted into a safe dry-run.
+2. The documented tmux launch snippet from ``dev-orchestrator`` must still
    work when adapted into a safe dry-run.
-2. A fresh directory launched via ``uvx --from <checkout>`` must still be able
+3. A fresh directory launched via ``uvx --from <checkout>`` must still be able
    to import amplihack and run the Rust-backed recipe API.
 
 They complement the issue-specific contract tests by validating the real shell
@@ -37,19 +39,29 @@ REPO_ROOT = _repo_root()
 DEV_ORCHESTRATOR_SKILL = REPO_ROOT / ".claude" / "skills" / "dev-orchestrator" / "SKILL.md"
 
 
-def _extract_tmux_launch_snippet() -> str:
+def _extract_direct_launch_snippet() -> str:
+    """Extract the direct execution bash snippet (under '#### Default: Direct Execution')."""
     content = DEV_ORCHESTRATOR_SKILL.read_text()
-    _, _, tail = content.partition("### REQUIRED: Execute via Recipe Runner")
+    _, _, tail = content.partition("#### Default: Direct Execution")
+    match = re.search(r"```bash\n(.*?)\n```", tail, re.DOTALL)
+    if match is None:
+        raise AssertionError("Could not find direct execution snippet in dev-orchestrator skill")
+    return match.group(1)
+
+
+def _extract_tmux_launch_snippet() -> str:
+    """Extract the tmux launch bash snippet (under '#### Durable Execution (tmux)')."""
+    content = DEV_ORCHESTRATOR_SKILL.read_text()
+    _, _, tail = content.partition("#### Durable Execution (tmux)")
     match = re.search(r"```bash\n(.*?)\n```", tail, re.DOTALL)
     if match is None:
         raise AssertionError("Could not find tmux launch snippet in dev-orchestrator skill")
     return match.group(1)
 
 
-def _build_tmux_dry_run_command(session_name: str, log_path: Path, task_description: str) -> str:
-    command = _extract_tmux_launch_snippet()
-    command = command.replace("-s recipe-runner ", f"-s {session_name} ", 1)
-    command = command.replace("/tmp/recipe-runner-output.log", str(log_path))
+def _build_direct_dry_run_command(task_description: str) -> str:
+    """Build a direct (non-tmux) dry-run command from the documented snippet."""
+    command = _extract_direct_launch_snippet()
     command = command.replace("TASK_DESCRIPTION_HERE", task_description)
     command = command.replace(
         "'repo_path': '.',",
@@ -57,9 +69,46 @@ def _build_tmux_dry_run_command(session_name: str, log_path: Path, task_descript
         1,
     )
     command = command.replace(
-        "    }\n)\nprint(f'Recipe result: {result}')",
-        "    },\n    dry_run=True,\n)\nprint('TMUX_OK', result.success, result.step_results[-1].step_id)",
+        "print(f'Recipe result: {result}')",
+        "print('DIRECT_OK', result.success, result.step_results[-1].step_id)",
         1,
+    )
+    command = command.replace(
+        "progress=True,",
+        "progress=True,\n    dry_run=True,",
+        1,
+    )
+    command = command.replace("/path/to/repo", str(REPO_ROOT))
+    command = command.replace("/path/to/amplihack", str(REPO_ROOT))
+    return command
+
+
+def _build_tmux_dry_run_command(session_name: str, log_path: Path, task_description: str) -> str:
+    command = _extract_tmux_launch_snippet()
+    command = command.replace("-s recipe-runner ", f"-s {session_name} ", 1)
+    command = command.replace("TASK_DESCRIPTION_HERE", task_description)
+    command = command.replace("/path/to/repo", str(REPO_ROOT))
+    command = command.replace("/path/to/amplihack", str(REPO_ROOT))
+    command = command.replace(
+        "'repo_path': '.',",
+        "'repo_path': '.',\n        'force_single_workstream': 'true',",
+        1,
+    )
+    command = command.replace(
+        "print(f'Recipe result: {result}')",
+        "print('TMUX_OK', result.success, result.step_results[-1].step_id)",
+        1,
+    )
+    command = command.replace(
+        "progress=True,",
+        "progress=True,\n    dry_run=True,",
+        1,
+    )
+    # Replace the log file path with the test-specific one
+    command = re.sub(
+        r"\$\(mktemp /tmp/recipe-runner-output\.\S+\.log\)",
+        str(log_path),
+        command,
     )
     return command
 
@@ -105,6 +154,28 @@ def _cleanup_tmux_session(session_name: str) -> None:
 
 
 @pytest.mark.slow
+def test_dev_orchestrator_direct_launch_snippet_executes_in_dry_run() -> None:
+    """The documented direct execution snippet should run a dry-run recipe successfully."""
+    command = _build_direct_dry_run_command(
+        task_description="direct startup regression test",
+    )
+
+    result = subprocess.run(
+        ["bash", "-lc", command],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+        env={**os.environ, "PYTHONPATH": str(REPO_ROOT / "src")},
+    )
+
+    combined = result.stdout + result.stderr
+    assert result.returncode == 0, combined
+    assert "DIRECT_OK True complete-session" in combined
+
+
+@pytest.mark.slow
 @pytest.mark.skipif(shutil.which("tmux") is None, reason="tmux command not available")
 def test_dev_orchestrator_tmux_launch_snippet_executes_in_dry_run(tmp_path: Path) -> None:
     """The documented tmux snippet should launch a dry-run recipe successfully."""
@@ -140,7 +211,7 @@ def test_dev_orchestrator_uvx_launch_works_from_clean_directory(tmp_path: Path) 
     repo = shlex.quote(str(REPO_ROOT))
     command = (
         f"uvx --from {repo} python -c "
-        "\"from amplihack.recipes import run_recipe_by_name; "
+        '"from amplihack.recipes import run_recipe_by_name; '
         "result = run_recipe_by_name("
         "'smart-orchestrator', "
         "user_context={'task_description': 'uvx startup regression test', "
