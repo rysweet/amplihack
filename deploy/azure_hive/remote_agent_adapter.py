@@ -228,7 +228,7 @@ class RemoteAgentAdapter:
     def _prepare_fact_batch(self, content: str) -> dict[str, Any]:
         """Prepare a direct-storage fact batch for replicated learning."""
         extractor = self._get_fact_batch_extractor()
-        return extractor.prepare_fact_batch(content)
+        return extractor.prepare_fact_batch(content, include_summary=False)
 
     def _wait_for_agents_online(self) -> None:
         """Wait until every target agent acknowledges ONLINE_CHECK.
