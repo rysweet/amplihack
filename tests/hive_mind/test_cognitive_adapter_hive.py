@@ -8,6 +8,7 @@ via DistributedCognitiveMemory.
 from __future__ import annotations
 
 import tempfile
+from types import SimpleNamespace
 
 import pytest
 
@@ -126,6 +127,43 @@ class TestHiveMerge:
         sky_facts = [r for r in results if "sky is blue" in r.get("fact", r.get("outcome", ""))]
         # Should be deduplicated (at most 1 local + 0 from hive since same content)
         assert len(sky_facts) <= 2
+
+    def test_plain_cognitive_backend_ignores_query_kwarg(self):
+        """Plain CognitiveMemory get_all_facts(limit) must not receive query."""
+
+        class PlainCognitiveMemory:
+            def __init__(self) -> None:
+                self.calls: list[int] = []
+
+            def get_all_facts(self, limit: int = 50):
+                self.calls.append(limit)
+                return [
+                    SimpleNamespace(
+                        node_id="sem-1",
+                        concept="Campaign",
+                        content="CAMP-1 objective was ransomware",
+                        confidence=0.9,
+                        created_at="2024-03-01T00:00:00Z",
+                        tags=["campaign"],
+                        metadata={},
+                    )
+                ]
+
+        adapter = CognitiveAdapter.__new__(CognitiveAdapter)
+        adapter.agent_name = "plain"
+        adapter.memory = PlainCognitiveMemory()
+        adapter._cognitive = True
+        adapter._hive_store = None
+        adapter._quality_threshold = 0.0
+        adapter._confidence_gate = 0.0
+        adapter._enable_query_expansion = False
+        adapter._buffer_pool_size = 0
+
+        results = adapter.get_all_facts(limit=7, query="What was CAMP-1?")
+
+        assert adapter.memory.calls == [7]
+        assert results[0]["context"] == "Campaign"
+        assert "ransomware" in results[0]["outcome"]
 
 
 class TestSearchByConceptHive:

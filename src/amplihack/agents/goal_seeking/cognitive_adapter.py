@@ -17,6 +17,7 @@ Philosophy:
 
 from __future__ import annotations
 
+import inspect
 import itertools
 import logging
 from pathlib import Path
@@ -549,9 +550,15 @@ class CognitiveAdapter:
             query: Optional question text passed through to the memory backend.
         """
         if self._cognitive:
-            # Pass query to memory backend. DistributedCognitiveMemory uses it
-            # for targeted hive queries; plain CognitiveMemory accepts **kwargs.
-            results = self.memory.get_all_facts(limit=limit, query=query)
+            get_all_facts = self.memory.get_all_facts
+            supports_query = any(
+                param.kind == inspect.Parameter.VAR_KEYWORD or name == "query"
+                for name, param in inspect.signature(get_all_facts).parameters.items()
+            )
+            if query and supports_query:
+                results = get_all_facts(limit=limit, query=query)
+            else:
+                results = get_all_facts(limit=limit)
             local_results = [self._semantic_fact_to_dict(r) for r in results]
         else:
             nodes = self.memory.get_all_knowledge(limit=limit)
