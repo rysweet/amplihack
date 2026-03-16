@@ -18,6 +18,8 @@ import re
 from functools import lru_cache
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 _PROMPT_DIR = Path(__file__).parent
 
 # Regex to match {{variable_name}} placeholders (not {single_brace})
@@ -25,6 +27,7 @@ _PLACEHOLDER_RE = re.compile(r"\{\{(\w+)\}\}")
 
 
 @lru_cache(maxsize=64)
+@log_call
 def load_prompt(name: str) -> str:
     """Load a prompt template from a markdown file.
 
@@ -58,6 +61,7 @@ def load_prompt(name: str) -> str:
     return "\n".join(content_lines).strip()
 
 
+@log_call
 def format_prompt(name: str, **kwargs: str) -> str:
     """Load and format a prompt template using {variable} syntax.
 
@@ -72,6 +76,7 @@ def format_prompt(name: str, **kwargs: str) -> str:
     return template.format(**kwargs)
 
 
+@log_call
 def render_prompt(name: str, **kwargs: str) -> str:
     """Load and render a prompt template using {{variable}} syntax.
 
@@ -87,6 +92,7 @@ def render_prompt(name: str, **kwargs: str) -> str:
     """
     template = load_prompt(name)
 
+    @log_call
     def _replace(match: re.Match) -> str:
         key = match.group(1)
         return kwargs.get(key, match.group(0))

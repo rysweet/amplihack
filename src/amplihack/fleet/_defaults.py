@@ -9,11 +9,14 @@ import os
 import shutil
 import subprocess
 
+from amplihack.utils.logging_utils import log_call
+
 __all__ = ["get_azlin_path", "ensure_azlin_context", "get_existing_tunnels", "DEFAULT_EXCLUDE_VMS"]
 
 logger = logging.getLogger(__name__)
 
 
+@log_call
 def get_azlin_path() -> str:
     """Resolve azlin binary path from AZLIN_PATH env var, PATH, or known dev location.
 
@@ -35,6 +38,7 @@ def get_azlin_path() -> str:
     )
 
 
+@log_call
 def ensure_azlin_context(azlin_path: str) -> bool:
     """Ensure azlin has a valid context configured.
 
@@ -47,7 +51,9 @@ def ensure_azlin_context(azlin_path: str) -> bool:
     try:
         result = subprocess.run(
             [azlin_path, "context", "list"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         if result.returncode == 0 and "No contexts" not in result.stdout:
             return True
@@ -59,7 +65,9 @@ def ensure_azlin_context(azlin_path: str) -> bool:
     try:
         az_result = subprocess.run(
             ["az", "account", "show", "--output", "json"],
-            capture_output=True, text=True, timeout=15,
+            capture_output=True,
+            text=True,
+            timeout=15,
         )
         if az_result.returncode != 0:
             logger.warning("az account show failed — cannot auto-create azlin context")
@@ -70,9 +78,20 @@ def ensure_azlin_context(azlin_path: str) -> bool:
         tenant_id = account["tenantId"]
 
         create_result = subprocess.run(
-            [azlin_path, "context", "create", "fleet",
-             "--subscription", sub_id, "--tenant", tenant_id, "--set-current"],
-            capture_output=True, text=True, timeout=15,
+            [
+                azlin_path,
+                "context",
+                "create",
+                "fleet",
+                "--subscription",
+                sub_id,
+                "--tenant",
+                tenant_id,
+                "--set-current",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=15,
         )
         if create_result.returncode == 0:
             logger.info("Created azlin context 'fleet' (sub=%s)", sub_id[:8])
@@ -84,6 +103,7 @@ def ensure_azlin_context(azlin_path: str) -> bool:
     return False
 
 
+@log_call
 def get_existing_tunnels(azlin_path: str) -> dict[str, int]:
     """Check for existing Bastion tunnels that can be reused.
 
@@ -96,7 +116,9 @@ def get_existing_tunnels(azlin_path: str) -> dict[str, int]:
     try:
         result = subprocess.run(
             [azlin_path, "list", "--output", "json"],
-            capture_output=True, text=True, timeout=15,
+            capture_output=True,
+            text=True,
+            timeout=15,
         )
         if result.returncode != 0 or not result.stdout.strip():
             return {}

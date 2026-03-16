@@ -13,6 +13,8 @@ from typing import Any
 import requests
 from flask import Flask, jsonify, request
 
+from amplihack.utils.logging_utils import log_call
+
 from .sanitizing_logger import get_sanitizing_logger
 
 # Use sanitizing logger to prevent credential exposure (Issue #1997)
@@ -22,6 +24,7 @@ logger = get_sanitizing_logger(__name__)
 class ResponsesAPIProxy:
     """Proxy server that translates between OpenAI Chat API and Azure Responses API formats."""
 
+    @log_call
     def __init__(self, azure_base_url: str, azure_api_key: str, listen_port: int = 8082):
         self.azure_base_url = azure_base_url
         self.azure_api_key = azure_api_key
@@ -32,10 +35,12 @@ class ResponsesAPIProxy:
         # Set up Flask routes
         self._setup_routes()
 
+    @log_call
     def _setup_routes(self):
         """Set up Flask routes for proxying requests."""
 
         @self.app.route("/v1/chat/completions", methods=["POST"])
+        @log_call
         def chat_completions():
             """Handle OpenAI chat completions and convert to Responses API."""
             try:
@@ -91,6 +96,7 @@ class ResponsesAPIProxy:
                 ), 500
 
         @self.app.route("/v1/messages/count_tokens", methods=["POST"])
+        @log_call
         def count_tokens():
             """Handle token counting requests."""
             # For now, return a simple estimate
@@ -104,10 +110,12 @@ class ResponsesAPIProxy:
             return jsonify({"token_count": estimated_tokens})
 
         @self.app.route("/health", methods=["GET"])
+        @log_call
         def health():
             """Health check endpoint."""
             return jsonify({"status": "healthy", "proxy_type": "responses_api"})
 
+    @log_call
     def _transform_to_responses_api(self, openai_request: dict[str, Any]) -> dict[str, Any]:
         """Transform OpenAI Chat API request to Azure Responses API format."""
         responses_request = {
@@ -181,6 +189,7 @@ class ResponsesAPIProxy:
 
         return responses_request
 
+    @log_call
     def _transform_to_openai_format(self, azure_response: dict[str, Any]) -> dict[str, Any]:
         """Transform Azure Responses API response to OpenAI Chat API format."""
         # This is a simplified transformation - may need adjustment based on actual response format
@@ -252,10 +261,12 @@ class ResponsesAPIProxy:
 
         return openai_response
 
+    @log_call
     def start(self) -> bool:
         """Start the proxy server in a background thread."""
         try:
 
+            @log_call
             def run_server():
                 self.app.run(
                     host="127.0.0.1",
@@ -282,12 +293,14 @@ class ResponsesAPIProxy:
             logger.error(f"Failed to start proxy server: {e}")
             return False
 
+    @log_call
     def stop(self):
         """Stop the proxy server."""
         # Flask doesn't have a clean shutdown mechanism in this setup
         # The thread will be cleaned up when the main process exits
 
 
+@log_call
 def create_responses_api_proxy(config: dict[str, str], port: int = 8082) -> ResponsesAPIProxy:
     """Create and configure a Responses API proxy instance."""
     azure_base_url = config.get("OPENAI_BASE_URL")

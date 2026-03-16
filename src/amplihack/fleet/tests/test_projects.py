@@ -19,7 +19,7 @@ from amplihack.fleet._projects import (
     save_projects,
     validate_repo_url,
 )
-
+from amplihack.utils.logging_utils import log_call
 
 # ────────────────────────────────────────────
 # UNIT TESTS (60%) — Project dataclass
@@ -29,6 +29,7 @@ from amplihack.fleet._projects import (
 class TestProject:
     """Unit tests for Project dataclass."""
 
+    @log_call
     def test_minimal_construction(self):
         proj = Project(name="myapp")
         assert proj.name == "myapp"
@@ -37,6 +38,7 @@ class TestProject:
         assert proj.priority == "medium"
         assert proj.objectives == []
 
+    @log_call
     def test_full_construction(self):
         proj = Project(
             name="myapp",
@@ -49,6 +51,7 @@ class TestProject:
         assert proj.priority == "high"
         assert len(proj.objectives) == 1
 
+    @log_call
     def test_add_objective(self):
         proj = Project(name="myapp")
         obj = proj.add_objective(number=42, title="Add auth", state="open")
@@ -56,6 +59,7 @@ class TestProject:
         assert obj["title"] == "Add auth"
         assert len(proj.objectives) == 1
 
+    @log_call
     def test_add_objective_updates_existing(self):
         proj = Project(name="myapp")
         proj.add_objective(number=42, title="Add auth", state="open")
@@ -64,6 +68,7 @@ class TestProject:
         assert proj.objectives[0]["title"] == "Add auth (updated)"
         assert proj.objectives[0]["state"] == "closed"
 
+    @log_call
     def test_remove_objective(self):
         proj = Project(name="myapp")
         proj.add_objective(number=1, title="A")
@@ -72,10 +77,12 @@ class TestProject:
         assert len(proj.objectives) == 1
         assert proj.objectives[0]["number"] == 2
 
+    @log_call
     def test_remove_objective_not_found(self):
         proj = Project(name="myapp")
         assert proj.remove_objective(999) is False
 
+    @log_call
     def test_open_objectives(self):
         proj = Project(name="myapp")
         proj.add_objective(number=1, title="Open", state="open")
@@ -85,6 +92,7 @@ class TestProject:
         assert len(opens) == 2
         assert all(o["state"] == "open" for o in opens)
 
+    @log_call
     def test_to_dict_roundtrip(self):
         proj = Project(
             name="myapp",
@@ -101,6 +109,7 @@ class TestProject:
         assert restored.priority == proj.priority
         assert restored.objectives == proj.objectives
 
+    @log_call
     def test_from_dict_missing_optional_fields(self):
         d = {"repo_url": "https://github.com/org/x"}
         proj = Project.from_dict("x", d)
@@ -108,6 +117,7 @@ class TestProject:
         assert proj.priority == "medium"
         assert proj.objectives == []
 
+    @log_call
     def test_validate_repo_url(self):
         assert validate_repo_url("https://github.com/org/repo") is True
         assert validate_repo_url("https://github.com/org/repo.git") is True
@@ -117,6 +127,7 @@ class TestProject:
         assert validate_repo_url("") is False
         assert validate_repo_url("https://github.com/org/repo; rm -rf /") is False
 
+    @log_call
     def test_objectives_default_independent(self):
         """Each instance gets its own objectives list."""
         p1 = Project(name="a")
@@ -133,6 +144,7 @@ class TestProject:
 class TestProjectsIO:
     """Integration tests for projects.toml I/O."""
 
+    @log_call
     def test_save_and_load_roundtrip(self, tmp_path: Path):
         path = tmp_path / "projects.toml"
         projects = {
@@ -162,21 +174,25 @@ class TestProjectsIO:
         assert loaded["myapp"].objectives[0]["number"] == 42
         assert loaded["lib"].priority == "low"
 
+    @log_call
     def test_load_nonexistent_returns_empty(self, tmp_path: Path):
         path = tmp_path / "nonexistent.toml"
         assert load_projects(path) == {}
 
+    @log_call
     def test_save_creates_parent_dirs(self, tmp_path: Path):
         path = tmp_path / "sub" / "dir" / "projects.toml"
         save_projects({"x": Project(name="x", repo_url="u")}, path)
         assert path.exists()
 
+    @log_call
     def test_save_empty_projects(self, tmp_path: Path):
         path = tmp_path / "projects.toml"
         save_projects({}, path)
         loaded = load_projects(path)
         assert loaded == {}
 
+    @log_call
     def test_toml_special_characters_roundtrip(self, tmp_path: Path):
         """Titles with quotes, backslashes, and equals signs survive roundtrip."""
         path = tmp_path / "projects.toml"
@@ -201,9 +217,10 @@ class TestProjectsIO:
         save_projects(projects, path)
         loaded = load_projects(path)
         assert len(loaded["myapp"].objectives) == len(tricky_titles)
-        for orig, loaded_obj in zip(tricky_titles, loaded["myapp"].objectives):
+        for orig, loaded_obj in zip(tricky_titles, loaded["myapp"].objectives, strict=False):
             assert loaded_obj["title"] == orig, f"Mismatch for {orig!r}"
 
+    @log_call
     def test_load_corrupt_toml_returns_empty(self, tmp_path: Path):
         """Corrupt TOML file returns empty dict instead of crashing."""
         path = tmp_path / "projects.toml"
@@ -211,6 +228,7 @@ class TestProjectsIO:
         loaded = load_projects(path)
         assert loaded == {}
 
+    @log_call
     def test_invalid_project_name_rejected(self):
         """Project names must match ^[a-zA-Z0-9][a-zA-Z0-9_-]*$."""
         with pytest.raises(ValueError, match="Invalid project name"):
@@ -220,6 +238,7 @@ class TestProjectsIO:
         with pytest.raises(ValueError, match="Invalid project name"):
             Project(name="has/slash")
 
+    @log_call
     def test_save_rejects_invalid_project_name(self, tmp_path: Path):
         """save_projects validates names even when bypassing __post_init__."""
         path = tmp_path / "projects.toml"
@@ -236,6 +255,7 @@ class TestProjectsIO:
 class TestMergeProjects:
     """Tests for merge_projects."""
 
+    @log_call
     def test_merge_adds_new_objectives(self):
         local = {
             "myapp": Project(name="myapp", repo_url="u"),
@@ -249,6 +269,7 @@ class TestMergeProjects:
         result = merge_projects(local, remote)
         assert len(result["myapp"].objectives) == 2
 
+    @log_call
     def test_merge_updates_existing_objectives(self):
         local = {
             "myapp": Project(
@@ -267,6 +288,7 @@ class TestMergeProjects:
         assert result["myapp"].objectives[0]["title"] == "New title"
         assert result["myapp"].objectives[0]["state"] == "closed"
 
+    @log_call
     def test_merge_ignores_unknown_projects(self):
         local = {"myapp": Project(name="myapp", repo_url="u")}
         remote = {
@@ -285,9 +307,9 @@ class TestMergeProjects:
 class TestProjectCLI:
     """CLI tests for project add-issue and track-issue commands."""
 
+    @log_call
     def test_add_issue_project_not_found(self, tmp_path: Path, monkeypatch):
         """add-issue with unknown project shows error."""
-        from unittest.mock import patch
 
         from click.testing import CliRunner
 
@@ -295,17 +317,17 @@ class TestProjectCLI:
 
         # Point load_projects to an empty file
         empty_path = tmp_path / "projects.toml"
-        monkeypatch.setattr(
-            "amplihack.fleet._projects.DEFAULT_PROJECTS_PATH", empty_path
-        )
+        monkeypatch.setattr("amplihack.fleet._projects.DEFAULT_PROJECTS_PATH", empty_path)
 
         runner = CliRunner()
         result = runner.invoke(
-            fleet_cli, ["project", "add-issue", "nonexistent", "42"],
+            fleet_cli,
+            ["project", "add-issue", "nonexistent", "42"],
             catch_exceptions=False,
         )
         assert "Project not found" in result.output
 
+    @log_call
     def test_add_issue_success(self, tmp_path: Path, monkeypatch):
         """add-issue adds objective to existing project."""
         from click.testing import CliRunner
@@ -317,9 +339,7 @@ class TestProjectCLI:
         projects = {"myapp": Project(name="myapp", repo_url="https://github.com/org/myapp")}
         save_projects(projects, projects_path)
 
-        monkeypatch.setattr(
-            "amplihack.fleet._projects.DEFAULT_PROJECTS_PATH", projects_path
-        )
+        monkeypatch.setattr("amplihack.fleet._projects.DEFAULT_PROJECTS_PATH", projects_path)
 
         runner = CliRunner()
         result = runner.invoke(
@@ -335,6 +355,7 @@ class TestProjectCLI:
         assert len(loaded["myapp"].objectives) == 1
         assert loaded["myapp"].objectives[0]["number"] == 42
 
+    @log_call
     def test_track_issue_project_not_found(self, tmp_path: Path, monkeypatch):
         """track-issue with unknown project shows error."""
         from click.testing import CliRunner
@@ -342,13 +363,12 @@ class TestProjectCLI:
         from amplihack.fleet.fleet_cli import fleet_cli
 
         empty_path = tmp_path / "projects.toml"
-        monkeypatch.setattr(
-            "amplihack.fleet._projects.DEFAULT_PROJECTS_PATH", empty_path
-        )
+        monkeypatch.setattr("amplihack.fleet._projects.DEFAULT_PROJECTS_PATH", empty_path)
 
         runner = CliRunner()
         result = runner.invoke(
-            fleet_cli, ["project", "track-issue", "nonexistent"],
+            fleet_cli,
+            ["project", "track-issue", "nonexistent"],
             catch_exceptions=False,
         )
         assert "Project not found" in result.output

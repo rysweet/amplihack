@@ -3,23 +3,24 @@
 Mocks all external dependencies (azlin, subprocess).
 """
 
-from pathlib import Path
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 from amplihack.fleet.fleet_admiral import (
     ActionType,
     DirectorAction,
+)
+from amplihack.fleet.fleet_admiral import (
     FleetAdmiral as FleetDirector,
 )
 from amplihack.fleet.fleet_state import AgentStatus, FleetState, TmuxSessionInfo, VMInfo
 from amplihack.fleet.fleet_tasks import FleetTask, TaskPriority, TaskQueue, TaskStatus
+from amplihack.utils.logging_utils import log_call
 
 
 class TestFleetDirectorReason:
     """Unit tests for director reasoning (decision-making)."""
 
+    @log_call
     def _make_director(self, tasks=None):
         queue = TaskQueue()
         if tasks:
@@ -27,11 +28,13 @@ class TestFleetDirectorReason:
                 queue.add(t)
         return FleetDirector(task_queue=queue)
 
+    @log_call
     def _make_state(self, vms):
         state = FleetState()
         state.vms = vms
         return state
 
+    @log_call
     def test_assign_task_to_idle_vm(self):
         task = FleetTask(prompt="Build feature", priority=TaskPriority.HIGH)
         director = self._make_director(tasks=[task])
@@ -50,6 +53,7 @@ class TestFleetDirectorReason:
         assert actions[0].action_type == ActionType.START_AGENT
         assert actions[0].task.id == task.id
 
+    @log_call
     def test_no_action_when_no_tasks(self):
         director = self._make_director(tasks=[])
         vm = VMInfo(name="vm-1", session_name="vm-1", status="Running")
@@ -58,6 +62,7 @@ class TestFleetDirectorReason:
         actions = director.reason(state)
         assert len(actions) == 0
 
+    @log_call
     def test_no_action_when_no_running_vms(self):
         task = FleetTask(prompt="Task")
         director = self._make_director(tasks=[task])
@@ -68,6 +73,7 @@ class TestFleetDirectorReason:
         actions = director.reason(state)
         assert len(actions) == 0
 
+    @log_call
     def test_detect_completed_agent(self):
         task = FleetTask(prompt="Test")
         task.assign("vm-1", "sess-1")
@@ -92,6 +98,7 @@ class TestFleetDirectorReason:
         actions = director.reason(state)
         assert any(a.action_type == ActionType.MARK_COMPLETE for a in actions)
 
+    @log_call
     def test_detect_stuck_agent(self):
         task = FleetTask(prompt="Test")
         task.assign("vm-1", "stuck-sess")
@@ -116,6 +123,7 @@ class TestFleetDirectorReason:
         actions = director.reason(state)
         assert any(a.action_type == ActionType.REASSIGN_TASK for a in actions)
 
+    @log_call
     def test_detect_errored_agent(self):
         task = FleetTask(prompt="Test")
         task.assign("vm-1", "err-sess")
@@ -141,6 +149,7 @@ class TestFleetDirectorReason:
         actions = director.reason(state)
         assert any(a.action_type == ActionType.MARK_FAILED for a in actions)
 
+    @log_call
     def test_detect_missing_session(self):
         """If assigned session no longer exists for 2+ cycles, mark failed (C2 grace period)."""
         task = FleetTask(prompt="Test")
@@ -165,11 +174,9 @@ class TestFleetDirectorReason:
         actions = director.reason(state)
         assert any(a.action_type == ActionType.MARK_FAILED for a in actions)
 
+    @log_call
     def test_respects_max_agents_per_vm(self):
-        tasks = [
-            FleetTask(prompt=f"Task {i}", priority=TaskPriority.HIGH)
-            for i in range(5)
-        ]
+        tasks = [FleetTask(prompt=f"Task {i}", priority=TaskPriority.HIGH) for i in range(5)]
         queue = TaskQueue()
         for t in tasks:
             queue.add(t)
@@ -199,6 +206,7 @@ class TestFleetDirectorReason:
         start_actions = [a for a in actions if a.action_type == ActionType.START_AGENT]
         assert len(start_actions) == 0
 
+    @log_call
     def test_excludes_excluded_vms(self):
         task = FleetTask(prompt="Task")
         director = self._make_director(tasks=[task])
@@ -220,6 +228,7 @@ class TestFleetDirectorAct:
     """Tests for action execution with mocked subprocess."""
 
     @patch("amplihack.fleet._admiral_actions.subprocess.run")
+    @log_call
     def test_start_agent_success(self, mock_run):
         mock_run.return_value = MagicMock(returncode=0, stdout="ok", stderr="")
 
@@ -240,6 +249,7 @@ class TestFleetDirectorAct:
         assert task.status == TaskStatus.RUNNING
 
     @patch("amplihack.fleet._admiral_actions.subprocess.run")
+    @log_call
     def test_start_agent_failure(self, mock_run):
         mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="Connection refused")
 
@@ -258,6 +268,7 @@ class TestFleetDirectorAct:
         result = director._execute_action(action)
         assert "ERROR" in result
 
+    @log_call
     def test_mark_complete(self):
         queue = TaskQueue()
         task = queue.add_task(prompt="Test")
@@ -269,6 +280,7 @@ class TestFleetDirectorAct:
         director._execute_action(action)
         assert task.status == TaskStatus.COMPLETED
 
+    @log_call
     def test_mark_failed(self):
         queue = TaskQueue()
         task = queue.add_task(prompt="Test")
@@ -285,6 +297,7 @@ class TestFleetDirectorAct:
         assert task.status == TaskStatus.FAILED
 
     @patch("amplihack.fleet._admiral_actions.subprocess.run")
+    @log_call
     def test_reassign_stuck_task(self, mock_run):
         mock_run.return_value = MagicMock(returncode=0)
 
@@ -312,6 +325,7 @@ class TestFleetDirectorE2E:
 
     @patch("amplihack.fleet._admiral_actions.subprocess.run")
     @patch.object(FleetState, "refresh")
+    @log_call
     def test_single_cycle(self, mock_refresh, mock_run):
         """Complete PERCEIVE→REASON→ACT cycle with mocked state."""
         mock_run.return_value = MagicMock(returncode=0, stdout="ok", stderr="")
@@ -332,6 +346,7 @@ class TestFleetDirectorE2E:
         director._fleet_state.vms = [vm]
 
         # Mock refresh to keep our state
+        @log_call
         def keep_state():
             director._fleet_state.vms = [vm]
             return director._fleet_state

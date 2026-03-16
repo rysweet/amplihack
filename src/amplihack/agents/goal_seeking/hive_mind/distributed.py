@@ -38,6 +38,8 @@ except ImportError:
     KuzuGraphStore = None  # type: ignore[assignment,misc]
     print("WARNING: amplihack_memory.graph not available", file=sys.stderr)
 
+from amplihack.utils.logging_utils import log_call
+
 from .constants import DEFAULT_TRUST_SCORE, MAX_TRUST_SCORE, PEER_CONFIDENCE_DISCOUNT
 from .event_bus import BusEvent, EventBus, LocalEventBus, make_event
 
@@ -61,6 +63,7 @@ __all__ = [
 # ---------------------------------------------------------------------------
 
 
+@log_call
 def _make_sized_cognitive_memory(
     agent_name: str, db_path: str, max_db_size: int = _DEFAULT_MAX_DB_SIZE
 ) -> CognitiveMemory:
@@ -135,6 +138,7 @@ class AgentNode:
     its local DB -- joining and leaving are non-destructive operations.
     """
 
+    @log_call
     def __init__(
         self,
         agent_id: str,
@@ -184,6 +188,7 @@ class AgentNode:
         else:
             self._federated = None
 
+    @log_call
     def learn(
         self,
         concept: str,
@@ -228,6 +233,7 @@ class AgentNode:
                 self._coordinator.report_fact(self.agent_id, concept)
         return node_id
 
+    @log_call
     def query(self, query: str, limit: int = 10) -> list[dict]:
         """Query this agent's local DB only.
 
@@ -251,6 +257,7 @@ class AgentNode:
             for f in facts
         ]
 
+    @log_call
     def get_all_facts(self, limit: int = 500) -> list[dict]:
         """Return all facts in this agent's local DB.
 
@@ -273,6 +280,7 @@ class AgentNode:
             for f in facts
         ]
 
+    @log_call
     def query_federated(self, query: str, limit: int = 10):
         """Query local + hive via the federated graph.
 
@@ -295,10 +303,12 @@ class AgentNode:
         return self.query(query, limit)
 
     @property
+    @log_call
     def federated(self) -> FederatedGraphStore | None:
         """Access the federated graph store, or None if not connected."""
         return self._federated
 
+    @log_call
     def incorporate_peer_fact(self, event: BusEvent) -> bool:
         """Decide whether to incorporate a peer's fact into local DB.
 
@@ -334,6 +344,7 @@ class AgentNode:
                 self._incorporated_events.popitem(last=False)  # evict oldest
             return True
 
+    @log_call
     def join_hive(self, event_bus: EventBus, coordinator: HiveCoordinator) -> None:
         """Join the hive mind network.
 
@@ -346,6 +357,7 @@ class AgentNode:
         event_bus.subscribe(self.agent_id, ["FACT_LEARNED", "FACT_PROMOTED"])
         coordinator.register_agent(self.agent_id, self.domain)
 
+    @log_call
     def leave_hive(self) -> None:
         """Leave the hive network. Local DB is completely unaffected."""
         if self._event_bus is not None:
@@ -355,6 +367,7 @@ class AgentNode:
         self._event_bus = None
         self._coordinator = None
 
+    @log_call
     def process_pending_events(self) -> int:
         """Process all pending events from the bus.
 
@@ -371,10 +384,12 @@ class AgentNode:
         return count
 
     @property
+    @log_call
     def is_connected(self) -> bool:
         """Whether this agent is currently connected to a hive."""
         return self._event_bus is not None
 
+    @log_call
     def get_fact_count(self) -> int:
         """Count of facts in this agent's local DB."""
         stats = self.memory.get_statistics()
@@ -397,6 +412,7 @@ class HiveCoordinator:
     DEFAULT_TRUST = DEFAULT_TRUST_SCORE
     _MAX_CONTRADICTIONS = 10_000
 
+    @log_call
     def __init__(self) -> None:
         self._lock = threading.Lock()
         # agent_id -> {domain, joined_at, fact_count, topics}
@@ -408,6 +424,7 @@ class HiveCoordinator:
         # detected contradictions (capped at _MAX_CONTRADICTIONS, newest kept)
         self._contradictions: list[dict] = []
 
+    @log_call
     def register_agent(self, agent_id: str, domain: str = "") -> None:
         """Register an agent as participating in the hive.
 
@@ -431,6 +448,7 @@ class HiveCoordinator:
                         self._expertise[keyword] = set()
                     self._expertise[keyword].add(agent_id)
 
+    @log_call
     def unregister_agent(self, agent_id: str) -> None:
         """Remove an agent from the hive. Its local DB is unaffected.
 
@@ -446,6 +464,7 @@ class HiveCoordinator:
                 if not agents:
                     del self._expertise[topic]
 
+    @log_call
     def get_experts(self, topic: str) -> list[str]:
         """Which agents know about this topic?
 
@@ -477,6 +496,7 @@ class HiveCoordinator:
                 reverse=True,
             )
 
+    @log_call
     def route_query(self, query: str) -> list[str]:
         """Route a query to the most relevant agents.
 
@@ -532,6 +552,7 @@ class HiveCoordinator:
                 reverse=True,
             )
 
+    @log_call
     def report_fact(self, agent_id: str, concept: str) -> None:
         """Agent reports it has learned a fact about a concept.
 
@@ -553,6 +574,7 @@ class HiveCoordinator:
                     self._expertise[keyword] = set()
                 self._expertise[keyword].add(agent_id)
 
+    @log_call
     def check_trust(self, agent_id: str) -> float:
         """Get trust score for an agent.
 
@@ -565,6 +587,7 @@ class HiveCoordinator:
         with self._lock:
             return self._trust.get(agent_id, 0.0)
 
+    @log_call
     def update_trust(self, agent_id: str, delta: float) -> None:
         """Adjust an agent's trust score.
 
@@ -576,6 +599,7 @@ class HiveCoordinator:
             current = self._trust.get(agent_id, self.DEFAULT_TRUST)
             self._trust[agent_id] = max(0.0, min(MAX_TRUST_SCORE, current + delta))
 
+    @log_call
     def report_contradiction(self, fact_a: dict, fact_b: dict) -> None:
         """Report a detected contradiction between two agents' facts.
 
@@ -596,6 +620,7 @@ class HiveCoordinator:
             if len(self._contradictions) > self._MAX_CONTRADICTIONS:
                 self._contradictions = self._contradictions[-self._MAX_CONTRADICTIONS :]
 
+    @log_call
     def resolve_contradiction(self, index: int) -> bool:
         """Mark a contradiction as resolved by index.
 
@@ -611,6 +636,7 @@ class HiveCoordinator:
                 return True
             return False
 
+    @log_call
     def get_hive_stats(self) -> dict:
         """Stats about the hive.
 
@@ -658,6 +684,7 @@ class DistributedHiveMind:
         >>> results = agent_b.query("DNA helix")
     """
 
+    @log_call
     def __init__(
         self,
         base_dir: str,
@@ -675,6 +702,7 @@ class DistributedHiveMind:
         self.coordinator = HiveCoordinator()
         self._agents: dict[str, AgentNode] = {}
 
+    @log_call
     def create_agent(self, agent_id: str, domain: str = "") -> AgentNode:
         """Create a new agent with its own independent Kuzu database.
 
@@ -697,6 +725,7 @@ class DistributedHiveMind:
         self._agents[agent_id] = agent
         return agent
 
+    @log_call
     def get_agent(self, agent_id: str) -> AgentNode:
         """Get an existing agent by ID.
 
@@ -713,6 +742,7 @@ class DistributedHiveMind:
             raise KeyError(f"Agent '{agent_id}' not found in hive")
         return self._agents[agent_id]
 
+    @log_call
     def propagate(self) -> dict[str, int]:
         """All agents process pending events from the bus.
 
@@ -727,6 +757,7 @@ class DistributedHiveMind:
             results[agent_id] = count
         return results
 
+    @log_call
     def query_routed(
         self,
         asking_agent: str,
@@ -761,6 +792,7 @@ class DistributedHiveMind:
 
         return results[:limit]
 
+    @log_call
     def query_all_agents(self, query: str, limit: int = 10) -> list[dict]:
         """Query ALL agents (broadcast) and merge results.
 
@@ -785,6 +817,7 @@ class DistributedHiveMind:
         results.sort(key=lambda x: -x.get("confidence", 0.0))
         return results[:limit]
 
+    @log_call
     def remove_agent(self, agent_id: str) -> None:
         """Remove agent from hive. Its local DB directory remains intact.
 
@@ -799,6 +832,7 @@ class DistributedHiveMind:
         agent = self._agents.pop(agent_id)
         agent.leave_hive()
 
+    @log_call
     def get_stats(self) -> dict:
         """Stats about the distributed hive.
 
@@ -819,6 +853,7 @@ class DistributedHiveMind:
             "coordinator": self.coordinator.get_hive_stats(),
         }
 
+    @log_call
     def close(self) -> None:
         """Shut down the hive: disconnect all agents, close event bus."""
         for agent in list(self._agents.values()):

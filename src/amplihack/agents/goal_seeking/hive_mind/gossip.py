@@ -22,6 +22,8 @@ import random
 from dataclasses import dataclass
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 from .constants import (
     DEFAULT_GOSSIP_FANOUT,
     DEFAULT_GOSSIP_TOP_K,
@@ -48,6 +50,7 @@ class GossipProtocol:
     min_confidence: float = GOSSIP_MIN_CONFIDENCE
 
 
+@log_call
 def _select_peers(
     all_peers: list[Any],
     source_hive_id: str,
@@ -104,6 +107,7 @@ def _select_peers(
     return selected
 
 
+@log_call
 def _get_top_facts(hive: Any, top_k: int, min_confidence: float) -> list[Any]:
     """Get the top-K facts from a hive by confidence.
 
@@ -127,6 +131,7 @@ def _get_top_facts(hive: Any, top_k: int, min_confidence: float) -> list[Any]:
     return eligible[:top_k]
 
 
+@log_call
 def run_gossip_round(
     source_hive: Any,
     peers: list[Any],
@@ -199,6 +204,7 @@ def run_gossip_round(
     return result
 
 
+@log_call
 def convergence_check(hives: list[Any]) -> float:
     """Measure knowledge convergence across multiple hives.
 

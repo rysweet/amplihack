@@ -13,12 +13,14 @@ from .defensive import (
     write_file_with_retry,
 )
 from .hello_world import hello_world
+from .logging_utils import get_logger, log_call
 from .paths import FrameworkPathResolver
 from .process import ProcessManager
 from .string_utils import slugify
 from .uvx_staging import stage_uvx_framework
 
 
+@log_call
 def is_uvx_deployment() -> bool:
     """Simple UVX detection based on sys.executable location."""
     import sys
@@ -50,4 +52,7 @@ __all__ = [
     "read_file_with_retry",
     "write_file_with_retry",
     "validate_json_schema",
+    # Logging utilities
+    "log_call",
+    "get_logger",
 ]

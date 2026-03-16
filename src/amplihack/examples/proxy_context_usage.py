@@ -5,8 +5,10 @@ from pathlib import Path
 
 from amplihack.proxy.config import ProxyConfig
 from amplihack.proxy.manager import ProxyManager
+from amplihack.utils.logging_utils import log_call
 
 
+@log_call
 def demo_context_manager():
     """Demonstrate using ProxyManager as a context manager."""
 
@@ -31,6 +33,7 @@ def demo_context_manager():
     print("Proxy has been automatically stopped")
 
 
+@log_call
 def demo_traditional_usage():
     """Demonstrate traditional start/stop usage."""
 

@@ -20,10 +20,12 @@ from pathlib import Path
 
 from amplihack.fleet._validation import validate_vm_name
 from amplihack.fleet.fleet_auth import AUTH_FILES, AuthResult, _validate_chmod_mode
+from amplihack.utils.logging_utils import log_call
 
 __all__ = ["propagate_all_bundled"]
 
 
+@log_call
 def propagate_all_bundled(
     vm_name: str,
     azlin_path: str,
@@ -51,9 +53,7 @@ def propagate_all_bundled(
         for file_info in service_files:
             src = Path(file_info["src"]).expanduser()
             if src.exists():
-                files_to_bundle.append(
-                    (str(src), file_info["dest"], file_info.get("mode", "600"))
-                )
+                files_to_bundle.append((str(src), file_info["dest"], file_info.get("mode", "600")))
 
     if not files_to_bundle:
         return AuthResult(

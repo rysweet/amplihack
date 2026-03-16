@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 
 from amplihack.vendor.blarify.vendor.multilspy.language_server import LanguageServer
 from amplihack.vendor.blarify.vendor.multilspy.lsp_protocol_handler.server import ProcessLaunchInfo
+from amplihack.utils.logging_utils import log_call
 
 
 class DartLanguageServer(LanguageServer):
@@ -14,6 +15,7 @@ class DartLanguageServer(LanguageServer):
     Provides Dart specific instantiation of the LanguageServer class. Contains various configurations and settings specific to Dart.
     """
 
+    @log_call
     def __init__(self, config, logger, repository_root_path):
         """
         Creates a DartServer instance. This class is not meant to be instantiated directly. Use LanguageServer.create() instead.
@@ -30,6 +32,7 @@ class DartLanguageServer(LanguageServer):
             "dart",
         )
 
+    @log_call
     def _get_initialize_params(self, repository_absolute_path: str):
         """
         Returns the initialize params for the Dart Language Server.
@@ -55,20 +58,25 @@ class DartLanguageServer(LanguageServer):
         return d
 
     @asynccontextmanager
+    @log_call
     async def start_server(self) -> AsyncIterator["DartLanguageServer"]:
         """
         Start the language server and yield when the server is ready.
         """
 
+        @log_call
         async def execute_client_command_handler(params):
             return []
 
+        @log_call
         async def do_nothing(params):
             return
 
+        @log_call
         async def check_experimental_status(params):
             pass
 
+        @log_call
         async def window_log_message(msg):
             self.logger.log(f"LSP: window/logMessage: {msg}", logging.INFO)
 

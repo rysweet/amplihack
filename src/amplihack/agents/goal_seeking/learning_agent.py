@@ -23,6 +23,8 @@ from typing import Any
 
 import litellm
 
+from amplihack.utils.logging_utils import log_call
+
 from .action_executor import ActionExecutor, calculate, read_content, search_memory
 from .agentic_loop import AgenticLoop, ReasoningTrace
 from .cognitive_adapter import HAS_COGNITIVE_MEMORY, CognitiveAdapter
@@ -34,6 +36,7 @@ from .similarity import rerank_facts_by_query
 logger = logging.getLogger(__name__)
 
 
+@log_call
 def _load_prompt(name: str, **kwargs: str) -> str:
     """Load a prompt template from prompts/{name}.md and substitute placeholders.
 
@@ -79,6 +82,7 @@ class LearningAgent:
         >>> print(answer)  # LLM-synthesized answer from stored facts
     """
 
+    @log_call
     def __init__(
         self,
         agent_name: str = "learning_agent",
@@ -189,6 +193,7 @@ class LearningAgent:
         self._pre_snapshot_facts: list[dict[str, Any]] | None = None
 
     @staticmethod
+    @log_call
     def _load_variant_prompt(variant_num: int) -> str:
         """Load a prompt variant from the variants directory.
 
@@ -228,6 +233,7 @@ class LearningAgent:
             content_lines.append(line)
         return "\n".join(content_lines).strip()
 
+    @log_call
     def learn_from_content(self, content: str) -> dict[str, Any]:
         """Learn from content by extracting and storing facts.
 
@@ -336,6 +342,7 @@ class LearningAgent:
             "content_summary": content[:200],
         }
 
+    @log_call
     def _store_summary_concept_map(
         self, content: str, facts: list[dict], episode_id: str = ""
     ) -> None:
@@ -386,6 +393,7 @@ class LearningAgent:
         except Exception as e:
             logger.debug("Failed to generate summary concept map: %s", e)
 
+    @log_call
     def _detect_temporal_metadata(self, content: str) -> dict[str, Any]:
         """Detect dates and temporal markers in content using LLM.
 
@@ -464,6 +472,7 @@ class LearningAgent:
     # All other intents use iterative reasoning for targeted retrieval
     # The iterative loop filters noise better than dumping all facts
 
+    @log_call
     def answer_question(
         self,
         question: str,
@@ -678,6 +687,7 @@ class LearningAgent:
                 else:
                     non_temporal_facts.append(f)
 
+            @log_call
             def temporal_sort_key(fact):
                 meta = fact.get("metadata", {})
                 t_idx = meta.get("temporal_index", 999999) if meta else 999999
@@ -773,6 +783,7 @@ class LearningAgent:
             return answer, reasoning_trace
         return answer
 
+    @log_call
     def answer_question_agentic(
         self, question: str, max_iterations: int = 3, return_trace: bool = False
     ) -> str | tuple[str, ReasoningTrace | None]:
@@ -893,6 +904,7 @@ class LearningAgent:
             return refined_answer, trace
         return refined_answer
 
+    @log_call
     def _evaluate_answer_completeness(self, question: str, answer: str) -> dict[str, Any]:
         """Evaluate whether an answer fully addresses the question.
 
@@ -973,6 +985,7 @@ class LearningAgent:
             logger.warning("Answer evaluation failed: %s", exc)
             return {"is_complete": True, "gaps": []}
 
+    @log_call
     def _simple_retrieval(
         self, question: str, force_verbatim: bool = False
     ) -> list[dict[str, Any]]:
@@ -1026,6 +1039,7 @@ class LearningAgent:
         # Large KB (1000+ facts): use progressive summarization tiers
         return self._tiered_retrieval(question, all_facts)
 
+    @log_call
     def _tiered_retrieval(
         self, question: str, all_facts: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
@@ -1038,6 +1052,7 @@ class LearningAgent:
         Summaries preserve key details: numbers, names, dates, status values.
         """
 
+        @log_call
         def _sort_key(f: dict) -> tuple:
             ts = f.get("timestamp", "")
             meta = f.get("metadata", {})
@@ -1074,6 +1089,7 @@ class LearningAgent:
         )
         return result
 
+    @log_call
     def _summarize_old_facts(
         self, facts: list[dict[str, Any]], level: str = "entity"
     ) -> list[dict[str, Any]]:
@@ -1129,6 +1145,7 @@ class LearningAgent:
 
         return summaries
 
+    @log_call
     def _aggregation_retrieval(self, question: str, intent: dict[str, Any]) -> list[dict[str, Any]]:
         """Handle meta-memory questions via Cypher aggregation.
 
@@ -1282,6 +1299,7 @@ class LearningAgent:
 
         return results
 
+    @log_call
     def _entity_retrieval(self, question: str) -> list[dict[str, Any]]:
         """Try entity-centric retrieval for questions about specific people/projects.
 
@@ -1449,6 +1467,7 @@ class LearningAgent:
         }
     )
 
+    @log_call
     def _concept_retrieval(self, question: str) -> list[dict[str, Any]]:
         """Concept-based retrieval fallback for questions without proper nouns.
 
@@ -1515,6 +1534,7 @@ class LearningAgent:
     # Regex for structured entity IDs (e.g. INC-2024-001, CVE-2024-3094)
     _ENTITY_ID_PATTERN = re.compile(r"\b([A-Z]{2,5}-\d{4}-\d{2,5})\b")
 
+    @log_call
     def _entity_linked_retrieval(
         self, question: str, existing_facts: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
@@ -1607,6 +1627,7 @@ class LearningAgent:
 
         return existing_facts + new_facts
 
+    @log_call
     def _multi_entity_retrieval(
         self, question: str, existing_facts: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
@@ -1672,6 +1693,7 @@ class LearningAgent:
 
         return existing_facts + new_facts
 
+    @log_call
     def _filter_facts_by_source_reference(
         self, question: str, facts: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
@@ -1722,6 +1744,7 @@ class LearningAgent:
         )
         return matched
 
+    @log_call
     def _get_summary_nodes(self) -> list[dict[str, Any]]:
         """Retrieve SUMMARY concept map nodes from memory.
 
@@ -1759,6 +1782,7 @@ class LearningAgent:
             logger.debug("Failed to retrieve summary nodes: %s", e)
             return []
 
+    @log_call
     def _detect_intent(self, question: str) -> dict[str, Any]:
         """Detect question intent using a single LLM call.
 
@@ -1830,6 +1854,7 @@ class LearningAgent:
             "reasoning": "default",
         }
 
+    @log_call
     def _validate_arithmetic(self, answer: str) -> str:
         """Validate arithmetic expressions found in the answer using the calculator.
 
@@ -1878,6 +1903,7 @@ class LearningAgent:
 
         return answer
 
+    @log_call
     def _compute_math_result(
         self, question: str, facts: list[dict[str, Any]], intent: dict[str, Any]
     ) -> str | None:
@@ -1953,6 +1979,7 @@ class LearningAgent:
             logger.debug("_compute_math_result failed: %s", e)
             return None
 
+    @log_call
     def _keyword_expanded_retrieval(
         self, question: str, existing_facts: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
@@ -2028,6 +2055,7 @@ class LearningAgent:
             logger.debug("_keyword_expanded_retrieval failed: %s", e)
             return existing_facts
 
+    @log_call
     def _extract_facts_with_llm(
         self, content: str, temporal_meta: dict[str, Any] | None = None
     ) -> list[dict[str, Any]]:
@@ -2121,6 +2149,7 @@ class LearningAgent:
                 }
             ]
 
+    @log_call
     def _synthesize_with_llm(
         self,
         question: str,
@@ -2162,6 +2191,7 @@ class LearningAgent:
             max_facts = 300
 
         # Build context string - include temporal metadata, source labels, and supersede markers
+        @log_call
         def _format_fact(i: int, fact: dict, include_temporal: bool) -> str:
             meta = fact.get("metadata", {})
             markers = []
@@ -2688,6 +2718,7 @@ Knowledge Overview (what was learned):
             logger.error("LLM synthesis failed: %s", e)
             return "I was unable to synthesize an answer due to an internal error."
 
+    @log_call
     def get_memory_stats(self) -> dict[str, Any]:
         """Get statistics about stored knowledge.
 
@@ -2696,6 +2727,7 @@ Knowledge Overview (what was learned):
         """
         return self.memory.get_statistics()
 
+    @log_call
     def _explain_knowledge(self, topic: str, depth: str = "overview") -> str:
         """Generate an explanation of a topic from stored knowledge.
 
@@ -2743,6 +2775,7 @@ Knowledge Overview (what was learned):
             logger.error("Explanation generation failed: %s", e)
             return f"Unable to generate explanation for '{topic}'."
 
+    @log_call
     def _find_knowledge_gaps(self, topic: str) -> dict[str, Any]:
         """Identify what's unknown or uncertain about a topic.
 
@@ -2812,6 +2845,7 @@ Knowledge Overview (what was learned):
             "overall_coverage": coverage,
         }
 
+    @log_call
     def _verify_fact(self, fact: str) -> dict[str, Any]:
         """Verify if a fact is consistent with stored knowledge.
 
@@ -2891,6 +2925,7 @@ Knowledge Overview (what was learned):
         "last": "-1",
     }
 
+    @log_call
     def retrieve_transition_chain(self, entity: str, field: str) -> list[dict[str, Any]]:
         """Retrieve all SUPERSEDED states for an entity/field from memory.
 
@@ -2940,6 +2975,7 @@ Knowledge Overview (what was learned):
         chain.sort(key=lambda x: (x["temporal_index"], x["timestamp"]))
         return chain
 
+    @log_call
     def _parse_temporal_index(self, question: str) -> str:
         """Parse a temporal question to determine which state index is requested.
 
@@ -2995,6 +3031,7 @@ Knowledge Overview (what was learned):
         # Default: latest value
         return "-1"
 
+    @log_call
     def temporal_code_synthesis(self, question: str, entity: str, field: str) -> dict[str, Any]:
         """Generate Python code to resolve a temporal question.
 
@@ -3053,6 +3090,7 @@ Knowledge Overview (what was learned):
             "result": result,
         }
 
+    @log_call
     def _code_generation_tool(self, question: str) -> dict[str, Any]:
         """Tool interface for temporal code generation.
 
@@ -3093,11 +3131,13 @@ Knowledge Overview (what was learned):
 
         return {"code": "", "index_expr": "", "transitions": [], "result": None}
 
+    @log_call
     def flush_memory(self):
         """Flush memory cache without losing data or agent state."""
         if hasattr(self.memory, "flush_memory"):
             self.memory.flush_memory()
 
+    @log_call
     def close(self):
         """Close agent and release resources."""
         self.memory.close()

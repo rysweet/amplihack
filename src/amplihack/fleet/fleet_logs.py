@@ -26,6 +26,7 @@ from dataclasses import dataclass, field
 
 from amplihack.fleet._defaults import get_azlin_path
 from amplihack.fleet._validation import validate_vm_name
+from amplihack.utils.logging_utils import log_call
 
 __all__ = ["LogReader", "SessionSummary"]
 
@@ -50,13 +51,16 @@ class SessionSummary:
     files_modified: list[str] = field(default_factory=list)
 
     @property
+    @log_call
     def is_active(self) -> bool:
         return self.message_count > 0
 
     @property
+    @log_call
     def has_pr(self) -> bool:
         return len(self.pr_urls) > 0
 
+    @log_call
     def to_dict(self) -> dict:
         return {
             "session_id": self.session_id,
@@ -84,6 +88,7 @@ class LogReader:
 
     azlin_path: str = field(default_factory=get_azlin_path)
 
+    @log_call
     def read_session_log(
         self,
         vm_name: str,
@@ -121,6 +126,7 @@ class LogReader:
             logger.warning("read_session_log failed for %s: %s", vm_name, exc)
             return None
 
+    @log_call
     def read_all_sessions(self, vm_name: str) -> list[SessionSummary]:
         """Read summaries from all Claude Code session logs on a VM."""
         find_cmd = """
@@ -163,7 +169,9 @@ done
             if result.returncode != 0:
                 logger.warning(
                     "read_all_sessions command failed for %s (rc=%d): %s",
-                    vm_name, result.returncode, result.stderr[:200] if result.stderr else "",
+                    vm_name,
+                    result.returncode,
+                    result.stderr[:200] if result.stderr else "",
                 )
                 return []
 
@@ -173,6 +181,7 @@ done
             logger.warning("read_all_sessions failed for %s: %s", vm_name, exc)
             return []
 
+    @log_call
     def _build_log_reader_command(self, project_path: str, tail_lines: int) -> str:
         """Build SSH command to read and summarize a specific project's log."""
         tail_lines = max(1, min(tail_lines, 10000))
@@ -213,6 +222,7 @@ print(json.dumps(stats))
 " 2>/dev/null
 """
 
+    @log_call
     def _parse_log_summary(self, output: str) -> SessionSummary | None:
         """Parse the remote log reader output."""
         for line in output.strip().split("\n"):
@@ -238,6 +248,7 @@ print(json.dumps(stats))
                 continue
         return None
 
+    @log_call
     def _parse_all_logs_output(self, output: str) -> list[SessionSummary]:
         """Parse output from read_all_sessions."""
         summaries = []

@@ -13,9 +13,12 @@ from collections.abc import MutableMapping
 from datetime import UTC, datetime
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 from ..context.adaptive.detector import LauncherDetector
 
 
+@log_call
 def get_gh_auth_account() -> str | None:
     """Check if gh CLI is authenticated and return the account name.
 
@@ -47,6 +50,7 @@ def get_gh_auth_account() -> str | None:
         return None
 
 
+@log_call
 def disable_github_mcp_server() -> bool:
     """Disable the GitHub MCP server by staging an MCP config.
 
@@ -87,6 +91,7 @@ def disable_github_mcp_server() -> bool:
         return False
 
 
+@log_call
 def enable_awesome_copilot_mcp_server() -> bool:
     """Enable the awesome-copilot MCP server for community extensions via Docker.
 
@@ -136,6 +141,7 @@ def enable_awesome_copilot_mcp_server() -> bool:
         return False
 
 
+@log_call
 def register_awesome_copilot_marketplace() -> bool:
     """Register awesome-copilot marketplace extensions (best-effort).
 
@@ -168,6 +174,7 @@ def register_awesome_copilot_marketplace() -> bool:
         return False
 
 
+@log_call
 def _compare_versions(current: str, latest: str) -> bool:
     """Compare version strings to determine if update is available.
 
@@ -194,6 +201,7 @@ def _compare_versions(current: str, latest: str) -> bool:
         return False
 
 
+@log_call
 def check_for_update() -> str | None:
     """Check if a newer version of Copilot CLI is available.
 
@@ -245,6 +253,7 @@ def check_for_update() -> str | None:
         return None
 
 
+@log_call
 def detect_install_method() -> str:
     """Detect how Copilot CLI was installed.
 
@@ -283,6 +292,7 @@ def detect_install_method() -> str:
     return "npm"
 
 
+@log_call
 def prompt_user_to_update(new_version: str, install_method: str) -> bool:
     """Prompt user to update Copilot CLI with timeout.
 
@@ -307,6 +317,7 @@ def prompt_user_to_update(new_version: str, install_method: str) -> bool:
 
     if platform.system() == "Windows":
         # Windows: Use threading-based timeout
+        @log_call
         def get_input():
             nonlocal user_input
             try:
@@ -325,6 +336,7 @@ def prompt_user_to_update(new_version: str, install_method: str) -> bool:
             return False
     else:
         # Unix: Use signal-based timeout
+        @log_call
         def timeout_handler(signum, frame):
             raise TimeoutError("Input timeout")
 
@@ -350,6 +362,7 @@ def prompt_user_to_update(new_version: str, install_method: str) -> bool:
     return user_input == "y"
 
 
+@log_call
 def execute_update(install_method: str) -> bool:
     """Execute Copilot CLI update based on installation method.
 
@@ -444,6 +457,7 @@ def execute_update(install_method: str) -> bool:
         return False
 
 
+@log_call
 def _copilot_home(home: Path | None = None, env: MutableMapping[str, str] | None = None) -> Path:
     """Resolve the home directory used for Copilot installation/discovery."""
     if home is not None:
@@ -453,11 +467,13 @@ def _copilot_home(home: Path | None = None, env: MutableMapping[str, str] | None
     return Path.home()
 
 
+@log_call
 def _copilot_npm_bin(home: Path | None = None, env: MutableMapping[str, str] | None = None) -> Path:
     """Return the npm-global bin directory used for Copilot CLI installs."""
     return _copilot_home(home=home, env=env) / ".npm-global" / "bin"
 
 
+@log_call
 def _ensure_copilot_bin_on_path(
     env: MutableMapping[str, str] | None = None, home: Path | None = None
 ) -> Path:
@@ -473,9 +489,8 @@ def _ensure_copilot_bin_on_path(
     return bin_path
 
 
-def check_copilot(
-    env: MutableMapping[str, str] | None = None, home: Path | None = None
-) -> bool:
+@log_call
+def check_copilot(env: MutableMapping[str, str] | None = None, home: Path | None = None) -> bool:
     """Check if Copilot CLI is installed.
 
     Returns:
@@ -497,9 +512,8 @@ def check_copilot(
         return False
 
 
-def install_copilot(
-    env: MutableMapping[str, str] | None = None, home: Path | None = None
-) -> bool:
+@log_call
+def install_copilot(env: MutableMapping[str, str] | None = None, home: Path | None = None) -> bool:
     """Install GitHub Copilot CLI via npm to user-local directory."""
     print("Installing GitHub Copilot CLI...")
 
@@ -535,6 +549,7 @@ def install_copilot(
         return False
 
 
+@log_call
 def stage_agents(source_agents: Path, copilot_home: Path) -> int:
     """Stage amplihack agents to ~/.copilot/agents/amplihack/ for Copilot CLI discovery.
 
@@ -573,6 +588,7 @@ def stage_agents(source_agents: Path, copilot_home: Path) -> int:
     return copied
 
 
+@log_call
 def register_copilot_plugin(source_commands: Path, copilot_home: Path) -> bool:
     """Register amplihack as a Copilot CLI local plugin and stage command files.
 
@@ -647,6 +663,7 @@ def register_copilot_plugin(source_commands: Path, copilot_home: Path) -> bool:
         return False
 
 
+@log_call
 def stage_directory(source_dir: Path, copilot_home: Path, dest_name: str) -> int:
     """Stage a directory of .md files to ~/.copilot/<dest_name>/amplihack/.
 
@@ -680,6 +697,7 @@ def stage_directory(source_dir: Path, copilot_home: Path, dest_name: str) -> int
     return copied
 
 
+@log_call
 def stage_hooks(package_dir: Path, user_dir: Path) -> int:
     """Stage amplihack hooks for Copilot CLI discovery.
 
@@ -815,6 +833,7 @@ INPUT=$(cat)
     return staged
 
 
+@log_call
 def _generate_rust_wrapper(hook_name, py_files, rust_binary, rust_hook_map):
     """Generate a bash wrapper script that uses the Rust hook binary.
 
@@ -869,6 +888,7 @@ INSTRUCTIONS_MARKER_START = "<!-- AMPLIHACK_INSTRUCTIONS_START -->"
 INSTRUCTIONS_MARKER_END = "<!-- AMPLIHACK_INSTRUCTIONS_END -->"
 
 
+@log_call
 def generate_copilot_instructions(copilot_home: Path) -> None:
     """Inject amplihack section into ~/.copilot/copilot-instructions.md.
 
@@ -946,6 +966,7 @@ Skills are available at `{copilot_home}/skills/`. They auto-activate based on co
         instructions.write_text(amplihack_section + "\n")
 
 
+@log_call
 def get_copilot_directories() -> list[str]:
     """Get list of directories to provide copilot filesystem access.
 
@@ -974,6 +995,7 @@ def get_copilot_directories() -> list[str]:
     return directories
 
 
+@log_call
 def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> int:
     """Launch Copilot CLI.
 

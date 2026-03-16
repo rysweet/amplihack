@@ -21,6 +21,8 @@ Philosophy:
 from dataclasses import dataclass, field
 from enum import Enum
 
+from amplihack.utils.logging_utils import log_call
+
 
 class ScenarioCategory(Enum):
     """Test scenario categories."""
@@ -61,6 +63,7 @@ class TestScenario:
 class GadugiScenarioGenerator:
     """Generates comprehensive test scenarios for QA validation."""
 
+    @log_call
     def generate_scenarios(
         self,
         goal: str,
@@ -112,6 +115,7 @@ class GadugiScenarioGenerator:
 
         return scenarios
 
+    @log_call
     def _generate_happy_path_scenarios(
         self,
         goal: str,
@@ -178,6 +182,7 @@ class GadugiScenarioGenerator:
 
         return scenarios
 
+    @log_call
     def _generate_error_handling_scenarios(
         self,
         goal: str,
@@ -260,6 +265,7 @@ class GadugiScenarioGenerator:
 
         return scenarios
 
+    @log_call
     def _generate_boundary_scenarios(
         self,
         goal: str,
@@ -323,6 +329,7 @@ class GadugiScenarioGenerator:
 
         return scenarios
 
+    @log_call
     def _generate_security_scenarios(
         self,
         goal: str,
@@ -385,6 +392,7 @@ class GadugiScenarioGenerator:
 
         return scenarios
 
+    @log_call
     def _generate_performance_scenarios(
         self,
         goal: str,
@@ -413,6 +421,7 @@ class GadugiScenarioGenerator:
 
         return scenarios
 
+    @log_call
     def _generate_integration_scenarios(
         self,
         goal: str,

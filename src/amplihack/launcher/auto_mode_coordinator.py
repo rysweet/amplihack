@@ -5,11 +5,16 @@ providing methods to start and monitor execution while maintaining thread-safe
 communication with the UI.
 """
 
+import logging
 import threading
 import time
 from collections.abc import Callable
 
+from amplihack.utils.logging_utils import log_call
+
 from .auto_mode_state import AutoModeState
+
+logger = logging.getLogger(__name__)
 
 
 class AutoModeCoordinator:
@@ -26,6 +31,7 @@ class AutoModeCoordinator:
         state_callback: Optional callback for state updates
     """
 
+    @log_call
     def __init__(
         self,
         auto_mode,
@@ -39,16 +45,19 @@ class AutoModeCoordinator:
             state: Shared AutoModeState instance
             state_callback: Optional callback invoked on state changes
         """
+        logger.debug("AutoModeCoordinator.__init__: called")
         self.auto_mode = auto_mode
         self.state = state
         self.state_callback = state_callback
         self.execution_thread: threading.Thread | None = None
 
+    @log_call
     def start(self) -> None:
         """Start auto mode execution in background thread.
 
         This creates and starts a new thread that will execute auto_mode.run().
         """
+        logger.debug("AutoModeCoordinator.start: called")
         if self.execution_thread and self.execution_thread.is_alive():
             raise RuntimeError("Auto mode already running")
 
@@ -69,18 +78,22 @@ class AutoModeCoordinator:
         self.state.add_log(f"Auto mode started (max {self.state.max_turns} turns)")
         self._notify_callback()
 
+    @log_call
     def _run_with_state_updates(self) -> None:
         """Run auto mode with periodic state updates.
 
         This is the target function for the background thread. It executes
         auto mode while updating shared state.
         """
+        logger.debug("AutoModeCoordinator._run_with_state_updates: called")
         try:
             # Inject state update hooks into auto mode
             original_log = self.auto_mode.log
 
+            @log_call
             def state_aware_log(msg: str, level: str = "INFO"):
                 """Log that also updates shared state."""
+                logger.debug(f"state_aware_log: called with msg={msg!r}, level={level!r}")
                 original_log(msg, level)
                 self.state.add_log(f"[{level}] {msg}")
                 self._notify_callback()
@@ -104,25 +117,31 @@ class AutoModeCoordinator:
         finally:
             self._notify_callback()
 
+    @log_call
     def wait(self, timeout: float | None = None) -> None:
         """Wait for execution thread to complete.
 
         Args:
             timeout: Maximum time to wait in seconds (None = wait forever)
         """
+        logger.debug(f"AutoModeCoordinator.wait: called with timeout={timeout!r}")
         if self.execution_thread and self.execution_thread.is_alive():
             self.execution_thread.join(timeout=timeout)
 
+    @log_call
     def is_alive(self) -> bool:
         """Check if execution thread is alive.
 
         Returns:
             True if thread is running
         """
+        logger.debug("AutoModeCoordinator.is_alive: called")
         return self.execution_thread is not None and self.execution_thread.is_alive()
 
+    @log_call
     def _notify_callback(self) -> None:
         """Notify state callback if configured."""
+        logger.debug("AutoModeCoordinator._notify_callback: called")
         if self.state_callback:
             try:
                 self.state_callback(self.state)

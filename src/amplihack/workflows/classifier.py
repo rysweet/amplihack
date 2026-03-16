@@ -9,6 +9,8 @@ Classifies user requests into 4 workflows:
 
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 
 class WorkflowClassifier:
     """Classifies user requests into appropriate workflows."""
@@ -58,6 +60,7 @@ class WorkflowClassifier:
         ],
     }
 
+    @log_call
     def __init__(self, custom_keywords: dict[str, list[str]] | None = None):
         """Initialize workflow classifier.
 
@@ -72,6 +75,7 @@ class WorkflowClassifier:
                 else:
                     self._keyword_map[workflow] = keywords
 
+    @log_call
     def classify(self, request: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
         """Classify a user request into appropriate workflow.
 
@@ -119,6 +123,7 @@ class WorkflowClassifier:
 
         return result
 
+    @log_call
     def _extract_keywords(self, request: str) -> list[str]:
         """Extract classification keywords from request.
 
@@ -139,6 +144,7 @@ class WorkflowClassifier:
 
         return matched_keywords
 
+    @log_call
     def _classify_by_keywords(self, keywords: list[str], request: str) -> tuple[str, str, float]:
         """Classify request based on matched keywords.
 
@@ -173,6 +179,7 @@ class WorkflowClassifier:
         # No keywords matched - default to DEFAULT_WORKFLOW with low confidence
         return "DEFAULT_WORKFLOW", "ambiguous request, defaulting to default workflow", 0.5
 
+    @log_call
     def format_announcement(
         self, result: dict[str, Any], recipe_runner_available: bool = False
     ) -> str:

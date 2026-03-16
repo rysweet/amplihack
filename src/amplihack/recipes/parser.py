@@ -12,6 +12,7 @@ from typing import Any
 import yaml
 
 from amplihack.recipes.models import Recipe, Step, StepType
+from amplihack.utils.logging_utils import log_call
 
 # Security: Maximum YAML file size to prevent YAML bomb attacks
 MAX_YAML_SIZE_BYTES = 1_000_000  # 1 MB
@@ -26,6 +27,7 @@ class RecipeParser:
     - Validation of required fields and uniqueness constraints
     """
 
+    @log_call
     def parse_file(self, path: str | Path) -> Recipe:
         """Parse a recipe YAML file from disk.
 
@@ -53,6 +55,7 @@ class RecipeParser:
 
         return self.parse(file_path.read_text(encoding="utf-8"))
 
+    @log_call
     def parse(self, yaml_content: str) -> Recipe:
         """Parse a YAML string into a Recipe.
 
@@ -138,6 +141,7 @@ class RecipeParser:
         }
     )
 
+    @log_call
     def validate(self, recipe: Recipe, raw_yaml: str | None = None) -> list[str]:
         """Validate a parsed recipe and return a list of warning strings.
 
@@ -176,6 +180,7 @@ class RecipeParser:
 
         return warnings
 
+    @log_call
     def _parse_step(self, raw: dict[str, Any]) -> Step:
         """Parse a single step dict into a Step object."""
         step_id = raw.get("id", "")
@@ -200,6 +205,7 @@ class RecipeParser:
             sub_context=raw.get("context") if isinstance(raw.get("context"), dict) else None,
         )
 
+    @log_call
     def _infer_step_type(self, raw: dict[str, Any]) -> StepType:
         """Determine step type from explicit field or infer from other fields.
 

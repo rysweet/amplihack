@@ -17,10 +17,12 @@ import subprocess
 from amplihack.fleet._constants import SUBPROCESS_TIMEOUT_SECONDS
 from amplihack.fleet._session_context import SessionContext
 from amplihack.fleet._status import infer_agent_status
+from amplihack.utils.logging_utils import log_call
 
 __all__ = ["gather_context", "parse_context_output"]
 
 
+@log_call
 def _match_project(repo_url: str) -> tuple[str, list[dict]]:
     """Match a repo URL to a registered project and return (name, objectives).
 
@@ -38,6 +40,7 @@ def _match_project(repo_url: str) -> tuple[str, list[dict]]:
     return ("", [])
 
 
+@log_call
 def gather_context(
     azlin_path: str,
     vm_name: str,
@@ -91,9 +94,9 @@ def gather_context(
         f'JSONL=$(ls -t "$HOME/.claude/projects/$PKEY/"*.jsonl 2>/dev/null | head -1); '
         f'if [ -n "$JSONL" ]; then '
         # Extract user/assistant text lines via grep + sed (no python needed)
-        f"MSGS=$(grep -E '\"type\":\"(user|assistant)\"' \"$JSONL\" 2>/dev/null "
-        f"| grep -oP '\"text\":\"[^\"]*\"' "
-        f"| sed 's/\"text\":\"//;s/\"$//' "
+        f'MSGS=$(grep -E \'"type":"(user|assistant)"\' "$JSONL" 2>/dev/null '
+        f'| grep -oP \'"text":"[^"]*"\' '
+        f'| sed \'s/"text":"//;s/"$//\' '
         f"| grep -v '^$'); "
         f'TOTAL=$(echo "$MSGS" | wc -l); '
         f'echo "TRANSCRIPT_LINES:$TOTAL"; '
@@ -106,9 +109,9 @@ def gather_context(
         f"fi; fi; "
         # Lightweight VM health (memory + disk) for reasoning context
         'echo "===HEALTH==="; '
-        'MEM=$(free -m 2>/dev/null | grep Mem | awk \'{printf "%.0f", $3/$2*100}\'); '
-        'DISK=$(df -h / 2>/dev/null | tail -1 | awk \'{print $5}\' | tr -d "%"); '
-        'LOAD=$(cat /proc/loadavg 2>/dev/null | awk \'{print $1}\'); '
+        "MEM=$(free -m 2>/dev/null | grep Mem | awk '{printf \"%.0f\", $3/$2*100}'); "
+        "DISK=$(df -h / 2>/dev/null | tail -1 | awk '{print $5}' | tr -d \"%\"); "
+        "LOAD=$(cat /proc/loadavg 2>/dev/null | awk '{print $1}'); "
         'echo "mem=${MEM:-?}% disk=${DISK:-?}% load=${LOAD:-?}"; '
         # Fleet objectives from GitHub issues (if gh is available and repo has the label)
         'echo "===OBJECTIVES==="; '
@@ -116,8 +119,8 @@ def gather_context(
         'REMOTE=$(cd "$CWD" 2>/dev/null && git remote get-url origin 2>/dev/null); '
         'if [ -n "$REMOTE" ]; then '
         'gh issue list --repo "$REMOTE" --label fleet-objective '
-        '--json number,title,state --jq \'.[]|[.number,.title,.state]|@tsv\' 2>/dev/null; '
-        'fi; fi; '
+        "--json number,title,state --jq '.[]|[.number,.title,.state]|@tsv' 2>/dev/null; "
+        "fi; fi; "
         'echo "===END==="'
     )
 
@@ -129,9 +132,7 @@ def gather_context(
             timeout=SUBPROCESS_TIMEOUT_SECONDS,
         )
 
-        if "===TMUX===" in result.stdout or "===END===" in result.stdout:
-            parse_context_output(result.stdout, context)
-        elif result.returncode == 0:
+        if "===TMUX===" in result.stdout or "===END===" in result.stdout or result.returncode == 0:
             parse_context_output(result.stdout, context)
 
     except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
@@ -148,6 +149,7 @@ def gather_context(
     return context
 
 
+@log_call
 def parse_context_output(output: str, context: SessionContext) -> None:
     """Parse the compound SSH output into SessionContext."""
     sections = output.split("===")
@@ -189,7 +191,7 @@ def parse_context_output(output: str, context: SessionContext) -> None:
                     early_start = parts_text.index("---EARLY---") + len("---EARLY---")
                     recent_start = parts_text.index("---RECENT---")
                     early = parts_text[early_start:recent_start].strip()
-                    recent = parts_text[recent_start + len("---RECENT---"):].strip()
+                    recent = parts_text[recent_start + len("---RECENT---") :].strip()
                 elif parts_text:
                     recent = parts_text
 
@@ -232,11 +234,13 @@ def parse_context_output(output: str, context: SessionContext) -> None:
                             raw_state = raw_state.strip().lower()
                             if raw_state not in ("open", "closed"):
                                 raw_state = "open"
-                            context.project_objectives.append({
-                                "number": int(parts[0]),
-                                "title": raw_title,
-                                "state": raw_state,
-                            })
+                            context.project_objectives.append(
+                                {
+                                    "number": int(parts[0]),
+                                    "title": raw_title,
+                                    "state": raw_state,
+                                }
+                            )
                         except (ValueError, IndexError):
                             continue
 

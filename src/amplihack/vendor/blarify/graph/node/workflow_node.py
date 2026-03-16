@@ -3,6 +3,7 @@ from typing import Any
 from .types.node_labels import NodeLabels
 
 from .types.node import Node
+from amplihack.utils.logging_utils import log_call
 
 
 class WorkflowNode(Node):
@@ -12,6 +13,7 @@ class WorkflowNode(Node):
     endpoints, and execution paths that can be retrieved by LLM agents.
     """
 
+    @log_call
     def __init__(
         self,
         title: str,
@@ -67,10 +69,12 @@ class WorkflowNode(Node):
         )
 
     @property
+    @log_call
     def node_repr_for_identifier(self) -> str:
         """Create a unique identifier representation for this workflow node."""
         return f"{self.source_name}@workflow"
 
+    @log_call
     def as_object(self) -> dict:
         """Convert to dictionary for database storage."""
         obj = super().as_object()
@@ -103,20 +107,24 @@ class WorkflowNode(Node):
 
         return obj
 
+    @log_call
     def get_content_preview(self, max_length: int = 200) -> str:
         """Get a preview of the content for display purposes."""
         if len(self.content) <= max_length:
             return self.content
         return self.content[: max_length - 3] + "..."
 
+    @log_call
     def get_workflow_summary(self) -> str:
         """Get a summary of the workflow."""
         return f"Workflow from {self.entry_point_name} to {self.end_point_name} with {len(self.workflow_nodes)} steps"
 
+    @log_call
     def has_valid_endpoints(self) -> bool:
         """Check if this workflow has valid entry and end points."""
         return bool(self.entry_point_id and self.end_point_id)
 
+    @log_call
     def get_step_count(self) -> int:
         """Get the number of steps in this workflow."""
         return len(self.workflow_nodes)

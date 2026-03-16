@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from amplihack.agents.domain_agents.base import DomainAgent, EvalLevel, EvalScenario
+from amplihack.utils.logging_utils import log_call
 
 
 @dataclass
@@ -77,6 +78,7 @@ class EvalReport:
     overall_passed: bool
     metadata: dict[str, Any] = field(default_factory=dict)
 
+    @log_call
     def to_dict(self) -> dict[str, Any]:
         """Convert report to dictionary for JSON serialization."""
         return {
@@ -108,6 +110,7 @@ class EvalReport:
             "metadata": self.metadata,
         }
 
+    @log_call
     def to_json(self, indent: int = 2) -> str:
         """Convert report to JSON string."""
         return json.dumps(self.to_dict(), indent=indent)
@@ -127,6 +130,7 @@ class DomainEvalHarness:
         >>> print(report.to_json())
     """
 
+    @log_call
     def __init__(self, agent: DomainAgent):
         """Initialize harness for a domain agent.
 
@@ -136,6 +140,7 @@ class DomainEvalHarness:
         self.agent = agent
         self.eval_levels = agent.get_eval_levels()
 
+    @log_call
     def run(self, levels: list[str] | None = None) -> EvalReport:
         """Run evaluation across all (or specified) levels.
 
@@ -176,6 +181,7 @@ class DomainEvalHarness:
             },
         )
 
+    @log_call
     def _run_level(self, level: EvalLevel) -> LevelResult:
         """Run all scenarios for one evaluation level.
 
@@ -206,6 +212,7 @@ class DomainEvalHarness:
             passing_threshold=level.passing_threshold,
         )
 
+    @log_call
     def _run_scenario(self, scenario: EvalScenario, level: EvalLevel) -> ScenarioResult:
         """Run a single scenario and grade the result.
 
@@ -258,6 +265,7 @@ class DomainEvalHarness:
             grading_details=details,
         )
 
+    @log_call
     def _grade_output(
         self,
         agent_output: Any,
@@ -394,6 +402,7 @@ class DomainEvalHarness:
         return round(min(1.0, max(0.0, score)), 3), details
 
 
+@log_call
 def _deep_get(obj: Any, key: str) -> Any:
     """Get a value from a nested dict/list structure.
 

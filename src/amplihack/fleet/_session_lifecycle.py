@@ -36,6 +36,7 @@ from pathlib import Path
 from typing import Any
 
 from amplihack.fleet._cli_formatters import AdvanceResult, ScoutResult
+from amplihack.utils.logging_utils import log_call
 
 __all__ = [
     "FleetConfig",
@@ -75,9 +76,11 @@ class FleetSession:
     advance_results: list[AdvanceResult] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
 
+    @log_call
     def is_active(self) -> bool:
         return self.status == "active"
 
+    @log_call
     def summary(self) -> dict[str, Any]:
         return {
             "session_id": self.session_id,
@@ -93,6 +96,7 @@ class FleetSession:
 _active_sessions: dict[str, FleetSession] = {}
 
 
+@log_call
 def start_fleet_session(
     name: str,
     config: FleetConfig | None = None,
@@ -120,6 +124,7 @@ def start_fleet_session(
     return session
 
 
+@log_call
 def stop_fleet_session(session_id: str) -> bool:
     """Stop and finalize a fleet session.
 
@@ -142,6 +147,7 @@ def stop_fleet_session(session_id: str) -> bool:
     return True
 
 
+@log_call
 def get_fleet_session_status(session_id: str) -> dict[str, Any]:
     """Get status of a fleet session.
 
@@ -164,6 +170,7 @@ def get_fleet_session_status(session_id: str) -> dict[str, Any]:
     }
 
 
+@log_call
 def list_fleet_sessions(active_only: bool = False) -> list[dict[str, Any]]:
     """List fleet sessions.
 
@@ -192,6 +199,7 @@ def list_fleet_sessions(active_only: bool = False) -> list[dict[str, Any]]:
     )
 
 
+@log_call
 def run_scout(
     session: FleetSession,
     task: str,
@@ -226,6 +234,7 @@ def run_scout(
     return result
 
 
+@log_call
 def run_advance(
     session: FleetSession,
     task: str,
@@ -268,10 +277,12 @@ def run_advance(
 # --- Private persistence helpers ---
 
 
+@log_call
 def _get_sessions_dir() -> Path:
     return _SESSIONS_DIR
 
 
+@log_call
 def _persist_session(session: FleetSession) -> None:
     sessions_dir = _get_sessions_dir()
     sessions_dir.mkdir(parents=True, exist_ok=True)
@@ -317,6 +328,7 @@ def _persist_session(session: FleetSession) -> None:
     path.write_text(json.dumps(data, indent=2))
 
 
+@log_call
 def _load_session(session_id: str) -> FleetSession | None:
     path = _get_sessions_dir() / f"{session_id}.json"
     if not path.exists():

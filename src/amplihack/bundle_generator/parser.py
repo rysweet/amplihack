@@ -9,6 +9,8 @@ import logging
 import re
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 from .exceptions import ParsingError
 from .models import ParsedPrompt
 
@@ -82,6 +84,7 @@ class PromptParser:
         "advanced": ["advanced", "complex", "comprehensive", "sophisticated", "detailed"],
     }
 
+    @log_call
     def __init__(self, enable_advanced_nlp: bool = False):
         """
         Initialize the prompt parser.
@@ -101,6 +104,7 @@ class PromptParser:
                 logger.warning("spaCy not available, falling back to rule-based parsing")
                 self.enable_advanced_nlp = False
 
+    @log_call
     def parse(self, prompt: str, context: dict[str, Any] | None = None) -> ParsedPrompt:
         """
         Parse a natural language prompt.
@@ -152,6 +156,7 @@ class PromptParser:
             metadata=metadata,
         )
 
+    @log_call
     def extract_requirements(
         self, text: str, hints: list[str] | None = None
     ) -> dict[str, list[str]]:
@@ -202,6 +207,7 @@ class PromptParser:
 
         return requirements
 
+    @log_call
     def _clean_prompt(self, prompt: str) -> str:
         """Clean and normalize the prompt text."""
         # Remove extra whitespace
@@ -215,12 +221,14 @@ class PromptParser:
 
         return cleaned.strip()
 
+    @log_call
     def _extract_sentences(self, text: str) -> list[str]:
         """Extract sentences from text."""
         # Simple sentence splitting (can be improved with NLTK or spaCy)
         sentences = re.split(r"[.!?]+", text)
         return [s.strip() for s in sentences if s.strip()]
 
+    @log_call
     def _tokenize(self, text: str) -> list[str]:
         """Tokenize text into words."""
         # Convert to lowercase and split
@@ -232,6 +240,7 @@ class PromptParser:
         # Remove empty tokens
         return [token for token in tokens if token]
 
+    @log_call
     def _extract_key_phrases(self, text: str, tokens: list[str]) -> list[str]:
         """Extract key phrases from text."""
         key_phrases = []
@@ -262,6 +271,7 @@ class PromptParser:
 
         return list(set(key_phrases))  # Remove duplicates
 
+    @log_call
     def _extract_entities(self, text: str, tokens: list[str]) -> dict[str, list[str]]:
         """Extract named entities from text."""
         entities = {"agents": [], "capabilities": [], "technologies": [], "requirements": []}
@@ -299,6 +309,7 @@ class PromptParser:
 
         return entities
 
+    @log_call
     def _calculate_confidence(
         self, tokens: list[str], key_phrases: list[str], entities: dict[str, list[str]]
     ) -> float:
@@ -327,6 +338,7 @@ class PromptParser:
 
         return min(confidence, 1.0)
 
+    @log_call
     def identify_agent_count(self, parsed: ParsedPrompt) -> int:
         """
         Identify the number of agents requested.
@@ -368,6 +380,7 @@ class PromptParser:
         # Cap at 10 agents
         return min(count, 10)
 
+    @log_call
     def identify_complexity(self, parsed: ParsedPrompt) -> str:
         """
         Identify requested complexity level.

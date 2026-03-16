@@ -21,16 +21,19 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from amplihack.fleet._constants import CONFIDENCE_COPILOT_WAIT
-from amplihack.fleet._validation import is_dangerous_input
 from amplihack.fleet._backends import auto_detect_backend
+from amplihack.fleet._constants import CONFIDENCE_COPILOT_WAIT
 from amplihack.fleet._transcript import (
     build_rich_context,
-    extract_last_output as _extract_last_output,  # Re-exported for backward compatibility (tests import from here)
-    infer_jsonl_status as _infer_jsonl_status,
     read_local_transcript,
+)
+from amplihack.fleet._transcript import (
+    infer_jsonl_status as _infer_jsonl_status,
+)
+from amplihack.fleet._transcript import (
     summarize_entries as _summarize_entries,
 )
+from amplihack.fleet._validation import is_dangerous_input
 from amplihack.fleet.fleet_session_reasoner import (
     SessionContext,
     SessionReasoner,
@@ -47,6 +50,7 @@ logger = logging.getLogger(__name__)
 
 # System prompt loaded from separate file — keeps prompts out of code
 from amplihack.fleet.prompts import load_prompt
+from amplihack.utils.logging_utils import log_call
 
 COPILOT_SYSTEM_PROMPT = load_prompt("copilot_system.prompt")
 
@@ -62,6 +66,7 @@ class CopilotSuggestion:
     progress_pct: int | None = None
     timestamp: datetime = field(default_factory=datetime.now)
 
+    @log_call
     def summary(self) -> str:
         progress_str = f"{self.progress_pct}%" if self.progress_pct is not None else "unknown"
         lines = [
@@ -88,11 +93,13 @@ class SessionCopilot:
     _suggestions: list[CopilotSuggestion] = field(default_factory=list)
     _transcript_dir: str | None = None
 
+    @log_call
     def __post_init__(self):
         if self.reasoner is None:
             backend = auto_detect_backend()
             self.reasoner = SessionReasoner(backend=backend, dry_run=True)
 
+    @log_call
     def suggest(self) -> CopilotSuggestion:
         """Read the local transcript and suggest the next action.
 
@@ -157,6 +164,7 @@ class SessionCopilot:
             self._suggestions.append(suggestion)
             return suggestion
 
+    @log_call
     def _summarize_transcript(self, transcript: str) -> str:
         """Create a brief summary of the transcript for context.
 
@@ -165,6 +173,7 @@ class SessionCopilot:
         lines = transcript.strip().split("\n") if transcript else []
         return _summarize_entries(lines)
 
+    @log_call
     def _estimate_progress(self, transcript: str) -> int | None:
         """Progress estimate based on transcript patterns."""
         if not transcript:
@@ -182,6 +191,7 @@ class SessionCopilot:
         return None
 
     @property
+    @log_call
     def history(self) -> list[CopilotSuggestion]:
         """Return all suggestions made in this session."""
         return list(self._suggestions)

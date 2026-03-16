@@ -6,6 +6,8 @@ import sys
 import time
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 
 class SettingsManager:
     """Manages settings.json backup and restoration.
@@ -23,6 +25,7 @@ class SettingsManager:
         backup_path: Path to the current backup file (if created)
     """
 
+    @log_call
     def __init__(self, settings_path: Path, session_id: str, non_interactive: bool = False):
         """Initialize SettingsManager.
 
@@ -40,6 +43,7 @@ class SettingsManager:
         self.session_state_dir = Path.home() / ".claude" / "runtime" / "sessions"
         self.session_state_file = self.session_state_dir / f"{session_id}_backup.json"
 
+    @log_call
     def prompt_user_for_modification(self) -> bool:
         """Prompt user for permission to modify settings.json.
 
@@ -77,6 +81,7 @@ class SettingsManager:
             print("\nOperation cancelled by user")
             return False
 
+    @log_call
     def create_backup(self) -> tuple[bool, Path | None]:
         """Create a timestamped backup of settings.json.
 
@@ -117,6 +122,7 @@ class SettingsManager:
             print(f"Error creating backup: {e}")
             return (False, None)
 
+    @log_call
     def restore_backup(self) -> bool:
         """Restore settings.json from backup.
 
@@ -158,6 +164,7 @@ class SettingsManager:
             print(f"Error restoring backup: {e}")
             return False
 
+    @log_call
     def save_session_state(self) -> bool:
         """Persist backup information to session state file.
 
@@ -191,6 +198,7 @@ class SettingsManager:
             print(f"Error saving session state: {e}")
             return False
 
+    @log_call
     def load_session_state(self) -> bool:
         """Load backup information from session state file.
 
@@ -226,6 +234,7 @@ class SettingsManager:
             print(f"Error loading session state: {e}")
             return False
 
+    @log_call
     def cleanup_session_state(self) -> bool:
         """Remove session state file.
 

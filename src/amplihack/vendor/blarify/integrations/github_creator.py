@@ -19,6 +19,7 @@ from amplihack.vendor.blarify.repositories.graph_db_manager.dtos.code_node_dto i
 from amplihack.vendor.blarify.repositories.graph_db_manager.queries import get_code_nodes_by_ids_query
 from amplihack.vendor.blarify.repositories.version_control.dtos.blame_commit_dto import BlameCommitDto
 from amplihack.vendor.blarify.repositories.version_control.github import GitHub
+from amplihack.utils.logging_utils import log_call
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +43,7 @@ class GitHubCreator:
     operating independently and assuming the code graph already exists.
     """
 
+    @log_call
     def __init__(
         self,
         db_manager: AbstractDbManager,
@@ -68,6 +70,7 @@ class GitHubCreator:
             token=github_token, repo_owner=repo_owner, repo_name=repo_name, ref=ref
         )
 
+    @log_call
     def create_github_integration(
         self,
         pr_limit: int = 50,
@@ -166,6 +169,7 @@ class GitHubCreator:
 
         return result
 
+    @log_call
     def _process_pr(self, pr_data: dict[str, Any]) -> tuple[IntegrationNode, list[IntegrationNode]]:
         """Process a single PR and its commits.
 
@@ -223,6 +227,7 @@ class GitHubCreator:
         )
         return pr_node, commit_nodes
 
+    @log_call
     def _map_commits_to_code(self, commit_nodes: list[IntegrationNode]) -> list[Any]:
         """Map commits to existing code nodes and create MODIFIED_BY relationships.
 
@@ -259,6 +264,7 @@ class GitHubCreator:
         logger.info(f"Created {len(relationships)} MODIFIED_BY relationships")
         return relationships
 
+    @log_call
     def _find_affected_code_nodes(self, file_path: str, file_change: dict[str, Any]) -> list[Any]:
         """Find ALL code nodes affected by file changes.
 
@@ -386,6 +392,7 @@ class GitHubCreator:
 
         return affected_nodes
 
+    @log_call
     def _save_to_database(self, nodes: Sequence[IntegrationNode], relationships: list[Any]):
         """Save integration nodes and relationships to the database.
 
@@ -412,6 +419,7 @@ class GitHubCreator:
             f"Saved {len(node_objects)} nodes and {len(rel_objects)} relationships to database"
         )
 
+    @log_call
     def _query_all_code_nodes(self) -> list[CodeNodeDto]:
         """Query all code nodes from database.
 
@@ -448,6 +456,7 @@ class GitHubCreator:
             )
         return nodes
 
+    @log_call
     def _query_nodes_by_ids(self, node_ids: list[str]) -> list[CodeNodeDto]:
         """Query specific code nodes by their IDs.
 
@@ -483,6 +492,7 @@ class GitHubCreator:
             )
         return nodes
 
+    @log_call
     def create_github_integration_from_nodes(
         self, node_ids: list[str] | None = None, save_to_database: bool = True
     ) -> GitHubIntegrationResult:
@@ -586,6 +596,7 @@ class GitHubCreator:
 
         return result
 
+    @log_call
     def _create_integration_nodes_from_blame(
         self, blame_results: dict[str, list[BlameCommitDto]]
     ) -> tuple[list[PullRequestNode], list[CommitNode]]:
@@ -660,6 +671,7 @@ class GitHubCreator:
         )
         return pr_nodes, commit_nodes
 
+    @log_call
     def create_github_integration_from_latest_prs(
         self, pr_limit: int = 50, since_date: str | None = None, save_to_database: bool = True
     ) -> GitHubIntegrationResult:

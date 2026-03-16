@@ -1,3 +1,5 @@
+from amplihack.utils.logging_utils import log_call
+@log_call
 def normalize_node_path(node_path: str) -> str:
     """
     Normalizes a node path by removing the environment name and the diff identifier
@@ -12,6 +14,7 @@ def normalize_node_path(node_path: str) -> str:
     return "/".join(parts)
 
 
+@log_call
 def mark_deleted_or_added_lines(diff_text: str | None) -> str | None:
     if diff_text is None:
         return None
@@ -30,6 +33,7 @@ def mark_deleted_or_added_lines(diff_text: str | None) -> str | None:
     return "\n".join(result)
 
 
+@log_call
 def discover_keys_for_provider(provider: str) -> list[str]:
     """Discover all API keys for a given provider from environment variables.
 
@@ -63,6 +67,7 @@ def discover_keys_for_provider(provider: str) -> list[str]:
     return keys
 
 
+@log_call
 def validate_key(key: str, provider: str) -> bool:
     """Validate API key format for provider.
 

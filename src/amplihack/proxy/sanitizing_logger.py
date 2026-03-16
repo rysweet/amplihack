@@ -17,6 +17,8 @@ Created to address Issue #1997: API Keys Logged in Plain Text
 import logging
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 from .token_sanitizer import TokenSanitizer
 
 
@@ -28,6 +30,7 @@ class SanitizingLoggerAdapter(logging.LoggerAdapter):
     are leaked in log messages.
     """
 
+    @log_call
     def process(self, msg: Any, kwargs: dict[str, Any]) -> tuple[Any, dict[str, Any]]:
         """
         Process log message to sanitize sensitive data.
@@ -54,28 +57,34 @@ class SanitizingLoggerAdapter(logging.LoggerAdapter):
 
     # Expose common logger attributes for drop-in replacement compatibility
     @property
+    @log_call
     def handlers(self):
         """Access underlying logger handlers."""
         return self.logger.handlers
 
     @property
+    @log_call
     def level(self):
         """Access underlying logger level."""
         return self.logger.level
 
+    @log_call
     def addFilter(self, filter):
         """Add filter to underlying logger."""
         return self.logger.addFilter(filter)
 
+    @log_call
     def removeFilter(self, filter):
         """Remove filter from underlying logger."""
         return self.logger.removeFilter(filter)
 
+    @log_call
     def setLevel(self, level):
         """Set level on underlying logger."""
         return self.logger.setLevel(level)
 
 
+@log_call
 def get_sanitizing_logger(name: str) -> SanitizingLoggerAdapter:
     """
     Get a logger that automatically sanitizes sensitive data.

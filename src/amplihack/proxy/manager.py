@@ -10,6 +10,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 from .config import ProxyConfig
 from .env import ProxyEnvironment
 from .sanitizing_logger import get_sanitizing_logger
@@ -21,6 +23,7 @@ logger = get_sanitizing_logger(__name__)
 class ProxyManager:
     """Manages claude-code-proxy lifecycle."""
 
+    @log_call
     def __init__(self, proxy_config: ProxyConfig | None = None):
         """Initialize proxy manager.
 
@@ -48,6 +51,7 @@ class ProxyManager:
         self._stdout_log_file = None
         self._stderr_log_file = None
 
+    @log_call
     def ensure_proxy_installed(self) -> bool:
         """Ensure the proxy server can be run.
 
@@ -59,6 +63,7 @@ class ProxyManager:
         print("Using built-in proxy server from src/amplihack/proxy/server.py")
         return True
 
+    @log_call
     def setup_proxy_config(self) -> bool:
         """Set up proxy configuration.
 
@@ -80,6 +85,7 @@ class ProxyManager:
             print(f"Failed to copy proxy configuration: {e}")
             return False
 
+    @log_call
     def start_proxy(self) -> bool:
         """Start the claude-code-proxy server.
 
@@ -176,6 +182,7 @@ class ProxyManager:
             self._close_log_files()
             return False
 
+    @log_call
     def stop_proxy(self) -> None:
         """Stop the claude-code-proxy server."""
         if not self.proxy_process:
@@ -221,6 +228,7 @@ class ProxyManager:
         self._endpoint_cache.clear()
         self._api_version_cache.clear()
 
+    @log_call
     def is_running(self) -> bool:
         """Check if proxy is running.
 
@@ -229,6 +237,7 @@ class ProxyManager:
         """
         return self.proxy_process is not None and self.proxy_process.poll() is None
 
+    @log_call
     def get_proxy_url(self) -> str:
         """Get the proxy URL.
 
@@ -237,6 +246,7 @@ class ProxyManager:
         """
         return f"http://localhost:{self.proxy_port}"
 
+    @log_call
     def __enter__(self) -> "ProxyManager":
         """Context manager entry - starts proxy.
 
@@ -246,6 +256,7 @@ class ProxyManager:
         self.start_proxy()
         return self
 
+    @log_call
     def __exit__(
         self,
         exc_type: type[BaseException] | None,
@@ -261,6 +272,7 @@ class ProxyManager:
         """
         self.stop_proxy()
 
+    @log_call
     def get_azure_deployment(self, model_name: str) -> str | None:
         """Get Azure deployment name for OpenAI model.
 
@@ -274,6 +286,7 @@ class ProxyManager:
             return None
         return self.proxy_config.get_azure_deployment(model_name)
 
+    @log_call
     def is_azure_mode(self) -> bool:
         """Check if proxy is configured for Azure mode.
 
@@ -284,6 +297,7 @@ class ProxyManager:
             return False
         return self.proxy_config.is_azure_endpoint()
 
+    @log_call
     def get_active_config_type(self) -> str:
         """Get the active configuration type.
 
@@ -300,6 +314,7 @@ class ProxyManager:
 
         return self.proxy_config.get_endpoint_type()
 
+    @log_call
     def get_azure_deployments(self) -> dict[str, str]:
         """Get Azure deployment mappings.
 
@@ -323,6 +338,7 @@ class ProxyManager:
 
         return deployments
 
+    @log_call
     def transform_request_for_azure(self, request_data: dict[str, Any]) -> dict[str, Any]:
         """Transform OpenAI request format to Azure format.
 
@@ -339,6 +355,7 @@ class ProxyManager:
 
         return azure_request
 
+    @log_call
     def construct_azure_url(self, model: str) -> str | None:
         """Construct Azure OpenAI API URL for a specific model.
 
@@ -388,6 +405,7 @@ class ProxyManager:
         self._url_template_cache[cache_key] = url
         return url
 
+    @log_call
     def normalize_azure_response(
         self, response: dict[str, Any], original_model: str
     ) -> dict[str, Any]:
@@ -408,6 +426,7 @@ class ProxyManager:
 
         return normalized
 
+    @log_call
     def _validate_git_url(self, url: str) -> bool:
         """Validate git repository URL for security.
 
@@ -421,6 +440,7 @@ class ProxyManager:
         allowed_patterns = [r"https://github\.com/[a-zA-Z0-9\-_.]+/[a-zA-Z0-9\-_.]+\.git$"]
         return any(re.match(pattern, url) for pattern in allowed_patterns)
 
+    @log_call
     def _sanitize_subprocess_error(self, error_msg: str) -> str:
         """Sanitize subprocess error messages to prevent credential leakage.
 
@@ -447,6 +467,7 @@ class ProxyManager:
 
         return sanitized
 
+    @log_call
     def _is_safe_module_path(self, module_path: str) -> bool:
         """Validate that a module path is safe for execution.
 
@@ -478,6 +499,7 @@ class ProxyManager:
             for prefix in safe_prefixes
         )
 
+    @log_call
     def _is_safe_file_path(self, file_path: Path) -> bool:
         """Validate that a file path is safe and within expected directories.
 
@@ -513,6 +535,7 @@ class ProxyManager:
             # If path resolution fails, consider it unsafe
             return False
 
+    @log_call
     def _sanitize_path_for_display(self, file_path: Path) -> str:
         """Sanitize file path for safe display in logs.
 
@@ -532,6 +555,7 @@ class ProxyManager:
         except Exception:
             return "<path unavailable>"
 
+    @log_call
     def _build_safe_subprocess_command(self, command: list[str]) -> list[str] | None:
         """Build a safe subprocess command with validation.
 
@@ -569,6 +593,7 @@ class ProxyManager:
 
         return safe_command
 
+    @log_call
     def _is_safe_inline_code(self, code: str) -> bool:
         """Validate that inline code is safe for execution.
 
@@ -589,6 +614,7 @@ class ProxyManager:
 
         return any(re.match(pattern, code.strip()) for pattern in safe_patterns)
 
+    @log_call
     def _create_secure_env(self) -> dict[str, str]:
         """Create a secure environment dictionary.
 
@@ -618,6 +644,7 @@ class ProxyManager:
 
         return env
 
+    @log_call
     def _get_secure_start_command(self, proxy_repo: Path) -> list[str] | None:
         """Get a secure start command for the proxy.
 
@@ -636,6 +663,7 @@ class ProxyManager:
             return ["npm", "start"]
         return None
 
+    @log_call
     def _get_proxy_start_command(self) -> list[str] | None:
         """Determine the correct command to start the proxy server.
 
@@ -749,6 +777,7 @@ class ProxyManager:
 
         return None
 
+    @log_call
     def _close_log_files(self) -> None:
         """Close proxy log files safely."""
         if self._stdout_log_file:
@@ -765,6 +794,7 @@ class ProxyManager:
                 logger.debug(f"Error closing stderr log file: {e}")
             self._stderr_log_file = None
 
+    @log_call
     def _display_log_locations(self) -> None:
         """Display proxy log file locations."""
         try:

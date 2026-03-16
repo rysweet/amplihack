@@ -9,7 +9,10 @@ This script:
 4. Keeps the rest of the file intact
 """
 
+from amplihack.utils.logging_utils import log_call
 
+
+@log_call
 def refactor_integrated_proxy():
     """Refactor integrated_proxy.py to use modular imports."""
 

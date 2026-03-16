@@ -14,13 +14,13 @@ from textual import work
 from textual.widgets import DataTable, Input, Select
 from textual.worker import get_current_worker
 
-from amplihack.fleet._validation import (
-    validate_session_name,
-    validate_vm_name,
-)
 from amplihack.fleet._backends import AnthropicBackend
 from amplihack.fleet._session_context import SessionDecision
+from amplihack.fleet._validation import (
+    validate_vm_name,
+)
 from amplihack.fleet.fleet_session_reasoner import SessionReasoner
+from amplihack.utils.logging_utils import log_call
 
 __all__ = ["_WorkersMixin"]
 
@@ -35,6 +35,7 @@ class _WorkersMixin:
     # ------------------------------------------------------------------
 
     @work(thread=True)
+    @log_call
     def _adopt_session_bg(self, vm_name: str, session_name: str) -> None:
         """Run SessionAdopter in a background thread."""
         worker = get_current_worker()
@@ -57,6 +58,7 @@ class _WorkersMixin:
         self.call_from_thread(self._schedule_refresh)
 
     @work(thread=True)
+    @log_call
     def _fetch_tmux_capture(self, vm_name: str, session_name: str) -> None:
         """Fetch full tmux capture from a session in background."""
         import shlex
@@ -69,17 +71,22 @@ class _WorkersMixin:
         key = f"{vm_name}/{session_name}"
 
         from amplihack.fleet._constants import DEFAULT_DETAIL_CAPTURE_LINES
+
         cmd = f"tmux capture-pane -t {shlex.quote(session_name)} -p -S -{DEFAULT_DETAIL_CAPTURE_LINES}"
         capture_text = ""
         try:
             result = subprocess.run(
                 [self._fleet.azlin_path, "connect", vm_name, "--no-tmux", "--", cmd],
-                capture_output=True, text=True, timeout=60,
+                capture_output=True,
+                text=True,
+                timeout=60,
             )
             if result.returncode == 0:
                 capture_text = result.stdout
         except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
-            logger.warning("Failed to capture tmux output for %s/%s: %s", vm_name, session_name, exc)
+            logger.warning(
+                "Failed to capture tmux output for %s/%s: %s", vm_name, session_name, exc
+            )
             capture_text = "(failed to capture tmux output)"
         if worker.is_cancelled:
             return
@@ -89,19 +96,25 @@ class _WorkersMixin:
         self.call_from_thread(self._show_tmux_capture, capture_text)
 
     @work(thread=True)
+    @log_call
     def _run_reasoning(self, vm_name: str, session_name: str) -> None:
         """Call SessionReasoner in a background thread."""
         worker = get_current_worker()
         key = f"{vm_name}/{session_name}"
         try:
             reasoner = SessionReasoner(
-                azlin_path=self._fleet.azlin_path, backend=AnthropicBackend(), dry_run=True,
+                azlin_path=self._fleet.azlin_path,
+                backend=AnthropicBackend(),
+                dry_run=True,
             )
             decision = reasoner.reason_about_session(vm_name=vm_name, session_name=session_name)
         except Exception as exc:
             decision = SessionDecision(
-                session_name=session_name, vm_name=vm_name,
-                action="escalate", reasoning=f"Reasoning failed: {exc}", confidence=0.0,
+                session_name=session_name,
+                vm_name=vm_name,
+                action="escalate",
+                reasoning=f"Reasoning failed: {exc}",
+                confidence=0.0,
             )
         if worker.is_cancelled:
             return
@@ -111,6 +124,7 @@ class _WorkersMixin:
         self.call_from_thread(self._show_proposal, decision)
 
     @work(thread=True)
+    @log_call
     def _create_session_bg(self, vm_name: str, agent_type: str) -> None:
         """Create a new tmux session on a VM in background."""
         import shlex
@@ -136,7 +150,9 @@ class _WorkersMixin:
         try:
             result = subprocess.run(
                 [self._fleet.azlin_path, "connect", vm_name, "--no-tmux", "--", remote_cmd],
-                capture_output=True, text=True, timeout=60,
+                capture_output=True,
+                text=True,
+                timeout=60,
             )
             if result.returncode == 0:
                 msg = f"Created session '{session_name}' on {vm_name} running {agent_type}"
@@ -153,12 +169,15 @@ class _WorkersMixin:
         self.call_from_thread(self._schedule_refresh)
 
     @work(thread=True)
+    @log_call
     def _execute_decision_bg(self, decision: SessionDecision) -> None:
         """Execute a decision via SessionReasoner in background."""
         worker = get_current_worker()
         try:
             reasoner = SessionReasoner(
-                azlin_path=self._fleet.azlin_path, backend=AnthropicBackend(), dry_run=False,
+                azlin_path=self._fleet.azlin_path,
+                backend=AnthropicBackend(),
+                dry_run=False,
             )
             reasoner.execute_decision(decision)
             msg = f"Applied: {decision.action}"
@@ -174,6 +193,7 @@ class _WorkersMixin:
     # Project management (UI-thread)
     # ------------------------------------------------------------------
 
+    @log_call
     def _add_project_from_input(self) -> None:
         """Add a project from the repo Input widget."""
         repo_input = self.query_one("#project-repo-input", Input)
@@ -190,6 +210,7 @@ class _WorkersMixin:
         self._refresh_projects_table()
         self.notify(f"Added project: {repo_url}")
 
+    @log_call
     def _remove_selected_project(self) -> None:
         """Remove the currently selected project from the table."""
         proj_table = self.query_one("#project-table", DataTable)
@@ -215,6 +236,7 @@ class _WorkersMixin:
     # New session creation (UI-thread)
     # ------------------------------------------------------------------
 
+    @log_call
     def _populate_vm_select(self) -> None:
         """Fill the VM select dropdown with running VMs from cache."""
         all_vms: set[str] = set()
@@ -227,6 +249,7 @@ class _WorkersMixin:
         vm_select = self.query_one("#vm-select", Select)
         vm_select.set_options([(name, name) for name in sorted(all_vms)])
 
+    @log_call
     def _create_new_session(self) -> None:
         """Create a new agent session on the selected VM."""
         vm_select = self.query_one("#vm-select", Select)

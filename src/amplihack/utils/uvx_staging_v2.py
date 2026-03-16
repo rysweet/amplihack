@@ -7,6 +7,8 @@ using the immutable data structures and proper error handling.
 import shutil
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 from .cleanup_registry import CleanupRegistry
 from .uvx_detection import detect_uvx_deployment, resolve_framework_paths
 from .uvx_models import (
@@ -23,6 +25,7 @@ from .uvx_settings_manager import uvx_settings_manager
 class UVXStager:
     """Handles UVX file staging operations with clean state management."""
 
+    @log_call
     def __init__(
         self,
         config: UVXConfiguration | None = None,
@@ -38,6 +41,7 @@ class UVXStager:
         self.cleanup_registry = cleanup_registry
         self._debug_enabled = self.config.is_debug_enabled
 
+    @log_call
     def _debug_log(self, message: str) -> None:
         """Log debug message if debugging is enabled."""
         if self._debug_enabled:
@@ -45,6 +49,7 @@ class UVXStager:
 
             print(f"[UVX STAGING DEBUG] {message}", file=sys.stderr)
 
+    @log_call
     def stage_framework_files(self, session_state: UVXSessionState | None = None) -> StagingResult:
         """Stage framework files from UVX installation to working directory.
 
@@ -111,6 +116,7 @@ class UVXStager:
 
         return result
 
+    @log_call
     def _stage_from_uvx_installation(
         self, target_location: FrameworkLocation, session_state: UVXSessionState
     ) -> StagingResult:
@@ -144,6 +150,7 @@ class UVXStager:
         self._debug_log(f"Staging from UVX source: {source_root}")
         return self._perform_staging_operations(source_root, target_location.root_path, result)
 
+    @log_call
     def _stage_from_resolved_location(
         self, source_location: FrameworkLocation, session_state: UVXSessionState
     ) -> StagingResult:
@@ -166,6 +173,7 @@ class UVXStager:
         self._debug_log(f"Staging from resolved location: {source_location.root_path}")
         return self._perform_staging_operations(source_location.root_path, target_dir, result)
 
+    @log_call
     def _perform_staging_operations(
         self, source_root: Path, target_root: Path, result: StagingResult
     ) -> StagingResult:
@@ -251,6 +259,7 @@ class UVXStager:
 
         return result
 
+    @log_call
     def _find_stageable_items(self, source_root: Path) -> list[str]:
         """Find all items in source root that should be staged.
 
@@ -267,6 +276,7 @@ class UVXStager:
             self._debug_log(f"Cannot read source directory: {source_root}")
             return []
 
+    @log_call
     def _create_backup(self, target_path: Path) -> None:
         """Create backup of existing target file/directory.
 
@@ -283,6 +293,7 @@ class UVXStager:
         except Exception as e:
             self._debug_log(f"Failed to create backup for {target_path}: {e}")
 
+    @log_call
     def cleanup_staged_files(self, staging_result: StagingResult) -> int:
         """Clean up staged files using CleanupHandler for security.
 
@@ -318,6 +329,7 @@ class UVXStager:
 
         return cleaned_count
 
+    @log_call
     def _stage_claude_directory(self, source_path: Path, target_path: Path) -> bool:
         """Stage .claude directory with special handling for settings.json.
 
@@ -359,6 +371,7 @@ class UVXStager:
             self._debug_log(f"Error staging .claude directory: {e}")
             return False
 
+    @log_call
     def _stage_settings_json(self, source_settings: Path, target_settings: Path) -> bool:
         """Stage settings.json with UVX-specific optimizations.
 
@@ -390,6 +403,7 @@ class UVXStager:
 _default_stager = UVXStager()
 
 
+@log_call
 def stage_uvx_framework(config: UVXConfiguration | None = None) -> bool:
     """Stage UVX framework files using default stager.
 
@@ -404,6 +418,7 @@ def stage_uvx_framework(config: UVXConfiguration | None = None) -> bool:
     return result.is_successful
 
 
+@log_call
 def create_uvx_session() -> UVXSessionState:
     """Create and initialize a new UVX session state.
 

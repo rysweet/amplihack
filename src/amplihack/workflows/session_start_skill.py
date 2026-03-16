@@ -8,6 +8,8 @@ import logging
 import time
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 from .classifier import WorkflowClassifier
 from .execution_tier_cascade import ExecutionTierCascade
 from .session_start import SessionStartDetector
@@ -18,6 +20,7 @@ logger = logging.getLogger(__name__)
 class SessionStartClassifierSkill:
     """Orchestrates session start workflow classification and execution."""
 
+    @log_call
     def __init__(
         self,
         classifier: WorkflowClassifier | None = None,
@@ -42,6 +45,7 @@ class SessionStartClassifierSkill:
         )
         self._detector = detector or SessionStartDetector()
 
+    @log_call
     def process(self, context: dict[str, Any]) -> dict[str, Any]:
         """Process session start: classify → execute → announce.
 

@@ -17,6 +17,7 @@ from amplihack.vendor.blarify.repositories.version_control.dtos.blame_line_range
 from amplihack.vendor.blarify.repositories.version_control.dtos.pull_request_info_dto import PullRequestInfoDto
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+from amplihack.utils.logging_utils import log_call
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,7 @@ class GitHub(AbstractVersionController):
     commits, and file changes using the GitHub API v3.
     """
 
+    @log_call
     def __init__(
         self,
         token: str | None = None,
@@ -73,10 +75,12 @@ class GitHub(AbstractVersionController):
         if self.token:
             self.session.headers["Authorization"] = f"token {self.token}"
 
+    @log_call
     def _get_repo_url(self) -> str:
         """Get the repository API URL."""
         return f"{self.base_url}/repos/{self.repo_owner}/{self.repo_name}"
 
+    @log_call
     def _to_blame_line(self, node_line: int) -> int:
         """Convert 0-indexed node line to 1-indexed blame line.
 
@@ -88,6 +92,7 @@ class GitHub(AbstractVersionController):
         """
         return node_line + 1
 
+    @log_call
     def _from_blame_line(self, blame_line: int) -> int:
         """Convert 1-indexed blame line to 0-indexed node line.
 
@@ -99,6 +104,7 @@ class GitHub(AbstractVersionController):
         """
         return blame_line - 1
 
+    @log_call
     def _normalize_file_path(self, file_path: str) -> str:
         """Normalize file path to be relative to repository root.
 
@@ -132,6 +138,7 @@ class GitHub(AbstractVersionController):
 
         return clean_path
 
+    @log_call
     def _make_request(
         self,
         method: str,
@@ -169,6 +176,7 @@ class GitHub(AbstractVersionController):
             logger.error(f"GitHub API request failed: {e}")
             raise
 
+    @log_call
     def fetch_pull_requests(
         self, limit: int = 50, since_date: datetime | None = None
     ) -> list[dict[str, Any]]:
@@ -252,6 +260,7 @@ class GitHub(AbstractVersionController):
         logger.info(f"Fetched {len(prs)} pull requests from GitHub")
         return prs[:limit]
 
+    @log_call
     def fetch_commits(
         self,
         pr_number: int | None = None,
@@ -351,6 +360,7 @@ class GitHub(AbstractVersionController):
         logger.info(f"Fetched {len(commits)} commits from GitHub")
         return commits[:limit]
 
+    @log_call
     def fetch_commit_changes(self, commit_sha: str) -> list[dict[str, Any]]:
         """Fetch file changes for a specific commit.
 
@@ -384,6 +394,7 @@ class GitHub(AbstractVersionController):
             logger.error(f"Error fetching commit changes for {commit_sha}: {e}")
             return []
 
+    @log_call
     def fetch_commit_patch(self, commit_sha: str) -> str:
         """Fetch the full patch for a commit.
 
@@ -412,6 +423,7 @@ class GitHub(AbstractVersionController):
             logger.error(f"Error fetching commit patch for {commit_sha}: {e}")
             return ""
 
+    @log_call
     def fetch_file_at_commit(self, file_path: str, commit_sha: str) -> str | None:
         """Fetch the contents of a file at a specific commit.
 
@@ -437,6 +449,7 @@ class GitHub(AbstractVersionController):
 
         return None
 
+    @log_call
     def get_repository_info(self) -> dict[str, Any]:
         """Get information about the repository.
 
@@ -471,6 +484,7 @@ class GitHub(AbstractVersionController):
             logger.error(f"Error getting repository info: {e}")
             return {}
 
+    @log_call
     def test_connection(self) -> bool:
         """Test the connection to GitHub.
 
@@ -486,6 +500,7 @@ class GitHub(AbstractVersionController):
             logger.error(f"GitHub connection test failed: {e}")
             return False
 
+    @log_call
     def get_ref_commit_info(self, ref: str = "HEAD") -> dict[str, Any] | None:
         """Get commit information for a specific ref (branch, tag, or commit SHA).
 
@@ -586,6 +601,7 @@ class GitHub(AbstractVersionController):
 
     # GraphQL API Methods
 
+    @log_call
     def _execute_graphql_query(self, query: str, variables: dict[str, Any]) -> dict[str, Any]:
         """Execute a GraphQL query against GitHub API.
 
@@ -620,6 +636,7 @@ class GitHub(AbstractVersionController):
             logger.error(f"GraphQL query failed: {e}")
             raise
 
+    @log_call
     def _build_blame_query(self, file_path: str, ref: str = "HEAD") -> tuple[str, dict[str, Any]]:
         """Build lightweight GraphQL query for blame information.
 
@@ -704,6 +721,7 @@ class GitHub(AbstractVersionController):
 
         return query, variables
 
+    @log_call
     def _fetch_commit_details_batch(
         self, commit_shas: list[str], batch_size: int = 20
     ) -> dict[str, dict[str, Any]]:
@@ -756,6 +774,7 @@ class GitHub(AbstractVersionController):
 
         return all_details
 
+    @log_call
     def _build_commit_details_query(self, shas: list[str]) -> dict[str, Any]:
         """Build GraphQL query to fetch details for multiple commits.
 
@@ -807,6 +826,7 @@ class GitHub(AbstractVersionController):
 
         return {"query": query, "variables": {"owner": self.repo_owner, "name": self.repo_name}}
 
+    @log_call
     def _parse_commit_details_response(
         self, response: dict[str, Any], shas: list[str]
     ) -> dict[str, dict[str, Any]]:
@@ -864,6 +884,7 @@ class GitHub(AbstractVersionController):
 
         return details
 
+    @log_call
     def _parse_blame_response(self, response: dict[str, Any]) -> list[BlameCommitDto]:
         """Parse lightweight GraphQL blame response into partial commit list.
 
@@ -949,6 +970,7 @@ class GitHub(AbstractVersionController):
 
         return commits
 
+    @log_call
     def blame_commits_for_range(
         self, file_path: str, start_line: int, end_line: int
     ) -> list[BlameCommitDto]:
@@ -1041,6 +1063,7 @@ class GitHub(AbstractVersionController):
         )
         return complete_commits
 
+    @log_call
     def blame_commits_for_nodes(self, nodes: list[CodeNodeDto]) -> dict[str, list[BlameCommitDto]]:
         """Get commits for multiple code nodes efficiently.
 
@@ -1089,6 +1112,7 @@ class GitHub(AbstractVersionController):
         logger.info(f"Processed blame for {len(nodes)} nodes across {len(nodes_by_file)} files")
         return results
 
+    @log_call
     def _merge_line_ranges(self, nodes: list[CodeNodeDto]) -> list[dict[str, Any]]:
         """Merge overlapping or adjacent line ranges to minimize API calls.
 
@@ -1133,6 +1157,7 @@ class GitHub(AbstractVersionController):
         logger.debug(f"Merged {len(nodes)} nodes into {len(merged)} ranges")
         return merged
 
+    @log_call
     def _ranges_overlap(
         self, line_ranges: list[dict[str, int]], start_line: int, end_line: int
     ) -> bool:
@@ -1156,6 +1181,7 @@ class GitHub(AbstractVersionController):
 
         return False
 
+    @log_call
     def extract_relevant_patch(
         self, full_patch: str, file_path: str, start_line: int, end_line: int
     ) -> str:

@@ -16,6 +16,8 @@ from dataclasses import dataclass
 
 import anthropic  # type: ignore[import-untyped]
 
+from amplihack.utils.logging_utils import log_call
+
 logger = logging.getLogger(__name__)
 
 
@@ -28,6 +30,7 @@ class GradeResult:
     vote_scores: list[float] | None = None  # Individual vote scores when multi-vote
 
 
+@log_call
 def _extract_json(text: str) -> dict:
     """Extract a JSON object from LLM response text.
 
@@ -76,6 +79,7 @@ def _extract_json(text: str) -> dict:
     )
 
 
+@log_call
 def _build_grading_prompt(question: str, expected: str, actual: str, level: str) -> str:
     """Build the grading prompt for LLM evaluation.
 
@@ -159,6 +163,7 @@ Return ONLY a JSON object with this structure:
 {{"score": 0.85, "reasoning": "Brief explanation of grade"}}"""
 
 
+@log_call
 def _single_grade_call(client: anthropic.Anthropic, model: str, prompt: str) -> GradeResult:
     """Execute a single grading LLM call.
 
@@ -185,6 +190,7 @@ def _single_grade_call(client: anthropic.Anthropic, model: str, prompt: str) -> 
     )
 
 
+@log_call
 def grade_answer(
     question: str,
     expected: str,

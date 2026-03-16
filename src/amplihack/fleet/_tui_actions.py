@@ -24,9 +24,10 @@ from textual.widgets import (
 from amplihack.fleet._tui_workers import _WorkersMixin
 from amplihack.fleet._validation import DANGEROUS_PATTERNS, is_dangerous_input
 from amplihack.fleet.fleet_session_reasoner import SessionDecision
+from amplihack.utils.logging_utils import log_call
 
 if TYPE_CHECKING:
-    from amplihack.fleet._tui_refresh import _CachedSession
+    pass
 
 __all__ = ["_ActionsMixin"]
 
@@ -44,6 +45,7 @@ class _ActionsMixin(_WorkersMixin):
     # DataTable cursor event
     # ------------------------------------------------------------------
 
+    @log_call
     def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
         """Update the preview pane when the cursor moves."""
         if event.row_key is None:
@@ -78,13 +80,16 @@ class _ActionsMixin(_WorkersMixin):
     # Keybinding actions
     # ------------------------------------------------------------------
 
+    @log_call
     def action_force_refresh(self) -> None:
         self._schedule_refresh()
         self.notify("Refreshing fleet data...")
 
+    @log_call
     def action_toggle_logo(self) -> None:
         self.query_one("#pirate-logo", Static).toggle_class("hidden")
 
+    @log_call
     def action_adopt_session(self) -> None:
         """Adopt the highlighted unmanaged session into fleet management."""
         if not self._selected_key:
@@ -107,6 +112,7 @@ class _ActionsMixin(_WorkersMixin):
         self.notify(f"Adopting {vm_name}/{session_name}...")
         self._adopt_session_bg(vm_name, session_name)
 
+    @log_call
     def action_open_detail(self) -> None:
         """Switch to Session Detail tab and kick off tmux capture."""
         if not self._selected_key:
@@ -127,6 +133,7 @@ class _ActionsMixin(_WorkersMixin):
         self.query_one("#proposal-text", Static).update("Fetching tmux capture...")
         self._fetch_tmux_capture(entry.view.vm_name, entry.view.session_name)
 
+    @log_call
     def _show_tmux_capture(self, text: str) -> None:
         """Display the tmux capture in the detail view (main thread)."""
         log = self.query_one("#tmux-capture", RichLog)
@@ -137,6 +144,7 @@ class _ActionsMixin(_WorkersMixin):
             "Press [bold]d[/bold] to run dry-run reasoning for this session."
         )
 
+    @log_call
     def action_back_to_fleet(self) -> None:
         """Go back one level. Editor→Detail, Detail→Fleet, anywhere→Fleet."""
         tabs = self.query_one("#tabs", TabbedContent)
@@ -157,18 +165,23 @@ class _ActionsMixin(_WorkersMixin):
         "new-session-tab",
     ]
 
+    @log_call
     def action_tab_fleet(self) -> None:
         self.query_one("#tabs", TabbedContent).active = "fleet-tab"
 
+    @log_call
     def action_tab_detail(self) -> None:
         self.query_one("#tabs", TabbedContent).active = "detail-tab"
 
+    @log_call
     def action_tab_editor(self) -> None:
         self.query_one("#tabs", TabbedContent).active = "editor-tab"
 
+    @log_call
     def action_tab_projects(self) -> None:
         self.query_one("#tabs", TabbedContent).active = "projects-tab"
 
+    @log_call
     def action_tab_next(self) -> None:
         """Advance to the next tab, wrapping around at the end."""
         tabs = self.query_one("#tabs", TabbedContent)
@@ -178,6 +191,7 @@ class _ActionsMixin(_WorkersMixin):
         except (ValueError, Exception):
             tabs.active = self._TAB_ORDER[0]
 
+    @log_call
     def action_tab_prev(self) -> None:
         """Move to the previous tab, wrapping around at the start."""
         tabs = self.query_one("#tabs", TabbedContent)
@@ -187,6 +201,7 @@ class _ActionsMixin(_WorkersMixin):
         except (ValueError, Exception):
             tabs.active = self._TAB_ORDER[0]
 
+    @log_call
     def action_dry_run_session(self) -> None:
         """Run LLM reasoning for the currently selected session."""
         if not self._selected_key:
@@ -205,6 +220,7 @@ class _ActionsMixin(_WorkersMixin):
         self.query_one("#proposal-text", Static).update("[yellow]Running LLM reasoning...[/yellow]")
         self._run_reasoning(entry.view.vm_name, entry.view.session_name)
 
+    @log_call
     def _show_proposal(self, decision: SessionDecision) -> None:
         """Display the proposal in the detail view (main thread)."""
         lines = [
@@ -217,6 +233,7 @@ class _ActionsMixin(_WorkersMixin):
             lines.append(f'[bold]Input:[/bold] "{display}"')
         self.query_one("#proposal-text", Static).update("\n".join(lines))
 
+    @log_call
     def action_edit_proposal(self) -> None:
         """Switch to Action Editor tab with the proposal pre-filled."""
         if not self._selected_key:
@@ -235,6 +252,7 @@ class _ActionsMixin(_WorkersMixin):
             f"[dim]Session:[/dim] {self._selected_key}"
         )
 
+    @log_call
     def action_apply_proposal(self) -> None:
         """Apply the current proposal as-is."""
         if not self._selected_key:
@@ -246,6 +264,7 @@ class _ActionsMixin(_WorkersMixin):
             return
         self._apply_decision(entry.proposal)
 
+    @log_call
     def action_new_session(self) -> None:
         """Switch to the New Session tab."""
         self.query_one("#tabs", TabbedContent).active = "new-session-tab"
@@ -255,6 +274,7 @@ class _ActionsMixin(_WorkersMixin):
     # Button handlers
     # ------------------------------------------------------------------
 
+    @log_call
     def on_button_pressed(self, event: Button.Pressed) -> None:
         button_id = event.button.id
         if button_id == "btn-edit":
@@ -275,6 +295,7 @@ class _ActionsMixin(_WorkersMixin):
         elif button_id == "btn-create-session":
             self._create_new_session()
 
+    @log_call
     def _apply_from_editor(self) -> None:
         """Build a decision from the editor fields and apply it."""
         if not self._selected_key:
@@ -287,13 +308,17 @@ class _ActionsMixin(_WorkersMixin):
         editor = self.query_one("#input-editor", TextArea)
         action_type = str(select.value) if select.value is not Select.BLANK else "wait"
         decision = SessionDecision(
-            session_name=entry.view.session_name, vm_name=entry.view.vm_name,
-            action=action_type, input_text=editor.text.strip(),
-            reasoning="Manually edited by operator", confidence=1.0,
+            session_name=entry.view.session_name,
+            vm_name=entry.view.vm_name,
+            action=action_type,
+            input_text=editor.text.strip(),
+            reasoning="Manually edited by operator",
+            confidence=1.0,
         )
         self._apply_decision(decision)
         self.query_one("#tabs", TabbedContent).active = "detail-tab"
 
+    @log_call
     def _apply_decision(self, decision: SessionDecision) -> None:
         """Validate and apply a decision (dangerous input check)."""
         if decision.action == "send_input" and decision.input_text:
@@ -301,7 +326,8 @@ class _ActionsMixin(_WorkersMixin):
                 self.notify(
                     f"BLOCKED: Input contains dangerous pattern. "
                     f"Matches against: {', '.join(p.pattern for p in DANGEROUS_PATTERNS[:3])}...",
-                    severity="error", timeout=8,
+                    severity="error",
+                    timeout=8,
                 )
                 return
         self._execute_decision_bg(decision)

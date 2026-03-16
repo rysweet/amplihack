@@ -6,27 +6,28 @@ All unit tests — no external dependencies (subprocess mocked).
 import time
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from amplihack.fleet.fleet_observer import (
     FleetObserver,
-    ObservationResult,
 )
 from amplihack.fleet.fleet_state import AgentStatus, TmuxSessionInfo
+from amplihack.utils.logging_utils import log_call
 
 
 class TestFleetObserverClassification:
     """Unit tests for output classification logic."""
 
+    @log_call
     def _make_observer(self):
         observer = FleetObserver()
         observer.stuck_threshold_seconds = 1.0  # Speed up tests
         return observer
 
+    @log_call
     def _classify(self, observer, lines, vm="vm-1", session="sess-1"):
         """Helper to call _classify_output directly."""
         return observer._classify_output(lines, vm, session)
 
+    @log_call
     def test_detect_completion_pr_created(self):
         observer = self._make_observer()
         lines = [
@@ -37,18 +38,21 @@ class TestFleetObserverClassification:
         assert status == AgentStatus.COMPLETED
         assert conf >= 0.8
 
+    @log_call
     def test_detect_completion_goal_achieved(self):
         observer = self._make_observer()
         lines = ["GOAL_STATUS: ACHIEVED", "Summary: All tasks completed"]
         status, conf, _ = self._classify(observer, lines)
         assert status == AgentStatus.COMPLETED
 
+    @log_call
     def test_detect_completion_workflow_complete(self):
         observer = self._make_observer()
         lines = ["Workflow Complete", "22/22 steps executed"]
         status, conf, _ = self._classify(observer, lines)
         assert status == AgentStatus.COMPLETED
 
+    @log_call
     def test_detect_error_traceback(self):
         observer = self._make_observer()
         lines = [
@@ -60,18 +64,21 @@ class TestFleetObserverClassification:
         assert status == AgentStatus.ERROR
         assert conf >= 0.8
 
+    @log_call
     def test_detect_error_goal_not_achieved(self):
         observer = self._make_observer()
         lines = ["GOAL_STATUS: NOT_ACHIEVED", "Failed to complete task"]
         status, conf, _ = self._classify(observer, lines)
         assert status == AgentStatus.ERROR
 
+    @log_call
     def test_detect_error_authentication_failed(self):
         observer = self._make_observer()
         lines = ["Authentication failed", "Please check credentials"]
         status, conf, _ = self._classify(observer, lines)
         assert status == AgentStatus.ERROR
 
+    @log_call
     def test_detect_waiting_input_question(self):
         """Generic questions no longer trigger WAITING_INPUT (L5: narrowed patterns)."""
         observer = self._make_observer()
@@ -80,30 +87,35 @@ class TestFleetObserverClassification:
         # After L5 fix, a bare question mark is not enough to classify as waiting
         assert status != AgentStatus.WAITING_INPUT
 
+    @log_call
     def test_detect_waiting_input_yn(self):
         observer = self._make_observer()
         lines = ["Continue with this approach? [Y/n]"]
         status, conf, _ = self._classify(observer, lines)
         assert status == AgentStatus.WAITING_INPUT
 
+    @log_call
     def test_detect_idle_shell_prompt(self):
         observer = self._make_observer()
         lines = ["azureuser@fleet-exp-1:~/code$ "]
         status, conf, _ = self._classify(observer, lines)
         assert status == AgentStatus.IDLE
 
+    @log_call
     def test_detect_running_step(self):
         observer = self._make_observer()
         lines = ["Step 5: Implementing authentication module", "Reading file auth.py"]
         status, conf, _ = self._classify(observer, lines)
         assert status == AgentStatus.RUNNING
 
+    @log_call
     def test_detect_running_building(self):
         observer = self._make_observer()
         lines = ["Building the API endpoint for user registration"]
         status, conf, _ = self._classify(observer, lines)
         assert status == AgentStatus.RUNNING
 
+    @log_call
     def test_detect_stuck_no_change(self):
         observer = self._make_observer()
         observer.stuck_threshold_seconds = 0.1
@@ -117,12 +129,14 @@ class TestFleetObserverClassification:
         status, conf, _ = observer._classify_output(lines, "vm-1", "sess-1")
         assert status == AgentStatus.STUCK
 
+    @log_call
     def test_unknown_for_empty_output(self):
         observer = self._make_observer()
         status, conf, _ = self._classify(observer, [])
         assert status == AgentStatus.UNKNOWN
         assert conf == 0.0
 
+    @log_call
     def test_running_default_for_substantial_output(self):
         observer = self._make_observer()
         lines = ["x" * 100]  # Substantial but no recognized pattern
@@ -130,6 +144,7 @@ class TestFleetObserverClassification:
         assert status == AgentStatus.RUNNING
         assert conf <= 0.6  # Lower confidence for default
 
+    @log_call
     def test_priority_completion_over_error(self):
         """Completion patterns should take priority."""
         observer = self._make_observer()
@@ -146,6 +161,7 @@ class TestFleetObserverIntegration:
     """Integration tests with mocked subprocess."""
 
     @patch("amplihack.fleet.fleet_observer.subprocess.run")
+    @log_call
     def test_observe_session_captures_pane(self, mock_run):
         mock_run.return_value = MagicMock(
             returncode=0,
@@ -161,6 +177,7 @@ class TestFleetObserverIntegration:
         assert result.observed_at is not None
 
     @patch("amplihack.fleet.fleet_observer.subprocess.run")
+    @log_call
     def test_observe_session_handles_failure(self, mock_run):
         mock_run.return_value = MagicMock(returncode=1, stdout="")
 
@@ -171,6 +188,7 @@ class TestFleetObserverIntegration:
         assert result.confidence == 0.0
 
     @patch("amplihack.fleet.fleet_observer.subprocess.run")
+    @log_call
     def test_observe_all(self, mock_run):
         mock_run.return_value = MagicMock(
             returncode=0,
@@ -191,12 +209,14 @@ class TestFleetObserverIntegration:
 class TestCapturePaneValidation:
     """Tests for _capture_pane input handling."""
 
+    @log_call
     def test_capture_pane_rejects_empty_session(self):
         """_capture_pane returns None for empty session names."""
         observer = FleetObserver()
         result = observer._capture_pane("vm-1", "")
         assert result is None
 
+    @log_call
     def test_capture_pane_accepts_parenthesized_names(self):
         """_capture_pane accepts names like (none) from tmux — shlex.quote handles safety."""
         observer = FleetObserver()

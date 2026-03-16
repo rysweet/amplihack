@@ -40,7 +40,9 @@ def _generate_cli_smoke_tests(
     ensure_directory(tests_dir)
 
     context = {
-        "app_name": config.binary_path.split("/")[-1] if "/" in config.binary_path else config.binary_path,
+        "app_name": config.binary_path.split("/")[-1]
+        if "/" in config.binary_path
+        else config.binary_path,
         "binary_path": config.binary_path,
         "help_pattern": "(usage|help|commands|options)",
         "version_pattern": r"(\\d+\\.\\d+|version)",
@@ -90,11 +92,13 @@ def _generate_cli_command_tests(
 """
 
         context = {
-            "app_name": config.binary_path.split("/")[-1] if "/" in config.binary_path else config.binary_path,
+            "app_name": config.binary_path.split("/")[-1]
+            if "/" in config.binary_path
+            else config.binary_path,
             "binary_path": config.binary_path,
             "command_name": cmd.name,
             "command_args": ", ".join(args_list),
-            "success_pattern": f"(.+)",  # Any output is success for now
+            "success_pattern": "(.+)",  # Any output is success for now
             "extra_steps": extra_steps,
         }
 
@@ -161,7 +165,9 @@ def _generate_cli_error_tests(
 """
 
     context = {
-        "app_name": config.binary_path.split("/")[-1] if "/" in config.binary_path else config.binary_path,
+        "app_name": config.binary_path.split("/")[-1]
+        if "/" in config.binary_path
+        else config.binary_path,
         "binary_path": config.binary_path,
         "missing_arg_steps": missing_arg_steps,
         "invalid_arg_steps": invalid_arg_steps,
@@ -197,7 +203,7 @@ def _generate_cli_integration_tests(
             steps.append(f"""    - action: launch
       target: "{config.binary_path}"
       args: [{", ".join(args)}]
-      description: "Step {i+1}: Run {cmd.name}"
+      description: "Step {i + 1}: Run {cmd.name}"
       timeout: 15s
 
     - action: verify_exit_code

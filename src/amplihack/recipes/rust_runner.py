@@ -19,11 +19,13 @@ from pathlib import Path
 from typing import Any
 
 from amplihack.recipes.models import RecipeResult, StepResult, StepStatus
+from amplihack.utils.logging_utils import log_call
 
 logger = logging.getLogger(__name__)
 
 
 @functools.lru_cache(maxsize=1)
+@log_call
 def _binary_search_paths() -> list[str]:
     """Return known locations to search for the Rust binary.
 
@@ -36,11 +38,13 @@ def _binary_search_paths() -> list[str]:
     ]
 
 
+@log_call
 def _install_timeout() -> int:
     """Return the install timeout in seconds (env-configurable)."""
     return int(os.environ.get("RECIPE_RUNNER_INSTALL_TIMEOUT", "300"))
 
 
+@log_call
 def find_rust_binary() -> str | None:
     """Find the recipe-runner-rs binary.
 
@@ -65,6 +69,7 @@ def find_rust_binary() -> str | None:
 MIN_RUNNER_VERSION = "0.1.0"
 
 
+@log_call
 def get_runner_version(binary: str | None = None) -> str | None:
     """Return the version string of the installed recipe-runner-rs, or None."""
     binary = binary or find_rust_binary()
@@ -86,11 +91,13 @@ def get_runner_version(binary: str | None = None) -> str | None:
     return None
 
 
+@log_call
 def _version_tuple(ver: str) -> tuple[int, ...]:
     """Parse a semver string into a comparable tuple."""
     return tuple(int(x) for x in ver.split(".") if x.isdigit())
 
 
+@log_call
 def check_runner_version(binary: str | None = None) -> bool:
     """Check if the installed binary meets the minimum version requirement.
 
@@ -115,6 +122,7 @@ def check_runner_version(binary: str | None = None) -> bool:
     return True
 
 
+@log_call
 def is_rust_runner_available() -> bool:
     """Check if the Rust recipe runner binary is available."""
     return find_rust_binary() is not None
@@ -127,6 +135,7 @@ class RustRunnerNotFoundError(RuntimeError):
 _REPO_URL = "https://github.com/rysweet/amplihack-recipe-runner"
 
 
+@log_call
 def ensure_rust_recipe_runner(*, quiet: bool = False) -> bool:
     """Ensure the recipe-runner-rs binary is installed.
 
@@ -186,6 +195,7 @@ def ensure_rust_recipe_runner(*, quiet: bool = False) -> bool:
 # -- Helpers for run_recipe_via_rust -----------------------------------------
 
 
+@log_call
 def _redact_command_for_log(cmd: list[str]) -> str:
     """Build a log-safe command string with context values masked."""
     parts: list[str] = []
@@ -203,6 +213,7 @@ def _redact_command_for_log(cmd: list[str]) -> str:
     return " ".join(parts)
 
 
+@log_call
 def _find_rust_binary() -> str:
     """Locate the Rust binary or raise ``RustRunnerNotFoundError``."""
     binary = find_rust_binary()
@@ -216,6 +227,7 @@ def _find_rust_binary() -> str:
     return binary
 
 
+@log_call
 def _build_rust_command(
     binary: str,
     name: str,
@@ -265,17 +277,20 @@ _STATUS_MAP = {
 }
 
 
+@log_call
 def _stream_process_output(process: subprocess.Popen[str]) -> tuple[str, str, int]:
     """Collect stdout while relaying stderr live for progress-enabled runs."""
     stdout_chunks: list[str] = []
     stderr_chunks: list[str] = []
 
+    @log_call
     def _drain_stdout() -> None:
         if process.stdout is None:
             return
         for line in process.stdout:
             stdout_chunks.append(line)
 
+    @log_call
     def _drain_stderr() -> None:
         if process.stderr is None:
             return
@@ -295,6 +310,7 @@ def _stream_process_output(process: subprocess.Popen[str]) -> tuple[str, str, in
     return "".join(stdout_chunks), "".join(stderr_chunks), returncode
 
 
+@log_call
 def _execute_rust_command(cmd: list[str], *, name: str, progress: bool) -> RecipeResult:
     """Run the Rust binary and parse its JSON output into a ``RecipeResult``."""
     if progress:
@@ -350,6 +366,7 @@ def _execute_rust_command(cmd: list[str], *, name: str, progress: bool) -> Recip
 # -- Public entry point ------------------------------------------------------
 
 
+@log_call
 def _default_package_recipe_dirs() -> list[str]:
     """Return bundled recipe directories visible to Python discovery.
 
@@ -374,6 +391,7 @@ def _default_package_recipe_dirs() -> list[str]:
     return []
 
 
+@log_call
 def run_recipe_via_rust(
     name: str,
     user_context: dict[str, Any] | None = None,

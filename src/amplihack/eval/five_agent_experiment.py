@@ -33,6 +33,7 @@ from amplihack.agents.domain_agents.document_creator import DocumentCreatorAgent
 from amplihack.agents.domain_agents.meeting_synthesizer import MeetingSynthesizerAgent
 from amplihack.agents.domain_agents.project_planning import ProjectPlanningAgent
 from amplihack.eval.domain_eval_harness import DomainEvalHarness
+from amplihack.utils.logging_utils import log_call
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +89,7 @@ class AgentExperimentResult:
     # Combined
     combined_score: float
 
+    @log_call
     def to_dict(self) -> dict[str, Any]:
         return {
             "agent_name": self.agent_name,
@@ -115,6 +117,7 @@ class ExperimentReport:
     all_passed: bool
     summary: str
 
+    @log_call
     def to_dict(self) -> dict[str, Any]:
         return {
             "overall_eval_score": round(self.overall_eval_score, 3),
@@ -126,6 +129,7 @@ class ExperimentReport:
         }
 
 
+@log_call
 def run_experiment(
     output_dir: str = "./five_agent_results",
     agent_names: list[str] | None = None,
@@ -285,6 +289,7 @@ def run_experiment(
     return report
 
 
+@log_call
 def main():
     """CLI entry point."""
     import argparse

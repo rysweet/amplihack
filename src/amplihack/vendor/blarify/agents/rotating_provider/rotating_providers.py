@@ -12,6 +12,7 @@ from typing import Any, TypeVar
 
 from amplihack.vendor.blarify.agents.api_key_manager import APIKeyManager
 from langchain_core.runnables import Runnable
+from amplihack.utils.logging_utils import log_call
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,7 @@ class ProviderMetrics:
 class RotatingProviderBase(Runnable[Any, Any], ABC):
     """Abstract base class for providers with rotating API keys."""
 
+    @log_call
     def __init__(self, key_manager: APIKeyManager, **kwargs: Any) -> None:
         """Initialize the rotating provider.
 
@@ -60,6 +62,7 @@ class RotatingProviderBase(Runnable[Any, Any], ABC):
         self.metrics = ProviderMetrics()
 
     @abstractmethod
+    @log_call
     def _create_client(self, api_key: str) -> Any:
         """Create the underlying provider client with the given API key.
 
@@ -71,6 +74,7 @@ class RotatingProviderBase(Runnable[Any, Any], ABC):
         """
 
     @abstractmethod
+    @log_call
     def get_provider_name(self) -> str:
         """Get the provider name for logging and identification.
 
@@ -79,6 +83,7 @@ class RotatingProviderBase(Runnable[Any, Any], ABC):
         """
 
     @abstractmethod
+    @log_call
     def analyze_error(self, error: Exception) -> tuple[ErrorType, int | None]:
         """Analyze an error and determine its type and retry timing.
 
@@ -91,6 +96,7 @@ class RotatingProviderBase(Runnable[Any, Any], ABC):
         """
 
     @abstractmethod
+    @log_call
     def extract_headers_from_error(self, error: Exception) -> dict[str, str]:
         """Extract HTTP headers from provider-specific error if available.
 
@@ -101,6 +107,7 @@ class RotatingProviderBase(Runnable[Any, Any], ABC):
             Dictionary of headers (empty if none available)
         """
 
+    @log_call
     def execute_with_rotation(self, func: Callable[[], T], max_retries: int = 3) -> T:
         """Execute function with automatic key rotation on errors.
 
@@ -242,6 +249,7 @@ class RotatingProviderBase(Runnable[Any, Any], ABC):
         logger.error(f"Max retries ({max_retries}) exceeded for {self.get_provider_name()}")
         raise last_error or RuntimeError(f"Max retries exceeded for {self.get_provider_name()}")
 
+    @log_call
     def _record_success(self, key: str) -> None:
         """Record successful request for a key (thread-safe).
 
@@ -255,6 +263,7 @@ class RotatingProviderBase(Runnable[Any, Any], ABC):
                 metadata["success_count"] = metadata.get("success_count", 0) + 1
                 metadata["last_success"] = datetime.now().isoformat()
 
+    @log_call
     def _record_failure(self, key: str, error_type: ErrorType) -> None:
         """Record failed request for a key (thread-safe).
 
@@ -272,6 +281,7 @@ class RotatingProviderBase(Runnable[Any, Any], ABC):
                 )
                 metadata["last_failure"] = datetime.now().isoformat()
 
+    @log_call
     def _update_metrics(self, error_type: ErrorType | None = None) -> None:
         """Update provider metrics (thread-safe).
 
@@ -296,6 +306,7 @@ class RotatingProviderBase(Runnable[Any, Any], ABC):
             else:
                 self.metrics.successful_requests += 1
 
+    @log_call
     def get_success_rate(self) -> float:
         """Get success rate as percentage (thread-safe).
 
@@ -307,6 +318,7 @@ class RotatingProviderBase(Runnable[Any, Any], ABC):
                 return 0.0
             return (self.metrics.successful_requests / self.metrics.total_requests) * 100
 
+    @log_call
     def get_metrics_snapshot(self) -> ProviderMetrics:
         """Get a snapshot of current metrics (thread-safe).
 
@@ -316,6 +328,7 @@ class RotatingProviderBase(Runnable[Any, Any], ABC):
         with self._lock:
             return copy.deepcopy(self.metrics)
 
+    @log_call
     def invoke(self, *args: Any, **kwargs: Any) -> Any:
         """Override invoke to use rotation logic.
 
@@ -327,6 +340,7 @@ class RotatingProviderBase(Runnable[Any, Any], ABC):
             The result from the underlying client's invoke method
         """
 
+        @log_call
         def _invoke() -> Any:
             if not self._current_key:
                 raise RuntimeError("No current key available")
@@ -335,6 +349,7 @@ class RotatingProviderBase(Runnable[Any, Any], ABC):
 
         return self.execute_with_rotation(_invoke)
 
+    @log_call
     def stream(self, *args: Any, **kwargs: Any) -> Any:
         """Override stream to use rotation logic.
 
@@ -346,6 +361,7 @@ class RotatingProviderBase(Runnable[Any, Any], ABC):
             The result from the underlying client's stream method
         """
 
+        @log_call
         def _stream() -> Any:
             if not self._current_key:
                 raise RuntimeError("No current key available")
@@ -354,6 +370,7 @@ class RotatingProviderBase(Runnable[Any, Any], ABC):
 
         return self.execute_with_rotation(_stream)
 
+    @log_call
     def batch(self, *args: Any, **kwargs: Any) -> Any:
         """Override batch to use rotation logic.
 
@@ -365,6 +382,7 @@ class RotatingProviderBase(Runnable[Any, Any], ABC):
             The result from the underlying client's batch method
         """
 
+        @log_call
         def _batch() -> Any:
             if not self._current_key:
                 raise RuntimeError("No current key available")

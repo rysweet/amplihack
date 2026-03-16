@@ -18,6 +18,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 
 @dataclass
 class LauncherInfo:
@@ -28,11 +30,13 @@ class LauncherInfo:
     detected_at: str  # ISO timestamp
     environment: dict[str, str]  # Relevant env vars
 
+    @log_call
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         return asdict(self)
 
     @classmethod
+    @log_call
     def from_dict(cls, data: dict[str, Any]) -> "LauncherInfo":
         """Create from dictionary."""
         return cls(**data)
@@ -52,6 +56,7 @@ class LauncherDetector:
     }
 
     @classmethod
+    @log_call
     def detect(cls) -> LauncherInfo:
         """Detect the launcher type and gather context.
 
@@ -76,6 +81,7 @@ class LauncherDetector:
         )
 
     @classmethod
+    @log_call
     def write_context(cls, launcher_type: str, command: str, **kwargs) -> Path:
         """Write launcher context to file.
 
@@ -106,6 +112,7 @@ class LauncherDetector:
         return cls.CONTEXT_FILE
 
     @classmethod
+    @log_call
     def read_context(cls) -> LauncherInfo | None:
         """Read launcher context from file.
 
@@ -123,6 +130,7 @@ class LauncherDetector:
             return None
 
     @classmethod
+    @log_call
     def is_stale(cls, context: LauncherInfo | None = None) -> bool:
         """Check if launcher context is stale (> 5 minutes old).
 
@@ -147,6 +155,7 @@ class LauncherDetector:
             return True
 
     @classmethod
+    @log_call
     def _detect_launcher_type(cls) -> str:
         """Detect launcher type from environment.
 
@@ -174,6 +183,7 @@ class LauncherDetector:
         return "unknown"
 
     @classmethod
+    @log_call
     def _get_command(cls) -> str:
         """Get the command line that launched this process.
 
@@ -183,6 +193,7 @@ class LauncherDetector:
         return " ".join(sys.argv)
 
     @classmethod
+    @log_call
     def _gather_environment(cls) -> dict[str, str]:
         """Gather relevant environment variables.
 
@@ -211,6 +222,7 @@ class LauncherDetector:
         return env
 
     @classmethod
+    @log_call
     def _get_parent_process_name(cls) -> str | None:
         """Get parent process name (best effort).
 
@@ -234,6 +246,7 @@ class LauncherDetector:
         return None
 
     @classmethod
+    @log_call
     def _write_with_retry(cls, filepath: Path, data: dict[str, Any], max_retries: int = 3) -> None:
         """Write JSON file with retry for cloud sync resilience.
 

@@ -6,6 +6,7 @@ from amplihack.vendor.blarify.tools.utils import resolve_reference_id
 from langchain_core.callbacks import CallbackManagerForToolRun
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field, model_validator
+from amplihack.utils.logging_utils import log_call
 
 
 # Pydantic Response Models (replacement for blarify DTOs)
@@ -35,6 +36,7 @@ class NodeSearchResultResponse(BaseModel):
     documentation_nodes: list[dict] | None = None
 
 
+@log_call
 def recursively_inject_code(code: str, node_map: dict[str, str], visited: set | None = None) -> str:
     """
     Recursively replaces placeholders in the code with corresponding code snippets from node_map.
@@ -95,6 +97,7 @@ def recursively_inject_code(code: str, node_map: dict[str, str], visited: set | 
     return "\n".join(out)
 
 
+@log_call
 def assemble_source_from_chain(chain) -> str:
     """
     Assembles the full source code from a chain of (node_id, text) tuples.
@@ -127,6 +130,7 @@ def assemble_source_from_chain(chain) -> str:
     return recursively_inject_code(parent_code, node_map)
 
 
+@log_call
 def format_code_with_line_numbers(
     code: str, start_line: int | None = None, child_references: list[dict] | None = None
 ) -> str:
@@ -185,6 +189,7 @@ def format_code_with_line_numbers(
     return "\n".join(formatted_lines)
 
 
+@log_call
 def get_relations_str(*, node_name: str, relations: list[EdgeResponse], direction: str) -> str:
     if direction == "outbound":
         relationship_str = "{node_name} -> {relation.relationship_type} -> {relation.node_name}"
@@ -208,6 +213,7 @@ class FlexibleInput(BaseModel):
     symbol_name: str | None = Field(None, description="Name of the function/class/method")
 
     @model_validator(mode="after")
+    @log_call
     def validate_inputs(self):
         if self.reference_id:
             if len(self.reference_id) != 32:
@@ -218,10 +224,12 @@ class FlexibleInput(BaseModel):
         return self
 
 
+@log_call
 def add_get_file_context_method(db_manager: Any) -> None:
     """Dynamically add get_file_context_by_id method to Neo4jManager if it doesn't exist."""
     if not hasattr(db_manager, "get_file_context_by_id"):
 
+        @log_call
         def get_file_context_by_id(self, node_id: str) -> list[tuple[str, str]]:
             query = """
             MATCH path = (ancestor)-[:FUNCTION_DEFINITION|CLASS_DEFINITION*0..]->(n:NODE {node_id: $node_id, entityId: $entity_id})
@@ -255,6 +263,7 @@ class GetExpandedContext(BaseTool):
 
     db_manager: Any = Field(description="Database manager for queries")
 
+    @log_call
     def __init__(
         self,
         db_manager: Any,
@@ -268,6 +277,7 @@ class GetExpandedContext(BaseTool):
             handle_validation_error=handle_validation_error,
         )
 
+    @log_call
     def _run(
         self,
         reference_id: str | None = None,

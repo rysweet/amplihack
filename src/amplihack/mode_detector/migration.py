@@ -12,15 +12,19 @@ Public API (the "studs"):
 import shutil
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 
 class MigrationHelper:
     """Help users migrate between Claude installation modes."""
 
+    @log_call
     def __init__(self):
         """Initialize migration helper."""
         self.plugin_claude = Path.home() / ".amplihack" / ".claude"
         self.plugin_root = self.plugin_claude.parent
 
+    @log_call
     def migrate_to_plugin(self, project_dir: Path) -> bool:
         """Migrate project from local to plugin mode.
 
@@ -45,6 +49,7 @@ class MigrationHelper:
         except (PermissionError, OSError):
             return False
 
+    @log_call
     def migrate_to_local(self, project_dir: Path) -> bool:
         """Create local .claude/ from plugin.
 
@@ -69,6 +74,7 @@ class MigrationHelper:
         except (PermissionError, OSError):
             return False
 
+    @log_call
     def can_migrate_to_plugin(self, project_dir: Path) -> bool:
         """Check if project can migrate to plugin mode.
 
@@ -95,6 +101,7 @@ class MigrationHelper:
 
         return True
 
+    @log_call
     def get_migration_info(self, project_dir: Path) -> dict:
         """Get information about migration options.
 

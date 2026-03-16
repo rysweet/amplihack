@@ -31,6 +31,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 from .long_horizon_memory import EvalReport, LongHorizonMemoryEval
 
 logger = logging.getLogger(__name__)
@@ -79,6 +81,7 @@ class MultiSeedReport:
     all_question_variances: list[QuestionVariance]
     per_seed_reports: dict[int, EvalReport]
 
+    @log_call
     def to_dict(self) -> dict[str, Any]:
         """Convert report to JSON-serializable dictionary."""
         return {
@@ -115,6 +118,7 @@ class MultiSeedReport:
         }
 
 
+@log_call
 def _safe_stddev(values: list[float]) -> float:
     """Compute sample standard deviation, returning 0 for <2 values."""
     if len(values) < 2:
@@ -124,6 +128,7 @@ def _safe_stddev(values: list[float]) -> float:
     return math.sqrt(variance)
 
 
+@log_call
 def run_multi_seed_eval(
     agent_factory: Any,
     num_turns: int = 100,
@@ -263,6 +268,7 @@ def run_multi_seed_eval(
     )
 
 
+@log_call
 def _print_multi_seed_report(report: MultiSeedReport) -> None:
     """Print human-readable multi-seed comparison report."""
     print("\n" + "=" * 70)
@@ -298,6 +304,7 @@ def _print_multi_seed_report(report: MultiSeedReport) -> None:
         print("\nNo noisy questions detected (all within 10pp variance).")
 
 
+@log_call
 def main() -> None:
     """CLI entry point for multi-seed long-horizon evaluation."""
     parser = argparse.ArgumentParser(description="Multi-seed long-horizon memory evaluation")
@@ -339,6 +346,7 @@ def main() -> None:
     seeds = [int(s.strip()) for s in args.seeds.split(",")]
     agent_model = args.model or os.environ.get("EVAL_MODEL", "claude-opus-4-6")
 
+    @log_call
     def agent_factory():
         import tempfile
 

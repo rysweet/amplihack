@@ -17,6 +17,8 @@ import uuid
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 
 @dataclass
 class SessionEntry:
@@ -70,6 +72,7 @@ class SessionTracker:
 
     RUNTIME_LOG = Path(".claude/runtime/sessions.jsonl")
 
+    @log_call
     def __init__(self):
         """Initialize session tracker.
 
@@ -77,11 +80,13 @@ class SessionTracker:
         """
         self._ensure_runtime_dir()
 
+    @log_call
     def _ensure_runtime_dir(self):
         """Create .claude/runtime directory if it doesn't exist"""
         runtime_dir = self.RUNTIME_LOG.parent
         runtime_dir.mkdir(parents=True, exist_ok=True)
 
+    @log_call
     def start_session(
         self,
         pid: int,
@@ -132,6 +137,7 @@ class SessionTracker:
         self._append_entry(entry)
         return session_id
 
+    @log_call
     def complete_session(self, session_id: str):
         """Mark session as completed.
 
@@ -143,6 +149,7 @@ class SessionTracker:
         """
         self._end_session(session_id, "completed")
 
+    @log_call
     def crash_session(self, session_id: str):
         """Mark session as crashed.
 
@@ -154,6 +161,7 @@ class SessionTracker:
         """
         self._end_session(session_id, "crashed")
 
+    @log_call
     def _end_session(self, session_id: str, status: str):
         """Internal: Mark session as ended with given status"""
         self._ensure_runtime_dir()
@@ -170,6 +178,7 @@ class SessionTracker:
         with open(self.RUNTIME_LOG, "a") as f:
             f.write(json.dumps(entry) + "\n")
 
+    @log_call
     def _append_entry(self, entry: SessionEntry):
         """Append session entry to JSONL file"""
         self._ensure_runtime_dir()
@@ -177,6 +186,7 @@ class SessionTracker:
         with open(self.RUNTIME_LOG, "a") as f:
             f.write(json.dumps(asdict(entry)) + "\n")
 
+    @log_call
     def _generate_session_id(self) -> str:
         """Generate unique session ID"""
         return f"session-{uuid.uuid4().hex[:8]}"

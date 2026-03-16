@@ -9,9 +9,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 __all__ = ["SYSTEM_PROMPT", "SYSTEM_PROMPT_BASE"]
 
 
+@log_call
 def _load_strategy_dictionary() -> str:
     """Load the strategy dictionary if available."""
     strategy_path = Path(__file__).parent / "STRATEGY_DICTIONARY.md"

@@ -17,6 +17,8 @@ from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from amplihack.utils.logging_utils import log_call
+
 __all__ = [
     "AnalysisReport",
     "format_report",
@@ -62,7 +64,7 @@ STRATEGY_KEYWORDS: dict[str, str] = {
 WORKFLOW_STEP_RE = re.compile(r"(?:step|workflow)\s+(\d+)", re.I)
 
 # All expected DEFAULT_WORKFLOW steps (0 through 22)
-ALL_EXPECTED_STEPS = list(range(0, 23))
+ALL_EXPECTED_STEPS = list(range(23))
 
 
 @dataclass
@@ -78,6 +80,7 @@ class AnalysisReport:
     total_messages: int = 0
     analysis_timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
 
+    @log_call
     def to_dict(self) -> dict:
         return {
             "tool_usage": dict(self.tool_usage.most_common()),
@@ -91,6 +94,7 @@ class AnalysisReport:
         }
 
 
+@log_call
 def format_report(report: AnalysisReport) -> str:
     """Format an AnalysisReport as a readable text report."""
     sections: list[str] = []

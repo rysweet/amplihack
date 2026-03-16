@@ -16,6 +16,8 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 from .session_tracker import SessionEntry
 
 
@@ -55,6 +57,7 @@ class NestingDetector:
 
     RUNTIME_LOG = Path(".claude/runtime/sessions.jsonl")
 
+    @log_call
     def detect_nesting(self, cwd: Path, argv: list[str]) -> NestingResult:
         """Main detection logic - checks all three conditions.
 
@@ -97,6 +100,7 @@ class NestingDetector:
             requires_staging=requires_staging,
         )
 
+    @log_call
     def _is_amplihack_source_repo(self, cwd: Path) -> bool:
         """Check if running in amplihack source repository.
 
@@ -132,6 +136,7 @@ class NestingDetector:
             )
             return False
 
+    @log_call
     def _find_active_session(self, cwd: Path) -> SessionEntry | None:
         """Find active session in runtime log with live PID.
 
@@ -228,6 +233,7 @@ class NestingDetector:
             )
             return None
 
+    @log_call
     def _is_process_alive(self, pid: int) -> bool:
         """Cross-platform PID liveness check.
 

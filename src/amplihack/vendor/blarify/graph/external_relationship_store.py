@@ -2,17 +2,21 @@ from typing import Any
 
 from amplihack.vendor.blarify.graph.relationship.external_relationship import ExternalRelationship
 from amplihack.vendor.blarify.graph.relationship.relationship_type import RelationshipType
+from amplihack.utils.logging_utils import log_call
 
 
 class ExternalRelationshipStore:
     relationships: list[ExternalRelationship]
 
+    @log_call
     def __init__(self) -> None:
         self.relationships: list[ExternalRelationship] = []
 
+    @log_call
     def add_relationship(self, relationship: ExternalRelationship) -> None:
         self.relationships.append(relationship)
 
+    @log_call
     def create_and_add_relationship(
         self, start_node_id: str, end_node_id: str, rel_type: RelationshipType
     ) -> None:
@@ -21,5 +25,6 @@ class ExternalRelationshipStore:
         )
         self.add_relationship(relationship)
 
+    @log_call
     def get_relationships_as_objects(self) -> list[dict[str, Any]]:
         return [relationship.as_object() for relationship in self.relationships]

@@ -4,14 +4,9 @@ Tests the TaskQueue and FleetTask without any external dependencies.
 """
 
 import json
-import tempfile
-from datetime import datetime
-from pathlib import Path
-
-import pytest
 
 from amplihack.fleet.fleet_tasks import FleetTask, TaskPriority, TaskQueue, TaskStatus
-
+from amplihack.utils.logging_utils import log_call
 
 # ============ UNIT TESTS (60%) ============
 
@@ -19,6 +14,7 @@ from amplihack.fleet.fleet_tasks import FleetTask, TaskPriority, TaskQueue, Task
 class TestFleetTask:
     """Unit tests for FleetTask dataclass."""
 
+    @log_call
     def test_create_task_defaults(self):
         task = FleetTask(prompt="Fix the bug")
         assert task.prompt == "Fix the bug"
@@ -29,6 +25,7 @@ class TestFleetTask:
         assert task.id  # Should have auto-generated ID
         assert len(task.id) == 12
 
+    @log_call
     def test_assign_task(self):
         task = FleetTask(prompt="Test")
         task.assign("vm-1", "session-1")
@@ -37,6 +34,7 @@ class TestFleetTask:
         assert task.assigned_session == "session-1"
         assert task.assigned_at is not None
 
+    @log_call
     def test_start_task(self):
         task = FleetTask(prompt="Test")
         task.assign("vm-1", "session-1")
@@ -44,6 +42,7 @@ class TestFleetTask:
         assert task.status == TaskStatus.RUNNING
         assert task.started_at is not None
 
+    @log_call
     def test_complete_task(self):
         task = FleetTask(prompt="Test")
         task.start()
@@ -53,6 +52,7 @@ class TestFleetTask:
         assert task.pr_url == "https://github.com/org/repo/pull/1"
         assert task.completed_at is not None
 
+    @log_call
     def test_fail_task(self):
         task = FleetTask(prompt="Test")
         task.start()
@@ -61,6 +61,7 @@ class TestFleetTask:
         assert task.error == "Timeout"
         assert task.completed_at is not None
 
+    @log_call
     def test_serialization_roundtrip(self):
         task = FleetTask(
             prompt="Build feature",
@@ -84,6 +85,7 @@ class TestFleetTask:
         assert restored.max_turns == 30
         assert restored.assigned_vm == "vm-1"
 
+    @log_call
     def test_serialization_with_completion(self):
         task = FleetTask(prompt="Test")
         task.complete(result="ok", pr_url="https://example.com/pr/1")
@@ -99,12 +101,14 @@ class TestFleetTask:
 class TestTaskQueue:
     """Unit tests for TaskQueue."""
 
+    @log_call
     def test_add_and_get(self):
         queue = TaskQueue()
         task = queue.add_task(prompt="Task 1")
         assert len(queue.tasks) == 1
         assert queue.get_task(task.id) == task
 
+    @log_call
     def test_next_task_priority_order(self):
         queue = TaskQueue()
         queue.add_task(prompt="Low priority", priority=TaskPriority.LOW)
@@ -115,6 +119,7 @@ class TestTaskQueue:
         assert next_task is not None
         assert next_task.prompt == "Critical"
 
+    @log_call
     def test_next_task_fifo_within_priority(self):
         queue = TaskQueue()
         t1 = queue.add_task(prompt="First medium")
@@ -124,6 +129,7 @@ class TestTaskQueue:
         assert next_task is not None
         assert next_task.id == t1.id
 
+    @log_call
     def test_next_task_skips_assigned(self):
         queue = TaskQueue()
         t1 = queue.add_task(prompt="First")
@@ -134,10 +140,12 @@ class TestTaskQueue:
         assert next_task is not None
         assert next_task.id == t2.id
 
+    @log_call
     def test_next_task_empty_queue(self):
         queue = TaskQueue()
         assert queue.next_task() is None
 
+    @log_call
     def test_active_tasks(self):
         queue = TaskQueue()
         t1 = queue.add_task(prompt="Running")
@@ -150,6 +158,7 @@ class TestTaskQueue:
         active = queue.active_tasks()
         assert len(active) == 2
 
+    @log_call
     def test_completed_tasks(self):
         queue = TaskQueue()
         t1 = queue.add_task(prompt="Done")
@@ -162,6 +171,7 @@ class TestTaskQueue:
         completed = queue.completed_tasks()
         assert len(completed) == 2
 
+    @log_call
     def test_summary(self):
         queue = TaskQueue()
         queue.add_task(prompt="Task 1", priority=TaskPriority.HIGH)
@@ -179,6 +189,7 @@ class TestTaskQueue:
 class TestTaskQueuePersistence:
     """Integration tests for queue persistence."""
 
+    @log_call
     def test_persist_and_load(self, tmp_path):
         path = tmp_path / "queue.json"
 
@@ -193,6 +204,7 @@ class TestTaskQueuePersistence:
         assert queue2.tasks[0].prompt == "Persistent task 1"
         assert queue2.tasks[0].priority == TaskPriority.HIGH
 
+    @log_call
     def test_persist_updates_on_mutation(self, tmp_path):
         path = tmp_path / "queue.json"
         queue = TaskQueue(persist_path=path)
@@ -204,6 +216,7 @@ class TestTaskQueuePersistence:
         assert len(data) == 1
         assert data[0]["prompt"] == "Test"
 
+    @log_call
     def test_handle_corrupt_file(self, tmp_path):
         path = tmp_path / "queue.json"
         path.write_text("not valid json{{{")
@@ -211,6 +224,7 @@ class TestTaskQueuePersistence:
         queue = TaskQueue(persist_path=path)
         assert len(queue.tasks) == 0  # Graceful degradation
 
+    @log_call
     def test_full_lifecycle_persisted(self, tmp_path):
         path = tmp_path / "queue.json"
         queue = TaskQueue(persist_path=path)
@@ -235,6 +249,7 @@ class TestTaskQueuePersistence:
 class TestTaskQueueE2E:
     """End-to-end task queue workflow."""
 
+    @log_call
     def test_full_priority_dispatch_workflow(self, tmp_path):
         """Simulate a real fleet dispatch scenario."""
         queue = TaskQueue(persist_path=tmp_path / "queue.json")

@@ -14,7 +14,6 @@ Testing pyramid:
 from __future__ import annotations
 
 import subprocess
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -22,14 +21,14 @@ import pytest
 from amplihack.fleet._cli_formatters import ScoutResult, format_scout_report
 from amplihack.fleet._session_lifecycle import (
     FleetConfig,
+    run_scout,
     start_fleet_session,
     stop_fleet_session,
-    run_scout,
 )
 from amplihack.fleet.fleet_adopt import AdoptedSession, SessionAdopter
-from amplihack.fleet.fleet_state import AgentStatus, FleetState, TmuxSessionInfo, VMInfo
+from amplihack.fleet.fleet_state import FleetState
 from amplihack.fleet.fleet_tasks import TaskQueue
-
+from amplihack.utils.logging_utils import log_call
 
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
@@ -63,12 +62,14 @@ _AZLIN_JSON_OUTPUT = (
 
 
 @pytest.fixture
+@log_call
 def tmp_queue(tmp_path):
     """Task queue backed by a temp directory."""
     return TaskQueue(persist_path=tmp_path / "queue.json")
 
 
 @pytest.fixture
+@log_call
 def adopter(tmp_path):
     """SessionAdopter with a fake azlin path."""
     return SessionAdopter(azlin_path="/usr/bin/azlin")
@@ -83,6 +84,7 @@ class TestDiscoverStage:
     """Verify the discover stage works with mocked SSH."""
 
     @patch("amplihack.fleet.fleet_adopt.subprocess.run")
+    @log_call
     def test_discover_returns_sessions(self, mock_run, adopter):
         """discover_sessions returns AdoptedSession records from SSH output."""
         mock_run.return_value = MagicMock(
@@ -99,6 +101,7 @@ class TestDiscoverStage:
         assert sess.vm_name == _MOCK_VM
 
     @patch("amplihack.fleet.fleet_adopt.subprocess.run")
+    @log_call
     def test_discover_infers_repo(self, mock_run, adopter):
         """discover_sessions infers repo URL from git remote output."""
         mock_run.return_value = MagicMock(
@@ -110,6 +113,7 @@ class TestDiscoverStage:
         assert sessions[0].inferred_repo == "https://github.com/org/myapp"
 
     @patch("amplihack.fleet.fleet_adopt.subprocess.run")
+    @log_call
     def test_discover_infers_branch(self, mock_run, adopter):
         """discover_sessions infers branch from git output."""
         mock_run.return_value = MagicMock(
@@ -121,6 +125,7 @@ class TestDiscoverStage:
         assert sessions[0].inferred_branch == "feat/auth-rework"
 
     @patch("amplihack.fleet.fleet_adopt.subprocess.run")
+    @log_call
     def test_discover_handles_empty_output(self, mock_run, adopter):
         """discover_sessions returns empty list when no sessions found."""
         mock_run.return_value = MagicMock(
@@ -132,6 +137,7 @@ class TestDiscoverStage:
         assert sessions == []
 
     @patch("amplihack.fleet.fleet_adopt.subprocess.run")
+    @log_call
     def test_discover_handles_ssh_error(self, mock_run, adopter):
         """discover_sessions returns empty list on SSH failure."""
         mock_run.side_effect = subprocess.SubprocessError("Connection refused")
@@ -139,6 +145,7 @@ class TestDiscoverStage:
         assert sessions == []
 
     @patch("amplihack.fleet.fleet_adopt.subprocess.run")
+    @log_call
     def test_discover_handles_timeout(self, mock_run, adopter):
         """discover_sessions returns empty list on SSH timeout."""
         mock_run.side_effect = subprocess.TimeoutExpired(cmd="azlin", timeout=120)
@@ -155,6 +162,7 @@ class TestAdoptStage:
     """Verify the adopt stage creates tasks from discovered sessions."""
 
     @patch("amplihack.fleet.fleet_adopt.subprocess.run")
+    @log_call
     def test_adopt_creates_task(self, mock_run, adopter, tmp_queue):
         """adopt_sessions creates a task in the queue for each adopted session."""
         mock_run.return_value = MagicMock(
@@ -169,6 +177,7 @@ class TestAdoptStage:
         assert adopted[0].task_id is not None
 
     @patch("amplihack.fleet.fleet_adopt.subprocess.run")
+    @log_call
     def test_adopt_assigns_vm_to_task(self, mock_run, adopter, tmp_queue):
         """adopt_sessions assigns the VM and session to the created task."""
         mock_run.return_value = MagicMock(
@@ -186,6 +195,7 @@ class TestAdoptStage:
         assert task.assigned_session == _MOCK_SESSION
 
     @patch("amplihack.fleet.fleet_adopt.subprocess.run")
+    @log_call
     def test_adopt_session_filter(self, mock_run, adopter, tmp_queue):
         """adopt_sessions with sessions filter only adopts specified sessions."""
         mock_run.return_value = MagicMock(
@@ -199,6 +209,7 @@ class TestAdoptStage:
         assert adopted == []
 
     @patch("amplihack.fleet.fleet_adopt.subprocess.run")
+    @log_call
     def test_adopt_returns_adopted_sessions(self, mock_run, adopter, tmp_queue):
         """adopt_sessions returns AdoptedSession records."""
         mock_run.return_value = MagicMock(
@@ -224,9 +235,10 @@ class TestReasonStage:
     """Verify the reason stage with mocked SSH and LLM backend."""
 
     @patch("amplihack.fleet.fleet_session_reasoner.gather_context")
+    @log_call
     def test_reason_calls_backend(self, mock_gather):
         """reason_about_session calls the LLM backend."""
-        from amplihack.fleet._session_context import SessionContext, SessionDecision
+        from amplihack.fleet._session_context import SessionContext
         from amplihack.fleet.fleet_session_reasoner import SessionReasoner
 
         # Mock gather_context to return a minimal context
@@ -246,8 +258,7 @@ class TestReasonStage:
 
         mock_backend = MagicMock()
         mock_backend.complete.return_value = (
-            '{"action": "wait", "confidence": 0.9, "reasoning": "Agent is idle",'
-            ' "input_text": ""}'
+            '{"action": "wait", "confidence": 0.9, "reasoning": "Agent is idle", "input_text": ""}'
         )
 
         reasoner = SessionReasoner(
@@ -260,6 +271,7 @@ class TestReasonStage:
         mock_backend.complete.assert_called_once()
 
     @patch("amplihack.fleet.fleet_session_reasoner.gather_context")
+    @log_call
     def test_reason_returns_decision(self, mock_gather):
         """reason_about_session returns a SessionDecision."""
         from amplihack.fleet._session_context import SessionContext, SessionDecision
@@ -305,6 +317,7 @@ class TestReasonStage:
 class TestReportStage:
     """Verify the report stage formats results correctly."""
 
+    @log_call
     def test_report_new_style(self):
         """format_scout_report produces non-empty output for a ScoutResult."""
         result = ScoutResult(
@@ -320,6 +333,7 @@ class TestReportStage:
         assert "Analyze auth codebase" in report
         assert "Found JWT implementation" in report
 
+    @log_call
     def test_report_json_serializable(self):
         """JSON format produces valid parseable JSON."""
         import json
@@ -347,6 +361,7 @@ class TestFullPipeline:
 
     @patch("amplihack.fleet.fleet_session_reasoner.gather_context")
     @patch("amplihack.fleet.fleet_adopt.subprocess.run")
+    @log_call
     def test_full_scout_pipeline(self, mock_run, mock_gather, tmp_queue):
         """Full pipeline: discover sessions, adopt them, reason, produce report."""
         from amplihack.fleet._session_context import SessionContext, SessionDecision
@@ -421,14 +436,9 @@ class TestFullPipeline:
 
     @patch("amplihack.fleet.fleet_session_reasoner.gather_context")
     @patch("amplihack.fleet.fleet_adopt.subprocess.run")
+    @log_call
     def test_pipeline_session_management(self, mock_run, mock_gather, tmp_path, tmp_queue):
         """Pipeline integrates with fleet session management (start/stop/run_scout)."""
-        from amplihack.fleet._session_lifecycle import (
-            FleetConfig,
-            start_fleet_session,
-            stop_fleet_session,
-            run_scout,
-        )
 
         # -- Stage 1 & 2: Discover + Adopt --
         mock_run.return_value = MagicMock(
@@ -443,6 +453,7 @@ class TestFullPipeline:
 
         # -- Create fleet session to coordinate --
         import amplihack.fleet._session_lifecycle as lifecycle_mod
+
         original_dir = lifecycle_mod._SESSIONS_DIR
         lifecycle_mod._SESSIONS_DIR = tmp_path / "sessions"
 
@@ -483,7 +494,9 @@ class TestFullPipeline:
                 backend=mock_backend,
                 dry_run=True,
             )
-            decision = reasoner.reason_about_session(_MOCK_VM, _MOCK_SESSION, task_prompt="Fix auth")
+            decision = reasoner.reason_about_session(
+                _MOCK_VM, _MOCK_SESSION, task_prompt="Fix auth"
+            )
 
             # -- Record scout results in fleet session --
             scout_result = run_scout(
@@ -510,6 +523,7 @@ class TestFullPipeline:
             lifecycle_mod._SESSIONS_DIR = original_dir
 
     @patch("amplihack.fleet.fleet_state.subprocess.run")
+    @log_call
     def test_pipeline_fleet_state_integration(self, mock_run):
         """FleetState correctly reads VM info from mocked azlin output."""
         # Mock azlin list --json call
@@ -529,6 +543,7 @@ class TestFullPipeline:
         assert vm.is_running
 
     @patch("amplihack.fleet.fleet_state.subprocess.run")
+    @log_call
     def test_pipeline_tmux_integration(self, mock_run):
         """FleetState correctly parses tmux session info from mocked SSH output."""
         mock_run.return_value = MagicMock(

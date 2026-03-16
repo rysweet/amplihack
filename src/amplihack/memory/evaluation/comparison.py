@@ -18,6 +18,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 from ..backends import create_backend
 from ..coordinator import MemoryCoordinator
 from .performance_evaluator import PerformanceEvaluator, PerformanceMetrics
@@ -61,10 +63,12 @@ class BackendComparison:
     Generates comprehensive comparison report.
     """
 
+    @log_call
     def __init__(self):
         """Initialize comparison."""
         self.results: dict[str, ComparisonReport] = {}
 
+    @log_call
     async def evaluate_backend(self, backend_type: str, **backend_config: Any) -> ComparisonReport:
         """Evaluate a single backend.
 
@@ -136,6 +140,7 @@ class BackendComparison:
         self.results[backend_type] = report
         return report
 
+    @log_call
     async def compare_all(self) -> dict[str, ComparisonReport]:
         """Compare all available backends.
 
@@ -152,6 +157,7 @@ class BackendComparison:
 
         return self.results
 
+    @log_call
     def _calculate_overall_score(
         self,
         quality: QualityMetrics,
@@ -193,6 +199,7 @@ class BackendComparison:
 
         return overall
 
+    @log_call
     def _generate_recommendations(
         self,
         backend_type: str,
@@ -249,6 +256,7 @@ class BackendComparison:
 
         return recommendations
 
+    @log_call
     def generate_markdown_report(self) -> str:
         """Generate markdown comparison report.
 
@@ -336,6 +344,7 @@ class BackendComparison:
         return "\n".join(report)
 
 
+@log_call
 async def run_evaluation(backend_type: str | None = None, **backend_config: Any) -> str:
     """Convenience function to run evaluation and generate report.
 

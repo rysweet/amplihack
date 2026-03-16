@@ -8,10 +8,13 @@ and detailed context for troubleshooting.
 import datetime
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 
 class BundleGeneratorError(Exception):
     """Base exception for all bundle generator operations."""
 
+    @log_call
     def __init__(
         self,
         message: str,
@@ -34,6 +37,7 @@ class BundleGeneratorError(Exception):
         self.recovery_suggestion = recovery_suggestion
         self.timestamp = datetime.datetime.utcnow()
 
+    @log_call
     def to_dict(self) -> dict[str, Any]:
         """Convert exception to dictionary for logging/API responses."""
         return {
@@ -45,6 +49,7 @@ class BundleGeneratorError(Exception):
             "timestamp": self.timestamp.isoformat(),
         }
 
+    @log_call
     def __str__(self) -> str:
         """Enhanced string representation including error code."""
         base_message = super().__str__()
@@ -54,6 +59,7 @@ class BundleGeneratorError(Exception):
 class ParsingError(BundleGeneratorError):
     """Exception raised when prompt parsing fails."""
 
+    @log_call
     def __init__(
         self,
         message: str,
@@ -85,6 +91,7 @@ class ParsingError(BundleGeneratorError):
 class ExtractionError(BundleGeneratorError):
     """Exception raised when intent extraction fails."""
 
+    @log_call
     def __init__(
         self,
         message: str,
@@ -116,6 +123,7 @@ class ExtractionError(BundleGeneratorError):
 class GenerationError(BundleGeneratorError):
     """Exception raised when agent generation fails."""
 
+    @log_call
     def __init__(
         self,
         message: str,
@@ -151,6 +159,7 @@ class GenerationError(BundleGeneratorError):
 class ValidationError(BundleGeneratorError):
     """Exception raised when validation fails."""
 
+    @log_call
     def __init__(
         self,
         message: str,
@@ -179,6 +188,7 @@ class ValidationError(BundleGeneratorError):
 class PackagingError(BundleGeneratorError):
     """Exception raised when bundle packaging fails."""
 
+    @log_call
     def __init__(
         self,
         message: str,
@@ -210,6 +220,7 @@ class PackagingError(BundleGeneratorError):
 class DistributionError(BundleGeneratorError):
     """Exception raised when bundle distribution fails."""
 
+    @log_call
     def __init__(
         self,
         message: str,
@@ -245,6 +256,7 @@ class DistributionError(BundleGeneratorError):
 class RateLimitError(BundleGeneratorError):
     """Exception raised when rate limits are exceeded."""
 
+    @log_call
     def __init__(
         self,
         message: str,
@@ -274,6 +286,7 @@ class RateLimitError(BundleGeneratorError):
 class TimeoutError(BundleGeneratorError):
     """Exception raised when operations timeout."""
 
+    @log_call
     def __init__(
         self,
         message: str,

@@ -15,6 +15,7 @@ from amplihack.vendor.blarify.repositories.graph_db_manager.db_manager import EN
 from amplihack.vendor.blarify.repositories.graph_db_manager.dtos.node_search_result_dto import (
     ReferenceSearchResultDTO,
 )
+from amplihack.utils.logging_utils import log_call
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,7 @@ class KuzuManager(AbstractDbManager):
         conn: Kuzu Connection instance
     """
 
+    @log_call
     def __init__(
         self,
         repo_id: str | list[str] | None = None,
@@ -82,6 +84,7 @@ class KuzuManager(AbstractDbManager):
             raise
 
     @staticmethod
+    @log_call
     def _open_with_retry(
         db_path: Path, max_retries: int = 3, base_delay: float = 0.2
     ) -> "kuzu.Database":
@@ -105,6 +108,7 @@ class KuzuManager(AbstractDbManager):
                     time.sleep(delay)
         raise last_error  # type: ignore[misc]
 
+    @log_call
     def _ensure_schema(self):
         """Ensure required node and relationship tables exist in Kuzu.
 
@@ -169,11 +173,13 @@ class KuzuManager(AbstractDbManager):
             # Schema might already exist, that's OK
             logger.debug("Schema creation note: %s", e)
 
+    @log_call
     def close(self):
         """Close the Kuzu database connection."""
         # Kuzu connections are automatically managed
         logger.debug("Kuzu connection closed")
 
+    @log_call
     def save_graph(self, nodes: list[Any], edges: list[Any]):
         """Save nodes and edges to Kuzu database.
 
@@ -184,6 +190,7 @@ class KuzuManager(AbstractDbManager):
         self.create_nodes(nodes)
         self.create_edges(edges)
 
+    @log_call
     def create_nodes(self, node_list: list[dict]):
         """Create nodes in Kuzu database.
 
@@ -234,6 +241,7 @@ class KuzuManager(AbstractDbManager):
                     "Failed to create node %s: %s", node.get("attributes", {}).get("node_id"), e
                 )
 
+    @log_call
     def create_edges(self, edges_list: list[dict]):
         """Create edges/relationships in Kuzu database.
 
@@ -320,6 +328,7 @@ class KuzuManager(AbstractDbManager):
                     e,
                 )
 
+    @log_call
     def detach_delete_nodes_with_path(self, path: str):
         """Delete nodes and their relationships matching the given path.
 
@@ -336,6 +345,7 @@ class KuzuManager(AbstractDbManager):
         except Exception as e:
             logger.error("Failed to delete nodes with path %s: %s", path, e)
 
+    @log_call
     def query(
         self,
         cypher_query: LiteralString,
@@ -377,6 +387,7 @@ class KuzuManager(AbstractDbManager):
             logger.error("Parameters: %s", parameters)
             raise
 
+    @log_call
     def get_node_by_id(self, node_id: str) -> ReferenceSearchResultDTO:
         """Retrieve a node by its ID.
 
@@ -400,6 +411,7 @@ class KuzuManager(AbstractDbManager):
         # This would need proper DTO mapping based on blarify's expectations
         return ReferenceSearchResultDTO(references=results)
 
+    @log_call
     def get_node_by_name_and_type(self, name: str, node_type: str):
         """Retrieve nodes by name and type.
 

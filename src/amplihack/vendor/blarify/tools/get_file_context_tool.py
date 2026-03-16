@@ -7,6 +7,7 @@ from amplihack.vendor.blarify.repositories.graph_db_manager.queries import get_f
 from langchain_core.callbacks import CallbackManagerForToolRun
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field, field_validator
+from amplihack.utils.logging_utils import log_call
 
 
 class NodeIdInput(BaseModel):
@@ -20,6 +21,7 @@ class NodeIdInput(BaseModel):
 
     @field_validator("node_id", mode="before")
     @classmethod
+    @log_call
     def validate_node_id(cls, value: Any) -> Any:
         """
         Validates that the node_id is a 32-character string.
@@ -43,6 +45,7 @@ class GetFileContextByIdTool(BaseTool):
         description="Neo4jManager object to interact with the database"
     )
 
+    @log_call
     def _recursively_inject_code(
         self, code: str, node_map: dict[str, str], visited: set | None = None
     ) -> str:
@@ -101,6 +104,7 @@ class GetFileContextByIdTool(BaseTool):
 
         return "\n".join(out)
 
+    @log_call
     def _assemble_source_from_chain(self, chain) -> str:
         """
         Assembles the full source code from a chain of (node_id, text) tuples.
@@ -127,6 +131,7 @@ class GetFileContextByIdTool(BaseTool):
 
         return self._recursively_inject_code(parent_code, node_map)
 
+    @log_call
     def _run(
         self,
         node_id: str,

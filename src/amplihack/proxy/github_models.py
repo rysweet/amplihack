@@ -3,6 +3,8 @@
 import re
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 # Claude model constants (exported for use in server.py)
 CLAUDE_MODELS = [
     "claude-3-opus-20240229",
@@ -38,6 +40,7 @@ GITHUB_COPILOT_MODELS = [
 class GitHubModelMapper:
     """Maps OpenAI model names to GitHub Copilot models."""
 
+    @log_call
     def __init__(self, config: dict[str, str]):
         """Initialize GitHub model mapper.
 
@@ -48,6 +51,7 @@ class GitHubModelMapper:
         self._model_cache: dict[str, str] = {}
         self._capability_cache: dict[str, dict] = {}
 
+    @log_call
     def get_github_model(self, openai_model: str) -> str | None:
         """Get GitHub Copilot model for OpenAI model name.
 
@@ -81,6 +85,7 @@ class GitHubModelMapper:
 
         return None
 
+    @log_call
     def get_available_models(self) -> list[str]:
         """Get list of available GitHub Copilot models.
 
@@ -97,6 +102,7 @@ class GitHubModelMapper:
             "claude-opus-4",
         ]
 
+    @log_call
     def get_model_capabilities(self, model: str) -> dict[str, Any]:
         """Get capabilities for a GitHub Copilot model.
 
@@ -114,6 +120,7 @@ class GitHubModelMapper:
         self._capability_cache[model] = capabilities
         return capabilities
 
+    @log_call
     def supports_function_calling(self, model: str) -> bool:
         """Check if model supports function calling.
 
@@ -126,6 +133,7 @@ class GitHubModelMapper:
         capabilities = self.get_model_capabilities(model)
         return capabilities.get("function_calling", False)
 
+    @log_call
     def supports_streaming(self, model: str) -> bool:
         """Check if model supports streaming responses.
 
@@ -138,6 +146,7 @@ class GitHubModelMapper:
         capabilities = self.get_model_capabilities(model)
         return capabilities.get("streaming", True)
 
+    @log_call
     def get_context_window(self, model: str) -> int:
         """Get context window size for model.
 
@@ -150,6 +159,7 @@ class GitHubModelMapper:
         capabilities = self.get_model_capabilities(model)
         return capabilities.get("context_window", 8192)
 
+    @log_call
     def get_max_output_tokens(self, model: str) -> int:
         """Get maximum output tokens for model.
 
@@ -162,6 +172,7 @@ class GitHubModelMapper:
         capabilities = self.get_model_capabilities(model)
         return capabilities.get("max_output_tokens", 4096)
 
+    @log_call
     def _get_direct_model_mapping(self, openai_model: str) -> str | None:
         """Get direct model mapping from configuration.
 
@@ -179,6 +190,7 @@ class GitHubModelMapper:
 
         return None
 
+    @log_call
     def _get_default_model_mapping(self, openai_model: str) -> str | None:
         """Get default model mapping for OpenAI model.
 
@@ -203,6 +215,7 @@ class GitHubModelMapper:
 
         return default_mappings.get(openai_model)
 
+    @log_call
     def _build_model_capabilities(self, model: str) -> dict[str, Any]:
         """Build capabilities dictionary for model.
 
@@ -261,6 +274,7 @@ class GitHubModelMapper:
 
         return capabilities
 
+    @log_call
     def get_supported_languages(self, model: str) -> set[str]:
         """Get programming languages supported by model.
 
@@ -301,6 +315,7 @@ class GitHubModelMapper:
             "makefile",
         }
 
+    @log_call
     def estimate_cost(self, model: str, input_tokens: int, output_tokens: int) -> float:
         """Estimate cost for model usage.
 
@@ -316,6 +331,7 @@ class GitHubModelMapper:
         # Return 0 for cost estimation, but could be extended for enterprise pricing
         return 0.0
 
+    @log_call
     def validate_model_name(self, model_name: Any) -> bool:
         """Validate model name format for security.
 

@@ -3,6 +3,7 @@
 import json
 import os
 from pathlib import Path
+from amplihack.utils.logging_utils import log_call
 
 
 class ProjectDetector:
@@ -37,6 +38,7 @@ class ProjectDetector:
     TYPESCRIPT_FILE_EXTENSIONS = {".ts", ".tsx", ".js", ".jsx"}
 
     @staticmethod
+    @log_call
     def is_python_project(root_path: str) -> bool:
         """
         Determine if a project is primarily a Python project.
@@ -124,6 +126,7 @@ class ProjectDetector:
         return python_ratio > 0.5  # More than 50% Python files
 
     @staticmethod
+    @log_call
     def is_typescript_project(root_path: str) -> bool:
         """
         Determine if a project is primarily a TypeScript/JavaScript project.
@@ -234,6 +237,7 @@ class ProjectDetector:
         return ts_ratio > 0.5  # More than 50% TypeScript/JavaScript files
 
     @staticmethod
+    @log_call
     def get_primary_language(root_path: str) -> str | None:
         """
         Detect the primary programming language of a project.

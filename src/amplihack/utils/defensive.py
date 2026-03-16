@@ -16,6 +16,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any, TypeVar
 
+from amplihack.utils.logging_utils import log_call
+
 T = TypeVar("T")
 
 
@@ -35,6 +37,7 @@ class FileOperationError(DefensiveError):
     """File operation failed after retries."""
 
 
+@log_call
 def parse_llm_json(response: str, strict: bool = False) -> dict[str, Any]:
     """Extract and parse JSON from LLM response text.
 
@@ -122,6 +125,7 @@ def parse_llm_json(response: str, strict: bool = False) -> dict[str, Any]:
     )
 
 
+@log_call
 def retry_with_feedback(
     func: Callable[..., T],
     max_attempts: int = 3,
@@ -214,6 +218,7 @@ def retry_with_feedback(
     ) from last_exception
 
 
+@log_call
 def isolate_prompt(
     user_prompt: str,
     system_context: str | None = None,
@@ -264,6 +269,7 @@ def isolate_prompt(
     return result
 
 
+@log_call
 def _sanitize_prompt_injection(prompt: str) -> str:
     """Sanitize prompt for common injection patterns.
 
@@ -295,6 +301,7 @@ def _sanitize_prompt_injection(prompt: str) -> str:
     return sanitized
 
 
+@log_call
 def read_file_with_retry(
     file_path: str | Path,
     max_attempts: int = 3,
@@ -351,6 +358,7 @@ def read_file_with_retry(
     ) from last_exception
 
 
+@log_call
 def write_file_with_retry(
     file_path: str | Path,
     content: str,
@@ -417,6 +425,7 @@ def write_file_with_retry(
     ) from last_exception
 
 
+@log_call
 def validate_json_schema(
     data: dict[str, Any],
     required_keys: list[str],

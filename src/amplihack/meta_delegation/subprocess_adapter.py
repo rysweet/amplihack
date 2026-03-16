@@ -25,10 +25,13 @@ import time
 from dataclasses import dataclass
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 
 class SubprocessError(Exception):
     """Base exception for subprocess errors."""
 
+    @log_call
     def __init__(
         self,
         message: str,
@@ -50,6 +53,7 @@ class SubprocessError(Exception):
 class SubprocessTimeoutError(SubprocessError):
     """Exception raised when subprocess exceeds timeout."""
 
+    @log_call
     def __init__(
         self,
         timeout: float,
@@ -100,11 +104,13 @@ class SubprocessResult:
     orphans_cleaned: int = 0
 
     @property
+    @log_call
     def success(self) -> bool:
         """Check if execution was successful."""
         return self.exit_code == 0 and not self.timed_out
 
     @property
+    @log_call
     def crashed(self) -> bool:
         """Check if process crashed."""
         return self.exit_code < 0
@@ -117,6 +123,7 @@ class CLISubprocessAdapter:
     output capture, and proper cleanup.
     """
 
+    @log_call
     def __init__(
         self,
         timeout: float | None = None,
@@ -140,6 +147,7 @@ class CLISubprocessAdapter:
         self.stream_output = stream_output
         self.env = env or {}
 
+    @log_call
     def spawn(
         self,
         command: list[str],
@@ -384,6 +392,7 @@ class CLISubprocessAdapter:
             orphans_cleaned=orphans_cleaned,
         )
 
+    @log_call
     def _kill_process(self, process: subprocess.Popen) -> None:
         """Kill a process and all its children.
 
@@ -414,6 +423,7 @@ class CLISubprocessAdapter:
 
             warnings.warn(f"Unexpected cleanup error for PID {process.pid}: {e}", stacklevel=2)
 
+    @log_call
     def _cleanup_orphans(self, process: subprocess.Popen) -> int:
         """Clean up orphaned child processes.
 
@@ -448,7 +458,10 @@ class CLISubprocessAdapter:
                 # Fallback: parse ps output (Unix-like systems only)
                 import sys
 
-                print("WARNING: psutil not available, using ps fallback for process cleanup", file=sys.stderr)
+                print(
+                    "WARNING: psutil not available, using ps fallback for process cleanup",
+                    file=sys.stderr,
+                )
                 if os.name != "nt":  # Not Windows
                     try:
                         ps_output = subprocess.check_output(
@@ -489,6 +502,7 @@ class CLISubprocessAdapter:
         return orphans_cleaned
 
 
+@log_call
 def spawn_subprocess(
     command: list[str],
     working_dir: str,

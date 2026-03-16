@@ -14,7 +14,7 @@ from datetime import datetime
 import pytest
 
 from amplihack.fleet._session_context import SessionContext, SessionDecision
-
+from amplihack.utils.logging_utils import log_call
 
 # ---------------------------------------------------------------------------
 # SessionContext construction
@@ -24,6 +24,7 @@ from amplihack.fleet._session_context import SessionContext, SessionDecision
 class TestSessionContextConstruction:
     """Tests for SessionContext dataclass creation and validation."""
 
+    @log_call
     def test_minimal_construction(self):
         """Construct with only required fields (vm_name, session_name)."""
         ctx = SessionContext(vm_name="devy", session_name="task-1")
@@ -33,6 +34,7 @@ class TestSessionContextConstruction:
         assert ctx.agent_status == ""
         assert ctx.files_modified == []
 
+    @log_call
     def test_full_construction(self):
         """Construct with all fields populated."""
         ctx = SessionContext(
@@ -54,21 +56,25 @@ class TestSessionContextConstruction:
         assert ctx.files_modified == ["auth.py", "test_auth.py"]
         assert ctx.pr_url == "https://github.com/org/repo/pull/42"
 
+    @log_call
     def test_rejects_invalid_vm_name(self):
         """vm_name validation rejects shell-unsafe characters."""
         with pytest.raises(ValueError, match="Invalid VM name"):
             SessionContext(vm_name="bad name!", session_name="ok-session")
 
+    @log_call
     def test_rejects_invalid_session_name(self):
         """session_name validation rejects shell-unsafe characters."""
         with pytest.raises(ValueError, match="Invalid session name"):
             SessionContext(vm_name="devy", session_name="bad session!")
 
+    @log_call
     def test_rejects_empty_vm_name(self):
         """Empty vm_name is rejected by validation."""
         with pytest.raises(ValueError, match="Invalid VM name"):
             SessionContext(vm_name="", session_name="task-1")
 
+    @log_call
     def test_files_modified_default_is_independent(self):
         """Each instance gets its own files_modified list (no shared default)."""
         ctx1 = SessionContext(vm_name="devy", session_name="s1")
@@ -76,12 +82,14 @@ class TestSessionContextConstruction:
         ctx1.files_modified.append("file.py")
         assert ctx2.files_modified == []
 
+    @log_call
     def test_project_fields_default(self):
         """project_name and project_objectives default to empty."""
         ctx = SessionContext(vm_name="devy", session_name="s1")
         assert ctx.project_name == ""
         assert ctx.project_objectives == []
 
+    @log_call
     def test_project_fields_populated(self):
         """project_name and project_objectives can be set."""
         ctx = SessionContext(
@@ -96,6 +104,7 @@ class TestSessionContextConstruction:
         assert ctx.project_name == "myapp"
         assert len(ctx.project_objectives) == 2
 
+    @log_call
     def test_project_objectives_default_independent(self):
         """Each instance gets its own project_objectives list."""
         ctx1 = SessionContext(vm_name="devy", session_name="s1")
@@ -112,6 +121,7 @@ class TestSessionContextConstruction:
 class TestSessionContextToPromptContext:
     """Tests for to_prompt_context formatting."""
 
+    @log_call
     def test_includes_vm_and_session(self):
         """Output always contains VM and session identifiers."""
         ctx = SessionContext(vm_name="devy", session_name="task-1")
@@ -119,14 +129,14 @@ class TestSessionContextToPromptContext:
         assert "VM: devy" in output
         assert "Session: task-1" in output
 
+    @log_call
     def test_includes_status(self):
         """Output always contains the agent status line."""
-        ctx = SessionContext(
-            vm_name="devy", session_name="task-1", agent_status="running"
-        )
+        ctx = SessionContext(vm_name="devy", session_name="task-1", agent_status="running")
         output = ctx.to_prompt_context()
         assert "Status: running" in output
 
+    @log_call
     def test_includes_all_populated_fields(self):
         """When all fields are set, all appear in the output."""
         ctx = SessionContext(
@@ -154,6 +164,7 @@ class TestSessionContextToPromptContext:
         assert "$ pytest" in output
         assert "Ship fast" in output
 
+    @log_call
     def test_handles_empty_fields_gracefully(self):
         """When optional fields are empty, they are omitted (not blank lines)."""
         ctx = SessionContext(vm_name="devy", session_name="task-1")
@@ -167,21 +178,22 @@ class TestSessionContextToPromptContext:
         assert "Transcript summary:" not in output
         assert "Project priorities:" not in output
 
+    @log_call
     def test_empty_tmux_shows_placeholder(self):
         """When tmux_capture is empty, output shows '(empty)' placeholder."""
         ctx = SessionContext(vm_name="devy", session_name="task-1")
         output = ctx.to_prompt_context()
         assert "(empty)" in output
 
+    @log_call
     def test_nonempty_tmux_shows_capture(self):
         """When tmux_capture has content, it appears instead of placeholder."""
-        ctx = SessionContext(
-            vm_name="devy", session_name="task-1", tmux_capture="hello world"
-        )
+        ctx = SessionContext(vm_name="devy", session_name="task-1", tmux_capture="hello world")
         output = ctx.to_prompt_context()
         assert "hello world" in output
         assert "(empty)" not in output
 
+    @log_call
     def test_includes_project_and_objectives(self):
         """When project_name and objectives are set, they appear in output."""
         ctx = SessionContext(
@@ -199,6 +211,7 @@ class TestSessionContextToPromptContext:
         # Closed objectives should NOT appear under "Open objectives"
         assert "#2: Done task" not in output
 
+    @log_call
     def test_no_project_omits_section(self):
         """When project_name is empty, project section is omitted."""
         ctx = SessionContext(vm_name="devy", session_name="task-1")
@@ -215,6 +228,7 @@ class TestSessionContextToPromptContext:
 class TestSessionDecision:
     """Tests for SessionDecision dataclass and summary()."""
 
+    @log_call
     def test_construction(self):
         """Construct a decision with all fields."""
         decision = SessionDecision(
@@ -230,6 +244,7 @@ class TestSessionDecision:
         assert decision.confidence == 0.95
         assert isinstance(decision.timestamp, datetime)
 
+    @log_call
     def test_summary_with_input_text(self):
         """summary() includes input text when action is send_input."""
         decision = SessionDecision(
@@ -247,6 +262,7 @@ class TestSessionDecision:
         assert "Agent waiting for approval" in result
         assert 'Input: "yes\\nplease continue"' in result
 
+    @log_call
     def test_summary_without_input_text(self):
         """summary() omits input line when input_text is empty."""
         decision = SessionDecision(
@@ -262,6 +278,7 @@ class TestSessionDecision:
         assert "70%" in result
         assert "Input:" not in result
 
+    @log_call
     def test_summary_truncates_long_input(self):
         """summary() truncates input_text to 100 characters for display."""
         long_input = "x" * 200
@@ -281,6 +298,7 @@ class TestSessionDecision:
                 quoted = line.split('"')[1]
                 assert len(quoted) <= 100
 
+    @log_call
     def test_summary_replaces_newlines_in_input(self):
         """summary() replaces newlines with \\n for single-line display."""
         decision = SessionDecision(

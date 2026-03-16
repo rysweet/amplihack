@@ -13,6 +13,7 @@ from amplihack.vendor.blarify.repositories.graph_db_manager.db_manager import Ab
 from langchain_core.callbacks import CallbackManagerForToolRun
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
+from amplihack.utils.logging_utils import log_call
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,7 @@ class GrepCode(BaseTool):
 
     db_manager: AbstractDbManager = Field(description="Database manager for queries")
 
+    @log_call
     def __init__(
         self,
         db_manager: Any,
@@ -73,6 +75,7 @@ class GrepCode(BaseTool):
         )
         logger.info("GrepCode tool initialized")
 
+    @log_call
     def _extract_matching_lines(
         self, code: str, pattern: str, case_sensitive: bool, context_lines: int = 2
     ) -> list[tuple[int, str]]:
@@ -112,6 +115,7 @@ class GrepCode(BaseTool):
 
         return matches
 
+    @log_call
     def _convert_glob_to_regex(self, glob_pattern: str) -> str:
         """
         Convert a glob pattern to a regex pattern for Cypher.
@@ -135,6 +139,7 @@ class GrepCode(BaseTool):
 
         return pattern
 
+    @log_call
     def _run(
         self,
         pattern: str,

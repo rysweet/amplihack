@@ -20,12 +20,15 @@ import logging
 import sys
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 from .evaluation import run_evaluation
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 
+@log_call
 def main():
     """CLI entry point fer memory evaluation."""
     parser = argparse.ArgumentParser(

@@ -15,6 +15,7 @@ from pathlib import Path, PurePath
 import requests
 from amplihack.vendor.blarify.vendor.multilspy.multilspy_exceptions import MultilspyException
 from amplihack.vendor.blarify.vendor.multilspy.multilspy_logger import MultilspyLogger
+from amplihack.utils.logging_utils import log_call
 
 
 class TextUtils:
@@ -23,6 +24,7 @@ class TextUtils:
     """
 
     @staticmethod
+    @log_call
     def get_line_col_from_index(text: str, index: int) -> tuple[int, int]:
         """
         Returns the zero-indexed line and column number of the given index in the given text
@@ -41,6 +43,7 @@ class TextUtils:
         return l, c
 
     @staticmethod
+    @log_call
     def get_index_from_line_col(text: str, line: int, col: int) -> int:
         """
         Returns the index of the given zero-indexed line and column number in the given text
@@ -55,6 +58,7 @@ class TextUtils:
         return idx
 
     @staticmethod
+    @log_call
     def get_updated_position_from_line_and_column_and_edit(
         l: int, c: int, text_to_be_inserted: str
     ) -> tuple[int, int]:
@@ -76,6 +80,7 @@ class PathUtils:
     """
 
     @staticmethod
+    @log_call
     def uri_to_path(uri: str) -> str:
         """
         Converts a URI to a file path. Works on both Linux and Windows.
@@ -104,6 +109,7 @@ class FileUtils:
     """
 
     @staticmethod
+    @log_call
     def read_file(logger: MultilspyLogger, file_path: str) -> str:
         """
         Reads the file at the given path and returns the contents as a string.
@@ -123,6 +129,7 @@ class FileUtils:
         raise MultilspyException(f"File read '{file_path}' failed: Unsupported encoding.") from None
 
     @staticmethod
+    @log_call
     def download_file(logger: MultilspyLogger, url: str, target_path: str) -> None:
         """
         Downloads the file from the given URL to the given {target_path}
@@ -142,6 +149,7 @@ class FileUtils:
             raise MultilspyException("Error downoading file.") from None
 
     @staticmethod
+    @log_call
     def download_and_extract_archive(
         logger: MultilspyLogger, url: str, target_path: str, archive_type: str
     ) -> None:
@@ -225,6 +233,7 @@ class PlatformUtils:
     """
 
     @staticmethod
+    @log_call
     def get_platform_id() -> PlatformId:
         """
         Returns the platform id for the current system
@@ -251,6 +260,7 @@ class PlatformUtils:
         raise MultilspyException("Unknown platform: " + system + " " + machine + " " + bitness)
 
     @staticmethod
+    @log_call
     def get_dotnet_version() -> DotnetVersion:
         """
         Returns the dotnet version for the current system

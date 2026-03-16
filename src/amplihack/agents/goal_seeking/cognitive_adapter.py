@@ -22,6 +22,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 from .hive_mind.constants import DEFAULT_CONFIDENCE_GATE, DEFAULT_QUALITY_THRESHOLD
 
 logger = logging.getLogger(__name__)
@@ -70,6 +72,7 @@ class CognitiveAdapter:
         >>> print(results[0]["context"])  # "Biology"
     """
 
+    @log_call
     def __init__(
         self,
         agent_name: str,
@@ -121,6 +124,7 @@ class CognitiveAdapter:
             self._cognitive = False
 
     @property
+    @log_call
     def backend_type(self) -> str:
         """Return which memory backend is active."""
         return "cognitive" if self._cognitive else "hierarchical"
@@ -129,6 +133,7 @@ class CognitiveAdapter:
     # FlatRetrieverAdapter-compatible interface
     # ------------------------------------------------------------------
 
+    @log_call
     def store_fact(
         self,
         context: str,
@@ -184,6 +189,7 @@ class CognitiveAdapter:
 
         return node_id
 
+    @log_call
     def _promote_to_hive(
         self,
         context: str,
@@ -238,6 +244,7 @@ class CognitiveAdapter:
         except Exception:
             logger.debug("Failed to promote fact to hive (non-fatal)", exc_info=True)
 
+    @log_call
     def search(
         self,
         query: str,
@@ -271,6 +278,7 @@ class CognitiveAdapter:
         hive_results = self._search_hive(query.strip(), limit=limit)
         return self._merge_results(local_results, hive_results, limit)
 
+    @log_call
     def get_all_facts(self, limit: int = 50) -> list[dict[str, Any]]:
         """Retrieve all facts without keyword filtering.
 
@@ -291,6 +299,7 @@ class CognitiveAdapter:
         return self._merge_results(local_results, hive_results, limit)
 
     @staticmethod
+    @log_call
     def _hive_fact_to_dict(
         content: str,
         concept: str,
@@ -314,6 +323,7 @@ class CognitiveAdapter:
             "source": f"hive:{source}",
         }
 
+    @log_call
     def _search_hive(self, query: str, limit: int = 50) -> list[dict[str, Any]]:
         """Search the shared hive store.
 
@@ -357,6 +367,7 @@ class CognitiveAdapter:
             logger.exception("Error searching hive store")
         return []
 
+    @log_call
     def _execute_hive_search(self, query: str, limit: int) -> list[dict[str, Any]]:
         """Execute the actual hive search using the best available method."""
         # FederatedGraphStore.federated_query returns FederatedQueryResult
@@ -400,6 +411,7 @@ class CognitiveAdapter:
             ]
         return []
 
+    @log_call
     def _get_all_hive_facts(self, limit: int = 50) -> list[dict[str, Any]]:
         """Get all facts from the shared hive store."""
         if self._hive_store is None:
@@ -436,6 +448,7 @@ class CognitiveAdapter:
         return []
 
     @staticmethod
+    @log_call
     def _merge_results(
         local: list[dict[str, Any]],
         hive: list[dict[str, Any]],
@@ -464,6 +477,7 @@ class CognitiveAdapter:
 
         return merged[:limit]
 
+    @log_call
     def get_statistics(self) -> dict[str, Any]:
         """Get memory statistics."""
         stats = self.memory.get_statistics()
@@ -471,6 +485,7 @@ class CognitiveAdapter:
             stats["total_experiences"] = stats.get("total", 0)
         return stats
 
+    @log_call
     def retrieve_by_entity(self, entity_name: str, limit: int = 50) -> list[dict[str, Any]]:
         """Retrieve all facts about a specific entity.
 
@@ -489,6 +504,7 @@ class CognitiveAdapter:
             return [self._node_to_dict(n) for n in nodes]
         return []
 
+    @log_call
     def search_by_concept(self, keywords: list[str], limit: int = 30) -> list[dict[str, Any]]:
         """Search for facts by concept/content keyword matching.
 
@@ -507,6 +523,7 @@ class CognitiveAdapter:
             return [self._node_to_dict(n) for n in nodes]
         return []
 
+    @log_call
     def execute_aggregation(self, query_type: str, entity_filter: str = "") -> dict[str, Any]:
         """Execute Cypher aggregation query for meta-memory questions.
 
@@ -523,6 +540,7 @@ class CognitiveAdapter:
             )
         return {"count": 0, "query_type": query_type, "error": "Not supported"}
 
+    @log_call
     def store_episode(self, content: str, source_label: str = "") -> str:
         """Store an episode (raw source content)."""
         return self.memory.store_episode(content=content, source_label=source_label)
@@ -531,6 +549,7 @@ class CognitiveAdapter:
     # CognitiveMemory-specific capabilities
     # ------------------------------------------------------------------
 
+    @log_call
     def push_working(
         self, slot_type: str, content: str, task_id: str, relevance: float = 1.0
     ) -> str | None:
@@ -539,30 +558,35 @@ class CognitiveAdapter:
             return self.memory.push_working(slot_type, content, task_id, relevance)
         return None
 
+    @log_call
     def get_working(self, task_id: str) -> list[Any]:
         """Get working memory slots for a task."""
         if self._cognitive:
             return self.memory.get_working(task_id)
         return []
 
+    @log_call
     def clear_working(self, task_id: str) -> int:
         """Clear working memory for a task."""
         if self._cognitive:
             return self.memory.clear_working(task_id)
         return 0
 
+    @log_call
     def store_procedure(self, name: str, steps: list[str], **kwargs: Any) -> str | None:
         """Store a procedural memory (step sequence)."""
         if self._cognitive:
             return self.memory.store_procedure(name=name, steps=steps, **kwargs)
         return None
 
+    @log_call
     def recall_procedure(self, query: str, limit: int = 5) -> list[Any]:
         """Recall a procedure by query."""
         if self._cognitive:
             return self.memory.recall_procedure(query=query, limit=limit)
         return []
 
+    @log_call
     def store_prospective(
         self, description: str, trigger_condition: str, action: str, **kwargs: Any
     ) -> str | None:
@@ -576,12 +600,14 @@ class CognitiveAdapter:
             )
         return None
 
+    @log_call
     def check_triggers(self, content: str) -> list[Any]:
         """Check if any prospective memories are triggered by content."""
         if self._cognitive:
             return self.memory.check_triggers(content)
         return []
 
+    @log_call
     def record_sensory(self, modality: str, raw_data: str, ttl_seconds: int = 300) -> str | None:
         """Record sensory memory (short-lived observation)."""
         if self._cognitive:
@@ -592,22 +618,27 @@ class CognitiveAdapter:
     # Utility
     # ------------------------------------------------------------------
 
+    @log_call
     def flush_memory(self) -> None:
         """Flush underlying memory cache without losing data."""
         if hasattr(self.memory, "flush_memory"):
             self.memory.flush_memory()
 
+    @log_call
     def close(self) -> None:
         """Close underlying memory."""
         self.memory.close()
 
+    @log_call
     def __enter__(self):
         return self
 
+    @log_call
     def __exit__(self, *args):
         self.close()
 
     @staticmethod
+    @log_call
     def _semantic_fact_to_dict(fact: Any) -> dict[str, Any]:
         """Convert CognitiveMemory SemanticFact to flat dict."""
         return {
@@ -621,6 +652,7 @@ class CognitiveAdapter:
         }
 
     @staticmethod
+    @log_call
     def _node_to_dict(node: Any) -> dict[str, Any]:
         """Convert HierarchicalMemory KnowledgeNode to flat dict."""
         return {

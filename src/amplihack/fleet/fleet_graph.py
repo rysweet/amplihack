@@ -13,6 +13,8 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 logger = logging.getLogger(__name__)
 
 __all__ = ["FleetGraph", "GraphNode", "GraphEdge", "NodeType", "EdgeType"]
@@ -79,29 +81,35 @@ class FleetGraph:
     persist_path: Path | None = None
     _batching: bool = field(default=False, repr=False)
 
+    @log_call
     def __post_init__(self):
         if self.persist_path and self.persist_path.exists():
             self.load()
 
     class _BatchContext:
+        @log_call
         def __init__(self, graph: FleetGraph):
             self._graph = graph
 
+        @log_call
         def __enter__(self):
             self._graph._batching = True
             return self._graph
 
+        @log_call
         def __exit__(self, *exc):
             self._graph._batching = False
             self._graph._save()
             return False
 
+    @log_call
     def batch(self) -> _BatchContext:
         """Context manager to batch multiple add_node/add_edge calls into one save."""
         return self._BatchContext(self)
 
     # --- Node operations ---
 
+    @log_call
     def add_node(self, node_id: str, node_type: NodeType, label: str = "", **metadata) -> GraphNode:
         """Add or update a node."""
         node = GraphNode(
@@ -115,14 +123,17 @@ class FleetGraph:
         self._save()
         return node
 
+    @log_call
     def get_node(self, node_id: str) -> GraphNode | None:
         return self.nodes.get(node_id)
 
+    @log_call
     def nodes_of_type(self, node_type: NodeType) -> list[GraphNode]:
         return [n for n in self.nodes.values() if n.node_type == node_type]
 
     # --- Edge operations ---
 
+    @log_call
     def add_edge(
         self, source_id: str, target_id: str, edge_type: EdgeType, **metadata
     ) -> GraphEdge:
@@ -145,6 +156,7 @@ class FleetGraph:
         self._save()
         return edge
 
+    @log_call
     def neighbors(self, node_id: str, edge_type: EdgeType | None = None) -> list[str]:
         """Get IDs of connected nodes."""
         result = []
@@ -157,6 +169,7 @@ class FleetGraph:
                     result.append(edge.source_id)
         return result
 
+    @log_call
     def edges_from(self, node_id: str, edge_type: EdgeType | None = None) -> list[GraphEdge]:
         """Get outgoing edges from a node."""
         return [
@@ -167,6 +180,7 @@ class FleetGraph:
 
     # --- Fleet-specific queries ---
 
+    @log_call
     def detect_conflicts(self, task_id: str) -> list[str]:
         """Find tasks that modify the same files as the given task."""
         my_files = set(self.neighbors(task_id, EdgeType.MODIFIES))
@@ -183,10 +197,12 @@ class FleetGraph:
 
         return conflicts
 
+    @log_call
     def task_dependencies(self, task_id: str) -> list[str]:
         """Get tasks that must complete before this one."""
         return self.neighbors(task_id, EdgeType.DEPENDS_ON)
 
+    @log_call
     def project_tasks(self, project_id: str) -> list[str]:
         """Get all task IDs for a project."""
         return [
@@ -195,6 +211,7 @@ class FleetGraph:
             if e.source_id == project_id and e.edge_type == EdgeType.CONTAINS
         ]
 
+    @log_call
     def project_prs(self, project_id: str) -> list[str]:
         """Get all PR IDs produced by tasks in a project."""
         prs = []
@@ -204,6 +221,7 @@ class FleetGraph:
 
     # --- Summary ---
 
+    @log_call
     def summary(self) -> str:
         """Human-readable graph summary."""
         type_counts: dict[str, int] = {}
@@ -228,13 +246,17 @@ class FleetGraph:
 
     # --- Persistence ---
 
+    @log_call
     def _save(self) -> None:
         if self._batching:
             return
         if not self.persist_path:
             return
-        if getattr(self, '_load_failed', False):
-            logger.error("Refusing to save — load failed for %s. Fix the .bak file manually.", self.persist_path)
+        if getattr(self, "_load_failed", False):
+            logger.error(
+                "Refusing to save — load failed for %s. Fix the .bak file manually.",
+                self.persist_path,
+            )
             return
         self.persist_path.parent.mkdir(parents=True, exist_ok=True)
         data = {
@@ -261,6 +283,7 @@ class FleetGraph:
         tmp.write_text(json.dumps(data, indent=2))
         tmp.rename(self.persist_path)
 
+    @log_call
     def load(self) -> None:
         if not self.persist_path or not self.persist_path.exists():
             return

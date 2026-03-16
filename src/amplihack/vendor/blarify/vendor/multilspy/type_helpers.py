@@ -5,10 +5,12 @@ This module provides type-helpers used across multilspy implementation
 import inspect
 from collections.abc import Callable
 from typing import TypeVar
+from amplihack.utils.logging_utils import log_call
 
 R = TypeVar("R", bound=object)
 
 
+@log_call
 def ensure_all_methods_implemented(
     source_cls: type[object],
 ) -> Callable[[type[R]], type[R]]:
@@ -16,6 +18,7 @@ def ensure_all_methods_implemented(
     A decorator to ensure that all methods of source_cls class are implemented in the decorated class.
     """
 
+    @log_call
     def check_all_methods_implemented(target_cls: R) -> R:
         for name, _ in inspect.getmembers(source_cls, inspect.isfunction):
             if name not in target_cls.__dict__ or not callable(target_cls.__dict__[name]):

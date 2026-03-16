@@ -15,10 +15,13 @@ import json
 import os
 import shutil
 
+from amplihack.utils.logging_utils import log_call
+
 # Import constants from package root
 from . import CLAUDE_DIR, MANIFEST_JSON
 
 
+@log_call
 def read_manifest() -> tuple[list[str], list[str]]:
     """Read manifest file and return files and directories lists."""
     try:
@@ -29,6 +32,7 @@ def read_manifest() -> tuple[list[str], list[str]]:
         return [], []
 
 
+@log_call
 def remove_hooks_from_settings():
     """Remove amplihack hook entries from ~/.claude/settings.json.
 
@@ -108,6 +112,7 @@ def remove_hooks_from_settings():
     return removed_count
 
 
+@log_call
 def uninstall():
     """Uninstall amplihack components from ~/.claude."""
     removed_any = False

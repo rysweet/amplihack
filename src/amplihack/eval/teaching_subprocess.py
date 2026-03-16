@@ -14,7 +14,10 @@ import sys
 import tempfile
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
 
+
+@log_call
 def teaching_phase(knowledge_base: list[str], agent_name: str, max_turns: int = 4) -> dict:
     """Run teaching phase: teacher teaches student using knowledge base.
 
@@ -95,6 +98,7 @@ Return a structured lesson plan with numbered key facts."""
         agent.close()
 
 
+@log_call
 def main():
     """Main entry point for subprocess."""
     import argparse

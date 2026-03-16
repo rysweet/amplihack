@@ -12,6 +12,8 @@ from typing import Any
 
 import aiohttp  # type: ignore[import-unresolved]
 
+from amplihack.utils.logging_utils import log_call
+
 from .exceptions import (
     AzureAPIError,
     AzureAuthenticationError,
@@ -23,6 +25,7 @@ from .monitoring import logger
 
 
 # Azure Error Classification and Parsing
+@log_call
 def classify_azure_error(status_code: int, error_text: str) -> AzureAPIError:
     """Classify Azure API errors into specific exception types with enhanced parsing."""
     # Parse JSON error response if possible
@@ -129,6 +132,7 @@ def classify_azure_error(status_code: int, error_text: str) -> AzureAPIError:
     )
 
 
+@log_call
 def extract_user_friendly_message(azure_error: AzureAPIError) -> str:
     """Extract a user-friendly error message from Azure API error."""
     if isinstance(azure_error, AzureAuthenticationError):
@@ -152,6 +156,7 @@ def extract_user_friendly_message(azure_error: AzureAPIError) -> str:
 
 
 # Azure Retry Logic with Exponential Backoff
+@log_call
 async def retry_azure_request(
     request_func,
     max_retries: int = 3,
@@ -275,6 +280,7 @@ async def retry_azure_request(
 class AzureFallbackManager:
     """Manages fallback behavior when Azure API consistently fails."""
 
+    @log_call
     def __init__(self):
         self.failure_count = 0
         self.consecutive_failures = 0
@@ -282,6 +288,7 @@ class AzureFallbackManager:
         self.fallback_mode = False
         self.fallback_until = None
 
+    @log_call
     def record_success(self):
         """Record a successful Azure API call."""
         self.consecutive_failures = 0
@@ -293,6 +300,7 @@ class AzureFallbackManager:
             self.fallback_mode = False
             self.fallback_until = None
 
+    @log_call
     def record_failure(self, azure_error: AzureAPIError):
         """Record a failed Azure API call and determine if fallback should be triggered."""
         self.failure_count += 1
@@ -338,6 +346,7 @@ class AzureFallbackManager:
                 f"(consecutive failures: {self.consecutive_failures})"
             )
 
+    @log_call
     def should_use_fallback(self) -> bool:
         """Check if fallback mode should be used."""
         if not self.fallback_mode:
@@ -354,6 +363,7 @@ class AzureFallbackManager:
 
         return True
 
+    @log_call
     def get_fallback_reason(self) -> str:
         """Get a human-readable reason for fallback mode."""
         if not self.fallback_mode:
@@ -370,6 +380,7 @@ class AzureFallbackManager:
 azure_fallback_manager = AzureFallbackManager()
 
 
+@log_call
 async def create_fallback_response(request: dict, fallback_reason: str) -> dict:
     """Create a fallback response when Azure API is unavailable."""
     claude_model = request.get("model", "claude-3-sonnet")

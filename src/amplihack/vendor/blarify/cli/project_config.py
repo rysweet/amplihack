@@ -4,27 +4,32 @@ import json
 import os
 from datetime import UTC, datetime
 from pathlib import Path
+from amplihack.utils.logging_utils import log_call
 
 
 class ProjectConfig:
     """Manages project configurations for Blarify."""
 
     @staticmethod
+    @log_call
     def get_config_dir() -> Path:
         """Get the Blarify configuration directory."""
         return Path.home() / ".blarify"
 
     @staticmethod
+    @log_call
     def get_credentials_file() -> Path:
         """Get the path to the Neo4j credentials file."""
         return ProjectConfig.get_config_dir() / "neo4j_credentials.json"
 
     @staticmethod
+    @log_call
     def get_projects_file() -> Path:
         """Get the path to the projects configuration file."""
         return ProjectConfig.get_config_dir() / "projects.json"
 
     @staticmethod
+    @log_call
     def load_neo4j_credentials() -> dict[str, str]:
         """Load Neo4j credentials from storage.
 
@@ -45,6 +50,7 @@ class ProjectConfig:
             return json.load(f)
 
     @staticmethod
+    @log_call
     def save_project_config(repo_id: str, entity_id: str, neo4j_uri: str) -> None:
         """Save project configuration.
 
@@ -87,6 +93,7 @@ class ProjectConfig:
         projects_file.chmod(0o600)
 
     @staticmethod
+    @log_call
     def load_project_config(repo_id: str | None = None) -> dict[str, str]:
         """Load project configuration.
 
@@ -131,6 +138,7 @@ class ProjectConfig:
         return projects[repo_id]
 
     @staticmethod
+    @log_call
     def list_projects() -> list[dict[str, str]]:
         """List all configured projects.
 
@@ -147,6 +155,7 @@ class ProjectConfig:
         return list(projects.values())
 
     @staticmethod
+    @log_call
     def find_project_by_path(current_path: str) -> str | None:
         """Find a project that contains the given path.
 
@@ -176,6 +185,7 @@ class ProjectConfig:
         return None
 
     @staticmethod
+    @log_call
     def delete_project(repo_id: str) -> bool:
         """Delete a project configuration.
 

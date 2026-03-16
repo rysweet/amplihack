@@ -6,11 +6,14 @@ import os
 import sys
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 from .base import AgentResult, AgentTool, GoalSeekingAgent, SDKType
 
 _DEFAULT_MODEL = os.environ.get("EVAL_MODEL", "claude-opus-4-6")
 
 
+@log_call
 def create_agent(
     name: str,
     sdk: str | SDKType = SDKType.MICROSOFT,
@@ -81,6 +84,7 @@ def create_agent(
 class _MiniFrameworkAdapter(GoalSeekingAgent):
     """Adapter wrapping the current WikipediaLearningAgent."""
 
+    @log_call
     def __init__(
         self,
         name: str,
@@ -99,6 +103,7 @@ class _MiniFrameworkAdapter(GoalSeekingAgent):
             enable_memory=enable_memory,
         )
 
+    @log_call
     def _create_sdk_agent(self) -> None:
         try:
             from ..wikipedia_learning_agent import WikipediaLearningAgent
@@ -112,6 +117,7 @@ class _MiniFrameworkAdapter(GoalSeekingAgent):
             self._learning_agent = None
             print("WARNING: WikipediaLearningAgent not available", file=sys.stderr)
 
+    @log_call
     async def _run_sdk_agent(self, task: str, max_turns: int = 10) -> AgentResult:
         if not self._learning_agent:
             return AgentResult(
@@ -124,9 +130,11 @@ class _MiniFrameworkAdapter(GoalSeekingAgent):
             answer = answer[0]
         return AgentResult(response=str(answer), goal_achieved=True, metadata={"sdk": "mini"})
 
+    @log_call
     def _get_native_tools(self) -> list[str]:
         return ["read_content", "search_memory", "synthesize_answer", "calculate"]
 
+    @log_call
     def _register_tool_with_sdk(self, tool: AgentTool) -> None:
         pass
 

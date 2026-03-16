@@ -19,6 +19,7 @@ from amplihack.agents.domain_agents.document_creator import DocumentCreatorAgent
 from amplihack.agents.domain_agents.meeting_synthesizer import MeetingSynthesizerAgent
 from amplihack.agents.domain_agents.project_planning import ProjectPlanningAgent
 from amplihack.eval.domain_eval_harness import DomainEvalHarness
+from amplihack.utils.logging_utils import log_call
 
 AGENT_REGISTRY = {
     "code_review": CodeReviewAgent,
@@ -29,6 +30,7 @@ AGENT_REGISTRY = {
 }
 
 
+@log_call
 def run_all_evals(
     agent_names: list[str] | None = None,
     output_dir: str = "./domain_eval_results",
@@ -114,6 +116,7 @@ def run_all_evals(
     return all_results
 
 
+@log_call
 def main():
     """CLI entry point."""
     import argparse

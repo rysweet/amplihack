@@ -15,6 +15,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 from .base import AgentResult, AgentTool, GoalSeekingAgent, SDKType
 
 logger = logging.getLogger(__name__)
@@ -49,6 +51,7 @@ except ImportError:
 _PROMPT_DIR = Path(__file__).resolve().parent.parent / "prompts" / "sdk"
 
 
+@log_call
 def _load_prompt(filename: str) -> str:
     """Load a prompt template from the prompts/sdk/ directory."""
     path = _PROMPT_DIR / filename
@@ -62,11 +65,13 @@ def _load_prompt(filename: str) -> str:
 # ---------------------------------------------------------------------------
 
 
+@log_call
 def _build_learning_tools(agent_ref: GoalSeekingAgent) -> list[Any]:
     """Wrap AgentTools as FunctionTool objects for the SDK."""
     return [_wrap_tool(tool_def) for tool_def in agent_ref._tools]
 
 
+@log_call
 def _wrap_tool(tool_def: AgentTool) -> Any:
     """Wrap a single AgentTool into a FunctionTool for the Agent Framework.
 
@@ -77,6 +82,7 @@ def _wrap_tool(tool_def: AgentTool) -> Any:
     name = tool_def.name
     description = tool_def.description
 
+    @log_call
     def wrapper(**kwargs: Any) -> str:
         result = original_fn(**kwargs)
         if isinstance(result, (dict, list)):
@@ -105,6 +111,7 @@ class MicrosoftGoalSeekingAgent(GoalSeekingAgent):
         >>> result = await agent.run("Learn about React framework releases")
     """
 
+    @log_call
     def __init__(
         self,
         name: str,
@@ -137,6 +144,7 @@ class MicrosoftGoalSeekingAgent(GoalSeekingAgent):
             enable_eval=enable_eval,
         )
 
+    @log_call
     def _create_sdk_agent(self) -> None:
         """Initialize Microsoft Agent Framework agent with Agent + OpenAIChatClient.
 
@@ -165,6 +173,7 @@ class MicrosoftGoalSeekingAgent(GoalSeekingAgent):
         )
         self._session = self._sdk_agent.create_session()
 
+    @log_call
     def _build_system_prompt(self) -> str:
         """Build system prompt from template + custom instructions."""
         template = _load_prompt("microsoft_system.md")
@@ -196,6 +205,7 @@ class MicrosoftGoalSeekingAgent(GoalSeekingAgent):
 
         return template
 
+    @log_call
     async def _run_sdk_agent(self, task: str, max_turns: int = 10) -> AgentResult:
         """Execute task through Microsoft Agent Framework Agent.run()."""
         try:
@@ -238,25 +248,30 @@ class MicrosoftGoalSeekingAgent(GoalSeekingAgent):
                 metadata={"sdk": "microsoft", "error_type": type(e).__name__},
             )
 
+    @log_call
     def _get_native_tools(self) -> list[str]:
         """Return registered tool names."""
         return [t.name for t in self._tools]
 
+    @log_call
     def _register_tool_with_sdk(self, tool: AgentTool) -> None:
         """Register a new tool and recreate the SDK agent."""
         self._tools.append(tool)
         self._create_sdk_agent()
 
+    @log_call
     def reset_session(self) -> None:
         """Create a new session, discarding conversation history."""
         self._session = self._sdk_agent.create_session()
         logger.info("Session reset for agent '%s'", self.name)
 
+    @log_call
     def close(self) -> None:
         """Release resources."""
         super().close()
         self._session = None
 
+    @log_call
     def __repr__(self) -> str:
         return f"MicrosoftGoalSeekingAgent(name={self.name!r}, model={self.model!r})"
 

@@ -4,6 +4,7 @@ from amplihack.vendor.blarify.code_hierarchy.languages.language_definitions impo
 from amplihack.vendor.blarify.graph.node.types.node_labels import NodeLabels
 from amplihack.vendor.blarify.graph.relationship.relationship_type import RelationshipType
 from tree_sitter import Language, Node, Parser
+from amplihack.utils.logging_utils import log_call
 
 
 class PhpDefinitions(LanguageDefinitions):
@@ -14,25 +15,31 @@ class PhpDefinitions(LanguageDefinitions):
     CONTROL_FLOW_STATEMENTS = ["if_statement", "while_statement", "for_statement"]
     CONSEQUENCE_STATEMENTS = ["compound_statement"]
 
+    @log_call
     def get_language_name() -> str:
         return "php"
 
+    @log_call
     def get_parsers_for_extensions() -> dict[str, Parser]:
         return {
             ".php": Parser(Language(tsphp.language_php())),
         }
 
+    @log_call
     def should_create_node(node: Node) -> bool:
         return LanguageDefinitions._should_create_node_base_implementation(
             node, ["class_declaration", "function_definition", "method_declaration"]
         )
 
+    @log_call
     def get_identifier_node(node: Node) -> Node:
         return LanguageDefinitions._get_identifier_node_base_implementation(node)
 
+    @log_call
     def get_body_node(node: Node) -> Node:
         return LanguageDefinitions._get_body_node_base_implementation(node)
 
+    @log_call
     def get_node_label_from_type(type: str) -> NodeLabels:
         return {
             "class_declaration": NodeLabels.CLASS,
@@ -40,15 +47,18 @@ class PhpDefinitions(LanguageDefinitions):
             "method_declaration": NodeLabels.FUNCTION,
         }[type]
 
+    @log_call
     def get_language_file_extensions() -> set[str]:
         return {".php"}
 
+    @log_call
     def get_relationship_type(node, node_in_point_reference: Node) -> FoundRelationshipScope | None:
         return PhpDefinitions._find_relationship_type(
             node_label=node.label,
             node_in_point_reference=node_in_point_reference,
         )
 
+    @log_call
     def _find_relationship_type(
         node_label: str, node_in_point_reference: Node
     ) -> FoundRelationshipScope | None:
@@ -59,6 +69,7 @@ class PhpDefinitions(LanguageDefinitions):
             node_in_point_reference, relevant_relationship_types
         )
 
+    @log_call
     def _get_relationship_types_by_label() -> dict[str, RelationshipType]:
         return {
             NodeLabels.CLASS: {

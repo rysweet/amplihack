@@ -20,6 +20,7 @@ from pathlib import Path
 
 from amplihack.fleet._defaults import get_azlin_path
 from amplihack.fleet._validation import validate_vm_name
+from amplihack.utils.logging_utils import log_call
 
 __all__ = ["AuthPropagator", "AuthResult", "GitHubIdentity"]
 
@@ -28,6 +29,7 @@ logger = logging.getLogger(__name__)
 _CHMOD_MODE_RE = re.compile(r"^[0-7]{3,4}$")
 
 
+@log_call
 def _validate_chmod_mode(mode: str) -> str:
     """Validate chmod mode is a safe numeric string."""
     if not _CHMOD_MODE_RE.match(mode):
@@ -70,6 +72,7 @@ class GitHubIdentity:
     username: str
     hostname: str = "github.com"
 
+    @log_call
     def switch_command(self) -> str:
         """Command to switch to this identity on a remote VM."""
         return f"gh auth switch --user {shlex.quote(self.username)} --hostname {shlex.quote(self.hostname)}"
@@ -97,6 +100,7 @@ class AuthPropagator:
 
     azlin_path: str = field(default_factory=get_azlin_path)
 
+    @log_call
     def propagate_all(self, vm_name: str, services: list[str] | None = None) -> list[AuthResult]:
         """Copy all auth tokens to a target VM.
 
@@ -123,6 +127,7 @@ class AuthPropagator:
 
         return results
 
+    @log_call
     def verify_auth(self, vm_name: str) -> dict[str, bool]:
         """Verify that auth tokens work on target VM.
 
@@ -144,12 +149,17 @@ class AuthPropagator:
                     timeout=30,
                 )
                 results[service] = result.returncode == 0
-            except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
+            except (
+                subprocess.TimeoutExpired,
+                subprocess.SubprocessError,
+                FileNotFoundError,
+            ) as exc:
                 logger.warning("verify_auth %s failed for %s: %s", service, vm_name, exc)
                 results[service] = False
 
         return results
 
+    @log_call
     def propagate_all_bundled(self, vm_name: str) -> AuthResult:
         """Copy all auth tokens as a single tar bundle.
 
@@ -159,6 +169,7 @@ class AuthPropagator:
 
         return propagate_all_bundled(vm_name, self.azlin_path, self._remote_exec)
 
+    @log_call
     def _propagate_service(self, vm_name: str, service: str) -> AuthResult:
         """Copy auth files for a single service to target VM."""
         start = time.monotonic()
@@ -223,6 +234,7 @@ class AuthPropagator:
             duration_seconds=duration,
         )
 
+    @log_call
     def switch_github_identity(self, vm_name: str, identity: GitHubIdentity) -> AuthResult:
         """Switch GitHub identity on a remote VM.
 
@@ -273,6 +285,7 @@ class AuthPropagator:
                 duration_seconds=time.monotonic() - start,
             )
 
+    @log_call
     def list_github_identities(self, vm_name: str) -> list[str]:
         """List available GitHub identities on a remote VM.
 
@@ -289,6 +302,7 @@ class AuthPropagator:
             logger.warning("list_github_identities failed for %s: %s", vm_name, exc)
         return []
 
+    @log_call
     def _remote_exec(self, vm_name: str, command: str) -> subprocess.CompletedProcess:
         """Execute command on remote VM via azlin."""
         validate_vm_name(vm_name)

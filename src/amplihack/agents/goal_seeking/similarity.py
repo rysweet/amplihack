@@ -16,6 +16,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from amplihack.utils.logging_utils import log_call
+
 if TYPE_CHECKING:
     pass
 
@@ -133,6 +135,7 @@ STOP_WORDS = frozenset(
 )
 
 
+@log_call
 def _tokenize(text: str) -> set[str]:
     """Tokenize text into lowercase words, removing stop words and short tokens.
 
@@ -148,6 +151,7 @@ def _tokenize(text: str) -> set[str]:
     return {w.strip(".,;:!?()[]{}\"'") for w in words if len(w) > 2} - STOP_WORDS
 
 
+@log_call
 def compute_word_similarity(text_a: str, text_b: str) -> float:
     """Compute Jaccard similarity on tokenized words minus stop words.
 
@@ -170,6 +174,7 @@ def compute_word_similarity(text_a: str, text_b: str) -> float:
     return len(intersection) / len(union) if union else 0.0
 
 
+@log_call
 def compute_tag_similarity(tags_a: list[str], tags_b: list[str]) -> float:
     """Compute Jaccard similarity between two tag lists.
 
@@ -195,6 +200,7 @@ def compute_tag_similarity(tags_a: list[str], tags_b: list[str]) -> float:
     return len(intersection) / len(union) if union else 0.0
 
 
+@log_call
 def compute_similarity(node_a: dict[str, Any], node_b: dict[str, Any]) -> float:
     """Compute weighted composite similarity between two knowledge nodes.
 
@@ -228,6 +234,7 @@ def compute_similarity(node_a: dict[str, Any], node_b: dict[str, Any]) -> float:
     return 0.5 * word_sim + 0.2 * tag_sim + 0.3 * concept_sim
 
 
+@log_call
 def rerank_facts_by_query(
     facts: list[dict[str, Any]],
     query: str,

@@ -6,26 +6,33 @@ import json
 from pathlib import Path
 from unittest.mock import MagicMock
 
+from amplihack.fleet._transcript import (
+    extract_last_output as _extract_last_output,
+)
+from amplihack.fleet._transcript import (
+    infer_jsonl_status as _infer_jsonl_status,
+)
+from amplihack.fleet._transcript import (
+    summarize_entries as _summarize_entries,
+)
 from amplihack.fleet.fleet_copilot import (
     CopilotSuggestion,
     SessionCopilot,
     build_rich_context,
     read_local_transcript,
 )
-from amplihack.fleet._transcript import (
-    extract_last_output as _extract_last_output,
-    infer_jsonl_status as _infer_jsonl_status,
-    summarize_entries as _summarize_entries,
-)
+from amplihack.utils.logging_utils import log_call
 
 
 class TestReadLocalTranscript:
     """Read local JSONL transcript files."""
 
+    @log_call
     def test_empty_when_no_files(self, tmp_path: Path):
         result = read_local_transcript(log_dir=str(tmp_path))
         assert result == ""
 
+    @log_call
     def test_reads_latest_jsonl(self, tmp_path: Path):
         subdir = tmp_path / "project"
         subdir.mkdir()
@@ -42,6 +49,7 @@ class TestReadLocalTranscript:
         assert "hello" in result
         assert "hi" in result
 
+    @log_call
     def test_reads_all_entries(self, tmp_path: Path):
         subdir = tmp_path / "project"
         subdir.mkdir()
@@ -53,6 +61,7 @@ class TestReadLocalTranscript:
         lines = result.strip().split("\n")
         assert len(lines) == 100
 
+    @log_call
     def test_handles_corrupt_file(self, tmp_path: Path):
         subdir = tmp_path / "project"
         subdir.mkdir()
@@ -66,6 +75,7 @@ class TestReadLocalTranscript:
 class TestExtractLastOutput:
     """Extract meaningful output from JSONL transcript."""
 
+    @log_call
     def test_extracts_assistant_text(self):
         entries = [
             json.dumps(
@@ -78,6 +88,7 @@ class TestExtractLastOutput:
         result = _extract_last_output("\n".join(entries))
         assert "Here is my answer" in result
 
+    @log_call
     def test_handles_string_content(self):
         entries = [
             json.dumps({"type": "assistant", "message": {"content": "plain text"}}),
@@ -85,9 +96,11 @@ class TestExtractLastOutput:
         result = _extract_last_output("\n".join(entries))
         assert "plain text" in result
 
+    @log_call
     def test_empty_on_no_transcript(self):
         assert _extract_last_output("") == ""
 
+    @log_call
     def test_preserves_full_output(self):
         big_text = "x" * 5000
         entries = [
@@ -96,6 +109,7 @@ class TestExtractLastOutput:
         result = _extract_last_output("\n".join(entries))
         assert len(result) == 5000
 
+    @log_call
     def test_returns_only_last_assistant_message(self):
         entries = [
             json.dumps({"type": "assistant", "message": {"content": "first message"}}),
@@ -110,9 +124,11 @@ class TestExtractLastOutput:
 class TestBuildRichContext:
     """build_rich_context assembles first message + summary + recent."""
 
+    @log_call
     def test_empty_transcript(self):
         assert build_rich_context("") == ""
 
+    @log_call
     def test_includes_first_user_message(self):
         entries = [
             json.dumps({"type": "human", "message": {"content": "Fix the auth bug"}}),
@@ -123,6 +139,7 @@ class TestBuildRichContext:
         assert "ORIGINAL USER REQUEST" in result
         assert "Fix the auth bug" in result
 
+    @log_call
     def test_small_transcript_no_summary(self):
         """Transcripts that fit entirely should have no summary section."""
         entries = [
@@ -133,6 +150,7 @@ class TestBuildRichContext:
         assert "SESSION HISTORY" not in result
         assert "RECENT CONTEXT" in result
 
+    @log_call
     def test_large_transcript_has_summary(self):
         """Large transcripts should include a summarized middle section."""
         entries = [
@@ -140,9 +158,13 @@ class TestBuildRichContext:
         ]
         # Add 600 tool_use entries in the middle
         for i in range(600):
-            entries.append(json.dumps({"type": "tool_use", "name": "Bash", "message": {"content": f"cmd {i}"}}))
+            entries.append(
+                json.dumps({"type": "tool_use", "name": "Bash", "message": {"content": f"cmd {i}"}})
+            )
         # Add recent entries
-        entries.append(json.dumps({"type": "assistant", "message": {"content": "Done with everything"}}))
+        entries.append(
+            json.dumps({"type": "assistant", "message": {"content": "Done with everything"}})
+        )
 
         result = build_rich_context("\n".join(entries), recent_message_count=100)
         assert "ORIGINAL USER REQUEST" in result
@@ -150,22 +172,28 @@ class TestBuildRichContext:
         assert "SESSION HISTORY" in result
         assert "RECENT CONTEXT" in result
 
+    @log_call
     def test_preserves_full_recent_entries(self):
         """Recent entries should not be truncated."""
         entries = []
         for i in range(200):
-            entries.append(json.dumps({"type": "assistant", "message": {"content": f"message-{i}"}}))
+            entries.append(
+                json.dumps({"type": "assistant", "message": {"content": f"message-{i}"}})
+            )
 
         result = build_rich_context("\n".join(entries), recent_message_count=200)
         assert "message-0" in result
         assert "message-199" in result
 
+    @log_call
     def test_first_user_message_with_list_content(self):
         entries = [
-            json.dumps({
-                "type": "human",
-                "message": {"content": [{"type": "text", "text": "Build OAuth2 login"}]},
-            }),
+            json.dumps(
+                {
+                    "type": "human",
+                    "message": {"content": [{"type": "text", "text": "Build OAuth2 login"}]},
+                }
+            ),
         ]
         result = build_rich_context("\n".join(entries))
         assert "Build OAuth2 login" in result
@@ -174,6 +202,7 @@ class TestBuildRichContext:
 class TestCopilotSuggestion:
     """CopilotSuggestion dataclass behavior."""
 
+    @log_call
     def test_summary_formatting(self):
         s = CopilotSuggestion(
             action="send_input",
@@ -188,6 +217,7 @@ class TestCopilotSuggestion:
         assert "60%" in text
         assert "continue with" in text
 
+    @log_call
     def test_summary_unknown_progress(self):
         s = CopilotSuggestion(
             action="wait",
@@ -198,6 +228,7 @@ class TestCopilotSuggestion:
         text = s.summary()
         assert "unknown" in text
 
+    @log_call
     def test_summary_no_input(self):
         s = CopilotSuggestion(action="wait", reasoning="thinking", confidence=0.95)
         text = s.summary()
@@ -208,6 +239,7 @@ class TestCopilotSuggestion:
 class TestSessionCopilot:
     """SessionCopilot reasoning engine."""
 
+    @log_call
     def test_suggest_wait_when_tool_running(self, tmp_path: Path):
         """If last entry is tool_use, co-pilot should wait (fast path)."""
         subdir = tmp_path / "proj"
@@ -215,7 +247,9 @@ class TestSessionCopilot:
         log = subdir / "session.jsonl"
         entries = [
             json.dumps({"type": "human", "message": {"content": "Fix the bug"}}),
-            json.dumps({"type": "tool_use", "name": "Bash", "message": {"content": "running tests"}}),
+            json.dumps(
+                {"type": "tool_use", "name": "Bash", "message": {"content": "running tests"}}
+            ),
         ]
         log.write_text("\n".join(entries))
 
@@ -224,6 +258,7 @@ class TestSessionCopilot:
         assert suggestion.action == "wait"
         assert suggestion.confidence >= 0.9
 
+    @log_call
     def test_suggest_with_no_transcript(self, tmp_path: Path):
         """With no transcript, co-pilot reasons about empty context."""
         mock_decision = MagicMock()
@@ -240,6 +275,7 @@ class TestSessionCopilot:
         suggestion = copilot.suggest()
         assert suggestion.action == "wait"
 
+    @log_call
     def test_blocks_dangerous_input(self, tmp_path: Path):
         """Co-pilot should block dangerous suggestions."""
         subdir = tmp_path / "proj"
@@ -273,6 +309,7 @@ class TestSessionCopilot:
             "dangerous" in suggestion.reasoning.lower() or "blocked" in suggestion.reasoning.lower()
         )
 
+    @log_call
     def test_progress_estimation(self, tmp_path: Path):
         """Progress estimation based on transcript content."""
         copilot = SessionCopilot(goal="test")
@@ -289,6 +326,7 @@ class TestSessionCopilot:
         # No concrete signal returns None
         assert copilot._estimate_progress("just some random lines\nof output") is None
 
+    @log_call
     def test_history_tracking(self, tmp_path: Path):
         """Co-pilot tracks suggestion history."""
         subdir = tmp_path / "proj"
@@ -310,6 +348,7 @@ class TestSessionCopilot:
 
         assert len(copilot.history) == 2
 
+    @log_call
     def test_summarize_transcript(self):
         """Transcript summarization extracts key stats."""
         copilot = SessionCopilot(goal="test")
@@ -329,40 +368,51 @@ class TestSessionCopilot:
 class TestInferJsonlStatus:
     """Unit tests for _infer_jsonl_status — JSONL-based status inference."""
 
+    @log_call
     def test_tool_result_returns_idle(self):
         entry = json.dumps({"type": "tool_result", "message": {"content": "done"}})
         assert _infer_jsonl_status(entry) == "idle"
 
+    @log_call
     def test_human_returns_tool_running(self):
         entry = json.dumps({"type": "human", "message": {"content": "Fix the bug"}})
         assert _infer_jsonl_status(entry) == "tool_running"
 
+    @log_call
     def test_user_returns_tool_running(self):
         entry = json.dumps({"type": "user", "message": {"content": "Fix the bug"}})
         assert _infer_jsonl_status(entry) == "tool_running"
 
+    @log_call
     def test_tool_use_returns_tool_running(self):
         entry = json.dumps({"type": "tool_use", "name": "Bash", "message": {"content": "ls"}})
         assert _infer_jsonl_status(entry) == "tool_running"
 
+    @log_call
     def test_assistant_idle(self):
         entry = json.dumps(
-            {"type": "assistant", "message": {"content": [{"type": "text", "text": "All done here."}]}}
+            {
+                "type": "assistant",
+                "message": {"content": [{"type": "text", "text": "All done here."}]},
+            }
         )
         assert _infer_jsonl_status(entry) == "idle"
 
+    @log_call
     def test_assistant_completed(self):
         entry = json.dumps(
             {"type": "assistant", "message": {"content": "GOAL_STATUS: ACHIEVED — all tasks done"}}
         )
         assert _infer_jsonl_status(entry) == "completed"
 
+    @log_call
     def test_assistant_error(self):
         entry = json.dumps(
             {"type": "assistant", "message": {"content": "error: cannot find module X"}}
         )
         assert _infer_jsonl_status(entry) == "error"
 
+    @log_call
     def test_empty_returns_unknown(self):
         assert _infer_jsonl_status("") == "unknown"
 
@@ -370,6 +420,7 @@ class TestInferJsonlStatus:
 class TestBuildRichContextDedup:
     """Test that build_rich_context avoids duplicate sections for tiny transcripts."""
 
+    @log_call
     def test_single_entry_no_duplicate(self):
         """A 1-entry transcript should NOT produce ORIGINAL USER REQUEST (only RECENT CONTEXT)."""
         entries = [
@@ -383,30 +434,37 @@ class TestBuildRichContextDedup:
 class TestSummarizeEntriesNestedToolName:
     """Test that _summarize_entries extracts tool names from nested content blocks."""
 
+    @log_call
     def test_summarize_entries_nested_tool_name(self):
         """Entries with tool name in message.content blocks should be counted."""
         entries = [
-            json.dumps({
-                "type": "tool_use",
-                "message": {
-                    "content": [
-                        {"type": "tool_use", "name": "Read"},
-                    ],
-                },
-            }),
-            json.dumps({
-                "type": "tool_use",
-                "message": {
-                    "content": [
-                        {"type": "tool_use", "name": "Read"},
-                    ],
-                },
-            }),
-            json.dumps({
-                "type": "tool_use",
-                "name": "Bash",
-                "message": {"content": ""},
-            }),
+            json.dumps(
+                {
+                    "type": "tool_use",
+                    "message": {
+                        "content": [
+                            {"type": "tool_use", "name": "Read"},
+                        ],
+                    },
+                }
+            ),
+            json.dumps(
+                {
+                    "type": "tool_use",
+                    "message": {
+                        "content": [
+                            {"type": "tool_use", "name": "Read"},
+                        ],
+                    },
+                }
+            ),
+            json.dumps(
+                {
+                    "type": "tool_use",
+                    "name": "Bash",
+                    "message": {"content": ""},
+                }
+            ),
         ]
         summary = _summarize_entries(entries)
         assert "Read" in summary

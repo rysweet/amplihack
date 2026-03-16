@@ -18,6 +18,7 @@ from amplihack.vendor.blarify.graph.node import DefinitionNode
 
 from .lsp_helper import ProgressTracker
 from .types.Reference import Reference
+from amplihack.utils.logging_utils import log_call
 
 logger = logging.getLogger(__name__)
 
@@ -60,41 +61,51 @@ if not scip_available:
     # Create a mock scip module for type hints and graceful degradation
     class MockScip:
         class Index:
+            @log_call
             def __init__(self):
                 pass
 
+            @log_call
             def ParseFromString(self, data: bytes) -> None:
                 pass
 
             @property
+            @log_call
             def documents(self):
                 return []
 
         class Document:
+            @log_call
             def __init__(self):
                 pass
 
             @property
+            @log_call
             def relative_path(self):
                 return ""
 
             @property
+            @log_call
             def occurrences(self):
                 return []
 
         class Occurrence:
+            @log_call
             def __init__(self):
                 pass
 
             @property
+            @log_call
             def symbol(self):
                 return ""
 
             @property
+            @log_call
             def symbol_roles(self):
                 return 0
 
             @property
+            @log_call
             def range(self):
                 return []
 
@@ -117,6 +128,7 @@ if not scip_available:
 class ScipReferenceResolver:
     """Fast reference resolution using SCIP (Source Code Intelligence Protocol) index."""
 
+    @log_call
     def __init__(
         self, root_path: str, scip_index_path: str | None = None, language: str | None = None
     ):
@@ -129,6 +141,7 @@ class ScipReferenceResolver:
         self._occurrence_to_document: dict[int, scip.Document] = {}  # Use id() as key
         self._loaded = False
 
+    @log_call
     def _detect_project_language(self) -> str:
         """Auto-detect the project language."""
         try:
@@ -149,6 +162,7 @@ class ScipReferenceResolver:
             logger.warning("Could not import ProjectDetector, defaulting to Python")
             return "python"
 
+    @log_call
     def ensure_loaded(self) -> bool:
         """Load the SCIP index if not already loaded."""
         if not scip_available:
@@ -175,6 +189,7 @@ class ScipReferenceResolver:
             logger.error(f"Failed to load SCIP index: {e}")
             return False
 
+    @log_call
     def _load_index(self):
         """Load and parse the SCIP index file."""
         with open(self.scip_index_path, "rb") as f:
@@ -186,6 +201,7 @@ class ScipReferenceResolver:
         # Build lookup tables for fast querying
         self._build_lookup_tables()
 
+    @log_call
     def _build_lookup_tables(self):
         """Build efficient lookup tables from the SCIP index."""
         if not self._index:
@@ -203,6 +219,7 @@ class ScipReferenceResolver:
                 # Use id() of the occurrence object as key since protobuf objects aren't hashable
                 self._occurrence_to_document[id(occurrence)] = document
 
+    @log_call
     def generate_index_if_needed(self, project_name: str = "blarify") -> bool:
         """Generate SCIP index if it doesn't exist or is outdated."""
         if os.path.exists(self.scip_index_path):
@@ -228,6 +245,7 @@ class ScipReferenceResolver:
         logger.info(f"🔄 Generating SCIP index for {self.language}...")
         return self._generate_index(project_name)
 
+    @log_call
     def _generate_index(self, project_name: str) -> bool:
         """Generate SCIP index using the appropriate language indexer."""
         import subprocess
@@ -296,6 +314,7 @@ class ScipReferenceResolver:
             logger.error(f"Error generating SCIP index: {e}")
             return False
 
+    @log_call
     def get_references_for_node(self, node: DefinitionNode) -> list[Reference]:
         """Get all references for a single node using SCIP index."""
         if not self.ensure_loaded():
@@ -326,6 +345,7 @@ class ScipReferenceResolver:
                 references.append(ref)
         return references
 
+    @log_call
     def get_references_batch(
         self, nodes: list[DefinitionNode]
     ) -> dict[DefinitionNode, list[Reference]]:
@@ -340,6 +360,7 @@ class ScipReferenceResolver:
 
         return results
 
+    @log_call
     def get_references_batch_with_progress(
         self, nodes: list[DefinitionNode]
     ) -> dict[DefinitionNode, list[Reference]]:
@@ -381,6 +402,7 @@ class ScipReferenceResolver:
         progress.complete()
         return results
 
+    @log_call
     def _find_symbol_for_node(self, node: DefinitionNode) -> str | None:
         """Find the SCIP symbol identifier for a given node."""
         # Convert file URI to relative path
@@ -411,6 +433,7 @@ class ScipReferenceResolver:
 
         return None
 
+    @log_call
     def _batch_find_symbols_for_nodes(
         self, nodes: list[DefinitionNode]
     ) -> dict[DefinitionNode, str | None]:
@@ -456,6 +479,7 @@ class ScipReferenceResolver:
 
         return node_to_symbol
 
+    @log_call
     def _is_reference_occurrence(self, occurrence: "scip.Occurrence") -> bool:
         """Check if an occurrence is a reference (not a definition).
 
@@ -494,6 +518,7 @@ class ScipReferenceResolver:
             & (scip.SymbolRole.ReadAccess | scip.SymbolRole.WriteAccess | scip.SymbolRole.Import)
         ) != 0
 
+    @log_call
     def _get_references_for_symbol(self, symbol: str) -> list[Reference]:
         """Get references for a specific symbol (optimized version)."""
         occurrences = self._symbol_to_occurrences.get(symbol, [])
@@ -516,12 +541,14 @@ class ScipReferenceResolver:
 
         return references
 
+    @log_call
     def _find_document_for_occurrence(
         self, occurrence: "scip.Occurrence"
     ) -> Optional["scip.Document"]:
         """Find the document containing an occurrence."""
         return self._occurrence_to_document.get(id(occurrence))
 
+    @log_call
     def _occurrence_to_reference(
         self, occurrence: "scip.Occurrence", document: "scip.Document"
     ) -> Reference | None:
@@ -554,6 +581,7 @@ class ScipReferenceResolver:
             logger.warning(f"Error converting occurrence to reference: {e}")
             return None
 
+    @log_call
     def get_statistics(self) -> dict[str, int]:
         """Get statistics about the loaded SCIP index."""
         if not self.ensure_loaded():

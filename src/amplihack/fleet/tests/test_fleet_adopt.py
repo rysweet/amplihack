@@ -10,11 +10,9 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
-from amplihack.fleet.fleet_adopt import AdoptedSession, SessionAdopter
+from amplihack.fleet.fleet_adopt import SessionAdopter
 from amplihack.fleet.fleet_tasks import TaskQueue, TaskStatus
-
+from amplihack.utils.logging_utils import log_call
 
 # ────────────────────────────────────────────
 # UNIT TESTS (60%) — _parse_discovery_output
@@ -24,9 +22,11 @@ from amplihack.fleet.fleet_tasks import TaskQueue, TaskStatus
 class TestParseDiscoveryOutput:
     """Unit tests for the tmux discovery output parser."""
 
+    @log_call
     def setup_method(self):
         self.adopter = SessionAdopter()
 
+    @log_call
     def test_single_session_all_fields(self):
         output = (
             "===SESSION:dev-1===\n"
@@ -53,6 +53,7 @@ class TestParseDiscoveryOutput:
         assert s.inferred_pr == "https://github.com/org/myrepo/pull/42"
         assert s.inferred_task == "Implementing authentication"
 
+    @log_call
     def test_multiple_sessions(self):
         output = (
             "===SESSION:session-a===\n"
@@ -70,30 +71,36 @@ class TestParseDiscoveryOutput:
         assert sessions[1].session_name == "session-b"
         assert sessions[1].agent_type == "amplifier"
 
+    @log_call
     def test_empty_output(self):
         sessions = self.adopter._parse_discovery_output("vm-01", "")
         assert sessions == []
 
+    @log_call
     def test_output_with_only_done_marker(self):
         sessions = self.adopter._parse_discovery_output("vm-01", "===DONE===\n")
         assert sessions == []
 
+    @log_call
     def test_agent_type_detection_copilot(self):
         output = "===SESSION:cop===\nCMD:copilot\n===DONE===\n"
         sessions = self.adopter._parse_discovery_output("vm-01", output)
         assert sessions[0].agent_type == "copilot"
 
+    @log_call
     def test_agent_type_detection_node(self):
         """node processes are detected as claude agents."""
         output = "===SESSION:n===\nCMD:node\n===DONE===\n"
         sessions = self.adopter._parse_discovery_output("vm-01", output)
         assert sessions[0].agent_type == "claude"
 
+    @log_call
     def test_agent_type_unknown_command(self):
         output = "===SESSION:x===\nCMD:bash\n===DONE===\n"
         sessions = self.adopter._parse_discovery_output("vm-01", output)
         assert sessions[0].agent_type == ""
 
+    @log_call
     def test_missing_fields_produce_defaults(self):
         output = "===SESSION:minimal===\n===DONE===\n"
         sessions = self.adopter._parse_discovery_output("vm-01", output)
@@ -106,27 +113,21 @@ class TestParseDiscoveryOutput:
         assert s.inferred_pr == ""
         assert s.inferred_task == ""
 
+    @log_call
     def test_last_msg_only_sets_task_once(self):
         """Only the first LAST_MSG line is used as inferred_task."""
-        output = (
-            "===SESSION:s===\n"
-            "LAST_MSG:First message\n"
-            "LAST_MSG:Second message\n"
-            "===DONE===\n"
-        )
+        output = "===SESSION:s===\nLAST_MSG:First message\nLAST_MSG:Second message\n===DONE===\n"
         sessions = self.adopter._parse_discovery_output("vm-01", output)
         assert sessions[0].inferred_task == "First message"
 
+    @log_call
     def test_whitespace_lines_are_stripped(self):
-        output = (
-            "  ===SESSION:ws===  \n"
-            "  CWD:/tmp/test  \n"
-            "  ===DONE===  \n"
-        )
+        output = "  ===SESSION:ws===  \n  CWD:/tmp/test  \n  ===DONE===  \n"
         sessions = self.adopter._parse_discovery_output("vm-01", output)
         assert len(sessions) == 1
         assert sessions[0].working_directory == "/tmp/test"
 
+    @log_call
     def test_parse_discovery_skips_invalid_session_names(self):
         """Sessions with shell metacharacters in the name should be skipped."""
         output = (
@@ -151,6 +152,7 @@ class TestAdoptSessions:
     """Integration tests for adopt_sessions with a real TaskQueue."""
 
     @patch("amplihack.fleet.fleet_adopt.subprocess.run")
+    @log_call
     def test_adopt_creates_running_tasks(self, mock_run):
         discovery_output = (
             "===SESSION:work-1===\n"
@@ -160,9 +162,7 @@ class TestAdoptSessions:
             "LAST_MSG:Working on feature X\n"
             "===DONE===\n"
         )
-        mock_run.return_value = MagicMock(
-            returncode=0, stdout=discovery_output, stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout=discovery_output, stderr="")
 
         queue = TaskQueue()
         adopter = SessionAdopter()
@@ -180,15 +180,12 @@ class TestAdoptSessions:
         assert task.assigned_session == "work-1"
 
     @patch("amplihack.fleet.fleet_adopt.subprocess.run")
+    @log_call
     def test_adopt_filters_by_session_names(self, mock_run):
         discovery_output = (
-            "===SESSION:keep===\nCMD:claude\n"
-            "===SESSION:skip===\nCMD:claude\n"
-            "===DONE===\n"
+            "===SESSION:keep===\nCMD:claude\n===SESSION:skip===\nCMD:claude\n===DONE===\n"
         )
-        mock_run.return_value = MagicMock(
-            returncode=0, stdout=discovery_output, stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout=discovery_output, stderr="")
 
         queue = TaskQueue()
         adopter = SessionAdopter()
@@ -198,6 +195,7 @@ class TestAdoptSessions:
         assert adopted[0].session_name == "keep"
 
     @patch("amplihack.fleet.fleet_adopt.subprocess.run")
+    @log_call
     def test_adopt_empty_discovery_returns_empty(self, mock_run):
         mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="error")
 
@@ -218,6 +216,7 @@ class TestDiscoverSessions:
     """E2E test for discover_sessions with subprocess mocking."""
 
     @patch("amplihack.fleet.fleet_adopt.subprocess.run")
+    @log_call
     def test_discover_sessions_timeout_returns_empty(self, mock_run):
         import subprocess as sp
 
@@ -228,6 +227,7 @@ class TestDiscoverSessions:
         assert result == []
 
     @patch("amplihack.fleet.fleet_adopt.subprocess.run")
+    @log_call
     def test_discover_sessions_full_roundtrip(self, mock_run):
         mock_run.return_value = MagicMock(
             returncode=0,

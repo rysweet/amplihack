@@ -5,6 +5,7 @@ from typing_extensions import LiteralString  # Python 3.10 compatibility
 from amplihack.vendor.blarify.repositories.graph_db_manager.dtos.node_search_result_dto import (
     ReferenceSearchResultDTO,
 )
+from amplihack.utils.logging_utils import log_call
 
 
 class ENVIRONMENT(Enum):
@@ -13,26 +14,32 @@ class ENVIRONMENT(Enum):
 
 
 class AbstractDbManager:
+    @log_call
     def close(self):
         """Close the connection to the database."""
         raise NotImplementedError
 
+    @log_call
     def save_graph(self, nodes, edges):
         """Save nodes and edges to the database."""
         raise NotImplementedError
 
+    @log_call
     def create_nodes(self, nodeList):
         """Create nodes in the database."""
         raise NotImplementedError
 
+    @log_call
     def create_edges(self, edgesList):
         """Create edges between nodes in the database."""
         raise NotImplementedError
 
+    @log_call
     def detatch_delete_nodes_with_path(self, path):
         """Detach and delete nodes matching the given path."""
         raise NotImplementedError
 
+    @log_call
     def query(
         self,
         cypher_query: LiteralString,
@@ -51,6 +58,7 @@ class AbstractDbManager:
         """
         raise NotImplementedError
 
+    @log_call
     def get_node_by_id(
         self,
         node_id: str,
@@ -66,6 +74,7 @@ class AbstractDbManager:
         """
         raise NotImplementedError
 
+    @log_call
     def get_node_by_name_and_type(
         self,
         name: str,

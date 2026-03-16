@@ -31,6 +31,8 @@ from typing import Any
 
 import yaml
 
+from amplihack.utils.logging_utils import log_call
+
 logger = logging.getLogger(__name__)
 
 _UPSTREAM_REPO = "https://github.com/microsoft/amplifier-bundle-recipes"
@@ -84,6 +86,7 @@ class RecipeInfo:
     sha256: str = ""
 
 
+@log_call
 def discover_recipes(
     search_dirs: list[Path] | None = None,
 ) -> dict[str, RecipeInfo]:
@@ -135,6 +138,7 @@ def discover_recipes(
     return recipes
 
 
+@log_call
 def list_recipes(search_dirs: list[Path] | None = None) -> list[RecipeInfo]:
     """Return a sorted list of all discovered recipes.
 
@@ -147,6 +151,7 @@ def list_recipes(search_dirs: list[Path] | None = None) -> list[RecipeInfo]:
     return sorted(discover_recipes(search_dirs).values(), key=lambda r: r.name)
 
 
+@log_call
 def verify_global_installation() -> dict[str, Any]:
     """Verify that global recipe directories exist and contain recipes.
 
@@ -194,6 +199,7 @@ def verify_global_installation() -> dict[str, Any]:
     return result
 
 
+@log_call
 def find_recipe(name: str, search_dirs: list[Path] | None = None) -> Path | None:
     """Find a recipe by name and return its file path.
 
@@ -215,6 +221,7 @@ def find_recipe(name: str, search_dirs: list[Path] | None = None) -> Path | None
     return None
 
 
+@log_call
 def check_upstream_changes(
     local_dir: Path | None = None,
 ) -> list[dict[str, str]]:
@@ -271,6 +278,7 @@ def check_upstream_changes(
     return changes
 
 
+@log_call
 def sync_upstream(
     repo_url: str = _UPSTREAM_REPO,
     branch: str = _UPSTREAM_BRANCH,
@@ -355,6 +363,7 @@ def sync_upstream(
     }
 
 
+@log_call
 def update_manifest(local_dir: Path | None = None) -> Path:
     """Write a manifest file recording the current hash of each recipe.
 
@@ -386,6 +395,7 @@ def update_manifest(local_dir: Path | None = None) -> Path:
 # ------------------------------------------------------------------
 
 
+@log_call
 def _load_recipe_info(yaml_path: Path) -> RecipeInfo | None:
     """Load minimal metadata from a recipe YAML file without full parsing."""
     try:
@@ -409,11 +419,13 @@ def _load_recipe_info(yaml_path: Path) -> RecipeInfo | None:
         return None
 
 
+@log_call
 def _file_hash(path: Path) -> str:
     """Return SHA-256 hex digest of a file's contents."""
     return hashlib.sha256(path.read_bytes()).hexdigest()[:16]
 
 
+@log_call
 def _load_manifest(recipe_dir: Path) -> dict[str, str]:
     """Load the recipe manifest from a directory, or return empty dict."""
     manifest_path = recipe_dir / "_recipe_manifest.json"
@@ -425,6 +437,7 @@ def _load_manifest(recipe_dir: Path) -> dict[str, str]:
     return {}
 
 
+@log_call
 def _find_first_recipe_dir() -> Path | None:
     """Return the first existing recipe directory from the search list."""
     for d in _DEFAULT_SEARCH_DIRS:

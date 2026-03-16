@@ -1,4 +1,5 @@
 from dataclasses import asdict, dataclass
+from amplihack.utils.logging_utils import log_call
 
 
 @dataclass
@@ -11,5 +12,6 @@ class NodeFoundByNameTypeDto:
     file_path: str
     code: str | None = None
 
+    @log_call
     def as_dict(self):
         return asdict(self)

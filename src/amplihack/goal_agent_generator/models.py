@@ -10,6 +10,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal
 
+from amplihack.utils.logging_utils import log_call
+
 
 @dataclass
 class GoalDefinition:
@@ -23,6 +25,7 @@ class GoalDefinition:
     context: dict[str, Any] = field(default_factory=dict)  # Additional context
     complexity: Literal["simple", "moderate", "complex"] = "moderate"
 
+    @log_call
     def __post_init__(self):
         """Validate goal definition."""
         if not self.raw_prompt.strip():
@@ -45,6 +48,7 @@ class PlanPhase:
     parallel_safe: bool = True  # Can execute in parallel with others
     success_indicators: list[str] = field(default_factory=list)
 
+    @log_call
     def __post_init__(self):
         """Validate phase definition."""
         if not self.name:
@@ -67,6 +71,7 @@ class ExecutionPlan:
     risk_factors: list[str] = field(default_factory=list)
     created_at: datetime = field(default_factory=datetime.utcnow)
 
+    @log_call
     def __post_init__(self):
         """Validate execution plan."""
         if not self.phases:
@@ -75,6 +80,7 @@ class ExecutionPlan:
             raise ValueError("Plan should have 3-5 phases for MVP (max 10)")
 
     @property
+    @log_call
     def phase_count(self) -> int:
         """Number of phases in plan."""
         return len(self.phases)
@@ -92,6 +98,7 @@ class SkillDefinition:
     dependencies: list[str] = field(default_factory=list)  # Other skills needed
     match_score: float = 0.0  # How well this matches the need (0-1)
 
+    @log_call
     def __post_init__(self):
         """Validate skill definition."""
         if not self.name:
@@ -110,6 +117,7 @@ class SDKToolConfig:
     description: str
     category: str  # e.g., "file_ops", "system", "search", "vcs", "network", "ai"
 
+    @log_call
     def to_dict(self) -> dict[str, str]:
         """Convert to dictionary."""
         return {
@@ -127,6 +135,7 @@ class SubAgentConfig:
     config: dict[str, Any] = field(default_factory=dict)
     filename: str = ""
 
+    @log_call
     def __post_init__(self) -> None:
         if not self.filename:
             self.filename = f"{self.role}.yaml"
@@ -150,6 +159,7 @@ class GoalAgentBundle:
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)
 
+    @log_call
     def __post_init__(self):
         """Validate bundle."""
         if not self.name:
@@ -158,11 +168,13 @@ class GoalAgentBundle:
             raise ValueError("Bundle name must be 3-50 characters")
 
     @property
+    @log_call
     def skill_count(self) -> int:
         """Number of skills in bundle."""
         return len(self.skills)
 
     @property
+    @log_call
     def is_complete(self) -> bool:
         """Check if bundle has all required components."""
         return bool(
@@ -184,6 +196,7 @@ class GenerationMetrics:
     bundle_size_kb: float = 0.0
 
     @property
+    @log_call
     def average_phase_time(self) -> float:
         """Average time per phase."""
         if self.phase_count == 0:

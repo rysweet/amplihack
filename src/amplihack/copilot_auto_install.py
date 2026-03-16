@@ -1,6 +1,9 @@
 """Auto-installer for github-copilot-sdk during startup."""
 
+from amplihack.utils.logging_utils import log_call
 
+
+@log_call
 def ensure_copilot_sdk_installed() -> bool:
     """Ensure github-copilot-sdk is installed, auto-install if missing.
 

@@ -3,6 +3,7 @@ from collections.abc import Iterator
 
 from .file import File
 from .folder import Folder
+from amplihack.utils.logging_utils import log_call
 
 
 class ProjectFilesIterator:
@@ -12,6 +13,7 @@ class ProjectFilesIterator:
     extensions_to_skip: list[str]
     max_file_size_mb: float
 
+    @log_call
     def __init__(
         self,
         root_path: str,
@@ -31,12 +33,14 @@ class ProjectFilesIterator:
             ignored_files = self.get_ignore_files(blarignore_path)
             self.names_to_skip.extend(ignored_files)
 
+    @log_call
     def get_ignore_files(self, gitignore_path: str) -> list[str]:
         if not os.path.exists(gitignore_path):
             return []
         with open(gitignore_path) as f:
             return [line.strip() for line in f.readlines()]
 
+    @log_call
     def __iter__(self) -> Iterator[Folder]:
         for current_path, dirs, files in os.walk(self.root_path, topdown=True):
             dirs[:] = self._get_filtered_dirs(current_path, dirs)
@@ -58,19 +62,23 @@ class ProjectFilesIterator:
                     level=level,
                 )
 
+    @log_call
     def _get_filtered_dirs(self, root: str, dirs: list[str]) -> list[str]:
         dirs = [dir for dir in dirs if not self._should_skip(os.path.join(root, dir))]
         return dirs
 
+    @log_call
     def get_path_level_relative_to_root(self, path: str) -> int:
         level = path.count(os.sep) - self.root_path.count(os.sep)
         return level
 
+    @log_call
     def _get_filtered_files(self, root: str, files: list[str], level: int) -> list[File]:
         files = [file for file in files if not self._should_skip(os.path.join(root, file))]
 
         return [File(name=file, root_path=root, level=level) for file in files]
 
+    @log_call
     def empty_folders_from_dirs(self, root: str, dirs: list[str], level: int) -> list[Folder]:
         return [
             Folder(
@@ -83,6 +91,7 @@ class ProjectFilesIterator:
             for dir in dirs
         ]
 
+    @log_call
     def _should_skip(self, path: str) -> bool:
         is_basename_in_names_to_skip = os.path.basename(path) in self.names_to_skip
 
@@ -103,8 +112,10 @@ class ProjectFilesIterator:
             or is_extension_to_skip
         )
 
+    @log_call
     def _mb_to_bytes(self, mb: float) -> float:
         return 1024 * 1024 * mb
 
+    @log_call
     def get_base_name(self, current_path: str) -> str:
         return os.path.basename(current_path)

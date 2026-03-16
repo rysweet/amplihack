@@ -26,7 +26,7 @@ from amplihack.fleet._cli_formatters import (
     format_advance_report,
     format_scout_report,
 )
-
+from amplihack.utils.logging_utils import log_call
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -34,6 +34,7 @@ from amplihack.fleet._cli_formatters import (
 
 
 @pytest.fixture
+@log_call
 def scout_result_success():
     """A successful ScoutResult with findings and recommendations."""
     return ScoutResult(
@@ -47,6 +48,7 @@ def scout_result_success():
 
 
 @pytest.fixture
+@log_call
 def scout_result_failure():
     """A failed ScoutResult with error."""
     return ScoutResult(
@@ -61,6 +63,7 @@ def scout_result_failure():
 
 
 @pytest.fixture
+@log_call
 def scout_result_empty():
     """A ScoutResult with no findings or recommendations."""
     return ScoutResult(
@@ -72,6 +75,7 @@ def scout_result_empty():
 
 
 @pytest.fixture
+@log_call
 def advance_result_success():
     """A successful AdvanceResult with changes."""
     return AdvanceResult(
@@ -87,6 +91,7 @@ def advance_result_success():
 
 
 @pytest.fixture
+@log_call
 def advance_result_partial():
     """A partial AdvanceResult (some steps done)."""
     return AdvanceResult(
@@ -103,6 +108,7 @@ def advance_result_partial():
 
 
 @pytest.fixture
+@log_call
 def advance_result_empty():
     """An AdvanceResult with no changes."""
     return AdvanceResult(
@@ -123,75 +129,89 @@ def advance_result_empty():
 class TestFormatScoutReportTable:
     """Tests for format_scout_report() with format='table'."""
 
+    @log_call
     def test_table_default_format(self, scout_result_success):
         """Default format is table."""
         report = format_scout_report(scout_result_success)
         assert "Scout Report" in report
         assert "sess-abc123" in report
 
+    @log_call
     def test_table_explicit_format(self, scout_result_success):
         """Explicit format='table' produces table output."""
         report = format_scout_report(scout_result_success, "table")
         assert "Scout Report [+]" in report
         assert "Analyze codebase for auth issues" in report
 
+    @log_call
     def test_table_shows_session_id(self, scout_result_success):
         """Table includes session_id."""
         report = format_scout_report(scout_result_success, "table")
         assert "sess-abc123" in report
 
+    @log_call
     def test_table_shows_task(self, scout_result_success):
         """Table shows task description."""
         report = format_scout_report(scout_result_success, "table")
         assert "Analyze codebase for auth issues" in report
 
+    @log_call
     def test_table_shows_agents(self, scout_result_success):
         """Table shows agent count."""
         report = format_scout_report(scout_result_success, "table")
         assert "2" in report
 
+    @log_call
     def test_table_shows_findings(self, scout_result_success):
         """Table includes findings list."""
         report = format_scout_report(scout_result_success, "table")
         assert "Found JWT validation in auth.py" in report
         assert "Token expiry not checked" in report
 
+    @log_call
     def test_table_shows_recommendations(self, scout_result_success):
         """Table includes recommendations."""
         report = format_scout_report(scout_result_success, "table")
         assert "Add expiry validation" in report
         assert "Use RS256 algorithm" in report
 
+    @log_call
     def test_table_success_icon_plus(self, scout_result_success):
         """Successful result shows [+] icon."""
         report = format_scout_report(scout_result_success, "table")
         assert "[+]" in report
 
+    @log_call
     def test_table_failure_icon_x(self, scout_result_failure):
         """Failed result shows [X] icon."""
         report = format_scout_report(scout_result_failure, "table")
         assert "[X]" in report
 
+    @log_call
     def test_table_shows_error_on_failure(self, scout_result_failure):
         """Failed result includes error message."""
         report = format_scout_report(scout_result_failure, "table")
         assert "SSH connection refused" in report
 
+    @log_call
     def test_table_no_error_on_success(self, scout_result_success):
         """Successful result does not show error field."""
         report = format_scout_report(scout_result_success, "table")
         assert "Error:" not in report
 
+    @log_call
     def test_table_empty_findings_placeholder(self, scout_result_empty):
         """Empty findings shows placeholder."""
         report = format_scout_report(scout_result_empty, "table")
         assert "(none)" in report
 
+    @log_call
     def test_table_shows_completed_status(self, scout_result_success):
         """Successful result shows 'completed' status."""
         report = format_scout_report(scout_result_success, "table")
         assert "completed" in report
 
+    @log_call
     def test_table_shows_failed_status(self, scout_result_failure):
         """Failed result shows 'failed' status."""
         report = format_scout_report(scout_result_failure, "table")
@@ -206,53 +226,63 @@ class TestFormatScoutReportTable:
 class TestFormatScoutReportJson:
     """Tests for format_scout_report() with format='json'."""
 
+    @log_call
     def test_json_is_valid(self, scout_result_success):
         """JSON output is valid JSON."""
         report = format_scout_report(scout_result_success, "json")
         data = json.loads(report)
         assert isinstance(data, dict)
 
+    @log_call
     def test_json_contains_session_id(self, scout_result_success):
         """JSON contains session_id."""
         data = json.loads(format_scout_report(scout_result_success, "json"))
         assert data["session_id"] == "sess-abc123"
 
+    @log_call
     def test_json_contains_task(self, scout_result_success):
         """JSON contains task field."""
         data = json.loads(format_scout_report(scout_result_success, "json"))
         assert data["task"] == "Analyze codebase for auth issues"
 
+    @log_call
     def test_json_contains_success(self, scout_result_success):
         """JSON contains success flag."""
         data = json.loads(format_scout_report(scout_result_success, "json"))
         assert data["success"] is True
 
+    @log_call
     def test_json_contains_findings(self, scout_result_success):
         """JSON contains findings list."""
         data = json.loads(format_scout_report(scout_result_success, "json"))
         assert data["findings"] == ["Found JWT validation in auth.py", "Token expiry not checked"]
 
+    @log_call
     def test_json_contains_recommendations(self, scout_result_success):
         """JSON contains recommendations list."""
         data = json.loads(format_scout_report(scout_result_success, "json"))
         assert data["recommendations"] == ["Add expiry validation", "Use RS256 algorithm"]
 
+    @log_call
     def test_json_contains_agents_used(self, scout_result_success):
         """JSON contains agents_used count."""
         data = json.loads(format_scout_report(scout_result_success, "json"))
         assert data["agents_used"] == 2
 
+    @log_call
     def test_json_failure_has_error(self, scout_result_failure):
         """JSON for failure contains error field."""
         data = json.loads(format_scout_report(scout_result_failure, "json"))
         assert data["error"] == "SSH connection refused"
         assert data["success"] is False
 
+    @log_call
     def test_json_success_error_is_none(self, scout_result_success):
         """JSON for success has null error."""
         data = json.loads(format_scout_report(scout_result_success, "json"))
         assert data["error"] is None
 
+    @log_call
     def test_json_contains_metadata(self, scout_result_success):
         """JSON contains metadata field."""
         data = json.loads(format_scout_report(scout_result_success, "json"))
@@ -267,32 +297,38 @@ class TestFormatScoutReportJson:
 class TestFormatScoutReportYaml:
     """Tests for format_scout_report() with format='yaml'."""
 
+    @log_call
     def test_yaml_is_valid(self, scout_result_success):
         """YAML output is valid YAML."""
         report = format_scout_report(scout_result_success, "yaml")
         data = yaml.safe_load(report)
         assert isinstance(data, dict)
 
+    @log_call
     def test_yaml_contains_session_id(self, scout_result_success):
         """YAML contains session_id."""
         data = yaml.safe_load(format_scout_report(scout_result_success, "yaml"))
         assert data["session_id"] == "sess-abc123"
 
+    @log_call
     def test_yaml_contains_task(self, scout_result_success):
         """YAML contains task field."""
         data = yaml.safe_load(format_scout_report(scout_result_success, "yaml"))
         assert data["task"] == "Analyze codebase for auth issues"
 
+    @log_call
     def test_yaml_contains_success(self, scout_result_success):
         """YAML contains success flag."""
         data = yaml.safe_load(format_scout_report(scout_result_success, "yaml"))
         assert data["success"] is True
 
+    @log_call
     def test_yaml_contains_findings(self, scout_result_success):
         """YAML contains findings list."""
         data = yaml.safe_load(format_scout_report(scout_result_success, "yaml"))
         assert "Found JWT validation in auth.py" in data["findings"]
 
+    @log_call
     def test_yaml_failure_has_error(self, scout_result_failure):
         """YAML for failure contains error field."""
         data = yaml.safe_load(format_scout_report(scout_result_failure, "yaml"))
@@ -307,11 +343,13 @@ class TestFormatScoutReportYaml:
 class TestFormatScoutReportInvalidFormat:
     """Tests for format_scout_report() with invalid format."""
 
+    @log_call
     def test_invalid_format_raises_value_error(self, scout_result_success):
         """Invalid format raises ValueError."""
         with pytest.raises(ValueError, match="Invalid format"):
             format_scout_report(scout_result_success, "xml")
 
+    @log_call
     def test_invalid_format_shows_valid_options(self, scout_result_success):
         """Error message includes valid format options."""
         with pytest.raises(ValueError, match="table"):
@@ -326,6 +364,7 @@ class TestFormatScoutReportInvalidFormat:
 class TestFormatScoutReportTruncation:
     """Tests for truncation in format_scout_report()."""
 
+    @log_call
     def test_long_finding_truncated_in_table(self):
         """Findings longer than MAX_FINDING_LENGTH are truncated in table."""
         long_finding = "x" * (MAX_FINDING_LENGTH + 50)
@@ -340,6 +379,7 @@ class TestFormatScoutReportTruncation:
         # The full string should NOT appear (it's truncated)
         assert long_finding not in report
 
+    @log_call
     def test_short_finding_not_truncated(self):
         """Findings within MAX_FINDING_LENGTH are not truncated."""
         short_finding = "x" * (MAX_FINDING_LENGTH - 10)
@@ -352,6 +392,7 @@ class TestFormatScoutReportTruncation:
         report = format_scout_report(result, "table")
         assert short_finding in report
 
+    @log_call
     def test_exact_length_finding_not_truncated(self):
         """Finding at exactly MAX_FINDING_LENGTH is not truncated."""
         exact_finding = "y" * MAX_FINDING_LENGTH
@@ -364,6 +405,7 @@ class TestFormatScoutReportTruncation:
         report = format_scout_report(result, "table")
         assert exact_finding in report
 
+    @log_call
     def test_verbose_mode_no_truncation(self):
         """verbose=True skips truncation of findings."""
         long_finding = "z" * (MAX_FINDING_LENGTH + 50)
@@ -377,6 +419,7 @@ class TestFormatScoutReportTruncation:
         report = format_scout_report(result, "table", True)
         assert long_finding in report
 
+    @log_call
     def test_json_format_no_truncation(self):
         """JSON format includes full finding text (not truncated)."""
         long_finding = "a" * (MAX_FINDING_LENGTH + 100)
@@ -398,18 +441,22 @@ class TestFormatScoutReportTruncation:
 class TestFormatScoutReportLegacy:
     """Tests for legacy format_scout_report(all_vms, decisions, adopted_count, skip_adopt)."""
 
+    @log_call
     def _make_vm(self, name, sessions=None):
         """Create a minimal VM-like object for legacy tests."""
         from unittest.mock import MagicMock
+
         vm = MagicMock()
         vm.name = name
         vm.is_running = True
         vm.sessions = sessions or []
         return vm
 
+    @log_call
     def _make_session(self, name, status="idle", branch="main"):
         """Create a minimal session-like object for legacy tests."""
         from unittest.mock import MagicMock
+
         sess = MagicMock()
         sess.session_name = name
         sess.status = status
@@ -417,37 +464,44 @@ class TestFormatScoutReportLegacy:
         sess.agent_alive = False
         return sess
 
+    @log_call
     def test_legacy_produces_header(self):
         """Legacy format includes the FLEET SCOUT REPORT header."""
         report = format_scout_report([], [], 0, False)
         assert "FLEET SCOUT REPORT" in report
 
+    @log_call
     def test_legacy_empty_vms(self):
         """Legacy format with no VMs shows zero counts."""
         report = format_scout_report([], [], 0, False)
         assert "Running VMs: 0" in report
 
+    @log_call
     def test_legacy_shows_vm_count(self):
         """Legacy format counts running VMs."""
         vm1 = self._make_vm("vm-1")
         report = format_scout_report([vm1], [], 0, False)
         assert "Running VMs: 1" in report
 
+    @log_call
     def test_legacy_shows_adopted_count(self):
         """Legacy format shows adoption count when not skipped."""
         report = format_scout_report([], [], 5, False)
         assert "Adopted: 5" in report
 
+    @log_call
     def test_legacy_skip_adopt_hides_count(self):
         """Legacy format hides adoption count when skip_adopt=True."""
         report = format_scout_report([], [], 5, True)
         assert "Adopted" not in report
 
+    @log_call
     def test_legacy_shows_next_steps(self):
         """Legacy format includes Next Steps section."""
         report = format_scout_report([], [], 0, False)
         assert "Next Steps" in report
 
+    @log_call
     def test_legacy_shows_session_in_table(self):
         """Legacy format includes sessions in the table."""
         sess = self._make_session("task-1", "idle")
@@ -455,6 +509,7 @@ class TestFormatScoutReportLegacy:
         report = format_scout_report([vm1], [], 0, False)
         assert "task-1" in report
 
+    @log_call
     def test_legacy_decisions_shown(self):
         """Legacy format shows decision counts."""
         sess = self._make_session("task-1", "idle")
@@ -472,62 +527,74 @@ class TestFormatScoutReportLegacy:
 class TestFormatAdvanceReportTable:
     """Tests for format_advance_report() with format='table'."""
 
+    @log_call
     def test_table_default_format(self, advance_result_success):
         """Default format is table."""
         report = format_advance_report(advance_result_success)
         assert "Advance Report" in report
 
+    @log_call
     def test_table_shows_session_id(self, advance_result_success):
         """Table includes session_id."""
         report = format_advance_report(advance_result_success, "table")
         assert "sess-abc123" in report
 
+    @log_call
     def test_table_shows_task(self, advance_result_success):
         """Table shows task description."""
         report = format_advance_report(advance_result_success, "table")
         assert "Fix JWT validation" in report
 
+    @log_call
     def test_table_shows_steps(self, advance_result_success):
         """Table shows steps completed/total."""
         report = format_advance_report(advance_result_success, "table")
         assert "3/3" in report
 
+    @log_call
     def test_table_shows_changes(self, advance_result_success):
         """Table includes changes made."""
         report = format_advance_report(advance_result_success, "table")
         assert "Updated auth.py" in report
         assert "Added test_auth.py" in report
 
+    @log_call
     def test_table_shows_output(self, advance_result_success):
         """Table shows output text."""
         report = format_advance_report(advance_result_success, "table")
         assert "All tests pass" in report
 
+    @log_call
     def test_table_success_icon_plus(self, advance_result_success):
         """Successful result shows [+] icon."""
         report = format_advance_report(advance_result_success, "table")
         assert "[+]" in report
 
+    @log_call
     def test_table_failure_icon_x(self, advance_result_partial):
         """Failed result shows [X] icon."""
         report = format_advance_report(advance_result_partial, "table")
         assert "[X]" in report
 
+    @log_call
     def test_table_shows_error_on_failure(self, advance_result_partial):
         """Failed result includes error message."""
         report = format_advance_report(advance_result_partial, "table")
         assert "Network timeout" in report
 
+    @log_call
     def test_table_empty_changes_placeholder(self, advance_result_empty):
         """No changes shows placeholder."""
         report = format_advance_report(advance_result_empty, "table")
         assert "(none)" in report
 
+    @log_call
     def test_table_partial_steps(self, advance_result_partial):
         """Partial completion shows 1/5 steps."""
         report = format_advance_report(advance_result_partial, "table")
         assert "1/5" in report
 
+    @log_call
     def test_table_shows_completed_status(self, advance_result_success):
         """Successful result shows 'completed' status."""
         report = format_advance_report(advance_result_success, "table")
@@ -542,39 +609,46 @@ class TestFormatAdvanceReportTable:
 class TestFormatAdvanceReportJson:
     """Tests for format_advance_report() with format='json'."""
 
+    @log_call
     def test_json_is_valid(self, advance_result_success):
         """JSON output is valid JSON."""
         report = format_advance_report(advance_result_success, "json")
         data = json.loads(report)
         assert isinstance(data, dict)
 
+    @log_call
     def test_json_contains_session_id(self, advance_result_success):
         """JSON contains session_id."""
         data = json.loads(format_advance_report(advance_result_success, "json"))
         assert data["session_id"] == "sess-abc123"
 
+    @log_call
     def test_json_contains_steps(self, advance_result_success):
         """JSON contains steps_completed and steps_total."""
         data = json.loads(format_advance_report(advance_result_success, "json"))
         assert data["steps_completed"] == 3
         assert data["steps_total"] == 3
 
+    @log_call
     def test_json_contains_changes(self, advance_result_success):
         """JSON contains changes_made list."""
         data = json.loads(format_advance_report(advance_result_success, "json"))
         assert "Updated auth.py" in data["changes_made"]
 
+    @log_call
     def test_json_contains_output(self, advance_result_success):
         """JSON contains output field."""
         data = json.loads(format_advance_report(advance_result_success, "json"))
         assert data["output"] == "All tests pass"
 
+    @log_call
     def test_json_failure_has_error(self, advance_result_partial):
         """JSON for failure contains error field."""
         data = json.loads(format_advance_report(advance_result_partial, "json"))
         assert data["error"] == "Network timeout"
         assert data["success"] is False
 
+    @log_call
     def test_json_contains_metadata(self, advance_result_success):
         """JSON contains metadata field."""
         data = json.loads(format_advance_report(advance_result_success, "json"))
@@ -589,27 +663,32 @@ class TestFormatAdvanceReportJson:
 class TestFormatAdvanceReportYaml:
     """Tests for format_advance_report() with format='yaml'."""
 
+    @log_call
     def test_yaml_is_valid(self, advance_result_success):
         """YAML output is valid YAML."""
         report = format_advance_report(advance_result_success, "yaml")
         data = yaml.safe_load(report)
         assert isinstance(data, dict)
 
+    @log_call
     def test_yaml_contains_session_id(self, advance_result_success):
         """YAML contains session_id."""
         data = yaml.safe_load(format_advance_report(advance_result_success, "yaml"))
         assert data["session_id"] == "sess-abc123"
 
+    @log_call
     def test_yaml_contains_changes(self, advance_result_success):
         """YAML contains changes_made list."""
         data = yaml.safe_load(format_advance_report(advance_result_success, "yaml"))
         assert "Updated auth.py" in data["changes_made"]
 
+    @log_call
     def test_yaml_contains_success(self, advance_result_success):
         """YAML contains success flag."""
         data = yaml.safe_load(format_advance_report(advance_result_success, "yaml"))
         assert data["success"] is True
 
+    @log_call
     def test_yaml_failure_has_error(self, advance_result_partial):
         """YAML for failure has error field."""
         data = yaml.safe_load(format_advance_report(advance_result_partial, "yaml"))
@@ -624,6 +703,7 @@ class TestFormatAdvanceReportYaml:
 class TestFormatAdvanceReportInvalidFormat:
     """Tests for format_advance_report() with invalid format."""
 
+    @log_call
     def test_invalid_format_raises_value_error(self, advance_result_success):
         """Invalid format raises ValueError."""
         with pytest.raises(ValueError, match="Invalid format"):
@@ -638,6 +718,7 @@ class TestFormatAdvanceReportInvalidFormat:
 class TestFormatAdvanceReportTruncation:
     """Tests for truncation in format_advance_report()."""
 
+    @log_call
     def test_long_output_truncated_in_table(self):
         """Output longer than MAX_OUTPUT_LENGTH is truncated in table."""
         long_output = "y" * (MAX_OUTPUT_LENGTH + 100)
@@ -651,6 +732,7 @@ class TestFormatAdvanceReportTruncation:
         assert "..." in report
         assert long_output not in report
 
+    @log_call
     def test_short_output_not_truncated(self):
         """Output within MAX_OUTPUT_LENGTH is not truncated."""
         short_output = "z" * (MAX_OUTPUT_LENGTH - 10)
@@ -663,6 +745,7 @@ class TestFormatAdvanceReportTruncation:
         report = format_advance_report(result, "table")
         assert short_output in report
 
+    @log_call
     def test_verbose_mode_no_truncation(self):
         """verbose=True skips output truncation."""
         long_output = "w" * (MAX_OUTPUT_LENGTH + 100)
@@ -676,6 +759,7 @@ class TestFormatAdvanceReportTruncation:
         report = format_advance_report(result, "table", True)
         assert long_output in report
 
+    @log_call
     def test_json_format_no_truncation(self):
         """JSON format includes full output text (not truncated)."""
         long_output = "b" * (MAX_OUTPUT_LENGTH + 200)
@@ -697,16 +781,19 @@ class TestFormatAdvanceReportTruncation:
 class TestFormatAdvanceReportLegacy:
     """Tests for legacy format_advance_report(decisions, executed)."""
 
+    @log_call
     def test_legacy_produces_header(self):
         """Legacy format includes the FLEET ADVANCE REPORT header."""
         report = format_advance_report([], [])
         assert "FLEET ADVANCE REPORT" in report
 
+    @log_call
     def test_legacy_empty_inputs(self):
         """Legacy format with empty inputs shows zero sessions."""
         report = format_advance_report([], [])
         assert "Sessions analyzed: 0" in report
 
+    @log_call
     def test_legacy_shows_decision_count(self):
         """Legacy format counts sessions analyzed."""
         decisions = [
@@ -716,6 +803,7 @@ class TestFormatAdvanceReportLegacy:
         report = format_advance_report(decisions, [])
         assert "Sessions analyzed: 2" in report
 
+    @log_call
     def test_legacy_shows_action_counts(self):
         """Legacy format breaks down actions by type."""
         decisions = [
@@ -727,6 +815,7 @@ class TestFormatAdvanceReportLegacy:
         assert "wait: 2" in report
         assert "send_input: 1" in report
 
+    @log_call
     def test_legacy_shows_executed_actions(self):
         """Legacy format shows executed actions section."""
         executed = [
@@ -736,30 +825,38 @@ class TestFormatAdvanceReportLegacy:
         assert "Actions Executed" in report
         assert "vm1/s1" in report
 
+    @log_call
     def test_legacy_executed_ok_status(self):
         """Legacy format shows OK for successful execution."""
         executed = [
-            {"vm": "vm1", "session": "s1", "action": "send_input",
-             "executed": True, "error": None}
+            {"vm": "vm1", "session": "s1", "action": "send_input", "executed": True, "error": None}
         ]
         report = format_advance_report([], executed)
         assert "[OK]" in report
 
+    @log_call
     def test_legacy_executed_error_status(self):
         """Legacy format shows ERROR for failed execution."""
         executed = [
-            {"vm": "vm1", "session": "s1", "action": "restart",
-             "executed": False, "error": "VM unreachable"}
+            {
+                "vm": "vm1",
+                "session": "s1",
+                "action": "restart",
+                "executed": False,
+                "error": "VM unreachable",
+            }
         ]
         report = format_advance_report([], executed)
         assert "[ERROR]" in report
         assert "VM unreachable" in report
 
+    @log_call
     def test_legacy_no_executed_no_section(self):
         """Legacy format omits 'Actions Executed' when empty."""
         report = format_advance_report([{"action": "wait"}], [])
         assert "Actions Executed" not in report
 
+    @log_call
     def test_legacy_none_defaults(self):
         """Legacy format handles None defaults gracefully."""
         # format_advance_report(decisions) with no executed arg

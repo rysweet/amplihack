@@ -20,6 +20,7 @@ from amplihack.vendor.blarify.vendor.multilspy.lsp_protocol_handler.server impor
 from amplihack.vendor.blarify.vendor.multilspy.multilspy_config import MultilspyConfig
 from amplihack.vendor.blarify.vendor.multilspy.multilspy_logger import MultilspyLogger
 from amplihack.vendor.blarify.vendor.multilspy.multilspy_utils import PlatformId, PlatformUtils
+from amplihack.utils.logging_utils import log_call
 
 
 class TypeScriptLanguageServer(LanguageServer):
@@ -27,6 +28,7 @@ class TypeScriptLanguageServer(LanguageServer):
     Provides TypeScript specific instantiation of the LanguageServer class. Contains various configurations and settings specific to TypeScript.
     """
 
+    @log_call
     def __init__(self, config: MultilspyConfig, logger: MultilspyLogger, repository_root_path: str):
         """
         Creates a TypeScriptLanguageServer instance. This class is not meant to be instantiated directly. Use LanguageServer.create() instead.
@@ -41,6 +43,7 @@ class TypeScriptLanguageServer(LanguageServer):
         )
         self.server_ready = asyncio.Event()
 
+    @log_call
     def setup_runtime_dependencies(self, logger: MultilspyLogger, config: MultilspyConfig) -> str:
         """
         Setup runtime dependencies for TypeScript Language Server.
@@ -101,6 +104,7 @@ class TypeScriptLanguageServer(LanguageServer):
         )
         return f"{tsserver_executable_path} --stdio"
 
+    @log_call
     def _get_initialize_params(self, repository_absolute_path: str) -> InitializeParams:
         """
         Returns the initialize params for the TypeScript Language Server.
@@ -126,6 +130,7 @@ class TypeScriptLanguageServer(LanguageServer):
         return d
 
     @asynccontextmanager
+    @log_call
     async def start_server(self) -> AsyncIterator["TypeScriptLanguageServer"]:
         """
         Starts the TypeScript Language Server, waits for the server to be ready and yields the LanguageServer instance.
@@ -140,6 +145,7 @@ class TypeScriptLanguageServer(LanguageServer):
         # LanguageServer has been shutdown
         """
 
+        @log_call
         async def register_capability_handler(params):
             assert "registrations" in params
             for registration in params["registrations"]:
@@ -150,12 +156,15 @@ class TypeScriptLanguageServer(LanguageServer):
                     # self.resolve_main_method_available.set()
             return
 
+        @log_call
         async def execute_client_command_handler(params):
             return []
 
+        @log_call
         async def do_nothing(params):
             return
 
+        @log_call
         async def window_log_message(msg):
             self.logger.log(f"LSP: window/logMessage: {msg}", logging.INFO)
 

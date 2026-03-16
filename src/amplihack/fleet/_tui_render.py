@@ -12,8 +12,9 @@ Public API:
 from __future__ import annotations
 
 import shutil
-import sys
 from datetime import datetime
+
+from amplihack.utils.logging_utils import log_call
 
 __all__ = ["render_dashboard", "boxline", "format_session"]
 
@@ -73,6 +74,7 @@ STATUS_ICONS_UTF8 = {
 }
 
 
+@log_call
 def boxline(content: str, inner: int, width: int, raw_len: int = 0) -> str:
     """Wrap content in box-drawing vertical lines with right-padding.
 
@@ -90,6 +92,7 @@ def boxline(content: str, inner: int, width: int, raw_len: int = 0) -> str:
     return f"{BOLD}{VL}{RESET} {content}{' ' * pad} {BOLD}{VL}{RESET}"
 
 
+@log_call
 def format_session(sess, inner: int) -> tuple[str, int]:
     """Format a single session line with icon and color.
 
@@ -138,6 +141,7 @@ def format_session(sess, inner: int) -> tuple[str, int]:
     return formatted, raw_len
 
 
+@log_call
 def render_dashboard(vms: list, refresh_interval: int, cols: int = 0) -> str:
     """Build the full dashboard string from VM data.
 
@@ -220,9 +224,7 @@ def render_dashboard(vms: list, refresh_interval: int, cols: int = 0) -> str:
 
         if not vm.sessions:
             empty_line = f"    {DIM}(no sessions){RESET}"
-            lines.append(
-                boxline(empty_line, inner, width, raw_len=len("    (no sessions)"))
-            )
+            lines.append(boxline(empty_line, inner, width, raw_len=len("    (no sessions)")))
         else:
             for sess in vm.sessions:
                 sess_line, raw_len = format_session(sess, inner)
@@ -262,7 +264,9 @@ def render_dashboard(vms: list, refresh_interval: int, cols: int = 0) -> str:
     lines.append(boxline(summary, inner, width, raw_len=raw_summary_len))
 
     # Footer: controls
-    controls = f"  {DIM}Next refresh in {refresh_interval}s    Press q to quit, r to refresh now{RESET}"
+    controls = (
+        f"  {DIM}Next refresh in {refresh_interval}s    Press q to quit, r to refresh now{RESET}"
+    )
     raw_controls_len = len(
         f"  Next refresh in {refresh_interval}s    Press q to quit, r to refresh now"
     )

@@ -22,6 +22,8 @@ from dataclasses import dataclass
 
 import litellm  # type: ignore[import-unresolved]
 
+from amplihack.utils.logging_utils import log_call
+
 logger = logging.getLogger(__name__)
 
 DIMENSION_NAMES = [
@@ -82,9 +84,11 @@ class MetacognitionGrader:
         >>> print(score.overall_score)  # 0.8125
     """
 
+    @log_call
     def __init__(self, model: str = "") -> None:
         self.model = model or os.environ.get("EVAL_MODEL", "claude-opus-4-6")
 
+    @log_call
     def grade(
         self,
         question: str,
@@ -109,6 +113,7 @@ class MetacognitionGrader:
             logger.warning("Grading failed: %s", e)
             return self._zero_score("Grading failed due to an internal error")
 
+    @log_call
     def batch_grade(self, items: list[dict[str, str]]) -> list[MetacognitionScore]:
         """Grade multiple question-answer pairs.
 
@@ -129,6 +134,7 @@ class MetacognitionGrader:
             for item in items
         ]
 
+    @log_call
     def _grade_with_llm(
         self,
         question: str,
@@ -187,6 +193,7 @@ Return ONLY a JSON object with this structure:
         response_text = response.choices[0].message.content.strip()
         return self._parse_grading_response(response_text)
 
+    @log_call
     def _parse_grading_response(self, response_text: str) -> MetacognitionScore:
         """Parse LLM grading response into MetacognitionScore."""
         try:
@@ -223,6 +230,7 @@ Return ONLY a JSON object with this structure:
             summary=self._generate_summary(dimensions, overall),
         )
 
+    @log_call
     def _generate_summary(self, dimensions: list[Dimension], overall: float) -> str:
         """Generate human-readable summary from dimension scores."""
         if overall >= 0.8:
@@ -243,6 +251,7 @@ Return ONLY a JSON object with this structure:
             f"Weakest: {weakest.name} ({weakest.score:.2f})."
         )
 
+    @log_call
     def _zero_score(self, reason: str) -> MetacognitionScore:
         """Return a zero score for error cases."""
         dimensions = [Dimension(name=name, score=0.0, reasoning=reason) for name in DIMENSION_NAMES]
@@ -274,6 +283,7 @@ class ReasoningTraceScore:
     details: dict
 
 
+@log_call
 def grade_metacognition(
     trace: dict | str,
     answer_score: float,

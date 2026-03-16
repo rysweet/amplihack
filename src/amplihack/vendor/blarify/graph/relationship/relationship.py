@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING, Any
+from amplihack.utils.logging_utils import log_call
 
 if TYPE_CHECKING:
     from ...graph.node import Node
@@ -14,6 +15,7 @@ class Relationship:
     reference_character: int | None
     attributes: dict[str, Any]
 
+    @log_call
     def __init__(
         self,
         start_node: "Node",
@@ -32,6 +34,7 @@ class Relationship:
         self.reference_character = reference_character
         self.attributes = attributes or {}
 
+    @log_call
     def as_object(self) -> dict:
         obj = {
             "sourceId": self.start_node.hashed_id,
@@ -53,6 +56,7 @@ class Relationship:
 
         return obj
 
+    @log_call
     def __str__(self) -> str:
         return f"{self.start_node} --[{self.rel_type}]-> {self.end_node}"
 
@@ -66,6 +70,7 @@ class WorkflowStepRelationship(Relationship):
     call_character: int | None
     relationship_type: str | None
 
+    @log_call
     def __init__(
         self,
         start_node: "Node",
@@ -85,6 +90,7 @@ class WorkflowStepRelationship(Relationship):
         self.call_character = call_character
         self.relationship_type = relationship_type
 
+    @log_call
     def as_object(self) -> dict:
         obj = super().as_object()
 
@@ -102,6 +108,7 @@ class WorkflowStepRelationship(Relationship):
 
         return obj
 
+    @log_call
     def __str__(self) -> str:
         step_info = f" (step {self.step_order})" if self.step_order is not None else ""
         return f"{self.start_node} --[{self.rel_type}{step_info}]-> {self.end_node}"

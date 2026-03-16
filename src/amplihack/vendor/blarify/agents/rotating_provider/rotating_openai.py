@@ -10,6 +10,7 @@ from amplihack.vendor.blarify.agents.api_key_manager import APIKeyManager
 from amplihack.vendor.blarify.agents.rotating_provider.rotating_providers import ErrorType, RotatingProviderBase
 from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
+from amplihack.utils.logging_utils import log_call
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,7 @@ class OpenAIRotationConfig:
 class RotatingKeyChatOpenAI(RotatingProviderBase):
     """OpenAI chat model with automatic key rotation."""
 
+    @log_call
     def __init__(
         self,
         key_manager: APIKeyManager,
@@ -45,6 +47,7 @@ class RotatingKeyChatOpenAI(RotatingProviderBase):
         # Remove api_key from kwargs if present (we'll set it per request)
         self.model_kwargs = {k: v for k, v in kwargs.items() if k != "api_key"}
 
+    @log_call
     def _create_client(self, api_key: str) -> ChatOpenAI:
         """Create ChatOpenAI instance with specific API key.
 
@@ -56,6 +59,7 @@ class RotatingKeyChatOpenAI(RotatingProviderBase):
         """
         return ChatOpenAI(api_key=SecretStr(api_key), **self.model_kwargs)
 
+    @log_call
     def get_provider_name(self) -> str:
         """Return provider name for logging.
 
@@ -64,6 +68,7 @@ class RotatingKeyChatOpenAI(RotatingProviderBase):
         """
         return "openai"
 
+    @log_call
     def analyze_error(self, error: Exception) -> tuple[ErrorType, int | None]:
         """Analyze OpenAI-specific errors.
 
@@ -107,6 +112,7 @@ class RotatingKeyChatOpenAI(RotatingProviderBase):
         # Default to non-retryable
         return (ErrorType.NON_RETRYABLE, None)
 
+    @log_call
     def _extract_retry_seconds(self, error_str: str) -> int:
         """Extract retry seconds from OpenAI error message.
 
@@ -131,6 +137,7 @@ class RotatingKeyChatOpenAI(RotatingProviderBase):
         # Default to configured cooldown if not found
         return self.rotation_config.default_cooldown_seconds
 
+    @log_call
     def extract_headers_from_error(self, error: Exception) -> dict[str, str]:
         """Extract rate limit headers from OpenAI errors.
 
@@ -172,6 +179,7 @@ class RotatingKeyChatOpenAI(RotatingProviderBase):
 
         return headers
 
+    @log_call
     def _should_preemptively_rotate(self, headers: dict[str, str]) -> bool:
         """Check if we should rotate keys proactively based on headers.
 
@@ -216,6 +224,7 @@ class RotatingKeyChatOpenAI(RotatingProviderBase):
 
         return False
 
+    @log_call
     def _calculate_cooldown_from_headers(self, headers: dict[str, str]) -> int | None:
         """Calculate cooldown period from reset headers.
 

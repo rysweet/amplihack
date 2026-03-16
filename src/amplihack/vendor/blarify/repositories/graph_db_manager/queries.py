@@ -12,10 +12,12 @@ from typing_extensions import LiteralString  # Python 3.10 compatibility
 from amplihack.vendor.blarify.repositories.graph_db_manager.db_manager import AbstractDbManager
 from amplihack.vendor.blarify.repositories.graph_db_manager.dtos.leaf_node_dto import LeafNodeDto
 from amplihack.vendor.blarify.repositories.graph_db_manager.dtos.node_with_content_dto import NodeWithContentDto
+from amplihack.utils.logging_utils import log_call
 
 logger = logging.getLogger(__name__)
 
 
+@log_call
 def get_codebase_skeleton_query() -> LiteralString:
     """
     Returns the Cypher query for retrieving the codebase skeleton structure.
@@ -47,6 +49,7 @@ def get_codebase_skeleton_query() -> LiteralString:
     """
 
 
+@log_call
 def format_codebase_skeleton_result(query_result: list[dict[str, Any]]) -> dict[str, Any]:
     """
     Formats the result of the codebase skeleton query into a structured format.
@@ -97,6 +100,7 @@ def format_codebase_skeleton_result(query_result: list[dict[str, Any]]) -> dict[
         return {"nodes": [], "relationships": []}
 
 
+@log_call
 def get_node_details_query() -> LiteralString:
     """
     Returns a query for retrieving detailed information about a specific node.
@@ -117,6 +121,7 @@ def get_node_details_query() -> LiteralString:
     """
 
 
+@log_call
 def get_node_relationships_query() -> LiteralString:
     """
     Returns a query for retrieving relationships of a specific node.
@@ -147,6 +152,7 @@ def get_node_relationships_query() -> LiteralString:
     """
 
 
+@log_call
 def format_node_details_result(query_result: list[dict[str, Any]]) -> dict[str, Any] | None:
     """
     Formats the result of a node details query.
@@ -176,6 +182,7 @@ def format_node_details_result(query_result: list[dict[str, Any]]) -> dict[str, 
         return None
 
 
+@log_call
 def format_node_relationships_result(query_result: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
     Formats the result of a node relationships query.
@@ -210,6 +217,7 @@ def format_node_relationships_result(query_result: list[dict[str, Any]]) -> list
         return []
 
 
+@log_call
 def get_codebase_skeleton(db_manager: AbstractDbManager, entity_id: str, repo_id: str) -> str:
     """
     Retrieves the codebase skeleton structure and formats it as a structured string.
@@ -240,6 +248,7 @@ def get_codebase_skeleton(db_manager: AbstractDbManager, entity_id: str, repo_id
         return f"Error retrieving codebase skeleton: {e!s}"
 
 
+@log_call
 def format_skeleton_as_string(skeleton_data: dict[str, Any]) -> str:
     """
     Formats skeleton data as a structured string representation.
@@ -267,6 +276,7 @@ def format_skeleton_as_string(skeleton_data: dict[str, Any]) -> str:
     return "\n".join(output)
 
 
+@log_call
 def build_hierarchy(
     nodes: list[dict[str, Any]], relationships: list[dict[str, Any]]
 ) -> dict[str, Any]:
@@ -307,6 +317,7 @@ def build_hierarchy(
     return hierarchy
 
 
+@log_call
 def format_hierarchy_tree(hierarchy: dict[str, Any]) -> list[str]:
     """
     Formats hierarchy as a tree structure with indentation and arrows.
@@ -319,6 +330,7 @@ def format_hierarchy_tree(hierarchy: dict[str, Any]) -> list[str]:
     """
     output = []
 
+    @log_call
     def format_node(
         node_id: str, level: int = 0, is_last: bool = False, parent_prefix: str = ""
     ) -> list[str]:
@@ -379,6 +391,7 @@ def format_hierarchy_tree(hierarchy: dict[str, Any]) -> list[str]:
     return output
 
 
+@log_call
 def get_code_nodes_by_ids_query() -> LiteralString:
     """Returns Cypher query to get code nodes by their IDs.
 
@@ -399,6 +412,7 @@ def get_code_nodes_by_ids_query() -> LiteralString:
     """
 
 
+@log_call
 def get_all_leaf_nodes_query() -> LiteralString:
     """
     Returns a Cypher query for retrieving all leaf nodes in the codebase hierarchy.
@@ -424,6 +438,7 @@ def get_all_leaf_nodes_query() -> LiteralString:
     """
 
 
+@log_call
 def get_folder_leaf_nodes_query() -> LiteralString:
     """
     Returns a Cypher query for retrieving leaf nodes under a specific folder path.
@@ -453,6 +468,7 @@ def get_folder_leaf_nodes_query() -> LiteralString:
     """
 
 
+@log_call
 def format_leaf_nodes_result(query_result: list[dict[str, Any]]) -> list[LeafNodeDto]:
     """
     Formats the result of the leaf nodes query into LeafNodeDto objects.
@@ -487,6 +503,7 @@ def format_leaf_nodes_result(query_result: list[dict[str, Any]]) -> list[LeafNod
         return []
 
 
+@log_call
 def get_all_leaf_nodes(
     db_manager: AbstractDbManager, entity_id: str, repo_id: str
 ) -> list[LeafNodeDto]:
@@ -516,6 +533,7 @@ def get_all_leaf_nodes(
         return []
 
 
+@log_call
 def get_folder_leaf_nodes(
     db_manager: AbstractDbManager, entity_id: str, repo_id: str, folder_path: str
 ) -> list[LeafNodeDto]:
@@ -546,6 +564,7 @@ def get_folder_leaf_nodes(
         return []
 
 
+@log_call
 def get_node_by_path_query() -> LiteralString:
     """
     Returns a Cypher query for retrieving a node (folder or file) by its path.
@@ -570,6 +589,7 @@ def get_node_by_path_query() -> LiteralString:
     """
 
 
+@log_call
 def get_direct_children_query() -> LiteralString:
     """
     Returns a Cypher query for retrieving immediate children of a node.
@@ -595,6 +615,7 @@ def get_direct_children_query() -> LiteralString:
     """
 
 
+@log_call
 def format_node_with_content_result(
     query_result: list[dict[str, Any]],
 ) -> NodeWithContentDto | None:
@@ -626,6 +647,7 @@ def format_node_with_content_result(
         return None
 
 
+@log_call
 def format_children_with_content_result(
     query_result: list[dict[str, Any]],
 ) -> list[NodeWithContentDto]:
@@ -663,6 +685,7 @@ def format_children_with_content_result(
         return []
 
 
+@log_call
 def get_node_by_path(db_manager: AbstractDbManager, node_path: str) -> NodeWithContentDto | None:
     """
     Retrieves a node (folder or file) by its path.
@@ -694,6 +717,7 @@ def get_node_by_path(db_manager: AbstractDbManager, node_path: str) -> NodeWithC
 
 
 # Keep the old function name for backward compatibility
+@log_call
 def get_folder_node_by_path(
     db_manager: AbstractDbManager, folder_path: str
 ) -> NodeWithContentDto | None:
@@ -714,6 +738,7 @@ def get_folder_node_by_path(
     return get_node_by_path(db_manager, folder_path)
 
 
+@log_call
 def get_direct_children(db_manager: AbstractDbManager, node_id: str) -> list[NodeWithContentDto]:
     """
     Retrieves immediate children of a node.
@@ -740,6 +765,7 @@ def get_direct_children(db_manager: AbstractDbManager, node_id: str) -> list[Nod
         return []
 
 
+@log_call
 def get_information_nodes_by_folder_query() -> LiteralString:
     """
     Returns a Cypher query for retrieving the information node for a specific folder.
@@ -765,6 +791,7 @@ def get_information_nodes_by_folder_query() -> LiteralString:
     """
 
 
+@log_call
 def format_information_nodes_result(query_result: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
     Formats the result of information nodes query into standardized dictionaries.
@@ -808,6 +835,7 @@ def format_information_nodes_result(query_result: list[dict[str, Any]]) -> list[
         return []
 
 
+@log_call
 def get_information_nodes_by_folder(
     db_manager: AbstractDbManager, folder_path: str
 ) -> list[dict[str, Any]]:
@@ -841,6 +869,7 @@ def get_information_nodes_by_folder(
         return []
 
 
+@log_call
 def get_root_information_nodes_query() -> LiteralString:
     """
     Returns a Cypher query for retrieving information nodes for root-level code nodes.
@@ -868,6 +897,7 @@ def get_root_information_nodes_query() -> LiteralString:
     """
 
 
+@log_call
 def get_root_information_nodes(db_manager: AbstractDbManager) -> list[dict[str, Any]]:
     """
     Retrieves information nodes for all root-level code nodes.
@@ -893,6 +923,7 @@ def get_root_information_nodes(db_manager: AbstractDbManager) -> list[dict[str, 
         return []
 
 
+@log_call
 def get_root_path_query() -> LiteralString:
     """
     Returns a Cypher query for retrieving root-level folders and files.
@@ -911,6 +942,7 @@ def get_root_path_query() -> LiteralString:
     """
 
 
+@log_call
 def get_root_path(db_manager: AbstractDbManager) -> LiteralString:
     """
     Retrieves paths of all root-level folders and files.
@@ -938,6 +970,7 @@ def get_root_path(db_manager: AbstractDbManager) -> LiteralString:
 # 4-Layer Architecture Queries for Spec Analysis
 
 
+@log_call
 def find_independent_workflows_query() -> LiteralString:
     """
     Returns a Cypher query for finding workflow execution traces with documentation nodes.
@@ -1068,6 +1101,7 @@ def find_independent_workflows_query() -> LiteralString:
     """
 
 
+@log_call
 def find_independent_workflows(
     db_manager: AbstractDbManager, entry_point_id: str
 ) -> list[dict[str, Any]]:
@@ -1162,6 +1196,7 @@ def find_independent_workflows(
         return []
 
 
+@log_call
 def _create_bridge_edges(
     execution_nodes: list[dict[str, Any]], execution_edges: list[dict[str, Any]]
 ) -> list[dict[str, Any]]:
@@ -1311,6 +1346,7 @@ def _create_bridge_edges(
     return all_edges
 
 
+@log_call
 def find_code_workflows_query() -> LiteralString:
     """
     Returns a Cypher query for finding workflow execution traces using proper DFS traversal.
@@ -1443,6 +1479,7 @@ def find_code_workflows_query() -> LiteralString:
     """
 
 
+@log_call
 def find_code_workflows(
     db_manager: AbstractDbManager, entry_point_id: str, max_depth: int = 5, batch_size: int = 100
 ) -> list[dict[str, Any]]:
@@ -1593,6 +1630,7 @@ def find_code_workflows(
         return []
 
 
+@log_call
 def create_spec_node_query() -> LiteralString:
     """
     Returns a Cypher query for creating a spec node in the specifications layer.
@@ -1618,6 +1656,7 @@ def create_spec_node_query() -> LiteralString:
     """
 
 
+@log_call
 def create_workflow_node_query() -> LiteralString:
     """
     Returns a Cypher query for creating a workflow node in the workflows layer.
@@ -1641,6 +1680,7 @@ def create_workflow_node_query() -> LiteralString:
     """
 
 
+@log_call
 def create_workflow_belongs_to_spec_query() -> LiteralString:
     """
     Returns a Cypher query for creating BELONGS_TO_SPEC relationship.
@@ -1656,6 +1696,7 @@ def create_workflow_belongs_to_spec_query() -> LiteralString:
     """
 
 
+@log_call
 def create_documentation_belongs_to_workflow_query() -> LiteralString:
     """
     Returns a Cypher query for creating BELONGS_TO_WORKFLOW relationships.
@@ -1672,6 +1713,7 @@ def create_documentation_belongs_to_workflow_query() -> LiteralString:
     """
 
 
+@log_call
 def create_workflow_steps_query() -> LiteralString:
     """
     Returns a Cypher query for creating WORKFLOW_STEP relationships between documentation nodes.
@@ -1695,6 +1737,7 @@ def create_workflow_steps_query() -> LiteralString:
 # Hybrid Entry Point Discovery Queries
 
 
+@log_call
 def find_potential_entry_points_query() -> LiteralString:
     """
     Returns a Cypher query for finding potential entry points using comprehensive relationship checking.
@@ -1722,6 +1765,7 @@ def find_potential_entry_points_query() -> LiteralString:
     """
 
 
+@log_call
 def find_all_entry_points(db_manager: AbstractDbManager) -> list[dict[str, Any]]:
     """
     Finds all potential entry points using comprehensive relationship checking.
@@ -1764,6 +1808,7 @@ def find_all_entry_points(db_manager: AbstractDbManager) -> list[dict[str, Any]]
         return []
 
 
+@log_call
 def find_nodes_by_text_query() -> LiteralString:
     """
     Returns the Cypher query for finding nodes by text content.
@@ -1790,6 +1835,7 @@ def find_nodes_by_text_query() -> LiteralString:
     """
 
 
+@log_call
 def find_nodes_by_text_content(
     db_manager: AbstractDbManager, search_text: str
 ) -> list[dict[str, Any]]:
@@ -1836,6 +1882,7 @@ def find_nodes_by_text_content(
         return []
 
 
+@log_call
 def grep_code_query() -> LiteralString:
     """
     Returns the Cypher query for searching code patterns (grep-like search).
@@ -1870,6 +1917,7 @@ def grep_code_query() -> LiteralString:
     """
 
 
+@log_call
 def get_file_context_by_id_query() -> LiteralString:
     """
     Returns the Cypher query for getting file context by node ID.
@@ -1891,6 +1939,7 @@ def get_file_context_by_id_query() -> LiteralString:
     """
 
 
+@log_call
 def get_file_context_by_id(db_manager: AbstractDbManager, node_id: str) -> list[tuple[str, str]]:
     """
     Get file context by node ID, returning a chain of (node_id, text) tuples.
@@ -1931,6 +1980,7 @@ def get_file_context_by_id(db_manager: AbstractDbManager, node_id: str) -> list[
         raise ValueError(f"Node {node_id} not found")
 
 
+@log_call
 def get_mermaid_graph_query() -> LiteralString:
     """
     Returns the Cypher query for generating a mermaid diagram showing relationships.
@@ -1982,6 +2032,7 @@ def get_mermaid_graph_query() -> LiteralString:
     """
 
 
+@log_call
 def get_mermaid_graph(db_manager: AbstractDbManager, node_id: str) -> str:
     """
     Generate a mermaid diagram showing relationships for a given node.
@@ -2045,6 +2096,7 @@ def get_mermaid_graph(db_manager: AbstractDbManager, node_id: str) -> str:
         return f"Error generating diagram for node {node_id}: {e!s}"
 
 
+@log_call
 def get_code_by_id_query() -> LiteralString:
     """
     Returns a simple Cypher query for getting node information by node ID.
@@ -2062,6 +2114,7 @@ def get_code_by_id_query() -> LiteralString:
     """
 
 
+@log_call
 def get_code_by_id(db_manager: AbstractDbManager, node_id: str) -> dict[str, Any] | None:
     """
     Get node information by node ID, returning basic node data.
@@ -2110,6 +2163,7 @@ def get_code_by_id(db_manager: AbstractDbManager, node_id: str) -> dict[str, Any
         return None
 
 
+@log_call
 def get_existing_documentation_for_node_query() -> LiteralString:
     """
     Returns a Cypher query for retrieving existing documentation for a specific code node.
@@ -2136,6 +2190,7 @@ def get_existing_documentation_for_node_query() -> LiteralString:
     """
 
 
+@log_call
 def find_entry_points_for_file_paths_query() -> LiteralString:
     """
     Find entry points that eventually reach a specific node path.
@@ -2172,6 +2227,7 @@ def find_entry_points_for_file_paths_query() -> LiteralString:
     """
 
 
+@log_call
 def find_entry_points_for_files_paths(
     db_manager: AbstractDbManager, file_paths: list[str]
 ) -> list[dict[str, Any]]:
@@ -2210,6 +2266,7 @@ def find_entry_points_for_files_paths(
         return []
 
 
+@log_call
 def get_documentation_nodes_for_embedding_query() -> LiteralString:
     """Query to retrieve documentation nodes for embedding processing.
 
@@ -2231,6 +2288,7 @@ def get_documentation_nodes_for_embedding_query() -> LiteralString:
     """
 
 
+@log_call
 def update_documentation_embeddings_query() -> LiteralString:
     """Query to update embeddings for documentation nodes.
 
@@ -2245,6 +2303,7 @@ def update_documentation_embeddings_query() -> LiteralString:
     """
 
 
+@log_call
 def get_processable_nodes_query() -> LiteralString:
     """
     Get nodes that are ready for processing in bottom-up order.
@@ -2287,6 +2346,7 @@ def get_processable_nodes_query() -> LiteralString:
     """
 
 
+@log_call
 def cleanup_processing_query() -> LiteralString:
     """
     Remove all processing status data from nodes.
@@ -2309,6 +2369,7 @@ def cleanup_processing_query() -> LiteralString:
 """
 
 
+@log_call
 def create_vector_index_query() -> LiteralString:
     """Create Neo4j vector index for documentation embeddings.
 
@@ -2326,6 +2387,7 @@ def create_vector_index_query() -> LiteralString:
     """
 
 
+@log_call
 def vector_similarity_search_query() -> LiteralString:
     """Cypher query for vector similarity search using Neo4j vector index.
 
@@ -2348,6 +2410,7 @@ def vector_similarity_search_query() -> LiteralString:
     """
 
 
+@log_call
 def hybrid_search_query() -> LiteralString:
     """Cypher query for hybrid search combining vector and keyword similarity.
 
@@ -2385,6 +2448,7 @@ def hybrid_search_query() -> LiteralString:
     """
 
 
+@log_call
 def get_node_by_id_query() -> LiteralString:
     """Cypher query to retrieve a node by its ID.
 
@@ -2455,6 +2519,7 @@ def get_node_by_id_query() -> LiteralString:
     """
 
 
+@log_call
 def get_node_by_name_and_type_query() -> LiteralString:
     """Cypher query to retrieve nodes by name and type.
 

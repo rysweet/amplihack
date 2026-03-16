@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 
+from amplihack.utils.logging_utils import log_call
+
 from ..models import GoalDefinition
 from ..prompt_analyzer import PromptAnalyzer
 
@@ -13,10 +15,12 @@ class TestPromptAnalyzer:
     """Tests for PromptAnalyzer."""
 
     @pytest.fixture
+    @log_call
     def analyzer(self):
         """Create analyzer instance."""
         return PromptAnalyzer()
 
+    @log_call
     def test_analyze_simple_prompt(self, analyzer):
         """Test analyzing simple prompt."""
         prompt = "Automate code review process"
@@ -27,6 +31,7 @@ class TestPromptAnalyzer:
         assert result.domain in analyzer.DOMAIN_KEYWORDS
         assert result.complexity in ["simple", "moderate", "complex"]
 
+    @log_call
     def test_analyze_complex_prompt(self, analyzer):
         """Test analyzing complex prompt with multiple sections."""
         prompt = """
@@ -52,6 +57,7 @@ class TestPromptAnalyzer:
         assert len(result.constraints) > 0
         assert len(result.success_criteria) > 0
 
+    @log_call
     def test_extract_goal_from_heading(self, analyzer):
         """Test extracting goal from markdown heading."""
         prompt = "# Automate deployment process\n\nSome details here"
@@ -59,6 +65,7 @@ class TestPromptAnalyzer:
 
         assert "deployment" in goal.lower()
 
+    @log_call
     def test_extract_goal_from_explicit_marker(self, analyzer):
         """Test extracting goal with explicit Goal: marker."""
         prompt = "Goal: Build automated testing framework"
@@ -66,6 +73,7 @@ class TestPromptAnalyzer:
 
         assert "testing" in goal.lower() or "automated" in goal.lower()
 
+    @log_call
     def test_classify_domain_data_processing(self, analyzer):
         """Test domain classification for data processing."""
         prompt = "Process and transform large datasets"
@@ -73,6 +81,7 @@ class TestPromptAnalyzer:
 
         assert domain == "data-processing"
 
+    @log_call
     def test_classify_domain_security(self, analyzer):
         """Test domain classification for security."""
         prompt = "Scan codebase for security vulnerabilities"
@@ -80,6 +89,7 @@ class TestPromptAnalyzer:
 
         assert domain == "security-analysis"
 
+    @log_call
     def test_classify_domain_automation(self, analyzer):
         """Test domain classification for automation."""
         prompt = "Automate workflow execution and scheduling"
@@ -87,6 +97,7 @@ class TestPromptAnalyzer:
 
         assert domain == "automation"
 
+    @log_call
     def test_extract_constraints(self, analyzer):
         """Test extracting constraints."""
         prompt = """
@@ -100,6 +111,7 @@ class TestPromptAnalyzer:
         assert len(constraints) > 0
         assert any("10 minutes" in c.lower() for c in constraints)
 
+    @log_call
     def test_extract_success_criteria(self, analyzer):
         """Test extracting success criteria."""
         prompt = """
@@ -113,6 +125,7 @@ class TestPromptAnalyzer:
         assert len(criteria) > 0
         assert any("test" in c.lower() or "report" in c.lower() for c in criteria)
 
+    @log_call
     def test_determine_complexity_simple(self, analyzer):
         """Test complexity determination for simple tasks."""
         prompt = "Single quick task"
@@ -120,6 +133,7 @@ class TestPromptAnalyzer:
 
         assert complexity == "simple"
 
+    @log_call
     def test_determine_complexity_complex(self, analyzer):
         """Test complexity determination for complex tasks."""
         prompt = """
@@ -135,6 +149,7 @@ class TestPromptAnalyzer:
 
         assert complexity == "complex"
 
+    @log_call
     def test_extract_context_timeframe(self, analyzer):
         """Test extracting timeframe from context."""
         prompt = "Complete within 30 minutes"
@@ -143,6 +158,7 @@ class TestPromptAnalyzer:
         assert "timeframe" in context
         assert "30" in context["timeframe"]
 
+    @log_call
     def test_extract_context_priority(self, analyzer):
         """Test extracting priority from context."""
         prompt_urgent = "Urgent: Fix critical bug immediately"
@@ -155,6 +171,7 @@ class TestPromptAnalyzer:
 
         assert context_low["priority"] == "low"
 
+    @log_call
     def test_extract_context_scale(self, analyzer):
         """Test extracting scale from context."""
         prompt_large = "Enterprise-scale production deployment"
@@ -167,6 +184,7 @@ class TestPromptAnalyzer:
 
         assert context_small["scale"] == "small"
 
+    @log_call
     def test_analyze_from_file(self, analyzer):
         """Test analyzing prompt from file."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
@@ -185,16 +203,19 @@ class TestPromptAnalyzer:
         finally:
             temp_path.unlink()
 
+    @log_call
     def test_analyze_missing_file_raises_error(self, analyzer):
         """Test that missing file raises FileNotFoundError."""
         with pytest.raises(FileNotFoundError):
             analyzer.analyze(Path("/nonexistent/file.md"))
 
+    @log_call
     def test_analyze_empty_text_raises_error(self, analyzer):
         """Test that empty text raises ValueError."""
         with pytest.raises(ValueError, match="Prompt cannot be empty"):
             analyzer.analyze_text("")
 
+    @log_call
     def test_analyze_whitespace_only_raises_error(self, analyzer):
         """Test that whitespace-only text raises ValueError."""
         with pytest.raises(ValueError, match="Prompt cannot be empty"):

@@ -10,6 +10,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 from .models import ExecutionPlan, SDKToolConfig, SkillDefinition
 
 # SDK-native tools available per SDK target
@@ -61,6 +63,7 @@ class SkillSynthesizer:
         "integrator": ["integrate", "connect", "api", "webhook"],
     }
 
+    @log_call
     def __init__(self, skills_directory: Path | None = None):
         """
         Initialize skill synthesizer.
@@ -70,6 +73,7 @@ class SkillSynthesizer:
         """
         self.skills_directory = skills_directory or self._find_skills_directory()
 
+    @log_call
     def synthesize_skills(
         self,
         execution_plan: ExecutionPlan,
@@ -99,6 +103,7 @@ class SkillSynthesizer:
 
         return synthesized_skills
 
+    @log_call
     def get_sdk_tools(
         self,
         sdk: str,
@@ -150,6 +155,7 @@ class SkillSynthesizer:
 
         return matched_tools
 
+    @log_call
     def synthesize_with_sdk_tools(
         self,
         execution_plan: ExecutionPlan,
@@ -184,6 +190,7 @@ class SkillSynthesizer:
             "sdk_tools": sdk_tools,
         }
 
+    @log_call
     def _capabilities_to_categories(self, capabilities: list[str]) -> set[str]:
         """
         Map capability keywords to tool categories.
@@ -202,6 +209,7 @@ class SkillSynthesizer:
                     categories.add(category)
         return categories
 
+    @log_call
     def _find_skills_directory(self) -> Path:
         """Find the .claude/agents directory."""
         # Start from current file and traverse up
@@ -215,6 +223,7 @@ class SkillSynthesizer:
         # Fallback: create temp directory
         return Path.cwd() / ".skills_temp"
 
+    @log_call
     def _find_matching_skill(self, skill_name: str) -> SkillDefinition | None:
         """
         Find existing skill that matches the requirement.
@@ -251,6 +260,7 @@ class SkillSynthesizer:
 
         return None
 
+    @log_call
     def _load_skill(self, skill_path: Path, skill_name: str, match_score: float) -> SkillDefinition:
         """Load skill from file."""
         content = skill_path.read_text()
@@ -274,6 +284,7 @@ class SkillSynthesizer:
             match_score=match_score,
         )
 
+    @log_call
     def _extract_description(self, content: str) -> str:
         """Extract description from skill markdown."""
         lines = content.split("\n")
@@ -296,6 +307,7 @@ class SkillSynthesizer:
 
         return " ".join(description_lines[:200])  # Limit to 200 chars
 
+    @log_call
     def _extract_capabilities(self, content: str, skill_name: str) -> list[str]:
         """Extract capabilities from skill content."""
         # Use keywords as capabilities
@@ -323,6 +335,7 @@ class SkillSynthesizer:
 
         return capabilities[:5]  # Limit to top 5
 
+    @log_call
     def _extract_dependencies(self, content: str) -> list[str]:
         """Extract dependencies from skill content."""
         dependencies = []
@@ -336,6 +349,7 @@ class SkillSynthesizer:
 
         return dependencies[:3]  # Limit to top 3
 
+    @log_call
     def _create_generic_skill(self) -> SkillDefinition:
         """Create a generic fallback skill."""
         return SkillDefinition(

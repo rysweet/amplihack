@@ -133,6 +133,8 @@ RUST_HOOK_MAP = {
 }
 
 # Import from focused modules
+from amplihack.utils.logging_utils import log_call
+
 from .hook_verification import verify_hooks
 from .install import (
     _local_install,
@@ -146,6 +148,7 @@ from .settings import SETTINGS_TEMPLATE, ensure_settings_json, update_hook_paths
 from .uninstall import read_manifest, uninstall
 
 
+@log_call
 def filecmp(f1, f2):
     """Compare two files byte-by-byte.
 
@@ -168,6 +171,7 @@ def filecmp(f1, f2):
         return False
 
 
+@log_call
 def main():
     """Main CLI entry point."""
     # Ensure dependencies are installed at CLI startup (not import time)

@@ -21,6 +21,7 @@ from pathlib import Path
 from amplihack.fleet._admiral_types import DirectorAction
 from amplihack.fleet.fleet_state import FleetState
 from amplihack.fleet.fleet_tasks import FleetTask, TaskQueue
+from amplihack.utils.logging_utils import log_call
 
 __all__ = ["CoordinationReasoner"]
 
@@ -37,6 +38,7 @@ class CoordinationReasoner:
         default_factory=lambda: Path.home() / ".amplihack" / "fleet" / "coordination"
     )
 
+    @log_call
     def reason(
         self,
         state: FleetState,

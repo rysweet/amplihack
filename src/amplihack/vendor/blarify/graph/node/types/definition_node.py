@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Optional, Union
 
 from amplihack.vendor.blarify.graph.node.types.node import Node
 from amplihack.vendor.blarify.stats.complexity import CodeComplexityCalculator, NestingStats
+from amplihack.utils.logging_utils import log_call
 
 if TYPE_CHECKING:
     from ....code_references.types import Reference
@@ -25,6 +26,7 @@ class DefinitionNode(Node):
     body_node: Optional["TreeSitterNode"] = None
     _tree_sitter_node: Optional["TreeSitterNode"] = None
 
+    @log_call
     def __init__(
         self,
         definition_range: "Reference",
@@ -47,6 +49,7 @@ class DefinitionNode(Node):
         super().__init__(*args, **kwargs)
 
     @property
+    @log_call
     def stats(self) -> "NestingStats":
         if self.body_node is None:
             return NestingStats(0, 0, 0, 0)
@@ -54,14 +57,17 @@ class DefinitionNode(Node):
             self.body_node, extension=self.extension
         )
 
+    @log_call
     def relate_node_as_define_relationship(self, node: Union["ClassNode", "FunctionNode"]) -> None:
         self._defines.append(node)
 
+    @log_call
     def relate_nodes_as_define_relationship(
         self, nodes: list[Union["ClassNode", "FunctionNode"]]
     ) -> None:
         self._defines.extend(nodes)
 
+    @log_call
     def get_relationships(self) -> list["Relationship"]:
         from ....graph.relationship import RelationshipCreator
 
@@ -71,9 +77,11 @@ class DefinitionNode(Node):
 
         return relationships
 
+    @log_call
     def get_start_and_end_line(self) -> tuple[int, int]:
         return self.node_range.range.start.line, self.node_range.range.end.line
 
+    @log_call
     def reference_search(self, reference: "Reference") -> "DefinitionNode":
         reference_start = reference.range.start.line
         reference_end = reference.range.end.line
@@ -94,14 +102,17 @@ class DefinitionNode(Node):
 
         return self
 
+    @log_call
     def is_reference_within_scope(
         self, reference_start: int, reference_end: int, scope_start: int, scope_end: int
     ) -> bool:
         return scope_start <= reference_start and scope_end >= reference_end
 
+    @log_call
     def is_reference_end_before_scope_start(self, reference_end: int, scope_start: int) -> bool:
         return reference_end < scope_start
 
+    @log_call
     def skeletonize(self) -> None:
         if self._tree_sitter_node is None:
             return
@@ -127,49 +138,60 @@ class DefinitionNode(Node):
 
             node.skeletonize()
 
+    @log_call
     def calculate_new_offset(self, start_byte: int, end_byte: int) -> int:
         return len(self._get_text_for_skeleton()) - (end_byte - start_byte)
 
+    @log_call
     def get_start_text_bytes(
         self, parent_text_bytes: bytes, bytes_offset: int
     ) -> tuple[bytes, int]:
         start_byte = self.body_node.start_byte + bytes_offset - 1
         return parent_text_bytes[:start_byte], start_byte
 
+    @log_call
     def get_end_text_bytes(self, parent_text_bytes: bytes, bytes_offset: int) -> tuple[bytes, int]:
         end_byte = self.body_node.end_byte + bytes_offset + 1
         return self.remove_line_break_if_present(text=parent_text_bytes[end_byte:]), end_byte
 
+    @log_call
     def remove_line_break_if_present(self, text: bytes) -> tuple[bytes, int]:
         if text[0:1] == b"\n":
             return text[1:]
         return text
 
+    @log_call
     def _get_text_for_skeleton(self) -> bytes:
         return f"# Code replaced for brevity, see node: {self.hashed_id}\n".encode()
 
+    @log_call
     def get_all_definition_ranges(self) -> list["Reference"]:
         definition_ranges = [self.definition_range]
         for node in self._defines:
             definition_ranges.extend(node.get_all_definition_ranges())
         return definition_ranges
 
+    @log_call
     def add_extra_label_to_self_and_children(self, label: str) -> None:
         self.add_extra_label(label)
         for node in self._defines:
             node.add_extra_label_to_self_and_children(label)
 
+    @log_call
     def add_extra_label(self, label: str) -> None:
         self.extra_labels.append(label)
 
+    @log_call
     def add_extra_attribute_to_self_and_children(self, key: str, value: str) -> None:
         self.add_extra_attribute(key, value)
         for node in self._defines:
             node.add_extra_attribute_to_self_and_children(key, value)
 
+    @log_call
     def add_extra_attribute(self, key: str, value: str) -> None:
         self.extra_attributes[key] = value
 
+    @log_call
     def update_graph_environment_to_self_and_children(
         self, graph_environment: "GraphEnvironment"
     ) -> None:
@@ -177,6 +199,7 @@ class DefinitionNode(Node):
         for node in self._defines:
             node.update_graph_environment_to_self_and_children(graph_environment)
 
+    @log_call
     def is_code_text_equivalent(self, code_text: str) -> bool:
         # Removing _get_text_for_skeleton() from code_text with a regex
         stripped_code_text = re.sub(
@@ -186,6 +209,7 @@ class DefinitionNode(Node):
 
         return stripped_code_text == other_code_text
 
+    @log_call
     def __copy__(self):
         cls = self.__class__
         result = cls.__new__(cls)
@@ -194,6 +218,7 @@ class DefinitionNode(Node):
         result.extra_attributes = self.extra_attributes.copy()
         return result
 
+    @log_call
     def as_object(self):
         obj = super().as_object()
         obj["extra_labels"] = self.extra_labels
@@ -207,10 +232,12 @@ class DefinitionNode(Node):
         }
         return obj
 
+    @log_call
     def filter_children_by_path(self, paths_to_keep: list[str]) -> None:
         self._defines = [node for node in self._defines if node.path in paths_to_keep]
         for node in self._defines:
             node.filter_children_by_path(paths_to_keep)
 
+    @log_call
     def has_tree_sitter_node(self):
         return self._tree_sitter_node is not None

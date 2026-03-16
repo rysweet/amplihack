@@ -11,6 +11,8 @@ Public API (the "studs"):
 
 import argparse
 
+from amplihack.utils.logging_utils import log_call
+
 from .cli_handlers import (
     plugin_install_command,
     plugin_uninstall_command,
@@ -18,6 +20,7 @@ from .cli_handlers import (
 )
 
 
+@log_call
 def setup_plugin_commands(subparsers: argparse._SubParsersAction) -> None:
     """Register plugin management commands.
 

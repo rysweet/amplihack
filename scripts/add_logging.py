@@ -17,8 +17,8 @@ Usage:
 Philosophy: ruthless simplicity — one pass, file-safe, idempotent.
 """
 
-import ast
 import argparse
+import ast
 import sys
 from pathlib import Path
 
@@ -30,8 +30,8 @@ IMPORT_LINE = "from amplihack.utils.logging_utils import log_call\n"
 # Files to never touch
 SKIP_FILENAMES = {
     "logging_utils.py",  # the decorator itself — circular import
-    "add_logging.py",    # this script
-    "conftest.py",       # pytest fixtures use special decorator rules
+    "add_logging.py",  # this script
+    "conftest.py",  # pytest fixtures use special decorator rules
 }
 
 # ── AST helpers ────────────────────────────────────────────────────────────────
@@ -159,9 +159,8 @@ def _module_docstring_end(lines: list[str]) -> int:
                 in_ds = True
                 continue
             return i  # no docstring; insert before first real line
-        else:
-            if s.endswith('"""') or s.endswith("'''"):
-                return i + 1
+        if s.endswith('"""') or s.endswith("'''"):
+            return i + 1
     return 0
 
 
@@ -279,13 +278,13 @@ def main() -> int:
     # ── Summary ───────────────────────────────────────────────────────────────
     mode = " (dry run)" if args.dry_run else ""
     print(
-        f"\n{'─'*60}\n"
+        f"\n{'─' * 60}\n"
         f"Done{mode}:\n"
         f"  {counts['modified']:>5} files {'would be ' if args.dry_run else ''}modified\n"
         f"  {counts['no_functions']:>5} files had no undecorated functions\n"
         f"  {counts['skipped']:>5} files skipped\n"
         f"  {counts['errors']:>5} errors\n"
-        f"{'─'*60}"
+        f"{'─' * 60}"
     )
 
     return 1 if counts["errors"] > 0 else 0

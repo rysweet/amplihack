@@ -11,6 +11,8 @@ import logging
 import threading
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 from ..utils.uvx_detection import detect_uvx_deployment, resolve_framework_paths
 from ..utils.uvx_models import (
     PathResolutionResult,
@@ -24,6 +26,7 @@ logger = logging.getLogger(__name__)
 class UVXManager:
     """Manages UVX environment detection and Claude command enhancement."""
 
+    @log_call
     def __init__(self, force_staging: bool = False):
         """Initialize UVX manager.
 
@@ -36,6 +39,7 @@ class UVXManager:
         self._path_resolution: PathResolutionResult | None = None
         self._lock = threading.RLock()  # Reentrant lock for thread safety
 
+    @log_call
     def _ensure_detection(self) -> None:
         """Ensure detection has been performed (thread-safe)."""
         with self._lock:
@@ -45,6 +49,7 @@ class UVXManager:
                 for reason in self._detection_state.detection_reasons:
                     logger.debug(f"  - {reason}")
 
+    @log_call
     def _ensure_path_resolution(self) -> None:
         """Ensure path resolution has been performed."""
         self._ensure_detection()
@@ -57,6 +62,7 @@ class UVXManager:
                 for attempt in self._path_resolution.attempts:
                     logger.debug(f"  - {attempt['strategy']}: {attempt['notes']}")
 
+    @log_call
     def is_uvx_environment(self) -> bool:
         """Detect if we're running in a UVX environment.
 
@@ -66,6 +72,7 @@ class UVXManager:
         self._ensure_detection()
         return self._detection_state.is_uvx_deployment if self._detection_state else False
 
+    @log_call
     def get_framework_path(self) -> Path | None:
         """Get the framework root path.
 
@@ -81,6 +88,7 @@ class UVXManager:
             return self._path_resolution.location.root_path
         return None
 
+    @log_call
     def should_use_add_dir(self) -> bool:
         """Determine if --add-dir should be used.
 
@@ -121,6 +129,7 @@ class UVXManager:
         )
         return True
 
+    @log_call
     def should_use_staging(self) -> bool:
         """Determine if staging approach should be used.
 
@@ -140,6 +149,7 @@ class UVXManager:
 
         return False
 
+    @log_call
     def get_add_dir_args(self) -> list[str]:
         """Get --add-dir arguments for Claude command.
 
@@ -156,6 +166,7 @@ class UVXManager:
         # Return the --add-dir argument with the framework path
         return ["--add-dir", str(framework_path)]
 
+    @log_call
     def validate_path_security(self, path: Path | None) -> bool:
         """Validate that a path is safe (no directory traversal).
 
@@ -227,6 +238,7 @@ class UVXManager:
             logger.error(f"Path validation error: {e}")
             return False
 
+    @log_call
     def enhance_claude_command(self, base_command: list[str]) -> list[str]:
         """Enhance Claude command with --add-dir parameter if appropriate.
 
@@ -247,6 +259,7 @@ class UVXManager:
         logger.info(f"Enhanced command with --add-dir: {' '.join(enhanced)}")
         return enhanced
 
+    @log_call
     def get_detection_state(self) -> UVXDetectionState:
         """Get the current UVX detection state.
 
@@ -259,6 +272,7 @@ class UVXManager:
         )
         return self._detection_state
 
+    @log_call
     def get_environment_variables(self) -> dict[str, str]:
         """Get environment variables to set for UVX mode.
 

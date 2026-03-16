@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Optional, Union
 from .types.node import Node
 from .types.node_labels import NodeLabels
 from amplihack.vendor.blarify.graph.node.file_node import FileNode
+from amplihack.utils.logging_utils import log_call
 
 if TYPE_CHECKING:
     from ...graph.graph_environment import GraphEnvironment
@@ -15,6 +16,7 @@ class FolderNode(Node):
     name: str
     level: int
 
+    @log_call
     def __init__(
         self,
         path: str,
@@ -28,23 +30,28 @@ class FolderNode(Node):
         super().__init__(NodeLabels.FOLDER, path, name, level, parent, graph_environment, layer)
 
     @property
+    @log_call
     def node_repr_for_identifier(self) -> str:
         return "/" + self.name
 
+    @log_call
     def _remove_trailing_slash(self, path: str) -> str:
         if path.endswith("/"):
             return path[:-1]
         return path
 
+    @log_call
     def relate_node_as_contain_relationship(self, node: Union[FileNode, "FolderNode"]) -> None:
         self._contains.append(node)
 
+    @log_call
     def relate_nodes_as_contain_relationship(
         self, nodes: Sequence[Union[FileNode, "FolderNode"]]
     ) -> None:
         for node in nodes:
             self.relate_node_as_contain_relationship(node)
 
+    @log_call
     def get_relationships(self) -> list["Relationship"]:
         from ...graph.relationship import RelationshipCreator
 
@@ -54,5 +61,6 @@ class FolderNode(Node):
 
         return relationships
 
+    @log_call
     def filter_children_by_path(self, paths: list[str]):
         self._contains = [node for node in self._contains if node.path in paths]

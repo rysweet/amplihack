@@ -17,6 +17,8 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 
 class UVXDetectionResult(Enum):
     """Result of UVX environment detection."""
@@ -48,6 +50,7 @@ class UVXEnvironmentInfo:
     python_executable: str = field(default_factory=str)
 
     @classmethod
+    @log_call
     def from_current_environment(cls) -> "UVXEnvironmentInfo":
         """Create UVXEnvironmentInfo from current environment."""
         import sys
@@ -61,6 +64,7 @@ class UVXEnvironmentInfo:
         )
 
     @property
+    @log_call
     def is_uv_cache_execution(self) -> bool:
         """Check if Python is running from UV cache.
 
@@ -82,16 +86,19 @@ class UVXDetectionState:
     detection_reasons: list[str] = field(default_factory=list)
 
     @property
+    @log_call
     def is_uvx_deployment(self) -> bool:
         """True if running in UVX deployment mode."""
         return self.result == UVXDetectionResult.UVX_DEPLOYMENT
 
     @property
+    @log_call
     def is_local_deployment(self) -> bool:
         """True if running in local development mode."""
         return self.result == UVXDetectionResult.LOCAL_DEPLOYMENT
 
     @property
+    @log_call
     def is_detection_successful(self) -> bool:
         """True if detection succeeded (not failed or ambiguous)."""
         return self.result in (
@@ -99,6 +106,7 @@ class UVXDetectionState:
             UVXDetectionResult.UVX_DEPLOYMENT,
         )
 
+    @log_call
     def with_additional_reason(self, reason: str) -> "UVXDetectionState":
         """Return new state with additional detection reason."""
         new_reasons = self.detection_reasons + [reason]
@@ -116,20 +124,24 @@ class FrameworkLocation:
     validation_errors: list[str] = field(default_factory=list)
 
     @property
+    @log_call
     def is_valid(self) -> bool:
         """True if the framework location is valid."""
         return len(self.validation_errors) == 0 and self.root_path.exists()
 
     @property
+    @log_call
     def claude_dir(self) -> Path:
         """Path to the .claude directory."""
         return self.root_path / ".claude"
 
     @property
+    @log_call
     def has_claude_dir(self) -> bool:
         """True if .claude directory exists."""
         return self.claude_dir.exists() and self.claude_dir.is_dir()
 
+    @log_call
     def validate(self) -> "FrameworkLocation":
         """Return new FrameworkLocation with validation results."""
         errors = []
@@ -146,6 +158,7 @@ class FrameworkLocation:
             root_path=self.root_path, strategy=self.strategy, validation_errors=errors
         )
 
+    @log_call
     def resolve_file(self, relative_path: str) -> Path | None:
         """Resolve a file path relative to framework root.
 
@@ -186,11 +199,13 @@ class PathResolutionResult:
     attempts: list[dict[str, str | Path | bool]] = field(default_factory=list)
 
     @property
+    @log_call
     def is_successful(self) -> bool:
         """True if path resolution succeeded."""
         return self.location is not None and self.location.is_valid
 
     @property
+    @log_call
     def requires_staging(self) -> bool:
         """True if successful resolution requires staging files."""
         return (
@@ -198,6 +213,7 @@ class PathResolutionResult:
             and self.location.strategy == PathResolutionStrategy.STAGING_REQUIRED
         )
 
+    @log_call
     def with_attempt(
         self, strategy: PathResolutionStrategy, path: Path, success: bool, notes: str = ""
     ) -> "PathResolutionResult":
@@ -231,6 +247,7 @@ class UVXConfiguration:
     debug_enabled: bool | None = None
 
     @property
+    @log_call
     def is_debug_enabled(self) -> bool:
         """True if debug mode is enabled."""
         if self.debug_enabled is not None:
@@ -239,6 +256,7 @@ class UVXConfiguration:
         debug_value = os.environ.get(self.debug_env_var, "").lower()
         return debug_value in ("true", "1", "yes")
 
+    @log_call
     def with_debug(self, enabled: bool) -> "UVXConfiguration":
         """Return new configuration with debug setting."""
         return UVXConfiguration(
@@ -264,6 +282,7 @@ class StagingOperation:
     operation_type: str  # "file", "directory", "symlink"
 
     @property
+    @log_call
     def is_valid(self) -> bool:
         """True if the staging operation is valid."""
         return self.source_path.exists() and self.target_path.parent.exists()
@@ -279,24 +298,29 @@ class StagingResult:
     skipped: dict[Path, str] = field(default_factory=dict)
 
     @property
+    @log_call
     def is_successful(self) -> bool:
         """True if all operations succeeded."""
         return len(self.failed) == 0 and len(self.successful) > 0
 
     @property
+    @log_call
     def total_operations(self) -> int:
         """Total number of staging operations attempted."""
         return len(self.successful) + len(self.failed) + len(self.skipped)
 
+    @log_call
     def add_success(self, path: Path, operation: StagingOperation) -> None:
         """Record a successful staging operation."""
         self.operations.append(operation)
         self.successful.add(path)
 
+    @log_call
     def add_failure(self, path: Path, error: str) -> None:
         """Record a failed staging operation."""
         self.failed[path] = error
 
+    @log_call
     def add_skipped(self, path: Path, reason: str) -> None:
         """Record a skipped staging operation."""
         self.skipped[path] = reason
@@ -314,6 +338,7 @@ class UVXSessionState:
     initialized: bool = False
 
     @property
+    @log_call
     def is_ready(self) -> bool:
         """True if session is fully initialized and ready."""
         return (
@@ -325,6 +350,7 @@ class UVXSessionState:
         )
 
     @property
+    @log_call
     def framework_root(self) -> Path | None:
         """Current framework root path if available."""
         if (
@@ -335,23 +361,28 @@ class UVXSessionState:
             return self.path_resolution.location.root_path
         return None
 
+    @log_call
     def initialize_detection(self, detection_state: UVXDetectionState) -> None:
         """Initialize with UVX detection results."""
         self.detection_state = detection_state
 
+    @log_call
     def set_path_resolution(self, resolution_result: PathResolutionResult) -> None:
         """Set path resolution results."""
         self.path_resolution = resolution_result
 
+    @log_call
     def set_staging_result(self, staging_result: StagingResult) -> None:
         """Set staging operation results."""
         self.staging_result = staging_result
 
+    @log_call
     def mark_initialized(self, session_id: str) -> None:
         """Mark session as fully initialized."""
         self.session_id = session_id
         self.initialized = True
 
+    @log_call
     def to_debug_dict(self) -> dict[str, str | bool | int | None]:
         """Convert session state to dictionary for debugging."""
         return {

@@ -14,6 +14,8 @@ from typing import Any
 import aiohttp  # type: ignore[import-unresolved]
 import certifi  # type: ignore[import-unresolved]
 
+from amplihack.utils.logging_utils import log_call
+
 from .azure_errors import (
     azure_fallback_manager,
     classify_azure_error,
@@ -36,6 +38,7 @@ from .monitoring import log_azure_operation, logger
 
 
 # Helper function to clean schema for Gemini
+@log_call
 def clean_gemini_schema(schema: JSONSchema) -> JSONSchema:
     """Recursively removes unsupported fields from a JSON schema for Gemini."""
     if isinstance(schema, dict):
@@ -61,6 +64,7 @@ def clean_gemini_schema(schema: JSONSchema) -> JSONSchema:
     return schema
 
 
+@log_call
 def parse_tool_result_content(content):
     """Helper function to properly parse and normalize tool result content."""
     if content is None:
@@ -106,6 +110,7 @@ def parse_tool_result_content(content):
         return "Unparseable content"
 
 
+@log_call
 def analyze_conversation_for_tools(messages: list[Message]) -> ConversationState:
     """
     Phase 2: Analyze conversation messages to determine tool call state.
@@ -183,6 +188,7 @@ def analyze_conversation_for_tools(messages: list[Message]) -> ConversationState
         raise ConversationStateError(f"Failed to analyze conversation state: {e}")
 
 
+@log_call
 def is_azure_responses_api() -> bool:
     """Check if we should use Azure Responses API instead of Chat API.
 
@@ -204,6 +210,7 @@ def is_azure_responses_api() -> bool:
     return False
 
 
+@log_call
 def is_azure_chat_api() -> bool:
     """Check if we should use Azure Chat API instead of Responses API.
 
@@ -225,6 +232,7 @@ def is_azure_chat_api() -> bool:
     return True
 
 
+@log_call
 def should_use_responses_api_for_model(model: str) -> bool:
     """Check if a specific model should use Responses API instead of Chat API.
 
@@ -260,6 +268,7 @@ def should_use_responses_api_for_model(model: str) -> bool:
     return clean_model in responses_api_models
 
 
+@log_call
 def convert_anthropic_to_azure_responses(anthropic_request: MessagesRequest) -> dict[str, Any]:
     """Convert Anthropic API request format to Azure Responses API format."""
     # Extract model name without provider prefix
@@ -383,12 +392,14 @@ def convert_anthropic_to_azure_responses(anthropic_request: MessagesRequest) -> 
     return azure_request
 
 
+@log_call
 async def make_azure_responses_api_call(request_data: dict[str, Any]) -> dict[str, Any]:
     """Make a direct call to Azure Responses API with robust error handling and retry logic."""
     AZURE_OPENAI_KEY = os.environ.get("AZURE_OPENAI_KEY", os.environ.get("OPENAI_API_KEY"))
     OPENAI_BASE_URL = os.environ.get("OPENAI_BASE_URL")
     AZURE_API_VERSION = os.environ.get("AZURE_API_VERSION", "2025-03-01-preview")
 
+    @log_call
     async def _make_request() -> dict[str, Any]:
         """Internal request function for retry logic."""
         headers = {
@@ -457,6 +468,7 @@ async def make_azure_responses_api_call(request_data: dict[str, Any]) -> dict[st
         raise azure_error
 
 
+@log_call
 def convert_azure_responses_to_anthropic(
     azure_response: dict[str, Any] | None, original_request: MessagesRequest
 ) -> MessagesResponse:
@@ -558,6 +570,7 @@ def convert_azure_responses_to_anthropic(
         )
 
 
+@log_call
 def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> dict[str, Any]:
     """Convert Anthropic API request format to LiteLLM format (which follows OpenAI)."""
     # LiteLLM already handles Anthropic models when using the format model="anthropic/claude-3-opus-20240229"
@@ -817,6 +830,7 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> dict[str
     return litellm_request
 
 
+@log_call
 def convert_litellm_to_anthropic(
     litellm_response: dict[str, Any] | Any, original_request: MessagesRequest
 ) -> MessagesResponse:
@@ -1028,6 +1042,7 @@ def convert_litellm_to_anthropic(
         )
 
 
+@log_call
 def is_azure_responses_api_model(model: str) -> bool:
     """Check if the model should use Azure Responses API."""
     # These models use Azure Responses API through our proxy

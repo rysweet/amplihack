@@ -4,6 +4,7 @@ Defines the settings for multilspy.
 
 import os
 import pathlib
+from amplihack.utils.logging_utils import log_call
 
 
 class MultilspySettings:
@@ -12,6 +13,7 @@ class MultilspySettings:
     """
 
     @staticmethod
+    @log_call
     def get_language_server_directory() -> str:
         """Returns the directory for language servers"""
         user_home = pathlib.Path.home()
@@ -21,6 +23,7 @@ class MultilspySettings:
         return lsp_dir
 
     @staticmethod
+    @log_call
     def get_global_cache_directory() -> str:
         """Returns the cache directory"""
         global_cache_dir = os.path.join(str(pathlib.Path.home()), ".multilspy", "global_cache")

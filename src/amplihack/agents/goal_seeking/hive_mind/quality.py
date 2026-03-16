@@ -21,6 +21,8 @@ import logging
 import re
 from dataclasses import dataclass, field
 
+from amplihack.utils.logging_utils import log_call
+
 from .constants import DEFAULT_BROADCAST_THRESHOLD, DEFAULT_QUALITY_THRESHOLD
 
 logger = logging.getLogger(__name__)
@@ -60,6 +62,7 @@ _SPECIFIC_PATTERNS = [
 ]
 
 
+@log_call
 def score_content_quality(content: str, concept: str = "") -> float:
     """Score the quality of a fact's content.
 
@@ -158,6 +161,7 @@ class QualityGate:
     broadcast_threshold: float = DEFAULT_BROADCAST_THRESHOLD
     _quality_scores: dict[str, float] = field(default_factory=dict, repr=False)
 
+    @log_call
     def should_promote(self, content: str, concept: str = "") -> bool:
         """Check if content meets quality threshold for promotion.
 
@@ -167,6 +171,7 @@ class QualityGate:
         quality = score_content_quality(content, concept)
         return quality >= self.promotion_threshold
 
+    @log_call
     def should_retrieve(self, confidence: float) -> bool:
         """Check if a fact meets confidence threshold for retrieval.
 
@@ -178,6 +183,7 @@ class QualityGate:
         """
         return confidence >= self.retrieval_confidence_threshold
 
+    @log_call
     def should_broadcast(self, confidence: float) -> bool:
         """Check if a fact meets threshold for cross-group broadcast.
 
@@ -189,6 +195,7 @@ class QualityGate:
         """
         return confidence >= self.broadcast_threshold
 
+    @log_call
     def score(self, content: str, concept: str = "") -> float:
         """Score content quality (cached by content+concept hash).
 

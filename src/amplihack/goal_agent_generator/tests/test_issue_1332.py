@@ -5,6 +5,8 @@ This test verifies that the Multi-Container Application scenario and similar
 edge cases now work correctly with the sanitized bundle name generation.
 """
 
+from amplihack.utils.logging_utils import log_call
+
 from ..agent_assembler import AgentAssembler
 from ..models import GoalDefinition
 from ..utils import sanitize_bundle_name
@@ -13,6 +15,7 @@ from ..utils import sanitize_bundle_name
 class TestIssue1332:
     """Test cases specifically for issue #1332."""
 
+    @log_call
     def test_multi_container_application_scenario(self):
         """
         Test the specific failing scenario from issue #1332.
@@ -36,6 +39,7 @@ class TestIssue1332:
         assert 3 <= len(bundle_name) <= 50
         assert bundle_name.endswith("-agent")
 
+    @log_call
     def test_direct_sanitization_of_scenario_name(self):
         """Test direct sanitization of 'Multi-Container Application'."""
         result = sanitize_bundle_name("Multi-Container Application", suffix="-agent")
@@ -44,6 +48,7 @@ class TestIssue1332:
         assert result == "multi-container-application-agent"
         assert 3 <= len(result) <= 50
 
+    @log_call
     def test_various_problematic_scenario_names(self):
         """Test various scenario names that might cause issues."""
         problematic_names = [
@@ -65,6 +70,7 @@ class TestIssue1332:
             assert not result.startswith("-")
             assert not result.endswith("--")
 
+    @log_call
     def test_assembler_integration_with_edge_case_goals(self):
         """Test assembler with edge case goal definitions."""
         edge_cases = [

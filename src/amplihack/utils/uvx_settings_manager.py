@@ -10,14 +10,18 @@ import shutil
 from pathlib import Path
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 
 class UVXSettingsManager:
     """Manages settings.json creation and updates for UVX installations."""
 
+    @log_call
     def __init__(self):
         """Initialize the UVX settings manager."""
         self._template_path = Path(__file__).parent / "uvx_settings_template.json"
 
+    @log_call
     def should_use_uvx_template(self, target_settings_path: Path) -> bool:
         """Determine if we should use the UVX template for this installation.
 
@@ -47,6 +51,7 @@ class UVXSettingsManager:
             # If we can't read the existing settings, use UVX template
             return True
 
+    @log_call
     def create_uvx_settings(self, target_path: Path, preserve_existing: bool = True) -> bool:
         """Create UVX-optimized settings.json file.
 
@@ -98,6 +103,7 @@ class UVXSettingsManager:
             print(f"[UVX Settings] Warning: Failed to create UVX settings: {e}", file=sys.stderr)
             return False
 
+    @log_call
     def merge_with_existing_settings(
         self, target_path: Path, existing_settings: dict[str, Any]
     ) -> bool:
@@ -157,6 +163,7 @@ class UVXSettingsManager:
             print(f"[UVX Settings] Warning: Failed to merge settings: {e}", file=sys.stderr)
             return False
 
+    @log_call
     def get_template_settings(self) -> dict[str, Any] | None:
         """Get the UVX template settings as a dictionary.
 

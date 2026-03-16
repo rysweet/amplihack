@@ -5,10 +5,13 @@ import re
 import subprocess
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 
 class FileLoggingHandler(logging.Handler):
     """File-based logging handler with credential sanitization."""
 
+    @log_call
     def __init__(self, log_file: Path):
         """Initialize the file logging handler.
 
@@ -24,6 +27,7 @@ class FileLoggingHandler(logging.Handler):
         # Ensure log directory exists
         self.log_file.parent.mkdir(parents=True, exist_ok=True)
 
+    @log_call
     def _sanitize(self, message: str) -> tuple[str, bool]:
         """Remove credentials from log message.
 
@@ -37,6 +41,7 @@ class FileLoggingHandler(logging.Handler):
             return self._credential_pattern.sub("<REDACTED>", message), True
         return message, False
 
+    @log_call
     def emit(self, record: logging.LogRecord) -> None:
         """Handle log record by writing to file.
 
@@ -60,6 +65,7 @@ class FileLoggingHandler(logging.Handler):
 class FileLoggingHandlerWithRotation(logging.Handler):
     """File logging handler with both rotation and credential sanitization."""
 
+    @log_call
     def __init__(self, log_file: Path):
         """Initialize the handler with rotation and sanitization.
 
@@ -85,6 +91,7 @@ class FileLoggingHandlerWithRotation(logging.Handler):
             encoding="utf-8",
         )
 
+    @log_call
     def _sanitize(self, message: str) -> tuple[str, bool]:
         """Remove credentials from log message.
 
@@ -98,16 +105,19 @@ class FileLoggingHandlerWithRotation(logging.Handler):
             return self._credential_pattern.sub("<REDACTED>", message), True
         return message, False
 
+    @log_call
     def setFormatter(self, fmt: logging.Formatter | None) -> None:
         """Set formatter for both this handler and the internal rotating handler."""
         super().setFormatter(fmt)
         self._rotating_handler.setFormatter(fmt)
 
+    @log_call
     def setLevel(self, level):
         """Set level for both this handler and the internal rotating handler."""
         super().setLevel(level)
         self._rotating_handler.setLevel(level)
 
+    @log_call
     def emit(self, record: logging.LogRecord) -> None:
         """Handle log record by sanitizing and delegating to rotating handler.
 
@@ -155,6 +165,7 @@ class FileLoggingHandlerWithRotation(logging.Handler):
 class FileLoggingService:
     """File-based logging service with automatic terminal launching."""
 
+    @log_call
     def __init__(self, port: int):
         """Initialize the file logging service.
 
@@ -167,6 +178,7 @@ class FileLoggingService:
         self.terminal_process: subprocess.Popen | None = None
         self.running = False
 
+    @log_call
     async def start(self) -> bool:
         """Start the file logging service.
 
@@ -191,6 +203,7 @@ class FileLoggingService:
             print(f"File logging failed to start: {e}")
             return False
 
+    @log_call
     async def stop(self) -> None:
         """Stop the file logging service."""
         if not self.running:
@@ -215,6 +228,7 @@ class FileLoggingService:
         except Exception:
             pass
 
+    @log_call
     def is_running(self) -> bool:
         """Check if service is running.
 
@@ -223,6 +237,7 @@ class FileLoggingService:
         """
         return self.running
 
+    @log_call
     def _setup_logging(self) -> None:
         """Setup file logging integration with rotation and sanitization."""
 

@@ -21,6 +21,8 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 from .evidence_collector import EvidenceItem
 
 
@@ -42,6 +44,7 @@ class EvaluationResult:
     requirements_missing: list[str] | None = None
     bonus_points: int = 0
 
+    @log_call
     def __post_init__(self):
         """Initialize default lists."""
         if self.requirements_met is None:
@@ -52,6 +55,7 @@ class EvaluationResult:
         # Clamp score to valid range
         self.score = max(0, min(100, self.score))
 
+    @log_call
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary.
 
@@ -67,6 +71,7 @@ class EvaluationResult:
         }
 
 
+@log_call
 def parse_success_criteria(criteria: str) -> list[str]:
     """Parse success criteria into individual requirements.
 
@@ -109,6 +114,7 @@ def parse_success_criteria(criteria: str) -> list[str]:
 class SuccessCriteriaEvaluator:
     """Evaluates task success against criteria using evidence."""
 
+    @log_call
     def __init__(self, **_kwargs: Any):
         """Initialize evaluator.
 
@@ -116,6 +122,7 @@ class SuccessCriteriaEvaluator:
             **_kwargs: Configuration options (for forward compatibility)
         """
 
+    @log_call
     def evaluate(
         self,
         criteria: str,
@@ -195,6 +202,7 @@ class SuccessCriteriaEvaluator:
             bonus_points=bonus_points,
         )
 
+    @log_call
     def _evaluate_basic(
         self,
         evidence: list[EvidenceItem],
@@ -237,6 +245,7 @@ class SuccessCriteriaEvaluator:
             notes=notes,
         )
 
+    @log_call
     def _is_requirement_met(
         self,
         requirement: str,
@@ -275,6 +284,7 @@ class SuccessCriteriaEvaluator:
 
         return matches / len(key_terms) >= 0.5
 
+    @log_call
     def _extract_key_terms(self, text: str) -> list[str]:
         """Extract key terms from requirement text.
 
@@ -317,6 +327,7 @@ class SuccessCriteriaEvaluator:
 
         return key_terms
 
+    @log_call
     def _has_passing_tests(
         self,
         evidence: list[EvidenceItem],
@@ -358,6 +369,7 @@ class SuccessCriteriaEvaluator:
 
         return False
 
+    @log_call
     def _has_documentation(self, evidence: list[EvidenceItem]) -> bool:
         """Check if documentation exists.
 
@@ -372,6 +384,7 @@ class SuccessCriteriaEvaluator:
         # Should have at least one substantial doc (> 100 chars)
         return any(e.size_bytes > 100 for e in docs)
 
+    @log_call
     def _generate_notes(
         self,
         requirements_met: list[str],

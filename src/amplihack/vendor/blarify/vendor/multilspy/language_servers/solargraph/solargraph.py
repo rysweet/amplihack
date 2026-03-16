@@ -19,6 +19,7 @@ from amplihack.vendor.blarify.vendor.multilspy.lsp_protocol_handler.server impor
 from amplihack.vendor.blarify.vendor.multilspy.multilspy_config import MultilspyConfig
 from amplihack.vendor.blarify.vendor.multilspy.multilspy_logger import MultilspyLogger
 from amplihack.vendor.blarify.vendor.multilspy.multilspy_utils import PlatformId, PlatformUtils
+from amplihack.utils.logging_utils import log_call
 
 
 class Solargraph(LanguageServer):
@@ -27,6 +28,7 @@ class Solargraph(LanguageServer):
     Contains various configurations and settings specific to Ruby.
     """
 
+    @log_call
     def __init__(self, config: MultilspyConfig, logger: MultilspyLogger, repository_root_path: str):
         """
         Creates a Solargraph instance. This class is not meant to be instantiated directly.
@@ -44,6 +46,7 @@ class Solargraph(LanguageServer):
         )
         self.server_ready = asyncio.Event()
 
+    @log_call
     def setup_runtime_dependencies(
         self, logger: MultilspyLogger, config: MultilspyConfig, repository_root_path: str
     ) -> str:
@@ -114,6 +117,7 @@ class Solargraph(LanguageServer):
         except subprocess.CalledProcessError:
             raise RuntimeError("Failed to locate Solargraph executable.")
 
+    @log_call
     def _get_initialize_params(self, repository_absolute_path: str) -> InitializeParams:
         """
         Returns the initialize params for the Solargraph Language Server.
@@ -139,6 +143,7 @@ class Solargraph(LanguageServer):
         return d
 
     @asynccontextmanager
+    @log_call
     async def start_server(self) -> AsyncIterator["Solargraph"]:
         """
         Starts the Solargraph Language Server for Ruby, waits for the server to be ready and yields the LanguageServer instance.
@@ -153,6 +158,7 @@ class Solargraph(LanguageServer):
         # LanguageServer has been shutdown
         """
 
+        @log_call
         async def register_capability_handler(params):
             assert "registrations" in params
             for registration in params["registrations"]:
@@ -161,6 +167,7 @@ class Solargraph(LanguageServer):
                     self.resolve_main_method_available.set()
             return
 
+        @log_call
         async def lang_status_handler(params):
             # TODO: Should we wait for
             # server -> client: {'jsonrpc': '2.0', 'method': 'language/status', 'params': {'type': 'ProjectStatus', 'message': 'OK'}}
@@ -168,12 +175,15 @@ class Solargraph(LanguageServer):
             if params["type"] == "ServiceReady" and params["message"] == "ServiceReady":
                 self.service_ready_event.set()
 
+        @log_call
         async def execute_client_command_handler(params):
             return []
 
+        @log_call
         async def do_nothing(params):
             return
 
+        @log_call
         async def window_log_message(msg):
             self.logger.log(f"LSP: window/logMessage: {msg}", logging.INFO)
 

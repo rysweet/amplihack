@@ -23,8 +23,10 @@ from amplihack.vendor.blarify.vendor.multilspy.multilspy_utils import (
     PlatformId,
     PlatformUtils,
 )
+from amplihack.utils.logging_utils import log_call
 
 
+@log_call
 def breadth_first_file_scan(root) -> Iterable[str]:
     """
     This function was obtained from https://stackoverflow.com/questions/49654234/is-there-a-breadth-first-search-option-available-in-os-walk-or-equivalent-py
@@ -51,6 +53,7 @@ def breadth_first_file_scan(root) -> Iterable[str]:
         dirs = next_dirs
 
 
+@log_call
 def find_least_depth_sln_file(root_dir) -> str:
     for filename in breadth_first_file_scan(root_dir):
         if filename.endswith(".sln"):
@@ -63,6 +66,7 @@ class OmniSharp(LanguageServer):
     Provides C# specific instantiation of the LanguageServer class. Contains various configurations and settings specific to C#.
     """
 
+    @log_call
     def __init__(self, config: MultilspyConfig, logger: MultilspyLogger, repository_root_path: str):
         """
         Creates an OmniSharp instance. This class is not meant to be instantiated directly. Use LanguageServer.create() instead.
@@ -117,6 +121,7 @@ class OmniSharp(LanguageServer):
         self.definition_available = asyncio.Event()
         self.references_available = asyncio.Event()
 
+    @log_call
     def _get_initialize_params(self, repository_absolute_path: str) -> InitializeParams:
         """
         Returns the initialize params for the Omnisharp Language Server.
@@ -141,6 +146,7 @@ class OmniSharp(LanguageServer):
 
         return d
 
+    @log_call
     def setupRuntimeDependencies(
         self, logger: MultilspyLogger, config: MultilspyConfig
     ) -> tuple[str, str]:
@@ -214,6 +220,7 @@ class OmniSharp(LanguageServer):
         return omnisharp_executable_path, razor_omnisharp_dll_path
 
     @asynccontextmanager
+    @log_call
     async def start_server(self) -> AsyncIterator["OmniSharp"]:
         """
         Starts the Omnisharp Language Server, waits for the server to be ready and yields the LanguageServer instance.
@@ -228,6 +235,7 @@ class OmniSharp(LanguageServer):
         # LanguageServer has been shutdown
         """
 
+        @log_call
         async def register_capability_handler(params):
             assert "registrations" in params
             for registration in params["registrations"]:
@@ -238,6 +246,7 @@ class OmniSharp(LanguageServer):
                 if registration["method"] == "textDocument/completion":
                     self.completions_available.set()
 
+        @log_call
         async def lang_status_handler(params):
             # TODO: Should we wait for
             # server -> client: {'jsonrpc': '2.0', 'method': 'language/status', 'params': {'type': 'ProjectStatus', 'message': 'OK'}}
@@ -246,19 +255,24 @@ class OmniSharp(LanguageServer):
             #     self.service_ready_event.set()
             pass
 
+        @log_call
         async def execute_client_command_handler(params):
             return []
 
+        @log_call
         async def do_nothing(params):
             return
 
+        @log_call
         async def check_experimental_status(params):
             if params["quiescent"] == True:
                 self.server_ready.set()
 
+        @log_call
         async def window_log_message(msg):
             self.logger.log(f"LSP: window/logMessage: {msg}", logging.INFO)
 
+        @log_call
         async def workspace_configuration_handler(params):
             # TODO: We do not know the appropriate way to handle this request. Should ideally contact the OmniSharp dev team
             return [

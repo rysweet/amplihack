@@ -39,6 +39,7 @@ from amplihack.fleet._tui_actions import _ActionsMixin
 from amplihack.fleet._tui_refresh import _CachedSession, _RefreshMixin
 from amplihack.fleet._tui_styles import APP_CSS
 from amplihack.fleet.fleet_tui import FleetTUI
+from amplihack.utils.logging_utils import log_call
 
 logger = logging.getLogger(__name__)
 
@@ -127,6 +128,7 @@ class FleetDashboardApp(_ActionsMixin, _RefreshMixin, App):
         Binding("right", "tab_next", "Next Tab", show=False),
     ]
 
+    @log_call
     def __init__(
         self,
         refresh_interval: int = DEFAULT_DASHBOARD_REFRESH_SECONDS,
@@ -146,6 +148,7 @@ class FleetDashboardApp(_ActionsMixin, _RefreshMixin, App):
     # Layout
     # ------------------------------------------------------------------
 
+    @log_call
     def compose(self) -> ComposeResult:
         yield Header()
         yield Static(PIRATE_LOGO, id="pirate-logo", markup=True)
@@ -224,6 +227,7 @@ class FleetDashboardApp(_ActionsMixin, _RefreshMixin, App):
     # Lifecycle
     # ------------------------------------------------------------------
 
+    @log_call
     def on_mount(self) -> None:
         table = self.query_one("#session-table", DataTable)
         table.add_columns("St", "VM", "Session", "State", "Branch", "PR")
@@ -246,6 +250,7 @@ class FleetDashboardApp(_ActionsMixin, _RefreshMixin, App):
 # ---------------------------------------------------------------------------
 
 
+@log_call
 def run_dashboard(
     interval: int = DEFAULT_DASHBOARD_REFRESH_SECONDS,
     capture_lines: int | None = None,
@@ -260,6 +265,7 @@ def run_dashboard(
         app = FleetDashboardApp(refresh_interval=interval)
     except ValueError as exc:
         import click
+
         click.echo(f"ERROR: {exc}", err=True)
         click.echo("Run 'fleet setup' to check prerequisites.", err=True)
         raise SystemExit(1)

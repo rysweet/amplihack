@@ -1,5 +1,6 @@
 import logging
 from dataclasses import dataclass
+from amplihack.utils.logging_utils import log_call
 
 logger = logging.getLogger(__name__)
 
@@ -10,6 +11,7 @@ class GraphEnvironment:
     diff_identifier: str
     root_path: str
 
+    @log_call
     def __str__(self):
         return f"/{self.environment}/{self.diff_identifier}"
 

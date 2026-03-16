@@ -4,11 +4,16 @@ This module provides a thread-safe state container that allows the auto mode
 execution thread to communicate with the UI thread without race conditions.
 """
 
+import logging
 import threading
 import time
 from collections import deque
 from dataclasses import dataclass, field
 from typing import Any
+
+from amplihack.utils.logging_utils import log_call
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -52,17 +57,21 @@ class AutoModeState:
     # Thread synchronization
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
+    @log_call
     def __post_init__(self):
         """Initialize the lock after dataclass initialization."""
+        logger.debug("AutoModeState.__post_init__: called")
         if not hasattr(self, "_lock") or self._lock is None:
             object.__setattr__(self, "_lock", threading.Lock())
 
+    @log_call
     def snapshot(self) -> dict[str, Any]:
         """Get a thread-safe snapshot of current state.
 
         Returns:
             Dictionary with all state values at this moment
         """
+        logger.debug("AutoModeState.snapshot: called")
         with self._lock:
             return {
                 "session_id": self.session_id,
@@ -78,6 +87,7 @@ class AutoModeState:
                 "kill_requested": self.kill_requested,
             }
 
+    @log_call
     def add_log(self, message: str, timestamp: bool = True) -> None:
         """Add a log message to the deque.
 
@@ -91,24 +101,29 @@ class AutoModeState:
                 message = f"{ts} {message}"
             self.logs.append(message)
 
+    @log_call
     def update_turn(self, turn: int) -> None:
         """Update current turn number.
 
         Args:
             turn: New turn number
         """
+        logger.debug(f"AutoModeState.update_turn: called with turn={turn!r}")
         with self._lock:
             self.turn = turn
 
+    @log_call
     def update_todos(self, todos: list[dict[str, str]]) -> None:
         """Update todo list.
 
         Args:
             todos: New todo list
         """
+        logger.debug("AutoModeState.update_todos: called")
         with self._lock:
             self.todos = list(todos)  # Copy to avoid reference issues
 
+    @log_call
     def update_costs(
         self, input_tokens: int = 0, output_tokens: int = 0, estimated_cost: float = 0.0
     ) -> None:
@@ -119,82 +134,104 @@ class AutoModeState:
             output_tokens: Number of output tokens generated
             estimated_cost: Estimated cost in dollars
         """
+        logger.debug(
+            f"AutoModeState.update_costs: called with input_tokens={input_tokens!r}, output_tokens={output_tokens!r}, estimated_cost={estimated_cost!r}"
+        )
         with self._lock:
             # Accumulate tokens
             self.costs["input_tokens"] = self.costs.get("input_tokens", 0) + input_tokens
             self.costs["output_tokens"] = self.costs.get("output_tokens", 0) + output_tokens
             self.costs["estimated_cost"] = self.costs.get("estimated_cost", 0.0) + estimated_cost
 
+    @log_call
     def update_status(self, status: str) -> None:
         """Update execution status.
 
         Args:
             status: New status (running, paused, stopped, completed, error)
         """
+        logger.debug(f"AutoModeState.update_status: called with status={status!r}")
         with self._lock:
             self.status = status
 
+    @log_call
     def request_pause(self) -> None:
         """Request execution to pause."""
+        logger.debug("AutoModeState.request_pause: called")
         with self._lock:
             self.pause_requested = True
 
+    @log_call
     def clear_pause_request(self) -> None:
         """Clear pause request."""
+        logger.debug("AutoModeState.clear_pause_request: called")
         with self._lock:
             self.pause_requested = False
 
+    @log_call
     def request_kill(self) -> None:
         """Request execution to terminate."""
+        logger.debug("AutoModeState.request_kill: called")
         with self._lock:
             self.kill_requested = True
 
+    @log_call
     def is_pause_requested(self) -> bool:
         """Check if pause is requested.
 
         Returns:
             True if pause requested
         """
+        logger.debug("AutoModeState.is_pause_requested: called")
         with self._lock:
             return self.pause_requested
 
+    @log_call
     def is_kill_requested(self) -> bool:
         """Check if kill is requested.
 
         Returns:
             True if kill requested
         """
+        logger.debug("AutoModeState.is_kill_requested: called")
         with self._lock:
             return self.kill_requested
 
+    @log_call
     def get_status(self) -> str:
         """Get current status.
 
         Returns:
             Current status string
         """
+        logger.debug("AutoModeState.get_status: called")
         with self._lock:
             return self.status
 
+    @log_call
     def get_turn(self) -> int:
         """Get current turn.
 
         Returns:
             Current turn number
         """
+        logger.debug("AutoModeState.get_turn: called")
         with self._lock:
             return self.turn
 
+    @log_call
     def get_elapsed_time(self) -> float:
         """Get elapsed time since session start.
 
         Returns:
             Elapsed seconds (clamped to 0 if negative)
         """
+        logger.debug("AutoModeState.get_elapsed_time: called")
         with self._lock:
             elapsed = time.time() - self.start_time
             return max(0, elapsed)  # Clamp to 0 for clock skew
 
+    @log_call
     def get_logs(self, n: int | None = None) -> list[str]:
         """Get recent log messages.
 
@@ -204,25 +241,30 @@ class AutoModeState:
         Returns:
             List of log messages
         """
+        logger.debug(f"AutoModeState.get_logs: called with n={n!r}")
         with self._lock:
             if n is None:
                 return list(self.logs)
             return list(self.logs)[-n:]
 
+    @log_call
     def get_todos(self) -> list[dict[str, str]]:
         """Get current todo list.
 
         Returns:
             Copy of current todo list
         """
+        logger.debug("AutoModeState.get_todos: called")
         with self._lock:
             return list(self.todos)
 
+    @log_call
     def get_costs(self) -> dict[str, Any]:
         """Get cost tracking information.
 
         Returns:
             Dictionary with cost info
         """
+        logger.debug("AutoModeState.get_costs: called")
         with self._lock:
             return dict(self.costs)

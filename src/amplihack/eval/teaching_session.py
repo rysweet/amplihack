@@ -20,6 +20,8 @@ from dataclasses import dataclass
 
 import litellm  # type: ignore[import-unresolved]
 
+from amplihack.utils.logging_utils import log_call
+
 logger = logging.getLogger(__name__)
 
 _DEFAULT_MODEL = os.environ.get("EVAL_MODEL", "claude-opus-4-6")
@@ -39,6 +41,7 @@ class TeachingConfig:
     max_turns: int = 6
     model: str = ""
 
+    @log_call
     def __post_init__(self) -> None:
         if not self.model:
             self.model = _DEFAULT_MODEL
@@ -112,6 +115,7 @@ class TeachingSession:
         >>> print(len(result.turns))  # 3
     """
 
+    @log_call
     def __init__(self, knowledge_base: list[str], config: TeachingConfig) -> None:
         if not knowledge_base:
             raise ValueError("knowledge_base cannot be empty")
@@ -119,6 +123,7 @@ class TeachingSession:
         self.knowledge_base = knowledge_base
         self.config = config
 
+    @log_call
     def run(self) -> TeachingResult:
         """Run the full teaching session.
 
@@ -168,6 +173,7 @@ class TeachingSession:
             student_accuracy=accuracy,
         )
 
+    @log_call
     def _generate_teacher_message(self, turn_number: int, history: list[dict[str, str]]) -> str:
         """Generate the teacher's message for this turn.
 
@@ -207,6 +213,7 @@ class TeachingSession:
 
         return response.choices[0].message.content.strip()
 
+    @log_call
     def _generate_student_response(
         self,
         teacher_message: str,
@@ -271,6 +278,7 @@ class TeachingSession:
             # Fallback: use raw text
             return response_text, ""
 
+    @log_call
     def _estimate_accuracy(self, turns: list[Turn]) -> float:
         """Rough estimate of student understanding based on self-explanations.
 

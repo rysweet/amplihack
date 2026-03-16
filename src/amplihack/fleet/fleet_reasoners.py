@@ -19,11 +19,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Protocol
 
+from amplihack.fleet._admiral_types import ActionType, DirectorAction
 from amplihack.fleet._constants import DEFAULT_STUCK_THRESHOLD_SECONDS
 from amplihack.fleet._coordination import CoordinationReasoner
-from amplihack.fleet._admiral_types import ActionType, DirectorAction
 from amplihack.fleet.fleet_state import AgentStatus, FleetState
 from amplihack.fleet.fleet_tasks import TaskPriority, TaskQueue, TaskStatus
+from amplihack.utils.logging_utils import log_call
 
 __all__ = [
     "ReasonerChain",
@@ -37,6 +38,7 @@ __all__ = [
 class Reasoner(Protocol):
     """A single reasoning function that proposes actions."""
 
+    @log_call
     def reason(
         self,
         state: FleetState,
@@ -51,6 +53,7 @@ class ReasonerChain:
 
     reasoners: list[Reasoner] = field(default_factory=list)
 
+    @log_call
     def reason(self, state: FleetState, queue: TaskQueue) -> list[DirectorAction]:
         all_actions: list[DirectorAction] = []
         for reasoner in self.reasoners:
@@ -71,6 +74,7 @@ class LifecycleReasoner:
     default_stuck_threshold: float = DEFAULT_STUCK_THRESHOLD_SECONDS
     _missing_session_counts: dict[str, int] = field(default_factory=dict)
 
+    @log_call
     def reason(
         self,
         state: FleetState,
@@ -80,7 +84,11 @@ class LifecycleReasoner:
         actions: list[DirectorAction] = []
 
         # Prune stale entries for tasks no longer active
-        active_keys = {f"{t.assigned_vm}:{t.assigned_session}" for t in queue.active_tasks() if t.assigned_vm and t.assigned_session}
+        active_keys = {
+            f"{t.assigned_vm}:{t.assigned_session}"
+            for t in queue.active_tasks()
+            if t.assigned_vm and t.assigned_session
+        }
         stale_keys = [k for k in self._missing_session_counts if k not in active_keys]
         for k in stale_keys:
             del self._missing_session_counts[k]
@@ -151,6 +159,7 @@ class LifecycleReasoner:
 
         return actions
 
+    @log_call
     def _find_session(self, vm, session_name):
         for s in vm.tmux_sessions:
             if s.session_name == session_name:
@@ -166,6 +175,7 @@ class PreemptionReasoner:
     Never preempts protected (deep work) tasks.
     """
 
+    @log_call
     def reason(
         self,
         state: FleetState,
@@ -227,6 +237,7 @@ class BatchAssignReasoner:
 
     max_agents_per_vm: int = 3
 
+    @log_call
     def reason(
         self,
         state: FleetState,

@@ -8,15 +8,13 @@ Testing pyramid:
 
 from __future__ import annotations
 
-import json
 from datetime import datetime
-from pathlib import Path
 
 import pytest
 
 from amplihack.fleet.fleet_dashboard import FleetDashboard, ProjectInfo
-from amplihack.fleet.fleet_tasks import FleetTask, TaskPriority, TaskQueue, TaskStatus
-
+from amplihack.fleet.fleet_tasks import TaskQueue
+from amplihack.utils.logging_utils import log_call
 
 # ────────────────────────────────────────────
 # UNIT TESTS (60%) — ProjectInfo
@@ -26,34 +24,42 @@ from amplihack.fleet.fleet_tasks import FleetTask, TaskPriority, TaskQueue, Task
 class TestProjectInfo:
     """Unit tests for ProjectInfo dataclass and serialization."""
 
+    @log_call
     def test_name_inferred_from_url(self):
         proj = ProjectInfo(repo_url="https://github.com/org/my-project")
         assert proj.name == "my-project"
 
+    @log_call
     def test_name_inferred_strips_trailing_slash(self):
         proj = ProjectInfo(repo_url="https://github.com/org/repo/")
         assert proj.name == "repo"
 
+    @log_call
     def test_explicit_name_not_overridden(self):
         proj = ProjectInfo(repo_url="https://github.com/org/repo", name="custom")
         assert proj.name == "custom"
 
+    @log_call
     def test_empty_url_empty_name(self):
         proj = ProjectInfo(repo_url="")
         assert proj.name == ""
 
+    @log_call
     def test_completion_rate_zero_tasks(self):
         proj = ProjectInfo(repo_url="u", tasks_total=0)
         assert proj.completion_rate == 0.0
 
+    @log_call
     def test_completion_rate_some_completed(self):
         proj = ProjectInfo(repo_url="u", tasks_total=10, tasks_completed=3)
         assert proj.completion_rate == pytest.approx(0.3)
 
+    @log_call
     def test_completion_rate_all_completed(self):
         proj = ProjectInfo(repo_url="u", tasks_total=5, tasks_completed=5)
         assert proj.completion_rate == pytest.approx(1.0)
 
+    @log_call
     def test_to_dict_roundtrip(self):
         now = datetime(2025, 6, 15, 12, 0, 0)
         proj = ProjectInfo(
@@ -86,12 +92,14 @@ class TestProjectInfo:
         assert restored.started_at == now
         assert restored.last_activity == now
 
+    @log_call
     def test_from_dict_missing_optional_dates(self):
         d = {"repo_url": "https://github.com/org/r", "name": "r"}
         proj = ProjectInfo.from_dict(d)
         assert proj.started_at is None
         assert proj.last_activity is None
 
+    @log_call
     def test_to_dict_none_dates(self):
         proj = ProjectInfo(repo_url="u")
         d = proj.to_dict()
@@ -107,6 +115,7 @@ class TestProjectInfo:
 class TestFleetDashboardUpdateFromQueue:
     """Integration: update_from_queue syncs task stats."""
 
+    @log_call
     def test_update_creates_project_for_new_repo(self):
         dashboard = FleetDashboard()
         queue = TaskQueue()
@@ -123,6 +132,7 @@ class TestFleetDashboardUpdateFromQueue:
         assert proj.repo_url == "https://github.com/org/repo"
         assert proj.tasks_total == 1
 
+    @log_call
     def test_update_counts_by_status(self):
         dashboard = FleetDashboard()
         queue = TaskQueue()
@@ -146,6 +156,7 @@ class TestFleetDashboardUpdateFromQueue:
         assert proj.prs_created == ["https://github.com/org/repo/pull/1"]
         assert "vm-01" in proj.vms
 
+    @log_call
     def test_update_ignores_unassigned_repo(self):
         dashboard = FleetDashboard()
         queue = TaskQueue()
@@ -155,6 +166,7 @@ class TestFleetDashboardUpdateFromQueue:
         # "unassigned" tasks don't create projects
         assert len(dashboard.projects) == 0
 
+    @log_call
     def test_persistence_roundtrip(self, tmp_path):
         path = tmp_path / "dashboard.json"
         dashboard = FleetDashboard(persist_path=path)
@@ -169,6 +181,7 @@ class TestFleetDashboardUpdateFromQueue:
         assert dashboard2.projects[0].repo_url == "https://github.com/org/repo"
         assert dashboard2.projects[0].github_identity == "user1"
 
+    @log_call
     def test_get_project_by_name_and_url(self):
         dashboard = FleetDashboard()
         dashboard.add_project(repo_url="https://github.com/org/alpha", name="alpha")
@@ -186,6 +199,7 @@ class TestFleetDashboardUpdateFromQueue:
 class TestFleetDashboardSummary:
     """E2E test: summary produces readable output."""
 
+    @log_call
     def test_summary_format(self):
         dashboard = FleetDashboard()
         proj = dashboard.add_project(
@@ -208,6 +222,7 @@ class TestFleetDashboardSummary:
         assert "1 failed tasks" in text
         assert "(user1)" in text
 
+    @log_call
     def test_summary_empty_dashboard(self):
         dashboard = FleetDashboard()
         text = dashboard.summary()
@@ -223,6 +238,7 @@ class TestFleetDashboardSummary:
 class TestFleetDashboardUpdateFromState:
     """Tests for update_from_state cost calculation."""
 
+    @log_call
     def test_update_cost_for_running_vms(self):
         """Cost should be calculated based on hours active."""
         from amplihack.fleet.fleet_state import FleetState, VMInfo
@@ -242,6 +258,7 @@ class TestFleetDashboardUpdateFromState:
         # Should have a cost > 0 since vm-1 is running
         assert proj.estimated_cost_usd > 0.0
 
+    @log_call
     def test_update_cost_for_stopped_vms(self):
         """Stopped VMs should not contribute to cost."""
         from amplihack.fleet.fleet_state import FleetState, VMInfo
@@ -260,10 +277,11 @@ class TestFleetDashboardUpdateFromState:
 
         assert proj.estimated_cost_usd == 0.0
 
+    @log_call
     def test_update_cost_no_started_at(self):
         """Without started_at, default to 1 hour."""
-        from amplihack.fleet.fleet_state import FleetState, VMInfo
         from amplihack.fleet.fleet_dashboard import DEFAULT_COST_PER_HOUR
+        from amplihack.fleet.fleet_state import FleetState, VMInfo
 
         dashboard = FleetDashboard()
         proj = dashboard.add_project(repo_url="https://github.com/org/repo")
@@ -279,6 +297,7 @@ class TestFleetDashboardUpdateFromState:
 
         assert proj.estimated_cost_usd == round(DEFAULT_COST_PER_HOUR, 2)
 
+    @log_call
     def test_update_cost_vm_not_in_state(self):
         """VMs not found in state should not contribute cost."""
         from amplihack.fleet.fleet_state import FleetState
@@ -298,6 +317,7 @@ class TestFleetDashboardUpdateFromState:
 class TestFleetDashboardPersistence:
     """Additional persistence tests."""
 
+    @log_call
     def test_load_corrupt_file(self, tmp_path):
         """Corrupt JSON file should not crash, creates backup."""
         path = tmp_path / "dashboard.json"
@@ -309,6 +329,7 @@ class TestFleetDashboardPersistence:
         backup = path.with_suffix(".json.bak")
         assert backup.exists()
 
+    @log_call
     def test_load_valid_data(self, tmp_path):
         """Valid JSON with proper dict entries loads correctly."""
         path = tmp_path / "dashboard.json"
@@ -318,6 +339,7 @@ class TestFleetDashboardPersistence:
         assert len(dashboard.projects) == 1
         assert dashboard.projects[0].repo_url == "https://github.com/org/repo"
 
+    @log_call
     def test_add_project_duplicate_returns_existing(self):
         """Adding duplicate project returns the existing one."""
         dashboard = FleetDashboard()
@@ -326,6 +348,7 @@ class TestFleetDashboardPersistence:
         assert proj1 is proj2
         assert len(dashboard.projects) == 1
 
+    @log_call
     def test_remove_project_success(self):
         """Remove existing project returns True."""
         dashboard = FleetDashboard()
@@ -333,6 +356,7 @@ class TestFleetDashboardPersistence:
         assert dashboard.remove_project("repo") is True
         assert len(dashboard.projects) == 0
 
+    @log_call
     def test_remove_project_not_found(self):
         """Remove nonexistent project returns False."""
         dashboard = FleetDashboard()
@@ -342,22 +366,26 @@ class TestFleetDashboardPersistence:
 class TestFleetDashboardProgressBar:
     """Tests for _progress_bar helper."""
 
+    @log_call
     def test_progress_bar_zero(self):
         dashboard = FleetDashboard()
         bar = dashboard._progress_bar(0.0)
         assert "0%" in bar
         assert bar.startswith("[")
 
+    @log_call
     def test_progress_bar_half(self):
         dashboard = FleetDashboard()
         bar = dashboard._progress_bar(0.5)
         assert "50%" in bar
 
+    @log_call
     def test_progress_bar_full(self):
         dashboard = FleetDashboard()
         bar = dashboard._progress_bar(1.0)
         assert "100%" in bar
 
+    @log_call
     def test_progress_bar_custom_width(self):
         dashboard = FleetDashboard()
         bar = dashboard._progress_bar(0.5, width=10)

@@ -3,6 +3,7 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any
+from amplihack.utils.logging_utils import log_call
 
 
 class AbstractVersionController(ABC):
@@ -13,6 +14,7 @@ class AbstractVersionController(ABC):
     """
 
     @abstractmethod
+    @log_call
     def fetch_pull_requests(
         self, limit: int = 50, since_date: datetime | None = None
     ) -> list[dict[str, Any]]:
@@ -39,6 +41,7 @@ class AbstractVersionController(ABC):
         """
 
     @abstractmethod
+    @log_call
     def fetch_commits(
         self,
         pr_number: int | None = None,
@@ -67,6 +70,7 @@ class AbstractVersionController(ABC):
         """
 
     @abstractmethod
+    @log_call
     def fetch_commit_changes(self, commit_sha: str) -> list[dict[str, Any]]:
         """Fetch file changes for a specific commit.
 
@@ -84,6 +88,7 @@ class AbstractVersionController(ABC):
         """
 
     @abstractmethod
+    @log_call
     def fetch_file_at_commit(self, file_path: str, commit_sha: str) -> str | None:
         """Fetch the contents of a file at a specific commit.
 
@@ -96,6 +101,7 @@ class AbstractVersionController(ABC):
         """
 
     @abstractmethod
+    @log_call
     def get_repository_info(self) -> dict[str, Any]:
         """Get information about the repository.
 
@@ -111,6 +117,7 @@ class AbstractVersionController(ABC):
         """
 
     @abstractmethod
+    @log_call
     def test_connection(self) -> bool:
         """Test the connection to the version control system.
 
@@ -119,6 +126,7 @@ class AbstractVersionController(ABC):
         """
 
     @abstractmethod
+    @log_call
     def blame_commits_for_range(self, file_path: str, start_line: int, end_line: int) -> list[Any]:
         """Get all commits that modified specific line range using blame.
 
@@ -133,6 +141,7 @@ class AbstractVersionController(ABC):
         """
 
     @abstractmethod
+    @log_call
     def blame_commits_for_nodes(self, nodes: list[Any]) -> dict[str, list[Any]]:
         """Get commits for multiple code nodes efficiently.
 
@@ -144,6 +153,7 @@ class AbstractVersionController(ABC):
             Dictionary mapping node IDs to their blame commit lists
         """
 
+    @log_call
     def parse_patch_header(self, patch_header: str) -> dict[str, Any]:
         """Parse a patch header to extract line range information.
 
@@ -174,6 +184,7 @@ class AbstractVersionController(ABC):
             "added": {"start_line": added_start, "line_count": added_count},
         }
 
+    @log_call
     def extract_change_ranges(self, patch: str) -> list[dict[str, Any]]:
         """Extract specific line and character ranges for each change.
 

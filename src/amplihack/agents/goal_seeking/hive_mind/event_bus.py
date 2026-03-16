@@ -29,6 +29,8 @@ import uuid
 from dataclasses import asdict, dataclass, field
 from typing import Any, Protocol, runtime_checkable
 
+from amplihack.utils.logging_utils import log_call
+
 logger = logging.getLogger(__name__)
 
 
@@ -67,11 +69,13 @@ class BusEvent:
     timestamp: float
     payload: dict[str, Any] = field(default_factory=dict)
 
+    @log_call
     def to_json(self) -> str:
         """Serialize to JSON string."""
         return json.dumps(asdict(self), separators=(",", ":"))
 
     @classmethod
+    @log_call
     def from_json(cls, data: str) -> BusEvent:
         """Deserialize from JSON string.
 
@@ -95,6 +99,7 @@ class BusEvent:
         )
 
 
+@log_call
 def make_event(
     event_type: str,
     source_agent: str,
@@ -127,6 +132,7 @@ class EventBus(Protocol):
     from all publishers except themselves (no self-delivery).
     """
 
+    @log_call
     def publish(self, event: BusEvent) -> None:
         """Publish an event to all subscribers (except the sender).
 
@@ -135,6 +141,7 @@ class EventBus(Protocol):
         """
         ...
 
+    @log_call
     def subscribe(self, agent_id: str, event_types: list[str] | None = None) -> None:
         """Subscribe an agent to receive events.
 
@@ -145,6 +152,7 @@ class EventBus(Protocol):
         """
         ...
 
+    @log_call
     def unsubscribe(self, agent_id: str) -> None:
         """Remove an agent's subscription and mailbox.
 
@@ -156,6 +164,7 @@ class EventBus(Protocol):
         """
         ...
 
+    @log_call
     def poll(self, agent_id: str) -> list[BusEvent]:
         """Drain and return all pending events for an agent.
 
@@ -170,6 +179,7 @@ class EventBus(Protocol):
         """
         ...
 
+    @log_call
     def close(self) -> None:
         """Release resources held by this event bus."""
         ...
@@ -201,6 +211,7 @@ class LocalEventBus:
         >>> assert bus.poll("agent_a") == []  # no self-delivery
     """
 
+    @log_call
     def __init__(self) -> None:
         self._lock = threading.Lock()
         # agent_id -> list of pending BusEvents
@@ -209,6 +220,7 @@ class LocalEventBus:
         self._filters: dict[str, set[str] | None] = {}
         self._closed = False
 
+    @log_call
     def publish(self, event: BusEvent) -> None:
         """Deliver event to all subscribers except the sender.
 
@@ -244,6 +256,7 @@ class LocalEventBus:
                         dropped,
                     )
 
+    @log_call
     def subscribe(self, agent_id: str, event_types: list[str] | None = None) -> None:
         """Subscribe an agent to receive events.
 
@@ -259,6 +272,7 @@ class LocalEventBus:
                 self._mailboxes[agent_id] = []
             self._filters[agent_id] = set(event_types) if event_types is not None else None
 
+    @log_call
     def unsubscribe(self, agent_id: str) -> None:
         """Remove an agent's subscription and mailbox.
 
@@ -269,6 +283,7 @@ class LocalEventBus:
             self._mailboxes.pop(agent_id, None)
             self._filters.pop(agent_id, None)
 
+    @log_call
     def poll(self, agent_id: str) -> list[BusEvent]:
         """Drain and return all pending events for an agent.
 
@@ -286,6 +301,7 @@ class LocalEventBus:
             self._mailboxes[agent_id] = []
             return events
 
+    @log_call
     def close(self) -> None:
         """Mark the bus as closed and clear all mailboxes."""
         with self._lock:
@@ -312,6 +328,7 @@ class AzureServiceBusEventBus:
         topic_name: Name of the topic to publish to.
     """
 
+    @log_call
     def __init__(self, connection_string: str, topic_name: str = "hive-events") -> None:
         try:
             from azure.servicebus import ServiceBusClient
@@ -328,6 +345,7 @@ class AzureServiceBusEventBus:
         self._receivers: dict[str, Any] = {}
         self._lock = threading.Lock()
 
+    @log_call
     def publish(self, event: BusEvent) -> None:
         """Publish event to the Azure Service Bus topic.
 
@@ -355,6 +373,7 @@ class AzureServiceBusEventBus:
             self._topic_name,
         )
 
+    @log_call
     def subscribe(self, agent_id: str, event_types: list[str] | None = None) -> None:
         """Create or reuse a subscription receiver for the agent.
 
@@ -379,6 +398,7 @@ class AzureServiceBusEventBus:
                 )
                 logger.debug("Subscribed agent %s to topic %s", agent_id, self._topic_name)
 
+    @log_call
     def unsubscribe(self, agent_id: str) -> None:
         """Close the receiver for an agent and remove its subscription mapping.
 
@@ -393,6 +413,7 @@ class AzureServiceBusEventBus:
             except Exception:
                 logger.debug("Error closing receiver for %s", agent_id, exc_info=True)
 
+    @log_call
     def poll(self, agent_id: str) -> list[BusEvent]:
         """Receive pending messages from the agent's subscription.
 
@@ -434,6 +455,7 @@ class AzureServiceBusEventBus:
                     logger.debug("Failed to dead-letter message", exc_info=True)
         return events
 
+    @log_call
     def close(self) -> None:
         """Close all receivers and the sender/client connections."""
         with self._lock:
@@ -472,6 +494,7 @@ class RedisEventBus:
         channel: Redis pub/sub channel name.
     """
 
+    @log_call
     def __init__(
         self,
         redis_url: str = "redis://localhost:6379",
@@ -499,6 +522,7 @@ class RedisEventBus:
         self._running = False
         self._start_listener()
 
+    @log_call
     def _start_listener(self) -> None:
         """Start the background thread that receives pub/sub messages."""
         self._running = True
@@ -509,6 +533,7 @@ class RedisEventBus:
         )
         self._listener_thread.start()
 
+    @log_call
     def _listen_loop(self) -> None:
         """Background loop that reads from Redis pub/sub and fills mailboxes."""
         while self._running:
@@ -544,6 +569,7 @@ class RedisEventBus:
                 if self._running:
                     logger.debug("Error in Redis listener loop", exc_info=True)
 
+    @log_call
     def publish(self, event: BusEvent) -> None:
         """Publish event to the Redis channel.
 
@@ -552,6 +578,7 @@ class RedisEventBus:
         """
         self._redis.publish(self._channel, event.to_json())
 
+    @log_call
     def subscribe(self, agent_id: str, event_types: list[str] | None = None) -> None:
         """Subscribe an agent to receive events.
 
@@ -564,6 +591,7 @@ class RedisEventBus:
                 self._mailboxes[agent_id] = []
             self._filters[agent_id] = set(event_types) if event_types is not None else None
 
+    @log_call
     def unsubscribe(self, agent_id: str) -> None:
         """Remove an agent's subscription and mailbox.
 
@@ -574,6 +602,7 @@ class RedisEventBus:
             self._mailboxes.pop(agent_id, None)
             self._filters.pop(agent_id, None)
 
+    @log_call
     def poll(self, agent_id: str) -> list[BusEvent]:
         """Drain and return all pending events for an agent.
 
@@ -590,6 +619,7 @@ class RedisEventBus:
             self._mailboxes[agent_id] = []
             return events
 
+    @log_call
     def close(self) -> None:
         """Stop the listener thread and close Redis connections."""
         self._running = False
@@ -611,6 +641,7 @@ class RedisEventBus:
 # ---------------------------------------------------------------------------
 
 
+@log_call
 def create_event_bus(backend: str = "local", **kwargs: Any) -> EventBus:
     """Create an event bus instance for the specified backend.
 

@@ -19,12 +19,14 @@ from pathlib import Path
 from amplihack.fleet._constants import AZ_CLI_TIMEOUT_SECONDS, SUBPROCESS_TIMEOUT_SECONDS
 from amplihack.fleet._tui_data import VMView
 from amplihack.fleet._tui_parsers import parse_vm_text
+from amplihack.utils.logging_utils import log_call
 
 __all__ = ["get_vm_list", "read_azlin_resource_group", "dedup_sessions"]
 
 log = logging.getLogger(__name__)
 
 
+@log_call
 def get_vm_list(azlin_path: str) -> list[tuple[str, str, bool, list[str]]]:
     """Get VM list from azlin.
 
@@ -85,6 +87,7 @@ def get_vm_list(azlin_path: str) -> list[tuple[str, str, bool, list[str]]]:
     return []
 
 
+@log_call
 def read_azlin_resource_group() -> str:
     """Read the default resource group from ~/.azlin/config.toml.
 
@@ -103,6 +106,7 @@ def read_azlin_resource_group() -> str:
     )
 
 
+@log_call
 def dedup_sessions(vms: list[VMView]) -> list[VMView]:
     """Detect VMs that returned identical session sets and keep only the first.
 

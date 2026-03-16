@@ -15,6 +15,8 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 
 class SecurityLevel(Enum):
     """Security validation levels"""
@@ -90,11 +92,13 @@ class ValidationResult:
     timestamp: datetime
 
     @property
+    @log_call
     def should_block(self) -> bool:
         """Whether content should be blocked based on risk level"""
         return self.risk_level in [RiskLevel.HIGH, RiskLevel.CRITICAL]
 
     @property
+    @log_call
     def should_alert(self) -> bool:
         """Whether an alert should be generated"""
         return self.risk_level != RiskLevel.NONE
@@ -158,6 +162,7 @@ class XPIADefenseInterface:
     All implementations must conform to this interface.
     """
 
+    @log_call
     async def validate_content(
         self,
         content: str,
@@ -179,6 +184,7 @@ class XPIADefenseInterface:
         """
         raise NotImplementedError
 
+    @log_call
     async def validate_bash_command(
         self,
         command: str,
@@ -198,6 +204,7 @@ class XPIADefenseInterface:
         """
         raise NotImplementedError
 
+    @log_call
     async def validate_agent_communication(
         self,
         source_agent: str,
@@ -219,22 +226,27 @@ class XPIADefenseInterface:
         """
         raise NotImplementedError
 
+    @log_call
     def get_configuration(self) -> SecurityConfiguration:
         """Get current security configuration"""
         raise NotImplementedError
 
+    @log_call
     async def update_configuration(self, config: SecurityConfiguration) -> bool:
         """Update security configuration"""
         raise NotImplementedError
 
+    @log_call
     def register_hook(self, registration: HookRegistration) -> str:
         """Register a security hook, returns hook ID"""
         raise NotImplementedError
 
+    @log_call
     def unregister_hook(self, hook_id: str) -> bool:
         """Unregister a security hook"""
         raise NotImplementedError
 
+    @log_call
     async def health_check(self) -> dict[str, Any]:
         """Perform health check and return status"""
         raise NotImplementedError
@@ -248,9 +260,11 @@ class BashToolIntegration:
     following the decorator pattern for seamless integration.
     """
 
+    @log_call
     def __init__(self, xpia_defense: XPIADefenseInterface):
         self.xpia_defense = xpia_defense
 
+    @log_call
     async def secure_execute(
         self,
         command: str,
@@ -282,6 +296,7 @@ class BashToolIntegration:
         result = await self._execute_command(command, arguments, context)
         return validation, result
 
+    @log_call
     async def _execute_command(
         self, command: str, arguments: list[str] | None, context: ValidationContext | None
     ) -> Any:
@@ -296,9 +311,11 @@ class AgentCommunicationSecurity:
     Provides security layer for inter-agent communications.
     """
 
+    @log_call
     def __init__(self, xpia_defense: XPIADefenseInterface):
         self.xpia_defense = xpia_defense
 
+    @log_call
     async def secure_send_message(
         self,
         source_agent: str,
@@ -323,6 +340,7 @@ class AgentCommunicationSecurity:
         await self._send_message(source_agent, target_agent, message, message_type)
         return validation, True
 
+    @log_call
     async def _send_message(
         self, source_agent: str, target_agent: str, message: dict[str, Any], message_type: str
     ) -> None:
@@ -333,6 +351,7 @@ class AgentCommunicationSecurity:
 # Utility Functions for Integration
 
 
+@log_call
 def create_validation_context(
     source: str = "system",
     session_id: str | None = None,
@@ -343,11 +362,13 @@ def create_validation_context(
     return ValidationContext(source=source, session_id=session_id, agent_id=agent_id, **kwargs)
 
 
+@log_call
 def is_threat_critical(validation_result: ValidationResult) -> bool:
     """Check if validation result contains critical threats"""
     return any(threat.severity == RiskLevel.CRITICAL for threat in validation_result.threats)
 
 
+@log_call
 def get_threat_summary(validation_result: ValidationResult) -> str:
     """Get human-readable threat summary"""
     if not validation_result.threats:
@@ -386,11 +407,13 @@ class HookError(XPIADefenseError):
 # Factory Functions
 
 
+@log_call
 def create_default_configuration() -> SecurityConfiguration:
     """Create default security configuration"""
     return SecurityConfiguration()
 
 
+@log_call
 async def create_xpia_defense_client(
     api_base_url: str, api_key: str | None = None, timeout: int = 30
 ) -> XPIADefenseInterface:
@@ -424,6 +447,7 @@ class SecurityDecorator:
             return processed_code
     """
 
+    @log_call
     def __init__(
         self,
         xpia_defense: XPIADefenseInterface,
@@ -434,7 +458,9 @@ class SecurityDecorator:
         self.content_type = content_type
         self.security_level = security_level
 
+    @log_call
     def __call__(self, func: Callable) -> Callable:
+        @log_call
         async def wrapper(*args, **kwargs):
             # Extract content to validate (implementation-specific)
             content = self._extract_content(args, kwargs)
@@ -450,6 +476,7 @@ class SecurityDecorator:
 
         return wrapper
 
+    @log_call
     def _extract_content(self, args: tuple, kwargs: dict) -> str:
         """Extract content from function arguments"""
         # Implementation-specific content extraction
@@ -463,9 +490,11 @@ class SecurityMiddleware:
     Can be integrated into web frameworks or agent communication layers.
     """
 
+    @log_call
     def __init__(self, xpia_defense: XPIADefenseInterface):
         self.xpia_defense = xpia_defense
 
+    @log_call
     async def process_request(self, request: dict[str, Any]) -> ValidationResult | None:
         """
         Process incoming request for security validation
@@ -480,6 +509,7 @@ class SecurityMiddleware:
 
         return validation if validation.should_block else None
 
+    @log_call
     def _extract_request_content(self, request: dict[str, Any]) -> str | None:
         """Extract content from request"""
         # Implementation-specific content extraction

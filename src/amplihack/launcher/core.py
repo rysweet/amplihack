@@ -9,6 +9,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 from ..proxy.manager import ProxyManager
 from ..tracing.trace_logger import TraceLogger
 from ..utils.claude_cli import get_claude_cli_path
@@ -21,6 +23,7 @@ from .repo_checkout import checkout_repository
 logger = logging.getLogger(__name__)
 
 
+@log_call
 def _is_noninteractive() -> bool:
     """Check if running in non-interactive mode.
 
@@ -75,6 +78,7 @@ class ClaudeLauncher:
         Not thread-safe. Use separate instances for concurrent launches.
     """
 
+    @log_call
     def __init__(
         self,
         proxy_manager: ProxyManager | None = None,
@@ -117,6 +121,7 @@ class ClaudeLauncher:
         # Setup signal handlers for graceful shutdown
         self._setup_signal_handlers()
 
+    @log_call
     def prepare_launch(self) -> bool:
         """Prepare environment for launching Claude.
 
@@ -184,6 +189,7 @@ class ClaudeLauncher:
 
         return True
 
+    @log_call
     def _check_prerequisites_noninteractive(self) -> bool:
         """Check prerequisites in non-interactive mode.
 
@@ -196,9 +202,8 @@ class ClaudeLauncher:
         Returns:
             True if all critical prerequisites available, False otherwise.
         """
-        import shutil
 
-        from ..utils.prerequisites import PrerequisiteChecker, safe_subprocess_call
+        from ..utils.prerequisites import PrerequisiteChecker
 
         checker = PrerequisiteChecker()
 
@@ -224,6 +229,7 @@ class ClaudeLauncher:
 
         return True
 
+    @log_call
     def _handle_repo_checkout(self) -> bool:
         """Handle repository checkout.
 
@@ -251,6 +257,7 @@ class ClaudeLauncher:
             print(f"Repository checkout failed: {e!s}")
             return False
 
+    @log_call
     def _find_target_directory(self) -> Path | None:
         """Find the target directory for execution.
 
@@ -273,6 +280,7 @@ class ClaudeLauncher:
         # No .claude directory found - use current directory
         return Path.cwd()
 
+    @log_call
     def _handle_directory_change(self, target_dir: Path) -> bool:
         """Handle directory change based on execution mode.
 
@@ -311,6 +319,7 @@ class ClaudeLauncher:
             print(f"Failed to change directory to {target_dir}: {e}")
             return False
 
+    @log_call
     def _start_proxy_if_needed(self) -> bool:
         """Start proxy if configured.
 
@@ -329,6 +338,7 @@ class ClaudeLauncher:
             proxy_started = [False]
             proxy_error = [None]
 
+            @log_call
             def _start_proxy():
                 try:
                     proxy_started[0] = self.proxy_manager.start_proxy()
@@ -368,6 +378,7 @@ class ClaudeLauncher:
 
         return True
 
+    @log_call
     def _configure_lsp_auto(self, target_dir: Path) -> None:
         """Auto-configure LSP using Claude Code plugin marketplace.
 
@@ -502,6 +513,7 @@ class ClaudeLauncher:
         except Exception as e:
             logger.debug(f"LSP auto-configuration skipped: {e}")
 
+    @log_call
     def _open_log_tail_window(self) -> None:
         """Open a new terminal window tailing proxy logs.
 
@@ -570,6 +582,7 @@ class ClaudeLauncher:
             # Log error but don't fail proxy startup
             print(f"Warning: Could not open log tail window: {e}")
 
+    @log_call
     def _has_model_arg(self) -> bool:
         """Check if user has already specified --model in claude_args.
 
@@ -580,6 +593,7 @@ class ClaudeLauncher:
             return False
         return "--model" in self.claude_args
 
+    @log_call
     def _get_azure_model(self) -> str:
         """Extract Azure model name from proxy configuration.
 
@@ -601,6 +615,7 @@ class ClaudeLauncher:
             or "gpt-5-codex"
         )
 
+    @log_call
     def build_claude_command(self) -> list[str]:
         """Build the Claude command with arguments.
 
@@ -698,6 +713,7 @@ class ClaudeLauncher:
 
         return cmd
 
+    @log_call
     def _ensure_runtime_directories(self, target_dir: Path) -> bool:
         """Ensure required runtime directories exist.
 
@@ -734,6 +750,7 @@ class ClaudeLauncher:
             print(f"Warning: Could not create runtime directories: {e}")
             return False
 
+    @log_call
     def _fix_hook_paths_in_settings(self, target_dir: Path) -> bool:
         """Fix hook paths in settings.json to use absolute paths.
 
@@ -768,6 +785,7 @@ class ClaudeLauncher:
             project_dir_str = str(target_dir.resolve())
 
             # Recursively replace $CLAUDE_PROJECT_DIR in hook commands
+            @log_call
             def replace_in_hooks(obj):
                 nonlocal hooks_modified
                 if isinstance(obj, dict):
@@ -796,6 +814,7 @@ class ClaudeLauncher:
             print(f"Warning: Could not fix hook paths: {e}")
             return False
 
+    @log_call
     def launch(self) -> int:
         """Launch Claude Code with configuration.
 
@@ -810,6 +829,7 @@ class ClaudeLauncher:
             print(f"Launching Claude with command: {' '.join(cmd)}")
 
             # Set up signal handling for graceful shutdown
+            @log_call
             def signal_handler(sig, frame):
                 print("\nReceived interrupt signal. Shutting down...")
                 if self.claude_process:
@@ -903,6 +923,7 @@ class ClaudeLauncher:
             if self.proxy_manager:
                 self.proxy_manager.stop_proxy()
 
+    @log_call
     def launch_interactive(self) -> int:
         """Launch Claude in interactive mode with live output.
 
@@ -927,6 +948,7 @@ class ClaudeLauncher:
             print(f"Launching Claude with command: {' '.join(cmd)}")
 
             # Set up signal handling for graceful shutdown
+            @log_call
             def signal_handler(sig, frame):
                 print("\nReceived interrupt signal. Shutting down...")
                 # Set shutdown flag BEFORE sys.exit to coordinate with hooks
@@ -1024,6 +1046,7 @@ class ClaudeLauncher:
 
     # Neo4j startup methods removed (Week 7 cleanup)
 
+    @log_call
     def _paths_are_same_with_cache(self, path1: Path, path2: Path) -> bool:
         """Compare paths with caching for resolved paths.
 
@@ -1035,6 +1058,7 @@ class ClaudeLauncher:
             True if paths refer to the same location, False otherwise
         """
 
+        @log_call
         def get_cached_resolved(path: Path) -> Path:
             """Get cached resolved path or compute and cache it."""
             path_key = str(path)
@@ -1044,6 +1068,7 @@ class ClaudeLauncher:
 
         return get_cached_resolved(path1) == get_cached_resolved(path2)
 
+    @log_call
     def invalidate_path_cache(self) -> None:
         """Invalidate cached path resolutions.
 
@@ -1052,6 +1077,7 @@ class ClaudeLauncher:
         """
         self._cached_resolved_paths.clear()
 
+    @log_call
     def invalidate_uvx_cache(self) -> None:
         """Invalidate cached UVX decision.
 
@@ -1061,6 +1087,7 @@ class ClaudeLauncher:
 
     # Neo4j credential check removed (Week 7 cleanup)
 
+    @log_call
     def _setup_signal_handlers(self) -> None:
         """Setup signal handlers for graceful shutdown.
 
@@ -1068,6 +1095,7 @@ class ClaudeLauncher:
         process to exit gracefully. Also registers atexit handler as fallback.
         """
 
+        @log_call
         def signal_handler(signum: int, frame) -> None:
             """Handle shutdown signals."""
             signal_name = "SIGINT" if signum == signal.SIGINT else "SIGTERM"
@@ -1095,6 +1123,7 @@ class ClaudeLauncher:
 
         logger.debug("Signal handlers registered for graceful shutdown")
 
+    @log_call
     def _cleanup_on_exit(self) -> None:
         """Fallback cleanup handler for atexit.
 
@@ -1112,6 +1141,7 @@ class ClaudeLauncher:
             # Fail silently in atexit - cleanup is best-effort
             pass
 
+    @log_call
     def _get_project_consent_cache_path(self, project_path: Path) -> Path:
         """Get per-project consent cache path.
 
@@ -1132,6 +1162,7 @@ class ClaudeLauncher:
 
         return cache_dir / f".blarify_consent_{project_hash}"
 
+    @log_call
     def _has_blarify_consent(self, project_path: Path) -> bool:
         """Check if user has already consented to blarify indexing for this project.
 
@@ -1144,6 +1175,7 @@ class ClaudeLauncher:
         consent_cache = self._get_project_consent_cache_path(project_path)
         return consent_cache.exists()
 
+    @log_call
     def _save_blarify_consent(self, project_path: Path) -> None:
         """Save blarify consent for this project.
 
@@ -1157,6 +1189,7 @@ class ClaudeLauncher:
         except Exception as e:
             logger.warning("Failed to save blarify consent: %s", e)
 
+    @log_call
     def _prompt_blarify_indexing(self) -> bool:
         """Prompt user to run blarify code indexing with staleness detection.
 
@@ -1293,6 +1326,7 @@ class ClaudeLauncher:
             print(f"\n⚠️  Code indexing prompt failed: {e} (continuing...)\n")
             return True  # Non-blocking - always return True
 
+    @log_call
     def _count_files_by_language(self, project_path: Path, languages: list[str]) -> dict[str, int]:
         """Count files for each language in the project.
 
@@ -1320,6 +1354,7 @@ class ClaudeLauncher:
 
         return counts
 
+    @log_call
     def _run_blarify_and_import(self, project_path: Path, background: bool = False) -> bool:
         """Run blarify and import results to Kuzu.
 

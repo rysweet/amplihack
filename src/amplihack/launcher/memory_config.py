@@ -37,6 +37,8 @@ import threading
 from pathlib import Path
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 try:
     import psutil  # pyright: ignore[reportMissingModuleSource]
 
@@ -68,6 +70,7 @@ MIN_MEMORY_MB = 8192  # 8 GB minimum
 MAX_MEMORY_MB = 32768  # 32 GB maximum
 
 
+@log_call
 def detect_system_ram_gb() -> int | None:
     """Detect total system RAM in GB.
 
@@ -120,6 +123,7 @@ def detect_system_ram_gb() -> int | None:
     return None
 
 
+@log_call
 def _round_to_power_of_2(gb_float: float) -> int:
     """Round GB value to nearest power of 2 if close (within 25%).
 
@@ -142,6 +146,7 @@ def _round_to_power_of_2(gb_float: float) -> int:
     return round(gb_float)
 
 
+@log_call
 def _detect_ram_linux() -> int | None:
     """Detect RAM on Linux using /proc/meminfo."""
     try:
@@ -165,6 +170,7 @@ def _detect_ram_linux() -> int | None:
     return None
 
 
+@log_call
 def _detect_ram_macos() -> int | None:
     """Detect RAM on macOS using sysctl."""
     try:
@@ -180,6 +186,7 @@ def _detect_ram_macos() -> int | None:
     return None
 
 
+@log_call
 def _detect_ram_windows() -> int | None:
     """Detect RAM on Windows using wmic."""
     try:
@@ -201,6 +208,7 @@ def _detect_ram_windows() -> int | None:
     return None
 
 
+@log_call
 def calculate_recommended_limit(ram_gb: int) -> int:
     """Calculate recommended memory limit in MB.
 
@@ -241,6 +249,7 @@ def calculate_recommended_limit(ram_gb: int) -> int:
     return limit_mb
 
 
+@log_call
 def parse_node_options(options_str: str) -> dict[str, Any]:
     """Parse NODE_OPTIONS string into dictionary.
 
@@ -295,6 +304,7 @@ def parse_node_options(options_str: str) -> dict[str, Any]:
     return result
 
 
+@log_call
 def merge_node_options(existing_options: dict[str, Any], new_limit_mb: int) -> str:
     """Merge new memory limit with existing NODE_OPTIONS.
 
@@ -324,6 +334,7 @@ def merge_node_options(existing_options: dict[str, Any], new_limit_mb: int) -> s
     return " ".join(parts)
 
 
+@log_call
 def should_warn_about_limit(limit_mb: int) -> bool:
     """Check if memory limit warrants a warning.
 
@@ -342,6 +353,7 @@ def should_warn_about_limit(limit_mb: int) -> bool:
     return limit_mb < MIN_MEMORY_MB
 
 
+@log_call
 def is_interactive_terminal() -> bool:
     """Detect if running in interactive terminal.
 
@@ -369,6 +381,7 @@ def is_interactive_terminal() -> bool:
         return False
 
 
+@log_call
 def parse_consent_response(response: str | None, default: bool) -> bool:
     """Parse user consent response.
 
@@ -408,6 +421,7 @@ def parse_consent_response(response: str | None, default: bool) -> bool:
     return default
 
 
+@log_call
 def get_user_input_with_timeout(
     prompt: str, timeout_seconds: int, logger: logging.Logger | None = None
 ) -> str | None:
@@ -445,6 +459,7 @@ def get_user_input_with_timeout(
     return _get_input_with_timeout_signal(prompt, timeout_seconds, logger)
 
 
+@log_call
 def _get_input_with_timeout_signal(
     prompt: str, timeout_seconds: int, logger: logging.Logger | None
 ) -> str | None:
@@ -453,6 +468,7 @@ def _get_input_with_timeout_signal(
     class TimeoutException(Exception):
         pass
 
+    @log_call
     def timeout_handler(_signum: int, _frame: Any) -> None:
         raise TimeoutException("Input timeout")
 
@@ -486,12 +502,14 @@ def _get_input_with_timeout_signal(
         return None
 
 
+@log_call
 def _get_input_with_timeout_threading(
     prompt: str, timeout_seconds: int, logger: logging.Logger | None
 ) -> str | None:
     """Windows implementation using threading."""
     result: dict[str, str | None] = {"value": None}
 
+    @log_call
     def get_input():
         try:
             result["value"] = input(prompt)
@@ -519,6 +537,7 @@ def _get_input_with_timeout_threading(
     return result["value"]
 
 
+@log_call
 def prompt_user_consent(
     config: dict[str, Any],
     timeout_seconds: int = 30,
@@ -622,6 +641,7 @@ def prompt_user_consent(
         return default_response
 
 
+@log_call
 def get_config_path() -> Path:
     """Return the path to the ~/.amplihack/config file.
 
@@ -636,6 +656,7 @@ def get_config_path() -> Path:
     return Path.home() / ".amplihack" / "config"
 
 
+@log_call
 def load_user_preference() -> dict[str, Any] | None:
     """Load saved NODE_OPTIONS preference from ~/.amplihack/config.
 
@@ -659,6 +680,7 @@ def load_user_preference() -> dict[str, Any] | None:
         return None
 
 
+@log_call
 def save_user_preference(consent: bool, limit_mb: int) -> None:
     """Persist user's NODE_OPTIONS preference to ~/.amplihack/config.
 
@@ -689,6 +711,7 @@ def save_user_preference(consent: bool, limit_mb: int) -> None:
         logging.getLogger(__name__).warning(f"Failed to save memory config preference: {e}")
 
 
+@log_call
 def get_memory_config(existing_node_options: str | None = None) -> dict[str, Any] | None:
     """Get complete memory configuration.
 
@@ -782,6 +805,7 @@ def get_memory_config(existing_node_options: str | None = None) -> dict[str, Any
     return config
 
 
+@log_call
 def display_memory_config(config: dict[str, Any]) -> None:
     """Display memory configuration on launch (concise single-line output).
 

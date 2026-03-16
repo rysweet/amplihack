@@ -10,6 +10,8 @@ import logging.handlers
 import sys
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 from .exceptions import (
     AzureAPIError,
     AzureAuthenticationError,
@@ -26,11 +28,13 @@ from .sanitizing_logger import SanitizingLoggerAdapter
 class AzureErrorLogger:
     """Centralized Azure error logging with metrics and analysis."""
 
+    @log_call
     def __init__(self):
         self.error_history = []
         self.error_patterns = {}
         self.last_health_check = None
 
+    @log_call
     def log_azure_error(
         self, azure_error: AzureAPIError, request_context: dict | None = None
     ) -> None:
@@ -88,6 +92,7 @@ class AzureErrorLogger:
             user_id = request_context.get("user_id", "unknown")
             logger.info(f"Error Context: Model={model}, User={user_id}")
 
+    @log_call
     def log_azure_success(self, request_context: dict | None = None) -> None:
         """Log successful Azure API call for health monitoring."""
         if request_context:
@@ -95,6 +100,7 @@ class AzureErrorLogger:
             response_time = request_context.get("response_time", "unknown")
             logger.debug(f"AZURE SUCCESS: Model={model}, ResponseTime={response_time}ms")
 
+    @log_call
     def get_error_summary(self) -> dict:
         """Get a summary of recent Azure errors for monitoring."""
         # Import here to avoid circular dependency at module level
@@ -122,6 +128,7 @@ class AzureErrorLogger:
         summary["recent_error_types"] = error_counts
         return summary
 
+    @log_call
     def should_alert(self) -> bool:
         """Determine if an alert should be triggered based on error patterns."""
         from .azure_errors import azure_fallback_manager
@@ -150,6 +157,7 @@ class AzureErrorLogger:
 azure_error_logger = AzureErrorLogger()
 
 
+@log_call
 def log_azure_operation(
     operation_name: str,
     success: bool,
@@ -167,6 +175,7 @@ def log_azure_operation(
 
 
 # Configure logging with file output and rotation
+@log_call
 def setup_logging() -> SanitizingLoggerAdapter:
     """
     Set up logging with file rotation and console output.
@@ -225,6 +234,7 @@ logger = setup_logging()
 
 # Create a filter to block any log messages containing specific strings
 class MessageFilter(logging.Filter):
+    @log_call
     def filter(self, record):
         # Block messages containing these strings
         blocked_phrases = [
@@ -257,6 +267,7 @@ class ColorizedFormatter(logging.Formatter):
     RESET = "\033[0m"
     BOLD = "\033[1m"
 
+    @log_call
     def format(self, record):
         if record.levelno == logging.DEBUG and "MODEL MAPPING" in getattr(record, "msg", ""):
             # Apply colors and formatting to model mapping logs
@@ -286,6 +297,7 @@ class Colors:
     DIM = "\033[2m"
 
 
+@log_call
 def log_request_beautifully(
     method, path, claude_model, openai_model, num_messages, num_tools, status_code
 ):

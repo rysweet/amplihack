@@ -19,12 +19,15 @@ import logging
 from datetime import datetime, timedelta
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 from .coordinator import MemoryCoordinator, RetrievalQuery, StorageRequest
 from .types import MemoryType
 
 logger = logging.getLogger(__name__)
 
 
+@log_call
 def store_discovery(
     content: str,
     *,
@@ -68,6 +71,7 @@ def store_discovery(
         return None  # Graceful failure
 
 
+@log_call
 def get_recent_discoveries(
     days: int = 30,
     limit: int = 10,

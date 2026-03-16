@@ -23,6 +23,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 from .constants import (
     DEFAULT_CONFIDENCE_DECAY_RATE,
     DEFAULT_FACT_TTL_SECONDS,
@@ -48,6 +50,7 @@ class FactTTL:
     confidence_decay_rate: float = DEFAULT_CONFIDENCE_DECAY_RATE
 
 
+@log_call
 def decay_confidence(
     original_confidence: float,
     elapsed_hours: float,
@@ -71,6 +74,7 @@ def decay_confidence(
     return max(0.0, min(1.0, decayed))
 
 
+@log_call
 def gc_expired_facts(
     hive: Any,
     ttl_registry: dict[str, FactTTL],
@@ -112,6 +116,7 @@ def gc_expired_facts(
     return removed
 
 
+@log_call
 def refresh_confidence(
     hive: Any,
     ttl_registry: dict[str, FactTTL],

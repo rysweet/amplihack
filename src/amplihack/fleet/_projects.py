@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from amplihack.fleet._constants import DEFAULT_PROJECTS_PATH
+from amplihack.utils.logging_utils import log_call
 
 __all__ = [
     "Project",
@@ -29,11 +30,10 @@ __all__ = [
 ]
 
 _PROJECT_NAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$")
-_REPO_URL_RE = re.compile(
-    r"^(https://github\.com/[\w.-]+/[\w.-]+(?:\.git)?|[\w.-]+/[\w.-]+)$"
-)
+_REPO_URL_RE = re.compile(r"^(https://github\.com/[\w.-]+/[\w.-]+(?:\.git)?|[\w.-]+/[\w.-]+)$")
 
 
+@log_call
 def validate_repo_url(url: str) -> bool:
     """Check repo_url is a valid GitHub HTTPS URL or owner/repo shorthand."""
     return bool(_REPO_URL_RE.match(url))
@@ -50,13 +50,14 @@ class Project:
     objectives: list[dict] = field(default_factory=list)
     # Each objective: {"number": int, "title": str, "state": str, "url": str}
 
+    @log_call
     def __post_init__(self) -> None:
         if not _PROJECT_NAME_RE.match(self.name):
             raise ValueError(
-                f"Invalid project name {self.name!r}: "
-                "must match ^[a-zA-Z0-9][a-zA-Z0-9_-]*$"
+                f"Invalid project name {self.name!r}: must match ^[a-zA-Z0-9][a-zA-Z0-9_-]*$"
             )
 
+    @log_call
     def add_objective(self, number: int, title: str, state: str = "open", url: str = "") -> dict:
         """Add or update an objective (GitHub issue)."""
         for obj in self.objectives:
@@ -70,6 +71,7 @@ class Project:
         self.objectives.append(entry)
         return entry
 
+    @log_call
     def remove_objective(self, number: int) -> bool:
         """Remove an objective by issue number. Returns True if found."""
         for i, obj in enumerate(self.objectives):
@@ -78,10 +80,12 @@ class Project:
                 return True
         return False
 
+    @log_call
     def open_objectives(self) -> list[dict]:
         """Return objectives that are still open."""
         return [o for o in self.objectives if o.get("state", "open") == "open"]
 
+    @log_call
     def to_dict(self) -> dict:
         return {
             "repo_url": self.repo_url,
@@ -91,6 +95,7 @@ class Project:
         }
 
     @classmethod
+    @log_call
     def from_dict(cls, name: str, data: dict) -> Project:
         return cls(
             name=name,
@@ -101,6 +106,7 @@ class Project:
         )
 
 
+@log_call
 def load_projects(path: Path | None = None) -> dict[str, Project]:
     """Load projects from a TOML file. Returns {name: Project}."""
     path = path or DEFAULT_PROJECTS_PATH
@@ -120,6 +126,7 @@ def load_projects(path: Path | None = None) -> dict[str, Project]:
     return projects
 
 
+@log_call
 def save_projects(projects: dict[str, Project], path: Path | None = None) -> None:
     """Write projects to a TOML file."""
     path = path or DEFAULT_PROJECTS_PATH
@@ -129,8 +136,7 @@ def save_projects(projects: dict[str, Project], path: Path | None = None) -> Non
     for name in projects:
         if not _PROJECT_NAME_RE.match(name):
             raise ValueError(
-                f"Invalid project name {name!r}: "
-                "must match ^[a-zA-Z0-9][a-zA-Z0-9_-]*$"
+                f"Invalid project name {name!r}: must match ^[a-zA-Z0-9][a-zA-Z0-9_-]*$"
             )
 
     doc: dict = {"project": {}}
@@ -158,6 +164,7 @@ def save_projects(projects: dict[str, Project], path: Path | None = None) -> Non
     path.write_bytes(tomli_w.dumps(doc).encode())
 
 
+@log_call
 def merge_projects(
     local: dict[str, Project],
     remote_objectives: dict[str, list[dict]],

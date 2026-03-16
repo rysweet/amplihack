@@ -9,10 +9,12 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from amplihack.launcher import ClaudeDirectoryDetector, ClaudeLauncher
 from amplihack.proxy import ProxyConfig
+from amplihack.utils.logging_utils import log_call
 
 # PathResolver removed in simplification
 
 
+@log_call
 def example_proxy_configuration():
     """Example of setting up proxy configuration."""
     print("=== Proxy Configuration Example ===")
@@ -28,6 +30,7 @@ def example_proxy_configuration():
         print(f"No configuration file found at: {config_path}")
 
 
+@log_call
 def example_directory_detection():
     """Example of detecting .claude directory."""
     print("\n=== Directory Detection Example ===")
@@ -43,6 +46,7 @@ def example_directory_detection():
         print("No .claude directory found in hierarchy")
 
 
+@log_call
 def example_path_utilities():
     """Example of using path utilities."""
     print("\n=== Path Utilities Example ===")
@@ -69,6 +73,7 @@ def example_path_utilities():
     print(f"Running in UVX deployment: {is_uvx}")
 
 
+@log_call
 def example_launcher_setup():
     """Example of setting up the launcher (without actually launching)."""
     print("\n=== Launcher Setup Example ===")
@@ -88,6 +93,7 @@ def example_launcher_setup():
         print(f"With prompt: {' '.join(command)}")
 
 
+@log_call
 def main():
     """Run all examples."""
     print("Amplihack Module Usage Examples\n")

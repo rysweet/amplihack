@@ -3,7 +3,10 @@
 Provides code to inject memory capabilities into generated agents.
 """
 
+from amplihack.utils.logging_utils import log_call
 
+
+@log_call
 def get_memory_initialization_code(agent_name: str, storage_path: str = "./memory") -> str:
     """
     Generate memory initialization code for a goal agent.
@@ -120,6 +123,7 @@ def cleanup_memory():
 '''
 
 
+@log_call
 def get_memory_config_yaml(agent_name: str) -> str:
     """
     Generate memory configuration YAML for a goal agent.
@@ -155,6 +159,7 @@ memory:
 """
 
 
+@log_call
 def get_memory_readme_section() -> str:
     """
     Generate README section documenting memory capabilities.

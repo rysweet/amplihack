@@ -30,6 +30,7 @@ from ..services.embedding_service import EmbeddingService
 from .queries.workflow_queries import cleanup_orphaned_documentation_query
 from .result_models import DocumentationResult, FrameworkDetectionResult
 from .utils.bottom_up_batch_processor import BottomUpBatchProcessor
+from amplihack.utils.logging_utils import log_call
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,7 @@ class DocumentationCreator:
     all the valuable RecursiveDFSProcessor functionality.
     """
 
+    @log_call
     def __init__(
         self,
         db_manager: AbstractDbManager,
@@ -68,6 +70,7 @@ class DocumentationCreator:
         self.max_workers = max_workers
         self.overwrite_documentation = overwrite_documentation
 
+    @log_call
     def create_documentation(
         self,
         target_paths: list[str] | None = None,
@@ -115,6 +118,7 @@ class DocumentationCreator:
                 processing_time_seconds=time.time() - start_time,
             )
 
+    @log_call
     def _parse_framework_analysis(self, analysis: str) -> FrameworkDetectionResult:
         """
         Parse the LLM framework analysis into structured data.
@@ -162,6 +166,7 @@ class DocumentationCreator:
             analysis_method="llm_analysis_basic_parsing",
         )
 
+    @log_call
     def _discover_entry_points(self, file_paths: list[str] | None = None) -> list[str]:
         """
         Discover entry points using hybrid approach from existing implementation.
@@ -206,6 +211,7 @@ class DocumentationCreator:
             logger.exception(f"Error discovering entry points: {e}")
             return []
 
+    @log_call
     def _create_targeted_documentation(
         self,
         target_paths: list[str],
@@ -306,6 +312,7 @@ class DocumentationCreator:
             logger.exception(f"Error in targeted documentation creation: {e}")
             return DocumentationResult(error=str(e))
 
+    @log_call
     def _create_full_documentation(self, generate_embeddings: bool = False) -> DocumentationResult:
         """
         Create documentation for the entire codebase.
@@ -365,6 +372,7 @@ class DocumentationCreator:
             logger.exception(f"Error in full documentation creation: {e}")
             return DocumentationResult(error=str(e))
 
+    @log_call
     def _save_documentation_to_database(
         self,
         documentation_nodes: list["DocumentationNode"],
@@ -406,6 +414,7 @@ class DocumentationCreator:
             logger.exception(f"Error saving documentation to database: {e}")
             # Don't raise - this is not critical for the documentation creation process
 
+    @log_call
     def embed_existing_documentation(
         self, batch_size: int = 100, skip_existing: bool = True
     ) -> dict[str, Any]:
@@ -559,6 +568,7 @@ class DocumentationCreator:
                 "success": False,
             }
 
+    @log_call
     def cleanup_orphaned_documentation(self) -> int:
         """
         Delete orphaned documentation nodes that have no DESCRIBES relationship.

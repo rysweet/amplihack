@@ -8,6 +8,7 @@ from ..file_node import FileNode
 from ..folder_node import FolderNode
 from ..function_node import FunctionNode
 from ..types.node_labels import NodeLabels
+from amplihack.utils.logging_utils import log_call
 
 if TYPE_CHECKING:
     from ....code_references.types import Reference
@@ -18,6 +19,7 @@ if TYPE_CHECKING:
 
 class NodeFactory:
     @staticmethod
+    @log_call
     def create_folder_node(
         folder: "Folder",
         parent: FolderNode | None = None,
@@ -32,6 +34,7 @@ class NodeFactory:
         )
 
     @staticmethod
+    @log_call
     def create_file_node(
         path: str,
         name: str,
@@ -58,6 +61,7 @@ class NodeFactory:
         )
 
     @staticmethod
+    @log_call
     def create_class_node(
         class_name: str,
         path: str,
@@ -84,6 +88,7 @@ class NodeFactory:
         )
 
     @staticmethod
+    @log_call
     def create_function_node(
         function_name: str,
         path: str,
@@ -110,6 +115,7 @@ class NodeFactory:
         )
 
     @staticmethod
+    @log_call
     def create_node_based_on_label(
         kind: NodeLabels,
         name: str,
@@ -152,6 +158,7 @@ class NodeFactory:
         raise ValueError(f"Kind {kind} is not supported")
 
     @staticmethod
+    @log_call
     def create_deleted_node(
         graph_environment: Optional["GraphEnvironment"] = None,
     ):

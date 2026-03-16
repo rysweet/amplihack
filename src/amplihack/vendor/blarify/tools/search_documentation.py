@@ -15,6 +15,7 @@ from amplihack.vendor.blarify.services.embedding_service import EmbeddingService
 from langchain_core.callbacks import CallbackManagerForToolRun
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
+from amplihack.utils.logging_utils import log_call
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,7 @@ class VectorSearch(BaseTool):
         default=None, description="Embedding service for query vectorization"
     )
 
+    @log_call
     def __init__(
         self,
         db_manager: Any,
@@ -64,6 +66,7 @@ class VectorSearch(BaseTool):
             self.embedding_service = None
         logger.info("VectorSearch tool initialized")
 
+    @log_call
     def _run(
         self,
         query: str,
@@ -113,6 +116,7 @@ class VectorSearch(BaseTool):
             logger.error(f"Vector search failed: {e}")
             return f"Error performing vector search: {e!s}"
 
+    @log_call
     def _format_results(self, results: list[dict[str, Any]], query: str) -> str:
         """
         Format search results into a readable string.

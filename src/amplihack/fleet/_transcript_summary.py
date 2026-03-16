@@ -10,9 +10,12 @@ from __future__ import annotations
 
 import json
 
+from amplihack.utils.logging_utils import log_call
+
 __all__ = ["summarize_entries"]
 
 
+@log_call
 def summarize_entries(lines: list[str]) -> str:
     """Summarize a section of JSONL entries into statistics and key events."""
     tool_uses: dict[str, int] = {}
@@ -50,7 +53,8 @@ def summarize_entries(lines: list[str]) -> str:
         raw_content = entry.get("message", {}).get("content", "")
         if isinstance(raw_content, list):
             text_parts = [
-                b.get("text", "") for b in raw_content
+                b.get("text", "")
+                for b in raw_content
                 if isinstance(b, dict) and b.get("type") == "text"
             ]
             content_text = "\n".join(text_parts)

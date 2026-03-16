@@ -4,6 +4,8 @@ from pathlib import Path
 
 import click
 
+from amplihack.utils.logging_utils import log_call
+
 from .bundle_generator import (
     AgentGenerator,
     BundleBuilder,
@@ -17,6 +19,7 @@ from .bundle_generator.models import DistributionMethod, PackageFormat
 
 
 @click.group()
+@log_call
 def bundle():
     """Agent Bundle Generator commands."""
 
@@ -26,6 +29,7 @@ def bundle():
 @click.option("--output", "-o", type=click.Path(), default="./bundles", help="Output directory")
 @click.option("--validate", is_flag=True, help="Validate generated bundle")
 @click.option("--test", is_flag=True, help="Test agent before bundling")
+@log_call
 def generate(prompt: str, output: str, validate: bool, test: bool):
     """Generate an agent bundle from a natural language prompt."""
     try:
@@ -92,6 +96,7 @@ def generate(prompt: str, output: str, validate: bool, test: bool):
     help="Package format",
 )
 @click.option("--output", "-o", type=click.Path(), help="Output path")
+@log_call
 def package(bundle_path: str, format: str, output: str | None):
     """Package a bundle for distribution."""
     try:
@@ -116,6 +121,7 @@ def package(bundle_path: str, format: str, output: str | None):
 @click.option("--pypi", is_flag=True, help="Distribute to PyPI")
 @click.option("--local", is_flag=True, help="Distribute locally")
 @click.option("--release", is_flag=True, help="Create a release")
+@log_call
 def distribute(package_path: str, github: bool, pypi: bool, local: bool, release: bool):
     """Distribute a package."""
     try:
@@ -154,6 +160,7 @@ def distribute(package_path: str, github: bool, pypi: bool, local: bool, release
     "--format", "-f", type=click.Choice(["uvx", "zip"]), default="uvx", help="Package format"
 )
 @click.option("--distribute", "-d", is_flag=True, help="Distribute after packaging")
+@log_call
 def pipeline(prompt: str, output: str, format: str, distribute: bool):
     """Run the complete bundle generation pipeline."""
     try:
@@ -193,6 +200,7 @@ def pipeline(prompt: str, output: str, format: str, distribute: bool):
         raise click.Abort()
 
 
+@log_call
 def register_cli_extensions(cli):
     """Register bundle generator commands with the main CLI."""
     cli.add_command(bundle)

@@ -22,6 +22,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+from amplihack.utils.logging_utils import log_call
+
 # =============================================================================
 # UNIT TESTS (60%)
 # =============================================================================
@@ -30,6 +32,7 @@ import pytest
 class TestIsInteractiveTerminal:
     """Test terminal interactivity detection."""
 
+    @log_call
     def test_is_interactive_when_tty(self):
         """Test returns True when stdin is a TTY."""
         from amplihack.launcher.memory_config import is_interactive_terminal
@@ -37,6 +40,7 @@ class TestIsInteractiveTerminal:
         with patch("sys.stdin.isatty", return_value=True):
             assert is_interactive_terminal() is True
 
+    @log_call
     def test_is_not_interactive_when_not_tty(self):
         """Test returns False when stdin is not a TTY."""
         from amplihack.launcher.memory_config import is_interactive_terminal
@@ -44,6 +48,7 @@ class TestIsInteractiveTerminal:
         with patch("sys.stdin.isatty", return_value=False):
             assert is_interactive_terminal() is False
 
+    @log_call
     def test_is_not_interactive_when_stdin_none(self):
         """Test returns False when stdin is None."""
         from amplihack.launcher.memory_config import is_interactive_terminal
@@ -51,6 +56,7 @@ class TestIsInteractiveTerminal:
         with patch("sys.stdin", None):
             assert is_interactive_terminal() is False
 
+    @log_call
     def test_is_not_interactive_when_no_isatty_method(self):
         """Test returns False when stdin has no isatty method."""
         from amplihack.launcher.memory_config import is_interactive_terminal
@@ -59,6 +65,7 @@ class TestIsInteractiveTerminal:
         with patch("sys.stdin", mock_stdin):
             assert is_interactive_terminal() is False
 
+    @log_call
     def test_is_not_interactive_when_isatty_raises(self):
         """Test returns False when isatty() raises exception."""
         from amplihack.launcher.memory_config import is_interactive_terminal
@@ -72,6 +79,7 @@ class TestIsInteractiveTerminal:
 class TestParseConsentResponse:
     """Test consent response parsing."""
 
+    @log_call
     def test_parse_yes_variants(self):
         """Test parsing various 'yes' responses."""
         from amplihack.launcher.memory_config import parse_consent_response
@@ -82,6 +90,7 @@ class TestParseConsentResponse:
                 f"Expected True for response '{response}'"
             )
 
+    @log_call
     def test_parse_no_variants(self):
         """Test parsing various 'no' responses."""
         from amplihack.launcher.memory_config import parse_consent_response
@@ -92,6 +101,7 @@ class TestParseConsentResponse:
                 f"Expected False for response '{response}'"
             )
 
+    @log_call
     def test_parse_empty_uses_default_true(self):
         """Test that empty string returns default when default=True."""
         from amplihack.launcher.memory_config import parse_consent_response
@@ -100,6 +110,7 @@ class TestParseConsentResponse:
         assert parse_consent_response(None, default=True) is True
         assert parse_consent_response("   ", default=True) is True
 
+    @log_call
     def test_parse_empty_uses_default_false(self):
         """Test that empty string returns default when default=False."""
         from amplihack.launcher.memory_config import parse_consent_response
@@ -108,6 +119,7 @@ class TestParseConsentResponse:
         assert parse_consent_response(None, default=False) is False
         assert parse_consent_response("   ", default=False) is False
 
+    @log_call
     def test_parse_invalid_uses_default_true(self):
         """Test that invalid responses use default when default=True."""
         from amplihack.launcher.memory_config import parse_consent_response
@@ -118,6 +130,7 @@ class TestParseConsentResponse:
                 f"Expected True (default) for invalid response '{response}'"
             )
 
+    @log_call
     def test_parse_invalid_uses_default_false(self):
         """Test that invalid responses use default when default=False."""
         from amplihack.launcher.memory_config import parse_consent_response
@@ -128,6 +141,7 @@ class TestParseConsentResponse:
                 f"Expected False (default) for invalid response '{response}'"
             )
 
+    @log_call
     def test_parse_strips_whitespace(self):
         """Test that whitespace is stripped before parsing."""
         from amplihack.launcher.memory_config import parse_consent_response
@@ -141,6 +155,7 @@ class TestGetUserInputWithTimeoutUnix:
     """Test user input with timeout on Unix systems."""
 
     @pytest.mark.skipif(platform.system() == "Windows", reason="Unix-specific test")
+    @log_call
     def test_get_input_returns_user_input_before_timeout(self):
         """Test returns user input when provided before timeout."""
         from amplihack.launcher.memory_config import get_user_input_with_timeout
@@ -150,10 +165,12 @@ class TestGetUserInputWithTimeoutUnix:
             assert result == "yes"
 
     @pytest.mark.skipif(platform.system() == "Windows", reason="Unix-specific test")
+    @log_call
     def test_get_input_returns_none_on_timeout(self):
         """Test returns None when timeout expires."""
         from amplihack.launcher.memory_config import get_user_input_with_timeout
 
+        @log_call
         def slow_input(*args, **kwargs):
             time.sleep(5)
             return "too late"
@@ -164,6 +181,7 @@ class TestGetUserInputWithTimeoutUnix:
             assert result is None
 
     @pytest.mark.skipif(platform.system() == "Windows", reason="Unix-specific test")
+    @log_call
     def test_get_input_handles_keyboard_interrupt(self):
         """Test handles KeyboardInterrupt gracefully."""
         from amplihack.launcher.memory_config import get_user_input_with_timeout
@@ -173,6 +191,7 @@ class TestGetUserInputWithTimeoutUnix:
             assert result is None
 
     @pytest.mark.skipif(platform.system() == "Windows", reason="Unix-specific test")
+    @log_call
     def test_get_input_handles_eof_error(self):
         """Test handles EOFError gracefully."""
         from amplihack.launcher.memory_config import get_user_input_with_timeout
@@ -182,12 +201,14 @@ class TestGetUserInputWithTimeoutUnix:
             assert result is None
 
     @pytest.mark.skipif(platform.system() == "Windows", reason="Unix-specific test")
+    @log_call
     def test_get_input_logs_timeout_with_logger(self):
         """Test logs timeout message when logger provided."""
         from amplihack.launcher.memory_config import get_user_input_with_timeout
 
         mock_logger = Mock(spec=logging.Logger)
 
+        @log_call
         def slow_input(*args, **kwargs):
             time.sleep(5)
             return "too late"
@@ -201,6 +222,7 @@ class TestGetUserInputWithTimeoutUnix:
             mock_logger.warning.assert_called()
 
     @pytest.mark.skipif(platform.system() == "Windows", reason="Unix-specific test")
+    @log_call
     def test_get_input_uses_signal_on_unix(self):
         """Test uses signal.SIGALRM for timeout on Unix."""
         from amplihack.launcher.memory_config import get_user_input_with_timeout
@@ -219,6 +241,7 @@ class TestGetUserInputWithTimeoutWindows:
     """Test user input with timeout on Windows systems."""
 
     @pytest.mark.skipif(platform.system() != "Windows", reason="Windows-specific test")
+    @log_call
     def test_get_input_uses_threading_on_windows(self):
         """Test uses threading for timeout on Windows."""
         from amplihack.launcher.memory_config import get_user_input_with_timeout
@@ -228,10 +251,12 @@ class TestGetUserInputWithTimeoutWindows:
             assert result == "yes"
 
     @pytest.mark.skipif(platform.system() != "Windows", reason="Windows-specific test")
+    @log_call
     def test_get_input_timeout_on_windows(self):
         """Test timeout works on Windows using threading."""
         from amplihack.launcher.memory_config import get_user_input_with_timeout
 
+        @log_call
         def slow_input(*args, **kwargs):
             time.sleep(5)
             return "too late"
@@ -245,6 +270,7 @@ class TestGetUserInputWithTimeoutWindows:
 class TestEnhancedPromptUserConsent:
     """Test enhanced prompt_user_consent with timeout and default."""
 
+    @log_call
     def test_prompt_uses_default_when_non_interactive(self):
         """Test uses default response when terminal is not interactive."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -263,6 +289,7 @@ class TestEnhancedPromptUserConsent:
             )
             assert result is False
 
+    @log_call
     def test_prompt_uses_default_on_timeout(self):
         """Test uses default response when user input times out."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -279,6 +306,7 @@ class TestEnhancedPromptUserConsent:
                 )
                 assert result is True
 
+    @log_call
     def test_prompt_parses_user_yes_response(self):
         """Test correctly parses user 'yes' response."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -294,6 +322,7 @@ class TestEnhancedPromptUserConsent:
                 )
                 assert result is True
 
+    @log_call
     def test_prompt_parses_user_no_response(self):
         """Test correctly parses user 'no' response."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -309,6 +338,7 @@ class TestEnhancedPromptUserConsent:
                 )
                 assert result is False
 
+    @log_call
     def test_prompt_displays_timeout_in_message(self):
         """Test displays timeout value in prompt message."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -329,6 +359,7 @@ class TestEnhancedPromptUserConsent:
                     args, kwargs = mock_input.call_args
                     assert kwargs.get("timeout_seconds") == 45 or args[1] == 45
 
+    @log_call
     def test_prompt_displays_default_in_message(self):
         """Test displays default response in prompt message."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -352,6 +383,7 @@ class TestEnhancedPromptUserConsent:
                         "default" in str(c).lower() or "y/n" in str(c).lower() for c in print_calls
                     )
 
+    @log_call
     def test_prompt_logs_with_provided_logger(self):
         """Test uses provided logger for messages."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -367,6 +399,7 @@ class TestEnhancedPromptUserConsent:
             # Logger should have been called
             assert mock_logger.info.called or mock_logger.warning.called
 
+    @log_call
     def test_prompt_handles_keyboard_interrupt(self):
         """Test handles KeyboardInterrupt and returns False."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -383,6 +416,7 @@ class TestEnhancedPromptUserConsent:
                 )
                 assert result is False
 
+    @log_call
     def test_prompt_preserves_original_config_dict(self):
         """Test does not modify the config dictionary passed in."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -404,6 +438,7 @@ class TestEnhancedPromptUserConsent:
 class TestMemoryConsentIntegration:
     """Integration tests combining multiple timeout components."""
 
+    @log_call
     def test_non_interactive_flow_uses_default(self):
         """Test complete non-interactive flow uses default without prompting."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -424,6 +459,7 @@ class TestMemoryConsentIntegration:
                     for c in print_calls
                 )
 
+    @log_call
     def test_interactive_yes_flow_complete(self):
         """Test complete interactive flow with user saying yes."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -445,6 +481,7 @@ class TestMemoryConsentIntegration:
                     assert "64" in print_output  # system_ram_gb
                     assert "16384" in print_output  # recommended_limit_mb
 
+    @log_call
     def test_interactive_no_flow_complete(self):
         """Test complete interactive flow with user saying no."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -461,6 +498,7 @@ class TestMemoryConsentIntegration:
 
                 assert result is False
 
+    @log_call
     def test_timeout_flow_with_default_true(self):
         """Test timeout triggers default response of True."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -483,6 +521,7 @@ class TestMemoryConsentIntegration:
                         "timeout" in str(c).lower() for c in mock_print.call_args_list
                     )
 
+    @log_call
     def test_timeout_flow_with_default_false(self):
         """Test timeout triggers default response of False."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -499,6 +538,7 @@ class TestMemoryConsentIntegration:
 
                 assert result is False
 
+    @log_call
     def test_keyboard_interrupt_returns_false(self):
         """Test KeyboardInterrupt is handled and returns False."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -517,6 +557,7 @@ class TestMemoryConsentIntegration:
                 # Ctrl+C should always return False, even with default=True
                 assert result is False
 
+    @log_call
     def test_invalid_response_uses_default(self):
         """Test invalid user response uses default value."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -548,6 +589,7 @@ class TestMemoryConsentE2E:
     """End-to-end tests for complete memory consent workflow."""
 
     @pytest.mark.skip(reason="Manual testing - requires real terminal interaction")
+    @log_call
     def test_e2e_interactive_terminal_user_types_yes(self):
         """
         MANUAL E2E TEST: Interactive terminal with user typing 'yes'
@@ -567,6 +609,7 @@ class TestMemoryConsentE2E:
         assert result is True
 
     @pytest.mark.skip(reason="Manual testing - requires real terminal interaction")
+    @log_call
     def test_e2e_interactive_terminal_timeout(self):
         """
         MANUAL E2E TEST: Interactive terminal with timeout
@@ -584,6 +627,7 @@ class TestMemoryConsentE2E:
         assert result is True  # Should use default
 
     @pytest.mark.skip(reason="Manual testing - requires non-interactive environment")
+    @log_call
     def test_e2e_non_interactive_environment(self):
         """
         MANUAL E2E TEST: Non-interactive environment (piped input, CI/CD)
@@ -601,6 +645,7 @@ class TestMemoryConsentE2E:
         assert result is True
 
     @pytest.mark.skip(reason="Manual testing - requires keyboard interrupt")
+    @log_call
     def test_e2e_keyboard_interrupt(self):
         """
         MANUAL E2E TEST: User presses Ctrl+C during prompt
@@ -626,6 +671,7 @@ class TestMemoryConsentE2E:
 class TestTimeoutEdgeCases:
     """Test edge cases and error conditions."""
 
+    @log_call
     def test_zero_timeout_returns_default_immediately(self):
         """Test zero timeout uses default without waiting."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -639,6 +685,7 @@ class TestTimeoutEdgeCases:
             )
             assert result is True
 
+    @log_call
     def test_negative_timeout_raises_or_uses_default(self):
         """Test negative timeout is handled gracefully."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -657,6 +704,7 @@ class TestTimeoutEdgeCases:
                 # Or it should raise ValueError for invalid timeout
                 pass
 
+    @log_call
     def test_very_large_timeout_works(self):
         """Test very large timeout value works correctly."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -673,6 +721,7 @@ class TestTimeoutEdgeCases:
                 )
                 assert result is True
 
+    @log_call
     def test_empty_config_dict(self):
         """Test handles empty config dict gracefully."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -686,6 +735,7 @@ class TestTimeoutEdgeCases:
             )
             assert result is True
 
+    @log_call
     def test_config_with_missing_keys(self):
         """Test handles config with missing optional keys."""
         from amplihack.launcher.memory_config import prompt_user_consent

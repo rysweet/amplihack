@@ -8,6 +8,7 @@ from amplihack.vendor.blarify.project_file_explorer import File
 from tree_sitter import Parser, Tree
 
 from .languages import BodyNodeNotFound, FallbackDefinitions, LanguageDefinitions
+from amplihack.utils.logging_utils import log_call
 
 if TYPE_CHECKING:
     from ..code_references.types import Reference
@@ -24,6 +25,7 @@ class TreeSitterHelper:
     created_nodes: list["Node"]
     graph_environment: Optional["GraphEnvironment"]
 
+    @log_call
     def __init__(
         self,
         language_definitions: type[LanguageDefinitions],
@@ -33,10 +35,12 @@ class TreeSitterHelper:
         self.parsers = self.language_definitions.get_parsers_for_extensions()
         self.graph_environment = graph_environment
 
+    @log_call
     def get_all_identifiers(self, node: "FileNode") -> list["Reference"]:
         self.current_path = node.path
         return self._traverse_and_find_identifiers(node._tree_sitter_node)
 
+    @log_call
     def _traverse_and_find_identifiers(self, node: "TreeSitterNode") -> list["Reference"]:
         identifiers = []
 
@@ -49,6 +53,7 @@ class TreeSitterHelper:
 
         return identifiers
 
+    @log_call
     def get_reference_type(
         self,
         original_node: "DefinitionNode",
@@ -69,6 +74,7 @@ class TreeSitterHelper:
 
         return found_relationship_scope
 
+    @log_call
     def _get_node_in_point_reference(
         self, node: "DefinitionNode", reference: "Reference"
     ) -> "TreeSitterNode":
@@ -78,6 +84,7 @@ class TreeSitterHelper:
 
         return node._tree_sitter_node.descendant_for_point_range(start_point, end_point)
 
+    @log_call
     def create_nodes_and_relationships_in_file(
         self, file: File, parent_folder: Optional["FolderNode"] = None
     ) -> list["Node"]:
@@ -94,6 +101,7 @@ class TreeSitterHelper:
 
         return [file_node]
 
+    @log_call
     def _does_path_have_valid_extension(self, path: str) -> bool:
         if self.language_definitions == FallbackDefinitions:
             return False
@@ -102,6 +110,7 @@ class TreeSitterHelper:
             for extension in self.language_definitions.get_language_file_extensions()
         )
 
+    @log_call
     def _handle_paths_with_valid_extension(
         self, file: File, parent_folder: Optional["FolderNode"] = None
     ) -> None:
@@ -114,11 +123,13 @@ class TreeSitterHelper:
 
         self._traverse(tree.root_node, context_stack=[file_node])
 
+    @log_call
     def _parse(self, code: str, extension: str) -> Tree:
         parser = self.parsers[extension]
         as_bytes = bytes(code, "utf-8")
         return parser.parse(as_bytes)
 
+    @log_call
     def _create_file_node_from_module_node(
         self, module_node: "TreeSitterNode", file: File, parent_folder: "FolderNode" = None
     ) -> "Node":
@@ -135,6 +146,7 @@ class TreeSitterHelper:
             graph_environment=self.graph_environment,
         )
 
+    @log_call
     def _get_content_from_file(self, file: File) -> str:
         try:
             with open(file.path) as file:
@@ -143,6 +155,7 @@ class TreeSitterHelper:
             # if content cannot be read, return empty string
             return ""
 
+    @log_call
     def _traverse(self, tree_sitter_node: "TreeSitterNode", context_stack: list["Node"]) -> None:
         """Perform a recursive preorder traversal of the tree."""
 
@@ -162,6 +175,7 @@ class TreeSitterHelper:
         if node_was_created:
             context_stack.pop()
 
+    @log_call
     def _handle_definition_node(
         self, tree_sitter_node: "TreeSitterNode", context_stack: list["Node"]
     ) -> "Node":
@@ -190,16 +204,19 @@ class TreeSitterHelper:
         parent_node.relate_node_as_define_relationship(node)
         return node
 
+    @log_call
     def _process_identifier_node(self, node: "TreeSitterNode") -> tuple[str, "Reference"]:
         identifier_node = self.language_definitions.get_identifier_node(node)
         identifier_reference = self._get_reference_from_node(node=identifier_node)
         identifier_name = self._get_identifier_name(identifier_node=identifier_node)
         return identifier_name, identifier_reference
 
+    @log_call
     def _get_identifier_name(self, identifier_node: str) -> str:
         identifier_name = identifier_node.text.decode("utf-8")
         return identifier_name
 
+    @log_call
     def _get_code_snippet_from_base_file(self, node_range: "Range") -> str:
         start_line = node_range.start.line
         end_line = node_range.end.line
@@ -207,6 +224,7 @@ class TreeSitterHelper:
         code_snippet = "\n".join(code_lines[start_line : end_line + 1])
         return code_snippet
 
+    @log_call
     def _get_reference_from_node(self, node: "TreeSitterNode") -> "Reference":
         return Reference(
             range=Range(
@@ -216,27 +234,33 @@ class TreeSitterHelper:
             uri=self.current_path,
         )
 
+    @log_call
     def _process_node_snippet(self, node: "TreeSitterNode") -> tuple[str, "Reference"]:
         node_reference = self._get_reference_from_node(node)
         node_snippet = self._get_code_snippet_from_base_file(node_reference.range)
         return node_snippet, node_reference
 
+    @log_call
     def _try_process_body_node_snippet(self, node: "TreeSitterNode") -> tuple[str, "Reference"]:
         try:
             return self._process_body_node_snippet(node)
         except BodyNodeNotFound:
             return None
 
+    @log_call
     def _process_body_node_snippet(self, node: "TreeSitterNode") -> tuple[str, "Reference"]:
         body_node = self.language_definitions.get_body_node(node)
         return body_node
 
+    @log_call
     def _get_label_from_node(self, node: "TreeSitterNode") -> NodeLabels:
         return self.language_definitions.get_node_label_from_type(node.type)
 
+    @log_call
     def get_parent_node(self, context_stack: list["Node"]) -> "DefinitionNode":
         return context_stack[-1]
 
+    @log_call
     def _create_file_node_from_raw_file(
         self, file: File, parent_folder: Optional["FolderNode"] = None
     ) -> "FileNode":
@@ -253,6 +277,7 @@ class TreeSitterHelper:
             graph_environment=self.graph_environment,
         )
 
+    @log_call
     def _empty_reference(self) -> "Reference":
         return Reference(
             range=Range(

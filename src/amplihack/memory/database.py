@@ -10,11 +10,14 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 from .models import MemoryEntry, MemoryQuery, MemoryType, SessionInfo
 
 logger = logging.getLogger(__name__)
 
 
+@log_call
 def _sanitize_error(error: Exception, operation: str) -> str:
     """Sanitize error messages to prevent information leakage.
 
@@ -36,6 +39,7 @@ def _sanitize_error(error: Exception, operation: str) -> str:
 class MemoryDatabase:
     """Thread-safe SQLite database for agent memory storage."""
 
+    @log_call
     def __init__(self, db_path: Path | str | None = None):
         """Initialize database connection.
 
@@ -52,6 +56,7 @@ class MemoryDatabase:
         self._connection: sqlite3.Connection | None = None
         self._init_database()
 
+    @log_call
     def _init_database(self) -> None:
         """Initialize database schema with secure permissions."""
         # Create parent directory with secure permissions
@@ -70,10 +75,12 @@ class MemoryDatabase:
         self._migrate_schema(conn)
         self._create_indexes(conn)
 
+    @log_call
     def initialize(self) -> None:
         """Public method to initialize database (alias for _init_database)."""
         self._init_database()
 
+    @log_call
     def _get_connection(self) -> sqlite3.Connection:
         """Get or create pooled database connection with proper configuration.
 
@@ -112,6 +119,7 @@ class MemoryDatabase:
             self._connection = conn
             return conn
 
+    @log_call
     def _create_tables(self, conn: sqlite3.Connection) -> None:
         """Create database tables."""
         # Main memory entries table
@@ -159,6 +167,7 @@ class MemoryDatabase:
 
         conn.commit()
 
+    @log_call
     def _migrate_schema(self, conn: sqlite3.Connection) -> None:
         """Migrate existing schema to add new columns.
 
@@ -186,6 +195,7 @@ class MemoryDatabase:
             logger.info("Schema migration complete")
             conn.commit()
 
+    @log_call
     def _create_indexes(self, conn: sqlite3.Connection) -> None:
         """Create indexes for efficient queries."""
         indexes = [
@@ -211,15 +221,18 @@ class MemoryDatabase:
 
         conn.commit()
 
+    @log_call
     def __enter__(self):
         """Context manager entry."""
         return self
 
+    @log_call
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit with proper cleanup."""
         self.close()
         return False
 
+    @log_call
     def close(self) -> None:
         """Close database connection and cleanup resources."""
         with self._lock:
@@ -232,6 +245,7 @@ class MemoryDatabase:
                     self._connection = None
 
     @staticmethod
+    @log_call
     def _compute_content_hash(content: str) -> str:
         """Compute SHA256 hash of content for O(1) duplicate detection.
 
@@ -243,6 +257,7 @@ class MemoryDatabase:
         """
         return hashlib.sha256(content.encode("utf-8")).hexdigest()
 
+    @log_call
     def store_memory(self, memory: MemoryEntry) -> bool:
         """Store a memory entry.
 
@@ -300,6 +315,7 @@ class MemoryDatabase:
                 logger.error(sanitized_msg)
                 return False
 
+    @log_call
     def retrieve_memories(self, query: MemoryQuery) -> list[MemoryEntry]:
         """Retrieve memories matching the query.
 
@@ -363,6 +379,7 @@ class MemoryDatabase:
                 logger.error(sanitized_msg)
                 return []
 
+    @log_call
     def get_memory_by_id(self, memory_id: str) -> MemoryEntry | None:
         """Get a specific memory by ID.
 
@@ -411,6 +428,7 @@ class MemoryDatabase:
 
         return None
 
+    @log_call
     def delete_memory(self, memory_id: str) -> bool:
         """Delete a memory entry.
 
@@ -435,6 +453,7 @@ class MemoryDatabase:
                 logger.error(sanitized_msg)
                 return False
 
+    @log_call
     def cleanup_expired(self) -> int:
         """Remove expired memory entries.
 
@@ -462,6 +481,7 @@ class MemoryDatabase:
                 logger.error(sanitized_msg)
                 return 0
 
+    @log_call
     def get_session_info(self, session_id: str) -> SessionInfo | None:
         """Get information about a session.
 
@@ -525,6 +545,7 @@ class MemoryDatabase:
 
         return None
 
+    @log_call
     def list_sessions(self, limit: int | None = None) -> list[SessionInfo]:
         """List all sessions ordered by last accessed.
 
@@ -595,6 +616,7 @@ class MemoryDatabase:
                 logger.error(sanitized_msg)
                 return []
 
+    @log_call
     def delete_session(self, session_id: str) -> bool:
         """Delete a session and all its associated memories.
 
@@ -639,6 +661,7 @@ class MemoryDatabase:
                 logger.error(sanitized_msg)
                 return False
 
+    @log_call
     def get_stats(self) -> dict[str, Any]:
         """Get database statistics.
 
@@ -689,6 +712,7 @@ class MemoryDatabase:
                 logger.error(sanitized_msg)
                 return {}
 
+    @log_call
     def _update_session(self, conn: sqlite3.Connection, session_id: str, agent_id: str) -> None:
         """Update session and agent tracking."""
         now = datetime.now().isoformat()
@@ -711,6 +735,7 @@ class MemoryDatabase:
             (session_id, agent_id, session_id, agent_id, now, now),
         )
 
+    @log_call
     def _row_to_memory(self, row: tuple) -> MemoryEntry | None:
         """Convert database row to MemoryEntry."""
         try:

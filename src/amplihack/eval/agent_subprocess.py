@@ -12,8 +12,10 @@ import tempfile
 from pathlib import Path
 
 from amplihack.agents.goal_seeking import LearningAgent
+from amplihack.utils.logging_utils import log_call
 
 
+@log_call
 def _compute_dynamic_confidence(trace, stats: dict, level: str) -> float:
     """Compute dynamic confidence based on fact coverage and reasoning trace.
 
@@ -62,6 +64,7 @@ def _compute_dynamic_confidence(trace, stats: dict, level: str) -> float:
     return min(1.0, max(0.1, round(base_confidence, 2)))
 
 
+@log_call
 def learning_phase(news_articles: list[dict], agent_name: str, sdk: str = "mini") -> dict:
     """Learning phase: Store news articles using LearningAgent with hierarchical memory.
 
@@ -131,6 +134,7 @@ def learning_phase(news_articles: list[dict], agent_name: str, sdk: str = "mini"
     }
 
 
+@log_call
 def testing_phase(quiz_questions: list[dict], agent_name: str, sdk: str = "mini") -> dict:
     """Testing phase: Answer questions using LearningAgent with hierarchical memory.
 
@@ -213,6 +217,7 @@ def testing_phase(quiz_questions: list[dict], agent_name: str, sdk: str = "mini"
     return {"status": "success", "answers": answers, "sdk": sdk}
 
 
+@log_call
 def main():
     """Main entry point for subprocess."""
     import argparse

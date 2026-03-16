@@ -4,14 +4,18 @@ import os
 import shutil
 import subprocess
 
+from amplihack.utils.logging_utils import log_call
+
 
 class DockerDetector:
     """Detects Docker availability and configuration."""
 
+    @log_call
     def is_available(self) -> bool:
         """Check if Docker is installed."""
         return shutil.which("docker") is not None
 
+    @log_call
     def is_running(self) -> bool:
         """Check if Docker daemon is running."""
         if not self.is_available():
@@ -29,6 +33,7 @@ class DockerDetector:
         except (subprocess.TimeoutExpired, subprocess.SubprocessError):
             return False
 
+    @log_call
     def should_use_docker(self) -> bool:
         """Determine if Docker should be used."""
         # Check environment variable
@@ -42,6 +47,7 @@ class DockerDetector:
         # Check Docker availability
         return self.is_running()
 
+    @log_call
     def is_in_docker(self) -> bool:
         """Check if running inside a Docker container."""
         # Check environment variable we set
@@ -62,6 +68,7 @@ class DockerDetector:
 
         return False
 
+    @log_call
     def check_image_exists(self, image_name: str) -> bool:
         """Check if a Docker image exists locally."""
         if not self.is_running():

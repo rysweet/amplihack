@@ -8,6 +8,8 @@ import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 from .staging_safety import is_safe_to_delete
 
 logger = logging.getLogger(__name__)
@@ -22,6 +24,7 @@ class CleanupResult:
     errors: list[tuple[Path, str]] = field(default_factory=list)  # Failed with error
 
 
+@log_call
 def cleanup_legacy_skills(
     dry_run: bool = False, legacy_dirs: list[Path] | None = None
 ) -> CleanupResult:

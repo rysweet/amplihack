@@ -7,6 +7,7 @@ from langchain_core.tools import BaseTool
 from pydantic import BaseModel
 from pydantic.fields import FieldInfo
 from pydantic_core import PydanticUndefined
+from amplihack.utils.logging_utils import log_call
 
 logger = logging.getLogger(__name__)
 
@@ -14,12 +15,14 @@ logger = logging.getLogger(__name__)
 class MCPToolWrapper:
     """Wrapper to adapt Langchain tools to MCP protocol."""
 
+    @log_call
     def __init__(self, langchain_tool: BaseTool) -> None:
         """Initialize wrapper with a Langchain tool."""
         self.langchain_tool = langchain_tool
         self.name = langchain_tool.name
         self.description = langchain_tool.description or ""
 
+    @log_call
     def get_mcp_schema(self) -> dict[str, Any]:
         """Convert Langchain tool schema to MCP format."""
         if not hasattr(self.langchain_tool, "args_schema") or not self.langchain_tool.args_schema:
@@ -31,6 +34,7 @@ class MCPToolWrapper:
             return {"type": "object", "properties": {}, "required": []}
         return self._pydantic_to_mcp_schema(schema_class)
 
+    @log_call
     def _pydantic_to_mcp_schema(self, model: type[BaseModel]) -> dict[str, Any]:
         """Convert Pydantic model to MCP JSON schema."""
         properties = {}
@@ -46,6 +50,7 @@ class MCPToolWrapper:
 
         return {"type": "object", "properties": properties, "required": required}
 
+    @log_call
     def _field_to_json_schema(self, field_info: FieldInfo) -> dict[str, Any]:
         """Convert a Pydantic field to JSON schema."""
         schema: dict[str, Any] = {}
@@ -109,6 +114,7 @@ class MCPToolWrapper:
 
         return schema
 
+    @log_call
     async def invoke(self, arguments: dict[str, Any]) -> Any:
         """Invoke the wrapped Langchain tool."""
         try:
@@ -124,6 +130,7 @@ class MCPToolWrapper:
             logger.error(f"Error invoking tool {self.name}: {e}")
             return f"Error: {e!s}"
 
+    @log_call
     def to_mcp_tool_definition(self) -> dict[str, Any]:
         """Get the complete MCP tool definition."""
         return {

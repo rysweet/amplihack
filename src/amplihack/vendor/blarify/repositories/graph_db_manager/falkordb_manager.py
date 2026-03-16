@@ -5,6 +5,7 @@ from typing import Any
 from amplihack.vendor.blarify.repositories.graph_db_manager.db_manager import AbstractDbManager
 from dotenv import load_dotenv
 from falkordb import FalkorDB
+from amplihack.utils.logging_utils import log_call
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +17,7 @@ class FalkorDBManager(AbstractDbManager):
     repo_id: str
     db: FalkorDB
 
+    @log_call
     def __init__(
         self,
         repo_id: str = None,
@@ -34,13 +36,16 @@ class FalkorDBManager(AbstractDbManager):
         self.repo_id = repo_id if repo_id is not None else "default_repo"
         self.entity_id = entity_id if entity_id is not None else "default_user"
 
+    @log_call
     def close(self):
         pass
 
+    @log_call
     def save_graph(self, nodes: list[Any], edges: list[Any]):
         self.create_nodes(nodes)
         self.create_edges(edges)
 
+    @log_call
     def create_nodes(self, nodeList: list[dict]):
         graph = self.db.select_graph(self.repo_id)
         cypher_query = """
@@ -57,6 +62,7 @@ class FalkorDBManager(AbstractDbManager):
             params={"nodes": nodeList},
         )
 
+    @log_call
     def create_edges(self, edgesList: list[dict]):
         graph = self.db.select_graph(self.repo_id)
 
@@ -86,12 +92,14 @@ class FalkorDBManager(AbstractDbManager):
 
             graph.query(cypher_query, params=params)
 
+    @log_call
     def detach_delete_nodes_with_path(self, path: str):
         graph = self.db.select_graph(self.repo_id)
         cypher_query = "MATCH (n {path: $path}) DETACH DELETE n"
         result = graph.query(cypher_query, params={"path": path})
         return result.result_set
 
+    @log_call
     def query(self, cypher_query: str, parameters: dict[str, Any] = None) -> list[dict[str, Any]]:
         """
         Execute a Cypher query and return the results.

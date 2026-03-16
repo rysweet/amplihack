@@ -11,9 +11,12 @@ import os
 import time
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 logger = logging.getLogger(__name__)
 
 
+@log_call
 def import_recipe_runner():
     """Try to import recipe runner."""
     try:
@@ -24,6 +27,7 @@ def import_recipe_runner():
         raise ImportError("Recipe Runner not available")
 
 
+@log_call
 def import_workflow_skills():
     """Try to import workflow skills.
 
@@ -59,6 +63,7 @@ class ExecutionTierCascade:
         "OPS_WORKFLOW": None,  # OPS doesn't use recipes
     }
 
+    @log_call
     def __init__(
         self,
         recipe_runner=None,
@@ -76,6 +81,7 @@ class ExecutionTierCascade:
         self._workflow_skill = workflow_skill
         self._tier_priority = tier_priority or [1, 2, 3]
 
+    @log_call
     def detect_available_tier(self) -> int:
         """Detect highest available tier.
 
@@ -94,6 +100,7 @@ class ExecutionTierCascade:
         # Default to tier 3 (markdown)
         return 3
 
+    @log_call
     def is_recipe_runner_available(self) -> bool:
         """Check if Recipe Runner is available and enabled.
 
@@ -118,6 +125,7 @@ class ExecutionTierCascade:
             print("WARNING: Recipe Runner not available", file=sys.stderr)
             return False
 
+    @log_call
     def is_recipe_runner_enabled(self) -> bool:
         """Check if Recipe Runner is enabled via environment variable.
 
@@ -127,6 +135,7 @@ class ExecutionTierCascade:
         env_value = os.environ.get("AMPLIHACK_USE_RECIPES", "1")
         return env_value != "0"
 
+    @log_call
     def is_workflow_skills_available(self) -> bool:
         """Check if Workflow Skills are available.
 
@@ -147,6 +156,7 @@ class ExecutionTierCascade:
             print("WARNING: Workflow Skills not available", file=sys.stderr)
             return False
 
+    @log_call
     def is_markdown_available(self) -> bool:
         """Check if Markdown workflow is available.
 
@@ -157,6 +167,7 @@ class ExecutionTierCascade:
         """
         return True
 
+    @log_call
     def workflow_to_recipe_name(self, workflow: str) -> str | None:
         """Map workflow name to recipe file name.
 
@@ -168,6 +179,7 @@ class ExecutionTierCascade:
         """
         return self.WORKFLOW_RECIPE_MAP.get(workflow)
 
+    @log_call
     def execute(self, workflow: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
         """Execute workflow via highest available tier with fallback.
 
@@ -249,6 +261,7 @@ class ExecutionTierCascade:
             logger.error(f"All tiers failed, including Tier 3 (Markdown): {e}")
             raise
 
+    @log_call
     def _execute_tier1(self, workflow: str, context: dict[str, Any]) -> dict[str, Any]:
         """Execute via Tier 1: Recipe Runner.
 
@@ -292,6 +305,7 @@ class ExecutionTierCascade:
             "recipe": recipe_name,
         }
 
+    @log_call
     def _execute_tier2(self, workflow: str, context: dict[str, Any]) -> dict[str, Any]:
         """Execute via Tier 2: Workflow Skills.
 
@@ -316,6 +330,7 @@ class ExecutionTierCascade:
             "workflow": workflow,
         }
 
+    @log_call
     def _execute_tier3(self, workflow: str, context: dict[str, Any]) -> dict[str, Any]:
         """Execute via Tier 3: Markdown.
 

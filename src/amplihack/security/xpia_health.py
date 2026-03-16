@@ -18,7 +18,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
 
+
+@log_call
 def check_hook_file_exists(hook_path: str) -> dict[str, Any]:
     """Check if a hook file exists and is executable"""
     path = Path(hook_path).expanduser()
@@ -43,6 +46,7 @@ def check_hook_file_exists(hook_path: str) -> dict[str, Any]:
     return {"status": "ok", "path": str(path), "message": "Hook file exists and is executable"}
 
 
+@log_call
 def check_settings_json_hooks(settings_path: Path | None = None) -> dict[str, Any]:
     """Check if XPIA hooks are configured in settings.json"""
     if settings_path is None:
@@ -104,6 +108,7 @@ def check_settings_json_hooks(settings_path: Path | None = None) -> dict[str, An
         return {"status": "error", "error": str(e), "message": f"Error reading settings.json: {e}"}
 
 
+@log_call
 def check_xpia_log_directory() -> dict[str, Any]:
     """Check if XPIA log directory exists and is writable"""
     log_dir = Path.home() / ".claude" / "logs" / "xpia"
@@ -146,6 +151,7 @@ def check_xpia_log_directory() -> dict[str, Any]:
         }
 
 
+@log_call
 def check_xpia_modules() -> dict[str, Any]:
     """Check if XPIA modules are importable"""
     try:
@@ -175,6 +181,7 @@ def check_xpia_modules() -> dict[str, Any]:
         return {"status": "error", "error": str(e), "message": f"Error checking XPIA modules: {e}"}
 
 
+@log_call
 def get_xpia_hook_paths() -> list[str]:
     """Get list of expected XPIA hook file paths"""
     home_dir = Path.home()
@@ -188,6 +195,7 @@ def get_xpia_hook_paths() -> list[str]:
     ]
 
 
+@log_call
 def check_xpia_health(settings_path: Path | None = None) -> dict[str, Any]:
     """
     Comprehensive XPIA health check
@@ -283,6 +291,7 @@ def check_xpia_health(settings_path: Path | None = None) -> dict[str, Any]:
     return health_report
 
 
+@log_call
 def print_health_report(health_report: dict[str, Any], verbose: bool = False) -> None:
     """Print formatted health report"""
     status_emoji = {
@@ -324,6 +333,7 @@ def print_health_report(health_report: dict[str, Any], verbose: bool = False) ->
     print()
 
 
+@log_call
 def main():
     """CLI interface for XPIA health check"""
     import argparse

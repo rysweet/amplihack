@@ -12,6 +12,8 @@ Philosophy: Rule-based generation, deterministic output.
 import re
 from dataclasses import dataclass
 
+from amplihack.utils.logging_utils import log_call
+
 from .multi_source_collector import NewsArticle
 
 
@@ -25,6 +27,7 @@ class QuizQuestion:
     source_urls: list[str]
 
 
+@log_call
 def generate_quiz(
     articles: list[NewsArticle], levels: list[str] | None = None
 ) -> list[QuizQuestion]:
@@ -57,6 +60,7 @@ def generate_quiz(
     return questions
 
 
+@log_call
 def _generate_l1_recall(articles: list[NewsArticle]) -> list[QuizQuestion]:
     """Generate L1 (recall) questions - direct facts."""
     questions = []
@@ -98,6 +102,7 @@ def _generate_l1_recall(articles: list[NewsArticle]) -> list[QuizQuestion]:
     return questions
 
 
+@log_call
 def _generate_l2_inference(articles: list[NewsArticle]) -> list[QuizQuestion]:
     """Generate L2 (inference) questions - reasoning from facts."""
     questions = []
@@ -141,6 +146,7 @@ def _generate_l2_inference(articles: list[NewsArticle]) -> list[QuizQuestion]:
     return questions
 
 
+@log_call
 def _generate_l3_synthesis(articles: list[NewsArticle]) -> list[QuizQuestion]:
     """Generate L3 (synthesis) questions - combining multiple sources."""
     questions = []
@@ -172,6 +178,7 @@ def _generate_l3_synthesis(articles: list[NewsArticle]) -> list[QuizQuestion]:
     return questions
 
 
+@log_call
 def _generate_l4_application(articles: list[NewsArticle]) -> list[QuizQuestion]:
     """Generate L4 (application) questions - applying to new scenarios."""
     questions = []
@@ -188,6 +195,7 @@ def _generate_l4_application(articles: list[NewsArticle]) -> list[QuizQuestion]:
     return questions
 
 
+@log_call
 def _extract_sentence_with_entity(content: str, entity: str) -> str:
     """Extract sentence containing the entity."""
     sentences = content.split(". ")
@@ -197,6 +205,7 @@ def _extract_sentence_with_entity(content: str, entity: str) -> str:
     return content[:100]
 
 
+@log_call
 def _extract_reasoning_context(content: str) -> str:
     """Extract reasoning/causal context from content."""
     sentences = content.split(". ")
@@ -209,6 +218,7 @@ def _extract_reasoning_context(content: str) -> str:
     return content[:150]
 
 
+@log_call
 def _extract_forward_looking_statement(content: str) -> str:
     """Extract forward-looking statements."""
     sentences = content.split(". ")
@@ -221,6 +231,7 @@ def _extract_forward_looking_statement(content: str) -> str:
     return content[:150]
 
 
+@log_call
 def _identify_common_theme(article1: NewsArticle, article2: NewsArticle) -> str:
     """Identify common theme between articles."""
     # Simplified - just note both articles exist

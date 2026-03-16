@@ -6,6 +6,8 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 
 class MemoryType(Enum):
     """Types of memory entries.
@@ -67,6 +69,7 @@ class MemoryEntry:
     expires_at: datetime | None = None
     parent_id: str | None = None  # For hierarchical memories
 
+    @log_call
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         return {
@@ -86,6 +89,7 @@ class MemoryEntry:
         }
 
     @classmethod
+    @log_call
     def from_dict(cls, data: dict[str, Any]) -> "MemoryEntry":
         """Create from dictionary."""
         return cls(
@@ -106,11 +110,13 @@ class MemoryEntry:
             parent_id=data.get("parent_id"),
         )
 
+    @log_call
     def to_json(self) -> str:
         """Convert to JSON string."""
         return json.dumps(self.to_dict(), default=str)
 
     @classmethod
+    @log_call
     def from_json(cls, json_str: str) -> "MemoryEntry":
         """Create from JSON string."""
         return cls.from_dict(json.loads(json_str))
@@ -127,6 +133,7 @@ class SessionInfo:
     memory_count: int
     metadata: dict[str, Any]
 
+    @log_call
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
@@ -155,6 +162,7 @@ class MemoryQuery:
     offset: int | None = None
     include_expired: bool = False
 
+    @log_call
     def __post_init__(self):
         """Validate query parameters to prevent SQL injection and logic errors."""
         # Validate limit
@@ -195,6 +203,7 @@ class MemoryQuery:
         if self.agent_id and not self.agent_id.replace("-", "").replace("_", "").isalnum():
             raise ValueError(f"agent_id contains invalid characters: {self.agent_id}")
 
+    @log_call
     def to_sql_where(self) -> tuple[str, list[Any]]:
         """Convert to SQL WHERE clause and parameters."""
         conditions = []

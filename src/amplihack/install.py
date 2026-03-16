@@ -12,12 +12,13 @@ Public API (the "studs"):
     ensure_dirs: Ensure base Claude directory exists
 """
 
-import json
 import os
 import shutil
 import stat
 import sys
 from pathlib import Path
+
+from amplihack.utils.logging_utils import log_call
 
 # Import constants from package root
 from . import (
@@ -29,6 +30,7 @@ from . import (
 )
 
 
+@log_call
 def ensure_dirs() -> None:
     """Ensure that the Claude directory exists.
 
@@ -38,6 +40,7 @@ def ensure_dirs() -> None:
     os.makedirs(CLAUDE_DIR, exist_ok=True)
 
 
+@log_call
 def copytree_manifest(
     repo_root: str, dst: str, rel_top: str = ".claude", manifest=None
 ) -> list[str]:
@@ -96,6 +99,7 @@ def copytree_manifest(
             # If file_filter is provided, use it to filter which files to copy
             if file_filter:
 
+                @log_call
                 def ignore_function(directory, contents):
                     """Filter function for shutil.copytree to skip files based on profile.
 
@@ -222,6 +226,7 @@ def copytree_manifest(
     return copied
 
 
+@log_call
 def create_runtime_dirs():
     """Create necessary runtime directories."""
     for dir_path in RUNTIME_DIRS:
@@ -236,6 +241,7 @@ def create_runtime_dirs():
             print(f"  ❌ Error creating {dir_path}: {e}")
 
 
+@log_call
 def all_rel_dirs(base: str) -> set[str]:
     """Get all relative directory paths from base directory."""
     result = set()
@@ -245,6 +251,7 @@ def all_rel_dirs(base: str) -> set[str]:
     return result
 
 
+@log_call
 def get_all_files_and_dirs(root_dirs: list[str]) -> tuple[list[str], list[str]]:
     """Get all files and directories from root directories.
 
@@ -268,6 +275,7 @@ def get_all_files_and_dirs(root_dirs: list[str]) -> tuple[list[str], list[str]]:
     return sorted(all_files), sorted(all_dirs)
 
 
+@log_call
 def write_manifest(files: list[str], dirs: list[str]) -> None:
     """Write manifest file with list of files and directories."""
     from .settings import write_json_atomic
@@ -276,6 +284,7 @@ def write_manifest(files: list[str], dirs: list[str]) -> None:
     write_json_atomic(MANIFEST_JSON, {"files": files, "dirs": dirs})
 
 
+@log_call
 def _local_install(repo_root, profile_uri=None):
     """Install amplihack files from the given repo_root directory.
 
@@ -414,12 +423,17 @@ def _local_install(repo_root, profile_uri=None):
             print("   ✅ recipe-runner-rs is available")
         else:
             print("   ❌ recipe-runner-rs not installed (recipe execution will fail without it)")
-            print("   Install: cargo install --git https://github.com/rysweet/amplihack-recipe-runner")
+            print(
+                "   Install: cargo install --git https://github.com/rysweet/amplihack-recipe-runner"
+            )
     except Exception as e:
         print(f"   ⚠️  recipe-runner-rs check failed: {e}")
         import logging as _install_logging
+
         _install_logging.getLogger(__name__).warning(
-            "Could not ensure recipe-runner-rs: %s", e, exc_info=True,
+            "Could not ensure recipe-runner-rs: %s",
+            e,
+            exc_info=True,
         )
 
     # Step 7: Generate manifest for uninstall

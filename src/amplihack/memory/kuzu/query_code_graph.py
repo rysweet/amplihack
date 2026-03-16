@@ -23,7 +23,10 @@ import argparse
 import json
 import sys
 
+from amplihack.utils.logging_utils import log_call
 
+
+@log_call
 def get_connector(db_path: str | None = None):
     """Get a KuzuConnector, finding the database automatically."""
     from amplihack.memory.kuzu.connector import KuzuConnector
@@ -33,6 +36,7 @@ def get_connector(db_path: str | None = None):
     return conn
 
 
+@log_call
 def cmd_stats(args):
     """Show code graph statistics."""
     conn = get_connector(args.db)
@@ -60,6 +64,7 @@ def cmd_stats(args):
         print(f"  Functions: {results['functions']}")
 
 
+@log_call
 def cmd_files(args):
     """List indexed files."""
     conn = get_connector(args.db)
@@ -83,6 +88,7 @@ def cmd_files(args):
             print(f"... (showing first {args.limit}, use --limit to see more)")
 
 
+@log_call
 def cmd_functions(args):
     """List functions, optionally filtered by file."""
     conn = get_connector(args.db)
@@ -119,6 +125,7 @@ def cmd_functions(args):
             print(f"... (showing first {args.limit}, use --limit to see more)")
 
 
+@log_call
 def cmd_classes(args):
     """List classes, optionally filtered by file."""
     conn = get_connector(args.db)
@@ -147,6 +154,7 @@ def cmd_classes(args):
             print(f"... (showing first {args.limit}, use --limit to see more)")
 
 
+@log_call
 def cmd_search(args):
     """Search for a symbol by name (functions, classes, files)."""
     conn = get_connector(args.db)
@@ -187,6 +195,7 @@ def cmd_search(args):
                 print(f"  [{r['type']}] {r['name']}")
 
 
+@log_call
 def cmd_callers(args):
     """Find functions that call a given function."""
     conn = get_connector(args.db)
@@ -212,6 +221,7 @@ def cmd_callers(args):
         print(f"Error querying callers: {e}", file=sys.stderr)
 
 
+@log_call
 def cmd_callees(args):
     """Find functions called by a given function."""
     conn = get_connector(args.db)
@@ -237,6 +247,7 @@ def cmd_callees(args):
         print(f"Error querying callees: {e}", file=sys.stderr)
 
 
+@log_call
 def main():
     parser = argparse.ArgumentParser(
         description="Query the Kuzu code graph for code intelligence",

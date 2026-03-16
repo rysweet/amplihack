@@ -10,6 +10,8 @@ import subprocess
 import sys
 from dataclasses import dataclass
 
+from amplihack.utils.logging_utils import log_call
+
 logger = logging.getLogger(__name__)
 
 
@@ -26,6 +28,7 @@ class InstallResult:
 class DependencyInstaller:
     """Auto-installs missing dependencies for blarify indexing."""
 
+    @log_call
     def __init__(self, quiet: bool = False):
         """Initialize installer.
 
@@ -34,11 +37,13 @@ class DependencyInstaller:
         """
         self.quiet = quiet
 
+    @log_call
     def _log(self, message: str) -> None:
         """Log message if not in quiet mode."""
         if not self.quiet:
             print(message, file=sys.stderr)
 
+    @log_call
     def _run_command(self, cmd: list[str], description: str) -> bool:
         """Run installation command with error handling.
 
@@ -76,6 +81,7 @@ class DependencyInstaller:
             self._log(f"❌ Error installing {description}: {e}")
             return False
 
+    @log_call
     def install_scip_python(self) -> InstallResult:
         """Install scip-python via npm (it's a Sourcegraph npm package, not pip)."""
         if shutil.which("scip-python"):
@@ -107,6 +113,7 @@ class DependencyInstaller:
             error_message=None if success else "npm install failed",
         )
 
+    @log_call
     def install_scip_typescript(self) -> InstallResult:
         """Install scip-typescript via npm (Sourcegraph npm package)."""
         if shutil.which("scip-typescript"):
@@ -138,6 +145,7 @@ class DependencyInstaller:
             error_message=None if success else "npm install failed",
         )
 
+    @log_call
     def install_typescript_language_server(self) -> InstallResult:
         """Install typescript-language-server via npm."""
         if shutil.which("typescript-language-server"):
@@ -169,6 +177,7 @@ class DependencyInstaller:
             error_message=None if success else "npm install failed",
         )
 
+    @log_call
     def install_python_dependencies(self) -> list[InstallResult]:
         """Install scip-python for Python code indexing.
 
@@ -188,6 +197,7 @@ class DependencyInstaller:
 
         return results
 
+    @log_call
     def install_typescript_dependencies(self) -> list[InstallResult]:
         """Install scip-typescript and typescript-language-server for TypeScript/JavaScript indexing.
 
@@ -214,6 +224,7 @@ class DependencyInstaller:
 
         return results
 
+    @log_call
     def install_go_dependencies(self) -> list[InstallResult]:
         """Install scip-go and gopls for Go code indexing.
 
@@ -270,6 +281,7 @@ class DependencyInstaller:
 
         return results
 
+    @log_call
     def install_rust_dependencies(self) -> list[InstallResult]:
         """Verify rust-analyzer is installed for Rust SCIP indexing.
 
@@ -312,6 +324,7 @@ class DependencyInstaller:
 
         return results
 
+    @log_call
     def install_csharp_dependencies(self) -> list[InstallResult]:
         """Install scip-dotnet for C# code indexing.
 
@@ -461,6 +474,7 @@ exec dotnet {dest_dir / "ScipDotnet.dll"} "$@"
 
         return results
 
+    @log_call
     def install_cpp_dependencies(self) -> list[InstallResult]:
         """Install scip-clang for C++ code indexing via GitHub release download.
 
@@ -536,6 +550,7 @@ exec dotnet {dest_dir / "ScipDotnet.dll"} "$@"
 
         return results
 
+    @log_call
     def install_all_auto_installable(self) -> dict[str, InstallResult]:
         """Install all dependencies that can be auto-installed.
 
@@ -586,6 +601,7 @@ exec dotnet {dest_dir / "ScipDotnet.dll"} "$@"
 
         return results
 
+    @log_call
     def show_system_dependency_help(self) -> None:
         """Show help for system dependencies that cannot be auto-installed."""
         messages = []

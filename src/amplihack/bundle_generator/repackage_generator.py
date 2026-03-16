@@ -3,9 +3,12 @@
 import stat
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 from .models import AgentBundle
 
 
+@log_call
 def generate_bash_script(bundle: AgentBundle) -> str:
     """
     Generate bash repackage script with validation, testing, and building.
@@ -260,6 +263,7 @@ main "$@"
 """
 
 
+@log_call
 def generate_python_script(bundle: AgentBundle) -> str:
     """
     Generate Python repackage script with same functionality as bash.
@@ -605,6 +609,7 @@ if __name__ == "__main__":
 """
 
 
+@log_call
 def make_executable(script_path: Path) -> None:
     """
     Make script executable by adding executable permission.
@@ -624,6 +629,7 @@ def make_executable(script_path: Path) -> None:
     script_path.chmod(new_permissions)
 
 
+@log_call
 def sanitize_bundle_name(name: str) -> str:
     """
     Sanitize bundle name to prevent script injection.
@@ -641,6 +647,7 @@ def sanitize_bundle_name(name: str) -> str:
     return sanitized
 
 
+@log_call
 def sanitize_version(version: str) -> str:
     """
     Sanitize version string to prevent script injection.

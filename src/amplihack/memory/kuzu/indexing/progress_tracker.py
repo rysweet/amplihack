@@ -6,6 +6,8 @@ Tracks progress, estimates time, and provides status updates during indexing.
 import time
 from dataclasses import dataclass, field
 
+from amplihack.utils.logging_utils import log_call
+
 
 @dataclass
 class LanguageProgress:
@@ -35,6 +37,7 @@ class ProgressUpdate:
 class ProgressTracker:
     """Track progress during Blarify indexing."""
 
+    @log_call
     def __init__(self, languages: list[str]):
         """Initialize progress tracker.
 
@@ -46,6 +49,7 @@ class ProgressTracker:
         self._current_language: str | None = None
         self._start_times: dict[str, float] = {}
 
+    @log_call
     def start_language(self, language: str, estimated_files: int) -> None:
         """Start tracking progress for a language.
 
@@ -67,6 +71,7 @@ class ProgressTracker:
             start_time=start_time,
         )
 
+    @log_call
     def update_progress(self, language: str, processed_files: int) -> None:
         """Update progress for a language.
 
@@ -94,6 +99,7 @@ class ProgressTracker:
         # Update elapsed time
         progress.elapsed_seconds = time.time() - progress.start_time
 
+    @log_call
     def complete_language(self, language: str, final_count: int) -> None:
         """Mark a language as completed.
 
@@ -115,6 +121,7 @@ class ProgressTracker:
         if self._current_language == language:
             self._current_language = None
 
+    @log_call
     def get_progress(self, language: str) -> LanguageProgress:
         """Get current progress for a language.
 
@@ -141,6 +148,7 @@ class ProgressTracker:
 
         return progress
 
+    @log_call
     def get_current_language(self) -> str | None:
         """Get the currently processing language.
 
@@ -149,6 +157,7 @@ class ProgressTracker:
         """
         return self._current_language
 
+    @log_call
     def estimate_remaining_time(self, language: str) -> float:
         """Estimate remaining time for a language.
 
@@ -179,6 +188,7 @@ class ProgressTracker:
             return remaining_files / rate
         return 0.0
 
+    @log_call
     def get_overall_progress(self) -> ProgressUpdate:
         """Get overall progress across all languages.
 
@@ -216,6 +226,7 @@ class ProgressTracker:
             languages_remaining=remaining_languages,
         )
 
+    @log_call
     def format_progress_display(self, language: str) -> str:
         """Format progress for display.
 
@@ -235,6 +246,7 @@ class ProgressTracker:
             f"({progress.percentage:.1f}%)"
         )
 
+    @log_call
     def reset_language(self, language: str) -> None:
         """Reset progress for a language.
 

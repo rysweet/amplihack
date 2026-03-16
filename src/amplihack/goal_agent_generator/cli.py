@@ -17,6 +17,8 @@ except ImportError:
     print("WARNING: click not available, CLI functionality limited", file=sys.stderr)
     click = None  # type: ignore[assignment]
 
+from amplihack.utils.logging_utils import log_call
+
 from .agent_assembler import AgentAssembler
 from .objective_planner import ObjectivePlanner
 from .packager import GoalAgentPackager
@@ -81,6 +83,7 @@ logger = logging.getLogger(__name__)
     is_flag=True,
     help="Enable dynamic sub-agent spawning (requires --multi-agent)",
 )
+@log_call
 def new_goal_agent(
     file: Path,
     output: Path | None,

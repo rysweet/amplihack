@@ -18,6 +18,8 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 from .patch_proposer import PatchProposal
 
 logger = logging.getLogger(__name__)
@@ -143,6 +145,7 @@ Respond with JSON:
 }}"""
 
 
+@log_call
 def _format_proposal_for_review(
     proposal: PatchProposal,
     challenge: ChallengeResponse | None = None,
@@ -186,6 +189,7 @@ def _format_proposal_for_review(
     return text
 
 
+@log_call
 def _parse_vote_response(response_text: str, reviewer_id: str) -> ReviewVote:
     """Parse an LLM response into a ReviewVote.
 
@@ -227,6 +231,7 @@ def _parse_vote_response(response_text: str, reviewer_id: str) -> ReviewVote:
         )
 
 
+@log_call
 def challenge_proposal(
     proposal: PatchProposal,
     llm_call: Any | None = None,
@@ -332,6 +337,7 @@ Respond with JSON:
     )
 
 
+@log_call
 def vote_on_proposal(
     proposal: PatchProposal,
     challenge: ChallengeResponse | None = None,
@@ -412,6 +418,7 @@ def vote_on_proposal(
     )
 
 
+@log_call
 def _tally_votes(votes: list[ReviewVote]) -> str:
     """Determine the final decision from reviewer votes.
 
@@ -441,6 +448,7 @@ def _tally_votes(votes: list[ReviewVote]) -> str:
     return "modified"
 
 
+@log_call
 def _build_consensus_rationale(votes: list[ReviewVote], decision: str) -> str:
     """Build a summary rationale from all votes.
 
@@ -462,6 +470,7 @@ def _build_consensus_rationale(votes: list[ReviewVote], decision: str) -> str:
     return "\n".join(parts)
 
 
+@log_call
 def review_result_to_dict(result: ReviewResult) -> dict[str, Any]:
     """Serialize a ReviewResult to a JSON-compatible dict.
 

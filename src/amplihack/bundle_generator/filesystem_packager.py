@@ -6,6 +6,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 from .documentation_generator import generate_instructions
 from .exceptions import PackagingError
 from .models import AgentBundle
@@ -26,6 +28,7 @@ class FilesystemPackager:
     repackaging scripts, and build artifacts.
     """
 
+    @log_call
     def __init__(self, output_dir: Path):
         """
         Initialize filesystem packager.
@@ -39,6 +42,7 @@ class FilesystemPackager:
         self.output_dir = Path(output_dir)
         self._validate_output_dir()
 
+    @log_call
     def _validate_output_dir(self) -> None:
         """
         Validate output directory path for security.
@@ -78,6 +82,7 @@ class FilesystemPackager:
                         f"Cannot write to system directory: {resolved}. Choose a user directory for output."
                     )
 
+    @log_call
     def create_package(
         self,
         bundle: AgentBundle,
@@ -163,6 +168,7 @@ class FilesystemPackager:
                 f"Failed to create filesystem package: {e!s}. Check file permissions and disk space."
             )
 
+    @log_call
     def _create_directory_structure(self, package_path: Path) -> None:
         """Create package directory structure."""
         logger.debug("Creating directory structure")
@@ -179,6 +185,7 @@ class FilesystemPackager:
         for directory in directories:
             directory.mkdir(parents=True, exist_ok=True)
 
+    @log_call
     def _write_agents(self, bundle: AgentBundle, package_path: Path) -> None:
         """Write agent markdown files."""
         logger.debug(f"Writing {len(bundle.agents)} agents")
@@ -188,6 +195,7 @@ class FilesystemPackager:
             agent_file = agents_dir / f"{agent.name}.md"
             agent_file.write_text(agent.content)
 
+    @log_call
     def _write_tests(self, bundle: AgentBundle, package_path: Path) -> None:
         """Write test files."""
         logger.debug("Writing tests")
@@ -203,6 +211,7 @@ class FilesystemPackager:
                 test_file = tests_dir / f"test_{agent.name}.py"
                 test_file.write_text("\n".join(agent.tests))
 
+    @log_call
     def _write_documentation(self, bundle: AgentBundle, package_path: Path) -> None:
         """Write documentation files."""
         logger.debug("Writing documentation")
@@ -215,6 +224,7 @@ class FilesystemPackager:
                 doc_file = docs_dir / f"{agent.name}_docs.md"
                 doc_file.write_text(agent.documentation)
 
+    @log_call
     def _write_configuration(self, bundle: AgentBundle, package_path: Path) -> None:
         """Write configuration files."""
         logger.debug("Writing configuration")
@@ -235,6 +245,7 @@ class FilesystemPackager:
         with open(config_file, "w") as f:
             json.dump(config, f, indent=2)
 
+    @log_call
     def _write_python_packaging(self, bundle: AgentBundle, package_path: Path) -> None:
         """Write Python packaging files (pyproject.toml, setup.py)."""
         logger.debug("Writing Python packaging files")
@@ -251,6 +262,7 @@ class FilesystemPackager:
         init_content = self._generate_init_py(bundle)
         (package_path / "__init__.py").write_text(init_content)
 
+    @log_call
     def _generate_pyproject_toml(self, bundle: AgentBundle) -> str:
         """Generate pyproject.toml content."""
         # Sanitize description for TOML (single line, no newlines)
@@ -316,6 +328,7 @@ line-length = 100
 target-version = "py311"
 """
 
+    @log_call
     def _generate_setup_py(self, bundle: AgentBundle) -> str:
         """Generate setup.py content."""
         # Sanitize description for Python string (escape quotes, single line)
@@ -356,6 +369,7 @@ setup(
 )
 '''
 
+    @log_call
     def _generate_init_py(self, bundle: AgentBundle) -> str:
         """Generate __init__.py content."""
         agent_names = [agent.name for agent in bundle.agents]
@@ -409,6 +423,7 @@ __all__ = [
 ]
 '''
 
+    @log_call
     def _write_manifest(self, bundle: AgentBundle, package_path: Path) -> None:
         """Write manifest.json."""
         logger.debug("Writing manifest")
@@ -443,6 +458,7 @@ __all__ = [
         with open(manifest_file, "w") as f:
             json.dump(manifest, f, indent=2)
 
+    @log_call
     def _write_readme(self, bundle: AgentBundle, package_path: Path) -> None:
         """Write README.md."""
         logger.debug("Writing README")
@@ -520,6 +536,7 @@ Bundle ID: {bundle.id}
 
         (package_path / "README.md").write_text(readme_content)
 
+    @log_call
     def _write_instructions(self, bundle: AgentBundle, package_path: Path) -> None:
         """Write INSTRUCTIONS.md with detailed usage guide."""
         logger.debug("Writing INSTRUCTIONS.md")
@@ -527,6 +544,7 @@ Bundle ID: {bundle.id}
         instructions_content = generate_instructions(bundle)
         (package_path / "INSTRUCTIONS.md").write_text(instructions_content)
 
+    @log_call
     def _write_repackage_scripts(self, bundle: AgentBundle, package_path: Path) -> None:
         """Write repackage.sh and repackage.py scripts."""
         logger.debug("Writing repackage scripts")
@@ -543,6 +561,7 @@ Bundle ID: {bundle.id}
         python_script_path.write_text(python_script_content)
         make_executable(python_script_path)
 
+    @log_call
     def _build_uvx_package(self, bundle: AgentBundle, package_path: Path) -> None:
         """Build UVX package in dist/ directory."""
         logger.debug("Building UVX package")

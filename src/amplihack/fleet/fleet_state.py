@@ -13,6 +13,7 @@ from datetime import datetime
 from enum import Enum
 
 from amplihack.fleet._defaults import get_azlin_path
+from amplihack.utils.logging_utils import log_call
 
 __all__ = ["FleetState", "VMInfo", "TmuxSessionInfo", "AgentStatus"]
 
@@ -58,10 +59,12 @@ class VMInfo:
     last_polled: datetime | None = None
 
     @property
+    @log_call
     def is_running(self) -> bool:
         return "run" in self.status.lower()
 
     @property
+    @log_call
     def active_agents(self) -> int:
         return sum(
             1
@@ -82,11 +85,13 @@ class FleetState:
     azlin_path: str = field(default_factory=get_azlin_path)
     _exclude_vms: set[str] = field(default_factory=set)
 
+    @log_call
     def exclude_vms(self, *vm_names: str) -> FleetState:
         """Mark VMs to exclude from management (existing user VMs)."""
         self._exclude_vms.update(vm_names)
         return self
 
+    @log_call
     def refresh(self) -> FleetState:
         """Poll azlin and tmux to update fleet state.
 
@@ -103,6 +108,7 @@ class FleetState:
 
         return self
 
+    @log_call
     def get_vm(self, name: str) -> VMInfo | None:
         """Get VM by name."""
         for vm in self.vms:
@@ -110,14 +116,17 @@ class FleetState:
                 return vm
         return None
 
+    @log_call
     def managed_vms(self) -> list[VMInfo]:
         """VMs that are managed (not excluded)."""
         return [vm for vm in self.vms if vm.name not in self._exclude_vms]
 
+    @log_call
     def idle_vms(self) -> list[VMInfo]:
         """Running VMs with no active agents."""
         return [vm for vm in self.managed_vms() if vm.is_running and vm.active_agents == 0]
 
+    @log_call
     def summary(self) -> str:
         """Human-readable fleet summary."""
         managed = self.managed_vms()
@@ -154,6 +163,7 @@ class FleetState:
 
         return "\n".join(lines)
 
+    @log_call
     def _poll_vms(self) -> list[VMInfo]:
         """Get VM list from azlin."""
         try:
@@ -191,6 +201,7 @@ class FleetState:
         logger.error("All VM polling strategies failed")
         return []
 
+    @log_call
     def _parse_vm_json(self, json_str: str) -> list[VMInfo]:
         """Parse JSON output from azlin list --json."""
         try:
@@ -211,6 +222,7 @@ class FleetState:
             logger.warning("Failed to parse VM JSON: %s", exc)
             return []
 
+    @log_call
     def _parse_vm_text(self, text: str) -> list[VMInfo]:
         """Parse text table output from azlin list."""
         vms = []
@@ -249,6 +261,7 @@ class FleetState:
 
         return vms
 
+    @log_call
     def poll_tmux_sessions(self, vm_name: str) -> list[TmuxSessionInfo]:
         """Public wrapper for tmux session polling."""
         from amplihack.fleet._validation import validate_vm_name
@@ -256,6 +269,7 @@ class FleetState:
         validate_vm_name(vm_name)
         return self._poll_tmux_sessions(vm_name)
 
+    @log_call
     def _poll_tmux_sessions(self, vm_name: str) -> list[TmuxSessionInfo]:
         """Get tmux session list from a VM."""
         try:

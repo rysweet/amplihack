@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from amplihack.utils.logging_utils import log_call
 
 
 class NodeWithContentDto(BaseModel):
@@ -13,6 +14,7 @@ class NodeWithContentDto(BaseModel):
     content: str = ""
     relationship_type: str | None = None  # Used when retrieved as a child
 
+    @log_call
     def as_dict(self) -> dict:
         return {
             "id": self.id,

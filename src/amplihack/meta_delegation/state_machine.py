@@ -22,6 +22,8 @@ import time
 from datetime import datetime
 from enum import Enum
 
+from amplihack.utils.logging_utils import log_call
+
 
 class ProcessState(Enum):
     """Enum representing subprocess states."""
@@ -54,6 +56,7 @@ class SubprocessStateMachine:
         ProcessState.FAILED: [],  # Terminal state
     }
 
+    @log_call
     def __init__(self, process=None, timeout_seconds: int = 1800):
         """Initialize state machine.
 
@@ -77,6 +80,7 @@ class SubprocessStateMachine:
             }
         ]
 
+    @log_call
     def attach_process(self, process) -> None:
         """Attach a process to the state machine.
 
@@ -94,6 +98,7 @@ class SubprocessStateMachine:
 
         self.process = process
 
+    @log_call
     def transition_to(self, new_state: ProcessState, error: str | None = None) -> None:
         """Transition to a new state.
 
@@ -138,6 +143,7 @@ class SubprocessStateMachine:
         self.current_state = new_state
         self._record_state_change(new_state)
 
+    @log_call
     def is_running(self) -> bool:
         """Check if process is currently running.
 
@@ -146,6 +152,7 @@ class SubprocessStateMachine:
         """
         return self.current_state == ProcessState.RUNNING
 
+    @log_call
     def is_complete(self) -> bool:
         """Check if process has completed.
 
@@ -154,6 +161,7 @@ class SubprocessStateMachine:
         """
         return self.current_state in [ProcessState.COMPLETED, ProcessState.FAILED]
 
+    @log_call
     def has_failed(self) -> bool:
         """Check if process has failed.
 
@@ -162,6 +170,7 @@ class SubprocessStateMachine:
         """
         return self.current_state == ProcessState.FAILED
 
+    @log_call
     def check_timeout(self) -> bool:
         """Check if process has exceeded timeout.
 
@@ -174,6 +183,7 @@ class SubprocessStateMachine:
         elapsed = (datetime.now() - self.start_time).total_seconds()
         return elapsed > self.timeout_seconds
 
+    @log_call
     def get_elapsed_time(self) -> float:
         """Get elapsed time since process started.
 
@@ -188,6 +198,7 @@ class SubprocessStateMachine:
 
         return (datetime.now() - self.start_time).total_seconds()
 
+    @log_call
     def poll_process(self) -> int | None:
         """Poll the subprocess to check if it has finished.
 
@@ -207,6 +218,7 @@ class SubprocessStateMachine:
         # Don't transition here - let the caller handle state transitions
         return returncode
 
+    @log_call
     def kill_process(self, force: bool = False) -> None:
         """Terminate the subprocess.
 
@@ -221,6 +233,7 @@ class SubprocessStateMachine:
         else:
             self.process.terminate()
 
+    @log_call
     def get_state_history(self) -> list[dict]:
         """Get complete state transition history.
 
@@ -229,6 +242,7 @@ class SubprocessStateMachine:
         """
         return self._state_history.copy()
 
+    @log_call
     def get_state_duration(self) -> dict[ProcessState, float]:
         """Calculate time spent in each state.
 
@@ -252,6 +266,7 @@ class SubprocessStateMachine:
 
         return durations
 
+    @log_call
     def to_dict(self) -> dict:
         """Serialize state machine to dictionary.
 
@@ -269,6 +284,7 @@ class SubprocessStateMachine:
             "is_timed_out": self.check_timeout(),
         }
 
+    @log_call
     def wait_for_state(self, target_state: ProcessState, timeout: float = 10.0) -> bool:
         """Wait for state machine to reach target state.
 
@@ -289,6 +305,7 @@ class SubprocessStateMachine:
 
         return False
 
+    @log_call
     def _record_state_change(self, new_state: ProcessState) -> None:
         """Record state change in history.
 

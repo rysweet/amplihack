@@ -15,7 +15,10 @@ import json
 import re
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
 
+
+@log_call
 def parse_llm_json(response_text: str) -> dict[str, Any] | None:
     """Parse JSON from an LLM response, handling markdown code blocks.
 
@@ -67,6 +70,7 @@ def parse_llm_json(response_text: str) -> dict[str, Any] | None:
     return None
 
 
+@log_call
 def parse_llm_json_list(response_text: str) -> list[dict[str, Any]]:
     """Parse a JSON list from an LLM response.
 

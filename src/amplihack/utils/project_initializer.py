@@ -10,6 +10,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 logger = logging.getLogger(__name__)
 
 
@@ -155,6 +157,7 @@ This file is installed by amplihack to provide project-specific context to AI ag
 """
 
 
+@log_call
 def detect_project_md_state(project_root: Path) -> tuple[ProjectState, str]:
     """Detect current state of PROJECT.md.
 
@@ -189,6 +192,7 @@ def detect_project_md_state(project_root: Path) -> tuple[ProjectState, str]:
     return ProjectState.VALID_USER_CONTENT, "User content detected"
 
 
+@log_call
 def analyze_project_structure(project_root: Path) -> dict[str, Any]:
     """Analyze project structure to gather context.
 
@@ -240,6 +244,7 @@ def analyze_project_structure(project_root: Path) -> dict[str, Any]:
     return info
 
 
+@log_call
 def generate_from_template(project_info: dict[str, Any]) -> str:
     """Generate PROJECT.md from template.
 
@@ -288,6 +293,7 @@ def generate_from_template(project_info: dict[str, Any]) -> str:
     return content
 
 
+@log_call
 def initialize_project_md(
     project_root: Path, mode: InitMode = InitMode.AUTO
 ) -> InitializationResult:

@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 from amplihack.fleet._validation import validate_session_name, validate_vm_name
+from amplihack.utils.logging_utils import log_call
 
 __all__ = ["SessionContext", "SessionDecision"]
 
@@ -36,10 +37,12 @@ class SessionContext:
     project_objectives: list[dict] = field(default_factory=list)
     # Each objective: {"number": int, "title": str, "state": str}
 
+    @log_call
     def __post_init__(self):
         validate_vm_name(self.vm_name)
         validate_session_name(self.session_name)
 
+    @log_call
     def to_prompt_context(self) -> str:
         """Format context for the reasoning LLM call."""
         parts = []
@@ -57,7 +60,9 @@ class SessionContext:
         if self.files_modified:
             parts.append(f"Files modified: {', '.join(self.files_modified)}")
         if self.transcript_summary:
-            parts.append(f"\nSession transcript (early + recent messages):\n{self.transcript_summary}")
+            parts.append(
+                f"\nSession transcript (early + recent messages):\n{self.transcript_summary}"
+            )
 
         parts.append("\nCurrent terminal output (full scrollback):")
         parts.append(self.tmux_capture if self.tmux_capture else "(empty)")
@@ -92,6 +97,7 @@ class SessionDecision:
     confidence: float = 0.0
     timestamp: datetime = field(default_factory=datetime.now)
 
+    @log_call
     def summary(self) -> str:
         """Human-readable decision summary."""
         lines = [

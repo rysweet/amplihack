@@ -8,6 +8,7 @@ from enum import Enum
 from typing import Any
 
 from amplihack.vendor.blarify.agents.utils import discover_keys_for_provider, validate_key
+from amplihack.utils.logging_utils import log_call
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +57,7 @@ class KeyState:
     error_count: int = 0
     metadata: dict[str, Any] = field(default_factory=dict)
 
+    @log_call
     def is_available(self) -> bool:
         """Check if key is available for use."""
         if self.state != KeyStatus.AVAILABLE:
@@ -68,6 +70,7 @@ class KeyState:
 class APIKeyManager:
     """Manages multiple API keys with thread-safe operations and rotation support."""
 
+    @log_call
     def __init__(
         self,
         provider: str,
@@ -98,6 +101,7 @@ class APIKeyManager:
 
         logger.debug(f"Initialized APIKeyManager for {provider}")
 
+    @log_call
     def _auto_discover_keys(self) -> None:
         """Automatically discover and add keys from environment."""
         discovered_keys = discover_keys_for_provider(self.provider)
@@ -107,6 +111,7 @@ class APIKeyManager:
         if discovered_keys:
             logger.info(f"Discovered {len(discovered_keys)} keys for {self.provider}")
 
+    @log_call
     def add_key(self, key: str, validate: bool | None = None) -> bool:
         """Add a new API key to the manager with validation.
 
@@ -132,6 +137,7 @@ class APIKeyManager:
                 return True
         return False
 
+    @log_call
     def reset_expired_cooldowns(self) -> None:
         """Reset keys whose cooldown period has expired."""
         now = datetime.now()
@@ -143,6 +149,7 @@ class APIKeyManager:
                         key_state.cooldown_until = None
                         logger.debug(f"Key {key_state.key[:8]}... cooldown expired, now available")
 
+    @log_call
     def get_next_available_key(self) -> str | None:
         """Get next available key using round-robin selection.
 
@@ -195,6 +202,7 @@ class APIKeyManager:
             )
             return None
 
+    @log_call
     def is_key_available(self, key: str) -> bool:
         """Check if a specific key is available for use without rotating.
 
@@ -215,6 +223,7 @@ class APIKeyManager:
             key_state = self.keys[key]
             return key_state.is_available()
 
+    @log_call
     def mark_rate_limited(self, key: str, retry_after: int | None = None) -> None:
         """Mark a key as rate limited with optional cooldown.
 
@@ -231,6 +240,7 @@ class APIKeyManager:
                 else:
                     logger.debug(f"Key {key[:8]}... marked as rate limited")
 
+    @log_call
     def mark_invalid(self, key: str) -> None:
         """Mark a key as permanently invalid.
 
@@ -245,6 +255,7 @@ class APIKeyManager:
                     f"Key {key[:8]}... marked as invalid, error count: {self.keys[key].error_count}"
                 )
 
+    @log_call
     def mark_quota_exceeded(self, key: str) -> None:
         """Mark a key as having exceeded quota.
 
@@ -256,6 +267,7 @@ class APIKeyManager:
                 self.keys[key].state = KeyStatus.QUOTA_EXCEEDED
                 logger.warning(f"Key {key[:8]}... marked as quota exceeded")
 
+    @log_call
     def get_key_states(self) -> dict[str, KeyState]:
         """Get current state of all keys.
 
@@ -265,6 +277,7 @@ class APIKeyManager:
         with self._lock:
             return dict(self.keys)
 
+    @log_call
     def get_available_count(self) -> int:
         """Get count of currently available keys.
 
@@ -275,6 +288,7 @@ class APIKeyManager:
             self.reset_expired_cooldowns()
             return sum(1 for state in self.keys.values() if state.is_available())
 
+    @log_call
     def remove_key(self, key: str) -> bool:
         """Remove a key from management.
 
@@ -295,6 +309,7 @@ class APIKeyManager:
                 return True
         return False
 
+    @log_call
     def cleanup_invalid_keys(self) -> int:
         """Remove keys that have exceeded error threshold.
 
@@ -317,6 +332,7 @@ class APIKeyManager:
             logger.info(f"Removed {removed} invalid keys for {self.provider}")
         return removed
 
+    @log_call
     def get_statistics(self) -> KeyStatistics:
         """Get current statistics for all keys.
 
@@ -344,6 +360,7 @@ class APIKeyManager:
             )
             return stats
 
+    @log_call
     def refresh_keys(self) -> int:
         """Re-discover keys from environment and add new ones.
 
@@ -363,6 +380,7 @@ class APIKeyManager:
 
         return new_keys
 
+    @log_call
     def export_state(self) -> dict[str, Any]:
         """Export current state for persistence.
 
@@ -382,6 +400,7 @@ class APIKeyManager:
                 }
             return state
 
+    @log_call
     def import_state(self, state: dict[str, Any]) -> None:
         """Import previously exported state.
 

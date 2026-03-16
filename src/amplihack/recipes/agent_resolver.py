@@ -9,6 +9,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 # Agent namespace and name must be simple identifiers (alphanumeric, hyphens,
 # underscores). This prevents path traversal via ".." or "/" in references.
 _SAFE_NAME_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
@@ -17,6 +19,7 @@ _SAFE_NAME_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
 class AgentNotFoundError(Exception):
     """Raised when an agent reference cannot be resolved to a file."""
 
+    @log_call
     def __init__(self, agent_ref: str, searched: list[str] | None = None) -> None:
         paths_msg = ""
         if searched:
@@ -39,9 +42,11 @@ class AgentResolver:
     Searches a configurable list of directories for agent definition files.
     """
 
+    @log_call
     def __init__(self, search_paths: list[Path] | None = None) -> None:
         self._search_paths = search_paths or _DEFAULT_SEARCH_PATHS
 
+    @log_call
     def resolve(self, agent_ref: str) -> str:
         """Resolve an agent reference to its system prompt content.
 
@@ -90,13 +95,15 @@ class AgentResolver:
         if category:
             candidates.append(Path(namespace) / category / f"{name}.md")
             candidates.append(Path(category) / f"{name}.md")
-        candidates.extend([
-            Path(namespace) / "core" / f"{name}.md",
-            Path(namespace) / "specialized" / f"{name}.md",
-            Path("core") / f"{name}.md",
-            Path("specialized") / f"{name}.md",
-            Path(f"{name}.md"),
-        ])
+        candidates.extend(
+            [
+                Path(namespace) / "core" / f"{name}.md",
+                Path(namespace) / "specialized" / f"{name}.md",
+                Path("core") / f"{name}.md",
+                Path("specialized") / f"{name}.md",
+                Path(f"{name}.md"),
+            ]
+        )
 
         searched: list[str] = []
         for base in self._search_paths:

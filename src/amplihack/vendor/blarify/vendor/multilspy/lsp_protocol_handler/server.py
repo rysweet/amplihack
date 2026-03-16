@@ -36,6 +36,7 @@ from typing import Any, Union
 
 from .lsp_requests import LspNotification, LspRequest
 from .lsp_types import ErrorCodes
+from amplihack.utils.logging_utils import log_call
 
 StringDict = dict[str, Any]
 PayloadLike = Union[list[StringDict], StringDict, None]
@@ -60,33 +61,41 @@ class ProcessLaunchInfo:
 
 
 class Error(Exception):
+    @log_call
     def __init__(self, code: ErrorCodes, message: str) -> None:
         super().__init__(message)
         self.code = code
 
+    @log_call
     def to_lsp(self) -> StringDict:
         return {"code": self.code, "message": super().__str__()}
 
     @classmethod
+    @log_call
     def from_lsp(cls, d: StringDict) -> "Error":
         return Error(d["code"], d["message"])
 
+    @log_call
     def __str__(self) -> str:
         return f"{super().__str__()} ({self.code})"
 
 
+@log_call
 def make_response(request_id: Any, params: PayloadLike) -> StringDict:
     return {"jsonrpc": "2.0", "id": request_id, "result": params}
 
 
+@log_call
 def make_error_response(request_id: Any, err: Error) -> StringDict:
     return {"jsonrpc": "2.0", "id": request_id, "error": err.to_lsp()}
 
 
+@log_call
 def make_notification(method: str, params: PayloadLike) -> StringDict:
     return {"jsonrpc": "2.0", "method": method, "params": params}
 
 
+@log_call
 def make_request(method: str, request_id: Any, params: PayloadLike) -> StringDict:
     return {"jsonrpc": "2.0", "method": method, "id": request_id, "params": params}
 
@@ -95,6 +104,7 @@ class StopLoopException(Exception):
     pass
 
 
+@log_call
 def create_message(payload: PayloadLike):
     body = json.dumps(
         payload, check_circular=False, ensure_ascii=False, separators=(",", ":")
@@ -114,22 +124,26 @@ class MessageType:
 
 
 class Request:
+    @log_call
     def __init__(self) -> None:
         self.cv = asyncio.Condition()
         self.result: PayloadLike | None = None
         self.error: Error | None = None
 
+    @log_call
     async def on_result(self, params: PayloadLike) -> None:
         self.result = params
         async with self.cv:
             self.cv.notify()
 
+    @log_call
     async def on_error(self, err: Error) -> None:
         self.error = err
         async with self.cv:
             self.cv.notify()
 
 
+@log_call
 def content_length(line: bytes) -> int | None:
     if line.startswith(b"Content-Length: "):
         _, value = line.split(b"Content-Length: ")
@@ -175,6 +189,7 @@ class LanguageServerHandler:
         loop: An asyncio.AbstractEventLoop object that represents the event loop used by the handler.
     """
 
+    @log_call
     def __init__(self, process_launch_info: ProcessLaunchInfo, logger=None) -> None:
         """
         Params:
@@ -198,6 +213,7 @@ class LanguageServerHandler:
         self.task_counter = 0
         self.loop = None
 
+    @log_call
     async def start(self) -> None:
         """
         Starts the language server process and creates a task to continuously read from its stdout to handle communications
@@ -220,6 +236,7 @@ class LanguageServerHandler:
         self.tasks[self.task_counter] = self.loop.create_task(self.run_forever_stderr())
         self.task_counter += 1
 
+    @log_call
     async def stop(self) -> None:
         """
         Sends the terminate signal to the language server process and waits for it to exit, with a timeout, killing it if necessary
@@ -243,6 +260,7 @@ class LanguageServerHandler:
             except TimeoutError:
                 process.kill()
 
+    @log_call
     async def shutdown(self) -> None:
         """
         Perform the shutdown sequence for the client, including sending the shutdown request to the server and notifying it of exit
@@ -256,6 +274,7 @@ class LanguageServerHandler:
             # in the run_forever and run_forever_stderr methods
             await asyncio.sleep(0)
 
+    @log_call
     def _log(self, message: str) -> None:
         """
         Create a log message
@@ -263,6 +282,7 @@ class LanguageServerHandler:
         if self.logger:
             self.logger("client", "logger", message)
 
+    @log_call
     async def run_forever(self) -> bool:
         """
         Continuously read from the language server process stdout and handle the messages
@@ -293,6 +313,7 @@ class LanguageServerHandler:
             pass
         return self._received_shutdown
 
+    @log_call
     async def run_forever_stderr(self) -> None:
         """
         Continuously read from the language server process stderr and log the messages
@@ -306,6 +327,7 @@ class LanguageServerHandler:
         except (BrokenPipeError, ConnectionResetError, StopLoopException):
             pass
 
+    @log_call
     async def _handle_body(self, body: bytes) -> None:
         """
         Parse the body text received from the language server process and invoke the appropriate handler
@@ -319,6 +341,7 @@ class LanguageServerHandler:
         except json.JSONDecodeError as ex:
             self._log(f"malformed JSON: {ex}")
 
+    @log_call
     async def _receive_payload(self, payload: StringDict) -> None:
         """
         Determine if the payload received from server is for a request, response, or notification and invoke the appropriate handler
@@ -338,12 +361,14 @@ class LanguageServerHandler:
         except Exception as err:
             self._log(f"Error handling server payload: {err}")
 
+    @log_call
     def send_notification(self, method: str, params: dict | None = None) -> None:
         """
         Send notification pertaining to the given method to the server with the given parameters
         """
         self._send_payload_sync(make_notification(method, params))
 
+    @log_call
     def send_response(self, request_id: Any, params: PayloadLike) -> None:
         """
         Send response to the given request id to the server with the given parameters
@@ -353,6 +378,7 @@ class LanguageServerHandler:
         )
         self.task_counter += 1
 
+    @log_call
     def send_error_response(self, request_id: Any, err: Error) -> None:
         """
         Send error response to the given request id to the server with the given error
@@ -362,6 +388,7 @@ class LanguageServerHandler:
         )
         self.task_counter += 1
 
+    @log_call
     async def send_request(self, method: str, params: dict | None = None) -> None:
         """
         Send request to the server, register the request id, and wait for the response
@@ -377,6 +404,7 @@ class LanguageServerHandler:
             raise request.error
         return request.result
 
+    @log_call
     def _send_payload_sync(self, payload: StringDict) -> None:
         """
         Send the payload to the server by writing to its stdin synchronously
@@ -388,6 +416,7 @@ class LanguageServerHandler:
             self.logger("client", "server", payload)
         self.process.stdin.writelines(msg)
 
+    @log_call
     async def _send_payload(self, payload: StringDict) -> None:
         """
         Send the payload to the server by writing to its stdin asynchronously.
@@ -400,18 +429,21 @@ class LanguageServerHandler:
         self.process.stdin.writelines(msg)
         await self.process.stdin.drain()
 
+    @log_call
     def on_request(self, method: str, cb) -> None:
         """
         Register the callback function to handle requests from the server to the client for the given method
         """
         self.on_request_handlers[method] = cb
 
+    @log_call
     def on_notification(self, method: str, cb) -> None:
         """
         Register the callback function to handle notifications from the server to the client for the given method
         """
         self.on_notification_handlers[method] = cb
 
+    @log_call
     async def _response_handler(self, response: StringDict) -> None:
         """
         Handle the response received from the server for a request, using the id to determine the request
@@ -424,6 +456,7 @@ class LanguageServerHandler:
         else:
             await request.on_error(Error(ErrorCodes.InvalidRequest, ""))
 
+    @log_call
     async def _request_handler(self, response: StringDict) -> None:
         """
         Handle the request received from the server: call the appropriate callback function and return the result
@@ -448,6 +481,7 @@ class LanguageServerHandler:
         except Exception as ex:
             self.send_error_response(request_id, Error(ErrorCodes.InternalError, str(ex)))
 
+    @log_call
     async def _notification_handler(self, response: StringDict) -> None:
         """
         Handle the notification received from the server: call the appropriate callback function

@@ -8,7 +8,10 @@ ScoutResult / AdvanceResult API.
 
 from __future__ import annotations
 
+from amplihack.utils.logging_utils import log_call
 
+
+@log_call
 def _format_scout_report_legacy(
     all_vms: list,
     decisions: list[dict],
@@ -40,12 +43,8 @@ def _format_scout_report_legacy(
         for s in v.sessions
         if s.status in ("thinking", "working", "running", "waiting_input")
     )
-    idle_sessions = sum(
-        1 for v in running_vms for s in v.sessions if s.status == "idle"
-    )
-    shell_sessions = sum(
-        1 for v in running_vms for s in v.sessions if s.status == "shell"
-    )
+    idle_sessions = sum(1 for v in running_vms for s in v.sessions if s.status == "idle")
+    shell_sessions = sum(1 for v in running_vms for s in v.sessions if s.status == "shell")
 
     lines.append("")
     lines.append(f"Running VMs: {len(running_vms)}")
@@ -69,9 +68,15 @@ def _format_scout_report_legacy(
                 display_status = "suspended"
 
             icon = {
-                "thinking": "~", "running": ">", "idle": ".",
-                "shell": "X", "suspended": "Z", "error": "!",
-                "completed": "+", "waiting_input": "?", "unknown": "-",
+                "thinking": "~",
+                "running": ">",
+                "idle": ".",
+                "shell": "X",
+                "suspended": "Z",
+                "error": "!",
+                "completed": "+",
+                "waiting_input": "?",
+                "unknown": "-",
             }.get(display_status, "-")
 
             action = d.get("action", "?") if d and "error" not in d else ("ERR" if d else "?")
@@ -84,25 +89,29 @@ def _format_scout_report_legacy(
             elif d:
                 reasoning = d.get("error", "")
 
-            rows.append({
-                "vm": vm.name, "session": sess.session_name,
-                "icon": icon, "status": display_status,
-                "branch": sess.branch or "",
-                "action": action, "conf": conf,
-                "summary": reasoning, "input": input_text,
-                "project": d.get("project", "") if d else "",
-                "objectives": d.get("objectives", []) if d else [],
-            })
+            rows.append(
+                {
+                    "vm": vm.name,
+                    "session": sess.session_name,
+                    "icon": icon,
+                    "status": display_status,
+                    "branch": sess.branch or "",
+                    "action": action,
+                    "conf": conf,
+                    "summary": reasoning,
+                    "input": input_text,
+                    "project": d.get("project", "") if d else "",
+                    "objectives": d.get("objectives", []) if d else [],
+                }
+            )
 
     # Table -- status + action
     lines.append("")
-    lines.append(
-        f"  {'VM':12s} {'Session':22s} {'Status':10s} {'Action':15s} {'Conf':>5s}"
-    )
+    lines.append(f"  {'VM':12s} {'Session':22s} {'Status':10s} {'Action':15s} {'Conf':>5s}")
     lines.append("  " + "-" * 68)
 
     for r in rows:
-        conf_str = f"{r['conf']:.0%}" if r['conf'] else ""
+        conf_str = f"{r['conf']:.0%}" if r["conf"] else ""
         lines.append(
             f"  {r['vm']:12s} [{r['icon']}] {r['session']:18s} "
             f"{r['status']:10s} {r['action']:15s} {conf_str:>5s}"
@@ -136,15 +145,11 @@ def _format_scout_report_legacy(
                 for o in objectives:
                     lines.append(f"    objective #{o['number']}: {o['title']}")
             for r in proj_sessions:
-                lines.append(
-                    f"    {r['vm']}/{r['session']} [{r['status']}] -> {r['action']}"
-                )
+                lines.append(f"    {r['vm']}/{r['session']} [{r['status']}] -> {r['action']}")
         if unassigned_rows:
-            lines.append(f"\n  [unassigned]")
+            lines.append("\n  [unassigned]")
             for r in unassigned_rows:
-                lines.append(
-                    f"    {r['vm']}/{r['session']} [{r['status']}] -> {r['action']}"
-                )
+                lines.append(f"    {r['vm']}/{r['session']} [{r['status']}] -> {r['action']}")
 
     # Session summaries (separate section)
     sessions_with_summary = [r for r in rows if r["summary"]]
@@ -155,7 +160,7 @@ def _format_scout_report_legacy(
             lines.append(f"  {r['vm']}/{r['session']}:")
             lines.append(f"    {r['summary'][:140]}")
             if r["input"]:
-                lines.append(f"    >> \"{r['input'][:120]}\"")
+                lines.append(f'    >> "{r["input"][:120]}"')
             lines.append("")
 
     # Actionable follow-up commands
@@ -179,7 +184,7 @@ def _format_scout_report_legacy(
             lines.append(f"  # Advance {r['vm']}/{r['session']} only:")
             lines.append(f"  fleet advance --session {r['vm']}:{r['session']}")
             if r["input"]:
-                lines.append(f"  #   >> \"{r['input'][:90]}\"")
+                lines.append(f'  #   >> "{r["input"][:90]}"')
 
     if completable:
         lines.append("")
@@ -208,6 +213,7 @@ def _format_scout_report_legacy(
     return "\n".join(lines)
 
 
+@log_call
 def _format_advance_report_legacy(
     decisions: list[dict],
     executed: list[dict],
@@ -244,10 +250,7 @@ def _format_advance_report_legacy(
             status = "OK" if ex.get("executed") else "SKIPPED"
             if ex.get("error"):
                 status = "ERROR"
-            lines.append(
-                f"  [{status}] {ex['vm']}/{ex['session']}: "
-                f"{ex['action']}"
-            )
+            lines.append(f"  [{status}] {ex['vm']}/{ex['session']}: {ex['action']}")
             if ex.get("input_text"):
                 lines.append(f"    Input: {ex['input_text'][:80]}")
             if ex.get("error"):

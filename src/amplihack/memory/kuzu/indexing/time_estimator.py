@@ -6,6 +6,8 @@ Provides accurate time estimates based on calibrated indexing rates for differen
 from dataclasses import dataclass
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 
 @dataclass
 class TimeEstimate:
@@ -58,6 +60,7 @@ IGNORED_DIRS = {
 }
 
 
+@log_call
 def estimate_time(project_path: Path, languages: list[str]) -> TimeEstimate:
     """Calculate time estimate for indexing.
 
@@ -102,6 +105,7 @@ def estimate_time(project_path: Path, languages: list[str]) -> TimeEstimate:
     )
 
 
+@log_call
 def _count_files_by_language(project_path: Path, languages: list[str]) -> dict[str, int]:
     """Count files by language based on extensions.
 

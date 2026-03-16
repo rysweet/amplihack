@@ -8,9 +8,12 @@ from __future__ import annotations
 
 import click
 
+from amplihack.utils.logging_utils import log_call
+
 __all__ = ["register_fleet_ops"]
 
 
+@log_call
 def register_fleet_ops(fleet_cli: click.Group) -> None:
     """Register fleet operation commands (start, run-once, dry-run, report).
 
@@ -31,11 +34,29 @@ def register_fleet_ops(fleet_cli: click.Group) -> None:
 
     @fleet_cli.command("start")
     @click.option("--max-cycles", default=0, help="Max admiral cycles (0 = unlimited)")
-    @click.option("--interval", default=int(DEFAULT_POLL_INTERVAL_SECONDS), help="Poll interval in seconds")
+    @click.option(
+        "--interval", default=int(DEFAULT_POLL_INTERVAL_SECONDS), help="Poll interval in seconds"
+    )
     @click.option("--adopt", is_flag=True, help="Adopt existing sessions at startup")
-    @click.option("--stuck-threshold", default=DEFAULT_STUCK_THRESHOLD_SECONDS, type=float, help="Seconds without change before session is stuck")
-    @click.option("--max-agents-per-vm", default=DEFAULT_MAX_AGENTS_PER_VM, type=int, help="Max concurrent agents per VM")
-    @click.option("--capture-lines", default=DEFAULT_CAPTURE_LINES, type=int, help="Terminal scrollback capture depth")
+    @click.option(
+        "--stuck-threshold",
+        default=DEFAULT_STUCK_THRESHOLD_SECONDS,
+        type=float,
+        help="Seconds without change before session is stuck",
+    )
+    @click.option(
+        "--max-agents-per-vm",
+        default=DEFAULT_MAX_AGENTS_PER_VM,
+        type=int,
+        help="Max concurrent agents per VM",
+    )
+    @click.option(
+        "--capture-lines",
+        default=DEFAULT_CAPTURE_LINES,
+        type=int,
+        help="Terminal scrollback capture depth",
+    )
+    @log_call
     def start(max_cycles, interval, adopt, stuck_threshold, max_agents_per_vm, capture_lines):
         """Start autonomous fleet admiral loop."""
         director = _cmd._get_director()
@@ -58,6 +79,7 @@ def register_fleet_ops(fleet_cli: click.Group) -> None:
     # ------------------------------------------------------------------
 
     @fleet_cli.command("run-once")
+    @log_call
     def run_once():
         """Execute one PERCEIVE->REASON->ACT cycle."""
         director = _cmd._get_director()
@@ -79,6 +101,7 @@ def register_fleet_ops(fleet_cli: click.Group) -> None:
         default="auto",
         help="LLM backend for reasoning (default: auto-detect)",
     )
+    @log_call
     def dry_run(vm, priorities, backend):
         """Show what the admiral would do for each session WITHOUT acting.
 
@@ -162,6 +185,7 @@ def register_fleet_ops(fleet_cli: click.Group) -> None:
     # ------------------------------------------------------------------
 
     @fleet_cli.command("report")
+    @log_call
     def report():
         """Generate fleet status report."""
         director = _cmd._get_director()

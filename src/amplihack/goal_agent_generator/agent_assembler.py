@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import uuid
 
+from amplihack.utils.logging_utils import log_call
+
 from .models import (
     ExecutionPlan,
     GoalAgentBundle,
@@ -23,6 +25,7 @@ from .utils import sanitize_bundle_name
 class AgentAssembler:
     """Assemble goal agent bundles from components."""
 
+    @log_call
     def assemble(
         self,
         goal_definition: GoalDefinition,
@@ -100,6 +103,7 @@ class AgentAssembler:
 
         return bundle
 
+    @log_call
     def _build_sub_agent_configs(self, enable_spawning: bool) -> list[SubAgentConfig]:
         """
         Build sub-agent configurations for multi-agent packaging.
@@ -159,6 +163,7 @@ class AgentAssembler:
 
         return configs
 
+    @log_call
     def _generate_bundle_name(self, goal_definition: GoalDefinition) -> str:
         """
         Generate a bundle name from goal definition.
@@ -207,6 +212,7 @@ class AgentAssembler:
 
         return bundle_name
 
+    @log_call
     def _create_auto_mode_config(
         self,
         goal_definition: GoalDefinition,
@@ -243,6 +249,7 @@ class AgentAssembler:
             "constraints": goal_definition.constraints,
         }
 
+    @log_call
     def _build_initial_prompt(
         self, goal_definition: GoalDefinition, execution_plan: ExecutionPlan
     ) -> str:
@@ -290,6 +297,7 @@ class AgentAssembler:
 
         return "\n".join(prompt_parts)
 
+    @log_call
     def _create_metadata(
         self,
         goal_definition: GoalDefinition,

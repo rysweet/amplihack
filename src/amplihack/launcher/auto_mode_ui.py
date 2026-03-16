@@ -9,6 +9,7 @@ displaying auto mode execution state with 5 main panels:
 - Prompt input area
 """
 
+import logging
 import select
 import sys
 import threading
@@ -16,6 +17,8 @@ import time
 from collections import deque
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+
+logger = logging.getLogger(__name__)
 
 try:
     from rich import box
@@ -36,6 +39,8 @@ except ImportError:
         Panel = Any
         Live = Any
 
+from amplihack.utils.logging_utils import log_call
+
 from .auto_mode_state import AutoModeState
 
 
@@ -54,6 +59,7 @@ class AutoModeUI:
     - h: Show help overlay
     """
 
+    @log_call
     def __init__(self, state: AutoModeState, auto_mode, working_dir: Path):
         """Initialize UI.
 
@@ -62,6 +68,7 @@ class AutoModeUI:
             auto_mode: AutoMode instance (for prompt and append_dir access)
             working_dir: Working directory for instruction files
         """
+        logger.debug(f"AutoModeUI.__init__: called with working_dir={working_dir!r}")
         if not RICH_AVAILABLE:
             raise ImportError("Rich library required for UI mode. Install with: pip install rich")
 
@@ -85,6 +92,7 @@ class AutoModeUI:
         self._last_update = 0.0
         self._update_interval = 1.0 / 30.0
 
+    @log_call
     def _generate_title_from_prompt(self, prompt: str) -> str:
         """Generate short title from user prompt.
 
@@ -96,6 +104,7 @@ class AutoModeUI:
         Returns:
             Title string (max 50 chars)
         """
+        logger.debug(f"AutoModeUI._generate_title_from_prompt: called with prompt={prompt!r}")
         if not prompt or not prompt.strip():
             return "Auto Mode Session"
 
@@ -105,12 +114,14 @@ class AutoModeUI:
 
         return prompt[:47] + "..."
 
+    @log_call
     def _create_layout(self) -> Layout:
         """Create Rich layout structure.
 
         Returns:
             Configured Layout instance with 5 areas
         """
+        logger.debug("AutoModeUI._create_layout: called")
         layout = Layout()
 
         # Split into 5 rows
@@ -124,15 +135,18 @@ class AutoModeUI:
 
         return layout
 
+    @log_call
     def _build_title_panel(self) -> Panel:
         """Build title panel.
 
         Returns:
             Rich Panel with session title
         """
+        logger.debug("AutoModeUI._build_title_panel: called")
         title_text = Text(self.title, style="bold cyan", justify="center")
         return Panel(title_text, box=box.ROUNDED, border_style="cyan")
 
+    @log_call
     def _build_session_panel(self) -> Panel:
         """Build session details panel.
 
@@ -141,6 +155,7 @@ class AutoModeUI:
         Returns:
             Rich Panel with session info
         """
+        logger.debug("AutoModeUI._build_session_panel: called")
         snapshot = self.state.snapshot()
 
         # Format elapsed time
@@ -206,6 +221,7 @@ class AutoModeUI:
 
         return Panel(table, title="Session Details", box=box.ROUNDED, border_style="blue")
 
+    @log_call
     def _build_todo_panel(self) -> Panel:
         """Build todo list panel.
 
@@ -214,6 +230,7 @@ class AutoModeUI:
         Returns:
             Rich Panel with todo list
         """
+        logger.debug("AutoModeUI._build_todo_panel: called")
         snapshot = self.state.snapshot()
         todos = snapshot["todos"]
 
@@ -244,6 +261,7 @@ class AutoModeUI:
 
         return Panel(content, title="Tasks", box=box.ROUNDED, border_style="green")
 
+    @log_call
     def _build_log_panel(self) -> Panel:
         """Build log streaming panel.
 
@@ -252,6 +270,7 @@ class AutoModeUI:
         Returns:
             Rich Panel with logs
         """
+        logger.debug("AutoModeUI._build_log_panel: called")
         snapshot = self.state.snapshot()
         logs = snapshot["logs"]
 
@@ -264,6 +283,7 @@ class AutoModeUI:
 
         return Panel(content, title="Logs", box=box.ROUNDED, border_style="magenta")
 
+    @log_call
     def _build_input_panel(self) -> Panel:
         """Build prompt input panel.
 
@@ -272,6 +292,7 @@ class AutoModeUI:
         Returns:
             Rich Panel with input instructions
         """
+        logger.debug("AutoModeUI._build_input_panel: called")
         help_text = Text()
         help_text.append("Commands: ", style="bold")
         help_text.append("[x] Exit UI  ", style="cyan")
@@ -283,12 +304,14 @@ class AutoModeUI:
 
         return Panel(help_text, title="Controls", box=box.ROUNDED, border_style="white")
 
+    @log_call
     def update_display(self, live: Live) -> None:
         """Update display with current state.
 
         Args:
             live: Rich Live display instance
         """
+        logger.debug("AutoModeUI.update_display: called")
         # Throttle updates
         now = time.time()
         if now - self._last_update < self._update_interval:
@@ -306,12 +329,14 @@ class AutoModeUI:
         # Refresh display
         live.update(self.layout)
 
+    @log_call
     def handle_keyboard_input(self, key: str) -> None:
         """Handle keyboard command input.
 
         Args:
             key: Key pressed (single character)
         """
+        logger.debug(f"AutoModeUI.handle_keyboard_input: called with key={key!r}")
         key = key.lower()
 
         if key == "x":
@@ -325,6 +350,7 @@ class AutoModeUI:
             if self._showing_help:
                 self.state.add_log("Help: x=exit ui, h=help")
 
+    @log_call
     def submit_input(self, text: str) -> None:
         """Submit new instruction via input panel.
 
@@ -333,6 +359,7 @@ class AutoModeUI:
         Args:
             text: Instruction text to inject
         """
+        logger.debug(f"AutoModeUI.submit_input: called with text={text!r}")
         if not text or not text.strip():
             return
 
@@ -347,92 +374,122 @@ class AutoModeUI:
         except Exception as e:
             self.state.add_log(f"Error submitting instruction: {e}")
 
+    @log_call
     def should_exit(self) -> bool:
         """Check if UI should exit.
 
         Returns:
             True if exit requested
         """
+        logger.debug("AutoModeUI.should_exit: called")
         return self._should_exit
 
+    @log_call
     def is_showing_help(self) -> bool:
         """Check if help overlay is showing.
 
         Returns:
             True if showing help
         """
+        logger.debug("AutoModeUI.is_showing_help: called")
         return self._showing_help
 
+    @log_call
     def has_pending_input(self) -> bool:
         """Check if there is pending input.
 
         Returns:
             True if input queued
         """
+        logger.debug("AutoModeUI.has_pending_input: called")
         return len(self._pending_input) > 0
 
+    @log_call
     def get_pending_input(self) -> str | None:
         """Get and clear next pending input.
 
         Returns:
             Next pending input or None
         """
+        logger.debug("AutoModeUI.get_pending_input: called")
         if self._pending_input:
             return self._pending_input.popleft()
         return None
 
     # Methods for test compatibility
+    @log_call
     def get_title(self) -> str:
         """Get current title."""
+        logger.debug("AutoModeUI.get_title: called")
         return self.title
 
+    @log_call
     def get_session_details(self) -> str:
         """Get session details as text."""
+        logger.debug("AutoModeUI.get_session_details: called")
         panel = self._build_session_panel()
         # Extract text representation for tests
         return str(panel)
 
+    @log_call
     def get_todo_display(self) -> str:
         """Get todo display as text."""
+        logger.debug("AutoModeUI.get_todo_display: called")
         panel = self._build_todo_panel()
         return str(panel)
 
+    @log_call
     def get_log_content(self) -> str:
         """Get log content as text."""
+        logger.debug("AutoModeUI.get_log_content: called")
         snapshot = self.state.snapshot()
         return "\n".join(snapshot["logs"])
 
+    @log_call
     def update_todos(self, todos: list[dict[str, str]]) -> None:
         """Update todo list in state."""
+        logger.debug("AutoModeUI.update_todos: called")
         self.state.update_todos(todos)
 
+    @log_call
     def append_log(self, message: str) -> None:
         """Append log message to state."""
+        logger.debug(f"AutoModeUI.append_log: called with message={message!r}")
         self.state.add_log(message)
 
+    @log_call
     def get_input_placeholder(self) -> str:
         """Get input placeholder text."""
+        logger.debug("AutoModeUI.get_input_placeholder: called")
         return "Type new instructions..."
 
+    @log_call
     def set_input_text(self, text: str) -> None:
         """Set input text (for tests)."""
+        logger.debug(f"AutoModeUI.set_input_text: called with text={text!r}")
         self._pending_input.append(text)
 
+    @log_call
     def get_cost_info(self) -> dict | None:
         """Get cost info from state."""
+        logger.debug("AutoModeUI.get_cost_info: called")
         costs = self.state.get_costs()
         return costs if costs else None
 
+    @log_call
     def _append_to_buffer(self, message: str) -> None:
         """Internal method to append to buffer (for test mocking)."""
+        logger.debug(f"AutoModeUI._append_to_buffer: called with message={message!r}")
         self.state.add_log(message)
 
+    @log_call
     def _keyboard_listener_thread(self):
         """Background thread to capture keyboard input without blocking.
 
         Runs in daemon mode and listens for single-character commands.
         Uses non-blocking stdin reading to avoid interfering with main thread.
         """
+        logger.debug("AutoModeUI._keyboard_listener_thread: called")
         # Configure terminal for non-blocking, non-canonical mode
         # This allows reading single characters without Enter
         import termios
@@ -463,6 +520,7 @@ class AutoModeUI:
                 except Exception:
                     pass
 
+    @log_call
     def run(self, update_interval: float = 0.1) -> None:
         """Main run loop - displays UI and handles keyboard input.
 
@@ -474,6 +532,7 @@ class AutoModeUI:
         Args:
             update_interval: Time between display updates in seconds (default 0.1)
         """
+        logger.debug(f"AutoModeUI.run: called with update_interval={update_interval!r}")
         # Start keyboard listener in background thread
         keyboard_thread = threading.Thread(
             target=self._keyboard_listener_thread, daemon=True, name="KeyboardListener"

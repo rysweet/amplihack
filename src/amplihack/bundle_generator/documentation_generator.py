@@ -1,8 +1,11 @@
 """Generate user-facing documentation for agent bundles."""
 
+from amplihack.utils.logging_utils import log_call
+
 from .models import AgentBundle
 
 
+@log_call
 def generate_instructions(bundle: AgentBundle) -> str:
     """
     Generate INSTRUCTIONS.md with full usage guide.
@@ -245,6 +248,7 @@ Bundle created: {bundle.created_at.strftime("%Y-%m-%d %H:%M:%S UTC")}
 """
 
 
+@log_call
 def generate_troubleshooting_section() -> str:
     """
     Generate common troubleshooting scenarios.
@@ -303,6 +307,7 @@ Solution: Force refresh
 ```"""
 
 
+@log_call
 def generate_prerequisites_section() -> str:
     """
     Generate prerequisites and installation requirements.

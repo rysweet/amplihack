@@ -17,6 +17,7 @@ import os
 from typing import Protocol
 
 from amplihack.fleet._constants import DEFAULT_LLM_MAX_TOKENS, SUBPROCESS_TIMEOUT_SECONDS
+from amplihack.utils.logging_utils import log_call
 
 __all__ = [
     "LLMBackend",
@@ -30,12 +31,14 @@ __all__ = [
 class LLMBackend(Protocol):
     """Protocol for LLM backends."""
 
+    @log_call
     def complete(self, system_prompt: str, user_prompt: str) -> str: ...
 
 
 class AnthropicBackend:
     """Anthropic SDK backend."""
 
+    @log_call
     def __init__(
         self,
         model: str = "claude-opus-4-6",
@@ -46,6 +49,7 @@ class AnthropicBackend:
         self.api_key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
         self.max_tokens = max_tokens
 
+    @log_call
     def complete(self, system_prompt: str, user_prompt: str) -> str:
         import anthropic
 
@@ -68,15 +72,18 @@ class CopilotBackend:
     Requires: GitHub Copilot subscription + gh auth login
     """
 
+    @log_call
     def __init__(self, model: str = "gpt-4o"):
         self.model = model
 
+    @log_call
     def complete(self, system_prompt: str, user_prompt: str) -> str:
         import asyncio
 
         # WARNING: asyncio.run() will crash if called from async context. See PATTERNS.md.
         return asyncio.run(self._async_complete(system_prompt, user_prompt))
 
+    @log_call
     async def _async_complete(self, system_prompt: str, user_prompt: str) -> str:
         import asyncio
 
@@ -89,12 +96,15 @@ class CopilotBackend:
             response_parts: list[str] = []
             done = asyncio.Event()
 
-            session = await client.create_session({
-                "model": self.model,
-                "system_message": {"content": system_prompt},
-                "on_permission_request": PermissionHandler.approve_all,
-            })
+            session = await client.create_session(
+                {
+                    "model": self.model,
+                    "system_message": {"content": system_prompt},
+                    "on_permission_request": PermissionHandler.approve_all,
+                }
+            )
 
+            @log_call
             def on_event(event):
                 etype = event.type.value if hasattr(event.type, "value") else str(event.type)
                 if etype == "assistant.message":
@@ -111,6 +121,7 @@ class CopilotBackend:
                 await asyncio.wait_for(done.wait(), timeout=SUBPROCESS_TIMEOUT_SECONDS)
             except TimeoutError:
                 import logging as _logging
+
                 _logging.getLogger(__name__).warning(
                     "Copilot session timed out after %ds", SUBPROCESS_TIMEOUT_SECONDS
                 )
@@ -129,10 +140,12 @@ class LiteLLMBackend:
     Set model via constructor: "gpt-4o", "claude-opus-4-6", "ollama/llama3", etc.
     """
 
+    @log_call
     def __init__(self, model: str = "gpt-4o", max_tokens: int = DEFAULT_LLM_MAX_TOKENS):
         self.model = model
         self.max_tokens = max_tokens
 
+    @log_call
     def complete(self, system_prompt: str, user_prompt: str) -> str:
         import litellm
 
@@ -152,6 +165,7 @@ class LiteLLMBackend:
         return ""
 
 
+@log_call
 def auto_detect_backend() -> LLMBackend:
     """Auto-detect the best available LLM backend.
 

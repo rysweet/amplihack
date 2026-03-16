@@ -25,6 +25,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 from .connector import KuzuConnector
 
 logger = logging.getLogger(__name__)
@@ -70,6 +72,7 @@ class KuzuCodeGraph:
         - RELATES_TO_FUNCTION_* (Memory → Function)
     """
 
+    @log_call
     def __init__(self, connector: KuzuConnector):
         """Initialize blarify integration.
 
@@ -79,6 +82,7 @@ class KuzuCodeGraph:
         self.conn = connector
         self._ensure_code_graph_schema()
 
+    @log_call
     def _ensure_code_graph_schema(self):
         """Ensure code graph schema tables exist in Kuzu database.
 
@@ -184,6 +188,7 @@ class KuzuCodeGraph:
                 # Table might already exist
                 logger.debug("Schema creation: %s", e)
 
+    @log_call
     def run_blarify(
         self,
         codebase_path: str,
@@ -234,6 +239,7 @@ class KuzuCodeGraph:
                 os.unlink(tmp_path)
                 logger.debug("Cleaned up temporary file: %s", tmp_path)
 
+    @log_call
     def import_blarify_output(
         self,
         blarify_json_path: Path,
@@ -278,6 +284,7 @@ class KuzuCodeGraph:
         logger.info("Blarify import complete: %s", counts)
         return counts
 
+    @log_call
     def _import_files(self, files: list[dict[str, Any]], project_id: str | None = None) -> int:
         """Import code file nodes.
 
@@ -363,6 +370,7 @@ class KuzuCodeGraph:
 
         return count
 
+    @log_call
     def _import_classes(self, classes: list[dict[str, Any]]) -> int:
         """Import class nodes.
 
@@ -463,6 +471,7 @@ class KuzuCodeGraph:
 
         return count
 
+    @log_call
     def _import_functions(self, functions: list[dict[str, Any]]) -> int:
         """Import function nodes.
 
@@ -614,6 +623,7 @@ class KuzuCodeGraph:
 
         return count
 
+    @log_call
     def _import_imports(self, imports: list[dict[str, Any]]) -> int:
         """Import import relationships.
 
@@ -671,6 +681,7 @@ class KuzuCodeGraph:
 
         return count
 
+    @log_call
     def _import_relationships(self, relationships: list[dict[str, Any]]) -> int:
         """Import code relationships (calls, inherits, references).
 
@@ -703,6 +714,7 @@ class KuzuCodeGraph:
 
         return count
 
+    @log_call
     def _create_call_relationship(self, source_id: str, target_id: str) -> int:
         """Create CALLS relationship between functions."""
         try:
@@ -740,6 +752,7 @@ class KuzuCodeGraph:
             logger.warning("Failed to create CALLS relationship: %s", e)
             return 0
 
+    @log_call
     def _create_inheritance_relationship(self, source_id: str, target_id: str) -> int:
         """Create INHERITS relationship between classes."""
         try:
@@ -777,6 +790,7 @@ class KuzuCodeGraph:
             logger.warning("Failed to create INHERITS relationship: %s", e)
             return 0
 
+    @log_call
     def _create_reference_relationship(self, source_id: str, target_id: str) -> int:
         """Create REFERENCES_CLASS relationship."""
         try:
@@ -814,6 +828,7 @@ class KuzuCodeGraph:
             logger.warning("Failed to create REFERENCES relationship: %s", e)
             return 0
 
+    @log_call
     def link_code_to_memories(self, project_id: str | None = None) -> int:
         """Create relationships between code and memories.
 
@@ -841,6 +856,7 @@ class KuzuCodeGraph:
         logger.info("Created %d code-memory relationships", count)
         return count
 
+    @log_call
     def _link_memories_to_files(self, project_id: str | None = None) -> int:
         """Link memories to code files based on metadata."""
         count = 0
@@ -931,6 +947,7 @@ class KuzuCodeGraph:
 
         return count
 
+    @log_call
     def _link_memories_to_functions(self, project_id: str | None = None) -> int:
         """Link memories to functions based on content matching."""
         count = 0
@@ -1015,6 +1032,7 @@ class KuzuCodeGraph:
 
         return count
 
+    @log_call
     def query_code_context(
         self,
         memory_id: str,
@@ -1137,6 +1155,7 @@ class KuzuCodeGraph:
             "classes": classes,
         }
 
+    @log_call
     def get_code_stats(self, project_id: str | None = None) -> dict[str, Any]:
         """Get code graph statistics.
 
@@ -1178,6 +1197,7 @@ class KuzuCodeGraph:
                 "total_lines": 0,
             }
 
+    @log_call
     def incremental_update(
         self,
         blarify_json_path: Path,
@@ -1198,6 +1218,7 @@ class KuzuCodeGraph:
         return self.import_blarify_output(blarify_json_path, project_id)
 
 
+@log_call
 def run_blarify(
     codebase_path: Path,
     output_path: Path,
@@ -1450,6 +1471,7 @@ def run_blarify(
         return False
 
 
+@log_call
 def _run_with_progress_indicator(
     cmd: list[str], codebase_path: Path
 ) -> subprocess.CompletedProcess:
@@ -1467,6 +1489,7 @@ def _run_with_progress_indicator(
     process_error = None
     result_lock = threading.Lock()
 
+    @log_call
     def run_subprocess():
         """Run the subprocess in a separate thread."""
         nonlocal process_result, process_error
@@ -1475,9 +1498,13 @@ def _run_with_progress_indicator(
                 cmd,
                 capture_output=True,
                 text=True,
+                timeout=600,
             )
             with result_lock:
                 process_result = result
+        except subprocess.TimeoutExpired as e:
+            with result_lock:
+                process_error = e
         except Exception as e:
             with result_lock:
                 process_error = e

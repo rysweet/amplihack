@@ -25,6 +25,7 @@ from amplihack.fleet._cli_formatters_legacy import (
     _format_advance_report_legacy,
     _format_scout_report_legacy,
 )
+from amplihack.utils.logging_utils import log_call
 
 # Truncation constants
 MAX_OUTPUT_LENGTH = 300
@@ -65,6 +66,7 @@ class AdvanceResult:
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
+@log_call
 def format_scout_report(
     result_or_all_vms,
     format_or_decisions=None,
@@ -97,7 +99,11 @@ def format_scout_report(
     if isinstance(result_or_all_vms, ScoutResult):
         result = result_or_all_vms
         fmt = format or (format_or_decisions if isinstance(format_or_decisions, str) else "table")
-        verbose_val = verbose if verbose is not None else (verbose_or_adopted_count if isinstance(verbose_or_adopted_count, bool) else False)
+        verbose_val = (
+            verbose
+            if verbose is not None
+            else (verbose_or_adopted_count if isinstance(verbose_or_adopted_count, bool) else False)
+        )
         if fmt not in _VALID_FORMATS:
             raise ValueError(f"Invalid format: {fmt}. Must be one of: {', '.join(_VALID_FORMATS)}")
         if fmt == "json":
@@ -114,6 +120,7 @@ def format_scout_report(
     return _format_scout_report_legacy(all_vms_val, decisions_val, adopted_val, skip_adopt_val)
 
 
+@log_call
 def format_advance_report(
     result_or_decisions,
     format_or_executed=None,
@@ -152,6 +159,7 @@ def format_advance_report(
 # --- Scout formatters (new style) ---
 
 
+@log_call
 def _format_scout_table(result: ScoutResult, verbose: bool) -> str:
     lines: list[str] = []
     status_icon = "+" if result.success else "X"
@@ -179,14 +187,17 @@ def _format_scout_table(result: ScoutResult, verbose: bool) -> str:
     return "\n".join(lines)
 
 
+@log_call
 def _format_scout_json(result: ScoutResult) -> str:
     return json.dumps(_scout_to_dict(result), indent=2)
 
 
+@log_call
 def _format_scout_yaml(result: ScoutResult) -> str:
     return yaml.dump(_scout_to_dict(result), default_flow_style=False, sort_keys=False)
 
 
+@log_call
 def _scout_to_dict(result: ScoutResult) -> dict[str, Any]:
     return {
         "session_id": result.session_id,
@@ -203,6 +214,7 @@ def _scout_to_dict(result: ScoutResult) -> dict[str, Any]:
 # --- Advance formatters (new style) ---
 
 
+@log_call
 def _format_advance_table(result: AdvanceResult, verbose: bool) -> str:
     lines: list[str] = []
     status_icon = "+" if result.success else "X"
@@ -229,14 +241,17 @@ def _format_advance_table(result: AdvanceResult, verbose: bool) -> str:
     return "\n".join(lines)
 
 
+@log_call
 def _format_advance_json(result: AdvanceResult) -> str:
     return json.dumps(_advance_to_dict(result), indent=2)
 
 
+@log_call
 def _format_advance_yaml(result: AdvanceResult) -> str:
     return yaml.dump(_advance_to_dict(result), default_flow_style=False, sort_keys=False)
 
 
+@log_call
 def _advance_to_dict(result: AdvanceResult) -> dict[str, Any]:
     return {
         "session_id": result.session_id,
@@ -255,10 +270,12 @@ def _advance_to_dict(result: AdvanceResult) -> dict[str, Any]:
 # --- Shared helpers ---
 
 
+@log_call
 def _format_agent_status(success: bool) -> str:
     return "completed" if success else "failed"
 
 
+@log_call
 def _truncate(text: str, max_len: int) -> str:
     if len(text) <= max_len:
         return text

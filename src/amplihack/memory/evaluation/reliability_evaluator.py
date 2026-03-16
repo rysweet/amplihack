@@ -19,6 +19,8 @@ import asyncio
 import logging
 from dataclasses import dataclass
 
+from amplihack.utils.logging_utils import log_call
+
 from ..coordinator import MemoryCoordinator, RetrievalQuery, StorageRequest
 from ..types import MemoryType
 
@@ -53,6 +55,7 @@ class ReliabilityEvaluator:
     - Error recovery: Handles failures gracefully?
     """
 
+    @log_call
     def __init__(self, coordinator: MemoryCoordinator):
         """Initialize evaluator.
 
@@ -62,6 +65,7 @@ class ReliabilityEvaluator:
         self.coordinator = coordinator
         self.backend = coordinator.backend
 
+    @log_call
     async def evaluate(self) -> ReliabilityMetrics:
         """Evaluate reliability with stress tests.
 
@@ -85,6 +89,7 @@ class ReliabilityEvaluator:
             backend_name=self.backend.get_capabilities().backend_name,
         )
 
+    @log_call
     async def _test_data_integrity(self) -> float:
         """Test that stored data can be retrieved accurately.
 
@@ -134,6 +139,7 @@ class ReliabilityEvaluator:
 
         return successful_roundtrips / total_tests if total_tests > 0 else 0.0
 
+    @log_call
     async def _test_concurrent_safety(self) -> float:
         """Test concurrent operations (multi-threading safety).
 
@@ -144,6 +150,7 @@ class ReliabilityEvaluator:
         successful_ops = 0
 
         # Create tasks fer concurrent storage
+        @log_call
         async def store_memory(index: int) -> bool:
             try:
                 request = StorageRequest(
@@ -169,6 +176,7 @@ class ReliabilityEvaluator:
 
         return successful_ops / num_concurrent_ops if num_concurrent_ops > 0 else 0.0
 
+    @log_call
     async def _test_error_recovery(self) -> float:
         """Test error handling and recovery.
 

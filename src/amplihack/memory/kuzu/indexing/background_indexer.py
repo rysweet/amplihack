@@ -11,6 +11,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 
 class JobStatus(Enum):
     """Status of a background indexing job."""
@@ -53,6 +55,7 @@ class IndexingJob:
     start_time: float = field(default_factory=time.time)
     result: JobResult | None = None
 
+    @log_call
     def wait(self, timeout: float | None = None) -> bool:
         """Wait for job to complete.
 
@@ -82,6 +85,7 @@ class IndexingJob:
 class BackgroundIndexer:
     """Manage background indexing jobs."""
 
+    @log_call
     def __init__(self, log_dir: Path | None = None):
         """Initialize background indexer.
 
@@ -97,6 +101,7 @@ class BackgroundIndexer:
         self._jobs: dict[str, IndexingJob] = {}
         self._completion_callbacks: list[Callable] = []
 
+    @log_call
     def start_background_job(
         self,
         codebase_path: Path,
@@ -140,6 +145,7 @@ class BackgroundIndexer:
 
         return job
 
+    @log_call
     def _worker(
         self,
         job_id: str,
@@ -240,6 +246,7 @@ class BackgroundIndexer:
             )
             self._store_result(job_id, result)
 
+    @log_call
     def _store_result(self, job_id: str, result: JobResult) -> None:
         """Store job result.
 
@@ -254,6 +261,7 @@ class BackgroundIndexer:
             if result.error:
                 f.write(f"error: {result.error}\n")
 
+    @log_call
     def get_job_status(self, job_id: str) -> JobStatus:
         """Get current status of a job.
 
@@ -283,6 +291,7 @@ class BackgroundIndexer:
 
         return job.status
 
+    @log_call
     def _load_result(self, job_id: str) -> JobResult | None:
         """Load job result from file.
 
@@ -317,6 +326,7 @@ class BackgroundIndexer:
             error=error,
         )
 
+    @log_call
     def cancel_job(self, job_id: str) -> None:
         """Cancel a running job.
 
@@ -335,6 +345,7 @@ class BackgroundIndexer:
 
         job.status = JobStatus.CANCELLED
 
+    @log_call
     def stream_logs(self, job_id: str, max_lines: int = 100) -> list[str]:
         """Stream log output from a job.
 
@@ -357,6 +368,7 @@ class BackgroundIndexer:
 
         return lines[-max_lines:]
 
+    @log_call
     def get_job_result(self, job_id: str) -> JobResult | None:
         """Get result of a completed job.
 
@@ -375,6 +387,7 @@ class BackgroundIndexer:
 
         return self._load_result(job_id)
 
+    @log_call
     def list_jobs(self) -> list[IndexingJob]:
         """List all jobs.
 
@@ -383,6 +396,7 @@ class BackgroundIndexer:
         """
         return list(self._jobs.values())
 
+    @log_call
     def cleanup_completed_jobs(self, keep_results: bool = True) -> None:
         """Clean up completed jobs from memory.
 
@@ -400,6 +414,7 @@ class BackgroundIndexer:
             if job_id in self._jobs:
                 del self._jobs[job_id]
 
+    @log_call
     def get_job_progress(self, job_id: str) -> JobProgress | None:
         """Get current progress of a job.
 
@@ -444,6 +459,7 @@ class BackgroundIndexer:
             files_processed=files_processed,
         )
 
+    @log_call
     def register_completion_callback(self, callback: Callable) -> None:
         """Register callback for job completion.
 

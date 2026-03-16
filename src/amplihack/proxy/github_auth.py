@@ -6,10 +6,13 @@ import subprocess
 import time
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 
 class GitHubAuthManager:
     """Manages GitHub authentication for Copilot API access."""
 
+    @log_call
     def __init__(self):
         """Initialize GitHub auth manager."""
         self.client_id = "Iv1.b507a08c87ecfe98"  # GitHub CLI client ID
@@ -17,6 +20,7 @@ class GitHubAuthManager:
         self.access_token_url = "https://github.com/login/oauth/access_token"
         self.scopes = ["copilot"]
 
+    @log_call
     def get_existing_token(self) -> str | None:
         """Get existing GitHub token from gh CLI if available.
 
@@ -49,6 +53,7 @@ class GitHubAuthManager:
 
         return None
 
+    @log_call
     def initiate_device_flow(self) -> tuple[str, str, str]:
         """Initiate GitHub OAuth device flow.
 
@@ -79,6 +84,7 @@ class GitHubAuthManager:
         except Exception as e:
             raise RuntimeError(f"Failed to initiate device flow: {e}")
 
+    @log_call
     def poll_for_token(self, device_code: str, interval: int = 5, timeout: int = 300) -> str:
         """Poll for access token after user authorization.
 
@@ -151,6 +157,7 @@ class GitHubAuthManager:
 
         raise RuntimeError("Authorization timed out")
 
+    @log_call
     def _set_secure_permissions(self, path: Path, is_dir: bool = False) -> None:
         """Set secure permissions on file or directory.
 
@@ -167,6 +174,7 @@ class GitHubAuthManager:
         except PermissionError as e:
             raise PermissionError(f"Unable to set secure permissions on {path}: {e}")
 
+    @log_call
     def save_token(self, token: str, config_path: str | Path | None = None) -> None:
         """Save GitHub token to configuration with secure permissions.
 
@@ -229,6 +237,7 @@ class GitHubAuthManager:
                 # File I/O and OS-level errors are warnings (disk full, network issues, filesystem issues)
                 print(f"Warning: Failed to save token: {e}")
 
+    @log_call
     def _verify_copilot_access(self, token: str) -> bool:
         """Verify token has GitHub Copilot access.
 
@@ -244,7 +253,10 @@ class GitHubAuthManager:
             # If requests not available, assume token is valid
             import sys
 
-            print("WARNING: requests not available, skipping Copilot access verification", file=sys.stderr)
+            print(
+                "WARNING: requests not available, skipping Copilot access verification",
+                file=sys.stderr,
+            )
             return True
 
         try:
@@ -267,6 +279,7 @@ class GitHubAuthManager:
 
         return False
 
+    @log_call
     def get_or_create_token(self, config_path: Path | None = None) -> str:
         """Get existing token or create new one via device flow.
 
@@ -302,6 +315,7 @@ class GitHubAuthManager:
         print("GitHub authentication successful!")
         return token
 
+    @log_call
     def revoke_token(self, token: str) -> bool:
         """Revoke GitHub access token.
 

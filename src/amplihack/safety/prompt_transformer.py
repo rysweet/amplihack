@@ -3,10 +3,13 @@
 import re
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 
 class PromptTransformer:
     """Transform auto mode prompts to include directory change."""
 
+    @log_call
     def transform_prompt(
         self, original_prompt: str, target_directory: str | Path, used_temp: bool
     ) -> str:
@@ -22,6 +25,7 @@ class PromptTransformer:
             return f"{slash_commands} {dir_instruction}{remaining_prompt}"
         return f"{dir_instruction}{remaining_prompt}"
 
+    @log_call
     def _extract_slash_commands(self, prompt: str) -> tuple[str, str]:
         """Extract slash commands from the start of the prompt."""
         prompt_stripped = prompt.strip()

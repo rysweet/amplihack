@@ -26,6 +26,8 @@ from dataclasses import dataclass
 
 import aiohttp  # type: ignore[import-untyped]
 
+from amplihack.utils.logging_utils import log_call
+
 
 @dataclass
 class BenchmarkResult:
@@ -45,11 +47,13 @@ class BenchmarkResult:
 class PerformanceBenchmark:
     """Comprehensive performance benchmark suite."""
 
+    @log_call
     def __init__(self, proxy_url: str = "http://localhost:8000", iterations: int = 1000):
         self.proxy_url = proxy_url
         self.iterations = iterations
         self.results: list[BenchmarkResult] = []
 
+    @log_call
     async def benchmark_router_initialization(self) -> BenchmarkResult:
         """Benchmark router initialization performance."""
         print("🚀 Benchmarking router initialization...")
@@ -68,6 +72,7 @@ class PerformanceBenchmark:
 
         return self._create_benchmark_result("Router Initialization", times, 10)
 
+    @log_call
     async def benchmark_model_routing(self) -> BenchmarkResult:
         """Benchmark model routing decision performance."""
         print("🔀 Benchmarking model routing decisions...")
@@ -98,6 +103,7 @@ class PerformanceBenchmark:
 
         return self._create_benchmark_result("Model Routing", times, len(times))
 
+    @log_call
     async def benchmark_cache_performance(self) -> BenchmarkResult:
         """Benchmark cache hit/miss performance."""
         print("💾 Benchmarking cache performance...")
@@ -121,11 +127,13 @@ class PerformanceBenchmark:
 
         return self._create_benchmark_result("Cache Access", times, len(times))
 
+    @log_call
     async def benchmark_session_pooling(self) -> BenchmarkResult:
         """Benchmark session connection pooling efficiency."""
         print("🔗 Benchmarking session pooling...")
 
         # Test concurrent requests to measure pooling efficiency
+        @log_call
         async def make_request(session: aiohttp.ClientSession) -> float:
             start_time = time.perf_counter()
             async with session.get(f"{self.proxy_url}/health") as response:
@@ -147,6 +155,7 @@ class PerformanceBenchmark:
 
         return self._create_benchmark_result("Session Pooling", times, len(times))
 
+    @log_call
     async def benchmark_end_to_end_latency(self) -> BenchmarkResult:
         """Benchmark end-to-end request latency."""
         print("⚡ Benchmarking end-to-end latency...")
@@ -187,6 +196,7 @@ class PerformanceBenchmark:
 
         return self._create_benchmark_result("End-to-End Latency", times, len(times))
 
+    @log_call
     def _create_benchmark_result(
         self, name: str, times: list[float], iterations: int
     ) -> BenchmarkResult:
@@ -227,6 +237,7 @@ class PerformanceBenchmark:
             throughput_per_sec=throughput,
         )
 
+    @log_call
     def print_results(self):
         """Print formatted benchmark results."""
         print("\n" + "=" * 80)
@@ -271,6 +282,7 @@ class PerformanceBenchmark:
                 f"   ⚠️  Cache Access: {cache_result.mean_time_ms if cache_result else 'N/A'}ms (Target: <10ms)"
             )
 
+    @log_call
     async def run_all_benchmarks(self):
         """Run all performance benchmarks."""
         print("🔥 Starting Performance Benchmarks")
@@ -308,6 +320,7 @@ class PerformanceBenchmark:
 
         self.print_results()
 
+    @log_call
     def export_results(self, filename: str = "benchmark_results.json"):
         """Export benchmark results to JSON file."""
         results_data = []
@@ -350,6 +363,7 @@ class PerformanceBenchmark:
         print(f"\n💾 Results exported to {filename}")
 
 
+@log_call
 async def main():
     """Main benchmark execution."""
     parser = argparse.ArgumentParser(

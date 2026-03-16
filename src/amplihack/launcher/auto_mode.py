@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import logging
 import os
 import platform
 import re
@@ -12,6 +13,8 @@ import threading
 import time
 from contextlib import nullcontext
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 # pty is Unix-only, not available on Windows
 if platform.system() != "Windows":
@@ -50,6 +53,7 @@ from amplihack.launcher.fork_manager import ForkManager
 from amplihack.launcher.json_logger import JsonLogger
 from amplihack.launcher.session_capture import MessageCapture
 from amplihack.launcher.work_summary import WorkSummaryGenerator
+from amplihack.utils.logging_utils import log_call
 
 # Security constants for content sanitization
 MAX_INJECTED_CONTENT_SIZE = 50 * 1024  # 50KB limit for injected content
@@ -64,6 +68,7 @@ PROMPT_INJECTION_PATTERNS = [
 ]
 
 
+@log_call
 def _sanitize_injected_content(content: str) -> str:
     """Sanitize content before injecting into prompts.
 
@@ -73,6 +78,9 @@ def _sanitize_injected_content(content: str) -> str:
     Returns:
         Sanitized content (truncated and with suspicious patterns removed)
     """
+    logger.debug(
+        "_sanitize_injected_content: called with content length=%d", len(content) if content else 0
+    )
     if not content:
         return content
 
@@ -100,6 +108,7 @@ def _sanitize_injected_content(content: str) -> str:
 class AutoMode:
     """Simple agentic loop orchestrator for Claude, Copilot, or Codex."""
 
+    @log_call
     def __init__(
         self,
         sdk: str = "claude",
@@ -271,6 +280,7 @@ class AutoMode:
                 self.ui_enabled = False
                 self.ui = None
 
+    @log_call
     def log(self, msg: str, level: str = "INFO"):
         """Log message with optional level."""
         # Only print INFO, WARNING, ERROR to console - skip DEBUG
@@ -285,6 +295,7 @@ class AutoMode:
         with open(self.log_dir / "auto.log", "a", encoding="utf-8") as f:
             f.write(f"[{time.strftime('%H:%M:%S')}] [{level}] {msg}\n")
 
+    @log_call
     def _format_elapsed(self, seconds: float) -> str:
         """Format elapsed time as Xm Ys or Xs.
 
@@ -294,12 +305,14 @@ class AutoMode:
         Returns:
             Formatted string like "45s" or "1m 23s"
         """
+        self.log(f"[DEBUG] _format_elapsed: called with seconds={seconds:.1f}", level="DEBUG")
         if seconds < 60:
             return f"{int(seconds)}s"
         minutes = int(seconds // 60)
         remaining_seconds = int(seconds % 60)
         return f"{minutes}m {remaining_seconds}s"
 
+    @log_call
     def _progress_str(self, phase: str) -> str:
         """Build progress indicator string with total duration across forks.
 
@@ -309,6 +322,7 @@ class AutoMode:
         Returns:
             Progress string like "[Turn 2/10 | Planning | 1m 23s]" or with fork info
         """
+        self.log(f"[DEBUG] _progress_str: called with phase={phase!r}", level="DEBUG")
         current_fork_time = time.time() - self.start_time
         total_time = self.total_session_time + current_fork_time
 
@@ -318,6 +332,7 @@ class AutoMode:
 
         return f"[Turn {self.turn}/{self.max_turns} | {phase} | {self._format_elapsed(total_time)}{fork_info}]"
 
+    @log_call
     def run_sdk(self, prompt: str) -> tuple[int, str]:
         """Run SDK command with prompt, choosing method by provider.
 
@@ -327,6 +342,10 @@ class AutoMode:
         Returns:
             (exit_code, output)
         """
+        self.log(
+            f"[DEBUG] run_sdk: called with sdk={self.sdk!r}, prompt length={len(prompt)}",
+            level="DEBUG",
+        )
         # Claude SDK should use the async session path to maintain single event loop
         if self.sdk == "claude" and CLAUDE_SDK_AVAILABLE:
             self.log(
@@ -336,12 +355,17 @@ class AutoMode:
         # Fallback to subprocess for Copilot or if SDK unavailable
         return self._run_sdk_subprocess(prompt)
 
+    @log_call
     def _run_sdk_subprocess(self, prompt: str) -> tuple[int, str]:
         """Run SDK command via subprocess (legacy/copilot mode).
 
         Returns:
             (exit_code, output)
         """
+        self.log(
+            f"[DEBUG] _run_sdk_subprocess: called with sdk={self.sdk!r}, prompt length={len(prompt)}",
+            level="DEBUG",
+        )
         if self.sdk == "copilot":
             cmd = ["copilot", "--allow-all-tools", "--add-dir", "/", "-p", prompt]
         elif self.sdk == "codex":
@@ -381,6 +405,7 @@ class AutoMode:
         stdout_lines = []
         stderr_lines = []
 
+        @log_call
         def read_stream(stream, output_list, mirror_stream):
             """Read from stream and mirror to output."""
             for line in iter(stream.readline, ""):
@@ -388,6 +413,7 @@ class AutoMode:
                 mirror_stream.write(line)
                 mirror_stream.flush()
 
+        @log_call
         def feed_pty_stdin(fd, proc):
             """Auto-feed pty master with newlines to prevent any stdin blocking."""
             # Only run this on Unix where pty is available
@@ -455,12 +481,17 @@ class AutoMode:
 
         return process.returncode, stdout_output
 
+    @log_call
     def _check_for_new_instructions(self) -> str:
         """Check append directory for new instruction files and process them.
 
         Returns:
             String containing all new instructions (sanitized), or empty string if none.
         """
+        self.log(
+            f"[DEBUG] _check_for_new_instructions: called, checking {self.append_dir}",
+            level="DEBUG",
+        )
         new_instructions = []
 
         # Get all .md files in append directory
@@ -497,12 +528,14 @@ class AutoMode:
             return "\n".join(new_instructions)
         return ""
 
+    @log_call
     def _build_philosophy_context(self) -> str:
         """Build comprehensive philosophy and decision-making context.
 
         Returns context string that instructs Claude on autonomous decision-making
         using project philosophy files.
         """
+        self.log("[DEBUG] _build_philosophy_context: called", level="DEBUG")
         return """AUTONOMOUS MODE: You are in auto mode. Do NOT ask questions. Make decisions using:
 1. Explicit user requirements (HIGHEST PRIORITY - cannot be overridden)
 2. @.claude/context/USER_PREFERENCES.md guidance (MANDATORY - must follow)
@@ -517,6 +550,7 @@ Decision Authority:
 
 Document your decisions and reasoning in comments/logs."""
 
+    @log_call
     def _build_evaluation_prompt(self, message_capture) -> str:
         """Build evaluation prompt with work summary injection.
 
@@ -526,6 +560,7 @@ Document your decisions and reasoning in comments/logs."""
         Returns:
             Evaluation prompt string with work summary
         """
+        self.log(f"[DEBUG] _build_evaluation_prompt: called at turn={self.turn}", level="DEBUG")
         try:
             # Generate work summary
             summary = self.work_summary_generator.generate(message_capture)
@@ -574,6 +609,7 @@ Current Turn: {self.turn}/{self.max_turns}"""
 
         return prompt
 
+    @log_call
     def _should_continue_loop(self, eval_result: str, message_capture) -> bool:
         """Determine if loop should continue based on verification.
 
@@ -666,6 +702,7 @@ Current Turn: {self.turn}/{self.max_turns}"""
             eval_lower = eval_result.lower()
             return "auto-mode evaluation: complete" not in eval_lower
 
+    @log_call
     def _get_verification_feedback(self, eval_result: str, verification) -> str:
         """Get feedback message for disputed completion.
 
@@ -676,8 +713,13 @@ Current Turn: {self.turn}/{self.max_turns}"""
         Returns:
             Feedback message
         """
+        self.log(
+            f"[DEBUG] _get_verification_feedback: called with eval_result length={len(eval_result)}",
+            level="DEBUG",
+        )
         return self.completion_verifier.format_report(verification)
 
+    @log_call
     def _format_todos_for_terminal(self, todos: list) -> str:
         """Format todo list for terminal display with ANSI colors.
 
@@ -687,6 +729,9 @@ Current Turn: {self.turn}/{self.max_turns}"""
         Returns:
             Formatted string ready for terminal display
         """
+        self.log(
+            f"[DEBUG] _format_todos_for_terminal: called with {len(todos)} todos", level="DEBUG"
+        )
         if not todos:
             return ""
 
@@ -719,6 +764,7 @@ Current Turn: {self.turn}/{self.max_turns}"""
 
         return "\n".join(lines) + "\n"
 
+    @log_call
     def _handle_todo_write(self, todos: list) -> None:
         """Process TodoWrite tool use and update UI state.
 
@@ -756,6 +802,7 @@ Current Turn: {self.turn}/{self.max_turns}"""
             # Never break conversation flow for todo formatting errors
             self.log(f"Error formatting todos: {e}", level="WARNING")
 
+    @log_call
     async def _run_turn_with_sdk(self, prompt: str) -> tuple[int, str]:
         """Execute one turn using Claude Python SDK with streaming.
 
@@ -997,6 +1044,7 @@ Current Turn: {self.turn}/{self.max_turns}"""
 
             return (1, f"SDK Error: {e!s}")
 
+    @log_call
     def _is_retryable_error(self, error_text: str) -> bool:
         """Check if error is transient and should be retried.
 
@@ -1006,6 +1054,10 @@ Current Turn: {self.turn}/{self.max_turns}"""
         Returns:
             True if error is retryable (500, 429, 503, timeout, overloaded)
         """
+        self.log(
+            f"[DEBUG] _is_retryable_error: called with error_text={error_text[:100]!r}",
+            level="DEBUG",
+        )
         error_lower = error_text.lower()
         retryable_patterns = [
             "overloaded",
@@ -1019,6 +1071,7 @@ Current Turn: {self.turn}/{self.max_turns}"""
         ]
         return any(pattern in error_lower for pattern in retryable_patterns)
 
+    @log_call
     async def _run_turn_with_retry(
         self,
         prompt: str,
@@ -1073,8 +1126,10 @@ Current Turn: {self.turn}/{self.max_turns}"""
 
         return (code, output)
 
+    @log_call
     def run_hook(self, hook: str):
         """Run hook for copilot and codex (Claude SDK handles hooks automatically)."""
+        self.log(f"[DEBUG] run_hook: called with hook={hook!r}, sdk={self.sdk!r}", level="DEBUG")
         if self.sdk not in ["copilot", "codex"]:
             # Claude SDK runs hooks automatically
             self.log("Skipping manual hook execution for Claude SDK (hooks run automatically)")
@@ -1124,11 +1179,16 @@ Current Turn: {self.turn}/{self.max_turns}"""
         except Exception as e:
             self.log(f"✗ Hook {hook} failed: {e}")
 
+    @log_call
     def _start_ui_thread(self) -> None:
         """Start UI in a separate thread if UI mode is enabled."""
+        self.log(
+            f"[DEBUG] _start_ui_thread: called with ui_enabled={self.ui_enabled}", level="DEBUG"
+        )
         if not self.ui_enabled or not self.ui:
             return
 
+        @log_call
         def ui_runner():
             """Thread target to run the UI."""
             try:
@@ -1145,8 +1205,13 @@ Current Turn: {self.turn}/{self.max_turns}"""
         self.ui_thread.start()
         self.log("UI thread started")
 
+    @log_call
     def _stop_ui_thread(self) -> None:
         """Stop UI thread and wait for it to finish."""
+        self.log(
+            f"[DEBUG] _stop_ui_thread: called, ui_thread={self.ui_thread is not None}",
+            level="DEBUG",
+        )
         if not self.ui_thread:
             return
 
@@ -1157,6 +1222,7 @@ Current Turn: {self.turn}/{self.max_turns}"""
         else:
             self.log("UI thread stopped")
 
+    @log_call
     def run(self) -> int:
         """Execute agentic loop.
 
@@ -1176,6 +1242,7 @@ Current Turn: {self.turn}/{self.max_turns}"""
             # Always stop UI thread when done
             self._stop_ui_thread()
 
+    @log_call
     def _run_sync_session(self) -> int:
         """Execute agentic loop using subprocess-based SDK calls (Copilot/fallback)."""
         self.start_time = time.time()
@@ -1400,6 +1467,7 @@ Current Turn: {turn}/{self.max_turns}"""
 
         return 0
 
+    @log_call
     async def _run_async_session(self) -> int:
         """Execute agentic loop using Claude SDK in single async event loop.
 
@@ -1708,12 +1776,16 @@ Current Turn: {turn}/{self.max_turns}"""
 
         return 0
 
+    @log_call
     def _export_session_transcript(self) -> None:
         """Export session transcript using ClaudeTranscriptBuilder.
 
         Creates comprehensive transcript files in multiple formats (markdown, JSON, codex)
         using the captured messages from the session.
         """
+        self.log(
+            f"[DEBUG] _export_session_transcript: called, log_dir={self.log_dir}", level="DEBUG"
+        )
         try:
             # Import builder using importlib - works in both UVX and local dev
             import importlib.util

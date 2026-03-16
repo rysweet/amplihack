@@ -22,6 +22,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import ClassVar
 
+from amplihack.utils.logging_utils import log_call
+
 from ..tracing.trace_logger import DEFAULT_TRACE_FILE
 
 
@@ -72,12 +74,14 @@ class ClaudeBinaryManager:
     # Binaries known to support trace logging
     TRACE_SUPPORTED_BINARIES: ClassVar[set[str]] = {"rustyclawd"}
 
+    @log_call
     def __init__(self):
         """Initialize the binary manager."""
         # Cache for detected binary to avoid repeated detection
         self._cached_binary: BinaryInfo | None = None
         self._cache_valid = False
 
+    @log_call
     def detect_native_binary(self) -> BinaryInfo | None:
         """
         Detect available native Claude binary.
@@ -124,6 +128,7 @@ class ClaudeBinaryManager:
         self._cache_valid = True
         return None
 
+    @log_call
     def _validate_binary_path(
         self, path: Path, check_exists: bool = True, check_executable: bool = True
     ) -> BinaryInfo | None:
@@ -159,6 +164,7 @@ class ClaudeBinaryManager:
 
         return self._create_binary_info(path)
 
+    @log_call
     def _create_binary_info(self, path: Path) -> BinaryInfo:
         """
         Create BinaryInfo from a path without validation.
@@ -194,6 +200,7 @@ class ClaudeBinaryManager:
             supports_trace=supports_trace,
         )
 
+    @log_call
     def detect_version(self, binary: BinaryInfo) -> str | None:
         """
         Detect the version of a binary.
@@ -222,6 +229,7 @@ class ClaudeBinaryManager:
 
         return None
 
+    @log_call
     def _parse_version(self, version_output: str) -> str | None:
         """
         Parse version string from various output formats.
@@ -246,6 +254,7 @@ class ClaudeBinaryManager:
 
         return None
 
+    @log_call
     def build_command(
         self,
         binary: BinaryInfo,
@@ -290,6 +299,7 @@ class ClaudeBinaryManager:
 
         return cmd
 
+    @log_call
     def invalidate_cache(self) -> None:
         """Invalidate the binary detection cache."""
         self._cache_valid = False

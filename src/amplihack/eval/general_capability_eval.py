@@ -33,6 +33,8 @@ from typing import Any
 
 import anthropic  # type: ignore[import-untyped]  # pyright: ignore[reportMissingImports]
 
+from amplihack.utils.logging_utils import log_call
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -59,16 +61,19 @@ class ToolTrajectory:
     total_time_ms: int = 0
 
     @property
+    @log_call
     def call_names(self) -> list[str]:
         """Return ordered list of tool names called."""
         return [c.tool_name for c in self.calls]
 
     @property
+    @log_call
     def unique_tools(self) -> set[str]:
         """Return set of distinct tools used."""
         return {c.tool_name for c in self.calls}
 
     @property
+    @log_call
     def call_count(self) -> int:
         return len(self.calls)
 
@@ -96,6 +101,7 @@ class EvalTypeResult:
     overall_score: float = 0.0
     duration_s: float = 0.0
 
+    @log_call
     def compute_averages(self) -> None:
         """Compute metric averages across all scenarios."""
         if not self.scenarios:
@@ -122,11 +128,13 @@ class CapabilityReport:
     total_time_s: float = 0.0
 
     @property
+    @log_call
     def overall_score(self) -> float:
         if not self.eval_results:
             return 0.0
         return statistics.mean(r.overall_score for r in self.eval_results)
 
+    @log_call
     def to_dict(self) -> dict[str, Any]:
         return {
             "agent_name": self.agent_name,
@@ -682,6 +690,7 @@ COLLABORATIVE_SCENARIOS = [
 # ---------------------------------------------------------------------------
 
 
+@log_call
 def _get_anthropic_client() -> anthropic.Anthropic:
     """Create Anthropic client from environment."""
     api_key = os.environ.get("ANTHROPIC_API_KEY")
@@ -690,6 +699,7 @@ def _get_anthropic_client() -> anthropic.Anthropic:
     return anthropic.Anthropic(api_key=api_key)
 
 
+@log_call
 def _extract_json(text: str) -> dict:
     """Extract JSON object from LLM response text."""
     import re
@@ -714,6 +724,7 @@ def _extract_json(text: str) -> dict:
     raise json.JSONDecodeError(f"No valid JSON in: {stripped[:200]}", stripped, 0)
 
 
+@log_call
 def _llm_grade(prompt: str, grader_model: str | None = None) -> dict[str, Any]:
     """Run a grading prompt through the LLM and return parsed JSON.
 
@@ -739,6 +750,7 @@ def _llm_grade(prompt: str, grader_model: str | None = None) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
+@log_call
 def _grade_tool_use(
     scenario: ToolUseScenario,
     trajectory: ToolTrajectory,
@@ -821,6 +833,7 @@ def _grade_tool_use(
 # ---------------------------------------------------------------------------
 
 
+@log_call
 def _grade_planning(
     scenario: PlanningScenario,
     agent_response: str,
@@ -889,6 +902,7 @@ Return ONLY a JSON object:
 # ---------------------------------------------------------------------------
 
 
+@log_call
 def _grade_uncertainty(
     scenario: UncertaintyScenario,
     agent_response: str,
@@ -973,6 +987,7 @@ Return ONLY a JSON object:
 # ---------------------------------------------------------------------------
 
 
+@log_call
 def _grade_transfer(
     scenario: TransferScenario,
     agent_response: str,
@@ -1046,6 +1061,7 @@ Return ONLY a JSON object:
 # ---------------------------------------------------------------------------
 
 
+@log_call
 def _grade_collaborative(
     scenario: CollaborativeScenario,
     agent_response: str,
@@ -1139,6 +1155,7 @@ class GeneralCapabilityEval:
         enable_spawning: Whether to enable multi-agent spawning for collaborative eval
     """
 
+    @log_call
     def __init__(
         self,
         agent_name: str = "capability-eval-agent",
@@ -1156,6 +1173,7 @@ class GeneralCapabilityEval:
         self.enable_spawning = enable_spawning
         self._agent = None
 
+    @log_call
     def _create_agent(self) -> Any:
         """Create a fresh agent instance."""
         if self.sdk == "mini":
@@ -1180,6 +1198,7 @@ class GeneralCapabilityEval:
             kwargs["model"] = self.model
         return create_agent(**kwargs)
 
+    @log_call
     def _learn_content(self, agent: Any, content: str) -> None:
         """Feed content to the agent."""
         if hasattr(agent, "learn_from_content"):
@@ -1189,6 +1208,7 @@ class GeneralCapabilityEval:
 
             asyncio.run(agent.run(f"Learn and remember:\n\n{content}"))
 
+    @log_call
     def _ask_agent(self, agent: Any, question: str) -> tuple[str, ToolTrajectory]:
         """Ask the agent a question and capture the tool trajectory.
 
@@ -1237,6 +1257,7 @@ class GeneralCapabilityEval:
 
         return answer_text, trajectory
 
+    @log_call
     def _reset_agent(self, agent: Any) -> None:
         """Close and release agent resources."""
         if hasattr(agent, "close"):
@@ -1244,6 +1265,7 @@ class GeneralCapabilityEval:
 
     # ----- Eval runners per type -----
 
+    @log_call
     def eval_tool_use(self) -> EvalTypeResult:
         """Run tool use efficiency evaluation.
 
@@ -1282,6 +1304,7 @@ class GeneralCapabilityEval:
         result.compute_averages()
         return result
 
+    @log_call
     def eval_planning(self) -> EvalTypeResult:
         """Run planning evaluation.
 
@@ -1320,6 +1343,7 @@ class GeneralCapabilityEval:
         result.compute_averages()
         return result
 
+    @log_call
     def eval_reasoning_under_uncertainty(self) -> EvalTypeResult:
         """Run reasoning under uncertainty evaluation.
 
@@ -1363,6 +1387,7 @@ class GeneralCapabilityEval:
         result.compute_averages()
         return result
 
+    @log_call
     def eval_cross_domain_transfer(self) -> EvalTypeResult:
         """Run cross-domain transfer evaluation.
 
@@ -1399,6 +1424,7 @@ class GeneralCapabilityEval:
         result.compute_averages()
         return result
 
+    @log_call
     def eval_collaborative(self) -> EvalTypeResult:
         """Run collaborative task evaluation.
 
@@ -1447,6 +1473,7 @@ class GeneralCapabilityEval:
 
     # ----- Main run method -----
 
+    @log_call
     def run(
         self,
         eval_types: list[str] | None = None,
@@ -1517,6 +1544,7 @@ class GeneralCapabilityEval:
 # ---------------------------------------------------------------------------
 
 
+@log_call
 def print_report(report: CapabilityReport) -> None:
     """Print a human-readable report to stdout."""
     print("=" * 72)
@@ -1551,6 +1579,7 @@ def print_report(report: CapabilityReport) -> None:
 # ---------------------------------------------------------------------------
 
 
+@log_call
 def main() -> None:
     """CLI entry point for general capability evaluation."""
     parser = argparse.ArgumentParser(

@@ -49,6 +49,7 @@ logging.getLogger("litellm.completion").setLevel(logging.ERROR)
 
 # Create a filter to block any log messages containing specific strings
 class MessageFilter(logging.Filter):
+    @log_call
     def filter(self, record):
         # Block messages containing these strings
         blocked_phrases = [
@@ -82,6 +83,7 @@ class ColorizedFormatter(logging.Formatter):
     RESET = "\033[0m"
     BOLD = "\033[1m"
 
+    @log_call
     def format(self, record):
         if record.levelno == logging.debug and "MODEL MAPPING" in record.msg:
             # Apply colors and formatting to model mapping logs
@@ -97,6 +99,8 @@ for handler in logger.handlers:
 app = FastAPI()
 
 # Register LiteLLM callbacks for optional trace logging
+from amplihack.utils.logging_utils import log_call
+
 from .litellm_callbacks import register_trace_callbacks
 
 _trace_callback = register_trace_callbacks()  # Reads from AMPLIHACK_TRACE_LOGGING env
@@ -152,12 +156,14 @@ class ModelValidator:
     fixes Sonnet 4 routing conflict from Issue #1920.
     """
 
+    @log_call
     def __init__(self):
         """Initialize ModelValidator with known model lists."""
         self.claude_models = set(CLAUDE_MODELS)
         self.openai_models = set(OPENAI_MODELS)
         self.github_models = set(GITHUB_COPILOT_MODELS)
 
+    @log_call
     def get_provider(self, model: str) -> str:
         """Determine provider from model name.
 
@@ -203,6 +209,7 @@ class ModelValidator:
         # Unknown model
         raise ValueError(f"Invalid model name: unknown model '{model}'")
 
+    @log_call
     def validate_and_route(self, model: str) -> str:
         """Validate model name and return with provider prefix.
 
@@ -244,11 +251,13 @@ if PROXY_TIMEOUT > MAX_TIMEOUT:
     raise ValueError(f"AMPLIHACK_PROXY_TIMEOUT must be <= {MAX_TIMEOUT}s, got {PROXY_TIMEOUT}")
 
 
+@log_call
 def generate_request_id() -> str:
     """Generate unique request ID for debugging."""
     return f"req_{uuid.uuid4().hex[:12]}"
 
 
+@log_call
 def log_request_lifecycle(request_id: str, event: str, details: dict[str, Any] | None = None):
     """Log request lifecycle with context for debugging hung requests."""
     log_data = {
@@ -374,6 +383,7 @@ elif GITHUB_TOKEN and not GITHUB_COPILOT_ENABLED:
 
 
 # Helper function to clean schema for Gemini
+@log_call
 def clean_gemini_schema(schema: Any) -> Any:
     """Recursively removes unsupported fields from a JSON schema for Gemini."""
     if isinstance(schema, dict):
@@ -469,6 +479,7 @@ class MessagesRequest(BaseModel):
     original_model: str | None = None  # Will store the original model name
 
     @field_validator("model")
+    @log_call
     def validate_model_field(cls, v, info):  # Renamed to avoid conflict
         # 🚨 CRITICAL FIX: Enforce security validation FIRST (Issue #1922)
         from amplihack.proxy.github_models import GitHubModelMapper
@@ -560,6 +571,7 @@ class TokenCountRequest(BaseModel):
     original_model: str | None = None  # Will store the original model name
 
     @field_validator("model")
+    @log_call
     def validate_model_token_count(cls, v, info):  # Renamed to avoid conflict
         # Use the same logic as MessagesRequest validator
         # NOTE: Pydantic validators might not share state easily if not class methods
@@ -665,6 +677,7 @@ class MessagesResponse(BaseModel):
 
 
 @app.middleware("http")
+@log_call
 async def log_requests(request: Request, call_next):
     # Get request details
     method = request.method
@@ -679,6 +692,7 @@ async def log_requests(request: Request, call_next):
     return response
 
 
+@log_call
 def parse_tool_result_content(content):
     """Helper function to properly parse and normalize tool result content."""
     if content is None:
@@ -724,6 +738,7 @@ def parse_tool_result_content(content):
         return "Unparseable content"
 
 
+@log_call
 def sanitize_message_content(
     messages: list[Message], allowed_types: set | None = None
 ) -> list[Message]:
@@ -807,6 +822,7 @@ def sanitize_message_content(
     return sanitized_messages
 
 
+@log_call
 def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> dict[str, Any]:
     """Convert Anthropic API request format to LiteLLM format (which follows OpenAI)."""
     # LiteLLM already handles Anthropic models when using the format model="anthropic/claude-3-opus-20240229"
@@ -1134,6 +1150,7 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> dict[str
     return litellm_request
 
 
+@log_call
 def convert_litellm_to_anthropic(
     litellm_response: dict[str, Any] | Any, original_request: MessagesRequest
 ) -> MessagesResponse:
@@ -1337,6 +1354,7 @@ def convert_litellm_to_anthropic(
         )
 
 
+@log_call
 async def handle_streaming(response_generator, original_request: MessagesRequest):
     """Handle streaming responses from LiteLLM and convert to Anthropic format."""
     try:
@@ -1696,6 +1714,7 @@ async def handle_streaming(response_generator, original_request: MessagesRequest
 
 
 @app.post("/v1/messages")
+@log_call
 async def create_message(request: MessagesRequest, raw_request: Request):
     try:
         # Get request body for logging and passthrough mode
@@ -2232,6 +2251,7 @@ async def create_message(request: MessagesRequest, raw_request: Request):
 
 
 @app.post("/v1/messages/count_tokens")
+@log_call
 async def count_tokens(request: TokenCountRequest, raw_request: Request):
     try:
         # Log the incoming token count request
@@ -2303,6 +2323,7 @@ async def count_tokens(request: TokenCountRequest, raw_request: Request):
 
 
 @app.post("/openai/responses")
+@log_call
 async def openai_responses(request: OpenAIResponsesRequest, raw_request: Request):
     """
     Azure OpenAI Responses API endpoint.
@@ -2378,11 +2399,13 @@ async def openai_responses(request: OpenAIResponsesRequest, raw_request: Request
 
 
 @app.get("/")
+@log_call
 async def root():
     return {"message": "Anthropic Proxy for LiteLLM with OpenAI Responses API"}
 
 
 @app.get("/status")
+@log_call
 async def status():
     """Get proxy status including passthrough mode and GitHub Copilot information."""
     status_info = {
@@ -2417,6 +2440,7 @@ class Colors:
     DIM = "\033[2m"
 
 
+@log_call
 def log_request_beautifully(
     method, path, claude_model, openai_model, num_messages, num_tools, status_code
 ):
@@ -2456,6 +2480,7 @@ def log_request_beautifully(
     sys.stdout.flush()
 
 
+@log_call
 def find_available_port(preferred_port: int, max_attempts: int = 50) -> int:
     """Find an available port starting from preferred_port.
 
@@ -2486,6 +2511,7 @@ def find_available_port(preferred_port: int, max_attempts: int = 50) -> int:
     )
 
 
+@log_call
 def run_server(host: str = "127.0.0.1", port: int = 8082):
     """Run the built-in proxy server with dynamic port selection."""
     try:

@@ -11,10 +11,14 @@ Philosophy:
 - Clear explanations for discrepancies
 """
 
+import logging
 from dataclasses import dataclass
 from enum import Enum
 
 from amplihack.launcher.completion_signals import CompletionSignals
+from amplihack.utils.logging_utils import log_call
+
+logger = logging.getLogger(__name__)
 
 
 class VerificationStatus(Enum):
@@ -39,14 +43,19 @@ class VerificationResult:
 class CompletionVerifier:
     """Verify completion claims against concrete signals."""
 
+    @log_call
     def __init__(self, completion_threshold: float = 0.8):
         """Initialize verifier.
 
         Args:
             completion_threshold: Score threshold for completion
         """
+        logger.debug(
+            f"CompletionVerifier.__init__: called with completion_threshold={completion_threshold!r}"
+        )
         self.completion_threshold = completion_threshold
 
+    @log_call
     def verify(self, evaluation_result: str, signals: CompletionSignals) -> VerificationResult:
         """Verify evaluation result against signals.
 
@@ -57,6 +66,9 @@ class CompletionVerifier:
         Returns:
             VerificationResult with status and discrepancies
         """
+        logger.debug(
+            f"CompletionVerifier.verify: called with evaluation_result={evaluation_result!r}, signals={signals!r}"
+        )
         # Parse completion claim from evaluation
         claimed_complete = self._parse_completion_claim(evaluation_result)
 
@@ -144,6 +156,7 @@ class CompletionVerifier:
             discrepancies=discrepancies,
         )
 
+    @log_call
     def _parse_completion_claim(self, evaluation_result: str) -> bool:
         """Parse completion claim from evaluation text.
 
@@ -153,6 +166,9 @@ class CompletionVerifier:
         Returns:
             True if claims complete, False if claims incomplete
         """
+        logger.debug(
+            f"CompletionVerifier._parse_completion_claim: called with evaluation_result={evaluation_result!r}"
+        )
         if not evaluation_result:
             return False
 
@@ -196,6 +212,7 @@ class CompletionVerifier:
         # Default to incomplete if ambiguous
         return False
 
+    @log_call
     def _detect_discrepancies(
         self, evaluation_result: str, signals: CompletionSignals, claimed_complete: bool
     ) -> list[str]:
@@ -209,6 +226,9 @@ class CompletionVerifier:
         Returns:
             List of discrepancy descriptions
         """
+        logger.debug(
+            f"CompletionVerifier._detect_discrepancies: called with claimed_complete={claimed_complete!r}"
+        )
         discrepancies = []
         text_lower = evaluation_result.lower()
 
@@ -258,6 +278,7 @@ class CompletionVerifier:
 
         return discrepancies
 
+    @log_call
     def format_report(self, result: VerificationResult) -> str:
         """Format verification result as human-readable report.
 
@@ -267,6 +288,7 @@ class CompletionVerifier:
         Returns:
             Report text
         """
+        logger.debug(f"CompletionVerifier.format_report: called with result={result!r}")
         lines = [f"Verification: {result.status.value.upper()}"]
 
         if result.verified:

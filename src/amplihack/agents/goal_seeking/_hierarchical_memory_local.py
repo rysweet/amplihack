@@ -31,6 +31,8 @@ from typing import Any
 
 import kuzu  # type: ignore[import-not-found]
 
+from amplihack.utils.logging_utils import log_call
+
 from .similarity import compute_similarity
 
 logger = logging.getLogger(__name__)
@@ -108,6 +110,7 @@ class KnowledgeSubgraph:
     edges: list[KnowledgeEdge] = field(default_factory=list)
     query: str = ""
 
+    @log_call
     def to_llm_context(self, chronological: bool = False) -> str:
         """Format subgraph as LLM-readable context string.
 
@@ -125,6 +128,7 @@ class KnowledgeSubgraph:
 
         if chronological:
             # Sort by temporal_index from metadata, then by created_at as fallback
+            @log_call
             def temporal_key(n: KnowledgeNode) -> tuple:
                 t_idx = n.metadata.get("temporal_index", 999999) if n.metadata else 999999
                 return (t_idx, n.created_at or "")
@@ -220,6 +224,7 @@ class MemoryClassifier:
         {"happened", "event", "occurred", "experience", "observed", "saw", "noticed"}
     )
 
+    @log_call
     def classify(self, content: str, concept: str = "") -> MemoryCategory:
         """Classify content into a memory category.
 
@@ -248,6 +253,7 @@ class MemoryClassifier:
         return MemoryCategory.SEMANTIC
 
 
+@log_call
 def _make_id() -> str:
     """Generate a UUID string for node IDs."""
     return str(uuid.uuid4())
@@ -273,6 +279,7 @@ class HierarchicalMemory:
         >>> print(sub.to_llm_context())
     """
 
+    @log_call
     def __init__(self, agent_name: str, db_path: str | Path | None = None):
         if not agent_name or not agent_name.strip():
             raise ValueError("agent_name cannot be empty")
@@ -310,6 +317,7 @@ class HierarchicalMemory:
         self._classifier = MemoryClassifier()
         self._init_schema()
 
+    @log_call
     def _init_schema(self) -> None:
         """Create Kuzu node and relationship tables if they don't exist."""
         try:
@@ -387,6 +395,7 @@ class HierarchicalMemory:
             logger.error("Failed to initialize HierarchicalMemory schema: %s", e)
             raise
 
+    @log_call
     def store_knowledge(
         self,
         content: str,
@@ -482,6 +491,7 @@ class HierarchicalMemory:
 
         return node_id
 
+    @log_call
     def store_episode(self, content: str, source_label: str = "") -> str:
         """Store an episodic memory node (raw source content).
 
@@ -523,6 +533,7 @@ class HierarchicalMemory:
 
         return episode_id
 
+    @log_call
     def _create_derives_from_edge(self, semantic_id: str, episode_id: str) -> None:
         """Create a DERIVES_FROM edge from SemanticMemory to EpisodicMemory."""
         try:
@@ -551,6 +562,7 @@ class HierarchicalMemory:
         except Exception as e:
             logger.debug("Failed to create DERIVES_FROM edge: %s", e)
 
+    @log_call
     def _detect_supersedes(
         self,
         new_node_id: str,
@@ -669,6 +681,7 @@ class HierarchicalMemory:
             logger.debug("Failed to detect supersedes: %s", e)
 
     @staticmethod
+    @log_call
     def _detect_contradiction(
         content_a: str, content_b: str, concept_a: str, concept_b: str
     ) -> dict:
@@ -725,6 +738,7 @@ class HierarchicalMemory:
 
         return {}
 
+    @log_call
     def _create_similarity_edges(
         self,
         node_id: str,
@@ -807,6 +821,7 @@ class HierarchicalMemory:
         except Exception as e:
             logger.debug("Failed to create similarity edges: %s", e)
 
+    @log_call
     def retrieve_subgraph(
         self,
         query: str,
@@ -969,6 +984,7 @@ class HierarchicalMemory:
         # Step 3: Combine and rank by confidence * keyword relevance
         all_nodes = seed_nodes + expanded_nodes
 
+        @log_call
         def rank_score(node: KnowledgeNode) -> float:
             # keyword_relevance: how many query keywords appear in content
             content_lower = node.content.lower()
@@ -998,6 +1014,7 @@ class HierarchicalMemory:
 
         return subgraph
 
+    @log_call
     def _expand_transition_chains(
         self, nodes: list[KnowledgeNode], seen_ids: set[str]
     ) -> tuple[list[KnowledgeNode], list[KnowledgeEdge]]:
@@ -1118,6 +1135,7 @@ class HierarchicalMemory:
 
         return new_nodes, new_edges
 
+    @log_call
     def _entity_seed_search(self, query: str, limit: int) -> list[KnowledgeNode]:
         """Find seed nodes by matching entity_name field.
 
@@ -1196,6 +1214,7 @@ class HierarchicalMemory:
 
         return nodes[:limit]
 
+    @log_call
     def _attach_provenance(self, nodes: list[KnowledgeNode]) -> None:
         """Follow DERIVES_FROM edges to attach source labels to node metadata.
 
@@ -1231,6 +1250,7 @@ class HierarchicalMemory:
         except Exception as e:
             logger.debug("Failed to attach provenance: %s", e)
 
+    @log_call
     def _mark_superseded(self, nodes: list[KnowledgeNode]) -> None:
         """Mark facts with their position in the transition chain.
 
@@ -1308,6 +1328,7 @@ class HierarchicalMemory:
                 logger.debug("SUPERSEDES check skipped (table may not exist): %s", e)
 
     @staticmethod
+    @log_call
     def _extract_entity_name(content: str, concept: str) -> str:
         """Extract the primary entity name from content or concept.
 
@@ -1351,6 +1372,7 @@ class HierarchicalMemory:
 
         return ""
 
+    @log_call
     def retrieve_by_entity(
         self,
         entity_name: str,
@@ -1447,6 +1469,7 @@ class HierarchicalMemory:
 
         return nodes
 
+    @log_call
     def search_by_concept(
         self,
         keywords: list[str],
@@ -1519,6 +1542,7 @@ class HierarchicalMemory:
 
         return nodes
 
+    @log_call
     def execute_aggregation(self, query_type: str, entity_filter: str = "") -> dict[str, Any]:
         """Execute Cypher aggregation queries for meta-memory questions.
 
@@ -1710,6 +1734,7 @@ class HierarchicalMemory:
 
         return {"count": 0, "query_type": query_type, "error": "Query failed"}
 
+    @log_call
     def get_all_knowledge(self, limit: int = 50) -> list[KnowledgeNode]:
         """Retrieve all semantic knowledge nodes.
 
@@ -1763,6 +1788,7 @@ class HierarchicalMemory:
 
         return nodes
 
+    @log_call
     def get_statistics(self) -> dict[str, Any]:
         """Get statistics about the hierarchical memory.
 
@@ -1838,6 +1864,7 @@ class HierarchicalMemory:
 
         return stats
 
+    @log_call
     def export_to_json(self) -> dict[str, Any]:
         """Export all memory nodes and edges to a JSON-serializable dict.
 
@@ -2040,6 +2067,7 @@ class HierarchicalMemory:
 
         return export_data
 
+    @log_call
     def import_from_json(self, data: dict[str, Any], merge: bool = False) -> dict[str, Any]:
         """Import memory from a JSON-serializable dict into this agent's graph.
 
@@ -2262,6 +2290,7 @@ class HierarchicalMemory:
 
         return stats
 
+    @log_call
     def _clear_agent_data(self) -> None:
         """Delete all nodes and edges belonging to this agent.
 
@@ -2295,6 +2324,7 @@ class HierarchicalMemory:
         except Exception as e:
             logger.error("Failed to clear agent data: %s", e)
 
+    @log_call
     def _get_existing_node_ids(self) -> set[str]:
         """Get all existing node IDs for this agent (for merge dedup).
 
@@ -2324,6 +2354,7 @@ class HierarchicalMemory:
 
         return ids
 
+    @log_call
     def flush_memory(self) -> None:
         """Close and reopen Kuzu connection to flush buffer cache.
 
@@ -2341,6 +2372,7 @@ class HierarchicalMemory:
         except Exception as e:
             logger.warning("flush_memory failed: %s", e)
 
+    @log_call
     def close(self) -> None:
         """Close database connection and release resources."""
         try:

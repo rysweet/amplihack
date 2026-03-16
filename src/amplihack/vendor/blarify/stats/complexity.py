@@ -3,6 +3,7 @@ from statistics import mean, stdev
 from typing import TYPE_CHECKING
 
 from tree_sitter import Node
+from amplihack.utils.logging_utils import log_call
 
 if TYPE_CHECKING:
     from ..code_hierarchy.languages.language_definitions import LanguageDefinitions
@@ -20,6 +21,7 @@ class CodeComplexityCalculator:
     DEFAULT_INDENTATION = 4
 
     @staticmethod
+    @log_call
     def calculate_nesting_stats(node: Node, extension: str) -> NestingStats:
         # Import here to avoid circular import
         from ..code_references.lsp_helper import LspQueryHelper
@@ -41,6 +43,7 @@ class CodeComplexityCalculator:
         return NestingStats(max_indentation, min_indentation, average_indentation, sd)
 
     @staticmethod
+    @log_call
     def __get_nesting_levels(node: Node, language_definitions: "LanguageDefinitions") -> list[int]:
         depths = []
 
@@ -55,6 +58,7 @@ class CodeComplexityCalculator:
         return depths
 
     @staticmethod
+    @log_call
     def __calculate_max_nesting_depth(
         node: Node, language_definitions: "LanguageDefinitions"
     ) -> int:
@@ -80,6 +84,7 @@ class CodeComplexityCalculator:
         return max(depths) if depths else 0
 
     @staticmethod
+    @log_call
     def calculate_parameter_count(node: Node) -> int:
         """
         Calculate the number of parameters in a function definition node.

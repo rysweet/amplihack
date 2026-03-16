@@ -18,18 +18,21 @@ from amplihack.fleet._backends import (
     auto_detect_backend,
 )
 from amplihack.fleet._session_context import SessionContext, SessionDecision
-from amplihack.fleet._status import infer_agent_status
 from amplihack.fleet._session_gather import parse_context_output
+from amplihack.fleet._status import infer_agent_status
 from amplihack.fleet.fleet_session_reasoner import SessionReasoner
+from amplihack.utils.logging_utils import log_call
 
 
 class MockBackend(LLMBackend):
     """Mock LLM backend for testing."""
 
+    @log_call
     def __init__(self, response: str = ""):
         self.response = response
         self.calls: list[tuple[str, str]] = []
 
+    @log_call
     def complete(self, system_prompt: str, user_prompt: str) -> str:
         self.calls.append((system_prompt, user_prompt))
         return self.response
@@ -38,12 +41,14 @@ class MockBackend(LLMBackend):
 class TestSessionContext:
     """Unit tests for SessionContext."""
 
+    @log_call
     def test_to_prompt_context_minimal(self):
         ctx = SessionContext(vm_name="vm-1", session_name="sess-1")
         prompt = ctx.to_prompt_context()
         assert "vm-1" in prompt
         assert "sess-1" in prompt
 
+    @log_call
     def test_to_prompt_context_full(self):
         ctx = SessionContext(
             vm_name="vm-1",
@@ -61,6 +66,7 @@ class TestSessionContext:
         assert "Security first" in prompt
         assert "Which approach?" in prompt
 
+    @log_call
     def test_to_prompt_context_preserves_full_tmux(self):
         ctx = SessionContext(
             vm_name="vm-1",
@@ -70,11 +76,13 @@ class TestSessionContext:
         prompt = ctx.to_prompt_context()
         assert "x" * 5000 in prompt  # Full content preserved, no truncation
 
+    @log_call
     def test_session_context_rejects_invalid_session_name(self):
         """SessionContext.__post_init__ rejects session names with shell metacharacters."""
         with pytest.raises(ValueError):
             SessionContext(vm_name="vm-1", session_name="bad;name")
 
+    @log_call
     def test_session_context_accepts_valid_session_name(self):
         """SessionContext.__post_init__ accepts clean alphanumeric session names."""
         ctx = SessionContext(vm_name="vm-1", session_name="copilot")
@@ -84,6 +92,7 @@ class TestSessionContext:
 class TestSessionDecision:
     """Unit tests for SessionDecision."""
 
+    @log_call
     def test_summary_send_input(self):
         decision = SessionDecision(
             session_name="sess-1",
@@ -98,6 +107,7 @@ class TestSessionDecision:
         assert "simplest approach" in summary
         assert '"1"' in summary
 
+    @log_call
     def test_summary_wait(self):
         decision = SessionDecision(
             session_name="sess-1",
@@ -114,13 +124,18 @@ class TestSessionDecision:
 class TestSessionReasonerDecisionParsing:
     """Tests that the reasoner correctly parses LLM responses."""
 
+    @log_call
     def test_parse_valid_json_response(self):
-        mock = MockBackend(response=json.dumps({
-            "action": "send_input",
-            "input_text": "2",
-            "reasoning": "Option 2 is best for performance",
-            "confidence": 0.85,
-        }))
+        mock = MockBackend(
+            response=json.dumps(
+                {
+                    "action": "send_input",
+                    "input_text": "2",
+                    "reasoning": "Option 2 is best for performance",
+                    "confidence": 0.85,
+                }
+            )
+        )
 
         reasoner = SessionReasoner(backend=mock, dry_run=True)
         ctx = SessionContext(
@@ -135,8 +150,11 @@ class TestSessionReasonerDecisionParsing:
         assert decision.input_text == "2"
         assert decision.confidence == 0.85
 
+    @log_call
     def test_parse_json_with_markdown_wrapping(self):
-        mock = MockBackend(response='```json\n{"action": "wait", "reasoning": "all good", "confidence": 0.9}\n```')
+        mock = MockBackend(
+            response='```json\n{"action": "wait", "reasoning": "all good", "confidence": 0.9}\n```'
+        )
 
         reasoner = SessionReasoner(backend=mock, dry_run=True)
         ctx = SessionContext(vm_name="vm-1", session_name="sess-1")
@@ -144,6 +162,7 @@ class TestSessionReasonerDecisionParsing:
         decision = reasoner._reason(ctx)
         assert decision.action == "wait"
 
+    @log_call
     def test_parse_invalid_response(self):
         mock = MockBackend(response="I don't understand")
 
@@ -154,8 +173,10 @@ class TestSessionReasonerDecisionParsing:
         assert decision.action == "wait"
         assert decision.confidence <= 0.5
 
+    @log_call
     def test_backend_failure(self):
         class FailingBackend(LLMBackend):
+            @log_call
             def complete(self, system_prompt, user_prompt):
                 raise ConnectionError("API down")
 
@@ -173,23 +194,28 @@ class TestSessionReasonerStatusInference:
     Test cases are derived from REAL live data observed across 9 sessions on 4 VMs.
     """
 
+    @log_call
     def test_infer_waiting_input_yn(self):
         reasoner = SessionReasoner(dry_run=True)
         assert infer_agent_status("Continue? [Y/n]") == "waiting_input"
 
+    @log_call
     def test_infer_error(self):
         reasoner = SessionReasoner(dry_run=True)
         assert infer_agent_status("Traceback (most recent call last):") == "error"
 
+    @log_call
     def test_infer_completed_pr_created(self):
         reasoner = SessionReasoner(dry_run=True)
         assert infer_agent_status("PR #42 created successfully") == "completed"
 
+    @log_call
     def test_infer_shell_prompt(self):
         """Bare shell prompt ($) means agent is dead, distinct from idle (❯)."""
         reasoner = SessionReasoner(dry_run=True)
         assert infer_agent_status("azureuser@vm:~/code$ ") == "shell"
 
+    @log_call
     def test_infer_running_output(self):
         reasoner = SessionReasoner(dry_run=True)
         # Needs >50 chars of content to distinguish from unknown
@@ -198,29 +224,34 @@ class TestSessionReasonerStatusInference:
 
     # --- Thinking detection (critical for not interrupting agents) ---
 
+    @log_call
     def test_thinking_claude_tool_call(self):
         """Claude Code shows ● for active tool calls."""
         reasoner = SessionReasoner(dry_run=True)
         tmux = "● Reading file src/auth.py"
         assert infer_agent_status(tmux) == "thinking"
 
+    @log_call
     def test_thinking_claude_streaming_output(self):
         """Claude Code shows ⎿ for streaming tool output."""
         reasoner = SessionReasoner(dry_run=True)
         tmux = "● Bash(git status)\n  ⎿  M src/auth.py"
         assert infer_agent_status(tmux) == "thinking"
 
+    @log_call
     def test_thinking_claude_bash_tool(self):
         """Claude Code actively running a Bash tool."""
         reasoner = SessionReasoner(dry_run=True)
         tmux = "some prior output\n● Bash(uv run python -m pytest tests/ -v)"
         assert infer_agent_status(tmux) == "thinking"
 
+    @log_call
     def test_thinking_copilot(self):
         """Copilot shows Thinking... indicator."""
         reasoner = SessionReasoner(dry_run=True)
         assert infer_agent_status("Thinking...") == "thinking"
 
+    @log_call
     def test_idle_claude_bare_prompt_with_bypass_status(self):
         """Bare ❯ prompt + status bar showing 'bypass on' = IDLE, not waiting.
 
@@ -233,6 +264,7 @@ class TestSessionReasonerStatusInference:
 
     # --- FIX 1: ✻ (timing verb) = JUST FINISHED thinking, not active thinking ---
 
+    @log_call
     def test_finished_thinking_then_idle(self):
         """✻ past-tense verb followed by bare ❯ prompt = IDLE, not thinking.
 
@@ -243,18 +275,21 @@ class TestSessionReasonerStatusInference:
         tmux = "✻ Brewed for 6m 11s\n❯ \n  ⏵⏵ bypass permissions on"
         assert infer_agent_status(tmux) == "idle"
 
+    @log_call
     def test_finished_thinking_cogitated_then_idle(self):
         """✻ Cogitated for Xm Ys + bare prompt = IDLE."""
         reasoner = SessionReasoner(dry_run=True)
         tmux = "some output\n✻ Cogitated for 4m 2s\n❯ \n  ~/src  Opus 4.6  ⏵⏵ bypass"
         assert infer_agent_status(tmux) == "idle"
 
+    @log_call
     def test_finished_thinking_sauteed_then_idle(self):
         """✻ Sautéed for Xm Ys + bare prompt = IDLE."""
         reasoner = SessionReasoner(dry_run=True)
         tmux = "✻ Sautéed for 2m 28s\n❯ \n  ⏵⏵ on"
         assert infer_agent_status(tmux) == "idle"
 
+    @log_call
     def test_finished_thinking_no_prompt_yet(self):
         """✻ alone without prompt = still finishing up = thinking."""
         reasoner = SessionReasoner(dry_run=True)
@@ -263,6 +298,7 @@ class TestSessionReasonerStatusInference:
 
     # --- FIX 1b: · (middle dot) with active verb = CURRENTLY thinking ---
 
+    @log_call
     def test_active_thinking_middle_dot_scampering(self):
         """· Scampering... with middle dot = CURRENTLY thinking.
 
@@ -273,12 +309,14 @@ class TestSessionReasonerStatusInference:
         tmux = "\u00b7 Scampering\u2026 (3m 20s \u00b7 \u2193 575 tokens)"
         assert infer_agent_status(tmux) == "thinking"
 
+    @log_call
     def test_active_thinking_middle_dot_brewing(self):
         """· Brewing... = CURRENTLY thinking."""
         reasoner = SessionReasoner(dry_run=True)
         tmux = "\u00b7 Brewing\u2026"
         assert infer_agent_status(tmux) == "thinking"
 
+    @log_call
     def test_active_thinking_middle_dot_with_prior_output(self):
         """Middle dot active verb after prior output = thinking."""
         reasoner = SessionReasoner(dry_run=True)
@@ -287,6 +325,7 @@ class TestSessionReasonerStatusInference:
 
     # --- FIX 2: ❯ with user text = agent processing input, not idle ---
 
+    @log_call
     def test_prompt_with_user_input_is_thinking(self):
         """❯ followed by user text = agent processing submitted input.
 
@@ -297,12 +336,14 @@ class TestSessionReasonerStatusInference:
         tmux = "❯ now close issue 12 and commit the .gitignore change\n  ⏵⏵ bypass permissions on"
         assert infer_agent_status(tmux) == "thinking"
 
+    @log_call
     def test_prompt_with_user_input_no_status_bar(self):
         """❯ with user text but no status bar = still thinking."""
         reasoner = SessionReasoner(dry_run=True)
         tmux = "❯ fix the auth module and run tests"
         assert infer_agent_status(tmux) == "thinking"
 
+    @log_call
     def test_bare_prompt_with_status_bar_is_idle(self):
         """Bare ❯ with status bar = idle (waiting for next task).
 
@@ -312,12 +353,14 @@ class TestSessionReasonerStatusInference:
         tmux = "❯ \n  ⏵⏵ bypass permissions on"
         assert infer_agent_status(tmux) == "idle"
 
+    @log_call
     def test_bare_prompt_no_status_bar_is_idle(self):
         """Bare ❯ without status bar = idle."""
         reasoner = SessionReasoner(dry_run=True)
         tmux = "some output\n❯ "
         assert infer_agent_status(tmux) == "idle"
 
+    @log_call
     def test_finished_then_user_typed_input(self):
         """✻ finished indicator + ❯ with user text = thinking (processing new input).
 
@@ -329,6 +372,7 @@ class TestSessionReasonerStatusInference:
 
     # --- FIX 3: Status bar "(running)" = running ---
 
+    @log_call
     def test_status_bar_running_indicator(self):
         """Status bar with '(running)' suffix = subagent/background task active.
 
@@ -339,6 +383,7 @@ class TestSessionReasonerStatusInference:
         tmux = "❯ \n  ~/src  ⏵⏵ · Wire LadybugDB backend for graph-query (running)"
         assert infer_agent_status(tmux) == "running"
 
+    @log_call
     def test_status_bar_running_with_prompt(self):
         """(running) in status bar even with bare prompt = running."""
         reasoner = SessionReasoner(dry_run=True)
@@ -347,16 +392,19 @@ class TestSessionReasonerStatusInference:
 
     # --- Regression tests for existing behavior that must still work ---
 
+    @log_call
     def test_waiting_input_yes_no_prompt(self):
         reasoner = SessionReasoner(dry_run=True)
         assert infer_agent_status("Do you want to continue? (yes/no)") == "waiting_input"
 
+    @log_call
     def test_waiting_claude_permission_allow_no_prompt(self):
         """Claude Code permission prompt with 'allow' but no bare ❯ prompt = waiting."""
         reasoner = SessionReasoner(dry_run=True)
         tmux = "Some tool output\n  ⏵⏵ allow all"
         assert infer_agent_status(tmux) == "waiting_input"
 
+    @log_call
     def test_waiting_claude_actual_permission_request(self):
         """Real permission request scenario: tool wants to run, asking for approval.
 
@@ -366,19 +414,23 @@ class TestSessionReasonerStatusInference:
         tmux = "I need to run a cleanup command.\nAllow this tool call? [Y/n]"
         assert infer_agent_status(tmux) == "waiting_input"
 
+    @log_call
     def test_error_fatal(self):
         reasoner = SessionReasoner(dry_run=True)
         assert infer_agent_status("fatal: not a git repository") == "error"
 
+    @log_call
     def test_completed_workflow(self):
         reasoner = SessionReasoner(dry_run=True)
         assert infer_agent_status("GOAL_STATUS: ACHIEVED") == "completed"
 
+    @log_call
     def test_shell_bare_prompt(self):
         """Bare shell prompt = shell (agent dead), not idle."""
         reasoner = SessionReasoner(dry_run=True)
         assert infer_agent_status("user@host:~/code$") == "shell"
 
+    @log_call
     def test_thinking_fast_path_skips_llm(self):
         """When status is thinking, the LLM call is skipped entirely."""
         mock = MockBackend(response='{"action":"wait","reasoning":"ok","confidence":0.8}')
@@ -403,6 +455,7 @@ class TestSessionReasonerStatusInference:
 
     # --- Combined real-world scenario tests ---
 
+    @log_call
     def test_real_scenario_agent_just_finished_at_prompt(self):
         """Full realistic tmux capture: agent finished task, sitting at prompt.
 
@@ -418,6 +471,7 @@ class TestSessionReasonerStatusInference:
   ~/src/amplihack  main  Opus 4.6  ⏵⏵ bypass permissions on"""
         assert infer_agent_status(tmux) == "idle"
 
+    @log_call
     def test_real_scenario_agent_actively_processing(self):
         """Full realistic tmux: agent is mid-thought with streaming indicator."""
         reasoner = SessionReasoner(dry_run=True)
@@ -426,6 +480,7 @@ class TestSessionReasonerStatusInference:
 · Scampering\u2026 (2m 15s \u00b7 \u2193 1.2k tokens)"""
         assert infer_agent_status(tmux) == "thinking"
 
+    @log_call
     def test_real_scenario_user_just_submitted_task(self):
         """Full realistic tmux: user typed a command at the prompt."""
         reasoner = SessionReasoner(dry_run=True)
@@ -439,13 +494,18 @@ class TestSessionReasonerStatusInference:
 class TestSessionReasonerDryRun:
     """Tests for dry-run mode."""
 
+    @log_call
     def test_dry_run_does_not_execute(self):
-        mock = MockBackend(response=json.dumps({
-            "action": "send_input",
-            "input_text": "yes",
-            "reasoning": "Approving",
-            "confidence": 0.9,
-        }))
+        mock = MockBackend(
+            response=json.dumps(
+                {
+                    "action": "send_input",
+                    "input_text": "yes",
+                    "reasoning": "Approving",
+                    "confidence": 0.9,
+                }
+            )
+        )
 
         reasoner = SessionReasoner(backend=mock, dry_run=True)
 
@@ -465,17 +525,28 @@ class TestSessionReasonerDryRun:
             # Key: _execute_decision should NOT have been called with SSH
             assert len(reasoner._decisions) == 1
 
+    @log_call
     def test_dry_run_report(self):
-        mock = MockBackend(response=json.dumps({
-            "action": "wait",
-            "reasoning": "Working fine",
-            "confidence": 0.8,
-        }))
+        mock = MockBackend(
+            response=json.dumps(
+                {
+                    "action": "wait",
+                    "reasoning": "Working fine",
+                    "confidence": 0.8,
+                }
+            )
+        )
 
         reasoner = SessionReasoner(backend=mock, dry_run=True)
         reasoner._decisions = [
             SessionDecision(session_name="s1", vm_name="vm-1", action="wait", reasoning="ok"),
-            SessionDecision(session_name="s2", vm_name="vm-1", action="send_input", input_text="1", reasoning="chose 1"),
+            SessionDecision(
+                session_name="s2",
+                vm_name="vm-1",
+                action="send_input",
+                input_text="1",
+                reasoning="chose 1",
+            ),
         ]
 
         report = reasoner.dry_run_report()
@@ -487,6 +558,7 @@ class TestSessionReasonerDryRun:
 class TestLLMBackends:
     """Tests for LLM backend protocol."""
 
+    @log_call
     def test_mock_backend(self):
         backend = MockBackend(response="test response")
         result = backend.complete("system", "user")
@@ -494,15 +566,18 @@ class TestLLMBackends:
         assert len(backend.calls) == 1
         assert backend.calls[0] == ("system", "user")
 
+    @log_call
     def test_llm_backend_protocol(self):
         """LLMBackend is a Protocol — cannot be instantiated directly."""
         from typing import Protocol
+
         from amplihack.fleet._backends import LLMBackend
 
         assert issubclass(LLMBackend, Protocol)
         with pytest.raises(TypeError, match="Protocols cannot be instantiated"):
             LLMBackend()
 
+    @log_call
     def test_copilot_backend_import_error(self):
         """CopilotBackend.complete raises ImportError when copilot-sdk not installed."""
         backend = CopilotBackend(model="gpt-4o")
@@ -512,6 +587,7 @@ class TestLLMBackends:
             with pytest.raises((ImportError, ModuleNotFoundError)):
                 backend.complete("system", "user")
 
+    @log_call
     def test_litellm_backend_import_error(self):
         """LiteLLMBackend.complete raises ImportError when litellm not installed."""
         backend = LiteLLMBackend(model="gpt-4o")
@@ -521,12 +597,14 @@ class TestLLMBackends:
             with pytest.raises((ImportError, ModuleNotFoundError)):
                 backend.complete("system", "user")
 
+    @log_call
     def test_auto_detect_with_anthropic_key(self):
         """auto_detect_backend returns AnthropicBackend when ANTHROPIC_API_KEY is set."""
         with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key-123"}):
             backend = auto_detect_backend()
             assert isinstance(backend, AnthropicBackend)
 
+    @log_call
     def test_auto_detect_always_returns_backend(self):
         """auto_detect_backend always returns a backend (litellm is a base dependency)."""
         with patch.dict(os.environ, {}, clear=True):
@@ -542,6 +620,7 @@ class TestLLMBackends:
 class TestAnthropicBackend:
     """Tests for AnthropicBackend class."""
 
+    @log_call
     def test_init_defaults(self):
         """Test default model and empty api_key."""
         with patch.dict(os.environ, {}, clear=True):
@@ -549,24 +628,29 @@ class TestAnthropicBackend:
             assert backend.model == "claude-opus-4-6"
             assert backend.api_key == ""
 
+    @log_call
     def test_init_with_explicit_api_key(self):
         backend = AnthropicBackend(api_key="sk-test-123")
         assert backend.api_key == "sk-test-123"
 
+    @log_call
     def test_init_reads_env_key(self):
         with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-env-key"}):
             backend = AnthropicBackend()
             assert backend.api_key == "sk-env-key"
 
+    @log_call
     def test_init_explicit_key_overrides_env(self):
         with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-env-key"}):
             backend = AnthropicBackend(api_key="sk-explicit")
             assert backend.api_key == "sk-explicit"
 
+    @log_call
     def test_init_custom_model(self):
         backend = AnthropicBackend(model="claude-opus-4-20250514")
         assert backend.model == "claude-opus-4-20250514"
 
+    @log_call
     def test_complete_success(self):
         """Test complete() with mocked anthropic streaming client."""
         backend = AnthropicBackend(api_key="test-key")
@@ -583,6 +667,7 @@ class TestAnthropicBackend:
         mock_anthropic_module.Anthropic.return_value = mock_client
 
         import sys
+
         with patch.dict(sys.modules, {"anthropic": mock_anthropic_module}):
             result = backend.complete("system prompt", "user prompt")
 
@@ -594,6 +679,7 @@ class TestAnthropicBackend:
             messages=[{"role": "user", "content": "user prompt"}],
         )
 
+    @log_call
     def test_complete_empty_response(self):
         """Test complete() when stream returns empty text."""
         backend = AnthropicBackend(api_key="test-key")
@@ -610,6 +696,7 @@ class TestAnthropicBackend:
         mock_anthropic_module.Anthropic.return_value = mock_client
 
         import sys
+
         with patch.dict(sys.modules, {"anthropic": mock_anthropic_module}):
             result = backend.complete("sys", "usr")
 
@@ -619,17 +706,21 @@ class TestAnthropicBackend:
 class TestCopilotBackendComplete:
     """Tests for CopilotBackend async completion flow."""
 
+    @log_call
     def test_copilot_default_model(self):
         backend = CopilotBackend()
         assert backend.model == "gpt-4o"
 
+    @log_call
     def test_copilot_custom_model(self):
         backend = CopilotBackend(model="claude-3-5-sonnet")
         assert backend.model == "claude-3-5-sonnet"
 
+    @log_call
     def test_copilot_complete_calls_asyncio_run(self):
         """CopilotBackend.complete() should call asyncio.run with _async_complete."""
         import sys
+
         mock_asyncio = MagicMock()
         mock_asyncio.run.return_value = "test response"
         backend = CopilotBackend()
@@ -642,14 +733,17 @@ class TestCopilotBackendComplete:
 class TestLiteLLMBackendComplete:
     """Tests for LiteLLMBackend.complete() with mocked litellm."""
 
+    @log_call
     def test_litellm_default_model(self):
         backend = LiteLLMBackend()
         assert backend.model == "gpt-4o"
 
+    @log_call
     def test_litellm_custom_model(self):
         backend = LiteLLMBackend(model="ollama/llama3")
         assert backend.model == "ollama/llama3"
 
+    @log_call
     def test_complete_success(self):
         """LiteLLMBackend.complete() returns text from response."""
         backend = LiteLLMBackend(model="gpt-4o")
@@ -665,6 +759,7 @@ class TestLiteLLMBackendComplete:
         mock_litellm_module.completion.return_value = mock_response
 
         import sys
+
         with patch.dict(sys.modules, {"litellm": mock_litellm_module}):
             result = backend.complete("system prompt", "user prompt")
 
@@ -678,6 +773,7 @@ class TestLiteLLMBackendComplete:
             max_tokens=backend.max_tokens,
         )
 
+    @log_call
     def test_complete_empty_choices(self):
         """LiteLLMBackend returns empty string when choices are empty."""
         backend = LiteLLMBackend()
@@ -688,11 +784,13 @@ class TestLiteLLMBackendComplete:
         mock_litellm_module.completion.return_value = mock_response
 
         import sys
+
         with patch.dict(sys.modules, {"litellm": mock_litellm_module}):
             result = backend.complete("sys", "usr")
 
         assert result == ""
 
+    @log_call
     def test_complete_none_message(self):
         """LiteLLMBackend returns empty string when message is None."""
         backend = LiteLLMBackend()
@@ -705,11 +803,13 @@ class TestLiteLLMBackendComplete:
         mock_litellm_module.completion.return_value = mock_response
 
         import sys
+
         with patch.dict(sys.modules, {"litellm": mock_litellm_module}):
             result = backend.complete("sys", "usr")
 
         assert result == ""
 
+    @log_call
     def test_complete_none_content(self):
         """LiteLLMBackend returns empty string when content is None."""
         backend = LiteLLMBackend()
@@ -724,6 +824,7 @@ class TestLiteLLMBackendComplete:
         mock_litellm_module.completion.return_value = mock_response
 
         import sys
+
         with patch.dict(sys.modules, {"litellm": mock_litellm_module}):
             result = backend.complete("sys", "usr")
 
@@ -733,12 +834,14 @@ class TestLiteLLMBackendComplete:
 class TestAutoDetectBackendEdgeCases:
     """Edge cases for auto_detect_backend."""
 
+    @log_call
     def test_no_env_returns_copilot(self):
         """Without ANTHROPIC_API_KEY, returns CopilotBackend."""
         with patch.dict(os.environ, {}, clear=True):
             backend = auto_detect_backend()
             assert isinstance(backend, CopilotBackend)
 
+    @log_call
     def test_empty_anthropic_key_returns_copilot(self):
         """Empty ANTHROPIC_API_KEY is falsy, returns CopilotBackend."""
         with patch.dict(os.environ, {"ANTHROPIC_API_KEY": ""}):
@@ -754,6 +857,7 @@ class TestAutoDetectBackendEdgeCases:
 class TestSessionReasonerGatherContext:
     """Tests for _gather_context method."""
 
+    @log_call
     def test_gather_context_success(self):
         """Successful subprocess returns populated context."""
         mock_output = (
@@ -790,18 +894,11 @@ class TestSessionReasonerGatherContext:
         assert ctx.pr_url == "https://github.com/org/repo/pull/42"
         assert "auth module" in ctx.transcript_summary
 
+    @log_call
     def test_gather_context_no_session(self):
         """When tmux returns NO_SESSION, status is no_session."""
         mock_output = (
-            "===TMUX===\n"
-            "NO_SESSION\n"
-            "===CWD===\n"
-            "\n"
-            "===GIT===\n"
-            "\n"
-            "===TRANSCRIPT===\n"
-            "\n"
-            "===END===\n"
+            "===TMUX===\nNO_SESSION\n===CWD===\n\n===GIT===\n\n===TRANSCRIPT===\n\n===END===\n"
         )
         mock = MockBackend()
         reasoner = SessionReasoner(backend=mock, dry_run=True)
@@ -812,6 +909,7 @@ class TestSessionReasonerGatherContext:
 
         assert ctx.agent_status == "no_session"
 
+    @log_call
     def test_gather_context_subprocess_failure(self):
         """Non-zero return code leaves context with default status."""
         mock = MockBackend()
@@ -823,9 +921,11 @@ class TestSessionReasonerGatherContext:
 
         assert ctx.agent_status == ""
 
+    @log_call
     def test_gather_context_timeout(self):
         """Timeout results in unreachable status."""
         import subprocess
+
         mock = MockBackend()
         reasoner = SessionReasoner(backend=mock, dry_run=True)
 
@@ -835,6 +935,7 @@ class TestSessionReasonerGatherContext:
 
         assert ctx.agent_status == "unreachable"
 
+    @log_call
     def test_gather_context_file_not_found(self):
         """FileNotFoundError results in unreachable status."""
         mock = MockBackend()
@@ -850,6 +951,7 @@ class TestSessionReasonerGatherContext:
 class TestParseContextOutput:
     """Tests for _parse_context_output method."""
 
+    @log_call
     def test_parse_empty_output(self):
         """Empty output should not crash."""
         reasoner = SessionReasoner(dry_run=True)
@@ -857,6 +959,7 @@ class TestParseContextOutput:
         parse_context_output("", ctx)
         assert ctx.tmux_capture == ""
 
+    @log_call
     def test_parse_git_section_with_files(self):
         """Git section should populate branch, remote, and modified files."""
         reasoner = SessionReasoner(dry_run=True)
@@ -876,6 +979,7 @@ class TestParseContextOutput:
         assert ctx.repo_url == "https://github.com/org/repo"
         assert ctx.files_modified == ["a.py", "b.py"]
 
+    @log_call
     def test_parse_no_git_info(self):
         """Git section without BRANCH/REMOTE lines should be fine."""
         reasoner = SessionReasoner(dry_run=True)
@@ -889,6 +993,7 @@ class TestParseContextOutput:
 class TestExecuteDecision:
     """Tests for _execute_decision method."""
 
+    @log_call
     def test_execute_send_input_success(self):
         """send_input with high confidence calls subprocess."""
         mock = MockBackend()
@@ -908,6 +1013,7 @@ class TestExecuteDecision:
 
         assert mock_run.called
 
+    @log_call
     def test_execute_send_input_low_confidence_suppressed(self):
         """send_input with confidence below threshold is suppressed."""
         mock = MockBackend()
@@ -926,6 +1032,7 @@ class TestExecuteDecision:
 
         mock_run.assert_not_called()
 
+    @log_call
     def test_execute_restart_low_confidence_suppressed(self):
         """restart with confidence below threshold is suppressed."""
         mock = MockBackend()
@@ -943,6 +1050,7 @@ class TestExecuteDecision:
 
         mock_run.assert_not_called()
 
+    @log_call
     def test_execute_restart_high_confidence(self):
         """restart with high confidence calls subprocess."""
         mock = MockBackend()
@@ -961,6 +1069,7 @@ class TestExecuteDecision:
 
         assert mock_run.called
 
+    @log_call
     def test_execute_send_input_dangerous_blocked(self):
         """Dangerous input text is blocked — new escalate decision appended."""
         mock = MockBackend()
@@ -985,6 +1094,7 @@ class TestExecuteDecision:
         assert reasoner._decisions[0].action == "escalate"
         assert "BLOCKED" in reasoner._decisions[0].reasoning
 
+    @log_call
     def test_execute_send_input_multiline(self):
         """Multi-line input sends each line separately."""
         mock = MockBackend()
@@ -1004,9 +1114,11 @@ class TestExecuteDecision:
 
         assert mock_run.call_count == 3
 
+    @log_call
     def test_execute_send_input_timeout(self):
         """send_input timeout should log warning but not crash."""
         import subprocess
+
         mock = MockBackend()
         reasoner = SessionReasoner(backend=mock, dry_run=False)
 
@@ -1023,9 +1135,11 @@ class TestExecuteDecision:
             reasoner._execute_decision(decision)
             # Should not raise
 
+    @log_call
     def test_execute_restart_timeout(self):
         """restart timeout should log warning but not crash."""
         import subprocess
+
         mock = MockBackend()
         reasoner = SessionReasoner(backend=mock, dry_run=False)
 
@@ -1041,6 +1155,7 @@ class TestExecuteDecision:
             reasoner._execute_decision(decision)
             # Should not raise
 
+    @log_call
     def test_execute_wait_noop(self):
         """wait action does nothing."""
         mock = MockBackend()
@@ -1058,6 +1173,7 @@ class TestExecuteDecision:
 
         mock_run.assert_not_called()
 
+    @log_call
     def test_execute_escalate_noop(self):
         """escalate action does nothing (no subprocess call)."""
         mock = MockBackend()
@@ -1075,6 +1191,7 @@ class TestExecuteDecision:
 
         mock_run.assert_not_called()
 
+    @log_call
     def test_execute_mark_complete_noop(self):
         """mark_complete action does nothing (no subprocess call)."""
         mock = MockBackend()
@@ -1092,6 +1209,7 @@ class TestExecuteDecision:
 
         mock_run.assert_not_called()
 
+    @log_call
     def test_execute_invalid_vm_name_raises(self):
         """Invalid VM name in decision should raise ValueError."""
         mock = MockBackend()
@@ -1107,6 +1225,7 @@ class TestExecuteDecision:
         with pytest.raises(ValueError, match="Invalid VM name"):
             reasoner._execute_decision(decision)
 
+    @log_call
     def test_execute_invalid_session_name_raises(self):
         """Invalid session name in decision should raise ValueError."""
         mock = MockBackend()
@@ -1126,13 +1245,18 @@ class TestExecuteDecision:
 class TestSessionReasonerReasonAboutAll:
     """Tests for reason_about_all method."""
 
+    @log_call
     def test_reason_about_all_multiple_sessions(self):
         """reason_about_all should process all sessions."""
-        mock = MockBackend(response=json.dumps({
-            "action": "wait",
-            "reasoning": "ok",
-            "confidence": 0.8,
-        }))
+        mock = MockBackend(
+            response=json.dumps(
+                {
+                    "action": "wait",
+                    "reasoning": "ok",
+                    "confidence": 0.8,
+                }
+            )
+        )
         reasoner = SessionReasoner(backend=mock, dry_run=True)
 
         sessions = [
@@ -1150,6 +1274,7 @@ class TestSessionReasonerReasonAboutAll:
 
         assert len(decisions) == 2
 
+    @log_call
     def test_reason_about_all_empty(self):
         """reason_about_all with empty list returns empty list."""
         mock = MockBackend()
@@ -1161,94 +1286,132 @@ class TestSessionReasonerReasonAboutAll:
 class TestSessionReasonerReasonInvalidActions:
     """Test _reason handles invalid/malformed LLM responses."""
 
+    @log_call
     def test_invalid_action_defaults_to_wait(self):
         """Invalid action value should default to 'wait'."""
-        mock = MockBackend(response=json.dumps({
-            "action": "destroy_everything",
-            "reasoning": "bad idea",
-            "confidence": 0.9,
-        }))
+        mock = MockBackend(
+            response=json.dumps(
+                {
+                    "action": "destroy_everything",
+                    "reasoning": "bad idea",
+                    "confidence": 0.9,
+                }
+            )
+        )
         reasoner = SessionReasoner(backend=mock, dry_run=True)
         ctx = SessionContext(vm_name="vm-1", session_name="sess-1")
         decision = reasoner._reason(ctx)
         assert decision.action == "wait"
 
+    @log_call
     def test_non_string_action_defaults_to_wait(self):
         """Non-string action should default to 'wait'."""
-        mock = MockBackend(response=json.dumps({
-            "action": 123,
-            "reasoning": "numeric action",
-            "confidence": 0.5,
-        }))
+        mock = MockBackend(
+            response=json.dumps(
+                {
+                    "action": 123,
+                    "reasoning": "numeric action",
+                    "confidence": 0.5,
+                }
+            )
+        )
         reasoner = SessionReasoner(backend=mock, dry_run=True)
         ctx = SessionContext(vm_name="vm-1", session_name="sess-1")
         decision = reasoner._reason(ctx)
         assert decision.action == "wait"
 
+    @log_call
     def test_invalid_confidence_clamped(self):
         """Confidence values outside 0-1 should be clamped."""
-        mock = MockBackend(response=json.dumps({
-            "action": "wait",
-            "reasoning": "ok",
-            "confidence": 5.0,  # Way above 1.0
-        }))
+        mock = MockBackend(
+            response=json.dumps(
+                {
+                    "action": "wait",
+                    "reasoning": "ok",
+                    "confidence": 5.0,  # Way above 1.0
+                }
+            )
+        )
         reasoner = SessionReasoner(backend=mock, dry_run=True)
         ctx = SessionContext(vm_name="vm-1", session_name="sess-1")
         decision = reasoner._reason(ctx)
         assert decision.confidence == 1.0
 
+    @log_call
     def test_negative_confidence_clamped(self):
         """Negative confidence should be clamped to 0.0."""
-        mock = MockBackend(response=json.dumps({
-            "action": "wait",
-            "reasoning": "ok",
-            "confidence": -0.5,
-        }))
+        mock = MockBackend(
+            response=json.dumps(
+                {
+                    "action": "wait",
+                    "reasoning": "ok",
+                    "confidence": -0.5,
+                }
+            )
+        )
         reasoner = SessionReasoner(backend=mock, dry_run=True)
         ctx = SessionContext(vm_name="vm-1", session_name="sess-1")
         decision = reasoner._reason(ctx)
         assert decision.confidence == 0.0
 
+    @log_call
     def test_non_numeric_confidence_defaults(self):
         """Non-numeric confidence should default to 0.5."""
-        mock = MockBackend(response=json.dumps({
-            "action": "wait",
-            "reasoning": "ok",
-            "confidence": "high",
-        }))
+        mock = MockBackend(
+            response=json.dumps(
+                {
+                    "action": "wait",
+                    "reasoning": "ok",
+                    "confidence": "high",
+                }
+            )
+        )
         reasoner = SessionReasoner(backend=mock, dry_run=True)
         ctx = SessionContext(vm_name="vm-1", session_name="sess-1")
         decision = reasoner._reason(ctx)
         assert decision.confidence == 0.5
 
+    @log_call
     def test_non_string_input_text_defaults_empty(self):
         """Non-string input_text should default to empty string."""
-        mock = MockBackend(response=json.dumps({
-            "action": "send_input",
-            "input_text": 42,
-            "reasoning": "ok",
-            "confidence": 0.8,
-        }))
+        mock = MockBackend(
+            response=json.dumps(
+                {
+                    "action": "send_input",
+                    "input_text": 42,
+                    "reasoning": "ok",
+                    "confidence": 0.8,
+                }
+            )
+        )
         reasoner = SessionReasoner(backend=mock, dry_run=True)
         ctx = SessionContext(vm_name="vm-1", session_name="sess-1")
         decision = reasoner._reason(ctx)
         assert decision.input_text == ""
 
+    @log_call
     def test_non_string_reasoning_defaults_empty(self):
         """Non-string reasoning should default to empty string."""
-        mock = MockBackend(response=json.dumps({
-            "action": "wait",
-            "reasoning": ["list", "not", "string"],
-            "confidence": 0.8,
-        }))
+        mock = MockBackend(
+            response=json.dumps(
+                {
+                    "action": "wait",
+                    "reasoning": ["list", "not", "string"],
+                    "confidence": 0.8,
+                }
+            )
+        )
         reasoner = SessionReasoner(backend=mock, dry_run=True)
         ctx = SessionContext(vm_name="vm-1", session_name="sess-1")
         decision = reasoner._reason(ctx)
         assert decision.reasoning == ""
 
+    @log_call
     def test_not_implemented_backend(self):
         """NotImplementedError from backend should return escalate."""
+
         class NotImplBackend:
+            @log_call
             def complete(self, system_prompt, user_prompt):
                 raise NotImplementedError("not implemented")
 
@@ -1258,18 +1421,24 @@ class TestSessionReasonerReasonInvalidActions:
         assert decision.action == "escalate"
         assert "not implemented" in decision.reasoning.lower()
 
+    @log_call
     def test_public_reason_method(self):
         """Public reason() method delegates to _reason()."""
-        mock = MockBackend(response=json.dumps({
-            "action": "wait",
-            "reasoning": "all good",
-            "confidence": 0.9,
-        }))
+        mock = MockBackend(
+            response=json.dumps(
+                {
+                    "action": "wait",
+                    "reasoning": "all good",
+                    "confidence": 0.9,
+                }
+            )
+        )
         reasoner = SessionReasoner(backend=mock, dry_run=True)
         ctx = SessionContext(vm_name="vm-1", session_name="sess-1")
         decision = reasoner.reason(ctx)
         assert decision.action == "wait"
 
+    @log_call
     def test_public_execute_decision_method(self):
         """Public execute_decision() delegates to _execute_decision()."""
         mock = MockBackend()
@@ -1289,6 +1458,7 @@ class TestSessionReasonerReasonInvalidActions:
 class TestSessionContextPromptContext:
     """Additional tests for SessionContext.to_prompt_context."""
 
+    @log_call
     def test_prompt_context_with_pr_url(self):
         ctx = SessionContext(
             vm_name="vm-1",
@@ -1298,6 +1468,7 @@ class TestSessionContextPromptContext:
         prompt = ctx.to_prompt_context()
         assert "PR: https://github.com/org/repo/pull/42" in prompt
 
+    @log_call
     def test_prompt_context_with_files_modified(self):
         ctx = SessionContext(
             vm_name="vm-1",
@@ -1308,6 +1479,7 @@ class TestSessionContextPromptContext:
         assert "a.py" in prompt
         assert "b.py" in prompt
 
+    @log_call
     def test_prompt_context_empty_tmux(self):
         ctx = SessionContext(vm_name="vm-1", session_name="sess-1", tmux_capture="")
         prompt = ctx.to_prompt_context()
@@ -1317,8 +1489,10 @@ class TestSessionContextPromptContext:
 class TestLoadStrategyDictionary:
     """Tests for _load_strategy_dictionary."""
 
+    @log_call
     def test_load_when_file_exists(self):
         from amplihack.fleet._system_prompt import _load_strategy_dictionary
+
         # This just tests the function runs without error
         result = _load_strategy_dictionary()
         assert isinstance(result, str)

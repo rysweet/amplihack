@@ -17,12 +17,14 @@ from typing import Any
 import yaml
 
 from amplihack.recipes.models import Recipe, RecipeResult, StepStatus
+from amplihack.utils.logging_utils import log_call
 
 # Truncation constants for output formatting
 MAX_OUTPUT_LENGTH = 200  # Maximum characters for step output in table format
 MAX_PROMPT_LENGTH = 100  # Maximum characters for prompt display in table format
 
 
+@log_call
 def format_recipe_result(
     result: RecipeResult,
     format: str = "table",
@@ -50,6 +52,7 @@ def format_recipe_result(
     raise ValueError(f"Invalid format: {format}. Must be table, json, or yaml")
 
 
+@log_call
 def format_recipe_list(
     recipes: list[Recipe],
     format: str = "table",
@@ -79,6 +82,7 @@ def format_recipe_list(
     raise ValueError(f"Invalid format: {format}. Must be table, json, or yaml")
 
 
+@log_call
 def format_validation_result(
     recipe: Recipe | None,
     is_valid: bool,
@@ -110,6 +114,7 @@ def format_validation_result(
     raise ValueError(f"Invalid format: {format}. Must be table, json, or yaml")
 
 
+@log_call
 def format_recipe_details(
     recipe: Recipe,
     format: str = "table",
@@ -148,6 +153,7 @@ def format_recipe_details(
 # ============================================================================
 
 
+@log_call
 def _format_result_json(result: RecipeResult, show_context: bool) -> str:
     """Format result as JSON."""
     data = {
@@ -168,6 +174,7 @@ def _format_result_json(result: RecipeResult, show_context: bool) -> str:
     return json.dumps(data, indent=2, ensure_ascii=False)
 
 
+@log_call
 def _format_list_json(recipes: list[Recipe], verbose: bool) -> str:
     """Format recipe list as JSON."""
     data = []
@@ -185,6 +192,7 @@ def _format_list_json(recipes: list[Recipe], verbose: bool) -> str:
     return json.dumps(data, indent=2, ensure_ascii=False)
 
 
+@log_call
 def _format_validation_json(recipe: Recipe | None, is_valid: bool, errors: list[str]) -> str:
     """Format validation result as JSON."""
     data = {
@@ -196,6 +204,7 @@ def _format_validation_json(recipe: Recipe | None, is_valid: bool, errors: list[
     return json.dumps(data, indent=2, ensure_ascii=False)
 
 
+@log_call
 def _format_details_json(recipe: Recipe) -> str:
     """Format recipe details as JSON."""
     data = {
@@ -224,6 +233,7 @@ def _format_details_json(recipe: Recipe) -> str:
 # ============================================================================
 
 
+@log_call
 def _format_result_yaml(result: RecipeResult, show_context: bool) -> str:
     """Format result as YAML."""
     data = {
@@ -244,6 +254,7 @@ def _format_result_yaml(result: RecipeResult, show_context: bool) -> str:
     return yaml.dump(data, default_flow_style=False, allow_unicode=True)
 
 
+@log_call
 def _format_list_yaml(recipes: list[Recipe], verbose: bool) -> str:
     """Format recipe list as YAML."""
     data = []
@@ -261,6 +272,7 @@ def _format_list_yaml(recipes: list[Recipe], verbose: bool) -> str:
     return yaml.dump(data, default_flow_style=False, allow_unicode=True)
 
 
+@log_call
 def _format_validation_yaml(recipe: Recipe | None, is_valid: bool, errors: list[str]) -> str:
     """Format validation result as YAML."""
     data = {
@@ -272,10 +284,12 @@ def _format_validation_yaml(recipe: Recipe | None, is_valid: bool, errors: list[
     return yaml.dump(data, default_flow_style=False, allow_unicode=True)
 
 
+@log_call
 def _format_details_yaml(recipe: Recipe) -> str:
     """Format recipe details as YAML."""
 
     # Return the recipe as YAML (essentially the original file format)
+    @log_call
     def serialize_step(step):
         """Convert step to dict with enum values as strings."""
         data = {}
@@ -308,6 +322,7 @@ def _format_details_yaml(recipe: Recipe) -> str:
 # ============================================================================
 
 
+@log_call
 def _format_result_table(result: RecipeResult, show_context: bool) -> str:
     """Format result as human-readable table."""
     lines = []
@@ -349,6 +364,7 @@ def _format_result_table(result: RecipeResult, show_context: bool) -> str:
     return "\n".join(lines)
 
 
+@log_call
 def _format_list_table(recipes: list[Recipe], verbose: bool, show_tags: bool) -> str:
     """Format recipe list as human-readable table."""
     if not recipes:
@@ -379,6 +395,7 @@ def _format_list_table(recipes: list[Recipe], verbose: bool, show_tags: bool) ->
     return "\n".join(lines)
 
 
+@log_call
 def _format_validation_table(
     recipe: Recipe | None, is_valid: bool, errors: list[str], verbose: bool
 ) -> str:
@@ -403,6 +420,7 @@ def _format_validation_table(
     return "\n".join(lines)
 
 
+@log_call
 def _format_details_table(
     recipe: Recipe,
     show_steps: bool,

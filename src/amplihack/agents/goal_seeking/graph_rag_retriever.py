@@ -18,6 +18,8 @@ from typing import Any
 
 import kuzu
 
+from amplihack.utils.logging_utils import log_call
+
 from .hierarchical_memory import (
     KnowledgeEdge,
     KnowledgeNode,
@@ -49,6 +51,7 @@ class GraphRAGRetriever:
         >>> nodes = retriever.keyword_search("photosynthesis", limit=10)
     """
 
+    @log_call
     def __init__(self, connection: kuzu.Connection, agent_name: str):
         if not agent_name or not agent_name.strip():
             raise ValueError("agent_name cannot be empty")
@@ -56,6 +59,7 @@ class GraphRAGRetriever:
         self.connection = connection
         self.agent_name = agent_name.strip()
 
+    @log_call
     def keyword_search(self, keyword: str, limit: int = 20) -> list[KnowledgeNode]:
         """Search SemanticMemory nodes using CONTAINS on content and concept.
 
@@ -114,6 +118,7 @@ class GraphRAGRetriever:
 
         return nodes
 
+    @log_call
     def similar_to_expand(
         self, node_id: str, min_similarity: float = 0.3
     ) -> list[tuple[KnowledgeNode, float]]:
@@ -166,6 +171,7 @@ class GraphRAGRetriever:
 
         return results
 
+    @log_call
     def get_provenance(self, node_id: str) -> list[dict[str, Any]]:
         """Follow DERIVES_FROM edges to find source EpisodicMemory nodes.
 
@@ -203,6 +209,7 @@ class GraphRAGRetriever:
 
         return episodes
 
+    @log_call
     def retrieve_subgraph(
         self,
         query: str,

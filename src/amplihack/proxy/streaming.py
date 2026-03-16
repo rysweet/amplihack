@@ -14,6 +14,8 @@ from typing import Any
 import aiohttp  # type: ignore[import-unresolved]
 import litellm  # type: ignore[import-unresolved]
 
+from amplihack.utils.logging_utils import log_call
+
 from .exceptions import (
     AzureAPIError,
     ToolCallError,
@@ -36,6 +38,7 @@ TOOL_STREAM_BUFFER_SIZE = int(os.environ.get("AMPLIHACK_TOOL_STREAM_BUFFER", "10
 USE_LITELLM_ROUTER = os.environ.get("AMPLIHACK_USE_LITELLM", "true").lower() == "true"
 
 
+@log_call
 async def retry_tool_call(func, max_attempts: int | None = None, tool_name: str | None = None):
     """
     Phase 2: Retry tool calls with exponential backoff.
@@ -96,6 +99,7 @@ async def retry_tool_call(func, max_attempts: int | None = None, tool_name: str 
     )
 
 
+@log_call
 def validate_tool_schema(tool: dict[str, Any]) -> list[str]:
     """
     Phase 2: Validate tool schema and return list of errors.
@@ -130,6 +134,7 @@ def validate_tool_schema(tool: dict[str, Any]) -> list[str]:
     return errors
 
 
+@log_call
 async def handle_tool_call_with_fallback(
     litellm_request: dict[str, Any], original_request: MessagesRequest
 ):
@@ -162,6 +167,7 @@ async def handle_tool_call_with_fallback(
                     raise ToolValidationError(error_msg, tool_name=tool.get("name"))
 
         # Attempt the tool call with retry logic
+        @log_call
         async def make_request():
             active_router = get_litellm_router()
             if USE_LITELLM_ROUTER and active_router:
@@ -184,6 +190,7 @@ async def handle_tool_call_with_fallback(
         fallback_request.pop("tool_choice", None)
 
         # Make fallback request
+        @log_call
         async def make_fallback_request():
             active_router = get_litellm_router()
             if USE_LITELLM_ROUTER and active_router:
@@ -193,6 +200,7 @@ async def handle_tool_call_with_fallback(
         return await retry_tool_call(make_fallback_request, tool_name="fallback_completion")
 
 
+@log_call
 async def stream_with_tools(
     response_generator, original_request: MessagesRequest, conversation_state: ConversationState
 ):
@@ -324,6 +332,7 @@ async def stream_with_tools(
             raise ToolStreamingError(f"Tool streaming failed: {e}")
 
 
+@log_call
 async def handle_azure_streaming_with_tools(
     azure_request: dict[str, Any],
     original_request: MessagesRequest,
@@ -470,6 +479,7 @@ async def handle_azure_streaming_with_tools(
         raise ToolStreamingError(f"Azure streaming failed: {e}")
 
 
+@log_call
 async def handle_streaming(response_generator, original_request: MessagesRequest):
     """Handle streaming responses from LiteLLM and convert to Anthropic format."""
     try:

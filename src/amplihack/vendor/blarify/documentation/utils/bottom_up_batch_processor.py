@@ -39,6 +39,7 @@ from amplihack.vendor.blarify.repositories.graph_db_manager.queries import (
     get_node_by_path,
 )
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from amplihack.utils.logging_utils import log_call
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +67,7 @@ class ProcessingResult(BaseModel):
 
     @field_validator("source_nodes", mode="before")
     @classmethod
+    @log_call
     def validate_source_nodes(cls, v: Any) -> list[NodeWithContentDto | dict[str, Any]]:
         """Convert NodeWithContentDto instances or dicts to the expected format."""
         if not v:
@@ -94,6 +96,7 @@ class BottomUpBatchProcessor:
     and avoid memory exhaustion for large codebases.
     """
 
+    @log_call
     def __init__(
         self,
         db_manager: AbstractDbManager,
@@ -142,6 +145,7 @@ class BottomUpBatchProcessor:
         self.all_documentation_nodes: list[DocumentationNode] = []
         self.all_source_nodes: list[NodeWithContentDto] = []
 
+    @log_call
     def process_upstream_definitions(self, node_path: str) -> ProcessingResult:
         """
         Process upstream definition dependencies for a given node path.
@@ -182,6 +186,7 @@ class BottomUpBatchProcessor:
             logger.exception(f"Error in upstream definition processing: {e}")
             return ProcessingResult(node_path=node_path, error=str(e))
 
+    @log_call
     def process_node(self, node_path: str) -> ProcessingResult:
         """
         Entry point - process using database queries only.
@@ -223,6 +228,7 @@ class BottomUpBatchProcessor:
             logger.exception(f"Error in query-based processing: {e}")
             return ProcessingResult(node_path=node_path, error=str(e))
 
+    @log_call
     def _process_upstream_definitions(self, root_node: NodeWithContentDto) -> int:
         """Process upstream definitions using database queries."""
 
@@ -246,6 +252,7 @@ class BottomUpBatchProcessor:
 
         return len(hierarchical_parents)
 
+    @log_call
     def _process_node_query_based(self, root_node: NodeWithContentDto) -> int:
         """Process using database queries without memory storage."""
 
@@ -310,6 +317,7 @@ class BottomUpBatchProcessor:
 
         return total_processed
 
+    @log_call
     def _process_leaf_batch(self, root_node: NodeWithContentDto) -> int:
         """Process a batch of leaf nodes."""
         # Get leaf nodes from database
@@ -363,6 +371,7 @@ class BottomUpBatchProcessor:
 
         return len(batch_results)
 
+    @log_call
     def _process_parent_batch(self, root_node: NodeWithContentDto) -> int:
         """Process a batch of parent nodes with child descriptions."""
         # Get parent nodes with descriptions from database
@@ -438,6 +447,7 @@ class BottomUpBatchProcessor:
 
         return len(batch_results)
 
+    @log_call
     def _process_remaining_functions_batch(self, root_node: NodeWithContentDto) -> int:
         """
         Process remaining FUNCTION nodes that may be in cycles.
@@ -521,6 +531,7 @@ class BottomUpBatchProcessor:
 
         return len(batch_results)
 
+    @log_call
     def _process_root_node(self, root_node: NodeWithContentDto) -> int:
         """
         Process the root node and its children.
@@ -546,6 +557,7 @@ class BottomUpBatchProcessor:
             logger.error(f"Error processing root node: {e}")
             return 0
 
+    @log_call
     def _save_documentation_batch(self, documentation_nodes: list[DocumentationNode]):
         """Save documentation to database using create_nodes and mark nodes completed."""
         if not documentation_nodes:
@@ -598,6 +610,7 @@ class BottomUpBatchProcessor:
 
         logger.debug(f"Saved {len(documentation_nodes)} documentation nodes to database")
 
+    @log_call
     def _has_pending_nodes(self, root_node: NodeWithContentDto) -> bool:
         """Check if there are still pending nodes under the root node."""
         query = check_pending_nodes_query()
@@ -609,6 +622,7 @@ class BottomUpBatchProcessor:
             return pending_count > 0
         return False
 
+    @log_call
     def _process_leaf_node(self, node: NodeWithContentDto) -> DocumentationNode | None:
         """
         Process a leaf node (FUNCTION with no calls or FILE with no children).
@@ -665,6 +679,7 @@ class BottomUpBatchProcessor:
                 graph_environment=self.graph_environment,
             )
 
+    @log_call
     def _process_parent_node(
         self, node: NodeWithContentDto, child_descriptions: list[DocumentationNode]
     ) -> DocumentationNode | None:
@@ -752,6 +767,7 @@ class BottomUpBatchProcessor:
                 graph_environment=self.graph_environment,
             )
 
+    @log_call
     def _create_child_descriptions_summary(
         self, child_descriptions: list[DocumentationNode]
     ) -> str:
@@ -780,6 +796,7 @@ class BottomUpBatchProcessor:
 
         return "\n".join(content_parts)
 
+    @log_call
     def _create_function_calls_context(self, child_descriptions: list[DocumentationNode]) -> str:
         """
         Create formatted context from child function descriptions for call stack analysis.
@@ -818,6 +835,7 @@ class BottomUpBatchProcessor:
 
         return "\nCalled functions and dependencies:\n" + "\n".join(context_parts)
 
+    @log_call
     def _replace_skeleton_comments_with_descriptions(
         self, parent_content: str, child_descriptions: list[DocumentationNode]
     ) -> str:
@@ -851,6 +869,7 @@ class BottomUpBatchProcessor:
         # Track which child descriptions were used in skeleton replacements
         used_child_ids = set()
 
+        @log_call
         def replace_comment(match: re.Match[str]) -> str:
             node_id = match.group(1)
             if node_id in child_lookup:
@@ -886,6 +905,7 @@ class BottomUpBatchProcessor:
 
         return enhanced_content
 
+    @log_call
     def __get_child_descriptions(self, root_node: NodeWithContentDto) -> list[DocumentationNode]:
         child_query = get_child_descriptions_query()
 

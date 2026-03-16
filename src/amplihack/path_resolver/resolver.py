@@ -4,6 +4,8 @@ import os
 from pathlib import Path
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 
 class PathResolver:
     """Resolves relative paths to absolute paths for plugin system.
@@ -27,10 +29,12 @@ class PathResolver:
         "relative",  # Common test field names
     }
 
+    @log_call
     def __init__(self):
         """Initialize path resolver."""
         self._cached_plugin_root = None
 
+    @log_call
     def resolve(self, path: str, plugin_root: Path) -> str:
         """Resolve a path to absolute form.
 
@@ -65,6 +69,7 @@ class PathResolver:
         resolved = plugin_root / path_obj
         return str(resolved.resolve())
 
+    @log_call
     def resolve_dict(self, data: dict[str, Any], plugin_root: Path) -> dict[str, Any]:
         """Resolve paths in dictionary recursively.
 
@@ -99,6 +104,7 @@ class PathResolver:
 
         return resolved
 
+    @log_call
     def get_plugin_root(self) -> Path:
         """Get plugin root directory.
 
@@ -122,6 +128,7 @@ class PathResolver:
         self._cached_plugin_root = Path.home() / ".amplihack" / ".claude"
         return self._cached_plugin_root
 
+    @log_call
     def _is_path_field(self, field_name: str) -> bool:
         """Check if field name indicates a path field.
 

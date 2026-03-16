@@ -14,6 +14,8 @@ import os
 from datetime import datetime
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 from .xpia_defender import WebFetchXPIADefender
 from .xpia_defense_interface import (
     ContentType,
@@ -34,6 +36,7 @@ class XPIAHookAdapter:
     and the XPIA defense implementation.
     """
 
+    @log_call
     def __init__(self, defender: WebFetchXPIADefender | None = None):
         """Initialize hook adapter with defender instance"""
         self.defender = defender or WebFetchXPIADefender()
@@ -43,6 +46,7 @@ class XPIAHookAdapter:
 
         logger.info(f"XPIA Hook Adapter initialized (enabled={self.enabled})")
 
+    @log_call
     async def pre_tool_use(self, context: dict[str, Any]) -> dict[str, Any]:
         """
         PreToolUse hook for Claude Code
@@ -79,6 +83,7 @@ class XPIAHookAdapter:
         # Handle other tools with general validation
         return await self._handle_general_validation(tool_name, parameters, context)
 
+    @log_call
     async def post_tool_use(self, context: dict[str, Any]) -> dict[str, Any]:
         """
         PostToolUse hook for Claude Code
@@ -128,6 +133,7 @@ class XPIAHookAdapter:
 
         return {"processed": True}
 
+    @log_call
     async def _handle_webfetch_validation(
         self, parameters: dict[str, Any], context: dict[str, Any]
     ) -> dict[str, Any]:
@@ -199,6 +205,7 @@ class XPIAHookAdapter:
             "metadata": {"risk_level": validation.risk_level.value, "validation": "passed"},
         }
 
+    @log_call
     async def _handle_bash_validation(
         self, parameters: dict[str, Any], context: dict[str, Any]
     ) -> dict[str, Any]:
@@ -249,6 +256,7 @@ class XPIAHookAdapter:
             "metadata": {"risk_level": validation.risk_level.value, "validation": "passed"},
         }
 
+    @log_call
     async def _handle_general_validation(
         self, tool_name: str, parameters: dict[str, Any], context: dict[str, Any]
     ) -> dict[str, Any]:
@@ -291,6 +299,7 @@ class XPIAHookAdapter:
             "metadata": {"risk_level": validation.risk_level.value, "validation": "passed"},
         }
 
+    @log_call
     def _create_block_message(self, validation: ValidationResult, tool_name: str) -> str:
         """Create user-friendly block message"""
         if not self.verbose_feedback:
@@ -326,6 +335,7 @@ class ClaudeCodeXPIAHook:
     This class provides the actual hook functions that Claude Code will call.
     """
 
+    @log_call
     def __init__(self):
         """Initialize Claude Code XPIA Hook"""
         self.adapter = XPIAHookAdapter()
@@ -336,6 +346,7 @@ class ClaudeCodeXPIAHook:
             "start_time": datetime.now(),
         }
 
+    @log_call
     def pre_tool_use(self, context: dict[str, Any]) -> dict[str, Any]:
         """
         PreToolUse hook implementation
@@ -365,6 +376,7 @@ class ClaudeCodeXPIAHook:
         finally:
             loop.close()
 
+    @log_call
     def post_tool_use(self, context: dict[str, Any]) -> dict[str, Any]:
         """
         PostToolUse hook implementation
@@ -384,6 +396,7 @@ class ClaudeCodeXPIAHook:
         finally:
             loop.close()
 
+    @log_call
     def get_stats(self) -> dict[str, Any]:
         """Get hook statistics"""
         uptime = (datetime.now() - self.stats["start_time"]).total_seconds()
@@ -399,6 +412,7 @@ class ClaudeCodeXPIAHook:
 
 
 # Hook registration helper
+@log_call
 def register_xpia_hooks():
     """
     Register XPIA hooks with Claude Code

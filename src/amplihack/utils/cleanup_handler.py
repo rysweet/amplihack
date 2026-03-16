@@ -11,6 +11,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 from .cleanup_registry import CleanupRegistry
 from .uvx_models import UVXConfiguration
 
@@ -23,6 +25,7 @@ class CleanupHandler:
     Registers exit handlers and safely removes tracked files.
     """
 
+    @log_call
     def __init__(self, registry: CleanupRegistry, config: UVXConfiguration):
         """Initialize cleanup handler.
 
@@ -35,6 +38,7 @@ class CleanupHandler:
         self.working_dir = registry.working_dir.resolve()
         self._cleanup_done = False
 
+    @log_call
     def validate_cleanup_path(self, path: Path) -> bool:
         """Validate path is safe for cleanup.
 
@@ -69,6 +73,7 @@ class CleanupHandler:
         except (OSError, RuntimeError):
             return False
 
+    @log_call
     def cleanup(self) -> int:
         """Execute cleanup of tracked files.
 
@@ -118,6 +123,7 @@ class CleanupHandler:
 
         return cleaned_count
 
+    @log_call
     def register_exit_handlers(self) -> None:
         """Register cleanup handlers for multiple exit scenarios."""
         # Normal exit
@@ -127,6 +133,7 @@ class CleanupHandler:
         if hasattr(signal, "SIGINT"):
             original_sigint = signal.getsignal(signal.SIGINT)
 
+            @log_call
             def sigint_handler(sig, frame):
                 try:
                     self.cleanup()
@@ -143,6 +150,7 @@ class CleanupHandler:
         if hasattr(signal, "SIGTERM"):
             original_sigterm = signal.getsignal(signal.SIGTERM)
 
+            @log_call
             def sigterm_handler(sig, frame):
                 try:
                     self.cleanup()
@@ -157,6 +165,7 @@ class CleanupHandler:
             signal.signal(signal.SIGTERM, sigterm_handler)
 
 
+@log_call
 def initialize_cleanup_system(
     config: UVXConfiguration, session_id: str, working_dir: Path
 ) -> CleanupHandler | None:

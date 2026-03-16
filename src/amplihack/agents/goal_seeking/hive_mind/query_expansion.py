@@ -28,6 +28,8 @@ logger = logging.getLogger(__name__)
 # Optional dependency: anthropic SDK
 # ---------------------------------------------------------------------------
 
+from amplihack.utils.logging_utils import log_call
+
 from .constants import DEFAULT_EXPANSION_MODEL
 
 try:
@@ -63,6 +65,7 @@ _SYNONYM_MAP: dict[str, list[str]] = {
 }
 
 
+@log_call
 def _local_expand(query: str) -> list[str]:
     """Expand query using local synonym map.
 
@@ -88,6 +91,7 @@ def _local_expand(query: str) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
+@log_call
 def expand_query(
     query: str,
     max_expansions: int = _MAX_EXPANSIONS,
@@ -157,6 +161,7 @@ def expand_query(
 # ---------------------------------------------------------------------------
 
 
+@log_call
 def search_expanded(
     query: str,
     search_fn: Any,

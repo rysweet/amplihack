@@ -15,6 +15,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
 
+from amplihack.utils.logging_utils import log_call
+
 LauncherType = Literal["claude", "copilot", "unknown"]
 
 
@@ -40,6 +42,7 @@ class LauncherDetector:
     # - Handles developer switching between Claude Code/Copilot across days
     STALENESS_HOURS = 24
 
+    @log_call
     def __init__(self, project_root: Path):
         """Initialize detector.
 
@@ -49,6 +52,7 @@ class LauncherDetector:
         self.project_root = project_root
         self.context_path = project_root / self.CONTEXT_FILE
 
+    @log_call
     def detect(self) -> LauncherType:
         """Detect which launcher is being used.
 
@@ -83,6 +87,7 @@ class LauncherDetector:
             # Fail-safe: malformed context defaults to Claude Code
             return "claude"
 
+    @log_call
     def write_context(
         self,
         launcher_type: LauncherType,
@@ -125,6 +130,7 @@ class LauncherDetector:
         except OSError:
             pass  # Best effort - Windows doesn't support POSIX permissions
 
+    @log_call
     def is_stale(self, max_age_hours: int | None = None) -> bool:
         """Check if launcher context is stale.
 
@@ -167,6 +173,7 @@ class LauncherDetector:
         except (json.JSONDecodeError, KeyError, ValueError):
             return True
 
+    @log_call
     def cleanup(self) -> None:
         """Remove launcher context file.
 

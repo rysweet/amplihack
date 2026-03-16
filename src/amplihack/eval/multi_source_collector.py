@@ -6,6 +6,8 @@ Philosophy: Simple data transformer, no external API calls.
 
 from dataclasses import dataclass
 
+from amplihack.utils.logging_utils import log_call
+
 
 @dataclass
 class NewsArticle:
@@ -17,6 +19,7 @@ class NewsArticle:
     published: str
 
 
+@log_call
 def collect_news(websearch_data: dict) -> list[NewsArticle]:
     """Collect and structure news from WebSearch results.
 

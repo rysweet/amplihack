@@ -4,6 +4,7 @@ from typing import Literal
 
 from amplihack.vendor.blarify.cli.project_config import ProjectConfig
 from pydantic import BaseModel, Field, field_validator
+from amplihack.utils.logging_utils import log_call
 
 
 class MCPServerConfig(BaseModel):
@@ -50,6 +51,7 @@ class MCPServerConfig(BaseModel):
 
     @field_validator("neo4j_uri")
     @classmethod
+    @log_call
     def validate_neo4j_uri(cls, v: str) -> str:
         """Validate Neo4j URI format."""
         if not v.startswith(("bolt://", "neo4j://", "neo4j+s://", "neo4j+ssc://")):
@@ -57,6 +59,7 @@ class MCPServerConfig(BaseModel):
         return v
 
     @classmethod
+    @log_call
     def from_project(cls, repo_id: str | None = None) -> "MCPServerConfig":
         """Load configuration from stored project and credentials.
 
@@ -86,6 +89,7 @@ class MCPServerConfig(BaseModel):
             db_type="neo4j",  # Currently only Neo4j is auto-configured
         )
 
+    @log_call
     def validate_for_db_type(self) -> None:
         """Validate configuration based on selected database type."""
         if self.db_type == "falkordb":

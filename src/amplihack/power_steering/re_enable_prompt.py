@@ -335,6 +335,8 @@ import signal
 import threading
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 logger = logging.getLogger(__name__)
 
 # Import worktree utilities - try multiple paths
@@ -360,6 +362,7 @@ except ImportError:
         print("WARNING: git_utils not available, using fallback runtime dir", file=sys.stderr)
 
         # Final fallback: use runtime relative to project root
+        @log_call
         def get_shared_runtime_dir(project_root: Path) -> str:
             return str(project_root / ".claude" / "runtime")
 
@@ -368,6 +371,7 @@ except ImportError:
 TIMEOUT_SECONDS = 30
 
 
+@log_call
 def _remove_disabled_file_safe(disabled_file: Path, context: str = "") -> None:
     """Remove .disabled file with fail-open error handling.
 
@@ -385,6 +389,7 @@ def _remove_disabled_file_safe(disabled_file: Path, context: str = "") -> None:
         logger.warning(f"Could not remove .disabled file: {e}")
 
 
+@log_call
 def _get_input_with_timeout(prompt: str, timeout: int, default: str) -> str:
     """Get user input with cross-platform timeout support.
 
@@ -408,6 +413,7 @@ def _get_input_with_timeout(prompt: str, timeout: int, default: str) -> str:
         input_container: list[str | None] = [default]  # Mutable container for thread communication
         input_event = threading.Event()
 
+        @log_call
         def get_input():
             try:
                 input_container[0] = input(prompt)
@@ -430,6 +436,7 @@ def _get_input_with_timeout(prompt: str, timeout: int, default: str) -> str:
         return default
 
     # Unix: Use signal.SIGALRM
+    @log_call
     def timeout_handler(_signum, _frame):
         raise TimeoutError("Input timeout")
 
@@ -452,6 +459,7 @@ def _get_input_with_timeout(prompt: str, timeout: int, default: str) -> str:
         signal.signal(signal.SIGALRM, old_handler)
 
 
+@log_call
 def prompt_re_enable_if_disabled(project_root: Path | None = None) -> bool:
     """Prompt user to re-enable power-steering if disabled.
 

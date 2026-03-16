@@ -6,11 +6,14 @@ import signal
 import subprocess
 import sys
 
+from amplihack.utils.logging_utils import log_call
+
 
 class ProcessManager:
     """Cross-platform process management utilities."""
 
     @staticmethod
+    @log_call
     def is_windows() -> bool:
         """Check if running on Windows.
 
@@ -20,6 +23,7 @@ class ProcessManager:
         return sys.platform == "win32" or os.name == "nt"
 
     @staticmethod
+    @log_call
     def is_unix() -> bool:
         """Check if running on Unix-like system.
 
@@ -29,6 +33,7 @@ class ProcessManager:
         return not ProcessManager.is_windows()
 
     @staticmethod
+    @log_call
     def create_process_group(popen_args: dict) -> dict:
         """Add process group creation flags to Popen arguments.
 
@@ -49,6 +54,7 @@ class ProcessManager:
         return popen_args
 
     @staticmethod
+    @log_call
     def terminate_process_group(process: subprocess.Popen, timeout: int = 5) -> None:
         """Terminate a process and its group.
 
@@ -91,6 +97,7 @@ class ProcessManager:
                 pass  # Fallback already attempted
 
     @staticmethod
+    @log_call
     def check_command_exists(command: str) -> bool:
         """Check if a command exists in PATH.
 
@@ -116,6 +123,7 @@ class ProcessManager:
             return False
 
     @staticmethod
+    @log_call
     def run_command(
         command: list[str],
         cwd: str | None = None,

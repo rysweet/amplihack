@@ -20,6 +20,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 from .backends import MemoryBackend, create_backend
 from .models import MemoryEntry
 from .types import MemoryType
@@ -43,6 +45,7 @@ class StorageRequest:
     context: dict[str, Any] = field(default_factory=dict)
     metadata: dict[str, Any] = field(default_factory=dict)
 
+    @log_call
     def __post_init__(self):
         """Validate required fields."""
         if not self.content or not self.content.strip():
@@ -77,6 +80,7 @@ class MemoryCoordinator:
     - Performance monitoring (<50ms retrieval, <500ms storage)
     """
 
+    @log_call
     def __init__(
         self,
         backend: MemoryBackend | None = None,
@@ -124,6 +128,7 @@ class MemoryCoordinator:
         }
         self.last_retrieval_tokens = 0
 
+    @log_call
     async def initialize(self) -> None:
         """Initialize the backend.
 
@@ -133,6 +138,7 @@ class MemoryCoordinator:
             await self.backend.initialize()
             self._initialized = True
 
+    @log_call
     async def store(self, request: StorageRequest) -> str | None:
         """Store a memory with quality review.
 
@@ -211,6 +217,7 @@ class MemoryCoordinator:
             logger.error(f"Error storing memory: {e}")
             raise  # Propagate exception - don't swallow
 
+    @log_call
     async def retrieve(self, query: RetrievalQuery) -> list[MemoryEntry]:
         """Retrieve memories matching query.
 
@@ -304,6 +311,7 @@ class MemoryCoordinator:
             logger.error(f"Error retrieving memories: {e}")
             raise  # Propagate exception - don't swallow
 
+    @log_call
     async def clear_working_memory(self, session_id: str | None = None):
         """Clear working memory (short-lived task context).
 
@@ -339,6 +347,7 @@ class MemoryCoordinator:
             logger.error(f"Error clearing working memory: {e}")
             raise  # Propagate exception - don't swallow
 
+    @log_call
     async def clear_all(self, session_id: str | None = None):
         """Clear all memories fer current session.
 
@@ -381,6 +390,7 @@ class MemoryCoordinator:
             logger.error(f"Error clearing all memories: {e}")
             raise  # Propagate exception (don't swallow)
 
+    @log_call
     async def mark_task_complete(self, task_id: str):
         """Mark a task as complete, clearing its working memory.
 
@@ -415,6 +425,7 @@ class MemoryCoordinator:
             logger.error(f"Error marking task complete: {e}")
             raise  # Propagate exception - don't swallow
 
+    @log_call
     async def get_statistics(self) -> dict[str, Any]:
         """Get memory statistics.
 
@@ -427,6 +438,7 @@ class MemoryCoordinator:
             "total_memories": db_stats.get("total_memories", 0),
         }
 
+    @log_call
     def get_backend_info(self) -> dict[str, Any]:
         """Get backend information and capabilities.
 
@@ -444,6 +456,7 @@ class MemoryCoordinator:
             "max_concurrent_connections": capabilities.max_concurrent_connections,
         }
 
+    @log_call
     def _is_trivial(self, content: str) -> bool:
         """Check if content is trivial.
 
@@ -476,6 +489,7 @@ class MemoryCoordinator:
 
         return False
 
+    @log_call
     async def _is_duplicate(self, content: str) -> bool:
         """Check if content is duplicate using composite fingerprint.
 
@@ -519,6 +533,7 @@ class MemoryCoordinator:
 
         return False
 
+    @log_call
     async def _invoke_agent(self, prompt: str) -> dict[str, Any]:
         """Invoke agent fer review (can be mocked in tests).
 
@@ -552,6 +567,7 @@ class MemoryCoordinator:
             # This ensures <500ms storage contract is met even without agents
             return self._heuristic_quality_score(prompt)
 
+    @log_call
     def _heuristic_quality_score(self, prompt: str) -> dict[str, Any]:
         """Fast heuristic-based quality scoring when agents unavailable.
 
@@ -587,6 +603,7 @@ class MemoryCoordinator:
             "reasoning": f"Heuristic score based on content length ({len(content)} chars) and structure",
         }
 
+    @log_call
     async def _review_quality(self, request: StorageRequest) -> int:
         """Review content quality using multi-agent system.
 
@@ -641,6 +658,7 @@ Return: {{"importance_score": <number>, "reasoning": "<brief reason>"}}
             logger.error(f"Error in quality review: {e}")
             return self._fallback_score(request)
 
+    @log_call
     def _fallback_score(self, request: StorageRequest) -> int:
         """Fallback scoring when agents unavailable.
 
@@ -663,6 +681,7 @@ Return: {{"importance_score": <number>, "reasoning": "<brief reason>"}}
 
         return min(10, score)
 
+    @log_call
     def _generate_title(self, content: str) -> str:
         """Generate title from content.
 
@@ -674,6 +693,7 @@ Return: {{"importance_score": <number>, "reasoning": "<brief reason>"}}
         """
         return content[:50].strip()
 
+    @log_call
     def _convert_to_old_type(self, new_type: MemoryType):
         """Convert new 5-type system to old type system fer database.
 
@@ -692,6 +712,7 @@ Return: {{"importance_score": <number>, "reasoning": "<brief reason>"}}
 
         return mapping.get(new_type, OldMemoryType.CONVERSATION)
 
+    @log_call
     def _rank_by_relevance(
         self, memories: list[MemoryEntry], query_text: str
     ) -> list[tuple[MemoryEntry, float]]:
@@ -735,6 +756,7 @@ Return: {{"importance_score": <number>, "reasoning": "<brief reason>"}}
         scored.sort(key=lambda x: x[1], reverse=True)
         return scored
 
+    @log_call
     async def _enrich_with_code_context(self, memories: list[MemoryEntry]) -> list[MemoryEntry]:
         """Enrich memories with related code context.
 
@@ -793,6 +815,7 @@ Return: {{"importance_score": <number>, "reasoning": "<brief reason>"}}
 
         return memories
 
+    @log_call
     def _format_code_context(self, context: dict[str, Any]) -> str:
         """Format code context into readable text fer LLM consumption.
 

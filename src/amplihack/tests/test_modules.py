@@ -5,10 +5,13 @@ import os
 import sys
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 # Add src to path for testing
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 
+@log_call
 def test_imports():
     """Test that all modules can be imported."""
     try:
@@ -44,6 +47,7 @@ def test_imports():
         return False
 
 
+@log_call
 def test_detector():
     """Test the Claude directory detector."""
     from amplihack.launcher.detector import ClaudeDirectoryDetector
@@ -60,6 +64,7 @@ def test_detector():
     return True
 
 
+@log_call
 def test_proxy_config():
     """Test proxy configuration parsing."""
     import tempfile
@@ -88,6 +93,7 @@ def test_proxy_config():
         os.unlink(temp_path)
 
 
+@log_call
 def test_path_resolver():
     """Test path resolution utilities."""
     # PathResolver removed in simplification, test FrameworkPathResolver instead
@@ -105,6 +111,7 @@ def test_path_resolver():
     return True
 
 
+@log_call
 def test_process_manager():
     """Test process management utilities."""
     from amplihack.utils.process import ProcessManager
@@ -124,6 +131,7 @@ def test_process_manager():
     return True
 
 
+@log_call
 def test_cli_parser():
     """Test CLI argument parser."""
     from amplihack.cli import create_parser
@@ -144,6 +152,7 @@ def test_cli_parser():
     return True
 
 
+@log_call
 def main():
     """Run all tests."""
     print("Testing amplihack modules...\n")

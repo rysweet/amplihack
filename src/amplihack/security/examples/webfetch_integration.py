@@ -12,16 +12,12 @@ os.environ["XPIA_ENABLED"] = "true"
 os.environ["XPIA_SECURITY_LEVEL"] = "MODERATE"
 os.environ["XPIA_VERBOSE_FEEDBACK"] = "true"
 
-import sys
-
-sys.path.append(
-    "/Users/ryan/src/hackathon/MicrosoftHackathon2025-AgenticCoding-xpia-133/src"  # pragma: allowlist secret
-)
-
 from amplihack.security import WebFetchXPIADefender, xpia_hook
 from amplihack.security.config import get_config
+from amplihack.utils.logging_utils import log_call
 
 
+@log_call
 async def safe_webfetch(url: str, prompt: str) -> str | None:
     """
     Safely fetch web content with XPIA validation
@@ -57,6 +53,7 @@ async def safe_webfetch(url: str, prompt: str) -> str | None:
     return f"Mock content from {url}"
 
 
+@log_call
 def hook_based_validation_example():
     """
     Example of using XPIA through Claude Code hooks
@@ -118,6 +115,7 @@ def hook_based_validation_example():
         print()
 
 
+@log_call
 async def batch_validation_example():
     """
     Example of validating multiple URLs in batch
@@ -144,6 +142,7 @@ async def batch_validation_example():
         )
 
 
+@log_call
 async def custom_security_level_example():
     """
     Example of using different security levels
@@ -168,6 +167,7 @@ async def custom_security_level_example():
         )
 
 
+@log_call
 async def pattern_detection_example():
     """
     Example showing pattern detection capabilities
@@ -198,6 +198,7 @@ async def pattern_detection_example():
         )
 
 
+@log_call
 def configuration_example():
     """
     Example of configuration management
@@ -229,6 +230,7 @@ def configuration_example():
     print(f"  Block on High Risk: {config.block_on_high_risk}")
 
 
+@log_call
 async def main():
     """Run all examples"""
     print("=" * 60)

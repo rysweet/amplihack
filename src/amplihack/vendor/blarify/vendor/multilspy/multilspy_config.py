@@ -4,6 +4,7 @@ Configuration parameters for Multilspy.
 
 from dataclasses import dataclass
 from enum import Enum
+from amplihack.utils.logging_utils import log_call
 
 
 class Language(str, Enum):
@@ -22,6 +23,7 @@ class Language(str, Enum):
     DART = "dart"
     PHP = "php"
 
+    @log_call
     def __str__(self) -> str:
         return self.value
 
@@ -36,6 +38,7 @@ class MultilspyConfig:
     trace_lsp_communication: bool = False
 
     @classmethod
+    @log_call
     def from_dict(cls, env: dict):
         """
         Create a MultilspyConfig instance from a dictionary

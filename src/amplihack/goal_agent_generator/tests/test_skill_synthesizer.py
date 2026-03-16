@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pytest
 
+from amplihack.utils.logging_utils import log_call
+
 from ..models import ExecutionPlan, PlanPhase, SkillDefinition
 from ..skill_synthesizer import SkillSynthesizer
 
@@ -14,6 +16,7 @@ class TestSkillSynthesizer:
     """Tests for SkillSynthesizer."""
 
     @pytest.fixture
+    @log_call
     def temp_skills_dir(self):
         """Create temporary skills directory."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -46,11 +49,13 @@ Runs tests and validates code.
             yield skills_dir
 
     @pytest.fixture
+    @log_call
     def synthesizer(self, temp_skills_dir):
         """Create synthesizer with temp directory."""
         return SkillSynthesizer(skills_directory=temp_skills_dir)
 
     @pytest.fixture
+    @log_call
     def execution_plan(self):
         """Create sample execution plan."""
         phases = [
@@ -75,6 +80,7 @@ Runs tests and validates code.
             required_skills=["analyzer", "tester"],
         )
 
+    @log_call
     def test_synthesize_skills_finds_matches(self, synthesizer, execution_plan):
         """Test that synthesizer finds matching skills."""
         skills = synthesizer.synthesize_skills(execution_plan)
@@ -82,6 +88,7 @@ Runs tests and validates code.
         assert len(skills) > 0
         assert all(isinstance(skill, SkillDefinition) for skill in skills)
 
+    @log_call
     def test_synthesize_skills_calculates_match_scores(self, synthesizer, execution_plan):
         """Test that match scores are calculated."""
         skills = synthesizer.synthesize_skills(execution_plan)
@@ -89,6 +96,7 @@ Runs tests and validates code.
         for skill in skills:
             assert 0 <= skill.match_score <= 1
 
+    @log_call
     def test_find_matching_skill_returns_best_match(self, synthesizer):
         """Test that best matching skill is returned."""
         skill = synthesizer._find_matching_skill("analyzer")
@@ -96,6 +104,7 @@ Runs tests and validates code.
         if skill:  # Might not find in temp directory
             assert "analyze" in skill.content.lower() or "review" in skill.content.lower()
 
+    @log_call
     def test_load_skill_extracts_metadata(self, temp_skills_dir):
         """Test that skill loading extracts metadata."""
         synthesizer = SkillSynthesizer(skills_directory=temp_skills_dir)
@@ -110,6 +119,7 @@ Runs tests and validates code.
         assert skill.content
         assert skill.match_score == 0.8
 
+    @log_call
     def test_extract_description_from_content(self, synthesizer):
         """Test extracting description from markdown."""
         content = """# Test Skill
@@ -126,6 +136,7 @@ Use this for testing.
         assert "test" in description.lower()
         assert len(description) > 0
 
+    @log_call
     def test_extract_capabilities_from_content(self, synthesizer):
         """Test extracting capabilities from content."""
         content = """# Analyzer
@@ -138,6 +149,7 @@ Analyzes and processes data.
         assert len(capabilities) > 0
         assert any("analyze" in cap.lower() for cap in capabilities)
 
+    @log_call
     def test_create_generic_skill_fallback(self, synthesizer):
         """Test creating generic fallback skill."""
         generic = synthesizer._create_generic_skill()
@@ -147,6 +159,7 @@ Analyzes and processes data.
         assert generic.content
         assert generic.match_score > 0
 
+    @log_call
     def test_synthesize_with_no_skills_returns_generic(self):
         """Test that synthesizer returns generic skill when no matches."""
         # Create synthesizer with empty directory
@@ -176,6 +189,7 @@ Analyzes and processes data.
             # Should have generic skill
             assert any(s.name == "generic-executor" for s in skills)
 
+    @log_call
     def test_skill_keywords_mapping(self):
         """Test that skill keywords are properly defined."""
         assert "analyzer" in SkillSynthesizer.SKILL_KEYWORDS

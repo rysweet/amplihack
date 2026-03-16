@@ -27,6 +27,8 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 from .grader import grade_answer
 from .metacognition_grader import grade_metacognition
 
@@ -77,6 +79,7 @@ class ProgressiveResult:
     error_message: str | None = None
 
 
+@log_call
 def _extract_json_line(stdout: str) -> str:
     """Extract the JSON object line from subprocess stdout.
 
@@ -102,6 +105,7 @@ def _extract_json_line(stdout: str) -> str:
     return "{}"
 
 
+@log_call
 def run_learning_subprocess(articles: list, agent_name: str, sdk: str = "mini") -> tuple[bool, str]:
     """Run learning phase as subprocess.
 
@@ -151,6 +155,7 @@ def run_learning_subprocess(articles: list, agent_name: str, sdk: str = "mini") 
     return True, _extract_json_line(result.stdout)
 
 
+@log_call
 def run_testing_subprocess(questions: list, agent_name: str, sdk: str = "mini") -> tuple[bool, str]:
     """Run testing phase as subprocess.
 
@@ -198,6 +203,7 @@ def run_testing_subprocess(questions: list, agent_name: str, sdk: str = "mini") 
     return True, _extract_json_line(result.stdout)
 
 
+@log_call
 def _isolate_memory_for_level(agent_name: str, level_id: str) -> str:
     """Create an isolated agent name for each level to avoid cross-level interference.
 
@@ -214,6 +220,7 @@ def _isolate_memory_for_level(agent_name: str, level_id: str) -> str:
     return f"{agent_name}_{level_id}_{int(time.time())}"
 
 
+@log_call
 def run_l7_teaching_eval(
     level: TestLevel, config: ProgressiveConfig, level_dir: Path
 ) -> LevelResult:
@@ -329,6 +336,7 @@ def run_l7_teaching_eval(
         )
 
 
+@log_call
 def _run_teaching_subprocess(knowledge_base: list[str], agent_name: str) -> dict:
     """Run a teaching session in a subprocess.
 
@@ -376,6 +384,7 @@ def _run_teaching_subprocess(knowledge_base: list[str], agent_name: str) -> dict
         return {"status": "completed", "turns": 0, "raw_output": result.stdout[:500]}
 
 
+@log_call
 def run_single_level(level: TestLevel, config: ProgressiveConfig, level_dir: Path) -> LevelResult:
     """Run evaluation for a single level.
 
@@ -558,6 +567,7 @@ def run_single_level(level: TestLevel, config: ProgressiveConfig, level_dir: Pat
         )
 
 
+@log_call
 def run_progressive_suite(config: ProgressiveConfig) -> ProgressiveResult:
     """Run complete progressive test suite.
 
@@ -668,6 +678,7 @@ class ParallelResult:
     per_run_scores: dict[str, list[float]] = field(default_factory=dict)
 
 
+@log_call
 def _run_single_suite(args: tuple) -> ProgressiveResult:
     """Run a single suite invocation (used as ProcessPoolExecutor target).
 
@@ -693,6 +704,7 @@ def _run_single_suite(args: tuple) -> ProgressiveResult:
     return run_progressive_suite(config)
 
 
+@log_call
 def run_parallel_suite(
     num_runs: int,
     base_output_dir: str,
@@ -772,6 +784,7 @@ def run_parallel_suite(
     )
 
 
+@log_call
 def main():
     """CLI entry point."""
     import argparse

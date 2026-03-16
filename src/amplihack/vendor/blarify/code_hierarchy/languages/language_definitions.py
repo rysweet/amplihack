@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Optional
 from amplihack.vendor.blarify.code_hierarchy.languages.FoundRelationshipScope import FoundRelationshipScope
 from amplihack.vendor.blarify.graph.node import NodeLabels
 from tree_sitter import Node, Parser
+from amplihack.utils.logging_utils import log_call
 
 if TYPE_CHECKING:
     from ...graph.relationship import RelationshipType
@@ -23,6 +24,7 @@ class LanguageDefinitions(ABC):
 
     @staticmethod
     @abstractmethod
+    @log_call
     def get_language_name() -> str:
         """
         This method should return the language name.
@@ -33,9 +35,11 @@ class LanguageDefinitions(ABC):
 
     @staticmethod
     @abstractmethod
+    @log_call
     def should_create_node(node: Node) -> bool:
         """This method should return a boolean indicating if a node should be created"""
 
+    @log_call
     def _should_create_node_base_implementation(
         node: Node, node_labels_that_should_be_created: list[str]
     ) -> bool:
@@ -43,6 +47,7 @@ class LanguageDefinitions(ABC):
 
     @staticmethod
     @abstractmethod
+    @log_call
     def get_identifier_node(node: Node) -> Node:
         """This method should return the identifier node for a given node,
         this name will be used as the node name in the graph.
@@ -51,6 +56,7 @@ class LanguageDefinitions(ABC):
         """
 
     @staticmethod
+    @log_call
     def _get_identifier_node_base_implementation(node: Node) -> Node:
         if identifier := node.child_by_field_name("name"):
             return identifier
@@ -59,12 +65,14 @@ class LanguageDefinitions(ABC):
 
     @staticmethod
     @abstractmethod
+    @log_call
     def get_body_node(node: Node) -> Node:
         """This method should return the body node for a given node,
         this node should contain the code block for the node without any signatures.
         """
 
     @staticmethod
+    @log_call
     def _get_body_node_base_implementation(node: Node) -> Node:
         if body := node.child_by_field_name("body"):
             return body
@@ -75,12 +83,14 @@ class LanguageDefinitions(ABC):
 
     @staticmethod
     @abstractmethod
+    @log_call
     def get_relationship_type(
         node: Node, node_in_point_reference: Node
     ) -> FoundRelationshipScope | None:
         """This method should tell you how the node is being used in the node_in_point_reference"""
 
     @staticmethod
+    @log_call
     def _traverse_and_find_relationships(
         node: Node, relationship_mapping: dict
     ) -> FoundRelationshipScope | None:
@@ -96,6 +106,7 @@ class LanguageDefinitions(ABC):
         return None
 
     @staticmethod
+    @log_call
     def _get_relationship_type_for_node(
         tree_sitter_node: Node, relationships_types: dict
     ) -> Optional["RelationshipType"]:
@@ -106,15 +117,18 @@ class LanguageDefinitions(ABC):
 
     @staticmethod
     @abstractmethod
+    @log_call
     def get_node_label_from_type(type: str) -> NodeLabels:
         """This method should return the node label for a given node type"""
 
     @staticmethod
     @abstractmethod
+    @log_call
     def get_language_file_extensions() -> set[str]:
         """This method should return the file extensions for the language"""
 
     @staticmethod
     @abstractmethod
+    @log_call
     def get_parsers_for_extensions() -> dict[str, Parser]:
         """This method should return the parsers for the language"""

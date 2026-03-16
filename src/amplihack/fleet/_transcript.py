@@ -21,6 +21,7 @@ from pathlib import Path
 
 from amplihack.fleet._constants import DEFAULT_RECENT_MESSAGE_COUNT
 from amplihack.fleet._transcript_summary import summarize_entries
+from amplihack.utils.logging_utils import log_call
 
 __all__ = [
     "read_local_transcript",
@@ -33,6 +34,7 @@ __all__ = [
 logger = logging.getLogger(__name__)
 
 
+@log_call
 def read_local_transcript(
     log_dir: str | None = None,
 ) -> str:
@@ -78,6 +80,7 @@ def read_local_transcript(
         return ""
 
 
+@log_call
 def build_rich_context(
     transcript_text: str,
     recent_message_count: int = DEFAULT_RECENT_MESSAGE_COUNT,
@@ -173,7 +176,9 @@ def build_rich_context(
         parts.append(f"=== ORIGINAL USER REQUEST ===\n{first_user_msg}")
 
     if middle_summary:
-        parts.append(f"\n=== SESSION HISTORY (summarized, {total - recent_message_count - 1} entries) ===\n{middle_summary}")
+        parts.append(
+            f"\n=== SESSION HISTORY (summarized, {total - recent_message_count - 1} entries) ===\n{middle_summary}"
+        )
 
     parts.append(f"\n=== RECENT CONTEXT ({len(recent_lines)} entries) ===")
     parts.append("\n".join(recent_text_parts))
@@ -181,6 +186,7 @@ def build_rich_context(
     return "\n".join(parts)
 
 
+@log_call
 def infer_jsonl_status(transcript_text: str) -> str:
     """Infer agent status from JSONL transcript entry types.
 
@@ -222,7 +228,8 @@ def infer_jsonl_status(transcript_text: str) -> str:
             content = entry.get("message", {}).get("content", "")
             if isinstance(content, list):
                 text_parts = [
-                    b.get("text", "") for b in content
+                    b.get("text", "")
+                    for b in content
                     if isinstance(b, dict) and b.get("type") == "text"
                 ]
                 content_str = "\n".join(text_parts)
@@ -241,6 +248,7 @@ def infer_jsonl_status(transcript_text: str) -> str:
     return "unknown"
 
 
+@log_call
 def extract_last_output(transcript_text: str) -> str:
     """Extract the most recent assistant output from the JSONL transcript.
 

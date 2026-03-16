@@ -20,7 +20,10 @@ import re
 import sys
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
 
+
+@log_call
 async def cleanup_memory_sessions_async(
     backend: Any,
     pattern: str = "test_*",
@@ -137,6 +140,7 @@ async def cleanup_memory_sessions_async(
     }
 
 
+@log_call
 def cleanup_memory_sessions(
     backend: Any,
     pattern: str = "test_*",

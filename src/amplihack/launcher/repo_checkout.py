@@ -5,7 +5,10 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
 
+
+@log_call
 def parse_github_uri(uri: str) -> str:
     """Convert any GitHub URI format to owner/repo.
 
@@ -45,6 +48,7 @@ def parse_github_uri(uri: str) -> str:
     raise ValueError(f"Invalid GitHub URI: {uri}")
 
 
+@log_call
 def checkout_repository(repo_uri: str, base_dir: Path | None = None) -> Path | None:
     """Checkout a GitHub repository.
 

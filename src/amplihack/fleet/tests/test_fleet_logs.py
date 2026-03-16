@@ -11,10 +11,8 @@ from __future__ import annotations
 import json
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from amplihack.fleet.fleet_logs import LogReader, SessionSummary
-
+from amplihack.utils.logging_utils import log_call
 
 # ────────────────────────────────────────────
 # UNIT TESTS (60%) — parsers and properties
@@ -22,22 +20,27 @@ from amplihack.fleet.fleet_logs import LogReader, SessionSummary
 
 
 class TestSessionSummaryProperties:
+    @log_call
     def test_is_active_with_messages(self):
         s = SessionSummary(message_count=5)
         assert s.is_active is True
 
+    @log_call
     def test_is_active_no_messages(self):
         s = SessionSummary(message_count=0)
         assert s.is_active is False
 
+    @log_call
     def test_has_pr(self):
         s = SessionSummary(pr_urls=["https://github.com/org/repo/pull/1"])
         assert s.has_pr is True
 
+    @log_call
     def test_no_pr(self):
         s = SessionSummary()
         assert s.has_pr is False
 
+    @log_call
     def test_to_dict_roundtrip(self):
         s = SessionSummary(
             session_id="abc123",
@@ -64,9 +67,11 @@ class TestSessionSummaryProperties:
 class TestParseLogSummary:
     """Unit tests for _parse_log_summary."""
 
+    @log_call
     def setup_method(self):
         self.reader = LogReader()
 
+    @log_call
     def test_valid_json_line(self):
         stats = {
             "session": "sess-1",
@@ -93,26 +98,42 @@ class TestParseLogSummary:
         assert result.pr_urls == ["https://github.com/org/repo/pull/1"]
         assert result.files_modified == ["auth.py"]
 
+    @log_call
     def test_no_log_marker(self):
         result = self.reader._parse_log_summary("NO_LOG")
         assert result is None
 
+    @log_call
     def test_empty_output(self):
         result = self.reader._parse_log_summary("")
         assert result is None
 
+    @log_call
     def test_invalid_json(self):
         result = self.reader._parse_log_summary("not{json")
         assert result is None
 
+    @log_call
     def test_multi_line_with_json_on_second(self):
         """Parser finds valid JSON anywhere in the output."""
-        stats = {"session": "s1", "branch": "", "cwd": "", "msgs": 1, "tools": 0, "user": 1, "asst": 0, "prs": [], "errors": [], "files": []}
+        stats = {
+            "session": "s1",
+            "branch": "",
+            "cwd": "",
+            "msgs": 1,
+            "tools": 0,
+            "user": 1,
+            "asst": 0,
+            "prs": [],
+            "errors": [],
+            "files": [],
+        }
         output = f"some debug line\n{json.dumps(stats)}\n"
         result = self.reader._parse_log_summary(output)
         assert result is not None
         assert result.session_id == "s1"
 
+    @log_call
     def test_missing_keys_use_defaults(self):
         result = self.reader._parse_log_summary(json.dumps({}))
         assert result is not None
@@ -123,12 +144,32 @@ class TestParseLogSummary:
 class TestParseAllLogsOutput:
     """Unit tests for _parse_all_logs_output."""
 
+    @log_call
     def setup_method(self):
         self.reader = LogReader()
 
+    @log_call
     def test_multiple_log_entries(self):
-        s1 = {"session": "a", "branch": "main", "cwd": "/a", "msgs": 5, "tools": 2, "user": 2, "asst": 3, "prs": []}
-        s2 = {"session": "b", "branch": "dev", "cwd": "/b", "msgs": 3, "tools": 1, "user": 1, "asst": 2, "prs": ["pr-url"]}
+        s1 = {
+            "session": "a",
+            "branch": "main",
+            "cwd": "/a",
+            "msgs": 5,
+            "tools": 2,
+            "user": 2,
+            "asst": 3,
+            "prs": [],
+        }
+        s2 = {
+            "session": "b",
+            "branch": "dev",
+            "cwd": "/b",
+            "msgs": 3,
+            "tools": 1,
+            "user": 1,
+            "asst": 2,
+            "prs": ["pr-url"],
+        }
         output = f"===LOG:/path/a.jsonl===\n{json.dumps(s1)}\n===LOG:/path/b.jsonl===\n{json.dumps(s2)}\n"
         results = self.reader._parse_all_logs_output(output)
         assert len(results) == 2
@@ -136,16 +177,28 @@ class TestParseAllLogsOutput:
         assert results[1].session_id == "b"
         assert results[1].pr_urls == ["pr-url"]
 
+    @log_call
     def test_empty_output(self):
         results = self.reader._parse_all_logs_output("")
         assert results == []
 
+    @log_call
     def test_all_invalid_lines(self):
         results = self.reader._parse_all_logs_output("===LOG:x===\nnot json\n")
         assert results == []
 
+    @log_call
     def test_log_markers_are_skipped(self):
-        stats = {"session": "s", "branch": "", "cwd": "", "msgs": 1, "tools": 0, "user": 0, "asst": 1, "prs": []}
+        stats = {
+            "session": "s",
+            "branch": "",
+            "cwd": "",
+            "msgs": 1,
+            "tools": 0,
+            "user": 0,
+            "asst": 1,
+            "prs": [],
+        }
         output = f"===LOG:/path===\n{json.dumps(stats)}\n"
         results = self.reader._parse_all_logs_output(output)
         assert len(results) == 1
@@ -159,23 +212,50 @@ class TestParseAllLogsOutput:
 class TestLogSummaryEdgeCases:
     """Integration tests for _parse_log_summary with unusual inputs."""
 
+    @log_call
     def setup_method(self):
         self.reader = LogReader()
 
+    @log_call
     def test_extra_fields_ignored(self):
-        stats = {"session": "x", "branch": "", "cwd": "", "msgs": 0, "tools": 0, "user": 0, "asst": 0, "prs": [], "errors": [], "files": [], "extra": "ignored"}
+        stats = {
+            "session": "x",
+            "branch": "",
+            "cwd": "",
+            "msgs": 0,
+            "tools": 0,
+            "user": 0,
+            "asst": 0,
+            "prs": [],
+            "errors": [],
+            "files": [],
+            "extra": "ignored",
+        }
         result = self.reader._parse_log_summary(json.dumps(stats))
         assert result is not None
         assert result.session_id == "x"
 
+    @log_call
     def test_numeric_strings_for_counts(self):
         """JSON with non-int values for count fields should still work."""
         stats = {"session": "x", "msgs": 0, "tools": 0, "user": 0, "asst": 0, "prs": []}
         result = self.reader._parse_log_summary(json.dumps(stats))
         assert result is not None
 
+    @log_call
     def test_mixed_valid_and_invalid_lines(self):
-        stats = {"session": "good", "branch": "", "cwd": "", "msgs": 1, "tools": 0, "user": 0, "asst": 1, "prs": [], "errors": [], "files": []}
+        stats = {
+            "session": "good",
+            "branch": "",
+            "cwd": "",
+            "msgs": 1,
+            "tools": 0,
+            "user": 0,
+            "asst": 1,
+            "prs": [],
+            "errors": [],
+            "files": [],
+        }
         output = f"bad line\n{json.dumps(stats)}\nanother bad"
         result = self.reader._parse_log_summary(output)
         assert result is not None
@@ -189,8 +269,20 @@ class TestLogSummaryEdgeCases:
 
 class TestReadSessionLog:
     @patch("amplihack.fleet.fleet_logs.subprocess.run")
+    @log_call
     def test_successful_read(self, mock_run):
-        stats = {"session": "abc", "branch": "main", "cwd": "/repo", "msgs": 20, "tools": 10, "user": 8, "asst": 12, "prs": ["pr-1"], "errors": [], "files": ["app.py"]}
+        stats = {
+            "session": "abc",
+            "branch": "main",
+            "cwd": "/repo",
+            "msgs": 20,
+            "tools": 10,
+            "user": 8,
+            "asst": 12,
+            "prs": ["pr-1"],
+            "errors": [],
+            "files": ["app.py"],
+        }
         mock_run.return_value = MagicMock(
             returncode=0,
             stdout=json.dumps(stats),
@@ -205,6 +297,7 @@ class TestReadSessionLog:
         assert result.message_count == 20
 
     @patch("amplihack.fleet.fleet_logs.subprocess.run")
+    @log_call
     def test_no_log_returns_none(self, mock_run):
         mock_run.return_value = MagicMock(returncode=0, stdout="NO_LOG", stderr="")
 
@@ -213,8 +306,10 @@ class TestReadSessionLog:
         assert result is None
 
     @patch("amplihack.fleet.fleet_logs.subprocess.run")
+    @log_call
     def test_timeout_returns_none(self, mock_run):
         import subprocess as sp
+
         mock_run.side_effect = sp.TimeoutExpired(cmd="azlin", timeout=60)
 
         reader = LogReader()

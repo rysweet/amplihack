@@ -15,7 +15,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from amplihack.fleet.fleet_health import HealthChecker, HealthReport, VMHealth
-
+from amplihack.utils.logging_utils import log_call
 
 # ────────────────────────────────────────────
 # UNIT TESTS (60%) — individual parsers
@@ -25,9 +25,11 @@ from amplihack.fleet.fleet_health import HealthChecker, HealthReport, VMHealth
 class TestParseMemory:
     """Unit tests for _parse_memory."""
 
+    @log_call
     def setup_method(self):
         self.checker = HealthChecker()
 
+    @log_call
     def test_typical_output(self):
         health = VMHealth(vm_name="vm-01")
         # free -m output: Mem: total used free shared buff/cache available
@@ -35,21 +37,25 @@ class TestParseMemory:
         expected = (45678 / 128812) * 100
         assert health.memory_used_pct == pytest.approx(expected, abs=0.1)
 
+    @log_call
     def test_high_usage(self):
         health = VMHealth(vm_name="vm-01")
         self.checker._parse_memory("Mem:  16384  15000  500  100  884  1000", health)
         assert health.memory_used_pct > 90.0
 
+    @log_call
     def test_empty_string(self):
         health = VMHealth(vm_name="vm-01")
         self.checker._parse_memory("", health)
         assert health.memory_used_pct == 0.0
 
+    @log_call
     def test_malformed_input(self):
         health = VMHealth(vm_name="vm-01")
         self.checker._parse_memory("garbage data", health)
         assert health.memory_used_pct == 0.0
 
+    @log_call
     def test_zero_total_no_crash(self):
         health = VMHealth(vm_name="vm-01")
         self.checker._parse_memory("Mem:  0  0  0", health)
@@ -59,24 +65,29 @@ class TestParseMemory:
 class TestParseDisk:
     """Unit tests for _parse_disk."""
 
+    @log_call
     def setup_method(self):
         self.checker = HealthChecker()
 
+    @log_call
     def test_typical_df_output(self):
         health = VMHealth(vm_name="vm-01")
         self.checker._parse_disk("/dev/sda1  50G  25G  23G  53%  /", health)
         assert health.disk_used_pct == pytest.approx(53.0)
 
+    @log_call
     def test_high_disk_usage(self):
         health = VMHealth(vm_name="vm-01")
         self.checker._parse_disk("/dev/sda1  100G  95G  3G  97%  /", health)
         assert health.disk_used_pct == pytest.approx(97.0)
 
+    @log_call
     def test_no_percentage_in_output(self):
         health = VMHealth(vm_name="vm-01")
         self.checker._parse_disk("no numbers here", health)
         assert health.disk_used_pct == 0.0
 
+    @log_call
     def test_empty_string(self):
         health = VMHealth(vm_name="vm-01")
         self.checker._parse_disk("", health)
@@ -86,19 +97,23 @@ class TestParseDisk:
 class TestParseProcesses:
     """Unit tests for _parse_processes."""
 
+    @log_call
     def setup_method(self):
         self.checker = HealthChecker()
 
+    @log_call
     def test_multiple_processes(self):
         health = VMHealth(vm_name="vm-01")
         self.checker._parse_processes("claude\namplifier\nnode", health)
         assert health.agent_processes == ["claude", "amplifier", "node"]
 
+    @log_call
     def test_empty_output(self):
         health = VMHealth(vm_name="vm-01")
         self.checker._parse_processes("", health)
         assert health.agent_processes == []
 
+    @log_call
     def test_whitespace_only(self):
         health = VMHealth(vm_name="vm-01")
         self.checker._parse_processes("   \n  \n  ", health)
@@ -108,24 +123,29 @@ class TestParseProcesses:
 class TestParseLoad:
     """Unit tests for _parse_load."""
 
+    @log_call
     def setup_method(self):
         self.checker = HealthChecker()
 
+    @log_call
     def test_typical_loadavg(self):
         health = VMHealth(vm_name="vm-01")
         self.checker._parse_load("2.34 1.56 0.89 3/256 12345", health)
         assert health.load_average == pytest.approx(2.34)
 
+    @log_call
     def test_zero_load(self):
         health = VMHealth(vm_name="vm-01")
         self.checker._parse_load("0.00 0.00 0.00 1/100 99", health)
         assert health.load_average == pytest.approx(0.0)
 
+    @log_call
     def test_empty_string(self):
         health = VMHealth(vm_name="vm-01")
         self.checker._parse_load("", health)
         assert health.load_average == 0.0
 
+    @log_call
     def test_malformed(self):
         health = VMHealth(vm_name="vm-01")
         self.checker._parse_load("not a number", health)
@@ -135,14 +155,17 @@ class TestParseLoad:
 class TestParseUptime:
     """Unit tests for _parse_uptime."""
 
+    @log_call
     def setup_method(self):
         self.checker = HealthChecker()
 
+    @log_call
     def test_typical_uptime(self):
         health = VMHealth(vm_name="vm-01")
         self.checker._parse_uptime("7200.50 14000.00", health)
         assert health.uptime_hours == pytest.approx(2.0, abs=0.1)
 
+    @log_call
     def test_empty_string(self):
         health = VMHealth(vm_name="vm-01")
         self.checker._parse_uptime("", health)
@@ -155,6 +178,7 @@ class TestParseUptime:
 
 
 class TestVMHealthProperties:
+    @log_call
     def test_healthy_vm(self):
         vm = VMHealth(
             vm_name="vm-01",
@@ -165,6 +189,7 @@ class TestVMHealthProperties:
         assert vm.is_healthy is True
         assert vm.needs_attention is False
 
+    @log_call
     def test_unhealthy_high_memory(self):
         vm = VMHealth(
             vm_name="vm-01",
@@ -174,6 +199,7 @@ class TestVMHealthProperties:
         )
         assert vm.is_healthy is False
 
+    @log_call
     def test_needs_attention_threshold(self):
         vm = VMHealth(
             vm_name="vm-01",
@@ -183,6 +209,7 @@ class TestVMHealthProperties:
         )
         assert vm.needs_attention is True
 
+    @log_call
     def test_unhealthy_with_errors(self):
         vm = VMHealth(
             vm_name="vm-01",
@@ -193,6 +220,7 @@ class TestVMHealthProperties:
         )
         assert vm.is_healthy is False
 
+    @log_call
     def test_unreachable_needs_attention(self):
         vm = VMHealth(vm_name="vm-01", ssh_reachable=False)
         assert vm.needs_attention is True
@@ -207,6 +235,7 @@ class TestVMHealthProperties:
 class TestParseHealthOutput:
     """Integration: _parse_health_output with realistic compound output."""
 
+    @log_call
     def test_full_compound_output(self):
         checker = HealthChecker()
         health = VMHealth(vm_name="vm-01")
@@ -237,6 +266,7 @@ class TestParseHealthOutput:
         assert health.load_average == pytest.approx(2.34)
         assert health.uptime_hours == pytest.approx(24.0, abs=0.1)
 
+    @log_call
     def test_partial_output_missing_sections(self):
         checker = HealthChecker()
         health = VMHealth(vm_name="vm-01")
@@ -247,11 +277,16 @@ class TestParseHealthOutput:
 
 
 class TestHealthReport:
+    @log_call
     def test_report_counts(self):
         report = HealthReport(
             vm_health=[
-                VMHealth(vm_name="vm-01", ssh_reachable=True, memory_used_pct=50.0, disk_used_pct=40.0),
-                VMHealth(vm_name="vm-02", ssh_reachable=True, memory_used_pct=85.0, disk_used_pct=40.0),
+                VMHealth(
+                    vm_name="vm-01", ssh_reachable=True, memory_used_pct=50.0, disk_used_pct=40.0
+                ),
+                VMHealth(
+                    vm_name="vm-02", ssh_reachable=True, memory_used_pct=85.0, disk_used_pct=40.0
+                ),
                 VMHealth(vm_name="vm-03", ssh_reachable=False),
             ],
             timestamp=datetime(2025, 1, 1, 12, 0, 0),
@@ -268,6 +303,7 @@ class TestHealthReport:
 
 class TestCheckVM:
     @patch("amplihack.fleet.fleet_health.subprocess.run")
+    @log_call
     def test_check_vm_success(self, mock_run):
         mock_run.return_value = MagicMock(
             returncode=0,
@@ -291,6 +327,7 @@ class TestCheckVM:
         assert health.agent_processes == ["claude"]
 
     @patch("amplihack.fleet.fleet_health.subprocess.run")
+    @log_call
     def test_check_vm_timeout(self, mock_run):
         mock_run.side_effect = sp.TimeoutExpired(cmd="azlin", timeout=60)
 

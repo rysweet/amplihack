@@ -27,6 +27,7 @@ from amplihack.fleet._constants import (
 from amplihack.fleet._validation import validate_session_name, validate_vm_name
 from amplihack.fleet.fleet_auth import AuthPropagator
 from amplihack.fleet.fleet_tasks import TaskQueue, TaskStatus
+from amplihack.utils.logging_utils import log_call
 
 __all__ = [
     "execute_action",
@@ -40,6 +41,7 @@ __all__ = [
 logger = logging.getLogger(__name__)
 
 
+@log_call
 def execute_action(
     action: DirectorAction,
     azlin_path: str,
@@ -60,6 +62,7 @@ def execute_action(
     return f"Unknown action: {action.action_type}"
 
 
+@log_call
 def start_agent(
     action: DirectorAction,
     azlin_path: str,
@@ -124,6 +127,7 @@ def start_agent(
         return f"ERROR: {e}"
 
 
+@log_call
 def mark_complete(action: DirectorAction, task_queue: TaskQueue) -> str:
     """Mark a task as completed."""
     if action.task:
@@ -132,6 +136,7 @@ def mark_complete(action: DirectorAction, task_queue: TaskQueue) -> str:
     return "Task marked complete"
 
 
+@log_call
 def mark_failed(action: DirectorAction, task_queue: TaskQueue) -> str:
     """Mark a task as failed."""
     if action.task:
@@ -140,6 +145,7 @@ def mark_failed(action: DirectorAction, task_queue: TaskQueue) -> str:
     return f"Task marked failed: {action.reason}"
 
 
+@log_call
 def reassign_task(
     action: DirectorAction,
     azlin_path: str,
@@ -149,9 +155,7 @@ def reassign_task(
     if action.task and action.vm_name and action.session_name:
         validate_vm_name(action.vm_name)
         # Kill the stuck session
-        kill_cmd = (
-            f"tmux kill-session -t {shlex.quote(action.session_name)} 2>/dev/null || true"
-        )
+        kill_cmd = f"tmux kill-session -t {shlex.quote(action.session_name)} 2>/dev/null || true"
         try:
             subprocess.run(
                 [azlin_path, "connect", action.vm_name, "--no-tmux", "--", kill_cmd],
@@ -177,6 +181,7 @@ def reassign_task(
     return "ERROR: Missing task/vm/session for reassignment"
 
 
+@log_call
 def propagate_auth(action: DirectorAction, auth: AuthPropagator) -> str:
     """Propagate auth tokens to a VM."""
     if action.vm_name:

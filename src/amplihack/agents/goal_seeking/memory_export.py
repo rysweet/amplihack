@@ -19,12 +19,15 @@ import shutil
 from pathlib import Path
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 logger = logging.getLogger(__name__)
 
 # Supported export/import formats
 SUPPORTED_FORMATS = ("json", "kuzu")
 
 
+@log_call
 def export_memory(
     agent_name: str,
     storage_path: Path | None = None,
@@ -64,6 +67,7 @@ def export_memory(
     return _export_json(agent_name, storage_path, output_path)
 
 
+@log_call
 def import_memory(
     agent_name: str,
     storage_path: Path | None = None,
@@ -103,6 +107,7 @@ def import_memory(
     return _import_json(agent_name, storage_path, input_path, merge)
 
 
+@log_call
 def _export_json(agent_name: str, storage_path: Path | None, output_path: Path) -> dict[str, Any]:
     """Export memory as JSON using HierarchicalMemory.export_to_json()."""
     from .hierarchical_memory import HierarchicalMemory
@@ -129,6 +134,7 @@ def _export_json(agent_name: str, storage_path: Path | None, output_path: Path) 
         mem.close()
 
 
+@log_call
 def _import_json(
     agent_name: str, storage_path: Path | None, input_path: Path, merge: bool
 ) -> dict[str, Any]:
@@ -154,6 +160,7 @@ def _import_json(
         mem.close()
 
 
+@log_call
 def _export_kuzu(agent_name: str, storage_path: Path | None, output_path: Path) -> dict[str, Any]:
     """Export memory by copying the raw Kuzu DB directory."""
     # Resolve the actual DB path
@@ -193,6 +200,7 @@ def _export_kuzu(agent_name: str, storage_path: Path | None, output_path: Path) 
     }
 
 
+@log_call
 def _import_kuzu(
     agent_name: str, storage_path: Path | None, input_path: Path, merge: bool
 ) -> dict[str, Any]:

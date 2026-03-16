@@ -9,6 +9,7 @@ from langchain_anthropic import ChatAnthropic
 from pydantic import SecretStr
 
 from .rotating_providers import ErrorType, RotatingProviderBase
+from amplihack.utils.logging_utils import log_call
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +17,7 @@ logger = logging.getLogger(__name__)
 class RotatingKeyChatAnthropic(RotatingProviderBase):
     """Anthropic chat model with automatic key rotation."""
 
+    @log_call
     def __init__(self, key_manager: APIKeyManager, **kwargs: Any) -> None:
         """Initialize the rotating Anthropic provider.
 
@@ -26,6 +28,7 @@ class RotatingKeyChatAnthropic(RotatingProviderBase):
         super().__init__(key_manager, **kwargs)
         self.model_kwargs = {k: v for k, v in kwargs.items() if k != "api_key"}
 
+    @log_call
     def _create_client(self, api_key: str) -> ChatAnthropic:
         """Create ChatAnthropic instance with specific API key.
 
@@ -37,6 +40,7 @@ class RotatingKeyChatAnthropic(RotatingProviderBase):
         """
         return ChatAnthropic(api_key=SecretStr(api_key), **self.model_kwargs)
 
+    @log_call
     def get_provider_name(self) -> str:
         """Return provider name for logging.
 
@@ -45,6 +49,7 @@ class RotatingKeyChatAnthropic(RotatingProviderBase):
         """
         return "anthropic"
 
+    @log_call
     def analyze_error(self, error: Exception) -> tuple[ErrorType, int | None]:
         """Analyze Anthropic-specific errors.
 
@@ -81,6 +86,7 @@ class RotatingKeyChatAnthropic(RotatingProviderBase):
 
         return (ErrorType.NON_RETRYABLE, None)
 
+    @log_call
     def extract_headers_from_error(self, error: Exception) -> dict[str, str]:
         """Extract rate limit headers from Anthropic errors.
 
@@ -123,6 +129,7 @@ class RotatingKeyChatAnthropic(RotatingProviderBase):
 
         return headers
 
+    @log_call
     def _extract_retry_after(self, error: Exception) -> int:
         """Extract Retry-After value from error or default.
 
@@ -143,6 +150,7 @@ class RotatingKeyChatAnthropic(RotatingProviderBase):
         # Default for Anthropic
         return 30  # Anthropic typically has shorter cooldowns
 
+    @log_call
     def _calculate_cooldown_from_headers(self, headers: dict[str, str]) -> int | None:
         """Calculate cooldown from Anthropic headers.
 
@@ -182,6 +190,7 @@ class RotatingKeyChatAnthropic(RotatingProviderBase):
 
         return None
 
+    @log_call
     def _is_spike_triggered(self, headers: dict[str, str]) -> bool:
         """Check if rate limit was triggered by usage spike.
 

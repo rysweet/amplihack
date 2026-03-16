@@ -2,16 +2,20 @@ from .types.node_labels import NodeLabels
 from amplihack.vendor.blarify.stats.complexity import CodeComplexityCalculator
 
 from .types.definition_node import DefinitionNode
+from amplihack.utils.logging_utils import log_call
 
 
 class FunctionNode(DefinitionNode):
+    @log_call
     def __init__(self, **kwargs):
         super().__init__(label=NodeLabels.FUNCTION, **kwargs)
 
     @property
+    @log_call
     def node_repr_for_identifier(self) -> str:
         return "." + self.name
 
+    @log_call
     def as_object(self) -> dict:
         obj = super().as_object()
         obj["attributes"]["start_line"] = self.node_range.range.start.line

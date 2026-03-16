@@ -20,6 +20,7 @@ from ..repositories.graph_db_manager.queries import (
 )
 from .queries.workflow_queries import delete_workflows_for_entry_points_query
 from .result_models import WorkflowDiscoveryResult, WorkflowResult
+from amplihack.utils.logging_utils import log_call
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,7 @@ class WorkflowCreator:
     to exist first, making it much faster for SWE benchmarks and targeted analysis.
     """
 
+    @log_call
     def __init__(
         self,
         db_manager: AbstractDbManager,
@@ -49,6 +51,7 @@ class WorkflowCreator:
         self.db_manager = db_manager
         self.graph_environment = graph_environment
 
+    @log_call
     def discover_workflows(
         self,
         entry_points: list[str] | None = None,
@@ -139,6 +142,7 @@ class WorkflowCreator:
                 discovery_time_seconds=time.time() - start_time,
             )
 
+    @log_call
     def _discover_entry_points(self, file_paths: list[str] | None = None) -> list[dict[str, Any]]:
         """
         Discover entry points using hybrid approach from existing implementation.
@@ -202,6 +206,7 @@ class WorkflowCreator:
             logger.exception(f"Error discovering entry points: {e}")
             return []
 
+    @log_call
     def _delete_workflow_nodes_for_entry_points(self, entry_point_ids: list[str]) -> None:
         """
         Delete existing workflow nodes and all related relationships for given entry points.
@@ -236,6 +241,7 @@ class WorkflowCreator:
         except Exception as e:
             logger.exception(f"Error deleting workflow nodes: {e}")
 
+    @log_call
     def _analyze_workflow_from_entry_point(
         self, entry_point_id: str, max_depth: int = 20
     ) -> list[WorkflowResult]:
@@ -275,6 +281,7 @@ class WorkflowCreator:
             logger.exception(f"Error analyzing workflows from entry point {entry_point_id}: {e}")
             return []
 
+    @log_call
     def _execute_code_workflows_query(
         self, entry_point_id: str, max_depth: int = 20
     ) -> list[dict[str, Any]]:
@@ -304,6 +311,7 @@ class WorkflowCreator:
             logger.exception(f"Error executing code workflows query for {entry_point_id}: {e}")
             return []
 
+    @log_call
     def _convert_to_workflow_result(self, workflow_data: dict[str, Any]) -> WorkflowResult:
         """
         Convert raw workflow data to WorkflowResult model.
@@ -348,6 +356,7 @@ class WorkflowCreator:
             has_cycles=has_cycles,
         )
 
+    @log_call
     def _save_workflows_to_database(self, workflows: list[WorkflowResult]) -> None:
         """
         Save discovered workflows to the database as WorkflowNode objects.
@@ -397,6 +406,7 @@ class WorkflowCreator:
         except Exception as e:
             logger.exception(f"Error saving workflows to database: {e}")
 
+    @log_call
     def _create_workflow_node(self, workflow_result: WorkflowResult) -> WorkflowNode:
         """
         Create a WorkflowNode from a WorkflowResult.
@@ -460,6 +470,7 @@ class WorkflowCreator:
             parent=None,
         )
 
+    @log_call
     def _create_workflow_relationships(
         self, workflow_node: WorkflowNode, workflow_result: WorkflowResult
     ) -> list[dict[str, Any]]:

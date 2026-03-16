@@ -18,6 +18,8 @@ import os
 from enum import Enum
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 from .base import BackendCapabilities, MemoryBackend
 from .sqlite_backend import SQLiteBackend
 
@@ -31,6 +33,7 @@ class BackendType(Enum):
     KUZU = "kuzu"
 
 
+@log_call
 def create_backend(backend_type: str | BackendType | None = None, **config: Any) -> MemoryBackend:
     """Create appropriate memory backend.
 
@@ -120,6 +123,7 @@ def create_backend(backend_type: str | BackendType | None = None, **config: Any)
     raise ValueError(f"Unknown backend type: {backend_type}")
 
 
+@log_call
 def get_default_backend() -> MemoryBackend:
     """Get default backend instance.
 

@@ -328,7 +328,7 @@ class TestRoutingPromptContent(unittest.TestCase):
         self.assertIn("what is OAuth?", _ROUTING_PROMPT)
 
     def test_prompt_is_concise(self):
-# New prompt is longer due to MANDATORY RULE section for code/docs changes
+        # New prompt is longer due to MANDATORY RULE section for code/docs changes
         self.assertLess(len(_ROUTING_PROMPT), 2500)
 
     def test_auto_routed_announcement(self):

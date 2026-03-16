@@ -14,6 +14,8 @@ Public API (the "studs"):
 import argparse
 import platform
 
+from amplihack.utils.logging_utils import log_call
+
 from ..plugin_manager import PluginManager
 from .verifier import PluginVerifier
 
@@ -23,6 +25,7 @@ SUCCESS = "[OK]" if IS_WINDOWS else "✅"
 FAILURE = "[ERROR]" if IS_WINDOWS else "❌"
 
 
+@log_call
 def plugin_install_command(args: argparse.Namespace) -> int:
     """Install plugin from source.
 
@@ -44,6 +47,7 @@ def plugin_install_command(args: argparse.Namespace) -> int:
     return 1
 
 
+@log_call
 def plugin_uninstall_command(args: argparse.Namespace) -> int:
     """Uninstall plugin.
 
@@ -64,6 +68,7 @@ def plugin_uninstall_command(args: argparse.Namespace) -> int:
     return 1
 
 
+@log_call
 def plugin_verify_command(args: argparse.Namespace) -> int:
     """Verify plugin installation and discoverability.
 

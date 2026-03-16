@@ -8,6 +8,7 @@ import logging
 from datetime import datetime
 
 from typing_extensions import TypedDict
+from amplihack.utils.logging_utils import log_call
 
 
 class LogLine(TypedDict):
@@ -28,10 +29,12 @@ class MultilspyLogger:
     Logger class
     """
 
+    @log_call
     def __init__(self) -> None:
         self.logger = logging.getLogger("multilspy")
         self.logger.setLevel(logging.INFO)
 
+    @log_call
     def log(self, debug_message: str, level: int, sanitized_error_message: str = "") -> None:
         """
         Log the debug and santized messages using the logger

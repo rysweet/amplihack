@@ -21,6 +21,8 @@ if os.path.exists(".azure.env"):
 
 # Import unified Azure integration
 # --- azure_errors.py ---
+from amplihack.utils.logging_utils import log_call
+
 from .azure_errors import (  # noqa: F401
     AzureFallbackManager,
     azure_fallback_manager,
@@ -121,6 +123,7 @@ USE_LITELLM_ROUTER = os.environ.get("AMPLIHACK_USE_LITELLM", "true").lower() == 
 
 
 # Security utility functions
+@log_call
 def sanitize_error_message(error_msg: str) -> str:
     """Sanitize error messages to prevent credential leakage."""
     # Pattern to match potential API keys (most specific first)
@@ -153,6 +156,7 @@ ENABLE_REASONING_EFFORT = os.environ.get("AMPLIHACK_REASONING_EFFORT", "false").
 _proxy_config: dict[str, str] | None = None
 
 
+@log_call
 def setup_litellm_router(config: dict[str, str] | None = None) -> Router | None:
     """Set up unified LiteLLM router for both Azure Chat and Responses APIs."""
     if not USE_LITELLM_ROUTER:
@@ -209,6 +213,7 @@ def setup_litellm_router(config: dict[str, str] | None = None) -> Router | None:
         return None
 
 
+@log_call
 def create_app(config: dict[str, str] | None = None) -> FastAPI:
     """Create FastAPI app with configuration."""
     global _proxy_config
@@ -236,6 +241,7 @@ def create_app(config: dict[str, str] | None = None) -> FastAPI:
     # All model mapping and API routing is handled by AzureUnifiedProvider
 
     @app.get("/health")
+    @log_call
     async def health():
         """Enhanced health check endpoint with Azure monitoring."""
         proxy_type = (
@@ -273,6 +279,7 @@ def create_app(config: dict[str, str] | None = None) -> FastAPI:
         return health_status
 
     @app.get("/azure/status")
+    @log_call
     async def azure_status():
         """Detailed Azure API status and error analysis."""
         status = {
@@ -293,9 +300,11 @@ def create_app(config: dict[str, str] | None = None) -> FastAPI:
         return status
 
     @app.get("/")
+    @log_call
     async def root():
         return {"message": "Integrated Anthropic Proxy with Azure Responses API Support"}
 
+    @log_call
     async def handle_message_with_litellm_router(request: dict) -> dict[str, Any]:
         """Handle messages using unified LiteLLM router for Chat and Responses APIs."""
         claude_model = request.get("model", "unknown")
@@ -576,6 +585,7 @@ def create_app(config: dict[str, str] | None = None) -> FastAPI:
 
     # Add message handling with unified LiteLLM routing
     @app.post("/v1/messages")
+    @log_call
     async def create_message(request: dict):
         """Handle messages using unified LiteLLM router for all requests."""
         try:
@@ -624,6 +634,7 @@ _litellm_router = None
 _router_init_attempted = False
 
 
+@log_call
 def get_litellm_router() -> Router | None:
     """Get LiteLLM router with lazy initialization for optimal startup performance."""
     global _litellm_router, _router_init_attempted, _proxy_config
@@ -669,6 +680,7 @@ SMALL_MODEL = os.environ.get("SMALL_MODEL", "gpt-4.1-mini")
 
 
 @app.middleware("http")
+@log_call
 async def log_requests(request: Request, call_next):
     # Get request details
     method = request.method
@@ -687,6 +699,7 @@ async def log_requests(request: Request, call_next):
 
 
 @app.post("/v1/messages")
+@log_call
 async def create_message(request: MessagesRequest, raw_request: Request):
     try:
         # print the body here
@@ -1120,6 +1133,7 @@ async def create_message(request: MessagesRequest, raw_request: Request):
                     error_details[key] = str(value)
 
         # Log all error details
+        @log_call
         def safe_json_serialize(obj, indent=2):
             """Safely serialize objects to JSON, handling non-serializable types."""
             try:
@@ -1150,6 +1164,7 @@ async def create_message(request: MessagesRequest, raw_request: Request):
 
 
 @app.post("/v1/messages/count_tokens")
+@log_call
 async def count_tokens(request: TokenCountRequest, raw_request: Request):
     try:
         # Log the incoming token count request
@@ -1221,11 +1236,13 @@ async def count_tokens(request: TokenCountRequest, raw_request: Request):
 
 
 @app.get("/")
+@log_call
 async def root():
     return {"message": "Anthropic Proxy for LiteLLM"}
 
 
 @app.get("/performance/metrics")
+@log_call
 async def performance_metrics():
     """Get comprehensive performance metrics for the proxy."""
     from .azure_unified_integration import get_global_performance_metrics
@@ -1255,6 +1272,7 @@ async def performance_metrics():
 
 
 @app.get("/performance/cache/status")
+@log_call
 async def cache_status():
     """Get detailed cache status and statistics."""
     from .azure_unified_integration import _MODEL_ROUTING_CACHE, _SESSION_CACHE, _TRANSFORM_CACHE
@@ -1284,6 +1302,7 @@ async def cache_status():
 
 
 @app.get("/performance/cache/clear")
+@log_call
 async def clear_caches():
     """Clear all performance caches (admin operation)."""
     from .azure_unified_integration import (
@@ -1319,6 +1338,7 @@ async def clear_caches():
 
 
 @app.get("/performance/benchmark")
+@log_call
 async def performance_benchmark():
     """Run a quick performance benchmark of the routing system."""
     import time
@@ -1361,6 +1381,7 @@ async def performance_benchmark():
 
 # Test endpoint for validating Azure error handling
 @app.get("/azure/test-error-handling")
+@log_call
 async def test_azure_error_handling():
     """Test endpoint to validate Azure error handling mechanisms."""
     test_results = {}

@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from amplihack.fleet.fleet_state import AgentStatus, FleetState, TmuxSessionInfo, VMInfo
-
+from amplihack.utils.logging_utils import log_call
 
 # ---------------------------------------------------------------------------
 # _defaults.py tests
@@ -19,36 +19,48 @@ from amplihack.fleet.fleet_state import AgentStatus, FleetState, TmuxSessionInfo
 class TestGetAzlinPath:
     """Tests for get_azlin_path from _defaults module."""
 
+    @log_call
     def test_returns_env_var_when_set(self, monkeypatch):
         from amplihack.fleet._defaults import get_azlin_path
+
         monkeypatch.setenv("AZLIN_PATH", "/custom/path/azlin")
         assert get_azlin_path() == "/custom/path/azlin"
 
+    @log_call
     def test_returns_which_when_on_path(self, monkeypatch):
         from amplihack.fleet._defaults import get_azlin_path
+
         monkeypatch.delenv("AZLIN_PATH", raising=False)
         with patch("amplihack.fleet._defaults.shutil.which", return_value="/usr/local/bin/azlin"):
             assert get_azlin_path() == "/usr/local/bin/azlin"
 
+    @log_call
     def test_raises_when_not_found(self, monkeypatch):
         from amplihack.fleet._defaults import get_azlin_path
+
         monkeypatch.delenv("AZLIN_PATH", raising=False)
-        with patch("amplihack.fleet._defaults.shutil.which", return_value=None), \
-             patch("amplihack.fleet._defaults.os.path.isfile", return_value=False):
+        with (
+            patch("amplihack.fleet._defaults.shutil.which", return_value=None),
+            patch("amplihack.fleet._defaults.os.path.isfile", return_value=False),
+        ):
             with pytest.raises(ValueError, match="azlin not found"):
                 get_azlin_path()
 
+    @log_call
     def test_env_var_takes_precedence(self, monkeypatch):
         from amplihack.fleet._defaults import get_azlin_path
+
         monkeypatch.setenv("AZLIN_PATH", "/env/path/azlin")
         with patch("amplihack.fleet._defaults.shutil.which", return_value="/which/path/azlin"):
             assert get_azlin_path() == "/env/path/azlin"
 
 
 class TestDefaultExcludeVms:
+    @log_call
     def test_is_empty_set(self):
         """DEFAULT_EXCLUDE_VMS is empty — all VMs are fleet-managed."""
         from amplihack.fleet._defaults import DEFAULT_EXCLUDE_VMS
+
         assert isinstance(DEFAULT_EXCLUDE_VMS, set)
         assert len(DEFAULT_EXCLUDE_VMS) == 0
 
@@ -56,21 +68,26 @@ class TestDefaultExcludeVms:
 class TestVMInfo:
     """Unit tests for VMInfo dataclass."""
 
+    @log_call
     def test_is_running(self):
         vm = VMInfo(name="test", session_name="test", status="Running")
         assert vm.is_running is True
 
+    @log_call
     def test_is_not_running(self):
         vm = VMInfo(name="test", session_name="test", status="Stopped")
         assert vm.is_running is False
 
+    @log_call
     def test_active_agents_count(self):
         vm = VMInfo(
             name="test",
             session_name="test",
             status="Running",
             tmux_sessions=[
-                TmuxSessionInfo(session_name="s1", vm_name="test", agent_status=AgentStatus.RUNNING),
+                TmuxSessionInfo(
+                    session_name="s1", vm_name="test", agent_status=AgentStatus.RUNNING
+                ),
                 TmuxSessionInfo(session_name="s2", vm_name="test", agent_status=AgentStatus.IDLE),
                 TmuxSessionInfo(
                     session_name="s3", vm_name="test", agent_status=AgentStatus.WAITING_INPUT
@@ -83,6 +100,7 @@ class TestVMInfo:
 class TestFleetStateExclude:
     """Tests for VM exclusion logic."""
 
+    @log_call
     def test_exclude_vms(self):
         state = FleetState()
         state.vms = [
@@ -95,12 +113,20 @@ class TestFleetStateExclude:
         assert len(managed) == 1
         assert managed[0].name == "fleet-exp-1"
 
+    @log_call
     def test_idle_vms(self):
         state = FleetState()
         state.vms = [
-            VMInfo(name="busy", session_name="busy", status="Running", tmux_sessions=[
-                TmuxSessionInfo(session_name="s1", vm_name="busy", agent_status=AgentStatus.RUNNING),
-            ]),
+            VMInfo(
+                name="busy",
+                session_name="busy",
+                status="Running",
+                tmux_sessions=[
+                    TmuxSessionInfo(
+                        session_name="s1", vm_name="busy", agent_status=AgentStatus.RUNNING
+                    ),
+                ],
+            ),
             VMInfo(name="idle", session_name="idle", status="Running", tmux_sessions=[]),
         ]
 
@@ -108,6 +134,7 @@ class TestFleetStateExclude:
         assert len(idle) == 1
         assert idle[0].name == "idle"
 
+    @log_call
     def test_get_vm(self):
         state = FleetState()
         state.vms = [VMInfo(name="vm-1", session_name="vm-1")]
@@ -118,6 +145,7 @@ class TestFleetStateExclude:
 class TestFleetStateParseJson:
     """Tests for JSON output parsing."""
 
+    @log_call
     def test_parse_vm_json_list_format(self):
         state = FleetState()
         json_str = '[{"name": "vm-1", "session_name": "vm-1", "status": "Running", "ip": "10.0.0.5", "region": "westus2"}]'
@@ -128,6 +156,7 @@ class TestFleetStateParseJson:
         assert vms[0].status == "Running"
         assert vms[0].region == "westus2"
 
+    @log_call
     def test_parse_vm_json_dict_format(self):
         state = FleetState()
         json_str = '{"vms": [{"name": "vm-2", "status": "Stopped", "location": "eastus"}]}'
@@ -137,11 +166,13 @@ class TestFleetStateParseJson:
         assert vms[0].name == "vm-2"
         assert vms[0].region == "eastus"
 
+    @log_call
     def test_parse_vm_json_invalid(self):
         state = FleetState()
         vms = state._parse_vm_json("not valid json{{{")
         assert vms == []
 
+    @log_call
     def test_parse_vm_json_empty(self):
         state = FleetState()
         vms = state._parse_vm_json("[]")
@@ -152,6 +183,7 @@ class TestFleetStateParseTmux:
     """Tests for tmux session list parsing."""
 
     @patch("amplihack.fleet.fleet_state.subprocess.run")
+    @log_call
     def test_poll_tmux_sessions(self, mock_run):
         mock_run.return_value = MagicMock(
             returncode=0,
@@ -170,6 +202,7 @@ class TestFleetStateParseTmux:
         assert sessions[1].attached is False
 
     @patch("amplihack.fleet.fleet_state.subprocess.run")
+    @log_call
     def test_poll_tmux_no_sessions(self, mock_run):
         mock_run.return_value = MagicMock(returncode=0, stdout="no-tmux\n")
 
@@ -178,6 +211,7 @@ class TestFleetStateParseTmux:
         assert sessions == []
 
     @patch("amplihack.fleet.fleet_state.subprocess.run")
+    @log_call
     def test_poll_tmux_timeout(self, mock_run):
         import subprocess
 
@@ -191,6 +225,7 @@ class TestFleetStateParseTmux:
 class TestFleetStateSummary:
     """Tests for human-readable summary."""
 
+    @log_call
     def test_summary_with_vms(self):
         state = FleetState()
         state.vms = [
@@ -223,6 +258,7 @@ class TestFleetStateSummary:
 class TestFleetStateParseVmText:
     """Tests for _parse_vm_text (text table parsing)."""
 
+    @log_call
     def test_parse_standard_table(self):
         state = FleetState()
         text = (
@@ -239,17 +275,20 @@ class TestFleetStateParseVmText:
         assert vms[1].name == "fleet-vm-2"
         assert vms[1].status == "Stopped"
 
+    @log_call
     def test_parse_empty_table(self):
         state = FleetState()
         vms = state._parse_vm_text("")
         assert vms == []
 
+    @log_call
     def test_parse_no_data_rows(self):
         state = FleetState()
         text = "\u2502 Session \u2502 Tmux \u2502 OS \u2502 Status \u2502\n"
         vms = state._parse_vm_text(text)
         assert vms == []
 
+    @log_call
     def test_parse_skip_separator_lines(self):
         """Table separator lines should be skipped."""
         state = FleetState()
@@ -261,6 +300,7 @@ class TestFleetStateParseVmText:
         vms = state._parse_vm_text(text)
         assert vms == []
 
+    @log_call
     def test_parse_continuation_row_skipped(self):
         """Rows with empty session name (continuation rows) are skipped."""
         state = FleetState()
@@ -277,18 +317,21 @@ class TestFleetStateParseVmText:
 class TestFleetStateParseVmJsonErrors:
     """Error path tests for _parse_vm_json."""
 
+    @log_call
     def test_parse_vm_json_empty_object(self):
         """Object without 'vms' key should return empty list (iterating empty)."""
         state = FleetState()
-        vms = state._parse_vm_json('{}')
+        vms = state._parse_vm_json("{}")
         assert vms == []
 
+    @log_call
     def test_parse_vm_json_vms_with_empty_list(self):
         """Object with empty vms list should return empty list."""
         state = FleetState()
         vms = state._parse_vm_json('{"vms": []}')
         assert vms == []
 
+    @log_call
     def test_parse_vm_json_missing_name(self):
         """Entries without name should still be added with empty name."""
         state = FleetState()
@@ -296,6 +339,7 @@ class TestFleetStateParseVmJsonErrors:
         assert len(vms) == 1
         assert vms[0].name == ""
 
+    @log_call
     def test_parse_vm_json_uses_location_fallback(self):
         """region field falls back to 'location' key."""
         state = FleetState()
@@ -307,6 +351,7 @@ class TestFleetStatePollVms:
     """Tests for _poll_vms with both strategies."""
 
     @patch("amplihack.fleet.fleet_state.subprocess.run")
+    @log_call
     def test_poll_vms_json_strategy(self, mock_run):
         """Strategy 1: JSON output succeeds."""
         mock_run.return_value = MagicMock(
@@ -319,10 +364,12 @@ class TestFleetStatePollVms:
         assert vms[0].name == "vm-1"
 
     @patch("amplihack.fleet.fleet_state.subprocess.run")
+    @log_call
     def test_poll_vms_json_empty_stdout(self, mock_run):
         """JSON strategy with empty stdout falls back to text."""
         call_count = [0]
 
+        @log_call
         def side_effect(*args, **kwargs):
             call_count[0] += 1
             if call_count[0] == 1:
@@ -341,12 +388,14 @@ class TestFleetStatePollVms:
         assert len(vms) == 1
 
     @patch("amplihack.fleet.fleet_state.subprocess.run")
+    @log_call
     def test_poll_vms_json_failure_falls_back_to_text(self, mock_run):
         """JSON strategy failure falls back to text strategy."""
         import subprocess
 
         call_count = [0]
 
+        @log_call
         def side_effect(*args, **kwargs):
             call_count[0] += 1
             if call_count[0] == 1:
@@ -365,6 +414,7 @@ class TestFleetStatePollVms:
         assert len(vms) == 1
 
     @patch("amplihack.fleet.fleet_state.subprocess.run")
+    @log_call
     def test_poll_vms_both_strategies_fail(self, mock_run):
         """When both strategies fail, return empty list."""
         mock_run.side_effect = FileNotFoundError("azlin not found")
@@ -373,10 +423,12 @@ class TestFleetStatePollVms:
         assert vms == []
 
     @patch("amplihack.fleet.fleet_state.subprocess.run")
+    @log_call
     def test_poll_vms_json_decode_error_fallback(self, mock_run):
         """JSONDecodeError falls through to text strategy."""
         call_count = [0]
 
+        @log_call
         def side_effect(*args, **kwargs):
             call_count[0] += 1
             if call_count[0] == 1:
@@ -389,6 +441,7 @@ class TestFleetStatePollVms:
         assert vms == []
 
     @patch("amplihack.fleet.fleet_state.subprocess.run")
+    @log_call
     def test_poll_tmux_sessions_partial_data(self, mock_run):
         """Lines with fewer than 3 parts are skipped."""
         mock_run.return_value = MagicMock(
@@ -401,6 +454,7 @@ class TestFleetStatePollVms:
         assert sessions[0].session_name == "valid-session"
 
     @patch("amplihack.fleet.fleet_state.subprocess.run")
+    @log_call
     def test_poll_tmux_sessions_non_digit_windows(self, mock_run):
         """Non-digit windows defaults to 1."""
         mock_run.return_value = MagicMock(
@@ -417,6 +471,7 @@ class TestFleetStateRefresh:
     """Tests for refresh() method."""
 
     @patch("amplihack.fleet.fleet_state.subprocess.run")
+    @log_call
     def test_refresh_populates_timestamp(self, mock_run):
         mock_run.return_value = MagicMock(
             returncode=0,
@@ -427,6 +482,7 @@ class TestFleetStateRefresh:
         assert state.timestamp is not None
 
     @patch("amplihack.fleet.fleet_state.subprocess.run")
+    @log_call
     def test_refresh_skips_excluded_vms(self, mock_run):
         """Excluded VMs should not have tmux sessions polled."""
         mock_run.return_value = MagicMock(
@@ -443,6 +499,7 @@ class TestFleetStateRefresh:
         # managed_vm was polled (though subprocess may return empty)
 
     @patch("amplihack.fleet.fleet_state.subprocess.run")
+    @log_call
     def test_refresh_skips_stopped_vms(self, mock_run):
         """Stopped VMs should not have tmux sessions polled."""
         mock_run.return_value = MagicMock(
@@ -455,6 +512,7 @@ class TestFleetStateRefresh:
         vm = state.get_vm("stopped-vm")
         assert vm.tmux_sessions == []
 
+    @log_call
     def test_poll_tmux_sessions_public_wrapper(self):
         """poll_tmux_sessions is a public wrapper for _poll_tmux_sessions."""
         state = FleetState()
@@ -467,6 +525,7 @@ class TestFleetStateRefresh:
 class TestFleetStateSummaryEdgeCases:
     """Edge case tests for summary()."""
 
+    @log_call
     def test_summary_no_timestamp(self):
         """Summary without timestamp should still work."""
         state = FleetState()
@@ -474,6 +533,7 @@ class TestFleetStateSummaryEdgeCases:
         summary = state.summary()
         assert "Fleet State" in summary
 
+    @log_call
     def test_summary_all_status_icons(self):
         """Summary should render different icons for each status."""
         state = FleetState()
@@ -484,11 +544,21 @@ class TestFleetStateSummaryEdgeCases:
                 status="Running",
                 region="westus",
                 tmux_sessions=[
-                    TmuxSessionInfo(session_name="s1", vm_name="vm-1", agent_status=AgentStatus.COMPLETED),
-                    TmuxSessionInfo(session_name="s2", vm_name="vm-1", agent_status=AgentStatus.STUCK),
-                    TmuxSessionInfo(session_name="s3", vm_name="vm-1", agent_status=AgentStatus.ERROR),
-                    TmuxSessionInfo(session_name="s4", vm_name="vm-1", agent_status=AgentStatus.IDLE),
-                    TmuxSessionInfo(session_name="s5", vm_name="vm-1", agent_status=AgentStatus.UNKNOWN),
+                    TmuxSessionInfo(
+                        session_name="s1", vm_name="vm-1", agent_status=AgentStatus.COMPLETED
+                    ),
+                    TmuxSessionInfo(
+                        session_name="s2", vm_name="vm-1", agent_status=AgentStatus.STUCK
+                    ),
+                    TmuxSessionInfo(
+                        session_name="s3", vm_name="vm-1", agent_status=AgentStatus.ERROR
+                    ),
+                    TmuxSessionInfo(
+                        session_name="s4", vm_name="vm-1", agent_status=AgentStatus.IDLE
+                    ),
+                    TmuxSessionInfo(
+                        session_name="s5", vm_name="vm-1", agent_status=AgentStatus.UNKNOWN
+                    ),
                 ],
             ),
         ]
@@ -499,6 +569,7 @@ class TestFleetStateSummaryEdgeCases:
         assert "[~]" in summary  # IDLE
         assert "[.]" in summary  # UNKNOWN
 
+    @log_call
     def test_summary_stopped_vm_icon(self):
         """Stopped VMs should get [-] icon."""
         state = FleetState()

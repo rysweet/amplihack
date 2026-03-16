@@ -1532,7 +1532,7 @@ steps:
       )
 
       git commit -m "$COMMIT_MSG" 2>/dev/null || echo "Commit prepared"
-      git push 2>/dev/null || echo "Push prepared"
+      git pull --rebase origin $(git branch --show-current) 2>/dev/null; git push 2>/dev/null || echo "Push prepared"
 
       echo '{"committed": true, "pushed": true}'
     output: "commit_result"
@@ -1816,7 +1816,7 @@ steps:
       echo "Pushing review updates..."
       git add -A
       git commit -m "Address PR review feedback" 2>/dev/null || true
-      git push 2>/dev/null || true
+      git pull --rebase origin $(git branch --show-current) 2>/dev/null; git push 2>/dev/null || true
       echo '{"updates_pushed": true}'
     output: "review_updates"
     parse_json: true

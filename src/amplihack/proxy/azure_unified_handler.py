@@ -8,6 +8,8 @@ import json
 import time
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 from .azure_unified_integration import AzureUnifiedProvider
 from .sanitizing_logger import get_sanitizing_logger
 
@@ -23,6 +25,7 @@ class AzureUnifiedHandler:
     eliminating the need for dual routing logic in the main proxy code.
     """
 
+    @log_call
     def __init__(self, api_key: str, base_url: str, api_version: str = "2025-01-01-preview"):
         """
         Initialize the unified handler.
@@ -35,6 +38,7 @@ class AzureUnifiedHandler:
         self.provider = AzureUnifiedProvider(api_key, base_url, api_version)
         logger.info(f"✅ Azure unified handler initialized: {base_url}")
 
+    @log_call
     async def handle_anthropic_request(self, anthropic_request: dict[str, Any]) -> dict[str, Any]:
         """
         Handle an Anthropic/Claude format request and route to appropriate Azure API.
@@ -56,6 +60,7 @@ class AzureUnifiedHandler:
         # Convert back to Anthropic format
         return self._convert_openai_to_anthropic(azure_response)
 
+    @log_call
     async def handle_openai_request(self, openai_request: dict[str, Any]) -> dict[str, Any]:
         """
         Handle an OpenAI format request and route to appropriate Azure API.
@@ -71,6 +76,7 @@ class AzureUnifiedHandler:
             openai_request, stream=openai_request.get("stream", False)
         )
 
+    @log_call
     def should_use_responses_api(self, model: str) -> bool:
         """
         Check if a model should use Responses API.
@@ -84,6 +90,7 @@ class AzureUnifiedHandler:
         """
         return self.provider.should_use_responses_api(model)
 
+    @log_call
     def _convert_anthropic_to_openai(self, anthropic_request: dict[str, Any]) -> dict[str, Any]:
         """Convert Anthropic request format to OpenAI format."""
         openai_request = {
@@ -109,6 +116,7 @@ class AzureUnifiedHandler:
 
         return openai_request
 
+    @log_call
     def _convert_openai_to_anthropic(self, openai_response: dict[str, Any]) -> dict[str, Any]:
         """Convert OpenAI response format to Anthropic format."""
         if "error" in openai_response:
@@ -166,6 +174,7 @@ class AzureUnifiedHandler:
 
         return anthropic_response
 
+    @log_call
     def _map_finish_reason(self, openai_finish_reason: str) -> str:
         """Map OpenAI finish reason to Anthropic format."""
         mapping = {
@@ -176,6 +185,7 @@ class AzureUnifiedHandler:
         }
         return mapping.get(openai_finish_reason, "end_turn")
 
+    @log_call
     def _convert_usage(self, openai_usage: dict[str, Any]) -> dict[str, Any]:
         """Convert OpenAI usage format to Anthropic format."""
         return {
@@ -184,6 +194,7 @@ class AzureUnifiedHandler:
         }
 
 
+@log_call
 def create_azure_unified_handler(
     api_key: str, base_url: str, api_version: str = "2025-01-01-preview"
 ) -> AzureUnifiedHandler:

@@ -22,6 +22,7 @@ from dataclasses import dataclass, field
 
 from amplihack.fleet._defaults import get_azlin_path
 from amplihack.fleet._validation import validate_vm_name
+from amplihack.utils.logging_utils import log_call
 
 __all__ = ["RepoSetup", "SetupResult"]
 
@@ -30,6 +31,7 @@ logger = logging.getLogger(__name__)
 _URL_SCHEME_RE = re.compile(r"^(https?://|git@|ssh://)")
 
 
+@log_call
 def _validate_repo_url(url: str) -> str:
     """Validate repo URL uses a safe transport scheme."""
     if not _URL_SCHEME_RE.match(url):
@@ -62,6 +64,7 @@ class RepoSetup:
     azlin_path: str = field(default_factory=get_azlin_path)
     workspace_base: str = "/workspace"
 
+    @log_call
     def setup_repo(
         self,
         vm_name: str,
@@ -126,6 +129,7 @@ class RepoSetup:
                 duration_seconds=time.monotonic() - start,
             )
 
+    @log_call
     def _generate_setup_script(
         self,
         repo_url: str,

@@ -32,8 +32,9 @@ from amplihack.fleet._constants import (
     DEFAULT_STUCK_THRESHOLD_SECONDS,
 )
 from amplihack.fleet._defaults import get_azlin_path
-from amplihack.fleet._validation import validate_session_name, validate_vm_name
+from amplihack.fleet._validation import validate_vm_name
 from amplihack.fleet.fleet_state import AgentStatus, TmuxSessionInfo
+from amplihack.utils.logging_utils import log_call
 
 __all__ = ["FleetObserver", "ObservationResult"]
 
@@ -115,6 +116,7 @@ class FleetObserver:
     _last_change_time: dict[str, float] = field(default_factory=dict)
     stuck_threshold_seconds: float = DEFAULT_STUCK_THRESHOLD_SECONDS
 
+    @log_call
     def observe_session(self, vm_name: str, session_name: str) -> ObservationResult:
         """Observe a single tmux session and classify agent state.
 
@@ -151,6 +153,7 @@ class FleetObserver:
             observed_at=datetime.now(),
         )
 
+    @log_call
     def observe_all(
         self,
         sessions: list[TmuxSessionInfo],
@@ -162,6 +165,7 @@ class FleetObserver:
             results.append(result)
         return results
 
+    @log_call
     def _capture_pane(self, vm_name: str, session_name: str) -> str | None:
         """Capture tmux pane content from a remote VM."""
         import shlex
@@ -187,6 +191,7 @@ class FleetObserver:
             logger.warning("Capture pane failed for %s/%s: %s", vm_name, session_name, exc)
         return None
 
+    @log_call
     def _classify_output(
         self,
         lines: list[str],

@@ -16,7 +16,7 @@ import pytest
 
 from amplihack.fleet._session_context import SessionContext
 from amplihack.fleet._session_gather import gather_context, parse_context_output
-
+from amplihack.utils.logging_utils import log_call
 
 # ---------------------------------------------------------------------------
 # gather_context -- success path
@@ -27,6 +27,7 @@ class TestGatherContextSuccess:
     """Tests for gather_context when SSH succeeds."""
 
     @patch("amplihack.fleet._session_gather.subprocess.run")
+    @log_call
     def test_returns_session_context_with_populated_fields(self, mock_run):
         """On success, gather_context returns a SessionContext with parsed fields."""
         mock_run.return_value = MagicMock(
@@ -68,6 +69,7 @@ class TestGatherContextSuccess:
         assert "Agent completed tests" in ctx.transcript_summary
 
     @patch("amplihack.fleet._session_gather.subprocess.run")
+    @log_call
     def test_calls_azlin_connect(self, mock_run):
         """gather_context invokes azlin connect with correct args."""
         mock_run.return_value = MagicMock(returncode=0, stdout="===END===", stderr="")
@@ -88,6 +90,7 @@ class TestGatherContextSuccess:
         assert "--no-tmux" in args
 
     @patch("amplihack.fleet._session_gather.subprocess.run")
+    @log_call
     def test_nonzero_returncode_with_markers_still_parses(self, mock_run):
         """When SSH returns non-zero but markers are present, context is parsed.
 
@@ -111,6 +114,7 @@ class TestGatherContextSuccess:
         assert ctx.tmux_capture == "some output"
 
     @patch("amplihack.fleet._session_gather.subprocess.run")
+    @log_call
     def test_nonzero_returncode_without_markers_leaves_unparsed(self, mock_run):
         """When SSH returns non-zero and no markers, context stays empty."""
         mock_run.return_value = MagicMock(
@@ -140,6 +144,7 @@ class TestGatherContextFailures:
     """Tests for gather_context when SSH fails."""
 
     @patch("amplihack.fleet._session_gather.subprocess.run")
+    @log_call
     def test_timeout_sets_unreachable(self, mock_run):
         """SSH timeout results in agent_status='unreachable'."""
         mock_run.side_effect = subprocess.TimeoutExpired(cmd="azlin", timeout=60)
@@ -155,6 +160,7 @@ class TestGatherContextFailures:
         assert ctx.agent_status == "unreachable"
 
     @patch("amplihack.fleet._session_gather.subprocess.run")
+    @log_call
     def test_file_not_found_sets_unreachable(self, mock_run):
         """azlin binary not found results in agent_status='unreachable'."""
         mock_run.side_effect = FileNotFoundError("azlin not found")
@@ -170,6 +176,7 @@ class TestGatherContextFailures:
         assert ctx.agent_status == "unreachable"
 
     @patch("amplihack.fleet._session_gather.subprocess.run")
+    @log_call
     def test_subprocess_error_sets_unreachable(self, mock_run):
         """Generic subprocess error results in agent_status='unreachable'."""
         mock_run.side_effect = subprocess.SubprocessError("SSH failed")
@@ -184,6 +191,7 @@ class TestGatherContextFailures:
 
         assert ctx.agent_status == "unreachable"
 
+    @log_call
     def test_rejects_invalid_vm_name(self):
         """Invalid vm_name raises ValueError before SSH is attempted."""
         with pytest.raises(ValueError, match="Invalid VM name"):
@@ -204,6 +212,7 @@ class TestGatherContextFailures:
 class TestParseContextOutput:
     """Tests for parse_context_output parsing logic."""
 
+    @log_call
     def test_parses_tmux_section(self):
         """TMUX section content is stored in tmux_capture."""
         ctx = SessionContext(vm_name="devy", session_name="task-1")
@@ -211,6 +220,7 @@ class TestParseContextOutput:
         parse_context_output(output, ctx)
         assert "hello" in ctx.tmux_capture
 
+    @log_call
     def test_no_session_sets_status(self):
         """'NO_SESSION' in TMUX section sets agent_status to 'no_session'."""
         ctx = SessionContext(vm_name="devy", session_name="task-1")
@@ -218,6 +228,7 @@ class TestParseContextOutput:
         parse_context_output(output, ctx)
         assert ctx.agent_status == "no_session"
 
+    @log_call
     def test_parses_cwd(self):
         """CWD section is stored in working_directory."""
         ctx = SessionContext(vm_name="devy", session_name="task-1")
@@ -225,6 +236,7 @@ class TestParseContextOutput:
         parse_context_output(output, ctx)
         assert ctx.working_directory == "/home/user/project"
 
+    @log_call
     def test_parses_git_branch_and_remote(self):
         """GIT section parses BRANCH and REMOTE lines."""
         ctx = SessionContext(vm_name="devy", session_name="task-1")
@@ -240,6 +252,7 @@ class TestParseContextOutput:
         assert ctx.repo_url == "https://github.com/org/repo"
         assert ctx.files_modified == ["file.py"]
 
+    @log_call
     def test_parses_transcript_with_pr_link(self):
         """TRANSCRIPT section extracts PR_CREATED link."""
         ctx = SessionContext(vm_name="devy", session_name="task-1")
@@ -253,6 +266,7 @@ class TestParseContextOutput:
         assert "Agent worked on feature" in ctx.transcript_summary
         assert ctx.pr_url == "https://github.com/org/repo/pull/42"
 
+    @log_call
     def test_handles_empty_output(self):
         """Empty output leaves context unchanged."""
         ctx = SessionContext(vm_name="devy", session_name="task-1")
@@ -261,6 +275,7 @@ class TestParseContextOutput:
         assert ctx.working_directory == ""
         assert ctx.git_branch == ""
 
+    @log_call
     def test_handles_partial_output(self):
         """Output with only some sections still parses what's available."""
         ctx = SessionContext(vm_name="devy", session_name="task-1")
@@ -269,6 +284,7 @@ class TestParseContextOutput:
         assert ctx.working_directory == "/tmp/work"
         assert ctx.git_branch == ""
 
+    @log_call
     def test_modified_files_splits_correctly(self):
         """MODIFIED line with trailing comma produces clean list."""
         ctx = SessionContext(vm_name="devy", session_name="task-1")
@@ -276,6 +292,7 @@ class TestParseContextOutput:
         parse_context_output(output, ctx)
         assert ctx.files_modified == ["a.py", "b.py", "c.py"]
 
+    @log_call
     def test_modified_files_empty(self):
         """MODIFIED line with no files results in empty list."""
         ctx = SessionContext(vm_name="devy", session_name="task-1")
@@ -292,6 +309,7 @@ class TestParseContextOutput:
 class TestTranscriptEarlyRecentParsing:
     """parse_context_output splits transcript into early + recent sections."""
 
+    @log_call
     def test_early_and_recent_sections(self):
         """Output with ---EARLY--- and ---RECENT--- markers produces both sections."""
         ctx = SessionContext(vm_name="devy", session_name="task-1")
@@ -317,15 +335,11 @@ class TestTranscriptEarlyRecentParsing:
         # Recent section should be prefixed with recent activity marker
         assert "Recent activity" in ctx.transcript_summary
 
+    @log_call
     def test_recent_only_no_early_marker(self):
         """Output without ---EARLY--- marker should just use the text as recent."""
         ctx = SessionContext(vm_name="devy", session_name="task-1")
-        output = (
-            "===TRANSCRIPT===\n"
-            "just recent text here\n"
-            "more recent text\n"
-            "===END===\n"
-        )
+        output = "===TRANSCRIPT===\njust recent text here\nmore recent text\n===END===\n"
         parse_context_output(output, ctx)
 
         assert "just recent text here" in ctx.transcript_summary
@@ -333,6 +347,7 @@ class TestTranscriptEarlyRecentParsing:
         # Should NOT contain early/recent section markers since there is no split
         assert "Session start" not in ctx.transcript_summary
 
+    @log_call
     def test_empty_transcript_section(self):
         """Empty TRANSCRIPT section should leave transcript_summary empty."""
         ctx = SessionContext(vm_name="devy", session_name="task-1")
@@ -340,16 +355,11 @@ class TestTranscriptEarlyRecentParsing:
         parse_context_output(output, ctx)
         assert ctx.transcript_summary == ""
 
+    @log_call
     def test_early_section_empty_recent_populated(self):
         """---EARLY--- with no content between it and ---RECENT--- should still parse recent."""
         ctx = SessionContext(vm_name="devy", session_name="task-1")
-        output = (
-            "===TRANSCRIPT===\n"
-            "---EARLY---\n"
-            "---RECENT---\n"
-            "only recent content\n"
-            "===END===\n"
-        )
+        output = "===TRANSCRIPT===\n---EARLY---\n---RECENT---\nonly recent content\n===END===\n"
         parse_context_output(output, ctx)
 
         assert "only recent content" in ctx.transcript_summary
@@ -365,14 +375,12 @@ class TestTranscriptEarlyRecentParsing:
 class TestObjectivesParsing:
     """Tests for parsing the ===OBJECTIVES=== section."""
 
+    @log_call
     def test_parses_objectives_from_tsv(self):
         """TSV-formatted objectives are parsed into project_objectives."""
         ctx = SessionContext(vm_name="devy", session_name="task-1")
         output = (
-            "===OBJECTIVES===\n"
-            "42\tAdd authentication\tOPEN\n"
-            "43\tFix login flow\tOPEN\n"
-            "===END===\n"
+            "===OBJECTIVES===\n42\tAdd authentication\tOPEN\n43\tFix login flow\tOPEN\n===END===\n"
         )
         parse_context_output(output, ctx)
         assert len(ctx.project_objectives) == 2
@@ -380,6 +388,7 @@ class TestObjectivesParsing:
         assert ctx.project_objectives[0]["title"] == "Add authentication"
         assert ctx.project_objectives[1]["number"] == 43
 
+    @log_call
     def test_empty_objectives_section(self):
         """Empty OBJECTIVES section leaves project_objectives empty."""
         ctx = SessionContext(vm_name="devy", session_name="task-1")
@@ -387,26 +396,25 @@ class TestObjectivesParsing:
         parse_context_output(output, ctx)
         assert ctx.project_objectives == []
 
+    @log_call
     def test_malformed_lines_skipped(self):
         """Lines without proper format are skipped."""
         ctx = SessionContext(vm_name="devy", session_name="task-1")
-        output = (
-            "===OBJECTIVES===\n"
-            "not-a-number\tBad line\n"
-            "42\tGood line\tOPEN\n"
-            "\n"
-            "===END===\n"
-        )
+        output = "===OBJECTIVES===\nnot-a-number\tBad line\n42\tGood line\tOPEN\n\n===END===\n"
         parse_context_output(output, ctx)
         assert len(ctx.project_objectives) == 1
         assert ctx.project_objectives[0]["number"] == 42
 
     @patch("amplihack.fleet._session_gather._match_project")
+    @log_call
     def test_enriches_with_local_project(self, mock_match):
         """After parsing repo_url, context is enriched with local project data."""
-        mock_match.return_value = ("myapp", [
-            {"number": 99, "title": "Local objective", "state": "open"},
-        ])
+        mock_match.return_value = (
+            "myapp",
+            [
+                {"number": 99, "title": "Local objective", "state": "open"},
+            ],
+        )
 
         ctx = SessionContext(vm_name="devy", session_name="task-1")
         output = (

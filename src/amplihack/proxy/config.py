@@ -5,6 +5,8 @@ import re
 from pathlib import Path
 from urllib.parse import urlparse
 
+from amplihack.utils.logging_utils import log_call
+
 from .azure_detector import AzureEndpointDetector
 from .azure_models import AzureModelMapper
 from .github_detector import GitHubEndpointDetector
@@ -20,6 +22,7 @@ class ProxyConfig:
     _API_KEY_REGEX = re.compile(r"[a-zA-Z0-9\-_]{20,}")
     _DEPLOYMENT_NAME_REGEX = re.compile(r"^[a-zA-Z0-9\-_]{1,64}$")
 
+    @log_call
     def __init__(self, config_path: Path | None = None):
         """Initialize proxy configuration.
 
@@ -44,6 +47,7 @@ class ProxyConfig:
         self._github_detector = GitHubEndpointDetector()
         self._github_mapper = GitHubModelMapper(self.config)
 
+    @log_call
     def _load_config(self) -> None:
         """Load configuration from .env file."""
         if not self.config_path or not self.config_path.exists():
@@ -96,6 +100,7 @@ class ProxyConfig:
         self._azure_mapper = AzureModelMapper(self.config)
         self._github_mapper = GitHubModelMapper(self.config)
 
+    @log_call
     def _load_environment_variables(self) -> None:
         """Load environment variables that override file configuration."""
         # Define variables that can be loaded from environment
@@ -141,6 +146,7 @@ class ProxyConfig:
             if env_value:
                 self.config[var] = env_value
 
+    @log_call
     def validate(self) -> bool:
         """Validate required configuration values.
 
@@ -160,6 +166,7 @@ class ProxyConfig:
                 return False
         return True
 
+    @log_call
     def get(self, key: str, default: str = "") -> str:
         """Get configuration value.
 
@@ -172,6 +179,7 @@ class ProxyConfig:
         """
         return self.config.get(key, default)
 
+    @log_call
     def to_env_dict(self) -> dict[str, str]:
         """Convert configuration to environment variables dictionary.
 
@@ -181,6 +189,7 @@ class ProxyConfig:
         # Create a copy and sanitize sensitive values if needed for debugging
         return self.config.copy()
 
+    @log_call
     def to_sanitized_dict(self) -> dict[str, str]:
         """Convert configuration to sanitized dictionary safe for logging.
 
@@ -198,6 +207,7 @@ class ProxyConfig:
 
         return sanitized
 
+    @log_call
     def save_to(self, target_path: Path) -> None:
         """Save configuration to a new .env file.
 
@@ -209,6 +219,7 @@ class ProxyConfig:
             for key, value in self.config.items():
                 f.write(f"{key}={value}\n")
 
+    @log_call
     def is_azure_endpoint(self) -> bool:
         """Check if configuration uses Azure OpenAI endpoint.
 
@@ -220,6 +231,7 @@ class ProxyConfig:
         )
         return self._azure_detector.is_azure_endpoint(base_url, self.config)
 
+    @log_call
     def get_endpoint_type(self) -> str:
         """Get endpoint type (azure, github_copilot, or openai).
 
@@ -238,6 +250,7 @@ class ProxyConfig:
         # Default to OpenAI
         return "openai"
 
+    @log_call
     def validate_azure_config(self) -> bool:
         """Validate Azure-specific configuration.
 
@@ -297,6 +310,7 @@ class ProxyConfig:
 
         return len(self.validation_errors) == 0
 
+    @log_call
     def get_azure_deployment(self, model_name: str) -> str | None:
         """Get Azure deployment name for OpenAI model.
 
@@ -308,6 +322,7 @@ class ProxyConfig:
         """
         return self._azure_mapper.get_azure_deployment(model_name)
 
+    @log_call
     def get_azure_endpoint(self) -> str | None:
         """Get Azure endpoint URL.
 
@@ -320,6 +335,7 @@ class ProxyConfig:
             or self.config.get("AZURE_OPENAI_BASE_URL")
         )
 
+    @log_call
     def get_azure_api_version(self) -> str | None:
         """Get Azure API version.
 
@@ -328,6 +344,7 @@ class ProxyConfig:
         """
         return self.config.get("AZURE_OPENAI_API_VERSION")
 
+    @log_call
     def validate_azure_endpoint_format(self) -> bool:
         """Validate Azure endpoint URL format.
 
@@ -340,6 +357,7 @@ class ProxyConfig:
 
         return self._azure_detector.validate_azure_endpoint(endpoint)
 
+    @log_call
     def validate_azure_api_version(self) -> bool:
         """Validate Azure API version format.
 
@@ -352,6 +370,7 @@ class ProxyConfig:
 
         return self._validate_api_version_format(api_version)
 
+    @log_call
     def validate_azure_deployments(self) -> bool:
         """Validate Azure deployment configuration.
 
@@ -377,6 +396,7 @@ class ProxyConfig:
 
         return True
 
+    @log_call
     def get_validation_errors(self) -> list[str]:
         """Get list of validation errors from last validation.
 
@@ -385,6 +405,7 @@ class ProxyConfig:
         """
         return self.validation_errors.copy()
 
+    @log_call
     def is_github_endpoint(self) -> bool:
         """Check if configuration uses GitHub Copilot endpoint.
 
@@ -394,6 +415,7 @@ class ProxyConfig:
         github_endpoint = self.config.get("GITHUB_COPILOT_ENDPOINT")
         return self._github_detector.is_github_endpoint(github_endpoint, self.config)
 
+    @log_call
     def get_github_endpoint_type(self) -> str:
         """Get GitHub endpoint type.
 
@@ -403,6 +425,7 @@ class ProxyConfig:
         github_endpoint = self.config.get("GITHUB_COPILOT_ENDPOINT")
         return self._github_detector.get_endpoint_type(github_endpoint, self.config)
 
+    @log_call
     def validate_github_config(self) -> bool:
         """Validate GitHub-specific configuration.
 
@@ -427,6 +450,7 @@ class ProxyConfig:
 
         return len(self.validation_errors) == 0
 
+    @log_call
     def get_github_model(self, openai_model: str) -> str | None:
         """Get GitHub Copilot model for OpenAI model name.
 
@@ -438,6 +462,7 @@ class ProxyConfig:
         """
         return self._github_mapper.get_github_model(openai_model)
 
+    @log_call
     def get_github_token(self) -> str | None:
         """Get GitHub token.
 
@@ -446,6 +471,7 @@ class ProxyConfig:
         """
         return self.config.get("GITHUB_TOKEN")
 
+    @log_call
     def is_github_copilot_enabled(self) -> bool:
         """Check if GitHub Copilot is enabled.
 
@@ -455,6 +481,7 @@ class ProxyConfig:
         enabled = self.config.get("GITHUB_COPILOT_ENABLED", "false").lower()
         return enabled in ("true", "1", "yes", "on")
 
+    @log_call
     def is_github_copilot_litellm_enabled(self) -> bool:
         """Check if GitHub Copilot LiteLLM provider is enabled.
 
@@ -463,6 +490,7 @@ class ProxyConfig:
         """
         return self._github_detector.is_litellm_provider_enabled(self.config)
 
+    @log_call
     def get_github_copilot_endpoint(self) -> str | None:
         """Get GitHub Copilot API endpoint.
 
@@ -471,6 +499,7 @@ class ProxyConfig:
         """
         return self.config.get("GITHUB_COPILOT_ENDPOINT", "https://api.github.com")
 
+    @log_call
     def get_litellm_github_config(self) -> dict[str, str]:
         """Get configuration for LiteLLM GitHub Copilot provider.
 
@@ -479,6 +508,7 @@ class ProxyConfig:
         """
         return self._github_detector.prepare_litellm_config(self.config)
 
+    @log_call
     def _validate_github_token_format(self, token: str) -> bool:
         """Validate GitHub token format.
 
@@ -506,6 +536,7 @@ class ProxyConfig:
 
         return False
 
+    @log_call
     def _validate_api_version_format(self, api_version: str) -> bool:
         """Validate Azure API version format.
 
@@ -519,6 +550,7 @@ class ProxyConfig:
         # Use cached compiled regex for better performance
         return bool(self._API_VERSION_REGEX.match(api_version))
 
+    @log_call
     def _validate_api_key_format(self, api_key: str) -> bool:
         """Validate Azure API key format.
 
@@ -538,6 +570,7 @@ class ProxyConfig:
         # Basic format validation - at least 20 chars, alphanumeric with dashes/underscores
         return bool(self._API_KEY_REGEX.match(api_key))
 
+    @log_call
     def _validate_deployment_name(self, deployment_name: str) -> bool:
         """Validate Azure deployment name format.
 
@@ -550,6 +583,7 @@ class ProxyConfig:
         # Deployment names should be 1-64 chars, alphanumeric with dashes/underscores
         return bool(self._DEPLOYMENT_NAME_REGEX.match(deployment_name))
 
+    @log_call
     def _enforce_https_endpoint(self, endpoint: str) -> bool:
         """Enforce HTTPS for Azure endpoints.
 
@@ -565,6 +599,7 @@ class ProxyConfig:
         except Exception:
             return False
 
+    @log_call
     def _sanitize_for_logging(self, value: str) -> str:
         """Sanitize sensitive values for safe logging.
 

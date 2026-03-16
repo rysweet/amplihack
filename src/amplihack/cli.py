@@ -9,6 +9,8 @@ import sys
 import time
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 from . import copytree_manifest
 from .docker import DockerManager
 from .launcher import ClaudeLauncher
@@ -37,6 +39,7 @@ EMOJI = {
 _CLAUDE_COMMANDS = {None, "launch", "claude", "RustyClawd"}
 
 
+@log_call
 def _debug_print(message: str) -> None:
     """Print debug message if AMPLIHACK_DEBUG is enabled.
 
@@ -47,6 +50,7 @@ def _debug_print(message: str) -> None:
         print(message)
 
 
+@log_call
 def _verify_claude_cli_ready(
     claude_path: str, max_retries: int = 3, retry_delay: float = 0.5
 ) -> bool:
@@ -95,6 +99,7 @@ def _verify_claude_cli_ready(
     return False
 
 
+@log_call
 def add_plugin_args_for_uvx(
     claude_args: list[str] | None = None, use_installed_plugin: bool = False
 ) -> list[str]:
@@ -126,6 +131,7 @@ def add_plugin_args_for_uvx(
     return result_args
 
 
+@log_call
 def launch_command(args: argparse.Namespace, claude_args: list[str] | None = None) -> int:
     """Handle the launch command.
 
@@ -184,6 +190,7 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
                 logging.debug(f"Failed to restore CWD to {original_cwd}: {e}")
 
 
+@log_call
 def _launch_command_impl(
     args: argparse.Namespace,
     claude_args: list[str] | None,
@@ -294,6 +301,7 @@ def _launch_command_impl(
     return exit_code
 
 
+@log_call
 def handle_auto_mode(sdk: str, args: argparse.Namespace, cmd_args: list[str] | None) -> int | None:
     """Handle auto mode for claude, copilot, or codex commands.
 
@@ -333,6 +341,7 @@ def handle_auto_mode(sdk: str, args: argparse.Namespace, cmd_args: list[str] | N
     return auto.run()
 
 
+@log_call
 def handle_append_instruction(args: argparse.Namespace) -> int:
     """Handle --append flag to inject instructions into running auto mode.
 
@@ -371,6 +380,7 @@ def handle_append_instruction(args: argparse.Namespace) -> int:
         return 1
 
 
+@log_call
 def parse_args_with_passthrough(
     argv: list[str] | None = None,
 ) -> "tuple[argparse.Namespace, list[str]]":
@@ -408,6 +418,7 @@ def parse_args_with_passthrough(
     return args, claude_args
 
 
+@log_call
 def add_auto_mode_args(parser: argparse.ArgumentParser) -> None:
     """Add auto mode arguments to a parser.
 
@@ -437,6 +448,7 @@ def add_auto_mode_args(parser: argparse.ArgumentParser) -> None:
     )
 
 
+@log_call
 def add_common_sdk_args(parser: argparse.ArgumentParser) -> None:
     """Add common SDK arguments to a parser.
 
@@ -457,6 +469,7 @@ def add_common_sdk_args(parser: argparse.ArgumentParser) -> None:
     )
 
 
+@log_call
 def add_claude_specific_args(parser: argparse.ArgumentParser) -> None:
     """Add Claude-specific arguments to a parser.
 
@@ -488,6 +501,7 @@ def add_claude_specific_args(parser: argparse.ArgumentParser) -> None:
 # Neo4j arguments removed (Week 7 cleanup) - Kuzu is now the only backend
 
 
+@log_call
 def create_parser() -> argparse.ArgumentParser:
     """Create the argument parser for amplihack CLI.
 
@@ -838,6 +852,7 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     return parser
 
 
+@log_call
 def _configure_amplihack_marketplace() -> bool:
     """Configure amplihack marketplace in Claude Code settings.
 
@@ -899,6 +914,7 @@ def _configure_amplihack_marketplace() -> bool:
         return False
 
 
+@log_call
 def _fallback_to_directory_copy(reason: str = "Plugin installation failed") -> str:
     """Copy .claude directory to ~/.amplihack/.claude/ (primary install location).
 
@@ -931,6 +947,7 @@ def _fallback_to_directory_copy(reason: str = "Plugin installation failed") -> s
     return install_dir
 
 
+@log_call
 def _fix_global_statusline_path() -> None:
     """Fix the global ~/.claude/settings.json statusline path to use ~/.amplihack/.claude/tools/statusline.sh.
 
@@ -977,6 +994,7 @@ def _fix_global_statusline_path() -> None:
             print(f"Warning: Could not update global statusline path: {e}")
 
 
+@log_call
 def _ensure_rust_recipe_runner() -> None:
     """Ensure the Rust recipe runner binary is available.
 
@@ -999,6 +1017,7 @@ def _ensure_rust_recipe_runner() -> None:
         )
 
 
+@log_call
 def _common_launcher_startup(args: "argparse.Namespace") -> None:
     """Run all shared startup initialization for launcher commands.
 
@@ -1072,6 +1091,7 @@ def _common_launcher_startup(args: "argparse.Namespace") -> None:
         logger.debug(f"Error checking power-steering re-enable prompt: {e}")
 
 
+@log_call
 def _ensure_amplihack_staged() -> None:
     """Ensure .claude/ files are staged to ~/.amplihack/.claude/ for non-Claude commands.
 
@@ -1149,6 +1169,7 @@ def _ensure_amplihack_staged() -> None:
     _fix_global_statusline_path()
 
 
+@log_call
 def _read_auto_update_preference(plugin_dir: str) -> bool:
     """Check if user's auto_update preference is 'always'.
 
@@ -1175,6 +1196,7 @@ def _read_auto_update_preference(plugin_dir: str) -> bool:
     return False
 
 
+@log_call
 def main(argv: list[str] | None = None) -> int:
     """Main entry point for amplihack CLI.
 

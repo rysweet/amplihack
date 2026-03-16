@@ -15,9 +15,14 @@ Public API:
 """
 
 import json
+import logging
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+
+from amplihack.utils.logging_utils import log_call
+
+logger = logging.getLogger(__name__)
 
 
 class JsonLogger:
@@ -27,18 +32,21 @@ class JsonLogger:
     and analysis by external tools.
     """
 
+    @log_call
     def __init__(self, log_dir: Path):
         """Initialize JSON logger.
 
         Args:
             log_dir: Directory where auto.jsonl will be created
         """
+        logger.debug(f"JsonLogger.__init__: called with log_dir={log_dir!r}")
         self.log_dir = Path(log_dir)
         self.log_file = self.log_dir / "auto.jsonl"
 
         # Ensure log directory exists
         self.log_dir.mkdir(parents=True, exist_ok=True)
 
+    @log_call
     def log_event(
         self, event_type: str, data: dict[str, Any] | None = None, level: str = "INFO"
     ) -> None:

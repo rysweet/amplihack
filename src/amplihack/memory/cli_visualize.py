@@ -35,11 +35,14 @@ except ImportError:
     Console = None  # type: ignore[assignment]
     Tree = None  # type: ignore[assignment]
 
+from amplihack.utils.logging_utils import log_call
+
 from .models import MemoryQuery, MemoryType
 
 logger = logging.getLogger(__name__)
 
 
+@log_call
 def get_memory_emoji(memory_type: MemoryType) -> str:
     """Get emoji fer memory type.
 
@@ -62,6 +65,7 @@ def get_memory_emoji(memory_type: MemoryType) -> str:
     return emoji_map.get(memory_type, "❓")
 
 
+@log_call
 def format_importance_score(importance: int | None) -> str:
     """Format importance score as stars.
 
@@ -82,6 +86,7 @@ def format_importance_score(importance: int | None) -> str:
     return f"{filled}{empty} {importance}/10"
 
 
+@log_call
 async def build_memory_tree_async(
     backend: Any,
     session_id: str | None = None,
@@ -224,6 +229,7 @@ async def build_memory_tree_async(
     return root
 
 
+@log_call
 async def visualize_memory_tree_async(
     backend: Any,
     session_id: str | None = None,
@@ -285,6 +291,7 @@ async def visualize_memory_tree_async(
         print(f"Error: {e!s}")
 
 
+@log_call
 def build_memory_tree(
     backend: Any,
     session_id: str | None = None,
@@ -311,6 +318,7 @@ def build_memory_tree(
     return asyncio.run(build_memory_tree_async(backend, session_id, memory_type, depth))
 
 
+@log_call
 def visualize_memory_tree(
     backend: Any,
     session_id: str | None = None,

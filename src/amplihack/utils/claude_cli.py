@@ -27,7 +27,10 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
 
+
+@log_call
 def _is_uvx_mode() -> bool:
     """Check if running in UVX mode.
 
@@ -46,6 +49,7 @@ def _is_uvx_mode() -> bool:
         return os.getenv("AMPLIHACK_UVX_MODE", "").lower() in ("1", "true", "yes")
 
 
+@log_call
 def _configure_user_local_npm() -> dict[str, str]:
     """Configure npm to use user-local installation paths.
 
@@ -77,6 +81,7 @@ def _configure_user_local_npm() -> dict[str, str]:
     return env
 
 
+@log_call
 def _update_shell_profile_path() -> bool:
     """Append npm-global bin to shell profile so PATH persists across sessions.
 
@@ -117,6 +122,7 @@ def _update_shell_profile_path() -> bool:
         return False
 
 
+@log_call
 def _find_claude_in_common_locations() -> str | None:
     """Search for claude in PATH, falling back to known install location.
 
@@ -144,6 +150,7 @@ def _find_claude_in_common_locations() -> str | None:
     return None
 
 
+@log_call
 def _print_manual_install_instructions():
     """Print manual installation instructions for Claude CLI."""
     print("  See https://code.claude.com/docs/en/setup for installation instructions")
@@ -153,6 +160,7 @@ def _print_manual_install_instructions():
     print("    - Windows: winget install Anthropic.ClaudeCode")
 
 
+@log_call
 def _validate_claude_binary(claude_path: str) -> bool:
     """Validate that claude binary works.
 
@@ -173,6 +181,7 @@ def _validate_claude_binary(claude_path: str) -> bool:
     return returncode == 0
 
 
+@log_call
 def _remove_failed_binary(binary_path: Path) -> None:
     """Remove a failed Claude binary.
 
@@ -188,6 +197,7 @@ def _remove_failed_binary(binary_path: Path) -> None:
         print(f"   Warning: Could not remove binary: {e}")
 
 
+@log_call
 def _retry_claude_installation(npm_path: str, user_npm_dir: Path, expected_binary: Path) -> bool:
     """Retry Claude CLI installation after validation failure.
 
@@ -243,6 +253,7 @@ def _retry_claude_installation(npm_path: str, user_npm_dir: Path, expected_binar
     return False
 
 
+@log_call
 def _install_claude_cli() -> bool:
     """Install Claude CLI via npm using user-local installation.
 
@@ -364,6 +375,7 @@ def _install_claude_cli() -> bool:
         return False
 
 
+@log_call
 def get_claude_cli_path(auto_install: bool = True) -> str | None:
     """Get path to Claude CLI binary, optionally installing if missing.
 
@@ -422,6 +434,7 @@ def get_claude_cli_path(auto_install: bool = True) -> str | None:
     return None
 
 
+@log_call
 def ensure_claude_cli() -> str:
     """Ensure Claude CLI is available, installing if needed.
 

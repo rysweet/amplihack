@@ -6,6 +6,7 @@ from amplihack.vendor.blarify.tools.utils import resolve_reference_id
 from langchain_core.callbacks import CallbackManagerForToolRun
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field, model_validator
+from amplihack.utils.logging_utils import log_call
 
 
 class FlexibleInput(BaseModel):
@@ -19,6 +20,7 @@ class FlexibleInput(BaseModel):
     )
 
     @model_validator(mode="after")
+    @log_call
     def validate_inputs(self):
         if self.reference_id:
             if len(self.reference_id) != 32:
@@ -40,12 +42,14 @@ class GetDependencyGraph(BaseTool):
 
     args_schema: type[BaseModel] = FlexibleInput  # type: ignore[assignment]
 
+    @log_call
     def __init__(self, db_manager: Any, handle_validation_error: bool = False):
         super().__init__(
             db_manager=db_manager,
             handle_validation_error=handle_validation_error,
         )
 
+    @log_call
     def _run(
         self,
         reference_id: str | None = None,

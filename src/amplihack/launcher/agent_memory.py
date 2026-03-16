@@ -19,6 +19,8 @@ import os
 import sys
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 logger = logging.getLogger(__name__)
 
 # Try to import memory lib, degrade gracefully
@@ -43,10 +45,12 @@ class AgentMemory:
     is not installed.
     """
 
+    @log_call
     def __init__(self, store: ExperienceStore) -> None:
         self._store = store
 
     @classmethod
+    @log_call
     def create(
         cls,
         agent_name: str = "auto_mode",
@@ -73,6 +77,7 @@ class AgentMemory:
             return None
 
     @staticmethod
+    @log_call
     def _to_str(value: object) -> str:
         """Coerce a value to ``str``.
 
@@ -87,6 +92,7 @@ class AgentMemory:
             return out
         return str(value)
 
+    @log_call
     def store_goal(self, goal: str) -> None:
         """Store the agent's goal at session start."""
         goal = self._to_str(goal)
@@ -98,6 +104,7 @@ class AgentMemory:
             tags=["goal", "session_start"],
         )
 
+    @log_call
     def store_objective(self, objective: str) -> None:
         """Store the clarified objective (after Turn 1)."""
         objective = self._to_str(objective)
@@ -109,6 +116,7 @@ class AgentMemory:
             tags=["objective", "turn_1"],
         )
 
+    @log_call
     def store_plan(self, plan: str) -> None:
         """Store the execution plan (after Turn 2)."""
         plan = self._to_str(plan)
@@ -120,6 +128,7 @@ class AgentMemory:
             tags=["plan", "turn_2"],
         )
 
+    @log_call
     def store_turn_result(self, turn: int, output: str) -> None:
         """Store execution output from a turn."""
         output = self._to_str(output)
@@ -131,6 +140,7 @@ class AgentMemory:
             tags=[f"turn_{turn}", "execution"],
         )
 
+    @log_call
     def store_evaluation(self, turn: int, eval_result: str) -> None:
         """Store evaluation result from a turn."""
         eval_result = self._to_str(eval_result)
@@ -142,6 +152,7 @@ class AgentMemory:
             tags=[f"turn_{turn}", "evaluation"],
         )
 
+    @log_call
     def store_learning(self, summary: str) -> None:
         """Store a session learning at completion."""
         summary = self._to_str(summary)
@@ -153,6 +164,7 @@ class AgentMemory:
             tags=["learning", "session_end"],
         )
 
+    @log_call
     def recall_relevant(self, query: str, limit: int = 5) -> str:
         """Recall relevant past experiences. Returns formatted string for prompts."""
         try:
@@ -170,10 +182,12 @@ class AgentMemory:
             logger.debug(f"Memory recall failed: {e}")
             return ""
 
+    @log_call
     def close(self) -> None:
         """Clean up the memory store (no-op if store has no close method)."""
         # ExperienceStore handles cleanup internally
 
+    @log_call
     def _safe_add(
         self,
         exp_type: ExperienceType,

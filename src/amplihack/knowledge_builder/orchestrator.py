@@ -7,11 +7,13 @@ from amplihack.knowledge_builder.kb_types import KnowledgeGraph
 from amplihack.knowledge_builder.modules.artifact_generator import ArtifactGenerator
 from amplihack.knowledge_builder.modules.knowledge_acquirer import KnowledgeAcquirer
 from amplihack.knowledge_builder.modules.question_generator import QuestionGenerator
+from amplihack.utils.logging_utils import log_call
 
 
 class KnowledgeBuilder:
     """Main orchestrator for Knowledge Builder workflow."""
 
+    @log_call
     def __init__(self, topic: str, claude_cmd: str = "claude", output_base: Path | None = None):
         """Initialize Knowledge Builder.
 
@@ -40,6 +42,7 @@ class KnowledgeBuilder:
         # Initialize knowledge graph
         self.kg = KnowledgeGraph(topic=self.topic)
 
+    @log_call
     def build(self) -> Path:
         """Execute complete Knowledge Builder workflow.
 
@@ -104,6 +107,7 @@ class KnowledgeBuilder:
             raise RuntimeError(f"Knowledge Builder failed: {e}") from e
 
 
+@log_call
 def main():
     """CLI entry point for Knowledge Builder."""
     if len(sys.argv) < 2:

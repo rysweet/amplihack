@@ -3,6 +3,8 @@
 import re
 from urllib.parse import urlparse
 
+from amplihack.utils.logging_utils import log_call
+
 
 class GitHubEndpointDetector:
     """Detects and validates GitHub Copilot API endpoints."""
@@ -17,6 +19,7 @@ class GitHubEndpointDetector:
     _GITHUB_API_REGEX = re.compile(r"^https://api\.github\.com/copilot")
     _GITHUB_COPILOT_REGEX = re.compile(r"^https://copilot-proxy\.githubusercontent\.com")
 
+    @log_call
     def is_github_endpoint(self, endpoint: str | None, config: dict[str, str]) -> bool:
         """Check if endpoint is a GitHub Copilot API endpoint.
 
@@ -33,6 +36,7 @@ class GitHubEndpointDetector:
 
         return self._validate_github_endpoint_format(endpoint)
 
+    @log_call
     def get_endpoint_type(self, endpoint: str | None, config: dict[str, str]) -> str:
         """Get endpoint type (github_copilot or openai).
 
@@ -47,6 +51,7 @@ class GitHubEndpointDetector:
             return "github_copilot"
         return "openai"
 
+    @log_call
     def validate_github_endpoint(self, endpoint: str) -> bool:
         """Validate GitHub Copilot endpoint URL format.
 
@@ -58,6 +63,7 @@ class GitHubEndpointDetector:
         """
         return self._validate_github_endpoint_format(endpoint)
 
+    @log_call
     def _has_github_config_indicators(self, config: dict[str, str]) -> bool:
         """Check for GitHub configuration indicators.
 
@@ -83,6 +89,7 @@ class GitHubEndpointDetector:
         proxy_type = config.get("PROXY_TYPE", "").lower()
         return proxy_type in ("github", "github_copilot", "copilot")
 
+    @log_call
     def _validate_github_endpoint_format(self, endpoint: str) -> bool:
         """Validate GitHub endpoint URL format.
 
@@ -114,6 +121,7 @@ class GitHubEndpointDetector:
         except Exception:
             return False
 
+    @log_call
     def get_canonical_endpoint(self, endpoint: str | None) -> str:
         """Get canonical GitHub Copilot endpoint.
 
@@ -129,6 +137,7 @@ class GitHubEndpointDetector:
         # Default to primary GitHub Copilot API
         return "https://api.github.com/copilot"
 
+    @log_call
     def supports_streaming(self, endpoint: str) -> bool:
         """Check if endpoint supports streaming responses.
 
@@ -141,6 +150,7 @@ class GitHubEndpointDetector:
         # GitHub Copilot API supports streaming
         return self.validate_github_endpoint(endpoint)
 
+    @log_call
     def get_rate_limit_info(self, endpoint: str) -> dict[str, int]:
         """Get rate limit information for GitHub endpoint.
 
@@ -160,6 +170,7 @@ class GitHubEndpointDetector:
             "tokens_per_minute": 50000,
         }
 
+    @log_call
     def is_litellm_provider_enabled(self, config: dict[str, str]) -> bool:
         """Check if LiteLLM GitHub Copilot provider is enabled.
 
@@ -180,6 +191,7 @@ class GitHubEndpointDetector:
 
         return github_enabled in ("true", "1", "yes", "on") and has_token
 
+    @log_call
     def get_litellm_model_prefix(self) -> str:
         """Get the LiteLLM model prefix for GitHub Copilot models.
 
@@ -188,6 +200,7 @@ class GitHubEndpointDetector:
         """
         return "github/"
 
+    @log_call
     def prepare_litellm_config(self, config: dict[str, str]) -> dict[str, str]:
         """Prepare configuration for LiteLLM GitHub Copilot provider.
 

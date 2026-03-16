@@ -17,6 +17,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 logger = logging.getLogger(__name__)
 
 
@@ -71,6 +73,7 @@ class GoalSeekingAgent(ABC):
     Spawned agents share read access to the parent's memory.
     """
 
+    @log_call
     def __init__(
         self,
         name: str,
@@ -110,6 +113,7 @@ class GoalSeekingAgent(ABC):
         self._sdk_agent: Any = None
         self._create_sdk_agent()
 
+    @log_call
     def _init_memory(self) -> None:
         """Initialize amplihack-memory-lib for persistent knowledge storage."""
         try:
@@ -124,6 +128,7 @@ class GoalSeekingAgent(ABC):
         except Exception as e:
             logger.warning("Failed to initialize memory: %s. Continuing without memory.", e)
 
+    @log_call
     def _init_spawner(self) -> None:
         """Initialize the AgentSpawner for dynamic sub-agent creation."""
         try:
@@ -142,6 +147,7 @@ class GoalSeekingAgent(ABC):
         except Exception as e:
             logger.warning("Failed to initialize spawner: %s", e)
 
+    @log_call
     def _register_learning_tools(self) -> None:
         """Register the 7 learning/teaching/applying tools + optional spawn_agent (tool #8)."""
         tools: list[AgentTool] = [
@@ -280,6 +286,7 @@ class GoalSeekingAgent(ABC):
         for t in tools:
             self._tools.append(t)
 
+    @log_call
     def _tool_spawn_agent(self, task: str, specialist_type: str = "auto") -> str:
         """Tool function: spawn a sub-agent for complex tasks.
 
@@ -311,6 +318,7 @@ class GoalSeekingAgent(ABC):
         except Exception as e:
             return f"Spawning failed: {e}"
 
+    @log_call
     def _tool_learn(self, content: str) -> dict[str, Any]:
         """Learn from content using LLM-based fact extraction.
 
@@ -336,6 +344,7 @@ class GoalSeekingAgent(ABC):
             return {"status": "learned", "content_length": len(content)}
         return {"error": "Memory not initialized"}
 
+    @log_call
     def _get_learning_agent(self) -> Any:
         """Get or create a LearningAgent sharing this agent's memory path.
 
@@ -364,6 +373,7 @@ class GoalSeekingAgent(ABC):
                 self._learning_agent_cache = None
         return self._learning_agent_cache
 
+    @log_call
     def _tool_search(self, query: str, limit: int = 10) -> list[dict[str, Any]]:
         if not self.memory:
             return []
@@ -372,6 +382,7 @@ class GoalSeekingAgent(ABC):
         limit = min(max(1, limit), 100)
         return self.memory.search(query=query.strip(), limit=limit)
 
+    @log_call
     def _tool_explain(self, topic: str, depth: str = "overview") -> str:
         if not self.memory:
             return f"No knowledge about '{topic}'."
@@ -381,6 +392,7 @@ class GoalSeekingAgent(ABC):
         facts_text = "\n".join(f"- {r.get('outcome', '')[:150]}" for r in results[:10])
         return f"Knowledge about '{topic}':\n{facts_text}"
 
+    @log_call
     def _tool_find_gaps(self, topic: str) -> dict[str, Any]:
         if not self.memory:
             return {"gaps": ["No memory initialized"], "total_facts": 0}
@@ -391,12 +403,14 @@ class GoalSeekingAgent(ABC):
             "gaps": [] if results else ["No knowledge"],
         }
 
+    @log_call
     def _tool_verify(self, fact: str) -> dict[str, Any]:
         if not self.memory:
             return {"verified": False, "reason": "No memory"}
         related = self.memory.search(query=fact, limit=10)
         return {"fact": fact, "related_facts": len(related), "verified": len(related) > 0}
 
+    @log_call
     def _tool_store(self, context: str, fact: str, confidence: float = 0.8) -> dict[str, Any]:
         if not self.memory:
             return {"error": "Memory not initialized"}
@@ -408,6 +422,7 @@ class GoalSeekingAgent(ABC):
         )
         return {"stored": True}
 
+    @log_call
     def _tool_summary(self) -> dict[str, Any]:
         if not self.memory:
             return {"error": "Memory not initialized"}
@@ -422,6 +437,7 @@ class GoalSeekingAgent(ABC):
     # The eval harness and external callers use these directly.
     # ------------------------------------------------------------------
 
+    @log_call
     def learn_from_content(self, content: str) -> dict[str, Any]:
         """Learn from content using LLM-based fact extraction.
 
@@ -431,6 +447,7 @@ class GoalSeekingAgent(ABC):
         """
         return self._tool_learn(content)
 
+    @log_call
     def answer_question(self, question: str, answer_mode: str = "single-shot") -> str:
         """Answer a question using memory retrieval and LLM synthesis.
 
@@ -460,10 +477,12 @@ class GoalSeekingAgent(ABC):
             return f"Based on stored knowledge:\n{facts}"
         return "I don't have enough information to answer that question."
 
+    @log_call
     def get_memory_stats(self) -> dict[str, Any]:
         """Get memory statistics."""
         return self._tool_summary()
 
+    @log_call
     def form_goal(self, user_intent: str) -> Goal:
         self.current_goal = Goal(
             description=user_intent,
@@ -474,21 +493,26 @@ class GoalSeekingAgent(ABC):
         return self.current_goal
 
     @abstractmethod
+    @log_call
     def _create_sdk_agent(self) -> None:
         """Initialize the SDK-specific agent."""
 
     @abstractmethod
+    @log_call
     async def _run_sdk_agent(self, task: str, max_turns: int = 10) -> AgentResult:
         """Execute a task through the SDK agent loop."""
 
     @abstractmethod
+    @log_call
     def _get_native_tools(self) -> list[str]:
         """Return list of native SDK tool names available."""
 
     @abstractmethod
+    @log_call
     def _register_tool_with_sdk(self, tool: AgentTool) -> None:
         """Register a custom AgentTool with the SDK tool system."""
 
+    @log_call
     async def run(self, task: str, max_turns: int = 10) -> AgentResult:
         if not task or not task.strip():
             return AgentResult(response="Error: Task cannot be empty", goal_achieved=False)
@@ -498,6 +522,7 @@ class GoalSeekingAgent(ABC):
             self.current_goal.status = "achieved" if result.goal_achieved else "failed"
         return result
 
+    @log_call
     def close(self) -> None:
         """Clean up resources."""
         if hasattr(self, "_learning_agent_cache") and self._learning_agent_cache:

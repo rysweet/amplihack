@@ -15,12 +15,13 @@ import json
 import logging
 import platform
 import shutil
-import stat
 import subprocess
 import tarfile
 import tempfile
 import zipfile
 from pathlib import Path
+
+from amplihack.utils.logging_utils import log_call
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,7 @@ INSTALL_DIR = Path.home() / ".amplihack" / "bin"
 VERSION_FILE = INSTALL_DIR / ".xpia-defend-version"
 
 
+@log_call
 def _get_target_triple() -> str:
     """Determine the Rust target triple for the current platform."""
     system = platform.system().lower()
@@ -63,6 +65,7 @@ class XPIAInstallError(Exception):
     """Raised when binary installation fails."""
 
 
+@log_call
 def _get_latest_release_tag() -> str:
     """Get the latest release tag from GitHub using gh CLI."""
     try:
@@ -95,6 +98,7 @@ def _get_latest_release_tag() -> str:
     raise XPIAInstallError(msg)
 
 
+@log_call
 def _get_installed_version() -> str | None:
     """Read the currently installed version from marker file."""
     if VERSION_FILE.exists():
@@ -102,6 +106,7 @@ def _get_installed_version() -> str | None:
     return None
 
 
+@log_call
 def _download_and_install(tag: str) -> Path:
     """Download release asset for current platform, verify checksum, extract, install binary."""
     target = _get_target_triple()
@@ -183,6 +188,7 @@ def _download_and_install(tag: str) -> Path:
         return dest
 
 
+@log_call
 def _verify_checksum(asset_path: Path, checksums_path: Path, asset_name: str) -> None:
     """Verify SHA256 checksum of downloaded asset. Raises on mismatch."""
     if not checksums_path.exists():
@@ -219,6 +225,7 @@ def _verify_checksum(asset_path: Path, checksums_path: Path, asset_name: str) ->
     logger.debug("Checksum verified for %s", asset_name)
 
 
+@log_call
 def _safe_zip_extract(zip_path: Path, member_name: str, dest_dir: Path) -> None:
     """Extract a single member from a zip file with path traversal protection."""
     with zipfile.ZipFile(zip_path) as zf:
@@ -235,6 +242,7 @@ def _safe_zip_extract(zip_path: Path, member_name: str, dest_dir: Path) -> None:
         zf.extract(info, dest_dir)
 
 
+@log_call
 def ensure_xpia_binary(*, force: bool = False) -> Path:
     """Ensure xpia-defend binary is installed and up to date.
 
@@ -266,10 +274,16 @@ def ensure_xpia_binary(*, force: bool = False) -> Path:
                     timeout=5,
                 )
                 if result.returncode == 0:
-                    logger.debug("xpia-defend %s already installed at %s", installed_version, installed_binary)
+                    logger.debug(
+                        "xpia-defend %s already installed at %s",
+                        installed_version,
+                        installed_binary,
+                    )
                     return installed_binary
             except (subprocess.TimeoutExpired, OSError):
-                logger.warning("Installed binary at %s is not functional, re-installing", installed_binary)
+                logger.warning(
+                    "Installed binary at %s is not functional, re-installing", installed_binary
+                )
         else:
             return installed_binary
 
@@ -283,6 +297,7 @@ def ensure_xpia_binary(*, force: bool = False) -> Path:
     return _download_and_install(latest_tag)
 
 
+@log_call
 def get_install_dir() -> Path:
     """Return the installation directory for the binary."""
     return INSTALL_DIR

@@ -11,15 +11,13 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from amplihack.fleet._backends import (
     AnthropicBackend,
     CopilotBackend,
     LiteLLMBackend,
     auto_detect_backend,
 )
-
+from amplihack.utils.logging_utils import log_call
 
 # ---------------------------------------------------------------------------
 # AnthropicBackend
@@ -29,28 +27,33 @@ from amplihack.fleet._backends import (
 class TestAnthropicBackend:
     """Tests for AnthropicBackend."""
 
+    @log_call
     def test_init_with_explicit_api_key(self):
         """Explicit api_key is stored directly."""
         backend = AnthropicBackend(api_key="sk-test-123")
         assert backend.api_key == "sk-test-123"
 
+    @log_call
     def test_init_from_env(self, monkeypatch):
         """Falls back to ANTHROPIC_API_KEY env var."""
         monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-env-456")
         backend = AnthropicBackend()
         assert backend.api_key == "sk-env-456"
 
+    @log_call
     def test_init_no_key_stores_empty(self, monkeypatch):
         """No key available stores empty string (fails at call time)."""
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
         backend = AnthropicBackend()
         assert backend.api_key == ""
 
+    @log_call
     def test_default_model(self):
         """Default model is set."""
         backend = AnthropicBackend(api_key="sk-test")
         assert "claude" in backend.model
 
+    @log_call
     def test_complete_calls_sdk_streaming(self):
         """complete() uses streaming API and extracts final text."""
         mock_anthropic = MagicMock()
@@ -70,6 +73,7 @@ class TestAnthropicBackend:
         assert result == "The answer is 42"
         mock_client.messages.stream.assert_called_once()
 
+    @log_call
     def test_complete_empty_response(self):
         """complete() returns empty string when stream returns empty text."""
         mock_anthropic = MagicMock()
@@ -97,17 +101,20 @@ class TestAnthropicBackend:
 class TestCopilotBackend:
     """Tests for CopilotBackend."""
 
+    @log_call
     def test_init_default_model(self):
         """Default model is gpt-4o."""
         backend = CopilotBackend()
         assert backend.model == "gpt-4o"
 
+    @log_call
     def test_init_custom_model(self):
         """Custom model is stored."""
         backend = CopilotBackend(model="gpt-4o-mini")
         assert backend.model == "gpt-4o-mini"
 
     @patch("asyncio.run")
+    @log_call
     def test_complete_calls_asyncio_run(self, mock_asyncio_run):
         """complete() delegates to asyncio.run for async execution."""
         mock_asyncio_run.return_value = "copilot response"
@@ -125,16 +132,19 @@ class TestCopilotBackend:
 class TestLiteLLMBackend:
     """Tests for LiteLLMBackend."""
 
+    @log_call
     def test_init_default_model(self):
         """Default model is gpt-4o."""
         backend = LiteLLMBackend()
         assert backend.model == "gpt-4o"
 
+    @log_call
     def test_init_custom_model(self):
         """Custom model is stored."""
         backend = LiteLLMBackend(model="ollama/llama3")
         assert backend.model == "ollama/llama3"
 
+    @log_call
     def test_complete_calls_litellm(self):
         """complete() calls litellm.completion and extracts text."""
         mock_litellm = MagicMock()
@@ -156,6 +166,7 @@ class TestLiteLLMBackend:
 
         assert result == "litellm response"
 
+    @log_call
     def test_complete_empty_choices(self):
         """complete() returns empty string when no choices returned."""
         mock_litellm = MagicMock()
@@ -180,18 +191,21 @@ class TestLiteLLMBackend:
 class TestAutoDetectBackend:
     """Tests for auto_detect_backend()."""
 
+    @log_call
     def test_returns_anthropic_when_key_set(self, monkeypatch):
         """Returns AnthropicBackend when ANTHROPIC_API_KEY is set."""
         monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test-key")
         backend = auto_detect_backend()
         assert isinstance(backend, AnthropicBackend)
 
+    @log_call
     def test_returns_copilot_when_no_key(self, monkeypatch):
         """Returns CopilotBackend as fallback when no Anthropic key."""
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
         backend = auto_detect_backend()
         assert isinstance(backend, CopilotBackend)
 
+    @log_call
     def test_empty_anthropic_key_falls_through(self, monkeypatch):
         """Empty ANTHROPIC_API_KEY string falls through to CopilotBackend."""
         monkeypatch.setenv("ANTHROPIC_API_KEY", "")

@@ -10,6 +10,7 @@ Public API:
 from __future__ import annotations
 
 from amplihack.fleet._status import infer_agent_status
+from amplihack.utils.logging_utils import log_call
 
 __all__ = ["classify_status"]
 
@@ -26,6 +27,7 @@ _TUI_STATUS_MAP = {
 }
 
 
+@log_call
 def classify_status(tmux_text: str) -> str:
     """Classify session status from tmux capture text.
 

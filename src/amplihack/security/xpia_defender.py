@@ -15,6 +15,8 @@ from datetime import datetime
 from typing import Any
 from urllib.parse import urlparse
 
+from amplihack.utils.logging_utils import log_call
+
 from .xpia_defense_interface import (
     ContentType,
     RiskLevel,
@@ -47,6 +49,7 @@ class XPIADefender(XPIADefenseInterface):
     with configurable security levels.
     """
 
+    @log_call
     def __init__(self, config: SecurityConfiguration | None = None):
         """Initialize XPIA Defender with configuration"""
         self.config = config or self._load_config_from_env()
@@ -57,6 +60,7 @@ class XPIADefender(XPIADefenseInterface):
 
         logger.info(f"XPIA Defender initialized with security level: {self.config.security_level}")
 
+    @log_call
     def _load_config_from_env(self) -> SecurityConfiguration:
         """Load configuration from environment variables"""
         config = SecurityConfiguration()
@@ -83,6 +87,7 @@ class XPIADefender(XPIADefenseInterface):
 
         return config
 
+    @log_call
     def _load_whitelist(self) -> set[str]:
         """Load domain whitelist from environment or file"""
         whitelist = set()
@@ -116,6 +121,7 @@ class XPIADefender(XPIADefenseInterface):
 
         return whitelist
 
+    @log_call
     def _load_blacklist(self) -> set[str]:
         """Load domain blacklist from environment or file"""
         blacklist = set()
@@ -133,6 +139,7 @@ class XPIADefender(XPIADefenseInterface):
 
         return blacklist
 
+    @log_call
     async def validate_content(
         self,
         content: str,
@@ -190,6 +197,7 @@ class XPIADefender(XPIADefenseInterface):
             timestamp=datetime.now(),
         )
 
+    @log_call
     async def validate_bash_command(
         self,
         command: str,
@@ -288,6 +296,7 @@ class XPIADefender(XPIADefenseInterface):
             timestamp=datetime.now(),
         )
 
+    @log_call
     async def validate_agent_communication(
         self,
         source_agent: str,
@@ -342,27 +351,32 @@ class XPIADefender(XPIADefenseInterface):
             timestamp=datetime.now(),
         )
 
+    @log_call
     def get_configuration(self) -> SecurityConfiguration:
         """Get current security configuration"""
         return self.config
 
+    @log_call
     async def update_configuration(self, config: SecurityConfiguration) -> bool:
         """Update security configuration"""
         self.config = config
         logger.info(f"Configuration updated: {config.security_level}")
         return True
 
+    @log_call
     def register_hook(self, registration) -> str:
         """Register a security hook"""
         # Hook registration would be implemented here
         # For now, return a placeholder ID
         return f"hook_{datetime.now().timestamp()}"
 
+    @log_call
     def unregister_hook(self, hook_id: str) -> bool:
         """Unregister a security hook"""
         # Hook unregistration would be implemented here
         return True
 
+    @log_call
     async def health_check(self) -> dict[str, Any]:
         """Perform health check and return status"""
         return {
@@ -377,6 +391,7 @@ class XPIADefender(XPIADefenseInterface):
 
     # Helper methods
 
+    @log_call
     def _should_flag_pattern(self, pattern: AttackPattern, security_level: SecurityLevel) -> bool:
         """Determine if a pattern should be flagged based on security level"""
         severity_levels = {
@@ -398,6 +413,7 @@ class XPIADefender(XPIADefenseInterface):
 
         return pattern_level >= threshold
 
+    @log_call
     def _pattern_to_threat(self, pattern: AttackPattern, content: str) -> ThreatDetection:
         """Convert attack pattern to threat detection"""
         threat_type_map = {
@@ -435,6 +451,7 @@ class XPIADefender(XPIADefenseInterface):
             mitigation=pattern.mitigation,
         )
 
+    @log_call
     def _calculate_risk_level(self, threats: list[ThreatDetection]) -> RiskLevel:
         """Calculate overall risk level from threats"""
         if not threats:
@@ -453,6 +470,7 @@ class XPIADefender(XPIADefenseInterface):
             return RiskLevel.LOW
         return RiskLevel.NONE
 
+    @log_call
     def _generate_recommendations(
         self, threats: list[ThreatDetection], security_level: SecurityLevel
     ) -> list[str]:
@@ -487,6 +505,7 @@ class XPIADefender(XPIADefenseInterface):
 
         return recommendations
 
+    @log_call
     def _log_security_event(
         self,
         content_type: ContentType,
@@ -519,6 +538,7 @@ class XPIADefender(XPIADefenseInterface):
         if self.config.logging_enabled:
             logger.warning(f"Security event: {json.dumps(event)}")
 
+    @log_call
     def _create_pass_result(self, reason: str) -> ValidationResult:
         """Create a passing validation result"""
         return ValidationResult(
@@ -538,6 +558,7 @@ class WebFetchXPIADefender(XPIADefender):
     Adds URL and prompt validation specific to WebFetch operations.
     """
 
+    @log_call
     async def validate_webfetch_request(
         self, url: str, prompt: str, context: ValidationContext | None = None
     ) -> ValidationResult:
@@ -575,6 +596,7 @@ class WebFetchXPIADefender(XPIADefender):
             timestamp=datetime.now(),
         )
 
+    @log_call
     async def _validate_url(self, url: str) -> list[ThreatDetection]:
         """Validate URL for security threats"""
         threats = []
@@ -681,6 +703,7 @@ class WebFetchXPIADefender(XPIADefender):
 
         return threats
 
+    @log_call
     def _check_combined_attacks(self, url: str, prompt: str) -> list[ThreatDetection]:
         """Check for attacks that combine URL and prompt"""
         threats = []
@@ -711,6 +734,7 @@ class WebFetchXPIADefender(XPIADefender):
 
         return threats
 
+    @log_call
     def _generate_webfetch_recommendations(
         self, threats: list[ThreatDetection], url: str
     ) -> list[str]:

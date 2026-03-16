@@ -14,6 +14,7 @@ from amplihack.vendor.blarify.vendor.multilspy.lsp_protocol_handler.lsp_types im
 from amplihack.vendor.blarify.vendor.multilspy.lsp_protocol_handler.server import ProcessLaunchInfo
 from amplihack.vendor.blarify.vendor.multilspy.multilspy_config import MultilspyConfig
 from amplihack.vendor.blarify.vendor.multilspy.multilspy_logger import MultilspyLogger
+from amplihack.utils.logging_utils import log_call
 
 
 class JediServer(LanguageServer):
@@ -21,6 +22,7 @@ class JediServer(LanguageServer):
     Provides Python specific instantiation of the LanguageServer class. Contains various configurations and settings specific to Python.
     """
 
+    @log_call
     def __init__(self, config: MultilspyConfig, logger: MultilspyLogger, repository_root_path: str):
         """
         Creates a JediServer instance. This class is not meant to be instantiated directly. Use LanguageServer.create() instead.
@@ -33,6 +35,7 @@ class JediServer(LanguageServer):
             "python",
         )
 
+    @log_call
     def _get_initialize_params(self, repository_absolute_path: str) -> InitializeParams:
         """
         Returns the initialize params for the Jedi Language Server.
@@ -58,6 +61,7 @@ class JediServer(LanguageServer):
         return d
 
     @asynccontextmanager
+    @log_call
     async def start_server(self) -> AsyncIterator["JediServer"]:
         """
         Starts the JEDI Language Server, waits for the server to be ready and yields the LanguageServer instance.
@@ -73,16 +77,20 @@ class JediServer(LanguageServer):
         ```
         """
 
+        @log_call
         async def execute_client_command_handler(params):
             return []
 
+        @log_call
         async def do_nothing(params):
             return
 
+        @log_call
         async def check_experimental_status(params):
             if params["quiescent"] == True:
                 self.completions_available.set()
 
+        @log_call
         async def window_log_message(msg):
             self.logger.log(f"LSP: window/logMessage: {msg}", logging.INFO)
 

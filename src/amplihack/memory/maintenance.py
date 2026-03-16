@@ -6,6 +6,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 from .database import MemoryDatabase
 from .models import MemoryQuery
 
@@ -13,6 +15,7 @@ from .models import MemoryQuery
 class MemoryMaintenance:
     """Handles memory system maintenance, cleanup, and optimization."""
 
+    @log_call
     def __init__(self, db_path: Path | None = None):
         """Initialize maintenance system.
 
@@ -21,6 +24,7 @@ class MemoryMaintenance:
         """
         self.db = MemoryDatabase(db_path)
 
+    @log_call
     def cleanup_expired(self) -> dict[str, Any]:
         """Remove expired memories and return cleanup report.
 
@@ -37,6 +41,7 @@ class MemoryMaintenance:
             "timestamp": datetime.now().isoformat(),
         }
 
+    @log_call
     def cleanup_old_sessions(self, older_than_days: int = 30) -> dict[str, Any]:
         """Remove sessions and their memories older than specified days.
 
@@ -98,6 +103,7 @@ class MemoryMaintenance:
             "timestamp": datetime.now().isoformat(),
         }
 
+    @log_call
     def vacuum_database(self) -> dict[str, Any]:
         """Vacuum database to reclaim space and optimize performance.
 
@@ -132,6 +138,7 @@ class MemoryMaintenance:
             "timestamp": datetime.now().isoformat(),
         }
 
+    @log_call
     def analyze_memory_usage(self) -> dict[str, Any]:
         """Analyze memory usage patterns and generate recommendations.
 
@@ -210,6 +217,7 @@ class MemoryMaintenance:
             "timestamp": datetime.now().isoformat(),
         }
 
+    @log_call
     def optimize_indexes(self) -> dict[str, Any]:
         """Analyze and optimize database indexes.
 
@@ -243,6 +251,7 @@ class MemoryMaintenance:
             "timestamp": datetime.now().isoformat(),
         }
 
+    @log_call
     def run_full_maintenance(
         self,
         cleanup_expired: bool = True,
@@ -287,6 +296,7 @@ class MemoryMaintenance:
 
         return results
 
+    @log_call
     def export_session_memories(self, session_id: str, output_path: Path) -> dict[str, Any]:
         """Export all memories from a session to JSON file.
 

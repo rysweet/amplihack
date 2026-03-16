@@ -23,6 +23,8 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 from ..coordinator import MemoryCoordinator, RetrievalQuery, StorageRequest
 from ..types import MemoryType
 
@@ -64,6 +66,7 @@ class PerformanceEvaluator:
     - Scalability: Performance vs database size
     """
 
+    @log_call
     def __init__(self, coordinator: MemoryCoordinator):
         """Initialize evaluator.
 
@@ -73,6 +76,7 @@ class PerformanceEvaluator:
         self.coordinator = coordinator
         self.backend = coordinator.backend
 
+    @log_call
     async def evaluate(self, num_operations: int = 100) -> PerformanceMetrics:
         """Evaluate performance with benchmark operations.
 
@@ -140,6 +144,7 @@ class PerformanceEvaluator:
             backend_name=self.backend.get_capabilities().backend_name,
         )
 
+    @log_call
     async def evaluate_scalability(
         self, scales: list[int] | None = None
     ) -> dict[int, PerformanceMetrics]:
@@ -181,6 +186,7 @@ class PerformanceEvaluator:
 
         return results
 
+    @log_call
     def _get_disk_usage(self) -> int:
         """Get disk usage of backend storage.
 
@@ -211,6 +217,7 @@ class PerformanceEvaluator:
             logger.warning(f"Could not determine disk usage: {e}")
             return 0
 
+    @log_call
     def check_performance_contracts(self, metrics: PerformanceMetrics) -> dict[str, bool]:
         """Check if backend meets performance contracts.
 

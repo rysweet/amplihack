@@ -12,11 +12,12 @@ import json
 import logging
 import shutil
 import subprocess
-import sys
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+
+from amplihack.utils.logging_utils import log_call
 
 logger = logging.getLogger(__name__)
 
@@ -49,10 +50,12 @@ class RustValidationResult:
     raw_json: dict[str, Any] = field(default_factory=dict, repr=False)
 
     @property
+    @log_call
     def should_block(self) -> bool:
         return self.risk_level in ("high", "critical")
 
     @classmethod
+    @log_call
     def from_json(cls, data: dict[str, Any]) -> RustValidationResult:
         return cls(
             is_valid=data.get("is_valid", False),
@@ -60,11 +63,12 @@ class RustValidationResult:
             threats=data.get("threats", []),
             recommendations=data.get("recommendations", []),
             metadata=data.get("metadata", {}),
-            timestamp=data.get("timestamp", datetime.now(timezone.utc).isoformat()),
+            timestamp=data.get("timestamp", datetime.now(UTC).isoformat()),
             raw_json=data,
         )
 
     @classmethod
+    @log_call
     def blocked(cls, reason: str) -> RustValidationResult:
         """Fail-closed: create a blocked result for error conditions."""
         return cls(
@@ -81,10 +85,11 @@ class RustValidationResult:
             ],
             recommendations=["Content blocked due to validation error"],
             metadata={"error": True, "reason": reason},
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
         )
 
 
+@log_call
 def find_binary(*, auto_install: bool = False) -> str:
     """Find the xpia-defend binary.
 
@@ -130,6 +135,7 @@ def find_binary(*, auto_install: bool = False) -> str:
     raise RustXPIAError(msg)
 
 
+@log_call
 def _run_command(args: list[str], stdin_data: str | None = None) -> dict[str, Any]:
     """Run xpia-defend with args, return parsed JSON. Fail-closed on any error."""
     binary = find_binary()
@@ -152,25 +158,23 @@ def _run_command(args: list[str], stdin_data: str | None = None) -> dict[str, An
     # Exit 2 = internal error in the Rust binary — always fail-closed
     if result.returncode == EXIT_ERROR:
         raise RustXPIAError(
-            f"XPIA binary internal error (exit {result.returncode}). "
-            f"stderr: {result.stderr}"
+            f"XPIA binary internal error (exit {result.returncode}). stderr: {result.stderr}"
         )
 
     if not result.stdout.strip():
         raise RustXPIAError(
-            f"XPIA binary produced no output (exit {result.returncode}). "
-            f"stderr: {result.stderr}"
+            f"XPIA binary produced no output (exit {result.returncode}). stderr: {result.stderr}"
         )
 
     try:
         return json.loads(result.stdout)
     except json.JSONDecodeError as e:
         raise RustXPIAError(
-            f"XPIA binary produced invalid JSON: {e}. "
-            f"stdout: {result.stdout[:200]}"
+            f"XPIA binary produced invalid JSON: {e}. stdout: {result.stdout[:200]}"
         ) from e
 
 
+@log_call
 def validate_content(
     content: str,
     content_type: str = "user-input",
@@ -184,9 +188,12 @@ def validate_content(
     try:
         args = [
             "validate-content",
-            "--content-type", content_type,
-            "--security-level", security_level,
-            "--source", source,
+            "--content-type",
+            content_type,
+            "--security-level",
+            security_level,
+            "--source",
+            source,
         ]
         # Use stdin for content to avoid shell injection via args
         data = _run_command(args, stdin_data=content)
@@ -196,6 +203,7 @@ def validate_content(
         return RustValidationResult.blocked(str(e))
 
 
+@log_call
 def validate_bash_command(
     command: str,
     security_level: str = "medium",
@@ -208,9 +216,12 @@ def validate_bash_command(
     try:
         args = [
             "validate-bash",
-            "--command", command,
-            "--security-level", security_level,
-            "--source", source,
+            "--command",
+            command,
+            "--security-level",
+            security_level,
+            "--source",
+            source,
         ]
         data = _run_command(args)
         return RustValidationResult.from_json(data)
@@ -219,6 +230,7 @@ def validate_bash_command(
         return RustValidationResult.blocked(str(e))
 
 
+@log_call
 def validate_webfetch_request(
     url: str,
     prompt: str,
@@ -232,10 +244,14 @@ def validate_webfetch_request(
     try:
         args = [
             "validate-webfetch",
-            "--url", url,
-            "--prompt", prompt,
-            "--security-level", security_level,
-            "--source", source,
+            "--url",
+            url,
+            "--prompt",
+            prompt,
+            "--security-level",
+            security_level,
+            "--source",
+            source,
         ]
         data = _run_command(args)
         return RustValidationResult.from_json(data)
@@ -244,6 +260,7 @@ def validate_webfetch_request(
         return RustValidationResult.blocked(str(e))
 
 
+@log_call
 def validate_agent_communication(
     source_agent: str,
     target_agent: str,
@@ -257,9 +274,12 @@ def validate_agent_communication(
     try:
         args = [
             "validate-agent",
-            "--source-agent", source_agent,
-            "--target-agent", target_agent,
-            "--security-level", security_level,
+            "--source-agent",
+            source_agent,
+            "--target-agent",
+            target_agent,
+            "--security-level",
+            security_level,
         ]
         data = _run_command(args, stdin_data=message)
         return RustValidationResult.from_json(data)
@@ -268,6 +288,7 @@ def validate_agent_communication(
         return RustValidationResult.blocked(str(e))
 
 
+@log_call
 def health_check(settings_path: str | None = None) -> dict[str, Any]:
     """Run XPIA health check via Rust CLI.
 
@@ -280,6 +301,7 @@ def health_check(settings_path: str | None = None) -> dict[str, Any]:
     return _run_command(args)
 
 
+@log_call
 def list_patterns() -> list[dict[str, Any]]:
     """List all registered attack patterns."""
     result = _run_command(["patterns"])
@@ -288,11 +310,13 @@ def list_patterns() -> list[dict[str, Any]]:
     raise RustXPIAError(f"Expected array from 'patterns', got {type(result).__name__}")
 
 
+@log_call
 def get_config(security_level: str = "medium") -> dict[str, Any]:
     """Get security configuration."""
     return _run_command(["config", "--security-level", security_level])
 
 
+@log_call
 def is_available() -> bool:
     """Check if the Rust XPIA binary is available."""
     try:

@@ -12,9 +12,14 @@ Philosophy:
 """
 
 import json
+import logging
 import subprocess
 from dataclasses import dataclass
 from typing import Any
+
+from amplihack.utils.logging_utils import log_call
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -26,8 +31,10 @@ class TodoState:
     in_progress: int
     pending: int
 
+    @log_call
     def __post_init__(self):
         """Validate counts sum to total."""
+        logger.debug("TodoState.__post_init__: called")
         if self.completed + self.in_progress + self.pending != self.total:
             raise ValueError(
                 f"Todo counts don't sum to total: {self.completed} + {self.in_progress} + {self.pending} != {self.total}"
@@ -65,9 +72,12 @@ class WorkSummary:
 class WorkSummaryGenerator:
     """Generate WorkSummary from session state and external tools."""
 
+    @log_call
     def __init__(self):
+        logger.debug("WorkSummaryGenerator.__init__: called")
         self._cache: WorkSummary | None = None
 
+    @log_call
     def generate(self, message_capture: Any) -> WorkSummary:
         """Generate complete WorkSummary.
 
@@ -77,6 +87,7 @@ class WorkSummaryGenerator:
         Returns:
             WorkSummary with all available information
         """
+        logger.debug("WorkSummaryGenerator.generate: called")
         if self._cache is not None:
             return self._cache
 
@@ -96,6 +107,7 @@ class WorkSummaryGenerator:
         self._cache = summary
         return summary
 
+    @log_call
     def _extract_todo_state(self, message_capture: Any) -> TodoState:
         """Extract TodoWrite state from MessageCapture.
 
@@ -105,6 +117,7 @@ class WorkSummaryGenerator:
         Returns:
             TodoState with counts
         """
+        logger.debug("WorkSummaryGenerator._extract_todo_state: called")
         try:
             todo_calls = message_capture.find_tools("TodoWrite")
             if not todo_calls:
@@ -142,12 +155,14 @@ class WorkSummaryGenerator:
             # Graceful degradation
             return TodoState(total=0, completed=0, in_progress=0, pending=0)
 
+    @log_call
     def _extract_git_state(self) -> GitState:
         """Extract Git repository state.
 
         Returns:
             GitState with current branch, uncommitted changes, commits ahead
         """
+        logger.debug("WorkSummaryGenerator._extract_git_state: called")
         try:
             # Get current branch
             result = subprocess.run(
@@ -198,6 +213,7 @@ class WorkSummaryGenerator:
             # Not in git repo or git not available
             return GitState(current_branch=None, has_uncommitted_changes=False, commits_ahead=None)
 
+    @log_call
     def _extract_github_state(self, branch: str) -> GitHubState:
         """Extract GitHub PR state using gh CLI.
 
@@ -207,6 +223,7 @@ class WorkSummaryGenerator:
         Returns:
             GitHubState with PR information (or empty if unavailable)
         """
+        logger.debug(f"WorkSummaryGenerator._extract_github_state: called with branch={branch!r}")
         try:
             # Query gh CLI for PR info
             result = subprocess.run(
@@ -276,6 +293,7 @@ class WorkSummaryGenerator:
             # gh CLI not available or error
             return GitHubState(pr_number=None, pr_state=None, ci_status=None, pr_mergeable=None)
 
+    @log_call
     def format_for_prompt(self, summary: WorkSummary) -> str:
         """Format WorkSummary for LLM prompt injection.
 
@@ -285,6 +303,7 @@ class WorkSummaryGenerator:
         Returns:
             Human-readable summary text
         """
+        logger.debug("WorkSummaryGenerator.format_for_prompt: called")
         lines = ["Work Summary:"]
 
         # Todo state

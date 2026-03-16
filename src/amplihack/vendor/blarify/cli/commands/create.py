@@ -25,14 +25,17 @@ from neo4j_container_manager import (
 )
 from rich.console import Console
 from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
+from amplihack.utils.logging_utils import log_call
 
 
+@log_call
 def generate_neo4j_password() -> str:
     """Generate a secure random password for Neo4j (min 8 chars)."""
     alphabet = string.ascii_letters + string.digits
     return "".join(secrets.choice(alphabet) for _ in range(16))
 
 
+@log_call
 def get_or_create_neo4j_credentials() -> dict[str, str]:
     """Get existing or create new Neo4j credentials."""
     creds_file = Path.home() / ".blarify" / "neo4j_credentials.json"
@@ -49,6 +52,7 @@ def get_or_create_neo4j_credentials() -> dict[str, str]:
         return creds
 
 
+@log_call
 def store_neo4j_credentials(creds: dict[str, str]) -> None:
     """Store Neo4j credentials securely."""
     creds_file = Path.home() / ".blarify" / "neo4j_credentials.json"
@@ -58,6 +62,7 @@ def store_neo4j_credentials(creds: dict[str, str]) -> None:
     creds_file.chmod(0o600)
 
 
+@log_call
 def display_neo4j_connection_info(
     uri: str,
     username: str,
@@ -104,6 +109,7 @@ def display_neo4j_connection_info(
 """)
 
 
+@log_call
 async def get_existing_container(manager: Neo4jContainerManager) -> Neo4jContainerInstance | None:
     """Try to get an existing container."""
     try:
@@ -178,6 +184,7 @@ async def get_existing_container(manager: Neo4jContainerManager) -> Neo4jContain
     return None
 
 
+@log_call
 async def spawn_or_get_neo4j_container() -> Neo4jContainerInstance:
     """Spawn new or get existing Neo4j container."""
     manager = Neo4jContainerManager()
@@ -220,6 +227,7 @@ async def spawn_or_get_neo4j_container() -> Neo4jContainerInstance:
     return instance
 
 
+@log_call
 def should_spawn_neo4j(args: Namespace) -> bool:
     """Check if Neo4j container should be spawned."""
     # Check if Neo4j args are provided (not empty)
@@ -232,6 +240,7 @@ def should_spawn_neo4j(args: Namespace) -> bool:
     return not (has_uri and has_username and has_password)
 
 
+@log_call
 def add_arguments(parser: ArgumentParser) -> None:
     """Add arguments for the create command.
 
@@ -312,6 +321,7 @@ def add_arguments(parser: ArgumentParser) -> None:
     )
 
 
+@log_call
 def execute(args: Namespace) -> int:
     """Execute the create command.
 

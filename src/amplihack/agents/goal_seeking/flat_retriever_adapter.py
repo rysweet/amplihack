@@ -16,6 +16,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 from .hierarchical_memory import HierarchicalMemory, MemoryCategory
 
 
@@ -36,10 +38,12 @@ class FlatRetrieverAdapter:
         >>> print(results[0]["context"])  # "Biology"
     """
 
+    @log_call
     def __init__(self, agent_name: str, db_path: str | Path | None = None):
         self.agent_name = agent_name
         self.memory = HierarchicalMemory(agent_name=agent_name, db_path=db_path)
 
+    @log_call
     def store_fact(
         self,
         context: str,
@@ -86,6 +90,7 @@ class FlatRetrieverAdapter:
             temporal_metadata=temporal_metadata,
         )
 
+    @log_call
     def search(
         self,
         query: str,
@@ -121,6 +126,7 @@ class FlatRetrieverAdapter:
 
         return results[:limit]
 
+    @log_call
     def get_all_facts(self, limit: int = 50) -> list[dict[str, Any]]:
         """Retrieve all facts without keyword filtering.
 
@@ -135,6 +141,7 @@ class FlatRetrieverAdapter:
         nodes = self.memory.get_all_knowledge(limit=limit)
         return [self._node_to_dict(node) for node in nodes]
 
+    @log_call
     def get_statistics(self) -> dict[str, Any]:
         """Get memory statistics.
 
@@ -143,6 +150,7 @@ class FlatRetrieverAdapter:
         """
         return self.memory.get_statistics()
 
+    @log_call
     def retrieve_by_entity(self, entity_name: str, limit: int = 50) -> list[dict[str, Any]]:
         """Retrieve all facts about a specific entity.
 
@@ -158,6 +166,7 @@ class FlatRetrieverAdapter:
         nodes = self.memory.retrieve_by_entity(entity_name=entity_name, limit=limit)
         return [self._node_to_dict(node) for node in nodes]
 
+    @log_call
     def search_by_concept(self, keywords: list[str], limit: int = 30) -> list[dict[str, Any]]:
         """Search for facts by concept/content keyword matching.
 
@@ -174,6 +183,7 @@ class FlatRetrieverAdapter:
         nodes = self.memory.search_by_concept(keywords=keywords, limit=limit)
         return [self._node_to_dict(node) for node in nodes]
 
+    @log_call
     def execute_aggregation(self, query_type: str, entity_filter: str = "") -> dict[str, Any]:
         """Execute Cypher aggregation query for meta-memory questions.
 
@@ -189,6 +199,7 @@ class FlatRetrieverAdapter:
         """
         return self.memory.execute_aggregation(query_type=query_type, entity_filter=entity_filter)
 
+    @log_call
     def store_episode(self, content: str, source_label: str = "") -> str:
         """Store an episode (raw source content).
 
@@ -201,24 +212,29 @@ class FlatRetrieverAdapter:
         """
         return self.memory.store_episode(content=content, source_label=source_label)
 
+    @log_call
     def flush_memory(self) -> None:
         """Flush underlying memory cache without losing data."""
         if hasattr(self.memory, "flush_memory"):
             self.memory.flush_memory()
 
+    @log_call
     def close(self) -> None:
         """Close underlying HierarchicalMemory."""
         self.memory.close()
 
+    @log_call
     def __enter__(self):
         """Context manager entry."""
         return self
 
+    @log_call
     def __exit__(self, *args):
         """Context manager exit."""
         self.close()
 
     @staticmethod
+    @log_call
     def _node_to_dict(node) -> dict[str, Any]:
         """Convert a KnowledgeNode to MemoryRetriever-compatible dict.
 

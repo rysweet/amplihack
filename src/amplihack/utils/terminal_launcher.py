@@ -5,11 +5,14 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 
 class TerminalLauncher:
     """Launches terminals with tail commands across different operating systems."""
 
     @staticmethod
+    @log_call
     def detect_os() -> str:
         """Detect the operating system.
 
@@ -24,6 +27,7 @@ class TerminalLauncher:
         return "linux"
 
     @staticmethod
+    @log_call
     def launch_tail_terminal(file_path: Path) -> tuple[bool, subprocess.Popen | None]:
         """Launch a terminal window tailing the specified file.
 
@@ -50,6 +54,7 @@ class TerminalLauncher:
             return False, None
 
     @staticmethod
+    @log_call
     def _launch_macos_terminal(file_path: Path) -> tuple[bool, subprocess.Popen | None]:
         """Launch macOS Terminal with tail command."""
         script = f'tell app "Terminal" to do script "tail -f {file_path}"'
@@ -67,6 +72,7 @@ class TerminalLauncher:
             return False, None
 
     @staticmethod
+    @log_call
     def _launch_linux_terminal(file_path: Path) -> tuple[bool, subprocess.Popen | None]:
         """Launch Linux terminal with tail command."""
         # Try different terminal emulators in order of preference
@@ -99,6 +105,7 @@ class TerminalLauncher:
         return False, None
 
     @staticmethod
+    @log_call
     def _launch_windows_terminal(file_path: Path) -> tuple[bool, subprocess.Popen | None]:
         """Launch Windows terminal with tail equivalent (Get-Content -Wait)."""
         try:

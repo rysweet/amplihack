@@ -1,8 +1,10 @@
 """Cypher queries for workflow and documentation operations."""
 
 from typing_extensions import LiteralString
+from amplihack.utils.logging_utils import log_call
 
 
+@log_call
 def cleanup_orphaned_documentation_query() -> LiteralString:
     """
     Delete orphaned documentation nodes that have no DESCRIBES relationship.
@@ -21,6 +23,7 @@ def cleanup_orphaned_documentation_query() -> LiteralString:
     """
 
 
+@log_call
 def delete_workflows_for_entry_points_query() -> LiteralString:
     """
     Delete workflow nodes and all related relationships for given entry points.

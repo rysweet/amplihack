@@ -10,6 +10,8 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 from .grader import grade_answer
 from .multi_source_collector import collect_news
 from .quiz_generator import generate_quiz
@@ -34,6 +36,7 @@ class HarnessResult:
     error_message: str | None = None
 
 
+@log_call
 def run_harness(config: HarnessConfig) -> HarnessResult:
     """Run complete evaluation harness.
 
@@ -188,6 +191,7 @@ def run_harness(config: HarnessConfig) -> HarnessResult:
         return HarnessResult(success=False, error_message=str(e))
 
 
+@log_call
 def main():
     """CLI entry point."""
     import argparse

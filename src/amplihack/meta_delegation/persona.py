@@ -18,6 +18,8 @@ Philosophy:
 
 from dataclasses import dataclass
 
+from amplihack.utils.logging_utils import log_call
+
 
 @dataclass(frozen=True)
 class PersonaStrategy:
@@ -201,6 +203,7 @@ _PERSONA_REGISTRY: dict[str, PersonaStrategy] = {
 }
 
 
+@log_call
 def register_persona(name: str, persona: PersonaStrategy) -> None:
     """Register a custom persona strategy.
 
@@ -211,6 +214,7 @@ def register_persona(name: str, persona: PersonaStrategy) -> None:
     _PERSONA_REGISTRY[name] = persona
 
 
+@log_call
 def get_persona_strategy(persona_type: str = "guide") -> PersonaStrategy:
     """Get persona strategy by name.
 

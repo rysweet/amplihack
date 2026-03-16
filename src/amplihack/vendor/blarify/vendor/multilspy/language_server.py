@@ -28,6 +28,7 @@ from .multilspy_exceptions import MultilspyException
 from .multilspy_logger import MultilspyLogger
 from .multilspy_utils import FileUtils, PathUtils, TextUtils
 from .type_helpers import ensure_all_methods_implemented
+from amplihack.utils.logging_utils import log_call
 
 
 @dataclasses.dataclass
@@ -59,6 +60,7 @@ class LanguageServer:
     """
 
     @classmethod
+    @log_call
     def create(
         cls, config: MultilspyConfig, logger: MultilspyLogger, repository_root_path: str
     ) -> "LanguageServer":
@@ -125,6 +127,7 @@ class LanguageServer:
         logger.log(f"Language {config.code_language} is not supported", logging.ERROR)
         raise MultilspyException(f"Language {config.code_language} is not supported")
 
+    @log_call
     def __init__(
         self,
         config: MultilspyConfig,
@@ -158,11 +161,13 @@ class LanguageServer:
 
         if config.trace_lsp_communication:
 
+            @log_call
             def logging_fn(source, target, msg):
                 self.logger.log(f"LSP: {source} -> {target}: {msg!s}", logging.DEBUG)
 
         else:
 
+            @log_call
             def logging_fn(source, target, msg):
                 pass
 
@@ -176,6 +181,7 @@ class LanguageServer:
         self.open_file_buffers: dict[str, LSPFileBuffer] = {}
 
     @asynccontextmanager
+    @log_call
     async def start_server(self) -> AsyncIterator["LanguageServer"]:
         """
         Starts the Language Server and yields the LanguageServer instance.
@@ -198,6 +204,7 @@ class LanguageServer:
     # TODO: Add support for more LSP features
 
     @contextmanager
+    @log_call
     def open_file(self, relative_file_path: str) -> Iterator[None]:
         """
         Open a file in the Language Server. This is required before making any requests to the Language Server.
@@ -250,6 +257,7 @@ class LanguageServer:
             )
             del self.open_file_buffers[uri]
 
+    @log_call
     def insert_text_at_position(
         self, relative_file_path: str, line: int, column: int, text_to_be_inserted: str
     ) -> multilspy_types.Position:
@@ -305,6 +313,7 @@ class LanguageServer:
         )
         return multilspy_types.Position(line=new_l, character=new_c)
 
+    @log_call
     def delete_text_between_positions(
         self,
         relative_file_path: str,
@@ -352,6 +361,7 @@ class LanguageServer:
         )
         return deleted_text
 
+    @log_call
     def get_open_file_text(self, relative_file_path: str) -> str:
         """
         Get the contents of the given opened file as per the Language Server.
@@ -374,6 +384,7 @@ class LanguageServer:
         file_buffer = self.open_file_buffers[uri]
         return file_buffer.contents
 
+    @log_call
     async def request_definition(
         self, relative_file_path: str, line: int, column: int
     ) -> list[multilspy_types.Location]:
@@ -468,6 +479,7 @@ class LanguageServer:
 
         return ret
 
+    @log_call
     async def request_references(
         self, relative_file_path: str, line: int, column: int
     ) -> list[multilspy_types.Location]:
@@ -528,6 +540,7 @@ class LanguageServer:
 
         return ret
 
+    @log_call
     async def request_completions(
         self,
         relative_file_path: str,
@@ -631,6 +644,7 @@ class LanguageServer:
                 )
             ]
 
+    @log_call
     async def request_document_symbols(
         self, relative_file_path: str
     ) -> tuple[
@@ -668,6 +682,7 @@ class LanguageServer:
             if LSPConstants.CHILDREN in item:
                 # TODO: l_tree should be a list of TreeRepr. Define the following function to return TreeRepr as well
 
+                @log_call
                 def visit_tree_nodes_and_build_tree_repr(
                     tree: LSPTypes.DocumentSymbol,
                 ) -> list[multilspy_types.UnifiedSymbolInformation]:
@@ -686,6 +701,7 @@ class LanguageServer:
         print(f"Document symbols for {relative_file_path} received")
         return ret, l_tree
 
+    @log_call
     async def request_hover(
         self, relative_file_path: str, line: int, column: int
     ) -> multilspy_types.Hover | None:
@@ -729,6 +745,7 @@ class SyncLanguageServer:
     It is used to communicate with Language Servers of different programming languages.
     """
 
+    @log_call
     def __init__(self, language_server: LanguageServer, timeout: int | None = None) -> None:
         self.language_server = language_server
         self.loop = None
@@ -736,6 +753,7 @@ class SyncLanguageServer:
         self.timeout = timeout
 
     @classmethod
+    @log_call
     def create(
         cls,
         config: MultilspyConfig,
@@ -760,6 +778,7 @@ class SyncLanguageServer:
         )
 
     @contextmanager
+    @log_call
     def open_file(self, relative_file_path: str) -> Iterator[None]:
         """
         Open a file in the Language Server. This is required before making any requests to the Language Server.
@@ -769,6 +788,7 @@ class SyncLanguageServer:
         with self.language_server.open_file(relative_file_path):
             yield
 
+    @log_call
     def insert_text_at_position(
         self, relative_file_path: str, line: int, column: int, text_to_be_inserted: str
     ) -> multilspy_types.Position:
@@ -785,6 +805,7 @@ class SyncLanguageServer:
             relative_file_path, line, column, text_to_be_inserted
         )
 
+    @log_call
     def delete_text_between_positions(
         self,
         relative_file_path: str,
@@ -796,6 +817,7 @@ class SyncLanguageServer:
         """
         return self.language_server.delete_text_between_positions(relative_file_path, start, end)
 
+    @log_call
     def get_open_file_text(self, relative_file_path: str) -> str:
         """
         Get the contents of the given opened file as per the Language Server.
@@ -805,6 +827,7 @@ class SyncLanguageServer:
         return self.language_server.get_open_file_text(relative_file_path)
 
     @contextmanager
+    @log_call
     def start_server(self) -> Iterator["SyncLanguageServer"]:
         """
         Starts the language server process and connects to it.
@@ -821,6 +844,7 @@ class SyncLanguageServer:
         self.loop.call_soon_threadsafe(self.loop.stop)
         loop_thread.join()
 
+    @log_call
     def request_definition(
         self, file_path: str, line: int, column: int
     ) -> list[multilspy_types.Location]:
@@ -839,6 +863,7 @@ class SyncLanguageServer:
         ).result(timeout=self.timeout)
         return result
 
+    @log_call
     def request_references(
         self, file_path: str, line: int, column: int
     ) -> list[multilspy_types.Location]:
@@ -857,6 +882,7 @@ class SyncLanguageServer:
         ).result(timeout=self.timeout)
         return result
 
+    @log_call
     def request_completions(
         self,
         relative_file_path: str,
@@ -882,6 +908,7 @@ class SyncLanguageServer:
         ).result(timeout=self.timeout)
         return result
 
+    @log_call
     def request_document_symbols(
         self, relative_file_path: str
     ) -> tuple[
@@ -901,6 +928,7 @@ class SyncLanguageServer:
         ).result(timeout=self.timeout)
         return result
 
+    @log_call
     def request_hover(
         self, relative_file_path: str, line: int, column: int
     ) -> multilspy_types.Hover | None:

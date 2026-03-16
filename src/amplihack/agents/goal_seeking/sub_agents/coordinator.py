@@ -17,6 +17,8 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 logger = logging.getLogger(__name__)
 
 
@@ -61,9 +63,11 @@ class CoordinatorAgent:
         >>> print(route.retrieval_strategy)  # "aggregation"
     """
 
+    @log_call
     def __init__(self, agent_name: str = "coordinator"):
         self.agent_name = agent_name
 
+    @log_call
     def classify(self, question: str, intent: dict[str, Any]) -> TaskRoute:
         """Classify a question and determine the execution route.
 

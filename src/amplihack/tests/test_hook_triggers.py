@@ -8,11 +8,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest  # pyright: ignore[reportMissingImports]
 
+from amplihack.utils.logging_utils import log_call
+
 
 class TestHookRegistration:
     """Test hook registration and callback setup."""
 
     @pytest.mark.skip(reason="Hook implementation needs to be finalized")
+    @log_call
     def test_blarify_hook_registers_on_startup(self):
         """Test that blarify hook is registered during initialization."""
         # ARRANGE: Mock hook registry
@@ -28,11 +31,13 @@ class TestHookRegistration:
             pass
 
     @pytest.mark.skip(reason="Hook implementation needs to be finalized")
+    @log_call
     def test_hook_callback_receives_tool_use_events(self):
         """Test that hook callback receives tool use events."""
         # ARRANGE: Setup hook callback
         events_received = []
 
+        @log_call
         def mock_callback(tool_name, tool_args, tool_result):
             events_received.append({"tool": tool_name, "args": tool_args, "result": tool_result})
 
@@ -67,6 +72,7 @@ class TestFileTypeFiltering:
             (".gitignore", False),
         ],
     )
+    @log_call
     def test_file_type_filter(self, file_path, should_trigger):
         """Test that only code files trigger staleness check."""
         # ARRANGE: Import filter function
@@ -99,6 +105,7 @@ class TestDirectoryFiltering:
             ("dist/build.py", False),
         ],
     )
+    @log_call
     def test_directory_filter(self, file_path, should_trigger):
         """Test that ignored directories don't trigger staleness check."""
         # ARRANGE: Import ignored directories
@@ -117,6 +124,7 @@ class TestDirectoryFiltering:
 class TestThresholdBehavior:
     """Test staleness threshold and batching behavior."""
 
+    @log_call
     def test_single_edit_does_not_trigger_immediate_prompt(self, tmp_path):
         """Test that single edit doesn't spam user with prompts."""
         # ARRANGE: Large project with many files
@@ -152,6 +160,7 @@ class TestThresholdBehavior:
         # In production, hook would check if % changed > threshold before prompting
 
     @pytest.mark.skip(reason="Threshold policy needs implementation")
+    @log_call
     def test_multiple_edits_exceed_threshold(self, tmp_path):
         """Test that exceeding threshold triggers reindex prompt."""
         # ARRANGE: Project with 100 files
@@ -187,11 +196,13 @@ class TestThresholdBehavior:
 class TestHookPerformance:
     """Test performance of hook operations."""
 
+    @log_call
     def test_hook_callback_completes_quickly(self, tmp_path):
         """Test that hook callback doesn't block tool execution."""
         import time
 
         # ARRANGE: Mock hook callback
+        @log_call
         def mock_hook_callback(tool_name, tool_args, tool_result):
             # Simulate staleness check
             if tool_name in ["Edit", "Write"]:
@@ -208,6 +219,7 @@ class TestHookPerformance:
         # ASSERT: Should complete in < 10ms (hook overhead)
         assert elapsed_time < 0.01
 
+    @log_call
     def test_staleness_check_in_hook_fast(self, tmp_path):
         """Test that staleness check in hook context is fast."""
         import time
@@ -233,6 +245,7 @@ class TestHookPerformance:
 class TestErrorHandling:
     """Test error handling in hook callbacks."""
 
+    @log_call
     def test_hook_handles_missing_project_path(self):
         """Test graceful handling when project path is invalid."""
         from amplihack.memory.kuzu.indexing.staleness_detector import (
@@ -248,6 +261,7 @@ class TestErrorHandling:
             # If it raises, it should be a specific exception
             assert "not exist" in str(e).lower() or "permission" in str(e).lower()
 
+    @log_call
     def test_hook_handles_permission_errors(self, tmp_path):
         """Test handling of permission errors during staleness check."""
         # ARRANGE: Create project with restricted permissions
@@ -285,6 +299,7 @@ class TestErrorHandling:
 class TestRealisticScenarios:
     """Test realistic usage scenarios."""
 
+    @log_call
     def test_typical_development_workflow(self, tmp_path):
         """Test typical workflow: Edit multiple files, check staleness."""
         from amplihack.memory.kuzu.indexing.staleness_detector import (
@@ -324,6 +339,7 @@ class TestRealisticScenarios:
         assert status_after.estimated_files == 4
 
     @pytest.mark.skip(reason="Full integration test")
+    @log_call
     def test_hook_integration_with_orchestrator(self, tmp_path):
         """Test full integration: Hook detects → Orchestrator runs → Graph updates."""
         # This would be the CRITICAL PATH integration test
@@ -336,11 +352,13 @@ class TestRealisticScenarios:
 
 
 @pytest.fixture
+@log_call
 def mock_hook_registry():
     """Mock hook registry for testing registration."""
     registry = MagicMock()
     registry.registered_hooks = []
 
+    @log_call
     def register_hook(hook_name, callback):
         registry.registered_hooks.append({"name": hook_name, "callback": callback})
 
@@ -349,6 +367,7 @@ def mock_hook_registry():
 
 
 @pytest.fixture
+@log_call
 def sample_tool_event():
     """Sample tool use event for testing."""
     return {

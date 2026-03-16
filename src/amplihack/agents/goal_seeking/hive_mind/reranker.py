@@ -28,6 +28,8 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+from amplihack.utils.logging_utils import log_call
+
 from .constants import (
     CONFIRMATION_NORMALIZATION_DIVISOR,
     DEFAULT_CONFIRMATION_WEIGHT,
@@ -97,6 +99,7 @@ class CrossEncoderReranker:
         ...     scored = reranker.rerank("DNA info", [fact1, fact2])
     """
 
+    @log_call
     def __init__(self, model_name: str = DEFAULT_CROSS_ENCODER_MODEL) -> None:
         self._model_name = model_name
         self._model: CrossEncoder | None = None
@@ -110,10 +113,12 @@ class CrossEncoderReranker:
                 self._model = None
 
     @property
+    @log_call
     def available(self) -> bool:
         """Whether the cross-encoder model is loaded and ready."""
         return self._model is not None
 
+    @log_call
     def rerank(
         self,
         query: str,
@@ -164,6 +169,7 @@ class CrossEncoderReranker:
 # ---------------------------------------------------------------------------
 
 
+@log_call
 def hybrid_score(
     keyword_score: float,
     vector_score: float,
@@ -189,6 +195,7 @@ def hybrid_score(
 # ---------------------------------------------------------------------------
 
 
+@log_call
 def rrf_merge(
     *ranked_lists: list[Any],
     key: str = "fact_id",
@@ -229,6 +236,7 @@ def rrf_merge(
     return result[:limit]
 
 
+@log_call
 def trust_weighted_score(
     similarity: float,
     trust: float,
@@ -261,6 +269,7 @@ def trust_weighted_score(
     return w_similarity * similarity_norm + w_trust * trust_norm + w_confidence * confidence_norm
 
 
+@log_call
 def hybrid_score_weighted(
     semantic_similarity: float = 0.0,
     confirmation_count: int = 0,

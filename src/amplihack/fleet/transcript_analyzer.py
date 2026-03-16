@@ -22,8 +22,8 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 from amplihack.fleet._transcript_report import (
-    ALL_EXPECTED_STEPS,
     AGENT_RE,
+    ALL_EXPECTED_STEPS,
     SKILL_INVOKE_RE,
     SKILL_RE,
     STRATEGY_KEYWORDS,
@@ -32,6 +32,7 @@ from amplihack.fleet._transcript_report import (
     format_report,
 )
 from amplihack.fleet._validation import validate_vm_name
+from amplihack.utils.logging_utils import log_call
 
 __all__ = [
     "TranscriptAnalyzer",
@@ -42,6 +43,7 @@ __all__ = [
 ]
 
 
+@log_call
 def gather_local_transcripts() -> list[Path]:
     """Find local JSONL transcript files under ~/.claude/projects/.
 
@@ -52,6 +54,7 @@ def gather_local_transcripts() -> list[Path]:
     if not projects_dir.is_dir():
         return []
 
+    @log_call
     def _safe_mtime(p: Path) -> float:
         try:
             return p.stat().st_mtime
@@ -62,6 +65,7 @@ def gather_local_transcripts() -> list[Path]:
     return sorted(projects_dir.rglob("*.jsonl"), key=_safe_mtime, reverse=True)
 
 
+@log_call
 def gather_remote_transcripts(
     vm_names: list[str],
     azlin_path: str | None = None,
@@ -69,6 +73,7 @@ def gather_remote_transcripts(
     """Gather transcript summaries from remote VMs via azlin."""
     if azlin_path is None:
         from amplihack.fleet._defaults import get_azlin_path
+
         azlin_path = get_azlin_path()
 
     remote_script = _build_remote_summary_script()
@@ -79,7 +84,9 @@ def gather_remote_transcripts(
             validate_vm_name(vm)
             proc = subprocess.run(
                 [azlin_path, "connect", vm, "--no-tmux", "--", "python3", "-c", remote_script],
-                capture_output=True, text=True, timeout=60,
+                capture_output=True,
+                text=True,
+                timeout=60,
             )
             if proc.returncode == 0 and proc.stdout.strip():
                 results[vm] = json.loads(proc.stdout.strip())
@@ -92,6 +99,7 @@ def gather_remote_transcripts(
     return results
 
 
+@log_call
 def _build_remote_summary_script() -> str:
     """Return a self-contained Python script that summarises JSONL files remotely."""
     return (
@@ -121,17 +129,23 @@ def _build_remote_summary_script() -> str:
 class TranscriptAnalyzer:
     """Analyzes Claude Code JSONL transcripts for patterns and metrics."""
 
+    @log_call
     def __init__(self) -> None:
         self._report: AnalysisReport | None = None
 
+    @log_call
     def gather_local(self) -> list[Path]:
         """Find local JSONL transcript files."""
         return gather_local_transcripts()
 
-    def gather_remote(self, vm_names: list[str], azlin_path: str | None = None) -> dict[str, list[dict]]:
+    @log_call
+    def gather_remote(
+        self, vm_names: list[str], azlin_path: str | None = None
+    ) -> dict[str, list[dict]]:
         """Gather transcript summaries from remote azlin VMs."""
         return gather_remote_transcripts(vm_names, azlin_path=azlin_path)
 
+    @log_call
     def analyze(self, transcripts: list[Path]) -> AnalysisReport:
         """Parse JSONL files and extract tool/strategy/agent patterns."""
         report = AnalysisReport(total_transcripts=len(transcripts))
@@ -148,6 +162,7 @@ class TranscriptAnalyzer:
         self._report = report
         return report
 
+    @log_call
     def _analyze_single(self, path, report, steps_seen, steps_total):
         """Analyze a single JSONL transcript file."""
         transcript_has_step: set[str] = set()
@@ -177,6 +192,7 @@ class TranscriptAnalyzer:
             step_key = f"step_{i}"
             steps_total[step_key] = steps_total.get(step_key, 0) + 1
 
+    @log_call
     def _extract_assistant_patterns(self, entry, report, transcript_steps):
         """Extract patterns from an assistant message entry."""
         message = entry.get("message", {})
@@ -191,7 +207,9 @@ class TranscriptAnalyzer:
                 tool_name = block.get("name", "unknown")
                 report.tool_usage[tool_name] += 1
                 tool_input = block.get("input", {})
-                input_str = json.dumps(tool_input) if isinstance(tool_input, dict) else str(tool_input)
+                input_str = (
+                    json.dumps(tool_input) if isinstance(tool_input, dict) else str(tool_input)
+                )
                 self._scan_for_skills(input_str, report)
                 self._scan_for_agents(input_str, report)
             elif block_type == "text":
@@ -201,6 +219,7 @@ class TranscriptAnalyzer:
                 self._scan_for_strategies(text, report)
                 self._scan_for_workflow_steps(text, transcript_steps)
 
+    @log_call
     def _extract_user_patterns(self, entry, report):
         """Extract patterns from a user message entry."""
         message = entry.get("message", {})
@@ -211,32 +230,38 @@ class TranscriptAnalyzer:
             text = str(content)
         self._scan_for_strategies(text, report)
 
+    @log_call
     def _scan_for_skills(self, text, report):
         for match in SKILL_RE.finditer(text):
             report.skill_invocations[match.group(1)] += 1
         for match in SKILL_INVOKE_RE.finditer(text):
             report.skill_invocations[match.group(1)] += 1
 
+    @log_call
     def _scan_for_agents(self, text, report):
         for match in AGENT_RE.finditer(text):
             report.agent_types[match.group(1)] += 1
 
+    @log_call
     def _scan_for_strategies(self, text, report):
         text_lower = text.lower()
         for keyword, strategy_name in STRATEGY_KEYWORDS.items():
             if keyword in text_lower:
                 report.strategy_patterns[strategy_name] += 1
 
+    @log_call
     def _scan_for_workflow_steps(self, text, steps):
         for match in WORKFLOW_STEP_RE.finditer(text):
             steps.add(f"step_{match.group(1)}")
 
+    @log_call
     def report(self) -> str:
         """Produce a human-readable report from the most recent analysis."""
         if self._report is None:
             raise RuntimeError("Call analyze() before report()")
         return format_report(self._report)
 
+    @log_call
     def update_strategy_dictionary(self, dict_path: Path) -> int:
         """Append newly discovered strategy patterns to a STRATEGY_DICTIONARY.md."""
         if self._report is None:

@@ -35,6 +35,8 @@ import importlib.util
 from dataclasses import dataclass
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 # ---------------------------------------------------------------------------
 # Configuration: dependencies and paths to check
 # ---------------------------------------------------------------------------
@@ -57,6 +59,7 @@ _CRITICAL_PATHS: tuple[str, ...] = (
 # Public contract
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class HealthReport:
     """Immutable result of a health check run.
@@ -74,6 +77,7 @@ class HealthReport:
     details: dict
 
 
+@log_call
 def check_health() -> HealthReport:
     """Run all system health checks and return a HealthReport.
 
@@ -102,7 +106,7 @@ def check_health() -> HealthReport:
     # Path checks
     try:
         root = _project_root()
-    except Exception:  # noqa: BLE001
+    except Exception:
         root = None
 
     for path_name in _CRITICAL_PATHS:
@@ -137,6 +141,8 @@ def check_health() -> HealthReport:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
+@log_call
 def _project_root() -> Path:
     """Return the project root directory.
 
@@ -148,6 +154,7 @@ def _project_root() -> Path:
     return Path(__file__).resolve().parent.parent.parent
 
 
+@log_call
 def _check_dependency(pkg: str) -> tuple[bool, str]:
     """Check whether a Python package is importable without executing it.
 
@@ -168,7 +175,7 @@ def _check_dependency(pkg: str) -> tuple[bool, str]:
         spec = importlib.util.find_spec(pkg)
     except (ModuleNotFoundError, ImportError, AttributeError, ValueError):
         return False, "not found"
-    except Exception:  # noqa: BLE001
+    except Exception:
         return False, "internal error"
 
     if spec is None:
@@ -177,6 +184,7 @@ def _check_dependency(pkg: str) -> tuple[bool, str]:
     return True, "found"
 
 
+@log_call
 def _check_path(path: Path) -> tuple[bool, str]:
     """Check whether a filesystem path exists.
 
@@ -192,7 +200,7 @@ def _check_path(path: Path) -> tuple[bool, str]:
     """
     try:
         exists = path.exists()
-    except Exception:  # noqa: BLE001
+    except Exception:
         return False, "internal error"
 
     if exists:

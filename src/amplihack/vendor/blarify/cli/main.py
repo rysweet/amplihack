@@ -4,8 +4,10 @@ import argparse
 import sys
 
 from amplihack.vendor.blarify.cli.commands import create
+from amplihack.utils.logging_utils import log_call
 
 
+@log_call
 def main(args: list[str] | None = None) -> int:
     """Main entry point for the Blarify CLI.
 

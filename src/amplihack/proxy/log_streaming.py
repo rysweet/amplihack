@@ -8,6 +8,8 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 from weakref import WeakSet
 
+from amplihack.utils.logging_utils import log_call
+
 if TYPE_CHECKING:
     from fastapi import FastAPI, Response  # type: ignore[import-untyped]
     from fastapi.responses import StreamingResponse  # type: ignore[import-untyped]
@@ -27,6 +29,7 @@ else:
 class LogStreamer(logging.Handler):
     """Unified log streaming handler with SSE broadcasting."""
 
+    @log_call
     def __init__(self):
         """Initialize the log streamer."""
         super().__init__()
@@ -36,6 +39,7 @@ class LogStreamer(logging.Handler):
             r'(?i)(?:api[_-]?key|token|password|authorization)["\s:=]*["\s]*([a-zA-Z0-9\-_+/=!@#$%^&*()]{8,})|sk-[a-zA-Z0-9]{48}|Bearer\s+[a-zA-Z0-9\-_+/=]{20,}'
         )
 
+    @log_call
     def add_client(self) -> asyncio.Queue | None:
         """Add SSE client. Returns queue or None if limit reached."""
         if len(self._clients) >= 10:  # Hard limit
@@ -45,21 +49,25 @@ class LogStreamer(logging.Handler):
         self._weak_clients.add(queue)
         return queue
 
+    @log_call
     def remove_client(self, queue: asyncio.Queue) -> None:
         """Remove SSE client."""
         self._clients.discard(queue)
         self._weak_clients.discard(queue)
 
+    @log_call
     def get_client_count(self) -> int:
         """Get connected client count."""
         return len(self._clients)
 
+    @log_call
     def _sanitize(self, message: str) -> tuple[str, bool]:
         """Remove credentials from log message."""
         if self._credential_pattern.search(message):
             return self._credential_pattern.sub("<REDACTED>", message), True
         return message, False
 
+    @log_call
     def emit(self, record: logging.LogRecord) -> None:
         """Handle log record by streaming to SSE clients."""
         if not self._clients:
@@ -102,6 +110,7 @@ class LogStreamer(logging.Handler):
 class LogStreamingService:
     """Main log streaming service."""
 
+    @log_call
     def __init__(self, port: int):
         """Initialize service on localhost for security."""
         self.port = port
@@ -109,17 +118,20 @@ class LogStreamingService:
         self.server_task: asyncio.Task | None = None
         self.running = False
 
+    @log_call
     def _create_app(self) -> FastAPI:
         """Create FastAPI app with SSE endpoint."""
         app = FastAPI()
 
         @app.get("/stream/logs")
+        @log_call
         async def stream_logs() -> StreamingResponse:
             """SSE endpoint for log streaming."""
             queue = self.streamer.add_client()
             if not queue:
                 return Response("Max clients reached", status_code=503)
 
+            @log_call
             async def events():
                 try:
                     # Send connection event
@@ -139,11 +151,13 @@ class LogStreamingService:
             )
 
         @app.get("/health")
+        @log_call
         async def health():
             return {"clients": self.streamer.get_client_count()}
 
         return app
 
+    @log_call
     def _setup_logging(self) -> None:
         """Setup logging integration."""
         formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -151,6 +165,7 @@ class LogStreamingService:
         self.streamer.setLevel(logging.DEBUG)
         logging.getLogger().addHandler(self.streamer)
 
+    @log_call
     async def start(self) -> bool:
         """Start the log streaming service."""
         if self.running:
@@ -182,6 +197,7 @@ class LogStreamingService:
             print(f"Log streaming failed: {e}")
             return False
 
+    @log_call
     async def stop(self) -> None:
         """Stop the service."""
         if not self.running:
@@ -199,6 +215,7 @@ class LogStreamingService:
         except Exception:
             pass
 
+    @log_call
     def is_running(self) -> bool:
         """Check if service is running."""
         if not self.running or not self.server_task:

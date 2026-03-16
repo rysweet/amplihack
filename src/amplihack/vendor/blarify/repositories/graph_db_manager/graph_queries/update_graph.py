@@ -7,8 +7,10 @@ Note: Index and constraint creation queries are handled by neo4j_manager.py meth
 """
 
 from typing_extensions import LiteralString
+from amplihack.utils.logging_utils import log_call
 
 
+@log_call
 def detach_delete_nodes_by_paths_query() -> LiteralString:
     """
     Returns the Cypher query for deleting nodes by file paths.
@@ -23,6 +25,7 @@ def detach_delete_nodes_by_paths_query() -> LiteralString:
     """
 
 
+@log_call
 def detach_delete_nodes_by_diff_identifier_query() -> LiteralString:
     """
     Returns the Cypher query for deleting nodes by diff identifier.
@@ -36,6 +39,7 @@ def detach_delete_nodes_by_diff_identifier_query() -> LiteralString:
     """
 
 
+@log_call
 def detach_delete_nodes_by_node_ids_query() -> LiteralString:
     """
     Returns the Cypher query for deleting nodes by their IDs.
@@ -50,6 +54,7 @@ def detach_delete_nodes_by_node_ids_query() -> LiteralString:
     """
 
 
+@log_call
 def match_empty_folders_query() -> LiteralString:
     """
     Returns the Cypher query for finding empty folder nodes.

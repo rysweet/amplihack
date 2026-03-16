@@ -18,16 +18,16 @@ TDD corrections (issue #3080):
 import hashlib
 import logging
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, call, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
 from amplihack.launcher.core import ClaudeLauncher
 
-
 # ---------------------------------------------------------------------------
 # Shared mock factories
 # ---------------------------------------------------------------------------
+
 
 def _make_stale_status():
     """Return a mock IndexStatus indicating a stale index that needs re-indexing."""
@@ -51,6 +51,7 @@ def _make_time_estimate():
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def mock_project_path(tmp_path):
     """Create a temporary project directory."""
@@ -68,6 +69,7 @@ def launcher():
 # ---------------------------------------------------------------------------
 # TestProjectConsentCaching
 # ---------------------------------------------------------------------------
+
 
 class TestProjectConsentCaching:
     """Test per-project consent caching mechanism.
@@ -117,6 +119,7 @@ class TestProjectConsentCaching:
 # ---------------------------------------------------------------------------
 # TestBlarifyPromptLogic
 # ---------------------------------------------------------------------------
+
 
 class TestBlarifyPromptLogic:
     """Test blarify prompt logic and user interaction.
@@ -350,6 +353,7 @@ class TestBlarifyPromptLogic:
 # TestBlarifyExecution
 # ---------------------------------------------------------------------------
 
+
 class TestBlarifyExecution:
     """Test blarify execution and Kuzu import.
 
@@ -433,6 +437,7 @@ class TestBlarifyExecution:
 # ---------------------------------------------------------------------------
 # TestIntegrationWithPrepareLaunch
 # ---------------------------------------------------------------------------
+
 
 class TestIntegrationWithPrepareLaunch:
     """Test integration with prepare_launch method.

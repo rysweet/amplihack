@@ -16,6 +16,8 @@ from textual import work
 from textual.widgets import DataTable, Static, TabbedContent
 from textual.worker import get_current_worker
 
+from amplihack.utils.logging_utils import log_call
+
 if TYPE_CHECKING:
     from amplihack.fleet.fleet_tui import SessionView, VMView
 
@@ -30,9 +32,10 @@ class _CachedSession:
 
     view: SessionView
     tmux_capture: str = ""
-    proposal: "SessionDecision | None" = None
+    proposal: SessionDecision | None = None
 
 
+@log_call
 def build_rows_and_cache(
     vms: list[VMView],
     old_cache: dict[str, _CachedSession],
@@ -112,6 +115,7 @@ def build_rows_and_cache(
 class _RefreshMixin:
     """Data-fetching and table-refresh methods for FleetDashboardApp."""
 
+    @log_call
     def _schedule_refresh(self) -> None:
         if self._refreshing:
             return
@@ -121,6 +125,7 @@ class _RefreshMixin:
         self._do_refresh()
 
     @work(thread=True)
+    @log_call
     def _do_refresh(self) -> None:
         """Poll all VMs via azlin in a background thread (two-phase)."""
         from amplihack.fleet.fleet_tui import VMView
@@ -130,6 +135,7 @@ class _RefreshMixin:
 
         try:
             from amplihack.fleet._vm_discovery import get_vm_list
+
             vm_list = get_vm_list(self._fleet.azlin_path)
         except Exception as exc:
             logger.error("Phase 1 VM list fetch failed: %s", exc)
@@ -150,12 +156,20 @@ class _RefreshMixin:
         managed_vm_names = {vm.name for vm in quick_managed}
         managed_rows, new_cache = build_rows_and_cache(quick_managed, self._cache)
         all_rows, all_cache = build_rows_and_cache(
-            quick_all, self._cache, include_mgd_column=True, managed_vm_names=managed_vm_names,
+            quick_all,
+            self._cache,
+            include_mgd_column=True,
+            managed_vm_names=managed_vm_names,
         )
         new_cache.update(all_cache)
         self.call_from_thread(
-            self._apply_refresh, quick_managed, managed_rows, new_cache,
-            all_rows, all_cache, managed_vm_names,
+            self._apply_refresh,
+            quick_managed,
+            managed_rows,
+            new_cache,
+            all_rows,
+            all_cache,
+            managed_vm_names,
         )
 
         if worker.is_cancelled:
@@ -174,12 +188,19 @@ class _RefreshMixin:
                 managed_vms = [v for v in all_vms if v.name not in self._fleet.exclude_vms]
                 managed_rows, new_cache = build_rows_and_cache(managed_vms, self._cache)
                 all_rows, all_cache = build_rows_and_cache(
-                    all_vms, self._all_cache,
-                    managed_vm_names=managed_vm_names, include_mgd_column=True,
+                    all_vms,
+                    self._all_cache,
+                    managed_vm_names=managed_vm_names,
+                    include_mgd_column=True,
                 )
                 self.call_from_thread(
-                    self._apply_refresh, managed_vms, managed_rows, new_cache,
-                    all_rows, all_cache, managed_vm_names,
+                    self._apply_refresh,
+                    managed_vms,
+                    managed_rows,
+                    new_cache,
+                    all_rows,
+                    all_cache,
+                    managed_vm_names,
                 )
         except Exception as exc:
             logger.warning("Fleet refresh failed: %s", exc)
@@ -187,15 +208,21 @@ class _RefreshMixin:
         finally:
             self.call_from_thread(self._finish_refresh)
 
+    @log_call
     def _finish_refresh(self) -> None:
         """Mark refresh cycle complete (main thread)."""
         self._refreshing = False
         self.remove_class("active-loading")
 
+    @log_call
     def _apply_refresh(
-        self, vms: list[VMView], rows: list[tuple[str, list[str]]],
-        new_cache: dict[str, _CachedSession], all_rows: list[tuple[str, list[str]]],
-        all_cache: dict[str, _CachedSession], managed_vm_names: set[str],
+        self,
+        vms: list[VMView],
+        rows: list[tuple[str, list[str]]],
+        new_cache: dict[str, _CachedSession],
+        all_rows: list[tuple[str, list[str]]],
+        all_cache: dict[str, _CachedSession],
+        managed_vm_names: set[str],
     ) -> None:
         """Update UI with refreshed data (main thread).
 
@@ -235,7 +262,9 @@ class _RefreshMixin:
 
         total_sessions = sum(1 for v in vms for _ in v.sessions if v.is_running)
         active = sum(
-            1 for v in vms for s in v.sessions
+            1
+            for v in vms
+            for s in v.sessions
             if v.is_running and s.status in ("thinking", "working", "running", "waiting_input")
         )
         idle = sum(1 for v in vms for s in v.sessions if v.is_running and s.status == "idle")
@@ -249,11 +278,14 @@ class _RefreshMixin:
         self.query_one("#fleet-summary", Static).update(summary)
 
     @staticmethod
+    @log_call
     def _get_dashboard():
         """Create a FleetDashboard instance with the standard persist path."""
         from amplihack.fleet.fleet_dashboard import FleetDashboard
+
         return FleetDashboard(persist_path=Path.home() / ".amplihack" / "fleet" / "dashboard.json")
 
+    @log_call
     def _refresh_projects_table(self) -> None:
         """Populate the projects tab DataTable from FleetDashboard."""
         dash = self._get_dashboard()

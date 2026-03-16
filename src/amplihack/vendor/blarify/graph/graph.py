@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, cast
 from amplihack.vendor.blarify.graph.node import Node, NodeLabels
 from amplihack.vendor.blarify.graph.node.file_node import FileNode
 from amplihack.vendor.blarify.graph.node.folder_node import FolderNode
+from amplihack.utils.logging_utils import log_call
 
 if TYPE_CHECKING:
     from ..graph.relationship import Relationship
@@ -19,6 +20,7 @@ class Graph:
     __nodes: dict[str, Node]
     __references_relationships: list["Relationship"]
 
+    @log_call
     def __init__(self) -> None:
         self.__nodes: dict[str, Node] = {}
         self.__references_relationships: list[Relationship] = []
@@ -28,13 +30,16 @@ class Graph:
         self.nodes_by_label: defaultdict[str, set[Node]] = defaultdict(set)
         self.nodes_by_relative_id: dict[str, Node] = {}
 
+    @log_call
     def has_folder_node_with_path(self, path: str) -> bool:
         return path in self.folder_nodes_by_path
 
+    @log_call
     def add_nodes(self, nodes: Sequence[Node]) -> None:
         for node in nodes:
             self.add_node(node)
 
+    @log_call
     def add_node(self, node: Node) -> None:
         self.__nodes[node.id] = node
         self.nodes_by_path[node.path].add(node)
@@ -47,24 +52,31 @@ class Graph:
         if node.label == NodeLabels.FOLDER:
             self.folder_nodes_by_path[node.path] = cast(FolderNode, node)
 
+    @log_call
     def get_nodes_by_path(self, path: str) -> set[Node]:
         return self.nodes_by_path[path]
 
+    @log_call
     def get_file_node_by_path(self, path: str) -> Node | None:
         return self.file_nodes_by_path.get(path)
 
+    @log_call
     def get_folder_node_by_path(self, path: str) -> FolderNode:
         return self.folder_nodes_by_path[path]
 
+    @log_call
     def get_nodes_by_label(self, label: str) -> set[Node]:
         return self.nodes_by_label[label]
 
+    @log_call
     def get_node_by_id(self, id: str) -> Node | None:
         return self.__nodes.get(id)
 
+    @log_call
     def get_node_by_relative_id(self, relative_id: str) -> Node | None:
         return self.nodes_by_relative_id.get(relative_id)
 
+    @log_call
     def get_relationships_as_objects(self) -> list[dict[str, Any]]:
         internal_relationships = [
             relationship.as_object() for relationship in self.get_relationships_from_nodes()
@@ -75,6 +87,7 @@ class Graph:
 
         return internal_relationships + reference_relationships
 
+    @log_call
     def get_relationships_from_nodes(self) -> list["Relationship"]:
         relationships: list[Relationship] = []
         for node in self.__nodes.values():
@@ -82,12 +95,15 @@ class Graph:
 
         return relationships
 
+    @log_call
     def add_references_relationships(self, references_relationships: list["Relationship"]) -> None:
         self.__references_relationships.extend(references_relationships)
 
+    @log_call
     def get_nodes_as_objects(self) -> list[dict[str, Any]]:
         return [node.as_object() for node in self.__nodes.values()]
 
+    @log_call
     def filtered_graph_by_paths(self, paths_to_keep: list[str]) -> "Graph":
         graph: Graph = Graph()
         for node in self.__nodes.values():
@@ -104,6 +120,7 @@ class Graph:
 
         return graph
 
+    @log_call
     def __str__(self) -> str:
         to_return: str = ""
 

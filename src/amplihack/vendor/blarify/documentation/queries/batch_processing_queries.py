@@ -1,8 +1,10 @@
 """Cypher queries for batch processing documentation nodes."""
 
 from typing_extensions import LiteralString
+from amplihack.utils.logging_utils import log_call
 
 
+@log_call
 def get_leaf_nodes_batch_query() -> LiteralString:
     """
     Get batch of leaf nodes (FUNCTION nodes with no CALLS, FILE nodes with no children, or FOLDER nodes with no children).
@@ -48,6 +50,7 @@ def get_leaf_nodes_batch_query() -> LiteralString:
     """
 
 
+@log_call
 def get_processable_nodes_with_descriptions_query() -> LiteralString:
     """
     Get nodes ready for processing with their children's descriptions.
@@ -111,6 +114,7 @@ def get_processable_nodes_with_descriptions_query() -> LiteralString:
     """
 
 
+@log_call
 def mark_nodes_completed_query() -> LiteralString:
     """
     Mark nodes as completed after documentation has been saved.
@@ -126,6 +130,7 @@ def mark_nodes_completed_query() -> LiteralString:
     """
 
 
+@log_call
 def check_pending_nodes_query() -> LiteralString:
     """
     Check if there are any pending nodes remaining under the root node.
@@ -143,6 +148,7 @@ def check_pending_nodes_query() -> LiteralString:
     """
 
 
+@log_call
 def get_leaf_nodes_under_node_query() -> LiteralString:
     """
     Get all leaf nodes that are under a given root node (descendants only).
@@ -196,6 +202,7 @@ RETURN n.node_id    AS id,
         """
 
 
+@log_call
 def get_child_descriptions_query() -> LiteralString:
     """
     Get descriptions for all child nodes of a given parent node.
@@ -220,6 +227,7 @@ def get_child_descriptions_query() -> LiteralString:
     """
 
 
+@log_call
 def get_remaining_pending_functions_query() -> LiteralString:
     """
     Get all pending FUNCTION nodes with their child descriptions.
@@ -291,6 +299,7 @@ def get_remaining_pending_functions_query() -> LiteralString:
     """
 
 
+@log_call
 def get_hierarchical_parents_query() -> LiteralString:
     """
     Get all hierarchical parent nodes (CONTAINS, FUNCTION_DEFINITION, CLASS_DEFINITION) of a given node.

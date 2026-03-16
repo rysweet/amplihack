@@ -1,6 +1,7 @@
 """DTO for documentation vector search results."""
 
 from dataclasses import dataclass
+from amplihack.utils.logging_utils import log_call
 
 
 @dataclass
@@ -16,6 +17,7 @@ class DocumentationSearchResultDto:
     info_type: str
     enhanced_content: str | None = None
 
+    @log_call
     def __repr__(self) -> str:
         """String representation of the search result."""
         return (

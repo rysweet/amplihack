@@ -24,6 +24,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 # Pre-compiled word-boundary check for classification
 _WORD_BOUNDARY = re.compile(r"\b{}\b")
 
@@ -109,6 +111,7 @@ class AgentSpawner:
         >>> print(results[0].result)
     """
 
+    @log_call
     def __init__(
         self,
         parent_agent_name: str,
@@ -131,6 +134,7 @@ class AgentSpawner:
         # Register default executors for each specialist type
         self._register_default_executors()
 
+    @log_call
     def _register_default_executors(self) -> None:
         """Register default executor functions for each specialist type.
 
@@ -143,6 +147,7 @@ class AgentSpawner:
         self._executors[SpecialistType.CODE_GENERATION] = self._execute_code_generation
         self._executors[SpecialistType.RESEARCH] = self._execute_research
 
+    @log_call
     def register_executor(
         self, specialist_type: str, executor: Callable[[SpawnedAgent], str]
     ) -> None:
@@ -154,6 +159,7 @@ class AgentSpawner:
         """
         self._executors[specialist_type] = executor
 
+    @log_call
     def spawn(self, task: str, specialist_type: str = "auto") -> SpawnedAgent:
         """Spawn a sub-agent to handle a specific task.
 
@@ -203,6 +209,7 @@ class AgentSpawner:
 
         return spawned
 
+    @log_call
     def collect_results(self, timeout: float = 60.0) -> list[SpawnedAgent]:
         """Execute all pending spawned agents and wait for results.
 
@@ -245,18 +252,22 @@ class AgentSpawner:
 
         return self._spawned
 
+    @log_call
     def get_pending_count(self) -> int:
         """Return the number of pending (not yet executed) agents."""
         return sum(1 for s in self._spawned if s.status == "pending")
 
+    @log_call
     def get_completed_results(self) -> list[SpawnedAgent]:
         """Return only completed agents with results."""
         return [s for s in self._spawned if s.status == "completed"]
 
+    @log_call
     def clear(self) -> None:
         """Clear all spawned agents (reset state)."""
         self._spawned.clear()
 
+    @log_call
     def _execute_agent(self, agent: SpawnedAgent) -> str:
         """Execute a single spawned agent using the registered executor.
 
@@ -280,6 +291,7 @@ class AgentSpawner:
             agent.elapsed_seconds = time.monotonic() - start
             raise
 
+    @log_call
     def _classify_task(self, task: str) -> str:
         """Auto-detect specialist type from task description.
 
@@ -314,6 +326,7 @@ class AgentSpawner:
     # Default executor implementations
     # ----------------------------------------------------------------
 
+    @log_call
     def _execute_retrieval(self, agent: SpawnedAgent) -> str:
         """Execute a retrieval specialist: search parent's memory.
 
@@ -343,6 +356,7 @@ class AgentSpawner:
         except Exception as e:
             return f"Retrieval failed: {e}"
 
+    @log_call
     def _execute_analysis(self, agent: SpawnedAgent) -> str:
         """Execute an analysis specialist: detect patterns in facts.
 
@@ -379,6 +393,7 @@ class AgentSpawner:
         except Exception as e:
             return f"Analysis failed: {e}"
 
+    @log_call
     def _execute_synthesis(self, agent: SpawnedAgent) -> str:
         """Execute a synthesis specialist: combine multiple facts."""
         try:
@@ -404,6 +419,7 @@ class AgentSpawner:
         except Exception as e:
             return f"Synthesis failed: {e}"
 
+    @log_call
     def _execute_code_generation(self, agent: SpawnedAgent) -> str:
         """Execute a code generation specialist.
 
@@ -416,6 +432,7 @@ class AgentSpawner:
             return f'# Generated script for: {task}\n\ndef main():\n    """Auto-generated."""\n    pass\n\nif __name__ == "__main__":\n    main()\n'
         return f"Code generation for: {task} (requires LLM integration)"
 
+    @log_call
     def _execute_research(self, agent: SpawnedAgent) -> str:
         """Execute a research specialist.
 

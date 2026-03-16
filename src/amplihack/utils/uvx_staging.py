@@ -7,10 +7,13 @@ import sys
 import time
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 
 class UVXStager:
     """Handles staging of framework files from UVX to user's working directory."""
 
+    @log_call
     def __init__(self):
         self._staged_files: set[Path] = set()
         self._debug_enabled = os.environ.get("AMPLIHACK_DEBUG", "").lower() in (
@@ -21,6 +24,7 @@ class UVXStager:
         self._cleanup_handler = None
         self._cleanup_initialized = False
 
+    @log_call
     def _debug_log(self, message: str) -> None:
         """Log debug message if debugging is enabled."""
         if self._debug_enabled:
@@ -28,10 +32,12 @@ class UVXStager:
 
             print(f"[AMPLIHACK DEBUG] {message}", file=sys.stderr)
 
+    @log_call
     def detect_uvx_deployment(self) -> bool:
         """Detect if running in UVX deployment mode."""
         return "UV_PYTHON" in os.environ or not (Path.cwd() / ".claude").exists()
 
+    @log_call
     def _find_uvx_framework_root(self) -> Path | None:
         """Find framework root in UVX installation."""
         if "AMPLIHACK_ROOT" in os.environ:
@@ -46,6 +52,7 @@ class UVXStager:
 
         return None
 
+    @log_call
     def _initialize_cleanup_system(self) -> None:
         """Initialize cleanup system for tracking and removing staged files."""
         if self._cleanup_initialized:
@@ -64,6 +71,7 @@ class UVXStager:
         except Exception as e:
             self._debug_log(f"Failed to initialize cleanup system: {e}")
 
+    @log_call
     def stage_framework_files(self) -> bool:
         """Stage framework files from UVX to working directory."""
         if not self.detect_uvx_deployment():
@@ -132,11 +140,13 @@ class UVXStager:
 _uvx_stager = UVXStager()
 
 
+@log_call
 def stage_uvx_framework() -> bool:
     """Stage UVX framework files."""
     return _uvx_stager.stage_framework_files()
 
 
+@log_call
 def is_uvx_deployment() -> bool:
     """Check if running in UVX deployment mode."""
     return _uvx_stager.detect_uvx_deployment()

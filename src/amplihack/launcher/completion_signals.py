@@ -14,9 +14,13 @@ Philosophy:
 - Threshold-based completion (default 0.8)
 """
 
+import logging
 from dataclasses import dataclass
 
 from amplihack.launcher.work_summary import WorkSummary
+from amplihack.utils.logging_utils import log_call
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -41,8 +45,10 @@ class CompletionSignals:
     completion_score: float
     pr_number: int | None = None
 
+    @log_call
     def __post_init__(self):
         """Validate completion score range."""
+        logger.debug("CompletionSignals.__post_init__: called")
         if not 0.0 <= self.completion_score <= 1.0:
             raise ValueError(f"Completion score must be 0.0-1.0, got {self.completion_score}")
 
@@ -60,14 +66,19 @@ class CompletionSignalDetector:
         "no_uncommitted_changes": 0.05,  # Clean tree
     }
 
+    @log_call
     def __init__(self, completion_threshold: float = 0.8):
         """Initialize detector.
 
         Args:
             completion_threshold: Score >= this value indicates completion (default 0.8)
         """
+        logger.debug(
+            f"CompletionSignalDetector.__init__: called with completion_threshold={completion_threshold!r}"
+        )
         self.completion_threshold = completion_threshold
 
+    @log_call
     def detect(self, summary: WorkSummary) -> CompletionSignals:
         """Detect all completion signals from WorkSummary.
 
@@ -77,6 +88,7 @@ class CompletionSignalDetector:
         Returns:
             CompletionSignals with detection results and score
         """
+        logger.debug(f"CompletionSignalDetector.detect: called with summary={summary!r}")
         # Detect individual signals
         all_steps_complete = self._detect_all_steps_complete(summary)
         pr_created = self._detect_pr_created(summary)
@@ -118,6 +130,7 @@ class CompletionSignalDetector:
             pr_number=summary.github_state.pr_number,
         )
 
+    @log_call
     def _detect_all_steps_complete(self, summary: WorkSummary) -> bool:
         """Detect if all TodoWrite tasks are completed.
 
@@ -127,11 +140,13 @@ class CompletionSignalDetector:
         Returns:
             True if all tasks completed
         """
+        logger.debug("CompletionSignalDetector._detect_all_steps_complete: called")
         todo = summary.todo_state
         if todo.total == 0:
             return False
         return todo.completed == todo.total
 
+    @log_call
     def _detect_pr_created(self, summary: WorkSummary) -> bool:
         """Detect if PR exists on GitHub.
 
@@ -141,8 +156,10 @@ class CompletionSignalDetector:
         Returns:
             True if PR exists
         """
+        logger.debug("CompletionSignalDetector._detect_pr_created: called")
         return summary.github_state.pr_number is not None
 
+    @log_call
     def _detect_ci_passing(self, summary: WorkSummary) -> bool:
         """Detect if CI checks are passing.
 
@@ -152,8 +169,10 @@ class CompletionSignalDetector:
         Returns:
             True if CI status is SUCCESS
         """
+        logger.debug("CompletionSignalDetector._detect_ci_passing: called")
         return summary.github_state.ci_status == "SUCCESS"
 
+    @log_call
     def _detect_pr_mergeable(self, summary: WorkSummary) -> bool:
         """Detect if PR is in mergeable state.
 
@@ -163,8 +182,10 @@ class CompletionSignalDetector:
         Returns:
             True if PR is mergeable
         """
+        logger.debug("CompletionSignalDetector._detect_pr_mergeable: called")
         return summary.github_state.pr_mergeable is True
 
+    @log_call
     def _detect_has_commits(self, summary: WorkSummary) -> bool:
         """Detect if branch has commits ahead of main.
 
@@ -174,9 +195,11 @@ class CompletionSignalDetector:
         Returns:
             True if commits ahead > 0
         """
+        logger.debug("CompletionSignalDetector._detect_has_commits: called")
         commits_ahead = summary.git_state.commits_ahead
         return commits_ahead is not None and commits_ahead > 0
 
+    @log_call
     def _detect_no_uncommitted_changes(self, summary: WorkSummary) -> bool:
         """Detect if working tree is clean.
 
@@ -186,8 +209,10 @@ class CompletionSignalDetector:
         Returns:
             True if no uncommitted changes
         """
+        logger.debug("CompletionSignalDetector._detect_no_uncommitted_changes: called")
         return not summary.git_state.has_uncommitted_changes
 
+    @log_call
     def is_complete(self, signals: CompletionSignals) -> bool:
         """Check if signals indicate completion.
 
@@ -197,8 +222,10 @@ class CompletionSignalDetector:
         Returns:
             True if completion_score >= threshold
         """
+        logger.debug(f"CompletionSignalDetector.is_complete: called with signals={signals!r}")
         return signals.completion_score >= self.completion_threshold
 
+    @log_call
     def explain(self, signals: CompletionSignals) -> str:
         """Generate human-readable explanation of signals.
 
@@ -208,10 +235,12 @@ class CompletionSignalDetector:
         Returns:
             Explanation text
         """
+        logger.debug(f"CompletionSignalDetector.explain: called with signals={signals!r}")
         if self.is_complete(signals):
             return self._explain_complete(signals)
         return self._explain_incomplete(signals)
 
+    @log_call
     def _explain_complete(self, signals: CompletionSignals) -> str:
         """Explain why signals indicate completion.
 
@@ -221,6 +250,7 @@ class CompletionSignalDetector:
         Returns:
             Explanation text
         """
+        logger.debug("CompletionSignalDetector._explain_complete: called")
         lines = ["Work appears complete:"]
 
         if signals.all_steps_complete:
@@ -240,6 +270,7 @@ class CompletionSignalDetector:
         lines.append(f"\nCompletion score: {signals.completion_score:.1%}")
         return "\n".join(lines)
 
+    @log_call
     def _explain_incomplete(self, signals: CompletionSignals) -> str:
         """Explain what's missing for completion.
 
@@ -249,6 +280,7 @@ class CompletionSignalDetector:
         Returns:
             Explanation text
         """
+        logger.debug("CompletionSignalDetector._explain_incomplete: called")
         lines = ["Work incomplete:"]
 
         missing = []

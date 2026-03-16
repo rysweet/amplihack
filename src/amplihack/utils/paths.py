@@ -3,6 +3,8 @@
 import os
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 
 class FrameworkPathResolver:
     """Resolves framework file paths for both local and UVX deployments."""
@@ -10,6 +12,7 @@ class FrameworkPathResolver:
     _cached_root: Path | None = None
 
     @staticmethod
+    @log_call
     def find_framework_root() -> Path | None:
         """Find the framework root directory.
 
@@ -57,6 +60,7 @@ class FrameworkPathResolver:
         return None
 
     @staticmethod
+    @log_call
     def resolve_framework_file(relative_path: str) -> Path | None:
         """Resolve a framework file path relative to framework root.
 
@@ -89,16 +93,19 @@ class FrameworkPathResolver:
             return None
 
     @staticmethod
+    @log_call
     def resolve_preferences_file() -> Path | None:
         """Find USER_PREFERENCES.md file."""
         return FrameworkPathResolver.resolve_framework_file(".claude/context/USER_PREFERENCES.md")
 
     @staticmethod
+    @log_call
     def resolve_workflow_file() -> Path | None:
         """Find DEFAULT_WORKFLOW.md file."""
         return FrameworkPathResolver.resolve_framework_file(".claude/workflow/DEFAULT_WORKFLOW.md")
 
     @staticmethod
+    @log_call
     def is_uvx_deployment() -> bool:
         """Check if running in UVX deployment mode."""
         from .uvx_staging import is_uvx_deployment

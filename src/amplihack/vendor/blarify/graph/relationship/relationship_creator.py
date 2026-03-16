@@ -7,6 +7,7 @@ from .relationship import Relationship, WorkflowStepRelationship
 from .relationship_type import RelationshipType
 from amplihack.vendor.blarify.repositories.graph_db_manager.dtos.code_node_dto import CodeNodeDto
 from amplihack.vendor.blarify.repositories.version_control.dtos.blame_line_range_dto import BlameLineRangeDto
+from amplihack.utils.logging_utils import log_call
 
 if TYPE_CHECKING:
     from ...code_hierarchy import TreeSitterHelper
@@ -17,6 +18,7 @@ if TYPE_CHECKING:
 
 class RelationshipCreator:
     @staticmethod
+    @log_call
     def create_relationships_from_paths_where_node_is_referenced(
         references: list["Reference"],
         node: "Node",
@@ -66,6 +68,7 @@ class RelationshipCreator:
         return relationships
 
     @staticmethod
+    @log_call
     def _get_relationship_type(defined_node: "Node") -> RelationshipType:
         if defined_node.label == NodeLabels.FUNCTION:
             return RelationshipType.FUNCTION_DEFINITION
@@ -74,6 +77,7 @@ class RelationshipCreator:
         raise ValueError(f"Node {defined_node.label} is not a valid definition node")
 
     @staticmethod
+    @log_call
     def create_defines_relationship(node: "Node", defined_node: "Node") -> Relationship:
         rel_type = RelationshipCreator._get_relationship_type(defined_node)
         return Relationship(
@@ -83,6 +87,7 @@ class RelationshipCreator:
         )
 
     @staticmethod
+    @log_call
     def create_contains_relationship(folder_node: "Node", contained_node: "Node") -> Relationship:
         return Relationship(
             folder_node,
@@ -91,6 +96,7 @@ class RelationshipCreator:
         )
 
     @staticmethod
+    @log_call
     def create_belongs_to_workflow_relationship(
         documentation_node: "Node", workflow_node: "Node"
     ) -> Relationship:
@@ -101,6 +107,7 @@ class RelationshipCreator:
         )
 
     @staticmethod
+    @log_call
     def create_workflow_step_relationship(
         current_step_node: "Node", next_step_node: "Node", step_order: int = None
     ) -> WorkflowStepRelationship:
@@ -114,6 +121,7 @@ class RelationshipCreator:
         )
 
     @staticmethod
+    @log_call
     def create_belongs_to_workflow_relationships_for_workflow_nodes(
         workflow_node: "Node", workflow_node_ids: list[str]
     ) -> list[dict[str, Any]]:
@@ -143,6 +151,7 @@ class RelationshipCreator:
         return relationships
 
     @staticmethod
+    @log_call
     def create_describes_relationships(
         documentation_nodes: list[DocumentationNode],
     ) -> list[dict[str, Any]]:
@@ -170,6 +179,7 @@ class RelationshipCreator:
         return describes_relationships
 
     @staticmethod
+    @log_call
     def create_workflow_step_relationships_from_execution_edges(
         workflow_node: "Node", execution_edges: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
@@ -227,6 +237,7 @@ class RelationshipCreator:
         return relationships
 
     @staticmethod
+    @log_call
     def create_integration_sequence_relationships(
         pr_node: "Node", commit_nodes: list["Node"]
     ) -> list[Relationship]:
@@ -254,6 +265,7 @@ class RelationshipCreator:
         return relationships
 
     @staticmethod
+    @log_call
     def create_modified_by_relationships(
         commit_node: "Node", code_nodes: list["Node"], file_changes: list[dict[str, Any]]
     ) -> list[Relationship]:
@@ -341,6 +353,7 @@ class RelationshipCreator:
         return relationships
 
     @staticmethod
+    @log_call
     def create_modified_by_with_blame(
         commit_node: CommitNode,
         code_node: CodeNodeDto,
@@ -401,6 +414,7 @@ class RelationshipCreator:
         }
 
     @staticmethod
+    @log_call
     def create_affects_relationships(
         commit_nodes: list["Node"], workflow_nodes: list["Node"]
     ) -> list[Relationship]:

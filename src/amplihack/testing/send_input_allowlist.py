@@ -20,6 +20,7 @@ import json
 import os
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
 
 # --------------------------------------------------------------------------- #
 # Default allow-list
@@ -69,6 +70,7 @@ class UnsafeInputError(ValueError):
         value: The input value that was rejected.
     """
 
+    @log_call
     def __init__(self, value: str) -> None:
         self.value = value
         safe_repr = repr(value)
@@ -79,6 +81,7 @@ class UnsafeInputError(ValueError):
         )
 
 
+@log_call
 def _load_extra_patterns() -> frozenset[str]:
     """Load additional safe patterns from the optional config file.
 
@@ -103,6 +106,7 @@ def _load_extra_patterns() -> frozenset[str]:
     return frozenset(str(p) for p in data if isinstance(p, str))
 
 
+@log_call
 def get_safe_patterns() -> frozenset[str]:
     """Return the effective allow-list (defaults + any configured extras).
 
@@ -112,6 +116,7 @@ def get_safe_patterns() -> frozenset[str]:
     return DEFAULT_SAFE_PATTERNS | _load_extra_patterns()
 
 
+@log_call
 def is_safe_pattern(value: str) -> bool:
     """Return True if *value* is on the effective allow-list.
 
@@ -139,6 +144,7 @@ def is_safe_pattern(value: str) -> bool:
     return normalised in {p.strip().lower() for p in safe}
 
 
+@log_call
 def validate_send_input(value: str, confirm: bool = False) -> None:
     """Validate a send_input value against the allow-list.
 
@@ -163,9 +169,8 @@ def validate_send_input(value: str, confirm: bool = False) -> None:
         raise UnsafeInputError(value)
 
 
-def validate_scenario_send_inputs(
-    scenario: dict, confirm: bool = False
-) -> list[str]:
+@log_call
+def validate_scenario_send_inputs(scenario: dict, confirm: bool = False) -> list[str]:
     """Validate all send_input values in a parsed YAML scenario dict.
 
     Walks the ``scenario.steps`` list and checks every step whose

@@ -21,6 +21,7 @@ from enum import Enum
 from pathlib import Path
 
 from amplihack.fleet._constants import DEFAULT_MAX_TURNS
+from amplihack.utils.logging_utils import log_call
 
 __all__ = ["TaskQueue", "FleetTask", "TaskStatus", "TaskPriority"]
 
@@ -73,6 +74,7 @@ class FleetTask:
     pr_url: str | None = None
     error: str | None = None
 
+    @log_call
     def assign(self, vm_name: str, session_name: str) -> None:
         """Assign task to a VM and session."""
         self.assigned_vm = vm_name
@@ -80,11 +82,13 @@ class FleetTask:
         self.assigned_at = datetime.now()
         self.status = TaskStatus.ASSIGNED
 
+    @log_call
     def start(self) -> None:
         """Mark task as running."""
         self.started_at = datetime.now()
         self.status = TaskStatus.RUNNING
 
+    @log_call
     def complete(self, result: str = "", pr_url: str = "") -> None:
         """Mark task as completed."""
         self.completed_at = datetime.now()
@@ -92,12 +96,14 @@ class FleetTask:
         self.result = result
         self.pr_url = pr_url
 
+    @log_call
     def fail(self, error: str) -> None:
         """Mark task as failed."""
         self.completed_at = datetime.now()
         self.status = TaskStatus.FAILED
         self.error = error
 
+    @log_call
     def to_dict(self) -> dict:
         """Serialize to dict (for JSON persistence)."""
         return {
@@ -123,6 +129,7 @@ class FleetTask:
         }
 
     @classmethod
+    @log_call
     def from_dict(cls, data: dict) -> FleetTask:
         """Deserialize from dict."""
         task = cls(
@@ -164,16 +171,19 @@ class TaskQueue:
     tasks: list[FleetTask] = field(default_factory=list)
     persist_path: Path | None = None
 
+    @log_call
     def __post_init__(self):
         if self.persist_path and self.persist_path.exists():
             self.load()
 
+    @log_call
     def add(self, task: FleetTask) -> FleetTask:
         """Add a task to the queue."""
         self.tasks.append(task)
         self.save()
         return task
 
+    @log_call
     def add_task(
         self,
         prompt: str,
@@ -194,6 +204,7 @@ class TaskQueue:
         )
         return self.add(task)
 
+    @log_call
     def next_task(self) -> FleetTask | None:
         """Get highest-priority unassigned task."""
         queued = [t for t in self.tasks if t.status == TaskStatus.QUEUED]
@@ -204,6 +215,7 @@ class TaskQueue:
         queued.sort(key=lambda t: (t.priority.value, t.created_at))
         return queued[0]
 
+    @log_call
     def get_task(self, task_id: str) -> FleetTask | None:
         """Get task by ID."""
         for task in self.tasks:
@@ -211,14 +223,17 @@ class TaskQueue:
                 return task
         return None
 
+    @log_call
     def active_tasks(self) -> list[FleetTask]:
         """Tasks that are currently assigned or running."""
         return [t for t in self.tasks if t.status in (TaskStatus.ASSIGNED, TaskStatus.RUNNING)]
 
+    @log_call
     def completed_tasks(self) -> list[FleetTask]:
         """Tasks that have completed (success or failure)."""
         return [t for t in self.tasks if t.status in (TaskStatus.COMPLETED, TaskStatus.FAILED)]
 
+    @log_call
     def summary(self) -> str:
         """Human-readable queue summary."""
         by_status = {}
@@ -237,13 +252,18 @@ class TaskQueue:
 
         return "\n".join(lines)
 
+    @log_call
     def save(self) -> None:
         """Persist queue to JSON file. Call after mutating task state."""
         if not self.persist_path:
             return
-        if getattr(self, '_load_failed', False):
+        if getattr(self, "_load_failed", False):
             import logging
-            logging.getLogger(__name__).error("Refusing to save — load failed for %s. Fix the .bak file manually.", self.persist_path)
+
+            logging.getLogger(__name__).error(
+                "Refusing to save — load failed for %s. Fix the .bak file manually.",
+                self.persist_path,
+            )
             return
         self.persist_path.parent.mkdir(parents=True, exist_ok=True)
         # Atomic write: unique temp file then replace
@@ -261,6 +281,7 @@ class TaskQueue:
                 os.unlink(tmp_path)
             raise
 
+    @log_call
     def load(self) -> None:
         """Load queue from JSON file."""
         if not self.persist_path or not self.persist_path.exists():
@@ -271,7 +292,9 @@ class TaskQueue:
             import logging
             import shutil
 
-            logging.getLogger(__name__).warning(f"Corrupt queue file: {self.persist_path} — creating backup")
+            logging.getLogger(__name__).warning(
+                f"Corrupt queue file: {self.persist_path} — creating backup"
+            )
             backup = self.persist_path.with_suffix(".json.bak")
             shutil.copy2(self.persist_path, backup)
             self._load_failed = True

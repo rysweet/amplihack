@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 import asyncio
 import logging
 import threading
+from amplihack.utils.logging_utils import log_call
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,7 @@ logger = logging.getLogger(__name__)
 class ProgressTracker:
     """Simple progress tracker for LSP reference queries"""
 
+    @log_call
     def __init__(self, total_nodes: int):
         self.total_nodes = total_nodes
         self.completed_nodes = 0
@@ -37,6 +39,7 @@ class ProgressTracker:
         self.last_update_time = 0
         self.update_interval = 2.0  # Update every 2 seconds
 
+    @log_call
     def update(self, nodes_completed: int):
         """Update progress and log if enough time has passed"""
         with self.lock:
@@ -48,6 +51,7 @@ class ProgressTracker:
                 self._log_progress()
                 self.last_update_time = current_time
 
+    @log_call
     def _log_progress(self):
         """Log current progress"""
         if self.total_nodes == 0:
@@ -72,12 +76,14 @@ class ProgressTracker:
             f"🔄 Progress: [{bar}] {self.completed_nodes}/{self.total_nodes} ({percentage:.1f}%) | {elapsed_time:.0f}s elapsed | {eta_str}"
         )
 
+    @log_call
     def force_update(self):
         """Force a progress update regardless of time interval"""
         with self.lock:
             self._log_progress()
             self.last_update_time = time.time()
 
+    @log_call
     def complete(self):
         """Mark as complete and log final status"""
         with self.lock:
@@ -98,6 +104,7 @@ class LspResourceOptimizer:
     """Automatically determines optimal LSP server instance counts based on system resources"""
 
     @staticmethod
+    @log_call
     def get_optimal_lsp_instances(language: str = None) -> int:
         """
         Calculate optimal number of LSP server instances based on:
@@ -191,6 +198,7 @@ class LspResourceOptimizer:
         return optimal
 
     @staticmethod
+    @log_call
     def get_system_info() -> dict:
         """Get detailed system information for debugging"""
         return {
@@ -212,6 +220,7 @@ class LspQueryHelper:
     PER_REQUEST_TIMEOUT = 2  # Additional timeout per request in seconds
     MAX_BATCH_SIZE = 50  # Maximum requests per batch before chunking
 
+    @log_call
     def __init__(
         self,
         root_uri: str,
@@ -246,6 +255,7 @@ class LspQueryHelper:
             )
 
     @staticmethod
+    @log_call
     def get_language_definition_for_extension(extension: str) -> "LanguageDefinitions":
         from ..code_hierarchy.languages import (
             CsharpDefinitions,
@@ -276,6 +286,7 @@ class LspQueryHelper:
             return JavaDefinitions
         raise FileExtensionNotSupported(f'File extension "{extension}" is not supported)')
 
+    @log_call
     def _create_lsp_server(
         self, language_definitions: "LanguageDefinitions", timeout=60
     ) -> SyncLanguageServer:
@@ -287,16 +298,19 @@ class LspQueryHelper:
         )
         return lsp
 
+    @log_call
     def start(self) -> None:
         """
         DEPRECATED, LSP servers are started on demand
         """
 
+    @log_call
     def _get_or_create_lsp_server(self, extension, timeout=60) -> SyncLanguageServer:
         """Get the first available LSP server for backwards compatibility"""
         servers = self._get_or_create_lsp_servers(extension, timeout, 1)
         return servers[0]
 
+    @log_call
     def _get_or_create_lsp_servers(
         self, extension, timeout=60, count=None
     ) -> list[SyncLanguageServer]:
@@ -324,22 +338,26 @@ class LspQueryHelper:
 
         return existing_servers[:count]
 
+    @log_call
     def _initialize_lsp_server_instance(self, language, lsp):
         """Initialize a single LSP server instance and return its context"""
         context = lsp.start_server()
         context.__enter__()
         return context
 
+    @log_call
     def initialize_directory(self, file) -> None:
         """
         DEPRECATED, LSP servers are started on demand
         """
 
+    @log_call
     def get_paths_where_node_is_referenced(self, node: "DefinitionNode") -> list[Reference]:
         server = self._get_or_create_lsp_server(node.extension)
         references = self._request_references_with_exponential_backoff(node, server)
         return [Reference(reference) for reference in references]
 
+    @log_call
     def get_paths_where_nodes_are_referenced_batch(
         self, nodes: list["DefinitionNode"]
     ) -> dict["DefinitionNode", list[Reference]]:
@@ -413,6 +431,7 @@ class LspQueryHelper:
         progress.complete()
         return results
 
+    @log_call
     def _batch_request_references_with_multiple_servers(
         self,
         nodes: list["DefinitionNode"],
@@ -448,6 +467,7 @@ class LspQueryHelper:
         results: dict[DefinitionNode, list[Reference]] = {}
         results_lock = threading.Lock()
 
+        @log_call
         def process_server_group(server_index: int):
             server = lsp_servers[server_index]
             server_nodes = server_node_groups[server_index]
@@ -484,6 +504,7 @@ class LspQueryHelper:
 
         return results
 
+    @log_call
     def _batch_request_references_for_language(
         self,
         nodes: list["DefinitionNode"],
@@ -515,6 +536,7 @@ class LspQueryHelper:
         results: dict[DefinitionNode, list[Reference]] = {}
 
         # Create async tasks for all requests
+        @log_call
         async def batch_requests():
             tasks = []
             for node in nodes:
@@ -568,12 +590,14 @@ class LspQueryHelper:
             # Fallback to empty results
             return {node: [] for node in nodes}
 
+    @log_call
     def _calculate_batch_timeout(self, batch_size: int) -> int:
         """Calculate dynamic timeout based on batch size"""
         timeout = self.BASE_TIMEOUT + (batch_size * self.PER_REQUEST_TIMEOUT)
         # Cap at reasonable maximum (5 minutes)
         return min(timeout, 300)
 
+    @log_call
     def _process_large_batch_in_chunks(
         self,
         nodes: list["DefinitionNode"],
@@ -604,6 +628,7 @@ class LspQueryHelper:
 
         return all_results
 
+    @log_call
     def _batch_request_references_simple(
         self,
         nodes: list["DefinitionNode"],
@@ -630,6 +655,7 @@ class LspQueryHelper:
         results: dict[DefinitionNode, list[Reference]] = {}
 
         # Create async tasks for all requests
+        @log_call
         async def batch_requests():
             tasks = []
             for node in nodes:
@@ -684,6 +710,7 @@ class LspQueryHelper:
             # Fallback to empty results
             return {node: [] for node in nodes}
 
+    @log_call
     def _request_references_with_exponential_backoff(self, node, lsp):
         timeout = 10
         for _ in range(1, 3):
@@ -708,6 +735,7 @@ class LspQueryHelper:
         logger.exception("Failed to get references, returning empty list")
         return []
 
+    @log_call
     def _restart_lsp_for_extension(self, extension):
         language_definitions = self.get_language_definition_for_extension(extension)
         language_name = language_definitions.get_language_name()
@@ -732,6 +760,7 @@ class LspQueryHelper:
         except ConnectionResetError:
             logger.exception("Connection reset error")
 
+    @log_call
     def exit_lsp_server(self, language) -> None:
         # Handle multiple server instances per language
         if language in self.entered_lsp_servers:
@@ -740,6 +769,7 @@ class LspQueryHelper:
                 try:
                     # Try to exit context manager with timeout, this is to ensure that we don't hang indefinitely
                     # It happens sometimes especially with c#
+                    @log_call
                     def exit_context():
                         context.__exit__(None, None, None)
 
@@ -776,6 +806,7 @@ class LspQueryHelper:
         if language in self.language_to_lsp_servers:
             del self.language_to_lsp_servers[language]
 
+    @log_call
     def _manual_cleanup_lsp_server_instance(self, lsp_server: SyncLanguageServer) -> None:
         """Manual cleanup for a single LSP server instance."""
         try:
@@ -799,6 +830,7 @@ class LspQueryHelper:
                     task.cancel()
 
                 # Schedule a coroutine to wait for cancelled tasks to complete
+                @log_call
                 async def wait_for_cancelled_tasks():
                     try:
                         await asyncio.gather(*tasks, return_exceptions=True)
@@ -820,6 +852,7 @@ class LspQueryHelper:
         if loop.is_running():
             loop.call_soon_threadsafe(loop.stop)
 
+    @log_call
     def get_definition_path_for_reference(self, reference: Reference, extension: str) -> str:
         lsp_caller = self._get_or_create_lsp_server(extension)
         definitions = self._request_definition_with_exponential_backoff(
@@ -831,6 +864,7 @@ class LspQueryHelper:
 
         return definitions[0]["uri"]
 
+    @log_call
     def _request_definition_with_exponential_backoff(self, reference: Reference, lsp, extension):
         timeout = 10
         for _ in range(1, 3):
@@ -855,6 +889,7 @@ class LspQueryHelper:
         logger.exception("Failed to get references, returning empty list")
         return []
 
+    @log_call
     def shutdown_exit_close(self) -> None:
         languages = list(self.language_to_lsp_servers.keys())
 

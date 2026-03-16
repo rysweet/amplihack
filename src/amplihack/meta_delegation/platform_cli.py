@@ -21,6 +21,8 @@ import subprocess
 from pathlib import Path
 from typing import Protocol
 
+from amplihack.utils.logging_utils import log_call
+
 # Whitelist of allowed extra_args for security
 ALLOWED_EXTRA_ARGS: set[str] = {
     "--debug",
@@ -36,6 +38,7 @@ ALLOWED_EXTRA_ARGS: set[str] = {
 }
 
 
+@log_call
 def _validate_working_dir(working_dir: str) -> None:
     """Validate working directory exists and is a directory.
 
@@ -62,6 +65,7 @@ def _validate_working_dir(working_dir: str) -> None:
         raise ValueError(f"working_dir is not a directory: {working_dir}")
 
 
+@log_call
 def _validate_extra_args(extra_args: list[str]) -> None:
     """Validate extra arguments against whitelist.
 
@@ -79,6 +83,7 @@ def _validate_extra_args(extra_args: list[str]) -> None:
             )
 
 
+@log_call
 def _validate_cli_command(command: list[str], timeout: int = 5) -> bool:
     """Validate that a CLI command is available.
 
@@ -101,6 +106,7 @@ def _validate_cli_command(command: list[str], timeout: int = 5) -> bool:
         return False
 
 
+@log_call
 def _get_cli_version(command: list[str], timeout: int = 5) -> str:
     """Get version from CLI command.
 
@@ -137,6 +143,7 @@ class PlatformCLI(Protocol):
 
     platform_name: str
 
+    @log_call
     def spawn_subprocess(
         self,
         goal: str,
@@ -159,6 +166,7 @@ class PlatformCLI(Protocol):
         """
         ...
 
+    @log_call
     def format_prompt(self, goal: str, persona: str, context: str) -> str:
         """Format prompt for the platform based on persona characteristics.
 
@@ -172,6 +180,7 @@ class PlatformCLI(Protocol):
         """
         ...
 
+    @log_call
     def parse_output(self, output: str) -> dict[str, str]:
         """Parse output from the subprocess.
 
@@ -183,6 +192,7 @@ class PlatformCLI(Protocol):
         """
         ...
 
+    @log_call
     def validate_installation(self) -> bool:
         """Check if platform CLI is installed and available.
 
@@ -191,6 +201,7 @@ class PlatformCLI(Protocol):
         """
         ...
 
+    @log_call
     def get_version(self) -> str:
         """Get version of the installed platform CLI.
 
@@ -205,14 +216,17 @@ class ClaudeCodeCLI:
 
     platform_name = "claude-code"
 
+    @log_call
     def validate_installation(self) -> bool:
         """Check if claude command is available."""
         return _validate_cli_command(["claude", "--version"])
 
+    @log_call
     def get_version(self) -> str:
         """Get Claude Code version."""
         return _get_cli_version(["claude", "--version"])
 
+    @log_call
     def format_prompt(self, goal: str, persona: str, context: str) -> str:
         """Format prompt for Claude Code with persona-specific styling."""
         persona_styles = {
@@ -277,6 +291,7 @@ Focus on delivering working code that meets the stated requirements.""",
 
         return template.format(goal=goal, context=context or "No additional context provided.")
 
+    @log_call
     def spawn_subprocess(
         self,
         goal: str,
@@ -320,6 +335,7 @@ Focus on delivering working code that meets the stated requirements.""",
 
         return process
 
+    @log_call
     def parse_output(self, output: str) -> dict[str, str]:
         """Parse Claude Code output."""
         return {
@@ -332,14 +348,17 @@ class CopilotCLI:
 
     platform_name = "copilot"
 
+    @log_call
     def validate_installation(self) -> bool:
         """Check if gh copilot is available."""
         return _validate_cli_command(["gh", "copilot", "--version"])
 
+    @log_call
     def get_version(self) -> str:
         """Get GitHub Copilot version."""
         return _get_cli_version(["gh", "copilot", "--version"])
 
+    @log_call
     def format_prompt(self, goal: str, persona: str, context: str) -> str:
         """Format prompt for GitHub Copilot."""
         # Copilot uses similar prompt structure but may have different conventions
@@ -355,6 +374,7 @@ class CopilotCLI:
 
         return f"{prefix}{goal}{context_str}"
 
+    @log_call
     def spawn_subprocess(
         self,
         goal: str,
@@ -391,6 +411,7 @@ class CopilotCLI:
 
         return process
 
+    @log_call
     def parse_output(self, output: str) -> dict[str, str]:
         """Parse GitHub Copilot output."""
         return {
@@ -403,20 +424,24 @@ class AmplifierCLI:
 
     platform_name = "amplifier"
 
+    @log_call
     def validate_installation(self) -> bool:
         """Check if amplifier command is available."""
         return _validate_cli_command(["amplifier", "--version"])
 
+    @log_call
     def get_version(self) -> str:
         """Get Amplifier version."""
         return _get_cli_version(["amplifier", "--version"])
 
+    @log_call
     def format_prompt(self, goal: str, persona: str, context: str) -> str:
         """Format prompt for Microsoft Amplifier."""
         context_str = f"\nContext: {context}" if context else ""
 
         return f"Goal: {goal}{context_str}\n\nPersona: {persona}"
 
+    @log_call
     def spawn_subprocess(
         self,
         goal: str,
@@ -453,6 +478,7 @@ class AmplifierCLI:
 
         return process
 
+    @log_call
     def parse_output(self, output: str) -> dict[str, str]:
         """Parse Amplifier output."""
         return {
@@ -468,6 +494,7 @@ _PLATFORM_REGISTRY: dict[str, PlatformCLI] = {
 }
 
 
+@log_call
 def register_platform(name: str, platform: PlatformCLI) -> None:
     """Register a custom platform CLI implementation.
 
@@ -478,6 +505,7 @@ def register_platform(name: str, platform: PlatformCLI) -> None:
     _PLATFORM_REGISTRY[name] = platform
 
 
+@log_call
 def get_platform_cli(platform: str | None = None) -> PlatformCLI:
     """Get platform CLI implementation.
 

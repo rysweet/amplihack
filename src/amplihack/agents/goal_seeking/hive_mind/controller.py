@@ -25,14 +25,16 @@ from __future__ import annotations
 
 import logging
 import os
-import sys
 import re
 import shutil
+import sys
 import tempfile
 import time
 import uuid
 from dataclasses import dataclass, field
 from typing import Any
+
+from amplihack.utils.logging_utils import log_call
 
 from .constants import (
     DEFAULT_CONTRADICTION_OVERLAP,
@@ -99,6 +101,7 @@ class InMemoryGraphStore:
     Not suitable for production.
     """
 
+    @log_call
     def __init__(self, store_id: str = "memory") -> None:
         self._store_id = store_id
         self._facts: dict[str, dict[str, Any]] = {}
@@ -106,9 +109,11 @@ class InMemoryGraphStore:
         self._edges: list[dict[str, Any]] = []
 
     @property
+    @log_call
     def store_id(self) -> str:
         return self._store_id
 
+    @log_call
     def store_fact(
         self,
         concept: str,
@@ -130,6 +135,7 @@ class InMemoryGraphStore:
         }
         return node_id
 
+    @log_call
     def search_facts(self, query: str, limit: int = 10) -> list[dict]:
         """Keyword search across stored facts."""
         keywords = [w.strip().lower() for w in query.split() if w.strip()]
@@ -146,14 +152,17 @@ class InMemoryGraphStore:
         scored.sort(key=lambda x: (-x[0], -x[1].get("confidence", 0.0)))
         return [f for _, f in scored[:limit]]
 
+    @log_call
     def get_all_facts(self, limit: int = 500) -> list[dict]:
         """Return all stored facts."""
         return list(self._facts.values())[:limit]
 
+    @log_call
     def get_statistics(self) -> dict:
         """Return basic stats."""
         return {"semantic": len(self._facts)}
 
+    @log_call
     def close(self) -> None:
         """No-op: in-memory store has no external resources to release.
 
@@ -161,6 +170,7 @@ class InMemoryGraphStore:
         after close().  Use clear() to explicitly wipe data.
         """
 
+    @log_call
     def clear(self) -> None:
         """Explicitly destroy all in-memory data."""
         self._facts.clear()
@@ -180,6 +190,7 @@ class InMemoryGateway:
     Performs trust checks and contradiction detection using in-memory data.
     """
 
+    @log_call
     def __init__(
         self,
         store: InMemoryGraphStore,
@@ -193,14 +204,17 @@ class InMemoryGateway:
         self._consensus_required = consensus_required
         self._agent_trust: dict[str, float] = {}
 
+    @log_call
     def set_trust(self, agent_id: str, trust: float) -> None:
         """Set trust score for an agent."""
         self._agent_trust[agent_id] = max(0.0, min(MAX_TRUST_SCORE, trust))
 
+    @log_call
     def get_trust(self, agent_id: str) -> float:
         """Get trust score for an agent."""
         return self._agent_trust.get(agent_id, DEFAULT_TRUST_SCORE)
 
+    @log_call
     def submit_for_promotion(
         self,
         agent_id: str,
@@ -261,6 +275,7 @@ class InMemoryGateway:
             "reason": "Clean promotion",
         }
 
+    @log_call
     def _find_contradictions(
         self,
         content: str,
@@ -293,6 +308,7 @@ class InMemoryGateway:
         return candidates
 
     @staticmethod
+    @log_call
     def _word_overlap(a: str, b: str) -> float:
         """Jaccard word overlap between two strings."""
         words_a = set(a.lower().split())
@@ -392,6 +408,7 @@ class HiveManifest:
     gateway: GatewayConfig = field(default_factory=GatewayConfig)
 
     @classmethod
+    @log_call
     def from_yaml(cls, path: str) -> HiveManifest:
         """Load manifest from a YAML file with environment variable substitution.
 
@@ -419,6 +436,7 @@ class HiveManifest:
         return cls.from_dict(raw)
 
     @classmethod
+    @log_call
     def from_dict(cls, data: dict) -> HiveManifest:
         """Load manifest from a dictionary.
 
@@ -467,6 +485,7 @@ class HiveManifest:
 # ---------------------------------------------------------------------------
 
 
+@log_call
 def _substitute_env_vars(obj: Any) -> Any:
     """Recursively substitute ${VAR_NAME} in string values.
 
@@ -530,6 +549,7 @@ class HiveController:
         >>> ctrl.shutdown()
     """
 
+    @log_call
     def __init__(self, manifest: HiveManifest) -> None:
         self.manifest = manifest
         self._hive_store: InMemoryGraphStore | Any = None
@@ -544,6 +564,7 @@ class HiveController:
     # Core reconciliation
     # ------------------------------------------------------------------
 
+    @log_call
     def apply(self) -> HiveState:
         """Apply the manifest -- create/destroy agents to match desired state.
 
@@ -587,6 +608,7 @@ class HiveController:
 
         return self.get_state()
 
+    @log_call
     def get_state(self) -> HiveState:
         """Return current actual state.
 
@@ -610,6 +632,7 @@ class HiveController:
     # Agent operations
     # ------------------------------------------------------------------
 
+    @log_call
     def learn(
         self,
         agent_id: str,
@@ -638,6 +661,7 @@ class HiveController:
         agent = self._get_agent(agent_id)
         return agent.learn(concept, content, confidence, tags)
 
+    @log_call
     def promote(
         self,
         agent_id: str,
@@ -674,6 +698,7 @@ class HiveController:
             concept=concept,
         )
 
+    @log_call
     def propagate(self) -> dict[str, int]:
         """Run one round of event propagation across all agents.
 
@@ -689,6 +714,7 @@ class HiveController:
             results[agent_id] = count
         return results
 
+    @log_call
     def query(
         self,
         agent_id: str,
@@ -713,6 +739,7 @@ class HiveController:
         agent = self._get_agent(agent_id)
         return agent.query(query_text, limit=limit)
 
+    @log_call
     def query_routed(
         self,
         query_text: str,
@@ -752,6 +779,7 @@ class HiveController:
     # Shutdown
     # ------------------------------------------------------------------
 
+    @log_call
     def shutdown(self, cleanup: bool = False) -> None:
         """Shutdown all agents and release resources.
 
@@ -786,6 +814,7 @@ class HiveController:
     # Private: infrastructure setup
     # ------------------------------------------------------------------
 
+    @log_call
     def _ensure_base_dir(self) -> None:
         """Create base directory for agent databases if needed."""
         if self._base_dir:
@@ -800,6 +829,7 @@ class HiveController:
 
         os.makedirs(self._base_dir, exist_ok=True)
 
+    @log_call
     def _ensure_hive_store(self) -> None:
         """Connect or create the hive graph store based on config."""
         if self._hive_store is not None:
@@ -825,6 +855,7 @@ class HiveController:
             )
             self._hive_store = InMemoryGraphStore(store_id=self.manifest.graph_store.graph_name)
 
+    @log_call
     def _ensure_event_bus(self) -> None:
         """Connect or create the event bus based on config."""
         if self._event_bus is not None:
@@ -845,6 +876,7 @@ class HiveController:
                 raise ImportError("LocalEventBus unavailable. Event bus module failed to import.")
             self._event_bus = LocalEventBus()
 
+    @log_call
     def _ensure_gateway(self) -> None:
         """Create the gateway based on config and backend."""
         if self._gateway is not None:
@@ -864,6 +896,7 @@ class HiveController:
     # Private: agent lifecycle
     # ------------------------------------------------------------------
 
+    @log_call
     def _create_agent(self, spec: AgentSpec) -> None:
         """Create an agent from its specification."""
         self._ensure_base_dir()
@@ -887,6 +920,7 @@ class HiveController:
 
         self._agents[spec.agent_id] = agent
 
+    @log_call
     def _remove_agent(self, agent_id: str) -> None:
         """Remove an agent from the hive.  Its local DB is preserved."""
         if agent_id not in self._agents:
@@ -894,6 +928,7 @@ class HiveController:
         agent = self._agents.pop(agent_id)
         agent.leave_hive()
 
+    @log_call
     def _get_agent(self, agent_id: str) -> AgentNode:
         """Look up an agent, raising KeyError if not found."""
         if agent_id not in self._agents:

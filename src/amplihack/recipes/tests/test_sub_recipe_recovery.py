@@ -27,19 +27,21 @@ from amplihack.recipes.models import (
     StepType,
 )
 from amplihack.recipes.runner import RecipeRunner
-
+from amplihack.utils.logging_utils import log_call
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 
+@log_call
 def _make_runner(adapter: MagicMock | None = None) -> RecipeRunner:
     if adapter is None:
         adapter = MagicMock()
     return RecipeRunner(adapter=adapter, working_dir="/tmp")
 
 
+@log_call
 def _make_step(recipe_name: str = "my-sub-recipe", working_dir: str | None = None) -> Step:
     return Step(
         id="step-01-sub",
@@ -49,14 +51,17 @@ def _make_step(recipe_name: str = "my-sub-recipe", working_dir: str | None = Non
     )
 
 
+@log_call
 def _make_ctx(**kwargs: str) -> RecipeContext:
     return RecipeContext(dict(kwargs))
 
 
+@log_call
 def _make_stub_recipe(name: str = "my-sub-recipe") -> Recipe:
     return Recipe(name=name, steps=[], description="stub", version="1.0.0")
 
 
+@log_call
 def _make_failed_result(recipe_name: str = "my-sub-recipe") -> RecipeResult:
     return RecipeResult(
         recipe_name=recipe_name,
@@ -72,6 +77,7 @@ def _make_failed_result(recipe_name: str = "my-sub-recipe") -> RecipeResult:
     )
 
 
+@log_call
 def _make_success_result(recipe_name: str = "my-sub-recipe") -> RecipeResult:
     return RecipeResult(
         recipe_name=recipe_name,
@@ -83,6 +89,7 @@ def _make_success_result(recipe_name: str = "my-sub-recipe") -> RecipeResult:
     )
 
 
+@log_call
 def _patch_sub_recipe(recipe_name: str, sub_result: RecipeResult):
     """Context manager stack that makes _execute_sub_recipe reach the failure branch.
 
@@ -91,7 +98,9 @@ def _patch_sub_recipe(recipe_name: str, sub_result: RecipeResult):
     - RecipeParser  → returns a stub Recipe object
     - RecipeRunner.execute → returns sub_result
     """
+
     @contextlib.contextmanager
+    @log_call
     def _cm():
         with patch("amplihack.recipes.runner.find_recipe", return_value="/fake/path.yaml"):
             with patch(
@@ -112,6 +121,7 @@ def _patch_sub_recipe(recipe_name: str, sub_result: RecipeResult):
 class TestRecoverableFailure:
     """When the sub-recipe fails but the recovery agent succeeds, return agent output."""
 
+    @log_call
     def test_agent_recovery_returns_output_on_success(self) -> None:
         """If recovery agent produces a non-UNRECOVERABLE response, it is returned."""
         adapter = MagicMock()
@@ -127,6 +137,7 @@ class TestRecoverableFailure:
         assert result == "Recovery complete: task done via agent"
         adapter.execute_agent_step.assert_called_once()
 
+    @log_call
     def test_recovery_prompt_includes_failure_context(self) -> None:
         """The recovery prompt contains sub-recipe name, failed step, and error info."""
         adapter = MagicMock()
@@ -144,6 +155,7 @@ class TestRecoverableFailure:
         assert "critical-sub" in prompt
         assert "sub-step-01" in prompt
 
+    @log_call
     def test_recovery_agent_uses_step_working_dir(self) -> None:
         """The recovery agent step is invoked with the step's working_dir."""
         adapter = MagicMock()
@@ -159,6 +171,7 @@ class TestRecoverableFailure:
         call_kwargs = adapter.execute_agent_step.call_args.kwargs
         assert call_kwargs.get("working_dir") == "/custom/dir"
 
+    @log_call
     def test_recovery_agent_falls_back_to_runner_working_dir(self) -> None:
         """When step.working_dir is None, the runner's working_dir is used."""
         adapter = MagicMock()
@@ -183,6 +196,7 @@ class TestRecoverableFailure:
 class TestUnrecoverableFailure:
     """When the recovery agent reports UNRECOVERABLE, StepExecutionError is raised."""
 
+    @log_call
     def test_unrecoverable_response_raises_step_execution_error(self) -> None:
         """UNRECOVERABLE in agent response causes StepExecutionError."""
         adapter = MagicMock()
@@ -198,6 +212,7 @@ class TestUnrecoverableFailure:
 
         assert "step-01-sub" in str(exc_info.value)
 
+    @log_call
     def test_error_message_references_original_sub_recipe(self) -> None:
         """StepExecutionError message references the original sub-recipe name."""
         adapter = MagicMock()
@@ -213,11 +228,15 @@ class TestUnrecoverableFailure:
 
         assert "failing-sub" in str(exc_info.value)
 
-    @pytest.mark.parametrize("response", [
-        "UNRECOVERABLE: missing deps",
-        "unrecoverable: disk full",
-        "This is UNRECOVERABLE due to conflict",
-    ])
+    @pytest.mark.parametrize(
+        "response",
+        [
+            "UNRECOVERABLE: missing deps",
+            "unrecoverable: disk full",
+            "This is UNRECOVERABLE due to conflict",
+        ],
+    )
+    @log_call
     def test_unrecoverable_token_is_case_insensitive(self, response: str) -> None:
         """UNRECOVERABLE token is matched regardless of case."""
         adapter = MagicMock()
@@ -240,6 +259,7 @@ class TestUnrecoverableFailure:
 class TestRecoveryAgentFailure:
     """When the recovery agent itself raises or returns nothing, StepExecutionError is raised."""
 
+    @log_call
     def test_adapter_exception_during_recovery_raises_step_execution_error(self) -> None:
         """If adapter.execute_agent_step raises during recovery, StepExecutionError propagates."""
         adapter = MagicMock()
@@ -253,6 +273,7 @@ class TestRecoveryAgentFailure:
             with pytest.raises(StepExecutionError):
                 runner._execute_sub_recipe(step, ctx)
 
+    @log_call
     def test_empty_recovery_response_raises_step_execution_error(self) -> None:
         """An empty string from the recovery agent is treated as failure."""
         adapter = MagicMock()
@@ -266,6 +287,7 @@ class TestRecoveryAgentFailure:
             with pytest.raises(StepExecutionError):
                 runner._execute_sub_recipe(step, ctx)
 
+    @log_call
     def test_none_adapter_skips_recovery_and_raises(self) -> None:
         """Without an adapter, recovery is skipped and StepExecutionError is raised."""
         runner = RecipeRunner(adapter=None, working_dir="/tmp")
@@ -285,6 +307,7 @@ class TestRecoveryAgentFailure:
 class TestSuccessfulSubRecipe:
     """When the sub-recipe succeeds, no recovery agent is invoked."""
 
+    @log_call
     def test_no_recovery_on_success(self) -> None:
         """If the sub-recipe succeeds, execute_agent_step is never called."""
         adapter = MagicMock()
@@ -307,6 +330,7 @@ class TestSuccessfulSubRecipe:
 class TestAttemptAgentRecoveryDirect:
     """Unit tests for _attempt_agent_recovery() in isolation."""
 
+    @log_call
     def test_returns_agent_output_on_success(self) -> None:
         adapter = MagicMock()
         adapter.execute_agent_step.return_value = "task completed successfully"
@@ -323,6 +347,7 @@ class TestAttemptAgentRecoveryDirect:
 
         assert result == "task completed successfully"
 
+    @log_call
     def test_returns_none_when_adapter_is_none(self) -> None:
         runner = RecipeRunner(adapter=None, working_dir="/tmp")
         result = runner._attempt_agent_recovery(
@@ -335,6 +360,7 @@ class TestAttemptAgentRecoveryDirect:
         )
         assert result is None
 
+    @log_call
     def test_returns_none_on_adapter_exception(self) -> None:
         adapter = MagicMock()
         adapter.execute_agent_step.side_effect = ConnectionError("timeout")
@@ -350,6 +376,7 @@ class TestAttemptAgentRecoveryDirect:
         )
         assert result is None
 
+    @log_call
     def test_returns_none_on_unrecoverable_response(self) -> None:
         adapter = MagicMock()
         adapter.execute_agent_step.return_value = "UNRECOVERABLE: nothing can be done"
@@ -365,6 +392,7 @@ class TestAttemptAgentRecoveryDirect:
         )
         assert result is None
 
+    @log_call
     def test_returns_none_on_empty_response(self) -> None:
         adapter = MagicMock()
         adapter.execute_agent_step.return_value = ""
@@ -380,6 +408,7 @@ class TestAttemptAgentRecoveryDirect:
         )
         assert result is None
 
+    @log_call
     def test_recovery_prompt_includes_failure_context(self) -> None:
         """Recovery prompt contains sub-recipe name, failed steps, and partial outputs."""
         adapter = MagicMock()

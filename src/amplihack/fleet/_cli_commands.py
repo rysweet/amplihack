@@ -10,8 +10,9 @@ fleet_cli.py's create_fleet_cli() instead.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import click
 
@@ -19,16 +20,6 @@ from amplihack.fleet._cli_copilot_ops import register_copilot_ops
 from amplihack.fleet._cli_fleet_ops import register_fleet_ops
 from amplihack.fleet._cli_scout_advance import register_scout_advance_ops
 from amplihack.fleet._cli_session_ops import register_session_ops
-from amplihack.fleet.fleet_auth import AuthPropagator
-from amplihack.fleet.fleet_observer import FleetObserver
-from amplihack.fleet._backends import (
-    AnthropicBackend,
-    CopilotBackend,
-    LiteLLMBackend,
-    auto_detect_backend,
-)
-from amplihack.fleet.fleet_session_reasoner import SessionReasoner
-from amplihack.fleet.fleet_state import FleetState
 from amplihack.fleet.fleet_tasks import TaskPriority, TaskQueue
 
 __all__ = ["register_commands", "COPILOT_LOCK_DIR", "COPILOT_LOG_DIR"]
@@ -50,12 +41,16 @@ _adopt_all_sessions: Callable[..., None] = lambda d: None
 # Tests patch these module-level vars for filesystem isolation.
 import os as _os
 
+from amplihack.utils.logging_utils import log_call
 
+
+@log_call
 def _copilot_lock_dir() -> Path:
     root = Path(_os.environ.get("CLAUDE_PROJECT_DIR", "."))
     return root / ".claude" / "runtime" / "locks"
 
 
+@log_call
 def _copilot_log_dir() -> Path:
     root = Path(_os.environ.get("CLAUDE_PROJECT_DIR", "."))
     return root / ".claude" / "runtime" / "copilot-decisions"
@@ -66,6 +61,7 @@ COPILOT_LOCK_DIR: Path | None = None
 COPILOT_LOG_DIR: Path | None = None
 
 
+@log_call
 def register_commands(
     fleet_cli: click.Group,
     *,
@@ -109,6 +105,7 @@ def register_commands(
     # ------------------------------------------------------------------
 
     @fleet_cli.command("dashboard")
+    @log_call
     def dashboard():
         """Show meta-project tracking dashboard."""
         from amplihack.fleet.fleet_dashboard import FleetDashboard
@@ -145,6 +142,7 @@ def register_commands(
     )
     @click.option("--max-turns", default=20, help="Max agent turns")
     @click.option("--protected", is_flag=True, help="Deep work mode -- never preempt")
+    @log_call
     def add_task(prompt, repo, priority, agent, mode, max_turns, protected):
         """Add a task to the fleet queue."""
         queue = TaskQueue(persist_path=_default_queue_path)
@@ -170,6 +168,7 @@ def register_commands(
     # ------------------------------------------------------------------
 
     @fleet_cli.command("queue")
+    @log_call
     def show_queue():
         """Show task queue."""
         queue = TaskQueue(persist_path=_default_queue_path)
@@ -180,6 +179,7 @@ def register_commands(
     # ------------------------------------------------------------------
 
     @fleet_cli.command("graph")
+    @log_call
     def show_graph():
         """Show fleet knowledge graph summary."""
         from amplihack.fleet.fleet_graph import FleetGraph
@@ -192,6 +192,7 @@ def register_commands(
     # ------------------------------------------------------------------
 
     @fleet_cli.group("project")
+    @log_call
     def project():
         """Manage fleet projects (repos, identities, priorities)."""
 
@@ -205,6 +206,7 @@ def register_commands(
         help="Project priority",
     )
     @click.option("--name", default="", help="Display name (default: derived from URL)")
+    @log_call
     def project_add(repo_url, identity, priority, name):
         """Register a project for fleet tracking."""
         from amplihack.fleet.fleet_dashboard import FleetDashboard
@@ -247,6 +249,7 @@ def register_commands(
         click.echo(f"  Priority: {priority}")
 
     @project.command("list")
+    @log_call
     def project_list():
         """List all registered fleet projects."""
         from amplihack.fleet.fleet_dashboard import FleetDashboard
@@ -278,6 +281,7 @@ def register_commands(
 
     @project.command("remove")
     @click.argument("name")
+    @log_call
     def project_remove(name):
         """Remove a project by name or repo URL."""
         from amplihack.fleet.fleet_dashboard import FleetDashboard
@@ -293,6 +297,7 @@ def register_commands(
     @click.argument("issue_number", type=int)
     @click.option("--title", default="", help="Issue title (fetched from GH if omitted)")
     @click.option("--url", default="", help="Issue URL")
+    @log_call
     def project_add_issue(project_name, issue_number, title, url):
         """Track a GitHub issue as a project objective."""
         from amplihack.fleet._projects import load_projects, save_projects
@@ -318,13 +323,26 @@ def register_commands(
                 if proj.identity:
                     subprocess.run(
                         ["gh", "auth", "switch", "--user", proj.identity],
-                        capture_output=True, text=True, timeout=10,
+                        capture_output=True,
+                        text=True,
+                        timeout=10,
                     )
                 result = subprocess.run(
-                    ["gh", "issue", "view", str(issue_number),
-                     "--repo", proj.repo_url, "--json", "title,url",
-                     "--jq", '.title + "\\n" + .url'],
-                    capture_output=True, text=True, timeout=15,
+                    [
+                        "gh",
+                        "issue",
+                        "view",
+                        str(issue_number),
+                        "--repo",
+                        proj.repo_url,
+                        "--json",
+                        "title,url",
+                        "--jq",
+                        '.title + "\\n" + .url',
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=15,
                 )
                 if result.returncode == 0 and result.stdout.strip():
                     lines = result.stdout.strip().split("\n")
@@ -344,6 +362,7 @@ def register_commands(
     @project.command("track-issue")
     @click.argument("project_name")
     @click.option("--label", default="fleet-objective", help="GitHub label to filter")
+    @log_call
     def project_track_issue(project_name, label):
         """Sync objectives from GitHub issues with a label."""
         import subprocess
@@ -371,13 +390,27 @@ def register_commands(
             if proj.identity:
                 subprocess.run(
                     ["gh", "auth", "switch", "--user", proj.identity],
-                    capture_output=True, text=True, timeout=10,
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
                 )
             result = subprocess.run(
-                ["gh", "issue", "list", "--repo", proj.repo_url,
-                 "--label", label, "--json", "number,title,state,url",
-                 "--jq", '.[]|[.number,.title,.state,.url]|@tsv'],
-                capture_output=True, text=True, timeout=15,
+                [
+                    "gh",
+                    "issue",
+                    "list",
+                    "--repo",
+                    proj.repo_url,
+                    "--label",
+                    label,
+                    "--json",
+                    "number,title,state,url",
+                    "--jq",
+                    ".[]|[.number,.title,.state,.url]|@tsv",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=15,
             )
         except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
             click.echo(f"Failed to query GitHub: {exc}")
@@ -403,4 +436,3 @@ def register_commands(
 
         save_projects(projects)
         click.echo(f"Synced {count} objectives for {project_name} (label: {label})")
-

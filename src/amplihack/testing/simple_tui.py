@@ -7,6 +7,8 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 
 @dataclass
 class TestResult:
@@ -31,16 +33,19 @@ class TUITestCase:
 class SimpleTUITester:
     """TUI testing implementation using gadugi-agentic-test framework via subprocess"""
 
+    @log_call
     def __init__(self, output_dir: Path = Path("./tui_output")):
         self.output_dir = output_dir
         self.output_dir.mkdir(exist_ok=True)
         self.test_cases: dict[str, TUITestCase] = {}
         self.results: dict[str, TestResult] = {}
 
+    @log_call
     def add_test(self, test_case: TUITestCase) -> None:
         """Add a test case"""
         self.test_cases[test_case.test_id] = test_case
 
+    @log_call
     def _check_gadugi_available(self) -> bool:
         """Check if gadugi-agentic-test is available"""
         # In CI environments, we want to avoid hanging on npx downloads
@@ -70,6 +75,7 @@ class SimpleTUITester:
         except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
             return False
 
+    @log_call
     async def run_test(self, test_id: str) -> TestResult:
         """Run a single test using gadugi-agentic-test framework or fallback"""
         if test_id not in self.test_cases:
@@ -226,6 +232,7 @@ class SimpleTUITester:
             duration = time.time() - start_time
             return TestResult(test_id, "failed", duration, f"Test execution failed: {e!s}")
 
+    @log_call
     async def run_all(self) -> dict[str, TestResult]:
         """Run all tests"""
         results = {}
@@ -235,17 +242,20 @@ class SimpleTUITester:
 
 
 # Simple factory function
+@log_call
 def create_tui_tester(output_dir: Path | None = None) -> SimpleTUITester:
     """Create a simple TUI tester"""
     return SimpleTUITester(output_dir or Path("./tui_output"))
 
 
 # Convenience functions for AmplIHack CLI testing
+@log_call
 def create_amplihack_test(test_id: str, args: str) -> TUITestCase:
     """Create an AmplIHack CLI test"""
     return TUITestCase(test_id=test_id, name=f"AmplIHack {args}", commands=[f"amplihack {args}"])
 
 
+@log_call
 async def run_amplihack_basics() -> dict[str, TestResult]:
     """Test basic AmplIHack commands"""
     tester = create_tui_tester()

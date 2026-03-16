@@ -10,6 +10,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal
 
+from amplihack.utils.logging_utils import log_call
+
 
 @dataclass
 class ParsedPrompt:
@@ -23,6 +25,7 @@ class ParsedPrompt:
     confidence: float
     metadata: dict[str, Any] = field(default_factory=dict)
 
+    @log_call
     def __post_init__(self):
         """Validate parsed prompt data."""
         if not 0 <= self.confidence <= 1:
@@ -44,6 +47,7 @@ class ExtractedIntent:
     dependencies: list[str]
     confidence: float
 
+    @log_call
     def __post_init__(self):
         """Validate extracted intent."""
         if self.agent_count < 1:
@@ -67,6 +71,7 @@ class AgentRequirement:
     dependencies: list[str] = field(default_factory=list)
     priority: int = 0  # 0 = highest priority
 
+    @log_call
     def __post_init__(self):
         """Validate agent requirement."""
         if not self.name.replace("-", "").replace("_", "").isalnum():
@@ -95,6 +100,7 @@ class GeneratedAgent:
     created_at: datetime = field(default_factory=datetime.utcnow)
     generation_time_seconds: float = 0.0
 
+    @log_call
     def __post_init__(self):
         """Validate generated agent."""
         if self.content and len(self.content) < 100:
@@ -103,6 +109,7 @@ class GeneratedAgent:
             raise ValueError(f"Agent {self.name} must have a role")
 
     @property
+    @log_call
     def file_size_kb(self) -> float:
         """Estimated file size in KB."""
         return len(self.content.encode("utf-8")) / 1024
@@ -123,6 +130,7 @@ class AgentBundle:
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)
 
+    @log_call
     def __post_init__(self):
         """Validate bundle."""
         if not self.name:
@@ -133,11 +141,13 @@ class AgentBundle:
             raise ValueError("Bundle name must be 3-50 characters")
 
     @property
+    @log_call
     def agent_count(self) -> int:
         """Number of agents in bundle."""
         return len(self.agents)
 
     @property
+    @log_call
     def total_size_kb(self) -> float:
         """Total estimated size in KB."""
         return sum(agent.file_size_kb for agent in self.agents)
@@ -155,6 +165,7 @@ class PackagedBundle:
     uvx_metadata: dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=datetime.utcnow)
 
+    @log_call
     def __post_init__(self):
         """Validate packaged bundle."""
         if not self.package_path:
@@ -183,11 +194,13 @@ class DistributionResult:
     distribution_time_seconds: float = 0.0
 
     @property
+    @log_call
     def has_errors(self) -> bool:
         """Check if distribution had errors."""
         return len(self.errors) > 0
 
     @property
+    @log_call
     def has_warnings(self) -> bool:
         """Check if distribution had warnings."""
         return len(self.warnings) > 0
@@ -209,6 +222,7 @@ class TestResult:
     coverage_percent: float | None = None
 
     @property
+    @log_call
     def success_rate(self) -> float:
         """Calculate test success rate."""
         if self.test_count == 0:
@@ -231,6 +245,7 @@ class GenerationMetrics:
     memory_peak_mb: float = 0.0
 
     @property
+    @log_call
     def average_agent_time(self) -> float:
         """Average time per agent."""
         if self.agent_count == 0:

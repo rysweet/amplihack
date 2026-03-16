@@ -22,6 +22,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 __all__ = ["ResultCollector", "TaskResult"]
 
 
@@ -47,9 +49,11 @@ class TaskResult:
     duration_seconds: float = 0.0
 
     @property
+    @log_call
     def is_success(self) -> bool:
         return self.status == "success"
 
+    @log_call
     def to_dict(self) -> dict:
         return {
             "task_id": self.task_id,
@@ -71,6 +75,7 @@ class TaskResult:
         }
 
     @classmethod
+    @log_call
     def from_dict(cls, data: dict) -> TaskResult:
         result = cls(
             task_id=data["task_id"],
@@ -106,10 +111,12 @@ class ResultCollector:
     results_dir: Path = Path.home() / ".amplihack" / "fleet" / "results"
     _results: dict[str, TaskResult] = field(default_factory=dict)
 
+    @log_call
     def __post_init__(self):
         self.results_dir.mkdir(parents=True, exist_ok=True)
         self._load_index()
 
+    @log_call
     def record(self, result: TaskResult) -> None:
         """Record a task result."""
         self._results[result.task_id] = result
@@ -120,10 +127,12 @@ class ResultCollector:
         tmp.rename(result_file)
         self._save_index()
 
+    @log_call
     def get(self, task_id: str) -> TaskResult | None:
         """Get result by task ID."""
         return self._results.get(task_id)
 
+    @log_call
     def recent(self, limit: int = 20) -> list[TaskResult]:
         """Get most recent results."""
         sorted_results = sorted(
@@ -133,6 +142,7 @@ class ResultCollector:
         )
         return sorted_results[:limit]
 
+    @log_call
     def success_rate(self) -> float:
         """Overall success rate across all recorded results."""
         if not self._results:
@@ -140,14 +150,17 @@ class ResultCollector:
         successes = sum(1 for r in self._results.values() if r.is_success)
         return successes / len(self._results)
 
+    @log_call
     def by_vm(self, vm_name: str) -> list[TaskResult]:
         """Get results for a specific VM."""
         return [r for r in self._results.values() if r.vm_name == vm_name]
 
+    @log_call
     def by_repo(self, repo_url: str) -> list[TaskResult]:
         """Get results for a specific repo."""
         return [r for r in self._results.values() if r.repo_url == repo_url]
 
+    @log_call
     def summary(self) -> str:
         """Human-readable results summary."""
         total = len(self._results)
@@ -176,11 +189,15 @@ class ResultCollector:
 
         return "\n".join(lines)
 
+    @log_call
     def _save_index(self) -> None:
         """Save results index for fast loading."""
-        if getattr(self, '_load_failed', False):
+        if getattr(self, "_load_failed", False):
             import logging
-            logging.getLogger(__name__).error("Refusing to save — load failed for results index. Fix the .bak file manually.")
+
+            logging.getLogger(__name__).error(
+                "Refusing to save — load failed for results index. Fix the .bak file manually."
+            )
             return
         index_file = self.results_dir / "index.json"
         index = {tid: r.to_dict() for tid, r in self._results.items()}
@@ -189,6 +206,7 @@ class ResultCollector:
         tmp.write_text(json.dumps(index, indent=2))
         tmp.rename(index_file)
 
+    @log_call
     def _load_index(self) -> None:
         """Load results index."""
         index_file = self.results_dir / "index.json"
@@ -200,7 +218,9 @@ class ResultCollector:
             import logging
             import shutil
 
-            logging.getLogger(__name__).warning(f"Corrupt results index: {index_file} — creating backup")
+            logging.getLogger(__name__).warning(
+                f"Corrupt results index: {index_file} — creating backup"
+            )
             backup = index_file.with_suffix(".json.bak")
             shutil.copy2(index_file, backup)
             self._load_failed = True

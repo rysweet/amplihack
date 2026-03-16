@@ -14,6 +14,8 @@ from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 TRIAL_HOME_ENV = "AMPLIHACK_RUST_TRIAL_HOME"
 TRIAL_BINARY_ENV = "AMPLIHACK_RUST_TRIAL_BINARY"
 TRIAL_HOME_NAME = ".amplihack-rust-trial"
@@ -24,10 +26,12 @@ USAGE = (
 )
 
 
+@log_call
 def _binary_name() -> str:
     return "amplihack.exe" if os.name == "nt" else "amplihack"
 
 
+@log_call
 def default_trial_home() -> Path:
     """Return the default isolated home for Rust CLI trials."""
     configured = os.environ.get(TRIAL_HOME_ENV)
@@ -36,11 +40,13 @@ def default_trial_home() -> Path:
     return Path.home() / TRIAL_HOME_NAME
 
 
+@log_call
 def _bundled_binary_path() -> Path:
     """Return the expected bundled Rust CLI binary path inside the package."""
     return Path(__file__).resolve().parent / ".claude" / "bin" / _binary_name()
 
 
+@log_call
 def _is_rust_cli_binary(candidate: Path) -> bool:
     """Return True when the candidate behaves like the Rust CLI binary."""
     if not candidate.is_file() or not os.access(candidate, os.X_OK):
@@ -61,6 +67,7 @@ def _is_rust_cli_binary(candidate: Path) -> bool:
     return "amplihack-rs" in combined or "rust core runtime" in combined
 
 
+@log_call
 def _existing_rust_candidate(path: Path | None) -> Path | None:
     if path is None:
         return None
@@ -70,6 +77,7 @@ def _existing_rust_candidate(path: Path | None) -> Path | None:
     return None
 
 
+@log_call
 def _target_triple() -> str:
     machine = platform.machine().lower()
     if machine in {"x86_64", "amd64"}:
@@ -89,10 +97,12 @@ def _target_triple() -> str:
     return f"{arch}-{suffix}"
 
 
+@log_call
 def _expected_release_asset_name() -> str:
     return f"amplihack-{_target_triple()}.tar.gz"
 
 
+@log_call
 def _release_cache_dir(trial_home: Path, tag_name: str) -> Path:
     return (
         trial_home.expanduser().resolve()
@@ -104,6 +114,7 @@ def _release_cache_dir(trial_home: Path, tag_name: str) -> Path:
     )
 
 
+@log_call
 def _github_json(url: str) -> object:
     request = urllib.request.Request(
         url,
@@ -116,12 +127,14 @@ def _github_json(url: str) -> object:
         return json.load(response)
 
 
+@log_call
 def _download_to_file(url: str, destination: Path) -> None:
     request = urllib.request.Request(url, headers={"User-Agent": "amplihack-rust-trial"})
     with urllib.request.urlopen(request, timeout=120) as response, destination.open("wb") as handle:
         shutil.copyfileobj(response, handle)
 
 
+@log_call
 def _select_release_asset(releases: object) -> tuple[str, str]:
     asset_name = _expected_release_asset_name()
     if not isinstance(releases, list):
@@ -160,6 +173,7 @@ def _select_release_asset(releases: object) -> tuple[str, str]:
     )
 
 
+@log_call
 def _release_sort_key(release: dict[str, object], index: int) -> tuple[datetime, datetime, int]:
     created_at = _parse_release_timestamp(release.get("created_at"))
     published_at = _parse_release_timestamp(release.get("published_at"))
@@ -168,6 +182,7 @@ def _release_sort_key(release: dict[str, object], index: int) -> tuple[datetime,
     return created_at, published_at, -index
 
 
+@log_call
 def _parse_release_timestamp(value: object) -> datetime:
     if not isinstance(value, str) or not value:
         return datetime.min.replace(tzinfo=UTC)
@@ -177,6 +192,7 @@ def _parse_release_timestamp(value: object) -> datetime:
         return datetime.min.replace(tzinfo=UTC)
 
 
+@log_call
 def download_latest_release_binary(trial_home: Path) -> Path:
     """Download and extract the latest compatible published Rust CLI binary."""
     tag_name, asset_url = _select_release_asset(_github_json(RUST_RELEASES_API))
@@ -202,6 +218,7 @@ def download_latest_release_binary(trial_home: Path) -> Path:
     return binary
 
 
+@log_call
 def find_rust_cli_binary(trial_home: Path) -> Path:
     """Locate or download the Rust CLI binary for the opt-in trial helper.
 
@@ -233,6 +250,7 @@ def find_rust_cli_binary(trial_home: Path) -> Path:
     return download_latest_release_binary(trial_home)
 
 
+@log_call
 def build_trial_env(trial_home: Path) -> dict[str, str]:
     """Create the isolated environment for the Rust CLI trial."""
     home = trial_home.expanduser().resolve()
@@ -251,9 +269,8 @@ def build_trial_env(trial_home: Path) -> dict[str, str]:
     return env
 
 
-def _ensure_trial_copilot_config(
-    trial_home: Path, source_home: Path | None = None
-) -> Path:
+@log_call
+def _ensure_trial_copilot_config(trial_home: Path, source_home: Path | None = None) -> Path:
     """Ensure the isolated trial home has a visible Copilot config file.
 
     Copilot CLI interactive startup can hang with no visible terminal output when
@@ -276,7 +293,10 @@ def _ensure_trial_copilot_config(
     return config_path
 
 
-def ensure_trial_dependencies(rust_args: Sequence[str], trial_home: Path, env: dict[str, str]) -> None:
+@log_call
+def ensure_trial_dependencies(
+    rust_args: Sequence[str], trial_home: Path, env: dict[str, str]
+) -> None:
     """Install subcommand-specific dependencies inside the isolated trial home."""
     if not rust_args or rust_args[0] != "copilot":
         return
@@ -290,6 +310,7 @@ def ensure_trial_dependencies(rust_args: Sequence[str], trial_home: Path, env: d
         raise RuntimeError("Failed to install GitHub Copilot CLI into the isolated trial home")
 
 
+@log_call
 def parse_trial_args(argv: Sequence[str]) -> tuple[Path, list[str]]:
     """Parse helper options and return (trial_home, rust_cli_args)."""
     args = list(argv)
@@ -319,6 +340,7 @@ def parse_trial_args(argv: Sequence[str]) -> tuple[Path, list[str]]:
     return trial_home, forwarded
 
 
+@log_call
 def run_rust_trial(rust_args: Sequence[str], trial_home: Path) -> int:
     """Run the Rust CLI inside the isolated trial home."""
     binary = find_rust_cli_binary(trial_home)
@@ -332,6 +354,7 @@ def run_rust_trial(rust_args: Sequence[str], trial_home: Path) -> int:
     return result.returncode
 
 
+@log_call
 def main(argv: Sequence[str] | None = None) -> int:
     """CLI entrypoint for the opt-in Rust trial helper."""
     try:

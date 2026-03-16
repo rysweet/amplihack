@@ -7,6 +7,8 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 
+from amplihack.utils.logging_utils import log_call
+
 
 @dataclass
 class LanguageStatus:
@@ -29,10 +31,12 @@ class PrerequisiteResult:
     partial_success: bool
     language_statuses: dict[str, LanguageStatus] | None = None
 
+    @log_call
     def __post_init__(self):
         if self.language_statuses is None:
             self.language_statuses = {}
 
+    @log_call
     def generate_report(self) -> str:
         """Generate human-readable report of prerequisite status."""
         lines = []
@@ -71,6 +75,7 @@ class PrerequisiteChecker:
     # Supported dotnet versions (6 LTS, 7, 8 LTS, 9, 10)
     SUPPORTED_DOTNET_VERSIONS = ["6", "7", "8", "9", "10"]
 
+    @log_call
     def check_language(self, language: str, indexer_type: str | None = None) -> LanguageStatus:
         """Check prerequisites for a specific language.
 
@@ -104,6 +109,7 @@ class PrerequisiteChecker:
             missing_tools=[],
         )
 
+    @log_call
     def _check_python(self, indexer_type: str | None = None) -> LanguageStatus:
         """Check Python prerequisites with graceful degradation.
 
@@ -163,6 +169,7 @@ class PrerequisiteChecker:
             install_instructions="pip install scip-python (preferred) OR pip install jedi-language-server (fallback)",
         )
 
+    @log_call
     def _check_javascript(self) -> LanguageStatus:
         """Check JavaScript prerequisites."""
         node_bin = shutil.which("node")
@@ -182,6 +189,7 @@ class PrerequisiteChecker:
             missing_tools=[],
         )
 
+    @log_call
     def _check_typescript(self) -> LanguageStatus:
         """Check TypeScript prerequisites."""
         node_bin = shutil.which("node")
@@ -205,6 +213,7 @@ class PrerequisiteChecker:
             missing_tools=[],
         )
 
+    @log_call
     def _check_csharp(self) -> LanguageStatus:
         """Check C# prerequisites."""
         # Check for dotnet binary
@@ -264,6 +273,7 @@ class PrerequisiteChecker:
                 install_instructions="Install .NET SDK from https://dotnet.microsoft.com/download",
             )
 
+    @log_call
     def _check_go(self) -> LanguageStatus:
         """Check Go prerequisites."""
         go_bin = shutil.which("go")
@@ -283,6 +293,7 @@ class PrerequisiteChecker:
             missing_tools=[],
         )
 
+    @log_call
     def _check_java(self) -> LanguageStatus:
         """Check Java prerequisites."""
         java_bin = shutil.which("java")
@@ -302,6 +313,7 @@ class PrerequisiteChecker:
             missing_tools=[],
         )
 
+    @log_call
     def _check_php(self) -> LanguageStatus:
         """Check PHP prerequisites."""
         php_bin = shutil.which("php")
@@ -321,6 +333,7 @@ class PrerequisiteChecker:
             missing_tools=[],
         )
 
+    @log_call
     def _check_ruby(self) -> LanguageStatus:
         """Check Ruby prerequisites."""
         ruby_bin = shutil.which("ruby")
@@ -340,6 +353,7 @@ class PrerequisiteChecker:
             missing_tools=[],
         )
 
+    @log_call
     def check_all(self, languages: list[str]) -> PrerequisiteResult:
         """Check prerequisites for all specified languages.
 

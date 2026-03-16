@@ -2,11 +2,13 @@ from typing import Any
 
 from amplihack.vendor.blarify.graph.graph_environment import GraphEnvironment
 from amplihack.vendor.blarify.graph.node.types.integration_node import IntegrationNode
+from amplihack.utils.logging_utils import log_call
 
 
 class PullRequestNode(IntegrationNode):
     """Represents a pull request node in the graph."""
 
+    @log_call
     def __init__(
         self,
         external_id: str,

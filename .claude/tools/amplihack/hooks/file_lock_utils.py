@@ -18,8 +18,9 @@ import time
 from contextlib import contextmanager
 
 # Platform-specific imports (Windows compatibility)
-if sys.platform != 'win32':
+if sys.platform != "win32":
     import fcntl
+
     LOCKING_AVAILABLE = True
 else:
     LOCKING_AVAILABLE = False

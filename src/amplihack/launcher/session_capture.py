@@ -4,9 +4,14 @@ Captures user prompts and assistant responses during auto mode execution
 for export via ClaudeTranscriptBuilder.
 """
 
+import logging
 import threading
 from datetime import datetime
 from typing import Any
+
+from amplihack.utils.logging_utils import log_call
+
+logger = logging.getLogger(__name__)
 
 
 class MessageCapture:
@@ -18,14 +23,17 @@ class MessageCapture:
     Thread-safe for concurrent access during async execution.
     """
 
+    @log_call
     def __init__(self) -> None:
         """Initialize empty message buffer."""
+        logger.debug("MessageCapture.__init__: called")
         self._messages: list[dict[str, Any]] = []
         self._current_phase: str = "initializing"
         self._current_turn: int = 0
         self._lock = threading.RLock()  # Thread safety for concurrent access
         self.todos: list[dict[str, Any]] = []  # TodoWrite state tracking
 
+    @log_call
     def set_phase(self, phase: str, turn: int) -> None:
         """Set current execution phase and turn number.
 
@@ -33,10 +41,12 @@ class MessageCapture:
             phase: Phase name (clarifying, planning, executing, evaluating, summarizing)
             turn: Current turn number
         """
+        logger.debug(f"MessageCapture.set_phase: called with phase={phase!r}, turn={turn!r}")
         with self._lock:
             self._current_phase = phase
             self._current_turn = turn
 
+    @log_call
     def capture_user_message(self, prompt: str) -> None:
         """Capture user prompt message.
 
@@ -46,6 +56,7 @@ class MessageCapture:
         Side Effects:
             Appends message to internal buffer
         """
+        logger.debug(f"MessageCapture.capture_user_message: called with prompt={prompt!r}")
         if not prompt:
             return
 
@@ -59,6 +70,7 @@ class MessageCapture:
         with self._lock:
             self._messages.append(message)
 
+    @log_call
     def capture_assistant_message(self, message: Any) -> None:
         """Capture assistant response from SDK.
 
@@ -71,6 +83,7 @@ class MessageCapture:
         Side Effects:
             Appends extracted text to internal buffer
         """
+        logger.debug("MessageCapture.capture_assistant_message: called")
         if not hasattr(message, "content"):
             return
 
@@ -90,6 +103,7 @@ class MessageCapture:
             }
             self._messages.append(captured_message)
 
+    @log_call
     def capture_text_response(self, text: str) -> None:
         """Capture plain text assistant response.
 
@@ -101,6 +115,7 @@ class MessageCapture:
         Side Effects:
             Appends message to internal buffer
         """
+        logger.debug(f"MessageCapture.capture_text_response: called with text={text!r}")
         if not text:
             return
 
@@ -113,6 +128,7 @@ class MessageCapture:
         }
         self._messages.append(message)
 
+    @log_call
     def get_messages(self) -> list[dict[str, Any]]:
         """Get all captured messages.
 
@@ -122,29 +138,35 @@ class MessageCapture:
         Side Effects:
             None (read-only)
         """
+        logger.debug("MessageCapture.get_messages: called")
         with self._lock:
             return self._messages.copy()
 
+    @log_call
     def clear(self) -> None:
         """Clear message buffer.
 
         Side Effects:
             Resets internal message list and todos
         """
+        logger.debug("MessageCapture.clear: called")
         with self._lock:
             self._messages.clear()
             self._current_phase = "initializing"
             self._current_turn = 0
             self.todos = []
 
+    @log_call
     def get_message_count(self) -> int:
         """Get count of captured messages.
 
         Returns:
             Number of messages in buffer
         """
+        logger.debug("MessageCapture.get_message_count: called")
         return len(self._messages)
 
+    @log_call
     def update_todos(self, todos: list[dict[str, Any]]) -> None:
         """Update todos with thread safety.
 
@@ -154,5 +176,6 @@ class MessageCapture:
         Side Effects:
             Updates internal todos list (thread-safe)
         """
+        logger.debug(f"MessageCapture.update_todos: called with todos={todos!r}")
         with self._lock:
             self.todos = list(todos)  # Copy to avoid reference issues

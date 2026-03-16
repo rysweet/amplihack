@@ -15,7 +15,10 @@ Public API:
 import re
 import unicodedata
 
+from amplihack.utils.logging_utils import log_call
 
+
+@log_call
 def slugify(text: str) -> str:
     """Convert text to URL-safe slug format.
 

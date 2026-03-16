@@ -14,9 +14,12 @@ import sys
 from enum import Enum
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 logger = logging.getLogger(__name__)
 
 
+@log_call
 def _install_kuzu() -> bool:
     """Install Kùzu package automatically.
 
@@ -74,10 +77,12 @@ class BackendDetector:
     Neo4j support has been removed.
     """
 
+    @log_call
     def __init__(self):
         self._kuzu_available: bool | None = None
 
     @property
+    @log_call
     def kuzu_available(self) -> bool:
         """Check if Kùzu package is installed."""
         if self._kuzu_available is None:
@@ -92,6 +97,7 @@ class BackendDetector:
 
     # Docker and Neo4j detection removed (Week 7 cleanup)
 
+    @log_call
     def _try_install_kuzu(self) -> bool:
         """Attempt to install Kùzu and verify it imports successfully.
 
@@ -112,6 +118,7 @@ class BackendDetector:
 
         return True
 
+    @log_call
     def detect_best_backend(self, auto_install: bool = True) -> BackendType:
         """Detect and return the best available backend.
 
@@ -153,6 +160,7 @@ class BackendDetector:
             "  pip install kuzu"
         )
 
+    @log_call
     def get_connector(self) -> Any:
         """Get a connector for the detected backend.
 
@@ -171,6 +179,7 @@ class BackendDetector:
 
         raise RuntimeError(f"Unknown backend: {backend}")
 
+    @log_call
     def get_status(self) -> dict:
         """Get status of backend.
 
@@ -188,6 +197,7 @@ class BackendDetector:
 # Module-level convenience functions
 
 
+@log_call
 def get_connector() -> Any:
     """Get a graph database connector using auto-detection.
 
@@ -202,6 +212,7 @@ def get_connector() -> Any:
     return detector.get_connector()
 
 
+@log_call
 def get_backend_status() -> dict:
     """Get status of all available backends.
 

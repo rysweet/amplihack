@@ -29,6 +29,8 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 
 class MemoryType(Enum):
     """Five psychological memory types."""
@@ -55,6 +57,7 @@ class EpisodicMemory:
     outcome: str = ""
     memory_type: MemoryType = field(default=MemoryType.EPISODIC, init=False)
 
+    @log_call
     def __post_init__(self):
         """Validate required fields."""
         if not self.timestamp:
@@ -62,6 +65,7 @@ class EpisodicMemory:
         if not self.participants:
             raise ValueError("Episodic memory requires participants to track who was involved")
 
+    @log_call
     def is_in_time_range(self, start: datetime, end: datetime) -> bool:
         """Check if memory falls within time range."""
         if self.timestamp is None:
@@ -83,6 +87,7 @@ class SemanticMemory:
     confidence: float | None = None
     memory_type: MemoryType = field(default=MemoryType.SEMANTIC, init=False)
 
+    @log_call
     def __post_init__(self):
         """Validate required fields and bounds."""
         if not self.concept:
@@ -106,6 +111,7 @@ class ProspectiveMemory:
     deadline: datetime | None = None
     memory_type: MemoryType = field(default=MemoryType.PROSPECTIVE, init=False)
 
+    @log_call
     def __post_init__(self):
         """Validate required fields."""
         if not self.task:
@@ -113,6 +119,7 @@ class ProspectiveMemory:
         if not self.trigger:
             raise ValueError("Prospective memory requires trigger condition")
 
+    @log_call
     def is_overdue(self) -> bool:
         """Check if memory is past deadline."""
         if self.deadline is None:
@@ -135,6 +142,7 @@ class ProceduralMemory:
     strength: float = 0.5  # Starts at medium strength
     memory_type: MemoryType = field(default=MemoryType.PROCEDURAL, init=False)
 
+    @log_call
     def __post_init__(self):
         """Validate required fields."""
         if not self.procedure_name:
@@ -144,6 +152,7 @@ class ProceduralMemory:
         if len(self.steps) == 0:
             raise ValueError("Procedural memory must have at least one step")
 
+    @log_call
     def record_usage(self) -> None:
         """Record successful usage and strengthen memory."""
         self.usage_count += 1
@@ -165,6 +174,7 @@ class WorkingMemory:
     is_cleared: bool = False
     memory_type: MemoryType = field(default=MemoryType.WORKING, init=False)
 
+    @log_call
     def __post_init__(self):
         """Validate required fields."""
         if not self.task_id:
@@ -175,6 +185,7 @@ class WorkingMemory:
         if self.dependencies is None:
             self.dependencies = []
 
+    @log_call
     def mark_task_complete(self) -> None:
         """Clear working memory when task completes."""
         self.is_cleared = True
@@ -192,6 +203,7 @@ class MemorySchema:
     required_fields: list[str]
     field_types: dict[str, type] | None = None
 
+    @log_call
     def validate(self, data: dict[str, Any]) -> bool:
         """Validate data against schema."""
         # Check required fields
@@ -209,6 +221,7 @@ class MemorySchema:
         return True
 
 
+@log_call
 def classify_memory_type(content: str, context: dict[str, Any]) -> MemoryType:
     """Automatically classify memory type based on content and context.
 

@@ -16,9 +16,11 @@ from ..repositories.graph_db_manager.graph_queries import (
     detach_delete_nodes_by_paths_query,
     match_empty_folders_query,
 )
+from amplihack.utils.logging_utils import log_call
 
 
 class GraphBuilder:
+    @log_call
     def __init__(
         self,
         root_path: str,
@@ -59,6 +61,7 @@ class GraphBuilder:
 
         self.only_hierarchy = only_hierarchy
 
+    @log_call
     def build(
         self,
         save_to_db: bool = True,
@@ -131,6 +134,7 @@ class GraphBuilder:
 
         return graph
 
+    @log_call
     def incremental_update(
         self,
         updated_files: list[UpdatedFile],
@@ -219,6 +223,7 @@ class GraphBuilder:
 
         return graph
 
+    @log_call
     def _detatch_delete_nodes_by_paths(self, file_paths: list[str]):
         query = detach_delete_nodes_by_paths_query()
         self.db_manager.query(
@@ -229,6 +234,7 @@ class GraphBuilder:
             transaction=True,
         )
 
+    @log_call
     def __detatch_delete_nodes_by_node_ids(self, node_ids: list[str]):
         query = detach_delete_nodes_by_node_ids_query()
         self.db_manager.query(
@@ -239,6 +245,7 @@ class GraphBuilder:
             transaction=True,
         )
 
+    @log_call
     def __match_empty_folders(self):
         query = match_empty_folders_query()
         result = self.db_manager.query(
@@ -248,11 +255,13 @@ class GraphBuilder:
 
         return result
 
+    @log_call
     def _detatch_empty_folder_nodes_iteratively(self):
         while empty_folders := self.__match_empty_folders():
             empty_nodes_ids = [folder["folder"]["node_id"] for folder in empty_folders]
             self.__detatch_delete_nodes_by_node_ids(empty_nodes_ids)
 
+    @log_call
     def _get_project_files_iterator(self):
         return ProjectFilesIterator(
             root_path=self.root_path,
@@ -261,12 +270,14 @@ class GraphBuilder:
             blarignore_path=self.root_path + "/.blarignore",
         )
 
+    @log_call
     def _get_started_reference_query_helper(self):
         reference_query_helper = HybridReferenceResolver(
             root_uri=self.root_path, mode=ResolverMode.AUTO
         )
         return reference_query_helper
 
+    @log_call
     def _convert_file_path_to_node_path(self, file_path: str) -> str:
         """
         Convert a file URI path to a node_path.

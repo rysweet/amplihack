@@ -9,7 +9,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
 
+
+@log_call
 def get_uv_tool_bin_dir() -> Path | None:
     """Get the uv tool bin directory."""
     # Try common locations
@@ -34,6 +37,7 @@ def get_uv_tool_bin_dir() -> Path | None:
     return None
 
 
+@log_call
 def ensure_uv_bin_in_path() -> None:
     """Ensure uv tool bin directory is in PATH for current process."""
     bin_dir = get_uv_tool_bin_dir()
@@ -41,6 +45,7 @@ def ensure_uv_bin_in_path() -> None:
         os.environ["PATH"] = f"{bin_dir}:{os.environ.get('PATH', '')}"
 
 
+@log_call
 def check_amplifier() -> bool:
     """Check if Amplifier CLI is installed."""
     # Ensure uv bin dir is in PATH
@@ -55,6 +60,7 @@ def check_amplifier() -> bool:
         return False
 
 
+@log_call
 def install_amplifier() -> bool:
     """Install Amplifier CLI via uv tool install.
 
@@ -104,6 +110,7 @@ def install_amplifier() -> bool:
         return False
 
 
+@log_call
 def sync_agents_md(project_root: Path) -> bool:
     """Sync AGENTS.md from CLAUDE.md for Amplifier compatibility.
 
@@ -152,6 +159,7 @@ def sync_agents_md(project_root: Path) -> bool:
         return False
 
 
+@log_call
 def get_bundle_path() -> Path | None:
     """Get the path to the amplihack bundle.
 
@@ -190,6 +198,7 @@ def get_bundle_path() -> Path | None:
     return None
 
 
+@log_call
 def ensure_bundle_registered(bundle_path: Path) -> bool:
     """Ensure the amplihack bundle is registered with Amplifier.
 
@@ -233,6 +242,7 @@ def ensure_bundle_registered(bundle_path: Path) -> bool:
         return False
 
 
+@log_call
 def upgrade_amplifier() -> bool:
     """Upgrade Amplifier CLI to the latest version using amplifier's built-in update.
 
@@ -272,6 +282,7 @@ def upgrade_amplifier() -> bool:
         return False
 
 
+@log_call
 def launch_amplifier(args: list[str] | None = None) -> int:
     """Launch Amplifier CLI with the amplihack bundle.
 
@@ -344,6 +355,7 @@ def launch_amplifier(args: list[str] | None = None) -> int:
         return 1
 
 
+@log_call
 def launch_amplifier_auto(prompt: str) -> int:
     """Launch Amplifier with a prompt (Amplifier manages its own execution loop).
 

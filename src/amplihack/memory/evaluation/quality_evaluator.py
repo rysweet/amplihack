@@ -19,6 +19,8 @@ Public API:
 import logging
 from dataclasses import dataclass
 
+from amplihack.utils.logging_utils import log_call
+
 from ..coordinator import MemoryCoordinator, RetrievalQuery, StorageRequest
 from ..models import MemoryEntry
 from ..types import MemoryType
@@ -72,6 +74,7 @@ class QualityEvaluator:
     - NDCG: Normalized Discounted Cumulative Gain (ranking quality)
     """
 
+    @log_call
     def __init__(self, coordinator: MemoryCoordinator):
         """Initialize evaluator.
 
@@ -81,6 +84,7 @@ class QualityEvaluator:
         self.coordinator = coordinator
         self.backend = coordinator.backend
 
+    @log_call
     async def evaluate(self, test_queries: list[QueryTestCase]) -> QualityMetrics:
         """Evaluate quality using test queries.
 
@@ -141,6 +145,7 @@ class QualityEvaluator:
             backend_name=self.backend.get_capabilities().backend_name,
         )
 
+    @log_call
     def _calculate_relevance(
         self, retrieved_memories: list[MemoryEntry], relevant_ids: set[str]
     ) -> float:
@@ -159,6 +164,7 @@ class QualityEvaluator:
         relevant_count = sum(1 for m in retrieved_memories if m.id in relevant_ids)
         return relevant_count / len(retrieved_memories)
 
+    @log_call
     def _calculate_ndcg(
         self, retrieved_memories: list[MemoryEntry], relevant_ids: set[str]
     ) -> float:
@@ -195,6 +201,7 @@ class QualityEvaluator:
             return dcg / idcg
         return 0.0
 
+    @log_call
     async def create_test_set(self, num_memories: int = 50) -> list[QueryTestCase]:
         """Create a standard test set fer evaluation.
 

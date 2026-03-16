@@ -3,6 +3,8 @@
 from pathlib import Path
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 
 class LSPDetector:
     """Detects project languages and generates LSP configurations.
@@ -71,6 +73,7 @@ class LSPDetector:
         },
     }
 
+    @log_call
     def detect_languages(self, project_path: Path) -> list[str]:
         """Detect languages used in project.
 
@@ -108,6 +111,7 @@ class LSPDetector:
 
         return sorted(list(detected))
 
+    @log_call
     def generate_lsp_config(self, languages: list[str]) -> dict[str, Any]:
         """Generate LSP configurations for detected languages.
 
@@ -129,6 +133,7 @@ class LSPDetector:
 
         return config
 
+    @log_call
     def update_settings_json(
         self, existing_settings: dict[str, Any], lsp_config: dict[str, Any]
     ) -> dict[str, Any]:

@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from amplihack.utils.logging_utils import log_call
 
 
 class LeafNodeDto(BaseModel):
@@ -10,6 +11,7 @@ class LeafNodeDto(BaseModel):
     end_line: int | None
     content: str
 
+    @log_call
     def as_dict(self):
         return {
             "id": self.id,

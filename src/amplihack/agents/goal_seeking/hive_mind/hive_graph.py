@@ -32,6 +32,8 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
 
+from amplihack.utils.logging_utils import log_call
+
 from .constants import (
     BROADCAST_TAG_PREFIX,
     CONFIDENCE_SCORE_BOOST,
@@ -169,102 +171,123 @@ class HiveGraph(Protocol):
     """
 
     @property
+    @log_call
     def hive_id(self) -> str:
         """Unique identifier for this hive."""
         ...
 
     # -- Agent registry -------------------------------------------------------
 
+    @log_call
     def register_agent(
         self, agent_id: str, domain: str = "", trust: float = DEFAULT_TRUST_SCORE
     ) -> None:
         """Register an agent in the hive."""
         ...
 
+    @log_call
     def unregister_agent(self, agent_id: str) -> None:
         """Remove an agent from the hive."""
         ...
 
+    @log_call
     def get_agent(self, agent_id: str) -> HiveAgent | None:
         """Retrieve an agent by ID, or None if not found."""
         ...
 
+    @log_call
     def list_agents(self) -> list[HiveAgent]:
         """List all registered agents."""
         ...
 
+    @log_call
     def update_trust(self, agent_id: str, trust: float) -> None:
         """Set an agent's trust score (clamped to [0.0, MAX_TRUST_SCORE])."""
         ...
 
     # -- Fact management -------------------------------------------------------
 
+    @log_call
     def promote_fact(self, agent_id: str, fact: HiveFact) -> str:
         """Promote a fact into the hive. Returns fact_id."""
         ...
 
+    @log_call
     def get_fact(self, fact_id: str) -> HiveFact | None:
         """Retrieve a fact by ID, or None if not found."""
         ...
 
+    @log_call
     def query_facts(self, query: str, limit: int = 20) -> list[HiveFact]:
         """Search facts by keyword query."""
         ...
 
+    @log_call
     def retract_fact(self, fact_id: str) -> bool:
         """Retract a fact. Returns True if found and retracted."""
         ...
 
     # -- Graph edges -----------------------------------------------------------
 
+    @log_call
     def add_edge(self, edge: HiveEdge) -> None:
         """Add an edge to the graph."""
         ...
 
+    @log_call
     def get_edges(self, node_id: str, edge_type: str | None = None) -> list[HiveEdge]:
         """Get edges for a node, optionally filtered by type."""
         ...
 
     # -- Contradiction detection -----------------------------------------------
 
+    @log_call
     def check_contradictions(self, content: str, concept: str) -> list[HiveFact]:
         """Find existing facts that may contradict the given content/concept."""
         ...
 
     # -- Expertise routing -----------------------------------------------------
 
+    @log_call
     def route_query(self, query: str) -> list[str]:
         """Find agent IDs whose domain overlaps with the query keywords."""
         ...
 
     # -- Federation ------------------------------------------------------------
 
+    @log_call
     def set_parent(self, parent: HiveGraph) -> None:
         """Set the parent hive in the federation tree."""
         ...
 
+    @log_call
     def add_child(self, child: HiveGraph) -> None:
         """Add a child hive to the federation tree."""
         ...
 
+    @log_call
     def escalate_fact(self, fact: HiveFact) -> bool:
         """Promote a fact to the parent hive. Returns True if parent accepted."""
         ...
 
+    @log_call
     def broadcast_fact(self, fact: HiveFact) -> int:
         """Push a fact to all children. Returns count of children that received it."""
         ...
 
+    @log_call
     def query_federated(self, query: str, limit: int = 20) -> list[HiveFact]:
         """Query local + parent + children for facts matching query."""
         ...
 
     # -- Stats & lifecycle -----------------------------------------------------
 
+    @log_call
     def get_stats(self) -> dict[str, Any]:
         """Return hive statistics."""
         ...
 
+    @log_call
     def close(self) -> None:
         """Release resources."""
         ...
@@ -275,16 +298,19 @@ class HiveGraph(Protocol):
 # ---------------------------------------------------------------------------
 
 
+@log_call
 def _new_fact_id() -> str:
     """Generate a unique fact ID."""
     return f"hf_{uuid.uuid4().hex[:FACT_ID_HEX_LENGTH]}"
 
 
+@log_call
 def _tokenize(text: str) -> set[str]:
     """Tokenize text into lowercase word set, stripping short words."""
     return {w.lower() for w in text.split() if len(w) > 1}
 
 
+@log_call
 def _federated_keyword_score(fact: Any, keywords: set[str]) -> float:
     """Compute keyword-based score for federated query re-ranking."""
     fact_words = _tokenize(f"{fact.content} {fact.concept}")
@@ -292,6 +318,7 @@ def _federated_keyword_score(fact: Any, keywords: set[str]) -> float:
     return hits + fact.confidence * CONFIDENCE_SCORE_BOOST
 
 
+@log_call
 def _word_overlap(a: str, b: str) -> float:
     """Compute Jaccard word overlap between two strings."""
     words_a = _tokenize(a)
@@ -321,6 +348,7 @@ class InMemoryHiveGraph:
         >>> assert len(results) >= 1
     """
 
+    @log_call
     def __init__(
         self,
         hive_id: str = "test-hive",
@@ -359,12 +387,14 @@ class InMemoryHiveGraph:
     # -- Property --------------------------------------------------------------
 
     @property
+    @log_call
     def hive_id(self) -> str:
         """Unique identifier for this hive."""
         return self._hive_id
 
     # -- Agent registry --------------------------------------------------------
 
+    @log_call
     def register_agent(
         self, agent_id: str, domain: str = "", trust: float = DEFAULT_TRUST_SCORE
     ) -> None:
@@ -394,6 +424,7 @@ class InMemoryHiveGraph:
                 reg.set(clamped_trust, time.time())
                 self._trust_registers[agent_id] = reg
 
+    @log_call
     def unregister_agent(self, agent_id: str) -> None:
         """Remove an agent from the hive.
 
@@ -410,16 +441,19 @@ class InMemoryHiveGraph:
             if _HAS_CRDT:
                 self._trust_registers.pop(agent_id, None)
 
+    @log_call
     def get_agent(self, agent_id: str) -> HiveAgent | None:
         """Retrieve an agent by ID, or None if not found."""
         with self._lock:
             return self._agents.get(agent_id)
 
+    @log_call
     def list_agents(self) -> list[HiveAgent]:
         """List all registered (active) agents."""
         with self._lock:
             return list(self._agents.values())
 
+    @log_call
     def update_trust(self, agent_id: str, trust: float) -> None:
         """Set an agent's trust score.
 
@@ -443,6 +477,7 @@ class InMemoryHiveGraph:
 
     # -- Fact management -------------------------------------------------------
 
+    @log_call
     def promote_fact(self, agent_id: str, fact: HiveFact) -> str:
         """Promote a fact into the hive.
 
@@ -534,11 +569,13 @@ class InMemoryHiveGraph:
 
         return fact_id
 
+    @log_call
     def get_fact(self, fact_id: str) -> HiveFact | None:
         """Retrieve a fact by ID, or None if not found."""
         with self._lock:
             return self._facts.get(fact_id)
 
+    @log_call
     def query_facts(self, query: str, limit: int = 20) -> list[HiveFact]:
         """Search facts by keyword query, with optional vector search.
 
@@ -572,6 +609,7 @@ class InMemoryHiveGraph:
             # Keyword fallback
             return self._keyword_query(query, limit)
 
+    @log_call
     def _cosine_sim(self, a: list[float], b: list[float]) -> float:
         """Compute cosine similarity between two vectors.
 
@@ -595,6 +633,7 @@ class InMemoryHiveGraph:
             return 0.0
         return dot / (norm_a * norm_b)
 
+    @log_call
     def _vector_query(self, query: str, limit: int) -> list[HiveFact]:
         """Vector search with hybrid scoring. Must be called under lock."""
         query_emb = self._embedding_generator.embed(query)
@@ -628,6 +667,7 @@ class InMemoryHiveGraph:
         scored.sort(key=lambda x: (-x[0], -x[1].confidence))
         return [f for _, f in scored[:limit]]
 
+    @log_call
     def _keyword_query(self, query: str, limit: int) -> list[HiveFact]:
         """Keyword-based search. Must be called under lock."""
         keywords = _tokenize(query)
@@ -647,6 +687,7 @@ class InMemoryHiveGraph:
         scored.sort(key=lambda x: (-x[0], -x[1].confidence))
         return [f for _, f in scored[:limit]]
 
+    @log_call
     def retract_fact(self, fact_id: str) -> bool:
         """Retract a fact. Returns True if found and retracted."""
         with self._lock:
@@ -660,11 +701,13 @@ class InMemoryHiveGraph:
 
     # -- Graph edges -----------------------------------------------------------
 
+    @log_call
     def add_edge(self, edge: HiveEdge) -> None:
         """Add an edge to the graph."""
         with self._lock:
             self._edges.append(edge)
 
+    @log_call
     def get_edges(self, node_id: str, edge_type: str | None = None) -> list[HiveEdge]:
         """Get edges for a node, optionally filtered by type.
 
@@ -681,6 +724,7 @@ class InMemoryHiveGraph:
 
     # -- Contradiction detection -----------------------------------------------
 
+    @log_call
     def check_contradictions(self, content: str, concept: str) -> list[HiveFact]:
         """Find existing facts that may contradict the given content.
 
@@ -718,6 +762,7 @@ class InMemoryHiveGraph:
 
     # -- Expertise routing -----------------------------------------------------
 
+    @log_call
     def route_query(self, query: str) -> list[str]:
         """Find agent IDs whose domain overlaps with query keywords.
 
@@ -747,11 +792,13 @@ class InMemoryHiveGraph:
 
     # -- Federation ------------------------------------------------------------
 
+    @log_call
     def set_parent(self, parent: HiveGraph) -> None:
         """Set the parent hive in the federation tree."""
         with self._lock:
             self._parent = parent
 
+    @log_call
     def add_child(self, child: HiveGraph) -> None:
         """Add a child hive to the federation tree.
 
@@ -762,6 +809,7 @@ class InMemoryHiveGraph:
             if child.hive_id not in existing_ids:
                 self._children.append(child)
 
+    @log_call
     def _ensure_relay_agent(self, target_graph: InMemoryHiveGraph) -> str:
         """Ensure a relay agent exists in *target_graph* for this hive.
 
@@ -773,6 +821,7 @@ class InMemoryHiveGraph:
             target_graph.register_agent(relay_id, domain="relay")
         return relay_id
 
+    @log_call
     def escalate_fact(self, fact: HiveFact) -> bool:
         """Promote a fact to the parent hive.
 
@@ -810,6 +859,7 @@ class InMemoryHiveGraph:
         )
         return True
 
+    @log_call
     def broadcast_fact(self, fact: HiveFact) -> int:
         """Push a fact to all children.
 
@@ -835,6 +885,7 @@ class InMemoryHiveGraph:
             count += 1
         return count
 
+    @log_call
     def query_federated(
         self,
         query: str,
@@ -947,6 +998,7 @@ class InMemoryHiveGraph:
 
     # -- TTL decay (private) ---------------------------------------------------
 
+    @log_call
     def _apply_ttl_decay(self) -> None:
         """Apply confidence decay to facts with TTL entries. Must be called under lock."""
         now = time.time()
@@ -962,6 +1014,7 @@ class InMemoryHiveGraph:
 
     # -- CRDT merge ------------------------------------------------------------
 
+    @log_call
     def merge_state(self, other: InMemoryHiveGraph) -> None:
         """Merge CRDTs from another hive replica for eventual consistency.
 
@@ -1012,6 +1065,7 @@ class InMemoryHiveGraph:
 
     # -- Gossip ----------------------------------------------------------------
 
+    @log_call
     def run_gossip(self, peers: list[Any]) -> dict[str, list[str]]:
         """Run a gossip round, sharing top facts with selected peers.
 
@@ -1033,6 +1087,7 @@ class InMemoryHiveGraph:
 
     # -- Garbage collection ----------------------------------------------------
 
+    @log_call
     def gc(self) -> list[str]:
         """Garbage-collect expired facts based on TTL.
 
@@ -1051,6 +1106,7 @@ class InMemoryHiveGraph:
 
     # -- Stats & lifecycle -----------------------------------------------------
 
+    @log_call
     def get_stats(self) -> dict[str, Any]:
         """Return hive statistics."""
         with self._lock:
@@ -1065,6 +1121,7 @@ class InMemoryHiveGraph:
                 "child_count": len(self._children),
             }
 
+    @log_call
     def close(self) -> None:
         """Release resources (no-op for in-memory)."""
 
@@ -1074,6 +1131,7 @@ class InMemoryHiveGraph:
 # ---------------------------------------------------------------------------
 
 
+@log_call
 def create_hive_graph(backend: str = "memory", **config: Any) -> HiveGraph:
     """Factory for HiveGraph backends.
 

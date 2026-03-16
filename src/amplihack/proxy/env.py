@@ -3,14 +3,18 @@
 import os
 import re
 
+from amplihack.utils.logging_utils import log_call
+
 
 class ProxyEnvironment:
     """Manages environment variables for Claude Code proxy."""
 
+    @log_call
     def __init__(self):
         """Initialize environment manager."""
         self.original_env: dict[str, str | None] = {}
 
+    @log_call
     def setup(
         self,
         proxy_port: int = 8080,
@@ -51,6 +55,7 @@ class ProxyEnvironment:
         if azure_config:
             self.setup_azure_environment(azure_config)
 
+    @log_call
     def restore(self) -> None:
         """Restore original environment variables."""
         for key, value in self.original_env.items():
@@ -60,6 +65,7 @@ class ProxyEnvironment:
                 os.environ[key] = value
         self.original_env.clear()
 
+    @log_call
     def get_proxy_env(
         self, proxy_port: int = 8080, config: dict[str, str] | None = None
     ) -> dict[str, str]:
@@ -80,6 +86,7 @@ class ProxyEnvironment:
 
         return env
 
+    @log_call
     def setup_azure_environment(self, config: dict[str, str]) -> None:
         """Set up Azure-specific environment variables.
 
@@ -91,6 +98,7 @@ class ProxyEnvironment:
             raise ValueError("Invalid Azure configuration - security validation failed")
         self._setup_azure_environment(config)
 
+    @log_call
     def _setup_azure_environment(self, config: dict[str, str]) -> None:
         """Internal method to set up Azure environment variables.
 
@@ -132,6 +140,7 @@ class ProxyEnvironment:
         if azure_api_key and self._validate_api_key_format(azure_api_key):
             os.environ["OPENAI_API_KEY"] = azure_api_key
 
+    @log_call
     def __enter__(self):
         """Context manager entry.
 
@@ -140,6 +149,7 @@ class ProxyEnvironment:
         """
         return self
 
+    @log_call
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit - restore environment.
 
@@ -150,6 +160,7 @@ class ProxyEnvironment:
         """
         self.restore()
 
+    @log_call
     def _validate_azure_config_security(self, config: dict[str, str]) -> bool:
         """Validate Azure configuration for security issues.
 
@@ -186,6 +197,7 @@ class ProxyEnvironment:
 
         return True
 
+    @log_call
     def _validate_api_key_format(self, api_key: str) -> bool:
         """Validate API key format.
 
@@ -210,6 +222,7 @@ class ProxyEnvironment:
         pattern = r"^[a-zA-Z0-9\-_]{20,}$"
         return bool(re.match(pattern, api_key))
 
+    @log_call
     def _validate_endpoint_url(self, url: str) -> bool:
         """Validate endpoint URL format.
 
@@ -230,6 +243,7 @@ class ProxyEnvironment:
         url_pattern = r"^https://[a-zA-Z0-9\-_.]+\.[a-zA-Z]{2,}(/.*)?$"
         return bool(re.match(url_pattern, url))
 
+    @log_call
     def _sanitize_env_value(self, value: str) -> str:
         """Sanitize environment variable value.
 

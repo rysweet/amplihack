@@ -9,7 +9,10 @@ import re
 from pathlib import Path
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
 
+
+@log_call
 def normalize_hook_path(path: str) -> str:
     """Normalize hook command path for comparison.
 
@@ -28,6 +31,7 @@ def normalize_hook_path(path: str) -> str:
     return normalized
 
 
+@log_call
 def normalize_hooks_dict(hooks: dict[str, Any]) -> dict[str, Any]:
     """Normalize hooks dictionary for comparison.
 
@@ -61,6 +65,7 @@ def normalize_hooks_dict(hooks: dict[str, Any]) -> dict[str, Any]:
     return normalized
 
 
+@log_call
 def compare_hooks(source_hooks: dict[str, Any], template_hooks: dict[str, Any]) -> list[str]:
     """Compare two hooks dictionaries and return differences.
 
@@ -95,6 +100,7 @@ def compare_hooks(source_hooks: dict[str, Any], template_hooks: dict[str, Any]) 
     return errors
 
 
+@log_call
 def validate_hooks_sync(source_path: Path, template_path: Path) -> tuple[bool, list[str]]:
     """Validate hooks synchronization between settings files.
 
@@ -131,6 +137,7 @@ def validate_hooks_sync(source_path: Path, template_path: Path) -> tuple[bool, l
         return (False, [f"Validation error: {e}"])
 
 
+@log_call
 def main() -> int:
     """Main entry point for CLI usage.
 

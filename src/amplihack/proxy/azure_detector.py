@@ -3,6 +3,8 @@
 import re
 from urllib.parse import urlparse
 
+from amplihack.utils.logging_utils import log_call
+
 
 class AzureEndpointDetector:
     """Detects and validates Azure OpenAI endpoints."""
@@ -23,6 +25,7 @@ class AzureEndpointDetector:
         r"https://api\.openai\.com",
     ]
 
+    @log_call
     def __init__(self):
         """Initialize Azure endpoint detector."""
         # Compile regex patterns once and cache them
@@ -33,6 +36,7 @@ class AzureEndpointDetector:
         self._validation_cache = {}
         self._cache_size = 1000  # Limit cache size to prevent memory leaks
 
+    @log_call
     def is_azure_endpoint(
         self, base_url: str | None = None, config: dict[str, str] | None = None
     ) -> bool:
@@ -55,6 +59,7 @@ class AzureEndpointDetector:
 
         return False
 
+    @log_call
     def get_endpoint_type(
         self, base_url: str | None = None, config: dict[str, str] | None = None
     ) -> str:
@@ -71,6 +76,7 @@ class AzureEndpointDetector:
             return "azure"
         return "openai"
 
+    @log_call
     def validate_azure_endpoint(self, endpoint: str) -> bool:
         """Validate Azure endpoint URL format.
 
@@ -106,6 +112,7 @@ class AzureEndpointDetector:
         self._validation_cache[endpoint] = result
         return result
 
+    @log_call
     def extract_azure_resource_name(self, endpoint: str) -> str | None:
         """Extract Azure resource name from endpoint URL.
 
@@ -134,14 +141,17 @@ class AzureEndpointDetector:
 
         return None
 
+    @log_call
     def _is_azure_url_pattern(self, url: str) -> bool:
         """Check if URL matches Azure patterns."""
         return any(regex.match(url) for regex in self._azure_regex)
 
+    @log_call
     def _is_openai_url_pattern(self, url: str) -> bool:
         """Check if URL matches OpenAI patterns."""
         return any(regex.match(url) for regex in self._openai_regex)
 
+    @log_call
     def _has_azure_config_vars(self, config: dict[str, str]) -> bool:
         """Check if config has Azure-specific variables."""
         azure_vars = [
@@ -152,6 +162,7 @@ class AzureEndpointDetector:
         ]
         return any(var in config and config[var] for var in azure_vars)
 
+    @log_call
     def _validate_endpoint_security(self, endpoint: str) -> bool:
         """Validate endpoint security requirements.
 

@@ -21,6 +21,8 @@ import types
 from pathlib import Path
 from typing import Any, Self
 
+from amplihack.utils.logging_utils import log_call
+
 from .base import AgentResult, AgentTool, GoalSeekingAgent, SDKType
 
 logger = logging.getLogger(__name__)
@@ -45,6 +47,7 @@ except ImportError:
     print("WARNING: copilot SDK not available", file=sys.stderr)
 
 
+@log_call
 def _make_tool_handler(agent_tool: AgentTool):
     """Create an async Copilot tool handler from an AgentTool.
 
@@ -53,6 +56,7 @@ def _make_tool_handler(agent_tool: AgentTool):
     to the Copilot SDK wire format.
     """
 
+    @log_call
     async def handler(invocation: ToolInvocation) -> ToolResult:
         try:
             args = invocation.get("arguments", {})
@@ -86,6 +90,7 @@ def _make_tool_handler(agent_tool: AgentTool):
     return handler
 
 
+@log_call
 def _agent_tool_to_copilot_tool(agent_tool: AgentTool) -> CopilotTool:
     """Convert an AgentTool to a Copilot SDK Tool."""
     return CopilotTool(
@@ -116,6 +121,7 @@ class CopilotGoalSeekingAgent(GoalSeekingAgent):
         ...     print(result.response)
     """
 
+    @log_call
     def __init__(
         self,
         name: str,
@@ -164,6 +170,7 @@ class CopilotGoalSeekingAgent(GoalSeekingAgent):
             enable_eval=enable_eval,
         )
 
+    @log_call
     def _create_sdk_agent(self) -> None:
         """Build SessionConfig and convert tools to Copilot format.
 
@@ -186,6 +193,7 @@ class CopilotGoalSeekingAgent(GoalSeekingAgent):
             streaming=self._streaming,
         )
 
+    @log_call
     def _build_system_prompt(self) -> str:
         """Build goal-seeking system prompt with tool descriptions."""
         tool_list = "\n".join(f"- {t.name}: {t.description}" for t in self._tools)
@@ -218,6 +226,7 @@ class CopilotGoalSeekingAgent(GoalSeekingAgent):
 
         return base
 
+    @log_call
     async def _ensure_client(self) -> None:
         """Initialize CopilotClient and create a session.
 
@@ -243,6 +252,7 @@ class CopilotGoalSeekingAgent(GoalSeekingAgent):
         # Track tool usage via events
         self._tools_used: list[str] = []
 
+        @log_call
         def _track_tools(event: Any) -> None:
             try:
                 if hasattr(event, "type") and "tool" in str(event.type).lower():
@@ -254,6 +264,7 @@ class CopilotGoalSeekingAgent(GoalSeekingAgent):
 
         self._session.on(_track_tools)
 
+    @log_call
     async def _cleanup(self) -> None:
         """Clean up existing client/session resources."""
         if self._session is not None:
@@ -272,6 +283,7 @@ class CopilotGoalSeekingAgent(GoalSeekingAgent):
                     pass
             self._client = None
 
+    @log_call
     async def _run_sdk_agent(self, task: str, max_turns: int = 10) -> AgentResult:
         """Execute task through Copilot SDK send_and_wait.
 
@@ -318,6 +330,7 @@ class CopilotGoalSeekingAgent(GoalSeekingAgent):
             await self._cleanup()
 
     @staticmethod
+    @log_call
     def _extract_response_content(response: Any) -> str:
         """Extract text content from a Copilot SessionEvent response.
 
@@ -343,10 +356,12 @@ class CopilotGoalSeekingAgent(GoalSeekingAgent):
         # Last resort: string representation
         return str(response) if response else ""
 
+    @log_call
     def _get_native_tools(self) -> list[str]:
         """Return Copilot CLI native tools."""
         return ["file_system", "git", "web_requests"]
 
+    @log_call
     def _register_tool_with_sdk(self, tool: AgentTool) -> None:
         """Register a new tool and invalidate the current session.
 
@@ -359,6 +374,7 @@ class CopilotGoalSeekingAgent(GoalSeekingAgent):
         # Invalidate session so next _ensure_client() creates a new one
         self._session = None
 
+    @log_call
     def close(self) -> None:
         """Release all resources (sync wrapper for async cleanup)."""
         super().close()
@@ -367,11 +383,13 @@ class CopilotGoalSeekingAgent(GoalSeekingAgent):
         self._session = None
         self._client = None
 
+    @log_call
     async def __aenter__(self) -> Self:
         """Async context manager entry."""
         await self._ensure_client()
         return self
 
+    @log_call
     async def __aexit__(
         self,
         exc_type: type[BaseException] | None,

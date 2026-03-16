@@ -10,6 +10,8 @@ import enum
 from dataclasses import dataclass, field
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 
 class StepType(enum.Enum):
     """Type of recipe step."""
@@ -71,6 +73,7 @@ class StepResult:
     output: str = ""
     error: str = ""
 
+    @log_call
     def __str__(self) -> str:
         """Return a human-readable summary of the step result."""
         line = f"[{self.status.value:>9}] {self.step_id}"
@@ -96,6 +99,7 @@ class RecipeResult:
     context: dict[str, Any] = field(default_factory=dict)
 
     @property
+    @log_call
     def output(self) -> str:
         """Aggregate output from all completed steps as a single string.
 
@@ -110,11 +114,13 @@ class RecipeResult:
                 parts.append(f"[{sr.step_id} error] {sr.error}")
         return "\n".join(parts)
 
+    @log_call
     def __str__(self) -> str:
         status = "SUCCESS" if self.success else "FAILED"
         step_count = len(self.step_results)
         return f"RecipeResult({self.recipe_name}: {status}, {step_count} steps)"
 
+    @log_call
     def __getitem__(self, key: int | slice) -> str:
         """Support subscripting (e.g. ``result[:500]``) by delegating to ``.output``."""
         return self.output[key]
@@ -123,6 +129,7 @@ class RecipeResult:
 class StepExecutionError(Exception):
     """Raised when a step fails to execute."""
 
+    @log_call
     def __init__(self, step_id: str, message: str) -> None:
         self.step_id = step_id
         super().__init__(f"Step '{step_id}' failed: {message}")

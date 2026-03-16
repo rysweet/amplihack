@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pytest
 
+from amplihack.utils.logging_utils import log_call
+
 from ..agent_assembler import AgentAssembler
 from ..models import ExecutionPlan, GoalDefinition, PlanPhase, SkillDefinition
 from ..packager import GoalAgentPackager
@@ -18,6 +20,7 @@ from ..templates.memory_template import (
 
 
 @pytest.fixture
+@log_call
 def temp_output_dir():
     """Create a temporary output directory."""
     temp_dir = Path(tempfile.mkdtemp())
@@ -26,6 +29,7 @@ def temp_output_dir():
 
 
 @pytest.fixture
+@log_call
 def sample_goal_definition():
     """Create a sample goal definition."""
     return GoalDefinition(
@@ -37,6 +41,7 @@ def sample_goal_definition():
 
 
 @pytest.fixture
+@log_call
 def sample_execution_plan(sample_goal_definition):
     """Create a sample execution plan."""
     phases = [
@@ -65,6 +70,7 @@ def sample_execution_plan(sample_goal_definition):
 
 
 @pytest.fixture
+@log_call
 def sample_skills():
     """Create sample skill definitions."""
     return [
@@ -82,6 +88,7 @@ def sample_skills():
 class TestMemoryTemplate:
     """Tests for memory template generation."""
 
+    @log_call
     def test_get_memory_initialization_code(self):
         """Test memory initialization code generation."""
         code = get_memory_initialization_code("test-agent", "./memory")
@@ -96,6 +103,7 @@ class TestMemoryTemplate:
         assert "recall_relevant" in code
         assert "cleanup_memory" in code
 
+    @log_call
     def test_get_memory_config_yaml(self):
         """Test memory config YAML generation."""
         config = get_memory_config_yaml("test-agent")
@@ -106,6 +114,7 @@ class TestMemoryTemplate:
         assert "max_experiences: 1000" in config
         assert "auto_compress: true" in config
 
+    @log_call
     def test_get_memory_readme_section(self):
         """Test memory README section generation."""
         section = get_memory_readme_section()
@@ -120,6 +129,7 @@ class TestMemoryTemplate:
 class TestAgentAssemblerMemory:
     """Tests for agent assembler with memory."""
 
+    @log_call
     def test_assemble_without_memory(
         self, sample_goal_definition, sample_execution_plan, sample_skills
     ):
@@ -136,6 +146,7 @@ class TestAgentAssemblerMemory:
         assert bundle.name == "test-agent"
         assert "memory_enabled" not in bundle.metadata or not bundle.metadata["memory_enabled"]
 
+    @log_call
     def test_assemble_with_memory(
         self, sample_goal_definition, sample_execution_plan, sample_skills
     ):
@@ -157,6 +168,7 @@ class TestAgentAssemblerMemory:
 class TestPackagerMemory:
     """Tests for packager with memory integration."""
 
+    @log_call
     def test_package_without_memory(
         self, temp_output_dir, sample_goal_definition, sample_execution_plan, sample_skills
     ):
@@ -186,6 +198,7 @@ class TestPackagerMemory:
         requirements = (agent_dir / "requirements.txt").read_text()
         assert "amplihack-memory-lib" not in requirements
 
+    @log_call
     def test_package_with_memory(
         self, temp_output_dir, sample_goal_definition, sample_execution_plan, sample_skills
     ):
@@ -230,6 +243,7 @@ class TestPackagerMemory:
 class TestEndToEndMemoryIntegration:
     """End-to-end tests for memory integration."""
 
+    @log_call
     def test_full_generation_with_memory(
         self, temp_output_dir, sample_goal_definition, sample_execution_plan, sample_skills
     ):

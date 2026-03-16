@@ -15,6 +15,8 @@ import os
 from enum import Enum
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 
 class ClaudeMode(Enum):
     """Claude installation mode."""
@@ -27,6 +29,7 @@ class ClaudeMode(Enum):
 class ModeDetector:
     """Detect Claude installation mode with precedence: LOCAL > PLUGIN > NONE."""
 
+    @log_call
     def __init__(self, project_dir: Path | None = None):
         """Initialize detector.
 
@@ -37,6 +40,7 @@ class ModeDetector:
         self.local_claude = self.project_dir / ".claude"
         self.plugin_claude = Path.home() / ".amplihack" / ".claude"
 
+    @log_call
     def detect(self) -> ClaudeMode:
         """Detect which mode to use.
 
@@ -63,6 +67,7 @@ class ModeDetector:
             return ClaudeMode.PLUGIN
         return ClaudeMode.NONE
 
+    @log_call
     def get_claude_dir(self, mode: ClaudeMode) -> Path | None:
         """Get .claude directory path for mode.
 
@@ -78,6 +83,7 @@ class ModeDetector:
             return self.plugin_claude if self.has_plugin_installation() else None
         return None
 
+    @log_call
     def has_local_installation(self) -> bool:
         """Check if project has valid .claude/ directory.
 
@@ -91,6 +97,7 @@ class ModeDetector:
         essential_dirs = ["agents", "commands", "skills", "tools"]
         return any((self.local_claude / d).exists() for d in essential_dirs)
 
+    @log_call
     def has_plugin_installation(self) -> bool:
         """Check if plugin is installed.
 
@@ -105,6 +112,7 @@ class ModeDetector:
         return manifest.exists()
 
 
+@log_call
 def detect_claude_mode(project_dir: Path | None = None) -> ClaudeMode:
     """Convenience function to detect Claude mode.
 

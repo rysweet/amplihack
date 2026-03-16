@@ -16,6 +16,8 @@ from datetime import UTC
 from pathlib import Path
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 
 class HookStrategy(ABC):
     """Base strategy for launcher-specific hook behavior.
@@ -29,6 +31,7 @@ class HookStrategy(ABC):
         >>> strategy.inject_context({"key": "value"})
     """
 
+    @log_call
     def __init__(self, project_root: Path, log_func=None):
         """Initialize strategy.
 
@@ -40,6 +43,7 @@ class HookStrategy(ABC):
         self.log = log_func or (lambda msg, level="INFO": print(f"[{level}] {msg}"))
 
     @abstractmethod
+    @log_call
     def inject_context(self, context: dict[str, Any] | str) -> str:
         """Inject context for the launcher.
 
@@ -51,10 +55,12 @@ class HookStrategy(ABC):
         """
 
     @abstractmethod
+    @log_call
     def cleanup(self) -> None:
         """Clean up any injected context."""
 
     @abstractmethod
+    @log_call
     def handle_stop(self, input_data: dict[str, Any]) -> dict[str, Any] | None:
         """Handle stop hook event.
 
@@ -66,6 +72,7 @@ class HookStrategy(ABC):
         """
 
     @abstractmethod
+    @log_call
     def handle_pre_tool_use(self, input_data: dict[str, Any]) -> dict[str, Any] | None:
         """Handle pre_tool_use hook event.
 
@@ -77,6 +84,7 @@ class HookStrategy(ABC):
         """
 
     @abstractmethod
+    @log_call
     def handle_post_tool_use(self, input_data: dict[str, Any]) -> dict[str, Any] | None:
         """Handle post_tool_use hook event.
 
@@ -88,6 +96,7 @@ class HookStrategy(ABC):
         """
 
     @abstractmethod
+    @log_call
     def handle_user_prompt_submit(self, input_data: dict[str, Any]) -> dict[str, Any] | None:
         """Handle user_prompt_submit hook event.
 
@@ -113,6 +122,7 @@ class ClaudeStrategy(HookStrategy):
 
     CONTEXT_FILE = ".claude/runtime/hook_context.json"
 
+    @log_call
     def inject_context(self, context: dict[str, Any] | str) -> str:
         """Write context to .claude/runtime/ for Claude to discover.
 
@@ -157,6 +167,7 @@ class ClaudeStrategy(HookStrategy):
         # Return formatted context
         return json.dumps(context, indent=2)
 
+    @log_call
     def cleanup(self) -> None:
         """Remove injected context file.
 
@@ -168,6 +179,7 @@ class ClaudeStrategy(HookStrategy):
         if context_path.exists():
             context_path.unlink()
 
+    @log_call
     def handle_stop(self, input_data: dict[str, Any]) -> dict[str, Any] | None:
         """Handle stop hook for Claude Code.
 
@@ -182,6 +194,7 @@ class ClaudeStrategy(HookStrategy):
         # Claude Code uses default stop behavior
         return None
 
+    @log_call
     def handle_pre_tool_use(self, input_data: dict[str, Any]) -> dict[str, Any] | None:
         """Handle pre_tool_use hook for Claude Code.
 
@@ -196,6 +209,7 @@ class ClaudeStrategy(HookStrategy):
         # Claude Code uses default pre-tool behavior
         return None
 
+    @log_call
     def handle_post_tool_use(self, input_data: dict[str, Any]) -> dict[str, Any] | None:
         """Handle post_tool_use hook for Claude Code.
 
@@ -210,6 +224,7 @@ class ClaudeStrategy(HookStrategy):
         # Claude Code uses default post-tool behavior
         return None
 
+    @log_call
     def handle_user_prompt_submit(self, input_data: dict[str, Any]) -> dict[str, Any] | None:
         """Handle user_prompt_submit hook for Claude Code.
 
@@ -245,6 +260,7 @@ class CopilotStrategy(HookStrategy):
 
     MAX_CONTEXT_SIZE = 10 * 1024 * 1024  # 10MB limit for context injection
 
+    @log_call
     def inject_context(self, context: dict[str, Any] | str) -> str:
         """Inject context into AGENTS.md at repository root.
 
@@ -330,6 +346,7 @@ class CopilotStrategy(HookStrategy):
         # Return the markdown context for logging
         return context_md
 
+    @log_call
     def cleanup(self) -> None:
         """Remove injected context from AGENTS.md.
 
@@ -349,6 +366,7 @@ class CopilotStrategy(HookStrategy):
         if cleaned != content:
             agents_path.write_text(cleaned)
 
+    @log_call
     def _format_string_context(self, context: str) -> str:
         """Format string context (like preferences) as markdown.
 
@@ -370,6 +388,7 @@ class CopilotStrategy(HookStrategy):
 
         return "\n".join(lines)
 
+    @log_call
     def _format_context_markdown(self, context: dict[str, Any]) -> str:
         """Format context as markdown section.
 
@@ -398,6 +417,7 @@ class CopilotStrategy(HookStrategy):
 
         return "\n".join(lines)
 
+    @log_call
     def _remove_old_context(self, content: str) -> str:
         """Remove old context markers from content.
 
@@ -426,6 +446,7 @@ class CopilotStrategy(HookStrategy):
 
         return result
 
+    @log_call
     def handle_stop(self, input_data: dict[str, Any]) -> dict[str, Any] | None:
         """Handle stop hook for Copilot CLI.
 
@@ -441,6 +462,7 @@ class CopilotStrategy(HookStrategy):
         self.log("Stop hook triggered in Copilot CLI mode - logging only")
         return None
 
+    @log_call
     def handle_pre_tool_use(self, input_data: dict[str, Any]) -> dict[str, Any] | None:
         """Handle pre_tool_use hook for Copilot CLI.
 
@@ -458,6 +480,7 @@ class CopilotStrategy(HookStrategy):
         self.log(f"Pre-tool hook in Copilot mode - tool: {tool_name} (logging only)")
         return None
 
+    @log_call
     def handle_post_tool_use(self, input_data: dict[str, Any]) -> dict[str, Any] | None:
         """Handle post_tool_use hook for Copilot CLI.
 
@@ -474,6 +497,7 @@ class CopilotStrategy(HookStrategy):
         self.log(f"Post-tool hook in Copilot mode - tool: {tool_name} (logging only)")
         return None
 
+    @log_call
     def handle_user_prompt_submit(self, input_data: dict[str, Any]) -> dict[str, Any] | None:
         """Handle user_prompt_submit hook for Copilot CLI.
 

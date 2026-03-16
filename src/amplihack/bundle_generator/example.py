@@ -6,6 +6,8 @@ This script demonstrates the complete workflow from prompt to distributed bundle
 
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 from .builder import BundleBuilder
 from .distributor import GitHubDistributor
 from .extractor import IntentExtractor
@@ -14,6 +16,7 @@ from .packager import UVXPackager
 from .parser import PromptParser
 
 
+@log_call
 def example_simple_generation():
     """Example: Generate a simple agent bundle."""
     print("=" * 60)
@@ -65,6 +68,7 @@ def example_simple_generation():
     return bundle
 
 
+@log_call
 def example_multi_agent_bundle():
     """Example: Generate a multi-agent bundle."""
     print("\n" + "=" * 60)
@@ -112,6 +116,7 @@ def example_multi_agent_bundle():
     return package
 
 
+@log_call
 def example_complete_pipeline():
     """Example: Complete pipeline from prompt to distribution."""
     print("\n" + "=" * 60)
@@ -183,6 +188,7 @@ def example_complete_pipeline():
         return None, None
 
 
+@log_call
 def example_test_existing_bundle():
     """Example: Test an existing bundle."""
     print("\n" + "=" * 60)
@@ -229,6 +235,7 @@ def example_test_existing_bundle():
         print("\n✅ Bundle validation passed!")
 
 
+@log_call
 def main():
     """Run all examples."""
     print("Agent Bundle Generator - Examples")

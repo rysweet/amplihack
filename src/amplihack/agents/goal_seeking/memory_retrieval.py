@@ -14,6 +14,8 @@ from typing import Any
 
 from amplihack_memory import Experience, ExperienceStore, ExperienceType
 
+from amplihack.utils.logging_utils import log_call
+
 
 class MemoryRetriever:
     """Memory search interface using Kuzu graph database.
@@ -26,6 +28,7 @@ class MemoryRetriever:
         connector: MemoryConnector to Kuzu backend
     """
 
+    @log_call
     def __init__(self, agent_name: str, storage_path: Path | None = None, backend: str = "kuzu"):
         """Initialize memory retriever.
 
@@ -49,6 +52,7 @@ class MemoryRetriever:
         self.store = ExperienceStore(**store_kwargs)
         self.connector = self.store.connector
 
+    @log_call
     def search(
         self,
         query: str,
@@ -106,6 +110,7 @@ class MemoryRetriever:
 
         return results
 
+    @log_call
     def store_fact(
         self, context: str, fact: str, confidence: float = 0.9, tags: list[str] | None = None
     ) -> str:
@@ -149,6 +154,7 @@ class MemoryRetriever:
 
         return self.connector.store_experience(experience)
 
+    @log_call
     def get_all_facts(self, limit: int = 50) -> list[dict[str, Any]]:
         """Retrieve all experiences without keyword filtering.
 
@@ -183,6 +189,7 @@ class MemoryRetriever:
 
         return results
 
+    @log_call
     def get_statistics(self) -> dict[str, Any]:
         """Get memory statistics.
 
@@ -194,14 +201,17 @@ class MemoryRetriever:
         """
         return self.store.get_statistics()
 
+    @log_call
     def close(self) -> None:
         """Close database connection."""
         self.connector.close()
 
+    @log_call
     def __enter__(self):
         """Context manager entry."""
         return self
 
+    @log_call
     def __exit__(self, *args):
         """Context manager exit."""
         self.close()

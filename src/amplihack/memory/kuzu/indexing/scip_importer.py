@@ -8,6 +8,8 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from amplihack.utils.logging_utils import log_call
+
 from ..connector import KuzuConnector
 
 logger = logging.getLogger(__name__)
@@ -50,6 +52,7 @@ if not scip_available:
 class ScipImporter:
     """Imports SCIP protobuf indexes into Kuzu graph database."""
 
+    @log_call
     def __init__(self, connector: KuzuConnector):
         """Initialize importer with Kuzu connector.
 
@@ -59,6 +62,7 @@ class ScipImporter:
         self.conn = connector
         self._ensure_schema()
 
+    @log_call
     def _ensure_schema(self):
         """Ensure Kuzu schema exists for code graph nodes."""
         schema_queries = [
@@ -140,6 +144,7 @@ class ScipImporter:
                 else:
                     logger.warning("Schema creation failed: %s", e)
 
+    @log_call
     def import_from_file(
         self,
         scip_index_path: str,
@@ -250,6 +255,7 @@ class ScipImporter:
 
         return stats
 
+    @log_call
     def _is_function_kind(self, kind: int, symbol: str) -> bool:
         """Check if SCIP symbol represents a function/method.
 
@@ -260,6 +266,7 @@ class ScipImporter:
         # Check for function signature indicators
         return "()" in symbol or "(" in symbol
 
+    @log_call
     def _is_class_kind(self, kind: int, symbol: str) -> bool:
         """Check if SCIP symbol represents a class/type.
 
@@ -286,6 +293,7 @@ class ScipImporter:
 
         return False
 
+    @log_call
     def _create_file_node(self, file_path: str, language: str):
         """Create CodeFile node in Kuzu."""
         file_id = file_path  # Use path as ID for uniqueness
@@ -318,6 +326,7 @@ class ScipImporter:
             )
             logger.debug("Created CodeFile node: %s", file_path)
 
+    @log_call
     def _create_function_node(self, symbol_info, file_path: str, doc):
         """Create CodeFunction node in Kuzu."""
         symbol_name = symbol_info.symbol
@@ -371,6 +380,7 @@ class ScipImporter:
 
             logger.debug("Created CodeFunction node: %s at line %d", function_name, line_number)
 
+    @log_call
     def _create_class_node(self, symbol_info, file_path: str, doc):
         """Create CodeClass node in Kuzu."""
         symbol_name = symbol_info.symbol
@@ -429,6 +439,7 @@ class ScipImporter:
 
             logger.debug("Created CodeClass node: %s at line %d", class_name, line_number)
 
+    @log_call
     def _create_defined_in_relationship(self, function_id: str, file_path: str, line_number: int):
         """Create DEFINED_IN relationship between function and file."""
         rel_query = """
@@ -445,6 +456,7 @@ class ScipImporter:
             },
         )
 
+    @log_call
     def _extract_name_from_symbol(self, symbol: str) -> str:
         """Extract human-readable name from SCIP symbol string.
 
@@ -459,6 +471,7 @@ class ScipImporter:
             return parts[-1].rstrip(".")
         return symbol.rstrip(".")
 
+    @log_call
     def _find_definition_line(self, symbol: str, occurrences) -> int:
         """Find the definition line number for a symbol from occurrences.
 
@@ -481,6 +494,7 @@ class ScipImporter:
         # If no definition found, return 0 as fallback
         return 0
 
+    @log_call
     def _batch_insert_files(self, files: list[tuple[str, str]]):
         """Batch insert CodeFile nodes."""
         if not files:
@@ -512,6 +526,7 @@ class ScipImporter:
         if failures > 0:
             logger.debug("Skipped %d/%d file inserts (duplicates)", failures, len(files))
 
+    @log_call
     def _batch_insert_functions(self, functions: list[tuple[Any, str, int]]):
         """Batch insert CodeFunction nodes."""
         if not functions:
@@ -572,6 +587,7 @@ class ScipImporter:
         if failures > 0:
             logger.debug("Skipped %d/%d function inserts (duplicates)", failures, len(functions))
 
+    @log_call
     def _batch_insert_classes(self, classes: list[tuple[Any, str, int]]):
         """Batch insert CodeClass nodes."""
         if not classes:

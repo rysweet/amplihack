@@ -16,6 +16,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 from ..sdk_adapters.base import AgentTool, SDKType
 
 logger = logging.getLogger(__name__)
@@ -26,6 +28,7 @@ logger = logging.getLogger(__name__)
 # The actual implementations are provided by the SDK runtime
 
 
+@log_call
 def _noop(**kwargs: Any) -> dict[str, Any]:
     """No-op placeholder function for SDK-native tools.
 
@@ -187,6 +190,7 @@ _SDK_TOOLS: dict[str, list[AgentTool]] = {
 }
 
 
+@log_call
 def get_sdk_tool_names(sdk_type: str | SDKType) -> list[str]:
     """Get the list of native tool names for an SDK type.
 
@@ -201,6 +205,7 @@ def get_sdk_tool_names(sdk_type: str | SDKType) -> list[str]:
     return [t.name for t in tools]
 
 
+@log_call
 def get_sdk_tools(sdk_type: str | SDKType) -> list[AgentTool]:
     """Get the native tools for an SDK type.
 
@@ -214,6 +219,7 @@ def get_sdk_tools(sdk_type: str | SDKType) -> list[AgentTool]:
     return list(_SDK_TOOLS.get(sdk_type_str, []))
 
 
+@log_call
 def inject_sdk_tools(agent: Any, sdk_type: str | SDKType) -> int:
     """Inject SDK-specific tools into an agent.
 

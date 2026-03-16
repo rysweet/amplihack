@@ -11,6 +11,8 @@ Public API (the "studs"):
 
 import os
 
+from amplihack.utils.logging_utils import log_call
+
 # Import constants from package root
 from . import HOME, HOOK_CONFIGS
 
@@ -18,6 +20,7 @@ from . import HOME, HOOK_CONFIGS
 AMPLIHACK_CLAUDE_DIR = os.path.join(HOME, ".amplihack", ".claude")
 
 
+@log_call
 def verify_hooks():
     """Verify that all hook files exist."""
     all_exist = True

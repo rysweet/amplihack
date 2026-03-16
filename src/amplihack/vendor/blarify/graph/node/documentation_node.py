@@ -5,6 +5,7 @@ from typing_extensions import Unpack  # Python 3.10 compatibility
 from .types.node_labels import NodeLabels
 
 from .types.node import Node
+from amplihack.utils.logging_utils import log_call
 
 if TYPE_CHECKING:
     from ...graph.graph_environment import GraphEnvironment
@@ -25,6 +26,7 @@ class DocumentationNode(Node):
     by LLM agents without needing to read entire documentation files.
     """
 
+    @log_call
     def __init__(
         self,
         content: str,
@@ -72,10 +74,12 @@ class DocumentationNode(Node):
         )
 
     @property
+    @log_call
     def node_repr_for_identifier(self) -> str:
         """Create a unique identifier representation for this information node."""
         return f"{self.source_id}@info"
 
+    @log_call
     def as_object(self) -> dict[str, str | list[str]]:
         """Convert to dictionary for database storage."""
         obj = super().as_object()
@@ -114,6 +118,7 @@ class DocumentationNode(Node):
 
         return obj
 
+    @log_call
     def mark_cycle(self) -> None:
         """Mark this node as part of a cycle."""
         original_content = self.content

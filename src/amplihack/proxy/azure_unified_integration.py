@@ -23,6 +23,8 @@ import aiohttp  # type: ignore[import-untyped]
 import certifi  # type: ignore[import-untyped]
 from litellm import Router  # type: ignore[import-untyped]
 
+from amplihack.utils.logging_utils import log_call
+
 from .sanitizing_logger import get_sanitizing_logger
 
 # Use sanitizing logger to prevent credential exposure (Issue #1997)
@@ -62,6 +64,7 @@ class AzureUnifiedProvider:
     for high-throughput scenarios.
     """
 
+    @log_call
     def __init__(self, api_key: str, base_url: str, api_version: str):
         self.api_key = api_key
         self.base_url = base_url
@@ -81,6 +84,7 @@ class AzureUnifiedProvider:
         self._cache_hits = 0
         self._session_reuse_count = 0
 
+    @log_call
     async def get_cached_session(self) -> aiohttp.ClientSession:
         """Get cached aiohttp session with optimized connection pooling."""
         cache_key = f"{self.base_url}:{self.api_key[:8]}"  # Use base_url + key prefix as cache key
@@ -124,6 +128,7 @@ class AzureUnifiedProvider:
         return session
 
     @lru_cache(maxsize=512)
+    @log_call
     def should_use_responses_api(self, model: str) -> bool:
         """
         Determine which Azure API to use based on model type.
@@ -153,6 +158,7 @@ class AzureUnifiedProvider:
         _MODEL_ROUTING_CACHE[model] = result
         return result
 
+    @log_call
     def get_cached_chat_transform(
         self, request_hash: str, request: dict[str, Any]
     ) -> dict[str, Any]:
@@ -189,6 +195,7 @@ class AzureUnifiedProvider:
         _TRANSFORM_CACHE[request_hash] = chat_request.copy()
         return chat_request
 
+    @log_call
     def transform_request_to_chat_api(self, request: dict[str, Any]) -> dict[str, Any]:
         """
         Transform request to Azure Chat API format with caching optimization.
@@ -208,10 +215,11 @@ class AzureUnifiedProvider:
             },
             sort_keys=True,
         )
-        request_hash = hashlib.md5(request_key.encode()).hexdigest()[:16]
+        request_hash = hashlib.sha256(request_key.encode()).hexdigest()[:16]
 
         return self.get_cached_chat_transform(request_hash, request)
 
+    @log_call
     def get_cached_responses_transform(
         self, request_hash: str, request: dict[str, Any]
     ) -> dict[str, Any]:
@@ -263,6 +271,7 @@ class AzureUnifiedProvider:
         _TRANSFORM_CACHE[request_hash] = responses_request.copy()
         return responses_request
 
+    @log_call
     def transform_request_to_responses_api(self, request: dict[str, Any]) -> dict[str, Any]:
         """
         Transform request to Azure Responses API format with caching optimization.
@@ -282,10 +291,11 @@ class AzureUnifiedProvider:
             },
             sort_keys=True,
         )
-        request_hash = hashlib.md5(request_key.encode()).hexdigest()[:16]
+        request_hash = hashlib.sha256(request_key.encode()).hexdigest()[:16]
 
         return self.get_cached_responses_transform(request_hash, request)
 
+    @log_call
     def transform_chat_api_response(self, response: dict[str, Any]) -> dict[str, Any]:
         """
         Transform Azure Chat API response to standard OpenAI format.
@@ -293,6 +303,7 @@ class AzureUnifiedProvider:
         """
         return response
 
+    @log_call
     def transform_responses_api_response(self, response: dict[str, Any]) -> dict[str, Any]:
         """
         Transform Azure Responses API response to standard OpenAI format.
@@ -359,6 +370,7 @@ class AzureUnifiedProvider:
 
         return openai_response
 
+    @log_call
     async def make_request(self, request: dict[str, Any], stream: bool = False) -> dict[str, Any]:
         """
         Make unified request to appropriate Azure API with performance optimizations.
@@ -421,6 +433,7 @@ class AzureUnifiedProvider:
             logger.error(f"❌ Azure API request failed: {e}")
             return {"error": {"message": str(e), "type": "request_error", "code": "request_failed"}}
 
+    @log_call
     def get_performance_metrics(self) -> dict[str, Any]:
         """Get performance metrics for monitoring."""
         return {
@@ -435,6 +448,7 @@ class AzureUnifiedProvider:
 
 
 @lru_cache(maxsize=16)
+@log_call
 def _get_cached_model_list_template(
     base_url: str,
     api_version: str,
@@ -568,6 +582,7 @@ def _get_cached_model_list_template(
     return model_list
 
 
+@log_call
 def create_unified_litellm_router(
     api_key: str,
     base_url: str,
@@ -620,6 +635,7 @@ def create_unified_litellm_router(
 
 
 @lru_cache(maxsize=32)
+@log_call
 def validate_azure_unified_config_cached(
     config_hash: str, base_url: str, has_api_key: bool
 ) -> bool:
@@ -656,6 +672,7 @@ def validate_azure_unified_config_cached(
     return True
 
 
+@log_call
 def validate_azure_unified_config(config: dict[str, str]) -> bool:
     """
     Legacy interface for configuration validation with caching optimization.
@@ -671,11 +688,12 @@ def validate_azure_unified_config(config: dict[str, str]) -> bool:
 
     # Create cache key from configuration
     config_str = f"{base_url}:{bool(api_key)}"
-    config_hash = hashlib.md5(config_str.encode()).hexdigest()[:16]
+    config_hash = hashlib.sha256(config_str.encode()).hexdigest()[:16]
 
     return validate_azure_unified_config_cached(config_hash, base_url, bool(api_key))
 
 
+@log_call
 async def cleanup_cached_sessions() -> None:
     """Clean up closed sessions from cache to prevent memory leaks."""
     closed_sessions = []
@@ -690,6 +708,7 @@ async def cleanup_cached_sessions() -> None:
         logger.debug(f"🧹 Cleaned up {len(closed_sessions)} closed sessions from cache")
 
 
+@log_call
 def get_global_performance_metrics() -> dict[str, Any]:
     """Get global performance metrics across all providers."""
     return {

@@ -2,6 +2,8 @@
 
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 
 class AzureModelMapper:
     """Maps OpenAI model names to Azure deployment names."""
@@ -24,6 +26,7 @@ class AzureModelMapper:
     # Reasoning models that require max_completion_tokens parameter
     REASONING_MODELS = {"gpt-5", "o3", "o4", "o3-mini", "o4-mini", "gpt-5-mini"}
 
+    @log_call
     def __init__(self, config: dict[str, str]):
         """Initialize model mapper with configuration.
 
@@ -41,6 +44,7 @@ class AzureModelMapper:
             if deployment_var in config:
                 self._deployment_cache[model] = config[deployment_var]
 
+    @log_call
     def get_azure_deployment(self, model_name: str) -> str | None:
         """Get Azure deployment name for OpenAI model.
 
@@ -80,6 +84,7 @@ class AzureModelMapper:
         self._deployment_cache[model_name] = None
         return None
 
+    @log_call
     def is_reasoning_model(self, model_name: str) -> bool:
         """Check if model is a reasoning model requiring parameter conversion.
 
@@ -91,6 +96,7 @@ class AzureModelMapper:
         """
         return model_name.lower() in {m.lower() for m in self.REASONING_MODELS}
 
+    @log_call
     def convert_parameters_for_reasoning(self, params: dict[str, Any]) -> dict[str, Any]:
         """Convert parameters for reasoning models.
 
@@ -108,6 +114,7 @@ class AzureModelMapper:
 
         return converted
 
+    @log_call
     def get_model_mapping_config(self) -> dict[str, str]:
         """Get all model mapping configuration.
 
@@ -125,6 +132,7 @@ class AzureModelMapper:
 
         return mappings
 
+    @log_call
     def _normalize_model_name(self, model_name: str) -> str:
         """Normalize model name for deployment mapping.
 

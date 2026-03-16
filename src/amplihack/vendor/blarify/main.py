@@ -17,6 +17,7 @@ from amplihack.vendor.blarify.project_graph_diff_creator import (
 from amplihack.vendor.blarify.project_graph_updater import ProjectGraphUpdater
 from amplihack.vendor.blarify.repositories.graph_db_manager.neo4j_manager import Neo4jManager
 from amplihack.vendor.blarify.utils.file_remover import FileRemover
+from amplihack.utils.logging_utils import log_call
 
 URI = os.getenv("NEO4J_URI")
 USER = os.getenv("NEO4J_USERNAME")
@@ -25,6 +26,7 @@ PASSWORD = os.getenv("NEO4J_PASSWORD")
 logger = logging.getLogger(__name__)
 
 
+@log_call
 def main_with_documentation(root_path: str = None, blarignore_path: str | None = None):
     """Main function that builds the graph and then runs the documentation generation workflow."""
     print("🚀 Starting integrated graph building and documentation generation...")
@@ -119,6 +121,7 @@ def main_with_documentation(root_path: str = None, blarignore_path: str | None =
         lsp_query_helper.shutdown_exit_close()
 
 
+@log_call
 def test_documentation_only(root_path: str = None):
     """Test only the documentation workflow, assuming the graph already exists in the database."""
     print("📚 Testing documentation generation workflow only...")
@@ -170,6 +173,7 @@ def test_documentation_only(root_path: str = None):
     print("\n✨ Integrated workflow completed!")
 
 
+@log_call
 def main_with_documentation_new(root_path: str = None, blarignore_path: str = None):
     """Main function that demonstrates the integrated documentation generation workflow."""
     print(
@@ -238,6 +242,7 @@ def main_with_documentation_new(root_path: str = None, blarignore_path: str = No
     print("\n✨ Integrated workflow completed!")
 
 
+@log_call
 def main_full(root_path: str = None, blarignore_path: str = None) -> None:
     """Original main function - builds the complete code graph from scratch."""
     print("\n🔨 Building complete code graph from scratch...")
@@ -278,6 +283,7 @@ def main_full(root_path: str = None, blarignore_path: str = None) -> None:
     lsp_query_helper.shutdown_exit_close()
 
 
+@log_call
 def main_diff(
     root_path: str = None, blarignore_path: str = None, updated_files: list = None
 ) -> None:
@@ -320,6 +326,7 @@ def main_diff(
     lsp_query_helper.shutdown_exit_close()
 
 
+@log_call
 def main_update(root_path: str = None, blarignore_path: str = None, updated_files=None):
     """Updates an existing graph with changes from specific files."""
     print("\n♻️ Updating existing graph with file changes...")
@@ -358,6 +365,7 @@ def main_update(root_path: str = None, blarignore_path: str = None, updated_file
     lsp_query_helper.shutdown_exit_close()
 
 
+@log_call
 def main_diff_with_previous(
     root_path: str = None,
     blarignore_path: str = None,
@@ -403,6 +411,7 @@ def main_diff_with_previous(
     lsp_query_helper.shutdown_exit_close()
 
 
+@log_call
 def test_github_integration(root_path: str = None, blarignore_path: str = None):
     """Test function to verify GitHub integration with a simple Blarify graph."""
     print("🧪 Testing GitHub Integration...")
@@ -507,6 +516,7 @@ def test_github_integration(root_path: str = None, blarignore_path: str = None):
         lsp_query_helper.shutdown_exit_close()
 
 
+@log_call
 def test_blame_integration_single_function(root_path: str = None, blarignore_path: str = None):
     """Test the blame integration for a single random function using existing graph.
 

@@ -28,6 +28,7 @@ from amplihack.fleet._constants import (
 )
 from amplihack.fleet._defaults import get_azlin_path
 from amplihack.fleet._validation import validate_vm_name
+from amplihack.utils.logging_utils import log_call
 
 __all__ = ["HealthChecker", "HealthReport", "VMHealth"]
 
@@ -52,6 +53,7 @@ class VMHealth:
     errors: list[str] = field(default_factory=list)
 
     @property
+    @log_call
     def is_healthy(self) -> bool:
         return (
             self.ssh_reachable
@@ -61,8 +63,13 @@ class VMHealth:
         )
 
     @property
+    @log_call
     def needs_attention(self) -> bool:
-        return self.memory_used_pct > MEMORY_ATTENTION_THRESHOLD_PCT or self.disk_used_pct > DISK_ATTENTION_THRESHOLD_PCT or not self.ssh_reachable
+        return (
+            self.memory_used_pct > MEMORY_ATTENTION_THRESHOLD_PCT
+            or self.disk_used_pct > DISK_ATTENTION_THRESHOLD_PCT
+            or not self.ssh_reachable
+        )
 
 
 @dataclass
@@ -73,13 +80,16 @@ class HealthReport:
     timestamp: datetime | None = None
 
     @property
+    @log_call
     def healthy_count(self) -> int:
         return sum(1 for vm in self.vm_health if vm.is_healthy)
 
     @property
+    @log_call
     def attention_count(self) -> int:
         return sum(1 for vm in self.vm_health if vm.needs_attention)
 
+    @log_call
     def summary(self) -> str:
         lines = [
             f"Fleet Health ({self.timestamp:%H:%M:%S})" if self.timestamp else "Fleet Health",
@@ -113,6 +123,7 @@ class HealthChecker:
 
     azlin_path: str = field(default_factory=get_azlin_path)
 
+    @log_call
     def check_vm(self, vm_name: str) -> VMHealth:
         """Run all health checks on a single VM in one SSH connection.
 
@@ -154,6 +165,7 @@ class HealthChecker:
 
         return health
 
+    @log_call
     def check_fleet(self, vm_names: list[str]) -> HealthReport:
         """Check health of multiple VMs.
 
@@ -165,6 +177,7 @@ class HealthChecker:
             report.vm_health.append(self.check_vm(vm_name))
         return report
 
+    @log_call
     def _parse_health_output(self, output: str, health: VMHealth) -> None:
         """Parse the compound health check output."""
         sections = output.split("---")
@@ -185,6 +198,7 @@ class HealthChecker:
             elif section == "UPTIME" and i + 1 < len(sections):
                 self._parse_uptime(sections[i + 1], health)
 
+    @log_call
     def _parse_memory(self, raw: str, health: VMHealth) -> None:
         """Parse free -m output."""
         try:
@@ -200,6 +214,7 @@ class HealthChecker:
             pass
         health.errors.append("Failed to parse memory metrics")
 
+    @log_call
     def _parse_disk(self, raw: str, health: VMHealth) -> None:
         """Parse df -h output."""
         try:
@@ -212,11 +227,13 @@ class HealthChecker:
             pass
         health.errors.append("Failed to parse disk metrics")
 
+    @log_call
     def _parse_processes(self, raw: str, health: VMHealth) -> None:
         """Parse process list."""
         procs = [line.strip() for line in raw.strip().split("\n") if line.strip()]
         health.agent_processes = procs
 
+    @log_call
     def _parse_tmux(self, raw: str, health: VMHealth) -> None:
         """Parse tmux session list."""
         sessions = [
@@ -226,6 +243,7 @@ class HealthChecker:
         ]
         health.tmux_sessions = sessions
 
+    @log_call
     def _parse_load(self, raw: str, health: VMHealth) -> None:
         """Parse /proc/loadavg."""
         try:
@@ -237,6 +255,7 @@ class HealthChecker:
             pass
         health.errors.append("Failed to parse load average")
 
+    @log_call
     def _parse_uptime(self, raw: str, health: VMHealth) -> None:
         """Parse /proc/uptime."""
         try:

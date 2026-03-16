@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 
+from amplihack.utils.logging_utils import log_call
+
 from ..agent_assembler import AgentAssembler
 from ..objective_planner import ObjectivePlanner
 from ..packager import GoalAgentPackager
@@ -16,6 +18,7 @@ class TestIntegration:
     """Integration tests for complete pipeline."""
 
     @pytest.fixture
+    @log_call
     def sample_prompt(self):
         """Create sample prompt file."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
@@ -38,12 +41,14 @@ Create an automated security scanning system that:
             return Path(f.name)
 
     @pytest.fixture
+    @log_call
     def temp_output_dir(self):
         """Create temporary output directory."""
         with tempfile.TemporaryDirectory() as tmpdir:
             yield Path(tmpdir)
 
     @pytest.fixture
+    @log_call
     def temp_skills_dir(self):
         """Create temporary skills directory with sample skills."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -63,6 +68,7 @@ Analyzes code for security vulnerabilities.
 
             yield skills_dir
 
+    @log_call
     def test_end_to_end_pipeline(self, sample_prompt, temp_output_dir, temp_skills_dir):
         """Test complete pipeline from prompt to packaged agent."""
         # Stage 1: Analyze prompt
@@ -108,6 +114,7 @@ Analyzes code for security vulnerabilities.
         assert (agent_dir / "prompt.md").exists()
         assert (agent_dir / ".claude" / "agents").exists()
 
+    @log_call
     def test_pipeline_with_custom_name(self, sample_prompt, temp_output_dir, temp_skills_dir):
         """Test pipeline with custom bundle name."""
         analyzer = PromptAnalyzer()
@@ -131,6 +138,7 @@ Analyzes code for security vulnerabilities.
 
         assert agent_dir.name == "custom-security-agent"
 
+    @log_call
     def test_packaged_agent_structure(self, sample_prompt, temp_output_dir, temp_skills_dir):
         """Test that packaged agent has correct structure."""
         # Complete pipeline
@@ -164,6 +172,7 @@ Analyzes code for security vulnerabilities.
         # Verify main.py is executable
         assert (agent_dir / "main.py").stat().st_mode & 0o111
 
+    @log_call
     def test_packaged_agent_content(self, sample_prompt, temp_output_dir, temp_skills_dir):
         """Test that packaged agent contains expected content."""
         analyzer = PromptAnalyzer()
@@ -203,6 +212,7 @@ Analyzes code for security vulnerabilities.
         "domain",
         ["data-processing", "security-analysis", "automation", "testing", "deployment"],
     )
+    @log_call
     def test_pipeline_for_various_domains(
         self, domain, temp_output_dir, temp_skills_dir, sample_prompt
     ):

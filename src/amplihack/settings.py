@@ -20,10 +20,13 @@ import tempfile
 import time
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 # Import constants from package root
 from . import CLAUDE_DIR, HOME, HOOK_CONFIGS, RUST_HOOK_MAP
 
 
+@log_call
 def write_json_atomic(path, data, indent=2):
     """Write JSON data to a file atomically to prevent data loss on crash.
 
@@ -155,6 +158,7 @@ SETTINGS_TEMPLATE = {
 }
 
 
+@log_call
 def _strip_managed_hooks(hooks_dict):
     """Remove amplihack/xpia-managed hook entries, preserving user-added hooks.
 
@@ -187,6 +191,7 @@ def _strip_managed_hooks(hooks_dict):
     return cleaned
 
 
+@log_call
 def _filter_existing_hooks(hooks_list, hooks_dir_path):
     """Filter hook configs to only those whose files exist on disk.
 
@@ -207,6 +212,7 @@ def _filter_existing_hooks(hooks_list, hooks_dir_path):
     return existing
 
 
+@log_call
 def validate_hook_paths(hook_system, hooks_to_validate, hooks_dir_path):
     """Validate that all hook files exist before configuration.
 
@@ -232,6 +238,7 @@ def validate_hook_paths(hook_system, hooks_to_validate, hooks_dir_path):
     return (len(missing_hooks) == 0, missing_hooks)
 
 
+@log_call
 def find_rust_hook_binary():
     """Locate the amplihack-hooks Rust binary.
 
@@ -257,6 +264,7 @@ def find_rust_hook_binary():
     return None
 
 
+@log_call
 def get_hook_engine():
     """Get the configured hook engine.
 
@@ -270,6 +278,7 @@ def get_hook_engine():
     return engine
 
 
+@log_call
 def update_hook_paths(settings, hook_system, hooks_to_update, hooks_dir_path, hook_engine=None):
     """Update hook paths for a given hook system (amplihack or xpia).
 
@@ -388,6 +397,7 @@ def update_hook_paths(settings, hook_system, hooks_to_update, hooks_dir_path, ho
     return hooks_updated
 
 
+@log_call
 def ensure_settings_json():
     """Ensure settings.json exists with proper hook configuration."""
     settings_path = os.path.join(CLAUDE_DIR, "settings.json")

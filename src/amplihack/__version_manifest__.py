@@ -6,6 +6,8 @@ package and a project's .claude directory.
 Updated automatically during release process.
 """
 
+from amplihack.utils.logging_utils import log_call
+
 # Package version (from __init__.py)
 VERSION = "0.1.0"  # TODO: Sync with __init__.py in CI
 
@@ -17,6 +19,7 @@ CLAUDE_DIR_VERSION = "9b0cac42"  # Current commit
 LAST_UPDATED = "2025-11-16T00:00:00+00:00"  # Will be updated by CI/release process
 
 
+@log_call
 def get_version_info() -> dict:
     """Get version information as dictionary.
 

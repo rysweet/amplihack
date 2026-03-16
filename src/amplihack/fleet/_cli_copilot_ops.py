@@ -10,9 +10,12 @@ import json
 
 import click
 
+from amplihack.utils.logging_utils import log_call
+
 __all__ = ["register_copilot_ops"]
 
 
+@log_call
 def register_copilot_ops(fleet_cli: click.Group) -> None:
     """Register copilot operation commands (copilot-status, copilot-log).
 
@@ -26,9 +29,12 @@ def register_copilot_ops(fleet_cli: click.Group) -> None:
     # ------------------------------------------------------------------
 
     @fleet_cli.command("copilot-status")
+    @log_call
     def copilot_status():
         """Show current copilot lock/goal state."""
-        lock_dir = _cmd.COPILOT_LOCK_DIR if _cmd.COPILOT_LOCK_DIR is not None else _cmd._copilot_lock_dir()
+        lock_dir = (
+            _cmd.COPILOT_LOCK_DIR if _cmd.COPILOT_LOCK_DIR is not None else _cmd._copilot_lock_dir()
+        )
         lock_file = lock_dir / ".lock_active"
         goal_file = lock_dir / ".lock_goal"
 
@@ -38,7 +44,7 @@ def register_copilot_ops(fleet_cli: click.Group) -> None:
 
         if goal_file.exists():
             goal_text = goal_file.read_text().strip()
-            click.echo(f"Copilot: active")
+            click.echo("Copilot: active")
             click.echo(f"Goal: {goal_text}")
         else:
             click.echo("Copilot: active (no goal)")
@@ -49,9 +55,12 @@ def register_copilot_ops(fleet_cli: click.Group) -> None:
 
     @fleet_cli.command("copilot-log")
     @click.option("--tail", default=0, type=int, help="Show last N entries only")
+    @log_call
     def copilot_log(tail):
         """Show copilot decision history."""
-        log_dir = _cmd.COPILOT_LOG_DIR if _cmd.COPILOT_LOG_DIR is not None else _cmd._copilot_log_dir()
+        log_dir = (
+            _cmd.COPILOT_LOG_DIR if _cmd.COPILOT_LOG_DIR is not None else _cmd._copilot_log_dir()
+        )
         decisions_file = log_dir / "decisions.jsonl"
 
         if not decisions_file.exists():

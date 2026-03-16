@@ -41,6 +41,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 from .long_horizon_memory import (
     EvalReport,
     LongHorizonMemoryEval,
@@ -119,6 +121,7 @@ class RunnerResult:
     total_duration_seconds: float
 
 
+@log_call
 def _analyze_categories(report: EvalReport, threshold: float) -> list[CategoryAnalysis]:
     """Analyze failures by question category.
 
@@ -172,6 +175,7 @@ def _analyze_categories(report: EvalReport, threshold: float) -> list[CategoryAn
     return analyses
 
 
+@log_call
 def _diagnose_bottleneck(
     category: str,
     failed_questions: list[dict[str, Any]],
@@ -271,6 +275,7 @@ def _diagnose_bottleneck(
     return "unknown", "Manual investigation needed"
 
 
+@log_call
 def _extract_category_scores(report: EvalReport) -> dict[str, float]:
     """Extract per-category scores from a report.
 
@@ -288,6 +293,7 @@ def _extract_category_scores(report: EvalReport) -> dict[str, float]:
     return scores
 
 
+@log_call
 def detect_regression(
     baseline_scores: dict[str, float],
     post_scores: dict[str, float],
@@ -329,6 +335,7 @@ def detect_regression(
     return has_regression, worst_category, max_regression_pp
 
 
+@log_call
 def _git_revert_last_commit(project_root: Path) -> bool:
     """Revert the last git commit (used for auto-reverting regressive patches).
 
@@ -362,6 +369,7 @@ def _git_revert_last_commit(project_root: Path) -> bool:
         return False
 
 
+@log_call
 def run_long_horizon_self_improve(
     config: LongHorizonRunnerConfig,
     llm_call: Any | None = None,
@@ -736,6 +744,7 @@ def run_long_horizon_self_improve(
     return result
 
 
+@log_call
 def main() -> None:
     """CLI entry point for long-horizon self-improvement."""
     import argparse

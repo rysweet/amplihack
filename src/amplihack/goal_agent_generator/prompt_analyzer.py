@@ -8,6 +8,8 @@ import re
 from pathlib import Path
 from typing import Literal
 
+from amplihack.utils.logging_utils import log_call
+
 from .models import GoalDefinition
 
 
@@ -33,6 +35,7 @@ class PromptAnalyzer:
         "complex": ["complex", "distributed", "multi-stage", "advanced", "sophisticated"],
     }
 
+    @log_call
     def analyze(self, prompt_path: Path) -> GoalDefinition:
         """
         Analyze a prompt file and extract goal definition.
@@ -53,6 +56,7 @@ class PromptAnalyzer:
         raw_prompt = prompt_path.read_text()
         return self.analyze_text(raw_prompt)
 
+    @log_call
     def analyze_text(self, prompt: str) -> GoalDefinition:
         """
         Analyze prompt text directly.
@@ -94,6 +98,7 @@ class PromptAnalyzer:
             context=context,
         )
 
+    @log_call
     def _extract_goal(self, prompt: str) -> str:
         """Extract the primary goal from prompt."""
         # Look for explicit goal markers
@@ -114,6 +119,7 @@ class PromptAnalyzer:
         lines = [line.strip() for line in prompt.split("\n") if line.strip()]
         return lines[0] if lines else prompt[:100]
 
+    @log_call
     def _classify_domain(self, prompt: str) -> str:
         """Classify the domain based on keywords."""
         prompt_lower = prompt.lower()
@@ -130,6 +136,7 @@ class PromptAnalyzer:
         # Return domain with highest score
         return max(domain_scores.items(), key=lambda x: x[1])[0]
 
+    @log_call
     def _extract_constraints(self, prompt: str) -> list[str]:
         """Extract technical or operational constraints."""
         constraints = []
@@ -150,6 +157,7 @@ class PromptAnalyzer:
 
         return constraints[:5]  # Limit to top 5 constraints
 
+    @log_call
     def _extract_success_criteria(self, prompt: str) -> list[str]:
         """Extract success criteria or completion indicators."""
         criteria = []
@@ -174,6 +182,7 @@ class PromptAnalyzer:
 
         return criteria[:5]  # Limit to top 5 criteria
 
+    @log_call
     def _determine_complexity(self, prompt: str) -> Literal["simple", "moderate", "complex"]:
         """Determine complexity level based on indicators."""
         prompt_lower = prompt.lower()
@@ -205,6 +214,7 @@ class PromptAnalyzer:
         # Type assertion for return type safety
         return result  # type: ignore[return-value]
 
+    @log_call
     def _extract_context(self, prompt: str) -> dict:
         """Extract additional contextual information."""
         context = {}

@@ -6,6 +6,8 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 logger = logging.getLogger(__name__)
 
 
@@ -26,10 +28,12 @@ class RepositoryCreator:
     Uses GitHub CLI (gh) for all repository operations.
     """
 
+    @log_call
     def __init__(self):
         """Initialize repository creator."""
         self._check_gh_cli()
 
+    @log_call
     def _check_gh_cli(self) -> bool:
         """
         Check if GitHub CLI is available and authenticated.
@@ -75,6 +79,7 @@ class RepositoryCreator:
                 "GitHub CLI (gh) is not installed. Install from: https://cli.github.com"
             )
 
+    @log_call
     def create_repository(
         self,
         bundle_path: Path,
@@ -264,6 +269,7 @@ class RepositoryCreator:
                 error=str(e),
             )
 
+    @log_call
     def _run_git_command(
         self,
         command: list,
@@ -304,6 +310,7 @@ class RepositoryCreator:
         except FileNotFoundError:
             raise RuntimeError("Git is not installed")
 
+    @log_call
     def delete_repository(
         self,
         repository: str,
@@ -366,6 +373,7 @@ class RepositoryCreator:
                 error=str(e),
             )
 
+    @log_call
     def check_repository_exists(self, repository: str) -> bool:
         """
         Check if repository exists.

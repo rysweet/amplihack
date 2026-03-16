@@ -30,6 +30,8 @@ except ImportError:
     print("WARNING: litellm not available, trace callbacks disabled", file=sys.stderr)
     LITELLM_AVAILABLE = False
 
+from amplihack.utils.logging_utils import log_call
+
 from ..tracing.trace_logger import DEFAULT_TRACE_FILE, TraceLogger
 
 
@@ -54,6 +56,7 @@ class TraceCallback:
         See register_trace_callbacks() for automatic registration.
     """
 
+    @log_call
     def __init__(
         self,
         trace_file: str | None = None,
@@ -79,12 +82,14 @@ class TraceCallback:
             # Enter the context immediately since callbacks are long-lived
             self.trace_logger.__enter__()
 
+    @log_call
     def close(self) -> None:
         """Close the trace logger if we own it."""
         if self._owns_logger and self.trace_logger:
             self.trace_logger.__exit__(None, None, None)
             self._owns_logger = False
 
+    @log_call
     def on_llm_start(self, kwargs: dict[str, Any]) -> None:
         """
         Called when LLM request starts.
@@ -128,6 +133,7 @@ class TraceCallback:
             # Silently ignore errors - never break LiteLLM flow
             pass
 
+    @log_call
     def on_llm_end(self, kwargs: dict[str, Any]) -> None:
         """
         Called when LLM request completes successfully.
@@ -160,6 +166,7 @@ class TraceCallback:
             # Silently ignore errors - never break LiteLLM flow
             pass
 
+    @log_call
     def on_llm_error(self, kwargs: dict[str, Any]) -> None:
         """
         Called when LLM request fails.
@@ -183,6 +190,7 @@ class TraceCallback:
             # Silently ignore errors - never break LiteLLM flow
             pass
 
+    @log_call
     def on_llm_stream(self, kwargs: dict[str, Any]) -> None:
         """
         Called for each streaming chunk.
@@ -217,6 +225,7 @@ class TraceCallback:
             pass
 
 
+@log_call
 def register_trace_callbacks(
     enabled: bool | None = None,
     trace_file: str | None = None,
@@ -271,6 +280,7 @@ def register_trace_callbacks(
     return callback
 
 
+@log_call
 def unregister_trace_callbacks(callback: TraceCallback | None) -> None:
     """
     Unregister trace callbacks from LiteLLM.

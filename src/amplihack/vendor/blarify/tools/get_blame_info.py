@@ -13,6 +13,7 @@ from amplihack.vendor.blarify.tools.utils import resolve_reference_id
 from langchain_core.callbacks import CallbackManagerForToolRun
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field, model_validator
+from amplihack.utils.logging_utils import log_call
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,7 @@ class FlexibleInput(BaseModel):
     symbol_name: str | None = Field(None, description="Name of the function/class/method")
 
     @model_validator(mode="after")
+    @log_call
     def validate_inputs(self):
         if self.reference_id:
             if len(self.reference_id) != 32:
@@ -61,6 +63,7 @@ class GetBlameInfo(BaseTool):
         default=True, description="Whether to create integration nodes if they don't exist"
     )
 
+    @log_call
     def __init__(
         self,
         db_manager: Any,
@@ -102,6 +105,7 @@ class GetBlameInfo(BaseTool):
         self._github_creator: GitHubCreator | None = None
         self._ref_commit_info: dict[str, Any] | None = None
 
+    @log_call
     def _run(
         self,
         reference_id: str | None = None,
@@ -164,6 +168,7 @@ class GetBlameInfo(BaseTool):
             logger.error(f"Error getting blame: {e}")
             return f"Error: Failed to get blame information - {e!s}"
 
+    @log_call
     def _get_node_info(self, node_id: str) -> dict[str, Any] | None:
         """Get basic information about the node.
 
@@ -188,6 +193,7 @@ class GetBlameInfo(BaseTool):
             return results[0]
         return None
 
+    @log_call
     def _get_existing_blame(self, node_id: str) -> list[dict[str, Any]]:
         """Get existing MODIFIED_BY relationships with blame attribution.
 
@@ -219,6 +225,7 @@ class GetBlameInfo(BaseTool):
         results = self.db_manager.query(query, {"node_id": node_id})
         return results if results else []
 
+    @log_call
     def _get_ref_commit_info(self) -> dict[str, Any] | None:
         """Get the commit information for the configured ref.
 
@@ -249,6 +256,7 @@ class GetBlameInfo(BaseTool):
 
         return self._ref_commit_info
 
+    @log_call
     def _create_integration_if_needed(self, node_id: str) -> bool:
         """Create integration nodes using GitHubCreator if they don't exist.
 
@@ -281,6 +289,7 @@ class GetBlameInfo(BaseTool):
             logger.exception(f"Failed to create integration nodes: {e}")
             return False
 
+    @log_call
     def _format_github_style_blame(
         self, node_info: dict[str, Any], blame_data: list[dict[str, Any]]
     ) -> str:
@@ -403,6 +412,7 @@ class GetBlameInfo(BaseTool):
 
         return "\n".join(output)
 
+    @log_call
     def _build_line_blame_map(
         self, blame_data: list[dict[str, Any]], start_line: int, num_lines: int
     ) -> dict[int, dict[str, Any]]:
@@ -449,6 +459,7 @@ class GetBlameInfo(BaseTool):
 
         return line_blame_map
 
+    @log_call
     def _format_time_ago(self, timestamp: str, ref_timestamp: str | None = None) -> str:
         """Convert ISO timestamp to human-readable time format.
 
@@ -515,6 +526,7 @@ class GetBlameInfo(BaseTool):
             logger.debug(f"Failed to parse timestamp {timestamp}: {e}")
             return "Unknown"
 
+    @log_call
     def _calculate_author_lines(self, blame_data: list[dict[str, Any]]) -> dict[str, int]:
         """Calculate number of lines attributed to each author.
 
@@ -551,6 +563,7 @@ class GetBlameInfo(BaseTool):
 
         return author_lines
 
+    @log_call
     def _find_latest_commit(self, blame_data: list[dict[str, Any]]) -> dict[str, Any] | None:
         """Find the most recent commit from blame data.
 

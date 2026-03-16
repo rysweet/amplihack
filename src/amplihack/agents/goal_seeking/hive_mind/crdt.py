@@ -23,6 +23,8 @@ import uuid
 from dataclasses import dataclass
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 
 class GSet:
     """Grow-only set.  Items can be added but never removed.
@@ -30,18 +32,22 @@ class GSet:
     Merge is the set union, which is commutative, associative, and idempotent.
     """
 
+    @log_call
     def __init__(self) -> None:
         self._items: set[str] = set()
         self._lock = threading.Lock()
 
+    @log_call
     def add(self, item: str) -> None:
         with self._lock:
             self._items.add(item)
 
+    @log_call
     def contains(self, item: str) -> bool:
         with self._lock:
             return item in self._items
 
+    @log_call
     def merge(self, other: GSet) -> None:
         # Deterministic lock ordering by id() to prevent deadlock
         first, second = (self, other) if id(self) < id(other) else (other, self)
@@ -49,15 +55,18 @@ class GSet:
             self._items |= other._items
 
     @property
+    @log_call
     def items(self) -> frozenset[str]:
         with self._lock:
             return frozenset(self._items)
 
+    @log_call
     def to_dict(self) -> dict[str, Any]:
         with self._lock:
             return {"type": "GSet", "items": sorted(self._items)}
 
     @classmethod
+    @log_call
     def from_dict(cls, data: dict[str, Any]) -> GSet:
         gs = cls()
         gs._items = set(data["items"])
@@ -74,6 +83,7 @@ class ORSet:
     Merge unions both the element-tag pairs and the tombstones.
     """
 
+    @log_call
     def __init__(self) -> None:
         # _elements: element -> set of unique tags
         self._elements: dict[str, set[str]] = {}
@@ -81,6 +91,7 @@ class ORSet:
         self._tombstones: dict[str, set[str]] = {}
         self._lock = threading.Lock()
 
+    @log_call
     def add(self, item: str) -> str:
         """Add *item* with a fresh unique tag.  Returns the tag."""
         tag = uuid.uuid4().hex
@@ -88,18 +99,21 @@ class ORSet:
             self._elements.setdefault(item, set()).add(tag)
         return tag
 
+    @log_call
     def remove(self, item: str) -> None:
         """Remove *item* by tombstoning all its currently-visible tags."""
         with self._lock:
             tags = self._elements.get(item, set())
             self._tombstones.setdefault(item, set()).update(tags)
 
+    @log_call
     def contains(self, item: str) -> bool:
         with self._lock:
             tags = self._elements.get(item, set())
             dead = self._tombstones.get(item, set())
             return bool(tags - dead)
 
+    @log_call
     def merge(self, other: ORSet) -> None:
         # Deterministic lock ordering by id() to prevent deadlock
         first, second = (self, other) if id(self) < id(other) else (other, self)
@@ -110,6 +124,7 @@ class ORSet:
                 self._tombstones.setdefault(item, set()).update(tags)
 
     @property
+    @log_call
     def items(self) -> frozenset[str]:
         with self._lock:
             result: set[str] = set()
@@ -119,6 +134,7 @@ class ORSet:
                     result.add(item)
             return frozenset(result)
 
+    @log_call
     def to_dict(self) -> dict[str, Any]:
         with self._lock:
             return {
@@ -128,6 +144,7 @@ class ORSet:
             }
 
     @classmethod
+    @log_call
     def from_dict(cls, data: dict[str, Any]) -> ORSet:
         orset = cls()
         orset._elements = {k: set(v) for k, v in data["elements"].items()}
@@ -151,19 +168,23 @@ class LWWRegister:
     (ties broken by greater value for determinism).
     """
 
+    @log_call
     def __init__(self) -> None:
         self._entry: _LWWEntry | None = None
         self._lock = threading.Lock()
 
+    @log_call
     def set(self, value: Any, timestamp: float) -> None:
         with self._lock:
             if self._entry is None or self._should_replace(timestamp, value):
                 self._entry = _LWWEntry(value=value, timestamp=timestamp)
 
+    @log_call
     def get(self) -> Any | None:
         with self._lock:
             return self._entry.value if self._entry else None
 
+    @log_call
     def merge(self, other: LWWRegister) -> None:
         # Deterministic lock ordering by id() to prevent deadlock
         first, second = (self, other) if id(self) < id(other) else (other, self)
@@ -182,6 +203,7 @@ class LWWRegister:
                     timestamp=other._entry.timestamp,
                 )
 
+    @log_call
     def _should_replace(self, new_ts: float, new_val: Any) -> bool:
         """Return True when (new_ts, new_val) beats the current entry."""
         assert self._entry is not None
@@ -194,6 +216,7 @@ class LWWRegister:
                 return False
         return False
 
+    @log_call
     def to_dict(self) -> dict[str, Any]:
         with self._lock:
             if self._entry is None:
@@ -205,6 +228,7 @@ class LWWRegister:
             }
 
     @classmethod
+    @log_call
     def from_dict(cls, data: dict[str, Any]) -> LWWRegister:
         reg = cls()
         if data["value"] is not None:

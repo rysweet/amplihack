@@ -5,6 +5,8 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 
 @dataclass
 class CopyStrategy:
@@ -23,6 +25,7 @@ class SafeCopyStrategy:
     to confirm overwrite (auto-approves in non-interactive mode).
     """
 
+    @log_call
     def determine_target(
         self,
         original_target: str | Path,
@@ -71,6 +74,7 @@ class SafeCopyStrategy:
         # "overwrite"
         return CopyStrategy(original_path, True, use_temp=False)
 
+    @log_call
     def _prompt_user_for_choice(self, conflicting_files: list[str], target_path: Path) -> str:
         """Prompt user to choose how to handle .claude directory conflicts.
 

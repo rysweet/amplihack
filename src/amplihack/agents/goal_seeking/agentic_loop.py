@@ -20,6 +20,8 @@ from typing import Any
 
 import litellm
 
+from amplihack.utils.logging_utils import log_call
+
 logger = logging.getLogger(__name__)
 
 # Default LLM model for the agentic loop (override via constructor parameter)
@@ -160,6 +162,7 @@ class AgenticLoop:
         >>> print(state.action)  # {'name': 'greet', 'params': {'name': 'Alice'}}
     """
 
+    @log_call
     def __init__(
         self,
         agent_name: str,
@@ -190,6 +193,7 @@ class AgenticLoop:
         self.max_iterations = max_iterations
         self.iteration_count = 0
 
+    @log_call
     def perceive(self, observation: str, goal: str) -> str:
         """PERCEIVE phase: Observe environment and retrieve relevant memory.
 
@@ -214,6 +218,7 @@ class AgenticLoop:
 
         return perception
 
+    @log_call
     def reason(self, perception: str) -> dict[str, Any]:
         """REASON phase: Use LLM to decide what action to take.
 
@@ -296,6 +301,7 @@ Respond in this JSON format:
                 "params": {"error": "Internal reasoning error"},
             }
 
+    @log_call
     def act(self, action_decision: dict[str, Any]) -> Any:
         """ACT phase: Execute the chosen action.
 
@@ -317,6 +323,7 @@ Respond in this JSON format:
             return result.output
         return {"error": result.error}
 
+    @log_call
     def learn(self, perception: str, reasoning: str, action: dict[str, Any], outcome: Any) -> str:
         """LEARN phase: Store experience in memory.
 
@@ -350,6 +357,7 @@ Respond in this JSON format:
 
         return learning
 
+    @log_call
     def run_iteration(self, goal: str, observation: str) -> LoopState:
         """Run one iteration of the PERCEIVE→REASON→ACT→LEARN loop.
 
@@ -394,6 +402,7 @@ Respond in this JSON format:
             iteration=self.iteration_count,
         )
 
+    @log_call
     def run_until_goal(
         self, goal: str, initial_observation: str, is_goal_achieved: Callable | None = None
     ) -> list[LoopState]:
@@ -437,6 +446,7 @@ Respond in this JSON format:
     # Iterative reasoning: plan → search → evaluate → refine → answer
     # ------------------------------------------------------------------
 
+    @log_call
     def reason_iteratively(
         self,
         question: str,
@@ -572,6 +582,7 @@ Respond in this JSON format:
 
         return collected_facts, collected_nodes, trace
 
+    @log_call
     def _plan_retrieval(self, question: str, intent: dict[str, Any]) -> RetrievalPlan:
         """Plan what information to retrieve. One short LLM call.
 
@@ -649,6 +660,7 @@ Return ONLY a JSON object:
             reasoning="fallback: using original question",
         )
 
+    @log_call
     def _refine_retrieval(
         self,
         question: str,
@@ -713,6 +725,7 @@ Return ONLY a JSON object:
             )
         return RetrievalPlan()
 
+    @log_call
     def _evaluate_sufficiency(
         self,
         question: str,
@@ -790,6 +803,7 @@ Return ONLY a JSON object:
             confidence=0.6 if len(collected_facts) >= 5 else 0.3,
         )
 
+    @log_call
     def _targeted_search(
         self,
         query: str,
@@ -845,6 +859,7 @@ Return ONLY a JSON object:
         return nodes, facts
 
     @staticmethod
+    @log_call
     def _parse_json_response(response_text: str) -> dict[str, Any] | None:
         """Parse JSON from an LLM response, handling markdown code blocks.
 

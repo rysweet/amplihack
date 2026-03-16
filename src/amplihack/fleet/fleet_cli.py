@@ -44,11 +44,13 @@ DEFAULT_DASHBOARD_PATH = Path.home() / ".amplihack" / "fleet" / "dashboard.json"
 DEFAULT_GRAPH_PATH = Path.home() / ".amplihack" / "fleet" / "graph.json"
 
 
+@log_call
 def _get_azlin() -> str:
     """Get azlin path. Raises ValueError if not found."""
     return get_azlin_path()
 
 
+@log_call
 def _validate_vm_name_cli(ctx, param, value):
     """Click callback to validate VM name."""
     if value:
@@ -63,6 +65,7 @@ def _validate_vm_name_cli(ctx, param, value):
 EXISTING_VMS = DEFAULT_EXCLUDE_VMS
 
 
+@log_call
 def _get_director(queue_path: Path = DEFAULT_QUEUE_PATH) -> FleetAdmiral:
     """Create a configured FleetAdmiral."""
     queue = TaskQueue(persist_path=queue_path)
@@ -75,6 +78,7 @@ def _get_director(queue_path: Path = DEFAULT_QUEUE_PATH) -> FleetAdmiral:
     return director
 
 
+@log_call
 def _adopt_all_sessions(director: FleetAdmiral) -> None:
     """Adopt existing sessions on all managed VMs."""
     from amplihack.fleet.fleet_adopt import SessionAdopter
@@ -96,6 +100,7 @@ def _adopt_all_sessions(director: FleetAdmiral) -> None:
 
 @click.group("fleet", invoke_without_command=True)
 @click.pass_context
+@log_call
 def fleet_cli(ctx):
     """Fleet orchestration for distributed coding agents.
 
@@ -154,6 +159,7 @@ def fleet_cli(ctx):
 
 
 @fleet_cli.command("setup")
+@log_call
 def setup():
     """Check prerequisites and report what is missing.
 
@@ -177,6 +183,7 @@ def setup():
     # Verify azlin works if found
     if path:
         import subprocess
+
         try:
             result = subprocess.run(
                 [path, "--version"],
@@ -188,7 +195,9 @@ def setup():
                 version = result.stdout.strip() or "unknown"
                 click.echo(f"  azlin version: {version}")
             else:
-                click.echo(f"  azlin: found but --version failed ({result.stderr.strip()})", err=True)
+                click.echo(
+                    f"  azlin: found but --version failed ({result.stderr.strip()})", err=True
+                )
         except Exception as exc:
             click.echo(f"  azlin: found but verification failed — {exc}", err=True)
 
@@ -207,6 +216,7 @@ def setup():
 
 
 @fleet_cli.command("status")
+@log_call
 def status():
     """Show current fleet state -- VMs, sessions, agents."""
     try:
@@ -221,8 +231,16 @@ def status():
 
 
 @fleet_cli.command("tui")
-@click.option("--interval", default=DEFAULT_DASHBOARD_REFRESH_SECONDS, help="Refresh interval in seconds")
-@click.option("--capture-lines", default=DEFAULT_CAPTURE_LINES, type=int, help="Terminal scrollback capture depth")
+@click.option(
+    "--interval", default=DEFAULT_DASHBOARD_REFRESH_SECONDS, help="Refresh interval in seconds"
+)
+@click.option(
+    "--capture-lines",
+    default=DEFAULT_CAPTURE_LINES,
+    type=int,
+    help="Terminal scrollback capture depth",
+)
+@log_call
 def tui(interval, capture_lines):
     """Interactive fleet dashboard (Textual TUI).
 
@@ -239,6 +257,7 @@ def tui(interval, capture_lines):
 # Register remaining commands from _cli_commands module
 # ------------------------------------------------------------------
 from amplihack.fleet._cli_commands import register_commands
+from amplihack.utils.logging_utils import log_call
 
 register_commands(
     fleet_cli,
@@ -253,6 +272,7 @@ register_commands(
 )
 
 
+@log_call
 def create_fleet_cli() -> click.Group:
     """Create and return the fleet CLI group."""
     return fleet_cli

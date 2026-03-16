@@ -45,6 +45,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 # Requires amplihack-agent-eval package.
 # Install: pip install "amplihack-agent-eval @ git+https://github.com/rysweet/amplihack-agent-eval.git@main"
 try:
@@ -115,6 +117,7 @@ class EvalReport:
     results: list[EvalResult]
     memory_stats: dict[str, Any] = field(default_factory=dict)
 
+    @log_call
     def to_dict(self) -> dict[str, Any]:
         """Convert report to dictionary for JSON serialization."""
         return {
@@ -178,6 +181,7 @@ _DETERMINISTIC_DIMENSIONS = {"factual_accuracy", "specificity"}
 _LLM_ONLY_DIMENSIONS = {"confidence_calibration", "source_attribution", "temporal_awareness"}
 
 
+@log_call
 def _deterministic_grade(
     rubric: GradingRubric,
     actual_answer: str,
@@ -263,6 +267,7 @@ def _deterministic_grade(
     return scores
 
 
+@log_call
 def _grade_hybrid(
     question: Question,
     actual_answer: str,
@@ -312,6 +317,7 @@ def _grade_hybrid(
     return result
 
 
+@log_call
 def _grade_multi_vote(
     question: Question,
     actual_answer: str,
@@ -332,6 +338,7 @@ def _grade_multi_vote(
     all_votes: dict[str, list[float]] = {d: [] for d in dimensions}
     all_reasoning: dict[str, list[str]] = {d: [] for d in dimensions}
 
+    @log_call
     def _do_vote() -> list[DimensionScore]:
         return _grade_hybrid(question, actual_answer, dimensions, grader_model)
 
@@ -370,6 +377,7 @@ def _grade_multi_vote(
     return result
 
 
+@log_call
 def _grade_with_llm(
     question: Question,
     actual_answer: str,
@@ -496,6 +504,7 @@ Scoring guide:
         return [DimensionScore(dimension=d, score=0.0, reasoning=f"Error: {e}") for d in dimensions]
 
 
+@log_call
 def _extract_json(text: str) -> dict:
     """Extract JSON from LLM response text."""
     import re
@@ -553,6 +562,7 @@ class LongHorizonMemoryEval:
         >>> print(f"Overall score: {report.overall_score:.2%}")
     """
 
+    @log_call
     def __init__(
         self,
         num_turns: int = 1000,
@@ -573,6 +583,7 @@ class LongHorizonMemoryEval:
         self.ground_truth: GroundTruth | None = None
         self.questions: list[Question] = []
 
+    @log_call
     def generate(self) -> tuple[GroundTruth, list[Question]]:
         """Generate dialogue and questions.
 
@@ -584,6 +595,7 @@ class LongHorizonMemoryEval:
         self.questions = generate_questions(self.ground_truth, num_questions=self.num_questions)
         return self.ground_truth, self.questions
 
+    @log_call
     def run_dialogue(
         self,
         agent: Any,
@@ -691,6 +703,7 @@ class LongHorizonMemoryEval:
             return elapsed, agent
         return elapsed
 
+    @log_call
     def evaluate(
         self,
         agent: Any,
@@ -776,6 +789,7 @@ class LongHorizonMemoryEval:
             memory_stats=mem_stats,
         )
 
+    @log_call
     def _evaluate_sequential(
         self,
         qs: list[Question],
@@ -790,6 +804,7 @@ class LongHorizonMemoryEval:
             results.append(result)
         return results
 
+    @log_call
     def _evaluate_parallel(
         self,
         qs: list[Question],
@@ -842,6 +857,7 @@ class LongHorizonMemoryEval:
             self.parallel_workers,
         )
 
+        @log_call
         def _worker(idx: int, q: Question) -> None:
             result = self._answer_and_grade_one(idx, q, agent, grader_model, total)
             results[idx] = result
@@ -886,6 +902,7 @@ class LongHorizonMemoryEval:
 
         return [r for r in results if r is not None]
 
+    @log_call
     def _answer_and_grade_one(
         self,
         idx: int,
@@ -933,6 +950,7 @@ class LongHorizonMemoryEval:
 
         return result
 
+    @log_call
     def run(
         self,
         agent: Any,
@@ -986,6 +1004,7 @@ class LongHorizonMemoryEval:
         return report
 
 
+@log_call
 def _print_report(report: EvalReport) -> None:
     """Print a human-readable summary of the evaluation report."""
     print("\n" + "=" * 70)
@@ -1038,22 +1057,27 @@ class _SDKAgentWrapper:
     and get_memory_stats() compatibility.
     """
 
+    @log_call
     def __init__(self, sdk_agent: Any, answer_mode: str = "single-shot"):
         self._agent = sdk_agent
         self._answer_mode = answer_mode
 
+    @log_call
     def learn_from_content(self, content: str) -> dict[str, Any]:
         """Forward to the SDK agent's learn_from_content method."""
         return self._agent.learn_from_content(content)
 
+    @log_call
     def answer_question(self, question: str) -> str:
         """Forward to the SDK agent's answer_question method."""
         return self._agent.answer_question(question, answer_mode=self._answer_mode)
 
+    @log_call
     def get_memory_stats(self) -> dict[str, Any]:
         """Get memory statistics."""
         return self._agent.get_memory_stats()
 
+    @log_call
     def close(self) -> None:
         """Close the underlying agent."""
         if hasattr(self._agent, "close"):
@@ -1071,14 +1095,17 @@ class _MiniAgentWrapper:
     methods delegate directly to the underlying LearningAgent.
     """
 
+    @log_call
     def __init__(self, learning_agent: Any, answer_mode: str = "single-shot"):
         self._agent = learning_agent
         self._answer_mode = answer_mode
 
+    @log_call
     def learn_from_content(self, content: str) -> dict[str, Any]:
         """Forward to the LearningAgent's learn_from_content method."""
         return self._agent.learn_from_content(content)
 
+    @log_call
     def answer_question(self, question: str) -> str:
         """Route to single-shot or agentic answer based on mode."""
         if self._answer_mode == "agentic":
@@ -1088,15 +1115,18 @@ class _MiniAgentWrapper:
             return result[0]
         return result
 
+    @log_call
     def get_memory_stats(self) -> dict[str, Any]:
         """Get memory statistics."""
         return self._agent.get_memory_stats()
 
+    @log_call
     def flush_memory(self) -> None:
         """Forward flush_memory to underlying agent."""
         if hasattr(self._agent, "flush_memory"):
             self._agent.flush_memory()
 
+    @log_call
     def close(self) -> None:
         """Close the underlying agent."""
         if hasattr(self._agent, "close"):
@@ -1106,6 +1136,7 @@ class _MiniAgentWrapper:
                 pass
 
 
+@log_call
 def _save_dialogue_json(gt: GroundTruth, path: Path) -> None:
     """Save generated dialogue to JSON for subprocess segment workers."""
     turns_data = []
@@ -1124,6 +1155,7 @@ def _save_dialogue_json(gt: GroundTruth, path: Path) -> None:
     logger.info("Saved dialogue (%d turns) to %s", len(turns_data), path)
 
 
+@log_call
 def _load_dialogue_slice(path: Path, start: int, end: int) -> list[dict[str, Any]]:
     """Load a slice of turns from a dialogue JSON file.
 
@@ -1140,6 +1172,7 @@ def _load_dialogue_slice(path: Path, start: int, end: int) -> list[dict[str, Any
     return all_turns[start:end]
 
 
+@log_call
 def _count_facts_in_db(db_path: Path) -> int:
     """Count semantic facts in the Kuzu DB for early failure detection."""
     try:
@@ -1161,6 +1194,7 @@ def _count_facts_in_db(db_path: Path) -> int:
         return 0
 
 
+@log_call
 def _run_segmented_learning(args: argparse.Namespace) -> None:
     """Orchestrate segmented learning by spawning subprocess workers.
 
@@ -1345,6 +1379,7 @@ def _run_segmented_learning(args: argparse.Namespace) -> None:
         raise RuntimeError(f"Questioning phase failed with exit code {result.returncode}")
 
 
+@log_call
 def _run_segment_worker(args: argparse.Namespace) -> None:
     """Subprocess worker: learn a slice of turns from a dialogue JSON, then exit.
 
@@ -1472,6 +1507,7 @@ def _run_segment_worker(args: argparse.Namespace) -> None:
     logger.info("Segment worker complete: turns %d:%d", slice_start, slice_end)
 
 
+@log_call
 def main() -> None:
     """CLI entry point for long-horizon memory evaluation."""
     parser = argparse.ArgumentParser(
@@ -1676,6 +1712,7 @@ def main() -> None:
             logger.warning("Could not detect agent_id from DB: %s", _e)
             agent_name = "long_horizon_eval_learning"
 
+    @log_call
     def _create_agent() -> Any:
         """Factory to create (or recreate) the eval agent."""
         if args.sdk == "mini":

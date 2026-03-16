@@ -7,6 +7,8 @@ IMPORTANT: This registry is generated from the actual filesystem at
 ~/.amplihack/.claude/skills/ to ensure it matches reality.
 """
 
+from amplihack.utils.logging_utils import log_call
+
 # All amplihack-managed skills (directory names)
 # Generated from ~/.amplihack/.claude/skills/ filesystem contents
 AMPLIHACK_SKILLS: frozenset[str] = frozenset(
@@ -104,6 +106,7 @@ AMPLIHACK_SKILLS: frozenset[str] = frozenset(
 )
 
 
+@log_call
 def is_amplihack_skill(skill_name: str) -> bool:
     """Check if skill name is managed by amplihack.
 

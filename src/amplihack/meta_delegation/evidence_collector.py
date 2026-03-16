@@ -28,6 +28,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 # Evidence type to file pattern mapping
 EVIDENCE_PATTERNS = {
     "code_file": [
@@ -138,6 +140,7 @@ class EvidenceItem:
     timestamp: datetime
     metadata: dict = field(default_factory=dict)
 
+    @log_call
     def save_to_file(self, output_path: str) -> None:
         """Save evidence content to file.
 
@@ -156,6 +159,7 @@ class EvidenceItem:
 
         output_path_obj.write_text(self.content, encoding="utf-8")
 
+    @log_call
     def get_metadata(self, key: str, default=None):
         """Get metadata value with default.
 
@@ -177,6 +181,7 @@ class EvidenceCollector:
         evidence_priorities: Optional ordered list of evidence types to prioritize
     """
 
+    @log_call
     def __init__(
         self,
         working_directory: str | None = None,
@@ -202,6 +207,7 @@ class EvidenceCollector:
         self.evidence_priorities = evidence_priorities or []
         self._collected_evidence: list[EvidenceItem] = []
 
+    @log_call
     def collect_evidence(
         self,
         execution_log: str | None = None,
@@ -262,6 +268,7 @@ class EvidenceCollector:
         self._collected_evidence = evidence
         return evidence
 
+    @log_call
     def get_evidence_by_type(self, evidence_type: str) -> list[EvidenceItem]:
         """Get evidence items of specific type.
 
@@ -273,6 +280,7 @@ class EvidenceCollector:
         """
         return [item for item in self._collected_evidence if item.type == evidence_type]
 
+    @log_call
     def get_evidence_by_path_pattern(self, pattern: str) -> list[EvidenceItem]:
         """Get evidence items matching path pattern.
 
@@ -284,6 +292,7 @@ class EvidenceCollector:
         """
         return [item for item in self._collected_evidence if fnmatch.fnmatch(item.path, pattern)]
 
+    @log_call
     def export_evidence(self, output_directory: str) -> None:
         """Export all collected evidence to directory.
 
@@ -325,6 +334,7 @@ class EvidenceCollector:
 
             item.save_to_file(str(output_path))
 
+    @log_call
     def _find_files(self, pattern: str, exclude_patterns: list[str]) -> list[Path]:
         """Find files matching pattern, excluding specified patterns.
 
@@ -363,6 +373,7 @@ class EvidenceCollector:
 
         return files
 
+    @log_call
     def _create_evidence_item(self, file_path: Path, evidence_type: str) -> EvidenceItem:
         """Create evidence item from file.
 
@@ -405,6 +416,7 @@ class EvidenceCollector:
             metadata=metadata,
         )
 
+    @log_call
     def _extract_metadata(self, file_path: Path, content: str) -> dict:
         """Extract metadata from file.
 

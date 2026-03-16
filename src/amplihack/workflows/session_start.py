@@ -8,13 +8,17 @@ Detects when classification should be triggered:
 
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 
 class SessionStartDetector:
     """Detects when workflow classification should be triggered."""
 
+    @log_call
     def __init__(self):
         """Initialize session start detector."""
 
+    @log_call
     def is_session_start(self, context: dict[str, Any]) -> bool:
         """Detect if this is a session start requiring classification.
 
@@ -46,6 +50,7 @@ class SessionStartDetector:
         # For now, only first message triggers classification
         return False
 
+    @log_call
     def should_bypass_classification(self, context: dict[str, Any]) -> bool:
         """Check if classification should be bypassed.
 

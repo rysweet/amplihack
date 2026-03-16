@@ -5,6 +5,7 @@ from amplihack.vendor.blarify.graph.graph import Graph
 from amplihack.vendor.blarify.graph.graph_environment import GraphEnvironment
 from amplihack.vendor.blarify.graph.graph_update import GraphUpdate
 from amplihack.vendor.blarify.project_graph_diff_creator import ChangeType, FileDiff, ProjectGraphDiffCreator
+from amplihack.utils.logging_utils import log_call
 
 
 @dataclass
@@ -15,6 +16,7 @@ class UpdatedFile:
 class ProjectGraphUpdater(ProjectGraphDiffCreator):
     updated_files: list[UpdatedFile]
 
+    @log_call
     def __init__(
         self,
         updated_files: list[UpdatedFile],
@@ -37,6 +39,7 @@ class ProjectGraphUpdater(ProjectGraphDiffCreator):
             **kwargs,
         )
 
+    @log_call
     def build(self) -> Graph:
         self._create_code_hierarchy()
         self.create_relationship_from_references_for_modified_and_added_files()
@@ -50,6 +53,7 @@ class ProjectGraphUpdater(ProjectGraphDiffCreator):
             ),
         )
 
+    @log_call
     def build_hierarchy_only(self) -> Graph:
         self._create_code_hierarchy()
         self.keep_only_files_to_create()
@@ -62,6 +66,7 @@ class ProjectGraphUpdater(ProjectGraphDiffCreator):
             ),
         )
 
+    @log_call
     def get_file_diffs_from_updated_files(self) -> list[FileDiff]:
         return [
             FileDiff(

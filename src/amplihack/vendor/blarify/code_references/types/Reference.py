@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from urllib.parse import unquote
+from amplihack.utils.logging_utils import log_call
 
 
 @dataclass
@@ -7,6 +8,7 @@ class Point:
     line: int
     character: int
 
+    @log_call
     def __eq__(self, value):
         if not isinstance(value, Point):
             return False
@@ -18,6 +20,7 @@ class Range:
     start: Point
     end: Point
 
+    @log_call
     def __eq__(self, value):
         if not isinstance(value, Range):
             return False
@@ -29,6 +32,7 @@ class Reference:
     range: Range
     uri: str
 
+    @log_call
     def __init__(self, reference: dict = None, range: Range = None, uri: str = None):
         if range and uri:
             self.range = range
@@ -40,6 +44,7 @@ class Reference:
         else:
             raise ValueError("Invalid Reference initialization")
 
+    @log_call
     def _initialize_from_dict(self, reference: dict) -> Range:
         self.range = Range(
             Point(reference["range"]["start"]["line"], reference["range"]["start"]["character"]),
@@ -49,17 +54,21 @@ class Reference:
         uri = reference["uri"]
         self.uri = self._desencode_uri(uri)
 
+    @log_call
     def _desencode_uri(self, uri: str) -> str:
         return unquote(uri)
 
     @property
+    @log_call
     def start_dict(self) -> dict:
         return {"line": self.range.start.line, "character": self.range.start.character}
 
     @property
+    @log_call
     def end_dict(self) -> dict:
         return {"line": self.range.end.line, "character": self.range.end.character}
 
+    @log_call
     def __eq__(self, value):
         if isinstance(value, Reference):
             return self.range == value.range and self.uri == value.uri

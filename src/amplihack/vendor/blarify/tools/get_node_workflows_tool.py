@@ -10,6 +10,7 @@ from amplihack.vendor.blarify.repositories.graph_db_manager.neo4j_manager import
 from langchain_core.callbacks import CallbackManagerForToolRun
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field, field_validator
+from amplihack.utils.logging_utils import log_call
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,7 @@ class NodeWorkflowsInput(BaseModel):
 
     @field_validator("node_id", mode="before")
     @classmethod
+    @log_call
     def format_node_id(cls, value: Any) -> Any:
         """Validate that node_id is a 32 character string."""
         if isinstance(value, str) and len(value) == 32:
@@ -52,6 +54,7 @@ class GetNodeWorkflowsTool(BaseTool):
     )
     _workflow_creator: Any | None = None
 
+    @log_call
     def __init__(
         self,
         db_manager: Neo4jManager,
@@ -76,6 +79,7 @@ class GetNodeWorkflowsTool(BaseTool):
         else:
             self._workflow_creator = None
 
+    @log_call
     def _generate_workflows_for_node(self, node_id: str, node_path: str) -> list[dict[str, Any]]:
         """Generate workflows for a specific node."""
         try:
@@ -100,6 +104,7 @@ class GetNodeWorkflowsTool(BaseTool):
             logger.error(f"Failed to auto-generate workflows: {e}")
             return []
 
+    @log_call
     def _run(
         self,
         node_id: str,
@@ -172,6 +177,7 @@ class GetNodeWorkflowsTool(BaseTool):
             logger.debug(f"Full traceback: {traceback.format_exc()}")
             return f"Error getting workflows: {e!s}"
 
+    @log_call
     def _get_node_info(self, node_id: str) -> dict[str, Any] | None:
         """Get basic information about a node."""
         try:
@@ -192,6 +198,7 @@ class GetNodeWorkflowsTool(BaseTool):
             logger.error(f"Error getting node info: {e}")
             return None
 
+    @log_call
     def _get_workflows_with_chains(self, node_id: str) -> list[dict[str, Any]]:
         """Get all workflows this node belongs to with their execution chains."""
         try:
@@ -339,6 +346,7 @@ class GetNodeWorkflowsTool(BaseTool):
             logger.debug(f"Full traceback: {traceback.format_exc()}")
             return []
 
+    @log_call
     def _format_workflow_section(self, workflow: dict[str, Any]) -> str:
         """Format a single workflow section."""
         output = "\n" + "━" * 80 + "\n"
@@ -426,6 +434,7 @@ class GetNodeWorkflowsTool(BaseTool):
 
         return output
 
+    @log_call
     def _format_summary(self, workflows: list[dict[str, Any]]) -> str:
         """Format a summary section."""
         output = "\n" + "=" * 80 + "\n"

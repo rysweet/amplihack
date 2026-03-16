@@ -6,6 +6,8 @@ Creates structured 3-5 phase plans with dependencies and parallel opportunities.
 
 import uuid
 
+from amplihack.utils.logging_utils import log_call
+
 from .models import ExecutionPlan, GoalDefinition, PlanPhase
 
 
@@ -68,6 +70,7 @@ class ObjectivePlanner:
         ("Deployment", "Deploy solution", ["deployment", "verification"]),
     ]
 
+    @log_call
     def generate_plan(self, goal_definition: GoalDefinition) -> ExecutionPlan:
         """
         Generate an execution plan from a goal definition.
@@ -107,6 +110,7 @@ class ObjectivePlanner:
             risk_factors=risk_factors,
         )
 
+    @log_call
     def _create_phases(
         self, phase_templates: list[tuple[str, str, list[str]]], goal_definition: GoalDefinition
     ) -> list[PlanPhase]:
@@ -141,6 +145,7 @@ class ObjectivePlanner:
 
         return phases[:5]  # Limit to 5 phases for MVP
 
+    @log_call
     def _estimate_phase_duration(self, complexity: str) -> str:
         """Estimate duration for a single phase based on complexity."""
         duration_map = {
@@ -150,6 +155,7 @@ class ObjectivePlanner:
         }
         return duration_map.get(complexity, "15 minutes")
 
+    @log_call
     def _estimate_total_duration(self, phases: list[PlanPhase], complexity: str) -> str:
         """Estimate total execution duration."""
         # Simple calculation: sum of phase durations
@@ -179,6 +185,7 @@ class ObjectivePlanner:
             return f"{hours} hour{'s' if hours > 1 else ''} {minutes} minutes"
         return f"{hours} hour{'s' if hours > 1 else ''}"
 
+    @log_call
     def _identify_parallel_opportunities(self, phases: list[PlanPhase]) -> list[list[str]]:
         """Identify phases that can execute in parallel."""
         parallel_groups = []
@@ -197,6 +204,7 @@ class ObjectivePlanner:
 
         return parallel_groups
 
+    @log_call
     def _calculate_required_skills(self, phases: list[PlanPhase]) -> list[str]:
         """Calculate unique skills needed across all phases."""
         all_capabilities = []
@@ -224,6 +232,7 @@ class ObjectivePlanner:
 
         return sorted(list(skills))
 
+    @log_call
     def _identify_risk_factors(self, goal_definition: GoalDefinition) -> list[str]:
         """Identify potential risk factors based on goal."""
         risks = []

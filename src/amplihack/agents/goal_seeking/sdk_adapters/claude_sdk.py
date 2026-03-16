@@ -13,6 +13,8 @@ import os
 import sys
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 from .base import AgentResult, AgentTool, GoalSeekingAgent, SDKType
 
 logger = logging.getLogger(__name__)
@@ -43,6 +45,7 @@ class ClaudeGoalSeekingAgent(GoalSeekingAgent):
         >>> result = await agent.run("Learn about the 2026 Winter Olympics")
     """
 
+    @log_call
     def __init__(
         self,
         name: str,
@@ -80,6 +83,7 @@ class ClaudeGoalSeekingAgent(GoalSeekingAgent):
             enable_eval=enable_eval,
         )
 
+    @log_call
     def _create_sdk_agent(self) -> None:
         """Store config for ClaudeSDKClient (created per-run)."""
         self._sdk_agent = {
@@ -87,6 +91,7 @@ class ClaudeGoalSeekingAgent(GoalSeekingAgent):
             "system": self._build_system_prompt(),
         }
 
+    @log_call
     def _build_system_prompt(self) -> str:
         """Build comprehensive system prompt for goal-seeking learning agent."""
         base = (
@@ -117,6 +122,7 @@ class ClaudeGoalSeekingAgent(GoalSeekingAgent):
 
         return base
 
+    @log_call
     async def _run_sdk_agent(self, task: str, max_turns: int = 10) -> AgentResult:
         """Execute task via ClaudeSDKClient connect/query/receive_response."""
         try:
@@ -156,10 +162,12 @@ class ClaudeGoalSeekingAgent(GoalSeekingAgent):
                 metadata={"sdk": "claude", "error_type": type(e).__name__},
             )
 
+    @log_call
     def _get_native_tools(self) -> list[str]:
         """Return Claude SDK native tools."""
         return ["bash", "read_file", "write_file", "edit_file", "glob", "grep"]
 
+    @log_call
     def _register_tool_with_sdk(self, tool: AgentTool) -> None:
         """Register custom tool with Claude Agent SDK."""
         self._tools.append(tool)

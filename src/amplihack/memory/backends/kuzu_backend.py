@@ -34,6 +34,8 @@ from typing import Any
 
 import kuzu
 
+from amplihack.utils.logging_utils import log_call
+
 from ..kuzu.code_graph import KuzuCodeGraph
 from ..kuzu.connector import KuzuConnector
 from ..models import MemoryEntry, MemoryQuery, MemoryType, SessionInfo
@@ -57,6 +59,7 @@ class KuzuBackend:
     - Memories can reference other memories
     """
 
+    @log_call
     def __init__(self, db_path: Path | str | None = None, enable_auto_linking: bool = True):
         """Initialize Kùzu backend.
 
@@ -87,6 +90,7 @@ class KuzuBackend:
         self._executor = ThreadPoolExecutor(max_workers=4)
 
     @staticmethod
+    @log_call
     def _open_database_with_retry(
         db_path: Path, max_retries: int = 3, base_delay: float = 0.2
     ) -> "kuzu.Database":
@@ -122,6 +126,7 @@ class KuzuBackend:
                     time.sleep(delay)
         raise last_error  # type: ignore[misc]
 
+    @log_call
     def get_capabilities(self) -> BackendCapabilities:
         """Get Kùzu backend capabilities."""
         return BackendCapabilities(
@@ -134,6 +139,7 @@ class KuzuBackend:
             backend_version="0.x",
         )
 
+    @log_call
     def _initialize_sync(self) -> None:
         """Synchronous initialization helper for executor."""
         try:
@@ -583,6 +589,7 @@ class KuzuBackend:
             logger.error(f"Error initializing Kùzu schema: {e}")
             raise
 
+    @log_call
     async def initialize(self) -> None:
         """Initialize Kùzu schema with 5 memory types + 3 code types.
 
@@ -599,6 +606,7 @@ class KuzuBackend:
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(self._executor, self._initialize_sync)
 
+    @log_call
     def _store_memory_sync(self, memory: MemoryEntry) -> bool:
         """Store a memory entry in appropriate node type based on memory_type (sync helper).
 
@@ -920,6 +928,7 @@ class KuzuBackend:
             logger.error(f"Error storing memory in Kùzu: {e}", exc_info=True)
             return False
 
+    @log_call
     async def store_memory(self, memory: MemoryEntry) -> bool:
         """Store a memory entry in appropriate node type based on memory_type.
 
@@ -943,6 +952,7 @@ class KuzuBackend:
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(self._executor, self._store_memory_sync, memory)
 
+    @log_call
     def _create_session_node(self, session_id: str, timestamp: datetime) -> None:
         """Create or update Session node."""
         self.connection.execute(
@@ -967,6 +977,7 @@ class KuzuBackend:
             },
         )
 
+    @log_call
     def _create_agent_node(self, agent_id: str, timestamp: datetime) -> None:
         """Create or update Agent node."""
         self.connection.execute(
@@ -987,6 +998,7 @@ class KuzuBackend:
             },
         )
 
+    @log_call
     def _retrieve_memories_sync(self, query: MemoryQuery) -> list[MemoryEntry]:
         """Retrieve memories matching the query (sync helper).
 
@@ -1035,6 +1047,7 @@ class KuzuBackend:
             logger.error(f"Error retrieving memories from Kùzu: {e}")
             return []
 
+    @log_call
     async def retrieve_memories(self, query: MemoryQuery) -> list[MemoryEntry]:
         """Retrieve memories matching the query.
 
@@ -1051,6 +1064,7 @@ class KuzuBackend:
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(self._executor, self._retrieve_memories_sync, query)
 
+    @log_call
     def _get_node_label_for_type(self, memory_type: MemoryType) -> str:
         """Map MemoryType to node label."""
         type_to_label = {
@@ -1062,6 +1076,7 @@ class KuzuBackend:
         }
         return type_to_label.get(memory_type, "Memory")  # Fallback to legacy
 
+    @log_call
     def _query_memories_by_type(self, query: MemoryQuery, node_label: str) -> list[MemoryEntry]:
         """Query memories from a specific node type."""
         # Build WHERE conditions
@@ -1159,6 +1174,7 @@ class KuzuBackend:
 
         return memories
 
+    @log_call
     def _get_memory_type_from_label(self, node_label: str) -> MemoryType:
         """Map node label back to MemoryType."""
         label_to_type = {
@@ -1170,6 +1186,7 @@ class KuzuBackend:
         }
         return label_to_type.get(node_label, MemoryType.EPISODIC)  # Default fallback
 
+    @log_call
     def _get_memory_by_id_sync(self, memory_id: str) -> MemoryEntry | None:
         """Get a specific memory by ID (sync helper).
 
@@ -1242,6 +1259,7 @@ class KuzuBackend:
             logger.error(f"Error getting memory by ID from Kùzu: {e}")
             return None
 
+    @log_call
     async def get_memory_by_id(self, memory_id: str) -> MemoryEntry | None:
         """Get a specific memory by ID.
 
@@ -1258,6 +1276,7 @@ class KuzuBackend:
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(self._executor, self._get_memory_by_id_sync, memory_id)
 
+    @log_call
     def _delete_memory_sync(self, memory_id: str) -> bool:
         """Delete a memory entry and its relationships (sync helper).
 
@@ -1309,6 +1328,7 @@ class KuzuBackend:
             logger.error(f"Error deleting memory from Kùzu: {e}")
             return False
 
+    @log_call
     async def delete_memory(self, memory_id: str) -> bool:
         """Delete a memory entry and its relationships.
 
@@ -1325,6 +1345,7 @@ class KuzuBackend:
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(self._executor, self._delete_memory_sync, memory_id)
 
+    @log_call
     def _cleanup_expired_sync(self) -> int:
         """Remove expired memory entries (sync helper).
 
@@ -1358,6 +1379,7 @@ class KuzuBackend:
 
         return total_deleted
 
+    @log_call
     async def cleanup_expired(self) -> int:
         """Remove expired memory entries.
 
@@ -1369,6 +1391,7 @@ class KuzuBackend:
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(self._executor, self._cleanup_expired_sync)
 
+    @log_call
     def _get_session_info_sync(self, session_id: str) -> SessionInfo | None:
         """Get information about a session (sync helper).
 
@@ -1414,6 +1437,7 @@ class KuzuBackend:
             logger.error(f"Error getting session info from Kùzu: {e}")
             return None
 
+    @log_call
     async def get_session_info(self, session_id: str) -> SessionInfo | None:
         """Get information about a session.
 
@@ -1428,6 +1452,7 @@ class KuzuBackend:
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(self._executor, self._get_session_info_sync, session_id)
 
+    @log_call
     def _list_sessions_sync(self, limit: int | None = None) -> list[SessionInfo]:
         """List all sessions ordered by last accessed (sync helper).
 
@@ -1481,6 +1506,7 @@ class KuzuBackend:
             logger.error(f"Error listing sessions from Kùzu: {e}")
             return []
 
+    @log_call
     async def list_sessions(self, limit: int | None = None) -> list[SessionInfo]:
         """List all sessions ordered by last accessed.
 
@@ -1495,6 +1521,7 @@ class KuzuBackend:
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(self._executor, self._list_sessions_sync, limit)
 
+    @log_call
     def _delete_session_sync(self, session_id: str) -> bool:
         """Delete a session and all its associated memories (sync helper).
 
@@ -1548,6 +1575,7 @@ class KuzuBackend:
             logger.error(f"Error deletin' session from Kùzu: {e}")
             return False
 
+    @log_call
     async def delete_session(self, session_id: str) -> bool:
         """Delete a session and all its associated memories.
 
@@ -1562,6 +1590,7 @@ class KuzuBackend:
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(self._executor, self._delete_session_sync, session_id)
 
+    @log_call
     def _get_stats_sync(self) -> dict[str, Any]:
         """Get database statistics (sync helper).
 
@@ -1651,6 +1680,7 @@ class KuzuBackend:
             logger.error(f"Error getting stats from Kùzu: {e}")
             return {}
 
+    @log_call
     async def get_stats(self) -> dict[str, Any]:
         """Get database statistics.
 
@@ -1664,6 +1694,7 @@ class KuzuBackend:
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(self._executor, self._get_stats_sync)
 
+    @log_call
     def _close_sync(self) -> None:
         """Close Kùzu connection and cleanup resources (sync helper).
 
@@ -1677,6 +1708,7 @@ class KuzuBackend:
         except Exception as e:
             logger.error(f"Error closing Kùzu connection: {e}")
 
+    @log_call
     async def close(self) -> None:
         """Close Kùzu connection and cleanup resources.
 
@@ -1686,6 +1718,7 @@ class KuzuBackend:
         await loop.run_in_executor(self._executor, self._close_sync)
         self._executor.shutdown(wait=True)
 
+    @log_call
     def _get_code_graph(self) -> KuzuCodeGraph:
         """Lazy-load KuzuCodeGraph instance.
 
@@ -1700,6 +1733,7 @@ class KuzuBackend:
             self._code_graph = KuzuCodeGraph(connector)
         return self._code_graph
 
+    @log_call
     def get_code_graph(self) -> KuzuCodeGraph | None:
         """Get code graph instance for querying code-memory relationships.
 
@@ -1719,6 +1753,7 @@ class KuzuBackend:
             logger.debug(f"Code graph not available: {e}")
             return None
 
+    @log_call
     def _auto_link_memory_to_code(self, memory: MemoryEntry) -> int:
         """Automatically link a memory to relevant code entities.
 
@@ -1772,6 +1807,7 @@ class KuzuBackend:
 
         return count
 
+    @log_call
     def _link_memory_to_file(
         self,
         memory_id: str,
@@ -1855,6 +1891,7 @@ class KuzuBackend:
             logger.debug(f"Error linking memory to file: {e}")
             return 0
 
+    @log_call
     def _link_memory_to_functions_by_content(
         self,
         memory_id: str,
@@ -1944,15 +1981,18 @@ class KuzuBackend:
             logger.debug(f"Error linking memory to functions: {e}")
             return 0
 
+    @log_call
     async def __aenter__(self):
         """Async context manager entry."""
         return self
 
+    @log_call
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit with proper cleanup."""
         await self.close()
         return False
 
+    @log_call
     def _has_old_schema(self) -> bool:
         """Check if old Memory table exists in database.
 
@@ -1974,6 +2014,7 @@ class KuzuBackend:
             # If query fails, old schema doesn't exist
             return False
 
+    @log_call
     def migrate_to_new_schema(self) -> bool:
         """Migrate data from old Memory table to new 5-node schema.
 
@@ -1987,15 +2028,13 @@ class KuzuBackend:
                 logger.info("No old schema detected, skipping migration")
                 return True
 
-            logger.warning("Migration from old schema not yet implemented")
-            # TODO: Implement migration logic
-            # 1. Query all nodes from old Memory table
-            # 2. Route each to appropriate new node type based on memory_type
-            # 3. Create proper relationships (Session, Agent)
-            # 4. Verify data integrity
-            # 5. Optionally remove old Memory table
-
-            return False
+            raise NotImplementedError(
+                "Migration from old Memory table schema is not yet implemented. "
+                "Manual migration required: query old Memory nodes, route each to the "
+                "appropriate new node type (EpisodicMemory, SemanticMemory, etc.) "
+                "based on memory_type, recreate relationships, verify integrity, "
+                "then remove the old Memory table."
+            )
 
         except Exception as e:
             logger.error(f"Error during schema migration: {e}")

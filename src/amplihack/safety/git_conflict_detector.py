@@ -4,6 +4,8 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 
 @dataclass
 class ConflictDetectionResult:
@@ -26,9 +28,11 @@ class GitConflictDetector:
         "context/PROJECT.md.bak",  # Backup from claude_md_preserver
     }
 
+    @log_call
     def __init__(self, target_dir: str | Path):
         self.target_dir = Path(target_dir).resolve()
 
+    @log_call
     def detect_conflicts(self, essential_dirs: list[str]) -> ConflictDetectionResult:
         """Detect conflicts between essential_dirs and uncommitted changes."""
         if not self._is_git_repo():
@@ -43,6 +47,7 @@ class GitConflictDetector:
             is_git_repo=True,
         )
 
+    @log_call
     def _is_git_repo(self) -> bool:
         """Check if target_dir is in a git repository."""
         try:
@@ -57,6 +62,7 @@ class GitConflictDetector:
         except (subprocess.TimeoutExpired, FileNotFoundError):
             return False
 
+    @log_call
     def _get_uncommitted_files(self) -> list[str]:
         """Get list of uncommitted files using git status --porcelain."""
         try:
@@ -87,6 +93,7 @@ class GitConflictDetector:
         except (subprocess.TimeoutExpired, FileNotFoundError):
             return []
 
+    @log_call
     def _filter_conflicts(
         self, uncommitted_files: list[str], essential_dirs: list[str]
     ) -> list[str]:

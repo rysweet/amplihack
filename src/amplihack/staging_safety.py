@@ -9,6 +9,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
+from amplihack.utils.logging_utils import log_call
+
 from .known_skills import is_amplihack_skill
 
 logger = logging.getLogger(__name__)
@@ -25,6 +27,7 @@ class DirectorySafetyCheck:
     custom_skills: list[str] = field(default_factory=list)
 
 
+@log_call
 def is_safe_to_delete(directory: Path) -> DirectorySafetyCheck:
     """Check if directory contains only amplihack-managed skills.
 

@@ -17,6 +17,7 @@ from typing import Any
 
 from amplihack.recipes import RecipeParser, discover_recipes, run_recipe_via_rust
 from amplihack.recipes.models import Recipe
+from amplihack.utils.logging_utils import log_call
 
 from .recipe_output import (
     format_recipe_details,
@@ -26,6 +27,7 @@ from .recipe_output import (
 )
 
 
+@log_call
 def parse_context_args(
     context_args: list[str] | list[list[str]],
 ) -> tuple[dict[str, str], list[str]]:
@@ -63,6 +65,7 @@ def parse_context_args(
     return context, errors
 
 
+@log_call
 def _validate_path(path_str: str, must_exist: bool = True) -> Path:
     """Validate and resolve a user-provided path.
 
@@ -97,6 +100,7 @@ def _validate_path(path_str: str, must_exist: bool = True) -> Path:
     return path
 
 
+@log_call
 def handle_run(
     recipe_path: str,
     context: dict[str, Any],
@@ -178,6 +182,7 @@ def handle_run(
         return 1
 
 
+@log_call
 def _infer_missing_context(
     recipe_defaults: dict[str, Any],
     merged: dict[str, Any],
@@ -241,6 +246,7 @@ def _infer_missing_context(
     return result
 
 
+@log_call
 def handle_list(
     recipe_dir: str | None = None,
     format: str = "table",
@@ -309,6 +315,7 @@ def handle_list(
         return 1
 
 
+@log_call
 def handle_validate(
     recipe_path: str,
     verbose: bool = False,
@@ -372,6 +379,7 @@ def handle_validate(
         return 1
 
 
+@log_call
 def handle_show(
     recipe_path: str,
     format: str = "table",

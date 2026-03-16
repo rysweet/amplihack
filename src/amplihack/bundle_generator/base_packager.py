@@ -10,6 +10,8 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 from .models import AgentBundle
 
 logger = logging.getLogger(__name__)
@@ -30,6 +32,7 @@ class BundlePackager:
     - Python packaging files (__init__.py, setup.py, pyproject.toml)
     """
 
+    @log_call
     def create_directory_structure(self, package_path: Path) -> None:
         """
         Create standard bundle directory structure.
@@ -50,6 +53,7 @@ class BundlePackager:
         for directory in directories:
             directory.mkdir(parents=True, exist_ok=True)
 
+    @log_call
     def write_agents(self, bundle: AgentBundle, package_path: Path) -> None:
         """
         Write agent markdown files to agents/ directory.
@@ -65,6 +69,7 @@ class BundlePackager:
             agent_file = agents_dir / f"{agent.name}.md"
             agent_file.write_text(agent.content)
 
+    @log_call
     def write_tests(self, bundle: AgentBundle, package_path: Path) -> None:
         """
         Write test files to tests/ directory.
@@ -86,6 +91,7 @@ class BundlePackager:
                 test_file = tests_dir / f"test_{agent.name}.py"
                 test_file.write_text("\n".join(agent.tests))
 
+    @log_call
     def write_documentation(self, bundle: AgentBundle, package_path: Path) -> None:
         """
         Write documentation files to docs/ directory.
@@ -104,6 +110,7 @@ class BundlePackager:
                 doc_file = docs_dir / f"{agent.name}_docs.md"
                 doc_file.write_text(agent.documentation)
 
+    @log_call
     def write_configuration(self, bundle: AgentBundle, package_path: Path) -> None:
         """
         Write configuration files to config/ directory.
@@ -130,6 +137,7 @@ class BundlePackager:
         with open(config_file, "w") as f:
             json.dump(config, f, indent=2)
 
+    @log_call
     def write_manifest(self, bundle: AgentBundle, package_path: Path) -> None:
         """
         Write manifest.json with bundle metadata.
@@ -170,6 +178,7 @@ class BundlePackager:
         with open(manifest_file, "w") as f:
             json.dump(manifest, f, indent=2)
 
+    @log_call
     def write_readme(self, bundle: AgentBundle, package_path: Path) -> None:
         """
         Write README.md with installation and usage instructions.
@@ -245,6 +254,7 @@ Bundle ID: {bundle.id}
 
         (package_path / "README.md").write_text(readme_content)
 
+    @log_call
     def write_python_init(self, bundle: AgentBundle, package_path: Path) -> None:
         """
         Write __init__.py with bundle API.
@@ -308,6 +318,7 @@ __all__ = [
 
         (package_path / "__init__.py").write_text(init_content)
 
+    @log_call
     def write_setup_py(self, bundle: AgentBundle, package_path: Path) -> None:
         """
         Write setup.py for Python packaging.
@@ -358,6 +369,7 @@ setup(
 
         (package_path / "setup.py").write_text(setup_content)
 
+    @log_call
     def write_pyproject_toml(self, bundle: AgentBundle, package_path: Path) -> None:
         """
         Write pyproject.toml for modern Python packaging.
@@ -433,6 +445,7 @@ target-version = "py311"
 
         (package_path / "pyproject.toml").write_text(pyproject_content)
 
+    @log_call
     def write_all_common_files(
         self, bundle: AgentBundle, package_path: Path, options: dict[str, Any] | None = None
     ) -> None:

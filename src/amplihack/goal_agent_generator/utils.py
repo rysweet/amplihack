@@ -6,7 +6,10 @@ Provides helper functions for name sanitization, validation, and other common ta
 
 import re
 
+from amplihack.utils.logging_utils import log_call
 
+
+@log_call
 def sanitize_bundle_name(
     name: str, min_length: int = 3, max_length: int = 50, suffix: str = ""
 ) -> str:
@@ -123,6 +126,7 @@ def sanitize_bundle_name(
     return sanitized
 
 
+@log_call
 def validate_bundle_name(name: str, min_length: int = 3, max_length: int = 50) -> bool:
     """
     Validate a bundle name meets requirements.

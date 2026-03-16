@@ -12,6 +12,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 from .xpia_defense_interface import RiskLevel, SecurityConfiguration, SecurityLevel
 
 
@@ -71,11 +73,13 @@ class XPIAConfig:
         default_factory=lambda: int(os.getenv("XPIA_MAX_URL_LENGTH", "2048"))
     )
 
+    @log_call
     def __post_init__(self):
         """Load additional configuration after initialization"""
         self._load_domain_lists()
         self._validate_config()
 
+    @log_call
     def _load_domain_lists(self):
         """Load domain whitelist and blacklist from files and environment"""
         # Load whitelist from environment
@@ -128,6 +132,7 @@ class XPIAConfig:
         self.whitelist_domains = list(set(self.whitelist_domains))
         self.blacklist_domains = list(set(self.blacklist_domains))
 
+    @log_call
     def _validate_config(self):
         """Validate configuration settings"""
         valid_levels = ["STRICT", "HIGH", "MODERATE", "MEDIUM", "LENIENT", "LOW"]
@@ -142,6 +147,7 @@ class XPIAConfig:
         if self.max_url_length < 10:
             raise ValueError("Max URL length must be at least 10 characters")
 
+    @log_call
     def to_security_configuration(self) -> SecurityConfiguration:
         """Convert to SecurityConfiguration for interface compatibility"""
         level_map = {
@@ -171,6 +177,7 @@ class XPIAConfig:
 
         return config
 
+    @log_call
     def get_security_level_enum(self) -> SecurityLevel:
         """Get SecurityLevel enum value"""
         level_map = {
@@ -183,6 +190,7 @@ class XPIAConfig:
         }
         return level_map[self.security_level.upper()]
 
+    @log_call
     def should_block_risk_level(self, risk_level: RiskLevel) -> bool:
         """Determine if a risk level should be blocked"""
         if risk_level == RiskLevel.CRITICAL and self.block_on_critical:
@@ -191,6 +199,7 @@ class XPIAConfig:
             return True
         return False
 
+    @log_call
     def to_dict(self) -> dict[str, Any]:
         """Convert configuration to dictionary"""
         return {
@@ -215,6 +224,7 @@ class XPIAConfig:
 _global_config: XPIAConfig | None = None
 
 
+@log_call
 def get_config() -> XPIAConfig:
     """Get or create global XPIA configuration"""
     global _global_config
@@ -223,6 +233,7 @@ def get_config() -> XPIAConfig:
     return _global_config
 
 
+@log_call
 def reload_config() -> XPIAConfig:
     """Reload configuration from environment"""
     global _global_config
@@ -230,6 +241,7 @@ def reload_config() -> XPIAConfig:
     return _global_config
 
 
+@log_call
 def set_config(config: XPIAConfig):
     """Set global configuration"""
     global _global_config
@@ -272,6 +284,7 @@ XPIA_MAX_URL_LENGTH=2048
 """
 
 
+@log_call
 def create_example_env_file(filepath: str = ".env.xpia.example"):
     """Create an example environment file"""
     with open(filepath, "w") as f:

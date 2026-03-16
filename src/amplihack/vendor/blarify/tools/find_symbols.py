@@ -4,6 +4,7 @@ from amplihack.vendor.blarify.repositories.graph_db_manager.db_manager import Ab
 from langchain_core.callbacks import CallbackManagerForToolRun
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
+from amplihack.utils.logging_utils import log_call
 
 
 # Pydantic Response Models
@@ -18,6 +19,7 @@ class SymbolSearchResult(BaseModel):
 
 
 # Simplified utility functions (removing blar dependencies)
+@log_call
 def mark_deleted_or_added_lines(text: str) -> str:
     """Mark deleted or added lines (simplified implementation)."""
     return text
@@ -42,6 +44,7 @@ class FindSymbols(BaseTool):
 
     args_schema: type[BaseModel] = Input  # type: ignore[assignment]
 
+    @log_call
     def _run(
         self,
         name: str,

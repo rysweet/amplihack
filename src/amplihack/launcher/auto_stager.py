@@ -18,6 +18,8 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 
 @dataclass
 class StagingResult:
@@ -49,6 +51,7 @@ class AutoStager:
         >>> print(f"Staged to: {result.staged_claude}")
     """
 
+    @log_call
     def stage_for_nested_execution(self, original_cwd: Path, session_id: str) -> StagingResult:
         """Create temp dir, copy .claude components, set env vars.
 
@@ -90,6 +93,7 @@ class AutoStager:
             original_cwd=original_cwd.resolve(),
         )
 
+    @log_call
     def _copy_claude_directory(self, source: Path, dest: Path):
         """Copy .claude components (not runtime logs).
 

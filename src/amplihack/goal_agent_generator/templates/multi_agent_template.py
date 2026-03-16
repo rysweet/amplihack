@@ -8,7 +8,10 @@ Provides YAML configs and code snippets for multi-agent packaging:
 
 from __future__ import annotations
 
+from amplihack.utils.logging_utils import log_call
 
+
+@log_call
 def get_coordinator_yaml(agent_name: str) -> str:
     """
     Generate coordinator YAML config for multi-agent setup.
@@ -54,6 +57,7 @@ classification:
 """
 
 
+@log_call
 def get_memory_agent_yaml(agent_name: str) -> str:
     """
     Generate memory agent YAML config for multi-agent setup.
@@ -98,6 +102,7 @@ memory_sharing:
 """
 
 
+@log_call
 def get_spawner_yaml(
     agent_name: str,
     enable_spawning: bool = True,
@@ -145,6 +150,7 @@ lifecycle:
 """
 
 
+@log_call
 def get_multi_agent_init_code(agent_name: str) -> str:
     """
     Generate Python initialization code for multi-agent setup.
@@ -195,6 +201,7 @@ def get_spawner_config(base_dir: Path | None = None) -> dict:
 '''
 
 
+@log_call
 def get_multi_agent_readme_section(agent_name: str) -> str:
     """
     Generate README section for multi-agent architecture.

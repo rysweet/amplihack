@@ -10,7 +10,10 @@ import sys
 from collections.abc import Callable
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
 
+
+@log_call
 def setup_blarify_indexing(
     project_root: Path,
     log: Callable,
@@ -71,6 +74,7 @@ def setup_blarify_indexing(
     return True  # background indexer holds the DB lock
 
 
+@log_call
 def inject_code_graph_context(
     project_root: Path,
     context_parts: list[str],
@@ -146,6 +150,7 @@ def inject_code_graph_context(
     save_metric("code_graph_files", stats["files"])
 
 
+@log_call
 def _run_sync(project_root: Path, log: Callable, save_metric: Callable) -> None:
     """Run synchronous blarify indexing."""
     from amplihack.memory.kuzu.connector import KuzuConnector
@@ -198,6 +203,7 @@ def _run_sync(project_root: Path, log: Callable, save_metric: Callable) -> None:
         save_metric("blarify_indexing_error", True)
 
 
+@log_call
 def _run_background(project_root: Path, log: Callable, save_metric: Callable) -> None:
     """Start background blarify indexing."""
     try:

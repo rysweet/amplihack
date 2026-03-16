@@ -6,6 +6,7 @@ from typing import Any
 from amplihack.vendor.blarify.graph.graph_environment import GraphEnvironment
 from amplihack.vendor.blarify.graph.node.types.node import Node
 from amplihack.vendor.blarify.graph.node.types.node_labels import NodeLabels
+from amplihack.utils.logging_utils import log_call
 
 
 class IntegrationNode(Node):
@@ -16,6 +17,7 @@ class IntegrationNode(Node):
     path format: integration://source/source_type/external_id
     """
 
+    @log_call
     def __init__(
         self,
         source: str,
@@ -72,6 +74,7 @@ class IntegrationNode(Node):
         self.url = url
         self.metadata = metadata
 
+    @log_call
     def as_object(self) -> dict[str, Any]:
         """Serialize IntegrationNode to dictionary.
 
@@ -99,10 +102,12 @@ class IntegrationNode(Node):
         return base_obj
 
     @property
+    @log_call
     def node_repr_for_identifier(self) -> str:
         """Return representation for identifier generation."""
         return f"{self.source}_{self.source_type}_{self.external_id}"
 
+    @log_call
     def __repr__(self) -> str:
         """String representation of IntegrationNode."""
         return f"IntegrationNode(source={self.source}, type={self.source_type}, id={self.external_id}, title={self.title})"

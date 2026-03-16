@@ -18,6 +18,8 @@ Thread Safety:
 from functools import lru_cache
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 from .uvx_models import (
     FrameworkLocation,
     PathResolutionResult,
@@ -30,6 +32,7 @@ from .uvx_models import (
 
 
 @lru_cache(maxsize=1)
+@log_call
 def _get_cached_environment_info() -> UVXEnvironmentInfo:
     """Cache environment info since it doesn't change during execution.
 
@@ -39,6 +42,7 @@ def _get_cached_environment_info() -> UVXEnvironmentInfo:
     return UVXEnvironmentInfo.from_current_environment()
 
 
+@log_call
 def detect_uvx_deployment(config: UVXConfiguration | None = None) -> UVXDetectionState:
     """Detect UVX deployment state with detailed reasoning.
 
@@ -123,6 +127,7 @@ def detect_uvx_deployment(config: UVXConfiguration | None = None) -> UVXDetectio
     )
 
 
+@log_call
 def resolve_framework_paths(
     detection_state: UVXDetectionState, config: UVXConfiguration | None = None
 ) -> PathResolutionResult:
@@ -240,6 +245,7 @@ def resolve_framework_paths(
     return result
 
 
+@log_call
 def _find_framework_in_sys_path(sys_path_entries: list[str]) -> Path | None:
     """Find framework installation in Python sys.path.
 
@@ -262,6 +268,7 @@ def _find_framework_in_sys_path(sys_path_entries: list[str]) -> Path | None:
     return None
 
 
+@log_call
 def _search_parent_directories(start_path: Path, max_levels: int = 10) -> Path | None:
     """Search parent directories for framework root.
 
@@ -285,12 +292,14 @@ def _search_parent_directories(start_path: Path, max_levels: int = 10) -> Path |
 
 
 # Convenience functions for backward compatibility
+@log_call
 def is_uvx_deployment(config: UVXConfiguration | None = None) -> bool:
     """Check if running in UVX deployment mode."""
     detection = detect_uvx_deployment(config)
     return detection.is_uvx_deployment
 
 
+@log_call
 def find_framework_root(config: UVXConfiguration | None = None) -> Path | None:
     """Find framework root directory."""
     detection = detect_uvx_deployment(config)
@@ -301,6 +310,7 @@ def find_framework_root(config: UVXConfiguration | None = None) -> Path | None:
     return None
 
 
+@log_call
 def resolve_framework_file(
     relative_path: str, config: UVXConfiguration | None = None
 ) -> Path | None:

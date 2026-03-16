@@ -20,6 +20,7 @@ from .rotating_provider import (
     RotatingKeyChatOpenAI,
 )
 from .utils import discover_keys_for_provider
+from amplihack.utils.logging_utils import log_call
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +69,7 @@ class LLMProvider:
         "google": RotatingKeyChatGoogle,
     }
 
+    @log_call
     def __init__(
         self, reasoning_agent_order: list[str] | None = None, reasoning_agent: str | None = None
     ):
@@ -86,6 +88,7 @@ class LLMProvider:
         # Cache for API key managers
         self._api_key_managers: dict[str, APIKeyManager] = {}
 
+    @log_call
     def _get_provider_from_model(self, model: str) -> str | None:
         """Get provider name from MODEL_PROVIDER_DICT."""
         provider_class = MODEL_PROVIDER_DICT.get(model)
@@ -103,12 +106,14 @@ class LLMProvider:
 
         return None
 
+    @log_call
     def _get_or_create_api_key_manager(self, provider: str) -> APIKeyManager:
         """Get or create an APIKeyManager for the provider."""
         if provider not in self._api_key_managers:
             self._api_key_managers[provider] = APIKeyManager(provider, auto_discover=True)
         return self._api_key_managers[provider]
 
+    @log_call
     def _create_rotating_model(
         self,
         model: str,
@@ -143,6 +148,7 @@ class LLMProvider:
 
         return chat_model
 
+    @log_call
     def _create_standard_model(
         self, model: str, timeout: int | None = None, output_schema: type[BaseModel] | None = None
     ) -> Runnable[Any, Any]:
@@ -183,6 +189,7 @@ class LLMProvider:
 
         return chat_model
 
+    @log_call
     def _get_or_create_model(
         self, model: str, timeout: int | None = None, output_schema: type[BaseModel] | None = None
     ) -> Runnable[Any, Any]:
@@ -216,6 +223,7 @@ class LLMProvider:
         self._model_cache[cache_key] = model_instance
         return model_instance
 
+    @log_call
     def _invoke_agent(
         self,
         system_prompt: str,
@@ -262,6 +270,7 @@ class LLMProvider:
 
         return response
 
+    @log_call
     def call_dumb_agent(
         self,
         system_prompt: str,
@@ -287,6 +296,7 @@ class LLMProvider:
             return response.content
         return response
 
+    @log_call
     def call_average_agent(
         self,
         input_dict: dict[str, Any],
@@ -320,6 +330,7 @@ class LLMProvider:
             timeout=timeout,
         )
 
+    @log_call
     def call_agent_with_reasoning(
         self,
         system_prompt: str,
@@ -350,6 +361,7 @@ class LLMProvider:
             return self.parse_structured_output(response.content, output_schema)
         return response
 
+    @log_call
     def _parse_structured_output(self, content: str, output_schema: type[BaseModel]) -> Any:
         try:
             # Try to handle content that might contain markdown code blocks with JSON
@@ -377,6 +389,7 @@ class LLMProvider:
             logger.warning(f"Error creating output schema from parsed content: {e}")
             raise
 
+    @log_call
     def parse_structured_output(self, content: str, output_schema: type[BaseModel]) -> Any:
         """First try to parse the content using the output schema. If it fails use the dumb agent to parse it."""
         try:

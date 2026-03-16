@@ -18,6 +18,8 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 from ..learning_agent import LearningAgent
 from ..similarity import rerank_facts_by_query
 from .agent_spawner import AgentSpawner
@@ -58,6 +60,7 @@ class MultiAgentLearningAgent(LearningAgent):
         >>> answer = agent.answer_question("What pet does Sarah Chen have?")
     """
 
+    @log_call
     def __init__(
         self,
         agent_name: str = "multi_agent_learning",
@@ -93,6 +96,7 @@ class MultiAgentLearningAgent(LearningAgent):
             except Exception as e:
                 logger.warning("Failed to initialize spawner: %s", e)
 
+    @log_call
     def answer_question(
         self,
         question: str,
@@ -126,6 +130,7 @@ class MultiAgentLearningAgent(LearningAgent):
             logger.warning("Multi-agent path failed, falling back to parent: %s", e)
             return super().answer_question(question, question_level, return_trace)
 
+    @log_call
     def _multi_agent_answer(
         self,
         question: str,
@@ -194,6 +199,7 @@ class MultiAgentLearningAgent(LearningAgent):
         # Step 4: Sort/rerank based on intent
         if intent.get("needs_temporal"):
 
+            @log_call
             def temporal_key(fact: dict) -> tuple:
                 meta = fact.get("metadata", {})
                 t_idx = meta.get("temporal_index", 999999) if meta else 999999
@@ -253,6 +259,7 @@ class MultiAgentLearningAgent(LearningAgent):
             return answer, trace
         return answer
 
+    @log_call
     def _spawn_retrieval(self, question: str, reasoning_type: str) -> list[dict[str, Any]]:
         """Spawn a retrieval sub-agent for multi-hop fact gathering.
 
@@ -297,6 +304,7 @@ class MultiAgentLearningAgent(LearningAgent):
         self.spawner.clear()
         return facts
 
+    @log_call
     def close(self) -> None:
         """Close agent and release resources, including spawner."""
         if self.spawner:

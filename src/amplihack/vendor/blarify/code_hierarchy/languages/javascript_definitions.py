@@ -6,15 +6,18 @@ from amplihack.vendor.blarify.graph.relationship import RelationshipType
 from tree_sitter import Language, Node, Parser
 
 from .language_definitions import LanguageDefinitions
+from amplihack.utils.logging_utils import log_call
 
 
 class JavascriptDefinitions(LanguageDefinitions):
     CONTROL_FLOW_STATEMENTS = ["for_statement", "if_statement", "while_statement", "else_clause"]
     CONSEQUENCE_STATEMENTS = ["statement_block"]
 
+    @log_call
     def get_language_name() -> str:
         return "javascript"
 
+    @log_call
     def get_parsers_for_extensions() -> dict[str, Parser]:
         return {
             ".js": Parser(Language(tsjavascript.language())),
@@ -22,6 +25,7 @@ class JavascriptDefinitions(LanguageDefinitions):
         }
 
     @staticmethod
+    @log_call
     def should_create_node(node: Node) -> bool:
         if node.type == "variable_declarator":
             return JavascriptDefinitions._is_variable_declaration_arrow_function(node)
@@ -37,15 +41,18 @@ class JavascriptDefinitions(LanguageDefinitions):
         )
 
     @staticmethod
+    @log_call
     def _is_variable_declaration_arrow_function(node: Node) -> bool:
         if node.type == "variable_declarator" and (children := node.child_by_field_name("value")):
             return children.type == "arrow_function"
 
     @staticmethod
+    @log_call
     def get_identifier_node(node: Node) -> Node:
         return LanguageDefinitions._get_identifier_node_base_implementation(node)
 
     @staticmethod
+    @log_call
     def get_relationship_type(
         node: GraphNode, node_in_point_reference: Node
     ) -> FoundRelationshipScope | None:
@@ -55,6 +62,7 @@ class JavascriptDefinitions(LanguageDefinitions):
         )
 
     @staticmethod
+    @log_call
     def _find_relationship_type(
         node_label: str, node_in_point_reference: Node
     ) -> FoundRelationshipScope | None:
@@ -66,6 +74,7 @@ class JavascriptDefinitions(LanguageDefinitions):
         )
 
     @staticmethod
+    @log_call
     def _get_relationship_types_by_label() -> dict:
         return {
             NodeLabels.CLASS: {
@@ -85,6 +94,7 @@ class JavascriptDefinitions(LanguageDefinitions):
         }
 
     @staticmethod
+    @log_call
     def _traverse_and_find_relationships(
         node: Node, relationship_mapping: dict
     ) -> RelationshipType | None:
@@ -97,6 +107,7 @@ class JavascriptDefinitions(LanguageDefinitions):
             node = node.parent
         return None
 
+    @log_call
     def _get_relationship_type_for_node(
         tree_sitter_node: Node, relationships_types: dict
     ) -> RelationshipType | None:
@@ -105,15 +116,18 @@ class JavascriptDefinitions(LanguageDefinitions):
 
         return relationships_types.get(tree_sitter_node.type, None)
 
+    @log_call
     def get_body_node(node: Node) -> Node:
         if JavascriptDefinitions._is_variable_declaration_arrow_function(node):
             return node.child_by_field_name("value").child_by_field_name("body")
 
         return LanguageDefinitions._get_body_node_base_implementation(node)
 
+    @log_call
     def get_language_file_extensions() -> set[str]:
         return {".js", ".jsx"}
 
+    @log_call
     def get_node_label_from_type(type: str) -> NodeLabels:
         # This method may need to be refactored to take the node instead in order to verify more complex node types
         if type == "variable_declarator":

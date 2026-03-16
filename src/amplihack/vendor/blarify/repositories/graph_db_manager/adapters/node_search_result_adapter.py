@@ -4,12 +4,14 @@ from amplihack.vendor.blarify.repositories.graph_db_manager.dtos.node_search_res
     EdgeDTO,
     ReferenceSearchResultDTO,
 )
+from amplihack.utils.logging_utils import log_call
 
 
 class Neo4jNodeSearchResultAdapter:
     """Adapter to convert Neo4j query results to NodeSearchResultDTO."""
 
     @staticmethod
+    @log_call
     def adapt(
         node_data: tuple[dict[str, Any], list[Any], list[dict[str, Any]]]
         | tuple[dict[str, Any], list[Any], list[dict[str, Any]], list[dict[str, Any]]],

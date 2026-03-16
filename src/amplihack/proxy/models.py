@@ -10,6 +10,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, field_validator  # type: ignore[import-unresolved]
 
+from amplihack.utils.logging_utils import log_call
+
 # Type alias for JSON schema structures
 JSONSchema = dict[str, Any] | list[Any] | str | int | float | bool | None
 
@@ -103,6 +105,7 @@ class ConversationState(BaseModel):
     has_streaming_tools: bool = False
     conversation_turn: int = 0
 
+    @log_call
     def add_tool_call(self, tool_call: dict[str, Any]) -> None:
         """Add a pending tool call"""
         self.pending_tool_calls.append(tool_call)
@@ -110,6 +113,7 @@ class ConversationState(BaseModel):
         self.tool_call_count += 1
         self.phase = "tool_call_pending"
 
+    @log_call
     def complete_tool_call(self, tool_call_id: str, result: dict[str, Any]) -> None:
         """Mark a tool call as completed"""
         for i, call in enumerate(self.pending_tool_calls):
@@ -122,6 +126,7 @@ class ConversationState(BaseModel):
         if not self.pending_tool_calls:
             self.phase = "tool_complete"
 
+    @log_call
     def reset_for_new_turn(self) -> None:
         """Reset state for a new conversation turn"""
         self.conversation_turn += 1
@@ -147,6 +152,7 @@ class MessagesRequest(BaseModel):
     original_model: str | None = None  # Will store the original model name
 
     @field_validator("model")
+    @log_call
     def validate_model_field(cls, v, info):  # Renamed to avoid conflict
         original_model = v
         new_model = v  # Default to original value
@@ -220,6 +226,7 @@ class TokenCountRequest(BaseModel):
     original_model: str | None = None  # Will store the original model name
 
     @field_validator("model")
+    @log_call
     def validate_model_token_count(cls, v, info):  # Renamed to avoid conflict
         # Use the same logic as MessagesRequest validator
         original_model = v

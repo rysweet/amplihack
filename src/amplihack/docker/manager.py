@@ -6,6 +6,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 from .detector import DockerDetector
 
 
@@ -14,10 +16,12 @@ class DockerManager:
 
     IMAGE_NAME = "amplihack:latest"
 
+    @log_call
     def __init__(self):
         """Initialize DockerManager."""
         self.detector = DockerDetector()
 
+    @log_call
     def build_image(self) -> bool:
         """Build the Docker image if it doesn't exist."""
         if not self.detector.is_running():
@@ -52,6 +56,7 @@ class DockerManager:
                 check=False,
                 capture_output=True,
                 text=True,
+                timeout=300,
             )
 
             if result.returncode != 0:
@@ -61,10 +66,14 @@ class DockerManager:
             print(f"Successfully built Docker image: {self.IMAGE_NAME}")
             return True
 
+        except subprocess.TimeoutExpired:
+            print("Docker build timed out after 300 seconds.", file=sys.stderr)
+            return False
         except subprocess.SubprocessError as e:
             print(f"Error building Docker image: {e}", file=sys.stderr)
             return False
 
+    @log_call
     def run_command(self, args: list[str], cwd: str | None = None) -> int:
         """Run amplihack command in Docker container."""
         if not self.detector.is_running():
@@ -115,17 +124,22 @@ class DockerManager:
 
         # Run the container
         try:
-            return subprocess.run(docker_cmd, check=False).returncode
+            return subprocess.run(docker_cmd, check=False, timeout=60).returncode
+        except subprocess.TimeoutExpired:
+            print("Docker container run timed out after 60 seconds.", file=sys.stderr)
+            return 1
         except subprocess.SubprocessError as e:
             print(f"Error running Docker container: {e}", file=sys.stderr)
             return 1
 
+    @log_call
     def _sanitize_env_value(self, value: str) -> str:
         """Sanitize environment variable value by removing control characters."""
         # Remove control characters (except newlines/tabs which are sometimes legitimate)
         sanitized = re.sub(r"[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]", "", value)
         return sanitized
 
+    @log_call
     def _validate_api_key(self, key_name: str, value: str) -> bool:
         """Validate API key format for known providers."""
         # Basic validation - ensure it looks like a legitimate key
@@ -148,6 +162,7 @@ class DockerManager:
         # For unknown keys, just ensure they're not obviously malicious
         return bool(re.match(r"^[a-zA-Z0-9\-_./+=]+$", value))
 
+    @log_call
     def _get_env_vars(self) -> dict:
         """Get environment variables to forward to container with validation."""
         env_vars = {}
@@ -173,6 +188,7 @@ class DockerManager:
         return env_vars
 
     @classmethod
+    @log_call
     def should_use_docker(cls) -> bool:
         """Check if Docker should be used."""
         return DockerDetector().should_use_docker()

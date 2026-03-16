@@ -8,6 +8,7 @@ from amplihack.vendor.blarify.agents.api_key_manager import APIKeyManager
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 from .rotating_providers import ErrorType, RotatingProviderBase
+from amplihack.utils.logging_utils import log_call
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +18,7 @@ T = TypeVar("T")
 class RotatingKeyChatGoogle(RotatingProviderBase):
     """Google chat model with automatic key rotation."""
 
+    @log_call
     def __init__(self, key_manager: APIKeyManager, **kwargs: Any):
         """Initialize RotatingKeyChatGoogle.
 
@@ -29,6 +31,7 @@ class RotatingKeyChatGoogle(RotatingProviderBase):
         # Track exponential backoff per key
         self._backoff_multipliers: dict[str, int] = {}
 
+    @log_call
     def _create_client(self, api_key: str) -> ChatGoogleGenerativeAI:
         """Create ChatGoogleGenerativeAI instance with specific API key.
 
@@ -40,6 +43,7 @@ class RotatingKeyChatGoogle(RotatingProviderBase):
         """
         return ChatGoogleGenerativeAI(google_api_key=api_key, **self.model_kwargs)
 
+    @log_call
     def get_provider_name(self) -> str:
         """Return provider name for logging.
 
@@ -48,6 +52,7 @@ class RotatingKeyChatGoogle(RotatingProviderBase):
         """
         return "google"
 
+    @log_call
     def analyze_error(self, error: Exception) -> tuple[ErrorType, int | None]:
         """Analyze Google-specific errors.
 
@@ -83,6 +88,7 @@ class RotatingKeyChatGoogle(RotatingProviderBase):
 
         return (ErrorType.NON_RETRYABLE, None)
 
+    @log_call
     def _calculate_backoff(self) -> int:
         """Calculate exponential backoff for current key.
 
@@ -106,6 +112,7 @@ class RotatingKeyChatGoogle(RotatingProviderBase):
         )
         return backoff
 
+    @log_call
     def _reset_backoff(self, key: str) -> None:
         """Reset backoff multiplier after successful request.
 
@@ -115,6 +122,7 @@ class RotatingKeyChatGoogle(RotatingProviderBase):
         if key in self._backoff_multipliers:
             del self._backoff_multipliers[key]
 
+    @log_call
     def extract_headers_from_error(self, error: Exception) -> dict[str, str]:
         """Extract headers from Google errors.
 
@@ -144,6 +152,7 @@ class RotatingKeyChatGoogle(RotatingProviderBase):
 
         return headers
 
+    @log_call
     def execute_with_rotation(self, func: Callable[[], T], max_retries: int = 3) -> T:
         """Override to add backoff reset on success.
 

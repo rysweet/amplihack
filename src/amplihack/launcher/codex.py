@@ -5,7 +5,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
 
+
+@log_call
 def check_codex() -> bool:
     """Check if Codex CLI is installed."""
     try:
@@ -15,6 +18,7 @@ def check_codex() -> bool:
         return False
 
 
+@log_call
 def install_codex() -> bool:
     """Install OpenAI Codex CLI via npm with security checks."""
     # Version pinning for security
@@ -54,6 +58,7 @@ def install_codex() -> bool:
         return False
 
 
+@log_call
 def configure_codex() -> bool:
     """Configure Codex CLI with approval_mode: auto.
 
@@ -100,6 +105,7 @@ def configure_codex() -> bool:
         return False
 
 
+@log_call
 def launch_codex(args: list[str] | None = None, interactive: bool = True) -> int:
     """Launch Codex CLI.
 

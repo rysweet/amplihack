@@ -21,6 +21,8 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 from ..progressive_test_suite import ProgressiveConfig, run_progressive_suite
 from .error_analyzer import ErrorAnalysis, analyze_eval_results
 
@@ -89,6 +91,7 @@ class RunnerResult:
     total_duration_seconds: float
 
 
+@log_call
 def _extract_level_scores(eval_result) -> dict[str, float]:
     """Extract per-level average scores from a ProgressiveResult.
 
@@ -109,6 +112,7 @@ def _extract_level_scores(eval_result) -> dict[str, float]:
     return scores
 
 
+@log_call
 def _extract_level_results_for_analyzer(eval_result) -> list[dict]:
     """Convert ProgressiveResult into the format expected by analyze_eval_results.
 
@@ -130,6 +134,7 @@ def _extract_level_results_for_analyzer(eval_result) -> list[dict]:
     return results
 
 
+@log_call
 def _research_improvement(
     analysis: ErrorAnalysis,
     all_analyses: list[ErrorAnalysis],
@@ -271,6 +276,7 @@ def _research_improvement(
     )
 
 
+@log_call
 def _apply_prompt_improvement(
     analysis: ErrorAnalysis,
     research: ResearchDecision,
@@ -311,6 +317,7 @@ def _apply_prompt_improvement(
     return research.proposed_change
 
 
+@log_call
 def _compute_regression(
     baseline: dict[str, float],
     post: dict[str, float],
@@ -342,6 +349,7 @@ def _compute_regression(
     return net_improvement, max_regression, worst_level
 
 
+@log_call
 def run_self_improvement(config: RunnerConfig) -> RunnerResult:
     """Run the complete self-improvement loop.
 
@@ -666,6 +674,7 @@ def run_self_improvement(config: RunnerConfig) -> RunnerResult:
     return result
 
 
+@log_call
 def main():
     """CLI entry point for the self-improvement runner."""
     import argparse

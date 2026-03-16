@@ -16,6 +16,8 @@ import textwrap
 
 import pytest
 
+from amplihack.utils.logging_utils import log_call
+
 # Sanitization pipeline reproduced from default-workflow.yaml step-04-setup-worktree.
 # Defined at module level so textwrap.dedent() runs once, not once per test call.
 _SANITIZE_SCRIPT = textwrap.dedent(
@@ -32,6 +34,7 @@ _SANITIZE_SCRIPT = textwrap.dedent(
 ).strip()
 
 
+@log_call
 def _sanitize(task_desc: str) -> str:
     """Run the sanitization pipeline from step-04 against task_desc.
 
@@ -56,6 +59,7 @@ def _sanitize(task_desc: str) -> str:
     return result.stdout.strip()
 
 
+@log_call
 def _validate_git_branch(name: str) -> bool:
     """Return True if git check-ref-format accepts the name as a branch."""
     result = subprocess.run(
@@ -68,6 +72,7 @@ def _validate_git_branch(name: str) -> bool:
 class TestBranchNameSanitization:
     """Verify each sanitization rule independently and combined."""
 
+    @log_call
     def test_newline_in_task_description_is_stripped(self) -> None:
         """Newlines in task_description produce a single-line branch slug."""
         desc = "fix login bug\nwith oauth"
@@ -75,6 +80,7 @@ class TestBranchNameSanitization:
         assert "\n" not in slug
         assert "\r" not in slug
 
+    @log_call
     def test_leading_trailing_whitespace_stripped(self) -> None:
         """Leading and trailing whitespace is removed from the slug."""
         desc = "   add feature   "
@@ -83,19 +89,22 @@ class TestBranchNameSanitization:
         assert not slug.endswith(" ")
         assert not slug.startswith("-")
 
+    @log_call
     def test_uppercase_converted_to_lowercase(self) -> None:
         """Uppercase letters are lowercased in the branch slug."""
         desc = "Add User Authentication"
         slug = _sanitize(desc)
         assert slug == slug.lower()
 
+    @log_call
     def test_spaces_replaced_with_hyphens(self) -> None:
         """Spaces become hyphens."""
         desc = "add user profile page"
         slug = _sanitize(desc)
         assert " " not in slug
-        assert "add-user-profile-page" == slug
+        assert slug == "add-user-profile-page"
 
+    @log_call
     def test_special_chars_replaced_with_hyphens(self) -> None:
         """Characters that are not alphanumeric, hyphen, underscore, or dot become hyphens."""
         desc = "fix: auth/login (oauth2)"
@@ -104,18 +113,21 @@ class TestBranchNameSanitization:
         for ch in (":", "/", "(", ")"):
             assert ch not in slug
 
+    @log_call
     def test_consecutive_hyphens_collapsed(self) -> None:
         """Multiple consecutive hyphens are collapsed to one."""
         desc = "fix  multiple   spaces"
         slug = _sanitize(desc)
         assert "--" not in slug
 
+    @log_call
     def test_long_description_truncated_to_60_chars(self) -> None:
         """Slugs are truncated to at most 60 characters."""
         desc = "a" * 120
         slug = _sanitize(desc)
         assert len(slug) <= 60
 
+    @log_call
     def test_trailing_hyphen_stripped(self) -> None:
         """Trailing hyphens are removed after truncation."""
         # Craft a string whose 60th char would be a hyphen
@@ -124,24 +136,28 @@ class TestBranchNameSanitization:
         slug = _sanitize(desc)
         assert not slug.endswith("-")
 
+    @log_call
     def test_trailing_dot_stripped(self) -> None:
         """Trailing dots are removed."""
         desc = "fix something."
         slug = _sanitize(desc)
         assert not slug.endswith(".")
 
+    @log_call
     def test_underscore_preserved(self) -> None:
         """Underscores are valid git ref chars and must be preserved."""
         desc = "fix_login_bug"
         slug = _sanitize(desc)
-        assert "fix_login_bug" == slug
+        assert slug == "fix_login_bug"
 
+    @log_call
     def test_dot_preserved_mid_name(self) -> None:
         """Dots mid-name are preserved."""
         desc = "bump version 1.2.3"
         slug = _sanitize(desc)
         assert "1.2.3" in slug
 
+    @log_call
     def test_multiline_description_is_valid(self) -> None:
         """Multi-line task descriptions produce a valid branch slug."""
         desc = "Fix authentication bug\nThis affects oauth and saml\nHigh priority"
@@ -150,6 +166,7 @@ class TestBranchNameSanitization:
         assert len(slug) > 0
         assert len(slug) <= 60
 
+    @log_call
     def test_only_special_chars_produces_safe_slug(self) -> None:
         """A description made entirely of special chars produces a slug that git accepts.
 
@@ -163,11 +180,15 @@ class TestBranchNameSanitization:
         # Just verify it ran without error
         assert isinstance(slug, str)
 
-    @pytest.mark.parametrize("desc,issue_num", [
-        ("add user profile page", 42),
-        ("fix login\nbug with oauth2\n", 99),
-        ("implement comprehensive user authentication system with oauth2 saml and ldap", 7),
-    ])
+    @pytest.mark.parametrize(
+        "desc,issue_num",
+        [
+            ("add user profile page", 42),
+            ("fix login\nbug with oauth2\n", 99),
+            ("implement comprehensive user authentication system with oauth2 saml and ldap", 7),
+        ],
+    )
+    @log_call
     def test_passes_git_check_ref_format(self, desc: str, issue_num: int) -> None:
         """All description types produce slugs that pass git check-ref-format."""
         branch = f"feat/issue-{issue_num}-{_sanitize(desc)}"

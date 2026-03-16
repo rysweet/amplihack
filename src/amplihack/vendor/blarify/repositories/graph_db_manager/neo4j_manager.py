@@ -20,6 +20,7 @@ from amplihack.vendor.blarify.repositories.graph_db_manager.queries import (
 )
 from dotenv import load_dotenv
 from neo4j import Driver, GraphDatabase, ManagedTransaction, exceptions
+from amplihack.utils.logging_utils import log_call
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,7 @@ class Neo4jManager(AbstractDbManager):
     repo_ids: list[str] | None  # List of repo IDs or None for entity-wide queries
     driver: Driver
 
+    @log_call
     def __init__(
         self,
         repo_id: str | list[str] | None = None,
@@ -77,18 +79,22 @@ class Neo4jManager(AbstractDbManager):
         self.environment = environment or ENVIRONMENT.MAIN
 
     @property
+    @log_call
     def repo_id(self) -> str | None:
         """Backward compatibility property - returns first repo_id or None."""
         return self.repo_ids[0] if self.repo_ids and len(self.repo_ids) > 0 else None
 
+    @log_call
     def close(self):
         # Close the connection to the database
         self.driver.close()
 
+    @log_call
     def save_graph(self, nodes: list[Any], edges: list[Any]):
         self.create_nodes(nodes)
         self.create_edges(edges)
 
+    @log_call
     def create_nodes(self, nodeList: list[Any]):
         # Function to create nodes in the Neo4j database
         if self.repo_id is None:
@@ -106,6 +112,7 @@ class Neo4jManager(AbstractDbManager):
                 environment=self.environment.value,
             )
 
+    @log_call
     def create_edges(self, edgesList: list[Any]):
         # Function to create edges between nodes in the Neo4j database
         if self.repo_id is None:
@@ -124,6 +131,7 @@ class Neo4jManager(AbstractDbManager):
             )
 
     @staticmethod
+    @log_call
     def _create_nodes_txn(
         tx: ManagedTransaction,
         nodeList: list[Any],
@@ -165,6 +173,7 @@ class Neo4jManager(AbstractDbManager):
             print(record)
 
     @staticmethod
+    @log_call
     def _create_edges_txn(
         tx: ManagedTransaction,
         edgesList: list[Any],
@@ -209,6 +218,7 @@ class Neo4jManager(AbstractDbManager):
             print(record)
 
     @staticmethod
+    @log_call
     def run_transaction(
         tx: ManagedTransaction, query: LiteralString, params: dict[str, Any] = {}, entity: str = ""
     ):
@@ -221,6 +231,7 @@ class Neo4jManager(AbstractDbManager):
 
         return records  # Return the records so execute_write can access them
 
+    @log_call
     def detatch_delete_nodes_with_path(self, path: str):
         if self.repo_id is None:
             raise ValueError(
@@ -239,6 +250,7 @@ class Neo4jManager(AbstractDbManager):
             )
             return result.data()
 
+    @log_call
     def query(
         self,
         cypher_query: LiteralString,
@@ -283,6 +295,7 @@ class Neo4jManager(AbstractDbManager):
             logger.exception(f"Parameters: {parameters}")
             raise
 
+    @log_call
     def get_node_by_id(
         self,
         node_id: str,
@@ -338,6 +351,7 @@ class Neo4jManager(AbstractDbManager):
 
         return node_result
 
+    @log_call
     def get_node_by_name_and_type(self, name: str, node_type: str) -> list[NodeFoundByNameTypeDto]:
         """
         Retrieve nodes by name and type from the database.
@@ -370,6 +384,7 @@ class Neo4jManager(AbstractDbManager):
 
         return nodes
 
+    @log_call
     def create_function_name_index(self) -> None:
         """Creates a fulltext index on the name and path properties of the nodes."""
         node_query = """
@@ -379,6 +394,7 @@ class Neo4jManager(AbstractDbManager):
         """
         self.query(node_query)
 
+    @log_call
     def create_node_text_index(self) -> None:
         """Creates a text index on the text property of nodes."""
         node_query = """
@@ -388,6 +404,7 @@ class Neo4jManager(AbstractDbManager):
         """
         self.query(node_query)
 
+    @log_call
     def create_node_id_index(self) -> None:
         """Creates an index on node_id for fast lookups."""
         node_query = """
@@ -397,6 +414,7 @@ class Neo4jManager(AbstractDbManager):
         """
         self.query(node_query)
 
+    @log_call
     def create_entityId_index(self) -> None:
         """Creates an index on entityId for data isolation."""
         user_query = """
@@ -406,6 +424,7 @@ class Neo4jManager(AbstractDbManager):
         """
         self.query(user_query)
 
+    @log_call
     def create_unique_constraint(self) -> None:
         """Creates a unique constraint for data integrity."""
         constraint_query = """
@@ -415,6 +434,7 @@ class Neo4jManager(AbstractDbManager):
         """
         self.query(constraint_query)
 
+    @log_call
     def create_vector_index(self) -> None:
         """Creates a vector index for semantic search on documentation embeddings."""
         vector_query = """
@@ -428,6 +448,7 @@ class Neo4jManager(AbstractDbManager):
         """
         self.query(vector_query)
 
+    @log_call
     def create_indexes(self) -> None:
         """Create all required indexes for optimal Blarify performance."""
         try:

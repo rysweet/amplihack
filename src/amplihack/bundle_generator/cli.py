@@ -10,6 +10,8 @@ import logging
 import sys
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 from .builder import BundleBuilder
 from .distributor import GitHubDistributor
 from .exceptions import BundleGeneratorError
@@ -25,6 +27,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+@log_call
 def main():
     """Main CLI entry point."""
     parser = create_parser()
@@ -62,6 +65,7 @@ def main():
         sys.exit(1)
 
 
+@log_call
 def create_parser() -> argparse.ArgumentParser:
     """Create the CLI argument parser."""
     parser = argparse.ArgumentParser(
@@ -139,6 +143,7 @@ def create_parser() -> argparse.ArgumentParser:
     return parser
 
 
+@log_call
 def generate_command(args):
     """Execute the generate command."""
     # Get prompt
@@ -193,6 +198,7 @@ def generate_command(args):
     print("=" * 50)
 
 
+@log_call
 def test_command(args):
     """Execute the test command."""
     bundle_path = Path(args.bundle_path)
@@ -274,6 +280,7 @@ def test_command(args):
     print("=" * 50)
 
 
+@log_call
 def package_command(args):
     """Execute the package command."""
     bundle_path = Path(args.bundle_path)
@@ -314,6 +321,7 @@ def package_command(args):
     print("=" * 50)
 
 
+@log_call
 def distribute_command(args):
     """Execute the distribute command."""
     package_path = Path(args.package_path)
@@ -353,6 +361,7 @@ def distribute_command(args):
         sys.exit(1)
 
 
+@log_call
 def pipeline_command(args):
     """Execute the complete pipeline."""
     # Get prompt
@@ -415,6 +424,7 @@ def pipeline_command(args):
     print("=" * 50)
 
 
+@log_call
 def create_repo_command(args):
     """Execute the create-repo command."""
     from .repository_creator import RepositoryCreator
@@ -445,6 +455,7 @@ def create_repo_command(args):
         sys.exit(1)
 
 
+@log_call
 def update_command(args):
     """Execute the update command."""
     from .update_manager import UpdateManager

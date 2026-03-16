@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from amplihack.vendor.blarify.utils.format_verifier import FormatVerifier
 from amplihack.vendor.blarify.utils.relative_id_calculator import RelativeIdCalculator
+from amplihack.utils.logging_utils import log_call
 
 if TYPE_CHECKING:
     from ....graph.graph_environment import GraphEnvironment
@@ -20,6 +21,7 @@ class Node:
     graph_environment: Optional["GraphEnvironment"]
     layer: str
 
+    @log_call
     def __init__(
         self,
         label: "NodeLabels",
@@ -41,14 +43,17 @@ class Node:
         if not self.is_path_format_valid():
             raise ValueError(f"Path format is not valid: {self.path}")
 
+    @log_call
     def is_path_format_valid(self) -> bool:
         return FormatVerifier.is_path_uri(self.path)
 
     @property
+    @log_call
     def hashed_id(self) -> str:
         return md5(self.id.encode()).hexdigest()
 
     @property
+    @log_call
     def relative_id(self) -> str:
         """
         Returns the id without the graph environment prefix or root folder name
@@ -56,21 +61,26 @@ class Node:
         return RelativeIdCalculator.calculate(self.id)
 
     @property
+    @log_call
     def id(self) -> str:
         return str(self.graph_environment or "") + self._identifier()
 
     @property
+    @log_call
     def node_repr_for_identifier(self) -> str:
         raise NotImplementedError
 
     @property
+    @log_call
     def pure_path(self) -> str:
         return self.path.replace("file://", "")
 
     @property
+    @log_call
     def extension(self) -> str:
         return os.path.splitext(self.pure_path)[1]
 
+    @log_call
     def as_object(self) -> dict[str, Any]:
         return {
             "type": self.label.name,
@@ -90,12 +100,15 @@ class Node:
             },
         }
 
+    @log_call
     def get_relationships(self) -> list["Relationship"]:
         return []
 
+    @log_call
     def filter_children_by_path(self, paths: list[str]) -> None:
         pass
 
+    @log_call
     def _identifier(self) -> str:
         identifier: str = ""
 
@@ -105,8 +118,10 @@ class Node:
 
         return identifier
 
+    @log_call
     def update_graph_environment(self, environment: "GraphEnvironment") -> None:
         self.graph_environment = environment
 
+    @log_call
     def __str__(self) -> str:
         return self._identifier()

@@ -27,6 +27,8 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 logger = logging.getLogger(__name__)
 
 # Version marker to identify amplihack's CLAUDE.md
@@ -87,6 +89,7 @@ class ClaudeHandlerResult:
     success: bool = True
 
 
+@log_call
 def compute_content_hash(content: str) -> str:
     """Compute SHA-256 hash of content, ignoring whitespace-only changes.
 
@@ -109,6 +112,7 @@ def compute_content_hash(content: str) -> str:
     return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
 
+@log_call
 def detect_claude_state(target_dir: Path) -> tuple[ClaudeState, str]:
     """Detect current state of CLAUDE.md in target directory.
 
@@ -164,6 +168,7 @@ def detect_claude_state(target_dir: Path) -> tuple[ClaudeState, str]:
         return ClaudeState.CUSTOM_CONTENT, "Invalid version marker (user modified)"
 
 
+@log_call
 def backup_to_project_md(target_dir: Path, content: str) -> Path:
     """Backup CLAUDE.md content to PROJECT.md with section markers.
 
@@ -210,6 +215,7 @@ def backup_to_project_md(target_dir: Path, content: str) -> Path:
     return project_md
 
 
+@log_call
 def backup_to_preserved(target_dir: Path, content: str) -> Path:
     """Create backup copy of CLAUDE.md as CLAUDE.md.preserved.
 
@@ -240,6 +246,7 @@ def backup_to_preserved(target_dir: Path, content: str) -> Path:
     return preserved_path
 
 
+@log_call
 def handle_claude_md(
     source_claude: Path, target_dir: Path, mode: HandleMode = HandleMode.AUTO
 ) -> ClaudeHandlerResult:

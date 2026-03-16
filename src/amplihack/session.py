@@ -18,6 +18,8 @@ import platform
 import sys
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 from . import copytree_manifest
 from .docker import DockerManager
 from .launcher import ClaudeLauncher
@@ -38,6 +40,7 @@ EMOJI = {
 _DEBUG: bool = os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true"
 
 
+@log_call
 def launch_command(args: argparse.Namespace, claude_args: list[str] | None = None) -> int:
     """Handle the launch command.
 
@@ -53,7 +56,9 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
     # (e.g. multitask workstreams).  See issue #2567.
     subprocess_safe = getattr(args, "subprocess_safe", False)
 
-    from .launcher.session_tracker import SessionTracker  # noqa: F811 (shadows module-level import; needed for test mock resolution)
+    from .launcher.session_tracker import (
+        SessionTracker,
+    )
 
     # Detect nesting BEFORE any .claude/ operations
     original_cwd = None
@@ -144,6 +149,7 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
                 logging.debug(f"Failed to restore CWD to {original_cwd}: {e}")
 
 
+@log_call
 def _launch_command_impl(
     args: argparse.Namespace,
     claude_args: list[str] | None,
@@ -254,7 +260,10 @@ def _launch_command_impl(
     return exit_code
 
 
-def handle_auto_mode(sdk: str, args: argparse.Namespace, cmd_args: list[str] | None) -> "int | None":
+@log_call
+def handle_auto_mode(
+    sdk: str, args: argparse.Namespace, cmd_args: list[str] | None
+) -> "int | None":
     """Handle auto mode for claude, copilot, or codex commands.
 
     Args:
@@ -293,6 +302,7 @@ def handle_auto_mode(sdk: str, args: argparse.Namespace, cmd_args: list[str] | N
     return auto.run()
 
 
+@log_call
 def handle_append_instruction(args: argparse.Namespace) -> int:
     """Handle --append flag to inject instructions into running auto mode.
 
@@ -331,6 +341,7 @@ def handle_append_instruction(args: argparse.Namespace) -> int:
         return 1
 
 
+@log_call
 def _fix_global_statusline_path() -> None:
     """Fix the global ~/.claude/settings.json statusline path to use ~/.amplihack/.claude/tools/statusline.sh.
 
@@ -372,6 +383,7 @@ def _fix_global_statusline_path() -> None:
             print(f"Warning: Could not update global statusline path: {e}")
 
 
+@log_call
 def _ensure_amplihack_staged() -> None:
     """Ensure .claude/ files are staged to ~/.amplihack/.claude/ for non-Claude commands.
 

@@ -20,6 +20,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 try:
     import requests
 except ImportError:
@@ -66,6 +68,7 @@ class UpdateCache:
     latest_version: str
     check_interval_hours: int = 24
 
+    @log_call
     def is_expired(self) -> bool:
         """Check if cache has expired based on TTL."""
         try:
@@ -75,6 +78,7 @@ class UpdateCache:
         except (ValueError, TypeError):
             return True  # Invalid timestamp = expired
 
+    @log_call
     def to_dict(self) -> dict:
         """Serialize to dict for JSON storage."""
         return {
@@ -84,6 +88,7 @@ class UpdateCache:
         }
 
     @classmethod
+    @log_call
     def from_dict(cls, data: dict) -> "UpdateCache":
         """Deserialize from dict."""
         return cls(
@@ -93,6 +98,7 @@ class UpdateCache:
         )
 
 
+@log_call
 def _fetch_latest_version(timeout: int = 5) -> tuple[str, str] | None:
     """Fetch latest version from GitHub Releases API.
 
@@ -145,6 +151,7 @@ def _fetch_latest_version(timeout: int = 5) -> tuple[str, str] | None:
         return None
 
 
+@log_call
 def _compare_versions(current: str, latest: str) -> bool:
     """Compare two version strings.
 
@@ -173,6 +180,7 @@ def _compare_versions(current: str, latest: str) -> bool:
         return False
 
 
+@log_call
 def _load_cache(cache_file: Path) -> UpdateCache | None:
     """Load update check cache from file.
 
@@ -194,6 +202,7 @@ def _load_cache(cache_file: Path) -> UpdateCache | None:
         return None
 
 
+@log_call
 def _save_cache(cache_file: Path, cache: UpdateCache) -> bool:
     """Save update check cache to file.
 
@@ -214,6 +223,7 @@ def _save_cache(cache_file: Path, cache: UpdateCache) -> bool:
         return False
 
 
+@log_call
 def check_for_updates(
     current_version: str,
     cache_dir: Path,
@@ -299,6 +309,7 @@ def check_for_updates(
     )
 
 
+@log_call
 def _run_upgrade(timeout: int = 60) -> bool:
     """Execute 'uv tool upgrade amplihack'.
 
@@ -334,6 +345,7 @@ def _run_upgrade(timeout: int = 60) -> bool:
         return False
 
 
+@log_call
 def _resolve_executable_path(executable: str) -> Path | None:
     """Resolve an executable name or path to an absolute path."""
     candidate = Path(executable).expanduser()
@@ -344,6 +356,7 @@ def _resolve_executable_path(executable: str) -> Path | None:
     return Path(resolved).resolve() if resolved else None
 
 
+@log_call
 def _current_cli_path() -> Path | None:
     """Resolve the currently running CLI path when possible."""
     if sys.argv and sys.argv[0]:
@@ -353,6 +366,7 @@ def _current_cli_path() -> Path | None:
     return _resolve_executable_path("amplihack")
 
 
+@log_call
 def _find_rust_cli() -> Path | None:
     """Return a Rust-managed amplihack binary if one is installed."""
     current = _current_cli_path()
@@ -413,6 +427,7 @@ _SAFE_SUBCOMMANDS = {
 }
 
 
+@log_call
 def run_update_command() -> int:
     """Handle explicit `amplihack update` invocations.
 
@@ -450,6 +465,7 @@ def run_update_command() -> int:
     return 1
 
 
+@log_call
 def _restart_cli(args: list[str]) -> None:
     """Restart amplihack CLI with same arguments.
 
@@ -523,6 +539,7 @@ def _restart_cli(args: list[str]) -> None:
         sys.exit(0)
 
 
+@log_call
 def prompt_and_upgrade(
     update_info: UpdateCheckResult,
     cli_args: list[str],

@@ -10,6 +10,8 @@ import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 logger = logging.getLogger(__name__)
 
 # Security: Limit registry size to prevent DOS
@@ -28,6 +30,7 @@ class CleanupRegistry:
     working_dir: Path
     _paths: set[Path] = field(default_factory=set)
 
+    @log_call
     def register(self, path: Path) -> bool:
         """Register a path for cleanup.
 
@@ -46,6 +49,7 @@ class CleanupRegistry:
         self._paths.add(resolved)
         return True
 
+    @log_call
     def get_tracked_paths(self) -> list[Path]:
         """Get all tracked paths in deletion-safe order.
 
@@ -55,6 +59,7 @@ class CleanupRegistry:
         # Sort by path depth (deepest first) for safe deletion
         return sorted(self._paths, key=lambda p: len(p.parts), reverse=True)
 
+    @log_call
     def save(self, registry_path: Path | None = None) -> None:
         """Save registry to disk with secure permissions.
 
@@ -83,6 +88,7 @@ class CleanupRegistry:
             logger.warning(f"Registry file has unexpected permissions: {oct(actual_mode)}")
 
     @classmethod
+    @log_call
     def load(cls, registry_path: Path) -> "CleanupRegistry | None":
         """Load registry from disk with security validation.
 

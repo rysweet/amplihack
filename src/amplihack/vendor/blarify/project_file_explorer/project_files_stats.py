@@ -2,14 +2,17 @@ import os
 
 from amplihack.vendor.blarify.logger import Logger
 from amplihack.vendor.blarify.project_file_explorer.project_files_iterator import ProjectFilesIterator
+from amplihack.utils.logging_utils import log_call
 
 
 class ProjectFileStats:
+    @log_call
     def __init__(self, project_files_iterator: ProjectFilesIterator):
         self.project_files_iterator = project_files_iterator
         self.file_stats = []
         self._analize()
 
+    @log_call
     def _analize(self):
         for folder in self.project_files_iterator:
             for file in folder.files:
@@ -19,9 +22,11 @@ class ProjectFileStats:
 
         self._sort_stats()
 
+    @log_call
     def _sort_stats(self):
         self.file_stats.sort(key=lambda x: x["size"], reverse=True)
 
+    @log_call
     def print(self, limit: int | None = None):
         file_stats = self.file_stats
         if limit:
@@ -34,6 +39,7 @@ class ProjectFileStats:
                 f"{file_stat['name']} - {file_stat['lines_count']} lines - {file_stat['size']} bytes"
             )
 
+    @log_call
     def get_file_stats(self, file_path: str):
         file_lines = self._read_file(file_path)
         if not file_lines:
@@ -45,6 +51,7 @@ class ProjectFileStats:
             "size": os.path.getsize(file_path),
         }
 
+    @log_call
     def _read_file(self, file_path: str):
         try:
             with open(file_path) as file:

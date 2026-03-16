@@ -13,6 +13,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 
 @dataclass
 class ActionResult:
@@ -49,10 +51,12 @@ class ActionExecutor:
         >>> print(result.output)  # "Hello Alice!"
     """
 
+    @log_call
     def __init__(self):
         """Initialize action executor with empty registry."""
         self._actions: dict[str, Callable] = {}
 
+    @log_call
     def register_action(self, name: str, func: Callable) -> None:
         """Register an action (tool) with the executor.
 
@@ -78,6 +82,7 @@ class ActionExecutor:
 
         self._actions[name] = func
 
+    @log_call
     def execute(self, action_name: str, **kwargs) -> ActionResult:
         """Execute a registered action with given parameters.
 
@@ -115,6 +120,7 @@ class ActionExecutor:
                 action_name=action_name,
             )
 
+    @log_call
     def get_available_actions(self) -> list[str]:
         """Get list of registered action names.
 
@@ -123,6 +129,7 @@ class ActionExecutor:
         """
         return list(self._actions.keys())
 
+    @log_call
     def has_action(self, action_name: str) -> bool:
         """Check if action is registered.
 
@@ -138,6 +145,7 @@ class ActionExecutor:
 # Standard actions for goal-seeking agents
 
 
+@log_call
 def read_content(content: str) -> dict[str, Any]:
     """Read and parse content for learning.
 
@@ -161,6 +169,7 @@ def read_content(content: str) -> dict[str, Any]:
     }
 
 
+@log_call
 def search_memory(memory_retriever, query: str, limit: int = 5) -> list[dict[str, Any]]:
     """Search memory for relevant experiences.
 
@@ -178,6 +187,7 @@ def search_memory(memory_retriever, query: str, limit: int = 5) -> list[dict[str
     return memory_retriever.search(query.strip(), limit=limit)
 
 
+@log_call
 def calculate(expression: str) -> dict[str, Any]:
     """Evaluate a simple arithmetic expression safely.
 
@@ -224,6 +234,7 @@ def calculate(expression: str) -> dict[str, Any]:
         ast.UAdd: operator.pos,
     }
 
+    @log_call
     def _safe_eval_node(node: ast.AST) -> float:
         if isinstance(node, ast.Expression):
             return _safe_eval_node(node.body)
@@ -247,6 +258,7 @@ def calculate(expression: str) -> dict[str, Any]:
         return {"expression": expr, "result": None, "error": str(e)}
 
 
+@log_call
 def synthesize_answer(
     llm_synthesizer, question: str, context: list[dict[str, Any]], question_level: str = "L1"
 ) -> str:

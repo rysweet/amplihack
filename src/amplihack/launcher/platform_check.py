@@ -17,6 +17,8 @@ import platform
 from dataclasses import dataclass
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 
 @dataclass
 class PlatformCheckResult:
@@ -35,6 +37,7 @@ class PlatformCheckResult:
     message: str = ""
 
 
+@log_call
 def is_native_windows() -> bool:
     """Detect if running on native Windows (not WSL).
 
@@ -63,6 +66,7 @@ def is_native_windows() -> bool:
     return True
 
 
+@log_call
 def check_platform_compatibility() -> PlatformCheckResult:
     """Check if current platform is compatible with amplihack.
 

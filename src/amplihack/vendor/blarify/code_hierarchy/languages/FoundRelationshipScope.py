@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Optional
+from amplihack.utils.logging_utils import log_call
 
 if TYPE_CHECKING:
     from ...graph.relationship.relationship_type import RelationshipType
@@ -11,5 +12,6 @@ class FoundRelationshipScope:
     node_in_scope: Optional["Node"]
     relationship_type: "RelationshipType"
 
+    @log_call
     def __str__(self) -> str:
         return f"FoundRelationshipScope({self.node_in_scope}, {self.relationship_type})"

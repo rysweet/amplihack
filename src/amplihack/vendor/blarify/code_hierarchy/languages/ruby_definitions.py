@@ -6,26 +6,32 @@ from amplihack.vendor.blarify.graph.relationship import RelationshipType
 from tree_sitter import Language, Node, Parser
 
 from .language_definitions import LanguageDefinitions
+from amplihack.utils.logging_utils import log_call
 
 
 class RubyDefinitions(LanguageDefinitions):
     CONTROL_FLOW_STATEMENTS = ["for", "if", "elsif", "unless", "while"]
     CONSEQUENCE_STATEMENTS = ["do", "then"]
 
+    @log_call
     def get_language_name() -> str:
         return "ruby"
 
+    @log_call
     def should_create_node(node: Node) -> bool:
         return LanguageDefinitions._should_create_node_base_implementation(
             node, ["class", "method", "singleton_method"]
         )
 
+    @log_call
     def get_identifier_node(node: Node) -> Node:
         return LanguageDefinitions._get_identifier_node_base_implementation(node)
 
+    @log_call
     def get_body_node(node: Node) -> Node:
         return LanguageDefinitions._get_body_node_base_implementation(node)
 
+    @log_call
     def get_node_label_from_type(type: str) -> NodeLabels:
         if type == "class":
             return NodeLabels.CLASS
@@ -34,6 +40,7 @@ class RubyDefinitions(LanguageDefinitions):
         if type == "singleton_method":
             return NodeLabels.FUNCTION
 
+    @log_call
     def get_relationship_type(
         node: GraphNode, node_in_point_reference: Node
     ) -> FoundRelationshipScope | None:
@@ -42,6 +49,7 @@ class RubyDefinitions(LanguageDefinitions):
             node_in_point_reference=node_in_point_reference,
         )
 
+    @log_call
     def _find_relationship_type(
         node_label: str, node_in_point_reference: Node
     ) -> FoundRelationshipScope | None:
@@ -72,9 +80,11 @@ class RubyDefinitions(LanguageDefinitions):
             named_parent = named_parent.parent
         return found_relationship_scope
 
+    @log_call
     def _is_call_method_indentifier_new(node: Node) -> bool:
         return node.child_by_field_name("method").text == b"new"
 
+    @log_call
     def _get_relationship_types_by_label() -> dict[str, dict[str, RelationshipType]]:
         return {
             NodeLabels.CLASS: {"superclass": RelationshipType.INHERITS},
@@ -83,6 +93,7 @@ class RubyDefinitions(LanguageDefinitions):
             },
         }
 
+    @log_call
     def _get_relationship_type_for_node(
         tree_sitter_node: Node, relationships_types: dict[str, RelationshipType]
     ) -> FoundRelationshipScope | None:
@@ -97,9 +108,11 @@ class RubyDefinitions(LanguageDefinitions):
 
         return None
 
+    @log_call
     def get_language_file_extensions() -> set[str]:
         return {".rb"}
 
+    @log_call
     def get_parsers_for_extensions() -> dict[str, Parser]:
         return {
             ".rb": Parser(Language(tsruby.language())),

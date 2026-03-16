@@ -33,6 +33,8 @@ from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 # Lazy import to avoid circular dependencies
 # claude_cli imports prerequisites, so we import it only when needed
 try:
@@ -41,6 +43,7 @@ except ImportError:
     print("WARNING: claude_cli module not available, using fallback", file=sys.stderr)
 
     # Fallback if import fails
+    @log_call
     def get_claude_cli_path(auto_install: bool = True) -> str | None:
         return None
 
@@ -122,6 +125,7 @@ class PrerequisiteResult:
     available_tools: list[ToolCheckResult] = field(default_factory=list)
 
 
+@log_call
 def safe_subprocess_call(
     cmd: list[str],
     context: str,
@@ -220,6 +224,7 @@ class InteractiveInstaller:
         ...     print("Node.js installed successfully")
     """
 
+    @log_call
     def __init__(self, platform: Platform):
         """Initialize interactive installer for a platform.
 
@@ -231,6 +236,7 @@ class InteractiveInstaller:
             Path.home() / ".claude" / "runtime" / "logs" / "installation_audit.jsonl"
         )
 
+    @log_call
     def is_interactive_environment(self) -> bool:
         """Check if running in an interactive environment.
 
@@ -248,6 +254,7 @@ class InteractiveInstaller:
 
         return True
 
+    @log_call
     def prompt_for_approval(self, tool: str, command: list[str]) -> bool:
         """Prompt user for approval to install a tool.
 
@@ -273,9 +280,7 @@ class InteractiveInstaller:
         for _ in range(max_attempts):
             try:
                 response = (
-                    input(f"Do you want to proceed with installing {tool}? [y/N]: ")
-                    .strip()
-                    .lower()
+                    input(f"Do you want to proceed with installing {tool}? [y/N]: ").strip().lower()
                 )
             except (EOFError, OSError):
                 # stdin closed or not available - decline
@@ -288,6 +293,7 @@ class InteractiveInstaller:
         # Exhausted attempts - decline
         return False
 
+    @log_call
     def _execute_install_command(self, command: list[str]) -> subprocess.CompletedProcess:
         """Execute installation command with interactive stdin.
 
@@ -312,6 +318,7 @@ class InteractiveInstaller:
             timeout=120,  # Prevent hanging in sandboxed environments
         )
 
+    @log_call
     def _log_audit(self, entry: InstallationAuditEntry) -> None:
         """Log installation attempt to audit log.
 
@@ -333,6 +340,7 @@ class InteractiveInstaller:
             # User can still see installation results in terminal output
             pass
 
+    @log_call
     def install_tool(self, tool: str) -> InstallationResult:
         """Install a tool interactively with user approval.
 
@@ -608,10 +616,12 @@ class PrerequisiteChecker:
         "claude": "https://code.claude.com/docs/en/setup",
     }
 
+    @log_call
     def __init__(self):
         """Initialize prerequisite checker and detect platform."""
         self.platform = self._detect_platform()
 
+    @log_call
     def _detect_platform(self) -> Platform:
         """Detect the current platform.
 
@@ -631,6 +641,7 @@ class PrerequisiteChecker:
             return Platform.WINDOWS
         return Platform.UNKNOWN
 
+    @log_call
     def _is_wsl(self) -> bool:
         """Check if running under Windows Subsystem for Linux.
 
@@ -646,6 +657,7 @@ class PrerequisiteChecker:
             pass
         return False
 
+    @log_call
     def check_tool(self, tool: str, version_arg: str | None = None) -> ToolCheckResult:
         """Check if a single tool is available.
 
@@ -685,6 +697,7 @@ class PrerequisiteChecker:
             version=version,
         )
 
+    @log_call
     def check_all_prerequisites(self) -> PrerequisiteResult:
         """Check all required prerequisites including Claude CLI with auto-install.
 
@@ -742,6 +755,7 @@ class PrerequisiteChecker:
             available_tools=available_tools,
         )
 
+    @log_call
     def get_install_command(self, tool: str) -> str:
         """Get platform-specific installation command for a tool (display format).
 
@@ -756,6 +770,7 @@ class PrerequisiteChecker:
         )
         return platform_commands.get(tool, f"Please install {tool} manually")
 
+    @log_call
     def format_missing_prerequisites(self, missing_tools: list[ToolCheckResult]) -> str:
         """Format a user-friendly message for missing prerequisites.
 
@@ -795,6 +810,7 @@ class PrerequisiteChecker:
 
         return "\n".join(lines)
 
+    @log_call
     def check_and_report(self) -> bool:
         """Check prerequisites and print report if any are missing.
 
@@ -813,6 +829,7 @@ class PrerequisiteChecker:
         print(self.format_missing_prerequisites(result.missing_tools))
         return False
 
+    @log_call
     def check_and_install(self, interactive: bool = True) -> PrerequisiteResult:
         """Check prerequisites and optionally install missing ones interactively.
 
@@ -905,6 +922,7 @@ class PrerequisiteChecker:
 
 
 # Convenience function for quick prerequisite checking
+@log_call
 def check_prerequisites() -> bool:
     """Quick prerequisite check with automatic interactive installation.
 

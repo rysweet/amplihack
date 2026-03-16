@@ -20,6 +20,8 @@ import re
 from enum import Enum
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 from ..similarity import rerank_facts_by_query
 
 logger = logging.getLogger(__name__)
@@ -58,10 +60,12 @@ class MemoryAgent:
         ...                            intent={"intent": "simple_recall"})
     """
 
+    @log_call
     def __init__(self, memory: Any, agent_name: str = "memory_agent"):
         self.memory = memory
         self.agent_name = agent_name
 
+    @log_call
     def select_strategy(self, question: str, intent: dict[str, Any]) -> RetrievalStrategy:
         """Select the best retrieval strategy for a question.
 
@@ -99,6 +103,7 @@ class MemoryAgent:
 
         return RetrievalStrategy.FULL_TEXT
 
+    @log_call
     def retrieve(
         self,
         question: str,
@@ -140,12 +145,14 @@ class MemoryAgent:
         # Default: full text search
         return self._full_text_retrieve(question, max_facts)
 
+    @log_call
     def _get_kb_size(self) -> int:
         """Get the number of facts in the knowledge base."""
         if hasattr(self.memory, "get_all_facts"):
             return len(self.memory.get_all_facts(limit=15000))
         return 0
 
+    @log_call
     def _has_entity_reference(self, question: str) -> bool:
         """Check if the question references a specific entity (proper noun)."""
         # Multi-word proper nouns
@@ -156,6 +163,7 @@ class MemoryAgent:
             return True
         return False
 
+    @log_call
     def _aggregation_retrieve(self, question: str, intent: dict[str, Any]) -> list[dict[str, Any]]:
         """Retrieve via Cypher aggregation for meta-memory questions."""
         if not hasattr(self.memory, "execute_aggregation"):
@@ -235,6 +243,7 @@ class MemoryAgent:
         results.extend(regular[:20])
         return results
 
+    @log_call
     def _simple_all_retrieve(self, question: str, max_facts: int) -> list[dict[str, Any]]:
         """Get all facts for small KBs."""
         if hasattr(self.memory, "get_all_facts"):
@@ -242,6 +251,7 @@ class MemoryAgent:
             return rerank_facts_by_query(facts, question)
         return []
 
+    @log_call
     def _entity_retrieve(self, question: str, max_facts: int) -> list[dict[str, Any]]:
         """Retrieve facts about specific entities mentioned in the question."""
         if not hasattr(self.memory, "retrieve_by_entity"):
@@ -265,11 +275,13 @@ class MemoryAgent:
 
         return rerank_facts_by_query(all_facts, question) if all_facts else []
 
+    @log_call
     def _temporal_retrieve(self, question: str, max_facts: int) -> list[dict[str, Any]]:
         """Retrieve facts sorted by temporal order."""
         # Get all facts, then sort by temporal_index
         facts = self._simple_all_retrieve(question, max_facts)
 
+        @log_call
         def temporal_key(fact: dict) -> tuple:
             meta = fact.get("metadata", {})
             t_idx = meta.get("temporal_index", 999999) if meta else 999999
@@ -277,6 +289,7 @@ class MemoryAgent:
 
         return sorted(facts, key=temporal_key)
 
+    @log_call
     def _two_phase_retrieve(self, question: str, max_facts: int) -> list[dict[str, Any]]:
         """Two-phase retrieval: broad keyword search then precise reranking.
 
@@ -299,6 +312,7 @@ class MemoryAgent:
         reranked = rerank_facts_by_query(candidates, question, top_k=max_facts)
         return reranked
 
+    @log_call
     def _full_text_retrieve(self, question: str, max_facts: int) -> list[dict[str, Any]]:
         """Standard keyword search."""
         results = self.memory.search(query=question, limit=max_facts)

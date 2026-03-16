@@ -24,11 +24,13 @@ import pytest  # pyright: ignore[reportMissingImports]
 from amplihack.memory.kuzu.indexing.staleness_detector import (
     check_index_status,
 )
+from amplihack.utils.logging_utils import log_call
 
 
 class TestStalenessDetection:
     """Test staleness detection logic (UNIT TESTS - 60%)."""
 
+    @log_call
     def test_missing_index_needs_indexing(self, tmp_path):
         """Test that missing index triggers indexing need."""
         # ARRANGE: Create project with Python files but no index
@@ -45,6 +47,7 @@ class TestStalenessDetection:
         assert status.estimated_files == 1
         assert status.last_indexed is None
 
+    @log_call
     def test_up_to_date_index_no_reindex(self, tmp_path):
         """Test that current index doesn't trigger reindexing."""
         # ARRANGE: Create project with index newer than source
@@ -70,6 +73,7 @@ class TestStalenessDetection:
         assert "up-to-date" in status.reason
         assert status.last_indexed is not None
 
+    @log_call
     def test_stale_index_needs_reindex(self, tmp_path):
         """Test that outdated index triggers reindexing."""
         # ARRANGE: Create index, then modify source
@@ -95,6 +99,7 @@ class TestStalenessDetection:
         assert "stale" in status.reason
         assert status.estimated_files == 1
 
+    @log_call
     def test_empty_project_no_indexing(self, tmp_path):
         """Test that empty project doesn't need indexing."""
         # ARRANGE: Create empty project
@@ -109,6 +114,7 @@ class TestStalenessDetection:
         assert "no files to index" in status.reason
         assert status.estimated_files == 0
 
+    @log_call
     def test_counts_only_indexable_files(self, tmp_path):
         """Test that only supported file types are counted."""
         # ARRANGE: Create project with mixed files
@@ -132,6 +138,7 @@ class TestStalenessDetection:
         assert status.estimated_files == 3
         assert status.needs_indexing is True
 
+    @log_call
     def test_ignores_standard_directories(self, tmp_path):
         """Test that ignored directories are skipped."""
         # ARRANGE: Create project with ignored dirs
@@ -162,6 +169,7 @@ class TestHookTriggers:
     """Test hook trigger detection (UNIT TESTS - 60%)."""
 
     @pytest.mark.skip(reason="Hook integration needs implementation")
+    @log_call
     def test_edit_operation_detected(self, tmp_path):
         """Test that Edit tool operation is detected by hook."""
         # ARRANGE: Create mock Edit operation
@@ -173,6 +181,7 @@ class TestHookTriggers:
         # Mock hook registry
         hook_triggered = []
 
+        @log_call
         def mock_hook(tool_name, tool_args, tool_result):
             if tool_name == "Edit":
                 hook_triggered.append(tool_args.get("file_path"))
@@ -185,12 +194,14 @@ class TestHookTriggers:
         assert str(target_file) in hook_triggered
 
     @pytest.mark.skip(reason="Hook integration needs implementation")
+    @log_call
     def test_write_operation_detected(self, tmp_path):
         """Test that Write tool operation is detected by hook."""
         # Similar to edit test but for Write tool
         # Implementation would mirror test_edit_operation_detected
 
     @pytest.mark.skip(reason="Hook integration needs implementation")
+    @log_call
     def test_threshold_triggers_reindex(self, tmp_path):
         """Test that staleness threshold triggers reindexing."""
         # ARRANGE: Setup project with multiple files
@@ -203,6 +214,7 @@ class TestIntegrationFlow:
     """Test end-to-end integration flow (INTEGRATION TESTS - 30%)."""
 
     @pytest.mark.skip(reason="Full integration test - requires database")
+    @log_call
     def test_edit_to_index_to_query_flow(self, tmp_path):
         """Test complete flow: Edit → Detect → Index → Query.
 
@@ -281,6 +293,7 @@ def goodbye():
         # mock_connector.query.assert_called()
 
     @pytest.mark.skip(reason="Full integration test - requires database")
+    @log_call
     def test_multiple_file_edits_batch_correctly(self, tmp_path):
         """Test that multiple edits batch into single reindex."""
         # ARRANGE: Project with multiple files
@@ -288,6 +301,7 @@ def goodbye():
         # ASSERT: Single reindex handles all changes
 
     @pytest.mark.skip(reason="Full integration test - requires background runner")
+    @log_call
     def test_background_indexing_completes(self, tmp_path):
         """Test background indexing job completes successfully."""
         # ARRANGE: Setup project
@@ -298,6 +312,7 @@ def goodbye():
 class TestCrossPlatform:
     """Test cross-platform compatibility (PLATFORM TESTS - 10%)."""
 
+    @log_call
     def test_works_in_claude_code_environment(self):
         """Test hooks work in Claude Code environment."""
         # ARRANGE: Detect Claude Code environment
@@ -312,6 +327,7 @@ class TestCrossPlatform:
         os.getenv("GITHUB_COPILOT") is None,
         reason="GitHub Copilot environment not available",
     )
+    @log_call
     def test_works_in_github_copilot_cli_environment(self):
         """Test hooks work in GitHub Copilot CLI environment."""
         # ARRANGE: Detect GitHub Copilot environment
@@ -320,6 +336,7 @@ class TestCrossPlatform:
         # ACT & ASSERT: Environment detection works
         assert is_copilot is True
 
+    @log_call
     def test_database_unavailable_graceful_degradation(self, tmp_path):
         """Test graceful handling when Kuzu database unavailable."""
         # ARRANGE: Setup without database connection
@@ -349,6 +366,7 @@ class TestCrossPlatform:
 class TestEdgeCases:
     """Test edge cases and error conditions."""
 
+    @log_call
     def test_indexing_fails_gracefully_on_invalid_path(self):
         """Test error handling for non-existent path."""
         # ARRANGE: Invalid path
@@ -371,6 +389,7 @@ class TestEdgeCases:
         assert result.success is False
         assert len(result.errors) > 0
 
+    @log_call
     def test_handles_very_large_codebase(self, tmp_path):
         """Test performance with large number of files."""
         # ARRANGE: Create large project structure
@@ -391,6 +410,7 @@ class TestEdgeCases:
         assert elapsed_time < 1.0
         assert status.estimated_files == 1000
 
+    @log_call
     def test_handles_concurrent_edits(self, tmp_path):
         """Test behavior with concurrent file modifications."""
         # ARRANGE: Project with index
@@ -419,6 +439,7 @@ class TestEdgeCases:
 class TestPerformance:
     """Performance benchmarks for critical paths."""
 
+    @log_call
     def test_staleness_check_performance(self, tmp_path):
         """Test that staleness check completes in < 100ms."""
         # ARRANGE: Create realistic project
@@ -445,6 +466,7 @@ class TestPerformance:
 
 
 @pytest.fixture
+@log_call
 def mock_kuzu_connector():
     """Mock Kuzu connector for testing."""
     connector = MagicMock()
@@ -453,6 +475,7 @@ def mock_kuzu_connector():
 
 
 @pytest.fixture
+@log_call
 def sample_project(tmp_path):
     """Create a sample project structure for testing."""
     project_path = tmp_path / "sample_project"
@@ -488,6 +511,7 @@ class UtilClass:
 # ============================================================================
 
 
+@log_call
 def verify_hook_integration():
     """Verify that hooks are properly integrated.
 
@@ -509,6 +533,7 @@ def verify_hook_integration():
     return True
 
 
+@log_call
 def verify_graph_queryable(connector):
     """Verify that graph data is queryable.
 
@@ -531,6 +556,7 @@ def verify_graph_queryable(connector):
 # ============================================================================
 
 
+@log_call
 def pytest_configure(config):
     """Configure pytest with custom markers."""
     config.addinivalue_line("markers", "integration: Integration tests (requires database)")

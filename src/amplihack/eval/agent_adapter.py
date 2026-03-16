@@ -23,6 +23,8 @@ from typing import Any
 
 from amplihack_eval.adapters.base import AgentAdapter, AgentResponse
 
+from amplihack.utils.logging_utils import log_call
+
 logger = logging.getLogger(__name__)
 
 
@@ -33,6 +35,7 @@ class AmplihackLearningAgentAdapter(AgentAdapter):
     answer_question() methods, so no async bridging is needed.
     """
 
+    @log_call
     def __init__(
         self,
         agent_name: str = "eval-learning-agent",
@@ -57,10 +60,12 @@ class AmplihackLearningAgentAdapter(AgentAdapter):
         self._extra_kwargs = kwargs
         self._agent = LearningAgent(**init_kwargs)
 
+    @log_call
     def learn(self, content: str) -> None:
         """Feed content to the LearningAgent."""
         self._agent.learn_from_content(content)
 
+    @log_call
     def answer(self, question: str) -> AgentResponse:
         """Ask the LearningAgent a question."""
         result = self._agent.answer_question(question)
@@ -76,6 +81,7 @@ class AmplihackLearningAgentAdapter(AgentAdapter):
             reasoning_trace=str(trace) if trace else "",
         )
 
+    @log_call
     def reset(self) -> None:
         """Reset agent by closing and re-creating."""
         self._agent.close()
@@ -83,11 +89,13 @@ class AmplihackLearningAgentAdapter(AgentAdapter):
 
         self._agent = LearningAgent(**self._init_kwargs)
 
+    @log_call
     def close(self) -> None:
         """Release agent resources."""
         self._agent.close()
 
     @property
+    @log_call
     def name(self) -> str:
         return f"AmplihackLearning({self._agent_name})"
 
@@ -99,6 +107,7 @@ class AmplihackMultiAgentAdapter(AgentAdapter):
     retrieval internally.
     """
 
+    @log_call
     def __init__(
         self,
         agent_name: str = "eval-multi-agent",
@@ -123,10 +132,12 @@ class AmplihackMultiAgentAdapter(AgentAdapter):
         self._init_kwargs = init_kwargs
         self._agent = MultiAgentLearningAgent(**init_kwargs)
 
+    @log_call
     def learn(self, content: str) -> None:
         """Feed content to the MultiAgentLearningAgent."""
         self._agent.learn_from_content(content)
 
+    @log_call
     def answer(self, question: str) -> AgentResponse:
         """Ask the MultiAgentLearningAgent a question."""
         result = self._agent.answer_question(question)
@@ -141,6 +152,7 @@ class AmplihackMultiAgentAdapter(AgentAdapter):
             reasoning_trace=str(trace) if trace else "",
         )
 
+    @log_call
     def reset(self) -> None:
         """Reset agent by closing and re-creating."""
         self._agent.close()
@@ -148,15 +160,18 @@ class AmplihackMultiAgentAdapter(AgentAdapter):
 
         self._agent = MultiAgentLearningAgent(**self._init_kwargs)
 
+    @log_call
     def close(self) -> None:
         """Release agent resources."""
         self._agent.close()
 
     @property
+    @log_call
     def name(self) -> str:
         return f"AmplihackMultiAgent({self._agent_name})"
 
     @property
+    @log_call
     def capabilities(self) -> set[str]:
         return {"memory", "multi_agent"}
 
@@ -168,6 +183,7 @@ class AmplihackSDKAgentAdapter(AgentAdapter):
     using asyncio.run() or an existing event loop.
     """
 
+    @log_call
     def __init__(
         self,
         agent_name: str = "eval-sdk-agent",
@@ -194,6 +210,7 @@ class AmplihackSDKAgentAdapter(AgentAdapter):
         self._agent = create_agent(**create_kwargs)
         self._learned_content: list[str] = []
 
+    @log_call
     def _run_async(self, coro: Any) -> Any:
         """Bridge async to sync, handling nested event loops."""
         try:
@@ -210,6 +227,7 @@ class AmplihackSDKAgentAdapter(AgentAdapter):
         else:
             return asyncio.run(coro)
 
+    @log_call
     def learn(self, content: str) -> None:
         """Feed content to the SDK agent via its run() method."""
         self._learned_content.append(content)
@@ -217,6 +235,7 @@ class AmplihackSDKAgentAdapter(AgentAdapter):
         task = f"Learn and remember the following information:\n\n{content}"
         self._run_async(self._agent.run(task))
 
+    @log_call
     def answer(self, question: str) -> AgentResponse:
         """Ask the SDK agent a question via its run() method."""
         result = self._run_async(self._agent.run(question))
@@ -225,6 +244,7 @@ class AmplihackSDKAgentAdapter(AgentAdapter):
             metadata={"sdk": self._sdk, "goal_achieved": result.goal_achieved if result else False},
         )
 
+    @log_call
     def reset(self) -> None:
         """Reset by closing and re-creating the SDK agent."""
         self._agent.close()
@@ -233,15 +253,18 @@ class AmplihackSDKAgentAdapter(AgentAdapter):
         self._agent = create_agent(**self._create_kwargs)
         self._learned_content.clear()
 
+    @log_call
     def close(self) -> None:
         """Release SDK agent resources."""
         self._agent.close()
 
     @property
+    @log_call
     def name(self) -> str:
         return f"AmplihackSDK({self._sdk}/{self._agent_name})"
 
     @property
+    @log_call
     def capabilities(self) -> set[str]:
         caps = {"memory"}
         if self._sdk != "mini":

@@ -21,6 +21,8 @@ import importlib
 import logging
 from dataclasses import dataclass, field
 
+from amplihack.utils.logging_utils import log_call
+
 logger = logging.getLogger(__name__)
 
 # SDK packages that MUST be importable for agent adapters to work.
@@ -38,10 +40,12 @@ class DepCheckResult:
     missing: list[str] = field(default_factory=list)
 
     @property
+    @log_call
     def all_ok(self) -> bool:
         return len(self.missing) == 0
 
 
+@log_call
 def check_sdk_dep(import_name: str) -> bool:
     """Check if a single SDK package is importable.
 
@@ -61,6 +65,7 @@ def check_sdk_dep(import_name: str) -> bool:
         return False
 
 
+@log_call
 def validate_sdk_deps(raise_on_missing: bool = True) -> DepCheckResult:
     """Validate that all required SDK dependencies are importable.
 
@@ -99,6 +104,7 @@ def validate_sdk_deps(raise_on_missing: bool = True) -> DepCheckResult:
     return result
 
 
+@log_call
 def ensure_sdk_deps() -> DepCheckResult:
     """Check SDK deps and auto-install any that are missing.
 
@@ -128,8 +134,11 @@ def ensure_sdk_deps() -> DepCheckResult:
     installer = shutil.which("uv")
     if installer:
         base_cmd = [
-            installer, "pip", "install",
-            "--python", sys.executable,
+            installer,
+            "pip",
+            "install",
+            "--python",
+            sys.executable,
             "--prerelease=allow",
         ]
     else:
@@ -151,7 +160,9 @@ def ensure_sdk_deps() -> DepCheckResult:
             else:
                 logger.warning(
                     "Failed to install %s (exit %d): %s",
-                    pip_name, proc.returncode, proc.stderr[:200]
+                    pip_name,
+                    proc.returncode,
+                    proc.stderr[:200],
                 )
         except Exception as e:
             logger.warning("Failed to install %s: %s", pip_name, e)
@@ -165,6 +176,9 @@ def ensure_sdk_deps() -> DepCheckResult:
 
 
 __all__ = [
-    "validate_sdk_deps", "check_sdk_dep", "ensure_sdk_deps",
-    "DepCheckResult", "SDK_DEPENDENCIES",
+    "validate_sdk_deps",
+    "check_sdk_dep",
+    "ensure_sdk_deps",
+    "DepCheckResult",
+    "SDK_DEPENDENCIES",
 ]

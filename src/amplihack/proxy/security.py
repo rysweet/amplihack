@@ -15,6 +15,8 @@ Public API:
 import re
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 
 class TokenSanitizer:
     """Sanitize sensitive tokens from strings and data structures.
@@ -28,6 +30,7 @@ class TokenSanitizer:
     - Azure tokens and connection strings
     """
 
+    @log_call
     def __init__(self):
         """Initialize TokenSanitizer with compiled regex patterns."""
         # Token patterns with their replacement markers
@@ -61,6 +64,7 @@ class TokenSanitizer:
             ),
         ]
 
+    @log_call
     def contains_token(self, text: str) -> bool:
         """Check if text contains any sensitive tokens.
 
@@ -78,6 +82,7 @@ class TokenSanitizer:
                 return True
         return False
 
+    @log_call
     def sanitize(self, data: Any) -> Any:
         """Sanitize tokens from data structure.
 
@@ -105,6 +110,7 @@ class TokenSanitizer:
         # For other types (int, bool, etc.), return as-is
         return data
 
+    @log_call
     def _sanitize_string(self, text: str) -> str:
         """Sanitize tokens from a single string.
 

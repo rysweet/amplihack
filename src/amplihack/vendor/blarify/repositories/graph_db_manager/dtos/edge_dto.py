@@ -1,6 +1,7 @@
 """EdgeDTO for representing graph edges/relationships."""
 
 from pydantic import BaseModel, ConfigDict
+from amplihack.utils.logging_utils import log_call
 
 
 class EdgeDTO(BaseModel):
@@ -13,5 +14,6 @@ class EdgeDTO(BaseModel):
     node_name: str
     node_type: list[str]
 
+    @log_call
     def __str__(self):
         return f"relationship_type: {self.relationship_type}, node_id: {self.node_id}, node_name: {self.node_name}, node_type: {self.node_type}"

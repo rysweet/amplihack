@@ -8,6 +8,8 @@ import threading
 from dataclasses import dataclass
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 
 @dataclass
 class InstallResult:
@@ -49,6 +51,7 @@ class PluginManager:
     # Fields that should be resolved to absolute paths
     PATH_FIELDS = {"entry_point", "files", "cwd", "script", "path"}
 
+    @log_call
     def __init__(self, plugin_root: Path | None = None):
         """Initialize plugin manager.
 
@@ -58,6 +61,7 @@ class PluginManager:
         self.plugin_root = plugin_root or Path.home() / ".amplihack" / ".claude" / "plugins"
         self._lock = threading.Lock()
 
+    @log_call
     def _validate_path_safety(self, path: Path, base_path: Path) -> bool:
         """Validate that path is safely under base_path (no traversal).
 
@@ -74,6 +78,7 @@ class PluginManager:
         except ValueError:
             return False
 
+    @log_call
     def validate_manifest(self, manifest_path: Path) -> ValidationResult:
         """Validate a plugin manifest file.
 
@@ -126,6 +131,7 @@ class PluginManager:
 
         return ValidationResult(valid=len(errors) == 0, errors=errors, warnings=warnings)
 
+    @log_call
     def install(self, source: str, force: bool = False) -> InstallResult:
         """Install a plugin from git URL or local path.
 
@@ -286,6 +292,7 @@ class PluginManager:
                 message=f"Plugin installed successfully: {plugin_name}",
             )
 
+    @log_call
     def uninstall(self, plugin_name: str) -> bool:
         """Uninstall a plugin.
 
@@ -306,6 +313,7 @@ class PluginManager:
         except (PermissionError, OSError):
             return False
 
+    @log_call
     def resolve_paths(self, manifest: dict, plugin_path: Path | None = None) -> dict:
         """Resolve relative paths in manifest to absolute paths.
 
@@ -340,6 +348,7 @@ class PluginManager:
 
         return resolved
 
+    @log_call
     def _resolve_nested_paths(self, data: dict, base_path: Path) -> dict:
         """Recursively resolve paths in nested dictionaries.
 
@@ -366,6 +375,7 @@ class PluginManager:
 
         return resolved
 
+    @log_call
     def _register_plugin(self, plugin_name: str) -> bool:
         """Register plugin in Claude Code settings.
 

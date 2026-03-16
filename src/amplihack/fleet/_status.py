@@ -10,10 +10,12 @@ Public API:
 from __future__ import annotations
 
 from amplihack.fleet._constants import MIN_SUBSTANTIAL_OUTPUT_LEN
+from amplihack.utils.logging_utils import log_call
 
 __all__ = ["infer_agent_status"]
 
 
+@log_call
 def infer_agent_status(tmux_text: str) -> str:
     """Infer agent status from tmux/terminal output.
 
@@ -49,7 +51,7 @@ def infer_agent_status(tmux_text: str) -> str:
         stripped = line.strip()
         if stripped.startswith("\u276f"):
             has_prompt = True
-            prompt_line_text = stripped[len("\u276f"):].strip()
+            prompt_line_text = stripped[len("\u276f") :].strip()
             break
 
     # STATUS BAR "(running)" detection (high priority)

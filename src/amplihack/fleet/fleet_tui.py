@@ -17,17 +17,27 @@ import time
 import tty
 from dataclasses import dataclass, field
 
-from amplihack.fleet._constants import DEFAULT_CAPTURE_LINES, DEFAULT_TUI_REFRESH_SECONDS, MAX_CAPTURE_LINES, SUBPROCESS_TIMEOUT_SECONDS
-from amplihack.fleet._defaults import DEFAULT_EXCLUDE_VMS, ensure_azlin_context, get_azlin_path, get_existing_tunnels
-from amplihack.fleet._tui_classify import classify_status
+from amplihack.fleet._constants import (
+    DEFAULT_CAPTURE_LINES,
+    DEFAULT_TUI_REFRESH_SECONDS,
+    MAX_CAPTURE_LINES,
+    SUBPROCESS_TIMEOUT_SECONDS,
+)
+from amplihack.fleet._defaults import (
+    DEFAULT_EXCLUDE_VMS,
+    ensure_azlin_context,
+    get_azlin_path,
+    get_existing_tunnels,
+)
 from amplihack.fleet._tui_data import SessionView, VMView
 from amplihack.fleet._tui_parsers import parse_hostname, parse_session_output
-from amplihack.fleet._vm_discovery import dedup_sessions, get_vm_list
 from amplihack.fleet._tui_render import (
     HIDE_CURSOR,
     SHOW_CURSOR,
     render_dashboard,
 )
+from amplihack.fleet._vm_discovery import dedup_sessions, get_vm_list
+from amplihack.utils.logging_utils import log_call
 
 __all__ = ["FleetTUI", "run_tui", "SessionView", "VMView"]
 
@@ -45,12 +55,14 @@ class FleetTUI:
     capture_lines: int = DEFAULT_CAPTURE_LINES
     exclude_vms: set[str] = field(default_factory=lambda: set(DEFAULT_EXCLUDE_VMS))
 
+    @log_call
     def __post_init__(self) -> None:
         self.capture_lines = max(1, min(self.capture_lines, MAX_CAPTURE_LINES))
         ensure_azlin_context(self.azlin_path)
         # Cache existing Bastion tunnels for reuse during polling
         self._tunnels: dict[str, int] = get_existing_tunnels(self.azlin_path)
 
+    @log_call
     def run(self, once: bool = False) -> None:
         """Main TUI loop with non-blocking keyboard input.
 
@@ -93,6 +105,7 @@ class FleetTUI:
             # Print a newline so the shell prompt starts clean
             print()
 
+    @log_call
     def refresh(self) -> list[VMView]:
         """Poll all VMs and collect session status.
 
@@ -100,6 +113,7 @@ class FleetTUI:
         """
         return list(self.refresh_iter())
 
+    @log_call
     def refresh_iter(self, *, exclude: bool = True):
         """Yield VMView objects one at a time as each VM is polled.
 
@@ -122,12 +136,14 @@ class FleetTUI:
 
             yield vm_view
 
+    @log_call
     def render(self, vms: list[VMView]) -> None:
         """Render the dashboard to terminal using ANSI codes."""
         output = render_dashboard(vms, self.refresh_interval)
         sys.stdout.write(output)
         sys.stdout.flush()
 
+    @log_call
     def _wait_with_keypress(self, seconds: int) -> str | None:
         """Wait for N seconds, returning early if a key is pressed.
 
@@ -150,10 +166,13 @@ class FleetTUI:
                     return ch
             except (OSError, ValueError) as exc:
                 # stdin closed or invalid fd -- fall back to sleeping
-                logging.getLogger(__name__).warning("stdin select failed, falling back to sleep: %s", exc)
+                logging.getLogger(__name__).warning(
+                    "stdin select failed, falling back to sleep: %s", exc
+                )
                 time.sleep(min(1.0, remaining))
         return None
 
+    @log_call
     def refresh_all(self, *, exclude: bool = True) -> list[VMView]:
         """Poll VMs using azlin data as source of truth for session discovery.
 
@@ -202,7 +221,9 @@ class FleetTUI:
                     if ssh_names and not ssh_names & azlin_names:
                         logging.getLogger(__name__).warning(
                             "SSH misroute on %s: azlin says %s, SSH returned %s — using azlin data",
-                            vm_name, sorted(azlin_names), sorted(ssh_names),
+                            vm_name,
+                            sorted(azlin_names),
+                            sorted(ssh_names),
                         )
                     # Build sessions from azlin names, enriched with SSH data where available
                     ssh_by_name = {s.session_name: s for s in ssh_sessions}
@@ -212,11 +233,13 @@ class FleetTUI:
                             vm_view.sessions.append(ssh_by_name[sess_name])
                         else:
                             # azlin knows this session but SSH didn't return it
-                            vm_view.sessions.append(SessionView(
-                                vm_name=vm_name,
-                                session_name=sess_name,
-                                status="unknown",
-                            ))
+                            vm_view.sessions.append(
+                                SessionView(
+                                    vm_name=vm_name,
+                                    session_name=sess_name,
+                                    status="unknown",
+                                )
+                            )
                 else:
                     # SSH and azlin agree (or azlin had no session data)
                     vm_view.sessions = ssh_sessions
@@ -231,6 +254,7 @@ class FleetTUI:
 
         return sorted(results, key=lambda v: v.name)
 
+    @log_call
     def _poll_vm(self, vm_name: str) -> list[SessionView]:
         """Poll a single VM for its tmux sessions and capture status info.
 
@@ -253,7 +277,7 @@ class FleetTUI:
             'CWD=$(tmux display-message -t "$SESS" -p "#{pane_current_path}" 2>/dev/null); '
             'if [ -n "$CWD" ] && [ -d "$CWD/.git" ]; then '
             'cd "$CWD" 2>/dev/null; '
-            'BRANCH=$(git branch --show-current 2>/dev/null); '
+            "BRANCH=$(git branch --show-current 2>/dev/null); "
             'echo "BRANCH:${BRANCH}"; '
             "PR=$(git log --oneline -1 --format='%s' 2>/dev/null | grep -oP 'PR #\\K\\d+' || true); "
             'if [ -n "$PR" ]; then echo "PR:#${PR}"; fi; '
@@ -262,7 +286,7 @@ class FleetTUI:
             'echo "---PROC---"; '
             'PANEPID=$(tmux display-message -t "$SESS" -p "#{pane_pid}" 2>/dev/null); '
             'if [ -n "$PANEPID" ]; then '
-            'SID=$(ps -o sid= -p $PANEPID 2>/dev/null); '
+            "SID=$(ps -o sid= -p $PANEPID 2>/dev/null); "
             'if [ -n "$SID" ]; then '
             'ps --no-headers -o comm -g $SID 2>/dev/null | grep -qE "^(claude|node)$" '
             '&& echo "AGENT:alive" || echo "AGENT:none"; '
@@ -277,8 +301,15 @@ class FleetTUI:
         tunnel_port = self._tunnels.get(vm_name)
         if tunnel_port:
             direct_cmd = [
-                "ssh", "-p", str(tunnel_port), "-o", "StrictHostKeyChecking=no",
-                "-o", "ConnectTimeout=10", "azureuser@localhost", gather_cmd,
+                "ssh",
+                "-p",
+                str(tunnel_port),
+                "-o",
+                "StrictHostKeyChecking=no",
+                "-o",
+                "ConnectTimeout=10",
+                "azureuser@localhost",
+                gather_cmd,
             ]
             output = self._run_ssh_cmd(direct_cmd)
             if output is not None:
@@ -298,6 +329,7 @@ class FleetTUI:
 
         return []
 
+    @log_call
     def _parse_and_verify(self, vm_name: str, output: str) -> list[SessionView]:
         """Parse SSH output and verify the hostname matches the expected VM.
 
@@ -312,27 +344,35 @@ class FleetTUI:
         host = parse_hostname(output)
         if host is not None and not (vm_name.startswith(host) or host.startswith(vm_name)):
             logging.getLogger(__name__).warning(
-                "Hostname mismatch for %s: got '%s' — discarding sessions", vm_name, host,
+                "Hostname mismatch for %s: got '%s' — discarding sessions",
+                vm_name,
+                host,
             )
             return []
         return parse_session_output(vm_name, output)
 
+    @log_call
     def _run_ssh_cmd(self, cmd: list[str]) -> str | None:
         """Run SSH command with standard subprocess. Returns output or None."""
         try:
             result = subprocess.run(
-                cmd, capture_output=True, text=True, timeout=SUBPROCESS_TIMEOUT_SECONDS,
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=SUBPROCESS_TIMEOUT_SECONDS,
             )
             if "===SESSION:" in result.stdout or "===NO_SESSIONS===" in result.stdout:
                 return result.stdout
             if result.returncode != 0:
                 logging.getLogger(__name__).debug(
-                    "SSH cmd returned %d (no session markers)", result.returncode,
+                    "SSH cmd returned %d (no session markers)",
+                    result.returncode,
                 )
         except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
             logging.getLogger(__name__).debug("SSH subprocess failed: %s", exc)
         return None
 
+    @log_call
     def _run_ssh_cmd_pty(self, cmd: list[str]) -> str | None:
         """Run SSH command with a virtual PTY (for Bastion-tunnelled SSH).
 
@@ -403,14 +443,15 @@ class FleetTUI:
             if "===SESSION:" in text or "===NO_SESSIONS===" in text:
                 return text
             logging.getLogger(__name__).debug(
-                "PTY SSH returned no session markers (%d bytes)", len(text),
+                "PTY SSH returned no session markers (%d bytes)",
+                len(text),
             )
         except (OSError, subprocess.SubprocessError) as exc:
             logging.getLogger(__name__).warning("PTY SSH failed: %s", exc)
         return None
 
 
-
+@log_call
 def run_tui(interval: int = DEFAULT_TUI_REFRESH_SECONDS, once: bool = False) -> None:
     """Entry point for the TUI dashboard.
 

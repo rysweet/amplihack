@@ -14,6 +14,7 @@ from .component_analysis import COMPONENT_ANALYSIS_TEMPLATE
 from .framework_detection import FRAMEWORK_DETECTION_TEMPLATE
 from .leaf_node_analysis import LEAF_NODE_ANALYSIS_TEMPLATE
 from .system_overview import SYSTEM_OVERVIEW_TEMPLATE
+from amplihack.utils.logging_utils import log_call
 
 logger = logging.getLogger(__name__)
 
@@ -21,10 +22,12 @@ logger = logging.getLogger(__name__)
 class PromptTemplateManager:
     """Manages prompt templates and their lifecycle."""
 
+    @log_call
     def __init__(self):
         self.templates: dict[str, PromptTemplate] = {}
         self._initialize_templates()
 
+    @log_call
     def _initialize_templates(self):
         """Initialize all available templates."""
         templates = [
@@ -38,18 +41,22 @@ class PromptTemplateManager:
         for template in templates:
             self.templates[template.name] = template
 
+    @log_call
     def get_template(self, name: str) -> PromptTemplate | None:
         """Get a template by name."""
         return self.templates.get(name)
 
+    @log_call
     def list_templates(self) -> list[str]:
         """List all available template names."""
         return list(self.templates.keys())
 
+    @log_call
     def add_template(self, template: PromptTemplate) -> None:
         """Add a new template."""
         self.templates[template.name] = template
 
+    @log_call
     def remove_template(self, name: str) -> bool:
         """Remove a template by name."""
         if name in self.templates:
@@ -57,6 +64,7 @@ class PromptTemplateManager:
             return True
         return False
 
+    @log_call
     def format_template(self, name: str, **kwargs) -> str:
         """Format a template with provided variables."""
         template = self.get_template(name)
@@ -68,6 +76,7 @@ class PromptTemplateManager:
 
         return template.format(**kwargs)
 
+    @log_call
     def validate_template_variables(self, name: str, variables: dict[str, Any]) -> bool:
         """Validate variables for a template."""
         template = self.get_template(name)
@@ -81,11 +90,13 @@ template_manager = PromptTemplateManager()
 
 
 # Convenience functions for common operations
+@log_call
 def get_framework_detection_prompt() -> PromptTemplate:
     """Get framework detection prompt template."""
     return template_manager.get_template("framework_detection")
 
 
+@log_call
 def get_system_overview_prompt(codebase_skeleton: str, framework_info: str) -> str:
     """Get formatted system overview prompt."""
     return template_manager.format_template(
@@ -93,6 +104,7 @@ def get_system_overview_prompt(codebase_skeleton: str, framework_info: str) -> s
     )
 
 
+@log_call
 def get_component_analysis_prompt(component_code: str, context: str) -> str:
     """Get formatted component analysis prompt."""
     return template_manager.format_template(
@@ -100,6 +112,7 @@ def get_component_analysis_prompt(component_code: str, context: str) -> str:
     )
 
 
+@log_call
 def get_api_documentation_prompt(api_code: str, framework_info: str) -> str:
     """Get formatted API documentation prompt."""
     return template_manager.format_template(
@@ -107,6 +120,7 @@ def get_api_documentation_prompt(api_code: str, framework_info: str) -> str:
     )
 
 
+@log_call
 def get_leaf_node_analysis_prompt(
     node_name: str, node_labels: list, node_path: str, node_content: str
 ) -> str:
@@ -121,12 +135,14 @@ def get_leaf_node_analysis_prompt(
 
 
 # Chat template convenience functions
+@log_call
 def get_framework_detection_chat_template(**kwargs):
     """Get framework detection chat template."""
     template = template_manager.get_template("framework_detection")
     return template.get_chat_template(**kwargs)
 
 
+@log_call
 def get_system_overview_chat_template(codebase_skeleton: str, framework_info: str):
     """Get system overview chat template."""
     template = template_manager.get_template("system_overview")
@@ -135,12 +151,14 @@ def get_system_overview_chat_template(codebase_skeleton: str, framework_info: st
     )
 
 
+@log_call
 def get_component_analysis_chat_template(component_code: str, context: str):
     """Get component analysis chat template."""
     template = template_manager.get_template("component_analysis")
     return template.get_chat_template(component_code=component_code, context=context)
 
 
+@log_call
 def get_api_documentation_chat_template(api_code: str, framework_info: str):
     """Get API documentation chat template."""
     template = template_manager.get_template("api_documentation")

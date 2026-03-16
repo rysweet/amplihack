@@ -3,11 +3,13 @@
 import subprocess
 
 from amplihack.knowledge_builder.kb_types import Question
+from amplihack.utils.logging_utils import log_call
 
 
 class KnowledgeAcquirer:
     """Acquires knowledge by answering questions via web search."""
 
+    @log_call
     def __init__(self, claude_cmd: str = "claude"):
         """Initialize knowledge acquirer.
 
@@ -16,6 +18,7 @@ class KnowledgeAcquirer:
         """
         self.claude_cmd = claude_cmd
 
+    @log_call
     def answer_question(self, question: Question, topic: str) -> tuple[str, list[str]]:
         """Answer a question using web search.
 
@@ -81,6 +84,7 @@ Requirements:
 
         return answer or "Unable to provide answer", sources
 
+    @log_call
     def answer_all_questions(self, questions: list[Question], topic: str) -> list[Question]:
         """Answer all questions via web search.
 

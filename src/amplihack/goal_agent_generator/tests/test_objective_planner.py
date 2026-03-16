@@ -2,6 +2,8 @@
 
 import pytest
 
+from amplihack.utils.logging_utils import log_call
+
 from ..models import ExecutionPlan, GoalDefinition
 from ..objective_planner import ObjectivePlanner
 
@@ -10,11 +12,13 @@ class TestObjectivePlanner:
     """Tests for ObjectivePlanner."""
 
     @pytest.fixture
+    @log_call
     def planner(self):
         """Create planner instance."""
         return ObjectivePlanner()
 
     @pytest.fixture
+    @log_call
     def simple_goal(self):
         """Create simple goal definition."""
         return GoalDefinition(
@@ -25,6 +29,7 @@ class TestObjectivePlanner:
         )
 
     @pytest.fixture
+    @log_call
     def complex_goal(self):
         """Create complex goal definition."""
         return GoalDefinition(
@@ -35,6 +40,7 @@ class TestObjectivePlanner:
             constraints=["Must complete within 2 hours"],
         )
 
+    @log_call
     def test_generate_plan_for_simple_goal(self, planner, simple_goal):
         """Test generating plan for simple goal."""
         plan = planner.generate_plan(simple_goal)
@@ -45,6 +51,7 @@ class TestObjectivePlanner:
         assert len(plan.required_skills) > 0
         assert plan.total_estimated_duration
 
+    @log_call
     def test_generate_plan_for_complex_goal(self, planner, complex_goal):
         """Test generating plan for complex goal."""
         plan = planner.generate_plan(complex_goal)
@@ -54,6 +61,7 @@ class TestObjectivePlanner:
         assert "data" in " ".join(plan.required_skills).lower()
         assert len(plan.risk_factors) > 0
 
+    @log_call
     def test_generate_plan_for_each_domain(self, planner):
         """Test generating plans for all supported domains."""
         domains = [
@@ -78,6 +86,7 @@ class TestObjectivePlanner:
             assert plan.phase_count >= 3
             assert len(plan.required_skills) > 0
 
+    @log_call
     def test_generate_plan_for_unknown_domain(self, planner):
         """Test generating plan for unknown domain uses generic phases."""
         goal = GoalDefinition(
@@ -94,6 +103,7 @@ class TestObjectivePlanner:
         phase_names = [p.name for p in plan.phases]
         assert any(name in ["Planning", "Implementation", "Testing"] for name in phase_names)
 
+    @log_call
     def test_phases_have_dependencies(self, planner, simple_goal):
         """Test that phases have proper dependencies."""
         plan = planner.generate_plan(simple_goal)
@@ -105,6 +115,7 @@ class TestObjectivePlanner:
         if len(plan.phases) > 1:
             assert len(plan.phases[1].dependencies) > 0
 
+    @log_call
     def test_phases_have_capabilities(self, planner, simple_goal):
         """Test that all phases have required capabilities."""
         plan = planner.generate_plan(simple_goal)
@@ -113,6 +124,7 @@ class TestObjectivePlanner:
             assert len(phase.required_capabilities) > 0
             assert phase.estimated_duration
 
+    @log_call
     def test_duration_estimation_varies_by_complexity(self, planner):
         """Test that duration varies by complexity."""
         simple_goal = GoalDefinition(
@@ -138,6 +150,7 @@ class TestObjectivePlanner:
 
         assert complex_minutes > simple_minutes
 
+    @log_call
     def test_identify_parallel_opportunities(self, planner, simple_goal):
         """Test identifying parallel execution opportunities."""
         plan = planner.generate_plan(simple_goal)
@@ -145,6 +158,7 @@ class TestObjectivePlanner:
         # Should identify some parallel opportunities
         assert isinstance(plan.parallel_opportunities, list)
 
+    @log_call
     def test_risk_factors_identified(self, planner):
         """Test that risk factors are identified."""
         complex_goal = GoalDefinition(
@@ -159,6 +173,7 @@ class TestObjectivePlanner:
         assert len(plan.risk_factors) > 0
         assert any("production" in r.lower() for r in plan.risk_factors)
 
+    @log_call
     def test_required_skills_calculated(self, planner, simple_goal):
         """Test that required skills are calculated from capabilities."""
         plan = planner.generate_plan(simple_goal)

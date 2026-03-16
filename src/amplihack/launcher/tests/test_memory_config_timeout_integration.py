@@ -22,6 +22,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+from amplihack.utils.logging_utils import log_call
+
 # =============================================================================
 # INTEGRATION TESTS (30%)
 # =============================================================================
@@ -30,6 +32,7 @@ import pytest
 class TestFullConsentWorkflow:
     """Test complete consent workflow from detection to response."""
 
+    @log_call
     def test_workflow_non_interactive_auto_accepts(self):
         """Test full workflow: non-interactive -> auto-accept with default."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -45,6 +48,7 @@ class TestFullConsentWorkflow:
             # Should use default without prompting
             assert result is True
 
+    @log_call
     def test_workflow_non_interactive_auto_rejects(self):
         """Test full workflow: non-interactive -> auto-reject with default."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -58,6 +62,7 @@ class TestFullConsentWorkflow:
 
             assert result is False
 
+    @log_call
     def test_workflow_interactive_user_yes(self):
         """Test full workflow: interactive -> user types yes -> consent granted."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -67,6 +72,7 @@ class TestFullConsentWorkflow:
         # Simulate interactive terminal with user input
         with patch("sys.stdin.isatty", return_value=True):
             # Mock the timeout input to return user response
+            @log_call
             def mock_input_with_timeout(prompt, timeout_seconds, logger):
                 return "yes"
 
@@ -80,6 +86,7 @@ class TestFullConsentWorkflow:
 
                 assert result is True
 
+    @log_call
     def test_workflow_interactive_user_no(self):
         """Test full workflow: interactive -> user types no -> consent denied."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -88,6 +95,7 @@ class TestFullConsentWorkflow:
 
         with patch("sys.stdin.isatty", return_value=True):
 
+            @log_call
             def mock_input_with_timeout(prompt, timeout_seconds, logger):
                 return "no"
 
@@ -101,6 +109,7 @@ class TestFullConsentWorkflow:
 
                 assert result is False
 
+    @log_call
     def test_workflow_interactive_timeout_uses_default(self):
         """Test full workflow: interactive -> timeout -> uses default."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -121,6 +130,7 @@ class TestFullConsentWorkflow:
                 # Should log timeout
                 assert mock_logger.warning.called or mock_logger.info.called
 
+    @log_call
     def test_workflow_interactive_keyboard_interrupt(self):
         """Test full workflow: interactive -> Ctrl+C -> returns False."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -144,6 +154,7 @@ class TestFullConsentWorkflow:
 class TestTerminalDetectionIntegration:
     """Test terminal detection integration with consent flow."""
 
+    @log_call
     def test_stdin_none_triggers_non_interactive_flow(self):
         """Test sys.stdin=None triggers non-interactive flow."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -158,6 +169,7 @@ class TestTerminalDetectionIntegration:
             # Should use default without prompting
             assert result is True
 
+    @log_call
     def test_stdin_no_isatty_triggers_non_interactive_flow(self):
         """Test sys.stdin without isatty() triggers non-interactive flow."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -172,6 +184,7 @@ class TestTerminalDetectionIntegration:
 
             assert result is False
 
+    @log_call
     def test_stdin_isatty_exception_triggers_non_interactive_flow(self):
         """Test exception from isatty() triggers non-interactive flow."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -192,6 +205,7 @@ class TestTerminalDetectionIntegration:
 class TestResponseParsingIntegration:
     """Test response parsing integration with consent flow."""
 
+    @log_call
     def test_various_yes_responses_all_grant_consent(self):
         """Test various 'yes' formats all grant consent."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -211,6 +225,7 @@ class TestResponseParsingIntegration:
 
                     assert result is True, f"Expected True for response '{response}'"
 
+    @log_call
     def test_various_no_responses_all_deny_consent(self):
         """Test various 'no' formats all deny consent."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -230,6 +245,7 @@ class TestResponseParsingIntegration:
 
                     assert result is False, f"Expected False for response '{response}'"
 
+    @log_call
     def test_invalid_responses_use_default(self):
         """Test invalid responses fall back to default."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -271,6 +287,7 @@ class TestResponseParsingIntegration:
 class TestConfigDisplayIntegration:
     """Test config display integration with consent flow."""
 
+    @log_call
     def test_displays_system_ram_when_available(self):
         """Test displays system RAM in prompt when available."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -290,6 +307,7 @@ class TestConfigDisplayIntegration:
                     print_calls = " ".join(str(call) for call in mock_print.call_args_list)
                     assert "32" in print_calls
 
+    @log_call
     def test_displays_current_and_recommended_limits(self):
         """Test displays both current and recommended limits."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -309,6 +327,7 @@ class TestConfigDisplayIntegration:
                     assert "4096" in print_calls
                     assert "8192" in print_calls
 
+    @log_call
     def test_displays_timeout_information(self):
         """Test displays timeout information in prompt."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -330,6 +349,7 @@ class TestConfigDisplayIntegration:
                         "timeout" in print_calls or "45" in print_calls or "seconds" in print_calls
                     )
 
+    @log_call
     def test_displays_default_response_indication(self):
         """Test displays which response is the default."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -355,6 +375,7 @@ class TestConfigDisplayIntegration:
 class TestLoggingIntegration:
     """Test logging integration with consent flow."""
 
+    @log_call
     def test_logs_non_interactive_mode_detection(self):
         """Test logs when non-interactive mode detected."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -370,6 +391,7 @@ class TestLoggingIntegration:
             # Should log non-interactive detection
             assert mock_logger.info.called or mock_logger.warning.called or mock_logger.debug.called
 
+    @log_call
     def test_logs_timeout_occurrence(self):
         """Test logs when timeout occurs."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -388,6 +410,7 @@ class TestLoggingIntegration:
                 # Should log timeout
                 assert mock_logger.warning.called
 
+    @log_call
     def test_logs_user_response(self):
         """Test logs user's response."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -406,6 +429,7 @@ class TestLoggingIntegration:
                 # Should log user's decision
                 assert mock_logger.info.called or mock_logger.debug.called
 
+    @log_call
     def test_logs_keyboard_interrupt(self):
         """Test logs when KeyboardInterrupt occurs."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -430,6 +454,7 @@ class TestPlatformSpecificIntegration:
     """Test platform-specific integration scenarios."""
 
     @pytest.mark.skipif(platform.system() == "Windows", reason="Unix-specific test")
+    @log_call
     def test_unix_signal_based_timeout_integration(self):
         """Test Unix signal-based timeout integrates correctly."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -451,6 +476,7 @@ class TestPlatformSpecificIntegration:
                         assert mock_alarm.called
 
     @pytest.mark.skipif(platform.system() != "Windows", reason="Windows-specific test")
+    @log_call
     def test_windows_threading_based_timeout_integration(self):
         """Test Windows threading-based timeout integrates correctly."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -469,6 +495,7 @@ class TestPlatformSpecificIntegration:
 class TestErrorRecoveryIntegration:
     """Test error recovery in integrated scenarios."""
 
+    @log_call
     def test_recovers_from_input_exception(self):
         """Test recovers gracefully from input() exception."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -487,6 +514,7 @@ class TestErrorRecoveryIntegration:
 
                 assert result is True
 
+    @log_call
     def test_recovers_from_print_exception(self):
         """Test recovers gracefully from print() exception."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -506,6 +534,7 @@ class TestErrorRecoveryIntegration:
                     # Should still get result even if display failed
                     assert result is True
 
+    @log_call
     def test_handles_malformed_config_gracefully(self):
         """Test handles malformed config dict gracefully."""
         from amplihack.launcher.memory_config import prompt_user_consent

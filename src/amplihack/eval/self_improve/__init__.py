@@ -16,6 +16,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from amplihack.utils.logging_utils import log_call
+
 from .error_analyzer import ErrorAnalysis, analyze_eval_results
 from .patch_proposer import PatchHistory, PatchProposal, propose_patch
 from .reviewer_voting import (
@@ -37,6 +39,7 @@ if TYPE_CHECKING:
     )
 
 
+@log_call
 def __getattr__(name: str):
     """Lazy imports for runner module to avoid circular import warnings."""
     _runner_names = {

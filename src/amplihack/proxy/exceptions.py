@@ -6,11 +6,14 @@ the proxy modules.
 
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 
 # Phase 2: Tool-Specific Exception Types
 class ToolCallError(Exception):
     """Base exception for tool call errors"""
 
+    @log_call
     def __init__(self, message: str, tool_name: str | None = None, retry_count: int = 0):
         super().__init__(message)
         self.tool_name = tool_name
@@ -20,6 +23,7 @@ class ToolCallError(Exception):
 class ToolValidationError(ToolCallError):
     """Exception for tool schema validation errors"""
 
+    @log_call
     def __init__(
         self,
         message: str,
@@ -33,6 +37,7 @@ class ToolValidationError(ToolCallError):
 class ToolTimeoutError(ToolCallError):
     """Exception for tool call timeouts"""
 
+    @log_call
     def __init__(
         self, message: str, tool_name: str | None = None, timeout_seconds: int | None = None
     ):
@@ -43,6 +48,7 @@ class ToolTimeoutError(ToolCallError):
 class ToolStreamingError(ToolCallError):
     """Exception for tool streaming errors"""
 
+    @log_call
     def __init__(
         self,
         message: str,
@@ -56,6 +62,7 @@ class ToolStreamingError(ToolCallError):
 class ConversationStateError(Exception):
     """Exception for conversation state management errors"""
 
+    @log_call
     def __init__(self, message: str, state: str | None = None):
         super().__init__(message)
         self.state = state
@@ -65,6 +72,7 @@ class ConversationStateError(Exception):
 class AzureAPIError(Exception):
     """Base exception for Azure API errors"""
 
+    @log_call
     def __init__(
         self,
         message: str,
@@ -83,6 +91,7 @@ class AzureAPIError(Exception):
 class AzureTransientError(AzureAPIError):
     """Exception for transient Azure errors that should be retried"""
 
+    @log_call
     def __init__(self, message: str, status_code: int | None = None, retry_count: int = 0):
         super().__init__(message, status_code, "transient", retry_count, is_retryable=True)
 
@@ -90,6 +99,7 @@ class AzureTransientError(AzureAPIError):
 class AzureAuthenticationError(AzureAPIError):
     """Exception for Azure authentication/authorization errors"""
 
+    @log_call
     def __init__(self, message: str, status_code: int | None = None):
         super().__init__(message, status_code, "authentication", is_retryable=False)
 
@@ -97,6 +107,7 @@ class AzureAuthenticationError(AzureAPIError):
 class AzureRateLimitError(AzureAPIError):
     """Exception for Azure rate limiting errors"""
 
+    @log_call
     def __init__(self, message: str, retry_after: int | None = None, retry_count: int = 0):
         super().__init__(message, 429, "rate_limit", retry_count, is_retryable=True)
         self.retry_after = retry_after
@@ -105,6 +116,7 @@ class AzureRateLimitError(AzureAPIError):
 class AzureConfigurationError(AzureAPIError):
     """Exception for Azure configuration/deployment errors"""
 
+    @log_call
     def __init__(self, message: str, status_code: int | None = None):
         super().__init__(message, status_code, "configuration", is_retryable=False)
 
@@ -112,6 +124,7 @@ class AzureConfigurationError(AzureAPIError):
 class AzureFallbackError(AzureAPIError):
     """Exception indicating Azure fallback was triggered"""
 
+    @log_call
     def __init__(self, message: str, original_error: Exception | None = None):
         super().__init__(message, error_type="fallback", is_retryable=False)
         self.original_error = original_error

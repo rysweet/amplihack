@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 
 class ClaudeDirectoryDetector:
     """Detects .claude directories in project hierarchy with intelligent caching.
@@ -25,11 +27,13 @@ class ClaudeDirectoryDetector:
         concurrent use or add external synchronization.
     """
 
+    @log_call
     def __init__(self):
         """Initialize detector with caching support."""
         self._cache = {}
         self._cache_max_size = 100  # Prevent unlimited cache growth
 
+    @log_call
     def find_claude_directory(self, start_path: Path | None = None) -> Path | None:
         """Find .claude directory in current or parent directories with caching.
 
@@ -67,6 +71,7 @@ class ClaudeDirectoryDetector:
         self._cache[cache_key] = result
         return result
 
+    @log_call
     def has_claude_directory(self, path: Path | None = None) -> bool:
         """Check if a .claude directory exists in the hierarchy.
 
@@ -79,6 +84,7 @@ class ClaudeDirectoryDetector:
         return self.find_claude_directory(path) is not None
 
     @staticmethod
+    @log_call
     def get_project_root(claude_dir: Path) -> Path:
         """Get the project root directory containing the .claude directory.
 
@@ -90,6 +96,7 @@ class ClaudeDirectoryDetector:
         """
         return claude_dir.parent
 
+    @log_call
     def invalidate_cache(self) -> None:
         """Invalidate all cached directory detection results.
 
@@ -98,6 +105,7 @@ class ClaudeDirectoryDetector:
         """
         self._cache.clear()
 
+    @log_call
     def invalidate_cache_entry(self, start_path: Path) -> None:
         """Invalidate a specific cache entry.
 
@@ -107,6 +115,7 @@ class ClaudeDirectoryDetector:
         cache_key = str(start_path.resolve())
         self._cache.pop(cache_key, None)
 
+    @log_call
     def _evict_oldest_cache_entries(self) -> None:
         """Evict oldest cache entries when cache is full.
 
@@ -119,6 +128,7 @@ class ClaudeDirectoryDetector:
         for key in keys_to_remove:
             self._cache.pop(key, None)
 
+    @log_call
     def get_cache_stats(self) -> dict:
         """Get cache statistics for debugging and monitoring.
 

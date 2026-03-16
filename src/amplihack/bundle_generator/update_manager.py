@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 from .exceptions import BundleGeneratorError
 
 
@@ -35,6 +37,7 @@ class UpdateResult:
 class UpdateManager:
     """Manages bundle updates from upstream framework."""
 
+    @log_call
     def __init__(self, framework_repo_path: Path | None = None):
         """Initialize update manager.
 
@@ -48,6 +51,7 @@ class UpdateManager:
         else:
             self.framework_repo = framework_repo_path
 
+    @log_call
     def check_for_updates(self, bundle_path: Path) -> UpdateInfo:
         """Check if updates are available for bundle.
 
@@ -97,6 +101,7 @@ class UpdateManager:
             changes=changes,
         )
 
+    @log_call
     def update_bundle(
         self, bundle_path: Path, preserve_edits: bool = True, backup: bool = True
     ) -> UpdateResult:
@@ -165,6 +170,7 @@ class UpdateManager:
                 success=False, updated_files=[], preserved_files=[], conflicts=[], error=str(e)
             )
 
+    @log_call
     def detect_customizations(self, bundle_path: Path) -> dict[str, bool]:
         """Detect which files have been customized by user.
 
@@ -183,6 +189,7 @@ class UpdateManager:
 
         return {file_path: (file_path in customized_files) for file_path in checksums.keys()}
 
+    @log_call
     def _get_framework_version(self) -> str:
         """Get current framework version from git."""
         result = subprocess.run(
@@ -199,6 +206,7 @@ class UpdateManager:
 
         return result.stdout.strip()[:12]  # Short hash
 
+    @log_call
     def _get_changelog(self, old_version: str, new_version: str) -> list[str]:
         """Get changelog between versions."""
         result = subprocess.run(
@@ -215,6 +223,7 @@ class UpdateManager:
 
         return result.stdout.strip().split("\n")[:10]  # Limit to 10 entries
 
+    @log_call
     def _detect_customizations(self, bundle_path: Path, checksums: dict[str, str]) -> set:
         """Detect files that have been modified from original."""
         customized = set()
@@ -232,6 +241,7 @@ class UpdateManager:
 
         return customized
 
+    @log_call
     def _compute_checksum(self, file_path: Path) -> str:
         """Compute SHA256 checksum of file."""
         sha256 = hashlib.sha256()
@@ -242,6 +252,7 @@ class UpdateManager:
 
         return f"sha256:{sha256.hexdigest()}"
 
+    @log_call
     def _create_backup(self, bundle_path: Path) -> Path:
         """Create backup of bundle before updating."""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

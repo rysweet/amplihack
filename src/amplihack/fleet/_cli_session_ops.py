@@ -28,6 +28,7 @@ from amplihack.fleet._cli_formatters import (
     format_advance_report,
     format_scout_report,
 )
+from amplihack.fleet._cli_scout_advance import _parse_session_target
 from amplihack.fleet._session_lifecycle import (
     FleetConfig,
     FleetSession,
@@ -38,7 +39,7 @@ from amplihack.fleet._session_lifecycle import (
     start_fleet_session,
     stop_fleet_session,
 )
-from amplihack.fleet._cli_scout_advance import _parse_session_target
+from amplihack.utils.logging_utils import log_call
 
 __all__ = [
     "register_session_ops",
@@ -58,6 +59,7 @@ __all__ = [
 ]
 
 
+@log_call
 def register_session_ops(fleet_cli: click.Group) -> None:
     """Register session operation commands (watch, snapshot, adopt, observe, auth).
 
@@ -74,6 +76,7 @@ def register_session_ops(fleet_cli: click.Group) -> None:
     @click.argument("vm_name", callback=_cmd._validate_vm_name_cli)
     @click.argument("session_name")
     @click.option("--lines", default=30, help="Number of lines to capture")
+    @log_call
     def watch(vm_name, session_name, lines):
         """Live snapshot of a remote tmux session.
 
@@ -109,6 +112,7 @@ def register_session_ops(fleet_cli: click.Group) -> None:
     # ------------------------------------------------------------------
 
     @fleet_cli.command("snapshot")
+    @log_call
     def snapshot():
         """Point-in-time capture of all managed sessions."""
         state = _cmd.FleetState(azlin_path=_cmd._get_azlin())
@@ -142,6 +146,7 @@ def register_session_ops(fleet_cli: click.Group) -> None:
     @fleet_cli.command("adopt")
     @click.argument("vm_name", callback=_cmd._validate_vm_name_cli)
     @click.option("--sessions", multiple=True, help="Specific sessions to adopt (default: all)")
+    @log_call
     def adopt(vm_name, sessions):
         """Bring existing tmux sessions under fleet management.
 
@@ -190,6 +195,7 @@ def register_session_ops(fleet_cli: click.Group) -> None:
         default=("github", "azure", "claude"),
         help="Services to propagate (github, azure, claude)",
     )
+    @log_call
     def propagate_auth(vm_name, services):
         """Propagate authentication tokens to a VM."""
         # Use _cmd.AuthPropagator so tests can patch _cli_commands.AuthPropagator
@@ -215,6 +221,7 @@ def register_session_ops(fleet_cli: click.Group) -> None:
 
     @fleet_cli.command("observe")
     @click.argument("vm_name", callback=_cmd._validate_vm_name_cli)
+    @log_call
     def observe(vm_name):
         """Observe agent sessions on a VM."""
         state = _cmd.FleetState(azlin_path=_cmd._get_azlin())

@@ -5,6 +5,8 @@ import re
 from pathlib import Path
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 
 class SettingsGenerator:
     """Generates and merges settings for Claude Code plugins.
@@ -18,6 +20,7 @@ class SettingsGenerator:
     # Plugin name pattern (lowercase letters, numbers, hyphens)
     NAME_PATTERN = re.compile(r"^[a-z0-9-]+$")
 
+    @log_call
     def generate(
         self, plugin_manifest: dict[str, Any], user_settings: dict[str, Any] | None = None
     ) -> dict[str, Any]:
@@ -108,6 +111,7 @@ class SettingsGenerator:
 
         return settings
 
+    @log_call
     def merge_settings(self, base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:
         """Deep merge two settings dictionaries.
 
@@ -140,6 +144,7 @@ class SettingsGenerator:
 
         return merged
 
+    @log_call
     def write_settings(self, settings: dict[str, Any], target_path: Path) -> bool:
         """Write settings to JSON file.
 
@@ -165,6 +170,7 @@ class SettingsGenerator:
         except (PermissionError, OSError, TypeError):
             return False
 
+    @log_call
     def _check_circular_reference(self, data: Any, seen: set | None = None) -> None:
         """Check for circular references in data structure.
 
@@ -201,6 +207,7 @@ class SettingsGenerator:
             for item in data:
                 self._check_circular_reference(item, branch_seen)
 
+    @log_call
     def _resolve_paths_in_dict(self, data: dict[str, Any]) -> dict[str, Any]:
         """Resolve relative paths in dictionary to absolute paths.
 
@@ -229,6 +236,7 @@ class SettingsGenerator:
 
         return resolved
 
+    @log_call
     def _is_valid_url(self, url: str) -> bool:
         """Check if URL is valid.
 
@@ -241,6 +249,7 @@ class SettingsGenerator:
         # Simple URL validation - must start with http:// or https://
         return url.startswith("http://") or url.startswith("https://")
 
+    @log_call
     def _is_valid_marketplace_name(self, name: str) -> bool:
         """Check if marketplace name is valid.
 
@@ -253,6 +262,7 @@ class SettingsGenerator:
         # Use same pattern as plugin names
         return bool(self.NAME_PATTERN.match(name))
 
+    @log_call
     def _is_valid_github_url(self, url: str) -> bool:
         """Check if URL is a valid GitHub repository URL.
 

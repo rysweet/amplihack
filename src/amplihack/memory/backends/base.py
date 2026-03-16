@@ -16,6 +16,8 @@ Public API:
 from dataclasses import dataclass
 from typing import Any, Protocol
 
+from amplihack.utils.logging_utils import log_call
+
 from ..models import MemoryEntry, MemoryQuery, SessionInfo
 
 
@@ -46,6 +48,7 @@ class MemoryBackend(Protocol):
     - delete_memory: <100ms
     """
 
+    @log_call
     def get_capabilities(self) -> BackendCapabilities:
         """Get backend capabilities.
 
@@ -54,6 +57,7 @@ class MemoryBackend(Protocol):
         """
         ...
 
+    @log_call
     async def initialize(self) -> None:
         """Initialize backend (create schema, indexes, etc).
 
@@ -62,6 +66,7 @@ class MemoryBackend(Protocol):
         """
         ...
 
+    @log_call
     async def store_memory(self, memory: MemoryEntry) -> bool:
         """Store a memory entry.
 
@@ -75,6 +80,7 @@ class MemoryBackend(Protocol):
         """
         ...
 
+    @log_call
     async def retrieve_memories(self, query: MemoryQuery) -> list[MemoryEntry]:
         """Retrieve memories matching the query.
 
@@ -88,6 +94,7 @@ class MemoryBackend(Protocol):
         """
         ...
 
+    @log_call
     async def get_memory_by_id(self, memory_id: str) -> MemoryEntry | None:
         """Get a specific memory by ID.
 
@@ -101,6 +108,7 @@ class MemoryBackend(Protocol):
         """
         ...
 
+    @log_call
     async def delete_memory(self, memory_id: str) -> bool:
         """Delete a memory entry.
 
@@ -114,6 +122,7 @@ class MemoryBackend(Protocol):
         """
         ...
 
+    @log_call
     async def cleanup_expired(self) -> int:
         """Remove expired memory entries.
 
@@ -124,6 +133,7 @@ class MemoryBackend(Protocol):
         """
         ...
 
+    @log_call
     async def get_session_info(self, session_id: str) -> SessionInfo | None:
         """Get information about a session.
 
@@ -137,6 +147,7 @@ class MemoryBackend(Protocol):
         """
         ...
 
+    @log_call
     async def list_sessions(self, limit: int | None = None) -> list[SessionInfo]:
         """List all sessions ordered by last accessed.
 
@@ -150,6 +161,7 @@ class MemoryBackend(Protocol):
         """
         ...
 
+    @log_call
     async def get_stats(self) -> dict[str, Any]:
         """Get database statistics.
 
@@ -160,6 +172,7 @@ class MemoryBackend(Protocol):
         """
         ...
 
+    @log_call
     async def close(self) -> None:
         """Close backend connection and cleanup resources.
 

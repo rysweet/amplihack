@@ -8,9 +8,12 @@ import importlib.util
 import logging
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 logger = logging.getLogger(__name__)
 
 
+@log_call
 def execute_stop_hook() -> None:
     """Execute the stop hook.
 
@@ -54,6 +57,7 @@ def execute_stop_hook() -> None:
         logger.warning(f"Failed to execute stop hook: {e}")
 
 
+@log_call
 def _find_stop_hook() -> Path | None:
     """Find the stop.py hook file.
 

@@ -5,9 +5,12 @@ Keeps prompts separate from code so they can be edited without touching Python.
 
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 _PROMPTS_DIR = Path(__file__).parent
 
 
+@log_call
 def load_prompt(name: str) -> str:
     """Load a prompt template from the prompts directory.
 

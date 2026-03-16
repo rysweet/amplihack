@@ -4,6 +4,8 @@ import uuid
 
 import pytest
 
+from amplihack.utils.logging_utils import log_call
+
 from ..models import (
     ExecutionPlan,
     GenerationMetrics,
@@ -17,6 +19,7 @@ from ..models import (
 class TestGoalDefinition:
     """Tests for GoalDefinition model."""
 
+    @log_call
     def test_valid_goal_definition(self):
         """Test creating valid goal definition."""
         goal_def = GoalDefinition(
@@ -34,6 +37,7 @@ class TestGoalDefinition:
         assert len(goal_def.constraints) == 1
         assert len(goal_def.success_criteria) == 1
 
+    @log_call
     def test_empty_prompt_raises_error(self):
         """Test that empty prompt raises ValueError."""
         with pytest.raises(ValueError, match="Raw prompt cannot be empty"):
@@ -43,6 +47,7 @@ class TestGoalDefinition:
                 domain="testing",
             )
 
+    @log_call
     def test_empty_goal_raises_error(self):
         """Test that empty goal raises ValueError."""
         with pytest.raises(ValueError, match="Goal must be specified"):
@@ -52,6 +57,7 @@ class TestGoalDefinition:
                 domain="testing",
             )
 
+    @log_call
     def test_empty_domain_raises_error(self):
         """Test that empty domain raises ValueError."""
         with pytest.raises(ValueError, match="Domain must be specified"):
@@ -65,6 +71,7 @@ class TestGoalDefinition:
 class TestPlanPhase:
     """Tests for PlanPhase model."""
 
+    @log_call
     def test_valid_phase(self):
         """Test creating valid plan phase."""
         phase = PlanPhase(
@@ -80,6 +87,7 @@ class TestPlanPhase:
         assert len(phase.required_capabilities) == 2
         assert phase.parallel_safe is True
 
+    @log_call
     def test_empty_name_raises_error(self):
         """Test that empty name raises ValueError."""
         with pytest.raises(ValueError, match="Phase must have a name"):
@@ -90,6 +98,7 @@ class TestPlanPhase:
                 estimated_duration="5 minutes",
             )
 
+    @log_call
     def test_no_capabilities_raises_error(self):
         """Test that missing capabilities raises ValueError."""
         with pytest.raises(ValueError, match="must specify required capabilities"):
@@ -104,6 +113,7 @@ class TestPlanPhase:
 class TestExecutionPlan:
     """Tests for ExecutionPlan model."""
 
+    @log_call
     def test_valid_execution_plan(self):
         """Test creating valid execution plan."""
         goal_id = uuid.uuid4()
@@ -133,6 +143,7 @@ class TestExecutionPlan:
         assert len(plan.required_skills) == 2
         assert plan.goal_id == goal_id
 
+    @log_call
     def test_empty_phases_raises_error(self):
         """Test that empty phases list raises ValueError."""
         with pytest.raises(ValueError, match="Plan must have at least one phase"):
@@ -142,6 +153,7 @@ class TestExecutionPlan:
                 total_estimated_duration="0 minutes",
             )
 
+    @log_call
     def test_too_many_phases_raises_error(self):
         """Test that too many phases raises ValueError."""
         phases = [
@@ -165,6 +177,7 @@ class TestExecutionPlan:
 class TestSkillDefinition:
     """Tests for SkillDefinition model."""
 
+    @log_call
     def test_valid_skill(self):
         """Test creating valid skill definition."""
         from pathlib import Path
@@ -182,6 +195,7 @@ class TestSkillDefinition:
         assert len(skill.capabilities) == 2
         assert skill.match_score == 0.85
 
+    @log_call
     def test_empty_name_raises_error(self):
         """Test that empty name raises ValueError."""
         from pathlib import Path
@@ -195,6 +209,7 @@ class TestSkillDefinition:
                 content="Content",
             )
 
+    @log_call
     def test_invalid_match_score_raises_error(self):
         """Test that invalid match score raises ValueError."""
         from pathlib import Path
@@ -213,6 +228,7 @@ class TestSkillDefinition:
 class TestGoalAgentBundle:
     """Tests for GoalAgentBundle model."""
 
+    @log_call
     def test_valid_bundle(self):
         """Test creating valid bundle."""
         bundle = GoalAgentBundle(
@@ -225,21 +241,25 @@ class TestGoalAgentBundle:
         assert bundle.skill_count == 0
         assert not bundle.is_complete
 
+    @log_call
     def test_empty_name_raises_error(self):
         """Test that empty name raises ValueError."""
         with pytest.raises(ValueError, match="Bundle must have a name"):
             GoalAgentBundle(name="")
 
+    @log_call
     def test_name_too_short_raises_error(self):
         """Test that short name raises ValueError."""
         with pytest.raises(ValueError, match="Bundle name must be 3-50 characters"):
             GoalAgentBundle(name="ab")
 
+    @log_call
     def test_name_too_long_raises_error(self):
         """Test that long name raises ValueError."""
         with pytest.raises(ValueError, match="Bundle name must be 3-50 characters"):
             GoalAgentBundle(name="a" * 51)
 
+    @log_call
     def test_is_complete_property(self):
         """Test is_complete property."""
         from pathlib import Path
@@ -285,6 +305,7 @@ class TestGoalAgentBundle:
 class TestGenerationMetrics:
     """Tests for GenerationMetrics model."""
 
+    @log_call
     def test_metrics_initialization(self):
         """Test metrics initialization."""
         metrics = GenerationMetrics(
@@ -301,6 +322,7 @@ class TestGenerationMetrics:
         assert metrics.skill_count == 3
         assert metrics.phase_count == 4
 
+    @log_call
     def test_average_phase_time(self):
         """Test average phase time calculation."""
         metrics = GenerationMetrics(
@@ -311,6 +333,7 @@ class TestGenerationMetrics:
 
         assert metrics.average_phase_time == 15.0
 
+    @log_call
     def test_average_phase_time_zero_phases(self):
         """Test average phase time with zero phases."""
         metrics = GenerationMetrics(

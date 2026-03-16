@@ -1,5 +1,7 @@
+from amplihack.utils.logging_utils import log_call
 class RelationshipMarker:
     @staticmethod
+    @log_call
     def replace_all(nodes_as_objects: list):
         node_names = RelationshipMarker.__get_all_node_names(nodes_as_objects)
         for node in nodes_as_objects:
@@ -16,5 +18,6 @@ class RelationshipMarker:
                 )
 
     @staticmethod
+    @log_call
     def __get_all_node_names(nodes_as_objects: list) -> list:
         return [node["attributes"]["name"] for node in nodes_as_objects]

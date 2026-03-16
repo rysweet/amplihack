@@ -8,6 +8,7 @@ from amplihack.vendor.blarify.repositories.graph_db_manager import AbstractDbMan
 from langchain_core.callbacks import CallbackManagerForToolRun
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
+from amplihack.utils.logging_utils import log_call
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +37,7 @@ class GetCommitByIdTool(BaseTool):
 
     db_manager: AbstractDbManager = Field(description="Database manager for graph operations")
 
+    @log_call
     def __init__(
         self,
         db_manager: Any,
@@ -52,6 +54,7 @@ class GetCommitByIdTool(BaseTool):
             handle_validation_error=handle_validation_error,
         )
 
+    @log_call
     def _run(
         self,
         commit_sha: str,
@@ -79,6 +82,7 @@ class GetCommitByIdTool(BaseTool):
             logger.error(f"Error getting commit {commit_sha}: {e}")
             return f"Error: Failed to get commit information - {e!s}"
 
+    @log_call
     def _get_commit_info(self, commit_sha: str) -> dict[str, Any] | None:
         """Get comprehensive commit information from the database.
 
@@ -125,6 +129,7 @@ class GetCommitByIdTool(BaseTool):
             return results[0]
         return None
 
+    @log_call
     def _format_commit_output(self, commit_info: dict[str, Any]) -> str:
         """Format commit information for display.
 

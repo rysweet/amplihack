@@ -9,7 +9,6 @@ Testing pyramid:
 from __future__ import annotations
 
 import json
-import textwrap
 from collections import Counter
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -23,11 +22,12 @@ from amplihack.fleet.transcript_analyzer import (
     gather_local_transcripts,
     gather_remote_transcripts,
 )
-
+from amplihack.utils.logging_utils import log_call
 
 # ── Fixtures ─────────────────────────────────────────────────────────
 
 
+@log_call
 def _make_jsonl(lines: list[dict]) -> str:
     """Serialize a list of dicts into JSONL text."""
     return "\n".join(json.dumps(obj) for obj in lines) + "\n"
@@ -117,6 +117,7 @@ SAMPLE_SYSTEM = {"type": "system", "data": "init"}
 
 
 class TestAnalysisReport:
+    @log_call
     def test_defaults(self):
         report = AnalysisReport()
         assert report.total_transcripts == 0
@@ -127,6 +128,7 @@ class TestAnalysisReport:
         assert isinstance(report.strategy_patterns, Counter)
         assert isinstance(report.workflow_compliance, dict)
 
+    @log_call
     def test_to_dict(self):
         report = AnalysisReport(total_transcripts=5, total_messages=100)
         report.tool_usage["Bash"] = 42
@@ -141,6 +143,7 @@ class TestAnalysisReport:
 class TestJSONLParsing:
     """Test that individual JSONL entries are parsed correctly."""
 
+    @log_call
     def test_tool_use_extraction(self, tmp_path: Path):
         jsonl_file = tmp_path / "session.jsonl"
         jsonl_file.write_text(_make_jsonl([SAMPLE_ASSISTANT_TOOL_USE]))
@@ -152,6 +155,7 @@ class TestJSONLParsing:
         assert report.tool_usage["Read"] == 1
         assert report.total_messages == 1
 
+    @log_call
     def test_skill_invocation_extraction(self, tmp_path: Path):
         jsonl_file = tmp_path / "session.jsonl"
         jsonl_file.write_text(_make_jsonl([SAMPLE_ASSISTANT_SKILL]))
@@ -165,6 +169,7 @@ class TestJSONLParsing:
         assert report.skill_invocations["mermaid-diagram-generator"] >= 1
         assert report.skill_invocations["transcript-analyzer"] >= 1
 
+    @log_call
     def test_agent_type_extraction(self, tmp_path: Path):
         jsonl_file = tmp_path / "session.jsonl"
         jsonl_file.write_text(_make_jsonl([SAMPLE_ASSISTANT_AGENT]))
@@ -174,11 +179,10 @@ class TestJSONLParsing:
 
         assert report.agent_types["architect"] >= 1
 
+    @log_call
     def test_strategy_pattern_extraction(self, tmp_path: Path):
         jsonl_file = tmp_path / "session.jsonl"
-        jsonl_file.write_text(
-            _make_jsonl([SAMPLE_ASSISTANT_STRATEGY, SAMPLE_USER])
-        )
+        jsonl_file.write_text(_make_jsonl([SAMPLE_ASSISTANT_STRATEGY, SAMPLE_USER]))
 
         analyzer = TranscriptAnalyzer()
         report = analyzer.analyze([jsonl_file])
@@ -187,6 +191,7 @@ class TestJSONLParsing:
         assert report.strategy_patterns["Workflow Compliance Check"] >= 1
         assert report.strategy_patterns["CI Diagnostic Recovery"] >= 1
 
+    @log_call
     def test_workflow_step_extraction(self, tmp_path: Path):
         jsonl_file = tmp_path / "session.jsonl"
         jsonl_file.write_text(_make_jsonl([SAMPLE_ASSISTANT_WORKFLOW_STEP]))
@@ -196,6 +201,7 @@ class TestJSONLParsing:
 
         assert "step_7" in report.workflow_compliance
 
+    @log_call
     def test_user_message_string_content(self, tmp_path: Path):
         jsonl_file = tmp_path / "session.jsonl"
         jsonl_file.write_text(_make_jsonl([SAMPLE_USER]))
@@ -205,6 +211,7 @@ class TestJSONLParsing:
         assert report.total_messages == 1
         assert report.strategy_patterns["CI Diagnostic Recovery"] >= 1
 
+    @log_call
     def test_user_message_list_content(self, tmp_path: Path):
         jsonl_file = tmp_path / "session.jsonl"
         jsonl_file.write_text(_make_jsonl([SAMPLE_USER_LIST_CONTENT]))
@@ -213,11 +220,10 @@ class TestJSONLParsing:
         report = analyzer.analyze([jsonl_file])
         assert report.strategy_patterns["Quality Audit Cycle"] >= 1
 
+    @log_call
     def test_non_analyzed_types_ignored(self, tmp_path: Path):
         jsonl_file = tmp_path / "session.jsonl"
-        jsonl_file.write_text(
-            _make_jsonl([SAMPLE_PROGRESS, SAMPLE_SYSTEM])
-        )
+        jsonl_file.write_text(_make_jsonl([SAMPLE_PROGRESS, SAMPLE_SYSTEM]))
 
         analyzer = TranscriptAnalyzer()
         report = analyzer.analyze([jsonl_file])
@@ -225,9 +231,12 @@ class TestJSONLParsing:
         assert report.total_messages == 2
         assert len(report.tool_usage) == 0
 
+    @log_call
     def test_malformed_json_skipped(self, tmp_path: Path):
         jsonl_file = tmp_path / "session.jsonl"
-        jsonl_file.write_text("not json\n{bad json\n" + json.dumps(SAMPLE_ASSISTANT_TOOL_USE) + "\n")
+        jsonl_file.write_text(
+            "not json\n{bad json\n" + json.dumps(SAMPLE_ASSISTANT_TOOL_USE) + "\n"
+        )
 
         analyzer = TranscriptAnalyzer()
         report = analyzer.analyze([jsonl_file])
@@ -236,6 +245,7 @@ class TestJSONLParsing:
         assert report.total_messages == 1
         assert report.tool_usage["Bash"] == 1
 
+    @log_call
     def test_empty_file(self, tmp_path: Path):
         jsonl_file = tmp_path / "session.jsonl"
         jsonl_file.write_text("")
@@ -244,6 +254,7 @@ class TestJSONLParsing:
         report = analyzer.analyze([jsonl_file])
         assert report.total_messages == 0
 
+    @log_call
     def test_unreadable_file_skipped(self, tmp_path: Path):
         bad_path = tmp_path / "nonexistent.jsonl"
         analyzer = TranscriptAnalyzer()
@@ -253,6 +264,7 @@ class TestJSONLParsing:
 
 
 class TestFormatReport:
+    @log_call
     def test_basic_report_structure(self):
         report = AnalysisReport(total_transcripts=3, total_messages=150)
         report.tool_usage["Bash"] = 50
@@ -276,12 +288,14 @@ class TestFormatReport:
         assert "step_1" in text
         assert "100%" in text
 
+    @log_call
     def test_empty_report(self):
         report = AnalysisReport()
         text = format_report(report)
         assert "Transcript Analysis Report" in text
         assert "Transcripts analyzed: 0" in text
 
+    @log_call
     def test_report_method_requires_analyze(self):
         analyzer = TranscriptAnalyzer()
         with pytest.raises(RuntimeError, match="Call analyze"):
@@ -292,6 +306,7 @@ class TestFormatReport:
 
 
 class TestGatherLocal:
+    @log_call
     def test_gather_from_projects_dir(self, tmp_path: Path):
         projects = tmp_path / ".claude" / "projects" / "myproject"
         projects.mkdir(parents=True)
@@ -306,6 +321,7 @@ class TestGatherLocal:
         assert len(result) == 5
         assert all(p.suffix == ".jsonl" for p in result)
 
+    @log_call
     def test_gather_empty_dir(self, tmp_path: Path):
         projects = tmp_path / ".claude" / "projects"
         projects.mkdir(parents=True)
@@ -317,6 +333,7 @@ class TestGatherLocal:
             result = gather_local_transcripts()
         assert result == []
 
+    @log_call
     def test_gather_no_projects_dir(self, tmp_path: Path):
         with patch(
             "amplihack.fleet.transcript_analyzer.Path.home",
@@ -327,18 +344,23 @@ class TestGatherLocal:
 
 
 class TestGatherRemote:
+    @log_call
     def test_gather_remote_success(self):
         summary_json = json.dumps(
-            [{"file": "/home/user/.claude/projects/x/s.jsonl", "messages": 42, "tools": {"Bash": 10}}]
+            [
+                {
+                    "file": "/home/user/.claude/projects/x/s.jsonl",
+                    "messages": 42,
+                    "tools": {"Bash": 10},
+                }
+            ]
         )
         mock_result = MagicMock()
         mock_result.returncode = 0
         mock_result.stdout = summary_json
 
         with patch("subprocess.run", return_value=mock_result) as mock_run:
-            result = gather_remote_transcripts(
-                ["azlin1"], azlin_path="/usr/bin/azlin"
-            )
+            result = gather_remote_transcripts(["azlin1"], azlin_path="/usr/bin/azlin")
 
         assert "azlin1" in result
         assert len(result["azlin1"]) == 1
@@ -349,6 +371,7 @@ class TestGatherRemote:
         assert call_args[1] == "connect"
         assert call_args[2] == "azlin1"
 
+    @log_call
     def test_gather_remote_timeout(self):
         with patch(
             "subprocess.run",
@@ -357,6 +380,7 @@ class TestGatherRemote:
             result = gather_remote_transcripts(["azlin1"], azlin_path="azlin")
         assert result["azlin1"] == []
 
+    @log_call
     def test_gather_remote_bad_json(self):
         mock_result = MagicMock()
         mock_result.returncode = 0
@@ -366,6 +390,7 @@ class TestGatherRemote:
             result = gather_remote_transcripts(["azlin1"], azlin_path="azlin")
         assert result["azlin1"] == []
 
+    @log_call
     def test_gather_remote_nonzero_exit(self):
         mock_result = MagicMock()
         mock_result.returncode = 1
@@ -375,22 +400,20 @@ class TestGatherRemote:
             result = gather_remote_transcripts(["azlin1"], azlin_path="azlin")
         assert result["azlin1"] == []
 
+    @log_call
     def test_gather_remote_command_not_found(self):
         with patch("subprocess.run", side_effect=FileNotFoundError):
-            result = gather_remote_transcripts(
-                ["azlin1"], azlin_path="/nonexistent/azlin"
-            )
+            result = gather_remote_transcripts(["azlin1"], azlin_path="/nonexistent/azlin")
         assert result["azlin1"] == []
 
 
 class TestAnalyzeMultipleFiles:
+    @log_call
     def test_multiple_transcripts_aggregate(self, tmp_path: Path):
         f1 = tmp_path / "s1.jsonl"
         f2 = tmp_path / "s2.jsonl"
         f1.write_text(_make_jsonl([SAMPLE_ASSISTANT_TOOL_USE]))
-        f2.write_text(
-            _make_jsonl([SAMPLE_ASSISTANT_TOOL_USE, SAMPLE_ASSISTANT_SKILL])
-        )
+        f2.write_text(_make_jsonl([SAMPLE_ASSISTANT_TOOL_USE, SAMPLE_ASSISTANT_SKILL]))
 
         analyzer = TranscriptAnalyzer()
         report = analyzer.analyze([f1, f2])
@@ -405,6 +428,7 @@ class TestAnalyzeMultipleFiles:
 
 
 class TestEndToEnd:
+    @log_call
     def test_full_pipeline(self, tmp_path: Path):
         """Full gather-analyze-report pipeline with local files."""
         projects = tmp_path / ".claude" / "projects" / "test-project"
@@ -439,6 +463,7 @@ class TestEndToEnd:
         assert "Transcript Analysis Report" in text
         assert "Bash" in text
 
+    @log_call
     def test_strategy_dictionary_update(self, tmp_path: Path):
         """Test appending new patterns to strategy dictionary."""
         dict_path = tmp_path / "STRATEGY_DICTIONARY.md"
@@ -446,9 +471,7 @@ class TestEndToEnd:
 
         # Analyze a transcript with strategies
         jsonl_file = tmp_path / "session.jsonl"
-        jsonl_file.write_text(
-            _make_jsonl([SAMPLE_ASSISTANT_STRATEGY, SAMPLE_USER])
-        )
+        jsonl_file.write_text(_make_jsonl([SAMPLE_ASSISTANT_STRATEGY, SAMPLE_USER]))
 
         analyzer = TranscriptAnalyzer()
         analyzer.analyze([jsonl_file])
@@ -460,6 +483,7 @@ class TestEndToEnd:
         # CI Diagnostic Recovery and Workflow Compliance Check are new
         assert added >= 1
 
+    @log_call
     def test_strategy_dictionary_update_no_duplicates(self, tmp_path: Path):
         """All patterns already exist -- nothing appended."""
         dict_path = tmp_path / "STRATEGY_DICTIONARY.md"
@@ -468,15 +492,14 @@ class TestEndToEnd:
         )
 
         jsonl_file = tmp_path / "session.jsonl"
-        jsonl_file.write_text(
-            _make_jsonl([SAMPLE_ASSISTANT_STRATEGY, SAMPLE_USER])
-        )
+        jsonl_file.write_text(_make_jsonl([SAMPLE_ASSISTANT_STRATEGY, SAMPLE_USER]))
 
         analyzer = TranscriptAnalyzer()
         analyzer.analyze([jsonl_file])
         added = analyzer.update_strategy_dictionary(dict_path)
         assert added == 0
 
+    @log_call
     def test_update_strategy_requires_analyze(self, tmp_path: Path):
         analyzer = TranscriptAnalyzer()
         with pytest.raises(RuntimeError, match="Call analyze"):

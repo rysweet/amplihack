@@ -4,12 +4,17 @@ This module provides functionality to append new instructions to running auto mo
 Instructions are written to timestamped files in the session's append/ directory.
 """
 
+import logging
 import os
 import re
 import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+
+from amplihack.utils.logging_utils import log_call
+
+logger = logging.getLogger(__name__)
 
 
 class AppendError(Exception):
@@ -59,12 +64,14 @@ class AppendResult:
     timestamp: str
     message: str | None = None
 
+    @log_call
     def to_dict(self) -> dict:
         """Convert to dictionary representation.
 
         Returns:
             Dictionary with all result fields
         """
+        logger.debug("AppendResult.to_dict: called")
         return {
             "success": self.success,
             "filename": self.filename,
@@ -75,6 +82,7 @@ class AppendResult:
         }
 
 
+@log_call
 def _validate_instruction(instruction: str) -> None:
     """Validate instruction content for security and size.
 
@@ -84,6 +92,7 @@ def _validate_instruction(instruction: str) -> None:
     Raises:
         ValidationError: If validation fails
     """
+    logger.debug("_validate_instruction: called")
     # Check size
     instruction_bytes = instruction.encode("utf-8")
     if len(instruction_bytes) > MAX_INSTRUCTION_SIZE:
@@ -103,6 +112,7 @@ def _validate_instruction(instruction: str) -> None:
             )
 
 
+@log_call
 def _check_rate_limit(append_dir: Path) -> None:
     """Check if rate limit has been exceeded.
 
@@ -112,6 +122,7 @@ def _check_rate_limit(append_dir: Path) -> None:
     Raises:
         ValidationError: If rate limit exceeded
     """
+    logger.debug(f"_check_rate_limit: called with append_dir={append_dir!r}")
     # Check pending instructions count
     pending_count = len(list(append_dir.glob("*.md")))
     if pending_count >= MAX_PENDING_INSTRUCTIONS:
@@ -143,6 +154,7 @@ def _check_rate_limit(append_dir: Path) -> None:
         )
 
 
+@log_call
 def _find_workspace_root(start_dir: Path) -> Path | None:
     """Find workspace root by traversing up to find .claude directory.
 
@@ -152,6 +164,7 @@ def _find_workspace_root(start_dir: Path) -> Path | None:
     Returns:
         Path to workspace root, or None if not found
     """
+    logger.debug(f"_find_workspace_root: called with start_dir={start_dir!r}")
     current = start_dir.resolve()
 
     # Traverse up to find .claude directory
@@ -164,6 +177,7 @@ def _find_workspace_root(start_dir: Path) -> Path | None:
     return None
 
 
+@log_call
 def _find_active_session(workspace: Path, session_id: str | None = None) -> Path | None:
     """Find active auto mode session directory.
 
@@ -174,6 +188,9 @@ def _find_active_session(workspace: Path, session_id: str | None = None) -> Path
     Returns:
         Path to session directory, or None if not found
     """
+    logger.debug(
+        f"_find_active_session: called with workspace={workspace!r}, session_id={session_id!r}"
+    )
     logs_dir = workspace / ".claude" / "runtime" / "logs"
 
     if not logs_dir.exists():
@@ -199,6 +216,7 @@ def _find_active_session(workspace: Path, session_id: str | None = None) -> Path
     return None
 
 
+@log_call
 def append_instructions(instruction: str, session_id: str | None = None) -> AppendResult:
     """Append instruction to active auto mode session.
 
@@ -214,6 +232,7 @@ def append_instructions(instruction: str, session_id: str | None = None) -> Appe
         ValidationError: If instruction fails security validation or rate limit
         AppendError: If session not found or write fails
     """
+    logger.debug(f"append_instructions: called with session_id={session_id!r}")
     # Validate instruction
     if not instruction or not instruction.strip():
         raise ValueError("Instruction cannot be empty or whitespace-only")

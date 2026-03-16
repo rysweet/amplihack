@@ -24,6 +24,7 @@ from amplihack.vendor.blarify.graph.node import FileNode, Node, NodeFactory, Nod
 from amplihack.vendor.blarify.graph.relationship import RelationshipCreator
 from amplihack.vendor.blarify.logger import Logger
 from amplihack.vendor.blarify.project_file_explorer import ProjectFilesIterator
+from amplihack.utils.logging_utils import log_call
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,7 @@ class ProjectGraphCreator:
         ".java": JavaDefinitions,
     }
 
+    @log_call
     def __init__(
         self,
         root_path: str,
@@ -68,11 +70,13 @@ class ProjectGraphCreator:
 
         self.graph = Graph()
 
+    @log_call
     def build(self) -> Graph:
         self._create_code_hierarchy()
         self._create_relationships_from_references_for_files()
         return self.graph
 
+    @log_call
     def build_hierarchy_only(self) -> Graph:
         """
         Build the graph with only the code hierarchy (folders, files, class definitions, function definitions)
@@ -82,6 +86,7 @@ class ProjectGraphCreator:
         self._create_code_hierarchy()
         return self.graph
 
+    @log_call
     def _create_code_hierarchy(self):
         start_time = time.time()
 
@@ -92,6 +97,7 @@ class ProjectGraphCreator:
         execution_time = end_time - start_time
         logger.info(f"Execution time of create_code_hierarchy: {execution_time:.2f} seconds")
 
+    @log_call
     def _process_folder(self, folder: "Folder") -> None:
         folder_node = self._add_or_get_folder_node(folder)
         folder_nodes = self._create_subfolder_nodes(folder, folder_node)
@@ -102,6 +108,7 @@ class ProjectGraphCreator:
         files = folder.files
         self._process_files(files, parent_folder=folder_node)
 
+    @log_call
     def _add_or_get_folder_node(
         self, folder: "Folder", parent_folder: Optional["FolderNode"] = None
     ) -> "FolderNode":
@@ -113,6 +120,7 @@ class ProjectGraphCreator:
         self.graph.add_node(folder_node)
         return folder_node
 
+    @log_call
     def _create_subfolder_nodes(
         self, folder: "Folder", folder_node: "FolderNode"
     ) -> list["FolderNode"]:
@@ -123,10 +131,12 @@ class ProjectGraphCreator:
 
         return nodes
 
+    @log_call
     def _process_files(self, files: list["File"], parent_folder: "FolderNode") -> None:
         for file in files:
             self._process_file(file, parent_folder)
 
+    @log_call
     def _process_file(self, file: "File", parent_folder: "FolderNode") -> None:
         tree_sitter_helper = self._get_tree_sitter_for_file_extension(file.extension)
         self._try_initialize_directory(file)
@@ -142,21 +152,25 @@ class ProjectGraphCreator:
 
         parent_folder.relate_node_as_contain_relationship(file_node)
 
+    @log_call
     def _try_initialize_directory(self, file: "File") -> None:
         try:
             self.reference_query_helper.initialize_directory(file)
         except FileExtensionNotSupported:
             pass
 
+    @log_call
     def _get_tree_sitter_for_file_extension(self, file_extension: str) -> TreeSitterHelper:
         language = self._get_language_definition(file_extension=file_extension)
         return TreeSitterHelper(
             language_definitions=language, graph_environment=self.graph_environment
         )
 
+    @log_call
     def _get_language_definition(self, file_extension: str) -> type[LanguageDefinitions]:
         return self.languages.get(file_extension, FallbackDefinitions)
 
+    @log_call
     def _get_file_node_from_file_nodes(self, file_nodes: list["FileNode"]) -> "FileNode":
         # File node should always be the first node in the list
         for node in file_nodes:
@@ -165,6 +179,7 @@ class ProjectGraphCreator:
 
         raise ValueError("File node not found in file nodes")
 
+    @log_call
     def _create_file_nodes(
         self,
         file: "File",
@@ -176,6 +191,7 @@ class ProjectGraphCreator:
         )
         return [cast(FileNode, node) for node in document_symbols]
 
+    @log_call
     def _create_relationships_from_references_for_files(
         self, files_nodes: list[FileNode] | None = None
     ) -> None:
@@ -247,10 +263,12 @@ class ProjectGraphCreator:
         )
         logger.info(f"Created {len(references_relationships)} reference relationships")
 
+    @log_call
     def _log_if_multiple_of_x(self, index: int, x: int, text: str) -> None:
         if index % x == 0:
             Logger.log(text)
 
+    @log_call
     def _create_node_relationships_from_references(
         self,
         node: "Node",

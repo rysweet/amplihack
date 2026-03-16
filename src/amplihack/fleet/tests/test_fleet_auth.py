@@ -9,19 +9,23 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from amplihack.fleet.fleet_auth import AuthPropagator, AuthResult, GitHubIdentity
+from amplihack.utils.logging_utils import log_call
 
 
 class TestGitHubIdentity:
     """Unit tests for GitHubIdentity dataclass."""
 
+    @log_call
     def test_default_hostname(self):
         identity = GitHubIdentity(username="octocat")
         assert identity.hostname == "github.com"
 
+    @log_call
     def test_custom_hostname(self):
         identity = GitHubIdentity(username="admin", hostname="github.example.com")
         assert identity.hostname == "github.example.com"
 
+    @log_call
     def test_switch_command(self):
         identity = GitHubIdentity(username="octocat")
         cmd = identity.switch_command()
@@ -29,6 +33,7 @@ class TestGitHubIdentity:
         assert "--user" in cmd
         assert "octocat" in cmd
 
+    @log_call
     def test_switch_command_escapes_special_chars(self):
         identity = GitHubIdentity(username="user-with-dashes")
         cmd = identity.switch_command()
@@ -39,6 +44,7 @@ class TestAuthPropagatorVerify:
     """Unit tests for auth verification logic."""
 
     @patch("amplihack.fleet.fleet_auth.subprocess.run")
+    @log_call
     def test_verify_auth_success(self, mock_run):
         mock_run.return_value = MagicMock(returncode=0)
 
@@ -49,7 +55,9 @@ class TestAuthPropagatorVerify:
         assert results["azure"] is True
 
     @patch("amplihack.fleet.fleet_auth.subprocess.run")
+    @log_call
     def test_verify_auth_github_fails(self, mock_run):
+        @log_call
         def side_effect(*args, **kwargs):
             cmd = args[0] if args else kwargs.get("args", [])
             # Find the command being executed
@@ -70,6 +78,7 @@ class TestAuthPropagatorVerify:
         assert results["azure"] is True
 
     @patch("amplihack.fleet.fleet_auth.subprocess.run")
+    @log_call
     def test_verify_auth_timeout(self, mock_run):
         import subprocess
 
@@ -86,6 +95,7 @@ class TestAuthPropagatorIdentitySwitch:
     """Tests for multi-GitHub identity management."""
 
     @patch("amplihack.fleet.fleet_auth.subprocess.run")
+    @log_call
     def test_switch_identity_success(self, mock_run):
         mock_run.return_value = MagicMock(returncode=0, stdout="Switched", stderr="")
 
@@ -98,6 +108,7 @@ class TestAuthPropagatorIdentitySwitch:
         assert "octocat" in result.files_copied[0]
 
     @patch("amplihack.fleet.fleet_auth.subprocess.run")
+    @log_call
     def test_switch_identity_failure(self, mock_run):
         mock_run.return_value = MagicMock(
             returncode=1,
@@ -114,6 +125,7 @@ class TestAuthPropagatorIdentitySwitch:
         assert "failed" in result.error.lower()
 
     @patch("amplihack.fleet.fleet_auth.subprocess.run")
+    @log_call
     def test_list_identities(self, mock_run):
         mock_run.return_value = MagicMock(
             returncode=0,
@@ -126,6 +138,7 @@ class TestAuthPropagatorIdentitySwitch:
         assert identities == ["octocat", "other-user"]
 
     @patch("amplihack.fleet.fleet_auth.subprocess.run")
+    @log_call
     def test_list_identities_empty(self, mock_run):
         mock_run.return_value = MagicMock(returncode=1, stdout="")
 
@@ -139,6 +152,7 @@ class TestAuthPropagatorPropagation:
     """Tests for auth file propagation logic."""
 
     @patch("amplihack.fleet.fleet_auth.subprocess.run")
+    @log_call
     def test_propagate_unknown_service(self, mock_run):
         auth = AuthPropagator()
         results = auth.propagate_all("test-vm", services=["nonexistent"])
@@ -148,6 +162,7 @@ class TestAuthPropagatorPropagation:
         assert "Unknown service" in results[0].error
 
     @patch("amplihack.fleet.fleet_auth.subprocess.run")
+    @log_call
     def test_propagate_service_missing_source_files(self, mock_run):
         """When source files don't exist, propagation should handle gracefully."""
         mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
@@ -169,6 +184,7 @@ class TestPropagateAllBundled:
     """Tests for propagate_all_bundled tar bundle flow."""
 
     @patch("amplihack.fleet.fleet_auth.subprocess.run")
+    @log_call
     def test_bundled_no_auth_files(self, mock_run, tmp_path, monkeypatch):
         """When no auth files exist locally, return error."""
         # Make sure no auth files exist by patching Path.expanduser
@@ -182,6 +198,7 @@ class TestPropagateAllBundled:
         assert result.service == "all"
 
     @patch("amplihack.fleet.fleet_auth.subprocess.run")
+    @log_call
     def test_bundled_copy_failure(self, mock_run, tmp_path, monkeypatch):
         """When azlin cp fails, return error."""
         # Create a fake auth file
@@ -191,6 +208,7 @@ class TestPropagateAllBundled:
         # Patch expanduser to point to our temp dir
         orig_expanduser = __import__("pathlib").Path.expanduser
 
+        @log_call
         def mock_expanduser(self):
             s = str(self)
             if "hosts.yml" in s:
@@ -209,6 +227,7 @@ class TestPropagateAllBundled:
         assert "Failed to copy bundle" in result.error
 
     @patch("amplihack.fleet.fleet_auth.subprocess.run")
+    @log_call
     def test_bundled_success(self, mock_run, tmp_path, monkeypatch):
         """Happy path: bundle, copy, extract all succeed."""
         fake_hosts = tmp_path / "hosts.yml"
@@ -216,6 +235,7 @@ class TestPropagateAllBundled:
 
         orig_expanduser = __import__("pathlib").Path.expanduser
 
+        @log_call
         def mock_expanduser(self):
             s = str(self)
             if "hosts.yml" in s:
@@ -238,6 +258,7 @@ class TestPropagateAllBundled:
         assert len(result.files_copied) >= 1
 
     @patch("amplihack.fleet.fleet_auth.subprocess.run")
+    @log_call
     def test_bundled_extract_failure(self, mock_run, tmp_path, monkeypatch):
         """When tar extract fails (no AUTH_OK), return failure."""
         fake_hosts = tmp_path / "hosts.yml"
@@ -245,6 +266,7 @@ class TestPropagateAllBundled:
 
         orig_expanduser = __import__("pathlib").Path.expanduser
 
+        @log_call
         def mock_expanduser(self):
             s = str(self)
             if "hosts.yml" in s:
@@ -268,6 +290,7 @@ class TestPropagateServiceErrors:
     """Tests for _propagate_service error paths."""
 
     @patch("amplihack.fleet.fleet_auth.subprocess.run")
+    @log_call
     def test_propagate_service_copy_failure(self, mock_run, tmp_path, monkeypatch):
         """When individual file copy fails, record error."""
         fake_claude = tmp_path / ".claude.json"
@@ -275,6 +298,7 @@ class TestPropagateServiceErrors:
 
         orig_expanduser = __import__("pathlib").Path.expanduser
 
+        @log_call
         def mock_expanduser(self):
             s = str(self)
             if ".claude.json" in s:
@@ -296,6 +320,7 @@ class TestPropagateServiceErrors:
         assert "permission denied" in result.error.lower() or "Failed" in result.error
 
     @patch("amplihack.fleet.fleet_auth.subprocess.run")
+    @log_call
     def test_propagate_service_timeout(self, mock_run, tmp_path, monkeypatch):
         """Timeout during copy should record error."""
         import subprocess
@@ -305,6 +330,7 @@ class TestPropagateServiceErrors:
 
         orig_expanduser = __import__("pathlib").Path.expanduser
 
+        @log_call
         def mock_expanduser(self):
             s = str(self)
             if ".claude.json" in s:
@@ -315,6 +341,7 @@ class TestPropagateServiceErrors:
 
         call_count = [0]
 
+        @log_call
         def side_effect(*args, **kwargs):
             call_count[0] += 1
             if call_count[0] == 1:
@@ -330,6 +357,7 @@ class TestPropagateServiceErrors:
         assert "Timeout" in result.error
 
     @patch("amplihack.fleet.fleet_auth.subprocess.run")
+    @log_call
     def test_propagate_service_file_not_found(self, mock_run, tmp_path, monkeypatch):
         """FileNotFoundError during copy should record error."""
         fake_claude = tmp_path / ".claude.json"
@@ -337,6 +365,7 @@ class TestPropagateServiceErrors:
 
         orig_expanduser = __import__("pathlib").Path.expanduser
 
+        @log_call
         def mock_expanduser(self):
             s = str(self)
             if ".claude.json" in s:
@@ -347,6 +376,7 @@ class TestPropagateServiceErrors:
 
         call_count = [0]
 
+        @log_call
         def side_effect(*args, **kwargs):
             call_count[0] += 1
             if call_count[0] == 1:
@@ -366,6 +396,7 @@ class TestPropagateAll:
     """Tests for propagate_all method."""
 
     @patch("amplihack.fleet.fleet_auth.subprocess.run")
+    @log_call
     def test_propagate_all_default_services(self, mock_run):
         """propagate_all with default services processes all three."""
         mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
@@ -381,6 +412,7 @@ class TestPropagateAll:
         assert "claude" in services
 
     @patch("amplihack.fleet.fleet_auth.subprocess.run")
+    @log_call
     def test_propagate_all_specific_service(self, mock_run):
         """propagate_all with specific service list."""
         mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
@@ -396,6 +428,7 @@ class TestVerifyAuthEdgeCases:
     """Additional tests for verify_auth."""
 
     @patch("amplihack.fleet.fleet_auth.subprocess.run")
+    @log_call
     def test_verify_auth_file_not_found(self, mock_run):
         """FileNotFoundError during verify should return False."""
         mock_run.side_effect = FileNotFoundError("azlin not found")
@@ -407,9 +440,11 @@ class TestVerifyAuthEdgeCases:
         assert results["azure"] is False
 
     @patch("amplihack.fleet.fleet_auth.subprocess.run")
+    @log_call
     def test_verify_auth_subprocess_error(self, mock_run):
         """SubprocessError during verify should return False."""
         import subprocess
+
         mock_run.side_effect = subprocess.SubprocessError("error")
 
         auth = AuthPropagator()
@@ -423,9 +458,11 @@ class TestSwitchGitHubIdentityEdgeCases:
     """Additional tests for switch_github_identity."""
 
     @patch("amplihack.fleet.fleet_auth.subprocess.run")
+    @log_call
     def test_switch_identity_timeout(self, mock_run):
         """Timeout during switch should return failure."""
         import subprocess
+
         mock_run.side_effect = subprocess.TimeoutExpired(cmd=["test"], timeout=30)
 
         auth = AuthPropagator()
@@ -436,9 +473,11 @@ class TestSwitchGitHubIdentityEdgeCases:
         assert result.error is not None
 
     @patch("amplihack.fleet.fleet_auth.subprocess.run")
+    @log_call
     def test_list_identities_timeout(self, mock_run):
         """Timeout during list should return empty list."""
         import subprocess
+
         mock_run.side_effect = subprocess.TimeoutExpired(cmd=["test"], timeout=30)
 
         auth = AuthPropagator()
@@ -449,6 +488,7 @@ class TestSwitchGitHubIdentityEdgeCases:
 class TestValidateChmodMode:
     """Tests for _validate_chmod_mode helper."""
 
+    @log_call
     def test_valid_modes(self):
         from amplihack.fleet.fleet_auth import _validate_chmod_mode
 
@@ -457,6 +497,7 @@ class TestValidateChmodMode:
         assert _validate_chmod_mode("755") == "755"
         assert _validate_chmod_mode("0644") == "0644"
 
+    @log_call
     def test_invalid_modes(self):
         from amplihack.fleet.fleet_auth import _validate_chmod_mode
 
@@ -471,6 +512,7 @@ class TestValidateChmodMode:
 class TestAuthResult:
     """Tests for AuthResult dataclass."""
 
+    @log_call
     def test_auth_result_defaults(self):
         result = AuthResult(service="github", vm_name="vm-1", success=True)
         assert result.files_copied == []

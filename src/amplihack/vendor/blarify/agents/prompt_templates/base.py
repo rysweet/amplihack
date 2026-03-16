@@ -7,6 +7,7 @@ This module provides the core PromptTemplate class and related utilities.
 import logging
 from dataclasses import dataclass
 from typing import Any
+from amplihack.utils.logging_utils import log_call
 
 logger = logging.getLogger(__name__)
 
@@ -21,14 +22,17 @@ class PromptTemplate:
     input_prompt: str
     variables: list[str] = None
 
+    @log_call
     def __post_init__(self):
         if self.variables is None:
             self.variables = []
 
+    @log_call
     def get_prompts(self) -> tuple[str, str]:
         """Get system prompt and input prompt as raw templates."""
         return self.system_prompt, self.input_prompt
 
+    @log_call
     def validate_variables(self, variables: dict[str, Any]) -> bool:
         """Validate that all required variables are provided."""
         missing = [var for var in self.variables if var not in variables]

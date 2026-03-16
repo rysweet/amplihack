@@ -22,6 +22,8 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 from .progressive_test_suite import (
     ProgressiveConfig,
     ProgressiveResult,
@@ -64,6 +66,7 @@ class MultiSDKReport:
     timestamp: str
 
 
+@log_call
 def _analyze_failures(result: ProgressiveResult) -> list[dict]:
     """Extract failure details from eval results.
 
@@ -103,6 +106,7 @@ def _analyze_failures(result: ProgressiveResult) -> list[dict]:
     return failures
 
 
+@log_call
 def _generate_recommendations(failures: list[dict], sdk: str) -> list[str]:
     """Generate SDK-specific prompt tuning recommendations.
 
@@ -157,6 +161,7 @@ def _generate_recommendations(failures: list[dict], sdk: str) -> list[str]:
     return recommendations
 
 
+@log_call
 def _extract_level_scores(result: ProgressiveResult) -> dict[str, float]:
     """Extract per-level average scores from result.
 
@@ -175,6 +180,7 @@ def _extract_level_scores(result: ProgressiveResult) -> dict[str, float]:
     return scores
 
 
+@log_call
 def run_sdk_eval_loop(
     sdk: str,
     num_loops: int = 5,
@@ -316,6 +322,7 @@ def run_sdk_eval_loop(
     return report
 
 
+@log_call
 def run_multi_sdk_eval(
     sdks: list[str],
     num_loops: int = 5,
@@ -422,6 +429,7 @@ def run_multi_sdk_eval(
     return multi_report
 
 
+@log_call
 def main():
     """CLI entry point."""
     import argparse

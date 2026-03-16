@@ -20,6 +20,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -34,6 +36,7 @@ class HookConfig:
     matcher: str | None = None
     timeout: int | None = None
 
+    @log_call
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary format for JSON"""
         hook_dict = {"type": "command", "command": self.command}
@@ -71,10 +74,12 @@ class HookMergeUtility:
     - Edge case handling
     """
 
+    @log_call
     def __init__(self, settings_path: str | Path):
         self.settings_path = Path(settings_path)
         self.backup_dir = self.settings_path.parent / "backups"
 
+    @log_call
     async def merge_hooks(self, xpia_hooks: list[HookConfig]) -> MergeResult:
         """
         Main entry point for merging XPIA hooks into settings.json
@@ -135,6 +140,7 @@ class HookMergeUtility:
 
         return result
 
+    @log_call
     async def _backup_settings(self) -> str:
         """Create timestamped backup of settings.json"""
         if not self.settings_path.exists():
@@ -150,6 +156,7 @@ class HookMergeUtility:
         shutil.copy2(self.settings_path, backup_path)
         return str(backup_path)
 
+    @log_call
     async def _load_settings(self) -> dict[str, Any]:
         """Load and parse current settings.json"""
         if not self.settings_path.exists():
@@ -170,6 +177,7 @@ class HookMergeUtility:
             logger.warning(f"Failed to load settings.json: {e}, creating new configuration")
             return self._create_default_settings()
 
+    @log_call
     def _create_default_settings(self) -> dict[str, Any]:
         """Create default settings.json with basic structure"""
         return {
@@ -184,6 +192,7 @@ class HookMergeUtility:
             "hooks": {},
         }
 
+    @log_call
     async def _merge_xpia_hooks(
         self, settings: dict[str, Any], xpia_hooks: list[HookConfig]
     ) -> tuple[dict[str, Any], int, int]:
@@ -229,6 +238,7 @@ class HookMergeUtility:
 
         return settings, hooks_added, hooks_updated
 
+    @log_call
     def _find_existing_xpia_hook(self, hook_list: list[dict], command: str) -> int | None:
         """Find index of existing XPIA hook in hook list"""
         for i, hook_entry in enumerate(hook_list):
@@ -240,6 +250,7 @@ class HookMergeUtility:
                         return i
         return None
 
+    @log_call
     def _create_hook_entry(
         self, hook_data: dict[str, Any], matcher: str | None = None
     ) -> dict[str, Any]:
@@ -251,6 +262,7 @@ class HookMergeUtility:
 
         return entry
 
+    @log_call
     def _validate_settings_format(self, settings: dict[str, Any]) -> bool:
         """Validate that settings follow expected format"""
         try:
@@ -288,6 +300,7 @@ class HookMergeUtility:
             logger.error(f"Settings validation failed: {e}")
             return False
 
+    @log_call
     async def _save_settings(self, settings: dict[str, Any]) -> None:
         """Save merged settings to file"""
         # Ensure parent directory exists
@@ -299,6 +312,7 @@ class HookMergeUtility:
 
         logger.info(f"Saved merged settings to {self.settings_path}")
 
+    @log_call
     async def _verify_saved_settings(self) -> None:
         """Verify that saved settings file is valid JSON"""
         try:
@@ -307,6 +321,7 @@ class HookMergeUtility:
         except (OSError, json.JSONDecodeError) as e:
             raise SettingsJsonError(f"Saved settings file is invalid: {e}")
 
+    @log_call
     async def _restore_settings(self, backup_path: str) -> None:
         """Restore settings from backup"""
         backup_file = Path(backup_path)
@@ -324,11 +339,13 @@ class HookMergeUtility:
             shutil.copy2(backup_file, self.settings_path)
             logger.info(f"Restored settings from backup: {backup_path}")
 
+    @log_call
     def _timestamp(self) -> str:
         """Generate timestamp for backup files"""
         return datetime.now().strftime("%Y%m%d_%H%M%S")
 
 
+@log_call
 def get_required_xpia_hooks() -> list[HookConfig]:
     """
     Get list of required XPIA security hooks
@@ -360,6 +377,7 @@ def get_required_xpia_hooks() -> list[HookConfig]:
     ]
 
 
+@log_call
 async def main():
     """CLI interface for hook merge utility"""
     import argparse

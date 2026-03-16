@@ -3,11 +3,13 @@
 import subprocess
 
 from amplihack.knowledge_builder.kb_types import Question
+from amplihack.utils.logging_utils import log_call
 
 
 class QuestionGenerator:
     """Generates questions using Socratic method (3 levels deep)."""
 
+    @log_call
     def __init__(self, claude_cmd: str = "claude"):
         """Initialize question generator.
 
@@ -16,6 +18,7 @@ class QuestionGenerator:
         """
         self.claude_cmd = claude_cmd
 
+    @log_call
     def generate_initial_questions(self, topic: str) -> list[Question]:
         """Generate 10 initial questions about a topic.
 
@@ -63,6 +66,7 @@ Requirements:
 
         return questions[:10]  # Ensure exactly 10
 
+    @log_call
     def generate_socratic_questions(
         self, parent_question: Question, parent_index: int
     ) -> list[Question]:
@@ -121,6 +125,7 @@ Requirements:
 
         return questions[:3]  # Ensure exactly 3
 
+    @log_call
     def generate_all_questions(self, topic: str) -> list[Question]:
         """Generate complete question tree (270 total questions).
 

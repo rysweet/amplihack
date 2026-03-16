@@ -22,6 +22,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 from ..proxy.token_sanitizer import TokenSanitizer
 
 # Default trace file location - used by trace_logger and litellm_callbacks
@@ -49,6 +51,7 @@ class TraceLogger:
     - Enabled: <10ms overhead per log entry
     """
 
+    @log_call
     def __init__(self, enabled: bool = False, log_file: Path | None = None):
         """
         Initialize TraceLogger.
@@ -62,6 +65,7 @@ class TraceLogger:
         self._file_handle = None
 
     @classmethod
+    @log_call
     def from_env(cls) -> "TraceLogger":
         """
         Create TraceLogger from environment variables.
@@ -86,6 +90,7 @@ class TraceLogger:
 
         return cls(enabled=enabled, log_file=log_file)
 
+    @log_call
     def __enter__(self):
         """Enter context manager - open log file if enabled."""
         if self.enabled and self.log_file:
@@ -106,6 +111,7 @@ class TraceLogger:
                 )
         return self
 
+    @log_call
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Exit context manager - close log file."""
         if self._file_handle:
@@ -119,14 +125,17 @@ class TraceLogger:
                 self._file_handle = None
         return False
 
+    @log_call
     async def __aenter__(self):
         """Async context manager entry."""
         return self.__enter__()
 
+    @log_call
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit."""
         return self.__exit__(exc_type, exc_val, exc_tb)
 
+    @log_call
     def log(self, data: dict[str, Any] | None) -> None:
         """
         Log a trace event.
@@ -192,6 +201,7 @@ class TraceLogger:
             pass
 
 
+@log_call
 def _json_default(obj: Any) -> str:
     """
     JSON serialization fallback for non-serializable objects.

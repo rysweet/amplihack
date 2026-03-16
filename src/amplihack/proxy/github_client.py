@@ -7,6 +7,8 @@ from collections.abc import AsyncGenerator
 from typing import Any
 from urllib.parse import urljoin
 
+from amplihack.utils.logging_utils import log_call
+
 logger = logging.getLogger(__name__)
 
 # Retryable HTTP status codes (transient server/gateway errors)
@@ -52,6 +54,7 @@ async def _retry_with_backoff(
 class GitHubCopilotClient:
     """Client for GitHub Copilot Language Model API."""
 
+    @log_call
     def __init__(self, token: str, base_url: str = "https://api.github.com"):
         """Initialize GitHub Copilot client.
 
@@ -63,16 +66,19 @@ class GitHubCopilotClient:
         self.base_url = base_url.rstrip("/")
         self.session: Any | None = None  # aiohttp.ClientSession when initialized
 
+    @log_call
     async def __aenter__(self):
         """Async context manager entry."""
         await self._ensure_session()
         return self
 
+    @log_call
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit."""
         if self.session:
             await self.session.close()
 
+    @log_call
     async def _ensure_session(self):
         """Ensure HTTP session is initialized."""
         if not self.session:
@@ -92,6 +98,7 @@ class GitHubCopilotClient:
                     "aiohttp required for GitHub Copilot client. Install with: pip install aiohttp"
                 )
 
+    @log_call
     async def chat_completion(
         self,
         messages: list[dict[str, Any]],
@@ -137,6 +144,7 @@ class GitHubCopilotClient:
             return self._stream_completion(url, data)
         return await self._create_completion(url, data)
 
+    @log_call
     async def _create_completion(self, url: str, data: dict[str, Any]) -> dict[str, Any]:
         """Create non-streaming completion with automatic retry on transient errors.
 
@@ -165,6 +173,7 @@ class GitHubCopilotClient:
                 raise RuntimeError(f"Network error: {e}")
             raise
 
+    @log_call
     async def _stream_completion(self, url: str, data: dict[str, Any]):
         """Create streaming completion.
 
@@ -202,6 +211,7 @@ class GitHubCopilotClient:
                 raise RuntimeError(f"Network error: {e}")
             raise
 
+    @log_call
     async def list_models(self) -> dict[str, Any]:
         """List available models.
 
@@ -227,6 +237,7 @@ class GitHubCopilotClient:
             ],
         }
 
+    @log_call
     async def get_usage(self) -> dict[str, Any]:
         """Get Copilot usage information.
 
@@ -249,6 +260,7 @@ class GitHubCopilotClient:
         except Exception:
             return {"usage": {}}
 
+    @log_call
     def sync_chat_completion(
         self,
         messages: list[dict[str, Any]],
@@ -280,7 +292,9 @@ class GitHubCopilotClient:
         if stream:
             # For streaming, we need to handle it differently
             # Return a generator function that can be called to start streaming
+            @log_call
             def _stream_generator():
+                @log_call
                 async def _stream_wrapper():
                     async with self:
                         stream_result = await self.chat_completion(
@@ -309,6 +323,7 @@ class GitHubCopilotClient:
             return _stream_generator
 
         # For non-streaming, run in event loop
+        @log_call
         async def _completion_wrapper():
             async with self:
                 return await self.chat_completion(
@@ -317,6 +332,7 @@ class GitHubCopilotClient:
 
         return loop.run_until_complete(_completion_wrapper())
 
+    @log_call
     def transform_openai_request(self, request_data: dict[str, Any]) -> dict[str, Any]:
         """Transform OpenAI request format to GitHub Copilot format.
 
@@ -343,6 +359,7 @@ class GitHubCopilotClient:
 
         return github_request
 
+    @log_call
     def transform_github_response(
         self, response: dict[str, Any], original_model: str
     ) -> dict[str, Any]:

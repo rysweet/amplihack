@@ -7,6 +7,8 @@ Extracts structured intent and requirements from parsed prompts.
 import logging
 import re
 
+from amplihack.utils.logging_utils import log_call
+
 from .exceptions import ExtractionError
 from .models import AgentRequirement, ExtractedIntent, ParsedPrompt
 from .parser import PromptParser
@@ -40,6 +42,7 @@ class IntentExtractor:
         "workflow": ["workflow", "pipeline", "orchestrate", "coordinate", "sequence"],
     }
 
+    @log_call
     def __init__(self, parser: PromptParser | None = None):
         """
         Initialize the intent extractor.
@@ -49,6 +52,7 @@ class IntentExtractor:
         """
         self.parser = parser or PromptParser()
 
+    @log_call
     def extract(self, parsed: ParsedPrompt) -> ExtractedIntent:
         """
         Extract intent and requirements from parsed prompt.
@@ -109,6 +113,7 @@ class IntentExtractor:
                 extraction_stage="intent_extraction",
             )
 
+    @log_call
     def _determine_action(self, parsed: ParsedPrompt) -> str:
         """Determine the primary action requested."""
         tokens = set(parsed.tokens)
@@ -126,6 +131,7 @@ class IntentExtractor:
         # Default to create
         return "create"
 
+    @log_call
     def _determine_domain(self, parsed: ParsedPrompt) -> str:
         """Determine the problem domain."""
         tokens = set(parsed.tokens)
@@ -152,6 +158,7 @@ class IntentExtractor:
         # Default to general data processing
         return "data-processing"
 
+    @log_call
     def _extract_agent_requirements(self, parsed: ParsedPrompt) -> list[AgentRequirement]:
         """Extract individual agent requirements."""
         requirements = []
@@ -176,6 +183,7 @@ class IntentExtractor:
 
         return requirements
 
+    @log_call
     def _extract_from_lists(self, parsed: ParsedPrompt) -> list[AgentRequirement]:
         """Extract agent requirements from numbered/bulleted lists."""
         requirements = []
@@ -202,6 +210,7 @@ class IntentExtractor:
 
         return requirements
 
+    @log_call
     def _extract_from_entities(self, parsed: ParsedPrompt) -> list[AgentRequirement]:
         """Extract agent requirements from identified entities."""
         requirements = []
@@ -224,6 +233,7 @@ class IntentExtractor:
 
         return requirements
 
+    @log_call
     def _create_default_agent(self, parsed: ParsedPrompt) -> AgentRequirement:
         """Create a default agent requirement when none are explicitly found."""
         domain = self._determine_domain(parsed)
@@ -237,6 +247,7 @@ class IntentExtractor:
             suggested_type="specialized",
         )
 
+    @log_call
     def _extract_agent_name(self, text: str) -> str | None:
         """Extract agent name from text."""
         # Look for "X Agent" or "X agent"
@@ -252,6 +263,7 @@ class IntentExtractor:
 
         return None
 
+    @log_call
     def _sanitize_name(self, name: str) -> str:
         """Sanitize agent name to be valid."""
         # Convert to lowercase and replace spaces with underscores
@@ -266,6 +278,7 @@ class IntentExtractor:
 
         return sanitized or "agent"
 
+    @log_call
     def _extract_role(self, text: str) -> str:
         """Extract agent role from text."""
         # Try to find a descriptive role
@@ -285,6 +298,7 @@ class IntentExtractor:
 
         return "Agent"
 
+    @log_call
     def _extract_capabilities(self, text: str) -> list[str]:
         """Extract capabilities from text."""
         capabilities = []
@@ -320,6 +334,7 @@ class IntentExtractor:
 
         return list(set(capabilities)) or ["process"]
 
+    @log_call
     def _suggest_type(self, text: str) -> str:
         """Suggest agent type based on text."""
         text_lower = text.lower()
@@ -331,6 +346,7 @@ class IntentExtractor:
         # Default to specialized
         return "specialized"
 
+    @log_call
     def _determine_complexity(
         self, parsed: ParsedPrompt, requirements: list[AgentRequirement]
     ) -> str:
@@ -348,6 +364,7 @@ class IntentExtractor:
             return "standard"
         return base_complexity
 
+    @log_call
     def _extract_constraints(self, parsed: ParsedPrompt) -> list[str]:
         """Extract constraints from parsed prompt."""
         constraints = []
@@ -371,6 +388,7 @@ class IntentExtractor:
 
         return list(set(constraints))
 
+    @log_call
     def _extract_dependencies(self, parsed: ParsedPrompt) -> list[str]:
         """Extract dependencies from parsed prompt."""
         dependencies = []
@@ -392,6 +410,7 @@ class IntentExtractor:
 
         return list(set(dependencies))
 
+    @log_call
     def _calculate_confidence(
         self, parsed: ParsedPrompt, action: str, domain: str, requirements: list[AgentRequirement]
     ) -> float:

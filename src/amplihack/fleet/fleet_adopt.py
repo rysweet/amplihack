@@ -24,6 +24,7 @@ from amplihack.fleet._constants import SUBPROCESS_TIMEOUT_SECONDS
 from amplihack.fleet._defaults import get_azlin_path
 from amplihack.fleet._validation import validate_session_name, validate_vm_name
 from amplihack.fleet.fleet_tasks import TaskPriority, TaskQueue
+from amplihack.utils.logging_utils import log_call
 
 __all__ = ["SessionAdopter", "AdoptedSession"]
 
@@ -55,6 +56,7 @@ class SessionAdopter:
 
     azlin_path: str = field(default_factory=get_azlin_path)
 
+    @log_call
     def discover_sessions(self, vm_name: str) -> list[AdoptedSession]:
         """Discover all tmux sessions on a VM and infer their context.
 
@@ -76,7 +78,12 @@ class SessionAdopter:
                 return self._parse_discovery_output(vm_name, result.stdout)
 
             if result.returncode != 0:
-                logger.warning("Session discovery command failed for %s (rc=%d): %s", vm_name, result.returncode, result.stderr[:200])
+                logger.warning(
+                    "Session discovery command failed for %s (rc=%d): %s",
+                    vm_name,
+                    result.returncode,
+                    result.stderr[:200],
+                )
                 return []
 
             return self._parse_discovery_output(vm_name, result.stdout)
@@ -85,6 +92,7 @@ class SessionAdopter:
             logger.warning("Session discovery failed for %s: %s", vm_name, exc)
             return []
 
+    @log_call
     def adopt_sessions(
         self,
         vm_name: str,
@@ -131,6 +139,7 @@ class SessionAdopter:
 
         return adopted
 
+    @log_call
     def _build_discover_command(self) -> str:
         """Build a compound SSH command that discovers all session contexts.
 
@@ -157,6 +166,7 @@ class SessionAdopter:
             'echo "===DONE==="'
         )
 
+    @log_call
     def _parse_discovery_output(self, vm_name: str, output: str) -> list[AdoptedSession]:
         """Parse the compound discovery output into AdoptedSession records."""
         sessions = []
@@ -176,7 +186,9 @@ class SessionAdopter:
                 try:
                     validate_session_name(session_name)
                 except ValueError:
-                    logger.warning("Skipping invalid session name from SSH output: %r", session_name)
+                    logger.warning(
+                        "Skipping invalid session name from SSH output: %r", session_name
+                    )
                     current = None
                     continue
                 current = AdoptedSession(vm_name=vm_name, session_name=session_name)

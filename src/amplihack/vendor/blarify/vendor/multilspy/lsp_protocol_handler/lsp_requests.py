@@ -32,12 +32,15 @@ SOFTWARE.
 from typing import Union
 
 from amplihack.vendor.blarify.vendor.multilspy.lsp_protocol_handler import lsp_types
+from amplihack.utils.logging_utils import log_call
 
 
 class LspRequest:
+    @log_call
     def __init__(self, send_request):
         self.send_request = send_request
 
+    @log_call
     async def implementation(
         self, params: lsp_types.ImplementationParams
     ) -> Union["lsp_types.Definition", list["lsp_types.LocationLink"], None]:
@@ -47,6 +50,7 @@ class LspRequest:
         Thenable that resolves to such."""
         return await self.send_request("textDocument/implementation", params)
 
+    @log_call
     async def type_definition(
         self, params: lsp_types.TypeDefinitionParams
     ) -> Union["lsp_types.Definition", list["lsp_types.LocationLink"], None]:
@@ -56,6 +60,7 @@ class LspRequest:
         Thenable that resolves to such."""
         return await self.send_request("textDocument/typeDefinition", params)
 
+    @log_call
     async def document_color(
         self, params: lsp_types.DocumentColorParams
     ) -> list["lsp_types.ColorInformation"]:
@@ -65,6 +70,7 @@ class LspRequest:
         that resolves to such."""
         return await self.send_request("textDocument/documentColor", params)
 
+    @log_call
     async def color_presentation(
         self, params: lsp_types.ColorPresentationParams
     ) -> list["lsp_types.ColorPresentation"]:
@@ -74,6 +80,7 @@ class LspRequest:
         that resolves to such."""
         return await self.send_request("textDocument/colorPresentation", params)
 
+    @log_call
     async def folding_range(
         self, params: lsp_types.FoldingRangeParams
     ) -> list["lsp_types.FoldingRange"] | None:
@@ -83,6 +90,7 @@ class LspRequest:
         that resolves to such."""
         return await self.send_request("textDocument/foldingRange", params)
 
+    @log_call
     async def declaration(
         self, params: lsp_types.DeclarationParams
     ) -> Union["lsp_types.Declaration", list["lsp_types.LocationLink"], None]:
@@ -93,6 +101,7 @@ class LspRequest:
         to such."""
         return await self.send_request("textDocument/declaration", params)
 
+    @log_call
     async def selection_range(
         self, params: lsp_types.SelectionRangeParams
     ) -> list["lsp_types.SelectionRange"] | None:
@@ -102,6 +111,7 @@ class LspRequest:
         that resolves to such."""
         return await self.send_request("textDocument/selectionRange", params)
 
+    @log_call
     async def prepare_call_hierarchy(
         self, params: lsp_types.CallHierarchyPrepareParams
     ) -> list["lsp_types.CallHierarchyItem"] | None:
@@ -111,6 +121,7 @@ class LspRequest:
         @since 3.16.0"""
         return await self.send_request("textDocument/prepareCallHierarchy", params)
 
+    @log_call
     async def incoming_calls(
         self, params: lsp_types.CallHierarchyIncomingCallsParams
     ) -> list["lsp_types.CallHierarchyIncomingCall"] | None:
@@ -119,6 +130,7 @@ class LspRequest:
         @since 3.16.0"""
         return await self.send_request("callHierarchy/incomingCalls", params)
 
+    @log_call
     async def outgoing_calls(
         self, params: lsp_types.CallHierarchyOutgoingCallsParams
     ) -> list["lsp_types.CallHierarchyOutgoingCall"] | None:
@@ -127,24 +139,28 @@ class LspRequest:
         @since 3.16.0"""
         return await self.send_request("callHierarchy/outgoingCalls", params)
 
+    @log_call
     async def semantic_tokens_full(
         self, params: lsp_types.SemanticTokensParams
     ) -> Union["lsp_types.SemanticTokens", None]:
         """@since 3.16.0"""
         return await self.send_request("textDocument/semanticTokens/full", params)
 
+    @log_call
     async def semantic_tokens_delta(
         self, params: lsp_types.SemanticTokensDeltaParams
     ) -> Union["lsp_types.SemanticTokens", "lsp_types.SemanticTokensDelta", None]:
         """@since 3.16.0"""
         return await self.send_request("textDocument/semanticTokens/full/delta", params)
 
+    @log_call
     async def semantic_tokens_range(
         self, params: lsp_types.SemanticTokensRangeParams
     ) -> Union["lsp_types.SemanticTokens", None]:
         """@since 3.16.0"""
         return await self.send_request("textDocument/semanticTokens/range", params)
 
+    @log_call
     async def linked_editing_range(
         self, params: lsp_types.LinkedEditingRangeParams
     ) -> Union["lsp_types.LinkedEditingRanges", None]:
@@ -153,6 +169,7 @@ class LspRequest:
         @since 3.16.0"""
         return await self.send_request("textDocument/linkedEditingRange", params)
 
+    @log_call
     async def will_create_files(
         self, params: lsp_types.CreateFilesParams
     ) -> Union["lsp_types.WorkspaceEdit", None]:
@@ -162,6 +179,7 @@ class LspRequest:
         @since 3.16.0"""
         return await self.send_request("workspace/willCreateFiles", params)
 
+    @log_call
     async def will_rename_files(
         self, params: lsp_types.RenameFilesParams
     ) -> Union["lsp_types.WorkspaceEdit", None]:
@@ -171,6 +189,7 @@ class LspRequest:
         @since 3.16.0"""
         return await self.send_request("workspace/willRenameFiles", params)
 
+    @log_call
     async def will_delete_files(
         self, params: lsp_types.DeleteFilesParams
     ) -> Union["lsp_types.WorkspaceEdit", None]:
@@ -180,12 +199,14 @@ class LspRequest:
         @since 3.16.0"""
         return await self.send_request("workspace/willDeleteFiles", params)
 
+    @log_call
     async def moniker(self, params: lsp_types.MonikerParams) -> list["lsp_types.Moniker"] | None:
         """A request to get the moniker of a symbol at a given text document position.
         The request parameter is of type {@link TextDocumentPositionParams}.
         The response is of type {@link Moniker Moniker[]} or `null`."""
         return await self.send_request("textDocument/moniker", params)
 
+    @log_call
     async def prepare_type_hierarchy(
         self, params: lsp_types.TypeHierarchyPrepareParams
     ) -> list["lsp_types.TypeHierarchyItem"] | None:
@@ -195,6 +216,7 @@ class LspRequest:
         @since 3.17.0"""
         return await self.send_request("textDocument/prepareTypeHierarchy", params)
 
+    @log_call
     async def type_hierarchy_supertypes(
         self, params: lsp_types.TypeHierarchySupertypesParams
     ) -> list["lsp_types.TypeHierarchyItem"] | None:
@@ -203,6 +225,7 @@ class LspRequest:
         @since 3.17.0"""
         return await self.send_request("typeHierarchy/supertypes", params)
 
+    @log_call
     async def type_hierarchy_subtypes(
         self, params: lsp_types.TypeHierarchySubtypesParams
     ) -> list["lsp_types.TypeHierarchyItem"] | None:
@@ -211,6 +234,7 @@ class LspRequest:
         @since 3.17.0"""
         return await self.send_request("typeHierarchy/subtypes", params)
 
+    @log_call
     async def inline_value(
         self, params: lsp_types.InlineValueParams
     ) -> list["lsp_types.InlineValue"] | None:
@@ -221,6 +245,7 @@ class LspRequest:
         @since 3.17.0"""
         return await self.send_request("textDocument/inlineValue", params)
 
+    @log_call
     async def inlay_hint(
         self, params: lsp_types.InlayHintParams
     ) -> list["lsp_types.InlayHint"] | None:
@@ -231,6 +256,7 @@ class LspRequest:
         @since 3.17.0"""
         return await self.send_request("textDocument/inlayHint", params)
 
+    @log_call
     async def resolve_inlay_hint(self, params: lsp_types.InlayHint) -> "lsp_types.InlayHint":
         """A request to resolve additional properties for an inlay hint.
         The request's parameter is of type {@link InlayHint}, the response is
@@ -239,6 +265,7 @@ class LspRequest:
         @since 3.17.0"""
         return await self.send_request("inlayHint/resolve", params)
 
+    @log_call
     async def text_document_diagnostic(
         self, params: lsp_types.DocumentDiagnosticParams
     ) -> "lsp_types.DocumentDiagnosticReport":
@@ -247,6 +274,7 @@ class LspRequest:
         @since 3.17.0"""
         return await self.send_request("textDocument/diagnostic", params)
 
+    @log_call
     async def workspace_diagnostic(
         self, params: lsp_types.WorkspaceDiagnosticParams
     ) -> "lsp_types.WorkspaceDiagnosticReport":
@@ -255,6 +283,7 @@ class LspRequest:
         @since 3.17.0"""
         return await self.send_request("workspace/diagnostic", params)
 
+    @log_call
     async def initialize(self, params: lsp_types.InitializeParams) -> "lsp_types.InitializeResult":
         """The initialize request is sent from the client to the server.
         It is sent once as the request after starting up the server.
@@ -263,6 +292,7 @@ class LspRequest:
         resolves to such."""
         return await self.send_request("initialize", params)
 
+    @log_call
     async def shutdown(self) -> None:
         """A shutdown request is sent from the client to the server.
         It is sent once when the client decides to shutdown the
@@ -270,6 +300,7 @@ class LspRequest:
         is the exit event."""
         return await self.send_request("shutdown")
 
+    @log_call
     async def will_save_wait_until(
         self, params: lsp_types.WillSaveTextDocumentParams
     ) -> list["lsp_types.TextEdit"] | None:
@@ -281,6 +312,7 @@ class LspRequest:
         reliable."""
         return await self.send_request("textDocument/willSaveWaitUntil", params)
 
+    @log_call
     async def completion(
         self, params: lsp_types.CompletionParams
     ) -> Union[list["lsp_types.CompletionItem"], "lsp_types.CompletionList", None]:
@@ -296,6 +328,7 @@ class LspRequest:
         """
         return await self.send_request("textDocument/completion", params)
 
+    @log_call
     async def resolve_completion_item(
         self, params: lsp_types.CompletionItem
     ) -> "lsp_types.CompletionItem":
@@ -304,17 +337,20 @@ class LspRequest:
         is of type {@link CompletionItem} or a Thenable that resolves to such."""
         return await self.send_request("completionItem/resolve", params)
 
+    @log_call
     async def hover(self, params: lsp_types.HoverParams) -> Union["lsp_types.Hover", None]:
         """Request to request hover information at a given text document position. The request's
         parameter is of type {@link TextDocumentPosition} the response is of
         type {@link Hover} or a Thenable that resolves to such."""
         return await self.send_request("textDocument/hover", params)
 
+    @log_call
     async def signature_help(
         self, params: lsp_types.SignatureHelpParams
     ) -> Union["lsp_types.SignatureHelp", None]:
         return await self.send_request("textDocument/signatureHelp", params)
 
+    @log_call
     async def definition(
         self, params: lsp_types.DefinitionParams
     ) -> Union["lsp_types.Definition", list["lsp_types.LocationLink"], None]:
@@ -325,6 +361,7 @@ class LspRequest:
         to such."""
         return await self.send_request("textDocument/definition", params)
 
+    @log_call
     async def references(
         self, params: lsp_types.ReferenceParams
     ) -> list["lsp_types.Location"] | None:
@@ -334,6 +371,7 @@ class LspRequest:
         {@link Location Location[]} or a Thenable that resolves to such."""
         return await self.send_request("textDocument/references", params)
 
+    @log_call
     async def document_highlight(
         self, params: lsp_types.DocumentHighlightParams
     ) -> list["lsp_types.DocumentHighlight"] | None:
@@ -343,6 +381,7 @@ class LspRequest:
         (#DocumentHighlight) or a Thenable that resolves to such."""
         return await self.send_request("textDocument/documentHighlight", params)
 
+    @log_call
     async def document_symbol(
         self, params: lsp_types.DocumentSymbolParams
     ) -> list["lsp_types.SymbolInformation"] | list["lsp_types.DocumentSymbol"] | None:
@@ -352,18 +391,21 @@ class LspRequest:
         that resolves to such."""
         return await self.send_request("textDocument/documentSymbol", params)
 
+    @log_call
     async def code_action(
         self, params: lsp_types.CodeActionParams
     ) -> list[Union["lsp_types.Command", "lsp_types.CodeAction"]] | None:
         """A request to provide commands for the given text document and range."""
         return await self.send_request("textDocument/codeAction", params)
 
+    @log_call
     async def resolve_code_action(self, params: lsp_types.CodeAction) -> "lsp_types.CodeAction":
         """Request to resolve additional information for a given code action.The request's
         parameter is of type {@link CodeAction} the response
         is of type {@link CodeAction} or a Thenable that resolves to such."""
         return await self.send_request("codeAction/resolve", params)
 
+    @log_call
     async def workspace_symbol(
         self, params: lsp_types.WorkspaceSymbolParams
     ) -> list["lsp_types.SymbolInformation"] | list["lsp_types.WorkspaceSymbol"] | None:
@@ -378,6 +420,7 @@ class LspRequest:
         """
         return await self.send_request("workspace/symbol", params)
 
+    @log_call
     async def resolve_workspace_symbol(
         self, params: lsp_types.WorkspaceSymbol
     ) -> "lsp_types.WorkspaceSymbol":
@@ -387,22 +430,26 @@ class LspRequest:
         @since 3.17.0"""
         return await self.send_request("workspaceSymbol/resolve", params)
 
+    @log_call
     async def code_lens(
         self, params: lsp_types.CodeLensParams
     ) -> list["lsp_types.CodeLens"] | None:
         """A request to provide code lens for the given text document."""
         return await self.send_request("textDocument/codeLens", params)
 
+    @log_call
     async def resolve_code_lens(self, params: lsp_types.CodeLens) -> "lsp_types.CodeLens":
         """A request to resolve a command for a given code lens."""
         return await self.send_request("codeLens/resolve", params)
 
+    @log_call
     async def document_link(
         self, params: lsp_types.DocumentLinkParams
     ) -> list["lsp_types.DocumentLink"] | None:
         """A request to provide document links"""
         return await self.send_request("textDocument/documentLink", params)
 
+    @log_call
     async def resolve_document_link(
         self, params: lsp_types.DocumentLink
     ) -> "lsp_types.DocumentLink":
@@ -411,30 +458,35 @@ class LspRequest:
         is of type {@link DocumentLink} or a Thenable that resolves to such."""
         return await self.send_request("documentLink/resolve", params)
 
+    @log_call
     async def formatting(
         self, params: lsp_types.DocumentFormattingParams
     ) -> list["lsp_types.TextEdit"] | None:
         """A request to to format a whole document."""
         return await self.send_request("textDocument/formatting", params)
 
+    @log_call
     async def range_formatting(
         self, params: lsp_types.DocumentRangeFormattingParams
     ) -> list["lsp_types.TextEdit"] | None:
         """A request to to format a range in a document."""
         return await self.send_request("textDocument/rangeFormatting", params)
 
+    @log_call
     async def on_type_formatting(
         self, params: lsp_types.DocumentOnTypeFormattingParams
     ) -> list["lsp_types.TextEdit"] | None:
         """A request to format a document on type."""
         return await self.send_request("textDocument/onTypeFormatting", params)
 
+    @log_call
     async def rename(
         self, params: lsp_types.RenameParams
     ) -> Union["lsp_types.WorkspaceEdit", None]:
         """A request to rename a symbol."""
         return await self.send_request("textDocument/rename", params)
 
+    @log_call
     async def prepare_rename(
         self, params: lsp_types.PrepareRenameParams
     ) -> Union["lsp_types.PrepareRenameResult", None]:
@@ -443,6 +495,7 @@ class LspRequest:
         @since 3.16 - support for default behavior"""
         return await self.send_request("textDocument/prepareRename", params)
 
+    @log_call
     async def execute_command(
         self, params: lsp_types.ExecuteCommandParams
     ) -> Union["lsp_types.LSPAny", None]:
@@ -452,9 +505,11 @@ class LspRequest:
 
 
 class LspNotification:
+    @log_call
     def __init__(self, send_notification):
         self.send_notification = send_notification
 
+    @log_call
     def did_change_workspace_folders(
         self, params: lsp_types.DidChangeWorkspaceFoldersParams
     ) -> None:
@@ -462,11 +517,13 @@ class LspNotification:
         folder configuration changes."""
         return self.send_notification("workspace/didChangeWorkspaceFolders", params)
 
+    @log_call
     def cancel_work_done_progress(self, params: lsp_types.WorkDoneProgressCancelParams) -> None:
         """The `window/workDoneProgress/cancel` notification is sent from  the client to the server to cancel a progress
         initiated on the server side."""
         return self.send_notification("window/workDoneProgress/cancel", params)
 
+    @log_call
     def did_create_files(self, params: lsp_types.CreateFilesParams) -> None:
         """The did create files notification is sent from the client to the server when
         files were created from within the client.
@@ -474,6 +531,7 @@ class LspNotification:
         @since 3.16.0"""
         return self.send_notification("workspace/didCreateFiles", params)
 
+    @log_call
     def did_rename_files(self, params: lsp_types.RenameFilesParams) -> None:
         """The did rename files notification is sent from the client to the server when
         files were renamed from within the client.
@@ -481,6 +539,7 @@ class LspNotification:
         @since 3.16.0"""
         return self.send_notification("workspace/didRenameFiles", params)
 
+    @log_call
     def did_delete_files(self, params: lsp_types.DeleteFilesParams) -> None:
         """The will delete files request is sent from the client to the server before files are actually
         deleted as long as the deletion is triggered from within the client.
@@ -488,40 +547,47 @@ class LspNotification:
         @since 3.16.0"""
         return self.send_notification("workspace/didDeleteFiles", params)
 
+    @log_call
     def did_open_notebook_document(self, params: lsp_types.DidOpenNotebookDocumentParams) -> None:
         """A notification sent when a notebook opens.
 
         @since 3.17.0"""
         return self.send_notification("notebookDocument/didOpen", params)
 
+    @log_call
     def did_change_notebook_document(
         self, params: lsp_types.DidChangeNotebookDocumentParams
     ) -> None:
         return self.send_notification("notebookDocument/didChange", params)
 
+    @log_call
     def did_save_notebook_document(self, params: lsp_types.DidSaveNotebookDocumentParams) -> None:
         """A notification sent when a notebook document is saved.
 
         @since 3.17.0"""
         return self.send_notification("notebookDocument/didSave", params)
 
+    @log_call
     def did_close_notebook_document(self, params: lsp_types.DidCloseNotebookDocumentParams) -> None:
         """A notification sent when a notebook closes.
 
         @since 3.17.0"""
         return self.send_notification("notebookDocument/didClose", params)
 
+    @log_call
     def initialized(self, params: lsp_types.InitializedParams) -> None:
         """The initialized notification is sent from the client to the
         server after the client is fully initialized and the server
         is allowed to send requests from the server to the client."""
         return self.send_notification("initialized", params)
 
+    @log_call
     def exit(self) -> None:
         """The exit event is sent from the client to the server to
         ask the server to exit its process."""
         return self.send_notification("exit")
 
+    @log_call
     def workspace_did_change_configuration(
         self, params: lsp_types.DidChangeConfigurationParams
     ) -> None:
@@ -530,6 +596,7 @@ class LspNotification:
         the changed configuration as defined by the language client."""
         return self.send_notification("workspace/didChangeConfiguration", params)
 
+    @log_call
     def did_open_text_document(self, params: lsp_types.DidOpenTextDocumentParams) -> None:
         """The document open notification is sent from the client to the server to signal
         newly opened text documents. The document's truth is now managed by the client
@@ -541,11 +608,13 @@ class LspNotification:
         is one."""
         return self.send_notification("textDocument/didOpen", params)
 
+    @log_call
     def did_change_text_document(self, params: lsp_types.DidChangeTextDocumentParams) -> None:
         """The document change notification is sent from the client to the server to signal
         changes to a text document."""
         return self.send_notification("textDocument/didChange", params)
 
+    @log_call
     def did_close_text_document(self, params: lsp_types.DidCloseTextDocumentParams) -> None:
         """The document close notification is sent from the client to the server when
         the document got closed in the client. The document's truth now exists where
@@ -556,26 +625,32 @@ class LspNotification:
         notification requires a previous open notification to be sent."""
         return self.send_notification("textDocument/didClose", params)
 
+    @log_call
     def did_save_text_document(self, params: lsp_types.DidSaveTextDocumentParams) -> None:
         """The document save notification is sent from the client to the server when
         the document got saved in the client."""
         return self.send_notification("textDocument/didSave", params)
 
+    @log_call
     def will_save_text_document(self, params: lsp_types.WillSaveTextDocumentParams) -> None:
         """A document will save notification is sent from the client to the server before
         the document is actually saved."""
         return self.send_notification("textDocument/willSave", params)
 
+    @log_call
     def did_change_watched_files(self, params: lsp_types.DidChangeWatchedFilesParams) -> None:
         """The watched files notification is sent from the client to the server when
         the client detects changes to file watched by the language client."""
         return self.send_notification("workspace/didChangeWatchedFiles", params)
 
+    @log_call
     def set_trace(self, params: lsp_types.SetTraceParams) -> None:
         return self.send_notification("$/setTrace", params)
 
+    @log_call
     def cancel_request(self, params: lsp_types.CancelParams) -> None:
         return self.send_notification("$/cancelRequest", params)
 
+    @log_call
     def progress(self, params: lsp_types.ProgressParams) -> None:
         return self.send_notification("$/progress", params)

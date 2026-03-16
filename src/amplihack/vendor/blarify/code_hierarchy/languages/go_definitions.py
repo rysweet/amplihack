@@ -6,32 +6,39 @@ from amplihack.vendor.blarify.graph.relationship import RelationshipType
 from tree_sitter import Language, Node, Parser
 
 from .language_definitions import LanguageDefinitions
+from amplihack.utils.logging_utils import log_call
 
 
 class GoDefinitions(LanguageDefinitions):
     CONTROL_FLOW_STATEMENTS = []
     CONSEQUENCE_STATEMENTS = []
 
+    @log_call
     def get_language_name() -> str:
         return "go"
 
+    @log_call
     def get_parsers_for_extensions() -> dict[str, Parser]:
         return {
             ".go": Parser(Language(tsgo.language())),
         }
 
+    @log_call
     def should_create_node(node: Node) -> bool:
         return LanguageDefinitions._should_create_node_base_implementation(
             node,
             ["type_spec", "type_alias", "method_declaration", "function_declaration"],
         )
 
+    @log_call
     def get_identifier_node(node: Node) -> Node:
         return LanguageDefinitions._get_identifier_node_base_implementation(node)
 
+    @log_call
     def get_body_node(node: Node) -> Node:
         return LanguageDefinitions._get_body_node_base_implementation(node)
 
+    @log_call
     def get_relationship_type(
         node: GraphNode, node_in_point_reference: Node
     ) -> FoundRelationshipScope | None:
@@ -40,6 +47,7 @@ class GoDefinitions(LanguageDefinitions):
             node_in_point_reference=node_in_point_reference,
         )
 
+    @log_call
     def get_node_label_from_type(type: str) -> NodeLabels:
         return {
             "type_spec": NodeLabels.CLASS,
@@ -48,9 +56,11 @@ class GoDefinitions(LanguageDefinitions):
             "function_declaration": NodeLabels.FUNCTION,
         }[type]
 
+    @log_call
     def get_language_file_extensions() -> set[str]:
         return {".go"}
 
+    @log_call
     def _find_relationship_type(
         node_label: str, node_in_point_reference: Node
     ) -> FoundRelationshipScope | None:
@@ -61,6 +71,7 @@ class GoDefinitions(LanguageDefinitions):
             node_in_point_reference, relevant_relationship_types
         )
 
+    @log_call
     def _get_relationship_types_by_label() -> dict[str, RelationshipType]:
         return {
             NodeLabels.CLASS: {

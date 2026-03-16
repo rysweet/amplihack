@@ -37,6 +37,8 @@ if TYPE_CHECKING:
 # Optional dependency: sentence-transformers
 # ---------------------------------------------------------------------------
 
+from amplihack.utils.logging_utils import log_call
+
 from .constants import DEFAULT_EMBEDDING_MODEL
 
 try:
@@ -68,6 +70,7 @@ class EmbeddingGenerator:
         ...     assert vec.shape == (gen.dimension,)
     """
 
+    @log_call
     def __init__(self, model_name: str = DEFAULT_MODEL) -> None:
         self._model_name = model_name
         self._model: SentenceTransformer | None = None
@@ -83,15 +86,18 @@ class EmbeddingGenerator:
                 self._model = None
 
     @property
+    @log_call
     def available(self) -> bool:
         """Whether the embedding model is loaded and ready."""
         return self._model is not None
 
     @property
+    @log_call
     def dimension(self) -> int:
         """Embedding vector dimension (0 if unavailable)."""
         return self._dimension
 
+    @log_call
     def embed(self, text: str) -> NDArray[np.float32] | None:
         """Embed a single text string.
 
@@ -102,6 +108,7 @@ class EmbeddingGenerator:
             return None
         return self._model.encode(text, normalize_embeddings=True)
 
+    @log_call
     def embed_batch(self, texts: list[str]) -> list[NDArray[np.float32]] | None:
         """Embed multiple texts in a single batch.
 
@@ -114,6 +121,7 @@ class EmbeddingGenerator:
         return [embeddings[i] for i in range(len(texts))]
 
     @staticmethod
+    @log_call
     def cosine_similarity(a: NDArray[np.float32], b: NDArray[np.float32]) -> float:
         """Compute cosine similarity between two normalized vectors.
 
@@ -127,6 +135,7 @@ class EmbeddingGenerator:
         return float(np.dot(a, b))
 
     @staticmethod
+    @log_call
     def cosine_similarity_batch(
         query: NDArray[np.float32], candidates: list[NDArray[np.float32]]
     ) -> list[float]:

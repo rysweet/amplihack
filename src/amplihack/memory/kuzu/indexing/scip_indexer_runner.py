@@ -15,6 +15,8 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 logger = logging.getLogger(__name__)
 
 
@@ -33,6 +35,7 @@ class ScipIndexResult:
 class ScipIndexerRunner:
     """Runs SCIP indexers to create index.scip files for code intelligence."""
 
+    @log_call
     def __init__(self, quiet: bool = False):
         """Initialize runner.
 
@@ -41,11 +44,13 @@ class ScipIndexerRunner:
         """
         self.quiet = quiet
 
+    @log_call
     def _log(self, message: str) -> None:
         """Log message if not in quiet mode."""
         if not self.quiet:
             print(message)
 
+    @log_call
     def _run_indexer(
         self,
         command: list[str],
@@ -148,6 +153,7 @@ class ScipIndexerRunner:
                 error_message=str(e),
             )
 
+    @log_call
     def run_python_indexer(self, codebase_path: Path) -> ScipIndexResult:
         """Run scip-python indexer.
 
@@ -164,6 +170,7 @@ class ScipIndexerRunner:
             timeout=600,
         )
 
+    @log_call
     def run_typescript_indexer(
         self, codebase_path: Path, is_javascript: bool = False
     ) -> ScipIndexResult:
@@ -221,6 +228,7 @@ class ScipIndexerRunner:
 
         return result
 
+    @log_call
     def run_go_indexer(self, codebase_path: Path) -> ScipIndexResult:
         """Run scip-go indexer.
 
@@ -237,6 +245,7 @@ class ScipIndexerRunner:
             timeout=600,
         )
 
+    @log_call
     def run_rust_indexer(self, codebase_path: Path) -> ScipIndexResult:
         """Run rust-analyzer scip command.
 
@@ -253,6 +262,7 @@ class ScipIndexerRunner:
             timeout=600,
         )
 
+    @log_call
     def run_csharp_indexer(self, codebase_path: Path) -> ScipIndexResult:
         """Run scip-dotnet indexer.
 
@@ -269,6 +279,7 @@ class ScipIndexerRunner:
             timeout=600,
         )
 
+    @log_call
     def run_cpp_indexer(self, codebase_path: Path) -> ScipIndexResult:
         """Run scip-clang indexer.
 
@@ -286,6 +297,7 @@ class ScipIndexerRunner:
             timeout=600,
         )
 
+    @log_call
     def run_indexer_for_language(
         self,
         language: str,

@@ -18,6 +18,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 logger = logging.getLogger(__name__)
 
 
@@ -56,6 +58,7 @@ class PatchHistory:
     rejected_patches: list[dict[str, Any]] = field(default_factory=list)
 
 
+@log_call
 def _build_proposal_prompt(
     category: str,
     category_score: float,
@@ -152,6 +155,7 @@ Rules:
 """
 
 
+@log_call
 def _read_target_file(bottleneck: str, project_root: Path) -> tuple[str, str]:
     """Read the target file based on the bottleneck component identifier.
 
@@ -192,6 +196,7 @@ def _read_target_file(bottleneck: str, project_root: Path) -> tuple[str, str]:
     return target_rel, content
 
 
+@log_call
 def _parse_llm_response(response_text: str) -> dict[str, Any]:
     """Parse LLM response as JSON, handling markdown code blocks.
 
@@ -216,6 +221,7 @@ def _parse_llm_response(response_text: str) -> dict[str, Any]:
     return json.loads(text)
 
 
+@log_call
 def propose_patch(
     category: str,
     category_score: float,
@@ -301,6 +307,7 @@ def propose_patch(
         )
 
 
+@log_call
 def propose_patch_from_analysis(
     category_analysis: dict[str, Any],
     history: PatchHistory | None = None,

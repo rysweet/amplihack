@@ -5,8 +5,10 @@ from pathlib import Path
 from amplihack.vendor.blarify.vendor.multilspy import SyncLanguageServer
 from amplihack.vendor.blarify.vendor.multilspy.multilspy_config import MultilspyConfig
 from amplihack.vendor.blarify.vendor.multilspy.multilspy_logger import MultilspyLogger
+from amplihack.utils.logging_utils import log_call
 
 
+@log_call
 def ensure_language_server_installed(language: str):
     """
     Ensure that the language server for the given language is installed.

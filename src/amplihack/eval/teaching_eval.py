@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from amplihack.agents.domain_agents.base import DomainAgent, TeachingResult
+from amplihack.utils.logging_utils import log_call
 
 
 @dataclass
@@ -58,6 +59,7 @@ class DomainTeachingEvalResult:
     teaching_result: TeachingResult
     metadata: dict[str, Any] = field(default_factory=dict)
 
+    @log_call
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
@@ -99,6 +101,7 @@ class DomainTeachingEvaluator:
         "adaptivity": 0.20,
     }
 
+    @log_call
     def __init__(self, agent: DomainAgent):
         """Initialize evaluator.
 
@@ -107,6 +110,7 @@ class DomainTeachingEvaluator:
         """
         self.agent = agent
 
+    @log_call
     def evaluate(
         self,
         topic: str,
@@ -145,6 +149,7 @@ class DomainTeachingEvaluator:
             teaching_result=teaching_result,
         )
 
+    @log_call
     def _grade_clarity(self, result: TeachingResult) -> TeachingDimensionScore:
         """Grade clarity of instruction."""
         instruction = result.instruction
@@ -201,6 +206,7 @@ class DomainTeachingEvaluator:
             details=" | ".join(details_parts),
         )
 
+    @log_call
     def _grade_completeness(self, result: TeachingResult) -> TeachingDimensionScore:
         """Grade completeness of teaching."""
         score = 0.0
@@ -248,6 +254,7 @@ class DomainTeachingEvaluator:
             details=" | ".join(details_parts),
         )
 
+    @log_call
     def _grade_student_performance(self, result: TeachingResult) -> TeachingDimensionScore:
         """Grade student performance on practice."""
         attempt = result.student_attempt
@@ -290,6 +297,7 @@ class DomainTeachingEvaluator:
             details=" | ".join(details_parts),
         )
 
+    @log_call
     def _grade_adaptivity(self, result: TeachingResult) -> TeachingDimensionScore:
         """Grade agent's adaptivity to student needs."""
         score = 0.0
@@ -326,6 +334,7 @@ class DomainTeachingEvaluator:
         )
 
 
+@log_call
 def _get_domain_terms(domain: str) -> list[str]:
     """Get domain-specific terms for instruction quality checking."""
     terms = {
@@ -376,6 +385,7 @@ def _get_domain_terms(domain: str) -> list[str]:
     return terms.get(domain, [])
 
 
+@log_call
 def run_combined_eval(
     agent: DomainAgent,
     teaching_topic: str,

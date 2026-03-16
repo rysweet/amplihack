@@ -1,6 +1,9 @@
 """Auto-installer for amplihack-memory-lib during startup."""
 
+from amplihack.utils.logging_utils import log_call
 
+
+@log_call
 def ensure_memory_lib_installed() -> bool:
     """Ensure amplihack-memory-lib is installed, auto-install if missing.
 

@@ -5,6 +5,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 from .database import MemoryDatabase
 from .models import MemoryEntry, MemoryQuery, MemoryType
 
@@ -16,6 +18,7 @@ class MemoryManager:
     batch operations for efficiency, and memory lifecycle management.
     """
 
+    @log_call
     def __init__(self, db_path: str | Path | None = None, session_id: str | None = None):
         """Initialize memory manager.
 
@@ -26,6 +29,7 @@ class MemoryManager:
         self.db = MemoryDatabase(db_path)
         self.session_id = session_id or self._generate_session_id()
 
+    @log_call
     def store(
         self,
         agent_id: str,
@@ -94,6 +98,7 @@ class MemoryManager:
             return memory_id
         raise RuntimeError(f"Failed to store memory: {title}")
 
+    @log_call
     def retrieve(
         self,
         agent_id: str | None = None,
@@ -141,6 +146,7 @@ class MemoryManager:
 
         return self.db.retrieve_memories(query)
 
+    @log_call
     def get(self, memory_id: str) -> MemoryEntry | None:
         """Get a specific memory by ID.
 
@@ -158,6 +164,7 @@ class MemoryManager:
 
         return memory
 
+    @log_call
     def update(
         self,
         memory_id: str,
@@ -201,6 +208,7 @@ class MemoryManager:
 
         return self.db.store_memory(memory)
 
+    @log_call
     def delete(self, memory_id: str) -> bool:
         """Delete a memory.
 
@@ -217,6 +225,7 @@ class MemoryManager:
 
         return self.db.delete_memory(memory_id)
 
+    @log_call
     def store_batch(self, memories: list[dict[str, Any]]) -> list[str]:
         """Store multiple memories efficiently.
 
@@ -257,6 +266,7 @@ class MemoryManager:
 
         return memory_ids
 
+    @log_call
     def search(self, query: str, agent_id: str | None = None, limit: int = 10) -> list[MemoryEntry]:
         """Simple full-text search across memories.
 
@@ -274,6 +284,7 @@ class MemoryManager:
             limit=limit,
         )
 
+    @log_call
     def get_recent(self, agent_id: str | None = None, limit: int = 10) -> list[MemoryEntry]:
         """Get most recently accessed memories.
 
@@ -286,6 +297,7 @@ class MemoryManager:
         """
         return self.retrieve(agent_id=agent_id, limit=limit)
 
+    @log_call
     def get_important(self, min_importance: int = 7, limit: int = 10) -> list[MemoryEntry]:
         """Get high-importance memories.
 
@@ -298,6 +310,7 @@ class MemoryManager:
         """
         return self.retrieve(min_importance=min_importance, limit=limit)
 
+    @log_call
     def cleanup_expired(self) -> int:
         """Remove expired memories.
 
@@ -306,6 +319,7 @@ class MemoryManager:
         """
         return self.db.cleanup_expired()
 
+    @log_call
     def get_session_summary(self) -> dict[str, Any]:
         """Get summary of current session.
 
@@ -331,6 +345,7 @@ class MemoryManager:
             "metadata": session_info.metadata,
         }
 
+    @log_call
     def list_memory_types(self) -> list[str]:
         """Get list of available memory types.
 
@@ -339,6 +354,7 @@ class MemoryManager:
         """
         return [t.value for t in MemoryType]
 
+    @log_call
     def get_stats(self) -> dict[str, Any]:
         """Get database statistics.
 
@@ -348,16 +364,19 @@ class MemoryManager:
         return self.db.get_stats()
 
     @staticmethod
+    @log_call
     def _generate_session_id() -> str:
         """Generate a unique session identifier."""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         unique_id = str(uuid.uuid4())[:8]
         return f"session_{timestamp}_{unique_id}"
 
+    @log_call
     def __enter__(self):
         """Context manager entry."""
         return self
 
+    @log_call
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit with automatic cleanup."""
         # Optionally cleanup expired memories on exit

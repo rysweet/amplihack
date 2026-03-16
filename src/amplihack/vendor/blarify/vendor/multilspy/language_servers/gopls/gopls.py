@@ -12,6 +12,7 @@ from amplihack.vendor.blarify.vendor.multilspy.lsp_protocol_handler.lsp_types im
 from amplihack.vendor.blarify.vendor.multilspy.lsp_protocol_handler.server import ProcessLaunchInfo
 from amplihack.vendor.blarify.vendor.multilspy.multilspy_config import MultilspyConfig
 from amplihack.vendor.blarify.vendor.multilspy.multilspy_logger import MultilspyLogger
+from amplihack.utils.logging_utils import log_call
 
 
 class Gopls(LanguageServer):
@@ -20,6 +21,7 @@ class Gopls(LanguageServer):
     """
 
     @staticmethod
+    @log_call
     def _get_go_version():
         """Get the installed Go version or None if not found."""
         try:
@@ -31,6 +33,7 @@ class Gopls(LanguageServer):
         return None
 
     @staticmethod
+    @log_call
     def _get_gopls_version():
         """Get the installed gopls version or None if not found."""
         try:
@@ -42,6 +45,7 @@ class Gopls(LanguageServer):
         return None
 
     @classmethod
+    @log_call
     def setup_runtime_dependency(cls):
         """
         Check if required Go runtime dependencies are available.
@@ -69,6 +73,7 @@ class Gopls(LanguageServer):
 
         return True
 
+    @log_call
     def __init__(self, config: MultilspyConfig, logger: MultilspyLogger, repository_root_path: str):
         # Check runtime dependencies before initializing
         self.setup_runtime_dependency()
@@ -83,6 +88,7 @@ class Gopls(LanguageServer):
         self.server_ready = asyncio.Event()
         self.request_id = 0
 
+    @log_call
     def _get_initialize_params(self, repository_absolute_path: str) -> InitializeParams:
         """
         Returns the initialize params for the TypeScript Language Server.
@@ -108,15 +114,19 @@ class Gopls(LanguageServer):
         return d
 
     @asynccontextmanager
+    @log_call
     async def start_server(self) -> AsyncIterator["Gopls"]:
         """Start gopls server process"""
 
+        @log_call
         async def register_capability_handler(params):
             return
 
+        @log_call
         async def window_log_message(msg):
             self.logger.log(f"LSP: window/logMessage: {msg}", logging.INFO)
 
+        @log_call
         async def do_nothing(params):
             return
 

@@ -27,6 +27,7 @@ from amplihack.vendor.blarify.tools import (
     VectorSearch,
 )
 from fastmcp import FastMCP
+from amplihack.utils.logging_utils import log_call
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -35,6 +36,7 @@ logger = logging.getLogger(__name__)
 class BlarifyMCPServer:
     """MCP Server for Blarify tools."""
 
+    @log_call
     def __init__(self, config: MCPServerConfig) -> None:
         """Initialize the MCP server."""
         self.config = config
@@ -47,6 +49,7 @@ class BlarifyMCPServer:
         self.db_manager: AbstractDbManager | None = None
         self.tool_wrappers: list[MCPToolWrapper] = []
 
+    @log_call
     def _initialize_db_manager(self) -> AbstractDbManager:
         """Initialize the database manager based on configuration."""
         if self.config.db_type == "neo4j":
@@ -67,6 +70,7 @@ class BlarifyMCPServer:
             )
         raise ValueError(f"Unsupported database type: {self.config.db_type}")
 
+    @log_call
     def _initialize_tools(self) -> None:
         """Initialize all Blarify tools with the database manager."""
         if not self.db_manager:
@@ -98,11 +102,13 @@ class BlarifyMCPServer:
         for wrapper in self.tool_wrappers:
             self._register_tool_with_mcp(wrapper)
 
+    @log_call
     def _register_tool_with_mcp(self, wrapper: MCPToolWrapper) -> None:
         """Register a tool wrapper with the FastMCP server."""
         # Since FastMCP doesn't support **kwargs, we create a function that
         # accepts a single Dict[str, Any] parameter for all arguments
 
+        @log_call
         async def tool_function(arguments: dict[str, Any] = {}) -> str:
             """Execute the tool with the provided arguments."""
             result = await wrapper.invoke(arguments)
@@ -113,6 +119,7 @@ class BlarifyMCPServer:
 
         logger.info(f"Registered tool: {wrapper.name}")
 
+    @log_call
     def run(self) -> None:
         """Run the MCP server."""
         try:
@@ -139,6 +146,7 @@ class BlarifyMCPServer:
                     pass
 
 
+@log_call
 def main() -> None:
     """Main entry point for the MCP server."""
     # Parse command-line arguments

@@ -28,6 +28,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 from .long_horizon_memory import (
     EvalReport,
     LongHorizonMemoryEval,
@@ -73,6 +75,7 @@ class MatrixReport:
     timestamp: str = ""
     total_time_s: float = 0.0
 
+    @log_call
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary."""
         return {
@@ -107,6 +110,7 @@ AGENT_TYPES: list[AgentConfig] = [
 ]
 
 
+@log_call
 def _create_agent(
     config: AgentConfig,
     model: str,
@@ -166,6 +170,7 @@ def _create_agent(
     return _SDKAgentWrapper(sdk_agent)
 
 
+@log_call
 def run_matrix_eval(
     num_turns: int = 500,
     num_questions: int = 50,
@@ -352,6 +357,7 @@ def run_matrix_eval(
     return matrix_report
 
 
+@log_call
 def _print_matrix_summary(report: MatrixReport) -> None:
     """Print a human-readable matrix summary."""
     print(f"\n{'=' * 70}")
@@ -437,6 +443,7 @@ def _print_matrix_summary(report: MatrixReport) -> None:
         # Overall ranking
         print("\nOVERALL RANKING:")
 
+        @log_call
         def _score_key(r: MatrixResult) -> float:
             return r.report.overall_score if r.report else 0.0
 
@@ -446,6 +453,7 @@ def _print_matrix_summary(report: MatrixReport) -> None:
             print(f"  {i}. {r.agent_name}: {r.report.overall_score:.2%}")
 
 
+@log_call
 def generate_markdown_report(report: MatrixReport, output_path: str) -> None:
     """Generate a detailed markdown report from matrix results.
 
@@ -491,6 +499,7 @@ def generate_markdown_report(report: MatrixReport, output_path: str) -> None:
 
     lines.append("")
 
+    @log_call
     def _md_score_key(r: MatrixResult) -> float:
         return r.report.overall_score if r.report else 0.0
 
@@ -654,6 +663,7 @@ def generate_markdown_report(report: MatrixReport, output_path: str) -> None:
     logger.info("Markdown report saved to %s", output_path)
 
 
+@log_call
 def main() -> None:
     """CLI entry point for matrix evaluation."""
     parser = argparse.ArgumentParser(description="5-way matrix evaluation across agent types")

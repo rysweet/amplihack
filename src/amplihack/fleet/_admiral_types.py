@@ -19,6 +19,7 @@ from enum import Enum
 from pathlib import Path
 
 from amplihack.fleet.fleet_tasks import FleetTask
+from amplihack.utils.logging_utils import log_call
 
 __all__ = ["ActionType", "DirectorAction", "DirectorLog"]
 
@@ -54,6 +55,7 @@ class DirectorLog:
     actions: list[dict] = field(default_factory=list)
     persist_path: Path | None = None
 
+    @log_call
     def record(self, action: DirectorAction, outcome: str) -> None:
         """Record an action and its outcome."""
         entry = {
@@ -68,6 +70,7 @@ class DirectorLog:
         self.actions.append(entry)
         self._save()
 
+    @log_call
     def _save(self) -> None:
         if self.persist_path:
             self.persist_path.parent.mkdir(parents=True, exist_ok=True)

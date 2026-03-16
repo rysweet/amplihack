@@ -23,6 +23,8 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 from .metacognition_grader import MetacognitionGrader
 from .teaching_session import TeachingConfig, TeachingSession
 
@@ -168,6 +170,7 @@ class ExperimentConfig:
     model: str = ""
     output_dir: str = "./meta_eval_results"
 
+    @log_call
     def __post_init__(self) -> None:
         if not self.model:
             self.model = os.environ.get("EVAL_MODEL", "claude-opus-4-6")
@@ -193,6 +196,7 @@ class ExperimentReport:
     overall_score: float
     summary: str
 
+    @log_call
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization."""
         return {
@@ -224,9 +228,11 @@ class MetaEvalExperiment:
         >>> print(report.overall_score)
     """
 
+    @log_call
     def __init__(self, config: ExperimentConfig) -> None:
         self.config = config
 
+    @log_call
     def build_knowledge_base(self) -> list[str]:
         """Build knowledge base from eval system documentation.
 
@@ -237,6 +243,7 @@ class MetaEvalExperiment:
         """
         return list(EVAL_KNOWLEDGE_BASE)
 
+    @log_call
     def generate_eval_quiz(self, knowledge_base: list[str]) -> list[dict[str, str]]:
         """Generate quiz questions about the eval system.
 
@@ -249,6 +256,7 @@ class MetaEvalExperiment:
         # Use pre-built quiz, limited by config
         return EVAL_QUIZ[: self.config.quiz_questions]
 
+    @log_call
     def run(self) -> ExperimentReport:
         """Run the complete experiment.
 
@@ -327,6 +335,7 @@ class MetaEvalExperiment:
         logger.info("Report saved to %s", report_path)
         return report
 
+    @log_call
     def _quiz_student(
         self,
         quiz: list[dict[str, str]],
@@ -404,6 +413,7 @@ class MetaEvalExperiment:
 
         return results
 
+    @log_call
     def _generate_summary(self, overall: float, turns: int, questions: int) -> str:
         """Generate human-readable summary."""
         if overall >= 0.8:
@@ -421,6 +431,7 @@ class MetaEvalExperiment:
             f"Overall metacognition score: {overall:.2f}."
         )
 
+    @log_call
     def _error_report(self, kb: list[str], error: str) -> ExperimentReport:
         """Generate an error report when experiment fails."""
         return ExperimentReport(
@@ -433,6 +444,7 @@ class MetaEvalExperiment:
         )
 
 
+@log_call
 def main():
     """CLI entry point for meta-eval experiment."""
     import argparse

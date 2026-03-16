@@ -33,6 +33,7 @@ from amplihack.fleet.fleet_auth import AuthPropagator
 from amplihack.fleet.fleet_observer import FleetObserver
 from amplihack.fleet.fleet_state import FleetState
 from amplihack.fleet.fleet_tasks import TaskQueue
+from amplihack.utils.logging_utils import log_call
 
 __all__ = ["FleetAdmiral", "ActionType", "DirectorAction", "DirectorLog"]
 
@@ -65,6 +66,7 @@ class FleetAdmiral:
         default_factory=lambda: {"actions": 0, "successes": 0, "failures": 0}
     )
 
+    @log_call
     def __post_init__(self):
         # Lazy import to avoid circular dependency (fleet_reasoners imports from _admiral_types)
         from amplihack.fleet.fleet_reasoners import (
@@ -91,6 +93,7 @@ class FleetAdmiral:
             self._log.persist_path = self.log_dir / "admiral_log.json"
             self.log_dir.mkdir(parents=True, exist_ok=True)
 
+    @log_call
     def exclude_vms(self, *vm_names: str) -> FleetAdmiral:
         """Mark VMs that should not be managed (user's existing VMs)."""
         self._exclude_vms.update(vm_names)
@@ -98,15 +101,18 @@ class FleetAdmiral:
         return self
 
     @property
+    @log_call
     def fleet_state(self) -> FleetState:
         """Public access to fleet state."""
         return self._fleet_state
 
     @property
+    @log_call
     def observer(self) -> FleetObserver:
         """Public access to fleet observer for configuration."""
         return self._observer
 
+    @log_call
     def run_once(self) -> list[DirectorAction]:
         """Execute one PERCEIVE→REASON→ACT cycle.
 
@@ -129,6 +135,7 @@ class FleetAdmiral:
 
         return actions
 
+    @log_call
     def run_loop(self, max_cycles: int = 0) -> None:
         """Run continuous admiral loop.
 
@@ -171,10 +178,12 @@ class FleetAdmiral:
 
         self._running = False
 
+    @log_call
     def stop(self) -> None:
         """Signal the admiral to stop after current cycle."""
         self._running = False
 
+    @log_call
     def perceive(self) -> FleetState:
         """Poll all VMs and tmux sessions.
 
@@ -194,12 +203,14 @@ class FleetAdmiral:
 
         return self._fleet_state
 
+    @log_call
     def reason(self, state: FleetState) -> list[DirectorAction]:
         """Delegate to composable reasoner chain."""
         actions = self._reasoner_chain.reason(state, self.task_queue)
         self.task_queue.save()  # Persist any state mutations from reasoning
         return actions
 
+    @log_call
     def act(self, actions: list[DirectorAction]) -> list[tuple[DirectorAction, str]]:
         """Execute decided actions.
 
@@ -221,10 +232,12 @@ class FleetAdmiral:
 
         return results
 
+    @log_call
     def _execute_action(self, action: DirectorAction) -> str:
         """Dispatch a single action to the appropriate executor."""
         return execute_action(action, self.azlin_path, self.task_queue, self._auth)
 
+    @log_call
     def learn(self, results: list[tuple[DirectorAction, str]]) -> None:
         """Track action outcomes and persist learnings to amplihack memory.
 
@@ -263,12 +276,14 @@ class FleetAdmiral:
                         summary=f"{action.action_type.value} on {action.vm_name} succeeded",
                     )
 
+    @log_call
     def recall_learnings(self, limit: int = 5) -> list[dict]:
         """Retrieve recent fleet learnings from amplihack memory."""
         from amplihack.memory.discoveries import get_recent_discoveries
 
         return get_recent_discoveries(days=30, limit=limit)
 
+    @log_call
     def status_report(self) -> str:
         """Generate human-readable status report."""
         lines = [

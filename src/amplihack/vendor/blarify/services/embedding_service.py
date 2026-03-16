@@ -6,11 +6,13 @@ import time
 
 from amplihack.vendor.blarify.graph.node.documentation_node import DocumentationNode
 from langchain_openai import OpenAIEmbeddings
+from amplihack.utils.logging_utils import log_call
 
 
 class EmbeddingService:
     """Service for generating and managing text embeddings using OpenAI's text-embedding-ada-002."""
 
+    @log_call
     def __init__(self, batch_size: int = 100) -> None:
         """Initialize the EmbeddingService.
 
@@ -22,6 +24,7 @@ class EmbeddingService:
         self.cache: dict[str, list[float]] = {}
         self._initialize_client()
 
+    @log_call
     def _initialize_client(self) -> None:
         """Initialize the OpenAI embeddings client."""
         api_key = os.getenv("OPENAI_API_KEY")
@@ -32,6 +35,7 @@ class EmbeddingService:
 
         self.client = OpenAIEmbeddings(model=self.model, api_key=SecretStr(api_key))
 
+    @log_call
     def _get_content_hash(self, text: str) -> str:
         """Generate a hash for the given text for caching purposes.
 
@@ -43,6 +47,7 @@ class EmbeddingService:
         """
         return hashlib.sha256(text.encode()).hexdigest()
 
+    @log_call
     def embed_batch(self, texts: list[str]) -> list[list[float]]:
         """Embed a batch of texts using OpenAI embeddings.
 
@@ -69,6 +74,7 @@ class EmbeddingService:
 
         return embeddings
 
+    @log_call
     def _embed_with_retry(self, texts: list[str], max_retries: int = 3) -> list[list[float]]:
         """Embed texts with retry logic for handling rate limits and failures.
 
@@ -92,6 +98,7 @@ class EmbeddingService:
 
         return []
 
+    @log_call
     def embed_documentation_nodes(self, nodes: list[DocumentationNode]) -> dict[str, list[float]]:
         """Generate embeddings for documentation nodes' content field.
 
@@ -141,6 +148,7 @@ class EmbeddingService:
 
         return node_embeddings
 
+    @log_call
     def embed_single_text(self, text: str) -> list[float] | None:
         """Embed a single text string.
 

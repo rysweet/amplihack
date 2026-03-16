@@ -15,10 +15,9 @@ Public API tested:
 from __future__ import annotations
 
 import os
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
-
 from textual.widgets import (
     Button,
     DataTable,
@@ -31,18 +30,20 @@ from textual.widgets import (
     TextArea,
 )
 
+from amplihack.fleet.fleet_session_reasoner import SessionDecision
+from amplihack.fleet.fleet_tui import SessionView, VMView
 from amplihack.fleet.fleet_tui_dashboard import (
     FleetDashboardApp,
     _CachedSession,
 )
-from amplihack.fleet.fleet_tui import SessionView, VMView
-from amplihack.fleet.fleet_session_reasoner import SessionDecision
-
+from amplihack.utils.logging_utils import log_call
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
+@log_call
 def _make_mock_vms() -> list[VMView]:
     """Build a small fleet of mock VMs with sessions."""
     return [
@@ -93,6 +94,7 @@ def _make_mock_vms() -> list[VMView]:
     ]
 
 
+@log_call
 def _make_sample_decision() -> SessionDecision:
     """Build a sample director proposal."""
     return SessionDecision(
@@ -105,6 +107,7 @@ def _make_sample_decision() -> SessionDecision:
     )
 
 
+@log_call
 def _inject_mock_data(app: FleetDashboardApp, vms: list[VMView]) -> None:
     """Directly populate the app's cache and table from mock VMs.
 
@@ -123,7 +126,12 @@ def _inject_mock_data(app: FleetDashboardApp, vms: list[VMView]) -> None:
         if not vm.sessions:
             key = f"{vm.name}/(no sessions)"
             table.add_row(
-                "[dim]\u25cb[/]", vm.name, "(none)", "stopped", "", "",
+                "[dim]\u25cb[/]",
+                vm.name,
+                "(none)",
+                "stopped",
+                "",
+                "",
                 key=key,
             )
             new_cache[key] = _CachedSession(
@@ -166,6 +174,7 @@ class TestFlow1AppLaunch:
     """Flow 1: App mounts correctly with all expected widgets."""
 
     @pytest.mark.asyncio
+    @log_call
     async def test_app_mounts_without_crash(self):
         """The app should mount and render without raising."""
         app = FleetDashboardApp(refresh_interval=9999)
@@ -174,6 +183,7 @@ class TestFlow1AppLaunch:
             assert app.title == "Fleet Dashboard"
 
     @pytest.mark.asyncio
+    @log_call
     async def test_header_shows_fleet_dashboard(self):
         """Header widget exists and app title is set."""
         app = FleetDashboardApp(refresh_interval=9999)
@@ -182,6 +192,7 @@ class TestFlow1AppLaunch:
             assert header is not None
 
     @pytest.mark.asyncio
+    @log_call
     async def test_data_table_exists_with_columns(self):
         """DataTable has the 6 expected columns: St, VM, Session, State, Branch, PR."""
         app = FleetDashboardApp(refresh_interval=9999)
@@ -192,6 +203,7 @@ class TestFlow1AppLaunch:
             assert col_labels == ["St", "VM", "Session", "State", "Branch", "PR"]
 
     @pytest.mark.asyncio
+    @log_call
     async def test_preview_pane_exists(self):
         """RichLog preview pane is present."""
         app = FleetDashboardApp(refresh_interval=9999)
@@ -200,6 +212,7 @@ class TestFlow1AppLaunch:
             assert preview is not None
 
     @pytest.mark.asyncio
+    @log_call
     async def test_summary_bar_exists(self):
         """Summary Static bar exists at bottom of fleet tab."""
         app = FleetDashboardApp(refresh_interval=9999)
@@ -208,6 +221,7 @@ class TestFlow1AppLaunch:
             assert summary is not None
 
     @pytest.mark.asyncio
+    @log_call
     async def test_footer_with_keybindings_visible(self):
         """Footer widget exists (shows keybindings)."""
         app = FleetDashboardApp(refresh_interval=9999)
@@ -225,6 +239,7 @@ class TestFlow2DataPopulation:
     """Flow 2: Mock data populates the table correctly."""
 
     @pytest.mark.asyncio
+    @log_call
     async def test_table_row_count_matches_running_sessions(self):
         """Table should have one row per session from running VMs."""
         app = FleetDashboardApp(refresh_interval=9999)
@@ -239,6 +254,7 @@ class TestFlow2DataPopulation:
             assert table.row_count == 3
 
     @pytest.mark.asyncio
+    @log_call
     async def test_status_icons_rendered(self):
         """Rows contain the correct Unicode status icons."""
         app = FleetDashboardApp(refresh_interval=9999)
@@ -257,6 +273,7 @@ class TestFlow2DataPopulation:
             assert app._cache["staging/deploy-1"].view.status == "error"
 
     @pytest.mark.asyncio
+    @log_call
     async def test_vm_names_appear_in_cache(self):
         """VM names are present in the cache keys."""
         app = FleetDashboardApp(refresh_interval=9999)
@@ -282,6 +299,7 @@ class TestFlow3CursorMovement:
     """Flow 3: Moving cursor in the table updates the preview pane."""
 
     @pytest.mark.asyncio
+    @log_call
     async def test_down_arrow_updates_preview(self):
         """Pressing Down should highlight a row and populate the preview pane."""
         app = FleetDashboardApp(refresh_interval=9999)
@@ -298,6 +316,7 @@ class TestFlow3CursorMovement:
             assert app._selected_key != ""
 
     @pytest.mark.asyncio
+    @log_call
     async def test_cursor_move_changes_selected_key(self):
         """Moving cursor between rows should change _selected_key."""
         app = FleetDashboardApp(refresh_interval=9999)
@@ -352,6 +371,7 @@ class TestFlow4EnterDetail:
     """Flow 4: Pressing Enter switches to the Session Detail tab."""
 
     @pytest.mark.asyncio
+    @log_call
     async def test_enter_switches_to_detail_tab(self):
         """Pressing Enter on a row should activate the detail tab."""
         app = FleetDashboardApp(refresh_interval=9999)
@@ -376,6 +396,7 @@ class TestFlow4EnterDetail:
             assert app._selected_key.split("/")[0] in header_text
 
     @pytest.mark.asyncio
+    @log_call
     async def test_detail_header_shows_session_info(self):
         """The detail header should contain the selected session's VM and name."""
         app = FleetDashboardApp(refresh_interval=9999)
@@ -398,6 +419,7 @@ class TestFlow4EnterDetail:
             assert "work-1" in str(header_text)
 
     @pytest.mark.asyncio
+    @log_call
     async def test_enter_with_no_selection_shows_warning(self):
         """Pressing Enter with no row selected should not crash."""
         app = FleetDashboardApp(refresh_interval=9999)
@@ -421,6 +443,7 @@ class TestFlow5EscapeBack:
     """Flow 5: Escape returns from Session Detail to Fleet Overview."""
 
     @pytest.mark.asyncio
+    @log_call
     async def test_escape_returns_to_fleet_tab(self):
         """action_back_to_fleet sets tabs.active to fleet-tab."""
         app = FleetDashboardApp(refresh_interval=9999)
@@ -447,6 +470,7 @@ class TestFlow6DryRun:
     """Flow 6: Pressing 'd' triggers reasoning and shows the proposal."""
 
     @pytest.mark.asyncio
+    @log_call
     async def test_dry_run_shows_proposal(self):
         """After dry-run, the proposal section should show action/reasoning/confidence."""
         app = FleetDashboardApp(refresh_interval=9999)
@@ -476,6 +500,7 @@ class TestFlow6DryRun:
             assert "confirmation" in proposal_text.lower()
 
     @pytest.mark.asyncio
+    @log_call
     async def test_dry_run_without_api_key_shows_error(self):
         """Pressing 'd' without ANTHROPIC_API_KEY should show an error message."""
         app = FleetDashboardApp(refresh_interval=9999)
@@ -507,6 +532,7 @@ class TestFlow7ActionEditor:
     """Flow 7: Pressing 'e' opens the Action Editor with pre-populated fields."""
 
     @pytest.mark.asyncio
+    @log_call
     async def test_edit_switches_to_editor_tab(self):
         """Pressing 'e' with a proposal should switch to editor-tab."""
         app = FleetDashboardApp(refresh_interval=9999)
@@ -531,6 +557,7 @@ class TestFlow7ActionEditor:
             assert len(editor.text) > 0 or entry is None
 
     @pytest.mark.asyncio
+    @log_call
     async def test_editor_prepopulated_with_decision_text(self):
         """TextArea should contain the decision's input_text."""
         app = FleetDashboardApp(refresh_interval=9999)
@@ -554,6 +581,7 @@ class TestFlow7ActionEditor:
             assert editor.text == "y\n"
 
     @pytest.mark.asyncio
+    @log_call
     async def test_editor_select_shows_action_type(self):
         """Select widget should show the decision's action type."""
         app = FleetDashboardApp(refresh_interval=9999)
@@ -577,6 +605,7 @@ class TestFlow7ActionEditor:
             assert select.value == "send_input"
 
     @pytest.mark.asyncio
+    @log_call
     async def test_edit_without_proposal_does_not_switch_tab(self):
         """Pressing 'e' without a proposal should warn and stay on current tab."""
         app = FleetDashboardApp(refresh_interval=9999)
@@ -606,6 +635,7 @@ class TestFlow8SafetyBlock:
     """Flow 8: Dangerous input is rejected by the safety check."""
 
     @pytest.mark.asyncio
+    @log_call
     async def test_dangerous_input_blocked_via_apply_decision(self):
         """_apply_decision should block 'rm -rf /' and NOT execute."""
         app = FleetDashboardApp(refresh_interval=9999)
@@ -635,6 +665,7 @@ class TestFlow8SafetyBlock:
                 mock_exec.assert_not_called()
 
     @pytest.mark.asyncio
+    @log_call
     async def test_dangerous_input_from_editor(self):
         """Applying edited action with dangerous text should be blocked."""
         app = FleetDashboardApp(refresh_interval=9999)
@@ -680,6 +711,7 @@ class TestFlow9Refresh:
     """Flow 9: Force refresh via 'r' key doesn't crash."""
 
     @pytest.mark.asyncio
+    @log_call
     async def test_force_refresh_does_not_crash(self):
         """Pressing 'r' should trigger a refresh without errors."""
         app = FleetDashboardApp(refresh_interval=9999)
@@ -693,6 +725,7 @@ class TestFlow9Refresh:
             assert app.is_running
 
     @pytest.mark.asyncio
+    @log_call
     async def test_refresh_with_mock_data_populates_table(self):
         """Background refresh with mock VMs should populate the table."""
         app = FleetDashboardApp(refresh_interval=9999)
@@ -719,6 +752,7 @@ class TestFlow10Quit:
     """Flow 10: Pressing 'q' exits the app cleanly."""
 
     @pytest.mark.asyncio
+    @log_call
     async def test_quit_exits_app(self):
         """Pressing 'q' should cause the app to exit."""
         app = FleetDashboardApp(refresh_interval=9999)
@@ -739,6 +773,7 @@ class TestEdgeCases:
     """Additional edge case coverage for robustness."""
 
     @pytest.mark.asyncio
+    @log_call
     async def test_apply_proposal_without_selection_warns(self):
         """Pressing 'a' with no selection should not crash."""
         app = FleetDashboardApp(refresh_interval=9999)
@@ -749,6 +784,7 @@ class TestEdgeCases:
             # No crash = pass
 
     @pytest.mark.asyncio
+    @log_call
     async def test_skip_button_updates_proposal_text(self):
         """Clicking Skip button should update proposal text to 'Skipped.'"""
         app = FleetDashboardApp(refresh_interval=9999)
@@ -772,6 +808,7 @@ class TestEdgeCases:
             assert "Skipped" in proposal_text
 
     @pytest.mark.asyncio
+    @log_call
     async def test_cancel_button_returns_to_detail(self):
         """Clicking Cancel in editor should return to detail tab."""
         app = FleetDashboardApp(refresh_interval=9999)
@@ -798,6 +835,7 @@ class TestEdgeCases:
             # Test passes if no exception raised
 
     @pytest.mark.asyncio
+    @log_call
     async def test_vm_with_no_sessions_gets_placeholder_row(self):
         """A running VM with no sessions should get a placeholder row."""
         app = FleetDashboardApp(refresh_interval=9999)
@@ -813,6 +851,7 @@ class TestEdgeCases:
             assert "empty-vm/(no sessions)" in app._cache
 
     @pytest.mark.asyncio
+    @log_call
     async def test_show_proposal_formats_correctly(self):
         """_show_proposal should format action, confidence, and reasoning."""
         app = FleetDashboardApp(refresh_interval=9999)
@@ -834,6 +873,7 @@ class TestEdgeCases:
             assert "actively processing" in proposal_text
 
     @pytest.mark.asyncio
+    @log_call
     async def test_tabbed_content_has_three_tabs(self):
         """TabbedContent should have fleet-tab, detail-tab, and editor-tab."""
         app = FleetDashboardApp(refresh_interval=9999)
@@ -855,6 +895,7 @@ class TestFlow11LetterHotkeys:
     """Flow 11: Letter keys (f, s, p) switch tabs alongside numeric keys."""
 
     @pytest.mark.asyncio
+    @log_call
     async def test_f_key_switches_to_fleet_tab(self):
         """Pressing 'f' should activate the fleet-tab."""
         app = FleetDashboardApp(refresh_interval=9999)
@@ -870,6 +911,7 @@ class TestFlow11LetterHotkeys:
             assert tabs.active == "fleet-tab"
 
     @pytest.mark.asyncio
+    @log_call
     async def test_s_key_bound_to_tab_detail(self):
         """'s' binding should map to action_tab_detail which targets detail-tab."""
         # Verify the binding exists and maps to the correct action
@@ -885,6 +927,7 @@ class TestFlow11LetterHotkeys:
             await pilot.pause()
 
     @pytest.mark.asyncio
+    @log_call
     async def test_p_key_bound_to_tab_projects(self):
         """'p' binding should map to action_tab_projects which targets projects-tab."""
         p_bindings = [b for b in FleetDashboardApp.BINDINGS if b.key == "p"]
@@ -898,6 +941,7 @@ class TestFlow11LetterHotkeys:
             await pilot.pause()
 
     @pytest.mark.asyncio
+    @log_call
     async def test_letter_bindings_exist_in_app(self):
         """BINDINGS should contain 'f', 's', and 'p' entries."""
         binding_keys = [b.key for b in FleetDashboardApp.BINDINGS]
@@ -906,6 +950,7 @@ class TestFlow11LetterHotkeys:
         assert "p" in binding_keys, "Missing 'p' binding for Projects tab"
 
     @pytest.mark.asyncio
+    @log_call
     async def test_numeric_bindings_still_exist(self):
         """Numeric keys 1-4 should still be present alongside letter keys."""
         binding_keys = [b.key for b in FleetDashboardApp.BINDINGS]
@@ -924,6 +969,7 @@ class TestFlow12ArrowTabNavigation:
     """Flow 12: Left/Right arrows cycle through tabs."""
 
     @pytest.mark.asyncio
+    @log_call
     async def test_action_tab_next_targets_correct_tab(self):
         """action_tab_next should set tabs.active to the next tab ID in order."""
         from amplihack.fleet._tui_actions import _ActionsMixin
@@ -941,6 +987,7 @@ class TestFlow12ArrowTabNavigation:
             await pilot.pause()
 
     @pytest.mark.asyncio
+    @log_call
     async def test_action_tab_prev_cycles_backward(self):
         """action_tab_prev should go from detail-tab back to fleet-tab."""
         from amplihack.fleet._tui_actions import _ActionsMixin
@@ -961,6 +1008,7 @@ class TestFlow12ArrowTabNavigation:
             assert tabs.active == "fleet-tab"
 
     @pytest.mark.asyncio
+    @log_call
     async def test_tab_next_wraps_at_end(self):
         """action_tab_next from last tab in order should wrap to first."""
         from amplihack.fleet._tui_actions import _ActionsMixin
@@ -976,6 +1024,7 @@ class TestFlow12ArrowTabNavigation:
             await pilot.pause()
 
     @pytest.mark.asyncio
+    @log_call
     async def test_tab_prev_wraps_at_start(self):
         """action_tab_prev from first tab in order should wrap to last."""
         from amplihack.fleet._tui_actions import _ActionsMixin
@@ -990,6 +1039,7 @@ class TestFlow12ArrowTabNavigation:
             await pilot.pause()
 
     @pytest.mark.asyncio
+    @log_call
     async def test_arrow_bindings_exist_in_app(self):
         """BINDINGS should contain 'left' and 'right' entries."""
         binding_keys = [b.key for b in FleetDashboardApp.BINDINGS]
@@ -1005,6 +1055,7 @@ class TestFlow12ArrowTabNavigation:
 class TestFlow13CommandPaletteDisabled:
     """Flow 13: Command palette is disabled to prevent Escape hijacking."""
 
+    @log_call
     def test_command_palette_binding_disabled(self):
         """COMMAND_PALETTE_BINDING should be empty string to disable palette."""
         # Textual uses empty string "" to disable the command palette

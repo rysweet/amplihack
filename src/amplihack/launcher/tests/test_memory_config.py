@@ -17,6 +17,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+from amplihack.utils.logging_utils import log_call
+
 # =============================================================================
 # UNIT TESTS (60%)
 # =============================================================================
@@ -25,6 +27,7 @@ import pytest
 class TestDetectSystemRAM:
     """Test system RAM detection across platforms."""
 
+    @log_call
     def test_detect_ram_linux_with_meminfo(self):
         """Test RAM detection on Linux using /proc/meminfo."""
         mock_meminfo = "MemTotal:       16384000 kB\nMemFree:        8000000 kB"
@@ -36,6 +39,7 @@ class TestDetectSystemRAM:
                 ram_gb = detect_system_ram_gb()
                 assert ram_gb == 16  # 16384000 KB ≈ 16 GB
 
+    @log_call
     def test_detect_ram_macos_with_sysctl(self):
         """Test RAM detection on macOS using sysctl."""
         mock_result = Mock()
@@ -49,6 +53,7 @@ class TestDetectSystemRAM:
                 ram_gb = detect_system_ram_gb()
                 assert ram_gb == 16
 
+    @log_call
     def test_detect_ram_windows_with_wmic(self):
         """Test RAM detection on Windows using wmic."""
         mock_result = Mock()
@@ -62,6 +67,7 @@ class TestDetectSystemRAM:
                 ram_gb = detect_system_ram_gb()
                 assert ram_gb == 16
 
+    @log_call
     def test_detect_ram_insufficient_system(self):
         """Test detection on systems with less than 4GB RAM."""
         mock_meminfo = "MemTotal:       2048000 kB\n"  # 2 GB
@@ -73,6 +79,7 @@ class TestDetectSystemRAM:
                 ram_gb = detect_system_ram_gb()
                 assert ram_gb == 2
 
+    @log_call
     def test_detect_ram_command_failure(self):
         """Test graceful handling when RAM detection fails."""
         with patch("platform.system", return_value="Linux"):
@@ -88,6 +95,7 @@ class TestDetectSystemRAM:
 class TestCalculateRecommendedLimit:
     """Test memory limit calculation with max() formula."""
 
+    @log_call
     def test_calculate_limit_small_system_uses_minimum(self):
         """Test that small systems get minimum 8GB limit."""
         from amplihack.launcher.memory_config import calculate_recommended_limit
@@ -96,6 +104,7 @@ class TestCalculateRecommendedLimit:
         limit_mb = calculate_recommended_limit(16)
         assert limit_mb == 8192
 
+    @log_call
     def test_calculate_limit_medium_system_uses_quarter(self):
         """Test that medium systems get 1/4 of RAM."""
         from amplihack.launcher.memory_config import calculate_recommended_limit
@@ -104,6 +113,7 @@ class TestCalculateRecommendedLimit:
         limit_mb = calculate_recommended_limit(64)
         assert limit_mb == 16384
 
+    @log_call
     def test_calculate_limit_large_system_capped_at_32gb(self):
         """Test that large systems are capped at 32GB."""
         from amplihack.launcher.memory_config import calculate_recommended_limit
@@ -112,6 +122,7 @@ class TestCalculateRecommendedLimit:
         limit_mb = calculate_recommended_limit(256)
         assert limit_mb == 32768  # 32 GB
 
+    @log_call
     def test_calculate_limit_exact_boundary_32gb(self):
         """Test calculation at exact 32GB boundary."""
         from amplihack.launcher.memory_config import calculate_recommended_limit
@@ -120,6 +131,7 @@ class TestCalculateRecommendedLimit:
         limit_mb = calculate_recommended_limit(128)
         assert limit_mb == 32768
 
+    @log_call
     def test_calculate_limit_edge_cases(self):
         """Test edge cases for limit calculation."""
         from amplihack.launcher.memory_config import calculate_recommended_limit
@@ -141,6 +153,7 @@ class TestCalculateRecommendedLimit:
 class TestParseNodeOptions:
     """Test parsing of existing NODE_OPTIONS."""
 
+    @log_call
     def test_parse_empty_options(self):
         """Test parsing when NODE_OPTIONS is empty."""
         from amplihack.launcher.memory_config import parse_node_options
@@ -148,6 +161,7 @@ class TestParseNodeOptions:
         result = parse_node_options("")
         assert result == {}
 
+    @log_call
     def test_parse_single_memory_flag(self):
         """Test parsing single --max-old-space-size flag."""
         from amplihack.launcher.memory_config import parse_node_options
@@ -155,6 +169,7 @@ class TestParseNodeOptions:
         result = parse_node_options("--max-old-space-size=4096")
         assert result["max-old-space-size"] == 4096
 
+    @log_call
     def test_parse_multiple_flags(self):
         """Test parsing multiple flags."""
         from amplihack.launcher.memory_config import parse_node_options
@@ -166,6 +181,7 @@ class TestParseNodeOptions:
         assert result["no-warnings"] is True
         assert result["expose-gc"] is True
 
+    @log_call
     def test_parse_mixed_format_flags(self):
         """Test parsing flags with different formats."""
         from amplihack.launcher.memory_config import parse_node_options
@@ -177,6 +193,7 @@ class TestParseNodeOptions:
         assert result["no-deprecation"] is True
         assert result["stack-size"] == 2048
 
+    @log_call
     def test_parse_invalid_format(self):
         """Test handling of invalid option formats."""
         from amplihack.launcher.memory_config import parse_node_options
@@ -189,6 +206,7 @@ class TestParseNodeOptions:
 class TestMergeNodeOptions:
     """Test merging new memory limit with existing options."""
 
+    @log_call
     def test_merge_into_empty_options(self):
         """Test merging into empty existing options."""
         from amplihack.launcher.memory_config import merge_node_options
@@ -196,6 +214,7 @@ class TestMergeNodeOptions:
         result = merge_node_options({}, 8192)
         assert "--max-old-space-size=8192" in result
 
+    @log_call
     def test_merge_replaces_existing_limit(self):
         """Test that new limit replaces existing one."""
         from amplihack.launcher.memory_config import merge_node_options
@@ -206,6 +225,7 @@ class TestMergeNodeOptions:
         assert "--max-old-space-size=16384" in result
         assert "--no-warnings" in result
 
+    @log_call
     def test_merge_preserves_other_flags(self):
         """Test that non-memory flags are preserved."""
         from amplihack.launcher.memory_config import merge_node_options
@@ -223,6 +243,7 @@ class TestMergeNodeOptions:
         assert "--no-deprecation" in result
         assert "--stack-size=2048" in result
 
+    @log_call
     def test_merge_output_format(self):
         """Test that merged output is valid NODE_OPTIONS format."""
         from amplihack.launcher.memory_config import merge_node_options
@@ -238,6 +259,7 @@ class TestMergeNodeOptions:
 class TestShouldWarnAboutLimit:
     """Test warning logic for insufficient memory."""
 
+    @log_call
     def test_warn_below_minimum_8gb(self):
         """Test warning when limit is below 8GB minimum."""
         from amplihack.launcher.memory_config import should_warn_about_limit
@@ -245,12 +267,14 @@ class TestShouldWarnAboutLimit:
         assert should_warn_about_limit(4096) is True  # 4 GB
         assert should_warn_about_limit(6144) is True  # 6 GB
 
+    @log_call
     def test_no_warn_at_minimum_8gb(self):
         """Test no warning at exactly 8GB."""
         from amplihack.launcher.memory_config import should_warn_about_limit
 
         assert should_warn_about_limit(8192) is False
 
+    @log_call
     def test_no_warn_above_minimum(self):
         """Test no warning above 8GB."""
         from amplihack.launcher.memory_config import should_warn_about_limit
@@ -258,6 +282,7 @@ class TestShouldWarnAboutLimit:
         assert should_warn_about_limit(16384) is False
         assert should_warn_about_limit(32768) is False
 
+    @log_call
     def test_warn_zero_or_negative(self):
         """Test warning for invalid values."""
         from amplihack.launcher.memory_config import should_warn_about_limit
@@ -269,6 +294,7 @@ class TestShouldWarnAboutLimit:
 class TestPromptUserConsent:
     """Test user consent prompting."""
 
+    @log_call
     def test_prompt_displays_current_and_recommended(self):
         """Test that prompt shows both current and recommended limits."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -279,6 +305,7 @@ class TestPromptUserConsent:
             result = prompt_user_consent(config)
             assert result is True
 
+    @log_call
     def test_prompt_accepts_yes_variants(self):
         """Test that prompt accepts various 'yes' inputs."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -290,6 +317,7 @@ class TestPromptUserConsent:
                 with patch("builtins.input", return_value=response):
                     assert prompt_user_consent(config) is True
 
+    @log_call
     def test_prompt_rejects_no_variants(self):
         """Test that prompt rejects 'no' inputs."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -301,6 +329,7 @@ class TestPromptUserConsent:
                 with patch("builtins.input", return_value=response):
                     assert prompt_user_consent(config) is False
 
+    @log_call
     def test_prompt_handles_empty_input(self):
         """Test that prompt handles empty input (default to no)."""
         from amplihack.launcher.memory_config import prompt_user_consent
@@ -321,6 +350,7 @@ class TestPromptUserConsent:
 class TestMemoryConfigIntegration:
     """Integration tests combining multiple functions."""
 
+    @log_call
     def test_full_detection_and_calculation_workflow(self):
         """Test complete workflow from detection to calculation."""
         mock_meminfo = "MemTotal:       65536000 kB\n"  # 64 GB
@@ -338,6 +368,7 @@ class TestMemoryConfigIntegration:
                 assert ram_gb == 64
                 assert limit_mb == 16384  # 64 GB / 4
 
+    @log_call
     def test_parse_and_merge_workflow(self):
         """Test parsing existing options and merging new limit."""
         from amplihack.launcher.memory_config import merge_node_options, parse_node_options
@@ -349,6 +380,7 @@ class TestMemoryConfigIntegration:
         assert "--max-old-space-size=16384" in merged
         assert "--no-warnings" in merged
 
+    @log_call
     def test_detection_calculation_warning_workflow(self):
         """Test workflow with warning for insufficient memory."""
         mock_meminfo = "MemTotal:       8192000 kB\n"  # 8 GB
@@ -369,6 +401,7 @@ class TestMemoryConfigIntegration:
                 assert limit_mb == 8192  # max(8192, 2048) = 8192
                 assert needs_warning is False
 
+    @log_call
     def test_environment_variable_update_workflow(self):
         """Test updating environment variable with new limit."""
         from amplihack.launcher.memory_config import merge_node_options, parse_node_options
@@ -391,6 +424,7 @@ class TestMemoryConfigIntegration:
 class TestGetMemoryConfigE2E:
     """End-to-end tests for main entry point."""
 
+    @log_call
     def test_get_memory_config_normal_system(self):
         """Test complete flow on normal system (16+ GB)."""
         mock_meminfo = "MemTotal:       32768000 kB\n"  # 32 GB
@@ -409,6 +443,7 @@ class TestGetMemoryConfigE2E:
                     assert config["system_ram_gb"] == 32
                     assert config["recommended_limit_mb"] == 8192
 
+    @log_call
     def test_get_memory_config_with_existing_node_options(self):
         """Test complete flow with existing NODE_OPTIONS."""
         mock_meminfo = "MemTotal:       65536000 kB\n"  # 64 GB
@@ -424,6 +459,7 @@ class TestGetMemoryConfigE2E:
                         assert "--max-old-space-size=16384" in config["node_options"]
                         assert "--no-warnings" in config["node_options"]
 
+    @log_call
     def test_get_memory_config_user_declines(self):
         """Test complete flow when user declines update."""
         mock_meminfo = "MemTotal:       32768000 kB\n"  # 32 GB
@@ -440,6 +476,7 @@ class TestGetMemoryConfigE2E:
                         assert config is not None
                         assert config.get("user_consent") is False
 
+    @log_call
     def test_get_memory_config_insufficient_memory_warning(self):
         """Test complete flow with insufficient memory warning."""
         mock_meminfo = "MemTotal:       4096000 kB\n"  # 4 GB
@@ -455,6 +492,7 @@ class TestGetMemoryConfigE2E:
                 assert config["recommended_limit_mb"] == 8192  # minimum
                 assert config.get("warning") is not None
 
+    @log_call
     def test_get_memory_config_detection_failure(self):
         """Test complete flow when RAM detection fails."""
         with patch("pathlib.Path.exists", return_value=False):
@@ -475,6 +513,7 @@ class TestGetMemoryConfigE2E:
 class TestEdgeCases:
     """Test edge cases and boundary conditions."""
 
+    @log_call
     def test_maximum_possible_ram(self):
         """Test with extremely large RAM (1TB+)."""
         from amplihack.launcher.memory_config import calculate_recommended_limit
@@ -483,6 +522,7 @@ class TestEdgeCases:
         limit_mb = calculate_recommended_limit(1024)
         assert limit_mb == 32768  # Capped at 32 GB
 
+    @log_call
     def test_very_small_ram(self):
         """Test with very small RAM (< 4GB)."""
         from amplihack.launcher.memory_config import calculate_recommended_limit
@@ -490,6 +530,7 @@ class TestEdgeCases:
         limit_mb = calculate_recommended_limit(2)
         assert limit_mb == 8192  # Still minimum 8 GB
 
+    @log_call
     def test_fractional_ram_values(self):
         """Test with fractional GB values."""
         from amplihack.launcher.memory_config import calculate_recommended_limit
@@ -498,6 +539,7 @@ class TestEdgeCases:
         limit_mb = calculate_recommended_limit(15.5)
         assert limit_mb >= 8192
 
+    @log_call
     def test_node_options_with_quotes(self):
         """Test parsing NODE_OPTIONS with quoted values."""
         from amplihack.launcher.memory_config import parse_node_options
@@ -508,6 +550,7 @@ class TestEdgeCases:
         # Should handle quoted values correctly
         assert result["max-old-space-size"] == 4096
 
+    @log_call
     def test_concurrent_modifications_to_node_options(self):
         """Test handling of concurrent NODE_OPTIONS modifications."""
         from amplihack.launcher.memory_config import merge_node_options, parse_node_options
@@ -533,6 +576,7 @@ class TestEdgeCases:
 class TestErrorHandling:
     """Test error handling and recovery."""
 
+    @log_call
     def test_invalid_ram_gb_input(self):
         """Test handling of invalid RAM GB values."""
         from amplihack.launcher.memory_config import calculate_recommended_limit
@@ -544,6 +588,7 @@ class TestErrorHandling:
         with pytest.raises((ValueError, TypeError)):
             calculate_recommended_limit("invalid")
 
+    @log_call
     def test_parse_malformed_node_options(self):
         """Test parsing completely malformed NODE_OPTIONS."""
         from amplihack.launcher.memory_config import parse_node_options
@@ -553,6 +598,7 @@ class TestErrorHandling:
         result = parse_node_options(malformed)
         assert isinstance(result, dict)
 
+    @log_call
     def test_permission_denied_reading_meminfo(self):
         """Test handling when /proc/meminfo cannot be read."""
         with patch("pathlib.Path.exists", return_value=True):
@@ -563,6 +609,7 @@ class TestErrorHandling:
                 ram_gb = detect_system_ram_gb()
                 assert ram_gb is None or ram_gb > 0
 
+    @log_call
     def test_subprocess_timeout_on_detection(self):
         """Test handling of subprocess timeout during detection."""
         with patch("subprocess.run", side_effect=subprocess.TimeoutExpired("cmd", 5)):
@@ -581,6 +628,7 @@ class TestErrorHandling:
 class TestPlatformSpecifics:
     """Test platform-specific behaviors."""
 
+    @log_call
     def test_linux_meminfo_parsing_variants(self):
         """Test parsing different /proc/meminfo formats."""
         test_cases = [
@@ -597,6 +645,7 @@ class TestPlatformSpecifics:
                     ram_gb = detect_system_ram_gb()
                     assert ram_gb == 16
 
+    @log_call
     def test_macos_sysctl_bytes_parsing(self):
         """Test macOS sysctl output parsing."""
         from amplihack.launcher.memory_config import detect_system_ram_gb
@@ -610,6 +659,7 @@ class TestPlatformSpecifics:
                 ram_gb = detect_system_ram_gb()
                 assert ram_gb == 16
 
+    @log_call
     def test_windows_wmic_output_parsing(self):
         """Test Windows wmic output parsing."""
         from amplihack.launcher.memory_config import detect_system_ram_gb
@@ -632,6 +682,7 @@ class TestPlatformSpecifics:
 class TestFormulaCorrectness:
     """Verify the formula N = max(8192, total_ram_mb // 4) capped at 32GB."""
 
+    @log_call
     def test_formula_minimum_enforcement(self):
         """Verify formula enforces 8GB minimum."""
         from amplihack.launcher.memory_config import calculate_recommended_limit
@@ -650,6 +701,7 @@ class TestFormulaCorrectness:
                 f"RAM {ram_gb}GB should yield {expected_mb}MB, got {actual_mb}MB"
             )
 
+    @log_call
     def test_formula_quarter_calculation(self):
         """Verify formula correctly calculates 1/4 of RAM."""
         from amplihack.launcher.memory_config import calculate_recommended_limit
@@ -667,6 +719,7 @@ class TestFormulaCorrectness:
                 f"RAM {ram_gb}GB should yield {expected_mb}MB, got {actual_mb}MB"
             )
 
+    @log_call
     def test_formula_maximum_cap(self):
         """Verify formula caps at 32GB."""
         from amplihack.launcher.memory_config import calculate_recommended_limit
@@ -685,6 +738,7 @@ class TestFormulaCorrectness:
                 f"RAM {ram_gb}GB should be capped at {expected_mb}MB, got {actual_mb}MB"
             )
 
+    @log_call
     def test_formula_exact_boundaries(self):
         """Test formula at exact boundary conditions."""
         from amplihack.launcher.memory_config import calculate_recommended_limit
@@ -710,6 +764,7 @@ class TestFormulaCorrectness:
 class TestConfigPersistence:
     """Test config file persistence for NODE_OPTIONS preference."""
 
+    @log_call
     def test_get_config_path_returns_amplihack_config(self):
         """Test that get_config_path returns ~/.amplihack/config."""
         from pathlib import Path
@@ -721,6 +776,7 @@ class TestConfigPersistence:
         assert path.parent.name == ".amplihack"
         assert path.parent.parent == Path.home()
 
+    @log_call
     def test_load_user_preference_returns_none_when_no_file(self, tmp_path):
         """Test load_user_preference returns None when config does not exist."""
         from unittest.mock import patch
@@ -732,6 +788,7 @@ class TestConfigPersistence:
             result = load_user_preference()
         assert result is None
 
+    @log_call
     def test_load_user_preference_returns_saved_value(self, tmp_path):
         """Test load_user_preference returns saved preference from config file."""
         import json
@@ -750,6 +807,7 @@ class TestConfigPersistence:
         assert result["node_options_consent"] is True
         assert result["node_options_limit_mb"] == 8192
 
+    @log_call
     def test_save_user_preference_creates_config_file(self, tmp_path):
         """Test save_user_preference creates config file with correct values."""
         import json
@@ -766,6 +824,7 @@ class TestConfigPersistence:
         assert data["node_options_consent"] is True
         assert data["node_options_limit_mb"] == 8192
 
+    @log_call
     def test_save_user_preference_creates_parent_directory(self, tmp_path):
         """Test save_user_preference creates ~/.amplihack directory if missing."""
         from unittest.mock import patch
@@ -779,6 +838,7 @@ class TestConfigPersistence:
         assert fake_config.parent.exists()
         assert fake_config.exists()
 
+    @log_call
     def test_save_user_preference_preserves_existing_keys(self, tmp_path):
         """Test save_user_preference merges with existing config keys."""
         import json
@@ -795,6 +855,7 @@ class TestConfigPersistence:
         assert data["other_key"] == "value"
         assert data["node_options_consent"] is True
 
+    @log_call
     def test_load_user_preference_returns_none_for_malformed_config(self, tmp_path):
         """Test load_user_preference returns None for malformed config file."""
         from unittest.mock import patch
@@ -807,6 +868,7 @@ class TestConfigPersistence:
             result = load_user_preference()
         assert result is None
 
+    @log_call
     def test_load_user_preference_returns_none_when_key_missing(self, tmp_path):
         """Test load_user_preference returns None when node_options_consent key absent."""
         import json
@@ -824,9 +886,9 @@ class TestConfigPersistence:
 class TestFirstRunVsReturningUser:
     """Test first-run prompts user; returning user gets info message only."""
 
+    @log_call
     def test_first_run_prompts_user_and_saves_preference(self, tmp_path):
         """First run: no config exists → user is prompted → preference is saved."""
-        import json
         from unittest.mock import patch
 
         from amplihack.launcher.memory_config import get_memory_config
@@ -834,7 +896,10 @@ class TestFirstRunVsReturningUser:
         fake_config = tmp_path / ".amplihack" / "config"
         mock_meminfo = "MemTotal:       32768000 kB\n"  # 32 GB
 
-        with patch("pathlib.Path.exists", side_effect=lambda self=None: False if str(self) == str(fake_config) else True):
+        with patch(
+            "pathlib.Path.exists",
+            side_effect=lambda self=None: False if str(self) == str(fake_config) else True,
+        ):
             pass  # complex mock, use simpler approach below
 
         with (
@@ -853,6 +918,7 @@ class TestFirstRunVsReturningUser:
         assert config.get("user_consent") is True
         mock_save.assert_called_once_with(True, config["recommended_limit_mb"])
 
+    @log_call
     def test_returning_user_skips_prompt(self, tmp_path):
         """Returning user: config exists → no prompt → returning_user flag set."""
         from unittest.mock import patch
@@ -875,6 +941,7 @@ class TestFirstRunVsReturningUser:
         assert config.get("user_consent") is True
         mock_input.assert_not_called()  # no prompt on returning user
 
+    @log_call
     def test_returning_user_declined_skips_prompt(self, tmp_path):
         """Returning user who declined: skips prompt, consent=False preserved."""
         from unittest.mock import patch
@@ -897,6 +964,7 @@ class TestFirstRunVsReturningUser:
         assert config.get("user_consent") is False
         mock_input.assert_not_called()
 
+    @log_call
     def test_display_memory_config_returning_user_shows_info_message(self, tmp_path, capsys):
         """display_memory_config emits info message for returning user."""
         from unittest.mock import patch
@@ -919,7 +987,10 @@ class TestFirstRunVsReturningUser:
         assert "saved preference" in captured.out
         assert str(fake_config) in captured.out
 
-    def test_display_memory_config_returning_user_declined_shows_info_message(self, tmp_path, capsys):
+    @log_call
+    def test_display_memory_config_returning_user_declined_shows_info_message(
+        self, tmp_path, capsys
+    ):
         """display_memory_config emits info message when returning user had declined."""
         from unittest.mock import patch
 
@@ -940,6 +1011,7 @@ class TestFirstRunVsReturningUser:
         assert "skipped" in captured.out.lower() or "skip" in captured.out.lower()
         assert "saved preference" in captured.out
 
+    @log_call
     def test_display_memory_config_first_run_consent_shows_checkmark(self, capsys):
         """display_memory_config shows ✓ on first run with consent."""
         from amplihack.launcher.memory_config import display_memory_config
@@ -955,6 +1027,7 @@ class TestFirstRunVsReturningUser:
         assert "✓" in captured.out
         assert "8192" in captured.out
 
+    @log_call
     def test_display_memory_config_first_run_declined_shows_cross(self, capsys):
         """display_memory_config shows ✗ on first run when user declined."""
         from amplihack.launcher.memory_config import display_memory_config

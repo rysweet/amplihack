@@ -23,6 +23,7 @@ from pathlib import Path
 from amplihack.fleet._constants import DEFAULT_COST_PER_HOUR
 from amplihack.fleet.fleet_state import FleetState
 from amplihack.fleet.fleet_tasks import FleetTask, TaskQueue, TaskStatus
+from amplihack.utils.logging_utils import log_call
 
 __all__ = ["FleetDashboard", "ProjectInfo"]
 
@@ -46,17 +47,20 @@ class ProjectInfo:
     started_at: datetime | None = None
     last_activity: datetime | None = None
 
+    @log_call
     def __post_init__(self):
         if not self.name and self.repo_url:
             # Extract repo name from URL
             self.name = self.repo_url.rstrip("/").split("/")[-1]
 
     @property
+    @log_call
     def completion_rate(self) -> float:
         if self.tasks_total == 0:
             return 0.0
         return self.tasks_completed / self.tasks_total
 
+    @log_call
     def to_dict(self) -> dict:
         return {
             "repo_url": self.repo_url,
@@ -76,6 +80,7 @@ class ProjectInfo:
         }
 
     @classmethod
+    @log_call
     def from_dict(cls, data: dict) -> ProjectInfo:
         proj = cls(
             repo_url=data.get("repo_url", ""),
@@ -109,10 +114,12 @@ class FleetDashboard:
     projects: list[ProjectInfo] = field(default_factory=list)
     persist_path: Path | None = None
 
+    @log_call
     def __post_init__(self):
         if self.persist_path and self.persist_path.exists():
             self.load()
 
+    @log_call
     def add_project(
         self,
         repo_url: str,
@@ -135,6 +142,7 @@ class FleetDashboard:
         self._save()
         return project
 
+    @log_call
     def get_project(self, name_or_url: str) -> ProjectInfo | None:
         """Find a project by name or repo URL."""
         for proj in self.projects:
@@ -142,6 +150,7 @@ class FleetDashboard:
                 return proj
         return None
 
+    @log_call
     def remove_project(self, name_or_url: str) -> bool:
         """Remove a project by name or repo URL. Returns True if found and removed."""
         proj = self.get_project(name_or_url)
@@ -151,6 +160,7 @@ class FleetDashboard:
         self._save()
         return True
 
+    @log_call
     def update_from_queue(self, queue: TaskQueue) -> None:
         """Sync project stats from the task queue."""
         # Group tasks by repo
@@ -177,6 +187,7 @@ class FleetDashboard:
 
         self._save()
 
+    @log_call
     def update_from_state(self, state: FleetState) -> None:
         """Update cost estimates from fleet state."""
         for proj in self.projects:
@@ -196,6 +207,7 @@ class FleetDashboard:
             proj.estimated_cost_usd = round(total_cost, 2)
         self._save()
 
+    @log_call
     def summary(self) -> str:
         """Human-readable dashboard summary."""
         total_tasks = sum(p.tasks_total for p in self.projects)
@@ -232,6 +244,7 @@ class FleetDashboard:
 
         return "\n".join(lines)
 
+    @log_call
     def _progress_bar(self, ratio: float, width: int = 20) -> str:
         """Simple text progress bar."""
         filled = int(width * ratio)
@@ -239,12 +252,17 @@ class FleetDashboard:
         pct = int(ratio * 100)
         return f"[{bar}] {pct}%"
 
+    @log_call
     def _save(self) -> None:
         if not self.persist_path:
             return
-        if getattr(self, '_load_failed', False):
+        if getattr(self, "_load_failed", False):
             import logging
-            logging.getLogger(__name__).error("Refusing to save — load failed for %s. Fix the .bak file manually.", self.persist_path)
+
+            logging.getLogger(__name__).error(
+                "Refusing to save — load failed for %s. Fix the .bak file manually.",
+                self.persist_path,
+            )
             return
         self.persist_path.parent.mkdir(parents=True, exist_ok=True)
         # Atomic write: temp file then rename
@@ -252,6 +270,7 @@ class FleetDashboard:
         tmp.write_text(json.dumps([p.to_dict() for p in self.projects], indent=2))
         tmp.rename(self.persist_path)
 
+    @log_call
     def load(self) -> None:
         if not self.persist_path or not self.persist_path.exists():
             return
@@ -261,7 +280,9 @@ class FleetDashboard:
             import logging
             import shutil
 
-            logging.getLogger(__name__).warning(f"Corrupt dashboard file: {self.persist_path} — creating backup")
+            logging.getLogger(__name__).warning(
+                f"Corrupt dashboard file: {self.persist_path} — creating backup"
+            )
             backup = self.persist_path.with_suffix(".json.bak")
             shutil.copy2(self.persist_path, backup)
             self._load_failed = True

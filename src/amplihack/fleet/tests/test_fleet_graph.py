@@ -8,13 +8,8 @@ Testing pyramid:
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
-import pytest
-
 from amplihack.fleet.fleet_graph import EdgeType, FleetGraph, NodeType
-
+from amplihack.utils.logging_utils import log_call
 
 # ────────────────────────────────────────────
 # UNIT TESTS (60%) — node/edge/conflict operations
@@ -24,6 +19,7 @@ from amplihack.fleet.fleet_graph import EdgeType, FleetGraph, NodeType
 class TestGraphNodes:
     """Unit tests for node operations."""
 
+    @log_call
     def test_add_node_basic(self):
         g = FleetGraph()
         node = g.add_node("vm-01", NodeType.VM, label="VM 01")
@@ -32,16 +28,19 @@ class TestGraphNodes:
         assert node.label == "VM 01"
         assert node.updated_at is not None
 
+    @log_call
     def test_add_node_default_label(self):
         g = FleetGraph()
         node = g.add_node("task-1", NodeType.TASK)
         assert node.label == "task-1"  # defaults to node_id
 
+    @log_call
     def test_add_node_with_metadata(self):
         g = FleetGraph()
         node = g.add_node("pr-1", NodeType.PR, url="https://github.com/pull/1")
         assert node.metadata == {"url": "https://github.com/pull/1"}
 
+    @log_call
     def test_add_node_overwrites_existing(self):
         g = FleetGraph()
         g.add_node("x", NodeType.VM, label="old")
@@ -49,15 +48,18 @@ class TestGraphNodes:
         assert len(g.nodes) == 1
         assert g.nodes["x"].label == "new"
 
+    @log_call
     def test_get_node_found(self):
         g = FleetGraph()
         g.add_node("a", NodeType.TASK)
         assert g.get_node("a") is not None
 
+    @log_call
     def test_get_node_missing(self):
         g = FleetGraph()
         assert g.get_node("nope") is None
 
+    @log_call
     def test_nodes_of_type(self):
         g = FleetGraph()
         g.add_node("t1", NodeType.TASK)
@@ -72,6 +74,7 @@ class TestGraphNodes:
 class TestGraphEdges:
     """Unit tests for edge operations."""
 
+    @log_call
     def test_add_edge_basic(self):
         g = FleetGraph()
         g.add_node("proj", NodeType.PROJECT)
@@ -81,24 +84,28 @@ class TestGraphEdges:
         assert edge.target_id == "task"
         assert edge.edge_type == EdgeType.CONTAINS
 
+    @log_call
     def test_add_edge_deduplicates(self):
         g = FleetGraph()
         g.add_edge("a", "b", EdgeType.CONTAINS)
         g.add_edge("a", "b", EdgeType.CONTAINS)  # duplicate
         assert len(g.edges) == 1
 
+    @log_call
     def test_add_edge_different_types_not_deduped(self):
         g = FleetGraph()
         g.add_edge("a", "b", EdgeType.CONTAINS)
         g.add_edge("a", "b", EdgeType.DEPENDS_ON)
         assert len(g.edges) == 2
 
+    @log_call
     def test_neighbors_bidirectional(self):
         g = FleetGraph()
         g.add_edge("a", "b", EdgeType.RELATED)
         assert "b" in g.neighbors("a")
         assert "a" in g.neighbors("b")
 
+    @log_call
     def test_neighbors_filtered_by_type(self):
         g = FleetGraph()
         g.add_edge("a", "b", EdgeType.CONTAINS)
@@ -106,6 +113,7 @@ class TestGraphEdges:
         assert g.neighbors("a", EdgeType.CONTAINS) == ["b"]
         assert g.neighbors("a", EdgeType.DEPENDS_ON) == ["c"]
 
+    @log_call
     def test_edges_from(self):
         g = FleetGraph()
         g.add_edge("a", "b", EdgeType.MODIFIES)
@@ -119,6 +127,7 @@ class TestGraphEdges:
 class TestDetectConflicts:
     """Unit tests for conflict detection."""
 
+    @log_call
     def test_no_conflicts_when_different_files(self):
         g = FleetGraph()
         g.add_node("t1", NodeType.TASK)
@@ -129,6 +138,7 @@ class TestDetectConflicts:
         g.add_edge("t2", "f2", EdgeType.MODIFIES)
         assert g.detect_conflicts("t1") == []
 
+    @log_call
     def test_conflict_on_shared_file(self):
         g = FleetGraph()
         g.add_node("t1", NodeType.TASK)
@@ -139,6 +149,7 @@ class TestDetectConflicts:
         conflicts = g.detect_conflicts("t1")
         assert "t2" in conflicts
 
+    @log_call
     def test_no_conflict_with_self(self):
         g = FleetGraph()
         g.add_node("t1", NodeType.TASK)
@@ -147,6 +158,7 @@ class TestDetectConflicts:
         conflicts = g.detect_conflicts("t1")
         assert "t1" not in conflicts
 
+    @log_call
     def test_no_conflicts_when_no_files_modified(self):
         g = FleetGraph()
         g.add_node("t1", NodeType.TASK)
@@ -161,6 +173,7 @@ class TestDetectConflicts:
 class TestGraphPersistence:
     """Integration tests for JSON persistence roundtrip."""
 
+    @log_call
     def test_save_and_load_roundtrip(self, tmp_path):
         path = tmp_path / "graph.json"
         g = FleetGraph(persist_path=path)
@@ -177,6 +190,7 @@ class TestGraphPersistence:
         assert g2.edges[0].edge_type == EdgeType.CONTAINS
         assert g2.edges[0].metadata == {"note": "first task"}
 
+    @log_call
     def test_load_corrupt_json_resets(self, tmp_path):
         path = tmp_path / "bad.json"
         path.write_text("not json{{{")
@@ -184,6 +198,7 @@ class TestGraphPersistence:
         assert g.nodes == {}
         assert g.edges == []
 
+    @log_call
     def test_load_nonexistent_file_is_empty(self, tmp_path):
         path = tmp_path / "nope.json"
         g = FleetGraph(persist_path=path)
@@ -194,6 +209,7 @@ class TestGraphPersistence:
 class TestGraphQueries:
     """Integration tests for fleet-specific queries."""
 
+    @log_call
     def test_project_tasks(self):
         g = FleetGraph()
         g.add_node("proj", NodeType.PROJECT)
@@ -204,6 +220,7 @@ class TestGraphQueries:
         tasks = g.project_tasks("proj")
         assert set(tasks) == {"t1", "t2"}
 
+    @log_call
     def test_project_prs(self):
         g = FleetGraph()
         g.add_node("proj", NodeType.PROJECT)
@@ -214,6 +231,7 @@ class TestGraphQueries:
         prs = g.project_prs("proj")
         assert "pr-1" in prs
 
+    @log_call
     def test_task_dependencies(self):
         g = FleetGraph()
         g.add_node("t1", NodeType.TASK)
@@ -229,6 +247,7 @@ class TestGraphQueries:
 
 
 class TestGraphSummary:
+    @log_call
     def test_summary_output(self):
         g = FleetGraph()
         g.add_node("proj", NodeType.PROJECT)
@@ -241,6 +260,7 @@ class TestGraphSummary:
         assert "task=1" in text
         assert "contains=1" in text
 
+    @log_call
     def test_summary_shows_conflicts(self):
         g = FleetGraph()
         g.add_edge("t1", "t2", EdgeType.CONFLICTS)

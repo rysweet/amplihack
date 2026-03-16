@@ -26,6 +26,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 from .evidence_collector import EvidenceCollector, EvidenceItem
 from .persona import get_persona_strategy
 from .platform_cli import get_platform_cli
@@ -37,6 +39,7 @@ from .success_evaluator import SuccessCriteriaEvaluator
 class DelegationTimeout(Exception):
     """Exception raised when delegation exceeds timeout."""
 
+    @log_call
     def __init__(self, elapsed_minutes: float, timeout_minutes: float):
         self.elapsed_minutes = elapsed_minutes
         self.timeout_minutes = timeout_minutes
@@ -49,6 +52,7 @@ class DelegationTimeout(Exception):
 class DelegationError(Exception):
     """Exception raised for delegation errors."""
 
+    @log_call
     def __init__(self, reason: str, exit_code: int | None = None):
         self.reason = reason
         self.exit_code = exit_code
@@ -85,6 +89,7 @@ class MetaDelegationResult:
     subprocess_pid: int | None = None
     test_scenarios: list[TestScenario] | None = None
 
+    @log_call
     def get_evidence_by_type(self, evidence_type: str) -> list[EvidenceItem]:
         """Get evidence items of specific type.
 
@@ -96,6 +101,7 @@ class MetaDelegationResult:
         """
         return [e for e in self.evidence if e.type == evidence_type]
 
+    @log_call
     def to_json(self) -> str:
         """Serialize to JSON string.
 
@@ -118,6 +124,7 @@ class MetaDelegationResult:
         return json.dumps(data, indent=2)
 
     @classmethod
+    @log_call
     def from_json(cls, json_str: str) -> "MetaDelegationResult":
         """Deserialize from JSON string.
 
@@ -147,6 +154,7 @@ class MetaDelegationResult:
 class MetaDelegationOrchestrator:
     """Orchestrates complete meta-delegation lifecycle."""
 
+    @log_call
     def __init__(
         self,
         persona: str = "guide",
@@ -174,6 +182,7 @@ class MetaDelegationOrchestrator:
         self.success_evaluator: SuccessCriteriaEvaluator | None = None
         self.scenario_generator: GadugiScenarioGenerator | None = None
 
+    @log_call
     def run(
         self,
         goal: str,
@@ -210,6 +219,7 @@ class MetaDelegationOrchestrator:
             environment=environment,
         )
 
+    @log_call
     def orchestrate_delegation(
         self,
         goal: str,
@@ -353,6 +363,7 @@ class MetaDelegationOrchestrator:
             # Cleanup
             self.cleanup()
 
+    @log_call
     def initialize_components(
         self,
         goal: str,
@@ -391,6 +402,7 @@ class MetaDelegationOrchestrator:
         # Initialize scenario generator
         self.scenario_generator = GadugiScenarioGenerator()
 
+    @log_call
     def validate_parameters(self, goal: str, success_criteria: str) -> None:
         """Validate delegation parameters.
 
@@ -407,6 +419,7 @@ class MetaDelegationOrchestrator:
         if not success_criteria or not success_criteria.strip():
             raise ValueError("Success criteria cannot be empty")
 
+    @log_call
     def spawn_subprocess(
         self,
         goal: str,
@@ -447,6 +460,7 @@ class MetaDelegationOrchestrator:
 
         return process
 
+    @log_call
     def monitor_execution(self, timeout_seconds: int) -> str:
         """Monitor subprocess execution.
 
@@ -519,6 +533,7 @@ class MetaDelegationOrchestrator:
 
         return "\n".join(execution_log_parts)
 
+    @log_call
     def collect_evidence(self, execution_log: str) -> list[EvidenceItem]:
         """Collect evidence from working directory.
 
@@ -533,6 +548,7 @@ class MetaDelegationOrchestrator:
             execution_log=execution_log,
         )
 
+    @log_call
     def evaluate_success(
         self,
         criteria: str,
@@ -556,6 +572,7 @@ class MetaDelegationOrchestrator:
             execution_log=execution_log,
         )
 
+    @log_call
     def generate_scenarios(
         self,
         goal: str,
@@ -579,12 +596,14 @@ class MetaDelegationOrchestrator:
             context=context,
         )
 
+    @log_call
     def cleanup(self) -> None:
         """Cleanup resources."""
         if self.state_machine and self.state_machine.process:
             if not self.state_machine.is_complete():
                 self.state_machine.kill_process()
 
+    @log_call
     def handle_timeout(self) -> None:
         """Handle timeout scenario."""
         # Attempt to collect partial evidence
@@ -594,6 +613,7 @@ class MetaDelegationOrchestrator:
             pass
 
 
+@log_call
 def run_meta_delegation(
     goal: str,
     success_criteria: str,

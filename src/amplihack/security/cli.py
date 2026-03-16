@@ -23,6 +23,7 @@ except ImportError:
 
 from amplihack.security.config import get_config
 from amplihack.security.xpia_defender import WebFetchXPIADefender
+from amplihack.utils.logging_utils import log_call
 
 from .xpia_defense_interface import ContentType, RiskLevel
 
@@ -30,6 +31,7 @@ if click is not None:
     console = Console()
 
     @click.group()
+    @log_call
     def xpia():
         """XPIA Defense System CLI"""
 
@@ -45,6 +47,7 @@ if click is not None:
 )
 @click.option("--verbose", is_flag=True, help="Show detailed output")
 @click.option("--json", "output_json", is_flag=True, help="Output as JSON")
+@log_call
 def validate(url: str, prompt: str, security_level: str, verbose: bool, output_json: bool):
     """Validate a WebFetch request for security threats"""
 
@@ -100,6 +103,7 @@ def validate(url: str, prompt: str, security_level: str, verbose: bool, output_j
     help="Security level for validation",
 )
 @click.option("--verbose", is_flag=True, help="Show detailed output")
+@log_call
 def validate_bash(command: str, security_level: str, verbose: bool):
     """Validate a Bash command for security threats"""
 
@@ -138,6 +142,7 @@ def validate_bash(command: str, security_level: str, verbose: bool):
     help="Security level for validation",
 )
 @click.option("--verbose", is_flag=True, help="Show detailed output")
+@log_call
 def validate_content(text: str, type: str, security_level: str, verbose: bool):
     """Validate arbitrary content for security threats"""
 
@@ -172,6 +177,7 @@ def validate_content(text: str, type: str, security_level: str, verbose: bool):
 
 
 @xpia.command()
+@log_call
 def patterns():
     """List all attack patterns"""
     from amplihack.security.xpia_patterns import PatternCategory, XPIAPatterns
@@ -211,6 +217,7 @@ def patterns():
 
 
 @xpia.command()
+@log_call
 def config():
     """Show current XPIA configuration"""
     config = get_config()
@@ -247,6 +254,7 @@ def config():
 
 
 @xpia.command()
+@log_call
 def health():
     """Check XPIA system health"""
     config = get_config()
@@ -286,6 +294,7 @@ def health():
         loop.close()
 
 
+@log_call
 def _display_validation_result(result, url: str, prompt: str, verbose: bool):
     """Display WebFetch validation result"""
     risk_color = _get_risk_color(result.risk_level)
@@ -347,6 +356,7 @@ def _display_validation_result(result, url: str, prompt: str, verbose: bool):
             console.print(f"  • {rec}")
 
 
+@log_call
 def _display_bash_validation_result(result, command: str, verbose: bool):
     """Display Bash validation result"""
     risk_color = _get_risk_color(result.risk_level)
@@ -384,6 +394,7 @@ def _display_bash_validation_result(result, command: str, verbose: bool):
                 console.print(f"    → {threat.mitigation}")
 
 
+@log_call
 def _display_content_validation_result(
     result, content_preview: str, content_type: str, verbose: bool
 ):
@@ -412,6 +423,7 @@ def _display_content_validation_result(
             console.print(f"  [{severity_color}]•[/{severity_color}] {threat.description}")
 
 
+@log_call
 def _get_risk_color(risk_level: RiskLevel) -> str:
     """Get color for risk level"""
     colors = {
@@ -424,6 +436,7 @@ def _get_risk_color(risk_level: RiskLevel) -> str:
     return colors.get(risk_level, "white")
 
 
+@log_call
 def _get_severity_color(severity: str) -> str:
     """Get color for severity string"""
     colors = {"low": "yellow", "medium": "orange3", "high": "red", "critical": "red bold"}

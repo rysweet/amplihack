@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from enum import Enum
 from re import Pattern
 
+from amplihack.utils.logging_utils import log_call
+
 
 class PatternCategory(Enum):
     """Categories of attack patterns"""
@@ -37,6 +39,7 @@ class AttackPattern:
     mitigation: str
     examples: list[str]
 
+    @log_call
     def matches(self, text: str) -> bool:
         """Check if text matches this attack pattern"""
         # Special handling for context window overflow pattern (CM001)
@@ -49,10 +52,12 @@ class AttackPattern:
 class XPIAPatterns:
     """Central repository of XPIA attack patterns"""
 
+    @log_call
     def __init__(self):
         self.patterns: dict[str, AttackPattern] = {}
         self._initialize_patterns()
 
+    @log_call
     def _initialize_patterns(self):
         """Initialize all attack patterns"""
 
@@ -425,22 +430,27 @@ class XPIAPatterns:
             )
         )
 
+    @log_call
     def add_pattern(self, pattern: AttackPattern):
         """Add a pattern to the repository"""
         self.patterns[pattern.id] = pattern
 
+    @log_call
     def get_pattern(self, pattern_id: str) -> AttackPattern | None:
         """Get a specific pattern by ID"""
         return self.patterns.get(pattern_id)
 
+    @log_call
     def get_patterns_by_category(self, category: PatternCategory) -> list[AttackPattern]:
         """Get all patterns in a specific category"""
         return [p for p in self.patterns.values() if p.category == category]
 
+    @log_call
     def get_patterns_by_severity(self, severity: str) -> list[AttackPattern]:
         """Get all patterns with specific severity"""
         return [p for p in self.patterns.values() if p.severity == severity]
 
+    @log_call
     def detect_patterns(self, text: str) -> list[AttackPattern]:
         """Detect all matching patterns in text"""
         matches = []
@@ -449,6 +459,7 @@ class XPIAPatterns:
                 matches.append(pattern)
         return matches
 
+    @log_call
     def get_high_risk_patterns(self) -> list[AttackPattern]:
         """Get patterns with high or critical severity"""
         return [p for p in self.patterns.values() if p.severity in ["high", "critical"]]
@@ -477,6 +488,7 @@ class URLPatterns:
     ]
 
     @classmethod
+    @log_call
     def is_suspicious_domain(cls, domain: str) -> bool:
         """Check if domain matches suspicious patterns"""
         for pattern in cls.SUSPICIOUS_DOMAINS:
@@ -485,6 +497,7 @@ class URLPatterns:
         return False
 
     @classmethod
+    @log_call
     def has_suspicious_params(cls, url: str) -> bool:
         """Check if URL contains suspicious parameters"""
         for pattern in cls.SUSPICIOUS_PARAMS:
@@ -509,6 +522,7 @@ class PromptPatterns:
     ]
 
     @classmethod
+    @log_call
     def is_suspicious_prompt(cls, prompt: str) -> bool:
         """Check if prompt contains suspicious patterns"""
         for pattern in cls.SUSPICIOUS_PROMPTS:
@@ -517,6 +531,7 @@ class PromptPatterns:
         return False
 
     @classmethod
+    @log_call
     def is_excessive_length(cls, prompt: str) -> bool:
         """Check if prompt exceeds safe length"""
         return len(prompt) > cls.MAX_SAFE_LENGTH

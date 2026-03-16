@@ -12,7 +12,11 @@ import subprocess
 from dataclasses import dataclass, field
 
 from amplihack.fleet._backends import LLMBackend, auto_detect_backend
-from amplihack.fleet._constants import MIN_CONFIDENCE_RESTART, MIN_CONFIDENCE_SEND, SSH_ACTION_TIMEOUT_SECONDS
+from amplihack.fleet._constants import (
+    MIN_CONFIDENCE_RESTART,
+    MIN_CONFIDENCE_SEND,
+    SSH_ACTION_TIMEOUT_SECONDS,
+)
 from amplihack.fleet._defaults import get_azlin_path
 from amplihack.fleet._session_context import SessionContext, SessionDecision
 from amplihack.fleet._session_gather import gather_context
@@ -22,6 +26,7 @@ from amplihack.fleet._validation import (
     validate_session_name,
     validate_vm_name,
 )
+from amplihack.utils.logging_utils import log_call
 
 logger = logging.getLogger(__name__)
 
@@ -46,10 +51,12 @@ class SessionReasoner:
     dry_run: bool = False
     _decisions: list[SessionDecision] = field(default_factory=list)
 
+    @log_call
     def __post_init__(self):
         if self.backend is None:
             self.backend = auto_detect_backend()
 
+    @log_call
     def reason_about_session(
         self,
         vm_name: str,
@@ -65,7 +72,9 @@ class SessionReasoner:
                 Passed through to gather_context to avoid re-polling the same pane.
         """
         # 1. PERCEIVE
-        context = self._gather_context(vm_name, session_name, task_prompt, project_priorities, cached_tmux_capture)
+        context = self._gather_context(
+            vm_name, session_name, task_prompt, project_priorities, cached_tmux_capture
+        )
 
         # 2. REASON -- fast-path: skip LLM call if agent is actively thinking
         if context.agent_status == "thinking":
@@ -90,6 +99,7 @@ class SessionReasoner:
 
         return decision
 
+    @log_call
     def reason_about_all(
         self,
         sessions: list[dict],
@@ -107,14 +117,26 @@ class SessionReasoner:
             decisions.append(decision)
         return decisions
 
-    def _gather_context(self, vm_name, session_name, task_prompt, project_priorities, cached_tmux_capture=""):
+    @log_call
+    def _gather_context(
+        self, vm_name, session_name, task_prompt, project_priorities, cached_tmux_capture=""
+    ):
         """Delegate to standalone gather_context."""
-        return gather_context(self.azlin_path, vm_name, session_name, task_prompt, project_priorities, cached_tmux_capture=cached_tmux_capture)
+        return gather_context(
+            self.azlin_path,
+            vm_name,
+            session_name,
+            task_prompt,
+            project_priorities,
+            cached_tmux_capture=cached_tmux_capture,
+        )
 
+    @log_call
     def reason(self, context: SessionContext) -> SessionDecision:
         """Public entry point for LLM-based reasoning about a session context."""
         return self._reason(context)
 
+    @log_call
     def _reason(self, context: SessionContext) -> SessionDecision:
         """REASON: Call LLM backend to decide what to do."""
         prompt_text = context.to_prompt_context()
@@ -147,7 +169,8 @@ class SessionReasoner:
                 except (TypeError, ValueError) as exc:
                     logger.warning(
                         "LLM returned unparseable confidence value %r: %s",
-                        decision_data.get("confidence"), exc,
+                        decision_data.get("confidence"),
+                        exc,
                     )
                     decision_data["confidence"] = 0.5
             if not isinstance(decision_data.get("input_text", ""), str):
@@ -165,7 +188,11 @@ class SessionReasoner:
             )
 
         except NotImplementedError:
-            logger.warning("LLM backend not implemented for session %s/%s", context.vm_name, context.session_name)
+            logger.warning(
+                "LLM backend not implemented for session %s/%s",
+                context.vm_name,
+                context.session_name,
+            )
             return SessionDecision(
                 session_name=context.session_name,
                 vm_name=context.vm_name,
@@ -174,7 +201,9 @@ class SessionReasoner:
                 confidence=0.0,
             )
         except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
-            logger.warning("LLM response parse error for %s/%s: %s", context.vm_name, context.session_name, e)
+            logger.warning(
+                "LLM response parse error for %s/%s: %s", context.vm_name, context.session_name, e
+            )
             return SessionDecision(
                 session_name=context.session_name,
                 vm_name=context.vm_name,
@@ -183,7 +212,13 @@ class SessionReasoner:
                 confidence=0.0,
             )
         except Exception as e:
-            logger.error("LLM call failed for %s/%s: %s: %s", context.vm_name, context.session_name, type(e).__name__, e)
+            logger.error(
+                "LLM call failed for %s/%s: %s: %s",
+                context.vm_name,
+                context.session_name,
+                type(e).__name__,
+                e,
+            )
             return SessionDecision(
                 session_name=context.session_name,
                 vm_name=context.vm_name,
@@ -192,10 +227,12 @@ class SessionReasoner:
                 confidence=0.0,
             )
 
+    @log_call
     def execute_decision(self, decision: SessionDecision) -> None:
         """Public API: Execute the decision on the remote session."""
         self._execute_decision(decision)
 
+    @log_call
     def _execute_decision(self, decision: SessionDecision) -> None:
         """ACT: Execute the decision on the remote session (internal)."""
         validate_vm_name(decision.vm_name)
@@ -232,12 +269,24 @@ class SessionReasoner:
                 cmd = f"tmux send-keys -t {safe_session} {shlex.quote(line)} Enter"
                 try:
                     subprocess.run(
-                        [self.azlin_path, "connect", decision.vm_name, "--no-tmux", "--yes", "--", cmd],
+                        [
+                            self.azlin_path,
+                            "connect",
+                            decision.vm_name,
+                            "--no-tmux",
+                            "--yes",
+                            "--",
+                            cmd,
+                        ],
                         capture_output=True,
                         text=True,
                         timeout=SSH_ACTION_TIMEOUT_SECONDS,
                     )
-                except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
+                except (
+                    subprocess.TimeoutExpired,
+                    subprocess.SubprocessError,
+                    FileNotFoundError,
+                ) as exc:
                     logger.warning(
                         "send_input failed for %s/%s: %s",
                         decision.vm_name,
@@ -258,7 +307,11 @@ class SessionReasoner:
                     text=True,
                     timeout=SSH_ACTION_TIMEOUT_SECONDS,
                 )
-            except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
+            except (
+                subprocess.TimeoutExpired,
+                subprocess.SubprocessError,
+                FileNotFoundError,
+            ) as exc:
                 logger.warning(
                     "restart failed for %s/%s: %s",
                     decision.vm_name,
@@ -266,6 +319,7 @@ class SessionReasoner:
                     exc,
                 )
 
+    @log_call
     def _show_decision(self, decision: SessionDecision, context: SessionContext) -> None:
         """DRY-RUN: Print what the admiral would do without acting."""
         print(f"\n{'=' * 60}")
@@ -287,6 +341,7 @@ class SessionReasoner:
         print(decision.summary())
         print(f"{'=' * 60}")
 
+    @log_call
     def dry_run_report(self) -> str:
         """Summary of all decisions from dry-run mode."""
         if not self._decisions:

@@ -14,6 +14,8 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
+
 
 @dataclass
 class VerificationResult:
@@ -29,6 +31,7 @@ class VerificationResult:
 class PluginVerifier:
     """Verify plugin installation and discoverability."""
 
+    @log_call
     def __init__(self, plugin_name: str):
         """Initialize verifier for specific plugin.
 
@@ -39,6 +42,7 @@ class PluginVerifier:
         self.plugin_root = Path.home() / ".amplihack" / ".claude" / "plugins" / plugin_name
         self.settings_path = Path.home() / ".claude" / "settings.json"
 
+    @log_call
     def verify(self) -> VerificationResult:
         """Run all verification checks.
 
@@ -72,6 +76,7 @@ class PluginVerifier:
             issues=issues,
         )
 
+    @log_call
     def check_installed(self) -> bool:
         """Check if plugin directory exists with manifest.
 
@@ -81,6 +86,7 @@ class PluginVerifier:
         manifest = self.plugin_root / ".claude-plugin" / "plugin.json"
         return self.plugin_root.exists() and manifest.exists()
 
+    @log_call
     def check_discoverable(self) -> bool:
         """Check if plugin is in Claude Code settings.
 
@@ -97,6 +103,7 @@ class PluginVerifier:
         except (json.JSONDecodeError, KeyError):
             return False
 
+    @log_call
     def check_hooks_loaded(self) -> bool:
         """Check if hooks.json exists and is valid.
 

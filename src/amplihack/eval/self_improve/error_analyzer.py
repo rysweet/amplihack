@@ -15,6 +15,8 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
+from amplihack.utils.logging_utils import log_call
+
 logger = logging.getLogger(__name__)
 
 
@@ -106,6 +108,7 @@ class ErrorAnalysis:
     suggested_focus: str = ""
 
 
+@log_call
 def analyze_eval_results(
     level_results: list[dict[str, Any]],
     score_threshold: float = 0.6,
@@ -153,6 +156,7 @@ def analyze_eval_results(
     return analyses
 
 
+@log_call
 def _classify_failure(detail: dict[str, Any], level_id: str) -> str:
     """Classify a single question failure into a failure mode.
 
@@ -209,6 +213,7 @@ def _classify_failure(detail: dict[str, Any], level_id: str) -> str:
     return "synthesis_hallucination"
 
 
+@log_call
 def _generate_focus_description(
     failure_mode: str,
     detail: dict[str, Any],

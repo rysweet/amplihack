@@ -10,12 +10,11 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from pathlib import Path
 
 import pytest
 
 from amplihack.fleet.fleet_results import ResultCollector, TaskResult
-
+from amplihack.utils.logging_utils import log_call
 
 # ────────────────────────────────────────────
 # UNIT TESTS (60%) — TaskResult
@@ -23,18 +22,22 @@ from amplihack.fleet.fleet_results import ResultCollector, TaskResult
 
 
 class TestTaskResult:
+    @log_call
     def test_is_success_true(self):
         r = TaskResult(task_id="t1", status="success")
         assert r.is_success is True
 
+    @log_call
     def test_is_success_false(self):
         r = TaskResult(task_id="t1", status="failure")
         assert r.is_success is False
 
+    @log_call
     def test_is_success_partial(self):
         r = TaskResult(task_id="t1", status="partial")
         assert r.is_success is False
 
+    @log_call
     def test_to_dict_all_fields(self):
         now = datetime(2025, 6, 15, 12, 0, 0)
         r = TaskResult(
@@ -64,6 +67,7 @@ class TestTaskResult:
         assert d["started_at"] == "2025-06-15T12:00:00"
         assert d["duration_seconds"] == 120.5
 
+    @log_call
     def test_from_dict_roundtrip(self):
         now = datetime(2025, 6, 15, 12, 0, 0)
         original = TaskResult(
@@ -94,12 +98,14 @@ class TestTaskResult:
         assert restored.completed_at == now
         assert restored.duration_seconds == 55.0
 
+    @log_call
     def test_from_dict_missing_optional_dates(self):
         d = {"task_id": "t1", "status": "success"}
         r = TaskResult.from_dict(d)
         assert r.started_at is None
         assert r.completed_at is None
 
+    @log_call
     def test_to_dict_none_dates(self):
         r = TaskResult(task_id="t1", status="success")
         d = r.to_dict()
@@ -110,10 +116,12 @@ class TestTaskResult:
 class TestResultCollectorQueries:
     """Unit tests for ResultCollector query methods."""
 
+    @log_call
     def test_success_rate_empty(self, tmp_path):
         collector = ResultCollector(results_dir=tmp_path / "results")
         assert collector.success_rate() == 0.0
 
+    @log_call
     def test_success_rate_mixed(self, tmp_path):
         collector = ResultCollector(results_dir=tmp_path / "results")
         collector.record(TaskResult(task_id="t1", status="success"))
@@ -121,6 +129,7 @@ class TestResultCollectorQueries:
         collector.record(TaskResult(task_id="t3", status="success"))
         assert collector.success_rate() == pytest.approx(2 / 3)
 
+    @log_call
     def test_by_vm(self, tmp_path):
         collector = ResultCollector(results_dir=tmp_path / "results")
         collector.record(TaskResult(task_id="t1", status="success", vm_name="vm-01"))
@@ -131,6 +140,7 @@ class TestResultCollectorQueries:
         assert len(vm01) == 2
         assert all(r.vm_name == "vm-01" for r in vm01)
 
+    @log_call
     def test_by_repo(self, tmp_path):
         collector = ResultCollector(results_dir=tmp_path / "results")
         collector.record(TaskResult(task_id="t1", status="success", repo_url="repo-a"))
@@ -139,6 +149,7 @@ class TestResultCollectorQueries:
         repo_a = collector.by_repo("repo-a")
         assert len(repo_a) == 1
 
+    @log_call
     def test_recent_ordering(self, tmp_path):
         collector = ResultCollector(results_dir=tmp_path / "results")
         r1 = TaskResult(task_id="old", status="success", completed_at=datetime(2025, 1, 1))
@@ -150,6 +161,7 @@ class TestResultCollectorQueries:
         assert len(recent) == 1
         assert recent[0].task_id == "new"
 
+    @log_call
     def test_get_by_id(self, tmp_path):
         collector = ResultCollector(results_dir=tmp_path / "results")
         collector.record(TaskResult(task_id="find-me", status="success"))
@@ -163,6 +175,7 @@ class TestResultCollectorQueries:
 
 
 class TestResultCollectorPersistence:
+    @log_call
     def test_record_creates_individual_file(self, tmp_path):
         results_dir = tmp_path / "results"
         collector = ResultCollector(results_dir=results_dir)
@@ -173,6 +186,7 @@ class TestResultCollectorPersistence:
         data = json.loads(individual.read_text())
         assert data["task_id"] == "t1"
 
+    @log_call
     def test_index_roundtrip(self, tmp_path):
         results_dir = tmp_path / "results"
         c1 = ResultCollector(results_dir=results_dir)
@@ -186,6 +200,7 @@ class TestResultCollectorPersistence:
         assert c2.get("b") is not None
         assert c2.get("b").status == "failure"
 
+    @log_call
     def test_corrupt_index_resets(self, tmp_path):
         results_dir = tmp_path / "results"
         results_dir.mkdir(parents=True)
@@ -195,6 +210,7 @@ class TestResultCollectorPersistence:
         collector = ResultCollector(results_dir=results_dir)
         assert collector.success_rate() == 0.0
 
+    @log_call
     def test_corrupt_index_creates_backup(self, tmp_path):
         """Corrupt index.json should create a .json.bak backup."""
         results_dir = tmp_path / "results"
@@ -209,6 +225,7 @@ class TestResultCollectorPersistence:
         assert backup.exists(), "Backup file should be created"
         assert backup.read_text() == corrupt_content
 
+    @log_call
     def test_load_failed_blocks_save(self, tmp_path):
         """After corrupt load, _save_index should refuse to overwrite."""
         results_dir = tmp_path / "results"
@@ -232,24 +249,30 @@ class TestResultCollectorPersistence:
 
 
 class TestResultCollectorSummary:
+    @log_call
     def test_summary_empty(self, tmp_path):
         collector = ResultCollector(results_dir=tmp_path / "results")
         text = collector.summary()
         assert "No results recorded yet" in text
 
+    @log_call
     def test_summary_with_data(self, tmp_path):
         collector = ResultCollector(results_dir=tmp_path / "results")
-        collector.record(TaskResult(
-            task_id="t1",
-            status="success",
-            pr_url="https://github.com/org/repo/pull/1",
-            completed_at=datetime(2025, 6, 1),
-        ))
-        collector.record(TaskResult(
-            task_id="t2",
-            status="failure",
-            completed_at=datetime(2025, 6, 2),
-        ))
+        collector.record(
+            TaskResult(
+                task_id="t1",
+                status="success",
+                pr_url="https://github.com/org/repo/pull/1",
+                completed_at=datetime(2025, 6, 1),
+            )
+        )
+        collector.record(
+            TaskResult(
+                task_id="t2",
+                status="failure",
+                completed_at=datetime(2025, 6, 2),
+            )
+        )
 
         text = collector.summary()
         assert "2 tasks" in text

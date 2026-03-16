@@ -44,6 +44,7 @@ from amplihack.recipes.rust_runner import (
     is_rust_runner_available,
     run_recipe_via_rust,
 )
+from amplihack.utils.logging_utils import log_call
 
 __all__ = [
     "AgentNotFoundError",
@@ -74,11 +75,13 @@ __all__ = [
 ]
 
 
+@log_call
 def parse_recipe(yaml_content: str) -> Recipe:
     """Shortcut: parse a YAML string into a Recipe."""
     return RecipeParser().parse(yaml_content)
 
 
+@log_call
 def run_recipe_by_name(
     name: str,
     user_context: dict[str, Any] | None = None,

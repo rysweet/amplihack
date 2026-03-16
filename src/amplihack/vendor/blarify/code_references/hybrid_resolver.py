@@ -14,6 +14,7 @@ from amplihack.vendor.blarify.graph.node import DefinitionNode
 from .lsp_helper import LspQueryHelper
 from .scip_helper import ScipReferenceResolver
 from .types.Reference import Reference
+from amplihack.utils.logging_utils import log_call
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,7 @@ class HybridReferenceResolver:
     programming languages, LSP resolver is used instead.
     """
 
+    @log_call
     def __init__(
         self,
         root_uri: str,
@@ -69,6 +71,7 @@ class HybridReferenceResolver:
         self._use_lsp = False
         self._setup_resolvers()
 
+    @log_call
     def _setup_resolvers(self):
         """Determine which resolvers to use based on mode and availability."""
         # Check project language to determine if SCIP is applicable
@@ -116,6 +119,7 @@ class HybridReferenceResolver:
             f"🔧 Hybrid resolver mode: {self.mode.value} | Language: {detected_language} | SCIP: {self._use_scip} | LSP: {self._use_lsp}"
         )
 
+    @log_call
     def _try_setup_scip(self) -> bool:
         """Try to set up SCIP resolver."""
         try:
@@ -136,6 +140,7 @@ class HybridReferenceResolver:
             return False
 
     @property
+    @log_call
     def lsp_resolver(self) -> LspQueryHelper:
         """Lazy initialization of LSP resolver."""
         if self._lsp_resolver is None:
@@ -143,6 +148,7 @@ class HybridReferenceResolver:
             self._lsp_resolver.start()
         return self._lsp_resolver
 
+    @log_call
     def get_paths_where_nodes_are_referenced_batch(
         self, nodes: list[DefinitionNode]
     ) -> dict[DefinitionNode, list[Reference]]:
@@ -185,11 +191,13 @@ class HybridReferenceResolver:
         logger.error("No reference resolvers available")
         return {node: [] for node in nodes}
 
+    @log_call
     def get_paths_where_node_is_referenced(self, node: DefinitionNode) -> list[Reference]:
         """Get references for a single node."""
         results = self.get_paths_where_nodes_are_referenced_batch([node])
         return results.get(node, [])
 
+    @log_call
     def get_resolver_info(self) -> dict[str, Any]:
         """Get information about the current resolver configuration."""
         from ..utils.path_calculator import PathCalculator
@@ -211,6 +219,7 @@ class HybridReferenceResolver:
 
         return info
 
+    @log_call
     def initialize_directory(self, file) -> None:  # type: ignore
         """
         Initialize directory for the given file.
@@ -219,6 +228,7 @@ class HybridReferenceResolver:
         if self._use_lsp:
             self.lsp_resolver.initialize_directory(file)
 
+    @log_call
     def shutdown(self):
         """Shutdown all resolvers."""
         if self._lsp_resolver:

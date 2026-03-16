@@ -7,7 +7,10 @@ and provides the appropriate binary path.
 import shutil
 from pathlib import Path
 
+from amplihack.utils.logging_utils import log_call
 
+
+@log_call
 def is_rustyclawd_available() -> bool:
     """Check if RustyClawd binary is available.
 
@@ -40,6 +43,7 @@ def is_rustyclawd_available() -> bool:
     return False
 
 
+@log_call
 def get_rustyclawd_path() -> Path | None:
     """Get path to RustyClawd binary.
 
@@ -73,6 +77,7 @@ def get_rustyclawd_path() -> Path | None:
     return None
 
 
+@log_call
 def install_rustyclawd() -> bool:
     """Install or update RustyClawd via cargo.
 
@@ -107,6 +112,7 @@ def install_rustyclawd() -> bool:
         return False
 
 
+@log_call
 def should_use_rustyclawd() -> bool:
     """Determine if RustyClawd should be used instead of Claude Code.
 

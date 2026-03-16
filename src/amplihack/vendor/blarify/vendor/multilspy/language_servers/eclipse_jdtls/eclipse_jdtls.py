@@ -22,6 +22,7 @@ from amplihack.vendor.blarify.vendor.multilspy.multilspy_config import Multilspy
 from amplihack.vendor.blarify.vendor.multilspy.multilspy_logger import MultilspyLogger
 from amplihack.vendor.blarify.vendor.multilspy.multilspy_settings import MultilspySettings
 from amplihack.vendor.blarify.vendor.multilspy.multilspy_utils import FileUtils, PlatformUtils
+from amplihack.utils.logging_utils import log_call
 
 
 @dataclasses.dataclass
@@ -45,6 +46,7 @@ class EclipseJDTLS(LanguageServer):
     The EclipseJDTLS class provides a Java specific implementation of the LanguageServer class
     """
 
+    @log_call
     def __init__(self, config: MultilspyConfig, logger: MultilspyLogger, repository_root_path: str):
         """
         Creates a new EclipseJDTLS instance initializing the language server settings appropriately.
@@ -145,6 +147,7 @@ class EclipseJDTLS(LanguageServer):
             config, logger, repository_root_path, ProcessLaunchInfo(cmd, proc_env, proc_cwd), "java"
         )
 
+    @log_call
     def setupRuntimeDependencies(
         self, logger: MultilspyLogger, config: MultilspyConfig
     ) -> RuntimeDependencyPaths:
@@ -265,6 +268,7 @@ class EclipseJDTLS(LanguageServer):
             intellisense_members_path=intellisense_members_path,
         )
 
+    @log_call
     def _get_initialize_params(self, repository_absolute_path: str) -> InitializeParams:
         """
         Returns the initialize parameters for the EclipseJDTLS server.
@@ -347,6 +351,7 @@ class EclipseJDTLS(LanguageServer):
         return d
 
     @asynccontextmanager
+    @log_call
     async def start_server(self) -> AsyncIterator["EclipseJDTLS"]:
         """
         Starts the Eclipse JDTLS Language Server, waits for the server to be ready and yields the LanguageServer instance.
@@ -362,6 +367,7 @@ class EclipseJDTLS(LanguageServer):
         ```
         """
 
+        @log_call
         async def register_capability_handler(params):
             assert "registrations" in params
             for registration in params["registrations"]:
@@ -380,6 +386,7 @@ class EclipseJDTLS(LanguageServer):
                         self.intellicode_enable_command_available.set()
             return
 
+        @log_call
         async def lang_status_handler(params):
             # TODO: Should we wait for
             # server -> client: {'jsonrpc': '2.0', 'method': 'language/status', 'params': {'type': 'ProjectStatus', 'message': 'OK'}}
@@ -387,14 +394,17 @@ class EclipseJDTLS(LanguageServer):
             if params["type"] == "ServiceReady" and params["message"] == "ServiceReady":
                 self.service_ready_event.set()
 
+        @log_call
         async def execute_client_command_handler(params):
             assert params["command"] == "_java.reloadBundles.command"
             assert params["arguments"] == []
             return []
 
+        @log_call
         async def window_log_message(msg):
             self.logger.log(f"LSP: window/logMessage: {msg}", logging.INFO)
 
+        @log_call
         async def do_nothing(params):
             return
 

@@ -7,6 +7,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
 
+from amplihack.utils.logging_utils import log_call
+
 
 class ErrorAction(Enum):
     """Action to take in response to an error."""
@@ -36,6 +38,7 @@ class IndexingError(Exception):
     context: dict = field(default_factory=dict)
     scope: str = "language"  # "file" or "language"
 
+    @log_call
     def __str__(self) -> str:
         return f"{self.language}: {self.message}"
 
@@ -64,12 +67,14 @@ class DegradationSummary:
 class ErrorHandler:
     """Handle errors during Blarify indexing."""
 
+    @log_call
     def __init__(self):
         """Initialize error handler."""
         self._errors: list[IndexingError] = []
         self._callbacks: list[Callable] = []
         self._retry_counts: dict[str, int] = {}
 
+    @log_call
     def handle_error(
         self,
         error: IndexingError,
@@ -97,6 +102,7 @@ class ErrorHandler:
 
         return action_result
 
+    @log_call
     def _determine_action(
         self,
         error: IndexingError,
@@ -171,6 +177,7 @@ class ErrorHandler:
             user_message=f"Skipping {error.language} due to error: {self._make_user_friendly(error)}",
         )
 
+    @log_call
     def _make_user_friendly(self, error: IndexingError) -> str:
         """Convert error message to user-friendly format.
 
@@ -204,6 +211,7 @@ class ErrorHandler:
 
         return message
 
+    @log_call
     def _calculate_backoff(self, attempt: int) -> float:
         """Calculate exponential backoff delay.
 
@@ -216,6 +224,7 @@ class ErrorHandler:
         base_delay = 1.0
         return base_delay * (2 ** (attempt - 1))
 
+    @log_call
     def register_callback(self, callback: Callable) -> None:
         """Register a callback for error notifications.
 
@@ -224,6 +233,7 @@ class ErrorHandler:
         """
         self._callbacks.append(callback)
 
+    @log_call
     def generate_error_report(self) -> str:
         """Generate a report of all errors.
 
@@ -252,6 +262,7 @@ class ErrorHandler:
 
         return "\n".join(lines)
 
+    @log_call
     def get_degradation_summary(self) -> DegradationSummary:
         """Get summary of degraded operation.
 

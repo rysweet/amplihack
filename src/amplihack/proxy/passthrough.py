@@ -7,6 +7,8 @@ from typing import Any
 
 import httpx  # type: ignore
 
+from amplihack.utils.logging_utils import log_call
+
 from .sanitizing_logger import get_sanitizing_logger
 
 # Use sanitizing logger to prevent credential exposure (Issue #1997)
@@ -16,6 +18,7 @@ logger = get_sanitizing_logger(__name__)
 class PassthroughHandler:
     """Handles passthrough mode with fallback from Anthropic to Azure OpenAI on 429 errors."""
 
+    @log_call
     def __init__(self):
         """Initialize passthrough handler."""
         self.anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
@@ -49,12 +52,14 @@ class PassthroughHandler:
         self.anthropic_client = None
         self.azure_client = None
 
+    @log_call
     async def __aenter__(self):
         """Async context manager entry."""
         self.anthropic_client = httpx.AsyncClient(timeout=60.0)
         self.azure_client = httpx.AsyncClient(timeout=60.0)
         return self
 
+    @log_call
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit."""
         if self.anthropic_client:
@@ -62,10 +67,12 @@ class PassthroughHandler:
         if self.azure_client:
             await self.azure_client.aclose()
 
+    @log_call
     def is_enabled(self) -> bool:
         """Check if passthrough mode is enabled."""
         return self.passthrough_enabled
 
+    @log_call
     def should_use_fallback(self) -> bool:
         """Determine if we should use Azure fallback based on failure count."""
         if not self.fallback_enabled:
@@ -85,6 +92,7 @@ class PassthroughHandler:
 
         return self.switched_to_fallback
 
+    @log_call
     def record_anthropic_failure(self):
         """Record a failure when calling Anthropic API."""
         self.anthropic_failure_count += 1
@@ -93,6 +101,7 @@ class PassthroughHandler:
             f"Anthropic API failure recorded. Count: {self.anthropic_failure_count}/{self.fallback_after_failures}"
         )
 
+    @log_call
     def record_anthropic_success(self):
         """Record a successful call to Anthropic API."""
         if self.anthropic_failure_count > 0:
@@ -100,6 +109,7 @@ class PassthroughHandler:
             self.anthropic_failure_count = 0
             self.switched_to_fallback = False
 
+    @log_call
     async def handle_request(self, request_data: dict[str, Any]) -> dict[str, Any] | httpx.Response:
         """
         Handle a request in passthrough mode.
@@ -147,6 +157,7 @@ class PassthroughHandler:
                 return await self._call_azure_api(request_data)
             raise
 
+    @log_call
     async def _call_anthropic_api(self, request_data: dict[str, Any]) -> dict[str, Any]:
         """Call the Anthropic API directly."""
         if not self.anthropic_api_key:
@@ -169,6 +180,7 @@ class PassthroughHandler:
         response.raise_for_status()
         return response.json()
 
+    @log_call
     async def _call_azure_api(self, request_data: dict[str, Any]) -> dict[str, Any]:
         """Call Azure OpenAI API as fallback."""
         if not self.azure_openai_key or not self.azure_openai_endpoint:
@@ -206,6 +218,7 @@ class PassthroughHandler:
         # Convert Azure response back to Anthropic format
         return self._convert_azure_to_anthropic(azure_response, request_data.get("model", ""))
 
+    @log_call
     def _convert_anthropic_to_azure(self, request_data: dict[str, Any]) -> dict[str, Any]:
         """Convert Anthropic request format to Azure OpenAI format."""
         azure_request = {
@@ -278,6 +291,7 @@ class PassthroughHandler:
 
         return azure_request
 
+    @log_call
     def _convert_azure_to_anthropic(
         self, azure_response: dict[str, Any], original_model: str
     ) -> dict[str, Any]:
@@ -305,6 +319,7 @@ class PassthroughHandler:
 
         return anthropic_response
 
+    @log_call
     def _map_finish_reason(self, finish_reason: str) -> str:
         """Map Azure finish_reason to Anthropic stop_reason."""
         mapping = {
@@ -315,6 +330,7 @@ class PassthroughHandler:
         }
         return mapping.get(finish_reason, "end_turn")
 
+    @log_call
     def get_status(self) -> dict[str, Any]:
         """Get current status of passthrough handler."""
         return {
