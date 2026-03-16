@@ -319,13 +319,14 @@ class TestRemoteAdapterPublishPartitionRouting:
         adapter._connection_string = "fake"
         adapter._input_hub = "hive-events-test"
         adapter._run_id = "run123"
+        adapter._producer_lock = threading.Lock()
+        adapter._producer = None
         return adapter
 
     def test_publish_uses_partition_id_for_agent_name(self):
         adapter = self._make_adapter()
 
         mock_producer = MagicMock()
-        mock_producer.__enter__.return_value = mock_producer
         mock_batch = MagicMock()
         mock_producer.create_batch.return_value = mock_batch
 
@@ -346,7 +347,6 @@ class TestRemoteAdapterPublishPartitionRouting:
         adapter = self._make_adapter()
 
         mock_producer = MagicMock()
-        mock_producer.__enter__.return_value = mock_producer
         mock_batch = MagicMock()
         mock_producer.create_batch.return_value = mock_batch
 

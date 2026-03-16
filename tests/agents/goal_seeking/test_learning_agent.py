@@ -130,6 +130,93 @@ class TestLearningAgent:
         assert result["facts_extracted"] == 2
         assert result["facts_stored"] >= 1
 
+    def test_prepare_fact_batch_builds_direct_storage_payload(self, agent):
+        agent.use_hierarchical = True
+        agent.memory.store_episode = MagicMock(return_value="episode-1")
+        with (
+            patch.object(
+                agent, "_detect_temporal_metadata", return_value={"source_date": "2025-01-02"}
+            ),
+            patch.object(
+                agent,
+                "_extract_facts_with_llm",
+                return_value=[
+                    {
+                        "context": "Campaign",
+                        "fact": "CAMP-1 is active",
+                        "confidence": 0.9,
+                        "tags": ["campaign"],
+                    }
+                ],
+            ),
+            patch.object(
+                agent,
+                "_build_summary_store_kwargs",
+                return_value={
+                    "context": "SUMMARY",
+                    "fact": "Summary fact",
+                    "confidence": 0.95,
+                    "tags": ["summary", "concept_map"],
+                },
+            ),
+        ):
+            batch = agent.prepare_fact_batch("Title: Campaign report\nCAMP-1 is active")
+
+        assert batch["facts_extracted"] == 1
+        assert batch["source_label"] == "Campaign report"
+        assert batch["episode_content"] == "Title: Campaign report\nCAMP-1 is active"
+        assert batch["facts"][0]["context"] == "Campaign"
+        assert batch["facts"][0]["fact"] == "CAMP-1 is active"
+        assert "date:2025-01-02" in batch["facts"][0]["tags"]
+        assert batch["facts"][0]["temporal_metadata"]["source_label"] == "Campaign report"
+        assert batch["summary_fact"]["context"] == "SUMMARY"
+
+    def test_store_fact_batch_stores_prepared_facts_and_summary(self, agent):
+        agent.use_hierarchical = True
+        agent.memory.store_episode = MagicMock(return_value="episode-1")
+        agent.memory.store_fact = MagicMock()
+        agent.loop.observe = MagicMock()
+        agent.loop.learn = MagicMock()
+
+        batch = {
+            "facts_extracted": 1,
+            "facts": [
+                {
+                    "context": "Campaign",
+                    "fact": "CAMP-1 is active",
+                    "confidence": 0.9,
+                    "tags": ["campaign"],
+                    "temporal_metadata": {"source_label": "Campaign report"},
+                }
+            ],
+            "summary_fact": {
+                "context": "SUMMARY",
+                "fact": "Summary fact",
+                "confidence": 0.95,
+                "tags": ["summary", "concept_map"],
+            },
+            "content_summary": "Campaign content",
+            "perception": "Campaign content",
+            "episode_content": "Campaign content",
+            "source_label": "Campaign report",
+        }
+
+        result = agent.store_fact_batch(batch, record_learning=True)
+
+        assert result["facts_extracted"] == 1
+        assert result["facts_stored"] == 1
+        agent.memory.store_episode.assert_called_once_with(
+            content="Campaign content",
+            source_label="Campaign report",
+        )
+        assert agent.memory.store_fact.call_count == 2
+        fact_call = agent.memory.store_fact.call_args_list[0].kwargs
+        summary_call = agent.memory.store_fact.call_args_list[1].kwargs
+        assert fact_call["source_id"] == "episode-1"
+        assert summary_call["source_id"] == "episode-1"
+        agent.loop.observe.assert_called_once_with("Campaign content")
+        agent.loop.learn.assert_called_once()
+
     @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
     def test_answer_question_synthesizes_answer(self, mock_completion, agent):
         """Test answering question uses LLM to synthesize answer."""
