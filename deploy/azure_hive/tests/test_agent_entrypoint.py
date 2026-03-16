@@ -238,6 +238,41 @@ class TestAgentEntrypoint:
         agent.process.assert_not_called()
         agent.process_store.assert_not_called()
 
+    def test_run_event_driven_loop_publishes_shutdown_event_when_none_follows_shutdown(self):
+        mod = _load_entrypoint()
+        agent = MagicMock()
+        answer_publisher = MagicMock()
+        memory = MagicMock()
+        shutdown_event = threading.Event()
+        publish_shutdown_event = MagicMock()
+
+        class FakeInputSource:
+            def __init__(self):
+                self._source = self
+                self.last_event_metadata = {"run_id": "run-shutdown"}
+
+            def next(self):
+                shutdown_event.set()
+                return
+
+        mod._run_event_driven_loop(
+            "agent-0",
+            agent,
+            FakeInputSource(),
+            answer_publisher,
+            memory,
+            shutdown_event,
+            publish_shutdown_event=publish_shutdown_event,
+        )
+
+        publish_shutdown_event.assert_called_once_with(
+            "input_shutdown",
+            "input_source returned None with shutdown_event set",
+            "run-shutdown",
+        )
+        agent.process.assert_not_called()
+        agent.process_store.assert_not_called()
+
     def test_handle_event_passes_learning_agent_from_ooda_tick(self):
         """_ooda_tick forwards the learning_agent to _handle_event; memory.recall never called."""
         mod = _load_entrypoint()
@@ -256,6 +291,27 @@ class TestAgentEntrypoint:
         mock_agent.process.assert_called_once_with("test?")
         # memory.recall must never be called — LearningAgent handles all recall
         mock_mem.recall.assert_not_called()
+
+
+class TestAnswerPublisher:
+    def test_publish_agent_shutdown_uses_run_context(self):
+        mod = _load_entrypoint()
+        publisher = mod.AnswerPublisher(
+            "agent-0",
+            "Endpoint=sb://fake.servicebus.windows.net/;SharedAccessKeyName=x;SharedAccessKey=y",
+            "eval-responses",
+        )
+        publisher._publish_to_eh = MagicMock()
+        publisher._current_run_id = "run-ctx"
+
+        publisher.publish_agent_shutdown(reason="signal", detail="signal=15")
+
+        payload = publisher._publish_to_eh.call_args.args[0]
+        assert payload["event_type"] == "AGENT_SHUTDOWN"
+        assert payload["agent_id"] == "agent-0"
+        assert payload["reason"] == "signal"
+        assert payload["detail"] == "signal=15"
+        assert payload["run_id"] == "run-ctx"
 
 
 class TestDockerfile:
