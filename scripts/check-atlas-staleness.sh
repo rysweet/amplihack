@@ -82,8 +82,12 @@ check_layer() {
                 [[ "$f" == *docker-compose*.yaml ]] && matched=true
                 [[ "$f" == */k8s/*.yaml ]] && matched=true
                 [[ "$f" == k8s/*.yaml ]] && matched=true
+                [[ "$f" == kubernetes/*.yaml ]] && matched=true
                 [[ "$f" == */kubernetes/*.yaml ]] && matched=true
+                [[ "$f" == helm/*.yaml ]] && matched=true
+                [[ "$f" == helm/*/*.yaml ]] && matched=true
                 [[ "$f" == */helm/*.yaml ]] && matched=true
+                [[ "$f" == */helm/*/*.yaml ]] && matched=true
                 ;;
             2)
                 [[ "$f" == go.mod ]] && matched=true

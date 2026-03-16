@@ -69,7 +69,7 @@ echo ""
 echo "=== SVG Companion Files ==="
 
 # Every .mmd and .dot file must have a matching .svg companion
-for mmd_file in "${ATLAS}"/**/*.mmd "${ATLAS}"/*.mmd 2>/dev/null; do
+for mmd_file in "${ATLAS}"/**/*.mmd "${ATLAS}"/*.mmd; do
     [[ -f "$mmd_file" ]] || continue
     svg_file="${mmd_file%.mmd}.svg"
     layer_dir=$(dirname "$mmd_file" | sed "s|${REPO_ROOT}/||")
@@ -81,7 +81,7 @@ for mmd_file in "${ATLAS}"/**/*.mmd "${ATLAS}"/*.mmd 2>/dev/null; do
     fi
 done
 
-for dot_file in "${ATLAS}"/**/*.dot "${ATLAS}"/*.dot 2>/dev/null; do
+for dot_file in "${ATLAS}"/**/*.dot "${ATLAS}"/*.dot; do
     [[ -f "$dot_file" ]] || continue
     svg_file="${dot_file%.dot}.svg"
     layer_dir=$(dirname "$dot_file" | sed "s|${REPO_ROOT}/||")
