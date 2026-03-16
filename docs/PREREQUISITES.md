@@ -167,6 +167,8 @@ git --version
 
 ### Windows (Native)
 
+> **Improved native support in v0.6.69**: PR #3127 (Phases 1–3) added comprehensive Windows native compatibility. All core amplihack commands now work in native PowerShell without WSL. Some advanced features (fleet orchestration, Docker workflows) still require WSL.
+
 **Package Managers:** winget (recommended) or Chocolatey
 
 #### Using winget (Windows 10 1709+)

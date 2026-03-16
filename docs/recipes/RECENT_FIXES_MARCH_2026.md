@@ -137,6 +137,111 @@ complete-session: COMPLETED
 **Documentation Updated**:
 - [Skill Catalog](../skills/SKILL_CATALOG.md#yaml-frontmatter-requirements)
 
+## Runtime & Orchestrator Fixes (March 16, 2026)
+
+### Auto-Normalise `{{var}}` Quoting in Recipe Commands (PR #3140)
+
+**Problem**: Recipe authors had to memorise Rust runner quoting rules for `{{var}}` placeholders — mistakes caused silent breakage (doubled quotes, unexpanded variables, literal heredoc output).
+
+**Solution**: The Python runner wrapper (`rust_runner.py`) now applies a normalisation pipeline automatically before invoking the Rust binary:
+
+- `"{{var}}"` → `{{var}}` (explicit wrapping doubled the quotes → `""$RECIPE_VAR_x""`)
+- `'{{var}}'` → `{{var}}` (single-quote wrapping produced literal `'$RECIPE_VAR_x'`)
+
+**Impact**: Recipe authors can write `{{var}}` directly without worrying about quoting — the runner handles it correctly in all contexts.
+
+**Example** (previously broken, now works):
+```yaml
+steps:
+  - id: use-var
+    type: bash
+    command: echo "{{task_description}}"
+    # Previously: echo ""$RECIPE_VAR_task_description""
+    # Now:        echo "$RECIPE_VAR_task_description"
+```
+
+**Documentation Updated**:
+- [Recipe Quick Reference](./quick-reference.md#variable-substitution)
+
+---
+
+### Drop CWD-Traversal Auto-Discovery from `resolve_bundle_asset` (PR #3141)
+
+**Problem**: `_discover_cwd_search_bases()` silently walked the process's CWD ancestry looking for any directory containing `amplifier-bundle/`, producing non-deterministic results depending on where amplihack was invoked from.
+
+**Solution**: Removed CWD-traversal discovery entirely. Bundle assets are now resolved only from well-known locations (installed package path, `~/.amplihack/`, explicit overrides).
+
+**Impact**:
+- Asset resolution is now deterministic regardless of working directory
+- Eliminates subtle bugs where a parent directory's bundle silently overrode the correct one
+- Use `AMPLIHACK_BUNDLE_PATH` to specify a custom bundle location if needed
+
+---
+
+### External-Runtime Orchestrator Resolution (PR #3179)
+
+**Problem**: Regression in how `smart-orchestrator` resolved helper assets, session-tree, and hooks when launched outside the amplihack repository (e.g. from user projects).
+
+**Solution**:
+- Full runtime assets (including `amplifier-bundle/`) are now staged into `~/.amplihack` on install
+- `smart-orchestrator` resolves all assets from real runtime roots, not from CWD or install-time paths
+- Current `dev-orchestrator` workflow instructions are injected into Copilot context
+
+**Impact**: Amplihack now works correctly from any directory when launched via `amplihack <command>` without needing the source repository in the CWD.
+
+---
+
+### Agent-Agnostic Binary Selection (PR #3174)
+
+**Problem**: Subprocess orchestration hardcoded `"claude"` as the fallback agent binary in 20+ files, making amplihack incompatible with other agent CLIs (e.g. `copilot`, custom agents).
+
+**Solution**: Introduced `get_agent_binary()` in `src/amplihack/utils/__init__.py` — reads `AMPLIHACK_AGENT_BINARY` env var with warning on fallback. All subprocess calls now use this central helper.
+
+**Impact**:
+- Amplihack is now fully agent-agnostic: `amplihack <agent>` uses that agent for all subprocess orchestration
+- No more hardcoded `"claude"` fallbacks in orchestration paths
+
+**Usage**:
+```bash
+# Use GitHub Copilot CLI as the agent
+export AMPLIHACK_AGENT_BINARY=copilot
+amplihack recipe run default-workflow --context task_description="Add auth"
+
+# Use a custom agent binary
+export AMPLIHACK_AGENT_BINARY=/usr/local/bin/my-agent
+amplihack recipe run investigation --context task_description="How does auth work?"
+```
+
+**Documentation Updated**:
+- [Recipe Quick Reference](./quick-reference.md#environment-variables) — added `AMPLIHACK_AGENT_BINARY`
+
+---
+
+### Windows Native Compatibility — Phases 1–3 (PR #3127)
+
+**Platform**: Windows (native PowerShell — not WSL)
+
+**Changes**: All modifications are additive platform guards that preserve existing macOS/Linux behavior.
+
+**Phase 1 — Critical Import/Crash Fixes**:
+- Guard `termios`/`tty`/`select` imports behind `try/except ImportError` with `msvcrt` fallback for keyboard input
+- Guard `os.getuid()`/`os.getgid()` with `hasattr` checks
+- Guard `pwd` module imports
+- Replace hardcoded `/tmp` with `tempfile.gettempdir()`
+
+**Phase 2 — Path Handling**:
+- Replace hardcoded `/`-joined paths with `pathlib.Path` operations throughout
+
+**Phase 3 — Shell Commands**:
+- Add platform-conditional shell invocation (`powershell` vs `bash`) for scripts that require a shell
+
+**Impact**: Amplihack can now be installed and run natively on Windows. Some advanced features (fleet, Docker workflows) still require WSL.
+
+**Documentation Updated**:
+- [Prerequisites](../PREREQUISITES.md#windows-native) — updated to reflect improved native support
+
+---
+
 ## Version History
 
 All fixes released in **amplihack v0.9.0** (March 2026):
@@ -145,6 +250,14 @@ All fixes released in **amplihack v0.9.0** (March 2026):
 - **Bash Timeouts** (PR #2807) - Removed hardcoded 120s limit
 - **Adapter Selection** (PR #2804) - Auto-detection for Claude Code
 - **Skill Frontmatter** (PR #2811) - Fixed YAML validation issues
+
+Fixes released in **amplihack v0.6.69** (March 16, 2026):
+
+- **{{var}} Quoting** (PR #3140) - Auto-normalise recipe variable quoting
+- **Bundle Asset Resolution** (PR #3141) - Deterministic, no CWD traversal
+- **Orchestrator Resolution** (PR #3179) - External-runtime staging fixed
+- **Agent-Agnostic Binary** (PR #3174) - `AMPLIHACK_AGENT_BINARY` env var
+- **Windows Compatibility** (PR #3127) - Phases 1–3 native PowerShell support
 
 ## See Also
 
