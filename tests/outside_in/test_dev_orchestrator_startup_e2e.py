@@ -90,13 +90,13 @@ def _build_tmux_dry_run_command(session_name: str, log_path: Path, task_descript
     command = command.replace("/path/to/repo", str(REPO_ROOT))
     command = command.replace("/path/to/amplihack", str(REPO_ROOT))
     command = command.replace(
-        "'repo_path': '.',",
-        "'repo_path': '.',\n        'force_single_workstream': 'true',",
+        '"repo_path": ".",',
+        '"repo_path": ".",\n        "force_single_workstream": "true",',
         1,
     )
     command = command.replace(
-        "print(f'Recipe result: {result}')",
-        "print('TMUX_OK', result.success, result.step_results[-1].step_id)",
+        'print(f"Recipe result: {result}")',
+        'print("TMUX_OK", result.success, result.step_results[-1].step_id)',
         1,
     )
     command = command.replace(
