@@ -275,7 +275,7 @@ class TestBicep:
         assert "hive-shards-" in content
 
     def test_bicep_has_shards_consumer_groups(self):
-        """Bicep must declare per-agent consumer groups on the shards hub."""
+        """Bicep must declare consumer groups on the shards hub."""
         bicep = Path(__file__).parent.parent / "main.bicep"
         content = bicep.read_text()
         assert "ehShardsConsumerGroups" in content
@@ -321,6 +321,69 @@ class TestShardTransport:
             eh_name="",
         )
         assert result is None, "Must return None without EH vars — no Service Bus fallback"
+
+    def test_init_dht_hive_uses_configured_shard_timeout(self, monkeypatch):
+        """Azure entrypoint should pass the configured shard timeout to EH transport."""
+        mod = _load_entrypoint()
+        monkeypatch.setenv("AMPLIHACK_SHARD_QUERY_TIMEOUT_SECONDS", "75")
+
+        transport = MagicMock()
+        graph = MagicMock()
+
+        with (
+            patch(
+                "amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph.EventHubsShardTransport",
+                return_value=transport,
+            ) as mock_transport,
+            patch(
+                "amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph.DistributedHiveGraph",
+                return_value=graph,
+            ),
+        ):
+            result = mod._init_dht_hive(
+                agent_name="agent-0",
+                agent_count=3,
+                connection_string="",
+                hive_name="test-hive",
+                eh_connection_string="Endpoint=sb://dummy/",
+                eh_name="hive-shards-test",
+                consumer_group="cg-app-0",
+            )
+
+        assert result == (graph, None, transport)
+        assert mock_transport.call_args.kwargs["timeout"] == 75.0
+
+    def test_main_exits_when_distributed_topology_requested_but_hive_init_fails(
+        self, monkeypatch, tmp_path
+    ):
+        """Distributed topology must fail fast instead of silently degrading to local-only."""
+        mod = _load_entrypoint()
+
+        monkeypatch.setenv("AMPLIHACK_AGENT_NAME", "agent-0")
+        monkeypatch.setenv("AMPLIHACK_AGENT_TOPOLOGY", "distributed")
+        monkeypatch.setenv("AMPLIHACK_EH_CONNECTION_STRING", "Endpoint=sb://dummy/")
+        monkeypatch.setenv("AMPLIHACK_EH_NAME", "hive-shards-test")
+        monkeypatch.setenv("AMPLIHACK_MEMORY_STORAGE_PATH", str(tmp_path / "agent-0"))
+
+        with patch.object(mod, "_init_dht_hive", return_value=None):
+            with patch(
+                "amplihack.agents.goal_seeking.goal_seeking_agent.GoalSeekingAgent",
+                return_value=MagicMock(),
+            ):
+                with patch("amplihack.memory.facade.Memory", return_value=MagicMock()):
+                    with patch(
+                        "amplihack.agents.goal_seeking.input_source.EventHubsInputSource",
+                        return_value=MagicMock(),
+                    ):
+                        with patch.object(
+                            mod,
+                            "_run_event_driven_loop",
+                            side_effect=AssertionError("distributed startup should fail first"),
+                        ):
+                            with pytest.raises(SystemExit) as exc_info:
+                                mod.main()
+
+        assert exc_info.value.code == 1
 
     def test_handle_shard_query_publishes_response(self):
         """EH transport handle_shard_query looks up local shard and publishes SHARD_RESPONSE."""
@@ -380,6 +443,17 @@ class TestShardTransport:
             transport_req._mailbox_ready.set()
 
         transport_0._publish = mock_publish
+        search_agent = MagicMock()
+        search_agent.memory.search_local.return_value = [
+            {
+                "experience_id": "paris-fact",
+                "context": "geography",
+                "outcome": "Paris is the capital of France",
+                "confidence": 0.9,
+                "tags": ["geo"],
+            }
+        ]
+        transport_0.bind_agent(search_agent)
 
         event = MagicMock()
         event.payload = {
@@ -388,7 +462,7 @@ class TestShardTransport:
             "correlation_id": "corr-1",
             "target_agent": "agent-0",
         }
-        transport_0.handle_shard_query(event)
+        transport_0.handle_shard_query(event, agent=search_agent)
 
         with transport_req._mailbox_lock:
             responses = [e for e in transport_req._mailbox if e.event_type == "SHARD_RESPONSE"]

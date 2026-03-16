@@ -39,7 +39,6 @@ from __future__ import annotations
 import concurrent.futures
 import hashlib
 import logging
-import random
 import threading
 import uuid
 from typing import Any, Protocol, runtime_checkable
@@ -59,6 +58,10 @@ from .hive_graph import HiveAgent, HiveEdge, HiveFact
 logger = logging.getLogger(__name__)
 
 
+class DistributedShardQueryError(RuntimeError):
+    """Raised when a distributed shard request fails or returns partial data."""
+
+
 # ---------------------------------------------------------------------------
 # ShardTransport Protocol
 # ---------------------------------------------------------------------------
@@ -76,6 +79,24 @@ class ShardTransport(Protocol):
 
     def query_shard(self, agent_id: str, query: str, limit: int) -> list[ShardFact]:
         """Query a specific agent's shard and return matching ShardFacts."""
+        ...
+
+    def retrieve_by_entity_shard(
+        self,
+        agent_id: str,
+        entity_name: str,
+        limit: int,
+    ) -> list[ShardFact]:
+        """Retrieve entity-specific facts from a specific agent's shard."""
+        ...
+
+    def execute_aggregation_shard(
+        self,
+        agent_id: str,
+        query_type: str,
+        entity_filter: str = "",
+    ) -> dict[str, Any]:
+        """Execute an aggregation on a specific agent's shard."""
         ...
 
     def store_on_shard(self, agent_id: str, fact: ShardFact) -> None:
@@ -100,6 +121,11 @@ class LocalShardTransport:
 
     def __init__(self, router: DHTRouter) -> None:
         self._router = router
+        self._local_agent: Any = None
+
+    def bind_agent(self, agent: Any) -> None:
+        """Bind the local agent for higher-level distributed memory operations."""
+        self._local_agent = agent
 
     def query_shard(self, agent_id: str, query: str, limit: int) -> list[ShardFact]:
         """Search a specific agent's shard directly."""
@@ -107,6 +133,40 @@ class LocalShardTransport:
         if shard is None:
             return []
         return shard.search(query, limit=limit)
+
+    def retrieve_by_entity_shard(
+        self,
+        agent_id: str,
+        entity_name: str,
+        limit: int,
+    ) -> list[ShardFact]:
+        """Retrieve entity-specific facts from the local bound agent."""
+        if self._local_agent is None or not hasattr(self._local_agent.memory, "retrieve_by_entity"):
+            raise DistributedShardQueryError(
+                "LocalShardTransport requires a bound agent with retrieve_by_entity()"
+            )
+        return _facts_to_shard_facts(
+            self._local_agent.memory.retrieve_by_entity(entity_name, limit=limit),
+            default_agent_id=agent_id,
+        )
+
+    def execute_aggregation_shard(
+        self,
+        agent_id: str,
+        query_type: str,
+        entity_filter: str = "",
+    ) -> dict[str, Any]:
+        """Execute an aggregation on the local bound agent."""
+        if self._local_agent is None or not hasattr(
+            self._local_agent.memory, "execute_aggregation"
+        ):
+            raise DistributedShardQueryError(
+                "LocalShardTransport requires a bound agent with execute_aggregation()"
+            )
+        return self._local_agent.memory.execute_aggregation(
+            query_type=query_type,
+            entity_filter=entity_filter,
+        )
 
     def store_on_shard(self, agent_id: str, fact: ShardFact) -> None:
         """Store a fact in a specific agent's shard directly."""
@@ -151,21 +211,37 @@ class ServiceBusShardTransport:
         # Pending cross-shard queries: correlation_id → (done_event, facts_list)
         self._pending: dict[str, tuple[threading.Event, list]] = {}
         self._pending_lock = threading.Lock()
+        self._pending_errors: dict[str, str] = {}
+        self._pending_payloads: dict[str, tuple[threading.Event, dict[str, Any]]] = {}
         self._local_graph: Any = None  # Bound by DistributedHiveGraph.__init__
+        self._local_agent: Any = None
 
     def bind_local(self, graph: Any) -> None:
         """Bind the DistributedHiveGraph that owns this transport's local shard."""
         self._local_graph = graph
+
+    def bind_agent(self, agent: Any) -> None:
+        """Bind the local GoalSeekingAgent for higher-level shard operations."""
+        self._local_agent = agent
 
     # -- ShardTransport protocol ---------------------------------------------
 
     def query_shard(self, agent_id: str, query: str, limit: int) -> list[ShardFact]:
         """Query a shard — local bypass for own shard, bus round-trip for remote."""
         if agent_id == self._agent_id and self._local_graph is not None:
-            shard = self._local_graph._router.get_shard(agent_id)
-            if shard is None:
-                return []
-            return shard.search(query, limit=limit)
+            if self._local_agent is None:
+                raise DistributedShardQueryError(
+                    f"Local shard query for {agent_id} requires a bound agent"
+                )
+            return _payload_facts_to_shard_facts(
+                _search_for_shard_response(
+                    query=query,
+                    limit=limit,
+                    agent=self._local_agent,
+                    local_graph=self._local_graph,
+                    agent_id=agent_id,
+                )
+            )
 
         # Remote query: publish SHARD_QUERY and wait for SHARD_RESPONSE
         correlation_id = uuid.uuid4().hex
@@ -173,6 +249,7 @@ class ServiceBusShardTransport:
         results: list[dict] = []
         with self._pending_lock:
             self._pending[correlation_id] = (done, results)
+            self._pending_errors[correlation_id] = ""
 
         try:
             from .event_bus import make_event
@@ -181,6 +258,7 @@ class ServiceBusShardTransport:
                 event_type="SHARD_QUERY",
                 source_agent=self._agent_id,
                 payload={
+                    "operation": "search",
                     "query": query,
                     "limit": limit,
                     "correlation_id": correlation_id,
@@ -188,10 +266,19 @@ class ServiceBusShardTransport:
                 },
             )
             self._bus.publish(query_event)
-            done.wait(timeout=self._timeout)
+            got_response = done.wait(timeout=self._timeout)
+            if not got_response:
+                raise DistributedShardQueryError(
+                    f"Shard query to {agent_id} timed out after {self._timeout:.1f}s"
+                )
+            with self._pending_lock:
+                error = self._pending_errors.get(correlation_id, "")
+            if error:
+                raise DistributedShardQueryError(error)
         finally:
             with self._pending_lock:
                 self._pending.pop(correlation_id, None)
+                self._pending_errors.pop(correlation_id, None)
 
         return [
             ShardFact(
@@ -205,6 +292,58 @@ class ServiceBusShardTransport:
             for f in results
             if f.get("content")
         ]
+
+    def retrieve_by_entity_shard(
+        self,
+        agent_id: str,
+        entity_name: str,
+        limit: int,
+    ) -> list[ShardFact]:
+        """Retrieve entity-specific facts from one shard."""
+        if agent_id == self._agent_id and self._local_graph is not None:
+            if self._local_agent is None or not hasattr(
+                self._local_agent.memory, "retrieve_by_entity"
+            ):
+                raise DistributedShardQueryError(
+                    f"Local shard entity query for {agent_id} requires retrieve_by_entity()"
+                )
+            return _facts_to_shard_facts(
+                self._local_agent.memory.retrieve_by_entity(entity_name, limit=limit),
+                default_agent_id=agent_id,
+            )
+
+        payload = self._request_shard_payload(
+            agent_id=agent_id,
+            operation="retrieve_by_entity",
+            request_payload={"entity_name": entity_name, "limit": limit},
+        )
+        return _payload_facts_to_shard_facts(payload.get("facts", []))
+
+    def execute_aggregation_shard(
+        self,
+        agent_id: str,
+        query_type: str,
+        entity_filter: str = "",
+    ) -> dict[str, Any]:
+        """Execute an aggregation on one shard."""
+        if agent_id == self._agent_id and self._local_graph is not None:
+            if self._local_agent is None or not hasattr(
+                self._local_agent.memory, "execute_aggregation"
+            ):
+                raise DistributedShardQueryError(
+                    f"Local shard aggregation for {agent_id} requires execute_aggregation()"
+                )
+            return self._local_agent.memory.execute_aggregation(
+                query_type=query_type,
+                entity_filter=entity_filter,
+            )
+
+        payload = self._request_shard_payload(
+            agent_id=agent_id,
+            operation="execute_aggregation",
+            request_payload={"query_type": query_type, "entity_filter": entity_filter},
+        )
+        return payload.get("aggregation", {})
 
     def store_on_shard(self, agent_id: str, fact: ShardFact) -> None:
         """Store a fact — local bypass for own shard, SHARD_STORE for remote."""
@@ -237,6 +376,46 @@ class ServiceBusShardTransport:
             },
         )
         self._bus.publish(store_event)
+
+    def _request_shard_payload(
+        self,
+        agent_id: str,
+        operation: str,
+        request_payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Publish a shard request and wait for a structured SHARD_RESPONSE payload."""
+        correlation_id = uuid.uuid4().hex
+        done = threading.Event()
+        response_payload: dict[str, Any] = {}
+        with self._pending_lock:
+            self._pending_payloads[correlation_id] = (done, response_payload)
+
+        try:
+            from .event_bus import make_event
+
+            event = make_event(
+                event_type="SHARD_QUERY",
+                source_agent=self._agent_id,
+                payload={
+                    "operation": operation,
+                    "correlation_id": correlation_id,
+                    "target_agent": agent_id,
+                    **request_payload,
+                },
+            )
+            self._bus.publish(event)
+            got_response = done.wait(timeout=self._timeout)
+            if not got_response:
+                raise DistributedShardQueryError(
+                    f"Shard {operation} request to {agent_id} timed out after {self._timeout:.1f}s"
+                )
+            error = response_payload.get("error", "")
+            if error:
+                raise DistributedShardQueryError(str(error))
+            return response_payload
+        finally:
+            with self._pending_lock:
+                self._pending_payloads.pop(correlation_id, None)
 
     def handle_shard_store(self, event: Any) -> None:
         """Store a replicated fact from an incoming SHARD_STORE event.
@@ -305,24 +484,25 @@ class ServiceBusShardTransport:
         if self._local_graph is None:
             return
         payload = getattr(event, "payload", None) or {}
-        query = payload.get("query", "")
-        limit = payload.get("limit", 20)
+        operation = payload.get("operation", "search")
         correlation_id = payload.get("correlation_id", "")
         target_agent = payload.get("target_agent", "")
         # Only respond if this query targets us (or has no target — broadcast)
         if target_agent and target_agent != self._agent_id:
             return
-        if not query or not correlation_id:
+        if not correlation_id:
             return
 
-        # Prefer CognitiveAdapter search (full quality) over raw ShardStore
-        facts_payload = _search_for_shard_response(
-            query=query,
-            limit=limit,
-            agent=agent,
-            local_graph=self._local_graph,
-            agent_id=self._agent_id,
-        )
+        try:
+            response_payload = _dispatch_shard_request(
+                operation=operation,
+                payload=payload,
+                agent=agent,
+                local_graph=self._local_graph,
+                agent_id=self._agent_id,
+            )
+        except Exception as exc:
+            response_payload = {"error": f"{type(exc).__name__}: {exc}"}
         try:
             from .event_bus import make_event
 
@@ -331,15 +511,15 @@ class ServiceBusShardTransport:
                 source_agent=self._agent_id,
                 payload={
                     "correlation_id": correlation_id,
-                    "facts": facts_payload,
+                    **response_payload,
                 },
             )
             self._bus.publish(response)
             logger.debug(
-                "Agent %s responded to SHARD_QUERY correlation=%s with %d facts",
+                "Agent %s responded to SHARD_QUERY correlation=%s (%s)",
                 self._agent_id,
                 correlation_id,
-                len(facts_payload),
+                operation,
             )
         except Exception:
             logger.debug("Failed to publish SHARD_RESPONSE", exc_info=True)
@@ -354,11 +534,22 @@ class ServiceBusShardTransport:
         correlation_id = payload.get("correlation_id", "")
         if not correlation_id:
             return
+        done_event: threading.Event | None = None
         with self._pending_lock:
             pending = self._pending.get(correlation_id)
+            pending_payload = self._pending_payloads.get(correlation_id)
+            if pending:
+                done_event, results = pending
+                error = payload.get("error", "")
+                if error:
+                    self._pending_errors[correlation_id] = str(error)
+                else:
+                    results.extend(payload.get("facts", []))
+            elif pending_payload:
+                done_event, response_payload = pending_payload
+                response_payload.update(payload)
         if pending:
-            done_event, results = pending
-            results.extend(payload.get("facts", []))
+            assert done_event is not None
             done_event.set()
             logger.debug(
                 "Agent %s received SHARD_RESPONSE correlation=%s (%d facts)",
@@ -366,11 +557,200 @@ class ServiceBusShardTransport:
                 correlation_id,
                 len(payload.get("facts", [])),
             )
+        elif pending_payload:
+            assert done_event is not None
+            done_event.set()
 
 
 # ---------------------------------------------------------------------------
 # Shared helper: search for SHARD_RESPONSE facts (used by both transports)
 # ---------------------------------------------------------------------------
+
+
+def _result_to_fact_payload(result: Any, default_agent_id: str) -> dict[str, Any] | None:
+    """Convert a local result object/dict into SHARD_RESPONSE fact payload format."""
+    if isinstance(result, dict):
+        content = result.get("outcome") or result.get("content", "")
+        if not content:
+            return None
+        source_agent = result.get("source_agent", "")
+        source = result.get("source", "")
+        if not source_agent and isinstance(source, str) and source.startswith("hive:"):
+            source_agent = source.removeprefix("hive:")
+        return {
+            "fact_id": result.get("fact_id", result.get("experience_id", "")),
+            "content": content,
+            "concept": result.get("context") or result.get("concept", ""),
+            "confidence": float(result.get("confidence", 0.8)),
+            "source_agent": source_agent or default_agent_id,
+            "tags": list(result.get("tags", [])),
+        }
+
+    content = getattr(result, "content", "")
+    if not content:
+        return None
+    return {
+        "fact_id": getattr(result, "fact_id", getattr(result, "node_id", "")),
+        "content": content,
+        "concept": getattr(result, "concept", ""),
+        "confidence": float(getattr(result, "confidence", 0.8)),
+        "source_agent": getattr(result, "source_agent", default_agent_id),
+        "tags": list(getattr(result, "tags", [])),
+    }
+
+
+def _facts_to_shard_facts(results: list[Any], default_agent_id: str) -> list[ShardFact]:
+    """Convert local result objects/dicts into ShardFact objects."""
+    converted: list[ShardFact] = []
+    for result in results:
+        payload = _result_to_fact_payload(result, default_agent_id)
+        if payload is None:
+            continue
+        converted.append(
+            ShardFact(
+                fact_id=payload.get("fact_id", ""),
+                content=payload.get("content", ""),
+                concept=payload.get("concept", ""),
+                confidence=float(payload.get("confidence", 0.8)),
+                source_agent=payload.get("source_agent", default_agent_id),
+                tags=list(payload.get("tags", [])),
+            )
+        )
+    return converted
+
+
+def _payload_facts_to_shard_facts(facts_payload: list[dict[str, Any]]) -> list[ShardFact]:
+    """Convert SHARD_RESPONSE fact payload dicts into ShardFact objects."""
+    return [
+        ShardFact(
+            fact_id=f.get("fact_id", ""),
+            content=f.get("content", ""),
+            concept=f.get("concept", ""),
+            confidence=f.get("confidence", 0.8),
+            source_agent=f.get("source_agent", ""),
+            tags=f.get("tags", []),
+        )
+        for f in facts_payload
+        if f.get("content")
+    ]
+
+
+def _entity_facts_for_shard_response(
+    entity_name: str,
+    limit: int,
+    agent: Any,
+    agent_id: str,
+) -> list[dict[str, Any]]:
+    """Return entity-specific fact payloads for a SHARD_RESPONSE."""
+    if (
+        agent is None
+        or not hasattr(agent, "memory")
+        or not hasattr(agent.memory, "retrieve_by_entity")
+    ):
+        raise DistributedShardQueryError(
+            f"Agent {agent_id} cannot handle distributed entity retrieval without retrieve_by_entity()"
+        )
+
+    try:
+        results = agent.memory.retrieve_by_entity(entity_name, limit=limit)
+    except Exception as exc:
+        raise DistributedShardQueryError(
+            f"retrieve_by_entity failed for {agent_id}: {exc}"
+        ) from exc
+
+    payloads: list[dict[str, Any]] = []
+    for result in results:
+        payload = _result_to_fact_payload(result, agent_id)
+        if payload is not None:
+            payloads.append(payload)
+    return payloads
+
+
+def _aggregation_for_shard_response(
+    query_type: str,
+    entity_filter: str,
+    agent: Any,
+    agent_id: str,
+) -> dict[str, Any]:
+    """Return aggregation payload for a SHARD_RESPONSE."""
+    if (
+        agent is None
+        or not hasattr(agent, "memory")
+        or not hasattr(agent.memory, "execute_aggregation")
+    ):
+        raise DistributedShardQueryError(
+            f"Agent {agent_id} cannot handle distributed aggregation without execute_aggregation()"
+        )
+
+    try:
+        result = agent.memory.execute_aggregation(
+            query_type=query_type,
+            entity_filter=entity_filter,
+        )
+    except Exception as exc:
+        raise DistributedShardQueryError(
+            f"execute_aggregation failed for {agent_id}: {exc}"
+        ) from exc
+
+    if not isinstance(result, dict):
+        raise DistributedShardQueryError(
+            f"execute_aggregation for {agent_id} returned non-dict result"
+        )
+    return result
+
+
+def _dispatch_shard_request(
+    operation: str,
+    payload: dict[str, Any],
+    agent: Any,
+    local_graph: Any,
+    agent_id: str,
+) -> dict[str, Any]:
+    """Dispatch a structured shard request to the appropriate local handler."""
+    if operation == "search":
+        query = payload.get("query", "")
+        limit = payload.get("limit", 20)
+        if not query:
+            raise DistributedShardQueryError("search operation requires non-empty query")
+        return {
+            "facts": _search_for_shard_response(
+                query=query,
+                limit=limit,
+                agent=agent,
+                local_graph=local_graph,
+                agent_id=agent_id,
+            )
+        }
+
+    if operation == "retrieve_by_entity":
+        entity_name = payload.get("entity_name", "")
+        limit = payload.get("limit", 20)
+        if not entity_name:
+            raise DistributedShardQueryError("retrieve_by_entity operation requires entity_name")
+        return {
+            "facts": _entity_facts_for_shard_response(
+                entity_name=entity_name,
+                limit=limit,
+                agent=agent,
+                agent_id=agent_id,
+            )
+        }
+
+    if operation == "execute_aggregation":
+        query_type = payload.get("query_type", "")
+        entity_filter = payload.get("entity_filter", "")
+        if not query_type:
+            raise DistributedShardQueryError("execute_aggregation operation requires query_type")
+        return {
+            "aggregation": _aggregation_for_shard_response(
+                query_type=query_type,
+                entity_filter=entity_filter,
+                agent=agent,
+                agent_id=agent_id,
+            )
+        }
+
+    raise DistributedShardQueryError(f"Unsupported shard operation: {operation}")
 
 
 def _search_for_shard_response(
@@ -383,8 +763,7 @@ def _search_for_shard_response(
     """Return a list of fact dicts for inclusion in a SHARD_RESPONSE.
 
     Uses agent.memory.search_local() (CognitiveAdapter LOCAL-ONLY path) to
-    avoid recursive SHARD_QUERY storms.  Falls back to direct ShardStore.search()
-    if the agent is None or raises an exception.
+    avoid recursive SHARD_QUERY storms.
 
     CRITICAL: Must NEVER call agent.memory.search() here — that triggers
     _search_hive() → query_facts() → SHARD_QUERY to all agents → each agent
@@ -395,67 +774,22 @@ def _search_for_shard_response(
     ``concept`` attributes.  Both are handled here so the SHARD_RESPONSE
     always carries the actual fact text.
     """
-    # CognitiveAdapter LOCAL-ONLY path: n-gram + reranking, NO hive search
-    if agent is not None and hasattr(agent, "memory") and hasattr(agent.memory, "search_local"):
-        try:
-            mem_results = agent.memory.search_local(query, limit=limit)
-            facts = []
-            for f in mem_results:
-                if isinstance(f, dict):
-                    # CognitiveAdapter returns dicts: outcome/context/confidence keys
-                    content = f.get("outcome") or f.get("content", "")
-                    if not content:
-                        continue
-                    facts.append(
-                        {
-                            "fact_id": f.get("experience_id", ""),
-                            "content": content,
-                            "concept": f.get("context") or f.get("concept", ""),
-                            "confidence": float(f.get("confidence", 0.8)),
-                            "source_agent": agent_id,
-                            "tags": list(f.get("tags", [])),
-                        }
-                    )
-                else:
-                    # ShardFact or similar object with .content attribute
-                    content = getattr(f, "content", "")
-                    if not content:
-                        continue
-                    facts.append(
-                        {
-                            "fact_id": getattr(f, "fact_id", ""),
-                            "content": content,
-                            "concept": getattr(f, "concept", ""),
-                            "confidence": float(getattr(f, "confidence", 0.8)),
-                            "source_agent": getattr(f, "source_agent", agent_id),
-                            "tags": list(getattr(f, "tags", [])),
-                        }
-                    )
-            return facts
-        except Exception:
-            logger.debug(
-                "CognitiveAdapter search failed for %s, falling back to shard",
-                agent_id,
-                exc_info=True,
-            )
+    if agent is None or not hasattr(agent, "memory") or not hasattr(agent.memory, "search_local"):
+        raise DistributedShardQueryError(
+            f"Agent {agent_id} cannot handle distributed search without search_local()"
+        )
 
-    # Fallback: raw ShardStore search (primitive keyword tokenisation)
-    shard = local_graph._router.get_shard(agent_id)
-    if not shard:
-        return []
-    shard_facts = shard.search(query, limit=limit)
-    hive_facts = [local_graph._shard_to_hive_fact(sf) for sf in shard_facts]
-    return [
-        {
-            "fact_id": f.fact_id,
-            "content": f.content,
-            "concept": f.concept,
-            "confidence": f.confidence,
-            "source_agent": f.source_agent,
-            "tags": list(getattr(f, "tags", [])),
-        }
-        for f in hive_facts
-    ]
+    try:
+        mem_results = agent.memory.search_local(query, limit=limit)
+    except Exception as exc:
+        raise DistributedShardQueryError(f"search_local failed for {agent_id}: {exc}") from exc
+
+    facts: list[dict[str, Any]] = []
+    for result in mem_results:
+        payload = _result_to_fact_payload(result, agent_id)
+        if payload is not None:
+            facts.append(payload)
+    return facts
 
 
 # ---------------------------------------------------------------------------
@@ -520,6 +854,8 @@ class EventHubsShardTransport:
         # Pending cross-shard queries: correlation_id → (done_event, facts_list)
         self._pending: dict[str, tuple[threading.Event, list]] = {}
         self._pending_lock = threading.Lock()
+        self._pending_errors: dict[str, str] = {}
+        self._pending_payloads: dict[str, tuple[threading.Event, dict[str, Any]]] = {}
 
         # Persistent producer — lazy-initialized, reused across all _publish()
         # calls to avoid ~1.5s AMQP connection setup per publish.
@@ -619,11 +955,22 @@ class EventHubsShardTransport:
                 # SHARD_RESPONSE: handle inline — wake query_shard() immediately
                 # instead of going through mailbox → poll → handle_shard_response.
                 if event_type == "SHARD_RESPONSE":
+                    done_event: threading.Event | None = None
                     with self._pending_lock:
                         pending = self._pending.get(correlation_id)
+                        pending_payload = self._pending_payloads.get(correlation_id)
+                        if pending:
+                            done_event, results = pending
+                            error = payload.get("error", "")
+                            if error:
+                                self._pending_errors[correlation_id] = str(error)
+                            else:
+                                results.extend(payload.get("facts", []))
+                        elif pending_payload:
+                            done_event, response_payload = pending_payload
+                            response_payload.update(payload)
                     if pending:
-                        done_event, results = pending
-                        results.extend(payload.get("facts", []))
+                        assert done_event is not None
                         done_event.set()
                         logger.info(
                             "Agent %s received SHARD_RESPONSE correlation=%s (%d facts) [inline]",
@@ -631,6 +978,9 @@ class EventHubsShardTransport:
                             correlation_id,
                             len(payload.get("facts", [])),
                         )
+                    elif pending_payload:
+                        assert done_event is not None
+                        done_event.set()
                     partition_context.update_checkpoint(event)
                     return
 
@@ -775,45 +1125,23 @@ class EventHubsShardTransport:
     def query_shard(self, agent_id: str, query: str, limit: int) -> list[ShardFact]:
         """Query a shard — local bypass for own shard, EH round-trip for remote."""
         if agent_id == self._agent_id and self._local_graph is not None:
-            # Use CognitiveAdapter search (n-gram + reranking) for LOCAL shard
-            # when available — same quality as REMOTE shards get via
-            # handle_shard_query() → _search_for_shard_response().
-            if self._local_agent is not None:
-                fact_dicts = _search_for_shard_response(
-                    query=query,
-                    limit=limit,
-                    agent=self._local_agent,
-                    local_graph=self._local_graph,
-                    agent_id=agent_id,
+            if self._local_agent is None:
+                raise DistributedShardQueryError(
+                    f"Local shard query for {agent_id} requires a bound agent"
                 )
-                logger.info(
-                    "Agent %s queried LOCAL shard (CognitiveAdapter) → %d facts",
-                    self._agent_id,
-                    len(fact_dicts),
-                )
-                # Convert dicts back to ShardFact for uniform return type
-                return [
-                    ShardFact(
-                        fact_id=d.get("fact_id", ""),
-                        content=d.get("content", ""),
-                        concept=d.get("concept", ""),
-                        confidence=d.get("confidence", 0.8),
-                        source_agent=d.get("source_agent", agent_id),
-                        tags=d.get("tags", []),
-                    )
-                    for d in fact_dicts
-                ]
-            # Fallback: raw ShardStore search (no agent bound)
-            shard = self._local_graph._router.get_shard(agent_id)
-            if shard is None:
-                return []
-            local_results = shard.search(query, limit=limit)
-            logger.info(
-                "Agent %s queried LOCAL shard (raw) → %d facts",
-                self._agent_id,
-                len(local_results),
+            fact_dicts = _search_for_shard_response(
+                query=query,
+                limit=limit,
+                agent=self._local_agent,
+                local_graph=self._local_graph,
+                agent_id=agent_id,
             )
-            return local_results
+            logger.info(
+                "Agent %s queried LOCAL shard (CognitiveAdapter) → %d facts",
+                self._agent_id,
+                len(fact_dicts),
+            )
+            return _payload_facts_to_shard_facts(fact_dicts)
 
         # Remote query: publish SHARD_QUERY and wait for SHARD_RESPONSE
         correlation_id = uuid.uuid4().hex
@@ -821,6 +1149,7 @@ class EventHubsShardTransport:
         results: list[dict] = []
         with self._pending_lock:
             self._pending[correlation_id] = (done, results)
+            self._pending_errors[correlation_id] = ""
 
         try:
             import time
@@ -839,6 +1168,7 @@ class EventHubsShardTransport:
                     "source_agent": self._agent_id,
                     "timestamp": time.time(),
                     "payload": {
+                        "operation": "search",
                         "query": query,
                         "limit": limit,
                         "correlation_id": correlation_id,
@@ -848,38 +1178,79 @@ class EventHubsShardTransport:
                 partition_key=agent_id,
             )
             got_response = done.wait(timeout=self._timeout)
-            if got_response:
-                logger.info(
-                    "Agent %s got SHARD_RESPONSE from %s (%d facts, correlation=%s)",
-                    self._agent_id,
-                    agent_id,
-                    len(results),
-                    correlation_id[:12],
+            if not got_response:
+                raise DistributedShardQueryError(
+                    f"Shard query to {agent_id} timed out after {self._timeout:.1f}s"
                 )
-            else:
-                logger.warning(
-                    "Agent %s SHARD_QUERY to %s TIMED OUT after %.1fs (correlation=%s)",
-                    self._agent_id,
-                    agent_id,
-                    self._timeout,
-                    correlation_id[:12],
-                )
+            with self._pending_lock:
+                error = self._pending_errors.get(correlation_id, "")
+            if error:
+                raise DistributedShardQueryError(error)
+            logger.info(
+                "Agent %s got SHARD_RESPONSE from %s (%d facts, correlation=%s)",
+                self._agent_id,
+                agent_id,
+                len(results),
+                correlation_id[:12],
+            )
         finally:
             with self._pending_lock:
                 self._pending.pop(correlation_id, None)
+                self._pending_errors.pop(correlation_id, None)
 
-        return [
-            ShardFact(
-                fact_id=f.get("fact_id", ""),
-                content=f.get("content", ""),
-                concept=f.get("concept", ""),
-                confidence=f.get("confidence", 0.8),
-                source_agent=f.get("source_agent", ""),
-                tags=f.get("tags", []),
+        return _payload_facts_to_shard_facts(results)
+
+    def retrieve_by_entity_shard(
+        self,
+        agent_id: str,
+        entity_name: str,
+        limit: int,
+    ) -> list[ShardFact]:
+        """Retrieve entity-specific facts from one shard."""
+        if agent_id == self._agent_id and self._local_graph is not None:
+            if self._local_agent is None or not hasattr(
+                self._local_agent.memory, "retrieve_by_entity"
+            ):
+                raise DistributedShardQueryError(
+                    f"Local shard entity query for {agent_id} requires retrieve_by_entity()"
+                )
+            return _facts_to_shard_facts(
+                self._local_agent.memory.retrieve_by_entity(entity_name, limit=limit),
+                default_agent_id=agent_id,
             )
-            for f in results
-            if f.get("content")
-        ]
+
+        payload = self._request_shard_payload(
+            agent_id=agent_id,
+            operation="retrieve_by_entity",
+            request_payload={"entity_name": entity_name, "limit": limit},
+        )
+        return _payload_facts_to_shard_facts(payload.get("facts", []))
+
+    def execute_aggregation_shard(
+        self,
+        agent_id: str,
+        query_type: str,
+        entity_filter: str = "",
+    ) -> dict[str, Any]:
+        """Execute an aggregation on one shard."""
+        if agent_id == self._agent_id and self._local_graph is not None:
+            if self._local_agent is None or not hasattr(
+                self._local_agent.memory, "execute_aggregation"
+            ):
+                raise DistributedShardQueryError(
+                    f"Local shard aggregation for {agent_id} requires execute_aggregation()"
+                )
+            return self._local_agent.memory.execute_aggregation(
+                query_type=query_type,
+                entity_filter=entity_filter,
+            )
+
+        payload = self._request_shard_payload(
+            agent_id=agent_id,
+            operation="execute_aggregation",
+            request_payload={"query_type": query_type, "entity_filter": entity_filter},
+        )
+        return payload.get("aggregation", {})
 
     def store_on_shard(self, agent_id: str, fact: ShardFact) -> None:
         """Store a fact — local bypass for own shard, SHARD_STORE via EH for remote."""
@@ -916,6 +1287,50 @@ class EventHubsShardTransport:
             partition_key=agent_id,
         )
 
+    def _request_shard_payload(
+        self,
+        agent_id: str,
+        operation: str,
+        request_payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Publish a shard request and wait for a structured SHARD_RESPONSE payload."""
+        import time
+
+        correlation_id = uuid.uuid4().hex
+        done = threading.Event()
+        response_payload: dict[str, Any] = {}
+        with self._pending_lock:
+            self._pending_payloads[correlation_id] = (done, response_payload)
+
+        try:
+            self._publish(
+                {
+                    "event_id": uuid.uuid4().hex,
+                    "event_type": "SHARD_QUERY",
+                    "source_agent": self._agent_id,
+                    "timestamp": time.time(),
+                    "payload": {
+                        "operation": operation,
+                        "correlation_id": correlation_id,
+                        "target_agent": agent_id,
+                        **request_payload,
+                    },
+                },
+                partition_key=agent_id,
+            )
+            got_response = done.wait(timeout=self._timeout)
+            if not got_response:
+                raise DistributedShardQueryError(
+                    f"Shard {operation} request to {agent_id} timed out after {self._timeout:.1f}s"
+                )
+            error = response_payload.get("error", "")
+            if error:
+                raise DistributedShardQueryError(str(error))
+            return response_payload
+        finally:
+            with self._pending_lock:
+                self._pending_payloads.pop(correlation_id, None)
+
     # -- Listener-side handlers (called by background thread via poll()) -----
 
     def handle_shard_query(self, event: Any, agent: Any = None) -> None:
@@ -929,13 +1344,13 @@ class EventHubsShardTransport:
         if self._local_graph is None:
             return
         payload = getattr(event, "payload", None) or {}
+        operation = payload.get("operation", "search")
         query = payload.get("query", "")
-        limit = payload.get("limit", 20)
         correlation_id = payload.get("correlation_id", "")
         target_agent = payload.get("target_agent", "")
         if target_agent and target_agent != self._agent_id:
             return
-        if not query or not correlation_id:
+        if not correlation_id:
             return
 
         source_agent = getattr(event, "source_agent", "")
@@ -947,13 +1362,16 @@ class EventHubsShardTransport:
             correlation_id[:12],
         )
 
-        facts_payload = _search_for_shard_response(
-            query=query,
-            limit=limit,
-            agent=agent,
-            local_graph=self._local_graph,
-            agent_id=self._agent_id,
-        )
+        try:
+            response_payload = _dispatch_shard_request(
+                operation=operation,
+                payload=payload,
+                agent=agent,
+                local_graph=self._local_graph,
+                agent_id=self._agent_id,
+            )
+        except Exception as exc:
+            response_payload = {"error": f"{type(exc).__name__}: {exc}"}
         import time
 
         self._publish(
@@ -964,16 +1382,16 @@ class EventHubsShardTransport:
                 "timestamp": time.time(),
                 "payload": {
                     "correlation_id": correlation_id,
-                    "facts": facts_payload,
+                    **response_payload,
                 },
             },
             partition_key=source_agent,
         )
         logger.info(
-            "Agent %s responded to SHARD_QUERY correlation=%s with %d facts → %s",
+            "Agent %s responded to SHARD_QUERY correlation=%s (%s) → %s",
             self._agent_id,
             correlation_id[:12],
-            len(facts_payload),
+            operation,
             source_agent,
         )
 
@@ -988,11 +1406,22 @@ class EventHubsShardTransport:
         correlation_id = payload.get("correlation_id", "")
         if not correlation_id:
             return
+        done_event: threading.Event | None = None
         with self._pending_lock:
             pending = self._pending.get(correlation_id)
+            pending_payload = self._pending_payloads.get(correlation_id)
+            if pending:
+                done_event, results = pending
+                error = payload.get("error", "")
+                if error:
+                    self._pending_errors[correlation_id] = str(error)
+                else:
+                    results.extend(payload.get("facts", []))
+            elif pending_payload:
+                done_event, response_payload = pending_payload
+                response_payload.update(payload)
         if pending:
-            done_event, results = pending
-            results.extend(payload.get("facts", []))
+            assert done_event is not None
             done_event.set()
             logger.info(
                 "Agent %s received SHARD_RESPONSE correlation=%s (%d facts) [mailbox]",
@@ -1000,6 +1429,9 @@ class EventHubsShardTransport:
                 correlation_id[:12],
                 len(payload.get("facts", [])),
             )
+        elif pending_payload:
+            assert done_event is not None
+            done_event.set()
 
     def handle_shard_store(self, event: Any) -> None:
         """Store a replicated fact from SHARD_STORE in the local shard."""
@@ -1239,6 +1671,146 @@ class DistributedHiveGraph:
                     return self._shard_to_hive_fact(sf)
         return None
 
+    @staticmethod
+    def _merge_ranked_shard_results(
+        results_by_agent: dict[str, list[ShardFact]],
+    ) -> list[ShardFact]:
+        """Merge shard-local rankings into one deterministic ordered result list."""
+        relevance_scores: dict[str, float] = {}
+        facts_by_hash: dict[str, ShardFact] = {}
+
+        for agent_id in sorted(results_by_agent):
+            for rank, fact in enumerate(results_by_agent[agent_id]):
+                content_hash = hashlib.md5(fact.content.encode()).hexdigest()
+                pos_score = max(0.0, 1.0 - rank * POSITION_SCORE_DECREMENT)
+                existing = facts_by_hash.get(content_hash)
+                existing_score = relevance_scores.get(content_hash, -1.0)
+                replace = pos_score > existing_score
+                if existing is not None and pos_score == existing_score:
+                    replace = (fact.source_agent, fact.fact_id, fact.content) < (
+                        existing.source_agent,
+                        existing.fact_id,
+                        existing.content,
+                    )
+                if existing is None or replace:
+                    facts_by_hash[content_hash] = fact
+                    relevance_scores[content_hash] = pos_score
+
+        merged = list(facts_by_hash.values())
+        merged.sort(
+            key=lambda fact: (
+                -relevance_scores[hashlib.md5(fact.content.encode()).hexdigest()],
+                fact.content,
+                fact.source_agent,
+                fact.fact_id,
+            )
+        )
+        return merged
+
+    def _collect_shard_fact_results(
+        self,
+        targets: list[str],
+        fetcher: Any,
+    ) -> dict[str, list[ShardFact]]:
+        """Run a shard fact fetch in parallel and fail on any shard error."""
+        results_by_agent: dict[str, list[ShardFact]] = {}
+        errors: dict[str, str] = {}
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, len(targets))) as pool:
+            futures = {pool.submit(fetcher, agent_id): agent_id for agent_id in targets}
+            for future in concurrent.futures.as_completed(futures):
+                agent_id = futures[future]
+                try:
+                    results_by_agent[agent_id] = future.result()
+                except Exception as exc:
+                    errors[agent_id] = str(exc)
+
+        if errors:
+            details = ", ".join(f"{agent}: {message}" for agent, message in sorted(errors.items()))
+            raise DistributedShardQueryError(f"Distributed shard request failed: {details}")
+
+        return results_by_agent
+
+    def _collect_shard_aggregations(
+        self,
+        targets: list[str],
+        query_type: str,
+        entity_filter: str,
+    ) -> list[dict[str, Any]]:
+        """Run a shard aggregation in parallel and fail on any shard error."""
+        results_by_agent: dict[str, dict[str, Any]] = {}
+        errors: dict[str, str] = {}
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, len(targets))) as pool:
+            futures = {
+                pool.submit(
+                    self._transport.execute_aggregation_shard,
+                    agent_id,
+                    query_type,
+                    entity_filter,
+                ): agent_id
+                for agent_id in targets
+            }
+            for future in concurrent.futures.as_completed(futures):
+                agent_id = futures[future]
+                try:
+                    results_by_agent[agent_id] = future.result()
+                except Exception as exc:
+                    errors[agent_id] = str(exc)
+
+        if errors:
+            details = ", ".join(f"{agent}: {message}" for agent, message in sorted(errors.items()))
+            raise DistributedShardQueryError(
+                f"Distributed aggregation failed for {query_type}: {details}"
+            )
+
+        return [results_by_agent[agent_id] for agent_id in sorted(results_by_agent)]
+
+    @staticmethod
+    def _merge_aggregation_results(
+        query_type: str,
+        shard_results: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        """Merge per-shard aggregation results deterministically."""
+        if query_type == "count_total":
+            return {"count": sum(int(result.get("count", 0)) for result in shard_results)}
+
+        if query_type in {"list_entities", "list_concepts", "list_superseded"}:
+            items = sorted(
+                {item for result in shard_results for item in (result.get("items", []) or [])}
+            )
+            return {"items": items, "count": len(items), "query_type": query_type}
+
+        if query_type == "count_by_concept":
+            counts: dict[str, int] = {}
+            for result in shard_results:
+                for concept, count in (result.get("items", {}) or {}).items():
+                    counts[concept] = counts.get(concept, 0) + int(count)
+            return {"items": counts, "count": sum(counts.values()), "query_type": query_type}
+
+        if query_type == "list_incident_cves":
+            items = sorted(
+                {item for result in shard_results for item in (result.get("items", []) or [])}
+            )
+            contents = sorted(
+                {
+                    content
+                    for result in shard_results
+                    for content in (result.get("contents", []) or [])
+                }
+            )
+            return {
+                "items": items,
+                "contents": contents,
+                "count": len(contents) if contents else len(items),
+                "query_type": query_type,
+            }
+
+        merged: dict[str, Any] = {}
+        for result in shard_results:
+            merged.update(result)
+        return merged
+
     def query_facts(self, query: str, limit: int = 20) -> list[HiveFact]:
         """Query the distributed hive for matching facts.
 
@@ -1249,7 +1821,7 @@ class DistributedHiveGraph:
         import time as _time
 
         _qf_start = _time.monotonic()
-        targets = self._router.select_query_targets(query)
+        targets = sorted(self._router.select_query_targets(query))
 
         try:
             from .tracing import trace_log
@@ -1263,50 +1835,12 @@ class DistributedHiveGraph:
         except ImportError:
             pass
 
-        seen: set[str] = set()
-        results: list[ShardFact] = []
-        _responded = 0
-        _timed_out = 0
-        _failed = 0
-
-        # Parallel fan-out: query all shards concurrently instead of sequentially.
-        # With ServiceBus transport this reduces N*SB_latency to max(SB_latency).
-        #
-        # Each shard's search_local() returns results in semantic relevance
-        # order (CognitiveAdapter uses embeddings, entity extraction, graph
-        # traversal, and full-corpus fallback).  We preserve that ordering
-        # by assigning each result a position-based score: the first result
-        # from a shard gets score=1.0, second=0.99, etc.  This keeps the
-        # per-shard semantic ranking intact across the merge, instead of
-        # discarding it with a crude keyword re-ranker.
-        relevance_scores: dict[str, float] = {}  # content_hash → score
-
-        with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, len(targets))) as pool:
-            futures = {
-                pool.submit(self._transport.query_shard, agent_id, query, limit): agent_id
-                for agent_id in targets
-            }
-            for future in concurrent.futures.as_completed(futures):
-                try:
-                    shard_results = future.result()
-                    if shard_results:
-                        _responded += 1
-                    for rank, fact in enumerate(shard_results):
-                        h = hashlib.md5(fact.content.encode()).hexdigest()
-                        # Position-based score: preserves per-shard semantic ordering.
-                        # First result = 1.0, second = 0.99, etc. Duplicate facts
-                        # (same content on multiple shards) get the max score.
-                        pos_score = max(0.0, 1.0 - rank * POSITION_SCORE_DECREMENT)
-                        if h in seen:
-                            # Duplicate content — keep the higher relevance score
-                            relevance_scores[h] = max(relevance_scores.get(h, 0.0), pos_score)
-                        else:
-                            seen.add(h)
-                            relevance_scores[h] = pos_score
-                            results.append(fact)
-                except Exception:
-                    _failed += 1
-                    logger.debug("Shard query failed for agent %s", futures[future], exc_info=True)
+        results_by_agent = self._collect_shard_fact_results(
+            targets,
+            lambda agent_id: self._transport.query_shard(agent_id, query, limit),
+        )
+        responded = sum(1 for shard_results in results_by_agent.values() if shard_results)
+        results = self._merge_ranked_shard_results(results_by_agent)
 
         _qf_elapsed = _time.monotonic() - _qf_start
         try:
@@ -1316,21 +1850,32 @@ class DistributedHiveGraph:
                 "query_facts",
                 "targets=%d responded=%d failed=%d unique_facts=%d elapsed=%.2fs",
                 len(targets),
-                _responded,
-                _failed,
+                responded,
+                0,
                 len(results),
                 _qf_elapsed,
             )
         except ImportError:
             pass
 
-        # Sort by position-based relevance score (preserves per-shard
-        # semantic ordering) rather than crude keyword matching.
-        results.sort(
-            key=lambda f: relevance_scores.get(hashlib.md5(f.content.encode()).hexdigest(), 0.0),
-            reverse=True,
-        )
         return [self._shard_to_hive_fact(sf) for sf in results[:limit]]
+
+    def retrieve_by_entity(self, entity_name: str, limit: int = 20) -> list[HiveFact]:
+        """Retrieve entity-specific facts across all shards."""
+        targets = sorted(self._router.select_query_targets(entity_name))
+        results_by_agent = self._collect_shard_fact_results(
+            targets,
+            lambda agent_id: self._transport.retrieve_by_entity_shard(agent_id, entity_name, limit),
+        )
+        results = self._merge_ranked_shard_results(results_by_agent)
+        return [self._shard_to_hive_fact(sf) for sf in results[:limit]]
+
+    def execute_aggregation(self, query_type: str, entity_filter: str = "") -> dict[str, Any]:
+        """Execute an aggregation across all shards."""
+        target_query = entity_filter or query_type
+        targets = sorted(self._router.select_query_targets(target_query))
+        shard_results = self._collect_shard_aggregations(targets, query_type, entity_filter)
+        return self._merge_aggregation_results(query_type, shard_results)
 
     def retract_fact(self, fact_id: str) -> bool:
         """Retract a fact across all shards holding a replica. Returns True if found."""
@@ -1503,7 +2048,7 @@ class DistributedHiveGraph:
     def run_gossip_round(self) -> dict[str, int]:
         """Run a gossip round using bloom filter exchange.
 
-        Each agent exchanges bloom filters with random peers.
+        Each agent exchanges bloom filters with a deterministic peer subset.
         Pulls facts that are missing from its shard.
         Returns dict of agent_id → facts received.
         """
@@ -1522,9 +2067,9 @@ class DistributedHiveGraph:
             if not shard:
                 continue
 
-            # Select random peers
+            # Select a stable peer subset so gossip behavior stays reproducible.
             peers = [a for a in agents if a != agent_id]
-            selected = random.sample(peers, min(fanout, len(peers)))
+            selected = self._select_gossip_peers(agent_id, peers, fanout)
 
             facts_received = 0
             for peer_id in selected:
@@ -1573,6 +2118,18 @@ class DistributedHiveGraph:
             )
 
         return received
+
+    def _select_gossip_peers(self, agent_id: str, peers: list[str], fanout: int) -> list[str]:
+        """Choose a stable gossip peer subset for an agent."""
+        if fanout <= 0 or not peers:
+            return []
+        ordered = sorted(
+            peers,
+            key=lambda peer_id: hashlib.sha256(
+                f"{self._hive_id}:{agent_id}->{peer_id}".encode()
+            ).hexdigest(),
+        )
+        return ordered[: min(fanout, len(ordered))]
 
     def convergence_score(self) -> float:
         """Measure knowledge convergence across all shards.
