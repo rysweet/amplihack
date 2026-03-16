@@ -322,6 +322,37 @@ class TestShardTransport:
         )
         assert result is None, "Must return None without EH vars — no Service Bus fallback"
 
+    def test_init_dht_hive_uses_configured_shard_timeout(self, monkeypatch):
+        """Azure entrypoint should pass the configured shard timeout to EH transport."""
+        mod = _load_entrypoint()
+        monkeypatch.setenv("AMPLIHACK_SHARD_QUERY_TIMEOUT_SECONDS", "75")
+
+        transport = MagicMock()
+        graph = MagicMock()
+
+        with (
+            patch(
+                "amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph.EventHubsShardTransport",
+                return_value=transport,
+            ) as mock_transport,
+            patch(
+                "amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph.DistributedHiveGraph",
+                return_value=graph,
+            ),
+        ):
+            result = mod._init_dht_hive(
+                agent_name="agent-0",
+                agent_count=3,
+                connection_string="",
+                hive_name="test-hive",
+                eh_connection_string="Endpoint=sb://dummy/",
+                eh_name="hive-shards-test",
+                consumer_group="cg-app-0",
+            )
+
+        assert result == (graph, None, transport)
+        assert mock_transport.call_args.kwargs["timeout"] == 75.0
+
     def test_main_exits_when_distributed_topology_requested_but_hive_init_fails(
         self, monkeypatch, tmp_path
     ):

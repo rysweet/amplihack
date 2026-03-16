@@ -153,12 +153,14 @@ def _init_dht_hive(
             )
             return None
 
+        shard_query_timeout = float(os.environ.get("AMPLIHACK_SHARD_QUERY_TIMEOUT_SECONDS", "60"))
+
         eh_transport = EventHubsShardTransport(
             connection_string=eh_connection_string,
             eventhub_name=eh_name,
             agent_id=agent_name,
             consumer_group=consumer_group,
-            timeout=30.0,
+            timeout=shard_query_timeout,
         )
         dht_graph = DistributedHiveGraph(
             hive_id=f"shard-{agent_name}",
