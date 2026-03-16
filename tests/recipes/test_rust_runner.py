@@ -15,6 +15,7 @@ import io
 import json
 import subprocess
 import sys
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -164,6 +165,25 @@ class TestRunRecipeViaRust:
         "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
     )
     @patch("subprocess.run")
+    @patch(
+        "amplihack.recipes.discovery.find_recipe",
+        return_value=Path("/recipes/default-workflow.yaml"),
+    )
+    def test_resolves_recipe_name_to_path(self, mock_find_recipe, mock_run, mock_find):
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout=self._make_rust_output(),
+            stderr="",
+        )
+        run_recipe_via_rust("default-workflow")
+        cmd = mock_run.call_args[0][0]
+        assert cmd[1] == "/recipes/default-workflow.yaml"
+
+    @patch(
+        "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
+    )
+    @patch("subprocess.run")
     def test_passes_recipe_dirs(self, mock_run, mock_find):
         mock_run.return_value = subprocess.CompletedProcess(
             args=[],
@@ -176,6 +196,42 @@ class TestRunRecipeViaRust:
         assert "-R" in cmd
         idx = cmd.index("-R")
         assert cmd[idx + 1] == "/a"
+
+    @patch(
+        "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
+    )
+    @patch("subprocess.run")
+    def test_normalizes_relative_recipe_dirs_against_working_dir(self, mock_run, mock_find):
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout=self._make_rust_output(),
+            stderr="",
+        )
+        run_recipe_via_rust(
+            "test-recipe",
+            recipe_dirs=["amplifier-bundle/recipes"],
+            working_dir="/repo/worktree",
+        )
+        cmd = mock_run.call_args[0][0]
+        idx = cmd.index("-R")
+        assert cmd[idx + 1] == "/repo/worktree/amplifier-bundle/recipes"
+
+    @patch.dict("os.environ", {"AMPLIHACK_AGENT_BINARY": "copilot"}, clear=False)
+    @patch(
+        "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
+    )
+    @patch("subprocess.run")
+    def test_does_not_pass_agent_binary_flag(self, mock_run, mock_find):
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout=self._make_rust_output(),
+            stderr="",
+        )
+        run_recipe_via_rust("test-recipe")
+        cmd = mock_run.call_args[0][0]
+        assert "--agent-binary" not in cmd
 
     @patch(
         "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
