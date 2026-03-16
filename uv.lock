@@ -168,7 +168,7 @@ dependencies = [
 
 [[package]]
 name = "amplihack"
-version = "0.6.55"
+version = "0.6.70"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
