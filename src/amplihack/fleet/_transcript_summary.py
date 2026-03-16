@@ -50,7 +50,8 @@ def summarize_entries(lines: list[str]) -> str:
         raw_content = entry.get("message", {}).get("content", "")
         if isinstance(raw_content, list):
             text_parts = [
-                b.get("text", "") for b in raw_content
+                b.get("text", "")
+                for b in raw_content
                 if isinstance(b, dict) and b.get("type") == "text"
             ]
             content_text = "\n".join(text_parts)

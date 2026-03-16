@@ -207,14 +207,15 @@ and routing automatically. However, if `smart-orchestrator` fails at the
 vars, Rust binary version mismatch), you MAY invoke the specific workflow
 recipe directly based on your classification:
 
-| Classification  | Direct Recipe              | When to Use                                |
-|-----------------|----------------------------|--------------------------------------------|
-| Investigation   | `investigation-workflow`   | smart-orchestrator decomposition failed    |
-| Development     | `default-workflow`         | smart-orchestrator decomposition failed    |
-| Q&A (complex)   | `qa-workflow`              | Q&A needing multi-step research            |
-| Consensus       | `consensus-workflow`       | Critical decisions needing validation      |
+| Classification | Direct Recipe            | When to Use                             |
+| -------------- | ------------------------ | --------------------------------------- |
+| Investigation  | `investigation-workflow` | smart-orchestrator decomposition failed |
+| Development    | `default-workflow`       | smart-orchestrator decomposition failed |
+| Q&A (complex)  | `qa-workflow`            | Q&A needing multi-step research         |
+| Consensus      | `consensus-workflow`     | Critical decisions needing validation   |
 
 Example:
+
 ```python
 run_recipe_by_name("investigation-workflow", user_context={
     'task_description': task, 'repo_path': '.',

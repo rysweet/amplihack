@@ -52,25 +52,25 @@ All four dataclasses (`CheckerResult`, `ConsiderationAnalysis`, `PowerSteeringRe
 
 Each flag lives in the module that owns its import:
 
-| Flag | Module | Controls |
-|---|---|---|
-| `SDK_AVAILABLE` | `sdk_calls` | `claude_power_steering` integration |
-| `EVIDENCE_AVAILABLE` | `sdk_calls` | `completion_evidence` integration |
-| `COMPACTION_AVAILABLE` | `progress_tracking` | `compaction_validator` integration |
-| `TURN_STATE_AVAILABLE` | `result_formatting` | `power_steering_state` integration |
+| Flag                   | Module              | Controls                            |
+| ---------------------- | ------------------- | ----------------------------------- |
+| `SDK_AVAILABLE`        | `sdk_calls`         | `claude_power_steering` integration |
+| `EVIDENCE_AVAILABLE`   | `sdk_calls`         | `completion_evidence` integration   |
+| `COMPACTION_AVAILABLE` | `progress_tracking` | `compaction_validator` integration  |
+| `TURN_STATE_AVAILABLE` | `result_formatting` | `power_steering_state` integration  |
 
 ### Configurable constants placement
 
 Constants are placed in the module where their value is consumed:
 
-| Constant | Module | Consumed by |
-|---|---|---|
-| `CHECKER_TIMEOUT` | `sdk_calls` | `_timeout()` calls inside `SdkCallsMixin` |
-| `PARALLEL_TIMEOUT` | `sdk_calls` | `asyncio.wait_for()` in parallel analysis |
-| `MAX_TRANSCRIPT_LINES` | `main_checker` | Transcript truncation in `check()` |
-| `MAX_ASK_USER_QUESTIONS` | `main_checker` | AskUserQuestion count check |
-| `MIN_TESTS_PASSED_THRESHOLD` | `main_checker` | Local testing check |
-| `DEFAULT_MAX_CONSECUTIVE_BLOCKS` | `result_formatting` | Fallback when TurnState unavailable |
+| Constant                         | Module              | Consumed by                               |
+| -------------------------------- | ------------------- | ----------------------------------------- |
+| `CHECKER_TIMEOUT`                | `sdk_calls`         | `_timeout()` calls inside `SdkCallsMixin` |
+| `PARALLEL_TIMEOUT`               | `sdk_calls`         | `asyncio.wait_for()` in parallel analysis |
+| `MAX_TRANSCRIPT_LINES`           | `main_checker`      | Transcript truncation in `check()`        |
+| `MAX_ASK_USER_QUESTIONS`         | `main_checker`      | AskUserQuestion count check               |
+| `MIN_TESTS_PASSED_THRESHOLD`     | `main_checker`      | Local testing check                       |
+| `DEFAULT_MAX_CONSECUTIVE_BLOCKS` | `result_formatting` | Fallback when TurnState unavailable       |
 
 ---
 
@@ -134,12 +134,14 @@ All 19 `except Exception` blocks now:
 3. Never silently swallow exceptions.
 
 Before:
+
 ```python
 except Exception:
     pass  # Line 5020 — is_disabled() silent failure
 ```
 
 After:
+
 ```python
 except Exception as e:
     logger.warning(
@@ -154,14 +156,14 @@ except Exception as e:
 
 Six inline magic numbers replaced with configurable named constants:
 
-| Before | After | Env Variable |
-|---|---|---|
-| `int(os.getenv("PSC_CHECKER_TIMEOUT", "25"))` inline | `CHECKER_TIMEOUT` | `PSC_CHECKER_TIMEOUT` |
-| `int(os.getenv("PSC_PARALLEL_TIMEOUT", "60"))` inline | `PARALLEL_TIMEOUT` | `PSC_PARALLEL_TIMEOUT` |
-| Literal `50000` | `MAX_TRANSCRIPT_LINES` | `PSC_MAX_TRANSCRIPT_LINES` |
-| Literal `3` (ask_user count) | `MAX_ASK_USER_QUESTIONS` | `PSC_MAX_ASK_USER_QUESTIONS` |
-| Literal `10` (tests threshold) | `MIN_TESTS_PASSED_THRESHOLD` | `PSC_MIN_TESTS_PASSED_THRESHOLD` |
-| Literal `10` (consecutive blocks) | `DEFAULT_MAX_CONSECUTIVE_BLOCKS` | `PSC_MAX_CONSECUTIVE_BLOCKS` |
+| Before                                                | After                            | Env Variable                     |
+| ----------------------------------------------------- | -------------------------------- | -------------------------------- |
+| `int(os.getenv("PSC_CHECKER_TIMEOUT", "25"))` inline  | `CHECKER_TIMEOUT`                | `PSC_CHECKER_TIMEOUT`            |
+| `int(os.getenv("PSC_PARALLEL_TIMEOUT", "60"))` inline | `PARALLEL_TIMEOUT`               | `PSC_PARALLEL_TIMEOUT`           |
+| Literal `50000`                                       | `MAX_TRANSCRIPT_LINES`           | `PSC_MAX_TRANSCRIPT_LINES`       |
+| Literal `3` (ask_user count)                          | `MAX_ASK_USER_QUESTIONS`         | `PSC_MAX_ASK_USER_QUESTIONS`     |
+| Literal `10` (tests threshold)                        | `MIN_TESTS_PASSED_THRESHOLD`     | `PSC_MIN_TESTS_PASSED_THRESHOLD` |
+| Literal `10` (consecutive blocks)                     | `DEFAULT_MAX_CONSECUTIVE_BLOCKS` | `PSC_MAX_CONSECUTIVE_BLOCKS`     |
 
 ### Safe environment variable parsing
 
@@ -173,14 +175,14 @@ All `PSC_*` variables are now parsed via `_env_int(name, default)` which logs a 
 
 The refactor also addressed six security issues identified during analysis. See the [API Reference security section](../../reference/power-steering-checker-api.md#security) for complete details.
 
-| Issue | Fix |
-|---|---|
-| Session ID path traversal | Regex validation `r'^[a-zA-Z0-9_\-]{1,128}$'` before path interpolation |
-| Non-numeric env vars crashing import | `_env_int()` helper with fallback |
-| Oversized JSON lines exhausting memory | 10 MB per-line size guard |
-| Malformed compaction event paths | `isinstance(str)` + non-empty check |
-| Silent OSError swallowing | Logged `WARNING` with `exc_info=True` |
-| TOCTOU on semaphore creation | Atomic `os.open(O_CREAT \| O_EXCL, 0o600)` |
+| Issue                                  | Fix                                                                     |
+| -------------------------------------- | ----------------------------------------------------------------------- |
+| Session ID path traversal              | Regex validation `r'^[a-zA-Z0-9_\-]{1,128}$'` before path interpolation |
+| Non-numeric env vars crashing import   | `_env_int()` helper with fallback                                       |
+| Oversized JSON lines exhausting memory | 10 MB per-line size guard                                               |
+| Malformed compaction event paths       | `isinstance(str)` + non-empty check                                     |
+| Silent OSError swallowing              | Logged `WARNING` with `exc_info=True`                                   |
+| TOCTOU on semaphore creation           | Atomic `os.open(O_CREAT \| O_EXCL, 0o600)`                              |
 
 ---
 
@@ -203,14 +205,17 @@ The refactor also addressed six security issues identified during analysis. See 
 
 1. Place in the module where it is consumed (see Constants Placement above).
 2. Use the pattern:
+
    ```python
    MY_CONSTANT = int(os.getenv("PSC_MY_CONSTANT", "default_value"))
    ```
 
    Or, if the module already has `_env_int`:
+
    ```python
    MY_CONSTANT = _env_int("PSC_MY_CONSTANT", default_value)
    ```
+
 3. Document in [Configuration Reference](../../reference/power-steering-checker-configuration.md).
 
 ### Writing tests
@@ -239,20 +244,20 @@ This section is for maintainers who need to understand how the split was perform
 
 ### File mapping
 
-| Original line range | Destination module |
-|---|---|
-| Dataclasses (top) | `considerations.py` |
-| `ConsiderationsMixin` | `considerations.py` |
-| `_timeout()` context manager | `sdk_calls.py` |
-| `SdkCallsMixin` | `sdk_calls.py` |
-| `_write_with_retry()` | `progress_tracking.py` |
-| Compaction import block | `progress_tracking.py` |
-| `ProgressTrackingMixin` | `progress_tracking.py` |
-| `ResultFormattingMixin` | `result_formatting.py` |
-| `PowerSteeringChecker` class | `main_checker.py` |
-| `check_session()` | `main_checker.py` |
-| `is_disabled()` | `main_checker.py` |
-| `if __name__ == "__main__":` | `main_checker.py` |
+| Original line range          | Destination module     |
+| ---------------------------- | ---------------------- |
+| Dataclasses (top)            | `considerations.py`    |
+| `ConsiderationsMixin`        | `considerations.py`    |
+| `_timeout()` context manager | `sdk_calls.py`         |
+| `SdkCallsMixin`              | `sdk_calls.py`         |
+| `_write_with_retry()`        | `progress_tracking.py` |
+| Compaction import block      | `progress_tracking.py` |
+| `ProgressTrackingMixin`      | `progress_tracking.py` |
+| `ResultFormattingMixin`      | `result_formatting.py` |
+| `PowerSteeringChecker` class | `main_checker.py`      |
+| `check_session()`            | `main_checker.py`      |
+| `is_disabled()`              | `main_checker.py`      |
+| `if __name__ == "__main__":` | `main_checker.py`      |
 
 ### What was not moved
 

@@ -31,7 +31,7 @@ def parse_hostname(output: str) -> str | None:
     # Take text up to the next section marker
     for end_marker in ("===SESSION:", "===NO_SESSIONS==="):
         if end_marker in rest:
-            rest = rest[:rest.index(end_marker)]
+            rest = rest[: rest.index(end_marker)]
             break
     hostname = rest.strip().split("\n")[0].strip()
     return hostname if hostname else None
@@ -172,12 +172,20 @@ def parse_vm_text(text: str) -> list[tuple[str, str, bool, list[str]]]:
                     status = non_edge[3] if len(non_edge) > 3 else ""
                     region = non_edge[5] if len(non_edge) > 5 else ""
                     is_running = status.lower().startswith("ru")
-                    sessions = [s.strip().rstrip(",") for s in tmux_col.split(",") if s.strip() and s.strip().rstrip(",")]
+                    sessions = [
+                        s.strip().rstrip(",")
+                        for s in tmux_col.split(",")
+                        if s.strip() and s.strip().rstrip(",")
+                    ]
                     vms.append((name, region, is_running, sessions))
                 elif tmux_col and vms:
                     # Continuation row — append session names to last VM
                     prev_name, prev_region, prev_running, prev_sessions = vms[-1]
-                    extra = [s.strip().rstrip(",") for s in tmux_col.split(",") if s.strip() and s.strip().rstrip(",")]
+                    extra = [
+                        s.strip().rstrip(",")
+                        for s in tmux_col.split(",")
+                        if s.strip() and s.strip().rstrip(",")
+                    ]
                     vms[-1] = (prev_name, prev_region, prev_running, prev_sessions + extra)
 
     return vms

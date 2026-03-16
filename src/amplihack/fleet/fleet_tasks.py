@@ -241,9 +241,13 @@ class TaskQueue:
         """Persist queue to JSON file. Call after mutating task state."""
         if not self.persist_path:
             return
-        if getattr(self, '_load_failed', False):
+        if getattr(self, "_load_failed", False):
             import logging
-            logging.getLogger(__name__).error("Refusing to save — load failed for %s. Fix the .bak file manually.", self.persist_path)
+
+            logging.getLogger(__name__).error(
+                "Refusing to save — load failed for %s. Fix the .bak file manually.",
+                self.persist_path,
+            )
             return
         self.persist_path.parent.mkdir(parents=True, exist_ok=True)
         # Atomic write: unique temp file then replace
@@ -271,7 +275,9 @@ class TaskQueue:
             import logging
             import shutil
 
-            logging.getLogger(__name__).warning(f"Corrupt queue file: {self.persist_path} — creating backup")
+            logging.getLogger(__name__).warning(
+                f"Corrupt queue file: {self.persist_path} — creating backup"
+            )
             backup = self.persist_path.with_suffix(".json.bak")
             shutil.copy2(self.persist_path, backup)
             self._load_failed = True

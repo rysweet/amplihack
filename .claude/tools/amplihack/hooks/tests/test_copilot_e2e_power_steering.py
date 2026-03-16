@@ -29,7 +29,6 @@ from power_steering_checker.transcript_parser import (
     parse_transcript,
 )
 
-
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 COPILOT_JSONL = FIXTURES_DIR / "copilot_events.jsonl"
 
@@ -166,6 +165,7 @@ class TestCopilotE2EPowerSteering(unittest.TestCase):
 
     def tearDown(self):
         import shutil
+
         shutil.rmtree(self.temp_dir)
 
     def test_session_type_detection_on_copilot_transcript(self):

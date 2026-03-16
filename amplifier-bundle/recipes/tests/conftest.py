@@ -4,7 +4,9 @@ Session-scoped fixtures for recipe push-diverged-remote fix tests.
 Loads both workflow YAML files once and exposes them as line arrays and
 raw content strings to minimize I/O during the test run.
 """
+
 import pathlib
+
 import pytest
 
 RECIPES_DIR = pathlib.Path(__file__).parent.parent

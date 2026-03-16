@@ -28,6 +28,7 @@ from amplihack.fleet._cli_formatters import (
     format_advance_report,
     format_scout_report,
 )
+from amplihack.fleet._cli_scout_advance import _parse_session_target
 from amplihack.fleet._session_lifecycle import (
     FleetConfig,
     FleetSession,
@@ -38,7 +39,6 @@ from amplihack.fleet._session_lifecycle import (
     start_fleet_session,
     stop_fleet_session,
 )
-from amplihack.fleet._cli_scout_advance import _parse_session_target
 
 __all__ = [
     "register_session_ops",

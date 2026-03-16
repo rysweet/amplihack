@@ -53,7 +53,9 @@ def remote_cli():
 @click.option("--no-reuse", is_flag=True, help="Always provision fresh VM")
 @click.option("--timeout", default=120, type=int, help="Max execution time in minutes")
 @click.option("--region", default=None, help="Azure region")
-@click.option("--port", default=None, type=int, help="Reuse existing bastion tunnel on this local port")
+@click.option(
+    "--port", default=None, type=int, help="Reuse existing bastion tunnel on this local port"
+)
 @click.argument("azlin_args", nargs=-1, type=click.UNPROCESSED)
 def remote_execute(
     command: str,
@@ -406,8 +408,12 @@ def cmd_list(status: str | None, output_json: bool):
     help="VM size tier (s=1, m=2, l=4, xl=8 sessions) [default: l]",
 )
 @click.option("--region", default=None, help="Azure region")
-@click.option("--port", default=None, type=int, help="Reuse existing bastion tunnel on this local port")
-def cmd_start(prompts: tuple, command: str, max_turns: int, size: str, region: str | None, port: int | None):
+@click.option(
+    "--port", default=None, type=int, help="Reuse existing bastion tunnel on this local port"
+)
+def cmd_start(
+    prompts: tuple, command: str, max_turns: int, size: str, region: str | None, port: int | None
+):
     """Start one or more detached remote sessions.
 
     Usage: amplihack remote start [options] "<prompt1>" "<prompt2>" ...

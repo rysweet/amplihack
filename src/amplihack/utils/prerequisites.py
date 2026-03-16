@@ -273,9 +273,7 @@ class InteractiveInstaller:
         for _ in range(max_attempts):
             try:
                 response = (
-                    input(f"Do you want to proceed with installing {tool}? [y/N]: ")
-                    .strip()
-                    .lower()
+                    input(f"Do you want to proceed with installing {tool}? [y/N]: ").strip().lower()
                 )
             except (EOFError, OSError):
                 # stdin closed or not available - decline
