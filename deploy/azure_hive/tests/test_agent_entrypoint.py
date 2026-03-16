@@ -275,7 +275,7 @@ class TestBicep:
         assert "hive-shards-" in content
 
     def test_bicep_has_shards_consumer_groups(self):
-        """Bicep must declare per-agent consumer groups on the shards hub."""
+        """Bicep must declare consumer groups on the shards hub."""
         bicep = Path(__file__).parent.parent / "main.bicep"
         content = bicep.read_text()
         assert "ehShardsConsumerGroups" in content
