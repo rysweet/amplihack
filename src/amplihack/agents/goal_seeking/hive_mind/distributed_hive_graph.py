@@ -1712,9 +1712,13 @@ class DistributedHiveGraph:
         targets: list[str],
         fetcher: Any,
     ) -> dict[str, list[ShardFact]]:
-        """Run a shard fact fetch in parallel and fail on any shard error."""
+        """Run a shard fact fetch in parallel; return partial results on timeout.
+
+        Best-effort: shard timeouts are logged as warnings but do NOT raise.
+        This prevents a single slow or queried-while-busy shard from blocking
+        the entire answer.  The caller merges whatever facts did respond.
+        """
         results_by_agent: dict[str, list[ShardFact]] = {}
-        errors: dict[str, str] = {}
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, len(targets))) as pool:
             futures = {pool.submit(fetcher, agent_id): agent_id for agent_id in targets}
@@ -1723,11 +1727,13 @@ class DistributedHiveGraph:
                 try:
                     results_by_agent[agent_id] = future.result()
                 except Exception as exc:
-                    errors[agent_id] = str(exc)
-
-        if errors:
-            details = ", ".join(f"{agent}: {message}" for agent, message in sorted(errors.items()))
-            raise DistributedShardQueryError(f"Distributed shard request failed: {details}")
+                    # Log the error but do not raise — partial results are better than none.
+                    logger.warning(
+                        "Shard query to %s failed (best-effort, continuing): %s",
+                        agent_id,
+                        exc,
+                    )
+                    results_by_agent[agent_id] = []
 
         return results_by_agent
 
@@ -1737,9 +1743,11 @@ class DistributedHiveGraph:
         query_type: str,
         entity_filter: str,
     ) -> list[dict[str, Any]]:
-        """Run a shard aggregation in parallel and fail on any shard error."""
+        """Run a shard aggregation in parallel; return partial results on timeout.
+
+        Best-effort: failed shards are logged as warnings, not raised.
+        """
         results_by_agent: dict[str, dict[str, Any]] = {}
-        errors: dict[str, str] = {}
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, len(targets))) as pool:
             futures = {
@@ -1756,13 +1764,13 @@ class DistributedHiveGraph:
                 try:
                     results_by_agent[agent_id] = future.result()
                 except Exception as exc:
-                    errors[agent_id] = str(exc)
-
-        if errors:
-            details = ", ".join(f"{agent}: {message}" for agent, message in sorted(errors.items()))
-            raise DistributedShardQueryError(
-                f"Distributed aggregation failed for {query_type}: {details}"
-            )
+                    logger.warning(
+                        "Shard aggregation %s from %s failed (best-effort): %s",
+                        query_type,
+                        agent_id,
+                        exc,
+                    )
+                    results_by_agent[agent_id] = {}
 
         return [results_by_agent[agent_id] for agent_id in sorted(results_by_agent)]
 

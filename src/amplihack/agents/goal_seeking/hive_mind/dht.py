@@ -613,14 +613,16 @@ class DHTRouter:
         # agents. DHT key routing cannot find the right shard because content is
         # distributed round-robin (not by consistent hash). Fan out to ALL agents
         # and let each respond with its own local facts.
+        # _collect_shard_fact_results uses best-effort collection so individual
+        # shard timeouts do not abort the entire query.
         with self._lock:
             local_targets = [
                 aid
                 for aid in all_agents
                 if aid in self._shards and self._shards[aid].fact_count > 0
             ]
-        # If most local shards are empty, we're in distributed mode — fan out to all.
         if len(local_targets) < len(all_agents):
+            # Distributed mode: query all agents; best-effort collection handles timeouts.
             return list(all_agents)
         # Pure in-process mode: all shards populated locally, return non-empty ones.
         return local_targets

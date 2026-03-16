@@ -62,8 +62,12 @@ def _make_graph(transport: _FakeTransport) -> DistributedHiveGraph:
     return graph
 
 
-def test_query_facts_raises_when_any_shard_fails() -> None:
-    """Distributed reads must surface shard failures instead of returning partial data."""
+def test_query_facts_best_effort_when_shard_fails() -> None:
+    """Distributed reads return partial results on shard timeout instead of raising.
+
+    A single timed-out shard must NOT abort the entire query — other shards'
+    facts must be returned so the agent can still synthesise an answer.
+    """
     graph = _make_graph(
         _FakeTransport(
             responses={
@@ -74,8 +78,12 @@ def test_query_facts_raises_when_any_shard_fails() -> None:
         )
     )
 
-    with pytest.raises(RuntimeError, match="agent-1"):
-        graph.query_facts("shared query", limit=10)
+    # Must NOT raise — returns partial results from the shards that responded.
+    results = graph.query_facts("shared query", limit=10)
+    contents = [f.content for f in results]
+    assert "agent-0 fact" in contents
+    assert "agent-2 fact" in contents
+    # agent-1 timed out — its content is absent but no exception is raised.
 
 
 def test_query_facts_uses_stable_tiebreaker_under_out_of_order_responses() -> None:
