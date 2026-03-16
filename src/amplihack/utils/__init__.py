@@ -1,5 +1,8 @@
 """Utility functions for amplihack."""
 
+import logging
+import os
+
 from .defensive import (
     DefensiveError,
     FileOperationError,
@@ -18,6 +21,31 @@ from .process import ProcessManager
 from .string_utils import slugify
 from .uvx_staging import stage_uvx_framework
 
+_logger = logging.getLogger(__name__)
+
+
+def get_agent_binary() -> str:
+    """Return the active agent binary name from AMPLIHACK_AGENT_BINARY.
+
+    This env var is set by the amplihack CLI dispatcher (cli.py) when the user
+    runs ``amplihack claude``, ``amplihack copilot``, etc.  Every subprocess
+    that needs to launch a coding agent should call this function instead of
+    hard-coding ``"claude"``.
+
+    Returns:
+        The agent binary name (e.g. ``"claude"``, ``"copilot"``, ``"codex"``).
+        Falls back to ``"claude"`` with a warning if the env var is unset.
+    """
+    binary = os.environ.get("AMPLIHACK_AGENT_BINARY")
+    if not binary:
+        _logger.warning(
+            "AMPLIHACK_AGENT_BINARY not set — defaulting to 'claude'. "
+            "This usually means a subprocess was launched outside the "
+            "amplihack CLI dispatcher."
+        )
+        binary = "claude"
+    return binary
+
 
 def is_uvx_deployment() -> bool:
     """Simple UVX detection based on sys.executable location."""
@@ -28,6 +56,8 @@ def is_uvx_deployment() -> bool:
 
 
 __all__ = [
+    # Agent binary
+    "get_agent_binary",
     # Path utilities
     "FrameworkPathResolver",
     # Process utilities
