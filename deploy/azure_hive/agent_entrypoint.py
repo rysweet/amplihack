@@ -503,7 +503,16 @@ def _run_event_driven_loop(
     Processes each message from the input source. Handles FEED_COMPLETE
     by publishing AGENT_READY to the eval-responses hub and continuing.
     Returns when input_source.next() returns None (shutdown).
+
+    When FEED_COMPLETE includes ``expected_fact_batches`` in its payload,
+    AGENT_READY is deferred until that many STORE_FACT_BATCH events have
+    been processed.  This prevents the eval harness from sending questions
+    before all pre-extracted fact batches are stored.
     """
+    # Track LEARN_CONTENT and STORE_FACT_BATCH processing for deferred AGENT_READY
+    _learn_content_count = 0
+    _fact_batch_count = 0
+    _pending_feed_complete: dict | None = None  # {total_turns, expected, run_id, mode}
 
     while not shutdown_event.is_set():
         text = input_source.next()
@@ -535,17 +544,57 @@ def _run_event_driven_loop(
 
         if text.startswith("__FEED_COMPLETE__:"):
             total_turns = text.split(":", 1)[1]
-            logger.info(
-                "Agent %s received FEED_COMPLETE (total_turns=%s). Publishing AGENT_READY.",
-                agent_name,
-                total_turns,
-            )
-            # Extract run_id from the FEED_COMPLETE event metadata
+            # Extract run_id, expected_learn_content, and expected_fact_batches
             run_id = ""
+            expected_learn_content = 0
+            expected_fact_batches = 0
             if hasattr(input_source, "_source"):
                 meta = getattr(input_source._source, "last_event_metadata", {})
                 run_id = meta.get("run_id", "")
-            answer_publisher.publish_agent_ready(total_turns, run_id=run_id)
+                payload = meta.get("payload", {})
+                if isinstance(payload, dict):
+                    expected_learn_content = int(payload.get("expected_learn_content", 0))
+                    expected_fact_batches = int(payload.get("expected_fact_batches", 0))
+            # Determine if we need to defer AGENT_READY
+            # Priority: expected_learn_content (new mode) > expected_fact_batches (legacy)
+            if expected_learn_content > 0 and _learn_content_count < expected_learn_content:
+                logger.info(
+                    "Agent %s received FEED_COMPLETE (total_turns=%s, expected_learn_content=%d,"
+                    " processed_so_far=%d). Deferring AGENT_READY until all content processed.",
+                    agent_name,
+                    total_turns,
+                    expected_learn_content,
+                    _learn_content_count,
+                )
+                _pending_feed_complete = {
+                    "total_turns": total_turns,
+                    "expected": expected_learn_content,
+                    "run_id": run_id,
+                    "mode": "learn_content",
+                }
+            elif expected_fact_batches > 0 and _fact_batch_count < expected_fact_batches:
+                logger.info(
+                    "Agent %s received FEED_COMPLETE (total_turns=%s, expected_fact_batches=%d,"
+                    " stored_so_far=%d). Deferring AGENT_READY until all batches stored.",
+                    agent_name,
+                    total_turns,
+                    expected_fact_batches,
+                    _fact_batch_count,
+                )
+                _pending_feed_complete = {
+                    "total_turns": total_turns,
+                    "expected": expected_fact_batches,
+                    "run_id": run_id,
+                    "mode": "fact_batch",
+                }
+            else:
+                logger.info(
+                    "Agent %s received FEED_COMPLETE (total_turns=%s). Publishing AGENT_READY.",
+                    agent_name,
+                    total_turns,
+                )
+                answer_publisher.publish_agent_ready(total_turns, run_id=run_id)
+                _pending_feed_complete = None
             continue
 
         if text == "__ONLINE_CHECK__":
@@ -571,6 +620,30 @@ def _run_event_driven_loop(
                 fact_count,
             )
             agent.store_fact_batch(fact_batch if isinstance(fact_batch, dict) else {})
+            _fact_batch_count += 1
+            # Check if we were waiting for this batch to publish AGENT_READY (legacy mode)
+            if (
+                _pending_feed_complete is not None
+                and _pending_feed_complete.get("mode") == "fact_batch"
+            ):
+                expected = _pending_feed_complete["expected"]
+                if _fact_batch_count >= expected:
+                    total_turns = _pending_feed_complete["total_turns"]
+                    run_id = _pending_feed_complete["run_id"]
+                    logger.info(
+                        "Agent %s stored all %d expected fact batches. Publishing AGENT_READY.",
+                        agent_name,
+                        expected,
+                    )
+                    answer_publisher.publish_agent_ready(total_turns, run_id=run_id)
+                    _pending_feed_complete = None
+                else:
+                    logger.debug(
+                        "Agent %s: %d/%d fact batches stored, still waiting for AGENT_READY.",
+                        agent_name,
+                        _fact_batch_count,
+                        expected,
+                    )
             continue
 
         logger.info("Agent %s processing input via OODA (len=%d)", agent_name, len(text))
@@ -592,6 +665,31 @@ def _run_event_driven_loop(
                     len(text),
                 )
                 agent.process_store(text)
+                _learn_content_count += 1
+                # Check if we were waiting on LEARN_CONTENT count for deferred AGENT_READY
+                if (
+                    _pending_feed_complete is not None
+                    and _pending_feed_complete.get("mode") == "learn_content"
+                ):
+                    expected = _pending_feed_complete["expected"]
+                    if _learn_content_count >= expected:
+                        _total_turns = _pending_feed_complete["total_turns"]
+                        _run_id = _pending_feed_complete["run_id"]
+                        logger.info(
+                            "Agent %s processed all %d expected LEARN_CONTENT events."
+                            " Publishing AGENT_READY.",
+                            agent_name,
+                            expected,
+                        )
+                        answer_publisher.publish_agent_ready(_total_turns, run_id=_run_id)
+                        _pending_feed_complete = None
+                    else:
+                        logger.debug(
+                            "Agent %s: %d/%d LEARN_CONTENT events processed, still waiting.",
+                            agent_name,
+                            _learn_content_count,
+                            expected,
+                        )
             else:
                 agent.process(text)
         except Exception:

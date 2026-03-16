@@ -57,6 +57,18 @@ def main():
         "--answer-timeout", type=int, default=0, help="Seconds to wait per answer (0=no timeout)"
     )
     p.add_argument("--output", default="", help="Output JSON path")
+    p.add_argument(
+        "--replicate-learn-to-all-agents",
+        action="store_true",
+        default=False,
+        help="Replicate each learn_from_content call to ALL agents (not just one per round-robin)",
+    )
+    p.add_argument(
+        "--question-failover-retries",
+        type=int,
+        default=0,
+        help="Number of failover retries for unanswered questions (retry on next agent)",
+    )
     args = p.parse_args()
 
     # Import the adapter and the eval harness
@@ -72,6 +84,8 @@ def main():
         agent_count=args.agents,
         resource_group=args.resource_group,
         answer_timeout=args.answer_timeout,
+        replicate_learning_to_all_agents=args.replicate_learn_to_all_agents,
+        question_failover_retries=args.question_failover_retries,
     )
 
     # Create the eval harness — IDENTICAL to single-agent

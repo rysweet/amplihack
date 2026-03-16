@@ -305,10 +305,9 @@ class RemoteAgentAdapter:
                 target_agents = [target_agent]
                 self._learn_turn_counts[target_agent] += 1
 
-        fact_batch: dict[str, Any] | None = None
-        if self._replicate_learning_to_all_agents:
-            fact_batch = self._prepare_fact_batch(content)
-
+        # In replicate mode, send LEARN_CONTENT (raw content) to all agents so
+        # each agent extracts facts independently in the container (no local
+        # LiteLLM calls in the eval harness, no STORE_FACT_BATCH ordering issues).
         for agent_index in target_agents:
             target_name = self._agent_name(agent_index)
             payload = {
@@ -321,17 +320,6 @@ class RemoteAgentAdapter:
                     "target_agent": target_name,
                 },
             }
-            if self._replicate_learning_to_all_agents:
-                payload = {
-                    "event_type": "STORE_FACT_BATCH",
-                    "event_id": event_id,
-                    "target_agent": target_name,
-                    "source_agent": "eval-harness",
-                    "payload": {
-                        "fact_batch": fact_batch,
-                        "target_agent": target_name,
-                    },
-                }
             self._publish_event(
                 payload,
                 partition_key=target_name,
@@ -341,7 +329,7 @@ class RemoteAgentAdapter:
         if learn_count % log_every == 0:
             if self._replicate_learning_to_all_agents:
                 logger.info(
-                    "RemoteAgentAdapter: sent %d content turns (replicated to all %d agents)",
+                    "RemoteAgentAdapter: sent %d content turns (LEARN_CONTENT replicated to all %d agents)",
                     learn_count,
                     self._agent_count,
                 )
@@ -353,7 +341,7 @@ class RemoteAgentAdapter:
                 )
 
         return {
-            "facts_stored": len((fact_batch or {}).get("facts", [])) if fact_batch else 1,
+            "facts_stored": 1,
             "event_id": event_id,
             "replicated_to": len(target_agents),
         }
@@ -483,6 +471,11 @@ class RemoteAgentAdapter:
                     if 0 <= target_agent < len(self._learn_turn_counts)
                     else self._learn_count // max(1, self._agent_count)
                 )
+                # Include expected_learn_content so agents defer AGENT_READY until
+                # all LEARN_CONTENT events in their partition have been processed.
+                # For replicated mode all agents receive all turns; for round-robin
+                # each agent only receives a fraction.
+                expected_learn_content = total_turns
                 self._publish_event(
                     {
                         "event_type": "FEED_COMPLETE",
@@ -492,6 +485,7 @@ class RemoteAgentAdapter:
                         "payload": {
                             "total_turns": total_turns,
                             "target_agent": target_name,
+                            "expected_learn_content": expected_learn_content,
                         },
                     },
                     partition_key=target_name,
