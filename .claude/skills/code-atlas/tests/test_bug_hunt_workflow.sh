@@ -1,12 +1,13 @@
 #!/bin/bash
 # .claude/skills/code-atlas/tests/test_bug_hunt_workflow.sh
 #
-# TDD tests for the two-pass bug-hunting workflow.
+# TDD tests for the three-pass bug-hunting workflow.
 # Tests validate that the bug-hunt workflow produces structured, evidence-backed
 # bug reports with the correct format and without security violations.
 #
 # Pass 1: Contradiction hunt — find route/DTO mismatches, orphaned env vars, dead paths
-# Pass 2: Journey trace — follow user scenarios through graphs to find deeper bugs
+# Pass 2: Fresh-eyes cross-check — independent re-examination + confirm/overturn Pass 1 findings
+# Pass 3: Scenario deep-dive — per-journey PASS/FAIL/NEEDS_ATTENTION verdicts
 #
 # THESE TESTS WILL FAIL until the bug-hunt workflow is implemented.
 #
@@ -410,8 +411,11 @@ echo "=== Pass 3 Verdict Block Tests (v1.1.0) ==="
 ATLAS="${REPO_ROOT}/docs/atlas"
 BUG_REPORTS="${ATLAS}/bug-reports"
 
+# Cache pass3 file list once — avoids 5 redundant filesystem scans below.
+mapfile -d '' _pass3_files < <(find "$BUG_REPORTS" -name "*pass3*" -print0 2>/dev/null)
+pass3_count="${#_pass3_files[@]}"
+
 # 6.1: At least one pass3 report file should exist (requires atlas run)
-pass3_count=$(find "$BUG_REPORTS" -name "*pass3*" 2>/dev/null | wc -l)
 if [[ "$pass3_count" -gt 0 ]]; then
     echo "PASS: 6.1 at least one pass3 bug report exists ($pass3_count files)"
     PASS=$((PASS + 1))
@@ -420,40 +424,28 @@ else
     FAIL=$((FAIL + 1))
 fi
 
-# 6.2: Each pass3 report must contain a Journey: heading
-while IFS= read -r -d '' p3_file; do
+# 6.2–6.6: Per-file checks using the cached list.
+for p3_file in "${_pass3_files[@]}"; do
     assert_file_contains "6.2 pass3 report has Journey heading: $(basename "$p3_file")" \
         "## Journey:" "$p3_file"
-done < <(find "$BUG_REPORTS" -name "*pass3*" -print0 2>/dev/null)
 
-# 6.3: Each pass3 report must contain a Verdict heading (PASS/FAIL/NEEDS_ATTENTION)
-while IFS= read -r -d '' p3_file; do
     assert_file_contains "6.3 pass3 report has Verdict: $(basename "$p3_file")" \
         "### Verdict:.*PASS\|### Verdict:.*FAIL\|### Verdict:.*NEEDS_ATTENTION" "$p3_file"
-done < <(find "$BUG_REPORTS" -name "*pass3*" -print0 2>/dev/null)
 
-# 6.4: Each pass3 report must contain status symbols ✅/❌/⚠️ in evidence table
-while IFS= read -r -d '' p3_file; do
     assert_file_contains "6.4 pass3 report has status symbols: $(basename "$p3_file")" \
         "✅\|❌\|⚠️" "$p3_file"
-done < <(find "$BUG_REPORTS" -name "*pass3*" -print0 2>/dev/null)
 
-# 6.5: Each pass3 report must contain a Verdict Rationale paragraph
-while IFS= read -r -d '' p3_file; do
     assert_file_contains "6.5 pass3 report has Verdict Rationale: $(basename "$p3_file")" \
         "\*\*Verdict Rationale:\*\*\|Verdict Rationale:" "$p3_file"
-done < <(find "$BUG_REPORTS" -name "*pass3*" -print0 2>/dev/null)
 
-# 6.6: SEC-16 — no absolute paths in pass3 evidence (relative paths only)
-while IFS= read -r -d '' p3_file; do
-    if grep -qP '^\| [^|]+ \| [^|]+ \| /' "$p3_file" 2>/dev/null; then
+    if grep -q '^\| [^|]* \| [^|]* \| /' "$p3_file" 2>/dev/null; then
         echo "FAIL: 6.6 SEC-16 — absolute path found in pass3 evidence: $(basename "$p3_file")"
         FAIL=$((FAIL + 1))
     else
         echo "PASS: 6.6 SEC-16 — no absolute paths in evidence: $(basename "$p3_file")"
         PASS=$((PASS + 1))
     fi
-done < <(find "$BUG_REPORTS" -name "*pass3*" -print0 2>/dev/null)
+done
 
 # 6.7: SKILL.md Pass 3 documents scenario deep-dive methodology
 assert_file_contains "6.7 SKILL.md Pass 3 documents scenario deep-dive" \

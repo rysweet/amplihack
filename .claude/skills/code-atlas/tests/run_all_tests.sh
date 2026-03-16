@@ -76,9 +76,16 @@ run_suite() {
     # Show output
     echo "$suite_output"
 
-    # Extract pass/fail counts from the results line
-    pass_count=$(echo "$suite_output" | grep -oP 'Results: \K[0-9]+(?= passed)' | tail -1 || echo "0")
-    fail_count=$(echo "$suite_output" | grep -oP '\K[0-9]+(?= failed)' | tail -1 || echo "0")
+    # Extract pass/fail counts — single grep, then pure bash string ops (no PCRE, no extra forks).
+    local results_line
+    results_line=$(grep -o 'Results: [0-9]* passed, [0-9]* failed' <<< "$suite_output" | tail -1)
+    if [[ -n "$results_line" ]]; then
+        pass_count="${results_line#Results: }"; pass_count="${pass_count%% *}"
+        fail_count="${results_line##*, }";      fail_count="${fail_count%% *}"
+    else
+        pass_count=0
+        fail_count=0
+    fi
 
     TOTAL_PASS=$((TOTAL_PASS + pass_count))
     TOTAL_FAIL=$((TOTAL_FAIL + fail_count))
