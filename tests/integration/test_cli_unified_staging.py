@@ -242,6 +242,28 @@ class TestStagingUnitBehavior:
                         assert staging_dir.exists()
                         assert exit_code == 0
 
+    def test_home_runtime_staging_copies_amplifier_bundle(self, tmp_path, monkeypatch):
+        """Runtime staging must populate ~/.amplihack/amplifier-bundle for external repos."""
+        monkeypatch.setenv("HOME", str(tmp_path))
+
+        package_root = tmp_path / "package"
+        bundle_helper = package_root / "amplifier-bundle" / "tools" / "orch_helper.py"
+        bundle_helper.parent.mkdir(parents=True, exist_ok=True)
+        bundle_helper.write_text("# helper\n")
+
+        def mock_copytree(*args, **kwargs):
+            target = Path(args[1])
+            target.mkdir(parents=True, exist_ok=True)
+            return ["tools"]
+
+        from src.amplihack.cli import _stage_home_runtime_assets
+
+        with patch("src.amplihack.cli.copytree_manifest", side_effect=mock_copytree):
+            install_dir = _stage_home_runtime_assets(package_root)
+
+        assert install_dir == tmp_path / ".amplihack" / ".claude"
+        assert (tmp_path / ".amplihack" / "amplifier-bundle" / "tools" / "orch_helper.py").exists()
+
 
 class TestStagingErrorHandling:
     """Test error handling in staging process."""
