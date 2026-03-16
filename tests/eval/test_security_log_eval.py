@@ -9,17 +9,17 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
+import random
+
 from amplihack.eval.security_log_eval import (
-    AttackCampaign,
     SecurityLogEval,
     SecurityQuestion,
-    _generate_campaigns,
     _generate_campaign_events,
+    _generate_campaigns,
     _generate_noise_events,
     _generate_questions,
     _grade_answer,
 )
-import random
 
 
 class TestCampaignGeneration:
@@ -42,7 +42,13 @@ class TestCampaignGeneration:
             assert len(c.techniques) >= 3
             assert len(c.iocs["ip"]) >= 2
             assert len(c.malware_hashes) >= 1
-            assert c.objective in ("data_exfiltration", "ransomware", "espionage", "cryptomining", "supply_chain")
+            assert c.objective in (
+                "data_exfiltration",
+                "ransomware",
+                "espionage",
+                "cryptomining",
+                "supply_chain",
+            )
 
     def test_unique_campaign_ids(self):
         campaigns = _generate_campaigns(random.Random(42), 12)
@@ -70,6 +76,22 @@ class TestEventGeneration:
         facts = [f for e in events for f in e["facts"]]
         assert len(facts) >= 3
 
+    def test_campaign_events_include_actor_attribution(self):
+        campaign = _generate_campaigns(random.Random(42), 1)[0]
+        actor_name = campaign.threat_actor.split("(")[0].strip()
+        events = _generate_campaign_events(random.Random(42), campaign)
+
+        attribution_events = [e for e in events if f"ThreatActor: {actor_name}" in e["content"]]
+
+        assert attribution_events
+        assert any(
+            f"CampaignId: {campaign.campaign_id}" in e["content"] for e in attribution_events
+        )
+        assert any(
+            f"{campaign.campaign_id} threat actor {actor_name}" in e["facts"]
+            for e in attribution_events
+        )
+
     def test_noise_events_have_no_facts(self):
         events = _generate_noise_events(random.Random(42), 50, 30)
         for e in events:
@@ -87,7 +109,7 @@ class TestQuestionGeneration:
         campaigns = _generate_campaigns(random.Random(42), 6)
         questions = _generate_questions(campaigns, random.Random(42), 50)
         assert len(questions) <= 50
-        assert len(questions) >= 20  # at least 5 per campaign × 4 types
+        assert len(questions) >= 20  # at least 5 per campaign x 4 types
 
     def test_question_categories(self):
         campaigns = _generate_campaigns(random.Random(42), 6)
@@ -104,6 +126,29 @@ class TestQuestionGeneration:
         for q in questions:
             assert len(q.required_keywords) >= 1
             assert len(q.campaign_ids) >= 1
+
+    def test_seeded_actor_attribution_questions_are_backed_by_generated_events(self):
+        eval_harness = SecurityLogEval(num_turns=300, num_questions=50, num_campaigns=12, seed=42)
+        eval_harness.generate()
+
+        actor_questions = [
+            q
+            for q in eval_harness.questions
+            if q.category == "cross_campaign" and "attributed to " in q.question
+        ]
+        assert actor_questions
+
+        contents = [
+            event["content"] for event in eval_harness.events if event["campaign_id"] != "BENIGN"
+        ]
+        for question in actor_questions:
+            actor_name = question.question.split("attributed to ", 1)[1].split("?", 1)[0]
+            for campaign_id in question.required_keywords:
+                assert any(
+                    f"CampaignId: {campaign_id}" in content
+                    and f"ThreatActor: {actor_name}" in content
+                    for content in contents
+                )
 
 
 class TestGrading:
