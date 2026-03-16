@@ -29,6 +29,17 @@ elif [[ -n "${1:-}" && -n "${2:-}" ]]; then
     BASE_REF="$1"
     HEAD_REF="$2"
     MODE="range"
+    # Validate that both refs contain only characters valid in a git ref/SHA.
+    # This prevents shell metacharacter injection via CI-supplied github.event.pull_request.*.sha
+    # values. Allowed: hex digits, alphanumerics, dots, slashes, hyphens, and underscores.
+    if ! [[ "$BASE_REF" =~ ^[0-9a-fA-F/._-]+$ ]]; then
+        echo "Error: BASE_REF contains invalid characters: ${BASE_REF}" >&2
+        exit 2
+    fi
+    if ! [[ "$HEAD_REF" =~ ^[0-9a-fA-F/._-]+$ ]]; then
+        echo "Error: HEAD_REF contains invalid characters: ${HEAD_REF}" >&2
+        exit 2
+    fi
 elif [[ -n "${1:-}" ]]; then
     echo "Error: Provide both <base> and <head>, or use --pr" >&2
     echo "Usage: $0 [--pr | <base> <head>]" >&2

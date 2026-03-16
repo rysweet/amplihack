@@ -90,8 +90,11 @@ log_ok() {
 
 # Patterns that indicate a secret *value* (not just a key name reference)
 SECRET_VALUE_PATTERNS=(
-    # env-var assignment: KEY=value (value is not a placeholder/empty)
-    '[A-Z_]{4,}=[A-Za-z0-9+/:@._-]{8,}'
+    # env-var assignment: only flag known credential key names followed by a non-placeholder value.
+    # The original broad pattern '[A-Z_]{4,}=...' created false positives on legitimate atlas content
+    # such as Layer 6 inventory entries (e.g. HTTP_METHOD=GET, BUILD_LAYER=layer1-runtime).
+    # Narrowed to require the key name itself to be credential-like.
+    '(API_KEY|SECRET[_A-Z0-9]*|AUTH_TOKEN|ACCESS_TOKEN|REFRESH_TOKEN|ID_TOKEN|PASSWORD|PASSWD|CREDENTIAL[S]?|PRIVATE_KEY|ACCESS_KEY|CLIENT_SECRET|SIGNING_KEY|ENCRYPTION_KEY|MASTER_KEY|DB_PASSWORD|DATABASE_PASSWORD|REDIS_PASSWORD|POSTGRES_PASSWORD|MYSQL_PASSWORD|JWT_SECRET)[[:space:]]*=[[:space:]]*[A-Za-z0-9+/:@._-]{8,}'
     # connection string with embedded credentials
     '://[^:]+:[^@]{4,}@'
     # Common credential field names with an inline value
