@@ -383,7 +383,7 @@ class LearningAgent:
             logger.debug("Failed to generate summary concept map: %s", e)
             return None
 
-    def prepare_fact_batch(self, content: str) -> dict[str, Any]:
+    def prepare_fact_batch(self, content: str, include_summary: bool = True) -> dict[str, Any]:
         """Extract a content batch once so peers can store facts directly.
 
         The returned payload contains only direct-storage kwargs plus enough
@@ -416,7 +416,7 @@ class LearningAgent:
                 continue
 
         summary_store_kwargs = None
-        if facts and prepared_facts:
+        if include_summary and facts and prepared_facts:
             summary_store_kwargs = self._build_summary_store_kwargs(facts)
 
         return {
@@ -518,6 +518,59 @@ class LearningAgent:
         except Exception as e:
             logger.debug("Failed to store summary concept map: %s", e)
 
+    @staticmethod
+    def _detect_temporal_metadata_fast(content: str) -> dict[str, Any] | None:
+        """Extract obvious temporal metadata directly from the source text."""
+        timestamp_match = re.search(
+            r"\bTimestamp:\s*(\d{4}-\d{2}-\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?",
+            content,
+            re.IGNORECASE,
+        )
+        if timestamp_match:
+            source_date = timestamp_match.group(1)
+            hour = timestamp_match.group(2) or "00"
+            minute = timestamp_match.group(3) or "00"
+            second = timestamp_match.group(4) or "00"
+            temporal_order = f"{source_date} {hour}:{minute}:{second}"
+            temporal_index = int(f"{source_date.replace('-', '')}{hour}{minute}{second}")
+            return {
+                "source_date": source_date,
+                "temporal_order": temporal_order,
+                "temporal_index": temporal_index,
+            }
+
+        iso_date_match = re.search(
+            r"\b(\d{4}-\d{2}-\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?\b",
+            content,
+        )
+        if iso_date_match:
+            source_date = iso_date_match.group(1)
+            hour = iso_date_match.group(2) or "00"
+            minute = iso_date_match.group(3) or "00"
+            second = iso_date_match.group(4) or "00"
+            temporal_order = (
+                f"{source_date} {hour}:{minute}:{second}"
+                if iso_date_match.group(2)
+                else source_date
+            )
+            temporal_index = int(f"{source_date.replace('-', '')}{hour}{minute}{second}")
+            return {
+                "source_date": source_date,
+                "temporal_order": temporal_order,
+                "temporal_index": temporal_index,
+            }
+
+        day_match = re.search(r"\bDay\s+(\d{1,4})\b", content, re.IGNORECASE)
+        if day_match:
+            day = int(day_match.group(1))
+            return {
+                "source_date": "",
+                "temporal_order": f"Day {day}",
+                "temporal_index": day,
+            }
+
+        return None
+
     def _detect_temporal_metadata(self, content: str) -> dict[str, Any]:
         """Detect dates and temporal markers in content using LLM.
 
@@ -532,6 +585,10 @@ class LearningAgent:
                 - temporal_order: Ordering label (e.g., "Day 7", "February 13")
                 - temporal_index: Numeric index for sorting (e.g., 7 for Day 7)
         """
+        fast_metadata = self._detect_temporal_metadata_fast(content)
+        if fast_metadata is not None:
+            return fast_metadata
+
         prompt = _load_prompt("temporal_detection_user", content=content[:500])
         try:
             response_text = self._llm_completion_with_retry(

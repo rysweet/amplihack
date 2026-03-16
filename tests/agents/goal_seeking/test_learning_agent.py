@@ -171,6 +171,42 @@ class TestLearningAgent:
         assert batch["facts"][0]["temporal_metadata"]["source_label"] == "Campaign report"
         assert batch["summary_fact"]["context"] == "SUMMARY"
 
+    def test_prepare_fact_batch_skips_summary_when_disabled(self, agent):
+        with (
+            patch.object(agent, "_detect_temporal_metadata", return_value={}),
+            patch.object(
+                agent,
+                "_extract_facts_with_llm",
+                return_value=[
+                    {
+                        "context": "Campaign",
+                        "fact": "CAMP-1 is active",
+                        "confidence": 0.9,
+                        "tags": ["campaign"],
+                    }
+                ],
+            ),
+            patch.object(agent, "_build_summary_store_kwargs") as build_summary,
+        ):
+            batch = agent.prepare_fact_batch("Campaign content", include_summary=False)
+
+        build_summary.assert_not_called()
+        assert batch["summary_fact"] is None
+
+    def test_detect_temporal_metadata_uses_timestamp_fast_path(self, agent):
+        agent._llm_completion_with_retry = MagicMock()
+
+        metadata = agent._detect_temporal_metadata(
+            "[MDE DeviceProcessEvents] Timestamp: 2024-03-14 09:26:53 | DeviceName: WS-001"
+        )
+
+        agent._llm_completion_with_retry.assert_not_called()
+        assert metadata == {
+            "source_date": "2024-03-14",
+            "temporal_order": "2024-03-14 09:26:53",
+            "temporal_index": 20240314092653,
+        }
+
     def test_store_fact_batch_stores_prepared_facts_and_summary(self, agent):
         agent.use_hierarchical = True
         agent.memory.store_episode = MagicMock(return_value="episode-1")

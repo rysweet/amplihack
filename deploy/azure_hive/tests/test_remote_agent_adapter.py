@@ -100,6 +100,18 @@ class TestRemoteAgentAdapterInit:
         assert adapter._question_count == 0
         assert adapter._run_id == "test_run_abc"
 
+    def test_prepare_fact_batch_uses_fast_replicated_shape(self):
+        mod = _load_module()
+        adapter = _make_adapter(mod)
+        extractor = MagicMock()
+        extractor.prepare_fact_batch.return_value = {"facts": []}
+        adapter._fact_batch_extractor = extractor
+
+        result = adapter._prepare_fact_batch("content")
+
+        extractor.prepare_fact_batch.assert_called_once_with("content", include_summary=False)
+        assert result == {"facts": []}
+
 
 class TestPublishEvent:
     def test_publish_attaches_run_id(self):

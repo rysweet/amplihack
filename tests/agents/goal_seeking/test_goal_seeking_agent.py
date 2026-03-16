@@ -325,8 +325,19 @@ class TestGoalSeekingAgentFactBatch:
 
         result = agent.prepare_fact_batch("campaign content")
 
-        agent._learning_agent.prepare_fact_batch.assert_called_once_with("campaign content")
+        agent._learning_agent.prepare_fact_batch.assert_called_once_with(
+            "campaign content",
+            include_summary=True,
+        )
         assert result == expected
+
+    def test_prepare_fact_batch_passes_include_summary_flag(self, agent):
+        agent.prepare_fact_batch("campaign content", include_summary=False)
+
+        agent._learning_agent.prepare_fact_batch.assert_called_once_with(
+            "campaign content",
+            include_summary=False,
+        )
 
     def test_store_fact_batch_delegates_without_recording_learning(self, agent):
         fact_batch = {"facts": [{"context": "Campaign", "fact": "CAMP-1 is active"}]}
