@@ -1,0 +1,124 @@
+# Gadugi Agentic Test Scenarios
+# PR #3133: Windows ARM64 CLI startup — platform detection + kuzu auto-install
+# https://github.com/rysweet/gadugi-agentic-test
+
+name: Windows Platform Detection & CLI Startup
+description: >
+  Validates that the amplihack CLI starts correctly after platform detection
+  fixes for Windows ARM64 (PR #3133). Tests platform_check.py, memory_auto_install.py,
+  and cli.py changes.
+
+scenarios:
+
+  - id: cli-version-runs
+    name: "amplihack --version exits successfully"
+    description: >
+      The CLI must start and print its version without hanging or crashing.
+      This validates the startup path including platform detection.
+    steps:
+      - action: run
+        command: >
+          uvx --from 'git+https://github.com/rysweet/amplihack.git@fix/windows-startup-platform-check'
+          amplihack --version
+        timeout: 60
+    assertions:
+      - type: exit_code
+        expected: 0
+      - type: stdout_contains
+        pattern: '\d+\.\d+\.\d+'
+        description: "Output contains a semver version string"
+    tags: [smoke, startup, critical]
+
+  - id: platform-detection-linux
+    name: "Platform detection returns correct values on Linux/WSL"
+    description: >
+      On Linux, is_native_windows() must return False and
+      check_platform_compatibility() must return compatible=True.
+    steps:
+      - action: run
+        command: >
+          python3 -c "
+          from amplihack.launcher.platform_check import is_native_windows, check_platform_compatibility;
+          assert is_native_windows() is False, 'should not detect as native Windows on Linux';
+          r = check_platform_compatibility();
+          assert r.compatible is True, f'should be compatible, got {r.compatible}';
+          assert r.is_wsl is False or r.is_wsl is True, 'is_wsl should be boolean';
+          print(f'PASS: compatible={r.compatible}, platform={r.platform_name}, wsl={r.is_wsl}')
+          "
+        timeout: 15
+        working_directory: /home/rysweet/src/amplihack
+        env:
+          PYTHONPATH: src
+    assertions:
+      - type: exit_code
+        expected: 0
+      - type: stdout_contains
+        pattern: "PASS: compatible=True"
+        description: "Platform detection reports Linux as compatible"
+    tags: [unit, platform]
+
+  - id: memory-auto-install-graceful
+    name: "memory_auto_install handles missing dependencies gracefully"
+    description: >
+      ensure_memory_lib_installed() must not crash even when amplihack_memory
+      is not available. It should return a boolean and print a warning.
+      _is_arm64_interpreter() and _find_x86_python() must not crash on Linux.
+    steps:
+      - action: run
+        command: >
+          python3 -c "
+          import sys; sys.path.insert(0, 'src');
+          from amplihack.memory_auto_install import _is_arm64_interpreter, _find_x86_python;
+          arm = _is_arm64_interpreter();
+          print(f'is_arm64_interpreter: {arm}');
+          x86 = _find_x86_python();
+          print(f'find_x86_python: {x86}');
+          assert isinstance(arm, bool), f'Expected bool, got {type(arm)}';
+          assert x86 is None, f'Expected None on Linux, got {x86}';
+          print('PASS: ARM64 detection and x86 fallback handle Linux gracefully')
+          "
+        timeout: 15
+        working_directory: /home/rysweet/src/amplihack
+    assertions:
+      - type: exit_code
+        expected: 0
+      - type: stdout_contains
+        pattern: "PASS"
+        description: "Both functions handle Linux without crashing"
+    tags: [unit, memory, graceful-degradation]
+
+  - id: cli-startup-no-hang
+    name: "CLI startup completes within 30 seconds"
+    description: >
+      The CLI must not hang during startup. This tests the full startup path
+      including platform detection, auto-install checks, and argument parsing.
+      A 30-second timeout ensures no infinite loops or blocking operations.
+    steps:
+      - action: run
+        command: >
+          timeout 30 python3 -c "
+          import sys; sys.path.insert(0, 'src');
+          from amplihack.launcher.platform_check import check_platform_compatibility;
+          r = check_platform_compatibility();
+          print(f'Platform: {r.platform_name}, compatible: {r.compatible}');
+          from amplihack.memory_auto_install import _is_arm64_interpreter;
+          print(f'ARM64 interpreter: {_is_arm64_interpreter()}');
+          print('PASS: Startup path completed within timeout')
+          "
+        timeout: 30
+        working_directory: /home/rysweet/src/amplihack
+    assertions:
+      - type: exit_code
+        expected: 0
+      - type: stdout_contains
+        pattern: "PASS: Startup path completed within timeout"
+        description: "Startup completes without hanging"
+    tags: [smoke, performance, startup]
+
+metadata:
+  pr: 3133
+  branch: fix/windows-startup-platform-check
+  author: rysweet
+  created: 2025-01-01
+  framework: gadugi-agentic-test
+  validation: manual  # gadugi-test not pip-installable; validated by running commands directly

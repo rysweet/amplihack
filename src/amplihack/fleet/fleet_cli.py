@@ -145,7 +145,25 @@ def fleet_cli(ctx):
     \b
     REQUIRES:
       azlin                              For VM management (github.com/rysweet/azlin)
+
+    \b
+    PLATFORM:
+      Fleet requires tmux and SSH, which are only available on macOS/Linux.
+      Windows native is not supported for fleet operations.
     """
+    import sys
+
+    if sys.platform == "win32":
+        click.echo(
+            "Error: Fleet operations require tmux and SSH, which are not available "
+            "on Windows native.\n"
+            "Please use WSL (Windows Subsystem for Linux) or a Linux/macOS machine.\n"
+            "See: https://learn.microsoft.com/en-us/windows/wsl/install",
+            err=True,
+        )
+        ctx.exit(1)
+        return
+
     if ctx.invoked_subcommand is None:
         from amplihack.fleet._constants import DEFAULT_DASHBOARD_REFRESH_SECONDS
         from amplihack.fleet.fleet_tui_dashboard import run_dashboard
@@ -177,6 +195,7 @@ def setup():
     # Verify azlin works if found
     if path:
         import subprocess
+
         try:
             result = subprocess.run(
                 [path, "--version"],
@@ -188,7 +207,9 @@ def setup():
                 version = result.stdout.strip() or "unknown"
                 click.echo(f"  azlin version: {version}")
             else:
-                click.echo(f"  azlin: found but --version failed ({result.stderr.strip()})", err=True)
+                click.echo(
+                    f"  azlin: found but --version failed ({result.stderr.strip()})", err=True
+                )
         except Exception as exc:
             click.echo(f"  azlin: found but verification failed — {exc}", err=True)
 
@@ -221,8 +242,15 @@ def status():
 
 
 @fleet_cli.command("tui")
-@click.option("--interval", default=DEFAULT_DASHBOARD_REFRESH_SECONDS, help="Refresh interval in seconds")
-@click.option("--capture-lines", default=DEFAULT_CAPTURE_LINES, type=int, help="Terminal scrollback capture depth")
+@click.option(
+    "--interval", default=DEFAULT_DASHBOARD_REFRESH_SECONDS, help="Refresh interval in seconds"
+)
+@click.option(
+    "--capture-lines",
+    default=DEFAULT_CAPTURE_LINES,
+    type=int,
+    help="Terminal scrollback capture depth",
+)
 def tui(interval, capture_lines):
     """Interactive fleet dashboard (Textual TUI).
 

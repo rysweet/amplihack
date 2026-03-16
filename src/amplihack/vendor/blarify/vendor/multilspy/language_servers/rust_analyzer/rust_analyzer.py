@@ -8,6 +8,7 @@ import logging
 import os
 import pathlib
 import stat
+import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -78,7 +79,8 @@ class RustAnalyzer(LanguageServer):
                     logger, dependency["url"], rustanalyzer_ls_dir, dependency["archiveType"]
                 )
         assert os.path.exists(rustanalyzer_executable_path)
-        os.chmod(rustanalyzer_executable_path, stat.S_IEXEC)
+        if sys.platform != "win32":
+            os.chmod(rustanalyzer_executable_path, stat.S_IEXEC)
 
         return rustanalyzer_executable_path
 

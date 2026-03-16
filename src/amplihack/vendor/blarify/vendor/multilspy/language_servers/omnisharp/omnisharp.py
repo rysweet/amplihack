@@ -8,6 +8,7 @@ import logging
 import os
 import pathlib
 import stat
+import sys
 from collections.abc import AsyncIterator, Iterable
 from contextlib import asynccontextmanager
 
@@ -198,7 +199,8 @@ class OmniSharp(LanguageServer):
             omnisharp_ls_dir, runtime_dependencies["OmniSharp"]["binaryName"]
         )
         assert os.path.exists(omnisharp_executable_path)
-        os.chmod(omnisharp_executable_path, stat.S_IEXEC)
+        if sys.platform != "win32":
+            os.chmod(omnisharp_executable_path, stat.S_IEXEC)
 
         razor_omnisharp_ls_dir = os.path.join(os.path.dirname(__file__), "static", "RazorOmnisharp")
         if not os.path.exists(razor_omnisharp_ls_dir):
