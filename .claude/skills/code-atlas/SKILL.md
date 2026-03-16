@@ -1,23 +1,29 @@
 ---
 name: code-atlas
-version: 1.0.0
+version: 1.1.0
 description: |
   Builds comprehensive, living code-atlases as multi-layer architecture documents derived from code-first truth.
   Supports Graphviz DOT and Mermaid diagram formats. Language-agnostic (Go, TypeScript, Python, .NET, Rust, Java).
   Produces: runtime service topology, compile-time dependencies, HTTP routing/contracts, data flows,
-  user journey scenario graphs, and exhaustive inventory tables.
+  user journey scenario graphs, exhaustive inventory tables, per-service component architecture (Layer 7),
+  and cross-file AST+LSP symbol bindings with dead code detection (Layer 8).
   Treats atlas-building as a multi-agent bug-hunting journey: graph-form reasoning exposes structural bugs,
   route/DTO mismatches, orphaned env vars, dead code paths, and stale documentation that linear review misses.
+  Three-pass bug hunt: Pass 1 (comprehensive build+hunt), Pass 2 (fresh-eyes cross-check), Pass 3
+  (scenario deep-dive with per-journey PASS/FAIL/NEEDS_ATTENTION verdicts).
+  Diagram density guard: never silently substitutes a table for a diagram — always prompts the user when
+  node/edge count exceeds thresholds (50 nodes or 100 edges). Complies with FORBIDDEN_PATTERNS.md §2.
   Use when: creating architecture documentation, investigating unfamiliar codebases, hunting structural bugs,
   setting up CI/CD diagram refresh, or publishing to GitHub Pages/mkdocs.
 invokes:
   skills:
-    - code-visualizer # Python AST-based module analysis and staleness detection
-    - mermaid-diagram-generator # Mermaid syntax generation and diagram formatting
+    - code-visualizer   # Python AST-based module analysis, staleness detection, Layer 7 static fallback
+    - mermaid-diagram-generator  # Mermaid syntax generation and diagram formatting
+    - lsp-setup         # Layer 8 LSP-assisted symbol query (optional; falls back to static mode)
   agents:
-    - visualization-architect # Complex multi-level DOT diagrams and cross-layer layouts
-    - analyzer # Deep codebase investigation and dependency mapping
-    - reviewer # Contradiction hunting and code-evidence gathering
+    - visualization-architect  # Complex multi-level DOT diagrams and cross-layer layouts
+    - analyzer          # Deep codebase investigation and dependency mapping
+    - reviewer          # Contradiction hunting and code-evidence gathering (all 3 passes)
 ---
 
 # Code Atlas Skill
@@ -53,16 +59,17 @@ An atlas is complete when any engineer, given only the atlas and a bug report, c
 ```
 code-atlas (this skill)
 ├── Responsibilities:
-│   ├── Atlas layer orchestration (all 6 layers)
+│   ├── Atlas layer orchestration (all 8 layers)
 │   ├── Language-agnostic code exploration
-│   ├── Two-pass bug-hunting workflow
+│   ├── Three-pass bug-hunting workflow
+│   ├── Density guard — never silent diagram→table substitution
 │   ├── Staleness detection triggers
 │   ├── CI integration patterns
 │   └── Publication workflow (GitHub Pages, mkdocs, SVG)
 │
 └── Delegates to:
     ├── code-visualizer skill
-    │   ├── Python AST module analysis
+    │   ├── Python AST module analysis (Layer 2 + Layer 7 static fallback)
     │   ├── Import relationship extraction
     │   └── Timestamp-based staleness detection
     │
@@ -70,6 +77,11 @@ code-atlas (this skill)
     │   ├── Mermaid diagram syntax generation
     │   ├── Flowchart, sequence, class diagram formatting
     │   └── Markdown embedding
+    │
+    ├── lsp-setup skill (Layer 8 only)
+    │   ├── LSP-assisted symbol reference queries
+    │   ├── Dead code detection (server-verified)
+    │   └── Interface mismatch detection
     │
     ├── visualization-architect agent
     │   ├── Complex DOT graph rendering
@@ -82,7 +94,9 @@ code-atlas (this skill)
     │   └── Runtime topology discovery
     │
     └── reviewer agent
-        ├── Contradiction hunting across layers
+        ├── Pass 1: Contradiction hunting across layers
+        ├── Pass 2: Fresh-eyes cross-check of atlas data
+        ├── Pass 3: Scenario deep-dive + per-journey verdicts
         ├── Route/DTO mismatch detection
         └── Code-evidence gathering for bug reports
 ```
@@ -90,19 +104,26 @@ code-atlas (this skill)
 **Invocation Pattern:**
 
 ```
-# Phase 1: Build atlas layers from code truth
-Delegate Python analysis → code-visualizer skill
+# Phase 1: Build atlas layers from code truth (Layers 1–8)
+Delegate Python analysis → code-visualizer skill (Layer 2 + Layer 7)
+Delegate LSP symbol queries → lsp-setup skill (Layer 8)
 Delegate polyglot exploration → analyzer agent
 Delegate Mermaid output → mermaid-diagram-generator skill
 Delegate complex DOT graphs → visualization-architect agent
 
-# Phase 2: Bug hunt using the atlas
-Pass 1: Contradiction hunt → reviewer agent + atlas cross-reference
-Pass 2: Journey trace → follow user scenarios through graphs
+# Phase 2: Three-pass bug hunt using the atlas
+Pass 1: Comprehensive build + hunt → reviewer agent + atlas cross-reference
+Pass 2: Fresh-eyes cross-check → reviewer agent in new context window
+Pass 3: Scenario deep-dive → reviewer agent traces journeys; emits JourneyVerdict per journey
 
 # Phase 3: Publish and maintain
 Generate SVGs, push to GitHub Pages / mkdocs directory
 Register CI hook for staleness detection on code changes
+
+# Density guard (all phases):
+Before rendering any diagram: check node_count > 50 OR edge_count > 100
+If threshold exceeded: pause and present DENSITY_PROMPT to user
+Never silently substitute a table — always ask
 ```
 
 ## When to Use This Skill
@@ -477,9 +498,304 @@ Inventory tables are **required companion outputs** for Layers 2 and 3, and a **
 
 ---
 
+### Layer 7: Service Component Architecture
+
+> _SEC-11 applies: service names used in file paths must be sanitised to `[a-zA-Z0-9_-]{1,64}` before use._
+
+**What it maps**: The internal module/package/component structure of each individual service discovered in Layer 1. Where Layers 1–6 map the system across service boundaries, Layer 7 maps each service's internal anatomy.
+
+**Discovery approach (per-service)**:
+
+```bash
+# Python: packages are directories with __init__.py
+find services/my-service -name "__init__.py" | xargs dirname | sort
+
+# Go: packages are directories with .go files
+find services/my-service -name "*.go" | xargs dirname | sort -u
+
+# TypeScript: packages declared in local package.json workspaces
+cat services/my-service/package.json | jq '.workspaces[]' 2>/dev/null || \
+  find services/my-service/src -maxdepth 2 -name "index.ts" | xargs dirname
+
+# .NET: projects are .csproj files
+find services/my-service -name "*.csproj" | sort
+
+# Rust: modules declared in lib.rs / main.rs
+grep -r "^pub mod\|^mod " --include="*.rs" services/my-service/src/ | head -50
+```
+
+**Delegation:** Delegates to `code-visualizer` skill for Python AST package discovery. Uses `analyzer` agent for polyglot services.
+
+**Output format** (per service — Mermaid `graph TD`):
+
+```mermaid
+graph TD
+    subgraph api_service["api-service"]
+        handler["handlers/"]
+        service["services/"]
+        repo["repositories/"]
+        dto["dto/"]
+        mid["middleware/"]
+    end
+
+    handler -->|"uses"| service
+    handler -->|"reads/writes"| dto
+    service -->|"calls"| repo
+    mid -->|"wraps"| handler
+
+    subgraph exports["Key Exported Symbols"]
+        OrderHandler["OrderHandler"]
+        UserService["UserService"]
+        PostgresRepo["PostgresRepository"]
+    end
+
+    handler --> OrderHandler
+    service --> UserService
+    repo --> PostgresRepo
+```
+
+**Output files**: One `.mmd` and (when mmdc available) `.svg` per service, under `docs/atlas/layer7-service-components/`.
+
+**Structural bugs Layer 7 detects:**
+
+- Service in Layer 1 topology with no discoverable internal packages (likely a deployment artefact, not a real service)
+- Internal package imported by 3+ other packages within the same service (high coupling, refactor candidate)
+- Exported symbol referenced in Layer 3 routes but not found in any Layer 7 package (missing handler)
+- Package with no exported symbols that is imported by other packages (private coupling)
+
+**Density guard**: When a service has >50 components or >100 intra-service edges, the density prompt is shown before rendering. (SEC-13: threshold values are validated integers in 1–10,000.)
+
+---
+
+### Layer 8: AST+LSP Symbol Bindings
+
+> _SEC-12 applies: all LSP output (symbol names, file paths, type strings) is treated as untrusted input and sanitised before embedding in atlas files._
+> _SEC-15 applies: credential redaction runs on all Layer 8 output files before writing._
+
+**What it maps**: Cross-file symbol references, dead code (unreferenced exported symbols), and call-site/definition mismatches (interface violations).
+
+**Operating modes** (always labelled — never hidden):
+
+| Mode | Trigger | Mechanism |
+|------|---------|-----------|
+| `lsp-assisted` | `lsp-setup` skill reports active LSP server | Delegates symbol queries directly to LSP server |
+| `static-approximation` | LSP unavailable (`LAYER8_LSP_UNAVAILABLE`) | ripgrep pattern matching + `code-visualizer` AST |
+
+**Mode label contract**: The first line of `docs/atlas/layer8-ast-lsp-bindings/README.md` MUST be:
+
+```
+**Mode:** lsp-assisted
+```
+
+or
+
+```
+**Mode:** static-approximation
+```
+
+Never absent. Never defaulted silently. The second line MUST be either "Results are LSP-verified." or "Results are approximate — install an LSP for verified analysis."
+
+**Delegation to `lsp-setup` skill:**
+
+```yaml
+# Layer 8 invokes lsp-setup with each query type in turn
+queries:
+  - type: symbol-references      # Cross-file reference graph
+  - type: dead-code              # Unreferenced exported symbols
+  - type: interface-mismatches   # Call-site vs definition signature mismatches
+```
+
+**Output files:**
+
+```
+docs/atlas/layer8-ast-lsp-bindings/
+├── README.md                    # Mode label on line 1 (REQUIRED)
+├── symbol-references.mmd        # Cross-file reference graph (Mermaid)
+├── dead-code.md                 # Dead code report table
+└── mismatched-interfaces.md     # Interface mismatch report table
+```
+
+**Example `dead-code.md` output:**
+
+```markdown
+# Dead Code Report
+
+**Mode:** static-approximation
+**Date:** 2026-03-16
+
+| Symbol | File | Line | Last Referenced | Notes |
+|--------|------|------|-----------------|-------|
+| `LegacyUserExporter.export()` | `src/exporters/legacy.ts` | 45 | Never (static analysis) | Candidate for removal |
+| `calculateTaxV1()` | `src/billing/tax.go` | 102 | Never (static analysis) | Superseded by calculateTaxV2 |
+```
+
+**Example `mismatched-interfaces.md` output:**
+
+```markdown
+# Interface Mismatch Report
+
+**Mode:** lsp-assisted
+**Date:** 2026-03-16
+
+| Symbol | Definition | Call Site | Mismatch |
+|--------|-----------|-----------|---------|
+| `OrderService.create` | `(ctx, dto: CreateOrderRequest): Promise<Order>` | `src/api/handlers/order.ts:67` | Called with 1 arg (missing ctx) |
+```
+
+**Structural bugs Layer 8 detects:**
+
+- Exported function defined in one service but called with wrong signature in another (interface mismatch → runtime TypeError)
+- Module exported in `index.ts` but never imported anywhere in the codebase (dead export, safe to remove)
+- Symbol referenced in Layer 3 route handler that appears in Layer 8 dead-code list (phantom dependency)
+- Interface declared in shared library with multiple implementations where call sites use incompatible signatures
+
+**Density guard**: applies to `symbol-references.mmd` (>50 symbols or >100 reference edges → density prompt shown).
+
+---
+
+## Global Density Guard
+
+> **FORBIDDEN_PATTERNS.md §2 compliance**: No code path in this skill ever silently falls back from a diagram to a table. This section defines the only permitted path when diagram density is high.
+
+### When It Triggers
+
+The density guard activates on **any diagram in any layer (1–8)** when:
+
+```
+node_count > 50  OR  edge_count > 100
+```
+
+Default thresholds: `nodes=50`, `edges=100`. Override per-invocation:
+
+```
+/code-atlas --density-threshold nodes=100,edges=200   # larger graph tolerance
+/code-atlas --density-threshold nodes=30,edges=60     # presentation quality
+```
+
+Override values must be positive integers in range 1–10,000 (SEC-13). Values outside this range are rejected with a clear error message; the skill does not proceed with an invalid threshold.
+
+### Required User Prompt
+
+When triggered, execution **pauses** and presents this exact prompt:
+
+```
+This diagram has {N} nodes and {M} edges, which may render poorly.
+Please choose:
+  (a) Full diagram anyway
+  (b) Simplified/clustered diagram
+  (c) Table representation
+```
+
+The skill accepts only `a`, `b`, or `c` (case-insensitive, whitespace-stripped). Any other input results in re-prompting — not a silent default (SEC-14).
+
+| User choice | Action |
+|-------------|--------|
+| `a` | Render full diagram; continue |
+| `b` | Render simplified/clustered diagram; continue |
+| `c` | Render table; emit `SkillError` code `DENSITY_THRESHOLD_EXCEEDED` |
+| (non-interactive context) | Default to `b`; log `SkillError` with `DENSITY_THRESHOLD_EXCEEDED` |
+
+### What Is NEVER Permitted
+
+```
+❌ Detect high density → silently write a table → continue  (FORBIDDEN_PATTERNS §2 violation)
+❌ Detect high density → skip the diagram → write nothing    (also a violation)
+❌ Accept user input other than a/b/c without re-prompting   (SEC-14 violation)
+❌ Threshold value of 0 or negative                         (SEC-13 violation)
+```
+
+---
+
+## Appendix A: Mermaid-vs-Graphviz Experiment Protocol
+
+This appendix documents how to run controlled renderer comparisons on amplihack repositories. It does not describe required execution steps — it describes an optional investigative experiment.
+
+### A.1 Purpose and Hypothesis
+
+**Purpose:** Determine which renderer (Mermaid or Graphviz DOT) produces more readable, navigable diagrams for specific atlas layers on amplihack-scale codebases.
+
+**Hypothesis:** Graphviz DOT may produce superior layouts for densely connected graphs (Layers 1, 7), while Mermaid may perform better for sequential flows (Layers 4, 5) and is easier to maintain in CI.
+
+### A.2 Recommended Layers for Testing
+
+| Layer | Reason for Inclusion |
+|-------|---------------------|
+| Layer 1 — Runtime Topology | High connectivity; tests DOT cluster layout vs Mermaid subgraph |
+| Layer 7 — Service Component Architecture | Per-service density; component hierarchy is a common DOT strength |
+
+Layers 4 and 5 are recommended as controls (expected Mermaid win due to sequence semantics).
+
+### A.3 Controlled Comparison Steps
+
+1. **Select a target repository** — use a real amplihack repo with ≥3 services
+2. **Build the layer with both renderers**:
+   ```
+   /code-atlas layers=1 diagram_formats=mermaid output_dir=docs/atlas/experiment/mermaid
+   /code-atlas layers=1 diagram_formats=dot output_dir=docs/atlas/experiment/dot
+   ```
+3. **Record render time** for each format (use `time` wrapper)
+4. **Assess readability** against the four metrics in §A.4
+5. **Record findings** in `docs/atlas/experiments/{YYYY-MM-DD}-mermaid-vs-graphviz-L{N}.md`
+
+### A.4 Metrics to Capture
+
+| Metric | Definition | How to Measure |
+|--------|-----------|----------------|
+| Render success | Did the renderer produce valid output without errors? | Exit code 0; SVG exists |
+| Layout clarity | Can all node labels be read without overlap? | Visual inspection; score 1–5 |
+| Navigation ease | Can a new engineer follow a path through the diagram? | Ask a volunteer; score 1–5 |
+| Maintenance burden | How many manual edits are needed when the codebase changes? | Count diffs per PR over 2 weeks |
+
+### A.5 Recording Findings
+
+Create `docs/atlas/experiments/{YYYY-MM-DD}-mermaid-vs-graphviz-L{N}.md` with:
+
+```markdown
+# Experiment: Mermaid vs Graphviz — Layer {N}
+
+**Date:** {YYYY-MM-DD}
+**Repository:** {repo-name}
+**Layer:** {N}
+
+## Render Results
+
+| Renderer | Success | Render Time | Layout Clarity (1–5) | Navigation Ease (1–5) |
+|----------|---------|-------------|---------------------|----------------------|
+| Mermaid  | ✅/❌   | {N}ms       | {score}              | {score}               |
+| Graphviz | ✅/❌   | {N}ms       | {score}              | {score}               |
+
+## Observations
+
+{Free text: what worked, what didn't, edge cases observed}
+
+## Recommendation
+
+{Mermaid / Graphviz / Neither — one sentence with rationale}
+```
+
+Experiment filenames use system date (`datetime.date.today().isoformat()`) and a validated layer ID from allowlist `{1..8}` (SEC-18: layer ID is never taken from raw user input without validation).
+
+### A.6 Reporting to Team
+
+After completing an experiment:
+
+1. Commit the experiment file to the feature branch
+2. Reference it in the PR description: "Experiment result: see `docs/atlas/experiments/`"
+3. Add a comment to the PR linking directly to the experiment file
+
+Do NOT add experiment results to `docs/atlas/` main layer directories — they are `experiments/` only.
+
+---
+
 ## Bug-Hunting Workflow
 
-The atlas is not just documentation — it is an **active investigation tool**. Two defined passes transform the atlas from a map into a bug-detection engine.
+The atlas is not just documentation — it is an **active investigation tool**. Three defined passes transform the atlas from a map into a high-confidence bug-detection engine. Each pass runs in a fresh context window to prevent anchoring bias.
+
+### Pass 1: Comprehensive Build + Hunt
+
+> "Build the atlas from verified code paths, then systematically hunt contradictions between layers."
+
+**Step 1.1 — Route ↔ DTO Mismatch Detection** (Layer 3 × Layer 4):
 
 ### Pass 1: Contradiction Hunt
 
@@ -562,46 +878,110 @@ comm -23 "$doc_routes" "$code_routes"  # In docs, not in code = STALE
 
 ---
 
-### Pass 2: User Journey Trace
+**Bug reports from Pass 1** are filed as `docs/atlas/bug-reports/{YYYY-MM-DD}-pass1-{slug}.md`. The `pass` field in every BugReport object is set to `1`. `layers_involved` can include any of Layers 1–8.
 
-> "Follow specific user journey scenarios through the graphs to find deeper bugs that contradict business expectations."
+---
 
-**Step 2.1 — Select journeys to trace** (from Layer 5):
+### Pass 2: Fresh-Eyes Cross-Check
 
-Prioritize journeys that:
+> "Re-examine the atlas from scratch in a new context window. Validate, overturn, or strengthen Pass 1 findings."
 
-1. Cross service boundaries (appear in multiple Layer 1 nodes)
-2. Write to data stores (mutate Layer 4)
-3. Have known user-reported bugs
+Pass 2 runs as a **separate reviewer agent invocation** — a clean context window with no knowledge of Pass 1 conclusions. This prevents anchoring: the reviewer sees only the atlas data, not the previous pass's interpretations.
 
-**Step 2.2 — Trace each journey through all layers**:
+**Step 2.1 — Fresh atlas read**:
 
-For each journey step, verify:
+The reviewer agent receives all layer output files directly, without any Pass 1 bug reports. It is instructed:
 
-- Layer 3: The route exists and accepts the right DTO
-- Layer 4: The data flow matches expectations (correct fields persisted)
-- Layer 1: The service-to-service calls match the topology
-- Layer 2: No missing dependencies required for this path
-
-**Step 2.3 — Document journey-traced bugs**:
-
-```markdown
-## Bug: Checkout Journey — Order Items Not Persisted
-
-**Journey**: "Browse → Cart → Checkout" (Layer 5, Step 4)
-**Layers crossed**: Layer 3 (POST /api/orders) → Layer 4 (INSERT orders) → Layer 1 (worker)
-**Evidence**:
-
-- Layer 5 sequence shows: API → DB: INSERT orders + INSERT order_items
-- Layer 4 data flow shows CreateOrderRequest.items → order_items table
-- Actual handler (src/controllers/orders.ts:67): Only INSERTs to `orders` table; skips `order_items`
-- Layer 3 inventory confirms CreateOrderRequest.items field exists
-
-**Impact**: Orders created with no line items; revenue reporting broken; fulfillment fails
-**Fix**: Add order_items insert loop in OrderController.create after orders insert
+```
+Read the following atlas layers and identify contradictions independently.
+Do NOT refer to any prior analysis. Treat every layer as a fresh source of truth.
+Layers: [layer1-runtime/README.md, layer3-routing/inventory.md, layer4-dataflow/README.md,
+         layer6-inventory/env-vars.md, layer7-service-components/README.md,
+         layer8-ast-lsp-bindings/dead-code.md, layer8-ast-lsp-bindings/mismatched-interfaces.md]
 ```
 
-**Pass 2 makes Pass 1 better**: After filing pass-2 bugs and fixing them, the atlas reflects corrected state — the next bug-hunting cycle starts from a higher-quality baseline.
+**Step 2.2 — Cross-check Pass 1 findings**:
+
+After independent analysis, the reviewer is given Pass 1 bug reports and asked:
+
+```
+For each Pass 1 finding: CONFIRM, OVERTURN, or NEEDS_ATTENTION.
+A confirmed finding is now severity-upgraded.
+An overturned finding is closed with explanation.
+A NEEDS_ATTENTION finding requires human review.
+```
+
+**Step 2.3 — Document cross-check results**:
+
+```markdown
+## Pass 2 Cross-Check: {pass1-bug-slug}
+
+**Pass 1 verdict:** {severity} — {title}
+**Pass 2 verdict:** CONFIRMED | OVERTURNED | NEEDS_ATTENTION
+
+**Rationale:** {One paragraph explaining Pass 2's independent finding.}
+```
+
+Bug reports from Pass 2 are filed as `docs/atlas/bug-reports/{YYYY-MM-DD}-pass2-{slug}.md`. The `pass` field is set to `2`.
+
+---
+
+### Pass 3: Scenario Deep-Dive
+
+> "Trace each Layer 5 user journey end-to-end. Produce a PASS/FAIL/NEEDS_ATTENTION verdict for every journey."
+
+**Step 3.1 — Select journeys** (all Layer 5 journeys are traced in Pass 3):
+
+```
+For each journey in docs/atlas/layer5-journeys/*.mmd:
+  1. Trace every step through Layers 3, 4, 1, 7, and 8
+  2. Evaluate against the four mandatory criteria (see §4b of API-CONTRACTS.md)
+  3. Produce a JourneyVerdict with PASS / FAIL / NEEDS_ATTENTION
+```
+
+**Step 3.2 — Per-journey trace checklist**:
+
+For each step in a journey, verify:
+
+| Check | Source | Question |
+|-------|--------|----------|
+| Route exists | Layer 3 | Does the step's HTTP endpoint appear in the route inventory? |
+| DTO complete | Layer 4 | Are all request fields declared in the DTO? Any response fields never populated? |
+| Topology matches | Layer 1 | Does the inter-service call appear in the runtime topology? |
+| Component reachable | Layer 7 | Are the handler and service components present in the per-service diagram? |
+| No dead code | Layer 8 | Are any symbols on this path listed in the dead-code report? |
+
+**Step 3.3 — Verdict block format** (per journey):
+
+```markdown
+## Journey: user-checkout
+
+### Verdict: FAIL
+
+| Criterion | Status | Evidence |
+|-----------|--------|----------|
+| Layer 3 routes match journey steps | ✅ | layer3-routing/inventory.md — POST /api/orders found |
+| Layer 4 data flows complete | ❌ | src/controllers/orders.ts:67 — order_items INSERT missing |
+| Layer 7 service components reachable | ✅ | layer7-service-components/api-service.mmd — OrderController present |
+| No dead code on critical path | ⚠️ | layer8-ast-lsp-bindings/dead-code.md — LegacyOrderFormatter on path |
+
+**Verdict Rationale:** The user-checkout journey fails because the Layer 4 data flow specifies that
+`CreateOrderRequest.items` is persisted to the `order_items` table, but `OrderController.create`
+(src/controllers/orders.ts:67) only INSERTs into the `orders` table. The missing INSERT is a
+critical data integrity bug; FAIL verdict applies.
+```
+
+**Verdict semantics:**
+
+| Verdict | Condition |
+|---------|-----------|
+| `PASS` | All criteria pass — no bugs found on this journey's path |
+| `FAIL` | ≥1 criterion fails — a critical or major bug is on the path |
+| `NEEDS_ATTENTION` | ≥1 criterion is `⚠️` and none are `❌` — minor issues or ambiguities |
+
+Bug reports from Pass 3 are filed as `docs/atlas/bug-reports/{YYYY-MM-DD}-pass3-{journey-slug}.md`. The `pass` field is set to `3`. All `file:line` references in evidence fields use relative paths (SEC-16 — absolute paths are rejected).
+
+**Three passes, higher confidence**: Pass 1 hunts broad contradictions. Pass 2 validates without anchoring bias. Pass 3 traces journeys with verdict accountability. Together they catch structural bugs that any single pass would miss.
 
 ---
 
@@ -609,15 +989,17 @@ For each journey step, verify:
 
 ### Trigger Table
 
-| File Change                                                                      | Atlas Layer(s) Affected    | Rebuild Command              |
-| -------------------------------------------------------------------------------- | -------------------------- | ---------------------------- |
-| `docker-compose*.yml`, `k8s/**/*.yaml`, `kubernetes/**/*.yaml`, `helm/**/*.yaml` | Layer 1 (Runtime Topology) | `/code-atlas rebuild layer1` |
-| `go.mod`, `package.json`, `*.csproj`, `Cargo.toml`                               | Layer 2 (Dependencies)     | `/code-atlas rebuild layer2` |
-| Route files (`*routes*.ts`, `*controller*.go`, `*views*.py`, `*handler*.go`)     | Layer 3 (HTTP Routing)     | `/code-atlas rebuild layer3` |
-| DTO files (`*dto*.ts`, `*schema*.py`, `*_request.go`, `*model*.go`)              | Layer 4 (Data Flow)        | `/code-atlas rebuild layer4` |
-| User-facing page/CLI files                                                       | Layer 5 (Journeys)         | `/code-atlas rebuild layer5` |
-| `.env.example`, service `README.md`                                              | Layer 6 (Inventory)        | `/code-atlas rebuild layer6` |
-| **Any of the above**                                                             | Full atlas                 | `/code-atlas rebuild all`    |
+| File Change                                                                      | Atlas Layer(s) Affected         | Rebuild Command                  |
+| -------------------------------------------------------------------------------- | ------------------------------- | -------------------------------- |
+| `docker-compose*.yml`, `k8s/**/*.yaml`, `kubernetes/**/*.yaml`, `helm/**/*.yaml` | Layer 1 (Runtime Topology)      | `/code-atlas rebuild layer1`     |
+| `go.mod`, `package.json`, `*.csproj`, `Cargo.toml`                               | Layer 2 (Dependencies)          | `/code-atlas rebuild layer2`     |
+| Route files (`*routes*.ts`, `*controller*.go`, `*views*.py`, `*handler*.go`)     | Layer 3 (HTTP Routing)          | `/code-atlas rebuild layer3`     |
+| DTO files (`*dto*.ts`, `*schema*.py`, `*_request.go`, `*model*.go`)              | Layer 4 (Data Flow)             | `/code-atlas rebuild layer4`     |
+| User-facing page/CLI files                                                       | Layer 5 (Journeys)              | `/code-atlas rebuild layer5`     |
+| `.env.example`, service `README.md`                                              | Layer 6 (Inventory)             | `/code-atlas rebuild layer6`     |
+| `**/__init__.py`, `**/package.json` (workspace), `**/*.mod`                      | Layer 7 (Service Components)    | `/code-atlas rebuild layer7`     |
+| `**/*.py`, `**/*.ts`, `**/*.go` (any source file change)                         | Layer 8 (AST+LSP Bindings)      | `/code-atlas rebuild layer8`     |
+| **Any of the above**                                                             | Full atlas                      | `/code-atlas rebuild all`        |
 
 ### Staleness Detection Commands
 
@@ -778,9 +1160,21 @@ docs/
     │   ├── env-vars.md
     │   ├── data-stores.md
     │   └── external-deps.md
-    └── bug-reports/
-        ├── pass1-contradictions.md
-        └── pass2-journey-bugs.md
+    ├── layer7-service-components/
+    │   ├── README.md                    # States service list and analysis date
+    │   ├── {service-name}.mmd           # One per service (SEC-11: name sanitised)
+    │   └── {service-name}.svg           # Pre-rendered SVG (when mmdc available)
+    ├── layer8-ast-lsp-bindings/
+    │   ├── README.md                    # Line 1: **Mode:** lsp-assisted|static-approximation
+    │   ├── symbol-references.mmd        # Cross-file reference graph
+    │   ├── dead-code.md                 # Unreferenced exported symbols table
+    │   └── mismatched-interfaces.md     # Call-site/definition mismatch table
+    ├── bug-reports/
+    │   ├── {YYYY-MM-DD}-pass1-{slug}.md # Pass 1 findings
+    │   ├── {YYYY-MM-DD}-pass2-{slug}.md # Pass 2 cross-check findings
+    │   └── {YYYY-MM-DD}-pass3-{slug}.md # Pass 3 per-journey verdict blocks
+    └── experiments/
+        └── {YYYY-MM-DD}-mermaid-vs-graphviz-L{N}.md  # Appendix A experiment records
 ```
 
 ### SVG Generation Commands
@@ -816,7 +1210,10 @@ nav:
       - Layer 4 — Data Flows: atlas/layer4-dataflow/README.md
       - Layer 5 — User Journeys: atlas/layer5-user-journeys/README.md
       - Layer 6 — Inventory: atlas/layer6-inventory/services.md
-      - Bug Reports: atlas/bug-reports/pass1-contradictions.md
+      - Layer 7 — Service Components: atlas/layer7-service-components/README.md
+      - Layer 8 — AST+LSP Bindings: atlas/layer8-ast-lsp-bindings/README.md
+      - Bug Reports: atlas/bug-reports/
+      - Experiments: atlas/experiments/
 
 plugins:
   - search
@@ -1005,6 +1402,8 @@ A complete code atlas satisfies:
 - [ ] Layer 4: Primary data flows traced from request to persistence to response
 - [ ] Layer 5: At least 3 named user journeys as sequence diagrams
 - [ ] Layer 6: Service, env var, data store, and external dependency inventory tables complete
+- [ ] Layer 7: Per-service component diagram produced for all services from Layer 1 (SEC-11: service names sanitised)
+- [ ] Layer 8: `symbol-references.mmd`, `dead-code.md`, `mismatched-interfaces.md` present; README mode label on line 1
 
 ### Diagram Quality
 
@@ -1013,12 +1412,15 @@ A complete code atlas satisfies:
 - [ ] No orphaned nodes (every node connected to at least one edge)
 - [ ] Legend present for any non-obvious symbols or colors
 - [ ] Diagrams navigable by a new engineer without requiring code access
+- [ ] No diagram was silently substituted with a table (density guard always prompted user first)
 
 ### Bug-Hunt Quality
 
-- [ ] Pass 1 ran against all 6 layers
+- [ ] Pass 1 ran against all 8 layers
+- [ ] Pass 2 ran as independent fresh-eyes cross-check
+- [ ] Pass 3 produced a JourneyVerdict (PASS/FAIL/NEEDS_ATTENTION) for every Layer 5 journey
 - [ ] Every filed bug includes: layer reference, file path, line number, code evidence
-- [ ] Pass 2 traced ≥ 2 user journeys end-to-end
+- [ ] All evidence file:line references are relative paths (not absolute) (SEC-16)
 - [ ] Zero bugs filed without code-evidence quote
 
 ### Freshness and Automation
@@ -1077,5 +1479,11 @@ A complete code atlas satisfies:
 The most valuable output of a code atlas is not the diagrams themselves — it is the bugs and contradictions discovered while being forced to reason about the system in graph form. Every layer built is an opportunity to ask: "Does what the code says match what the code does?"
 
 A code atlas that takes 2 hours to build and finds 5 critical bugs is worth more than 6 months of unread API documentation.
+
+**Three rules that are never negotiable:**
+
+1. **No silent diagram→table substitution.** If density is high, ask. Always. (FORBIDDEN_PATTERNS §2)
+2. **Mode is always visible.** Layer 8's README always states whether it is `lsp-assisted` or `static-approximation` on line 1.
+3. **Three-pass bug hunting.** Pass 1 hunts. Pass 2 validates without anchoring. Pass 3 verdicts per journey. Never skip a pass.
 
 **Rebuild from code truth. Hunt contradictions. File evidence-backed bugs. Repeat.**
