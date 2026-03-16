@@ -264,3 +264,40 @@ class TestGoalSeekingAgentOrient:
             "Store this operational note."[:200], limit=ORIENT_SEARCH_LIMIT
         )
         assert result == {"input": "Store this operational note.", "facts": ["Known fact"]}
+
+
+class TestGoalSeekingAgentProcessStore:
+    """Unit tests for GoalSeekingAgent.process_store()."""
+
+    @pytest.fixture
+    def agent(self):
+        with patch(
+            "amplihack.agents.goal_seeking.goal_seeking_agent.GoalSeekingAgent.__init__",
+            lambda self, **kwargs: None,
+        ):
+            from amplihack.agents.goal_seeking.goal_seeking_agent import GoalSeekingAgent
+
+            ag = GoalSeekingAgent.__new__(GoalSeekingAgent)
+            ag._agent_name = "test_agent"
+            ag._current_input = ""
+            ag._oriented_facts = {}
+            ag._decision = ""
+            ag._learning_agent = MagicMock()
+            ag.on_answer = None
+            return ag
+
+    def test_process_store_forces_learning_for_question_like_input(self, agent):
+        agent._learning_agent.learn_from_content.return_value = {"facts_stored": 2}
+
+        result = agent.process_store("What is Sarah Chen's birthday?")
+
+        agent._learning_agent.learn_from_content.assert_called_once_with(
+            "What is Sarah Chen's birthday?"
+        )
+        agent._learning_agent.answer_question.assert_not_called()
+        assert agent._decision == "store"
+        assert agent._oriented_facts == {
+            "input": "What is Sarah Chen's birthday?",
+            "facts": [],
+        }
+        assert result == "Stored 2 facts from input."
