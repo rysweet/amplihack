@@ -324,7 +324,6 @@ class TestShardTransport:
 
     def test_handle_shard_query_publishes_response(self):
         """EH transport handle_shard_query looks up local shard and publishes SHARD_RESPONSE."""
-        from unittest.mock import patch
 
         from amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph import (
             DistributedHiveGraph,
@@ -335,12 +334,16 @@ class TestShardTransport:
 
         # Use _start_receiving=False to skip background EH consumer thread
         transport_0 = EventHubsShardTransport(
-            connection_string="dummy://", eventhub_name="hive-shards",
-            agent_id="agent-0", _start_receiving=False,
+            connection_string="dummy://",
+            eventhub_name="hive-shards",
+            agent_id="agent-0",
+            _start_receiving=False,
         )
         transport_req = EventHubsShardTransport(
-            connection_string="dummy://", eventhub_name="hive-shards",
-            agent_id="requester", _start_receiving=False,
+            connection_string="dummy://",
+            eventhub_name="hive-shards",
+            agent_id="requester",
+            _start_receiving=False,
         )
 
         graph = DistributedHiveGraph(
@@ -379,8 +382,12 @@ class TestShardTransport:
         transport_0._publish = mock_publish
 
         event = MagicMock()
-        event.payload = {"query": "capital France", "limit": 5, "correlation_id": "corr-1",
-                         "target_agent": "agent-0"}
+        event.payload = {
+            "query": "capital France",
+            "limit": 5,
+            "correlation_id": "corr-1",
+            "target_agent": "agent-0",
+        }
         transport_0.handle_shard_query(event)
 
         with transport_req._mailbox_lock:
@@ -396,8 +403,10 @@ class TestShardTransport:
         )
 
         transport = EventHubsShardTransport(
-            connection_string="dummy://", eventhub_name="hive-shards",
-            agent_id="agent-0", _start_receiving=False,
+            connection_string="dummy://",
+            eventhub_name="hive-shards",
+            agent_id="agent-0",
+            _start_receiving=False,
         )
 
         done_event = threading.Event()
@@ -425,8 +434,10 @@ class TestShardTransport:
         from amplihack.agents.goal_seeking.hive_mind.hive_graph import HiveFact
 
         transport = EventHubsShardTransport(
-            connection_string="dummy://", eventhub_name="hive-shards",
-            agent_id="agent-0", _start_receiving=False,
+            connection_string="dummy://",
+            eventhub_name="hive-shards",
+            agent_id="agent-0",
+            _start_receiving=False,
         )
         published: list[dict] = []
         transport._publish = lambda payload, partition_key=None: published.append(payload)
@@ -540,3 +551,50 @@ class TestShardQueryListener:
         t.join()
 
         mock_transport.handle_shard_response.assert_called()
+
+
+# ---------------------------------------------------------------------------
+# Question propagation: original question string reaches query_facts unchanged
+# ---------------------------------------------------------------------------
+
+
+class TestQuestionPropagationEndToEnd:
+    """Regression guards for ingress question propagation in the Azure entrypoint."""
+
+    def test_extract_input_text_preserves_original_question(self) -> None:
+        """_extract_input_text('INPUT', {'question': q}) returns q unchanged."""
+        mod = _load_entrypoint()
+        original_question = "What animal facts are known?"
+
+        result = mod._extract_input_text(
+            "INPUT",
+            {"question": original_question},
+            {},
+        )
+        assert result == original_question, (
+            f"_extract_input_text returned {result!r}, expected {original_question!r}"
+        )
+
+    def test_handle_input_event_delivers_question_to_agent_process(self) -> None:
+        """INPUT event with payload.question delivers the original question to agent.process().
+
+        Regression guard for the ingress INPUT event path:
+          _handle_event(INPUT event) → _extract_input_text → agent.process(original_question)
+
+        The question must reach agent.process() verbatim — no mutation or transformation
+        by the event dispatch layer.
+        """
+        mod = _load_entrypoint()
+        mock_mem = MagicMock()
+        mock_agent = MagicMock()
+        mock_agent.process.return_value = "answer"
+
+        original_question = "What animal facts are known?"
+        input_event = {
+            "event_type": "INPUT",
+            "payload": {"question": original_question},
+        }
+        mod._handle_event("agent", input_event, mock_mem, mock_agent)
+
+        mock_agent.process.assert_called_once_with(original_question)
+        mock_mem.recall.assert_not_called()
