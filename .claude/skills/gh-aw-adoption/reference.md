@@ -740,19 +740,30 @@ This section documents common workflow failures discovered in production and the
 **Symptom**:
 
 ```
-##[error]MCP server(s) failed to launch: docker-mcp
+##[error]ERR_API: MCP server(s) failed to launch: docker-mcp
 ```
 
-**Root Cause**: MCP servers configured in `.mcp.json` that cannot run in GitHub Actions environment (e.g., docker-mcp requires Docker which isn't available in standard runners).
+**Root Cause**: MCP servers configured in `.mcp.json` that cannot run in GitHub Actions
+environment (e.g., `docker-mcp` requires Docker which isn't available in the AWF container).
+
+> **Real-world case**: PR [#3136](https://github.com/rysweet/amplihack/pull/3136) failed
+> because `.mcp.json` contained `docker-mcp` without `"disabled": true`. The agent itself
+> completed successfully ("Repo Guardian - Passed"), but the "Parse agent logs" step
+> reported `ERR_API: MCP server(s) failed to launch: docker-mcp` and marked the job as
+> failed. Filed as issue [#3137](https://github.com/rysweet/amplihack/issues/3137).
+>
+> **Fix applied**: Removed `docker-mcp` from `.mcp.json` and added `"disabled": true` to
+> `workiq`. A pre-commit hook (`check-mcp-config`) now prevents re-introduction.
 
 **Solution**:
 
-1. **Remove incompatible MCP servers** from `.mcp.json`:
+1. **Remove incompatible MCP servers** from `.mcp.json` (or add `"disabled": true`):
 
    ```json
    {
      "mcpServers": {
        "workiq": {
+         "disabled": true,
          "command": "npx",
          "args": ["-y", "@microsoft/workiq", "mcp"]
        }
@@ -764,7 +775,7 @@ This section documents common workflow failures discovered in production and the
    - ✅ workiq - Works (npm-based)
    - ✅ github - Works (API-based)
    - ✅ safeoutputs - Works (built-in)
-   - ❌ docker-mcp - Fails (requires Docker)
+   - ❌ docker-mcp - Fails (requires Docker daemon, unavailable in AWF container)
    - ❌ filesystem with host paths - Fails (sandboxed)
 
 3. **Test MCP servers locally first**:
@@ -773,7 +784,16 @@ This section documents common workflow failures discovered in production and the
    uvx docker-mcp  # If this fails, it will fail in CI too
    ```
 
-**Impact**: MCP server launch failures cause entire workflow to fail, even if agent completed successfully.
+4. **Pre-commit hook catches this automatically** (since PR #3143):
+   ```bash
+   # The check-mcp-config hook in .pre-commit-config.yaml will flag:
+   # "MCP server 'docker-mcp' is enabled but CI-incompatible"
+   pre-commit run check-mcp-config --files .mcp.json
+   ```
+
+**Impact**: MCP server launch failures cause entire workflow to fail, even if agent
+completed successfully. The failure appears in the "Parse agent logs for step summary"
+step, not in the main agent execution step.
 
 ---
 
