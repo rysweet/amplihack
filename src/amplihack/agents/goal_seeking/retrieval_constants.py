@@ -110,6 +110,10 @@ BIGRAM_WEIGHT: float = 0.35
 # Per-rank decrement in position-based scoring for shard responses.
 POSITION_SCORE_DECREMENT: float = 0.01
 
+# Small weight applied to confidence as a secondary sort key when ranking
+# facts by keyword hit count (prevents equal-hit facts from ordering randomly).
+CONFIDENCE_SORT_WEIGHT: float = 0.01
+
 # ---------------------------------------------------------------------------
 # Distributed hive
 # ---------------------------------------------------------------------------
