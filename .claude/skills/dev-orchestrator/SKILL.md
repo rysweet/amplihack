@@ -167,27 +167,31 @@ Use tmux **only** when:
 
 ```bash
 LOG_FILE=$(mktemp /tmp/recipe-runner-output.XXXXXX.log)
-chmod 600 "$LOG_FILE"
-tmux new-session -d -s recipe-runner "cd /path/to/repo && \
-  env -u CLAUDECODE \
-  AMPLIHACK_HOME=/path/to/amplihack PYTHONPATH=src \
-  python3 -c \"
+SCRIPT_FILE=$(mktemp /tmp/recipe-runner-script.XXXXXX.py)
+chmod 600 "$LOG_FILE" "$SCRIPT_FILE"
+cat > "$SCRIPT_FILE" << 'RECIPE_SCRIPT'
 from amplihack.recipes import run_recipe_by_name
 
 result = run_recipe_by_name(
-    'smart-orchestrator',
+    "smart-orchestrator",
     user_context={
-        'task_description': '''TASK_DESCRIPTION_HERE''',
-        'repo_path': '.',
+        "task_description": """TASK_DESCRIPTION_HERE""",
+        "repo_path": ".",
     },
     progress=True,
 )
-print(f'Recipe result: {result}')
-\" 2>&1 | tee \"$LOG_FILE\""
+print(f"Recipe result: {result}")
+RECIPE_SCRIPT
+tmux new-session -d -s recipe-runner \
+  "cd /path/to/repo && env -u CLAUDECODE \
+   AMPLIHACK_HOME=/path/to/amplihack PYTHONPATH=src \
+   python3 $SCRIPT_FILE 2>&1 | tee $LOG_FILE"
 echo "Recipe runner log: $LOG_FILE"
 ```
 
-- `chmod 600 "$LOG_FILE"` — keeps the tmux log private to the current user
+- The Python payload is written to a temp script to avoid nested quoting
+  issues that cause silent launch failures (see issue #3215)
+- `chmod 600 "$LOG_FILE" "$SCRIPT_FILE"` — keeps both files private
 - `tmux new-session -d` — detached session, no timeout, survives disconnects
 - Monitor with: `tail -f "$LOG_FILE"` or `tmux attach -t recipe-runner`
 
