@@ -105,8 +105,7 @@ assert_output_contains "help: shows --dry-run flag" "\-\-dry-run" "$output"
 # ---------------------------------------------------------------------------
 # Test 2: Unknown flag exits 1 with error message
 # ---------------------------------------------------------------------------
-output=$(bash "$REBUILD_SCRIPT" --unknown-flag 2>&1 || true)
-exit_code=$?
+output=$(bash "$REBUILD_SCRIPT" --unknown-flag 2>&1) && exit_code=0 || exit_code=$?
 assert_exit_code "unknown flag: exits 1" 1 "$exit_code" "$output"
 assert_output_contains "unknown flag: error message" "[Uu]nknown\|[Ee]rror\|[Ii]nvalid" "$output"
 
@@ -114,8 +113,7 @@ assert_output_contains "unknown flag: error message" "[Uu]nknown\|[Ee]rror\|[Ii]
 # Test 3: Outside git repo exits 1 with error
 # ---------------------------------------------------------------------------
 tmpdir=$(mktemp -d)
-output=$(cd "$tmpdir" && bash "$REBUILD_SCRIPT" 2>&1 || true)
-exit_code=$?
+output=$(cd "$tmpdir" && bash "$REBUILD_SCRIPT" 2>&1) && exit_code=0 || exit_code=$?
 assert_exit_code "outside git repo: exits 1" 1 "$exit_code" "$output"
 assert_output_contains "outside git repo: git error message" "[Gg]it\|[Rr]epository\|[Rr]epo" "$output"
 rm -rf "$tmpdir"

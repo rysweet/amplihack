@@ -64,7 +64,7 @@ fi
 
 REPO_ROOT=$(git rev-parse --show-toplevel)
 ATLAS_DIR="${REPO_ROOT}/docs/atlas"
-CURRENT_REF=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+CURRENT_REF=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
 
 echo "Repository: ${REPO_ROOT}"
@@ -122,7 +122,7 @@ if [[ "$CI_MODE" == true ]]; then
     echo "CI mode: staging atlas changes..."
 
     # Validate that rebuild produced expected layer directories
-    EXPECTED_LAYERS=("layer1-runtime" "layer2-dependencies" "layer3-routing" "layer4-dataflow" "layer5-journeys" "layer6-inventory")
+    EXPECTED_LAYERS=("layer1-runtime" "layer2-dependencies" "layer3-http-routing" "layer4-dataflow" "layer5-user-journeys" "layer6-inventory")
     MISSING_LAYERS=()
     for layer in "${EXPECTED_LAYERS[@]}"; do
         layer_dir="${ATLAS_DIR}/${layer}"
