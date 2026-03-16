@@ -4,6 +4,7 @@ import argparse
 import logging
 import os
 import platform
+import shutil
 import subprocess
 import sys
 import time
@@ -910,9 +911,9 @@ def _configure_amplihack_marketplace() -> bool:
 
 
 def _fallback_to_directory_copy(reason: str = "Plugin installation failed") -> str:
-    """Copy .claude directory to ~/.amplihack/.claude/ (primary install location).
+    """Stage runtime assets into ~/.amplihack/ (primary install location).
 
-    This is the primary mechanism for deploying amplihack's .claude components
+    This is the primary mechanism for deploying amplihack's runtime components
     to the user's home directory. Used both as a fallback when Claude Code plugin
     installation is unavailable AND as the primary method for amplifier command.
 
@@ -930,13 +931,61 @@ def _fallback_to_directory_copy(reason: str = "Plugin installation failed") -> s
     if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
         print(f"   Reason: {reason}")
 
-    install_dir = str(Path.home() / ".amplihack" / ".claude")
     amplihack_src = Path(amplihack.__file__).parent
-    Path(install_dir).mkdir(parents=True, exist_ok=True)
-    copied = copytree_manifest(str(amplihack_src), install_dir, ".claude")
-    if not copied:
-        print("❌ Failed to copy .claude directory")
+    return str(_stage_home_runtime_assets(amplihack_src))
+
+
+def _sync_home_runtime_directory(source_dir: Path, target_dir: Path, description: str) -> None:
+    """Sync a non-.claude runtime directory into ~/.amplihack."""
+    if not source_dir.exists():
+        print(f"❌ Required runtime directory missing: {source_dir}")
         sys.exit(1)
+
+    target_dir.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        shutil.copytree(source_dir, target_dir, dirs_exist_ok=True)
+    except OSError as exc:
+        print(f"❌ Failed to stage {description} to {target_dir}: {exc}")
+        sys.exit(1)
+
+
+def _resolve_runtime_source_root(amplihack_src: Path) -> Path:
+    """Resolve the source root that contains runtime assets for staging."""
+    candidates = [
+        amplihack_src,
+        amplihack_src.parent.parent,
+    ]
+
+    for candidate in candidates:
+        if (candidate / ".claude").exists():
+            return candidate
+
+    return amplihack_src
+
+
+def _stage_home_runtime_assets(amplihack_src: Path) -> Path:
+    """Stage the runtime layout expected by external-repo workflows into ~/.amplihack."""
+    home_root = Path.home() / ".amplihack"
+    home_root.mkdir(parents=True, exist_ok=True)
+    source_root = _resolve_runtime_source_root(amplihack_src)
+
+    install_dir = home_root / ".claude"
+    copied = copytree_manifest(str(source_root), str(install_dir), ".claude")
+    if not copied:
+        print("❌ Failed to stage amplihack framework to ~/.amplihack/.claude/")
+        sys.exit(1)
+
+    bundle_source = source_root / "amplifier-bundle"
+    _sync_home_runtime_directory(bundle_source, home_root / "amplifier-bundle", "amplifier-bundle/")
+
+    for filename in ("CLAUDE.md", "AMPLIHACK.md"):
+        source_file = source_root / filename
+        if source_file.exists():
+            try:
+                shutil.copy2(source_file, home_root / filename)
+            except OSError as exc:
+                print(f"❌ Failed to stage {filename} to {home_root}: {exc}")
+                sys.exit(1)
 
     return install_dir
 
@@ -1083,14 +1132,14 @@ def _common_launcher_startup(args: "argparse.Namespace") -> None:
 
 
 def _ensure_amplihack_staged() -> None:
-    """Ensure .claude/ files are staged to ~/.amplihack/.claude/ for non-Claude commands.
+    """Ensure runtime assets are staged to ~/.amplihack/ for non-Claude commands.
 
     This function populates the unified staging directory used by copilot, amplifier,
     rustyclawd, and codex commands. Only runs in UVX deployment mode.
 
     The staging process:
-    1. Creates ~/.amplihack/.claude/ if it doesn't exist
-    2. Copies essential framework files using copytree_manifest()
+    1. Creates ~/.amplihack/ if it doesn't exist
+    2. Copies .claude/ and amplifier-bundle/ runtime assets
     3. Exits with code 1 if staging fails
 
     Raises:
@@ -1127,28 +1176,18 @@ def _ensure_amplihack_staged() -> None:
 
     # Debug logging
     if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-        print("📦 Staging amplihack framework to ~/.amplihack/.claude/")
+        print("📦 Staging amplihack runtime to ~/.amplihack/")
 
     # Determine source directory (package installation)
     import amplihack
 
     amplihack_src = Path(amplihack.__file__).parent
 
-    # Unified staging directory for all commands
-    staging_dir = Path.home() / ".amplihack" / ".claude"
-    staging_dir.mkdir(parents=True, exist_ok=True)
-
-    # Copy .claude/ files to staging directory
-    copied = copytree_manifest(str(amplihack_src), str(staging_dir), ".claude")
-
-    if not copied:
-        print("❌ Failed to stage amplihack framework to ~/.amplihack/.claude/")
-        print("   This is required for amplihack commands to work in UVX mode.")
-        sys.exit(1)
+    staging_dir = _stage_home_runtime_assets(amplihack_src)
 
     # Debug logging
     if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-        print(f"✓ Staged {len(copied)} directories to {staging_dir}")
+        print(f"✓ Staged amplihack runtime assets to {staging_dir.parent}")
 
     # Configure Claude Code hooks in ~/.claude/settings.json
     from .settings import ensure_settings_json

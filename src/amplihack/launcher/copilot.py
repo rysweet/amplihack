@@ -554,12 +554,17 @@ def install_copilot(env: MutableMapping[str, str] | None = None, home: Path | No
     npm_prefix.mkdir(parents=True, exist_ok=True)
 
     try:
-        kwargs = {"check": False}
         if env is not None:
-            kwargs["env"] = effective_env
-        result = subprocess.run(
-            ["npm", "install", "-g", "--prefix", str(npm_prefix), "@github/copilot"], **kwargs
-        )
+            result = subprocess.run(
+                ["npm", "install", "-g", "--prefix", str(npm_prefix), "@github/copilot"],
+                check=False,
+                env=effective_env,
+            )
+        else:
+            result = subprocess.run(
+                ["npm", "install", "-g", "--prefix", str(npm_prefix), "@github/copilot"],
+                check=False,
+            )
         if result.returncode == 0:
             print("✓ Copilot CLI installed")
 
@@ -917,6 +922,57 @@ INSTRUCTIONS_MARKER_START = "<!-- AMPLIHACK_INSTRUCTIONS_START -->"
 INSTRUCTIONS_MARKER_END = "<!-- AMPLIHACK_INSTRUCTIONS_END -->"
 
 
+def _read_text_if_exists(path: Path) -> str:
+    """Read a text file if it exists, otherwise return an empty string."""
+    return path.read_text() if path.exists() else ""
+
+
+def _extract_heading_block(text: str, start_heading: str, end_heading: str) -> str:
+    """Extract a markdown section bounded by two headings."""
+    start = text.find(start_heading)
+    if start == -1:
+        return ""
+
+    block = text[start:]
+    end = block.find(end_heading)
+    if end != -1:
+        block = block[:end]
+
+    return block.strip()
+
+
+def build_copilot_agents_context(claude_dir: Path, preferences_text: str | None = None) -> str:
+    """Build the AGENTS.md context Copilot needs for workflow enforcement."""
+    routing_prompt = _read_text_if_exists(
+        claude_dir / "tools" / "amplihack" / "hooks" / "templates" / "routing_prompt.txt"
+    ).strip()
+    dev_skill = _read_text_if_exists(claude_dir / "skills" / "dev-orchestrator" / "SKILL.md")
+    execution_block = _extract_heading_block(
+        dev_skill, "## Execution Instructions", "## Task Type Classification"
+    )
+
+    sections = [
+        "## Amplihack Copilot Workflow Rules\n\n"
+        "For any DEV, INVESTIGATE, or HYBRID request, invoke "
+        '`Skill(skill="dev-orchestrator")` immediately.\n\n'
+        "After the skill is activated, the next tool call must execute the "
+        '`smart-orchestrator` recipe via `run_recipe_by_name("smart-orchestrator")`.\n\n'
+        "Do not follow the workflow manually and do not fall back to legacy "
+        "`ultrathink` behavior.",
+    ]
+
+    if routing_prompt:
+        sections.append("## Auto-routing prompt\n\n" + routing_prompt)
+
+    if execution_block:
+        sections.append(execution_block)
+
+    if preferences_text:
+        sections.append("## User Preferences\n\n" + preferences_text.strip())
+
+    return "\n\n".join(section for section in sections if section)
+
+
 def generate_copilot_instructions(copilot_home: Path) -> None:
     """Inject amplihack section into ~/.copilot/copilot-instructions.md.
 
@@ -954,7 +1010,8 @@ Read workflow files from `{copilot_home}/workflow/amplihack/` to follow structur
 - `INVESTIGATION_WORKFLOW.md` — Research and exploration (6 phases)
 - `CASCADE_WORKFLOW.md`, `DEBATE_WORKFLOW.md`, `N_VERSION_WORKFLOW.md` — Fault tolerance patterns
 
-For any non-trivial development task, read DEFAULT_WORKFLOW.md and follow its steps.
+    For any non-trivial development or investigation task, use `/dev` (or `Skill(skill="dev-orchestrator")`)
+    so the smart-orchestrator recipe executes the workflow instead of handling it manually.
 
 ## Context
 Read context files from `{copilot_home}/context/amplihack/` for project philosophy and patterns:
@@ -963,11 +1020,12 @@ Read context files from `{copilot_home}/context/amplihack/` for project philosop
 - `TRUST.md` — Anti-sycophancy and direct communication guidelines
 - `USER_PREFERENCES.md` — User-specific preferences (MANDATORY)
 
-## Commands
-Read command definitions from `{copilot_home}/commands/amplihack/` for available capabilities:
-- `ultrathink.md` — Deep analysis orchestration for complex tasks
-- `analyze.md` — Comprehensive code review
-- `improve.md` — Self-improvement and learning capture
+    ## Commands
+    Read command definitions from `{copilot_home}/commands/amplihack/` for available capabilities:
+    - `dev.md` — Primary dev-orchestrator entry point
+    - `ultrathink.md` — Deprecated alias to `/dev`
+    - `analyze.md` — Comprehensive code review
+    - `improve.md` — Self-improvement and learning capture
 
 ## Agents
 Custom agents are available at `{copilot_home}/agents/amplihack/`. Use them via the task tool.
@@ -1177,12 +1235,14 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
         # Generate copilot-instructions.md so copilot knows where everything is
         generate_copilot_instructions(copilot_home)
 
-        # Inject preferences into AGENTS.md for copilot context
+        # Inject workflow instructions and preferences into AGENTS.md for Copilot context.
+        # Copilot's UserPromptSubmit hook is observe-only, so AGENTS.md must carry the
+        # actual routing/workflow instructions up front.
         prefs_file = user_dir / ".claude/context/USER_PREFERENCES.md"
         if not prefs_file.exists():
             prefs_file = claude_dir / "context/USER_PREFERENCES.md"
-        if prefs_file.exists():
-            strategy.inject_context(prefs_file.read_text())
+        preferences_text = prefs_file.read_text() if prefs_file.exists() else None
+        strategy.inject_context(build_copilot_agents_context(claude_dir, preferences_text))
     except Exception as e:
         # Fail gracefully - Copilot will work without preferences
         print(f"Warning: Could not prepare Copilot environment: {e}")

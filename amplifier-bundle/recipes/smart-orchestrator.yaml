@@ -81,10 +81,12 @@ steps:
   - id: "parse-decomposition"
     type: "bash"
     command: |
-      HELPER_PATH=$(python3 -m amplihack.resolve_bundle_asset "amplifier-bundle/tools/orch_helper.py") || {
-          echo "ERROR: orch_helper.py not found. Set AMPLIHACK_HOME to your amplihack installation root." >&2
+      HELPER_PATH="$(python3 -m amplihack.runtime_assets helper-path 2>/dev/null || true)"
+      if [ ! -f "$HELPER_PATH" ]; then
+          echo "ERROR: orch_helper.py not found at: $HELPER_PATH" >&2
+          echo "Ensure amplihack is installed correctly, or set AMPLIHACK_HOME to a valid runtime root." >&2
           exit 1
-      }
+      fi
       _DECOMP_TMPFILE=$(mktemp)
       trap 'rm -f "$_DECOMP_TMPFILE"' EXIT
       cat > "$_DECOMP_TMPFILE" <<__DECOMP_EOF__
@@ -130,17 +132,19 @@ steps:
   - id: "activate-workflow"
     type: "bash"
     command: |
-      HELPER_PATH=$(python3 -m amplihack.resolve_bundle_asset "amplifier-bundle/tools/orch_helper.py") || {
-          echo "ERROR: orch_helper.py not found. Set AMPLIHACK_HOME to your amplihack installation root." >&2
+      HELPER_PATH="$(python3 -m amplihack.runtime_assets helper-path 2>/dev/null || true)"
+      if [ ! -f "$HELPER_PATH" ]; then
+          echo "ERROR: orch_helper.py not found at: $HELPER_PATH" >&2
+          echo "Ensure amplihack is installed correctly, or set AMPLIHACK_HOME to a valid runtime root." >&2
           exit 1
-      }
+      fi
       DECOMP_JSON=$(cat <<EOFDECOMP
       {{decomposition_json}}
       EOFDECOMP
       )
       TASK_TYPE={{task_type}}
       FORCE_SINGLE={{force_single_workstream}}
-      HOOKS_DIR=$(python3 -m amplihack.resolve_bundle_asset "amplifier-bundle/tools/amplihack/hooks" 2>/dev/null) || HOOKS_DIR=""
+      HOOKS_DIR="$(python3 -m amplihack.runtime_assets hooks-dir 2>/dev/null || true)"
       _DECOMP_TMPFILE=$(mktemp)
       trap 'rm -f "$_DECOMP_TMPFILE"' EXIT
       cat > "$_DECOMP_TMPFILE" <<__DECOMP_EOF__
@@ -216,7 +220,7 @@ steps:
     type: "bash"
     condition: "'Development' in task_type or 'Investigation' in task_type or task_type == ''"
     command: |
-      TREE_SCRIPT=$(python3 -m amplihack.resolve_bundle_asset "amplifier-bundle/tools/session_tree.py" 2>/dev/null) || TREE_SCRIPT=""
+      TREE_SCRIPT="$(python3 -m amplihack.runtime_assets session-tree-path 2>/dev/null || true)"
       SESSION_ID=$(python3 -c "import uuid; print(uuid.uuid4().hex[:8])")
 
       if [ -f "$TREE_SCRIPT" ]; then
@@ -343,10 +347,12 @@ steps:
     condition: |
       ('Development' in task_type or 'Investigation' in task_type) and workstream_count != '1' and workstream_count != '' and 'ALLOWED' in recursion_guard and force_single_workstream != 'true'
     command: |
-      HELPER_PATH=$(python3 -m amplihack.resolve_bundle_asset "amplifier-bundle/tools/orch_helper.py") || {
-          echo "ERROR: orch_helper.py not found. Set AMPLIHACK_HOME to your amplihack installation root." >&2
+      HELPER_PATH="$(python3 -m amplihack.runtime_assets helper-path 2>/dev/null || true)"
+      if [ ! -f "$HELPER_PATH" ]; then
+          echo "ERROR: orch_helper.py not found at: $HELPER_PATH" >&2
+          echo "Ensure amplihack is installed correctly, or set AMPLIHACK_HOME to a valid runtime root." >&2
           exit 1
-      }
+      fi
       _DECOMP_TMPFILE=$(mktemp)
       trap 'rm -f "$_DECOMP_TMPFILE"' EXIT
       cat > "$_DECOMP_TMPFILE" <<__DECOMP_EOF__
@@ -834,8 +840,8 @@ steps:
       {{session_info}}
       EOFSESSIONJSON
       )
-      TREE_SCRIPT=$(python3 -m amplihack.resolve_bundle_asset "amplifier-bundle/tools/session_tree.py" 2>/dev/null) || TREE_SCRIPT=""
-      HOOKS_DIR=$(python3 -m amplihack.resolve_bundle_asset "amplifier-bundle/tools/amplihack/hooks" 2>/dev/null) || HOOKS_DIR=""
+      TREE_SCRIPT="$(python3 -m amplihack.runtime_assets session-tree-path 2>/dev/null || true)"
+      HOOKS_DIR="$(python3 -m amplihack.runtime_assets hooks-dir 2>/dev/null || true)"
       # Parse session fields and clear workflow semaphore in one Python subprocess.
       # Uses env vars instead of pipe+heredoc to avoid stdin conflict (issue #2581).
       export SESSION_JSON HOOKS_DIR
