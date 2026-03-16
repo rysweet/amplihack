@@ -39,7 +39,6 @@ from __future__ import annotations
 import concurrent.futures
 import hashlib
 import logging
-import random
 import threading
 import uuid
 from typing import Any, Protocol, runtime_checkable
@@ -2049,7 +2048,7 @@ class DistributedHiveGraph:
     def run_gossip_round(self) -> dict[str, int]:
         """Run a gossip round using bloom filter exchange.
 
-        Each agent exchanges bloom filters with random peers.
+        Each agent exchanges bloom filters with a deterministic peer subset.
         Pulls facts that are missing from its shard.
         Returns dict of agent_id → facts received.
         """
@@ -2068,9 +2067,9 @@ class DistributedHiveGraph:
             if not shard:
                 continue
 
-            # Select random peers
+            # Select a stable peer subset so gossip behavior stays reproducible.
             peers = [a for a in agents if a != agent_id]
-            selected = random.sample(peers, min(fanout, len(peers)))
+            selected = self._select_gossip_peers(agent_id, peers, fanout)
 
             facts_received = 0
             for peer_id in selected:
@@ -2119,6 +2118,18 @@ class DistributedHiveGraph:
             )
 
         return received
+
+    def _select_gossip_peers(self, agent_id: str, peers: list[str], fanout: int) -> list[str]:
+        """Choose a stable gossip peer subset for an agent."""
+        if fanout <= 0 or not peers:
+            return []
+        ordered = sorted(
+            peers,
+            key=lambda peer_id: hashlib.sha256(
+                f"{self._hive_id}:{agent_id}->{peer_id}".encode()
+            ).hexdigest(),
+        )
+        return ordered[: min(fanout, len(ordered))]
 
     def convergence_score(self) -> float:
         """Measure knowledge convergence across all shards.
