@@ -480,8 +480,15 @@ def _run_event_driven_loop(
     while not shutdown_event.is_set():
         text = input_source.next()
         if text is None:
-            logger.info("Agent %s input source exhausted, exiting OODA loop", agent_name)
-            break
+            if shutdown_event.is_set():
+                logger.info("Agent %s input source exhausted, exiting OODA loop", agent_name)
+                break
+            logger.warning(
+                "Agent %s input source returned None without shutdown; continuing",
+                agent_name,
+            )
+            time.sleep(1.0)
+            continue
 
         metadata = {}
         if hasattr(input_source, "_source"):

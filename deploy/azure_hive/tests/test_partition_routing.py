@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import importlib.util
+import queue
 import sys
+import threading
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -151,10 +153,10 @@ class TestInputSourcePartitionRouting:
         src._starting_position = "@latest"
         src._consumer = MagicMock()
         src._consumer.get_partition_ids.return_value = [str(i) for i in range(num_partitions)]
-        src._shutdown = MagicMock()
-        src._shutdown.is_set.return_value = False
+        src._max_wait_time = 1
+        src._shutdown = threading.Event()
         src._closed = False
-        src._queue = MagicMock()
+        src._queue = queue.Queue()
         return src
 
     def test_target_partition_wraps(self):
@@ -163,13 +165,49 @@ class TestInputSourcePartitionRouting:
 
     def test_receive_uses_explicit_partition_id(self):
         src = self._make_source(agent_name="agent-5")
-        src._consumer.receive.side_effect = lambda **_: None
+        first_call = True
+
+        def _receive(**_):
+            nonlocal first_call
+            if first_call:
+                first_call = False
+                src._shutdown.set()
+            return
+
+        src._consumer.receive.side_effect = _receive
 
         src._receive_loop()
 
         kwargs = src._consumer.receive.call_args.kwargs
         assert kwargs["partition_id"] == "5"
         assert kwargs["starting_position"] == "@latest"
+
+    def test_receive_loop_retries_after_unexpected_return(self):
+        src = self._make_source(agent_name="agent-5")
+
+        call_count = 0
+
+        def _receive(**_):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 2:
+                src._shutdown.set()
+            return
+
+        src._consumer.receive.side_effect = _receive
+
+        with patch("amplihack.agents.goal_seeking.input_source.time.sleep", return_value=None):
+            src._receive_loop()
+
+        assert call_count == 2
+
+    def test_next_ignores_unexpected_shutdown_sentinel(self):
+        src = self._make_source(agent_name="agent-5")
+        src._queue.put((None, {}))
+        src._queue.put(("hello", {"event_id": "evt-1"}))
+
+        assert src.next() == "hello"
+        assert src.last_event_metadata == {"event_id": "evt-1"}
 
 
 class TestPublishPartitionRouting:

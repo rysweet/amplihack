@@ -23,6 +23,7 @@ import json
 import logging
 import sys
 import threading
+import time
 from typing import Protocol, runtime_checkable
 
 logger = logging.getLogger(__name__)
@@ -436,24 +437,37 @@ class EventHubsInputSource:
             except Exception:
                 logger.debug("EventHubsInputSource: parse error", exc_info=True)
 
-        try:
-            my_partition = self._target_partition(self._agent_name)
-            logger.info(
-                "EventHubsInputSource: agent=%s receiving partition=%s (cg=%s)",
-                self._agent_name,
-                my_partition,
-                self._consumer_group,
-            )
-            self._consumer.receive(
-                on_event=_on_event,
-                partition_id=my_partition,
-                starting_position=self._starting_position,
-            )
-        except Exception:
-            if not self._closed and not self._shutdown.is_set():
+        my_partition = self._target_partition(self._agent_name)
+        logger.info(
+            "EventHubsInputSource: agent=%s receiving partition=%s (cg=%s)",
+            self._agent_name,
+            my_partition,
+            self._consumer_group,
+        )
+
+        while not self._closed and not self._shutdown.is_set():
+            try:
+                self._consumer.receive(
+                    on_event=_on_event,
+                    partition_id=my_partition,
+                    starting_position=self._starting_position,
+                )
+                if self._closed or self._shutdown.is_set():
+                    break
+                logger.warning(
+                    "EventHubsInputSource: receive loop returned unexpectedly; reconnecting"
+                )
+            except Exception:
+                if self._closed or self._shutdown.is_set():
+                    break
                 logger.warning("EventHubsInputSource: receive loop exited", exc_info=True)
-        finally:
-            self._queue.put((None, {}))
+
+            if self._closed or self._shutdown.is_set():
+                break
+
+            time.sleep(1.0)
+
+        self._queue.put((None, {}))
 
     def next(self) -> str | None:
         """Block until a message arrives and return its text.
@@ -471,7 +485,10 @@ class EventHubsInputSource:
                 item = self._queue.get(timeout=self._max_wait_time)
                 text, metadata = item
                 if text is None:
-                    return None
+                    if self._closed or self._shutdown.is_set():
+                        return None
+                    logger.warning("EventHubsInputSource: ignoring unexpected shutdown sentinel")
+                    continue
                 self._last_event_metadata = metadata
                 return text
             except _queue.Empty:
