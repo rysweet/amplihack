@@ -44,6 +44,7 @@ Environment variables:
 
 from __future__ import annotations
 
+import concurrent.futures
 import json
 import logging
 import os
@@ -95,25 +96,47 @@ def _shard_query_listener(
     - EventHubsShardTransport: ``shard_bus`` is None; uses
       ``transport.poll(agent_id)`` which blocks on the internal mailbox_ready
       Event — no artificial sleep.
+
+    Burst handling:
+    - ``SHARD_QUERY`` events are dispatched to a bounded worker pool so one
+      slow local shard search does not block unrelated queries/responses behind
+      it in the listener loop.
     """
     logger.info("Agent %s shard query listener started", agent_id)
-    while not shutdown_event.is_set():
-        try:
-            if shard_bus is not None:
-                events = shard_bus.poll(agent_id)
-            elif hasattr(transport, "poll"):
-                events = transport.poll(agent_id)
-            else:
-                events = []
-            for event in events:
-                if event.event_type == "SHARD_QUERY":
-                    transport.handle_shard_query(event, agent=agent)
-                elif event.event_type == "SHARD_RESPONSE":
-                    transport.handle_shard_response(event)
-                elif event.event_type == "SHARD_STORE":
-                    transport.handle_shard_store(event)
-        except Exception:
-            logger.debug("Shard query listener error for %s", agent_id, exc_info=True)
+    handler_workers = int(os.environ.get("AMPLIHACK_SHARD_QUERY_HANDLER_WORKERS", "8"))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, handler_workers)) as pool:
+        query_futures: set[concurrent.futures.Future[Any]] = set()
+
+        def _track_future(future: concurrent.futures.Future[Any]) -> None:
+            query_futures.add(future)
+
+            def _done(done_future: concurrent.futures.Future[Any]) -> None:
+                query_futures.discard(done_future)
+                exc = done_future.exception()
+                if exc is not None:
+                    logger.debug("Shard query worker error for %s", agent_id, exc_info=exc)
+
+            future.add_done_callback(_done)
+
+        while not shutdown_event.is_set():
+            try:
+                if shard_bus is not None:
+                    events = shard_bus.poll(agent_id)
+                elif hasattr(transport, "poll"):
+                    events = transport.poll(agent_id)
+                else:
+                    events = []
+                for event in events:
+                    if event.event_type == "SHARD_QUERY":
+                        _track_future(pool.submit(transport.handle_shard_query, event, agent=agent))
+                    elif event.event_type == "SHARD_RESPONSE":
+                        transport.handle_shard_response(event)
+                    elif event.event_type == "SHARD_STORE":
+                        transport.handle_shard_store(event)
+            except Exception:
+                logger.debug("Shard query listener error for %s", agent_id, exc_info=True)
+        for future in list(query_futures):
+            future.result()
     logger.info("Agent %s shard query listener exiting", agent_id)
 
 
