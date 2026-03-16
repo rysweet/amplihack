@@ -149,6 +149,7 @@ Understand the philosophy and architecture behind amplihack.
 - [Development Patterns](claude/context/PATTERNS.md) - Proven implementation patterns
 - [Unified Staging Architecture](concepts/unified-staging-architecture.md) - How .claude/ staging works across all commands
 - [Framework Injection Architecture](concepts/framework-injection-architecture.md) - How AMPLIHACK.md injection works
+- [Unified Distributed Cognitive Memory](concepts/unified-distributed-cognitive-memory.md) - Planned architecture for deterministic cluster-wide memory retrieval
 - [How to Use Blarify Code Graph](howto/blarify-code-graph.md) - Enable, query, and configure
 - [Blarify Architecture](blarify_architecture.md) - Understanding the Blarify integration
 - [Documentation Knowledge Graph](documentation_knowledge_graph.md) - How docs connect

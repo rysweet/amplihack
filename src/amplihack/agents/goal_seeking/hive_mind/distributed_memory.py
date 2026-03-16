@@ -148,6 +148,33 @@ class DistributedCognitiveMemory:
             query=" ".join(keywords[:QUERY_KEYWORD_LIMIT]) if keywords else "",
         )
 
+    def retrieve_by_entity(self, entity_name: str, limit: int = 50) -> list:
+        """Retrieve facts about an entity from local memory + distributed hive."""
+        local_results = []
+        if hasattr(self._local, "retrieve_by_entity"):
+            local_results = self._local.retrieve_by_entity(entity_name=entity_name, limit=limit)
+
+        hive_dicts = self._query_hive_entity(entity_name, limit=limit)
+        if not hive_dicts:
+            return local_results[:limit] if local_results else []
+
+        return self._merge_fact_lists(local_results, hive_dicts, limit, query=entity_name)
+
+    def execute_aggregation(self, query_type: str, entity_filter: str = "") -> dict[str, Any]:
+        """Execute a cluster-wide aggregation for meta-memory questions."""
+        local_result: dict[str, Any] = {}
+        if hasattr(self._local, "execute_aggregation"):
+            local_result = self._local.execute_aggregation(
+                query_type=query_type,
+                entity_filter=entity_filter,
+            )
+
+        hive_result = self._query_hive_aggregation(query_type, entity_filter)
+        if not hive_result:
+            return local_result
+
+        return self._merge_aggregation_results(query_type, local_result, hive_result)
+
     # ------------------------------------------------------------------
     # Writes: store locally + auto-promote to hive
     # ------------------------------------------------------------------
@@ -284,6 +311,46 @@ class DistributedCognitiveMemory:
             ]
         return []
 
+    def _query_hive_entity(self, entity_name: str, limit: int) -> list[dict[str, Any]]:
+        """Retrieve entity-specific facts from the distributed hive."""
+        if not entity_name.strip() or self._hive is None:
+            return []
+
+        if hasattr(self._hive, "retrieve_by_entity"):
+            facts = self._hive.retrieve_by_entity(entity_name=entity_name, limit=limit)
+            return [
+                {
+                    "experience_id": getattr(f, "fact_id", getattr(f, "node_id", "")),
+                    "context": getattr(f, "concept", ""),
+                    "outcome": getattr(f, "content", ""),
+                    "confidence": float(getattr(f, "confidence", 0.5)),
+                    "tags": list(getattr(f, "tags", [])),
+                    "metadata": getattr(f, "metadata", {}) if hasattr(f, "metadata") else {},
+                }
+                if not isinstance(f, dict)
+                else f
+                for f in facts
+                if (getattr(f, "content", "") if not isinstance(f, dict) else f.get("outcome", ""))
+            ]
+
+        return self._query_hive(entity_name, limit=limit)
+
+    def _query_hive_aggregation(self, query_type: str, entity_filter: str = "") -> dict[str, Any]:
+        """Execute an aggregation against the distributed hive."""
+        if self._hive is None:
+            return {}
+
+        if hasattr(self._hive, "execute_aggregation"):
+            return self._hive.execute_aggregation(
+                query_type=query_type,
+                entity_filter=entity_filter,
+            )
+
+        raise RuntimeError(
+            f"Distributed hive backend {type(self._hive).__name__} does not implement "
+            f"execute_aggregation(query_type={query_type!r})"
+        )
+
     def _merge_fact_lists(
         self,
         local_results: list,
@@ -324,6 +391,56 @@ class DistributedCognitiveMemory:
         # for a deterministic tiebreaker — same inputs always produce same output.
         scored.sort(key=lambda x: (-x[0], self._extract_content(x[1])))
         return [r for _, r in scored[:limit]]
+
+    @staticmethod
+    def _merge_aggregation_results(
+        query_type: str,
+        local_result: dict[str, Any],
+        hive_result: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Merge local and distributed aggregation outputs deterministically."""
+        if not local_result:
+            return hive_result
+
+        if query_type == "count_total":
+            return {"count": int(local_result.get("count", 0)) + int(hive_result.get("count", 0))}
+
+        if query_type in {"list_entities", "list_concepts", "list_superseded"}:
+            items = sorted(
+                set(local_result.get("items", []) or []) | set(hive_result.get("items", []) or [])
+            )
+            return {
+                "items": items,
+                "count": len(items),
+                "query_type": query_type,
+            }
+
+        if query_type == "count_by_concept":
+            merged: dict[str, int] = {}
+            for source in (local_result.get("items", {}), hive_result.get("items", {})):
+                for key, value in (source or {}).items():
+                    merged[key] = merged.get(key, 0) + int(value)
+            return {"items": merged, "count": sum(merged.values()), "query_type": query_type}
+
+        if query_type == "list_incident_cves":
+            items = sorted(
+                set(local_result.get("items", []) or []) | set(hive_result.get("items", []) or [])
+            )
+            contents = sorted(
+                set(local_result.get("contents", []) or [])
+                | set(hive_result.get("contents", []) or [])
+            )
+            return {
+                "items": items,
+                "contents": contents,
+                "count": len(contents) if contents else len(items),
+                "query_type": query_type,
+            }
+
+        merged = dict(local_result)
+        for key, value in hive_result.items():
+            merged[key] = value
+        return merged
 
     @staticmethod
     def _relevance_score(result: Any, query: str) -> float:
