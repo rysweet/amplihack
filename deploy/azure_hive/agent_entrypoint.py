@@ -220,6 +220,9 @@ def main() -> None:
     # deterministic per-agent partition within the shared group.
     app_index = os.environ.get("AMPLIHACK_APP_INDEX", "")
     consumer_group = f"cg-app-{app_index}" if app_index else f"cg-{agent_name}"
+    distributed_retrieval_enabled = os.environ.get(
+        "AMPLIHACK_ENABLE_DISTRIBUTED_RETRIEVAL", "true"
+    ).strip().lower() in ("1", "true", "yes")
 
     logger.info(
         "Starting agent: name=%s topology=%s transport=%s",
@@ -237,7 +240,7 @@ def main() -> None:
     hive_bus: Any | None = None
     shard_transport: Any | None = None
 
-    if eh_connection_string:
+    if eh_connection_string and distributed_retrieval_enabled:
         agent_count = int(os.environ.get("AMPLIHACK_AGENT_COUNT", "5"))
         result = _init_dht_hive(
             agent_name,
@@ -250,6 +253,11 @@ def main() -> None:
         )
         if result:
             hive_store, hive_bus, shard_transport = result
+    elif eh_connection_string:
+        logger.info(
+            "Agent %s: distributed retrieval disabled via AMPLIHACK_ENABLE_DISTRIBUTED_RETRIEVAL",
+            agent_name,
+        )
     elif transport == "azure_service_bus" and connection_string:
         agent_count = int(os.environ.get("AMPLIHACK_AGENT_COUNT", "5"))
         result = _init_dht_hive(

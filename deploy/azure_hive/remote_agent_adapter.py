@@ -42,6 +42,8 @@ class RemoteAgentAdapter:
         agent_count: int = 100,
         resource_group: str = "",
         answer_timeout: int = 0,
+        replicate_learning_to_all_agents: bool = False,
+        question_failover_retries: int = 0,
     ) -> None:
         self._connection_string = connection_string
         self._input_hub = input_hub
@@ -50,8 +52,11 @@ class RemoteAgentAdapter:
         self._agent_count = agent_count
 
         self._learn_count = 0
+        self._learn_turn_counts = [0 for _ in range(agent_count)]
         self._question_count = 0
         self._answer_timeout = answer_timeout
+        self._replicate_learning_to_all_agents = replicate_learning_to_all_agents
+        self._question_failover_retries = max(0, question_failover_retries)
         self._shutdown = threading.Event()
         self._startup_wait_done = threading.Event()
         self._idle_wait_done = threading.Event()
@@ -128,6 +133,11 @@ class RemoteAgentAdapter:
     def _target_partition(self, agent_id: str) -> str:
         """Deterministic partition for an agent: agent_index % num_partitions."""
         return str(self._agent_index(agent_id) % self._get_num_partitions())
+
+    @staticmethod
+    def _agent_name(agent_index: int) -> str:
+        """Return the canonical agent name for an index."""
+        return f"agent-{agent_index}"
 
     def _publish_event(self, payload: dict, partition_key: str) -> None:
         """Publish a single JSON event to the input Event Hub."""
@@ -227,7 +237,7 @@ class RemoteAgentAdapter:
             time.sleep(poll_interval)
 
     def learn_from_content(self, content: str) -> dict[str, Any]:
-        """Send content to one agent (round-robin partition).
+        """Send content to one agent or to all agents when replication is enabled.
 
         5000 turns / N agents = ~(5000/N) turns each. Each agent learns its
         partition locally. The hive mind shares knowledge between agents
@@ -244,48 +254,55 @@ class RemoteAgentAdapter:
             target_agent = self._learn_count % self._agent_count
             self._learn_count += 1
             learn_count = self._learn_count
-        target_name = f"agent-{target_agent}"
+            if self._replicate_learning_to_all_agents:
+                target_agents = list(range(self._agent_count))
+                for agent_index in target_agents:
+                    self._learn_turn_counts[agent_index] += 1
+            else:
+                target_agents = [target_agent]
+                self._learn_turn_counts[target_agent] += 1
 
-        self._publish_event(
-            {
-                "event_type": "LEARN_CONTENT",
-                "event_id": event_id,
-                "target_agent": target_name,
-                "source_agent": "eval-harness",
-                "payload": {
-                    "content": content,
+        for agent_index in target_agents:
+            target_name = self._agent_name(agent_index)
+            self._publish_event(
+                {
+                    "event_type": "LEARN_CONTENT",
+                    "event_id": event_id,
                     "target_agent": target_name,
+                    "source_agent": "eval-harness",
+                    "payload": {
+                        "content": content,
+                        "target_agent": target_name,
+                    },
                 },
-            },
-            partition_key=target_name,
-        )
-
-        if learn_count % 500 == 0:
-            logger.info(
-                "RemoteAgentAdapter: sent %d content turns (%d per agent)",
-                learn_count,
-                learn_count // max(1, self._agent_count),
+                partition_key=target_name,
             )
 
-        return {"facts_stored": 1, "event_id": event_id}
+        if learn_count % 500 == 0:
+            if self._replicate_learning_to_all_agents:
+                logger.info(
+                    "RemoteAgentAdapter: sent %d content turns (replicated to all %d agents)",
+                    learn_count,
+                    self._agent_count,
+                )
+            else:
+                logger.info(
+                    "RemoteAgentAdapter: sent %d content turns (%d per agent)",
+                    learn_count,
+                    learn_count // max(1, self._agent_count),
+                )
 
-    def answer_question(self, question: str) -> str:
-        """Send question to one agent, wait for answer. No timeout."""
-        # Wait for agents to finish processing content (blocks all threads)
-        if self._learn_count > 0 and not self._idle_wait_done.is_set():
-            with self._counter_lock:
-                if not self._idle_wait_done.is_set():
-                    self._wait_for_agents_idle()
-                    self._idle_wait_done.set()
+        return {
+            "facts_stored": 1,
+            "event_id": event_id,
+            "replicated_to": len(target_agents),
+        }
 
-        with self._counter_lock:
-            target_agent = self._question_count % self._agent_count
-            self._question_count += 1
-
+    def _send_question_to_agent(self, question: str, target_agent: int) -> str:
+        """Send one question attempt to one agent and wait for its answer."""
         event_id = uuid.uuid4().hex[:12]
-        target_name = f"agent-{target_agent}"
+        target_name = self._agent_name(target_agent)
 
-        # Register signal before sending
         answer_event = threading.Event()
         with self._answer_lock:
             self._answer_events[event_id] = answer_event
@@ -327,17 +344,51 @@ class RemoteAgentAdapter:
 
         return answer
 
+    def answer_question(self, question: str) -> str:
+        """Send question to one agent, retrying on other agents when configured."""
+        # Wait for agents to finish processing content (blocks all threads)
+        if self._learn_count > 0 and not self._idle_wait_done.is_set():
+            with self._counter_lock:
+                if not self._idle_wait_done.is_set():
+                    self._wait_for_agents_idle()
+                    self._idle_wait_done.set()
+
+        with self._counter_lock:
+            target_agent = self._question_count % self._agent_count
+            self._question_count += 1
+
+        max_attempts = min(self._agent_count, 1 + self._question_failover_retries)
+        last_answer = "No answer received"
+        for attempt in range(max_attempts):
+            attempt_target = (target_agent + attempt) % self._agent_count
+            if attempt > 0:
+                logger.info(
+                    "RemoteAgentAdapter: retrying question on %s after previous timeout/no-answer",
+                    self._agent_name(attempt_target),
+                )
+            answer = self._send_question_to_agent(question, attempt_target)
+            if answer != "No answer received":
+                return answer
+            last_answer = answer
+
+        return last_answer
+
     def _wait_for_agents_idle(self) -> None:
         """Wait for all agents to finish processing content.
 
         Sends FEED_COMPLETE to every agent, then waits for each to publish
         AGENT_READY on the eval-responses hub.  Event-driven — no polling.
         """
-        turns_per_agent = self._learn_count // max(1, self._agent_count)
+        min_turns = min(self._learn_turn_counts, default=0)
+        max_turns = max(self._learn_turn_counts, default=0)
+        if min_turns == max_turns:
+            turns_summary = f"{max_turns} content turns each"
+        else:
+            turns_summary = f"{min_turns}-{max_turns} content turns per agent"
         logger.info(
-            "Sending FEED_COMPLETE to all %d agents (%d content turns each)...",
+            "Sending FEED_COMPLETE to all %d agents (%s)...",
             self._agent_count,
-            turns_per_agent,
+            turns_summary,
         )
 
         # Reset ready tracking
@@ -366,6 +417,12 @@ class RemoteAgentAdapter:
                 return
 
             for target_name in missing_agents:
+                target_agent = self._agent_index(target_name)
+                total_turns = (
+                    self._learn_turn_counts[target_agent]
+                    if 0 <= target_agent < len(self._learn_turn_counts)
+                    else self._learn_count // max(1, self._agent_count)
+                )
                 self._publish_event(
                     {
                         "event_type": "FEED_COMPLETE",
@@ -373,7 +430,7 @@ class RemoteAgentAdapter:
                         "target_agent": target_name,
                         "source_agent": "eval-harness",
                         "payload": {
-                            "total_turns": turns_per_agent,
+                            "total_turns": total_turns,
                             "target_agent": target_name,
                         },
                     },

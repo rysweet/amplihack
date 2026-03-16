@@ -36,8 +36,8 @@ param location string = resourceGroup().location
 @description('Total number of agents to deploy')
 param agentCount int = 5
 
-@description('Max agents per Container App (default: 5)')
-param agentsPerApp int = 5
+@description('Max agents per Container App (default: 1)')
+param agentsPerApp int = 1
 
 @description('Container image to deploy (e.g. myacr.azurecr.io/amplihive:latest)')
 param image string = ''
@@ -63,6 +63,10 @@ param memoryBackend string = 'cognitive'
 @description('LLM model for agents (e.g. claude-sonnet-4-6, claude-opus-4-6)')
 param agentModel string = 'claude-sonnet-4-6'
 
+@description('Whether Azure agents should perform distributed hive retrieval during question answering')
+@allowed(['true', 'false'])
+param enableDistributedRetrieval string = 'true'
+
 
 // ---------- Naming ----------
 var suffix = uniqueString(resourceGroup().id)
@@ -74,6 +78,8 @@ var ehEventsHub = 'hive-events-${hiveName}'
 var ehShardsHub = 'hive-shards-${hiveName}'
 var ehEvalHub = 'eval-responses-${hiveName}'
 var appCount = (agentCount + agentsPerApp - 1) / agentsPerApp
+var perAgentCpu = json(agentsPerApp <= 1 ? '2.0' : (agentsPerApp <= 2 ? '1.0' : (agentsPerApp <= 5 ? '0.75' : (agentsPerApp <= 8 ? '0.5' : '0.25'))))
+var perAgentMemory = agentsPerApp <= 1 ? '4Gi' : (agentsPerApp <= 2 ? '2Gi' : (agentsPerApp <= 5 ? '1.5Gi' : (agentsPerApp <= 8 ? '1Gi' : '0.5Gi')))
 
 // ---------- Container Registry ----------
 resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' = if (empty(acrName)) {
@@ -259,8 +265,8 @@ resource containerApps 'Microsoft.App/containerApps@2024-03-01' = [
             name: 'agent-${appIdx * agentsPerApp + agentOffset}'
             image: resolvedImage
             resources: {
-              cpu: json(agentsPerApp <= 5 ? '0.75' : (agentsPerApp <= 8 ? '0.5' : '0.25'))
-              memory: agentsPerApp <= 5 ? '1.5Gi' : (agentsPerApp <= 8 ? '1Gi' : '0.5Gi')
+              cpu: perAgentCpu
+              memory: perAgentMemory
             }
             env: [
               {
@@ -318,6 +324,10 @@ resource containerApps 'Microsoft.App/containerApps@2024-03-01' = [
               {
                 name: 'AMPLIHACK_APP_INDEX'
                 value: '${appIdx}'
+              }
+              {
+                name: 'AMPLIHACK_ENABLE_DISTRIBUTED_RETRIEVAL'
+                value: enableDistributedRetrieval
               }
             ]
             volumeMounts: [
