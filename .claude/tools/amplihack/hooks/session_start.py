@@ -458,6 +458,21 @@ class SessionStartHook(HookProcessor):
                 )
                 return
 
+            stdin = getattr(sys, "stdin", None)
+            if stdin is None or not hasattr(stdin, "isatty") or not stdin.isatty():
+                self.log("Non-interactive session detected - skipping update prompt")
+                print(
+                    f"\n⚠️  .claude/ directory out of date (package: {version_info.package_commit}, project: {version_info.project_commit or 'unknown'})",
+                    file=sys.stderr,
+                )
+                print(
+                    "  Non-interactive session detected - skipping update prompt. "
+                    "Set /amplihack:customize auto_update to always/never or update manually.\n",
+                    file=sys.stderr,
+                )
+                self.save_metric("version_prompt_skipped_non_interactive", True)
+                return
+
             # No preference - prompt user
             print("\n" + "=" * 70, file=sys.stderr)
             print("⚠️  Version Mismatch Detected", file=sys.stderr)
@@ -488,7 +503,13 @@ class SessionStartHook(HookProcessor):
             print("\nChoice (y/n/a/v): ", end="", file=sys.stderr, flush=True)
 
             # 30 second timeout for user response
-            ready, _, _ = select.select([sys.stdin], [], [], 30)
+            try:
+                ready, _, _ = select.select([sys.stdin], [], [], 30)
+            except (AttributeError, OSError, ValueError) as exc:
+                self.log(f"Interactive prompt unavailable - skipping update prompt: {exc}")
+                print("\n\n(non-interactive stdin unavailable - skipping update)\n", file=sys.stderr)
+                self.save_metric("version_prompt_skipped_non_interactive", True)
+                return
 
             if not ready:
                 print("\n\n(timeout - skipping update)\n", file=sys.stderr)
