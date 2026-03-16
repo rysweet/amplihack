@@ -691,10 +691,10 @@ class LearningAgent:
         ]
 
         # Entity-linked retrieval: when the question mentions structured IDs
-        # (e.g. INC-2024-001, CVE-2024-3094), search for ALL facts containing
-        # those IDs to capture related facts stored under different contexts.
+        # (e.g. INC-2024-001, CVE-2024-3094), pull related LOCAL facts without
+        # re-fanning the whole hive. Large-KB tiered retrieval preserves exact-ID
+        # matches verbatim so we do not need a second distributed search pass here.
         if self._ENTITY_ID_PATTERN.search(question) and not exhaustive_retrieval:
-            relevant_facts = self._distributed_entity_id_retrieval(question, relevant_facts)
             relevant_facts = self._entity_linked_retrieval(
                 question,
                 relevant_facts,
@@ -1140,6 +1140,55 @@ class LearningAgent:
         # Large KB: use progressive summarization tiers
         return self._tiered_retrieval(question, all_facts)
 
+    def _preserve_exact_id_facts(
+        self, question: str, all_facts: list[dict[str, Any]]
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+        """Keep question-matching structured-ID facts verbatim before tiering.
+
+        Large distributed retrieval already fans out across the whole hive and can
+        return the relevant exact-ID facts in its first pass. The quality loss came
+        from compressing those older campaign/incident facts into summaries, which
+        then forced a second distributed exact-ID search. Preserve those exact-ID
+        matches here so the first distributed pass is sufficient.
+        """
+        entity_ids = {entity_id.lower() for entity_id in self._ENTITY_ID_PATTERN.findall(question)}
+        if not entity_ids:
+            return [], all_facts
+
+        q_lower = question.lower()
+        is_incident_query = any(
+            kw in q_lower for kw in ("incident", "cve", "vulnerability", "security")
+        )
+        exact_limit = INCIDENT_QUERY_SEARCH_LIMIT if is_incident_query else ENTITY_SEARCH_LIMIT
+
+        exact_id_facts: list[dict[str, Any]] = []
+        remaining_facts: list[dict[str, Any]] = []
+        seen_exact: set[str] = set()
+
+        for fact in all_facts:
+            fact_text = (
+                f"{fact.get('context', '')} {fact.get('outcome', fact.get('content', ''))}"
+            ).lower()
+            if any(entity_id in fact_text for entity_id in entity_ids):
+                dedupe_key = fact.get("experience_id", "") or fact_text
+                if dedupe_key not in seen_exact:
+                    seen_exact.add(dedupe_key)
+                    exact_id_facts.append(fact)
+            else:
+                remaining_facts.append(fact)
+
+        if exact_limit and len(exact_id_facts) > exact_limit:
+            exact_id_facts = exact_id_facts[-exact_limit:]
+
+        if exact_id_facts:
+            logger.info(
+                "Tiered retrieval preserved %d exact-ID facts verbatim for '%s'",
+                len(exact_id_facts),
+                question[:60],
+            )
+
+        return exact_id_facts, remaining_facts
+
     def _tiered_retrieval(
         self, question: str, all_facts: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
@@ -1159,32 +1208,34 @@ class LearningAgent:
             return (t_idx, ts)
 
         sorted_facts = sorted(all_facts, key=_sort_key)
+        exact_id_facts, remaining_facts = self._preserve_exact_id_facts(question, sorted_facts)
         kb_size = len(sorted_facts)
-        result: list[dict[str, Any]] = []
+        result: list[dict[str, Any]] = list(exact_id_facts)
 
         # Tier 1: Most recent TIER1_VERBATIM_SIZE facts - verbatim
-        tier1_facts = sorted_facts[max(0, kb_size - TIER1_VERBATIM_SIZE) :]
+        tier1_facts = remaining_facts[max(0, len(remaining_facts) - TIER1_VERBATIM_SIZE) :]
         result.extend(tier1_facts)
 
         # Tier 2: Facts TIER1_VERBATIM_SIZE+1 to TIER2_ENTITY_SIZE - entity-level summaries
-        tier2_start = max(0, kb_size - TIER2_ENTITY_SIZE)
-        tier2_end = max(0, kb_size - TIER1_VERBATIM_SIZE)
+        tier2_start = max(0, len(remaining_facts) - TIER2_ENTITY_SIZE)
+        tier2_end = max(0, len(remaining_facts) - TIER1_VERBATIM_SIZE)
         if tier2_end > tier2_start:
-            tier2_facts = sorted_facts[tier2_start:tier2_end]
+            tier2_facts = remaining_facts[tier2_start:tier2_end]
             tier2_summaries = self._summarize_old_facts(tier2_facts, level="entity")
             result.extend(tier2_summaries)
 
         # Tier 3: Facts 1000+ - topic-level summaries
         if tier2_start > 0:
-            tier3_facts = sorted_facts[:tier2_start]
+            tier3_facts = remaining_facts[:tier2_start]
             tier3_summaries = self._summarize_old_facts(tier3_facts, level="topic")
             result.extend(tier3_summaries)
 
         logger.info(
-            "Tiered retrieval: %d total -> %d tier1 verbatim + %d summarized items",
+            "Tiered retrieval: %d total -> %d exact-ID + %d tier1 verbatim + %d summarized items",
             kb_size,
+            len(exact_id_facts),
             len(tier1_facts),
-            len(result) - len(tier1_facts),
+            len(result) - len(exact_id_facts) - len(tier1_facts),
         )
         return result
 
@@ -1660,49 +1711,6 @@ class LearningAgent:
         if hasattr(self.memory, "retrieve_by_entity"):
             return self.memory.retrieve_by_entity(entity_name=entity_name, limit=limit)
         return []
-
-    def _distributed_entity_id_retrieval(
-        self, question: str, existing_facts: list[dict[str, Any]]
-    ) -> list[dict[str, Any]]:
-        """Add one exact-ID search pass before local-only supplemental retrieval.
-
-        The first broad retrieval pass keeps distributed question-level recall, but
-        campaign/incident-style eval questions often need an exact ID lookup as well.
-        We intentionally limit this to a single text-search pass per structured ID so
-        we restore recall without reopening the old multi-pass fan-out storm.
-        """
-        entity_ids = self._ENTITY_ID_PATTERN.findall(question)
-        if not entity_ids or not hasattr(self.memory, "search"):
-            return existing_facts
-
-        existing_ids = {
-            f.get("experience_id", "") for f in existing_facts if f.get("experience_id")
-        }
-        new_facts: list[dict[str, Any]] = []
-        q_lower = question.lower()
-        is_incident_query = any(
-            kw in q_lower for kw in ("incident", "cve", "vulnerability", "security")
-        )
-        search_limit = INCIDENT_QUERY_SEARCH_LIMIT if is_incident_query else ENTITY_SEARCH_LIMIT
-
-        for entity_id in entity_ids:
-            results = self._search_memory(entity_id, search_limit, local_only=False)
-            for fact in results:
-                fid = fact.get("experience_id", "")
-                if fid and fid not in existing_ids:
-                    existing_ids.add(fid)
-                    new_facts.append(fact)
-
-        if new_facts:
-            logger.info(
-                "Distributed entity-ID retrieval: %d IDs -> %d new facts (limit=%d) for '%s'",
-                len(entity_ids),
-                len(new_facts),
-                search_limit,
-                question[:60],
-            )
-
-        return existing_facts + new_facts
 
     def _entity_linked_retrieval(
         self,
