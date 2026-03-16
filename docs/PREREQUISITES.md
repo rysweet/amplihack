@@ -557,7 +557,7 @@ echo "For installation instructions, see docs/PREREQUISITES.md"
 After installing all prerequisites:
 
 1. **Verify installation:** Run `amplihack` to check all tools are detected
-2. **Install claude-trace (optional):** Automatically installed on first use
+2. **Install claude-trace (required):** Install it during initial setup so tracing is available when amplihack needs it
 3. **Configure git:** Set up your name and email
 4. **Start using AmplihHack:** See README.md for usage instructions
 
