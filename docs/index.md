@@ -376,6 +376,18 @@ Modular, on-demand capabilities that extend amplihack:
 - [Test Gap Analyzer](claude/skills/test-gap-analyzer/SKILL.md) - Find untested code
 - [Code Smell Detector](claude/skills/code-smell-detector/SKILL.md) - Identify anti-patterns
 
+## Code Atlas
+
+Living architecture documentation derived from code truth. Builds six-layer diagrams, hunts structural bugs, and maintains freshness via CI.
+
+- [Getting Started](tutorials/code-atlas-getting-started.md) — Build your first atlas in 30 minutes
+- [Daily Use Recipes](howto/use-code-atlas.md) — 15 practical how-tos
+- [Add Custom Journeys](howto/add-custom-journeys.md) — Define business-critical paths for bug hunting
+- [Publish to GitHub Pages](howto/publish-atlas-to-github-pages.md) — Host your atlas as a browsable site
+- [Configure Staleness Triggers](howto/configure-staleness-triggers.md) — Customize CI freshness detection
+- [Reference](reference/code-atlas-reference.md) — All flags, layer IDs, output files, error codes
+- [Layers Explained](reference/atlas-layers-explained.md) — What each layer detects and why
+
 ### Scenario Tools
 
 Production-ready executable tools following the Progressive Maturity Model:

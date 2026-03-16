@@ -1,0 +1,189 @@
+#!/bin/bash
+# .claude/skills/code-atlas/tests/run_all_tests.sh
+#
+# Unified test runner for the code-atlas skill.
+# Runs all test suites and reports a combined pass/fail summary.
+#
+# Usage:
+#   bash .claude/skills/code-atlas/tests/run_all_tests.sh
+#   bash .claude/skills/code-atlas/tests/run_all_tests.sh --fast   # skip integration tests
+#
+# Exit: 0 = all suites passed, non-zero = one or more failures
+#
+# Test Suites:
+#   1. test_staleness_triggers.sh  — Layer detection for all 6 layer patterns
+#   2. test_rebuild_script.sh      — rebuild-atlas-all.sh behaviors
+#   3. test_security_controls.sh   — SEC-01 through SEC-10 controls
+#   4. test_atlas_output_structure.sh — docs/atlas/ output directory structure
+#   5. test_layer_contracts.sh     — Per-layer content contracts
+#   6. test_bug_hunt_workflow.sh   — Two-pass bug hunt report format
+#   7. test_ci_workflow.sh         — CI YAML structure and script path checks
+#   8. test_publication_workflow.sh — SVG generation and GitHub Pages readiness
+
+set -uo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+FAST_MODE=false
+[[ "${1:-}" == "--fast" ]] && FAST_MODE=true
+
+# ---------------------------------------------------------------------------
+# ANSI colors (if terminal supports them)
+# ---------------------------------------------------------------------------
+if [[ -t 1 ]]; then
+    RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RESET='\033[0m'
+    BOLD='\033[1m'
+else
+    RED=''; GREEN=''; YELLOW=''; RESET=''; BOLD=''
+fi
+
+# ---------------------------------------------------------------------------
+# Suite runner
+# ---------------------------------------------------------------------------
+TOTAL_PASS=0
+TOTAL_FAIL=0
+SUITE_RESULTS=()
+
+run_suite() {
+    local name="$1"
+    local script="$2"
+    local skip_in_fast="${3:-false}"
+
+    if [[ "$FAST_MODE" == "true" && "$skip_in_fast" == "true" ]]; then
+        echo -e "${YELLOW}SKIP${RESET}: $name (--fast mode)"
+        SUITE_RESULTS+=("SKIP: $name")
+        return
+    fi
+
+    echo ""
+    echo -e "${BOLD}━━━ Suite: $name ━━━${RESET}"
+
+    if [[ ! -f "$script" ]]; then
+        echo -e "${RED}ERROR${RESET}: Script not found: $script"
+        SUITE_RESULTS+=("ERROR: $name — script not found")
+        TOTAL_FAIL=$((TOTAL_FAIL + 1))
+        return
+    fi
+
+    # Run the suite, capture output and exit code
+    suite_output=$(bash "$script" 2>&1)
+    suite_exit=$?
+
+    # Show output
+    echo "$suite_output"
+
+    # Extract pass/fail counts from the results line
+    pass_count=$(echo "$suite_output" | grep -oP 'Results: \K[0-9]+(?= passed)' | tail -1 || echo "0")
+    fail_count=$(echo "$suite_output" | grep -oP '\K[0-9]+(?= failed)' | tail -1 || echo "0")
+
+    TOTAL_PASS=$((TOTAL_PASS + pass_count))
+    TOTAL_FAIL=$((TOTAL_FAIL + fail_count))
+
+    if [[ "$suite_exit" -eq 0 ]]; then
+        SUITE_RESULTS+=("$(echo -e "${GREEN}PASS${RESET}"): $name ($pass_count passed)")
+    else
+        SUITE_RESULTS+=("$(echo -e "${RED}FAIL${RESET}"): $name ($pass_count passed, $fail_count failed)")
+    fi
+}
+
+# ---------------------------------------------------------------------------
+# Header
+# ---------------------------------------------------------------------------
+echo ""
+echo -e "${BOLD}╔════════════════════════════════════════╗${RESET}"
+echo -e "${BOLD}║     Code Atlas — TDD Test Runner       ║${RESET}"
+echo -e "${BOLD}╚════════════════════════════════════════╝${RESET}"
+echo ""
+echo "Running all test suites..."
+[[ "$FAST_MODE" == "true" ]] && echo "(Fast mode: integration tests skipped)"
+
+# ---------------------------------------------------------------------------
+# Suite 1: Staleness Triggers
+# ---------------------------------------------------------------------------
+run_suite \
+    "Staleness Triggers (check-atlas-staleness.sh)" \
+    "${SCRIPT_DIR}/test_staleness_triggers.sh"
+
+# ---------------------------------------------------------------------------
+# Suite 2: Rebuild Script
+# ---------------------------------------------------------------------------
+run_suite \
+    "Rebuild Script (rebuild-atlas-all.sh)" \
+    "${SCRIPT_DIR}/test_rebuild_script.sh"
+
+# ---------------------------------------------------------------------------
+# Suite 3: Security Controls
+# ---------------------------------------------------------------------------
+run_suite \
+    "Security Controls (SEC-01 through SEC-10)" \
+    "${SCRIPT_DIR}/test_security_controls.sh"
+
+# ---------------------------------------------------------------------------
+# Suite 4: Atlas Output Structure
+# ---------------------------------------------------------------------------
+run_suite \
+    "Atlas Output Structure (docs/atlas/ directory contract)" \
+    "${SCRIPT_DIR}/test_atlas_output_structure.sh" \
+    "false"  # not skipped in fast mode — but tests will fail until /code-atlas runs
+
+# ---------------------------------------------------------------------------
+# Suite 5: Layer Content Contracts
+# ---------------------------------------------------------------------------
+run_suite \
+    "Layer Content Contracts (per-layer output requirements)" \
+    "${SCRIPT_DIR}/test_layer_contracts.sh"
+
+# ---------------------------------------------------------------------------
+# Suite 6: Bug Hunt Workflow
+# ---------------------------------------------------------------------------
+run_suite \
+    "Bug Hunt Workflow (Pass 1 + Pass 2 report format)" \
+    "${SCRIPT_DIR}/test_bug_hunt_workflow.sh"
+
+# ---------------------------------------------------------------------------
+# Suite 7: CI Workflow
+# ---------------------------------------------------------------------------
+run_suite \
+    "CI Workflow (atlas-ci.yml structure + integration)" \
+    "${SCRIPT_DIR}/test_ci_workflow.sh"
+
+# ---------------------------------------------------------------------------
+# Suite 8: Publication Workflow
+# ---------------------------------------------------------------------------
+run_suite \
+    "Publication Workflow (SVG generation + GitHub Pages readiness)" \
+    "${SCRIPT_DIR}/test_publication_workflow.sh"
+
+# ---------------------------------------------------------------------------
+# Summary
+# ---------------------------------------------------------------------------
+echo ""
+echo -e "${BOLD}════════════════════════════════════════${RESET}"
+echo -e "${BOLD}           Test Suite Summary           ${RESET}"
+echo -e "${BOLD}════════════════════════════════════════${RESET}"
+echo ""
+for result in "${SUITE_RESULTS[@]}"; do
+    echo "  $result"
+done
+echo ""
+echo -e "  Total: ${GREEN}${TOTAL_PASS} passed${RESET}, ${RED}${TOTAL_FAIL} failed${RESET}"
+echo ""
+
+if [[ "$TOTAL_FAIL" -gt 0 ]]; then
+    echo -e "${RED}Some tests failed.${RESET}"
+    echo ""
+    echo "Expected failures (TDD — implement to fix):"
+    echo "  • test_security_controls.sh: validate_atlas_output.sh + safe_read.sh not yet created"
+    echo "  • test_atlas_output_structure.sh: docs/atlas/ doesn't exist (run /code-atlas first)"
+    echo "  • test_layer_contracts.sh: docs/atlas/ doesn't exist (run /code-atlas first)"
+    echo "  • test_publication_workflow.sh: SVGs not generated (run /code-atlas publish first)"
+    echo "  • test_bug_hunt_workflow.sh: bug reports not generated (run /code-atlas first)"
+    echo "  • test_rebuild_script.sh: rebuild script needs full hash in .build-stamp"
+    echo "  • test_staleness_triggers.sh: kubernetes/ and helm/ root patterns missing"
+    echo ""
+    echo "Unexpected failures need investigation."
+    exit 1
+else
+    echo -e "${GREEN}All tests passed. Atlas skill is fully implemented.${RESET}"
+    exit 0
+fi
