@@ -13,6 +13,7 @@ Custom journeys define named end-to-end paths through your system for Pass 2 bug
 ## Why add custom journeys?
 
 By default, the atlas auto-derives journeys from Layer 3 routes. Custom journeys let you:
+
 - Name business-critical paths explicitly (e.g., "enterprise-checkout", "admin-export-report")
 - Ensure Pass 2 traces the paths most likely to harbor bugs
 - Document non-obvious multi-service flows that route-based derivation misses
@@ -66,17 +67,18 @@ When this file exists, the atlas reads it automatically on each build.
 
 ## Journey schema
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| `name` | Yes | Slug identifier — used in Layer 5 file names (e.g., `journey-user-checkout.mmd`) |
-| `entry` | Yes | Route or event that starts the journey: `POST /api/orders` or `kafka:EventName` |
-| `description` | Yes | One sentence — used as the sequence diagram title |
+| Field         | Required | Description                                                                      |
+| ------------- | -------- | -------------------------------------------------------------------------------- |
+| `name`        | Yes      | Slug identifier — used in Layer 5 file names (e.g., `journey-user-checkout.mmd`) |
+| `entry`       | Yes      | Route or event that starts the journey: `POST /api/orders` or `kafka:EventName`  |
+| `description` | Yes      | One sentence — used as the sequence diagram title                                |
 
 ---
 
 ## What Pass 2 does with your journeys
 
 For each journey, Pass 2:
+
 1. Traces the entry point through Layer 3 (find the handler)
 2. Follows the handler through Layer 4 (data transformations and persistence)
 3. Crosses Layer 1 service boundaries (inter-service calls)
@@ -100,7 +102,7 @@ A contradiction means a step in the journey either can't be executed (missing ro
 **Bad — too granular (this is a route, not a journey):**
 
 ```yaml
-- name: get-user-by-id   # This is a route, not a journey
+- name: get-user-by-id # This is a route, not a journey
   entry: "GET /api/users/:id"
   description: "Get a user"
 ```

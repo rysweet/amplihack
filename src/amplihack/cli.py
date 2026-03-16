@@ -1203,7 +1203,7 @@ def main(argv: list[str] | None = None) -> int:
     if not platform_result.compatible:
         print(platform_result.message, file=sys.stderr)
         return 1
-    elif platform_result.message:
+    if platform_result.message:
         # Partial support (e.g., native Windows) — warn but continue
         print(platform_result.message, file=sys.stderr)
 

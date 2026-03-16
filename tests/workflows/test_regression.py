@@ -150,7 +150,7 @@ class TestExistingRecipeRunnerUnaffected:
 
     def test_recipe_runner_direct_invocation_works(self, mock_recipe_runner):
         """Test Recipe Runner can still be invoked via Rust runner."""
-        from amplihack.recipes import run_recipe_by_name, is_rust_runner_available
+        from amplihack.recipes import is_rust_runner_available, run_recipe_by_name
 
         # run_recipe_by_name now always uses Rust runner
         # Just verify the function is importable and accepts adapter kwarg for compat

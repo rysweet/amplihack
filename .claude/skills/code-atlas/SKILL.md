@@ -12,12 +12,12 @@ description: |
   setting up CI/CD diagram refresh, or publishing to GitHub Pages/mkdocs.
 invokes:
   skills:
-    - code-visualizer          # Python AST-based module analysis and staleness detection
+    - code-visualizer # Python AST-based module analysis and staleness detection
     - mermaid-diagram-generator # Mermaid syntax generation and diagram formatting
   agents:
-    - visualization-architect  # Complex multi-level DOT diagrams and cross-layer layouts
-    - analyzer                 # Deep codebase investigation and dependency mapping
-    - reviewer                 # Contradiction hunting and code-evidence gathering
+    - visualization-architect # Complex multi-level DOT diagrams and cross-layer layouts
+    - analyzer # Deep codebase investigation and dependency mapping
+    - reviewer # Contradiction hunting and code-evidence gathering
 ---
 
 # Code Atlas Skill
@@ -107,16 +107,16 @@ Register CI hook for staleness detection on code changes
 
 ## When to Use This Skill
 
-| Trigger | Use Case |
-|---------|----------|
-| Starting work on an unfamiliar codebase | Full atlas build before coding |
-| Onboarding a new engineer | Share atlas as navigation guide |
-| Before a major refactor | Map current state; plan changes against topology |
-| Bug hunt stalled | Pass 1 + Pass 2 bug-hunting through graphs |
-| Docs feel stale | Staleness check + targeted rebuild |
-| Adding CI/CD quality gate | Register atlas freshness checks |
-| Publishing documentation site | GitHub Pages / mkdocs publication workflow |
-| Reviewing an unfamiliar PR | PR impact view using diff against current atlas |
+| Trigger                                 | Use Case                                         |
+| --------------------------------------- | ------------------------------------------------ |
+| Starting work on an unfamiliar codebase | Full atlas build before coding                   |
+| Onboarding a new engineer               | Share atlas as navigation guide                  |
+| Before a major refactor                 | Map current state; plan changes against topology |
+| Bug hunt stalled                        | Pass 1 + Pass 2 bug-hunting through graphs       |
+| Docs feel stale                         | Staleness check + targeted rebuild               |
+| Adding CI/CD quality gate               | Register atlas freshness checks                  |
+| Publishing documentation site           | GitHub Pages / mkdocs publication workflow       |
+| Reviewing an unfamiliar PR              | PR impact view using diff against current atlas  |
 
 ## Quick Start
 
@@ -281,12 +281,12 @@ flowchart TD
 
 **Inventory Table** (required output):
 
-| Package | Version | Consumers | Direct? | License |
-|---------|---------|-----------|---------|---------|
-| express | ^4.18 | api-service | Yes | MIT |
-| @grpc/grpc-js | ^1.9 | auth-service | Yes | Apache-2.0 |
-| pg | ^8.11 | api-service | Yes | MIT |
-| @org/models | workspace | api-service, auth-service, worker | Yes | Internal |
+| Package       | Version   | Consumers                         | Direct? | License    |
+| ------------- | --------- | --------------------------------- | ------- | ---------- |
+| express       | ^4.18     | api-service                       | Yes     | MIT        |
+| @grpc/grpc-js | ^1.9      | auth-service                      | Yes     | Apache-2.0 |
+| pg            | ^8.11     | api-service                       | Yes     | MIT        |
+| @org/models   | workspace | api-service, auth-service, worker | Yes     | Internal   |
 
 ---
 
@@ -348,11 +348,11 @@ flowchart TD
 
 **Inventory Table** (required output):
 
-| Method | Path | Handler | Auth | DTO In | DTO Out | Middleware |
-|--------|------|---------|------|--------|---------|-----------|
-| POST | /api/auth/login | AuthController.login | None | LoginRequest | TokenResponse | cors |
-| GET | /api/users | UserController.list | JWT | — | UserListResponse | cors, jwt, audit |
-| POST | /api/orders | OrderController.create | JWT | CreateOrderRequest | OrderResponse | cors, jwt, ratelimit |
+| Method | Path            | Handler                | Auth | DTO In             | DTO Out          | Middleware           |
+| ------ | --------------- | ---------------------- | ---- | ------------------ | ---------------- | -------------------- |
+| POST   | /api/auth/login | AuthController.login   | None | LoginRequest       | TokenResponse    | cors                 |
+| GET    | /api/users      | UserController.list    | JWT  | —                  | UserListResponse | cors, jwt, audit     |
+| POST   | /api/orders     | OrderController.create | JWT  | CreateOrderRequest | OrderResponse    | cors, jwt, ratelimit |
 
 ---
 
@@ -399,6 +399,7 @@ flowchart LR
 
 ```markdown
 ## Journeys to trace (auto-derived from Layer 3 routes):
+
 1. User registration + email verification
 2. Login → receive JWT
 3. Browse products → add to cart → checkout → order confirmation
@@ -441,38 +442,38 @@ Inventory tables are **required companion outputs** for Layers 2 and 3, and a **
 
 **6a. Service Inventory**
 
-| Service | Language | Port | Repo Path | Owner | Health Check |
-|---------|----------|------|-----------|-------|--------------|
-| api-service | TypeScript | 8080 | services/api | backend-team | GET /health |
-| auth-service | Go | 8081 | services/auth | platform-team | GET /healthz |
-| worker | Python | — | services/worker | backend-team | — |
+| Service      | Language   | Port | Repo Path       | Owner         | Health Check |
+| ------------ | ---------- | ---- | --------------- | ------------- | ------------ |
+| api-service  | TypeScript | 8080 | services/api    | backend-team  | GET /health  |
+| auth-service | Go         | 8081 | services/auth   | platform-team | GET /healthz |
+| worker       | Python     | —    | services/worker | backend-team  | —            |
 
 **6b. Environment Variable Inventory**
 
-| Variable | Service(s) | Required | Default | Purpose |
-|----------|-----------|---------|---------|---------|
-| DATABASE_URL | api-service, auth-service | Yes | — | PostgreSQL connection string |
-| JWT_SECRET | api-service, auth-service | Yes | — | JWT signing key |
-| REDIS_URL | api-service | Yes | — | Cache connection |
-| KAFKA_BROKERS | api-service, worker | Yes | — | Event streaming |
-| EMAIL_API_KEY | worker | Yes | — | Email delivery |
-| LOG_LEVEL | all | No | info | Logging verbosity |
+| Variable      | Service(s)                | Required | Default | Purpose                      |
+| ------------- | ------------------------- | -------- | ------- | ---------------------------- |
+| DATABASE_URL  | api-service, auth-service | Yes      | —       | PostgreSQL connection string |
+| JWT_SECRET    | api-service, auth-service | Yes      | —       | JWT signing key              |
+| REDIS_URL     | api-service               | Yes      | —       | Cache connection             |
+| KAFKA_BROKERS | api-service, worker       | Yes      | —       | Event streaming              |
+| EMAIL_API_KEY | worker                    | Yes      | —       | Email delivery               |
+| LOG_LEVEL     | all                       | No       | info    | Logging verbosity            |
 
 **6c. Data Store Inventory**
 
-| Store | Type | Version | Schema Location | Consumers | Migration Tool |
-|-------|------|---------|-----------------|-----------|----------------|
-| app_db | PostgreSQL | 15 | db/migrations/ | api-service, auth-service | Flyway |
-| cache | Redis | 7 | — | api-service | — |
-| events | Kafka | 3.5 | proto/events/ | api-service, worker | Schema Registry |
+| Store  | Type       | Version | Schema Location | Consumers                 | Migration Tool  |
+| ------ | ---------- | ------- | --------------- | ------------------------- | --------------- |
+| app_db | PostgreSQL | 15      | db/migrations/  | api-service, auth-service | Flyway          |
+| cache  | Redis      | 7       | —               | api-service               | —               |
+| events | Kafka      | 3.5     | proto/events/   | api-service, worker       | Schema Registry |
 
 **6d. External Dependency Inventory**
 
-| Dependency | Type | Auth | Rate Limit | Fallback |
-|-----------|------|------|------------|---------|
-| Stripe API | Payments | API Key | 100 req/s | Queue + retry |
-| SendGrid | Email | API Key | 100 req/day | Log + alert |
-| S3 / Azure Blob | File Storage | IAM/SAS | — | Local cache |
+| Dependency      | Type         | Auth    | Rate Limit  | Fallback      |
+| --------------- | ------------ | ------- | ----------- | ------------- |
+| Stripe API      | Payments     | API Key | 100 req/s   | Queue + retry |
+| SendGrid        | Email        | API Key | 100 req/day | Log + alert   |
+| S3 / Azure Blob | File Storage | IAM/SAS | —           | Local cache   |
 
 ---
 
@@ -550,6 +551,7 @@ comm -23 "$doc_routes" "$code_routes"  # In docs, not in code = STALE
 **Layer**: 3 (HTTP Routing) × 4 (Data Flow)
 **Severity**: High
 **Evidence**:
+
 - Handler `OrderController.create` (src/controllers/orders.ts:45) accesses `req.body.customerId`
 - `CreateOrderRequest` DTO (src/dtos/orders.ts:12) declares: `{ items, deliveryAddress }` — no `customerId`
 - Layer 3 inventory table row: POST /api/orders → CreateOrderRequest DTO
@@ -567,6 +569,7 @@ comm -23 "$doc_routes" "$code_routes"  # In docs, not in code = STALE
 **Step 2.1 — Select journeys to trace** (from Layer 5):
 
 Prioritize journeys that:
+
 1. Cross service boundaries (appear in multiple Layer 1 nodes)
 2. Write to data stores (mutate Layer 4)
 3. Have known user-reported bugs
@@ -574,6 +577,7 @@ Prioritize journeys that:
 **Step 2.2 — Trace each journey through all layers**:
 
 For each journey step, verify:
+
 - Layer 3: The route exists and accepts the right DTO
 - Layer 4: The data flow matches expectations (correct fields persisted)
 - Layer 1: The service-to-service calls match the topology
@@ -587,6 +591,7 @@ For each journey step, verify:
 **Journey**: "Browse → Cart → Checkout" (Layer 5, Step 4)
 **Layers crossed**: Layer 3 (POST /api/orders) → Layer 4 (INSERT orders) → Layer 1 (worker)
 **Evidence**:
+
 - Layer 5 sequence shows: API → DB: INSERT orders + INSERT order_items
 - Layer 4 data flow shows CreateOrderRequest.items → order_items table
 - Actual handler (src/controllers/orders.ts:67): Only INSERTs to `orders` table; skips `order_items`
@@ -604,15 +609,15 @@ For each journey step, verify:
 
 ### Trigger Table
 
-| File Change | Atlas Layer(s) Affected | Rebuild Command |
-|-------------|------------------------|-----------------|
+| File Change                                                                      | Atlas Layer(s) Affected    | Rebuild Command              |
+| -------------------------------------------------------------------------------- | -------------------------- | ---------------------------- |
 | `docker-compose*.yml`, `k8s/**/*.yaml`, `kubernetes/**/*.yaml`, `helm/**/*.yaml` | Layer 1 (Runtime Topology) | `/code-atlas rebuild layer1` |
-| `go.mod`, `package.json`, `*.csproj`, `Cargo.toml` | Layer 2 (Dependencies) | `/code-atlas rebuild layer2` |
-| Route files (`*routes*.ts`, `*controller*.go`, `*views*.py`, `*handler*.go`) | Layer 3 (HTTP Routing) | `/code-atlas rebuild layer3` |
-| DTO files (`*dto*.ts`, `*schema*.py`, `*_request.go`, `*model*.go`) | Layer 4 (Data Flow) | `/code-atlas rebuild layer4` |
-| User-facing page/CLI files | Layer 5 (Journeys) | `/code-atlas rebuild layer5` |
-| `.env.example`, service `README.md` | Layer 6 (Inventory) | `/code-atlas rebuild layer6` |
-| **Any of the above** | Full atlas | `/code-atlas rebuild all` |
+| `go.mod`, `package.json`, `*.csproj`, `Cargo.toml`                               | Layer 2 (Dependencies)     | `/code-atlas rebuild layer2` |
+| Route files (`*routes*.ts`, `*controller*.go`, `*views*.py`, `*handler*.go`)     | Layer 3 (HTTP Routing)     | `/code-atlas rebuild layer3` |
+| DTO files (`*dto*.ts`, `*schema*.py`, `*_request.go`, `*model*.go`)              | Layer 4 (Data Flow)        | `/code-atlas rebuild layer4` |
+| User-facing page/CLI files                                                       | Layer 5 (Journeys)         | `/code-atlas rebuild layer5` |
+| `.env.example`, service `README.md`                                              | Layer 6 (Inventory)        | `/code-atlas rebuild layer6` |
+| **Any of the above**                                                             | Full atlas                 | `/code-atlas rebuild all`    |
 
 ### Staleness Detection Commands
 
@@ -651,12 +656,12 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/**'
-      - 'services/**'
-      - 'docker-compose*.yml'
-      - '**/package.json'
-      - '**/go.mod'
-      - '**/*.csproj'
+      - "src/**"
+      - "services/**"
+      - "docker-compose*.yml"
+      - "**/package.json"
+      - "**/go.mod"
+      - "**/*.csproj"
 
 jobs:
   refresh-atlas:
@@ -719,7 +724,7 @@ name: Scheduled Atlas Rebuild
 
 on:
   schedule:
-    - cron: '0 6 * * 1'  # Every Monday 6am UTC
+    - cron: "0 6 * * 1" # Every Monday 6am UTC
   workflow_dispatch:
 
 jobs:
@@ -804,18 +809,18 @@ done
 # mkdocs.yml additions
 nav:
   - Code Atlas:
-    - Overview: atlas/index.md
-    - Layer 1 — Runtime Topology: atlas/layer1-runtime/README.md
-    - Layer 2 — Dependencies: atlas/layer2-dependencies/README.md
-    - Layer 3 — HTTP Routing: atlas/layer3-http-routing/README.md
-    - Layer 4 — Data Flows: atlas/layer4-dataflow/README.md
-    - Layer 5 — User Journeys: atlas/layer5-user-journeys/README.md
-    - Layer 6 — Inventory: atlas/layer6-inventory/services.md
-    - Bug Reports: atlas/bug-reports/pass1-contradictions.md
+      - Overview: atlas/index.md
+      - Layer 1 — Runtime Topology: atlas/layer1-runtime/README.md
+      - Layer 2 — Dependencies: atlas/layer2-dependencies/README.md
+      - Layer 3 — HTTP Routing: atlas/layer3-http-routing/README.md
+      - Layer 4 — Data Flows: atlas/layer4-dataflow/README.md
+      - Layer 5 — User Journeys: atlas/layer5-user-journeys/README.md
+      - Layer 6 — Inventory: atlas/layer6-inventory/services.md
+      - Bug Reports: atlas/bug-reports/pass1-contradictions.md
 
 plugins:
   - search
-  - mermaid2  # pip install mkdocs-mermaid2-plugin
+  - mermaid2 # pip install mkdocs-mermaid2-plugin
 ```
 
 ### GitHub Pages Deployment
@@ -826,7 +831,7 @@ plugins:
   uses: peaceiris/actions-gh-pages@v3
   with:
     github_token: ${{ secrets.GITHUB_TOKEN }}
-    publish_dir: ./site  # mkdocs build output
+    publish_dir: ./site # mkdocs build output
 
 # Verify publication
 - name: Verify atlas pages
@@ -993,6 +998,7 @@ Atlas skill:
 A complete code atlas satisfies:
 
 ### Atlas Completeness
+
 - [ ] Layer 1: All runtime services mapped with ports and communication channels
 - [ ] Layer 2: Full dependency graph per service; inventory table with versions and licenses
 - [ ] Layer 3: Every HTTP route documented; route inventory table with DTOs and auth
@@ -1001,6 +1007,7 @@ A complete code atlas satisfies:
 - [ ] Layer 6: Service, env var, data store, and external dependency inventory tables complete
 
 ### Diagram Quality
+
 - [ ] Both DOT and Mermaid formats produced for Layers 1–5
 - [ ] SVG renders available alongside source files
 - [ ] No orphaned nodes (every node connected to at least one edge)
@@ -1008,17 +1015,20 @@ A complete code atlas satisfies:
 - [ ] Diagrams navigable by a new engineer without requiring code access
 
 ### Bug-Hunt Quality
+
 - [ ] Pass 1 ran against all 6 layers
 - [ ] Every filed bug includes: layer reference, file path, line number, code evidence
 - [ ] Pass 2 traced ≥ 2 user journeys end-to-end
 - [ ] Zero bugs filed without code-evidence quote
 
 ### Freshness and Automation
+
 - [ ] Staleness trigger table documented for this codebase
 - [ ] At least one CI pattern implemented (Pattern 1 recommended)
 - [ ] Rebuild commands tested and produce valid outputs
 
 ### Publication
+
 - [ ] docs/atlas/ directory structure matches template
 - [ ] mkdocs nav updated (if mkdocs in use)
 - [ ] GitHub Pages deployment verified (if used)
@@ -1029,15 +1039,15 @@ A complete code atlas satisfies:
 
 ### Language Coverage Gaps
 
-| Language Feature | Coverage | Notes |
-|-----------------|---------|-------|
-| Python modules (AST) | 95% | Delegates to code-visualizer; dynamic imports missed |
-| TypeScript/JS routes | 85% | Static grep-based; decorated routes (NestJS) require extra patterns |
-| Go routes (chi/gin/echo) | 80% | Most router patterns covered; generated routes (protobuf) may be missed |
-| .NET (ASP.NET Core) | 75% | Controllers and minimal API both covered; Razor Pages partially |
-| Rust (axum/actix-web) | 70% | Core patterns covered; macro-heavy code harder to parse |
-| GraphQL APIs | 40% | Not a primary target; resolver mapping requires special handling |
-| gRPC services | 60% | Proto files provide contract; service mesh topology requires runtime data |
+| Language Feature         | Coverage | Notes                                                                     |
+| ------------------------ | -------- | ------------------------------------------------------------------------- |
+| Python modules (AST)     | 95%      | Delegates to code-visualizer; dynamic imports missed                      |
+| TypeScript/JS routes     | 85%      | Static grep-based; decorated routes (NestJS) require extra patterns       |
+| Go routes (chi/gin/echo) | 80%      | Most router patterns covered; generated routes (protobuf) may be missed   |
+| .NET (ASP.NET Core)      | 75%      | Controllers and minimal API both covered; Razor Pages partially           |
+| Rust (axum/actix-web)    | 70%      | Core patterns covered; macro-heavy code harder to parse                   |
+| GraphQL APIs             | 40%      | Not a primary target; resolver mapping requires special handling          |
+| gRPC services            | 60%      | Proto files provide contract; service mesh topology requires runtime data |
 
 ### Staleness Detection Limitations
 

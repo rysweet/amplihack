@@ -140,7 +140,7 @@ def test_dev_orchestrator_uvx_launch_works_from_clean_directory(tmp_path: Path) 
     repo = shlex.quote(str(REPO_ROOT))
     command = (
         f"uvx --from {repo} python -c "
-        "\"from amplihack.recipes import run_recipe_by_name; "
+        '"from amplihack.recipes import run_recipe_by_name; '
         "result = run_recipe_by_name("
         "'smart-orchestrator', "
         "user_context={'task_description': 'uvx startup regression test', "

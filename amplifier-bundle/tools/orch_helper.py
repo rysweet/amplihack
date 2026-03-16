@@ -6,7 +6,9 @@ Provides extract_json() and normalise_type() used by the parse-decomposition
 and create-workstreams-config bash steps. Having them here (not inline in YAML
 heredocs) enables linting, unit testing, and import by other tools.
 """
+
 from __future__ import annotations
+
 import json
 import re
 
@@ -26,14 +28,14 @@ def extract_json(text: str) -> dict:
     3. Raw JSON in prose (balanced-brace scanner)
     """
     # 1. Prefer explicitly ```json-tagged code blocks first.
-    for m in re.finditer(r'```json\s*(\{[^`]*\})\s*```', text, re.DOTALL):
+    for m in re.finditer(r"```json\s*(\{[^`]*\})\s*```", text, re.DOTALL):
         try:
             return json.loads(m.group(1))
         except json.JSONDecodeError:
             continue  # malformed block, try next
 
     # 2. Try untagged code blocks (``` without a language tag).
-    for m in re.finditer(r'```\s*(\{[^`]*\})\s*```', text, re.DOTALL):
+    for m in re.finditer(r"```\s*(\{[^`]*\})\s*```", text, re.DOTALL):
         try:
             return json.loads(m.group(1))
         except json.JSONDecodeError:
@@ -45,7 +47,7 @@ def extract_json(text: str) -> dict:
     _decoder = json.JSONDecoder()
     pos = 0
     while True:
-        start = text.find('{', pos)
+        start = text.find("{", pos)
         if start == -1:
             break
         try:
@@ -74,6 +76,7 @@ if __name__ == "__main__":
     #   echo '{"task_type": "dev", "workstreams": []}' | python3 orch_helper.py extract
     #   echo "dev" | python3 orch_helper.py normalise
     import sys
+
     cmd = sys.argv[1] if len(sys.argv) > 1 else "extract"
     text = sys.stdin.read()
     if cmd == "extract":

@@ -11,6 +11,7 @@
 ### TEST-SEC-01-A [AUTO]: Env var values never appear in Layer 6b output
 
 **Setup:**
+
 ```bash
 echo "DATABASE_URL=postgres://user:MYSECRETPASSWORD@localhost/db" > /tmp/test.env
 echo "JWT_SECRET=supersecretjwtkey123" >> /tmp/test.env
@@ -19,6 +20,7 @@ echo "JWT_SECRET=supersecretjwtkey123" >> /tmp/test.env
 **Action:** Run `/code-atlas layers=6` with the test env file.
 
 **Expected:**
+
 - `docs/atlas/layer6-inventory/env-vars.md` contains `DATABASE_URL` (key name)
 - `docs/atlas/layer6-inventory/env-vars.md` does NOT contain `MYSECRETPASSWORD`
 - `docs/atlas/layer6-inventory/env-vars.md` does NOT contain `supersecretjwtkey123`

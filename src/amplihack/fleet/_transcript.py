@@ -173,7 +173,9 @@ def build_rich_context(
         parts.append(f"=== ORIGINAL USER REQUEST ===\n{first_user_msg}")
 
     if middle_summary:
-        parts.append(f"\n=== SESSION HISTORY (summarized, {total - recent_message_count - 1} entries) ===\n{middle_summary}")
+        parts.append(
+            f"\n=== SESSION HISTORY (summarized, {total - recent_message_count - 1} entries) ===\n{middle_summary}"
+        )
 
     parts.append(f"\n=== RECENT CONTEXT ({len(recent_lines)} entries) ===")
     parts.append("\n".join(recent_text_parts))
@@ -222,7 +224,8 @@ def infer_jsonl_status(transcript_text: str) -> str:
             content = entry.get("message", {}).get("content", "")
             if isinstance(content, list):
                 text_parts = [
-                    b.get("text", "") for b in content
+                    b.get("text", "")
+                    for b in content
                     if isinstance(b, dict) and b.get("type") == "text"
                 ]
                 content_str = "\n".join(text_parts)

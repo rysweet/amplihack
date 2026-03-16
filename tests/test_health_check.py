@@ -22,14 +22,13 @@ import pytest
 # Ensure src/ is on sys.path for direct test runs
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from amplihack.health_check import (  # noqa: E402
+from amplihack.health_check import (
     HealthReport,
     _check_dependency,
     _check_path,
     _project_root,
     check_health,
 )
-
 
 # ---------------------------------------------------------------------------
 # HealthReport dataclass contract
@@ -100,18 +99,14 @@ class TestCheckHealth:
         report = check_health()
         from amplihack.health_check import _CRITICAL_DEPS, _CRITICAL_PATHS
 
-        expected = {f"dep:{d}" for d in _CRITICAL_DEPS} | {
-            f"path:{p}" for p in _CRITICAL_PATHS
-        }
+        expected = {f"dep:{d}" for d in _CRITICAL_DEPS} | {f"path:{p}" for p in _CRITICAL_PATHS}
         union = set(report.checks_passed) | set(report.checks_failed)
         assert expected == union
 
     def test_never_raises(self):
         """check_health() must not raise under any circumstances."""
         # Patch _project_root to raise to simulate extreme failure
-        with patch(
-            "amplihack.health_check._project_root", side_effect=RuntimeError("boom")
-        ):
+        with patch("amplihack.health_check._project_root", side_effect=RuntimeError("boom")):
             # Should still return a HealthReport without raising
             report = check_health()
             assert isinstance(report, HealthReport)
@@ -127,9 +122,7 @@ class TestStatusClassification:
 
     def test_unhealthy_when_dep_missing(self):
         """If any dep check fails -> status must be 'unhealthy'."""
-        with patch(
-            "amplihack.health_check._check_dependency", return_value=(False, "not found")
-        ):
+        with patch("amplihack.health_check._check_dependency", return_value=(False, "not found")):
             report = check_health()
         assert report.status == "unhealthy"
 

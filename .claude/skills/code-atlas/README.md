@@ -26,14 +26,14 @@ Publish the atlas to GitHub Pages
 
 A complete atlas is six layers plus a bug report:
 
-| Layer | Content |
-|-------|---------|
-| Layer 1 — Runtime Topology | Service graph: containers, ports, external dependencies |
+| Layer                               | Content                                                            |
+| ----------------------------------- | ------------------------------------------------------------------ |
+| Layer 1 — Runtime Topology          | Service graph: containers, ports, external dependencies            |
 | Layer 2 — Compile-time Dependencies | Package graphs, version constraints, circular dependency detection |
-| Layer 3 — HTTP Routing | Route inventory, request/response contracts, middleware chain |
-| Layer 4 — Data Flows | DTO/schema chain from HTTP boundary to storage |
-| Layer 5 — User Journey Scenarios | Entry-point to outcome scenario graphs |
-| Layer 6 — Exhaustive Inventory | All services, env vars, data stores, external deps in tables |
+| Layer 3 — HTTP Routing              | Route inventory, request/response contracts, middleware chain      |
+| Layer 4 — Data Flows                | DTO/schema chain from HTTP boundary to storage                     |
+| Layer 5 — User Journey Scenarios    | Entry-point to outcome scenario graphs                             |
+| Layer 6 — Exhaustive Inventory      | All services, env vars, data stores, external deps in tables       |
 
 Every layer is committed to `docs/atlas/` as `.mmd`, `.dot`, `.svg`, and a `README.md` narrative. The atlas is regeneratable at any time from code alone.
 
@@ -137,11 +137,11 @@ See `SKILL.md` for complete limitations and accuracy expectations.
 
 ## Philosophy Alignment
 
-| Principle | How This Skill Follows It |
-|-----------|--------------------------|
-| **Ruthless Simplicity** | Code is truth; every diagram regeneratable from one command |
-| **Zero-BS** | Real parsing, no invented topology, honest about heuristic limits |
-| **Modular Design** | One brick (atlas orchestration), delegates diagram work to specialist bricks |
+| Principle               | How This Skill Follows It                                                    |
+| ----------------------- | ---------------------------------------------------------------------------- |
+| **Ruthless Simplicity** | Code is truth; every diagram regeneratable from one command                  |
+| **Zero-BS**             | Real parsing, no invented topology, honest about heuristic limits            |
+| **Modular Design**      | One brick (atlas orchestration), delegates diagram work to specialist bricks |
 
 ## Security Controls
 

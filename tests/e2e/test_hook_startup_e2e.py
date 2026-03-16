@@ -118,7 +118,9 @@ def run_test(cwd: str) -> bool:
     if failed:
         for line in r["raw"].split("\n"):
             low = line.lower()
-            if any(k in low for k in ["hook error", "episodicmemory", "project root", "importerror"]):
+            if any(
+                k in low for k in ["hook error", "episodicmemory", "project root", "importerror"]
+            ):
                 print(f"    >>> {line.strip()[:200]}")
     return not failed
 

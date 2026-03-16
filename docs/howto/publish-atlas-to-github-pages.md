@@ -25,14 +25,14 @@ Add these entries to your `mkdocs.yml`:
 ```yaml
 nav:
   - Code Atlas:
-    - Overview: atlas/index.md
-    - Layer 1 — Runtime Topology: atlas/layer1-runtime/README.md
-    - Layer 2 — Dependencies: atlas/layer2-dependencies/README.md
-    - Layer 3 — HTTP Routing: atlas/layer3-routing/README.md
-    - Layer 4 — Data Flow: atlas/layer4-dataflow/README.md
-    - Layer 5 — User Journeys: atlas/layer5-journeys/README.md
-    - Layer 6 — Inventory: atlas/layer6-inventory/services.md
-    - Bug Reports: atlas/bug-reports/
+      - Overview: atlas/index.md
+      - Layer 1 — Runtime Topology: atlas/layer1-runtime/README.md
+      - Layer 2 — Dependencies: atlas/layer2-dependencies/README.md
+      - Layer 3 — HTTP Routing: atlas/layer3-routing/README.md
+      - Layer 4 — Data Flow: atlas/layer4-dataflow/README.md
+      - Layer 5 — User Journeys: atlas/layer5-journeys/README.md
+      - Layer 6 — Inventory: atlas/layer6-inventory/services.md
+      - Bug Reports: atlas/bug-reports/
 
 plugins:
   - search
@@ -44,6 +44,7 @@ plugins:
 ## Step 2: Enable GitHub Pages
 
 In your repository settings:
+
 1. Go to **Settings → Pages**
 2. Source: **GitHub Actions**
 
@@ -60,8 +61,8 @@ on:
   push:
     branches: [main]
     paths:
-      - 'docs/**'
-      - 'mkdocs.yml'
+      - "docs/**"
+      - "mkdocs.yml"
 
 jobs:
   deploy:

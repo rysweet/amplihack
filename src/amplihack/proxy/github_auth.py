@@ -244,7 +244,10 @@ class GitHubAuthManager:
             # If requests not available, assume token is valid
             import sys
 
-            print("WARNING: requests not available, skipping Copilot access verification", file=sys.stderr)
+            print(
+                "WARNING: requests not available, skipping Copilot access verification",
+                file=sys.stderr,
+            )
             return True
 
         try:

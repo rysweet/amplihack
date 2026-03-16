@@ -9,6 +9,7 @@
 ## Scenario 1: Minimal Go API (Single Service)
 
 **Fixture:** A Go HTTP service with:
+
 - `cmd/server/main.go` — entry point, listens on `:8080`
 - `internal/handlers/user_handler.go` — `GET /users`, `POST /users`
 - `internal/models/user_model.go` — `User` struct
@@ -20,16 +21,17 @@
 
 **Expected outputs:**
 
-| File | Must contain |
-|------|-------------|
-| `docs/atlas/layer1-runtime/topology.mmd` | Node for `api` service, port `8080` |
-| `docs/atlas/layer2-dependencies/deps.mmd` | Node for `github.com/gin-gonic/gin` |
-| `docs/atlas/layer3-routing/inventory.md` | Rows for `GET /users` and `POST /users` |
-| `docs/atlas/layer4-dataflow/dataflow.mmd` | `User` struct referenced |
-| `docs/atlas/layer6-inventory/env-vars.md` | `DATABASE_URL` row, no value shown |
-| `docs/atlas/layer6-inventory/services.md` | `api-service` row with port `8080` |
+| File                                      | Must contain                            |
+| ----------------------------------------- | --------------------------------------- |
+| `docs/atlas/layer1-runtime/topology.mmd`  | Node for `api` service, port `8080`     |
+| `docs/atlas/layer2-dependencies/deps.mmd` | Node for `github.com/gin-gonic/gin`     |
+| `docs/atlas/layer3-routing/inventory.md`  | Rows for `GET /users` and `POST /users` |
+| `docs/atlas/layer4-dataflow/dataflow.mmd` | `User` struct referenced                |
+| `docs/atlas/layer6-inventory/env-vars.md` | `DATABASE_URL` row, no value shown      |
+| `docs/atlas/layer6-inventory/services.md` | `api-service` row with port `8080`      |
 
 **Must NOT contain:**
+
 - Any value from `.env.example` (only key names)
 - Nodes from test files (`*_test.go`)
 
@@ -38,6 +40,7 @@
 ## Scenario 2: TypeScript + Go Microservices (Multi-Service)
 
 **Fixture:** Two services:
+
 - `services/api/` — Express TypeScript API with `routes/user.routes.ts`, `dtos/user.dto.ts`
 - `services/auth/` — Go auth service with `handler_login.go`, `login_request.go`
 - `docker-compose.yml` — both services + postgres + redis
@@ -46,14 +49,14 @@
 
 **Expected outputs:**
 
-| Layer | Expected content |
-|-------|-----------------|
+| Layer   | Expected content                                             |
+| ------- | ------------------------------------------------------------ |
 | Layer 1 | Both services, postgres, redis as nodes; inter-service edges |
-| Layer 2 | Separate dependency graphs for TypeScript and Go services |
-| Layer 3 | Routes from TypeScript service + Go handler routes |
-| Layer 4 | `user.dto.ts` types + Go request struct traced |
-| Layer 5 | At least 2 user journeys derived from routes |
-| Layer 6 | Both services in service inventory |
+| Layer 2 | Separate dependency graphs for TypeScript and Go services    |
+| Layer 3 | Routes from TypeScript service + Go handler routes           |
+| Layer 4 | `user.dto.ts` types + Go request struct traced               |
+| Layer 5 | At least 2 user journeys derived from routes                 |
+| Layer 6 | Both services in service inventory                           |
 
 **Staleness check:** Change `services/api/routes/user.routes.ts`. Run `check-atlas-staleness.sh`.
 Expected output: `Layer 3 STALE` (and not Layer 1 or Layer 2).
@@ -63,6 +66,7 @@ Expected output: `Layer 3 STALE` (and not Layer 1 or Layer 2).
 ## Scenario 3: Python FastAPI (Single Service, Bug Hunt Focus)
 
 **Fixture:** FastAPI service with a deliberate bug:
+
 - Route `POST /api/orders` declares `CreateOrderRequest` with fields `{items, user_id}`
 - Handler `order_handler.py` accesses `request.customer_id` (field not in DTO)
 - `.env.example` declares `DATABASE_URL` and `STRIPE_KEY`
@@ -72,12 +76,13 @@ Expected output: `Layer 3 STALE` (and not Layer 1 or Layer 2).
 
 **Expected bug reports:**
 
-| Bug | Expected report |
-|-----|----------------|
+| Bug                | Expected report                                                       |
+| ------------------ | --------------------------------------------------------------------- |
 | Route/DTO mismatch | `BUG-001`: handler accesses `customer_id` not in `CreateOrderRequest` |
-| Orphaned env var | `BUG-002`: `STRIPE_KEY` declared in `.env.example` but never used |
+| Orphaned env var   | `BUG-002`: `STRIPE_KEY` declared in `.env.example` but never used     |
 
 **Pass criteria:**
+
 - `docs/atlas/bug-reports/` contains at least 2 files
 - Each file contains code evidence with file path and line number
 - Neither bug report contains the actual value of `DATABASE_URL`
@@ -90,19 +95,19 @@ Expected output: `Layer 3 STALE` (and not Layer 1 or Layer 2).
 
 **Test matrix:** For each row, change exactly one file and verify exactly one layer is reported stale.
 
-| File changed | Expected stale layer | Must NOT report stale |
-|-------------|--------------------|-----------------------|
-| `docker-compose.yml` | Layer 1 | Layers 2–6 |
-| `k8s/deployment.yaml` | Layer 1 | Layers 2–6 |
-| `helm/templates/service.yaml` | Layer 1 | Layers 2–6 |
-| `go.mod` | Layer 2 | Layers 1, 3–6 |
-| `services/web/package.json` | Layer 2 | Layers 1, 3–6 |
-| `internal/user_handler.go` | Layer 3 | Layers 1–2, 4–6 |
-| `src/api/routes.ts` | Layer 3 | Layers 1–2, 4–6 |
-| `src/dtos/user.dto.ts` | Layer 4 | Layers 1–3, 5–6 |
-| `internal/order_model.go` | Layer 4 | Layers 1–3, 5–6 |
-| `src/pages/checkout.page.tsx` | Layer 5 | Layers 1–4, 6 |
-| `.env.example` | Layer 6 | Layers 1–5 |
+| File changed                  | Expected stale layer | Must NOT report stale |
+| ----------------------------- | -------------------- | --------------------- |
+| `docker-compose.yml`          | Layer 1              | Layers 2–6            |
+| `k8s/deployment.yaml`         | Layer 1              | Layers 2–6            |
+| `helm/templates/service.yaml` | Layer 1              | Layers 2–6            |
+| `go.mod`                      | Layer 2              | Layers 1, 3–6         |
+| `services/web/package.json`   | Layer 2              | Layers 1, 3–6         |
+| `internal/user_handler.go`    | Layer 3              | Layers 1–2, 4–6       |
+| `src/api/routes.ts`           | Layer 3              | Layers 1–2, 4–6       |
+| `src/dtos/user.dto.ts`        | Layer 4              | Layers 1–3, 5–6       |
+| `internal/order_model.go`     | Layer 4              | Layers 1–3, 5–6       |
+| `src/pages/checkout.page.tsx` | Layer 5              | Layers 1–4, 6         |
+| `.env.example`                | Layer 6              | Layers 1–5            |
 
 ---
 
@@ -113,12 +118,14 @@ Expected output: `Layer 3 STALE` (and not Layer 1 or Layer 2).
 **Command:** `/code-atlas publish=true`
 
 **Expected:**
+
 - `docs/atlas/` contains all 6 layer directories
 - Each directory has at least one `.mmd` or `.dot` file and one `.svg` file
 - `docs/atlas/README.md` exists and links to all 6 layers
 - `docs/atlas/staleness-map.yaml` exists and contains at least 6 glob entries
 
 **CI validation:**
+
 ```bash
 # Run in CI after publish
 for layer in layer1-runtime layer2-dependencies layer3-routing layer4-dataflow layer5-journeys layer6-inventory; do
@@ -134,6 +141,7 @@ echo "All layer directories present."
 ## Scenario 6: Error Resilience (Partial Codebase)
 
 **Fixture:** A repository with:
+
 - No `docker-compose.yml` or Kubernetes manifests (Layer 1 source missing)
 - No Python files (code-visualizer delegation should be skipped)
 - Valid TypeScript routes (Layer 3 should succeed)
@@ -141,6 +149,7 @@ echo "All layer directories present."
 **Command:** `/code-atlas`
 
 **Expected:**
+
 - Layer 1: Skipped with `SkillError { code: "LAYER_SOURCE_NOT_FOUND", layer: 1 }`
 - Layers 2, 3, 4, 5, 6: Completed normally
 - `completion_summary.errors` contains exactly one error for Layer 1

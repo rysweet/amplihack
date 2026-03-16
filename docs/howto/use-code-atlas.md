@@ -115,6 +115,7 @@ cat .github/workflows/atlas-ci.yml
 ```
 
 The workflow provides:
+
 - **Pattern 1**: Post-merge staleness gate on push to `main`
 - **Pattern 2**: PR architecture impact check
 - **Pattern 3**: Scheduled weekly full rebuild (every Monday)
