@@ -18,12 +18,19 @@ import time
 from contextlib import contextmanager
 
 # Platform-specific imports (Windows compatibility)
-if sys.platform != 'win32':
+if sys.platform != "win32":
     import fcntl
+
     LOCKING_AVAILABLE = True
 else:
-    LOCKING_AVAILABLE = False
-    print("WARNING: File locking not available on Windows - locking disabled", file=sys.stderr)
+    fcntl = None  # type: ignore[assignment]
+    try:
+        import msvcrt
+
+        LOCKING_AVAILABLE = True
+    except ImportError:
+        msvcrt = None  # type: ignore[assignment]
+        LOCKING_AVAILABLE = False
 
 __all__ = [
     "LOCKING_AVAILABLE",
@@ -77,17 +84,26 @@ def acquire_file_lock(file_handle, timeout_seconds: float | None = None, log=Non
     # Try to acquire lock with timeout
     start_time = time.time()
     lock_acquired = False
+    use_msvcrt = sys.platform == "win32" and msvcrt is not None
 
     try:
         while True:
             try:
-                # Non-blocking exclusive lock
-                fcntl.flock(file_handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                if use_msvcrt:
+                    # Windows: use msvcrt.locking() with LK_NBLCK (non-blocking)
+                    file_handle.seek(0)
+                    msvcrt.locking(
+                        file_handle.fileno(), msvcrt.LK_NBLCK, max(1, file_handle.seek(0, 2))
+                    )
+                    file_handle.seek(0)
+                else:
+                    # Unix: Non-blocking exclusive lock
+                    fcntl.flock(file_handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
                 lock_acquired = True
                 log("File lock acquired", "DEBUG")
                 break
 
-            except BlockingIOError:
+            except (BlockingIOError, OSError):
                 # Lock unavailable - check timeout
                 elapsed = time.time() - start_time
                 if timeout_seconds is not None and elapsed >= timeout_seconds:
@@ -112,7 +128,13 @@ def acquire_file_lock(file_handle, timeout_seconds: float | None = None, log=Non
         # Release lock if acquired
         if lock_acquired:
             try:
-                fcntl.flock(file_handle.fileno(), fcntl.LOCK_UN)
+                if use_msvcrt:
+                    file_handle.seek(0)
+                    msvcrt.locking(
+                        file_handle.fileno(), msvcrt.LK_UNLCK, max(1, file_handle.seek(0, 2))
+                    )
+                else:
+                    fcntl.flock(file_handle.fileno(), fcntl.LOCK_UN)
                 log("File lock released", "DEBUG")
             except Exception as e:
                 # Non-critical: Lock will be released when file closes

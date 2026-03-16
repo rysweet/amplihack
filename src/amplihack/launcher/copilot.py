@@ -7,6 +7,7 @@ import shlex
 import shutil
 import signal
 import subprocess
+import sys
 import tempfile
 import threading
 from collections.abc import MutableMapping
@@ -845,7 +846,8 @@ INPUT=$(cat)
 """
 
         wrapper_path.write_text(wrapper_content)
-        wrapper_path.chmod(0o755)
+        if sys.platform != "win32":
+            wrapper_path.chmod(0o755)
         staged += 1
 
     # Stage the error-occurred wrapper separately (no Python hook, uses inline fallback)
@@ -854,7 +856,8 @@ INPUT=$(cat)
         source_error = package_dir.parent.parent / ".github" / "hooks" / "error-occurred"
         if source_error.exists():
             shutil.copy2(source_error, error_wrapper)
-            error_wrapper.chmod(0o755)
+            if sys.platform != "win32":
+                error_wrapper.chmod(0o755)
             staged += 1
 
     return staged

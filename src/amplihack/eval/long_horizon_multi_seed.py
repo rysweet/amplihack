@@ -26,6 +26,7 @@ import json
 import logging
 import math
 import os
+import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -316,7 +317,7 @@ def main() -> None:
     parser.add_argument(
         "--output-dir",
         type=str,
-        default="/tmp/memory-eval-multi-seed",
+        default=os.path.join(tempfile.gettempdir(), "memory-eval-multi-seed"),
         help="Output directory",
     )
     parser.add_argument("--grader-model", type=str, default="", help="LLM model for grading")
