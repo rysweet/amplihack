@@ -36,7 +36,7 @@ assert_file_contains() {
         FAIL=$((FAIL + 1))
         return
     fi
-    if grep -qP "$pattern" "$file" 2>/dev/null || grep -q "$pattern" "$file" 2>/dev/null; then
+    if grep -q "$pattern" "$file" 2>/dev/null; then
         echo "PASS: $label"
         PASS=$((PASS + 1))
     else
@@ -52,6 +52,10 @@ assert_not_in_file() {
         FAIL=$((FAIL + 1))
         return
     fi
+    # -P (PCRE) is intentionally retained here: the forbidden patterns use PCRE
+    # alternation syntax such as "(a |the )?" which BRE cannot express. The -i
+    # flag (case-insensitive) is also needed for cross-case matching. Do NOT
+    # simplify this to plain grep — it would silently fail to catch violations.
     if grep -qiP "$pattern" "$file" 2>/dev/null; then
         echo "FAIL: $label — forbidden pattern '$pattern' found in $file"
         FAIL=$((FAIL + 1))

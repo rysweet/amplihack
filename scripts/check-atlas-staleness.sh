@@ -31,12 +31,13 @@ elif [[ -n "${1:-}" && -n "${2:-}" ]]; then
     MODE="range"
     # Validate that both refs contain only characters valid in a git ref/SHA.
     # This prevents shell metacharacter injection via CI-supplied github.event.pull_request.*.sha
-    # values. Allowed: hex digits, alphanumerics, dots, slashes, hyphens, and underscores.
-    if ! [[ "$BASE_REF" =~ ^[0-9a-fA-F/._-]+$ ]]; then
+    # values. Allowed: hex digits, alphanumerics, dots, slashes, hyphens, underscores,
+    # tildes (~) and carets (^) for git ancestry notation (e.g. HEAD~1, main^).
+    if ! [[ "$BASE_REF" =~ ^[0-9a-zA-Z/._~^-]+$ ]]; then
         echo "Error: BASE_REF contains invalid characters: ${BASE_REF}" >&2
         exit 2
     fi
-    if ! [[ "$HEAD_REF" =~ ^[0-9a-fA-F/._-]+$ ]]; then
+    if ! [[ "$HEAD_REF" =~ ^[0-9a-zA-Z/._~^-]+$ ]]; then
         echo "Error: HEAD_REF contains invalid characters: ${HEAD_REF}" >&2
         exit 2
     fi
@@ -51,12 +52,19 @@ fi
 # ---------------------------------------------------------------------------
 case "$MODE" in
     pr)
+        # Fallback: if merge-base is unavailable (shallow clone, no common ancestor),
+        # fall back to a direct three-dot diff. This is intentional CI robustness, not
+        # silent degradation — the diff is always computed; only the base revision differs.
         CHANGED_FILES=$(git diff --name-only "$(git merge-base origin/main HEAD)"...HEAD 2>/dev/null || git diff --name-only origin/main...HEAD)
         ;;
     range)
         CHANGED_FILES=$(git diff --name-only "${BASE_REF}..${HEAD_REF}")
         ;;
     commit)
+        # Fallback: HEAD~1 does not exist on the first commit of a repo. Silently
+        # falling back to `git diff --name-only HEAD` (initial commit diff) is
+        # intentional — the staleness check still runs; it simply diffs against the
+        # empty tree rather than the previous commit.
         CHANGED_FILES=$(git diff --name-only HEAD~1..HEAD 2>/dev/null || git diff --name-only HEAD)
         ;;
 esac

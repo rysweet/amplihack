@@ -26,16 +26,16 @@ Publish the atlas to GitHub Pages
 
 A complete atlas is eight layers plus a bug report:
 
-| Layer                               | Content                                                            |
-| ----------------------------------- | ------------------------------------------------------------------ |
-| Layer 1 — Runtime Topology          | Service graph: containers, ports, external dependencies            |
-| Layer 2 — Compile-time Dependencies | Package graphs, version constraints, circular dependency detection |
-| Layer 3 — HTTP Routing              | Route inventory, request/response contracts, middleware chain      |
-| Layer 4 — Data Flows                | DTO/schema chain from HTTP boundary to storage                     |
-| Layer 5 — User Journey Scenarios    | Entry-point to outcome scenario graphs                             |
-| Layer 6 — Exhaustive Inventory      | All services, env vars, data stores, external deps in tables       |
-| Layer 7 — Service Component Architecture | Per-service module/package diagrams; internal coupling mapping |
-| Layer 8 — AST+LSP Symbol Bindings   | Cross-file references, dead code detection, interface mismatches   |
+| Layer                                    | Content                                                            |
+| ---------------------------------------- | ------------------------------------------------------------------ |
+| Layer 1 — Runtime Topology               | Service graph: containers, ports, external dependencies            |
+| Layer 2 — Compile-time Dependencies      | Package graphs, version constraints, circular dependency detection |
+| Layer 3 — HTTP Routing                   | Route inventory, request/response contracts, middleware chain      |
+| Layer 4 — Data Flows                     | DTO/schema chain from HTTP boundary to storage                     |
+| Layer 5 — User Journey Scenarios         | Entry-point to outcome scenario graphs                             |
+| Layer 6 — Exhaustive Inventory           | All services, env vars, data stores, external deps in tables       |
+| Layer 7 — Service Component Architecture | Per-service module/package diagrams; internal coupling mapping     |
+| Layer 8 — AST+LSP Symbol Bindings        | Cross-file references, dead code detection, interface mismatches   |
 
 Every layer is committed to `docs/atlas/` as `.mmd`, `.dot`, `.svg`, and a `README.md` narrative. The atlas is regeneratable at any time from code alone.
 
@@ -121,10 +121,14 @@ skills/code-atlas/
 ├── tests/
 │   ├── run_all_tests.sh             # 10-suite test runner
 │   ├── test_staleness_triggers.sh   # 30+ assertions verifying trigger patterns
+│   ├── test_rebuild_script.sh       # rebuild-atlas-all.sh behavior assertions
 │   ├── test_security_controls.sh    # SEC-01–SEC-10 automated test plans
 │   ├── test_security_controls.md    # SEC-01–SEC-19 manual test plans
+│   ├── test_atlas_output_structure.sh # docs/atlas/ directory contract assertions
 │   ├── test_layer_contracts.sh      # Per-layer output contracts (Layers 1–8)
 │   ├── test_bug_hunt_workflow.sh    # Three-pass bug hunt report format
+│   ├── test_ci_workflow.sh          # CI YAML structure and script path checks
+│   ├── test_publication_workflow.sh # SVG generation and GitHub Pages readiness
 │   ├── test_layer7_8.sh             # Layer 7/8 output structure + security assertions
 │   ├── test_no_silent_degradation.sh # Density guard compliance assertions
 │   └── test_scenarios.md            # 8 end-to-end acceptance scenarios
