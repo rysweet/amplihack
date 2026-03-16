@@ -96,6 +96,11 @@ MULTI_ENTITY_LIMIT: int = 40
 # Text search limit for structured entity IDs.
 ENTITY_ID_TEXT_SEARCH_LIMIT: int = 20
 
+# Only run keyword-expansion follow-up searches when the initial retrieval
+# returned fewer than this many facts. This keeps the expensive supplemental
+# path for genuinely sparse contexts instead of re-fanning the whole hive.
+KEYWORD_EXPANSION_SPARSE_FACT_THRESHOLD: int = 3
+
 # Topics shown from conflicting-information analysis.
 CONFLICTING_TOPICS_LIMIT: int = 20
 

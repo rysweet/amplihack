@@ -110,6 +110,17 @@ def test_cognitive_adapter_retrieve_by_entity_includes_remote_facts() -> None:
     assert hive.retrieve_by_entity_calls == [("Sarah Chen", 10)]
 
 
+def test_cognitive_adapter_retrieve_by_entity_local_skips_hive() -> None:
+    """Local-only entity retrieval must bypass distributed fan-out."""
+    adapter, hive = _make_adapter()
+
+    results = adapter.retrieve_by_entity_local("Sarah Chen", limit=10)
+    outcomes = {r["outcome"] for r in results}
+
+    assert outcomes == {"Sarah Chen manages Project Atlas"}
+    assert hive.retrieve_by_entity_calls == []
+
+
 def test_cognitive_adapter_execute_aggregation_uses_local_shard_only() -> None:
     """Meta-memory aggregations must use local shard only to avoid cross-shard storms.
 

@@ -518,6 +518,25 @@ class CognitiveAdapter:
 
         return local_results
 
+    def search_by_concept_local(self, keywords: list[str], limit: int = 30) -> list[dict[str, Any]]:
+        """Search local concept indexes only — no distributed fan-out."""
+        local_mem = self.memory
+        use_local_search = hasattr(local_mem, "local_search_by_concept")
+
+        if self._cognitive:
+            if use_local_search:
+                results = local_mem.local_search_by_concept(keywords=keywords, limit=limit)
+            elif hasattr(local_mem, "search_by_concept"):
+                results = local_mem.search_by_concept(keywords=keywords, limit=limit)
+            else:
+                return []
+            return [self._semantic_fact_to_dict(r) for r in results]
+
+        if hasattr(local_mem, "search_by_concept"):
+            nodes = local_mem.search_by_concept(keywords=keywords, limit=limit)
+            return [self._node_to_dict(n) for n in nodes]
+        return []
+
     def get_all_facts(self, limit: int = 50, query: str = "") -> list[dict[str, Any]]:
         """Retrieve all facts.
 
@@ -783,6 +802,25 @@ class CognitiveAdapter:
             return [self._semantic_fact_to_dict(r) for r in results]
         if hasattr(self.memory, "retrieve_by_entity"):
             nodes = self.memory.retrieve_by_entity(entity_name=entity_name, limit=limit)
+            return [self._node_to_dict(n) for n in nodes]
+        return []
+
+    def retrieve_by_entity_local(self, entity_name: str, limit: int = 50) -> list[dict[str, Any]]:
+        """Retrieve entity facts from local memory only."""
+        local_mem = self.memory
+        use_local_entity = hasattr(local_mem, "local_retrieve_by_entity")
+
+        if self._cognitive:
+            if use_local_entity:
+                results = local_mem.local_retrieve_by_entity(entity_name=entity_name, limit=limit)
+            elif hasattr(local_mem, "retrieve_by_entity"):
+                results = local_mem.retrieve_by_entity(entity_name=entity_name, limit=limit)
+            else:
+                return []
+            return [self._semantic_fact_to_dict(r) for r in results]
+
+        if hasattr(local_mem, "retrieve_by_entity"):
+            nodes = local_mem.retrieve_by_entity(entity_name=entity_name, limit=limit)
             return [self._node_to_dict(n) for n in nodes]
         return []
 

@@ -298,6 +298,94 @@ class TestLearningAgent:
 
         assert "Sarah Chen" in answer
 
+    def test_answer_question_uses_local_only_supplements_after_initial_pass(self, agent):
+        """Supplemental retrieval should stay local after the first pass."""
+        initial_facts = [
+            {"context": "Incident", "outcome": "INC-2024-001 was opened", "experience_id": "e1"}
+        ]
+
+        def simple_retrieval(question, force_verbatim=False):
+            agent._thread_local._last_simple_retrieval_exhaustive = False
+            return list(initial_facts)
+
+        agent.memory.search_local = MagicMock(return_value=[])
+
+        with (
+            patch.object(
+                agent,
+                "_detect_intent",
+                return_value={
+                    "intent": "temporal_comparison",
+                    "needs_temporal": False,
+                    "needs_math": False,
+                },
+            ),
+            patch.object(agent, "_simple_retrieval", side_effect=simple_retrieval),
+            patch.object(agent, "_synthesize_with_llm", return_value="answer"),
+            patch.object(
+                agent,
+                "_entity_linked_retrieval",
+                side_effect=lambda question, facts, local_only=False: facts,
+            ) as entity_linked,
+            patch.object(
+                agent,
+                "_multi_entity_retrieval",
+                side_effect=lambda question, facts, local_only=False: facts,
+            ) as multi_entity,
+            patch.object(
+                agent,
+                "_keyword_expanded_retrieval",
+                side_effect=lambda question, facts, local_only=False: facts,
+            ) as keyword_expansion,
+        ):
+            agent.answer_question(
+                "How did INC-2024-001 and INC-2024-002 change over time?",
+                question_level="L3",
+                _skip_qanda_store=True,
+            )
+
+        assert entity_linked.call_args.kwargs["local_only"] is True
+        assert multi_entity.call_args.kwargs["local_only"] is True
+        assert keyword_expansion.call_args.kwargs["local_only"] is True
+
+    def test_answer_question_skips_keyword_expansion_when_initial_retrieval_is_not_sparse(
+        self, agent
+    ):
+        """Keyword expansion should only run for sparse initial retrieval."""
+        initial_facts = [
+            {"context": "Latency", "outcome": "Latency was 12ms", "experience_id": "e1"},
+            {"context": "Latency", "outcome": "Latency was 18ms", "experience_id": "e2"},
+            {"context": "Latency", "outcome": "Latency was 22ms", "experience_id": "e3"},
+        ]
+
+        def simple_retrieval(question, force_verbatim=False):
+            agent._thread_local._last_simple_retrieval_exhaustive = False
+            return list(initial_facts)
+
+        with (
+            patch.object(
+                agent,
+                "_detect_intent",
+                return_value={
+                    "intent": "temporal_comparison",
+                    "needs_temporal": False,
+                    "needs_math": False,
+                },
+            ),
+            patch.object(agent, "_simple_retrieval", side_effect=simple_retrieval),
+            patch.object(agent, "_synthesize_with_llm", return_value="answer"),
+            patch.object(
+                agent,
+                "_keyword_expanded_retrieval",
+                side_effect=AssertionError("keyword expansion should be skipped"),
+            ),
+        ):
+            agent.answer_question(
+                "How did latency change over time?",
+                question_level="L3",
+                _skip_qanda_store=True,
+            )
+
     def test_get_memory_stats(self, agent):
         """Test getting memory statistics."""
         stats = agent.get_memory_stats()
@@ -636,6 +724,45 @@ class TestEntityLinkedRetrieval:
             # Should not have more than what search returned (no duplicates)
             ids_in_result = [f.get("experience_id") for f in result if f.get("experience_id")]
             assert len(ids_in_result) == len(set(ids_in_result))
+
+    def test_entity_linked_local_only_uses_local_memory_helpers(self, agent):
+        """Local-only entity-linked retrieval must not call distributed helpers."""
+        local_fact = {
+            "context": "Incident",
+            "outcome": "INC-2024-001 is linked to CVE-2024-21626",
+            "experience_id": "local-1",
+        }
+        concept_fact = {
+            "context": "CVE Details",
+            "outcome": "CVE-2024-21626 enabled the incident",
+            "experience_id": "local-2",
+        }
+        agent.memory.search = MagicMock(
+            side_effect=AssertionError("distributed search should not run")
+        )
+        agent.memory.retrieve_by_entity = MagicMock(
+            side_effect=AssertionError("distributed entity retrieval should not run")
+        )
+        agent.memory.search_by_concept = MagicMock(
+            side_effect=AssertionError("distributed concept search should not run")
+        )
+        agent.memory.search_local = MagicMock(return_value=[local_fact])
+        agent.memory.retrieve_by_entity_local = MagicMock(return_value=[])
+        agent.memory.search_by_concept_local = MagicMock(return_value=[concept_fact])
+
+        result = agent._entity_linked_retrieval(
+            "Which CVE is tied to INC-2024-001?",
+            [],
+            local_only=True,
+        )
+
+        outcomes = {fact["outcome"] for fact in result}
+        assert outcomes == {
+            "INC-2024-001 is linked to CVE-2024-21626",
+            "CVE-2024-21626 enabled the incident",
+        }
+        agent.memory.search_local.assert_called()
+        agent.memory.search_by_concept_local.assert_called()
 
 
 class TestMultiEntityRetrieval:
