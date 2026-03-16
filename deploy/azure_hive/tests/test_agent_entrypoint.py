@@ -163,6 +163,40 @@ class TestAgentEntrypoint:
         agent.process_store.assert_called_once_with("What is Sarah Chen's birthday?")
         agent.process.assert_not_called()
 
+    def test_run_event_driven_loop_publishes_agent_online_for_online_check(self):
+        mod = _load_entrypoint()
+        agent = MagicMock()
+        answer_publisher = MagicMock()
+        memory = MagicMock()
+        shutdown_event = threading.Event()
+
+        class FakeInputSource:
+            def __init__(self):
+                self._source = self
+                self.last_event_metadata = {}
+                self._items = [
+                    ("__ONLINE_CHECK__", {"event_type": "ONLINE_CHECK", "run_id": "run-123"}),
+                    (None, {}),
+                ]
+
+            def next(self):
+                text, meta = self._items.pop(0)
+                self.last_event_metadata = meta
+                return text
+
+        mod._run_event_driven_loop(
+            "agent-0",
+            agent,
+            FakeInputSource(),
+            answer_publisher,
+            memory,
+            shutdown_event,
+        )
+
+        answer_publisher.publish_agent_online.assert_called_once_with(run_id="run-123")
+        agent.process.assert_not_called()
+        agent.process_store.assert_not_called()
+
     def test_handle_event_passes_learning_agent_from_ooda_tick(self):
         """_ooda_tick forwards the learning_agent to _handle_event; memory.recall never called."""
         mod = _load_entrypoint()
