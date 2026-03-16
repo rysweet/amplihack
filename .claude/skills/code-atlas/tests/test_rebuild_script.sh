@@ -261,8 +261,8 @@ rm -rf "$tmpdir"
 # ---------------------------------------------------------------------------
 tmpdir=$(_fresh_repo)
 # Create a fake .env with secrets
-echo "DATABASE_URL=postgres://user:SECRETPASSWORD@localhost/db" > "$tmpdir/.env"
-echo "JWT_SECRET=mysupersecretkey123" >> "$tmpdir/.env"
+echo "DATABASE_URL=postgres://user:SECRETPASSWORD@localhost/db" > "$tmpdir/.env"  # pragma: allowlist secret
+echo "JWT_SECRET=mysupersecretkey123" >> "$tmpdir/.env"  # pragma: allowlist secret
 
 output=$(cd "$tmpdir" && bash "$REBUILD_SCRIPT" 2>&1 || true)
 assert_output_not_contains "rebuild: does not leak .env values" "SECRETPASSWORD\|mysupersecretkey123" "$output"
