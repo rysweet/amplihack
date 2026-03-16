@@ -180,16 +180,100 @@ For each journey step, Pass 2 verifies:
 
 ---
 
+---
+
+## Layer 7: Service Component Architecture
+
+**Question answered:** What is the internal module/package structure of each service, and how tightly coupled are its components?
+
+### Source signals
+
+| Signal | Pattern |
+|--------|---------|
+| Python packages | `find . -name "__init__.py" \| xargs dirname` |
+| Go packages | `find . -name "*.go" \| xargs dirname \| sort -u` |
+| TypeScript workspaces | `package.json workspaces[]` + `find src -maxdepth 2 -name "index.ts"` |
+| .NET projects | `find . -name "*.csproj"` |
+| Rust modules | `grep -r "^pub mod\|^mod " --include="*.rs"` |
+| Key exported symbols | Public class/function declarations in each package |
+
+### Output format
+
+One `graph TD` Mermaid diagram per service, showing packages → files → key exported symbols. Exported symbols that appear in Layer 3 routes are highlighted.
+
+### Structural bugs Layer 7 detects
+
+- Service present in Layer 1 topology with no discoverable packages (deployment artefact, not a real service)
+- Package imported by ≥3 other packages within the same service (high-coupling refactor candidate)
+- Exported symbol referenced in Layer 3 routes but absent from Layer 7 packages (phantom handler)
+- Package with zero exported symbols that is imported by other packages (private coupling, likely a code smell)
+
+### Security
+
+SEC-11 applies: service names are sanitised to `[a-zA-Z0-9_-]{1,64}` before filesystem path construction. Density guard applies: >50 components or >100 edges triggers user prompt.
+
+---
+
+## Layer 8: AST+LSP Symbol Bindings
+
+**Question answered:** Which symbols are referenced across files, which are dead code, and which call sites use the wrong interface?
+
+### Operating modes
+
+| Mode | Trigger | Mechanism |
+|------|---------|-----------|
+| `lsp-assisted` | `lsp-setup` reports active LSP server | Direct LSP server queries |
+| `static-approximation` | LSP unavailable | ripgrep + `code-visualizer` AST |
+
+The mode is always stated on line 1 of `layer8-ast-lsp-bindings/README.md`. It is never hidden.
+
+### Source signals
+
+| Signal | LSP-assisted | Static fallback |
+|--------|-------------|-----------------|
+| Symbol references | `textDocument/references` LSP call | `grep -r "symbol_name"` with context |
+| Dead code | `workspace/symbol` + reference count | Public symbols with zero grep matches |
+| Interface mismatches | `textDocument/hover` on call site vs definition | Regex signature comparison |
+
+### Output files
+
+| File | Content |
+|------|---------|
+| `symbol-references.mmd` | Cross-file reference graph (Mermaid) |
+| `dead-code.md` | Table of unreferenced exported symbols |
+| `mismatched-interfaces.md` | Table of call-site / definition mismatches |
+
+### Structural bugs Layer 8 detects
+
+- Exported function called with wrong number of arguments in another package (interface mismatch → runtime TypeError)
+- Public symbol with zero references anywhere in the codebase (dead code, safe to remove)
+- Symbol appearing in Layer 3 handler that Layer 8 lists as dead (phantom dependency — investigate first before removing)
+- Implementation of a shared interface that doesn't match the interface definition (silent break in polymorphic dispatch)
+
+### Security
+
+SEC-12: all LSP output treated as untrusted; schema-validated, HTML-escaped, path-boundary-checked, credential-redacted before embedding.
+SEC-15: LAYER8_CREDENTIAL_PATTERNS applied before writing all four output files.
+
+---
+
 ## Cross-Layer Bug Detection Summary
 
-| Bug Type                             | Layers   | Pass |
-| ------------------------------------ | -------- | ---- |
-| Route reads undeclared DTO field     | 3 × 4    | 1    |
-| Service in topology with no routes   | 1 × 3    | 1    |
-| Env var used but undeclared          | 1 × 6b   | 1    |
-| Env var declared but unused          | 1 × 6b   | 1    |
-| Docs reference removed routes        | Docs × 3 | 1    |
-| Journey step missing route           | 5 × 3    | 2    |
-| Direct service call bypasses gateway | 5 × 1    | 2    |
-| Data from step N not in step N+1     | 5 × 4    | 2    |
-| Circular import cycle                | 2        | 1    |
+| Bug Type                              | Layers     | Pass |
+| ------------------------------------- | ---------- | ---- |
+| Route reads undeclared DTO field      | 3 × 4      | 1    |
+| Service in topology with no routes    | 1 × 3      | 1    |
+| Env var used but undeclared           | 1 × 6b     | 1    |
+| Env var declared but unused           | 1 × 6b     | 1    |
+| Docs reference removed routes         | Docs × 3   | 1    |
+| Circular import cycle                 | 2          | 1    |
+| Service with no internal packages     | 1 × 7      | 1    |
+| High-coupling package (≥3 importers)  | 7          | 1    |
+| Phantom handler (route → missing sym) | 3 × 7      | 1    |
+| Dead exported symbol                  | 8          | 1    |
+| Interface mismatch at call site       | 8          | 1    |
+| Journey step missing route            | 5 × 3      | 3    |
+| Direct service call bypasses gateway  | 5 × 1      | 3    |
+| Data from step N not in step N+1      | 5 × 4      | 3    |
+| Dead code on critical journey path    | 5 × 8      | 3    |
+| Layer 7 component missing from path   | 5 × 7      | 3    |

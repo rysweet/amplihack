@@ -6,8 +6,8 @@ updated: 2026-03-16
 
 # Getting Started with Code Atlas
 
-**Time required:** 30–45 minutes
-**What you'll learn:** How to build a complete code atlas, read each layer, find your first structural bug, and set up CI freshness detection.
+**Time required:** 45–60 minutes
+**What you'll learn:** How to build a complete 8-layer code atlas, read each layer, find your first structural bug using the three-pass bug hunt, and set up CI freshness detection.
 
 **Prerequisites:**
 
@@ -28,11 +28,11 @@ Build a complete code atlas for this repository
 The skill will:
 
 1. Detect your language(s) from build files and entry points
-2. Build 6 layers of architecture documentation
-3. Run a 2-pass bug hunt
+2. Build 8 layers of architecture documentation
+3. Run a 3-pass bug hunt
 4. Save all outputs to `docs/atlas/`
 
-**Expected output (first 10 lines):**
+**Expected output (first 12 lines):**
 
 ```
 Analyzing codebase: /path/to/your-repo
@@ -46,9 +46,17 @@ Building Layer 1: Runtime Topology...
 Building Layer 2: Compile-time Dependencies...
   Found: go.mod, package.json
   Output: docs/atlas/layer2-dependencies/deps.mmd ✓
+...
+Building Layer 7: Service Component Architecture...
+  api-service: 4 packages, 12 exported symbols
+  Output: docs/atlas/layer7-service-components/api-service.mmd ✓
+
+Building Layer 8: AST+LSP Symbol Bindings...
+  Mode: static-approximation (no LSP server found — run /lsp-setup for verified results)
+  Output: docs/atlas/layer8-ast-lsp-bindings/symbol-references.mmd ✓
 ```
 
-The full build takes 2–5 minutes for a typical multi-service repository.
+The full build takes 3–8 minutes for a typical multi-service repository.
 
 ---
 
@@ -196,14 +204,43 @@ bash scripts/check-atlas-staleness.sh
 
 ---
 
+## Step 6 (Optional): Explore Layer 7 and Layer 8
+
+**Layer 7** shows the internal anatomy of each service:
+
+```bash
+cat docs/atlas/layer7-service-components/api-service.mmd
+```
+
+Look for packages imported by many others within the same service — these are high-coupling candidates for refactoring.
+
+**Layer 8** shows dead code and interface mismatches:
+
+```bash
+cat docs/atlas/layer8-ast-lsp-bindings/dead-code.md
+```
+
+Check which mode was used (line 1 of the README):
+
+```bash
+head -1 docs/atlas/layer8-ast-lsp-bindings/README.md
+# **Mode:** static-approximation
+```
+
+To get LSP-verified results, run `/lsp-setup` first and then rebuild Layer 8:
+
+```
+/code-atlas layers=8
+```
+
 ## What's Next
 
 Now that you have a complete atlas:
 
-- **[How to use code atlas daily](../howto/use-code-atlas.md)** — 15 practical recipes including partial rebuilds, bug hunt commands, and PR review
-- **[How to add custom journeys](../howto/add-custom-journeys.md)** — Define business-critical user paths for deeper bug hunting
+- **[How to use code atlas daily](../howto/use-code-atlas.md)** — Practical recipes including partial rebuilds, Layer 7/8 commands, density guard, and PR review
+- **[How to add custom journeys](../howto/add-custom-journeys.md)** — Define business-critical user paths for deeper Pass 3 bug hunting
 - **[Full reference](../reference/code-atlas-reference.md)** — All flags, layer IDs, output files, and error codes
-- **[Atlas layers explained](../reference/atlas-layers-explained.md)** — What each layer detects and why it matters
+- **[Atlas layers explained](../reference/atlas-layers-explained.md)** — What each of the 8 layers detects and why it matters
 
 ---
 
