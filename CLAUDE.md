@@ -47,6 +47,23 @@ turns, it's the same topic. Continue in the current workflow.
 
 ### Quick Classification (3 seconds max)
 
+```mermaid
+flowchart TD
+    MSG[New User Message] --> TB{Topic Boundary?}
+    TB -->|"same goal/domain as last 3 turns"| CONTINUE[Continue current workflow]
+    TB -->|"new topic / first message / direction change"| CLASS{Classify Task Type}
+
+    CLASS --> QA{Edits code files?}
+    QA -->|"no + Q&A keywords"| QA_ACT[Respond directly]
+    QA -->|"no + ops keywords"| OPS_ACT[Respond directly]
+
+    CLASS -->|"investigation keywords"| INV_ACT[Invoke /dev]
+    CLASS -->|"development keywords"| DEV_ACT[Invoke /dev]
+    QA -->|"yes - ANY code file edit"| DEV_ACT
+
+    CLASS -->|"ambiguous"| DEV_ACT
+```
+
 | Task Type         | Action                      | When to Use                                            |
 | ----------------- | --------------------------- | ------------------------------------------------------ |
 | **Q&A**           | Respond directly            | Simple questions, single-turn answers, no code changes |

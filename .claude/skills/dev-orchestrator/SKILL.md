@@ -23,6 +23,52 @@ priority: 5
 
 # Dev Orchestrator Skill
 
+## Workflow Graph
+
+```mermaid
+flowchart TD
+    A[User Request] --> B{Classify Task}
+    B -->|Q&A| C[analyzer agent]
+    B -->|Operations| D[builder agent]
+    B -->|Dev / Investigation| E{Recursion Guard}
+
+    E -->|BLOCKED| F[announce-depth-limited]
+    F --> G[execute-single-fallback]
+    G --> R1_BLOCKED[Round 1 result]
+
+    E -->|ALLOWED| H{Decompose Workstreams}
+    H -->|1 workstream| I[default-workflow recipe]
+    H -->|N workstreams| J[multitask parallel]
+    I --> R1[Round 1 result]
+    J --> R1
+
+    R1_BLOCKED --> REFLECT
+    R1 --> REFLECT{Reflect on Round 1}
+    REFLECT -->|ACHIEVED| SUM[Summarize]
+    REFLECT -->|PARTIAL / NOT_ACHIEVED| K[Execute Round 2]
+    K --> REFLECT2{Reflect on Round 2}
+    REFLECT2 -->|ACHIEVED| SUM
+    REFLECT2 -->|PARTIAL / NOT_ACHIEVED| L[Execute Round 3 - final]
+    L --> REFLECT_FINAL[Final Reflect]
+    REFLECT_FINAL --> VAL{Outside-In Testing Validation}
+    REFLECT --> VAL
+
+    VAL --> SUM
+    SUM --> DONE[Complete Session + Cleanup]
+
+    %% Adaptive error recovery path
+    R1 -.->|empty result| DET[detect-execution-gap]
+    DET --> FILE_BUG[file-routing-bug]
+    FILE_BUG --> ADAPT{Adaptive Recipe}
+    ADAPT -->|Investigation| INV_RECIPE[investigation-workflow]
+    ADAPT -->|Development| DEV_RECIPE[default-workflow]
+    INV_RECIPE --> REFLECT
+    DEV_RECIPE --> REFLECT
+
+    C --> DONE
+    D --> DONE
+```
+
 ## Purpose
 
 This is the **default orchestrator** for all non-trivial development and investigation tasks
