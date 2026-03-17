@@ -70,6 +70,17 @@ MITRE_TECHNIQUES = {
     "T1490": "Inhibit System Recovery",
 }
 
+
+def _technique_keyword(technique_id: str) -> str:
+    """Return the human-readable keyword used by temporal question grading."""
+    return MITRE_TECHNIQUES.get(technique_id, technique_id).split(":")[0].strip()
+
+
+def _objective_keyword(objective: str) -> str:
+    """Return the human-readable keyword used by objective question grading."""
+    return objective.replace("_", " ")
+
+
 # Realistic device names for a 500-device enterprise
 DEVICE_POOLS = {
     "workstations": [
@@ -361,6 +372,24 @@ def _mde_threat_intel_event(ts: str, device: str, campaign_id: str, threat_actor
         f"Title: Threat intelligence links activity to {threat_actor} | "
         f"Severity: Medium | Category: ThreatIntelligence | "
         f"CampaignId: {campaign_id} | ThreatActor: {threat_actor}"
+    )
+
+
+def _mde_campaign_summary_event(ts: str, device: str, campaign: AttackCampaign) -> str:
+    """Generate a campaign-summary enrichment record for benchmark-facing semantics."""
+    actor_name = campaign.threat_actor.split("(")[0].strip()
+    technique_sequence = " -> ".join(_technique_keyword(t) for t in campaign.techniques[:4])
+    ioc_ips = ", ".join(campaign.iocs["ip"][:2])
+    ioc_hashes = ", ".join(campaign.malware_hashes[:1])
+    return (
+        f"[MDE AlertInfo] Timestamp: {ts} | "
+        f"AlertId: SUM-{campaign.campaign_id} | DeviceName: {device} | "
+        f"Title: Campaign intelligence summary for {campaign.campaign_id} | "
+        f"Severity: Medium | Category: ThreatIntelligence | "
+        f"CampaignId: {campaign.campaign_id} | ThreatActor: {actor_name} | "
+        f"Objective: {_objective_keyword(campaign.objective)} | "
+        f"IOC_IPs: {ioc_ips} | IOC_Hashes: {ioc_hashes} | "
+        f"TechniqueSequence: {technique_sequence}"
     )
 
 
@@ -723,6 +752,22 @@ def _generate_campaign_events(rng: random.Random, campaign: AttackCampaign) -> l
         }
     )
 
+    summary_ts = _ts(day, 6, 30)
+    technique_keywords = [_technique_keyword(t) for t in campaign.techniques[:4]]
+    events.append(
+        {
+            "content": _mde_campaign_summary_event(summary_ts, primary_device, campaign),
+            "phase": "summary",
+            "campaign_id": campaign.campaign_id,
+            "technique": "",
+            "facts": [
+                f"{campaign.campaign_id} objective {_objective_keyword(campaign.objective)}",
+                f"{campaign.campaign_id} IOCs {' '.join(campaign.iocs['ip'][:2])} {campaign.malware_hashes[0][:16]}",
+                f"{campaign.campaign_id} technique sequence {' -> '.join(technique_keywords)}",
+            ],
+        }
+    )
+
     # Add noise events (benign activity on same devices)
     for _ in range(rng.randint(5, 15)):
         noise_day = campaign.start_day + rng.randint(0, campaign.duration_days)
@@ -886,9 +931,7 @@ def _generate_questions(
                 ground_truth_facts=[
                     f"{camp.campaign_id} technique {t}" for t in camp.techniques[:4]
                 ],
-                required_keywords=[
-                    MITRE_TECHNIQUES.get(t, t).split(":")[0].strip() for t in camp.techniques[:3]
-                ],
+                required_keywords=[_technique_keyword(t) for t in camp.techniques[:3]],
                 campaign_ids=[camp.campaign_id],
                 difficulty="hard",
             )
@@ -903,7 +946,7 @@ def _generate_questions(
                 f"Was it ransomware, data exfiltration, espionage, or something else?",
                 category="alert_retrieval",
                 ground_truth_facts=[f"{camp.campaign_id} objective: {camp.objective}"],
-                required_keywords=[camp.objective.replace("_", " ")],
+                required_keywords=[_objective_keyword(camp.objective)],
                 campaign_ids=[camp.campaign_id],
                 difficulty="easy",
             )

@@ -19,6 +19,8 @@ from amplihack.eval.security_log_eval import (
     _generate_noise_events,
     _generate_questions,
     _grade_answer,
+    _objective_keyword,
+    _technique_keyword,
 )
 
 
@@ -92,6 +94,23 @@ class TestEventGeneration:
             for e in attribution_events
         )
 
+    def test_campaign_events_include_benchmark_summary_metadata(self):
+        campaign = _generate_campaigns(random.Random(42), 1)[0]
+        events = _generate_campaign_events(random.Random(42), campaign)
+
+        summary_events = [
+            e for e in events if f"AlertId: SUM-{campaign.campaign_id}" in e["content"]
+        ]
+
+        assert summary_events
+        summary = summary_events[0]
+        assert f"Objective: {_objective_keyword(campaign.objective)}" in summary["content"]
+        for ip in campaign.iocs["ip"][:2]:
+            assert ip in summary["content"]
+        assert campaign.malware_hashes[0] in summary["content"]
+        for technique in campaign.techniques[:4]:
+            assert _technique_keyword(technique) in summary["content"]
+
     def test_noise_events_have_no_facts(self):
         events = _generate_noise_events(random.Random(42), 50, 30)
         for e in events:
@@ -149,6 +168,23 @@ class TestQuestionGeneration:
                     and f"ThreatActor: {actor_name}" in content
                     for content in contents
                 )
+
+    def test_seeded_required_keywords_are_backed_by_generated_events(self):
+        eval_harness = SecurityLogEval(num_turns=300, num_questions=50, num_campaigns=12, seed=42)
+        eval_harness.generate()
+
+        telemetry = "\n".join(
+            event["content"] for event in eval_harness.events if event["campaign_id"] != "BENIGN"
+        ).lower()
+        missing = []
+        for question in eval_harness.questions:
+            missing_keywords = [
+                kw for kw in question.required_keywords if kw.lower() not in telemetry
+            ]
+            if missing_keywords:
+                missing.append((question.question_id, missing_keywords))
+
+        assert missing == []
 
 
 class TestGrading:
