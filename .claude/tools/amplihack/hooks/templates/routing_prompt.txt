@@ -1,39 +1,56 @@
 <system-reminder source="auto-intent-router">
-Before responding, classify this prompt and act accordingly:
+Before responding, classify this prompt using parallel signal evaluation:
 
-  DEV — Any task that creates, modifies, or deletes code files OR documentation files.
-    This includes ALL of: implement, build, fix, write, refactor, configure, test, deploy,
-    document, review code, add feature, update config, change defaults, edit prompts.
-    → Say "[auto-routed] DEV → launching dev-orchestrator" then Invoke Skill(skill="dev-orchestrator"). Do not answer inline.
+```mermaid
+flowchart TD
+    MSG[User Message] --> BYPASS{"Bypass?<br/>'just answer' / 'skip workflow'"}
+    BYPASS -->|yes| SKIP[SKIP: respect bypass]
 
-  INVESTIGATE — Analyze, understand, explore, research, audit, trace, map dependencies.
-    → Say "[auto-routed] INVESTIGATE → launching dev-orchestrator" then Invoke Skill(skill="dev-orchestrator"). Do not answer inline.
+    MSG --> EVAL{Detect all signals}
+    EVAL --> S1["UNDERSTAND<br/>explain, how does, why,<br/>analyze, research, explore"]
+    EVAL --> S2["IMPLEMENT<br/>build, fix, add, create,<br/>refactor, update, write"]
+    EVAL --> S3["FILE_EDIT<br/>any code/doc file will be<br/>created / modified / deleted"]
+    EVAL --> S4["SHELL_ONLY<br/>run tests, git status,<br/>check logs, show disk"]
+    EVAL --> S5["QUESTION<br/>what is, how do I,<br/>explain, compare"]
 
-  HYBRID — Investigate/understand THEN implement/fix, or run command THEN fix.
-    → Say "[auto-routed] HYBRID → launching dev-orchestrator" then Invoke Skill(skill="dev-orchestrator"). Do not answer inline.
+    EVAL --> RESOLVE{Resolve by priority}
+    RESOLVE -->|"UNDERSTAND + IMPLEMENT"| HYBRID[HYBRID → dev-orchestrator]
+    RESOLVE -->|"SHELL_ONLY + IMPLEMENT"| HYBRID
+    RESOLVE -->|"FILE_EDIT or IMPLEMENT alone"| DEV[DEV → dev-orchestrator]
+    RESOLVE -->|"UNDERSTAND alone"| INVESTIGATE[INVESTIGATE → dev-orchestrator]
+    RESOLVE -->|"SHELL_ONLY alone"| OPS[OPS: execute directly]
+    RESOLVE -->|"QUESTION alone"| QA[Q&A: answer directly]
+```
 
-  Q&A — Pure knowledge questions with NO file changes: what is, how does, explain, compare.
-    → Answer directly. No workflow needed.
+Resolution rules — detect all signals, then apply the FIRST matching rule:
+1. BYPASS → SKIP
+2. UNDERSTAND + IMPLEMENT both present → **HYBRID** (even if FILE_EDIT also present)
+3. SHELL_ONLY + IMPLEMENT both present → **HYBRID** (run command then fix)
+4. FILE_EDIT or IMPLEMENT present (no UNDERSTAND) → **DEV**
+5. UNDERSTAND present (no IMPLEMENT) → **INVESTIGATE**
+6. SHELL_ONLY present (no FILE_EDIT) → **OPS**
+7. QUESTION present (no FILE_EDIT) → **Q&A**
+8. Ambiguous → **DEV** (safe default)
 
-  OPS — Shell commands that do NOT modify files: run tests, check logs, show disk, git status.
-    → Execute directly. No workflow needed.
+Calibration examples (use these to resolve edge cases):
+  "run tests and fix failures" = HYBRID (SHELL_ONLY + IMPLEMENT → both phases)
+  "investigate X then fix Y" = HYBRID
+  "what does this error mean and how do I fix it" = HYBRID (UNDERSTAND + IMPLEMENT)
+  "change the default model" = DEV. "update README" = DEV. "fix a typo" = DEV.
+  "review this PR" = DEV. "make sure it works" = DEV. "write docs" = DEV.
+  "run tests" = OPS. "git status" = OPS.
+  "what is OAuth?" = Q&A. "how does X work?" = Q&A (no fix requested).
+  "what's broken?" = INVESTIGATE. "why is CI failing?" = INVESTIGATE.
+  "research rate limiting then implement it" = HYBRID.
+  "analyze deps and remove circular imports" = HYBRID (UNDERSTAND + IMPLEMENT).
 
-  SKIP — User says "just answer", "skip workflow", "without workflow".
-    → Respect the bypass.
+Actions:
+  DEV → Say "[auto-routed] DEV → launching dev-orchestrator" then Invoke Skill(skill="dev-orchestrator"). Do not answer inline.
+  INVESTIGATE → Say "[auto-routed] INVESTIGATE → launching dev-orchestrator" then Invoke Skill(skill="dev-orchestrator"). Do not answer inline.
+  HYBRID → Say "[auto-routed] HYBRID → launching dev-orchestrator" then Invoke Skill(skill="dev-orchestrator"). Do not answer inline.
+  Q&A → Answer directly. No workflow needed.
+  OPS → Execute directly. No workflow needed.
+  SKIP → Respect the bypass.
 
-MANDATORY RULE — Code AND Docs Changes ALWAYS Use DEV:
-  If the task requires editing ANY files (.py, .yaml, .md, .ts, .js, .rs, .go, .json, .toml, .txt, etc.),
-  it is ALWAYS DEV — never Q&A or OPS, regardless of how trivial the change seems.
-  The dev-orchestrator runs the full default-workflow recipe (issue → branch → implement → test → PR).
-  There are NO exceptions. "Just one line" = DEV. "Fix a typo" = DEV. "Update a default" = DEV.
-
-Examples:
-  "change the default model" = DEV. "update README" = DEV. "fix a typo in code" = DEV.
-  "write docs" = DEV. "review this PR" = DEV. "make sure it works" = DEV.
-  "run tests" = OPS. "run tests and fix failures" = HYBRID.
-  "what's broken?" = INVESTIGATE. "what is OAuth?" = Q&A.
-  "investigate X then fix Y" = HYBRID.
-
-When in doubt, choose DEV. False positive (workflow for a simple task) costs minutes.
-False negative (skipping workflow for file changes) costs quality, testing, and trust.
+When in doubt, choose DEV. False positive costs minutes. False negative costs quality.
 </system-reminder>
