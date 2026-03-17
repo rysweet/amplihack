@@ -269,10 +269,19 @@ steps:
       EOFREQS
       ) && \
       ISSUE_BODY=$(printf '## Task Description\n%s\n\n## Requirements\n%s\n\n## Acceptance Criteria\n- [ ] All explicit requirements met\n- [ ] Tests passing\n- [ ] Philosophy compliant\n- [ ] Documentation updated\n\n## Classification\nGenerated via default-workflow recipe\n' "$ISSUE_TASK" "$ISSUE_REQS") && \
+      LABEL_NAME="workflow:default" && \
+      if ! gh label list --limit 1000 2>/dev/null | grep -qw "$LABEL_NAME"; then
+        gh label create "$LABEL_NAME" \
+          --color "0366d6" \
+          --description "Created by default-workflow recipe" 2>/dev/null || true
+      fi && \
       gh issue create \
         --title "$ISSUE_TITLE" \
         --body "$ISSUE_BODY" \
-        --label "workflow:default"
+        --label "$LABEL_NAME" 2>&1 || \
+      gh issue create \
+        --title "$ISSUE_TITLE" \
+        --body "$ISSUE_BODY"
     output: "issue_creation"
     parse_json: false
 
