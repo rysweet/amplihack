@@ -26,7 +26,7 @@ tags: ["architecture", "documentation", "bug-hunting", "atlas", "code-atlas"]
 # Layers:
 #   1. Runtime Topology          — services, containers, ports, connections
 #   2. Compile-time Dependencies — packages, modules, circular dependency detection
-#   3. HTTP Routing              — routes, DTOs, middleware chains
+#   3. API Contracts             — routes, endpoints, DTOs, middleware chains, gRPC/GraphQL schemas
 #   4. Data Flow                 — DTO-to-storage chain, transformation steps
 #   5. User Journey Scenarios    — entry-point to outcome sequence diagrams
 #   6. Exhaustive Inventory      — services, env vars, data stores, external deps
@@ -169,7 +169,7 @@ steps:
       Layer 1 — Repository Surface: all source files, project structure, build systems
       Layer 2 — Runtime Topology: services, containers, ports, inter-service connections
       Layer 3 — Compile-time Dependencies: imports, packages, circular dependency detection
-      Layer 4 — HTTP Routing/Contracts: routes, DTOs, middleware chains, route inventory
+      Layer 4 — API Contracts: HTTP routes, gRPC services, GraphQL schemas, DTOs, middleware chains
       Layer 5 — Data Flow: DTO-to-storage chain, transformation steps
       Layer 6 — User Journey Scenarios: entry-point to outcome, minimum 3 journeys
       Layer 7 — Service Component Architecture: per-service module/package diagrams

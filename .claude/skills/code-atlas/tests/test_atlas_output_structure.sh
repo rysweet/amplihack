@@ -260,7 +260,7 @@ assert_dir_exists "docs/atlas/ directory exists" "$ATLAS_DIR"
 assert_file_exists "docs/atlas/index.md exists" "$ATLAS_DIR/index.md"
 assert_file_contains "index.md mentions Layer 1" "layer1\|Layer 1\|Runtime Topology" "$ATLAS_DIR/index.md"
 assert_file_contains "index.md mentions Layer 2" "layer2\|Layer 2\|Dependenc" "$ATLAS_DIR/index.md"
-assert_file_contains "index.md mentions Layer 3" "layer3\|Layer 3\|HTTP\|Routing" "$ATLAS_DIR/index.md"
+assert_file_contains "index.md mentions Layer 3" "layer3\|Layer 3\|API|Contracts|Routing\|API|Contracts|Routing" "$ATLAS_DIR/index.md"
 assert_file_contains "index.md mentions Layer 4" "layer4\|Layer 4\|Data Flow" "$ATLAS_DIR/index.md"
 assert_file_contains "index.md mentions Layer 5" "layer5\|Layer 5\|User Journey\|Scenario" "$ATLAS_DIR/index.md"
 assert_file_contains "index.md mentions Layer 6" "layer6\|Layer 6\|Inventory" "$ATLAS_DIR/index.md"
@@ -298,20 +298,20 @@ assert_valid_mermaid "dependencies.mmd is valid Mermaid"     "$L2/dependencies.m
 assert_markdown_table "inventory.md has package table" "$L2/inventory.md" 1
 
 # ---------------------------------------------------------------------------
-# Test Group 4: Layer 3 — HTTP Routing
+# Test Group 4: Layer 3 — API|Contracts|Routing API|Contracts|Routing
 # ---------------------------------------------------------------------------
 
 echo ""
-echo "--- Layer 3: HTTP Routing ---"
-L3="$ATLAS_DIR/layer3-http-routing"
-assert_dir_exists  "layer3-http-routing/ exists"             "$L3"
-assert_file_exists "layer3-http-routing/routing.mmd"         "$L3/routing.mmd"
-assert_file_exists "layer3-http-routing/routing.svg"         "$L3/routing.svg"
-assert_file_exists "layer3-http-routing/route-inventory.md"  "$L3/route-inventory.md"
-assert_file_exists "layer3-http-routing/README.md"           "$L3/README.md"
+echo "--- Layer 3: API Contracts ---"
+L3="$ATLAS_DIR/layer3-api-contracts"
+assert_dir_exists  "layer3-api-contracts/ exists"             "$L3"
+assert_file_exists "layer3-api-contracts/routing.mmd"         "$L3/routing.mmd"
+assert_file_exists "layer3-api-contracts/routing.svg"         "$L3/routing.svg"
+assert_file_exists "layer3-api-contracts/route-inventory.md"  "$L3/route-inventory.md"
+assert_file_exists "layer3-api-contracts/README.md"           "$L3/README.md"
 assert_valid_mermaid "routing.mmd is valid Mermaid"          "$L3/routing.mmd"
 assert_markdown_table "route-inventory.md has route rows"    "$L3/route-inventory.md" 1
-# Route inventory must have HTTP method column
+# Route inventory must have API|Contracts|Routing method column
 assert_file_contains "route-inventory.md has Method column"  "[Mm]ethod\|GET\|POST\|PUT\|DELETE\|PATCH" "$L3/route-inventory.md"
 # Route inventory must have Path column
 assert_file_contains "route-inventory.md has Path column"    "[Pp]ath\|/\|endpoint" "$L3/route-inventory.md"

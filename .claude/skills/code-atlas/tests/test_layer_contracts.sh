@@ -250,13 +250,13 @@ assert_contains "L2: version 1.9.1 in inventory" "1\.9\.1" "${L2}/inventory.md"
 assert_contains "L2: mmd has module name" "myapp\|module" "${L2}/dependencies.mmd"
 
 # ---------------------------------------------------------------------------
-# Layer 3 Contracts — HTTP Routing
+# Layer 3 Contracts — API Contracts
 # ---------------------------------------------------------------------------
 
 echo ""
-echo "=== Layer 3 Contract Tests: HTTP Routing ==="
+echo "=== Layer 3 Contract Tests: API Contracts ==="
 
-L3="${ATLAS}/layer3-http-routing"
+L3="${ATLAS}/layer3-api-contracts"
 
 # Contract 3.1: All 4 routes from user_handler.go appear in route-inventory.md
 assert_contains "L3: GET /api/users in inventory" "GET.*api/users\|/api/users.*GET" "${L3}/route-inventory.md"

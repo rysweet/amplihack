@@ -136,17 +136,25 @@ while IFS= read -r f; do
         fi
     fi
 
-    # Layer 3: HTTP Routing
+    # Layer 3: API Contracts (HTTP routes, gRPC, GraphQL, OpenAPI)
     if [[ -z "${STALE_SET[3]:-}" ]]; then
         if  [[ "$f" == *route*.ts      ]] || \
             [[ "$f" == *route*.go      ]] || \
             [[ "$f" == *controller*.go ]] || \
             [[ "$f" == *controller*.ts ]] || \
+            [[ "$f" == *controller*.cs ]] || \
             [[ "$f" == *views*.py      ]] || \
             [[ "$f" == *router*.ts     ]] || \
             [[ "$f" == *router*.go     ]] || \
-            [[ "$f" == *handler*.go    ]]; then
-            printf 'Layer 3 STALE: HTTP Routing — triggered by: %q\n' "${f}"
+            [[ "$f" == *handler*.go    ]] || \
+            [[ "$f" == *.proto         ]] || \
+            [[ "$f" == *.graphql       ]] || \
+            [[ "$f" == *.gql           ]] || \
+            [[ "$f" == *openapi*.yaml  ]] || \
+            [[ "$f" == *openapi*.json  ]] || \
+            [[ "$f" == *swagger*.yaml  ]] || \
+            [[ "$f" == *swagger*.json  ]]; then
+            printf 'Layer 3 STALE: API Contracts — triggered by: %q\n' "${f}"
             echo "  Rebuild: /code-atlas rebuild layer3   # or: code-atlas rebuild layer3"
             STALE_SET[3]=1
         fi

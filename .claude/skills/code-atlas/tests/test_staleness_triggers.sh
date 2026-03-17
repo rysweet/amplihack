@@ -105,7 +105,7 @@ assert_layer_detected "Layer2: requirements.txt"        2 "requirements.txt"
 assert_layer_detected "Layer2: pyproject.toml"          2 "pyproject.toml"
 
 # ---------------------------------------------------------------------------
-# Layer 3: HTTP Routing triggers (including previously undocumented patterns)
+# Layer 3: API Contracts triggers (including previously undocumented patterns)
 # ---------------------------------------------------------------------------
 assert_layer_detected "Layer3: routes.ts"               3 "src/api/routes.ts"
 assert_layer_detected "Layer3: route file"              3 "services/api/route_users.go"
