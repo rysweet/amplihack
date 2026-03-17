@@ -711,73 +711,9 @@ The skill accepts only `a`, `b`, or `c` (case-insensitive, whitespace-stripped).
 
 ---
 
-## Appendix A: Mermaid-vs-Graphviz Experiment Results
+## Why Both Mermaid and Graphviz
 
-Controlled experiment conducted 2026-03-17 across 6 amplihack repositories, running each format independently in separate agent sessions.
-
-### A.1 Experiment Design
-
-- **Mermaid arm**: 5 repos analyzed with Mermaid-only diagrams across all 8 layers + 3-pass bug hunt
-- **Graphviz arm**: 6 repos analyzed with Graphviz DOT-only diagrams across all 8 layers + 3-pass bug hunt
-- **Independence**: Each arm ran in a separate agent session with no shared context
-- **Repos**: amplihack-memory-lib, amplihack-recipe-runner, amplihack-xpia-defender, amplihack-agent-eval, amplihack-docs-fix-demo, amplihack-rs
-
-### A.2 Results
-
-| Repo | Mermaid Bugs | Graphviz Bugs | Delta |
-|------|-------------|---------------|-------|
-| amplihack-memory-lib | 9 | 11 | +2 Graphviz |
-| amplihack-recipe-runner | 9 | 12 | +3 Graphviz |
-| amplihack-xpia-defender | 9 | 12 | +3 Graphviz |
-| amplihack-agent-eval | 14 | 10 | +4 Mermaid |
-| amplihack-docs-fix-demo | 6 | 6 | tie |
-| amplihack-rs | — | 13 | Graphviz only |
-| amplihack-rs | 13 | 13 | tie |
-| amplihack (main) | 16 | 14 | +2 Mermaid |
-| **Total (all 7 repos)** | **76** | **78** | **+2 Graphviz (+2.6%)** |
-
-### A.3 Key Findings
-
-1. **Graphviz found ~30% more bugs on Rust codebases** (memory-lib, recipe-runner, xpia-defender). The explicit `A -> B [label="..."]` syntax forces the agent to enumerate every edge, which is deeper reasoning than Mermaid's more abbreviated syntax.
-
-2. **Mermaid found more bugs on the Python-only codebase** (agent-eval: 14 vs 10). Mermaid's sequence diagram format was particularly effective for tracing Python call chains.
-
-3. **Bug quality differs**: Graphviz uniquely found the fail-closed inconsistency in xpia-defender (3 related methods lack error wrapping), the URL-safe base64 evasion vector, and the condition evaluator arithmetic limitation. Mermaid uniquely found the agent-eval double-close and greedy regex bugs.
-
-4. **Density**: Graphviz handled all repos without hitting density limits. Mermaid needed subgraph aggregation for Layer 7/8 on memory-lib (~90 files).
-
-5. **The act of building the graph IS the bug hunt** — both formats surface bugs not through rendering quality but through forcing the agent to make explicit claims about code structure that can be verified.
-
-### A.4 Conclusion and Recommended Approach
-
-**Winner: Run both. They find different bugs.**
-
-Overlap analysis across 3 repos (memory-lib, recipe-runner, xpia-defender) shows only ~15% of bugs are found by both formats. Each format finds a largely independent set:
-
-- Graphviz-only bugs: 27 (tend toward structural/architectural issues)
-- Mermaid-only bugs: 19 (tend toward API/naming/documentation issues)
-- Shared: 8 (obvious issues both catch)
-
-Running both finds **~1.7x the bugs** compared to either alone. The recommended workflow is:
-
-1. **Build atlas in Graphviz DOT** (separate agent session) — explicit edge enumeration forces deeper structural reasoning
-2. **Build atlas in Mermaid** (separate agent session) — abbreviated syntax surfaces different patterns, especially in call chains
-3. **Run 3-pass bug hunt independently in each session** — no shared context, no anchoring bias
-4. **Merge and deduplicate findings** — union of both bug sets
-5. **Convert DOT to Mermaid for publication** — Mermaid renders natively in GitHub markdown
-
-The two formats are complementary, not competing. The different syntax forces the agent to reason about the same code in different ways, which is the actual mechanism that surfaces bugs.
-
-### A.5 Issues Filed from Experiment
-
-Total: **50 issues filed** across 6 repos (both arms combined, deduplicated):
-- amplihack: 10 issues (#3226-#3235) including global CWD thread-safety, triple-nested error handling
-- amplihack-rs: 8 issues (#81-#88) including PID overflow, --no-verify incomplete coverage, session ID collision
-- amplihack-xpia-defender: 8 issues (#14-#21) including 1 security bug (0.0.0.0 SSRF bypass)
-- amplihack-memory-lib: 7 issues (#72-#78) including kuzu hard dependency blocking all usage
-- amplihack-recipe-runner: 7 issues (#42-#48) including .yml silently ignored
-- amplihack-agent-eval: 5 issues (#35-#39) including multi-vote grading degradation
-- amplihack-docs-fix-demo: 2 bugs found (repo archived, issues not filed)
+The skill always builds atlas diagrams in both formats because they find different bugs. A controlled experiment across 7 amplihack repos (76 Mermaid bugs vs 78 Graphviz bugs) showed only ~15% overlap — running both finds ~1.7x the bugs of either alone. The different syntax forces different reasoning paths through the same code. Evidence and methodology are documented in PR #3221.
 
 ---
 

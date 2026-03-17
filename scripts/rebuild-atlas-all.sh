@@ -130,17 +130,17 @@ if [[ "$CI_MODE" == true ]]; then
     #
     # In a typical workflow:
     #   1. Developer (or Claude Code session) runs: /code-atlas rebuild all
-    #   2. That populates docs/atlas/layer{1-6}-*/  with .mmd, .dot, .svg, and .md files
+    #   2. That populates docs/atlas/layer{1-8}-*/  with .mmd, .dot, .svg, and .md files
     #   3. Then this script is run with --ci to stage and commit the result
     #
     # If layer directories are absent it means Step 1 has not happened yet.
     # We warn and skip the commit rather than failing CI — the missing-layer state
     # is expected on first run and does not indicate a script error.
-    EXPECTED_LAYERS=("layer1-runtime" "layer2-dependencies" "layer3-http-routing" "layer4-dataflow" "layer5-user-journeys" "layer6-inventory")
+    EXPECTED_LAYERS=("layer1-runtime" "layer2-dependencies" "layer3-http-routing" "layer4-dataflow" "layer5-user-journeys" "layer6-inventory" "layer7-service-components" "layer8-ast-lsp-bindings")
     MISSING_LAYERS=()
     for layer in "${EXPECTED_LAYERS[@]}"; do
         layer_dir="${ATLAS_DIR}/${layer}"
-        if [[ ! -d "$layer_dir" ]] || ! compgen -G "${layer_dir}/*" > /dev/null 2>&1; then
+        if [[ ! -d "$layer_dir" ]] || ! compgen -G "${layer_dir}/*" > /dev/null; then
             MISSING_LAYERS+=("$layer")
         fi
     done

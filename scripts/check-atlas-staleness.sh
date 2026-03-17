@@ -83,6 +83,8 @@ fi
 # Layer 4: *dto*.ts, *schema*.py, *_request.go, *_response.go, *types*.ts
 # Layer 5: user-facing page/CLI files (*page*.tsx, *page*.ts, cmd/**/*.go, cli/**/*.py)
 # Layer 6: .env.example, service README.md files
+# Layer 7: any source file in a service directory (internal module structure changes)
+# Layer 8: any source file (function signatures, exports, imports affect symbol bindings)
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
@@ -90,7 +92,7 @@ fi
 #
 # Guard blocks skip pattern checks for layers already confirmed stale,
 # reducing work as layers are marked. The short-circuit break exits once
-# all 6 layers are stale so no further files need scanning.
+# all 8 layers are stale so no further files need scanning.
 # ---------------------------------------------------------------------------
 declare -A STALE_SET=()
 
@@ -190,8 +192,40 @@ while IFS= read -r f; do
         fi
     fi
 
-    # Short-circuit: all 6 layers stale — no further files need scanning
-    [[ ${#STALE_SET[@]} -eq 6 ]] && break
+    # Layer 7: Service Component Architecture (internal module changes)
+    if [[ -z "${STALE_SET[7]:-}" ]]; then
+        if  [[ "$f" == services/*/*.go     ]] || \
+            [[ "$f" == services/*/*.ts     ]] || \
+            [[ "$f" == services/*/*.py     ]] || \
+            [[ "$f" == services/*/*.rs     ]] || \
+            [[ "$f" == services/*/*.cs     ]] || \
+            [[ "$f" == apps/*/*.go         ]] || \
+            [[ "$f" == apps/*/*.ts         ]] || \
+            [[ "$f" == src/*/__init__.py   ]] || \
+            [[ "$f" == */mod.rs            ]]; then
+            printf 'Layer 7 STALE: Service Component Architecture — triggered by: %q\n' "${f}"
+            echo "  Rebuild: /code-atlas rebuild layer7   # or: code-atlas rebuild layer7"
+            STALE_SET[7]=1
+        fi
+    fi
+
+    # Layer 8: AST+LSP Symbol Bindings (any source file change affects cross-file refs)
+    if [[ -z "${STALE_SET[8]:-}" ]]; then
+        if  [[ "$f" == *.go  ]] || \
+            [[ "$f" == *.ts  ]] || \
+            [[ "$f" == *.py  ]] || \
+            [[ "$f" == *.rs  ]] || \
+            [[ "$f" == *.cs  ]] || \
+            [[ "$f" == *.js  ]] || \
+            [[ "$f" == *.java ]]; then
+            printf 'Layer 8 STALE: AST+LSP Symbol Bindings — triggered by: %q\n' "${f}"
+            echo "  Rebuild: /code-atlas rebuild layer8   # or: code-atlas rebuild layer8"
+            STALE_SET[8]=1
+        fi
+    fi
+
+    # Short-circuit: all 8 layers stale — no further files need scanning
+    [[ ${#STALE_SET[@]} -eq 8 ]] && break
 
 done <<< "$CHANGED_FILES"
 
