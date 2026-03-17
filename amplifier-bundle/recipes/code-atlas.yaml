@@ -10,7 +10,9 @@ tags: ["architecture", "documentation", "bug-hunting", "atlas", "code-atlas"]
 
 # CODE-ATLAS RECIPE
 #
-# 10 sequential steps covering prerequisites → 8 layers → 3-pass bug hunt → publish → report.
+# 12 steps: prerequisites → all 8 layers → parallel dual-format bug hunt → merge → publish → report.
+# The experiment (Appendix A) proved Mermaid and Graphviz find ~85% different bugs.
+# Running both in parallel finds ~1.7x the bugs of either alone.
 #
 # Layers:
 #   1. Runtime Topology          — services, containers, ports, connections
@@ -114,14 +116,12 @@ parameters:
     description: "Trigger GitHub Pages publication after atlas build."
 
 # ---------------------------------------------------------------------------
-# Steps — exactly 10 named sequential steps
+# Steps — 12 named steps
 # ---------------------------------------------------------------------------
 steps:
 
   # ==========================================================================
   # STEP 1: VALIDATE PREREQUISITES
-  # Check tool availability, parameter validity, LSP status, and graph engine.
-  # SEC-17: Validate codebase_path and output_dir before any file operations.
   # ==========================================================================
   - id: "validate-prerequisites"
     name: "Step 1: Validate Prerequisites"
@@ -130,13 +130,12 @@ steps:
     task: "validate-prerequisites"
     description: |
       Validate all prerequisites before any atlas work begins:
-      1. Verify codebase_path exists and is readable
-      2. Validate codebase_path has no null bytes or shell metacharacters (SEC-17)
-      3. Verify output_dir is writable and within the repository (SEC-05)
-      4. Validate density_threshold_nodes and density_threshold_edges (SEC-13: 1–10,000)
-      5. Check for optional tools: graphviz (dot), mermaid-cli (mmdc) — log availability
-      6. Query lsp-setup skill for LSP availability — record mode (lsp-assisted or static-approximation)
-      7. Report prerequisite summary to user before proceeding
+      1. Verify codebase_path exists, is readable, has no null bytes or shell metacharacters (SEC-17)
+      2. Verify output_dir is writable and within the repository (SEC-05)
+      3. Validate density thresholds (SEC-13: 1–10,000)
+      4. Check tools: graphviz (dot), mermaid-cli (mmdc) — log availability
+      5. Query lsp-setup skill for LSP availability — record mode
+      6. Report prerequisite summary to user
     inputs:
       codebase_path: "{{parameters.codebase_path}}"
       output_dir: "{{parameters.output_dir}}"
@@ -148,31 +147,45 @@ steps:
       - validation_passed  # boolean
 
   # ==========================================================================
-  # STEP 2: BUILD LAYERS 1–4 (INFRASTRUCTURE LAYERS)
-  # Runtime topology, compile-time deps, HTTP routing, data flow.
-  # These layers form the structural foundation that Layers 5–8 depend on.
+  # STEP 2: BUILD ALL 8 LAYERS
+  # All layers built together in both formats. No artificial grouping.
   # ==========================================================================
-  - id: "build-layers-1-to-4"
-    name: "Step 2: Build Layers 1–4 (Infrastructure)"
-    type: "skill"
-    skill: "code-atlas"
-    task: "build-layers"
+  - id: "build-all-layers"
+    name: "Step 2: Build All 8 Layers"
+    type: "agent"
+    agent: "amplihack:amplihack:core:builder"
     description: |
-      Build the four infrastructure layers:
-      Layer 1 — Runtime Topology: discover services from docker-compose/k8s manifests;
-        map ports and inter-service connections; density guard applies.
-      Layer 2 — Compile-time Dependencies: parse go.mod/package.json/Cargo.toml/etc.;
-        detect circular dependencies; delegate Python to code-visualizer skill.
-      Layer 3 — HTTP Routing: extract all routes per framework (chi/gin/Express/FastAPI/NestJS/axum/etc.);
-        build route inventory table; density guard applies.
-      Layer 4 — Data Flow: map DTO-to-storage chain; cross-reference with Layer 3 handlers.
-      Apply density guard at each diagram: >50 nodes OR >100 edges → prompt user (SEC-13/14).
-      Apply SEC-01–SEC-10 throughout.
+      Build all 8 atlas layers in both Mermaid and Graphviz DOT formats:
+
+      Layer 1 — Repository Surface: all source files, project structure, build systems
+      Layer 2 — Runtime Topology: services, containers, ports, inter-service connections
+      Layer 3 — Compile-time Dependencies: imports, packages, circular dependency detection
+      Layer 4 — HTTP Routing/Contracts: routes, DTOs, middleware chains, route inventory
+      Layer 5 — Data Flow: DTO-to-storage chain, transformation steps
+      Layer 6 — User Journey Scenarios: entry-point to outcome, minimum 3 journeys
+      Layer 7 — Service Component Architecture: per-service module/package diagrams
+        - SEC-11: sanitise service names to [a-zA-Z0-9_-]{1,64}
+        - Delegate Python to code-visualizer skill
+      Layer 8 — AST+LSP Symbol Bindings: cross-file references, dead code, interface mismatches
+        - Mode from Step 1 (lsp-assisted or static-approximation)
+        - SEC-12: sanitise LSP output; SEC-15: credential patterns
+
+      For EACH layer, produce BOTH:
+        - {layer-name}.mmd (Mermaid)
+        - {layer-name}.dot (Graphviz DOT)
+      Plus inventory tables where appropriate (Layer 6).
+
+      Apply density guard at every diagram: >50 nodes OR >100 edges → ASK user (SEC-13/14).
+      NEVER silently substitute a table for a diagram.
+      Apply SEC-01 through SEC-19 throughout.
+
+      Write to: {{output_dir}}/layer{N}-{name}/
     inputs:
       codebase_path: "{{parameters.codebase_path}}"
       output_dir: "{{parameters.output_dir}}"
-      layers: [1, 2, 3, 4]
+      layers: "{{parameters.layers}}"
       diagram_formats: "{{parameters.diagram_formats}}"
+      lsp_mode: "{{steps.validate-prerequisites.outputs.lsp_mode}}"
       density_threshold_nodes: "{{parameters.density_threshold_nodes}}"
       density_threshold_edges: "{{parameters.density_threshold_edges}}"
     depends_on:
@@ -180,267 +193,176 @@ steps:
     condition: "{{steps.validate-prerequisites.outputs.validation_passed}}"
 
   # ==========================================================================
-  # STEP 3: BUILD LAYERS 5–6 (USER-FACING LAYERS)
-  # User journey scenarios and exhaustive inventory.
+  # STEP 3: BUG-HUNT — MERMAID ARM (parallel with Step 4)
+  # Full 3-pass hunt using only Mermaid diagrams.
+  # Experiment proved Mermaid finds different bugs than Graphviz (~85% unique).
   # ==========================================================================
-  - id: "build-layers-5-to-6"
-    name: "Step 3: Build Layers 5–6 (User-Facing)"
-    type: "skill"
-    skill: "code-atlas"
-    task: "build-layers"
-    description: |
-      Build the two user-facing layers:
-      Layer 5 — User Journey Scenarios: auto-derive journeys from Layer 3 routes (minimum 3);
-        user-defined journeys in docs/atlas/journeys.yaml take precedence;
-        produce one sequence diagram per journey.
-      Layer 6 — Exhaustive Inventory: build four inventory tables (services, env vars,
-        data stores, external deps); SEC-01 applies (env var values never written).
-      Apply density guard to Layer 5 diagrams when node/edge count exceeds thresholds.
-    inputs:
-      codebase_path: "{{parameters.codebase_path}}"
-      output_dir: "{{parameters.output_dir}}"
-      layers: [5, 6]
-      diagram_formats: "{{parameters.diagram_formats}}"
-      density_threshold_nodes: "{{parameters.density_threshold_nodes}}"
-      density_threshold_edges: "{{parameters.density_threshold_edges}}"
-    depends_on:
-      - "build-layers-1-to-4"
-
-  # ==========================================================================
-  # STEP 4: BUILD LAYER 7 (SERVICE COMPONENT ARCHITECTURE)
-  # Per-service module/package/component diagrams.
-  # SEC-11: service names sanitised to [a-zA-Z0-9_-]{1,64} before path use.
-  # ==========================================================================
-  - id: "build-layer-7"
-    name: "Step 4: Build Layer 7 (Service Component Architecture)"
-    type: "skill"
-    skill: "code-atlas"
-    task: "build-layer-7"
-    description: |
-      Build Layer 7 — Service Component Architecture:
-      For each service discovered in Layer 1:
-        1. Discover internal packages/modules using language-specific patterns
-           (Python: __init__.py; Go: directory-per-package; TS: workspaces; .NET: .csproj; Rust: mod declarations)
-        2. Sanitise service name to [a-zA-Z0-9_-]{1,64} before path construction (SEC-11)
-        3. Identify key exported symbols (public classes, interfaces, functions)
-        4. Build Mermaid graph TD: packages → files → key exported symbols
-        5. Apply density guard: >50 components or >100 edges → prompt user (SEC-13/14)
-        6. Write {service-name}.mmd and (if mmdc available) {service-name}.svg
-      Delegate Python package discovery to code-visualizer skill.
-      Emit LAYER7_SOURCE_NOT_FOUND (non-fatal) for services with no discoverable structure.
-    inputs:
-      codebase_path: "{{parameters.codebase_path}}"
-      output_dir: "{{parameters.output_dir}}"
-      density_threshold_nodes: "{{parameters.density_threshold_nodes}}"
-      density_threshold_edges: "{{parameters.density_threshold_edges}}"
-      services: "{{steps.build-layers-1-to-4.outputs.services_discovered}}"
-    depends_on:
-      - "build-layers-1-to-4"
-
-  # ==========================================================================
-  # STEP 5: BUILD LAYER 8 (AST+LSP SYMBOL BINDINGS)
-  # Cross-file references, dead code, interface mismatches.
-  # SEC-12: all LSP output sanitised before embedding.
-  # SEC-15: LAYER8_CREDENTIAL_PATTERNS applied to all four output files.
-  # ==========================================================================
-  - id: "build-layer-8"
-    name: "Step 5: Build Layer 8 (AST+LSP Symbol Bindings)"
-    type: "skill"
-    skill: "code-atlas"
-    task: "build-layer-8"
-    description: |
-      Build Layer 8 — AST+LSP Symbol Bindings:
-      Operating mode is set by lsp-setup delegation result (from Step 1).
-      Mode MUST be written verbatim on line 1 of layer8-ast-lsp-bindings/README.md.
-      Never hidden. Never defaulted silently.
-
-      Three queries, each producing a separate output file:
-      1. symbol-references: cross-file reference graph (symbol-references.mmd)
-      2. dead-code: exported symbols with zero references (dead-code.md)
-      3. interface-mismatches: call-site vs definition signature mismatches (mismatched-interfaces.md)
-
-      LSP-assisted path: delegate each query to lsp-setup skill (§2f contract).
-      Static-approximation path: use ripgrep + code-visualizer AST for best-effort analysis.
-
-      Security:
-      - SEC-12: validate LSP output schema; apply SEC-03 + SEC-02 + SEC-09 to all fields
-      - SEC-15: LAYER8_CREDENTIAL_PATTERNS applied before writing each output file
-      - Density guard on symbol-references.mmd (SEC-13/14)
-
-      Emit LAYER8_LSP_UNAVAILABLE (non-fatal, informational) when using static mode.
-    inputs:
-      codebase_path: "{{parameters.codebase_path}}"
-      output_dir: "{{parameters.output_dir}}"
-      lsp_mode: "{{steps.validate-prerequisites.outputs.lsp_mode}}"
-      density_threshold_nodes: "{{parameters.density_threshold_nodes}}"
-      density_threshold_edges: "{{parameters.density_threshold_edges}}"
-    depends_on:
-      - "validate-prerequisites"
-      - "build-layers-1-to-4"
-
-  # ==========================================================================
-  # STEP 6: BUG-HUNT PASS 1 — COMPREHENSIVE BUILD + HUNT
-  # Structural contradictions across all 8 layers.
-  # SEC-09: credential redaction in all evidence fields.
-  # SEC-16: all evidence paths must be relative.
-  # ==========================================================================
-  - id: "bug-hunt-pass-1"
-    name: "Step 6: Bug-Hunt Pass 1 (Comprehensive Build + Hunt)"
+  - id: "bug-hunt-mermaid"
+    name: "Step 3: Bug-Hunt — Mermaid Arm"
     type: "agent"
     agent: "amplihack:amplihack:core:reviewer"
+    parallel_group: "dual-format-hunt"
     description: |
-      Pass 1 — Comprehensive Build + Hunt across all 8 layers:
+      3-pass bug hunt using ONLY the Mermaid (.mmd) diagrams from Step 2.
+      Do NOT read the .dot files — format independence is critical for finding different bugs.
 
-      Step 1.1 — Route ↔ DTO Mismatch Detection (Layer 3 × Layer 4):
-        Compare handler field accesses against DTO declarations.
-      Step 1.2 — Orphaned Environment Variables (Layer 1 × Layer 6b):
-        Find env vars used in code but absent from .env.example (orphaned).
-        Find env vars declared in .env.example but never used (undead).
-      Step 1.3 — Dead Runtime Paths (Layer 1 × Layer 3):
-        Services in topology with no routes; routes with no service in topology.
-      Step 1.4 — Stale Documentation Contradictions:
-        Docs referencing routes that no longer exist in code.
-      Step 1.5 — Layer 7 internal coupling issues:
-        Services with no discoverable packages; high-coupling packages (≥3 importers).
-      Step 1.6 — Layer 8 symbol issues:
-        Dead exported symbols; interface mismatches.
+      Pass 1 — Comprehensive Hunt: Read all 8 layer .mmd files. Check:
+        - Route ↔ DTO mismatches (Layer 3 × Layer 4)
+        - Orphaned/undead env vars (Layer 2 × Layer 6)
+        - Dead runtime paths (Layer 2 × Layer 3)
+        - Stale documentation contradictions
+        - Layer 7 coupling issues; Layer 8 dead symbols and interface mismatches
 
-      For each contradiction found: produce a BugReport with pass=1, evidence (relative paths only, SEC-16),
-      and credential-redacted code quotes (SEC-09).
-      Write findings to: docs/atlas/bug-reports/{YYYY-MM-DD}-pass1-{slug}.md
+      Pass 2 — Fresh Eyes: Re-read all .mmd files from scratch, ignoring Pass 1 conclusions.
+        Cross-check Pass 1 findings: CONFIRMED / OVERTURNED / NEEDS_ATTENTION.
+
+      Pass 3 — Scenario Deep-Dive: Trace each Layer 5 journey through Layers 3,4,2,7,8.
+        Produce per-journey verdict: PASS / FAIL / NEEDS_ATTENTION.
+
+      SEC-09: credential redaction in all evidence. SEC-16: relative paths only.
+      Write to: {{output_dir}}/bug-reports/mermaid-arm/
     inputs:
       atlas_path: "{{parameters.output_dir}}"
       codebase_path: "{{parameters.codebase_path}}"
-      layers_available: [1, 2, 3, 4, 5, 6, 7, 8]
+      format: "mermaid"
     condition: "{{parameters.bug_hunt}}"
     depends_on:
-      - "build-layers-1-to-4"
-      - "build-layers-5-to-6"
-      - "build-layer-7"
-      - "build-layer-8"
+      - "build-all-layers"
 
   # ==========================================================================
-  # STEP 7: BUG-HUNT PASS 2 — FRESH-EYES CROSS-CHECK
-  # New context window. No Pass 1 conclusions visible initially.
-  # Prevents anchoring bias.
+  # STEP 4: BUG-HUNT — GRAPHVIZ ARM (parallel with Step 3)
+  # Full 3-pass hunt using only Graphviz DOT diagrams.
   # ==========================================================================
-  - id: "bug-hunt-pass-2"
-    name: "Step 7: Bug-Hunt Pass 2 (Fresh-Eyes Cross-Check)"
+  - id: "bug-hunt-graphviz"
+    name: "Step 4: Bug-Hunt — Graphviz Arm"
     type: "agent"
     agent: "amplihack:amplihack:core:reviewer"
+    parallel_group: "dual-format-hunt"
     description: |
-      Pass 2 — Fresh-Eyes Cross-Check (run in a new context window):
+      3-pass bug hunt using ONLY the Graphviz DOT (.dot) diagrams from Step 2.
+      Do NOT read the .mmd files — format independence is critical for finding different bugs.
 
-      Phase A — Independent re-examination:
-        Read all layer output files from scratch, without knowledge of Pass 1 conclusions.
-        Identify contradictions independently (same checklist as Pass 1, fresh perspective).
+      Same 3-pass structure as Step 3 (Mermaid arm), but reading .dot files.
+      The explicit A -> B [label="..."] syntax forces different reasoning paths,
+      surfacing structural/architectural bugs that Mermaid's abbreviated syntax misses.
 
-      Phase B — Cross-check Pass 1 findings:
-        For each Pass 1 bug report, assign one of:
-        - CONFIRMED: independent analysis agrees → severity upgraded
-        - OVERTURNED: analysis disagrees → finding closed with explanation
-        - NEEDS_ATTENTION: ambiguous → human review required
-
-      Write findings to: docs/atlas/bug-reports/{YYYY-MM-DD}-pass2-{slug}.md
-      Include pass=2 in all BugReport objects.
-      Apply SEC-09 (credential redaction) and SEC-16 (relative paths) throughout.
+      SEC-09: credential redaction. SEC-16: relative paths only.
+      Write to: {{output_dir}}/bug-reports/graphviz-arm/
     inputs:
       atlas_path: "{{parameters.output_dir}}"
       codebase_path: "{{parameters.codebase_path}}"
-      pass1_reports: "{{steps.bug-hunt-pass-1.outputs.bug_report_paths}}"
+      format: "dot"
     condition: "{{parameters.bug_hunt}}"
     depends_on:
-      - "bug-hunt-pass-1"
-    # IMPORTANT: This agent receives pass1_reports ONLY in Phase B.
-    # Phase A must complete before pass1_reports are shared with the agent.
-    execution_mode: "two-phase"
+      - "build-all-layers"
 
   # ==========================================================================
-  # STEP 8: BUG-HUNT PASS 3 — SCENARIO DEEP-DIVE
-  # Per-journey trace. Produces JourneyVerdict for each Layer 5 journey.
-  # SEC-16: all evidence paths must be relative.
+  # STEP 5: MERGE AND DEDUPLICATE BUG FINDINGS
+  # Union of both arms, dedup by file:line, assign final severity.
   # ==========================================================================
-  - id: "bug-hunt-pass-3"
-    name: "Step 8: Bug-Hunt Pass 3 (Scenario Deep-Dive)"
+  - id: "merge-bug-findings"
+    name: "Step 5: Merge and Deduplicate Bug Findings"
     type: "agent"
     agent: "amplihack:amplihack:core:reviewer"
     description: |
-      Pass 3 — Scenario Deep-Dive; per-journey PASS/FAIL/NEEDS_ATTENTION verdicts:
+      Merge findings from both the Mermaid and Graphviz arms:
 
-      For each journey in docs/atlas/layer5-journeys/*.mmd:
-        Trace every step through Layers 3, 4, 1, 7, and 8.
-        Evaluate four mandatory criteria per journey:
-          1. Layer 3 routes match journey steps
-          2. Layer 4 data flows complete
-          3. Layer 7 service components reachable
-          4. No dead code on critical path (Layer 8)
-        Produce a JourneyVerdict with:
-          - verdict: PASS | FAIL | NEEDS_ATTENTION
-          - criteria table with ✅/❌/⚠️ and evidence (file:line, relative, SEC-16)
-          - rationale: one paragraph explaining the verdict
+      1. Read all bug reports from both arms
+      2. Deduplicate by file:line — bugs found by BOTH arms get severity UPGRADED
+      3. Bugs found by only one arm keep original severity
+      4. Produce merged report with provenance (mermaid-only / graphviz-only / both)
+      5. Count: total unique, mermaid-only, graphviz-only, shared
 
-      Write one file per journey: docs/atlas/bug-reports/{YYYY-MM-DD}-pass3-{journey-slug}.md
-      Include pass=3 and layers_involved in all BugReport objects.
-      Apply SEC-09 (credential redaction) and SEC-16 (relative paths) throughout.
+      Write merged report to: {{output_dir}}/bug-reports/merged-findings.md
+      Write individual issue files to: {{output_dir}}/bug-reports/issues/
     inputs:
-      atlas_path: "{{parameters.output_dir}}"
+      mermaid_reports: "{{steps.bug-hunt-mermaid.outputs.bug_report_paths}}"
+      graphviz_reports: "{{steps.bug-hunt-graphviz.outputs.bug_report_paths}}"
       codebase_path: "{{parameters.codebase_path}}"
-      journeys: "{{steps.build-layers-5-to-6.outputs.journeys}}"
     condition: "{{parameters.bug_hunt}}"
     depends_on:
-      - "bug-hunt-pass-2"
-      - "build-layer-7"
-      - "build-layer-8"
+      - "bug-hunt-mermaid"
+      - "bug-hunt-graphviz"
 
   # ==========================================================================
-  # STEP 9: PUBLISH ATLAS
-  # Write docs/atlas/ index, staleness-map.yaml, and optionally push to GitHub Pages.
-  # SEC-19: git push output sanitised for credentials before display.
+  # STEP 6: FILE ISSUES FROM VERIFIED FINDINGS
+  # Create GitHub issues with code-atlas-bughunt label.
+  # Creates the label in the repo if it doesn't exist.
+  # ==========================================================================
+  - id: "file-issues"
+    name: "Step 6: File GitHub Issues"
+    type: "bash"
+    description: |
+      For each verified bug in the merged findings:
+      1. Ensure the 'code-atlas-bughunt' label exists in the repo (create if missing)
+      2. Create a GitHub issue with:
+         - Title: brief description
+         - Body: file:line evidence, severity, provenance (mermaid/graphviz/both)
+         - Labels: bug, code-atlas-bughunt
+      3. Log created issue URLs
+    command: |
+      cd "{{parameters.codebase_path}}" && \
+      gh label create "code-atlas-bughunt" --description "Bug found by /code-atlas graph-based bug hunt" --color "D93F0B" 2>/dev/null || true && \
+      echo "Label 'code-atlas-bughunt' ensured. Issue filing handled by the agent in Step 5."
+    condition: "{{parameters.bug_hunt}}"
+    depends_on:
+      - "merge-bug-findings"
+
+  # ==========================================================================
+  # STEP 7: PUBLISH ATLAS
   # ==========================================================================
   - id: "publish-atlas"
-    name: "Step 9: Publish Atlas"
+    name: "Step 7: Publish Atlas"
     type: "skill"
     skill: "code-atlas"
     task: "publish"
     description: |
-      Publish the completed atlas:
-      1. Write docs/atlas/README.md index (links to all 8 layers + bug reports + experiments/)
-      2. Write docs/atlas/staleness-map.yaml (Glob → layer mappings for CI; includes Layers 7+8)
-      3. Render SVG files for all .mmd diagrams (if mmdc available)
-      4. If publish=true: push docs/atlas/ to GitHub Pages branch
-         SEC-19: sanitise git push stdout/stderr with CREDENTIAL_URL_PATTERN before display
-      5. Update mkdocs.yml nav (if mkdocs.yml exists) to include Layers 7+8 entries
+      Publish the completed atlas as a single set of pages with side-by-side diagrams:
+
+      Each layer page (docs/atlas/layer{N}-{name}/README.md) contains:
+        - Layer description and what it maps
+        - Mermaid diagram (rendered inline for GitHub/mkdocs)
+        - Graphviz diagram (linked SVG, rendered from .dot)
+        - Link to diagram source files (.mmd and .dot)
+        - Bug findings from both arms relevant to this layer
+
+      Steps:
+      1. Write docs/atlas/README.md index (links to all 8 layer pages + merged bug report)
+      2. Write per-layer README.md with side-by-side Mermaid + Graphviz SVG
+      3. Write docs/atlas/staleness-map.yaml (Glob → layer mappings for CI)
+      4. Render SVG from .mmd (if mmdc available) and .dot (if dot available)
+      5. If publish=true: push to GitHub Pages (SEC-19: sanitise credentials)
+      6. Update mkdocs.yml nav if exists
     inputs:
       output_dir: "{{parameters.output_dir}}"
       codebase_path: "{{parameters.codebase_path}}"
       publish: "{{parameters.publish}}"
       tools_available: "{{steps.validate-prerequisites.outputs.tools_available}}"
     depends_on:
-      - "bug-hunt-pass-3"
+      - "file-issues"
 
   # ==========================================================================
-  # STEP 10: SUMMARISE AND REPORT
-  # Final summary to user with metrics, verdict counts, and next steps.
+  # STEP 8: SUMMARISE AND REPORT
   # ==========================================================================
   - id: "summarise-and-report"
-    name: "Step 10: Summarise and Report"
+    name: "Step 8: Summarise and Report"
     type: "skill"
     skill: "code-atlas"
     task: "summarise"
     description: |
-      Produce the final completion summary:
-      1. Layers built: count and list (e.g. "8 of 8 layers built")
-      2. Diagrams created: count of .mmd and .svg files
-      3. Layer 7 summary: N services mapped, average components per service
-      4. Layer 8 mode: lsp-assisted or static-approximation; N dead symbols found
-      5. Bug hunt summary:
-         - Pass 1: N findings (breakdown by severity)
-         - Pass 2: N confirmed, N overturned, N needs-attention
-         - Pass 3: N journeys traced; PASS/FAIL/NEEDS_ATTENTION breakdown
-      6. Density guard activations: N diagrams prompted user
-      7. Errors: list any SkillError codes emitted (LAYER7_SOURCE_NOT_FOUND, LAYER8_LSP_UNAVAILABLE, etc.)
-      8. Next steps: specific rebuild commands for stale layers; lsp-setup suggestion if static mode used
-      Report to user as structured completion message.
+      Final completion summary:
+      1. Layers built: count and list
+      2. Diagrams created: .mmd count, .dot count, .svg count
+      3. Layer 7: N services mapped, components per service
+      4. Layer 8: mode used, N dead symbols, N interface mismatches
+      5. Bug hunt:
+         - Mermaid arm: N findings
+         - Graphviz arm: N findings
+         - Merged unique: N (shared: N, mermaid-only: N, graphviz-only: N)
+         - Issues filed: N with URLs
+      6. Density guard activations: N
+      7. Errors: SkillError codes emitted
+      8. Next steps: rebuild commands, lsp-setup suggestion if static mode
     inputs:
       output_dir: "{{parameters.output_dir}}"
       all_step_outputs: "{{steps}}"

@@ -3,8 +3,10 @@ name: code-atlas
 version: 1.1.0
 description: |
   Builds comprehensive, living code-atlases as multi-layer architecture documents derived from code-first truth.
-  Builds atlas in Graphviz DOT (superior for reasoning/bug-finding), converts to Mermaid for publication.
+  Always builds atlas in BOTH Graphviz DOT and Mermaid — experiment proved they find ~85% different bugs.
+  Published as single atlas with side-by-side diagrams (Mermaid inline + Graphviz SVG) plus source files.
   Language-agnostic (Go, TypeScript, Python, .NET, Rust, Java).
+  Files issues with 'code-atlas-bughunt' label (creates the label if missing).
   Produces: runtime service topology, compile-time dependencies, HTTP routing/contracts, data flows,
   user journey scenario graphs, exhaustive inventory tables, per-service component architecture (Layer 7),
   and cross-file AST+LSP symbol bindings with dead code detection (Layer 8).
