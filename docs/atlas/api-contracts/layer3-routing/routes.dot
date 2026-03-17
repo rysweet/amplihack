@@ -1,0 +1,54 @@
+digraph routes {
+    rankdir=TD
+    node [shape=box style=filled fontname="Helvetica" fontsize=10]
+
+    subgraph cluster_cli {
+        label="CLI Commands (argparse)"
+        style=filled fillcolor="#E8F4FD"
+        launch [label="amplihack launch" fillcolor="#AED6F1"]
+        claude [label="amplihack claude" fillcolor="#AED6F1"]
+        copilot [label="amplihack copilot" fillcolor="#AED6F1"]
+        codex [label="amplihack codex" fillcolor="#AED6F1"]
+        amplifier [label="amplihack amplifier" fillcolor="#AED6F1"]
+        install [label="amplihack install" fillcolor="#AED6F1"]
+        uninstall [label="amplihack uninstall" fillcolor="#AED6F1"]
+        plugin [label="amplihack plugin" fillcolor="#AED6F1"]
+        memory [label="amplihack memory" fillcolor="#AED6F1"]
+        health [label="amplihack health" fillcolor="#AED6F1"]
+    }
+
+    subgraph cluster_proxy {
+        label="Proxy HTTP Routes"
+        style=filled fillcolor="#FEF5E7"
+        health_api [label="GET /health" fillcolor="#FAD7A0"]
+        root_api [label="GET /" fillcolor="#FAD7A0"]
+        messages [label="POST /v1/messages" fillcolor="#FAD7A0"]
+        count_tokens [label="POST /v1/messages/count_tokens" fillcolor="#FAD7A0"]
+        perf [label="GET /performance/*" fillcolor="#FAD7A0"]
+        azure_status [label="GET /azure/status" fillcolor="#FAD7A0"]
+    end
+
+    subgraph cluster_hooks {
+        label="Hook Events"
+        style=filled fillcolor="#E8F8E8"
+        session_start [label="SessionStart" fillcolor="#A9DFBF"]
+        stop [label="Stop" fillcolor="#A9DFBF"]
+        pre_tool [label="PreToolUse" fillcolor="#A9DFBF"]
+        post_tool [label="PostToolUse" fillcolor="#A9DFBF"]
+        user_prompt [label="UserPromptSubmit" fillcolor="#A9DFBF"]
+        pre_compact [label="PreCompact" fillcolor="#A9DFBF"]
+    }
+
+    // Handlers
+    launcher_h [label="ClaudeLauncher" shape=ellipse fillcolor="#D5F5E3"]
+    install_h [label="install.py" shape=ellipse fillcolor="#D5F5E3"]
+    litellm_h [label="LiteLLM Router" shape=ellipse fillcolor="#D5F5E3"]
+
+    launch -> launcher_h
+    claude -> launcher_h
+    copilot -> launcher_h
+    codex -> launcher_h
+    amplifier -> launcher_h
+    install -> install_h
+    messages -> litellm_h
+}

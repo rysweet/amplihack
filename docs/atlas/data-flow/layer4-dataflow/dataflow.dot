@@ -1,0 +1,55 @@
+digraph dataflow {
+    rankdir=LR
+    node [shape=box style=filled fontname="Helvetica" fontsize=10]
+    compound=true
+
+    subgraph cluster_entry {
+        label="Entry"
+        style=filled fillcolor="#E8F4FD"
+        user_cmd [label="User runs\namplihack" fillcolor="#AED6F1"]
+    }
+
+    subgraph cluster_install {
+        label="Install Flow"
+        style=filled fillcolor="#FEF5E7"
+        copy_files [label="Copy .claude/ files" fillcolor="#FAD7A0"]
+        write_settings [label="Write settings.json" fillcolor="#FAD7A0"]
+        register_hooks [label="Register hooks" fillcolor="#FAD7A0"]
+    }
+
+    subgraph cluster_launch {
+        label="Launch Flow"
+        style=filled fillcolor="#E8F8E8"
+        detect_mode [label="Detect mode" fillcolor="#A9DFBF"]
+        ensure_deps [label="Ensure SDK deps" fillcolor="#A9DFBF"]
+        discover_cli [label="Discover CLI binary" fillcolor="#A9DFBF"]
+        spawn [label="Spawn subprocess" fillcolor="#A9DFBF"]
+    }
+
+    subgraph cluster_session {
+        label="Session Hooks"
+        style=filled fillcolor="#F5E6FF"
+        ss_hook [label="SessionStart" fillcolor="#D7BDE2"]
+        up_hook [label="UserPromptSubmit" fillcolor="#D7BDE2"]
+        pt_hook [label="PreToolUse" fillcolor="#D7BDE2"]
+        stop_hook [label="Stop" fillcolor="#D7BDE2"]
+    }
+
+    subgraph cluster_memory {
+        label="Memory"
+        style=filled fillcolor="#FDEDEC"
+        store [label="Store discovery" fillcolor="#F5B7B1"]
+        retrieve [label="Retrieve memories" fillcolor="#F5B7B1"]
+        kuzu [label="Kuzu DB" shape=cylinder fillcolor="#F5B7B1"]
+    }
+
+    user_cmd -> copy_files [label="install"]
+    user_cmd -> detect_mode [label="launch"]
+    copy_files -> write_settings -> register_hooks
+    detect_mode -> ensure_deps -> discover_cli -> spawn
+    spawn -> ss_hook -> up_hook -> pt_hook -> stop_hook
+    stop_hook -> store
+    ss_hook -> retrieve
+    store -> kuzu
+    retrieve -> kuzu
+}
