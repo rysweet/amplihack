@@ -85,6 +85,36 @@ code {
     color: white;
 }
 
+/* Code Atlas diagram rendering — prevent ultra-wide SVGs from squishing into
+   unreadable strips. Give diagrams a scrollable container with min-height. */
+.md-content img[alt*="Mermaid"],
+.md-content img[alt*="Graphviz"] {
+    display: block;
+    max-width: none;
+    min-height: 300px;
+    height: auto;
+    object-fit: contain;
+    overflow-x: auto;
+    border: 1px solid var(--md-default-fg-color--lightest);
+    border-radius: 4px;
+    padding: 1em;
+    background: white;
+    margin: 1em 0;
+}
+
+/* Dark mode: keep diagram background white for readability */
+[data-md-color-scheme="slate"] .md-content img[alt*="Mermaid"],
+[data-md-color-scheme="slate"] .md-content img[alt*="Graphviz"] {
+    background: #f8f9fa;
+}
+
+/* Wrap diagram images in a scrollable container */
+.md-content p:has(> img[alt*="Mermaid"]),
+.md-content p:has(> img[alt*="Graphviz"]) {
+    overflow-x: auto;
+    max-width: 100%;
+}
+
 /* Ensure GitHub header link is visible at tablet breakpoint and above (Issue #2215)
    Material for MkDocs default shows at 60em (960px), lowering to 45em (720px) */
 @media screen and (min-width: 45em) {
