@@ -57,7 +57,7 @@ An atlas is complete when any engineer, given only the atlas and a bug report, c
 
 - **This skill is one brick**: Atlas orchestration and bug-hunt workflow
 - **Delegates to other bricks**: code-visualizer for Python analysis, mermaid-diagram-generator for syntax, visualization-architect for complex DOT layouts
-- **Clear output contract**: Atlas = 6 layers + inventory tables + bug report with code evidence
+- **Clear output contract**: Atlas = 8 layers + inventory tables + bug report with code evidence
 
 ## Skill Delegation Architecture
 
@@ -1261,7 +1261,7 @@ Atlas skill:
 11. Delegates complex DOT layouts to visualization-architect
 12. Saves all outputs to docs/atlas/
 13. Generates SVG files for each diagram
-14. Reports: "Atlas built — 6 layers, 3 services, 24 routes, 6 user journeys"
+14. Reports: "Atlas built — 8 layers, 3 services, 24 routes, 6 user journeys"
 ```
 
 ### Example 2: Bug-Hunt Passes
