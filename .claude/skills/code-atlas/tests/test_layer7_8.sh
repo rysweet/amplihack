@@ -389,7 +389,7 @@ assert_file_exists \
 
 assert_file_contains \
     "Recipe has exactly 10 steps" \
-    "validate-prerequisites\|build-layers-1-to-4\|build-layers-5-to-6\|build-layer-7\|build-layer-8\|bug-hunt-pass-1\|bug-hunt-pass-2\|bug-hunt-pass-3\|publish-atlas\|summarise-and-report" \
+    "validate-prerequisites\|build-all-layers\|bug-hunt-mermaid\|bug-hunt-graphviz\|merge-bug-findings\|validate-bugs-security\|validate-bugs-architect\|validate-bugs-tester\|tally-validation-votes\|ensure-label\|file-issues\|ingest-to-graph\|publish-atlas\|summarise-and-report" \
     "$RECIPE"
 
 assert_file_contains \
@@ -398,38 +398,38 @@ assert_file_contains \
     "$RECIPE"
 
 assert_file_contains \
-    "Recipe step: build-layers-1-to-4" \
-    "build-layers-1-to-4" \
+    "Recipe step: build-all-layers" \
+    "build-all-layers" \
     "$RECIPE"
 
 assert_file_contains \
-    "Recipe step: build-layers-5-to-6" \
-    "build-layers-5-to-6" \
+    "Recipe step: build-all-layers" \
+    "build-all-layers" \
     "$RECIPE"
 
 assert_file_contains \
-    "Recipe step: build-layer-7" \
-    "build-layer-7" \
+    "Recipe step: build-all-layers" \
+    "build-all-layers" \
     "$RECIPE"
 
 assert_file_contains \
-    "Recipe step: build-layer-8" \
-    "build-layer-8" \
+    "Recipe step: build-all-layers" \
+    "build-all-layers" \
     "$RECIPE"
 
 assert_file_contains \
-    "Recipe step: bug-hunt-pass-1" \
-    "bug-hunt-pass-1" \
+    "Recipe step: bug-hunt-mermaid" \
+    "bug-hunt-mermaid" \
     "$RECIPE"
 
 assert_file_contains \
-    "Recipe step: bug-hunt-pass-2" \
-    "bug-hunt-pass-2" \
+    "Recipe step: bug-hunt-graphviz" \
+    "bug-hunt-graphviz" \
     "$RECIPE"
 
 assert_file_contains \
-    "Recipe step: bug-hunt-pass-3" \
-    "bug-hunt-pass-3" \
+    "Recipe step: merge-bug-findings" \
+    "merge-bug-findings" \
     "$RECIPE"
 
 assert_file_contains \

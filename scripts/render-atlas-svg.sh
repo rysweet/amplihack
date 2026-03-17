@@ -156,7 +156,7 @@ render_mmd_file() {
             --input  "$src"  \
             --output "$dst"  \
             --backgroundColor transparent \
-            --quiet 2>/dev/null; then
+            --quiet; then
         echo "  OK: ${dst}"
         return 0
     else
@@ -231,18 +231,18 @@ ERRORS=0
 # Render .mmd files
 while IFS= read -r -d '' mmd_file; do
     if render_mmd_file "$mmd_file"; then
-        (( RENDERED++ )) || true
+        RENDERED=$((RENDERED + 1))
     else
-        (( ERRORS++ )) || true
+        ERRORS=$((ERRORS + 1))
     fi
 done < <(find "$ATLAS_DIR" -name '*.mmd' -not -type l -print0 2>/dev/null)
 
 # Render .dot files
 while IFS= read -r -d '' dot_file; do
     if render_dot_file "$dot_file"; then
-        (( RENDERED++ )) || true
+        RENDERED=$((RENDERED + 1))
     else
-        (( ERRORS++ )) || true
+        ERRORS=$((ERRORS + 1))
     fi
 done < <(find "$ATLAS_DIR" -name '*.dot' -not -type l -print0 2>/dev/null)
 
