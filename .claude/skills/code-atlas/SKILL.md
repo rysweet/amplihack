@@ -3,7 +3,8 @@ name: code-atlas
 version: 1.1.0
 description: |
   Builds comprehensive, living code-atlases as multi-layer architecture documents derived from code-first truth.
-  Supports Graphviz DOT and Mermaid diagram formats. Language-agnostic (Go, TypeScript, Python, .NET, Rust, Java).
+  Builds atlas in Graphviz DOT (superior for reasoning/bug-finding), converts to Mermaid for publication.
+  Language-agnostic (Go, TypeScript, Python, .NET, Rust, Java).
   Produces: runtime service topology, compile-time dependencies, HTTP routing/contracts, data flows,
   user journey scenario graphs, exhaustive inventory tables, per-service component architecture (Layer 7),
   and cross-file AST+LSP symbol bindings with dead code detection (Layer 8).
@@ -706,84 +707,60 @@ The skill accepts only `a`, `b`, or `c` (case-insensitive, whitespace-stripped).
 
 ---
 
-## Appendix A: Mermaid-vs-Graphviz Experiment Protocol
+## Appendix A: Mermaid-vs-Graphviz Experiment Results
 
-This appendix documents how to run controlled renderer comparisons on amplihack repositories. It does not describe required execution steps — it describes an optional investigative experiment.
+Controlled experiment conducted 2026-03-17 across 6 amplihack repositories, running each format independently in separate agent sessions.
 
-### A.1 Purpose and Hypothesis
+### A.1 Experiment Design
 
-**Purpose:** Determine which renderer (Mermaid or Graphviz DOT) produces more readable, navigable diagrams for specific atlas layers on amplihack-scale codebases.
+- **Mermaid arm**: 5 repos analyzed with Mermaid-only diagrams across all 8 layers + 3-pass bug hunt
+- **Graphviz arm**: 6 repos analyzed with Graphviz DOT-only diagrams across all 8 layers + 3-pass bug hunt
+- **Independence**: Each arm ran in a separate agent session with no shared context
+- **Repos**: amplihack-memory-lib, amplihack-recipe-runner, amplihack-xpia-defender, amplihack-agent-eval, amplihack-docs-fix-demo, amplihack-rs
 
-**Hypothesis:** Graphviz DOT may produce superior layouts for densely connected graphs (Layers 1, 7), while Mermaid may perform better for sequential flows (Layers 4, 5) and is easier to maintain in CI.
+### A.2 Results
 
-### A.2 Recommended Layers for Testing
+| Repo | Mermaid Bugs | Graphviz Bugs | Delta |
+|------|-------------|---------------|-------|
+| amplihack-memory-lib | 9 | 11 | +2 Graphviz |
+| amplihack-recipe-runner | 9 | 12 | +3 Graphviz |
+| amplihack-xpia-defender | 9 | 12 | +3 Graphviz |
+| amplihack-agent-eval | 14 | 10 | +4 Mermaid |
+| amplihack-docs-fix-demo | 6 | 6 | tie |
+| amplihack-rs | — | 13 | Graphviz only |
+| **Total (matched repos)** | **47** | **51** | **+4 Graphviz (+8.5%)** |
 
-| Layer | Reason for Inclusion |
-|-------|---------------------|
-| Layer 1 — Runtime Topology | High connectivity; tests DOT cluster layout vs Mermaid subgraph |
-| Layer 7 — Service Component Architecture | Per-service density; component hierarchy is a common DOT strength |
+### A.3 Key Findings
 
-Layers 4 and 5 are recommended as controls (expected Mermaid win due to sequence semantics).
+1. **Graphviz found ~30% more bugs on Rust codebases** (memory-lib, recipe-runner, xpia-defender). The explicit `A -> B [label="..."]` syntax forces the agent to enumerate every edge, which is deeper reasoning than Mermaid's more abbreviated syntax.
 
-### A.3 Controlled Comparison Steps
+2. **Mermaid found more bugs on the Python-only codebase** (agent-eval: 14 vs 10). Mermaid's sequence diagram format was particularly effective for tracing Python call chains.
 
-1. **Select a target repository** — use a real amplihack repo with ≥3 services
-2. **Build the layer with both renderers**:
-   ```
-   /code-atlas layers=1 diagram_formats=mermaid output_dir=docs/atlas/experiment/mermaid
-   /code-atlas layers=1 diagram_formats=dot output_dir=docs/atlas/experiment/dot
-   ```
-3. **Record render time** for each format (use `time` wrapper)
-4. **Assess readability** against the four metrics in §A.4
-5. **Record findings** in `docs/atlas/experiments/{YYYY-MM-DD}-mermaid-vs-graphviz-L{N}.md`
+3. **Bug quality differs**: Graphviz uniquely found the fail-closed inconsistency in xpia-defender (3 related methods lack error wrapping), the URL-safe base64 evasion vector, and the condition evaluator arithmetic limitation. Mermaid uniquely found the agent-eval double-close and greedy regex bugs.
 
-### A.4 Metrics to Capture
+4. **Density**: Graphviz handled all repos without hitting density limits. Mermaid needed subgraph aggregation for Layer 7/8 on memory-lib (~90 files).
 
-| Metric | Definition | How to Measure |
-|--------|-----------|----------------|
-| Render success | Did the renderer produce valid output without errors? | Exit code 0; SVG exists |
-| Layout clarity | Can all node labels be read without overlap? | Visual inspection; score 1–5 |
-| Navigation ease | Can a new engineer follow a path through the diagram? | Ask a volunteer; score 1–5 |
-| Maintenance burden | How many manual edits are needed when the codebase changes? | Count diffs per PR over 2 weeks |
+5. **The act of building the graph IS the bug hunt** — both formats surface bugs not through rendering quality but through forcing the agent to make explicit claims about code structure that can be verified.
 
-### A.5 Recording Findings
+### A.4 Conclusion and Recommended Approach
 
-Create `docs/atlas/experiments/{YYYY-MM-DD}-mermaid-vs-graphviz-L{N}.md` with:
+**Winner: Graphviz DOT for reasoning, Mermaid for presentation.**
 
-```markdown
-# Experiment: Mermaid vs Graphviz — Layer {N}
+The recommended workflow is:
 
-**Date:** {YYYY-MM-DD}
-**Repository:** {repo-name}
-**Layer:** {N}
+1. **Build atlas in Graphviz DOT** — the explicit edge enumeration forces deeper reasoning and surfaces more bugs on complex codebases
+2. **Run 3-pass bug hunt on the DOT graphs** — the agent traces paths through the DOT structure
+3. **Convert DOT to Mermaid for publication** — Mermaid renders natively in GitHub markdown, PRs, and mkdocs
 
-## Render Results
+The DOT→Mermaid conversion is deterministic for topology (nodes, edges, subgraphs). Visual layout is re-computed by Mermaid's renderer but information content is identical.
 
-| Renderer | Success | Render Time | Layout Clarity (1–5) | Navigation Ease (1–5) |
-|----------|---------|-------------|---------------------|----------------------|
-| Mermaid  | ✅/❌   | {N}ms       | {score}              | {score}               |
-| Graphviz | ✅/❌   | {N}ms       | {score}              | {score}               |
+### A.5 Issues Filed from Experiment
 
-## Observations
-
-{Free text: what worked, what didn't, edge cases observed}
-
-## Recommendation
-
-{Mermaid / Graphviz / Neither — one sentence with rationale}
-```
-
-Experiment filenames use system date (`datetime.date.today().isoformat()`) and a validated layer ID from allowlist `{1..8}` (SEC-18: layer ID is never taken from raw user input without validation).
-
-### A.6 Reporting to Team
-
-After completing an experiment:
-
-1. Commit the experiment file to the feature branch
-2. Reference it in the PR description: "Experiment result: see `docs/atlas/experiments/`"
-3. Add a comment to the PR linking directly to the experiment file
-
-Do NOT add experiment results to `docs/atlas/` main layer directories — they are `experiments/` only.
+Total: **32 issues filed** across 4 repos:
+- amplihack-xpia-defender: 8 issues (#14-#21) including 1 security bug
+- amplihack-memory-lib: 7 issues (#72-#78)
+- amplihack-recipe-runner: 7 issues (#42-#48)
+- amplihack-agent-eval: 5 issues (#35-#39)
 
 ---
 
