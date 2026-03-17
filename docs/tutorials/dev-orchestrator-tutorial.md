@@ -298,6 +298,57 @@ SKIP category and responds directly.
 
 ---
 
+## Execution Modes
+
+The dev-orchestrator supports two execution modes for the recipe runner.
+
+### Default: Direct Execution
+
+Recipes run via plain `subprocess.Popen` — no tmux required. This works
+everywhere: local shells, containers, CI, Windows native, and restricted
+environments.
+
+```
+[dev-orchestrator] starting recipe runner (direct mode)...
+```
+
+### Optional: Durable Execution via tmux
+
+For long-running recipes (typically >15 minutes) or environments that kill
+background processes on disconnection (SSH sessions without session managers),
+use the tmux-based durable execution mode.
+
+```bash
+# Enable durable mode for the current session
+export AMPLIHACK_DURABLE_EXEC=1
+/dev your long-running task
+```
+
+In durable mode, the Python payload is written to a temporary script file
+before launching tmux — this avoids nested quoting failures that occurred in
+older versions when task descriptions contained quotes:
+
+```bash
+tmux new-session -d -s recipe-runner "python3 $SCRIPT_FILE 2>&1 | tee $LOG_FILE"
+```
+
+If the tmux session appears to start but produces no output, ensure you are
+using amplihack v0.9.1 or later which includes the temp-script fix (PR #3216).
+
+### Agent Binary Selection
+
+By default, amplihack uses `claude` as the agent binary. To use a different
+agent, set `AMPLIHACK_AGENT_BINARY`:
+
+```bash
+export AMPLIHACK_AGENT_BINARY=claude   # default
+```
+
+This variable is preserved across nested agent launches — subagents spawned by
+the recipe runner use the same binary as the parent.
+
+---
+
 ## Troubleshooting
 
 **"BLOCKED: max_depth exceeded"**

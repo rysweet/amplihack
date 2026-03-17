@@ -214,6 +214,21 @@ uv --version     # Should show version info
 git --version    # Should show 2.x or higher
 ```
 
+#### Windows Feature Compatibility
+
+| Feature | Windows Native | WSL |
+|---|---|---|
+| Core recipe runner | Full | Full |
+| Agent orchestration (`/dev`) | Full | Full |
+| Auto mode (TUI) | Headless only | Full |
+| Fleet CLI | Not supported | Full |
+| File locking | Full (`msvcrt` fallback) | Full |
+| Keyboard input | Full (`msvcrt` fallback) | Full |
+| Temp directories | Full (`tempfile.gettempdir()`) | Full |
+| Rust recipe runner | Full | Full |
+
+For WSL setup, follow the Linux instructions in [the Linux section above](#linux).
+
 #### Configure PowerShell UTF-8 Encoding (Required for Windows)
 
 AmplihHack uses Unicode characters (emojis, checkmarks) in output. Windows PowerShell defaults to Code Page 437, which causes these characters to display incorrectly as garbled text (e.g., `âœ…` instead of ✅).
@@ -555,4 +570,4 @@ If you encounter issues not covered in this guide:
 
 ---
 
-**Last Updated:** 2025-10-01
+**Last Updated:** 2026-03-17
