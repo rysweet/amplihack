@@ -119,9 +119,9 @@ Expected output: `Layer 3 STALE` (and not Layer 1 or Layer 2).
 
 **Expected:**
 
-- `docs/atlas/` contains all 6 layer directories
+- `docs/atlas/` contains all 8 layer directories
 - Each directory has at least one `.mmd` or `.dot` file and one `.svg` file
-- `docs/atlas/README.md` exists and links to all 6 layers
+- `docs/atlas/README.md` exists and links to all 8 layers
 - `docs/atlas/staleness-map.yaml` exists and contains at least 6 glob entries
 
 **CI validation:**

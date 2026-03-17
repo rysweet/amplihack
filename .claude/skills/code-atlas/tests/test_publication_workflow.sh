@@ -108,7 +108,7 @@ if [[ -f "$INDEX" ]]; then
     # Must have a title heading
     assert_file_contains "index.md: has H1 title" "^# " "$INDEX"
 
-    # Must link to all 6 layers
+    # Must link to all 8 layers
     for layer in "layer1" "layer2" "layer3" "layer4" "layer5" "layer6"; do
         assert_file_contains "index.md: links to $layer" "$layer" "$INDEX"
     done
@@ -245,7 +245,7 @@ STALENESS_MAP="${ATLAS}/.staleness-map.yaml"
 assert_file_exists "docs/atlas/.staleness-map.yaml exists" "$STALENESS_MAP"
 
 if [[ -f "$STALENESS_MAP" ]]; then
-    # Must have entries for all 6 layers
+    # Must have entries for all 8 layers
     for layer in 1 2 3 4 5 6; do
         assert_file_contains ".staleness-map.yaml: layer $layer entry" \
             "layer${layer}\|layer_${layer}" "$STALENESS_MAP"

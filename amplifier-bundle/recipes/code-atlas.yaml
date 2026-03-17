@@ -199,7 +199,7 @@ steps:
       density_threshold_edges: "{{parameters.density_threshold_edges}}"
     depends_on:
       - "validate-prerequisites"
-    condition: "validate_prerequisites and 'true' in str(validate_prerequisites).lower()"
+    condition: "validate_prerequisites"
 
   # ==========================================================================
   # STEP 3: BUG-HUNT — MERMAID ARM (parallel with Step 4)
