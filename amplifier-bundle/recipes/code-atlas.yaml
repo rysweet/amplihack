@@ -10,7 +10,9 @@ tags: ["architecture", "documentation", "bug-hunting", "atlas", "code-atlas"]
 
 # CODE-ATLAS RECIPE
 #
-# 9 steps: prerequisites → all 8 layers → parallel dual-format bug hunt → merge → file issues → ingest to graph → publish → report.
+# 10 steps: prerequisites → all 8 layers → parallel dual-format bug hunt → merge →
+# multi-agent validation (3 specialists vote, >= 2/3 to pass) → file validated issues →
+# ingest to graph → publish → report.
 # The experiment (Appendix A) proved Mermaid and Graphviz find ~85% different bugs.
 # Running both in parallel finds ~1.7x the bugs of either alone.
 #
@@ -285,11 +287,129 @@ steps:
       - "bug-hunt-graphviz"
 
   # ==========================================================================
-  # STEP 6a: ENSURE LABEL EXISTS
+  # STEP 6: MULTI-AGENT FALSE POSITIVE ELIMINATION
+  # Three specialist agents independently validate each bug.
+  # A bug must receive 2/3 CONFIRMED votes to be filed as an issue.
+  # This prevents wasting developer time on false positives.
+  # ==========================================================================
+  - id: "validate-bugs-security"
+    name: "Step 6a: Validate Bugs — Security Specialist"
+    type: "agent"
+    agent: "amplihack:amplihack:specialized:security"
+    parallel_group: "bug-validation"
+    description: |
+      Security specialist reviews each merged bug finding independently.
+      For each bug, read the actual source code at file:line and determine:
+
+      - CONFIRMED: The bug is real. The code at file:line has the described problem.
+        Include a one-line explanation of WHY it's a bug.
+      - FALSE_POSITIVE: The bug is not real. The code is correct.
+        Include a one-line explanation of WHY the finding was wrong.
+      - UNCERTAIN: Cannot determine from available evidence.
+
+      Focus on: error handling, input validation, security implications,
+      fail-closed behavior, credential exposure, injection risks.
+
+      Write verdicts to: {{output_dir}}/bug-reports/validation/security-verdicts.md
+    inputs:
+      merged_findings: "{{steps.merge-bug-findings.outputs}}"
+      codebase_path: "{{parameters.codebase_path}}"
+    condition: "{{parameters.bug_hunt}}"
+    depends_on:
+      - "merge-bug-findings"
+
+  - id: "validate-bugs-architect"
+    name: "Step 6b: Validate Bugs — Architecture Specialist"
+    type: "agent"
+    agent: "amplihack:amplihack:core:architect"
+    parallel_group: "bug-validation"
+    description: |
+      Architecture specialist reviews each merged bug finding independently.
+      For each bug, read the actual source code at file:line and determine:
+
+      - CONFIRMED: The bug is real. The code at file:line has the described problem.
+      - FALSE_POSITIVE: The bug is not real. The code is correct.
+      - UNCERTAIN: Cannot determine from available evidence.
+
+      Focus on: module boundaries, API contracts, dependency direction,
+      encapsulation violations, naming inconsistencies, dead code, stale docs.
+
+      Write verdicts to: {{output_dir}}/bug-reports/validation/architect-verdicts.md
+    inputs:
+      merged_findings: "{{steps.merge-bug-findings.outputs}}"
+      codebase_path: "{{parameters.codebase_path}}"
+    condition: "{{parameters.bug_hunt}}"
+    depends_on:
+      - "merge-bug-findings"
+
+  - id: "validate-bugs-tester"
+    name: "Step 6c: Validate Bugs — Testing Specialist"
+    type: "agent"
+    agent: "amplihack:amplihack:core:tester"
+    parallel_group: "bug-validation"
+    description: |
+      Testing specialist reviews each merged bug finding independently.
+      For each bug, read the actual source code at file:line and determine:
+
+      - CONFIRMED: The bug is real. The code at file:line has the described problem.
+        If possible, describe a test case that would expose the bug.
+      - FALSE_POSITIVE: The bug is not real. The code is correct.
+        Explain what the bug-hunter misunderstood.
+      - UNCERTAIN: Cannot determine from available evidence.
+
+      Focus on: edge cases, error paths, race conditions, resource leaks,
+      type mismatches, unreachable code, off-by-one errors.
+
+      Write verdicts to: {{output_dir}}/bug-reports/validation/tester-verdicts.md
+    inputs:
+      merged_findings: "{{steps.merge-bug-findings.outputs}}"
+      codebase_path: "{{parameters.codebase_path}}"
+    condition: "{{parameters.bug_hunt}}"
+    depends_on:
+      - "merge-bug-findings"
+
+  # ==========================================================================
+  # STEP 6d: TALLY VOTES AND FILTER
+  # A bug needs >= 2 of 3 CONFIRMED votes to be filed.
+  # UNCERTAIN counts as 0.5 (two UNCERTAINs + one CONFIRMED = filed).
+  # ==========================================================================
+  - id: "tally-validation-votes"
+    name: "Step 6d: Tally Validation Votes"
+    type: "agent"
+    agent: "amplihack:amplihack:core:reviewer"
+    description: |
+      Tally votes from the three validation specialists:
+
+      For each bug in the merged findings:
+        1. Read verdicts from security, architect, and tester
+        2. Score: CONFIRMED=1, UNCERTAIN=0.5, FALSE_POSITIVE=0
+        3. Threshold: score >= 2.0 → VALIDATED (will be filed)
+        4. Score < 2.0 → REJECTED (not filed, logged with reasons)
+
+      Produce:
+        - {{output_dir}}/bug-reports/validated-bugs.md — bugs that passed validation
+        - {{output_dir}}/bug-reports/rejected-bugs.md — bugs filtered out with vote breakdown
+        - Summary: N validated, N rejected, N unanimous, false positive rate estimate
+
+      Bugs found by BOTH diagram formats AND validated by all 3 agents get severity
+      upgraded to HIGH (regardless of original severity).
+    inputs:
+      security_verdicts: "{{steps.validate-bugs-security.outputs}}"
+      architect_verdicts: "{{steps.validate-bugs-architect.outputs}}"
+      tester_verdicts: "{{steps.validate-bugs-tester.outputs}}"
+      merged_findings: "{{steps.merge-bug-findings.outputs}}"
+    condition: "{{parameters.bug_hunt}}"
+    depends_on:
+      - "validate-bugs-security"
+      - "validate-bugs-architect"
+      - "validate-bugs-tester"
+
+  # ==========================================================================
+  # STEP 7a: ENSURE LABEL EXISTS
   # Create code-atlas-bughunt label if missing.
   # ==========================================================================
   - id: "ensure-label"
-    name: "Step 6a: Ensure code-atlas-bughunt Label"
+    name: "Step 7a: Ensure code-atlas-bughunt Label"
     type: "bash"
     command: |
       cd "{{parameters.codebase_path}}" && \
@@ -299,21 +419,22 @@ steps:
       echo "Label 'code-atlas-bughunt' ensured."
     condition: "{{parameters.bug_hunt}}"
     depends_on:
-      - "merge-bug-findings"
+      - "tally-validation-votes"
 
   # ==========================================================================
-  # STEP 6b: FILE ISSUES FOR EVERY BUG FOUND
-  # Read merged findings, file one GitHub issue per unique bug.
-  # Every bug gets filed — no filtering, no "top N only".
+  # STEP 7b: FILE ISSUES FOR VALIDATED BUGS ONLY
+  # Only bugs that passed multi-agent validation (>= 2/3 votes) get filed.
+  # Rejected bugs are logged but not filed — reduces developer noise.
   # ==========================================================================
   - id: "file-issues"
-    name: "Step 6b: File GitHub Issues for All Bugs"
+    name: "Step 7b: File GitHub Issues for Validated Bugs"
     type: "agent"
     agent: "amplihack:amplihack:core:builder"
     description: |
-      File a GitHub issue for EVERY unique bug in the merged findings.
+      File a GitHub issue for every VALIDATED bug (score >= 2.0 from Step 6d).
+      Do NOT file rejected bugs — they are logged in rejected-bugs.md.
 
-      For each bug in {{output_dir}}/bug-reports/merged-findings.md:
+      For each bug in {{output_dir}}/bug-reports/validated-bugs.md:
         1. Create issue via `gh issue create` with:
            - Title: "[code-atlas] {brief description}" (under 70 chars)
            - Body containing:
@@ -323,14 +444,15 @@ steps:
              - Which pass found it (Pass 1/2/3)
              - Code quote with credential redaction (SEC-09)
            - Labels: bug, code-atlas-bughunt
+         - Validation: "Validated by N/3 agents (security: X, architect: X, tester: X)"
         2. Log the created issue URL
-        3. Do NOT skip any bugs — every finding gets an issue
-        4. Do NOT batch multiple bugs into one issue — one issue per bug
+        3. File every validated bug — no additional filtering
+        4. One issue per bug — no batching
 
       After filing all issues, write the list of URLs to:
         {{output_dir}}/bug-reports/filed-issues.md
     inputs:
-      merged_findings: "{{steps.merge-bug-findings.outputs}}"
+      validated_bugs: "{{steps.tally-validation-votes.outputs}}"
       codebase_path: "{{parameters.codebase_path}}"
       output_dir: "{{parameters.output_dir}}"
     condition: "{{parameters.bug_hunt}}"
@@ -338,13 +460,13 @@ steps:
       - "ensure-label"
 
   # ==========================================================================
-  # STEP 7: INGEST ATLAS INTO CODE GRAPH (Kuzu)
+  # STEP 8: INGEST ATLAS INTO CODE GRAPH (Kuzu)
   # Map atlas layers, services, symbols, and bugs into the queryable graph.
   # Enables Cypher queries like "show all paths from login to database write"
   # or "which services are affected by this bug?"
   # ==========================================================================
   - id: "ingest-to-graph"
-    name: "Step 7: Ingest Atlas into Code Graph"
+    name: "Step 8: Ingest Atlas into Code Graph"
     type: "agent"
     agent: "amplihack:amplihack:core:builder"
     description: |
@@ -389,10 +511,10 @@ steps:
       - "file-issues"
 
   # ==========================================================================
-  # STEP 8: PUBLISH ATLAS
+  # STEP 9: PUBLISH ATLAS
   # ==========================================================================
   - id: "publish-atlas"
-    name: "Step 8: Publish Atlas"
+    name: "Step 9: Publish Atlas"
     type: "skill"
     skill: "code-atlas"
     task: "publish"
@@ -422,10 +544,10 @@ steps:
       - "ingest-to-graph"
 
   # ==========================================================================
-  # STEP 9: SUMMARISE AND REPORT
+  # STEP 10: SUMMARISE AND REPORT
   # ==========================================================================
   - id: "summarise-and-report"
-    name: "Step 9: Summarise and Report"
+    name: "Step 10: Summarise and Report"
     type: "skill"
     skill: "code-atlas"
     task: "summarise"
@@ -439,6 +561,8 @@ steps:
          - Mermaid arm: N findings
          - Graphviz arm: N findings
          - Merged unique: N (shared: N, mermaid-only: N, graphviz-only: N)
+         - Validation: N validated, N rejected (false positive rate: N%)
+         - Unanimous (3/3 confirmed): N — highest confidence
          - Issues filed: N with URLs
       6. Density guard activations: N
       7. Code graph: N atlas nodes ingested, N relationships created (or ATLAS_GRAPH_UNAVAILABLE)
