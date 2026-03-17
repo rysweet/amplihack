@@ -26,7 +26,7 @@ digraph routes {
         count_tokens [label="POST /v1/messages/count_tokens" fillcolor="#FAD7A0"]
         perf [label="GET /performance/*" fillcolor="#FAD7A0"]
         azure_status [label="GET /azure/status" fillcolor="#FAD7A0"]
-    end
+    }
 
     subgraph cluster_hooks {
         label="Hook Events"

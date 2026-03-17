@@ -1,0 +1,88 @@
+graph TD
+    subgraph "Entry Points"
+        ROOT["__root__<br/><i>cli.py, session.py, install.py</i>"]
+    end
+
+    subgraph "Core Services"
+        LAUNCHER["launcher<br/><i>26 files</i>"]
+        PROXY["proxy<br/><i>30 files</i>"]
+        RECIPES["recipes<br/><i>6 files</i>"]
+        MEMORY["memory<br/><i>39 files</i>"]
+        FLEET["fleet<br/><i>55 files</i>"]
+    end
+
+    subgraph "Agent Subsystem"
+        AGENTS["agents<br/><i>40 files</i>"]
+        EVAL["eval<br/><i>27 files</i>"]
+        GOAL_GEN["goal_agent_generator<br/><i>12 files</i>"]
+        META["meta_delegation<br/><i>9 files</i>"]
+    end
+
+    subgraph "CLI Layer"
+        RECIPE_CLI["recipe_cli<br/><i>3 files</i>"]
+        PLUGIN_CLI["plugin_cli<br/><i>4 files</i>"]
+    end
+
+    subgraph "Infrastructure"
+        HOOKS["hooks<br/><i>3 files</i>"]
+        SAFETY["safety<br/><i>4 files</i>"]
+        SECURITY["security<br/><i>11 files</i>"]
+        UTILS["utils<br/><i>21 files</i>"]
+        EXCEPTIONS["exceptions"]
+        SETTINGS_GEN["settings_generator<br/><i>2 files</i>"]
+    end
+
+    subgraph "Support Modules"
+        WORKFLOWS["workflows<br/><i>6 files</i>"]
+        BUNDLE_GEN["bundle_generator<br/><i>17 files</i>"]
+        KNOWLEDGE["knowledge_builder<br/><i>7 files</i>"]
+        DOCKER["docker<br/><i>3 files</i>"]
+        CONTEXT["context<br/><i>3 files</i>"]
+        MODE["mode_detector<br/><i>3 files</i>"]
+        TRACING["tracing<br/><i>2 files</i>"]
+        UVX["uvx<br/><i>2 files</i>"]
+        POWER["power_steering<br/><i>2 files</i>"]
+        LSP["lsp_detector<br/><i>2 files</i>"]
+        PLUGIN_MGR["plugin_manager<br/><i>2 files</i>"]
+        PATH_RES["path_resolver<br/><i>2 files</i>"]
+        TESTING["testing<br/><i>3 files</i>"]
+    end
+
+    subgraph "Vendored"
+        VENDOR["vendor/blarify"]
+    end
+
+    %% Cross-module dependencies
+    ROOT -->|"fleet_cli"| FLEET
+    ROOT -->|"SettingsManager"| LAUNCHER
+    ROOT -->|"ClaudeBinaryNotFoundError"| EXCEPTIONS
+
+    EVAL -->|"37 imports"| AGENTS
+    FLEET -->|"store_discovery"| MEMORY
+    GOAL_GEN -->|"AutoMode"| LAUNCHER
+    META -->|"get_agent_binary"| UTILS
+
+    LAUNCHER -->|"execute_stop_hook"| HOOKS
+    LAUNCHER -->|"PromptTransformer"| SAFETY
+
+    RECIPE_CLI -->|"RecipeParser, Recipe"| RECIPES
+    WORKFLOWS -->|"run_recipe_by_name"| RECIPES
+
+    MEMORY -->|"GraphBuilder, KuzuManager"| VENDOR
+    UTILS -->|"write_json_atomic"| SETTINGS_GEN
+
+    classDef entry fill:#e1f5fe,stroke:#0288d1,stroke-width:2px
+    classDef core fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef agent fill:#fff3e0,stroke:#ef6c00,stroke-width:2px
+    classDef cli fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    classDef infra fill:#fce4ec,stroke:#c62828,stroke-width:1px
+    classDef support fill:#f5f5f5,stroke:#616161,stroke-width:1px
+    classDef vendor fill:#fff9c4,stroke:#f9a825,stroke-width:1px
+
+    class ROOT entry
+    class LAUNCHER,PROXY,RECIPES,MEMORY,FLEET core
+    class AGENTS,EVAL,GOAL_GEN,META agent
+    class RECIPE_CLI,PLUGIN_CLI cli
+    class HOOKS,SAFETY,SECURITY,UTILS,EXCEPTIONS,SETTINGS_GEN infra
+    class WORKFLOWS,BUNDLE_GEN,KNOWLEDGE,DOCKER,CONTEXT,MODE,TRACING,UVX,POWER,LSP,PLUGIN_MGR,PATH_RES,TESTING support
+    class VENDOR vendor

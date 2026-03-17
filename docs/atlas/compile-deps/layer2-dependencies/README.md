@@ -46,5 +46,12 @@ See [inventory.md](inventory.md) for the complete package inventory table.
 
 ## Diagrams
 
-- [deps.mmd](deps.mmd) -- Mermaid flowchart
-- [deps.dot](deps.dot) -- Graphviz DOT
+### Mermaid Diagram
+
+![Compile Dependencies - Mermaid](deps-mermaid.svg)
+
+### Graphviz Diagram
+
+![Compile Dependencies - Graphviz](deps-dot.svg)
+
+**Source files:** [deps.mmd](deps.mmd) | [deps.dot](deps.dot)
