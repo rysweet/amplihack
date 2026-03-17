@@ -7,6 +7,8 @@ description: |
   Published as single atlas with side-by-side diagrams (Mermaid inline + Graphviz SVG) plus source files.
   Language-agnostic (Go, TypeScript, Python, .NET, Rust, Java).
   Files issues with 'code-atlas-bughunt' label (creates the label if missing).
+  Ingests atlas into Kuzu code graph for queryable traversal — enables Cypher queries like
+  "show all paths from login to database write" or "which services are affected by this bug?"
   Produces: runtime service topology, compile-time dependencies, HTTP routing/contracts, data flows,
   user journey scenario graphs, exhaustive inventory tables, per-service component architecture (Layer 7),
   and cross-file AST+LSP symbol bindings with dead code detection (Layer 8).
