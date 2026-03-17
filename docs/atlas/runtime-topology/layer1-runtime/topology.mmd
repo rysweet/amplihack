@@ -1,0 +1,60 @@
+flowchart LR
+    subgraph user["User Entry Points"]
+        cli["amplihack CLI\n(Python entry point)"]
+        copilot["copilot launcher"]
+        codex["codex launcher"]
+        amplifier["amplifier launcher"]
+    end
+
+    subgraph core["Core Runtime"]
+        session["session.py\n(Session Manager)"]
+        launcher["launcher/\n(ClaudeLauncher)"]
+        plugin_mgr["plugin_manager/\n(PluginManager)"]
+        hooks["hooks/\n(Hook Engine)"]
+        rust_hooks["Rust Hook Engine\n(amplihack-hooks)"]
+    end
+
+    subgraph proxy_layer["Proxy Layer"]
+        integrated_proxy["integrated_proxy.py\nFastAPI :proxy_port"]
+        responses_proxy["responses_api_proxy.py\nFlask :5000"]
+        log_stream["log_streaming.py\nFastAPI SSE"]
+    end
+
+    subgraph ai_backends["AI Backends"]
+        anthropic["Anthropic API\n(Claude)"]
+        azure_openai["Azure OpenAI\n(GPT-4)"]
+        litellm_router["LiteLLM Router\n(Multi-provider)"]
+    end
+
+    subgraph data_stores["Data Stores"]
+        kuzu["Kuzu\n(Embedded Graph DB)"]
+        memory_lib["amplihack-memory-lib\n(CognitiveMemory)"]
+        filesystem["Filesystem\n(.claude/ runtime/)"]
+    end
+
+    subgraph docker_env["Docker (optional)"]
+        docker_container["amplihack container\n(docker-compose)"]
+    end
+
+    cli -->|"launch"| launcher
+    cli -->|"proxy"| integrated_proxy
+    copilot -->|"launch"| launcher
+    codex -->|"launch"| launcher
+    amplifier -->|"launch"| launcher
+
+    launcher -->|"creates"| session
+    launcher -->|"registers"| hooks
+    hooks -.->|"delegates to"| rust_hooks
+    session -->|"routes via"| integrated_proxy
+    integrated_proxy -->|"forward"| litellm_router
+    litellm_router -->|"call"| anthropic
+    litellm_router -->|"call"| azure_openai
+    responses_proxy -->|"forward"| anthropic
+    log_stream -->|"reads"| filesystem
+
+    session -->|"stores"| memory_lib
+    memory_lib -->|"persists"| kuzu
+    hooks -->|"reads/writes"| filesystem
+    plugin_mgr -->|"manages"| hooks
+
+    docker_container -->|"runs"| cli

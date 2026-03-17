@@ -1,0 +1,89 @@
+digraph runtime {
+    rankdir=LR
+    node [shape=box style=filled fontname="Helvetica"]
+    edge [fontname="Helvetica" fontsize=10]
+
+    // User Entry Points
+    subgraph cluster_entry {
+        label="User Entry Points"
+        style=filled
+        fillcolor="#E8F4FD"
+        cli [label="amplihack CLI\n(Python entry)" fillcolor="#AED6F1"]
+        copilot [label="copilot launcher" fillcolor="#AED6F1"]
+        codex [label="codex launcher" fillcolor="#AED6F1"]
+        amplifier [label="amplifier launcher" fillcolor="#AED6F1"]
+    }
+
+    // Core Runtime
+    subgraph cluster_core {
+        label="Core Runtime"
+        style=filled
+        fillcolor="#E8F8E8"
+        session [label="session.py\n(Session Manager)" fillcolor="#A9DFBF"]
+        launcher [label="launcher/\n(ClaudeLauncher)" fillcolor="#A9DFBF"]
+        plugin_mgr [label="plugin_manager/\n(PluginManager)" fillcolor="#A9DFBF"]
+        hooks [label="hooks/\n(Hook Engine)" fillcolor="#A9DFBF"]
+        rust_hooks [label="Rust Hook Engine\n(amplihack-hooks)" fillcolor="#82E0AA"]
+    }
+
+    // Proxy Layer
+    subgraph cluster_proxy {
+        label="Proxy Layer"
+        style=filled
+        fillcolor="#FEF5E7"
+        integrated_proxy [label="integrated_proxy.py\nFastAPI" fillcolor="#FAD7A0"]
+        responses_proxy [label="responses_api_proxy.py\nFlask" fillcolor="#FAD7A0"]
+        log_stream [label="log_streaming.py\nFastAPI SSE" fillcolor="#FAD7A0"]
+    }
+
+    // AI Backends
+    subgraph cluster_ai {
+        label="AI Backends (External)"
+        style=filled
+        fillcolor="#F5E6FF"
+        anthropic [label="Anthropic API\n(Claude)" fillcolor="#D7BDE2"]
+        azure_openai [label="Azure OpenAI\n(GPT-4)" fillcolor="#D7BDE2"]
+        litellm_router [label="LiteLLM Router" fillcolor="#D7BDE2"]
+    }
+
+    // Data Stores
+    subgraph cluster_data {
+        label="Data Stores"
+        style=filled
+        fillcolor="#FDEDEC"
+        kuzu [label="Kuzu\n(Embedded Graph DB)" shape=cylinder fillcolor="#F5B7B1"]
+        memory_lib [label="amplihack-memory-lib\n(CognitiveMemory)" fillcolor="#F5B7B1"]
+        filesystem [label="Filesystem\n(.claude/ runtime/)" shape=cylinder fillcolor="#F5B7B1"]
+    }
+
+    // Docker
+    subgraph cluster_docker {
+        label="Docker (optional)"
+        style=dashed
+        docker_container [label="amplihack container" fillcolor="#D5F5E3"]
+    }
+
+    // Edges
+    cli -> launcher [label="launch"]
+    cli -> integrated_proxy [label="proxy"]
+    copilot -> launcher [label="launch"]
+    codex -> launcher [label="launch"]
+    amplifier -> launcher [label="launch"]
+
+    launcher -> session [label="creates"]
+    launcher -> hooks [label="registers"]
+    hooks -> rust_hooks [style=dashed label="delegates"]
+    session -> integrated_proxy [label="routes via"]
+    integrated_proxy -> litellm_router [label="forward"]
+    litellm_router -> anthropic [label="call"]
+    litellm_router -> azure_openai [label="call"]
+    responses_proxy -> anthropic [label="forward"]
+    log_stream -> filesystem [label="reads"]
+
+    session -> memory_lib [label="stores"]
+    memory_lib -> kuzu [label="persists"]
+    hooks -> filesystem [label="reads/writes"]
+    plugin_mgr -> hooks [label="manages"]
+
+    docker_container -> cli [label="runs"]
+}
