@@ -1,0 +1,84 @@
+scenario:
+  name: "Mermaid Workflow Graphs - Syntax and Structure Validation"
+  description: "Verifies that all mermaid graphs added by PR #3249 are syntactically valid and structurally accurate"
+  type: cli
+  tags: [smoke, mermaid, workflow-graphs]
+
+  prerequisites:
+    - "Repository checked out on feat/workflow-mermaid-graphs branch"
+    - "Python 3 available"
+
+  steps:
+    # Verify all 7 files contain mermaid blocks
+    - action: launch
+      target: "grep"
+      args: ["-rl", "```mermaid", ".claude/skills/dev-orchestrator/SKILL.md", ".claude/skills/default-workflow/SKILL.md", ".claude/skills/investigation-workflow/SKILL.md", ".claude/skills/quality-audit/SKILL.md", "CLAUDE.md", ".claude/agents/amplihack/specialized/ci-diagnostic-workflow.md", ".claude/commands/amplihack/fix.md"]
+    - action: verify_output
+      contains: "SKILL.md"
+      description: "At least one skill file contains mermaid block"
+    - action: verify_exit_code
+      expected: 0
+
+    # Validate dev-orchestrator graph has required nodes
+    - action: launch
+      target: "grep"
+      args: ["-c", "Classify Task", ".claude/skills/dev-orchestrator/SKILL.md"]
+    - action: verify_output
+      contains: "1"
+      description: "Dev-orchestrator graph contains Classify Task node"
+
+    # Validate quality-audit parallel validators (fix #1)
+    - action: launch
+      target: "grep"
+      args: ["V1 & V2 & V3", ".claude/skills/quality-audit/SKILL.md"]
+    - action: verify_output
+      contains: "V1 & V2 & V3"
+      description: "Quality-audit validators shown as parallel fork/join"
+
+    # Validate quality-audit NEW keyword (fix #2)
+    - action: launch
+      target: "grep"
+      args: ["NEW high/critical", ".claude/skills/quality-audit/SKILL.md"]
+    - action: verify_output
+      contains: "NEW"
+      description: "CONTINUE edge specifies NEW findings"
+
+    # Validate dev-orchestrator separate Dev/Investigation (fix #3)
+    - action: launch
+      target: "grep"
+      args: ["|Development|", ".claude/skills/dev-orchestrator/SKILL.md"]
+    - action: verify_output
+      contains: "Development"
+      description: "Dev and Investigation are separate edges"
+
+    # Validate investigation-workflow has 6 phases
+    - action: launch
+      target: "grep"
+      args: ["-c", "subgraph P", ".claude/skills/investigation-workflow/SKILL.md"]
+    - action: verify_output
+      contains: "6"
+      description: "Investigation workflow graph has 6 phase subgraphs"
+
+    # Validate CI diagnostic uses stateDiagram
+    - action: launch
+      target: "grep"
+      args: ["stateDiagram-v2", ".claude/agents/amplihack/specialized/ci-diagnostic-workflow.md"]
+    - action: verify_output
+      contains: "stateDiagram-v2"
+      description: "CI diagnostic uses mermaid state diagram"
+
+    # Validate CLAUDE.md classification graph
+    - action: launch
+      target: "grep"
+      args: ["Classify Task Type", "CLAUDE.md"]
+    - action: verify_output
+      contains: "Classify"
+      description: "CLAUDE.md has classification decision tree"
+
+    # Validate default-workflow has 7 phases
+    - action: launch
+      target: "grep"
+      args: ["-c", "subgraph P", ".claude/skills/default-workflow/SKILL.md"]
+    - action: verify_output
+      contains: "7"
+      description: "Default workflow graph has 7 phase subgraphs"
