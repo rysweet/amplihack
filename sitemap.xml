@@ -293,55 +293,7 @@
          <lastmod>2026-03-17</lastmod>
     </url>
     <url>
-         <loc>https://rysweet.github.io/amplihack/atlas/bug-reports/2026-03-17-pass1-dead-code-cli-extensions/</loc>
-         <lastmod>2026-03-17</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/atlas/bug-reports/2026-03-17-pass1-dead-filecmp/</loc>
-         <lastmod>2026-03-17</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/atlas/bug-reports/2026-03-17-pass1-double-cleanup/</loc>
-         <lastmod>2026-03-17</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/atlas/bug-reports/2026-03-17-pass1-dual-fastapi-app/</loc>
-         <lastmod>2026-03-17</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/atlas/bug-reports/2026-03-17-pass1-duplicate-ensure-staged/</loc>
-         <lastmod>2026-03-17</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/atlas/bug-reports/2026-03-17-pass1-duplicate-launch-command/</loc>
-         <lastmod>2026-03-17</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/atlas/bug-reports/2026-03-17-pass1-env-vars-not-in-env-example/</loc>
-         <lastmod>2026-03-17</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/atlas/bug-reports/2026-03-17-pass2-cross-check/</loc>
-         <lastmod>2026-03-17</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/atlas/bug-reports/2026-03-17-pass3-install-and-launch/</loc>
-         <lastmod>2026-03-17</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/atlas/bug-reports/2026-03-17-pass3-plugin-install/</loc>
-         <lastmod>2026-03-17</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/atlas/bug-reports/2026-03-17-pass3-proxy-api-call/</loc>
-         <lastmod>2026-03-17</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/atlas/bug-reports/2026-03-17-pass3-recipe-execution/</loc>
-         <lastmod>2026-03-17</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/atlas/bug-reports/2026-03-17-pass3-session-lifecycle/</loc>
+         <loc>https://rysweet.github.io/amplihack/atlas/ast-lsp-bindings/</loc>
          <lastmod>2026-03-17</lastmod>
     </url>
     <url>
@@ -374,6 +326,10 @@
     </url>
     <url>
          <loc>https://rysweet.github.io/amplihack/atlas/runtime-topology/layer1-runtime/</loc>
+         <lastmod>2026-03-17</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/atlas/service-components/</loc>
          <lastmod>2026-03-17</lastmod>
     </url>
     <url>
@@ -2602,10 +2558,6 @@
     </url>
     <url>
          <loc>https://rysweet.github.io/amplihack/migration/</loc>
-         <lastmod>2026-03-17</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/migration/claude-trace-to-native/</loc>
          <lastmod>2026-03-17</lastmod>
     </url>
     <url>
