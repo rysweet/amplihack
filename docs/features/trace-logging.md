@@ -305,16 +305,11 @@ export AMPLIHACK_TRACE_RETENTION_DAYS=90
 find .claude/runtime/amplihack-traces/ -name "trace_*.jsonl" -mtime +30 -delete
 ```
 
-## Migrating from claude-trace
-
-If you previously used the `claude-trace` NPM package, see [Migration Guide](../migration/claude-trace-to-native.md) for transition steps.
-
 ## Next Steps
 
 - [How-To: Trace Logging](../howto/trace-logging.md) - Task-oriented recipes
 - [Developer Reference: Trace Logging API](../reference/trace-logging-api.md) - Technical implementation
 - [Troubleshooting: Trace Logging](../troubleshooting/trace-logging.md) - Common issues
-- [Migration: claude-trace to Native](../migration/claude-trace-to-native.md) - Upgrade guide
 
 ## Related Features
 

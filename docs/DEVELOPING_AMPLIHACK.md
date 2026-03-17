@@ -183,7 +183,7 @@ Key Directories:
 ```bash
 # Claude Configuration
 CLAUDE_PROJECT_DIR=/path/to/project
-AMPLIHACK_USE_TRACE=1          # Enable claude-trace
+AMPLIHACK_TRACE_LOGGING=true   # Enable native trace logging
 
 # Azure Configuration
 OPENAI_API_KEY=your-key
@@ -360,7 +360,7 @@ amplihack is a **development framework** that enhances Claude Code and GitHub Co
    └── Configure environment variables
    ↓
 4. ClaudeLauncher.build_claude_command() (launcher/core.py:281-348)
-   ├── Select claude or claude-trace
+   ├── Select claude command
    ├── Add --add-dir for UVX mode
    ├── Configure Azure model
    └── Append user arguments
@@ -628,7 +628,7 @@ if launcher.prepare_launch():
 
 **Logic**:
 
-- Detects claude-trace vs standard claude (line 291)
+- Detects Claude CLI availability (line 291)
 - Adds --add-dir for UVX mode (lines 312-313, 336-338)
 - Configures Azure model when proxy is active (lines 316-317, 341-342)
 - Appends user-provided arguments (lines 320-321, 345-346)
@@ -1665,7 +1665,7 @@ def check_prerequisites() -> bool:
     - Node.js (version 18+)
     - npm
     - git
-    - claude CLI or claude-trace
+    - claude CLI
 
     Returns:
         True if all prerequisites met, False otherwise
@@ -1729,42 +1729,19 @@ if not claude_path:
 
 ---
 
-#### 4.6.3 Claude-Trace Integration
+#### 4.6.3 Native Trace Logging
 
-**File**: `claude_trace.py:1-150`
+**Purpose**: Native JSONL trace logging for debugging.
 
-**Purpose**: Integration with claude-trace for debugging.
-
-**Key Functions**:
-
-```python
-def get_claude_command() -> str:
-    """
-    Get appropriate Claude command (claude-trace or claude).
-
-    Checks:
-    - AMPLIHACK_USE_TRACE environment variable
-    - claude-trace availability
-
-    Returns:
-        "claude-trace" or "claude"
-    """
-
-def is_trace_available() -> bool:
-    """Check if claude-trace is available."""
-```
-
-**Example**:
+**Usage**:
 
 ```python
 import os
-from amplihack.utils.claude_trace import get_claude_command
 
-# Enable tracing
-os.environ["AMPLIHACK_USE_TRACE"] = "1"
+# Enable native trace logging
+os.environ["AMPLIHACK_TRACE_LOGGING"] = "true"
 
-cmd = get_claude_command()
-# Returns: "claude-trace" if available, else "claude"
+# Traces are written to .claude/runtime/amplihack-traces/
 ```
 
 ---
@@ -1787,8 +1764,8 @@ cmd = get_claude_command()
 # Claude Project Directory (automatically set by launcher)
 CLAUDE_PROJECT_DIR=/path/to/project
 
-# Enable Claude-Trace debugging
-AMPLIHACK_USE_TRACE=1
+# Enable native trace logging
+AMPLIHACK_TRACE_LOGGING=true
 
 # UVX mode (automatically detected)
 AMPLIHACK_UVX_MODE=1
@@ -3168,13 +3145,6 @@ which claude
 claude --version
 ```
 
-**Alternative**: Use claude-trace
-
-```bash
-export AMPLIHACK_USE_TRACE=1
-npm install -g @anthropic-ai/claude-trace
-```
-
 ---
 
 #### 8.1.2 Proxy Connection Failed
@@ -3373,11 +3343,12 @@ amplihack claude --with-proxy-config ./azure.env
 **Claude Debug**:
 
 ```bash
-# Use claude-trace
-export AMPLIHACK_USE_TRACE=1
+# Enable native trace logging
+export AMPLIHACK_TRACE_LOGGING=true
 amplihack claude
 
-# claude-trace will show:
+# Trace logs will be written to:
+# .claude/runtime/amplihack-traces/
 # - Request/response traces
 # - Tool calls
 # - Context usage
@@ -4034,7 +4005,7 @@ if __name__ == "__main__":
 
 **Claude Code**: Anthropic's CLI tool for AI-assisted coding.
 
-**Claude-Trace**: Debugging tool for Claude Code that provides detailed execution traces.
+**Native Trace Logging**: Built-in JSONL trace logging for debugging Claude Code sessions. Enable with `AMPLIHACK_TRACE_LOGGING=true`.
 
 **.claude Directory**: Configuration directory containing agents, commands, context, and workflows.
 

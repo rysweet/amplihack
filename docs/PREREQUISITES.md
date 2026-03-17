@@ -8,8 +8,8 @@ The amplihack framework requires the following tools. Each entry explains **what
 
 | Tool        | Min Version    | What It Does                  | Why amplihack Needs It                                                                                 |
 | ----------- | -------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------ |
-| **Node.js** | v18+           | JavaScript runtime            | Runs Claude CLI and claude-trace (debugging/tracing)                                                   |
-| **npm**     | (with Node.js) | Node.js package manager       | Installs Claude CLI and claude-trace packages                                                          |
+| **Node.js** | v18+           | JavaScript runtime            | Runs Claude CLI                                                                                        |
+| **npm**     | (with Node.js) | Node.js package manager       | Installs Claude CLI                                                                                    |
 | **uv**      | latest         | Fast Python package installer | Installs amplihack itself and its Python dependencies                                                  |
 | **git**     | 2.0+           | Version control               | Branch management, PRs, and workflow automation                                                        |
 | **claude**  | latest         | Claude Code CLI               | Core AI coding assistant that amplihack extends                                                        |
@@ -251,7 +251,7 @@ chcp 65001
 
 ### Node.js
 
-**Purpose:** Runtime for claude-trace (enhanced debugging and tracing)
+**Purpose:** Runtime for Claude CLI
 
 **Official Documentation:** https://nodejs.org/
 
@@ -265,7 +265,7 @@ chcp 65001
 
 ### npm
 
-**Purpose:** Package manager for installing claude-trace
+**Purpose:** Package manager for installing Claude CLI
 
 **Official Documentation:** https://www.npmjs.com/
 
@@ -354,34 +354,6 @@ export AMPLIHACK_AUTO_INSTALL=1
 
 When set, the framework will automatically install Claude CLI if missing.
 This requires explicit opt-in for security.
-
----
-
-### claude-trace
-
-**Purpose:** Enhanced debugging and traffic logging for Claude Code
-
-**Installation (Required):**
-
-```bash
-npm install -g @mariozechner/claude-trace
-```
-
-**Note:** This is a **required dependency** as of the simplified implementation. Install it during initial setup.
-
-**Documentation:** Part of claude-code ecosystem (https://github.com/mariozechner/claude-trace)
-
-**Usage:**
-
-- Enabled by default (`AMPLIHACK_USE_TRACE=1`)
-- To temporarily disable and use plain `claude`: `export AMPLIHACK_USE_TRACE=0`
-
-**Verification:**
-
-```bash
-claude-trace --version
-# Should show version information
-```
 
 ---
 
@@ -559,9 +531,8 @@ echo "For installation instructions, see docs/PREREQUISITES.md"
 After installing all prerequisites:
 
 1. **Verify installation:** Run `amplihack` to check all tools are detected
-2. **Install claude-trace (optional):** Automatically installed on first use
-3. **Configure git:** Set up your name and email
-4. **Start using AmplihHack:** See README.md for usage instructions
+2. **Configure git:** Set up your name and email
+3. **Start using AmplihHack:** See README.md for usage instructions
 
 ---
 
