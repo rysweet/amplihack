@@ -76,45 +76,45 @@ docs/atlas/
 ├── README.md                        # Atlas index
 ├── staleness-map.yaml               # Glob→layer map for CI paths: filters
 │
-├── layer1-runtime/
+├── repo-surface/
 │   ├── README.md                    # Layer narrative
 │   ├── topology.dot                 # Graphviz DOT source
 │   ├── topology.mmd                 # Mermaid source
 │   └── topology.svg                 # Pre-rendered SVG (committed)
 │
-├── layer2-dependencies/
+├── compile-deps/
 │   ├── README.md
 │   ├── deps.mmd
 │   ├── deps.svg
 │   └── inventory.md                 # Package inventory table (REQUIRED)
 │
-├── layer3-routing/
+├── api-contracts/
 │   ├── README.md
 │   ├── routes.mmd
 │   ├── routes.svg
 │   └── inventory.md                 # Route inventory table (REQUIRED)
 │
-├── layer4-dataflow/
+├── data-flow/
 │   ├── README.md
 │   ├── dataflow.mmd
 │   └── dataflow.svg
 │
-├── layer5-journeys/
+├── user-journeys/
 │   ├── README.md
 │   └── {journey-name}.mmd           # One file per journey (minimum 3)
 │
-├── layer6-inventory/
+├── inventory/
 │   ├── services.md                  # 6a: Service inventory (REQUIRED)
 │   ├── env-vars.md                  # 6b: Env var inventory (REQUIRED)
 │   ├── data-stores.md               # 6c: Data store inventory (REQUIRED)
 │   └── external-deps.md             # 6d: External dependency inventory (REQUIRED)
 │
-├── layer7-service-components/       # NEW in v1.1.0
+├── service-components/       # NEW in v1.1.0
 │   ├── README.md                    # Lists services analysed; analysis date
 │   ├── {service-name}.mmd           # One per service (Mermaid graph TD; SEC-11 name)
 │   └── {service-name}.svg           # Pre-rendered SVG (when mmdc available)
 │
-├── layer8-ast-lsp-bindings/         # NEW in v1.1.0
+├── ast-lsp-bindings/         # NEW in v1.1.0
 │   ├── README.md                    # Line 1: **Mode:** lsp-assisted|static-approximation
 │   ├── symbol-references.mmd        # Cross-file reference graph
 │   ├── dead-code.md                 # Unreferenced exported symbols table
@@ -310,7 +310,7 @@ No environment variables are required by the skill itself. The CI scripts read t
 
 ## Inventory Table Column Schemas
 
-**Route Inventory (Layer 3 — `layer3-routing/inventory.md`):**
+**Route Inventory (Layer 3 — `api-contracts/inventory.md`):**
 
 | Column       | Required | Description                                  |
 | ------------ | -------- | -------------------------------------------- |
@@ -322,7 +322,7 @@ No environment variables are required by the skill itself. The CI scripts read t
 | Response DTO | No       | Output DTO name or `—`                       |
 | Middleware   | No       | Comma-separated middleware names             |
 
-**Env Var Inventory (Layer 6b — `layer6-inventory/env-vars.md`):**
+**Env Var Inventory (Layer 6b — `inventory/env-vars.md`):**
 
 | Column      | Required | Description                                 |
 | ----------- | -------- | ------------------------------------------- |
@@ -347,4 +347,4 @@ A -->|import| B
 B -->|import| A
 ```
 
-Cycles are always filed as `severity: major` bugs in `bug-reports/` with the cycle path documented in the evidence. A cycle in `layer2-dependencies` means the build order is undefined and refactoring is required.
+Cycles are always filed as `severity: major` bugs in `bug-reports/` with the cycle path documented in the evidence. A cycle in `compile-deps` means the build order is undefined and refactoring is required.

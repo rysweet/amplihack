@@ -41,19 +41,19 @@ Services found: 3 (api-service, auth-service, worker)
 
 Building Layer 1: Runtime Topology...
   Found: docker-compose.yml — 3 services, 2 external deps
-  Output: docs/atlas/layer1-runtime/topology.mmd ✓
+  Output: docs/atlas/repo-surface/topology.mmd ✓
 
 Building Layer 2: Compile-time Dependencies...
   Found: go.mod, package.json
-  Output: docs/atlas/layer2-dependencies/deps.mmd ✓
+  Output: docs/atlas/compile-deps/deps.mmd ✓
 ...
 Building Layer 7: Service Component Architecture...
   api-service: 4 packages, 12 exported symbols
-  Output: docs/atlas/layer7-service-components/api-service.mmd ✓
+  Output: docs/atlas/service-components/api-service.mmd ✓
 
 Building Layer 8: AST+LSP Symbol Bindings...
   Mode: static-approximation (no LSP server found — run /lsp-setup for verified results)
-  Output: docs/atlas/layer8-ast-lsp-bindings/symbol-references.mmd ✓
+  Output: docs/atlas/ast-lsp-bindings/symbol-references.mmd ✓
 ```
 
 The full build takes 3–8 minutes for a typical multi-service repository.
@@ -62,7 +62,7 @@ The full build takes 3–8 minutes for a typical multi-service repository.
 
 ## Step 2: Read the Runtime Topology (Layer 1)
 
-Open `docs/atlas/layer1-runtime/topology.mmd` or `topology.svg`.
+Open `docs/atlas/repo-surface/topology.mmd` or `topology.svg`.
 
 This diagram shows:
 
@@ -99,7 +99,7 @@ flowchart LR
 
 ## Step 3: Check Your Route Inventory (Layer 3)
 
-Open `docs/atlas/layer3-routing/inventory.md`.
+Open `docs/atlas/api-contracts/inventory.md`.
 
 This table lists every HTTP route in your system:
 
@@ -209,7 +209,7 @@ bash scripts/check-atlas-staleness.sh
 **Layer 7** shows the internal anatomy of each service:
 
 ```bash
-cat docs/atlas/layer7-service-components/api-service.mmd
+cat docs/atlas/service-components/api-service.mmd
 ```
 
 Look for packages imported by many others within the same service — these are high-coupling candidates for refactoring.
@@ -217,13 +217,13 @@ Look for packages imported by many others within the same service — these are 
 **Layer 8** shows dead code and interface mismatches:
 
 ```bash
-cat docs/atlas/layer8-ast-lsp-bindings/dead-code.md
+cat docs/atlas/ast-lsp-bindings/dead-code.md
 ```
 
 Check which mode was used (line 1 of the README):
 
 ```bash
-head -1 docs/atlas/layer8-ast-lsp-bindings/README.md
+head -1 docs/atlas/ast-lsp-bindings/README.md
 # **Mode:** static-approximation
 ```
 

@@ -58,7 +58,7 @@ To see the internal module/package structure of each service:
 /code-atlas layers=7
 ```
 
-Produces one Mermaid `graph TD` diagram per service under `docs/atlas/layer7-service-components/`. Useful when a service has grown complex and you need to understand its internal coupling.
+Produces one Mermaid `graph TD` diagram per service under `docs/atlas/service-components/`. Useful when a service has grown complex and you need to understand its internal coupling.
 
 ## Find dead code and interface mismatches (Layer 8)
 
@@ -66,12 +66,12 @@ Produces one Mermaid `graph TD` diagram per service under `docs/atlas/layer7-ser
 /code-atlas layers=8
 ```
 
-Runs in `lsp-assisted` mode if an LSP server is active, or `static-approximation` mode otherwise. Always labels which mode was used on line 1 of `docs/atlas/layer8-ast-lsp-bindings/README.md`.
+Runs in `lsp-assisted` mode if an LSP server is active, or `static-approximation` mode otherwise. Always labels which mode was used on line 1 of `docs/atlas/ast-lsp-bindings/README.md`.
 
 **Check which mode was used:**
 
 ```bash
-head -1 docs/atlas/layer8-ast-lsp-bindings/README.md
+head -1 docs/atlas/ast-lsp-bindings/README.md
 # Output: **Mode:** lsp-assisted
 # OR:     **Mode:** static-approximation
 ```

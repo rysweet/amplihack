@@ -116,7 +116,7 @@ assert_file_contains \
 
 assert_file_contains \
     "SKILL.md Layer 7 output path documented" \
-    "layer7-service-components" \
+    "service-components" \
     "$SKILL_MD"
 
 assert_file_contains \
@@ -192,12 +192,12 @@ assert_file_contains \
 
 assert_file_contains \
     "API-CONTRACTS.md contains Layer 7 filesystem contract" \
-    "Layer7Output\|layer7-service-components" \
+    "Layer7Output\|service-components" \
     "$API_MD"
 
 assert_file_contains \
     "API-CONTRACTS.md contains Layer 8 filesystem contract" \
-    "Layer8Output\|layer8-ast-lsp-bindings" \
+    "Layer8Output\|ast-lsp-bindings" \
     "$API_MD"
 
 assert_file_contains \
@@ -305,36 +305,36 @@ echo ""
 echo "--- Atlas Output Structure (requires /code-atlas run first) ---"
 
 assert_dir_exists \
-    "layer7-service-components/ directory exists" \
-    "${ATLAS_DIR}/layer7-service-components"
+    "service-components/ directory exists" \
+    "${ATLAS_DIR}/service-components"
 
 assert_file_exists \
-    "layer7-service-components/README.md exists" \
-    "${ATLAS_DIR}/layer7-service-components/README.md"
+    "service-components/README.md exists" \
+    "${ATLAS_DIR}/service-components/README.md"
 
 assert_dir_exists \
-    "layer8-ast-lsp-bindings/ directory exists" \
-    "${ATLAS_DIR}/layer8-ast-lsp-bindings"
+    "ast-lsp-bindings/ directory exists" \
+    "${ATLAS_DIR}/ast-lsp-bindings"
 
 assert_file_exists \
-    "layer8-ast-lsp-bindings/README.md exists" \
-    "${ATLAS_DIR}/layer8-ast-lsp-bindings/README.md"
+    "ast-lsp-bindings/README.md exists" \
+    "${ATLAS_DIR}/ast-lsp-bindings/README.md"
 
 assert_file_exists \
-    "layer8-ast-lsp-bindings/symbol-references.mmd exists" \
-    "${ATLAS_DIR}/layer8-ast-lsp-bindings/symbol-references.mmd"
+    "ast-lsp-bindings/symbol-references.mmd exists" \
+    "${ATLAS_DIR}/ast-lsp-bindings/symbol-references.mmd"
 
 assert_file_exists \
-    "layer8-ast-lsp-bindings/dead-code.md exists" \
-    "${ATLAS_DIR}/layer8-ast-lsp-bindings/dead-code.md"
+    "ast-lsp-bindings/dead-code.md exists" \
+    "${ATLAS_DIR}/ast-lsp-bindings/dead-code.md"
 
 assert_file_exists \
-    "layer8-ast-lsp-bindings/mismatched-interfaces.md exists" \
-    "${ATLAS_DIR}/layer8-ast-lsp-bindings/mismatched-interfaces.md"
+    "ast-lsp-bindings/mismatched-interfaces.md exists" \
+    "${ATLAS_DIR}/ast-lsp-bindings/mismatched-interfaces.md"
 
 # Layer 8 README mode label on line 1 (SEC-12)
-if [[ -f "${ATLAS_DIR}/layer8-ast-lsp-bindings/README.md" ]]; then
-    first_line=$(head -1 "${ATLAS_DIR}/layer8-ast-lsp-bindings/README.md")
+if [[ -f "${ATLAS_DIR}/ast-lsp-bindings/README.md" ]]; then
+    first_line=$(head -1 "${ATLAS_DIR}/ast-lsp-bindings/README.md")
     if echo "$first_line" | grep -q "\*\*Mode:\*\*.*lsp-assisted\|\*\*Mode:\*\*.*static-approximation"; then
         echo "PASS: Layer 8 README line 1 contains mode label"
         PASS=$((PASS + 1))
@@ -348,8 +348,8 @@ else
 fi
 
 # SEC-16: no absolute paths in Layer 8 dead-code.md
-if [[ -f "${ATLAS_DIR}/layer8-ast-lsp-bindings/dead-code.md" ]]; then
-    if grep -qP '^/' "${ATLAS_DIR}/layer8-ast-lsp-bindings/dead-code.md" 2>/dev/null; then
+if [[ -f "${ATLAS_DIR}/ast-lsp-bindings/dead-code.md" ]]; then
+    if grep -qP '^/' "${ATLAS_DIR}/ast-lsp-bindings/dead-code.md" 2>/dev/null; then
         echo "FAIL: SEC-16 violation — absolute path found in layer8/dead-code.md"
         FAIL=$((FAIL + 1))
     else
@@ -363,7 +363,7 @@ fi
 
 # SEC-15: no raw credential patterns in Layer 8 outputs (verify redaction worked)
 for f in symbol-references.mmd dead-code.md mismatched-interfaces.md; do
-    layer8_file="${ATLAS_DIR}/layer8-ast-lsp-bindings/${f}"
+    layer8_file="${ATLAS_DIR}/ast-lsp-bindings/${f}"
     if [[ -f "$layer8_file" ]]; then
         if grep -qiP 'password\s*=\s*\S+|secret\s*=\s*\S+|token\s*=\s*\S+|api_key\s*=\s*\S+' "$layer8_file" 2>/dev/null; then
             echo "FAIL: SEC-15 violation — potential credential in layer8/${f}"

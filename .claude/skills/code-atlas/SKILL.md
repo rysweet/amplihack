@@ -559,7 +559,7 @@ graph TD
     repo --> PostgresRepo
 ```
 
-**Output files**: One `.mmd` and (when mmdc available) `.svg` per service, under `docs/atlas/layer7-service-components/`.
+**Output files**: One `.mmd` and (when mmdc available) `.svg` per service, under `docs/atlas/service-components/`.
 
 **Structural bugs Layer 7 detects:**
 
@@ -586,7 +586,7 @@ graph TD
 | `lsp-assisted` | `lsp-setup` skill reports active LSP server | Delegates symbol queries directly to LSP server |
 | `static-approximation` | LSP unavailable (`LAYER8_LSP_UNAVAILABLE`) | ripgrep pattern matching + `code-visualizer` AST |
 
-**Mode label contract**: The first line of `docs/atlas/layer8-ast-lsp-bindings/README.md` MUST be:
+**Mode label contract**: The first line of `docs/atlas/ast-lsp-bindings/README.md` MUST be:
 
 ```
 **Mode:** lsp-assisted
@@ -613,7 +613,7 @@ queries:
 **Output files:**
 
 ```
-docs/atlas/layer8-ast-lsp-bindings/
+docs/atlas/ast-lsp-bindings/
 ├── README.md                    # Mode label on line 1 (REQUIRED)
 ├── symbol-references.mmd        # Cross-file reference graph (Mermaid)
 ├── dead-code.md                 # Dead code report table
@@ -825,9 +825,9 @@ The reviewer agent receives all layer output files directly, without any Pass 1 
 ```
 Read the following atlas layers and identify contradictions independently.
 Do NOT refer to any prior analysis. Treat every layer as a fresh source of truth.
-Layers: [layer1-runtime/README.md, layer3-routing/inventory.md, layer4-dataflow/README.md,
-         layer6-inventory/env-vars.md, layer7-service-components/README.md,
-         layer8-ast-lsp-bindings/dead-code.md, layer8-ast-lsp-bindings/mismatched-interfaces.md]
+Layers: [repo-surface/README.md, api-contracts/inventory.md, data-flow/README.md,
+         inventory/env-vars.md, service-components/README.md,
+         ast-lsp-bindings/dead-code.md, ast-lsp-bindings/mismatched-interfaces.md]
 ```
 
 **Step 2.2 — Cross-check Pass 1 findings**:
@@ -863,7 +863,7 @@ Bug reports from Pass 2 are filed as `docs/atlas/bug-reports/{YYYY-MM-DD}-pass2-
 **Step 3.1 — Select journeys** (all Layer 5 journeys are traced in Pass 3):
 
 ```
-For each journey in docs/atlas/layer5-journeys/*.mmd:
+For each journey in docs/atlas/user-journeys/*.mmd:
   1. Trace every step through Layers 3, 4, 1, 7, and 8
   2. Evaluate against the four mandatory criteria (see §4b of API-CONTRACTS.md)
   3. Produce a JourneyVerdict with PASS / FAIL / NEEDS_ATTENTION
@@ -890,10 +890,10 @@ For each step in a journey, verify:
 
 | Criterion | Status | Evidence |
 |-----------|--------|----------|
-| Layer 3 routes match journey steps | ✅ | layer3-routing/inventory.md — POST /api/orders found |
+| Layer 3 routes match journey steps | ✅ | api-contracts/inventory.md — POST /api/orders found |
 | Layer 4 data flows complete | ❌ | src/controllers/orders.ts:67 — order_items INSERT missing |
-| Layer 7 service components reachable | ✅ | layer7-service-components/api-service.mmd — OrderController present |
-| No dead code on critical path | ⚠️ | layer8-ast-lsp-bindings/dead-code.md — LegacyOrderFormatter on path |
+| Layer 7 service components reachable | ✅ | service-components/api-service.mmd — OrderController present |
+| No dead code on critical path | ⚠️ | ast-lsp-bindings/dead-code.md — LegacyOrderFormatter on path |
 
 **Verdict Rationale:** The user-checkout journey fails because the Layer 4 data flow specifies that
 `CreateOrderRequest.items` is persisted to the `order_items` table, but `OrderController.create`
@@ -1061,40 +1061,40 @@ jobs:
 docs/
 └── atlas/
     ├── index.md                    # Atlas landing page with layer overview
-    ├── layer1-runtime/
+    ├── repo-surface/
     │   ├── topology.dot            # Graphviz DOT source
     │   ├── topology.mmd            # Mermaid source
     │   ├── topology.svg            # Rendered SVG (committed)
     │   └── README.md               # Layer narrative
-    ├── layer2-dependencies/
+    ├── compile-deps/
     │   ├── dependencies.mmd
     │   ├── dependencies.svg
     │   ├── inventory.md            # Package inventory table
     │   └── README.md
-    ├── layer3-api-contracts/
+    ├── api-contracts/
     │   ├── routing.mmd
     │   ├── routing.svg
     │   ├── route-inventory.md      # Route inventory table
     │   └── README.md
-    ├── layer4-dataflow/
+    ├── data-flow/
     │   ├── dataflow.mmd
     │   ├── dataflow.svg
     │   └── README.md
-    ├── layer5-user-journeys/
+    ├── user-journeys/
     │   ├── journey-registration.mmd
     │   ├── journey-checkout.mmd
     │   ├── *.svg
     │   └── README.md
-    ├── layer6-inventory/
+    ├── inventory/
     │   ├── services.md
     │   ├── env-vars.md
     │   ├── data-stores.md
     │   └── external-deps.md
-    ├── layer7-service-components/
+    ├── service-components/
     │   ├── README.md                    # States service list and analysis date
     │   ├── {service-name}.mmd           # One per service (SEC-11: name sanitised)
     │   └── {service-name}.svg           # Pre-rendered SVG (when mmdc available)
-    ├── layer8-ast-lsp-bindings/
+    ├── ast-lsp-bindings/
     │   ├── README.md                    # Line 1: **Mode:** lsp-assisted|static-approximation
     │   ├── symbol-references.mmd        # Cross-file reference graph
     │   ├── dead-code.md                 # Unreferenced exported symbols table
@@ -1111,12 +1111,12 @@ docs/
 
 ```bash
 # Graphviz DOT → SVG
-dot -Tsvg docs/atlas/layer1-runtime/topology.dot \
-  -o docs/atlas/layer1-runtime/topology.svg
+dot -Tsvg docs/atlas/repo-surface/topology.dot \
+  -o docs/atlas/repo-surface/topology.svg
 
 # Mermaid → SVG (requires mmdc / @mermaid-js/mermaid-cli)
-mmdc -i docs/atlas/layer2-dependencies/dependencies.mmd \
-     -o docs/atlas/layer2-dependencies/dependencies.svg \
+mmdc -i docs/atlas/compile-deps/dependencies.mmd \
+     -o docs/atlas/compile-deps/dependencies.svg \
      --backgroundColor transparent
 
 # Batch all layers
@@ -1134,14 +1134,14 @@ done
 nav:
   - Code Atlas:
       - Overview: atlas/index.md
-      - Layer 1 — Runtime Topology: atlas/layer1-runtime/README.md
-      - Layer 2 — Dependencies: atlas/layer2-dependencies/README.md
-      - Layer 3 — API Contracts: atlas/layer3-api-contracts/README.md
-      - Layer 4 — Data Flows: atlas/layer4-dataflow/README.md
-      - Layer 5 — User Journeys: atlas/layer5-user-journeys/README.md
-      - Layer 6 — Inventory: atlas/layer6-inventory/services.md
-      - Layer 7 — Service Components: atlas/layer7-service-components/README.md
-      - Layer 8 — AST+LSP Bindings: atlas/layer8-ast-lsp-bindings/README.md
+      - 1. Repository Surface: atlas/repo-surface/README.md
+      - 2. AST+LSP Bindings: atlas/ast-lsp-bindings/README.md
+      - 3. Compile-time Deps: atlas/compile-deps/README.md
+      - 4. Runtime Topology: atlas/runtime-topology/README.md
+      - 5. API Contracts: atlas/api-contracts/README.md
+      - 6. Data Flow: atlas/data-flow
+      - 7. Service Components: atlas/service-components/README.md
+      - 8. User Journeys: atlas/user-journeys/README.md
       - Bug Reports: atlas/bug-reports/
       - Experiments: atlas/experiments/
 

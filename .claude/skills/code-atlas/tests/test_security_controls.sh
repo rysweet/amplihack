@@ -111,7 +111,7 @@ else
 
     # TEST-SEC-01-A: .env values never appear in atlas output
     tmpdir=$(mktemp -d)
-    mkdir -p "$tmpdir/docs/atlas/layer6-inventory"
+    mkdir -p "$tmpdir/docs/atlas/inventory"
 
     # Create a fake .env with a real secret
     cat > "$tmpdir/.env" << 'EOF'
@@ -121,7 +121,7 @@ REDIS_URL=redis://:REDISPASS@localhost:6379  # pragma: allowlist secret
 EOF
 
     # Simulate what atlas layer6 should produce: keys ONLY
-    cat > "$tmpdir/docs/atlas/layer6-inventory/env-vars.md" << 'EOF'
+    cat > "$tmpdir/docs/atlas/inventory/env-vars.md" << 'EOF'
 | Variable | Description | Required |
 |----------|-------------|----------|
 | DATABASE_URL | PostgreSQL connection | Yes |
@@ -135,17 +135,17 @@ EOF
 
     assert_not_in_file "SEC-01-A: MYSECRETPASSWORD not in env-vars.md" \
         "MYSECRETPASSWORD" \
-        "$tmpdir/docs/atlas/layer6-inventory/env-vars.md"
+        "$tmpdir/docs/atlas/inventory/env-vars.md"
     assert_not_in_file "SEC-01-A: supersecretjwtkey123 not in env-vars.md" \
         "supersecretjwtkey123" \
-        "$tmpdir/docs/atlas/layer6-inventory/env-vars.md"
+        "$tmpdir/docs/atlas/inventory/env-vars.md"
     assert_not_in_file "SEC-01-A: REDISPASS not in env-vars.md" \
         "REDISPASS" \
-        "$tmpdir/docs/atlas/layer6-inventory/env-vars.md"
+        "$tmpdir/docs/atlas/inventory/env-vars.md"
 
     # TEST-SEC-01-B: Kubernetes Secret data block values never emitted
-    mkdir -p "$tmpdir/docs/atlas/layer1-runtime"
-    cat > "$tmpdir/docs/atlas/layer1-runtime/README.md" << 'EOF'
+    mkdir -p "$tmpdir/docs/atlas/repo-surface"
+    cat > "$tmpdir/docs/atlas/repo-surface/README.md" << 'EOF'
 # Layer 1 - Runtime Topology
 Services: api, auth, db-proxy
 Secrets mounted: db-credentials (key names: DATABASE_URL, DB_PASSWORD)
@@ -153,17 +153,17 @@ EOF
 
     assert_not_in_file "SEC-01-B: K8s secret values not in layer1 README" \
         "dXNlcjpwYXNz\|cGFzc3dvcmQ=\|base64" \
-        "$tmpdir/docs/atlas/layer1-runtime/README.md"
+        "$tmpdir/docs/atlas/repo-surface/README.md"
 
     rm -rf "$tmpdir"
 fi
 
 # TEST-SEC-01-C: validate_atlas_output.sh itself detects secrets if they leaked
 tmpdir=$(mktemp -d)
-mkdir -p "$tmpdir/docs/atlas/layer6-inventory"
+mkdir -p "$tmpdir/docs/atlas/inventory"
 
 # Intentionally bad output with a leaked secret (env-var assignment format triggers SEC-01)
-cat > "$tmpdir/docs/atlas/layer6-inventory/env-vars.md" << 'EOF'
+cat > "$tmpdir/docs/atlas/inventory/env-vars.md" << 'EOF'
 # Leaked secrets example (bad atlas output)
 JWT_SECRET=supersecretjwtkey123  # pragma: allowlist secret
 DATABASE_URL=postgres://user:MYSECRETPASSWORD@localhost/db  # pragma: allowlist secret
@@ -236,10 +236,10 @@ echo "=== SEC-03: XSS Prevention ==="
 
 # TEST-SEC-03-A: HTML chars in service name are escaped in Mermaid output
 tmpdir=$(mktemp -d)
-mkdir -p "$tmpdir/docs/atlas/layer1-runtime"
+mkdir -p "$tmpdir/docs/atlas/repo-surface"
 
 # Simulate atlas output that was generated from a service named "<evil-service>"
-cat > "$tmpdir/docs/atlas/layer1-runtime/topology.mmd" << 'EOF'
+cat > "$tmpdir/docs/atlas/repo-surface/topology.mmd" << 'EOF'
 graph LR
     api["&lt;evil-service&gt;"]
     auth["safe-auth"]
@@ -247,24 +247,24 @@ graph LR
 EOF
 
 assert_not_in_file "SEC-03-A: raw < not in Mermaid label" "<evil-service>" \
-    "$tmpdir/docs/atlas/layer1-runtime/topology.mmd"
+    "$tmpdir/docs/atlas/repo-surface/topology.mmd"
 
 # TEST-SEC-03-B: JavaScript-like content in service name is escaped
-cat > "$tmpdir/docs/atlas/layer1-runtime/topology.mmd" << 'EOF'
+cat > "$tmpdir/docs/atlas/repo-surface/topology.mmd" << 'EOF'
 graph LR
     xss["&lt;script&gt;alert(1)&lt;/script&gt;"]
 EOF
 assert_not_in_file "SEC-03-B: <script> not raw in Mermaid output" \
     "<script>" \
-    "$tmpdir/docs/atlas/layer1-runtime/topology.mmd"
+    "$tmpdir/docs/atlas/repo-surface/topology.mmd"
 
 rm -rf "$tmpdir"
 
 if [[ -f "$VALIDATE_SCRIPT" ]]; then
     # TEST-SEC-03-C: Validator catches unescaped HTML in .mmd files
     tmpdir=$(mktemp -d)
-    mkdir -p "$tmpdir/docs/atlas/layer1-runtime"
-    cat > "$tmpdir/docs/atlas/layer1-runtime/topology.mmd" << 'EOF'
+    mkdir -p "$tmpdir/docs/atlas/repo-surface"
+    cat > "$tmpdir/docs/atlas/repo-surface/topology.mmd" << 'EOF'
 graph LR
     xss["<script>alert(1)</script>"]
 EOF
@@ -283,11 +283,11 @@ echo "=== SEC-05: Output Confinement ==="
 if [[ -f "$VALIDATE_SCRIPT" ]]; then
     # TEST-SEC-05-A: Validator detects symlink in docs/atlas/ escaping the boundary
     tmpdir=$(mktemp -d)
-    mkdir -p "$tmpdir/docs/atlas/layer1-runtime"
+    mkdir -p "$tmpdir/docs/atlas/repo-surface"
 
     # Create a file outside atlas, then symlink it into atlas
     echo "sensitive outside content" > "$tmpdir/outside.txt"
-    ln -s "$tmpdir/outside.txt" "$tmpdir/docs/atlas/layer1-runtime/topology.mmd"
+    ln -s "$tmpdir/outside.txt" "$tmpdir/docs/atlas/repo-surface/topology.mmd"
 
     output=$(bash "$VALIDATE_SCRIPT" --atlas-dir "$tmpdir/docs/atlas" --strict 2>&1) && exit_val=0 || exit_val=$?
     assert_exit_code "SEC-05-A: validator detects symlink escaping docs/atlas/ (exit 1)" 1 "$exit_val" "$output"
@@ -356,9 +356,9 @@ echo "=== SEC-10: DOT/Mermaid Injection Prevention ==="
 if [[ -f "$VALIDATE_SCRIPT" ]]; then
     # TEST-SEC-10-A: XSS payload in DOT label detected
     tmpdir=$(mktemp -d)
-    mkdir -p "$tmpdir/docs/atlas/layer1-runtime"
+    mkdir -p "$tmpdir/docs/atlas/repo-surface"
     # Use a <script> tag in a DOT label — caught by SEC-10 XSS pattern check
-    cat > "$tmpdir/docs/atlas/layer1-runtime/topology.dot" << 'EOF'
+    cat > "$tmpdir/docs/atlas/repo-surface/topology.dot" << 'EOF'
 digraph topology {
     "api" -> "auth" [label="<script>alert(1)</script>"];
 }

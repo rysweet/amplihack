@@ -24,14 +24,16 @@ tags: ["architecture", "documentation", "bug-hunting", "atlas", "code-atlas"]
 # Running both in parallel finds ~1.7x the bugs of either alone.
 #
 # Layers:
-#   1. Repository Surface         — source files, project structure, build systems
-#   2. Runtime Topology          — services, containers, ports, connections
-#   3. Compile-time Dependencies — packages, modules, circular dependency detection
-#   4. API Contracts             — HTTP routes, gRPC, GraphQL, OpenAPI, DTOs
-#   5. Data Flow                 — DTO-to-storage chain, transformation steps
-#   6. User Journey Scenarios    — entry-point to outcome sequence diagrams
-#   7. Service Component Architecture — per-service module/package diagrams (NEW)
-#   8. AST+LSP Symbol Bindings   — dead code, cross-file refs, interface mismatches (NEW)
+#   1. repo-surface         — source files, project structure, build systems
+#   2. ast-lsp-bindings     — cross-file refs, dead code, interface mismatches
+#   3. compile-deps         — packages, modules, circular dependency detection
+#   4. runtime-topology     — services, containers, ports, connections
+#   5. api-contracts        — HTTP routes, gRPC, GraphQL, OpenAPI, DTOs
+#   6. data-flow            — DTO-to-storage chain, transformation steps
+#   7. service-components   — per-service module/package diagrams
+#   8. user-journeys        — entry-point to outcome sequence diagrams
+#
+#   Canonical order defined in LAYERS.yaml. Reordering = change display_order there.
 #
 # Bug Hunt (3-pass):
 #   Pass 1: Comprehensive build + contradiction hunt (all 8 layers)

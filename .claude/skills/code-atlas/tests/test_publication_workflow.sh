@@ -137,7 +137,7 @@ fi
 echo ""
 echo "=== Layer README Files ==="
 
-for layer_dir in layer1-runtime layer2-dependencies layer3-api-contracts layer4-dataflow layer5-user-journeys layer6-inventory; do
+for layer_dir in repo-surface compile-deps api-contracts data-flow user-journeys inventory; do
     readme="${ATLAS}/${layer_dir}/README.md"
     assert_file_exists "${layer_dir}/README.md exists" "$readme"
 

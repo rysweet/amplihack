@@ -1,0 +1,123 @@
+# LAYERS.yaml — Single source of truth for code-atlas layer definitions.
+#
+# REORDERING LAYERS: Change display_order values here. Nothing else changes.
+# Directory names use the 'slug' field, not numbers. References throughout
+# the codebase use slugs. Numbers are display metadata only.
+#
+# ADDING A LAYER: Add an entry here. The slug becomes the directory name
+# under docs/atlas/{slug}/. Add staleness triggers to enable CI detection.
+
+layers:
+  - slug: repo-surface
+    display_order: 1
+    name: Repository Surface
+    description: All source files, project structure, build systems, configuration
+    staleness_triggers:
+      - "**/*"  # any file change (broad — gated by other layers being more specific)
+
+  - slug: ast-lsp-bindings
+    display_order: 2
+    name: AST+LSP Symbol Bindings
+    description: Cross-file symbol references, dead code detection, interface mismatch analysis
+    staleness_triggers:
+      - "*.go"
+      - "*.ts"
+      - "*.py"
+      - "*.rs"
+      - "*.cs"
+      - "*.js"
+      - "*.java"
+
+  - slug: compile-deps
+    display_order: 3
+    name: Compile-time Dependencies
+    description: Package/module imports, dependency trees, circular dependency detection
+    staleness_triggers:
+      - "go.mod"
+      - "*/go.mod"
+      - "package.json"
+      - "*/package.json"
+      - "*.csproj"
+      - "Cargo.toml"
+      - "*/Cargo.toml"
+      - "requirements*.txt"
+      - "*/requirements*.txt"
+      - "pyproject.toml"
+      - "*/pyproject.toml"
+
+  - slug: runtime-topology
+    display_order: 4
+    name: Runtime Topology
+    description: Services, containers, ports, inter-service connections
+    staleness_triggers:
+      - "docker-compose*.yml"
+      - "docker-compose*.yaml"
+      - "*/k8s/*.yaml"
+      - "k8s/*.yaml"
+      - "kubernetes/*.yaml"
+      - "*/kubernetes/*.yaml"
+      - "helm/*.yaml"
+      - "helm/*/*.yaml"
+      - "*/helm/*.yaml"
+      - "*/helm/*/*.yaml"
+
+  - slug: api-contracts
+    display_order: 5
+    name: API Contracts
+    description: HTTP routes, gRPC services, GraphQL schemas, OpenAPI specs, DTOs, middleware
+    staleness_triggers:
+      - "*route*.ts"
+      - "*route*.go"
+      - "*controller*.go"
+      - "*controller*.ts"
+      - "*controller*.cs"
+      - "*views*.py"
+      - "*router*.ts"
+      - "*router*.go"
+      - "*handler*.go"
+      - "*.proto"
+      - "*.graphql"
+      - "*.gql"
+      - "*openapi*.yaml"
+      - "*openapi*.json"
+      - "*swagger*.yaml"
+      - "*swagger*.json"
+
+  - slug: data-flow
+    display_order: 6
+    name: Data Flow
+    description: DTO-to-storage chains, data transformation steps, persistence mapping
+    staleness_triggers:
+      - "*dto*.ts"
+      - "*schema*.py"
+      - "*_request.go"
+      - "*_response.go"
+      - "*types*.ts"
+      - "*model*.go"
+
+  - slug: service-components
+    display_order: 7
+    name: Service Component Architecture
+    description: Per-service internal module/package structure, component boundaries
+    staleness_triggers:
+      - "services/*/*.go"
+      - "services/*/*.ts"
+      - "services/*/*.py"
+      - "services/*/*.rs"
+      - "services/*/*.cs"
+      - "apps/*/*.go"
+      - "apps/*/*.ts"
+      - "src/*/__init__.py"
+      - "*/mod.rs"
+
+  - slug: user-journeys
+    display_order: 8
+    name: User Journey Scenarios
+    description: End-to-end paths from entry point to outcome, traced through all layers
+    staleness_triggers:
+      - "*page*.tsx"
+      - "*page*.ts"
+      - "cmd/*.go"
+      - "*/cmd/*.go"
+      - "cli/*.py"
+      - "*/cli/*.py"

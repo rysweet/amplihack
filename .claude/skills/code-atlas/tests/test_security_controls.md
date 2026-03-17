@@ -21,9 +21,9 @@ echo "JWT_SECRET=supersecretjwtkey123" >> /tmp/test.env
 
 **Expected:**
 
-- `docs/atlas/layer6-inventory/env-vars.md` contains `DATABASE_URL` (key name)
-- `docs/atlas/layer6-inventory/env-vars.md` does NOT contain `MYSECRETPASSWORD`
-- `docs/atlas/layer6-inventory/env-vars.md` does NOT contain `supersecretjwtkey123`
+- `docs/atlas/inventory/env-vars.md` contains `DATABASE_URL` (key name)
+- `docs/atlas/inventory/env-vars.md` does NOT contain `MYSECRETPASSWORD`
+- `docs/atlas/inventory/env-vars.md` does NOT contain `supersecretjwtkey123`
 
 **Pass criteria:** `grep -r "MYSECRETPASSWORD\|supersecretjwtkey123" docs/atlas/` returns no output.
 
@@ -61,9 +61,9 @@ echo "JWT_SECRET=supersecretjwtkey123" >> /tmp/test.env
 
 **Setup:** Create a service named `<evil-service>` in docker-compose.yml.
 
-**Expected:** In `docs/atlas/layer1-runtime/topology.mmd`, the label appears as `&lt;evil-service&gt;`.
+**Expected:** In `docs/atlas/repo-surface/topology.mmd`, the label appears as `&lt;evil-service&gt;`.
 
-**Pass criteria:** `grep "<evil-service>" docs/atlas/layer1-runtime/topology.mmd` returns no output.
+**Pass criteria:** `grep "<evil-service>" docs/atlas/repo-surface/topology.mmd` returns no output.
 
 ---
 
@@ -141,7 +141,7 @@ echo "JWT_SECRET=supersecretjwtkey123" >> /tmp/test.env
 
 **Expected:** Layer 3 Mermaid output renders `[legacy]` as `&#91;legacy&#93;` so it does not break diagram syntax.
 
-**Pass criteria:** `mmdc -i docs/atlas/layer3-routing/routes.mmd` completes without error.
+**Pass criteria:** `mmdc -i docs/atlas/api-contracts/routes.mmd` completes without error.
 
 ---
 
@@ -151,7 +151,7 @@ echo "JWT_SECRET=supersecretjwtkey123" >> /tmp/test.env
 
 **Expected:** DOT output wraps label as `"My \"Quoted\" Service"` — valid DOT syntax.
 
-**Pass criteria:** `dot -Tsvg docs/atlas/layer1-runtime/topology.dot` completes without error.
+**Pass criteria:** `dot -Tsvg docs/atlas/repo-surface/topology.dot` completes without error.
 
 ---
 

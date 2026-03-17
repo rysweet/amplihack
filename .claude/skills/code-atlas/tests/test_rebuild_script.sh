@@ -237,8 +237,8 @@ git -C "$tmpdir" config user.name "Test"
 git -C "$tmpdir" commit --allow-empty -q -m "init"
 
 # Simulate atlas content already generated
-mkdir -p "$tmpdir/docs/atlas/layer1-runtime"
-echo "graph LR; A --> B" > "$tmpdir/docs/atlas/layer1-runtime/topology.mmd"
+mkdir -p "$tmpdir/docs/atlas/repo-surface"
+echo "graph LR; A --> B" > "$tmpdir/docs/atlas/repo-surface/topology.mmd"
 
 output=$(cd "$tmpdir" && bash "$REBUILD_SCRIPT" --ci 2>&1 || true)
 exit_code=$?
