@@ -165,13 +165,13 @@ class TestHiveMerge:
         assert results[0]["context"] == "Campaign"
         assert "ransomware" in results[0]["outcome"]
 
-    def test_plain_cognitive_backend_uses_search_facts_for_query(self):
-        """Plain CognitiveMemory should still use query-aware retrieval when available."""
+    def test_plain_cognitive_backend_uses_filtered_search_path_for_query(self):
+        """Plain CognitiveMemory should use the adapter search path for question queries."""
 
         class PlainCognitiveMemory:
             def __init__(self) -> None:
                 self.get_all_calls: list[int] = []
-                self.search_calls: list[tuple[str, int]] = []
+                self.search_calls: list[tuple[str, int, float]] = []
 
             def get_all_facts(self, limit: int = 50):
                 self.get_all_calls.append(limit)
@@ -188,7 +188,9 @@ class TestHiveMerge:
                 ]
 
             def search_facts(self, query: str, limit: int = 10, min_confidence: float = 0.0):
-                self.search_calls.append((query, limit))
+                self.search_calls.append((query, limit, min_confidence))
+                if query != "camp-1":
+                    return []
                 return [
                     SimpleNamespace(
                         node_id="sem-1",
@@ -213,7 +215,7 @@ class TestHiveMerge:
 
         results = adapter.get_all_facts(limit=7, query="What was CAMP-1?")
 
-        assert adapter.memory.search_calls == [("What was CAMP-1?", 7)]
+        assert adapter.memory.search_calls == [("camp-1", 21, 0.0)]
         assert adapter.memory.get_all_calls == []
         assert results[0]["context"] == "Campaign"
         assert "ransomware" in results[0]["outcome"]

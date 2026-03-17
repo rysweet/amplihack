@@ -768,6 +768,16 @@ def _generate_campaign_events(rng: random.Random, campaign: AttackCampaign) -> l
         }
     )
 
+    # All malicious campaign events need an explicit campaign anchor in the raw
+    # telemetry so the learning path can recover campaign-scoped facts, device
+    # hops, and hashes during question answering. Keep benign noise untagged.
+    for event in events:
+        if event["phase"] == "noise":
+            continue
+        if f"CampaignId: {campaign.campaign_id}" in event["content"]:
+            continue
+        event["content"] = f"{event['content']} | CampaignId: {campaign.campaign_id}"
+
     # Add noise events (benign activity on same devices)
     for _ in range(rng.randint(5, 15)):
         noise_day = campaign.start_day + rng.randint(0, campaign.duration_days)
