@@ -424,7 +424,7 @@ flowchart LR
 **How to define journeys** (exhaustive by default — derive from routes + pages/CLI entries):
 
 ```markdown
-## Journeys to trace (auto-derived from Layer 3 routes):
+## Journeys to trace (auto-derived from api-contracts routes):
 
 1. User registration + email verification
 2. Login → receive JWT
@@ -565,7 +565,7 @@ graph TD
 
 - Service in Layer 1 topology with no discoverable internal packages (likely a deployment artefact, not a real service)
 - Internal package imported by 3+ other packages within the same service (high coupling, refactor candidate)
-- Exported symbol referenced in Layer 3 routes but not found in any Layer 7 package (missing handler)
+- Exported symbol referenced in api-contracts routes but not found in any Layer 7 package (missing handler)
 - Package with no exported symbols that is imported by other packages (private coupling)
 
 **Density guard**: When a service has >50 components or >100 intra-service edges, the density prompt is shown before rendering. (SEC-13: threshold values are validated integers in 1–10,000.)
@@ -725,13 +725,13 @@ The atlas is not just documentation — it is an **active investigation tool**. 
 
 > "Build the atlas from verified code paths, then systematically hunt contradictions between layers."
 
-**Step 1.1 — Route ↔ DTO Mismatch Detection** (Layer 3 × Layer 4):
+**Step 1.1 — Route ↔ DTO Mismatch Detection** (api-contracts × data-flow):
 
 ### Pass 1: Contradiction Hunt
 
 > "Build the atlas from verified code paths, then systematically hunt contradictions between layers."
 
-**Step 1.1 — Route ↔ DTO Mismatch Detection** (Layer 3 × Layer 4):
+**Step 1.1 — Route ↔ DTO Mismatch Detection** (api-contracts × data-flow):
 
 ```bash
 # Extract all route handler signatures
@@ -890,9 +890,9 @@ For each step in a journey, verify:
 
 | Criterion | Status | Evidence |
 |-----------|--------|----------|
-| Layer 3 routes match journey steps | ✅ | api-contracts/inventory.md — POST /api/orders found |
-| Layer 4 data flows complete | ❌ | src/controllers/orders.ts:67 — order_items INSERT missing |
-| Layer 7 service components reachable | ✅ | service-components/api-service.mmd — OrderController present |
+| api-contracts routes match journey steps | ✅ | api-contracts/inventory.md — POST /api/orders found |
+| data-flow complete | ❌ | src/controllers/orders.ts:67 — order_items INSERT missing |
+| service-components reachable | ✅ | service-components/api-service.mmd — OrderController present |
 | No dead code on critical path | ⚠️ | ast-lsp-bindings/dead-code.md — LegacyOrderFormatter on path |
 
 **Verdict Rationale:** The user-checkout journey fails because the Layer 4 data flow specifies that
@@ -921,14 +921,14 @@ Bug reports from Pass 3 are filed as `docs/atlas/bug-reports/{YYYY-MM-DD}-pass3-
 
 | File Change                                                                      | Atlas Layer(s) Affected         | Rebuild Command                  |
 | -------------------------------------------------------------------------------- | ------------------------------- | -------------------------------- |
-| `docker-compose*.yml`, `k8s/**/*.yaml`, `kubernetes/**/*.yaml`, `helm/**/*.yaml` | Layer 1 (Runtime Topology)      | `/code-atlas rebuild layer1`     |
-| `go.mod`, `package.json`, `*.csproj`, `Cargo.toml`                               | Layer 2 (Dependencies)          | `/code-atlas rebuild layer2`     |
-| API files (`*routes*.ts`, `*controller*.*`, `*handler*.go`, `*.proto`, `*.graphql`, `*openapi*.*`, `*swagger*.*`) | Layer 3 (API Contracts) | `/code-atlas rebuild layer3` |
-| DTO files (`*dto*.ts`, `*schema*.py`, `*_request.go`, `*model*.go`)              | Layer 4 (Data Flow)             | `/code-atlas rebuild layer4`     |
+| `docker-compose*.yml`, `k8s/**/*.yaml`, `kubernetes/**/*.yaml`, `helm/**/*.yaml` | runtime-topology layer      | `/code-atlas rebuild layer1`     |
+| `go.mod`, `package.json`, `*.csproj`, `Cargo.toml`                               | compile-deps layer          | `/code-atlas rebuild layer2`     |
+| API files (`*routes*.ts`, `*controller*.*`, `*handler*.go`, `*.proto`, `*.graphql`, `*openapi*.*`, `*swagger*.*`) | api-contracts layer | `/code-atlas rebuild layer3` |
+| DTO files (`*dto*.ts`, `*schema*.py`, `*_request.go`, `*model*.go`)              | data-flow layer             | `/code-atlas rebuild layer4`     |
 | User-facing page/CLI files                                                       | Layer 5 (Journeys)              | `/code-atlas rebuild layer5`     |
-| `.env.example`, service `README.md`                                              | Layer 6 (Inventory)             | `/code-atlas rebuild layer6`     |
-| `**/__init__.py`, `**/package.json` (workspace), `**/*.mod`                      | Layer 7 (Service Components)    | `/code-atlas rebuild layer7`     |
-| `**/*.py`, `**/*.ts`, `**/*.go` (any source file change)                         | Layer 8 (AST+LSP Bindings)      | `/code-atlas rebuild layer8`     |
+| `.env.example`, service `README.md`                                              | inventory layer             | `/code-atlas rebuild layer6`     |
+| `**/__init__.py`, `**/package.json` (workspace), `**/*.mod`                      | service-components layer    | `/code-atlas rebuild layer7`     |
+| `**/*.py`, `**/*.ts`, `**/*.go` (any source file change)                         | ast-lsp-bindings layer      | `/code-atlas rebuild layer8`     |
 | **Any of the above**                                                             | Full atlas                      | `/code-atlas rebuild all`        |
 
 ### Staleness Detection Commands
@@ -1021,9 +1021,9 @@ jobs:
         run: |
           git diff --name-only origin/main...HEAD | while read f; do
             case "$f" in
-              *route*|*controller*) echo "⚠️ Layer 3 (API Contracts) may need update" ;;
-              *docker-compose*) echo "⚠️ Layer 1 (Runtime Topology) may need update" ;;
-              *dto*|*schema*) echo "⚠️ Layer 4 (Data Flow) may need update" ;;
+              *route*|*controller*) echo "⚠️ api-contracts layer may need update" ;;
+              *docker-compose*) echo "⚠️ runtime-topology layer may need update" ;;
+              *dto*|*schema*) echo "⚠️ data-flow layer may need update" ;;
             esac
           done
 ```
@@ -1139,7 +1139,7 @@ nav:
       - 3. Compile-time Deps: atlas/compile-deps/README.md
       - 4. Runtime Topology: atlas/runtime-topology/README.md
       - 5. API Contracts: atlas/api-contracts/README.md
-      - 6. Data Flow: atlas/data-flow
+      - 6. Data Flow: atlas/data-flow/README.md
       - 7. Service Components: atlas/service-components/README.md
       - 8. User Journeys: atlas/user-journeys/README.md
       - Bug Reports: atlas/bug-reports/
@@ -1271,7 +1271,7 @@ User: We keep getting runtime errors that don't show up in tests. Run code atlas
 
 Atlas skill:
 Pass 1 (Contradiction Hunt):
-- Cross-references Layer 3 routes with Layer 4 DTOs
+- Cross-references api-contracts routes with Layer 4 DTOs
 - Finds: OrderController.create accesses req.body.customerId not in CreateOrderRequest DTO
 - Finds: 2 env vars used in auth-service not declared in .env.example
 - Finds: /api/reports route referenced in README but removed from code

@@ -136,7 +136,7 @@ if [[ "$CI_MODE" == true ]]; then
     # If layer directories are absent it means Step 1 has not happened yet.
     # We warn and skip the commit rather than failing CI — the missing-layer state
     # is expected on first run and does not indicate a script error.
-    EXPECTED_LAYERS=("repo-surface" "compile-deps" "api-contracts" "data-flow" "user-journeys" "inventory" "service-components" "ast-lsp-bindings")
+    EXPECTED_LAYERS=("repo-surface" "compile-deps" "api-contracts" "data-flow" "user-journeys" "runtime-topology" "service-components" "ast-lsp-bindings")
     MISSING_LAYERS=()
     for layer in "${EXPECTED_LAYERS[@]}"; do
         layer_dir="${ATLAS_DIR}/${layer}"
