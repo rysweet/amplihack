@@ -60,7 +60,7 @@ Complete reference for all flags, layer IDs, output files, schemas, and error co
 | ----- | ----------------------------- | ---------------------------------------------------------------- |
 | 1     | Runtime Topology              | Services, containers, ports, inter-service connections           |
 | 2     | Compile-time Dependencies     | Package imports, module boundaries, external library versions    |
-| 3     | HTTP Routing                  | All routes, handlers, DTOs, middleware chains                    |
+| 3     | API Contracts                  | All routes, handlers, DTOs, middleware chains                    |
 | 4     | Data Flow                     | DTO-to-storage chain, transformation steps                       |
 | 5     | User Journey Scenarios        | Named end-to-end paths as sequence diagrams                      |
 | 6     | Exhaustive Inventory          | Tables: services, env vars, data stores, external deps           |

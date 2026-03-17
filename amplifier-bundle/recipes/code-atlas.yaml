@@ -24,12 +24,12 @@ tags: ["architecture", "documentation", "bug-hunting", "atlas", "code-atlas"]
 # Running both in parallel finds ~1.7x the bugs of either alone.
 #
 # Layers:
-#   1. Runtime Topology          — services, containers, ports, connections
-#   2. Compile-time Dependencies — packages, modules, circular dependency detection
-#   3. API Contracts             — routes, endpoints, DTOs, middleware chains, gRPC/GraphQL schemas
-#   4. Data Flow                 — DTO-to-storage chain, transformation steps
-#   5. User Journey Scenarios    — entry-point to outcome sequence diagrams
-#   6. Exhaustive Inventory      — services, env vars, data stores, external deps
+#   1. Repository Surface         — source files, project structure, build systems
+#   2. Runtime Topology          — services, containers, ports, connections
+#   3. Compile-time Dependencies — packages, modules, circular dependency detection
+#   4. API Contracts             — HTTP routes, gRPC, GraphQL, OpenAPI, DTOs
+#   5. Data Flow                 — DTO-to-storage chain, transformation steps
+#   6. User Journey Scenarios    — entry-point to outcome sequence diagrams
 #   7. Service Component Architecture — per-service module/package diagrams (NEW)
 #   8. AST+LSP Symbol Bindings   — dead code, cross-file refs, interface mismatches (NEW)
 #

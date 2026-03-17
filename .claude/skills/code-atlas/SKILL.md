@@ -794,7 +794,7 @@ comm -23 "$doc_routes" "$code_routes"  # In docs, not in code = STALE
 ```markdown
 ## Bug: Route/DTO Mismatch — POST /api/orders
 
-**Layer**: 3 (HTTP Routing) × 4 (Data Flow)
+**Layer**: 3 (API Contracts) × 4 (Data Flow)
 **Severity**: High
 **Evidence**:
 
@@ -923,7 +923,7 @@ Bug reports from Pass 3 are filed as `docs/atlas/bug-reports/{YYYY-MM-DD}-pass3-
 | -------------------------------------------------------------------------------- | ------------------------------- | -------------------------------- |
 | `docker-compose*.yml`, `k8s/**/*.yaml`, `kubernetes/**/*.yaml`, `helm/**/*.yaml` | Layer 1 (Runtime Topology)      | `/code-atlas rebuild layer1`     |
 | `go.mod`, `package.json`, `*.csproj`, `Cargo.toml`                               | Layer 2 (Dependencies)          | `/code-atlas rebuild layer2`     |
-| Route files (`*routes*.ts`, `*controller*.go`, `*views*.py`, `*handler*.go`)     | Layer 3 (API Contracts)          | `/code-atlas rebuild layer3`     |
+| API files (`*routes*.ts`, `*controller*.*`, `*handler*.go`, `*.proto`, `*.graphql`, `*openapi*.*`, `*swagger*.*`) | Layer 3 (API Contracts) | `/code-atlas rebuild layer3` |
 | DTO files (`*dto*.ts`, `*schema*.py`, `*_request.go`, `*model*.go`)              | Layer 4 (Data Flow)             | `/code-atlas rebuild layer4`     |
 | User-facing page/CLI files                                                       | Layer 5 (Journeys)              | `/code-atlas rebuild layer5`     |
 | `.env.example`, service `README.md`                                              | Layer 6 (Inventory)             | `/code-atlas rebuild layer6`     |
@@ -1071,7 +1071,7 @@ docs/
     │   ├── dependencies.svg
     │   ├── inventory.md            # Package inventory table
     │   └── README.md
-    ├── layer3-http-routing/
+    ├── layer3-api-contracts/
     │   ├── routing.mmd
     │   ├── routing.svg
     │   ├── route-inventory.md      # Route inventory table
@@ -1136,7 +1136,7 @@ nav:
       - Overview: atlas/index.md
       - Layer 1 — Runtime Topology: atlas/layer1-runtime/README.md
       - Layer 2 — Dependencies: atlas/layer2-dependencies/README.md
-      - Layer 3 — HTTP Routing: atlas/layer3-http-routing/README.md
+      - Layer 3 — API Contracts: atlas/layer3-api-contracts/README.md
       - Layer 4 — Data Flows: atlas/layer4-dataflow/README.md
       - Layer 5 — User Journeys: atlas/layer5-user-journeys/README.md
       - Layer 6 — Inventory: atlas/layer6-inventory/services.md
