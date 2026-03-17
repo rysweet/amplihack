@@ -285,28 +285,57 @@ steps:
       - "bug-hunt-graphviz"
 
   # ==========================================================================
-  # STEP 6: FILE ISSUES FROM VERIFIED FINDINGS
-  # Create GitHub issues with code-atlas-bughunt label.
-  # Creates the label in the repo if it doesn't exist.
+  # STEP 6a: ENSURE LABEL EXISTS
+  # Create code-atlas-bughunt label if missing.
   # ==========================================================================
-  - id: "file-issues"
-    name: "Step 6: File GitHub Issues"
+  - id: "ensure-label"
+    name: "Step 6a: Ensure code-atlas-bughunt Label"
     type: "bash"
-    description: |
-      For each verified bug in the merged findings:
-      1. Ensure the 'code-atlas-bughunt' label exists in the repo (create if missing)
-      2. Create a GitHub issue with:
-         - Title: brief description
-         - Body: file:line evidence, severity, provenance (mermaid/graphviz/both)
-         - Labels: bug, code-atlas-bughunt
-      3. Log created issue URLs
     command: |
       cd "{{parameters.codebase_path}}" && \
-      gh label create "code-atlas-bughunt" --description "Bug found by /code-atlas graph-based bug hunt" --color "D93F0B" 2>/dev/null || true && \
-      echo "Label 'code-atlas-bughunt' ensured. Issue filing handled by the agent in Step 5."
+      gh label create "code-atlas-bughunt" \
+        --description "Bug found by /code-atlas graph-based bug hunt" \
+        --color "D93F0B" 2>/dev/null || true && \
+      echo "Label 'code-atlas-bughunt' ensured."
     condition: "{{parameters.bug_hunt}}"
     depends_on:
       - "merge-bug-findings"
+
+  # ==========================================================================
+  # STEP 6b: FILE ISSUES FOR EVERY BUG FOUND
+  # Read merged findings, file one GitHub issue per unique bug.
+  # Every bug gets filed — no filtering, no "top N only".
+  # ==========================================================================
+  - id: "file-issues"
+    name: "Step 6b: File GitHub Issues for All Bugs"
+    type: "agent"
+    agent: "amplihack:amplihack:core:builder"
+    description: |
+      File a GitHub issue for EVERY unique bug in the merged findings.
+
+      For each bug in {{output_dir}}/bug-reports/merged-findings.md:
+        1. Create issue via `gh issue create` with:
+           - Title: "[code-atlas] {brief description}" (under 70 chars)
+           - Body containing:
+             - Severity (LOW/MEDIUM/HIGH)
+             - File:line evidence (relative paths)
+             - Provenance: found by mermaid-only / graphviz-only / both
+             - Which pass found it (Pass 1/2/3)
+             - Code quote with credential redaction (SEC-09)
+           - Labels: bug, code-atlas-bughunt
+        2. Log the created issue URL
+        3. Do NOT skip any bugs — every finding gets an issue
+        4. Do NOT batch multiple bugs into one issue — one issue per bug
+
+      After filing all issues, write the list of URLs to:
+        {{output_dir}}/bug-reports/filed-issues.md
+    inputs:
+      merged_findings: "{{steps.merge-bug-findings.outputs}}"
+      codebase_path: "{{parameters.codebase_path}}"
+      output_dir: "{{parameters.output_dir}}"
+    condition: "{{parameters.bug_hunt}}"
+    depends_on:
+      - "ensure-label"
 
   # ==========================================================================
   # STEP 7: PUBLISH ATLAS
