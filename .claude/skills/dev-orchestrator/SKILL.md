@@ -30,14 +30,15 @@ flowchart TD
     A[User Request] --> B{Classify Task}
     B -->|Q&A| C[analyzer agent]
     B -->|Operations| D[builder agent]
-    B -->|Dev / Investigation| E{Recursion Guard}
+    B -->|Development| E{Recursion Guard}
+    B -->|Investigation| E
 
     E -->|BLOCKED| F[announce-depth-limited]
     F --> G[execute-single-fallback]
     G --> R1_BLOCKED[Round 1 result]
 
     E -->|ALLOWED| H{Decompose Workstreams}
-    H -->|1 workstream| I[default-workflow recipe]
+    H -->|"1 workstream<br/>(default-workflow or investigation-workflow)"| I[Execute recipe]
     H -->|N workstreams| J[multitask parallel]
     I --> R1[Round 1 result]
     J --> R1

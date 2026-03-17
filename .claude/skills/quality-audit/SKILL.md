@@ -17,10 +17,8 @@ flowchart TD
     subgraph CYCLE["Audit Cycle (min 3, max 6)"]
         SEEK[SEEK: Scan for issues<br/>reviewer agent<br/>escalating depth per cycle] --> VAL_CHECK{Findings found?}
         VAL_CHECK -->|no| DECISION
-        VAL_CHECK -->|yes| V1[VALIDATE Agent 1<br/>analyzer]
-        V1 --> V2[VALIDATE Agent 2<br/>reviewer]
-        V2 --> V3[VALIDATE Agent 3<br/>architect]
-        V3 --> MERGE[Merge Validations<br/>require >=2/3 agreement]
+        VAL_CHECK -->|yes| V1[VALIDATE Agent 1<br/>analyzer] & V2[VALIDATE Agent 2<br/>reviewer] & V3[VALIDATE Agent 3<br/>architect]
+        V1 & V2 & V3 --> MERGE[Merge Validations<br/>require >=2/3 agreement]
         MERGE --> FIX_CHECK{Confirmed findings?}
         FIX_CHECK -->|no| DECISION
         FIX_CHECK -->|yes| FIX[FIX ALL confirmed<br/>builder agent<br/>fix-all-per-cycle rule]
@@ -29,7 +27,7 @@ flowchart TD
         ACCUM --> DECISION{Recurse decision}
     end
 
-    DECISION -->|"CONTINUE<br/>(cycle < min OR<br/>high/critical found OR<br/>>3 medium found)"| SEEK
+    DECISION -->|"CONTINUE<br/>(cycle < min OR<br/>NEW high/critical found OR<br/>>3 NEW medium found)"| SEEK
     DECISION -->|"STOP<br/>(thresholds met OR<br/>max cycles reached)"| SUMMARY
 
     SUMMARY[Final Summary<br/>architect agent] --> SELF[Self-Improvement Review<br/>architect agent]
