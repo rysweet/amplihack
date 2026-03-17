@@ -24,6 +24,65 @@ token_budget: 4000
 
 # Investigation Workflow Skill
 
+## Workflow Graph
+
+```mermaid
+flowchart TD
+    INIT[Initialize Tracking] --> P1
+
+    subgraph P1["Phase 1: Scope Definition"]
+        SCOPE[scope-definition<br/>prompt-writer agent] --> AMB{Has ambiguities?}
+        AMB -->|yes| CLARIFY[clarify-ambiguities<br/>ambiguity agent]
+        AMB -->|no| P1_OUT[Scope defined]
+        CLARIFY --> P1_OUT
+    end
+
+    subgraph P2["Phase 2: Exploration Strategy"]
+        STRAT[exploration-strategy<br/>architect agent] --> PAST[check-past-investigations<br/>patterns agent]
+        PAST --> HIST{Historical context needed?}
+        HIST -->|yes| ARCH[historical-research<br/>knowledge-archaeologist]
+        HIST -->|no| P2_OUT[Strategy ready]
+        ARCH --> P2_OUT
+    end
+
+    subgraph P3["Phase 3: Parallel Deep Dives"]
+        DD1[deep-dive-primary<br/>architect agent]
+        DD2[deep-dive-secondary<br/>patterns agent]
+        DD3[deep-dive-tertiary<br/>architect agent]
+        DD4{Specialist needed?}
+        DD4 -->|yes| DDS[deep-dive-specialist<br/>security agent]
+        DD1 & DD2 & DD3 --> CONSOL[consolidate-findings<br/>patterns agent]
+        DDS --> CONSOL
+    end
+
+    subgraph P4["Phase 4: Verification"]
+        HYP[formulate-hypotheses<br/>architect agent] --> EXEC[execute-verification<br/>architect agent]
+        EXEC --> VAL[validate-verification<br/>reviewer agent]
+    end
+
+    subgraph P5["Phase 5: Synthesis"]
+        PAT[identify-patterns<br/>patterns agent] --> SYN[synthesis<br/>architect agent]
+        SYN --> VSYN[validate-synthesis<br/>reviewer agent]
+    end
+
+    subgraph P6["Phase 6: Knowledge Capture"]
+        DISC[update-discoveries] --> PATN{New patterns?}
+        PATN -->|yes| UPAT[update-patterns]
+        PATN -->|no| RPT[create-investigation-report]
+        UPAT --> RPT
+    end
+
+    P1 --> P2 --> P3 --> P4 --> P5 --> P6
+
+    RPT --> TRANS[transition-guidance<br/>patterns agent]
+    TRANS --> EFF[efficiency-report]
+    EFF --> FINAL[final-output]
+
+    TRANS --> TDEV{Transition to dev?}
+    TDEV -->|yes| DW[Resume DEFAULT_WORKFLOW<br/>at Step 4 or 5]
+    TDEV -->|no| DONE[Investigation Complete]
+```
+
 ## Purpose
 
 This skill provides a systematic 6-phase workflow for investigating and understanding existing systems, codebases, and architectures. Unlike development workflows optimized for implementation, this workflow is optimized for exploration, understanding, and knowledge capture.
