@@ -149,6 +149,9 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # git
 sudo apt install git
+
+# Rust/cargo (for recipe runner)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
 #### After Installation
@@ -161,6 +164,7 @@ node --version
 npm --version
 uv --version
 git --version
+cargo --version
 ```
 
 ---
