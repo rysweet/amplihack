@@ -235,7 +235,7 @@ Regardless of mode:
 
 ## Fix Pattern Recognition
 
-### High-Frequency Patterns (from claude-trace analysis)
+### High-Frequency Patterns (from trace log analysis)
 
 1. **Import Errors** (15% of fixes)
    - Missing imports

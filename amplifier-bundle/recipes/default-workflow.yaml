@@ -269,10 +269,19 @@ steps:
       EOFREQS
       ) && \
       ISSUE_BODY=$(printf '## Task Description\n%s\n\n## Requirements\n%s\n\n## Acceptance Criteria\n- [ ] All explicit requirements met\n- [ ] Tests passing\n- [ ] Philosophy compliant\n- [ ] Documentation updated\n\n## Classification\nGenerated via default-workflow recipe\n' "$ISSUE_TASK" "$ISSUE_REQS") && \
+      LABEL_NAME="workflow:default" && \
+      if ! gh label list --limit 1000 2>/dev/null | grep -qw "$LABEL_NAME"; then
+        gh label create "$LABEL_NAME" \
+          --color "0366d6" \
+          --description "Created by default-workflow recipe" 2>/dev/null || true
+      fi && \
       gh issue create \
         --title "$ISSUE_TITLE" \
         --body "$ISSUE_BODY" \
-        --label "workflow:default"
+        --label "$LABEL_NAME" 2>&1 || \
+      gh issue create \
+        --title "$ISSUE_TITLE" \
+        --body "$ISSUE_BODY"
     output: "issue_creation"
     parse_json: false
 
@@ -1022,7 +1031,7 @@ steps:
       echo "" && \
       echo "--- Pushing to Remote ---" && \
       if git rev-list --count @{u}..HEAD 2>/dev/null | grep -qv '^0$'; then \
-        git push ; \
+        git pull --rebase 2>/dev/null && git push ; \
       else \
         echo "WARNING: Nothing to push - branch is up to date with remote" ; \
       fi && \
@@ -1102,7 +1111,7 @@ steps:
       3. **Commit and push** the fix:
          ```bash
          git add -A && git commit -m "fix: <describe the fix found during outside-in testing>"
-         git push
+         git pull --rebase && git push
          ```
       4. **Re-run** the outside-in tests from the updated branch
       5. **Repeat** until all tests pass (max 3 fix iterations)
@@ -1339,7 +1348,7 @@ steps:
         echo "WARNING: Nothing to commit - feedback changes already committed" ; \
       fi && \
       if git rev-list --count @{u}..HEAD 2>/dev/null | grep -qv '^0$'; then \
-        git push ; \
+        git pull --rebase 2>/dev/null && git push ; \
       else \
         echo "WARNING: Nothing to push - branch is up to date with remote" ; \
       fi && \
@@ -1504,7 +1513,7 @@ steps:
       cd {{worktree_setup.worktree_path}} && \
       echo "=== Pushing Cleanup Changes ===" && \
       git add -A && \
-      git diff --cached --quiet || (git commit -m "final cleanup pass" && git push) && \
+      git diff --cached --quiet || (git commit -m "final cleanup pass" && git pull --rebase 2>/dev/null && git push) && \
       echo "=== Cleanup Complete ==="
     output: "cleanup_push_result"
 

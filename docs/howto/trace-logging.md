@@ -482,4 +482,3 @@ See [Troubleshooting: Trace Logging](../troubleshooting/trace-logging.md) for co
 
 - [Feature Overview: Trace Logging](../features/trace-logging.md) - Understanding trace logging
 - [Developer Reference: Trace Logging API](../reference/trace-logging-api.md) - Technical implementation
-- [Migration Guide: claude-trace to Native](../migration/claude-trace-to-native.md) - Upgrade from claude-trace

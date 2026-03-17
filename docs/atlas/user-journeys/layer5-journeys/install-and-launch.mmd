@@ -1,0 +1,31 @@
+sequenceDiagram
+    actor User
+    participant CLI as amplihack CLI
+    participant Install as install.py
+    participant FS as Filesystem
+    participant Settings as settings.py
+    participant Hooks as hook_verification.py
+    participant Launcher as ClaudeLauncher
+    participant Claude as Claude Code
+
+    User->>CLI: amplihack install
+    CLI->>Install: _local_install()
+    Install->>FS: copytree_manifest(ESSENTIAL_DIRS)
+    FS-->>Install: files copied to ~/.claude/
+    Install->>Install: create_runtime_dirs()
+    Install->>Settings: ensure_settings_json()
+    Settings->>FS: write settings.json
+    Install->>Hooks: verify_hooks()
+    Hooks->>FS: register hooks in settings
+    Install->>FS: write_manifest(manifest.json)
+    Install-->>CLI: installation complete
+    CLI-->>User: "amplihack installed"
+
+    User->>CLI: amplihack launch
+    CLI->>Launcher: launch()
+    Launcher->>Launcher: detect mode (claude/copilot/codex)
+    Launcher->>Launcher: ensure_sdk_deps()
+    Launcher->>Launcher: discover CLI binary
+    Launcher->>Launcher: stage plugins
+    Launcher->>Claude: spawn subprocess
+    Claude-->>User: Claude Code session active

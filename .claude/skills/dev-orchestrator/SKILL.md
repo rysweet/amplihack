@@ -28,30 +28,33 @@ priority: 5
 ```mermaid
 flowchart TD
     A[User Request] --> B{Classify Task}
-    B -->|Q&A| C[Respond directly<br/>analyzer agent]
-    B -->|Operations| D[Respond directly<br/>builder agent]
+    B -->|Q&A| C[analyzer agent]
+    B -->|Operations| D[builder agent]
     B -->|Development| E{Recursion Guard}
     B -->|Investigation| E
 
-    E -->|BLOCKED| ANNOUNCE[announce-depth-limited]
-    ANNOUNCE --> G[execute-single-fallback-blocked]
-    G --> R1[Round 1 result]
+    E -->|BLOCKED| F[announce-depth-limited]
+    F --> G[execute-single-fallback]
+    G --> R1_BLOCKED[Round 1 result]
 
     E -->|ALLOWED| H{Decompose Workstreams}
     H -->|"1 workstream<br/>(default-workflow or investigation-workflow)"| I[Execute recipe]
     H -->|N workstreams| J[multitask parallel]
-    I --> R1
+    I --> R1[Round 1 result]
     J --> R1
 
+    R1_BLOCKED --> REFLECT
     R1 --> REFLECT{Reflect on Round 1}
-    REFLECT -->|ACHIEVED| REFLECT_FINAL
+    REFLECT -->|ACHIEVED| SUM[Summarize]
     REFLECT -->|PARTIAL / NOT_ACHIEVED| K[Execute Round 2]
     K --> REFLECT2{Reflect on Round 2}
-    REFLECT2 -->|ACHIEVED| REFLECT_FINAL
+    REFLECT2 -->|ACHIEVED| SUM
     REFLECT2 -->|PARTIAL / NOT_ACHIEVED| L[Execute Round 3 - final]
     L --> REFLECT_FINAL[Final Reflect]
     REFLECT_FINAL --> VAL{Outside-In Testing Validation}
-    VAL --> SUM[Summarize]
+    REFLECT --> VAL
+
+    VAL --> SUM
     SUM --> DONE[Complete Session + Cleanup]
 
     %% Adaptive error recovery path

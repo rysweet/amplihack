@@ -45,12 +45,14 @@ flowchart TD
         ARCH --> P2_OUT
     end
 
-    subgraph P3["Phase 3: Deep Dives (parallel agents)"]
-        DD1[deep-dive-primary<br/>architect agent] --> DD4{Specialist needed?}
-        DD2[deep-dive-secondary<br/>patterns agent] --> DD4
-        DD3[deep-dive-tertiary<br/>architect agent] --> DD4
-        DD4 -->|yes| DDS[deep-dive-specialist<br/>security agent] --> CONSOL[consolidate-findings<br/>patterns agent]
-        DD4 -->|no| CONSOL
+    subgraph P3["Phase 3: Parallel Deep Dives"]
+        DD1[deep-dive-primary<br/>architect agent]
+        DD2[deep-dive-secondary<br/>patterns agent]
+        DD3[deep-dive-tertiary<br/>architect agent]
+        DD4{Specialist needed?}
+        DD4 -->|yes| DDS[deep-dive-specialist<br/>security agent]
+        DD1 & DD2 & DD3 --> CONSOL[consolidate-findings<br/>patterns agent]
+        DDS --> CONSOL
     end
 
     subgraph P4["Phase 4: Verification"]
@@ -73,10 +75,12 @@ flowchart TD
     P1 --> P2 --> P3 --> P4 --> P5 --> P6
 
     RPT --> TRANS[transition-guidance<br/>patterns agent]
+    TRANS --> EFF[efficiency-report]
+    EFF --> FINAL[final-output]
+
     TRANS --> TDEV{Transition to dev?}
-    TDEV -->|yes| DW[Resume DEFAULT_WORKFLOW<br/>at Design or Implementation phase]
-    TDEV -->|no| EFF[efficiency-report]
-    EFF --> FINAL[final-output / Investigation Complete]
+    TDEV -->|yes| DW[Resume DEFAULT_WORKFLOW<br/>at Step 4 or 5]
+    TDEV -->|no| DONE[Investigation Complete]
 ```
 
 ## Purpose

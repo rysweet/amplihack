@@ -273,9 +273,7 @@ class InteractiveInstaller:
         for _ in range(max_attempts):
             try:
                 response = (
-                    input(f"Do you want to proceed with installing {tool}? [y/N]: ")
-                    .strip()
-                    .lower()
+                    input(f"Do you want to proceed with installing {tool}? [y/N]: ").strip().lower()
                 )
             except (EOFError, OSError):
                 # stdin closed or not available - decline
@@ -479,8 +477,8 @@ class PrerequisiteChecker:
     providing platform-specific installation commands when tools are missing.
 
     Required tools:
-        - Node.js (for claude-trace)
-        - npm (for installing claude-trace)
+        - Node.js (for Claude CLI)
+        - npm (for installing Claude CLI)
         - uv (for Python package management)
         - git (for repository operations)
 

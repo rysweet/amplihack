@@ -70,18 +70,18 @@ flowchart TD
     AUTO --> PAT
 
     PAT --> CTX[Build pattern-specific context]
-    CTX --> WF[DEFAULT_WORKFLOW Steps 0-21<br/>all 22 steps execute]
+    CTX --> WF[DEFAULT_WORKFLOW Steps 0-21]
 
-    subgraph WF_DETAIL["Pattern-sensitive steps — all 22 steps run, these are where pattern matters"]
-        S0[Step 0: Prep] --> S1[Step 1: Clarify - pattern informs scope]
-        S1 --> S4[Step 4: Design - pattern selects agents]
-        S4 -->|import| FIX_AGENT[fix-agent]
-        S4 -->|ci| CI_AGENT[ci-diagnostic-workflow]
-        S4 -->|pre-commit| PC_AGENT[pre-commit-diagnostic]
-        S4 -->|other| BUILD[builder agent]
-        FIX_AGENT & CI_AGENT & PC_AGENT & BUILD --> S6[Step 6: Implement fix]
-        S6 --> S8[Step 8: Local testing]
-        S8 --> S9_21[Steps 9-21: PR & Review]
+    subgraph WF_DETAIL["Workflow with Pattern Context"]
+        S0[Step 0: Prep] --> S2[Step 2: Clarify - pattern informs scope]
+        S2 --> S5[Step 5: Design - pattern selects agents]
+        S5 -->|import| FIX_AGENT[fix-agent]
+        S5 -->|ci| CI_AGENT[ci-diagnostic-workflow]
+        S5 -->|pre-commit| PC_AGENT[pre-commit-diagnostic]
+        S5 -->|other| BUILD[builder agent]
+        FIX_AGENT & CI_AGENT & PC_AGENT & BUILD --> S8[Step 8: Implement fix]
+        S8 --> S13[Step 13: Test fix]
+        S13 --> S14[Step 14-21: PR & Review]
     end
 
     WF --> DONE[Complete, tested fix]

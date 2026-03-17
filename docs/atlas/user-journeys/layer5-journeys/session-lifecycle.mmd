@@ -1,0 +1,41 @@
+sequenceDiagram
+    actor User
+    participant Claude as Claude Code
+    participant Hooks as Hook Engine
+    participant Memory as CognitiveMemory
+    participant Kuzu as Kuzu DB
+    participant XPIA as XPIA Defender
+
+    Note over Claude: Session starts
+    Claude->>Hooks: SessionStart event
+    Hooks->>Memory: initialize memory
+    Memory->>Kuzu: retrieve relevant memories
+    Kuzu-->>Memory: past discoveries, patterns
+    Memory-->>Hooks: context enriched
+
+    User->>Claude: types a prompt
+    Claude->>Hooks: UserPromptSubmit
+    Hooks->>Hooks: workflow classification
+    Hooks-->>Claude: (optionally modified prompt)
+
+    Claude->>Claude: processes prompt, calls tool
+    Claude->>Hooks: PreToolUse(tool_name, input)
+    Hooks->>XPIA: scan for prompt injection
+    XPIA-->>Hooks: allow/deny
+    Hooks-->>Claude: decision
+
+    Claude->>Claude: tool executes
+    Claude->>Hooks: PostToolUse(tool_name, result)
+    Hooks->>XPIA: scan result for threats
+    XPIA-->>Hooks: clean
+
+    Note over Claude: Context window filling up
+    Claude->>Hooks: PreCompact
+    Hooks->>Hooks: save critical context
+
+    Note over Claude: Session ending
+    Claude->>Hooks: Stop event
+    Hooks->>Memory: store session discoveries
+    Memory->>Kuzu: persist to graph DB
+    Hooks->>Hooks: reflection & cleanup
+    Hooks-->>Claude: session complete

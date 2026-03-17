@@ -240,6 +240,11 @@ def _build_rust_command(
     if progress:
         cmd.append("--progress")
 
+    # NOTE: Agent binary preference is communicated via the AMPLIHACK_AGENT_BINARY
+    # env var, which the Rust binary reads at init time.  We no longer pass
+    # --agent-binary on the CLI because older installed binaries reject the flag
+    # (see issue #3275).  The env var is inherited by the subprocess automatically.
+
     if recipe_dirs:
         for d in recipe_dirs:
             cmd.extend(["-R", d])

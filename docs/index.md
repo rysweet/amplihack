@@ -16,6 +16,7 @@ amplihack is a development framework for popular coding agent systems (Claude Co
 
 **Looking for something specific?**
 
+- [Code Atlas](atlas/index.md) - Architecture diagrams, dependency maps, and bug hunt results
 - [Commands & Operations](#%EF%B8%8F-commands--operations) - Execute complex tasks
 - [Workflows](#-workflows) - Structured development processes
 - [Agents & Tools](#-agents--tools) - Specialized AI capabilities
@@ -523,7 +524,6 @@ Optional request/response logging using Anthropic's native Claude binary:
 - **[Native Binary Trace Logging Overview](NATIVE_BINARY_TRACE_LOGGING.md)** - Complete feature documentation hub
 - [Trace Logging Feature Guide](features/trace-logging.md) - What it is and when to use it
 - [How-To: Trace Logging](howto/trace-logging.md) - Practical recipes
-- [Migration: claude-trace to Native](migration/claude-trace-to-native.md) - Upgrade from NPM package
 - [API Reference: Trace Logging](reference/trace-logging-api.md) - Technical details
 - [Troubleshooting: Trace Logging](troubleshooting/trace-logging.md) - Fix common issues
 
