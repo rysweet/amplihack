@@ -28,12 +28,13 @@ priority: 5
 ```mermaid
 flowchart TD
     A[User Request] --> B{Classify Task}
-    B -->|Q&A| C[analyzer agent]
-    B -->|Operations| D[builder agent]
+    B -->|Q&A| C[Respond directly<br/>analyzer agent]
+    B -->|Operations| D[Respond directly<br/>builder agent]
     B -->|Development| E{Recursion Guard}
     B -->|Investigation| E
 
-    E -->|BLOCKED| G[execute-single-fallback-blocked]
+    E -->|BLOCKED| ANNOUNCE[announce-depth-limited]
+    ANNOUNCE --> G[execute-single-fallback-blocked]
     G --> R1[Round 1 result]
 
     E -->|ALLOWED| H{Decompose Workstreams}

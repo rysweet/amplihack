@@ -151,9 +151,11 @@ stateDiagram-v2
 3. **FAILING**: CI has failures, need fixes
 4. **FIXING**: Applying fixes locally
 5. **PUSHING**: Pushing fixes to PR
-6. **PASSED**: All checks green
-7. **MERGEABLE**: Ready to merge (but DON'T)
-8. **WAITING_FOR_USER**: Success, awaiting instructions
+6. **POLLING**: Waiting for CI to complete after pushing fixes
+7. **PASSED**: All checks green
+8. **MERGEABLE**: Ready to merge (but DON'T)
+9. **ESCALATED**: Max iterations (5) reached without CI passing, escalating to user
+10. **WAITING_FOR_USER**: Success or escalation, awaiting instructions
 
 ## CI Failure Categories
 
