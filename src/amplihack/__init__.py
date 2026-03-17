@@ -14,6 +14,7 @@ Public API:
     - Main: main (CLI entry point)
 """
 
+import json
 import os
 import sys
 from pathlib import Path
@@ -132,6 +133,161 @@ RUST_HOOK_MAP = {
     "pre_compact.py": "pre-compact",
 }
 
+def _resolve_hooks_json_path():
+    """Locate the canonical hooks.json file.
+
+    Search order:
+    1. Installed location: ~/.amplihack/.claude/tools/amplihack/hooks/hooks.json
+    2. Source tree (development): relative to this file
+
+    Returns:
+        Path to hooks.json, or None if not found.
+    """
+    installed = Path(HOME) / ".amplihack" / ".claude" / "tools" / "amplihack" / "hooks" / "hooks.json"
+    if installed.exists():
+        return installed
+
+    # Development: hooks.json lives in the source tree
+    source = Path(__file__).resolve().parent.parent.parent / ".claude" / "tools" / "amplihack" / "hooks" / "hooks.json"
+    if source.exists():
+        return source
+
+    return None
+
+
+def validate_hook_configs_against_json(hooks_json_path=None):
+    """Validate HOOK_CONFIGS and RUST_HOOK_MAP against hooks.json.
+
+    hooks.json is the canonical source of truth for hook definitions.
+    This function checks that HOOK_CONFIGS (used by the Python installer)
+    and RUST_HOOK_MAP (used by the Rust hook engine) are consistent with it.
+
+    Args:
+        hooks_json_path: Path to hooks.json. If None, auto-discovered.
+
+    Returns:
+        Tuple of (is_valid: bool, errors: list[str]).
+        When is_valid is False, errors contains human-readable descriptions
+        of every divergence found.
+
+    Raises:
+        Nothing — returns errors instead of raising.
+    """
+    errors = []
+
+    if hooks_json_path is None:
+        hooks_json_path = _resolve_hooks_json_path()
+
+    if hooks_json_path is None:
+        errors.append("hooks.json not found — cannot validate HOOK_CONFIGS")
+        return (False, errors)
+
+    try:
+        with open(hooks_json_path, encoding="utf-8") as f:
+            hooks_json = json.load(f)
+    except (json.JSONDecodeError, OSError) as exc:
+        errors.append(f"Failed to read hooks.json at {hooks_json_path}: {exc}")
+        return (False, errors)
+
+    # --- Build a normalised view from hooks.json ---
+    # hooks.json structure: { "EventType": [ { "hooks": [ { "command": "...file.py", ... } ] } ] }
+    json_hooks_by_type = {}  # event_type -> list of basenames
+    for event_type, event_configs in hooks_json.items():
+        basenames = []
+        for config in event_configs:
+            for hook in config.get("hooks", []):
+                command = hook.get("command", "")
+                basename = os.path.basename(command)
+                if basename:
+                    basenames.append(basename)
+        if basenames:
+            json_hooks_by_type[event_type] = sorted(basenames)
+
+    # --- Check 1: HOOK_CONFIGS["amplihack"] must match hooks.json ---
+    config_hooks_by_type = {}  # event_type -> list of filenames
+    for hook_info in HOOK_CONFIGS.get("amplihack", []):
+        event_type = hook_info["type"]
+        config_hooks_by_type.setdefault(event_type, []).append(hook_info["file"])
+    for key in config_hooks_by_type:
+        config_hooks_by_type[key] = sorted(config_hooks_by_type[key])
+
+    # Compare event types present
+    json_event_types = set(json_hooks_by_type.keys())
+    config_event_types = set(config_hooks_by_type.keys())
+
+    missing_in_config = json_event_types - config_event_types
+    extra_in_config = config_event_types - json_event_types
+
+    for event_type in sorted(missing_in_config):
+        errors.append(
+            f"HOOK_CONFIGS['amplihack'] is missing event type '{event_type}' "
+            f"that exists in hooks.json"
+        )
+
+    for event_type in sorted(extra_in_config):
+        errors.append(
+            f"HOOK_CONFIGS['amplihack'] has event type '{event_type}' "
+            f"not present in hooks.json"
+        )
+
+    # Compare hook files within shared event types
+    for event_type in sorted(json_event_types & config_event_types):
+        json_files = json_hooks_by_type[event_type]
+        config_files = config_hooks_by_type[event_type]
+
+        if json_files != config_files:
+            errors.append(
+                f"HOOK_CONFIGS['amplihack'] event '{event_type}' has files "
+                f"{config_files} but hooks.json has {json_files}"
+            )
+
+    # --- Check 2: Every amplihack hook file (except workflow_classification_reminder.py)
+    #     should have a RUST_HOOK_MAP entry ---
+    # workflow_classification_reminder.py is documented as Python-only.
+    PYTHON_ONLY_HOOKS = {"workflow_classification_reminder.py"}
+    all_amplihack_files = {h["file"] for h in HOOK_CONFIGS.get("amplihack", [])}
+
+    for hook_file in sorted(all_amplihack_files - PYTHON_ONLY_HOOKS):
+        if hook_file not in RUST_HOOK_MAP:
+            errors.append(
+                f"RUST_HOOK_MAP is missing entry for '{hook_file}' "
+                f"(present in HOOK_CONFIGS['amplihack'])"
+            )
+
+    # Check that RUST_HOOK_MAP doesn't reference files absent from
+    # both HOOK_CONFIGS['amplihack'] and the known Copilot-only set.
+    COPILOT_ONLY_HOOKS = {"session_stop.py"}  # documented in RUST_HOOK_MAP comment
+    for rust_file in sorted(RUST_HOOK_MAP.keys()):
+        if rust_file not in all_amplihack_files and rust_file not in COPILOT_ONLY_HOOKS:
+            errors.append(
+                f"RUST_HOOK_MAP has entry for '{rust_file}' which is not in "
+                f"HOOK_CONFIGS['amplihack'] and not a known Copilot-only hook"
+            )
+
+    return (len(errors) == 0, errors)
+
+
+def _validate_hooks_on_startup():
+    """Run hook config validation at startup and warn on divergence.
+
+    This is called at module import time. It logs warnings to stderr
+    but does not raise — divergence is a configuration bug, not a
+    runtime crash.
+    """
+    is_valid, errors = validate_hook_configs_against_json()
+    if not is_valid:
+        print(
+            "WARNING: HOOK_CONFIGS/RUST_HOOK_MAP diverged from hooks.json:",
+            file=sys.stderr,
+        )
+        for error in errors:
+            print(f"  - {error}", file=sys.stderr)
+
+
+# Validate at import time — catches divergence early.
+_validate_hooks_on_startup()
+
+
 # Import from focused modules
 from .hook_verification import verify_hooks
 from .install import (
@@ -197,6 +353,7 @@ __all__ = [
     "ESSENTIAL_FILES",
     "RUNTIME_DIRS",
     "HOOK_CONFIGS",
+    "validate_hook_configs_against_json",
     "SETTINGS_TEMPLATE",
     # Installation
     "_local_install",
