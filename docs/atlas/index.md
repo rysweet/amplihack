@@ -2,7 +2,7 @@
 
 **Generated:** 2026-03-17
 **Version:** 0.6.73
-**Mode:** Production atlas (6 layers + 3-pass bug hunt)
+**Mode:** Production atlas (8 layers + 3-pass bug hunt)
 
 ## Atlas Layers
 
@@ -14,6 +14,8 @@
 | 4 | [Data Flow Graph](data-flow/layer4-dataflow/README.md) | [.mmd](data-flow/layer4-dataflow/dataflow.mmd) [.dot](data-flow/layer4-dataflow/dataflow.dot) | Data entry, transformation, persistence, exit |
 | 5 | [User Journey Scenarios](user-journeys/layer5-journeys/README.md) | 5 sequence diagrams | End-to-end user flows |
 | 6 | [Exhaustive Inventory](inventory/) | 4 inventory tables | Services, env vars, data stores, external deps |
+| 7 | [Service Components](service-components/README.md) | [.mmd](service-components/components.mmd) [.dot](service-components/components.dot) | Internal module structure, cross-module dependencies |
+| 8 | [AST+LSP Symbol Bindings](ast-lsp-bindings/README.md) | [.mmd](ast-lsp-bindings/symbol-references.mmd) [.dot](ast-lsp-bindings/symbol-references.dot) | Cross-file symbol references, dead code candidates (static-approximation) |
 
 ## Inventory Tables
 
@@ -25,45 +27,6 @@
 | Env var inventory | [env-vars.md](inventory/env-vars.md) | 24 environment variables |
 | Data store inventory | [data-stores.md](inventory/data-stores.md) | 8 data stores |
 | External deps inventory | [external-deps.md](inventory/external-deps.md) | 12 external dependencies |
-
-## Bug Hunt Results
-
-### Summary
-
-| Severity | Count | Pass |
-|----------|-------|------|
-| Critical | 1 | Pass 2 (upgraded from major) |
-| Major | 3 | Pass 1 |
-| Minor | 3 | Pass 1 |
-| **Total** | **7** | |
-
-### Journey Verdicts (Pass 3)
-
-| Journey | Verdict | Key Issue |
-|---------|---------|-----------|
-| Install and Launch | NEEDS_ATTENTION | Dead code in session.py on import path |
-| Session Lifecycle | PASS | Clean hook dispatch chain |
-| Proxy API Call | FAIL | Dual FastAPI app with divergent routes |
-| Recipe Execution | PASS | Well-structured recipe pipeline |
-| Plugin Install | PASS | Clean plugin management flow |
-
-### Bug Reports
-
-| ID | Severity | Title | Pass |
-|----|----------|-------|------|
-| [dual-fastapi-app](bug-reports/2026-03-17-pass1-dual-fastapi-app.md) | critical | Dual FastAPI app instances in integrated_proxy.py | 1 (upgraded in pass 2) |
-| [duplicate-launch-command](bug-reports/2026-03-17-pass1-duplicate-launch-command.md) | major | Duplicate `launch_command()` in session.py and cli.py | 1 |
-| [duplicate-ensure-staged](bug-reports/2026-03-17-pass1-duplicate-ensure-staged.md) | major | Duplicate `_ensure_amplihack_staged()` in session.py and cli.py | 1 |
-| [double-cleanup](bug-reports/2026-03-17-pass1-double-cleanup.md) | minor | `cleanup_legacy_skills()` imported in both session.py and cli.py | 1 |
-| [dead-code-cli-extensions](bug-reports/2026-03-17-pass1-dead-code-cli-extensions.md) | minor | `cli_extensions.py` module never imported | 1 |
-| [dead-filecmp](bug-reports/2026-03-17-pass1-dead-filecmp.md) | minor | `filecmp()` exported but never used | 1 |
-| [env-vars-not-documented](bug-reports/2026-03-17-pass1-env-vars-not-in-env-example.md) | minor | 12+ AMPLIHACK_* env vars not in .env.example | 1 |
-
-### Cross-Check (Pass 2)
-
-All 7 Pass 1 findings were **CONFIRMED** in Pass 2. The dual FastAPI app finding was **severity-upgraded** from major to critical.
-
-See [pass2-cross-check.md](bug-reports/2026-03-17-pass2-cross-check.md) for full cross-check results.
 
 ## Architecture Notes
 

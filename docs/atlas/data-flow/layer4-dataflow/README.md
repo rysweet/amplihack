@@ -66,5 +66,12 @@ Each hook receives a JSON payload from Claude Code and returns a JSON response:
 
 ## Diagrams
 
-- [dataflow.mmd](dataflow.mmd) -- Mermaid flowchart
-- [dataflow.dot](dataflow.dot) -- Graphviz DOT
+### Mermaid Diagram
+
+![Data Flow - Mermaid](dataflow-mermaid.svg)
+
+### Graphviz Diagram
+
+![Data Flow - Graphviz](dataflow-dot.svg)
+
+**Source files:** [dataflow.mmd](dataflow.mmd) | [dataflow.dot](dataflow.dot)

@@ -87,5 +87,12 @@ XPIA security hooks (separate chain):
 
 ## Diagrams
 
-- [routes.mmd](routes.mmd) -- Mermaid flowchart
-- [routes.dot](routes.dot) -- Graphviz DOT
+### Mermaid Diagram
+
+![API Contracts - Mermaid](routes-mermaid.svg)
+
+### Graphviz Diagram
+
+![API Contracts - Graphviz](routes-dot.svg)
+
+**Source files:** [routes.mmd](routes.mmd) | [routes.dot](routes.dot)

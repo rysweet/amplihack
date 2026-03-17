@@ -31,8 +31,24 @@ The plugin management flow: user installs a Claude Code plugin via CLI, the plug
 
 ## Diagrams
 
-- [install-and-launch.mmd](install-and-launch.mmd)
-- [session-lifecycle.mmd](session-lifecycle.mmd)
-- [proxy-api-call.mmd](proxy-api-call.mmd)
-- [recipe-execution.mmd](recipe-execution.mmd)
-- [plugin-install.mmd](plugin-install.mmd)
+### Install and Launch
+
+![Install and Launch](install-and-launch.svg)
+
+### Session Lifecycle
+
+![Session Lifecycle](session-lifecycle.svg)
+
+### Proxy API Call
+
+![Proxy API Call](proxy-api-call.svg)
+
+### Recipe Execution
+
+![Recipe Execution](recipe-execution.svg)
+
+### Plugin Install
+
+![Plugin Install](plugin-install.svg)
+
+**Source files:** [install-and-launch.mmd](install-and-launch.mmd) | [session-lifecycle.mmd](session-lifecycle.mmd) | [proxy-api-call.mmd](proxy-api-call.mmd) | [recipe-execution.mmd](recipe-execution.mmd) | [plugin-install.mmd](plugin-install.mmd)

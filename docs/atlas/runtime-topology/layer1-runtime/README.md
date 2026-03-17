@@ -56,5 +56,12 @@ All internal communication is **in-process function calls**. The only network co
 
 ## Diagrams
 
-- [topology.mmd](topology.mmd) -- Mermaid flowchart
-- [topology.dot](topology.dot) -- Graphviz DOT
+### Mermaid Diagram
+
+![Runtime Topology - Mermaid](topology-mermaid.svg)
+
+### Graphviz Diagram
+
+![Runtime Topology - Graphviz](topology-dot.svg)
+
+**Source files:** [topology.mmd](topology.mmd) | [topology.dot](topology.dot)

@@ -166,20 +166,13 @@ nav:
       - API Contracts: atlas/api-contracts/layer3-routing/README.md
       - Data Flow: atlas/data-flow/layer4-dataflow/README.md
       - User Journeys: atlas/user-journeys/layer5-journeys/README.md
+      - Service Components: atlas/service-components/README.md
+      - AST+LSP Bindings: atlas/ast-lsp-bindings/README.md
       - Inventory:
           - Services: atlas/inventory/services.md
           - Environment Variables: atlas/inventory/env-vars.md
           - Data Stores: atlas/inventory/data-stores.md
           - External Dependencies: atlas/inventory/external-deps.md
-      - Bug Reports:
-          - Pass 2 Cross-Check: atlas/bug-reports/2026-03-17-pass2-cross-check.md
-          - Dual FastAPI App (Critical): atlas/bug-reports/2026-03-17-pass1-dual-fastapi-app.md
-          - Duplicate launch_command: atlas/bug-reports/2026-03-17-pass1-duplicate-launch-command.md
-          - Duplicate ensure_staged: atlas/bug-reports/2026-03-17-pass1-duplicate-ensure-staged.md
-          - Double Cleanup Import: atlas/bug-reports/2026-03-17-pass1-double-cleanup.md
-          - Dead CLI Extensions: atlas/bug-reports/2026-03-17-pass1-dead-code-cli-extensions.md
-          - Dead filecmp: atlas/bug-reports/2026-03-17-pass1-dead-filecmp.md
-          - Undocumented Env Vars: atlas/bug-reports/2026-03-17-pass1-env-vars-not-in-env-example.md
   - Reference:
       - Discoveries: claude/context/DISCOVERIES.md
       - Security: SECURITY_RECOMMENDATIONS.md

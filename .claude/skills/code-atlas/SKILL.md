@@ -193,14 +193,17 @@ The mode label is never absent, never defaulted silently.
 docs/atlas/
   index.md
   {slug}/
-    README.md
-    *.mmd          (Mermaid source)
-    *.dot          (Graphviz source)
-    *.svg          (rendered diagrams)
-    inventory.md   (where applicable)
-  bug-reports/
-    {YYYY-MM-DD}-pass{N}-{slug}.md
+    README.md          (embeds SVG diagrams inline)
+    *-mermaid.svg      (rendered Mermaid diagrams)
+    *-dot.svg          (rendered Graphviz diagrams)
+    *.mmd              (Mermaid source)
+    *.dot              (Graphviz source)
+    inventory.md       (where applicable)
 ```
+
+Bug hunt results are **never stored in the atlas**. All findings are filed as
+GitHub issues with the `code-atlas-bughunt` label. The atlas is a living
+architecture document, not a point-in-time bug report.
 
 ## Staleness Detection
 
@@ -259,9 +262,8 @@ A complete atlas satisfies:
 - All 8 layers produced with diagrams in `docs/atlas/{slug}/`
 - Both DOT and Mermaid source files present (unless user requested single format)
 - SVG renders alongside source files
-- Bug hunt produced Pass 1, 2, and 3 reports with code evidence
+- Bug hunt findings filed as GitHub issues (never stored in atlas docs)
 - Every filed bug includes: layer reference, file path, line number, code evidence
-- All evidence references use relative paths
 - No orphaned nodes in diagrams
 - ast-lsp-bindings README states mode on line 1
 
