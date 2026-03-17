@@ -21,7 +21,7 @@ import time
 from pathlib import Path
 
 # Import constants from package root
-from . import CLAUDE_DIR, HOME, HOOK_CONFIGS, RUST_HOOK_MAP
+from . import CLAUDE_DIR, HOME, HOOK_CONFIGS, RUST_HOOK_MAP, validate_hook_configs_against_json
 
 
 def write_json_atomic(path, data, indent=2):
@@ -390,6 +390,13 @@ def update_hook_paths(settings, hook_system, hooks_to_update, hooks_dir_path, ho
 
 def ensure_settings_json():
     """Ensure settings.json exists with proper hook configuration."""
+    # Validate HOOK_CONFIGS / RUST_HOOK_MAP against hooks.json before configuring
+    valid, config_errors = validate_hook_configs_against_json()
+    if not valid:
+        print("  WARNING: HOOK_CONFIGS / RUST_HOOK_MAP diverged from hooks.json:", file=sys.stderr)
+        for err in config_errors:
+            print(f"    - {err}", file=sys.stderr)
+
     settings_path = os.path.join(CLAUDE_DIR, "settings.json")
 
     # Detect UVX environment - if running from UVX, auto-approve settings modification

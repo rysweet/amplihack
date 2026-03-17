@@ -132,6 +132,144 @@ RUST_HOOK_MAP = {
     "pre_compact.py": "pre-compact",
 }
 
+def _resolve_hooks_json_path():
+    """Locate hooks.json on disk.
+
+    Search order:
+    1. Installed location: ~/.amplihack/.claude/tools/amplihack/hooks/hooks.json
+    2. Source repo location: <repo_root>/.claude/tools/amplihack/hooks/hooks.json
+
+    Returns:
+        Path to hooks.json, or None if not found.
+    """
+    installed = os.path.join(HOME, ".amplihack", ".claude", "tools", "amplihack", "hooks", "hooks.json")
+    if os.path.isfile(installed):
+        return installed
+
+    # Try repo-relative (for development / CI)
+    repo_candidate = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+        ".claude", "tools", "amplihack", "hooks", "hooks.json",
+    )
+    if os.path.isfile(repo_candidate):
+        return repo_candidate
+
+    return None
+
+
+def validate_hook_configs_against_json(hooks_json_path=None):
+    """Validate HOOK_CONFIGS and RUST_HOOK_MAP against hooks.json.
+
+    hooks.json is the canonical source of truth for which hooks exist and their
+    event types, files, timeouts, and matchers.  This function detects divergence
+    so that mismatches are caught at startup rather than silently ignored.
+
+    Args:
+        hooks_json_path: Explicit path to hooks.json (used by tests).
+                         If None, auto-resolved via _resolve_hooks_json_path().
+
+    Returns:
+        Tuple of (valid: bool, errors: list[str]).
+        When valid is False, errors describes each mismatch found.
+
+    Raises:
+        Nothing — callers decide whether to warn or abort.
+    """
+    import json as _json
+
+    if hooks_json_path is None:
+        hooks_json_path = _resolve_hooks_json_path()
+
+    if hooks_json_path is None:
+        return True, []  # hooks.json not available (e.g. pip-installed wheel) — skip
+
+    try:
+        with open(hooks_json_path, encoding="utf-8") as f:
+            hooks_json = _json.load(f)
+    except Exception as exc:
+        return False, [f"Failed to read hooks.json at {hooks_json_path}: {exc}"]
+
+    errors = []
+
+    # --- 1. Validate HOOK_CONFIGS["amplihack"] against hooks.json ---
+    # Build a normalised set of (event_type, filename) from hooks.json
+    json_hooks = set()  # {(event_type, filename)}
+    json_details = {}   # {(event_type, filename): {timeout, matcher}}
+    for event_type, event_configs in hooks_json.items():
+        for config in event_configs:
+            for hook in config.get("hooks", []):
+                cmd = hook.get("command", "")
+                filename = os.path.basename(cmd)
+                json_hooks.add((event_type, filename))
+                json_details[(event_type, filename)] = {
+                    "timeout": hook.get("timeout"),
+                    "matcher": config.get("matcher"),
+                }
+
+    # Build the same set from HOOK_CONFIGS["amplihack"]
+    py_hooks = set()
+    py_details = {}
+    for entry in HOOK_CONFIGS.get("amplihack", []):
+        key = (entry["type"], entry["file"])
+        py_hooks.add(key)
+        py_details[key] = {
+            "timeout": entry.get("timeout"),
+            "matcher": entry.get("matcher"),
+        }
+
+    # Compare sets
+    in_json_not_py = json_hooks - py_hooks
+    in_py_not_json = py_hooks - json_hooks
+
+    for event_type, filename in sorted(in_json_not_py):
+        errors.append(
+            f"Hook ({event_type}, {filename}) present in hooks.json but missing from HOOK_CONFIGS"
+        )
+    for event_type, filename in sorted(in_py_not_json):
+        errors.append(
+            f"Hook ({event_type}, {filename}) present in HOOK_CONFIGS but missing from hooks.json"
+        )
+
+    # Compare details (timeout, matcher) for hooks present in both
+    for key in sorted(py_hooks & json_hooks):
+        py_d = py_details[key]
+        js_d = json_details[key]
+        if py_d["timeout"] != js_d["timeout"]:
+            errors.append(
+                f"Hook {key} timeout mismatch: HOOK_CONFIGS={py_d['timeout']}, hooks.json={js_d['timeout']}"
+            )
+        if py_d["matcher"] != js_d["matcher"]:
+            errors.append(
+                f"Hook {key} matcher mismatch: HOOK_CONFIGS={py_d['matcher']}, hooks.json={js_d['matcher']}"
+            )
+
+    # --- 2. Validate RUST_HOOK_MAP covers all amplihack hooks (except known Python-only) ---
+    # Every file in HOOK_CONFIGS["amplihack"] that has a Rust equivalent should be in RUST_HOOK_MAP.
+    # workflow_classification_reminder.py is explicitly Python-only, so we just verify
+    # that no file in HOOK_CONFIGS is completely absent from RUST_HOOK_MAP without explanation.
+    # (We don't enforce that every hook MUST have a Rust equivalent — only that files
+    #  listed in RUST_HOOK_MAP actually appear in HOOK_CONFIGS or hooks.json.)
+    for rust_file in RUST_HOOK_MAP:
+        # session_stop.py is Copilot-only, noted in the comment — skip it
+        if rust_file == "session_stop.py":
+            continue
+        found_in_configs = any(
+            entry["file"] == rust_file for entry in HOOK_CONFIGS.get("amplihack", [])
+        )
+        found_in_json = any(
+            os.path.basename(hook.get("command", "")) == rust_file
+            for configs in hooks_json.values()
+            for config in configs
+            for hook in config.get("hooks", [])
+        )
+        if not found_in_configs and not found_in_json:
+            errors.append(
+                f"RUST_HOOK_MAP contains '{rust_file}' which is absent from both HOOK_CONFIGS and hooks.json"
+            )
+
+    return len(errors) == 0, errors
+
+
 # Import from focused modules
 from .hook_verification import verify_hooks
 from .install import (
@@ -197,6 +335,7 @@ __all__ = [
     "ESSENTIAL_FILES",
     "RUNTIME_DIRS",
     "HOOK_CONFIGS",
+    "RUST_HOOK_MAP",
     "SETTINGS_TEMPLATE",
     # Installation
     "_local_install",
@@ -210,6 +349,7 @@ __all__ = [
     "update_hook_paths",
     # Hooks
     "verify_hooks",
+    "validate_hook_configs_against_json",
     # Uninstall
     "uninstall",
     "read_manifest",
