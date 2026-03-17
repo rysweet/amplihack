@@ -471,6 +471,128 @@ class TestLearningAgent:
         assert multi_entity.call_args.kwargs["local_only"] is True
         assert keyword_expansion.call_args.kwargs["local_only"] is True
 
+    def test_answer_question_large_simple_retrieval_supplements_entity_hits(self, agent):
+        """Large simple-retrieval questions should merge targeted entity facts before synthesis."""
+        initial_facts = [
+            {
+                "context": "Quarterly Revenue",
+                "outcome": "As of Q1, the revenue is $4.7M.",
+                "experience_id": "noise-1",
+            }
+        ]
+        beacon_fact = {
+            "context": "Project Beacon - Leadership Change",
+            "outcome": "The lead of Project Beacon changed from Marcus Rivera to Amara Okafor.",
+            "experience_id": "beacon-1",
+        }
+
+        def simple_retrieval(question, force_verbatim=False):
+            agent._thread_local._last_simple_retrieval_exhaustive = False
+            return list(initial_facts)
+
+        agent.memory.search_local = MagicMock(return_value=[])
+        synth = MagicMock(return_value="answer")
+
+        with (
+            patch.object(
+                agent,
+                "_detect_intent",
+                return_value={
+                    "intent": "incremental_update",
+                    "needs_temporal": False,
+                    "needs_math": False,
+                },
+            ),
+            patch.object(agent, "_simple_retrieval", side_effect=simple_retrieval),
+            patch.object(agent, "_synthesize_with_llm", synth),
+            patch.object(
+                agent,
+                "_entity_retrieval",
+                return_value=[beacon_fact],
+            ) as entity_retrieval,
+            patch.object(agent, "_concept_retrieval", return_value=[]),
+            patch.object(
+                agent,
+                "_multi_entity_retrieval",
+                side_effect=lambda question, facts, local_only=False: facts,
+            ),
+            patch.object(
+                agent,
+                "_keyword_expanded_retrieval",
+                side_effect=lambda question, facts, local_only=False: facts,
+            ),
+        ):
+            agent.answer_question(
+                "Who leads Project Beacon now, and who led it originally?",
+                question_level="L3",
+                _skip_qanda_store=True,
+            )
+
+        assert entity_retrieval.call_args.kwargs["local_only"] is True
+        synth_context = synth.call_args.kwargs["context"]
+        assert any(f.get("experience_id") == "beacon-1" for f in synth_context)
+
+    def test_answer_question_large_simple_retrieval_supplements_concept_hits(self, agent):
+        """Large simple-retrieval questions should merge targeted concept facts before synthesis."""
+        initial_facts = [
+            {
+                "context": "Quarterly Revenue",
+                "outcome": "As of Q1, the revenue is $4.7M.",
+                "experience_id": "noise-1",
+            }
+        ]
+        db_fact = {
+            "context": "Database query optimization",
+            "outcome": "The Database query optimization savings is $34K/month by reducing read replicas from 5 to 3.",
+            "experience_id": "db-1",
+        }
+
+        def simple_retrieval(question, force_verbatim=False):
+            agent._thread_local._last_simple_retrieval_exhaustive = False
+            return list(initial_facts)
+
+        agent.memory.search_local = MagicMock(return_value=[])
+        synth = MagicMock(return_value="answer")
+
+        with (
+            patch.object(
+                agent,
+                "_detect_intent",
+                return_value={
+                    "intent": "incremental_update",
+                    "needs_temporal": False,
+                    "needs_math": False,
+                },
+            ),
+            patch.object(agent, "_simple_retrieval", side_effect=simple_retrieval),
+            patch.object(agent, "_synthesize_with_llm", synth),
+            patch.object(agent, "_entity_retrieval", return_value=[]),
+            patch.object(
+                agent,
+                "_concept_retrieval",
+                return_value=[db_fact],
+            ) as concept_retrieval,
+            patch.object(
+                agent,
+                "_multi_entity_retrieval",
+                side_effect=lambda question, facts, local_only=False: facts,
+            ),
+            patch.object(
+                agent,
+                "_keyword_expanded_retrieval",
+                side_effect=lambda question, facts, local_only=False: facts,
+            ),
+        ):
+            agent.answer_question(
+                "How much does the database query optimization save monthly and what was the change?",
+                question_level="L3",
+                _skip_qanda_store=True,
+            )
+
+        assert concept_retrieval.call_args.kwargs["local_only"] is True
+        synth_context = synth.call_args.kwargs["context"]
+        assert any(f.get("experience_id") == "db-1" for f in synth_context)
+
     def test_answer_question_does_not_run_second_distributed_id_search(self, agent):
         """Structured-ID questions should not trigger a second distributed text search."""
         initial_facts = [

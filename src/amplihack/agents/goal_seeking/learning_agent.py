@@ -743,6 +743,7 @@ class LearningAgent:
             intent["intent"] = "meta_memory"
 
         # Route meta-memory questions to Cypher aggregation
+        used_simple_path = False
         if intent_type in self.AGGREGATION_INTENTS:
             relevant_facts = self._aggregation_retrieval(question, intent)
         else:
@@ -772,6 +773,7 @@ class LearningAgent:
                 # Solution C: pass force_verbatim so simple_recall questions in agentic
                 # context also bypass Tier 3 compression (not just entity-retrieval fallback).
                 relevant_facts = self._simple_retrieval(question, force_verbatim=_force_simple)
+                used_simple_path = True
             else:
                 # Large KB: try entity-centric retrieval first
                 relevant_facts = self._entity_retrieval(question)
@@ -820,6 +822,13 @@ class LearningAgent:
                 f.get("context", "").startswith("Question:") and "q_and_a" in (f.get("tags") or [])
             )
         ]
+
+        if used_simple_path and not exhaustive_retrieval:
+            relevant_facts = self._supplement_simple_retrieval(
+                question,
+                relevant_facts,
+                local_only=supplemental_local_only,
+            )
 
         # Entity-linked retrieval: when the question mentions structured IDs
         # (e.g. INC-2024-001, CVE-2024-3094), pull related LOCAL facts without
@@ -962,10 +971,7 @@ class LearningAgent:
             question,
             intent_type,
             len(relevant_facts),
-            "true"
-            if intent_type in self.SIMPLE_INTENTS
-            or (not use_simple if "use_simple" in dir() else True)
-            else "false",
+            "true" if used_simple_path else "false",
         )
 
         # Synthesize answer from the oriented world model (relevant_facts).
@@ -1578,7 +1584,7 @@ class LearningAgent:
 
         return results
 
-    def _entity_retrieval(self, question: str) -> list[dict[str, Any]]:
+    def _entity_retrieval(self, question: str, local_only: bool = False) -> list[dict[str, Any]]:
         """Try entity-centric retrieval for questions about specific people/projects.
 
         Extracts entity names from the question and uses the entity_name index
@@ -1633,7 +1639,11 @@ class LearningAgent:
         seen_ids: set[str] = set()
 
         for candidate in candidates:
-            entity_facts = self.memory.retrieve_by_entity(candidate, limit=ENTITY_FACT_LIMIT)
+            entity_facts = self._retrieve_by_entity_memory(
+                candidate,
+                ENTITY_FACT_LIMIT,
+                local_only=local_only,
+            )
             for fact in entity_facts:
                 fid = fact.get("experience_id", "")
                 if fid not in seen_ids:
@@ -1745,7 +1755,7 @@ class LearningAgent:
         }
     )
 
-    def _concept_retrieval(self, question: str) -> list[dict[str, Any]]:
+    def _concept_retrieval(self, question: str, local_only: bool = False) -> list[dict[str, Any]]:
         """Concept-based retrieval fallback for questions without proper nouns.
 
         Extracts key noun phrases (not proper nouns) from the question using
@@ -1784,8 +1794,10 @@ class LearningAgent:
         # Try search_by_concept on HierarchicalMemory if available
         if hasattr(self.memory, "search_by_concept"):
             for phrase in phrases[:CONCEPT_PHRASE_LIMIT]:
-                concept_facts = self.memory.search_by_concept(
-                    keywords=[phrase], limit=CONCEPT_SEARCH_LIMIT
+                concept_facts = self._search_by_concept_memory(
+                    keywords=[phrase],
+                    limit=CONCEPT_SEARCH_LIMIT,
+                    local_only=local_only,
                 )
                 for fact in concept_facts:
                     fid = fact.get("experience_id", "")
@@ -1795,7 +1807,11 @@ class LearningAgent:
         else:
             # Fall back to regular search
             for phrase in phrases[:CONCEPT_PHRASE_LIMIT]:
-                results = self.memory.search(query=phrase, limit=CONCEPT_SEARCH_LIMIT)
+                results = self._search_memory(
+                    phrase,
+                    CONCEPT_SEARCH_LIMIT,
+                    local_only=local_only,
+                )
                 for fact in results:
                     fid = fact.get("experience_id", "")
                     if fid and fid not in seen_ids:
@@ -1809,6 +1825,42 @@ class LearningAgent:
             question[:80],
         )
         return all_facts
+
+    def _supplement_simple_retrieval(
+        self,
+        question: str,
+        existing_facts: list[dict[str, Any]],
+        local_only: bool = False,
+    ) -> list[dict[str, Any]]:
+        """Add focused entity/concept hits back into large simple retrievals."""
+        existing_keys = {
+            f.get("experience_id") or f"{f.get('context', '')}::{f.get('outcome', '')}"
+            for f in existing_facts
+        }
+        supplemented = list(existing_facts)
+        added = 0
+
+        targeted_facts = self._entity_retrieval(question, local_only=local_only)
+        targeted_facts.extend(self._concept_retrieval(question, local_only=local_only))
+
+        for fact in targeted_facts:
+            key = (
+                fact.get("experience_id") or f"{fact.get('context', '')}::{fact.get('outcome', '')}"
+            )
+            if key in existing_keys:
+                continue
+            existing_keys.add(key)
+            supplemented.append(fact)
+            added += 1
+
+        if added:
+            logger.info(
+                "Simple retrieval supplements: added %d targeted facts for '%s'",
+                added,
+                question[:60],
+            )
+
+        return supplemented
 
     # Regex for structured entity IDs (e.g. INC-2024-001, CVE-2024-3094)
     _ENTITY_ID_PATTERN = re.compile(r"\b([A-Z]{2,5}-\d{4}-\d{2,5})\b")
