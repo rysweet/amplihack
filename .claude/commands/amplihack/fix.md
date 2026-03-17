@@ -70,9 +70,9 @@ flowchart TD
     AUTO --> PAT
 
     PAT --> CTX[Build pattern-specific context]
-    CTX --> WF[DEFAULT_WORKFLOW Steps 0-21]
+    CTX --> WF[DEFAULT_WORKFLOW Steps 0-21<br/>all 22 steps execute]
 
-    subgraph WF_DETAIL["Pattern-sensitive steps highlighted"]
+    subgraph WF_DETAIL["Pattern-sensitive steps — all 22 steps run, these are where pattern matters"]
         S0[Step 0: Prep] --> S1[Step 1: Clarify - pattern informs scope]
         S1 --> S4[Step 4: Design - pattern selects agents]
         S4 -->|import| FIX_AGENT[fix-agent]
