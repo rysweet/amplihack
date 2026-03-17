@@ -389,13 +389,13 @@ echo ""
 echo "--- Bug Reports ---"
 BR="$ATLAS_DIR/bug-reports"
 assert_dir_exists  "bug-reports/ exists"                     "$BR"
-assert_file_exists "bug-reports/pass1-contradictions.md"     "$BR/pass1-contradictions.md"
-assert_file_exists "bug-reports/pass2-journey-bugs.md"       "$BR/pass2-journey-bugs.md"
+assert_file_exists "bug-reports/merged-findings.md"     "$BR/merged-findings.md"
+assert_file_exists "bug-reports/validated-bugs.md"       "$BR/validated-bugs.md"
 
 # Bug reports must have required fields
-assert_file_contains "pass1 report has Severity field" "[Ss]everity" "$BR/pass1-contradictions.md"
-assert_file_contains "pass1 report has Evidence field" "[Ee]vidence\|Code quote\|code_quote" "$BR/pass1-contradictions.md"
-assert_file_contains "pass2 report has journey reference" "[Jj]ourney\|scenario\|[Uu]ser" "$BR/pass2-journey-bugs.md"
+assert_file_contains "merged report has Severity field" "[Ss]everity" "$BR/merged-findings.md"
+assert_file_contains "merged report has Evidence field" "[Ee]vidence\|Code quote\|code_quote" "$BR/merged-findings.md"
+assert_file_contains "validated report has journey reference" "[Jj]ourney\|scenario\|[Uu]ser" "$BR/validated-bugs.md"
 
 # ---------------------------------------------------------------------------
 # Test Group 9: .build-stamp freshness metadata

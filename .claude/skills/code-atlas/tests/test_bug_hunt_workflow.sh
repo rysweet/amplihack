@@ -79,8 +79,8 @@ assert_not_in_file() {
 # ---------------------------------------------------------------------------
 
 ATLAS="${REPO_ROOT}/docs/atlas"
-P1_REPORT="${ATLAS}/bug-reports/pass1-contradictions.md"
-P2_REPORT="${ATLAS}/bug-reports/pass2-journey-bugs.md"
+P1_REPORT="${ATLAS}/bug-reports/mermaid-arm/pass1-findings.md"
+P2_REPORT="${ATLAS}/bug-reports/graphviz-arm/pass1-findings.md"
 
 # ============================================================================
 # Test Group 1: Bug Report Schema Validation
@@ -150,8 +150,8 @@ validate_bug_report_schema() {
         "://.*:.*@" "$report_file"
 }
 
-validate_bug_report_schema "$P1_REPORT" "pass1-contradictions"
-validate_bug_report_schema "$P2_REPORT" "pass2-journey-bugs"
+validate_bug_report_schema "$P1_REPORT" "mermaid-arm-findings"
+validate_bug_report_schema "$P2_REPORT" "graphviz-arm-findings"
 
 # ============================================================================
 # Test Group 2: Pass 1 Contradiction Hunt — Specific Detections
@@ -171,7 +171,7 @@ tmpdir=$(mktemp -d)
 mkdir -p "$tmpdir/docs/atlas/bug-reports"
 
 # Create a pass1 report that correctly identifies a route/DTO mismatch
-cat > "$tmpdir/docs/atlas/bug-reports/pass1-contradictions.md" << 'EOF'
+cat > "$tmpdir/docs/atlas/bug-reports/mermaid-arm/pass1-findings.md" << 'EOF'
 # Pass 1 Bug Report — Contradiction Hunt
 
 Generated: 2026-03-16T10:00:00Z
@@ -213,22 +213,22 @@ PAYMENT_SECRET=***REDACTED***
 or remove it from .env.example if the payment feature is not implemented.
 EOF
 
-validate_bug_report_schema "$tmpdir/docs/atlas/bug-reports/pass1-contradictions.md" "fixture-pass1"
+validate_bug_report_schema "$tmpdir/docs/atlas/bug-reports/mermaid-arm/pass1-findings.md" "fixture-mermaid-arm"
 
 # 2.2: Route/DTO mismatch is the primary Pass 1 contradiction type
 assert_file_contains "P1 fixture: route/DTO mismatch detected" \
     "[Rr]oute.*[Mm]issing\|DTO.*not found\|route.*DTO\|missing.*DTO\|[Mm]ismatch" \
-    "$tmpdir/docs/atlas/bug-reports/pass1-contradictions.md"
+    "$tmpdir/docs/atlas/bug-reports/mermaid-arm/pass1-findings.md"
 
 # 2.3: Orphaned env var detection
 assert_file_contains "P1 fixture: orphaned env var detected" \
     "[Oo]rphan\|env.*var.*not.*consumed\|PAYMENT_SECRET" \
-    "$tmpdir/docs/atlas/bug-reports/pass1-contradictions.md"
+    "$tmpdir/docs/atlas/bug-reports/mermaid-arm/pass1-findings.md"
 
 # 2.4: Values are redacted in evidence
 assert_not_in_file "P1 fixture SEC-09: no raw secret values" \
     "payment-secret-value\|real-secret-here" \
-    "$tmpdir/docs/atlas/bug-reports/pass1-contradictions.md"
+    "$tmpdir/docs/atlas/bug-reports/mermaid-arm/pass1-findings.md"
 
 rm -rf "$tmpdir"
 
@@ -243,7 +243,7 @@ tmpdir=$(mktemp -d)
 mkdir -p "$tmpdir/docs/atlas/bug-reports"
 
 # Create a well-formed pass2 report
-cat > "$tmpdir/docs/atlas/bug-reports/pass2-journey-bugs.md" << 'EOF'
+cat > "$tmpdir/docs/atlas/bug-reports/graphviz-arm/pass1-findings.md" << 'EOF'
 # Pass 2 Bug Report — User Journey Trace
 
 Generated: 2026-03-16T10:05:00Z
@@ -306,27 +306,27 @@ Password string `json:"-"`  // Should be excluded from JSON responses
 asserting Password field is absent from GET /api/users response body.
 EOF
 
-validate_bug_report_schema "$tmpdir/docs/atlas/bug-reports/pass2-journey-bugs.md" "fixture-pass2"
+validate_bug_report_schema "$tmpdir/docs/atlas/bug-reports/graphviz-arm/pass1-findings.md" "fixture-graphviz-arm"
 
 # 3.1: Pass 2 must reference journey names
 assert_file_contains "P2: references journey names" \
     "[Jj]ourney:\|[Ss]cenario:" \
-    "$tmpdir/docs/atlas/bug-reports/pass2-journey-bugs.md"
+    "$tmpdir/docs/atlas/bug-reports/graphviz-arm/pass1-findings.md"
 
 # 3.2: Pass 2 must trace steps through layers
 assert_file_contains "P2: traces steps through layers" \
     "[Ss]tep.*Layer\|Layer.*step\|journey.*step\|[Ss]teps traced" \
-    "$tmpdir/docs/atlas/bug-reports/pass2-journey-bugs.md"
+    "$tmpdir/docs/atlas/bug-reports/graphviz-arm/pass1-findings.md"
 
 # 3.3: Pass 2 bugs must reference the originating journey
 assert_file_contains "P2: BUG entries reference journey" \
     "journey:\|[Ss]cenario:" \
-    "$tmpdir/docs/atlas/bug-reports/pass2-journey-bugs.md"
+    "$tmpdir/docs/atlas/bug-reports/graphviz-arm/pass1-findings.md"
 
 # 3.4: Layer references in Pass 2 must be in format "Layer N → M"
 assert_file_contains "P2: layer cross-references" \
     "Layer [1-6].*→.*[1-6]\|[1-6] → [1-6]" \
-    "$tmpdir/docs/atlas/bug-reports/pass2-journey-bugs.md"
+    "$tmpdir/docs/atlas/bug-reports/graphviz-arm/pass1-findings.md"
 
 rm -rf "$tmpdir"
 
@@ -343,8 +343,8 @@ if [[ -f "$P1_REPORT" ]] && [[ -f "$P2_REPORT" ]]; then
     PASS=$((PASS + 1))
 else
     missing=""
-    [[ ! -f "$P1_REPORT" ]] && missing="pass1-contradictions.md"
-    [[ ! -f "$P2_REPORT" ]] && missing="$missing pass2-journey-bugs.md"
+    [[ ! -f "$P1_REPORT" ]] && missing="mermaid-arm-findings.md"
+    [[ ! -f "$P2_REPORT" ]] && missing="$missing graphviz-arm-findings.md"
     echo "FAIL: missing bug reports:$missing"
     FAIL=$((FAIL + 1))
 fi

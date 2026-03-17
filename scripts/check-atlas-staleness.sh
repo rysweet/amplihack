@@ -238,7 +238,7 @@ if [[ ${#STALE_SET[@]} -eq 0 ]]; then
 else
     # Collect sorted stale layer numbers without spawning a subprocess
     STALE_SORTED=()
-    for _k in 1 2 3 4 5 6; do
+    for _k in 1 2 3 4 5 6 7 8; do
         [[ -n "${STALE_SET[$_k]:-}" ]] && STALE_SORTED+=("$_k")
     done
     echo ""
