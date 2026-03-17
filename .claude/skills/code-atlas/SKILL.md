@@ -728,7 +728,9 @@ Controlled experiment conducted 2026-03-17 across 6 amplihack repositories, runn
 | amplihack-agent-eval | 14 | 10 | +4 Mermaid |
 | amplihack-docs-fix-demo | 6 | 6 | tie |
 | amplihack-rs | — | 13 | Graphviz only |
-| **Total (matched repos)** | **47** | **51** | **+4 Graphviz (+8.5%)** |
+| amplihack-rs | 13 | 13 | tie |
+| amplihack (main) | 16 | 14 | +2 Mermaid |
+| **Total (all 7 repos)** | **76** | **78** | **+2 Graphviz (+2.6%)** |
 
 ### A.3 Key Findings
 
@@ -756,11 +758,14 @@ The DOT→Mermaid conversion is deterministic for topology (nodes, edges, subgra
 
 ### A.5 Issues Filed from Experiment
 
-Total: **32 issues filed** across 4 repos:
-- amplihack-xpia-defender: 8 issues (#14-#21) including 1 security bug
-- amplihack-memory-lib: 7 issues (#72-#78)
-- amplihack-recipe-runner: 7 issues (#42-#48)
-- amplihack-agent-eval: 5 issues (#35-#39)
+Total: **50 issues filed** across 6 repos (both arms combined, deduplicated):
+- amplihack: 10 issues (#3226-#3235) including global CWD thread-safety, triple-nested error handling
+- amplihack-rs: 8 issues (#81-#88) including PID overflow, --no-verify incomplete coverage, session ID collision
+- amplihack-xpia-defender: 8 issues (#14-#21) including 1 security bug (0.0.0.0 SSRF bypass)
+- amplihack-memory-lib: 7 issues (#72-#78) including kuzu hard dependency blocking all usage
+- amplihack-recipe-runner: 7 issues (#42-#48) including .yml silently ignored
+- amplihack-agent-eval: 5 issues (#35-#39) including multi-vote grading degradation
+- amplihack-docs-fix-demo: 2 bugs found (repo archived, issues not filed)
 
 ---
 
