@@ -111,8 +111,8 @@ while IFS= read -r f; do
             [[ "$f" == helm/*/*.yaml         ]] || \
             [[ "$f" == */helm/*.yaml         ]] || \
             [[ "$f" == */helm/*/*.yaml       ]]; then
-            printf 'Layer 1 STALE: Runtime Topology — triggered by: %q\n' "${f}"
-            echo "  Rebuild: /code-atlas rebuild layer1   # or: code-atlas rebuild layer1"
+            printf 'STALE: runtime-topology (Runtime Topology) — triggered by: %q\n' "${f}"
+            echo "  Rebuild: /code-atlas rebuild   # or: code-atlas rebuild layer1"
             STALE_SET[1]=1
         fi
     fi
@@ -130,8 +130,8 @@ while IFS= read -r f; do
             [[ "$f" == */requirements*.txt ]] || \
             [[ "$f" == pyproject.toml      ]] || \
             [[ "$f" == */pyproject.toml    ]]; then
-            printf 'Layer 2 STALE: Compile-time Deps — triggered by: %q\n' "${f}"
-            echo "  Rebuild: /code-atlas rebuild layer2   # or: code-atlas rebuild layer2"
+            printf 'STALE: compile-deps (Compile-time Dependencies) — triggered by: %q\n' "${f}"
+            echo "  Rebuild: /code-atlas rebuild   # or: code-atlas rebuild layer2"
             STALE_SET[2]=1
         fi
     fi
@@ -154,8 +154,8 @@ while IFS= read -r f; do
             [[ "$f" == *openapi*.json  ]] || \
             [[ "$f" == *swagger*.yaml  ]] || \
             [[ "$f" == *swagger*.json  ]]; then
-            printf 'Layer 3 STALE: API Contracts — triggered by: %q\n' "${f}"
-            echo "  Rebuild: /code-atlas rebuild layer3   # or: code-atlas rebuild layer3"
+            printf 'STALE: api-contracts (API Contracts) — triggered by: %q\n' "${f}"
+            echo "  Rebuild: /code-atlas rebuild   # or: code-atlas rebuild layer3"
             STALE_SET[3]=1
         fi
     fi
@@ -168,8 +168,8 @@ while IFS= read -r f; do
             [[ "$f" == *_response.go ]] || \
             [[ "$f" == *types*.ts    ]] || \
             [[ "$f" == *model*.go    ]]; then
-            printf 'Layer 4 STALE: Data Flows — triggered by: %q\n' "${f}"
-            echo "  Rebuild: /code-atlas rebuild layer4   # or: code-atlas rebuild layer4"
+            printf 'STALE: data-flow (Data Flow) — triggered by: %q\n' "${f}"
+            echo "  Rebuild: /code-atlas rebuild   # or: code-atlas rebuild layer4"
             STALE_SET[4]=1
         fi
     fi
@@ -182,8 +182,8 @@ while IFS= read -r f; do
             [[ "$f" == */cmd/*.go  ]] || \
             [[ "$f" == cli/*.py    ]] || \
             [[ "$f" == */cli/*.py  ]]; then
-            printf 'Layer 5 STALE: User Journey Scenarios — triggered by: %q\n' "${f}"
-            echo "  Rebuild: /code-atlas rebuild layer5   # or: code-atlas rebuild layer5"
+            printf 'STALE: user-journeys (User Journeys) — triggered by: %q\n' "${f}"
+            echo "  Rebuild: /code-atlas rebuild   # or: code-atlas rebuild layer5"
             STALE_SET[5]=1
         fi
     fi
@@ -194,8 +194,8 @@ while IFS= read -r f; do
             [[ "$f" == */.env.example       ]] || \
             [[ "$f" == services/*/README.md ]] || \
             [[ "$f" == apps/*/README.md     ]]; then
-            printf 'Layer 6 STALE: Exhaustive Inventory — triggered by: %q\n' "${f}"
-            echo "  Rebuild: /code-atlas rebuild layer6   # or: code-atlas rebuild layer6"
+            printf 'STALE: inventory (Exhaustive Inventory) — triggered by: %q\n' "${f}"
+            echo "  Rebuild: /code-atlas rebuild   # or: code-atlas rebuild layer6"
             STALE_SET[6]=1
         fi
     fi
@@ -211,8 +211,8 @@ while IFS= read -r f; do
             [[ "$f" == apps/*/*.ts         ]] || \
             [[ "$f" == src/*/__init__.py   ]] || \
             [[ "$f" == */mod.rs            ]]; then
-            printf 'Layer 7 STALE: Service Component Architecture — triggered by: %q\n' "${f}"
-            echo "  Rebuild: /code-atlas rebuild layer7   # or: code-atlas rebuild layer7"
+            printf 'STALE: service-components (Service Components) — triggered by: %q\n' "${f}"
+            echo "  Rebuild: /code-atlas rebuild   # or: code-atlas rebuild layer7"
             STALE_SET[7]=1
         fi
     fi
@@ -226,8 +226,8 @@ while IFS= read -r f; do
             [[ "$f" == *.cs  ]] || \
             [[ "$f" == *.js  ]] || \
             [[ "$f" == *.java ]]; then
-            printf 'Layer 8 STALE: AST+LSP Symbol Bindings — triggered by: %q\n' "${f}"
-            echo "  Rebuild: /code-atlas rebuild layer8   # or: code-atlas rebuild layer8"
+            printf 'STALE: ast-lsp-bindings (AST+LSP Bindings) — triggered by: %q\n' "${f}"
+            echo "  Rebuild: /code-atlas rebuild   # or: code-atlas rebuild layer8"
             STALE_SET[8]=1
         fi
     fi
