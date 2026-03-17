@@ -1,0 +1,67 @@
+{
+  "run": "23210010603",
+  "timestamp": "2026-03-17T18:30:00Z",
+  "new_prs_triaged": [
+    {
+      "number": 3261,
+      "title": "docs(design): LearningAgent integration into goal-seeking agent generator",
+      "author": "rysweet",
+      "risk": "low",
+      "category": "documentation",
+      "status": "ready",
+      "labels_added": ["documentation", "triage:low-risk", "triage:complete"],
+      "notes": "Design-only doc. No code changes. Maps architecture and identifies gaps for follow-up implementation PR."
+    },
+    {
+      "number": 3249,
+      "title": "feat: mermaid workflow graphs for improved LLM reasoning",
+      "author": "rysweet",
+      "risk": "medium",
+      "category": "enhancement",
+      "status": "ready",
+      "labels_added": ["enhancement", "triage:medium-risk", "triage:complete"],
+      "notes": "Adds mermaid graphs to 7 key skill/agent/command files. Well-tested: validation script 7/7 pass, QA converged clean after 3 quality audit cycles (0 high findings). CI passing."
+    },
+    {
+      "number": 3247,
+      "title": "docs: consolidate external community docs fixes",
+      "author": "rysweet",
+      "risk": "low",
+      "category": "documentation",
+      "status": "ready",
+      "labels_added": ["documentation", "triage:low-risk", "triage:complete"],
+      "notes": "Consolidates valid fixes from 4 external contributors into one PR. Supersedes PRs 3241, 3242 (qianchongyang). Fixes: WSL Rust install, Python 3.11+ alignment, claude-trace recommended status."
+    },
+    {
+      "number": 3243,
+      "title": "docs: fill in PROJECT.md template with actual project details",
+      "author": "qianchongyang",
+      "risk": "low",
+      "category": "documentation",
+      "status": "duplicate",
+      "labels_added": ["documentation", "duplicate", "triage:low-risk", "triage:complete"],
+      "notes": "Rejected by PR #3247 triage: inaccurate directory claims, removes template sections."
+    },
+    {
+      "number": 3242,
+      "title": "docs: add Rust/cargo to WSL installation section",
+      "author": "qianchongyang",
+      "risk": "low",
+      "category": "documentation",
+      "status": "duplicate",
+      "labels_added": ["documentation", "duplicate", "triage:low-risk", "triage:complete"],
+      "notes": "Superseded by #3247 which incorporates the Rust install change."
+    },
+    {
+      "number": 3241,
+      "title": "docs: clarify claude-trace is recommended not required",
+      "author": "qianchongyang",
+      "risk": "low",
+      "category": "documentation",
+      "status": "duplicate",
+      "labels_added": ["documentation", "duplicate", "triage:low-risk", "triage:complete"],
+      "notes": "Superseded by #3247 which incorporates the claude-trace fix."
+    }
+  ],
+  "skipped_already_triaged": [3238, 3236, 3223, 3221, 3219, 3218, 3217, 3203, 3202, 3201, 3200, 3199, 2876]
+}
