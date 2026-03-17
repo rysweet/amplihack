@@ -746,15 +746,23 @@ Controlled experiment conducted 2026-03-17 across 6 amplihack repositories, runn
 
 ### A.4 Conclusion and Recommended Approach
 
-**Winner: Graphviz DOT for reasoning, Mermaid for presentation.**
+**Winner: Run both. They find different bugs.**
 
-The recommended workflow is:
+Overlap analysis across 3 repos (memory-lib, recipe-runner, xpia-defender) shows only ~15% of bugs are found by both formats. Each format finds a largely independent set:
 
-1. **Build atlas in Graphviz DOT** — the explicit edge enumeration forces deeper reasoning and surfaces more bugs on complex codebases
-2. **Run 3-pass bug hunt on the DOT graphs** — the agent traces paths through the DOT structure
-3. **Convert DOT to Mermaid for publication** — Mermaid renders natively in GitHub markdown, PRs, and mkdocs
+- Graphviz-only bugs: 27 (tend toward structural/architectural issues)
+- Mermaid-only bugs: 19 (tend toward API/naming/documentation issues)
+- Shared: 8 (obvious issues both catch)
 
-The DOT→Mermaid conversion is deterministic for topology (nodes, edges, subgraphs). Visual layout is re-computed by Mermaid's renderer but information content is identical.
+Running both finds **~1.7x the bugs** compared to either alone. The recommended workflow is:
+
+1. **Build atlas in Graphviz DOT** (separate agent session) — explicit edge enumeration forces deeper structural reasoning
+2. **Build atlas in Mermaid** (separate agent session) — abbreviated syntax surfaces different patterns, especially in call chains
+3. **Run 3-pass bug hunt independently in each session** — no shared context, no anchoring bias
+4. **Merge and deduplicate findings** — union of both bug sets
+5. **Convert DOT to Mermaid for publication** — Mermaid renders natively in GitHub markdown
+
+The two formats are complementary, not competing. The different syntax forces the agent to reason about the same code in different ways, which is the actual mechanism that surfaces bugs.
 
 ### A.5 Issues Filed from Experiment
 
