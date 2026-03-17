@@ -6,19 +6,28 @@
 #
 # ADDING A LAYER: Add an entry here. The slug becomes the directory name
 # under docs/atlas/{slug}/. Add staleness triggers to enable CI detection.
+#
+# SCOPE TARGET: Tells agents how deep to go for each layer. Without this,
+# agents either go too shallow (missing bugs) or too deep (hitting context limits).
+#
+# DIAGRAM TYPE: Recommended Mermaid/DOT diagram type for this layer.
 
 layers:
   - slug: repo-surface
     display_order: 1
     name: Repository Surface
     description: All source files, project structure, build systems, configuration
+    scope_target: "List all top-level directories and their purpose. For src/, show one level of subpackages. For config files, list at root. Group test files as a single node."
+    diagram_type: "graph TD (Mermaid) / digraph with subgraph clusters (DOT)"
     staleness_triggers:
-      - "**/*"  # any file change (broad — gated by other layers being more specific)
+      - "**/*"
 
   - slug: ast-lsp-bindings
     display_order: 2
     name: AST+LSP Symbol Bindings
     description: Cross-file symbol references, dead code detection, interface mismatch analysis
+    scope_target: "Focus on public API boundaries (__all__ exports, pub use, exported functions). Map cross-package imports. Skip intra-module function calls. Flag symbols exported but never imported elsewhere."
+    diagram_type: "graph LR (Mermaid) / digraph with record nodes (DOT)"
     staleness_triggers:
       - "*.go"
       - "*.ts"
@@ -32,6 +41,8 @@ layers:
     display_order: 3
     name: Compile-time Dependencies
     description: Package/module imports, dependency trees, circular dependency detection
+    scope_target: "Map all direct dependencies from manifest files (go.mod, package.json, Cargo.toml, pyproject.toml). Show internal package import graph at the package level (not file level). Flag circular dependencies."
+    diagram_type: "graph TD (Mermaid) / digraph with edge labels (DOT)"
     staleness_triggers:
       - "go.mod"
       - "*/go.mod"
@@ -49,6 +60,8 @@ layers:
     display_order: 4
     name: Runtime Topology
     description: Services, containers, ports, inter-service connections
+    scope_target: "Map every service/process from docker-compose, k8s manifests, or process spawn code. Show ports, protocols, and inter-service connections. Include databases and external services."
+    diagram_type: "graph LR (Mermaid) / digraph with component shapes (DOT)"
     staleness_triggers:
       - "docker-compose*.yml"
       - "docker-compose*.yaml"
@@ -65,6 +78,8 @@ layers:
     display_order: 5
     name: API Contracts
     description: HTTP routes, gRPC services, GraphQL schemas, OpenAPI specs, DTOs, middleware
+    scope_target: "List every public endpoint/command/hook. For HTTP: method + path + handler. For CLI: subcommand + handler. For hooks: event + script. For gRPC/GraphQL: service + methods. Include request/response types."
+    diagram_type: "graph TD (Mermaid) / digraph with record nodes (DOT)"
     staleness_triggers:
       - "*route*.ts"
       - "*route*.go"
@@ -87,6 +102,8 @@ layers:
     display_order: 6
     name: Data Flow
     description: DTO-to-storage chains, data transformation steps, persistence mapping
+    scope_target: "Trace data from API entry point through transformation to storage. Show DTO types, validation steps, and database tables/collections. One flowchart per major data path."
+    diagram_type: "flowchart TD (Mermaid) / digraph with edge labels (DOT)"
     staleness_triggers:
       - "*dto*.ts"
       - "*schema*.py"
@@ -99,6 +116,8 @@ layers:
     display_order: 7
     name: Service Component Architecture
     description: Per-service internal module/package structure, component boundaries
+    scope_target: "For each service from runtime-topology: show internal packages/modules, their public interfaces, and internal dependency arrows. One diagram per service. Skip services with fewer than 3 internal modules."
+    diagram_type: "graph TB (Mermaid) / digraph with subgraph per service (DOT)"
     staleness_triggers:
       - "services/*/*.go"
       - "services/*/*.ts"
@@ -114,6 +133,8 @@ layers:
     display_order: 8
     name: User Journey Scenarios
     description: End-to-end paths from entry point to outcome, traced through all layers
+    scope_target: "Identify 3-5 key user journeys from CLI commands, UI pages, or API endpoints. Trace each from entry point through all layers to final outcome. One sequence diagram per journey."
+    diagram_type: "sequenceDiagram (Mermaid) / digraph with rank constraints (DOT)"
     staleness_triggers:
       - "*page*.tsx"
       - "*page*.ts"
