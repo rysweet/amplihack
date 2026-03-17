@@ -406,45 +406,45 @@ docs/atlas/
 ├── README.md                     # Atlas index; links to all layers
 ├── staleness-map.yaml            # Glob → layer mapping for CI (see §6)
 │
-├── layer1-runtime/
+├── repo-surface/
 │   ├── README.md                 # Layer narrative
 │   ├── topology.dot              # Graphviz DOT source
 │   ├── topology.mmd              # Mermaid source
 │   └── topology.svg              # Pre-rendered SVG (committed)
 │
-├── layer2-dependencies/
+├── compile-deps/
 │   ├── README.md
 │   ├── deps.mmd
 │   ├── deps.svg
 │   └── inventory.md              # Package inventory table (REQUIRED)
 │
-├── layer3-routing/
+├── api-contracts/
 │   ├── README.md
 │   ├── routes.mmd
 │   ├── routes.svg
 │   └── inventory.md              # Route inventory table (REQUIRED)
 │
-├── layer4-dataflow/
+├── data-flow/
 │   ├── README.md
 │   ├── dataflow.mmd
 │   └── dataflow.svg
 │
-├── layer5-journeys/
+├── user-journeys/
 │   ├── README.md
 │   └── {journey-name}.mmd        # One file per journey (minimum 3)
 │
-├── layer6-inventory/
+├── inventory/
 │   ├── services.md               # 6a: Service inventory (REQUIRED)
 │   ├── env-vars.md               # 6b: Env var inventory (REQUIRED)
 │   ├── data-stores.md            # 6c: Data store inventory (REQUIRED)
 │   └── external-deps.md          # 6d: External dependency inventory (REQUIRED)
 │
-├── layer7-service-components/         # NEW in v1.1.0
+├── service-components/         # NEW in v1.1.0
 │   ├── README.md                      # States purpose, service list, and mode used
 │   ├── {service-name}.mmd             # One Mermaid graph TD per service (REQUIRED)
 │   └── {service-name}.svg             # Pre-rendered SVG (optional; depends on mmdc)
 │
-├── layer8-ast-lsp-bindings/           # NEW in v1.1.0
+├── ast-lsp-bindings/           # NEW in v1.1.0
 │   ├── README.md                      # MUST state operating mode on first line
 │   ├── symbol-references.mmd          # Cross-file symbol reference graph (REQUIRED)
 │   ├── dead-code.md                   # Dead code report table (REQUIRED)
@@ -490,7 +490,7 @@ docs/atlas/
 
 ```typescript
 interface Layer7Output {
-  directory: "docs/atlas/layer7-service-components/";
+  directory: "docs/atlas/service-components/";
   files: {
     readme: "README.md";                          // Required; lists services analysed
     service_diagrams: "{service-name}.mmd";       // One per service; Mermaid graph TD
@@ -510,7 +510,7 @@ interface Layer7Output {
 
 ```typescript
 interface Layer8Output {
-  directory: "docs/atlas/layer8-ast-lsp-bindings/";
+  directory: "docs/atlas/ast-lsp-bindings/";
   files: {
     readme: "README.md";                          // First line MUST state operating mode
     symbol_refs: "symbol-references.mmd";         // Cross-file reference graph
@@ -725,7 +725,7 @@ type ErrorCode =
   "layer": 1,
   "code": "DOT_RENDER_FAILED",
   "message": "graphviz not installed (dot command not found).",
-  "file": "docs/atlas/layer1-runtime/topology.dot",
+  "file": "docs/atlas/repo-surface/topology.dot",
   "fallback_taken": "Mermaid-only output produced. Install graphviz for SVG render."
 }
 ```
@@ -744,8 +744,8 @@ type ErrorCode =
   "layer": "density",
   "code": "DENSITY_THRESHOLD_EXCEEDED",
   "message": "Layer 7 service diagram has 73 nodes and 118 edges. User selected table representation.",
-  "file": "docs/atlas/layer7-service-components/payments.mmd",
-  "fallback_taken": "Table representation written to layer7-service-components/payments.md instead of diagram."
+  "file": "docs/atlas/service-components/payments.mmd",
+  "fallback_taken": "Table representation written to service-components/payments.md instead of diagram."
 }
 ```
 
@@ -885,7 +885,7 @@ staleness_map:
 | `BugReport.id` format                | **Stable**   | `{topic}-{field-slug}` format guaranteed                       |
 | `BugReport.pass` values              | **Stable**   | `1 | 2 | 3` guaranteed; adding `4` is additive (no break)      |
 | `JourneyVerdict` verdict values      | **Stable**   | `PASS | FAIL | NEEDS_ATTENTION` guaranteed                     |
-| Layer 7 service diagram filenames    | **Stable**   | `layer7-service-components/{service-name}.mmd` guaranteed      |
+| Layer 7 service diagram filenames    | **Stable**   | `service-components/{service-name}.mmd` guaranteed      |
 | Layer 8 README mode label            | **Stable**   | Line 1 format `**Mode:** {mode}` guaranteed                    |
 | Density prompt wording               | **Stable**   | Options (a)(b)(c) wording guaranteed; do not reorder           |
 | `DensityThresholdConfig` defaults    | **Stable**   | `nodes: 50, edges: 100` defaults guaranteed                    |

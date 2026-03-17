@@ -271,12 +271,12 @@ assert_file_contains "index.md mentions Layer 6" "layer6\|Layer 6\|Inventory" "$
 
 echo ""
 echo "--- Layer 1: Runtime Topology ---"
-L1="$ATLAS_DIR/layer1-runtime"
-assert_dir_exists  "layer1-runtime/ exists"                  "$L1"
-assert_file_exists "layer1-runtime/topology.dot"             "$L1/topology.dot"
-assert_file_exists "layer1-runtime/topology.mmd"             "$L1/topology.mmd"
-assert_file_exists "layer1-runtime/topology.svg"             "$L1/topology.svg"
-assert_file_exists "layer1-runtime/README.md"                "$L1/README.md"
+L1="$ATLAS_DIR/repo-surface"
+assert_dir_exists  "repo-surface/ exists"                  "$L1"
+assert_file_exists "repo-surface/topology.dot"             "$L1/topology.dot"
+assert_file_exists "repo-surface/topology.mmd"             "$L1/topology.mmd"
+assert_file_exists "repo-surface/topology.svg"             "$L1/topology.svg"
+assert_file_exists "repo-surface/README.md"                "$L1/README.md"
 assert_valid_dot   "topology.dot is valid DOT syntax"        "$L1/topology.dot"
 assert_valid_mermaid "topology.mmd is valid Mermaid syntax"  "$L1/topology.mmd"
 assert_file_not_empty "topology.svg is not empty"            "$L1/topology.svg"
@@ -288,12 +288,12 @@ assert_file_contains "topology.dot has at least one node"    "label\|graph\|digr
 
 echo ""
 echo "--- Layer 2: Compile-time Dependencies ---"
-L2="$ATLAS_DIR/layer2-dependencies"
-assert_dir_exists  "layer2-dependencies/ exists"             "$L2"
-assert_file_exists "layer2-dependencies/dependencies.mmd"    "$L2/dependencies.mmd"
-assert_file_exists "layer2-dependencies/dependencies.svg"    "$L2/dependencies.svg"
-assert_file_exists "layer2-dependencies/inventory.md"        "$L2/inventory.md"
-assert_file_exists "layer2-dependencies/README.md"           "$L2/README.md"
+L2="$ATLAS_DIR/compile-deps"
+assert_dir_exists  "compile-deps/ exists"             "$L2"
+assert_file_exists "compile-deps/dependencies.mmd"    "$L2/dependencies.mmd"
+assert_file_exists "compile-deps/dependencies.svg"    "$L2/dependencies.svg"
+assert_file_exists "compile-deps/inventory.md"        "$L2/inventory.md"
+assert_file_exists "compile-deps/README.md"           "$L2/README.md"
 assert_valid_mermaid "dependencies.mmd is valid Mermaid"     "$L2/dependencies.mmd"
 assert_markdown_table "inventory.md has package table" "$L2/inventory.md" 1
 
@@ -303,12 +303,12 @@ assert_markdown_table "inventory.md has package table" "$L2/inventory.md" 1
 
 echo ""
 echo "--- Layer 3: API Contracts ---"
-L3="$ATLAS_DIR/layer3-api-contracts"
-assert_dir_exists  "layer3-api-contracts/ exists"             "$L3"
-assert_file_exists "layer3-api-contracts/routing.mmd"         "$L3/routing.mmd"
-assert_file_exists "layer3-api-contracts/routing.svg"         "$L3/routing.svg"
-assert_file_exists "layer3-api-contracts/route-inventory.md"  "$L3/route-inventory.md"
-assert_file_exists "layer3-api-contracts/README.md"           "$L3/README.md"
+L3="$ATLAS_DIR/api-contracts"
+assert_dir_exists  "api-contracts/ exists"             "$L3"
+assert_file_exists "api-contracts/routing.mmd"         "$L3/routing.mmd"
+assert_file_exists "api-contracts/routing.svg"         "$L3/routing.svg"
+assert_file_exists "api-contracts/route-inventory.md"  "$L3/route-inventory.md"
+assert_file_exists "api-contracts/README.md"           "$L3/README.md"
 assert_valid_mermaid "routing.mmd is valid Mermaid"          "$L3/routing.mmd"
 assert_markdown_table "route-inventory.md has route rows"    "$L3/route-inventory.md" 1
 # Route inventory must have API|Contracts|Routing method column
@@ -322,11 +322,11 @@ assert_file_contains "route-inventory.md has Path column"    "[Pp]ath\|/\|endpoi
 
 echo ""
 echo "--- Layer 4: Data Flows ---"
-L4="$ATLAS_DIR/layer4-dataflow"
-assert_dir_exists  "layer4-dataflow/ exists"                 "$L4"
-assert_file_exists "layer4-dataflow/dataflow.mmd"            "$L4/dataflow.mmd"
-assert_file_exists "layer4-dataflow/dataflow.svg"            "$L4/dataflow.svg"
-assert_file_exists "layer4-dataflow/README.md"               "$L4/README.md"
+L4="$ATLAS_DIR/data-flow"
+assert_dir_exists  "data-flow/ exists"                 "$L4"
+assert_file_exists "data-flow/dataflow.mmd"            "$L4/dataflow.mmd"
+assert_file_exists "data-flow/dataflow.svg"            "$L4/dataflow.svg"
+assert_file_exists "data-flow/README.md"               "$L4/README.md"
 assert_valid_mermaid "dataflow.mmd is valid Mermaid"         "$L4/dataflow.mmd"
 
 # ---------------------------------------------------------------------------
@@ -335,9 +335,9 @@ assert_valid_mermaid "dataflow.mmd is valid Mermaid"         "$L4/dataflow.mmd"
 
 echo ""
 echo "--- Layer 5: User Journey Scenarios ---"
-L5="$ATLAS_DIR/layer5-user-journeys"
-assert_dir_exists  "layer5-user-journeys/ exists"            "$L5"
-assert_file_exists "layer5-user-journeys/README.md"          "$L5/README.md"
+L5="$ATLAS_DIR/user-journeys"
+assert_dir_exists  "user-journeys/ exists"            "$L5"
+assert_file_exists "user-journeys/README.md"          "$L5/README.md"
 # At least one journey diagram must exist
 journey_count=$(find "$L5" -name "journey-*.mmd" 2>/dev/null | wc -l)
 if [[ "$journey_count" -ge 1 ]]; then
@@ -354,12 +354,12 @@ fi
 
 echo ""
 echo "--- Layer 6: Inventory Tables ---"
-L6="$ATLAS_DIR/layer6-inventory"
-assert_dir_exists  "layer6-inventory/ exists"                "$L6"
-assert_file_exists "layer6-inventory/services.md"            "$L6/services.md"
-assert_file_exists "layer6-inventory/env-vars.md"            "$L6/env-vars.md"
-assert_file_exists "layer6-inventory/data-stores.md"         "$L6/data-stores.md"
-assert_file_exists "layer6-inventory/external-deps.md"       "$L6/external-deps.md"
+L6="$ATLAS_DIR/inventory"
+assert_dir_exists  "inventory/ exists"                "$L6"
+assert_file_exists "inventory/services.md"            "$L6/services.md"
+assert_file_exists "inventory/env-vars.md"            "$L6/env-vars.md"
+assert_file_exists "inventory/data-stores.md"         "$L6/data-stores.md"
+assert_file_exists "inventory/external-deps.md"       "$L6/external-deps.md"
 assert_markdown_table "services.md has service rows"         "$L6/services.md" 1
 assert_markdown_table "env-vars.md has env var rows"         "$L6/env-vars.md" 1
 

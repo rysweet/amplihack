@@ -305,7 +305,7 @@ def safe_read_bounded(path: str) -> str | None:
 
 ### SEC-11: Layer 7 Service Name Sanitization (HIGH)
 
-**Rule:** Service names used as filenames in `docs/atlas/layer7-service-components/` must be sanitised to `[a-zA-Z0-9_-]{1,64}` before any filesystem path construction. Apply `realpath()` boundary check identical to SEC-02 to confirm output stays within `output_dir`.
+**Rule:** Service names used as filenames in `docs/atlas/service-components/` must be sanitised to `[a-zA-Z0-9_-]{1,64}` before any filesystem path construction. Apply `realpath()` boundary check identical to SEC-02 to confirm output stays within `output_dir`.
 
 **Implementation pattern:**
 
@@ -325,7 +325,7 @@ def safe_service_name(raw: str) -> str:
 
 def layer7_output_path(output_dir: str, service_name: str) -> str:
     safe_name = safe_service_name(service_name)
-    path = os.path.join(output_dir, "layer7-service-components", f"{safe_name}.mmd")
+    path = os.path.join(output_dir, "service-components", f"{safe_name}.mmd")
     canonical = os.path.realpath(path)
     if not canonical.startswith(os.path.realpath(output_dir)):
         raise SecurityError(f"Path traversal detected for service: {service_name!r}")
@@ -425,10 +425,10 @@ def prompt_density_choice(node_count: int, edge_count: int) -> str:
 
 **Files that require redaction:**
 
-- `docs/atlas/layer8-ast-lsp-bindings/symbol-references.mmd`
-- `docs/atlas/layer8-ast-lsp-bindings/dead-code.md`
-- `docs/atlas/layer8-ast-lsp-bindings/mismatched-interfaces.md`
-- `docs/atlas/layer8-ast-lsp-bindings/README.md`
+- `docs/atlas/ast-lsp-bindings/symbol-references.mmd`
+- `docs/atlas/ast-lsp-bindings/dead-code.md`
+- `docs/atlas/ast-lsp-bindings/mismatched-interfaces.md`
+- `docs/atlas/ast-lsp-bindings/README.md`
 
 **Caution:** The `CREDENTIAL_PATTERNS` for Layer 8 must use targeted `key=value` format patterns — not bare base64 scanning — to avoid false positives on legitimate symbol names that happen to be long alphanumeric strings.
 

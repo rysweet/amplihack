@@ -12,7 +12,7 @@
 #
 # Usage:
 #   bash scripts/safe_read.sh <file_path> [--boundary <dir>]
-#   content=$(bash scripts/safe_read.sh docs/atlas/layer1-runtime/topology.mmd)
+#   content=$(bash scripts/safe_read.sh docs/atlas/repo-surface/topology.mmd)
 #
 # Options:
 #   --boundary <dir>   Allowed root directory (default: docs/atlas)

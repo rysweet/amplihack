@@ -23,12 +23,12 @@
 
 | File                                      | Must contain                            |
 | ----------------------------------------- | --------------------------------------- |
-| `docs/atlas/layer1-runtime/topology.mmd`  | Node for `api` service, port `8080`     |
-| `docs/atlas/layer2-dependencies/deps.mmd` | Node for `github.com/gin-gonic/gin`     |
-| `docs/atlas/layer3-routing/inventory.md`  | Rows for `GET /users` and `POST /users` |
-| `docs/atlas/layer4-dataflow/dataflow.mmd` | `User` struct referenced                |
-| `docs/atlas/layer6-inventory/env-vars.md` | `DATABASE_URL` row, no value shown      |
-| `docs/atlas/layer6-inventory/services.md` | `api-service` row with port `8080`      |
+| `docs/atlas/repo-surface/topology.mmd`  | Node for `api` service, port `8080`     |
+| `docs/atlas/compile-deps/deps.mmd` | Node for `github.com/gin-gonic/gin`     |
+| `docs/atlas/api-contracts/inventory.md`  | Rows for `GET /users` and `POST /users` |
+| `docs/atlas/data-flow/dataflow.mmd` | `User` struct referenced                |
+| `docs/atlas/inventory/env-vars.md` | `DATABASE_URL` row, no value shown      |
+| `docs/atlas/inventory/services.md` | `api-service` row with port `8080`      |
 
 **Must NOT contain:**
 
@@ -128,7 +128,7 @@ Expected output: `Layer 3 STALE` (and not Layer 1 or Layer 2).
 
 ```bash
 # Run in CI after publish
-for layer in layer1-runtime layer2-dependencies layer3-routing layer4-dataflow layer5-journeys layer6-inventory; do
+for layer in repo-surface compile-deps api-contracts data-flow user-journeys inventory; do
     if [[ ! -d "docs/atlas/$layer" ]]; then
         echo "FAIL: Missing $layer" && exit 1
     fi

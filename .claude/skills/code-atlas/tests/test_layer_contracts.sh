@@ -204,7 +204,7 @@ echo "=== Layer 1 Contract Tests: Runtime Topology ==="
 # If docs/atlas/ doesn't exist, we check the fixture would produce expected output.
 ATLAS="${REPO_ROOT}/docs/atlas"
 
-L1="${ATLAS}/layer1-runtime"
+L1="${ATLAS}/repo-surface"
 
 # Contract 1.1: topology.dot must contain all services from docker-compose.yml
 # If the Go fixture is used (api, postgres, redis services):
@@ -232,7 +232,7 @@ assert_contains "L1: README has layer description" "[Rr]untime\|[Tt]opology\|[Ss
 echo ""
 echo "=== Layer 2 Contract Tests: Compile-time Dependencies ==="
 
-L2="${ATLAS}/layer2-dependencies"
+L2="${ATLAS}/compile-deps"
 
 # Contract 2.1: inventory.md has columns for Package, Version, License
 assert_contains "L2: inventory.md has Package column" "[Pp]ackage\|[Mm]odule\|[Nn]ame" "${L2}/inventory.md"
@@ -256,7 +256,7 @@ assert_contains "L2: mmd has module name" "myapp\|module" "${L2}/dependencies.mm
 echo ""
 echo "=== Layer 3 Contract Tests: API Contracts ==="
 
-L3="${ATLAS}/layer3-api-contracts"
+L3="${ATLAS}/api-contracts"
 
 # Contract 3.1: All 4 routes from user_handler.go appear in route-inventory.md
 assert_contains "L3: GET /api/users in inventory" "GET.*api/users\|/api/users.*GET" "${L3}/route-inventory.md"
@@ -281,7 +281,7 @@ assert_contains "L3: mmd shows route structure" "GET\|POST\|DELETE\|/api" "${L3}
 echo ""
 echo "=== Layer 4 Contract Tests: Data Flows ==="
 
-L4="${ATLAS}/layer4-dataflow"
+L4="${ATLAS}/data-flow"
 
 # Contract 4.1: User struct appears in dataflow diagram
 assert_contains "L4: User struct in dataflow" "User" "${L4}/dataflow.mmd"
@@ -302,7 +302,7 @@ assert_not_contains "L4: Password not in API output flow" "Password.*response\|r
 echo ""
 echo "=== Layer 5 Contract Tests: User Journey Scenarios ==="
 
-L5="${ATLAS}/layer5-user-journeys"
+L5="${ATLAS}/user-journeys"
 
 # Contract 5.1: At least one journey .mmd file exists
 journey_files=$(find "${L5}" -name "journey-*.mmd" 2>/dev/null | wc -l)
@@ -340,7 +340,7 @@ done
 echo ""
 echo "=== Layer 6 Contract Tests: Inventory Tables ==="
 
-L6="${ATLAS}/layer6-inventory"
+L6="${ATLAS}/inventory"
 
 # Contract 6.1: services.md has row for each docker-compose service
 assert_contains "L6: api service in services.md" "api" "${L6}/services.md"
@@ -430,31 +430,31 @@ fi
 echo ""
 echo "=== Layer 7 Filesystem Contract Tests ==="
 
-L7="${ATLAS}/layer7-service-components"
+L7="${ATLAS}/service-components"
 
 if [[ ! -d "$L7" ]]; then
-    echo "FAIL: layer7-service-components/ directory does not exist"
+    echo "FAIL: service-components/ directory does not exist"
     FAIL=$((FAIL + 3))
 else
-    echo "PASS: layer7-service-components/ directory exists"
+    echo "PASS: service-components/ directory exists"
     PASS=$((PASS + 1))
 
     # Contract L7.1: README.md must exist
     if [[ ! -f "${L7}/README.md" ]]; then
-        echo "FAIL: L7.1 layer7-service-components/README.md does not exist"
+        echo "FAIL: L7.1 service-components/README.md does not exist"
         FAIL=$((FAIL + 1))
     else
-        echo "PASS: L7.1 layer7-service-components/README.md exists"
+        echo "PASS: L7.1 service-components/README.md exists"
         PASS=$((PASS + 1))
     fi
 
     # Contract L7.2: At least one .mmd file must exist per service
     mmd_count=$(find "$L7" -name "*.mmd" 2>/dev/null | wc -l)
     if [[ "$mmd_count" -gt 0 ]]; then
-        echo "PASS: L7.2 at least one .mmd file exists in layer7-service-components/"
+        echo "PASS: L7.2 at least one .mmd file exists in service-components/"
         PASS=$((PASS + 1))
     else
-        echo "FAIL: L7.2 no .mmd files found in layer7-service-components/"
+        echo "FAIL: L7.2 no .mmd files found in service-components/"
         FAIL=$((FAIL + 1))
     fi
 
@@ -500,18 +500,18 @@ fi
 echo ""
 echo "=== Layer 8 Filesystem Contract Tests ==="
 
-L8="${ATLAS}/layer8-ast-lsp-bindings"
+L8="${ATLAS}/ast-lsp-bindings"
 
 if [[ ! -d "$L8" ]]; then
-    echo "FAIL: layer8-ast-lsp-bindings/ directory does not exist"
+    echo "FAIL: ast-lsp-bindings/ directory does not exist"
     FAIL=$((FAIL + 5))
 else
-    echo "PASS: layer8-ast-lsp-bindings/ directory exists"
+    echo "PASS: ast-lsp-bindings/ directory exists"
     PASS=$((PASS + 1))
 
     # Contract L8.1: README.md must exist and have mode label on line 1
     if [[ ! -f "${L8}/README.md" ]]; then
-        echo "FAIL: L8.1 layer8-ast-lsp-bindings/README.md does not exist"
+        echo "FAIL: L8.1 ast-lsp-bindings/README.md does not exist"
         FAIL=$((FAIL + 1))
     else
         first_line=$(head -1 "${L8}/README.md")
