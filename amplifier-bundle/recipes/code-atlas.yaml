@@ -10,9 +10,16 @@ tags: ["architecture", "documentation", "bug-hunting", "atlas", "code-atlas"]
 
 # CODE-ATLAS RECIPE
 #
-# 10 steps: prerequisites → all 8 layers → parallel dual-format bug hunt → merge →
-# multi-agent validation (3 specialists vote, >= 2/3 to pass) → file validated issues →
-# ingest to graph → publish → report.
+# 14 step IDs in 10 logical phases:
+#   Phase 1: Validate prerequisites (1 step)
+#   Phase 2: Build all 8 layers (1 step)
+#   Phase 3-4: Dual-format bug hunt (2 parallel steps)
+#   Phase 5: Merge findings (1 step)
+#   Phase 6: Multi-agent validation — 3 parallel specialists + tally (4 steps)
+#   Phase 7: File validated issues — ensure label + file (2 steps)
+#   Phase 8: Ingest to Kuzu graph (1 step)
+#   Phase 9: Publish atlas (1 step)
+#   Phase 10: Summarise and report (1 step)
 # The experiment (Appendix A) proved Mermaid and Graphviz find ~85% different bugs.
 # Running both in parallel finds ~1.7x the bugs of either alone.
 #
@@ -270,7 +277,7 @@ steps:
       Merge findings from both the Mermaid and Graphviz arms:
 
       1. Read all bug reports from both arms
-      2. Deduplicate by file:line — bugs found by BOTH arms get severity UPGRADED
+      2. Deduplicate by file:line — bugs found by BOTH arms flagged as "dual-format confirmed" (higher confidence, but severity determined by reviewers in Step 6)
       3. Bugs found by only one arm keep original severity
       4. Produce merged report with provenance (mermaid-only / graphviz-only / both)
       5. Count: total unique, mermaid-only, graphviz-only, shared
@@ -435,8 +442,8 @@ steps:
     type: "agent"
     agent: "amplihack:amplihack:core:builder"
     description: |
-      File a GitHub issue for EVERY finding — validated AND rejected.
-      All work tracking happens in issues, not in repo documents.
+      File individual issues for validated bugs. File ONE summary issue for all rejected findings.
+      All work tracking happens in issues — no findings are only in repo documents.
 
       For each VALIDATED bug (score >= 2.0) in {{output_dir}}/bug-reports/validated-bugs.md:
         1. Create issue via `gh issue create` with:
@@ -453,12 +460,12 @@ steps:
         3. File every validated bug — no additional filtering
         4. One issue per bug — no batching
 
-      For each REJECTED bug (score < 2.0) in {{output_dir}}/bug-reports/rejected-bugs.md:
-        1. Create issue via `gh issue create` with:
-           - Title: "[code-atlas][needs-review] {brief description}"
-           - Body: same evidence as above PLUS the vote breakdown and rejection reasons
-           - Labels: code-atlas-needs-review
-        2. These are tracked so humans can override the agents if they disagree
+      For ALL rejected bugs (score < 2.0), file ONE summary issue:
+        1. Title: "[code-atlas] Rejected findings summary — N items need human review"
+        2. Body: table of all rejected findings with vote breakdowns and reasons
+        3. Labels: code-atlas-needs-review
+        4. This gives humans a single place to review and override agent consensus
+           without creating N noise issues that dilute the validated findings
 
       After filing all issues, write the list of URLs to:
         {{output_dir}}/bug-reports/filed-issues.md
