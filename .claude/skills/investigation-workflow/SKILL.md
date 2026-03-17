@@ -45,13 +45,13 @@ flowchart TD
         ARCH --> P2_OUT
     end
 
-    subgraph P3["Phase 3: Parallel Deep Dives"]
-        DD1[deep-dive-primary<br/>architect agent]
-        DD2[deep-dive-secondary<br/>patterns agent]
-        DD3[deep-dive-tertiary<br/>architect agent]
-        DD4{Specialist needed?}
+    subgraph P3["Phase 3: Deep Dives"]
+        DD1[deep-dive-primary<br/>architect agent] --> CONSOL[consolidate-findings<br/>patterns agent]
+        DD2[deep-dive-secondary<br/>patterns agent] --> CONSOL
+        DD3[deep-dive-tertiary<br/>architect agent] --> CONSOL
+        DD3 --> DD4{Specialist needed?}
         DD4 -->|yes| DDS[deep-dive-specialist<br/>security agent]
-        DD1 & DD2 & DD3 --> CONSOL[consolidate-findings<br/>patterns agent]
+        DD4 -->|no| CONSOL
         DDS --> CONSOL
     end
 
