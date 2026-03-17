@@ -6,32 +6,30 @@ flowchart TD
     MSG[User Message] --> BYPASS{"Bypass?<br/>'just answer' / 'skip workflow'"}
     BYPASS -->|yes| SKIP[SKIP: respect bypass]
 
-    MSG --> S1["UNDERSTAND signal<br/>explain, how does, why,<br/>analyze, research, explore,<br/>investigate, audit, trace"]
-    MSG --> S2["IMPLEMENT signal<br/>build, fix, add, create,<br/>refactor, update, write,<br/>deploy, configure, remove"]
-    MSG --> S3["FILE_EDIT signal<br/>any .py .yaml .md .ts<br/>.json .toml etc will be<br/>created / modified / deleted"]
-    MSG --> S4["SHELL_ONLY signal<br/>run tests, git status,<br/>check logs, show disk"]
-    MSG --> S5["QUESTION signal<br/>what is, how do I,<br/>explain, compare"]
+    MSG --> EVAL{Detect all signals}
+    EVAL --> S1["UNDERSTAND<br/>explain, how does, why,<br/>analyze, research, explore"]
+    EVAL --> S2["IMPLEMENT<br/>build, fix, add, create,<br/>refactor, update, write"]
+    EVAL --> S3["FILE_EDIT<br/>any code/doc file will be<br/>created / modified / deleted"]
+    EVAL --> S4["SHELL_ONLY<br/>run tests, git status,<br/>check logs, show disk"]
+    EVAL --> S5["QUESTION<br/>what is, how do I,<br/>explain, compare"]
 
-    S1 & S2 --> BOTH{Both signals?}
-    BOTH -->|yes| HYBRID[HYBRID → dev-orchestrator]
-    BOTH -->|IMPLEMENT only| DEV
-    BOTH -->|UNDERSTAND only| INV_CHECK{Also FILE_EDIT?}
-    INV_CHECK -->|yes| DEV[DEV → dev-orchestrator]
-    INV_CHECK -->|no| INVESTIGATE[INVESTIGATE → dev-orchestrator]
-
-    S3 -->|"alone (no UNDERSTAND)"| DEV
-    S4 -->|"alone (no FILE_EDIT)"| OPS[OPS: execute directly]
-    S5 -->|"alone (no FILE_EDIT)"| QA[Q&A: answer directly]
+    EVAL --> RESOLVE{Resolve by priority}
+    RESOLVE -->|"UNDERSTAND + IMPLEMENT"| HYBRID[HYBRID → dev-orchestrator]
+    RESOLVE -->|"SHELL_ONLY + IMPLEMENT"| HYBRID
+    RESOLVE -->|"FILE_EDIT or IMPLEMENT alone"| DEV[DEV → dev-orchestrator]
+    RESOLVE -->|"UNDERSTAND alone"| INVESTIGATE[INVESTIGATE → dev-orchestrator]
+    RESOLVE -->|"SHELL_ONLY alone"| OPS[OPS: execute directly]
+    RESOLVE -->|"QUESTION alone"| QA[Q&A: answer directly]
 ```
 
-Resolution rules — evaluate ALL signals in parallel, then apply the FIRST matching rule:
+Resolution rules — detect all signals, then apply the FIRST matching rule:
 1. BYPASS → SKIP
 2. UNDERSTAND + IMPLEMENT both present → **HYBRID** (even if FILE_EDIT also present)
-3. FILE_EDIT present, no UNDERSTAND → **DEV**
-4. IMPLEMENT present, no UNDERSTAND → **DEV**
-5. UNDERSTAND present, no IMPLEMENT → **INVESTIGATE**
-6. SHELL_ONLY present, no FILE_EDIT → **OPS**
-7. QUESTION present, no FILE_EDIT → **Q&A**
+3. SHELL_ONLY + IMPLEMENT both present → **HYBRID** (run command then fix)
+4. FILE_EDIT or IMPLEMENT present (no UNDERSTAND) → **DEV**
+5. UNDERSTAND present (no IMPLEMENT) → **INVESTIGATE**
+6. SHELL_ONLY present (no FILE_EDIT) → **OPS**
+7. QUESTION present (no FILE_EDIT) → **Q&A**
 8. Ambiguous → **DEV** (safe default)
 
 Calibration examples (use these to resolve edge cases):
