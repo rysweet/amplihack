@@ -111,6 +111,16 @@ class TestEventGeneration:
         for technique in campaign.techniques[:4]:
             assert _technique_keyword(technique) in summary["content"]
 
+    def test_all_non_noise_campaign_events_include_campaign_id_in_content(self):
+        campaign = _generate_campaigns(random.Random(42), 1)[0]
+        events = _generate_campaign_events(random.Random(42), campaign)
+
+        campaign_events = [e for e in events if e["phase"] != "noise"]
+
+        assert campaign_events
+        for event in campaign_events:
+            assert f"CampaignId: {campaign.campaign_id}" in event["content"]
+
     def test_noise_events_have_no_facts(self):
         events = _generate_noise_events(random.Random(42), 50, 30)
         for e in events:

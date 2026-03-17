@@ -558,9 +558,10 @@ class CognitiveAdapter:
             if query and supports_query:
                 results = get_all_facts(limit=limit, query=query)
             elif query and hasattr(self.memory, "search_facts"):
-                results = self.memory.search_facts(query=query, limit=limit)
-                if not results:
-                    results = get_all_facts(limit=limit)
+                # Route plain cognitive backends through the adapter's search path so
+                # stop-word filtering, candidate expansion, and fallback re-ranking
+                # still apply even when get_all_facts() does not support query=.
+                return self.search(query=query, limit=limit)
             else:
                 results = get_all_facts(limit=limit)
             local_results = [self._semantic_fact_to_dict(r) for r in results]
