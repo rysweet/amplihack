@@ -3,18 +3,8 @@
 # Code Atlas CI — three patterns for keeping architecture diagrams fresh.
 #
 # Pattern 1 (atlas-staleness-gate): Post-merge staleness detection.
-#   Triggered on push to main when atlas-relevant files change.
-#   Detects stale layers and reports which layers need rebuilding.
-#
 # Pattern 2 (atlas-pr-impact): PR architecture impact check.
-#   Annotates PRs with which atlas layers the changes touch.
-#
 # Pattern 3 (atlas-scheduled-rebuild): Weekly full rebuild.
-#   Runs every Monday. Creates a GitHub Issue on failure.
-#
-# Script paths expected:
-#   scripts/check-atlas-staleness.sh  (exit 0=fresh, 1=stale, 2=usage-error)
-#   scripts/rebuild-atlas-all.sh      (exit 0=success, 1=error)
 
 name: Code Atlas CI
 
@@ -72,7 +62,7 @@ jobs:
           EXIT_CODE=$?
           cat stale-report.txt
           echo "exit_code=${EXIT_CODE}" >> "$GITHUB_OUTPUT"
-          echo "stale_count=$(grep -c 'STALE:' stale-report.txt || true)" >> "$GITHUB_OUTPUT"
+          echo "stale_count=$(grep -c 'STALE:' stale-report.txt || echo 0)" >> "$GITHUB_OUTPUT"
         continue-on-error: true
 
       - name: Upload staleness report
@@ -104,18 +94,25 @@ jobs:
 
       - name: Detect atlas impact
         id: impact
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          BASE="${{ github.event.pull_request.base.sha }}"
-          HEAD="${{ github.event.pull_request.head.sha }}"
-          echo "Checking atlas impact for PR: ${BASE}..${HEAD}"
+          echo "Checking atlas impact for PR: ${BASE_SHA}..${HEAD_SHA}"
           echo ""
 
-          bash scripts/check-atlas-staleness.sh "$BASE" "$HEAD" > impact-report.txt 2>&1 || true
+          bash scripts/check-atlas-staleness.sh "$BASE_SHA" "$HEAD_SHA" > impact-report.txt 2>&1
+          EXIT_CODE=$?
+
           cat impact-report.txt
 
-          if grep -q 'STALE:' impact-report.txt; then
+          if [[ "$EXIT_CODE" -eq 1 ]]; then
             echo "has_impact=true" >> "$GITHUB_OUTPUT"
             echo "::warning::This PR touches atlas-tracked files. Consider rebuilding affected layers before merging."
+          elif [[ "$EXIT_CODE" -eq 2 ]]; then
+            echo "has_impact=false" >> "$GITHUB_OUTPUT"
+            echo "::error::Staleness check failed with usage error. Check scripts/check-atlas-staleness.sh."
+            exit 1
           else
             echo "has_impact=false" >> "$GITHUB_OUTPUT"
             echo "::notice::No atlas layers affected by this PR."
@@ -125,14 +122,12 @@ jobs:
         if: steps.impact.outputs.has_impact == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          # Build a structured PR comment body using the impact report
-          PR="${{ github.event.pull_request.number }}"
-          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          STALE_LIST=$(grep 'STALE:' impact-report.txt | sed 's/^/- /' || true)
+          STALE_LIST=$(grep 'STALE:' impact-report.txt | sed 's/^/- /' || echo "- (none detected)")
 
-          cat > ${RUNNER_TEMP}/pr-comment.md <<EOF
-          ## Code Atlas Impact Detected
+          COMMENT_BODY="## Code Atlas Impact Detected
 
           This PR modifies files tracked by the code atlas. The following layers will be stale after merge:
 
@@ -143,11 +138,10 @@ jobs:
           /code-atlas rebuild all
           \`\`\`
 
-          See [full impact report](${RUN_URL}) for details.
-          EOF
+          See [full impact report](${RUN_URL}) for details."
 
-          bash scripts/github-api-adapter.sh post-pr-comment "$PR" ${RUNNER_TEMP}/pr-comment.md \
-            || echo "::warning::Could not post PR comment (non-fatal). Check GH_TOKEN permissions."
+          gh pr comment "$PR_NUMBER" --body "$COMMENT_BODY" \
+            || echo "::warning::Could not post PR comment. Check GH_TOKEN permissions."
 
       - name: Upload impact report
         uses: actions/upload-artifact@v4
@@ -172,41 +166,23 @@ jobs:
         run: |
           bash scripts/rebuild-atlas-all.sh --ci
 
-      - name: Validate atlas output (security check)
+      - name: Validate atlas output (security check — MUST pass)
         if: success()
         run: |
-          bash scripts/validate_atlas_output.sh --atlas-dir docs/atlas || true
+          bash scripts/validate_atlas_output.sh --atlas-dir docs/atlas --strict
 
       - name: Render SVG diagrams
         if: success()
         run: |
-          # Render .mmd and .dot files to .svg (gracefully skips if mmdc/dot absent)
-          bash scripts/render-atlas-svg.sh --atlas-dir docs/atlas || true
+          bash scripts/render-atlas-svg.sh --atlas-dir docs/atlas
 
       - name: Open issue on rebuild preparation failure
         if: failure()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
-          cat > ${RUNNER_TEMP}/issue-body.md <<EOF
-          ## Weekly Atlas Rebuild Failed
-
-          The scheduled atlas rebuild preparation failed on $(date +%Y-%m-%d).
-
-          **Workflow run:** ${RUN_URL}
-
-          **Next steps:**
-          1. Review the failed workflow run linked above
-          2. Run \`/code-atlas rebuild all\` locally to diagnose
-          3. Check \`scripts/rebuild-atlas-all.sh\` for recent changes
-          EOF
-
-          bash scripts/github-api-adapter.sh create-issue \
-            "Weekly code atlas rebuild failed ($(date +%Y-%m-%d))" \
-            ${RUNNER_TEMP}/issue-body.md \
-            || gh issue create \
-                 --title "Weekly code atlas rebuild failed ($(date +%Y-%m-%d))" \
-                 --body "The scheduled atlas rebuild preparation failed. See workflow run: ${RUN_URL}" \
-                 --label "documentation,automated" || true
+          gh issue create \
+            --title "Weekly code atlas rebuild failed ($(date +%Y-%m-%d))" \
+            --body "The scheduled atlas rebuild preparation failed on $(date +%Y-%m-%d). See workflow run: ${RUN_URL}" \
+            --label "documentation,automated"

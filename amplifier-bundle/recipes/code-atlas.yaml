@@ -421,12 +421,15 @@ steps:
     type: "bash"
     command: |
       cd "{{parameters.codebase_path}}" && \
-      gh label create "code-atlas-bughunt" \
-        --description "Bug found by /code-atlas graph-based bug hunt" \
-        --color "D93F0B" 2>/dev/null || true && \
-      gh label create "code-atlas-needs-review" \
-        --description "Finding from /code-atlas that did not pass multi-agent validation — needs human review" \
-        --color "FBCA04" 2>/dev/null || true && \
+      echo "Ensuring labels exist..." && \
+      (gh label list --json name -q '.[].name' | grep -q '^code-atlas-bughunt$' \
+        || gh label create "code-atlas-bughunt" \
+             --description "Bug found by /code-atlas graph-based bug hunt" \
+             --color "D93F0B") && \
+      (gh label list --json name -q '.[].name' | grep -q '^code-atlas-needs-review$' \
+        || gh label create "code-atlas-needs-review" \
+             --description "Finding from /code-atlas that did not pass multi-agent validation" \
+             --color "FBCA04") && \
       echo "Labels ensured: code-atlas-bughunt, code-atlas-needs-review"
     condition: "{{parameters.bug_hunt}}"
     depends_on:
