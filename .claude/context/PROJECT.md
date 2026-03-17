@@ -10,72 +10,54 @@ Replace the sections below with information about your project.
 
 ---
 
-## Project: amplihack-workrep
+## Project: amplihack
 
 ## Overview
 
-Development framework for Claude Code, GitHub Copilot CLI, and Microsoft Amplifier. Adds structured workflows, persistent memory, specialized agents,
+Development framework for Claude Code, GitHub Copilot CLI, and Microsoft Amplifier. Adds structured workflows, persistent memory, specialized agents, goal-seeking capabilities, autonomous execution, and continuous improvement for systematic software engineering.
 
 ## Architecture
 
 ### Key Components
 
-- **Component 1**: [Purpose and responsibilities]
-- **Component 2**: [Purpose and responsibilities]
-- **Component 3**: [Purpose and responsibilities]
+- **CLAUDE.md**: Main agent context and commands
+- **Workflows**: Structured task execution patterns
+- **Memory System**: Persistent conversation context
+- **Agents**: Specialized autonomous agents
 
 ### Technology Stack
 
 - **Language**: Python
-- **Language**: JavaScript/TypeScript
+- **Language**: JavaScript/TypeScript  
 - **Language**: Rust
-- **Framework**: [Main framework if applicable]
-- **Database**: [Database system if applicable]
+- **Framework**: Claude Code SDK, Node.js CLI
+- **Package Manager**: uv (Python), npm (Node.js)
 
 ## Development Guidelines
 
 ### Code Organization
 
-[How is your code organized? What are the main directories?]
+- `agent/`: Core agent logic
+- `workflows/`: Workflow definitions
+- `docs/`: Documentation
+- `tests/`: Test suites
 
 ### Key Patterns
 
-[What architectural patterns or conventions does your project follow?]
+- Recipe-based task execution
+- Persistent memory with structured context
+- Multi-agent coordination
+- Goal-seeking autonomous agents
 
 ### Testing Strategy
 
-[How do you test? Unit tests, integration tests, E2E?]
+- Unit tests for core modules
+- Integration tests for workflows
+- CLI behavior tests
 
 ## Domain Knowledge
 
-### Business Context
-
-[What problem does this project solve? Who are the users?]
-
-### Key Terminology
-
-[Important domain-specific terms that agents should understand]
-
-## Common Tasks
-
-### Development Workflow
-
-[How do developers typically work on this project?]
-
-### Deployment Process
-
-[How is the project deployed?]
-
-## Important Notes
-
-[Any special considerations, gotchas, or critical information]
-
----
-
-## About This File
-
-This file is installed by amplihack to provide project-specific context to AI agents.
-
-**For more about amplihack itself**, see PROJECT_AMPLIHACK.md in this directory.
-
-**Tip**: Keep this file updated as your project evolves. Accurate context leads to better AI assistance.
+- AI-assisted software development
+- Claude Code extension development
+- Autonomous agent systems
+- Workflow automation
