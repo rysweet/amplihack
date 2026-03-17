@@ -16,6 +16,7 @@ amplihack is a development framework for popular coding agent systems (Claude Co
 
 **Looking for something specific?**
 
+- [Code Atlas](atlas/index.md) - Architecture diagrams, dependency maps, and bug hunt results
 - [Commands & Operations](#%EF%B8%8F-commands--operations) - Execute complex tasks
 - [Workflows](#-workflows) - Structured development processes
 - [Agents & Tools](#-agents--tools) - Specialized AI capabilities
