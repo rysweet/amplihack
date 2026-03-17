@@ -12,15 +12,23 @@ Public API (the "studs"):
 import os
 
 # Import constants from package root
-from . import HOME, HOOK_CONFIGS
+from . import HOME, HOOK_CONFIGS, validate_hook_configs_against_json
 
 # Hooks are installed to ~/.amplihack/.claude/ (not ~/.claude/)
 AMPLIHACK_CLAUDE_DIR = os.path.join(HOME, ".amplihack", ".claude")
 
 
 def verify_hooks():
-    """Verify that all hook files exist."""
+    """Verify that all hook files exist and configs match hooks.json."""
     all_exist = True
+
+    # Validate HOOK_CONFIGS / RUST_HOOK_MAP against hooks.json (canonical source)
+    valid, config_errors = validate_hook_configs_against_json()
+    if not valid:
+        all_exist = False
+        print("  HOOK_CONFIGS / RUST_HOOK_MAP diverged from hooks.json:")
+        for err in config_errors:
+            print(f"    - {err}")
 
     for hook_system, hooks in HOOK_CONFIGS.items():
         hooks_dir = os.path.join(AMPLIHACK_CLAUDE_DIR, "tools", hook_system, "hooks")
