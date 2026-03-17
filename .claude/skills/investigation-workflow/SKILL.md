@@ -45,7 +45,7 @@ flowchart TD
         ARCH --> P2_OUT
     end
 
-    subgraph P3["Phase 3: Deep Dives"]
+    subgraph P3["Phase 3: Deep Dives (parallel agents)"]
         DD1[deep-dive-primary<br/>architect agent] --> DD4{Specialist needed?}
         DD2[deep-dive-secondary<br/>patterns agent] --> DD4
         DD3[deep-dive-tertiary<br/>architect agent] --> DD4
