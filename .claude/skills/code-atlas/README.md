@@ -30,7 +30,7 @@ A complete atlas is eight layers plus a bug report:
 | ---------------------------------------- | ------------------------------------------------------------------ |
 | Layer 1 — Runtime Topology               | Service graph: containers, ports, external dependencies            |
 | Layer 2 — Compile-time Dependencies      | Package graphs, version constraints, circular dependency detection |
-| Layer 3 — HTTP Routing                   | Route inventory, request/response contracts, middleware chain      |
+| Layer 3 — API Contracts                   | Route inventory, request/response contracts, middleware chain      |
 | Layer 4 — Data Flows                     | DTO/schema chain from HTTP boundary to storage                     |
 | Layer 5 — User Journey Scenarios         | Entry-point to outcome scenario graphs                             |
 | Layer 6 — Exhaustive Inventory           | All services, env vars, data stores, external deps in tables       |

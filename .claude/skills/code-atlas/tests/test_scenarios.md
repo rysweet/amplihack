@@ -89,7 +89,7 @@ Expected output: `Layer 3 STALE` (and not Layer 1 or Layer 2).
 
 ---
 
-## Scenario 4: Staleness Detection — All 6 Layer Triggers
+## Scenario 4: Staleness Detection — All 8 Layer Triggers
 
 **Purpose:** Verify that each file pattern in the staleness trigger table correctly identifies the right layer.
 

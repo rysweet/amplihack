@@ -134,7 +134,7 @@ Bug reports look like this:
 
 ## Evidence
 
-### Layer 3 truth: HTTP Routing
+### Layer 3 truth: API Contracts
 
 ```go
 // src/handlers/orders.go:47
@@ -195,7 +195,7 @@ The CI workflow runs `scripts/check-atlas-staleness.sh` on every push and report
 bash scripts/check-atlas-staleness.sh
 
 # Example output:
-# Layer 3 STALE: HTTP Routing — triggered by: src/api/routes/user-routes.ts
+# Layer 3 STALE: API Contracts — triggered by: src/api/routes/user-routes.ts
 #   Rebuild: /code-atlas rebuild layer3
 #
 # Summary: 1 layer(s) stale: [3]
