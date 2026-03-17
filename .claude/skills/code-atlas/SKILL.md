@@ -9,7 +9,7 @@ description: |
   Files issues with 'code-atlas-bughunt' label (creates the label if missing).
   Ingests atlas into Kuzu code graph for queryable traversal — enables Cypher queries like
   "show all paths from login to database write" or "which services are affected by this bug?"
-  Produces: runtime service topology, compile-time dependencies, HTTP routing/contracts, data flows,
+  Produces: runtime service topology, compile-time dependencies, API contracts, data flows,
   user journey scenario graphs, exhaustive inventory tables, per-service component architecture (Layer 7),
   and cross-file AST+LSP symbol bindings with dead code detection (Layer 8).
   Treats atlas-building as a multi-agent bug-hunting journey: graph-form reasoning exposes structural bugs,
@@ -316,7 +316,7 @@ flowchart TD
 
 ---
 
-### Layer 3: HTTP Routing and API Contracts
+### Layer 3: API Contracts
 
 **What it maps**: All HTTP routes, their handlers, request/response DTOs, authentication requirements, and middleware chains.
 
@@ -923,7 +923,7 @@ Bug reports from Pass 3 are filed as `docs/atlas/bug-reports/{YYYY-MM-DD}-pass3-
 | -------------------------------------------------------------------------------- | ------------------------------- | -------------------------------- |
 | `docker-compose*.yml`, `k8s/**/*.yaml`, `kubernetes/**/*.yaml`, `helm/**/*.yaml` | Layer 1 (Runtime Topology)      | `/code-atlas rebuild layer1`     |
 | `go.mod`, `package.json`, `*.csproj`, `Cargo.toml`                               | Layer 2 (Dependencies)          | `/code-atlas rebuild layer2`     |
-| Route files (`*routes*.ts`, `*controller*.go`, `*views*.py`, `*handler*.go`)     | Layer 3 (HTTP Routing)          | `/code-atlas rebuild layer3`     |
+| Route files (`*routes*.ts`, `*controller*.go`, `*views*.py`, `*handler*.go`)     | Layer 3 (API Contracts)          | `/code-atlas rebuild layer3`     |
 | DTO files (`*dto*.ts`, `*schema*.py`, `*_request.go`, `*model*.go`)              | Layer 4 (Data Flow)             | `/code-atlas rebuild layer4`     |
 | User-facing page/CLI files                                                       | Layer 5 (Journeys)              | `/code-atlas rebuild layer5`     |
 | `.env.example`, service `README.md`                                              | Layer 6 (Inventory)             | `/code-atlas rebuild layer6`     |
@@ -1021,7 +1021,7 @@ jobs:
         run: |
           git diff --name-only origin/main...HEAD | while read f; do
             case "$f" in
-              *route*|*controller*) echo "⚠️ Layer 3 (HTTP Routing) may need update" ;;
+              *route*|*controller*) echo "⚠️ Layer 3 (API Contracts) may need update" ;;
               *docker-compose*) echo "⚠️ Layer 1 (Runtime Topology) may need update" ;;
               *dto*|*schema*) echo "⚠️ Layer 4 (Data Flow) may need update" ;;
             esac
