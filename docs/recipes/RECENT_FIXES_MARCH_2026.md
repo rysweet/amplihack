@@ -2,7 +2,174 @@
 
 This document tracks recent bug fixes and improvements to the Recipe Runner and Skills systems following the Diátaxis framework.
 
-## Recipe Runner Fixes
+## Dev-Orchestrator Execution Modes (PRs #3214, #3216)
+
+### Direct subprocess is now the default (PR #3214)
+
+**What changed**: The dev-orchestrator previously required tmux for all recipe
+launches. This was a documentation-driven constraint — the underlying recipe
+runner was already entirely subprocess-based with no tmux dependency in its
+code. The SKILL.md has been restructured so:
+
+- **Default** — Direct Execution: plain `subprocess.Popen`, works everywhere,
+  no tmux required.
+- **Optional** — Durable Execution via tmux: for long-running recipes or
+  environments that kill background processes on disconnection (e.g. SSH
+  sessions without session managers).
+
+**Why it matters**: Users on environments without tmux (containers, CI, Windows
+native, restricted shells) can now use the dev-orchestrator without workarounds.
+
+**How to choose**:
+
+| Mode | When to use |
+|---|---|
+| Direct (default) | Interactive local development, short-to-medium recipes |
+| Durable (tmux) | Long recipes (>15 min), SSH sessions, environments that prune orphan processes |
+
+**Using the durable (tmux) mode**:
+
+To use tmux for durability, follow the Optional Durable Execution section in the
+dev-orchestrator SKILL.md or explicitly set the execution mode in your launch
+script.
+
+### Temp-script launch for tmux (PR #3216)
+
+**Problem**: tmux launches embedded Python payloads inline, causing nested
+quoting failures when task descriptions contained single quotes, double quotes,
+or triple-quoted strings.
+
+**Fix**: The Python payload is written to a temporary script file via heredoc
+first, then tmux launches the script with a simple command:
+
+```bash
+cat > "$SCRIPT_FILE" << RECIPE_SCRIPT
+# python code — no quoting issues
+RECIPE_SCRIPT
+tmux new-session -d -s recipe-runner "python3 $SCRIPT_FILE 2>&1 | tee $LOG_FILE"
+```
+
+This eliminates nested quoting failures regardless of task description content.
+
+**Impact**: If you previously encountered silent tmux launch failures where the
+session appeared to start but produced no output, this fix resolves that.
+
+---
+
+## Agent-Agnostic Binary Selection (PR #3174)
+
+**What changed**: amplihack now fully supports any agent binary, not just
+`claude`. When launched via `amplihack <agent>`, all subprocess orchestration
+(nested agents, fleet, multi-task, auto_mode) uses the same agent binary
+consistently.
+
+**Central mechanism**: `get_agent_binary()` in `src/amplihack/utils/__init__.py`
+reads the `AMPLIHACK_AGENT_BINARY` environment variable and emits a warning on
+fallback.
+
+**Configuration**:
+
+```bash
+# Set your agent binary
+export AMPLIHACK_AGENT_BINARY=claude   # default
+export AMPLIHACK_AGENT_BINARY=copilot  # use GitHub Copilot CLI
+```
+
+**Design decision**: The implementation uses a pragmatic fallback (warn + default
+to `claude`) rather than a hard failure when `AMPLIHACK_AGENT_BINARY` is unset.
+This ensures backward compatibility for direct Python imports and tests that do
+not set the variable.
+
+**Knowledge builder parameter renamed**: `claude_cmd` parameter has been renamed
+to `agent_cmd` in orchestrator.py, question_generator.py, and
+knowledge_acquirer.py. Update any direct Python API calls that used the old
+parameter name.
+
+---
+
+## Workflow Parser Reliability (PR #3211)
+
+**What changed**: The recipe runner's parser and dev-orchestrator launch
+guidance were improved for reliability:
+
+- **`AMPLIHACK_AGENT_BINARY` propagation**: The dev-orchestrator recipe-runner
+  launch guidance now preserves `AMPLIHACK_AGENT_BINARY` so nested agents stay
+  on the caller's active binary.
+- **Typed-field validation tightened**: `parse_json`, `auto_stage`, and
+  `timeout` fields are now validated strictly; malformed values produce clear
+  errors instead of silent misbehaviour.
+- **Bash step `agent` field warning**: Recipe steps of type `bash` that
+  mistakenly set the `agent` field now produce a warning. The `agent` field is
+  only meaningful on `agent` steps.
+
+---
+
+## Recipe Variable Quoting Auto-Normalisation (PR #3140)
+
+**What changed**: Recipe authors no longer need to memorise Rust runner quoting
+rules for `{{var}}` placeholders. The Python wrapper (`rust_runner.py`) now
+applies three automatic fixes before invoking the Rust binary:
+
+| Pattern | Problem | Auto-fix |
+|---|---|---|
+| `"{{var}}"` | Runner adds double quotes; explicit wrapping doubles them | Strip outer `"` |
+| `'{{var}}'` | Single quotes block `$RECIPE_VAR_*` expansion | Strip outer `'` |
+| `<<'DELIM'` | Quoted heredoc delimiter blocks variable expansion | Remove quotes from delimiter |
+
+**Impact**: Recipes that previously silently broke due to quoting (doubled
+quotes, unexpanded variables, literal heredoc output) now work correctly without
+changes to the recipe YAML.
+
+**No action required** for existing recipes — normalisation is transparent.
+
+---
+
+## GhAwCompiler Workflow Frontend (PR #3144)
+
+**What changed**: A new Python compiler frontend, `GhAwCompiler`, has been added
+for validating `.github/workflows/*.md` files used by the GitHub Actions Workflow
+system.
+
+**Import**:
+
+```python
+from amplihack.workflows import GhAwCompiler, Diagnostic, compile_workflow
+```
+
+**Key improvements over the previous parser**:
+
+| Issue | Fix |
+|---|---|
+| `on:` key → Python `True` false positives (YAML 1.1 Norway problem) | `yaml.compose()` preserves the raw `"on"` string key |
+| No line/column in error messages | `Diagnostic(line=N, col=N)` from compose node tree |
+| Typos silently stay as warnings | Levenshtein distance ≤ 2 → severity escalated to `"error"` |
+| Full field list in suggestions | `difflib.get_close_matches(n=3)` → top-3 ranked matches |
+| Missing-field errors give no guidance | `FIELD_VALID_VALUES` dict embeds format examples |
+
+**Example**:
+
+```python
+from amplihack.workflows import compile_workflow
+
+diags = compile_workflow(content, filename="issue-classifier.md")
+# [ERROR] issue-classifier.md:5:1: Unrecognised frontmatter field 'stirct' (possible typo). Did you mean: 'strict'?
+# [ERROR] issue-classifier.md:2:1: Missing required field 'on'. Valid format: a trigger map, e.g.: ...
+```
+
+---
+
+## Windows Native Compatibility (PR #3127)
+
+**What changed**: amplihack now has partial Windows native (PowerShell) support.
+All changes are additive platform guards that preserve existing macOS/Linux
+behaviour.
+
+See [Windows Support](#windows-support) below and [PREREQUISITES.md](../PREREQUISITES.md)
+for the feature compatibility matrix.
+
+---
+
+## Recipe Runner Fixes (Earlier March 2026)
 
 ### Recipe Discovery from Installed Packages (PR #2813)
 
@@ -265,6 +432,18 @@ amplihack recipe run investigation --context task_description="How does auth wor
 
 **Impact**: Amplihack can now be installed and run natively on Windows. Some advanced features (fleet, Docker workflows) still require WSL.
 
+#### Feature Compatibility Matrix
+
+| Feature | macOS | Linux | WSL | Windows Native |
+|---|---|---|---|---|
+| Core recipe runner | Full | Full | Full | Full |
+| Agent orchestration | Full | Full | Full | Full |
+| Auto mode | Full | Full | Full | Partial (no TUI) |
+| Fleet CLI | Full | Full | Full | Not supported |
+| File locking | Full | Full | Full | Full (`msvcrt` fallback) |
+| Keyboard input | Full | Full | Full | Full (`msvcrt` fallback) |
+| Temp directory | Full | Full | Full | Full (`tempfile.gettempdir()`) |
+
 **Documentation Updated**:
 
 - [Prerequisites](../PREREQUISITES.md#windows-native) — updated to reflect improved native support
@@ -272,6 +451,16 @@ amplihack recipe run investigation --context task_description="How does auth wor
 ---
 
 ## Version History
+
+All fixes released in **amplihack v0.9.1** (March 2026):
+
+- **Dev-orchestrator direct mode** (PR #3214) - Subprocess as default, tmux optional
+- **Tmux temp-script launch** (PR #3216) - Eliminates nested quoting failures
+- **Agent-agnostic binary** (PR #3174) - `AMPLIHACK_AGENT_BINARY` env var centralized
+- **Workflow parser reliability** (PR #3211) - Typed fields, `AMPLIHACK_AGENT_BINARY` propagation
+- **Recipe variable quoting** (PR #3140) - Auto-normalise `{{var}}` quoting
+- **GhAwCompiler frontend** (PR #3144) - YAML `on` fix, line:col, typo→error, fuzzy suggestions
+- **Windows native compatibility** (PR #3127) - Phases 1-3 platform guards
 
 All fixes released in **amplihack v0.9.0** (March 2026):
 
@@ -294,3 +483,5 @@ Fixes released in **amplihack v0.6.69** (March 16, 2026):
 - [Recipe Discovery Troubleshooting](./recipe-discovery-troubleshooting.md)
 - [Skill Catalog](../skills/SKILL_CATALOG.md)
 - [SDK Adapters Guide](../SDK_ADAPTERS_GUIDE.md)
+- [Dev-Orchestrator Tutorial](../tutorials/dev-orchestrator-tutorial.md)
+- [Prerequisites](../PREREQUISITES.md)
