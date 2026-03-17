@@ -33,28 +33,24 @@ flowchart TD
     B -->|Development| E{Recursion Guard}
     B -->|Investigation| E
 
-    E -->|BLOCKED| F[announce-depth-limited]
-    F --> G[execute-single-fallback]
-    G --> R1_BLOCKED[Round 1 result]
+    E -->|BLOCKED| G[execute-single-fallback-blocked]
+    G --> R1[Round 1 result]
 
     E -->|ALLOWED| H{Decompose Workstreams}
     H -->|"1 workstream<br/>(default-workflow or investigation-workflow)"| I[Execute recipe]
     H -->|N workstreams| J[multitask parallel]
-    I --> R1[Round 1 result]
+    I --> R1
     J --> R1
 
-    R1_BLOCKED --> REFLECT
     R1 --> REFLECT{Reflect on Round 1}
-    REFLECT -->|ACHIEVED| SUM[Summarize]
+    REFLECT -->|ACHIEVED| REFLECT_FINAL
     REFLECT -->|PARTIAL / NOT_ACHIEVED| K[Execute Round 2]
     K --> REFLECT2{Reflect on Round 2}
-    REFLECT2 -->|ACHIEVED| SUM
+    REFLECT2 -->|ACHIEVED| REFLECT_FINAL
     REFLECT2 -->|PARTIAL / NOT_ACHIEVED| L[Execute Round 3 - final]
     L --> REFLECT_FINAL[Final Reflect]
     REFLECT_FINAL --> VAL{Outside-In Testing Validation}
-    REFLECT --> VAL
-
-    VAL --> SUM
+    VAL --> SUM[Summarize]
     SUM --> DONE[Complete Session + Cleanup]
 
     %% Adaptive error recovery path

@@ -135,9 +135,12 @@ stateDiagram-v2
     CHECKING --> PASSED : all checks green
     FAILING --> FIXING : diagnose failures
     FIXING --> PUSHING : fixes applied
-    PUSHING --> CHECKING : re-run CI
+    FIXING --> ESCALATED : max iterations (5) reached
+    PUSHING --> POLLING : wait for CI
+    POLLING --> CHECKING : CI completed
     PASSED --> MERGEABLE
     MERGEABLE --> WAITING_FOR_USER
+    ESCALATED --> WAITING_FOR_USER
     WAITING_FOR_USER --> [*]
 ```
 
