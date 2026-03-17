@@ -60,6 +60,33 @@ Intelligent fix workflow that executes all 22 steps of DEFAULT_WORKFLOW with pat
   - `logic` - Algorithm bugs and business logic
   - `auto` - Automatic pattern detection (default)
 
+## Workflow Graph
+
+```mermaid
+flowchart TD
+    CMD["/fix [pattern]"] --> DETECT{Pattern Detection}
+    DETECT -->|explicit| PAT[Use specified pattern]
+    DETECT -->|auto| AUTO[Match error message]
+    AUTO --> PAT
+
+    PAT --> CTX[Build pattern-specific context]
+    CTX --> WF[DEFAULT_WORKFLOW Steps 0-21]
+
+    subgraph WF_DETAIL["Workflow with Pattern Context"]
+        S0[Step 0: Prep] --> S2[Step 2: Clarify - pattern informs scope]
+        S2 --> S5[Step 5: Design - pattern selects agents]
+        S5 -->|import| FIX_AGENT[fix-agent]
+        S5 -->|ci| CI_AGENT[ci-diagnostic-workflow]
+        S5 -->|pre-commit| PC_AGENT[pre-commit-diagnostic]
+        S5 -->|other| BUILD[builder agent]
+        FIX_AGENT & CI_AGENT & PC_AGENT & BUILD --> S8[Step 8: Implement fix]
+        S8 --> S13[Step 13: Test fix]
+        S13 --> S14[Step 14-21: PR & Review]
+    end
+
+    WF --> DONE[Complete, tested fix]
+```
+
 ## Core Philosophy
 
 ### Single Workflow Path
