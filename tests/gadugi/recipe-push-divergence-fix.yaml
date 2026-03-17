@@ -1,0 +1,214 @@
+# Outside-in test: recipe push steps handle diverged remote (#3194)
+# Verifies that subsequent push steps in default-workflow and consensus-workflow
+# include git pull --rebase before git push, preventing non-fast-forward
+# rejection when earlier steps have already pushed.
+
+scenario:
+  name: "Recipe Push Steps - Diverged Remote Handling"
+  description: |
+    When a recipe workflow runs multiple push steps sequentially (steps 16b, 17e,
+    18c, cleanup), earlier pushes advance the remote. Subsequent pushes must
+    pull --rebase first to avoid non-fast-forward rejection. This test verifies
+    the fix for issue #3194 where bare 'git push' in later steps would fail.
+  type: cli
+  level: 2
+
+  tags: [recipe, push, rebase, divergence, regression, issue-3194]
+
+  prerequisites:
+    - "recipe-runner-rs binary is available at ~/.cargo/bin/recipe-runner-rs"
+    - "amplifier-bundle/recipes/default-workflow.yaml exists"
+    - "amplifier-bundle/recipes/consensus-workflow.yaml exists"
+
+  environment:
+    variables:
+      PYTHONPATH: "src"
+
+  steps:
+    # Scenario 1: Validate default-workflow recipe is structurally valid
+    - action: launch
+      target: "~/.cargo/bin/recipe-runner-rs"
+      args:
+        - "amplifier-bundle/recipes/default-workflow.yaml"
+        - "--dry-run"
+        - "--output-format=json"
+        - "--set"
+        - "task_description=test push divergence fix"
+        - "--set"
+        - "repo_path=."
+      description: "Dry-run default-workflow to verify YAML validity after edits"
+      timeout: 30s
+
+    - action: verify_exit_code
+      value: 0
+      description: "default-workflow must parse and dry-run without errors"
+
+    # Scenario 2: Validate consensus-workflow recipe is structurally valid
+    - action: launch
+      target: "~/.cargo/bin/recipe-runner-rs"
+      args:
+        - "amplifier-bundle/recipes/consensus-workflow.yaml"
+        - "--dry-run"
+        - "--output-format=json"
+        - "--set"
+        - "task_description=test push divergence fix"
+        - "--set"
+        - "repo_path=."
+      description: "Dry-run consensus-workflow to verify YAML validity after edits"
+      timeout: 30s
+
+    - action: verify_exit_code
+      value: 0
+      description: "consensus-workflow must parse and dry-run without errors"
+
+    # Scenario 3: Verify fix patterns in default-workflow
+    # All subsequent push steps (after initial push -u) must have git pull --rebase
+    - action: launch
+      target: "bash"
+      args:
+        - "-c"
+        - |
+          echo "=== Verifying default-workflow push fix patterns ==="
+          FILE="amplifier-bundle/recipes/default-workflow.yaml"
+
+          # Initial push must be UNCHANGED (push -u origin)
+          INITIAL=$(grep -c 'git push -u origin' "$FILE")
+          echo "Initial push-with-tracking lines: $INITIAL"
+          [ "$INITIAL" -ge 1 ] || { echo "FAIL: initial push -u origin missing"; exit 1; }
+
+          # All subsequent push lines must have pull --rebase before them
+          # Count bare 'git push' that are NOT 'git push -u' and NOT preceded by 'pull --rebase'
+          BARE_PUSH=$(grep -E 'git push' "$FILE" | grep -v 'push -u' | grep -v 'pull --rebase' | wc -l)
+          echo "Bare push lines without rebase: $BARE_PUSH"
+          [ "$BARE_PUSH" -eq 0 ] || { echo "FAIL: found $BARE_PUSH bare push lines without rebase"; exit 1; }
+
+          # Count fixed push lines (have pull --rebase)
+          FIXED=$(grep -c 'pull --rebase' "$FILE")
+          echo "Push lines with pull --rebase: $FIXED"
+          [ "$FIXED" -ge 4 ] || { echo "FAIL: expected >= 4 fixed push lines, found $FIXED"; exit 1; }
+
+          echo "PASS: all default-workflow push steps have rebase guard"
+      description: "Verify all subsequent push steps in default-workflow have rebase"
+      timeout: 10s
+
+    - action: verify_output
+      contains: "PASS: all default-workflow push steps have rebase guard"
+      description: "default-workflow fix pattern verification must pass"
+
+    # Scenario 4: Verify fix patterns in consensus-workflow
+    - action: launch
+      target: "bash"
+      args:
+        - "-c"
+        - |
+          echo "=== Verifying consensus-workflow push fix patterns ==="
+          FILE="amplifier-bundle/recipes/consensus-workflow.yaml"
+
+          # Initial push must be UNCHANGED (push -u origin)
+          INITIAL=$(grep -c 'git push -u origin' "$FILE")
+          echo "Initial push-with-tracking lines: $INITIAL"
+          [ "$INITIAL" -ge 1 ] || { echo "FAIL: initial push -u origin missing"; exit 1; }
+
+          # All subsequent push lines must have pull --rebase
+          BARE_PUSH=$(grep -E 'git push' "$FILE" | grep -v 'push -u' | grep -v 'pull --rebase' | wc -l)
+          echo "Bare push lines without rebase: $BARE_PUSH"
+          [ "$BARE_PUSH" -eq 0 ] || { echo "FAIL: found $BARE_PUSH bare push lines without rebase"; exit 1; }
+
+          # Error suppression must be preserved
+          SUPPRESSED=$(grep 'pull --rebase' "$FILE" | grep -c '2>/dev/null')
+          echo "Rebase lines with stderr suppression: $SUPPRESSED"
+          [ "$SUPPRESSED" -ge 2 ] || { echo "FAIL: error suppression not preserved"; exit 1; }
+
+          # Fallback patterns must be preserved
+          FALLBACK=$(grep 'git push' "$FILE" | grep -v 'push -u' | grep -cE '\|\| (true|echo)')
+          echo "Push lines with fallback patterns: $FALLBACK"
+          [ "$FALLBACK" -ge 2 ] || { echo "FAIL: fallback patterns not preserved"; exit 1; }
+
+          echo "PASS: all consensus-workflow push steps have rebase guard with preserved error handling"
+      description: "Verify consensus-workflow fix patterns with error suppression preserved"
+      timeout: 10s
+
+    - action: verify_output
+      contains: "PASS: all consensus-workflow push steps have rebase guard with preserved error handling"
+      description: "consensus-workflow fix pattern verification must pass"
+
+    # Scenario 5: Simulate diverged-remote push with rebase
+    - action: launch
+      target: "bash"
+      args:
+        - "-c"
+        - |
+          echo "=== Simulating diverged-remote scenario ==="
+          TMPDIR=$(mktemp -d)
+          trap "rm -rf $TMPDIR" EXIT
+
+          # Create bare origin
+          git init --bare "$TMPDIR/origin.git" 2>/dev/null
+          git clone "$TMPDIR/origin.git" "$TMPDIR/repo1" 2>/dev/null
+          cd "$TMPDIR/repo1"
+          git checkout -b test-branch 2>/dev/null
+          echo "initial" > file.txt
+          git add . && git commit -m "initial" 2>/dev/null
+          git push -u origin test-branch 2>/dev/null
+
+          # Simulate step 17e pushing (advance remote)
+          echo "step17e" >> file.txt
+          git add . && git commit -m "step 17e push" 2>/dev/null
+          git push 2>/dev/null
+
+          # Clone a second copy to simulate step 18c (local behind remote)
+          git clone "$TMPDIR/origin.git" "$TMPDIR/repo2" 2>/dev/null
+          cd "$TMPDIR/repo2"
+          git checkout test-branch 2>/dev/null
+
+          # Make a local commit (step 18c work)
+          echo "step18c" >> other.txt
+          git add . && git commit -m "step 18c work" 2>/dev/null
+
+          # Meanwhile, push more from repo1 (simulate another workflow step)
+          cd "$TMPDIR/repo1"
+          echo "another-step" >> file.txt
+          git add . && git commit -m "another step pushed" 2>/dev/null
+          git push 2>/dev/null
+
+          # Back in repo2, bare push should fail
+          cd "$TMPDIR/repo2"
+          if git push 2>/dev/null; then
+            echo "UNEXPECTED: bare push succeeded (no divergence simulated)"
+            exit 1
+          else
+            echo "Confirmed: bare git push fails with diverged remote"
+          fi
+
+          # Fixed pattern: pull --rebase && push should succeed
+          if git pull --rebase 2>/dev/null && git push 2>/dev/null; then
+            echo "PASS: git pull --rebase && git push succeeds with diverged remote"
+          else
+            echo "FAIL: even with rebase, push failed"
+            exit 1
+          fi
+      description: "End-to-end: simulate diverged remote and verify rebase fix works"
+      timeout: 30s
+
+    - action: verify_output
+      contains: "PASS: git pull --rebase && git push succeeds with diverged remote"
+      description: "Diverged-remote simulation must pass with rebase fix"
+
+  cleanup:
+    - action: capture_output
+      save_as: "recipe-push-divergence-output.txt"
+      description: "Save full test output for debugging"
+
+# Expected Behavior:
+# - All subsequent push steps (after initial push -u) include git pull --rebase
+# - Error suppression patterns (2>/dev/null, || true, || echo) are preserved
+# - Initial push-with-tracking steps remain unchanged
+# - When remote has diverged, pull --rebase + push succeeds where bare push fails
+#
+# Root Cause (fixed in PR):
+# Multiple workflow steps push independently. When step 17e pushes, it advances
+# the remote. Step 18c then has local commits ahead but remote is also ahead.
+# Bare 'git push' fails with non-fast-forward rejection.
+#
+# Run Command:
+# gadugi-test run tests/gadugi/recipe-push-divergence-fix.yaml --verbose
