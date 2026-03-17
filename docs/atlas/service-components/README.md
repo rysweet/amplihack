@@ -78,7 +78,12 @@ Edges represent `from amplihack.<target> import ...` statements found outside of
 
 ## Diagrams
 
-- [components.mmd](components.mmd) - Mermaid graph TD
-- [components.dot](components.dot) - Graphviz DOT digraph
-- [components-mermaid.svg](components-mermaid.svg) - Rendered Mermaid SVG
-- [components-dot.svg](components-dot.svg) - Rendered Graphviz SVG
+### Mermaid Diagram
+
+![Service Components - Mermaid](components-mermaid.svg)
+
+### Graphviz Diagram
+
+![Service Components - Graphviz](components-dot.svg)
+
+**Source files:** [components.mmd](components.mmd) | [components.dot](components.dot)

@@ -10,16 +10,18 @@ tags: ["architecture", "documentation", "bug-hunting", "atlas", "code-atlas"]
 
 # CODE-ATLAS RECIPE
 #
-# 14 step IDs in 10 logical phases:
+# 16 step IDs in 12 logical phases:
 #   Phase 1: Validate prerequisites (1 step)
-#   Phase 2: Build all 8 layers (1 step)
-#   Phase 3-4: Dual-format bug hunt (2 parallel steps)
-#   Phase 5: Merge findings (1 step)
-#   Phase 6: Multi-agent validation — 3 parallel specialists + tally (4 steps)
-#   Phase 7: File validated issues — ensure label + file (2 steps)
-#   Phase 8: Ingest to Kuzu graph (1 step)
-#   Phase 9: Publish atlas (1 step)
-#   Phase 10: Summarise and report (1 step)
+#   Phase 2: Build layers 1-4 (1 step)
+#   Phase 3: Build layers 5-8 (1 step)
+#   Phase 4: Verify all 8 layers exist (1 step)
+#   Phase 5-6: Dual-format bug hunt (2 parallel steps)
+#   Phase 7: Merge findings (1 step)
+#   Phase 8: Multi-agent validation — 3 parallel specialists + tally (4 steps)
+#   Phase 9: File validated issues — ensure label + file (2 steps)
+#   Phase 10: Ingest to Kuzu graph + generate OpenCypher files (1 step — REQUIRED, not optional)
+#   Phase 11: Publish atlas with rendered SVGs (1 step)
+#   Phase 12: Final checklist review + summarise (1 step)
 # The experiment (Appendix A) proved Mermaid and Graphviz find ~85% different bugs.
 # Running both in parallel finds ~1.7x the bugs of either alone.
 #
@@ -104,22 +106,6 @@ parameters:
     default: true
     description: "Run all three bug-hunt passes after building layers."
 
-  density_threshold_nodes:
-    type: integer
-    required: false
-    default: 50
-    minimum: 1
-    maximum: 10000
-    description: "Node count threshold for density guard prompt (SEC-13)."
-
-  density_threshold_edges:
-    type: integer
-    required: false
-    default: 100
-    minimum: 1
-    maximum: 10000
-    description: "Edge count threshold for density guard prompt (SEC-13)."
-
   publish:
     type: boolean
     required: false
@@ -158,53 +144,115 @@ steps:
       - validation_passed  # boolean
 
   # ==========================================================================
-  # STEP 2: BUILD ALL 8 LAYERS
-  # All layers built together in both formats. No artificial grouping.
+  # STEP 2: BUILD LAYERS 1-4 (structural layers)
+  # Split into two steps to prevent context exhaustion on large codebases.
   # ==========================================================================
-  - id: "build-all-layers"
-    name: "Step 2: Build All 8 Layers"
+  - id: "build-layers-1-4"
+    name: "Step 2: Build Layers 1-4 (Structural)"
     type: "agent"
     agent: "amplihack:amplihack:core:builder"
     description: |
-      Build all 8 atlas layers in both Mermaid and Graphviz DOT formats.
+      Build the first 4 atlas layers. Read .claude/skills/code-atlas/LAYERS.yaml
+      for slug, scope_target, and diagram_type for each layer.
 
-      Layer definitions are in LAYERS.yaml (the single source of truth).
-      Read .claude/skills/code-atlas/LAYERS.yaml to get slugs, scope_target,
-      and diagram_type for each layer. Build in display_order sequence.
+      Build these layers (by slug, in display_order):
+        1. repo-surface — source files, project structure, build systems
+        2. ast-lsp-bindings — cross-file symbol references, dead code (mode: {{lsp_mode}})
+        3. compile-deps — package imports, dependency trees, circular deps
+        4. runtime-topology — services, containers, ports, connections
 
-      The 8 layers (by slug):
-        repo-surface, ast-lsp-bindings, compile-deps, runtime-topology,
-        api-contracts, data-flow, service-components, user-journeys
-
-      For EACH layer, produce BOTH:
-        - {name}.mmd (Mermaid, using diagram_type.mermaid from LAYERS.yaml)
-        - {name}.dot (Graphviz DOT, using diagram_type.dot from LAYERS.yaml)
+      For EACH layer produce:
+        - {name}.mmd (Mermaid source)
+        - {name}.dot (Graphviz DOT source)
+        - README.md with layer description
       Plus inventory tables where appropriate.
 
-      After building all layers, render SVGs:
+      Render SVGs after creating source files:
         - mmdc -i {name}.mmd -o {name}-mermaid.svg (if mmdc available)
         - dot -Tsvg {name}.dot -o {name}-dot.svg (if dot available)
-      Embed SVG images inline in each layer's README.md.
-
-      If a diagram would be dense, split into sub-diagrams by package or
-      service boundary. NEVER substitute a table for a diagram.
+      Embed SVG images inline in README.md using ![alt](file.svg) syntax.
 
       Write to: {{output_dir}}/{slug}/
 
-      CRITICAL: Verify ALL 8 layer directories exist with at least one .mmd
-      and one .dot file each before reporting completion. If any layer is
-      missing, build it before finishing. List each completed layer.
+      List each completed layer with file counts before finishing.
     inputs:
       codebase_path: "{{parameters.codebase_path}}"
       output_dir: "{{parameters.output_dir}}"
-      layers: "{{parameters.layers}}"
-      diagram_formats: "{{parameters.diagram_formats}}"
       lsp_mode: "{{steps.validate-prerequisites.outputs.lsp_mode}}"
-      density_threshold_nodes: "{{parameters.density_threshold_nodes}}"
-      density_threshold_edges: "{{parameters.density_threshold_edges}}"
     depends_on:
       - "validate-prerequisites"
     condition: "validate_prerequisites"
+
+  # ==========================================================================
+  # STEP 3: BUILD LAYERS 5-8 (behavioral layers)
+  # ==========================================================================
+  - id: "build-layers-5-8"
+    name: "Step 3: Build Layers 5-8 (Behavioral)"
+    type: "agent"
+    agent: "amplihack:amplihack:core:builder"
+    description: |
+      Build the remaining 4 atlas layers. Read .claude/skills/code-atlas/LAYERS.yaml
+      for slug, scope_target, and diagram_type for each layer.
+
+      Build these layers (by slug, in display_order):
+        5. api-contracts — HTTP routes, CLI commands, hooks, gRPC, GraphQL
+        6. data-flow — DTO-to-storage chains, transformation steps
+        7. service-components — internal module/package structure
+        8. user-journeys — end-to-end sequence diagrams (3-5 journeys)
+
+      For EACH layer produce:
+        - {name}.mmd (Mermaid source)
+        - {name}.dot (Graphviz DOT source)
+        - README.md with layer description
+      Plus inventory tables where appropriate.
+
+      Render SVGs after creating source files:
+        - mmdc -i {name}.mmd -o {name}-mermaid.svg (if mmdc available)
+        - dot -Tsvg {name}.dot -o {name}-dot.svg (if dot available)
+      Embed SVG images inline in README.md using ![alt](file.svg) syntax.
+
+      Write to: {{output_dir}}/{slug}/
+
+      List each completed layer with file counts before finishing.
+    inputs:
+      codebase_path: "{{parameters.codebase_path}}"
+      output_dir: "{{parameters.output_dir}}"
+    depends_on:
+      - "build-layers-1-4"
+
+  # ==========================================================================
+  # STEP 4: VERIFY ALL 8 LAYERS BUILT
+  # Explicit checklist — fail loudly if anything is missing.
+  # ==========================================================================
+  - id: "verify-all-layers"
+    name: "Step 4: Verify All 8 Layers Built"
+    type: "agent"
+    agent: "amplihack:amplihack:core:reviewer"
+    description: |
+      Verify that ALL 8 atlas layers were successfully built. This is a hard gate.
+
+      For each slug in LAYERS.yaml, check that {{output_dir}}/{slug}/ contains:
+        - At least one .mmd file
+        - At least one .dot file
+        - At least one .svg file (rendered diagram)
+        - A README.md that embeds SVG images using ![alt](file.svg) syntax
+
+      Expected slugs: repo-surface, ast-lsp-bindings, compile-deps,
+        runtime-topology, api-contracts, data-flow, service-components, user-journeys
+
+      Output a checklist:
+        [PASS] repo-surface: 1 .mmd, 1 .dot, 2 .svg, README.md with 2 images
+        [PASS] ast-lsp-bindings: 1 .mmd, 1 .dot, 2 .svg, README.md with 2 images
+        ... etc ...
+
+      If ANY layer is [FAIL], list what is missing and attempt to build it.
+      Do NOT proceed until all 8 layers are [PASS].
+
+      Also verify the atlas index.md exists and links to all 8 layers.
+    inputs:
+      output_dir: "{{parameters.output_dir}}"
+    depends_on:
+      - "build-layers-5-8"
 
   # ==========================================================================
   # STEP 3: BUG-HUNT — MERMAID ARM (parallel with Step 4)
@@ -241,7 +289,7 @@ steps:
       format: "mermaid"
     condition: "bug_hunt == True"
     depends_on:
-      - "build-all-layers"
+      - "verify-all-layers"
 
   # ==========================================================================
   # STEP 4: BUG-HUNT — GRAPHVIZ ARM (parallel with Step 3)
@@ -268,7 +316,7 @@ steps:
       format: "dot"
     condition: "bug_hunt == True"
     depends_on:
-      - "build-all-layers"
+      - "verify-all-layers"
 
   # ==========================================================================
   # STEP 5: MERGE AND DEDUPLICATE BUG FINDINGS
@@ -486,48 +534,57 @@ steps:
       - "ensure-label"
 
   # ==========================================================================
-  # STEP 8: INGEST ATLAS INTO CODE GRAPH (Kuzu)
-  # Map atlas layers, services, symbols, and bugs into the queryable graph.
-  # Enables Cypher queries like "show all paths from login to database write"
-  # or "which services are affected by this bug?"
+  # STEP 8: INGEST ATLAS INTO CODE GRAPH (Kuzu) + GENERATE OPENCYPHER FILES
+  # Kuzu is REQUIRED, not optional. If unavailable, fail loudly and fix it.
+  # Also generates standalone .cypher files for portability.
   # ==========================================================================
   - id: "ingest-to-graph"
-    name: "Step 8: Ingest Atlas into Code Graph"
+    name: "Step 8: Ingest Atlas into Code Graph + Generate OpenCypher"
     type: "agent"
     agent: "amplihack:amplihack:core:builder"
     description: |
-      Ingest the atlas into the Kuzu code graph for queryable traversal.
-      This connects atlas data to the existing code graph schema (CodeFile,
-      CodeClass, CodeFunction, CALLS, IMPORTS, etc.) and adds atlas-specific
-      nodes and relationships.
+      TWO outputs from this step:
+        A) Ingest atlas into Kuzu code graph (REQUIRED — NOT optional)
+        B) Generate standalone OpenCypher .cypher files (always)
 
-      New node tables (created if not exist):
-        - AtlasLayer (layer_id, layer_number, name, diagram_path_mmd, diagram_path_dot, node_count, edge_count, built_at)
-        - AtlasService (service_id, name, layer1_topology, layer7_component_count)
-        - AtlasBug (bug_id, title, severity, file_path, line_number, provenance, pass_number, issue_url)
+      --- Part A: Kuzu Ingestion (REQUIRED) ---
 
-      New relationship tables:
-        - ATLAS_MAPS (AtlasLayer → CodeFile) — which files each layer covers
-        - SERVICE_CONTAINS (AtlasService → CodeFile) — service-to-file ownership
-        - BUG_IN (AtlasBug → CodeFile) — bug location
-        - BUG_IN_FUNCTION (AtlasBug → CodeFunction) — bug in specific function
-        - LAYER_FOUND_BUG (AtlasLayer → AtlasBug) — which layer revealed each bug
+      Check Kuzu availability. If Kuzu is NOT available:
+        1. Print a LOUD ERROR: "ERROR: Kuzu graph database is not available."
+        2. Attempt to fix: check if kuzu Python package is installed (pip show kuzu).
+           If missing, install it: pip install kuzu
+        3. Check for the database directory (~/.amplihack/kuzu_db or env KUZU_DB_PATH)
+        4. If still unavailable after fix attempt, FAIL with clear error message
+           explaining what is wrong and how to fix it. Do NOT silently skip.
 
-      Ingestion steps:
-        1. Check Kuzu connectivity (skip gracefully if not available)
-        2. Create atlas schema tables (idempotent)
-        3. For each layer: create AtlasLayer node, create ATLAS_MAPS edges to CodeFiles
-        4. For each service (Layer 2): create AtlasService, link to CodeFiles via SERVICE_CONTAINS
-        5. For each bug: create AtlasBug, link to CodeFile/CodeFunction via BUG_IN/BUG_IN_FUNCTION
-        6. Link bugs to layers via LAYER_FOUND_BUG
-        7. Report: N nodes created, N relationships created
+      If Kuzu IS available, ingest:
+        1. Create atlas schema tables (idempotent):
+           - AtlasLayer (layer_id, slug, name, diagram_path_mmd, diagram_path_dot,
+             node_count, edge_count, built_at)
+           - AtlasService (service_id, name, component_count)
+           - AtlasBug (bug_id, title, severity, file_path, line_number, provenance,
+             pass_number, issue_url)
+        2. Create relationship tables:
+           - ATLAS_MAPS (AtlasLayer → CodeFile)
+           - SERVICE_CONTAINS (AtlasService → CodeFile)
+           - BUG_IN (AtlasBug → CodeFile)
+           - LAYER_FOUND_BUG (AtlasLayer → AtlasBug)
+        3. Populate from atlas data
+        4. Report: N nodes created, N relationships created
 
-      This enables queries like:
-        - MATCH (b:AtlasBug)-[:BUG_IN]->(f:CodeFile) RETURN b.title, f.file_path
-        - MATCH (s:AtlasService)-[:SERVICE_CONTAINS]->(f:CodeFile)<-[:DEFINED_IN]-(fn:CodeFunction)-[:CALLS]->(fn2:CodeFunction) RETURN s.name, fn.function_name, fn2.function_name
-        - MATCH (l:AtlasLayer)-[:LAYER_FOUND_BUG]->(b:AtlasBug) WHERE b.severity = 'HIGH' RETURN l.name, b.title
+      --- Part B: OpenCypher File Generation (ALWAYS) ---
 
-      If Kuzu is not available, emit ATLAS_GRAPH_UNAVAILABLE (non-fatal) and skip.
+      Generate {{output_dir}}/cypher/ directory with standalone .cypher files:
+        - schema.cypher — CREATE NODE TABLE and CREATE REL TABLE statements
+        - atlas-layers.cypher — CREATE statements for all 8 AtlasLayer nodes
+        - atlas-services.cypher — CREATE statements for AtlasService nodes
+        - atlas-bugs.cypher — CREATE statements for AtlasBug nodes (from filed issues)
+        - atlas-relationships.cypher — CREATE relationship statements
+        - queries.cypher — 5-10 useful example queries
+
+      These .cypher files are committed to the repo alongside the atlas so
+      anyone can load the atlas into any OpenCypher-compatible graph database.
+
     inputs:
       output_dir: "{{parameters.output_dir}}"
       codebase_path: "{{parameters.codebase_path}}"
@@ -572,31 +629,52 @@ steps:
       - "ingest-to-graph"
 
   # ==========================================================================
-  # STEP 10: SUMMARISE AND REPORT
+  # STEP 10: FINAL CHECKLIST REVIEW + SUMMARISE
+  # A reviewer agent independently verifies the entire atlas is complete.
   # ==========================================================================
-  - id: "summarise-and-report"
-    name: "Step 10: Summarise and Report"
-    type: "skill"
-    skill: "code-atlas"
-    task: "summarise"
+  - id: "final-checklist-review"
+    name: "Step 10: Final Checklist Review and Summary"
+    type: "agent"
+    agent: "amplihack:amplihack:core:reviewer"
     description: |
-      Final completion summary:
-      1. Layers built: count and list
-      2. Diagrams created: .mmd count, .dot count, .svg count
-      3. Layer 7: N services mapped, components per service
-      4. Layer 8: mode used, N dead symbols, N interface mismatches
-      5. Bug hunt:
-         - Mermaid arm: N findings
-         - Graphviz arm: N findings
-         - Merged unique: N (shared: N, mermaid-only: N, graphviz-only: N)
-         - Validation: N validated, N needs-review (estimated false positive rate: N%)
-         - Unanimous (3/3 confirmed): N — highest confidence
-         - Issues filed: N validated + N needs-review = N total (all tracked in issues)
-      6. Density guard activations: N
-      7. Code graph: N atlas nodes ingested, N relationships created (or ATLAS_GRAPH_UNAVAILABLE)
-      8. Example queries: 3 ready-to-run Cypher queries based on the bugs found
-      9. Errors: SkillError codes emitted
-      10. Next steps: rebuild commands, lsp-setup suggestion if static mode, graph queries to try
+      Final independent review of the completed atlas. Walk through this
+      checklist and report PASS/FAIL for each item:
+
+      LAYER COMPLETENESS:
+        [ ] All 8 layer directories exist under {{output_dir}}/
+        [ ] Each layer has README.md, at least one .mmd, one .dot, and rendered .svg files
+        [ ] Each README.md embeds SVG diagrams inline using ![alt](file.svg)
+        [ ] No orphaned nodes in any diagram (every node has at least one edge)
+        [ ] ast-lsp-bindings README states mode on line 1
+
+      DIAGRAM RENDERING:
+        [ ] .mmd files render successfully (mmdc exit code 0)
+        [ ] .dot files render successfully (dot exit code 0)
+        [ ] SVG files are non-empty and well-formed
+        [ ] README image references match actual SVG filenames
+
+      ATLAS INDEX:
+        [ ] docs/atlas/index.md exists and links to all 8 layers
+        [ ] mkdocs.yml has Code Atlas nav section with all layers
+        [ ] No bug report files exist in docs/atlas/ (bugs go to issues only)
+
+      OPENCYPHER:
+        [ ] docs/atlas/cypher/ directory exists with .cypher files
+        [ ] schema.cypher has valid CREATE statements
+        [ ] Kuzu ingestion completed (or clear error explaining why not)
+
+      BUG HUNT:
+        [ ] All validated bugs filed as GitHub issues with code-atlas-bughunt label
+        [ ] No bug reports stored in the atlas docs directory
+
+      Summary statistics:
+        - Layers: N/8 complete
+        - Diagrams: N .mmd, N .dot, N .svg
+        - Bugs filed: N issues
+        - Kuzu: N nodes, N relationships (or error status)
+        - OpenCypher files: N .cypher files
+
+      If ANY checklist item is FAIL, describe what is wrong and attempt to fix it.
     inputs:
       output_dir: "{{parameters.output_dir}}"
       all_step_outputs: "{{steps}}"

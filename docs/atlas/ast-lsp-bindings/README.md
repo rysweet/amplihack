@@ -131,7 +131,12 @@ The codebase has a **wide public surface area** (890 total dead code candidates)
 
 ## Diagrams
 
-- [symbol-references.mmd](symbol-references.mmd) - Mermaid flowchart LR showing cross-file symbol references
-- [symbol-references.dot](symbol-references.dot) - Graphviz DOT digraph
-- [symbol-references-mermaid.svg](symbol-references-mermaid.svg) - Rendered Mermaid SVG
-- [symbol-references-dot.svg](symbol-references-dot.svg) - Rendered Graphviz SVG
+### Mermaid Diagram
+
+![AST+LSP Symbol References - Mermaid](symbol-references-mermaid.svg)
+
+### Graphviz Diagram
+
+![AST+LSP Symbol References - Graphviz](symbol-references-dot.svg)
+
+**Source files:** [symbol-references.mmd](symbol-references.mmd) | [symbol-references.dot](symbol-references.dot)
