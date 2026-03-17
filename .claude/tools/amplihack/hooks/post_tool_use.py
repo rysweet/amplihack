@@ -70,6 +70,16 @@ class PostToolUseHook(HookProcessor):
             self.log(f"Workflow enforcement hook not available: {e}", "WARNING")
             print(f"WARNING: workflow_enforcement_hook not available: {e}", file=sys.stderr)
 
+        # Register investigation loop detector hook (detects read-without-edit loops)
+        try:
+            from investigation_loop_detector_hook import register_investigation_loop_detector_hook
+
+            register_investigation_loop_detector_hook()
+            self.log("Investigation loop detector hook registered", "DEBUG")
+        except ImportError as e:
+            self.log(f"Investigation loop detector hook not available: {e}", "WARNING")
+            print(f"WARNING: investigation_loop_detector_hook not available: {e}", file=sys.stderr)
+
     def save_tool_metric(self, tool_name: str, duration_ms: int | None = None):
         """Save tool usage metric with structured data.
 
