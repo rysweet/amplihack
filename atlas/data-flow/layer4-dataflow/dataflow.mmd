@@ -1,0 +1,72 @@
+flowchart LR
+    subgraph entry["Entry"]
+        user_cmd["User runs\namplihack launch"]
+        user_proxy["User runs\namplihack --with-proxy"]
+    end
+
+    subgraph install_flow["Install Flow"]
+        parse_args["Parse CLI args\n(argparse)"]
+        check_prereqs["Check prerequisites\n(node, claude CLI)"]
+        copy_files["Copy .claude/ files\n(copytree_manifest)"]
+        write_settings["Write settings.json\n(ensure_settings_json)"]
+        register_hooks["Register hooks\n(verify_hooks)"]
+        write_manifest["Write manifest.json\n(write_manifest)"]
+    end
+
+    subgraph launch_flow["Launch Flow"]
+        detect_mode["Detect mode\n(claude/copilot/codex)"]
+        ensure_deps["Ensure SDK deps\n(dep_check)"]
+        auto_update["Check auto-update\n(auto_update)"]
+        discover_cli["Discover CLI binary\n(get_claude_cli_path)"]
+        stage_plugins["Stage plugins\n(PluginManager)"]
+        spawn_proc["Spawn subprocess\n(ClaudeLauncher)"]
+    end
+
+    subgraph session_flow["Session Lifecycle"]
+        session_start_hook["SessionStart hook\n-> init memory, log"]
+        user_prompt_hook["UserPromptSubmit hook\n-> workflow classify"]
+        pre_tool_hook["PreToolUse hook\n-> XPIA scan"]
+        post_tool_hook["PostToolUse hook\n-> XPIA scan"]
+        pre_compact_hook["PreCompact hook\n-> save context"]
+        stop_hook["Stop hook\n-> reflection, cleanup"]
+    end
+
+    subgraph proxy_flow["Proxy Data Flow"]
+        recv_request["Receive /v1/messages\n(FastAPI)"]
+        middleware["HTTP middleware\n(logging, timing)"]
+        route_provider["Route to provider\n(LiteLLM Router)"]
+        stream_resp["Stream response\n(SSE chunks)"]
+        cache["Cache response\n(if cacheable)"]
+    end
+
+    subgraph memory_flow["Memory Flow"]
+        store_discovery["Store discovery\n(CognitiveMemory)"]
+        store_pattern["Store pattern"]
+        retrieve["Retrieve memories\n(retrieval_pipeline)"]
+        kuzu_persist["Persist to Kuzu\n(graph DB)"]
+    end
+
+    user_cmd --> parse_args
+    parse_args -->|install| copy_files
+    parse_args -->|launch| detect_mode
+
+    copy_files --> write_settings --> register_hooks --> write_manifest
+
+    detect_mode --> ensure_deps --> auto_update --> discover_cli --> stage_plugins --> spawn_proc
+
+    spawn_proc --> session_start_hook
+    session_start_hook --> user_prompt_hook
+    user_prompt_hook --> pre_tool_hook
+    pre_tool_hook --> post_tool_hook
+    post_tool_hook --> pre_compact_hook
+    pre_compact_hook --> stop_hook
+
+    user_proxy --> recv_request
+    recv_request --> middleware --> route_provider --> stream_resp
+    route_provider --> cache
+
+    stop_hook --> store_discovery
+    store_discovery --> kuzu_persist
+    store_pattern --> kuzu_persist
+    session_start_hook --> retrieve
+    retrieve --> kuzu_persist
