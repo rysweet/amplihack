@@ -86,15 +86,14 @@ code {
 }
 
 /* Code Atlas diagram rendering — prevent ultra-wide SVGs from squishing into
-   unreadable strips. Give diagrams a scrollable container with min-height. */
+   unreadable strips. Use a scrollable container at native resolution. */
 .md-content img[alt*="Mermaid"],
 .md-content img[alt*="Graphviz"] {
     display: block;
     max-width: none;
-    min-height: 300px;
+    width: auto;
+    min-height: 400px;
     height: auto;
-    object-fit: contain;
-    overflow-x: auto;
     border: 1px solid var(--md-default-fg-color--lightest);
     border-radius: 4px;
     padding: 1em;
@@ -108,11 +107,13 @@ code {
     background: #f8f9fa;
 }
 
-/* Wrap diagram images in a scrollable container */
+/* Scrollable container for wide diagrams */
 .md-content p:has(> img[alt*="Mermaid"]),
 .md-content p:has(> img[alt*="Graphviz"]) {
     overflow-x: auto;
+    overflow-y: hidden;
     max-width: 100%;
+    -webkit-overflow-scrolling: touch;
 }
 
 /* Ensure GitHub header link is visible at tablet breakpoint and above (Issue #2215)
