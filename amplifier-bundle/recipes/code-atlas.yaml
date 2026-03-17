@@ -10,7 +10,7 @@ tags: ["architecture", "documentation", "bug-hunting", "atlas", "code-atlas"]
 
 # CODE-ATLAS RECIPE
 #
-# 12 steps: prerequisites → all 8 layers → parallel dual-format bug hunt → merge → publish → report.
+# 9 steps: prerequisites → all 8 layers → parallel dual-format bug hunt → merge → file issues → ingest to graph → publish → report.
 # The experiment (Appendix A) proved Mermaid and Graphviz find ~85% different bugs.
 # Running both in parallel finds ~1.7x the bugs of either alone.
 #
@@ -338,10 +338,61 @@ steps:
       - "ensure-label"
 
   # ==========================================================================
-  # STEP 7: PUBLISH ATLAS
+  # STEP 7: INGEST ATLAS INTO CODE GRAPH (Kuzu)
+  # Map atlas layers, services, symbols, and bugs into the queryable graph.
+  # Enables Cypher queries like "show all paths from login to database write"
+  # or "which services are affected by this bug?"
+  # ==========================================================================
+  - id: "ingest-to-graph"
+    name: "Step 7: Ingest Atlas into Code Graph"
+    type: "agent"
+    agent: "amplihack:amplihack:core:builder"
+    description: |
+      Ingest the atlas into the Kuzu code graph for queryable traversal.
+      This connects atlas data to the existing code graph schema (CodeFile,
+      CodeClass, CodeFunction, CALLS, IMPORTS, etc.) and adds atlas-specific
+      nodes and relationships.
+
+      New node tables (created if not exist):
+        - AtlasLayer (layer_id, layer_number, name, diagram_path_mmd, diagram_path_dot, node_count, edge_count, built_at)
+        - AtlasService (service_id, name, layer1_topology, layer7_component_count)
+        - AtlasBug (bug_id, title, severity, file_path, line_number, provenance, pass_number, issue_url)
+
+      New relationship tables:
+        - ATLAS_MAPS (AtlasLayer → CodeFile) — which files each layer covers
+        - SERVICE_CONTAINS (AtlasService → CodeFile) — service-to-file ownership
+        - BUG_IN (AtlasBug → CodeFile) — bug location
+        - BUG_IN_FUNCTION (AtlasBug → CodeFunction) — bug in specific function
+        - LAYER_FOUND_BUG (AtlasLayer → AtlasBug) — which layer revealed each bug
+
+      Ingestion steps:
+        1. Check Kuzu connectivity (skip gracefully if not available)
+        2. Create atlas schema tables (idempotent)
+        3. For each layer: create AtlasLayer node, create ATLAS_MAPS edges to CodeFiles
+        4. For each service (Layer 2): create AtlasService, link to CodeFiles via SERVICE_CONTAINS
+        5. For each bug: create AtlasBug, link to CodeFile/CodeFunction via BUG_IN/BUG_IN_FUNCTION
+        6. Link bugs to layers via LAYER_FOUND_BUG
+        7. Report: N nodes created, N relationships created
+
+      This enables queries like:
+        - MATCH (b:AtlasBug)-[:BUG_IN]->(f:CodeFile) RETURN b.title, f.file_path
+        - MATCH (s:AtlasService)-[:SERVICE_CONTAINS]->(f:CodeFile)<-[:DEFINED_IN]-(fn:CodeFunction)-[:CALLS]->(fn2:CodeFunction) RETURN s.name, fn.function_name, fn2.function_name
+        - MATCH (l:AtlasLayer)-[:LAYER_FOUND_BUG]->(b:AtlasBug) WHERE b.severity = 'HIGH' RETURN l.name, b.title
+
+      If Kuzu is not available, emit ATLAS_GRAPH_UNAVAILABLE (non-fatal) and skip.
+    inputs:
+      output_dir: "{{parameters.output_dir}}"
+      codebase_path: "{{parameters.codebase_path}}"
+      merged_findings: "{{steps.merge-bug-findings.outputs}}"
+      filed_issues: "{{steps.file-issues.outputs}}"
+    depends_on:
+      - "file-issues"
+
+  # ==========================================================================
+  # STEP 8: PUBLISH ATLAS
   # ==========================================================================
   - id: "publish-atlas"
-    name: "Step 7: Publish Atlas"
+    name: "Step 8: Publish Atlas"
     type: "skill"
     skill: "code-atlas"
     task: "publish"
@@ -368,13 +419,13 @@ steps:
       publish: "{{parameters.publish}}"
       tools_available: "{{steps.validate-prerequisites.outputs.tools_available}}"
     depends_on:
-      - "file-issues"
+      - "ingest-to-graph"
 
   # ==========================================================================
-  # STEP 8: SUMMARISE AND REPORT
+  # STEP 9: SUMMARISE AND REPORT
   # ==========================================================================
   - id: "summarise-and-report"
-    name: "Step 8: Summarise and Report"
+    name: "Step 9: Summarise and Report"
     type: "skill"
     skill: "code-atlas"
     task: "summarise"
@@ -390,8 +441,10 @@ steps:
          - Merged unique: N (shared: N, mermaid-only: N, graphviz-only: N)
          - Issues filed: N with URLs
       6. Density guard activations: N
-      7. Errors: SkillError codes emitted
-      8. Next steps: rebuild commands, lsp-setup suggestion if static mode
+      7. Code graph: N atlas nodes ingested, N relationships created (or ATLAS_GRAPH_UNAVAILABLE)
+      8. Example queries: 3 ready-to-run Cypher queries based on the bugs found
+      9. Errors: SkillError codes emitted
+      10. Next steps: rebuild commands, lsp-setup suggestion if static mode, graph queries to try
     inputs:
       output_dir: "{{parameters.output_dir}}"
       all_step_outputs: "{{steps}}"
