@@ -53,6 +53,21 @@ Common variables:
 - `pr_number` - Pull request number
 - `focus_area` - Directory to analyze
 
+### Variable Substitution
+
+Use `{{var_name}}` in recipe YAML to reference context variables. The runner automatically normalises quoting — write `{{var}}` directly without wrapping in quotes:
+
+```yaml
+# Correct — runner handles quoting automatically
+command: echo {{task_description}}
+command: git checkout -b {{branch_name}}
+
+# Also accepted — runner strips the extra quotes
+command: echo "{{task_description}}"   # normalised to: echo {{task_description}}
+```
+
+Quoting auto-normalisation was added in PR #3140.
+
 ## Run Options
 
 ```bash
@@ -84,7 +99,22 @@ export AMPLIHACK_RECIPE_PATH="/custom/recipes:/team/recipes"
 export AMPLIHACK_ADAPTER=copilot
 export AMPLIHACK_VERBOSE=1
 export AMPLIHACK_DRY_RUN=1
+export AMPLIHACK_AGENT_BINARY=copilot   # Agent CLI for subprocess orchestration (default: claude)
 ```
+
+### `AMPLIHACK_AGENT_BINARY`
+
+Sets the agent binary used for all subprocess orchestration. Defaults to `claude` with a warning if unset.
+
+```bash
+# Use GitHub Copilot as the orchestration agent
+export AMPLIHACK_AGENT_BINARY=copilot
+
+# Use a fully-qualified path
+export AMPLIHACK_AGENT_BINARY=/usr/local/bin/my-agent
+```
+
+This makes amplihack agent-agnostic: `amplihack <command>` will use the configured binary for all agent subprocess calls (skills, recipes, orchestrator). Added in PR #3174.
 
 ## Quick Examples
 
