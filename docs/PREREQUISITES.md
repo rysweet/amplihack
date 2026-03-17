@@ -149,6 +149,10 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # git
 sudo apt install git
+
+# Rust/cargo (for recipe runner)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source $HOME/.cargo/env
 ```
 
 #### After Installation
@@ -161,6 +165,7 @@ node --version
 npm --version
 uv --version
 git --version
+cargo --version
 ```
 
 ---
@@ -361,13 +366,13 @@ This requires explicit opt-in for security.
 
 **Purpose:** Enhanced debugging and traffic logging for Claude Code
 
-**Installation (Required):**
+**Installation (Recommended):**
 
 ```bash
 npm install -g @mariozechner/claude-trace
 ```
 
-**Note:** This is a **required dependency** as of the simplified implementation. Install it during initial setup.
+**Note:** This is a **recommended dependency** for debugging. It will be installed automatically on first use if not present.
 
 **Documentation:** Part of claude-code ecosystem (https://github.com/mariozechner/claude-trace)
 
@@ -559,7 +564,7 @@ echo "For installation instructions, see docs/PREREQUISITES.md"
 After installing all prerequisites:
 
 1. **Verify installation:** Run `amplihack` to check all tools are detected
-2. **Install claude-trace (optional):** Automatically installed on first use
+2. **Install claude-trace (recommended):** Automatically installed on first use
 3. **Configure git:** Set up your name and email
 4. **Start using AmplihHack:** See README.md for usage instructions
 
