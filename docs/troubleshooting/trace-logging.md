@@ -736,4 +736,3 @@ cat trace_diagnostics.txt
 - [Feature Overview: Trace Logging](../features/trace-logging.md) - Understanding trace logging
 - [How-To: Trace Logging](../howto/trace-logging.md) - Practical recipes
 - [Developer Reference: Trace Logging API](../reference/trace-logging-api.md) - Technical details
-- [Migration Guide: claude-trace to Native](../migration/claude-trace-to-native.md) - Upgrade from claude-trace

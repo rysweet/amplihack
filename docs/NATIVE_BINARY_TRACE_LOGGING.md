@@ -4,28 +4,28 @@
 
 ## Overview
 
-amplihack now uses Anthropic's native Claude binary with optional trace logging instead of the deprecated `claude-trace` NPM package. This provides better performance, zero external dependencies, and enhanced security.
+amplihack uses Anthropic's native Claude binary with optional JSONL trace logging. This provides excellent performance, zero external dependencies, and enhanced security.
 
 ## What Changed
 
 ### Key Improvements
 
-- **No NPM dependency**: Uses native Claude binary instead of `claude-trace` package
+- **No NPM dependency**: Uses native Claude binary directly
 - **Optional by default**: Trace logging disabled by default, zero overhead when off
-- **Better performance**: <0.1ms overhead when disabled, <10ms when enabled
+- **High performance**: <0.1ms overhead when disabled, <10ms when enabled
 - **Automatic security**: TokenSanitizer removes API keys and secrets automatically
 - **Session-scoped logs**: JSONL files organized by session in `.claude/runtime/amplihack-traces/`
 - **LiteLLM integration**: Automatic request/response capture via callbacks
 
-### Performance Comparison
+### Performance
 
-| Metric              | claude-trace NPM | Native Binary |
-| ------------------- | ---------------- | ------------- |
-| Overhead (disabled) | ~1-2ms           | <0.1ms        |
-| Overhead (enabled)  | ~15-20ms         | <10ms         |
-| NPM dependency      | Required (250KB) | None          |
-| Default state       | Enabled          | Disabled      |
-| Security            | Manual           | Automatic     |
+| Metric              | Native Binary |
+| ------------------- | ------------- |
+| Overhead (disabled) | <0.1ms        |
+| Overhead (enabled)  | <10ms         |
+| NPM dependency      | None          |
+| Default state       | Disabled      |
+| Security            | Automatic     |
 
 ## Quick Start
 
@@ -79,18 +79,6 @@ Start here to learn how to use trace logging:
    - Monitor token usage
    - Archive traces for compliance
    - Export to CSV
-
-### For Migrators
-
-If you're upgrading from `claude-trace`:
-
-3. **[Migration Guide](migration/claude-trace-to-native.md)**
-   - Complete migration checklist
-   - Breaking changes and impacts
-   - Step-by-step upgrade process
-   - Convert existing trace data
-   - Update analysis scripts
-   - Rollback plan
 
 ### For Developers
 
@@ -288,17 +276,6 @@ def log_request(self, request):
     # ... logging logic only runs if enabled
 ```
 
-## Migration from claude-trace
-
-If you previously used `claude-trace`:
-
-1. Remove NPM dependency: `npm uninstall claude-trace`
-2. Remove manual instrumentation code
-3. Enable native trace logging: `export AMPLIHACK_TRACE_LOGGING=true`
-4. Update scripts for JSONL format
-
-See [complete migration guide](migration/claude-trace-to-native.md) for details.
-
 ## Troubleshooting
 
 ### No trace files created
@@ -370,17 +347,12 @@ cat trace_*.jsonl | jq 'select(.response.usage != null) | .response.usage'
 
 See [How-To Guide](howto/trace-logging.md) for recipes.
 
-### Q: Can I migrate from claude-trace?
-
-**A**: Yes. See [Migration Guide](migration/claude-trace-to-native.md) for step-by-step instructions.
-
 ## Next Steps
 
 Choose your path:
 
 - **New to trace logging?** Start with [Feature Overview](features/trace-logging.md)
 - **Want to use it?** See [How-To Guide](howto/trace-logging.md)
-- **Migrating from claude-trace?** Read [Migration Guide](migration/claude-trace-to-native.md)
 - **Need technical details?** Check [Developer Reference](reference/trace-logging-api.md)
 - **Having issues?** Consult [Troubleshooting Guide](troubleshooting/trace-logging.md)
 

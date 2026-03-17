@@ -799,4 +799,3 @@ class TokenSanitizer:
 - [Feature Overview: Trace Logging](../features/trace-logging.md) - High-level feature description
 - [How-To: Trace Logging](../howto/trace-logging.md) - Practical recipes
 - [Troubleshooting: Trace Logging](../troubleshooting/trace-logging.md) - Fix common issues
-- [Migration Guide: claude-trace to Native](../migration/claude-trace-to-native.md) - Upgrade path
