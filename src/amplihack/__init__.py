@@ -25,7 +25,8 @@ except ImportError:
     # Python < 3.8 (shouldn't happen, but graceful fallback)
     print("WARNING: importlib.metadata not available", file=sys.stderr)
     version = None  # type: ignore
-    PackageNotFoundError = Exception  # type: ignore
+    class PackageNotFoundError(Exception):  # type: ignore
+        """Narrow fallback: only catches missing-package errors."""
 
 if version:
     try:
