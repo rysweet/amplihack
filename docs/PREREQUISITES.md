@@ -6,13 +6,13 @@ This document provides detailed installation instructions for all required tools
 
 The amplihack framework requires the following tools. Each entry explains **what** the tool does and **why** amplihack needs it:
 
-| Tool        | Min Version    | What It Does                  | Why amplihack Needs It                                |
-| ----------- | -------------- | ----------------------------- | ----------------------------------------------------- |
-| **Node.js** | v18+           | JavaScript runtime            | Runs Claude CLI and claude-trace (debugging/tracing)  |
-| **npm**     | (with Node.js) | Node.js package manager       | Installs Claude CLI and claude-trace packages         |
-| **uv**      | latest         | Fast Python package installer | Installs amplihack itself and its Python dependencies |
-| **git**     | 2.0+           | Version control               | Branch management, PRs, and workflow automation       |
-| **claude**  | latest         | Claude Code CLI               | Core AI coding assistant that amplihack extends       |
+| Tool        | Min Version    | What It Does                  | Why amplihack Needs It                                                                                 |
+| ----------- | -------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------ |
+| **Node.js** | v18+           | JavaScript runtime            | Runs Claude CLI                                                                                        |
+| **npm**     | (with Node.js) | Node.js package manager       | Installs Claude CLI                                                                                    |
+| **uv**      | latest         | Fast Python package installer | Installs amplihack itself and its Python dependencies                                                  |
+| **git**     | 2.0+           | Version control               | Branch management, PRs, and workflow automation                                                        |
+| **claude**  | latest         | Claude Code CLI               | Core AI coding assistant that amplihack extends                                                        |
 | **cargo**   | 1.70+          | Rust package manager          | Installs the Rust recipe runner for fast recipe execution. Install via [rustup.rs](https://rustup.rs/) |
 
 ## Quick Check
@@ -149,6 +149,10 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # git
 sudo apt install git
+
+# Rust/cargo (for recipe runner)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source $HOME/.cargo/env
 ```
 
 #### After Installation
@@ -161,11 +165,14 @@ node --version
 npm --version
 uv --version
 git --version
+cargo --version
 ```
 
 ---
 
 ### Windows (Native)
+
+> **Improved native support in v0.6.69**: PR #3127 (Phases 1–3) added comprehensive Windows native compatibility. All core amplihack commands now work in native PowerShell without WSL. Some advanced features (fleet orchestration, Docker workflows) still require WSL.
 
 **Package Managers:** winget (recommended) or Chocolatey
 
@@ -249,7 +256,7 @@ chcp 65001
 
 ### Node.js
 
-**Purpose:** Runtime for claude-trace (enhanced debugging and tracing)
+**Purpose:** Runtime for Claude CLI
 
 **Official Documentation:** https://nodejs.org/
 
@@ -263,7 +270,7 @@ chcp 65001
 
 ### npm
 
-**Purpose:** Package manager for installing claude-trace
+**Purpose:** Package manager for installing Claude CLI
 
 **Official Documentation:** https://www.npmjs.com/
 
@@ -327,11 +334,11 @@ git config --list
 
 **Installation — pick the method for your platform:**
 
-| Platform | Command |
-|----------|---------|
-| macOS (Homebrew) | `brew install --cask claude-code` |
+| Platform            | Command                                           |
+| ------------------- | ------------------------------------------------- |
+| macOS (Homebrew)    | `brew install --cask claude-code`                 |
 | macOS / Linux / WSL | `curl -fsSL https://claude.ai/install.sh \| bash` |
-| Windows (WinGet) | `winget install Anthropic.ClaudeCode` |
+| Windows (WinGet)    | `winget install Anthropic.ClaudeCode`             |
 
 > **Note:** The older `npm install -g @anthropic-ai/claude-code` method is
 > **deprecated** and no longer recommended. Use the platform-specific
@@ -352,34 +359,6 @@ export AMPLIHACK_AUTO_INSTALL=1
 
 When set, the framework will automatically install Claude CLI if missing.
 This requires explicit opt-in for security.
-
----
-
-### claude-trace
-
-**Purpose:** Enhanced debugging and traffic logging for Claude Code
-
-**Installation (Required):**
-
-```bash
-npm install -g @mariozechner/claude-trace
-```
-
-**Note:** This is a **required dependency** as of the simplified implementation. Install it during initial setup.
-
-**Documentation:** Part of claude-code ecosystem (https://github.com/mariozechner/claude-trace)
-
-**Usage:**
-
-- Enabled by default (`AMPLIHACK_USE_TRACE=1`)
-- To temporarily disable and use plain `claude`: `export AMPLIHACK_USE_TRACE=0`
-
-**Verification:**
-
-```bash
-claude-trace --version
-# Should show version information
-```
 
 ---
 
@@ -557,9 +536,8 @@ echo "For installation instructions, see docs/PREREQUISITES.md"
 After installing all prerequisites:
 
 1. **Verify installation:** Run `amplihack` to check all tools are detected
-2. **Install claude-trace (optional):** Automatically installed on first use
-3. **Configure git:** Set up your name and email
-4. **Start using AmplihHack:** See README.md for usage instructions
+2. **Configure git:** Set up your name and email
+3. **Start using AmplihHack:** See README.md for usage instructions
 
 ---
 

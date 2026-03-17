@@ -159,6 +159,20 @@ nav:
           - User Guide: remote-sessions/README.md
           - CLI Reference: remote-sessions/CLI_REFERENCE.md
           - Tutorial: remote-sessions/TUTORIAL.md
+  - Code Atlas:
+      - Overview: atlas/index.md
+      - Runtime Topology: atlas/runtime-topology/layer1-runtime/README.md
+      - Compile-Time Dependencies: atlas/compile-deps/layer2-dependencies/README.md
+      - API Contracts: atlas/api-contracts/layer3-routing/README.md
+      - Data Flow: atlas/data-flow/layer4-dataflow/README.md
+      - User Journeys: atlas/user-journeys/layer5-journeys/README.md
+      - Service Components: atlas/service-components/README.md
+      - AST+LSP Bindings: atlas/ast-lsp-bindings/README.md
+      - Inventory:
+          - Services: atlas/inventory/services.md
+          - Environment Variables: atlas/inventory/env-vars.md
+          - Data Stores: atlas/inventory/data-stores.md
+          - External Dependencies: atlas/inventory/external-deps.md
   - Reference:
       - Discoveries: claude/context/DISCOVERIES.md
       - Security: SECURITY_RECOMMENDATIONS.md

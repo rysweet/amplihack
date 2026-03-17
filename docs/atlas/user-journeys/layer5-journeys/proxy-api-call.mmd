@@ -1,0 +1,25 @@
+sequenceDiagram
+    actor Client
+    participant Proxy as integrated_proxy.py
+    participant MW as HTTP Middleware
+    participant LiteLLM as LiteLLM Router
+    participant Anthropic as Anthropic API
+    participant Azure as Azure OpenAI
+    participant Cache as Response Cache
+
+    Client->>Proxy: POST /v1/messages
+    Proxy->>MW: log request, start timer
+    MW->>LiteLLM: route to provider
+
+    alt Primary provider (Anthropic)
+        LiteLLM->>Anthropic: forward request
+        Anthropic-->>LiteLLM: streaming response
+    else Fallback (Azure OpenAI)
+        LiteLLM->>Azure: forward request
+        Azure-->>LiteLLM: streaming response
+    end
+
+    LiteLLM-->>Proxy: SSE chunks
+    Proxy->>Cache: cache if eligible
+    Proxy-->>Client: stream SSE response
+    MW->>MW: log response time, metrics

@@ -57,8 +57,8 @@ Add to your shell profile (`~/.bashrc`, `~/.zshrc`, or `~/.profile`):
 # API key (skip if using Claude Max subscription)
 export ANTHROPIC_API_KEY=sk-ant-your-key-here
 
-# Optional: enable claude-trace for debugging
-export AMPLIHACK_USE_TRACE=1
+# Optional: enable native trace logging for debugging
+export AMPLIHACK_TRACE_LOGGING=true
 ```
 
 Then install amplihack:
