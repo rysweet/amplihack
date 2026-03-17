@@ -919,7 +919,7 @@ class ClaudeLauncher:
                 if plugin_root.exists():
                     env["CLAUDE_PLUGIN_ROOT"] = str(plugin_root)
 
-            # Ensure user-local npm bin is in PATH (for claude/claude-trace installed via npm)
+            # Ensure user-local npm bin is in PATH (for claude installed via npm)
             user_npm_bin = str(Path.home() / ".npm-global" / "bin")
             current_path = env.get("PATH", "")
             if user_npm_bin not in current_path:
@@ -1041,7 +1041,7 @@ class ClaudeLauncher:
                 if plugin_root.exists():
                     env["CLAUDE_PLUGIN_ROOT"] = str(plugin_root)
 
-            # Ensure user-local npm bin is in PATH (for claude/claude-trace installed via npm)
+            # Ensure user-local npm bin is in PATH (for claude installed via npm)
             user_npm_bin = str(Path.home() / ".npm-global" / "bin")
             current_path = env.get("PATH", "")
             if user_npm_bin not in current_path:
