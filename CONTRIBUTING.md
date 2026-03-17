@@ -1,12 +1,13 @@
 # Contributing to amplihack
 
-Thank you for your interest in contributing to amplihack! This guide will help you get started.
+Thank you for your interest in contributing to amplihack! This guide will help
+you get started.
 
 ## Getting Started
 
 ### Prerequisites
 
-- **Python 3.12+**
+- **Python 3.11+**
 - **Node.js 18+**
 - **[uv](https://docs.astral.sh/uv/)** — fast Python package manager
 - **git**
@@ -45,27 +46,35 @@ pytest -v
 #### Interpreting Test Results
 
 **What success looks like:**
+
 ```
 ==================== 237 passed in 45.2s ====================
 ```
+
 All tests passing means your changes don't break existing functionality.
 
 **What failure looks like:**
+
 ```
 ======================== FAILURES ========================
 ___________________________ TestClass.test_method _______________________
 ...
 FAILED tests/test_example.py::TestClass::test_method
 ```
-A failure means something isn't working as expected. Don't panic — this is normal during development.
+
+A failure means something isn't working as expected. Don't panic — this is
+normal during development.
 
 **Common causes of test failures:**
 
-1. **Missing environment variables** — Copy `.env.example` to `.env` and add your API keys
+1. **Missing environment variables** — Copy `.env.example` to `.env` and add
+   your API keys
 2. **Missing dependencies** — Run `uv sync` to install all dependencies
-3. **Import errors** — Run `uv sync` first; if still failing, check the error message for missing packages
+3. **Import errors** — Run `uv sync` first; if still failing, check the error
+   message for missing packages
 
 **Debugging tips:**
+
 - Run with `-v` flag for detailed output: `pytest -v`
 - Run a single test file to isolate issues: `pytest tests/test_example.py`
 - Check the error traceback — it usually points to the exact line failing
@@ -83,7 +92,8 @@ make docs-build    # Build the documentation site
 
 ### Reporting Bugs
 
-1. Check [existing issues](https://github.com/rysweet/amplihack/issues) to avoid duplicates.
+1. Check [existing issues](https://github.com/rysweet/amplihack/issues) to avoid
+   duplicates.
 2. Open a new issue with:
    - A clear, descriptive title
    - Steps to reproduce
@@ -93,6 +103,7 @@ make docs-build    # Build the documentation site
 ### Suggesting Features
 
 Open an issue with the **Feature Request** label. Describe:
+
 - The problem you're trying to solve
 - Your proposed solution
 - Any alternatives you've considered
@@ -116,12 +127,12 @@ Open an issue with the **Feature Request** label. Describe:
 
 ### Branch Naming
 
-| Type | Pattern | Example |
-|------|---------|---------|
+| Type    | Pattern                  | Example                  |
+| ------- | ------------------------ | ------------------------ |
 | Feature | `feat/short-description` | `feat/add-memory-export` |
-| Bug fix | `fix/short-description` | `fix/agent-timeout` |
-| Docs | `docs/short-description` | `docs/update-quickstart` |
-| Tests | `test/short-description` | `test/workflow-coverage` |
+| Bug fix | `fix/short-description`  | `fix/agent-timeout`      |
+| Docs    | `docs/short-description` | `docs/update-quickstart` |
+| Tests   | `test/short-description` | `test/workflow-coverage` |
 
 ### Commit Messages
 
@@ -136,8 +147,11 @@ test: add coverage for recipe validation
 
 ## Code Style
 
-- **Python**: Follow existing code conventions. Pre-commit hooks enforce formatting.
-- **Markdown**: Follow [markdownlint](https://github.com/DavidAnson/markdownlint) rules (see `.markdownlint.json`).
+- **Python**: Follow existing code conventions. Pre-commit hooks enforce
+  formatting.
+- **Markdown**: Follow
+  [markdownlint](https://github.com/DavidAnson/markdownlint) rules (see
+  `.markdownlint.json`).
 - Keep functions focused and well-documented.
 
 ## Pull Request Guidelines
@@ -149,4 +163,5 @@ test: add coverage for recipe validation
 
 ## Questions?
 
-If you're unsure about anything, open an issue or start a discussion. We're happy to help!
+If you're unsure about anything, open an issue or start a discussion. We're
+happy to help!
