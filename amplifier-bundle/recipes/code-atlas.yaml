@@ -388,11 +388,12 @@ steps:
 
       Produce:
         - {{output_dir}}/bug-reports/validated-bugs.md — bugs that passed validation
-        - {{output_dir}}/bug-reports/rejected-bugs.md — bugs filtered out with vote breakdown
+        - {{output_dir}}/bug-reports/rejected-bugs.md — bugs that failed validation (will still be filed as issues with 'needs-review' label)
         - Summary: N validated, N rejected, N unanimous, false positive rate estimate
 
-      Bugs found by BOTH diagram formats AND validated by all 3 agents get severity
-      upgraded to HIGH (regardless of original severity).
+      Severity is determined by reviewer consensus, NOT automatically upgraded.
+      If all 3 reviewers agree on HIGH, it's HIGH. If they disagree, use the median.
+      Do NOT override reviewer judgment with automatic rules.
     inputs:
       security_verdicts: "{{steps.validate-bugs-security.outputs}}"
       architect_verdicts: "{{steps.validate-bugs-architect.outputs}}"
@@ -416,7 +417,10 @@ steps:
       gh label create "code-atlas-bughunt" \
         --description "Bug found by /code-atlas graph-based bug hunt" \
         --color "D93F0B" 2>/dev/null || true && \
-      echo "Label 'code-atlas-bughunt' ensured."
+      gh label create "code-atlas-needs-review" \
+        --description "Finding from /code-atlas that did not pass multi-agent validation — needs human review" \
+        --color "FBCA04" 2>/dev/null || true && \
+      echo "Labels ensured: code-atlas-bughunt, code-atlas-needs-review"
     condition: "{{parameters.bug_hunt}}"
     depends_on:
       - "tally-validation-votes"
@@ -431,10 +435,10 @@ steps:
     type: "agent"
     agent: "amplihack:amplihack:core:builder"
     description: |
-      File a GitHub issue for every VALIDATED bug (score >= 2.0 from Step 6d).
-      Do NOT file rejected bugs — they are logged in rejected-bugs.md.
+      File a GitHub issue for EVERY finding — validated AND rejected.
+      All work tracking happens in issues, not in repo documents.
 
-      For each bug in {{output_dir}}/bug-reports/validated-bugs.md:
+      For each VALIDATED bug (score >= 2.0) in {{output_dir}}/bug-reports/validated-bugs.md:
         1. Create issue via `gh issue create` with:
            - Title: "[code-atlas] {brief description}" (under 70 chars)
            - Body containing:
@@ -448,6 +452,13 @@ steps:
         2. Log the created issue URL
         3. File every validated bug — no additional filtering
         4. One issue per bug — no batching
+
+      For each REJECTED bug (score < 2.0) in {{output_dir}}/bug-reports/rejected-bugs.md:
+        1. Create issue via `gh issue create` with:
+           - Title: "[code-atlas][needs-review] {brief description}"
+           - Body: same evidence as above PLUS the vote breakdown and rejection reasons
+           - Labels: code-atlas-needs-review
+        2. These are tracked so humans can override the agents if they disagree
 
       After filing all issues, write the list of URLs to:
         {{output_dir}}/bug-reports/filed-issues.md
@@ -561,9 +572,9 @@ steps:
          - Mermaid arm: N findings
          - Graphviz arm: N findings
          - Merged unique: N (shared: N, mermaid-only: N, graphviz-only: N)
-         - Validation: N validated, N rejected (false positive rate: N%)
+         - Validation: N validated, N needs-review (estimated false positive rate: N%)
          - Unanimous (3/3 confirmed): N — highest confidence
-         - Issues filed: N with URLs
+         - Issues filed: N validated + N needs-review = N total (all tracked in issues)
       6. Density guard activations: N
       7. Code graph: N atlas nodes ingested, N relationships created (or ATLAS_GRAPH_UNAVAILABLE)
       8. Example queries: 3 ready-to-run Cypher queries based on the bugs found
