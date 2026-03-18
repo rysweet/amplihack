@@ -1,18 +1,22 @@
 """Layer 3: Compile Dependencies -- external deps, internal import graph, cycles.
 
-Parses pyproject.toml for declared dependencies, builds the internal import graph
+Parses dependency manifests for all detected languages (pyproject.toml,
+Cargo.toml, package.json, go.mod, *.csproj), builds the internal import graph
 from layer2 data, detects circular dependencies via iterative Tarjan's SCC, and
 cross-checks declared vs actually-imported packages.
 """
 
 import argparse
+import json
 import re
 import sys
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(_REPO_ROOT))
 from scripts.atlas.common import (
+    detect_languages,
     find_repo_root,
     get_stdlib_modules,
     load_layer_json,
@@ -80,6 +84,303 @@ def _parse_pyproject(repo_root: Path) -> list[dict]:
             })
 
     return deps
+
+
+def _parse_cargo_toml(repo_root: Path, manifest_paths: list[str] | None = None) -> list[dict]:
+    """Parse Cargo.toml and extract Rust crate dependencies.
+
+    Handles both inline version strings (``serde = "1.0"``) and table entries
+    (``clap = { version = "4.5", features = ["derive"] }``).
+
+    Parses [dependencies], [dev-dependencies], and [build-dependencies].
+
+    Args:
+        repo_root: Repository root directory.
+        manifest_paths: Relative paths to Cargo.toml files (from detect_languages).
+            Falls back to repo_root/Cargo.toml if not provided.
+    """
+    if manifest_paths:
+        toml_paths = [repo_root / p for p in manifest_paths if p.endswith("Cargo.toml")]
+    else:
+        toml_paths = [repo_root / "Cargo.toml"]
+    toml_paths = [p for p in toml_paths if p.exists()]
+    if not toml_paths:
+        return []
+
+    try:
+        import tomllib
+    except ImportError:
+        try:
+            import tomli as tomllib  # type: ignore[no-redef]
+        except ImportError:
+            print(
+                "WARNING: tomllib/tomli not available, skipping Cargo.toml",
+                file=sys.stderr,
+            )
+            return []
+
+    deps: list[dict] = []
+    seen: set[str] = set()
+    # Top-level and workspace-level dependency sections
+    cargo_sections = [
+        (["dependencies"], "dependencies"),
+        (["dev-dependencies"], "dev-dependencies"),
+        (["build-dependencies"], "build-dependencies"),
+        (["workspace", "dependencies"], "dependencies"),
+    ]
+
+    for toml_path in toml_paths:
+        with open(toml_path, "rb") as f:
+            data = tomllib.load(f)
+
+        source = str(toml_path.relative_to(repo_root))
+        for key_path, group in cargo_sections:
+            section = data
+            for key in key_path:
+                section = section.get(key, {})
+            if not isinstance(section, dict):
+                continue
+            for name, value in section.items():
+                norm = name.lower().replace("_", "-")
+                if norm in seen:
+                    continue
+                seen.add(norm)
+                if isinstance(value, str):
+                    version = value
+                elif isinstance(value, dict):
+                    version = value.get("version", "")
+                else:
+                    version = ""
+                deps.append({
+                    "name": name,
+                    "normalized_name": norm,
+                    "version_constraint": version,
+                    "group": group,
+                    "language": "rust",
+                    "source": source,
+                    "imported_by": [],
+                    "import_count": 0,
+                })
+
+    return deps
+
+
+def _parse_package_json(repo_root: Path, manifest_paths: list[str] | None = None) -> list[dict]:
+    """Parse package.json and extract JavaScript/TypeScript dependencies.
+
+    Parses dependencies, devDependencies, peerDependencies, and
+    optionalDependencies.
+    """
+    if manifest_paths:
+        pkg_paths = [repo_root / p for p in manifest_paths if p.endswith("package.json")]
+    else:
+        pkg_paths = [repo_root / "package.json"]
+    pkg_paths = [p for p in pkg_paths if p.exists()]
+    if not pkg_paths:
+        return []
+
+    deps: list[dict] = []
+    seen: set[str] = set()
+    npm_sections = [
+        ("dependencies", "dependencies"),
+        ("devDependencies", "dev-dependencies"),
+        ("peerDependencies", "peer-dependencies"),
+        ("optionalDependencies", "optional-dependencies"),
+    ]
+
+    for pkg_path in pkg_paths:
+        try:
+            data = json.loads(pkg_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError) as e:
+            print(f"WARNING: failed to parse {pkg_path}: {e}", file=sys.stderr)
+            continue
+
+        source = str(pkg_path.relative_to(repo_root))
+        for section_key, group in npm_sections:
+            section = data.get(section_key, {})
+            for name, version in section.items():
+                norm = name.lower()
+                if norm in seen:
+                    continue
+                seen.add(norm)
+                deps.append({
+                    "name": name,
+                    "normalized_name": norm,
+                    "version_constraint": version,
+                    "group": group,
+                    "language": "javascript",
+                    "source": source,
+                    "imported_by": [],
+                    "import_count": 0,
+                })
+
+    return deps
+
+
+def _parse_go_mod(repo_root: Path, manifest_paths: list[str] | None = None) -> list[dict]:
+    """Parse go.mod and extract Go module dependencies.
+
+    Handles both single-line ``require`` and block ``require ( ... )``.
+    """
+    if manifest_paths:
+        mod_paths = [repo_root / p for p in manifest_paths if p.endswith("go.mod")]
+    else:
+        mod_paths = [repo_root / "go.mod"]
+    mod_paths = [p for p in mod_paths if p.exists()]
+    if not mod_paths:
+        return []
+
+    deps: list[dict] = []
+    seen: set[str] = set()
+
+    # Match require blocks: require ( ... )
+    block_pattern = re.compile(r"require\s*\((.*?)\)", re.DOTALL)
+    # Match single require lines: require github.com/foo v1.2.3
+    single_pattern = re.compile(r"^require\s+(\S+)\s+(\S+)", re.MULTILINE)
+    # Match lines inside a require block: module version
+    line_pattern = re.compile(r"^\s+(\S+)\s+(\S+)", re.MULTILINE)
+
+    for mod_path in mod_paths:
+        try:
+            content = mod_path.read_text(encoding="utf-8")
+        except OSError as e:
+            print(f"WARNING: failed to read {mod_path}: {e}", file=sys.stderr)
+            continue
+
+        source = str(mod_path.relative_to(repo_root))
+
+        # Parse blocks
+        for block_match in block_pattern.finditer(content):
+            block = block_match.group(1)
+            for line_match in line_pattern.finditer(block):
+                module_path_str = line_match.group(1)
+                version = line_match.group(2)
+                if module_path_str.startswith("//"):
+                    continue
+                norm = module_path_str.lower()
+                if norm in seen:
+                    continue
+                seen.add(norm)
+                deps.append({
+                    "name": module_path_str,
+                    "normalized_name": norm,
+                    "version_constraint": version,
+                    "group": "dependencies",
+                    "language": "go",
+                    "source": source,
+                    "imported_by": [],
+                    "import_count": 0,
+                })
+
+        # Parse single-line requires
+        for match in single_pattern.finditer(content):
+            module_path_str = match.group(1)
+            version = match.group(2)
+            norm = module_path_str.lower()
+            if norm in seen:
+                continue
+            seen.add(norm)
+            deps.append({
+                "name": module_path_str,
+                "normalized_name": norm,
+                "version_constraint": version,
+                "group": "dependencies",
+                "language": "go",
+                "source": source,
+                "imported_by": [],
+                "import_count": 0,
+            })
+
+    return deps
+
+
+def _parse_csproj(repo_root: Path) -> list[dict]:
+    """Parse *.csproj files and extract .NET/C# NuGet package references.
+
+    Looks for ``<PackageReference Include="..." Version="..." />`` elements.
+    """
+    csproj_files = list(repo_root.glob("**/*.csproj"))
+    if not csproj_files:
+        return []
+
+    deps: list[dict] = []
+    seen: set[str] = set()
+
+    for csproj_path in csproj_files:
+        try:
+            tree = ET.parse(csproj_path)
+        except ET.ParseError as e:
+            print(
+                f"WARNING: failed to parse {csproj_path}: {e}",
+                file=sys.stderr,
+            )
+            continue
+
+        for pkg_ref in tree.iter("PackageReference"):
+            name = pkg_ref.get("Include", "")
+            version = pkg_ref.get("Version", "")
+            if not name:
+                continue
+            norm = name.lower()
+            if norm in seen:
+                continue
+            seen.add(norm)
+            deps.append({
+                "name": name,
+                "normalized_name": norm,
+                "version_constraint": version,
+                "group": "dependencies",
+                "language": "csharp",
+                "source": csproj_path.name,
+                "imported_by": [],
+                "import_count": 0,
+            })
+
+    return deps
+
+
+def _parse_all_dependencies(manifest: dict, repo_root: Path) -> list[dict]:
+    """Parse dependency manifests for all detected languages.
+
+    Calls detect_languages() to find which languages are present, then invokes
+    the appropriate parsers. All results share a uniform schema with a
+    ``language`` field to distinguish origin.
+
+    Args:
+        manifest: Loaded manifest dict.
+        repo_root: Repository root directory.
+
+    Returns:
+        Combined list of external dependency dicts.
+    """
+    languages = detect_languages(manifest, repo_root)
+    all_deps: list[dict] = []
+
+    def _manifests_for(lang: str) -> list[str]:
+        return languages.get(lang, {}).get("manifests", [])
+
+    # Always try Python (existing behavior)
+    if "python" in languages or (repo_root / "pyproject.toml").exists():
+        py_deps = _parse_pyproject(repo_root)
+        for dep in py_deps:
+            dep.setdefault("language", "python")
+            dep.setdefault("source", "pyproject.toml")
+        all_deps.extend(py_deps)
+
+    if "rust" in languages:
+        all_deps.extend(_parse_cargo_toml(repo_root, _manifests_for("rust")))
+
+    if "javascript" in languages or "typescript" in languages:
+        js_manifests = _manifests_for("javascript") + _manifests_for("typescript")
+        all_deps.extend(_parse_package_json(repo_root, js_manifests))
+
+    if "go" in languages:
+        all_deps.extend(_parse_go_mod(repo_root, _manifests_for("go")))
+
+    if "csharp" in languages:
+        all_deps.extend(_parse_csproj(repo_root))
+
+    return all_deps
 
 
 def _import_module_to_package_name(module: str) -> str:
@@ -185,8 +486,8 @@ def extract(manifest: dict, layer2: dict, repo_root: Path) -> dict:
     root_str = manifest["root"]
     stdlib = get_stdlib_modules()
 
-    # 1. Parse external dependencies from pyproject.toml
-    ext_deps = _parse_pyproject(repo_root)
+    # 1. Parse external dependencies from ALL detected language manifests
+    ext_deps = _parse_all_dependencies(manifest, repo_root)
 
     # Build lookup: normalized name -> dep entry
     dep_lookup: dict[str, dict] = {}
