@@ -118,6 +118,52 @@ class TestHiveMerge:
         local_facts = [r for r in results if "Local version" in r.get("fact", r.get("outcome", ""))]
         assert len(local_facts) >= 1
 
+    def test_hive_results_preserve_temporal_metadata(self, adapter_a, adapter_b):
+        adapter_a.store_fact(
+            "Project Atlas",
+            "Project Atlas deadline moved to September 20",
+            tags=["project", "date:2024-09-20", "time:September 2024"],
+            temporal_metadata={
+                "source_label": "Atlas planning memo",
+                "source_date": "2024-09-20",
+                "temporal_order": "September 2024",
+                "temporal_index": 20240920,
+            },
+        )
+
+        results = adapter_b.search("Atlas deadline", limit=10)
+        match = next(r for r in results if "September 20" in r.get("outcome", ""))
+
+        assert match["source"] == "hive:agent_a"
+        assert match["timestamp"] != ""
+        assert match["metadata"]["source_label"] == "Atlas planning memo"
+        assert match["metadata"]["source_date"] == "2024-09-20"
+        assert match["metadata"]["temporal_order"] == "September 2024"
+        assert match["metadata"]["temporal_index"] == 20240920
+
+    def test_hive_results_restore_temporal_metadata_from_tags(self, adapter_b, hive):
+        hive.promote_fact(
+            "agent_a",
+            HiveFact(
+                fact_id="",
+                content="Project Atlas deadline moved to September 20",
+                concept="Project Atlas",
+                confidence=0.9,
+                source_agent="agent_a",
+                tags=["project", "date:2024-09-20", "time:September 2024"],
+                created_at=123.0,
+            ),
+        )
+
+        results = adapter_b.search("Atlas deadline", limit=10)
+        match = next(r for r in results if "September 20" in r.get("outcome", ""))
+
+        assert match["timestamp"] == "123.0"
+        assert match["source"] == "hive:agent_a"
+        assert match["metadata"]["source_date"] == "2024-09-20"
+        assert match["metadata"]["temporal_order"] == "September 2024"
+        assert match["metadata"]["temporal_index"] == 20240920
+
     def test_deduplication_by_content(self, adapter_a, adapter_b, hive):
         # Both agents store the same fact
         adapter_a.store_fact("Shared", "The sky is blue")

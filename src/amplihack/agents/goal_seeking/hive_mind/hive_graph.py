@@ -128,6 +128,7 @@ class HiveFact:
     status: str = "promoted"
     embedding: Any = None
     created_at: float = field(default_factory=time.time)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -791,6 +792,8 @@ class InMemoryHiveGraph:
             source_agent=fact.source_agent,
             tags=[*fact.tags, f"{ESCALATION_TAG_PREFIX}{self._hive_id}"],
             status="promoted",
+            created_at=fact.created_at,
+            metadata=dict(getattr(fact, "metadata", {})),
         )
         self._parent.promote_fact(relay_id, escalated)
 
@@ -825,6 +828,8 @@ class InMemoryHiveGraph:
                 source_agent=fact.source_agent,
                 tags=[*fact.tags, f"{BROADCAST_TAG_PREFIX}{self._hive_id}"],
                 status="promoted",
+                created_at=fact.created_at,
+                metadata=dict(getattr(fact, "metadata", {})),
             )
             child.promote_fact(relay_id, broadcast_copy)
             count += 1
@@ -986,6 +991,7 @@ class InMemoryHiveGraph:
                         status=fact.status,
                         embedding=fact.embedding,
                         created_at=fact.created_at,
+                        metadata=dict(getattr(fact, "metadata", {})),
                     )
 
             # Sync fact status with ORSet membership (add-wins semantics)
