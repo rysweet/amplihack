@@ -450,10 +450,107 @@ amplihack recipe run investigation --context task_description="How does auth wor
 
 ---
 
+## Parallel Signal Evaluation Routing (PR #3249)
+
+**What changed**: The `UserPromptSubmit` routing prompt was completely rewritten,
+replacing a flat text-category list with a **parallel signal evaluation** graph
+backed by calibration examples. Seven skill and agent files also received mermaid
+workflow graphs.
+
+**Impact measured**: Classification accuracy improved from **80% → 100%** across a
+15-task test suite (3/15 wrong → 0/15 wrong). The three previously misclassified
+categories — Hybrid tasks misrouted as Development, Investigation tasks routed
+as Q&A, and Q&A tasks routed as Development — are all corrected.
+
+**How it works**: The new routing prompt evaluates 5 signals in parallel before
+resolving to a classification:
+
+| Signal | Meaning |
+|--------|---------|
+| UNDERSTAND | Exploration, research, "how does X work" |
+| IMPLEMENT | Code changes, feature adds, bug fixes |
+| FILE_EDIT | Any edit to a `.py`, `.yaml`, `.ts`, `.json` etc. |
+| SHELL_ONLY | Run tests, git commands, disk operations |
+| QUESTION | Simple Q&A, "what is X", "explain X" |
+
+Resolution uses priority rules — e.g. `IMPLEMENT + FILE_EDIT` always wins over
+`QUESTION` for the same message, and `UNDERSTAND + IMPLEMENT` produces HYBRID
+(two parallel workstreams).
+
+**Combined approach is key**: Neither the graph alone nor calibration examples
+alone achieves 100%. Only the combined approach does (see A/B data in PR body).
+
+**Tokens overhead**: negligible (+1% on routing_prompt injection). Graphs added
+to skill files helped complex tasks (−22% tokens on investigate→build) but
+hurt simple tasks (+77% tool calls). Therefore graphs are in the routing prompt
+and only in skills where they aid complex scenarios.
+
+**See also**: [Auto-Routing tutorial section](../tutorials/dev-orchestrator-tutorial.md#auto-routing-how-it-works) — updated in PR #3289 to reflect the 4-layer pipeline.
+
+---
+
+## Code Atlas 12-Phase Recipe and OpenCypher Output (PR #3285)
+
+**What changed**: The `code-atlas` SKILL.md was updated to document the full
+12-phase recipe (previously described as 10 phases), three non-negotiable output
+rules, and a corrected SVG naming convention.
+
+### 12-Phase Recipe Overview
+
+The recipe was internally split into two additional explicit phases:
+
+| Old | New | Description |
+|-----|-----|-------------|
+| 10 phases | 12 phases | Added: verify gate step + final checklist step |
+
+The additional phases ensure the atlas is complete and consistent before committing.
+
+### Non-Negotiable Output Rules
+
+Three rules are now documented as required (not optional) in the SKILL.md:
+
+1. **Bugs go to issues only** — bug findings must be filed as GitHub issues, not
+   embedded in atlas markdown files.
+2. **Kuzu is required** — the code graph backend uses Kuzu. It is not optional.
+   Code-atlas will fail if Kuzu is not installed.
+3. **OpenCypher always generated** — standalone OpenCypher files are always
+   written to the `cypher/` directory, regardless of other output settings.
+
+### Output Structure Updates
+
+The `cypher/` directory is now part of the standard atlas output:
+
+```
+docs/atlas/
+├── ...
+└── cypher/               # NEW — standalone OpenCypher files
+    ├── layer1.cypher
+    ├── layer2.cypher
+    └── ...
+```
+
+### SVG Naming Convention
+
+SVG files now follow a consistent naming scheme that identifies the diagram type:
+
+| Old | New |
+|-----|-----|
+| `topology.svg` | `topology-mermaid.svg` (Mermaid-rendered) |
+| `topology.svg` | `topology-dot.svg` (Graphviz DOT-rendered) |
+
+This avoids filename collisions when both formats are generated.
+
+**See also**: [Code Atlas Reference](../reference/code-atlas-reference.md) — updated to reflect these changes.
+
+---
+
 ## Version History
 
 All fixes released in **amplihack v0.9.1** (March 2026):
 
+- **Parallel signal routing** (PR #3249) - 80%→100% classification accuracy; mermaid routing graph
+- **Code Atlas 12-phase recipe** (PR #3285) - Kuzu required, OpenCypher always generated, cypher/ output dir
+- **CI fail-fast restored** (PR #3223) - Removed `continue-on-error` from validation workflow
 - **Dev-orchestrator direct mode** (PR #3214) - Subprocess as default, tmux optional
 - **Tmux temp-script launch** (PR #3216) - Eliminates nested quoting failures
 - **Agent-agnostic binary** (PR #3174) - `AMPLIHACK_AGENT_BINARY` env var centralized

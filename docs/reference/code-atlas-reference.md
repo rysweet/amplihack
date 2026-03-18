@@ -1,13 +1,17 @@
 ---
 type: reference
 skill: code-atlas
-version: 1.1.0
-updated: 2026-03-16
+version: 1.2.0
+updated: 2026-03-18
 ---
 
 # Code Atlas Reference
 
-Complete reference for all flags, layer IDs, output files, schemas, and error codes. API-CONTRACTS.md v1.1.0.
+Complete reference for all flags, layer IDs, output files, schemas, and error codes. API-CONTRACTS.md v1.2.0.
+
+> **v1.2.0 changes** (PR #3285): 12-phase recipe (was 10); `cypher/` output directory added;
+> SVG files renamed to `*-mermaid.svg` / `*-dot.svg`; Kuzu is required (not optional);
+> OpenCypher output is always generated.
 
 ---
 
@@ -80,24 +84,25 @@ docs/atlas/
 │   ├── README.md                    # Layer narrative
 │   ├── topology.dot                 # Graphviz DOT source
 │   ├── topology.mmd                 # Mermaid source
-│   └── topology.svg                 # Pre-rendered SVG (committed)
+│   ├── topology-mermaid.svg         # Pre-rendered Mermaid SVG (committed)
+│   └── topology-dot.svg             # Pre-rendered DOT SVG (committed)
 │
 ├── compile-deps/
 │   ├── README.md
 │   ├── deps.mmd
-│   ├── deps.svg
+│   ├── deps-mermaid.svg
 │   └── inventory.md                 # Package inventory table (REQUIRED)
 │
 ├── api-contracts/
 │   ├── README.md
 │   ├── routes.mmd
-│   ├── routes.svg
+│   ├── routes-mermaid.svg
 │   └── inventory.md                 # Route inventory table (REQUIRED)
 │
 ├── data-flow/
 │   ├── README.md
 │   ├── dataflow.mmd
-│   └── dataflow.svg
+│   └── dataflow-mermaid.svg
 │
 ├── user-journeys/
 │   ├── README.md
@@ -125,9 +130,24 @@ docs/atlas/
 │   ├── {YYYY-MM-DD}-pass2-{slug}.md # Pass 2 findings (fresh-eyes cross-check)
 │   └── {YYYY-MM-DD}-pass3-{slug}.md # Pass 3 findings (scenario deep-dive + verdicts)
 │
-└── experiments/                     # NEW in v1.1.0 — Appendix A records
-    └── {YYYY-MM-DD}-mermaid-vs-graphviz-L{N}.md
+├── experiments/                     # NEW in v1.1.0 — Appendix A records
+│   └── {YYYY-MM-DD}-mermaid-vs-graphviz-L{N}.md
+│
+└── cypher/                          # NEW in v1.2.0 — standalone OpenCypher files
+    ├── layer1.cypher
+    ├── layer2.cypher
+    └── ...                          # One file per layer (always generated)
 ```
+
+### Non-Negotiable Output Rules (v1.2.0)
+
+These rules cannot be skipped via flags or configuration:
+
+| Rule | Description |
+|------|-------------|
+| **Bugs to issues only** | Bug findings from the 3-pass hunt must be filed as GitHub issues. Do not embed them in atlas markdown. |
+| **Kuzu required** | The code graph backend requires Kuzu. Code-atlas will fail if Kuzu is not installed. |
+| **OpenCypher always** | Standalone OpenCypher files are always written to `cypher/` regardless of other output flags. |
 
 ---
 
