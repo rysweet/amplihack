@@ -1,65 +1,49 @@
 graph LR
-    subgraph exports["Public API (__all__ exports)"]
-        direction TB
-        pkg_init["amplihack<br/>main, install, uninstall<br/>ensure_dirs, copytree_manifest"]
-        settings_exp["settings<br/>ensure_settings_json<br/>update_hook_paths"]
-        launcher_exp["launcher<br/>ClaudeLauncher<br/>ClaudeDirectoryDetector<br/>PrerequisiteChecker"]
-        proxy_exp["proxy<br/>ProxyConfig, ProxyServer"]
-        security_exp["security<br/>scan, SecurityScanner"]
-        safety_exp["safety<br/>StagingGuard"]
-        docker_exp["docker<br/>DockerDetector, DockerManager"]
-        uvx_exp["uvx<br/>UVXManager"]
-        utils_exp["utils<br/>slugify, claude_cli<br/>prerequisites, defensive"]
-        recipes_exp["recipes<br/>RecipeParser, run_recipe_via_rust<br/>discover_recipes"]
-        recipe_cli_exp["recipe_cli<br/>create_recipe_subparser<br/>handle_recipe_command"]
-        fleet_exp["fleet<br/>FleetObserver, FleetCLI<br/>SessionContext"]
-        knowledge_exp["knowledge_builder<br/>KnowledgeBuilder<br/>KnowledgeGraph"]
-        bundle_exp["bundle_generator<br/>BundleBuilder<br/>BundlePackager"]
-        workflows_exp["workflows<br/>WorkflowEngine"]
-        settings_gen_exp["settings_generator<br/>SettingsGenerator"]
-        power_exp["power_steering<br/>prompt_re_enable_if_disabled"]
-        lsp_exp["lsp_detector<br/>LSPDetector"]
-        memory_exp["memory.discoveries<br/>store_discovery<br/>get_recent_discoveries"]
-        eval_exp["eval<br/>teaching_eval<br/>grader, progressive_test_suite"]
-        hooks_exp["hooks<br/>LauncherDetector<br/>LauncherInfo"]
-        context_exp["context.adaptive<br/>LauncherDetector<br/>HookStrategy"]
-        vendor_exp["vendor.blarify<br/>GraphBuilder"]
-    end
+    F0["constants<br/>refs: 45"]
+    F1["models<br/>refs: 38"]
+    F2["models<br/>refs: 28"]
+    F3["models<br/>refs: 28"]
+    F4["exceptions<br/>refs: 28"]
+    F5["models<br/>refs: 26"]
+    F6["base<br/>refs: 23"]
+    F7["xpia_defense_interface<br/>refs: 22"]
+    F8["uvx_models<br/>refs: 18"]
+    F9["__init__<br/>refs: 17"]
+    F10["exceptions<br/>refs: 17"]
+    F11["base<br/>refs: 16"]
+    F12["coordinator<br/>refs: 15"]
+    F13["settings<br/>refs: 14"]
+    F14["language_definitions<br/>refs: 14"]
+    F15["event_bus<br/>refs: 13"]
+    F16["long_horizon_memory<br/>refs: 13"]
+    F17["monitoring<br/>refs: 13"]
+    F18["conversion<br/>refs: 12"]
+    F19["Reference<br/>refs: 11"]
+    F20["multi_agent_template<br/>refs: 10"]
+    F21["azure_errors<br/>refs: 10"]
+    F22["xpia_patterns<br/>refs: 10"]
+    F23["defensive<br/>refs: 10"]
+    F24["queries<br/>refs: 10"]
+    F25["controller<br/>refs: 9"]
+    F26["reviewer_voting<br/>refs: 9"]
+    F27["install<br/>refs: 9"]
+    F28["cli_handlers<br/>refs: 9"]
+    F29["azure_unified_integration<br/>refs: 9"]
+    F9 --> F27
+    F9 --> F13
+    F25 --> F0
+    F25 --> F15
+    F27 --> F9
+    F27 --> F13
+    F12 --> F3
+    F21 --> F4
+    F21 --> F17
+    F18 --> F21
+    F18 --> F4
+    F18 --> F5
+    F18 --> F17
+    F17 --> F4
+    F17 --> F21
+    F13 --> F9
 
-    subgraph cross_pkg["Cross-Package Imports"]
-        direction TB
-        cli_imp["cli.py"]
-        launcher_imp["launcher/auto_mode"]
-        fleet_imp["fleet/fleet_copilot"]
-        recipe_cli_imp["recipe_cli/recipe_command"]
-        eval_imp["eval/*"]
-        kb_imp["knowledge_builder/orchestrator"]
-    end
-
-    cli_imp -->|"imports"| launcher_exp
-    cli_imp -->|"imports"| proxy_exp
-    cli_imp -->|"imports"| fleet_exp
-    cli_imp -->|"imports"| recipes_exp
-    cli_imp -->|"imports"| bundle_exp
-
-    launcher_imp -->|"imports"| launcher_exp
-    fleet_imp -->|"imports"| fleet_exp
-    recipe_cli_imp -->|"imports"| recipes_exp
-    eval_imp -->|"imports"| eval_exp
-    kb_imp -->|"imports"| knowledge_exp
-
-    subgraph recipes_intra["recipes (intra-module imports)"]
-        direction LR
-        rust_runner_mod["rust_runner.py<br/>stdlib: signal, os, json, subprocess"]
-        discovery_mod["discovery.py<br/>stdlib: os, hashlib, json, subprocess"]
-    end
-    rust_runner_mod -->|"imports _AMPLIHACK_HOME_BUNDLE_DIR<br/>_PACKAGE_BUNDLE_DIR, _REPO_ROOT_BUNDLE_DIR"| discovery_mod
-
-    subgraph dead_code["Dead Code Candidates"]
-        direction TB
-        dead1["examples/usage_example.py<br/>(demo only)"]
-        dead2["examples/proxy_context_usage.py<br/>(demo only)"]
-        dead3["rust_trial.py<br/>(experimental)"]
-        dead4["copilot_auto_install.py"]
-        dead5["staging_cleanup.py"]
-    end
+    click F0 "../ast-lsp-bindings/" "View AST bindings"

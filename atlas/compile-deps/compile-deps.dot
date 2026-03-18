@@ -84,6 +84,8 @@ digraph compile_deps {
     launcher -> hooks [label="imports"];
     eval_pkg -> knowledge [label="imports"];
 
+<<<<<<< HEAD
+=======
     // Intra-package: recipes/rust_runner -> recipes/discovery
     subgraph cluster_recipes_internal {
         label="recipes (intra-package)";
@@ -95,6 +97,7 @@ digraph compile_deps {
     }
     rust_runner -> discovery [label="imports\n_AMPLIHACK_HOME_BUNDLE_DIR", style=solid, color="#6666aa"];
 
+>>>>>>> origin/main
     // External dependency edges
     proxy -> flask [style=dashed, label="web server"];
     proxy -> aiohttp [style=dashed, label="async HTTP"];
