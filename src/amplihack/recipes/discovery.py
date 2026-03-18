@@ -24,6 +24,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -47,6 +48,15 @@ _PACKAGE_BUNDLE_DIR = _PACKAGE_DIR / "amplifier-bundle" / "recipes"
 # ``amplifier-bundle/recipes/``.  We detect this by walking up to the repo root.
 _REPO_ROOT_BUNDLE_DIR = _PACKAGE_DIR.parent.parent / "amplifier-bundle" / "recipes"
 
+# AMPLIHACK_HOME env var provides an explicit amplihack root directory.
+# Other asset resolution code (resolve_bundle_asset.py, runtime_assets.py)
+# already checks this.  Recipe discovery must too, so recipes are found
+# when running from a non-amplihack repo with AMPLIHACK_HOME set (#3237).
+_AMPLIHACK_HOME_BUNDLE_DIR: Path | None = None
+_amplihack_home = os.environ.get("AMPLIHACK_HOME")
+if _amplihack_home:
+    _AMPLIHACK_HOME_BUNDLE_DIR = Path(_amplihack_home) / "amplifier-bundle" / "recipes"
+
 # Directories searched for recipe files, in priority order.
 # Later entries override earlier ones when recipes share the same name.
 #
@@ -54,16 +64,18 @@ _REPO_ROOT_BUNDLE_DIR = _PACKAGE_DIR.parent.parent / "amplifier-bundle" / "recip
 # discoverable even when CWD is an unrelated project.  This fixes #2812
 # where recipe discovery failed outside the amplihack source tree.
 #
-# Priority (package → repo-root → global → local):
+# Priority (package → repo-root → AMPLIHACK_HOME → global → local):
 # 1. <site-packages>/amplihack/amplifier-bundle/recipes/ - Installed package
 # 2. <repo-root>/amplifier-bundle/recipes/               - Editable install
-# 3. ~/.amplihack/.claude/recipes/       - User home (global installation)
-# 4. amplifier-bundle/recipes/           - Global bundled (CWD-relative)
-# 5. src/amplihack/amplifier-bundle/     - Global source (CWD-relative)
-# 6. .claude/recipes/                    - Project local recipes
+# 3. $AMPLIHACK_HOME/amplifier-bundle/recipes/           - Explicit env var
+# 4. ~/.amplihack/.claude/recipes/       - User home (global installation)
+# 5. amplifier-bundle/recipes/           - Global bundled (CWD-relative)
+# 6. src/amplihack/amplifier-bundle/     - Global source (CWD-relative)
+# 7. .claude/recipes/                    - Project local recipes
 _DEFAULT_SEARCH_DIRS: list[Path] = [
     _PACKAGE_BUNDLE_DIR,  # Installed package — ALWAYS available
     _REPO_ROOT_BUNDLE_DIR,  # Editable install — repo root fallback
+    *([_AMPLIHACK_HOME_BUNDLE_DIR] if _AMPLIHACK_HOME_BUNDLE_DIR else []),
     Path.home() / ".amplihack" / ".claude" / "recipes",  # Global user home
     Path("amplifier-bundle") / "recipes",  # Global bundled
     Path("src") / "amplihack" / "amplifier-bundle" / "recipes",  # Global source
