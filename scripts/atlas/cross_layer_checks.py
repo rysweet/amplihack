@@ -543,8 +543,8 @@ def _check_route_test_coverage(layer5, manifest) -> dict:
     for tf in test_files:
         try:
             test_contents[tf["path"]] = Path(tf["path"]).read_text(errors="replace")
-        except OSError:
-            pass
+        except OSError as e:
+            print(f"WARNING: could not read test file {tf['path']}: {e}", file=sys.stderr)
 
     untested = []
     for route in routes:

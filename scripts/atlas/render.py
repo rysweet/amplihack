@@ -821,17 +821,33 @@ class AtlasRenderer:
             counter += 1
             lines.append(f'    {nid}("Network I/O<br/>n={net_count}")')
 
-        # Transformation points as connectors
+        # Transformation points as connectors between I/O nodes
+        # Build a lookup from format key to node ID for linking
+        io_node_ids: dict[str, str] = {}
+        io_counter = 0
+        for key in sorted(formats.items(), key=lambda x: x[1], reverse=True)[:15]:
+            io_node_ids[key[0]] = f"IO{io_counter}"
+            io_counter += 1
+
         for i, tp in enumerate(transforms[:10]):
             func = tp.get("function", "transform")
             tnid = f"T{i}"
             lines.append(f'    {tnid}{{{{"{func}"}}}}')
             reads = tp.get("reads", [])
             writes = tp.get("writes", [])
-            if reads:
-                lines.append(f"    {tnid} -.->|reads| {tnid}")
-            if writes:
-                lines.append(f"    {tnid} -.->|writes| {tnid}")
+            # Connect to actual I/O nodes based on format matches
+            for r in reads[:3]:
+                fmt = r if isinstance(r, str) else str(r)
+                for key, nid in io_node_ids.items():
+                    if fmt in key:
+                        lines.append(f"    {nid} -.->|reads| {tnid}")
+                        break
+            for w in writes[:3]:
+                fmt = w if isinstance(w, str) else str(w)
+                for key, nid in io_node_ids.items():
+                    if fmt in key:
+                        lines.append(f"    {tnid} -.->|writes| {nid}")
+                        break
 
         return "\n".join(lines)
 
@@ -907,6 +923,7 @@ class AtlasRenderer:
             top = journeys[:5]
 
         lines = ["sequenceDiagram"]
+        declared_participants: set[str] = set()
 
         for journey in top:
             command = journey.get("command", "unknown")
@@ -916,9 +933,15 @@ class AtlasRenderer:
             outcomes = journey.get("outcomes", [])
             packages = journey.get("packages_touched", [])
 
-            lines.append(f"    participant User")
-            lines.append(f"    participant CLI as cli.py")
-            lines.append(f"    participant {handler_file}")
+            if "User" not in declared_participants:
+                lines.append(f"    participant User")
+                declared_participants.add("User")
+            if "CLI" not in declared_participants:
+                lines.append(f"    participant CLI as cli.py")
+                declared_participants.add("CLI")
+            if handler_file not in declared_participants:
+                lines.append(f"    participant {handler_file}")
+                declared_participants.add(handler_file)
 
             lines.append(f"    User->>CLI: {command}")
             lines.append(f"    CLI->>{handler_file}: {handler_func}()")
@@ -927,6 +950,9 @@ class AtlasRenderer:
                 otype = outcome.get("type", "return")
                 detail = outcome.get("detail", "")
                 ofile = Path(outcome.get("file", "")).stem if outcome.get("file") else "system"
+                if ofile not in declared_participants:
+                    lines.append(f"    participant {ofile}")
+                    declared_participants.add(ofile)
                 lines.append(f"    {handler_file}->>{ofile}: {otype}: {detail}")
 
             lines.append(f"    {handler_file}-->>CLI: result")

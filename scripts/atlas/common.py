@@ -25,6 +25,7 @@ from pathlib import Path
 
 __all__ = [
     "build_manifest",
+    "find_repo_root",
     "load_manifest",
     "parse_file_safe",
     "walk_definitions",
@@ -45,6 +46,30 @@ def get_stdlib_modules() -> set[str]:
     Uses sys.stdlib_module_names (Python 3.10+).
     """
     return set(sys.stdlib_module_names)
+
+
+def find_repo_root(root: Path) -> Path:
+    """Find repository root by searching for pyproject.toml walking up from root.
+
+    Args:
+        root: Starting directory to search from.
+
+    Returns:
+        Path to the repository root containing pyproject.toml.
+
+    Raises:
+        FileNotFoundError: If no pyproject.toml found in any parent directory.
+    """
+    candidate = root.resolve()
+    while True:
+        if (candidate / "pyproject.toml").exists():
+            return candidate
+        parent = candidate.parent
+        if parent == candidate:
+            raise FileNotFoundError(
+                f"No pyproject.toml found in any parent of {root}"
+            )
+        candidate = parent
 
 
 def build_manifest(root: Path) -> dict:

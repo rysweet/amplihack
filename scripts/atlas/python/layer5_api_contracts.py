@@ -15,6 +15,7 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(_REPO_ROOT))
 from scripts.atlas.common import (
     _resolve_call_name,
+    find_repo_root,
     load_manifest,
     parse_file_safe,
     write_layer_json,
@@ -451,13 +452,7 @@ def main() -> int:
     root = Path(args.root).resolve()
     output = Path(args.output).resolve()
 
-    # Repo root is parent of src/amplihack
-    repo_root = root
-    while repo_root.name != "amplihack" or not (repo_root / "pyproject.toml").exists():
-        if repo_root.parent == repo_root:
-            repo_root = root.parent.parent
-            break
-        repo_root = repo_root.parent
+    repo_root = find_repo_root(root)
 
     manifest = load_manifest(output)
     data = extract(manifest, repo_root)
