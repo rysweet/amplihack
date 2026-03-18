@@ -719,8 +719,16 @@ def _run_event_driven_loop(
                     agent_name,
                     len(text),
                 )
+                next_learn_content_count = _learn_content_count + 1
+                if next_learn_content_count == 1 or next_learn_content_count % 50 == 0:
+                    answer_publisher.publish_agent_progress(
+                        phase="learn_content_started",
+                        processed_count=next_learn_content_count,
+                        run_id=metadata.get("run_id", ""),
+                        input_event_type=event_type,
+                    )
                 agent.process_store(text)
-                _learn_content_count += 1
+                _learn_content_count = next_learn_content_count
                 if _learn_content_count == 1 or _learn_content_count % 50 == 0:
                     answer_publisher.publish_agent_progress(
                         phase="learn_content",

@@ -165,6 +165,60 @@ class TestAgentEntrypoint:
         agent.process_store.assert_called_once_with("What is Sarah Chen's birthday?")
         agent.process.assert_not_called()
 
+    def test_run_event_driven_loop_emits_started_progress_before_store_returns(self):
+        mod = _load_entrypoint()
+        answer_publisher = MagicMock()
+        memory = MagicMock()
+        shutdown_event = threading.Event()
+        progress_seen_during_store: dict[str, bool] = {}
+
+        agent = MagicMock()
+
+        def _process_store(_: str) -> None:
+            progress_seen_during_store["seen"] = answer_publisher.publish_agent_progress.called
+
+        agent.process_store.side_effect = _process_store
+
+        class FakeInputSource:
+            def __init__(self):
+                self._source = self
+                self.last_event_metadata = {"event_type": "LEARN_CONTENT", "run_id": "run-123"}
+                self._items = [
+                    (
+                        "Telemetry probe content",
+                        {"event_type": "LEARN_CONTENT", "run_id": "run-123"},
+                    ),
+                    (None, {}),
+                ]
+
+            def next(self):
+                text, meta = self._items.pop(0)
+                self.last_event_metadata = meta
+                if text is None:
+                    shutdown_event.set()
+                return text
+
+        mod._run_event_driven_loop(
+            "agent-0",
+            agent,
+            FakeInputSource(),
+            answer_publisher,
+            memory,
+            shutdown_event,
+        )
+
+        assert progress_seen_during_store == {"seen": True}
+        assert [
+            call.kwargs["phase"] for call in answer_publisher.publish_agent_progress.call_args_list
+        ] == [
+            "learn_content_started",
+            "learn_content",
+        ]
+        assert [
+            call.kwargs["processed_count"]
+            for call in answer_publisher.publish_agent_progress.call_args_list
+        ] == [1, 1]
+
     def test_handle_store_fact_batch_uses_direct_storage_path(self):
         mod = _load_entrypoint()
         mock_mem = MagicMock()
