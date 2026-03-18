@@ -496,12 +496,19 @@ class RemoteAgentAdapter:
 
             return answer
 
-    def answer_question(self, question: str) -> str:
+    def answer_question(self, question: str, target_agent: int | None = None) -> str:
         """Send question to one agent, retrying on other agents when configured."""
         with start_span(
             "azure_eval.answer_question",
             tracer_name=__name__,
-            attributes=self._span_attributes(question_length=len(question)),
+            attributes=self._span_attributes(
+                question_length=len(question),
+                target_agent=(
+                    self._agent_name(target_agent)
+                    if target_agent is not None
+                    else "auto-round-robin"
+                ),
+            ),
         ):
             if self._learn_count > 0 and not self._idle_wait_done.is_set():
                 with self._counter_lock:
@@ -510,13 +517,16 @@ class RemoteAgentAdapter:
                         self._idle_wait_done.set()
 
             with self._counter_lock:
-                target_agent = self._question_count % self._agent_count
+                if target_agent is None:
+                    base_target_agent = self._question_count % self._agent_count
+                else:
+                    base_target_agent = target_agent % self._agent_count
                 self._question_count += 1
 
             max_attempts = min(self._agent_count, 1 + self._question_failover_retries)
             last_answer = "No answer received"
             for attempt in range(max_attempts):
-                attempt_target = (target_agent + attempt) % self._agent_count
+                attempt_target = (base_target_agent + attempt) % self._agent_count
                 if attempt > 0:
                     logger.info(
                         "RemoteAgentAdapter: retrying question on %s after previous timeout/no-answer",

@@ -84,6 +84,20 @@ if (
     && !string.IsNullOrWhiteSpace(responseHub)
 )
 {
+    if (GetBool(builder, "eval:enableRetrievalSmoke", "AMPLIHACK_ASPIRE_ENABLE_RETRIEVAL_SMOKE"))
+    {
+        builder
+            .AddExecutable("azure-hive-retrieval-smoke", "python", repoRoot)
+            .WithArgs(BuildRetrievalSmokeArgs(builder, eventHubConnectionString, inputHub, responseHub))
+            .WithEnvironment("PYTHONPATH", srcPath)
+            .WithEnvironment("PYTHONUNBUFFERED", "1")
+            .WithEnvironment("AMPLIHACK_OTEL_ENABLED", "true")
+            .WithEnvironment("OTEL_EXPORTER_OTLP_PROTOCOL", otlpProtocol)
+            .WithEnvironment("OTEL_EXPORTER_OTLP_ENDPOINT", otlpEndpoint)
+            .WithEnvironment("OTEL_SERVICE_NAMESPACE", "amplihack")
+            .WithEnvironment("OTEL_SERVICE_NAME", "amplihack.aspire.azure-hive-retrieval-smoke");
+    }
+
     if (GetBool(builder, "eval:enableLongHorizon", "AMPLIHACK_ASPIRE_ENABLE_LONG_HORIZON_EVAL"))
     {
         builder
@@ -225,6 +239,43 @@ static string[] BuildMonitorArgs(
     );
 
     return args.ToArray();
+}
+
+static string[] BuildRetrievalSmokeArgs(
+    IDistributedApplicationBuilder builder,
+    string connectionString,
+    string inputHub,
+    string responseHub
+)
+{
+    return new[]
+    {
+        "deploy/azure_hive/eval_retrieval_smoke.py",
+        "--connection-string",
+        connectionString,
+        "--input-hub",
+        inputHub,
+        "--response-hub",
+        responseHub,
+        "--agents",
+        GetConfig(builder, "azure:agentCount", "HIVE_AGENT_COUNT", "100"),
+        "--answer-timeout",
+        GetConfig(builder, "eval:answerTimeout", "AMPLIHACK_ASPIRE_ANSWER_TIMEOUT", "120"),
+        "--question-offset",
+        GetConfig(
+            builder,
+            "eval:retrievalSmokeQuestionOffset",
+            "AMPLIHACK_ASPIRE_RETRIEVAL_SMOKE_OFFSET",
+            "3"
+        ),
+        "--output",
+        GetConfig(
+            builder,
+            "eval:retrievalSmokeOutput",
+            "AMPLIHACK_ASPIRE_RETRIEVAL_SMOKE_OUTPUT",
+            "aspire_retrieval_smoke.json"
+        ),
+    };
 }
 
 static string[] BuildLongHorizonArgs(

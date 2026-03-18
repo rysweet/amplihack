@@ -419,6 +419,22 @@ class TestAnswerQuestion:
         assert send_question.call_args_list[0].args == ("recover after timeout", 0)
         assert send_question.call_args_list[1].args == ("recover after timeout", 1)
 
+    def test_answer_question_can_target_specific_agent(self):
+        mod = _load_module()
+        adapter = _make_adapter(mod, agent_count=5)
+        adapter._idle_wait_done.set()
+
+        with patch.object(
+            adapter,
+            "_send_question_to_agent",
+            return_value="Targeted answer",
+        ) as send_question:
+            result = adapter.answer_question("what is the answer?", target_agent=3)
+
+        assert result == "Targeted answer"
+        send_question.assert_called_once_with("what is the answer?", 3)
+        assert adapter._question_count == 1
+
 
 class TestOnEvent:
     def test_agent_online_tracked(self):

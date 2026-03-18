@@ -7,7 +7,7 @@ import os
 import threading
 import time
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest  # type: ignore[import-unresolved]
 
@@ -218,6 +218,114 @@ class TestAgentEntrypoint:
             call.kwargs["processed_count"]
             for call in answer_publisher.publish_agent_progress.call_args_list
         ] == [1, 1]
+
+    def test_run_event_driven_loop_resets_progress_counts_per_run(self):
+        mod = _load_entrypoint()
+        answer_publisher = MagicMock()
+        memory = MagicMock()
+        shutdown_event = threading.Event()
+        agent = MagicMock()
+
+        class FakeInputSource:
+            def __init__(self):
+                self._source = self
+                self.last_event_metadata = {}
+                self._items = [
+                    ("First probe content", {"event_type": "LEARN_CONTENT", "run_id": "run-1"}),
+                    ("Second probe content", {"event_type": "LEARN_CONTENT", "run_id": "run-2"}),
+                    (None, {}),
+                ]
+
+            def next(self):
+                text, meta = self._items.pop(0)
+                self.last_event_metadata = meta
+                if text is None:
+                    shutdown_event.set()
+                return text
+
+        mod._run_event_driven_loop(
+            "agent-0",
+            agent,
+            FakeInputSource(),
+            answer_publisher,
+            memory,
+            shutdown_event,
+        )
+
+        assert [
+            (call.kwargs["phase"], call.kwargs["run_id"], call.kwargs["processed_count"])
+            for call in answer_publisher.publish_agent_progress.call_args_list
+        ] == [
+            ("learn_content_started", "run-1", 1),
+            ("learn_content", "run-1", 1),
+            ("learn_content_started", "run-2", 1),
+            ("learn_content", "run-2", 1),
+        ]
+
+    def test_run_event_driven_loop_defers_ready_using_current_run_counts(self):
+        mod = _load_entrypoint()
+        answer_publisher = MagicMock()
+        memory = MagicMock()
+        shutdown_event = threading.Event()
+        second_run_ready_seen_during_store: dict[str, int] = {}
+        agent = MagicMock()
+
+        def _process_store(_: str) -> None:
+            call_count = agent.process_store.call_count
+            if call_count == 2:
+                second_run_ready_seen_during_store["count"] = (
+                    answer_publisher.publish_agent_ready.call_count
+                )
+
+        agent.process_store.side_effect = _process_store
+
+        class FakeInputSource:
+            def __init__(self):
+                self._source = self
+                self.last_event_metadata = {}
+                self._items = [
+                    ("First probe content", {"event_type": "LEARN_CONTENT", "run_id": "run-1"}),
+                    (
+                        "__FEED_COMPLETE__:1",
+                        {
+                            "event_type": "FEED_COMPLETE",
+                            "run_id": "run-1",
+                            "payload": {"expected_learn_content": 1},
+                        },
+                    ),
+                    (
+                        "__FEED_COMPLETE__:1",
+                        {
+                            "event_type": "FEED_COMPLETE",
+                            "run_id": "run-2",
+                            "payload": {"expected_learn_content": 1},
+                        },
+                    ),
+                    ("Second probe content", {"event_type": "LEARN_CONTENT", "run_id": "run-2"}),
+                    (None, {}),
+                ]
+
+            def next(self):
+                text, meta = self._items.pop(0)
+                self.last_event_metadata = meta
+                if text is None:
+                    shutdown_event.set()
+                return text
+
+        mod._run_event_driven_loop(
+            "agent-0",
+            agent,
+            FakeInputSource(),
+            answer_publisher,
+            memory,
+            shutdown_event,
+        )
+
+        assert second_run_ready_seen_during_store == {"count": 1}
+        assert answer_publisher.publish_agent_ready.call_args_list == [
+            call("1", run_id="run-1"),
+            call("1", run_id="run-2"),
+        ]
 
     def test_handle_store_fact_batch_uses_direct_storage_path(self):
         mod = _load_entrypoint()
