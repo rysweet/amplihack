@@ -54,6 +54,7 @@ def extract(manifest: dict, root: Path) -> dict:
     all_exports = []
     all_imports = []
     all_calls_by_file: dict[str, list[dict]] = {}
+    all_name_refs_by_file: dict[str, set[str]] = {}  # Fix 2: track all Name references per file
     files_analyzed = 0
     files_failed_parse: list[dict] = []
     importlib_calls: list[dict] = []
@@ -90,13 +91,22 @@ def extract(manifest: dict, root: Path) -> dict:
             resolved = None
             if imp["category"] == "internal":
                 module = imp["module"]
-                resolved = resolve_internal_import(module, imp.get("names", []), root)
+                resolved = resolve_internal_import(module, imp.get("names", []), root, importing_file=filepath)
             imp["resolved_target"] = resolved
             all_imports.append(imp)
 
         # Calls (for intra-file usage detection)
         file_calls = walk_calls(tree, filepath)
         all_calls_by_file[filepath] = file_calls
+
+        # Fix 2: Collect all Name references (Load context) for intra-file usage
+        # This catches bare name references like `logger.info(...)` where `logger`
+        # is used as an attribute base, and constants used in expressions/assignments.
+        name_refs: set[str] = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
+                name_refs.add(node.id)
+        all_name_refs_by_file[filepath] = name_refs
 
         # Detect importlib.import_module() calls
         for call in file_calls:
@@ -115,6 +125,22 @@ def extract(manifest: dict, root: Path) -> dict:
         key = f"{defn['file']}::{defn['name']}"
         def_index[key] = set()
 
+    # Build re-export map: for __init__.py files that do "from .submod import Name",
+    # map (init_file, Name) -> submodule_file so we can propagate references.
+    init_reexport_map: dict[tuple[str, str], str] = {}
+    for imp in all_imports:
+        if imp.get("level", 0) <= 0:
+            continue
+        if not imp["file"].endswith("__init__.py"):
+            continue
+        # This is a relative import in an __init__.py
+        target = imp.get("resolved_target")
+        if not target:
+            continue
+        for name in imp.get("names", []):
+            if name != "*":
+                init_reexport_map[(imp["file"], name)] = target
+
     # For each import, find the definitions it references
     for imp in all_imports:
         if imp["category"] != "internal":
@@ -126,6 +152,16 @@ def extract(manifest: dict, root: Path) -> dict:
             key = f"{target}::{name}"
             if key in def_index:
                 def_index[key].add(imp["file"])
+
+            # Fix 1: Follow re-export chains through __init__.py
+            # If target is an __init__.py that re-exports 'name' from a submodule,
+            # also mark the original definition in the submodule as referenced.
+            reexport_source = init_reexport_map.get((target, name))
+            if reexport_source:
+                source_key = f"{reexport_source}::{name}"
+                if source_key in def_index:
+                    def_index[source_key].add(imp["file"])
+
             # Also check wildcard: if name == '*', mark all exports of target
             if name == "*":
                 for exp in all_exports:
@@ -134,6 +170,12 @@ def extract(manifest: dict, root: Path) -> dict:
                             ekey = f"{target}::{ename}"
                             if ekey in def_index:
                                 def_index[ekey].add(imp["file"])
+                            # Propagate wildcard through re-exports too
+                            reexport_src = init_reexport_map.get((target, ename))
+                            if reexport_src:
+                                src_key = f"{reexport_src}::{ename}"
+                                if src_key in def_index:
+                                    def_index[src_key].add(imp["file"])
 
     # Build exported names set per file
     exported_names: dict[str, set[str]] = {}
@@ -204,6 +246,10 @@ def extract(manifest: dict, root: Path) -> dict:
         })
 
     # --- Phase 4: Dead code detection (conservative) ---
+    # Pre-compute file sets for skipping
+    test_files = {f["path"] for f in py_files if f.get("is_test", False)}
+    vendor_files = {f["path"] for f in py_files if f.get("classification") == "vendor"}
+
     potentially_dead = []
     for defn in all_definitions:
         name = defn["name"]
@@ -211,6 +257,15 @@ def extract(manifest: dict, root: Path) -> dict:
 
         # Skip dunders
         if name.startswith("__") and name.endswith("__"):
+            continue
+
+        # Skip definitions in test files — test classes/functions are discovered
+        # by pytest at runtime, not via imports
+        if filepath in test_files:
+            continue
+
+        # Skip vendored files — external code we don't control
+        if filepath in vendor_files:
             continue
 
         # Skip if exported
@@ -222,10 +277,15 @@ def extract(manifest: dict, root: Path) -> dict:
         if def_index.get(key, set()):
             continue
 
-        # Skip if called within its own file
+        # Skip if referenced within its own file (Fix 2: use Name refs, not just calls)
+        # This catches: logger.info(), constants in expressions, class instantiation, etc.
+        file_name_refs = all_name_refs_by_file.get(filepath, set())
+        if name in file_name_refs:
+            continue
+
+        # Also check call-based references (for dotted names like self.method)
         file_calls = all_calls_by_file.get(filepath, [])
         called_names = {c["name"].split(".")[-1] for c in file_calls}
-        # Also check full name (e.g. self.method)
         called_full = {c["name"] for c in file_calls}
         if name in called_names or name in called_full:
             continue

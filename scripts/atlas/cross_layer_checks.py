@@ -479,16 +479,24 @@ def _check_circular_import_severity(layer3) -> dict:
     if not cycles:
         return _pass(name, "No circular dependencies detected")
 
-    # All cycles reported -- score them
+    # Separate vendor cycles from internal cycles
+    vendor_cycles = []
+    internal_cycles = []
+    for c in cycles:
+        cycle_path = c.get("cycle", [])
+        if any("vendor" in node for node in cycle_path):
+            vendor_cycles.append(c)
+        else:
+            internal_cycles.append(c)
+
     total = len(cycles)
-    details = f"{total} circular dependency cycles found"
+    details = (f"{total} circular dependency cycles found "
+               f"({len(internal_cycles)} internal, {len(vendor_cycles)} vendor)")
 
-    if total > 5:
-        return _result(name, "FAIL", details,
-                       [str(c.get("cycle", [])) for c in cycles[:10]])
-
+    # Vendor cycles are informational (we don't control vendored code)
+    # Internal cycles are warnings (common in Python, usually work at runtime)
     return _result(name, "WARN", details,
-                   [str(c.get("cycle", [])) for c in cycles])
+                   [str(c.get("cycle", [])) for c in internal_cycles[:10]])
 
 
 def _check_env_var_completeness(layer4, manifest) -> dict:

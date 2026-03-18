@@ -4,7 +4,7 @@ title: Code Atlas
 
 # Code Atlas
 
-<div class="atlas-metadata">Generated: 2026-03-18 14:01 UTC</div>
+<div class="atlas-metadata">Generated: 2026-03-18 14:42 UTC</div>
 
 ## Layer Overview
 
@@ -33,7 +33,7 @@ title: Code Atlas
     <small>100% coverage</small>
 
     <div class="atlas-scale">
-    **total definitions**: 3365 | **total exports**: 1070 | **total imports**: 4235 | **potentially dead**: 1817
+    **total definitions**: 3365 | **total exports**: 1070 | **total imports**: 4235 | **potentially dead**: 139
     </div>
 
 -   <span class="atlas-icon--structural">:material-package-variant:</span> **[Layer 3: Compile-time Dependencies](compile-deps/)**
@@ -48,7 +48,7 @@ title: Code Atlas
     <small>100% coverage</small>
 
     <div class="atlas-scale">
-    **external dep**: 56 | **internal packages**: 601 | **internal edges**: 110 | **circular dependency**: 0
+    **external dep**: 56 | **internal packages**: 601 | **internal edges**: 715 | **circular dependency**: 8
     </div>
 
 -   <span class="atlas-icon--structural">:material-server-network:</span> **[Layer 4: Runtime Topology](runtime-topology/)**
@@ -108,7 +108,7 @@ title: Code Atlas
     <small>100% coverage</small>
 
     <div class="atlas-scale">
-    **total packages**: 77 | **core packages**: 0 | **leaf packages**: 4
+    **total packages**: 77 | **core packages**: 0 | **leaf packages**: 16
     </div>
 
 -   <span class="atlas-icon--behavioral">:material-routes:</span> **[Layer 8: User Journeys](user-journeys/)**

@@ -340,29 +340,60 @@ def walk_calls(tree: ast.Module, filepath: str) -> list[dict]:
     return calls
 
 
-def resolve_internal_import(module: str, names: list[str], root: Path) -> str | None:
-    """Resolve 'amplihack.foo.bar' to relative file path.
+def resolve_internal_import(module: str, names: list[str], root: Path, importing_file: str | None = None) -> str | None:
+    """Resolve 'amplihack.foo.bar' or '.bar' to an absolute file path.
 
-    Handles both module imports (amplihack.foo -> amplihack/foo.py or
-    amplihack/foo/__init__.py) and relative imports.
+    Handles both absolute module imports (amplihack.foo -> amplihack/foo.py or
+    amplihack/foo/__init__.py) and relative imports (resolved relative to the
+    importing file's package).
 
     Args:
-        module: Module string (e.g. 'amplihack.foo.bar').
+        module: Module string (e.g. 'amplihack.foo.bar' or '.bar').
         names: Imported names (unused for path resolution but kept for API).
         root: Project root directory.
+        importing_file: Absolute path of the file containing the import.
+            Required for correct relative import resolution.
 
     Returns:
-        Resolved file path relative to root, or None if not resolvable.
+        Resolved absolute file path, or None if not resolvable.
     """
     if not module:
         return None
 
-    # Strip leading dots for relative imports
+    # Count leading dots for relative import level
+    level = len(module) - len(module.lstrip("."))
     clean = module.lstrip(".")
+
+    if level > 0 and importing_file:
+        # Relative import: resolve relative to importing file's package
+        importing_dir = Path(importing_file).parent
+        # Go up (level - 1) directories: level=1 means current package,
+        # level=2 means parent package, etc.
+        base_dir = importing_dir
+        for _ in range(level - 1):
+            base_dir = base_dir.parent
+
+        if clean:
+            parts = clean.split(".")
+            # Try as direct .py file
+            candidate = base_dir / Path(*parts).with_suffix(".py")
+            if candidate.exists():
+                return str(candidate)
+            # Try as package __init__.py
+            candidate = base_dir / Path(*parts) / "__init__.py"
+            if candidate.exists():
+                return str(candidate)
+        else:
+            # 'from . import X' — refers to current package's __init__.py
+            candidate = base_dir / "__init__.py"
+            if candidate.exists():
+                return str(candidate)
+        return None
+
     if not clean:
         return None
 
-    # Convert dotted module to path
+    # Absolute import: convert dotted module to path from root
     parts = clean.split(".")
 
     # Try as direct .py file

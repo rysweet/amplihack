@@ -9,7 +9,7 @@ title: "Layer 8: User Journeys"
 # Layer 8: User Journeys
 
 <div class="atlas-metadata">
-Category: <strong>Behavioral</strong> | Generated: 2026-03-18T14:01:07.000862+00:00
+Category: <strong>Behavioral</strong> | Generated: 2026-03-18T14:42:10.201533+00:00
 </div>
 
 ## Map
@@ -120,7 +120,7 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-18T14:01:07.000862+00
 ## Key Findings
 
 - 351 user journeys traced
-- 5233 functions unreachable from any entry point
+- 5191 functions unreachable from any entry point
 
 ## Detail
 
@@ -133,10 +133,10 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-18T14:01:07.000862+00
     - **Http Journeys**: 22
     - **Hook Journeys**: 274
     - **Out Of Scope Journeys**: 274
-    - **Avg Trace Depth**: 0.4
+    - **Avg Trace Depth**: 0.6
     - **Total Functions In Graph**: 5426
-    - **Total Functions Reached**: 227
-    - **Unreachable Function Count**: 5233
+    - **Total Functions Reached**: 269
+    - **Unreachable Function Count**: 5191
 
 ## Cross-References
 

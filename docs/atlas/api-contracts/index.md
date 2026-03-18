@@ -9,7 +9,7 @@ title: "Layer 5: API Contracts"
 # Layer 5: API Contracts
 
 <div class="atlas-metadata">
-Category: <strong>Behavioral</strong> | Generated: 2026-03-18T14:00:58.872251+00:00
+Category: <strong>Behavioral</strong> | Generated: 2026-03-18T14:42:01.665352+00:00
 </div>
 
 ## Map
