@@ -332,7 +332,11 @@ def _execute_rust_command(cmd: list[str], *, name: str, progress: bool) -> Recip
                 import signal
 
                 sig_num = -returncode
-                sig_name = signal.Signals(sig_num).name if sig_num in signal.valid_signals() else str(sig_num)
+                sig_name = (
+                    signal.Signals(sig_num).name
+                    if sig_num in signal.valid_signals()
+                    else str(sig_num)
+                )
                 raise RuntimeError(
                     f"Rust recipe runner killed by signal {sig_name} ({sig_num}). "
                     f"The process was terminated externally before producing output."
@@ -343,11 +347,12 @@ def _execute_rust_command(cmd: list[str], *, name: str, progress: bool) -> Recip
             if stderr:
                 lines = stderr.strip().splitlines()
                 # Skip progress/heartbeat lines, show last 5 meaningful lines
-                meaningful = [ln for ln in lines if not ln.strip().startswith(("▶", "✓", "⊘", "✗", "[agent]"))]
+                meaningful = [
+                    ln for ln in lines if not ln.strip().startswith(("▶", "✓", "⊘", "✗", "[agent]"))
+                ]
                 stderr_tail = "\n".join(meaningful[-5:]) if meaningful else "\n".join(lines[-5:])
             raise RuntimeError(
-                f"Rust recipe runner failed (exit {returncode}): "
-                f"{stderr_tail or 'no stderr'}"
+                f"Rust recipe runner failed (exit {returncode}): {stderr_tail or 'no stderr'}"
             )
         raise RuntimeError(
             f"Rust recipe runner returned unparseable output (exit {returncode}): "
