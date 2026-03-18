@@ -52,37 +52,10 @@ _REPO_ROOT_BUNDLE_DIR = _PACKAGE_DIR.parent.parent / "amplifier-bundle" / "recip
 # Other asset resolution code (resolve_bundle_asset.py, runtime_assets.py)
 # already checks this.  Recipe discovery must too, so recipes are found
 # when running from a non-amplihack repo with AMPLIHACK_HOME set (#3237).
-#
-# Security contract:
-# - Path is canonicalized via Path(raw).resolve() before use (follows symlinks)
-# - .is_dir() check is required — invalid values emit a WARNING log, not an
-#   exception and not silent ignore (#3237)
-# - _AMPLIHACK_HOME_BUNDLE_DIR is kept for backwards compat with rust_runner.py
-_AMPLIHACK_HOME_DIR: Path | None = None
 _AMPLIHACK_HOME_BUNDLE_DIR: Path | None = None
-_amplihack_home_raw = os.environ.get("AMPLIHACK_HOME")
-if _amplihack_home_raw:
-    _amplihack_home_resolved = Path(_amplihack_home_raw).resolve()
-    if _amplihack_home_resolved.is_dir():
-        _AMPLIHACK_HOME_DIR = _amplihack_home_resolved
-        _bundle_candidate = _amplihack_home_resolved / "amplifier-bundle" / "recipes"
-        if _bundle_candidate.is_dir():
-            _AMPLIHACK_HOME_BUNDLE_DIR = _bundle_candidate
-        else:
-            logger.warning(
-                "AMPLIHACK_HOME=%r is set but amplifier-bundle/recipes/ subdir not found "
-                "(resolved: %s) — recipes from AMPLIHACK_HOME will not be discovered. "
-                "Ensure amplifier-bundle/recipes/ exists inside AMPLIHACK_HOME.",
-                _amplihack_home_raw,
-                _bundle_candidate,
-            )
-    else:
-        logger.warning(
-            "AMPLIHACK_HOME=%r is not a valid directory (resolved: %s) — ignoring. "
-            "Set AMPLIHACK_HOME to an existing directory containing your amplihack installation.",
-            _amplihack_home_raw,
-            _amplihack_home_resolved,
-        )
+_amplihack_home = os.environ.get("AMPLIHACK_HOME")
+if _amplihack_home:
+    _AMPLIHACK_HOME_BUNDLE_DIR = Path(_amplihack_home) / "amplifier-bundle" / "recipes"
 
 # Directories searched for recipe files, in priority order.
 # Later entries override earlier ones when recipes share the same name.
@@ -94,7 +67,7 @@ if _amplihack_home_raw:
 # Priority (package → repo-root → AMPLIHACK_HOME → global → local):
 # 1. <site-packages>/amplihack/amplifier-bundle/recipes/ - Installed package
 # 2. <repo-root>/amplifier-bundle/recipes/               - Editable install
-# 3. $AMPLIHACK_HOME/amplifier-bundle/recipes/ - Explicit env var (resolved, bundle subdir checked)
+# 3. $AMPLIHACK_HOME/amplifier-bundle/recipes/           - Explicit env var
 # 4. ~/.amplihack/.claude/recipes/       - User home (global installation)
 # 5. amplifier-bundle/recipes/           - Global bundled (CWD-relative)
 # 6. src/amplihack/amplifier-bundle/     - Global source (CWD-relative)

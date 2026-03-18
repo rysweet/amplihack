@@ -267,7 +267,63 @@ def _execute_rust_command(cmd: list[str], *, name: str, progress: bool) -> Recip
     return execute_rust_command(cmd, name=name, progress=progress, env_builder=_build_rust_env)
 
 
-def _resolve_effective_recipe_dirs(
+# -- Public entry point ------------------------------------------------------
+
+
+def _default_package_recipe_dirs() -> list[str]:
+    """Return bundled recipe directories visible to Python discovery.
+
+    In editable installs, ``src/amplihack/amplifier-bundle/recipes`` may exist
+    but only contain a subset of recipes, while the full bundle lives at the
+    repo root ``amplifier-bundle/recipes``.  The Rust runner needs both paths
+    to match Python-side discovery in real environments (issue #3002).
+
+    Also includes ``$AMPLIHACK_HOME/amplifier-bundle/recipes/`` when the env
+    var is set, so recipes are found when running from non-amplihack repos
+    (issue #3237).
+    """
+    try:
+        from amplihack.recipes.discovery import (
+            _AMPLIHACK_HOME_BUNDLE_DIR,
+            _PACKAGE_BUNDLE_DIR,
+            _REPO_ROOT_BUNDLE_DIR,
+        )
+
+        candidates = [_PACKAGE_BUNDLE_DIR, _REPO_ROOT_BUNDLE_DIR]
+        if _AMPLIHACK_HOME_BUNDLE_DIR is not None:
+            candidates.append(_AMPLIHACK_HOME_BUNDLE_DIR)
+
+        dirs: list[str] = []
+        for candidate in candidates:
+            if candidate.is_dir():
+                candidate_str = str(candidate)
+                if candidate_str not in dirs:
+                    dirs.append(candidate_str)
+        if dirs:
+            return dirs
+    except Exception as exc:
+        logger.debug("Could not resolve default recipe dirs: %s", exc)
+    return []
+
+
+def _normalize_recipe_dirs(recipe_dirs: list[str] | None, *, working_dir: str) -> list[str] | None:
+    """Return absolute recipe directories rooted at ``working_dir`` when needed."""
+    if recipe_dirs is None:
+        return None
+
+    base_dir = Path(working_dir).resolve()
+    normalized: list[str] = []
+    for recipe_dir in recipe_dirs:
+        candidate = Path(recipe_dir)
+        if not candidate.is_absolute():
+            candidate = base_dir / candidate
+        normalized.append(str(candidate.resolve()))
+    return normalized
+
+
+def _resolve_recipe_target(
+    name: str,
+    *,
     recipe_dirs: list[str] | None,
     *,
     working_dir: str,
