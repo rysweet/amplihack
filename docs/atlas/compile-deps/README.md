@@ -1,10 +1,11 @@
 # Layer 3: Compile-time Dependencies
 
 **Slug:** `compile-deps` | **Display Order:** 3
+**Last rebuilt:** 2026-03-18 | **Package version:** 0.6.85
 
 ## Direct Dependencies (pyproject.toml)
 
-The project declares 57 direct dependencies in `pyproject.toml`. Python >=3.11 required.
+The project declares 57 direct dependencies in `pyproject.toml` (v0.6.85). Python >=3.11 required.
 
 ### Core Framework
 
@@ -86,6 +87,7 @@ Other cross-package edges:
 - `launcher` -> `hooks`
 - `eval` -> `knowledge_builder`
 - `eval` -> `agents.domain_agents`
+- `recipes/rust_runner` -> `recipes/discovery` (intra-package: imports `_AMPLIHACK_HOME_BUNDLE_DIR`, `_PACKAGE_BUNDLE_DIR`, `_REPO_ROOT_BUNDLE_DIR`)
 - `vendor/blarify` is fully self-contained (no imports outside vendor/)
 
 ## Circular Dependencies
@@ -95,6 +97,9 @@ No circular cross-package imports were detected. The `vendor/blarify/` subtree i
 ## Diagrams
 
 ### Mermaid Diagram
+
+> **Note:** SVGs were not regenerated (mmdc/dot not available). Refer to source files for the current truth.
+
 ![Compile-time Dependencies - Mermaid](compile-deps-mermaid.svg)
 
 ### Graphviz Diagram
