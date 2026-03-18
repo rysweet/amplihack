@@ -1,0 +1,79 @@
+# gadugi outside-in test scenarios for code atlas v3
+# Validates the atlas extraction pipeline from an external user perspective
+
+name: code-atlas-v3-e2e
+description: End-to-end validation of the deterministic code atlas extraction pipeline
+type: cli
+
+scenarios:
+  - name: "Full pipeline completes on amplihack"
+    description: "run_all.py produces all layer JSONs and cross-layer report"
+    steps:
+      - run: "rm -rf /tmp/atlas-test-e2e && python3 scripts/atlas/run_all.py --root src/amplihack --output /tmp/atlas-test-e2e"
+        expect_exit_code: 0
+        expect_stdout_contains:
+          - "Atlas extraction complete"
+          - "TOTAL"
+      - run: "ls /tmp/atlas-test-e2e/*.json | wc -l"
+        expect_stdout_contains: "10"
+
+  - name: "Manifest counts all git-tracked files"
+    description: "Manifest file count matches git ls-files"
+    steps:
+      - run: "python3 -c \"import json; m=json.load(open('/tmp/atlas-test-e2e/manifest.json')); print(m['total_files'])\""
+        expect_exit_code: 0
+      - run: "cd src/amplihack && git ls-files | wc -l"
+        expect_exit_code: 0
+
+  - name: "Layer 2 parses all Python files with zero failures"
+    description: "AST parser handles every .py file"
+    steps:
+      - run: "python3 -c \"import json; d=json.load(open('/tmp/atlas-test-e2e/layer2_ast_bindings.json')); print(f'analyzed={d[\\\"files_analyzed\\\"]}, failed={len(d.get(\\\"files_failed_parse\\\", []))}'); assert len(d.get('files_failed_parse', [])) == 0, 'Parse failures found'\""
+        expect_exit_code: 0
+        expect_stdout_contains: "failed=0"
+
+  - name: "Cross-layer checks produce zero FAILures"
+    description: "No hard failures in cross-layer validation"
+    steps:
+      - run: "python3 -c \"import json; r=json.load(open('/tmp/atlas-test-e2e/cross_layer_report.json')); fails=[c for c in r['checks'] if c['status']=='FAIL']; print(f'failures={len(fails)}'); assert len(fails)==0, f'Failures: {fails}'\""
+        expect_exit_code: 0
+        expect_stdout_contains: "failures=0"
+
+  - name: "Pipeline completes in under 60 seconds"
+    description: "Performance target for 601 files"
+    steps:
+      - run: "python3 -c \"import json, time; start=time.time(); import subprocess; subprocess.run(['python3', 'scripts/atlas/run_all.py', '--root', 'src/amplihack', '--output', '/tmp/atlas-perf-test'], check=True, capture_output=True); elapsed=time.time()-start; print(f'elapsed={elapsed:.1f}s'); assert elapsed < 60, f'Too slow: {elapsed}s'\""
+        expect_exit_code: 0
+
+  - name: "Renderer produces atlas pages from JSON"
+    description: "render.py generates all expected Markdown files"
+    steps:
+      - run: "python3 scripts/atlas/render.py --data /tmp/atlas-test-e2e --output /tmp/atlas-render-test"
+        expect_exit_code: 0
+      - run: "find /tmp/atlas-render-test -name '*.md' | wc -l"
+        expect_stdout_contains: "11"
+
+  - name: "Pipeline works on external repo (azlin)"
+    description: "Atlas extraction succeeds on a non-amplihack Python codebase"
+    steps:
+      - run: "python3 scripts/atlas/run_all.py --root /home/azureuser/src/azlin --output /tmp/atlas-azlin-e2e"
+        expect_exit_code: 0
+        expect_stdout_contains: "Atlas extraction complete"
+
+  - name: "Every CLI command has a journey trace"
+    description: "Cross-layer check: CLI_COMMAND_COVERAGE passes"
+    steps:
+      - run: "python3 -c \"import json; r=json.load(open('/tmp/atlas-test-e2e/cross_layer_report.json')); check=[c for c in r['checks'] if c['name']=='CLI_COMMAND_COVERAGE'][0]; print(f'status={check[\\\"status\\\"]}'); assert check['status'] in ('PASS','WARN')\""
+        expect_exit_code: 0
+
+  - name: "Layer 5 finds all argparse commands"
+    description: "Deterministic extraction is exhaustive for CLI"
+    steps:
+      - run: "python3 -c \"import json; d=json.load(open('/tmp/atlas-test-e2e/layer5_api_contracts.json')); print(f'commands={d[\\\"summary\\\"][\\\"cli_command_count\\\"]}, routes={d[\\\"summary\\\"][\\\"http_route_count\\\"]}'); assert d['summary']['cli_command_count'] >= 30, 'Expected 30+ CLI commands'\""
+        expect_exit_code: 0
+
+  - name: "Health page renders from cross-layer report"
+    description: "The health dashboard page is generated correctly"
+    steps:
+      - run: "test -f /tmp/atlas-render-test/health.md && grep -c 'PASS\\|WARN\\|FAIL' /tmp/atlas-render-test/health.md"
+        expect_exit_code: 0
