@@ -34,7 +34,7 @@ Usage:
 Environment:
     EH_CONN                    Event Hubs namespace connection string
     AMPLIHACK_EH_RESPONSE_HUB  Response hub name override
-    AMPLIHACK_EVAL_MONITOR_CONSUMER_GROUP  Response-hub consumer group
+    AMPLIHACK_EVAL_MONITOR_CONSUMER_GROUP  Response-hub consumer group (default: eval-monitor)
     HIVE_AGENT_COUNT           Expected agent count
 """
 
@@ -471,7 +471,7 @@ def main() -> int:
     )
     p.add_argument(
         "--consumer-group",
-        default=os.environ.get("AMPLIHACK_EVAL_MONITOR_CONSUMER_GROUP", "eval-reader"),
+        default=os.environ.get("AMPLIHACK_EVAL_MONITOR_CONSUMER_GROUP", "eval-monitor"),
     )
     p.add_argument(
         "--agents",

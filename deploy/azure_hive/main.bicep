@@ -8,7 +8,8 @@
 //       hive-events-{hiveName}    — LEARN_CONTENT, INPUT, FEED_COMPLETE, AGENT_READY
 //       hive-shards-{hiveName}    — SHARD_QUERY, SHARD_RESPONSE (cross-shard DHT)
 //       eval-responses-{hiveName} — EVAL_ANSWER, AGENT_READY (eval harness)
-//   - Per-agent consumer groups on hive-events and eval-responses hubs
+//   - Per-app consumer groups on hive-events and hive-shards hubs
+//   - Dedicated eval-harness and monitor consumer groups on eval-responses
 //   - N Container Apps (ceil(agentCount / agentsPerApp) apps, each with
 //     up to agentsPerApp agent containers)
 //
@@ -214,13 +215,12 @@ resource ehEvalReaderGroup 'Microsoft.EventHub/namespaces/eventhubs/consumergrou
   parent: ehEvalHubResource
 }
 
-// Per-app consumer groups on eval-responses
-resource ehEvalConsumerGroups 'Microsoft.EventHub/namespaces/eventhubs/consumergroups@2023-01-01-preview' = [
-  for appIdx in range(0, appCount): {
-    name: 'cg-app-${appIdx}'
-    parent: ehEvalHubResource
-  }
-]
+// Eval monitor consumer group: dedicated to external telemetry readers so they
+// do not steal answer/progress events from the live eval harness.
+resource ehEvalMonitorGroup 'Microsoft.EventHub/namespaces/eventhubs/consumergroups@2023-01-01-preview' = {
+  name: 'eval-monitor'
+  parent: ehEvalHubResource
+}
 
 // ---------- Container Apps Environment ----------
 resource containerEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {

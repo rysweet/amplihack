@@ -175,7 +175,7 @@ static string[] BuildMonitorArgs(
             builder,
             "eval:monitorConsumerGroup",
             "AMPLIHACK_EVAL_MONITOR_CONSUMER_GROUP",
-            "eval-reader"
+            "eval-monitor"
         ),
         "--agents",
         GetConfig(builder, "azure:agentCount", "HIVE_AGENT_COUNT", "100"),
