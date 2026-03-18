@@ -1,0 +1,134 @@
+scenario:
+  name: "Eval Infrastructure CLI - Setup, Assess, Report, Scale"
+  description: |
+    Verify the four distributed eval CLI tools (eval_setup.py, eval_assess.py,
+    eval_report.py, eval_scale_100.py) behave correctly from a user perspective.
+    Covers help output, pre-flight checks, report generation, and scale analysis.
+  type: cli
+  tags: [smoke, eval-infra, issue-3172]
+
+  prerequisites:
+    - "Python 3.11+ is available"
+    - "deploy/azure_hive/eval_setup.py exists"
+    - "deploy/azure_hive/eval_assess.py exists"
+    - "deploy/azure_hive/eval_report.py exists"
+    - "deploy/azure_hive/eval_scale_100.py exists"
+    - "deploy/azure_hive/eval_results_100agents_1000turns.json exists"
+
+  variables:
+    worktree: "."
+    results_1k: "deploy/azure_hive/eval_results_100agents_1000turns.json"
+    results_5k: "deploy/azure_hive/eval_results_100agents_5000turns.json"
+
+  # ─── Scenario 1: eval_setup.py pre-flight in skip-azure mode ───────────────
+  steps:
+    - action: launch
+      target: "python"
+      args: ["deploy/azure_hive/eval_setup.py", "--skip-azure", "--check-only"]
+      description: "Run eval_setup.py pre-flight with Azure checks skipped (CI mode)"
+      timeout: 15s
+
+    - action: verify_output
+      contains: "Distributed eval setup"
+      description: "Should print setup header"
+
+    - action: verify_output
+      contains: "Skipping Azure checks"
+      description: "Should confirm --skip-azure flag was honoured"
+
+    - action: verify_output
+      matches: "(PASS|WARN|FAIL|✓|✗|⚠)"
+      description: "Should emit at least one status symbol"
+
+    # eval_setup.py exits 1 when ANTHROPIC_API_KEY missing — that is expected
+    - action: verify_exit_code
+      expected: 1
+      description: "Exits 1 when required env vars are absent (expected in CI)"
+
+    # ─── Scenario 2: eval_assess.py parity comparison ─────────────────────────
+    - action: launch
+      target: "python"
+      args:
+        - "deploy/azure_hive/eval_assess.py"
+        - "--distributed"
+        - "${results_1k}"
+        - "--baseline"
+        - "${results_5k}"
+      description: "Assess distributed results vs baseline for retrieval parity"
+      timeout: 20s
+
+    - action: verify_output
+      contains: "Retrieval Parity Analysis"
+      description: "Should include parity section header"
+
+    - action: verify_output
+      matches: "(PARITY|REGRESSION|IMPROVEMENT)"
+      description: "Should report a parity verdict"
+
+    - action: verify_output
+      matches: "\\d+\\.\\d+%"
+      description: "Should display percentage scores"
+
+    - action: verify_exit_code
+      expected: 0
+      description: "eval_assess.py exits 0 on successful assessment"
+
+    # ─── Scenario 3: eval_report.py markdown generation ───────────────────────
+    - action: launch
+      target: "python"
+      args:
+        - "deploy/azure_hive/eval_report.py"
+        - "--distributed"
+        - "${results_1k}"
+      description: "Generate markdown report from 100-agent/1k-turn results"
+      timeout: 15s
+
+    - action: verify_output
+      contains: "# Distributed Eval Report"
+      description: "Output should be a Markdown document"
+
+    - action: verify_output
+      contains: "Overall score"
+      description: "Report must contain overall score row"
+
+    - action: verify_output
+      contains: "Category Breakdown"
+      description: "Report must contain per-category section"
+
+    - action: verify_output
+      matches: "\\d+\\.\\d+%"
+      description: "At least one percentage score in report"
+
+    - action: verify_exit_code
+      expected: 0
+      description: "eval_report.py exits 0 when report is produced"
+
+    # ─── Scenario 4: eval_scale_100.py static topology analysis ───────────────
+    - action: launch
+      target: "python"
+      args: ["deploy/azure_hive/eval_scale_100.py", "--skip-azure"]
+      description: "Run 100-agent scale validator in static analysis mode"
+      timeout: 15s
+
+    - action: verify_output
+      contains: "100-Agent Scale Validation"
+      description: "Should print scale validation header"
+
+    - action: verify_output
+      contains: "Scale bottlenecks"
+      description: "Must enumerate known bottlenecks"
+
+    - action: verify_output
+      contains: "consumer group"
+      description: "Should flag Event Hub consumer group limit"
+
+    - action: verify_output
+      contains: "Static analysis complete"
+      description: "Should confirm static analysis finished"
+
+    - action: verify_exit_code
+      expected: 0
+      description: "eval_scale_100.py exits 0 after static analysis"
+
+  cleanup:
+    - action: stop_application
