@@ -9,7 +9,7 @@ title: "Layer 2: AST + LSP Bindings"
 # Layer 2: AST + LSP Bindings
 
 <div class="atlas-metadata">
-Category: <strong>Structural</strong> | Generated: 2026-03-18T14:41:55.644012+00:00
+Category: <strong>Structural</strong> | Generated: 2026-03-18T19:21:23.610770+00:00
 </div>
 
 ## Map
@@ -78,10 +78,10 @@ Category: <strong>Structural</strong> | Generated: 2026-03-18T14:41:55.644012+00
 
     | Metric | Value |
     |--------|-------|
-    | Total definitions | 3365 |
+    | Total definitions | 3369 |
     | Total exports | 1070 |
     | Total imports | 4235 |
-    | Potentially dead | 139 |
+    | Potentially dead | 140 |
     | Files with `__all__` | 206 |
 
 ## Legend
@@ -98,8 +98,8 @@ Category: <strong>Structural</strong> | Generated: 2026-03-18T14:41:55.644012+00
 
 ## Key Findings
 
-- 3365 total definitions across all files
-- 139 potentially dead definitions (4.1% of total)
+- 3369 total definitions across all files
+- 140 potentially dead definitions (4.2% of total)
 - 395 files without `__all__` exports
 
 ## Detail
@@ -108,13 +108,15 @@ Category: <strong>Structural</strong> | Generated: 2026-03-18T14:41:55.644012+00
 
     **Summary metrics:**
     
-    - **Total Definitions**: 3365
+    - **Total Definitions**: 3369
     - **Total Exports**: 1070
     - **Total Imports**: 4235
-    - **Potentially Dead Count**: 139
+    - **Potentially Dead Count**: 140
     - **Files With All**: 206
     - **Files Without All**: 395
     - **Importlib Dynamic Imports**: 1
+    - **Language Counts**:
+        - `python`: 3369
 
 ## Cross-References
 
