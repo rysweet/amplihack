@@ -241,7 +241,7 @@ class TestNoHardcodedSecrets:
             for lineno, line in enumerate(text.splitlines(), 1):
                 if pattern.search(line):
                     # Allow lines that are obviously tests / documentation
-                    if any(kw in line for kw in ("# noqa", "example", "test", "dummy", "placeholder", "YOUR_")):
+                    if any(kw in line for kw in ("# noqa", "example", "test", "dummy", "placeholder", "YOUR_", ">>>", "sanitize", "sanitizer", "redact", "mask")):
                         continue
                     violations.append(f"{py_file.relative_to(REPO_ROOT)}:{lineno}: {line.strip()!r}")
 

@@ -211,6 +211,80 @@ class AtlasRenderer:
         lines.append("</div>")
         lines.append("")
 
+        # Language detection section (from layer 1)
+        layer1 = self.layers.get("layer1_repo_surface", {})
+        languages = layer1.get("languages", {})
+        if languages:
+            primary = layer1.get("primary_language", "unknown")
+            total_code = layer1.get("total_code_lines", 0)
+            tools_used = layer1.get("tools_used", [])
+            tool_label = ", ".join(tools_used) if tools_used else "extension counting"
+
+            lines.extend([
+                "## Languages",
+                "",
+                f"Primary language: **{primary.title()}**"
+                f" | Total code: **{total_code:,}** lines"
+                f" | Detected via: *{tool_label}*",
+                "",
+                "| Language | Files | Code Lines | % | Analysis Available |",
+                "|----------|------:|-----------:|--:|-------------------|",
+            ])
+
+            # Analysis availability per language
+            analysis_levels = {
+                "python": "Full (AST, imports, dead code, journeys)",
+                "rust": "Dependencies (Cargo.toml)",
+                "typescript": "Dependencies (package.json)",
+                "javascript": "Dependencies (package.json)",
+                "go": "Dependencies (go.mod)",
+                "csharp": "Dependencies (*.csproj)",
+                "java": "Dependencies (build manifest)",
+            }
+
+            # Filter out non-code languages for the main table
+            _code_languages = {
+                "python", "rust", "typescript", "javascript", "go",
+                "csharp", "java", "ruby", "swift", "kotlin", "c", "cpp",
+                "zig", "lua",
+            }
+
+            for lang, info in languages.items():
+                analysis = analysis_levels.get(lang, "File-level only")
+                code = info.get("code", info.get("line_count", 0))
+                pct = info.get("percentage", 0)
+                # Show all languages with code, but highlight programming ones
+                if lang in _code_languages or code > 0:
+                    lines.append(
+                        f"| {lang.title()} | {info['file_count']:,} "
+                        f"| {code:,} | {pct}% | {analysis} |"
+                    )
+
+            lines.append("")
+
+            # Show coverage note if primary language is not Python
+            if primary != "python":
+                pct_primary = languages.get(primary, {}).get("percentage", 0)
+                lines.extend([
+                    f"> **Analysis Coverage**: This codebase is primarily "
+                    f"**{primary.title()}** ({pct_primary}% of code). "
+                    f"Full AST analysis is available for Python files. "
+                    f"{primary.title()} analysis covers dependencies and "
+                    f"file structure. See [issue #3310]"
+                    f"(https://github.com/user/repo/issues/3310) for "
+                    f"expanded language support.",
+                    "",
+                ])
+            else:
+                non_python = [l for l in languages if l != "python"]
+                if non_python:
+                    lines.extend([
+                        "> **Note**: Full AST analysis is currently available "
+                        "for Python only. Other languages have dependency and "
+                        "file-level analysis.",
+                        "",
+                    ])
+
         # Legend
         lines.extend([
             "## Legend",

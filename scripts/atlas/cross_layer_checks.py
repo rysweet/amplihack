@@ -215,15 +215,26 @@ def _check_dependency_consistency(layer2, layer3) -> dict:
             top = imp["module"].split(".")[0]
             imported_modules.add(top.lower().replace("-", "_"))
 
-    # Check declared deps
+    # Check declared deps — only Python deps against Python imports.
+    # Non-Python deps (Rust, JS, Go, etc.) are validated by their own tooling.
     unused = []
+    python_deps = 0
+    non_python_deps = 0
     for dep in layer3.get("external_dependencies", []):
+        lang = dep.get("language", "python")
+        if lang != "python":
+            non_python_deps += 1
+            continue
+        python_deps += 1
         norm = dep.get("normalized_name", dep["name"]).lower().replace("-", "_")
         if dep.get("import_count", 0) == 0 and norm not in imported_modules:
             unused.append(dep["name"])
 
     if not unused:
-        return _pass(name, f"All external dependencies are imported")
+        detail = f"All {python_deps} Python dependencies are imported"
+        if non_python_deps:
+            detail += f" ({non_python_deps} non-Python deps not checked against imports)"
+        return _pass(name, detail)
 
     return _result(name, "WARN", f"{len(unused)} declared deps appear unused", unused)
 

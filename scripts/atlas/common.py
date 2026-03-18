@@ -1,10 +1,11 @@
 """Common utilities for code atlas extraction.
 
 Shared foundation for all atlas layers: file discovery via git, AST helpers,
-JSON I/O, and import classification.
+JSON I/O, import classification, and language detection.
 
 Public API:
     build_manifest: Build canonical file manifest using git ls-files
+    detect_languages: Detect languages present in a repository
     load_manifest: Load manifest.json from output directory
     parse_file_safe: Parse Python file safely (None on SyntaxError)
     walk_definitions: Extract top-level and class-level definitions
@@ -25,6 +26,7 @@ from pathlib import Path
 
 __all__ = [
     "build_manifest",
+    "detect_languages",
     "find_repo_root",
     "load_manifest",
     "parse_file_safe",
@@ -49,27 +51,268 @@ def get_stdlib_modules() -> set[str]:
 
 
 def find_repo_root(root: Path) -> Path:
-    """Find repository root by searching for pyproject.toml walking up from root.
+    """Find repository root by searching for known project manifest files.
+
+    Walks up from root looking for any language manifest (pyproject.toml,
+    Cargo.toml, package.json, go.mod, *.csproj, *.sln, pom.xml, build.gradle,
+    build.gradle.kts) or a .git directory.
 
     Args:
         root: Starting directory to search from.
 
     Returns:
-        Path to the repository root containing pyproject.toml.
+        Path to the repository root.
 
     Raises:
-        FileNotFoundError: If no pyproject.toml found in any parent directory.
+        FileNotFoundError: If no project manifest found in any parent directory.
     """
+    # Fixed-name manifests to check
+    manifest_names = [
+        "pyproject.toml", "setup.py", "setup.cfg",
+        "Cargo.toml",
+        "package.json",
+        "go.mod",
+        "pom.xml", "build.gradle", "build.gradle.kts",
+        ".git",
+    ]
+    # Glob patterns for manifests without fixed names
+    manifest_globs = ["*.csproj", "*.sln"]
+
     candidate = root.resolve()
     while True:
-        if (candidate / "pyproject.toml").exists():
-            return candidate
+        for name in manifest_names:
+            if (candidate / name).exists():
+                return candidate
+        for pattern in manifest_globs:
+            if list(candidate.glob(pattern)):
+                return candidate
         parent = candidate.parent
         if parent == candidate:
             raise FileNotFoundError(
-                f"No pyproject.toml found in any parent of {root}"
+                f"No project manifest found in any parent of {root}"
             )
         candidate = parent
+
+
+def detect_languages(manifest: dict, root: Path) -> dict:
+    """Detect programming languages present in a repository.
+
+    Tries tokei first for accurate code/comment/blank counts across 150+
+    languages. Falls back to file-extension counting from the manifest if
+    tokei is not installed.
+
+    Args:
+        manifest: Loaded manifest dict (from build_manifest).
+        root: Repository root directory (where manifest files live).
+
+    Returns:
+        Dict mapping language name to info dict::
+
+            {"python": {"file_count": 18, "code": 1200, "comments": 80,
+                        "blanks": 120, "line_count": 1400,
+                        "manifests": ["pyproject.toml"]},
+             ...}
+
+        The ``line_count`` field equals ``code + comments + blanks`` when tokei
+        data is available, or raw line counts from the manifest otherwise.
+        A ``_meta`` key holds ``{"tools_used": ["tokei"], ...}`` or
+        ``{"tools_used": ["extension-fallback"], ...}``.
+    """
+    root = root.resolve()
+
+    # Language manifest files: language -> list of (filename_or_glob, is_glob)
+    lang_manifests: dict[str, list[tuple[str, bool]]] = {
+        "python": [
+            ("pyproject.toml", False),
+            ("setup.py", False),
+            ("setup.cfg", False),
+            ("requirements.txt", False),
+        ],
+        "rust": [("Cargo.toml", False)],
+        "typescript": [("tsconfig.json", False)],
+        "javascript": [("package.json", False)],
+        "go": [("go.mod", False)],
+        "csharp": [("*.csproj", True), ("*.sln", True)],
+        "java": [
+            ("pom.xml", False),
+            ("build.gradle", False),
+            ("build.gradle.kts", False),
+        ],
+    }
+
+    # Try tokei first (accurate code/comment/blank breakdown)
+    languages = _detect_via_tokei(root)
+    if languages is None:
+        languages = _detect_via_extensions(manifest)
+
+    # Discover manifest files on disk (root + immediate subdirectories)
+    search_dirs = [root] + [
+        d for d in root.iterdir() if d.is_dir() and not d.name.startswith(".")
+    ]
+
+    for lang, manifest_specs in lang_manifests.items():
+        found_manifests: list[str] = []
+        for search_dir in search_dirs:
+            for name, is_glob in manifest_specs:
+                if is_glob:
+                    matches = list(search_dir.glob(name))
+                    found_manifests.extend(str(m.relative_to(root)) for m in matches)
+                else:
+                    candidate = search_dir / name
+                    if candidate.exists():
+                        found_manifests.append(str(candidate.relative_to(root)))
+        if found_manifests:
+            if lang not in languages:
+                languages[lang] = {
+                    "file_count": 0, "code": 0, "comments": 0,
+                    "blanks": 0, "line_count": 0, "manifests": [],
+                }
+            languages[lang]["manifests"] = sorted(set(
+                languages[lang].get("manifests", []) + found_manifests
+            ))
+
+    # Remove languages with zero files and no manifests (skip _meta)
+    languages = {
+        lang: info for lang, info in languages.items()
+        if lang == "_meta" or info.get("file_count", 0) > 0 or info.get("manifests")
+    }
+
+    return languages
+
+
+def _detect_via_tokei(root: Path) -> dict | None:
+    """Run tokei and parse its JSON output into our language dict format.
+
+    Returns None if tokei is not installed or fails.
+    """
+    try:
+        result = subprocess.run(
+            ["tokei", str(root), "--output", "json"],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        if result.returncode != 0:
+            return None
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return None
+
+    import json as _json
+    try:
+        tokei_data = _json.loads(result.stdout)
+    except (ValueError, _json.JSONDecodeError):
+        return None
+
+    # Tokei language name -> our normalized name
+    tokei_name_map: dict[str, str] = {
+        "Python": "python",
+        "Rust": "rust",
+        "TypeScript": "typescript",
+        "TSX": "typescript",
+        "JavaScript": "javascript",
+        "JSX": "javascript",
+        "Go": "go",
+        "C#": "csharp",
+        "CSharp": "csharp",
+        "Java": "java",
+        "Ruby": "ruby",
+        "Swift": "swift",
+        "Kotlin": "kotlin",
+        "C": "c",
+        "C Header": "c",
+        "C++": "cpp",
+        "C++ Header": "cpp",
+        "TOML": "toml",
+        "YAML": "yaml",
+        "JSON": "json",
+        "Markdown": "markdown",
+        "Bash": "bash",
+        "Shell": "bash",
+        "CSS": "css",
+        "HTML": "html",
+        "SQL": "sql",
+        "Lua": "lua",
+        "Zig": "zig",
+        "Makefile": "makefile",
+        "Dockerfile": "dockerfile",
+    }
+
+    languages: dict[str, dict] = {}
+
+    for tokei_lang, lang_data in tokei_data.items():
+        if not isinstance(lang_data, dict):
+            continue
+        norm_name = tokei_name_map.get(tokei_lang, tokei_lang.lower().replace(" ", "_"))
+
+        code = lang_data.get("code", 0)
+        comments = lang_data.get("comments", 0)
+        blanks = lang_data.get("blanks", 0)
+        reports = lang_data.get("reports", [])
+        file_count = len(reports) if isinstance(reports, list) else 0
+
+        if norm_name in languages:
+            # Merge (e.g. TSX into typescript)
+            languages[norm_name]["file_count"] += file_count
+            languages[norm_name]["code"] += code
+            languages[norm_name]["comments"] += comments
+            languages[norm_name]["blanks"] += blanks
+            languages[norm_name]["line_count"] += code + comments + blanks
+        else:
+            languages[norm_name] = {
+                "file_count": file_count,
+                "code": code,
+                "comments": comments,
+                "blanks": blanks,
+                "line_count": code + comments + blanks,
+                "manifests": [],
+            }
+
+    languages["_meta"] = {"tools_used": ["tokei"]}
+    return languages
+
+
+def _detect_via_extensions(manifest: dict) -> dict:
+    """Fallback language detection using file extensions from the manifest."""
+    ext_to_lang: dict[str, str] = {
+        ".py": "python",
+        ".pyi": "python",
+        ".rs": "rust",
+        ".ts": "typescript",
+        ".tsx": "typescript",
+        ".js": "javascript",
+        ".jsx": "javascript",
+        ".go": "go",
+        ".cs": "csharp",
+        ".java": "java",
+        ".rb": "ruby",
+        ".swift": "swift",
+        ".kt": "kotlin",
+        ".kts": "kotlin",
+        ".c": "c",
+        ".h": "c",
+        ".cpp": "cpp",
+        ".hpp": "cpp",
+        ".cc": "cpp",
+    }
+
+    languages: dict[str, dict] = {}
+    for f in manifest.get("files", []):
+        ext = f.get("extension", "")
+        lang = ext_to_lang.get(ext)
+        if lang:
+            if lang not in languages:
+                languages[lang] = {
+                    "file_count": 0, "code": 0, "comments": 0,
+                    "blanks": 0, "line_count": 0, "manifests": [],
+                }
+            languages[lang]["file_count"] += 1
+            line_count = f.get("line_count", 0)
+            languages[lang]["line_count"] += line_count
+            # Without tokei we only have total line count, put it all in code
+            languages[lang]["code"] += line_count
+
+    languages["_meta"] = {"tools_used": ["extension-fallback"]}
+    return languages
 
 
 def build_manifest(root: Path) -> dict:
@@ -522,16 +765,34 @@ def _is_test_file(rel_path: str) -> bool:
 
 
 def _classify_py_file(rel_path: str, ext: str, is_test: bool, is_init: bool) -> str:
-    """Classify a file by its role."""
-    if ext != ".py":
-        return "non_python"
-    if is_test:
-        return "test"
-    if is_init:
-        return "init"
-    if "vendor" in Path(rel_path).parts:
-        return "vendor"
-    return "source"
+    """Classify a file by its role.
+
+    Handles Python files with fine-grained roles (test, init, vendor, source)
+    and non-Python source files by language category.
+    """
+    _SOURCE_EXTS = {
+        ".rs", ".ts", ".tsx", ".js", ".jsx", ".go", ".cs", ".java",
+        ".rb", ".swift", ".kt", ".kts", ".c", ".h", ".cpp", ".hpp", ".cc",
+    }
+    _CONFIG_EXTS = {".toml", ".yaml", ".yml", ".json", ".cfg", ".ini", ".xml"}
+    _DOC_EXTS = {".md", ".rst", ".txt"}
+
+    if ext == ".py":
+        if is_test:
+            return "test"
+        if is_init:
+            return "init"
+        if "vendor" in Path(rel_path).parts:
+            return "vendor"
+        return "source"
+
+    if ext in _SOURCE_EXTS:
+        return "source"
+    if ext in _CONFIG_EXTS:
+        return "config"
+    if ext in _DOC_EXTS:
+        return "docs"
+    return "other"
 
 
 def _classify_import(module: str, top_module: str, stdlib: set[str]) -> str:

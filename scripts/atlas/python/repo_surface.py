@@ -12,7 +12,7 @@ from pathlib import Path
 # Allow running as script from repo root
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(_REPO_ROOT))
-from scripts.atlas.common import build_manifest, load_manifest, write_layer_json
+from scripts.atlas.common import build_manifest, detect_languages, load_manifest, write_layer_json
 
 
 def extract(manifest: dict, root: Path) -> dict:
@@ -97,11 +97,49 @@ def extract(manifest: dict, root: Path) -> dict:
     file_count_sum = sum(d["file_counts"]["total"] for d in directories)
     completeness_ok = file_count_sum == manifest["total_files"]
 
+    # Language statistics
+    lang_info = detect_languages(manifest, root)
+    meta = lang_info.pop("_meta", {})
+    tools_used = meta.get("tools_used", [])
+
+    # Sort by code lines (descending), compute percentages
+    total_code = sum(info.get("code", 0) for info in lang_info.values())
+    total_lines = sum(info.get("line_count", 0) for info in lang_info.values())
+    languages_section = {}
+    for lang, info in sorted(lang_info.items(), key=lambda x: -x[1].get("code", 0)):
+        code = info.get("code", 0)
+        pct = (code / total_code * 100) if total_code > 0 else 0
+        entry = {
+            "file_count": info["file_count"],
+            "code": code,
+            "comments": info.get("comments", 0),
+            "blanks": info.get("blanks", 0),
+            "line_count": info.get("line_count", 0),
+            "percentage": round(pct, 1),
+        }
+        languages_section[lang] = entry
+
+    # Determine primary language (most code lines)
+    primary_language = (
+        max(lang_info, key=lambda k: lang_info[k].get("code", 0))
+        if lang_info else "unknown"
+    )
+
+    # Collect all manifest files found
+    manifest_files = sorted(set(
+        mf for info in lang_info.values() for mf in info.get("manifests", [])
+    ))
+
     return {
         "layer": "repo-surface",
         "directories": directories,
         "entry_points": entry_points,
         "non_python_assets": non_python,
+        "languages": languages_section,
+        "primary_language": primary_language,
+        "total_code_lines": total_code,
+        "tools_used": tools_used,
+        "manifest_files": manifest_files,
         "completeness": {
             "directory_file_sum": file_count_sum,
             "manifest_total": manifest["total_files"],
@@ -209,6 +247,22 @@ def main():
     for d in dirs:
         roles[d["role"]] = roles.get(d["role"], 0) + 1
     print(f"  Roles: {json.dumps(roles)}")
+
+    # Language summary
+    languages = layer_data.get("languages", {})
+    if languages:
+        primary = layer_data.get("primary_language", "unknown")
+        tools = layer_data.get("tools_used", [])
+        total_code = layer_data.get("total_code_lines", 0)
+        print(f"  Primary language: {primary} (detected via {', '.join(tools) or 'unknown'})")
+        print(f"  Total code lines: {total_code:,}")
+        for lang, info in languages.items():
+            code = info.get("code", info.get("line_count", 0))
+            print(f"    {lang}: {info['file_count']} files, "
+                  f"{code:,} code lines ({info['percentage']}%)")
+        manifests = layer_data.get("manifest_files", [])
+        if manifests:
+            print(f"  Manifest files: {', '.join(manifests)}")
 
     completeness = layer_data["completeness"]
     if completeness["ok"]:
