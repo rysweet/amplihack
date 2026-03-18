@@ -9,7 +9,7 @@ title: Health Dashboard
 # Health Dashboard
 
 <div class="atlas-metadata">
-Overall: :material-alert-circle:{ .atlas-health--warn } **PASS_WITH_WARNINGS** | Warnings: 10 | Failures: 0
+Overall: :material-alert-circle:{ .atlas-health--warn } **PASS_WITH_WARNINGS** | Warnings: 11 | Failures: 0
 </div>
 
 ## Check Results
@@ -24,10 +24,10 @@ Overall: :material-alert-circle:{ .atlas-health--warn } **PASS_WITH_WARNINGS** |
 | SUBPROCESS_TRACEABILITY | :material-alert-circle:{ .atlas-health--warn } | 55/109 subprocess files in unreachable packages |
 | PACKAGE_CONSISTENCY | :material-alert-circle:{ .atlas-health--warn } | layer1 vs manifest: 36 differences; layer3 vs manifest: 0 missing, 524 extra |
 | ROUTE_COVERAGE | :material-check-circle:{ .atlas-health--pass } | 14 HTTP routes all have journeys |
-| IMPORT_RESOLUTION | :material-alert-circle:{ .atlas-health--warn } | 54/194 imports unresolved |
+| IMPORT_RESOLUTION | :material-alert-circle:{ .atlas-health--warn } | 32/1379 imports unresolved |
 | CLI_HANDLER_REACHABILITY | :material-check-circle:{ .atlas-health--pass } | 52 CLI commands have reachable handlers |
 | DEAD_DEP_CROSS_VALIDATION | :material-alert-circle:{ .atlas-health--warn } | 1 deps marked unused in layer3 but found in layer2 |
-| CIRCULAR_IMPORT_SEVERITY | :material-check-circle:{ .atlas-health--pass } | No circular dependencies detected |
+| CIRCULAR_IMPORT_SEVERITY | :material-alert-circle:{ .atlas-health--warn } | 8 circular dependency cycles found (6 internal, 2 vendor) |
 | ENV_VAR_COMPLETENESS | :material-alert-circle:{ .atlas-health--warn } | 128 env vars found but no .env.example file |
 | ROUTE_TEST_COVERAGE | :material-alert-circle:{ .atlas-health--warn } | 15/22 routes without test references |
 | REEXPORT_CHAIN_VALIDATION | :material-alert-circle:{ .atlas-health--warn } | 5 broken re-export chains |
@@ -81,16 +81,16 @@ Missing items:
 
 Missing items:
 
-- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/project_file_explorer/project_files_stats.py`
-- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/vendor/multilspy/language_servers/rust_analyzer/rust_analyzer.py`
-- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/graph/node/types/integration_node.py`
-- `/home/azureuser/src/amplihack/src/amplihack/eval/progressive_test_suite.py`
-- `/home/azureuser/src/amplihack/src/amplihack/eval/run_domain_evals.py`
-- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/code_references/scip_helper.py`
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/_projects.py`
-- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/vendor/multilspy/language_servers/gopls/gopls.py`
+- `/home/azureuser/src/amplihack/src/amplihack/eval/agent_subprocess.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/fleet_state.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/_cli_scout_advance.py`
 - `/home/azureuser/src/amplihack/src/amplihack/tracing/trace_logger.py`
-- `/home/azureuser/src/amplihack/src/amplihack/session.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/tests/test_fleet_results.py`
+- `/home/azureuser/src/amplihack/src/amplihack/eval/progressive_test_suite.py`
+- `/home/azureuser/src/amplihack/src/amplihack/eval/grader.py`
+- `/home/azureuser/src/amplihack/src/amplihack/eval/harness_runner.py`
+- `/home/azureuser/src/amplihack/src/amplihack/eval/general_capability_eval.py`
+- `/home/azureuser/src/amplihack/src/amplihack/settings_generator/generator.py`
 
 ### SUBPROCESS_TRACEABILITY
 
@@ -98,16 +98,16 @@ Missing items:
 
 Missing items:
 
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/fleet_cli.py`
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/_tui_workers.py`
-- `/home/azureuser/src/amplihack/src/amplihack/knowledge_builder/modules/question_generator.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/fleet_state.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/fleet_health.py`
 - `/home/azureuser/src/amplihack/src/amplihack/eval/progressive_test_suite.py`
-- `/home/azureuser/src/amplihack/src/amplihack/eval/run_domain_evals.py`
-- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/code_references/scip_helper.py`
-- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/vendor/multilspy/language_servers/gopls/gopls.py`
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/_admiral_actions.py`
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/fleet_tui_dashboard.py`
-- `/home/azureuser/src/amplihack/src/amplihack/session.py`
+- `/home/azureuser/src/amplihack/src/amplihack/eval/harness_runner.py`
+- `/home/azureuser/src/amplihack/src/amplihack/eval/general_capability_eval.py`
+- `/home/azureuser/src/amplihack/src/amplihack/meta_delegation/subprocess_adapter.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/_backends.py`
+- `/home/azureuser/src/amplihack/src/amplihack/cli.py`
+- `/home/azureuser/src/amplihack/src/amplihack/auto_update.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/fleet_session_reasoner.py`
 
 ### PACKAGE_CONSISTENCY
 
@@ -120,30 +120,30 @@ Missing items:
 
 ### IMPORT_RESOLUTION
 
-54/194 imports unresolved
+32/1379 imports unresolved
 
 Missing items:
 
-- `/home/azureuser/src/amplihack/src/amplihack/bundle_generator/__init__.py imports BundleGeneratorError from /home/azureuser/src/amplihack/src/amplihack/exceptions.py`
-- `/home/azureuser/src/amplihack/src/amplihack/bundle_generator/__init__.py imports DistributionError from /home/azureuser/src/amplihack/src/amplihack/exceptions.py`
-- `/home/azureuser/src/amplihack/src/amplihack/bundle_generator/__init__.py imports GenerationError from /home/azureuser/src/amplihack/src/amplihack/exceptions.py`
-- `/home/azureuser/src/amplihack/src/amplihack/bundle_generator/__init__.py imports PackagingError from /home/azureuser/src/amplihack/src/amplihack/exceptions.py`
-- `/home/azureuser/src/amplihack/src/amplihack/bundle_generator/__init__.py imports ParsingError from /home/azureuser/src/amplihack/src/amplihack/exceptions.py`
-- `/home/azureuser/src/amplihack/src/amplihack/bundle_generator/builder.py imports GenerationError from /home/azureuser/src/amplihack/src/amplihack/exceptions.py`
-- `/home/azureuser/src/amplihack/src/amplihack/bundle_generator/cli.py imports BundleGeneratorError from /home/azureuser/src/amplihack/src/amplihack/exceptions.py`
-- `/home/azureuser/src/amplihack/src/amplihack/bundle_generator/distributor.py imports DistributionError from /home/azureuser/src/amplihack/src/amplihack/exceptions.py`
-- `/home/azureuser/src/amplihack/src/amplihack/bundle_generator/distributor.py imports RateLimitError from /home/azureuser/src/amplihack/src/amplihack/exceptions.py`
-- `/home/azureuser/src/amplihack/src/amplihack/bundle_generator/distributor.py imports TimeoutError from /home/azureuser/src/amplihack/src/amplihack/exceptions.py`
-- `/home/azureuser/src/amplihack/src/amplihack/bundle_generator/extractor.py imports ExtractionError from /home/azureuser/src/amplihack/src/amplihack/exceptions.py`
-- `/home/azureuser/src/amplihack/src/amplihack/bundle_generator/filesystem_packager.py imports PackagingError from /home/azureuser/src/amplihack/src/amplihack/exceptions.py`
-- `/home/azureuser/src/amplihack/src/amplihack/bundle_generator/generator.py imports GenerationError from /home/azureuser/src/amplihack/src/amplihack/exceptions.py`
-- `/home/azureuser/src/amplihack/src/amplihack/bundle_generator/packager.py imports PackagingError from /home/azureuser/src/amplihack/src/amplihack/exceptions.py`
-- `/home/azureuser/src/amplihack/src/amplihack/bundle_generator/parser.py imports ParsingError from /home/azureuser/src/amplihack/src/amplihack/exceptions.py`
-- `/home/azureuser/src/amplihack/src/amplihack/bundle_generator/update_manager.py imports BundleGeneratorError from /home/azureuser/src/amplihack/src/amplihack/exceptions.py`
 - `/home/azureuser/src/amplihack/src/amplihack/cli_extensions.py imports BundleDistributor from /home/azureuser/src/amplihack/src/amplihack/bundle_generator/__init__.py`
 - `/home/azureuser/src/amplihack/src/amplihack/cli_extensions.py imports BundlePackager from /home/azureuser/src/amplihack/src/amplihack/bundle_generator/__init__.py`
 - `/home/azureuser/src/amplihack/src/amplihack/cli_extensions.py imports DistributionMethod from /home/azureuser/src/amplihack/src/amplihack/bundle_generator/models.py`
 - `/home/azureuser/src/amplihack/src/amplihack/cli_extensions.py imports PackageFormat from /home/azureuser/src/amplihack/src/amplihack/bundle_generator/models.py`
+- `/home/azureuser/src/amplihack/src/amplihack/eval/self_improve/__init__.py imports runner from /home/azureuser/src/amplihack/src/amplihack/eval/self_improve/__init__.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/code_hierarchy/languages/language_definitions.py imports RelationshipType from /home/azureuser/src/amplihack/src/amplihack/vendor/blarify/graph/relationship/__init__.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/code_hierarchy/tree_sitter_helper.py imports Reference from /home/azureuser/src/amplihack/src/amplihack/vendor/blarify/code_references/types/__init__.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/code_hierarchy/tree_sitter_helper.py imports DefinitionNode from /home/azureuser/src/amplihack/src/amplihack/vendor/blarify/graph/node/__init__.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/code_hierarchy/tree_sitter_helper.py imports FileNode from /home/azureuser/src/amplihack/src/amplihack/vendor/blarify/graph/node/__init__.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/code_hierarchy/tree_sitter_helper.py imports FolderNode from /home/azureuser/src/amplihack/src/amplihack/vendor/blarify/graph/node/__init__.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/code_hierarchy/tree_sitter_helper.py imports Node from /home/azureuser/src/amplihack/src/amplihack/vendor/blarify/graph/node/__init__.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/code_references/lsp_helper.py imports DefinitionNode from /home/azureuser/src/amplihack/src/amplihack/vendor/blarify/graph/node/__init__.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/graph/graph.py imports Relationship from /home/azureuser/src/amplihack/src/amplihack/vendor/blarify/graph/relationship/__init__.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/graph/node/class_node.py imports Reference from /home/azureuser/src/amplihack/src/amplihack/vendor/blarify/code_references/types/__init__.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/graph/node/folder_node.py imports Relationship from /home/azureuser/src/amplihack/src/amplihack/vendor/blarify/graph/relationship/__init__.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/graph/node/folder_node.py imports RelationshipCreator from /home/azureuser/src/amplihack/src/amplihack/vendor/blarify/graph/relationship/__init__.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/graph/node/types/definition_node.py imports Reference from /home/azureuser/src/amplihack/src/amplihack/vendor/blarify/code_references/types/__init__.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/graph/node/types/definition_node.py imports Relationship from /home/azureuser/src/amplihack/src/amplihack/vendor/blarify/graph/relationship/__init__.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/graph/node/types/definition_node.py imports RelationshipCreator from /home/azureuser/src/amplihack/src/amplihack/vendor/blarify/graph/relationship/__init__.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/graph/node/types/node.py imports NodeLabels from /home/azureuser/src/amplihack/src/amplihack/vendor/blarify/graph/node/__init__.py`
 
 ### DEAD_DEP_CROSS_VALIDATION
 
@@ -152,6 +152,19 @@ Missing items:
 Missing items:
 
 - `rich`
+
+### CIRCULAR_IMPORT_SEVERITY
+
+8 circular dependency cycles found (6 internal, 2 vendor)
+
+Missing items:
+
+- `['utils.prerequisites', 'utils.claude_cli', 'utils.prerequisites']`
+- `['memory.kuzu.indexing.background_indexer', 'memory.kuzu.indexing.orchestrator', 'memory.kuzu.indexing.background_indexer']`
+- `['launcher.core', 'launcher', 'launcher.copilot', 'cli', 'uninstall', 'settings', 'install', 'hook_verification', 'amplihack', 'launcher.core']`
+- `['agents.goal_seeking.hive_mind.gossip', 'agents.goal_seeking.hive_mind.hive_graph', 'agents.goal_seeking.hive_mind.gossip']`
+- `['proxy.monitoring', 'proxy.azure_errors', 'proxy.monitoring']`
+- `['proxy.streaming', 'proxy.integrated_proxy', 'proxy.streaming']`
 
 ### ENV_VAR_COMPLETENESS
 
