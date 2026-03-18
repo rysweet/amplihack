@@ -37,10 +37,12 @@ class TestAspireAppHost:
         content = _APPHOST.read_text()
         assert "deploy/azure_hive/deploy.sh" in content
         assert "deploy/azure_hive/eval_monitor.py" in content
+        assert "deploy/azure_hive/eval_retrieval_smoke.py" in content
         assert "deploy/azure_hive/eval_distributed.py" in content
         assert "deploy/azure_hive/eval_distributed_security.py" in content
         assert "AMPLIHACK_ASPIRE_ENABLE_AZURE_DEPLOY" in content
         assert "AMPLIHACK_ASPIRE_ENABLE_EVAL_MONITOR" in content
+        assert "AMPLIHACK_ASPIRE_ENABLE_RETRIEVAL_SMOKE" in content
         assert "AMPLIHACK_ASPIRE_ENABLE_LONG_HORIZON_EVAL" in content
         assert "AMPLIHACK_ASPIRE_ENABLE_SECURITY_EVAL" in content
 

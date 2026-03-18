@@ -560,6 +560,8 @@ def _run_event_driven_loop(
     # Track LEARN_CONTENT and STORE_FACT_BATCH processing for deferred AGENT_READY
     _learn_content_count = 0
     _fact_batch_count = 0
+    _learn_content_counts_by_run: dict[str, int] = {}
+    _fact_batch_counts_by_run: dict[str, int] = {}
     _pending_feed_complete: dict | None = None  # {total_turns, expected, run_id, mode}
 
     while not shutdown_event.is_set():
@@ -603,36 +605,41 @@ def _run_event_driven_loop(
                 if isinstance(payload, dict):
                     expected_learn_content = int(payload.get("expected_learn_content", 0))
                     expected_fact_batches = int(payload.get("expected_fact_batches", 0))
+            run_key = run_id or "__default__"
+            run_learn_content_count = _learn_content_counts_by_run.get(run_key, 0)
+            run_fact_batch_count = _fact_batch_counts_by_run.get(run_key, 0)
             # Determine if we need to defer AGENT_READY
             # Priority: expected_learn_content (new mode) > expected_fact_batches (legacy)
-            if expected_learn_content > 0 and _learn_content_count < expected_learn_content:
+            if expected_learn_content > 0 and run_learn_content_count < expected_learn_content:
                 logger.info(
                     "Agent %s received FEED_COMPLETE (total_turns=%s, expected_learn_content=%d,"
                     " processed_so_far=%d). Deferring AGENT_READY until all content processed.",
                     agent_name,
                     total_turns,
                     expected_learn_content,
-                    _learn_content_count,
+                    run_learn_content_count,
                 )
                 _pending_feed_complete = {
                     "total_turns": total_turns,
                     "expected": expected_learn_content,
                     "run_id": run_id,
+                    "run_key": run_key,
                     "mode": "learn_content",
                 }
-            elif expected_fact_batches > 0 and _fact_batch_count < expected_fact_batches:
+            elif expected_fact_batches > 0 and run_fact_batch_count < expected_fact_batches:
                 logger.info(
                     "Agent %s received FEED_COMPLETE (total_turns=%s, expected_fact_batches=%d,"
                     " stored_so_far=%d). Deferring AGENT_READY until all batches stored.",
                     agent_name,
                     total_turns,
                     expected_fact_batches,
-                    _fact_batch_count,
+                    run_fact_batch_count,
                 )
                 _pending_feed_complete = {
                     "total_turns": total_turns,
                     "expected": expected_fact_batches,
                     "run_id": run_id,
+                    "run_key": run_key,
                     "mode": "fact_batch",
                 }
             else:
@@ -661,6 +668,8 @@ def _run_event_driven_loop(
                 payload = meta.get("payload", {})
                 if isinstance(payload, dict):
                     fact_batch = payload.get("fact_batch", {}) or {}
+            run_id = str(metadata.get("run_id", ""))
+            run_key = run_id or "__default__"
             fact_count = len(fact_batch.get("facts", [])) if isinstance(fact_batch, dict) else 0
             logger.info(
                 "Agent %s storing pre-extracted fact batch (%d facts)",
@@ -669,20 +678,23 @@ def _run_event_driven_loop(
             )
             agent.store_fact_batch(fact_batch if isinstance(fact_batch, dict) else {})
             _fact_batch_count += 1
-            if _fact_batch_count == 1 or _fact_batch_count % 50 == 0:
+            next_run_fact_batch_count = _fact_batch_counts_by_run.get(run_key, 0) + 1
+            _fact_batch_counts_by_run[run_key] = next_run_fact_batch_count
+            if next_run_fact_batch_count == 1 or next_run_fact_batch_count % 50 == 0:
                 answer_publisher.publish_agent_progress(
                     phase="fact_batch",
-                    processed_count=_fact_batch_count,
-                    run_id=metadata.get("run_id", ""),
+                    processed_count=next_run_fact_batch_count,
+                    run_id=run_id,
                     input_event_type="STORE_FACT_BATCH",
                 )
             # Check if we were waiting for this batch to publish AGENT_READY (legacy mode)
             if (
                 _pending_feed_complete is not None
                 and _pending_feed_complete.get("mode") == "fact_batch"
+                and _pending_feed_complete.get("run_key") == run_key
             ):
                 expected = _pending_feed_complete["expected"]
-                if _fact_batch_count >= expected:
+                if next_run_fact_batch_count >= expected:
                     total_turns = _pending_feed_complete["total_turns"]
                     run_id = _pending_feed_complete["run_id"]
                     logger.info(
@@ -696,7 +708,7 @@ def _run_event_driven_loop(
                     logger.debug(
                         "Agent %s: %d/%d fact batches stored, still waiting for AGENT_READY.",
                         agent_name,
-                        _fact_batch_count,
+                        next_run_fact_batch_count,
                         expected,
                     )
             continue
@@ -719,30 +731,35 @@ def _run_event_driven_loop(
                     agent_name,
                     len(text),
                 )
+                run_id = str(metadata.get("run_id", ""))
+                run_key = run_id or "__default__"
                 next_learn_content_count = _learn_content_count + 1
-                if next_learn_content_count == 1 or next_learn_content_count % 50 == 0:
+                next_run_learn_content_count = _learn_content_counts_by_run.get(run_key, 0) + 1
+                if next_run_learn_content_count == 1 or next_run_learn_content_count % 50 == 0:
                     answer_publisher.publish_agent_progress(
                         phase="learn_content_started",
-                        processed_count=next_learn_content_count,
-                        run_id=metadata.get("run_id", ""),
+                        processed_count=next_run_learn_content_count,
+                        run_id=run_id,
                         input_event_type=event_type,
                     )
                 agent.process_store(text)
                 _learn_content_count = next_learn_content_count
-                if _learn_content_count == 1 or _learn_content_count % 50 == 0:
+                _learn_content_counts_by_run[run_key] = next_run_learn_content_count
+                if next_run_learn_content_count == 1 or next_run_learn_content_count % 50 == 0:
                     answer_publisher.publish_agent_progress(
                         phase="learn_content",
-                        processed_count=_learn_content_count,
-                        run_id=metadata.get("run_id", ""),
+                        processed_count=next_run_learn_content_count,
+                        run_id=run_id,
                         input_event_type=event_type,
                     )
                 # Check if we were waiting on LEARN_CONTENT count for deferred AGENT_READY
                 if (
                     _pending_feed_complete is not None
                     and _pending_feed_complete.get("mode") == "learn_content"
+                    and _pending_feed_complete.get("run_key") == run_key
                 ):
                     expected = _pending_feed_complete["expected"]
-                    if _learn_content_count >= expected:
+                    if next_run_learn_content_count >= expected:
                         _total_turns = _pending_feed_complete["total_turns"]
                         _run_id = _pending_feed_complete["run_id"]
                         logger.info(
@@ -757,7 +774,7 @@ def _run_event_driven_loop(
                         logger.debug(
                             "Agent %s: %d/%d LEARN_CONTENT events processed, still waiting.",
                             agent_name,
-                            _learn_content_count,
+                            next_run_learn_content_count,
                             expected,
                         )
             else:

@@ -31,7 +31,10 @@ from .hive_mind.constants import (
 from .retrieval_constants import (
     BIGRAM_WEIGHT,
     FALLBACK_SCAN_MULTIPLIER,
+    HOP_DEPTH,
+    MAX_EDGES_PER_NODE,
     SEARCH_CANDIDATE_MULTIPLIER,
+    SIMILARITY_THRESHOLD,
     UNIGRAM_WEIGHT,
 )
 
@@ -242,10 +245,17 @@ class CognitiveAdapter:
             if not kuzu_path.exists():
                 kuzu_path.parent.mkdir(parents=True, exist_ok=True)
 
-            # Note: CognitiveMemory creates kuzu.Database internally using its
-            # own defaults. The buffer_pool_size parameter is accepted here for
-            # API consistency but CognitiveMemory does not expose it.
-            self.memory = CognitiveMemory(agent_name=agent_name, db_path=str(kuzu_path))
+            # Pass amplihack's tuned graph-edge constants so the memory-lib uses
+            # the same similarity threshold, edge cap, and hop depth configured
+            # in retrieval_constants rather than the library's own defaults.
+            self.memory = CognitiveMemory(
+                agent_name=agent_name,
+                db_path=str(kuzu_path),
+                buffer_pool_size=buffer_pool_size,
+                similarity_threshold=SIMILARITY_THRESHOLD,
+                max_edges_per_node=MAX_EDGES_PER_NODE,
+                hop_depth=HOP_DEPTH,
+            )
             self._cognitive = True
         else:
             if require_cognitive:
