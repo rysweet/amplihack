@@ -16,11 +16,20 @@ Usage:
         --agents 100 \\
         --output monitor_progress.json
 
+    # Bounded telemetry spotcheck: prove remote agents are processing work
+    python deploy/azure_hive/eval_monitor.py \\
+        --connection-string "$EH_CONN" \\
+        --response-hub eval-responses-amplihive \\
+        --agents 100 \\
+        --wait-for-online 100 \\
+        --wait-for-progress 100 \\
+        --max-wait-seconds 180
+
     # With OTel (Aspire dashboard):
     OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317 \\
-    OTEL_EXPORTER_OTLP_PROTOCOL=grpc \\
-    AMPLIHACK_OTEL_ENABLED=true \\
-    python deploy/azure_hive/eval_monitor.py ...
+        OTEL_EXPORTER_OTLP_PROTOCOL=grpc \\
+        AMPLIHACK_OTEL_ENABLED=true \\
+        python deploy/azure_hive/eval_monitor.py ...
 
 Environment:
     EH_CONN                    Event Hubs namespace connection string
@@ -115,6 +124,7 @@ class EvalMonitor:
         self._answer_count = 0
         self._start_time = time.time()
         self._shutdown = threading.Event()
+        self._consumer: Any | None = None
 
         # OTel
         configure_otel(
@@ -246,6 +256,49 @@ class EvalMonitor:
         if callable(update_checkpoint):
             update_checkpoint(event)
 
+    def stop(self) -> None:
+        self._shutdown.set()
+        consumer = self._consumer
+        if consumer is None:
+            return
+        try:
+            consumer.close()
+        except Exception:
+            logger.exception("Failed to close eval monitor consumer cleanly")
+
+    def _status_counts(self) -> dict[str, int]:
+        snapshot = self._snapshot()
+        progress_agents = sum(
+            1 for agent in snapshot["agents"].values() if int(agent["progress_count"]) > 0
+        )
+        return {
+            "online": int(snapshot["agents_online"]),
+            "ready": int(snapshot["agents_ready"]),
+            "progress_agents": progress_agents,
+            "answers": int(snapshot["total_answers"]),
+        }
+
+    def criteria_status(
+        self,
+        *,
+        min_online: int = 0,
+        min_ready: int = 0,
+        min_progress_agents: int = 0,
+        min_answers: int = 0,
+    ) -> tuple[bool, list[str], dict[str, int]]:
+        counts = self._status_counts()
+        unmet: list[str] = []
+        requirements = (
+            ("online", min_online),
+            ("ready", min_ready),
+            ("progress_agents", min_progress_agents),
+            ("answers", min_answers),
+        )
+        for key, required in requirements:
+            if required > counts[key]:
+                unmet.append(f"{key} {counts[key]}/{required}")
+        return not unmet, unmet, counts
+
     def _consume_event(self, partition_context: Any, event: Any) -> None:
         if event is None:
             return
@@ -273,6 +326,63 @@ class EvalMonitor:
         finally:
             self._checkpoint_event(partition_context, event)
 
+    def wait_for_criteria(
+        self,
+        *,
+        min_online: int = 0,
+        min_ready: int = 0,
+        min_progress_agents: int = 0,
+        min_answers: int = 0,
+        max_wait_seconds: int = 120,
+        poll_interval_seconds: float = 1.0,
+    ) -> int:
+        if max_wait_seconds <= 0:
+            raise ValueError("max_wait_seconds must be > 0 for telemetry spotchecks")
+
+        monitor_thread = threading.Thread(target=self.run, daemon=True)
+        monitor_thread.start()
+
+        deadline = time.time() + max_wait_seconds
+        try:
+            while time.time() < deadline:
+                satisfied, _, counts = self.criteria_status(
+                    min_online=min_online,
+                    min_ready=min_ready,
+                    min_progress_agents=min_progress_agents,
+                    min_answers=min_answers,
+                )
+                if satisfied:
+                    logger.info(
+                        "Telemetry spotcheck passed: online=%d ready=%d progress_agents=%d answers=%d",
+                        counts["online"],
+                        counts["ready"],
+                        counts["progress_agents"],
+                        counts["answers"],
+                    )
+                    return 0
+                time.sleep(poll_interval_seconds)
+        finally:
+            self.stop()
+            monitor_thread.join(timeout=10)
+            self._write_snapshot()
+
+        _, unmet, counts = self.criteria_status(
+            min_online=min_online,
+            min_ready=min_ready,
+            min_progress_agents=min_progress_agents,
+            min_answers=min_answers,
+        )
+        logger.error(
+            "Telemetry spotcheck timed out after %ds: %s (online=%d ready=%d progress_agents=%d answers=%d)",
+            max_wait_seconds,
+            ", ".join(unmet),
+            counts["online"],
+            counts["ready"],
+            counts["progress_agents"],
+            counts["answers"],
+        )
+        return 2
+
     def run(self) -> None:
         """Start listening and printing until interrupted."""
         try:
@@ -289,6 +399,7 @@ class EvalMonitor:
             consumer_group=self._consumer_group,
             eventhub_name=self._hub,
         )
+        self._consumer = consumer
 
         logger.info("Monitoring eval run on hub '%s'...", self._hub)
         logger.info("Press Ctrl-C to stop.")
@@ -331,6 +442,7 @@ class EvalMonitor:
                 consumer.close()
             except Exception:
                 pass
+            self._consumer = None
             print()  # newline after status line
             self._write_snapshot()
 
@@ -367,6 +479,11 @@ def main() -> int:
         default=int(os.environ.get("HIVE_AGENT_COUNT", "100")),
     )
     p.add_argument("--output", default="eval_monitor_progress.json")
+    p.add_argument("--wait-for-online", type=int, default=0)
+    p.add_argument("--wait-for-ready", type=int, default=0)
+    p.add_argument("--wait-for-progress", type=int, default=0)
+    p.add_argument("--wait-for-answers", type=int, default=0)
+    p.add_argument("--max-wait-seconds", type=int, default=0)
     args = p.parse_args()
 
     if not args.connection_string:
@@ -382,9 +499,26 @@ def main() -> int:
     )
 
     def _sigterm(*_: Any) -> None:
-        monitor._shutdown.set()
+        monitor.stop()
 
     signal.signal(signal.SIGTERM, _sigterm)
+    if any(
+        (
+            args.wait_for_online,
+            args.wait_for_ready,
+            args.wait_for_progress,
+            args.wait_for_answers,
+        )
+    ):
+        max_wait_seconds = args.max_wait_seconds or 120
+        return monitor.wait_for_criteria(
+            min_online=args.wait_for_online,
+            min_ready=args.wait_for_ready,
+            min_progress_agents=args.wait_for_progress,
+            min_answers=args.wait_for_answers,
+            max_wait_seconds=max_wait_seconds,
+        )
+
     monitor.run()
     return 0
 

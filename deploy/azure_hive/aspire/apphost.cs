@@ -61,6 +61,23 @@ var eventHubConnectionString = GetConfig(
 var inputHub = GetConfig(builder, "azure:inputHub", "AMPLIHACK_EH_INPUT_HUB", "");
 var responseHub = GetConfig(builder, "azure:responseHub", "AMPLIHACK_EH_RESPONSE_HUB", "");
 
+if (!string.IsNullOrWhiteSpace(eventHubConnectionString) && !string.IsNullOrWhiteSpace(responseHub))
+{
+    if (GetBool(builder, "eval:enableMonitor", "AMPLIHACK_ASPIRE_ENABLE_EVAL_MONITOR"))
+    {
+        builder
+            .AddExecutable("azure-hive-eval-monitor", "python", repoRoot)
+            .WithArgs(BuildMonitorArgs(builder, eventHubConnectionString, responseHub))
+            .WithEnvironment("PYTHONPATH", srcPath)
+            .WithEnvironment("PYTHONUNBUFFERED", "1")
+            .WithEnvironment("AMPLIHACK_OTEL_ENABLED", "true")
+            .WithEnvironment("OTEL_EXPORTER_OTLP_PROTOCOL", otlpProtocol)
+            .WithEnvironment("OTEL_EXPORTER_OTLP_ENDPOINT", otlpEndpoint)
+            .WithEnvironment("OTEL_SERVICE_NAMESPACE", "amplihack")
+            .WithEnvironment("OTEL_SERVICE_NAME", "amplihack.aspire.azure-hive-monitor");
+    }
+}
+
 if (
     !string.IsNullOrWhiteSpace(eventHubConnectionString)
     && !string.IsNullOrWhiteSpace(inputHub)
@@ -122,6 +139,92 @@ static bool GetBool(
         || value.Equals("yes", StringComparison.OrdinalIgnoreCase)
         || value.Equals("on", StringComparison.OrdinalIgnoreCase)
         || bool.TryParse(value, out var parsed) && parsed;
+}
+
+static void AddOptionalPositiveArg(
+    IDistributedApplicationBuilder builder,
+    List<string> args,
+    string argName,
+    string configKey,
+    string envKey
+)
+{
+    var value = GetConfig(builder, configKey, envKey, "0");
+    if (int.TryParse(value, out var parsed) && parsed > 0)
+    {
+        args.Add(argName);
+        args.Add(parsed.ToString());
+    }
+}
+
+static string[] BuildMonitorArgs(
+    IDistributedApplicationBuilder builder,
+    string connectionString,
+    string responseHub
+)
+{
+    var args = new List<string>
+    {
+        "deploy/azure_hive/eval_monitor.py",
+        "--connection-string",
+        connectionString,
+        "--response-hub",
+        responseHub,
+        "--consumer-group",
+        GetConfig(
+            builder,
+            "eval:monitorConsumerGroup",
+            "AMPLIHACK_EVAL_MONITOR_CONSUMER_GROUP",
+            "eval-reader"
+        ),
+        "--agents",
+        GetConfig(builder, "azure:agentCount", "HIVE_AGENT_COUNT", "100"),
+        "--output",
+        GetConfig(
+            builder,
+            "eval:monitorOutput",
+            "AMPLIHACK_ASPIRE_MONITOR_OUTPUT",
+            "aspire_eval_monitor_progress.json"
+        ),
+    };
+
+    AddOptionalPositiveArg(
+        builder,
+        args,
+        "--wait-for-online",
+        "eval:monitorWaitForOnline",
+        "AMPLIHACK_ASPIRE_MONITOR_WAIT_FOR_ONLINE"
+    );
+    AddOptionalPositiveArg(
+        builder,
+        args,
+        "--wait-for-ready",
+        "eval:monitorWaitForReady",
+        "AMPLIHACK_ASPIRE_MONITOR_WAIT_FOR_READY"
+    );
+    AddOptionalPositiveArg(
+        builder,
+        args,
+        "--wait-for-progress",
+        "eval:monitorWaitForProgress",
+        "AMPLIHACK_ASPIRE_MONITOR_WAIT_FOR_PROGRESS"
+    );
+    AddOptionalPositiveArg(
+        builder,
+        args,
+        "--wait-for-answers",
+        "eval:monitorWaitForAnswers",
+        "AMPLIHACK_ASPIRE_MONITOR_WAIT_FOR_ANSWERS"
+    );
+    AddOptionalPositiveArg(
+        builder,
+        args,
+        "--max-wait-seconds",
+        "eval:monitorMaxWaitSeconds",
+        "AMPLIHACK_ASPIRE_MONITOR_MAX_WAIT_SECONDS"
+    );
+
+    return args.ToArray();
 }
 
 static string[] BuildLongHorizonArgs(
