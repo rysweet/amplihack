@@ -3,6 +3,11 @@
 Parses ALL .py files with ast.parse(), extracts definitions, exports (__all__),
 imports, cross-references, and dead code candidates. This is the most critical
 layer -- it provides the symbol table that layers 3, 7, and 8 depend on.
+
+Multi-language support: Uses blarify (tree-sitter based) to extract definitions
+from non-Python languages (JS, TS, Rust, Go, C#, Java, Ruby, PHP). Python files
+still use ast.parse() for richer analysis (__all__ exports, conditional imports,
+dead code detection). Results are merged into a unified definitions list.
 """
 
 import argparse
@@ -24,21 +29,46 @@ from scripts.atlas.common import (
 )
 
 
+def _extract_blarify_definitions(root: Path) -> tuple[list[dict], list[dict]]:
+    """Extract definitions from all languages using blarify.
+
+    Returns:
+        Tuple of (non_python_definitions, all_relationships).
+        Non-Python definitions are returned for merging; Python files
+        are handled by ast.parse() for richer analysis.
+    """
+    try:
+        sys.path.insert(0, str(_REPO_ROOT / "src"))
+        from scripts.atlas.blarify_bridge import BlarifyBridge
+
+        bridge = BlarifyBridge(root)
+        bridge.build(hierarchy_only=True)
+
+        all_defs = bridge.to_layer2_definitions()
+        all_rels = bridge.get_relationships()
+
+        # Separate: Python defs handled by ast.parse, non-Python from blarify
+        non_python_defs = [d for d in all_defs if d.get("language", "python") != "python"]
+
+        stats = bridge.get_language_stats()
+        lang_summary = ", ".join(f"{lang}={count}" for lang, count in sorted(stats.items()))
+        print(f"  Blarify: {len(all_defs)} total defs ({lang_summary})")
+        print(f"  Blarify: {len(non_python_defs)} non-Python defs for merge")
+
+        return non_python_defs, all_rels
+
+    except Exception as e:
+        print(f"WARNING: blarify extraction failed: {e}", file=sys.stderr)
+        return [], []
+
+
 def extract(manifest: dict, root: Path) -> dict:
-    """Extract layer 2 data by parsing all Python files.
+    """Extract layer 2 data by parsing all Python files and non-Python via blarify.
 
-    For each .py file:
-      1. Parse with ast.parse()
-      2. Extract definitions (functions, classes, constants)
-      3. Extract __all__ exports
-      4. Extract imports (classify as stdlib/third_party/internal)
-      5. Resolve internal imports to file paths
-
-    After all files:
-      6. Build cross-reference map
-      7. Detect dead code (conservative)
-      8. Tag conditional imports
-      9. Detect importlib.import_module() calls
+    Phase 1 (blarify): Extract definitions from ALL languages via tree-sitter.
+    Phase 2 (Python ast): Parse .py files for rich analysis (__all__, imports, etc).
+    Phase 3: Merge non-Python blarify defs into unified definitions list.
+    Phase 4: Cross-references, dead code detection (Python only).
 
     Args:
         manifest: Loaded manifest dict.
@@ -50,6 +80,10 @@ def extract(manifest: dict, root: Path) -> dict:
     root = root.resolve()
     py_files = [f for f in manifest["files"] if f["extension"] == ".py"]
 
+    # --- Phase 1: Blarify (all languages) ---
+    blarify_defs, blarify_rels = _extract_blarify_definitions(root)
+
+    # --- Phase 2: Python ast.parse() ---
     all_definitions = []
     all_exports = []
     all_imports = []
@@ -302,6 +336,19 @@ def extract(manifest: dict, root: Path) -> dict:
             "reason": "no_imports_no_exports_no_intra_file_calls",
         })
 
+    # --- Phase 5: Merge blarify non-Python definitions ---
+    # Non-Python definitions from blarify get added to the unified list.
+    # They have no cross-reference data (that's Python-specific), but they
+    # provide the symbol table for non-Python languages.
+    for bdef in blarify_defs:
+        definitions_out.append(bdef)
+
+    # Count languages in the final output
+    language_counts: dict[str, int] = {}
+    for d in definitions_out:
+        lang = d.get("language", "python")
+        language_counts[lang] = language_counts.get(lang, 0) + 1
+
     # --- Summary ---
     files_with_all = len(all_exports)
     py_file_count = len(py_files)
@@ -315,6 +362,7 @@ def extract(manifest: dict, root: Path) -> dict:
         "files_with_all": files_with_all,
         "files_without_all": files_without_all,
         "importlib_dynamic_imports": len(importlib_calls),
+        "language_counts": language_counts,
     }
 
     # --- Completeness check ---
@@ -441,6 +489,9 @@ def main():
     print(f"  Imports: {s['total_imports']}")
     print(f"  Potentially dead: {s['potentially_dead_count']}")
     print(f"  Dynamic imports (importlib): {s['importlib_dynamic_imports']}")
+    if s.get("language_counts"):
+        lang_parts = ", ".join(f"{lang}={count}" for lang, count in sorted(s["language_counts"].items()))
+        print(f"  Languages: {lang_parts}")
 
     if layer_data["files_failed_parse"]:
         print(f"  Parse failures: {len(layer_data['files_failed_parse'])}")
