@@ -306,16 +306,30 @@ def _extract_all_exports(tree: ast.Module, filepath: str) -> dict | None:
 
 
 def _extract_string_list(node: ast.expr) -> list[str] | None:
-    """Extract a list of string literals from a List or Tuple AST node."""
+    """Extract a list of string literals from a List or Tuple AST node.
+
+    Returns:
+        List of string names, or None if the node is not a List/Tuple
+        or if all elements are non-string (indicating a dynamic __all__).
+    """
     if not isinstance(node, (ast.List, ast.Tuple)):
         return None
     names = []
+    skipped = 0
     for elt in node.elts:
         if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
             names.append(elt.value)
         else:
-            # Non-string element -- can't fully resolve, return what we have
-            pass
+            skipped += 1
+            print(
+                f"WARNING: non-string element in __all__ at line {getattr(elt, 'lineno', '?')}: "
+                f"{ast.dump(elt)}",
+                file=sys.stderr,
+            )
+    # If the node had elements but none were strings, return None to signal
+    # we couldn't resolve it (distinct from a genuinely empty __all__ = [])
+    if not names and node.elts:
+        return None
     return names
 
 
