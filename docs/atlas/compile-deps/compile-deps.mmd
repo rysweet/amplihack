@@ -71,6 +71,14 @@ graph TD
     eval_mod --> knowledge_mod
     fleet_mod --> fleet_mod
 
+    %% Intra-package: recipes/rust_runner imports from recipes/discovery
+    subgraph recipes_internal["recipes (intra-package)"]
+        direction LR
+        rust_runner["rust_runner.py"]
+        discovery["discovery.py"]
+    end
+    rust_runner -->|"imports _AMPLIHACK_HOME_BUNDLE_DIR"| discovery
+
     %% External dependency usage
     proxy_mod -.-> flask
     proxy_mod -.-> aiohttp
