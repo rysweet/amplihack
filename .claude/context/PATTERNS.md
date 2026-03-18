@@ -939,6 +939,51 @@ condition: "variable == true"  # Use True (capitalized)
 
 ---
 
+## Prompt Engineering Patterns
+
+### Pattern: Parallel Signal Evaluation for LLM Classification
+
+**Challenge**: Sequential decision trees in LLM prompts create ordering bugs where early checks shadow later ones. For example, a flowchart that checks FILE_EDIT before HYBRID makes HYBRID unreachable for any file-editing task.
+
+**Solution**: Use parallel signal evaluation — detect all criteria simultaneously, then resolve with explicit priority rules. Combine with calibration examples for edge cases.
+
+```
+# WRONG: Sequential flowchart (ordering bugs)
+MSG → FILE_CHECK? → yes → DEV (HYBRID unreachable!)
+                  → no → PHASE_CHECK? → HYBRID
+
+# RIGHT: Parallel signal evaluation + examples
+MSG → detect ALL signals in parallel:
+      [UNDERSTAND, IMPLEMENT, FILE_EDIT, SHELL_ONLY, QUESTION]
+    → resolve by priority:
+      1. UNDERSTAND + IMPLEMENT → HYBRID
+      2. FILE_EDIT alone → DEV
+      3. UNDERSTAND alone → INVESTIGATE
+    → calibrate with examples:
+      "run tests and fix failures" = HYBRID
+```
+
+**Empirical Evidence** (PR #3249, 16 agent runs):
+
+| Approach | Accuracy |
+|----------|----------|
+| Text-only categories | 12/15 (80%) |
+| Sequential flowchart | 12/15 (80%) + ordering bug |
+| Parallel graph only | 12/15 (80%) |
+| **Parallel graph + examples** | **15/15 (100%)** |
+
+**Key Points**:
+
+- Sequential flowcharts impose priority order that may not match the classification semantics
+- Parallel evaluation avoids ordering bugs — all criteria checked simultaneously
+- Examples provide calibration for edge cases that pure signal detection misses
+- Neither graphs alone nor examples alone achieve 100% — the combination is required
+- Graph overhead in routing prompts is negligible (+1% tokens)
+
+> **Origin**: Discovered during A/B testing of mermaid workflow graphs (PR #3249, 2026-03-17). Applied to `routing_prompt.txt` — the per-turn classification prompt injected by `dev_intent_router.py`.
+
+---
+
 ## Remember
 
 These patterns represent proven solutions from real development challenges:
