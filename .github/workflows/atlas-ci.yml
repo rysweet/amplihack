@@ -101,10 +101,8 @@ jobs:
           echo "Checking atlas impact for PR: ${BASE_SHA}..${HEAD_SHA}"
           echo ""
 
-          # Exit code 1 = stale layers (advisory, not a failure).
-          # Must capture explicitly since GH Actions uses set -e by default.
-          EXIT_CODE=0
-          bash scripts/check-atlas-staleness.sh "$BASE_SHA" "$HEAD_SHA" > impact-report.txt 2>&1 || EXIT_CODE=$?
+          bash scripts/check-atlas-staleness.sh "$BASE_SHA" "$HEAD_SHA" > impact-report.txt 2>&1
+          EXIT_CODE=$?
 
           cat impact-report.txt
 
