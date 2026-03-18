@@ -4,7 +4,7 @@ title: Code Atlas
 
 # Code Atlas
 
-<div class="atlas-metadata">Generated: 2026-03-18 14:42 UTC</div>
+<div class="atlas-metadata">Generated: 2026-03-18 19:22 UTC</div>
 
 ## Layer Overview
 
@@ -33,7 +33,7 @@ title: Code Atlas
     <small>100% coverage</small>
 
     <div class="atlas-scale">
-    **total definitions**: 3365 | **total exports**: 1070 | **total imports**: 4235 | **potentially dead**: 139
+    **total definitions**: 3369 | **total exports**: 1070 | **total imports**: 4235 | **potentially dead**: 140
     </div>
 
 -   <span class="atlas-icon--structural">:material-package-variant:</span> **[Layer 3: Compile-time Dependencies](compile-deps/)**
@@ -48,7 +48,7 @@ title: Code Atlas
     <small>100% coverage</small>
 
     <div class="atlas-scale">
-    **external dep**: 56 | **internal packages**: 601 | **internal edges**: 715 | **circular dependency**: 8
+    **external dep**: 67 | **internal packages**: 601 | **internal edges**: 715 | **circular dependency**: 8
     </div>
 
 -   <span class="atlas-icon--structural">:material-server-network:</span> **[Layer 4: Runtime Topology](runtime-topology/)**
@@ -127,6 +127,17 @@ title: Code Atlas
     </div>
 
 </div>
+
+## Languages
+
+Primary language: **Python** | Total code: **125,298** lines | Detected via: *tokei*
+
+| Language | Files | Code Lines | % | Analysis Available |
+|----------|------:|-----------:|--:|-------------------|
+| Python | 533 | 120,895 | 96.5% | Full (AST, imports, dead code, journeys) |
+| Json | 20 | 4,403 | 3.5% | File-level only |
+
+> **Note**: Full AST analysis is currently available for Python only. Other languages have dependency and file-level analysis.
 
 ## Legend
 
