@@ -13,6 +13,8 @@ from pathlib import Path
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(_REPO_ROOT))
 from scripts.atlas.common import (
+    _find_enclosing_function,
+    _resolve_call_name,
     load_manifest,
     parse_file_safe,
     write_layer_json,
@@ -53,20 +55,6 @@ _ENV_PATTERNS = {
 }
 
 
-def _resolve_call_name(node: ast.expr) -> str | None:
-    """Resolve a call's func node to a dotted string."""
-    if isinstance(node, ast.Name):
-        return node.id
-    elif isinstance(node, ast.Attribute):
-        value = _resolve_call_name(node.value)
-        if value:
-            return f"{value}.{node.attr}"
-        return node.attr
-    elif isinstance(node, ast.Subscript):
-        return _resolve_call_name(node.value)
-    return None
-
-
 def _extract_literal(node: ast.expr) -> str | list | None:
     """Try to extract a literal string or list of strings from an AST node."""
     if isinstance(node, ast.Constant) and isinstance(node.value, str):
@@ -89,20 +77,6 @@ def _extract_literal(node: ast.expr) -> str | list | None:
                 parts.append("{...}")
         return "".join(parts)
     return None
-
-
-def _find_enclosing_function(tree: ast.Module, target_lineno: int) -> str | None:
-    """Find the function name enclosing a given line number."""
-    best = None
-    for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            # Check if target line is within this function
-            end_lineno = getattr(node, "end_lineno", None)
-            if end_lineno and node.lineno <= target_lineno <= end_lineno:
-                # Prefer innermost (most specific)
-                if best is None or node.lineno > best[1]:
-                    best = (node.name, node.lineno)
-    return best[0] if best else None
 
 
 def _extract_subprocess_calls(tree: ast.Module, filepath: str) -> list[dict]:

@@ -503,16 +503,18 @@ def _trace_from(
 
     Returns dict with visited set, leaves set, max_depth reached.
     """
+    from collections import deque as _deque
+
     visited: set[str] = set()
     leaves: set[str] = set()
     max_depth_reached = 0
 
     # BFS with depth tracking
-    queue: list[tuple[str, int]] = [(start_key, 0)]
+    queue: _deque[tuple[str, int]] = _deque([(start_key, 0)])
     visited.add(start_key)
 
     while queue:
-        current, depth = queue.pop(0)
+        current, depth = queue.popleft()
         max_depth_reached = max(max_depth_reached, depth)
 
         if depth >= max_depth:

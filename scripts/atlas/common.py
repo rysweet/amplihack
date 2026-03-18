@@ -34,6 +34,8 @@ __all__ = [
     "write_layer_json",
     "load_layer_json",
     "get_stdlib_modules",
+    "_resolve_call_name",
+    "_find_enclosing_function",
 ]
 
 
@@ -210,13 +212,14 @@ def walk_imports(tree: ast.Module, filepath: str) -> list[dict]:
     """
     stdlib = get_stdlib_modules()
     imports = []
+    try_cache: dict[int, set[int]] = {}
 
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
                 top_module = alias.name.split(".")[0]
                 category = _classify_import(alias.name, top_module, stdlib)
-                is_conditional = _is_inside_try(tree, node)
+                is_conditional = _is_inside_try(tree, node, _cache=try_cache)
                 imports.append({
                     "file": filepath,
                     "module": alias.name,
@@ -238,7 +241,7 @@ def walk_imports(tree: ast.Module, filepath: str) -> list[dict]:
                 category = _classify_import(module, top_module, stdlib)
 
             names = [alias.name for alias in node.names] if node.names else []
-            is_conditional = _is_inside_try(tree, node)
+            is_conditional = _is_inside_try(tree, node, _cache=try_cache)
 
             imports.append({
                 "file": filepath,
@@ -377,8 +380,16 @@ def _git_commit(root: Path) -> str:
         )
         if result.returncode == 0:
             return result.stdout.strip()
-    except (subprocess.TimeoutExpired, FileNotFoundError):
-        pass
+        print(
+            f"WARNING: git rev-parse HEAD failed (exit {result.returncode}), "
+            f"using 'unknown': {result.stderr.strip()}",
+            file=sys.stderr,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError) as e:
+        print(
+            f"WARNING: git rev-parse HEAD failed ({e}), using 'unknown'",
+            file=sys.stderr,
+        )
     return "unknown"
 
 
@@ -402,7 +413,8 @@ def _count_lines(filepath: Path) -> int:
     """Count lines in a file."""
     try:
         return len(filepath.read_text(encoding="utf-8", errors="replace").splitlines())
-    except OSError:
+    except OSError as e:
+        print(f"WARNING: could not read {filepath} for line count: {e}", file=sys.stderr)
         return 0
 
 
@@ -442,18 +454,35 @@ def _classify_import(module: str, top_module: str, stdlib: set[str]) -> str:
     return "third_party"
 
 
-def _is_inside_try(tree: ast.Module, target_node: ast.AST) -> bool:
-    """Check if a node is inside a Try block (conditional import)."""
+def _build_try_node_ids(tree: ast.Module) -> set[int]:
+    """Pre-compute the set of node ids that are inside Try blocks."""
+    inside_try: set[int] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Try):
             for child in ast.walk(node):
-                if child is target_node:
-                    return True
-    return False
+                inside_try.add(id(child))
+    return inside_try
+
+
+def _is_inside_try(tree: ast.Module, target_node: ast.AST, _cache: dict[int, set[int]] | None = None) -> bool:
+    """Check if a node is inside a Try block (conditional import).
+
+    Uses pre-computed set when available via _cache, keyed by id(tree).
+    """
+    if _cache is not None:
+        tree_id = id(tree)
+        if tree_id not in _cache:
+            _cache[tree_id] = _build_try_node_ids(tree)
+        return id(target_node) in _cache[tree_id]
+    # Fallback: single-pass build (still O(n) per call but avoids repeated walks)
+    return id(target_node) in _build_try_node_ids(tree)
 
 
 def _resolve_call_name(func_node: ast.expr) -> str | None:
-    """Resolve call target to a string name."""
+    """Resolve call target to a string name.
+
+    Handles Name, Attribute chains, and Subscript (e.g. os.environ["X"]).
+    """
     if isinstance(func_node, ast.Name):
         return func_node.id
     elif isinstance(func_node, ast.Attribute):
@@ -461,7 +490,21 @@ def _resolve_call_name(func_node: ast.expr) -> str | None:
         if value_name:
             return f"{value_name}.{func_node.attr}"
         return func_node.attr
+    elif isinstance(func_node, ast.Subscript):
+        return _resolve_call_name(func_node.value)
     return None
+
+
+def _find_enclosing_function(tree: ast.Module, target_lineno: int) -> str | None:
+    """Find the function name enclosing a given line number."""
+    best = None
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            end_lineno = getattr(node, "end_lineno", None)
+            if end_lineno and node.lineno <= target_lineno <= end_lineno:
+                if best is None or node.lineno > best[1]:
+                    best = (node.name, node.lineno)
+    return best[0] if best else None
 
 
 def _extract_function_def(node: ast.FunctionDef | ast.AsyncFunctionDef, filepath: str) -> dict:
@@ -485,8 +528,8 @@ def _extract_function_def(node: ast.FunctionDef | ast.AsyncFunctionDef, filepath
     if node.returns:
         try:
             return_annotation = ast.unparse(node.returns)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"WARNING: ast.unparse failed in {filepath}: {e}", file=sys.stderr)
 
     return {
         "file": filepath,
@@ -524,8 +567,8 @@ def _extract_class_def(node: ast.ClassDef, filepath: str) -> dict:
     for base in node.bases:
         try:
             bases.append(ast.unparse(base))
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"WARNING: ast.unparse failed in {filepath}: {e}", file=sys.stderr)
 
     return {
         "file": filepath,
