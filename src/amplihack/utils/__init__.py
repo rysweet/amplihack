@@ -1,7 +1,9 @@
 """Utility functions for amplihack."""
 
+import contextlib
 import logging
 import os
+from collections.abc import Generator
 
 from .defensive import (
     DefensiveError,
@@ -47,6 +49,28 @@ def get_agent_binary() -> str:
     return binary
 
 
+@contextlib.contextmanager
+def _agent_binary_context(agent_binary: str | None) -> Generator[None, None, None]:
+    """Temporarily set AMPLIHACK_AGENT_BINARY and restore the original value on exit.
+
+    Args:
+        agent_binary: Binary name to set, or ``None`` to leave the env var unchanged.
+    """
+    if agent_binary is None:
+        yield
+        return
+
+    original = os.environ.get("AMPLIHACK_AGENT_BINARY")
+    os.environ["AMPLIHACK_AGENT_BINARY"] = agent_binary
+    try:
+        yield
+    finally:
+        if original is None:
+            os.environ.pop("AMPLIHACK_AGENT_BINARY", None)
+        else:
+            os.environ["AMPLIHACK_AGENT_BINARY"] = original
+
+
 def is_uvx_deployment() -> bool:
     """Simple UVX detection based on sys.executable location."""
     import sys
@@ -58,6 +82,7 @@ def is_uvx_deployment() -> bool:
 __all__ = [
     # Agent binary
     "get_agent_binary",
+    "_agent_binary_context",
     # Path utilities
     "FrameworkPathResolver",
     # Process utilities
