@@ -141,23 +141,26 @@ high-level overview diagram showing inter-domain connections.
 
 A table is only produced as a companion to a diagram, never as a replacement.
 
-## Recipe: 10-Phase Atlas Build
+## Recipe: 12-Phase Atlas Build
 
 The atlas build follows these phases in order:
 
-1. **Language Detection** -- Identify languages, frameworks, build systems
-2. **runtime-topology** -- Map services, containers, ports, protocols from manifests
-3. **compile-deps** -- Build dependency graphs per service (delegate Python to code-visualizer)
-4. **api-contracts** -- Exhaustive route inventory with DTOs, auth, middleware
-5. **data-flow** -- Trace DTO-to-storage chains per service
-6. **service-components** -- Per-service internal module diagrams
-7. **ast-lsp-bindings** -- Cross-file symbol references, dead code, interface mismatches
-8. **user-journeys** -- Derive and trace end-to-end journeys
-9. **repo-surface + Inventory** -- File structure overview + env var / data store / external dep tables
-10. **Bug Hunt** -- Three-pass contradiction hunt (see [bug-hunt-guide.md](./bug-hunt-guide.md))
+1. **Validate Prerequisites** -- Check tools (mmdc, dot, kuzu), detect LSP mode
+2. **Build Layers 1-4** (structural) -- repo-surface, ast-lsp-bindings, compile-deps, runtime-topology
+3. **Build Layers 5-8** (behavioral) -- api-contracts, data-flow, service-components, user-journeys
+4. **Verify All 8 Layers** -- Hard gate: every slug must have .mmd + .dot + rendered .svg + README with embedded images
+5. **Bug Hunt (Mermaid arm)** -- 3-pass hunt using only .mmd diagrams
+6. **Bug Hunt (Graphviz arm)** -- 3-pass hunt using only .dot diagrams (parallel with step 5)
+7. **Merge Findings** -- Deduplicate across both arms
+8. **Multi-Agent Validation** -- 3 specialists vote independently; threshold >= 2/3 to confirm
+9. **File Issues** -- Validated bugs filed as GitHub issues (never stored in atlas)
+10. **Kuzu Ingestion + OpenCypher** -- Ingest to graph (REQUIRED) + generate standalone .cypher files
+11. **Publish Atlas** -- Render SVGs, write index, update mkdocs nav
+12. **Final Checklist Review** -- Independent reviewer verifies completeness of all deliverables
 
-After each phase, diagrams are written to `docs/atlas/{slug}/` with both `.mmd` and `.dot`
-source files plus rendered `.svg` when tools are available.
+After each build phase, diagrams are written to `docs/atlas/{slug}/` with `.mmd` source,
+`.dot` source, rendered `*-mermaid.svg` and `*-dot.svg`, and a README.md that embeds the
+SVGs inline using `![alt](file.svg)` syntax.
 
 ## Bug-Hunting Workflow Overview
 
@@ -192,18 +195,31 @@ The mode label is never absent, never defaulted silently.
 ```
 docs/atlas/
   index.md
+  staleness-map.yaml
   {slug}/
-    README.md          (embeds SVG diagrams inline)
+    README.md          (embeds SVG diagrams inline with ![alt](file.svg))
     *-mermaid.svg      (rendered Mermaid diagrams)
     *-dot.svg          (rendered Graphviz diagrams)
     *.mmd              (Mermaid source)
     *.dot              (Graphviz source)
     inventory.md       (where applicable)
+  cypher/
+    schema.cypher      (CREATE NODE/REL TABLE statements)
+    atlas-layers.cypher
+    atlas-services.cypher
+    atlas-bugs.cypher
+    atlas-relationships.cypher
+    queries.cypher     (ready-to-run example queries)
 ```
 
-Bug hunt results are **never stored in the atlas**. All findings are filed as
-GitHub issues with the `code-atlas-bughunt` label. The atlas is a living
-architecture document, not a point-in-time bug report.
+**Three non-negotiable output rules:**
+
+1. Bug hunt results are **never stored in the atlas**. All findings are filed as
+   GitHub issues with the `code-atlas-bughunt` label.
+2. Kuzu ingestion is **required, not optional**. If Kuzu is unavailable, fail
+   loudly and attempt to fix (install kuzu package). Never silently skip.
+3. OpenCypher `.cypher` files are **always generated** alongside Kuzu ingestion
+   for portability to any graph database.
 
 ## Staleness Detection
 
@@ -284,10 +300,12 @@ A complete atlas satisfies:
 The most valuable output of a code atlas is the bugs and contradictions discovered while
 reasoning about the system in graph form.
 
-Three rules that are never negotiable:
+Five rules that are never negotiable:
 
 1. **No silent diagram-to-table substitution.** If density is high, split into sub-diagrams.
 2. **Mode is always visible.** ast-lsp-bindings README always states its mode on line 1.
 3. **Three-pass bug hunting.** Pass 1 hunts. Pass 2 validates. Pass 3 verdicts per journey.
+4. **Bugs go to issues, never the atlas.** The atlas is a living architecture doc, not a bug report.
+5. **Kuzu is required, not optional.** Never silently skip graph ingestion. Fail loudly and fix.
 
 **Rebuild from code truth. Hunt contradictions. File evidence-backed bugs. Repeat.**

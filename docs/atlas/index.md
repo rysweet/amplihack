@@ -1,41 +1,40 @@
-# Code Atlas: amplihack
+# Atlas Index — amplihack
 
-**Generated:** 2026-03-17
-**Version:** 0.6.73
-**Mode:** Production atlas (8 layers + 3-pass bug hunt)
+Generated: 2026-03-18
 
-## Atlas Layers
+## Layer Diagrams
 
-| Layer | Name | Diagrams | Description |
-|-------|------|----------|-------------|
-| 1 | [Runtime Service Topology](runtime-topology/layer1-runtime/README.md) | [.mmd](runtime-topology/layer1-runtime/topology.mmd) [.dot](runtime-topology/layer1-runtime/topology.dot) | Services, processes, communication channels |
-| 2 | [Compile-Time Dependencies](compile-deps/layer2-dependencies/README.md) | [.mmd](compile-deps/layer2-dependencies/deps.mmd) [.dot](compile-deps/layer2-dependencies/deps.dot) | Package imports, module boundaries, external libraries |
-| 3 | [API Contracts](api-contracts/layer3-routing/README.md) | [.mmd](api-contracts/layer3-routing/routes.mmd) [.dot](api-contracts/layer3-routing/routes.dot) | CLI commands, HTTP routes, hook events |
-| 4 | [Data Flow Graph](data-flow/layer4-dataflow/README.md) | [.mmd](data-flow/layer4-dataflow/dataflow.mmd) [.dot](data-flow/layer4-dataflow/dataflow.dot) | Data entry, transformation, persistence, exit |
-| 5 | [User Journey Scenarios](user-journeys/layer5-journeys/README.md) | 5 sequence diagrams | End-to-end user flows |
-| 6 | [Exhaustive Inventory](inventory/) | 4 inventory tables | Services, env vars, data stores, external deps |
-| 7 | [Service Components](service-components/README.md) | [.mmd](service-components/components.mmd) [.dot](service-components/components.dot) | Internal module structure, cross-module dependencies |
-| 8 | [AST+LSP Symbol Bindings](ast-lsp-bindings/README.md) | [.mmd](ast-lsp-bindings/symbol-references.mmd) [.dot](ast-lsp-bindings/symbol-references.dot) | Cross-file symbol references, dead code candidates (static-approximation) |
+| # | Slug | Name | Mermaid | DOT | SVG (Mermaid) | SVG (DOT) | Description |
+|---|------|------|---------|-----|---------------|-----------|-------------|
+| 1 | [repo-surface](repo-surface/) | Repository Surface | [.mmd](repo-surface/repo-surface.mmd) | [.dot](repo-surface/repo-surface.dot) | [.svg](repo-surface/repo-surface-mermaid.svg) | [.svg](repo-surface/repo-surface-dot.svg) | All source files, project structure, build systems, configuration |
+| 2 | [ast-lsp-bindings](ast-lsp-bindings/) | AST+LSP Symbol Bindings | [.mmd](ast-lsp-bindings/ast-lsp-bindings.mmd) | [.dot](ast-lsp-bindings/ast-lsp-bindings.dot) | [.svg](ast-lsp-bindings/ast-lsp-bindings-mermaid.svg) | [.svg](ast-lsp-bindings/ast-lsp-bindings-dot.svg) | Cross-file symbol references, dead code detection, interface mismatch analysis |
+| 3 | [compile-deps](compile-deps/) | Compile-time Dependencies | [.mmd](compile-deps/compile-deps.mmd) | [.dot](compile-deps/compile-deps.dot) | [.svg](compile-deps/compile-deps-mermaid.svg) | [.svg](compile-deps/compile-deps-dot.svg) | Package/module imports, dependency trees, circular dependency detection |
+| 4 | [runtime-topology](runtime-topology/) | Runtime Topology | [.mmd](runtime-topology/runtime-topology.mmd) | [.dot](runtime-topology/runtime-topology.dot) | [.svg](runtime-topology/runtime-topology-mermaid.svg) | [.svg](runtime-topology/runtime-topology-dot.svg) | Services, containers, ports, inter-service connections |
+| 5 | [api-contracts](api-contracts/) | API Contracts | [.mmd](api-contracts/api-contracts.mmd) | [.dot](api-contracts/api-contracts.dot) | [.svg](api-contracts/api-contracts-mermaid.svg) | [.svg](api-contracts/api-contracts-dot.svg) | HTTP routes, CLI commands, hook events, DTOs |
+| 6 | [data-flow](data-flow/) | Data Flow | [.mmd](data-flow/data-flow.mmd) | [.dot](data-flow/data-flow.dot) | [.svg](data-flow/data-flow-mermaid.svg) | [.svg](data-flow/data-flow-dot.svg) | DTO-to-storage chains, data transformation steps, persistence mapping |
+| 7 | [service-components](service-components/) | Service Component Architecture | [.mmd](service-components/service-components.mmd) | [.dot](service-components/service-components.dot) | [.svg](service-components/service-components-mermaid.svg) | [.svg](service-components/service-components-dot.svg) | Per-service internal module/package structure, component boundaries |
+| 8 | [user-journeys](user-journeys/) | User Journey Scenarios | [.mmd (overview)](user-journeys/user-journeys-overview.dot) | [.dot](user-journeys/user-journeys-overview.dot) | Multiple | [.svg](user-journeys/user-journeys-overview-dot.svg) | End-to-end paths from entry point to outcome |
 
 ## Inventory Tables
 
-| Table | Location | Content |
-|-------|----------|---------|
-| Package inventory | [inventory.md](compile-deps/layer2-dependencies/inventory.md) | 37 direct dependencies |
-| Route inventory | [inventory.md](api-contracts/layer3-routing/inventory.md) | 17 CLI commands + 11 HTTP routes |
-| Service inventory | [services.md](inventory/services.md) | 6 runtime components + 13 non-runtime |
-| Env var inventory | [env-vars.md](inventory/env-vars.md) | 24 environment variables |
-| Data store inventory | [data-stores.md](inventory/data-stores.md) | 8 data stores |
-| External deps inventory | [external-deps.md](inventory/external-deps.md) | 12 external dependencies |
+| Table | File | Description |
+|-------|------|-------------|
+| Services | [services.md](inventory/services.md) | Runtime services/processes and non-runtime components |
+| Environment Variables | [env-vars.md](inventory/env-vars.md) | All environment variables with descriptions and defaults |
+| Data Stores | [data-stores.md](inventory/data-stores.md) | Databases, filesystem stores, configuration sources |
+| External Dependencies | [external-deps.md](inventory/external-deps.md) | pyproject.toml dependencies with versions and purpose |
 
-## Architecture Notes
+## Graph Database
 
-Amplihack is a **monolithic Python CLI tool** (not a microservice system). Key architectural characteristics:
+| File | Description |
+|------|-------------|
+| [cypher/schema.cypher](cypher/schema.cypher) | Node and relationship table definitions |
+| [cypher/atlas-data.cypher](cypher/atlas-data.cypher) | Node data population statements |
+| [cypher/atlas-relationships.cypher](cypher/atlas-relationships.cypher) | Relationship creation statements |
+| [cypher/queries.cypher](cypher/queries.cypher) | Example queries for atlas traversal |
 
-1. **Single process**: All components run in one Python process
-2. **Subprocess delegation**: Launches external CLIs (claude, copilot, codex) as child processes
-3. **Hook-based extensibility**: Session lifecycle hooks provide extension points
-4. **Optional proxy**: FastAPI/Flask proxy layer for AI API routing
-5. **Embedded graph DB**: Kuzu for persistent cross-session memory
-6. **Large skill/agent library**: ~120 skills and 30+ agents as Markdown definitions in `.claude/`
-7. **Recipe system**: YAML-based workflow orchestration
+## Supporting Files
+
+| File | Description |
+|------|-------------|
+| [staleness-map.yaml](staleness-map.yaml) | File patterns that trigger layer rebuilds |

@@ -1,0 +1,65 @@
+graph TD
+    subgraph root["amplihack repository"]
+        direction TB
+        pyproject["pyproject.toml<br/>Build config, deps"]
+        makefile["Makefile"]
+        dockerfile["Dockerfile"]
+        claudemd["CLAUDE.md<br/>Agent instructions"]
+        conftest["conftest.py / pytest.ini"]
+        readme["README.md"]
+    end
+
+    subgraph src_pkg["src/amplihack/ — Main Package"]
+        direction TB
+        cli["cli.py / cli_extensions.py<br/>CLI entry point"]
+        init["__init__.py / __main__.py<br/>Package init"]
+        settings["settings.py / settings_generator/"]
+        install["install.py / uninstall.py"]
+    end
+
+    subgraph src_sub["src/amplihack/ Subpackages"]
+        direction TB
+        launcher["launcher/<br/>Claude/Copilot launcher"]
+        proxy["proxy/<br/>LLM proxy, Flask server"]
+        fleet["fleet/<br/>Multi-agent fleet mgmt"]
+        recipes["recipes/ + recipe_cli/<br/>Recipe engine"]
+        memory["memory/<br/>Discovery persistence"]
+        security["security/<br/>Safety & scanning"]
+        eval_pkg["eval/<br/>Agent evaluation"]
+        knowledge["knowledge_builder/<br/>Knowledge graph"]
+        bundle["bundle_generator/<br/>Package distribution"]
+        hooks["hooks/<br/>Git hooks"]
+        utils["utils/<br/>Shared utilities"]
+        vendor["vendor/blarify/<br/>Code graph indexer"]
+        lsp["lsp_detector/<br/>LSP detection"]
+        uvx["uvx/<br/>UVX packaging"]
+        docker_pkg["docker/<br/>Docker detection"]
+        tracing["tracing/<br/>Observability"]
+        context["context/<br/>Adaptive context"]
+        workflows["workflows/<br/>Workflow engine"]
+        plugin["plugin_manager/ + plugin_cli/"]
+        power["power_steering/<br/>Prompt control"]
+        safety["safety/<br/>Staging safety"]
+        meta["meta_delegation/<br/>Agent delegation"]
+        mode["mode_detector/<br/>Mode detection"]
+        path_res["path_resolver/<br/>Path resolution"]
+        goal["goal_agent_generator/"]
+    end
+
+    subgraph support["Support Directories"]
+        direction TB
+        tests["tests/<br/>Top-level test suite"]
+        scripts["scripts/<br/>Utility scripts"]
+        docs["docs/<br/>MkDocs documentation"]
+        specs["Specs/<br/>Module specifications"]
+        examples_dir["examples/<br/>Usage examples"]
+        docker_dir["docker/<br/>Docker compose"]
+        agents_dir["agents/<br/>Agent definitions"]
+        commands_dir["commands/<br/>Slash commands"]
+        skills_dir["skills/<br/>Skill definitions"]
+        tools_dir["tools/<br/>Hook utilities"]
+    end
+
+    root --> src_pkg
+    src_pkg --> src_sub
+    root --> support
