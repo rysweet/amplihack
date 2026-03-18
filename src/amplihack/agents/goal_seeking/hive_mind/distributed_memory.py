@@ -88,8 +88,10 @@ class DistributedCognitiveMemory:
             **kwargs,
         )
 
-        # Distributed search via hive transport
-        hive_dicts = self._query_hive(query, limit=limit)
+        # Distributed search via hive transport — use the same broad-fetch
+        # multiplier as local so both sides have equal candidate headroom
+        # before the relevance-ranked merge.
+        hive_dicts = self._query_hive(query, limit=limit * HIVE_SEARCH_MULTIPLIER)
 
         if not hive_dicts:
             return local_results[:limit] if local_results else []
@@ -346,7 +348,12 @@ class DistributedCognitiveMemory:
                 )
             except ImportError:
                 pass
-            return [self._hive_fact_to_dict(f) for f in facts if getattr(f, "content", "")]
+            return [
+                self._hive_fact_to_dict(f)
+                for f in facts
+                # Handle both HiveFact objects (content attr) and raw dicts (content key)
+                if (f.get("content", "") if isinstance(f, dict) else getattr(f, "content", ""))
+            ]
         # FederatedGraphStore fallback
         if hasattr(self._hive, "federated_query"):
             fqr = self._hive.federated_query(query, limit=limit)
@@ -374,10 +381,8 @@ class DistributedCognitiveMemory:
             facts = self._hive.retrieve_by_entity(entity_name=entity_name, limit=limit)
             return [
                 self._hive_fact_to_dict(f)
-                if not isinstance(f, dict)
-                else self._hive_fact_to_dict(f)
                 for f in facts
-                if (getattr(f, "content", "") if not isinstance(f, dict) else f.get("outcome", ""))
+                if (f.get("outcome", "") if isinstance(f, dict) else getattr(f, "content", ""))
             ]
 
         return self._query_hive(entity_name, limit=limit)
@@ -422,7 +427,10 @@ class DistributedCognitiveMemory:
                 h = hashlib.md5(content.encode()).hexdigest()
                 if h not in seen:
                     seen.add(h)
-                    score = self._relevance_score(r, query) if query else 1.0
+                    # Without a query all facts receive the same neutral score
+                    # so ordering falls through to the deterministic content
+                    # tiebreaker — local and hive results interleave fairly.
+                    score = self._relevance_score(r, query) if query else 0.5
                     scored.append((score, r))
 
         for r in hive_dicts:
@@ -431,7 +439,10 @@ class DistributedCognitiveMemory:
                 h = hashlib.md5(content.encode()).hexdigest()
                 if h not in seen:
                     seen.add(h)
-                    score = self._relevance_score(r, query) if query else 0.0
+                    # Without a query, use the same neutral baseline as local
+                    # facts (1.0 → 0.5 parity) so distributed results are not
+                    # systematically suppressed below local-only results.
+                    score = self._relevance_score(r, query) if query else 0.5
                     scored.append((score, r))
 
         # Primary sort: descending score. Secondary sort: ascending content string
