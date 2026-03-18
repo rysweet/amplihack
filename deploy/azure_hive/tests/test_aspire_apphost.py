@@ -36,11 +36,21 @@ class TestAspireAppHost:
     def test_apphost_models_real_azure_commands(self):
         content = _APPHOST.read_text()
         assert "deploy/azure_hive/deploy.sh" in content
+        assert "deploy/azure_hive/eval_monitor.py" in content
         assert "deploy/azure_hive/eval_distributed.py" in content
         assert "deploy/azure_hive/eval_distributed_security.py" in content
         assert "AMPLIHACK_ASPIRE_ENABLE_AZURE_DEPLOY" in content
+        assert "AMPLIHACK_ASPIRE_ENABLE_EVAL_MONITOR" in content
         assert "AMPLIHACK_ASPIRE_ENABLE_LONG_HORIZON_EVAL" in content
         assert "AMPLIHACK_ASPIRE_ENABLE_SECURITY_EVAL" in content
+
+    def test_apphost_exposes_monitor_spotcheck_thresholds(self):
+        content = _APPHOST.read_text()
+        assert "AMPLIHACK_ASPIRE_MONITOR_WAIT_FOR_ONLINE" in content
+        assert "AMPLIHACK_ASPIRE_MONITOR_WAIT_FOR_READY" in content
+        assert "AMPLIHACK_ASPIRE_MONITOR_WAIT_FOR_PROGRESS" in content
+        assert "AMPLIHACK_ASPIRE_MONITOR_WAIT_FOR_ANSWERS" in content
+        assert "AMPLIHACK_ASPIRE_MONITOR_MAX_WAIT_SECONDS" in content
 
     def test_nuget_config_exists(self):
         assert _NUGET_CONFIG.exists()
