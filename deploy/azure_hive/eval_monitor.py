@@ -25,6 +25,7 @@ Usage:
 Environment:
     EH_CONN                    Event Hubs namespace connection string
     AMPLIHACK_EH_RESPONSE_HUB  Response hub name override
+    AMPLIHACK_EVAL_MONITOR_CONSUMER_GROUP  Response-hub consumer group
     HIVE_AGENT_COUNT           Expected agent count
 """
 
@@ -99,11 +100,13 @@ class EvalMonitor:
         self,
         connection_string: str,
         response_hub: str,
+        consumer_group: str,
         agent_count: int,
         output_path: str,
     ) -> None:
         self._conn = connection_string
         self._hub = response_hub
+        self._consumer_group = consumer_group
         self._agent_count = agent_count
         self._output_path = output_path
 
@@ -238,6 +241,38 @@ class EvalMonitor:
         except Exception:
             pass  # never crash on write
 
+    def _checkpoint_event(self, partition_context: Any, event: Any) -> None:
+        update_checkpoint = getattr(partition_context, "update_checkpoint", None)
+        if callable(update_checkpoint):
+            update_checkpoint(event)
+
+    def _consume_event(self, partition_context: Any, event: Any) -> None:
+        if event is None:
+            return
+
+        raw_body = event.body_as_str()
+        try:
+            body = json.loads(raw_body)
+        except json.JSONDecodeError as exc:
+            logger.warning(
+                "Skipping malformed eval monitor event on partition %s: %s",
+                getattr(partition_context, "partition_id", "?"),
+                exc,
+            )
+            self._checkpoint_event(partition_context, event)
+            return
+
+        try:
+            self._handle_event(body)
+        except Exception:
+            logger.exception(
+                "Failed to process eval monitor event_type=%s agent_id=%s",
+                body.get("event_type", ""),
+                body.get("agent_id", ""),
+            )
+        finally:
+            self._checkpoint_event(partition_context, event)
+
     def run(self) -> None:
         """Start listening and printing until interrupted."""
         try:
@@ -247,19 +282,11 @@ class EvalMonitor:
             sys.exit(1)
 
         def _on_event(partition_context: Any, event: Any) -> None:
-            if event is None:
-                return
-            try:
-                body = json.loads(event.body_as_str())
-                self._handle_event(body)
-            except Exception:
-                pass
-            if hasattr(partition_context, "update_checkpoint"):
-                partition_context.update_checkpoint(event)
+            self._consume_event(partition_context, event)
 
         consumer = EventHubConsumerClient.from_connection_string(
             self._conn,
-            consumer_group="$Default",
+            consumer_group=self._consumer_group,
             eventhub_name=self._hub,
         )
 
@@ -331,6 +358,10 @@ def main() -> int:
         ),
     )
     p.add_argument(
+        "--consumer-group",
+        default=os.environ.get("AMPLIHACK_EVAL_MONITOR_CONSUMER_GROUP", "eval-reader"),
+    )
+    p.add_argument(
         "--agents",
         type=int,
         default=int(os.environ.get("HIVE_AGENT_COUNT", "100")),
@@ -345,6 +376,7 @@ def main() -> int:
     monitor = EvalMonitor(
         connection_string=args.connection_string,
         response_hub=args.response_hub,
+        consumer_group=args.consumer_group,
         agent_count=args.agents,
         output_path=args.output,
     )
