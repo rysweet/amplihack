@@ -28,7 +28,7 @@ Overall: :material-alert-circle:{ .atlas-health--warn } **PASS_WITH_WARNINGS** |
 | CLI_HANDLER_REACHABILITY | :material-check-circle:{ .atlas-health--pass } | 52 CLI commands have reachable handlers |
 | DEAD_DEP_CROSS_VALIDATION | :material-alert-circle:{ .atlas-health--warn } | 1 deps marked unused in layer3 but found in layer2 |
 | CIRCULAR_IMPORT_SEVERITY | :material-check-circle:{ .atlas-health--pass } | No circular dependencies detected |
-| ENV_VAR_COMPLETENESS | :material-alert-circle:{ .atlas-health--warn } | 126/126 env vars not in .env.example |
+| ENV_VAR_COMPLETENESS | :material-alert-circle:{ .atlas-health--warn } | 126 env vars found but no .env.example file |
 | ROUTE_TEST_COVERAGE | :material-alert-circle:{ .atlas-health--warn } | 15/22 routes without test references |
 | REEXPORT_CHAIN_VALIDATION | :material-alert-circle:{ .atlas-health--warn } | 6 broken re-export chains |
 
@@ -94,16 +94,16 @@ Missing items:
 
 Missing items:
 
-- `/home/azureuser/src/amplihack/src/amplihack/context/adaptive/strategies.py`
-- `/home/azureuser/src/amplihack/src/amplihack/eval/teaching_session.py`
-- `/home/azureuser/src/amplihack/src/amplihack/install.py`
-- `/home/azureuser/src/amplihack/src/amplihack/eval/self_improve/patch_proposer.py`
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/fleet_logs.py`
 - `/home/azureuser/src/amplihack/src/amplihack/testing/send_input_allowlist.py`
-- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/vendor/multilspy/language_servers/solargraph/solargraph.py`
-- `/home/azureuser/src/amplihack/src/amplihack/__init__.py`
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/tests/test_fleet_copilot.py`
-- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/vendor/multilspy/language_servers/intelephense/intelephense.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/vendor/multilspy/language_servers/jedi_language_server/jedi_server.py`
+- `/home/azureuser/src/amplihack/src/amplihack/context/adaptive/detector.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/vendor/multilspy/language_servers/dart_language_server/dart_language_server.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/_admiral_types.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/fleet_state.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/tests/test_fleet_session_reasoner.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/tests/test_fleet_reasoners.py`
+- `/home/azureuser/src/amplihack/src/amplihack/settings.py`
+- `/home/azureuser/src/amplihack/src/amplihack/eval/self_improve/patch_proposer.py`
 
 ### SUBPROCESS_TRACEABILITY
 
@@ -111,16 +111,16 @@ Missing items:
 
 Missing items:
 
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/fleet_state.py`
 - `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/main.py`
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/fleet_tui.py`
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/fleet_logs.py`
-- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/repositories/graph_db_manager/neo4j_manager.py`
 - `/home/azureuser/src/amplihack/src/amplihack/fleet/fleet_adopt.py`
-- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/vendor/multilspy/language_servers/solargraph/solargraph.py`
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/_cli_commands.py`
-- `/home/azureuser/src/amplihack/src/amplihack/knowledge_builder/modules/knowledge_acquirer.py`
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/_tui_workers.py`
-- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/vendor/multilspy/language_servers/intelephense/intelephense.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/fleet_setup.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/mcp_server/server.py`
+- `/home/azureuser/src/amplihack/src/amplihack/session.py`
+- `/home/azureuser/src/amplihack/src/amplihack/eval/progressive_test_suite.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/code_references/scip_helper.py`
+- `/home/azureuser/src/amplihack/src/amplihack/rust_trial.py`
+- `/home/azureuser/src/amplihack/src/amplihack/eval/agent_adapter.py`
 
 ### PACKAGE_CONSISTENCY
 
@@ -168,7 +168,7 @@ Missing items:
 
 ### ENV_VAR_COMPLETENESS
 
-126/126 env vars not in .env.example
+126 env vars found but no .env.example file
 
 Missing items:
 
