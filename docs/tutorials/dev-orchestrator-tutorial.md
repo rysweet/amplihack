@@ -257,18 +257,43 @@ expected — those task types respond directly and do not generate summaries.
 
 ## Auto-Routing: How It Works
 
-The `UserPromptSubmit` hook injects a short routing prompt on every message
-(except slash commands like `/dev` or `/analyze`). This prompt tells Claude
-which workflow to use based on your intent:
+The `UserPromptSubmit` hook injects a routing prompt on every message (except
+slash commands like `/dev` or `/analyze`). This routing prompt uses **parallel
+signal evaluation** — it detects multiple signals in your message simultaneously
+and resolves them with priority rules.
 
-| Your intent                                 | What Claude does                                          |
-| ------------------------------------------- | --------------------------------------------------------- |
-| Build, fix, write, test, deploy             | Invokes `dev-orchestrator` (DEFAULT_WORKFLOW)             |
-| Investigate, analyze, understand            | Invokes `dev-orchestrator` (INVESTIGATION_WORKFLOW)       |
-| Both investigate AND implement              | Invokes `dev-orchestrator` (creates parallel workstreams) |
-| Knowledge question (what is, how does)      | Answers directly — no workflow                            |
-| Shell/admin command (git, ls, restart)      | Executes directly — no workflow                           |
-| Existing `/command` or "just answer" bypass | Respects your explicit intent                             |
+### The 4-Layer Classification Pipeline
+
+Your message passes through 4 classification layers:
+
+1. **`routing_prompt.txt`** — Injected every turn by `dev_intent_router.py`. Detects 5 parallel signals (UNDERSTAND, IMPLEMENT, FILE_EDIT, SHELL_ONLY, QUESTION) and resolves with priority rules. This is the primary classifier.
+2. **`CLAUDE.md`** — Classification table loaded at session start. Provides keyword guidance and the mandatory code-file-edit rule.
+3. **`workflow_classification_reminder.py`** — Fires at topic boundaries (new conversations, direction changes). Reinforces classification.
+4. **`dev-orchestrator/SKILL.md`** — When the skill activates, guides decomposition into workstreams.
+
+### Signal Detection and Resolution
+
+The routing prompt evaluates these signals in parallel:
+
+| Signal | Keywords | Example |
+|--------|----------|---------|
+| UNDERSTAND | explain, how does, why, analyze, research, explore | "why is CI failing" |
+| IMPLEMENT | build, fix, add, create, refactor, update, write | "fix the login bug" |
+| FILE_EDIT | any .py/.yaml/.md/.ts/.json will change | "update the README" |
+| SHELL_ONLY | run tests, git status, check logs | "git status" |
+| QUESTION | what is, how do I, explain, compare | "what is OAuth?" |
+
+Then resolves by priority:
+
+| Signals detected | Classification | Action |
+|-----------------|---------------|--------|
+| UNDERSTAND + IMPLEMENT | **HYBRID** | dev-orchestrator (parallel workstreams) |
+| SHELL_ONLY + IMPLEMENT | **HYBRID** | dev-orchestrator |
+| FILE_EDIT or IMPLEMENT alone | **DEV** | dev-orchestrator |
+| UNDERSTAND alone | **INVESTIGATE** | dev-orchestrator |
+| SHELL_ONLY alone | **OPS** | Execute directly |
+| QUESTION alone | **Q&A** | Answer directly |
+| "just answer" / "skip workflow" | **SKIP** | Bypass |
 
 The hook itself does NOT classify — it injects the same routing guidance for
 every message. Claude's natural language understanding handles the rest.
