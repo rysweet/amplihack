@@ -4,7 +4,7 @@ title: Code Atlas
 
 # Code Atlas
 
-<div class="atlas-metadata">Generated: 2026-03-18 19:22 UTC</div>
+<div class="atlas-metadata">Generated: 2026-03-18 22:10 UTC</div>
 
 ## Layer Overview
 
@@ -78,7 +78,7 @@ title: Code Atlas
     <small>100% coverage</small>
 
     <div class="atlas-scale">
-    **cli command**: 52 | **cli argument**: 236 | **http route**: 22 | **hook event**: 274
+    **cli command**: 52 | **cli argument**: 236 | **click typer command**: 11 | **http route**: 22
     </div>
 
 -   <span class="atlas-icon--behavioral">:material-transit-connection-variant:</span> **[Layer 6: Data Flow](data-flow/)**

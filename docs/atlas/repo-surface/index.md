@@ -9,7 +9,7 @@ title: "Layer 1: Repository Surface"
 # Layer 1: Repository Surface
 
 <div class="atlas-metadata">
-Category: <strong>Structural</strong> | Generated: 2026-03-18T19:21:16.035613+00:00
+Category: <strong>Structural</strong> | Generated: 2026-03-18T22:10:10.536607+00:00
 </div>
 
 ## Map

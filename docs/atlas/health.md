@@ -82,16 +82,16 @@ Missing items:
 
 Missing items:
 
-- `/home/azureuser/src/amplihack/src/amplihack/eval/long_horizon_self_improve.py`
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/tests/test_fleet_results.py`
-- `/home/azureuser/src/amplihack/src/amplihack/cli.py`
-- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/project_file_explorer/project_files_stats.py`
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/tests/test_cli_formatters.py`
-- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/graph/node/types/integration_node.py`
-- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/vendor/multilspy/language_servers/solargraph/solargraph.py`
-- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/vendor/multilspy/language_servers/dart_language_server/dart_language_server.py`
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/_session_lifecycle.py`
-- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/vendor/multilspy/multilspy_logger.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/transcript_analyzer.py`
+- `/home/azureuser/src/amplihack/src/amplihack/eval/harness_runner.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/tests/test_fleet_session_reasoner.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/_transcript.py`
+- `/home/azureuser/src/amplihack/src/amplihack/eval/agent_subprocess.py`
+- `/home/azureuser/src/amplihack/src/amplihack/auto_update.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/tests/test_fleet_logs.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/vendor/multilspy/lsp_protocol_handler/server.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/_cli_formatters.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/tests/test_fleet_cli.py`
 
 ### SUBPROCESS_TRACEABILITY
 
@@ -99,16 +99,16 @@ Missing items:
 
 Missing items:
 
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/_cli_commands.py`
-- `/home/azureuser/src/amplihack/src/amplihack/eval/long_horizon_self_improve.py`
-- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/mcp_server/server.py`
-- `/home/azureuser/src/amplihack/src/amplihack/cli.py`
-- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/vendor/multilspy/language_servers/solargraph/solargraph.py`
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/fleet_tui_dashboard.py`
-- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/code_references/scip_helper.py`
-- `/home/azureuser/src/amplihack/src/amplihack/eval/progressive_test_suite.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/fleet_setup.py`
 - `/home/azureuser/src/amplihack/src/amplihack/fleet/_session_gather.py`
-- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/vendor/multilspy/language_servers/typescript_language_server/typescript_language_server.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/fleet_tui.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/transcript_analyzer.py`
+- `/home/azureuser/src/amplihack/src/amplihack/eval/agent_adapter.py`
+- `/home/azureuser/src/amplihack/src/amplihack/eval/harness_runner.py`
+- `/home/azureuser/src/amplihack/src/amplihack/auto_update.py`
+- `/home/azureuser/src/amplihack/src/amplihack/knowledge_builder/modules/question_generator.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/vendor/multilspy/language_servers/intelephense/intelephense.py`
+- `/home/azureuser/src/amplihack/src/amplihack/eval/meta_eval_experiment.py`
 
 ### PACKAGE_CONSISTENCY
 
@@ -160,9 +160,9 @@ Missing items:
 
 Missing items:
 
-- `['utils.claude_cli', 'utils.prerequisites', 'utils.claude_cli']`
+- `['utils.prerequisites', 'utils.claude_cli', 'utils.prerequisites']`
 - `['memory.kuzu.indexing.background_indexer', 'memory.kuzu.indexing.orchestrator', 'memory.kuzu.indexing.background_indexer']`
-- `['launcher.copilot', 'launcher.core', 'launcher', 'cli', 'hook_verification', 'install', 'settings', 'uninstall', 'amplihack', 'launcher.copilot']`
+- `['install', 'launcher.core', 'launcher', 'launcher.copilot', 'cli', 'hook_verification', 'settings', 'uninstall', 'amplihack', 'install']`
 - `['agents.goal_seeking.hive_mind.gossip', 'agents.goal_seeking.hive_mind.hive_graph', 'agents.goal_seeking.hive_mind.gossip']`
 - `['proxy.monitoring', 'proxy.azure_errors', 'proxy.monitoring']`
 - `['proxy.streaming', 'proxy.integrated_proxy', 'proxy.streaming']`

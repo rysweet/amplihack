@@ -9,7 +9,7 @@ title: "Layer 7: Service Components"
 # Layer 7: Service Components
 
 <div class="atlas-metadata">
-Category: <strong>Structural</strong> | Generated: 2026-03-18T19:21:35.491967+00:00
+Category: <strong>Structural</strong> | Generated: 2026-03-18T22:10:29.999510+00:00
 </div>
 
 ## Map
