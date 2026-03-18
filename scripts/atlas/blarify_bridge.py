@@ -50,12 +50,14 @@ class BlarifyBridge:
         self.root = root.resolve()
         self.graph = None
 
-    def build(self, hierarchy_only: bool = True) -> "BlarifyBridge":
+    def build(self, hierarchy_only: bool = False) -> "BlarifyBridge":
         """Build the blarify graph for the project.
 
         Args:
-            hierarchy_only: If True (default), skip LSP reference resolution.
-                This is fast (1-2s) and sufficient for definition extraction.
+            hierarchy_only: If False (default), full build with LSP reference
+                resolution. Gives CALLS, IMPORTS, INSTANTIATES, USES, INHERITS
+                relationships. Slower (minutes for large codebases) but much richer.
+                If True, fast build with definitions only (1-2s).
 
         Returns:
             self, for chaining.
@@ -136,15 +138,116 @@ class BlarifyBridge:
         return [d for d in all_defs if d["file"] == file_path]
 
     def get_relationships(self) -> list[dict]:
-        """Get all relationships as JSON-serializable dicts.
+        """Extract all relationships from the graph as JSON-serializable dicts.
+
+        Each relationship has: type, source_file, source_name, target_file,
+        target_name. For code-reference types (CALLS, IMPORTS, INSTANTIATES,
+        USES, INHERITS), source/target are definition nodes. For hierarchy
+        types (CONTAINS, etc.), they are structural nodes.
 
         Returns:
-            List of relationship dicts from blarify's graph.
+            List of relationship dicts.
         """
         if self.graph is None:
             raise RuntimeError("Call build() before get_relationships()")
 
-        return self.graph.get_relationships_as_objects()
+        # Use raw relationship objects for richer node info
+        code_ref_types = {"CALLS", "IMPORTS", "INSTANTIATES", "USES", "INHERITS",
+                          "TYPES", "ASSIGNS"}
+        results = []
+
+        for rel in self.graph.get_relationships_from_nodes():
+            rel_type = rel.rel_type.name
+            start = rel.start_node
+            end = rel.end_node
+            entry = {
+                "type": rel_type,
+                "source_file": start.path.replace("file://", "") if start.path.startswith("file://") else start.path,
+                "source_name": start.name,
+                "target_file": end.path.replace("file://", "") if end.path.startswith("file://") else end.path,
+                "target_name": end.name,
+            }
+            if rel.start_line is not None:
+                entry["lineno"] = rel.start_line
+            results.append(entry)
+
+        # Also include reference relationships (from LSP resolution)
+        for rel in self.graph._Graph__references_relationships:
+            rel_type = rel.rel_type.name
+            start = rel.start_node
+            end = rel.end_node
+            entry = {
+                "type": rel_type,
+                "source_file": start.path.replace("file://", "") if start.path.startswith("file://") else start.path,
+                "source_name": start.name,
+                "target_file": end.path.replace("file://", "") if end.path.startswith("file://") else end.path,
+                "target_name": end.name,
+            }
+            if rel.start_line is not None:
+                entry["lineno"] = rel.start_line
+            results.append(entry)
+
+        return results
+
+    def get_call_graph(self) -> dict:
+        """Extract CALLS relationships as a directed graph.
+
+        Returns:
+            {"nodes": [...], "edges": [{"from": "file::func", "to": "file::func", "type": "CALLS"}]}
+        """
+        if self.graph is None:
+            raise RuntimeError("Call build() before get_call_graph()")
+
+        rels = self.get_relationships()
+        calls = [r for r in rels if r["type"] == "CALLS"]
+
+        nodes_set: set[str] = set()
+        edges = []
+        for c in calls:
+            src_key = f"{c['source_file']}::{c['source_name']}"
+            tgt_key = f"{c['target_file']}::{c['target_name']}"
+            nodes_set.add(src_key)
+            nodes_set.add(tgt_key)
+            edges.append({"from": src_key, "to": tgt_key, "type": "CALLS"})
+
+        return {"nodes": sorted(nodes_set), "edges": edges}
+
+    def get_imports(self) -> list[dict]:
+        """Extract IMPORTS relationships.
+
+        Returns:
+            List of dicts with source_file, target_file, source_name, target_name.
+        """
+        if self.graph is None:
+            raise RuntimeError("Call build() before get_imports()")
+
+        rels = self.get_relationships()
+        return [
+            {
+                "source_file": r["source_file"],
+                "target_file": r["target_file"],
+                "source_name": r["source_name"],
+                "target_name": r["target_name"],
+            }
+            for r in rels if r["type"] == "IMPORTS"
+        ]
+
+    def get_relationship_summary(self) -> dict[str, int]:
+        """Count relationships by type.
+
+        Returns:
+            Dict mapping relationship type to count, plus "total".
+        """
+        if self.graph is None:
+            raise RuntimeError("Call build() before get_relationship_summary()")
+
+        rels = self.get_relationships()
+        counts: dict[str, int] = {}
+        for r in rels:
+            rtype = r["type"]
+            counts[rtype] = counts.get(rtype, 0) + 1
+        counts["total"] = len(rels)
+        return counts
 
     def get_language_stats(self) -> dict[str, int]:
         """Count definitions per language from the graph.
@@ -265,7 +368,8 @@ if __name__ == "__main__":
         print(f"ERROR: {root} is not a directory", file=sys.stderr)
         sys.exit(1)
 
-    print(f"Building blarify graph for {root}...")
+    mode = "full (with LSP)" if args.full else "hierarchy only"
+    print(f"Building blarify graph for {root} ({mode})...")
     bridge = BlarifyBridge(root)
     bridge.build(hierarchy_only=not args.full)
 
@@ -288,3 +392,11 @@ if __name__ == "__main__":
     print(f"\nFiles by language:")
     for lang, count in sorted(file_stats.items(), key=lambda x: -x[1]):
         print(f"  {lang}: {count}")
+
+    # Relationship summary (meaningful for full builds)
+    rel_summary = bridge.get_relationship_summary()
+    if rel_summary.get("total", 0) > 0:
+        print(f"\nRelationships ({rel_summary['total']} total):")
+        for rtype, count in sorted(rel_summary.items(), key=lambda x: -x[1]):
+            if rtype != "total":
+                print(f"  {rtype}: {count}")

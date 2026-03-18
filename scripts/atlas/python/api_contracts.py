@@ -100,6 +100,126 @@ def _extract_cli_commands(tree: ast.Module, filepath: str) -> tuple[list[dict], 
     return parsers, arguments
 
 
+def _extract_click_typer_commands(tree: ast.Module, filepath: str) -> list[dict]:
+    """Extract Click and Typer CLI command definitions.
+
+    Detects:
+    - @click.command(), @click.group()
+    - @app.command() where app = click.Group() or typer.Typer()
+    - Extracts command name, arguments from function signature, docstring help text.
+    """
+    commands = []
+
+    # Phase 1: Find module-level objects that are Click groups or Typer apps
+    # Case A: app = typer.Typer(), cli = click.Group()
+    click_typer_vars: set[str] = set()
+    for node in ast.iter_child_nodes(tree):
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name) and isinstance(node.value, ast.Call):
+                    call_name = _resolve_call_name(node.value.func)
+                    if call_name and call_name in (
+                        "click.Group", "click.group", "typer.Typer",
+                        "click.MultiCommand", "click.CommandCollection",
+                    ):
+                        click_typer_vars.add(target.id)
+
+    # Case B: @click.group() decorated functions become group objects
+    # e.g. @click.group() def bundle(): ... -> 'bundle' is a Click group
+    for node in ast.iter_child_nodes(tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        for dec in node.decorator_list:
+            dec_name = None
+            if isinstance(dec, ast.Call):
+                dec_name = _resolve_call_name(dec.func)
+            elif isinstance(dec, ast.Attribute):
+                dec_name = _resolve_call_name(dec)
+            if dec_name and dec_name in ("click.group", "click.Group"):
+                click_typer_vars.add(node.name)
+
+    # Phase 2: Find decorated functions
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+
+        for dec in node.decorator_list:
+            dec_call = None
+            call_name = None
+
+            if isinstance(dec, ast.Call):
+                call_name = _resolve_call_name(dec.func)
+                dec_call = dec
+            elif isinstance(dec, ast.Attribute):
+                call_name = _resolve_call_name(dec)
+
+            if not call_name:
+                continue
+
+            # Check for click.command(), click.group()
+            is_click_direct = call_name in ("click.command", "click.group")
+
+            # Check for app.command(), app.group() where app is a known Click/Typer var
+            is_app_command = False
+            if not is_click_direct and call_name:
+                parts = call_name.rsplit(".", 1)
+                if len(parts) == 2:
+                    obj_name, method = parts
+                    if obj_name in click_typer_vars and method in ("command", "group", "callback"):
+                        is_app_command = True
+
+            if not is_click_direct and not is_app_command:
+                continue
+
+            # Extract command name from decorator arg or fall back to function name
+            cmd_name = None
+            if dec_call:
+                cmd_name = _get_string_arg(dec_call, 0, kw="name")
+            if not cmd_name:
+                cmd_name = node.name.replace("_", "-")
+
+            # Extract help text from decorator kwarg or docstring
+            help_text = None
+            if dec_call:
+                help_text = _get_string_arg(dec_call, kw="help")
+            if not help_text and node.body:
+                first = node.body[0]
+                if isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant) and isinstance(first.value.value, str):
+                    help_text = first.value.value.strip().split("\n")[0]
+
+            # Extract arguments from function signature
+            func_args = []
+            for arg in node.args.args:
+                if arg.arg in ("self", "ctx"):
+                    continue
+                annotation = None
+                if arg.annotation:
+                    try:
+                        annotation = ast.unparse(arg.annotation)
+                    except Exception:
+                        pass
+                func_args.append({
+                    "name": arg.arg,
+                    "type": annotation,
+                })
+
+            framework = "click" if is_click_direct or call_name.startswith("click.") else "typer"
+            cmd_type = "group" if "group" in (call_name or "") else "command"
+
+            commands.append({
+                "command": cmd_name,
+                "function": node.name,
+                "framework": framework,
+                "type": cmd_type,
+                "help": help_text,
+                "arguments": func_args,
+                "file": filepath,
+                "lineno": node.lineno,
+            })
+
+    return commands
+
+
 def _extract_http_routes(tree: ast.Module, filepath: str) -> list[dict]:
     """Extract HTTP route decorators (@app.route, @app.get, @router.post, etc.)."""
     routes = []
@@ -367,6 +487,7 @@ def extract(manifest: dict, repo_root: Path) -> dict:
     all_parsers: list[dict] = []
     all_arguments: list[dict] = []
     all_routes: list[dict] = []
+    all_click_typer: list[dict] = []
 
     for finfo in py_files:
         filepath = finfo["path"]
@@ -380,6 +501,9 @@ def extract(manifest: dict, repo_root: Path) -> dict:
 
         routes = _extract_http_routes(tree, filepath)
         all_routes.extend(routes)
+
+        click_typer = _extract_click_typer_commands(tree, filepath)
+        all_click_typer.extend(click_typer)
 
     # Build CLI command entries with their arguments
     # Group arguments by file proximity to parsers
@@ -409,6 +533,7 @@ def extract(manifest: dict, repo_root: Path) -> dict:
         "layer": "api-contracts",
         "cli_commands": cli_commands,
         "cli_arguments": all_arguments,
+        "click_typer_commands": all_click_typer,
         "http_routes": all_routes,
         "hook_events": hooks,
         "recipes": recipes,
@@ -417,6 +542,7 @@ def extract(manifest: dict, repo_root: Path) -> dict:
         "summary": {
             "cli_command_count": len(cli_commands),
             "cli_argument_count": len(all_arguments),
+            "click_typer_command_count": len(all_click_typer),
             "http_route_count": len(all_routes),
             "hook_event_count": len(hooks),
             "recipe_count": len(recipes),
@@ -464,6 +590,7 @@ def main() -> int:
     print(f"Layer 5: api-contracts")
     print(f"  CLI commands:     {s['cli_command_count']}")
     print(f"  CLI arguments:    {s['cli_argument_count']}")
+    print(f"  Click/Typer:      {s['click_typer_command_count']}")
     print(f"  HTTP routes:      {s['http_route_count']}")
     print(f"  Hook events:      {s['hook_event_count']}")
     print(f"  Recipes:          {s['recipe_count']}")

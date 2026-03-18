@@ -55,6 +55,16 @@ def extract(manifest: dict, layer2: dict, root: Path,
     # --- Step 1: Build call graph ---
     call_graph, all_functions = _build_call_graph(manifest, layer2, root)
 
+    # --- Step 1b: Enrich call graph with blarify CALLS relationships ---
+    # When blarify provides CALLS relationships from LSP, add non-Python call
+    # edges to the graph. This allows tracing across language boundaries.
+    blarify_rels = layer2.get("blarify_relationships", {})
+    blarify_edges_added = 0
+    if blarify_rels.get("calls", 0) > 0:
+        blarify_edges_added = _enrich_call_graph_from_blarify(
+            call_graph, all_functions, root
+        )
+
     # --- Step 2: Get entry points ---
     entry_points = _get_entry_points(layer5, root)
 
@@ -144,6 +154,7 @@ def extract(manifest: dict, layer2: dict, root: Path,
         "call_graph": {
             "node_count": len(all_functions),
             "edge_count": sum(len(targets) for targets in call_graph.values()),
+            "blarify_edges_added": blarify_edges_added,
             "max_depth_reached": 5,
         },
         "journeys": journeys,
@@ -243,6 +254,80 @@ def _build_call_graph(
         )
 
     return dict(call_graph), all_functions
+
+
+def _enrich_call_graph_from_blarify(
+    call_graph: dict[str, set[str]],
+    all_functions: dict[str, dict],
+    root: Path,
+) -> int:
+    """Add non-Python CALLS edges from blarify to the call graph.
+
+    Uses the blarify bridge to get CALLS relationships and adds edges
+    for non-Python source or target functions. This enables cross-language
+    call tracing.
+
+    Returns:
+        Number of edges added.
+    """
+    try:
+        from scripts.atlas.blarify_bridge import BlarifyBridge, EXTENSION_TO_LANGUAGE
+        import os
+
+        bridge = BlarifyBridge(root)
+        # Use hierarchy_only=True here since we only need the call graph data
+        # that was already computed during layer2. Re-doing full LSP would be slow.
+        # Instead, try to get cached relationships.
+        bridge.build(hierarchy_only=True)
+        rels = bridge.get_relationships()
+        calls = [r for r in rels if r.get("type") == "CALLS"]
+
+        edges_added = 0
+        for call in calls:
+            src_file = call.get("source_file", "")
+            tgt_file = call.get("target_file", "")
+            src_name = call.get("source_name", "")
+            tgt_name = call.get("target_name", "")
+
+            if not src_file or not tgt_file or not src_name or not tgt_name:
+                continue
+
+            src_ext = os.path.splitext(src_file)[1]
+            tgt_ext = os.path.splitext(tgt_file)[1]
+            src_lang = EXTENSION_TO_LANGUAGE.get(src_ext, "unknown")
+            tgt_lang = EXTENSION_TO_LANGUAGE.get(tgt_ext, "unknown")
+
+            # Only add edges that involve non-Python code (Python edges
+            # are already captured by the AST-based call graph)
+            if src_lang == "python" and tgt_lang == "python":
+                continue
+
+            src_key = f"{src_file}::{src_name}"
+            tgt_key = f"{tgt_file}::{tgt_name}"
+
+            # Register functions if not already known
+            if src_key not in all_functions:
+                all_functions[src_key] = {
+                    "file": src_file, "name": src_name,
+                    "lineno": call.get("lineno"), "type": "function",
+                }
+            if tgt_key not in all_functions:
+                all_functions[tgt_key] = {
+                    "file": tgt_file, "name": tgt_name,
+                    "lineno": None, "type": "function",
+                }
+
+            if tgt_key not in call_graph.get(src_key, set()):
+                if src_key not in call_graph:
+                    call_graph[src_key] = set()
+                call_graph[src_key].add(tgt_key)
+                edges_added += 1
+
+        return edges_added
+
+    except Exception as e:
+        print(f"Note: blarify call graph enrichment skipped: {e}", file=sys.stderr)
+        return 0
 
 
 def _extract_calls_from_ast(
@@ -846,7 +931,8 @@ def main():
     s = layer_data["summary"]
     cg = layer_data["call_graph"]
     print(f"Layer 8: {s['total_journeys']} journeys traced")
-    print(f"  Call graph: {cg['node_count']} nodes, {cg['edge_count']} edges")
+    blarify_extra = f" (+{cg['blarify_edges_added']} blarify)" if cg.get('blarify_edges_added') else ""
+    print(f"  Call graph: {cg['node_count']} nodes, {cg['edge_count']} edges{blarify_extra}")
     print(f"  CLI journeys: {s['cli_journeys']}")
     print(f"  HTTP journeys: {s['http_journeys']}")
     print(f"  Hook journeys: {s['hook_journeys']}")
