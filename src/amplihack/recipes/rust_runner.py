@@ -362,12 +362,24 @@ def _default_package_recipe_dirs() -> list[str]:
     but only contain a subset of recipes, while the full bundle lives at the
     repo root ``amplifier-bundle/recipes``.  The Rust runner needs both paths
     to match Python-side discovery in real environments (issue #3002).
+
+    Also includes ``$AMPLIHACK_HOME/amplifier-bundle/recipes/`` when the env
+    var is set, so recipes are found when running from non-amplihack repos
+    (issue #3237).
     """
     try:
-        from amplihack.recipes.discovery import _PACKAGE_BUNDLE_DIR, _REPO_ROOT_BUNDLE_DIR
+        from amplihack.recipes.discovery import (
+            _AMPLIHACK_HOME_BUNDLE_DIR,
+            _PACKAGE_BUNDLE_DIR,
+            _REPO_ROOT_BUNDLE_DIR,
+        )
+
+        candidates = [_PACKAGE_BUNDLE_DIR, _REPO_ROOT_BUNDLE_DIR]
+        if _AMPLIHACK_HOME_BUNDLE_DIR is not None:
+            candidates.append(_AMPLIHACK_HOME_BUNDLE_DIR)
 
         dirs: list[str] = []
-        for candidate in (_PACKAGE_BUNDLE_DIR, _REPO_ROOT_BUNDLE_DIR):
+        for candidate in candidates:
             if candidate.is_dir():
                 candidate_str = str(candidate)
                 if candidate_str not in dirs:
