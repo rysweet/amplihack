@@ -1,142 +1,74 @@
 Mode: static-approximation
 
-# Layer 8: AST + LSP Symbol Bindings
+# Layer 2: AST+LSP Symbol Bindings
 
-**Generated:** 2026-03-17
-**Mode:** Static approximation via regex-based import analysis (no LSP server available)
-**Scope:** `src/amplihack/` excluding `vendor/` and `__pycache__/`
+**Slug:** `ast-lsp-bindings` | **Display Order:** 2
 
-## Methodology
+No LSP server was available for this analysis. All symbol bindings were derived via static grep/read of `__all__` exports and `from amplihack.X import Y` statements.
 
-This layer was built by:
-1. Parsing all `from amplihack.<module> import <symbol>` statements across the codebase
-2. Collecting all `class` and `def` definitions at module scope
-3. Collecting all `__all__` export lists from `__init__.py` files
-4. Cross-referencing defined symbols against imported symbols to find dead code candidates
+## Public API Boundaries (__all__ exports)
 
-Limitations of static approximation:
-- Cannot detect dynamic imports (`importlib`, `__import__`)
-- Cannot detect usage via CLI entry points (`console_scripts` in pyproject.toml)
-- Cannot detect symbols used only within their own module (intra-module refs are not "dead")
-- Cannot detect usage from external consumers of the `amplihack` package
+Modules with explicit `__all__` declarations (38 files found):
 
-## Cross-Module Symbol References
+| Module | Key Exports |
+|---|---|
+| `amplihack` (root) | `main`, `install`, `uninstall`, `ensure_dirs`, `copytree_manifest` |
+| `settings` | `ensure_settings_json`, `update_hook_paths` |
+| `launcher` | `ClaudeLauncher`, `ClaudeDirectoryDetector`, `PrerequisiteChecker`, `AutoStager`, `ClaudeBinaryManager` |
+| `proxy.token_sanitizer` | `TokenSanitizer`, `sanitize` |
+| `security` | `scan`, `SecurityScanner` |
+| `safety` | `StagingGuard` |
+| `docker` | `DockerDetector`, `DockerManager` |
+| `uvx` | `UVXManager` |
+| `utils` | `slugify`, `claude_cli`, `prerequisites`, `defensive` |
+| `recipes` | `RecipeParser`, `run_recipe_via_rust`, `discover_recipes` |
+| `recipe_cli` | `create_recipe_subparser`, `handle_recipe_command` |
+| `fleet` | `FleetObserver`, `FleetCLI`, `SessionContext` |
+| `knowledge_builder` | `KnowledgeBuilder`, `KnowledgeGraph` |
+| `bundle_generator` | `BundleBuilder`, `BundlePackager` |
+| `workflows` | `WorkflowEngine` |
+| `settings_generator` | `SettingsGenerator` |
+| `power_steering` | `prompt_re_enable_if_disabled` |
+| `lsp_detector` | `LSPDetector` |
+| `memory.discoveries` | `store_discovery`, `get_recent_discoveries` |
+| `eval` | `teaching_eval`, `grader`, `progressive_test_suite` |
+| `hooks.launcher_detector` | `LauncherDetector`, `LauncherInfo` |
+| `context.adaptive` | `LauncherDetector`, `HookStrategy`, `ClaudeStrategy`, `CopilotStrategy` |
+| `vendor.blarify.prebuilt` | `GraphBuilder` |
 
-These are the concrete symbol-level import edges between top-level modules.
+## Cross-Package Imports
 
-### eval -> agents (37 references, heaviest edge)
+Key import relationships between top-level subpackages:
 
-| Source File | Imported Symbol |
-|-------------|----------------|
-| `eval/agent_adapter.py` | `LearningAgent`, `MultiAgentLearningAgent`, `create_agent` |
-| `eval/agent_subprocess.py` | `LearningAgent`, `create_agent` |
-| `eval/domain_eval_harness.py` | `DomainAgent`, `EvalLevel`, `EvalScenario` |
-| `eval/five_agent_experiment.py` | `CodeReviewAgent`, `DataAnalysisAgent`, `DocumentCreatorAgent`, `MeetingSynthesizerAgent`, `ProjectPlanningAgent` |
-| `eval/general_capability_eval.py` | `LearningAgent`, `create_agent` |
-| `eval/long_horizon_memory.py` | `CognitiveAdapter`, `LearningAgent`, `create_agent` |
-| `eval/long_horizon_multi_seed.py` | `LearningAgent` |
-| `eval/long_horizon_self_improve.py` | `LearningAgent`, `MultiAgentLearningAgent` |
-| `eval/matrix_eval.py` | `LearningAgent`, `create_agent` |
-| `eval/teaching_eval.py` | `DomainAgent`, `TeachingResult` |
-| `eval/teaching_subprocess.py` | `LearningAgent` |
-
-### launcher -> hooks, safety (4 references)
-
-| Source File | Target Module | Imported Symbol |
-|-------------|--------------|----------------|
-| `launcher/core.py` | `hooks` | `execute_stop_hook` |
-| `launcher/auto_mode.py` | `safety` | `PromptTransformer` |
-
-### fleet -> memory (3 references)
-
-| Source File | Imported Symbol |
-|-------------|----------------|
-| `fleet/fleet_admiral.py` | `store_discovery`, `get_recent_discoveries` |
-
-### recipe_cli -> recipes (3 references)
-
-| Source File | Imported Symbol |
-|-------------|----------------|
-| `recipe_cli/cli.py` | `RecipeParser`, `discover_recipes`, `run_recipe_via_rust` |
-| `recipe_cli/cli.py` | `Recipe`, `RecipeResult`, `StepStatus` |
-
-### Other edges (1 reference each)
-
-| Source | Target | Symbol |
-|--------|--------|--------|
-| `__root__/cli.py` | `fleet` | `fleet_cli` |
-| `__root__/cli.py` | `launcher` | `SettingsManager` |
-| `__root__/exceptions.py` | `exceptions` | `ClaudeBinaryNotFoundError`, `LaunchError` |
-| `goal_agent_generator/packager.py` | `launcher` | `AutoMode` |
-| `meta_delegation/platforms.py` | `utils` | `get_agent_binary` |
-| `workflows/session_start.py` | `recipes` | `run_recipe_by_name` |
-| `utils/json_utils.py` | `settings` | `write_json_atomic` |
-| `memory/kuzu/code_graph.py` | `vendor` | `GraphBuilder`, `KuzuManager` |
-
-## `__all__` Export Coverage
-
-How many symbols each module exports via `__all__` vs. how many are actually imported by other modules.
-
-| Module | Exported | Imported Externally | Unused Exports | Coverage |
-|--------|----------|-------------------|----------------|----------|
-| `agents` | 31 | 13 | 18 | 42% |
-| `fleet` | 47 | 2 | 45 | 4% |
-| `recipes` | 23 | 5 | 18 | 22% |
-| `launcher` | 10 | 4 | 8 | 20% |
-| `memory` | 21 | 2 | 19 | 10% |
-| `proxy` | 2 | 2 | 0 | 100% |
-| `utils` | 16 | 2 | 14 | 13% |
-| `security` | 11 | 0 | 11 | 0% |
-| `meta_delegation` | 30 | 0 | 30 | 0% |
-| `bundle_generator` | 17 | 0 | 17 | 0% |
-| `eval` | 26 | 0 | 26 | 0% |
-| `safety` | 5 | 1 | 4 | 20% |
-| `hooks` | (no __all__) | 1 | - | - |
-| `workflows` | 7 | 0 | 7 | 0% |
-| `testing` | 13 | 0 | 13 | 0% |
-
-**Observation**: Most modules export far more than is consumed internally. This is expected for a library package (external consumers use these exports), but several modules like `security`, `meta_delegation`, and `bundle_generator` have zero internal consumers, suggesting they are either entry-point-only modules or genuinely unused.
+| Source | Imports From |
+|---|---|
+| `cli.py` | `launcher`, `proxy`, `fleet`, `recipes`, `bundle_generator`, `plugin_manager`, `eval`, `settings`, `uvx`, `docker`, `security` |
+| `recipe_cli/recipe_command` | `recipes` |
+| `launcher/auto_mode` | `launcher` (internal: `completion_signals`, `fork_manager`, `json_logger`, `session_capture`, `work_summary`) |
+| `fleet/fleet_copilot` | `fleet` (internal: `_constants`, `_validation`, `_backends`, `_transcript`, `fleet_session_reasoner`, `prompts`) |
+| `eval/*` | `agents.domain_agents`, `knowledge_builder` |
+| `knowledge_builder/orchestrator` | `knowledge_builder.kb_types`, `knowledge_builder.modules.*` |
+| `vendor/blarify/*` | Self-contained (only intra-vendor imports) |
 
 ## Dead Code Candidates
 
-Modules with the highest ratio of defined-but-never-cross-imported symbols. Note: many of these symbols may be used intra-module or via CLI entry points, so this is a **candidate list**, not a confirmed dead code report.
+Files that are exported but not imported by any other package module:
 
-### High Confidence Dead Code Candidates
-
-These modules have significant public APIs with zero external importers:
-
-| Module | Defined | Imported | Dead Candidates | Notes |
-|--------|---------|----------|-----------------|-------|
-| `security` | 71 | 0 | 71 | Likely invoked via hooks, not imports |
-| `meta_delegation` | 30 | 0 | 30 | CLI-driven module |
-| `bundle_generator` | 59 | 0 | 59 | CLI-driven module |
-| `plugin_cli` | 6 | 0 | 6 | CLI-driven module |
-| `testing` | 11 | 0 | 11 | Test utility module |
-| `workflows` | 9 | 0 | 9 | Invoked via recipe system |
-
-### Moderate Confidence (large modules, few external refs)
-
-| Module | Defined | Imported | Dead % | Notes |
-|--------|---------|----------|--------|-------|
-| `fleet` | 122 | 1 | 99% | Only `fleet_cli` imported by `__root__` |
-| `proxy` | 113 | 3 | 97% | Only `ProxyConfig`, `ProxyManager` imported |
-| `agents` | 100 | 14 | 86% | Heavy eval usage but most symbols internal |
-| `memory` | 91 | 2 | 98% | Only `store_discovery`, `get_recent_discoveries` |
-| `launcher` | 87 | 4 | 95% | Hub module but most symbols internal |
-| `utils` | 81 | 3 | 96% | Utility grab-bag |
-
-### Key Finding
-
-The codebase has a **wide public surface area** (890 total dead code candidates) but most modules are **self-contained subsystems** accessed through a single entry point (CLI command or one facade function). This is consistent with the monolith architecture where CLI dispatch, not import graphs, drives execution.
+| File | Reason |
+|---|---|
+| `examples/usage_example.py` | Demo file, imports `launcher` and `proxy` but never imported |
+| `examples/proxy_context_usage.py` | Demo file, imports `proxy.config` and `proxy.manager` |
+| `rust_trial.py` | Experimental, has its own entry point in pyproject.toml |
+| `copilot_auto_install.py` | Standalone utility, no cross-package importers found |
+| `staging_cleanup.py` | Standalone utility |
+| `memory_auto_install.py` | Standalone utility |
 
 ## Diagrams
 
 ### Mermaid Diagram
-
-![AST+LSP Symbol References - Mermaid](symbol-references-mermaid.svg)
+![AST+LSP Symbol Bindings - Mermaid](ast-lsp-bindings-mermaid.svg)
 
 ### Graphviz Diagram
+![AST+LSP Symbol Bindings - Graphviz](ast-lsp-bindings-dot.svg)
 
-![AST+LSP Symbol References - Graphviz](symbol-references-dot.svg)
-
-**Source files:** [symbol-references.mmd](symbol-references.mmd) | [symbol-references.dot](symbol-references.dot)
+**Source files:** [ast-lsp-bindings.mmd](ast-lsp-bindings.mmd) | [ast-lsp-bindings.dot](ast-lsp-bindings.dot)

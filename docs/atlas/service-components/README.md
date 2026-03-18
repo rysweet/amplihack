@@ -1,89 +1,46 @@
 # Layer 7: Service Component Architecture
 
-**Generated:** 2026-03-17
-**Mode:** Static analysis of `src/amplihack/` package structure and cross-module imports
+Internal packages/modules within the amplihack monolith, their public interfaces, and dependency arrows.
 
-## Purpose
+## Scope
 
-This layer maps the internal module structure of the amplihack monolith, showing how the 31 top-level subpackages depend on each other. While Layer 2 (Compile-Time Dependencies) covers external packages, this layer focuses on intra-package coupling.
+All major packages under `src/amplihack/` treated as pseudo-services with internal module structure and inter-package dependencies.
 
-## Module Inventory
+## Mermaid Diagram
 
-| Module | Files | Role |
-|--------|-------|------|
-| `__root__` | 22 | CLI entry point, install, session, settings, exceptions |
-| `agents` | 40 | Goal-seeking agents, domain agents, cognitive adapters |
-| `bundle_generator` | 17 | Prompt-to-agent bundle pipeline |
-| `context` | 3 | Adaptive launcher/hook strategy detection |
-| `docker` | 3 | Docker environment detection and management |
-| `eval` | 27 | Evaluation harnesses, self-improvement loops |
-| `examples` | 2 | Usage examples for proxy and launcher |
-| `fleet` | 55 | Distributed fleet management, task queues, dashboards |
-| `goal_agent_generator` | 12 | Goal-to-agent generation pipeline |
-| `hooks` | 3 | Session lifecycle hook execution |
-| `knowledge_builder` | 7 | Knowledge graph construction from Q&A |
-| `launcher` | 26 | Binary management, directory detection, staging |
-| `lsp_detector` | 2 | Language server protocol detection |
-| `memory` | 39 | Persistent memory with SQLite/Kuzu backends |
-| `meta_delegation` | 9 | Multi-persona subprocess delegation |
-| `mode_detector` | 3 | Claude mode detection (direct/proxy/fleet) |
-| `path_resolver` | 2 | Framework path resolution |
-| `plugin_cli` | 4 | Plugin install/uninstall CLI commands |
-| `plugin_manager` | 2 | Plugin lifecycle management |
-| `power_steering` | 2 | Prompt re-enable after disable |
-| `proxy` | 30 | FastAPI/LiteLLM HTTP proxy for AI APIs |
-| `recipe_cli` | 3 | CLI interface for recipe runner |
-| `recipes` | 6 | YAML recipe parsing, discovery, execution |
-| `safety` | 4 | Git conflict detection, safe copy, prompt transform |
-| `security` | 11 | XPIA defense, pattern detection, hooks |
-| `settings_generator` | 2 | Settings file generation |
-| `testing` | 3 | TUI testing helpers, input validation |
-| `tracing` | 2 | Trace logging |
-| `utils` | 21 | Agent binary, path resolution, JSON parsing, retries |
-| `uvx` | 2 | UVX deployment management |
-| `workflows` | 6 | Workflow classification, session start, GH compilation |
+![Service Components (Mermaid)](service-components-mermaid.svg)
 
-## Cross-Module Dependency Summary
+## DOT Diagram
 
-Edges represent `from amplihack.<target> import ...` statements found outside of test files and vendored code.
+![Service Components (DOT)](service-components-dot.svg)
 
-| Source | Target | Import Count | Key Symbols |
-|--------|--------|-------------|-------------|
-| `__root__` | `exceptions` | 1 | `ClaudeBinaryNotFoundError`, `LaunchError` |
-| `__root__` | `fleet` | 1 | `fleet_cli` |
-| `__root__` | `launcher` | 1 | `SettingsManager` |
-| `eval` | `agents` | 37 | `LearningAgent`, `MultiAgentLearningAgent`, `create_agent` |
-| `examples` | `launcher` | 1 | `ClaudeDirectoryDetector`, `ClaudeLauncher` |
-| `examples` | `proxy` | 3 | `ProxyConfig`, `ProxyManager` |
-| `examples` | `utils` | 1 | `FrameworkPathResolver` |
-| `fleet` | `memory` | 3 | `store_discovery`, `get_recent_discoveries` |
-| `goal_agent_generator` | `launcher` | 1 | `AutoMode` |
-| `launcher` | `hooks` | 2 | `execute_stop_hook` |
-| `launcher` | `safety` | 2 | `PromptTransformer` |
-| `memory` | `vendor` | 3 | `GraphBuilder`, `KuzuManager`, `scip_pb2` |
-| `meta_delegation` | `utils` | 1 | `get_agent_binary` |
-| `power_steering` | `worktree` | 1 | `get_shared_runtime_dir` |
-| `recipe_cli` | `recipes` | 3 | `RecipeParser`, `Recipe`, `RecipeResult` |
-| `utils` | `settings` | 1 | `write_json_atomic` |
-| `workflows` | `recipes` | 1 | `run_recipe_by_name` |
+## Package Summary
 
-## Architectural Observations
+| Package | Module Count | Public Interface | Role |
+|---------|-------------|-----------------|------|
+| `cli.py` | 2 | `main()`, `create_parser()` | CLI entry, argument parsing |
+| `launcher/` | 17 | `ClaudeLauncher`, `AutoMode`, SDK launchers | Binary management, session lifecycle |
+| `proxy/` | 16 | `ProxyConfig`, `ProxyManager` | Azure OpenAI proxy, GitHub auth |
+| `memory/` | 15+ | `MemoryDatabase`, `MemoryManager`, `MemoryEntry` | Persistent agent memory (SQLite + Kuzu) |
+| `recipes/` | 6 | `Step`, `Recipe`, `rust_runner` | YAML recipe parsing and execution |
+| `security/` | 7 | `XPIADefender`, `xpia_hook` | Cross-prompt injection defense |
+| `safety/` | 3 | `GitConflictDetector`, `SafeCopyStrategy` | Data loss prevention in auto mode |
+| `fleet/` | 20+ | `fleet_cli` (Click), `FleetAdmiral` | Multi-VM agent orchestration |
+| `goal_agent_generator/` | 7 | `cli`, `prompt_analyzer`, `agent_assembler` | Goal-seeking agent generation |
+| `install.py` + settings | 5 | `copytree_manifest`, `ensure_settings_json` | Installation and staging |
+| `plugin_manager/` | 2 | `PluginManager`, plugin CLI commands | Plugin install/link/verify |
+| `utils/` | 12 | `prerequisites`, `claude_cli`, `uvx_detection` | Shared utilities |
+| `docker/` | 3 | `DockerManager` | Docker container execution |
+| `hooks/` | 2 | `execute_stop_hook` | Hook lifecycle management |
+| `workflows/` | 4 | `classifier`, `session_start` | Workflow classification |
+| `tracing/` | 1 | `TraceLogger` | Execution tracing |
+| `bundle_generator/` | 12 | Bundle packaging for distribution | Amplifier bundle generation |
 
-1. **Low coupling**: Most modules are self-contained. Only 17 cross-module edges exist across 31 modules.
-2. **eval is the heaviest consumer**: 37 imports from `agents`, making it tightly coupled to the agent subsystem.
-3. **memory is a leaf dependency**: Only `fleet` imports from `memory`; `memory` itself only depends on `vendor` (Kuzu/blarify).
-4. **recipes subsystem is cleanly layered**: `recipe_cli` -> `recipes`, `workflows` -> `recipes`. No reverse dependencies.
-5. **launcher is a hub**: Imported by `__root__`, `examples`, and `goal_agent_generator`. It depends on `hooks` and `safety`.
-6. **Vendor isolation**: `memory` is the only module that imports from `vendor` (blarify graph/SCIP bindings).
+## Key Dependency Patterns
 
-## Diagrams
-
-### Mermaid Diagram
-
-![Service Components - Mermaid](components-mermaid.svg)
-
-### Graphviz Diagram
-
-![Service Components - Graphviz](components-dot.svg)
-
-**Source files:** [components.mmd](components.mmd) | [components.dot](components.dot)
+1. **CLI is the fan-out point**: `cli.py` imports from launcher, install, plugin, memory, recipes, goal_agent_generator, fleet, and docker.
+2. **Launcher depends on proxy and utils**: `core.py` pulls in ProxyManager, prerequisites, claude_cli, UVXManager, and tracing.
+3. **Memory is self-contained**: The memory subsystem (database, backends, kuzu) has no dependencies on other amplihack packages.
+4. **Recipes are isolated**: The recipe system depends only on its own models and the agent_resolver for finding agent prompt files.
+5. **Security and safety are leaf nodes**: Neither package depends on other amplihack packages beyond standard library.
+6. **Fleet is the largest subsystem**: 20+ modules with its own Click-based CLI, TUI dashboard, and multi-VM coordination.

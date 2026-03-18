@@ -1,0 +1,210 @@
+graph TB
+    subgraph CLI_LAYER["CLI Layer"]
+        cli["cli.py\ncreate_parser / main"]
+        cli_ext["cli_extensions.py"]
+    end
+
+    subgraph LAUNCHER_PKG["launcher/"]
+        core["core.py\nClaudeLauncher"]
+        auto["auto_mode.py\nAutoMode"]
+        auto_coord["auto_mode_coordinator.py"]
+        auto_state["auto_mode_state.py"]
+        copilot_l["copilot.py"]
+        codex_l["codex.py"]
+        amplifier_l["amplifier.py"]
+        session_tracker["session_tracker.py"]
+        nesting["nesting_detector.py"]
+        binary_mgr["claude_binary_manager.py"]
+        repo_co["repo_checkout.py"]
+        fork_mgr["fork_manager.py"]
+        append_h["append_handler.py"]
+        completion["completion_verifier.py"]
+        work_sum["work_summary.py"]
+    end
+
+    subgraph PROXY_PKG["proxy/"]
+        proxy_cfg["config.py\nProxyConfig"]
+        proxy_mgr["manager.py\nProxyManager"]
+        proxy_srv["server.py"]
+        integrated["integrated_proxy.py"]
+        azure_handler["azure_unified_handler.py"]
+        resp_api["responses_api_proxy.py"]
+        streaming["streaming.py"]
+        conversion["conversion.py"]
+        monitoring["monitoring.py"]
+        gh_auth["github_auth.py"]
+    end
+
+    subgraph MEMORY_PKG["memory/"]
+        mem_db["database.py\nMemoryDatabase"]
+        mem_models["models.py\nMemoryEntry"]
+        mem_mgr["manager.py\nMemoryManager"]
+        mem_coord["coordinator.py"]
+        mem_retrieval["retrieval_pipeline.py"]
+        mem_viz["cli_visualize.py"]
+        mem_clean["cli_cleanup.py"]
+        subgraph KUZU_SUB["kuzu/"]
+            kuzu_conn["connector.py"]
+            kuzu_code["code_graph.py"]
+            kuzu_query["query_code_graph.py"]
+            subgraph INDEXING["indexing/"]
+                idx_orch["orchestrator.py"]
+                idx_scip["scip_indexer_runner.py"]
+                idx_import["scip_importer.py"]
+                idx_bg["background_indexer.py"]
+            end
+        end
+        subgraph BACKENDS["backends/"]
+            be_base["base.py"]
+            be_sqlite["sqlite_backend.py"]
+            be_kuzu["kuzu_backend.py"]
+        end
+    end
+
+    subgraph RECIPE_PKG["recipes/"]
+        r_models["models.py\nStep, Recipe"]
+        r_parser["parser.py"]
+        r_discovery["discovery.py"]
+        r_runner["rust_runner.py"]
+        r_resolver["agent_resolver.py"]
+        subgraph ADAPTERS["adapters/"]
+            r_adapter["execution adapters"]
+        end
+    end
+
+    subgraph SECURITY_PKG["security/"]
+        xpia_def["xpia_defender.py\nXPIADefender"]
+        xpia_pat["xpia_patterns.py"]
+        xpia_hooks["xpia_hooks.py"]
+        xpia_health["xpia_health.py"]
+        sec_cfg["config.py"]
+    end
+
+    subgraph SAFETY_PKG["safety/"]
+        git_conflict["git_conflict_detector.py"]
+        safe_copy["safe_copy_strategy.py"]
+        prompt_trans["prompt_transformer.py"]
+    end
+
+    subgraph INSTALL_PKG["install/"]
+        install_mod["install.py\ncopytree_manifest"]
+        uninstall_mod["uninstall.py"]
+        settings_mod["settings.py"]
+        staging_clean["staging_cleanup.py"]
+        staging_safe["staging_safety.py"]
+    end
+
+    subgraph PLUGIN_PKG["plugin system"]
+        plugin_mgr["plugin_manager.py"]
+        plugin_cli_mod["plugin_cli.py"]
+    end
+
+    subgraph FLEET_PKG["fleet/"]
+        fleet_cli_mod["fleet_cli.py (Click)"]
+        fleet_admiral["fleet_admiral.py"]
+        fleet_tui_mod["fleet_tui.py"]
+        fleet_tasks_mod["fleet_tasks.py"]
+        fleet_state_mod["fleet_state.py"]
+        fleet_health_mod["fleet_health.py"]
+        fleet_session["fleet_session_reasoner.py"]
+    end
+
+    subgraph UTILS_PKG["utils/"]
+        prereqs["prerequisites.py"]
+        claude_cli_util["claude_cli.py"]
+        uvx_detect["uvx_detection.py"]
+        uvx_staging_mod["uvx_staging.py"]
+        paths_mod["paths.py"]
+        cleanup_reg["cleanup_registry.py"]
+    end
+
+    subgraph GOAL_AGENT["goal_agent_generator/"]
+        ga_cli["cli.py"]
+        ga_analyzer["prompt_analyzer.py"]
+        ga_assembler["agent_assembler.py"]
+        ga_synth["skill_synthesizer.py"]
+        ga_packager["packager.py"]
+        ga_models["models.py"]
+    end
+
+    subgraph OTHER_PKG["Other Modules"]
+        docker_mgr["docker/ DockerManager"]
+        hooks_mgr["hooks/ manager.py"]
+        workflows_mod["workflows/ classifier.py"]
+        tracing_mod["tracing/ trace_logger.py"]
+        context_adapt["context/adaptive/"]
+        mode_det["mode_detector/"]
+        bundle_gen["bundle_generator/"]
+        power_steer["power_steering/"]
+        lsp_det["lsp_detector/"]
+    end
+
+    %% Dependencies
+    cli --> core
+    cli --> auto
+    cli --> copilot_l
+    cli --> codex_l
+    cli --> amplifier_l
+    cli --> install_mod
+    cli --> plugin_cli_mod
+    cli --> mem_viz
+    cli --> r_runner
+    cli --> ga_cli
+    cli --> fleet_cli_mod
+    cli --> docker_mgr
+
+    core --> proxy_mgr
+    core --> binary_mgr
+    core --> prereqs
+    core --> nesting
+    core --> session_tracker
+    core --> tracing_mod
+
+    auto --> auto_coord
+    auto --> auto_state
+    auto --> completion
+    auto_coord --> append_h
+
+    proxy_mgr --> proxy_cfg
+    proxy_mgr --> proxy_srv
+    proxy_srv --> integrated
+    integrated --> azure_handler
+    integrated --> resp_api
+    integrated --> streaming
+    integrated --> conversion
+
+    mem_db --> mem_models
+    mem_mgr --> mem_db
+    mem_coord --> mem_mgr
+    mem_coord --> mem_retrieval
+    kuzu_conn --> kuzu_code
+    idx_orch --> idx_scip
+    idx_orch --> idx_import
+
+    r_runner --> r_models
+    r_runner --> r_parser
+    r_runner --> r_resolver
+
+    xpia_def --> xpia_pat
+    xpia_hooks --> xpia_def
+
+    install_mod --> staging_safe
+    install_mod --> settings_mod
+
+    fleet_cli_mod --> fleet_admiral
+    fleet_admiral --> fleet_tasks_mod
+    fleet_admiral --> fleet_state_mod
+
+    style CLI_LAYER fill:#74b9ff,color:#2d3436
+    style LAUNCHER_PKG fill:#55efc4,color:#2d3436
+    style PROXY_PKG fill:#ffeaa7,color:#2d3436
+    style MEMORY_PKG fill:#fab1a0,color:#2d3436
+    style RECIPE_PKG fill:#dfe6e9,color:#2d3436
+    style SECURITY_PKG fill:#fd79a8,color:#2d3436
+    style SAFETY_PKG fill:#e17055,color:#fff
+    style INSTALL_PKG fill:#a29bfe,color:#2d3436
+    style PLUGIN_PKG fill:#6c5ce7,color:#fff
+    style FLEET_PKG fill:#00cec9,color:#2d3436
+    style UTILS_PKG fill:#b2bec3,color:#2d3436
+    style GOAL_AGENT fill:#fdcb6e,color:#2d3436
+    style OTHER_PKG fill:#636e72,color:#fff

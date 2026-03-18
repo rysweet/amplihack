@@ -1,0 +1,30 @@
+sequenceDiagram
+    actor User
+    participant CLI as cli.py
+    participant Parser as create_parser()
+    participant Startup as _common_launcher_startup
+    participant Tracker as SessionTracker
+    participant Nesting as NestingDetector
+    participant Prereqs as prerequisites.py
+    participant Binary as ClaudeBinaryManager
+    participant Launcher as ClaudeLauncher
+    participant Claude as claude binary
+
+    User->>CLI: amplihack launch
+    CLI->>Parser: parse_args_with_passthrough(argv)
+    Parser-->>CLI: (Namespace, claude_args)
+    CLI->>Startup: _common_launcher_startup(args)
+    Startup->>Nesting: detect nesting level
+    Nesting-->>Startup: NestingResult
+    Startup->>Prereqs: check_prerequisites()
+    Prereqs-->>Startup: all OK
+    CLI->>Tracker: start_session(pid, launch_dir, argv)
+    Tracker-->>CLI: session_id
+    CLI->>Launcher: ClaudeLauncher(proxy_manager, claude_args)
+    Launcher->>Binary: get_claude_cli_path()
+    Binary-->>Launcher: /path/to/claude
+    Launcher->>Claude: subprocess.run(claude, args)
+    Claude-->>Launcher: exit_code
+    Launcher-->>CLI: exit_code
+    CLI->>Tracker: complete_session(session_id)
+    CLI-->>User: exit_code
