@@ -101,6 +101,7 @@ loop {
 ```
 
 Key design decisions:
+
 - **30-second heartbeat interval** (reduced from 60s) for faster feedback
 - **Total elapsed time** shown so users know how long the step has been running
 - **PID alive check** confirms the process hasn't crashed silently
