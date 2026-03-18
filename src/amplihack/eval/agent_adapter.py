@@ -21,7 +21,10 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from amplihack_eval.adapters.base import AgentAdapter, AgentResponse  # type: ignore[import-not-found]
+from amplihack_eval.adapters.base import (  # type: ignore[import-not-found]
+    AgentAdapter,
+    AgentResponse,
+)
 
 logger = logging.getLogger(__name__)
 
