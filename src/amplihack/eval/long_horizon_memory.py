@@ -45,6 +45,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from .llm_grader import call_grader_json, get_grader_model
+
 # Requires amplihack-agent-eval package.
 # Install: pip install "amplihack-agent-eval @ git+https://github.com/rysweet/amplihack-agent-eval.git@main"
 try:
@@ -387,17 +389,8 @@ def _grade_with_llm(
     Returns:
         List of DimensionScore for each requested dimension
     """
-    import anthropic  # type: ignore[import-untyped]
-
     if not grader_model:
-        grader_model = os.environ.get("GRADER_MODEL", "claude-opus-4-6")
-
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        # Return zero scores if no API key
-        return [DimensionScore(dimension=d, score=0.0, reasoning="No API key") for d in dimensions]
-
-    client = anthropic.Anthropic(api_key=api_key)
+        grader_model = get_grader_model()
 
     dimension_descriptions = {
         "factual_accuracy": "Is the answer factually correct? Does it match the expected answer on key facts?",
@@ -434,22 +427,12 @@ Scoring guide:
 - 1.0: Perfect or semantically equivalent
 - 0.8-0.9: Correct main points, minor differences
 - 0.5-0.7: Partially correct, missing key details
-- 0.2-0.4: Some relevant content, significant gaps
-- 0.0-0.1: Incorrect or irrelevant
-"""
+    - 0.2-0.4: Some relevant content, significant gaps
+    - 0.0-0.1: Incorrect or irrelevant
+    """
 
     try:
-        message = client.messages.create(
-            model=grader_model,
-            max_tokens=1000,
-            messages=[{"role": "user", "content": prompt}],
-        )
-
-        response_text = getattr(message.content[0], "text", "") or ""
-        response_text = response_text.strip()
-
-        # Parse JSON from response
-        result = _extract_json(response_text)
+        result = call_grader_json(prompt, model=grader_model, max_tokens=1000)
         scores_dict = result.get("scores", result)
 
         dimension_scores = []
@@ -490,6 +473,8 @@ Scoring guide:
                 )
 
         return dimension_scores
+    except OSError:
+        return [DimensionScore(dimension=d, score=0.0, reasoning="No API key") for d in dimensions]
 
     except Exception as e:
         logger.warning("Grading failed for %s: %s", question.question_id, e)
@@ -1380,56 +1365,17 @@ def _run_segment_worker(args: argparse.Namespace) -> None:
     )
 
     # Create agent
+    from amplihack.agents.goal_seeking.runtime_factory import create_goal_agent_runtime
+
     agent_name = "long_horizon_eval"
-    if args.sdk == "mini":
-        from amplihack.agents.goal_seeking.learning_agent import LearningAgent
-
-        # When --memory-type is explicitly set, bypass auto-detection in
-        # LearningAgent.__init__ by passing use_hierarchical=False. This
-        # prevents CognitiveAdapter from polluting the Kuzu schema before
-        # we override with FlatRetrieverAdapter (schema mismatch = 0 facts).
-        memory_type = getattr(args, "memory_type", "auto")
-        init_hierarchical = args.use_hierarchical and memory_type == "auto"
-
-        agent = LearningAgent(
-            agent_name=agent_name,
-            model=agent_model,
-            storage_path=db_path,
-            use_hierarchical=init_hierarchical,
-        )
-
-        # Override memory backend if --memory-type specified
-        if memory_type == "hierarchical":
-            from amplihack.agents.goal_seeking.flat_retriever_adapter import (
-                FlatRetrieverAdapter,
-            )
-
-            try:
-                agent.memory.close()
-            except Exception:
-                pass
-            agent.memory = FlatRetrieverAdapter(agent_name=agent_name, db_path=db_path)
-            agent.use_hierarchical = True
-        elif memory_type == "cognitive":
-            from amplihack.agents.goal_seeking.cognitive_adapter import CognitiveAdapter
-
-            try:
-                agent.memory.close()
-            except Exception:
-                pass
-            agent.memory = CognitiveAdapter(agent_name=agent_name, db_path=db_path)
-            agent.use_hierarchical = True
-    else:
-        from amplihack.agents.goal_seeking.sdk_adapters.factory import create_agent
-
-        sdk_agent = create_agent(
-            name=agent_name,
-            sdk=args.sdk,
-            model=agent_model,
-            storage_path=db_path,
-            enable_memory=True,
-        )
-        agent = _SDKAgentWrapper(sdk_agent)
+    agent = create_goal_agent_runtime(
+        agent_name=agent_name,
+        sdk=args.sdk,
+        model=agent_model,
+        storage_path=db_path,
+        use_hierarchical=args.use_hierarchical,
+        memory_type=getattr(args, "memory_type", "auto"),
+    )
 
     # Learn the slice
     flush_every = args.flush_every if hasattr(args, "flush_every") else 0
@@ -1678,61 +1624,17 @@ def main() -> None:
 
     def _create_agent() -> Any:
         """Factory to create (or recreate) the eval agent."""
-        if args.sdk == "mini":
-            from amplihack.agents.goal_seeking.learning_agent import LearningAgent
+        from amplihack.agents.goal_seeking.runtime_factory import create_goal_agent_runtime
 
-            # Same fix as _run_segment_worker: bypass auto-detection when
-            # --memory-type is explicitly set to prevent schema conflicts.
-            memory_type = getattr(args, "memory_type", "auto")
-            init_hierarchical = args.use_hierarchical and memory_type == "auto"
-
-            agent = LearningAgent(
-                agent_name=agent_name,
-                model=agent_model,
-                storage_path=db_path,
-                use_hierarchical=init_hierarchical,
-            )
-
-            # Override memory backend if --memory-type specified
-            if memory_type == "hierarchical":
-                from amplihack.agents.goal_seeking.flat_retriever_adapter import (
-                    FlatRetrieverAdapter,
-                )
-
-                try:
-                    agent.memory.close()
-                except Exception:
-                    pass
-                agent.memory = FlatRetrieverAdapter(agent_name=agent_name, db_path=db_path)
-                agent.use_hierarchical = True
-                logger.info("Forced HierarchicalMemory via --memory-type=hierarchical")
-            elif memory_type == "cognitive":
-                from amplihack.agents.goal_seeking.cognitive_adapter import (
-                    CognitiveAdapter,
-                )
-
-                try:
-                    agent.memory.close()
-                except Exception:
-                    pass
-                agent.memory = CognitiveAdapter(agent_name=agent_name, db_path=db_path)
-                agent.use_hierarchical = True
-                logger.info("Forced CognitiveMemory via --memory-type=cognitive")
-
-            # Wrap mini agent to support answer_mode
-            answer_mode = getattr(args, "answer_mode", "single-shot")
-            return _MiniAgentWrapper(agent, answer_mode=answer_mode)
-        from amplihack.agents.goal_seeking.sdk_adapters.factory import create_agent
-
-        sdk_agent = create_agent(
-            name=agent_name,
+        return create_goal_agent_runtime(
+            agent_name=agent_name,
             sdk=args.sdk,
             model=agent_model,
             storage_path=db_path,
-            enable_memory=True,
+            use_hierarchical=args.use_hierarchical,
+            memory_type=getattr(args, "memory_type", "auto"),
+            answer_mode=getattr(args, "answer_mode", "single-shot"),
         )
-        answer_mode = getattr(args, "answer_mode", "single-shot")
-        return _SDKAgentWrapper(sdk_agent, answer_mode=answer_mode)
 
     agent = _create_agent()
 

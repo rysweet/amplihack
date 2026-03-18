@@ -351,3 +351,53 @@ class TestGoalSeekingAgentFactBatch:
             record_learning=False,
         )
         assert result == expected
+
+
+class TestGoalSeekingAgentCompatDelegates:
+    """Unit tests for benchmark/eval compatibility delegate methods."""
+
+    @pytest.fixture
+    def agent(self):
+        with patch(
+            "amplihack.agents.goal_seeking.goal_seeking_agent.GoalSeekingAgent.__init__",
+            lambda self, **kwargs: None,
+        ):
+            from amplihack.agents.goal_seeking.goal_seeking_agent import GoalSeekingAgent
+
+            ag = GoalSeekingAgent.__new__(GoalSeekingAgent)
+            ag._agent_name = "test_agent"
+            ag._learning_agent = MagicMock()
+            return ag
+
+    def test_learn_from_content_delegates_to_learning_agent(self, agent):
+        expected = {"facts_stored": 3}
+        agent._learning_agent.learn_from_content.return_value = expected
+
+        result = agent.learn_from_content("campaign content")
+
+        agent._learning_agent.learn_from_content.assert_called_once_with("campaign content")
+        assert result == expected
+
+    def test_answer_question_returns_string_for_single_shot(self, agent):
+        agent._learning_agent.answer_question.return_value = ("Answer", {"trace": "x"})
+
+        result = agent.answer_question("What happened to Beacon?")
+
+        agent._learning_agent.answer_question.assert_called_once_with("What happened to Beacon?")
+        assert result == "Answer"
+
+    def test_answer_question_uses_agentic_mode_when_requested(self, agent):
+        agent._learning_agent.answer_question_agentic.return_value = "Agentic answer"
+
+        result = agent.answer_question("What happened to Beacon?", answer_mode="agentic")
+
+        agent._learning_agent.answer_question_agentic.assert_called_once_with(
+            "What happened to Beacon?"
+        )
+        agent._learning_agent.answer_question.assert_not_called()
+        assert result == "Agentic answer"
+
+    def test_flush_memory_delegates_when_available(self, agent):
+        agent.flush_memory()
+
+        agent._learning_agent.flush_memory.assert_called_once_with()
