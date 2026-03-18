@@ -18,7 +18,7 @@ Overall: :material-alert-circle:{ .atlas-health--warn } **PASS_WITH_WARNINGS** |
 |-------|--------|---------|
 | FILE_COVERAGE | :material-check-circle:{ .atlas-health--pass } | 601 .py files covered across layers 1, 2, 7 |
 | CLI_COMMAND_COVERAGE | :material-check-circle:{ .atlas-health--pass } | 45 CLI commands all have journeys |
-| EXPORT_CONSISTENCY | :material-alert-circle:{ .atlas-health--warn } | 18 exported names missing definitions |
+| EXPORT_CONSISTENCY | :material-alert-circle:{ .atlas-health--warn } | 5 exported names missing definitions |
 | DEPENDENCY_CONSISTENCY | :material-alert-circle:{ .atlas-health--warn } | 22 declared deps appear unused |
 | IO_TRACEABILITY | :material-alert-circle:{ .atlas-health--warn } | 91/178 I/O files in unreachable packages |
 | SUBPROCESS_TRACEABILITY | :material-alert-circle:{ .atlas-health--warn } | 55/109 subprocess files in unreachable packages |
@@ -28,35 +28,22 @@ Overall: :material-alert-circle:{ .atlas-health--warn } **PASS_WITH_WARNINGS** |
 | CLI_HANDLER_REACHABILITY | :material-check-circle:{ .atlas-health--pass } | 52 CLI commands have reachable handlers |
 | DEAD_DEP_CROSS_VALIDATION | :material-alert-circle:{ .atlas-health--warn } | 1 deps marked unused in layer3 but found in layer2 |
 | CIRCULAR_IMPORT_SEVERITY | :material-check-circle:{ .atlas-health--pass } | No circular dependencies detected |
-| ENV_VAR_COMPLETENESS | :material-alert-circle:{ .atlas-health--warn } | 126 env vars found but no .env.example file |
+| ENV_VAR_COMPLETENESS | :material-alert-circle:{ .atlas-health--warn } | 128 env vars found but no .env.example file |
 | ROUTE_TEST_COVERAGE | :material-alert-circle:{ .atlas-health--warn } | 15/22 routes without test references |
-| REEXPORT_CHAIN_VALIDATION | :material-alert-circle:{ .atlas-health--warn } | 6 broken re-export chains |
+| REEXPORT_CHAIN_VALIDATION | :material-alert-circle:{ .atlas-health--warn } | 5 broken re-export chains |
 
 ## Warnings
 
 ### EXPORT_CONSISTENCY
 
-18 exported names missing definitions
+5 exported names missing definitions
 
 Missing items:
 
-- `/home/azureuser/src/amplihack/src/amplihack/__init__.py::__version__`
-- `/home/azureuser/src/amplihack/src/amplihack/agents/goal_seeking/cognitive_adapter.py::HAS_COGNITIVE_MEMORY`
-- `/home/azureuser/src/amplihack/src/amplihack/agents/goal_seeking/hive_mind/embeddings.py::HAS_SENTENCE_TRANSFORMERS`
-- `/home/azureuser/src/amplihack/src/amplihack/agents/goal_seeking/hive_mind/query_expansion.py::HAS_ANTHROPIC`
-- `/home/azureuser/src/amplihack/src/amplihack/agents/goal_seeking/hive_mind/reranker.py::HAS_CROSS_ENCODER`
-- `/home/azureuser/src/amplihack/src/amplihack/dep_check.py::SDK_DEPENDENCIES`
 - `/home/azureuser/src/amplihack/src/amplihack/eval/__init__.py::LongHorizonRunnerResult`
 - `/home/azureuser/src/amplihack/src/amplihack/eval/__init__.py::CapabilityEvalTypeResult`
 - `/home/azureuser/src/amplihack/src/amplihack/eval/__init__.py::CapabilityScenarioResult`
 - `/home/azureuser/src/amplihack/src/amplihack/eval/__init__.py::CapabilityToolCall`
-- `/home/azureuser/src/amplihack/src/amplihack/eval/matrix_eval.py::AGENT_TYPES`
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/_cli_commands.py::COPILOT_LOCK_DIR`
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/_cli_commands.py::COPILOT_LOG_DIR`
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/_defaults.py::DEFAULT_EXCLUDE_VMS`
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/_transcript_report.py::STRATEGY_KEYWORDS`
-- `/home/azureuser/src/amplihack/src/amplihack/memory/kuzu/connector.py::KUZU_AVAILABLE`
-- `/home/azureuser/src/amplihack/src/amplihack/testing/send_input_allowlist.py::DEFAULT_SAFE_PATTERNS`
 - `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/vendor/multilspy/__init__.py::Types`
 
 ### DEPENDENCY_CONSISTENCY
@@ -94,16 +81,16 @@ Missing items:
 
 Missing items:
 
-- `/home/azureuser/src/amplihack/src/amplihack/testing/send_input_allowlist.py`
-- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/vendor/multilspy/language_servers/jedi_language_server/jedi_server.py`
-- `/home/azureuser/src/amplihack/src/amplihack/context/adaptive/detector.py`
-- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/vendor/multilspy/language_servers/dart_language_server/dart_language_server.py`
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/_admiral_types.py`
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/fleet_state.py`
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/tests/test_fleet_session_reasoner.py`
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/tests/test_fleet_reasoners.py`
-- `/home/azureuser/src/amplihack/src/amplihack/settings.py`
-- `/home/azureuser/src/amplihack/src/amplihack/eval/self_improve/patch_proposer.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/project_file_explorer/project_files_stats.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/vendor/multilspy/language_servers/rust_analyzer/rust_analyzer.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/graph/node/types/integration_node.py`
+- `/home/azureuser/src/amplihack/src/amplihack/eval/progressive_test_suite.py`
+- `/home/azureuser/src/amplihack/src/amplihack/eval/run_domain_evals.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/code_references/scip_helper.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/_projects.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/vendor/multilspy/language_servers/gopls/gopls.py`
+- `/home/azureuser/src/amplihack/src/amplihack/tracing/trace_logger.py`
+- `/home/azureuser/src/amplihack/src/amplihack/session.py`
 
 ### SUBPROCESS_TRACEABILITY
 
@@ -111,16 +98,16 @@ Missing items:
 
 Missing items:
 
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/fleet_state.py`
-- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/main.py`
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/fleet_adopt.py`
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/fleet_setup.py`
-- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/mcp_server/server.py`
-- `/home/azureuser/src/amplihack/src/amplihack/session.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/fleet_cli.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/_tui_workers.py`
+- `/home/azureuser/src/amplihack/src/amplihack/knowledge_builder/modules/question_generator.py`
 - `/home/azureuser/src/amplihack/src/amplihack/eval/progressive_test_suite.py`
+- `/home/azureuser/src/amplihack/src/amplihack/eval/run_domain_evals.py`
 - `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/code_references/scip_helper.py`
-- `/home/azureuser/src/amplihack/src/amplihack/rust_trial.py`
-- `/home/azureuser/src/amplihack/src/amplihack/eval/agent_adapter.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/vendor/multilspy/language_servers/gopls/gopls.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/_admiral_actions.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/fleet_tui_dashboard.py`
+- `/home/azureuser/src/amplihack/src/amplihack/session.py`
 
 ### PACKAGE_CONSISTENCY
 
@@ -168,7 +155,7 @@ Missing items:
 
 ### ENV_VAR_COMPLETENESS
 
-126 env vars found but no .env.example file
+128 env vars found but no .env.example file
 
 Missing items:
 
@@ -180,18 +167,18 @@ Missing items:
 - `AMPLIHACK_DEFAULT_MODEL`
 - `AMPLIHACK_ENABLE_BLARIFY`
 - `AMPLIHACK_GRAPH_BACKEND`
+- `AMPLIHACK_GRAPH_DB_PATH`
 - `AMPLIHACK_HOME`
 - `AMPLIHACK_HOOK_ENGINE`
 - `AMPLIHACK_IN_DOCKER`
 - `AMPLIHACK_IS_STAGED`
+- `AMPLIHACK_KUZU_DB_PATH`
 - `AMPLIHACK_MEMORY_BACKEND`
 - `AMPLIHACK_MEMORY_ENABLED`
 - `AMPLIHACK_MODE`
 - `AMPLIHACK_NONINTERACTIVE`
 - `AMPLIHACK_NO_AUTO_INSTALL`
 - `AMPLIHACK_ORIGINAL_CWD`
-- `AMPLIHACK_PLUGIN_INSTALLED`
-- `AMPLIHACK_PROXY_TIMEOUT`
 
 ### ROUTE_TEST_COVERAGE
 
@@ -217,11 +204,10 @@ Missing items:
 
 ### REEXPORT_CHAIN_VALIDATION
 
-6 broken re-export chains
+5 broken re-export chains
 
 Missing items:
 
-- `/home/azureuser/src/amplihack/src/amplihack/__init__.py::__version__`
 - `/home/azureuser/src/amplihack/src/amplihack/eval/__init__.py::LongHorizonRunnerResult`
 - `/home/azureuser/src/amplihack/src/amplihack/eval/__init__.py::CapabilityEvalTypeResult`
 - `/home/azureuser/src/amplihack/src/amplihack/eval/__init__.py::CapabilityScenarioResult`

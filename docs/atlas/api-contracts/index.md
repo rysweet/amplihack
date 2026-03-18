@@ -9,7 +9,7 @@ title: "Layer 5: API Contracts"
 # Layer 5: API Contracts
 
 <div class="atlas-metadata">
-Category: <strong>Behavioral</strong> | Generated: 2026-03-18T05:33:57.711719+00:00
+Category: <strong>Behavioral</strong> | Generated: 2026-03-18T14:00:58.872251+00:00
 </div>
 
 ## Map
@@ -221,7 +221,6 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-18T05:33:57.711719+00
 
 <div class="atlas-footer">
 
-Source: [`layer5_api_contracts.json`](../../atlas_output/layer5_api_contracts.json)
- | [Mermaid source](api-contracts.mmd)
+Source: `layer5_api_contracts.json` | [Mermaid source](api-contracts.mmd)
 
 </div>
