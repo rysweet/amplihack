@@ -303,6 +303,13 @@ def _stream_process_output(process: subprocess.Popen[str]) -> tuple[str, str, in
 
 def _execute_rust_command(cmd: list[str], *, name: str, progress: bool) -> RecipeResult:
     """Run the Rust binary and parse its JSON output into a ``RecipeResult``."""
+    env = os.environ.copy()
+    if "AMPLIHACK_AGENT_BINARY" not in env:
+        logger.warning(
+            "AMPLIHACK_AGENT_BINARY not set — Rust runner will default to 'claude'. "
+            "Set the env var via the amplihack CLI dispatcher to use a different agent."
+        )
+
     if progress:
         process = subprocess.Popen(
             cmd,
@@ -310,6 +317,7 @@ def _execute_rust_command(cmd: list[str], *, name: str, progress: bool) -> Recip
             stderr=subprocess.PIPE,
             text=True,
             bufsize=1,
+            env=env,
         )
         stdout, stderr, returncode = _stream_process_output(process)
     else:
@@ -317,6 +325,7 @@ def _execute_rust_command(cmd: list[str], *, name: str, progress: bool) -> Recip
             cmd,
             capture_output=True,
             text=True,
+            env=env,
         )
         stdout = result.stdout
         stderr = result.stderr
