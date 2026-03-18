@@ -214,14 +214,16 @@ class RemoteAgentAdapter:
         """Return a reusable local extractor for replicated fact batches."""
         with self._extractor_lock:
             if self._fact_batch_extractor is None:
-                from amplihack.agents.goal_seeking.goal_seeking_agent import GoalSeekingAgent
+                from amplihack.agents.goal_seeking.runtime_factory import create_goal_agent_runtime
 
                 extractor_dir = Path(tempfile.mkdtemp(prefix="amplihack-azure-fact-batch-"))
                 self._fact_batch_extractor_dir = extractor_dir
-                self._fact_batch_extractor = GoalSeekingAgent(
+                self._fact_batch_extractor = create_goal_agent_runtime(
                     agent_name="eval-harness-fact-extractor",
                     storage_path=extractor_dir,
                     use_hierarchical=True,
+                    runtime_kind="goal",
+                    bind_answer_mode=False,
                 )
             return self._fact_batch_extractor
 

@@ -280,16 +280,18 @@ def main() -> None:
     # The agent is topology-unaware. Distributed memory is injected below.
     from pathlib import Path
 
-    from amplihack.agents.goal_seeking.goal_seeking_agent import GoalSeekingAgent
+    from amplihack.agents.goal_seeking.runtime_factory import create_goal_agent_runtime
 
     _storage = Path(storage_path)
     _storage.mkdir(parents=True, exist_ok=True)
     try:
-        agent = GoalSeekingAgent(
+        agent: Any = create_goal_agent_runtime(
             agent_name=agent_name,
             storage_path=_storage,
             use_hierarchical=True,
             model=model,
+            runtime_kind="goal",
+            bind_answer_mode=False,
         )
     except Exception:
         logger.exception("Failed to initialize GoalSeekingAgent for agent %s", agent_name)

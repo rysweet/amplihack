@@ -622,7 +622,7 @@ class TestShardTransport:
 
         with patch.object(mod, "_init_dht_hive", return_value=None):
             with patch(
-                "amplihack.agents.goal_seeking.goal_seeking_agent.GoalSeekingAgent",
+                "amplihack.agents.goal_seeking.runtime_factory.create_goal_agent_runtime",
                 return_value=MagicMock(),
             ):
                 with patch("amplihack.memory.facade.Memory", return_value=MagicMock()):
@@ -657,7 +657,7 @@ class TestShardTransport:
 
         with patch.object(mod, "_init_dht_hive") as init_hive:
             with patch(
-                "amplihack.agents.goal_seeking.goal_seeking_agent.GoalSeekingAgent",
+                "amplihack.agents.goal_seeking.runtime_factory.create_goal_agent_runtime",
                 return_value=mock_agent,
             ):
                 with patch("amplihack.memory.facade.Memory", return_value=MagicMock()):

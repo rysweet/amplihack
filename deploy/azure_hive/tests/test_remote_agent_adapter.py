@@ -112,6 +112,22 @@ class TestRemoteAgentAdapterInit:
         extractor.prepare_fact_batch.assert_called_once_with("content", include_summary=False)
         assert result == {"facts": []}
 
+    def test_get_fact_batch_extractor_uses_runtime_factory(self):
+        mod = _load_module()
+        adapter = _make_adapter(mod)
+        extractor = MagicMock()
+
+        with patch(
+            "amplihack.agents.goal_seeking.runtime_factory.create_goal_agent_runtime",
+            return_value=extractor,
+        ) as create_runtime:
+            result = adapter._get_fact_batch_extractor()
+
+        assert result is extractor
+        create_runtime.assert_called_once()
+        assert create_runtime.call_args.kwargs["runtime_kind"] == "goal"
+        assert create_runtime.call_args.kwargs["bind_answer_mode"] is False
+
 
 class TestPublishEvent:
     def test_publish_attaches_run_id(self):

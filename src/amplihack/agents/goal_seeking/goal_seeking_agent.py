@@ -19,6 +19,8 @@ Public API:
     act()                → execute decision, write output to stdout → str
     process(input_data)  → observe → orient → decide → act pipeline → str
     process_store(input_data) → observe → force-store → act pipeline → str
+    learn_from_content(input_data) → benchmark/eval compatibility delegate
+    answer_question(question) → benchmark/eval compatibility delegate
 
 Backward compatibility:
     LearningAgent is NOT removed; existing callers continue to work unchanged.
@@ -94,6 +96,7 @@ class GoalSeekingAgent:
         model: str | None = None,
         storage_path: Path | None = None,
         use_hierarchical: bool = False,
+        memory_type: str = "auto",
         prompt_variant: int | None = None,
         **kwargs: Any,
     ) -> None:
@@ -108,6 +111,8 @@ class GoalSeekingAgent:
             use_hierarchical=use_hierarchical,
             prompt_variant=prompt_variant,
         )
+        self._memory_type = memory_type
+        self._configure_memory_backend(storage_path)
 
         # OODA state — reset per process() call
         self._current_input: str = ""
@@ -118,6 +123,42 @@ class GoalSeekingAgent:
         # Set via DI by the entrypoint for distributed eval answer collection.
         # Signature: on_answer(agent_name: str, answer: str) -> None
         self.on_answer: Any | None = None
+
+    def _configure_memory_backend(self, storage_path: Path | None) -> None:
+        """Override LearningAgent memory backend when explicitly requested."""
+        if self._memory_type == "auto":
+            return
+
+        db_path = storage_path
+        if db_path is None:
+            return
+
+        if self._memory_type == "hierarchical":
+            from .flat_retriever_adapter import FlatRetrieverAdapter
+
+            try:
+                self._learning_agent.memory.close()
+            except Exception:
+                pass
+            self._learning_agent.memory = FlatRetrieverAdapter(
+                agent_name=self._agent_name,
+                db_path=db_path,
+            )
+            self._learning_agent.use_hierarchical = True
+            return
+
+        if self._memory_type == "cognitive":
+            from .cognitive_adapter import CognitiveAdapter
+
+            try:
+                self._learning_agent.memory.close()
+            except Exception:
+                pass
+            self._learning_agent.memory = CognitiveAdapter(
+                agent_name=self._agent_name,
+                db_path=db_path,
+            )
+            self._learning_agent.use_hierarchical = True
 
     # ------------------------------------------------------------------
     # OODA loop — public API
@@ -326,6 +367,20 @@ class GoalSeekingAgent:
         self._decision = "store"
         return self.act()
 
+    def learn_from_content(self, input_data: str) -> dict[str, Any]:
+        """Compatibility delegate for benchmark/eval surfaces."""
+        return self._learning_agent.learn_from_content(input_data)
+
+    def answer_question(self, question: str, answer_mode: str = "single-shot") -> str:
+        """Compatibility delegate for benchmark/eval surfaces."""
+        if answer_mode == "agentic":
+            return self._learning_agent.answer_question_agentic(question)
+
+        result = self._learning_agent.answer_question(question)
+        if isinstance(result, tuple):
+            return result[0]
+        return result
+
     def prepare_fact_batch(self, input_data: str, include_summary: bool = True) -> dict[str, Any]:
         """Prepare a reusable fact batch from raw content."""
         return self._learning_agent.prepare_fact_batch(
@@ -419,6 +474,11 @@ class GoalSeekingAgent:
         if hasattr(self._learning_agent, "get_memory_stats"):
             return self._learning_agent.get_memory_stats()
         return {}
+
+    def flush_memory(self) -> None:
+        """Delegate flush_memory when the underlying learning agent supports it."""
+        if hasattr(self._learning_agent, "flush_memory"):
+            self._learning_agent.flush_memory()
 
     def close(self) -> None:
         """Delegate close to LearningAgent."""
