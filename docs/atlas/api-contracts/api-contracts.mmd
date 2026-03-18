@@ -1,5 +1,4 @@
 graph TD
-<<<<<<< HEAD
     ROOT["amplihack"]
     C0["generate"]
     ROOT --> C0
@@ -107,83 +106,3 @@ graph TD
     ROOT --> C51
 
     click ROOT "../" "Back to Atlas"
-=======
-    subgraph CLI["amplihack CLI Entry Point"]
-        MAIN["amplihack (main)"]
-    end
-
-    subgraph MGMT["Management Commands"]
-        INSTALL["install"]
-        UNINSTALL["uninstall"]
-        UPDATE["update"]
-        VERSION["version / --version"]
-        LOCAL_INSTALL["_local_install &lt;repo_root&gt;"]
-    end
-
-    subgraph SDK["SDK Launcher Commands"]
-        LAUNCH["launch"]
-        CLAUDE["claude (alias)"]
-        RUSTY["RustyClawd"]
-        COPILOT["copilot"]
-        CODEX["codex"]
-        AMPLIFIER["amplifier"]
-    end
-
-    subgraph PLUGIN["Plugin Commands"]
-        P_INSTALL["plugin install &lt;source&gt;"]
-        P_UNINSTALL["plugin uninstall &lt;name&gt;"]
-        P_LINK["plugin link [name]"]
-        P_VERIFY["plugin verify [name]"]
-    end
-
-    subgraph MEMORY["Memory Commands"]
-        M_TREE["memory tree"]
-        M_EXPORT["memory export --agent &lt;name&gt; -o &lt;path&gt;"]
-        M_IMPORT["memory import --agent &lt;name&gt; -i &lt;path&gt;"]
-        M_CLEAN["memory clean --pattern &lt;pat&gt;"]
-    end
-
-    subgraph RECIPE["Recipe Commands"]
-        R_RUN["recipe run &lt;path&gt;"]
-        R_LIST["recipe list [dir]"]
-        R_VALIDATE["recipe validate &lt;path&gt;"]
-        R_SHOW["recipe show &lt;path&gt;"]
-    end
-
-    subgraph OTHER["Other Commands"]
-        NEW["new -f &lt;prompt.md&gt;"]
-        MODE["mode detect / to-plugin / to-local"]
-        FLEET["fleet &lt;subcommand&gt;"]
-        UVX_HELP["uvx-help"]
-    end
-
-    subgraph HOOKS["Hook Events"]
-        STOP_HOOK["stop hook (session end)"]
-        XPIA_HOOK["XPIA defense hook (web fetch)"]
-    end
-
-    MAIN --> MGMT
-    MAIN --> SDK
-    MAIN --> PLUGIN
-    MAIN --> MEMORY
-    MAIN --> RECIPE
-    MAIN --> OTHER
-
-    LAUNCH -->|"--auto"| AUTO_MODE["AutoMode loop"]
-    LAUNCH -->|"--docker"| DOCKER["DockerManager"]
-    LAUNCH -->|"--with-proxy-config"| PROXY["ProxyManager"]
-    LAUNCH -->|"--checkout-repo"| REPO["repo_checkout"]
-    LAUNCH -->|"default"| LAUNCHER["ClaudeLauncher"]
-
-    CLAUDE --> LAUNCH
-    RUSTY --> LAUNCH
-
-    style CLI fill:#2d3436,color:#dfe6e9
-    style MGMT fill:#0984e3,color:#fff
-    style SDK fill:#00b894,color:#fff
-    style PLUGIN fill:#6c5ce7,color:#fff
-    style MEMORY fill:#e17055,color:#fff
-    style RECIPE fill:#fdcb6e,color:#2d3436
-    style OTHER fill:#636e72,color:#fff
-    style HOOKS fill:#d63031,color:#fff
->>>>>>> origin/main

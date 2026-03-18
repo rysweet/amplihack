@@ -9,7 +9,7 @@ title: "Layer 4: Runtime Topology"
 # Layer 4: Runtime Topology
 
 <div class="atlas-metadata">
-Category: <strong>Structural</strong> | Generated: 2026-03-18T14:41:59.224861+00:00
+Category: <strong>Structural</strong> | Generated: 2026-03-18T19:21:27.401838+00:00
 </div>
 
 ## Map
@@ -83,7 +83,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-18T14:41:59.224861+00
     | Unique files with subprocesses | 109 |
     | Port bindings | 5 |
     | Docker services | 0 |
-    | Environment variables | 334 |
+    | Environment variables | 335 |
 
 ## Legend
 
@@ -101,7 +101,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-18T14:41:59.224861+00
 ## Key Findings
 
 - 286 subprocess calls across 109 files
-- 334 environment variable reads
+- 335 environment variable reads
 
 ## Detail
 
@@ -114,7 +114,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-18T14:41:59.224861+00
     - **Port Binding Count**: 5
     - **Docker Service Count**: 0
     - **Dockerfile Count**: 1
-    - **Env Var Count**: 334
+    - **Env Var Count**: 335
 
 ## Cross-References
 
