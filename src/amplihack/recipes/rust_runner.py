@@ -264,7 +264,74 @@ def _build_rust_env() -> dict[str, str]:
 
 def _execute_rust_command(cmd: list[str], *, name: str, progress: bool) -> RecipeResult:
     """Run the Rust binary and parse its JSON output into a ``RecipeResult``."""
-    return execute_rust_command(cmd, name=name, progress=progress, env_builder=_build_rust_env)
+    if progress:
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1,
+        )
+        stdout, stderr, returncode = _stream_process_output(process)
+    else:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+        )
+        stdout = result.stdout
+        stderr = result.stderr
+        returncode = result.returncode
+
+    try:
+        data = json.loads(stdout)
+    except (json.JSONDecodeError, TypeError):
+        if returncode != 0:
+            # Negative exit codes indicate signal kills (e.g. -15 = SIGTERM).
+            # Produce a clear message instead of dumping the entire progress
+            # stderr buffer which makes the error unreadable.
+            if returncode < 0:
+                import signal
+
+                sig_num = -returncode
+                sig_name = signal.Signals(sig_num).name if sig_num in signal.valid_signals() else str(sig_num)
+                raise RuntimeError(
+                    f"Rust recipe runner killed by signal {sig_name} ({sig_num}). "
+                    f"The process was terminated externally before producing output."
+                )
+            # For non-signal failures, show only the last few lines of stderr
+            # (not the full progress log which can be thousands of lines).
+            stderr_tail = ""
+            if stderr:
+                lines = stderr.strip().splitlines()
+                # Skip progress/heartbeat lines, show last 5 meaningful lines
+                meaningful = [ln for ln in lines if not ln.strip().startswith(("▶", "✓", "⊘", "✗", "[agent]"))]
+                stderr_tail = "\n".join(meaningful[-5:]) if meaningful else "\n".join(lines[-5:])
+            raise RuntimeError(
+                f"Rust recipe runner failed (exit {returncode}): "
+                f"{stderr_tail or 'no stderr'}"
+            )
+        raise RuntimeError(
+            f"Rust recipe runner returned unparseable output (exit {returncode}): "
+            f"{stdout[:500] if stdout else 'empty stdout'}"
+        )
+
+    step_results = [
+        StepResult(
+            step_id=sr.get("step_id", "unknown"),
+            status=_STATUS_MAP.get(sr.get("status", "failed").lower(), StepStatus.FAILED),
+            output=sr.get("output", ""),
+            error=sr.get("error", ""),
+        )
+        for sr in data.get("step_results", [])
+    ]
+
+    return RecipeResult(
+        recipe_name=data.get("recipe_name", name),
+        success=data.get("success", False),
+        step_results=step_results,
+        context=data.get("context", {}),
+    )
 
 
 # -- Public entry point ------------------------------------------------------
