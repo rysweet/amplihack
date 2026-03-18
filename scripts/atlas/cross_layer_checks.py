@@ -74,7 +74,7 @@ def run_checks(output_dir: Path) -> dict:
     checks.append(_check_cli_handler_reachability(layer5, layer2))
     checks.append(_check_dead_dep_cross_validation(layer2, layer3))
     checks.append(_check_circular_import_severity(layer3))
-    checks.append(_check_env_var_completeness(layer4))
+    checks.append(_check_env_var_completeness(layer4, manifest))
     checks.append(_check_route_test_coverage(layer5, manifest))
     checks.append(_check_reexport_chain_validation(layer2))
 
@@ -491,7 +491,7 @@ def _check_circular_import_severity(layer3) -> dict:
                    [str(c.get("cycle", [])) for c in cycles])
 
 
-def _check_env_var_completeness(layer4) -> dict:
+def _check_env_var_completeness(layer4, manifest) -> dict:
     """Check 13: Env vars read in code vs .env.example."""
     name = "ENV_VAR_COMPLETENESS"
     if not layer4:
@@ -502,8 +502,9 @@ def _check_env_var_completeness(layer4) -> dict:
     if not env_vars:
         return _pass(name, "No environment variables detected")
 
-    # Check for .env.example
-    env_example = Path(".env.example")
+    # Resolve .env.example relative to manifest root (repo root), not cwd
+    manifest_root = Path(manifest["root"]).parent if manifest else Path(".")
+    env_example = manifest_root / ".env.example"
     documented_vars: set[str] = set()
     if env_example.exists():
         for line in env_example.read_text().splitlines():

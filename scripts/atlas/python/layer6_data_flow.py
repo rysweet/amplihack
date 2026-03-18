@@ -12,6 +12,8 @@ from pathlib import Path
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(_REPO_ROOT))
 from scripts.atlas.common import (
+    _find_enclosing_function,
+    _resolve_call_name,
     load_manifest,
     parse_file_safe,
     write_layer_json,
@@ -82,18 +84,6 @@ _NETWORK_PATTERNS = {
 }
 
 
-def _resolve_call_name(node: ast.expr) -> str | None:
-    """Resolve a call's func node to a dotted string."""
-    if isinstance(node, ast.Name):
-        return node.id
-    elif isinstance(node, ast.Attribute):
-        value = _resolve_call_name(node.value)
-        if value:
-            return f"{value}.{node.attr}"
-        return node.attr
-    return None
-
-
 def _get_string_arg(node: ast.Call, pos: int = 0) -> str | None:
     """Extract a string argument from a call by position."""
     if pos < len(node.args) and isinstance(node.args[pos], ast.Constant):
@@ -101,18 +91,6 @@ def _get_string_arg(node: ast.Call, pos: int = 0) -> str | None:
         if isinstance(val, str):
             return val
     return None
-
-
-def _find_enclosing_function(tree: ast.Module, target_lineno: int) -> str | None:
-    """Find the function name enclosing a given line number."""
-    best = None
-    for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            end_lineno = getattr(node, "end_lineno", None)
-            if end_lineno and node.lineno <= target_lineno <= end_lineno:
-                if best is None or node.lineno > best[1]:
-                    best = (node.name, node.lineno)
-    return best[0] if best else None
 
 
 def _match_pattern(call_name: str, patterns: dict) -> str | None:
@@ -225,6 +203,8 @@ def _extract_file_io(tree: ast.Module, filepath: str) -> list[dict]:
 def _extract_database_ops(tree: ast.Module, filepath: str) -> list[dict]:
     """Extract database operations from AST."""
     ops = []
+    # Local set for dynamically-discovered DB call names (avoids mutating module-level dict)
+    dynamic_db_patterns: dict[str, tuple[str, str | None]] = {}
 
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
@@ -236,25 +216,27 @@ def _extract_database_ops(tree: ast.Module, filepath: str) -> list[dict]:
 
         matched = _match_pattern(call_name, _DB_PATTERNS)
         if not matched:
+            matched = _match_pattern(call_name, dynamic_db_patterns)
+        if not matched:
             # Check for kuzu/sqlite/neo4j/falkordb in call name directly
             call_lower = call_name.lower()
             if "kuzu" in call_lower:
                 matched = call_name
-                _DB_PATTERNS[call_name] = ("kuzu", None)
+                dynamic_db_patterns[call_name] = ("kuzu", None)
             elif "sqlite" in call_lower:
                 matched = call_name
-                _DB_PATTERNS[call_name] = ("sqlite", None)
+                dynamic_db_patterns[call_name] = ("sqlite", None)
             elif "neo4j" in call_lower:
                 matched = call_name
-                _DB_PATTERNS[call_name] = ("neo4j", None)
+                dynamic_db_patterns[call_name] = ("neo4j", None)
             elif "falkordb" in call_lower:
                 matched = call_name
-                _DB_PATTERNS[call_name] = ("falkordb", None)
+                dynamic_db_patterns[call_name] = ("falkordb", None)
 
         if not matched:
             continue
 
-        db_type, op_type = _DB_PATTERNS.get(matched, ("unknown", None))
+        db_type, op_type = _DB_PATTERNS.get(matched, dynamic_db_patterns.get(matched, ("unknown", None)))
 
         # Try to determine operation from query literal
         query_literal = _get_string_arg(node, 0)

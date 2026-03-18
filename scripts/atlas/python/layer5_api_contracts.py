@@ -14,22 +14,11 @@ from pathlib import Path
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(_REPO_ROOT))
 from scripts.atlas.common import (
+    _resolve_call_name,
     load_manifest,
     parse_file_safe,
     write_layer_json,
 )
-
-
-def _resolve_call_name(node: ast.expr) -> str | None:
-    """Resolve a call's func node to a dotted string."""
-    if isinstance(node, ast.Name):
-        return node.id
-    elif isinstance(node, ast.Attribute):
-        value = _resolve_call_name(node.value)
-        if value:
-            return f"{value}.{node.attr}"
-        return node.attr
-    return None
 
 
 def _get_string_arg(node: ast.Call, pos: int = 0, kw: str | None = None) -> str | None:
@@ -241,7 +230,8 @@ def _extract_recipes(repo_root: Path) -> list[dict]:
 
                 try:
                     data = yaml.safe_load(f.read_text())
-                except Exception:
+                except Exception as e:
+                    print(f"WARNING: failed to parse recipe {f}: {e}", file=sys.stderr)
                     continue
 
                 if not isinstance(data, dict):
@@ -273,7 +263,8 @@ def _parse_frontmatter(filepath: Path) -> dict:
     """Extract YAML frontmatter from a markdown file."""
     try:
         content = filepath.read_text(encoding="utf-8", errors="replace")
-    except OSError:
+    except OSError as e:
+        print(f"WARNING: could not read frontmatter from {filepath}: {e}", file=sys.stderr)
         return {}
 
     if not content.startswith("---"):
@@ -288,7 +279,8 @@ def _parse_frontmatter(filepath: Path) -> dict:
         import yaml
         data = yaml.safe_load(frontmatter_str)
         return data if isinstance(data, dict) else {}
-    except Exception:
+    except Exception as e:
+        print(f"WARNING: failed to parse YAML frontmatter in {filepath}: {e}", file=sys.stderr)
         return {}
 
 
