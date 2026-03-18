@@ -101,8 +101,8 @@ jobs:
           echo "Checking atlas impact for PR: ${BASE_SHA}..${HEAD_SHA}"
           echo ""
 
-          # Exit code 1 = stale layers (advisory, not a failure).
-          # Must capture explicitly since GH Actions uses set -e by default.
+          # Capture exit code explicitly — GH Actions set -e would kill the step
+          # before we can report which layers are stale and how to fix them.
           EXIT_CODE=0
           bash scripts/check-atlas-staleness.sh "$BASE_SHA" "$HEAD_SHA" > impact-report.txt 2>&1 || EXIT_CODE=$?
 
@@ -110,10 +110,27 @@ jobs:
 
           if [[ "$EXIT_CODE" -eq 1 ]]; then
             echo "has_impact=true" >> "$GITHUB_OUTPUT"
-            echo "::warning::This PR touches atlas-tracked files. Consider rebuilding affected layers before merging."
+            echo ""
+            echo "=========================================="
+            echo "  CODE ATLAS IS STALE — PR cannot merge"
+            echo "=========================================="
+            echo ""
+            echo "This PR modifies files tracked by the code atlas but the"
+            echo "atlas diagrams were not updated. To fix:"
+            echo ""
+            echo "  1. Check out this branch locally"
+            echo "  2. Run:  /code-atlas rebuild all"
+            echo "     Or manually update the affected layer files in docs/atlas/"
+            echo "  3. Commit and push the updated atlas files"
+            echo ""
+            echo "Stale layers detected (see report above for details)."
+            echo "Atlas source files live in docs/atlas/{layer-slug}/"
+            echo "Each layer has README.md, .mmd (Mermaid), and .dot (Graphviz) sources."
+            echo ""
+            exit 1
           elif [[ "$EXIT_CODE" -eq 2 ]]; then
             echo "has_impact=false" >> "$GITHUB_OUTPUT"
-            echo "::error::Staleness check failed with usage error. Check scripts/check-atlas-staleness.sh."
+            echo "::error::Staleness check script error. Check scripts/check-atlas-staleness.sh."
             exit 1
           else
             echo "has_impact=false" >> "$GITHUB_OUTPUT"
