@@ -12,6 +12,7 @@ import json
 import logging
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import threading
@@ -329,8 +330,6 @@ def _execute_rust_command(cmd: list[str], *, name: str, progress: bool) -> Recip
             # Produce a clear message instead of dumping the entire progress
             # stderr buffer which makes the error unreadable.
             if returncode < 0:
-                import signal
-
                 sig_num = -returncode
                 sig_name = (
                     signal.Signals(sig_num).name
