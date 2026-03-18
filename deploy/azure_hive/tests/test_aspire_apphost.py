@@ -20,6 +20,7 @@ class TestAspireAppHost:
 
     def test_apphost_wires_grpc_otel_for_local_dashboard(self):
         content = _APPHOST.read_text()
+        assert "builder.AppHostDirectory" in content
         assert (
             'GetConfig(builder, "telemetry:protocol", "OTEL_EXPORTER_OTLP_PROTOCOL", "grpc")'
             in content

@@ -6,16 +6,20 @@ using System.IO;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
-var repoRoot = ResolveRepoRoot();
+var repoRoot = Path.GetFullPath(Path.Combine(builder.AppHostDirectory, "..", "..", ".."));
 var srcPath = Path.Combine(repoRoot, "src");
 var deploymentProfile = GetConfig(builder, "azure:deploymentProfile", "HIVE_DEPLOYMENT_PROFILE", "federated-100");
 var hiveName = GetConfig(builder, "azure:hiveName", "HIVE_NAME", "amplihive");
 var agentCount = GetConfig(builder, "azure:agentCount", "HIVE_AGENT_COUNT", "100");
+// Default to "true" to match deploy.sh — distributed retrieval must be
+// enabled for 100-agent topology where each agent only holds ~1% of the
+// total corpus.  Set HIVE_ENABLE_DISTRIBUTED_RETRIEVAL=false or
+// azure:enableDistributedRetrieval=false to disable (smoke-10 profile).
 var enableDistributedRetrieval = GetConfig(
     builder,
     "azure:enableDistributedRetrieval",
     "HIVE_ENABLE_DISTRIBUTED_RETRIEVAL",
-    "false"
+    "true"
 );
 var otlpProtocol = GetConfig(builder, "telemetry:protocol", "OTEL_EXPORTER_OTLP_PROTOCOL", "grpc");
 var otlpEndpoint = GetConfig(builder, "telemetry:endpoint", "OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317");
@@ -93,11 +97,6 @@ if (
 }
 
 builder.Build().Run();
-
-static string ResolveRepoRoot()
-{
-    return Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", ".."));
-}
 
 static string GetConfig(
     IDistributedApplicationBuilder builder,
