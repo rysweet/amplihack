@@ -238,6 +238,35 @@ while IFS= read -r f; do
 done <<< "$CHANGED_FILES"
 
 # ---------------------------------------------------------------------------
+# Reconciliation — check if stale layers were rebuilt in the same diff
+#
+# A layer is considered rebuilt if docs/atlas/{slug}/ files appear in the
+# changed file list.  This lets PRs that update both source code and atlas
+# diagrams pass the staleness check.
+# ---------------------------------------------------------------------------
+declare -A LAYER_SLUG_MAP=(
+    [1]="runtime-topology"
+    [2]="compile-deps"
+    [3]="api-contracts"
+    [4]="data-flow"
+    [5]="user-journeys"
+    [6]="inventory"
+    [7]="service-components"
+    [8]="ast-lsp-bindings"
+)
+
+for layer_num in "${!STALE_SET[@]}"; do
+    slug="${LAYER_SLUG_MAP[$layer_num]:-}"
+    [[ -z "$slug" ]] && continue
+
+    # Check if any docs/atlas/{slug}/ file was updated in the same diff
+    if echo "$CHANGED_FILES" | grep -q "^docs/atlas/${slug}/"; then
+        printf 'REBUILT: %s — atlas files updated in this PR\n' "$slug"
+        unset "STALE_SET[$layer_num]"
+    fi
+done
+
+# ---------------------------------------------------------------------------
 # Summary
 # ---------------------------------------------------------------------------
 if [[ ${#STALE_SET[@]} -eq 0 ]]; then
