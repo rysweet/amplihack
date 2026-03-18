@@ -9,7 +9,7 @@ title: "Layer 2: AST + LSP Bindings"
 # Layer 2: AST + LSP Bindings
 
 <div class="atlas-metadata">
-Category: <strong>Structural</strong> | Generated: 2026-03-18T05:33:52.352304+00:00
+Category: <strong>Structural</strong> | Generated: 2026-03-18T14:00:53.503575+00:00
 </div>
 
 ## Map
@@ -91,11 +91,11 @@ Category: <strong>Structural</strong> | Generated: 2026-03-18T05:33:52.352304+00
 
     | Metric | Value |
     |--------|-------|
-    | Total definitions | 3276 |
+    | Total definitions | 3365 |
     | Total exports | 1070 |
-    | Total imports | 4230 |
-    | Potentially dead | 1746 |
-    | Files with `__all__` | 204 |
+    | Total imports | 4235 |
+    | Potentially dead | 1817 |
+    | Files with `__all__` | 206 |
 
 ## Legend
 
@@ -111,9 +111,9 @@ Category: <strong>Structural</strong> | Generated: 2026-03-18T05:33:52.352304+00
 
 ## Key Findings
 
-- 3276 total definitions across all files
-- 1746 potentially dead definitions (53.3% of total)
-- 397 files without `__all__` exports
+- 3365 total definitions across all files
+- 1817 potentially dead definitions (54.0% of total)
+- 395 files without `__all__` exports
 
 ## Detail
 
@@ -121,12 +121,12 @@ Category: <strong>Structural</strong> | Generated: 2026-03-18T05:33:52.352304+00
 
     **Summary metrics:**
     
-    - **Total Definitions**: 3276
+    - **Total Definitions**: 3365
     - **Total Exports**: 1070
-    - **Total Imports**: 4230
-    - **Potentially Dead Count**: 1746
-    - **Files With All**: 204
-    - **Files Without All**: 397
+    - **Total Imports**: 4235
+    - **Potentially Dead Count**: 1817
+    - **Files With All**: 206
+    - **Files Without All**: 395
     - **Importlib Dynamic Imports**: 1
 
 ## Cross-References
@@ -142,7 +142,6 @@ Category: <strong>Structural</strong> | Generated: 2026-03-18T05:33:52.352304+00
 
 <div class="atlas-footer">
 
-Source: [`layer2_ast_bindings.json`](../../atlas_output/layer2_ast_bindings.json)
- | [Mermaid source](ast-lsp-bindings.mmd)
+Source: `layer2_ast_bindings.json` | [Mermaid source](ast-lsp-bindings.mmd)
 
 </div>

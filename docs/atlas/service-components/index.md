@@ -9,7 +9,7 @@ title: "Layer 7: Service Components"
 # Layer 7: Service Components
 
 <div class="atlas-metadata">
-Category: <strong>Structural</strong> | Generated: 2026-03-18T05:34:02.263764+00:00
+Category: <strong>Structural</strong> | Generated: 2026-03-18T14:01:03.491907+00:00
 </div>
 
 ## Map
@@ -210,7 +210,6 @@ Category: <strong>Structural</strong> | Generated: 2026-03-18T05:34:02.263764+00
 
 <div class="atlas-footer">
 
-Source: [`layer7_service_components.json`](../../atlas_output/layer7_service_components.json)
- | [Mermaid source](service-components.mmd)
+Source: `layer7_service_components.json` | [Mermaid source](service-components.mmd)
 
 </div>

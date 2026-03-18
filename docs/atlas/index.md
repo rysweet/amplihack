@@ -4,7 +4,7 @@ title: Code Atlas
 
 # Code Atlas
 
-<div class="atlas-metadata">Generated: 2026-03-18 05:34 UTC</div>
+<div class="atlas-metadata">Generated: 2026-03-18 14:01 UTC</div>
 
 ## Layer Overview
 
@@ -33,7 +33,7 @@ title: Code Atlas
     <small>100% coverage</small>
 
     <div class="atlas-scale">
-    **total definitions**: 3276 | **total exports**: 1070 | **total imports**: 4230 | **potentially dead**: 1746
+    **total definitions**: 3365 | **total exports**: 1070 | **total imports**: 4235 | **potentially dead**: 1817
     </div>
 
 -   <span class="atlas-icon--structural">:material-package-variant:</span> **[Layer 3: Compile-time Dependencies](compile-deps/)**
@@ -93,7 +93,7 @@ title: Code Atlas
     <small>100% coverage</small>
 
     <div class="atlas-scale">
-    **file io**: 844 | **database op**: 291 | **network io**: 23 | **transformation point**: 45
+    **file io**: 844 | **database op**: 293 | **network io**: 23 | **transformation point**: 45
     </div>
 
 -   <span class="atlas-icon--structural">:material-view-module:</span> **[Layer 7: Service Components](service-components/)**

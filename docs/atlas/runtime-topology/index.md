@@ -9,7 +9,7 @@ title: "Layer 4: Runtime Topology"
 # Layer 4: Runtime Topology
 
 <div class="atlas-metadata">
-Category: <strong>Structural</strong> | Generated: 2026-03-18T05:33:55.728735+00:00
+Category: <strong>Structural</strong> | Generated: 2026-03-18T14:00:56.883659+00:00
 </div>
 
 ## Map
@@ -21,7 +21,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-18T05:33:55.728735+00
         S0(["subprocess.run"])
         S1(["uv"])
         S2(["subprocess.Popen"])
-        S3(["<dynamic>"])
+        S3(["&lt;dynamic&gt;"])
         S4(["pytest"])
         S5(["gh"])
         S6(["git"])
@@ -83,7 +83,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-18T05:33:55.728735+00
     | Unique files with subprocesses | 109 |
     | Port bindings | 5 |
     | Docker services | 0 |
-    | Environment variables | 330 |
+    | Environment variables | 334 |
 
 ## Legend
 
@@ -101,7 +101,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-18T05:33:55.728735+00
 ## Key Findings
 
 - 286 subprocess calls across 109 files
-- 330 environment variable reads
+- 334 environment variable reads
 
 ## Detail
 
@@ -114,7 +114,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-18T05:33:55.728735+00
     - **Port Binding Count**: 5
     - **Docker Service Count**: 0
     - **Dockerfile Count**: 1
-    - **Env Var Count**: 330
+    - **Env Var Count**: 334
 
 ## Cross-References
 
@@ -127,7 +127,6 @@ Category: <strong>Structural</strong> | Generated: 2026-03-18T05:33:55.728735+00
 
 <div class="atlas-footer">
 
-Source: [`layer4_runtime_topology.json`](../../atlas_output/layer4_runtime_topology.json)
- | [Mermaid source](runtime-topology.mmd)
+Source: `layer4_runtime_topology.json` | [Mermaid source](runtime-topology.mmd)
 
 </div>
