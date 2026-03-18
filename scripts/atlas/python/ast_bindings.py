@@ -284,18 +284,28 @@ def extract(manifest: dict, root: Path) -> dict:
 def _extract_all_exports(tree: ast.Module, filepath: str) -> dict | None:
     """Extract __all__ assignment from a module.
 
-    Handles both list and tuple literal forms:
+    Handles both list and tuple literal forms, and annotated assignments:
         __all__ = ["name1", "name2"]
         __all__ = ("name1", "name2")
+        __all__: list[str] = ["name1", "name2"]
 
     Returns:
         Dict with file and all_names, or None if no __all__.
     """
     for node in ast.iter_child_nodes(tree):
-        if not isinstance(node, ast.Assign):
-            continue
-        for target in node.targets:
-            if isinstance(target, ast.Name) and target.id == "__all__":
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name) and target.id == "__all__":
+                    names = _extract_string_list(node.value)
+                    if names is not None:
+                        return {
+                            "file": filepath,
+                            "all_names": names,
+                        }
+        elif isinstance(node, ast.AnnAssign):
+            if (isinstance(node.target, ast.Name)
+                    and node.target.id == "__all__"
+                    and node.value is not None):
                 names = _extract_string_list(node.value)
                 if names is not None:
                     return {

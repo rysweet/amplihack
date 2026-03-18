@@ -97,11 +97,11 @@ def main():
     # --- Phase 2: layer1, layer2, layer4 ---
     print("\nPhase 2: layer1, layer2, layer4")
     phase2_scripts = [
-        (str(python_dir / "layer1_repo_surface.py"), "layer1_repo_surface"),
-        (str(python_dir / "layer2_ast_bindings.py"), "layer2_ast_bindings"),
+        (str(python_dir / "repo_surface.py"), "layer1_repo_surface"),
+        (str(python_dir / "ast_bindings.py"), "layer2_ast_bindings"),
     ]
     # layer4 only if script exists
-    layer4_script = python_dir / "layer4_runtime_topology.py"
+    layer4_script = python_dir / "runtime_topology.py"
     if layer4_script.exists():
         phase2_scripts.append((str(layer4_script), "layer4_runtime_topology"))
 
@@ -114,8 +114,14 @@ def main():
     # --- Phase 3: layer3, layer5, layer6 ---
     print("\nPhase 3: layer3, layer5, layer6")
     phase3_scripts = []
-    for name in ("layer3_compile_deps", "layer5_api_contracts", "layer6_data_flow"):
-        script = python_dir / f"{name}.py"
+    phase3_names = [
+        ("compile_deps", "layer3_compile_deps"),
+        ("api_contracts", "layer5_api_contracts"),
+        ("data_flow", "layer6_data_flow"),
+    ]
+    for script_name, label_name in phase3_names:
+        name = label_name
+        script = python_dir / f"{script_name}.py"
         if script.exists():
             phase3_scripts.append((str(script), name))
         else:
@@ -129,7 +135,7 @@ def main():
 
     # --- Phase 4: layer7 ---
     print("\nPhase 4: layer7")
-    layer7_script = str(python_dir / "layer7_service_components.py")
+    layer7_script = str(python_dir / "service_components.py")
     ok, elapsed = run_layer(layer7_script, common_args, "layer7_service_components")
     timings.append(("layer7_service_components", elapsed))
     if not ok:
@@ -137,7 +143,7 @@ def main():
 
     # --- Phase 5: layer8 ---
     print("\nPhase 5: layer8")
-    layer8_script = str(python_dir / "layer8_user_journeys.py")
+    layer8_script = str(python_dir / "user_journeys.py")
     ok, elapsed = run_layer(layer8_script, common_args, "layer8_user_journeys")
     timings.append(("layer8_user_journeys", elapsed))
     if not ok:
