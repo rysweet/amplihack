@@ -70,6 +70,10 @@ def _make_adapter(mod, agent_count=5, answer_timeout=0):
         adapter._online_agents = set()
         adapter._online_lock = threading.Lock()
         adapter._all_agents_online = threading.Event()
+        adapter._progress_agents = set()
+        adapter._progress_counts = {}
+        adapter._progress_lock = threading.Lock()
+        adapter._feed_telemetry_wait_done = threading.Event()
         adapter._ready_agents = set()
         adapter._ready_lock = threading.Lock()
         adapter._all_agents_ready = threading.Event()
@@ -269,6 +273,7 @@ class TestLearnFromContent:
         mod = _load_module()
         adapter = _make_adapter(mod, agent_count=3)
         adapter._startup_wait_done.set()
+        adapter._wait_for_feed_telemetry = MagicMock()
 
         published_keys = []
 
@@ -290,12 +295,15 @@ class TestLearnFromContent:
             "agent-2",
         ]
         assert adapter._learn_turn_counts == [2, 2, 2]
+        adapter._wait_for_feed_telemetry.assert_called_once_with({"agent-0", "agent-1", "agent-2"})
+        assert adapter._feed_telemetry_wait_done.is_set()
 
     def test_replicated_learning_targets_all_agents(self):
         mod = _load_module()
         adapter = _make_adapter(mod, agent_count=3)
         adapter._startup_wait_done.set()
         adapter._replicate_learning_to_all_agents = True
+        adapter._wait_for_feed_telemetry = MagicMock()
         adapter._prepare_fact_batch = MagicMock(
             return_value={
                 "facts_extracted": 2,
@@ -340,12 +348,15 @@ class TestLearnFromContent:
         assert adapter._learn_turn_counts == [1, 1, 1]
         assert result["facts_stored"] == 2
         assert result["replicated_to"] == 3
+        adapter._wait_for_feed_telemetry.assert_called_once_with({"agent-0", "agent-1", "agent-2"})
+        assert adapter._feed_telemetry_wait_done.is_set()
 
     def test_learn_increments_counter(self):
         mod = _load_module()
         adapter = _make_adapter(mod, agent_count=2)
         adapter._startup_wait_done.set()
         adapter._publish_event = MagicMock()
+        adapter._wait_for_feed_telemetry = MagicMock()
 
         adapter.learn_from_content("hello")
         assert adapter._learn_count == 1
@@ -439,6 +450,44 @@ class TestOnEvent:
 
         on_event(MagicMock(), mock_event)
         assert "agent-1" in adapter._online_agents
+
+    def test_agent_progress_tracked(self):
+        mod = _load_module()
+        adapter = _make_adapter(mod, agent_count=2)
+
+        body = json.dumps(
+            {
+                "event_type": "AGENT_PROGRESS",
+                "agent_id": "agent-1",
+                "phase": "learn_content",
+                "processed_count": 3,
+                "run_id": "test_run_abc",
+            }
+        )
+        mock_event = MagicMock()
+        mock_event.body_as_str.return_value = body
+
+        run_id = adapter._run_id
+
+        def on_event(partition_context, event):
+            if event is None:
+                return
+            data = json.loads(event.body_as_str())
+            rid = data.get("run_id", "")
+            if rid and rid != run_id:
+                return
+            if data.get("event_type", "") == "AGENT_PROGRESS":
+                agent_id = data.get("agent_id", "")
+                if agent_id:
+                    with adapter._progress_lock:
+                        adapter._progress_agents.add(agent_id)
+                        adapter._progress_counts[agent_id] = int(
+                            data.get("processed_count", 0) or 0
+                        )
+
+        on_event(MagicMock(), mock_event)
+        assert "agent-1" in adapter._progress_agents
+        assert adapter._progress_counts["agent-1"] == 3
 
     def test_agent_ready_tracked(self):
         mod = _load_module()

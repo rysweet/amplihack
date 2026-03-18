@@ -368,6 +368,40 @@ class TestSessionLifecycle:
 
     @patch(f"{_P}.HAS_COPILOT_SDK", True)
     @pytest.mark.asyncio
+    async def test_ensure_client_forwards_otel_env(self):
+        agent = _make_agent()
+
+        mock_session = AsyncMock()
+        mock_session.on = MagicMock(return_value=lambda: None)
+
+        mock_client = AsyncMock()
+        mock_client.start = AsyncMock()
+        mock_client.create_session = AsyncMock(return_value=mock_session)
+
+        with (
+            patch(f"{_P}.CopilotClient", return_value=mock_client) as mock_ctor,
+            patch.dict(
+                os.environ,
+                {
+                    "AMPLIHACK_OTEL_ENABLED": "true",
+                    "OTEL_EXPORTER_OTLP_ENDPOINT": "http://collector:4318",
+                },
+                clear=False,
+            ),
+        ):
+            await agent._ensure_client()
+
+        mock_ctor.assert_called_once()
+        options = mock_ctor.call_args.args[0]
+        assert options["env"]["AMPLIHACK_OTEL_ENABLED"] == "true"
+        assert (
+            options["env"]["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"]
+            == "http://collector:4318/v1/traces"
+        )
+        assert options["env"]["OTEL_SERVICE_NAME"] == "amplihack.copilot-sdk-agent"
+
+    @patch(f"{_P}.HAS_COPILOT_SDK", True)
+    @pytest.mark.asyncio
     async def test_ensure_client_creates_fresh(self):
         """Each _ensure_client call creates a fresh client to avoid stale event loops."""
         agent = _make_agent()
@@ -506,12 +540,13 @@ class TestFactory:
 
     @patch(f"{_P}.HAS_COPILOT_SDK", True)
     def test_factory_default_is_microsoft(self):
+        from unittest.mock import MagicMock
+
         import amplihack.agents.goal_seeking.sdk_adapters.microsoft_sdk as _ms
         from amplihack.agents.goal_seeking.sdk_adapters.factory import create_agent
         from amplihack.agents.goal_seeking.sdk_adapters.microsoft_sdk import (
             MicrosoftGoalSeekingAgent,
         )
-        from unittest.mock import MagicMock
 
         _key = "test-key"  # pragma: allowlist secret
         _mock_agent = MagicMock()

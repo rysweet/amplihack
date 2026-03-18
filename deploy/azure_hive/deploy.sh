@@ -29,12 +29,17 @@
 #   HIVE_NAME              -- Hive name (default: amplihive)
 #   HIVE_RESOURCE_GROUP    -- Resource group (default: hive-mind-rg)
 #   HIVE_LOCATION          -- Azure region (default: westus2)
-#   HIVE_AGENT_COUNT       -- Total agents (default: 5)
-#   HIVE_AGENTS_PER_APP    -- Agents per Container App (default: 1)
+#   HIVE_DEPLOYMENT_PROFILE -- federated-100 | smoke-10 | custom (default: federated-100)
+#   HIVE_AGENT_COUNT       -- Total agents (required for custom profile)
+#   HIVE_AGENTS_PER_APP    -- Agents per Container App (required for custom profile)
 #   HIVE_ACR_NAME          -- ACR name override (auto-generated if empty)
 #   HIVE_IMAGE_TAG         -- Docker image tag (default: latest)
 #   HIVE_TRANSPORT         -- Transport type (default: azure_event_hubs)
 #   HIVE_AGENT_PROMPT_BASE -- Base system prompt for agents
+#   HIVE_OTEL_ENABLED      -- Enable OpenTelemetry instrumentation in deployed agents
+#   HIVE_OTEL_OTLP_ENDPOINT -- OTLP/HTTP collector endpoint
+#   HIVE_OTEL_EXPORTER_HEADERS -- Optional OTLP headers (for auth, etc.)
+#   HIVE_OTEL_CONSOLE_EXPORTER -- Emit spans to stdout if no OTLP endpoint is set
 
 set -euo pipefail
 
@@ -46,14 +51,18 @@ HIVE_NAME="${HIVE_NAME:-amplihive}"
 RESOURCE_GROUP="${HIVE_RESOURCE_GROUP:-hive-mind-rg}"
 LOCATION="${HIVE_LOCATION:-westus2}"
 FALLBACK_REGIONS="${HIVE_FALLBACK_REGIONS:-eastus,westus3,centralus}"
-AGENT_COUNT="${HIVE_AGENT_COUNT:-5}"
-AGENTS_PER_APP="${HIVE_AGENTS_PER_APP:-1}"
+DEPLOYMENT_PROFILE="${HIVE_DEPLOYMENT_PROFILE:-federated-100}"
 IMAGE_TAG="${HIVE_IMAGE_TAG:-latest}"
 TRANSPORT="${HIVE_TRANSPORT:-azure_event_hubs}"
 MEMORY_BACKEND="${HIVE_MEMORY_BACKEND:-cognitive}"
 AGENT_MODEL="${HIVE_AGENT_MODEL:-claude-sonnet-4-6}"
 AGENT_PROMPT_BASE="${HIVE_AGENT_PROMPT_BASE:-You are a distributed hive mind agent.}"
 ENABLE_DISTRIBUTED_RETRIEVAL="${HIVE_ENABLE_DISTRIBUTED_RETRIEVAL:-true}"
+OTEL_OTLP_ENDPOINT="${HIVE_OTEL_OTLP_ENDPOINT:-}"
+OTEL_OTLP_PROTOCOL="${HIVE_OTEL_OTLP_PROTOCOL:-http/protobuf}"
+OTEL_EXPORTER_HEADERS="${HIVE_OTEL_EXPORTER_HEADERS:-}"
+OTEL_SERVICE_NAMESPACE="${HIVE_OTEL_SERVICE_NAMESPACE:-amplihack}"
+OTEL_CONSOLE_EXPORTER="${HIVE_OTEL_CONSOLE_EXPORTER:-false}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
@@ -103,6 +112,45 @@ if [[ "$MODE" == "status" ]]; then
     --query "[?starts_with(name, '${HIVE_NAME}')].{name:name,status:properties.runningStatus,replicas:properties.template.scale.minReplicas}" \
     --output table 2>/dev/null || echo "Resource group not found or no Container Apps deployed."
   exit 0
+fi
+
+case "${DEPLOYMENT_PROFILE}" in
+  federated-100)
+    PROFILE_AGENT_COUNT="100"
+    PROFILE_AGENTS_PER_APP="5"
+    ;;
+  smoke-10)
+    PROFILE_AGENT_COUNT="10"
+    PROFILE_AGENTS_PER_APP="1"
+    ;;
+  custom)
+    PROFILE_AGENT_COUNT=""
+    PROFILE_AGENTS_PER_APP=""
+    ;;
+  *)
+    die "Unknown HIVE_DEPLOYMENT_PROFILE='${DEPLOYMENT_PROFILE}'. Use federated-100, smoke-10, or custom."
+    ;;
+esac
+
+if [[ "${DEPLOYMENT_PROFILE}" == "custom" ]]; then
+  AGENT_COUNT="${HIVE_AGENT_COUNT:-}"
+  AGENTS_PER_APP="${HIVE_AGENTS_PER_APP:-}"
+  [[ -n "${AGENT_COUNT}" ]] || die "HIVE_AGENT_COUNT is required when HIVE_DEPLOYMENT_PROFILE=custom."
+  [[ -n "${AGENTS_PER_APP}" ]] || die "HIVE_AGENTS_PER_APP is required when HIVE_DEPLOYMENT_PROFILE=custom."
+else
+  AGENT_COUNT="${HIVE_AGENT_COUNT:-${PROFILE_AGENT_COUNT}}"
+  AGENTS_PER_APP="${HIVE_AGENTS_PER_APP:-${PROFILE_AGENTS_PER_APP}}"
+  if [[ "${AGENT_COUNT}" != "${PROFILE_AGENT_COUNT}" || "${AGENTS_PER_APP}" != "${PROFILE_AGENTS_PER_APP}" ]]; then
+    die "Profile '${DEPLOYMENT_PROFILE}' expects HIVE_AGENT_COUNT=${PROFILE_AGENT_COUNT} and HIVE_AGENTS_PER_APP=${PROFILE_AGENTS_PER_APP}. Use HIVE_DEPLOYMENT_PROFILE=custom for non-profile values."
+  fi
+fi
+
+if [[ -n "${HIVE_OTEL_ENABLED:-}" ]]; then
+  OTEL_ENABLED="${HIVE_OTEL_ENABLED}"
+elif [[ -n "${OTEL_OTLP_ENDPOINT}" || "${OTEL_CONSOLE_EXPORTER,,}" == "true" ]]; then
+  OTEL_ENABLED="true"
+else
+  OTEL_ENABLED="false"
 fi
 
 # ============================================================
@@ -248,6 +296,13 @@ for _region in "${_REGIONS[@]}"; do
         agentModel="${AGENT_MODEL}" \
         agentPromptBase="${AGENT_PROMPT_BASE}" \
         enableDistributedRetrieval="${ENABLE_DISTRIBUTED_RETRIEVAL}" \
+        deploymentProfile="${DEPLOYMENT_PROFILE}" \
+        enableOpenTelemetry="${OTEL_ENABLED}" \
+        otelOtlpEndpoint="${OTEL_OTLP_ENDPOINT}" \
+        otelOtlpProtocol="${OTEL_OTLP_PROTOCOL}" \
+        otelExporterHeaders="${OTEL_EXPORTER_HEADERS}" \
+        otelServiceNamespace="${OTEL_SERVICE_NAMESPACE}" \
+        otelConsoleExporter="${OTEL_CONSOLE_EXPORTER}" \
       --output json 2>&1) && { DEPLOY_SUCCEEDED=true; break 2; }
 
     if [[ "${_deploy_attempt}" -lt "${DEPLOY_MAX_RETRIES}" ]]; then
@@ -284,10 +339,14 @@ APP_COUNT=$(( (AGENT_COUNT + AGENTS_PER_APP - 1) / AGENTS_PER_APP ))
 
 log "============================================"
 log "Hive '${HIVE_NAME}' deployment complete!"
+log "  Profile:        ${DEPLOYMENT_PROFILE}"
 log "  Agents:         ${AGENT_COUNT}"
 log "  Container Apps: ${APP_COUNT} (${AGENTS_PER_APP} agents each)"
 log "  ACR:            ${ACR_LOGIN_SERVER}"
 log "  Transport:      ${TRANSPORT} (azure_event_hubs)"
+log "  OTel Enabled:   ${OTEL_ENABLED}"
+[[ -n "${OTEL_OTLP_ENDPOINT}" ]] && log "  OTLP Endpoint:  ${OTEL_OTLP_ENDPOINT}"
+[[ -n "${OTEL_OTLP_PROTOCOL}" ]] && log "  OTLP Protocol:  ${OTEL_OTLP_PROTOCOL}"
 log "  EH Input Hub:   hive-events-${HIVE_NAME}"
 log "  EH Shards Hub:  hive-shards-${HIVE_NAME}"
 log "  EH Eval Hub:    eval-responses-${HIVE_NAME}"

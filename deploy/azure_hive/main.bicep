@@ -25,7 +25,7 @@
 //   az deployment group create \
 //     --resource-group <rg> \
 //     --template-file deploy/azure_hive/main.bicep \
-//     --parameters hiveName=my-hive agentCount=20 anthropicApiKey=<key>
+//     --parameters hiveName=my-hive agentCount=100 agentsPerApp=5 anthropicApiKey=<key>
 
 @description('Name of the hive deployment')
 param hiveName string = 'amplihive'
@@ -34,10 +34,10 @@ param hiveName string = 'amplihive'
 param location string = resourceGroup().location
 
 @description('Total number of agents to deploy')
-param agentCount int = 5
+param agentCount int = 100
 
-@description('Max agents per Container App (default: 1)')
-param agentsPerApp int = 1
+@description('Max agents per Container App (default: 5)')
+param agentsPerApp int = 5
 
 @description('Container image to deploy (e.g. myacr.azurecr.io/amplihive:latest)')
 param image string = ''
@@ -66,6 +66,34 @@ param agentModel string = 'claude-sonnet-4-6'
 @description('Whether Azure agents should perform distributed hive retrieval during question answering')
 @allowed(['true', 'false'])
 param enableDistributedRetrieval string = 'true'
+
+@description('Deployment profile label propagated to agents and harnesses')
+param deploymentProfile string = 'federated-100'
+
+@description('Whether to enable OpenTelemetry inside deployed agents')
+@allowed(['true', 'false'])
+param enableOpenTelemetry string = 'false'
+
+@description('OTLP collector endpoint for agent spans')
+param otelOtlpEndpoint string = ''
+
+@allowed([
+  'grpc'
+  'http/protobuf'
+])
+@description('OTLP protocol for agent telemetry export')
+param otelOtlpProtocol string = 'http/protobuf'
+
+@description('Optional OTLP exporter headers')
+@secure()
+param otelExporterHeaders string = ''
+
+@description('OTel service namespace propagated to agents')
+param otelServiceNamespace string = 'amplihack'
+
+@description('Emit spans to stdout when no OTLP endpoint is configured')
+@allowed(['true', 'false'])
+param otelConsoleExporter string = 'false'
 
 
 // ---------- Naming ----------
@@ -221,6 +249,12 @@ resource containerEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
 var ehConnectionString = listKeys('${ehNamespace.id}/AuthorizationRules/RootManageSharedAccessKey', '2023-01-01-preview').primaryConnectionString
 var acrCredentials = empty(acrName) ? acr.listCredentials() : acrExisting.listCredentials()
 var resolvedImage = empty(image) ? '${acrNameResolved}.azurecr.io/amplihive:latest' : image
+var otelSecrets = empty(otelExporterHeaders) ? [] : [
+  {
+    name: 'otel-exporter-headers'
+    value: otelExporterHeaders
+  }
+]
 
 resource containerApps 'Microsoft.App/containerApps@2024-03-01' = [
   for appIdx in range(0, appCount): {
@@ -231,7 +265,7 @@ resource containerApps 'Microsoft.App/containerApps@2024-03-01' = [
       workloadProfileName: 'Consumption'
       configuration: {
         activeRevisionsMode: 'Single'
-        secrets: [
+        secrets: concat([
           {
             name: 'acr-password'
             value: acrCredentials.passwords[0].value
@@ -244,7 +278,7 @@ resource containerApps 'Microsoft.App/containerApps@2024-03-01' = [
             name: 'eh-connection-string'
             value: ehConnectionString
           }
-        ]
+        ], otelSecrets)
         registries: [
           {
             server: '${acrNameResolved}.azurecr.io'
@@ -268,7 +302,7 @@ resource containerApps 'Microsoft.App/containerApps@2024-03-01' = [
               cpu: perAgentCpu
               memory: perAgentMemory
             }
-            env: [
+            env: concat([
               {
                 name: 'AMPLIHACK_AGENT_NAME'
                 value: 'agent-${appIdx * agentsPerApp + agentOffset}'
@@ -302,6 +336,14 @@ resource containerApps 'Microsoft.App/containerApps@2024-03-01' = [
                 value: '${agentCount}'
               }
               {
+                name: 'AMPLIHACK_AGENTS_PER_APP'
+                value: '${agentsPerApp}'
+              }
+              {
+                name: 'AMPLIHACK_APP_COUNT'
+                value: '${appCount}'
+              }
+              {
                 name: 'AMPLIHACK_EH_CONNECTION_STRING'
                 secretRef: 'eh-connection-string' // pragma: allowlist secret
               }
@@ -329,7 +371,48 @@ resource containerApps 'Microsoft.App/containerApps@2024-03-01' = [
                 name: 'AMPLIHACK_ENABLE_DISTRIBUTED_RETRIEVAL'
                 value: enableDistributedRetrieval
               }
-            ]
+              {
+                name: 'AMPLIHACK_DEPLOYMENT_PROFILE'
+                value: deploymentProfile
+              }
+              {
+                name: 'AMPLIHACK_OTEL_ENABLED'
+                value: enableOpenTelemetry
+              }
+              {
+                name: 'AMPLIHACK_OTEL_SERVICE_NAMESPACE'
+                value: otelServiceNamespace
+              }
+              {
+                name: 'AMPLIHACK_OTEL_CONSOLE_EXPORTER'
+                value: otelConsoleExporter
+              }
+              {
+                name: 'OTEL_SERVICE_NAME'
+                value: 'amplihack.azure-hive-agent'
+              }
+              {
+                name: 'OTEL_SERVICE_NAMESPACE'
+                value: otelServiceNamespace
+              }
+              {
+                name: 'OTEL_EXPORTER_OTLP_ENDPOINT'
+                value: otelOtlpEndpoint
+              }
+              {
+                name: 'OTEL_EXPORTER_OTLP_PROTOCOL'
+                value: otelOtlpProtocol
+              }
+              {
+                name: 'OTEL_RESOURCE_ATTRIBUTES'
+                value: 'deployment.profile=${deploymentProfile},amplihack.hive.name=${hiveName},amplihack.app.index=${appIdx},amplihack.agent.count=${agentCount},amplihack.agents.per.app=${agentsPerApp}'
+              }
+            ], empty(otelExporterHeaders) ? [] : [
+              {
+                name: 'OTEL_EXPORTER_OTLP_HEADERS'
+                secretRef: 'otel-exporter-headers' // pragma: allowlist secret
+              }
+            ])
             volumeMounts: [
               {
                 volumeName: 'hive-data'

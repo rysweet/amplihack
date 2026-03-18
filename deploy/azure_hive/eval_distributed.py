@@ -14,7 +14,7 @@ Usage:
         --input-hub hive-events-amplihiveeval \
         --response-hub eval-responses-amplihiveeval \
         --turns 5000 --questions 50 \
-        --agents 5 \
+        --agents 100 \
         --grader-model claude-haiku-4-5-20251001 \
         --output results.json
 """
@@ -31,11 +31,24 @@ from pathlib import Path
 # Allow running from repo root
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
 
+from amplihack.observability import configure_otel, start_span
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
 )
 logger = logging.getLogger("eval_distributed")
+
+
+def _default_agent_count() -> int:
+    raw = os.environ.get("AMPLIHACK_AGENT_COUNT") or os.environ.get("HIVE_AGENT_COUNT")
+    if raw:
+        try:
+            return int(raw)
+        except ValueError:
+            logger.warning("Ignoring invalid agent count override: %s", raw)
+
+    return 10 if os.environ.get("HIVE_DEPLOYMENT_PROFILE", "").strip() == "smoke-10" else 100
 
 
 def main():
@@ -49,7 +62,9 @@ def main():
     p.add_argument("--response-hub", default="eval-responses", help="Eval response Event Hub name")
     p.add_argument("--turns", type=int, default=300, help="Dialogue turns")
     p.add_argument("--questions", type=int, default=50, help="Number of questions")
-    p.add_argument("--agents", type=int, default=5, help="Number of deployed agents")
+    p.add_argument(
+        "--agents", type=int, default=_default_agent_count(), help="Number of deployed agents"
+    )
     p.add_argument("--seed", type=int, default=42, help="Random seed")
     p.add_argument("--grader-model", default="claude-haiku-4-5-20251001")
     p.add_argument("--resource-group", default="", help="Azure resource group (optional, unused)")
@@ -70,6 +85,17 @@ def main():
         help="Number of failover retries for unanswered questions (retry on next agent)",
     )
     args = p.parse_args()
+
+    configure_otel(
+        service_name=os.environ.get("OTEL_SERVICE_NAME", "").strip()
+        or "amplihack.azure-eval-harness",
+        component="eval-distributed",
+        attributes={
+            "amplihack.agent_count": args.agents,
+            "amplihack.turns": args.turns,
+            "amplihack.questions": args.questions,
+        },
+    )
 
     # Import the adapter and the eval harness
     from remote_agent_adapter import RemoteAgentAdapter
@@ -97,7 +123,16 @@ def main():
 
     # Run — same code path as: python -m amplihack.eval.long_horizon_memory
     try:
-        report = eval_harness.run(adapter, grader_model=args.grader_model)
+        with start_span(
+            "azure_eval.run_long_horizon",
+            tracer_name=__name__,
+            attributes={
+                "amplihack.agent_count": args.agents,
+                "amplihack.turns": args.turns,
+                "amplihack.questions": args.questions,
+            },
+        ):
+            report = eval_harness.run(adapter, grader_model=args.grader_model)
     finally:
         adapter.close()
 
