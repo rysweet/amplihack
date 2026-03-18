@@ -9,7 +9,7 @@ title: "Layer 2: AST + LSP Bindings"
 # Layer 2: AST + LSP Bindings
 
 <div class="atlas-metadata">
-Category: <strong>Structural</strong> | Generated: 2026-03-18T19:21:23.610770+00:00
+Category: <strong>Structural</strong> | Generated: 2026-03-18T22:10:18.020890+00:00
 </div>
 
 ## Map
@@ -117,6 +117,11 @@ Category: <strong>Structural</strong> | Generated: 2026-03-18T19:21:23.610770+00
     - **Importlib Dynamic Imports**: 1
     - **Language Counts**:
         - `python`: 3369
+    - **Blarify Relationships**:
+        - `CONTAINS`: 605
+        - `FUNCTION_DEFINITION`: 4549
+        - `CLASS_DEFINITION`: 904
+        - `total`: 6058
 
 ## Cross-References
 

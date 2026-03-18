@@ -9,7 +9,7 @@ title: "Layer 5: API Contracts"
 # Layer 5: API Contracts
 
 <div class="atlas-metadata">
-Category: <strong>Behavioral</strong> | Generated: 2026-03-18T19:21:30.784714+00:00
+Category: <strong>Behavioral</strong> | Generated: 2026-03-18T22:10:25.297563+00:00
 </div>
 
 ## Map
@@ -205,6 +205,7 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-18T19:21:30.784714+00
     
     - **Cli Command Count**: 52
     - **Cli Argument Count**: 236
+    - **Click Typer Command Count**: 11
     - **Http Route Count**: 22
     - **Hook Event Count**: 274
     - **Recipe Count**: 19
