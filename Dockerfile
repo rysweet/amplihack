@@ -29,6 +29,7 @@ COPY src/ ./src/
 
 # Install Python dependencies with UV
 RUN uv pip install --system -e .
+RUN uv pip install --system opentelemetry-exporter-otlp-proto-http opentelemetry-exporter-otlp-proto-grpc
 
 # Install Claude CLI via npm (if available)
 RUN npm install -g @anthropic-ai/claude-cli || echo "Claude CLI not available via npm"

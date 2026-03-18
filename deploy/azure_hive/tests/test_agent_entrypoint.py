@@ -447,10 +447,18 @@ class TestDeployScript:
         content = deploy_sh.read_text()
         assert "containerapp" in content.lower() or "Container App" in content
 
-    def test_deploy_sh_defaults_to_one_agent_per_app(self):
+    def test_deploy_sh_defaults_to_federated_profile(self):
         deploy_sh = Path(__file__).parent.parent / "deploy.sh"
         content = deploy_sh.read_text()
-        assert 'AGENTS_PER_APP="${HIVE_AGENTS_PER_APP:-1}"' in content
+        assert 'DEPLOYMENT_PROFILE="${HIVE_DEPLOYMENT_PROFILE:-federated-100}"' in content
+        assert 'PROFILE_AGENT_COUNT="100"' in content
+        assert 'PROFILE_AGENTS_PER_APP="5"' in content
+
+    def test_deploy_sh_has_custom_profile_guardrails(self):
+        deploy_sh = Path(__file__).parent.parent / "deploy.sh"
+        content = deploy_sh.read_text()
+        assert "HIVE_DEPLOYMENT_PROFILE=custom" in content
+        assert "Profile '${DEPLOYMENT_PROFILE}' expects" in content
 
     def test_deploy_sh_exposes_distributed_retrieval_toggle(self):
         deploy_sh = Path(__file__).parent.parent / "deploy.sh"
@@ -458,6 +466,13 @@ class TestDeployScript:
         assert (
             'ENABLE_DISTRIBUTED_RETRIEVAL="${HIVE_ENABLE_DISTRIBUTED_RETRIEVAL:-true}"' in content
         )
+
+    def test_deploy_sh_exposes_otel_overrides(self):
+        deploy_sh = Path(__file__).parent.parent / "deploy.sh"
+        content = deploy_sh.read_text()
+        assert 'OTEL_OTLP_ENDPOINT="${HIVE_OTEL_OTLP_ENDPOINT:-}"' in content
+        assert 'OTEL_CONSOLE_EXPORTER="${HIVE_OTEL_CONSOLE_EXPORTER:-false}"' in content
+        assert 'enableOpenTelemetry="${OTEL_ENABLED}"' in content
 
     def test_deploy_sh_has_cleanup_mode(self):
         deploy_sh = Path(__file__).parent.parent / "deploy.sh"
@@ -501,10 +516,11 @@ class TestBicep:
         content = bicep.read_text()
         assert "agentsPerApp" in content
 
-    def test_bicep_defaults_to_one_agent_per_app(self):
+    def test_bicep_defaults_to_federated_profile(self):
         bicep = Path(__file__).parent.parent / "main.bicep"
         content = bicep.read_text()
-        assert "param agentsPerApp int = 1" in content
+        assert "param agentCount int = 100" in content
+        assert "param agentsPerApp int = 5" in content
 
     def test_bicep_single_agent_packing_uses_high_headroom(self):
         bicep = Path(__file__).parent.parent / "main.bicep"
@@ -522,6 +538,20 @@ class TestBicep:
         content = bicep.read_text()
         assert "enableDistributedRetrieval" in content
         assert "AMPLIHACK_ENABLE_DISTRIBUTED_RETRIEVAL" in content
+
+    def test_bicep_has_deployment_profile_env(self):
+        bicep = Path(__file__).parent.parent / "main.bicep"
+        content = bicep.read_text()
+        assert "deploymentProfile" in content
+        assert "AMPLIHACK_DEPLOYMENT_PROFILE" in content
+
+    def test_bicep_has_otel_env(self):
+        bicep = Path(__file__).parent.parent / "main.bicep"
+        content = bicep.read_text()
+        assert "enableOpenTelemetry" in content
+        assert "OTEL_SERVICE_NAME" in content
+        assert "OTEL_EXPORTER_OTLP_ENDPOINT" in content
+        assert "OTEL_RESOURCE_ATTRIBUTES" in content
 
     def test_bicep_has_shards_hub(self):
         """Bicep must declare hive-shards Event Hub for cross-shard DHT queries."""

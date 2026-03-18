@@ -40,6 +40,10 @@ Environment variables:
     AMPLIHACK_EH_INPUT_HUB         -- input Event Hub name (default: hive-events-{hiveName})
     AMPLIHACK_EVAL_RESPONSE_HUB    -- eval response Event Hub name (default: eval-responses-{hiveName})
     AMPLIHACK_HIVE_NAME            -- hive deployment name (for hub naming)
+    AMPLIHACK_DEPLOYMENT_PROFILE   -- federated-100 | smoke-10 | custom
+    AMPLIHACK_OTEL_ENABLED         -- enable OpenTelemetry instrumentation
+    OTEL_EXPORTER_OTLP_ENDPOINT    -- OTLP/HTTP collector endpoint
+    OTEL_EXPORTER_OTLP_HEADERS     -- optional OTLP headers
 """
 
 from __future__ import annotations
@@ -53,6 +57,8 @@ import threading
 import time
 from collections.abc import Callable
 from typing import Any
+
+from amplihack.observability import configure_otel, start_span
 
 logging.basicConfig(
     level=logging.INFO,
@@ -69,6 +75,16 @@ print(f"[agent_entrypoint] Python {sys.version}", flush=True)
 print(
     f"[agent_entrypoint] AGENT_NAME={os.environ.get('AMPLIHACK_AGENT_NAME', 'UNSET')}", flush=True
 )
+
+
+def _default_agent_count() -> int:
+    raw = os.environ.get("AMPLIHACK_AGENT_COUNT") or os.environ.get("HIVE_AGENT_COUNT")
+    if raw:
+        try:
+            return int(raw)
+        except ValueError:
+            logger.warning("Ignoring invalid agent count override: %s", raw)
+    return 10 if os.environ.get("AMPLIHACK_DEPLOYMENT_PROFILE", "").strip() == "smoke-10" else 100
 
 
 # ---------------------------------------------------------------------------
@@ -215,6 +231,9 @@ def main() -> None:
     eh_name = os.environ.get("AMPLIHACK_EH_NAME", f"hive-shards-{hive_name}")
     eh_input_hub = os.environ.get("AMPLIHACK_EH_INPUT_HUB", f"hive-events-{hive_name}")
     eh_eval_hub = os.environ.get("AMPLIHACK_EVAL_RESPONSE_HUB", f"eval-responses-{hive_name}")
+    deployment_profile = os.environ.get("AMPLIHACK_DEPLOYMENT_PROFILE", "custom")
+    agents_per_app = os.environ.get("AMPLIHACK_AGENTS_PER_APP", "")
+    app_count = os.environ.get("AMPLIHACK_APP_COUNT", "")
 
     # Per-app consumer groups are safe because EventHubsInputSource reads a
     # deterministic per-agent partition within the shared group.
@@ -231,6 +250,25 @@ def main() -> None:
         transport,
     )
 
+    configure_otel(
+        service_name=os.environ.get("OTEL_SERVICE_NAME", "").strip()
+        or "amplihack.azure-hive-agent",
+        component="azure-hive-agent",
+        attributes={
+            "amplihack.agent.name": agent_name,
+            "amplihack.hive.name": hive_name,
+            "amplihack.input_hub": eh_input_hub,
+            "amplihack.shards_hub": eh_name,
+            "amplihack.response_hub": eh_eval_hub,
+            "amplihack.deployment_profile": deployment_profile,
+            "amplihack.app_index": app_index,
+            "amplihack.agent_count": _default_agent_count(),
+            "amplihack.agents_per_app": agents_per_app,
+            "amplihack.app_count": app_count,
+            "amplihack.distributed_retrieval_enabled": distributed_retrieval_enabled,
+        },
+    )
+
     # ------------------------------------------------------------------
     # Initialize DHT shard store for cross-agent knowledge sharing.
     # DI pattern: EventHubsShardTransport injected into DistributedHiveGraph.
@@ -241,7 +279,7 @@ def main() -> None:
     shard_transport: Any | None = None
 
     if eh_connection_string and distributed_retrieval_enabled:
-        agent_count = int(os.environ.get("AMPLIHACK_AGENT_COUNT", "5"))
+        agent_count = _default_agent_count()
         result = _init_dht_hive(
             agent_name,
             agent_count,
@@ -259,7 +297,7 @@ def main() -> None:
             agent_name,
         )
     elif transport == "azure_service_bus" and connection_string:
-        agent_count = int(os.environ.get("AMPLIHACK_AGENT_COUNT", "5"))
+        agent_count = _default_agent_count()
         result = _init_dht_hive(
             agent_name,
             agent_count,
@@ -351,7 +389,15 @@ def main() -> None:
         logger.info("Bound agent %s to shard transport for LOCAL queries", agent_name)
 
     # Store initial agent identity without routing it through question heuristics.
-    agent.process_store(f"Agent identity: {agent_name}. Role: {agent_prompt}")
+    with start_span(
+        "azure_hive.seed_agent_identity",
+        tracer_name=__name__,
+        attributes={
+            "amplihack.agent.name": agent_name,
+            "amplihack.hive.name": hive_name,
+        },
+    ):
+        agent.process_store(f"Agent identity: {agent_name}. Role: {agent_prompt}")
 
     # Set up answer publisher for eval answer correlation via on_answer callback.
     answer_publisher = AnswerPublisher(agent_name, eh_connection_string, eh_eval_hub)
@@ -623,6 +669,13 @@ def _run_event_driven_loop(
             )
             agent.store_fact_batch(fact_batch if isinstance(fact_batch, dict) else {})
             _fact_batch_count += 1
+            if _fact_batch_count == 1 or _fact_batch_count % 50 == 0:
+                answer_publisher.publish_agent_progress(
+                    phase="fact_batch",
+                    processed_count=_fact_batch_count,
+                    run_id=metadata.get("run_id", ""),
+                    input_event_type="STORE_FACT_BATCH",
+                )
             # Check if we were waiting for this batch to publish AGENT_READY (legacy mode)
             if (
                 _pending_feed_complete is not None
@@ -668,6 +721,13 @@ def _run_event_driven_loop(
                 )
                 agent.process_store(text)
                 _learn_content_count += 1
+                if _learn_content_count == 1 or _learn_content_count % 50 == 0:
+                    answer_publisher.publish_agent_progress(
+                        phase="learn_content",
+                        processed_count=_learn_content_count,
+                        run_id=metadata.get("run_id", ""),
+                        input_event_type=event_type,
+                    )
                 # Check if we were waiting on LEARN_CONTENT count for deferred AGENT_READY
                 if (
                     _pending_feed_complete is not None
@@ -693,7 +753,17 @@ def _run_event_driven_loop(
                             expected,
                         )
             else:
-                agent.process(text)
+                with start_span(
+                    "azure_hive.answer_question",
+                    tracer_name=__name__,
+                    attributes={
+                        "amplihack.agent.name": agent_name,
+                        "amplihack.event_type": event_type or "unknown",
+                        "amplihack.question_length": len(text),
+                        "amplihack.run_id": metadata.get("run_id", ""),
+                    },
+                ):
+                    agent.process(text)
         except Exception:
             logger.exception("Error in OODA process for agent %s", agent_name)
         finally:
@@ -844,8 +914,9 @@ class AnswerPublisher:
     publisher wraps the answer with the current event_id and publishes to the
     eval-responses Event Hub.
 
-    Also publishes AGENT_ONLINE and AGENT_READY events so the eval harness can
-    synchronize startup and feed-drain barriers.
+    Also publishes AGENT_ONLINE, AGENT_PROGRESS, and AGENT_READY events so the
+    eval harness can synchronize startup and feed-drain barriers and verify
+    that agents are processing real feed work.
 
     The current event_id is set by _CorrelatingInputSource before each process() call.
     """
@@ -881,34 +952,43 @@ class AnswerPublisher:
         backoff_seconds = [1, 2, 4]
         last_exc: Exception | None = None
 
-        for attempt in range(1, max_retries + 1):
-            try:
-                from azure.eventhub import (  # type: ignore[import-unresolved]
-                    EventData,
-                    EventHubProducerClient,
-                )
-
-                producer = EventHubProducerClient.from_connection_string(
-                    self._eh_connection_string, eventhub_name=self._eval_hub_name
-                )
-                with producer:
-                    batch = producer.create_batch(partition_key=self._agent_name)
-                    batch.add(EventData(json.dumps(payload)))
-                    producer.send_batch(batch)
-                return  # success
-            except Exception as e:
-                last_exc = e
-                if attempt < max_retries:
-                    delay = backoff_seconds[attempt - 1]
-                    logger.warning(
-                        "AnswerPublisher: EH publish attempt %d/%d failed (%s), "
-                        "retrying in %ds with fresh producer",
-                        attempt,
-                        max_retries,
-                        e,
-                        delay,
+        with start_span(
+            "azure_hive.publish_eval_event",
+            tracer_name=__name__,
+            attributes={
+                "amplihack.agent.name": self._agent_name,
+                "amplihack.eval_hub": self._eval_hub_name,
+                "amplihack.event_type": payload.get("event_type", "UNKNOWN"),
+            },
+        ):
+            for attempt in range(1, max_retries + 1):
+                try:
+                    from azure.eventhub import (  # type: ignore[import-unresolved]
+                        EventData,
+                        EventHubProducerClient,
                     )
-                    time.sleep(delay)
+
+                    producer = EventHubProducerClient.from_connection_string(
+                        self._eh_connection_string, eventhub_name=self._eval_hub_name
+                    )
+                    with producer:
+                        batch = producer.create_batch(partition_key=self._agent_name)
+                        batch.add(EventData(json.dumps(payload)))
+                        producer.send_batch(batch)
+                    return  # success
+                except Exception as e:
+                    last_exc = e
+                    if attempt < max_retries:
+                        delay = backoff_seconds[attempt - 1]
+                        logger.warning(
+                            "AnswerPublisher: EH publish attempt %d/%d failed (%s), "
+                            "retrying in %ds with fresh producer",
+                            attempt,
+                            max_retries,
+                            e,
+                            delay,
+                        )
+                        time.sleep(delay)
 
         # All retries exhausted — log at ERROR (this will hang the eval)
         logger.error(
@@ -981,6 +1061,34 @@ class AnswerPublisher:
             }
         )
         logger.info("AnswerPublisher: published AGENT_ONLINE for agent=%s", self._agent_name)
+
+    def publish_agent_progress(
+        self,
+        phase: str,
+        processed_count: int,
+        run_id: str = "",
+        input_event_type: str = "",
+    ) -> None:
+        """Publish AGENT_PROGRESS event to eval-responses hub."""
+        import uuid as _uuid
+
+        self._publish_to_eh(
+            {
+                "event_type": "AGENT_PROGRESS",
+                "event_id": _uuid.uuid4().hex,
+                "agent_id": self._agent_name,
+                "phase": phase,
+                "processed_count": processed_count,
+                "input_event_type": input_event_type,
+                "run_id": run_id or self._current_run_id,
+            }
+        )
+        logger.info(
+            "AnswerPublisher: published AGENT_PROGRESS for agent=%s phase=%s count=%d",
+            self._agent_name,
+            phase,
+            processed_count,
+        )
 
     def publish_agent_shutdown(self, reason: str, detail: str = "", run_id: str = "") -> None:
         """Publish AGENT_SHUTDOWN event to eval-responses hub."""

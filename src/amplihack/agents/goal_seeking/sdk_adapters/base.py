@@ -17,6 +17,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+from amplihack.observability import configure_otel, start_span
+
 logger = logging.getLogger(__name__)
 
 
@@ -93,6 +95,18 @@ class GoalSeekingAgent(ABC):
         self.enable_memory = enable_memory
         self.enable_eval = enable_eval
         self.enable_spawning = enable_spawning
+
+        configure_otel(
+            service_name=os.environ.get("OTEL_SERVICE_NAME", "").strip() or "amplihack.goal-agent",
+            component="sdk-goal-agent",
+            attributes={
+                "amplihack.agent.name": self.name,
+                "amplihack.sdk": self.sdk_type.value,
+                "amplihack.enable_memory": enable_memory,
+                "amplihack.enable_eval": enable_eval,
+                "amplihack.enable_spawning": enable_spawning,
+            },
+        )
 
         self.memory: Any = None
         if enable_memory:
@@ -426,6 +440,14 @@ class GoalSeekingAgent(ABC):
     # The eval harness and external callers use these directly.
     # ------------------------------------------------------------------
 
+    def _span_attributes(self, **extra: Any) -> dict[str, Any]:
+        attributes: dict[str, Any] = {
+            "amplihack.agent.name": self.name,
+            "amplihack.sdk": self.sdk_type.value,
+        }
+        attributes.update({key: value for key, value in extra.items() if value is not None})
+        return attributes
+
     def learn_from_content(self, content: str) -> dict[str, Any]:
         """Learn from content using LLM-based fact extraction.
 
@@ -433,7 +455,12 @@ class GoalSeekingAgent(ABC):
         internal LearningAgent for proper temporal detection, entity
         extraction, and structured fact storage.
         """
-        return self._tool_learn(content)
+        with start_span(
+            "sdk_goal_agent.learn_from_content",
+            tracer_name=__name__,
+            attributes=self._span_attributes(content_length=len(content)),
+        ):
+            return self._tool_learn(content)
 
     def answer_question(self, question: str, answer_mode: str = "single-shot") -> str:
         """Answer a question using memory retrieval and LLM synthesis.
@@ -449,20 +476,28 @@ class GoalSeekingAgent(ABC):
                 ``"agentic"`` uses the iterative PERCEIVE->REASON->ACT->LEARN
                 loop where the agent autonomously picks tools.
         """
-        la = self._get_learning_agent()
-        if la:
-            if answer_mode == "agentic":
-                return la.answer_question_agentic(question)
-            result = la.answer_question(question)
-            if isinstance(result, tuple):
-                return result[0]
-            return result
-        # Fallback: raw memory search
-        results = self._tool_search(query=question, limit=20)
-        if results:
-            facts = "\n".join(r.get("outcome", r.get("fact", ""))[:150] for r in results[:10])
-            return f"Based on stored knowledge:\n{facts}"
-        return "I don't have enough information to answer that question."
+        with start_span(
+            "sdk_goal_agent.answer_question",
+            tracer_name=__name__,
+            attributes=self._span_attributes(
+                question_length=len(question),
+                answer_mode=answer_mode,
+            ),
+        ):
+            la = self._get_learning_agent()
+            if la:
+                if answer_mode == "agentic":
+                    return la.answer_question_agentic(question)
+                result = la.answer_question(question)
+                if isinstance(result, tuple):
+                    return result[0]
+                return result
+            # Fallback: raw memory search
+            results = self._tool_search(query=question, limit=20)
+            if results:
+                facts = "\n".join(r.get("outcome", r.get("fact", ""))[:150] for r in results[:10])
+                return f"Based on stored knowledge:\n{facts}"
+            return "I don't have enough information to answer that question."
 
     def get_memory_stats(self) -> dict[str, Any]:
         """Get memory statistics."""
@@ -497,10 +532,15 @@ class GoalSeekingAgent(ABC):
         if not task or not task.strip():
             return AgentResult(response="Error: Task cannot be empty", goal_achieved=False)
         self.form_goal(task)
-        result = await self._run_sdk_agent(task, max_turns)
-        if self.current_goal:
-            self.current_goal.status = "achieved" if result.goal_achieved else "failed"
-        return result
+        with start_span(
+            "sdk_goal_agent.run",
+            tracer_name=__name__,
+            attributes=self._span_attributes(task_length=len(task), max_turns=max_turns),
+        ):
+            result = await self._run_sdk_agent(task, max_turns)
+            if self.current_goal:
+                self.current_goal.status = "achieved" if result.goal_achieved else "failed"
+            return result
 
     def close(self) -> None:
         """Clean up resources."""

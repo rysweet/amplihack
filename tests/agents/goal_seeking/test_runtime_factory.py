@@ -48,6 +48,33 @@ def test_create_goal_agent_runtime_can_return_raw_goal_runtime(tmp_path: Path):
     assert runtime is runtime_backend
 
 
+def test_create_goal_agent_runtime_configures_otel(tmp_path: Path):
+    runtime_backend = MagicMock()
+
+    with (
+        patch(
+            "amplihack.agents.goal_seeking.runtime_factory.OODAGoalSeekingAgent",
+            return_value=runtime_backend,
+            create=True,
+        ),
+        patch("amplihack.agents.goal_seeking.runtime_factory.configure_otel") as configure_otel,
+    ):
+        from amplihack.agents.goal_seeking.runtime_factory import create_goal_agent_runtime
+
+        create_goal_agent_runtime(
+            agent_name="telemetry-agent",
+            sdk="mini",
+            storage_path=tmp_path,
+            bind_answer_mode=False,
+        )
+
+    configure_otel.assert_called_once()
+    assert configure_otel.call_args.kwargs["component"] == "goal-agent-runtime"
+    assert (
+        configure_otel.call_args.kwargs["attributes"]["amplihack.agent.name"] == "telemetry-agent"
+    )
+
+
 def test_create_goal_agent_runtime_uses_sdk_factory_for_non_mini(tmp_path: Path):
     sdk_agent = MagicMock()
 

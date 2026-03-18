@@ -12,7 +12,9 @@ COPY . /build
 RUN cd /build && pip install --no-cache-dir . && \
     pip install --no-cache-dir kuzu && \
     pip install --no-cache-dir sentence-transformers && \
-    pip install --no-cache-dir "azure-eventhub==5.11.7" redis pyyaml
+    pip install --no-cache-dir "azure-eventhub==5.11.7" redis pyyaml \
+        opentelemetry-exporter-otlp-proto-http \
+        opentelemetry-exporter-otlp-proto-grpc
 
 # Create non-root user (security best practice for Container Apps)
 RUN useradd -m -s /bin/bash amplihack-agent \

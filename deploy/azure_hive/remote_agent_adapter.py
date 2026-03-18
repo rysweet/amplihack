@@ -13,6 +13,8 @@ Transport: Azure Event Hubs (CBS-free AMQP — works reliably in Container Apps)
     content is not published before every target agent is actually listening.
   - _wait_for_agents_idle() sends FEED_COMPLETE to all agents and waits
     for N AGENT_READY events on the eval-responses hub.
+  - learn_from_content() also waits for an initial AGENT_PROGRESS event from
+    every target agent before trusting feed progress logs.
 
 Content is partitioned round-robin across agents (each agent learns N/agent_count turns).
 Questions are targeted to specific agents via target_agent field.
@@ -23,6 +25,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import shutil
 import tempfile
 import threading
@@ -30,6 +33,8 @@ import time
 import uuid
 from pathlib import Path
 from typing import Any
+
+from amplihack.observability import configure_otel, start_span
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +92,12 @@ class RemoteAgentAdapter:
         self._online_lock = threading.Lock()
         self._all_agents_online = threading.Event()
 
+        # AGENT_PROGRESS tracking for early feed telemetry verification
+        self._progress_agents: set[str] = set()
+        self._progress_counts: dict[str, int] = {}
+        self._progress_lock = threading.Lock()
+        self._feed_telemetry_wait_done = threading.Event()
+
         # Unique run_id to filter stale events from previous eval runs
         self._run_id = uuid.uuid4().hex[:12]
         self._num_partitions: int | None = None
@@ -110,6 +121,12 @@ class RemoteAgentAdapter:
             response_hub,
             agent_count,
             self._run_id,
+        )
+        configure_otel(
+            service_name=os.environ.get("OTEL_SERVICE_NAME", "").strip()
+            or "amplihack.azure-eval-harness",
+            component="remote-agent-adapter",
+            attributes=self._span_attributes(),
         )
 
     @staticmethod
@@ -146,6 +163,18 @@ class RemoteAgentAdapter:
     def _agent_name(agent_index: int) -> str:
         """Return the canonical agent name for an index."""
         return f"agent-{agent_index}"
+
+    def _span_attributes(self, **extra: Any) -> dict[str, Any]:
+        attributes: dict[str, Any] = {
+            "amplihack.input_hub": self._input_hub,
+            "amplihack.response_hub": self._response_hub,
+            "amplihack.agent_count": self._agent_count,
+            "amplihack.run_id": self._run_id,
+            "amplihack.replicate_learning": self._replicate_learning_to_all_agents,
+            "amplihack.question_failover_retries": self._question_failover_retries,
+        }
+        attributes.update({key: value for key, value in extra.items() if value is not None})
+        return attributes
 
     def _publish_event(self, payload: dict, partition_key: str) -> None:
         """Publish a single JSON event to the input Event Hub."""
@@ -238,48 +267,82 @@ class RemoteAgentAdapter:
         This prevents the eval feed from starting while some agents are still
         booting and not yet consuming their assigned Event Hubs partitions.
         """
-        logger.info(
-            "Sending ONLINE_CHECK to all %d agents before feed phase...",
-            self._agent_count,
-        )
-
-        with self._online_lock:
-            self._online_agents.clear()
-            self._all_agents_online.clear()
-
-        poll_interval = 10
-        while True:
-            with self._online_lock:
-                missing_agents = [
-                    f"agent-{i}"
-                    for i in range(self._agent_count)
-                    if f"agent-{i}" not in self._online_agents
-                ]
-                online_count = self._agent_count - len(missing_agents)
-
-            if not missing_agents:
-                logger.info("All %d agents online. Starting feed phase.", self._agent_count)
-                return
-
-            for target_name in missing_agents:
-                self._publish_event(
-                    {
-                        "event_type": "ONLINE_CHECK",
-                        "event_id": uuid.uuid4().hex[:12],
-                        "target_agent": target_name,
-                        "source_agent": "eval-harness",
-                        "payload": {"target_agent": target_name},
-                    },
-                    partition_key=target_name,
-                )
-
+        with start_span(
+            "azure_eval.wait_for_agents_online",
+            tracer_name=__name__,
+            attributes=self._span_attributes(),
+        ):
             logger.info(
-                "  %d/%d agents online, pinging missing agents: %s",
-                online_count,
+                "Sending ONLINE_CHECK to all %d agents before feed phase...",
                 self._agent_count,
-                ", ".join(missing_agents),
             )
-            time.sleep(poll_interval)
+
+            with self._online_lock:
+                self._online_agents.clear()
+                self._all_agents_online.clear()
+
+            poll_interval = 10
+            while True:
+                with self._online_lock:
+                    missing_agents = [
+                        f"agent-{i}"
+                        for i in range(self._agent_count)
+                        if f"agent-{i}" not in self._online_agents
+                    ]
+                    online_count = self._agent_count - len(missing_agents)
+
+                if not missing_agents:
+                    logger.info("All %d agents online. Starting feed phase.", self._agent_count)
+                    return
+
+                for target_name in missing_agents:
+                    self._publish_event(
+                        {
+                            "event_type": "ONLINE_CHECK",
+                            "event_id": uuid.uuid4().hex[:12],
+                            "target_agent": target_name,
+                            "source_agent": "eval-harness",
+                            "payload": {"target_agent": target_name},
+                        },
+                        partition_key=target_name,
+                    )
+
+                logger.info(
+                    "  %d/%d agents online, pinging missing agents: %s",
+                    online_count,
+                    self._agent_count,
+                    ", ".join(missing_agents),
+                )
+                time.sleep(poll_interval)
+
+    def _wait_for_feed_telemetry(self, expected_agents: set[str]) -> None:
+        """Wait until each expected agent reports real feed processing."""
+        if not expected_agents:
+            return
+
+        with start_span(
+            "azure_eval.wait_for_feed_telemetry",
+            tracer_name=__name__,
+            attributes=self._span_attributes(expected_agents=len(expected_agents)),
+        ):
+            logger.info(
+                "Waiting for initial AGENT_PROGRESS from %d agents before trusting feed telemetry...",
+                len(expected_agents),
+            )
+            poll_interval = 5
+            while True:
+                with self._progress_lock:
+                    missing_agents = sorted(expected_agents - self._progress_agents)
+
+                if not missing_agents:
+                    logger.info(
+                        "Received AGENT_PROGRESS from all %d agents. Feed telemetry confirmed.",
+                        len(expected_agents),
+                    )
+                    return
+
+                logger.info("  waiting for AGENT_PROGRESS from: %s", ", ".join(missing_agents))
+                time.sleep(poll_interval)
 
     def learn_from_content(self, content: str) -> dict[str, Any]:
         """Send content to one agent or to all agents when replication is enabled.
@@ -288,157 +351,183 @@ class RemoteAgentAdapter:
         partition locally. The hive mind shares knowledge between agents
         so any agent can answer questions about any content.
         """
-        if not self._startup_wait_done.is_set():
+        with start_span(
+            "azure_eval.learn_from_content",
+            tracer_name=__name__,
+            attributes=self._span_attributes(content_length=len(content)),
+        ):
+            if not self._startup_wait_done.is_set():
+                with self._counter_lock:
+                    if not self._startup_wait_done.is_set():
+                        self._wait_for_agents_online()
+                        self._startup_wait_done.set()
+
+            event_id = uuid.uuid4().hex[:12]
             with self._counter_lock:
-                if not self._startup_wait_done.is_set():
-                    self._wait_for_agents_online()
-                    self._startup_wait_done.set()
+                target_agent = self._learn_count % self._agent_count
+                self._learn_count += 1
+                learn_count = self._learn_count
+                if self._replicate_learning_to_all_agents:
+                    target_agents = list(range(self._agent_count))
+                    for agent_index in target_agents:
+                        self._learn_turn_counts[agent_index] += 1
+                else:
+                    target_agents = [target_agent]
+                    self._learn_turn_counts[target_agent] += 1
 
-        event_id = uuid.uuid4().hex[:12]
-        with self._counter_lock:
-            target_agent = self._learn_count % self._agent_count
-            self._learn_count += 1
-            learn_count = self._learn_count
+            fact_batch: dict[str, Any] | None = None
             if self._replicate_learning_to_all_agents:
-                target_agents = list(range(self._agent_count))
-                for agent_index in target_agents:
-                    self._learn_turn_counts[agent_index] += 1
-            else:
-                target_agents = [target_agent]
-                self._learn_turn_counts[target_agent] += 1
+                fact_batch = self._prepare_fact_batch(content)
 
-        fact_batch: dict[str, Any] | None = None
-        if self._replicate_learning_to_all_agents:
-            # Pre-extract facts locally so agents just do a fast DB write.
-            # STORE_FACT_BATCH events are sent in order before FEED_COMPLETE.
-            # Agents defer AGENT_READY until all expected fact batches are stored
-            # (see expected_fact_batches in FEED_COMPLETE payload).
-            fact_batch = self._prepare_fact_batch(content)
-
-        for agent_index in target_agents:
-            target_name = self._agent_name(agent_index)
-            if self._replicate_learning_to_all_agents:
-                payload = {
-                    "event_type": "STORE_FACT_BATCH",
-                    "event_id": event_id,
-                    "target_agent": target_name,
-                    "source_agent": "eval-harness",
-                    "payload": {
-                        "fact_batch": fact_batch,
+            for agent_index in target_agents:
+                target_name = self._agent_name(agent_index)
+                if self._replicate_learning_to_all_agents:
+                    payload = {
+                        "event_type": "STORE_FACT_BATCH",
+                        "event_id": event_id,
                         "target_agent": target_name,
-                    },
-                }
-            else:
-                payload = {
-                    "event_type": "LEARN_CONTENT",
-                    "event_id": event_id,
-                    "target_agent": target_name,
-                    "source_agent": "eval-harness",
-                    "payload": {
-                        "content": content,
+                        "source_agent": "eval-harness",
+                        "payload": {
+                            "fact_batch": fact_batch,
+                            "target_agent": target_name,
+                        },
+                    }
+                else:
+                    payload = {
+                        "event_type": "LEARN_CONTENT",
+                        "event_id": event_id,
                         "target_agent": target_name,
-                    },
-                }
-            self._publish_event(
-                payload,
-                partition_key=target_name,
-            )
-
-        log_every = 50 if self._replicate_learning_to_all_agents else 500
-        if learn_count % log_every == 0:
-            if self._replicate_learning_to_all_agents:
-                logger.info(
-                    "RemoteAgentAdapter: sent %d content turns (STORE_FACT_BATCH replicated to all %d agents)",
-                    learn_count,
-                    self._agent_count,
-                )
-            else:
-                logger.info(
-                    "RemoteAgentAdapter: sent %d content turns (%d per agent)",
-                    learn_count,
-                    learn_count // max(1, self._agent_count),
+                        "source_agent": "eval-harness",
+                        "payload": {
+                            "content": content,
+                            "target_agent": target_name,
+                        },
+                    }
+                self._publish_event(
+                    payload,
+                    partition_key=target_name,
                 )
 
-        return {
-            "facts_stored": len((fact_batch or {}).get("facts", [])) if fact_batch else 1,
-            "event_id": event_id,
-            "replicated_to": len(target_agents),
-        }
+            if not self._feed_telemetry_wait_done.is_set():
+                expected_progress_agents: set[str] | None = None
+                if (self._replicate_learning_to_all_agents and learn_count >= 1) or (
+                    not self._replicate_learning_to_all_agents and learn_count >= self._agent_count
+                ):
+                    expected_progress_agents = {
+                        self._agent_name(i) for i in range(self._agent_count)
+                    }
+
+                if expected_progress_agents is not None:
+                    self._wait_for_feed_telemetry(expected_progress_agents)
+                    self._feed_telemetry_wait_done.set()
+
+            log_every = 50 if self._replicate_learning_to_all_agents else 500
+            if learn_count % log_every == 0:
+                if self._replicate_learning_to_all_agents:
+                    logger.info(
+                        "RemoteAgentAdapter: sent %d content turns (STORE_FACT_BATCH replicated to all %d agents)",
+                        learn_count,
+                        self._agent_count,
+                    )
+                else:
+                    logger.info(
+                        "RemoteAgentAdapter: sent %d content turns (%d per agent)",
+                        learn_count,
+                        learn_count // max(1, self._agent_count),
+                    )
+
+            return {
+                "facts_stored": len((fact_batch or {}).get("facts", [])) if fact_batch else 1,
+                "event_id": event_id,
+                "replicated_to": len(target_agents),
+            }
 
     def _send_question_to_agent(self, question: str, target_agent: int) -> str:
         """Send one question attempt to one agent and wait for its answer."""
-        event_id = uuid.uuid4().hex[:12]
         target_name = self._agent_name(target_agent)
+        with start_span(
+            "azure_eval.send_question",
+            tracer_name=__name__,
+            attributes=self._span_attributes(
+                question_length=len(question),
+                target_agent=target_name,
+            ),
+        ):
+            event_id = uuid.uuid4().hex[:12]
 
-        answer_event = threading.Event()
-        with self._answer_lock:
-            self._answer_events[event_id] = answer_event
+            answer_event = threading.Event()
+            with self._answer_lock:
+                self._answer_events[event_id] = answer_event
 
-        self._publish_event(
-            {
-                "event_type": "INPUT",
-                "event_id": event_id,
-                "target_agent": target_name,
-                "source_agent": "eval-harness",
-                "payload": {
-                    "question": question,
-                    "question_id": f"q_{target_agent}_{event_id}",
+            self._publish_event(
+                {
+                    "event_type": "INPUT",
+                    "event_id": event_id,
                     "target_agent": target_name,
+                    "source_agent": "eval-harness",
+                    "payload": {
+                        "question": question,
+                        "question_id": f"q_{target_agent}_{event_id}",
+                        "target_agent": target_name,
+                    },
                 },
-            },
-            partition_key=target_name,
-        )
-
-        logger.info(
-            "RemoteAgentAdapter: sent question to %s (event_id=%s): %s",
-            target_name,
-            event_id,
-            question[:60],
-        )
-
-        timeout = self._answer_timeout if self._answer_timeout > 0 else None
-        got_answer = answer_event.wait(timeout=timeout)
-        if not got_answer:
-            logger.warning(
-                "answer_question: timeout after %ds waiting for event_id=%s",
-                self._answer_timeout,
-                event_id,
+                partition_key=target_name,
             )
 
-        with self._answer_lock:
-            answer = self._pending_answers.pop(event_id, "No answer received")
-            self._answer_events.pop(event_id, None)
+            logger.info(
+                "RemoteAgentAdapter: sent question to %s (event_id=%s): %s",
+                target_name,
+                event_id,
+                question[:60],
+            )
 
-        return answer
+            timeout = self._answer_timeout if self._answer_timeout > 0 else None
+            got_answer = answer_event.wait(timeout=timeout)
+            if not got_answer:
+                logger.warning(
+                    "answer_question: timeout after %ds waiting for event_id=%s",
+                    self._answer_timeout,
+                    event_id,
+                )
+
+            with self._answer_lock:
+                answer = self._pending_answers.pop(event_id, "No answer received")
+                self._answer_events.pop(event_id, None)
+
+            return answer
 
     def answer_question(self, question: str) -> str:
         """Send question to one agent, retrying on other agents when configured."""
-        # Wait for agents to finish processing content (blocks all threads)
-        if self._learn_count > 0 and not self._idle_wait_done.is_set():
+        with start_span(
+            "azure_eval.answer_question",
+            tracer_name=__name__,
+            attributes=self._span_attributes(question_length=len(question)),
+        ):
+            if self._learn_count > 0 and not self._idle_wait_done.is_set():
+                with self._counter_lock:
+                    if not self._idle_wait_done.is_set():
+                        self._wait_for_agents_idle()
+                        self._idle_wait_done.set()
+
             with self._counter_lock:
-                if not self._idle_wait_done.is_set():
-                    self._wait_for_agents_idle()
-                    self._idle_wait_done.set()
+                target_agent = self._question_count % self._agent_count
+                self._question_count += 1
 
-        with self._counter_lock:
-            target_agent = self._question_count % self._agent_count
-            self._question_count += 1
+            max_attempts = min(self._agent_count, 1 + self._question_failover_retries)
+            last_answer = "No answer received"
+            for attempt in range(max_attempts):
+                attempt_target = (target_agent + attempt) % self._agent_count
+                if attempt > 0:
+                    logger.info(
+                        "RemoteAgentAdapter: retrying question on %s after previous timeout/no-answer",
+                        self._agent_name(attempt_target),
+                    )
+                answer = self._send_question_to_agent(question, attempt_target)
+                if answer != "No answer received":
+                    return answer
+                last_answer = answer
 
-        max_attempts = min(self._agent_count, 1 + self._question_failover_retries)
-        last_answer = "No answer received"
-        for attempt in range(max_attempts):
-            attempt_target = (target_agent + attempt) % self._agent_count
-            if attempt > 0:
-                logger.info(
-                    "RemoteAgentAdapter: retrying question on %s after previous timeout/no-answer",
-                    self._agent_name(attempt_target),
-                )
-            answer = self._send_question_to_agent(question, attempt_target)
-            if answer != "No answer received":
-                return answer
-            last_answer = answer
-
-        return last_answer
+            return last_answer
 
     def _wait_for_agents_idle(self) -> None:
         """Wait for all agents to finish processing content.
@@ -446,84 +535,83 @@ class RemoteAgentAdapter:
         Sends FEED_COMPLETE to every agent, then waits for each to publish
         AGENT_READY on the eval-responses hub.  Event-driven — no polling.
         """
-        min_turns = min(self._learn_turn_counts, default=0)
-        max_turns = max(self._learn_turn_counts, default=0)
-        if min_turns == max_turns:
-            turns_summary = f"{max_turns} content turns each"
-        else:
-            turns_summary = f"{min_turns}-{max_turns} content turns per agent"
-        logger.info(
-            "Sending FEED_COMPLETE to all %d agents (%s)...",
-            self._agent_count,
-            turns_summary,
-        )
+        with start_span(
+            "azure_eval.wait_for_agents_idle",
+            tracer_name=__name__,
+            attributes=self._span_attributes(),
+        ):
+            min_turns = min(self._learn_turn_counts, default=0)
+            max_turns = max(self._learn_turn_counts, default=0)
+            if min_turns == max_turns:
+                turns_summary = f"{max_turns} content turns each"
+            else:
+                turns_summary = f"{min_turns}-{max_turns} content turns per agent"
+            logger.info(
+                "Sending FEED_COMPLETE to all %d agents (%s)...",
+                self._agent_count,
+                turns_summary,
+            )
 
-        # Reset ready tracking
-        with self._ready_lock:
-            self._ready_agents.clear()
-            self._all_agents_ready.clear()
-
-        logger.info(
-            "Waiting for %d AGENT_READY events on '%s'...",
-            self._agent_count,
-            self._response_hub,
-        )
-
-        # Wait for all agents to report ready (no timeout — eval is not time-bound)
-        poll_interval = 15
-        while True:
             with self._ready_lock:
-                missing_agents = [
-                    f"agent-{i}"
-                    for i in range(self._agent_count)
-                    if f"agent-{i}" not in self._ready_agents
-                ]
-                ready_count = self._agent_count - len(missing_agents)
-            if ready_count >= self._agent_count:
-                logger.info("All %d agents ready. Starting question phase.", self._agent_count)
-                return
-
-            for target_name in missing_agents:
-                target_agent = self._agent_index(target_name)
-                total_turns = (
-                    self._learn_turn_counts[target_agent]
-                    if 0 <= target_agent < len(self._learn_turn_counts)
-                    else self._learn_count // max(1, self._agent_count)
-                )
-                # Include expected event count so agents defer AGENT_READY until
-                # all queued events in their partition have been processed.
-                # - STORE_FACT_BATCH mode (replicate): agents get total_turns fact batches.
-                # - LEARN_CONTENT mode (round-robin): agents get total_turns learn events.
-                if self._replicate_learning_to_all_agents:
-                    feed_payload: dict[str, Any] = {
-                        "total_turns": total_turns,
-                        "target_agent": target_name,
-                        "expected_fact_batches": total_turns,
-                    }
-                else:
-                    feed_payload = {
-                        "total_turns": total_turns,
-                        "target_agent": target_name,
-                        "expected_learn_content": total_turns,
-                    }
-                self._publish_event(
-                    {
-                        "event_type": "FEED_COMPLETE",
-                        "event_id": uuid.uuid4().hex[:12],
-                        "target_agent": target_name,
-                        "source_agent": "eval-harness",
-                        "payload": feed_payload,
-                    },
-                    partition_key=target_name,
-                )
+                self._ready_agents.clear()
+                self._all_agents_ready.clear()
 
             logger.info(
-                "  %d/%d agents ready, re-sent FEED_COMPLETE to: %s",
-                ready_count,
+                "Waiting for %d AGENT_READY events on '%s'...",
                 self._agent_count,
-                ", ".join(missing_agents),
+                self._response_hub,
             )
-            time.sleep(poll_interval)
+
+            poll_interval = 15
+            while True:
+                with self._ready_lock:
+                    missing_agents = [
+                        f"agent-{i}"
+                        for i in range(self._agent_count)
+                        if f"agent-{i}" not in self._ready_agents
+                    ]
+                    ready_count = self._agent_count - len(missing_agents)
+                if ready_count >= self._agent_count:
+                    logger.info("All %d agents ready. Starting question phase.", self._agent_count)
+                    return
+
+                for target_name in missing_agents:
+                    target_agent = self._agent_index(target_name)
+                    total_turns = (
+                        self._learn_turn_counts[target_agent]
+                        if 0 <= target_agent < len(self._learn_turn_counts)
+                        else self._learn_count // max(1, self._agent_count)
+                    )
+                    if self._replicate_learning_to_all_agents:
+                        feed_payload: dict[str, Any] = {
+                            "total_turns": total_turns,
+                            "target_agent": target_name,
+                            "expected_fact_batches": total_turns,
+                        }
+                    else:
+                        feed_payload = {
+                            "total_turns": total_turns,
+                            "target_agent": target_name,
+                            "expected_learn_content": total_turns,
+                        }
+                    self._publish_event(
+                        {
+                            "event_type": "FEED_COMPLETE",
+                            "event_id": uuid.uuid4().hex[:12],
+                            "target_agent": target_name,
+                            "source_agent": "eval-harness",
+                            "payload": feed_payload,
+                        },
+                        partition_key=target_name,
+                    )
+
+                logger.info(
+                    "  %d/%d agents ready, re-sent FEED_COMPLETE to: %s",
+                    ready_count,
+                    self._agent_count,
+                    ", ".join(missing_agents),
+                )
+                time.sleep(poll_interval)
 
     def _listen_for_answers(self) -> None:
         """Background thread: collect eval lifecycle and answer events."""
@@ -571,6 +659,30 @@ class RemoteAgentAdapter:
                             "RemoteAgentAdapter: AGENT_READY from %s (%d/%d)",
                             agent_id,
                             ready_count,
+                            self._agent_count,
+                        )
+                    if hasattr(partition_context, "update_checkpoint"):
+                        partition_context.update_checkpoint(event)
+                    return
+
+                if event_type == "AGENT_PROGRESS":
+                    agent_id = body.get("agent_id", "")
+                    phase = body.get("phase", "")
+                    processed_count = int(body.get("processed_count", 0) or 0)
+                    if agent_id:
+                        with self._progress_lock:
+                            self._progress_agents.add(agent_id)
+                            self._progress_counts[agent_id] = max(
+                                processed_count,
+                                self._progress_counts.get(agent_id, 0),
+                            )
+                            progress_count = len(self._progress_agents)
+                        logger.info(
+                            "RemoteAgentAdapter: AGENT_PROGRESS from %s phase=%s count=%d (%d/%d)",
+                            agent_id,
+                            phase or "unknown",
+                            processed_count,
+                            progress_count,
                             self._agent_count,
                         )
                     if hasattr(partition_context, "update_checkpoint"):
