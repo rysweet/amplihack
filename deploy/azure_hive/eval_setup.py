@@ -8,7 +8,7 @@ Checks performed:
   1. Azure CLI authenticated and target subscription accessible
   2. Resource group and Container Apps present with expected agent count
   3. Event Hub namespace reachable; all three hubs exist with correct partitions
-  4. Consumer group "eval-reader" exists on the response hub
+  4. Consumer groups "eval-reader" and "eval-monitor" exist on the response hub
   5. ANTHROPIC_API_KEY present
   6. OTel endpoint reachable (if configured)
   7. Outputs a ready-to-use .env file for the eval harness
@@ -172,16 +172,14 @@ def check_event_hub_namespace(connection_string: str, hive_name: str) -> tuple[b
         resp_msg = f"Response hub '{response_hub}' unreachable: {exc}"
     _step(resp_ok, resp_msg)
 
-    # Check eval-reader consumer group on response hub
-    cg_ok = _ensure_eval_reader_consumer_group(connection_string, response_hub, hive_name)
+    # Check response-hub consumer groups used by the eval harness and external monitor
+    cg_ok = _ensure_response_consumer_groups(connection_string, response_hub)
 
     return input_ok and resp_ok and cg_ok, input_hub, response_hub
 
 
-def _ensure_eval_reader_consumer_group(
-    connection_string: str, response_hub: str, hive_name: str
-) -> bool:
-    """Create the eval-reader consumer group if it does not exist."""
+def _ensure_response_consumer_groups(connection_string: str, response_hub: str) -> bool:
+    """Create the response-hub consumer groups used by eval tooling if needed."""
     # Extract namespace name from connection string
     ns = ""
     for part in connection_string.split(";"):
@@ -222,7 +220,7 @@ def _ensure_eval_reader_consumer_group(
     )
     if not ok:
         _warn(
-            "Could not list consumer groups (az CLI needed) — ensure 'eval-reader' exists manually"
+            "Could not list consumer groups (az CLI needed) — ensure 'eval-reader' and 'eval-monitor' exist manually"
         )
         return True
 
@@ -231,30 +229,36 @@ def _ensure_eval_reader_consumer_group(
     except json.JSONDecodeError:
         groups = []
 
-    if "eval-reader" in groups:
-        return _step(True, "Consumer group 'eval-reader' exists on response hub")
+    required_groups = ("eval-reader", "eval-monitor")
+    missing_groups = [group for group in required_groups if group not in groups]
+    if not missing_groups:
+        return _step(True, "Consumer groups 'eval-reader' and 'eval-monitor' exist on response hub")
 
-    # Create it
-    create_ok, _ = _az(
-        "eventhubs",
-        "eventhub",
-        "consumer-group",
-        "create",
-        "--namespace-name",
-        ns,
-        "--eventhub-name",
-        response_hub,
-        "--resource-group",
-        resource_group,
-        "--name",
-        "eval-reader",
-    )
-    return _step(
-        create_ok,
-        "Created consumer group 'eval-reader' on response hub"
-        if create_ok
-        else "Failed to create 'eval-reader' consumer group — create it manually",
-    )
+    all_ok = True
+    for group_name in missing_groups:
+        create_ok, _ = _az(
+            "eventhubs",
+            "eventhub",
+            "consumer-group",
+            "create",
+            "--namespace-name",
+            ns,
+            "--eventhub-name",
+            response_hub,
+            "--resource-group",
+            resource_group,
+            "--name",
+            group_name,
+        )
+        all_ok = all_ok and create_ok
+        _step(
+            create_ok,
+            f"Created consumer group '{group_name}' on response hub"
+            if create_ok
+            else f"Failed to create '{group_name}' consumer group — create it manually",
+        )
+
+    return all_ok
 
 
 def check_anthropic_key() -> bool:

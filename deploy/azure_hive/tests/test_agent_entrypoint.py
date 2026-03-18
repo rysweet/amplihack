@@ -570,6 +570,14 @@ class TestBicep:
         bicep = Path(__file__).parent.parent / "main.bicep"
         content = bicep.read_text()
         assert "eval-responses-" in content
+        assert "eval-monitor" in content
+
+    def test_bicep_does_not_create_per_app_consumer_groups_on_eval_responses(self):
+        """Response hub should keep dedicated reader groups, not unused per-app groups."""
+        bicep = Path(__file__).parent.parent / "main.bicep"
+        content = bicep.read_text()
+        response_section = content.split("// Hub 3: eval-responses", maxsplit=1)[1]
+        assert "resource ehEvalConsumerGroups" not in response_section
 
     def test_bicep_no_service_bus(self):
         """Bicep must NOT reference Service Bus — CBS auth fails in Container Apps."""

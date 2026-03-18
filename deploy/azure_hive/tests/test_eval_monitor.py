@@ -20,7 +20,7 @@ def _load_module():
 
 
 class TestEvalMonitor:
-    def test_main_defaults_consumer_group_to_eval_reader(self, monkeypatch):
+    def test_main_defaults_consumer_group_to_eval_monitor(self, monkeypatch):
         monkeypatch.setenv(
             "EH_CONN",
             "Endpoint=sb://fake.servicebus.windows.net/;SharedAccessKeyName=x;SharedAccessKey=y",
@@ -38,7 +38,7 @@ class TestEvalMonitor:
 
             assert mod.main() == 0
 
-        assert monitor_cls.call_args.kwargs["consumer_group"] == "eval-reader"
+        assert monitor_cls.call_args.kwargs["consumer_group"] == "eval-monitor"
 
     def test_run_uses_configured_consumer_group(self):
         mod = _load_module()
