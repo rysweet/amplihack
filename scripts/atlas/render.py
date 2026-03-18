@@ -97,6 +97,19 @@ LAYER_DEFS = [
 ]
 
 
+def _mermaid_escape(text: str) -> str:
+    """Sanitize text for use inside Mermaid node labels and messages.
+
+    Escapes characters that break Mermaid syntax: double quotes, angle brackets,
+    and newlines.
+    """
+    return (text
+            .replace('"', '#quot;')
+            .replace('<', '&lt;')
+            .replace('>', '&gt;')
+            .replace('\n', ' '))
+
+
 class AtlasRenderer:
     """Renders atlas JSON data into mkdocs-material pages.
 
@@ -351,7 +364,7 @@ class AtlasRenderer:
         lines.extend([
             '<div class="atlas-footer">',
             "",
-            f"Source: [`{layer_def['json_key']}.json`](../../atlas_output/{layer_def['json_key']}.json)",
+            f"Source: `{layer_def['json_key']}.json`"
             f" | [Mermaid source]({slug}.mmd)",
             "",
             "</div>",
@@ -561,7 +574,7 @@ class AtlasRenderer:
             node_ids[path] = node_id
 
             short_name = Path(path).name or path
-            label = f"{short_name}<br/>{py_count} py / {total} total"
+            label = _mermaid_escape(f"{short_name}<br/>{py_count} py / {total} total")
             lines.append(f'    {node_id}["{label}"]')
 
         # Edges from parent to child
@@ -600,7 +613,7 @@ class AtlasRenderer:
         for i, (filepath, count) in enumerate(top_files):
             nid = f"F{i}"
             node_ids[filepath] = nid
-            short = Path(filepath).stem
+            short = _mermaid_escape(Path(filepath).stem)
             lines.append(f'    {nid}["{short}<br/>refs: {count}"]')
 
         # Build edges from imports
@@ -637,7 +650,7 @@ class AtlasRenderer:
                              reverse=True)[:20]
             lines.append('    subgraph ext["External Dependencies"]')
             for i, dep in enumerate(top_ext):
-                name = dep.get("name", f"dep{i}")
+                name = _mermaid_escape(dep.get("name", f"dep{i}"))
                 count = dep.get("import_count", 0)
                 nid = f"E{i}"
                 lines.append(f'        {nid}["{name}<br/>imports: {count}"]')
@@ -652,7 +665,7 @@ class AtlasRenderer:
             for i, pkg in enumerate(nodes[:30]):
                 nid = f"P{i}"
                 pkg_ids[pkg] = nid
-                short = pkg.split(".")[-1] if "." in pkg else pkg
+                short = _mermaid_escape(pkg.split(".")[-1] if "." in pkg else pkg)
                 lines.append(f'        {nid}["{short}"]')
             lines.append("    end")
 
@@ -698,7 +711,7 @@ class AtlasRenderer:
                 nid = f"S{counter}"
                 counter += 1
                 seen_cmds[cmd_name] = nid
-                lines.append(f'    {nid}(["{cmd_name}"])')
+                lines.append(f'    {nid}(["{_mermaid_escape(cmd_name)}"])')
 
         # Port bindings as hexagons
         for i, pb in enumerate(port_bindings[:10]):
@@ -722,7 +735,7 @@ class AtlasRenderer:
                 fnid = f"FN{fcounter}"
                 fcounter += 1
                 file_nodes[short_src] = fnid
-                lines.append(f'    {fnid}["{short_src}"]')
+                lines.append(f'    {fnid}["{_mermaid_escape(short_src)}"]')
 
             cmd = call.get("command_literal")
             if isinstance(cmd, list) and cmd:
@@ -760,9 +773,9 @@ class AtlasRenderer:
             node_ids[command] = nid
 
             arg_count = len(cmd.get("arguments", []))
-            label = parser_name
+            label = _mermaid_escape(parser_name)
             if arg_count:
-                label = f"{parser_name}<br/>{arg_count} args"
+                label = f"{_mermaid_escape(parser_name)}<br/>{arg_count} args"
             lines.append(f'    {nid}["{label}"]')
 
             parent_nid = node_ids.get(parent, "ROOT")
@@ -830,7 +843,7 @@ class AtlasRenderer:
             io_counter += 1
 
         for i, tp in enumerate(transforms[:10]):
-            func = tp.get("function", "transform")
+            func = _mermaid_escape(tp.get("function", "transform"))
             tnid = f"T{i}"
             lines.append(f'    {tnid}{{{{"{func}"}}}}')
             reads = tp.get("reads", [])
@@ -883,7 +896,7 @@ class AtlasRenderer:
                 counter += 1
                 node_ids[name] = nid
                 lines.append(
-                    f'        {nid}["{short}<br/>'
+                    f'        {nid}["{_mermaid_escape(short)}<br/>'
                     f'{file_count} files<br/>'
                     f'I={instability:.2f}"]'
                 )
@@ -943,12 +956,12 @@ class AtlasRenderer:
                 lines.append(f"    participant {handler_file}")
                 declared_participants.add(handler_file)
 
-            lines.append(f"    User->>CLI: {command}")
-            lines.append(f"    CLI->>{handler_file}: {handler_func}()")
+            lines.append(f"    User->>CLI: {_mermaid_escape(command)}")
+            lines.append(f"    CLI->>{handler_file}: {_mermaid_escape(handler_func)}()")
 
             for outcome in outcomes[:3]:
                 otype = outcome.get("type", "return")
-                detail = outcome.get("detail", "")
+                detail = _mermaid_escape(outcome.get("detail", ""))
                 ofile = Path(outcome.get("file", "")).stem if outcome.get("file") else "system"
                 if ofile not in declared_participants:
                     lines.append(f"    participant {ofile}")

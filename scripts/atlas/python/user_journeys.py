@@ -71,7 +71,34 @@ def extract(manifest: dict, layer2: dict, root: Path,
         if not handler_key:
             continue
 
-        trace = _trace_from(handler_key, call_graph, max_depth=5)
+        # Skip out_of_scope entry points (e.g. hooks pointing to .claude/tools/)
+        trace_status = ep.get("trace_status")
+        if trace_status == "out_of_scope":
+            journeys.append({
+                "entry_type": ep["type"],
+                "command": ep.get("command", ep.get("path", ep.get("name", "unknown"))),
+                "handler": {
+                    "file": ep.get("file", ""),
+                    "function": ep.get("function", ""),
+                    "lineno": ep.get("lineno"),
+                },
+                "trace_status": "out_of_scope",
+                "trace_depth": 0,
+                "functions_reached": 0,
+                "outcomes": [],
+                "packages_touched": [],
+            })
+            continue
+
+        # If handler_key doesn't exist in call graph, try fuzzy matching:
+        # search for functions in the same file whose name contains the parser name
+        effective_key = handler_key
+        if handler_key not in call_graph and handler_key not in all_functions:
+            fuzzy = _fuzzy_resolve_handler(handler_key, all_functions)
+            if fuzzy:
+                effective_key = fuzzy
+
+        trace = _trace_from(effective_key, call_graph, max_depth=5)
         outcomes = _classify_outcomes(trace["leaves"], all_functions, io_functions, subprocess_functions)
         packages_touched = _packages_from_keys(trace["visited"], root_str)
 
@@ -106,8 +133,11 @@ def extract(manifest: dict, layer2: dict, root: Path,
     cli_count = sum(1 for j in journeys if j["entry_type"] == "cli")
     http_count = sum(1 for j in journeys if j["entry_type"] == "http")
     hook_count = sum(1 for j in journeys if j["entry_type"] == "hook")
-    depths = [j["trace_depth"] for j in journeys]
-    avg_depth = round(sum(depths) / len(depths), 1) if depths else 0.0
+    out_of_scope_count = sum(1 for j in journeys if j.get("trace_status") == "out_of_scope")
+    # Exclude out_of_scope journeys from average depth calculation
+    in_scope_depths = [j["trace_depth"] for j in journeys
+                       if j.get("trace_status") != "out_of_scope"]
+    avg_depth = round(sum(in_scope_depths) / len(in_scope_depths), 1) if in_scope_depths else 0.0
 
     return {
         "layer": "user-journeys",
@@ -129,6 +159,7 @@ def extract(manifest: dict, layer2: dict, root: Path,
             "cli_journeys": cli_count,
             "http_journeys": http_count,
             "hook_journeys": hook_count,
+            "out_of_scope_journeys": out_of_scope_count,
             "avg_trace_depth": avg_depth,
             "total_functions_in_graph": len(all_functions),
             "total_functions_reached": len(all_reached),
@@ -340,16 +371,27 @@ def _resolve_callee(
 def _get_entry_points(layer5: dict | None, root: Path) -> list[dict]:
     """Get entry points from layer5 or extract directly from codebase.
 
-    Returns list of dicts with: type, command/path/name, handler_key, file, function, lineno.
+    Returns list of dicts with: type, command/path/name, handler_key, file,
+    function, lineno, and optionally trace_status.
     """
     entry_points = []
     root_str = str(root)
+
+    # Pre-build set_defaults handler map: file -> {parser_name: handler_func}
+    # This resolves the handler_key mismatch where parser_name != actual handler.
+    defaults_map = _build_set_defaults_map(root)
 
     if layer5:
         # CLI commands
         for cmd in layer5.get("cli_commands", []):
             handler_file = cmd.get("file", "")
-            handler_func = cmd.get("handler_function", cmd.get("parser_name", ""))
+            parser_name = cmd.get("parser_name", "")
+            # Prefer handler_function from layer5, then set_defaults map, then parser_name
+            handler_func = cmd.get("handler_function", "")
+            if not handler_func and handler_file in defaults_map:
+                handler_func = defaults_map[handler_file].get(parser_name, "")
+            if not handler_func:
+                handler_func = parser_name
             if handler_file and handler_func:
                 entry_points.append({
                     "type": "cli",
@@ -380,7 +422,14 @@ def _get_entry_points(layer5: dict | None, root: Path) -> list[dict]:
             handler_file = hook.get("file", "")
             handler_func = hook.get("handler", "")
             if handler_file and handler_func:
-                entry_points.append({
+                # Mark hooks pointing to .claude/tools/ as out_of_scope
+                trace_status = None
+                if ".claude/tools/" in handler_file:
+                    trace_status = "out_of_scope"
+                elif not handler_file.startswith(root_str):
+                    trace_status = "out_of_scope"
+
+                ep = {
                     "type": "hook",
                     "name": hook.get("name", ""),
                     "command": f"hook:{hook.get('name', '')}",
@@ -388,7 +437,10 @@ def _get_entry_points(layer5: dict | None, root: Path) -> list[dict]:
                     "file": handler_file,
                     "function": handler_func,
                     "lineno": hook.get("lineno"),
-                })
+                }
+                if trace_status:
+                    ep["trace_status"] = trace_status
+                entry_points.append(ep)
 
     # Always add direct extraction from codebase for completeness
     direct_eps = _extract_entry_points_from_codebase(root)
@@ -398,6 +450,105 @@ def _get_entry_points(layer5: dict | None, root: Path) -> list[dict]:
             entry_points.append(dep)
 
     return entry_points
+
+
+def _build_set_defaults_map(root: Path) -> dict[str, dict[str, str]]:
+    """Scan codebase for set_defaults(func=X) near add_parser() calls.
+
+    Returns: {filepath: {parser_name: handler_function_name}}
+    """
+    result: dict[str, dict[str, str]] = {}
+
+    for py_file in root.rglob("*.py"):
+        filepath_str = str(py_file)
+        if "__pycache__" in filepath_str:
+            continue
+
+        tree = parse_file_safe(py_file)
+        if tree is None:
+            continue
+
+        # Collect add_parser names and set_defaults(func=X) in the same file
+        parser_names: list[tuple[str, int]] = []  # (name, lineno)
+        defaults_funcs: list[tuple[str, int]] = []  # (func_name, lineno)
+
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            if not isinstance(node.func, ast.Attribute):
+                continue
+
+            if node.func.attr == "add_parser":
+                if (node.args
+                        and isinstance(node.args[0], ast.Constant)
+                        and isinstance(node.args[0].value, str)):
+                    parser_names.append((node.args[0].value, node.lineno))
+
+            elif node.func.attr == "set_defaults":
+                for kw in node.keywords:
+                    if kw.arg == "func" and isinstance(kw.value, ast.Name):
+                        defaults_funcs.append((kw.value.id, node.lineno))
+
+        if not parser_names or not defaults_funcs:
+            continue
+
+        # Match each parser to the nearest following set_defaults call
+        file_map: dict[str, str] = {}
+        for p_name, p_line in parser_names:
+            best_func = None
+            best_dist = float("inf")
+            for d_func, d_line in defaults_funcs:
+                dist = d_line - p_line
+                if 0 <= dist < best_dist:
+                    best_dist = dist
+                    best_func = d_func
+            if best_func:
+                file_map[p_name] = best_func
+
+        if file_map:
+            result[filepath_str] = file_map
+
+    return result
+
+
+def _fuzzy_resolve_handler(
+    handler_key: str, all_functions: dict[str, dict]
+) -> str | None:
+    """Fuzzy-match a handler_key against the call graph when exact match fails.
+
+    For handler_key "file::parser_name", search for functions in the same file
+    whose name contains the parser_name (e.g. "generate" -> "generate_command",
+    "cmd_generate").
+    """
+    if "::" not in handler_key:
+        return None
+    filepath, func_name = handler_key.split("::", 1)
+    if not func_name:
+        return None
+
+    # Gather all function keys in the same file
+    candidates = []
+    for key, info in all_functions.items():
+        if info["file"] == filepath:
+            candidates.append((key, info["name"]))
+
+    # Normalize: replace hyphens with underscores for matching
+    name_norm = func_name.lower().replace("-", "_")
+    matches = []
+    for key, name in candidates:
+        cand_norm = name.lower().replace("-", "_")
+        if name_norm in cand_norm or cand_norm in name_norm:
+            matches.append((key, name))
+
+    if len(matches) == 1:
+        return matches[0][0]
+
+    # If multiple matches, prefer the one whose name is closest in length
+    if matches:
+        matches.sort(key=lambda m: abs(len(m[1]) - len(func_name)))
+        return matches[0][0]
+
+    return None
 
 
 def _extract_entry_points_from_codebase(root: Path) -> list[dict]:

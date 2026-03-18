@@ -216,6 +216,41 @@ def walk_definitions(tree: ast.Module, filepath: str) -> list[dict]:
                         "is_private": target.id.startswith("_"),
                         "decorators": [],
                     })
+        elif isinstance(node, ast.AnnAssign):
+            if isinstance(node.target, ast.Name):
+                defs.append({
+                    "file": filepath,
+                    "name": node.target.id,
+                    "type": "constant",
+                    "lineno": node.lineno,
+                    "is_private": node.target.id.startswith("_"),
+                    "decorators": [],
+                })
+
+        # Walk one level into Try/If blocks for module-level assignments
+        elif isinstance(node, (ast.Try, ast.If)):
+            for child in ast.iter_child_nodes(node):
+                if isinstance(child, ast.Assign):
+                    for target in child.targets:
+                        if isinstance(target, ast.Name):
+                            defs.append({
+                                "file": filepath,
+                                "name": target.id,
+                                "type": "constant",
+                                "lineno": child.lineno,
+                                "is_private": target.id.startswith("_"),
+                                "decorators": [],
+                            })
+                elif isinstance(child, ast.AnnAssign):
+                    if isinstance(child.target, ast.Name):
+                        defs.append({
+                            "file": filepath,
+                            "name": child.target.id,
+                            "type": "constant",
+                            "lineno": child.lineno,
+                            "is_private": child.target.id.startswith("_"),
+                            "decorators": [],
+                        })
 
     return defs
 
