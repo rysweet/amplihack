@@ -1,36 +1,94 @@
 {
-  "last_run": "2026-03-13T09:00:00Z",
-  "run_id": "23052222966",
+  "last_run": "2026-03-18T06:44:00Z",
+  "run_id": "23244544065",
   "triaged_prs": {
-    "3107": {
-      "title": "fix: use agent-framework-core instead of meta-package for SDK auto-install",
+    "3299": {
+      "title": "[docs] Update documentation for March 18 2026 merged PRs",
       "risk": "low",
-      "status": "triage:complete",
-      "labels_applied": ["triage:complete", "triage:low-risk", "triage:needs-review"],
-      "recommendation": "Approve & Merge",
-      "comment_posted": true
-    },
-    "3106": {
-      "title": "[docs] add Environment Variables reference page",
-      "risk": "very-low",
-      "status": "triage:complete",
       "draft": true,
-      "labels_applied": ["triage:complete", "triage:low-risk"],
-      "recommendation": "Review when ready (draft)",
-      "comment_posted": false
+      "status": "triage:complete",
+      "labels_applied": ["documentation", "automation", "triage:low-risk", "triage:complete"],
+      "recommendation": "Review when ready (draft, expires Mar 19)",
+      "comment_posted": true,
+      "run": "23232157458"
     },
-    "3085": {
-      "title": "[docs] docs: daily documentation update for March 12 2026 merged PRs",
+    "3296": {
+      "title": "feat: Aspire AppHost for Azure Hive orchestration with OTEL telemetry",
+      "risk": "high",
+      "status": "triage:complete",
+      "labels_applied": ["triage:complete", "triage:needs-deep-review", "triage:high-risk", "triage:has-tests"],
+      "recommendation": "Needs deep review — verify branch scope, full CI, infra owner approval",
+      "comment_posted": true,
+      "run": "23232157458"
+    },
+    "3295": {
+      "title": "fix: remove dead Python <3.8 fallbacks in version detection",
       "risk": "low",
       "status": "triage:complete",
-      "note": "Already triaged in prior run. Expired Mar 13 2026.",
-      "skipped": true
+      "labels_applied": ["code-health", "triage:low-risk", "triage:complete", "triage:has-tests"],
+      "recommendation": "Approve & Merge — merge before #3288 to resolve version conflict",
+      "comment_posted": true,
+      "run": "23232157458"
+    },
+    "3293": {
+      "title": "feat(code-atlas): v3 design — deterministic extraction + visual atlas",
+      "risk": "high",
+      "status": "triage:complete",
+      "labels_applied": ["triage:complete", "triage:needs-deep-review", "triage:high-risk", "triage:has-tests", "triage:high-priority"],
+      "recommendation": "Needs deep review — full CI, Kuzu dep check, architecture review",
+      "comment_posted": true,
+      "run": "23232157458"
+    },
+    "3290": {
+      "title": "test(tdd): add failing security tests for SEC-01 through SEC-07 hardening",
+      "risk": "medium",
+      "status": "triage:complete",
+      "labels_applied": ["triage:complete", "triage:medium-risk", "triage:has-tests", "triage:high-priority", "triage:security-review"],
+      "recommendation": "Rebase required; coordinate with implementation PRs to avoid CI red period",
+      "comment_posted": true,
+      "run": "23232157458"
+    },
+    "3288": {
+      "title": "fix: improve heartbeat visibility for long-running agent steps",
+      "risk": "medium",
+      "status": "triage:complete",
+      "labels_applied": ["triage:complete", "triage:needs-review", "triage:medium-risk", "triage:has-tests"],
+      "recommendation": "Needs fixes — revert PROJECT.md change, investigate Atlas check failure, clarify recipe manifest",
+      "comment_posted": true,
+      "run": "23232157458"
+    },
+    "3286": {
+      "title": "fix: add progress markers to step-02b-analyze-codebase (closes #3266)",
+      "risk": "low",
+      "status": "triage:complete",
+      "labels_applied": ["triage:low-risk", "triage:complete", "triage:needs-review"],
+      "recommendation": "Rebase required; coordinate with #3288 (both fix #3266)",
+      "comment_posted": true,
+      "run": "23232157458"
+    },
+    "3268": {
+      "title": "fix(baseline): flatten triple-nested exception handling in cli.py (#3233)",
+      "risk": "medium",
+      "status": "triage:complete",
+      "labels_applied": ["bug", "error_handling", "triage:complete", "triage:medium-risk", "triage:has-tests"],
+      "recommendation": "Approve with awareness of behavior change (errors now propagate)",
+      "comment_posted": true,
+      "run": "23223326025"
+    },
+    "3261": {
+      "title": "docs(design): LearningAgent integration into goal-seeking agent generator",
+      "risk": "low",
+      "status": "triage:complete",
+      "labels_applied": ["documentation", "triage:low-risk", "triage:complete"],
+      "recommendation": "Safe to merge — rebase for cleanliness, track follow-up impl PR",
+      "comment_posted": true,
+      "run": "23244544065"
     },
     "2876": {
       "title": "feat(hive): replace broadcast replication with proper DHT sharding (#3034)",
       "risk": "extreme",
       "status": "triage:complete",
-      "note": "Already triaged in prior run. Has merge-conflicts label.",
+      "note": "Previously triaged. Has merge-conflicts, too-large, extreme-risk labels.",
       "skipped": true
     }
   }
