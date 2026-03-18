@@ -288,6 +288,10 @@ class ServiceBusShardTransport:
                 confidence=f.get("confidence", 0.8),
                 source_agent=f.get("source_agent", ""),
                 tags=f.get("tags", []),
+                created_at=f.get("created_at", 0.0),
+                metadata=dict(f.get("metadata", {}))
+                if isinstance(f.get("metadata", {}), dict)
+                else {},
             )
             for f in results
             if f.get("content")
@@ -372,6 +376,8 @@ class ServiceBusShardTransport:
                     "confidence": fact.confidence,
                     "source_agent": fact.source_agent,
                     "tags": list(fact.tags),
+                    "created_at": fact.created_at,
+                    "metadata": dict(getattr(fact, "metadata", {})),
                 },
             },
         )
@@ -451,6 +457,10 @@ class ServiceBusShardTransport:
             confidence=fact_dict.get("confidence", 0.8),
             source_agent=fact_dict.get("source_agent", event.source_agent),
             tags=fact_dict.get("tags", []),
+            created_at=fact_dict.get("created_at", 0.0),
+            metadata=dict(fact_dict.get("metadata", {}))
+            if isinstance(fact_dict.get("metadata", {}), dict)
+            else {},
         )
         stored = shard.store(replica)
         logger.debug(
@@ -584,6 +594,10 @@ def _result_to_fact_payload(result: Any, default_agent_id: str) -> dict[str, Any
             "confidence": float(result.get("confidence", 0.8)),
             "source_agent": source_agent or default_agent_id,
             "tags": list(result.get("tags", [])),
+            "created_at": result.get("created_at", result.get("timestamp", "")),
+            "metadata": dict(result.get("metadata", {}))
+            if isinstance(result.get("metadata", {}), dict)
+            else {},
         }
 
     content = getattr(result, "content", "")
@@ -596,6 +610,10 @@ def _result_to_fact_payload(result: Any, default_agent_id: str) -> dict[str, Any
         "confidence": float(getattr(result, "confidence", 0.8)),
         "source_agent": getattr(result, "source_agent", default_agent_id),
         "tags": list(getattr(result, "tags", [])),
+        "created_at": getattr(result, "created_at", 0.0),
+        "metadata": dict(getattr(result, "metadata", {}))
+        if isinstance(getattr(result, "metadata", {}), dict)
+        else {},
     }
 
 
@@ -614,6 +632,10 @@ def _facts_to_shard_facts(results: list[Any], default_agent_id: str) -> list[Sha
                 confidence=float(payload.get("confidence", 0.8)),
                 source_agent=payload.get("source_agent", default_agent_id),
                 tags=list(payload.get("tags", [])),
+                created_at=payload.get("created_at", 0.0),
+                metadata=dict(payload.get("metadata", {}))
+                if isinstance(payload.get("metadata", {}), dict)
+                else {},
             )
         )
     return converted
@@ -629,6 +651,10 @@ def _payload_facts_to_shard_facts(facts_payload: list[dict[str, Any]]) -> list[S
             confidence=f.get("confidence", 0.8),
             source_agent=f.get("source_agent", ""),
             tags=f.get("tags", []),
+            created_at=f.get("created_at", 0.0),
+            metadata=dict(f.get("metadata", {}))
+            if isinstance(f.get("metadata", {}), dict)
+            else {},
         )
         for f in facts_payload
         if f.get("content")
@@ -1281,6 +1307,8 @@ class EventHubsShardTransport:
                         "confidence": fact.confidence,
                         "source_agent": fact.source_agent,
                         "tags": list(fact.tags),
+                        "created_at": fact.created_at,
+                        "metadata": dict(getattr(fact, "metadata", {})),
                     },
                 },
             },
@@ -1459,6 +1487,10 @@ class EventHubsShardTransport:
             confidence=fact_dict.get("confidence", 0.8),
             source_agent=fact_dict.get("source_agent", getattr(event, "source_agent", "")),
             tags=fact_dict.get("tags", []),
+            created_at=fact_dict.get("created_at", 0.0),
+            metadata=dict(fact_dict.get("metadata", {}))
+            if isinstance(fact_dict.get("metadata", {}), dict)
+            else {},
         )
         stored = shard.store(replica)
         logger.debug(
@@ -1634,6 +1666,7 @@ class DistributedHiveGraph:
             source_agent=fact.source_agent,
             tags=list(fact.tags),
             created_at=fact.created_at,
+            metadata=dict(getattr(fact, "metadata", {})),
         )
 
         # Store locally in the promoting agent's own shard (pure DHT sharding:
@@ -1980,6 +2013,7 @@ class DistributedHiveGraph:
                 source_agent=relay_id,
                 tags=[*fact.tags, f"{BROADCAST_TAG_PREFIX}{self._hive_id}"],
                 created_at=fact.created_at,
+                metadata=dict(getattr(fact, "metadata", {})),
             )
             child.promote_fact(relay_id, promoted)
             count += 1
@@ -2001,6 +2035,7 @@ class DistributedHiveGraph:
             source_agent=relay_id,
             tags=[*fact.tags, f"escalated_from:{self._hive_id}"],
             created_at=fact.created_at,
+            metadata=dict(getattr(fact, "metadata", {})),
         )
         self._parent.promote_fact(relay_id, escalated)
 
@@ -2109,6 +2144,7 @@ class DistributedHiveGraph:
                             source_agent=peer_fact.source_agent,
                             tags=[*peer_fact.tags, f"gossip_from:{peer_id}"],
                             created_at=peer_fact.created_at,
+                            metadata=dict(getattr(peer_fact, "metadata", {})),
                         )
                         if shard.store(replica):
                             facts_received += 1
@@ -2208,6 +2244,7 @@ class DistributedHiveGraph:
             source_agent=sf.source_agent,
             tags=sf.tags,
             created_at=sf.created_at,
+            metadata=dict(getattr(sf, "metadata", {})),
         )
 
     # -- merge_state (CRDT compat) -------------------------------------------

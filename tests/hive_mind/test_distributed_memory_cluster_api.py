@@ -137,3 +137,41 @@ def test_cognitive_adapter_execute_aggregation_uses_local_shard_only() -> None:
     assert result["count"] == 1
     assert result["items"] == ["Project Atlas"]
     assert hive.execute_aggregation_calls == []
+
+
+def test_shard_payload_round_trip_preserves_metadata() -> None:
+    """Transport payload conversion must preserve source/timestamp/metadata."""
+    from amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph import (
+        _payload_facts_to_shard_facts,
+        _result_to_fact_payload,
+    )
+
+    result = {
+        "experience_id": "sem-1",
+        "context": "Project Atlas",
+        "outcome": "Project Atlas deadline moved to September 20",
+        "confidence": 0.9,
+        "source": "hive:agent_a",
+        "timestamp": "123.0",
+        "tags": ["project", "date:2024-09-20", "time:September 2024"],
+        "metadata": {
+            "source_label": "Atlas planning memo",
+            "source_date": "2024-09-20",
+            "temporal_order": "September 2024",
+            "temporal_index": 20240920,
+        },
+    }
+
+    payload = _result_to_fact_payload(result, "agent-default")
+
+    assert payload is not None
+    assert payload["source_agent"] == "agent_a"
+    assert payload["created_at"] == "123.0"
+    assert payload["metadata"]["source_label"] == "Atlas planning memo"
+
+    shard_facts = _payload_facts_to_shard_facts([payload])
+
+    assert len(shard_facts) == 1
+    assert shard_facts[0].source_agent == "agent_a"
+    assert shard_facts[0].created_at == "123.0"
+    assert shard_facts[0].metadata["source_label"] == "Atlas planning memo"

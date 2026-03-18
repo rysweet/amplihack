@@ -90,6 +90,7 @@ class ShardFact:
     source_agent: str = ""
     tags: list[str] = field(default_factory=list)
     created_at: float = field(default_factory=time.time)
+    metadata: dict[str, Any] = field(default_factory=dict)
     ring_position: int = 0  # Position on the hash ring
 
 

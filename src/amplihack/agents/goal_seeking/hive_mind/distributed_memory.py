@@ -251,6 +251,72 @@ class DistributedCognitiveMemory:
     # Internal: hive query + merge
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _restore_hive_metadata(
+        tags: list[str] | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Rehydrate temporal metadata from hive tags when structured metadata is absent."""
+        restored = dict(metadata or {})
+        for raw_tag in tags or []:
+            if not isinstance(raw_tag, str):
+                continue
+            if raw_tag.startswith("date:") and not restored.get("source_date"):
+                source_date = raw_tag.removeprefix("date:")
+                restored["source_date"] = source_date
+                if not restored.get("temporal_index"):
+                    digits = "".join(ch for ch in source_date if ch.isdigit())
+                    if digits:
+                        restored["temporal_index"] = int(digits)
+            elif raw_tag.startswith("time:") and not restored.get("temporal_order"):
+                temporal_order = raw_tag.removeprefix("time:")
+                restored["temporal_order"] = temporal_order
+                if not restored.get("temporal_index"):
+                    digits = "".join(ch for ch in temporal_order if ch.isdigit())
+                    if digits:
+                        restored["temporal_index"] = int(digits)
+        return restored
+
+    @classmethod
+    def _hive_fact_to_dict(cls, fact: Any) -> dict[str, Any]:
+        """Convert hive facts or payload dicts into LearningAgent-compatible dicts."""
+        if isinstance(fact, dict):
+            tags = list(fact.get("tags", []))
+            metadata = cls._restore_hive_metadata(
+                tags,
+                fact.get("metadata", {}) if isinstance(fact.get("metadata", {}), dict) else {},
+            )
+            source_agent = fact.get("source_agent", "")
+            source = fact.get("source", "")
+            if not source and source_agent:
+                source = f"hive:{source_agent}"
+            timestamp = fact.get("timestamp", fact.get("created_at", ""))
+            return {
+                "experience_id": fact.get("fact_id", fact.get("experience_id", "")),
+                "context": fact.get("context", fact.get("concept", "")),
+                "outcome": fact.get("outcome", fact.get("content", "")),
+                "confidence": float(fact.get("confidence", 0.5)),
+                "timestamp": "" if timestamp in ("", None) else str(timestamp),
+                "tags": tags,
+                "metadata": metadata,
+                "source": source,
+            }
+
+        tags = list(getattr(fact, "tags", []))
+        metadata = cls._restore_hive_metadata(tags, getattr(fact, "metadata", {}))
+        source_agent = getattr(fact, "source_agent", "")
+        timestamp = getattr(fact, "created_at", "")
+        return {
+            "experience_id": getattr(fact, "fact_id", getattr(fact, "node_id", "")),
+            "context": getattr(fact, "concept", ""),
+            "outcome": getattr(fact, "content", ""),
+            "confidence": float(getattr(fact, "confidence", 0.5)),
+            "timestamp": "" if timestamp in ("", None) else str(timestamp),
+            "tags": tags,
+            "metadata": metadata,
+            "source": f"hive:{source_agent}" if source_agent else "",
+        }
+
     def _query_hive(self, query: str, limit: int) -> list[dict[str, Any]]:
         """Query the distributed hive for facts matching the query.
 
@@ -280,34 +346,12 @@ class DistributedCognitiveMemory:
                 )
             except ImportError:
                 pass
-            return [
-                {
-                    "experience_id": getattr(f, "fact_id", ""),
-                    "context": getattr(f, "concept", ""),
-                    "outcome": getattr(f, "content", ""),
-                    "confidence": float(getattr(f, "confidence", 0.5)),
-                    "tags": list(getattr(f, "tags", [])),
-                    "metadata": {},
-                }
-                for f in facts
-                if getattr(f, "content", "")
-            ]
+            return [self._hive_fact_to_dict(f) for f in facts if getattr(f, "content", "")]
         # FederatedGraphStore fallback
         if hasattr(self._hive, "federated_query"):
             fqr = self._hive.federated_query(query, limit=limit)
             results = fqr.results if hasattr(fqr, "results") else fqr
-            return [
-                {
-                    "experience_id": "",
-                    "context": r.get("concept", ""),
-                    "outcome": r.get("content", ""),
-                    "confidence": float(r.get("confidence", 0.5)),
-                    "tags": list(r.get("tags", [])),
-                    "metadata": {},
-                }
-                for r in results
-                if r.get("content")
-            ]
+            return [self._hive_fact_to_dict(r) for r in results if r.get("content")]
         return []
 
     def _get_all_hive_facts(self, limit: int) -> list[dict[str, Any]]:
@@ -317,19 +361,8 @@ class DistributedCognitiveMemory:
         if hasattr(self._hive, "get_all_facts"):
             facts = self._hive.get_all_facts(limit=limit)
             if facts and isinstance(facts[0], dict):
-                return facts[:limit]
-            return [
-                {
-                    "experience_id": getattr(f, "fact_id", ""),
-                    "context": getattr(f, "concept", ""),
-                    "outcome": getattr(f, "content", ""),
-                    "confidence": float(getattr(f, "confidence", 0.5)),
-                    "tags": list(getattr(f, "tags", [])),
-                    "metadata": {},
-                }
-                for f in facts[:limit]
-                if getattr(f, "content", "")
-            ]
+                return [self._hive_fact_to_dict(f) for f in facts[:limit] if f.get("content")]
+            return [self._hive_fact_to_dict(f) for f in facts[:limit] if getattr(f, "content", "")]
         return []
 
     def _query_hive_entity(self, entity_name: str, limit: int) -> list[dict[str, Any]]:
@@ -340,16 +373,9 @@ class DistributedCognitiveMemory:
         if hasattr(self._hive, "retrieve_by_entity"):
             facts = self._hive.retrieve_by_entity(entity_name=entity_name, limit=limit)
             return [
-                {
-                    "experience_id": getattr(f, "fact_id", getattr(f, "node_id", "")),
-                    "context": getattr(f, "concept", ""),
-                    "outcome": getattr(f, "content", ""),
-                    "confidence": float(getattr(f, "confidence", 0.5)),
-                    "tags": list(getattr(f, "tags", [])),
-                    "metadata": getattr(f, "metadata", {}) if hasattr(f, "metadata") else {},
-                }
+                self._hive_fact_to_dict(f)
                 if not isinstance(f, dict)
-                else f
+                else self._hive_fact_to_dict(f)
                 for f in facts
                 if (getattr(f, "content", "") if not isinstance(f, dict) else f.get("outcome", ""))
             ]
@@ -530,6 +556,7 @@ class DistributedCognitiveMemory:
         content = kwargs.get("content", args[1] if len(args) > 1 else "")
         confidence = float(kwargs.get("confidence", args[2] if len(args) > 2 else 0.8))
         tags = kwargs.get("tags", args[4] if len(args) > 4 else [])
+        temporal_metadata = kwargs.get("temporal_metadata", args[5] if len(args) > 5 else {})
 
         if not content:
             return
@@ -555,6 +582,7 @@ class DistributedCognitiveMemory:
                 confidence=confidence,
                 source_agent=self._agent_name,
                 tags=list(tags) if tags else [],
+                metadata=dict(temporal_metadata or {}),
             )
             if hasattr(self._hive, "get_agent"):
                 agent = self._hive.get_agent(self._agent_name)

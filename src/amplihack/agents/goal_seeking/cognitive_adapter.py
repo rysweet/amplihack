@@ -324,7 +324,13 @@ class CognitiveAdapter:
 
         # Legacy: auto-promote when hive_store is set directly on CognitiveAdapter.
         # New architecture: DistributedCognitiveMemory handles promotion transparently.
-        self._promote_to_hive(context.strip(), fact.strip(), confidence, tags)
+        self._promote_to_hive(
+            context.strip(),
+            fact.strip(),
+            confidence,
+            tags,
+            temporal_metadata,
+        )
 
         return node_id
 
@@ -334,6 +340,7 @@ class CognitiveAdapter:
         fact: str,
         confidence: float,
         tags: list[str] | None = None,
+        temporal_metadata: dict[str, Any] | None = None,
     ) -> None:
         """Promote a fact to the shared hive store.
 
@@ -372,6 +379,7 @@ class CognitiveAdapter:
                 confidence=confidence,
                 source_agent=self.agent_name,
                 tags=list(tags) if tags else [],
+                metadata=dict(temporal_metadata or {}),
             )
             # Ensure agent is registered before promoting
             if hasattr(self._hive_store, "get_agent"):
@@ -572,26 +580,55 @@ class CognitiveAdapter:
         return local_results
 
     @staticmethod
+    def _restore_hive_metadata(
+        tags: list[str] | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Rehydrate temporal metadata from hive tags when structured metadata is absent."""
+        restored = dict(metadata or {})
+        for raw_tag in tags or []:
+            if not isinstance(raw_tag, str):
+                continue
+            if raw_tag.startswith("date:") and not restored.get("source_date"):
+                source_date = raw_tag.removeprefix("date:")
+                restored["source_date"] = source_date
+                if not restored.get("temporal_index"):
+                    digits = "".join(ch for ch in source_date if ch.isdigit())
+                    if digits:
+                        restored["temporal_index"] = int(digits)
+            elif raw_tag.startswith("time:") and not restored.get("temporal_order"):
+                temporal_order = raw_tag.removeprefix("time:")
+                restored["temporal_order"] = temporal_order
+                if not restored.get("temporal_index"):
+                    digits = "".join(ch for ch in temporal_order if ch.isdigit())
+                    if digits:
+                        restored["temporal_index"] = int(digits)
+        return restored
+
+    @staticmethod
     def _hive_fact_to_dict(
         content: str,
         concept: str,
         confidence: float,
         tags: list[str] | None = None,
         source: str = "unknown",
+        timestamp: Any = "",
+        metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Convert a hive fact to the same dict format as local facts.
 
         Uses "outcome" key (not "fact") to match _semantic_fact_to_dict output,
         so LearningAgent can process hive facts identically to local ones.
         """
+        restored_metadata = CognitiveAdapter._restore_hive_metadata(tags, metadata)
         return {
             "experience_id": "",
             "context": concept,
             "outcome": content,
             "confidence": confidence,
-            "timestamp": "",
+            "timestamp": "" if timestamp in ("", None) else str(timestamp),
             "tags": tags or [],
-            "metadata": {},
+            "metadata": restored_metadata,
             "source": f"hive:{source}",
         }
 
@@ -659,6 +696,10 @@ class CognitiveAdapter:
                     confidence=r.get("confidence", 0.5),
                     tags=r.get("tags", []),
                     source=r.get("source", "unknown"),
+                    timestamp=r.get("created_at", r.get("timestamp", "")),
+                    metadata=r.get("metadata", {})
+                    if isinstance(r.get("metadata", {}), dict)
+                    else {},
                 )
                 for r in (fqr.results if hasattr(fqr, "results") else fqr)
             ]
@@ -685,6 +726,8 @@ class CognitiveAdapter:
                     confidence=f.confidence,
                     tags=getattr(f, "tags", []),
                     source=getattr(f, "source_agent", "unknown"),
+                    timestamp=getattr(f, "created_at", ""),
+                    metadata=getattr(f, "metadata", {}),
                 )
                 for f in facts
             ]
@@ -717,6 +760,8 @@ class CognitiveAdapter:
                     confidence=f.confidence,
                     tags=getattr(f, "tags", []),
                     source=getattr(f, "source_agent", "unknown"),
+                    timestamp=getattr(f, "created_at", ""),
+                    metadata=getattr(f, "metadata", {}),
                 )
                 for f in facts
             ]
