@@ -48,6 +48,13 @@ graph LR
     eval_imp -->|"imports"| eval_exp
     kb_imp -->|"imports"| knowledge_exp
 
+    subgraph recipes_intra["recipes (intra-module imports)"]
+        direction LR
+        rust_runner_mod["rust_runner.py<br/>stdlib: signal, os, json, subprocess"]
+        discovery_mod["discovery.py<br/>stdlib: os, hashlib, json, subprocess"]
+    end
+    rust_runner_mod -->|"imports _AMPLIHACK_HOME_BUNDLE_DIR<br/>_PACKAGE_BUNDLE_DIR, _REPO_ROOT_BUNDLE_DIR"| discovery_mod
+
     subgraph dead_code["Dead Code Candidates"]
         direction TB
         dead1["examples/usage_example.py<br/>(demo only)"]
