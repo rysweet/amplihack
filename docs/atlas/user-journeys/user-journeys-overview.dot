@@ -1,0 +1,56 @@
+digraph user_journeys_overview {
+    rankdir=LR;
+    node [fontname="Helvetica", fontsize=10, shape=box, style="rounded,filled"];
+    edge [fontname="Helvetica", fontsize=9];
+
+    // Rank constraints for left-to-right flow
+    { rank=same; user; }
+    { rank=same; cli; }
+    { rank=same; launcher; auto; install_mod; recipe; memory; }
+    { rank=same; claude_bin; sqlite; kuzu; fs; }
+
+    // User
+    user [label="User", shape=ellipse, fillcolor="#74b9ff"];
+
+    // Entry
+    cli [label="CLI\ncli.py", fillcolor="#dfe6e9"];
+
+    // Journey targets
+    launcher [label="ClaudeLauncher\ncore.py", fillcolor="#55efc4"];
+    auto [label="AutoMode\nauto_mode.py", fillcolor="#ffeaa7"];
+    install_mod [label="install.py\ncopytree_manifest", fillcolor="#a29bfe"];
+    recipe [label="RecipeRunner\nrust_runner.py", fillcolor="#dfe6e9"];
+    memory [label="MemoryManager\nmanager.py", fillcolor="#fab1a0"];
+
+    // Outcomes
+    claude_bin [label="claude binary\n(subprocess)", fillcolor="#b2f2bb"];
+    sqlite [label="SQLite\nmemory.db", shape=cylinder, fillcolor="#ffd8a8"];
+    kuzu [label="Kuzu\ngraph DB", shape=cylinder, fillcolor="#ffe0cc"];
+    fs [label="~/.amplihack/.claude/\n(filesystem)", shape=cylinder, fillcolor="#d0bfff"];
+
+    // Journey 1: Launch Claude
+    user -> cli [label="amplihack launch"];
+    cli -> launcher [label="J1: Launch"];
+    launcher -> claude_bin;
+
+    // Journey 2: Auto Mode
+    user -> cli [label="amplihack --auto -p '...'"];
+    cli -> auto [label="J2: Auto Mode"];
+    auto -> claude_bin [label="iterative turns"];
+
+    // Journey 3: Install
+    user -> cli [label="amplihack install"];
+    cli -> install_mod [label="J3: Install"];
+    install_mod -> fs;
+
+    // Journey 4: Recipe Run
+    user -> cli [label="amplihack recipe run"];
+    cli -> recipe [label="J4: Recipe"];
+    recipe -> claude_bin [label="agent steps"];
+
+    // Journey 5: Memory
+    user -> cli [label="amplihack memory tree"];
+    cli -> memory [label="J5: Memory"];
+    memory -> sqlite;
+    memory -> kuzu;
+}

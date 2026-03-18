@@ -1,56 +1,84 @@
-staleness_map:
-  - glob: "docker/docker-compose*.yml"
-    layers_affected: [1, 6]
-    rebuild_command: "/code-atlas layers=1,6"
+# Staleness Map — extracted from LAYERS.yaml staleness_triggers
+# Maps each layer slug to file patterns that trigger a rebuild.
 
-  - glob: "Dockerfile"
-    layers_affected: [1]
-    rebuild_command: "/code-atlas layers=1"
+repo-surface:
+  - "**/*"
 
-  - glob: "pyproject.toml"
-    layers_affected: [2, 6]
-    rebuild_command: "/code-atlas layers=2,6"
+ast-lsp-bindings:
+  - "*.go"
+  - "*.ts"
+  - "*.py"
+  - "*.rs"
+  - "*.cs"
+  - "*.js"
+  - "*.java"
 
-  - glob: "**/*.py"
-    layers_affected: [2, 7, 8]
-    rebuild_command: "/code-atlas layers=2,7,8"
+compile-deps:
+  - "go.mod"
+  - "*/go.mod"
+  - "package.json"
+  - "*/package.json"
+  - "*.csproj"
+  - "Cargo.toml"
+  - "*/Cargo.toml"
+  - "requirements*.txt"
+  - "*/requirements*.txt"
+  - "pyproject.toml"
+  - "*/pyproject.toml"
 
-  - glob: "src/amplihack/cli.py"
-    layers_affected: [3, 4, 5, 7]
-    rebuild_command: "/code-atlas layers=3,4,5,7"
+runtime-topology:
+  - "docker-compose*.yml"
+  - "docker-compose*.yaml"
+  - "*/k8s/*.yaml"
+  - "k8s/*.yaml"
+  - "kubernetes/*.yaml"
+  - "*/kubernetes/*.yaml"
+  - "helm/*.yaml"
+  - "helm/*/*.yaml"
+  - "*/helm/*.yaml"
+  - "*/helm/*/*.yaml"
 
-  - glob: "src/amplihack/proxy/**/*.py"
-    layers_affected: [1, 3, 4]
-    rebuild_command: "/code-atlas layers=1,3,4"
+api-contracts:
+  - "*route*.ts"
+  - "*route*.go"
+  - "*controller*.go"
+  - "*controller*.ts"
+  - "*controller*.cs"
+  - "*views*.py"
+  - "*router*.ts"
+  - "*router*.go"
+  - "*handler*.go"
+  - "*.proto"
+  - "*.graphql"
+  - "*.gql"
+  - "*openapi*.yaml"
+  - "*openapi*.json"
+  - "*swagger*.yaml"
+  - "*swagger*.json"
 
-  - glob: "src/amplihack/hooks/**/*.py"
-    layers_affected: [3, 4, 5]
-    rebuild_command: "/code-atlas layers=3,4,5"
+data-flow:
+  - "*dto*.ts"
+  - "*schema*.py"
+  - "*_request.go"
+  - "*_response.go"
+  - "*types*.ts"
+  - "*model*.go"
 
-  - glob: "src/amplihack/memory/**/*.py"
-    layers_affected: [4, 7]
-    rebuild_command: "/code-atlas layers=4,7"
+service-components:
+  - "services/*/*.go"
+  - "services/*/*.ts"
+  - "services/*/*.py"
+  - "services/*/*.rs"
+  - "services/*/*.cs"
+  - "apps/*/*.go"
+  - "apps/*/*.ts"
+  - "src/*/__init__.py"
+  - "*/mod.rs"
 
-  - glob: ".env.example"
-    layers_affected: [6]
-    rebuild_command: "/code-atlas layers=6"
-
-  - glob: ".env.*.example"
-    layers_affected: [6]
-    rebuild_command: "/code-atlas layers=6"
-
-  - glob: "amplifier-bundle/recipes/*.yaml"
-    layers_affected: [5]
-    rebuild_command: "/code-atlas layers=5"
-
-  - glob: "src/amplihack/__init__.py"
-    layers_affected: [2, 3, 7]
-    rebuild_command: "/code-atlas layers=2,3,7"
-
-  - glob: ".claude/skills/**"
-    layers_affected: [6]
-    rebuild_command: "/code-atlas layers=6"
-
-  - glob: ".claude/agents/**"
-    layers_affected: [6]
-    rebuild_command: "/code-atlas layers=6"
+user-journeys:
+  - "*page*.tsx"
+  - "*page*.ts"
+  - "cmd/*.go"
+  - "*/cmd/*.go"
+  - "cli/*.py"
+  - "*/cli/*.py"
