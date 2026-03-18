@@ -1,0 +1,28 @@
+sequenceDiagram
+    actor User
+    participant CLI as cli.py
+    participant Install as install.py
+    participant Manifest as StagingManifest
+    participant Settings as settings.py
+    participant FS as filesystem
+
+    User->>CLI: amplihack install
+    CLI->>Install: _local_install(repo_root)
+    Install->>Install: ensure_dirs() -> mkdir ~/.amplihack/.claude
+    Install->>Manifest: load ESSENTIAL_DIRS, ESSENTIAL_FILES
+    Manifest-->>Install: dirs_to_copy, file_filter
+
+    loop Each essential directory
+        Install->>FS: copytree(src/.claude/{dir}, ~/.amplihack/.claude/{dir})
+        FS-->>Install: copied
+    end
+
+    Install->>Install: create_runtime_dirs()
+    Install->>FS: mkdir logs/, metrics/, analysis/
+    Install->>Settings: ensure_settings_json()
+    Settings->>FS: read/create settings.json
+    Settings->>Settings: update_hook_paths()
+    Settings->>FS: write settings.json
+    Install->>Install: _configure_amplihack_marketplace()
+    Install-->>CLI: success
+    CLI-->>User: "Installation complete"

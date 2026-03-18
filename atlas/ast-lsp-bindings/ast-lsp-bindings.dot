@@ -1,0 +1,67 @@
+digraph ast_lsp_bindings {
+    rankdir=LR;
+    fontname="Helvetica";
+    node [fontname="Helvetica", fontsize=10];
+    edge [color="#666666"];
+
+    // Public API nodes as record shapes
+    node [shape=record, style="filled", fillcolor="#e8f4fd"];
+
+    amplihack [label="{amplihack/__init__|main()\linstall()\luninstall()\lensure_dirs()\lcopytree_manifest()\l}"];
+    settings [label="{settings|ensure_settings_json()\lupdate_hook_paths()\l}"];
+    launcher [label="{launcher|ClaudeLauncher\lClaudeDirectoryDetector\lPrerequisiteChecker\lAutoStager\lClaudeBinaryManager\l}"];
+    proxy [label="{proxy|ProxyConfig\lProxyServer\lTokenSanitizer\l}"];
+    security [label="{security|scan()\lSecurityScanner\l}"];
+    safety [label="{safety|StagingGuard\l}"];
+    docker [label="{docker|DockerDetector\lDockerManager\l}"];
+    uvx [label="{uvx|UVXManager\l}"];
+    utils [label="{utils|slugify()\lclaude_cli\lprerequisites\ldefensive\l}"];
+    recipes [label="{recipes|RecipeParser\lrun_recipe_via_rust()\ldiscover_recipes()\l}"];
+    recipe_cli [label="{recipe_cli|create_recipe_subparser()\lhandle_recipe_command()\l}"];
+    fleet [label="{fleet|FleetObserver\lFleetCLI\lSessionContext\l}"];
+    knowledge [label="{knowledge_builder|KnowledgeBuilder\lKnowledgeGraph\l}"];
+    bundle [label="{bundle_generator|BundleBuilder\lBundlePackager\l}"];
+    workflows [label="{workflows|WorkflowEngine\l}"];
+    settings_gen [label="{settings_generator|SettingsGenerator\l}"];
+    power [label="{power_steering|prompt_re_enable_if_disabled()\l}"];
+    lsp [label="{lsp_detector|LSPDetector\l}"];
+    memory [label="{memory.discoveries|store_discovery()\lget_recent_discoveries()\l}"];
+    eval_pkg [label="{eval|teaching_eval\lgrader\lprogressive_test_suite\l}"];
+    hooks [label="{hooks|LauncherDetector\lLauncherInfo\l}"];
+    context [label="{context.adaptive|LauncherDetector\lHookStrategy\lClaudeStrategy\lCopilotStrategy\l}"];
+    vendor [label="{vendor.blarify|GraphBuilder\l}"];
+
+    // Cross-package imports
+    node [shape=ellipse, style="filled", fillcolor="#fff9c4"];
+    cli [label="cli.py"];
+    auto_mode [label="launcher/auto_mode"];
+    fleet_copilot [label="fleet/fleet_copilot"];
+    recipe_cmd [label="recipe_cli/command"];
+    eval_harness [label="eval/*"];
+
+    cli -> launcher [label="imports"];
+    cli -> proxy [label="imports"];
+    cli -> fleet [label="imports"];
+    cli -> recipes [label="imports"];
+    cli -> bundle [label="imports"];
+
+    auto_mode -> launcher [label="internal"];
+    fleet_copilot -> fleet [label="internal"];
+    recipe_cmd -> recipes [label="imports"];
+    eval_harness -> eval_pkg [label="internal"];
+
+    // Intra-module: recipes/rust_runner -> recipes/discovery
+    node [shape=record, style="filled", fillcolor="#d4e8d4"];
+    rust_runner [label="{recipes/rust_runner|signal (stdlib)\los, json, subprocess\lRecipeResult, StepResult\l}"];
+    discovery_mod [label="{recipes/discovery|os (stdlib)\lhashlib, json, subprocess\l_AMPLIHACK_HOME_BUNDLE_DIR\l_PACKAGE_BUNDLE_DIR\l_REPO_ROOT_BUNDLE_DIR\l}"];
+
+    rust_runner -> discovery_mod [label="imports\n_AMPLIHACK_HOME_BUNDLE_DIR\n_PACKAGE_BUNDLE_DIR\n_REPO_ROOT_BUNDLE_DIR", color="#6666aa"];
+
+    // Dead code candidates
+    node [shape=box, style="dashed,filled", fillcolor="#ffcdd2"];
+    dead1 [label="examples/usage_example.py\n(demo only)"];
+    dead2 [label="examples/proxy_context_usage.py\n(demo only)"];
+    dead3 [label="rust_trial.py\n(experimental)"];
+    dead4 [label="copilot_auto_install.py"];
+    dead5 [label="staging_cleanup.py"];
+}
