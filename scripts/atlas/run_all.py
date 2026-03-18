@@ -23,13 +23,14 @@ sys.path.insert(0, str(_REPO_ROOT))
 from scripts.atlas.common import build_manifest
 
 
-def run_layer(script_path: str, args: list[str], label: str) -> tuple[bool, float]:
+def run_layer(script_path: str, args: list[str], label: str, timeout: int = 120) -> tuple[bool, float]:
     """Run a layer script and return (success, elapsed_seconds).
 
     Args:
         script_path: Path to the Python script.
         args: Additional CLI arguments.
         label: Display label for this layer.
+        timeout: Timeout in seconds (default 120, increase for LSP-heavy layers).
 
     Returns:
         Tuple of (success bool, elapsed seconds).
@@ -42,7 +43,7 @@ def run_layer(script_path: str, args: list[str], label: str) -> tuple[bool, floa
             cmd,
             capture_output=True,
             text=True,
-            timeout=120,
+            timeout=timeout,
         )
     except subprocess.TimeoutExpired:
         elapsed = time.monotonic() - start
@@ -71,6 +72,8 @@ def main():
     parser = argparse.ArgumentParser(description="Run all atlas extraction layers")
     parser.add_argument("--root", required=True, help="Project root directory")
     parser.add_argument("--output", required=True, help="Output directory for all JSON files")
+    parser.add_argument("--fast", action="store_true",
+                        help="Use hierarchy-only mode for blarify (faster, no LSP relationships)")
     args = parser.parse_args()
 
     root = Path(args.root).resolve()
@@ -81,6 +84,8 @@ def main():
     python_dir = scripts_dir / "python"
 
     common_args = ["--root", str(root), "--output", str(output_dir)]
+    # --fast is only passed to layer scripts that support it (ast_bindings.py)
+    blarify_args = common_args + (["--fast"] if args.fast else [])
     total_start = time.monotonic()
     timings: list[tuple[str, float]] = []
 
@@ -95,21 +100,31 @@ def main():
     timings.append(("manifest", manifest_elapsed))
 
     # --- Phase 2: layer1, layer2, layer4 ---
-    print("\nPhase 2: layer1, layer2, layer4")
-    phase2_scripts = [
-        (str(python_dir / "repo_surface.py"), "layer1_repo_surface"),
-        (str(python_dir / "ast_bindings.py"), "layer2_ast_bindings"),
-    ]
-    # layer4 only if script exists
+    mode_label = "fast (hierarchy-only)" if args.fast else "full (with LSP)"
+    print(f"\nPhase 2: layer1, layer2, layer4 [{mode_label}]")
+    # Layer 2 with full LSP can take several minutes; increase timeout accordingly
+    layer2_timeout = 120 if args.fast else 600
+
+    # layer1: repo surface (no --fast support)
+    ok, elapsed = run_layer(str(python_dir / "repo_surface.py"), common_args, "layer1_repo_surface")
+    timings.append(("layer1_repo_surface", elapsed))
+    if not ok:
+        _abort("layer1_repo_surface", timings, total_start)
+
+    # layer2: ast bindings (supports --fast for hierarchy-only blarify)
+    ok, elapsed = run_layer(str(python_dir / "ast_bindings.py"), blarify_args,
+                            "layer2_ast_bindings", timeout=layer2_timeout)
+    timings.append(("layer2_ast_bindings", elapsed))
+    if not ok:
+        _abort("layer2_ast_bindings", timings, total_start)
+
+    # layer4: runtime topology (no --fast support)
     layer4_script = python_dir / "runtime_topology.py"
     if layer4_script.exists():
-        phase2_scripts.append((str(layer4_script), "layer4_runtime_topology"))
-
-    for script, label in phase2_scripts:
-        ok, elapsed = run_layer(script, common_args, label)
-        timings.append((label, elapsed))
+        ok, elapsed = run_layer(str(layer4_script), common_args, "layer4_runtime_topology")
+        timings.append(("layer4_runtime_topology", elapsed))
         if not ok:
-            _abort(label, timings, total_start)
+            _abort("layer4_runtime_topology", timings, total_start)
 
     # --- Phase 3: layer3, layer5, layer6 ---
     print("\nPhase 3: layer3, layer5, layer6")
