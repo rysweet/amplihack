@@ -65,7 +65,17 @@ if _amplihack_home_raw:
     _amplihack_home_resolved = Path(_amplihack_home_raw).resolve()
     if _amplihack_home_resolved.is_dir():
         _AMPLIHACK_HOME_DIR = _amplihack_home_resolved
-        _AMPLIHACK_HOME_BUNDLE_DIR = _amplihack_home_resolved / "amplifier-bundle" / "recipes"
+        _bundle_candidate = _amplihack_home_resolved / "amplifier-bundle" / "recipes"
+        if _bundle_candidate.is_dir():
+            _AMPLIHACK_HOME_BUNDLE_DIR = _bundle_candidate
+        else:
+            logger.warning(
+                "AMPLIHACK_HOME=%r is set but amplifier-bundle/recipes/ subdir not found "
+                "(resolved: %s) — recipes from AMPLIHACK_HOME will not be discovered. "
+                "Ensure amplifier-bundle/recipes/ exists inside AMPLIHACK_HOME.",
+                _amplihack_home_raw,
+                _bundle_candidate,
+            )
     else:
         logger.warning(
             "AMPLIHACK_HOME=%r is not a valid directory (resolved: %s) — ignoring. "
@@ -84,7 +94,7 @@ if _amplihack_home_raw:
 # Priority (package → repo-root → AMPLIHACK_HOME → global → local):
 # 1. <site-packages>/amplihack/amplifier-bundle/recipes/ - Installed package
 # 2. <repo-root>/amplifier-bundle/recipes/               - Editable install
-# 3. $AMPLIHACK_HOME/                    - Explicit env var (resolved, is_dir checked)
+# 3. $AMPLIHACK_HOME/amplifier-bundle/recipes/ - Explicit env var (resolved, bundle subdir checked)
 # 4. ~/.amplihack/.claude/recipes/       - User home (global installation)
 # 5. amplifier-bundle/recipes/           - Global bundled (CWD-relative)
 # 6. src/amplihack/amplifier-bundle/     - Global source (CWD-relative)
@@ -92,7 +102,7 @@ if _amplihack_home_raw:
 _DEFAULT_SEARCH_DIRS: list[Path] = [
     _PACKAGE_BUNDLE_DIR,  # Installed package — ALWAYS available
     _REPO_ROOT_BUNDLE_DIR,  # Editable install — repo root fallback
-    *([_AMPLIHACK_HOME_DIR] if _AMPLIHACK_HOME_DIR else []),
+    *([_AMPLIHACK_HOME_BUNDLE_DIR] if _AMPLIHACK_HOME_BUNDLE_DIR else []),
     Path.home() / ".amplihack" / ".claude" / "recipes",  # Global user home
     Path("amplifier-bundle") / "recipes",  # Global bundled
     Path("src") / "amplihack" / "amplifier-bundle" / "recipes",  # Global source
