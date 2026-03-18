@@ -1,0 +1,49 @@
+sequenceDiagram
+    participant User
+    participant CLI as cli.py
+    participant cli
+    User->>CLI: cli:cli.py
+    CLI->>cli: main()
+    cli->>memory_export: file_io: _export_json
+    cli->>auto_update: return_value: UpdateCache.from_dict
+    cli->>auto_update: file_io: _fetch_latest_version
+    cli-->>CLI: result
+    CLI-->>User: exit code
+
+    participant User
+    participant CLI as cli.py
+    participant cli
+    User->>CLI: cli:cli.py
+    CLI->>cli: main()
+    cli->>cli: return_value: create_parser
+    cli->>cli: file_io: package_command
+    cli->>cli: subprocess: test_command
+    cli-->>CLI: result
+    CLI-->>User: exit code
+
+    participant User
+    participant CLI as cli.py
+    participant cli
+    User->>CLI: generate
+    CLI->>cli: generate()
+    cli->>cli: return_value: generate
+    cli-->>CLI: result
+    CLI-->>User: exit code
+
+    participant User
+    participant CLI as cli.py
+    participant cli
+    User->>CLI: test
+    CLI->>cli: test()
+    cli->>cli: return_value: test
+    cli-->>CLI: result
+    CLI-->>User: exit code
+
+    participant User
+    participant CLI as cli.py
+    participant cli
+    User->>CLI: package
+    CLI->>cli: package()
+    cli->>cli: return_value: package
+    cli-->>CLI: result
+    CLI-->>User: exit code

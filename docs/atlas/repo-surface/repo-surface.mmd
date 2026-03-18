@@ -1,65 +1,80 @@
 graph TD
-    subgraph root["amplihack repository"]
-        direction TB
-        pyproject["pyproject.toml<br/>Build config, deps"]
-        makefile["Makefile"]
-        dockerfile["Dockerfile"]
-        claudemd["CLAUDE.md<br/>Agent instructions"]
-        conftest["conftest.py / pytest.ini"]
-        readme["README.md"]
-    end
+    D0["amplihack<br/>22 py / 23 total"]
+    D1["agents<br/>0 py / 1 total"]
+    D2["eval-recipes<br/>0 py / 1 total"]
+    D3["goal_seeking<br/>13 py / 14 total"]
+    D4["recipes<br/>0 py / 1 total"]
+    D5["bundle_generator<br/>17 py / 17 total"]
+    D6["adaptive<br/>3 py / 3 total"]
+    D7["docker<br/>3 py / 3 total"]
+    D8["eval<br/>23 py / 26 total"]
+    D9["self_improve<br/>5 py / 5 total"]
+    D10["examples<br/>2 py / 3 total"]
+    D11["fleet<br/>54 py / 55 total"]
+    D12["prompts<br/>1 py / 3 total"]
+    D13["tests<br/>32 py / 32 total"]
+    D14["goal_agent_generator<br/>9 py / 11 total"]
+    D15["templates<br/>3 py / 3 total"]
+    D16["tests<br/>9 py / 9 total"]
+    D17["hooks<br/>3 py / 3 total"]
+    D18["knowledge_builder<br/>3 py / 3 total"]
+    D19["modules<br/>4 py / 4 total"]
+    D20["launcher<br/>26 py / 26 total"]
+    D21["tests<br/>4 py / 5 total"]
+    D22["lsp_detector<br/>2 py / 2 total"]
+    D23["memory<br/>14 py / 15 total"]
+    D24["backends<br/>4 py / 4 total"]
+    D25["evaluation<br/>5 py / 5 total"]
+    D26["kuzu<br/>5 py / 6 total"]
+    D27["meta_delegation<br/>9 py / 9 total"]
+    D28["mode_detector<br/>3 py / 3 total"]
+    D29["path_resolver<br/>2 py / 2 total"]
+    D30["plugin_cli<br/>4 py / 4 total"]
+    D31["plugin_manager<br/>2 py / 2 total"]
+    D32["power_steering<br/>2 py / 2 total"]
+    D33["prompts<br/>0 py / 1 total"]
+    D34["proxy<br/>30 py / 30 total"]
+    D35["recipe_cli<br/>3 py / 3 total"]
+    D36["recipes<br/>6 py / 6 total"]
+    D37["tests<br/>3 py / 3 total"]
+    D38["safety<br/>4 py / 4 total"]
+    D39["security<br/>10 py / 11 total"]
+    D0 --> D1
+    D1 --> D2
+    D1 --> D3
+    D0 --> D5
+    D0 --> D7
+    D0 --> D8
+    D8 --> D9
+    D0 --> D10
+    D0 --> D11
+    D11 --> D12
+    D11 --> D13
+    D0 --> D14
+    D14 --> D15
+    D14 --> D16
+    D0 --> D17
+    D0 --> D18
+    D18 --> D19
+    D0 --> D20
+    D20 --> D21
+    D0 --> D22
+    D0 --> D23
+    D23 --> D24
+    D23 --> D25
+    D23 --> D26
+    D0 --> D27
+    D0 --> D28
+    D0 --> D29
+    D0 --> D30
+    D0 --> D31
+    D0 --> D32
+    D0 --> D33
+    D0 --> D34
+    D0 --> D35
+    D0 --> D36
+    D36 --> D37
+    D0 --> D38
+    D0 --> D39
 
-    subgraph src_pkg["src/amplihack/ — Main Package"]
-        direction TB
-        cli["cli.py / cli_extensions.py<br/>CLI entry point"]
-        init["__init__.py / __main__.py<br/>Package init"]
-        settings["settings.py / settings_generator/"]
-        install["install.py / uninstall.py"]
-    end
-
-    subgraph src_sub["src/amplihack/ Subpackages"]
-        direction TB
-        launcher["launcher/<br/>Claude/Copilot launcher"]
-        proxy["proxy/<br/>LLM proxy, Flask server"]
-        fleet["fleet/<br/>Multi-agent fleet mgmt"]
-        recipes["recipes/ + recipe_cli/<br/>Recipe engine"]
-        memory["memory/<br/>Discovery persistence"]
-        security["security/<br/>Safety & scanning"]
-        eval_pkg["eval/<br/>Agent evaluation"]
-        knowledge["knowledge_builder/<br/>Knowledge graph"]
-        bundle["bundle_generator/<br/>Package distribution"]
-        hooks["hooks/<br/>Git hooks"]
-        utils["utils/<br/>Shared utilities"]
-        vendor["vendor/blarify/<br/>Code graph indexer"]
-        lsp["lsp_detector/<br/>LSP detection"]
-        uvx["uvx/<br/>UVX packaging"]
-        docker_pkg["docker/<br/>Docker detection"]
-        tracing["tracing/<br/>Observability"]
-        context["context/<br/>Adaptive context"]
-        workflows["workflows/<br/>Workflow engine"]
-        plugin["plugin_manager/ + plugin_cli/"]
-        power["power_steering/<br/>Prompt control"]
-        safety["safety/<br/>Staging safety"]
-        meta["meta_delegation/<br/>Agent delegation"]
-        mode["mode_detector/<br/>Mode detection"]
-        path_res["path_resolver/<br/>Path resolution"]
-        goal["goal_agent_generator/"]
-    end
-
-    subgraph support["Support Directories"]
-        direction TB
-        tests["tests/<br/>Top-level test suite"]
-        scripts["scripts/<br/>Utility scripts"]
-        docs["docs/<br/>MkDocs documentation"]
-        specs["Specs/<br/>Module specifications"]
-        examples_dir["examples/<br/>Usage examples"]
-        docker_dir["docker/<br/>Docker compose"]
-        agents_dir["agents/<br/>Agent definitions"]
-        commands_dir["commands/<br/>Slash commands"]
-        skills_dir["skills/<br/>Skill definitions"]
-        tools_dir["tools/<br/>Hook utilities"]
-    end
-
-    root --> src_pkg
-    src_pkg --> src_sub
-    root --> support
+    click D0 "../" "Back to Atlas index"

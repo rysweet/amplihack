@@ -1,210 +1,100 @@
 graph TB
-    subgraph CLI_LAYER["CLI Layer"]
-        cli["cli.py\ncreate_parser / main"]
-        cli_ext["cli_extensions.py"]
+    subgraph utility["Utility Packages"]
+        P0["plugin_manager<br/>2 files<br/>I=0.00"]
     end
 
-    subgraph LAUNCHER_PKG["launcher/"]
-        core["core.py\nClaudeLauncher"]
-        auto["auto_mode.py\nAutoMode"]
-        auto_coord["auto_mode_coordinator.py"]
-        auto_state["auto_mode_state.py"]
-        copilot_l["copilot.py"]
-        codex_l["codex.py"]
-        amplifier_l["amplifier.py"]
-        session_tracker["session_tracker.py"]
-        nesting["nesting_detector.py"]
-        binary_mgr["claude_binary_manager.py"]
-        repo_co["repo_checkout.py"]
-        fork_mgr["fork_manager.py"]
-        append_h["append_handler.py"]
-        completion["completion_verifier.py"]
-        work_sum["work_summary.py"]
+    subgraph feature["Feature Packages"]
+        P1["goal_seeking<br/>13 files<br/>I=0.00"]
+        P2["hive_mind<br/>13 files<br/>I=0.00"]
+        P3["prompts<br/>1 files<br/>I=0.00"]
+        P4["sdk<br/>1 files<br/>I=0.00"]
+        P5["sdk_adapters<br/>6 files<br/>I=0.00"]
+        P6["sub_agents<br/>6 files<br/>I=0.00"]
+        P7["bundle_generator<br/>17 files<br/>I=0.50"]
+        P8["adaptive<br/>3 files<br/>I=0.00"]
+        P9["docker<br/>3 files<br/>I=0.00"]
+        P10["eval<br/>23 files<br/>I=0.00"]
+        P11["self_improve<br/>5 files<br/>I=0.00"]
+        P12["fleet<br/>54 files<br/>I=0.00"]
+        P13["prompts<br/>1 files<br/>I=0.00"]
+        P14["tests<br/>32 files<br/>I=0.00"]
+        P15["templates<br/>3 files<br/>I=0.00"]
+        P16["hooks<br/>3 files<br/>I=0.00"]
+        P17["knowledge_builder<br/>3 files<br/>I=0.00"]
+        P18["modules<br/>4 files<br/>I=0.00"]
+        P19["launcher<br/>26 files<br/>I=0.82"]
+        P20["tests<br/>4 files<br/>I=0.00"]
+        P21["lsp_detector<br/>2 files<br/>I=0.00"]
+        P22["memory<br/>14 files<br/>I=0.00"]
+        P23["backends<br/>4 files<br/>I=0.00"]
+        P24["evaluation<br/>5 files<br/>I=0.00"]
+        P25["kuzu<br/>5 files<br/>I=0.00"]
+        P26["indexing<br/>11 files<br/>I=0.00"]
+        P27["meta_delegation<br/>9 files<br/>I=0.00"]
+        P28["mode_detector<br/>3 files<br/>I=0.00"]
+        P29["path_resolver<br/>2 files<br/>I=0.00"]
+        P30["plugin_cli<br/>4 files<br/>I=0.50"]
+        P31["power_steering<br/>2 files<br/>I=0.00"]
+        P32["proxy<br/>30 files<br/>I=0.33"]
+        P33["recipe_cli<br/>3 files<br/>I=0.00"]
+        P34["recipes<br/>6 files<br/>I=0.00"]
+        P35["tests<br/>3 files<br/>I=0.00"]
+        P36["safety<br/>4 files<br/>I=0.00"]
+        P37["security<br/>10 files<br/>I=0.00"]
+        P38["settings_generator<br/>2 files<br/>I=0.00"]
+        P39["testing<br/>3 files<br/>I=0.00"]
+        P40["tracing<br/>2 files<br/>I=0.33"]
+        P41["utils<br/>21 files<br/>I=0.00"]
+        P42["uvx<br/>2 files<br/>I=0.50"]
+        P43["vendor<br/>1 files<br/>I=0.00"]
+        P44["blarify<br/>7 files<br/>I=0.00"]
+        P45["prompt_templates<br/>17 files<br/>I=0.00"]
+        P46["rotating_provider<br/>5 files<br/>I=0.00"]
+        P47["cli<br/>3 files<br/>I=0.00"]
+        P48["commands<br/>2 files<br/>I=0.00"]
+        P49["code_hierarchy<br/>2 files<br/>I=0.00"]
+        P50["languages<br/>12 files<br/>I=0.00"]
+        P51["code_references<br/>4 files<br/>I=0.00"]
+        P52["types<br/>2 files<br/>I=0.00"]
+        P53["documentation<br/>4 files<br/>I=0.00"]
+        P54["queries<br/>3 files<br/>I=0.00"]
+        P55["utils<br/>2 files<br/>I=0.00"]
+        P56["node<br/>10 files<br/>I=0.00"]
+        P57["relationship<br/>5 files<br/>I=0.00"]
+        P58["integrations<br/>2 files<br/>I=0.00"]
+        P59["mcp_server<br/>4 files<br/>I=0.00"]
+        P60["tools<br/>2 files<br/>I=0.00"]
+        P61["prebuilt<br/>2 files<br/>I=0.00"]
+        P62["project_file_explorer<br/>5 files<br/>I=0.00"]
+        P63["repositories<br/>1 files<br/>I=0.00"]
+        P64["graph_db_manager<br/>6 files<br/>I=0.00"]
+        P65["dtos<br/>10 files<br/>I=0.00"]
+        P66["graph_queries<br/>2 files<br/>I=0.00"]
+        P67["version_control<br/>3 files<br/>I=0.00"]
+        P68["tools<br/>11 files<br/>I=0.00"]
+        P69["utils<br/>2 files<br/>I=0.00"]
+        P70["experimental<br/>2 files<br/>I=0.00"]
+        P71["multilspy<br/>9 files<br/>I=0.00"]
+        P72["workflows<br/>6 files<br/>I=0.00"]
     end
 
-    subgraph PROXY_PKG["proxy/"]
-        proxy_cfg["config.py\nProxyConfig"]
-        proxy_mgr["manager.py\nProxyManager"]
-        proxy_srv["server.py"]
-        integrated["integrated_proxy.py"]
-        azure_handler["azure_unified_handler.py"]
-        resp_api["responses_api_proxy.py"]
-        streaming["streaming.py"]
-        conversion["conversion.py"]
-        monitoring["monitoring.py"]
-        gh_auth["github_auth.py"]
+    subgraph leaf["Leaf Packages"]
+        P73["amplihack<br/>22 files<br/>I=1.00"]
+        P74["goal_agent_generator<br/>9 files<br/>I=1.00"]
+        P75["tests<br/>9 files<br/>I=1.00"]
+        P76["agents<br/>4 files<br/>I=1.00"]
     end
 
-    subgraph MEMORY_PKG["memory/"]
-        mem_db["database.py\nMemoryDatabase"]
-        mem_models["models.py\nMemoryEntry"]
-        mem_mgr["manager.py\nMemoryManager"]
-        mem_coord["coordinator.py"]
-        mem_retrieval["retrieval_pipeline.py"]
-        mem_viz["cli_visualize.py"]
-        mem_clean["cli_cleanup.py"]
-        subgraph KUZU_SUB["kuzu/"]
-            kuzu_conn["connector.py"]
-            kuzu_code["code_graph.py"]
-            kuzu_query["query_code_graph.py"]
-            subgraph INDEXING["indexing/"]
-                idx_orch["orchestrator.py"]
-                idx_scip["scip_indexer_runner.py"]
-                idx_import["scip_importer.py"]
-                idx_bg["background_indexer.py"]
-            end
-        end
-        subgraph BACKENDS["backends/"]
-            be_base["base.py"]
-            be_sqlite["sqlite_backend.py"]
-            be_kuzu["kuzu_backend.py"]
-        end
-    end
+    P74 -->|1| P41
+    P75 -->|2| P41
+    P19 -->|4| P26
+    P19 -->|4| P41
+    P19 -->|2| P8
+    P30 -->|1| P0
+    P32 -->|1| P37
+    P32 -->|1| P40
+    P40 -->|1| P32
+    P42 -->|2| P41
+    P76 -->|1| P41
 
-    subgraph RECIPE_PKG["recipes/"]
-        r_models["models.py\nStep, Recipe"]
-        r_parser["parser.py"]
-        r_discovery["discovery.py"]
-        r_runner["rust_runner.py"]
-        r_resolver["agent_resolver.py"]
-        subgraph ADAPTERS["adapters/"]
-            r_adapter["execution adapters"]
-        end
-    end
-
-    subgraph SECURITY_PKG["security/"]
-        xpia_def["xpia_defender.py\nXPIADefender"]
-        xpia_pat["xpia_patterns.py"]
-        xpia_hooks["xpia_hooks.py"]
-        xpia_health["xpia_health.py"]
-        sec_cfg["config.py"]
-    end
-
-    subgraph SAFETY_PKG["safety/"]
-        git_conflict["git_conflict_detector.py"]
-        safe_copy["safe_copy_strategy.py"]
-        prompt_trans["prompt_transformer.py"]
-    end
-
-    subgraph INSTALL_PKG["install/"]
-        install_mod["install.py\ncopytree_manifest"]
-        uninstall_mod["uninstall.py"]
-        settings_mod["settings.py"]
-        staging_clean["staging_cleanup.py"]
-        staging_safe["staging_safety.py"]
-    end
-
-    subgraph PLUGIN_PKG["plugin system"]
-        plugin_mgr["plugin_manager.py"]
-        plugin_cli_mod["plugin_cli.py"]
-    end
-
-    subgraph FLEET_PKG["fleet/"]
-        fleet_cli_mod["fleet_cli.py (Click)"]
-        fleet_admiral["fleet_admiral.py"]
-        fleet_tui_mod["fleet_tui.py"]
-        fleet_tasks_mod["fleet_tasks.py"]
-        fleet_state_mod["fleet_state.py"]
-        fleet_health_mod["fleet_health.py"]
-        fleet_session["fleet_session_reasoner.py"]
-    end
-
-    subgraph UTILS_PKG["utils/"]
-        prereqs["prerequisites.py"]
-        claude_cli_util["claude_cli.py"]
-        uvx_detect["uvx_detection.py"]
-        uvx_staging_mod["uvx_staging.py"]
-        paths_mod["paths.py"]
-        cleanup_reg["cleanup_registry.py"]
-    end
-
-    subgraph GOAL_AGENT["goal_agent_generator/"]
-        ga_cli["cli.py"]
-        ga_analyzer["prompt_analyzer.py"]
-        ga_assembler["agent_assembler.py"]
-        ga_synth["skill_synthesizer.py"]
-        ga_packager["packager.py"]
-        ga_models["models.py"]
-    end
-
-    subgraph OTHER_PKG["Other Modules"]
-        docker_mgr["docker/ DockerManager"]
-        hooks_mgr["hooks/ manager.py"]
-        workflows_mod["workflows/ classifier.py"]
-        tracing_mod["tracing/ trace_logger.py"]
-        context_adapt["context/adaptive/"]
-        mode_det["mode_detector/"]
-        bundle_gen["bundle_generator/"]
-        power_steer["power_steering/"]
-        lsp_det["lsp_detector/"]
-    end
-
-    %% Dependencies
-    cli --> core
-    cli --> auto
-    cli --> copilot_l
-    cli --> codex_l
-    cli --> amplifier_l
-    cli --> install_mod
-    cli --> plugin_cli_mod
-    cli --> mem_viz
-    cli --> r_runner
-    cli --> ga_cli
-    cli --> fleet_cli_mod
-    cli --> docker_mgr
-
-    core --> proxy_mgr
-    core --> binary_mgr
-    core --> prereqs
-    core --> nesting
-    core --> session_tracker
-    core --> tracing_mod
-
-    auto --> auto_coord
-    auto --> auto_state
-    auto --> completion
-    auto_coord --> append_h
-
-    proxy_mgr --> proxy_cfg
-    proxy_mgr --> proxy_srv
-    proxy_srv --> integrated
-    integrated --> azure_handler
-    integrated --> resp_api
-    integrated --> streaming
-    integrated --> conversion
-
-    mem_db --> mem_models
-    mem_mgr --> mem_db
-    mem_coord --> mem_mgr
-    mem_coord --> mem_retrieval
-    kuzu_conn --> kuzu_code
-    idx_orch --> idx_scip
-    idx_orch --> idx_import
-
-    r_runner --> r_models
-    r_runner --> r_parser
-    r_runner --> r_resolver
-
-    xpia_def --> xpia_pat
-    xpia_hooks --> xpia_def
-
-    install_mod --> staging_safe
-    install_mod --> settings_mod
-
-    fleet_cli_mod --> fleet_admiral
-    fleet_admiral --> fleet_tasks_mod
-    fleet_admiral --> fleet_state_mod
-
-    style CLI_LAYER fill:#74b9ff,color:#2d3436
-    style LAUNCHER_PKG fill:#55efc4,color:#2d3436
-    style PROXY_PKG fill:#ffeaa7,color:#2d3436
-    style MEMORY_PKG fill:#fab1a0,color:#2d3436
-    style RECIPE_PKG fill:#dfe6e9,color:#2d3436
-    style SECURITY_PKG fill:#fd79a8,color:#2d3436
-    style SAFETY_PKG fill:#e17055,color:#fff
-    style INSTALL_PKG fill:#a29bfe,color:#2d3436
-    style PLUGIN_PKG fill:#6c5ce7,color:#fff
-    style FLEET_PKG fill:#00cec9,color:#2d3436
-    style UTILS_PKG fill:#b2bec3,color:#2d3436
-    style GOAL_AGENT fill:#fdcb6e,color:#2d3436
-    style OTHER_PKG fill:#636e72,color:#fff
+    click P0 "../service-components/" "View details"

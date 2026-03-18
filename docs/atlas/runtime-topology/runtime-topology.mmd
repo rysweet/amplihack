@@ -1,74 +1,50 @@
 graph LR
-    subgraph user["User Entry"]
-        cli_cmd["amplihack CLI<br/>Python process"]
-    end
-
-    subgraph main_proc["Main Process"]
-        direction TB
-        launcher_rt["Launcher<br/>Session management"]
-        settings_rt["Settings<br/>Config loading"]
-        install_rt["Installer<br/>File copy, hooks"]
-    end
-
-    subgraph sub_procs["Spawned Subprocesses"]
-        direction TB
-        claude_bin["Claude CLI<br/>(claude binary)<br/>via subprocess"]
-        git_proc["git<br/>subprocess calls"]
-        npm_proc["npm / node<br/>subprocess"]
-        recipe_rust["Recipe Runner<br/>(Rust binary)<br/>amplihack-recipe-runner"]
-    end
-
-    subgraph servers["Server Processes"]
-        direction TB
-        flask_proxy["Flask Proxy Server<br/>responses_api_proxy.py<br/>Port configurable"]
-        litellm_proxy["LiteLLM Proxy<br/>(optional external)"]
-    end
-
-    subgraph fleet_rt["Fleet Management"]
-        direction TB
-        tmux_sessions["tmux sessions<br/>per-agent"]
-        ssh_tunnels["SSH tunnels<br/>to remote VMs"]
-        fleet_tui["Fleet TUI<br/>Rich dashboard"]
-    end
-
-    subgraph docker_rt["Docker (Optional)"]
-        direction TB
-        docker_container["amplihack container<br/>Python 3.12-slim<br/>Node 20"]
-        workspace_vol["/workspace volume<br/>mounted from host"]
-    end
-
-    subgraph external["External Services"]
-        direction TB
-        anthropic_api["Anthropic API<br/>Claude models"]
-        github_api["GitHub API<br/>Copilot"]
-        azure_api["Azure OpenAI<br/>(optional)"]
-        neo4j_db["Neo4j<br/>(optional, blarify)"]
-        falkordb_db["FalkorDB<br/>(optional, blarify)"]
-        kuzu_db["Kuzu<br/>embedded graph<br/>(memory)"]
-    end
-
-    cli_cmd --> launcher_rt
-    cli_cmd --> settings_rt
-    cli_cmd --> install_rt
-
-    launcher_rt --> claude_bin
-    launcher_rt --> git_proc
-    launcher_rt --> npm_proc
-    launcher_rt --> recipe_rust
-
-    cli_cmd --> flask_proxy
-    flask_proxy --> litellm_proxy
-    flask_proxy --> anthropic_api
-    flask_proxy --> github_api
-    flask_proxy --> azure_api
-
-    cli_cmd --> fleet_tui
-    fleet_tui --> tmux_sessions
-    fleet_tui --> ssh_tunnels
-
-    docker_container --> cli_cmd
-    workspace_vol --> docker_container
-
-    launcher_rt --> kuzu_db
-    flask_proxy -.-> neo4j_db
-    flask_proxy -.-> falkordb_db
+    S0(["subprocess.run"])
+    S1(["uv"])
+    S2(["subprocess.Popen"])
+    S3(["<dynamic>"])
+    S4(["pytest"])
+    S5(["gh"])
+    S6(["git"])
+    B0{{"flask :None (http)"}}
+    B1{{"flask :None (http)"}}
+    B2{{"flask :None (http)"}}
+    B3{{"uvicorn :None (http)"}}
+    B4{{"uvicorn :None (http)"}}
+    FN0["microsoft_sdk"]
+    FN0 --> S0
+    FN1["auto_update"]
+    FN1 --> S1
+    FN1 --> S2
+    FN1 --> S3
+    FN1 --> S2
+    FN2["cli"]
+    FN2 --> S4
+    FN3["distributor"]
+    FN3 --> S5
+    FN3 --> S0
+    FN3 --> S0
+    FN3 --> S5
+    FN3 --> S0
+    FN3 --> S6
+    FN3 --> S6
+    FN3 --> S6
+    FN3 --> S6
+    FN3 --> S0
+    FN3 --> S0
+    FN3 --> S0
+    FN3 --> S6
+    FN3 --> S6
+    FN4["filesystem_packager"]
+    FN4 --> S3
+    FN5["repository_creator"]
+    FN5 --> S5
+    FN5 --> S5
+    FN5 --> S0
+    FN5 --> S0
+    FN5 --> S5
+    FN5 --> S5
+    FN5 --> S6
+    FN5 --> S5
+    FN6["update_manager"]
+    FN6 --> S6
