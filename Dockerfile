@@ -25,6 +25,7 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh && \
 
 # Copy project files
 COPY pyproject.toml uv.lock ./
+COPY build_hooks.py ./
 COPY src/ ./src/
 
 # Install Python dependencies with UV
