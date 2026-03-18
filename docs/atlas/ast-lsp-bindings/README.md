@@ -3,7 +3,10 @@ Mode: static-approximation
 # Layer 2: AST+LSP Symbol Bindings
 
 **Slug:** `ast-lsp-bindings` | **Display Order:** 2
+<<<<<<< HEAD
+=======
 **Last rebuilt:** 2026-03-18 | **Package version:** 0.6.85
+>>>>>>> origin/main
 
 No LSP server was available for this analysis. All symbol bindings were derived via static grep/read of `__all__` exports and `from amplihack.X import Y` statements.
 
@@ -23,7 +26,10 @@ Modules with explicit `__all__` declarations (38 files found):
 | `uvx` | `UVXManager` |
 | `utils` | `slugify`, `claude_cli`, `prerequisites`, `defensive` |
 | `recipes` | `RecipeParser`, `run_recipe_via_rust`, `discover_recipes` |
+<<<<<<< HEAD
+=======
 | `recipes.discovery` | `discover_recipes`, `list_recipes`, `find_recipe`, `RecipeInfo`, `_AMPLIHACK_HOME_BUNDLE_DIR` (module-level, used by `rust_runner`) |
+>>>>>>> origin/main
 | `recipe_cli` | `create_recipe_subparser`, `handle_recipe_command` |
 | `fleet` | `FleetObserver`, `FleetCLI`, `SessionContext` |
 | `knowledge_builder` | `KnowledgeBuilder`, `KnowledgeGraph` |
@@ -50,8 +56,11 @@ Key import relationships between top-level subpackages:
 | `fleet/fleet_copilot` | `fleet` (internal: `_constants`, `_validation`, `_backends`, `_transcript`, `fleet_session_reasoner`, `prompts`) |
 | `eval/*` | `agents.domain_agents`, `knowledge_builder` |
 | `knowledge_builder/orchestrator` | `knowledge_builder.kb_types`, `knowledge_builder.modules.*` |
+<<<<<<< HEAD
+=======
 | `recipes/rust_runner` | `recipes.discovery` (`_AMPLIHACK_HOME_BUNDLE_DIR`, `_PACKAGE_BUNDLE_DIR`, `_REPO_ROOT_BUNDLE_DIR`), `recipes.models`, stdlib `signal` |
 | `recipes/discovery` | stdlib `os` (module-level `os.environ.get` for `AMPLIHACK_HOME`) |
+>>>>>>> origin/main
 | `vendor/blarify/*` | Self-contained (only intra-vendor imports) |
 
 ## Dead Code Candidates
@@ -70,9 +79,12 @@ Files that are exported but not imported by any other package module:
 ## Diagrams
 
 ### Mermaid Diagram
+<<<<<<< HEAD
+=======
 
 > **Note:** SVGs were not regenerated (mmdc/dot not available). Refer to source files for the current truth.
 
+>>>>>>> origin/main
 ![AST+LSP Symbol Bindings - Mermaid](ast-lsp-bindings-mermaid.svg)
 
 ### Graphviz Diagram

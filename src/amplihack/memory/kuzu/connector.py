@@ -8,8 +8,10 @@ Data is stored in a local directory and persists between sessions.
 """
 
 import logging
+import os
 import sys
 import time
+import warnings
 from pathlib import Path
 from typing import Any
 
@@ -83,20 +85,76 @@ class KuzuConnector:
     def _find_db_path(self) -> str:
         """Find appropriate database path.
 
-        Looks for project root (with .claude) or falls back to home directory.
+        Resolution order (mirrors amplihack-rs backend-neutral contract):
+        1. ``AMPLIHACK_GRAPH_DB_PATH`` env var (preferred, backend-neutral name)
+        2. ``AMPLIHACK_KUZU_DB_PATH`` env var (deprecated – emits DeprecationWarning)
+        3. Project root ``.amplihack/kuzu_db`` (nearest ancestor with ``.claude``)
+        4. ``~/.amplihack/kuzu_db`` (home-directory fallback)
 
         Returns:
             Path string for database directory
         """
-        # Try to find project root
+        # 1. Backend-neutral env var (preferred)
+        env_primary = os.environ.get("AMPLIHACK_GRAPH_DB_PATH", "").strip()
+        if env_primary:
+            return self._validate_env_db_path(env_primary, "AMPLIHACK_GRAPH_DB_PATH")
+
+        # 2. Legacy Kuzu-specific env var (deprecated)
+        env_legacy = os.environ.get("AMPLIHACK_KUZU_DB_PATH", "").strip()
+        if env_legacy:
+            warnings.warn(
+                "AMPLIHACK_KUZU_DB_PATH is deprecated; use AMPLIHACK_GRAPH_DB_PATH instead.",
+                DeprecationWarning,
+                stacklevel=3,
+            )
+            return self._validate_env_db_path(env_legacy, "AMPLIHACK_KUZU_DB_PATH")
+
+        # 3. Try to find project root
         current = Path.cwd()
         while current != current.parent:
             if (current / ".claude").exists():
                 return str(current / self.DEFAULT_DB_PATH)
             current = current.parent
 
-        # Fallback to home directory
+        # 4. Fallback to home directory
         return str(Path.home() / self.DEFAULT_DB_PATH)
+
+    @staticmethod
+    def _validate_env_db_path(raw_path: str, env_var: str) -> str:
+        """Validate a database path supplied via environment variable.
+
+        Applies the same safety checks as amplihack-rs:
+        - Must be an absolute path
+        - Must not contain parent-directory traversal (``..``)
+        - Must not start with a blocked system prefix (``/proc``, ``/sys``, ``/dev``)
+
+        Args:
+            raw_path: Raw path string from the environment variable
+            env_var: Variable name (for error messages)
+
+        Returns:
+            Validated absolute path string
+
+        Raises:
+            ValueError: If the path fails any validation check
+        """
+        path = Path(raw_path)
+        if not path.is_absolute():
+            raise ValueError(
+                f"Invalid {env_var} override: path must be absolute, got: {raw_path!r}"
+            )
+        if ".." in path.parts:
+            raise ValueError(
+                f"Invalid {env_var} override: path must not contain '..', got: {raw_path!r}"
+            )
+        blocked = (Path("/proc"), Path("/sys"), Path("/dev"))
+        for prefix in blocked:
+            if path == prefix or str(path).startswith(str(prefix) + "/"):
+                raise ValueError(
+                    f"Invalid {env_var} override: path uses blocked prefix {prefix}, "
+                    f"got: {raw_path!r}"
+                )
+        return raw_path
 
     def connect(self) -> "KuzuConnector":
         """Open connection to Kùzu database.
