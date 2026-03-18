@@ -325,9 +325,29 @@ def _execute_rust_command(cmd: list[str], *, name: str, progress: bool) -> Recip
         data = json.loads(stdout)
     except (json.JSONDecodeError, TypeError):
         if returncode != 0:
+            # Negative exit codes indicate signal kills (e.g. -15 = SIGTERM).
+            # Produce a clear message instead of dumping the entire progress
+            # stderr buffer which makes the error unreadable.
+            if returncode < 0:
+                import signal
+
+                sig_num = -returncode
+                sig_name = signal.Signals(sig_num).name if sig_num in signal.valid_signals() else str(sig_num)
+                raise RuntimeError(
+                    f"Rust recipe runner killed by signal {sig_name} ({sig_num}). "
+                    f"The process was terminated externally before producing output."
+                )
+            # For non-signal failures, show only the last few lines of stderr
+            # (not the full progress log which can be thousands of lines).
+            stderr_tail = ""
+            if stderr:
+                lines = stderr.strip().splitlines()
+                # Skip progress/heartbeat lines, show last 5 meaningful lines
+                meaningful = [ln for ln in lines if not ln.strip().startswith(("▶", "✓", "⊘", "✗", "[agent]"))]
+                stderr_tail = "\n".join(meaningful[-5:]) if meaningful else "\n".join(lines[-5:])
             raise RuntimeError(
                 f"Rust recipe runner failed (exit {returncode}): "
-                f"{stderr[:1000] if stderr else 'no stderr'}"
+                f"{stderr_tail or 'no stderr'}"
             )
         raise RuntimeError(
             f"Rust recipe runner returned unparseable output (exit {returncode}): "
