@@ -29,23 +29,29 @@ from scripts.atlas.common import (
 )
 
 
-def _extract_blarify_definitions(root: Path) -> tuple[list[dict], list[dict]]:
+def _extract_blarify_definitions(root: Path, hierarchy_only: bool = False) -> tuple[list[dict], list[dict], dict[str, int]]:
     """Extract definitions from all languages using blarify.
 
+    Args:
+        root: Project root directory.
+        hierarchy_only: If True, skip LSP reference resolution (fast mode).
+
     Returns:
-        Tuple of (non_python_definitions, all_relationships).
+        Tuple of (non_python_definitions, all_relationships, relationship_summary).
         Non-Python definitions are returned for merging; Python files
         are handled by ast.parse() for richer analysis.
+        relationship_summary maps type -> count (e.g. {"CALLS": 222, "total": 540}).
     """
     try:
         sys.path.insert(0, str(_REPO_ROOT / "src"))
         from scripts.atlas.blarify_bridge import BlarifyBridge
 
         bridge = BlarifyBridge(root)
-        bridge.build(hierarchy_only=True)
+        bridge.build(hierarchy_only=hierarchy_only)
 
         all_defs = bridge.to_layer2_definitions()
         all_rels = bridge.get_relationships()
+        rel_summary = bridge.get_relationship_summary()
 
         # Separate: Python defs handled by ast.parse, non-Python from blarify
         non_python_defs = [d for d in all_defs if d.get("language", "python") != "python"]
@@ -54,15 +60,20 @@ def _extract_blarify_definitions(root: Path) -> tuple[list[dict], list[dict]]:
         lang_summary = ", ".join(f"{lang}={count}" for lang, count in sorted(stats.items()))
         print(f"  Blarify: {len(all_defs)} total defs ({lang_summary})")
         print(f"  Blarify: {len(non_python_defs)} non-Python defs for merge")
+        if rel_summary.get("total", 0) > 0:
+            code_rels = {k: v for k, v in rel_summary.items()
+                         if k in ("CALLS", "IMPORTS", "INSTANTIATES", "USES", "INHERITS")}
+            rel_parts = ", ".join(f"{k}={v}" for k, v in sorted(code_rels.items()))
+            print(f"  Blarify: {rel_summary['total']} relationships ({rel_parts})")
 
-        return non_python_defs, all_rels
+        return non_python_defs, all_rels, rel_summary
 
     except Exception as e:
         print(f"WARNING: blarify extraction failed: {e}", file=sys.stderr)
-        return [], []
+        return [], [], {}
 
 
-def extract(manifest: dict, root: Path) -> dict:
+def extract(manifest: dict, root: Path, hierarchy_only: bool = False) -> dict:
     """Extract layer 2 data by parsing all Python files and non-Python via blarify.
 
     Phase 1 (blarify): Extract definitions from ALL languages via tree-sitter.
@@ -73,6 +84,7 @@ def extract(manifest: dict, root: Path) -> dict:
     Args:
         manifest: Loaded manifest dict.
         root: Project root directory.
+        hierarchy_only: If True, use fast hierarchy-only blarify build.
 
     Returns:
         Layer 2 data dict matching the spec schema.
@@ -81,7 +93,7 @@ def extract(manifest: dict, root: Path) -> dict:
     py_files = [f for f in manifest["files"] if f["extension"] == ".py"]
 
     # --- Phase 1: Blarify (all languages) ---
-    blarify_defs, blarify_rels = _extract_blarify_definitions(root)
+    blarify_defs, blarify_rels, blarify_rel_summary = _extract_blarify_definitions(root, hierarchy_only=hierarchy_only)
 
     # --- Phase 2: Python ast.parse() ---
     all_definitions = []
@@ -343,6 +355,35 @@ def extract(manifest: dict, root: Path) -> dict:
     for bdef in blarify_defs:
         definitions_out.append(bdef)
 
+    # --- Phase 5b: Use blarify relationships for cross-file reference enrichment ---
+    # When blarify provides CALLS/IMPORTS/INSTANTIATES/USES, use them for:
+    # - Cross-file reference tracking for non-Python definitions
+    # - Dead code detection across all languages (definition with no incoming refs)
+    blarify_ref_types = {"CALLS", "IMPORTS", "INSTANTIATES", "USES", "INHERITS"}
+    blarify_code_rels = [r for r in blarify_rels if r.get("type") in blarify_ref_types]
+
+    if blarify_code_rels:
+        # Build incoming reference map from blarify: target_file::target_name -> set of source files
+        blarify_incoming: dict[str, set[str]] = {}
+        for rel in blarify_code_rels:
+            target_key = f"{rel.get('target_file', '')}::{rel.get('target_name', '')}"
+            source_file = rel.get("source_file", "")
+            if target_key and source_file:
+                if target_key not in blarify_incoming:
+                    blarify_incoming[target_key] = set()
+                blarify_incoming[target_key].add(source_file)
+
+        # Enrich non-Python definitions with cross-file references from blarify
+        for defn in definitions_out:
+            if defn.get("language", "python") == "python":
+                continue  # Python refs already handled by ast analysis
+            key = f"{defn['file']}::{defn['name']}"
+            refs = blarify_incoming.get(key, set())
+            if refs:
+                ref_list = [{"file": rf, "lineno": None} for rf in sorted(refs)]
+                defn["references"] = ref_list
+                defn["reference_count"] = len(ref_list)
+
     # Count languages in the final output
     language_counts: dict[str, int] = {}
     for d in definitions_out:
@@ -365,12 +406,16 @@ def extract(manifest: dict, root: Path) -> dict:
         "language_counts": language_counts,
     }
 
+    # Add blarify relationship summary if available
+    if blarify_rel_summary:
+        summary["blarify_relationships"] = blarify_rel_summary
+
     # --- Completeness check ---
     completeness_ok = files_analyzed == py_file_count
     # Every __all__ file must produce an exports entry
     all_files_with_all = {e["file"] for e in all_exports}
 
-    return {
+    result = {
         "layer": "ast-lsp-bindings",
         "files_analyzed": files_analyzed,
         "files_failed_parse": files_failed_parse,
@@ -387,6 +432,19 @@ def extract(manifest: dict, root: Path) -> dict:
             "ok": completeness_ok,
         },
     }
+
+    # Include blarify relationship summary as a top-level section
+    if blarify_rel_summary:
+        result["blarify_relationships"] = {
+            "calls": blarify_rel_summary.get("CALLS", 0),
+            "imports": blarify_rel_summary.get("IMPORTS", 0),
+            "instantiates": blarify_rel_summary.get("INSTANTIATES", 0),
+            "uses": blarify_rel_summary.get("USES", 0),
+            "inherits": blarify_rel_summary.get("INHERITS", 0),
+            "total": blarify_rel_summary.get("total", 0),
+        }
+
+    return result
 
 
 def _extract_all_exports(tree: ast.Module, filepath: str) -> dict | None:
@@ -456,6 +514,8 @@ def main():
     parser = argparse.ArgumentParser(description="Layer 2: AST+LSP Symbol Bindings")
     parser.add_argument("--root", required=True, help="Project root directory")
     parser.add_argument("--output", required=True, help="Output directory for JSON files")
+    parser.add_argument("--fast", action="store_true",
+                        help="Use hierarchy-only blarify mode (faster, no LSP relationships)")
     args = parser.parse_args()
 
     root = Path(args.root).resolve()
@@ -476,7 +536,7 @@ def main():
         print(f"Manifest: {manifest['total_files']} files")
 
     # Extract layer 2
-    layer_data = extract(manifest, root)
+    layer_data = extract(manifest, root, hierarchy_only=args.fast)
 
     # Write output
     out_path = write_layer_json("layer2_ast_bindings", layer_data, output_dir)
@@ -492,6 +552,14 @@ def main():
     if s.get("language_counts"):
         lang_parts = ", ".join(f"{lang}={count}" for lang, count in sorted(s["language_counts"].items()))
         print(f"  Languages: {lang_parts}")
+
+    brel = layer_data.get("blarify_relationships")
+    if brel and brel.get("total", 0) > 0:
+        parts = []
+        for key in ("calls", "imports", "instantiates", "uses", "inherits"):
+            if brel.get(key, 0) > 0:
+                parts.append(f"{key}={brel[key]}")
+        print(f"  Blarify relationships: {brel['total']} ({', '.join(parts)})")
 
     if layer_data["files_failed_parse"]:
         print(f"  Parse failures: {len(layer_data['files_failed_parse'])}")
