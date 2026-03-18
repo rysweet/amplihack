@@ -9,7 +9,7 @@ title: "Layer 3: Compile-time Dependencies"
 # Layer 3: Compile-time Dependencies
 
 <div class="atlas-metadata">
-Category: <strong>Structural</strong> | Generated: 2026-03-18T14:41:59.763366+00:00
+Category: <strong>Structural</strong> | Generated: 2026-03-18T19:21:28.787782+00:00
 </div>
 
 ## Map
@@ -132,7 +132,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-18T14:41:59.763366+00
 
 ## Key Findings
 
-- 8 unused dependencies: github-copilot-sdk, rich, azure-identity, amplihack-memory-lib, langchain
+- 9 unused dependencies: github-copilot-sdk, rich, azure-identity, amplihack-memory-lib, langchain
 - 8 circular dependency chains detected
 
 ## Detail
@@ -141,11 +141,11 @@ Category: <strong>Structural</strong> | Generated: 2026-03-18T14:41:59.763366+00
 
     **Summary metrics:**
     
-    - **External Dep Count**: 56
+    - **External Dep Count**: 67
     - **Internal Packages**: 601
     - **Internal Edges**: 715
     - **Circular Dependency Count**: 8
-    - **Unused Dep Count**: 8
+    - **Unused Dep Count**: 9
     - **Undeclared Dep Count**: 30
 
 ## Cross-References

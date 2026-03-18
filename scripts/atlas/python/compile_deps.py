@@ -339,6 +339,156 @@ def _parse_csproj(repo_root: Path) -> list[dict]:
     return deps
 
 
+def _parse_pom_xml(repo_root: Path, manifest_paths: list[str] | None = None) -> list[dict]:
+    """Parse pom.xml files and extract Java Maven dependencies.
+
+    Looks for ``<dependency>`` elements with ``<groupId>``, ``<artifactId>``,
+    and optionally ``<version>``.
+
+    Args:
+        repo_root: Repository root directory.
+        manifest_paths: Relative paths to pom.xml files (from detect_languages).
+    """
+    if manifest_paths:
+        pom_paths = [repo_root / p for p in manifest_paths if p.endswith("pom.xml")]
+    else:
+        pom_paths = [repo_root / "pom.xml"]
+    pom_paths = [p for p in pom_paths if p.exists()]
+    if not pom_paths:
+        return []
+
+    deps: list[dict] = []
+    seen: set[str] = set()
+
+    for pom_path in pom_paths:
+        try:
+            tree = ET.parse(pom_path)
+        except ET.ParseError as e:
+            print(f"WARNING: failed to parse {pom_path}: {e}", file=sys.stderr)
+            continue
+
+        root = tree.getroot()
+        # Handle Maven namespace
+        ns = ""
+        if root.tag.startswith("{"):
+            ns = root.tag.split("}")[0] + "}"
+
+        source = str(pom_path.relative_to(repo_root))
+
+        for dep in root.iter(f"{ns}dependency"):
+            group_id_el = dep.find(f"{ns}groupId")
+            artifact_id_el = dep.find(f"{ns}artifactId")
+            version_el = dep.find(f"{ns}version")
+            scope_el = dep.find(f"{ns}scope")
+
+            if group_id_el is None or artifact_id_el is None:
+                continue
+
+            group_id = group_id_el.text or ""
+            artifact_id = artifact_id_el.text or ""
+            version = version_el.text if version_el is not None else ""
+            scope = scope_el.text if scope_el is not None else "compile"
+
+            name = f"{group_id}:{artifact_id}"
+            norm = name.lower()
+            if norm in seen:
+                continue
+            seen.add(norm)
+
+            group = "dev-dependencies" if scope == "test" else "dependencies"
+            deps.append({
+                "name": name,
+                "normalized_name": norm,
+                "version_constraint": version,
+                "group": group,
+                "language": "java",
+                "source": source,
+                "imported_by": [],
+                "import_count": 0,
+            })
+
+    return deps
+
+
+def _parse_build_gradle(repo_root: Path, manifest_paths: list[str] | None = None) -> list[dict]:
+    """Parse build.gradle / build.gradle.kts and extract Gradle dependencies.
+
+    Extracts dependency declarations matching patterns like:
+        implementation 'group:artifact:version'
+        testImplementation "group:artifact:version"
+        api("group:artifact:version")
+
+    Args:
+        repo_root: Repository root directory.
+        manifest_paths: Relative paths to build.gradle files (from detect_languages).
+    """
+    gradle_names = {"build.gradle", "build.gradle.kts"}
+    if manifest_paths:
+        gradle_paths = [repo_root / p for p in manifest_paths if Path(p).name in gradle_names]
+    else:
+        gradle_paths = [repo_root / n for n in gradle_names]
+    gradle_paths = [p for p in gradle_paths if p.exists()]
+    if not gradle_paths:
+        return []
+
+    # Match: configuration 'group:artifact:version' or configuration("group:artifact:version")
+    dep_pattern = re.compile(
+        r"""(?:implementation|api|compileOnly|runtimeOnly|testImplementation|"""
+        r"""testCompileOnly|testRuntimeOnly|classpath|annotationProcessor)"""
+        r"""\s*[\(]?\s*['"]([^'"]+)['"]""",
+        re.MULTILINE,
+    )
+
+    # Map Gradle configurations to our group names
+    test_configs = {"testImplementation", "testCompileOnly", "testRuntimeOnly"}
+
+    deps: list[dict] = []
+    seen: set[str] = set()
+
+    for gradle_path in gradle_paths:
+        try:
+            content = gradle_path.read_text(encoding="utf-8")
+        except OSError as e:
+            print(f"WARNING: failed to read {gradle_path}: {e}", file=sys.stderr)
+            continue
+
+        source = str(gradle_path.relative_to(repo_root))
+
+        for match in dep_pattern.finditer(content):
+            dep_str = match.group(1)
+            parts = dep_str.split(":")
+
+            if len(parts) < 2:
+                continue
+
+            group_id = parts[0]
+            artifact_id = parts[1]
+            version = parts[2] if len(parts) > 2 else ""
+
+            name = f"{group_id}:{artifact_id}"
+            norm = name.lower()
+            if norm in seen:
+                continue
+            seen.add(norm)
+
+            # Determine group from configuration keyword
+            line = content[:match.start()].rsplit("\n", 1)[-1] if match.start() > 0 else ""
+            group = "dev-dependencies" if any(tc in line for tc in test_configs) else "dependencies"
+
+            deps.append({
+                "name": name,
+                "normalized_name": norm,
+                "version_constraint": version,
+                "group": group,
+                "language": "java",
+                "source": source,
+                "imported_by": [],
+                "import_count": 0,
+            })
+
+    return deps
+
+
 def _parse_all_dependencies(manifest: dict, repo_root: Path) -> list[dict]:
     """Parse dependency manifests for all detected languages.
 
@@ -379,6 +529,11 @@ def _parse_all_dependencies(manifest: dict, repo_root: Path) -> list[dict]:
 
     if "csharp" in languages:
         all_deps.extend(_parse_csproj(repo_root))
+
+    if "java" in languages:
+        java_manifests = _manifests_for("java")
+        all_deps.extend(_parse_pom_xml(repo_root, java_manifests))
+        all_deps.extend(_parse_build_gradle(repo_root, java_manifests))
 
     return all_deps
 

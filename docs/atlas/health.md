@@ -19,7 +19,7 @@ Overall: :material-alert-circle:{ .atlas-health--warn } **PASS_WITH_WARNINGS** |
 | FILE_COVERAGE | :material-check-circle:{ .atlas-health--pass } | 601 .py files covered across layers 1, 2, 7 |
 | CLI_COMMAND_COVERAGE | :material-check-circle:{ .atlas-health--pass } | 45 CLI commands all have journeys |
 | EXPORT_CONSISTENCY | :material-alert-circle:{ .atlas-health--warn } | 5 exported names missing definitions |
-| DEPENDENCY_CONSISTENCY | :material-alert-circle:{ .atlas-health--warn } | 22 declared deps appear unused |
+| DEPENDENCY_CONSISTENCY | :material-alert-circle:{ .atlas-health--warn } | 23 declared deps appear unused |
 | IO_TRACEABILITY | :material-alert-circle:{ .atlas-health--warn } | 91/178 I/O files in unreachable packages |
 | SUBPROCESS_TRACEABILITY | :material-alert-circle:{ .atlas-health--warn } | 55/109 subprocess files in unreachable packages |
 | PACKAGE_CONSISTENCY | :material-alert-circle:{ .atlas-health--warn } | layer1 vs manifest: 36 differences; layer3 vs manifest: 0 missing, 524 extra |
@@ -48,7 +48,7 @@ Missing items:
 
 ### DEPENDENCY_CONSISTENCY
 
-22 declared deps appear unused
+23 declared deps appear unused
 
 Missing items:
 
@@ -58,6 +58,7 @@ Missing items:
 - `langchain`
 - `protobuf`
 - `jedi-language-server`
+- `tomli`
 - `amplihack-agent-eval`
 - `agent-framework-core`
 - `opentelemetry-semantic-conventions-ai`
@@ -81,16 +82,16 @@ Missing items:
 
 Missing items:
 
-- `/home/azureuser/src/amplihack/src/amplihack/eval/agent_subprocess.py`
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/fleet_state.py`
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/_cli_scout_advance.py`
-- `/home/azureuser/src/amplihack/src/amplihack/tracing/trace_logger.py`
+- `/home/azureuser/src/amplihack/src/amplihack/eval/long_horizon_self_improve.py`
 - `/home/azureuser/src/amplihack/src/amplihack/fleet/tests/test_fleet_results.py`
-- `/home/azureuser/src/amplihack/src/amplihack/eval/progressive_test_suite.py`
-- `/home/azureuser/src/amplihack/src/amplihack/eval/grader.py`
-- `/home/azureuser/src/amplihack/src/amplihack/eval/harness_runner.py`
-- `/home/azureuser/src/amplihack/src/amplihack/eval/general_capability_eval.py`
-- `/home/azureuser/src/amplihack/src/amplihack/settings_generator/generator.py`
+- `/home/azureuser/src/amplihack/src/amplihack/cli.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/project_file_explorer/project_files_stats.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/tests/test_cli_formatters.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/graph/node/types/integration_node.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/vendor/multilspy/language_servers/solargraph/solargraph.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/vendor/multilspy/language_servers/dart_language_server/dart_language_server.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/_session_lifecycle.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/vendor/multilspy/multilspy_logger.py`
 
 ### SUBPROCESS_TRACEABILITY
 
@@ -98,16 +99,16 @@ Missing items:
 
 Missing items:
 
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/fleet_state.py`
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/fleet_health.py`
-- `/home/azureuser/src/amplihack/src/amplihack/eval/progressive_test_suite.py`
-- `/home/azureuser/src/amplihack/src/amplihack/eval/harness_runner.py`
-- `/home/azureuser/src/amplihack/src/amplihack/eval/general_capability_eval.py`
-- `/home/azureuser/src/amplihack/src/amplihack/meta_delegation/subprocess_adapter.py`
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/_backends.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/_cli_commands.py`
+- `/home/azureuser/src/amplihack/src/amplihack/eval/long_horizon_self_improve.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/mcp_server/server.py`
 - `/home/azureuser/src/amplihack/src/amplihack/cli.py`
-- `/home/azureuser/src/amplihack/src/amplihack/auto_update.py`
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/fleet_session_reasoner.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/vendor/multilspy/language_servers/solargraph/solargraph.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/fleet_tui_dashboard.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/code_references/scip_helper.py`
+- `/home/azureuser/src/amplihack/src/amplihack/eval/progressive_test_suite.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/_session_gather.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/vendor/multilspy/language_servers/typescript_language_server/typescript_language_server.py`
 
 ### PACKAGE_CONSISTENCY
 
@@ -159,9 +160,9 @@ Missing items:
 
 Missing items:
 
-- `['utils.prerequisites', 'utils.claude_cli', 'utils.prerequisites']`
+- `['utils.claude_cli', 'utils.prerequisites', 'utils.claude_cli']`
 - `['memory.kuzu.indexing.background_indexer', 'memory.kuzu.indexing.orchestrator', 'memory.kuzu.indexing.background_indexer']`
-- `['launcher.core', 'launcher', 'launcher.copilot', 'cli', 'uninstall', 'settings', 'install', 'hook_verification', 'amplihack', 'launcher.core']`
+- `['launcher.copilot', 'launcher.core', 'launcher', 'cli', 'hook_verification', 'install', 'settings', 'uninstall', 'amplihack', 'launcher.copilot']`
 - `['agents.goal_seeking.hive_mind.gossip', 'agents.goal_seeking.hive_mind.hive_graph', 'agents.goal_seeking.hive_mind.gossip']`
 - `['proxy.monitoring', 'proxy.azure_errors', 'proxy.monitoring']`
 - `['proxy.streaming', 'proxy.integrated_proxy', 'proxy.streaming']`
