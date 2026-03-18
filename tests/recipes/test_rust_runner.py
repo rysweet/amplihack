@@ -294,6 +294,21 @@ class TestRunRecipeViaRust:
         "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
     )
     @patch("subprocess.run")
+    def test_signal_kill_raises_clear_message(self, mock_run, mock_find):
+        """Exit code -15 (SIGTERM) should produce a clear 'killed by signal' message."""
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=[],
+            returncode=-15,
+            stdout="",
+            stderr="▶ step-01\n  [agent] ... working\n  ✓ step-01",
+        )
+        with pytest.raises(RuntimeError, match="killed by signal SIGTERM"):
+            run_recipe_via_rust("test-recipe")
+
+    @patch(
+        "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
+    )
+    @patch("subprocess.run")
     def test_zero_exit_with_bad_json_raises(self, mock_run, mock_find):
         mock_run.return_value = subprocess.CompletedProcess(
             args=[],
