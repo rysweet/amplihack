@@ -58,7 +58,7 @@ dependencies = [
 # Install with: pip install amplihack[memory]
 memory = [
     "kuzu>=0.11.0",  # Embedded graph database for memory system
-    "amplihack-memory-lib @ git+https://github.com/rysweet/amplihack-memory-lib.git@v0.2.0",  # CognitiveMemory 6-type system
+    "amplihack-memory-lib @ git+https://github.com/rysweet/amplihack-memory-lib.git@1dd8cc4af8b19fa29660345fff46d1248d2c357d",  # CognitiveMemory 6-type system; pinned to immutable SHA (was mutable tag @v0.2.0)
 ]
 # Microsoft Agent Framework requires pre-release Azure deps
 microsoft-sdk = [
