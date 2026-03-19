@@ -34,6 +34,9 @@ _INSTALL_MSG = (
 # Module-level cache: None = not yet checked, True/False = cached result.
 # Avoids rescanning sys.path on every call when the library is absent.
 # O(1) on all repeat calls — avoids sys.path re-scan after first probe.
+# TODO(free-threaded): Under PEP 703 / CPython free-threaded mode (--disable-gil),
+# the GIL no longer protects this flag against concurrent writes. If free-threaded
+# Python support is ever required, protect with threading.Lock.
 _memory_available: bool | None = None
 
 

@@ -21,8 +21,6 @@ import pytest
 # Helpers
 # ---------------------------------------------------------------------------
 
-_WORKTREE_MODULE = "amplihack.memory_auto_install"
-
 
 def _reload_module():
     """Reload memory_auto_install, resetting the _memory_available cache."""
@@ -47,33 +45,27 @@ class TestNoSubprocessCalls:
 
     def test_library_absent_no_subprocess(self):
         """ImportError is raised cleanly without touching subprocess."""
+        import builtins
+
         import amplihack.memory_auto_install as mod
 
+        real_import = builtins.__import__
+
+        def _fail_memory_import(name, *args, **kwargs):
+            if name == "amplihack_memory":
+                raise ImportError("mocked missing")
+            return real_import(name, *args, **kwargs)
+
         mod._memory_available = None
+        sys.modules.pop("amplihack_memory", None)
 
         with (
             patch("subprocess.run", side_effect=_raise_if_called),
             patch("subprocess.Popen", side_effect=_raise_if_called),
-            patch.dict(sys.modules, {"amplihack_memory": None}),
+            patch("builtins.__import__", side_effect=_fail_memory_import),
         ):
-            # Remove from sys.modules so import attempt runs
-            sys.modules.pop("amplihack_memory", None)
-            # Patch the import to fail
-            with patch.dict(sys.modules, {}):
-                # Simulate missing library by making the import fail
-                import builtins
-
-                real_import = builtins.__import__
-
-                def _fail_memory_import(name, *args, **kwargs):
-                    if name == "amplihack_memory":
-                        raise ImportError("mocked missing")
-                    return real_import(name, *args, **kwargs)
-
-                mod._memory_available = None
-                with patch("builtins.__import__", side_effect=_fail_memory_import):
-                    with pytest.raises(ImportError, match="pip install amplihack"):
-                        mod.ensure_memory_lib_installed()
+            with pytest.raises(ImportError, match="pip install amplihack"):
+                mod.ensure_memory_lib_installed()
 
     def test_library_present_no_subprocess(self):
         """When library is available, returns True without touching subprocess."""

@@ -145,12 +145,13 @@ def filecmp(f1, f2):
 
 def main():
     """Main CLI entry point."""
-    # Ensure dependencies are installed at CLI startup (not import time)
+    # Copilot SDK is checked at startup (optional SDK for enhanced features)
     from .copilot_auto_install import ensure_copilot_sdk_installed
-    from .memory_auto_install import ensure_memory_lib_installed
 
-    ensure_memory_lib_installed()
     ensure_copilot_sdk_installed()
+    # NOTE: memory_auto_install is intentionally NOT called here.
+    # Memory features are optional extras; the guard is invoked only by code
+    # that actually requires amplihack_memory, not at every CLI invocation.
 
     # Import and use the enhanced CLI
     from .cli import main as cli_main
