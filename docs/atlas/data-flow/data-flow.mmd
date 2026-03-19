@@ -1,106 +1,23 @@
 flowchart TD
-    subgraph ENTRY["CLI Entry"]
-        ARGV["sys.argv"]
-        PARSE["parse_args_with_passthrough()"]
-        NS["argparse.Namespace + claude_args"]
-    end
-
-    subgraph LAUNCH_FLOW["Launch Flow"]
-        SESSION["SessionTracker.start_session()"]
-        NESTING["NestingDetector"]
-        PROXY_CFG["ProxyConfig (.env file)"]
-        PROXY_MGR["ProxyManager"]
-        LAUNCHER["ClaudeLauncher"]
-        CLAUDE_BIN["claude binary (subprocess)"]
-    end
-
-    subgraph AUTO_FLOW["Auto Mode Flow"]
-        AUTO["AutoMode(sdk, prompt, max_turns)"]
-        STATE["AutoModeState (JSON)"]
-        COORD["AutoModeCoordinator"]
-        COMPLETION["CompletionVerifier"]
-        SUMMARY["WorkSummary"]
-    end
-
-    subgraph MEMORY_FLOW["Memory Storage Flow"]
-        MEM_ENTRY["MemoryEntry"]
-        MEM_DB["MemoryDatabase (SQLite)"]
-        MEM_KUZU["Kuzu Graph DB"]
-        SQLITE_FILE[("~/.amplihack/memory.db")]
-        KUZU_DIR[("~/.amplihack/kuzu/")]
-    end
-
-    subgraph RECIPE_FLOW["Recipe Execution Flow"]
-        YAML_FILE[("recipe.yaml")]
-        PARSER["recipes.parser"]
-        RECIPE_MODEL["Recipe (Steps)"]
-        STEP["Step model"]
-        RUST_RUNNER["rust_runner / adapter"]
-        STEP_RESULT["StepResult (context)"]
-    end
-
-    subgraph INSTALL_FLOW["Installation Flow"]
-        REPO_ROOT[("repo .claude/")]
-        MANIFEST["StagingManifest"]
-        COPYTREE["copytree_manifest()"]
-        CLAUDE_DIR[("~/.amplihack/.claude/")]
-        SETTINGS[("settings.json")]
-    end
-
-    subgraph SECURITY_FLOW["Security Flow"]
-        WEB_CONTENT["Fetched web content"]
-        XPIA_DEFENDER["XPIADefender"]
-        PATTERNS["XPIAPatterns"]
-        SCAN_RESULT["ScanResult (safe/blocked)"]
-    end
-
-    %% CLI Entry
-    ARGV --> PARSE --> NS
-
-    %% Launch path
-    NS -->|"command=launch"| SESSION
-    SESSION --> NESTING
-    NS -->|"--with-proxy-config"| PROXY_CFG
-    PROXY_CFG -->|".env parse"| PROXY_MGR
-    PROXY_MGR --> LAUNCHER
-    NESTING --> LAUNCHER
-    LAUNCHER -->|"subprocess.run"| CLAUDE_BIN
-
-    %% Auto mode path
-    NS -->|"--auto"| AUTO
-    AUTO --> STATE
-    AUTO --> COORD
-    COORD -->|"each turn"| CLAUDE_BIN
-    COORD --> COMPLETION
-    COMPLETION --> SUMMARY
-    STATE -->|"JSON file"| AUTO_LOG[(".claude/runtime/logs/")]
-
-    %% Memory path
-    MEM_ENTRY --> MEM_DB
-    MEM_ENTRY --> MEM_KUZU
-    MEM_DB --> SQLITE_FILE
-    MEM_KUZU --> KUZU_DIR
-
-    %% Recipe path
-    YAML_FILE --> PARSER --> RECIPE_MODEL
-    RECIPE_MODEL --> STEP
-    STEP --> RUST_RUNNER
-    RUST_RUNNER --> STEP_RESULT
-    STEP_RESULT -->|"feeds next step context"| STEP
-
-    %% Install path
-    REPO_ROOT --> MANIFEST --> COPYTREE --> CLAUDE_DIR
-    COPYTREE --> SETTINGS
-
-    %% Security path
-    WEB_CONTENT --> XPIA_DEFENDER
-    XPIA_DEFENDER --> PATTERNS
-    PATTERNS --> SCAN_RESULT
-
-    style ENTRY fill:#74b9ff,color:#2d3436
-    style LAUNCH_FLOW fill:#55efc4,color:#2d3436
-    style AUTO_FLOW fill:#ffeaa7,color:#2d3436
-    style MEMORY_FLOW fill:#fab1a0,color:#2d3436
-    style RECIPE_FLOW fill:#dfe6e9,color:#2d3436
-    style INSTALL_FLOW fill:#a29bfe,color:#2d3436
-    style SECURITY_FLOW fill:#fd79a8,color:#2d3436
+    IO0[/"json write<br/>n=339"/]
+    IO1[("json read<br/>n=250")]
+    IO2[/"text write<br/>n=135"/]
+    IO3[("text read<br/>n=97")]
+    IO4[("yaml read<br/>n=15")]
+    IO5[/"yaml write<br/>n=6"/]
+    IO6[("toml read<br/>n=2")]
+    DB7[("kuzu<br/>ops: 188")]
+    DB8[("sqlite<br/>ops: 59")]
+    DB9[("neo4j<br/>ops: 44")]
+    DB10[("falkordb<br/>ops: 2")]
+    NET11("Network I/O<br/>n=23")
+    T0{{"_create_similarity_edges"}}
+    T1{{"import_from_json"}}
+    T2{{"handler"}}
+    T3{{"_upload_package"}}
+    T4{{"update_bundle"}}
+    T5{{"main"}}
+    T6{{"run_harness"}}
+    T7{{"_run_teaching_subprocess"}}
+    T8{{"run_l7_teaching_eval"}}
+    T9{{"run_single_level"}}

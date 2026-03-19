@@ -1,0 +1,161 @@
+# Version Detection Outside-In Test
+# Validates the dead-code removal of Python <3.8 fallback branches
+# for importlib.metadata and tomli in src/amplihack/__init__.py
+#
+# Context: Project requires Python >=3.11, so try/except ImportError
+# wrappers around importlib.metadata and tomli were dead code.
+# Direct imports are now used instead.
+
+name: "Version Detection - Dead Fallback Removal"
+description: >
+  Outside-in validation that amplihack version detection works correctly
+  after removing dead Python <3.8 fallback branches for importlib.metadata
+  and tomli. Verifies import succeeds, version is valid, and no stderr
+  warnings are emitted.
+version: "1.0.0"
+config:
+  timeout: 30000
+  retries: 1
+  parallel: false
+
+environment:
+  requires:
+    - HOME
+
+agents:
+  - name: "python-runner"
+    type: "system"
+    config:
+      shell: "bash"
+      cwd: "${PWD}"
+      timeout: 15000
+      capture_output: true
+
+steps:
+  # Step 1: Import succeeds without errors
+  - name: "Import amplihack succeeds"
+    agent: "python-runner"
+    action: "execute_command"
+    params:
+      command: 'python3 -c ''import amplihack; print("IMPORT_OK")'''
+    expect:
+      exit_code: 0
+      stdout_contains:
+        - "IMPORT_OK"
+    timeout: 10000
+
+  # Step 2: __version__ is a non-empty string
+  - name: "Version is a non-empty string"
+    agent: "python-runner"
+    action: "execute_command"
+    params:
+      command: |
+        python3 -c "
+        import amplihack
+        v = amplihack.__version__
+        assert isinstance(v, str), f'Expected str, got {type(v)}'
+        assert len(v) > 0, 'Version is empty string'
+        print(f'VERSION={v}')
+        "
+    expect:
+      exit_code: 0
+      stdout_contains:
+        - "VERSION="
+    timeout: 10000
+
+  # Step 3: __version__ is not "unknown"
+  - name: "Version is not unknown"
+    agent: "python-runner"
+    action: "execute_command"
+    params:
+      command: |
+        python3 -c "
+        import amplihack
+        assert amplihack.__version__ != 'unknown', 'Version should not be unknown'
+        print(f'VALID_VERSION={amplihack.__version__}')
+        "
+    expect:
+      exit_code: 0
+      stdout_contains:
+        - "VALID_VERSION="
+    timeout: 10000
+
+  # Step 4: No stderr warnings about importlib.metadata or tomllib
+  - name: "No stderr warnings about fallback imports"
+    agent: "python-runner"
+    action: "execute_command"
+    params:
+      command: |
+        python3 -c "import amplihack; print(amplihack.__version__)" 2>/tmp/version-stderr.txt
+        STDERR=$(cat /tmp/version-stderr.txt)
+        if echo "$STDERR" | grep -qi "importlib.metadata"; then
+          echo "FAIL: stderr contains importlib.metadata warning"
+          echo "STDERR: $STDERR"
+          exit 1
+        fi
+        if echo "$STDERR" | grep -qi "tomllib"; then
+          echo "FAIL: stderr contains tomllib warning"
+          echo "STDERR: $STDERR"
+          exit 1
+        fi
+        if echo "$STDERR" | grep -qi "tomli"; then
+          echo "FAIL: stderr contains tomli warning"
+          echo "STDERR: $STDERR"
+          exit 1
+        fi
+        echo "NO_STDERR_WARNINGS"
+        rm -f /tmp/version-stderr.txt
+    expect:
+      exit_code: 0
+      stdout_contains:
+        - "NO_STDERR_WARNINGS"
+    timeout: 10000
+
+assertions:
+  - name: "Import Succeeds"
+    type: "command_success"
+    agent: "python-runner"
+    params:
+      step: "Import amplihack succeeds"
+
+  - name: "Version Is Non-Empty String"
+    type: "command_success"
+    agent: "python-runner"
+    params:
+      step: "Version is a non-empty string"
+
+  - name: "Version Is Not Unknown"
+    type: "command_success"
+    agent: "python-runner"
+    params:
+      step: "Version is not unknown"
+
+  - name: "No Fallback Warnings"
+    type: "command_success"
+    agent: "python-runner"
+    params:
+      step: "No stderr warnings about fallback imports"
+
+cleanup:
+  - name: "Remove temp stderr file"
+    agent: "python-runner"
+    action: "execute_command"
+    params:
+      command: "rm -f /tmp/version-stderr.txt"
+
+metadata:
+  tags:
+    - "version-detection"
+    - "dead-code-removal"
+    - "smoke-test"
+    - "python-311"
+  priority: "high"
+  author: "amplihack-agentic-testing"
+  created: "2026-03-18T00:00:00Z"
+  updated: "2026-03-18T00:00:00Z"
+
+# How to Run:
+#   node dist/index.js run tests/agentic/version-detection-outside-in.yaml
+#
+# Corresponding unit tests:
+#   uv run pytest tests/unit/test_version_detection.py -v
