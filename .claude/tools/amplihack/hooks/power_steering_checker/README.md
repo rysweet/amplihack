@@ -123,14 +123,14 @@ from power_steering_checker.main_checker import (
 All runtime thresholds are configurable via environment variables with safe defaults.
 See [configuration reference](../../../../../docs/reference/power-steering-checker-configuration.md).
 
-| Variable | Default | Description |
-|---|---|---|
-| `PSC_CHECKER_TIMEOUT` | `25` | Per-consideration timeout (seconds) |
-| `PSC_PARALLEL_TIMEOUT` | `60` | Total parallel execution budget (seconds) |
-| `PSC_MAX_TRANSCRIPT_LINES` | `50000` | Transcript size cap |
-| `PSC_MAX_ASK_USER_QUESTIONS` | `3` | Max AskUserQuestion calls before flagging |
-| `PSC_MIN_TESTS_PASSED_THRESHOLD` | `10` | Minimum passing tests |
-| `PSC_MAX_CONSECUTIVE_BLOCKS` | `10` | Consecutive block limit (turn-state fallback) |
+| Variable                         | Default | Description                                   |
+| -------------------------------- | ------- | --------------------------------------------- |
+| `PSC_CHECKER_TIMEOUT`            | `25`    | Per-consideration timeout (seconds)           |
+| `PSC_PARALLEL_TIMEOUT`           | `60`    | Total parallel execution budget (seconds)     |
+| `PSC_MAX_TRANSCRIPT_LINES`       | `50000` | Transcript size cap                           |
+| `PSC_MAX_ASK_USER_QUESTIONS`     | `3`     | Max AskUserQuestion calls before flagging     |
+| `PSC_MIN_TESTS_PASSED_THRESHOLD` | `10`    | Minimum passing tests                         |
+| `PSC_MAX_CONSECUTIVE_BLOCKS`     | `10`    | Consecutive block limit (turn-state fallback) |
 
 ## Error Handling
 

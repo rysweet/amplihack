@@ -16,25 +16,25 @@ All major packages under `src/amplihack/` treated as pseudo-services with intern
 
 ## Package Summary
 
-| Package | Module Count | Public Interface | Role |
-|---------|-------------|-----------------|------|
-| `cli.py` | 2 | `main()`, `create_parser()` | CLI entry, argument parsing |
-| `launcher/` | 17 | `ClaudeLauncher`, `AutoMode`, SDK launchers | Binary management, session lifecycle |
-| `proxy/` | 16 | `ProxyConfig`, `ProxyManager` | Azure OpenAI proxy, GitHub auth |
-| `memory/` | 15+ | `MemoryDatabase`, `MemoryManager`, `MemoryEntry` | Persistent agent memory (SQLite + Kuzu) |
-| `recipes/` | 6 | `Step`, `Recipe`, `rust_runner` | YAML recipe parsing and execution |
-| `security/` | 7 | `XPIADefender`, `xpia_hook` | Cross-prompt injection defense |
-| `safety/` | 3 | `GitConflictDetector`, `SafeCopyStrategy` | Data loss prevention in auto mode |
-| `fleet/` | 20+ | `fleet_cli` (Click), `FleetAdmiral` | Multi-VM agent orchestration |
-| `goal_agent_generator/` | 7 | `cli`, `prompt_analyzer`, `agent_assembler` | Goal-seeking agent generation |
-| `install.py` + settings | 5 | `copytree_manifest`, `ensure_settings_json` | Installation and staging |
-| `plugin_manager/` | 2 | `PluginManager`, plugin CLI commands | Plugin install/link/verify |
-| `utils/` | 12 | `prerequisites`, `claude_cli`, `uvx_detection` | Shared utilities |
-| `docker/` | 3 | `DockerManager` | Docker container execution |
-| `hooks/` | 2 | `execute_stop_hook` | Hook lifecycle management |
-| `workflows/` | 4 | `classifier`, `session_start` | Workflow classification |
-| `tracing/` | 1 | `TraceLogger` | Execution tracing |
-| `bundle_generator/` | 12 | Bundle packaging for distribution | Amplifier bundle generation |
+| Package                 | Module Count | Public Interface                                 | Role                                    |
+| ----------------------- | ------------ | ------------------------------------------------ | --------------------------------------- |
+| `cli.py`                | 2            | `main()`, `create_parser()`                      | CLI entry, argument parsing             |
+| `launcher/`             | 17           | `ClaudeLauncher`, `AutoMode`, SDK launchers      | Binary management, session lifecycle    |
+| `proxy/`                | 16           | `ProxyConfig`, `ProxyManager`                    | Azure OpenAI proxy, GitHub auth         |
+| `memory/`               | 15+          | `MemoryDatabase`, `MemoryManager`, `MemoryEntry` | Persistent agent memory (SQLite + Kuzu) |
+| `recipes/`              | 6            | `Step`, `Recipe`, `rust_runner`                  | YAML recipe parsing and execution       |
+| `security/`             | 7            | `XPIADefender`, `xpia_hook`                      | Cross-prompt injection defense          |
+| `safety/`               | 3            | `GitConflictDetector`, `SafeCopyStrategy`        | Data loss prevention in auto mode       |
+| `fleet/`                | 20+          | `fleet_cli` (Click), `FleetAdmiral`              | Multi-VM agent orchestration            |
+| `goal_agent_generator/` | 7            | `cli`, `prompt_analyzer`, `agent_assembler`      | Goal-seeking agent generation           |
+| `install.py` + settings | 5            | `copytree_manifest`, `ensure_settings_json`      | Installation and staging                |
+| `plugin_manager/`       | 2            | `PluginManager`, plugin CLI commands             | Plugin install/link/verify              |
+| `utils/`                | 12           | `prerequisites`, `claude_cli`, `uvx_detection`   | Shared utilities                        |
+| `docker/`               | 3            | `DockerManager`                                  | Docker container execution              |
+| `hooks/`                | 2            | `execute_stop_hook`                              | Hook lifecycle management               |
+| `workflows/`            | 4            | `classifier`, `session_start`                    | Workflow classification                 |
+| `tracing/`              | 1            | `TraceLogger`                                    | Execution tracing                       |
+| `bundle_generator/`     | 12           | Bundle packaging for distribution                | Amplifier bundle generation             |
 
 ## Key Dependency Patterns
 

@@ -171,7 +171,9 @@ class SessionStartHook(HookProcessor):
             except Exception:
                 context_parts.append("Project context available in .claude/context/PROJECT.md.")
         else:
-            context_parts.append("Project context available in CLAUDE.md or .claude/context/PROJECT.md.")
+            context_parts.append(
+                "Project context available in CLAUDE.md or .claude/context/PROJECT.md."
+            )
 
         # Check for recent discoveries
         discoveries_file = self.project_root / ".claude" / "context" / "DISCOVERIES.md"

@@ -62,12 +62,12 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-19T00:27:30.663563+00
 
 <div class="atlas-legend" markdown>
 
-| Symbol | Meaning |
-|--------|---------|
-| Stadium | Read operation |
-| Parallelogram | Write operation |
-| Cylinder | Database operation |
-| Diamond | Transformation function |
+| Symbol        | Meaning                 |
+| ------------- | ----------------------- |
+| Stadium       | Read operation          |
+| Parallelogram | Write operation         |
+| Cylinder      | Database operation      |
+| Diamond       | Transformation function |
 
 </div>
 
@@ -81,7 +81,7 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-19T00:27:30.663563+00
 ??? info "Full data (click to expand)"
 
     **Summary metrics:**
-    
+
     - **File Io Count**: 844
     - **Database Op Count**: 293
     - **Network Io Count**: 23

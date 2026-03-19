@@ -23,7 +23,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-19T00:27:30.767480+00
             P1["plugin_manager<br/>2 files<br/>I=0.25"]
             P2["types<br/>2 files<br/>I=0.10"]
         end
-    
+
         subgraph feature["Feature Packages"]
             P3["goal_seeking<br/>13 files<br/>I=0.93"]
             P4["hive_mind<br/>13 files<br/>I=0.80"]
@@ -84,7 +84,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-19T00:27:30.767480+00
             P59["experimental<br/>2 files<br/>I=0.00"]
             P60["multilspy<br/>9 files<br/>I=0.33"]
         end
-    
+
         subgraph leaf["Leaf Packages"]
             P61["fleet<br/>54 files<br/>I=1.00"]
             P62["tests<br/>9 files<br/>I=1.00"]
@@ -103,7 +103,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-19T00:27:30.767480+00
             P75["utils<br/>2 files<br/>I=1.00"]
             P76["workflows<br/>6 files<br/>I=1.00"]
         end
-    
+
         P3 -->|4| P4
         P8 -->|7| P3
         P8 -->|1| P7
@@ -144,7 +144,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-19T00:27:30.767480+00
         P50 -->|5| P40
         P50 -->|5| P51
         P50 -->|3| P2
-    
+
         click P0 "../service-components/" "View details"
     ```
 
@@ -193,12 +193,12 @@ Category: <strong>Structural</strong> | Generated: 2026-03-19T00:27:30.767480+00
 
 <div class="atlas-legend" markdown>
 
-| Symbol | Meaning |
-|--------|---------|
-| Subgraph | Package classification |
-| Rectangle | Package |
-| `I=` | Instability metric (0=stable, 1=unstable) |
-| Edge label N | Coupling count |
+| Symbol       | Meaning                                   |
+| ------------ | ----------------------------------------- |
+| Subgraph     | Package classification                    |
+| Rectangle    | Package                                   |
+| `I=`         | Instability metric (0=stable, 1=unstable) |
+| Edge label N | Coupling count                            |
 
 </div>
 
@@ -212,7 +212,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-19T00:27:30.767480+00
 ??? info "Full data (click to expand)"
 
     **Summary metrics:**
-    
+
     - **Total Packages**: 77
     - **By Classification**:
         - `feature`: 58

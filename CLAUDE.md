@@ -96,7 +96,8 @@ Classification happens through 4 layers, each reinforcing the others:
    priority resolution. The authoritative per-turn classifier.
 2. **`CLAUDE.md`** (this file) — Keywords and code-file-edit rule below.
 3. **`workflow_classification_reminder.py`** — Topic boundary reinforcement.
-4. **`dev-orchestrator/SKILL.md`** — Decomposition guidance when skill activates.
+4. **`dev-orchestrator/SKILL.md`** — Decomposition guidance when skill
+   activates.
 
 ### Classification Keywords
 

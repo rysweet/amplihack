@@ -318,7 +318,7 @@ class PowerSteeringChecker:
         "go test",
         "python -m pytest",
         "python -m unittest",
-        "uvx --from",       # Outside-in package testing (user-mandated)
+        "uvx --from",  # Outside-in package testing (user-mandated)
         "uvx --from git+",  # Outside-in from branch
     ]
     # Broader validation patterns (config checks, smoke tests, linting)
@@ -327,13 +327,13 @@ class PowerSteeringChecker:
     # like python -c "print('hello')". See _is_meaningful_validation().
     VALIDATION_COMMAND_PATTERNS = [
         "ruff check",  # Linting
-        "mypy",        # Type checking
-        "flake8",      # Linting
+        "mypy",  # Type checking
+        "flake8",  # Linting
     ]
     # These patterns require content validation via _is_meaningful_validation()
     INLINE_VALIDATION_PATTERNS = [
-        "python -c",   # Inline validation (YAML, imports, smoke tests)
-        "node -e",     # Inline JS validation
+        "python -c",  # Inline validation (YAML, imports, smoke tests)
+        "node -e",  # Inline JS validation
     ]
 
     # Keywords that indicate simple housekeeping tasks (skip power-steering)
@@ -3082,17 +3082,24 @@ class PowerSteeringChecker:
                                     if "origin main" in command or "origin master" in command:
                                         return False
                                     # Bare git push (no branch specified) while on main
-                                    if "origin main" not in command and "origin master" not in command:
+                                    if (
+                                        "origin main" not in command
+                                        and "origin master" not in command
+                                    ):
                                         # Only flag if no branch is specified at all
                                         # (git push, git push origin, git push -u origin)
                                         parts = command.strip().split()
                                         # If command is just "git push" or "git push origin"
                                         # (no branch arg), check if we're on main
                                         has_branch_arg = len(parts) > 3 or any(
-                                            p.startswith("feat/") or p.startswith("fix/") or p.startswith("docs/")
+                                            p.startswith("feat/")
+                                            or p.startswith("fix/")
+                                            or p.startswith("docs/")
                                             for p in parts
                                         )
-                                        if not has_branch_arg and self._is_on_main_branch_near(transcript, i):
+                                        if not has_branch_arg and self._is_on_main_branch_near(
+                                            transcript, i
+                                        ):
                                             return False
         return True
 
@@ -3117,7 +3124,11 @@ class PowerSteeringChecker:
             if msg.get("type") == "tool_result":
                 output = str(msg.get("message", {}).get("content", "")).lower()
                 # If we find a feature branch indicator, we're NOT on main
-                if "on branch " in output and "on branch main" not in output and "on branch master" not in output:
+                if (
+                    "on branch " in output
+                    and "on branch main" not in output
+                    and "on branch master" not in output
+                ):
                     return False
                 # If we find main/master indicator, we ARE on main
                 if "on branch main" in output or "on branch master" in output:
@@ -3295,9 +3306,19 @@ class PowerSteeringChecker:
             True if the command appears to do real validation
         """
         validation_signals = [
-            "import ", "from ", "open(", "load(", "parse(",
-            "validate", "check", "assert", "yaml", "json",
-            "safe_load", "read_text", "read()",
+            "import ",
+            "from ",
+            "open(",
+            "load(",
+            "parse(",
+            "validate",
+            "check",
+            "assert",
+            "yaml",
+            "json",
+            "safe_load",
+            "read_text",
+            "read()",
         ]
         cmd_lower = command.lower()
         return any(signal in cmd_lower for signal in validation_signals)
@@ -3785,14 +3806,20 @@ class PowerSteeringChecker:
                                 )
                                 # __init__.py is public only inside public dirs
                                 if "__init__.py" in file_path and any(
-                                    d in file_path for d in ["/commands/", "/skills/", "/scenarios/"]
+                                    d in file_path
+                                    for d in ["/commands/", "/skills/", "/scenarios/"]
                                 ):
                                     is_public = True
                                 if is_code and is_public:
                                     public_code_modified = True
 
                                 # Check for doc files using class constant
-                                if any(file_path.endswith(ext) if ext.startswith(".") else ext in file_path for ext in self.DOC_FILE_EXTENSIONS):
+                                if any(
+                                    file_path.endswith(ext)
+                                    if ext.startswith(".")
+                                    else ext in file_path
+                                    for ext in self.DOC_FILE_EXTENSIONS
+                                ):
                                     doc_files_modified = True
 
         # Only flag if public-facing code was changed without doc updates
@@ -4000,11 +4027,18 @@ class PowerSteeringChecker:
                                     file_path = block.get("input", {}).get("file_path", "")
 
                                     # Check for code files using class constant
-                                    if any(file_path.endswith(ext) for ext in self.CODE_FILE_EXTENSIONS):
+                                    if any(
+                                        file_path.endswith(ext) for ext in self.CODE_FILE_EXTENSIONS
+                                    ):
                                         code_modified = True
 
                                     # Check for doc files using class constant
-                                    if any(file_path.endswith(ext) if ext.startswith(".") else ext in file_path for ext in self.DOC_FILE_EXTENSIONS):
+                                    if any(
+                                        file_path.endswith(ext)
+                                        if ext.startswith(".")
+                                        else ext in file_path
+                                        for ext in self.DOC_FILE_EXTENSIONS
+                                    ):
                                         docs_modified = True
 
             # Docs-only session if docs modified but no code files
@@ -4095,8 +4129,7 @@ class PowerSteeringChecker:
                                 ]
                                 text_lower = text.lower()
                                 is_handoff = any(
-                                    re.search(hp, text_lower)
-                                    for hp in handoff_patterns
+                                    re.search(hp, text_lower) for hp in handoff_patterns
                                 )
                                 if is_handoff:
                                     self._log(

@@ -216,16 +216,16 @@ git --version    # Should show 2.x or higher
 
 #### Windows Feature Compatibility
 
-| Feature | Windows Native | WSL |
-|---|---|---|
-| Core recipe runner | Full | Full |
-| Agent orchestration (`/dev`) | Full | Full |
-| Auto mode (TUI) | Headless only | Full |
-| Fleet CLI | Not supported | Full |
-| File locking | Full (`msvcrt` fallback) | Full |
-| Keyboard input | Full (`msvcrt` fallback) | Full |
-| Temp directories | Full (`tempfile.gettempdir()`) | Full |
-| Rust recipe runner | Full | Full |
+| Feature                      | Windows Native                 | WSL  |
+| ---------------------------- | ------------------------------ | ---- |
+| Core recipe runner           | Full                           | Full |
+| Agent orchestration (`/dev`) | Full                           | Full |
+| Auto mode (TUI)              | Headless only                  | Full |
+| Fleet CLI                    | Not supported                  | Full |
+| File locking                 | Full (`msvcrt` fallback)       | Full |
+| Keyboard input               | Full (`msvcrt` fallback)       | Full |
+| Temp directories             | Full (`tempfile.gettempdir()`) | Full |
+| Rust recipe runner           | Full                           | Full |
 
 For WSL setup, follow the Linux instructions in [the Linux section above](#linux).
 

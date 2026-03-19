@@ -18,7 +18,11 @@ scenario:
     # Step 1: Verify copilot-sdk is importable
     - action: launch
       target: ".venv/bin/python"
-      args: ["-c", "from copilot import CopilotClient; print(f'COPILOT_SDK_INSTALLED'); import copilot; print(f'VERSION: {copilot.__version__}')"]
+      args:
+        [
+          "-c",
+          "from copilot import CopilotClient; print(f'COPILOT_SDK_INSTALLED'); import copilot; print(f'VERSION: {copilot.__version__}')",
+        ]
       description: "copilot-sdk must be importable"
 
     - action: verify_output
@@ -27,7 +31,11 @@ scenario:
     # Step 2: Verify auto_detect_backend returns CopilotBackend without Anthropic key
     - action: launch
       target: "bash"
-      args: ["-c", "unset ANTHROPIC_API_KEY && .venv/bin/python -c \"from amplihack.fleet._backends import auto_detect_backend, CopilotBackend; b = auto_detect_backend(); print(f'BACKEND: {type(b).__name__}'); assert isinstance(b, CopilotBackend), f'Expected CopilotBackend, got {type(b).__name__}'\""]
+      args:
+        [
+          "-c",
+          'unset ANTHROPIC_API_KEY && .venv/bin/python -c "from amplihack.fleet._backends import auto_detect_backend, CopilotBackend; b = auto_detect_backend(); print(f''BACKEND: {type(b).__name__}''); assert isinstance(b, CopilotBackend), f''Expected CopilotBackend, got {type(b).__name__}''"',
+        ]
       description: "Without ANTHROPIC_API_KEY, auto_detect_backend returns CopilotBackend"
 
     - action: verify_output
@@ -36,7 +44,11 @@ scenario:
     # Step 3: Verify auto_detect_backend returns AnthropicBackend with key
     - action: launch
       target: ".venv/bin/python"
-      args: ["-c", "from amplihack.fleet._backends import auto_detect_backend, AnthropicBackend; b = auto_detect_backend(); print(f'BACKEND: {type(b).__name__}'); assert isinstance(b, AnthropicBackend)"]
+      args:
+        [
+          "-c",
+          "from amplihack.fleet._backends import auto_detect_backend, AnthropicBackend; b = auto_detect_backend(); print(f'BACKEND: {type(b).__name__}'); assert isinstance(b, AnthropicBackend)",
+        ]
       description: "With ANTHROPIC_API_KEY, auto_detect_backend returns AnthropicBackend"
 
     - action: verify_output
@@ -45,15 +57,18 @@ scenario:
     # Step 4: Test SessionCopilot constructs with correct backend
     - action: launch
       target: ".venv/bin/python"
-      args: ["-c", "
-from amplihack.fleet.fleet_copilot import SessionCopilot
-copilot = SessionCopilot(goal='test goal')
-backend_name = type(copilot.reasoner.backend).__name__
-print(f'COPILOT_BACKEND: {backend_name}')
-from amplihack.fleet._backends import AnthropicBackend
-assert isinstance(copilot.reasoner.backend, AnthropicBackend), f'Expected AnthropicBackend, got {backend_name}'
-print('BACKEND_CHECK_PASSED')
-"]
+      args: [
+          "-c",
+          "
+          from amplihack.fleet.fleet_copilot import SessionCopilot
+          copilot = SessionCopilot(goal='test goal')
+          backend_name = type(copilot.reasoner.backend).__name__
+          print(f'COPILOT_BACKEND: {backend_name}')
+          from amplihack.fleet._backends import AnthropicBackend
+          assert isinstance(copilot.reasoner.backend, AnthropicBackend), f'Expected AnthropicBackend, got {backend_name}'
+          print('BACKEND_CHECK_PASSED')
+          ",
+        ]
       description: "SessionCopilot auto-selects the correct backend"
 
     - action: verify_output
@@ -62,20 +77,23 @@ print('BACKEND_CHECK_PASSED')
     # Step 5: Test CopilotBackend with real Copilot SDK call
     - action: launch
       target: "bash"
-      args: ["-c", "unset ANTHROPIC_API_KEY && .venv/bin/python -c \"
-from amplihack.fleet._backends import CopilotBackend
-backend = CopilotBackend()
-try:
-    result = backend.complete('You are helpful.', 'Say hello in 3 words.')
-    print(f'COPILOT_RESPONSE: {result[:200]}')
-    print('COPILOT_CALL_SUCCEEDED')
-except Exception as e:
-    err = str(e)
-    if 'version mismatch' in err.lower():
-        print(f'COPILOT_SDK_OUTDATED: {err}')
-    else:
-        print(f'COPILOT_CALL_FAILED: {err}')
-\""]
+      args: [
+          "-c",
+          'unset ANTHROPIC_API_KEY && .venv/bin/python -c "
+          from amplihack.fleet._backends import CopilotBackend
+          backend = CopilotBackend()
+          try:
+          result = backend.complete(''You are helpful.'', ''Say hello in 3 words.'')
+          print(f''COPILOT_RESPONSE: {result[:200]}'')
+          print(''COPILOT_CALL_SUCCEEDED'')
+          except Exception as e:
+          err = str(e)
+          if ''version mismatch'' in err.lower():
+          print(f''COPILOT_SDK_OUTDATED: {err}'')
+          else:
+          print(f''COPILOT_CALL_FAILED: {err}'')
+          "',
+        ]
       description: "CopilotBackend real call (may fail if SDK outdated)"
       timeout: 60s
       continue_on_failure: true

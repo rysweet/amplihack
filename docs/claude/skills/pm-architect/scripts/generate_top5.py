@@ -22,7 +22,6 @@ from typing import Any
 
 import yaml
 
-
 # Aggregation weights
 WEIGHT_ISSUES = 0.40
 WEIGHT_PRS = 0.30
@@ -69,7 +68,9 @@ def run_gh(args: list[str], account: str | None = None) -> str | None:
     if account:
         switch = subprocess.run(
             ["gh", "auth", "switch", "--user", account],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         if switch.returncode != 0:
             return None
@@ -77,7 +78,9 @@ def run_gh(args: list[str], account: str | None = None) -> str | None:
     try:
         result = subprocess.run(
             ["gh"] + args,
-            capture_output=True, text=True, timeout=30,
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
         if result.returncode != 0:
             return None
@@ -91,7 +94,9 @@ def get_current_gh_account() -> str | None:
     try:
         result = subprocess.run(
             ["gh", "api", "user", "--jq", ".login"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         if result.returncode == 0 and result.stdout.strip():
             return result.stdout.strip()
@@ -109,21 +114,30 @@ def fetch_github_issues(account: str, repos: list[str]) -> list[dict]:
     query = f"is:open is:issue {repo_qualifiers}"
 
     jq_filter = (
-        '.items[] | {'
+        ".items[] | {"
         'repo: (.repository_url | split("/") | .[-2:] | join("/")),'
-        'title: .title,'
-        'labels: [.labels[].name],'
-        'created: .created_at,'
-        'updated: .updated_at,'
-        'number: .number,'
-        'comments: .comments'
-        '}'
+        "title: .title,"
+        "labels: [.labels[].name],"
+        "created: .created_at,"
+        "updated: .updated_at,"
+        "number: .number,"
+        "comments: .comments"
+        "}"
     )
 
     output = run_gh(
-        ["api", "search/issues", "--method", "GET",
-         "-f", f"q={query}", "-f", "per_page=50",
-         "--jq", jq_filter],
+        [
+            "api",
+            "search/issues",
+            "--method",
+            "GET",
+            "-f",
+            f"q={query}",
+            "-f",
+            "per_page=50",
+            "--jq",
+            jq_filter,
+        ],
         account=account,
     )
 
@@ -172,27 +186,33 @@ def fetch_github_issues(account: str, repos: list[str]) -> list[dict]:
             reasons.append("open issue")
 
         repo = item.get("repo", "")
-        candidates.append({
-            "title": item["title"],
-            "source": "github_issue",
-            "raw_score": round(raw_score, 1),
-            "score_breakdown": {
-                "label_priority": round(priority_score, 2),
-                "staleness": round(staleness_score, 2),
-                "activity": round(activity_score, 2),
-            },
-            "rationale": ", ".join(reasons),
-            "item_id": f"{repo}#{item['number']}",
-            "priority": "HIGH" if priority_score >= 0.8 else "MEDIUM" if priority_score >= 0.5 else "LOW",
-            "repo": repo,
-            "account": account,
-            "url": f"https://github.com/{repo}/issues/{item['number']}",
-            "labels": item.get("labels", []),
-            "created": item.get("created", ""),
-            "updated": item.get("updated", ""),
-            "days_stale": round(days_stale, 1),
-            "comments": comments,
-        })
+        candidates.append(
+            {
+                "title": item["title"],
+                "source": "github_issue",
+                "raw_score": round(raw_score, 1),
+                "score_breakdown": {
+                    "label_priority": round(priority_score, 2),
+                    "staleness": round(staleness_score, 2),
+                    "activity": round(activity_score, 2),
+                },
+                "rationale": ", ".join(reasons),
+                "item_id": f"{repo}#{item['number']}",
+                "priority": "HIGH"
+                if priority_score >= 0.8
+                else "MEDIUM"
+                if priority_score >= 0.5
+                else "LOW",
+                "repo": repo,
+                "account": account,
+                "url": f"https://github.com/{repo}/issues/{item['number']}",
+                "labels": item.get("labels", []),
+                "created": item.get("created", ""),
+                "updated": item.get("updated", ""),
+                "days_stale": round(days_stale, 1),
+                "comments": comments,
+            }
+        )
 
     return candidates
 
@@ -205,22 +225,31 @@ def fetch_github_prs(account: str, repos: list[str]) -> list[dict]:
     query = f"is:open is:pr {repo_qualifiers}"
 
     jq_filter = (
-        '.items[] | {'
+        ".items[] | {"
         'repo: (.repository_url | split("/") | .[-2:] | join("/")),'
-        'title: .title,'
-        'labels: [.labels[].name],'
-        'created: .created_at,'
-        'updated: .updated_at,'
-        'number: .number,'
-        'draft: .draft,'
-        'comments: .comments'
-        '}'
+        "title: .title,"
+        "labels: [.labels[].name],"
+        "created: .created_at,"
+        "updated: .updated_at,"
+        "number: .number,"
+        "draft: .draft,"
+        "comments: .comments"
+        "}"
     )
 
     output = run_gh(
-        ["api", "search/issues", "--method", "GET",
-         "-f", f"q={query}", "-f", "per_page=50",
-         "--jq", jq_filter],
+        [
+            "api",
+            "search/issues",
+            "--method",
+            "GET",
+            "-f",
+            f"q={query}",
+            "-f",
+            "per_page=50",
+            "--jq",
+            jq_filter,
+        ],
         account=account,
     )
 
@@ -270,26 +299,28 @@ def fetch_github_prs(account: str, repos: list[str]) -> list[dict]:
                 reasons.append(f"labeled {', '.join(relevant)}")
 
         repo = item.get("repo", "")
-        candidates.append({
-            "title": item["title"],
-            "source": "github_pr",
-            "raw_score": round(raw_score, 1),
-            "score_breakdown": {
-                "base_priority": round(base_score, 2),
-                "staleness": round(staleness_score, 2),
-            },
-            "rationale": ", ".join(reasons),
-            "item_id": f"{repo}#{item['number']}",
-            "priority": "HIGH" if base_score >= 0.8 else "MEDIUM",
-            "repo": repo,
-            "account": account,
-            "url": f"https://github.com/{repo}/pull/{item['number']}",
-            "labels": item.get("labels", []),
-            "created": item.get("created", ""),
-            "updated": item.get("updated", ""),
-            "days_stale": round(days_stale, 1),
-            "is_draft": is_draft,
-        })
+        candidates.append(
+            {
+                "title": item["title"],
+                "source": "github_pr",
+                "raw_score": round(raw_score, 1),
+                "score_breakdown": {
+                    "base_priority": round(base_score, 2),
+                    "staleness": round(staleness_score, 2),
+                },
+                "rationale": ", ".join(reasons),
+                "item_id": f"{repo}#{item['number']}",
+                "priority": "HIGH" if base_score >= 0.8 else "MEDIUM",
+                "repo": repo,
+                "account": account,
+                "url": f"https://github.com/{repo}/pull/{item['number']}",
+                "labels": item.get("labels", []),
+                "created": item.get("created", ""),
+                "updated": item.get("updated", ""),
+                "days_stale": round(days_stale, 1),
+                "is_draft": is_draft,
+            }
+        )
 
     return candidates
 
@@ -319,14 +350,16 @@ def load_local_overrides(pm_dir: Path) -> list[dict]:
         if not reasons:
             reasons.append("local backlog item")
 
-        candidates.append({
-            "title": item.get("title", item["id"]),
-            "source": "local",
-            "raw_score": round(raw_score, 1),
-            "rationale": ", ".join(reasons),
-            "item_id": item["id"],
-            "priority": priority,
-        })
+        candidates.append(
+            {
+                "title": item.get("title", item["id"]),
+                "source": "local",
+                "raw_score": round(raw_score, 1),
+                "rationale": ", ".join(reasons),
+                "item_id": item["id"],
+                "priority": priority,
+            }
+        )
 
     return candidates
 
@@ -387,7 +420,7 @@ def suggest_action(candidate: dict) -> str:
         if days_stale > 7:
             return "Review and merge or request changes"
         return "Review PR"
-    elif source == "github_issue":
+    if source == "github_issue":
         if any(lbl in ("critical", "priority:critical") for lbl in labels):
             return "Fix immediately — critical severity"
         if any(lbl in ("bug",) for lbl in labels):
@@ -395,7 +428,7 @@ def suggest_action(candidate: dict) -> str:
         if days_stale > 30:
             return "Triage: still relevant? Close or reprioritize"
         return "Work on issue or delegate"
-    elif source == "local":
+    if source == "local":
         return "Pick up from local backlog"
     return "Review"
 
@@ -442,8 +475,18 @@ def aggregate_and_rank(
             "action": suggest_action(candidate),
         }
         # Preserve all metadata from the candidate
-        for key in ("url", "repo", "account", "labels", "created", "updated",
-                     "days_stale", "comments", "is_draft", "score_breakdown"):
+        for key in (
+            "url",
+            "repo",
+            "account",
+            "labels",
+            "created",
+            "updated",
+            "days_stale",
+            "comments",
+            "is_draft",
+            "score_breakdown",
+        ):
             if key in candidate:
                 entry[key] = candidate[key]
 
@@ -456,7 +499,7 @@ def aggregate_and_rank(
     for i, item in enumerate(top):
         item["rank"] = i + 1
 
-    near_misses = scored[top_n:top_n + 5]
+    near_misses = scored[top_n : top_n + 5]
     for i, item in enumerate(near_misses):
         item["rank"] = top_n + i + 1
 
@@ -561,12 +604,17 @@ def generate_top5(project_root: Path, sources_path: Path | None = None) -> dict:
 
 def main():
     """Main entry point."""
-    parser = argparse.ArgumentParser(description="Generate Top 5 priorities from GitHub + local state")
+    parser = argparse.ArgumentParser(
+        description="Generate Top 5 priorities from GitHub + local state"
+    )
     parser.add_argument(
         "--project-root", type=Path, default=Path.cwd(), help="Project root directory"
     )
     parser.add_argument(
-        "--sources", type=Path, default=None, help="Path to sources.yaml (default: .pm/sources.yaml)"
+        "--sources",
+        type=Path,
+        default=None,
+        help="Path to sources.yaml (default: .pm/sources.yaml)",
     )
 
     args = parser.parse_args()

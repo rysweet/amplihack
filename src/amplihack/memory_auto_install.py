@@ -86,7 +86,7 @@ def ensure_memory_lib_installed() -> bool:
     # First call: probe the import system once and cache the outcome.
     # sys.path is scanned exactly once per process lifetime.
     try:
-        import amplihack_memory  # noqa: F401
+        import amplihack_memory  # noqa: F401  # pyright: ignore[reportMissingImports]
 
         _memory_available = True
         return True

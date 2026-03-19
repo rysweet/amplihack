@@ -29,7 +29,7 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-19T00:32:00.001334+00
         cli->>dep_check: return_value: check_sdk_dep
         cli-->>CLI: result
         CLI-->>User: exit code
-    
+
         User->>CLI: cli:cli.py
         CLI->>cli: main()
         participant memory_export
@@ -39,14 +39,14 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-19T00:32:00.001334+00
         cli->>auto_update: file_io: _fetch_latest_version
         cli-->>CLI: result
         CLI-->>User: exit code
-    
+
         User->>CLI: recipe
         CLI->>cli: recipe()
         participant rust_runner
         cli->>rust_runner: return_value: _binary_search_paths
         cli-->>CLI: result
         CLI-->>User: exit code
-    
+
         User->>CLI: claude
         CLI->>cli: claude()
         cli->>cli: return_value: _debug_print
@@ -54,7 +54,7 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-19T00:32:00.001334+00
         cli->>prerequisites: subprocess: safe_subprocess_call
         cli-->>CLI: result
         CLI-->>User: exit code
-    
+
         User->>CLI: plugin
         CLI->>cli: plugin()
         participant __init__
@@ -108,12 +108,12 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-19T00:32:00.001334+00
 
 <div class="atlas-legend" markdown>
 
-| Symbol | Meaning |
-|--------|---------|
-| Actor | User |
-| Participant | Module/component |
-| Solid arrow | Synchronous call |
-| Dashed arrow | Response/return |
+| Symbol       | Meaning          |
+| ------------ | ---------------- |
+| Actor        | User             |
+| Participant  | Module/component |
+| Solid arrow  | Synchronous call |
+| Dashed arrow | Response/return  |
 
 </div>
 
@@ -127,7 +127,7 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-19T00:32:00.001334+00
 ??? info "Full data (click to expand)"
 
     **Summary metrics:**
-    
+
     - **Total Journeys**: 351
     - **Cli Journeys**: 55
     - **Http Journeys**: 22

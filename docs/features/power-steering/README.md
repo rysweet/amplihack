@@ -446,6 +446,7 @@ gh pr view --json statusCheckRollup
 ```
 
 **Architecture Highlights**:
+
 - **Modular Design**: Split from monolithic 5,063-line file into 12 focused modules (largest: 1,217 lines)
 - **Backward Compatible**: All existing imports continue to work via `__init__.py` re-exports
 - **Copilot CLI Support**: Auto-detects and parses both Claude Code and GitHub Copilot CLI transcripts (real `events.jsonl` format)
@@ -465,6 +466,7 @@ gh pr view --json statusCheckRollup
 **Generic checker**: For custom considerations, uses keyword extraction and transcript search.
 
 **Module Responsibilities**:
+
 - `considerations.py` — Data models + consideration loading/evaluation
 - `sdk_calls.py` — Claude SDK integration + parallel analysis + timeouts
 - `progress_tracking.py` — State persistence + redirect records + compaction
