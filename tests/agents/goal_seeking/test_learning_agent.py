@@ -597,23 +597,32 @@ class TestLearningAgent:
         """incremental_update questions should get temporal ordering even without needs_temporal."""
         facts = [
             {
+                "context": "Server Downtime",
+                "outcome": "API response time increased during an unrelated outage.",
+                "experience_id": "noise-1",
+                "timestamp": "2024-01-05",
+                "metadata": {"temporal_index": 1},
+            },
+            {
                 "context": "Q2 Marketing Budget",
                 "outcome": "Marketing budget changes were approved for the next quarter.",
-                "experience_id": "noise-1",
+                "experience_id": "noise-2",
+                "timestamp": "2024-01-10",
+                "metadata": {"temporal_index": 2},
             },
             {
                 "context": "Project Atlas - Performance",
                 "outcome": "Atlas average response time was 450ms during the initial beta.",
                 "experience_id": "atlas-1",
-                "timestamp": "2024-01-15",
-                "metadata": {"temporal_index": 1},
+                "timestamp": "2024-02-15",
+                "metadata": {"temporal_index": 3},
             },
             {
                 "context": "Project Atlas - Performance",
                 "outcome": "Atlas average response time improved to 220ms after optimization.",
                 "experience_id": "atlas-2",
                 "timestamp": "2024-03-10",
-                "metadata": {"temporal_index": 2},
+                "metadata": {"temporal_index": 4},
             },
         ]
 
@@ -656,6 +665,37 @@ class TestLearningAgent:
 
         synth_context = synth.call_args.kwargs["context"]
         assert [fact["experience_id"] for fact in synth_context[:2]] == ["atlas-1", "atlas-2"]
+        assert [fact["experience_id"] for fact in synth_context[2:4]] == ["noise-1", "noise-2"]
+
+    def test_synthesize_with_llm_includes_temporal_markers_for_incremental_update(self, agent):
+        """incremental_update synthesis should show temporal markers even when needs_temporal is false."""
+        context = [
+            {
+                "context": "Project Atlas - Performance",
+                "outcome": "Atlas average response time improved to 220ms after optimization.",
+                "metadata": {
+                    "source_date": "2024-03-10",
+                    "temporal_order": "after optimization",
+                },
+            }
+        ]
+
+        with patch.object(agent, "_llm_completion_with_retry", return_value="answer") as llm:
+            answer = agent._synthesize_with_llm(
+                "How did the Atlas average response time change over time?",
+                context,
+                "L3",
+                intent={
+                    "intent": "incremental_update",
+                    "needs_temporal": False,
+                },
+            )
+
+        assert answer == "answer"
+        prompt = llm.call_args.kwargs["messages"][1]["content"]
+        assert "Relevant facts (ordered chronologically where possible):" in prompt
+        assert "Date: 2024-03-10" in prompt
+        assert "after optimization" in prompt
 
     def test_simple_retrieval_treats_distributed_query_hits_as_partial(self, agent):
         """Distributed query-filtered hits should not masquerade as exhaustive coverage."""

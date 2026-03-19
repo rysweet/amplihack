@@ -215,6 +215,42 @@ def _query_phrases(query: str) -> set[str]:
     return phrases
 
 
+def _entity_anchor_tokens(query: str) -> set[str]:
+    """Extract capitalized/structured tokens that likely identify the target entity."""
+    anchors: set[str] = set()
+    for raw in query.split():
+        cleaned = raw.strip(".,;:!?()[]{}\"'")
+        lowered = cleaned.lower()
+        if (
+            len(cleaned) > 2
+            and any(ch.isupper() for ch in cleaned)
+            and lowered not in STOP_WORDS
+            and lowered not in QUERY_CUE_TOKENS
+        ):
+            anchors.add(lowered)
+    return anchors
+
+
+def extract_query_anchor_tokens(query: str) -> set[str]:
+    """Expose discriminative query anchors for downstream ranking helpers."""
+    return _anchor_tokens(query)
+
+
+def extract_query_phrases(query: str) -> set[str]:
+    """Expose discriminative ordered phrases for downstream ranking helpers."""
+    return _query_phrases(query)
+
+
+def extract_entity_anchor_tokens(query: str) -> set[str]:
+    """Expose likely entity-identifying query tokens for downstream helpers."""
+    return _entity_anchor_tokens(query)
+
+
+def tokenize_similarity_text(text: str) -> set[str]:
+    """Expose the similarity tokenization used by query/fact reranking."""
+    return _tokenize(text)
+
+
 def compute_word_similarity(text_a: str, text_b: str) -> float:
     """Compute Jaccard similarity on tokenized words minus stop words.
 
@@ -401,5 +437,9 @@ __all__ = [
     "compute_word_similarity",
     "compute_tag_similarity",
     "compute_similarity",
+    "extract_entity_anchor_tokens",
+    "extract_query_anchor_tokens",
+    "extract_query_phrases",
     "rerank_facts_by_query",
+    "tokenize_similarity_text",
 ]
