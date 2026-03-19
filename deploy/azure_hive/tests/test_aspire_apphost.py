@@ -56,12 +56,10 @@ class TestAspireAppHost:
         assert "AMPLIHACK_ASPIRE_ENABLE_LONG_HORIZON_EVAL" in content
         assert "AMPLIHACK_ASPIRE_ENABLE_SECURITY_EVAL" in content
 
-    def test_apphost_long_horizon_defaults_to_no_answer_timeout(self):
+    def test_apphost_long_horizon_uses_scale_aware_answer_timeout(self):
         content = _APPHOST.read_text()
-        assert (
-            'GetConfig(builder, "eval:answerTimeout", "AMPLIHACK_ASPIRE_ANSWER_TIMEOUT", "0")'
-            in content
-        )
+        assert "GetDefaultEvalAnswerTimeout(" in content
+        assert '"AMPLIHACK_ASPIRE_ANSWER_TIMEOUT"' in content
 
     def test_apphost_pythonpath_includes_eval_repo_src(self):
         content = _APPHOST.read_text()

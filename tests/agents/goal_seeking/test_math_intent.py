@@ -754,7 +754,7 @@ class TestSummaryConditionalFilter:
     def test_summary_filtered_for_meta_memory(
         self, mock_agg: MagicMock, mock_intent: MagicMock, mock_synth: MagicMock
     ):
-        """For meta_memory intent, SUMMARY facts are filtered out."""
+        """For meta_memory intent, only DB SUMMARY nodes are filtered out."""
         mock_intent.return_value = {
             "intent": "meta_memory",
             "needs_math": False,
@@ -767,7 +767,7 @@ class TestSummaryConditionalFilter:
             "outcome": "Overall project summary with 5 topics",
             "tags": ["overview"],
         }
-        summary_by_tag = {
+        tiered_summary = {
             "context": "Project Alpha",
             "outcome": "Summary of all work done",
             "tags": ["summary"],
@@ -777,7 +777,7 @@ class TestSummaryConditionalFilter:
             "outcome": "Beta launched in January",
             "tags": ["project"],
         }
-        mock_agg.return_value = [summary_by_context, summary_by_tag, real_fact]
+        mock_agg.return_value = [summary_by_context, tiered_summary, real_fact]
 
         self.agent.answer_question("How many projects are tracked?", "L1")
 
@@ -790,7 +790,7 @@ class TestSummaryConditionalFilter:
         fact_outcomes = [f.get("outcome", "") for f in facts_passed]
         assert "Beta launched in January" in fact_outcomes
         assert "Overall project summary with 5 topics" not in fact_outcomes
-        assert "Summary of all work done" not in fact_outcomes
+        assert "Summary of all work done" in fact_outcomes
 
     @patch.object(LearningAgent, "_synthesize_with_llm", return_value="Mocked answer")
     @patch.object(LearningAgent, "_detect_intent")
@@ -840,11 +840,11 @@ class TestSummaryConditionalFilter:
     def test_summary_filter_uses_both_conditions(
         self, mock_agg: MagicMock, mock_intent: MagicMock, mock_synth: MagicMock
     ):
-        """SUMMARY filter catches facts by context='SUMMARY' OR tags containing 'summary'.
+        """Meta-memory filtering only drops DB SUMMARY nodes by context.
 
         For meta_memory intent:
         - context="SUMMARY" -> filtered
-        - tags=["summary"] -> filtered
+        - tags=["summary"] alone -> retained
         - both context="SUMMARY" and tags=["summary"] -> filtered
         - neither -> retained
         """
@@ -861,7 +861,7 @@ class TestSummaryConditionalFilter:
             "outcome": "High-level overview",
             "tags": ["overview"],
         }
-        # Only tags=["summary"] -> filtered
+        # Tiered retrieval summary -> retained
         summary_tag_only = {
             "context": "Project Report",
             "outcome": "Condensed report",
@@ -895,8 +895,8 @@ class TestSummaryConditionalFilter:
             else synth_call_args[1].get("context", [])
         )
         fact_outcomes = [f.get("outcome", "") for f in facts_passed]
-        # Only the regular fact should survive
+        # Tiered summaries survive; DB SUMMARY nodes do not.
         assert "Team grew by 3 members" in fact_outcomes
         assert "High-level overview" not in fact_outcomes
-        assert "Condensed report" not in fact_outcomes
+        assert "Condensed report" in fact_outcomes
         assert "Full summary with tags" not in fact_outcomes

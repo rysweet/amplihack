@@ -49,6 +49,10 @@ _FAIL = "\033[31m✗\033[0m"
 _WARN = "\033[33m⚠\033[0m"
 
 
+def _default_eval_answer_timeout(agent_count: int) -> int:
+    return 300 if agent_count >= 100 else 120
+
+
 def _step(ok: bool, message: str) -> bool:
     icon = _PASS if ok else _FAIL
     print(f"  {icon} {message}")
@@ -319,7 +323,7 @@ AMPLIHACK_OTEL_ENABLED={os.environ.get("AMPLIHACK_OTEL_ENABLED", "false")}
 # Eval parameters (override as needed)
 AMPLIHACK_ASPIRE_EVAL_TURNS=5000
 AMPLIHACK_ASPIRE_EVAL_QUESTIONS=50
-AMPLIHACK_ASPIRE_ANSWER_TIMEOUT=0
+AMPLIHACK_ASPIRE_ANSWER_TIMEOUT={_default_eval_answer_timeout(agent_count)}
 """
     Path(path).write_text(env_content)
     logger.info("Wrote eval environment to %s", path)

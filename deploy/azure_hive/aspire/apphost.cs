@@ -215,6 +215,17 @@ static void AddOptionalPositiveArg(
     }
 }
 
+static string GetDefaultEvalAnswerTimeout(
+    IDistributedApplicationBuilder builder,
+    string configKey,
+    string envKey
+)
+{
+    var agentCountValue = GetConfig(builder, "azure:agentCount", "HIVE_AGENT_COUNT", "100");
+    var defaultValue = int.TryParse(agentCountValue, out var parsed) && parsed >= 100 ? "300" : "120";
+    return GetConfig(builder, configKey, envKey, defaultValue);
+}
+
 static string[] BuildMonitorArgs(
     IDistributedApplicationBuilder builder,
     string connectionString,
@@ -304,7 +315,11 @@ static string[] BuildRetrievalSmokeArgs(
         "--agents",
         GetConfig(builder, "azure:agentCount", "HIVE_AGENT_COUNT", "100"),
         "--answer-timeout",
-        GetConfig(builder, "eval:answerTimeout", "AMPLIHACK_ASPIRE_ANSWER_TIMEOUT", "0"),
+        GetDefaultEvalAnswerTimeout(
+            builder,
+            "eval:answerTimeout",
+            "AMPLIHACK_ASPIRE_ANSWER_TIMEOUT"
+        ),
         "--question-offset",
         GetConfig(
             builder,
@@ -347,7 +362,11 @@ static string[] BuildLongHorizonArgs(
         "--seed",
         GetConfig(builder, "eval:seed", "AMPLIHACK_ASPIRE_EVAL_SEED", "42"),
         "--answer-timeout",
-        GetConfig(builder, "eval:answerTimeout", "AMPLIHACK_ASPIRE_ANSWER_TIMEOUT", "0"),
+        GetDefaultEvalAnswerTimeout(
+            builder,
+            "eval:answerTimeout",
+            "AMPLIHACK_ASPIRE_ANSWER_TIMEOUT"
+        ),
         "--grader-model",
         GetConfig(
             builder,
