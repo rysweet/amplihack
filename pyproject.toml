@@ -26,9 +26,6 @@ dependencies = [
     "github-copilot-sdk>=0.1.0", # GitHub Copilot SDK for embedding Copilot in applications
     "rich>=13.0.0", # Required for --ui interactive TUI mode
     "azure-identity>=1.12.0", # Azure Service Principal authentication for remote execution
-    "kuzu>=0.11.0", # Embedded graph database for memory system
-    "amplihack-memory-lib @ git+https://github.com/rysweet/amplihack-memory-lib.git@v0.2.0", # Standalone memory system with CognitiveMemory 6-type system
-
     # Blarify vendored code dependencies (using vendored copy in src/amplihack/vendor/blarify, not PyPI package)
     "json-repair>=0.47.7", # JSON repair for blarify LLM provider
     "langchain>=1.2.3", # Langchain core for blarify agents
@@ -57,6 +54,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Memory features: kuzu graph database + amplihack-memory-lib
+# Install with: pip install amplihack[memory]
+memory = [
+    "kuzu>=0.11.0",  # Embedded graph database for memory system
+    "amplihack-memory-lib @ git+https://github.com/rysweet/amplihack-memory-lib.git@v0.2.0",  # CognitiveMemory 6-type system
+]
 # Microsoft Agent Framework requires pre-release Azure deps
 microsoft-sdk = [
     "agent-framework-core>=1.0.0rc1",
