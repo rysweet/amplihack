@@ -50,14 +50,8 @@ class BlarifyBridge:
         self.root = root.resolve()
         self.graph = None
 
-    def build(self, hierarchy_only: bool = False) -> "BlarifyBridge":
-        """Build the blarify graph for the project.
-
-        Args:
-            hierarchy_only: If False (default), full build with LSP reference
-                resolution. Gives CALLS, IMPORTS, INSTANTIATES, USES, INHERITS
-                relationships. Slower (minutes for large codebases) but much richer.
-                If True, fast build with definitions only (1-2s).
+    def build(self) -> "BlarifyBridge":
+        """Build the blarify graph for the project (full build with LSP references).
 
         Returns:
             self, for chaining.
@@ -84,10 +78,7 @@ class BlarifyBridge:
             project_files_iterator=iterator,
         )
 
-        if hierarchy_only:
-            self.graph = creator.build_hierarchy_only()
-        else:
-            self.graph = creator.build()
+        self.graph = creator.build()
 
         return self
 
@@ -360,7 +351,6 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Blarify bridge: extract definitions from code")
     parser.add_argument("root", help="Project root directory")
-    parser.add_argument("--full", action="store_true", help="Full build (with LSP references)")
     args = parser.parse_args()
 
     root = Path(args.root).resolve()
@@ -368,10 +358,9 @@ if __name__ == "__main__":
         print(f"ERROR: {root} is not a directory", file=sys.stderr)
         sys.exit(1)
 
-    mode = "full (with LSP)" if args.full else "hierarchy only"
-    print(f"Building blarify graph for {root} ({mode})...")
+    print(f"Building blarify graph for {root} (full with LSP)...")
     bridge = BlarifyBridge(root)
-    bridge.build(hierarchy_only=not args.full)
+    bridge.build()
 
     defs = bridge.get_all_definitions()
     print(f"Total definitions: {len(defs)}")
