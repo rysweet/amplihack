@@ -29,12 +29,11 @@ from scripts.atlas.common import (
 )
 
 
-def _extract_blarify_definitions(root: Path, hierarchy_only: bool = False) -> tuple[list[dict], list[dict], dict[str, int]]:
+def _extract_blarify_definitions(root: Path) -> tuple[list[dict], list[dict], dict[str, int]]:
     """Extract definitions from all languages using blarify.
 
     Args:
         root: Project root directory.
-        hierarchy_only: If True, skip LSP reference resolution (fast mode).
 
     Returns:
         Tuple of (non_python_definitions, all_relationships, relationship_summary).
@@ -47,7 +46,7 @@ def _extract_blarify_definitions(root: Path, hierarchy_only: bool = False) -> tu
         from scripts.atlas.blarify_bridge import BlarifyBridge
 
         bridge = BlarifyBridge(root)
-        bridge.build(hierarchy_only=hierarchy_only)
+        bridge.build()
 
         all_defs = bridge.to_layer2_definitions()
         all_rels = bridge.get_relationships()
@@ -61,10 +60,9 @@ def _extract_blarify_definitions(root: Path, hierarchy_only: bool = False) -> tu
         print(f"  Blarify: {len(all_defs)} total defs ({lang_summary})")
         print(f"  Blarify: {len(non_python_defs)} non-Python defs for merge")
         if rel_summary.get("total", 0) > 0:
-            code_rels = {k: v for k, v in rel_summary.items()
-                         if k in ("CALLS", "IMPORTS", "INSTANTIATES", "USES", "INHERITS")}
-            rel_parts = ", ".join(f"{k}={v}" for k, v in sorted(code_rels.items()))
-            print(f"  Blarify: {rel_summary['total']} relationships ({rel_parts})")
+            # Show all relationship types found (not just code references)
+            type_parts = ", ".join(f"{k}={v}" for k, v in sorted(rel_summary.items()) if k != "total")
+            print(f"  Blarify: {rel_summary['total']} relationships ({type_parts})")
 
         return non_python_defs, all_rels, rel_summary
 
@@ -73,7 +71,7 @@ def _extract_blarify_definitions(root: Path, hierarchy_only: bool = False) -> tu
         return [], [], {}
 
 
-def extract(manifest: dict, root: Path, hierarchy_only: bool = False) -> dict:
+def extract(manifest: dict, root: Path) -> dict:
     """Extract layer 2 data by parsing all Python files and non-Python via blarify.
 
     Phase 1 (blarify): Extract definitions from ALL languages via tree-sitter.
@@ -84,7 +82,6 @@ def extract(manifest: dict, root: Path, hierarchy_only: bool = False) -> dict:
     Args:
         manifest: Loaded manifest dict.
         root: Project root directory.
-        hierarchy_only: If True, use fast hierarchy-only blarify build.
 
     Returns:
         Layer 2 data dict matching the spec schema.
@@ -93,7 +90,7 @@ def extract(manifest: dict, root: Path, hierarchy_only: bool = False) -> dict:
     py_files = [f for f in manifest["files"] if f["extension"] == ".py"]
 
     # --- Phase 1: Blarify (all languages) ---
-    blarify_defs, blarify_rels, blarify_rel_summary = _extract_blarify_definitions(root, hierarchy_only=hierarchy_only)
+    blarify_defs, blarify_rels, blarify_rel_summary = _extract_blarify_definitions(root)
 
     # --- Phase 2: Python ast.parse() ---
     all_definitions = []
@@ -434,14 +431,10 @@ def extract(manifest: dict, root: Path, hierarchy_only: bool = False) -> dict:
     }
 
     # Include blarify relationship summary as a top-level section
+    # Map all relationship types from blarify (uppercase) to lowercase output keys
     if blarify_rel_summary:
         result["blarify_relationships"] = {
-            "calls": blarify_rel_summary.get("CALLS", 0),
-            "imports": blarify_rel_summary.get("IMPORTS", 0),
-            "instantiates": blarify_rel_summary.get("INSTANTIATES", 0),
-            "uses": blarify_rel_summary.get("USES", 0),
-            "inherits": blarify_rel_summary.get("INHERITS", 0),
-            "total": blarify_rel_summary.get("total", 0),
+            k.lower(): v for k, v in blarify_rel_summary.items()
         }
 
     return result
@@ -514,8 +507,6 @@ def main():
     parser = argparse.ArgumentParser(description="Layer 2: AST+LSP Symbol Bindings")
     parser.add_argument("--root", required=True, help="Project root directory")
     parser.add_argument("--output", required=True, help="Output directory for JSON files")
-    parser.add_argument("--fast", action="store_true",
-                        help="Use hierarchy-only blarify mode (faster, no LSP relationships)")
     args = parser.parse_args()
 
     root = Path(args.root).resolve()
@@ -536,7 +527,7 @@ def main():
         print(f"Manifest: {manifest['total_files']} files")
 
     # Extract layer 2
-    layer_data = extract(manifest, root, hierarchy_only=args.fast)
+    layer_data = extract(manifest, root)
 
     # Write output
     out_path = write_layer_json("layer2_ast_bindings", layer_data, output_dir)
@@ -556,9 +547,9 @@ def main():
     brel = layer_data.get("blarify_relationships")
     if brel and brel.get("total", 0) > 0:
         parts = []
-        for key in ("calls", "imports", "instantiates", "uses", "inherits"):
-            if brel.get(key, 0) > 0:
-                parts.append(f"{key}={brel[key]}")
+        for key, val in sorted(brel.items()):
+            if key != "total" and val > 0:
+                parts.append(f"{key}={val}")
         print(f"  Blarify relationships: {brel['total']} ({', '.join(parts)})")
 
     if layer_data["files_failed_parse"]:

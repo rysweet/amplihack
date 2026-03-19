@@ -196,7 +196,8 @@ class AtlasRenderer:
                 lines.append(f'    <div class="atlas-coverage__bar" '
                              f'style="width:{pct}%"></div>')
                 lines.append(f"    </div>")
-                lines.append(f"    <small>{pct}% coverage</small>")
+                coverage_label = self._coverage_label(layer_def, data, pct)
+                lines.append(f"    <small>{coverage_label}</small>")
                 lines.append("")
 
             # Summary stats
@@ -1210,12 +1211,21 @@ class AtlasRenderer:
             # Directories covered
             return 100.0 if data.get("directories") else None
         elif num == 2:
-            # Files analyzed vs total
+            # Files analyzed at AST level vs total files in the manifest.
+            # For multi-language repos, only Python files get full AST analysis,
+            # so coverage reflects what fraction of ALL code files are analyzed.
             analyzed = data.get("files_analyzed", 0)
-            if analyzed > 0:
+            if analyzed <= 0:
+                return None
+            # Use layer 1 total file count if available for accurate coverage
+            layer1 = self.layers.get("layer1_repo_surface", {})
+            total_files = self._layer1_total_files(layer1)
+            if total_files > 0:
                 failed = len(data.get("files_failed_parse", []))
-                return ((analyzed - failed) / analyzed) * 100
-            return None
+                return ((analyzed - failed) / total_files) * 100
+            # Last fallback: analyzed/analyzed (Python-only view)
+            failed = len(data.get("files_failed_parse", []))
+            return ((analyzed - failed) / analyzed) * 100
         elif num == 7:
             packages = data.get("packages", [])
             return 100.0 if packages else None
@@ -1228,6 +1238,37 @@ class AtlasRenderer:
 
         # Generic: has data = 100%, no data = None
         return 100.0 if data and data != {} else None
+
+    @staticmethod
+    def _layer1_total_files(layer1: dict) -> int:
+        """Get the total file count from layer 1 data.
+
+        Tries completeness.manifest_total first, falls back to summing
+        language file counts.
+        """
+        completeness = layer1.get("completeness", {})
+        total = completeness.get("manifest_total", 0)
+        if total > 0:
+            return total
+        languages = layer1.get("languages", {})
+        return sum(info.get("file_count", 0) for info in languages.values())
+
+    def _coverage_label(self, layer_def: dict, data: dict, pct: int) -> str:
+        """Build a human-readable coverage label for a layer card.
+
+        For layer 2, shows "N/M files analyzed (X%)" so multi-language repos
+        don't misleadingly claim 100% when only Python files are parsed.
+        """
+        num = layer_def["num"]
+        if num == 2:
+            analyzed = data.get("files_analyzed", 0)
+            failed = len(data.get("files_failed_parse", []))
+            effective = analyzed - failed
+            layer1 = self.layers.get("layer1_repo_surface", {})
+            total_files = self._layer1_total_files(layer1)
+            if total_files > 0 and total_files != effective:
+                return f"{effective}/{total_files} files analyzed ({pct}%)"
+        return f"{pct}% coverage"
 
     def _format_summary_stats(self, layer_def: dict, summary: dict) -> list[str]:
         """Format summary stats as compact text items."""
