@@ -50,6 +50,16 @@ digraph ast_lsp_bindings {
     recipe_cmd -> recipes [label="imports"];
     eval_harness -> eval_pkg [label="internal"];
 
+<<<<<<< HEAD
+=======
+    // Intra-module: recipes/rust_runner -> recipes/discovery
+    node [shape=record, style="filled", fillcolor="#d4e8d4"];
+    rust_runner [label="{recipes/rust_runner|signal (stdlib)\los, json, subprocess\lRecipeResult, StepResult\l}"];
+    discovery_mod [label="{recipes/discovery|os (stdlib)\lhashlib, json, subprocess\l_AMPLIHACK_HOME_BUNDLE_DIR\l_PACKAGE_BUNDLE_DIR\l_REPO_ROOT_BUNDLE_DIR\l}"];
+
+    rust_runner -> discovery_mod [label="imports\n_AMPLIHACK_HOME_BUNDLE_DIR\n_PACKAGE_BUNDLE_DIR\n_REPO_ROOT_BUNDLE_DIR", color="#6666aa"];
+
+>>>>>>> origin/main
     // Dead code candidates
     node [shape=box, style="dashed,filled", fillcolor="#ffcdd2"];
     dead1 [label="examples/usage_example.py\n(demo only)"];

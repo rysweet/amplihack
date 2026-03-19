@@ -1,95 +1,58 @@
-graph TD
-    subgraph ext_deps["External Dependencies (pyproject.toml)"]
-        direction TB
-        flask["flask >=2.0"]
-        requests["requests >=2.32.4"]
-        fastapi["fastapi >=0.68"]
-        uvicorn["uvicorn >=0.15"]
-        aiohttp["aiohttp >=3.8"]
-        litellm["litellm >=1.0"]
-        dotenv["python-dotenv >=0.19"]
-        claude_sdk["claude-agent-sdk >=0.1"]
-        copilot_sdk["github-copilot-sdk >=0.1"]
-        rich["rich >=13.0"]
-        azure_id["azure-identity >=1.12"]
-        kuzu["kuzu >=0.11"]
-        memory_lib["amplihack-memory-lib @git"]
-        agent_eval["amplihack-agent-eval @git"]
-        tree_sitter["tree-sitter >=0.23 + grammars"]
-        langchain["langchain + openai/anthropic/google"]
-        psutil["psutil >=7.0"]
-        protobuf["protobuf >=5.29"]
-        falkordb["falkordb >=1.0"]
-        neo4j["neo4j >=5.25"]
-        jedi_lsp["jedi-language-server >=0.43"]
-        docker_py["docker >=7.1"]
-        packaging["packaging >=21.0"]
+graph LR
+    subgraph ext["External Dependencies"]
+        E0["pytest<br/>imports: 42"]
+        E1["rich<br/>imports: 20"]
+        E2["litellm<br/>imports: 15"]
+        E3["tree-sitter<br/>imports: 15"]
+        E4["typing-extensions<br/>imports: 13"]
+        E5["kuzu<br/>imports: 10"]
+        E6["requests<br/>imports: 9"]
+        E7["fastapi<br/>imports: 8"]
+        E8["aiohttp<br/>imports: 6"]
+        E9["python-dotenv<br/>imports: 5"]
+        E10["claude-agent-sdk<br/>imports: 3"]
+        E11["langchain-openai<br/>imports: 3"]
+        E12["psutil<br/>imports: 3"]
+        E13["uvicorn<br/>imports: 2"]
+        E14["langchain-anthropic<br/>imports: 2"]
+        E15["langchain-google-genai<br/>imports: 2"]
+        E16["flask<br/>imports: 1"]
+        E17["json-repair<br/>imports: 1"]
+        E18["tree-sitter-python<br/>imports: 1"]
+        E19["tree-sitter-javascript<br/>imports: 1"]
     end
 
-    subgraph int_pkg["Internal Package Graph"]
-        direction TB
-        cli_mod["cli"]
-        launcher_mod["launcher"]
-        proxy_mod["proxy"]
-        fleet_mod["fleet"]
-        recipes_mod["recipes"]
-        recipe_cli_mod["recipe_cli"]
-        bundle_mod["bundle_generator"]
-        eval_mod["eval"]
-        knowledge_mod["knowledge_builder"]
-        memory_mod["memory"]
-        security_mod["security"]
-        utils_mod["utils"]
-        settings_mod["settings"]
-        hooks_mod["hooks"]
-        vendor_mod["vendor/blarify"]
-        uvx_mod["uvx"]
-        docker_mod["docker"]
-        lsp_mod["lsp_detector"]
-        context_mod["context"]
-        workflows_mod["workflows"]
-        plugin_mod["plugin_manager"]
-        safety_mod["safety"]
-        tracing_mod["tracing"]
+    subgraph int["Internal Packages"]
+        P0["__main__"]
+        P1["__version_manifest__"]
+        P2["goal_seeking"]
+        P3["_hierarchical_memory_local"]
+        P4["action_executor"]
+        P5["agentic_loop"]
+        P6["cognitive_adapter"]
+        P7["flat_retriever_adapter"]
+        P8["graph_rag_retriever"]
+        P9["hierarchical_memory"]
+        P10["hive_mind"]
+        P11["constants"]
+        P12["controller"]
+        P13["crdt"]
+        P14["distributed"]
+        P15["embeddings"]
+        P16["event_bus"]
+        P17["fact_lifecycle"]
+        P18["gossip"]
+        P19["hive_graph"]
+        P20["quality"]
+        P21["query_expansion"]
+        P22["reranker"]
+        P23["json_utils"]
+        P24["learning_agent"]
+        P25["memory_export"]
+        P26["memory_retrieval"]
+        P27["prompts"]
+        P28["sdk"]
+        P29["sdk_adapters"]
     end
 
-    %% Internal cross-package imports
-    cli_mod --> launcher_mod
-    cli_mod --> proxy_mod
-    cli_mod --> fleet_mod
-    cli_mod --> recipes_mod
-    cli_mod --> bundle_mod
-    cli_mod --> plugin_mod
-    cli_mod --> eval_mod
-    cli_mod --> settings_mod
-    cli_mod --> uvx_mod
-    cli_mod --> docker_mod
-    cli_mod --> security_mod
-
-    recipe_cli_mod --> recipes_mod
-    launcher_mod --> hooks_mod
-    eval_mod --> knowledge_mod
-    fleet_mod --> fleet_mod
-
-    %% External dependency usage
-    proxy_mod -.-> flask
-    proxy_mod -.-> aiohttp
-    proxy_mod -.-> litellm
-    launcher_mod -.-> claude_sdk
-    launcher_mod -.-> rich
-    fleet_mod -.-> rich
-    vendor_mod -.-> tree_sitter
-    vendor_mod -.-> langchain
-    vendor_mod -.-> falkordb
-    vendor_mod -.-> neo4j
-    memory_mod -.-> kuzu
-    memory_mod -.-> memory_lib
-    eval_mod -.-> agent_eval
-    bundle_mod -.-> packaging
-    docker_mod -.-> docker_py
-    lsp_mod -.-> jedi_lsp
-
-    subgraph circular["Circular Dependency Check"]
-        direction LR
-        circ_note["No circular cross-package\nimports detected.\nvendor/blarify is self-contained."]
-    end
+    click P0 "../compile-deps/" "View compile deps"

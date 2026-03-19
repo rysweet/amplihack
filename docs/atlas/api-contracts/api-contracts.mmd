@@ -1,79 +1,108 @@
 graph TD
-    subgraph CLI["amplihack CLI Entry Point"]
-        MAIN["amplihack (main)"]
-    end
+    ROOT["amplihack"]
+    C0["generate"]
+    ROOT --> C0
+    C1["test"]
+    ROOT --> C1
+    C2["package"]
+    ROOT --> C2
+    C3["distribute"]
+    ROOT --> C3
+    C4["create-repo"]
+    ROOT --> C4
+    C5["update"]
+    ROOT --> C5
+    C6["pipeline"]
+    ROOT --> C6
+    C7["version"]
+    ROOT --> C7
+    C8["install"]
+    ROOT --> C8
+    C9["uninstall"]
+    ROOT --> C9
+    C10["update"]
+    ROOT --> C10
+    C11["launch"]
+    ROOT --> C11
+    C12["claude"]
+    ROOT --> C12
+    C13["RustyClawd"]
+    ROOT --> C13
+    C14["copilot"]
+    ROOT --> C14
+    C15["codex"]
+    ROOT --> C15
+    C16["amplifier"]
+    ROOT --> C16
+    C17["uvx-help"]
+    ROOT --> C17
+    C18["_local_install"]
+    ROOT --> C18
+    C19["plugin"]
+    ROOT --> C19
+    C20["install"]
+    ROOT --> C20
+    C21["uninstall"]
+    ROOT --> C21
+    C22["link"]
+    ROOT --> C22
+    C23["verify"]
+    ROOT --> C23
+    C24["memory"]
+    ROOT --> C24
+    C25["tree"]
+    ROOT --> C25
+    C26["export"]
+    ROOT --> C26
+    C27["import"]
+    ROOT --> C27
+    C28["clean"]
+    ROOT --> C28
+    C29["new"]
+    ROOT --> C29
+    C30["recipe"]
+    ROOT --> C30
+    C31["run"]
+    ROOT --> C31
+    C32["list"]
+    ROOT --> C32
+    C33["validate"]
+    ROOT --> C33
+    C34["show"]
+    ROOT --> C34
+    C35["mode"]
+    ROOT --> C35
+    C36["detect"]
+    ROOT --> C36
+    C37["to-plugin"]
+    ROOT --> C37
+    C38["to-local"]
+    ROOT --> C38
+    C39["fleet"]
+    ROOT --> C39
+    C40["stats"]
+    ROOT --> C40
+    C41["files"]
+    ROOT --> C41
+    C42["functions"]
+    ROOT --> C42
+    C43["classes"]
+    ROOT --> C43
+    C44["search"]
+    ROOT --> C44
+    C45["callers"]
+    ROOT --> C45
+    C46["callees"]
+    ROOT --> C46
+    C47["plugin"]
+    ROOT --> C47
+    C48["install"]
+    ROOT --> C48
+    C49["uninstall"]
+    ROOT --> C49
+    C50["verify"]
+    ROOT --> C50
+    C51["create"]
+    ROOT --> C51
 
-    subgraph MGMT["Management Commands"]
-        INSTALL["install"]
-        UNINSTALL["uninstall"]
-        UPDATE["update"]
-        VERSION["version / --version"]
-        LOCAL_INSTALL["_local_install &lt;repo_root&gt;"]
-    end
-
-    subgraph SDK["SDK Launcher Commands"]
-        LAUNCH["launch"]
-        CLAUDE["claude (alias)"]
-        RUSTY["RustyClawd"]
-        COPILOT["copilot"]
-        CODEX["codex"]
-        AMPLIFIER["amplifier"]
-    end
-
-    subgraph PLUGIN["Plugin Commands"]
-        P_INSTALL["plugin install &lt;source&gt;"]
-        P_UNINSTALL["plugin uninstall &lt;name&gt;"]
-        P_LINK["plugin link [name]"]
-        P_VERIFY["plugin verify [name]"]
-    end
-
-    subgraph MEMORY["Memory Commands"]
-        M_TREE["memory tree"]
-        M_EXPORT["memory export --agent &lt;name&gt; -o &lt;path&gt;"]
-        M_IMPORT["memory import --agent &lt;name&gt; -i &lt;path&gt;"]
-        M_CLEAN["memory clean --pattern &lt;pat&gt;"]
-    end
-
-    subgraph RECIPE["Recipe Commands"]
-        R_RUN["recipe run &lt;path&gt;"]
-        R_LIST["recipe list [dir]"]
-        R_VALIDATE["recipe validate &lt;path&gt;"]
-        R_SHOW["recipe show &lt;path&gt;"]
-    end
-
-    subgraph OTHER["Other Commands"]
-        NEW["new -f &lt;prompt.md&gt;"]
-        MODE["mode detect / to-plugin / to-local"]
-        FLEET["fleet &lt;subcommand&gt;"]
-        UVX_HELP["uvx-help"]
-    end
-
-    subgraph HOOKS["Hook Events"]
-        STOP_HOOK["stop hook (session end)"]
-        XPIA_HOOK["XPIA defense hook (web fetch)"]
-    end
-
-    MAIN --> MGMT
-    MAIN --> SDK
-    MAIN --> PLUGIN
-    MAIN --> MEMORY
-    MAIN --> RECIPE
-    MAIN --> OTHER
-
-    LAUNCH -->|"--auto"| AUTO_MODE["AutoMode loop"]
-    LAUNCH -->|"--docker"| DOCKER["DockerManager"]
-    LAUNCH -->|"--with-proxy-config"| PROXY["ProxyManager"]
-    LAUNCH -->|"--checkout-repo"| REPO["repo_checkout"]
-    LAUNCH -->|"default"| LAUNCHER["ClaudeLauncher"]
-
-    CLAUDE --> LAUNCH
-    RUSTY --> LAUNCH
-
-    style CLI fill:#2d3436,color:#dfe6e9
-    style MGMT fill:#0984e3,color:#fff
-    style SDK fill:#00b894,color:#fff
-    style PLUGIN fill:#6c5ce7,color:#fff
-    style MEMORY fill:#e17055,color:#fff
-    style RECIPE fill:#fdcb6e,color:#2d3436
-    style OTHER fill:#636e72,color:#fff
-    style HOOKS fill:#d63031,color:#fff
+    click ROOT "../" "Back to Atlas"
