@@ -15,6 +15,12 @@ from amplihack.vendor.blarify.code_hierarchy.languages import (
 from amplihack.vendor.blarify.code_hierarchy.languages.go_definitions import GoDefinitions
 from amplihack.vendor.blarify.code_hierarchy.languages.language_definitions import LanguageDefinitions
 from amplihack.vendor.blarify.code_hierarchy.languages.php_definitions import PhpDefinitions
+
+try:
+    from amplihack.vendor.blarify.code_hierarchy.languages.rust_definitions import RustDefinitions
+    _has_rust = True
+except ImportError:
+    _has_rust = False
 from amplihack.vendor.blarify.code_references import FileExtensionNotSupported
 from amplihack.vendor.blarify.code_references.hybrid_resolver import HybridReferenceResolver
 from amplihack.vendor.blarify.code_references.types.Reference import Reference
@@ -51,6 +57,9 @@ class ProjectGraphCreator:
         ".php": PhpDefinitions,
         ".java": JavaDefinitions,
     }
+
+    if _has_rust:
+        languages[".rs"] = RustDefinitions
 
     def __init__(
         self,

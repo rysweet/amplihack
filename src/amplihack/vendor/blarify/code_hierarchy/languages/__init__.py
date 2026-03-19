@@ -9,6 +9,12 @@ from .python_definitions import PythonDefinitions
 from .ruby_definitions import RubyDefinitions
 from .typescript_definitions import TypescriptDefinitions
 
+try:
+    from .rust_definitions import RustDefinitions
+    _has_rust = True
+except ImportError:
+    _has_rust = False
+
 __all__ = [
     "CsharpDefinitions",
     "FallbackDefinitions",
@@ -23,3 +29,6 @@ __all__ = [
     "RubyDefinitions",
     "TypescriptDefinitions",
 ]
+
+if _has_rust:
+    __all__.append("RustDefinitions")

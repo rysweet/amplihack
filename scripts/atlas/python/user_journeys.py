@@ -524,12 +524,15 @@ def _get_entry_points(layer5: dict | None, root: Path) -> list[dict]:
                     ep["trace_status"] = trace_status
                 entry_points.append(ep)
 
-    # Always add direct extraction from codebase for completeness
-    direct_eps = _extract_entry_points_from_codebase(root)
-    existing_keys = {ep["handler_key"] for ep in entry_points}
-    for dep in direct_eps:
-        if dep["handler_key"] not in existing_keys:
-            entry_points.append(dep)
+    # Only fall back to direct codebase scanning when layer5 provided no
+    # entry points.  This avoids re-scanning every .py file when layer5
+    # already supplied a complete entry-point list.
+    if not entry_points:
+        direct_eps = _extract_entry_points_from_codebase(root)
+        existing_keys = {ep["handler_key"] for ep in entry_points}
+        for dep in direct_eps:
+            if dep["handler_key"] not in existing_keys:
+                entry_points.append(dep)
 
     return entry_points
 
