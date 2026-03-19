@@ -593,6 +593,154 @@ class TestLearningAgent:
         synth_context = synth.call_args.kwargs["context"]
         assert any(f.get("experience_id") == "db-1" for f in synth_context)
 
+    def test_answer_question_incremental_update_orders_temporal_facts_first(self, agent):
+        """incremental_update questions should get temporal ordering even without needs_temporal."""
+        facts = [
+            {
+                "context": "Q2 Marketing Budget",
+                "outcome": "Marketing budget changes were approved for the next quarter.",
+                "experience_id": "noise-1",
+            },
+            {
+                "context": "Project Atlas - Performance",
+                "outcome": "Atlas average response time was 450ms during the initial beta.",
+                "experience_id": "atlas-1",
+                "timestamp": "2024-01-15",
+                "metadata": {"temporal_index": 1},
+            },
+            {
+                "context": "Project Atlas - Performance",
+                "outcome": "Atlas average response time improved to 220ms after optimization.",
+                "experience_id": "atlas-2",
+                "timestamp": "2024-03-10",
+                "metadata": {"temporal_index": 2},
+            },
+        ]
+
+        def simple_retrieval(question, force_verbatim=False):
+            agent._thread_local._last_simple_retrieval_exhaustive = True
+            return list(facts)
+
+        synth = MagicMock(return_value="answer")
+        agent.memory.search_local = MagicMock(return_value=[])
+
+        with (
+            patch.object(
+                agent,
+                "_detect_intent",
+                return_value={
+                    "intent": "incremental_update",
+                    "needs_temporal": False,
+                    "needs_math": False,
+                },
+            ),
+            patch.object(agent, "_simple_retrieval", side_effect=simple_retrieval),
+            patch.object(agent, "_synthesize_with_llm", synth),
+            patch.object(agent, "_code_generation_tool", return_value={}),
+            patch.object(
+                agent,
+                "_multi_entity_retrieval",
+                side_effect=lambda question, facts, local_only=False: facts,
+            ),
+            patch.object(
+                agent,
+                "_keyword_expanded_retrieval",
+                side_effect=lambda question, facts, local_only=False: facts,
+            ),
+        ):
+            agent.answer_question(
+                "How did the Atlas average response time change over time?",
+                question_level="L3",
+                _skip_qanda_store=True,
+            )
+
+        synth_context = synth.call_args.kwargs["context"]
+        assert [fact["experience_id"] for fact in synth_context[:2]] == ["atlas-1", "atlas-2"]
+
+    def test_simple_retrieval_treats_distributed_query_hits_as_partial(self, agent):
+        """Distributed query-filtered hits should not masquerade as exhaustive coverage."""
+        filtered_hits = [
+            {
+                "context": f"Agent {idx}",
+                "outcome": f"agent-{idx} identity fact",
+                "experience_id": f"agent-{idx}",
+            }
+            for idx in range(400)
+        ]
+        agent.memory.get_all_facts = MagicMock(return_value=filtered_hits)
+        agent.memory.get_statistics = MagicMock(return_value={"total_experiences": 57})
+        agent.memory.search_local = MagicMock(return_value=[])
+
+        result = agent._simple_retrieval("What is the current status of INC-2024-001?")
+
+        assert result
+        assert agent._thread_local._last_simple_retrieval_exhaustive is False
+
+    def test_supplement_simple_retrieval_retries_distributed_when_local_empty(self, agent):
+        """Targeted supplements should retry distributed search when local-only finds nothing."""
+        existing = [
+            {"context": "Noise", "outcome": "agent identity fact", "experience_id": "noise-1"}
+        ]
+        remote_fact = {
+            "context": "Incident",
+            "outcome": "INC-2024-001 status is closed.",
+            "experience_id": "inc-1",
+        }
+
+        entity_modes: list[bool] = []
+        concept_modes: list[bool] = []
+
+        def entity_retrieval(question, local_only=False):
+            entity_modes.append(local_only)
+            return [] if local_only else [remote_fact]
+
+        def concept_retrieval(question, local_only=False):
+            concept_modes.append(local_only)
+            return []
+
+        with (
+            patch.object(agent, "_entity_retrieval", side_effect=entity_retrieval),
+            patch.object(agent, "_concept_retrieval", side_effect=concept_retrieval),
+        ):
+            result = agent._supplement_simple_retrieval(
+                "What is the current status of INC-2024-001?",
+                existing,
+                local_only=True,
+            )
+
+        assert remote_fact in result
+        assert entity_modes == [True, False]
+        assert concept_modes == [True, False]
+
+    def test_entity_linked_retrieval_retries_distributed_when_local_empty(self, agent):
+        """Structured-ID supplements should retry distributed search after an empty local pass."""
+        remote_fact = {
+            "context": "Incident",
+            "outcome": "INC-2024-001 status is closed.",
+            "experience_id": "inc-1",
+            "tags": [],
+            "metadata": {},
+        }
+
+        def search_memory(query, limit, local_only=False):
+            return [] if local_only else [remote_fact]
+
+        with (
+            patch.object(agent, "_search_memory", side_effect=search_memory) as search_memory_mock,
+            patch.object(agent, "_retrieve_by_entity_memory", return_value=[]),
+            patch.object(agent, "_search_by_concept_memory", return_value=[]),
+        ):
+            result = agent._entity_linked_retrieval(
+                "What is the current status of INC-2024-001?",
+                [],
+                local_only=True,
+            )
+
+        assert any(f.get("experience_id") == "inc-1" for f in result)
+        assert any(
+            call.kwargs.get("local_only") is False for call in search_memory_mock.call_args_list
+        )
+
     def test_answer_question_does_not_run_second_distributed_id_search(self, agent):
         """Structured-ID questions should not trigger a second distributed text search."""
         initial_facts = [

@@ -132,6 +132,38 @@ STOP_WORDS = frozenset(
     }
 )
 
+QUERY_CUE_TOKENS = frozenset(
+    {
+        "change",
+        "changed",
+        "current",
+        "currently",
+        "different",
+        "evolution",
+        "first",
+        "history",
+        "initial",
+        "initially",
+        "latest",
+        "list",
+        "many",
+        "name",
+        "now",
+        "number",
+        "original",
+        "originally",
+        "over",
+        "previous",
+        "project",
+        "revised",
+        "show",
+        "status",
+        "time",
+        "timeline",
+        "updated",
+    }
+)
+
 
 def _tokenize(text: str) -> set[str]:
     """Tokenize text into lowercase words, removing stop words and short tokens.
@@ -146,6 +178,41 @@ def _tokenize(text: str) -> set[str]:
         return set()
     words = text.lower().split()
     return {w.strip(".,;:!?()[]{}\"'") for w in words if len(w) > 2} - STOP_WORDS
+
+
+def _ordered_tokens(text: str) -> list[str]:
+    """Return ordered lowercase tokens after the same basic cleanup as _tokenize."""
+    if not text:
+        return []
+    tokens: list[str] = []
+    for word in text.lower().split():
+        cleaned = word.strip(".,;:!?()[]{}\"'")
+        if len(cleaned) > 2 and cleaned not in STOP_WORDS:
+            tokens.append(cleaned)
+    return tokens
+
+
+def _anchor_tokens(query: str) -> set[str]:
+    """Extract the discriminative query tokens used for reranking boosts."""
+    tokens = _tokenize(query)
+    anchors = {token for token in tokens if token not in QUERY_CUE_TOKENS}
+    return anchors or tokens
+
+
+def _query_phrases(query: str) -> set[str]:
+    """Extract ordered 2-3 token query phrases that are likely to be discriminative."""
+    ordered = _ordered_tokens(query)
+    phrases: set[str] = set()
+    for size in (3, 2):
+        for idx in range(len(ordered) - size + 1):
+            window = ordered[idx : idx + size]
+            non_cue_count = sum(token not in QUERY_CUE_TOKENS for token in window)
+            if non_cue_count == 0 or (size == 3 and non_cue_count < 2):
+                continue
+            phrase = " ".join(window)
+            if len(phrase) >= 8:
+                phrases.add(phrase)
+    return phrases
 
 
 def compute_word_similarity(text_a: str, text_b: str) -> float:
@@ -256,6 +323,8 @@ def rerank_facts_by_query(
     query_tokens = _tokenize(query)
     if not query_tokens:
         return facts
+    anchor_tokens = _anchor_tokens(query)
+    query_phrases = _query_phrases(query)
 
     # Detect temporal cues for boosting temporal facts
     query_lower = query.lower()
@@ -284,24 +353,37 @@ def rerank_facts_by_query(
     for idx, fact in enumerate(facts):
         # Combine outcome and context text for matching
         fact_text = f"{fact.get('context', '')} {fact.get('outcome', '')}"
+        fact_text_lower = fact_text.lower()
         fact_tokens = _tokenize(fact_text)
 
         if not fact_tokens:
             scored.append((0.0, idx, fact))
             continue
 
-        # Compute overlap: fraction of query tokens found in fact
+        # Generic query overlap keeps broad relevance, while anchor overlap and
+        # phrase matches make exact entity/metric facts outrank summary noise.
         overlap = len(query_tokens & fact_tokens) / len(query_tokens)
+        anchor_overlap = (
+            len(anchor_tokens & fact_tokens) / len(anchor_tokens) if anchor_tokens else 0.0
+        )
+        phrase_hits = sum(1 for phrase in query_phrases if phrase in fact_text_lower)
+        phrase_bonus = 0.0
+        if query_phrases:
+            phrase_bonus = 0.25 * (phrase_hits / len(query_phrases))
+        overlap += 0.6 * anchor_overlap + phrase_bonus
 
         # Boost temporal facts when query has temporal cues
+        meta = fact.get("metadata", {})
         if has_temporal_query:
-            meta = fact.get("metadata", {})
             if meta and (
                 meta.get("temporal_index", 0) > 0
                 or meta.get("source_date")
                 or meta.get("temporal_order")
             ):
                 overlap += 0.15
+
+        if meta.get("is_summary") and phrase_hits == 0 and anchor_overlap < 1.0:
+            overlap -= 0.05
 
         scored.append((overlap, idx, fact))
 

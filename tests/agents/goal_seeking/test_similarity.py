@@ -158,3 +158,45 @@ class TestRerankFactsByQuery:
         ]
         reranked = rerank_facts_by_query(facts, "topic", top_k=2)
         assert len(reranked) == 2
+
+    def test_prefers_phrase_match_over_generic_temporal_summary(self):
+        """Exact entity/metric phrase matches should outrank generic temporal summaries."""
+        facts = [
+            {
+                "context": "SUMMARY (Marketing Budget)",
+                "outcome": "[Summary of 7 facts about Marketing Budget]: budget changes were approved over time.",
+                "metadata": {"is_summary": True},
+            },
+            {
+                "context": "Project Atlas - Performance",
+                "outcome": "Atlas average response time improved from 450ms to 220ms after optimization.",
+            },
+        ]
+
+        reranked = rerank_facts_by_query(
+            facts,
+            "How did the Atlas average response time change over time?",
+        )
+
+        assert "Atlas average response time" in reranked[0]["outcome"]
+
+    def test_prefers_exact_incident_phrase_for_attribution_queries(self):
+        """Specific incident/source phrases should outrank generic attribution summaries."""
+        facts = [
+            {
+                "context": "Threat attribution summary",
+                "outcome": "Several infrastructure incidents were attributed to multiple APT groups.",
+                "metadata": {"is_summary": True},
+            },
+            {
+                "context": "Development infrastructure incident",
+                "outcome": "INC-2024-003: TTPs matched APT29 for the development infrastructure incident.",
+            },
+        ]
+
+        reranked = rerank_facts_by_query(
+            facts,
+            "What APT group was attributed to the development infrastructure incident?",
+        )
+
+        assert "APT29" in reranked[0]["outcome"]
