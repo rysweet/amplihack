@@ -1047,7 +1047,35 @@ steps:
     type: "bash"
     command: |
       cd {{worktree_setup.worktree_path}} && \
-      echo "=== Step 15: Creating Draft PR ===" && \
+      echo "=== Step 16: Creating Draft PR ===" >&2 && \
+      CURRENT_BRANCH=$(git branch --show-current) && \
+      ISSUE_NUM={{issue_number}} && \
+      # Validate issue number is numeric to prevent injection
+      case "$ISSUE_NUM" in
+        ''|*[!0-9]*) echo "ERROR: issue_number is not numeric: $ISSUE_NUM" >&2; exit 1 ;;
+      esac && \
+      # --- Path 1: Check if PR already exists for this branch ---
+      EXISTING_PR=$(gh pr list --head "$CURRENT_BRANCH" --json url --jq '.[0].url' 2>/dev/null) && \
+      if [ -n "$EXISTING_PR" ]; then \
+        echo "PR already exists for branch $CURRENT_BRANCH: $EXISTING_PR" >&2 ; \
+        printf '%s' "$EXISTING_PR" ; \
+        exit 0 ; \
+      fi && \
+      # --- Path 2: Check if PR exists referencing this issue ---
+      ISSUE_PR=$(gh pr list --search "closes #${ISSUE_NUM} OR fixes #${ISSUE_NUM}" --json url,headRefName --jq '.[0].url' 2>/dev/null) && \
+      if [ -n "$ISSUE_PR" ]; then \
+        echo "PR already exists for issue #${ISSUE_NUM}: $ISSUE_PR" >&2 ; \
+        printf '%s' "$ISSUE_PR" ; \
+        exit 0 ; \
+      fi && \
+      # --- Path 3: Check if branch has commits ahead of main ---
+      COMMITS_AHEAD=$(git rev-list --count main..HEAD 2>/dev/null || echo "0") && \
+      if [ "$COMMITS_AHEAD" = "0" ]; then \
+        echo "WARNING: No commits ahead of main on $CURRENT_BRANCH — skipping PR creation" >&2 ; \
+        printf '' ; \
+        exit 0 ; \
+      fi && \
+      # --- Path 4: Create new PR ---
       # FIX (#3045/#3076/#3117): unquoted heredoc — safe variable capture
       TASK_DESC=$(cat <<EOFTASKDESC
       {{task_description}}
@@ -1059,7 +1087,7 @@ steps:
       {{design_spec}}
       EOFDESIGN
       ) && \
-      PR_BODY=$(printf '## Summary\n%s\n\n## Issue\nCloses #%s\n\n## Changes\n%s\n\n## Testing\n- Unit tests added\n- Local testing completed\n- Pre-commit hooks pass\n\n## Checklist\n- [x] Tests pass\n- [x] Documentation updated\n- [x] No stubs or TODOs\n- [ ] Code review completed\n- [ ] Philosophy check passed\n\n---\n*This PR was created as a draft for review before merging.*\n' "$PR_TASK" {{issue_number}} "$PR_DESIGN") && \
+      PR_BODY=$(printf '## Summary\n%s\n\n## Issue\nCloses #%s\n\n## Changes\n%s\n\n## Testing\n- Unit tests added\n- Local testing completed\n- Pre-commit hooks pass\n\n## Checklist\n- [x] Tests pass\n- [x] Documentation updated\n- [x] No stubs or TODOs\n- [ ] Code review completed\n- [ ] Philosophy check passed\n\n---\n*This PR was created as a draft for review before merging.*\n' "$PR_TASK" "$ISSUE_NUM" "$PR_DESIGN") && \
       gh pr create --draft \
         --title "$PR_TITLE" \
         --body "$PR_BODY"
