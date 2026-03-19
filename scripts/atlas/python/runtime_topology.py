@@ -93,17 +93,28 @@ def _extract_subprocess_calls(tree: ast.Module, filepath: str) -> list[dict]:
         # Check direct match
         matched = None
         for pattern in _SUBPROCESS_PATTERNS:
-            if call_name == pattern or call_name.endswith("." + pattern.split(".")[-1]) and pattern.split(".")[0] in call_name:
+            if call_name == pattern:
+                matched = pattern
+                break
+            # Match fully-qualified call names like `module.os.system`
+            # by verifying the full pattern (e.g. "os.system") appears at the end
+            if call_name.endswith("." + pattern):
                 matched = pattern
                 break
 
         # Also check for bare function name matches (e.g., after `from subprocess import run`)
         if not matched:
             bare = call_name.split(".")[-1]
-            for pattern in _SUBPROCESS_PATTERNS:
-                if bare == pattern.split(".")[-1] and bare in {"run", "Popen", "call", "check_output", "check_call", "system", "popen"}:
-                    matched = pattern
-                    break
+            # Only match bare names when the call has no module qualifier
+            # (i.e. it was imported directly: `from subprocess import run`)
+            # or the qualifier matches the expected module.
+            # Skip bare matching for names that collide with stdlib
+            # (e.g. `system` can be platform.system, not just os.system).
+            if "." not in call_name:
+                for pattern in _SUBPROCESS_PATTERNS:
+                    if bare == pattern.split(".")[-1] and bare in {"run", "Popen", "call", "check_output", "check_call", "system", "popen"}:
+                        matched = pattern
+                        break
 
         if not matched:
             continue
