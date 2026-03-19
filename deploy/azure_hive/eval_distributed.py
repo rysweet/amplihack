@@ -38,6 +38,49 @@ logging.basicConfig(
 logger = logging.getLogger("eval_distributed")
 
 
+def _scale_aware_defaults(agents: int) -> dict:
+    """Return scale-aware defaults for >=100 agent runs.
+
+    At 100+ agents the distributed correctness requirements change:
+    - PARALLEL_WORKERS=1: serialise question dispatch to avoid answer-to-wrong-question
+      correlation races under high concurrency.
+    - HIVE_MEMORY_QUERY_FANOUT=agents: fan out to ALL shards, not the default 5.
+    - HIVE_SHARD_QUERY_TIMEOUT_SECONDS=0: infinite shard wait so slow shards don't
+      silently produce partial-hive answers (EventHubsShardTransport converts 0→None).
+    - answer_timeout=0: no eval-level answer timeout so late answers aren't discarded.
+    - question_failover_retries=2: 3 total attempts covering transport misses and
+      semantic abstentions on the wrong shard.
+    - replicate_learn_to_all_agents=True: every agent learns every turn so any agent
+      can answer any question (no shard-miss silent failures).
+    """
+    if agents >= 100:
+        return {
+            "parallel_workers": 1,
+            "hive_fanout": agents,
+            "hive_shard_timeout": 0,
+            "answer_timeout": 0,
+            "question_failover_retries": 2,
+            "replicate_learn_to_all_agents": True,
+        }
+    if agents >= 50:
+        return {
+            "parallel_workers": 2,
+            "hive_fanout": agents,
+            "hive_shard_timeout": 0,
+            "answer_timeout": 0,
+            "question_failover_retries": 2,
+            "replicate_learn_to_all_agents": True,
+        }
+    return {
+        "parallel_workers": 4,
+        "hive_fanout": agents,
+        "hive_shard_timeout": 30,
+        "answer_timeout": 0,
+        "question_failover_retries": 1,
+        "replicate_learn_to_all_agents": False,
+    }
+
+
 def main():
     p = argparse.ArgumentParser(
         description="Distributed eval — same harness as single-agent, remote agents via Event Hubs"
@@ -54,22 +97,63 @@ def main():
     p.add_argument("--grader-model", default="claude-haiku-4-5-20251001")
     p.add_argument("--resource-group", default="", help="Azure resource group (optional, unused)")
     p.add_argument(
-        "--answer-timeout", type=int, default=0, help="Seconds to wait per answer (0=no timeout)"
+        "--answer-timeout",
+        type=int,
+        default=None,
+        help="Seconds to wait per answer (0=no timeout; default: scale-aware per --agents)",
     )
     p.add_argument("--output", default="", help="Output JSON path")
     p.add_argument(
         "--replicate-learn-to-all-agents",
         action="store_true",
-        default=False,
-        help="Replicate each learn_from_content call to ALL agents (not just one per round-robin)",
+        default=None,
+        help=(
+            "Replicate each learn_from_content call to ALL agents (default: True for >=50 agents)"
+        ),
     )
     p.add_argument(
         "--question-failover-retries",
         type=int,
-        default=0,
-        help="Number of failover retries for unanswered questions (retry on next agent)",
+        default=None,
+        help="Number of failover retries for unanswered/abstention questions (default: scale-aware)",
     )
     args = p.parse_args()
+
+    # Apply scale-aware defaults — CLI flags override when explicitly supplied
+    defaults = _scale_aware_defaults(args.agents)
+    answer_timeout = (
+        args.answer_timeout if args.answer_timeout is not None else defaults["answer_timeout"]
+    )
+    replicate = (
+        args.replicate_learn_to_all_agents
+        if args.replicate_learn_to_all_agents is not None
+        else defaults["replicate_learn_to_all_agents"]
+    )
+    failover_retries = (
+        args.question_failover_retries
+        if args.question_failover_retries is not None
+        else defaults["question_failover_retries"]
+    )
+
+    # Propagate hive settings via environment so AppHost agents pick them up
+    if "HIVE_MEMORY_QUERY_FANOUT" not in os.environ:
+        os.environ["HIVE_MEMORY_QUERY_FANOUT"] = str(defaults["hive_fanout"])
+    if "HIVE_SHARD_QUERY_TIMEOUT_SECONDS" not in os.environ:
+        os.environ["HIVE_SHARD_QUERY_TIMEOUT_SECONDS"] = str(defaults["hive_shard_timeout"])
+    if "PARALLEL_WORKERS" not in os.environ:
+        os.environ["PARALLEL_WORKERS"] = str(defaults["parallel_workers"])
+
+    logger.info(
+        "Scale-aware defaults for %d agents: PARALLEL_WORKERS=%s, HIVE_MEMORY_QUERY_FANOUT=%s, "
+        "HIVE_SHARD_QUERY_TIMEOUT_SECONDS=%s, answer_timeout=%s, failover_retries=%s, replicate=%s",
+        args.agents,
+        os.environ["PARALLEL_WORKERS"],
+        os.environ["HIVE_MEMORY_QUERY_FANOUT"],
+        os.environ["HIVE_SHARD_QUERY_TIMEOUT_SECONDS"],
+        answer_timeout,
+        failover_retries,
+        replicate,
+    )
 
     # Import the adapter and the eval harness
     from remote_agent_adapter import RemoteAgentAdapter
@@ -83,9 +167,9 @@ def main():
         response_hub=args.response_hub,
         agent_count=args.agents,
         resource_group=args.resource_group,
-        answer_timeout=args.answer_timeout,
-        replicate_learning_to_all_agents=args.replicate_learn_to_all_agents,
-        question_failover_retries=args.question_failover_retries,
+        answer_timeout=answer_timeout,
+        replicate_learning_to_all_agents=replicate,
+        question_failover_retries=failover_retries,
     )
 
     # Create the eval harness — IDENTICAL to single-agent

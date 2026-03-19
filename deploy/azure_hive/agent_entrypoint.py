@@ -154,7 +154,15 @@ def _init_dht_hive(
             )
             return None
 
-        shard_query_timeout = float(os.environ.get("AMPLIHACK_SHARD_QUERY_TIMEOUT_SECONDS", "60"))
+        # HIVE_SHARD_QUERY_TIMEOUT_SECONDS=0 means "no timeout" (infinite wait).
+        # AMPLIHACK_SHARD_QUERY_TIMEOUT_SECONDS is the legacy name; both are accepted.
+        # Default changed from 60 to 0 (no timeout) so slow shards don't cause
+        # partial-hive results to be silently treated as valid query answers.
+        _timeout_str = os.environ.get(
+            "HIVE_SHARD_QUERY_TIMEOUT_SECONDS",
+            os.environ.get("AMPLIHACK_SHARD_QUERY_TIMEOUT_SECONDS", "0"),
+        )
+        shard_query_timeout = float(_timeout_str)
 
         eh_transport = EventHubsShardTransport(
             connection_string=eh_connection_string,

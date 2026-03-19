@@ -266,7 +266,8 @@ class ServiceBusShardTransport:
                 },
             )
             self._bus.publish(query_event)
-            got_response = done.wait(timeout=self._timeout)
+            wait_timeout = None if self._timeout <= 0 else self._timeout
+            got_response = done.wait(timeout=wait_timeout)
             if not got_response:
                 raise DistributedShardQueryError(
                     f"Shard query to {agent_id} timed out after {self._timeout:.1f}s"
@@ -410,7 +411,8 @@ class ServiceBusShardTransport:
                 },
             )
             self._bus.publish(event)
-            got_response = done.wait(timeout=self._timeout)
+            wait_timeout = None if self._timeout <= 0 else self._timeout
+            got_response = done.wait(timeout=wait_timeout)
             if not got_response:
                 raise DistributedShardQueryError(
                     f"Shard {operation} request to {agent_id} timed out after {self._timeout:.1f}s"
@@ -652,9 +654,7 @@ def _payload_facts_to_shard_facts(facts_payload: list[dict[str, Any]]) -> list[S
             source_agent=f.get("source_agent", ""),
             tags=f.get("tags", []),
             created_at=f.get("created_at", 0.0),
-            metadata=dict(f.get("metadata", {}))
-            if isinstance(f.get("metadata", {}), dict)
-            else {},
+            metadata=dict(f.get("metadata", {})) if isinstance(f.get("metadata", {}), dict) else {},
         )
         for f in facts_payload
         if f.get("content")
@@ -1203,7 +1203,11 @@ class EventHubsShardTransport:
                 },
                 partition_key=agent_id,
             )
-            got_response = done.wait(timeout=self._timeout)
+            # timeout<=0 means "wait forever" — pass None to threading.Event.wait()
+            # so that HIVE_SHARD_QUERY_TIMEOUT_SECONDS=0 disables the timeout rather
+            # than becoming an instant non-blocking poll that always returns False.
+            wait_timeout = None if self._timeout <= 0 else self._timeout
+            got_response = done.wait(timeout=wait_timeout)
             if not got_response:
                 raise DistributedShardQueryError(
                     f"Shard query to {agent_id} timed out after {self._timeout:.1f}s"
@@ -1346,7 +1350,8 @@ class EventHubsShardTransport:
                 },
                 partition_key=agent_id,
             )
-            got_response = done.wait(timeout=self._timeout)
+            wait_timeout = None if self._timeout <= 0 else self._timeout
+            got_response = done.wait(timeout=wait_timeout)
             if not got_response:
                 raise DistributedShardQueryError(
                     f"Shard {operation} request to {agent_id} timed out after {self._timeout:.1f}s"
