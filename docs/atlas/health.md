@@ -82,16 +82,16 @@ Missing items:
 
 Missing items:
 
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/transcript_analyzer.py`
-- `/home/azureuser/src/amplihack/src/amplihack/eval/harness_runner.py`
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/tests/test_fleet_session_reasoner.py`
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/_transcript.py`
-- `/home/azureuser/src/amplihack/src/amplihack/eval/agent_subprocess.py`
-- `/home/azureuser/src/amplihack/src/amplihack/auto_update.py`
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/tests/test_fleet_logs.py`
-- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/vendor/multilspy/lsp_protocol_handler/server.py`
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/_cli_formatters.py`
+- `/home/azureuser/src/amplihack/src/amplihack/eval/metacognition_grader.py`
+- `/home/azureuser/src/amplihack/src/amplihack/eval/general_capability_eval.py`
 - `/home/azureuser/src/amplihack/src/amplihack/fleet/tests/test_fleet_cli.py`
+- `/home/azureuser/src/amplihack/src/amplihack/eval/meta_eval_experiment.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/vendor/multilspy/multilspy_logger.py`
+- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/project_file_explorer/project_files_iterator.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/_vm_discovery.py`
+- `/home/azureuser/src/amplihack/src/amplihack/eval/matrix_eval.py`
+- `/home/azureuser/src/amplihack/src/amplihack/eval/grader.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/tests/test_fleet_results.py`
 
 ### SUBPROCESS_TRACEABILITY
 
@@ -99,16 +99,16 @@ Missing items:
 
 Missing items:
 
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/fleet_setup.py`
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/_session_gather.py`
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/fleet_tui.py`
-- `/home/azureuser/src/amplihack/src/amplihack/fleet/transcript_analyzer.py`
-- `/home/azureuser/src/amplihack/src/amplihack/eval/agent_adapter.py`
-- `/home/azureuser/src/amplihack/src/amplihack/eval/harness_runner.py`
-- `/home/azureuser/src/amplihack/src/amplihack/auto_update.py`
-- `/home/azureuser/src/amplihack/src/amplihack/knowledge_builder/modules/question_generator.py`
-- `/home/azureuser/src/amplihack/src/amplihack/vendor/blarify/vendor/multilspy/language_servers/intelephense/intelephense.py`
+- `/home/azureuser/src/amplihack/src/amplihack/eval/general_capability_eval.py`
 - `/home/azureuser/src/amplihack/src/amplihack/eval/meta_eval_experiment.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/_vm_discovery.py`
+- `/home/azureuser/src/amplihack/src/amplihack/docker/detector.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/fleet_session_reasoner.py`
+- `/home/azureuser/src/amplihack/src/amplihack/auto_update.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/_admiral_actions.py`
+- `/home/azureuser/src/amplihack/src/amplihack/docker/manager.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/fleet_state.py`
+- `/home/azureuser/src/amplihack/src/amplihack/fleet/fleet_adopt.py`
 
 ### PACKAGE_CONSISTENCY
 
@@ -162,7 +162,7 @@ Missing items:
 
 - `['utils.prerequisites', 'utils.claude_cli', 'utils.prerequisites']`
 - `['memory.kuzu.indexing.background_indexer', 'memory.kuzu.indexing.orchestrator', 'memory.kuzu.indexing.background_indexer']`
-- `['install', 'launcher.core', 'launcher', 'launcher.copilot', 'cli', 'hook_verification', 'settings', 'uninstall', 'amplihack', 'install']`
+- `['launcher.core', 'launcher', 'launcher.copilot', 'cli', 'uninstall', 'install', 'settings', 'hook_verification', 'amplihack', 'launcher.core']`
 - `['agents.goal_seeking.hive_mind.gossip', 'agents.goal_seeking.hive_mind.hive_graph', 'agents.goal_seeking.hive_mind.gossip']`
 - `['proxy.monitoring', 'proxy.azure_errors', 'proxy.monitoring']`
 - `['proxy.streaming', 'proxy.integrated_proxy', 'proxy.streaming']`

@@ -9,7 +9,7 @@ title: "Layer 1: Repository Surface"
 # Layer 1: Repository Surface
 
 <div class="atlas-metadata">
-Category: <strong>Structural</strong> | Generated: 2026-03-18T22:10:10.536607+00:00
+Category: <strong>Structural</strong> | Generated: 2026-03-19T00:22:49.724250+00:00
 </div>
 
 ## Map
@@ -174,7 +174,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-18T22:10:10.536607+00
 
 ## Key Findings
 
-- 115 directories discovered
+- 158 directories discovered
 - 5 entry points identified
 
 ## Detail
