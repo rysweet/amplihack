@@ -275,10 +275,7 @@ def _enrich_call_graph_from_blarify(
         import os
 
         bridge = BlarifyBridge(root)
-        # Use hierarchy_only=True here since we only need the call graph data
-        # that was already computed during layer2. Re-doing full LSP would be slow.
-        # Instead, try to get cached relationships.
-        bridge.build(hierarchy_only=True)
+        bridge.build()
         rels = bridge.get_relationships()
         calls = [r for r in rels if r.get("type") == "CALLS"]
 
