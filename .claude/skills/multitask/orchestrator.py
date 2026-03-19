@@ -17,16 +17,38 @@ Usage:
 
 import json
 import os
+import re
 import shlex
 import shutil
 import signal
 import subprocess
 import sys
 import textwrap
+import threading
 import time
+import warnings
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
+
+try:
+    from amplihack.hooks.launcher_detector import LauncherDetector
+except ImportError:
+    LauncherDetector = None  # type: ignore[assignment,misc]
+
+# Allowlist of valid delegate values (single source of truth for injection prevention).
+# Only these exact strings may be used as subprocess delegates.
+VALID_DELEGATES: frozenset[str] = frozenset(
+    {
+        "amplihack claude",
+        "amplihack copilot",
+        "amplihack amplifier",
+    }
+)
+
+# Log size cap: prevent /tmp exhaustion from runaway subprocesses.
+# Configurable via AMPLIHACK_MAX_LOG_BYTES env var.
+MAX_LOG_BYTES: int = int(os.environ.get("AMPLIHACK_MAX_LOG_BYTES", str(100 * 1024 * 1024)))
 
 
 @dataclass
@@ -79,15 +101,78 @@ class ParallelOrchestrator:
         self._processes: dict[int, subprocess.Popen] = {}
         self._cleaned_up: set[int] = set()  # Track cleaned workstream issues
         self._freed_bytes: int = 0  # Track total disk freed by auto-cleanup
+        self._stdout_lock = threading.Lock()  # Serialize concurrent stdout writes
+        self._tail_threads: dict[int, threading.Thread] = {}  # Per-workstream tailing threads
+        self._max_log_bytes: int = MAX_LOG_BYTES
 
     def setup(self) -> None:
         """Create clean temporary directory for workstreams and check disk space."""
         if self.tmp_base.exists():
             shutil.rmtree(self.tmp_base)
-        self.tmp_base.mkdir(parents=True)
+        self.tmp_base.mkdir(parents=True, mode=0o700)
 
         # Check disk space and warn if low
         self._check_disk_space()
+
+    def _stdout_write(self, msg: str) -> None:
+        """Write msg to stdout under _stdout_lock to prevent interleaving."""
+        with self._stdout_lock:
+            sys.stdout.write(msg)
+            sys.stdout.flush()
+
+    def _safe_log_path(self, issue_id: object) -> Path:
+        """Return a log file path guaranteed to be within tmp_base.
+
+        Sanitizes issue_id to prevent path traversal attacks.
+        """
+        safe_id = re.sub(r"[^a-zA-Z0-9_-]", "_", str(issue_id))
+        candidate = (self.tmp_base / f"log-{safe_id}.txt").resolve()
+        if not str(candidate).startswith(str(self.tmp_base.resolve())):
+            raise ValueError(f"Unsafe log path detected for issue_id={issue_id!r}")
+        return candidate
+
+    def _detect_delegate(self) -> str:
+        """Detect the active amplihack delegate for subprocess propagation.
+
+        Resolution order:
+        1. AMPLIHACK_DELEGATE env var (if set and in VALID_DELEGATES)
+        2. LauncherDetector.detect() → map launcher type to delegate
+        3. Fall back to "amplihack claude" with a warning
+
+        Returns:
+            A member of VALID_DELEGATES.
+        """
+        env_delegate = os.environ.get("AMPLIHACK_DELEGATE")
+        if env_delegate is not None:
+            if env_delegate in VALID_DELEGATES:
+                return env_delegate
+            # Reject invalid env var (injection prevention) and fall through to detection
+            warnings.warn(
+                f"AMPLIHACK_DELEGATE={env_delegate!r} is not in VALID_DELEGATES. "
+                "Falling back to LauncherDetector.",
+                stacklevel=2,
+            )
+
+        # Try LauncherDetector
+        if LauncherDetector is not None:
+            try:
+                launcher_info = LauncherDetector()
+                detected = launcher_info.detect()
+                # detect() returns a LauncherInfo or a string (mocked in tests)
+                launcher_type = detected if isinstance(detected, str) else detected.launcher_type
+                candidate = f"amplihack {launcher_type}"
+                if candidate in VALID_DELEGATES:
+                    return candidate
+            except Exception:
+                pass
+
+        # Final fallback
+        warnings.warn(
+            "Could not detect amplihack delegate — defaulting to 'amplihack claude'. "
+            "Set AMPLIHACK_DELEGATE to suppress this warning.",
+            stacklevel=2,
+        )
+        return "amplihack claude"
 
     def add(
         self,
@@ -251,11 +336,15 @@ class ParallelOrchestrator:
         current_depth = int(os.environ.get("AMPLIHACK_SESSION_DEPTH", "0"))
         tree_id = os.environ.get("AMPLIHACK_TREE_ID") or uuid.uuid4().hex[:8]
 
+        # Detect delegate at generation time (S2: bake in value, prevent injection)
+        delegate = self._detect_delegate()
+
         safe_work_dir = shlex.quote(str(ws.work_dir))
         safe_tree = shlex.quote(tree_id)
         safe_depth = shlex.quote(str(current_depth + 1))
         safe_max_depth = shlex.quote(os.environ.get("AMPLIHACK_MAX_DEPTH", "3"))
         safe_max_sessions = shlex.quote(os.environ.get("AMPLIHACK_MAX_SESSIONS", "10"))
+        safe_delegate = shlex.quote(delegate)
 
         run_sh = ws.work_dir / "run.sh"
         run_sh.write_text(
@@ -267,6 +356,8 @@ class ParallelOrchestrator:
             export AMPLIHACK_SESSION_DEPTH={safe_depth}
             export AMPLIHACK_MAX_DEPTH={safe_max_depth}
             export AMPLIHACK_MAX_SESSIONS={safe_max_sessions}
+            # Bake in the detected delegate so nested ClaudeProcess inherits it (S2)
+            export AMPLIHACK_DELEGATE={safe_delegate}
             exec python3 launcher.py
             """)
         )
@@ -288,11 +379,15 @@ class ParallelOrchestrator:
         _depth = int(os.environ.get("AMPLIHACK_SESSION_DEPTH", "0"))
         _tree = os.environ.get("AMPLIHACK_TREE_ID") or _uuid.uuid4().hex[:8]
 
+        # Detect delegate at generation time and bake it into run.sh (S2: prevents env var injection)
+        _delegate = self._detect_delegate()
+
         _safe_work_dir = shlex.quote(str(ws.work_dir))
         _safe_tree = shlex.quote(_tree)
         _safe_depth = shlex.quote(str(_depth + 1))
         _safe_max_depth = shlex.quote(os.environ.get("AMPLIHACK_MAX_DEPTH", "3"))
         _safe_max_sessions = shlex.quote(os.environ.get("AMPLIHACK_MAX_SESSIONS", "10"))
+        _safe_delegate = shlex.quote(_delegate)
 
         run_sh = ws.work_dir / "run.sh"
         run_sh.write_text(
@@ -303,33 +398,69 @@ class ParallelOrchestrator:
             export AMPLIHACK_SESSION_DEPTH={_safe_depth}
             export AMPLIHACK_MAX_DEPTH={_safe_max_depth}
             export AMPLIHACK_MAX_SESSIONS={_safe_max_sessions}
-            if [ -z "$AMPLIHACK_AGENT_BINARY" ]; then
-                echo "WARNING: AMPLIHACK_AGENT_BINARY not set, defaulting to claude" >&2
-                export AMPLIHACK_AGENT_BINARY=claude
-            fi
-            amplihack "$AMPLIHACK_AGENT_BINARY" --subprocess-safe -- -p "@TASK.md Execute task autonomously following DEFAULT_WORKFLOW.md. NO QUESTIONS. Work through all steps. Create PR when complete."
+            {_safe_delegate} --subprocess-safe -- -p "@TASK.md Execute task autonomously following DEFAULT_WORKFLOW.md. NO QUESTIONS. Work through all steps. Create PR when complete."
             """)
         )
         run_sh.chmod(0o755)
 
-    def launch(self, ws: Workstream) -> None:
-        """Launch a single workstream subprocess."""
-        log_handle = ws.log_file.open("w")
+    def _tail_output(self, pipe: object, log_file: Path, issue_id: int) -> None:
+        """Daemon thread: read from pipe, tee to log file + prefixed stdout.
+
+        Lines are written raw to the log file and with a ``[ws:{issue_id}]`` prefix
+        to stdout.  Writing stops when ``_max_log_bytes`` is reached.
+        Log file is created with 0o600 permissions (owner-only) to protect secrets.
+        """
+        log_bytes_written = 0
+        log_fd = os.open(str(log_file), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(log_fd, "w") as log_fh:
+            for line in iter(pipe.readline, ""):  # type: ignore[union-attr]
+                if log_bytes_written < self._max_log_bytes:
+                    encoded_len = len(line.encode("utf-8", errors="replace"))
+                    if log_bytes_written + encoded_len <= self._max_log_bytes:
+                        log_fh.write(line)
+                        log_bytes_written += encoded_len
+                self._stdout_write(f"[ws:{issue_id}] {line}")
+
+    def launch(self, ws: Workstream, *, delegate: str | None = None) -> None:
+        """Launch a single workstream subprocess.
+
+        Args:
+            ws: Workstream to launch.
+            delegate: Pre-detected delegate string (from launch_all). If None,
+                AMPLIHACK_DELEGATE is taken from the current environment.
+        """
+        launch_env = {**os.environ}
+        if delegate is not None:
+            launch_env["AMPLIHACK_DELEGATE"] = delegate
+
         proc = subprocess.Popen(
             [str(ws.work_dir / "run.sh")],
-            stdout=log_handle,
+            stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             cwd=ws.work_dir,
+            env=launch_env,
+            text=True,
         )
         ws.pid = proc.pid
         ws.start_time = time.time()
         self._processes[ws.issue] = proc
+
+        # Start a daemon thread to tee stdout → log file + prefixed console output
+        tail_thread = threading.Thread(
+            target=self._tail_output,
+            args=(proc.stdout, ws.log_file, ws.issue),
+            daemon=True,
+        )
+        tail_thread.start()
+        self._tail_threads[ws.issue] = tail_thread
+
         print(f"[{ws.issue}] Launched PID {ws.pid} ({self.mode} mode)")
 
     def launch_all(self) -> None:
         """Launch all workstreams in parallel."""
+        delegate = self._detect_delegate()
         for ws in self.workstreams:
-            self.launch(ws)
+            self.launch(ws, delegate=delegate)
         print(f"\n{len(self.workstreams)} workstreams launched in parallel ({self.mode} mode)")
 
     def get_status(self) -> dict[str, list[int]]:
