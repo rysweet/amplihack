@@ -33,6 +33,7 @@ EXTENSION_TO_LANGUAGE: dict[str, str] = {
     ".go": "go",
     ".php": "php",
     ".java": "java",
+    ".rs": "rust",
 }
 
 
