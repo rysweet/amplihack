@@ -652,9 +652,7 @@ def _payload_facts_to_shard_facts(facts_payload: list[dict[str, Any]]) -> list[S
             source_agent=f.get("source_agent", ""),
             tags=f.get("tags", []),
             created_at=f.get("created_at", 0.0),
-            metadata=dict(f.get("metadata", {}))
-            if isinstance(f.get("metadata", {}), dict)
-            else {},
+            metadata=dict(f.get("metadata", {})) if isinstance(f.get("metadata", {}), dict) else {},
         )
         for f in facts_payload
         if f.get("content")
@@ -949,6 +947,10 @@ class EventHubsShardTransport:
         """Deterministic partition for an agent: agent_index % num_partitions."""
         return str(self._agent_index(agent_id) % self._get_num_partitions())
 
+    def _wait_timeout(self) -> float | None:
+        """Return the effective wait timeout, or None for no timeout."""
+        return self._timeout if self._timeout > 0 else None
+
     # -- Background receive loop ---------------------------------------------
 
     def _receive_loop(self) -> None:
@@ -1203,7 +1205,8 @@ class EventHubsShardTransport:
                 },
                 partition_key=agent_id,
             )
-            got_response = done.wait(timeout=self._timeout)
+            wait_timeout = self._wait_timeout()
+            got_response = done.wait(timeout=wait_timeout)
             if not got_response:
                 raise DistributedShardQueryError(
                     f"Shard query to {agent_id} timed out after {self._timeout:.1f}s"
@@ -1346,7 +1349,8 @@ class EventHubsShardTransport:
                 },
                 partition_key=agent_id,
             )
-            got_response = done.wait(timeout=self._timeout)
+            wait_timeout = self._wait_timeout()
+            got_response = done.wait(timeout=wait_timeout)
             if not got_response:
                 raise DistributedShardQueryError(
                     f"Shard {operation} request to {agent_id} timed out after {self._timeout:.1f}s"

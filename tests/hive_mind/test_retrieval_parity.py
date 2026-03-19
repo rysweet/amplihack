@@ -1,6 +1,6 @@
 """Tests for distributed retrieval parity fixes.
 
-Covers three regression vectors identified in the retrieval parity analysis:
+Covers five regression vectors identified in the retrieval parity analysis:
 
 1. search_facts() hive candidate budget — hive must get limit * HIVE_SEARCH_MULTIPLIER
    candidates, not just limit, so it has equal ranking headroom vs local.
@@ -10,6 +10,11 @@ Covers three regression vectors identified in the retrieval parity analysis:
 
 3. apphost.cs HIVE_ENABLE_DISTRIBUTED_RETRIEVAL default — must be "true" to match
    deploy.sh and ensure distributed retrieval is on by default for 100-agent topology.
+
+4. deploy.sh must expose scale-safe fanout/timeout knobs so a 100-agent eval can
+   query the whole hive instead of the default 5-shard subset.
+
+5. main.bicep must wire those scale-safe env vars into the deployed agents.
 """
 
 from __future__ import annotations
@@ -303,6 +308,32 @@ class TestApphostDistributedRetrievalDefault:
             f"apphost.cs still has 'false' as default for HIVE_ENABLE_DISTRIBUTED_RETRIEVAL. "
             f"Found: {snippet!r}"
         )
+
+
+class TestScaleSafeDistributedRetrievalDefaults:
+    """Deployment surfaces must expose scale-safe retrieval knobs."""
+
+    def test_deploy_script_exposes_fanout_and_timeout_overrides(self):
+        import pathlib
+
+        deploy = pathlib.Path(__file__).parents[2] / "deploy" / "azure_hive" / "deploy.sh"
+        content = deploy.read_text()
+
+        assert "HIVE_MEMORY_QUERY_FANOUT" in content
+        assert "HIVE_SHARD_QUERY_TIMEOUT_SECONDS" in content
+        assert "memoryQueryFanout" in content
+        assert "shardQueryTimeoutSeconds" in content
+
+    def test_bicep_wires_fanout_and_timeout_into_agents(self):
+        import pathlib
+
+        bicep = pathlib.Path(__file__).parents[2] / "deploy" / "azure_hive" / "main.bicep"
+        content = bicep.read_text()
+
+        assert "memoryQueryFanoutResolved" in content
+        assert "shardQueryTimeoutSecondsResolved" in content
+        assert "AMPLIHACK_MEMORY_QUERY_FANOUT" in content
+        assert "AMPLIHACK_SHARD_QUERY_TIMEOUT_SECONDS" in content
 
 
 # ---------------------------------------------------------------------------

@@ -636,6 +636,22 @@ class TestDeployScript:
         assert 'OTEL_CONSOLE_EXPORTER="${HIVE_OTEL_CONSOLE_EXPORTER:-false}"' in content
         assert 'enableOpenTelemetry="${OTEL_ENABLED}"' in content
 
+    def test_deploy_sh_can_force_event_hubs_recreation(self):
+        deploy_sh = Path(__file__).parent.parent / "deploy.sh"
+        content = deploy_sh.read_text()
+        assert 'FORCE_RECREATE_EVENT_HUBS="${HIVE_FORCE_RECREATE_EVENT_HUBS:-false}"' in content
+        assert "az eventhubs namespace delete" in content
+
+    def test_deploy_sh_recreates_event_hubs_when_partition_count_must_increase(self):
+        deploy_sh = Path(__file__).parent.parent / "deploy.sh"
+        content = deploy_sh.read_text()
+        assert 'DESIRED_EH_PARTITIONS="${AGENT_COUNT}"' in content
+        assert (
+            '"hive-events-${HIVE_NAME}" "hive-shards-${HIVE_NAME}" "eval-responses-${HIVE_NAME}"'
+            in content
+        )
+        assert "partitionCount" in content
+
     def test_deploy_sh_has_cleanup_mode(self):
         deploy_sh = Path(__file__).parent.parent / "deploy.sh"
         content = deploy_sh.read_text()

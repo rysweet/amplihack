@@ -40,6 +40,9 @@
 #   HIVE_OTEL_OTLP_ENDPOINT -- OTLP/HTTP collector endpoint
 #   HIVE_OTEL_EXPORTER_HEADERS -- Optional OTLP headers (for auth, etc.)
 #   HIVE_OTEL_CONSOLE_EXPORTER -- Emit spans to stdout if no OTLP endpoint is set
+#   HIVE_FORCE_RECREATE_EVENT_HUBS -- Force delete/recreate the Event Hubs namespace before deploy
+#   HIVE_MEMORY_QUERY_FANOUT -- Max shards queried per distributed retrieval request (default: all agents)
+#   HIVE_SHARD_QUERY_TIMEOUT_SECONDS -- Timeout for cross-shard queries (default: disabled for 100-agent profile, otherwise 60s)
 
 set -euo pipefail
 
@@ -63,6 +66,7 @@ OTEL_OTLP_PROTOCOL="${HIVE_OTEL_OTLP_PROTOCOL:-http/protobuf}"
 OTEL_EXPORTER_HEADERS="${HIVE_OTEL_EXPORTER_HEADERS:-}"
 OTEL_SERVICE_NAMESPACE="${HIVE_OTEL_SERVICE_NAMESPACE:-amplihack}"
 OTEL_CONSOLE_EXPORTER="${HIVE_OTEL_CONSOLE_EXPORTER:-false}"
+FORCE_RECREATE_EVENT_HUBS="${HIVE_FORCE_RECREATE_EVENT_HUBS:-false}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
@@ -151,6 +155,20 @@ elif [[ -n "${OTEL_OTLP_ENDPOINT}" || "${OTEL_CONSOLE_EXPORTER,,}" == "true" ]];
   OTEL_ENABLED="true"
 else
   OTEL_ENABLED="false"
+fi
+
+if [[ -n "${HIVE_MEMORY_QUERY_FANOUT:-}" ]]; then
+  MEMORY_QUERY_FANOUT="${HIVE_MEMORY_QUERY_FANOUT}"
+else
+  MEMORY_QUERY_FANOUT="${AGENT_COUNT}"
+fi
+
+if [[ -n "${HIVE_SHARD_QUERY_TIMEOUT_SECONDS:-}" ]]; then
+  SHARD_QUERY_TIMEOUT_SECONDS="${HIVE_SHARD_QUERY_TIMEOUT_SECONDS}"
+elif [[ "${AGENT_COUNT}" -ge 100 ]]; then
+  SHARD_QUERY_TIMEOUT_SECONDS="0"
+else
+  SHARD_QUERY_TIMEOUT_SECONDS="60"
 fi
 
 # ============================================================
@@ -260,6 +278,57 @@ if [[ -n "${EXISTING_APPS}" ]]; then
 fi
 
 # ============================================================
+# Event Hubs reset for immutable partition changes
+# ============================================================
+
+DESIRED_EH_PARTITIONS="${AGENT_COUNT}"
+if [[ "${DESIRED_EH_PARTITIONS}" -gt 28 ]]; then
+  DESIRED_EH_PARTITIONS=32
+else
+  DESIRED_EH_PARTITIONS=$((DESIRED_EH_PARTITIONS + 4))
+fi
+
+EH_NAMESPACE_NAME="$(az eventhubs namespace list \
+  --resource-group "${RESOURCE_GROUP}" \
+  --query "[?starts_with(name, 'hive-eh-')].name | [0]" \
+  -o tsv 2>/dev/null || true)"
+
+RESET_EVENT_HUBS=false
+RESET_REASON=""
+
+if [[ "${FORCE_RECREATE_EVENT_HUBS,,}" == "true" && -n "${EH_NAMESPACE_NAME}" ]]; then
+  RESET_EVENT_HUBS=true
+  RESET_REASON="forced by HIVE_FORCE_RECREATE_EVENT_HUBS=true"
+elif [[ -n "${EH_NAMESPACE_NAME}" ]]; then
+  for HUB_NAME in "hive-events-${HIVE_NAME}" "hive-shards-${HIVE_NAME}" "eval-responses-${HIVE_NAME}"; do
+    CURRENT_PARTITIONS="$(az eventhubs eventhub show \
+      --resource-group "${RESOURCE_GROUP}" \
+      --namespace-name "${EH_NAMESPACE_NAME}" \
+      --name "${HUB_NAME}" \
+      --query partitionCount \
+      -o tsv 2>/dev/null || true)"
+    if [[ -n "${CURRENT_PARTITIONS}" && "${CURRENT_PARTITIONS}" != "null" && "${CURRENT_PARTITIONS}" -lt "${DESIRED_EH_PARTITIONS}" ]]; then
+      RESET_EVENT_HUBS=true
+      RESET_REASON="hub ${HUB_NAME} has ${CURRENT_PARTITIONS} partition(s), needs ${DESIRED_EH_PARTITIONS}"
+      break
+    fi
+  done
+fi
+
+if [[ "${RESET_EVENT_HUBS}" == "true" && -n "${EH_NAMESPACE_NAME}" ]]; then
+  log "Recreating Event Hubs namespace ${EH_NAMESPACE_NAME} (${RESET_REASON})..."
+  az eventhubs namespace delete \
+    --name "${EH_NAMESPACE_NAME}" \
+    --resource-group "${RESOURCE_GROUP}" \
+    --output none
+  log "Waiting for Event Hubs namespace deletion to complete..."
+  while az eventhubs namespace show --name "${EH_NAMESPACE_NAME}" --resource-group "${RESOURCE_GROUP}" --output none &>/dev/null; do
+    sleep 5
+  done
+  log "Event Hubs namespace ${EH_NAMESPACE_NAME} deleted."
+fi
+
+# ============================================================
 # Provision infrastructure via Bicep
 # ============================================================
 
@@ -296,6 +365,8 @@ for _region in "${_REGIONS[@]}"; do
         agentModel="${AGENT_MODEL}" \
         agentPromptBase="${AGENT_PROMPT_BASE}" \
         enableDistributedRetrieval="${ENABLE_DISTRIBUTED_RETRIEVAL}" \
+        memoryQueryFanout="${MEMORY_QUERY_FANOUT}" \
+        shardQueryTimeoutSeconds="${SHARD_QUERY_TIMEOUT_SECONDS}" \
         deploymentProfile="${DEPLOYMENT_PROFILE}" \
         enableOpenTelemetry="${OTEL_ENABLED}" \
         otelOtlpEndpoint="${OTEL_OTLP_ENDPOINT}" \

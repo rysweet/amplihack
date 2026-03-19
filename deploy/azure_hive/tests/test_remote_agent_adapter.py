@@ -637,3 +637,29 @@ class TestClose:
         adapter = _make_adapter(mod)
         adapter.close()
         assert adapter._shutdown.is_set()
+
+
+class TestListenerStartup:
+    def test_listener_alive_waits_for_all_partition_initializers(self):
+        mod = _load_module()
+        adapter = _make_adapter(mod, agent_count=2)
+        adapter._listener_alive.clear()
+
+        consumer = MagicMock()
+        consumer.get_partition_ids.return_value = ["0", "1"]
+
+        def fake_receive(*, on_event, on_partition_initialize, starting_position):
+            assert starting_position == "@latest"
+            on_partition_initialize(MagicMock(partition_id="0"))
+            assert not adapter._listener_alive.is_set()
+            on_partition_initialize(MagicMock(partition_id="1"))
+            assert adapter._listener_alive.is_set()
+
+        consumer.receive.side_effect = fake_receive
+
+        with patch("azure.eventhub.EventHubConsumerClient", create=True) as consumer_cls:
+            consumer_cls.from_connection_string.return_value = consumer
+            adapter._listen_for_answers()
+
+        consumer_cls.from_connection_string.assert_called_once()
+        consumer.close.assert_called_once()

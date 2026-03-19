@@ -168,6 +168,51 @@ def _ngram_overlap_score(query: str, text: str) -> float:
     return unigram * UNIGRAM_WEIGHT + bigram * BIGRAM_WEIGHT
 
 
+def _build_cognitive_memory_kwargs(
+    *,
+    agent_name: str,
+    db_path: str,
+    buffer_pool_size: int,
+) -> dict[str, Any]:
+    """Build kwargs compatible with both legacy and tuned CognitiveMemory releases."""
+    kwargs: dict[str, Any] = {
+        "agent_name": agent_name,
+        "db_path": db_path,
+        "buffer_pool_size": buffer_pool_size,
+    }
+    tuned_kwargs: dict[str, Any] = {
+        "similarity_threshold": SIMILARITY_THRESHOLD,
+        "max_edges_per_node": MAX_EDGES_PER_NODE,
+        "hop_depth": HOP_DEPTH,
+    }
+
+    try:
+        signature = inspect.signature(CognitiveMemory.__init__)
+    except (TypeError, ValueError):
+        logger.info(
+            "Unable to inspect CognitiveMemory.__init__; using legacy-compatible constructor args"
+        )
+        return kwargs
+
+    supports_var_kwargs = any(
+        param.kind == inspect.Parameter.VAR_KEYWORD for param in signature.parameters.values()
+    )
+    unsupported: list[str] = []
+    for key, value in tuned_kwargs.items():
+        if supports_var_kwargs or key in signature.parameters:
+            kwargs[key] = value
+        else:
+            unsupported.append(key)
+
+    if unsupported:
+        logger.info(
+            "CognitiveMemory.__init__ does not accept %s; using library defaults for those settings",
+            ", ".join(sorted(unsupported)),
+        )
+
+    return kwargs
+
+
 # Try importing CognitiveMemory, fall back to HierarchicalMemory
 try:
     from amplihack_memory.cognitive_memory import CognitiveMemory  # type: ignore[import-not-found]
@@ -245,16 +290,12 @@ class CognitiveAdapter:
             if not kuzu_path.exists():
                 kuzu_path.parent.mkdir(parents=True, exist_ok=True)
 
-            # Pass amplihack's tuned graph-edge constants so the memory-lib uses
-            # the same similarity threshold, edge cap, and hop depth configured
-            # in retrieval_constants rather than the library's own defaults.
             self.memory = CognitiveMemory(
-                agent_name=agent_name,
-                db_path=str(kuzu_path),
-                buffer_pool_size=buffer_pool_size,
-                similarity_threshold=SIMILARITY_THRESHOLD,
-                max_edges_per_node=MAX_EDGES_PER_NODE,
-                hop_depth=HOP_DEPTH,
+                **_build_cognitive_memory_kwargs(
+                    agent_name=agent_name,
+                    db_path=str(kuzu_path),
+                    buffer_pool_size=buffer_pool_size,
+                )
             )
             self._cognitive = True
         else:

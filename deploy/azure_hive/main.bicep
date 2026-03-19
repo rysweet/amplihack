@@ -68,6 +68,14 @@ param agentModel string = 'claude-sonnet-4-6'
 @allowed(['true', 'false'])
 param enableDistributedRetrieval string = 'true'
 
+@description('Max shards to query per distributed retrieval request (0 = all deployed agents)')
+@minValue(0)
+param memoryQueryFanout int = 0
+
+@description('Timeout in seconds for remote shard queries (0 = no timeout)')
+@minValue(0)
+param shardQueryTimeoutSeconds int = 0
+
 @description('Deployment profile label propagated to agents and harnesses')
 param deploymentProfile string = 'federated-100'
 
@@ -109,6 +117,8 @@ var ehEvalHub = 'eval-responses-${hiveName}'
 var appCount = (agentCount + agentsPerApp - 1) / agentsPerApp
 var perAgentCpu = json(agentsPerApp <= 1 ? '2.0' : (agentsPerApp <= 2 ? '1.0' : (agentsPerApp <= 5 ? '0.75' : (agentsPerApp <= 8 ? '0.5' : '0.25'))))
 var perAgentMemory = agentsPerApp <= 1 ? '4Gi' : (agentsPerApp <= 2 ? '2Gi' : (agentsPerApp <= 5 ? '1.5Gi' : (agentsPerApp <= 8 ? '1Gi' : '0.5Gi')))
+var memoryQueryFanoutResolved = memoryQueryFanout > 0 ? memoryQueryFanout : agentCount
+var shardQueryTimeoutSecondsResolved = shardQueryTimeoutSeconds
 
 // ---------- Container Registry ----------
 resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' = if (empty(acrName)) {
@@ -370,6 +380,14 @@ resource containerApps 'Microsoft.App/containerApps@2024-03-01' = [
               {
                 name: 'AMPLIHACK_ENABLE_DISTRIBUTED_RETRIEVAL'
                 value: enableDistributedRetrieval
+              }
+              {
+                name: 'AMPLIHACK_MEMORY_QUERY_FANOUT'
+                value: '${memoryQueryFanoutResolved}'
+              }
+              {
+                name: 'AMPLIHACK_SHARD_QUERY_TIMEOUT_SECONDS'
+                value: '${shardQueryTimeoutSecondsResolved}'
               }
               {
                 name: 'AMPLIHACK_DEPLOYMENT_PROFILE'
