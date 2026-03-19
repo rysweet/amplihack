@@ -888,6 +888,43 @@ class TestShardTransport:
         assert exc_info.value.code == 0
         init_hive.assert_not_called()
 
+    def test_main_publishes_startup_online_event(self, monkeypatch, tmp_path):
+        mod = _load_entrypoint()
+
+        monkeypatch.setenv("AMPLIHACK_AGENT_NAME", "agent-0")
+        monkeypatch.setenv("AMPLIHACK_EH_CONNECTION_STRING", "Endpoint=sb://dummy/")
+        monkeypatch.setenv("AMPLIHACK_EH_NAME", "hive-shards-test")
+        monkeypatch.setenv("AMPLIHACK_EH_INPUT_HUB", "hive-events-test")
+        monkeypatch.setenv("AMPLIHACK_MEMORY_STORAGE_PATH", str(tmp_path / "agent-0"))
+        monkeypatch.setenv("AMPLIHACK_ENABLE_DISTRIBUTED_RETRIEVAL", "false")
+
+        mock_agent = MagicMock()
+        mock_agent.memory = MagicMock()
+        mock_agent.memory.memory = MagicMock()
+        mock_input_source = MagicMock()
+        mock_publisher = MagicMock()
+
+        with patch.object(mod, "AnswerPublisher", return_value=mock_publisher):
+            with patch.object(mod, "_init_dht_hive") as init_hive:
+                with patch(
+                    "amplihack.agents.goal_seeking.runtime_factory.create_goal_agent_runtime",
+                    return_value=mock_agent,
+                ):
+                    with patch("amplihack.memory.facade.Memory", return_value=MagicMock()):
+                        with patch(
+                            "amplihack.agents.goal_seeking.input_source.EventHubsInputSource",
+                            return_value=mock_input_source,
+                        ):
+                            with patch.object(
+                                mod, "_run_event_driven_loop", side_effect=SystemExit(0)
+                            ):
+                                with pytest.raises(SystemExit) as exc_info:
+                                    mod.main()
+
+        assert exc_info.value.code == 0
+        init_hive.assert_not_called()
+        mock_publisher.publish_agent_online.assert_called_once_with()
+
     def test_handle_shard_query_publishes_response(self):
         """EH transport handle_shard_query looks up local shard and publishes SHARD_RESPONSE."""
 
