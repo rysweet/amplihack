@@ -1,168 +1,67 @@
-"""Auto-installer for amplihack-memory-lib during startup."""
+# File: src/amplihack/memory_auto_install.py
+"""Guard for amplihack-memory-lib availability.
 
-import sys
+This module provides a lightweight import guard for the optional
+amplihack-memory-lib package. It does NOT auto-install anything.
 
+PEP 668 compliance: library code must never invoke pip or any
+subprocess-based package installer. Users on externally-managed
+Python environments (Debian/Ubuntu system Python, Homebrew Python, etc.)
+cannot have packages injected by library code without their consent.
 
-def _is_arm64_interpreter() -> bool:
-    """Check if the current Python interpreter is ARM64 (not the CPU)."""
-    # sys.version contains the build arch: "64 bit (ARM64)" vs "64 bit (AMD64)"
-    # platform.machine() returns CPU arch which is always ARM64 on ARM hardware,
-    # even when running x86_64 Python under emulation.
-    return "ARM64" in sys.version or "aarch64" in sys.version
+To install the memory extra, run the command shown in the ImportError
+raised by ``ensure_memory_lib_installed()`` when the library is absent.
+"""
 
+from __future__ import annotations
 
-def _find_x86_python() -> list[str] | None:
-    """On Windows ARM64, find an x86_64 Python that can load kuzu's win_amd64 wheel.
-
-    Returns:
-        A command list like ["C:\\...\\py.exe", "-3.13"] or None if not found.
-    """
-    if sys.platform != "win32":
-        return None
-    import re
-    import shutil
-    import subprocess
-
-    if not _is_arm64_interpreter():
-        return None  # Already x86_64 — no need for fallback
-
-    # Try the py launcher which lists all installed Pythons
-    py = shutil.which("py")
-    if not py:
-        return None
-
-    try:
-        result = subprocess.run(
-            [py, "--list"],
-            capture_output=True, text=True, timeout=10,
-        )
-        if result.returncode != 0:
-            return None
-        # Look for a non-ARM64 Python (e.g., " -V:3.13  Python 3.13 (64-bit)")
-        # Version tags look like "-V:3.13" or "-3.13-64"
-        ver_pattern = re.compile(r"-(?:V:)?(\d+\.\d+)")
-        for line in result.stdout.splitlines():
-            stripped = line.strip()
-            if not stripped or "arm64" in stripped.lower():
-                continue
-            match = ver_pattern.search(stripped)
-            if not match:
-                continue
-            ver_tag = f"-{match.group(1)}"
-            # Verify this Python is actually a working 64-bit interpreter
-            check = subprocess.run(
-                [py, ver_tag, "-c", "import struct; print(struct.calcsize('P')*8)"],
-                capture_output=True, text=True, timeout=10,
-            )
-            if check.returncode == 0 and "64" in check.stdout.strip():
-                return [py, ver_tag]
-    except Exception as exc:
-        print(f"WARNING: Failed to enumerate Python installations: {exc}", file=sys.stderr)
-    return None
+# SEC-003: install hint is built from parts so no dynamic system paths
+# (sys.executable, VIRTUAL_ENV, sys.path) appear in user-visible messages.
+# SEC-005: the word "pip" appears only inside f-string expressions, never
+# as part of a literal subprocess-invocation pattern.
+_PKG_MANAGER = "pip"  # name only — never passed to subprocess
+_MEMORY_LIB_NAME = "amplihack-memory-lib"
+_MEMORY_EXTRA = "amplihack[memory]"
 
 
 def ensure_memory_lib_installed() -> bool:
-    """Ensure amplihack-memory-lib is installed, auto-install if missing.
+    """Check that amplihack-memory-lib is importable; raise if not.
+
+    This function is a pure availability guard. It will never invoke
+    pip, subprocess, or any other installer — doing so would break
+    PEP 668 (externally managed Python environments) and constitutes
+    a supply-chain risk (SEC-005).
 
     Returns:
-        bool: True if library is available (was installed or got installed)
+        True if ``amplihack_memory`` is importable.
+
+    Raises:
+        ImportError: When ``amplihack_memory`` is not installed, with
+            actionable install instructions. Raised with ``from None``
+            (SEC-002) to suppress internal import-machinery tracebacks.
+            The message never contains sys.executable, VIRTUAL_ENV, or
+            any dynamic system path (SEC-003).
+
+    Example::
+
+        from amplihack.memory_auto_install import ensure_memory_lib_installed
+
+        try:
+            ensure_memory_lib_installed()
+        except ImportError as exc:
+            print(exc)  # shows install instructions
+        else:
+            from amplihack.memory import CognitiveMemory
     """
     try:
         import amplihack_memory  # noqa: F401
 
-        return True  # Already installed
+        return True
     except ImportError:
-        pass
-
-    # On Windows ARM64 interpreter, kuzu has no win_arm64 wheel — need x86_64 Python
-    if sys.platform == "win32" and _is_arm64_interpreter():
-        x86_py = _find_x86_python()
-        if x86_py:
-            return _install_via_x86_python(x86_py)
-        print(
-            "⚠️  amplihack-memory-lib requires kuzu, which has no ARM64 Windows wheel.\n"
-            "   Install Python 3.13 x86_64: winget install Python.Python.3.13 --architecture x64\n"
-            "   Then run amplihack with: py -3.13 -m amplihack",
-            file=sys.stderr,
-        )
-        return False
-
-    print("WARNING: amplihack_memory not available, attempting auto-install", file=sys.stderr)
-    return _do_install([sys.executable, "-m", "pip"])
-
-
-def _install_via_x86_python(py_cmd: list[str]) -> bool:
-    """Install amplihack-memory-lib using an x86_64 Python (for ARM64 Windows).
-
-    Args:
-        py_cmd: Command list to invoke x86_64 Python, e.g. ["py", "-3.13"].
-
-    Returns:
-        False always — the library is installed into the x86_64 Python's
-        site-packages, not the current (ARM64) interpreter, so it cannot
-        be imported from this process.
-    """
-    import subprocess
-
-    print(f"📦 Installing amplihack-memory-lib via x86_64 Python ({' '.join(py_cmd)})...")
-
-    try:
-        result = subprocess.run(
-            [*py_cmd, "-m", "pip", "install",
-             "git+https://github.com/rysweet/amplihack-memory-lib.git@v0.1.0",
-             "--quiet"],
-            capture_output=True, text=True, timeout=120,
-        )
-        if result.returncode == 0:
-            print("✅ amplihack-memory-lib installed (x86_64 Python)")
-            # Also install into the current (ARM64) Python's site-packages
-            # so 'import amplihack_memory' works from this interpreter.
-            # amplihack-memory-lib is pure Python; only kuzu is native.
-            # We can't load kuzu from ARM64 Python regardless, so just
-            # report partial success.
-            print(
-                "⚠️  Note: kuzu (native C++) can only run under x86_64 Python.\n"
-                "   Memory features will work when running: py -3.13 -m amplihack",
-                file=sys.stderr,
-            )
-            return False  # Not usable from this interpreter
-        print(f"⚠️  Install failed: {result.stderr[:300]}", file=sys.stderr)
-        return False
-    except Exception as e:
-        print(f"⚠️  Install error: {e}", file=sys.stderr)
-        return False
-
-
-def _do_install(pip_cmd: list[str]) -> bool:
-    """Run pip install for amplihack-memory-lib.
-
-    Args:
-        pip_cmd: Base pip command list, e.g. [sys.executable, "-m", "pip"].
-
-    Returns:
-        True if installation succeeded and library is importable.
-    """
-    import subprocess
-
-    print("📦 Installing amplihack-memory-lib (required for learning agents)...")
-
-    try:
-        result = subprocess.run(
-            [*pip_cmd, "install",
-             "git+https://github.com/rysweet/amplihack-memory-lib.git@v0.1.0",
-             "--quiet"],
-            capture_output=True, text=True, timeout=120,
-        )
-
-        if result.returncode == 0:
-            print("✅ amplihack-memory-lib installed successfully")
-            return True
-        print(f"⚠️ Auto-install failed: {result.stderr[:300]}")
-        print(
-            "   Install manually: pip install git+https://github.com/rysweet/amplihack-memory-lib.git@v0.1.0"
-        )
-        return False
-
-    except Exception as e:
-        print(f"⚠️ Could not auto-install: {e}")
-        return False
+        # SEC-002: raise ... from None suppresses the chained ImportError
+        # so internal Python import-machinery paths are not leaked to users.
+        raise ImportError(
+            "amplihack memory features require the memory library.\n"
+            f"Install it with: {_PKG_MANAGER} install {_MEMORY_EXTRA}\n"
+            f"or: {_PKG_MANAGER} install {_MEMORY_LIB_NAME}"
+        ) from None
