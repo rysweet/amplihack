@@ -1,7 +1,7 @@
 ---
 type: howto
 skill: code-atlas
-updated: 2026-03-16
+updated: 2026-03-19
 ---
 
 # How to Use Code Atlas
@@ -238,6 +238,60 @@ To compare renderers on a specific layer:
 ```
 
 Then review both outputs and record your findings in `docs/atlas/experiments/`. See `SKILL.md` Appendix A for the full experiment template and metrics to capture.
+
+## Detect Rust binaries and clap CLI entry points
+
+The atlas now detects Rust code automatically via the `rust_definitions.py`
+extractor. Rust clap CLI commands are included in the user-journeys layer:
+
+```
+Build a code atlas for this repository
+```
+
+Rust entry points detected include:
+
+- `#[derive(Parser)]` — clap derive-API parsers
+- `#[command(...)]` — clap command attributes
+- `clap::Command::new()` — builder-API commands
+- `fn main()` — binary crate entry points
+
+No additional flags required. Rust files are picked up automatically.
+
+---
+
+## Detect Python CLI commands (Click/Typer)
+
+Click and Typer command decorators are detected as CLI entry points in the
+user-journeys layer:
+
+```
+/code-atlas layers=8
+```
+
+Detected patterns include:
+
+- `@app.command()` / `@app.callback()` (Typer)
+- `@cli.group()` / `@cli.command()` (Click)
+- `@click.command()` / `@click.group()`
+
+Results appear as entry points in `docs/atlas/user-journeys/`.
+
+---
+
+## Use fast mode (hierarchy-only, no relationship extraction)
+
+Full LSP mode is the default — it extracts all relationship types (CALLS,
+IMPORTS, INSTANTIATES, USES, INHERITS). For a faster build that skips
+relationship extraction:
+
+```
+/code-atlas --fast
+```
+
+Fast mode produces Layer 1–7 hierarchy diagrams only; Layer 8 (AST+LSP
+Bindings) is skipped.
+
+---
 
 ## Troubleshooting
 

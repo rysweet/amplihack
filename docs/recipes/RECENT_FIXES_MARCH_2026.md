@@ -450,7 +450,206 @@ amplihack recipe run investigation --context task_description="How does auth wor
 
 ---
 
+## Code Atlas v3 — Deterministic Multi-Language Extraction (March 19, 2026)
+
+### Code Atlas v3 Design — Deterministic Extraction + Visual Atlas (PR #3293)
+
+**What changed**: The code atlas pipeline was redesigned from LLM-first to
+data-first. Python AST scripts now parse all source files deterministically,
+producing verified JSON for all 8 layers and 15 cross-layer checks before any
+LLM is involved.
+
+**Key improvements**:
+
+| Area | Before (v2) | After (v3) |
+|---|---|---|
+| Extraction | LLM-driven (hallucination risk) | Python AST scripts (deterministic) |
+| Speed | Variable | 601 Python files parsed in 14.8s |
+| Cross-layer checks | None | 15 checks (5 PASS, 10 WARN, 0 FAIL) |
+| Bug hunting | Ad-hoc | LLMs now hunt bugs on verified-complete data |
+
+**Why it matters**: LLMs inventing topology that doesn't exist in code produced
+false confidence. v3 ensures every node and edge in the atlas corresponds to
+real code — LLMs only do layout and bug hunting on top of verified data.
+
+---
+
+### Blarify Integration — Multi-Language AST Analysis for 10 Languages (PR #3317)
+
+**What changed**: Blarify (a vendored tree-sitter code graph builder) is now
+the universal AST engine for the code atlas. Previously only Python was
+supported via the Python-specific AST analyzer.
+
+**Supported languages**: Python, JavaScript, TypeScript, C#, Go, Java, Ruby,
+PHP, JSX, TSX.
+
+**Impact on azlin repo**: Went from 63 definitions (Python only) to 605
+definitions across languages. The new `blarify_bridge.py` module handles
+language detection and result normalization — no Neo4j or SCIP required.
+
+**No configuration required**: blarify is automatically used when building
+Layer 2 (AST+LSP Bindings) and Layer 7 (Service Components). Closes #3314.
+
+---
+
+### Full LSP Mode as Default + Click/Typer CLI Detection (PR #3319)
+
+**What changed**:
+
+1. **Full LSP mode is now the default**: blarify's full LSP mode extracts all
+   relationship types (CALLS, IMPORTS, INSTANTIATES, USES, INHERITS). The
+   previous default was hierarchy-only. The `--fast` flag enables hierarchy-only
+   mode when full LSP is not needed.
+
+2. **Click/Typer CLI detection added**: Python Click and Typer command
+   decorators are now detected as CLI entry points in the user-journeys layer
+   (`@app.command()`, `@cli.group()`, `@click.command()`, etc.). Found 11
+   commands in the amplihack repo itself. Closes #3310.
+
+**Using fast mode** (hierarchy-only, no relationship extraction):
+
+```
+/code-atlas --fast
+```
+
+---
+
+### Rust Language Support + Clap CLI Detection (PR #3326)
+
+**What changed**: Rust is now a first-class language in the code atlas via a
+dedicated `rust_definitions.py` extractor (7 Rust node types: structs, enums,
+traits, impls, functions, modules, macros).
+
+**Clap CLI detection**: Rust binaries using the clap argument parser are
+detected as CLI entry points: `#[derive(Parser)]`, `#[command(...)]`,
+`clap::Command::new()`.
+
+**Impact on azlin repo**: Went from 0 detected Rust definitions to 480 Rust
+files / 7,432 functions / 862 classes. Found 236 clap CLI commands.
+
+**Layer 8 performance improvement**: File scanning is skipped when Layer 5
+already provides entry points — avoids redundant scanning of large Rust
+codebases.
+
+---
+
+### Code Atlas Bug Fixes — March 19, 2026
+
+**Remove fast mode, fix relationship mapping (PR #3322)**:
+
+Three fixes from azlin friction testing:
+
+1. Removed `--fast` flag (full LSP is always used — fast mode was causing
+   missed relationships)
+2. Fixed relationship type mapping that showed `calls=0` despite 3,567 actual
+   CALLS relationships in the Kuzu graph
+3. Fixed misleading "100%" coverage claim — now shows accurate file coverage
+   (e.g. "18/785 files (2.3%)")
+
+**Fix `platform.system()` false positive in subprocess scanner (PR #3329)**:
+
+The Layer 4 runtime topology scanner incorrectly classified `platform.system()`
+as a subprocess call (false positive for `os.system()`). Root cause was overly
+broad `endswith(".system")` matching that didn't distinguish the module. Both
+qualified-name and bare-name matching paths are now fixed.
+
+**Impact**: Atlas bug reports no longer contain spurious subprocess call entries
+for standard library calls like `platform.system()`.
+
+---
+
+## Agent Binary Propagation Through All Subprocess Spawn Sites (PR #3313)
+
+**What changed**: Fixed a silent regression where only the top-level amplihack
+process respected `AMPLIHACK_AGENT_BINARY` — all worker subprocesses silently
+fell back to `claude`.
+
+**Affected files**: `rust_runner.py`, `multitask/orchestrator.py`,
+`claude_process.py`, `recipes/__init__.py`.
+
+**Additional improvements in the same PR**:
+
+- **Injection-safe binary lookup**: Binary name is validated before subprocess
+  spawn to prevent command injection via a malicious `AMPLIHACK_AGENT_BINARY`
+  value
+- **Thread-safe stdout**: Fixed a race condition in multi-threaded recipe steps
+  that interleaved output lines
+- **Log file permission hardening**: Log files are now created with `0o600`
+  (user-only read/write)
+- **`_agent_binary_context()` context manager**: New helper for tests that need
+  to temporarily override the agent binary without environment mutation
+
+**Verification**: 88 tests passing after the fix.
+
+**Impact**: Recipes that use `copilot` or a custom agent binary now
+consistently use that binary for all spawned workers — no more silent `claude`
+fallbacks in nested steps.
+
+---
+
+## Heartbeat Visibility for Long-Running Agent Steps (PR #3288)
+
+**What changed**: Heartbeat messages during long-running agent steps are now
+more informative and timely.
+
+| Attribute | Before | After |
+|---|---|---|
+| Interval | Every 60 seconds | Every 30 seconds |
+| Message | "Agent step still running..." | "Agent step working (elapsed: 2m 15s, PID: 12345)" |
+| Elapsed time | Not shown | Shown in every message |
+| Process alive check | None | `/proc/{pid}` check — warns if process is gone |
+
+**Also fixed**: `AMPLIHACK_HOME` is now included in the recipe discovery search
+path, fixing cases where custom recipes in `~/.amplihack/` were not found.
+Closes #3266 and #3237.
+
+---
+
+## Dead Code Removal — Python <3.8 Fallbacks (PR #3295)
+
+**What changed**: Removed three unreachable code paths from version detection
+that existed as Python 2/3.7 compatibility shims:
+
+1. `except ImportError` fallback for `importlib.metadata` (available since
+   Python 3.8 — amplihack already requires ≥3.8)
+2. `tomli` fallback import (same reason — `tomllib` in stdlib since 3.11,
+   `tomli` was a backport)
+3. `PackageNotFoundError = Exception` alias that silently caught all exceptions,
+   masking real errors
+
+**Net**: 38 lines of dead code removed. 8/8 unit tests passing. Closes #3235.
+
+---
+
+## CI Fail-Fast Behavior Restored (PR #3223)
+
+**What changed**: Removed `continue-on-error: true` from the main CI
+validation workflow. Previously, a failing lint or test step would not stop the
+pipeline — later steps (including deployment gates) would run anyway.
+
+**Impact**: CI now fails fast on the first error. The summary step is preserved
+so failure context is always visible even when the pipeline stops early.
+
+---
+
 ## Version History
+
+All fixes released in **amplihack v0.9.2** (March 19, 2026):
+
+- **Code Atlas v3** (PR #3293) — Deterministic Python AST extraction, 15
+  cross-layer checks
+- **Blarify integration** (PR #3317) — Multi-language AST for 10 languages
+- **Full LSP mode** (PR #3319) — Default mode + Click/Typer CLI detection
+- **Rust + clap support** (PR #3326) — 7 Rust node types, clap CLI detection
+- **Relationship mapping fix** (PR #3322) — Correct CALLS count, accurate
+  coverage %
+- **platform.system() false positive fix** (PR #3329) — Subprocess scanner
+  no longer misclassifies standard library calls
+- **Agent binary propagation** (PR #3313) — All subprocess spawn sites now
+  respect `AMPLIHACK_AGENT_BINARY`
+- **Heartbeat visibility** (PR #3288) — 30s interval, elapsed time, PID check
+- **Dead code removal** (PR #3295) — 38 lines of Python <3.8 fallbacks removed
+- **CI fail-fast** (PR #3223) — Restored fail-fast behavior
 
 All fixes released in **amplihack v0.9.1** (March 2026):
 
