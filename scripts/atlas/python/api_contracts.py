@@ -472,6 +472,101 @@ def _extract_agents(repo_root: Path) -> list[dict]:
     return agents
 
 
+def _extract_rust_clap_commands(root: Path) -> list[dict]:
+    """Detect Rust clap CLI commands from source files.
+
+    Scans .rs files for clap derive macros and builder patterns:
+    - #[derive(Parser)] or #[derive(Args)] structs
+    - #[command(name = "...")] attributes
+    - #[subcommand] enum variants
+    - clap::Command::new("...") builder calls
+    """
+    commands: list[dict] = []
+
+    for rs_file in root.rglob("*.rs"):
+        filepath_str = str(rs_file)
+        if any(skip in filepath_str for skip in ("target/", ".git/", "vendor/")):
+            continue
+
+        try:
+            content = rs_file.read_text(errors="replace")
+        except OSError:
+            continue
+
+        lines = content.split("\n")
+
+        # Track derive(Parser) structs and their #[command] attributes
+        has_derive_parser = False
+        pending_command_name = None
+
+        for lineno_0, line in enumerate(lines):
+            lineno = lineno_0 + 1
+            stripped = line.strip()
+
+            # Detect #[derive(Parser)] or #[derive(Args)]
+            if re.search(r"#\[derive\([^)]*\b(Parser|Args)\b", stripped):
+                has_derive_parser = True
+                pending_command_name = None
+                continue
+
+            # Detect #[command(name = "...")] attribute
+            m = re.search(r'#\[command\([^)]*name\s*=\s*"([^"]+)"', stripped)
+            if m:
+                pending_command_name = m.group(1)
+                continue
+
+            # When we hit a struct/enum after derive(Parser), record the command
+            if has_derive_parser:
+                struct_m = re.match(r"(?:pub\s+)?(?:struct|enum)\s+(\w+)", stripped)
+                if struct_m:
+                    cmd_name = pending_command_name or struct_m.group(1).lower()
+                    commands.append({
+                        "command": cmd_name,
+                        "struct": struct_m.group(1),
+                        "framework": "clap-derive",
+                        "type": "command",
+                        "file": filepath_str,
+                        "lineno": lineno,
+                    })
+                    has_derive_parser = False
+                    pending_command_name = None
+                    continue
+
+            # Detect #[subcommand] field annotations
+            if re.search(r"#\[subcommand\]", stripped):
+                # The next field line has the subcommand name
+                # e.g. "command: Commands" -- we just record the annotation
+                commands.append({
+                    "command": "(subcommand)",
+                    "framework": "clap-derive",
+                    "type": "subcommand",
+                    "file": filepath_str,
+                    "lineno": lineno,
+                })
+                continue
+
+            # Detect clap::Command::new("...") or Command::new("...")
+            for builder_m in re.finditer(
+                r'(?:clap::)?Command::new\(\s*"([^"]+)"', stripped
+            ):
+                commands.append({
+                    "command": builder_m.group(1),
+                    "framework": "clap-builder",
+                    "type": "command",
+                    "file": filepath_str,
+                    "lineno": lineno,
+                })
+
+            # Reset derive tracking on blank lines or non-attribute/non-comment lines
+            if has_derive_parser and stripped and not stripped.startswith("#") and not stripped.startswith("//"):
+                # If we hit a non-struct definition line, reset
+                if not stripped.startswith("pub") and not stripped.startswith("struct") and not stripped.startswith("enum"):
+                    has_derive_parser = False
+                    pending_command_name = None
+
+    return commands
+
+
 def extract(manifest: dict, repo_root: Path) -> dict:
     """Extract layer 5 API contracts data.
 
@@ -523,6 +618,9 @@ def extract(manifest: dict, repo_root: Path) -> dict:
             "argument_count": len(file_args),
         })
 
+    # Rust CLI commands (clap)
+    rust_clap_commands = _extract_rust_clap_commands(repo_root)
+
     # Non-Python contracts
     hooks = _extract_hooks(repo_root)
     recipes = _extract_recipes(repo_root)
@@ -534,6 +632,7 @@ def extract(manifest: dict, repo_root: Path) -> dict:
         "cli_commands": cli_commands,
         "cli_arguments": all_arguments,
         "click_typer_commands": all_click_typer,
+        "rust_clap_commands": rust_clap_commands,
         "http_routes": all_routes,
         "hook_events": hooks,
         "recipes": recipes,
@@ -543,6 +642,7 @@ def extract(manifest: dict, repo_root: Path) -> dict:
             "cli_command_count": len(cli_commands),
             "cli_argument_count": len(all_arguments),
             "click_typer_command_count": len(all_click_typer),
+            "rust_clap_command_count": len(rust_clap_commands),
             "http_route_count": len(all_routes),
             "hook_event_count": len(hooks),
             "recipe_count": len(recipes),
@@ -591,6 +691,7 @@ def main() -> int:
     print(f"  CLI commands:     {s['cli_command_count']}")
     print(f"  CLI arguments:    {s['cli_argument_count']}")
     print(f"  Click/Typer:      {s['click_typer_command_count']}")
+    print(f"  Rust clap:        {s['rust_clap_command_count']}")
     print(f"  HTTP routes:      {s['http_route_count']}")
     print(f"  Hook events:      {s['hook_event_count']}")
     print(f"  Recipes:          {s['recipe_count']}")
