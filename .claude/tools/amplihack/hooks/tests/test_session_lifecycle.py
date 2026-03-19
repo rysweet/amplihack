@@ -6,14 +6,11 @@ context building, session stop memory store bridge, uncommitted work detection.
 """
 
 import json
-from io import StringIO
 import os
 import sys
-import tempfile
+from io import StringIO
 from pathlib import Path
-from unittest.mock import MagicMock, patch, PropertyMock
-
-import pytest
+from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -57,9 +54,7 @@ class TestVersionCheck:
         mock_info = MagicMock()
         mock_info.is_mismatched = False
         with patch.dict("sys.modules", {}):
-            with patch(
-                "session_start.SessionStartHook._check_version_mismatch"
-            ) as mock_check:
+            with patch("session_start.SessionStartHook._check_version_mismatch") as mock_check:
                 mock_check.return_value = None
                 hook._check_version_mismatch()  # Should not raise
 
@@ -67,9 +62,7 @@ class TestVersionCheck:
         hook = _make_session_start_hook(tmp_path)
         # The real _check_version_mismatch catches all exceptions
         # Verify it doesn't crash
-        with patch(
-            "builtins.__import__", side_effect=ImportError("no version_checker")
-        ):
+        with patch("builtins.__import__", side_effect=ImportError("no version_checker")):
             # Direct call — this should catch and log
             try:
                 hook._check_version_mismatch()
@@ -290,11 +283,15 @@ class TestSessionStopMain:
         mock_stdin = MagicMock()
         mock_stdin.isatty.return_value = True
         with patch("sys.stdin", mock_stdin):
-            with patch.dict("sys.modules", {
-                "amplihack.memory.coordinator": MagicMock(),
-                "amplihack.memory.types": MagicMock(),
-            }):
+            with patch.dict(
+                "sys.modules",
+                {
+                    "amplihack.memory.coordinator": MagicMock(),
+                    "amplihack.memory.types": MagicMock(),
+                },
+            ):
                 from session_stop import main
+
                 main()  # Should not raise
 
     def test_empty_agent_output_returns_early(self):
@@ -304,13 +301,18 @@ class TestSessionStopMain:
         mock_stdin = StringIO(json.dumps({"agent_type": "test", "output": ""}))
         mock_stdin.isatty = lambda: False
         with patch("sys.stdin", mock_stdin):
-            with patch.dict("sys.modules", {
-                "amplihack.memory.coordinator": MagicMock(),
-                "amplihack.memory.types": MagicMock(),
-            }):
+            with patch.dict(
+                "sys.modules",
+                {
+                    "amplihack.memory.coordinator": MagicMock(),
+                    "amplihack.memory.types": MagicMock(),
+                },
+            ):
                 # Reimport to get fresh module
                 import importlib
+
                 import session_stop
+
                 importlib.reload(session_stop)
                 session_stop.main()  # Should not raise
 
@@ -333,12 +335,17 @@ class TestSessionStopMain:
         mock_coordinator_module.MemoryCoordinator.side_effect = RuntimeError("storage failed")
 
         with patch("sys.stdin", mock_stdin):
-            with patch.dict("sys.modules", {
-                "amplihack.memory.coordinator": mock_coordinator_module,
-                "amplihack.memory.types": MagicMock(),
-            }):
+            with patch.dict(
+                "sys.modules",
+                {
+                    "amplihack.memory.coordinator": mock_coordinator_module,
+                    "amplihack.memory.types": MagicMock(),
+                },
+            ):
                 import importlib
+
                 import session_stop
+
                 importlib.reload(session_stop)
                 session_stop.main()  # Should not raise
 
@@ -349,12 +356,17 @@ class TestSessionStopMain:
         mock_stdin = StringIO("{invalid json}")
         mock_stdin.isatty = lambda: False
         with patch("sys.stdin", mock_stdin):
-            with patch.dict("sys.modules", {
-                "amplihack.memory.coordinator": MagicMock(),
-                "amplihack.memory.types": MagicMock(),
-            }):
+            with patch.dict(
+                "sys.modules",
+                {
+                    "amplihack.memory.coordinator": MagicMock(),
+                    "amplihack.memory.types": MagicMock(),
+                },
+            ):
                 import importlib
+
                 import session_stop
+
                 importlib.reload(session_stop)
                 # json.loads will raise, caught by outer try-except
                 session_stop.main()  # Should not raise

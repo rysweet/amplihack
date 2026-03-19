@@ -12,12 +12,10 @@ Design note:
 
 from __future__ import annotations
 
-import importlib
 import sys
 from unittest.mock import patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -36,9 +34,7 @@ def _reload_module():
 
 def _raise_if_called(*args, **kwargs):
     """Side-effect that fails the test if subprocess is invoked."""
-    raise AssertionError(
-        f"subprocess must not be called — got args={args!r} kwargs={kwargs!r}"
-    )
+    raise AssertionError(f"subprocess must not be called — got args={args!r} kwargs={kwargs!r}")
 
 
 # ---------------------------------------------------------------------------
@@ -220,6 +216,4 @@ class TestErrorMessage:
         source = inspect.getsource(mod)
         forbidden = ["subprocess.run", "subprocess.Popen", "sys.executable"]
         for pattern in forbidden:
-            assert pattern not in source, (
-                f"memory_auto_install.py must not contain {pattern!r}"
-            )
+            assert pattern not in source, f"memory_auto_install.py must not contain {pattern!r}"

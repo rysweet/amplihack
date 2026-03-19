@@ -99,12 +99,12 @@ flowchart TD
 
 ### Inventory Table (required companion)
 
-| Package | Version | Consumers | Direct? | License |
-|---------|---------|-----------|---------|---------|
-| express | ^4.18 | api-service | Yes | MIT |
-| @grpc/grpc-js | ^1.9 | auth-service | Yes | Apache-2.0 |
-| pg | ^8.11 | api-service | Yes | MIT |
-| @org/models | workspace | api-service, auth-service, worker | Yes | Internal |
+| Package       | Version   | Consumers                         | Direct? | License    |
+| ------------- | --------- | --------------------------------- | ------- | ---------- |
+| express       | ^4.18     | api-service                       | Yes     | MIT        |
+| @grpc/grpc-js | ^1.9      | auth-service                      | Yes     | Apache-2.0 |
+| pg            | ^8.11     | api-service                       | Yes     | MIT        |
+| @org/models   | workspace | api-service, auth-service, worker | Yes     | Internal   |
 
 ---
 
@@ -144,11 +144,11 @@ flowchart TD
 
 ### Inventory Table (required companion)
 
-| Method | Path | Handler | Auth | DTO In | DTO Out | Middleware |
-|--------|------|---------|------|--------|---------|-----------|
-| POST | /api/auth/login | AuthController.login | None | LoginRequest | TokenResponse | cors |
-| GET | /api/users | UserController.list | JWT | -- | UserListResponse | cors, jwt, audit |
-| POST | /api/orders | OrderController.create | JWT | CreateOrderRequest | OrderResponse | cors, jwt, ratelimit |
+| Method | Path            | Handler                | Auth | DTO In             | DTO Out          | Middleware           |
+| ------ | --------------- | ---------------------- | ---- | ------------------ | ---------------- | -------------------- |
+| POST   | /api/auth/login | AuthController.login   | None | LoginRequest       | TokenResponse    | cors                 |
+| GET    | /api/users      | UserController.list    | JWT  | --                 | UserListResponse | cors, jwt, audit     |
+| POST   | /api/orders     | OrderController.create | JWT  | CreateOrderRequest | OrderResponse    | cors, jwt, ratelimit |
 
 ---
 
@@ -252,10 +252,10 @@ sequenceDiagram
 **Mode:** static-approximation
 **Date:** 2026-03-16
 
-| Symbol | File | Line | Last Referenced | Notes |
-|--------|------|------|-----------------|-------|
-| `LegacyUserExporter.export()` | `src/exporters/legacy.ts` | 45 | Never (static analysis) | Candidate for removal |
-| `calculateTaxV1()` | `src/billing/tax.go` | 102 | Never (static analysis) | Superseded by calculateTaxV2 |
+| Symbol                        | File                      | Line | Last Referenced         | Notes                        |
+| ----------------------------- | ------------------------- | ---- | ----------------------- | ---------------------------- |
+| `LegacyUserExporter.export()` | `src/exporters/legacy.ts` | 45   | Never (static analysis) | Candidate for removal        |
+| `calculateTaxV1()`            | `src/billing/tax.go`      | 102  | Never (static analysis) | Superseded by calculateTaxV2 |
 ```
 
 ### Interface Mismatch Report (table format)
@@ -266,8 +266,8 @@ sequenceDiagram
 **Mode:** lsp-assisted
 **Date:** 2026-03-16
 
-| Symbol | Definition | Call Site | Mismatch |
-|--------|-----------|-----------|---------|
+| Symbol                | Definition                                       | Call Site                      | Mismatch                        |
+| --------------------- | ------------------------------------------------ | ------------------------------ | ------------------------------- |
 | `OrderService.create` | `(ctx, dto: CreateOrderRequest): Promise<Order>` | `src/api/handlers/order.ts:67` | Called with 1 arg (missing ctx) |
 ```
 
@@ -287,6 +287,7 @@ build entry points, and configuration files. Not every file is shown; group by d
 These commands are used across layers to explore any codebase:
 
 ### Go
+
 ```bash
 find . -name "main.go" | head -10
 grep -r "\.Get\|\.Post\|\.Handle" --include="*.go" . | grep -v _test.go
@@ -294,6 +295,7 @@ grep -r "type.*struct {" --include="*.go" . | grep -i "request\|response\|dto"
 ```
 
 ### TypeScript / Node.js
+
 ```bash
 cat package.json | jq '.main, .scripts.start'
 grep -r "\.get\|\.post\|router\.\|@Controller" --include="*.ts" src/ | head -30
@@ -301,6 +303,7 @@ find . -name "*.dto.ts" -o -name "*.schema.ts" | grep -v node_modules
 ```
 
 ### Python (FastAPI, Django, Flask)
+
 ```bash
 find . -name "app.py" -o -name "main.py" -o -name "wsgi.py" -o -name "asgi.py"
 grep -r "@app\.\|@router\." --include="*.py" . | grep -v test
@@ -308,6 +311,7 @@ grep -r "class.*BaseModel\|class.*Serializer" --include="*.py" .
 ```
 
 ### .NET (ASP.NET Core)
+
 ```bash
 find . -name "Program.cs" -o -name "Startup.cs"
 find . -name "*Controller.cs" | xargs grep "\[Http\|MapGet\|MapPost"
@@ -315,6 +319,7 @@ find . -name "*Dto.cs" -o -name "*Request.cs" -o -name "*Response.cs"
 ```
 
 ### Rust (Axum, Actix-web)
+
 ```bash
 find . -name "main.rs" | head -5
 grep -r "Router::new\|\.route\|get!\|post!" --include="*.rs" src/

@@ -95,7 +95,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-19T00:22:49.724250+00
         D36 --> D37
         D0 --> D38
         D0 --> D39
-    
+
         click D0 "../" "Back to Atlas index"
     ```
 
@@ -164,11 +164,11 @@ Category: <strong>Structural</strong> | Generated: 2026-03-19T00:22:49.724250+00
 
 <div class="atlas-legend" markdown>
 
-| Symbol | Meaning |
-|--------|---------|
-| Rectangle | Directory |
-| Arrow | Parent-child relationship |
-| Label | `name` / `py count` / `total count` |
+| Symbol    | Meaning                             |
+| --------- | ----------------------------------- |
+| Rectangle | Directory                           |
+| Arrow     | Parent-child relationship           |
+| Label     | `name` / `py count` / `total count` |
 
 </div>
 

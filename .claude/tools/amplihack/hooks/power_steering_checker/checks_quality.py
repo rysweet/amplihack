@@ -406,6 +406,7 @@ class ChecksQualityMixin:
                 output = str(msg.get("message", {}).get("content", ""))
                 # Match pytest-style "N passed" or "N tests passed"
                 import re as _re
+
                 match = _re.search(r"(\d+)\s+passed", output, _re.IGNORECASE)
                 if match:
                     count = int(match.group(1))

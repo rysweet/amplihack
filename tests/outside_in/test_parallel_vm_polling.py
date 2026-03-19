@@ -10,22 +10,19 @@ Run with: uv run pytest tests/outside_in/test_parallel_vm_polling.py -v
 """
 
 import sys
+import tempfile
 import time
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-import tempfile
-
-import pytest
 
 # amplifier-bundle is not installed as a package; add it to the path
 _BUNDLE_ROOT = Path(__file__).resolve().parents[2] / "amplifier-bundle"
 if str(_BUNDLE_ROOT) not in sys.path:
     sys.path.insert(0, str(_BUNDLE_ROOT))
 
-from tools.amplihack.remote.orchestrator import Orchestrator, VM, VMOptions  # noqa: E402
-from tools.amplihack.remote.vm_pool import VMPoolEntry, VMPoolManager, VMSize  # noqa: E402
-
+from tools.amplihack.remote.orchestrator import VM, Orchestrator
+from tools.amplihack.remote.vm_pool import VMPoolEntry, VMPoolManager
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -149,8 +146,7 @@ class TestOrchestratorPollVmStatusesParallelism:
 
         # Parallel should be well under sequential time
         assert elapsed < sequential_estimate * 0.6, (
-            f"Expected parallel polling to be <{sequential_estimate * 0.6:.2f}s, "
-            f"got {elapsed:.2f}s"
+            f"Expected parallel polling to be <{sequential_estimate * 0.6:.2f}s, got {elapsed:.2f}s"
         )
         assert len(result) == 8
 
@@ -292,7 +288,6 @@ class TestOrchestratorPollSingleVmStatus:
 
     def test_returns_unknown_on_cli_error(self):
         """_poll_single_vm_status returns 'unknown' when az CLI returns non-zero."""
-        import subprocess
 
         orchestrator = MagicMock(spec=Orchestrator)
         orchestrator._poll_single_vm_status = Orchestrator._poll_single_vm_status.__get__(
@@ -310,7 +305,6 @@ class TestOrchestratorPollSingleVmStatus:
 
     def test_returns_lowercased_status_on_success(self):
         """_poll_single_vm_status returns the lowercased power state on success."""
-        import subprocess
 
         orchestrator = MagicMock(spec=Orchestrator)
         orchestrator._poll_single_vm_status = Orchestrator._poll_single_vm_status.__get__(

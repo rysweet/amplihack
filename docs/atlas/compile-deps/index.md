@@ -40,7 +40,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-19T00:27:23.740489+00
             E18["tree-sitter-python<br/>imports: 1"]
             E19["tree-sitter-javascript<br/>imports: 1"]
         end
-    
+
         subgraph int["Internal Packages"]
             P0["__main__"]
             P1["__version_manifest__"]
@@ -73,7 +73,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-19T00:27:23.740489+00
             P28["sdk"]
             P29["sdk_adapters"]
         end
-    
+
         click P0 "../compile-deps/" "View compile deps"
     ```
 
@@ -122,11 +122,11 @@ Category: <strong>Structural</strong> | Generated: 2026-03-19T00:27:23.740489+00
 
 <div class="atlas-legend" markdown>
 
-| Symbol | Meaning |
-|--------|---------|
-| `ext` subgraph | External dependencies |
-| `int` subgraph | Internal packages |
-| Edge label N | Import count between packages |
+| Symbol         | Meaning                       |
+| -------------- | ----------------------------- |
+| `ext` subgraph | External dependencies         |
+| `int` subgraph | Internal packages             |
+| Edge label N   | Import count between packages |
 
 </div>
 
@@ -140,7 +140,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-19T00:27:23.740489+00
 ??? info "Full data (click to expand)"
 
     **Summary metrics:**
-    
+
     - **External Dep Count**: 67
     - **Internal Packages**: 601
     - **Internal Edges**: 715

@@ -27,7 +27,6 @@ from amplihack.fleet._cli_formatters import (
     format_scout_report,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -401,6 +400,7 @@ class TestFormatScoutReportLegacy:
     def _make_vm(self, name, sessions=None):
         """Create a minimal VM-like object for legacy tests."""
         from unittest.mock import MagicMock
+
         vm = MagicMock()
         vm.name = name
         vm.is_running = True
@@ -410,6 +410,7 @@ class TestFormatScoutReportLegacy:
     def _make_session(self, name, status="idle", branch="main"):
         """Create a minimal session-like object for legacy tests."""
         from unittest.mock import MagicMock
+
         sess = MagicMock()
         sess.session_name = name
         sess.status = status
@@ -739,8 +740,7 @@ class TestFormatAdvanceReportLegacy:
     def test_legacy_executed_ok_status(self):
         """Legacy format shows OK for successful execution."""
         executed = [
-            {"vm": "vm1", "session": "s1", "action": "send_input",
-             "executed": True, "error": None}
+            {"vm": "vm1", "session": "s1", "action": "send_input", "executed": True, "error": None}
         ]
         report = format_advance_report([], executed)
         assert "[OK]" in report
@@ -748,8 +748,13 @@ class TestFormatAdvanceReportLegacy:
     def test_legacy_executed_error_status(self):
         """Legacy format shows ERROR for failed execution."""
         executed = [
-            {"vm": "vm1", "session": "s1", "action": "restart",
-             "executed": False, "error": "VM unreachable"}
+            {
+                "vm": "vm1",
+                "session": "s1",
+                "action": "restart",
+                "executed": False,
+                "error": "VM unreachable",
+            }
         ]
         report = format_advance_report([], executed)
         assert "[ERROR]" in report

@@ -17,13 +17,13 @@ The token sanitizer (`amplihack.proxy.token_sanitizer`) replaces API keys and se
 
 The sanitizer detects and replaces the following token types:
 
-| Token Type | Pattern | Redacted Form |
-|-----------|---------|--------------|
-| OpenAI project key | `sk-proj-…` | `sk-proj-***` |
-| OpenAI standard key | `sk-…` | `sk-***` |
-| Azure subscription ID | UUID format in Azure paths | `[REDACTED:azure-subscription-id]` |
-| GitHub PAT | `ghp_…` or `github_pat_…` | `ghp_***` / `github_pat_***` |
-| Generic bearer token | `Bearer <token>` in headers | `[REDACTED:bearer-token]` |
+| Token Type            | Pattern                     | Redacted Form                      |
+| --------------------- | --------------------------- | ---------------------------------- |
+| OpenAI project key    | `sk-proj-…`                 | `sk-proj-***`                      |
+| OpenAI standard key   | `sk-…`                      | `sk-***`                           |
+| Azure subscription ID | UUID format in Azure paths  | `[REDACTED:azure-subscription-id]` |
+| GitHub PAT            | `ghp_…` or `github_pat_…`   | `ghp_***` / `github_pat_***`       |
+| Generic bearer token  | `Bearer <token>` in headers | `[REDACTED:bearer-token]`          |
 
 ---
 
@@ -72,8 +72,8 @@ Scans `text` for known secret patterns and replaces each match with its redacted
 
 **Parameters**
 
-| Name | Type | Description |
-|------|------|-------------|
+| Name   | Type  | Description                                            |
+| ------ | ----- | ------------------------------------------------------ |
 | `text` | `str` | Input text, typically a JSON request or response body. |
 
 **Returns** `str` — A copy of `text` with all recognised secrets replaced using the `***` format (e.g. `sk-***`, `sk-proj-***`).

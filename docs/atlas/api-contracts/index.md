@@ -123,7 +123,7 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-19T00:27:26.095238+00
         ROOT --> C50
         C51["create"]
         ROOT --> C51
-    
+
         click ROOT "../" "Back to Atlas"
     ```
 
@@ -182,12 +182,12 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-19T00:27:26.095238+00
 
 <div class="atlas-legend" markdown>
 
-| Symbol | Meaning |
-|--------|---------|
-| ROOT | `amplihack` CLI entry |
-| Rectangle | Subcommand |
-| Label | `name` / `arg count` |
-| Arrow | Parent-child command |
+| Symbol    | Meaning               |
+| --------- | --------------------- |
+| ROOT      | `amplihack` CLI entry |
+| Rectangle | Subcommand            |
+| Label     | `name` / `arg count`  |
+| Arrow     | Parent-child command  |
 
 </div>
 
@@ -202,7 +202,7 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-19T00:27:26.095238+00
 ??? info "Full data (click to expand)"
 
     **Summary metrics:**
-    
+
     - **Cli Command Count**: 52
     - **Cli Argument Count**: 236
     - **Click Typer Command Count**: 11

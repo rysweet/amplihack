@@ -11,10 +11,7 @@ from __future__ import annotations
 import subprocess as sp
 from unittest.mock import MagicMock, patch
 
-import pytest
-
-from amplihack.fleet.fleet_setup import RepoSetup, SetupResult
-
+from amplihack.fleet.fleet_setup import RepoSetup
 
 # ────────────────────────────────────────────
 # UNIT TESTS (60%) — _generate_setup_script
@@ -245,7 +242,7 @@ class TestSetupResult:
 
     def test_project_name_extraction(self):
         setup = RepoSetup()
-        result = setup.setup_repo.__wrapped__ if hasattr(setup.setup_repo, '__wrapped__') else None
+        result = setup.setup_repo.__wrapped__ if hasattr(setup.setup_repo, "__wrapped__") else None
         # Just verify RepoSetup extracts project name from URL
         repo_url = "https://github.com/org/my-project.git"
         project_name = repo_url.rstrip("/").split("/")[-1].replace(".git", "")

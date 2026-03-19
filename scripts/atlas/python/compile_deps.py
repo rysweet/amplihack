@@ -36,7 +36,7 @@ def _parse_dep_spec(spec: str) -> tuple[str, str]:
     if not match:
         return spec, ""
     name = match.group(1)
-    constraint = spec[len(name):].strip()
+    constraint = spec[len(name) :].strip()
     return name, constraint
 
 
@@ -61,27 +61,31 @@ def _parse_pyproject(repo_root: Path) -> list[dict]:
     # Core dependencies
     for spec in project.get("dependencies", []):
         name, constraint = _parse_dep_spec(spec)
-        deps.append({
-            "name": name,
-            "normalized_name": _normalize_package_name(name),
-            "version_constraint": constraint,
-            "group": "core",
-            "imported_by": [],
-            "import_count": 0,
-        })
+        deps.append(
+            {
+                "name": name,
+                "normalized_name": _normalize_package_name(name),
+                "version_constraint": constraint,
+                "group": "core",
+                "imported_by": [],
+                "import_count": 0,
+            }
+        )
 
     # Optional dependencies
     for group, group_deps in project.get("optional-dependencies", {}).items():
         for spec in group_deps:
             name, constraint = _parse_dep_spec(spec)
-            deps.append({
-                "name": name,
-                "normalized_name": _normalize_package_name(name),
-                "version_constraint": constraint,
-                "group": group,
-                "imported_by": [],
-                "import_count": 0,
-            })
+            deps.append(
+                {
+                    "name": name,
+                    "normalized_name": _normalize_package_name(name),
+                    "version_constraint": constraint,
+                    "group": group,
+                    "imported_by": [],
+                    "import_count": 0,
+                }
+            )
 
     return deps
 
@@ -151,16 +155,18 @@ def _parse_cargo_toml(repo_root: Path, manifest_paths: list[str] | None = None) 
                     version = value.get("version", "")
                 else:
                     version = ""
-                deps.append({
-                    "name": name,
-                    "normalized_name": norm,
-                    "version_constraint": version,
-                    "group": group,
-                    "language": "rust",
-                    "source": source,
-                    "imported_by": [],
-                    "import_count": 0,
-                })
+                deps.append(
+                    {
+                        "name": name,
+                        "normalized_name": norm,
+                        "version_constraint": version,
+                        "group": group,
+                        "language": "rust",
+                        "source": source,
+                        "imported_by": [],
+                        "import_count": 0,
+                    }
+                )
 
     return deps
 
@@ -203,16 +209,18 @@ def _parse_package_json(repo_root: Path, manifest_paths: list[str] | None = None
                 if norm in seen:
                     continue
                 seen.add(norm)
-                deps.append({
-                    "name": name,
-                    "normalized_name": norm,
-                    "version_constraint": version,
-                    "group": group,
-                    "language": "javascript",
-                    "source": source,
-                    "imported_by": [],
-                    "import_count": 0,
-                })
+                deps.append(
+                    {
+                        "name": name,
+                        "normalized_name": norm,
+                        "version_constraint": version,
+                        "group": group,
+                        "language": "javascript",
+                        "source": source,
+                        "imported_by": [],
+                        "import_count": 0,
+                    }
+                )
 
     return deps
 
@@ -261,16 +269,18 @@ def _parse_go_mod(repo_root: Path, manifest_paths: list[str] | None = None) -> l
                 if norm in seen:
                     continue
                 seen.add(norm)
-                deps.append({
-                    "name": module_path_str,
-                    "normalized_name": norm,
-                    "version_constraint": version,
-                    "group": "dependencies",
-                    "language": "go",
-                    "source": source,
-                    "imported_by": [],
-                    "import_count": 0,
-                })
+                deps.append(
+                    {
+                        "name": module_path_str,
+                        "normalized_name": norm,
+                        "version_constraint": version,
+                        "group": "dependencies",
+                        "language": "go",
+                        "source": source,
+                        "imported_by": [],
+                        "import_count": 0,
+                    }
+                )
 
         # Parse single-line requires
         for match in single_pattern.finditer(content):
@@ -280,16 +290,18 @@ def _parse_go_mod(repo_root: Path, manifest_paths: list[str] | None = None) -> l
             if norm in seen:
                 continue
             seen.add(norm)
-            deps.append({
-                "name": module_path_str,
-                "normalized_name": norm,
-                "version_constraint": version,
-                "group": "dependencies",
-                "language": "go",
-                "source": source,
-                "imported_by": [],
-                "import_count": 0,
-            })
+            deps.append(
+                {
+                    "name": module_path_str,
+                    "normalized_name": norm,
+                    "version_constraint": version,
+                    "group": "dependencies",
+                    "language": "go",
+                    "source": source,
+                    "imported_by": [],
+                    "import_count": 0,
+                }
+            )
 
     return deps
 
@@ -325,16 +337,18 @@ def _parse_csproj(repo_root: Path) -> list[dict]:
             if norm in seen:
                 continue
             seen.add(norm)
-            deps.append({
-                "name": name,
-                "normalized_name": norm,
-                "version_constraint": version,
-                "group": "dependencies",
-                "language": "csharp",
-                "source": csproj_path.name,
-                "imported_by": [],
-                "import_count": 0,
-            })
+            deps.append(
+                {
+                    "name": name,
+                    "normalized_name": norm,
+                    "version_constraint": version,
+                    "group": "dependencies",
+                    "language": "csharp",
+                    "source": csproj_path.name,
+                    "imported_by": [],
+                    "import_count": 0,
+                }
+            )
 
     return deps
 
@@ -396,16 +410,18 @@ def _parse_pom_xml(repo_root: Path, manifest_paths: list[str] | None = None) -> 
             seen.add(norm)
 
             group = "dev-dependencies" if scope == "test" else "dependencies"
-            deps.append({
-                "name": name,
-                "normalized_name": norm,
-                "version_constraint": version,
-                "group": group,
-                "language": "java",
-                "source": source,
-                "imported_by": [],
-                "import_count": 0,
-            })
+            deps.append(
+                {
+                    "name": name,
+                    "normalized_name": norm,
+                    "version_constraint": version,
+                    "group": group,
+                    "language": "java",
+                    "source": source,
+                    "imported_by": [],
+                    "import_count": 0,
+                }
+            )
 
     return deps
 
@@ -472,19 +488,21 @@ def _parse_build_gradle(repo_root: Path, manifest_paths: list[str] | None = None
             seen.add(norm)
 
             # Determine group from configuration keyword
-            line = content[:match.start()].rsplit("\n", 1)[-1] if match.start() > 0 else ""
+            line = content[: match.start()].rsplit("\n", 1)[-1] if match.start() > 0 else ""
             group = "dev-dependencies" if any(tc in line for tc in test_configs) else "dependencies"
 
-            deps.append({
-                "name": name,
-                "normalized_name": norm,
-                "version_constraint": version,
-                "group": group,
-                "language": "java",
-                "source": source,
-                "imported_by": [],
-                "import_count": 0,
-            })
+            deps.append(
+                {
+                    "name": name,
+                    "normalized_name": norm,
+                    "version_constraint": version,
+                    "group": group,
+                    "language": "java",
+                    "source": source,
+                    "imported_by": [],
+                    "import_count": 0,
+                }
+            )
 
     return deps
 
@@ -666,8 +684,7 @@ def extract(manifest: dict, layer2: dict, repo_root: Path) -> dict:
 
     # 2. Cross-check external deps vs actual imports
     third_party_imports = [
-        imp for imp in layer2.get("imports", [])
-        if imp.get("category") == "third_party"
+        imp for imp in layer2.get("imports", []) if imp.get("category") == "third_party"
     ]
 
     # Track which declared deps are actually imported
@@ -694,8 +711,7 @@ def extract(manifest: dict, layer2: dict, repo_root: Path) -> dict:
 
     # Find unused (declared but never imported)
     unused_deps = [
-        dep["name"] for dep in ext_deps
-        if dep["import_count"] == 0 and dep["group"] == "core"
+        dep["name"] for dep in ext_deps if dep["import_count"] == 0 and dep["group"] == "core"
     ]
 
     # Find undeclared (imported but not declared, excluding stdlib)
@@ -721,8 +737,7 @@ def extract(manifest: dict, layer2: dict, repo_root: Path) -> dict:
 
     # 3. Build internal import graph
     internal_imports = [
-        imp for imp in layer2.get("imports", [])
-        if imp.get("category") == "internal"
+        imp for imp in layer2.get("imports", []) if imp.get("category") == "internal"
     ]
 
     # File-level edges
@@ -770,27 +785,33 @@ def extract(manifest: dict, layer2: dict, repo_root: Path) -> dict:
             if tgt:
                 tgt_pkg = _file_to_package(tgt, root_str)
                 if src_pkg in cycle_set and tgt_pkg in cycle_set and src_pkg != tgt_pkg:
-                    files_involved.append({
-                        "file": imp["file"],
-                        "imports": imp["module"],
-                        "lineno": imp["lineno"],
-                    })
+                    files_involved.append(
+                        {
+                            "file": imp["file"],
+                            "imports": imp["module"],
+                            "lineno": imp["lineno"],
+                        }
+                    )
         # Build cycle path
         cycle_path = list(cycle_pkgs) + [cycle_pkgs[0]]
-        circular_deps.append({
-            "cycle": cycle_path,
-            "files_involved": files_involved,
-        })
+        circular_deps.append(
+            {
+                "cycle": cycle_path,
+                "files_involved": files_involved,
+            }
+        )
 
     # Build edges list for output
     edge_list = []
     for src, targets in sorted(pkg_edges.items()):
         for tgt, count in sorted(targets.items()):
-            edge_list.append({
-                "from": src,
-                "to": tgt,
-                "import_count": count,
-            })
+            edge_list.append(
+                {
+                    "from": src,
+                    "to": tgt,
+                    "import_count": count,
+                }
+            )
 
     nodes = sorted(all_packages)
 
@@ -824,14 +845,13 @@ def self_check(data: dict, manifest: dict, layer2: dict) -> list[str]:
 
     # Every internal import from layer2 should be in the graph
     internal_imports = [
-        imp for imp in layer2.get("imports", [])
+        imp
+        for imp in layer2.get("imports", [])
         if imp.get("category") == "internal" and imp.get("resolved_target")
     ]
     graph_edges = data.get("internal_import_graph", {}).get("edges", [])
     if not graph_edges and internal_imports:
-        issues.append(
-            f"No graph edges but {len(internal_imports)} internal imports exist"
-        )
+        issues.append(f"No graph edges but {len(internal_imports)} internal imports exist")
 
     return issues
 
@@ -858,7 +878,7 @@ def main() -> int:
 
     # Summary
     s = data["summary"]
-    print(f"Layer 3: compile-deps")
+    print("Layer 3: compile-deps")
     print(f"  External dependencies: {s['external_dep_count']}")
     print(f"  Internal packages:     {s['internal_packages']}")
     print(f"  Internal edges:        {s['internal_edges']}")

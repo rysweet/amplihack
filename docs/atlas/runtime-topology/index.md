@@ -89,12 +89,12 @@ Category: <strong>Structural</strong> | Generated: 2026-03-19T00:27:22.305927+00
 
 <div class="atlas-legend" markdown>
 
-| Symbol | Meaning |
-|--------|---------|
+| Symbol       | Meaning                  |
+| ------------ | ------------------------ |
 | Rounded rect | External process/command |
-| Hexagon | Port binding |
-| Rectangle | Source module |
-| Arrow | Invocation |
+| Hexagon      | Port binding             |
+| Rectangle    | Source module            |
+| Arrow        | Invocation               |
 
 </div>
 
@@ -108,7 +108,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-19T00:27:22.305927+00
 ??? info "Full data (click to expand)"
 
     **Summary metrics:**
-    
+
     - **Subprocess Call Count**: 286
     - **Unique Subprocess Files**: 109
     - **Port Binding Count**: 5

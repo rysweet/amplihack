@@ -159,8 +159,7 @@ class RecipeParser:
                 warnings.append(f"Step '{step.id}': recipe step is missing a 'recipe' field")
             if step.step_type == StepType.BASH and step.agent:
                 warnings.append(
-                    f"Step '{step.id}': bash step has 'agent' field set "
-                    f"(did you mean type: agent?)"
+                    f"Step '{step.id}': bash step has 'agent' field set (did you mean type: agent?)"
                 )
 
         # Check for unrecognized fields if raw YAML is provided
@@ -196,14 +195,12 @@ class RecipeParser:
             if lower in RecipeParser._BOOL_FALSE:
                 return False
             raise ValueError(
-                f"Step '{step_id}': field '{field_name}' must be a boolean, "
-                f"got string '{value}'"
+                f"Step '{step_id}': field '{field_name}' must be a boolean, got string '{value}'"
             )
         if isinstance(value, int):
             return bool(value)
         raise ValueError(
-            f"Step '{step_id}': field '{field_name}' must be a boolean, "
-            f"got {type(value).__name__}"
+            f"Step '{step_id}': field '{field_name}' must be a boolean, got {type(value).__name__}"
         )
 
     @staticmethod
@@ -216,12 +213,10 @@ class RecipeParser:
                 return int(value)
             except ValueError:
                 raise ValueError(
-                    f"Step '{step_id}': field '{field_name}' must be an integer, "
-                    f"got '{value}'"
+                    f"Step '{step_id}': field '{field_name}' must be an integer, got '{value}'"
                 ) from None
         raise ValueError(
-            f"Step '{step_id}': field '{field_name}' must be an integer, "
-            f"got {type(value).__name__}"
+            f"Step '{step_id}': field '{field_name}' must be an integer, got {type(value).__name__}"
         )
 
     def _parse_step(self, raw: dict[str, Any]) -> Step:
@@ -246,9 +241,7 @@ class RecipeParser:
         # Coerce timeout (optional int field)
         raw_timeout = raw.get("timeout")
         timeout = (
-            self._coerce_int(raw_timeout, "timeout", step_id)
-            if raw_timeout is not None
-            else None
+            self._coerce_int(raw_timeout, "timeout", step_id) if raw_timeout is not None else None
         )
 
         return Step(

@@ -20,7 +20,6 @@ from amplihack.fleet._projects import (
     validate_repo_url,
 )
 
-
 # ────────────────────────────────────────────
 # UNIT TESTS (60%) — Project dataclass
 # ────────────────────────────────────────────
@@ -201,7 +200,7 @@ class TestProjectsIO:
         save_projects(projects, path)
         loaded = load_projects(path)
         assert len(loaded["myapp"].objectives) == len(tricky_titles)
-        for orig, loaded_obj in zip(tricky_titles, loaded["myapp"].objectives):
+        for orig, loaded_obj in zip(tricky_titles, loaded["myapp"].objectives, strict=False):
             assert loaded_obj["title"] == orig, f"Mismatch for {orig!r}"
 
     def test_load_corrupt_toml_returns_empty(self, tmp_path: Path):
@@ -287,7 +286,6 @@ class TestProjectCLI:
 
     def test_add_issue_project_not_found(self, tmp_path: Path, monkeypatch):
         """add-issue with unknown project shows error."""
-        from unittest.mock import patch
 
         from click.testing import CliRunner
 
@@ -295,13 +293,12 @@ class TestProjectCLI:
 
         # Point load_projects to an empty file
         empty_path = tmp_path / "projects.toml"
-        monkeypatch.setattr(
-            "amplihack.fleet._projects.DEFAULT_PROJECTS_PATH", empty_path
-        )
+        monkeypatch.setattr("amplihack.fleet._projects.DEFAULT_PROJECTS_PATH", empty_path)
 
         runner = CliRunner()
         result = runner.invoke(
-            fleet_cli, ["project", "add-issue", "nonexistent", "42"],
+            fleet_cli,
+            ["project", "add-issue", "nonexistent", "42"],
             catch_exceptions=False,
         )
         assert "Project not found" in result.output
@@ -317,9 +314,7 @@ class TestProjectCLI:
         projects = {"myapp": Project(name="myapp", repo_url="https://github.com/org/myapp")}
         save_projects(projects, projects_path)
 
-        monkeypatch.setattr(
-            "amplihack.fleet._projects.DEFAULT_PROJECTS_PATH", projects_path
-        )
+        monkeypatch.setattr("amplihack.fleet._projects.DEFAULT_PROJECTS_PATH", projects_path)
 
         runner = CliRunner()
         result = runner.invoke(
@@ -342,13 +337,12 @@ class TestProjectCLI:
         from amplihack.fleet.fleet_cli import fleet_cli
 
         empty_path = tmp_path / "projects.toml"
-        monkeypatch.setattr(
-            "amplihack.fleet._projects.DEFAULT_PROJECTS_PATH", empty_path
-        )
+        monkeypatch.setattr("amplihack.fleet._projects.DEFAULT_PROJECTS_PATH", empty_path)
 
         runner = CliRunner()
         result = runner.invoke(
-            fleet_cli, ["project", "track-issue", "nonexistent"],
+            fleet_cli,
+            ["project", "track-issue", "nonexistent"],
             catch_exceptions=False,
         )
         assert "Project not found" in result.output

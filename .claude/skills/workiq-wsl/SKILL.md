@@ -102,6 +102,7 @@ with a natural-language prompt. The `--allow-all-tools` flag grants the Copilot 
 permission to call the WorkIQ MCP tool, which queries Microsoft Graph on your behalf.
 
 Key flags:
+
 - `--allow-all-tools` — Lets Copilot use WorkIQ without manual approval
 - `--silent` — Suppresses interactive UI elements
 - `--no-auto-update` — Prevents update checks that slow down execution
@@ -149,25 +150,32 @@ Microsoft 365, Outlook, or WorkIQ in a WSL environment.
 When activated, perform these checks in order:
 
 1. **Detect WSL environment:**
+
    ```bash
    grep -qi microsoft /proc/version
    ```
+
    If not WSL, fall back to the standard `work-iq` skill (native MCP approach).
 
 2. **Check Windows Copilot is available:**
+
    ```bash
    powershell.exe -NoProfile -Command "copilot --version" 2>&1
    ```
+
    If not found, guide user through installation (see Prerequisites §2).
 
 3. **Check WorkIQ plugin is installed:**
+
    ```bash
    powershell.exe -NoProfile -Command "copilot plugin list" 2>&1 | grep -i workiq
    ```
+
    If not found, guide user through installation (see Prerequisites §4).
 
 4. **Route the query:** Build the powershell.exe command with the user's natural-language
    question and execute it:
+
    ```bash
    powershell.exe -NoProfile -Command "copilot -p 'Use the workiq ask_work_iq tool to answer: <USER_QUERY>' --allow-all-tools --silent --no-auto-update 2>&1"
    ```
@@ -191,16 +199,16 @@ To set up M365 access from WSL:
 
 ## Troubleshooting
 
-| Problem | Cause | Solution |
-|---------|-------|----------|
-| `copilot: command not found` | Copilot CLI not installed on Windows host | Install via `winget install GitHub.Copilot` from Windows Terminal |
-| `powershell.exe: not found` | Not running in WSL2 or WSL interop disabled | Check `cat /proc/sys/fs/binfmt_misc/WSLInterop` exists |
-| WorkIQ timeout / no response | M365 auth expired or never completed | Run the query again — it will re-trigger browser auth |
-| PowerShell execution policy error | Restrictive execution policy | The `-NoProfile` flag avoids this; if persists, run `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser` in PowerShell |
-| Quote escaping issues | Nested quotes between bash and PowerShell | Use double quotes for the outer PowerShell command, single quotes for the inner Copilot prompt |
-| Garbled output or ANSI codes | Terminal encoding mismatch | Pipe output through `sed 's/\x1b\[[0-9;]*m//g'` to strip ANSI escape codes |
-| `GitHub auth required` | Copilot CLI not authenticated | Run `powershell.exe -NoProfile -Command "copilot login"` |
-| Slow responses (30s+) | Normal — each query boots Copilot + WorkIQ MCP | Expected behavior; first query is slowest due to MCP server startup |
+| Problem                           | Cause                                          | Solution                                                                                                                |
+| --------------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `copilot: command not found`      | Copilot CLI not installed on Windows host      | Install via `winget install GitHub.Copilot` from Windows Terminal                                                       |
+| `powershell.exe: not found`       | Not running in WSL2 or WSL interop disabled    | Check `cat /proc/sys/fs/binfmt_misc/WSLInterop` exists                                                                  |
+| WorkIQ timeout / no response      | M365 auth expired or never completed           | Run the query again — it will re-trigger browser auth                                                                   |
+| PowerShell execution policy error | Restrictive execution policy                   | The `-NoProfile` flag avoids this; if persists, run `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser` in PowerShell |
+| Quote escaping issues             | Nested quotes between bash and PowerShell      | Use double quotes for the outer PowerShell command, single quotes for the inner Copilot prompt                          |
+| Garbled output or ANSI codes      | Terminal encoding mismatch                     | Pipe output through `sed 's/\x1b\[[0-9;]*m//g'` to strip ANSI escape codes                                              |
+| `GitHub auth required`            | Copilot CLI not authenticated                  | Run `powershell.exe -NoProfile -Command "copilot login"`                                                                |
+| Slow responses (30s+)             | Normal — each query boots Copilot + WorkIQ MCP | Expected behavior; first query is slowest due to MCP server startup                                                     |
 
 ## Limitations
 
@@ -216,13 +224,13 @@ To set up M365 access from WSL:
 
 This skill complements the existing `work-iq` skill:
 
-| | `work-iq` | `workiq-wsl` |
-|---|-----------|-------------|
-| **Environment** | Any (native MCP) | WSL2 only |
+|                     | `work-iq`                    | `workiq-wsl`                                    |
+| ------------------- | ---------------------------- | ----------------------------------------------- |
+| **Environment**     | Any (native MCP)             | WSL2 only                                       |
 | **How it connects** | Direct MCP server connection | Bridge via powershell.exe → Windows Copilot CLI |
-| **Auth** | Browser from current OS | Browser on Windows host |
-| **Latency** | Low (direct MCP) | Higher (~10-30s per query) |
-| **Session** | Persistent MCP connection | New process per query |
+| **Auth**            | Browser from current OS      | Browser on Windows host                         |
+| **Latency**         | Low (direct MCP)             | Higher (~10-30s per query)                      |
+| **Session**         | Persistent MCP connection    | New process per query                           |
 
 Use `work-iq` when running natively. Use `workiq-wsl` when running inside WSL2 and
 the native MCP approach is unavailable.
