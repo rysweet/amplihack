@@ -9,7 +9,7 @@ title: "Layer 8: User Journeys"
 # Layer 8: User Journeys
 
 <div class="atlas-metadata">
-Category: <strong>Behavioral</strong> | Generated: 2026-03-18T22:10:33.574152+00:00
+Category: <strong>Behavioral</strong> | Generated: 2026-03-19T00:32:00.001334+00:00
 </div>
 
 ## Map

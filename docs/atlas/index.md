@@ -4,7 +4,7 @@ title: Code Atlas
 
 # Code Atlas
 
-<div class="atlas-metadata">Generated: 2026-03-18 22:10 UTC</div>
+<div class="atlas-metadata">Generated: 2026-03-19 00:32 UTC</div>
 
 ## Layer Overview
 
@@ -28,9 +28,9 @@ title: Code Atlas
     Cross-file imports, symbol references, dead code
 
     <div class="atlas-coverage">
-    <div class="atlas-coverage__bar" style="width:100%"></div>
+    <div class="atlas-coverage__bar" style="width:26%"></div>
     </div>
-    <small>100% coverage</small>
+    <small>601/2293 files analyzed (26%)</small>
 
     <div class="atlas-scale">
     **total definitions**: 3369 | **total exports**: 1070 | **total imports**: 4235 | **potentially dead**: 140
@@ -130,12 +130,13 @@ title: Code Atlas
 
 ## Languages
 
-Primary language: **Python** | Total code: **125,298** lines | Detected via: *tokei*
+Primary language: **Python** | Total code: **139,522** lines | Detected via: *tokei*
 
 | Language | Files | Code Lines | % | Analysis Available |
 |----------|------:|-----------:|--:|-------------------|
-| Python | 533 | 120,895 | 96.5% | Full (AST, imports, dead code, journeys) |
-| Json | 20 | 4,403 | 3.5% | File-level only |
+| Python | 533 | 120,895 | 86.6% | Full (AST, imports, dead code, journeys) |
+| Json | 24 | 17,065 | 12.2% | File-level only |
+| Xml | 13 | 1,562 | 1.1% | File-level only |
 
 > **Note**: Full AST analysis is currently available for Python only. Other languages have dependency and file-level analysis.
 
