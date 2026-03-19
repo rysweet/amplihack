@@ -319,7 +319,7 @@ AMPLIHACK_OTEL_ENABLED={os.environ.get("AMPLIHACK_OTEL_ENABLED", "false")}
 # Eval parameters (override as needed)
 AMPLIHACK_ASPIRE_EVAL_TURNS=5000
 AMPLIHACK_ASPIRE_EVAL_QUESTIONS=50
-AMPLIHACK_ASPIRE_ANSWER_TIMEOUT=120
+AMPLIHACK_ASPIRE_ANSWER_TIMEOUT=0
 """
     Path(path).write_text(env_content)
     logger.info("Wrote eval environment to %s", path)

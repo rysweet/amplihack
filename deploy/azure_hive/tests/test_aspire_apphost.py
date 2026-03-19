@@ -58,9 +58,15 @@ class TestAspireAppHost:
 
     def test_apphost_long_horizon_defaults_to_no_answer_timeout(self):
         content = _APPHOST.read_text()
-        assert '"eval:answerTimeout"' in content
-        assert '"AMPLIHACK_ASPIRE_ANSWER_TIMEOUT"' in content
-        assert '"0"' in content
+        assert (
+            'GetConfig(builder, "eval:answerTimeout", "AMPLIHACK_ASPIRE_ANSWER_TIMEOUT", "0")'
+            in content
+        )
+
+    def test_apphost_pythonpath_includes_eval_repo_src(self):
+        content = _APPHOST.read_text()
+        assert 'Path.Combine(repoRoot, "..", "amplihack-agent-eval")' in content
+        assert 'WithEnvironment("PYTHONPATH", pythonPath)' in content
 
     def test_apphost_exposes_monitor_spotcheck_thresholds(self):
         content = _APPHOST.read_text()

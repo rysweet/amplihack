@@ -9,6 +9,12 @@ var builder = DistributedApplication.CreateBuilder(args);
 
 var repoRoot = Path.GetFullPath(Path.Combine(builder.AppHostDirectory, "..", "..", ".."));
 var srcPath = Path.Combine(repoRoot, "src");
+var evalRepoRoot = Path.GetFullPath(Path.Combine(repoRoot, "..", "amplihack-agent-eval"));
+var evalSrcPath = Path.Combine(evalRepoRoot, "src");
+var pythonPath = string.Join(
+    Path.PathSeparator,
+    new[] { srcPath, evalSrcPath }.Where(Directory.Exists).Distinct()
+);
 var deploymentProfile = GetConfig(builder, "azure:deploymentProfile", "HIVE_DEPLOYMENT_PROFILE", "federated-100");
 var hiveName = GetConfig(builder, "azure:hiveName", "HIVE_NAME", "amplihive");
 var agentCount = GetConfig(builder, "azure:agentCount", "HIVE_AGENT_COUNT", "100");
@@ -31,13 +37,13 @@ var otlpProtocol = GetConfig(builder, "telemetry:protocol", "OTEL_EXPORTER_OTLP_
 var otlpEndpoint = GetConfig(builder, "telemetry:endpoint", "OTEL_EXPORTER_OTLP_ENDPOINT", defaultOtlpEndpoint);
 var otlpCertificate = ResolveTrustedDevCertPath();
 
-var otelHeartbeat = builder
-    .AddExecutable("otel-heartbeat", "python", repoRoot)
-    .WithArgs("deploy/azure_hive/aspire/telemetry_heartbeat.py")
-    .WithEnvironment("PYTHONPATH", srcPath)
-    .WithEnvironment("PYTHONUNBUFFERED", "1")
-    .WithEnvironment("AMPLIHACK_OTEL_ENABLED", "true")
-    .WithEnvironment("OTEL_EXPORTER_OTLP_PROTOCOL", otlpProtocol)
+    var otelHeartbeat = builder
+        .AddExecutable("otel-heartbeat", "python", repoRoot)
+        .WithArgs("deploy/azure_hive/aspire/telemetry_heartbeat.py")
+        .WithEnvironment("PYTHONPATH", pythonPath)
+        .WithEnvironment("PYTHONUNBUFFERED", "1")
+        .WithEnvironment("AMPLIHACK_OTEL_ENABLED", "true")
+        .WithEnvironment("OTEL_EXPORTER_OTLP_PROTOCOL", otlpProtocol)
     .WithEnvironment("OTEL_EXPORTER_OTLP_ENDPOINT", otlpEndpoint)
     .WithEnvironment("OTEL_SERVICE_NAMESPACE", "amplihack")
     .WithEnvironment("OTEL_SERVICE_NAME", "amplihack.aspire.telemetry-heartbeat");
@@ -77,7 +83,7 @@ if (!string.IsNullOrWhiteSpace(eventHubConnectionString) && !string.IsNullOrWhit
         var azureHiveEvalMonitor = builder
             .AddExecutable("azure-hive-eval-monitor", "python", repoRoot)
             .WithArgs(BuildMonitorArgs(builder, eventHubConnectionString, responseHub))
-            .WithEnvironment("PYTHONPATH", srcPath)
+            .WithEnvironment("PYTHONPATH", pythonPath)
             .WithEnvironment("PYTHONUNBUFFERED", "1")
             .WithEnvironment("AMPLIHACK_OTEL_ENABLED", "true")
             .WithEnvironment("OTEL_EXPORTER_OTLP_PROTOCOL", otlpProtocol)
@@ -99,7 +105,7 @@ if (
         var azureHiveRetrievalSmoke = builder
             .AddExecutable("azure-hive-retrieval-smoke", "python", repoRoot)
             .WithArgs(BuildRetrievalSmokeArgs(builder, eventHubConnectionString, inputHub, responseHub))
-            .WithEnvironment("PYTHONPATH", srcPath)
+            .WithEnvironment("PYTHONPATH", pythonPath)
             .WithEnvironment("PYTHONUNBUFFERED", "1")
             .WithEnvironment("AMPLIHACK_OTEL_ENABLED", "true")
             .WithEnvironment("OTEL_EXPORTER_OTLP_PROTOCOL", otlpProtocol)
@@ -114,7 +120,7 @@ if (
         var azureHiveLongHorizonEval = builder
             .AddExecutable("azure-hive-long-horizon-eval", "python", repoRoot)
             .WithArgs(BuildLongHorizonArgs(builder, eventHubConnectionString, inputHub, responseHub))
-            .WithEnvironment("PYTHONPATH", srcPath)
+            .WithEnvironment("PYTHONPATH", pythonPath)
             .WithEnvironment("PYTHONUNBUFFERED", "1")
             .WithEnvironment("AMPLIHACK_OTEL_ENABLED", "true")
             .WithEnvironment("OTEL_EXPORTER_OTLP_PROTOCOL", otlpProtocol)
@@ -129,7 +135,7 @@ if (
         var azureHiveSecurityEval = builder
             .AddExecutable("azure-hive-security-eval", "python", repoRoot)
             .WithArgs(BuildSecurityEvalArgs(builder, eventHubConnectionString, inputHub, responseHub))
-            .WithEnvironment("PYTHONPATH", srcPath)
+            .WithEnvironment("PYTHONPATH", pythonPath)
             .WithEnvironment("PYTHONUNBUFFERED", "1")
             .WithEnvironment("AMPLIHACK_OTEL_ENABLED", "true")
             .WithEnvironment("OTEL_EXPORTER_OTLP_PROTOCOL", otlpProtocol)
@@ -341,7 +347,7 @@ static string[] BuildLongHorizonArgs(
         "--seed",
         GetConfig(builder, "eval:seed", "AMPLIHACK_ASPIRE_EVAL_SEED", "42"),
         "--answer-timeout",
-        GetConfig(builder, "eval:answerTimeout", "AMPLIHACK_ASPIRE_ANSWER_TIMEOUT", "120"),
+        GetConfig(builder, "eval:answerTimeout", "AMPLIHACK_ASPIRE_ANSWER_TIMEOUT", "0"),
         "--grader-model",
         GetConfig(
             builder,
