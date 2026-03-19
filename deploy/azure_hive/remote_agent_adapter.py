@@ -411,8 +411,37 @@ class RemoteAgentAdapter:
 
         return answer
 
+    # Prefixes that indicate the agent understood the question but had no relevant
+    # facts — semantically a non-answer even though it's a syntactically valid string.
+    _ABSTENTION_PREFIXES: tuple[str, ...] = (
+        "the provided facts do not contain",
+        "the provided context does not contain",
+        "no information available",
+        "not enough context",
+        "i don't have information",
+        "i do not have information",
+        "there is no information",
+        "based on the provided",
+        "the facts provided do not",
+        "i cannot find",
+        "no relevant information",
+    )
+
+    @classmethod
+    def _is_semantic_abstention(cls, answer: str) -> bool:
+        """Return True if the answer is a semantic abstention (agent had no facts)."""
+        lowered = answer.strip().lower()
+        return any(lowered.startswith(prefix) for prefix in cls._ABSTENTION_PREFIXES)
+
     def answer_question(self, question: str) -> str:
-        """Send question to one agent, retrying on other agents when configured."""
+        """Send question to one agent, retrying on other agents when configured.
+
+        Retries on:
+        - "No answer received" (transport miss / timeout)
+        - Semantic abstentions: answers that start with known no-context phrases,
+          meaning the agent understood the question but lacked the relevant facts.
+          Retrying on a different agent may surface facts stored on another shard.
+        """
         # Wait for agents to finish processing content (blocks all threads)
         if self._learn_count > 0 and not self._idle_wait_done.is_set():
             with self._counter_lock:
@@ -430,11 +459,11 @@ class RemoteAgentAdapter:
             attempt_target = (target_agent + attempt) % self._agent_count
             if attempt > 0:
                 logger.info(
-                    "RemoteAgentAdapter: retrying question on %s after previous timeout/no-answer",
+                    "RemoteAgentAdapter: retrying question on %s after previous timeout/no-answer/abstention",
                     self._agent_name(attempt_target),
                 )
             answer = self._send_question_to_agent(question, attempt_target)
-            if answer != "No answer received":
+            if answer != "No answer received" and not self._is_semantic_abstention(answer):
                 return answer
             last_answer = answer
 
