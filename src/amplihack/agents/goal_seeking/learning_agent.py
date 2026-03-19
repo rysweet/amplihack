@@ -47,7 +47,13 @@ from .retrieval_constants import (
     TIER2_ENTITY_SIZE,
     VERBATIM_RETRIEVAL_THRESHOLD,
 )
-from .similarity import rerank_facts_by_query
+from .similarity import (
+    extract_entity_anchor_tokens,
+    extract_query_anchor_tokens,
+    extract_query_phrases,
+    rerank_facts_by_query,
+    tokenize_similarity_text,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -890,31 +896,49 @@ class LearningAgent:
         relevant_facts = rerank_facts_by_query(relevant_facts, question)
 
         # Sort temporally if needed (after reranking so top-K are already relevant).
-        # Only sort facts that HAVE temporal metadata -- leave non-temporal facts
-        # in their reranked (relevance-first) order to avoid pushing relevant
-        # non-temporal facts to the end of the list.
+        # Only promote the temporally sortable facts that still match the question's
+        # discriminative anchors. A global time sort across every temporal fact can
+        # let unrelated early timeline items outrank the entity-specific history the
+        # question is actually asking about.
         if intent.get("needs_temporal") or intent_type in (
             "temporal_comparison",
             "incremental_update",
         ):
-            temporal_facts = []
-            non_temporal_facts = []
+            entity_anchor_tokens = extract_entity_anchor_tokens(question)
+            anchor_tokens = extract_query_anchor_tokens(question)
+            query_phrases = extract_query_phrases(question)
+            prioritized_temporal_facts = []
+            remaining_facts = []
+
+            def matches_temporal_query(fact: dict[str, Any]) -> bool:
+                fact_text = f"{fact.get('context', '')} {fact.get('outcome', '')}"
+                fact_text_lower = fact_text.lower()
+                fact_tokens = tokenize_similarity_text(fact_text)
+                entity_anchor_hits = len(entity_anchor_tokens & fact_tokens)
+                anchor_hits = len(anchor_tokens & fact_tokens)
+                phrase_hits = sum(1 for phrase in query_phrases if phrase in fact_text_lower)
+                required_anchor_hits = 1 if len(anchor_tokens) < 3 else 2
+                if entity_anchor_tokens:
+                    return entity_anchor_hits > 0 and (
+                        phrase_hits > 0 or anchor_hits >= required_anchor_hits
+                    )
+                return phrase_hits > 0 or anchor_hits >= required_anchor_hits
+
             for f in relevant_facts:
                 meta = f.get("metadata", {})
                 t_idx = meta.get("temporal_index", 0) if meta else 0
-                if t_idx > 0:
-                    temporal_facts.append(f)
+                if t_idx > 0 and matches_temporal_query(f):
+                    prioritized_temporal_facts.append(f)
                 else:
-                    non_temporal_facts.append(f)
+                    remaining_facts.append(f)
 
             def temporal_sort_key(fact):
                 meta = fact.get("metadata", {})
                 t_idx = meta.get("temporal_index", 999999) if meta else 999999
                 return (t_idx, fact.get("timestamp", ""))
 
-            temporal_facts.sort(key=temporal_sort_key)
-            # Put temporal facts first (chronological), then non-temporal (by relevance)
-            relevant_facts = temporal_facts + non_temporal_facts
+            prioritized_temporal_facts.sort(key=temporal_sort_key)
+            relevant_facts = prioritized_temporal_facts + remaining_facts
 
         # If the question references a specific article/source, provide a filtered
         # subset of facts from JUST that article. This helps the LLM focus on the
@@ -2664,7 +2688,11 @@ class LearningAgent:
             line += f"   Fact: {fact['outcome']}\n\n"
             return line
 
-        if intent.get("needs_temporal"):
+        include_temporal_context = intent.get("needs_temporal") or intent_type in (
+            "temporal_comparison",
+            "incremental_update",
+        )
+        if include_temporal_context:
             context_str = "Relevant facts (ordered chronologically where possible):\n"
             for i, fact in enumerate(context[:max_facts], 1):
                 context_str += _format_fact(i, fact, include_temporal=True)
