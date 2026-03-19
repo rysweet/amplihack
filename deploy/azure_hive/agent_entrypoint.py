@@ -404,6 +404,7 @@ def main() -> None:
     agent.on_answer = answer_publisher.publish_answer
 
     logger.info("Agent %s memory initialized and entering OODA loop", agent_name)
+    answer_publisher.publish_agent_online()
 
     # Signal readiness
     try:
