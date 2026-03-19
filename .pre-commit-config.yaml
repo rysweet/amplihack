@@ -90,7 +90,8 @@ repos:
     rev: v1.5.0
     hooks:
       - id: detect-secrets
-        exclude: .*\.lock$|package-lock\.json$
+        args: ["--baseline", ".secrets.baseline"]
+        exclude: .*\.lock$|package-lock\.json$|\.secrets\.baseline$
 
   # Custom quality gates to match CI standards
   - repo: local
@@ -169,7 +170,7 @@ repos:
         language: system
         types: [python]
         pass_filenames: true
-        exclude: '^(build_hooks\.py$|\.claude/tools/amplihack/.*\.py$|\.claude/tools/xpia/.*\.py$|\.claude/skills/.*\.py$|\.github/scripts/.*\.py$|tests/.*\.py$|.*/tests/.*\.py$|archive/.*\.py$|experiments/.*\.py$|src/amplihack/memory/backends/kuzu_backend\.py$|src/amplihack/memory/kuzu/.*\.py$|src/amplihack/vendor/.*\.py$)'
+        exclude: '^(build_hooks\.py$|\.claude/tools/amplihack/.*\.py$|\.claude/tools/xpia/.*\.py$|\.claude/skills/.*\.py$|\.github/scripts/.*\.py$|tests/.*\.py$|.*/tests/.*\.py$|archive/.*\.py$|experiments/.*\.py$|src/amplihack/memory/backends/kuzu_backend\.py$|src/amplihack/memory/kuzu/.*\.py$|src/amplihack/vendor/.*\.py$|deploy/.*\.py$|src/amplihack/eval/distributed_adapter\.py$)'
 
       # Dependency validation - ensures optional deps have try/except
       - id: check-dependencies

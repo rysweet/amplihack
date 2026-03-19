@@ -776,6 +776,40 @@ class TestEventHubsShardTransportLocal:
             f"Local bypass query returned no results: {[f.content for f in results]}"
         )
 
+    def test_query_shard_zero_timeout_waits_for_response(self):
+        """timeout=0 means wait indefinitely for the remote shard response."""
+        transport = self._make_transport("agent-1")
+        transport._timeout = 0
+
+        def delayed_publish(payload, partition_key=None):
+            correlation_id = payload["payload"]["correlation_id"]
+
+            def respond():
+                time.sleep(0.05)
+                with transport._pending_lock:
+                    done, results = transport._pending[correlation_id]
+                    results.append(
+                        {
+                            "fact_id": "eh-remote-1",
+                            "content": "Remote fact from agent-0",
+                            "concept": "test",
+                            "confidence": 0.9,
+                            "source_agent": "agent-0",
+                            "tags": [],
+                            "created_at": 0.0,
+                            "metadata": {},
+                        }
+                    )
+                done.set()
+
+            threading.Thread(target=respond, daemon=True).start()
+
+        transport._publish = delayed_publish
+
+        results = transport.query_shard("agent-0", "remote fact", limit=5)
+
+        assert [fact.content for fact in results] == ["Remote fact from agent-0"]
+
     def test_handle_shard_query_returns_error_when_no_agent(self):
         """handle_shard_query without agent returns an explicit error payload."""
         from amplihack.agents.goal_seeking.hive_mind.event_bus import BusEvent

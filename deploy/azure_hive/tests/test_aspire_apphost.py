@@ -4,6 +4,7 @@ from pathlib import Path
 
 _ASPIRE_DIR = Path(__file__).parent.parent / "aspire"
 _APPHOST = _ASPIRE_DIR / "apphost.cs"
+_LAUNCH_SETTINGS = _ASPIRE_DIR / "Properties" / "launchSettings.json"
 _NUGET_CONFIG = _ASPIRE_DIR / "NuGet.config"
 _HEARTBEAT = _ASPIRE_DIR / "telemetry_heartbeat.py"
 _DEPLOY_SH = Path(__file__).parent.parent / "deploy.sh"
@@ -18,20 +19,29 @@ class TestAspireAppHost:
     def test_apphost_uses_file_based_sdk(self):
         assert "#:sdk Aspire.AppHost.Sdk@" in _APPHOST.read_text()
 
-    def test_apphost_wires_grpc_otel_for_local_dashboard(self):
+    def test_apphost_wires_http_otel_for_local_dashboard(self):
         content = _APPHOST.read_text()
         assert "builder.AppHostDirectory" in content
-        assert (
-            'GetConfig(builder, "telemetry:protocol", "OTEL_EXPORTER_OTLP_PROTOCOL", "grpc")'
-            in content
-        )
-        assert (
-            'GetConfig(builder, "telemetry:endpoint", "OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")'
-            in content
-        )
+        assert '"ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL"' in content
+        assert '"telemetry:protocol"' in content
+        assert '"OTEL_EXPORTER_OTLP_PROTOCOL"' in content
+        assert '"http/protobuf"' in content
+        assert '"grpc"' in content
+        assert '"telemetry:endpoint"' in content
+        assert '"OTEL_EXPORTER_OTLP_ENDPOINT"' in content
+        assert '"http://localhost:4318"' in content
         assert 'WithEnvironment("OTEL_EXPORTER_OTLP_PROTOCOL", otlpProtocol)' in content
         assert 'WithEnvironment("OTEL_EXPORTER_OTLP_ENDPOINT", otlpEndpoint)' in content
+        assert 'WithEnvironment("OTEL_EXPORTER_OTLP_CERTIFICATE", certPath)' in content
+        assert "ResolveTrustedDevCertPath()" in content
         assert 'OTEL_SERVICE_NAME", "amplihack.aspire.telemetry-heartbeat"' in content
+
+    def test_launch_settings_expose_aspire_dashboard_otlp_http_endpoint(self):
+        assert _LAUNCH_SETTINGS.exists()
+        content = _LAUNCH_SETTINGS.read_text()
+        assert '"ASPIRE_ALLOW_UNSECURED_TRANSPORT": "true"' in content
+        assert '"ASPIRE_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS": "true"' in content
+        assert '"ASPIRE_DASHBOARD_OTLP_HTTP_ENDPOINT_URL": "http://localhost:4318"' in content
 
     def test_apphost_models_real_azure_commands(self):
         content = _APPHOST.read_text()
@@ -45,6 +55,12 @@ class TestAspireAppHost:
         assert "AMPLIHACK_ASPIRE_ENABLE_RETRIEVAL_SMOKE" in content
         assert "AMPLIHACK_ASPIRE_ENABLE_LONG_HORIZON_EVAL" in content
         assert "AMPLIHACK_ASPIRE_ENABLE_SECURITY_EVAL" in content
+
+    def test_apphost_long_horizon_defaults_to_no_answer_timeout(self):
+        content = _APPHOST.read_text()
+        assert '"eval:answerTimeout"' in content
+        assert '"AMPLIHACK_ASPIRE_ANSWER_TIMEOUT"' in content
+        assert '"0"' in content
 
     def test_apphost_exposes_monitor_spotcheck_thresholds(self):
         content = _APPHOST.read_text()

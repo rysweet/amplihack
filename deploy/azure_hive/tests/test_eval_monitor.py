@@ -103,6 +103,34 @@ class TestEvalMonitor:
             "answers": 1,
         }
 
+    def test_later_lifecycle_events_imply_online(self):
+        mod = _load_module()
+        events = [
+            {"event_type": "AGENT_READY", "agent_id": "agent-1"},
+            {
+                "event_type": "AGENT_PROGRESS",
+                "agent_id": "agent-2",
+                "processed_count": 3,
+                "phase": "learn",
+            },
+            {"event_type": "EVAL_ANSWER", "agent_id": "agent-3"},
+        ]
+
+        for event in events:
+            monitor = mod.EvalMonitor(
+                connection_string="conn",
+                response_hub="hub",
+                consumer_group="eval-reader",
+                agent_count=10,
+                output_path="",
+            )
+
+            monitor._handle_event(event)
+
+            snapshot = monitor._snapshot()
+            assert snapshot["agents_online"] == 1
+            assert snapshot["agents"][event["agent_id"]]["online"] is True
+
     def test_criteria_status_reports_unmet_requirements(self):
         mod = _load_module()
         monitor = mod.EvalMonitor(

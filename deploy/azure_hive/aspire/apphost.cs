@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -21,10 +22,16 @@ var enableDistributedRetrieval = GetConfig(
     "HIVE_ENABLE_DISTRIBUTED_RETRIEVAL",
     "true"
 );
-var otlpProtocol = GetConfig(builder, "telemetry:protocol", "OTEL_EXPORTER_OTLP_PROTOCOL", "grpc");
-var otlpEndpoint = GetConfig(builder, "telemetry:endpoint", "OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317");
+var dashboardGrpcEndpoint = Environment.GetEnvironmentVariable("ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL");
+var defaultOtlpProtocol = string.IsNullOrWhiteSpace(dashboardGrpcEndpoint) ? "http/protobuf" : "grpc";
+var defaultOtlpEndpoint = string.IsNullOrWhiteSpace(dashboardGrpcEndpoint)
+    ? "http://localhost:4318"
+    : dashboardGrpcEndpoint;
+var otlpProtocol = GetConfig(builder, "telemetry:protocol", "OTEL_EXPORTER_OTLP_PROTOCOL", defaultOtlpProtocol);
+var otlpEndpoint = GetConfig(builder, "telemetry:endpoint", "OTEL_EXPORTER_OTLP_ENDPOINT", defaultOtlpEndpoint);
+var otlpCertificate = ResolveTrustedDevCertPath();
 
-builder
+var otelHeartbeat = builder
     .AddExecutable("otel-heartbeat", "python", repoRoot)
     .WithArgs("deploy/azure_hive/aspire/telemetry_heartbeat.py")
     .WithEnvironment("PYTHONPATH", srcPath)
@@ -34,10 +41,11 @@ builder
     .WithEnvironment("OTEL_EXPORTER_OTLP_ENDPOINT", otlpEndpoint)
     .WithEnvironment("OTEL_SERVICE_NAMESPACE", "amplihack")
     .WithEnvironment("OTEL_SERVICE_NAME", "amplihack.aspire.telemetry-heartbeat");
+ApplyOtlpCertificate(otelHeartbeat, otlpCertificate);
 
 if (GetBool(builder, "azure:enableDeployCommand", "AMPLIHACK_ASPIRE_ENABLE_AZURE_DEPLOY"))
 {
-    builder
+    var azureHiveDeploy = builder
         .AddExecutable("azure-hive-deploy", "bash", repoRoot)
         .WithArgs("deploy/azure_hive/deploy.sh")
         .WithEnvironment("PYTHONUNBUFFERED", "1")
@@ -50,6 +58,7 @@ if (GetBool(builder, "azure:enableDeployCommand", "AMPLIHACK_ASPIRE_ENABLE_AZURE
         .WithEnvironment("OTEL_EXPORTER_OTLP_ENDPOINT", otlpEndpoint)
         .WithEnvironment("OTEL_SERVICE_NAMESPACE", "amplihack")
         .WithEnvironment("OTEL_SERVICE_NAME", "amplihack.aspire.azure-hive-deploy");
+    ApplyOtlpCertificate(azureHiveDeploy, otlpCertificate);
 }
 
 var eventHubConnectionString = GetConfig(
@@ -65,7 +74,7 @@ if (!string.IsNullOrWhiteSpace(eventHubConnectionString) && !string.IsNullOrWhit
 {
     if (GetBool(builder, "eval:enableMonitor", "AMPLIHACK_ASPIRE_ENABLE_EVAL_MONITOR"))
     {
-        builder
+        var azureHiveEvalMonitor = builder
             .AddExecutable("azure-hive-eval-monitor", "python", repoRoot)
             .WithArgs(BuildMonitorArgs(builder, eventHubConnectionString, responseHub))
             .WithEnvironment("PYTHONPATH", srcPath)
@@ -75,6 +84,7 @@ if (!string.IsNullOrWhiteSpace(eventHubConnectionString) && !string.IsNullOrWhit
             .WithEnvironment("OTEL_EXPORTER_OTLP_ENDPOINT", otlpEndpoint)
             .WithEnvironment("OTEL_SERVICE_NAMESPACE", "amplihack")
             .WithEnvironment("OTEL_SERVICE_NAME", "amplihack.aspire.azure-hive-monitor");
+        ApplyOtlpCertificate(azureHiveEvalMonitor, otlpCertificate);
     }
 }
 
@@ -86,7 +96,7 @@ if (
 {
     if (GetBool(builder, "eval:enableRetrievalSmoke", "AMPLIHACK_ASPIRE_ENABLE_RETRIEVAL_SMOKE"))
     {
-        builder
+        var azureHiveRetrievalSmoke = builder
             .AddExecutable("azure-hive-retrieval-smoke", "python", repoRoot)
             .WithArgs(BuildRetrievalSmokeArgs(builder, eventHubConnectionString, inputHub, responseHub))
             .WithEnvironment("PYTHONPATH", srcPath)
@@ -96,11 +106,12 @@ if (
             .WithEnvironment("OTEL_EXPORTER_OTLP_ENDPOINT", otlpEndpoint)
             .WithEnvironment("OTEL_SERVICE_NAMESPACE", "amplihack")
             .WithEnvironment("OTEL_SERVICE_NAME", "amplihack.aspire.azure-hive-retrieval-smoke");
+        ApplyOtlpCertificate(azureHiveRetrievalSmoke, otlpCertificate);
     }
 
     if (GetBool(builder, "eval:enableLongHorizon", "AMPLIHACK_ASPIRE_ENABLE_LONG_HORIZON_EVAL"))
     {
-        builder
+        var azureHiveLongHorizonEval = builder
             .AddExecutable("azure-hive-long-horizon-eval", "python", repoRoot)
             .WithArgs(BuildLongHorizonArgs(builder, eventHubConnectionString, inputHub, responseHub))
             .WithEnvironment("PYTHONPATH", srcPath)
@@ -110,11 +121,12 @@ if (
             .WithEnvironment("OTEL_EXPORTER_OTLP_ENDPOINT", otlpEndpoint)
             .WithEnvironment("OTEL_SERVICE_NAMESPACE", "amplihack")
             .WithEnvironment("OTEL_SERVICE_NAME", "amplihack.aspire.azure-hive-long-horizon");
+        ApplyOtlpCertificate(azureHiveLongHorizonEval, otlpCertificate);
     }
 
     if (GetBool(builder, "eval:enableSecurity", "AMPLIHACK_ASPIRE_ENABLE_SECURITY_EVAL"))
     {
-        builder
+        var azureHiveSecurityEval = builder
             .AddExecutable("azure-hive-security-eval", "python", repoRoot)
             .WithArgs(BuildSecurityEvalArgs(builder, eventHubConnectionString, inputHub, responseHub))
             .WithEnvironment("PYTHONPATH", srcPath)
@@ -124,6 +136,7 @@ if (
             .WithEnvironment("OTEL_EXPORTER_OTLP_ENDPOINT", otlpEndpoint)
             .WithEnvironment("OTEL_SERVICE_NAMESPACE", "amplihack")
             .WithEnvironment("OTEL_SERVICE_NAME", "amplihack.aspire.azure-hive-security");
+        ApplyOtlpCertificate(azureHiveSecurityEval, otlpCertificate);
     }
 }
 
@@ -139,6 +152,31 @@ static string GetConfig(
     return builder.Configuration[configKey]
         ?? Environment.GetEnvironmentVariable(envKey)
         ?? defaultValue;
+}
+
+static string ResolveTrustedDevCertPath()
+{
+    var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+    if (string.IsNullOrWhiteSpace(home))
+    {
+        return "";
+    }
+
+    var trustDir = Path.Combine(home, ".aspnet", "dev-certs", "trust");
+    if (!Directory.Exists(trustDir))
+    {
+        return "";
+    }
+
+    return Directory.EnumerateFiles(trustDir, "*.pem").OrderBy(path => path).FirstOrDefault() ?? "";
+}
+
+static void ApplyOtlpCertificate(IResourceBuilder<ExecutableResource> resource, string certPath)
+{
+    if (!string.IsNullOrWhiteSpace(certPath))
+    {
+        resource.WithEnvironment("OTEL_EXPORTER_OTLP_CERTIFICATE", certPath);
+    }
 }
 
 static bool GetBool(
@@ -260,7 +298,7 @@ static string[] BuildRetrievalSmokeArgs(
         "--agents",
         GetConfig(builder, "azure:agentCount", "HIVE_AGENT_COUNT", "100"),
         "--answer-timeout",
-        GetConfig(builder, "eval:answerTimeout", "AMPLIHACK_ASPIRE_ANSWER_TIMEOUT", "120"),
+        GetConfig(builder, "eval:answerTimeout", "AMPLIHACK_ASPIRE_ANSWER_TIMEOUT", "0"),
         "--question-offset",
         GetConfig(
             builder,

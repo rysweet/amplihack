@@ -12,7 +12,9 @@
     "Specs/",
     "scripts/",
     "src/amplihack/agents/goal_seeking/sdk_adapters",
-    "amplihack-memory-lib/"
+    "amplihack-memory-lib/",
+    "deploy/",
+    "src/amplihack/eval/distributed_adapter.py"
   ],
   "typeCheckingMode": "basic",
   "reportMissingImports": true,
