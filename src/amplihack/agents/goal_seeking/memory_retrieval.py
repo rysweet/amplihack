@@ -149,7 +149,7 @@ class MemoryRetriever:
 
         return self.connector.store_experience(experience)
 
-    def get_all_facts(self, limit: int = 50) -> list[dict[str, Any]]:
+    def get_all_facts(self, limit: int = 50, **kwargs: Any) -> list[dict[str, Any]]:
         """Retrieve all experiences without keyword filtering.
 
         Bypasses search and retrieves experiences directly from the store.

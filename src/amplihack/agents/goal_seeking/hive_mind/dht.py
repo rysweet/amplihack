@@ -376,7 +376,7 @@ class ShardStore:
         with self._lock:
             return set(self._facts.keys())
 
-    def get_all_facts(self) -> list[ShardFact]:
+    def get_all_facts(self, **kwargs: Any) -> list[ShardFact]:
         """Get all facts in this shard."""
         with self._lock:
             return list(self._facts.values())
