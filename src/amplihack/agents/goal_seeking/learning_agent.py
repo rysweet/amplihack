@@ -764,7 +764,7 @@ class LearningAgent:
                             limit=MAX_RETRIEVAL_LIMIT, query=question
                         )
                     self._thread_local._cached_all_facts = cached
-                    kb_size = len(cached)
+                    kb_size = self._estimate_total_fact_count() or len(cached)
                 if kb_size <= SIMPLE_RETRIEVAL_THRESHOLD:
                     use_simple = True
 
@@ -883,11 +883,7 @@ class LearningAgent:
         # a large KB. Only filter out DB-stored SUMMARY nodes (context == "SUMMARY")
         # which are different from tiered retrieval summaries.
         if intent_type == "meta_memory":
-            relevant_facts = [
-                f
-                for f in relevant_facts
-                if f.get("context", "") != "SUMMARY" and "summary" not in (f.get("tags") or [])
-            ]
+            relevant_facts = [f for f in relevant_facts if f.get("context", "") != "SUMMARY"]
 
         # Always rerank by query relevance first to prioritize the most relevant facts.
         # For large fact sets (>80), this ensures we trim noise, not signal.
@@ -897,7 +893,10 @@ class LearningAgent:
         # Only sort facts that HAVE temporal metadata -- leave non-temporal facts
         # in their reranked (relevance-first) order to avoid pushing relevant
         # non-temporal facts to the end of the list.
-        if intent.get("needs_temporal"):
+        if intent.get("needs_temporal") or intent_type in (
+            "temporal_comparison",
+            "incremental_update",
+        ):
             temporal_facts = []
             non_temporal_facts = []
             for f in relevant_facts:
@@ -1269,13 +1268,80 @@ class LearningAgent:
             all_facts = self.memory.get_all_facts(limit=MAX_RETRIEVAL_LIMIT, query=question)
         kb_size = len(all_facts)
 
-        exhaustive = force_verbatim or kb_size <= VERBATIM_RETRIEVAL_THRESHOLD
+        total_fact_count = self._estimate_total_fact_count()
+        distributed_partial = (
+            hasattr(self.memory, "search_local")
+            and total_fact_count is not None
+            and kb_size > total_fact_count
+        )
+        if distributed_partial:
+            logger.info(
+                "Simple retrieval treating query-bearing distributed results as partial "
+                "(retrieved=%d local_total=%d) for '%s'",
+                kb_size,
+                total_fact_count,
+                question[:60],
+            )
+
+        exhaustive = force_verbatim or (
+            not distributed_partial
+            and (
+                (
+                    total_fact_count is not None
+                    and total_fact_count <= VERBATIM_RETRIEVAL_THRESHOLD
+                    and kb_size >= total_fact_count
+                )
+                or (
+                    total_fact_count is None
+                    and not hasattr(self.memory, "search_local")
+                    and kb_size <= VERBATIM_RETRIEVAL_THRESHOLD
+                )
+            )
+        )
         self._thread_local._last_simple_retrieval_exhaustive = exhaustive
         if exhaustive:
             return all_facts
 
         # Large KB: use progressive summarization tiers
         return self._tiered_retrieval(question, all_facts)
+
+    def _estimate_total_fact_count(self) -> int | None:
+        """Estimate total locally stored facts without using query-filtered retrieval."""
+        if self._pre_snapshot_facts is not None:
+            return len(self._pre_snapshot_facts)
+
+        if not hasattr(self.memory, "get_statistics"):
+            return None
+
+        try:
+            stats = self.memory.get_statistics()
+        except Exception as exc:
+            logger.debug("Unable to estimate total fact count from memory stats: %s", exc)
+            return None
+
+        def _extract_total(mapping: Any) -> int | None:
+            if not isinstance(mapping, dict):
+                return None
+
+            for key in ("total_experiences", "total", "total_facts", "semantic"):
+                value = mapping.get(key)
+                if isinstance(value, int) and value >= 0:
+                    return value
+
+            semantic_nodes = mapping.get("semantic_nodes")
+            episodic_nodes = mapping.get("episodic_nodes")
+            if isinstance(semantic_nodes, int) and semantic_nodes >= 0:
+                if isinstance(episodic_nodes, int) and episodic_nodes >= 0:
+                    return semantic_nodes + episodic_nodes
+                return semantic_nodes
+
+            return None
+
+        total = _extract_total(stats)
+        if total is not None:
+            return total
+
+        return _extract_total(stats.get("adapter_stats"))
 
     def _preserve_exact_id_facts(
         self, question: str, all_facts: list[dict[str, Any]]
@@ -1843,6 +1909,15 @@ class LearningAgent:
         targeted_facts = self._entity_retrieval(question, local_only=local_only)
         targeted_facts.extend(self._concept_retrieval(question, local_only=local_only))
 
+        if not targeted_facts and local_only:
+            logger.info(
+                "Simple retrieval supplements empty locally; retrying distributed targeted retrieval "
+                "for '%s'",
+                question[:60],
+            )
+            targeted_facts = self._entity_retrieval(question, local_only=False)
+            targeted_facts.extend(self._concept_retrieval(question, local_only=False))
+
         for fact in targeted_facts:
             key = (
                 fact.get("experience_id") or f"{fact.get('context', '')}::{fact.get('outcome', '')}"
@@ -1998,6 +2073,12 @@ class LearningAgent:
                 search_limit,
                 question[:60],
             )
+        elif local_only:
+            logger.info(
+                "Entity-linked retrieval empty locally; retrying distributed ID search for '%s'",
+                question[:60],
+            )
+            return self._entity_linked_retrieval(question, existing_facts, local_only=False)
 
         return existing_facts + new_facts
 
