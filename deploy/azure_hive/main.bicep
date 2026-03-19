@@ -115,8 +115,8 @@ var ehEventsHub = 'hive-events-${hiveName}'
 var ehShardsHub = 'hive-shards-${hiveName}'
 var ehEvalHub = 'eval-responses-${hiveName}'
 var appCount = (agentCount + agentsPerApp - 1) / agentsPerApp
-var perAgentCpu = json(agentsPerApp <= 1 ? '2.0' : (agentsPerApp <= 2 ? '1.0' : (agentsPerApp <= 5 ? '0.75' : (agentsPerApp <= 8 ? '0.5' : '0.25'))))
-var perAgentMemory = agentsPerApp <= 1 ? '4Gi' : (agentsPerApp <= 2 ? '2Gi' : (agentsPerApp <= 5 ? '1.5Gi' : (agentsPerApp <= 8 ? '1Gi' : '0.5Gi')))
+var perAgentCpu = json(agentsPerApp <= 1 ? '2.0' : (agentsPerApp <= 5 ? '1.0' : (agentsPerApp <= 8 ? '0.5' : '0.25')))
+var perAgentMemory = agentsPerApp <= 1 ? '4Gi' : (agentsPerApp <= 5 ? '2Gi' : (agentsPerApp <= 8 ? '1Gi' : '0.5Gi'))
 var memoryQueryFanoutResolved = memoryQueryFanout > 0 ? memoryQueryFanout : agentCount
 var shardQueryTimeoutSecondsResolved = shardQueryTimeoutSeconds
 
