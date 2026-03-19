@@ -1211,21 +1211,30 @@ class AtlasRenderer:
             # Directories covered
             return 100.0 if data.get("directories") else None
         elif num == 2:
-            # Files analyzed at AST level vs total files in the manifest.
-            # For multi-language repos, only Python files get full AST analysis,
-            # so coverage reflects what fraction of ALL code files are analyzed.
-            analyzed = data.get("files_analyzed", 0)
-            if analyzed <= 0:
+            # Files analyzed at AST level vs total code files in the manifest.
+            # Python files are counted via files_analyzed; non-Python files
+            # analyzed by blarify are counted from unique files in definitions.
+            py_analyzed = data.get("files_analyzed", 0)
+            failed = len(data.get("files_failed_parse", []))
+
+            # Count unique non-Python files that blarify extracted definitions from
+            non_py_files: set[str] = set()
+            for defn in data.get("definitions", []):
+                if defn.get("language", "python") != "python":
+                    f = defn.get("file", "")
+                    if f:
+                        non_py_files.add(f)
+
+            effective = (py_analyzed - failed) + len(non_py_files)
+            if effective <= 0:
                 return None
-            # Use layer 1 total file count if available for accurate coverage
+
             layer1 = self.layers.get("layer1_repo_surface", {})
             total_files = self._layer1_total_files(layer1)
             if total_files > 0:
-                failed = len(data.get("files_failed_parse", []))
-                return ((analyzed - failed) / total_files) * 100
-            # Last fallback: analyzed/analyzed (Python-only view)
-            failed = len(data.get("files_failed_parse", []))
-            return ((analyzed - failed) / analyzed) * 100
+                return (effective / total_files) * 100
+            # Last fallback: effective/effective (100%)
+            return 100.0
         elif num == 7:
             packages = data.get("packages", [])
             return 100.0 if packages else None
@@ -1261,9 +1270,15 @@ class AtlasRenderer:
         """
         num = layer_def["num"]
         if num == 2:
-            analyzed = data.get("files_analyzed", 0)
+            py_analyzed = data.get("files_analyzed", 0)
             failed = len(data.get("files_failed_parse", []))
-            effective = analyzed - failed
+            non_py_files: set[str] = set()
+            for defn in data.get("definitions", []):
+                if defn.get("language", "python") != "python":
+                    f = defn.get("file", "")
+                    if f:
+                        non_py_files.add(f)
+            effective = (py_analyzed - failed) + len(non_py_files)
             layer1 = self.layers.get("layer1_repo_surface", {})
             total_files = self._layer1_total_files(layer1)
             if total_files > 0 and total_files != effective:
