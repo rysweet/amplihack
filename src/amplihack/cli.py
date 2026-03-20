@@ -169,26 +169,21 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
         parent_session_id=nesting_result.parent_session_id if nesting_result else None,
     )
 
-    # Wrap execution in try/finally to ensure session is marked complete/crashed
+    # Wrap execution in try/except/finally to ensure session is marked
+    # complete/crashed and CWD is restored.  No nested exception handlers —
+    # failures in crash_session() or os.chdir() propagate directly so they
+    # are never silently swallowed.  See issue #3233.
     try:
         result = _launch_command_impl(args, claude_args, session_id, tracker)
         tracker.complete_session(session_id)
         return result
     except Exception as e:
         logger.debug(f"Session {session_id} ended with error: {type(e).__name__}: {e}")
-        try:
-            tracker.crash_session(session_id)
-        except Exception as crash_err:
-            logger.debug(f"crash_session also failed: {crash_err}")
+        tracker.crash_session(session_id)
         raise
     finally:
-        # Restore original CWD if we staged
         if original_cwd is not None:
-            try:
-                os.chdir(original_cwd)
-            except Exception as e:
-                # Best effort - log error but don't fail on CWD restore
-                logging.debug(f"Failed to restore CWD to {original_cwd}: {e}")
+            os.chdir(original_cwd)
 
 
 def _launch_command_impl(
