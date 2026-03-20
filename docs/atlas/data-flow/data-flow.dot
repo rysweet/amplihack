@@ -1,0 +1,80 @@
+digraph data_flow {
+    rankdir=TD;
+    node [fontname="Helvetica", fontsize=10];
+    edge [fontname="Helvetica", fontsize=9];
+
+    // Shapes: oval=process, box3d=storage, diamond=decision, record=data
+    // Data types
+    node [shape=record];
+    argv [label="sys.argv|list[str]"];
+    namespace [label="argparse.Namespace|command, flags, values"];
+    claude_args [label="claude_args|list[str] after --"];
+    session_info [label="SessionInfo|pid, launch_dir, argv, is_auto"];
+    proxy_config [label="ProxyConfig|api_key, endpoint, model"];
+    mem_entry [label="MemoryEntry|id, session_id, agent_id\lmemory_type, title, content\lmetadata, timestamps"];
+    mem_query [label="MemoryQuery|session_id, agent_id\lmemory_type, query_text\llimit, offset"];
+    step_model [label="Step|id, step_type, command\lagent, prompt, condition\lparse_json, timeout"];
+    recipe_model [label="Recipe|name, description\lsteps: list[Step]\lcontext: dict"];
+    step_result [label="StepResult|step_id, status\loutput, context_update"];
+    scan_result [label="ScanResult|is_safe: bool\lthreats: list[str]"];
+
+    // Processes
+    node [shape=ellipse];
+    parse [label="parse_args_with_passthrough"];
+    launch_cmd [label="launch_command"];
+    auto_mode [label="AutoMode.run"];
+    copytree [label="copytree_manifest"];
+    recipe_parse [label="recipes.parser.parse"];
+    recipe_run [label="rust_runner.execute"];
+    xpia_scan [label="XPIADefender.scan"];
+    mem_store [label="MemoryDatabase.store"];
+    mem_retrieve [label="MemoryDatabase.retrieve"];
+
+    // Storage
+    node [shape=cylinder];
+    sqlite_db [label="~/.amplihack/memory.db\n(SQLite)"];
+    kuzu_db [label="~/.amplihack/kuzu/\n(Kuzu graph)"];
+    claude_dir [label="~/.amplihack/.claude/\n(staging)"];
+    settings_json [label="settings.json\n(Claude Code config)"];
+    auto_log [label=".claude/runtime/logs/\n(JSON state)"];
+    yaml_file [label="recipe.yaml"];
+
+    // CLI entry flow
+    argv -> parse [label="split on --"];
+    parse -> namespace;
+    parse -> claude_args;
+
+    // Launch flow
+    namespace -> launch_cmd [label="command=launch|claude"];
+    launch_cmd -> session_info [label="creates"];
+    namespace -> proxy_config [label="--with-proxy-config"];
+    proxy_config -> launch_cmd [label="configures proxy"];
+    launch_cmd -> auto_log [label="session tracking"];
+
+    // Auto mode flow
+    namespace -> auto_mode [label="--auto flag"];
+    auto_mode -> auto_log [label="state persistence"];
+
+    // Memory flow
+    mem_entry -> mem_store;
+    mem_store -> sqlite_db;
+    mem_store -> kuzu_db;
+    mem_query -> mem_retrieve;
+    mem_retrieve -> sqlite_db;
+    mem_retrieve -> kuzu_db;
+
+    // Recipe flow
+    yaml_file -> recipe_parse [label="YAML load"];
+    recipe_parse -> recipe_model;
+    recipe_model -> step_model [label="contains"];
+    step_model -> recipe_run [label="execute"];
+    recipe_run -> step_result;
+    step_result -> step_model [label="feeds context", style=dashed];
+
+    // Install flow
+    copytree -> claude_dir [label="copy dirs"];
+    copytree -> settings_json [label="update hooks"];
+
+    // Security flow
+    xpia_scan -> scan_result;
+}

@@ -274,6 +274,14 @@ class LspQueryHelper:
             return PhpDefinitions
         if extension in JavaDefinitions.get_language_file_extensions():
             return JavaDefinitions
+
+        try:
+            from ..code_hierarchy.languages.rust_definitions import RustDefinitions
+            if extension in RustDefinitions.get_language_file_extensions():
+                return RustDefinitions
+        except ImportError:
+            pass
+
         raise FileExtensionNotSupported(f'File extension "{extension}" is not supported)')
 
     def _create_lsp_server(

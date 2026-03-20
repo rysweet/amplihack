@@ -72,29 +72,40 @@ Same pattern as CLISubprocessAdapter, plus:
 
 ### Progress Monitoring
 
-The `_tail_output` helper function:
+The Rust recipe runner's heartbeat thread monitors the agent's output log file:
 
-```python
-@staticmethod
-def _tail_output(path: Path, stop: threading.Event) -> None:
-    """Tail file and print progress/heartbeat."""
-    last_size = 0
-    last_activity = time.time()
+```rust
+// Background heartbeat thread (simplified)
+let mut last_size = 0u64;
+let mut last_activity = Instant::now();
+let start_time = Instant::now();
 
-    while not stop.is_set():
-        current_size = path.stat().st_size
+loop {
+    let current_size = metadata(&output_path).len();
 
-        if current_size > last_size:
-            # Print last meaningful line as progress
-            print(f"  [agent] {lines[-1][:120]}")
-            last_activity = time.time()
-        elif time.time() - last_activity > 60:
-            # Heartbeat when idle
-            print(f"  [agent] ... still running ({elapsed}s since last output)")
-            last_activity = time.time()
+    if current_size > last_size {
+        // Print last meaningful line as progress
+        eprintln!("  [agent] {}", last_line_of(output_path));
+        last_activity = Instant::now();
+    } else if last_activity.elapsed() > Duration::from_secs(30) {
+        // Heartbeat when idle — show total elapsed, idle time, and PID status
+        eprintln!("  [agent] ... working ({}s elapsed, {}s since last output, pid {} alive)",
+            start_time.elapsed().as_secs(),
+            last_activity.elapsed().as_secs(),
+            child_pid);
+        last_activity = Instant::now();
+    }
 
-        stop.wait(2)  # Check every 2 seconds
+    sleep(Duration::from_secs(2));
+}
 ```
+
+Key design decisions:
+
+- **30-second heartbeat interval** (reduced from 60s) for faster feedback
+- **Total elapsed time** shown so users know how long the step has been running
+- **PID alive check** confirms the process hasn't crashed silently
+- **Step-type hints** in progress listener: agent steps show `[agent — may take several minutes]`
 
 ## User Experience
 
@@ -109,13 +120,14 @@ ERROR: TimeoutExpired after 1800s
 ### After (Streaming Monitor)
 
 ```
-Running agent step...
+▶ step-02b-analyze-codebase [agent — may take several minutes]
   [agent] Analyzing codebase structure...
   [agent] Found 23 Python modules
   [agent] Checking test coverage...
-  [agent] ... still running (62s since last output)
+  [agent] ... working (45s elapsed, 32s since last output, pid 12345 alive)
+  [agent] ... working (78s elapsed, 33s since last output, pid 12345 alive)
   [agent] Generating report...
-Done!
+  ✓ step-02b-analyze-codebase (95.2s)
 ```
 
 ## Testing
@@ -175,7 +187,7 @@ subprocess.run(["/bin/bash", "-c", command], timeout=120)
 
 Potential improvements:
 
-- Configurable heartbeat interval
+- Configurable heartbeat interval (currently 30s, was 60s)
 - Structured progress events (not just text)
 - Cancellation support (user abort)
 - Multiple concurrent monitors

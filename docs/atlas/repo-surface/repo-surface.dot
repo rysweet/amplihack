@@ -1,0 +1,84 @@
+digraph repo_surface {
+    rankdir=TB;
+    fontname="Helvetica";
+    node [fontname="Helvetica", shape=box, style="rounded,filled", fillcolor="#e8f4fd"];
+    edge [color="#666666"];
+
+    subgraph cluster_root {
+        label="Root Config Files";
+        style="dashed";
+        color="#999999";
+        fontcolor="#333333";
+        pyproject [label="pyproject.toml\nBuild config, 57 deps"];
+        makefile [label="Makefile"];
+        dockerfile [label="Dockerfile\nPython 3.12-slim"];
+        claudemd [label="CLAUDE.md\nAgent instructions"];
+        conftest [label="conftest.py\npytest.ini"];
+    }
+
+    subgraph cluster_src_core {
+        label="src/amplihack/ — Core";
+        style="filled";
+        fillcolor="#f0f8e8";
+        color="#88aa55";
+        cli [label="cli.py\ncli_extensions.py\nCLI entry point", fillcolor="#c8e6c9"];
+        init [label="__init__.py\n__main__.py\nPackage init", fillcolor="#c8e6c9"];
+        settings [label="settings.py\nsettings_generator/\nConfiguration", fillcolor="#c8e6c9"];
+        install [label="install.py\nuninstall.py", fillcolor="#c8e6c9"];
+    }
+
+    subgraph cluster_src_sub {
+        label="src/amplihack/ — Subpackages";
+        style="filled";
+        fillcolor="#fff8e1";
+        color="#f9a825";
+        launcher [label="launcher/\nClaude/Copilot launcher"];
+        proxy [label="proxy/\nLLM proxy (Flask)"];
+        fleet [label="fleet/\nMulti-agent fleet mgmt"];
+        recipes [label="recipes/ + recipe_cli/\nRecipe engine"];
+        memory [label="memory/\nDiscovery persistence"];
+        security [label="security/\nSafety & scanning"];
+        eval_pkg [label="eval/\nAgent evaluation"];
+        knowledge [label="knowledge_builder/\nKnowledge graph"];
+        bundle [label="bundle_generator/\nPackage distribution"];
+        hooks [label="hooks/\nGit hooks"];
+        utils [label="utils/\nShared utilities"];
+        vendor [label="vendor/blarify/\nCode graph indexer"];
+        lsp [label="lsp_detector/"];
+        uvx [label="uvx/\nUVX packaging"];
+        docker_pkg [label="docker/\nDocker detection"];
+        tracing [label="tracing/"];
+        context [label="context/\nAdaptive context"];
+        workflows [label="workflows/"];
+        plugin [label="plugin_manager/\nplugin_cli/"];
+        power [label="power_steering/"];
+        safety [label="safety/"];
+        meta [label="meta_delegation/"];
+        mode [label="mode_detector/"];
+        path_res [label="path_resolver/"];
+        goal [label="goal_agent_generator/"];
+    }
+
+    subgraph cluster_support {
+        label="Support Directories";
+        style="dashed";
+        color="#999999";
+        tests [label="tests/\nTop-level test suite"];
+        scripts [label="scripts/"];
+        docs [label="docs/\nMkDocs"];
+        specs [label="Specs/\nModule specs"];
+        examples_dir [label="examples/"];
+        docker_dir [label="docker/\ndocker-compose.yml"];
+        agents_dir [label="agents/\nAgent definitions (.md)"];
+        commands_dir [label="commands/\nSlash commands"];
+        skills_dir [label="skills/\nSkill definitions"];
+    }
+
+    pyproject -> cli [style=dashed, label="entry point"];
+    cli -> launcher;
+    cli -> proxy;
+    cli -> fleet;
+    cli -> recipes;
+    cli -> bundle;
+    cli -> plugin;
+}

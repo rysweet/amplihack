@@ -1,0 +1,80 @@
+digraph runtime_topology {
+    rankdir=LR;
+    fontname="Helvetica";
+    node [fontname="Helvetica", fontsize=10];
+    edge [color="#555555"];
+    compound=true;
+
+    // Main process
+    node [shape=component, style="filled", fillcolor="#c8e6c9"];
+    cli [label="amplihack CLI\nPython main process"];
+    launcher [label="Launcher\nSession management"];
+    settings [label="Settings\nConfig loading"];
+    installer [label="Installer\nFile copy & hooks"];
+
+    // Subprocesses
+    node [shape=box3d, style="filled", fillcolor="#bbdefb"];
+    claude_bin [label="Claude CLI\n(claude binary)\nsubprocess"];
+    git_proc [label="git\nsubprocess"];
+    npm_proc [label="npm / node\nsubprocess"];
+    recipe_rust [label="Recipe Runner\n(Rust binary)\namplihack-recipe-runner"];
+
+    // Servers
+    node [shape=hexagon, style="filled", fillcolor="#fff9c4"];
+    flask_proxy [label="Flask Proxy Server\nresponses_api_proxy.py\nPort: configurable"];
+    litellm_proxy [label="LiteLLM Proxy\n(optional external)"];
+
+    // Fleet
+    node [shape=tab, style="filled", fillcolor="#e1bee7"];
+    fleet_tui [label="Fleet TUI\nRich dashboard"];
+    tmux [label="tmux sessions\nper-agent"];
+    ssh [label="SSH tunnels\nto remote VMs"];
+
+    // Docker
+    node [shape=box, style="dashed,filled", fillcolor="#f0f0f0"];
+    docker [label="Docker container\nPython 3.12-slim + Node 20"];
+    workspace [label="/workspace\nmounted volume"];
+
+    // External services
+    node [shape=cylinder, style="filled", fillcolor="#ffccbc"];
+    anthropic [label="Anthropic API\nClaude models"];
+    github [label="GitHub API\nCopilot"];
+    azure [label="Azure OpenAI\n(optional)"];
+
+    node [shape=cylinder, style="filled", fillcolor="#d7ccc8"];
+    neo4j [label="Neo4j\n(optional)"];
+    falkordb [label="FalkorDB\n(optional)"];
+    kuzu [label="Kuzu\nembedded graph DB"];
+
+    // Edges - main process
+    cli -> launcher;
+    cli -> settings;
+    cli -> installer;
+
+    // Subprocess spawning
+    launcher -> claude_bin [label="subprocess.run"];
+    launcher -> git_proc [label="subprocess.run"];
+    launcher -> npm_proc [label="subprocess.run"];
+    launcher -> recipe_rust [label="subprocess.run"];
+
+    // Server connections
+    cli -> flask_proxy [label="starts"];
+    flask_proxy -> litellm_proxy [label="HTTP forward"];
+    flask_proxy -> anthropic [label="HTTPS"];
+    flask_proxy -> github [label="HTTPS"];
+    flask_proxy -> azure [label="HTTPS"];
+
+    // Fleet
+    cli -> fleet_tui [label="starts"];
+    fleet_tui -> tmux [label="manages"];
+    fleet_tui -> ssh [label="creates"];
+
+    // Docker
+    docker -> cli [label="ENTRYPOINT"];
+    workspace -> docker [label="bind mount", style=dashed];
+
+    // Data stores
+    launcher -> kuzu [label="embedded"];
+    flask_proxy -> neo4j [style=dashed, label="optional"];
+    flask_proxy -> falkordb [style=dashed, label="optional"];
+}

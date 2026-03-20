@@ -1,0 +1,36 @@
+sequenceDiagram
+    actor User
+    participant CLI as cli.py
+    participant Parser as recipes.parser
+    participant Runner as rust_runner
+    participant Resolver as agent_resolver
+    participant Step as Step.evaluate_condition
+    participant Agent as Claude agent (subprocess)
+    participant Context as execution context dict
+
+    User->>CLI: amplihack recipe run my-recipe.yaml -c task="Fix bug"
+    CLI->>Parser: parse(recipe_path)
+    Parser-->>CLI: Recipe(steps, context)
+    CLI->>Context: merge user context (-c task="Fix bug")
+    CLI->>Runner: execute(recipe, context)
+
+    loop Each Step in Recipe
+        Runner->>Step: evaluate_condition(context)
+        alt Condition met or absent
+            Step-->>Runner: True
+            alt step_type == AGENT
+                Runner->>Resolver: resolve_agent(step.agent)
+                Resolver-->>Runner: agent_prompt_path
+                Runner->>Agent: subprocess(claude, -p step.prompt)
+                Agent-->>Runner: output
+            else step_type == BASH
+                Runner->>Runner: subprocess.run(step.command)
+            end
+            Runner->>Context: update(step.output -> context[step.id])
+        else Condition not met
+            Step-->>Runner: False (skip)
+        end
+    end
+
+    Runner-->>CLI: StepResults
+    CLI-->>User: execution summary

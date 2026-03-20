@@ -12,6 +12,7 @@ import json
 import logging
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import threading
@@ -302,6 +303,13 @@ def _stream_process_output(process: subprocess.Popen[str]) -> tuple[str, str, in
 
 def _execute_rust_command(cmd: list[str], *, name: str, progress: bool) -> RecipeResult:
     """Run the Rust binary and parse its JSON output into a ``RecipeResult``."""
+    env = os.environ.copy()
+    if "AMPLIHACK_AGENT_BINARY" not in env:
+        logger.warning(
+            "AMPLIHACK_AGENT_BINARY not set — Rust runner will default to 'claude'. "
+            "Set the env var via the amplihack CLI dispatcher to use a different agent."
+        )
+
     if progress:
         process = subprocess.Popen(
             cmd,
@@ -309,6 +317,7 @@ def _execute_rust_command(cmd: list[str], *, name: str, progress: bool) -> Recip
             stderr=subprocess.PIPE,
             text=True,
             bufsize=1,
+            env=env,
         )
         stdout, stderr, returncode = _stream_process_output(process)
     else:
@@ -316,6 +325,7 @@ def _execute_rust_command(cmd: list[str], *, name: str, progress: bool) -> Recip
             cmd,
             capture_output=True,
             text=True,
+            env=env,
         )
         stdout = result.stdout
         stderr = result.stderr
@@ -325,9 +335,32 @@ def _execute_rust_command(cmd: list[str], *, name: str, progress: bool) -> Recip
         data = json.loads(stdout)
     except (json.JSONDecodeError, TypeError):
         if returncode != 0:
+            # Negative exit codes indicate signal kills (e.g. -15 = SIGTERM).
+            # Produce a clear message instead of dumping the entire progress
+            # stderr buffer which makes the error unreadable.
+            if returncode < 0:
+                sig_num = -returncode
+                sig_name = (
+                    signal.Signals(sig_num).name
+                    if sig_num in signal.valid_signals()
+                    else str(sig_num)
+                )
+                raise RuntimeError(
+                    f"Rust recipe runner killed by signal {sig_name} ({sig_num}). "
+                    f"The process was terminated externally before producing output."
+                )
+            # For non-signal failures, show only the last few lines of stderr
+            # (not the full progress log which can be thousands of lines).
+            stderr_tail = ""
+            if stderr:
+                lines = stderr.strip().splitlines()
+                # Skip progress/heartbeat lines, show last 5 meaningful lines
+                meaningful = [
+                    ln for ln in lines if not ln.strip().startswith(("▶", "✓", "⊘", "✗", "[agent]"))
+                ]
+                stderr_tail = "\n".join(meaningful[-5:]) if meaningful else "\n".join(lines[-5:])
             raise RuntimeError(
-                f"Rust recipe runner failed (exit {returncode}): "
-                f"{stderr[:1000] if stderr else 'no stderr'}"
+                f"Rust recipe runner failed (exit {returncode}): {stderr_tail or 'no stderr'}"
             )
         raise RuntimeError(
             f"Rust recipe runner returned unparseable output (exit {returncode}): "
@@ -362,12 +395,24 @@ def _default_package_recipe_dirs() -> list[str]:
     but only contain a subset of recipes, while the full bundle lives at the
     repo root ``amplifier-bundle/recipes``.  The Rust runner needs both paths
     to match Python-side discovery in real environments (issue #3002).
+
+    Also includes ``$AMPLIHACK_HOME/amplifier-bundle/recipes/`` when the env
+    var is set, so recipes are found when running from non-amplihack repos
+    (issue #3237).
     """
     try:
-        from amplihack.recipes.discovery import _PACKAGE_BUNDLE_DIR, _REPO_ROOT_BUNDLE_DIR
+        from amplihack.recipes.discovery import (
+            _AMPLIHACK_HOME_BUNDLE_DIR,
+            _PACKAGE_BUNDLE_DIR,
+            _REPO_ROOT_BUNDLE_DIR,
+        )
+
+        candidates = [_PACKAGE_BUNDLE_DIR, _REPO_ROOT_BUNDLE_DIR]
+        if _AMPLIHACK_HOME_BUNDLE_DIR is not None:
+            candidates.append(_AMPLIHACK_HOME_BUNDLE_DIR)
 
         dirs: list[str] = []
-        for candidate in (_PACKAGE_BUNDLE_DIR, _REPO_ROOT_BUNDLE_DIR):
+        for candidate in candidates:
             if candidate.is_dir():
                 candidate_str = str(candidate)
                 if candidate_str not in dirs:

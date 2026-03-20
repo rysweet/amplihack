@@ -494,37 +494,47 @@ steps:
   # Rejected bugs are logged but not filed — reduces developer noise.
   # ==========================================================================
   - id: "file-issues"
-    name: "Step 7b: File GitHub Issues for Validated Bugs"
+    name: "Step 7b: File Work Items for Validated Bugs"
     type: "agent"
     agent: "amplihack:amplihack:core:builder"
     description: |
-      File individual issues for validated bugs. File ONE summary issue for all rejected findings.
-      All work tracking happens in issues — no findings are only in repo documents.
+      File ALL validated bugs as work items. This is DETERMINISTIC — every
+      validated bug gets filed, no agent discretion about which to include.
 
-      For each VALIDATED bug (score >= 2.0) in {{output_dir}}/bug-reports/validated-bugs.md:
-        1. Create issue via `gh issue create` with:
-           - Title: "[code-atlas] {brief description}" (under 70 chars)
-           - Body containing:
-             - Severity (LOW/MEDIUM/HIGH)
-             - File:line evidence (relative paths)
-             - Provenance: found by mermaid-only / graphviz-only / both
-             - Which pass found it (Pass 1/2/3)
-             - Code quote with credential redaction (SEC-09)
-           - Labels: bug, code-atlas-bughunt
-         - Validation: "Validated by N/3 agents (security: X, architect: X, tester: X)"
-        2. Log the created issue URL
-        3. File every validated bug — no additional filtering
-        4. One issue per bug — no batching
+      Supports two backends:
+        - GitHub Issues: `gh issue create` (default, auto-detected)
+        - Azure DevOps: `az boards work-item create` (when ADO is configured)
 
-      For ALL rejected bugs (score < 2.0), file ONE summary issue:
-        1. Title: "[code-atlas] Rejected findings summary — N items need human review"
-        2. Body: table of all rejected findings with vote breakdowns and reasons
-        3. Labels: code-atlas-needs-review
-        4. This gives humans a single place to review and override agent consensus
-           without creating N noise issues that dilute the validated findings
+      Detection: if `az devops configure --list` succeeds, use ADO. Otherwise gh.
 
-      After filing all issues, write the list of URLs to:
-        {{output_dir}}/bug-reports/filed-issues.md
+      For each VALIDATED bug (score >= 2.0):
+
+        GitHub:
+          gh issue create \
+            --title "[code-atlas] {brief_description}" \
+            --label "bug" --label "code-atlas-bughunt" \
+            --body "**Severity**: {severity}
+          **File**: {file}:{line}
+          **Evidence**: {evidence}
+          **Provenance**: {mermaid-only|graphviz-only|both}
+          **Pass**: {pass_number}
+          **Validation**: {N}/3 agents confirmed (security: {X}, architect: {X}, tester: {X})"
+
+        ADO:
+          az boards work-item create \
+            --type Bug \
+            --title "[code-atlas] {brief_description}" \
+            --fields "System.Tags=code-atlas-bughunt" \
+                     "Microsoft.VSTS.Common.Severity={1-4}" \
+                     "Microsoft.VSTS.TCM.ReproSteps={evidence}"
+
+      Rules:
+        1. File EVERY validated bug — no filtering, no batching, no discretion
+        2. One work item per bug
+        3. File ONE summary issue for all rejected findings (score < 2.0)
+        4. Write all created URLs to {{output_dir}}/bug-reports/filed-issues.md
+        5. The filed-issues.md is the ONLY output that lists bugs — bugs are
+           NEVER stored in docs/atlas/ or any other atlas page
     inputs:
       validated_bugs: "{{steps.tally-validation-votes.outputs}}"
       codebase_path: "{{parameters.codebase_path}}"
