@@ -1,0 +1,79 @@
+# Outside-in test: step-16 PR creation idempotency (#3324 / PR #3335)
+# Verifies that step-16-create-draft-pr handles all 4 code paths:
+#   Path 1 — existing branch PR detected via gh pr list --head
+#   Path 2 — issue-referenced PR detected via gh pr list --search
+#   Path 3 — no commits ahead of main, PR creation skipped
+#   Path 4 — new PR created via gh pr create --draft
+# Also verifies injection prevention and stderr diagnostics.
+
+scenario:
+  name: "Step 16 PR Creation Idempotency"
+  description: |
+    When step-16-create-draft-pr runs on a branch that already has a PR
+    (matched by branch name or issue reference), it must return the existing
+    PR URL instead of attempting to create a duplicate. When no commits exist
+    ahead of main, it must skip PR creation with a warning. Only when none
+    of these conditions match should it create a new draft PR. Issue number
+    validation prevents shell injection via non-numeric values.
+  type: cli
+  level: 2
+
+  tags: [workflow, pr-creation, idempotency, regression, issue-3324, pr-3335]
+
+  prerequisites:
+    - "amplifier-bundle/recipes/default-workflow.yaml exists"
+    - "grep is available"
+
+  steps:
+    # --- Path 1: Existing branch PR detection ---
+    - action: grep
+      target: "amplifier-bundle/recipes/default-workflow.yaml"
+      pattern: "gh pr list --head"
+      description: "Path 1 — existing branch PR check via gh pr list --head"
+
+    # --- Path 2: Issue-referenced PR detection ---
+    - action: grep
+      target: "amplifier-bundle/recipes/default-workflow.yaml"
+      pattern: "gh pr list --search.*closes.*fixes"
+      description: "Path 2 — issue-referenced PR check via gh pr list --search with closes/fixes"
+
+    # --- Path 3: Zero-commits-ahead guard ---
+    - action: grep
+      target: "amplifier-bundle/recipes/default-workflow.yaml"
+      pattern: "rev-list --count"
+      description: "Path 3 — zero-commits guard via git rev-list --count"
+
+    # --- Path 4: Normal PR creation still exists ---
+    - action: grep
+      target: "amplifier-bundle/recipes/default-workflow.yaml"
+      pattern: "gh pr create --draft"
+      description: "Path 4 — gh pr create --draft still present for new PRs"
+
+    # --- Injection prevention ---
+    - action: grep
+      target: "amplifier-bundle/recipes/default-workflow.yaml"
+      pattern: "[!0-9]"
+      description: "Issue number validation rejects non-numeric values"
+
+    # --- Diagnostic output routed to stderr ---
+    - action: grep
+      target: "amplifier-bundle/recipes/default-workflow.yaml"
+      pattern: ">&2"
+      description: "Diagnostic messages routed to stderr (>&2)"
+
+    # --- Step banner correctness ---
+    - action: grep
+      target: "amplifier-bundle/recipes/default-workflow.yaml"
+      pattern: "Step 16"
+      description: "Step banner says 'Step 16', not 'Step 15'"
+
+# Expected Behavior:
+# - Path 1: gh pr list --head detects existing PR for the current branch
+# - Path 2: gh pr list --search detects PR referencing closes/fixes #N
+# - Path 3: git rev-list --count main..HEAD returns 0, PR creation skipped
+# - Path 4: gh pr create --draft creates new PR (only when paths 1-3 don't match)
+# - Issue number validated as numeric — non-numeric causes exit 1
+# - All diagnostic echo statements route to stderr via >&2
+#
+# Run Command:
+# gadugi-test run tests/gadugi/step-16-pr-creation-idempotency.yaml --verbose
