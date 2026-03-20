@@ -1514,25 +1514,43 @@ steps:
     output: "zero_bs_check"
 
   - id: "step-19d-verification-gate"
-    type: "bash"
-    command: |
-      echo "=== STEP 19 VERIFICATION GATE ===" && \
-      echo "" && \
-      echo "Before proceeding, verify ALL of the following:" && \
-      echo "" && \
-      echo "  ✓ Did I invoke the REVIEWER agent for philosophy check?" && \
-      echo "  ✓ Did I invoke the PATTERNS agent?" && \
-      echo "  ✓ Did I complete the zero-BS verification?" && \
-      echo "  ✓ Did I check for Forbidden Pattern violations?" && \
-      echo "  ✓ Are all findings documented?" && \
-      echo "  ✓ Any issues found have been addressed?" && \
-      echo "" && \
-      echo "Philosophy check: {{philosophy_check}}" && \
-      echo "Patterns check: {{patterns_check}}" && \
-      echo "" && \
-      echo "If any verification fails, STOP and complete the missing step." && \
-      echo "" && \
-      echo "=== GATE PASSED - Proceed to Step 20 ==="
+    agent: "amplihack:reviewer"
+    prompt: |
+      # Step 19d: Verification Gate — Synthesize Review Results
+
+      You are the final gatekeeper before Step 20 (cleanup). Your role is to
+      synthesize the outputs of all prior Step 19 sub-steps and determine
+      whether the implementation is ready to proceed.
+
+      ## Philosophy Check Output (step-19a)
+      {{philosophy_check}}
+
+      ## Patterns Check Output (step-19b)
+      {{patterns_check}}
+
+      ## Zero-BS Verification Output (step-19c)
+      {{zero_bs_check}}
+
+      ## Verification Checklist
+
+      Review the outputs above and confirm ALL of the following:
+
+        ✓ Was the REVIEWER agent invoked for philosophy check? (see Philosophy Check above)
+        ✓ Was the PATTERNS agent invoked? (see Patterns Check above)
+        ✓ Was the zero-BS verification completed? (see Zero-BS Verification above — confirm no TODOs, stubs, or Forbidden Patterns found)
+        ✓ Were Forbidden Pattern violations checked?
+        ✓ Are all findings documented in the outputs above?
+        ✓ Have any issues found been addressed?
+
+      ## Gate Decision
+
+      If ANY verification item is unresolved or failed, respond with:
+        GATE STATUS: BLOCKED — list the specific unresolved items and required actions.
+
+      If ALL verification items are confirmed, respond with:
+        GATE STATUS: PASSED — ready to proceed to Step 20.
+
+      Be direct and specific. Do not proceed to Step 20 unless all items are confirmed.
     output: "step_19_gate_status"
 
   # ==========================================================================
@@ -1541,7 +1559,7 @@ steps:
   - id: "step-20-final-cleanup"
     agent: "amplihack:cleanup"
     prompt: |
-      # Step 19: Final Cleanup and Verification
+      # Step 20: Final Cleanup and Verification
 
       **CRITICAL:** Original user requirements:
       {{final_requirements}}
@@ -1658,13 +1676,9 @@ steps:
     type: "bash"
     command: |
       cd {{worktree_setup.worktree_path}} && \
-      echo "=== Step 20: Converting PR to Ready ===" && \
+      echo "=== Step 21: Converting PR to Ready ===" && \
       echo "" && \
       echo "--- Verifying All Steps Complete ---" && \
-      echo "Philosophy check: {{philosophy_check}}" && \
-      echo "Patterns check: {{patterns_check}}" && \
-      echo "Cleanup: {{final_cleanup}}" && \
-      echo "Quality audit: {{quality_audit_results}}" && \
       echo "" && \
       echo "--- Converting PR to Ready ---" && \
       gh pr ready && \
