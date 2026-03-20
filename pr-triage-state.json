@@ -1,43 +1,72 @@
 {
-  "last_run": "2026-03-18T06:44:00Z",
-  "run_id": "23244544065",
+  "last_run": "2026-03-20T00:00:00Z",
+  "run_id": "23323829228",
   "triaged_prs": {
-    "3299": {
-      "title": "[docs] Update documentation for March 18 2026 merged PRs",
+    "3342": {
+      "title": "fix: truncate large context in verification gate echoes (ARG_MAX)",
+      "risk": "low",
+      "status": "triage:complete",
+      "labels_applied": ["triage:low-risk", "triage:complete", "triage:needs-review"],
+      "recommendation": "Low-risk fix; truncates echo output in verification gate steps",
+      "comment_posted": false,
+      "run": "23323829228"
+    },
+    "3338": {
+      "title": "[docs] Daily documentation update 2026-03-19",
+      "risk": "low",
+      "draft": false,
+      "status": "triage:complete",
+      "labels_applied": ["documentation", "automation", "triage:low-risk", "triage:complete"],
+      "recommendation": "Automated docs update; review and merge",
+      "comment_posted": false,
+      "run": "23323829228"
+    },
+    "3337": {
+      "title": "Fix GitHub issue #3327: amplihack import eagerly auto-installs memory lib",
       "risk": "low",
       "draft": true,
       "status": "triage:complete",
-      "labels_applied": ["documentation", "automation", "triage:low-risk", "triage:complete"],
-      "recommendation": "Review when ready (draft, expires Mar 19)",
-      "comment_posted": true,
-      "run": "23232157458"
+      "labels_applied": ["triage:low-risk", "triage:complete"],
+      "recommendation": "Draft; awaiting review — duplicate approach to #3334",
+      "comment_posted": false,
+      "run": "23323829228"
+    },
+    "3335": {
+      "title": "fix(recipe): make step-16-create-draft-pr idempotent",
+      "risk": "low",
+      "draft": true,
+      "status": "triage:complete",
+      "labels_applied": ["triage:low-risk", "triage:complete", "triage:has-tests"],
+      "recommendation": "Draft; 268 tests pass; review idempotency logic",
+      "comment_posted": false,
+      "run": "23323829228"
+    },
+    "3334": {
+      "title": "fix: remove eager auto-install of memory lib on import (#3327)",
+      "risk": "medium",
+      "status": "triage:complete",
+      "labels_applied": ["triage:complete", "triage:medium-risk", "triage:has-tests", "triage:high-priority"],
+      "recommendation": "BREAKING CHANGE — memory lib now optional dep; verify downstream usage",
+      "comment_posted": false,
+      "run": "23323829228"
+    },
+    "3332": {
+      "title": "fix(hive-eval): patch all 5 root causes before 100-agent eval rerun",
+      "risk": "high",
+      "status": "triage:complete",
+      "labels_applied": ["triage:complete", "triage:needs-review", "triage:high-risk"],
+      "recommendation": "High-risk eval infrastructure changes; needs careful review before eval rerun",
+      "comment_posted": false,
+      "run": "23323829228"
     },
     "3296": {
-      "title": "feat: Aspire AppHost for Azure Hive orchestration with OTEL telemetry",
+      "title": "feat(eval): distributed eval infrastructure, retrieval parity fixes, 100-agent scale",
       "risk": "high",
       "status": "triage:complete",
       "labels_applied": ["triage:complete", "triage:needs-deep-review", "triage:high-risk", "triage:has-tests"],
-      "recommendation": "Needs deep review — verify branch scope, full CI, infra owner approval",
+      "recommendation": "Needs deep review — large eval infrastructure change with scale bottleneck analysis",
       "comment_posted": true,
-      "run": "23232157458"
-    },
-    "3295": {
-      "title": "fix: remove dead Python <3.8 fallbacks in version detection",
-      "risk": "low",
-      "status": "triage:complete",
-      "labels_applied": ["code-health", "triage:low-risk", "triage:complete", "triage:has-tests"],
-      "recommendation": "Approve & Merge — merge before #3288 to resolve version conflict",
-      "comment_posted": true,
-      "run": "23232157458"
-    },
-    "3293": {
-      "title": "feat(code-atlas): v3 design — deterministic extraction + visual atlas",
-      "risk": "high",
-      "status": "triage:complete",
-      "labels_applied": ["triage:complete", "triage:needs-deep-review", "triage:high-risk", "triage:has-tests", "triage:high-priority"],
-      "recommendation": "Needs deep review — full CI, Kuzu dep check, architecture review",
-      "comment_posted": true,
-      "run": "23232157458"
+      "run": "23244544065"
     },
     "3290": {
       "title": "test(tdd): add failing security tests for SEC-01 through SEC-07 hardening",
@@ -45,15 +74,6 @@
       "status": "triage:complete",
       "labels_applied": ["triage:complete", "triage:medium-risk", "triage:has-tests", "triage:high-priority", "triage:security-review"],
       "recommendation": "Rebase required; coordinate with implementation PRs to avoid CI red period",
-      "comment_posted": true,
-      "run": "23232157458"
-    },
-    "3288": {
-      "title": "fix: improve heartbeat visibility for long-running agent steps",
-      "risk": "medium",
-      "status": "triage:complete",
-      "labels_applied": ["triage:complete", "triage:needs-review", "triage:medium-risk", "triage:has-tests"],
-      "recommendation": "Needs fixes — revert PROJECT.md change, investigate Atlas check failure, clarify recipe manifest",
       "comment_posted": true,
       "run": "23232157458"
     },
