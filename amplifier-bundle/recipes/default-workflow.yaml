@@ -1527,8 +1527,8 @@ steps:
       echo "  ✓ Are all findings documented?" && \
       echo "  ✓ Any issues found have been addressed?" && \
       echo "" && \
-      echo "Philosophy check: {{philosophy_check}}" && \
-      echo "Patterns check: {{patterns_check}}" && \
+      echo "Philosophy check: $(echo {{philosophy_check}} | head -c 200)" && \
+      echo "Patterns check: $(echo {{patterns_check}} | head -c 200)" && \
       echo "" && \
       echo "If any verification fails, STOP and complete the missing step." && \
       echo "" && \
@@ -1661,10 +1661,10 @@ steps:
       echo "=== Step 20: Converting PR to Ready ===" && \
       echo "" && \
       echo "--- Verifying All Steps Complete ---" && \
-      echo "Philosophy check: {{philosophy_check}}" && \
-      echo "Patterns check: {{patterns_check}}" && \
-      echo "Cleanup: {{final_cleanup}}" && \
-      echo "Quality audit: {{quality_audit_results}}" && \
+      echo "Philosophy check: $(echo {{philosophy_check}} | head -c 200)" && \
+      echo "Patterns check: $(echo {{patterns_check}} | head -c 200)" && \
+      echo "Cleanup: $(echo {{final_cleanup}} | head -c 200)" && \
+      echo "Quality audit: $(echo {{quality_audit_results}} | head -c 200)" && \
       echo "" && \
       echo "--- Converting PR to Ready ---" && \
       gh pr ready && \
