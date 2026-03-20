@@ -1,0 +1,47 @@
+# Outside-in test: ARG_MAX overflow prevention in verification gates
+# Verifies that large context variables in step-19d and step-21 are
+# truncated via head -c 200 to prevent ARG_MAX overflow.
+
+scenario:
+  name: "ARG_MAX Overflow Prevention in Verification Gates"
+  description: |
+    Verification gate steps (19d, 21) echo large agent outputs like
+    philosophy_check and patterns_check. Without truncation, these can
+    exceed ARG_MAX and crash the shell. This test verifies all echoed
+    context variables are piped through head -c 200.
+  type: cli
+  level: 1
+
+  tags: [recipe, arg-max, verification-gate, regression, issue-3342]
+
+  prerequisites:
+    - "amplifier-bundle/recipes/default-workflow.yaml exists"
+
+  steps:
+    - action: grep
+      target: "amplifier-bundle/recipes/default-workflow.yaml"
+      pattern: "head -c 200"
+      description: "At least one head -c 200 truncation exists in the recipe"
+
+    - action: grep
+      target: "amplifier-bundle/recipes/default-workflow.yaml"
+      pattern: "philosophy_check.*head -c 200"
+      description: "philosophy_check output is truncated"
+
+    - action: grep
+      target: "amplifier-bundle/recipes/default-workflow.yaml"
+      pattern: "patterns_check.*head -c 200"
+      description: "patterns_check output is truncated"
+
+    - action: grep
+      target: "amplifier-bundle/recipes/default-workflow.yaml"
+      pattern: "final_cleanup.*head -c 200"
+      description: "final_cleanup output is truncated"
+
+    - action: grep
+      target: "amplifier-bundle/recipes/default-workflow.yaml"
+      pattern: "quality_audit_results.*head -c 200"
+      description: "quality_audit_results output is truncated"
+
+# Run Command:
+# gadugi-test run tests/gadugi/arg-max-verification-gates.yaml --verbose
