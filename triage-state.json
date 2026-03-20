@@ -1,8 +1,8 @@
 {
-  "ts": "2026-03-20T06:30:00Z",
-  "run": 23331680596,
-  "open_prs": [3346, 3342, 3338, 3337, 3334, 3332, 3296, 3290, 3261, 2876],
-  "closed_since_last": [3335, 3286, 3268],
+  "ts": "2026-03-20T18:00:00Z",
+  "run": 23342463010,
+  "open_prs": [3346, 3342, 3337, 3334, 3332, 3296, 3290, 3261, 2876],
+  "closed_since_last": [3338],
   "prs": {
     "3346": {
       "risk": "low",
@@ -21,15 +21,6 @@
       "labels": ["triage:low-risk", "triage:complete", "triage:needs-review"],
       "status": "open",
       "note": "Defense-in-depth ARG_MAX fix: truncates echo output in steps 19d/21 to 200 chars. No new tests. Needs review."
-    },
-    "3338": {
-      "risk": "low",
-      "priority": "low",
-      "type": "docs-automated",
-      "tests": false,
-      "labels": ["documentation", "automation", "triage:low-risk", "triage:complete"],
-      "status": "open",
-      "note": "Auto-generated daily doc update 2026-03-19; expired 2026-03-20 06:25 UTC — stale, candidate for closure"
     },
     "3337": {
       "risk": "low",
@@ -74,7 +65,7 @@
       "tests": true,
       "labels": ["triage:complete", "triage:medium-risk", "triage:has-tests", "triage:security-review", "triage:high-priority"],
       "status": "open",
-      "note": "TDD security tests SEC-01 to SEC-07; 81/86 intentionally failing; stale base (7fd2fc1); needs rebase"
+      "note": "TDD security tests SEC-01 to SEC-07; 81/86 intentionally failing; stale base; needs rebase"
     },
     "3261": {
       "risk": "low",
