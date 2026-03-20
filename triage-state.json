@@ -1,17 +1,35 @@
 {
-  "ts": "2026-03-19T11:45:00Z",
-  "run": 23294498127,
-  "open_prs": [3338, 3337, 3335, 3334, 3332, 3296, 3290, 3286, 3268, 3261, 2876],
-  "closed_since_last": [3299],
+  "ts": "2026-03-20T06:30:00Z",
+  "run": 23331680596,
+  "open_prs": [3346, 3342, 3338, 3337, 3334, 3332, 3296, 3290, 3261, 2876],
+  "closed_since_last": [3335, 3286, 3268],
   "prs": {
+    "3346": {
+      "risk": "low",
+      "priority": "low",
+      "type": "docs-automated",
+      "tests": false,
+      "labels": ["documentation", "automation"],
+      "status": "draft",
+      "note": "Auto-generated daily doc update for #3335 (idempotent step-16); draft; expires 2026-03-21 06:18 UTC"
+    },
+    "3342": {
+      "risk": "low",
+      "priority": "medium",
+      "type": "bugfix-defense",
+      "tests": false,
+      "labels": ["triage:low-risk", "triage:complete", "triage:needs-review"],
+      "status": "open",
+      "note": "Defense-in-depth ARG_MAX fix: truncates echo output in steps 19d/21 to 200 chars. No new tests. Needs review."
+    },
     "3338": {
       "risk": "low",
       "priority": "low",
       "type": "docs-automated",
       "tests": false,
-      "labels": ["triage:complete", "triage:low-risk", "documentation", "automation"],
+      "labels": ["documentation", "automation", "triage:low-risk", "triage:complete"],
       "status": "open",
-      "note": "Auto-generated daily doc update 2026-03-19; covers 14 merged PRs; expires 2026-03-20 06:25 UTC"
+      "note": "Auto-generated daily doc update 2026-03-19; expired 2026-03-20 06:25 UTC — stale, candidate for closure"
     },
     "3337": {
       "risk": "low",
@@ -20,16 +38,7 @@
       "tests": false,
       "labels": ["triage:complete", "triage:low-risk"],
       "status": "draft",
-      "note": "Draft; duplicate/parallel of #3334 (non-draft). Same fix for #3327/#3331. Likely superseded — candidate for closure once #3334 merges."
-    },
-    "3335": {
-      "risk": "low",
-      "priority": "medium",
-      "type": "bugfix-recipe",
-      "tests": true,
-      "labels": ["triage:complete", "triage:low-risk", "triage:has-tests"],
-      "status": "draft",
-      "note": "Makes step-16-create-draft-pr idempotent; 17 new tests, 268/268 recipe tests pass; draft pending review"
+      "note": "Draft duplicate of #3334 (same fix #3327/#3331). Candidate for closure once #3334 merges."
     },
     "3334": {
       "risk": "medium",
@@ -38,7 +47,7 @@
       "tests": true,
       "labels": ["triage:complete", "triage:medium-risk", "triage:has-tests", "triage:high-priority"],
       "status": "open",
-      "note": "PEP 668 compliance fix; moves memory-lib to optional dep — BREAKING CHANGE (users must run pip install amplihack[memory])"
+      "note": "PEP 668 compliance; moves memory-lib to optional dep; BREAKING CHANGE; 11/11 tests pass; ready for review"
     },
     "3332": {
       "risk": "high",
@@ -47,7 +56,7 @@
       "tests": false,
       "labels": ["triage:complete", "triage:high-risk", "triage:needs-review"],
       "status": "open",
-      "note": "5 root-cause fixes for 100-agent distributed eval: timeout<=0→None fix, semantic abstention retry, scale-aware defaults"
+      "note": "5 root-cause fixes for 100-agent eval: timeout<=0->None, semantic abstention retry, scale-aware defaults; no tests; needs review"
     },
     "3296": {
       "risk": "high",
@@ -56,7 +65,7 @@
       "tests": true,
       "labels": ["triage:complete", "triage:high-risk", "triage:needs-deep-review", "triage:has-tests"],
       "status": "open",
-      "note": "Eval infrastructure + retrieval parity fixes + 100-agent scale validator; stale base; needs rebase"
+      "note": "Eval infrastructure + retrieval parity + 100-agent scale; stale base (c8608fe); needs rebase"
     },
     "3290": {
       "risk": "medium",
@@ -65,25 +74,7 @@
       "tests": true,
       "labels": ["triage:complete", "triage:medium-risk", "triage:has-tests", "triage:security-review", "triage:high-priority"],
       "status": "open",
-      "note": "TDD security tests SEC-01 to SEC-07; 81/86 intentionally failing; stale base; needs rebase"
-    },
-    "3286": {
-      "risk": "low",
-      "priority": "medium",
-      "type": "bugfix-recipe",
-      "tests": false,
-      "labels": ["triage:complete", "triage:low-risk", "triage:needs-review"],
-      "status": "open",
-      "note": "Progress markers for step-02b; stale base; needs rebase"
-    },
-    "3268": {
-      "risk": "medium",
-      "priority": "medium",
-      "type": "bugfix-exception",
-      "tests": true,
-      "labels": ["bug", "error_handling", "triage:complete", "triage:medium-risk", "triage:has-tests"],
-      "status": "open",
-      "note": "cli.py exception flattening; stale base (527cbfd); needs rebase"
+      "note": "TDD security tests SEC-01 to SEC-07; 81/86 intentionally failing; stale base (7fd2fc1); needs rebase"
     },
     "3261": {
       "risk": "low",
@@ -92,7 +83,7 @@
       "tests": false,
       "labels": ["documentation", "triage:low-risk", "triage:complete"],
       "status": "open",
-      "note": "Design doc only; no code changes; open for review"
+      "note": "Design doc only; LearningAgent integration architecture; no code changes; open for review"
     },
     "2876": {
       "risk": "extreme",
@@ -101,7 +92,7 @@
       "tests": true,
       "labels": ["needs-decomposition", "extreme-risk", "triage:complete", "triage:extreme-risk", "triage:needs-deep-review", "too-large", "merge-conflicts"],
       "status": "open",
-      "note": "DHT sharding; merge conflicts; needs decomposition; retrieval parity overlap with #3296/#3332"
+      "note": "DHT sharding; merge conflicts; too large; needs decomposition; retrieval parity overlap with #3296/#3332"
     }
   }
 }
