@@ -1,0 +1,44 @@
+sequenceDiagram
+    participant User
+    participant CLI as cli.py
+    participant cli
+    User->>CLI: launch
+    CLI->>cli: launch()
+    cli->>cli: return_value: _launch_command_impl
+    cli->>cli: file_io: _sync_home_runtime_directory
+    participant dep_check
+    cli->>dep_check: return_value: check_sdk_dep
+    cli-->>CLI: result
+    CLI-->>User: exit code
+
+    User->>CLI: cli:cli.py
+    CLI->>cli: main()
+    participant memory_export
+    cli->>memory_export: file_io: _export_json
+    participant auto_update
+    cli->>auto_update: return_value: UpdateCache.from_dict
+    cli->>auto_update: file_io: _fetch_latest_version
+    cli-->>CLI: result
+    CLI-->>User: exit code
+
+    User->>CLI: recipe
+    CLI->>cli: recipe()
+    participant rust_runner
+    cli->>rust_runner: return_value: _binary_search_paths
+    cli-->>CLI: result
+    CLI-->>User: exit code
+
+    User->>CLI: claude
+    CLI->>cli: claude()
+    cli->>cli: return_value: _debug_print
+    participant prerequisites
+    cli->>prerequisites: subprocess: safe_subprocess_call
+    cli-->>CLI: result
+    CLI-->>User: exit code
+
+    User->>CLI: plugin
+    CLI->>cli: plugin()
+    participant __init__
+    cli->>__init__: return_value: is_uvx_deployment
+    cli-->>CLI: result
+    CLI-->>User: exit code

@@ -1,0 +1,207 @@
+# .github/workflows/atlas-ci.yml
+#
+# Code Atlas CI — three patterns for keeping architecture diagrams fresh.
+#
+# Pattern 1 (atlas-staleness-gate): Post-merge staleness detection.
+# Pattern 2 (atlas-pr-impact): PR architecture impact check.
+# Pattern 3 (atlas-scheduled-rebuild): Weekly full rebuild.
+
+name: Code Atlas CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "services/**"
+      - "apps/**"
+      - "cmd/**"
+      - "docker-compose*.yml"
+      - "docker-compose*.yaml"
+      - "**/package.json"
+      - "**/go.mod"
+      - "**/*.csproj"
+      - "**/Cargo.toml"
+      - "**/requirements*.txt"
+      - "**/pyproject.toml"
+      - "k8s/**"
+      - "kubernetes/**"
+      - "helm/**"
+
+  pull_request:
+    branches: [main]
+
+  schedule:
+    - cron: "0 6 * * 1" # Every Monday at 06:00 UTC
+
+  workflow_dispatch:
+    inputs:
+      force_full_rebuild:
+        description: "Force full atlas rebuild (ignores staleness check)"
+        required: false
+        default: "false"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Pattern 1: Post-merge staleness gate
+  # ---------------------------------------------------------------------------
+  atlas-staleness-gate:
+    name: "Atlas Staleness Gate"
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check atlas staleness
+        id: staleness
+        run: |
+          bash scripts/check-atlas-staleness.sh > stale-report.txt 2>&1
+          EXIT_CODE=$?
+          cat stale-report.txt
+          echo "exit_code=${EXIT_CODE}" >> "$GITHUB_OUTPUT"
+          echo "stale_count=$(grep -c 'STALE:' stale-report.txt || echo 0)" >> "$GITHUB_OUTPUT"
+        continue-on-error: true
+
+      - name: Upload staleness report
+        if: steps.staleness.outputs.exit_code == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-staleness-report
+          path: stale-report.txt
+          retention-days: 7
+
+      - name: Comment staleness summary (non-blocking)
+        if: steps.staleness.outputs.exit_code == '1'
+        run: |
+          echo "::warning::Code atlas has stale layers. Run '/code-atlas rebuild all' to refresh."
+          echo "::warning::See artifact 'atlas-staleness-report' for details."
+
+  # ---------------------------------------------------------------------------
+  # Pattern 2: PR architecture impact check
+  # ---------------------------------------------------------------------------
+  atlas-pr-impact:
+    name: "Atlas PR Impact Check"
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect atlas impact
+        id: impact
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          echo "Checking atlas impact for PR: ${BASE_SHA}..${HEAD_SHA}"
+          echo ""
+
+          # Capture exit code explicitly — GH Actions set -e would kill the step
+          # before we can report which layers are stale and how to fix them.
+          EXIT_CODE=0
+          bash scripts/check-atlas-staleness.sh "$BASE_SHA" "$HEAD_SHA" > impact-report.txt 2>&1 || EXIT_CODE=$?
+
+          cat impact-report.txt
+
+          if [[ "$EXIT_CODE" -eq 1 ]]; then
+            echo "has_impact=true" >> "$GITHUB_OUTPUT"
+            echo ""
+            echo "=========================================="
+            echo "  CODE ATLAS IS STALE — PR cannot merge"
+            echo "=========================================="
+            echo ""
+            echo "This PR modifies files tracked by the code atlas but the"
+            echo "atlas diagrams were not updated. To fix:"
+            echo ""
+            echo "  1. Check out this branch locally"
+            echo "  2. Run:  /code-atlas rebuild all"
+            echo "     Or manually update the affected layer files in docs/atlas/"
+            echo "  3. Commit and push the updated atlas files"
+            echo ""
+            echo "Stale layers detected (see report above for details)."
+            echo "Atlas source files live in docs/atlas/{layer-slug}/"
+            echo "Each layer has README.md, .mmd (Mermaid), and .dot (Graphviz) sources."
+            echo ""
+            exit 1
+          elif [[ "$EXIT_CODE" -eq 2 ]]; then
+            echo "has_impact=false" >> "$GITHUB_OUTPUT"
+            echo "::error::Staleness check script error. Check scripts/check-atlas-staleness.sh."
+            exit 1
+          else
+            echo "has_impact=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No atlas layers affected by this PR."
+          fi
+
+      - name: Post PR impact comment
+        if: steps.impact.outputs.has_impact == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          STALE_LIST=$(grep 'STALE:' impact-report.txt | sed 's/^/- /' || echo "- (none detected)")
+
+          COMMENT_BODY="## Code Atlas Impact Detected
+
+          This PR modifies files tracked by the code atlas. The following layers will be stale after merge:
+
+          ${STALE_LIST}
+
+          **To refresh:**
+          \`\`\`
+          /code-atlas rebuild all
+          \`\`\`
+
+          See [full impact report](${RUN_URL}) for details."
+
+          gh pr comment "$PR_NUMBER" --body "$COMMENT_BODY" \
+            || echo "::warning::Could not post PR comment. Check GH_TOKEN permissions."
+
+      - name: Upload impact report
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-pr-impact-${{ github.event.pull_request.number }}
+          path: impact-report.txt
+          retention-days: 14
+
+  # ---------------------------------------------------------------------------
+  # Pattern 3: Scheduled full rebuild
+  # ---------------------------------------------------------------------------
+  atlas-scheduled-rebuild:
+    name: "Scheduled Full Atlas Rebuild"
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.force_full_rebuild == 'true')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run rebuild script (prepare for Claude Code rebuild)
+        id: rebuild
+        run: |
+          bash scripts/rebuild-atlas-all.sh --ci
+
+      - name: Validate atlas output (security check — MUST pass)
+        if: success()
+        run: |
+          bash scripts/validate_atlas_output.sh --atlas-dir docs/atlas --strict
+
+      - name: Render SVG diagrams
+        if: success()
+        run: |
+          bash scripts/render-atlas-svg.sh --atlas-dir docs/atlas
+
+      - name: Open issue on rebuild preparation failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh issue create \
+            --title "Weekly code atlas rebuild failed ($(date +%Y-%m-%d))" \
+            --body "The scheduled atlas rebuild preparation failed on $(date +%Y-%m-%d). See workflow run: ${RUN_URL}" \
+            --label "documentation,automated"

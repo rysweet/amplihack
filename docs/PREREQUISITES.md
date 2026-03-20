@@ -8,8 +8,8 @@ The amplihack framework requires the following tools. Each entry explains **what
 
 | Tool        | Min Version    | What It Does                  | Why amplihack Needs It                                                                                 |
 | ----------- | -------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------ |
-| **Node.js** | v18+           | JavaScript runtime            | Runs Claude CLI and claude-trace (debugging/tracing)                                                   |
-| **npm**     | (with Node.js) | Node.js package manager       | Installs Claude CLI and claude-trace packages                                                          |
+| **Node.js** | v18+           | JavaScript runtime            | Runs Claude CLI                                                                                        |
+| **npm**     | (with Node.js) | Node.js package manager       | Installs Claude CLI                                                                                    |
 | **uv**      | latest         | Fast Python package installer | Installs amplihack itself and its Python dependencies                                                  |
 | **git**     | 2.0+           | Version control               | Branch management, PRs, and workflow automation                                                        |
 | **claude**  | latest         | Claude Code CLI               | Core AI coding assistant that amplihack extends                                                        |
@@ -149,6 +149,10 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # git
 sudo apt install git
+
+# Rust/cargo (for recipe runner)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source $HOME/.cargo/env
 ```
 
 #### After Installation
@@ -161,6 +165,7 @@ node --version
 npm --version
 uv --version
 git --version
+cargo --version
 ```
 
 ---
@@ -209,6 +214,21 @@ uv --version     # Should show version info
 git --version    # Should show 2.x or higher
 ```
 
+#### Windows Feature Compatibility
+
+| Feature | Windows Native | WSL |
+|---|---|---|
+| Core recipe runner | Full | Full |
+| Agent orchestration (`/dev`) | Full | Full |
+| Auto mode (TUI) | Headless only | Full |
+| Fleet CLI | Not supported | Full |
+| File locking | Full (`msvcrt` fallback) | Full |
+| Keyboard input | Full (`msvcrt` fallback) | Full |
+| Temp directories | Full (`tempfile.gettempdir()`) | Full |
+| Rust recipe runner | Full | Full |
+
+For WSL setup, follow the Linux instructions in [the Linux section above](#linux).
+
 #### Configure PowerShell UTF-8 Encoding (Required for Windows)
 
 AmplihHack uses Unicode characters (emojis, checkmarks) in output. Windows PowerShell defaults to Code Page 437, which causes these characters to display incorrectly as garbled text (e.g., `âœ…` instead of ✅).
@@ -251,7 +271,7 @@ chcp 65001
 
 ### Node.js
 
-**Purpose:** Runtime for claude-trace (enhanced debugging and tracing)
+**Purpose:** Runtime for Claude CLI
 
 **Official Documentation:** https://nodejs.org/
 
@@ -265,7 +285,7 @@ chcp 65001
 
 ### npm
 
-**Purpose:** Package manager for installing claude-trace
+**Purpose:** Package manager for installing Claude CLI
 
 **Official Documentation:** https://www.npmjs.com/
 
@@ -354,34 +374,6 @@ export AMPLIHACK_AUTO_INSTALL=1
 
 When set, the framework will automatically install Claude CLI if missing.
 This requires explicit opt-in for security.
-
----
-
-### claude-trace
-
-**Purpose:** Enhanced debugging and traffic logging for Claude Code
-
-**Installation (Required):**
-
-```bash
-npm install -g @mariozechner/claude-trace
-```
-
-**Note:** This is a **required dependency** as of the simplified implementation. Install it during initial setup.
-
-**Documentation:** Part of claude-code ecosystem (https://github.com/mariozechner/claude-trace)
-
-**Usage:**
-
-- Enabled by default (`AMPLIHACK_USE_TRACE=1`)
-- To temporarily disable and use plain `claude`: `export AMPLIHACK_USE_TRACE=0`
-
-**Verification:**
-
-```bash
-claude-trace --version
-# Should show version information
-```
 
 ---
 
@@ -559,9 +551,8 @@ echo "For installation instructions, see docs/PREREQUISITES.md"
 After installing all prerequisites:
 
 1. **Verify installation:** Run `amplihack` to check all tools are detected
-2. **Install claude-trace (optional):** Automatically installed on first use
-3. **Configure git:** Set up your name and email
-4. **Start using AmplihHack:** See README.md for usage instructions
+2. **Configure git:** Set up your name and email
+3. **Start using AmplihHack:** See README.md for usage instructions
 
 ---
 
@@ -579,4 +570,4 @@ If you encounter issues not covered in this guide:
 
 ---
 
-**Last Updated:** 2025-10-01
+**Last Updated:** 2026-03-17

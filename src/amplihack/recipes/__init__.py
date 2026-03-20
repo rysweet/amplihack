@@ -13,7 +13,6 @@ Public API:
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 from amplihack.recipes.agent_resolver import AgentNotFoundError, AgentResolver
@@ -44,6 +43,7 @@ from amplihack.recipes.rust_runner import (
     is_rust_runner_available,
     run_recipe_via_rust,
 )
+from amplihack.utils import _agent_binary_context
 
 __all__ = [
     "AgentNotFoundError",
@@ -87,6 +87,7 @@ def run_recipe_by_name(
     working_dir: str = ".",
     auto_stage: bool = True,
     progress: bool = False,
+    agent_binary: str | None = None,
     **_kwargs: Any,
 ) -> RecipeResult:
     """Find a recipe by name and execute it via the Rust recipe runner.
@@ -102,16 +103,19 @@ def run_recipe_by_name(
         working_dir: Working directory for execution (default ``"."``).
         auto_stage: Whether to auto-stage git changes (default True).
         progress: Whether to stream Rust runner progress output to stderr.
+        agent_binary: Override AMPLIHACK_AGENT_BINARY for this call only.
+            The original env var value is restored after the call.
 
     Raises:
         RustRunnerNotFoundError: If the Rust binary is not installed.
     """
-    return run_recipe_via_rust(
-        name=name,
-        user_context=user_context,
-        dry_run=dry_run,
-        recipe_dirs=recipe_dirs,
-        working_dir=working_dir,
-        auto_stage=auto_stage,
-        progress=progress,
-    )
+    with _agent_binary_context(agent_binary):
+        return run_recipe_via_rust(
+            name=name,
+            user_context=user_context,
+            dry_run=dry_run,
+            recipe_dirs=recipe_dirs,
+            working_dir=working_dir,
+            auto_stage=auto_stage,
+            progress=progress,
+        )

@@ -1,0 +1,84 @@
+# Staleness Map — extracted from LAYERS.yaml staleness_triggers
+# Maps each layer slug to file patterns that trigger a rebuild.
+
+repo-surface:
+  - "**/*"
+
+ast-lsp-bindings:
+  - "*.go"
+  - "*.ts"
+  - "*.py"
+  - "*.rs"
+  - "*.cs"
+  - "*.js"
+  - "*.java"
+
+compile-deps:
+  - "go.mod"
+  - "*/go.mod"
+  - "package.json"
+  - "*/package.json"
+  - "*.csproj"
+  - "Cargo.toml"
+  - "*/Cargo.toml"
+  - "requirements*.txt"
+  - "*/requirements*.txt"
+  - "pyproject.toml"
+  - "*/pyproject.toml"
+
+runtime-topology:
+  - "docker-compose*.yml"
+  - "docker-compose*.yaml"
+  - "*/k8s/*.yaml"
+  - "k8s/*.yaml"
+  - "kubernetes/*.yaml"
+  - "*/kubernetes/*.yaml"
+  - "helm/*.yaml"
+  - "helm/*/*.yaml"
+  - "*/helm/*.yaml"
+  - "*/helm/*/*.yaml"
+
+api-contracts:
+  - "*route*.ts"
+  - "*route*.go"
+  - "*controller*.go"
+  - "*controller*.ts"
+  - "*controller*.cs"
+  - "*views*.py"
+  - "*router*.ts"
+  - "*router*.go"
+  - "*handler*.go"
+  - "*.proto"
+  - "*.graphql"
+  - "*.gql"
+  - "*openapi*.yaml"
+  - "*openapi*.json"
+  - "*swagger*.yaml"
+  - "*swagger*.json"
+
+data-flow:
+  - "*dto*.ts"
+  - "*schema*.py"
+  - "*_request.go"
+  - "*_response.go"
+  - "*types*.ts"
+  - "*model*.go"
+
+service-components:
+  - "services/*/*.go"
+  - "services/*/*.ts"
+  - "services/*/*.py"
+  - "services/*/*.rs"
+  - "services/*/*.cs"
+  - "apps/*/*.go"
+  - "apps/*/*.ts"
+  - "src/*/__init__.py"
+  - "*/mod.rs"
+
+user-journeys:
+  - "*page*.tsx"
+  - "*page*.ts"
+  - "cmd/*.go"
+  - "*/cmd/*.go"
+  - "cli/*.py"
+  - "*/cli/*.py"

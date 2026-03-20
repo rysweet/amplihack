@@ -47,6 +47,23 @@ turns, it's the same topic. Continue in the current workflow.
 
 ### Quick Classification (3 seconds max)
 
+```mermaid
+flowchart TD
+    MSG[New User Message] --> TB{Topic Boundary?}
+    TB -->|"same goal/domain as last 3 turns"| CONTINUE[Continue current workflow]
+    TB -->|"new topic / first message / direction change"| CLASS{Classify Task Type}
+
+    CLASS --> QA{Edits code files?}
+    QA -->|"no + Q&A keywords"| QA_ACT[Respond directly]
+    QA -->|"no + ops keywords"| OPS_ACT[Respond directly]
+
+    CLASS -->|"investigation keywords"| INV_ACT[Invoke /dev]
+    CLASS -->|"development keywords"| DEV_ACT[Invoke /dev]
+    QA -->|"yes - ANY code file edit"| DEV_ACT
+
+    CLASS -->|"ambiguous"| DEV_ACT
+```
+
 | Task Type         | Action                      | When to Use                                            |
 | ----------------- | --------------------------- | ------------------------------------------------------ |
 | **Q&A**           | Respond directly            | Simple questions, single-turn answers, no code changes |
@@ -70,6 +87,17 @@ Examples of "trivial" changes that STILL require the Development workflow:
 The only exception is editing `CLAUDE.md` itself or files in `.claude/context/`
 — these are documentation/configuration, not code.
 
+### Classification Pipeline (4 layers)
+
+Classification happens through 4 layers, each reinforcing the others:
+
+1. **`routing_prompt.txt`** — Injected every turn. Uses parallel signal
+   evaluation (UNDERSTAND, IMPLEMENT, FILE_EDIT, SHELL_ONLY, QUESTION) with
+   priority resolution. The authoritative per-turn classifier.
+2. **`CLAUDE.md`** (this file) — Keywords and code-file-edit rule below.
+3. **`workflow_classification_reminder.py`** — Topic boundary reinforcement.
+4. **`dev-orchestrator/SKILL.md`** — Decomposition guidance when skill activates.
+
 ### Classification Keywords
 
 - **Q&A**: "what is", "explain briefly", "quick question", "how do I run"
@@ -79,6 +107,8 @@ The only exception is editing `CLAUDE.md` itself or files in `.claude/context/`
   "explore", "how does X work"
 - **Development**: "implement", "add", "fix", "create", "refactor", "update",
   "build"
+- **Hybrid**: Both investigation AND implementation keywords present (e.g.,
+  "investigate X then fix Y", "research how to do X then implement it")
 
 ### Required Announcement
 

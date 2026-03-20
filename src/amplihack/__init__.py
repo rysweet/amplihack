@@ -15,48 +15,23 @@ Public API:
 """
 
 import os
-import sys
-from pathlib import Path
 
 # Read version from installed package metadata
+from importlib.metadata import PackageNotFoundError, version
+from pathlib import Path
+
 try:
-    from importlib.metadata import PackageNotFoundError, version
-except ImportError:
-    # Python < 3.8 (shouldn't happen, but graceful fallback)
-    print("WARNING: importlib.metadata not available", file=sys.stderr)
-    version = None  # type: ignore
-    PackageNotFoundError = Exception  # type: ignore
+    __version__ = version("amplihack")
+except PackageNotFoundError:
+    # Development mode (not installed as package) — read from pyproject.toml
+    import tomllib
 
-if version:
-    try:
-        __version__ = version("amplihack")
-    except PackageNotFoundError:
-        # Fallback for development (not installed)
-        try:
-            import tomllib  # Python 3.11+
-        except ImportError:
-            print("WARNING: tomllib not available, trying tomli", file=sys.stderr)
-            try:
-                import tomli as tomllib  # type: ignore
-            except ImportError:
-                print(
-                    "WARNING: tomli not available, version detection from pyproject.toml disabled",
-                    file=sys.stderr,
-                )
-                tomllib = None  # type: ignore
-
-        if tomllib:
-            _pyproject_path = Path(__file__).parent.parent.parent / "pyproject.toml"
-            if _pyproject_path.exists():
-                with open(_pyproject_path, "rb") as f:
-                    _pyproject = tomllib.load(f)
-                    __version__ = _pyproject["project"]["version"]
-            else:
-                __version__ = "unknown"
-        else:
-            __version__ = "unknown"
-else:
-    __version__ = "unknown"
+    _pyproject_path = Path(__file__).parent.parent.parent / "pyproject.toml"
+    if _pyproject_path.exists():
+        with open(_pyproject_path, "rb") as f:
+            __version__ = tomllib.load(f)["project"]["version"]
+    else:
+        __version__ = "unknown"
 
 # Core constants
 HOME = str(Path.home())

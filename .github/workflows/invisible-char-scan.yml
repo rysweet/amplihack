@@ -1,0 +1,36 @@
+name: Invisible Character Scan
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  scan:
+    # Skip for maintainers and bots
+    if: >-
+      github.event.pull_request.author_association != 'OWNER' &&
+      github.event.pull_request.author_association != 'MEMBER' &&
+      github.event.pull_request.author_association != 'COLLABORATOR' &&
+      github.actor != 'github-actions[bot]' &&
+      github.actor != 'dependabot[bot]' &&
+      github.actor != 'copilot[bot]'
+    runs-on: ubuntu-latest
+    environment: external-pr-scan
+    steps:
+      - name: Checkout base (safe — not PR head)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 0
+
+      - name: Fetch PR head
+        run: git fetch origin pull/${{ github.event.pull_request.number }}/head:pr-head
+
+      - name: Scan diff for invisible characters
+        run: |
+          git diff ${{ github.event.pull_request.base.sha }}...pr-head \
+            | python3 scripts/scan_invisible_chars.py
