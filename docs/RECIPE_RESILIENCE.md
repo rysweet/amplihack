@@ -1,6 +1,6 @@
-# Recipe Resilience: Branch Sanitization & Sub-Recipe Recovery
+# Recipe Resilience: Branch Sanitization, Sub-Recipe Recovery & Idempotent PR Creation
 
-This document describes two resilience improvements to the amplihack recipe runner:
+This document describes three resilience improvements to the amplihack recipe runner:
 
 1. **Branch Name Sanitization** (Issue #2952) — `default-workflow` step 4 now
    produces valid git branch names from any `task_description`, including
@@ -8,6 +8,9 @@ This document describes two resilience improvements to the amplihack recipe runn
 2. **Sub-Recipe Agentic Recovery** (Issue #2953) — when a sub-recipe step fails,
    the runner invokes an agent recovery step before raising a hard error, giving
    the workflow a chance to self-heal.
+3. **Idempotent PR Creation** (Issue #3324) — `default-workflow` step 16 now
+   gracefully handles pre-existing PRs, zero-commit branches, and
+   issue-referenced PRs instead of failing.
 
 ---
 
@@ -282,4 +285,64 @@ Expected output:
 
 ```
 37 passed in ...s
+```
+
+---
+
+## Idempotent PR Creation (Step 16)
+
+### Problem
+
+`step-16-create-draft-pr` in `default-workflow.yaml` called `gh pr create`
+unconditionally. Re-running the workflow (e.g., after a transient failure or
+deliberate retry) produced one of these errors:
+
+- `gh pr create` fails because a PR already exists for the branch
+- `gh pr create` fails because the branch has no commits ahead of the base
+- A duplicate PR is created when a PR referencing the issue already exists
+
+### Solution: Four-Path Decision Tree
+
+Step 16 now evaluates four conditions in order before attempting creation:
+
+| Path | Detection | Behaviour |
+|------|-----------|-----------|
+| 1. Branch already has a PR | `gh pr list --head <branch>` returns a URL | Return existing URL, exit 0 |
+| 2. Issue already has a PR | `gh pr list --search "closes #N OR fixes #N"` | Return existing URL, exit 0 |
+| 3. No commits ahead of base | `git rev-list --count` returns 0 | Log warning, exit 0 (no-op) |
+| 4. No PR exists, branch has commits | — | Create new draft PR (original behaviour) |
+
+Only path 4 calls `gh pr create --draft`. All other paths exit cleanly without
+side effects.
+
+### Additional Hardening
+
+- **Injection prevention** — `issue_number` is validated as numeric via a
+  `case` statement before use in shell expansions.
+- **Stderr routing** — all diagnostic messages go to `stderr`; only the PR URL
+  goes to `stdout`, so downstream steps that capture output receive a clean
+  value.
+
+### Security Note
+
+`issue_number` is matched against `[0-9]*` before being interpolated into any
+shell command. Non-numeric values cause an immediate error, preventing
+command injection through attacker-influenced issue numbers.
+
+### Testing
+
+| File | Tests | Coverage |
+|---|---|---|
+| `tests/recipes/test_pr_creation_idempotency.py` | 17 | Four detection paths, numeric validation, stderr routing, zero-commits guard |
+
+Run with:
+
+```bash
+.venv/bin/python -m pytest tests/recipes/test_pr_creation_idempotency.py -x -q
+```
+
+Expected output:
+
+```
+17 passed in ...s
 ```
