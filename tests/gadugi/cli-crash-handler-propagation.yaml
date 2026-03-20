@@ -1,0 +1,81 @@
+# Outside-in test: cli.py crash handler error propagation (#3268)
+# Verifies that the launch_command crash handler uses a flat try/except/finally
+# with no nested exception swallowing — crash_session() and os.chdir() failures
+# propagate directly.  See issue #3233.
+
+scenario:
+  name: "CLI Crash Handler - Error Propagation"
+  description: |
+    When launch_command encounters an exception, the crash handler must:
+    1. Log the error via logger.debug (not the module-level logging.debug)
+    2. Call crash_session() without wrapping it in a nested try/except
+    3. Restore CWD via os.chdir() in a finally block without a nested try/except
+    4. Re-raise the original exception so callers see real failures
+
+    This test verifies the fix for issue #3233 where triple-nested try/except
+    blocks silently swallowed crash_session() and os.chdir() failures.
+  type: cli
+  level: 2
+
+  tags: [cli, crash-handler, error-propagation, regression, issue-3233, issue-3268]
+
+  prerequisites:
+    - "Python 3.10+ with amplihack package importable"
+    - "src/amplihack/cli.py exists"
+
+  environment:
+    variables:
+      PYTHONPATH: "src"
+
+  steps:
+    # Verify the crash handler section uses flat try/except/finally
+    - action: grep_source
+      target: "src/amplihack/cli.py"
+      pattern: "try:.*_launch_command_impl"
+      description: "Crash handler wraps _launch_command_impl in a single try block"
+
+    # Verify crash_session is called directly (not inside nested try)
+    - action: grep_source
+      target: "src/amplihack/cli.py"
+      pattern: "tracker\\.crash_session\\(session_id\\)"
+      description: "crash_session() is called directly without nested try/except"
+
+    # Verify os.chdir is in finally block (not inside nested try)
+    - action: grep_source
+      target: "src/amplihack/cli.py"
+      pattern: "finally:.*os\\.chdir"
+      description: "os.chdir() is in finally block without nested try/except"
+
+    # Verify logger.debug is used (not logging.debug)
+    - action: verify_source
+      target: "src/amplihack/cli.py"
+      contains: "logger.debug"
+      not_contains: "logging.debug"
+      scope: "launch_command"
+      description: "Uses logger.debug (instance) not logging.debug (module-level)"
+
+    # Verify the except block re-raises
+    - action: grep_source
+      target: "src/amplihack/cli.py"
+      pattern: "except Exception.*raise"
+      description: "Exception handler re-raises after crash_session"
+
+  cleanup:
+    - action: capture_output
+      save_as: "cli-crash-handler-propagation-output.txt"
+      description: "Save full test output for debugging"
+
+# Expected Behavior:
+# - launch_command uses a single try/except/finally (no nesting)
+# - crash_session() failures propagate (not wrapped in inner try/except)
+# - os.chdir() failures propagate (not wrapped in inner try/except)
+# - logger.debug is used consistently (not logging.debug)
+# - The except block always re-raises the original exception
+#
+# Root Cause (fixed in #3268):
+# The original crash handler had triple-nested try/except blocks that silently
+# swallowed failures from crash_session() and os.chdir(), violating the
+# project's Forbidden Patterns (no error swallowing, no silent fallbacks).
+#
+# Run Command:
+# gadugi-test run tests/gadugi/cli-crash-handler-propagation.yaml --verbose
