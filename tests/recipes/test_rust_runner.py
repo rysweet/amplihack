@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -23,6 +24,8 @@ import pytest
 from amplihack.recipes.models import StepStatus
 from amplihack.recipes.rust_runner import (
     RustRunnerNotFoundError,
+    _build_rust_env,
+    _normalize_copilot_cli_args,
     _redact_command_for_log,
     ensure_rust_recipe_runner,
     find_rust_binary,
@@ -562,6 +565,114 @@ class TestEnsureRustRecipeRunner:
     @patch("subprocess.run", side_effect=subprocess.TimeoutExpired("cargo", 300))
     def test_cargo_install_timeout(self, mock_run, mock_which, mock_avail):
         assert ensure_rust_recipe_runner(quiet=True) is False
+
+
+class TestRustRunnerEnvironment:
+    """Tests for minimal env forwarding into the Rust runner."""
+
+    @patch.dict(
+        "os.environ",
+        {
+            "PATH": "/usr/bin",
+            "HOME": "/tmp/home",
+            "LANG": "C.UTF-8",
+            "AMPLIHACK_AGENT_BINARY": "copilot",
+            "RECIPE_RUNNER_RS_PATH": "/custom/bin/recipe-runner-rs",
+            "GITHUB_TOKEN": "secret-token",  # pragma: allowlist secret
+            "AWS_SECRET_ACCESS_KEY": "super-secret",  # pragma: allowlist secret
+        },
+        clear=True,
+    )
+    def test_build_rust_env_uses_allowlist(self):
+        env = _build_rust_env()
+
+        assert env["PATH"].endswith("/usr/bin")
+        assert env["HOME"] == "/tmp/home"
+        assert env["LANG"] == "C.UTF-8"
+        assert env["AMPLIHACK_AGENT_BINARY"] == "copilot"
+        assert env["RECIPE_RUNNER_RS_PATH"] == "/custom/bin/recipe-runner-rs"
+        assert "GITHUB_TOKEN" not in env
+        assert "AWS_SECRET_ACCESS_KEY" not in env
+
+    @patch.dict(
+        "os.environ",
+        {
+            "PATH": "/usr/bin",
+            "AMPLIHACK_AGENT_BINARY": "copilot",
+        },
+        clear=True,
+    )
+    @patch("amplihack.recipes.rust_runner._create_copilot_compat_wrapper_dir")
+    @patch("amplihack.recipes.rust_runner.shutil.which")
+    def test_build_rust_env_prepends_copilot_wrapper(self, mock_which, mock_create_wrapper):
+        mock_which.return_value = "/usr/bin/copilot"
+        mock_create_wrapper.return_value = "/tmp/copilot-shim"
+
+        env = _build_rust_env()
+
+        assert env["PATH"] == f"/tmp/copilot-shim{os.pathsep}/usr/bin"
+        mock_which.assert_called_once_with("copilot", path="/usr/bin")
+        mock_create_wrapper.assert_called_once_with("/usr/bin/copilot")
+
+
+class TestNormalizeCopilotCliArgs:
+    """Tests for nested Copilot compatibility argument rewriting."""
+
+    def test_merges_system_prompt_into_single_prompt_and_injects_permissions(self):
+        args = [
+            "--continue",
+            "abc123",
+            "-p",
+            "user prompt",
+            "--system-prompt",
+            "architect instructions",
+        ]
+
+        normalized = _normalize_copilot_cli_args(args)
+
+        assert normalized[:2] == ["--allow-all-tools", "--allow-all-paths"]
+        assert "--system-prompt" not in normalized
+        assert normalized.count("-p") == 1
+        prompt_index = normalized.index("-p")
+        assert normalized[prompt_index + 1] == "architect instructions\n\nuser prompt"
+        assert "--continue" in normalized
+        assert "abc123" in normalized
+
+    def test_preserves_explicit_permission_flags(self):
+        args = [
+            "--allow-tool",
+            "shell(git)",
+            "--allow-path",
+            "/repo",
+            "--prompt=check repo",
+        ]
+
+        normalized = _normalize_copilot_cli_args(args)
+
+        assert "--allow-all-tools" not in normalized
+        assert "--allow-all-paths" not in normalized
+        assert "--allow-tool" in normalized
+        assert "--allow-path" in normalized
+        assert normalized[-2:] == ["-p", "check repo"]
+
+    def test_preserves_equals_style_permission_flags(self):
+        args = [
+            "--allow-tool=shell(git)",
+            "--deny-tool=fetch",
+            "--allow-path=/repo",
+            "--deny-path=/secret",
+            "--append-system-prompt=check repo",
+        ]
+
+        normalized = _normalize_copilot_cli_args(args)
+
+        assert "--allow-all-tools" not in normalized
+        assert "--allow-all-paths" not in normalized
+        assert "--allow-tool=shell(git)" in normalized
+        assert "--deny-tool=fetch" in normalized
+        assert "--allow-path=/repo" in normalized
+        assert "--deny-path=/secret" in normalized
+        assert normalized[-2:] == ["-p", "check repo"]
 
 
 # ============================================================================

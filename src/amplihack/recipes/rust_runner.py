@@ -12,6 +12,7 @@ import json
 import logging
 import os
 import re
+import shlex
 import shutil
 import signal
 import subprocess
@@ -382,6 +383,224 @@ def _build_rust_command(
     return cmd
 
 
+_ALLOWED_RUST_ENV_VARS = {
+    "AMPLIHACK_AGENT_BINARY",
+    "CURL_CA_BUNDLE",
+    "FORCE_COLOR",
+    "HOME",
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "LANG",
+    "LC_ALL",
+    "LC_CTYPE",
+    "LOGNAME",
+    "NO_COLOR",
+    "NO_PROXY",
+    "PATH",
+    "RECIPE_RUNNER_RS_PATH",
+    "REQUESTS_CA_BUNDLE",
+    "SHELL",
+    "SSL_CERT_DIR",
+    "SSL_CERT_FILE",
+    "TEMP",
+    "TERM",
+    "TMP",
+    "TMPDIR",
+    "USER",
+    "http_proxy",
+    "https_proxy",
+    "no_proxy",
+}
+
+
+def _has_explicit_copilot_permission(token: str, *, category: str) -> bool:
+    """Return True when a Copilot arg already sets explicit permissions."""
+    if category == "tool":
+        prefixes = ("--allow-all-tools", "--allow-tool", "--deny-tool")
+    elif category == "path":
+        prefixes = ("--allow-all-paths", "--allow-path", "--deny-path")
+    else:
+        raise ValueError(f"Unsupported Copilot permission category: {category}")
+
+    return any(token == prefix or token.startswith(f"{prefix}=") for prefix in prefixes)
+
+
+def _normalize_copilot_cli_args(args: list[str]) -> list[str]:
+    """Normalize Copilot CLI args for nested agent compatibility."""
+    normalized: list[str] = []
+    system_prompt_parts: list[str] = []
+    prompt_parts: list[str] = []
+    saw_tool_permissions = False
+    saw_path_permissions = False
+    i = 0
+
+    while i < len(args):
+        token = args[i]
+
+        if token in {"--system-prompt", "--append-system-prompt"}:
+            if i + 1 < len(args):
+                system_prompt_parts.append(args[i + 1])
+            i += 2
+            continue
+
+        if token.startswith("--system-prompt=") or token.startswith("--append-system-prompt="):
+            _, _, value = token.partition("=")
+            if value:
+                system_prompt_parts.append(value)
+            i += 1
+            continue
+
+        if token in {"-p", "--prompt"}:
+            if i + 1 < len(args):
+                prompt_parts.append(args[i + 1])
+            i += 2
+            continue
+
+        if token.startswith("--prompt="):
+            _, _, value = token.partition("=")
+            if value:
+                prompt_parts.append(value)
+            i += 1
+            continue
+
+        if _has_explicit_copilot_permission(token, category="tool"):
+            saw_tool_permissions = True
+        if _has_explicit_copilot_permission(token, category="path"):
+            saw_path_permissions = True
+
+        normalized.append(token)
+        i += 1
+
+    prefix: list[str] = []
+    if not saw_tool_permissions:
+        prefix.append("--allow-all-tools")
+    if not saw_path_permissions:
+        prefix.append("--allow-all-paths")
+
+    merged_parts = system_prompt_parts + prompt_parts
+    if merged_parts:
+        merged_prompt = "\n\n".join(part for part in merged_parts if part)
+        if merged_prompt:
+            normalized.extend(["-p", merged_prompt])
+
+    return prefix + normalized
+
+
+@functools.lru_cache(maxsize=1)
+def _create_copilot_compat_wrapper_dir(real_binary: str) -> str:
+    """Create a Copilot wrapper for nested recipe-runner agent launches."""
+    wrapper_dir = Path(tempfile.mkdtemp(prefix="amplihack-copilot-compat-"))
+    wrapper_path = wrapper_dir / "copilot"
+    wrapper_py_path = wrapper_dir / "copilot.py"
+    wrapper_cmd_path = wrapper_dir / "copilot.cmd"
+
+    wrapper_source = f"""#!/usr/bin/env python3
+import subprocess
+import sys
+
+REAL_BINARY = {real_binary!r}
+
+
+def normalize(args):
+    normalized = []
+    system_prompt_parts = []
+    prompt_parts = []
+    saw_tool_permissions = False
+    saw_path_permissions = False
+    i = 0
+    while i < len(args):
+        token = args[i]
+        if token in ("--system-prompt", "--append-system-prompt"):
+            if i + 1 < len(args):
+                system_prompt_parts.append(args[i + 1])
+            i += 2
+            continue
+        if token.startswith("--system-prompt=") or token.startswith("--append-system-prompt="):
+            _, _, value = token.partition("=")
+            if value:
+                system_prompt_parts.append(value)
+            i += 1
+            continue
+        if token in ("-p", "--prompt"):
+            if i + 1 < len(args):
+                prompt_parts.append(args[i + 1])
+            i += 2
+            continue
+        if token.startswith("--prompt="):
+            _, _, value = token.partition("=")
+            if value:
+                prompt_parts.append(value)
+            i += 1
+            continue
+        if token == "--allow-all-tools" or token.startswith("--allow-tool=") or token.startswith("--deny-tool=") or token in ("--allow-tool", "--deny-tool"):
+            saw_tool_permissions = True
+        if token == "--allow-all-paths" or token.startswith("--allow-path=") or token.startswith("--deny-path=") or token in ("--allow-path", "--deny-path"):
+            saw_path_permissions = True
+        normalized.append(token)
+        i += 1
+
+    prefix = []
+    if not saw_tool_permissions:
+        prefix.append("--allow-all-tools")
+    if not saw_path_permissions:
+        prefix.append("--allow-all-paths")
+
+    merged_parts = system_prompt_parts + prompt_parts
+    if merged_parts:
+        merged_prompt = "\\n\\n".join(part for part in merged_parts if part)
+        if merged_prompt:
+            normalized.extend(["-p", merged_prompt])
+
+    return prefix + normalized
+
+
+def main():
+    cmd = [REAL_BINARY] + normalize(sys.argv[1:])
+    completed = subprocess.run(cmd, check=False)
+    raise SystemExit(completed.returncode)
+
+
+if __name__ == "__main__":
+    main()
+"""
+
+    wrapper_py_path.write_text(wrapper_source, encoding="utf-8")
+    wrapper_cmd_path.write_text(
+        f'@echo off\r\n"{sys.executable}" "%~dp0copilot.py" %*\r\n',
+        encoding="utf-8",
+    )
+    wrapper_path.write_text(
+        f'#!/usr/bin/env bash\nexec {shlex.quote(sys.executable)} {shlex.quote(str(wrapper_py_path))} "$@"\n',
+        encoding="utf-8",
+    )
+
+    if os.name != "nt":
+        wrapper_path.chmod(0o755)
+        wrapper_py_path.chmod(0o755)
+
+    return str(wrapper_dir)
+
+
+def _build_rust_env() -> dict[str, str]:
+    """Return the minimal subprocess environment for the Rust runner."""
+    env: dict[str, str] = {}
+    for key in _ALLOWED_RUST_ENV_VARS:
+        value = os.environ.get(key)
+        if value is not None:
+            env[key] = value
+
+    if env.get("AMPLIHACK_AGENT_BINARY") == "copilot":
+        real_copilot = shutil.which("copilot", path=env.get("PATH"))
+        if real_copilot:
+            wrapper_dir = _create_copilot_compat_wrapper_dir(real_copilot)
+            existing_path = env.get("PATH", "")
+            env["PATH"] = (
+                f"{wrapper_dir}{os.pathsep}{existing_path}" if existing_path else wrapper_dir
+            )
+
+    return env
+
+
 _STATUS_MAP = {
     "completed": StepStatus.COMPLETED,
     "skipped": StepStatus.SKIPPED,
@@ -423,7 +642,7 @@ def _stream_process_output(process: subprocess.Popen[str]) -> tuple[str, str, in
 
 def _execute_rust_command(cmd: list[str], *, name: str, progress: bool) -> RecipeResult:
     """Run the Rust binary and parse its JSON output into a ``RecipeResult``."""
-    env = os.environ.copy()
+    env = _build_rust_env()
     if "AMPLIHACK_AGENT_BINARY" not in env:
         logger.warning(
             "AMPLIHACK_AGENT_BINARY not set — Rust runner will default to 'claude'. "
