@@ -450,7 +450,194 @@ amplihack recipe run investigation --context task_description="How does auth wor
 
 ---
 
+## ARG_MAX Overflow Resolution (PRs #3355, #3366)
+
+The recipe runner's verification gate steps (`step-19d` and `step-21`) previously
+echoed large agent outputs into environment variables, causing ARG_MAX overflow on
+Linux when these outputs exceeded ~2MB. Two complementary fixes were shipped on
+March 20, 2026.
+
+### Initial fix: 200-char truncation (PR #3355)
+
+**What changed**: Wrapped the six echoed context variables in `step-19d-verification-gate`
+and `step-21-pr-ready` with `$(echo {{var}} | head -c 200)`. These steps only
+confirm that outputs exist — displaying multi-MB agent responses was unnecessary.
+
+**Impact**: Immediate ARG_MAX protection with no change to runner internals.
+
+### Definitive fix: agent step conversion + 32KB size guard (PR #3366)
+
+PR #3366 replaced the approach above with a more robust two-phase solution that
+preserves **full output content** (zero truncation):
+
+**Phase 1 — YAML**: `step-19d-verification-gate` was converted from a `bash` echo
+step to an `amplihack:reviewer` **agent step**. Agent steps receive context through
+the recipe runner's internal mechanism, not environment variables — so ARG_MAX
+does not apply. The large-var echo lines were removed from `step-21-pr-ready`
+while preserving the `gh pr ready` and `gh pr comment` calls.
+
+**Phase 2 — rust_runner.py**: A 32KB size guard was added in `_build_rust_command()`.
+Values exceeding the threshold spill to temp files referenced by a `file://` URI.
+Template expansion reads the file content transparently. Temp directories are
+cleaned up in a `finally` block. Small values pass through unchanged (full
+backward compatibility).
+
+**Key constants and functions**:
+
+| Symbol | Location | Purpose |
+|---|---|---|
+| `_ENV_VAR_SIZE_LIMIT` | `rust_runner.py:32` | 32 × 1024 bytes threshold |
+| `_write_spill_bytes()` | `rust_runner.py:59` | Writes value to temp file, returns `file://` URI |
+| `_resolve_context_value()` | `rust_runner.py:98` | Reads `file://` URI or returns value directly |
+
+**Why this matters**: The truncation approach discarded real agent output. The new
+approach guarantees that downstream steps receive the complete content of all
+context variables regardless of size.
+
+---
+
+## Memory Startup Check Rewrite (PR #3351)
+
+**Problem (issue #3327)**: `memory_auto_install.py` called `subprocess.run()` to
+invoke `pip install` directly from library code, violating PEP 668 (externally
+managed Python environments). Fresh installs on modern Debian/Ubuntu, Homebrew
+Python, and other PEP 668 environments failed with a hard error.
+
+**Solution**: Replaced 169 lines of subprocess + pip machinery with 42 lines of
+a pure import guard:
+
+```python
+try:
+    import amplihack_memory
+    return True
+except ImportError:
+    # Print loud error to stderr with actionable repair instructions
+    return False
+```
+
+**Key behavioral changes**:
+
+| Behavior | Before | After |
+|---|---|---|
+| Memory lib absent | `subprocess.run pip install` | Returns `False`, prints repair hint to stderr |
+| `--help`/`version` CLI | Crashed on PEP 668 environments | Always works (returns `False`, not `sys.exit`) |
+| `amplihack-memory-lib` dependency | Mandatory in `[project.dependencies]` | Mandatory — unchanged |
+| Subprocess calls | Yes (`pip install`) | Zero |
+
+**Repair instructions** (shown when the library is absent):
+
+```
+amplihack memory features require the memory library.
+Install it with: pip install amplihack
+```
+
+**Tests**: 7 unit tests verify that `import amplihack_memory` is attempted, `True`
+is returned when available, `False` is returned when absent, and no subprocess is
+invoked.
+
+---
+
+## Step-16 PR Creation Idempotency (PR #3335)
+
+**Problem (issue #3324)**: `step-16-create-draft-pr` in `default-workflow.yaml`
+failed if a PR already existed for the branch, if the branch had no commits ahead
+of main, or if a PR was already linked to the issue. Re-runs of the same workflow
+were not safe.
+
+**Solution**: Step-16 now has four distinct code paths executed in priority order:
+
+| Path | Detection | Action |
+|---|---|---|
+| 1. Existing branch PR | `gh pr list --head "$CURRENT_BRANCH"` | Return existing PR URL |
+| 2. Issue-referenced PR | `gh pr list --search "closes #N OR fixes #N"` | Return existing PR URL |
+| 3. No commits ahead | `git rev-list --count HEAD ^origin/main` == 0 | Skip with warning, exit 0 |
+| 4. Create new PR | None of the above | `gh pr create --draft` (original behavior) |
+
+**Additional hardening**:
+
+- `issue_number` is validated as numeric before use in the `gh pr list --search`
+  query (injection prevention)
+- All diagnostic messages are routed to stderr; only the PR URL appears on stdout
+
+**Tests**: 28 Gadugi scenario tests + 17 recipe idempotency unit tests (268 total
+recipe tests pass without regression).
+
+---
+
+## Step-02b Progress Markers (PR #3286)
+
+**Problem (issue #3266)**: `step-02b-analyze-codebase` emitted no visible output
+during long codebase exploration. The architect agent ran many `Glob`/`Grep`/`Read`
+tool calls silently before producing any text, triggering the recipe runner's
+watchdog (`... still running (60s since last output)`). Upstream monitors
+interpreted this as a hang and abandoned the step.
+
+**Solution**: The step-02b prompt was restructured into four named exploration
+phases. Each phase begins with a mandatory progress marker the agent must emit
+before starting that phase's tool calls:
+
+```
+## Progress: Phase 1/4 — Scanning project structure
+## Progress: Phase 2/4 — Searching for task-relevant code
+## Progress: Phase 3/4 — Analyzing dependencies and interfaces
+## Progress: Phase 4/4 — Synthesizing findings
+```
+
+**Why it works**: The watchdog timer resets on each line of output. Emitting a
+progress marker before each batch of tool calls guarantees at least one output
+line every few seconds, preventing false hang detection.
+
+**No action required** for existing recipes — this is a prompt-level change inside
+the YAML.
+
+---
+
+## CLI Crash Handler Flattening (PR #3268)
+
+**Problem (issue #3233)**: The `launch_command` crash handler in `cli.py`
+(lines 177–191) used triple-nested `try/except` blocks. The two inner blocks
+silently swallowed errors from `tracker.crash_session()` and `os.chdir()`, making
+it impossible to diagnose failures in the crash handler itself.
+
+**Additional defect**: A `logging.debug()` call used the module-level `logging`
+logger instead of the file-scoped `logger` instance, silently emitting to the
+wrong sink.
+
+**Solution**: Flattened to a single `try/except/finally`:
+
+```python
+try:
+    _launch_command_impl(...)
+except Exception:
+    tracker.crash_session(session_id)   # propagates if it fails
+    raise
+finally:
+    os.chdir(original_cwd)              # propagates if it fails
+```
+
+`logging.debug` → `logger.debug` corrected.
+
+**Why this matters**: Errors in `crash_session()` or `chdir()` are now visible
+rather than silently discarded. The double-failure case (original exception + crash
+handler exception) preserves the original as `__context__` via Python's standard
+exception chaining.
+
+**Tests**: 4 unit tests confirm crash_session is invoked on error, OSError from
+crash_session propagates, OSError from os.chdir propagates, and CWD is restored
+on the happy path.
+
+---
+
 ## Version History
+
+All fixes released in **amplihack v0.9.2** (March 20, 2026):
+
+- **ARG_MAX overflow** (PR #3366) — Agent step conversion + 32KB spill-to-file guard; full content preserved
+- **ARG_MAX truncation** (PR #3355) — Initial 200-char echo truncation (superseded by #3366's approach)
+- **Memory startup check** (PR #3351) — Replace subprocess pip-install with pure import guard (PEP 668 safe)
+- **Step-16 idempotency** (PR #3335) — 4-path PR creation; safe to re-run
+- **Step-02b progress markers** (PR #3286) — Phase markers prevent watchdog false positives
+- **CLI crash handler** (PR #3268) — Flatten triple-nested try/except; errors no longer swallowed
 
 All fixes released in **amplihack v0.9.1** (March 2026):
 
