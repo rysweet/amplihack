@@ -1,44 +1,17 @@
 {
-  "ts": "2026-03-20T18:00:00Z",
-  "run": 23342463010,
-  "open_prs": [3346, 3342, 3337, 3334, 3332, 3296, 3290, 3261, 2876],
-  "closed_since_last": [3338],
+  "ts": "2026-03-21T00:00:00Z",
+  "run": 23368090649,
+  "open_prs": [3346, 3332, 3296, 3290, 3261, 2876],
+  "closed_since_last": [3342, 3337, 3334],
   "prs": {
     "3346": {
       "risk": "low",
       "priority": "low",
       "type": "docs-automated",
       "tests": false,
-      "labels": ["documentation", "automation"],
+      "labels": ["documentation", "automation", "triage:low-risk", "triage:complete"],
       "status": "draft",
-      "note": "Auto-generated daily doc update for #3335 (idempotent step-16); draft; expires 2026-03-21 06:18 UTC"
-    },
-    "3342": {
-      "risk": "low",
-      "priority": "medium",
-      "type": "bugfix-defense",
-      "tests": false,
-      "labels": ["triage:low-risk", "triage:complete", "triage:needs-review"],
-      "status": "open",
-      "note": "Defense-in-depth ARG_MAX fix: truncates echo output in steps 19d/21 to 200 chars. No new tests. Needs review."
-    },
-    "3337": {
-      "risk": "low",
-      "priority": "low",
-      "type": "bugfix-duplicate",
-      "tests": false,
-      "labels": ["triage:complete", "triage:low-risk"],
-      "status": "draft",
-      "note": "Draft duplicate of #3334 (same fix #3327/#3331). Candidate for closure once #3334 merges."
-    },
-    "3334": {
-      "risk": "medium",
-      "priority": "high",
-      "type": "bugfix-breaking",
-      "tests": true,
-      "labels": ["triage:complete", "triage:medium-risk", "triage:has-tests", "triage:high-priority"],
-      "status": "open",
-      "note": "PEP 668 compliance; moves memory-lib to optional dep; BREAKING CHANGE; 11/11 tests pass; ready for review"
+      "note": "Auto-generated daily doc update for #3335 (idempotent step-16); draft; expired 2026-03-21 06:18 UTC"
     },
     "3332": {
       "risk": "high",
@@ -56,7 +29,7 @@
       "tests": true,
       "labels": ["triage:complete", "triage:high-risk", "triage:needs-deep-review", "triage:has-tests"],
       "status": "open",
-      "note": "Eval infrastructure + retrieval parity + 100-agent scale; stale base (c8608fe); needs rebase"
+      "note": "Eval infrastructure + retrieval parity + 100-agent scale; stale base; needs rebase"
     },
     "3290": {
       "risk": "medium",
