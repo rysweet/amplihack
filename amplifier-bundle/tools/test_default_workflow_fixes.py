@@ -38,13 +38,6 @@ from pathlib import Path
 
 # --- BL-001 bash snippets ---
 
-# The CURRENT (buggy) extraction command — used in tests that assert the bug exists.
-_BL001_BUGGY_CMD = textwrap.dedent("""\
-    set +H  # disable history expansion so !-tokens are safe
-    INPUT={input_var}
-    echo $INPUT | grep -oE 'issues/[0-9]+' | grep -oE '[0-9]+' | tail -1
-""")
-
 # The FIXED extraction command — tests assert this behaves correctly.
 # NOTE: The EOFISSUECREATION delimiter is intentionally long and specific to
 # prevent accidental collision with issue body text that might contain "EOF".
@@ -124,46 +117,7 @@ def _init_repo_with_commit(path: str) -> None:
 # The FIXED step-04 idempotency bash logic, parameterised for tests.
 # SECURITY NOTE: grep -F is required (not -E/-P) so that filesystem path
 # characters (., +, *) are not interpreted as regex metacharacters.
-_BL002_FIXED_STEP4 = textwrap.dedent("""\
-    set -euo pipefail
-    REPO_PATH={repo_path!r}
-    BRANCH_NAME={branch_name!r}
-    WORKTREE_PATH={worktree_path!r}
-
-    cd "$REPO_PATH"
-
-    # --- Idempotency: detect existing branch and/or worktree ---
-    BRANCH_EXISTS=$(git branch --list "$BRANCH_NAME")
-    # grep -F: security property — disables regex so path chars (., +, *) are literals
-    WORKTREE_EXISTS=$(git worktree list --porcelain | grep -F "worktree $WORKTREE_PATH" || true)
-
-    if [ -n "$BRANCH_EXISTS" ] && [ -n "$WORKTREE_EXISTS" ]; then
-      echo "INFO: Branch and worktree already exist — reusing." >&2
-      CREATED=false
-    elif [ -n "$BRANCH_EXISTS" ] && [ -z "$WORKTREE_EXISTS" ]; then
-      echo "INFO: Branch exists but worktree missing — adding worktree without -b." >&2
-      git worktree add "$WORKTREE_PATH" "$BRANCH_NAME" >&2
-      CREATED=true
-    else
-      echo "INFO: Creating new branch and worktree." >&2
-      git worktree add "$WORKTREE_PATH" -b "$BRANCH_NAME" origin/main >&2
-      CREATED=true
-    fi
-
-    # Push branch to remote with tracking (idempotent — suppressed; surfaces at step-16)
-    git -C "$WORKTREE_PATH" push origin "$BRANCH_NAME" 2>/dev/null || true
-    git -C "$WORKTREE_PATH" branch --set-upstream-to="origin/$BRANCH_NAME" "$BRANCH_NAME" 2>/dev/null || true
-
-    cat << 'EOFJSON'_PLACEHOLDER
-    {{
-      "worktree_path": "$WORKTREE_PATH_PLACEHOLDER",
-      "branch_name": "$BRANCH_NAME_PLACEHOLDER",
-      "created": $CREATED_PLACEHOLDER
-    }}
-    EOFJSON_PLACEHOLDER
-""")
-
-# Simpler JSON output block — using printf avoids heredoc quoting complexity in tests.
+# Uses printf for JSON output to avoid heredoc quoting complexity in tests.
 _BL002_FIXED_STEP4_FULL = textwrap.dedent("""\
     set -euo pipefail
     REPO_PATH={repo_path!r}
@@ -822,11 +776,7 @@ class TestYAMLBugRegression(unittest.TestCase):
 
         # Rebuild cmd with exact values from first run to ensure same branch/worktree
         raw_cmd2 = _extract_step_command(_WORKFLOW_YAML, "step-04-setup-worktree")
-        cmd2 = raw_cmd2
-        cmd2 = cmd2.replace("{{repo_path}}", self.repo_dir)
-        cmd2 = cmd2.replace("{{branch_prefix}}", "feat")
-        cmd2 = cmd2.replace("{{issue_number}}", "3023")
-        cmd2 = cmd2.replace("{{task_description}}", "issue-3023-yaml-regression")
+        cmd2 = self._build_step4_cmd(raw_cmd2)
 
         # Second run — must NOT fail with 128
         result2 = subprocess.run(
