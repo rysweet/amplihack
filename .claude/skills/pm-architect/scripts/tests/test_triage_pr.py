@@ -1,6 +1,8 @@
 """Tests for triage_pr.py."""
 
+import asyncio
 import json
+import os
 import subprocess
 
 # Import the module under test
@@ -13,6 +15,7 @@ import pytest  # pyright: ignore[reportMissingImports]
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from agent_query import AgentQueryError
 from triage_pr import (
+    _get_agent_runtime,
     get_pr_details,
     get_pr_diff_summary,
     get_related_issues,
@@ -265,13 +268,15 @@ class TestTriagePr:
 
     @pytest.mark.asyncio
     async def test_triage_sdk_not_available(self, project_root, capsys):
-        """Test behavior when no agent SDK is available."""
-        with patch("triage_pr.SDK_AVAILABLE", False):
-            result = await triage_pr(project_root, 456)
+        """Test behavior when Claude SDK not available."""
+        with patch("triage_pr.CLAUDE_SDK_AVAILABLE", False):
+            with patch.dict(os.environ, {}, clear=True):
+                os.environ.pop("AMPLIHACK_AGENT_BINARY", None)
+                result = await triage_pr(project_root, 456)
 
-            assert result is None
-            captured = capsys.readouterr()
-            assert "No agent SDK available" in captured.err
+                assert result is None
+                captured = capsys.readouterr()
+                assert "Claude SDK not available" in captured.err
 
     @pytest.mark.asyncio
     async def test_triage_pr_not_found(self, project_root, capsys):
@@ -307,16 +312,20 @@ Approve for review after addressing minor concerns.
         async def mock_query(prompt, project_root):
             return mock_response
 
-        with patch("triage_pr.SDK_AVAILABLE", True):
-            with patch("triage_pr.get_pr_details", return_value=sample_pr_data):
-                with patch("triage_pr.get_pr_diff_summary", return_value="## Diff\nSome changes"):
-                    with patch("triage_pr.get_related_issues", return_value="## Issues\n#123"):
-                        with patch("triage_pr.query_agent", side_effect=mock_query):
-                            result = await triage_pr(project_root, 456)
+        with patch.dict(os.environ, {}, clear=True):
+            os.environ.pop("AMPLIHACK_AGENT_BINARY", None)
+            with patch("triage_pr.CLAUDE_SDK_AVAILABLE", True):
+                with patch("triage_pr.get_pr_details", return_value=sample_pr_data):
+                    with patch(
+                        "triage_pr.get_pr_diff_summary", return_value="## Diff\nSome changes"
+                    ):
+                        with patch("triage_pr.get_related_issues", return_value="## Issues\n#123"):
+                            with patch("triage_pr.query", side_effect=mock_query_generator):
+                                result = await triage_pr(project_root, 456)
 
-                            assert result is not None
-                            assert "Priority Assessment" in result
-                            assert "HIGH" in result
+                                assert result is not None
+                                assert "Priority Assessment" in result
+                                assert "HIGH" in result
 
     @pytest.mark.asyncio
     async def test_triage_sdk_exception(self, project_root, sample_pr_data, capsys):
@@ -325,16 +334,18 @@ Approve for review after addressing minor concerns.
         async def mock_query_exception(prompt, project_root):
             raise AgentQueryError("SDK error")
 
-        with patch("triage_pr.SDK_AVAILABLE", True):
-            with patch("triage_pr.get_pr_details", return_value=sample_pr_data):
-                with patch("triage_pr.get_pr_diff_summary", return_value="## Diff"):
-                    with patch("triage_pr.get_related_issues", return_value="## Issues"):
-                        with patch("triage_pr.query_agent", side_effect=mock_query_exception):
-                            result = await triage_pr(project_root, 456)
+        with patch.dict(os.environ, {}, clear=True):
+            os.environ.pop("AMPLIHACK_AGENT_BINARY", None)
+            with patch("triage_pr.CLAUDE_SDK_AVAILABLE", True):
+                with patch("triage_pr.get_pr_details", return_value=sample_pr_data):
+                    with patch("triage_pr.get_pr_diff_summary", return_value="## Diff"):
+                        with patch("triage_pr.get_related_issues", return_value="## Issues"):
+                            with patch("triage_pr.query", side_effect=mock_query_exception):
+                                result = await triage_pr(project_root, 456)
 
-                            assert result is None
-                            captured = capsys.readouterr()
-                            assert "Error performing PR triage" in captured.err
+                                assert result is None
+                                captured = capsys.readouterr()
+                                assert "Error performing PR triage" in captured.err
 
     @pytest.mark.asyncio
     async def test_triage_empty_response(self, project_root, sample_pr_data):
@@ -343,14 +354,16 @@ Approve for review after addressing minor concerns.
         async def mock_query_empty(prompt, project_root):
             return ""
 
-        with patch("triage_pr.SDK_AVAILABLE", True):
-            with patch("triage_pr.get_pr_details", return_value=sample_pr_data):
-                with patch("triage_pr.get_pr_diff_summary", return_value="## Diff"):
-                    with patch("triage_pr.get_related_issues", return_value="## Issues"):
-                        with patch("triage_pr.query_agent", side_effect=mock_query_empty):
-                            result = await triage_pr(project_root, 456)
+        with patch.dict(os.environ, {}, clear=True):
+            os.environ.pop("AMPLIHACK_AGENT_BINARY", None)
+            with patch("triage_pr.CLAUDE_SDK_AVAILABLE", True):
+                with patch("triage_pr.get_pr_details", return_value=sample_pr_data):
+                    with patch("triage_pr.get_pr_diff_summary", return_value="## Diff"):
+                        with patch("triage_pr.get_related_issues", return_value="## Issues"):
+                            with patch("triage_pr.query", side_effect=mock_query_empty):
+                                result = await triage_pr(project_root, 456)
 
-                            assert result is None
+                                assert result is None
 
 
 class TestMainFunction:
@@ -358,16 +371,18 @@ class TestMainFunction:
 
     def test_main_sdk_not_available(self, capsys):
         """Test main when SDK not available."""
-        with patch("triage_pr.SDK_AVAILABLE", False):
-            with patch("sys.argv", ["triage_pr.py", "456"]):
-                from triage_pr import main
+        with patch("triage_pr.CLAUDE_SDK_AVAILABLE", False):
+            with patch.dict(os.environ, {}, clear=True):
+                os.environ.pop("AMPLIHACK_AGENT_BINARY", None)
+                with patch("sys.argv", ["triage_pr.py", "456"]):
+                    from triage_pr import main
 
-                with pytest.raises(SystemExit) as exc_info:
-                    main()
+                    with pytest.raises(SystemExit) as exc_info:
+                        main()
 
-                assert exc_info.value.code == 1
-                captured = capsys.readouterr()
-                assert "No agent SDK installed" in captured.err
+                    assert exc_info.value.code == 1
+                    captured = capsys.readouterr()
+                    assert "not installed" in captured.err
 
     def test_main_triage_failure(self, capsys):
         """Test main when triage fails."""
@@ -424,6 +439,27 @@ class TestMainFunction:
                     assert output_file.exists()
                     content = output_file.read_text()
                     assert "Triage Result" in content
+
+    def test_main_copilot_bypasses_sdk_check(self, capsys):
+        """Test that copilot runtime skips the Claude SDK availability check."""
+        mock_triage = "# Triage Result\nCopilot analysis"
+
+        async def mock_triage_async(*args, **kwargs):
+            return mock_triage
+
+        with patch("triage_pr.CLAUDE_SDK_AVAILABLE", False):
+            with patch.dict(os.environ, {"AMPLIHACK_AGENT_BINARY": "copilot"}):
+                with patch("triage_pr.triage_pr", side_effect=mock_triage_async):
+                    with patch("sys.argv", ["triage_pr.py", "456"]):
+                        from triage_pr import main
+
+                        with pytest.raises(SystemExit) as exc_info:
+                            main()
+
+                        # Should NOT exit with 1 due to missing SDK
+                        assert exc_info.value.code == 0
+                        captured = capsys.readouterr()
+                        assert "Triage Result" in captured.out
 
 
 class TestEdgeCases:
@@ -483,3 +519,66 @@ class TestEdgeCases:
             # Should only fetch issue once despite multiple references
             assert call_count[0] == 1
             assert result.count("#123") == 1  # Only in the output once
+
+
+class TestGetAgentRuntime:
+    def test_returns_claude_when_unset(self):
+        with patch.dict(os.environ, {}, clear=True):
+            # remove AMPLIHACK_AGENT_BINARY if present
+            os.environ.pop("AMPLIHACK_AGENT_BINARY", None)
+            assert _get_agent_runtime() == "claude"
+
+    def test_returns_copilot_when_set(self):
+        with patch.dict(os.environ, {"AMPLIHACK_AGENT_BINARY": "copilot"}):
+            assert _get_agent_runtime() == "copilot"
+
+    def test_case_insensitive(self):
+        with patch.dict(os.environ, {"AMPLIHACK_AGENT_BINARY": "COPILOT"}):
+            assert _get_agent_runtime() == "copilot"
+
+    def test_other_values_default_to_claude(self):
+        with patch.dict(os.environ, {"AMPLIHACK_AGENT_BINARY": "other"}):
+            assert _get_agent_runtime() == "claude"
+
+
+class TestCopilotPath:
+    def test_copilot_path_success(self, sample_pr_data):
+        # Test that copilot path calls subprocess with correct command
+        with patch.dict(os.environ, {"AMPLIHACK_AGENT_BINARY": "copilot"}):
+            with patch("triage_pr.get_pr_details", return_value=sample_pr_data):
+                with patch("triage_pr.get_pr_diff_summary", return_value="## Diff\nSome changes"):
+                    with patch("triage_pr.get_related_issues", return_value="## Issues\nNone"):
+                        with patch("subprocess.run") as mock_run:
+                            mock_run.return_value = MagicMock(
+                                returncode=0,
+                                stdout="## Triage Result\nPR looks good",
+                                stderr="",
+                            )
+                            result = asyncio.run(triage_pr(Path("/fake/root"), 42))
+                            assert result == "## Triage Result\nPR looks good"
+                            # Verify command includes copilot flags
+                            called_cmd = mock_run.call_args[0][0]
+                            assert "copilot" in called_cmd
+                            assert "--allow-all-tools" in called_cmd
+
+    def test_copilot_path_failure(self, sample_pr_data):
+        with patch.dict(os.environ, {"AMPLIHACK_AGENT_BINARY": "copilot"}):
+            with patch("triage_pr.get_pr_details", return_value=sample_pr_data):
+                with patch("triage_pr.get_pr_diff_summary", return_value="## Diff"):
+                    with patch("triage_pr.get_related_issues", return_value="## Issues"):
+                        with patch("subprocess.run") as mock_run:
+                            mock_run.return_value = MagicMock(
+                                returncode=1, stdout="", stderr="Error occurred"
+                            )
+                            result = asyncio.run(triage_pr(Path("/fake/root"), 42))
+                            assert result is None
+
+    def test_copilot_path_empty_output(self, sample_pr_data):
+        with patch.dict(os.environ, {"AMPLIHACK_AGENT_BINARY": "copilot"}):
+            with patch("triage_pr.get_pr_details", return_value=sample_pr_data):
+                with patch("triage_pr.get_pr_diff_summary", return_value="## Diff"):
+                    with patch("triage_pr.get_related_issues", return_value="## Issues"):
+                        with patch("subprocess.run") as mock_run:
+                            mock_run.return_value = MagicMock(returncode=0, stdout="   ", stderr="")
+                            result = asyncio.run(triage_pr(Path("/fake/root"), 42))
+                            assert result is None
