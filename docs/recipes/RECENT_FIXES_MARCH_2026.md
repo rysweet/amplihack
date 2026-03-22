@@ -2,6 +2,127 @@
 
 This document tracks recent bug fixes and improvements to the Recipe Runner and Skills systems following the Diátaxis framework.
 
+## Memory Library Startup Check (PR #3351)
+
+**What changed**: `memory_auto_install.py` no longer calls
+`subprocess.run([sys.executable, "-m", "pip", "install", ...])`. The previous
+approach violated PEP 668 (externally-managed Python environments) and caused
+fresh installs on Debian/Ubuntu system Python and Homebrew to fail with
+`error: externally-managed-environment`.
+
+**New behaviour**: `ensure_memory_lib_installed()` is now a pure import guard:
+
+```python
+try:
+    import amplihack_memory
+    return True
+except ImportError:
+    # print actionable instructions to stderr
+    return False
+```
+
+When the library is absent the function returns `False` with a clear error
+message directing users to `pip install amplihack`. The `--help` and `version`
+commands still work because the function no longer calls `sys.exit` on failure.
+
+**`amplihack-memory-lib` stays mandatory**: The package remains in
+`[project.dependencies]`, not in an optional group. The startup check verifies
+the install is healthy; it does not make the dependency optional.
+
+**Impact**: Fresh installs on PEP 668–enforced environments no longer fail on
+first launch. Any broken installs surface immediately with repair instructions
+rather than a confusing `pip` error.
+
+---
+
+## Progress Markers in Step-02b Codebase Analysis (PR #3286)
+
+**What changed**: `step-02b-analyze-codebase` in `default-workflow.yaml` now
+requires the agent to emit `## Progress: Phase N/4` markers at the start of
+each of four named exploration phases.
+
+**Why it matters**: The recipe runner's watchdog emits a warning if no output
+is seen for 60 seconds. Long codebase scans — where the agent runs many
+Glob/Grep/Read tool calls before producing any streamed text — previously hit
+the watchdog repeatedly. Upstream orchestrators (Copilot CLI,
+smart-orchestrator) sometimes interpreted the silence as a hang and abandoned
+the step.
+
+**The four phases**:
+
+| Phase | Name |
+|---|---|
+| 1/4 | Scanning project structure |
+| 2/4 | Searching for task-relevant code |
+| 3/4 | Analyzing dependencies and interfaces |
+| 4/4 | Synthesizing findings |
+
+Each phase boundary prints a marker of the form:
+
+```
+## Progress: Phase N/4 — <description>
+```
+
+This resets the watchdog timer and provides upstream monitors with a visible
+signal of forward progress.
+
+**Impact**: Steps with large codebases no longer trigger watchdog warnings or
+spurious abandonment by orchestrators watching for output activity.
+
+---
+
+## Crash Handler Simplified in cli.py (PR #3268)
+
+**What changed**: The `launch_command` crash handler in `cli.py` was refactored
+from a triple-nested `try/except` structure into a single `try/except/finally`.
+
+**Before** (triple-nested):
+
+```python
+try:
+    result = _launch_command_impl(...)
+    ...
+except Exception as e:
+    try:
+        tracker.crash_session(session_id)   # ← swallowed
+    except Exception:
+        pass
+    try:
+        os.chdir(original_cwd)              # ← swallowed
+    except Exception:
+        pass
+    raise
+```
+
+**After** (single try/except/finally):
+
+```python
+try:
+    result = _launch_command_impl(...)
+    ...
+except Exception:
+    tracker.crash_session(session_id)       # ← propagates
+    raise
+finally:
+    if original_cwd is not None:
+        os.chdir(original_cwd)              # ← propagates
+```
+
+**Why it matters**: The inner `except: pass` blocks were silently swallowing
+`tracker.crash_session()` failures and `os.chdir()` failures. If crash
+reporting itself raised (e.g., a broken session tracker), the original
+exception was still raised but the crash session was never recorded. If CWD
+restore raised, the process was left in the wrong directory with no diagnostic.
+
+The new structure also fixes a `logging.debug()` vs `logger.debug()` mismatch
+in the removed block (the module-level `logging` was used instead of the
+file's configured `logger` instance).
+
+**Impact**: Crash-session failures and CWD-restore failures now propagate with
+full stack traces. No silent fallbacks remain in the crash handler.
+
+---
+
 ## Dev-Orchestrator Execution Modes (PRs #3214, #3216)
 
 ### Direct subprocess is now the default (PR #3214)
