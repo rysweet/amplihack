@@ -1,0 +1,89 @@
+# Outside-in test: step-02b progress markers (#3266 / PR #3286)
+# Verifies that step-02b-analyze-codebase in the default workflow recipe
+# includes progress marker instructions to prevent watchdog timeouts during
+# silent exploration phases.
+
+scenario:
+  name: "Step 02b - Progress Markers for Watchdog Keepalive"
+  description: |
+    When the recipe runner executes step-02b-analyze-codebase, the agent must
+    emit progress markers before each exploration phase so the watchdog timer
+    does not kill the step for inactivity. This test verifies the recipe prompt
+    defines all 4 phases with mandatory Print instructions in the correct
+    "## Progress: Phase N/4 — ..." format.
+  type: cli
+  level: 1
+
+  tags: [default-workflow, progress-markers, watchdog, regression, issue-3266]
+
+  prerequisites:
+    - "amplifier-bundle/recipes/default-workflow.yaml exists"
+    - "Python 3.10+ with yaml importable"
+
+  environment:
+    variables:
+      PYTHONPATH: "src"
+
+  steps:
+    # Verify the step-02b prompt contains a progress marker instruction block
+    - action: grep
+      target: "amplifier-bundle/recipes/default-workflow.yaml"
+      pattern: "Emit progress markers"
+      description: "Step-02b prompt must instruct the agent to emit progress markers"
+
+    # Verify Phase 1/4 is defined with the correct Print instruction
+    - action: grep
+      target: "amplifier-bundle/recipes/default-workflow.yaml"
+      pattern: "Phase 1/4"
+      description: "Phase 1/4 (Project structure) must be present"
+
+    # Verify Phase 2/4 is defined
+    - action: grep
+      target: "amplifier-bundle/recipes/default-workflow.yaml"
+      pattern: "Phase 2/4"
+      description: "Phase 2/4 (Relevant code paths) must be present"
+
+    # Verify Phase 3/4 is defined
+    - action: grep
+      target: "amplifier-bundle/recipes/default-workflow.yaml"
+      pattern: "Phase 3/4"
+      description: "Phase 3/4 (Dependencies and integration points) must be present"
+
+    # Verify Phase 4/4 is defined
+    - action: grep
+      target: "amplifier-bundle/recipes/default-workflow.yaml"
+      pattern: "Phase 4/4"
+      description: "Phase 4/4 (Synthesis) must be present"
+
+    # Verify the ## Progress: format is documented
+    - action: grep
+      target: "amplifier-bundle/recipes/default-workflow.yaml"
+      pattern: "## Progress:"
+      description: "The '## Progress:' marker format must be documented in the prompt"
+
+    # Verify watchdog timeout warning is present
+    - action: grep
+      target: "amplifier-bundle/recipes/default-workflow.yaml"
+      pattern: "watchdog"
+      description: "Watchdog timeout warning must be present to explain why markers are needed"
+
+  cleanup:
+    - action: capture_output
+      save_as: "step-02b-progress-markers-output.txt"
+      description: "Save full test output for debugging"
+
+# Expected Behavior:
+# - step-02b-analyze-codebase prompt defines 4 exploration phases
+# - Each phase has a Print instruction: `## Progress: Phase N/4 — [description]`
+# - The prompt warns the agent about the 60+ second watchdog timeout
+# - The old minimal prompt ("Analyze the existing codebase to understand:")
+#   has been replaced with the structured phased prompt
+#
+# Root Cause (fixed):
+# The original step-02b prompt gave the agent a broad "analyze the codebase"
+# instruction with no output requirements. During deep exploration the agent
+# could go 60+ seconds without emitting any text, triggering the recipe runner
+# watchdog and killing the step.
+#
+# Run Command:
+# gadugi-test run tests/gadugi/step-02b-progress-markers.yaml --verbose

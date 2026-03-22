@@ -1,41 +1,157 @@
-# Code Atlas: amplihack
+---
+title: Code Atlas
+---
 
-**Generated:** 2026-03-17
-**Version:** 0.6.73
-**Mode:** Production atlas (8 layers + 3-pass bug hunt)
+# Code Atlas
 
-## Atlas Layers
+<div class="atlas-metadata">Generated: 2026-03-19 00:32 UTC</div>
 
-| Layer | Name | Diagrams | Description |
-|-------|------|----------|-------------|
-| 1 | [Runtime Service Topology](runtime-topology/layer1-runtime/README.md) | [.mmd](runtime-topology/layer1-runtime/topology.mmd) [.dot](runtime-topology/layer1-runtime/topology.dot) | Services, processes, communication channels |
-| 2 | [Compile-Time Dependencies](compile-deps/layer2-dependencies/README.md) | [.mmd](compile-deps/layer2-dependencies/deps.mmd) [.dot](compile-deps/layer2-dependencies/deps.dot) | Package imports, module boundaries, external libraries |
-| 3 | [API Contracts](api-contracts/layer3-routing/README.md) | [.mmd](api-contracts/layer3-routing/routes.mmd) [.dot](api-contracts/layer3-routing/routes.dot) | CLI commands, HTTP routes, hook events |
-| 4 | [Data Flow Graph](data-flow/layer4-dataflow/README.md) | [.mmd](data-flow/layer4-dataflow/dataflow.mmd) [.dot](data-flow/layer4-dataflow/dataflow.dot) | Data entry, transformation, persistence, exit |
-| 5 | [User Journey Scenarios](user-journeys/layer5-journeys/README.md) | 5 sequence diagrams | End-to-end user flows |
-| 6 | [Exhaustive Inventory](inventory/) | 4 inventory tables | Services, env vars, data stores, external deps |
-| 7 | [Service Components](service-components/README.md) | [.mmd](service-components/components.mmd) [.dot](service-components/components.dot) | Internal module structure, cross-module dependencies |
-| 8 | [AST+LSP Symbol Bindings](ast-lsp-bindings/README.md) | [.mmd](ast-lsp-bindings/symbol-references.mmd) [.dot](ast-lsp-bindings/symbol-references.dot) | Cross-file symbol references, dead code candidates (static-approximation) |
+## Layer Overview
 
-## Inventory Tables
+<div class="grid cards atlas-grid" markdown>
 
-| Table | Location | Content |
-|-------|----------|---------|
-| Package inventory | [inventory.md](compile-deps/layer2-dependencies/inventory.md) | 37 direct dependencies |
-| Route inventory | [inventory.md](api-contracts/layer3-routing/inventory.md) | 17 CLI commands + 11 HTTP routes |
-| Service inventory | [services.md](inventory/services.md) | 6 runtime components + 13 non-runtime |
-| Env var inventory | [env-vars.md](inventory/env-vars.md) | 24 environment variables |
-| Data store inventory | [data-stores.md](inventory/data-stores.md) | 8 data stores |
-| External deps inventory | [external-deps.md](inventory/external-deps.md) | 12 external dependencies |
+-   <span class="atlas-icon--structural">:material-folder-outline:</span> **[Layer 1: Repository Surface](repo-surface/)**
 
-## Architecture Notes
+    ---
 
-Amplihack is a **monolithic Python CLI tool** (not a microservice system). Key architectural characteristics:
+    Directory tree, file counts, project structure
 
-1. **Single process**: All components run in one Python process
-2. **Subprocess delegation**: Launches external CLIs (claude, copilot, codex) as child processes
-3. **Hook-based extensibility**: Session lifecycle hooks provide extension points
-4. **Optional proxy**: FastAPI/Flask proxy layer for AI API routing
-5. **Embedded graph DB**: Kuzu for persistent cross-session memory
-6. **Large skill/agent library**: ~120 skills and 30+ agents as Markdown definitions in `.claude/`
-7. **Recipe system**: YAML-based workflow orchestration
+    <div class="atlas-coverage">
+    <div class="atlas-coverage__bar" style="width:100%"></div>
+    </div>
+    <small>100% coverage</small>
+
+-   <span class="atlas-icon--structural">:material-code-braces:</span> **[Layer 2: AST + LSP Bindings](ast-lsp-bindings/)**
+
+    ---
+
+    Cross-file imports, symbol references, dead code
+
+    <div class="atlas-coverage">
+    <div class="atlas-coverage__bar" style="width:26%"></div>
+    </div>
+    <small>601/2293 files analyzed (26%)</small>
+
+    <div class="atlas-scale">
+    **total definitions**: 3369 | **total exports**: 1070 | **total imports**: 4235 | **potentially dead**: 140
+    </div>
+
+-   <span class="atlas-icon--structural">:material-package-variant:</span> **[Layer 3: Compile-time Dependencies](compile-deps/)**
+
+    ---
+
+    External deps, internal import graph, circular deps
+
+    <div class="atlas-coverage">
+    <div class="atlas-coverage__bar" style="width:100%"></div>
+    </div>
+    <small>100% coverage</small>
+
+    <div class="atlas-scale">
+    **external dep**: 67 | **internal packages**: 601 | **internal edges**: 715 | **circular dependency**: 8
+    </div>
+
+-   <span class="atlas-icon--structural">:material-server-network:</span> **[Layer 4: Runtime Topology](runtime-topology/)**
+
+    ---
+
+    Processes, ports, subprocess calls, env vars
+
+    <div class="atlas-coverage">
+    <div class="atlas-coverage__bar" style="width:100%"></div>
+    </div>
+    <small>100% coverage</small>
+
+    <div class="atlas-scale">
+    **subprocess call**: 286 | **unique subprocess files**: 109 | **port binding**: 5 | **docker service**: 0
+    </div>
+
+-   <span class="atlas-icon--behavioral">:material-api:</span> **[Layer 5: API Contracts](api-contracts/)**
+
+    ---
+
+    CLI commands, HTTP routes, hooks, recipes
+
+    <div class="atlas-coverage">
+    <div class="atlas-coverage__bar" style="width:100%"></div>
+    </div>
+    <small>100% coverage</small>
+
+    <div class="atlas-scale">
+    **cli command**: 52 | **cli argument**: 236 | **click typer command**: 11 | **http route**: 22
+    </div>
+
+-   <span class="atlas-icon--behavioral">:material-transit-connection-variant:</span> **[Layer 6: Data Flow](data-flow/)**
+
+    ---
+
+    File I/O, database ops, network I/O, data paths
+
+    <div class="atlas-coverage">
+    <div class="atlas-coverage__bar" style="width:100%"></div>
+    </div>
+    <small>100% coverage</small>
+
+    <div class="atlas-scale">
+    **file io**: 844 | **database op**: 293 | **network io**: 23 | **transformation point**: 45
+    </div>
+
+-   <span class="atlas-icon--structural">:material-view-module:</span> **[Layer 7: Service Components](service-components/)**
+
+    ---
+
+    Package boundaries, coupling metrics, architecture
+
+    <div class="atlas-coverage">
+    <div class="atlas-coverage__bar" style="width:100%"></div>
+    </div>
+    <small>100% coverage</small>
+
+    <div class="atlas-scale">
+    **total packages**: 77 | **core packages**: 0 | **leaf packages**: 16
+    </div>
+
+-   <span class="atlas-icon--behavioral">:material-routes:</span> **[Layer 8: User Journeys](user-journeys/)**
+
+    ---
+
+    Entry-to-outcome traces for CLI, HTTP, hooks
+
+    <div class="atlas-coverage">
+    <div class="atlas-coverage__bar" style="width:100%"></div>
+    </div>
+    <small>100% coverage</small>
+
+    <div class="atlas-scale">
+    **total journeys**: 351 | **cli journeys**: 55 | **http journeys**: 22 | **hook journeys**: 274
+    </div>
+
+</div>
+
+## Languages
+
+Primary language: **Python** | Total code: **139,522** lines | Detected via: *tokei*
+
+| Language | Files | Code Lines | % | Analysis Available |
+|----------|------:|-----------:|--:|-------------------|
+| Python | 533 | 120,895 | 86.6% | Full (AST, imports, dead code, journeys) |
+| Json | 24 | 17,065 | 12.2% | File-level only |
+| Xml | 13 | 1,562 | 1.1% | File-level only |
+
+> **Note**: Full AST analysis is currently available for Python only. Other languages have dependency and file-level analysis.
+
+## Legend
+
+<div class="atlas-legend" markdown>
+
+| Category | Layers | Color |
+|----------|--------|-------|
+| Structural | 1, 2, 3, 4, 7 | Blue |
+| Behavioral | 5, 6, 8 | Orange |
+
+</div>
+
+## Quick Links
+
+- [Health Dashboard](health.md) -- cross-layer check results
+- [Glossary](glossary.md) -- atlas terminology

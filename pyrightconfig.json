@@ -12,7 +12,8 @@
     "Specs/",
     "scripts/",
     "src/amplihack/agents/goal_seeking/sdk_adapters",
-    "amplihack-memory-lib/"
+    "amplihack-memory-lib/",
+    "amplifier-bundle/tools/"
   ],
   "typeCheckingMode": "basic",
   "reportMissingImports": true,

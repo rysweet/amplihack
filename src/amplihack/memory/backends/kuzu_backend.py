@@ -26,7 +26,9 @@ Schema:
 import asyncio
 import json
 import logging
+import os
 import time
+import warnings
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
@@ -60,12 +62,36 @@ class KuzuBackend:
     def __init__(self, db_path: Path | str | None = None, enable_auto_linking: bool = True):
         """Initialize Kùzu backend.
 
+        Resolution order for ``db_path`` when not supplied explicitly
+        (mirrors amplihack-rs backend-neutral env-var contract):
+
+        1. ``AMPLIHACK_GRAPH_DB_PATH`` env var (preferred, backend-neutral)
+        2. ``AMPLIHACK_KUZU_DB_PATH`` env var (deprecated – emits DeprecationWarning)
+        3. ``~/.amplihack/memory_kuzu.db`` (built-in default)
+
         Args:
-            db_path: Path to Kùzu database directory. Defaults to ~/.amplihack/memory_kuzu/
-            enable_auto_linking: If True, automatically link memories to code on storage (default: True)
+            db_path: Path to Kùzu database directory. When *None*, the env-var
+                resolution order above is used.
+            enable_auto_linking: If True, automatically link memories to code on
+                storage (default: True).
         """
         if db_path is None:
-            db_path = Path.home() / ".amplihack" / "memory_kuzu.db"
+            from ..kuzu.connector import KuzuConnector
+
+            env_primary = os.environ.get("AMPLIHACK_GRAPH_DB_PATH", "").strip()
+            env_legacy = os.environ.get("AMPLIHACK_KUZU_DB_PATH", "").strip()
+
+            if env_primary:
+                db_path = Path(KuzuConnector._validate_env_db_path(env_primary, "AMPLIHACK_GRAPH_DB_PATH"))
+            elif env_legacy:
+                warnings.warn(
+                    "AMPLIHACK_KUZU_DB_PATH is deprecated; use AMPLIHACK_GRAPH_DB_PATH instead.",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+                db_path = Path(KuzuConnector._validate_env_db_path(env_legacy, "AMPLIHACK_KUZU_DB_PATH"))
+            else:
+                db_path = Path.home() / ".amplihack" / "memory_kuzu.db"
         elif isinstance(db_path, str):
             db_path = Path(db_path)
 
