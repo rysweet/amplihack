@@ -266,7 +266,7 @@ result = await workflow.run(initial_message="Research AI trends")
 
 ```bash
 # Install both systems
-pip install agent-framework --pre
+pip install agent-framework-core --pre
 # amplihack is already installed via Claude Code
 
 # Environment variables

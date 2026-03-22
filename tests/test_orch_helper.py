@@ -206,14 +206,98 @@ class TestHelperPathImport(unittest.TestCase):
         """Verify the recipe's import pattern works: HELPER_PATH must be importable."""
         tools_dir = str(Path(__file__).parent.parent / "amplifier-bundle" / "tools")
         r = subprocess.run(
-            [sys.executable, "-c",
-             "import os,sys; sys.path.insert(0,os.path.dirname(os.environ['HELPER_PATH'])); import orch_helper; print('ok')"],
+            [
+                sys.executable,
+                "-c",
+                "import os,sys; sys.path.insert(0,os.path.dirname(os.environ['HELPER_PATH'])); import orch_helper; print('ok')",
+            ],
             env={**os.environ, "HELPER_PATH": f"{tools_dir}/orch_helper.py"},
             capture_output=True,
             text=True,
         )
         self.assertEqual(r.returncode, 0, f"Import via HELPER_PATH failed: {r.stderr}")
         self.assertEqual(r.stdout.strip(), "ok")
+
+
+class TestResolveHelperPathRegression(unittest.TestCase):
+    """Regression tests for issue #3092: orch_helper.py path resolution.
+
+    These tests document the old broken pattern and verify the new
+    resolve_bundle_asset module fixes it.
+    """
+
+    def test_old_git_rev_parse_pattern_would_fail_in_tmp(self):
+        """The old `git rev-parse --show-toplevel` pattern fails from /tmp.
+
+        This test documents the root cause of issue #3092: when run from
+        /tmp (not inside the amplihack git repo), git rev-parse returns a
+        non-zero exit code, so the fallback `echo '.'` resolves to the
+        current directory — which is /tmp, not the amplihack root.
+        """
+        original_cwd = os.getcwd()
+        try:
+            os.chdir("/tmp")
+            # Simulate the broken bash pattern: $(git rev-parse ... || echo '.')
+            result = subprocess.run(
+                ["git", "rev-parse", "--show-toplevel"],
+                capture_output=True,
+                text=True,
+                cwd="/tmp",
+            )
+            if result.returncode != 0:
+                # git failed → broken pattern falls back to "."
+                broken_path = Path("/tmp") / "amplifier-bundle" / "tools" / "orch_helper.py"
+                self.assertFalse(
+                    broken_path.is_file(),
+                    "Broken pattern accidentally resolved correctly — test assumption invalid",
+                )
+            # If git happens to succeed (user's /tmp is inside a repo), skip.
+        finally:
+            os.chdir(original_cwd)
+
+    def test_resolve_bundle_asset_finds_orch_helper(self):
+        """resolve_bundle_asset finds orch_helper.py even from /tmp."""
+        resolve_module_path = (
+            Path(__file__).parent.parent / "src" / "amplihack" / "resolve_bundle_asset.py"
+        )
+        self.assertTrue(
+            resolve_module_path.exists(),
+            f"resolve_bundle_asset.py not found: {resolve_module_path}",
+        )
+        result = subprocess.run(
+            [sys.executable, str(resolve_module_path), "amplifier-bundle/tools/orch_helper.py"],
+            capture_output=True,
+            text=True,
+            cwd="/tmp",
+        )
+        self.assertEqual(result.returncode, 0, f"resolve_bundle_asset failed:\n{result.stderr}")
+        resolved_path = Path(result.stdout.strip())
+        self.assertTrue(resolved_path.is_file(), f"Resolved path is not a file: {resolved_path}")
+
+    def test_resolved_path_importable_as_orch_helper(self):
+        """orch_helper resolved via resolve_bundle_asset is importable."""
+        import importlib.util as _ilu
+
+        resolve_module_path = (
+            Path(__file__).parent.parent / "src" / "amplihack" / "resolve_bundle_asset.py"
+        )
+        result = subprocess.run(
+            [sys.executable, str(resolve_module_path), "amplifier-bundle/tools/orch_helper.py"],
+            capture_output=True,
+            text=True,
+            cwd="/tmp",
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        helper_path = result.stdout.strip()
+
+        spec = _ilu.spec_from_file_location("orch_helper", helper_path)
+        self.assertIsNotNone(spec)
+        mod = _ilu.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        self.assertTrue(
+            callable(getattr(mod, "extract_json", None)),
+            "extract_json not found in resolved orch_helper",
+        )
 
 
 if __name__ == "__main__":

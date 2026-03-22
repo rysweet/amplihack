@@ -6,6 +6,7 @@ on:
     types: [opened]
 permissions:
   contents: read
+engine: claude
 safe-outputs:
   add-labels:
     max: 1

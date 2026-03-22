@@ -127,7 +127,7 @@ steps:
       {{decomposition_json}}
       EOFDECOMP
       )
-      TASK_TYPE='{{task_type}}'
+      TASK_TYPE={{task_type}}
       HOOKS_DIR="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/amplihack/hooks"
       export DECOMP_JSON HELPER_PATH TASK_TYPE HOOKS_DIR
       python3 - <<'PYEOF'
@@ -250,7 +250,7 @@ steps:
     type: "bash"
     condition: "'Development' in task_type or 'Investigation' in task_type"
     command: |
-      SESSION_JSON='{{session_info}}'
+      SESSION_JSON={{session_info}}
       # Extract status using shell grep — no Python subprocess needed
       if echo "$SESSION_JSON" | grep -qE '"status" *: *"ok"'; then
         echo "ALLOWED"
@@ -273,19 +273,13 @@ steps:
   # ─────────────────────────────────────────────────────────────────────────
 
   - id: "execute-single-round-1"
-    type: "agent"
+    type: "recipe"
     condition: |
       ('Development' in task_type or 'Investigation' in task_type) and ((workstream_count == '1' or workstream_count == '') or force_single_workstream == 'true')
-    agent: "amplihack:core:builder"
-    prompt: |
-      Execute this task following the complete development workflow (DEFAULT_WORKFLOW.md, steps 0-22).
-
-      **Goal**: {{decomposition_json}}
-      **Task**: {{task_description}}
-      **Repo**: {{repo_path}}
-
-      Follow all 23 steps (0-22). Use specialized agents. Create a PR. Report PR URL.
-      End with "STATUS: COMPLETE" if fully done, "STATUS: CONTINUE" if more work remains.
+    recipe: "default-workflow"
+    # No explicit context needed: task_description and repo_path flow through
+    # from the parent smart-orchestrator context automatically via context merging
+    # in _execute_sub_recipe().
     output: "round_1_result"
 
   # ─────────────────────────────────────────────────────────────────────────
@@ -337,9 +331,9 @@ steps:
     condition: |
       ('Development' in task_type or 'Investigation' in task_type) and workstream_count != '1' and workstream_count != '' and 'ALLOWED' in recursion_guard and force_single_workstream != 'true'
     command: |
-      REPO_PATH='{{repo_path}}'
-      WS_FILE='{{workstreams_file}}'
-      SESSION_JSON='{{session_info}}'
+      REPO_PATH={{repo_path}}
+      WS_FILE={{workstreams_file}}
+      SESSION_JSON={{session_info}}
       # Parse tree_id, depth, and validate workstreams file in one Python subprocess.
       # Uses env vars instead of pipe+heredoc to avoid stdin conflict (issue #2581).
       export SESSION_JSON WS_FILE
@@ -389,37 +383,25 @@ steps:
 
   # ─────────────────────────────────────────────────────────────────────────
   # Recursion depth limit: fall back to single-session execution
-  # The depth-limited notice is included in the agent prompt below so the user
-  # sees it in the agent's response. This replaces the former announce-depth-limited step.
+  # Uses default-workflow sub-recipe (same as primary path) so workflow
+  # steps are enforced even when parallel spawning is blocked.
   # ─────────────────────────────────────────────────────────────────────────
 
   - id: "execute-single-fallback-blocked"
-    type: "agent"
+    type: "recipe"
     # Fires when blocked from spawning subworkstreams — executes as single session instead
     condition: |
       ('Development' in task_type or 'Investigation' in task_type) and 'BLOCKED' in recursion_guard and workstream_count != '1' and workstream_count != ''
-    agent: "amplihack:core:builder"
-    prompt: |
-      Execute this task as a single session (parallel execution is depth-limited).
-
-      **Goal**: {{decomposition_json}}
-      **Task**: {{task_description}}
-      **Repo**: {{repo_path}}
-
-      **NOTE**: Parallel workstream spawning was blocked by the recursion guard
-      (reason: {{recursion_guard}}). Your task will run as a single-session execution
-      with all workstreams handled sequentially.
-
-      Execute the full task in this single session following DEFAULT_WORKFLOW.md steps 0-22.
-      Create a PR. Report PR URL.
-      End with "STATUS: COMPLETE" or "STATUS: CONTINUE".
+    recipe: "default-workflow"
+    # No explicit context needed: task_description and repo_path flow through
+    # from the parent smart-orchestrator context automatically.
     output: "round_1_result"
 
   # Cleanup temp workstreams file
   - id: "cleanup-helper"
     type: "bash"
     command: |
-      WS_FILE='{{workstreams_file}}'
+      WS_FILE={{workstreams_file}}
       [ -f "$WS_FILE" ] && rm -f "$WS_FILE"
       echo "ok"
     output: "cleanup_status"
@@ -523,13 +505,19 @@ steps:
 
   # ─────────────────────────────────────────────────────────────────────────
   # Phase 4: Outside-In Testing Validation
-  # Runs only when at least one workstream produced a PR.
-  # Checks that the outside-in-testing skill was used for every PR.
+  # Mandatory for ALL Development tasks — single and multi-workstream alike.
+  #
+  # FIX (#2925): The previous condition required PR URLs in round_1_result.
+  # For parallel/multitask workstreams, round_1_result is the orchestrator
+  # report which never contains PR URLs, so this step was always SKIPPED.
+  # Fixed by removing the PR-URL requirement: validation now runs for any
+  # Development task that produced results, letting the reviewer agent
+  # determine if PRs exist and whether outside-in testing was performed.
   # ─────────────────────────────────────────────────────────────────────────
 
   - id: "validate-outside-in-testing"
     type: "agent"
-    condition: "'Q&A' not in task_type and 'Operations' not in task_type and round_1_result and ('pull/' in round_1_result or 'pull/' in round_2_result or 'pull/' in round_3_result)"
+    condition: "'Q&A' not in task_type and 'Operations' not in task_type and 'Development' in task_type and round_1_result"
     agent: "amplihack:core:reviewer"
     prompt: |
       Outside-in testing validation check.
@@ -541,44 +529,59 @@ steps:
       - Round 2 (if any): {{round_2_result}}
       - Round 3 (if any): {{round_3_result}}
 
-      One or more workstreams produced a GitHub PR. Before the workflow can be
-      marked complete, you must verify that outside-in testing was performed.
+      ## Important: Multi-Workstream Execution
+
+      If Round 1 looks like an orchestrator report (contains "PARALLEL WORKSTREAM
+      REPORT" or lists multiple workstreams with log paths), this was a parallel
+      multitask execution. In that case, PR URLs will NOT appear directly in the
+      round results — they are in each workstream's individual log file.
+
+      For parallel workstreams: inspect the round results for evidence that each
+      workstream completed, and check whether the log references mention outside-in
+      testing being performed (look for "Step 13", "outside-in-testing", or
+      "local testing" references in the results).
 
       ## Validation Steps
 
-      1. Scan the round results above for any PR URLs (lines containing
-         `https://github.com/...pull/...`).
+      1. Determine execution mode:
+         - **Single workstream**: PR URL appears directly in round results
+         - **Parallel workstreams**: Round 1 is an orchestrator report; PR URLs
+           are in individual workstream logs
 
-      2. For each PR-producing workstream, determine whether the
-         `outside-in-testing` skill was invoked AND whether a
-         "Step 13: Local Testing Results" section with at least 2 test
-         scenarios appears in the results.
+      2. For each workstream, determine whether outside-in testing was performed:
+         - Look for "Step 13: Local Testing Results" evidence
+         - Look for `outside-in-testing` skill invocation
+         - Look for at least 2 test scenario results (PASS/FAIL)
 
       3. Report your findings in this format:
 
          ```
          OUTSIDE-IN TESTING VALIDATION REPORT
          =====================================
-         PR(s) found: <list PR URLs>
+         Execution mode: single / parallel
+         PR(s) found: <list PR URLs or "see workstream logs">
 
-         For each PR:
-           - PR URL: <url>
-           - outside-in-testing skill invoked: YES / NO
-           - Step 13 results documented: YES / NO
-           - Test scenarios executed: <count>
-           - VERDICT: PASS / FAIL
+         For each workstream:
+           - Workstream: <name or PR URL>
+           - outside-in-testing skill invoked: YES / NO / UNKNOWN
+           - Step 13 results documented: YES / NO / UNKNOWN
+           - Test scenarios executed: <count or UNKNOWN>
+           - VERDICT: PASS / FAIL / CANNOT_VERIFY
          ```
 
-      4. If ALL PR-producing workstreams have PASS verdict, end with:
+      4. If ALL workstreams have PASS or CANNOT_VERIFY verdict, end with:
          `OUTSIDE_IN_VALIDATION: PASSED`
 
-      5. If ANY workstream has FAIL verdict, end with:
-         `OUTSIDE_IN_VALIDATION: FAILED -- <list the PR URLs that are missing outside-in testing>`
+      5. If ANY workstream has FAIL verdict (evidence shows testing was skipped),
+         end with:
+         `OUTSIDE_IN_VALIDATION: FAILED -- <describe which workstreams are missing outside-in testing>`
 
-         When FAILED, state clearly: "The following PRs require outside-in
-         testing to be completed before this workflow is marked done: <PR URLs>"
-         and list the exact `uvx --from git+...@<branch> amplihack` command
-         the developer should run.
+         When FAILED, state clearly what outside-in testing is missing and the
+         command the developer should run to complete it.
+
+      6. If no Development work was done (e.g., task was purely informational
+         and produced no code changes or PRs), end with:
+         `OUTSIDE_IN_VALIDATION: N/A -- no code changes produced`
     output: "outside_in_validation"
 
   # ─────────────────────────────────────────────────────────────────────────
@@ -618,7 +621,7 @@ steps:
   - id: "complete-session"
     type: "bash"
     command: |
-      SESSION_JSON='{{session_info}}'
+      SESSION_JSON={{session_info}}
       TREE_SCRIPT="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/session_tree.py"
       HOOKS_DIR="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/amplihack/hooks"
       # Parse session fields and clear workflow semaphore in one Python subprocess.

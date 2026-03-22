@@ -521,15 +521,24 @@ if [ -z "$ANTHROPIC_API_KEY" ]; then
     exit 1
 fi
 
-# Decode prompt from base64
+# Write a run script to avoid send-keys quoting issues with special characters in prompt.
+# The heredoc uses a single-quoted delimiter ('AMPLIHACK_RUN_EOF') to prevent the outer
+# shell from expanding $(...) and $VAR - Python f-string has already substituted the
+# base64 values. The run script decodes them safely at execution time inside tmux.
+SCRIPT=/tmp/amplihack-{safe_session_id}.sh
+cat > "$SCRIPT" << 'AMPLIHACK_RUN_EOF'
+#!/bin/bash
+source ~/.amplihack-venv/bin/activate
+export ANTHROPIC_API_KEY=$(echo '{encoded_api_key}' | base64 -d)
+export NODE_OPTIONS='--max-old-space-size=32768'
 PROMPT=$(echo '{encoded_prompt}' | base64 -d)
+exec amplihack claude --{command} --max-turns {max_turns} -- -p "$PROMPT"
+AMPLIHACK_RUN_EOF
+chmod +x "$SCRIPT"
 
-# Create tmux session and run amplihack inside it
+# Create tmux session and run the script (avoids send-keys quoting issues)
 tmux new-session -d -s {safe_session_id} -c {safe_workspace}
-tmux send-keys -t {safe_session_id} "source ~/.amplihack-venv/bin/activate" C-m
-tmux send-keys -t {safe_session_id} "export ANTHROPIC_API_KEY='$ANTHROPIC_API_KEY'" C-m
-tmux send-keys -t {safe_session_id} "export NODE_OPTIONS='--max-old-space-size=32768'" C-m
-tmux send-keys -t {safe_session_id} "amplihack claude --{command} --max-turns {max_turns} -- -p \\"$PROMPT\\"" C-m
+tmux send-keys -t {safe_session_id} "bash $SCRIPT" C-m
 
 echo "Tmux session {safe_session_id} started successfully"
 """

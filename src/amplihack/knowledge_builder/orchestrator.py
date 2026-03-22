@@ -1,5 +1,6 @@
 """Knowledge Builder orchestrator - main entry point."""
 
+import os
 import sys
 from pathlib import Path
 
@@ -12,16 +13,17 @@ from amplihack.knowledge_builder.modules.question_generator import QuestionGener
 class KnowledgeBuilder:
     """Main orchestrator for Knowledge Builder workflow."""
 
-    def __init__(self, topic: str, claude_cmd: str = "claude", output_base: Path | None = None):
+    def __init__(self, topic: str, agent_cmd: str | None = None, output_base: Path | None = None):
         """Initialize Knowledge Builder.
 
         Args:
             topic: Topic to build knowledge about (1-2 sentences)
-            claude_cmd: Claude command to use (default: "claude")
+            agent_cmd: Agent command to use. Reads AMPLIHACK_AGENT_BINARY if
+                not provided, falls back to "claude".
             output_base: Base directory for output (default: .claude/data)
         """
         self.topic = topic.strip()
-        self.claude_cmd = claude_cmd
+        self.agent_cmd = agent_cmd or os.environ.get("AMPLIHACK_AGENT_BINARY", "claude")
 
         # Sanitize topic for directory name
         topic_slug = "".join(c if c.isalnum() or c in " -_" else "_" for c in self.topic[:50])
@@ -33,8 +35,8 @@ class KnowledgeBuilder:
         self.output_dir = output_base / topic_slug
 
         # Initialize modules
-        self.question_gen = QuestionGenerator(claude_cmd)
-        self.knowledge_acq = KnowledgeAcquirer(claude_cmd)
+        self.question_gen = QuestionGenerator(self.agent_cmd)
+        self.knowledge_acq = KnowledgeAcquirer(self.agent_cmd)
         self.artifact_gen = ArtifactGenerator(self.output_dir)
 
         # Initialize knowledge graph

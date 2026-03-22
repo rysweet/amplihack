@@ -28,6 +28,7 @@ try:
 
     CLAUDE_SDK_AVAILABLE = True
 except ImportError:
+    print("WARNING: claude_agent_sdk not available", file=sys.stderr)
     CLAUDE_SDK_AVAILABLE = False
 
 # Try to import Rich for markdown rendering
@@ -37,6 +38,7 @@ try:
 
     RICH_AVAILABLE = True
 except ImportError:
+    print("WARNING: rich not available, markdown rendering disabled", file=sys.stderr)
     RICH_AVAILABLE = False
     Console = None
     Markdown = None
@@ -341,11 +343,18 @@ class AutoMode:
             (exit_code, output)
         """
         if self.sdk == "copilot":
-            cmd = ["copilot", "--allow-all-tools", "--add-dir", "/", "-p", prompt]
+            cmd = ["amplihack", "copilot", "--allow-all-tools", "--add-dir", "/", "-p", prompt]
         elif self.sdk == "codex":
-            cmd = ["codex", "--dangerously-bypass-approvals-and-sandbox", "exec", prompt]
+            cmd = [
+                "amplihack",
+                "codex",
+                "--dangerously-bypass-approvals-and-sandbox",
+                "exec",
+                prompt,
+            ]
         else:
-            cmd = ["claude", "--dangerously-skip-permissions", "--verbose", "-p", prompt]
+            agent = os.environ.get("AMPLIHACK_AGENT_BINARY", self.sdk or "claude")
+            cmd = ["amplihack", agent, "--dangerously-skip-permissions", "--verbose", "-p", prompt]
 
         self.log(f"Running: {cmd[0]} ...")
 

@@ -4,29 +4,7 @@ Step-by-step guides for upgrading amplihack features and dependencies.
 
 ## Available Migration Guides
 
-### [claude-trace to Native Binary](./claude-trace-to-native.md)
-
-**Migration from the deprecated claude-trace NPM package to native binary trace logging.**
-
-- **Why migrate**: Better performance, zero dependencies, automatic security
-- **Effort**: 30-60 minutes
-- **Breaking changes**: File format (JSON → JSONL), directory structure, API
-- **When to migrate**: Before upgrading to amplihack v1.0+
-
-**Quick start**:
-
-```bash
-# 1. Remove old dependency
-npm uninstall claude-trace
-
-# 2. Enable native trace logging
-export AMPLIHACK_TRACE_LOGGING=true
-
-# 3. Update scripts for JSONL format
-cat .claude/runtime/amplihack-traces/*.jsonl | jq .
-```
-
-See [complete guide](./claude-trace-to-native.md) for detailed steps.
+_No active migration guides at this time._
 
 ---
 

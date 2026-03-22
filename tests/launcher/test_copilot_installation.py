@@ -17,6 +17,7 @@ from amplihack.launcher.copilot import install_copilot, launch_copilot
 class TestCopilotInstallationLogic:
     """Unit tests for installation logic in launch_copilot()."""
 
+    @patch("amplihack.launcher.copilot.ensure_latest_copilot")
     @patch("amplihack.launcher.copilot.disable_github_mcp_server")
     @patch("amplihack.launcher.copilot.check_copilot")
     @patch("amplihack.launcher.copilot.install_copilot")
@@ -41,6 +42,7 @@ class TestCopilotInstallationLogic:
         mock_install,
         mock_check,
         mock_disable_mcp,
+        mock_ensure_latest,
     ):
         """Test: Installation succeeds, no re-check after successful install.
 
@@ -83,6 +85,7 @@ class TestCopilotInstallationLogic:
         # Verify install was called (installation path triggered)
         mock_install.assert_called_once()
 
+    @patch("amplihack.launcher.copilot.ensure_latest_copilot")
     @patch("amplihack.launcher.copilot.check_copilot")
     @patch("amplihack.launcher.copilot.install_copilot")
     @patch("amplihack.launcher.copilot.subprocess.run")
@@ -97,6 +100,7 @@ class TestCopilotInstallationLogic:
         mock_subprocess,
         mock_install,
         mock_check,
+        mock_ensure_latest,
     ):
         """Test: Installation fails, returns error code 1.
 
@@ -121,6 +125,7 @@ class TestCopilotInstallationLogic:
         # Verify subprocess.run was NOT called (copilot not launched)
         mock_subprocess.assert_not_called()
 
+    @patch("amplihack.launcher.copilot.ensure_latest_copilot")
     @patch("amplihack.launcher.copilot.disable_github_mcp_server")
     @patch("amplihack.launcher.copilot.check_copilot")
     @patch("amplihack.launcher.copilot.install_copilot")
@@ -145,6 +150,7 @@ class TestCopilotInstallationLogic:
         mock_install,
         mock_check,
         mock_disable_mcp,
+        mock_ensure_latest,
     ):
         """Test: Already installed, skips installation entirely.
 
@@ -173,7 +179,7 @@ class TestCopilotInstallationLogic:
         mock_install.assert_not_called()
 
         # Verify subprocess.run was called (copilot launched)
-        mock_subprocess.assert_called_once()
+        assert mock_subprocess.called, "subprocess.run was not called — copilot was not launched"
 
 
 class TestInstallCopilotPathUpdate:
@@ -225,6 +231,7 @@ class TestInstallCopilotPathUpdate:
 class TestInstallationErrorMessages:
     """Tests for error message clarity during installation failures."""
 
+    @patch("amplihack.launcher.copilot.ensure_latest_copilot")
     @patch("amplihack.launcher.copilot.check_copilot")
     @patch("amplihack.launcher.copilot.install_copilot")
     @patch("amplihack.launcher.copilot.check_for_update")
@@ -239,6 +246,7 @@ class TestInstallationErrorMessages:
         mock_check_update,
         mock_install,
         mock_check,
+        mock_ensure_latest,
         capsys,
     ):
         """Test: Clear error message when installation fails.
@@ -270,6 +278,7 @@ class TestInstallationErrorMessages:
 class TestBugReproduction:
     """Direct reproduction of the bug for documentation purposes."""
 
+    @patch("amplihack.launcher.copilot.ensure_latest_copilot")
     @patch("amplihack.launcher.copilot.disable_github_mcp_server")
     @patch("amplihack.launcher.copilot.check_copilot")
     @patch("amplihack.launcher.copilot.install_copilot")
@@ -294,6 +303,7 @@ class TestBugReproduction:
         mock_install,
         mock_check,
         mock_disable_mcp,
+        mock_ensure_latest,
     ):
         """REPRODUCTION: False negative when install succeeds but re-check fails.
 

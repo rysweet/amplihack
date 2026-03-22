@@ -1,6 +1,7 @@
 """Codex CLI launcher - wrapper around OpenAI Codex command."""
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -12,6 +13,81 @@ def check_codex() -> bool:
         subprocess.run(["codex", "--version"], capture_output=True, timeout=5, check=False)
         return True
     except (FileNotFoundError, subprocess.TimeoutExpired):
+        return False
+
+
+def _get_current_codex_version() -> str | None:
+    """Get the currently installed Codex CLI version."""
+    try:
+        result = subprocess.run(
+            ["codex", "--version"], capture_output=True, text=True, timeout=10, check=False
+        )
+        if result.returncode != 0:
+            return None
+        return result.stdout.strip().split()[0].lstrip("v") if result.stdout.strip() else None
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError, IndexError):
+        return None
+
+
+def _compare_versions(current: str, latest: str) -> bool:
+    """Return True if latest > current using semantic version comparison."""
+    try:
+        cur = tuple(int(x) for x in current.lstrip("v").split("."))
+        lat = tuple(int(x) for x in latest.lstrip("v").split("."))
+        return lat > cur
+    except (ValueError, AttributeError):
+        return False
+
+
+def ensure_latest_codex() -> bool:
+    """Auto-update Codex CLI to the latest version if an update is available.
+
+    Set AMPLIHACK_SKIP_UPDATE=1 to bypass.
+
+    Returns:
+        True if up-to-date or updated successfully, False on failure.
+    """
+    if os.environ.get("AMPLIHACK_SKIP_UPDATE", "") == "1":
+        return True
+
+    if not check_codex():
+        return True  # not installed yet — let install_codex() handle it
+
+    try:
+        current = _get_current_codex_version()
+        if current is None:
+            return True
+
+        latest_result = subprocess.run(
+            ["npm", "view", "@openai/codex-cli", "version"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=False,
+        )
+        if latest_result.returncode != 0:
+            return True
+
+        latest = latest_result.stdout.strip()
+        if not _compare_versions(current, latest):
+            return True  # already up-to-date
+
+        print(f"🔄 Codex CLI update available: {current} → {latest}")
+        result = subprocess.run(
+            ["npm", "install", "-g", "@openai/codex-cli"],
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+        if result.returncode == 0:
+            post = _get_current_codex_version() or latest
+            print(f"✓ Codex CLI updated to {post}")
+            return True
+
+        print(f"⚠ Codex update failed — continuing with current version: {result.stderr.strip()}")
+        return False
+    except Exception:
         return False
 
 
@@ -110,6 +186,12 @@ def launch_codex(args: list[str] | None = None, interactive: bool = True) -> int
     Returns:
         Exit code (only for non-interactive mode)
     """
+    # Auto-update to latest version before launching (fixes #3097)
+    try:
+        ensure_latest_codex()
+    except Exception:
+        pass  # non-critical — continue with current version
+
     # Ensure codex is installed
     if not check_codex():
         if not install_codex() or not check_codex():
@@ -139,7 +221,12 @@ def launch_codex(args: list[str] | None = None, interactive: bool = True) -> int
             # No -p flag, pass args as-is
             cmd.extend(args)
 
+    # Build explicit env with agent identity and home directory for Rust CLI parity
+    env = os.environ.copy()
+    env["AMPLIHACK_AGENT_BINARY"] = "codex"
+    env.setdefault("AMPLIHACK_HOME", os.path.expanduser("~/.amplihack"))
+
     # Launch using subprocess.run() for proper terminal handling
     # Note: os.execvp() doesn't work properly on Windows - it corrupts stdin/terminal state
-    result = subprocess.run(cmd, check=False)
+    result = subprocess.run(cmd, check=False, env=env)
     return result.returncode

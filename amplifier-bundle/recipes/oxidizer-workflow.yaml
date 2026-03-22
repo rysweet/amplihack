@@ -1,0 +1,1224 @@
+name: "oxidizer-workflow"
+description: |
+  Automated Python-to-Rust migration workflow. Treats the Python codebase as
+  the living specification and iteratively converges toward FULL Rust parity
+  through a recursive, quality-seeking, goal-evaluating loop.
+
+  ZERO TOLERANCE: Convergence requires 100% parity. No partial results accepted.
+  Every iteration passes through quality-audit-cycle AND silent-degradation-audit.
+  Test coverage must be complete BEFORE any code porting begins.
+
+  EFFECTIVE RUST COMPLIANCE: All generated Rust code must follow the Effective
+  Rust guide (https://effective-rust.com/). Key rules enforced:
+  - No `unsafe` code unless absolutely required for FFI (Item 16)
+  - Use the type system to make invalid states unrepresentable (Items 1-6)
+  - Prefer channels over shared-state concurrency; avoid deadlocks (Item 17)
+  - Use clippy, fmt, Miri, cargo-deny, and CI integration (Items 29, 31, 32)
+
+  Phases: Analysis → Test Completeness Gate → Scaffolding → Test Extraction →
+  [Core-Out Implementation → Comparison → Quality Audit → Silent Degradation
+  Audit (incl. unsafe audit) → Convergence Check] × N iterations until 100% parity.
+version: "2.0.0"
+author: "Amplihack Team"
+tags: ["oxidizer", "migration", "python-to-rust", "goal-seeking", "zero-tolerance"]
+
+recursion:
+  max_depth: 8
+  max_total_steps: 120
+
+context:
+  # Required inputs
+  task_description: ""
+  repo_path: "."
+  python_package_path: "" # e.g. "src/amplihack/recipes"
+  rust_target_path: "" # e.g. "rust/recipe-runner"
+  rust_repo_name: "" # e.g. "amplihack-recipe-runner"
+  rust_repo_org: "" # e.g. "rysweet" (GitHub org/user)
+
+  # Phase 1 outputs
+  analysis_json: ""
+  migration_priority: ""
+
+  # Phase 1B: Test completeness gate
+  test_completeness_result: ""
+  test_coverage_percentage: "0"
+  test_coverage_sufficient: "false"
+
+  # Phase 2 outputs
+  scaffold_result: ""
+
+  # Phase 3 outputs
+  test_extraction_result: ""
+  scorecard: ""
+
+  # Phase 4-6 iteration state
+  current_module: ""
+  next_module_json: ""
+  implementation_result: ""
+  comparison_result: ""
+  parity_percentage: "0"
+  iteration_number: "1"
+  max_iterations: "30"
+  quality_audit_result: ""
+  silent_degradation_result: ""
+  convergence_status: "NOT_CONVERGED"
+  convergence_json: ""
+
+  # Strict parity enforcement
+  parity_target: "100"
+  allow_partial_convergence: "false"
+
+steps:
+  # ========================================================================
+  # PHASE 1: ANALYSIS
+  # Map Python modules, dependencies, CLI commands, test coverage
+  # ========================================================================
+
+  - id: "phase-1-analyze"
+    type: "agent"
+    agent: "amplihack:core:analyzer"
+    prompt: |
+      # Oxidizer Phase 1: Comprehensive Analysis
+
+      Analyze the Python codebase for migration to Rust. This analysis must be
+      EXHAUSTIVE — every public function, every code path, every edge case.
+
+      **Python Package Path:** {{python_package_path}}
+      **Repository:** {{repo_path}}
+
+      Produce a comprehensive analysis covering:
+
+      1. **Dependency Graph**: Map ALL Python modules, their imports, and
+         inter-module dependencies. Identify leaf modules (no internal deps)
+         vs hub modules (many dependents). Include private helpers.
+
+      2. **Feature Catalog**: List ALL public AND private APIs, CLI commands,
+         subcommands, flags, and their behaviors. Include:
+         - Every function signature with parameter types and return types
+         - Every class with all methods
+         - Every constant and enum
+         - Error types and exception hierarchies
+
+      3. **Test Coverage**: Measure existing test coverage per-module.
+         Identify ALL untested code paths, branches, and edge cases.
+         This is critical — gaps here become gaps in the Rust port.
+
+      4. **External Integrations**: Catalog ALL external service integrations
+         (APIs, databases, cloud SDKs, subprocess calls, file I/O, env vars).
+
+      5. **Migration Priority Order**: Leaf modules first, then inward.
+
+      6. **Rust Ecosystem Mapping**: For EVERY Python dependency, identify
+         the Rust equivalent. Flag any with no good equivalent — these need
+         custom implementations and MUST be explicitly tracked.
+
+      7. **Complexity Metrics**: LOC, cyclomatic complexity, number of
+         functions per module. This drives effort estimation.
+
+      **Output as JSON**:
+      ```json
+      {
+        "dependency_graph": {"module_name": ["dep1", "dep2"]},
+        "feature_catalog": [{"module": "...", "functions": [...], "classes": [...], "constants": [...]}],
+        "test_coverage": {"overall": "X%", "per_module": {...}, "untested_paths": [...]},
+        "external_integrations": [...],
+        "migration_priority": ["module1", "module2"],
+        "rust_mapping": {"python_dep": "rust_crate"},
+        "complexity": {"total_loc": 0, "per_module": {...}},
+        "total_features": 0
+      }
+      ```
+    output: "analysis_json"
+    parse_json: true
+
+  - id: "extract-analysis"
+    type: "bash"
+    command: |
+      echo {{analysis_json}} | python3 -c "
+      import sys, json
+      data = json.load(sys.stdin)
+      print(json.dumps(data.get('migration_priority', [])))" 2>/dev/null || echo '[]'
+    output: "migration_priority"
+
+  # ========================================================================
+  # PHASE 1B: TEST COMPLETENESS GATE (MANDATORY)
+  # Ensure Python test coverage is complete BEFORE porting begins.
+  # If coverage is insufficient, ADD tests to the Python codebase first.
+  # ========================================================================
+
+  - id: "phase-1b-test-completeness-check"
+    type: "agent"
+    agent: "amplihack:core:reviewer"
+    prompt: |
+      # Oxidizer Phase 1B: Test Completeness Gate
+
+      **CRITICAL**: No porting begins until the Python codebase has comprehensive
+      test coverage. The Python tests ARE the specification for the Rust port.
+      Insufficient tests = insufficient specification = guaranteed parity gaps.
+
+      **Python Package Path:** {{python_package_path}}
+      **Repository:** {{repo_path}}
+      **Analysis:** {{analysis_json}}
+
+      Evaluate test completeness:
+
+      1. Run the existing Python test suite. Report pass/fail counts.
+      2. Measure line coverage and branch coverage.
+      3. For every public function in the feature catalog, verify there is at
+         least one test exercising it.
+      4. For every error path / exception handler, verify there is a test.
+      5. For every CLI command/subcommand, verify there is an integration test.
+      6. Identify ALL untested code paths.
+
+      If coverage is below 90%, produce a detailed list of EXACTLY which tests
+      must be written. Group by module and priority.
+
+      **Output as JSON**:
+      ```json
+      {
+        "test_coverage_percentage": N,
+        "tests_run": N,
+        "tests_passed": N,
+        "tests_failed": N,
+        "coverage_sufficient": true/false,
+        "untested_functions": ["mod.func1", "mod.func2"],
+        "untested_error_paths": ["mod.func1:line42"],
+        "untested_cli_commands": ["cmd1", "cmd2"],
+        "tests_to_write": [
+          {"module": "...", "function": "...", "test_description": "...", "priority": "high"}
+        ]
+      }
+      ```
+    output: "test_completeness_result"
+    parse_json: true
+
+  - id: "extract-test-coverage"
+    type: "bash"
+    command: |
+      echo {{test_completeness_result}} | python3 -c "
+      import sys, json
+      data = json.load(sys.stdin)
+      pct = data.get('test_coverage_percentage', 0)
+      print(pct)" 2>/dev/null || echo '0'
+    output: "test_coverage_percentage"
+
+  - id: "check-test-sufficiency"
+    type: "bash"
+    command: |
+      echo {{test_completeness_result}} | python3 -c "
+      import sys, json
+      data = json.load(sys.stdin)
+      sufficient = data.get('coverage_sufficient', False)
+      print('true' if sufficient else 'false')" 2>/dev/null || echo 'false'
+    output: "test_coverage_sufficient"
+
+  # If tests are insufficient, write the missing tests FIRST
+  - id: "phase-1b-write-missing-tests"
+    type: "recipe"
+    recipe: "default-workflow"
+    condition: "test_coverage_sufficient == 'false'"
+    sub_context:
+      task_description: |
+        MANDATORY: Write missing Python tests before the Oxidizer migration can proceed.
+
+        The following test gaps were identified in the Python codebase at
+        {{python_package_path}}. ALL of these must be filled:
+
+        {{test_completeness_result}}
+
+        Requirements:
+        1. Write tests for EVERY function listed in untested_functions
+        2. Write tests for EVERY error path listed in untested_error_paths
+        3. Write integration tests for EVERY CLI command in untested_cli_commands
+        4. Use pytest fixtures and parametrize for thorough coverage
+        5. Include edge cases: empty inputs, None values, invalid types, boundary values
+        6. Run the full test suite and verify ALL tests pass
+        7. Achieve at least 90% line coverage
+
+        Do NOT proceed to any other task until test coverage is sufficient.
+      repo_path: "{{repo_path}}"
+    output: "test_writing_result"
+
+  # Re-verify coverage after writing tests
+  - id: "phase-1b-reverify-coverage"
+    type: "agent"
+    agent: "amplihack:core:reviewer"
+    condition: "test_coverage_sufficient == 'false'"
+    prompt: |
+      # Re-verify Test Coverage After Writing Missing Tests
+
+      The missing tests have been written. Re-run the full Python test suite
+      at {{python_package_path}} and verify coverage is now sufficient (>=90%).
+
+      If still insufficient, list remaining gaps.
+
+      **Output as JSON**:
+      ```json
+      {
+        "test_coverage_percentage": N,
+        "coverage_sufficient": true/false,
+        "remaining_gaps": []
+      }
+      ```
+    output: "test_reverify_result"
+    parse_json: true
+
+  # ========================================================================
+  # PHASE 2: RUST SCAFFOLDING
+  # Create Cargo workspace mirroring Python structure
+  # ========================================================================
+
+  - id: "phase-2-scaffold"
+    type: "recipe"
+    recipe: "default-workflow"
+    sub_context:
+      task_description: |
+        Create a Rust Cargo workspace for the project '{{rust_repo_name}}'.
+
+        Based on the analysis of the Python package at {{python_package_path}}:
+        {{analysis_json}}
+
+        Tasks:
+        1. If repo '{{rust_repo_name}}' doesn't exist yet, create it:
+           gh repo create {{rust_repo_org}}/{{rust_repo_name}} --public --clone
+        2. Create a Cargo workspace with modules mirroring the Python structure
+        3. Set up GitHub Actions CI that builds and tests the Rust code
+        4. Add dependencies to Cargo.toml based on the Rust ecosystem mapping
+        5. Create a README.md documenting the migration status
+        6. Create a SCORECARD.json with all features from the feature catalog,
+           all initially set to passes_rust: false
+        7. Configure Clippy lints in Cargo.toml or .clippy.toml:
+           - `#![deny(unsafe_code)]` in lib.rs/main.rs to forbid unsafe by default
+           - `#![warn(clippy::all, clippy::pedantic)]` for thorough linting
+           - Enable `unsafe_op_in_unsafe_fn` lint if any FFI is needed
+        8. Add a rust-toolchain.toml pinning a stable Rust version for CI reproducibility
+        9. Add `cargo-deny` config (deny.toml) for license and advisory checks
+
+        The Cargo workspace should be at: {{rust_target_path}}
+      repo_path: "{{repo_path}}"
+    output: "scaffold_result"
+
+  # ========================================================================
+  # PHASE 3: TEST EXTRACTION
+  # Convert Python tests to Rust BEFORE any implementation
+  # ========================================================================
+
+  - id: "phase-3-extract-tests"
+    type: "recipe"
+    recipe: "default-workflow"
+    sub_context:
+      task_description: |
+        Extract and convert ALL tests from the Python codebase to Rust for the
+        '{{rust_repo_name}}' migration. Tests must exist BEFORE implementation.
+
+        Python package: {{python_package_path}}
+        Rust workspace: {{rust_target_path}}
+        Analysis: {{analysis_json}}
+
+        MANDATORY — Every single test must be ported:
+        1. Convert ALL Python unit tests to Rust #[test] equivalents
+        2. Convert ALL integration tests to Rust integration tests
+        3. Create shared agentic test scenarios (YAML) that run against both
+           Python and Rust versions with identical inputs/outputs
+        4. Create the Feature Scorecard (scorecard.json) with EVERY feature:
+           ```json
+           {
+             "features": [
+               {
+                 "name": "feature_name",
+                 "module": "module_name",
+                 "has_test": true,
+                 "passes_python": true,
+                 "passes_rust": false,
+                 "exec_time_python_ms": null,
+                 "exec_time_rust_ms": null,
+                 "notes": ""
+               }
+             ],
+             "total_features": N,
+             "features_with_tests": N,
+             "parity_percentage": 0,
+             "last_updated": "ISO-8601"
+           }
+           ```
+        5. Verify ALL extracted tests pass against the Python version (baseline)
+        6. The Rust tests should initially FAIL (compile but fail) — that's expected
+
+        The scorecard MUST list every feature from the analysis. No feature left behind.
+      repo_path: "{{repo_path}}"
+    output: "test_extraction_result"
+
+  # Quality audit the test extraction itself
+  - id: "phase-3-test-quality-audit"
+    type: "recipe"
+    recipe: "quality-audit-cycle"
+    sub_context:
+      target_path: "{{rust_target_path}}"
+      min_cycles: "2"
+      max_cycles: "4"
+      categories: "test_gaps,reliability,structural"
+
+  # ========================================================================
+  # PHASE 4: CORE-OUT IMPLEMENTATION (Iteration 1)
+  # Port modules from inside-out, using default-workflow for each module
+  # ========================================================================
+
+  - id: "phase-4-select-next-module"
+    type: "agent"
+    agent: "amplihack:core:architect"
+    condition: "convergence_status != 'CONVERGED'"
+    prompt: |
+      # Oxidizer Phase 4: Select Next Module to Port (Iteration {{iteration_number}})
+
+      **Migration Priority Order:** {{migration_priority}}
+      **Current Scorecard:** {{scorecard}}
+      **Iteration:** {{iteration_number}} of {{max_iterations}}
+      **Previous Results:** {{implementation_result}}
+      **Previous Comparison:** {{comparison_result}}
+
+      Select the next module to port. Rules:
+      1. NEVER select a module whose dependencies haven't been ported yet
+      2. Select the module with the LARGEST parity gap
+      3. If this is a re-visit (module was partially ported), focus on the gaps
+
+      **Output as JSON**:
+      ```json
+      {
+        "module_name": "the_module_to_port",
+        "reason": "why this module is next",
+        "dependencies_ported": true,
+        "estimated_complexity": "low|medium|high",
+        "specific_gaps_to_close": ["gap1", "gap2"]
+      }
+      ```
+    output: "next_module_json"
+    parse_json: true
+
+  - id: "extract-module-name"
+    type: "bash"
+    condition: "convergence_status != 'CONVERGED'"
+    command: |
+      echo {{next_module_json}} | python3 -c "
+      import sys, json
+      data = json.load(sys.stdin)
+      print(data.get('module_name', ''))" 2>/dev/null || echo ''
+    output: "current_module"
+
+  - id: "phase-4-implement-module"
+    type: "recipe"
+    recipe: "default-workflow"
+    condition: "convergence_status != 'CONVERGED'"
+    sub_context:
+      task_description: |
+        Port the Python module '{{current_module}}' to Rust as part of the
+        {{rust_repo_name}} migration. Iteration {{iteration_number}}.
+
+        **Python Source:** {{python_package_path}}/{{current_module}}
+        **Rust Target:** {{rust_target_path}}
+        **Analysis:** {{analysis_json}}
+        **Specific Gaps to Close:** {{next_module_json}}
+
+        STRICT REQUIREMENTS:
+        1. Read the Python source THOROUGHLY — every function, every branch
+        2. Write IDIOMATIC Rust — don't transliterate Python line-by-line
+        3. Implement ALL public AND private functions
+        4. Write #[test] for EVERY function — not just happy paths but error cases too
+        5. ALL previously extracted tests for this module MUST pass
+        6. Run `cargo test` and verify zero failures
+        7. Run `cargo clippy -- -D warnings` and fix all warnings
+        8. Do NOT delete or modify the Python source
+        9. If the previous iteration had gaps, close ALL of them
+        10. **No `unsafe` code** — use safe abstractions from std/crates (see below)
+
+        ## Effective Rust Compliance (MANDATORY)
+
+        Follow these rules from the Effective Rust guide (https://effective-rust.com/):
+
+        ### Types — Make Invalid States Unrepresentable
+        - Use `enum` with data fields to encode state machines and variant behaviors
+          (e.g., `enum SchedulerState { Inert, Pending(HashSet<Job>), Running(...) }`)
+        - Use `Option<T>` for optional values — NEVER use sentinel values (-1, "", null)
+        - Use `Result<T, E>` for fallible operations — NEVER panic on expected errors
+        - Use the **newtype pattern** (`struct Miles(f64)`) for domain-specific semantics
+          to get compile-time unit/type safety
+        - Prefer `From`/`Into` trait conversions over `as` casts — `as` silently truncates
+        - Use `TryFrom`/`TryInto` when conversion can fail
+        - Use `thiserror` for library error enums; implement `Error`, `Display`, `Debug`
+        - Use `anyhow` for application-level error handling with context
+        - Replace Python `bool` parameters with descriptive enums
+          (e.g., `enum Sides { Both, Single }` instead of `both_sides: bool`)
+
+        ### Unsafe — Avoid Writing `unsafe` Code (Item 16)
+        - **DO NOT write `unsafe` blocks** unless absolutely required for FFI
+        - The standard library already provides safe abstractions: `Arc`, `Mutex`,
+          `Rc`, `RefCell`, `Pin`, atomics, `std::mem::{take, swap, replace}`
+        - Search crates.io for safe wrappers before reaching for `unsafe`
+        - If `unsafe` is unavoidable (FFI only):
+          * Isolate ALL `unsafe` in a dedicated wrapper module
+          * Add safety comments documenting preconditions and invariants
+          * Minimize the amount of code inside each `unsafe` block
+          * Enable the `unsafe_op_in_unsafe_fn` lint
+          * Run Miri (`cargo +nightly miri test`) over the unsafe code
+          * Write extra tests covering the unsafe boundaries
+          * Think carefully about multithreaded use
+
+        ### Parallelism — Fearless Concurrency (Item 17)
+        - Prefer **channels** (`std::sync::mpsc`) over shared-state concurrency
+          ("share memory by communicating, not communicate by sharing memory")
+        - When shared state is needed, use `Arc<Mutex<T>>` or `Arc<RwLock<T>>`
+        - **Group related data under a single lock** to prevent inconsistency:
+          WRONG: `players: Mutex<HashMap<...>>, games: Mutex<HashMap<...>>`
+          RIGHT: `state: Mutex<GameState>` where GameState holds both
+        - Keep lock scopes small — use helper methods that get/set under the lock
+        - **Never invoke closures with locks held** (future closures may deadlock)
+        - **Never return a `MutexGuard`** to a caller
+        - Prefer `parking_lot::Mutex` for performance-critical paths
+        - Use `Send` + `Sync` bounds correctly; understand that `Rc` is !Send,
+          `Cell`/`RefCell` are !Sync
+
+        ### Tooling — Use the Ecosystem (Items 29, 31, 32)
+        - `cargo clippy -- -D warnings` — treat all Clippy warnings as errors
+        - `cargo fmt --check` — enforce consistent formatting
+        - `cargo doc --no-deps` — verify documentation compiles and links resolve
+        - Consider `cargo-udeps` for unused dependency detection
+        - Consider `cargo-deny` for license, advisory, and duplicate checks
+        - Consider `cargo-tarpaulin` for code coverage measurement
+        - For benchmarks, use `criterion` crate with `std::hint::black_box`
+
+        Python-to-Rust patterns:
+        - dataclasses → #[derive(Debug, Clone, Serialize, Deserialize)] structs
+        - dict → HashMap or typed structs (prefer typed structs for known shapes)
+        - Optional → Option<T>
+        - exceptions → Result<T, Error> with thiserror enum variants
+        - list comprehension → .iter().map().collect()
+        - context managers → Drop trait or RAII patterns
+        - bool parameters → descriptive enums (Sides::Both, not true)
+        - string-typed IDs → newtype wrappers (struct UserId(String))
+        - type aliases → newtype structs for type safety
+        - Python Union types → Rust enum with data fields
+        - Python @property → Rust methods (getters return &T or T)
+        - Python ABC → Rust trait
+        - try/except specific → match on Result + specific error variants
+        - logging → log crate (log::info!, log::error!, etc.)
+        - Python global mutable state → Arc<Mutex<T>> or once_cell/LazyLock
+      repo_path: "{{repo_path}}"
+    output: "implementation_result"
+
+  # ========================================================================
+  # PHASE 5: COMPARISON + QUALITY GATES
+  # Automated parity checking + quality audit + silent degradation audit
+  # ========================================================================
+
+  - id: "phase-5-compare"
+    type: "agent"
+    agent: "amplihack:core:reviewer"
+    condition: "convergence_status != 'CONVERGED'"
+    prompt: |
+      # Oxidizer Phase 5: Strict Parity Comparison (Iteration {{iteration_number}})
+
+      Compare Python and Rust implementations of '{{current_module}}'.
+      ZERO TOLERANCE — every feature must match.
+
+      **Python Package:** {{python_package_path}}
+      **Rust Workspace:** {{rust_target_path}}
+      **Module:** {{current_module}}
+
+      Run these comparisons:
+      1. **Feature Completeness**: For EVERY function in the Python module,
+         verify the Rust equivalent exists and has the same signature/behavior.
+         List ALL missing functions — even internal helpers.
+      2. **Test Results**: Run `cargo test` on the Rust code. Run `pytest` on
+         the Python code. Report exact pass/fail for each test.
+      3. **Output Comparison**: For key functions, run identical inputs through
+         both versions and diff the outputs character-by-character.
+      4. **Error Behavior**: Verify that the same invalid inputs produce
+         equivalent errors in both versions.
+      5. **Performance**: Measure execution time for both versions.
+      6. **Edge Cases**: Test boundary conditions, empty inputs, None/null.
+
+      Update the scorecard. Set parity_percentage to the ACTUAL percentage
+      of features that fully pass in both versions.
+
+      **Output as JSON**:
+      ```json
+      {
+        "module": "{{current_module}}",
+        "feature_completeness": {"total": N, "ported": M, "missing": [...]},
+        "tests": {"python_pass": N, "python_fail": 0, "rust_pass": M, "rust_fail": K, "rust_failing_tests": [...]},
+        "output_matches": true/false,
+        "error_behavior_matches": true/false,
+        "performance": {"python_ms": N, "rust_ms": M},
+        "parity_percentage": N,
+        "remaining_gaps": ["specific gap 1", "specific gap 2"]
+      }
+      ```
+    output: "comparison_result"
+    parse_json: true
+
+  - id: "extract-parity"
+    type: "bash"
+    condition: "convergence_status != 'CONVERGED'"
+    command: |
+      echo {{comparison_result}} | python3 -c "
+      import sys, json
+      data = json.load(sys.stdin)
+      print(data.get('parity_percentage', 0))" 2>/dev/null || echo '0'
+    output: "parity_percentage"
+
+  # Quality audit — rigorous, minimum 3 cycles
+  - id: "phase-5-quality-gate"
+    type: "recipe"
+    recipe: "quality-audit-cycle"
+    condition: "convergence_status != 'CONVERGED'"
+    sub_context:
+      target_path: "{{rust_target_path}}"
+      min_cycles: "3"
+      max_cycles: "6"
+      severity_threshold: "medium"
+      categories: "security,reliability,dead_code,silent_fallbacks,error_swallowing,structural,hardcoded_limits,test_gaps,unsafe_code"
+
+  # Silent degradation audit — catch things that "work" but produce wrong results
+  - id: "phase-5-silent-degradation-audit"
+    type: "agent"
+    agent: "amplihack:core:reviewer"
+    condition: "convergence_status != 'CONVERGED'"
+    prompt: |
+      # Oxidizer: Silent Degradation Audit (Iteration {{iteration_number}})
+
+      Audit the Rust implementation at {{rust_target_path}} for SILENT DEGRADATION.
+      These are bugs where the code runs without errors but produces subtly wrong
+      results — the most dangerous class of migration bugs.
+
+      **Module Under Review:** {{current_module}}
+      **Python Reference:** {{python_package_path}}/{{current_module}}
+
+      Check these 7 categories:
+
+      1. **Dependency Failures**: What happens when external dependencies
+         (subprocess calls, file I/O, network) fail? Does the Rust version
+         handle failures identically to Python? Look for:
+         - unwrap() on Results that Python would catch with try/except
+         - Missing timeout handling that Python has
+         - Different default values on failure
+
+      2. **Config/Input Errors**: What happens with malformed input? Does
+         the Rust version reject the same inputs Python rejects?
+         - Missing validation that Python performs
+         - Different parsing behavior for edge cases
+         - Silent type coercion differences
+
+      3. **Background/Async Work**: If any async or background operations
+         exist, do failures propagate identically?
+
+      4. **Test Effectiveness**: Do the Rust tests actually verify behavior
+         or just check that code runs without panicking? Look for:
+         - assert!(result.is_ok()) without checking the actual value
+         - Tests that always pass regardless of implementation
+         - Missing negative test cases
+
+      5. **Operator Visibility**: Are errors and warnings visible? Look for:
+         - Python logging calls that have no Rust log::* equivalent
+         - Error messages that differ between versions
+         - Silent error swallowing (catch-all error handlers)
+
+      6. **Functional Stubs**: Code that compiles and runs but doesn't
+         actually implement the intended behavior. Look for:
+         - Functions that return Ok(()) or default values without real logic
+         - todo!() or unimplemented!() behind conditional paths
+         - Incomplete match arms that silently ignore variants
+
+      7. **Unsafe Code Audit**: Any `unsafe` blocks MUST be flagged and justified.
+         Per Effective Rust Item 16 (https://effective-rust.com/unsafe.html):
+         - Flag EVERY `unsafe` block found — each is a CRITICAL finding
+         - Check if the unsafe code can be replaced with safe abstractions
+           from std (Arc, Mutex, Pin, atomics, std::mem) or crates.io
+         - If `unsafe` is genuinely required (FFI), verify:
+           * It is isolated in a dedicated wrapper module
+           * Safety comments document preconditions and invariants
+           * The `unsafe_op_in_unsafe_fn` lint is enabled
+           * Miri has been run over the unsafe code
+           * Extra tests cover the unsafe boundaries
+           * Multithreaded safety has been considered
+         - `unsafe` blocks that can be eliminated are CRITICAL findings
+         - `unsafe` blocks that are justified but lack safety comments are HIGH
+
+      **Output as JSON**:
+      ```json
+      {
+        "findings_count": N,
+        "critical_findings": [...],
+        "high_findings": [...],
+        "medium_findings": [...],
+        "all_clear": true/false
+      }
+      ```
+    output: "silent_degradation_result"
+    parse_json: true
+
+  # If silent degradation found critical/high issues, fix them
+  - id: "phase-5-fix-degradation"
+    type: "recipe"
+    recipe: "default-workflow"
+    condition: "convergence_status != 'CONVERGED'"
+    sub_context:
+      task_description: |
+        FIX all silent degradation findings in the Rust code at {{rust_target_path}}.
+
+        Findings from the silent degradation audit:
+        {{silent_degradation_result}}
+
+        For EACH finding:
+        1. Understand the Python behavior that the Rust code should match
+        2. Fix the Rust code to match Python behavior exactly
+        3. Write a regression test proving the fix
+        4. Run `cargo test` and verify zero failures
+
+        Do NOT skip any finding. Every silent degradation is a parity gap.
+      repo_path: "{{repo_path}}"
+    output: "degradation_fix_result"
+
+  # ========================================================================
+  # PHASE 6: CONVERGENCE CHECK (STRICT — 100% or loop)
+  # ========================================================================
+
+  - id: "phase-6-convergence-check"
+    type: "agent"
+    agent: "amplihack:core:reviewer"
+    prompt: |
+      # Oxidizer Phase 6: Strict Convergence Evaluation (Iteration {{iteration_number}})
+
+      **ZERO TOLERANCE POLICY**: Convergence means 100% parity. Nothing less.
+
+      **Current Parity:** {{parity_percentage}}%
+      **Target Parity:** {{parity_target}}%
+      **Iteration:** {{iteration_number}} of {{max_iterations}}
+      **Scorecard:** {{scorecard}}
+      **Latest Comparison:** {{comparison_result}}
+      **Silent Degradation Findings:** {{silent_degradation_result}}
+      **Allow Partial:** {{allow_partial_convergence}}
+
+      Evaluation rules:
+      1. Parity is EXACTLY 100% AND zero silent degradation findings → CONVERGED
+      2. Any remaining gaps, failing tests, or degradation findings → NOT_CONVERGED
+      3. max_iterations reached BUT parity < 100% → NOT_CONVERGED (keep going,
+         raise max_iterations if needed — we do NOT accept partial results)
+
+      For NOT_CONVERGED, identify the SPECIFIC gaps remaining and what must be
+      done in the next iteration to close them.
+
+      **Output as JSON**:
+      ```json
+      {
+        "convergence_status": "CONVERGED" | "NOT_CONVERGED",
+        "parity_percentage": N,
+        "remaining_modules": [...],
+        "remaining_gaps": ["specific gap description"],
+        "silent_degradation_clear": true/false,
+        "quality_audit_clear": true/false,
+        "recommendation": "specific action for next iteration",
+        "iteration_number": N
+      }
+      ```
+    output: "convergence_json"
+    parse_json: true
+
+  - id: "extract-convergence"
+    type: "bash"
+    command: |
+      echo {{convergence_json}} | python3 -c "
+      import sys, json
+      data = json.load(sys.stdin)
+      print(data.get('convergence_status', 'NOT_CONVERGED'))" 2>/dev/null || echo 'NOT_CONVERGED'
+    output: "convergence_status"
+
+  - id: "increment-iteration"
+    type: "bash"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    command: |
+      echo $(({{iteration_number}} + 1))
+    output: "iteration_number"
+
+  # ========================================================================
+  # RECURSIVE LOOP: Iterations 2-5 (repeat the full cycle)
+  # Each iteration: select → implement → compare → quality audit →
+  # silent degradation → fix → convergence check
+  # ========================================================================
+
+  - id: "loop-2-select"
+    type: "agent"
+    agent: "amplihack:core:architect"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    prompt: |
+      # Oxidizer Iteration {{iteration_number}}: Module Selection
+
+      **Priority:** {{migration_priority}}
+      **Scorecard:** {{scorecard}}
+      **Previous Gaps:** {{convergence_json}}
+
+      Select the module with the largest remaining parity gap.
+      If revisiting a module, list the SPECIFIC gaps to close.
+
+      **Output JSON**: {"module_name": "...", "reason": "...", "specific_gaps_to_close": [...]}
+    output: "next_module_json"
+    parse_json: true
+
+  - id: "loop-2-extract-module"
+    type: "bash"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    command: |
+      echo {{next_module_json}} | python3 -c "
+      import sys, json; print(json.load(sys.stdin).get('module_name',''))" 2>/dev/null || echo ''
+    output: "current_module"
+
+  - id: "loop-2-implement"
+    type: "recipe"
+    recipe: "default-workflow"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    sub_context:
+      task_description: |
+        Oxidizer iteration {{iteration_number}}: Port/fix '{{current_module}}'.
+        Python: {{python_package_path}}/{{current_module}}
+        Rust: {{rust_target_path}}
+        Gaps to close: {{convergence_json}}
+        All tests must pass. Run cargo test && cargo clippy.
+      repo_path: "{{repo_path}}"
+    output: "implementation_result"
+
+  - id: "loop-2-compare"
+    type: "agent"
+    agent: "amplihack:core:reviewer"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    prompt: |
+      # Parity Comparison — Iteration {{iteration_number}}, module '{{current_module}}'
+      Python: {{python_package_path}}, Rust: {{rust_target_path}}
+      Check feature completeness, test results, output comparison, error behavior.
+      **Output JSON**: {"module":"...","parity_percentage":N,"remaining_gaps":[...],
+        "tests":{"rust_pass":N,"rust_fail":K},"feature_completeness":{"total":N,"ported":M,"missing":[...]}}
+    output: "comparison_result"
+    parse_json: true
+
+  - id: "loop-2-extract-parity"
+    type: "bash"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    command: |
+      echo {{comparison_result}} | python3 -c "
+      import sys, json; print(json.load(sys.stdin).get('parity_percentage',0))" 2>/dev/null || echo '0'
+    output: "parity_percentage"
+
+  - id: "loop-2-quality-gate"
+    type: "recipe"
+    recipe: "quality-audit-cycle"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    sub_context:
+      target_path: "{{rust_target_path}}"
+      min_cycles: "3"
+      max_cycles: "5"
+      categories: "security,reliability,dead_code,silent_fallbacks,error_swallowing,test_gaps"
+
+  - id: "loop-2-silent-degradation"
+    type: "agent"
+    agent: "amplihack:core:reviewer"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    prompt: |
+      # Silent Degradation Audit — Iteration {{iteration_number}}
+      Rust: {{rust_target_path}}, Module: {{current_module}}, Python ref: {{python_package_path}}
+      Check: dependency failures, config errors, test effectiveness, operator visibility, functional stubs.
+      **Output JSON**: {"findings_count":N,"critical_findings":[...],"high_findings":[...],"all_clear":true/false}
+    output: "silent_degradation_result"
+    parse_json: true
+
+  - id: "loop-2-fix-degradation"
+    type: "recipe"
+    recipe: "default-workflow"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    sub_context:
+      task_description: |
+        Fix silent degradation findings in {{rust_target_path}}:
+        {{silent_degradation_result}}
+        Fix each finding, add regression tests, run cargo test.
+      repo_path: "{{repo_path}}"
+    output: "degradation_fix_result"
+
+  - id: "loop-2-convergence"
+    type: "agent"
+    agent: "amplihack:core:reviewer"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    prompt: |
+      # Convergence Check — Iteration {{iteration_number}}
+      Parity: {{parity_percentage}}%, Target: {{parity_target}}%
+      Comparison: {{comparison_result}}, Degradation: {{silent_degradation_result}}
+      RULE: 100% parity + zero degradation findings = CONVERGED. Otherwise NOT_CONVERGED.
+      **Output JSON**: {"convergence_status":"CONVERGED"|"NOT_CONVERGED","parity_percentage":N,
+        "remaining_gaps":[...],"silent_degradation_clear":true/false}
+    output: "convergence_json"
+    parse_json: true
+
+  - id: "loop-2-extract-convergence"
+    type: "bash"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    command: |
+      echo {{convergence_json}} | python3 -c "
+      import sys, json; print(json.load(sys.stdin).get('convergence_status','NOT_CONVERGED'))" 2>/dev/null || echo 'NOT_CONVERGED'
+    output: "convergence_status"
+
+  - id: "loop-2-increment"
+    type: "bash"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    command: "echo $(({{iteration_number}} + 1))"
+    output: "iteration_number"
+
+  # --- Iteration 3 ---
+  - id: "loop-3-select"
+    type: "agent"
+    agent: "amplihack:core:architect"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    prompt: |
+      # Oxidizer Iteration {{iteration_number}}: Module Selection
+      Priority: {{migration_priority}}, Scorecard: {{scorecard}}, Gaps: {{convergence_json}}
+      Select next module. Output JSON: {"module_name":"...","reason":"...","specific_gaps_to_close":[...]}
+    output: "next_module_json"
+    parse_json: true
+
+  - id: "loop-3-extract-module"
+    type: "bash"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    command: |
+      echo {{next_module_json}} | python3 -c "
+      import sys, json; print(json.load(sys.stdin).get('module_name',''))" 2>/dev/null || echo ''
+    output: "current_module"
+
+  - id: "loop-3-implement"
+    type: "recipe"
+    recipe: "default-workflow"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    sub_context:
+      task_description: |
+        Oxidizer iteration {{iteration_number}}: Port/fix '{{current_module}}'.
+        Python: {{python_package_path}}/{{current_module}}, Rust: {{rust_target_path}}
+        Gaps: {{convergence_json}}. All tests must pass. cargo test && cargo clippy.
+      repo_path: "{{repo_path}}"
+    output: "implementation_result"
+
+  - id: "loop-3-compare"
+    type: "agent"
+    agent: "amplihack:core:reviewer"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    prompt: |
+      # Parity Comparison — Iteration {{iteration_number}}, module '{{current_module}}'
+      Python: {{python_package_path}}, Rust: {{rust_target_path}}
+      Output JSON: {"module":"...","parity_percentage":N,"remaining_gaps":[...],
+        "tests":{"rust_pass":N,"rust_fail":K},"feature_completeness":{"total":N,"ported":M,"missing":[...]}}
+    output: "comparison_result"
+    parse_json: true
+
+  - id: "loop-3-parity"
+    type: "bash"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    command: |
+      echo {{comparison_result}} | python3 -c "
+      import sys, json; print(json.load(sys.stdin).get('parity_percentage',0))" 2>/dev/null || echo '0'
+    output: "parity_percentage"
+
+  - id: "loop-3-quality"
+    type: "recipe"
+    recipe: "quality-audit-cycle"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    sub_context:
+      target_path: "{{rust_target_path}}"
+      min_cycles: "3"
+      max_cycles: "5"
+      categories: "security,reliability,silent_fallbacks,error_swallowing,test_gaps"
+
+  - id: "loop-3-degradation"
+    type: "agent"
+    agent: "amplihack:core:reviewer"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    prompt: |
+      # Silent Degradation Audit — Iteration {{iteration_number}}
+      Rust: {{rust_target_path}}, Module: {{current_module}}, Python: {{python_package_path}}
+      Output JSON: {"findings_count":N,"critical_findings":[...],"all_clear":true/false}
+    output: "silent_degradation_result"
+    parse_json: true
+
+  - id: "loop-3-fix"
+    type: "recipe"
+    recipe: "default-workflow"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    sub_context:
+      task_description: |
+        Fix degradation in {{rust_target_path}}: {{silent_degradation_result}}
+        Add regression tests. cargo test.
+      repo_path: "{{repo_path}}"
+    output: "degradation_fix_result"
+
+  - id: "loop-3-convergence"
+    type: "agent"
+    agent: "amplihack:core:reviewer"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    prompt: |
+      # Convergence — Iteration {{iteration_number}}
+      Parity: {{parity_percentage}}%, Target: 100%, Degradation: {{silent_degradation_result}}
+      RULE: 100% + zero degradation = CONVERGED. Otherwise NOT_CONVERGED.
+      Output JSON: {"convergence_status":"...","parity_percentage":N,"remaining_gaps":[...]}
+    output: "convergence_json"
+    parse_json: true
+
+  - id: "loop-3-extract"
+    type: "bash"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    command: |
+      echo {{convergence_json}} | python3 -c "
+      import sys, json; print(json.load(sys.stdin).get('convergence_status','NOT_CONVERGED'))" 2>/dev/null || echo 'NOT_CONVERGED'
+    output: "convergence_status"
+
+  - id: "loop-3-increment"
+    type: "bash"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    command: "echo $(({{iteration_number}} + 1))"
+    output: "iteration_number"
+
+  # --- Iteration 4 ---
+  - id: "loop-4-select"
+    type: "agent"
+    agent: "amplihack:core:architect"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    prompt: |
+      # Oxidizer Iteration {{iteration_number}}: Module Selection
+      Priority: {{migration_priority}}, Gaps: {{convergence_json}}
+      Output JSON: {"module_name":"...","reason":"...","specific_gaps_to_close":[...]}
+    output: "next_module_json"
+    parse_json: true
+
+  - id: "loop-4-extract-module"
+    type: "bash"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    command: |
+      echo {{next_module_json}} | python3 -c "
+      import sys, json; print(json.load(sys.stdin).get('module_name',''))" 2>/dev/null || echo ''
+    output: "current_module"
+
+  - id: "loop-4-implement"
+    type: "recipe"
+    recipe: "default-workflow"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    sub_context:
+      task_description: |
+        Oxidizer iteration {{iteration_number}}: Port/fix '{{current_module}}'.
+        Python: {{python_package_path}}/{{current_module}}, Rust: {{rust_target_path}}
+        Gaps: {{convergence_json}}. cargo test && cargo clippy.
+      repo_path: "{{repo_path}}"
+    output: "implementation_result"
+
+  - id: "loop-4-compare"
+    type: "agent"
+    agent: "amplihack:core:reviewer"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    prompt: |
+      # Parity — Iteration {{iteration_number}}, '{{current_module}}'
+      Python: {{python_package_path}}, Rust: {{rust_target_path}}
+      Output JSON: {"module":"...","parity_percentage":N,"remaining_gaps":[...],
+        "tests":{"rust_pass":N,"rust_fail":K}}
+    output: "comparison_result"
+    parse_json: true
+
+  - id: "loop-4-parity"
+    type: "bash"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    command: |
+      echo {{comparison_result}} | python3 -c "
+      import sys, json; print(json.load(sys.stdin).get('parity_percentage',0))" 2>/dev/null || echo '0'
+    output: "parity_percentage"
+
+  - id: "loop-4-quality"
+    type: "recipe"
+    recipe: "quality-audit-cycle"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    sub_context:
+      target_path: "{{rust_target_path}}"
+      min_cycles: "3"
+      max_cycles: "5"
+      categories: "security,reliability,silent_fallbacks,error_swallowing,test_gaps"
+
+  - id: "loop-4-degradation"
+    type: "agent"
+    agent: "amplihack:core:reviewer"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    prompt: |
+      # Silent Degradation — Iteration {{iteration_number}}
+      Rust: {{rust_target_path}}, Module: {{current_module}}, Python: {{python_package_path}}
+      Output JSON: {"findings_count":N,"critical_findings":[...],"all_clear":true/false}
+    output: "silent_degradation_result"
+    parse_json: true
+
+  - id: "loop-4-fix"
+    type: "recipe"
+    recipe: "default-workflow"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    sub_context:
+      task_description: |
+        Fix degradation in {{rust_target_path}}: {{silent_degradation_result}}
+        Regression tests. cargo test.
+      repo_path: "{{repo_path}}"
+    output: "degradation_fix_result"
+
+  - id: "loop-4-convergence"
+    type: "agent"
+    agent: "amplihack:core:reviewer"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    prompt: |
+      # Convergence — Iteration {{iteration_number}}
+      Parity: {{parity_percentage}}%, Degradation: {{silent_degradation_result}}
+      100% + zero degradation = CONVERGED. Otherwise NOT_CONVERGED.
+      Output JSON: {"convergence_status":"...","parity_percentage":N,"remaining_gaps":[...]}
+    output: "convergence_json"
+    parse_json: true
+
+  - id: "loop-4-extract"
+    type: "bash"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    command: |
+      echo {{convergence_json}} | python3 -c "
+      import sys, json; print(json.load(sys.stdin).get('convergence_status','NOT_CONVERGED'))" 2>/dev/null || echo 'NOT_CONVERGED'
+    output: "convergence_status"
+
+  - id: "loop-4-increment"
+    type: "bash"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    command: "echo $(({{iteration_number}} + 1))"
+    output: "iteration_number"
+
+  # --- Iteration 5 ---
+  - id: "loop-5-select"
+    type: "agent"
+    agent: "amplihack:core:architect"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    prompt: |
+      # Oxidizer Iteration {{iteration_number}}: Module Selection
+      Priority: {{migration_priority}}, Gaps: {{convergence_json}}
+      Output JSON: {"module_name":"...","reason":"...","specific_gaps_to_close":[...]}
+    output: "next_module_json"
+    parse_json: true
+
+  - id: "loop-5-extract-module"
+    type: "bash"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    command: |
+      echo {{next_module_json}} | python3 -c "
+      import sys, json; print(json.load(sys.stdin).get('module_name',''))" 2>/dev/null || echo ''
+    output: "current_module"
+
+  - id: "loop-5-implement"
+    type: "recipe"
+    recipe: "default-workflow"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    sub_context:
+      task_description: |
+        Oxidizer iteration {{iteration_number}}: FINAL PUSH on '{{current_module}}'.
+        Python: {{python_package_path}}/{{current_module}}, Rust: {{rust_target_path}}
+        Gaps: {{convergence_json}}. Close EVERY remaining gap. cargo test && cargo clippy.
+      repo_path: "{{repo_path}}"
+    output: "implementation_result"
+
+  - id: "loop-5-compare"
+    type: "agent"
+    agent: "amplihack:core:reviewer"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    prompt: |
+      # Final Parity — Iteration {{iteration_number}}, '{{current_module}}'
+      Python: {{python_package_path}}, Rust: {{rust_target_path}}
+      Output JSON: {"module":"...","parity_percentage":N,"remaining_gaps":[...],
+        "tests":{"rust_pass":N,"rust_fail":K}}
+    output: "comparison_result"
+    parse_json: true
+
+  - id: "loop-5-parity"
+    type: "bash"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    command: |
+      echo {{comparison_result}} | python3 -c "
+      import sys, json; print(json.load(sys.stdin).get('parity_percentage',0))" 2>/dev/null || echo '0'
+    output: "parity_percentage"
+
+  - id: "loop-5-quality"
+    type: "recipe"
+    recipe: "quality-audit-cycle"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    sub_context:
+      target_path: "{{rust_target_path}}"
+      min_cycles: "3"
+      max_cycles: "6"
+      categories: "security,reliability,silent_fallbacks,error_swallowing,test_gaps"
+
+  - id: "loop-5-degradation"
+    type: "agent"
+    agent: "amplihack:core:reviewer"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    prompt: |
+      # Silent Degradation — Iteration {{iteration_number}}
+      Rust: {{rust_target_path}}, Module: {{current_module}}, Python: {{python_package_path}}
+      Output JSON: {"findings_count":N,"critical_findings":[...],"all_clear":true/false}
+    output: "silent_degradation_result"
+    parse_json: true
+
+  - id: "loop-5-fix"
+    type: "recipe"
+    recipe: "default-workflow"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    sub_context:
+      task_description: |
+        Fix degradation in {{rust_target_path}}: {{silent_degradation_result}}
+        Regression tests. cargo test.
+      repo_path: "{{repo_path}}"
+    output: "degradation_fix_result"
+
+  - id: "loop-5-convergence"
+    type: "agent"
+    agent: "amplihack:core:reviewer"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    prompt: |
+      # Final Convergence — Iteration {{iteration_number}}
+      Parity: {{parity_percentage}}%, Degradation: {{silent_degradation_result}}
+      100% + zero degradation = CONVERGED. Otherwise NOT_CONVERGED.
+      If NOT_CONVERGED after 5 iterations, detail EXACTLY what remains.
+      Output JSON: {"convergence_status":"...","parity_percentage":N,"remaining_gaps":[...]}
+    output: "convergence_json"
+    parse_json: true
+
+  - id: "loop-5-extract"
+    type: "bash"
+    condition: "convergence_status == 'NOT_CONVERGED'"
+    command: |
+      echo {{convergence_json}} | python3 -c "
+      import sys, json; print(json.load(sys.stdin).get('convergence_status','NOT_CONVERGED'))" 2>/dev/null || echo 'NOT_CONVERGED'
+    output: "convergence_status"
+
+  # ========================================================================
+  # FINAL SUMMARY
+  # ========================================================================
+
+  - id: "final-summary"
+    type: "agent"
+    agent: "amplihack:core:reviewer"
+    prompt: |
+      # Oxidizer Migration Report
+
+      **Final Parity:** {{parity_percentage}}%
+      **Target Parity:** {{parity_target}}%
+      **Total Iterations:** {{iteration_number}}
+      **Convergence Status:** {{convergence_status}}
+      **Final Scorecard:** {{scorecard}}
+      **Silent Degradation Clear:** Check {{silent_degradation_result}}
+
+      Produce a comprehensive final report:
+      1. Summary of ALL modules ported
+      2. Final scorecard with every feature and its status
+      3. Performance comparison (Python vs Rust) per module
+      4. Quality audit history across iterations
+      5. Silent degradation audit results
+      6. If parity < 100%: detailed list of EVERY remaining gap with
+         specific instructions for closing each one
+      7. If parity == 100%: recommendation for deprecating Python version,
+         including a migration checklist for downstream consumers
+
+      Format as a markdown report for a GitHub issue comment.
+    output: "final_report"

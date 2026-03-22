@@ -21,6 +21,75 @@ from .repo_checkout import checkout_repository
 logger = logging.getLogger(__name__)
 
 
+def _is_noninteractive() -> bool:
+    """Check if running in non-interactive mode.
+
+    Non-interactive mode is triggered by:
+    - AMPLIHACK_NONINTERACTIVE=1 environment variable
+    - No TTY on stdin (e.g., sandboxed/isolated environments)
+    - Sandboxed environment detected (isolated HOME, restricted PATH)
+
+    In non-interactive mode, the launcher:
+    - Skips interactive prompts
+    - Skips auto-update and auto-install checks
+    - Uses shorter timeouts for network operations
+    - Fails fast when claude binary is not found
+
+    Returns:
+        True if running in non-interactive mode.
+    """
+    # Explicit environment variable takes priority
+    if os.environ.get("AMPLIHACK_NONINTERACTIVE", "").strip() in ("1", "true", "yes"):
+        return True
+
+    # No TTY means non-interactive
+    try:
+        if sys.stdin is None or not hasattr(sys.stdin, "isatty") or not sys.stdin.isatty():
+            return True
+    except (AttributeError, OSError):
+        return True
+
+    # Detect sandboxed environments (isolated HOME, restricted PATH)
+    if _is_sandboxed():
+        return True
+
+    return False
+
+
+def _is_sandboxed() -> bool:
+    """Detect sandboxed/isolated environments that may cause hangs.
+
+    Checks for:
+    - HOME pointing to a non-standard or missing directory
+    - PATH missing critical system directories (/usr/bin, /bin)
+    - CI/container environment variables
+
+    Returns:
+        True if a sandboxed environment is detected.
+    """
+    # CI/container environment markers
+    ci_vars = ("CI", "GITHUB_ACTIONS", "JENKINS_URL", "GITLAB_CI", "CODESPACES")
+    if any(os.environ.get(v) for v in ci_vars):
+        return True
+
+    # HOME doesn't exist or is not a writable directory
+    home = os.environ.get("HOME", "")
+    if not home or not os.path.isdir(home):
+        return True
+    try:
+        if not os.access(home, os.W_OK):
+            return True
+    except OSError:
+        return True
+
+    # PATH missing essential system directories
+    path = os.environ.get("PATH", "")
+    if not any(d in path for d in ("/usr/bin", "/bin")):
+        return True
+
+    return False
+
+
 class ClaudeLauncher:
     """Launches Claude Code with proper configuration and performance optimization.
 
@@ -93,9 +162,19 @@ class ClaudeLauncher:
         Returns:
             True if preparation successful, False otherwise.
         """
+        noninteractive = _is_noninteractive()
+
+        if noninteractive:
+            logger.info("Non-interactive mode: skipping interactive prompts and auto-install")
+
         # 1. Check prerequisites first - fail fast with helpful guidance
-        if not check_prerequisites():
-            return False
+        # In non-interactive mode, skip auto-install to avoid blocking
+        if noninteractive:
+            if not self._check_prerequisites_noninteractive():
+                return False
+        else:
+            if not check_prerequisites():
+                return False
 
         # 2. Initialize TraceLogger if enabled
         self.trace_logger = TraceLogger.from_env()
@@ -103,8 +182,10 @@ class ClaudeLauncher:
             print(f"Trace logging enabled: {self.trace_logger.log_file}")
 
         # 3. Blarify code indexing (non-blocking, failure doesn't stop launch)
-        if not self._prompt_blarify_indexing():
-            logger.info("Blarify indexing skipped")
+        # Skip entirely in non-interactive mode (requires user prompts)
+        if not noninteractive:
+            if not self._prompt_blarify_indexing():
+                logger.info("Blarify indexing skipped")
 
         # 4. Handle repository checkout if needed
         if self.checkout_repo:
@@ -136,7 +217,48 @@ class ClaudeLauncher:
             return False
 
         # 10. Auto-configure LSP if supported languages detected
-        self._configure_lsp_auto(target_dir)
+        # Skip in non-interactive mode (involves npm installs and network calls)
+        if not noninteractive:
+            self._configure_lsp_auto(target_dir)
+
+        return True
+
+    def _check_prerequisites_noninteractive(self) -> bool:
+        """Check prerequisites in non-interactive mode.
+
+        In non-interactive mode:
+        - Does NOT attempt auto-installation of missing tools
+        - Uses short timeouts (5s) for all checks
+        - Fails fast if claude binary is not found
+        - Never prompts for user input
+
+        Returns:
+            True if all critical prerequisites available, False otherwise.
+        """
+
+        from ..utils.prerequisites import PrerequisiteChecker
+
+        checker = PrerequisiteChecker()
+
+        # Check standard tools (node, npm, uv, git, rg) with short timeouts
+        missing = []
+        for tool, version_arg in checker.REQUIRED_TOOLS.items():
+            result = checker.check_tool(tool, version_arg)
+            if not result.available:
+                missing.append(tool)
+
+        # Check for claude binary - NO auto-install in non-interactive mode
+        claude_path = get_claude_cli_path(auto_install=False)
+        if not claude_path:
+            print(
+                "ERROR: Claude CLI not found. "
+                "Install it or set AMPLIHACK_NONINTERACTIVE=0 to enable auto-install."
+            )
+            return False
+
+        if missing:
+            print(f"Warning: Missing optional tools: {', '.join(missing)}")
+            print("Continuing in non-interactive mode...")
 
         return True
 
@@ -234,8 +356,40 @@ class ClaudeLauncher:
             True if proxy started successfully or not needed, False otherwise.
         """
         if self.proxy_manager:
+            noninteractive = _is_noninteractive()
+            timeout_seconds = 10 if noninteractive else 60
+
             print("Starting proxy and waiting for readiness...")
-            if not self.proxy_manager.start_proxy():
+
+            # Use a threading timer to enforce timeout on proxy startup
+            import threading
+
+            proxy_started = [False]
+            proxy_error = [None]
+
+            def _start_proxy():
+                try:
+                    proxy_started[0] = self.proxy_manager.start_proxy()
+                except Exception as e:
+                    proxy_error[0] = e
+
+            thread = threading.Thread(target=_start_proxy, daemon=True)
+            thread.start()
+            thread.join(timeout=timeout_seconds)
+
+            if thread.is_alive():
+                print(f"Proxy startup timed out after {timeout_seconds}s")
+                if noninteractive:
+                    print("In non-interactive mode, continuing without proxy")
+                    self.proxy_manager = None
+                    return True
+                return False
+
+            if proxy_error[0]:
+                print(f"Proxy startup error: {proxy_error[0]}")
+                return False
+
+            if not proxy_started[0]:
                 print("Failed to start proxy")
                 return False
 
@@ -246,8 +400,9 @@ class ClaudeLauncher:
 
             print(f"Proxy running at: {self.proxy_manager.get_proxy_url()}")
 
-            # Open terminal window tailing proxy logs
-            self._open_log_tail_window()
+            # Open terminal window tailing proxy logs (skip in non-interactive)
+            if not noninteractive:
+                self._open_log_tail_window()
 
         return True
 
@@ -668,9 +823,10 @@ class ClaudeLauncher:
             replace_in_hooks(settings["hooks"])
 
             if hooks_modified:
-                # Write back with absolute paths
-                with open(settings_file, "w") as f:
-                    json.dump(settings, f, indent=2)
+                # Write back with absolute paths (atomic to prevent data loss)
+                from ..settings import write_json_atomic
+
+                write_json_atomic(str(settings_file), settings)
                 print(f"✓ Fixed hook paths in {settings_file.relative_to(target_dir)}")
 
             return True
@@ -687,6 +843,16 @@ class ClaudeLauncher:
         """
         if not self.prepare_launch():
             return 1
+
+        # Auto-update to latest version before launching (fixes #3097)
+        # Skip in non-interactive/sandboxed mode to avoid hangs
+        if not _is_noninteractive():
+            try:
+                from ..utils.claude_cli import ensure_latest_claude
+
+                ensure_latest_claude()
+            except Exception:
+                pass  # non-critical — continue with current version
 
         try:
             cmd = self.build_claude_command()
@@ -707,6 +873,10 @@ class ClaudeLauncher:
 
             # Set environment variables for UVX mode
             env = os.environ.copy()
+
+            # Set agent identity and home directory for Rust CLI parity
+            env["AMPLIHACK_AGENT_BINARY"] = "claude"
+            env.setdefault("AMPLIHACK_HOME", os.path.expanduser("~/.amplihack"))
 
             # Smart memory configuration
             from .memory_config import display_memory_config, get_memory_config
@@ -749,7 +919,7 @@ class ClaudeLauncher:
                 if plugin_root.exists():
                     env["CLAUDE_PLUGIN_ROOT"] = str(plugin_root)
 
-            # Ensure user-local npm bin is in PATH (for claude/claude-trace installed via npm)
+            # Ensure user-local npm bin is in PATH (for claude installed via npm)
             user_npm_bin = str(Path.home() / ".npm-global" / "bin")
             current_path = env.get("PATH", "")
             if user_npm_bin not in current_path:
@@ -826,6 +996,10 @@ class ClaudeLauncher:
             # Set environment variables for UVX mode
             env = os.environ.copy()
 
+            # Set agent identity and home directory for Rust CLI parity
+            env["AMPLIHACK_AGENT_BINARY"] = "claude"
+            env.setdefault("AMPLIHACK_HOME", os.path.expanduser("~/.amplihack"))
+
             # Smart memory configuration
             from .memory_config import display_memory_config, get_memory_config
 
@@ -867,7 +1041,7 @@ class ClaudeLauncher:
                 if plugin_root.exists():
                     env["CLAUDE_PLUGIN_ROOT"] = str(plugin_root)
 
-            # Ensure user-local npm bin is in PATH (for claude/claude-trace installed via npm)
+            # Ensure user-local npm bin is in PATH (for claude installed via npm)
             user_npm_bin = str(Path.home() / ".npm-global" / "bin")
             current_path = env.get("PATH", "")
             if user_npm_bin not in current_path:

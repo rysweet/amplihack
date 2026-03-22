@@ -7,8 +7,8 @@ import json
 import logging
 import os
 import pathlib
-import pwd
 import shutil
+import shlex
 import subprocess
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -80,16 +80,20 @@ class TypeScriptLanguageServer(LanguageServer):
         # Install typescript and typescript-language-server if not already installed, as a non-root user
         if not os.path.exists(tsserver_ls_dir):
             os.makedirs(tsserver_ls_dir, exist_ok=True)
+            run_kwargs: dict = {
+                "shell": False,
+                "check": True,
+                "cwd": tsserver_ls_dir,
+                "stdout": subprocess.DEVNULL,
+                "stderr": subprocess.DEVNULL,
+            }
+            if hasattr(os, "getuid"):
+                import pwd
+                run_kwargs["user"] = pwd.getpwuid(os.getuid()).pw_name
             for dependency in runtime_dependencies:
-                user = pwd.getpwuid(os.getuid()).pw_name
                 subprocess.run(
-                    dependency["command"],
-                    shell=True,
-                    check=True,
-                    user=user,
-                    cwd=tsserver_ls_dir,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
+                    shlex.split(dependency["command"]),
+                    **run_kwargs,
                 )
 
         tsserver_executable_path = os.path.join(

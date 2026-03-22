@@ -15,41 +15,23 @@ Public API:
 """
 
 import os
-from pathlib import Path
 
 # Read version from installed package metadata
+from importlib.metadata import PackageNotFoundError, version
+from pathlib import Path
+
 try:
-    from importlib.metadata import PackageNotFoundError, version
-except ImportError:
-    # Python < 3.8 (shouldn't happen, but graceful fallback)
-    version = None  # type: ignore
-    PackageNotFoundError = Exception  # type: ignore
+    __version__ = version("amplihack")
+except PackageNotFoundError:
+    # Development mode (not installed as package) — read from pyproject.toml
+    import tomllib
 
-if version:
-    try:
-        __version__ = version("amplihack")
-    except PackageNotFoundError:
-        # Fallback for development (not installed)
-        try:
-            import tomllib  # Python 3.11+
-        except ImportError:
-            try:
-                import tomli as tomllib  # type: ignore
-            except ImportError:
-                tomllib = None  # type: ignore
-
-        if tomllib:
-            _pyproject_path = Path(__file__).parent.parent.parent / "pyproject.toml"
-            if _pyproject_path.exists():
-                with open(_pyproject_path, "rb") as f:
-                    _pyproject = tomllib.load(f)
-                    __version__ = _pyproject["project"]["version"]
-            else:
-                __version__ = "unknown"
-        else:
-            __version__ = "unknown"
-else:
-    __version__ = "unknown"
+    _pyproject_path = Path(__file__).parent.parent.parent / "pyproject.toml"
+    if _pyproject_path.exists():
+        with open(_pyproject_path, "rb") as f:
+            __version__ = tomllib.load(f)["project"]["version"]
+    else:
+        __version__ = "unknown"
 
 # Core constants
 HOME = str(Path.home())
@@ -61,6 +43,7 @@ MANIFEST_JSON = os.path.join(CLAUDE_DIR, "install", "amplihack-manifest.json")
 
 # Essential directories that must be copied during installation
 ESSENTIAL_DIRS = [
+    "bin",  # Staged Rust binaries (amplihack, amplihack-hooks)
     "agents/amplihack",  # Specialized agents
     "commands/amplihack",  # Slash commands
     "tools/amplihack",  # Hooks and utilities
@@ -110,6 +93,20 @@ HOOK_CONFIGS = {
     ],
 }
 
+# Maps Python hook filenames to Rust multicall subcommands (amplihack-hooks <subcommand>).
+# Hooks NOT in this map (e.g., workflow_classification_reminder.py) always use Python.
+RUST_HOOK_MAP = {
+    "session_start.py": "session-start",
+    "stop.py": "stop",
+    # session_stop.py is used only in Copilot launcher wrappers (stage_hooks),
+    # not in Claude Code's HOOK_CONFIGS. Included here for Copilot rust engine path.
+    "session_stop.py": "session-stop",
+    "pre_tool_use.py": "pre-tool-use",
+    "post_tool_use.py": "post-tool-use",
+    "user_prompt_submit.py": "user-prompt-submit",
+    "pre_compact.py": "pre-compact",
+}
+
 # Import from focused modules
 from .hook_verification import verify_hooks
 from .install import (
@@ -148,6 +145,13 @@ def filecmp(f1, f2):
 
 def main():
     """Main CLI entry point."""
+    # Ensure dependencies are installed at CLI startup (not import time)
+    from .copilot_auto_install import ensure_copilot_sdk_installed
+    from .memory_auto_install import ensure_memory_lib_installed
+
+    ensure_memory_lib_installed()
+    ensure_copilot_sdk_installed()
+
     # Import and use the enhanced CLI
     from .cli import main as cli_main
 
@@ -189,8 +193,3 @@ __all__ = [
     # Main
     "main",
 ]
-
-# Auto-install memory library if needed (for learning agents)
-from .memory_auto_install import ensure_memory_lib_installed
-
-ensure_memory_lib_installed()

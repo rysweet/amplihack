@@ -66,7 +66,7 @@ User provides task list
 For each task:
   1. Clone branch to /tmp/amplihack-workstreams/ws-{issue}/
   2. Write launcher.py (Recipe Runner with CLISubprocessAdapter)
-  3. Write run.sh (unsets CLAUDECODE, runs launcher.py)
+  3. Write run.sh (sets session tree vars, runs launcher.py)
   4. Launch subprocess via Popen
         |
         v
@@ -88,9 +88,9 @@ Report: PR numbers, success/failure, runtime
 ### Critical Implementation Details
 
 1. **`/tmp` clones** (not worktrees): Worktree symlinks confuse nested Claude sessions. Clean clones avoid this.
-2. **`unset CLAUDECODE`**: Claude Code blocks nested sessions via this env var. Unsetting allows controlled parallel execution.
-3. **`--subprocess-safe`**: Classic mode passes this flag to skip staging/env updates, preventing concurrent write races on `~/.amplihack/.claude/` (issue #2567).
-4. **Recipe Runner adapter**: `CLISubprocessAdapter` shells out to `claude -p` for each agent step within the recipe (no `amplihack` wrapper, so no staging race).
+2. **`--subprocess-safe`**: Classic mode passes this flag to skip staging/env updates, preventing concurrent write races on `~/.amplihack/.claude/` (issue #2567).
+3. **Recipe Runner adapter**: `CLISubprocessAdapter` shells out to `claude -p` for each agent step within the recipe (no `amplihack` wrapper, so no staging race).
+4. **Child env cleanup**: The shared `build_child_env()` utility strips blocking env vars and propagates session tree context.
 
 ## Execution Modes
 
@@ -100,10 +100,8 @@ Each workstream runs `run_recipe_by_name()` through a Python launcher:
 
 ```python
 from amplihack.recipes import run_recipe_by_name
-from amplihack.recipes.adapters.cli_subprocess import CLISubprocessAdapter
 
-adapter = CLISubprocessAdapter(cli="claude", working_dir=".")
-result = run_recipe_by_name("default-workflow", adapter=adapter,
+result = run_recipe_by_name("default-workflow",
     user_context={"task_description": task, "repo_path": "."})
 ```
 
@@ -261,8 +259,6 @@ Continue anyway? (y/N):
 ## Troubleshooting
 
 **Empty log files**: Process started but exited immediately. Check if `amplihack` package is importable in the clone's environment.
-
-**"CLAUDECODE env var detected"**: The `run.sh` wrapper must unset `CLAUDECODE` before running the launcher.
 
 **Recipe not found**: Ensure `amplifier-bundle/recipes/` exists in the cloned branch. The recipe discovery checks this directory first.
 

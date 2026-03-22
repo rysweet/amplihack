@@ -92,15 +92,15 @@ As a developer, I want to describe an agentic behavior in natural language so th
 
 #### IR-1: Claude Integration
 
-- System SHALL include claude-trace debugging capabilities:
+- System SHALL include native trace logging capabilities:
 
   ```python
-  # Claude-trace integration
-  from amplihack.utils import claude_trace
+  # Native trace logging integration
+  import os
+  os.environ["AMPLIHACK_TRACE_LOGGING"] = "true"
 
-  @claude_trace.trace("bundle_generation")
   def generate_bundle(prompt: str) -> Bundle:
-      # Automatic tracing of generation process
+      # Traces automatically captured when enabled
       pass
   ```
 
@@ -376,7 +376,6 @@ uvx --from github.com/user/code-review-agent review --pr 123
 
 - Amplihack framework
 - Claude Code SDK
-- claude-trace
 - uvx package manager
 - GitHub API
 - Python packaging tools

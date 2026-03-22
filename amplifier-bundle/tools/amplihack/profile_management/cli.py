@@ -14,6 +14,7 @@ try:
 
     HAS_RICH = True
 except ImportError:
+    print("WARNING: rich not available - using plain text fallback", file=sys.stderr)
     HAS_RICH = False
 
     # Fallback implementations if rich is not available

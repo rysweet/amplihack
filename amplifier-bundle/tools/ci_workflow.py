@@ -23,6 +23,7 @@ except ImportError:
     import os
     import sys
 
+    print("WARNING: relative ci_status import not available - using absolute import for script mode", file=sys.stderr)
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     from ci_status import check_ci_status
 

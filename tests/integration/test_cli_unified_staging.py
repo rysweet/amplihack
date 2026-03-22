@@ -242,6 +242,28 @@ class TestStagingUnitBehavior:
                         assert staging_dir.exists()
                         assert exit_code == 0
 
+    def test_home_runtime_staging_copies_amplifier_bundle(self, tmp_path, monkeypatch):
+        """Runtime staging must populate ~/.amplihack/amplifier-bundle for external repos."""
+        monkeypatch.setenv("HOME", str(tmp_path))
+
+        package_root = tmp_path / "package"
+        bundle_helper = package_root / "amplifier-bundle" / "tools" / "orch_helper.py"
+        bundle_helper.parent.mkdir(parents=True, exist_ok=True)
+        bundle_helper.write_text("# helper\n")
+
+        def mock_copytree(*args, **kwargs):
+            target = Path(args[1])
+            target.mkdir(parents=True, exist_ok=True)
+            return ["tools"]
+
+        from src.amplihack.cli import _stage_home_runtime_assets
+
+        with patch("src.amplihack.cli.copytree_manifest", side_effect=mock_copytree):
+            install_dir = _stage_home_runtime_assets(package_root)
+
+        assert install_dir == tmp_path / ".amplihack" / ".claude"
+        assert (tmp_path / ".amplihack" / "amplifier-bundle" / "tools" / "orch_helper.py").exists()
+
 
 class TestStagingErrorHandling:
     """Test error handling in staging process."""
@@ -466,6 +488,60 @@ class TestCopytreeManifestSyncBehavior:
         result = (dst_context / "PHILOSOPHY.md").read_text()
         assert result == "# Updated Philosophy", f"File not overwritten. Got: {result}"
 
+    def test_copytree_manifest_copies_bin_directory(self, tmp_path):
+        """Rust binaries under .claude/bin should be staged into ~/.amplihack/.claude/bin."""
+        from src.amplihack.install import copytree_manifest
+
+        src_dir = tmp_path / "src"
+        bin_dir = src_dir / ".claude" / "bin"
+        bin_dir.mkdir(parents=True)
+        binary = bin_dir / "amplihack-hooks"
+        binary.write_text("#!/bin/sh\necho hooks\n")
+        binary.chmod(0o755)
+
+        dst_dir = tmp_path / "dst"
+        copied = copytree_manifest(str(src_dir), str(dst_dir), ".claude")
+
+        staged_binary = dst_dir / "bin" / "amplihack-hooks"
+        assert "bin" in copied
+        assert staged_binary.exists()
+        assert os.access(staged_binary, os.X_OK)
+
+    def test_copytree_manifest_finds_repo_root_claude_from_src_amplihack(self, tmp_path):
+        """Editable checkout layout repo/src/amplihack should resolve repo-root .claude."""
+        from src.amplihack.install import copytree_manifest
+
+        repo_root = tmp_path / "repo"
+        package_dir = repo_root / "src" / "amplihack"
+        package_dir.mkdir(parents=True)
+
+        hooks_dir = repo_root / ".claude" / "tools" / "amplihack" / "hooks"
+        hooks_dir.mkdir(parents=True)
+        (hooks_dir / "session_start.py").write_text("print('hook')\n")
+
+        dst_dir = tmp_path / "dst"
+        copied = copytree_manifest(str(package_dir), str(dst_dir), ".claude")
+
+        assert "tools/amplihack" in copied
+        assert (dst_dir / "tools" / "amplihack" / "hooks" / "session_start.py").exists()
+
+    def test_copytree_manifest_reports_all_attempted_paths(self, tmp_path, capsys):
+        """Missing-source errors should show direct, parent, and grandparent candidates."""
+        from src.amplihack.install import copytree_manifest
+
+        repo_root = tmp_path / "repo" / "src" / "amplihack"
+        repo_root.mkdir(parents=True)
+        dst_dir = tmp_path / "dst"
+
+        copied = copytree_manifest(str(repo_root), str(dst_dir), ".claude")
+
+        captured = capsys.readouterr()
+        assert copied == []
+        assert "❌ .claude not found at:" in captured.out
+        assert str(repo_root / ".claude") in captured.out
+        assert str(repo_root.parent / ".claude") in captured.out
+        assert str(repo_root.parent.parent / ".claude") in captured.out
+
 
 class TestStagingE2EBehavior:
     """End-to-end tests for staging behavior with real subprocess calls (optional)."""
@@ -485,4 +561,6 @@ class TestStagingE2EBehavior:
             assert (staging_dir / "agents").exists(), "agents/ directory missing after staging"
             assert (staging_dir / "skills").exists(), "skills/ directory missing after staging"
             assert (staging_dir / "tools").exists(), "tools/ directory missing after staging"
-            assert (staging_dir / "hooks").exists(), "hooks/ directory missing after staging"
+            assert (staging_dir / "tools" / "amplihack" / "hooks").exists(), (
+                "tools/amplihack/hooks directory missing after staging"
+            )

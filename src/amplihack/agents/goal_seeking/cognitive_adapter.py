@@ -20,6 +20,7 @@ from __future__ import annotations
 import inspect
 import itertools
 import logging
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -220,6 +221,7 @@ try:
     HAS_COGNITIVE_MEMORY = True
 except ImportError:
     HAS_COGNITIVE_MEMORY = False
+    print("WARNING: amplihack_memory.cognitive_memory not available", file=sys.stderr)
 
 # Graceful imports for retrieval pipeline modules
 try:
@@ -228,6 +230,7 @@ try:
     _HAS_QUALITY = True
 except ImportError:
     _HAS_QUALITY = False
+    print("WARNING: hive_mind.quality not available", file=sys.stderr)
 
 try:
     from .hive_mind.query_expansion import expand_query
@@ -235,6 +238,7 @@ try:
     _HAS_QUERY_EXPANSION = True
 except ImportError:
     _HAS_QUERY_EXPANSION = False
+    print("WARNING: hive_mind.query_expansion not available", file=sys.stderr)
 
 
 class CognitiveAdapter:

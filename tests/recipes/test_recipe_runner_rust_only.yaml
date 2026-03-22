@@ -1,0 +1,66 @@
+scenario:
+  name: "Recipe Runner — Rust-Only Execution"
+  description: >
+    Verifies that recipe execution works end-to-end via the Rust runner
+    after the Python recipe runner was removed. Tests real recipe files
+    from the amplihack recipe library.
+  type: cli
+  tags: [smoke, critical, recipe-runner, rust]
+
+  prerequisites:
+    - "recipe-runner-rs binary is installed"
+    - "amplihack package is installed"
+    - "Recipe files exist in amplifier-bundle/recipes/"
+
+  steps:
+    # Step 1: Verify Rust binary exists
+    - action: launch
+      target: "which"
+      args: ["recipe-runner-rs"]
+    - action: verify_exit_code
+      expected: 0
+      description: "recipe-runner-rs must be on PATH"
+
+    # Step 2: Dry-run the default-workflow recipe
+    - action: launch
+      target: "recipe-runner-rs"
+      args: ["default-workflow", "--dry-run", "--output-format", "json"]
+    - action: verify_output
+      contains: '"success"'
+      description: "Dry run of default-workflow should succeed"
+    - action: verify_exit_code
+      expected: 0
+
+    # Step 3: Dry-run the smart-orchestrator recipe
+    - action: launch
+      target: "recipe-runner-rs"
+      args: ["smart-orchestrator", "--dry-run", "--output-format", "json"]
+    - action: verify_output
+      contains: '"recipe_name"'
+      description: "Smart orchestrator dry run should return valid JSON"
+    - action: verify_exit_code
+      expected: 0
+
+    # Step 4: List available recipes via Python API
+    - action: launch
+      target: "bash"
+      args: ["-lc", "PYTHONPATH=src python3 -c \"from amplihack.recipes import list_recipes; print(f'Found {len(list_recipes())} recipes')\""]
+    - action: verify_output
+      matches: "Found \\d+ recipes"
+      description: "Python API list_recipes should discover recipes"
+
+    # Step 5: Verify Python runner import fails
+    - action: launch
+      target: "bash"
+      args: ["-lc", "PYTHONPATH=src python3 -c \"from amplihack.recipes.runner import RecipeRunner\""]
+    - action: verify_exit_code
+      expected: 1
+      description: "Python runner must NOT be importable"
+
+    # Step 6: Execute recipe via Python API with dry_run
+    - action: launch
+      target: "bash"
+      args: ["-lc", "PYTHONPATH=src python3 -c \"from amplihack.recipes import run_recipe_by_name; r = run_recipe_by_name('default-workflow', user_context={'task_description': 'test', 'repo_path': '.'}, dry_run=True); print(f'OK steps={len(r.step_results)} success={r.success}')\""]
+    - action: verify_output
+      contains: "OK steps="
+      description: "Python API should execute via Rust runner dry-run"

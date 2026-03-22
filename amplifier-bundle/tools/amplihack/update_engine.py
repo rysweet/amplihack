@@ -18,6 +18,7 @@ Public API (the "studs" that other modules connect to):
 
 import shutil
 import subprocess
+import sys
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -27,6 +28,7 @@ try:
     from .version_checker import get_package_version
 except ImportError:
     # Fallback for standalone execution
+    print("WARNING: relative imports not available - using absolute imports for standalone execution", file=sys.stderr)
     from file_classifier import FileCategory, classify_file
     from version_checker import get_package_version
 

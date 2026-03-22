@@ -8,6 +8,7 @@ permissions:
   issues: read
   pull-requests: read
 
+engine: claude
 safe-outputs:
   add-comment:
     max: 1

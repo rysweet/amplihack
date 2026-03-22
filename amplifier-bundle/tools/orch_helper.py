@@ -19,15 +19,27 @@ def extract_json(text: str) -> dict:
     - Raw JSON embedded in prose (tries each candidate in document order)
     - Multiple code blocks (tries each independently)
     - Prose with non-JSON braces before actual JSON
+
+    Priority order (fix #3075):
+    1. ``json``-tagged code blocks (most explicit signal)
+    2. Untagged code blocks
+    3. Raw JSON in prose (balanced-brace scanner)
     """
-    # Try each code block in order (non-greedy within block = one block at a time)
-    for m in re.finditer(r'```(?:json)?\s*(\{[^`]*\})\s*```', text, re.DOTALL):
+    # 1. Prefer explicitly ```json-tagged code blocks first.
+    for m in re.finditer(r'```json\s*(\{[^`]*\})\s*```', text, re.DOTALL):
         try:
             return json.loads(m.group(1))
         except json.JSONDecodeError:
             continue  # malformed block, try next
 
-    # Fallback: scan for first valid JSON object in document order.
+    # 2. Try untagged code blocks (``` without a language tag).
+    for m in re.finditer(r'```\s*(\{[^`]*\})\s*```', text, re.DOTALL):
+        try:
+            return json.loads(m.group(1))
+        except json.JSONDecodeError:
+            continue
+
+    # 3. Fallback: scan for first valid JSON object in document order.
     # json.JSONDecoder.raw_decode() correctly handles } inside string values,
     # unlike a manual depth counter which treats all } as structural.
     _decoder = json.JSONDecoder()

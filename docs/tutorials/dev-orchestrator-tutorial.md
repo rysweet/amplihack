@@ -257,18 +257,43 @@ expected — those task types respond directly and do not generate summaries.
 
 ## Auto-Routing: How It Works
 
-The `UserPromptSubmit` hook injects a short routing prompt on every message
-(except slash commands like `/dev` or `/analyze`). This prompt tells Claude
-which workflow to use based on your intent:
+The `UserPromptSubmit` hook injects a routing prompt on every message (except
+slash commands like `/dev` or `/analyze`). This routing prompt uses **parallel
+signal evaluation** — it detects multiple signals in your message simultaneously
+and resolves them with priority rules.
 
-| Your intent                                 | What Claude does                                          |
-| ------------------------------------------- | --------------------------------------------------------- |
-| Build, fix, write, test, deploy             | Invokes `dev-orchestrator` (DEFAULT_WORKFLOW)             |
-| Investigate, analyze, understand            | Invokes `dev-orchestrator` (INVESTIGATION_WORKFLOW)       |
-| Both investigate AND implement              | Invokes `dev-orchestrator` (creates parallel workstreams) |
-| Knowledge question (what is, how does)      | Answers directly — no workflow                            |
-| Shell/admin command (git, ls, restart)      | Executes directly — no workflow                           |
-| Existing `/command` or "just answer" bypass | Respects your explicit intent                             |
+### The 4-Layer Classification Pipeline
+
+Your message passes through 4 classification layers:
+
+1. **`routing_prompt.txt`** — Injected every turn by `dev_intent_router.py`. Detects 5 parallel signals (UNDERSTAND, IMPLEMENT, FILE_EDIT, SHELL_ONLY, QUESTION) and resolves with priority rules. This is the primary classifier.
+2. **`CLAUDE.md`** — Classification table loaded at session start. Provides keyword guidance and the mandatory code-file-edit rule.
+3. **`workflow_classification_reminder.py`** — Fires at topic boundaries (new conversations, direction changes). Reinforces classification.
+4. **`dev-orchestrator/SKILL.md`** — When the skill activates, guides decomposition into workstreams.
+
+### Signal Detection and Resolution
+
+The routing prompt evaluates these signals in parallel:
+
+| Signal | Keywords | Example |
+|--------|----------|---------|
+| UNDERSTAND | explain, how does, why, analyze, research, explore | "why is CI failing" |
+| IMPLEMENT | build, fix, add, create, refactor, update, write | "fix the login bug" |
+| FILE_EDIT | any .py/.yaml/.md/.ts/.json will change | "update the README" |
+| SHELL_ONLY | run tests, git status, check logs | "git status" |
+| QUESTION | what is, how do I, explain, compare | "what is OAuth?" |
+
+Then resolves by priority:
+
+| Signals detected | Classification | Action |
+|-----------------|---------------|--------|
+| UNDERSTAND + IMPLEMENT | **HYBRID** | dev-orchestrator (parallel workstreams) |
+| SHELL_ONLY + IMPLEMENT | **HYBRID** | dev-orchestrator |
+| FILE_EDIT or IMPLEMENT alone | **DEV** | dev-orchestrator |
+| UNDERSTAND alone | **INVESTIGATE** | dev-orchestrator |
+| SHELL_ONLY alone | **OPS** | Execute directly |
+| QUESTION alone | **Q&A** | Answer directly |
+| "just answer" / "skip workflow" | **SKIP** | Bypass |
 
 The hook itself does NOT classify — it injects the same routing guidance for
 every message. Claude's natural language understanding handles the rest.
@@ -295,6 +320,57 @@ echo 'export AMPLIHACK_AUTO_DEV=false' >> ~/.bashrc  # permanent
 **Override for a single prompt:** Include "just answer" or "without workflow"
 anywhere in your message. Claude reads these phrases in the routing prompt's
 SKIP category and responds directly.
+
+---
+
+## Execution Modes
+
+The dev-orchestrator supports two execution modes for the recipe runner.
+
+### Default: Direct Execution
+
+Recipes run via plain `subprocess.Popen` — no tmux required. This works
+everywhere: local shells, containers, CI, Windows native, and restricted
+environments.
+
+```
+[dev-orchestrator] starting recipe runner (direct mode)...
+```
+
+### Optional: Durable Execution via tmux
+
+For long-running recipes (typically >15 minutes) or environments that kill
+background processes on disconnection (SSH sessions without session managers),
+use the tmux-based durable execution mode.
+
+```bash
+# Enable durable mode for the current session
+export AMPLIHACK_DURABLE_EXEC=1
+/dev your long-running task
+```
+
+In durable mode, the Python payload is written to a temporary script file
+before launching tmux — this avoids nested quoting failures that occurred in
+older versions when task descriptions contained quotes:
+
+```bash
+tmux new-session -d -s recipe-runner "python3 $SCRIPT_FILE 2>&1 | tee $LOG_FILE"
+```
+
+If the tmux session appears to start but produces no output, ensure you are
+using amplihack v0.9.1 or later which includes the temp-script fix (PR #3216).
+
+### Agent Binary Selection
+
+By default, amplihack uses `claude` as the agent binary. To use a different
+agent, set `AMPLIHACK_AGENT_BINARY`:
+
+```bash
+export AMPLIHACK_AGENT_BINARY=claude   # default
+```
+
+This variable is preserved across nested agent launches — subagents spawned by
+the recipe runner use the same binary as the parent.
 
 ---
 

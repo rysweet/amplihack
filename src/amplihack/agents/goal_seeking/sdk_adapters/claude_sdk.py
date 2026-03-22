@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
 from pathlib import Path
 
 from .base import AgentResult, AgentTool, GoalSeekingAgent, SDKType
@@ -29,7 +30,7 @@ try:
 
     HAS_CLAUDE_SDK = True
 except ImportError:
-    pass  # Checked in ClaudeGoalSeekingAgent.__init__
+    print("WARNING: claude_agent_sdk not available", file=sys.stderr)
 
 
 class ClaudeGoalSeekingAgent(GoalSeekingAgent):

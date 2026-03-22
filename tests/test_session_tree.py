@@ -36,12 +36,23 @@ class TestDepthEnforcement(unittest.TestCase):
 
     def setUp(self):
         self._trees_created = []
+        # Isolate env vars so ambient values don't affect depth/session limits
+        self._saved_max_depth = os.environ.pop("AMPLIHACK_MAX_DEPTH", None)
+        self._saved_max_sessions = os.environ.pop("AMPLIHACK_MAX_SESSIONS", None)
+        self._saved_depth = os.environ.pop("AMPLIHACK_SESSION_DEPTH", None)
 
     def tearDown(self):
         for tree in self._trees_created:
             for suffix in (".json", ".lock"):
                 p = st.STATE_DIR / f"{tree}{suffix}"
                 p.unlink(missing_ok=True)
+        # Restore env vars
+        if self._saved_max_depth is not None:
+            os.environ["AMPLIHACK_MAX_DEPTH"] = self._saved_max_depth
+        if self._saved_max_sessions is not None:
+            os.environ["AMPLIHACK_MAX_SESSIONS"] = self._saved_max_sessions
+        if self._saved_depth is not None:
+            os.environ["AMPLIHACK_SESSION_DEPTH"] = self._saved_depth
 
     def _unique_tree(self) -> str:
         import uuid
@@ -468,8 +479,11 @@ class TestTTLPruning(unittest.TestCase):
         del state["sessions"]["no-ct"]["completed_at"]
         st._save(tree, state)  # triggers TTL; epoch default means always prunable
         state_after = st._load(tree)
-        self.assertNotIn("no-ct", state_after["sessions"],
-            "Completed session with missing completed_at must be pruned")
+        self.assertNotIn(
+            "no-ct",
+            state_after["sessions"],
+            "Completed session with missing completed_at must be pruned",
+        )
 
 
 class TestCLISubcommands(unittest.TestCase):
@@ -718,7 +732,6 @@ class TestGetStatusEdgeCases(unittest.TestCase):
         """get_status for a tree with no state file must return empty lists."""
         import uuid
 
-
         tree = "test-never-" + uuid.uuid4().hex[:8]
         result = st.get_status(tree)
         self.assertEqual(result["tree_id"], tree)
@@ -773,6 +786,109 @@ class TestStaleLockCleanup(unittest.TestCase):
 
         self.assertTrue(acquired, "Should have acquired lock after stale lock cleanup")
         self.assertFalse(lock_file.exists(), "Lock file should be removed after release")
+
+
+class TestTreeWideSpawnCounter(unittest.TestCase):
+    """Tree-wide LLM spawn counter must be atomic and cap-enforced."""
+
+    def setUp(self):
+        self._trees_created = []
+        self._saved_cap = os.environ.pop("AMPLIHACK_MAX_TREE_SPAWNS", None)
+
+    def tearDown(self):
+        for tree in self._trees_created:
+            for suffix in (".json", ".lock"):
+                (st.STATE_DIR / f"{tree}{suffix}").unlink(missing_ok=True)
+        if self._saved_cap is not None:
+            os.environ["AMPLIHACK_MAX_TREE_SPAWNS"] = self._saved_cap
+
+    def _unique_tree(self) -> str:
+        import uuid
+
+        t = "test-" + uuid.uuid4().hex[:8]
+        self._trees_created.append(t)
+        return t
+
+    def test_first_increment_returns_one(self):
+        """First increment on a fresh tree must return 1."""
+        tree = self._unique_tree()
+        result = st.increment_tree_spawn_count(tree_id=tree)
+        self.assertEqual(result, 1)
+
+    def test_increments_are_monotonically_increasing(self):
+        """Each increment returns a value one greater than the previous."""
+        tree = self._unique_tree()
+        os.environ["AMPLIHACK_MAX_TREE_SPAWNS"] = "10"
+        counts = [st.increment_tree_spawn_count(tree_id=tree) for _ in range(5)]
+        self.assertEqual(counts, [1, 2, 3, 4, 5])
+
+    def test_raises_runtime_error_at_cap(self):
+        """increment_tree_spawn_count must raise RuntimeError when cap is reached."""
+        tree = self._unique_tree()
+        os.environ["AMPLIHACK_MAX_TREE_SPAWNS"] = "3"
+        for _ in range(3):
+            st.increment_tree_spawn_count(tree_id=tree)
+        with self.assertRaises(RuntimeError) as ctx:
+            st.increment_tree_spawn_count(tree_id=tree)
+        self.assertIn("cap", str(ctx.exception))
+
+    def test_cap_enforced_exactly_at_boundary(self):
+        """The (cap)th increment succeeds; the (cap+1)th raises."""
+        tree = self._unique_tree()
+        cap = 5
+        os.environ["AMPLIHACK_MAX_TREE_SPAWNS"] = str(cap)
+        for i in range(cap):
+            count = st.increment_tree_spawn_count(tree_id=tree)
+            self.assertEqual(count, i + 1)
+        with self.assertRaises(RuntimeError):
+            st.increment_tree_spawn_count(tree_id=tree)
+
+    def test_get_tree_spawn_count_returns_zero_for_new_tree(self):
+        """Advisory read returns 0 for a tree with no state file."""
+        import uuid
+
+        tree = "test-never-" + uuid.uuid4().hex[:8]
+        self.assertEqual(st.get_tree_spawn_count(tree_id=tree), 0)
+
+    def test_get_tree_spawn_count_reflects_increments(self):
+        """Advisory read returns the current counter value."""
+        tree = self._unique_tree()
+        os.environ["AMPLIHACK_MAX_TREE_SPAWNS"] = "10"
+        st.increment_tree_spawn_count(tree_id=tree)
+        st.increment_tree_spawn_count(tree_id=tree)
+        self.assertEqual(st.get_tree_spawn_count(tree_id=tree), 2)
+
+    def test_get_tree_spawn_count_returns_zero_on_error(self):
+        """Advisory read must return 0, never raise, even on bad input."""
+        result = st.get_tree_spawn_count(tree_id=None)
+        self.assertEqual(result, 0)
+
+    def test_concurrent_increments_respect_cap(self):
+        """Concurrent threads must not collectively exceed the cap."""
+        tree = self._unique_tree()
+        cap = 5
+        os.environ["AMPLIHACK_MAX_TREE_SPAWNS"] = str(cap)
+        successes = []
+        failures = []
+        lock = threading.Lock()
+
+        def do_increment():
+            try:
+                st.increment_tree_spawn_count(tree_id=tree)
+                with lock:
+                    successes.append(1)
+            except RuntimeError:
+                with lock:
+                    failures.append(1)
+
+        threads = [threading.Thread(target=do_increment) for _ in range(cap + 3)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        self.assertEqual(len(successes), cap, f"Exactly {cap} should succeed, got: {successes}")
+        self.assertEqual(len(failures), 3, f"Exactly 3 should fail, got: {failures}")
 
 
 if __name__ == "__main__":

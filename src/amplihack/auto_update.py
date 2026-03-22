@@ -13,6 +13,7 @@ Public API:
 
 import json
 import logging
+import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -22,11 +23,13 @@ from pathlib import Path
 try:
     import requests
 except ImportError:
+    print("WARNING: requests not available, update checks disabled", file=sys.stderr)
     requests = None  # type: ignore
 
 try:
     from packaging.version import parse as parse_version
 except ImportError:
+    print("WARNING: packaging not available, version comparison disabled", file=sys.stderr)
     parse_version = None  # type: ignore
 
 logger = logging.getLogger(__name__)
@@ -331,6 +334,122 @@ def _run_upgrade(timeout: int = 60) -> bool:
         return False
 
 
+def _resolve_executable_path(executable: str) -> Path | None:
+    """Resolve an executable name or path to an absolute path."""
+    candidate = Path(executable).expanduser()
+    if candidate.is_absolute():
+        return candidate.resolve() if candidate.exists() else None
+
+    resolved = shutil.which(executable)
+    return Path(resolved).resolve() if resolved else None
+
+
+def _current_cli_path() -> Path | None:
+    """Resolve the currently running CLI path when possible."""
+    if sys.argv and sys.argv[0]:
+        current = _resolve_executable_path(sys.argv[0])
+        if current is not None:
+            return current
+    return _resolve_executable_path("amplihack")
+
+
+def _find_rust_cli() -> Path | None:
+    """Return a Rust-managed amplihack binary if one is installed."""
+    current = _current_cli_path()
+    candidates = (
+        Path.home() / ".local" / "bin" / "amplihack",
+        Path.home() / ".cargo" / "bin" / "amplihack",
+    )
+    for candidate in candidates:
+        if not candidate.exists():
+            continue
+        resolved = candidate.resolve()
+        if current is not None and resolved == current:
+            continue
+        return resolved
+    return None
+
+
+_RUST_CLI_UPDATE_TIMEOUT = 300  # seconds; generous for slow downloads
+
+_SAFE_ARG_PATTERNS = [
+    "--auto",
+    "--max-turns",
+    "--ui",
+    "--no-reflection",
+    "--with-proxy-config",
+    "--checkout-repo",
+    "--docker",
+    "--",
+    "-p",
+    "-v",
+    "--verbose",
+    "--help",
+    "--version",
+]
+_SAFE_TOP_LEVEL_COMMANDS = {
+    "launch",
+    "claude",
+    "RustyClawd",
+    "copilot",
+    "codex",
+    "amplifier",
+    "uvx-help",
+    "plugin",
+    "memory",
+    "new",
+    "recipe",
+    "mode",
+    "fleet",
+    "install",
+    "uninstall",
+    "update",
+}
+_SAFE_SUBCOMMANDS = {
+    "plugin": {"install", "uninstall", "link", "verify"},
+    "memory": {"tree", "export", "import", "clean"},
+    "recipe": {"run", "list", "validate", "show"},
+    "mode": {"detect", "to-plugin", "to-local"},
+}
+
+
+def run_update_command() -> int:
+    """Handle explicit `amplihack update` invocations.
+
+    Prefer the managed Rust CLI when it is installed in the standard locations so a
+    shadowing Python CLI can still hand off to the real Rust updater.
+    """
+    rust_cli = _find_rust_cli()
+    if rust_cli is not None:
+        print(f"Delegating update to Rust CLI at {rust_cli}")
+        try:
+            result = subprocess.run(
+                [str(rust_cli), "update"],
+                check=False,
+                timeout=_RUST_CLI_UPDATE_TIMEOUT,
+            )
+            return result.returncode
+        except subprocess.TimeoutExpired:
+            logger.error(
+                "Rust CLI update timed out after %ds. Try running '%s update' directly.",
+                _RUST_CLI_UPDATE_TIMEOUT,
+                rust_cli,
+            )
+            return 1
+
+    if _run_upgrade():
+        print("Updated Python amplihack.")
+        return 0
+
+    print("Update failed.")
+    print(
+        "If you installed the Rust CLI, run "
+        "`cargo install --git https://github.com/rysweet/amplihack-rs amplihack --locked` "
+        "and then `~/.cargo/bin/amplihack install`."
+    )
+    return 1
+
+
 def _restart_cli(args: list[str]) -> None:
     """Restart amplihack CLI with same arguments.
 
@@ -343,46 +462,43 @@ def _restart_cli(args: list[str]) -> None:
     Raises:
         Does not return (exits process via sys.exit)
     """
-    # Whitelist safe arguments to prevent malicious flag injection
-    SAFE_ARG_PATTERNS = [
-        "--auto",
-        "--max-turns",
-        "--ui",
-        "--no-reflection",
-        "--with-proxy-config",
-        "--checkout-repo",
-        "--docker",
-        "--",
-        "-p",
-        "-v",
-        "--verbose",
-        "--help",
-        "--version",
-    ]
-
     safe_args = []
     skip_next = False
-    for i, arg in enumerate(args):
+    active_command = None
+    for arg in args:
         if skip_next:
             skip_next = False
             safe_args.append(arg)  # This is a value for previous flag
             continue
 
         # Check if this arg or its prefix is in whitelist
-        if any(arg.startswith(pattern) for pattern in SAFE_ARG_PATTERNS):
+        if any(arg.startswith(pattern) for pattern in _SAFE_ARG_PATTERNS):
             safe_args.append(arg)
             # If this flag expects a value, include next arg
             if arg in ["--max-turns", "--with-proxy-config", "--checkout-repo", "-p"]:
                 skip_next = True
+        elif not arg.startswith("-") and not safe_args and arg in _SAFE_TOP_LEVEL_COMMANDS:
+            safe_args.append(arg)
+            active_command = arg
+        elif (
+            not arg.startswith("-")
+            and active_command is not None
+            and arg in _SAFE_SUBCOMMANDS.get(active_command, set())
+        ):
+            safe_args.append(arg)
         elif arg.startswith("-"):
             logger.warning(f"Skipping non-whitelisted argument: {arg}")
 
     args = safe_args  # Use filtered args
 
+    restart_target = _current_cli_path()
+    launch_argv = (
+        [str(restart_target), *args] if restart_target is not None else ["amplihack", *args]
+    )
+
     try:
-        # Use 'amplihack' command directly for uv tool installs
         subprocess.Popen(
-            ["amplihack"] + args,
+            launch_argv,
             start_new_session=True,
         )
         logger.debug("Restarted amplihack CLI via command")

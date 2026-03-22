@@ -13,8 +13,7 @@
     "scripts/",
     "src/amplihack/agents/goal_seeking/sdk_adapters",
     "amplihack-memory-lib/",
-    "deploy/",
-    "src/amplihack/eval/distributed_adapter.py"
+    "amplifier-bundle/tools/"
   ],
   "typeCheckingMode": "basic",
   "reportMissingImports": true,

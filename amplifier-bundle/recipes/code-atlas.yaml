@@ -1,0 +1,692 @@
+name: "code-atlas"
+description: |
+  Builds a comprehensive, living code atlas as multi-layer architecture documents.
+  Enforces the full 3-pass bug-hunt workflow. Produces 8 layers (Layers 1–8) plus
+  per-journey PASS/FAIL/NEEDS_ATTENTION verdicts from Pass 3.
+  Never silently substitutes diagrams with tables (density guard, FORBIDDEN_PATTERNS §2).
+version: "1.1.0"
+author: "Amplihack Team"
+tags: ["architecture", "documentation", "bug-hunting", "atlas", "code-atlas"]
+
+# CODE-ATLAS RECIPE
+#
+# 16 step IDs in 12 logical phases:
+#   Phase 1: Validate prerequisites (1 step)
+#   Phase 2: Build layers 1-4 (1 step)
+#   Phase 3: Build layers 5-8 (1 step)
+#   Phase 4: Verify all 8 layers exist (1 step)
+#   Phase 5-6: Dual-format bug hunt (2 parallel steps)
+#   Phase 7: Merge findings (1 step)
+#   Phase 8: Multi-agent validation — 3 parallel specialists + tally (4 steps)
+#   Phase 9: File validated issues — ensure label + file (2 steps)
+#   Phase 10: Ingest to Kuzu graph + generate OpenCypher files (1 step — REQUIRED, not optional)
+#   Phase 11: Publish atlas with rendered SVGs (1 step)
+#   Phase 12: Final checklist review + summarise (1 step)
+# The experiment (Appendix A) proved Mermaid and Graphviz find ~85% different bugs.
+# Running both in parallel finds ~1.7x the bugs of either alone.
+#
+# Layers:
+#   1. repo-surface         — source files, project structure, build systems
+#   2. ast-lsp-bindings     — cross-file refs, dead code, interface mismatches
+#   3. compile-deps         — packages, modules, circular dependency detection
+#   4. runtime-topology     — services, containers, ports, connections
+#   5. api-contracts        — HTTP routes, gRPC, GraphQL, OpenAPI, DTOs
+#   6. data-flow            — DTO-to-storage chain, transformation steps
+#   7. service-components   — per-service module/package diagrams
+#   8. user-journeys        — entry-point to outcome sequence diagrams
+#
+#   Canonical order defined in LAYERS.yaml. Reordering = change display_order there.
+#
+# Bug Hunt (3-pass):
+#   Pass 1: Comprehensive build + contradiction hunt (all 8 layers)
+#   Pass 2: Fresh-eyes cross-check (new context window; no anchoring bias)
+#   Pass 3: Scenario deep-dive; per-journey PASS/FAIL/NEEDS_ATTENTION verdict
+#
+# Density Guard (applied at every layer):
+#   >50 nodes OR >100 edges → user prompt (a/b/c); NEVER silent table substitution
+#
+# Security Compliance:
+#   SEC-01 through SEC-19 from SECURITY.md apply to all steps.
+#   SEC-17: codebase_path and output_dir are validated before use (no shell metacharacters).
+#
+# Usage:
+#   amplifier recipes execute code-atlas.yaml --context '{
+#     "codebase_path": ".",
+#     "output_dir": "docs/atlas"
+#   }'
+#
+# Run specific layers only:
+#   amplifier recipes execute code-atlas.yaml --context '{
+#     "codebase_path": "services/billing",
+#     "layers": [3, 4, 7, 8],
+#     "bug_hunt": false
+#   }'
+
+recursion:
+  max_depth: 3
+  max_total_steps: 30
+
+# ---------------------------------------------------------------------------
+# Parameters — passed as structured data only (SEC-17: no shell interpolation)
+# ---------------------------------------------------------------------------
+parameters:
+  codebase_path:
+    type: string
+    required: true
+    default: "."
+    description: "Root directory to analyse. Must be a readable path with no null bytes or shell metacharacters (SEC-17)."
+
+  output_dir:
+    type: string
+    required: false
+    default: "docs/atlas"
+    description: "Where to write atlas output. Must stay within the repository (SEC-05)."
+
+  layers:
+    type: array
+    items:
+      type: integer
+      enum: [1, 2, 3, 4, 5, 6, 7, 8]
+    required: false
+    default: [1, 2, 3, 4, 5, 6, 7, 8]
+    description: "Which layers to build. Defaults to all 8."
+
+  diagram_formats:
+    type: array
+    items:
+      type: string
+      enum: ["mermaid", "dot", "both"]
+    required: false
+    default: ["mermaid", "dot"]
+    description: "Output diagram formats."
+
+  bug_hunt:
+    type: boolean
+    required: false
+    default: true
+    description: "Run all three bug-hunt passes after building layers."
+
+  publish:
+    type: boolean
+    required: false
+    default: false
+    description: "Trigger GitHub Pages publication after atlas build."
+
+# ---------------------------------------------------------------------------
+# Steps — 12 named steps
+# ---------------------------------------------------------------------------
+steps:
+
+  # ==========================================================================
+  # STEP 1: VALIDATE PREREQUISITES
+  # ==========================================================================
+  - id: "validate-prerequisites"
+    name: "Step 1: Validate Prerequisites"
+    type: "skill"
+    skill: "code-atlas"
+    task: "validate-prerequisites"
+    description: |
+      Validate all prerequisites before any atlas work begins:
+      1. Verify codebase_path exists, is readable, has no null bytes or shell metacharacters (SEC-17)
+      2. Verify output_dir is writable and within the repository (SEC-05)
+      3. Validate density thresholds (SEC-13: 1–10,000)
+      4. Check tools: graphviz (dot), mermaid-cli (mmdc) — log availability
+      5. Query lsp-setup skill for LSP availability — record mode
+      6. Report prerequisite summary to user
+    inputs:
+      codebase_path: "{{parameters.codebase_path}}"
+      output_dir: "{{parameters.output_dir}}"
+      density_threshold_nodes: "{{parameters.density_threshold_nodes}}"
+      density_threshold_edges: "{{parameters.density_threshold_edges}}"
+    outputs:
+      - lsp_mode           # "lsp-assisted" or "static-approximation"
+      - tools_available    # Array: ["graphviz", "mmdc"] or subset
+      - validation_passed  # boolean
+
+  # ==========================================================================
+  # STEP 2: BUILD LAYERS 1-4 (structural layers)
+  # Split into two steps to prevent context exhaustion on large codebases.
+  # ==========================================================================
+  - id: "build-layers-1-4"
+    name: "Step 2: Build Layers 1-4 (Structural)"
+    type: "agent"
+    agent: "amplihack:amplihack:core:builder"
+    description: |
+      Build the first 4 atlas layers. Read .claude/skills/code-atlas/LAYERS.yaml
+      for slug, scope_target, and diagram_type for each layer.
+
+      Build these layers (by slug, in display_order):
+        1. repo-surface — source files, project structure, build systems
+        2. ast-lsp-bindings — cross-file symbol references, dead code (mode: {{lsp_mode}})
+        3. compile-deps — package imports, dependency trees, circular deps
+        4. runtime-topology — services, containers, ports, connections
+
+      For EACH layer produce:
+        - {name}.mmd (Mermaid source)
+        - {name}.dot (Graphviz DOT source)
+        - README.md with layer description
+      Plus inventory tables where appropriate.
+
+      Render SVGs after creating source files:
+        - mmdc -i {name}.mmd -o {name}-mermaid.svg (if mmdc available)
+        - dot -Tsvg {name}.dot -o {name}-dot.svg (if dot available)
+      Embed SVG images inline in README.md using ![alt](file.svg) syntax.
+
+      Write to: {{output_dir}}/{slug}/
+
+      List each completed layer with file counts before finishing.
+    inputs:
+      codebase_path: "{{parameters.codebase_path}}"
+      output_dir: "{{parameters.output_dir}}"
+      lsp_mode: "{{steps.validate-prerequisites.outputs.lsp_mode}}"
+    depends_on:
+      - "validate-prerequisites"
+    condition: "validate_prerequisites"
+
+  # ==========================================================================
+  # STEP 3: BUILD LAYERS 5-8 (behavioral layers)
+  # ==========================================================================
+  - id: "build-layers-5-8"
+    name: "Step 3: Build Layers 5-8 (Behavioral)"
+    type: "agent"
+    agent: "amplihack:amplihack:core:builder"
+    description: |
+      Build the remaining 4 atlas layers. Read .claude/skills/code-atlas/LAYERS.yaml
+      for slug, scope_target, and diagram_type for each layer.
+
+      Build these layers (by slug, in display_order):
+        5. api-contracts — HTTP routes, CLI commands, hooks, gRPC, GraphQL
+        6. data-flow — DTO-to-storage chains, transformation steps
+        7. service-components — internal module/package structure
+        8. user-journeys — end-to-end sequence diagrams (3-5 journeys)
+
+      For EACH layer produce:
+        - {name}.mmd (Mermaid source)
+        - {name}.dot (Graphviz DOT source)
+        - README.md with layer description
+      Plus inventory tables where appropriate.
+
+      Render SVGs after creating source files:
+        - mmdc -i {name}.mmd -o {name}-mermaid.svg (if mmdc available)
+        - dot -Tsvg {name}.dot -o {name}-dot.svg (if dot available)
+      Embed SVG images inline in README.md using ![alt](file.svg) syntax.
+
+      Write to: {{output_dir}}/{slug}/
+
+      List each completed layer with file counts before finishing.
+    inputs:
+      codebase_path: "{{parameters.codebase_path}}"
+      output_dir: "{{parameters.output_dir}}"
+    depends_on:
+      - "build-layers-1-4"
+
+  # ==========================================================================
+  # STEP 4: VERIFY ALL 8 LAYERS BUILT
+  # Explicit checklist — fail loudly if anything is missing.
+  # ==========================================================================
+  - id: "verify-all-layers"
+    name: "Step 4: Verify All 8 Layers Built"
+    type: "agent"
+    agent: "amplihack:amplihack:core:reviewer"
+    description: |
+      Verify that ALL 8 atlas layers were successfully built. This is a hard gate.
+
+      For each slug in LAYERS.yaml, check that {{output_dir}}/{slug}/ contains:
+        - At least one .mmd file
+        - At least one .dot file
+        - At least one .svg file (rendered diagram)
+        - A README.md that embeds SVG images using ![alt](file.svg) syntax
+
+      Expected slugs: repo-surface, ast-lsp-bindings, compile-deps,
+        runtime-topology, api-contracts, data-flow, service-components, user-journeys
+
+      Output a checklist:
+        [PASS] repo-surface: 1 .mmd, 1 .dot, 2 .svg, README.md with 2 images
+        [PASS] ast-lsp-bindings: 1 .mmd, 1 .dot, 2 .svg, README.md with 2 images
+        ... etc ...
+
+      If ANY layer is [FAIL], list what is missing and attempt to build it.
+      Do NOT proceed until all 8 layers are [PASS].
+
+      Also verify the atlas index.md exists and links to all 8 layers.
+    inputs:
+      output_dir: "{{parameters.output_dir}}"
+    depends_on:
+      - "build-layers-5-8"
+
+  # ==========================================================================
+  # STEP 3: BUG-HUNT — MERMAID ARM (parallel with Step 4)
+  # Full 3-pass hunt using only Mermaid diagrams.
+  # Experiment proved Mermaid finds different bugs than Graphviz (~85% unique).
+  # ==========================================================================
+  - id: "bug-hunt-mermaid"
+    name: "Step 3: Bug-Hunt — Mermaid Arm"
+    type: "agent"
+    agent: "amplihack:amplihack:core:reviewer"
+    parallel_group: "dual-format-hunt"
+    description: |
+      3-pass bug hunt using ONLY the Mermaid (.mmd) diagrams from Step 2.
+      Do NOT read the .dot files — format independence is critical for finding different bugs.
+
+      Pass 1 — Comprehensive Hunt: Read all 8 layer .mmd files. Check:
+        - Route ↔ DTO mismatches (Layer 3 × Layer 4)
+        - Orphaned/undead env vars (Layer 2 × Layer 6)
+        - Dead runtime paths (Layer 2 × Layer 3)
+        - Stale documentation contradictions
+        - Layer 7 coupling issues; Layer 8 dead symbols and interface mismatches
+
+      Pass 2 — Fresh Eyes: Re-read all .mmd files from scratch, ignoring Pass 1 conclusions.
+        Cross-check Pass 1 findings: CONFIRMED / OVERTURNED / NEEDS_ATTENTION.
+
+      Pass 3 — Scenario Deep-Dive: Trace each Layer 5 journey through Layers 3,4,2,7,8.
+        Produce per-journey verdict: PASS / FAIL / NEEDS_ATTENTION.
+
+      SEC-09: credential redaction in all evidence. SEC-16: relative paths only.
+      Write to: {{output_dir}}/bug-reports/mermaid-arm/
+    inputs:
+      atlas_path: "{{parameters.output_dir}}"
+      codebase_path: "{{parameters.codebase_path}}"
+      format: "mermaid"
+    condition: "bug_hunt == True"
+    depends_on:
+      - "verify-all-layers"
+
+  # ==========================================================================
+  # STEP 4: BUG-HUNT — GRAPHVIZ ARM (parallel with Step 3)
+  # Full 3-pass hunt using only Graphviz DOT diagrams.
+  # ==========================================================================
+  - id: "bug-hunt-graphviz"
+    name: "Step 4: Bug-Hunt — Graphviz Arm"
+    type: "agent"
+    agent: "amplihack:amplihack:core:reviewer"
+    parallel_group: "dual-format-hunt"
+    description: |
+      3-pass bug hunt using ONLY the Graphviz DOT (.dot) diagrams from Step 2.
+      Do NOT read the .mmd files — format independence is critical for finding different bugs.
+
+      Same 3-pass structure as Step 3 (Mermaid arm), but reading .dot files.
+      The explicit A -> B [label="..."] syntax forces different reasoning paths,
+      surfacing structural/architectural bugs that Mermaid's abbreviated syntax misses.
+
+      SEC-09: credential redaction. SEC-16: relative paths only.
+      Write to: {{output_dir}}/bug-reports/graphviz-arm/
+    inputs:
+      atlas_path: "{{parameters.output_dir}}"
+      codebase_path: "{{parameters.codebase_path}}"
+      format: "dot"
+    condition: "bug_hunt == True"
+    depends_on:
+      - "verify-all-layers"
+
+  # ==========================================================================
+  # STEP 5: MERGE AND DEDUPLICATE BUG FINDINGS
+  # Union of both arms, dedup by file:line, assign final severity.
+  # ==========================================================================
+  - id: "merge-bug-findings"
+    name: "Step 5: Merge and Deduplicate Bug Findings"
+    type: "agent"
+    agent: "amplihack:amplihack:core:reviewer"
+    description: |
+      Merge findings from both the Mermaid and Graphviz arms:
+
+      1. Read all bug reports from both arms
+      2. Deduplicate by file:line — bugs found by BOTH arms flagged as "dual-format confirmed" (higher confidence, but severity determined by reviewers in Step 6)
+      3. Bugs found by only one arm keep original severity
+      4. Produce merged report with provenance (mermaid-only / graphviz-only / both)
+      5. Count: total unique, mermaid-only, graphviz-only, shared
+
+      Write merged report to: {{output_dir}}/bug-reports/merged-findings.md
+      Write individual issue files to: {{output_dir}}/bug-reports/issues/
+    inputs:
+      mermaid_reports: "{{steps.bug-hunt-mermaid.outputs.bug_report_paths}}"
+      graphviz_reports: "{{steps.bug-hunt-graphviz.outputs.bug_report_paths}}"
+      codebase_path: "{{parameters.codebase_path}}"
+    condition: "bug_hunt == True"
+    depends_on:
+      - "bug-hunt-mermaid"
+      - "bug-hunt-graphviz"
+
+  # ==========================================================================
+  # STEP 6: MULTI-AGENT FALSE POSITIVE ELIMINATION
+  # Three specialist agents independently validate each bug.
+  # A bug must receive 2/3 CONFIRMED votes to be filed as an issue.
+  # This prevents wasting developer time on false positives.
+  # ==========================================================================
+  - id: "validate-bugs-security"
+    name: "Step 6a: Validate Bugs — Security Specialist"
+    type: "agent"
+    agent: "amplihack:amplihack:specialized:security"
+    parallel_group: "bug-validation"
+    description: |
+      Security specialist reviews each merged bug finding independently.
+      For each bug, read the actual source code at file:line and determine:
+
+      - CONFIRMED: The bug is real. The code at file:line has the described problem.
+        Include a one-line explanation of WHY it's a bug.
+      - FALSE_POSITIVE: The bug is not real. The code is correct.
+        Include a one-line explanation of WHY the finding was wrong.
+      - UNCERTAIN: Cannot determine from available evidence.
+
+      Focus on: error handling, input validation, security implications,
+      fail-closed behavior, credential exposure, injection risks.
+
+      Write verdicts to: {{output_dir}}/bug-reports/validation/security-verdicts.md
+    inputs:
+      merged_findings: "{{steps.merge-bug-findings.outputs}}"
+      codebase_path: "{{parameters.codebase_path}}"
+    condition: "bug_hunt == True"
+    depends_on:
+      - "merge-bug-findings"
+
+  - id: "validate-bugs-architect"
+    name: "Step 6b: Validate Bugs — Architecture Specialist"
+    type: "agent"
+    agent: "amplihack:amplihack:core:architect"
+    parallel_group: "bug-validation"
+    description: |
+      Architecture specialist reviews each merged bug finding independently.
+      For each bug, read the actual source code at file:line and determine:
+
+      - CONFIRMED: The bug is real. The code at file:line has the described problem.
+      - FALSE_POSITIVE: The bug is not real. The code is correct.
+      - UNCERTAIN: Cannot determine from available evidence.
+
+      Focus on: module boundaries, API contracts, dependency direction,
+      encapsulation violations, naming inconsistencies, dead code, stale docs.
+
+      Write verdicts to: {{output_dir}}/bug-reports/validation/architect-verdicts.md
+    inputs:
+      merged_findings: "{{steps.merge-bug-findings.outputs}}"
+      codebase_path: "{{parameters.codebase_path}}"
+    condition: "bug_hunt == True"
+    depends_on:
+      - "merge-bug-findings"
+
+  - id: "validate-bugs-tester"
+    name: "Step 6c: Validate Bugs — Testing Specialist"
+    type: "agent"
+    agent: "amplihack:amplihack:core:tester"
+    parallel_group: "bug-validation"
+    description: |
+      Testing specialist reviews each merged bug finding independently.
+      For each bug, read the actual source code at file:line and determine:
+
+      - CONFIRMED: The bug is real. The code at file:line has the described problem.
+        If possible, describe a test case that would expose the bug.
+      - FALSE_POSITIVE: The bug is not real. The code is correct.
+        Explain what the bug-hunter misunderstood.
+      - UNCERTAIN: Cannot determine from available evidence.
+
+      Focus on: edge cases, error paths, race conditions, resource leaks,
+      type mismatches, unreachable code, off-by-one errors.
+
+      Write verdicts to: {{output_dir}}/bug-reports/validation/tester-verdicts.md
+    inputs:
+      merged_findings: "{{steps.merge-bug-findings.outputs}}"
+      codebase_path: "{{parameters.codebase_path}}"
+    condition: "bug_hunt == True"
+    depends_on:
+      - "merge-bug-findings"
+
+  # ==========================================================================
+  # STEP 6d: TALLY VOTES AND FILTER
+  # A bug needs >= 2 of 3 CONFIRMED votes to be filed.
+  # UNCERTAIN counts as 0.5 (two UNCERTAINs + one CONFIRMED = filed).
+  # ==========================================================================
+  - id: "tally-validation-votes"
+    name: "Step 6d: Tally Validation Votes"
+    type: "agent"
+    agent: "amplihack:amplihack:core:reviewer"
+    description: |
+      Tally votes from the three validation specialists:
+
+      For each bug in the merged findings:
+        1. Read verdicts from security, architect, and tester
+        2. Score: CONFIRMED=1, UNCERTAIN=0.5, FALSE_POSITIVE=0
+        3. Threshold: score >= 2.0 → VALIDATED (will be filed)
+        4. Score < 2.0 → REJECTED (not filed, logged with reasons)
+
+      Produce:
+        - {{output_dir}}/bug-reports/validated-bugs.md — bugs that passed validation
+        - {{output_dir}}/bug-reports/rejected-bugs.md — bugs that failed validation (will still be filed as issues with 'needs-review' label)
+        - Summary: N validated, N rejected, N unanimous, false positive rate estimate
+
+      Severity is determined by reviewer consensus, NOT automatically upgraded.
+      If all 3 reviewers agree on HIGH, it's HIGH. If they disagree, use the median.
+      Do NOT override reviewer judgment with automatic rules.
+    inputs:
+      security_verdicts: "{{steps.validate-bugs-security.outputs}}"
+      architect_verdicts: "{{steps.validate-bugs-architect.outputs}}"
+      tester_verdicts: "{{steps.validate-bugs-tester.outputs}}"
+      merged_findings: "{{steps.merge-bug-findings.outputs}}"
+    condition: "bug_hunt == True"
+    depends_on:
+      - "validate-bugs-security"
+      - "validate-bugs-architect"
+      - "validate-bugs-tester"
+
+  # ==========================================================================
+  # STEP 7a: ENSURE LABEL EXISTS
+  # Create code-atlas-bughunt label if missing.
+  # ==========================================================================
+  - id: "ensure-label"
+    name: "Step 7a: Ensure code-atlas-bughunt Label"
+    type: "bash"
+    command: |
+      cd "{{parameters.codebase_path}}" && \
+      echo "Ensuring labels exist..." && \
+      (gh label list --json name -q '.[].name' | grep -q '^code-atlas-bughunt$' \
+        || gh label create "code-atlas-bughunt" \
+             --description "Bug found by /code-atlas graph-based bug hunt" \
+             --color "D93F0B") && \
+      (gh label list --json name -q '.[].name' | grep -q '^code-atlas-needs-review$' \
+        || gh label create "code-atlas-needs-review" \
+             --description "Finding from /code-atlas that did not pass multi-agent validation" \
+             --color "FBCA04") && \
+      echo "Labels ensured: code-atlas-bughunt, code-atlas-needs-review"
+    condition: "bug_hunt == True"
+    depends_on:
+      - "tally-validation-votes"
+
+  # ==========================================================================
+  # STEP 7b: FILE ISSUES FOR VALIDATED BUGS ONLY
+  # Only bugs that passed multi-agent validation (>= 2/3 votes) get filed.
+  # Rejected bugs are logged but not filed — reduces developer noise.
+  # ==========================================================================
+  - id: "file-issues"
+    name: "Step 7b: File Work Items for Validated Bugs"
+    type: "agent"
+    agent: "amplihack:amplihack:core:builder"
+    description: |
+      File ALL validated bugs as work items. This is DETERMINISTIC — every
+      validated bug gets filed, no agent discretion about which to include.
+
+      Supports two backends:
+        - GitHub Issues: `gh issue create` (default, auto-detected)
+        - Azure DevOps: `az boards work-item create` (when ADO is configured)
+
+      Detection: if `az devops configure --list` succeeds, use ADO. Otherwise gh.
+
+      For each VALIDATED bug (score >= 2.0):
+
+        GitHub:
+          gh issue create \
+            --title "[code-atlas] {brief_description}" \
+            --label "bug" --label "code-atlas-bughunt" \
+            --body "**Severity**: {severity}
+          **File**: {file}:{line}
+          **Evidence**: {evidence}
+          **Provenance**: {mermaid-only|graphviz-only|both}
+          **Pass**: {pass_number}
+          **Validation**: {N}/3 agents confirmed (security: {X}, architect: {X}, tester: {X})"
+
+        ADO:
+          az boards work-item create \
+            --type Bug \
+            --title "[code-atlas] {brief_description}" \
+            --fields "System.Tags=code-atlas-bughunt" \
+                     "Microsoft.VSTS.Common.Severity={1-4}" \
+                     "Microsoft.VSTS.TCM.ReproSteps={evidence}"
+
+      Rules:
+        1. File EVERY validated bug — no filtering, no batching, no discretion
+        2. One work item per bug
+        3. File ONE summary issue for all rejected findings (score < 2.0)
+        4. Write all created URLs to {{output_dir}}/bug-reports/filed-issues.md
+        5. The filed-issues.md is the ONLY output that lists bugs — bugs are
+           NEVER stored in docs/atlas/ or any other atlas page
+    inputs:
+      validated_bugs: "{{steps.tally-validation-votes.outputs}}"
+      codebase_path: "{{parameters.codebase_path}}"
+      output_dir: "{{parameters.output_dir}}"
+    condition: "bug_hunt == True"
+    depends_on:
+      - "ensure-label"
+
+  # ==========================================================================
+  # STEP 8: INGEST ATLAS INTO CODE GRAPH (Kuzu) + GENERATE OPENCYPHER FILES
+  # Kuzu is REQUIRED, not optional. If unavailable, fail loudly and fix it.
+  # Also generates standalone .cypher files for portability.
+  # ==========================================================================
+  - id: "ingest-to-graph"
+    name: "Step 8: Ingest Atlas into Code Graph + Generate OpenCypher"
+    type: "agent"
+    agent: "amplihack:amplihack:core:builder"
+    description: |
+      TWO outputs from this step:
+        A) Ingest atlas into Kuzu code graph (REQUIRED — NOT optional)
+        B) Generate standalone OpenCypher .cypher files (always)
+
+      --- Part A: Kuzu Ingestion (REQUIRED) ---
+
+      Check Kuzu availability. If Kuzu is NOT available:
+        1. Print a LOUD ERROR: "ERROR: Kuzu graph database is not available."
+        2. Attempt to fix: check if kuzu Python package is installed (pip show kuzu).
+           If missing, install it: pip install kuzu
+        3. Check for the database directory (~/.amplihack/kuzu_db or env KUZU_DB_PATH)
+        4. If still unavailable after fix attempt, FAIL with clear error message
+           explaining what is wrong and how to fix it. Do NOT silently skip.
+
+      If Kuzu IS available, ingest:
+        1. Create atlas schema tables (idempotent):
+           - AtlasLayer (layer_id, slug, name, diagram_path_mmd, diagram_path_dot,
+             node_count, edge_count, built_at)
+           - AtlasService (service_id, name, component_count)
+           - AtlasBug (bug_id, title, severity, file_path, line_number, provenance,
+             pass_number, issue_url)
+        2. Create relationship tables:
+           - ATLAS_MAPS (AtlasLayer → CodeFile)
+           - SERVICE_CONTAINS (AtlasService → CodeFile)
+           - BUG_IN (AtlasBug → CodeFile)
+           - LAYER_FOUND_BUG (AtlasLayer → AtlasBug)
+        3. Populate from atlas data
+        4. Report: N nodes created, N relationships created
+
+      --- Part B: OpenCypher File Generation (ALWAYS) ---
+
+      Generate {{output_dir}}/cypher/ directory with standalone .cypher files:
+        - schema.cypher — CREATE NODE TABLE and CREATE REL TABLE statements
+        - atlas-layers.cypher — CREATE statements for all 8 AtlasLayer nodes
+        - atlas-services.cypher — CREATE statements for AtlasService nodes
+        - atlas-bugs.cypher — CREATE statements for AtlasBug nodes (from filed issues)
+        - atlas-relationships.cypher — CREATE relationship statements
+        - queries.cypher — 5-10 useful example queries
+
+      These .cypher files are committed to the repo alongside the atlas so
+      anyone can load the atlas into any OpenCypher-compatible graph database.
+
+    inputs:
+      output_dir: "{{parameters.output_dir}}"
+      codebase_path: "{{parameters.codebase_path}}"
+      merged_findings: "{{steps.merge-bug-findings.outputs}}"
+      filed_issues: "{{steps.file-issues.outputs}}"
+    depends_on:
+      - "file-issues"
+
+  # ==========================================================================
+  # STEP 9: PUBLISH ATLAS
+  # ==========================================================================
+  - id: "publish-atlas"
+    name: "Step 9: Publish Atlas"
+    type: "skill"
+    skill: "code-atlas"
+    task: "publish"
+    description: |
+      Publish the completed atlas as a single set of pages with side-by-side diagrams:
+
+      Each layer page (docs/atlas/{slug}/README.md) contains:
+        - Layer description and what it maps
+        - Mermaid diagram (rendered SVG embedded inline)
+        - Graphviz diagram (rendered SVG embedded inline)
+        - Link to diagram source files (.mmd and .dot)
+
+      Bug hunt results are NEVER stored in the atlas — they are filed as GitHub
+      issues only. The atlas is a living architecture document, not a bug report.
+
+      Steps:
+      1. Write docs/atlas/index.md (links to all 8 layer pages)
+      2. Write per-layer README.md with side-by-side Mermaid + Graphviz SVG
+      3. Write docs/atlas/staleness-map.yaml (Glob → layer mappings for CI)
+      4. Render SVG from .mmd (if mmdc available) and .dot (if dot available)
+      5. If publish=true: push to GitHub Pages (SEC-19: sanitise credentials)
+      6. Update mkdocs.yml nav if exists
+    inputs:
+      output_dir: "{{parameters.output_dir}}"
+      codebase_path: "{{parameters.codebase_path}}"
+      publish: "{{parameters.publish}}"
+      tools_available: "{{steps.validate-prerequisites.outputs.tools_available}}"
+    depends_on:
+      - "ingest-to-graph"
+
+  # ==========================================================================
+  # STEP 10: FINAL CHECKLIST REVIEW + SUMMARISE
+  # A reviewer agent independently verifies the entire atlas is complete.
+  # ==========================================================================
+  - id: "final-checklist-review"
+    name: "Step 10: Final Checklist Review and Summary"
+    type: "agent"
+    agent: "amplihack:amplihack:core:reviewer"
+    description: |
+      Final independent review of the completed atlas. Walk through this
+      checklist and report PASS/FAIL for each item:
+
+      LAYER COMPLETENESS:
+        [ ] All 8 layer directories exist under {{output_dir}}/
+        [ ] Each layer has README.md, at least one .mmd, one .dot, and rendered .svg files
+        [ ] Each README.md embeds SVG diagrams inline using ![alt](file.svg)
+        [ ] No orphaned nodes in any diagram (every node has at least one edge)
+        [ ] ast-lsp-bindings README states mode on line 1
+
+      DIAGRAM RENDERING:
+        [ ] .mmd files render successfully (mmdc exit code 0)
+        [ ] .dot files render successfully (dot exit code 0)
+        [ ] SVG files are non-empty and well-formed
+        [ ] README image references match actual SVG filenames
+
+      ATLAS INDEX:
+        [ ] docs/atlas/index.md exists and links to all 8 layers
+        [ ] mkdocs.yml has Code Atlas nav section with all layers
+        [ ] No bug report files exist in docs/atlas/ (bugs go to issues only)
+
+      OPENCYPHER:
+        [ ] docs/atlas/cypher/ directory exists with .cypher files
+        [ ] schema.cypher has valid CREATE statements
+        [ ] Kuzu ingestion completed (or clear error explaining why not)
+
+      BUG HUNT:
+        [ ] All validated bugs filed as GitHub issues with code-atlas-bughunt label
+        [ ] No bug reports stored in the atlas docs directory
+
+      Summary statistics:
+        - Layers: N/8 complete
+        - Diagrams: N .mmd, N .dot, N .svg
+        - Bugs filed: N issues
+        - Kuzu: N nodes, N relationships (or error status)
+        - OpenCypher files: N .cypher files
+
+      If ANY checklist item is FAIL, describe what is wrong and attempt to fix it.
+    inputs:
+      output_dir: "{{parameters.output_dir}}"
+      all_step_outputs: "{{steps}}"
+    depends_on:
+      - "publish-atlas"

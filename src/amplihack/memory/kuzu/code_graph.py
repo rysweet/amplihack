@@ -18,6 +18,7 @@ Public API:
 import json
 import logging
 import subprocess
+import sys
 import threading
 import time
 from datetime import datetime
@@ -37,6 +38,7 @@ try:
 
     RICH_AVAILABLE = True
 except ImportError:
+    print("WARNING: rich not available, progress indicators disabled", file=sys.stderr)
     RICH_AVAILABLE = False
     logger.debug("rich library not available, progress indicators will be disabled")
 

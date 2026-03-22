@@ -2,9 +2,51 @@
 
 import asyncio
 import json
+import logging
 from collections.abc import AsyncGenerator
 from typing import Any
 from urllib.parse import urljoin
+
+logger = logging.getLogger(__name__)
+
+# Retryable HTTP status codes (transient server/gateway errors)
+_RETRYABLE_STATUS_CODES = frozenset({429, 500, 502, 503, 504})
+
+
+async def _retry_with_backoff(
+    func,
+    max_attempts: int = 3,
+    base_delay: float = 1.0,
+    max_delay: float = 60.0,
+    backoff_multiplier: float = 2.0,
+) -> Any:
+    """Execute *func* with exponential backoff on retryable HTTP errors.
+
+    Non-retryable errors (4xx except 429) propagate immediately.
+    """
+    last_exc: Exception | None = None
+    for attempt in range(max_attempts):
+        try:
+            return await func()
+        except RuntimeError as exc:
+            last_exc = exc
+            # Parse status code from error messages like "GitHub Copilot API error 503: ..."
+            msg = str(exc)
+            retryable = any(str(code) in msg for code in _RETRYABLE_STATUS_CODES)
+            if not retryable or attempt >= max_attempts - 1:
+                raise
+            delay = min(base_delay * (backoff_multiplier**attempt), max_delay)
+            logger.warning(
+                "GitHub Copilot API transient error (attempt %d/%d), retrying in %.1fs: %s",
+                attempt + 1,
+                max_attempts,
+                delay,
+                msg,
+            )
+            await asyncio.sleep(delay)
+    if last_exc:
+        raise last_exc
+    raise RuntimeError("All retry attempts exhausted")
 
 
 class GitHubCopilotClient:
@@ -96,7 +138,7 @@ class GitHubCopilotClient:
         return await self._create_completion(url, data)
 
     async def _create_completion(self, url: str, data: dict[str, Any]) -> dict[str, Any]:
-        """Create non-streaming completion.
+        """Create non-streaming completion with automatic retry on transient errors.
 
         Args:
             url: API endpoint URL
@@ -105,7 +147,8 @@ class GitHubCopilotClient:
         Returns:
             Response dictionary.
         """
-        try:
+
+        async def _attempt() -> dict[str, Any]:
             await self._ensure_session()
             if self.session is None:
                 raise RuntimeError("HTTP session not initialized")
@@ -115,6 +158,8 @@ class GitHubCopilotClient:
                 error_text = await response.text()
                 raise RuntimeError(f"GitHub Copilot API error {response.status}: {error_text}")
 
+        try:
+            return await _retry_with_backoff(_attempt)
         except Exception as e:
             if "aiohttp" in str(type(e)):
                 raise RuntimeError(f"Network error: {e}")

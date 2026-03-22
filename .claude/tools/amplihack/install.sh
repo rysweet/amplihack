@@ -3,6 +3,18 @@
 # if the AMPLIHACK_INSTALL_LOCATION variable is not set, default to https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding
 AMPLIHACK_INSTALL_LOCATION=${AMPLIHACK_INSTALL_LOCATION:-https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding}
 
+# Validate install URL is from a trusted GitHub org/repo
+ALLOWED_ORGS="rysweet|microsoft"
+if ! echo "$AMPLIHACK_INSTALL_LOCATION" | grep -qE "^https://github\.com/($ALLOWED_ORGS)/"; then
+  echo "ERROR: AMPLIHACK_INSTALL_LOCATION is not a trusted repository URL."
+  echo "  Got: $AMPLIHACK_INSTALL_LOCATION"
+  echo "  Allowed: https://github.com/{$ALLOWED_ORGS}/*"
+  echo ""
+  echo "If this is intentional, unset the variable to use the default:"
+  echo "  unset AMPLIHACK_INSTALL_LOCATION"
+  exit 1
+fi
+
 # clone the repository to a tmp local directory
 # make sure the dir does not exist first - exit if it does
 if [ -d "./tmpamplihack" ]; then

@@ -4,6 +4,7 @@ import argparse
 import logging
 import os
 import platform
+import shutil
 import subprocess
 import sys
 import time
@@ -35,6 +36,12 @@ EMOJI = {
 # Commands that require Claude Code plugin installation.
 # All other commands (copilot, amplifier, codex, etc.) skip it.
 _CLAUDE_COMMANDS = {None, "launch", "claude", "RustyClawd"}
+
+# Commands that launch a subordinate CLI/SDK and can safely receive unknown
+# arguments as passthrough. This lets `amplihack copilot --resume` behave like
+# `amplihack copilot -- --resume` while keeping strict parsing for management
+# commands such as `install`, `plugin`, and `memory`.
+_PASSTHROUGH_COMMANDS = _CLAUDE_COMMANDS | {"copilot", "codex", "amplifier"}
 
 
 def _debug_print(message: str) -> None:
@@ -139,63 +146,15 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
     # --subprocess-safe: skip all staging/env mutations to avoid concurrent
     # write races when running as a delegate from another amplihack process
     # (e.g. multitask workstreams).  See issue #2567.
-    subprocess_safe = getattr(args, "subprocess_safe", False)
 
     from .launcher.session_tracker import SessionTracker
 
-    # Detect nesting BEFORE any .claude/ operations
-    original_cwd = None
-    nesting_result = None
+    # Capture CWD before startup (which may chdir during staging)
+    original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
 
-    if not subprocess_safe:
-        from .launcher.auto_stager import AutoStager
-        from .launcher.nesting_detector import NestingDetector
-
-        detector = NestingDetector()
-        nesting_result = detector.detect_nesting(Path.cwd(), sys.argv)
-
-        # Auto-stage if nested execution in source repo detected
-        if nesting_result.requires_staging:
-            print("\n🚨 SELF-MODIFICATION PROTECTION ACTIVATED")
-            print("   Running nested in amplihack source repository")
-            print("   Auto-staging .claude/ to temp directory for safety")
-
-            stager = AutoStager()
-            original_cwd = Path.cwd()
-            staging_result = stager.stage_for_nested_execution(
-                original_cwd, f"nested-{os.getpid()}"
-            )
-
-            print(f"   📁 Staged to: {staging_result.temp_root}")
-            print("   Your original .claude/ files are protected")
-
-            # CRITICAL: Change to temp directory so all .claude/ operations happen there
-            os.chdir(staging_result.temp_root)
-            print(f"   📂 CWD changed to: {staging_result.temp_root}\n")
-
-        # Ensure amplihack framework is staged to ~/.amplihack/.claude/
-        _ensure_amplihack_staged()
-
-        # Auto-install missing SDK dependencies (e.g. agent-framework)
-        # Uses --python sys.executable to target the running interpreter,
-        # critical when launched via uvx (ephemeral venv != project .venv).
-        try:
-            from .dep_check import ensure_sdk_deps
-
-            dep_result = ensure_sdk_deps()
-            if not dep_result.all_ok:
-                logger.warning("Some SDK deps could not be installed: %s", dep_result.missing)
-        except Exception as e:
-            logger.debug("SDK dep check skipped: %s", e)
-
-        # Prompt to re-enable power-steering if disabled (#2544)
-        try:
-            from .power_steering.re_enable_prompt import prompt_re_enable_if_disabled
-
-            prompt_re_enable_if_disabled()
-        except Exception as e:
-            # Fail-open: log error but continue
-            logger.debug(f"Error checking power-steering re-enable prompt: {e}")
+    # Run shared startup (nesting, staging, deps, power-steering)
+    _common_launcher_startup(args)
+    nesting_result = getattr(args, "_nesting_result", None)
 
     # Start session tracking
     tracker = SessionTracker()
@@ -210,7 +169,10 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
         parent_session_id=nesting_result.parent_session_id if nesting_result else None,
     )
 
-    # Wrap execution in try/finally to ensure session is marked complete/crashed
+    # Wrap execution in try/except/finally to ensure session is marked
+    # complete/crashed and CWD is restored.  No nested exception handlers —
+    # failures in crash_session() or os.chdir() propagate directly so they
+    # are never silently swallowed.  See issue #3233.
     try:
         result = _launch_command_impl(args, claude_args, session_id, tracker)
         tracker.complete_session(session_id)
@@ -220,13 +182,8 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
         tracker.crash_session(session_id)
         raise
     finally:
-        # Restore original CWD if we staged
         if original_cwd is not None:
-            try:
-                os.chdir(original_cwd)
-            except Exception as e:
-                # Best effort - log error but don't fail on CWD restore
-                logging.debug(f"Failed to restore CWD to {original_cwd}: {e}")
+            os.chdir(original_cwd)
 
 
 def _launch_command_impl(
@@ -449,7 +406,13 @@ def parse_args_with_passthrough(
         # No command and no claude args - show help
         pass
 
-    args = parser.parse_args(amplihack_args)
+    args, unknown_args = parser.parse_known_args(amplihack_args)
+
+    if unknown_args:
+        if args.command not in _PASSTHROUGH_COMMANDS:
+            parser.error(f"unrecognized arguments: {' '.join(unknown_args)}")
+        claude_args = unknown_args + claude_args
+
     return args, claude_args
 
 
@@ -568,13 +531,31 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
+    from amplihack import __version__  # local import avoids circular dependency at module load
+
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"amplihack {__version__}",
+        help="Show amplihack version and exit",
+    )
+
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
+
+    # Version subcommand (matches Rust CLI)
+    subparsers.add_parser("version", help="Show amplihack version")
 
     # Install command (existing)
     subparsers.add_parser("install", help="Install amplihack agents and tools to ~/.claude")
 
     # Uninstall command (existing)
     subparsers.add_parser("uninstall", help="Remove amplihack agents and tools from ~/.claude")
+
+    # Update command
+    subparsers.add_parser(
+        "update",
+        help="Update amplihack, delegating to the Rust CLI when one is installed",
+    )
 
     # Launch command (new)
     launch_parser = subparsers.add_parser(
@@ -852,6 +833,14 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     # Migrate to local command
     _ = mode_subparsers.add_parser("to-local", help="Create local .claude/ from plugin")
 
+    # Fleet management commands (delegates to Click CLI)
+    fleet_parser = subparsers.add_parser(
+        "fleet", help="Fleet orchestration — manage coding agents across VMs"
+    )
+    fleet_parser.add_argument(
+        "fleet_args", nargs=argparse.REMAINDER, help="Fleet subcommand and arguments"
+    )
+
     return parser
 
 
@@ -899,8 +888,9 @@ def _configure_amplihack_marketplace() -> bool:
             }
 
             # Write atomically
-            with open(settings_path, "w") as f:
-                json.dump(settings, f, indent=2)
+            from .settings import write_json_atomic
+
+            write_json_atomic(settings_path, settings)
 
             if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
                 print(f"✅ Configured amplihack marketplace in {settings_path}")
@@ -916,9 +906,9 @@ def _configure_amplihack_marketplace() -> bool:
 
 
 def _fallback_to_directory_copy(reason: str = "Plugin installation failed") -> str:
-    """Copy .claude directory to ~/.amplihack/.claude/ (primary install location).
+    """Stage runtime assets into ~/.amplihack/ (primary install location).
 
-    This is the primary mechanism for deploying amplihack's .claude components
+    This is the primary mechanism for deploying amplihack's runtime components
     to the user's home directory. Used both as a fallback when Claude Code plugin
     installation is unavailable AND as the primary method for amplifier command.
 
@@ -936,13 +926,61 @@ def _fallback_to_directory_copy(reason: str = "Plugin installation failed") -> s
     if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
         print(f"   Reason: {reason}")
 
-    install_dir = str(Path.home() / ".amplihack" / ".claude")
     amplihack_src = Path(amplihack.__file__).parent
-    Path(install_dir).mkdir(parents=True, exist_ok=True)
-    copied = copytree_manifest(str(amplihack_src), install_dir, ".claude")
-    if not copied:
-        print("❌ Failed to copy .claude directory")
+    return str(_stage_home_runtime_assets(amplihack_src))
+
+
+def _sync_home_runtime_directory(source_dir: Path, target_dir: Path, description: str) -> None:
+    """Sync a non-.claude runtime directory into ~/.amplihack."""
+    if not source_dir.exists():
+        print(f"❌ Required runtime directory missing: {source_dir}")
         sys.exit(1)
+
+    target_dir.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        shutil.copytree(source_dir, target_dir, dirs_exist_ok=True)
+    except OSError as exc:
+        print(f"❌ Failed to stage {description} to {target_dir}: {exc}")
+        sys.exit(1)
+
+
+def _resolve_runtime_source_root(amplihack_src: Path) -> Path:
+    """Resolve the source root that contains runtime assets for staging."""
+    candidates = [
+        amplihack_src,
+        amplihack_src.parent.parent,
+    ]
+
+    for candidate in candidates:
+        if (candidate / ".claude").exists():
+            return candidate
+
+    return amplihack_src
+
+
+def _stage_home_runtime_assets(amplihack_src: Path) -> Path:
+    """Stage the runtime layout expected by external-repo workflows into ~/.amplihack."""
+    home_root = Path.home() / ".amplihack"
+    home_root.mkdir(parents=True, exist_ok=True)
+    source_root = _resolve_runtime_source_root(amplihack_src)
+
+    install_dir = home_root / ".claude"
+    copied = copytree_manifest(str(source_root), str(install_dir), ".claude")
+    if not copied:
+        print("❌ Failed to stage amplihack framework to ~/.amplihack/.claude/")
+        sys.exit(1)
+
+    bundle_source = source_root / "amplifier-bundle"
+    _sync_home_runtime_directory(bundle_source, home_root / "amplifier-bundle", "amplifier-bundle/")
+
+    for filename in ("CLAUDE.md", "AMPLIHACK.md"):
+        source_file = source_root / filename
+        if source_file.exists():
+            try:
+                shutil.copy2(source_file, home_root / filename)
+            except OSError as exc:
+                print(f"❌ Failed to stage {filename} to {home_root}: {exc}")
+                sys.exit(1)
 
     return install_dir
 
@@ -979,9 +1017,10 @@ def _fix_global_statusline_path() -> None:
             statusline_config["command"] = correct_command
             settings["statusLine"] = statusline_config
 
-            # Write updated settings
-            with open(global_settings_path, "w", encoding="utf-8") as f:
-                json.dump(settings, f, indent=2, ensure_ascii=False)
+            # Write updated settings atomically
+            from .settings import write_json_atomic
+
+            write_json_atomic(global_settings_path, settings)
 
             if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
                 print(f"✓ Updated statusline path in {global_settings_path}")
@@ -992,15 +1031,110 @@ def _fix_global_statusline_path() -> None:
             print(f"Warning: Could not update global statusline path: {e}")
 
 
+def _ensure_rust_recipe_runner() -> None:
+    """Ensure the Rust recipe runner binary is available.
+
+    Called during startup for all launcher paths. Non-fatal — logs a
+    warning if the binary cannot be installed or found.
+    """
+    try:
+        from .recipes.rust_runner import ensure_rust_recipe_runner
+
+        if ensure_rust_recipe_runner():
+            print("✓ Rust recipe runner available")
+        else:
+            print("⚠ Rust recipe runner not installed — install Rust (rustup.rs) and run:")
+            print("  cargo install --git https://github.com/rysweet/amplihack-recipe-runner")
+    except Exception as e:
+        logging.getLogger(__name__).warning(
+            "Could not check recipe-runner-rs: %s",
+            e,
+            exc_info=True,
+        )
+
+
+def _common_launcher_startup(args: "argparse.Namespace") -> None:
+    """Run all shared startup initialization for launcher commands.
+
+    Consolidates initialization that must happen for every launcher path
+    (launch, claude, RustyClawd, copilot, codex, amplifier). Respects
+    --subprocess-safe to avoid concurrent write races (#2567).
+
+    Idempotent — safe to call multiple times (e.g. RustyClawd → launch_command).
+
+    Steps performed (in order):
+    1. Nesting detection and auto-staging
+    2. Framework staging (~/.amplihack/.claude/)
+    3. Rust recipe runner check
+    4. SDK dependency check
+    5. Power-steering re-enable prompt (#2544)
+    """
+    # Idempotency guard — skip if already run this process
+    if getattr(args, "_startup_done", False):
+        return
+    args._startup_done = True
+
+    subprocess_safe = getattr(args, "subprocess_safe", False)
+    if subprocess_safe:
+        return
+
+    # 1. Nesting detection — protect .claude/ when running in source repo
+    from .launcher.auto_stager import AutoStager
+    from .launcher.nesting_detector import NestingDetector
+
+    detector = NestingDetector()
+    nesting_result = detector.detect_nesting(Path.cwd(), sys.argv)
+
+    if nesting_result.requires_staging:
+        print("\n🚨 SELF-MODIFICATION PROTECTION ACTIVATED")
+        print("   Running nested in amplihack source repository")
+        print("   Auto-staging .claude/ to temp directory for safety")
+
+        stager = AutoStager()
+        staging_result = stager.stage_for_nested_execution(Path.cwd(), f"nested-{os.getpid()}")
+
+        print(f"   📁 Staged to: {staging_result.temp_root}")
+        print("   Your original .claude/ files are protected")
+        os.chdir(staging_result.temp_root)
+        print(f"   📂 CWD changed to: {staging_result.temp_root}\n")
+
+    # Store nesting result on args for session tracking
+    args._nesting_result = nesting_result
+
+    # 2. Framework staging
+    _ensure_amplihack_staged()
+
+    # 3. Rust recipe runner
+    _ensure_rust_recipe_runner()
+
+    # 4. SDK dependency check
+    try:
+        from .dep_check import ensure_sdk_deps
+
+        dep_result = ensure_sdk_deps()
+        if not dep_result.all_ok:
+            logger.warning("Some SDK deps could not be installed: %s", dep_result.missing)
+    except Exception as e:
+        logger.debug("SDK dep check skipped: %s", e)
+
+    # 5. Power-steering re-enable prompt (#2544)
+    try:
+        from .power_steering.re_enable_prompt import prompt_re_enable_if_disabled
+
+        prompt_re_enable_if_disabled()
+    except Exception as e:
+        logger.debug(f"Error checking power-steering re-enable prompt: {e}")
+
+
 def _ensure_amplihack_staged() -> None:
-    """Ensure .claude/ files are staged to ~/.amplihack/.claude/ for non-Claude commands.
+    """Ensure runtime assets are staged to ~/.amplihack/ for non-Claude commands.
 
     This function populates the unified staging directory used by copilot, amplifier,
     rustyclawd, and codex commands. Only runs in UVX deployment mode.
 
     The staging process:
-    1. Creates ~/.amplihack/.claude/ if it doesn't exist
-    2. Copies essential framework files using copytree_manifest()
+    1. Creates ~/.amplihack/ if it doesn't exist
+    2. Copies .claude/ and amplifier-bundle/ runtime assets
     3. Exits with code 1 if staging fails
 
     Raises:
@@ -1037,28 +1171,18 @@ def _ensure_amplihack_staged() -> None:
 
     # Debug logging
     if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-        print("📦 Staging amplihack framework to ~/.amplihack/.claude/")
+        print("📦 Staging amplihack runtime to ~/.amplihack/")
 
     # Determine source directory (package installation)
     import amplihack
 
     amplihack_src = Path(amplihack.__file__).parent
 
-    # Unified staging directory for all commands
-    staging_dir = Path.home() / ".amplihack" / ".claude"
-    staging_dir.mkdir(parents=True, exist_ok=True)
-
-    # Copy .claude/ files to staging directory
-    copied = copytree_manifest(str(amplihack_src), str(staging_dir), ".claude")
-
-    if not copied:
-        print("❌ Failed to stage amplihack framework to ~/.amplihack/.claude/")
-        print("   This is required for amplihack commands to work in UVX mode.")
-        sys.exit(1)
+    staging_dir = _stage_home_runtime_assets(amplihack_src)
 
     # Debug logging
     if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-        print(f"✓ Staged {len(copied)} directories to {staging_dir}")
+        print(f"✓ Staged amplihack runtime assets to {staging_dir.parent}")
 
     # Configure Claude Code hooks in ~/.claude/settings.json
     from .settings import ensure_settings_json
@@ -1104,6 +1228,8 @@ def main(argv: list[str] | None = None) -> int:
     Returns:
         Exit code.
     """
+    raw_args = sys.argv[1:] if argv is None else list(argv)
+
     # Platform compatibility check FIRST (fail-fast before any operations)
     from .launcher.platform_check import check_platform_compatibility
 
@@ -1111,9 +1237,12 @@ def main(argv: list[str] | None = None) -> int:
     if not platform_result.compatible:
         print(platform_result.message, file=sys.stderr)
         return 1
+    if platform_result.message:
+        # Partial support (e.g., native Windows) — warn but continue
+        print(platform_result.message, file=sys.stderr)
 
     # Auto-update check (only for uv tool installs, not uvx)
-    if not is_uvx_deployment():
+    if not is_uvx_deployment() and (not raw_args or raw_args[0] != "update"):
         from .auto_update import check_for_updates, prompt_and_upgrade
 
         try:
@@ -1144,8 +1273,9 @@ def main(argv: list[str] | None = None) -> int:
     args, claude_args = parse_args_with_passthrough(argv)
 
     # Auto-install missing blarify dependencies (scip-python, typescript-language-server, etc.)
-    # Skip for non-launch commands to avoid unnecessary delays
-    if not hasattr(args, "command") or args.command in (None, "launch"):
+    # Skip for non-launch commands and non-interactive mode to avoid blocking
+    _noninteractive = os.environ.get("AMPLIHACK_NONINTERACTIVE", "").strip() in ("1", "true", "yes")
+    if not _noninteractive and (not hasattr(args, "command") or args.command in (None, "launch")):
         try:
             from .memory.kuzu.indexing.dependency_installer import DependencyInstaller
 
@@ -1343,6 +1473,12 @@ def main(argv: list[str] | None = None) -> int:
     # Import the original functions for backward compatibility
     from . import _local_install, uninstall
 
+    if args.command == "version":
+        from . import __version__
+
+        print(f"amplihack {__version__}")
+        return 0
+
     if args.command == "install":
         # Use the existing install logic
         import tempfile
@@ -1360,6 +1496,11 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "uninstall":
         uninstall()
         return 0
+
+    elif args.command == "update":
+        from .auto_update import run_update_command
+
+        return run_update_command()
 
     elif args.command == "_local_install":
         _local_install(args.repo_root)
@@ -1432,6 +1573,9 @@ def main(argv: list[str] | None = None) -> int:
         if getattr(args, "append", None):
             return handle_append_instruction(args)
 
+        # Set agent binary env var for recipe runner and sub-processes
+        os.environ["AMPLIHACK_AGENT_BINARY"] = "claude"
+
         # Claude is an alias for launch
         if is_uvx_deployment():
             claude_args = add_plugin_args_for_uvx(claude_args)
@@ -1448,9 +1592,11 @@ def main(argv: list[str] | None = None) -> int:
         if getattr(args, "append", None):
             return handle_append_instruction(args)
 
-        # Ensure amplihack framework is staged (skip in subprocess-safe mode)
-        if not getattr(args, "subprocess_safe", False):
-            _ensure_amplihack_staged()
+        # Set agent binary env var for recipe runner and sub-processes
+        os.environ["AMPLIHACK_AGENT_BINARY"] = "claude"  # RustyClawd uses claude binary
+
+        # Shared startup (nesting, staging, deps, power-steering)
+        _common_launcher_startup(args)
 
         # Force RustyClawd usage (Rust implementation of Claude Code)
         os.environ["AMPLIHACK_USE_RUSTYCLAWD"] = "1"
@@ -1474,9 +1620,11 @@ def main(argv: list[str] | None = None) -> int:
         if getattr(args, "append", None):
             return handle_append_instruction(args)
 
-        # Ensure amplihack framework is staged (skip in subprocess-safe mode)
-        if not getattr(args, "subprocess_safe", False):
-            _ensure_amplihack_staged()
+        # Set agent binary env var for recipe runner and sub-processes
+        os.environ["AMPLIHACK_AGENT_BINARY"] = "copilot"
+
+        # Shared startup (nesting, staging, deps, power-steering)
+        _common_launcher_startup(args)
 
         # Handle auto mode
         exit_code = handle_auto_mode("copilot", args, claude_args)
@@ -1498,9 +1646,11 @@ def main(argv: list[str] | None = None) -> int:
         if getattr(args, "append", None):
             return handle_append_instruction(args)
 
-        # Ensure amplihack framework is staged (skip in subprocess-safe mode)
-        if not getattr(args, "subprocess_safe", False):
-            _ensure_amplihack_staged()
+        # Set agent binary env var for recipe runner and sub-processes
+        os.environ["AMPLIHACK_AGENT_BINARY"] = "codex"
+
+        # Shared startup (nesting, staging, deps, power-steering)
+        _common_launcher_startup(args)
 
         # Handle auto mode
         exit_code = handle_auto_mode("codex", args, claude_args)
@@ -1522,9 +1672,13 @@ def main(argv: list[str] | None = None) -> int:
         if getattr(args, "append", None):
             return handle_append_instruction(args)
 
-        # Ensure amplihack framework is staged (skip in subprocess-safe mode)
-        if not getattr(args, "subprocess_safe", False):
-            _ensure_amplihack_staged()
+        # Set agent binary env var for recipe runner and sub-processes
+        os.environ["AMPLIHACK_AGENT_BINARY"] = (
+            "claude"  # amplifier uses claude as underlying binary
+        )
+
+        # Shared startup (nesting, staging, deps, power-steering)
+        _common_launcher_startup(args)
 
         # Environment setup
         if getattr(args, "no_reflection", False):
@@ -1549,7 +1703,10 @@ def main(argv: list[str] | None = None) -> int:
         return launch_amplifier(args=claude_args or [])
 
     elif args.command == "uvx-help":
-        from .commands.uvx_helper import find_uvx_installation_path, print_uvx_usage_instructions
+        from .commands.uvx_helper import (  # type: ignore[reportMissingImports]
+            find_uvx_installation_path,
+            print_uvx_usage_instructions,
+        )
 
         if args.find_path:
             path = find_uvx_installation_path()
@@ -1601,10 +1758,10 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "memory":
         if args.memory_command == "tree":
             from .memory.cli_visualize import visualize_memory_tree
-            from .memory.models import MemoryType
 
             # Select backend (SQLite only; use KuzuGraphStore for graph storage)
             from .memory.database import MemoryDatabase
+            from .memory.models import MemoryType
 
             backend = MemoryDatabase()
             backend.initialize()
@@ -1684,7 +1841,9 @@ def main(argv: list[str] | None = None) -> int:
                 return 1
 
         if args.memory_command == "clean":
-            print("The 'memory clean' command has been removed. Use the database directly to clean up sessions.")
+            print(
+                "The 'memory clean' command has been removed. Use the database directly to clean up sessions."
+            )
             return 1
 
         create_parser().print_help()
@@ -1831,6 +1990,13 @@ def main(argv: list[str] | None = None) -> int:
 
         create_parser().print_help()
         return 1
+
+    elif args.command == "fleet":
+        from amplihack.fleet.fleet_cli import fleet_cli
+
+        fleet_args = args.fleet_args if args.fleet_args else ["--help"]
+        fleet_cli(fleet_args, standalone_mode=False)  # type: ignore[reportCallIssue]
+        return 0
 
     else:
         create_parser().print_help()

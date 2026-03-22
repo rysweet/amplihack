@@ -7,18 +7,24 @@ systematic software engineering.
 
 **📚 [View Full Documentation](https://rysweet.github.io/amplihack/)**
 
+**Requires**: Python 3.11+, Node.js 18+, git, [uv](https://docs.astral.sh/uv/).
+macOS/Linux/WSL only.
+
 ```sh
-# Quick start
+# Quick start — uvx is uv's package runner (like npx for Python)
 uvx --from git+https://github.com/rysweet/amplihack amplihack claude
 ```
 
 ---
 
-**New to amplihack?** Start with [Quick Start](#quick-start), then [Core Concepts](#core-concepts), then [Configuration](#configuration).
+**New to amplihack?** Start with [Quick Start](#quick-start), then
+[Core Concepts](#core-concepts), then [Configuration](#configuration).
 
-**Want to contribute?** Go to [Development](#development) and [CONTRIBUTING.md](CONTRIBUTING.md).
+**Want to contribute?** Go to [Development](#development) and
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
-**Already familiar?** Check out [Features](#features) and [Documentation Navigator](#documentation-navigator).
+**Already familiar?** Check out [Features](#features) and
+[Documentation Navigator](#documentation-navigator).
 
 ---
 
@@ -27,9 +33,11 @@ uvx --from git+https://github.com/rysweet/amplihack amplihack claude
 - [Why amplihack?](#why-amplihack)
 - [Quick Start](#quick-start)
 - [Core Concepts](#core-concepts)
-- [Features](#features)
+- [Feature Catalog](#feature-catalog)
+- [Fleet Management](#fleet-management)
 - [Configuration](#configuration)
 - [Documentation Navigator](#documentation-navigator)
+- [Windows Support](#windows-support)
 - [Development](#development)
 - [RustyClawd Integration](#rustyclawd-integration)
 - [License](#license)
@@ -61,10 +69,12 @@ high-quality code.
 
 ### Prerequisites
 
-- **Platform**: macOS, Linux, or Windows via WSL (native Windows is not
-  supported)
-- **Runtime**: Python 3.12+, Node.js 18+
+- **Platform**: macOS, Linux, or Windows via WSL. Native Windows has
+  [partial support](#windows-support).
+- **Runtime**: Python 3.11+, Node.js 18+
 - **Tools**: git, npm, uv ([astral.sh/uv](https://docs.astral.sh/uv/))
+- **Recommended**: Rust/cargo ([rustup.rs](https://rustup.rs/)) — required for
+  the Rust recipe runner
 - **Optional**: GitHub CLI (`gh`), Azure CLI (`az`)
 
 Detailed setup:
@@ -87,7 +97,31 @@ uvx --from git+https://github.com/rysweet/amplihack amplihack amplifier
 uvx --from git+https://github.com/rysweet/amplihack amplihack copilot
 ```
 
-This launches an interactive Claude Code session enhanced with amplihack's workflows, specialized agents, and development tools. You'll get a CLI prompt where you can describe tasks and the framework orchestrates their execution.
+This launches an interactive Claude Code session enhanced with amplihack's
+workflows, specialized agents, and development tools. You'll get a CLI prompt
+where you can describe tasks and the framework orchestrates their execution.
+
+### Trial the Rust CLI without replacing your current install
+
+Use the opt-in helper below to run the bundled Rust CLI under an isolated home
+directory. On a fresh machine, the helper downloads the latest compatible
+published `amplihack-rs` release binary automatically. Trial state stays out of
+your real `~/.claude` setup.
+
+```bash
+# Single-command fresh-machine flow
+uvx --from git+https://github.com/rysweet/amplihack \
+  amplihack-rust-trial \
+  --trial-home ~/.amplihack-rust-e2e \
+  copilot
+
+# Try specific commands without touching your current amplihack install
+uvx --from git+https://github.com/rysweet/amplihack amplihack-rust-trial recipe list
+uvx --from git+https://github.com/rysweet/amplihack amplihack-rust-trial mode detect
+```
+
+By default the helper stores trial state under `~/.amplihack-rust-trial` and
+does not change the default Python-based `amplihack` entrypoint.
 
 **Option 2: Global Install** (for daily use)
 
@@ -137,7 +171,9 @@ cd /path/to/my/project
 Add user authentication with OAuth2 support
 ```
 
-The `/dev` command is amplihack's primary entry point for development tasks. It automatically classifies your task, detects parallel workstreams, and orchestrates execution through the 23-step default workflow.
+The `/dev` command is amplihack's primary entry point for development tasks. It
+automatically classifies your task, detects parallel workstreams, and
+orchestrates execution through the 23-step default workflow.
 
 ### Developer Quick Example
 
@@ -197,6 +233,14 @@ What happens:
 > natural language prompts are all you need.
 
 ## Core Concepts
+
+| Term             | Definition                                                                                           |
+| ---------------- | ---------------------------------------------------------------------------------------------------- |
+| **Agent**        | A specialized AI role (e.g., architect, builder, reviewer) with a defined responsibility             |
+| **Workflow**     | A structured step-by-step process that guides task execution (e.g., the 23-step DEFAULT_WORKFLOW)    |
+| **Orchestrator** | Routes tasks to the right workflow and coordinates agents                                            |
+| **Recipe**       | A code-enforced workflow definition (YAML) that models cannot skip or shortcut                       |
+| **Skill**        | A self-contained capability that auto-activates based on context (e.g., PDF processing, Azure admin) |
 
 ### Philosophy
 
@@ -274,7 +318,8 @@ amplihack recipe run ./my-recipe.yaml --dry-run  # Preview execution
 amplihack recipe validate my-recipe.yaml         # Validate recipe syntax
 ```
 
-Full reference: [docs/reference/recipe-cli-reference.md](docs/reference/recipe-cli-reference.md)
+Full reference:
+[docs/reference/recipe-cli-reference.md](docs/reference/recipe-cli-reference.md)
 
 </details>
 
@@ -337,6 +382,45 @@ Full reference: [docs/reference/recipe-cli-reference.md](docs/reference/recipe-c
   style, workflow)
 - **[Statusline](https://rysweet.github.io/amplihack/reference/STATUSLINE/)** —
   Real-time session info
+
+### Fleet Management
+
+Manage coding agents (Claude Code, Copilot, Amplifier) running across multiple
+Azure VMs. The fleet admiral monitors sessions, reasons about what each agent
+needs, and can send commands autonomously.
+
+```bash
+# From the shell:
+amplihack fleet              # Interactive TUI dashboard
+amplihack fleet scout        # Discover all VMs/sessions, dry-run reasoning
+amplihack fleet advance      # Send next commands to sessions (live)
+amplihack fleet status       # Quick text overview
+amplihack fleet adopt devo   # Bring existing sessions under management
+amplihack fleet auth devo    # Propagate auth tokens to a VM
+
+# From the Claude Code REPL (interactive session):
+/fleet scout                 # Same commands available as slash commands
+/fleet advance --session deva:rustyclawd
+```
+
+**Key capabilities:**
+
+- **Scout** discovers all VMs and sessions via azlin (no SSH needed for
+  discovery)
+- **Admiral reasoning** uses LLM streaming to decide: wait, send_input, restart,
+  or escalate
+- **SessionCopilot** watches local sessions and auto-continues toward a goal
+  (`/amplihack:lock`)
+- **Dual backend** — uses Anthropic API when available, falls back to GitHub
+  Copilot SDK
+- **Safety** — dangerous input patterns blocked, shell metacharacter rejection,
+  confidence thresholds
+
+Requires [azlin](https://github.com/rysweet/azlin) for VM management.
+
+See [Fleet Tutorial](docs/fleet-orchestration/TUTORIAL.md) |
+[Architecture](docs/fleet-orchestration/ARCHITECTURE.md) |
+[Admiral Reasoning](docs/fleet-orchestration/ADMIRAL_REASONING.md)
 
 </details>
 
@@ -522,6 +606,42 @@ Custom workflows:
 - **[Security Context Preservation](https://rysweet.github.io/amplihack/SECURITY_CONTEXT_PRESERVATION/)** -
   Context handling
 
+## Windows Support
+
+amplihack has partial support for Windows native (PowerShell). The recommended
+approach remains **WSL** for full compatibility, but core features work
+natively.
+
+| Feature                                         |        Windows Native        | WSL / macOS / Linux |
+| ----------------------------------------------- | :--------------------------: | :-----------------: |
+| Core CLI (`amplihack claude/copilot/amplifier`) |              ✅              |         ✅          |
+| Workflows & recipes                             |              ✅              |         ✅          |
+| Persistent memory                               |              ✅              |         ✅          |
+| Proxy (LiteLLM)                                 |              ✅              |         ✅          |
+| Fleet management (multi-VM)                     |    ❌ (requires tmux/SSH)    |         ✅          |
+| Rust recipe runner                              |        ⚠️ (untested)         |         ✅          |
+| Docker sandbox                                  | ⚠️ (Docker Desktop required) |         ✅          |
+
+**Installation on Windows native:**
+
+```powershell
+# Requires Python 3.11+, Node.js 18+, git, uv
+uvx --from git+https://github.com/rysweet/amplihack amplihack copilot
+```
+
+**Known limitations:**
+
+- Fleet commands (`amplihack fleet *`) are unavailable — they require tmux and
+  SSH, which are Linux/macOS only. Use WSL for fleet operations.
+- Some language server integrations (multilspy) may have reduced functionality.
+- File permission management (chmod) is a no-op on Windows.
+
+For full compatibility, use
+[WSL](https://learn.microsoft.com/en-us/windows/wsl/install).
+
+See [issue #3112](https://github.com/rysweet/amplihack/issues/3112) for the
+complete Windows compatibility tracker.
+
 ## Development
 
 ### Contributing
@@ -547,6 +667,11 @@ amplihack launch
 ```bash
 pytest tests/
 ```
+
+Some tests require optional dependencies (e.g. kuzu graph database). These skip
+gracefully when the dependency is absent via `pytest.importorskip`. See
+[docs/KUZU_TEST_CONFIGURATION.md](docs/KUZU_TEST_CONFIGURATION.md) for details
+on kuzu test isolation and the approved skip pattern.
 
 ## RustyClawd Integration
 

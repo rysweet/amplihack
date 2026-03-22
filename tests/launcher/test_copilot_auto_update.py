@@ -3,7 +3,7 @@
 These tests are written FIRST (TDD approach) and will fail until implementation is complete.
 
 Tests cover:
-1. check_for_update() - fetches latest version from npm with 3s timeout
+1. check_for_update() - fetches latest version from npm with 15s timeout
 2. detect_install_method() - detects npm vs uvx installation
 3. prompt_user_to_update() - prompts user with update instructions
 4. _compare_versions() - compares semantic versions
@@ -16,6 +16,7 @@ from amplihack.launcher.copilot import (
     _compare_versions,
     check_for_update,
     detect_install_method,
+    ensure_latest_copilot,
     launch_copilot,
     prompt_user_to_update,
 )
@@ -88,8 +89,8 @@ class TestCheckForUpdate:
 
         # Should return the new version
         assert result == "1.5.0"
-        # Verify timeout was set to 3 seconds on npm call
-        assert mock_run.call_args_list[1][1]["timeout"] == 3
+        # Verify timeout was set to 15 seconds on npm call (increased from 3s for reliability)
+        assert mock_run.call_args_list[1][1]["timeout"] == 15
 
     @patch("amplihack.launcher.copilot.subprocess.run")
     def test_returns_none_when_up_to_date(self, mock_run):
@@ -235,25 +236,20 @@ class TestLaunchCopilotIntegration:
     """Test auto-update check integration in launch_copilot()."""
 
     @patch("amplihack.launcher.copilot.check_copilot", return_value=True)
-    @patch("amplihack.launcher.copilot.check_for_update")
-    @patch("amplihack.launcher.copilot.detect_install_method")
-    @patch("amplihack.launcher.copilot.prompt_user_to_update")
+    @patch("amplihack.launcher.copilot.ensure_latest_copilot")
     @patch("amplihack.launcher.copilot.subprocess.run")
     @patch("os.getcwd")
-    def test_checks_for_updates_on_launch(
+    def test_calls_ensure_latest_on_launch(
         self,
         mock_getcwd,
         mock_run,
-        mock_prompt,
-        mock_detect,
-        mock_check_update,
+        mock_ensure_latest,
         mock_check_copilot,
         tmp_path,
     ):
-        """Test that launch_copilot checks for updates."""
+        """Test that launch_copilot calls ensure_latest_copilot (auto-update)."""
         mock_getcwd.return_value = str(tmp_path)
-        mock_check_update.return_value = "1.5.0"
-        mock_detect.return_value = "npm"
+        mock_ensure_latest.return_value = True
         mock_run.return_value.returncode = 0
 
         # Create minimal .claude directory structure
@@ -261,78 +257,48 @@ class TestLaunchCopilotIntegration:
 
         launch_copilot(args=[])
 
-        # Verify update check was called
-        mock_check_update.assert_called_once()
+        # Verify auto-update was called
+        mock_ensure_latest.assert_called_once()
 
     @patch("amplihack.launcher.copilot.check_copilot", return_value=True)
-    @patch("amplihack.launcher.copilot.check_for_update")
-    @patch("amplihack.launcher.copilot.detect_install_method")
-    @patch("amplihack.launcher.copilot.prompt_user_to_update")
+    @patch("amplihack.launcher.copilot.ensure_latest_copilot")
     @patch("amplihack.launcher.copilot.subprocess.run")
     @patch("os.getcwd")
-    def test_prompts_user_when_update_available(
+    def test_continues_on_update_failure(
         self,
         mock_getcwd,
         mock_run,
-        mock_prompt,
-        mock_detect,
-        mock_check_update,
+        mock_ensure_latest,
         mock_check_copilot,
         tmp_path,
     ):
-        """Test prompts user when update is available."""
+        """Test launcher continues even if auto-update fails."""
         mock_getcwd.return_value = str(tmp_path)
-        mock_check_update.return_value = "1.5.0"
-        mock_detect.return_value = "npm"
+        mock_ensure_latest.return_value = False  # Update failed
         mock_run.return_value.returncode = 0
 
         (tmp_path / ".claude" / "runtime").mkdir(parents=True)
 
-        launch_copilot(args=[])
+        # Should not raise exception, should continue launching
+        result = launch_copilot(args=[])
 
-        # Verify user was prompted with correct info
-        mock_prompt.assert_called_once_with("1.5.0", "npm")
+        assert result == 0  # Successful launch despite update failure
 
     @patch("amplihack.launcher.copilot.check_copilot", return_value=True)
-    @patch("amplihack.launcher.copilot.check_for_update")
+    @patch("amplihack.launcher.copilot.ensure_latest_copilot")
     @patch("amplihack.launcher.copilot.subprocess.run")
     @patch("os.getcwd")
-    def test_no_prompt_when_up_to_date(
+    def test_continues_on_update_exception(
         self,
         mock_getcwd,
         mock_run,
-        mock_check_update,
+        mock_ensure_latest,
         mock_check_copilot,
         tmp_path,
     ):
-        """Test no prompt when already up to date."""
+        """Test launcher continues even if ensure_latest_copilot raises."""
         mock_getcwd.return_value = str(tmp_path)
-        mock_check_update.return_value = None  # No update available
-        mock_run.return_value.returncode = 0
-
-        (tmp_path / ".claude" / "runtime").mkdir(parents=True)
-
-        with patch("amplihack.launcher.copilot.prompt_user_to_update") as mock_prompt:
-            launch_copilot(args=[])
-
-            # Verify user was NOT prompted
-            mock_prompt.assert_not_called()
-
-    @patch("amplihack.launcher.copilot.check_copilot", return_value=True)
-    @patch("amplihack.launcher.copilot.check_for_update")
-    @patch("amplihack.launcher.copilot.subprocess.run")
-    @patch("os.getcwd")
-    def test_continues_on_update_check_failure(
-        self,
-        mock_getcwd,
-        mock_run,
-        mock_check_update,
-        mock_check_copilot,
-        tmp_path,
-    ):
-        """Test launcher continues even if update check fails."""
-        mock_getcwd.return_value = str(tmp_path)
-        mock_check_update.side_effect = Exception("Network error")
+        mock_ensure_latest.side_effect = Exception("Network error")
         mock_run.return_value.returncode = 0
 
         (tmp_path / ".claude" / "runtime").mkdir(parents=True)

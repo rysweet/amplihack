@@ -171,6 +171,7 @@ async def inject_memory_for_agents(
         return prompt, metadata
 
     except ImportError as e:
+        print(f"WARNING: Memory system not available: {e}", file=sys.stderr)
         logger.warning(f"Memory system not available: {e}")
         return prompt, {"memory_available": False, "error": "import_failed"}
 
@@ -247,6 +248,7 @@ async def extract_learnings_from_conversation(
         return metadata
 
     except ImportError as e:
+        print(f"WARNING: Memory system not available: {e}", file=sys.stderr)
         logger.warning(f"Memory system not available: {e}")
         return {"memory_available": False, "error": "import_failed"}
 
@@ -384,6 +386,7 @@ def inject_memory_for_agents_sync(
                 loop.close()
 
     except ImportError as e:
+        print(f"WARNING: Memory system not available: {e}", file=sys.stderr)
         logger.warning(f"Memory system not available: {e}")
         return prompt, {"memory_available": False, "error": "import_failed"}
 
@@ -469,6 +472,7 @@ def extract_learnings_from_conversation_sync(
                 loop.close()
 
     except ImportError as e:
+        print(f"WARNING: Memory system not available: {e}", file=sys.stderr)
         logger.warning(f"Memory system not available: {e}")
         return {"memory_available": False, "error": "import_failed", "learnings_stored": 0}
 

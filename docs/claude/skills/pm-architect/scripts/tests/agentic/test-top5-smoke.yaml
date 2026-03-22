@@ -1,0 +1,52 @@
+# Outside-in smoke test for /top5 priority aggregation
+# Validates the generate_top5.py CLI produces valid JSON output
+# with the expected structure from a user's perspective.
+
+scenario:
+  name: "Top 5 Priorities - Smoke Test"
+  description: |
+    Verifies that generate_top5.py runs successfully, produces valid JSON,
+    and contains the expected top-level keys (top5, sources, total_candidates).
+    Uses an empty project root so no GitHub calls are made.
+  type: cli
+  level: 1
+  tags: [cli, smoke, top5, pm-architect]
+
+  prerequisites:
+    - "Python 3.11+ is available"
+    - "PyYAML is installed"
+
+  steps:
+    # Run with empty project root (no .pm/ dir, no sources.yaml)
+    - action: launch
+      target: "python"
+      args:
+        - "scripts/generate_top5.py"
+        - "--project-root"
+        - "/tmp/top5-test-empty"
+      working_directory: ".claude/skills/pm-architect"
+      description: "Run generate_top5.py with empty project root"
+      timeout: 15s
+
+    # Verify valid JSON output with expected keys
+    - action: verify_output
+      contains: '"top5"'
+      timeout: 5s
+      description: "Output contains top5 key"
+
+    - action: verify_output
+      contains: '"sources"'
+      description: "Output contains sources key"
+
+    - action: verify_output
+      contains: '"total_candidates"'
+      description: "Output contains total_candidates key"
+
+    - action: verify_exit_code
+      expected: 0
+      description: "Script exits cleanly with code 0"
+
+  cleanup:
+    - action: stop_application
+      force: true
+      description: "Ensure process is terminated"

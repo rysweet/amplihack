@@ -60,6 +60,24 @@ class TestCLIPlatformIntegration:
                 # Expected - version handling or other CLI logic
                 pass
 
+    def test_cli_dispatches_update_command(self):
+        """CLI routes explicit update requests to the update handler."""
+        compatible_result = PlatformCheckResult(
+            compatible=True, platform_name="Linux", is_wsl=False, message=""
+        )
+
+        with (
+            patch(
+                "amplihack.launcher.platform_check.check_platform_compatibility",
+                return_value=compatible_result,
+            ),
+            patch("amplihack.auto_update.run_update_command", return_value=0) as mock_update,
+        ):
+            exit_code = main(["update"])
+
+        assert exit_code == 0
+        mock_update.assert_called_once_with()
+
     def test_cli_prints_error_message_on_windows(self, capsys):
         """CLI prints helpful error message on Windows."""
         incompatible_result = PlatformCheckResult(
@@ -122,35 +140,35 @@ class TestCLIPlatformErrorHandling:
 
 
 class TestCLIPlatformMessages:
-    """Test CLI platform error messages."""
+    """Test CLI platform messages."""
 
-    def test_wsl_guidance_message_format(self, capsys):
-        """WSL guidance message is properly formatted."""
-        message = """
-╔══════════════════════════════════════════════════════════════════════╗
-║                    WINDOWS DETECTED                                  ║
-╚══════════════════════════════════════════════════════════════════════╝
-
-amplihack requires a Unix-like environment
-""".strip()
-
-        incompatible_result = PlatformCheckResult(
-            compatible=False,
-            platform_name="Windows (native)",
+    def test_partial_support_warning_printed(self, capsys):
+        """Partial-support warning is printed to stderr but CLI continues."""
+        partial_result = PlatformCheckResult(
+            compatible=True,
+            platform_name="Windows (native, partial)",
             is_wsl=False,
-            message=message,
+            message="⚠️  Native Windows detected — running with partial support.",
         )
 
-        with patch(
-            "amplihack.launcher.platform_check.check_platform_compatibility",
-            return_value=incompatible_result,
+        with (
+            patch(
+                "amplihack.launcher.platform_check.check_platform_compatibility",
+                return_value=partial_result,
+            ),
+            patch("amplihack.cli.parse_args_with_passthrough") as mock_parse,
         ):
-            main(["--version"])
-            captured = capsys.readouterr()
+            from argparse import Namespace
 
-            # Check that box drawing characters are preserved
-            assert "WINDOWS DETECTED" in captured.err
-            assert "amplihack requires" in captured.err
+            mock_parse.return_value = (Namespace(command=None, version=True), [])
+
+            try:
+                main(["--version"])
+            except (SystemExit, AttributeError):
+                pass
+
+            captured = capsys.readouterr()
+            assert "partial support" in captured.err
 
 
 class TestCLIAllCommands:

@@ -21,7 +21,7 @@ requires: []
 invokes:
   - test-gap-analyzer (test coverage analysis)
   - shadow-testing (parallel test execution)
-  - outside-in-testing (methodology validation)
+  - qa-team (primary methodology validation; outside-in-testing remains an alias)
 output_location: e2e/
 ---
 
@@ -614,7 +614,7 @@ The skill:
 3. Runs tests against both environments
 4. Reports discrepancies
 
-**With outside-in-testing methodology:**
+**With qa-team methodology (formerly outside-in-testing):**
 
 The skill inherently follows outside-in testing:
 

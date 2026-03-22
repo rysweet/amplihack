@@ -1,0 +1,108 @@
+scenario:
+  name: "SessionCopilot Lifecycle - Claude Code"
+  description: >
+    End-to-end test of the SessionCopilot with a real Claude Code session.
+    Lock mode is enabled with a goal, agent works, stop hook fires,
+    copilot reads JSONL transcript, LLM reasons, suggestion is returned.
+  type: cli
+  tags: [copilot, e2e, claude, fleet]
+  timeout: 120s
+
+  prerequisites:
+    - "claude CLI is installed and on PATH"
+    - "ANTHROPIC_API_KEY is set"
+    - "amplihack package installed in .venv"
+
+  environment:
+    variables:
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY}"
+
+  steps:
+    # Step 1: Clean lock state
+    - action: launch
+      target: ".venv/bin/python"
+      args: [".claude/tools/amplihack/lock_tool.py", "unlock"]
+      description: "Ensure lock mode is off before test"
+
+    - action: verify_exit_code
+      expected: 0
+
+    # Step 2: Enable lock mode with a simple goal
+    - action: launch
+      target: ".venv/bin/python"
+      args: [".claude/tools/amplihack/lock_tool.py", "lock"]
+      description: "Enable lock mode"
+
+    - action: verify_exit_code
+      expected: 0
+
+    # Step 3: Write the goal file
+    - action: launch
+      target: "bash"
+      args: ["-c", "mkdir -p .claude/runtime/locks && echo 'Create a file called /tmp/copilot-test-goal.txt with the text hello world' > .claude/runtime/locks/.lock_goal"]
+      description: "Write goal file for copilot"
+
+    - action: verify_exit_code
+      expected: 0
+
+    # Step 4: Verify lock is active
+    - action: launch
+      target: ".venv/bin/python"
+      args: [".claude/tools/amplihack/lock_tool.py", "check"]
+      description: "Verify lock mode is active"
+
+    - action: verify_output
+      contains: "LOCKED"
+
+    # Step 5: Run copilot suggest directly (simulates stop hook)
+    - action: launch
+      target: ".venv/bin/python"
+      args: ["-c", "from amplihack.fleet.fleet_copilot import SessionCopilot; c = SessionCopilot(goal='Create a file called /tmp/copilot-test-goal.txt'); s = c.suggest(); print(f'ACTION:{s.action}'); print(f'CONFIDENCE:{s.confidence}'); print(f'REASONING:{s.reasoning}')"]
+      description: "Invoke SessionCopilot.suggest() with real LLM"
+      timeout: 60s
+
+    - action: verify_output
+      matches: "ACTION:(send_input|wait|escalate|mark_complete)"
+      description: "Copilot must return a valid action"
+
+    - action: verify_output
+      matches: "CONFIDENCE:\\d+\\.\\d+"
+      description: "Copilot must return a confidence score"
+
+    - action: verify_output
+      matches: "REASONING:.+"
+      description: "Copilot must provide reasoning"
+
+    # Step 6: Test copilot-status CLI command
+    - action: launch
+      target: ".venv/bin/python"
+      args: ["-m", "amplihack.fleet.fleet_cli", "copilot-status"]
+      description: "Fleet copilot-status should show lock state"
+
+    - action: verify_output
+      contains: "locked"
+      case_sensitive: false
+      description: "copilot-status should indicate lock is active"
+
+    # Step 7: Test copilot-log CLI command
+    - action: launch
+      target: ".venv/bin/python"
+      args: ["-m", "amplihack.fleet.fleet_cli", "copilot-log"]
+      description: "Fleet copilot-log should show decision history"
+
+    - action: verify_exit_code
+      expected: 0
+
+    # Step 8: Clean up lock
+    - action: launch
+      target: ".venv/bin/python"
+      args: [".claude/tools/amplihack/lock_tool.py", "unlock"]
+      description: "Disable lock mode"
+
+    - action: verify_exit_code
+      expected: 0
+
+  cleanup:
+    - action: launch
+      target: "bash"
+      args: ["-c", "rm -f .claude/runtime/locks/.lock_active .claude/runtime/locks/.lock_goal /tmp/copilot-test-goal.txt"]

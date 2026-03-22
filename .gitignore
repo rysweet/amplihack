@@ -211,3 +211,4 @@ eval_results.json
 eval_progressive_example/
 generated-agents/
 eval_500_turns_report.json
+amplihack-recipe-runner-rs/
