@@ -1554,22 +1554,36 @@ steps:
   - id: "step-19d-verification-gate"
     type: "bash"
     command: |
-      echo "=== STEP 19 VERIFICATION GATE ===" && \
-      echo "" && \
-      echo "Before proceeding, verify ALL of the following:" && \
-      echo "" && \
-      echo "  ✓ Did I invoke the REVIEWER agent for philosophy check?" && \
-      echo "  ✓ Did I invoke the PATTERNS agent?" && \
-      echo "  ✓ Did I complete the zero-BS verification?" && \
-      echo "  ✓ Did I check for Forbidden Pattern violations?" && \
-      echo "  ✓ Are all findings documented?" && \
-      echo "  ✓ Any issues found have been addressed?" && \
-      echo "" && \
-      echo "Philosophy check: {{philosophy_check}}" && \
-      echo "Patterns check: {{patterns_check}}" && \
-      echo "" && \
-      echo "If any verification fails, STOP and complete the missing step." && \
-      echo "" && \
+      # ARG_MAX guard: large template variables (philosophy_check, patterns_check)
+      # are captured via heredoc and truncated to 1 KB summaries.  Echoing them
+      # raw caused ARG_MAX overflow — see #3366 / b1f87112b.
+      PHIL_CHECK=$(cat <<'EOFPHILCHECK'
+      {{philosophy_check}}
+      EOFPHILCHECK
+      )
+      PAT_CHECK=$(cat <<'EOFPATCHECK'
+      {{patterns_check}}
+      EOFPATCHECK
+      )
+      PHIL_SUMMARY=$(printf '%.1024s' "$PHIL_CHECK")
+      PAT_SUMMARY=$(printf '%.1024s' "$PAT_CHECK")
+
+      echo "=== STEP 19 VERIFICATION GATE ==="
+      echo ""
+      echo "Before proceeding, verify ALL of the following:"
+      echo ""
+      echo "  ✓ Did I invoke the REVIEWER agent for philosophy check?"
+      echo "  ✓ Did I invoke the PATTERNS agent?"
+      echo "  ✓ Did I complete the zero-BS verification?"
+      echo "  ✓ Did I check for Forbidden Pattern violations?"
+      echo "  ✓ Are all findings documented?"
+      echo "  ✓ Any issues found have been addressed?"
+      echo ""
+      echo "Philosophy check (first 1KB): $PHIL_SUMMARY"
+      echo "Patterns check (first 1KB): $PAT_SUMMARY"
+      echo ""
+      echo "If any verification fails, STOP and complete the missing step."
+      echo ""
       echo "=== GATE PASSED - Proceed to Step 20 ==="
     output: "step_19_gate_status"
 
@@ -1579,7 +1593,7 @@ steps:
   - id: "step-20-final-cleanup"
     agent: "amplihack:cleanup"
     prompt: |
-      # Step 19: Final Cleanup and Verification
+      # Step 20: Final Cleanup and Verification
 
       **CRITICAL:** Original user requirements:
       {{final_requirements}}
@@ -1699,10 +1713,6 @@ steps:
       echo "=== Step 20: Converting PR to Ready ===" && \
       echo "" && \
       echo "--- Verifying All Steps Complete ---" && \
-      echo "Philosophy check: {{philosophy_check}}" && \
-      echo "Patterns check: {{patterns_check}}" && \
-      echo "Cleanup: {{final_cleanup}}" && \
-      echo "Quality audit: {{quality_audit_results}}" && \
       echo "" && \
       echo "--- Converting PR to Ready ---" && \
       gh pr ready && \
