@@ -295,7 +295,7 @@ steps:
       # noise number captured via 2>&1 in step-03a.
       # EOFISSUECREATION delimiter is intentionally long/specific to prevent accidental
       # collision with issue body text that might contain common delimiters like "EOF".
-      ISSUE_CREATION=$(cat <<EOFISSUECREATION
+      ISSUE_CREATION=$(cat <<'EOFISSUECREATION'
       {{issue_creation}}
       EOFISSUECREATION
       )

@@ -43,7 +43,7 @@ from pathlib import Path
 # prevent accidental collision with issue body text that might contain "EOF".
 _BL001_FIXED_CMD = textwrap.dedent("""\
     set +H  # disable history expansion so !-tokens are safe
-    ISSUE_CREATION=$(cat <<EOFISSUECREATION
+    ISSUE_CREATION=$(cat <<'EOFISSUECREATION'
     {issue_creation}
     EOFISSUECREATION
     )
