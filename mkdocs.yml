@@ -161,13 +161,14 @@ nav:
           - Tutorial: remote-sessions/TUTORIAL.md
   - Code Atlas:
       - Overview: atlas/index.md
-      - Runtime Topology: atlas/runtime-topology/layer1-runtime/README.md
-      - Compile-Time Dependencies: atlas/compile-deps/layer2-dependencies/README.md
-      - API Contracts: atlas/api-contracts/layer3-routing/README.md
-      - Data Flow: atlas/data-flow/layer4-dataflow/README.md
-      - User Journeys: atlas/user-journeys/layer5-journeys/README.md
-      - Service Components: atlas/service-components/README.md
+      - Repository Surface: atlas/repo-surface/README.md
       - AST+LSP Bindings: atlas/ast-lsp-bindings/README.md
+      - Compile-Time Dependencies: atlas/compile-deps/README.md
+      - Runtime Topology: atlas/runtime-topology/README.md
+      - API Contracts: atlas/api-contracts/README.md
+      - Data Flow: atlas/data-flow/README.md
+      - Service Components: atlas/service-components/README.md
+      - User Journeys: atlas/user-journeys/README.md
       - Inventory:
           - Services: atlas/inventory/services.md
           - Environment Variables: atlas/inventory/env-vars.md

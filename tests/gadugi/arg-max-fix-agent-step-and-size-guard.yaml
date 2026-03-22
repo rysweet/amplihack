@@ -1,0 +1,134 @@
+# Outside-in test: ARG_MAX overflow fix — agent step conversion + size guard (#3362)
+# Verifies that step-19d is now an agent step (not bash), step-21 no longer
+# echoes large variable expansions, and rust_runner.py has a 32KB size guard
+# with file:// URI spill logic and temp dir cleanup.
+
+scenario:
+  name: "ARG_MAX Fix - Agent Step Conversion and Size Guard"
+  description: |
+    PR #3366 fixes ARG_MAX overflow in two phases:
+    Phase 1 (default-workflow.yaml): step-19d converted from bash echo to agent
+    step; step-21 large variable echoes removed while preserving gh pr ready and
+    gh pr comment.
+    Phase 2 (rust_runner.py): 32KB size guard in _build_rust_command(); large
+    values spill to temp files with file:// URI; template expansion reads
+    file:// URIs transparently; temp dir cleanup in finally block.
+  type: cli
+  level: 2
+
+  tags: [arg-max, overflow, agent-step, size-guard, regression, issue-3362, pr-3366]
+
+  prerequisites:
+    - "amplifier-bundle/recipes/default-workflow.yaml exists"
+    - "src/amplihack/recipes/rust_runner.py exists"
+    - "Python 3.10+ with yaml and pytest importable"
+
+  steps:
+    # --- Phase 1: default-workflow.yaml assertions ---
+
+    # step-19d must be an agent step (has 'agent:' field)
+    - action: grep
+      target: "amplifier-bundle/recipes/default-workflow.yaml"
+      pattern: 'step-19d-verification-gate.*\n\s+agent:'
+      description: "step-19d must have an 'agent:' field (agent step, not bash)"
+
+    # step-19d must NOT have type: "bash"
+    - action: grep_absent
+      target: "amplifier-bundle/recipes/default-workflow.yaml"
+      pattern: 'step-19d-verification-gate.*\n\s+type:\s*"?bash"?'
+      description: "step-19d must NOT have type: bash"
+
+    # step-21 must NOT echo philosophy_check
+    - action: grep_absent
+      target: "amplifier-bundle/recipes/default-workflow.yaml"
+      pattern: "step-21-pr-ready.*echo.*philosophy_check"
+      description: "step-21 must not echo philosophy_check (large var removed)"
+
+    # step-21 must NOT echo patterns_check
+    - action: grep_absent
+      target: "amplifier-bundle/recipes/default-workflow.yaml"
+      pattern: "step-21-pr-ready.*echo.*patterns_check"
+      description: "step-21 must not echo patterns_check (large var removed)"
+
+    # step-21 must NOT echo final_cleanup
+    - action: grep_absent
+      target: "amplifier-bundle/recipes/default-workflow.yaml"
+      pattern: "step-21-pr-ready.*echo.*final_cleanup"
+      description: "step-21 must not echo final_cleanup (large var removed)"
+
+    # step-21 must NOT echo quality_audit_results
+    - action: grep_absent
+      target: "amplifier-bundle/recipes/default-workflow.yaml"
+      pattern: "step-21-pr-ready.*echo.*quality_audit_results"
+      description: "step-21 must not echo quality_audit_results (large var removed)"
+
+    # step-21 must still have gh pr ready
+    - action: grep
+      target: "amplifier-bundle/recipes/default-workflow.yaml"
+      pattern: "gh pr ready"
+      description: "step-21 must still invoke 'gh pr ready'"
+
+    # step-21 must still have gh pr comment
+    - action: grep
+      target: "amplifier-bundle/recipes/default-workflow.yaml"
+      pattern: "gh pr comment"
+      description: "step-21 must still invoke 'gh pr comment'"
+
+    # --- Phase 2: rust_runner.py assertions ---
+
+    # 32KB threshold constant
+    - action: grep
+      target: "src/amplihack/recipes/rust_runner.py"
+      pattern: "_ENV_VAR_SIZE_LIMIT.*=.*32.*1024"
+      description: "rust_runner.py must define 32KB size limit constant"
+
+    # file:// URI spill logic
+    - action: grep
+      target: "src/amplihack/recipes/rust_runner.py"
+      pattern: "file://"
+      description: "rust_runner.py must use file:// URI for spilled values"
+
+    # _spill_large_value or _write_spill_bytes function
+    - action: grep
+      target: "src/amplihack/recipes/rust_runner.py"
+      pattern: "def _spill_large_value|def _write_spill_bytes"
+      description: "rust_runner.py must define spill helper functions"
+
+    # _resolve_context_value for reading back file:// URIs
+    - action: grep
+      target: "src/amplihack/recipes/rust_runner.py"
+      pattern: "def _resolve_context_value"
+      description: "rust_runner.py must define _resolve_context_value for file:// URIs"
+
+    # temp dir cleanup in finally block
+    - action: grep
+      target: "src/amplihack/recipes/rust_runner.py"
+      pattern: 'shutil\.rmtree.*tmp_dir'
+      description: "rust_runner.py must clean up temp dir with shutil.rmtree"
+
+    # mkdtemp for secure temp dir creation
+    - action: grep
+      target: "src/amplihack/recipes/rust_runner.py"
+      pattern: 'tempfile\.mkdtemp'
+      description: "rust_runner.py must use tempfile.mkdtemp for temp dir creation"
+
+  cleanup:
+    - action: capture_output
+      save_as: "arg-max-fix-output.txt"
+      description: "Save full test output for debugging"
+
+# Expected Behavior:
+# - step-19d is an agent step (agent: amplihack:reviewer) — no longer a bash
+#   step that echoed large variable expansions into the command line
+# - step-21 preserves gh pr ready and gh pr comment but removes large variable
+#   echo statements (philosophy_check, patterns_check, final_cleanup,
+#   quality_audit_results) that caused ARG_MAX overflow
+# - rust_runner.py has a 32KB threshold (_ENV_VAR_SIZE_LIMIT) that gates
+#   whether context values are passed as env vars or spilled to temp files
+# - Spilled values use file:// URIs that are resolved transparently during
+#   template expansion via _resolve_context_value()
+# - Temp directory is created with tempfile.mkdtemp() and cleaned up in a
+#   finally block with shutil.rmtree()
+#
+# Run Command:
+# gadugi-test run tests/gadugi/arg-max-fix-agent-step-and-size-guard.yaml --verbose

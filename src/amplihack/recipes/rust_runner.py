@@ -11,9 +11,12 @@ import functools
 import json
 import logging
 import os
+import re
 import shutil
+import signal
 import subprocess
 import sys
+import tempfile
 import threading
 from pathlib import Path
 from typing import Any
@@ -21,6 +24,89 @@ from typing import Any
 from amplihack.recipes.models import RecipeResult, StepResult, StepStatus
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Env-var size guard: values >= this byte threshold are spilled to temp files
+# ---------------------------------------------------------------------------
+
+_ENV_VAR_SIZE_LIMIT = 32 * 1024  # 32 768 bytes — kernel limit guard
+
+# Pre-compiled at module level to avoid regex recompilation on every
+# _sanitize_key() call.
+_KEY_SANITIZE_RE: re.Pattern[str] = re.compile(r"[^a-zA-Z0-9_]")
+
+# Fast-path threshold for the encode() guard.
+# UTF-8 uses at most 4 bytes per code-point, so a string shorter than
+# limit/4 characters cannot possibly encode to >= limit bytes.
+# Strings below this character count skip encode() entirely.
+_FAST_PATH_CHAR_LIMIT: int = _ENV_VAR_SIZE_LIMIT // 4  # 8 192
+
+
+def _sanitize_key(key: str) -> str:
+    """Return a filesystem-safe name derived from an env-var key.
+
+    Replaces any character outside ``[a-zA-Z0-9_]`` with ``_`` and
+    truncates to 64 characters.  Falls back to ``_empty_key_`` when the
+    result would otherwise be empty.
+
+    SECURITY: strips all characters outside [A-Za-z0-9_] to prevent
+    path traversal (e.g. '../../../etc/passwd' → 'etcpasswd').
+    """
+    safe = _KEY_SANITIZE_RE.sub("_", key)[:64]
+    return safe if safe else "_empty_key_"
+
+
+def _write_spill_bytes(key: str, encoded: bytes, tmp_dir: Path) -> str:
+    """Write pre-encoded bytes to ``<tmp_dir>/<safe_key>`` and return a ``file://`` URI.
+
+    Internal helper used by :func:`_build_rust_command` when it already holds
+    encoded bytes — avoids a second ``encode()`` call.
+
+    The directory is created lazily (mode 0o700 — owner-only); the file is
+    restricted to 0o600 (owner read/write only).
+
+    Args:
+        key:     Context variable name (used to derive the filename).
+        encoded: UTF-8 bytes already produced by the caller.
+        tmp_dir: Directory under which the file is written.
+
+    Returns:
+        Absolute ``file://`` URI pointing at the written file.
+    """
+    tmp_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+    file_path = tmp_dir / _sanitize_key(key)
+    file_path.write_bytes(encoded)
+    file_path.chmod(0o600)
+    return f"file://{file_path.resolve()}"
+
+
+def _spill_large_value(key: str, value: str, tmp_dir: Path) -> str:
+    """Write *value* to a temp file under *tmp_dir* and return its ``file://`` URI.
+
+    Public interface — accepts a plain string, encodes it to UTF-8 once, and
+    delegates to :func:`_write_spill_bytes`.
+
+    The directory is created lazily (mode 0o700 — owner-only) and the
+    resulting file is restricted to 0o600 (owner read/write only).
+
+    Security: only call this on values produced within the same process.
+    Never pass externally-supplied paths to the resolver.
+    """
+    return _write_spill_bytes(key, value.encode("utf-8"), tmp_dir)
+
+
+def _resolve_context_value(value: str) -> str:
+    """Dereference a ``file://`` URI back to the file's text content.
+
+    Plain strings (no ``file://`` prefix) are returned unchanged with no I/O.
+
+    Security: only call this on values produced by ``_spill_large_value``
+    within the same process.  Never call on externally-supplied values —
+    this function reads arbitrary filesystem paths.
+    """
+    if value.startswith("file://"):
+        return Path(value[7:]).read_text(encoding="utf-8")
+    return value
 
 
 @functools.lru_cache(maxsize=1)
@@ -186,6 +272,23 @@ def ensure_rust_recipe_runner(*, quiet: bool = False) -> bool:
 # -- Helpers for run_recipe_via_rust -----------------------------------------
 
 
+def _serialize_context_value(v: Any) -> str:
+    """Serialize a context value to a string suitable for ``--set key=<str>``.
+
+    * ``bool``  → ``"true"`` / ``"false"`` (not Python's ``"True"``/``"False"``)
+    * ``dict`` / ``list`` → JSON-encoded string
+    * Everything else → ``str(v)``
+
+    Serialization happens *before* the byte-length guard so that the guard
+    operates on the form the Rust binary actually receives.
+    """
+    if isinstance(v, bool):
+        return "true" if v else "false"
+    if isinstance(v, (dict, list)):
+        return json.dumps(v)
+    return str(v)
+
+
 def _redact_command_for_log(cmd: list[str]) -> str:
     """Build a log-safe command string with context values masked."""
     parts: list[str] = []
@@ -226,8 +329,16 @@ def _build_rust_command(
     progress: bool,
     recipe_dirs: list[str] | None,
     user_context: dict[str, Any] | None,
+    tmp_dir: Path | None = None,
 ) -> list[str]:
-    """Assemble the CLI command list for the Rust binary."""
+    """Assemble the CLI command list for the Rust binary.
+
+    Large context values (>= ``_ENV_VAR_SIZE_LIMIT`` UTF-8 bytes) are spilled
+    to temporary files under *tmp_dir* and replaced with ``file://`` URIs.
+    *tmp_dir* is created lazily — only when the first value exceeds the limit.
+    When *tmp_dir* is ``None``, spilling is disabled and all values are passed
+    inline (backward-compatible).
+    """
     abs_working_dir = str(Path(working_dir).resolve())
     cmd = [binary, name, "--output-format", "json", "-C", abs_working_dir]
 
@@ -251,12 +362,22 @@ def _build_rust_command(
 
     if user_context:
         for key, value in user_context.items():
-            if isinstance(value, (dict, list)):
-                cmd.extend(["--set", f"{key}={json.dumps(value)}"])
-            elif isinstance(value, bool):
-                cmd.extend(["--set", f"{key}={'true' if value else 'false'}"])
-            else:
-                cmd.extend(["--set", f"{key}={value}"])
+            serialized = _serialize_context_value(value)
+
+            # Fast-path: a string with fewer than _FAST_PATH_CHAR_LIMIT chars
+            # cannot encode to >= _ENV_VAR_SIZE_LIMIT bytes (UTF-8 uses at most
+            # 4 bytes per code-point, so len(s) < limit/4 => encoded < limit).
+            # Also skip spilling when no tmp_dir is provided.
+            if tmp_dir is None or len(serialized) < _FAST_PATH_CHAR_LIMIT:
+                cmd.extend(["--set", f"{key}={serialized}"])
+                continue
+
+            # Encode once — reuse the same bytes for both the size check and
+            # the file write, avoiding a second full encode() call.
+            encoded = serialized.encode("utf-8")
+            if len(encoded) >= _ENV_VAR_SIZE_LIMIT:
+                serialized = _write_spill_bytes(key, encoded, tmp_dir)
+            cmd.extend(["--set", f"{key}={serialized}"])
 
     return cmd
 
@@ -302,6 +423,13 @@ def _stream_process_output(process: subprocess.Popen[str]) -> tuple[str, str, in
 
 def _execute_rust_command(cmd: list[str], *, name: str, progress: bool) -> RecipeResult:
     """Run the Rust binary and parse its JSON output into a ``RecipeResult``."""
+    env = os.environ.copy()
+    if "AMPLIHACK_AGENT_BINARY" not in env:
+        logger.warning(
+            "AMPLIHACK_AGENT_BINARY not set — Rust runner will default to 'claude'. "
+            "Set the env var via the amplihack CLI dispatcher to use a different agent."
+        )
+
     if progress:
         process = subprocess.Popen(
             cmd,
@@ -309,6 +437,7 @@ def _execute_rust_command(cmd: list[str], *, name: str, progress: bool) -> Recip
             stderr=subprocess.PIPE,
             text=True,
             bufsize=1,
+            env=env,
         )
         stdout, stderr, returncode = _stream_process_output(process)
     else:
@@ -316,6 +445,7 @@ def _execute_rust_command(cmd: list[str], *, name: str, progress: bool) -> Recip
             cmd,
             capture_output=True,
             text=True,
+            env=env,
         )
         stdout = result.stdout
         stderr = result.stderr
@@ -325,9 +455,32 @@ def _execute_rust_command(cmd: list[str], *, name: str, progress: bool) -> Recip
         data = json.loads(stdout)
     except (json.JSONDecodeError, TypeError):
         if returncode != 0:
+            # Negative exit codes indicate signal kills (e.g. -15 = SIGTERM).
+            # Produce a clear message instead of dumping the entire progress
+            # stderr buffer which makes the error unreadable.
+            if returncode < 0:
+                sig_num = -returncode
+                sig_name = (
+                    signal.Signals(sig_num).name
+                    if sig_num in signal.valid_signals()
+                    else str(sig_num)
+                )
+                raise RuntimeError(
+                    f"Rust recipe runner killed by signal {sig_name} ({sig_num}). "
+                    f"The process was terminated externally before producing output."
+                )
+            # For non-signal failures, show only the last few lines of stderr
+            # (not the full progress log which can be thousands of lines).
+            stderr_tail = ""
+            if stderr:
+                lines = stderr.strip().splitlines()
+                # Skip progress/heartbeat lines, show last 5 meaningful lines
+                meaningful = [
+                    ln for ln in lines if not ln.strip().startswith(("▶", "✓", "⊘", "✗", "[agent]"))
+                ]
+                stderr_tail = "\n".join(meaningful[-5:]) if meaningful else "\n".join(lines[-5:])
             raise RuntimeError(
-                f"Rust recipe runner failed (exit {returncode}): "
-                f"{stderr[:1000] if stderr else 'no stderr'}"
+                f"Rust recipe runner failed (exit {returncode}): {stderr_tail or 'no stderr'}"
             )
         raise RuntimeError(
             f"Rust recipe runner returned unparseable output (exit {returncode}): "
@@ -362,12 +515,24 @@ def _default_package_recipe_dirs() -> list[str]:
     but only contain a subset of recipes, while the full bundle lives at the
     repo root ``amplifier-bundle/recipes``.  The Rust runner needs both paths
     to match Python-side discovery in real environments (issue #3002).
+
+    Also includes ``$AMPLIHACK_HOME/amplifier-bundle/recipes/`` when the env
+    var is set, so recipes are found when running from non-amplihack repos
+    (issue #3237).
     """
     try:
-        from amplihack.recipes.discovery import _PACKAGE_BUNDLE_DIR, _REPO_ROOT_BUNDLE_DIR
+        from amplihack.recipes.discovery import (
+            _AMPLIHACK_HOME_BUNDLE_DIR,
+            _PACKAGE_BUNDLE_DIR,
+            _REPO_ROOT_BUNDLE_DIR,
+        )
+
+        candidates = [_PACKAGE_BUNDLE_DIR, _REPO_ROOT_BUNDLE_DIR]
+        if _AMPLIHACK_HOME_BUNDLE_DIR is not None:
+            candidates.append(_AMPLIHACK_HOME_BUNDLE_DIR)
 
         dirs: list[str] = []
-        for candidate in (_PACKAGE_BUNDLE_DIR, _REPO_ROOT_BUNDLE_DIR):
+        for candidate in candidates:
             if candidate.is_dir():
                 candidate_str = str(candidate)
                 if candidate_str not in dirs:
@@ -460,21 +625,34 @@ def run_recipe_via_rust(
         working_dir=working_dir,
     )
 
-    cmd = _build_rust_command(
-        binary,
-        resolved_name,
-        working_dir=working_dir,
-        dry_run=dry_run,
-        auto_stage=auto_stage,
-        progress=progress,
-        recipe_dirs=effective_recipe_dirs,
-        user_context=user_context,
-    )
+    # Create a process-scoped temp directory for context value spill files.
+    # tempfile.mkdtemp() creates it atomically (O_CREAT|O_EXCL) with 0o700
+    # permissions, eliminating TOCTOU race conditions from predictable paths.
+    # The finally block removes it unconditionally.
+    tmp_dir = Path(tempfile.mkdtemp(prefix=f"recipe-context-{os.getpid()}-"))
 
-    logger.info(
-        "Executing recipe '%s' via Rust binary: %s",
-        name,
-        _redact_command_for_log(cmd),
-    )
+    try:
+        cmd = _build_rust_command(
+            binary,
+            resolved_name,
+            working_dir=working_dir,
+            dry_run=dry_run,
+            auto_stage=auto_stage,
+            progress=progress,
+            recipe_dirs=effective_recipe_dirs,
+            user_context=user_context,
+            tmp_dir=tmp_dir,
+        )
 
-    return _execute_rust_command(cmd, name=name, progress=progress)
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(
+                "Executing recipe '%s' via Rust binary: %s",
+                name,
+                _redact_command_for_log(cmd),
+            )
+
+        return _execute_rust_command(cmd, name=name, progress=progress)
+    finally:
+        # Clean up spill directory whether execution succeeded or failed.
+        if tmp_dir.exists():
+            shutil.rmtree(tmp_dir, ignore_errors=True)

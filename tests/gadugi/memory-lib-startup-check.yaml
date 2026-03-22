@@ -1,0 +1,62 @@
+# Outside-in test: memory lib startup check (#3327 / PR #3351)
+# Verifies that memory_auto_install.py is a pure import guard with no
+# subprocess calls, and that amplihack-memory-lib remains a mandatory
+# dependency in pyproject.toml.
+
+scenario:
+  name: "Memory Lib Startup Check - PEP 668 Compliance"
+  description: |
+    When amplihack starts, it must verify that amplihack-memory-lib is
+    importable without running any subprocess pip install commands. The
+    memory lib is a mandatory dependency — the package manager handles
+    installation. The startup check only verifies and fails loudly if
+    the install is broken.
+  type: cli
+  level: 1
+
+  tags: [memory, startup, pep668, regression, issue-3327]
+
+  prerequisites:
+    - "src/amplihack/memory_auto_install.py exists"
+    - "pyproject.toml exists"
+
+  steps:
+    - action: grep
+      target: "src/amplihack/memory_auto_install.py"
+      pattern: "import amplihack_memory"
+      description: "Startup check imports amplihack_memory to verify availability"
+
+    - action: grep
+      target: "src/amplihack/memory_auto_install.py"
+      pattern: "return True"
+      description: "Returns True when library is importable"
+
+    - action: grep
+      target: "src/amplihack/memory_auto_install.py"
+      pattern: "return False"
+      description: "Returns False (not sys.exit) when library is absent"
+
+    - action: verify_source
+      target: "src/amplihack/memory_auto_install.py"
+      not_contains: "subprocess.run"
+      contains: "import amplihack_memory"
+      description: "No subprocess.run calls — pure import guard only"
+
+    - action: verify_source
+      target: "src/amplihack/memory_auto_install.py"
+      not_contains: "os.system"
+      contains: "return True"
+      description: "No os.system calls"
+
+    - action: grep
+      target: "src/amplihack/memory_auto_install.py"
+      pattern: "pip install"
+      description: "Error message includes pip install repair instructions"
+
+    - action: grep
+      target: "pyproject.toml"
+      pattern: "amplihack-memory-lib"
+      description: "amplihack-memory-lib is declared as a dependency in pyproject.toml"
+
+# Run Command:
+# gadugi-test run tests/gadugi/memory-lib-startup-check.yaml --verbose

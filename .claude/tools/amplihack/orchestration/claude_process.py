@@ -11,8 +11,17 @@ import subprocess
 import sys
 import threading
 import time
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
+
+# Pre-split command lookup: maps AMPLIHACK_DELEGATE value to the binary command prefix.
+# Values are lists (never shell strings) to prevent injection via string splitting.
+DELEGATE_COMMANDS: dict[str, list[str]] = {
+    "amplihack claude": ["claude"],
+    "amplihack copilot": ["amplihack", "copilot"],
+    "amplihack amplifier": ["amplihack", "amplifier"],
+}
 
 
 @dataclass
@@ -201,11 +210,32 @@ class ClaudeProcess:
     def _build_command(self) -> list[str]:
         """Build the agent CLI command.
 
+        Looks up AMPLIHACK_DELEGATE in DELEGATE_COMMANDS to select the binary prefix.
+        Falls back to the 'claude' binary with a warning when the env var is absent
+        or unrecognised.
+
         Returns:
             Command as list of strings
         """
-        agent = os.environ.get("AMPLIHACK_AGENT_BINARY", "claude")
-        cmd = [agent, "--dangerously-skip-permissions", "-p", self.prompt]
+        delegate = os.environ.get("AMPLIHACK_DELEGATE")
+        if delegate is None:
+            warnings.warn(
+                "AMPLIHACK_DELEGATE not set — defaulting to 'claude'. "
+                "Set AMPLIHACK_DELEGATE (e.g. 'amplihack claude') to select the agent.",
+                stacklevel=2,
+            )
+            binary_prefix = ["claude"]
+        elif delegate not in DELEGATE_COMMANDS:
+            warnings.warn(
+                f"Unrecognised AMPLIHACK_DELEGATE={delegate!r}. "
+                f"Known delegates: {list(DELEGATE_COMMANDS)}. Falling back to 'claude'.",
+                stacklevel=2,
+            )
+            binary_prefix = ["claude"]
+        else:
+            binary_prefix = DELEGATE_COMMANDS[delegate]
+
+        cmd = [*binary_prefix, "--dangerously-skip-permissions", "-p", self.prompt]
 
         if self.model:
             cmd.extend(["--model", self.model])
@@ -222,6 +252,7 @@ class ClaudeProcess:
         Returns:
             Popen process object
         """
+        # TODO: mirror of amplifier-bundle copy
         return subprocess.Popen(
             cmd,
             stdin=slave_fd,
@@ -229,6 +260,7 @@ class ClaudeProcess:
             stderr=subprocess.PIPE,
             text=True,
             cwd=self.working_dir,
+            env=os.environ.copy(),
         )
 
     def _start_threads(self) -> list[threading.Thread]:

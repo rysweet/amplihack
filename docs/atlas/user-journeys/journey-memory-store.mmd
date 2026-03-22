@@ -1,0 +1,36 @@
+sequenceDiagram
+    actor Agent as AI Agent
+    participant Coord as MemoryCoordinator
+    participant Mgr as MemoryManager
+    participant DB as MemoryDatabase
+    participant SQLite as SQLite file
+    participant Kuzu as Kuzu graph DB
+    participant CLI as amplihack memory tree
+
+    Agent->>Coord: store_memory(session_id, content, type)
+    Coord->>Mgr: create_entry(MemoryEntry)
+    Mgr->>DB: store(entry)
+    DB->>SQLite: INSERT INTO memories(...)
+    SQLite-->>DB: ok
+    DB-->>Mgr: stored entry
+    Mgr-->>Coord: success
+
+    Note over Agent,Kuzu: Parallel: code graph indexing
+
+    Agent->>Coord: retrieve_memories(query)
+    Coord->>Mgr: search(MemoryQuery)
+    Mgr->>DB: retrieve(query)
+    DB->>SQLite: SELECT ... WHERE ...
+    SQLite-->>DB: rows
+    DB-->>Mgr: list[MemoryEntry]
+    Mgr-->>Coord: results
+
+    Note over CLI,Kuzu: User inspects memory
+
+    actor User
+    User->>CLI: amplihack memory tree --session abc
+    CLI->>DB: retrieve(session_id=abc)
+    DB->>SQLite: SELECT ...
+    SQLite-->>DB: rows
+    DB-->>CLI: entries
+    CLI-->>User: tree visualization
