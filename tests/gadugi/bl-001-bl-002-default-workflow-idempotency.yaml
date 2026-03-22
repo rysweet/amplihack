@@ -218,11 +218,12 @@ scenario:
             exit 1
           fi
 
-          if echo "$STEP_BLOCK" | grep -q 'tail -1'; then
-            echo "FAIL: step-03b still contains tail -1 (buggy)"
+          # Exclude comment lines (starting with #) — comments may mention the old bug
+          if echo "$STEP_BLOCK" | grep -v '^\s*#' | grep -q 'tail -1'; then
+            echo "FAIL: step-03b still contains tail -1 in code (buggy)"
             exit 1
           else
-            echo "PASS: step-03b does not contain tail -1"
+            echo "PASS: step-03b does not contain tail -1 in code"
           fi
 
           if echo "$STEP_BLOCK" | grep -q 'heredoc\|EOFISSUECREATION\|cat <<'; then
@@ -239,8 +240,8 @@ scenario:
       description: "YAML must use head -1"
 
     - action: verify_output
-      contains: "PASS: step-03b does not contain tail -1"
-      description: "YAML must not use tail -1"
+      contains: "PASS: step-03b does not contain tail -1 in code"
+      description: "YAML must not use tail -1 in code (comments OK)"
 
     - action: verify_output
       contains: "PASS: step-03b uses heredoc capture"
