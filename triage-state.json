@@ -1,62 +1,80 @@
 {
-  "ts": "2026-03-21T00:00:00Z",
-  "run": 23368090649,
-  "open_prs": [3346, 3332, 3296, 3290, 3261, 2876],
-  "closed_since_last": [3342, 3337, 3334],
+  "ts": "2026-03-22T00:00:00Z",
+  "run": 23409293669,
+  "open_prs": [3418, 3416, 3415, 3412, 3398, 3394, 3389, 3290],
+  "closed_since_last": [3346, 3332, 3296, 3261, 2876],
   "prs": {
-    "3346": {
+    "3418": {
+      "risk": "medium",
+      "priority": "medium",
+      "type": "feat-parity-port",
+      "tests": true,
+      "labels": ["triage:medium-risk", "triage:has-tests", "triage:needs-review", "triage:complete", "enhancement"],
+      "status": "open",
+      "note": "Stacked parity port of upstream #3410 (distributed hive, memory facade, graph store, network store, hive CLI, deploy, docs); 203 tests passed; blocked by #3417 for deploy/azure_hive tests; stacked on #3416"
+    },
+    "3416": {
+      "risk": "medium",
+      "priority": "medium",
+      "type": "feat-parity-port",
+      "tests": true,
+      "labels": ["triage:medium-risk", "triage:has-tests", "triage:needs-review", "triage:complete", "enhancement"],
+      "status": "open",
+      "note": "Stacked parity port of upstream #3401 (dual-SDK PM Architect routing); 73 tests passed + YAML_OK; stacked on #3415"
+    },
+    "3415": {
+      "risk": "medium",
+      "priority": "medium",
+      "type": "bugfix-workflow-hardening",
+      "tests": true,
+      "labels": ["triage:medium-risk", "triage:has-tests", "triage:needs-review", "triage:complete", "bug"],
+      "status": "open",
+      "note": "Stacked parity port of upstream #3390 (safe issue-number extraction, idempotent step-4 worktree); 47 tests passed; stacked on #3412"
+    },
+    "3412": {
+      "risk": "medium",
+      "priority": "high",
+      "type": "bugfix-memory-optional",
+      "tests": true,
+      "labels": ["triage:medium-risk", "triage:has-tests", "triage:high-priority", "triage:needs-review", "triage:complete", "bug"],
+      "status": "open",
+      "note": "Reverts mandatory memory startup regression; 15 tests + outside-in E2E; fixes user-visible CLI startup breakage; stacked on #3389"
+    },
+    "3398": {
+      "risk": "medium",
+      "priority": "medium",
+      "type": "feat-copilot-triage",
+      "tests": false,
+      "labels": ["triage:medium-risk", "triage:needs-review", "triage:needs-testing", "triage:complete", "enhancement", "copilot"],
+      "status": "open",
+      "note": "Adds Copilot CLI runtime to triage_pr.py via AMPLIHACK_AGENT_BINARY env var; test plan described but not confirmed (unchecked boxes); direct to main"
+    },
+    "3394": {
       "risk": "low",
       "priority": "low",
       "type": "docs-automated",
       "tests": false,
       "labels": ["documentation", "automation", "triage:low-risk", "triage:complete"],
       "status": "draft",
-      "note": "Auto-generated daily doc update for #3335 (idempotent step-16); draft; expired 2026-03-21 06:18 UTC"
+      "note": "Auto-generated daily doc update for PRs #3268 #3286 #3335 #3351 #3366; expires Mar 23 2026"
     },
-    "3332": {
+    "3389": {
       "risk": "high",
       "priority": "high",
-      "type": "bugfix-eval",
-      "tests": false,
-      "labels": ["triage:complete", "triage:high-risk", "triage:needs-review"],
-      "status": "open",
-      "note": "5 root-cause fixes for 100-agent eval: timeout<=0->None, semantic abstention retry, scale-aware defaults; no tests; needs review"
-    },
-    "3296": {
-      "risk": "high",
-      "priority": "medium",
-      "type": "feat-eval-infra",
+      "type": "bugfix-copilot",
       "tests": true,
-      "labels": ["triage:complete", "triage:high-risk", "triage:needs-deep-review", "triage:has-tests"],
+      "labels": ["bug", "copilot", "triage:complete", "triage:needs-review", "triage:high-risk", "triage:has-tests"],
       "status": "open",
-      "note": "Eval infrastructure + retrieval parity + 100-agent scale; stale base; needs rebase"
+      "note": "Fix nested Copilot equals-style permission flags in rust_runner.py; 66 tests passed; gadugi outside-in evidence; quality-audit cycle complete"
     },
     "3290": {
       "risk": "medium",
       "priority": "high",
       "type": "tdd-security",
       "tests": true,
-      "labels": ["triage:complete", "triage:medium-risk", "triage:has-tests", "triage:security-review", "triage:high-priority"],
+      "labels": ["triage:complete", "triage:medium-risk", "triage:has-tests", "triage:high-priority", "triage:security-review"],
       "status": "open",
-      "note": "TDD security tests SEC-01 to SEC-07; 81/86 intentionally failing; stale base; needs rebase"
-    },
-    "3261": {
-      "risk": "low",
-      "priority": "low",
-      "type": "docs-design",
-      "tests": false,
-      "labels": ["documentation", "triage:low-risk", "triage:complete"],
-      "status": "open",
-      "note": "Design doc only; LearningAgent integration architecture; no code changes; open for review"
-    },
-    "2876": {
-      "risk": "extreme",
-      "priority": "low",
-      "type": "feat-hive-dht",
-      "tests": true,
-      "labels": ["needs-decomposition", "extreme-risk", "triage:complete", "triage:extreme-risk", "triage:needs-deep-review", "too-large", "merge-conflicts"],
-      "status": "open",
-      "note": "DHT sharding; merge conflicts; too large; needs decomposition; retrieval parity overlap with #3296/#3332"
+      "note": "TDD test files for SEC-01 through SEC-07 security hardening; 86 tests collected, 81 intentionally fail (target for follow-up PRs)"
     }
   }
 }
