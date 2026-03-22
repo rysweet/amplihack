@@ -1,0 +1,168 @@
+scenario:
+  name: "PM Architect agent_query — runtime detection and SDK routing"
+  description: |
+    Verifies that the agent_query module correctly detects the active agent
+    runtime from AMPLIHACK_AGENT_BINARY and that the SDK_AVAILABLE flag,
+    detect_runtime(), and query_agent() behave correctly when no real SDK
+    is installed (which is the CI/test case).
+  type: cli
+  tags: [pm-architect, agent-query, sdk-routing, smoke]
+
+  prerequisites:
+    - "Python 3.10+ available"
+    - "agent_query.py exists at .claude/skills/pm-architect/scripts/agent_query.py"
+
+  environment:
+    variables:
+      PYTHONPATH: ".claude/skills/pm-architect/scripts"
+
+  steps:
+    # Scenario 1: detect_runtime returns "copilot" when env var is set
+    - action: launch
+      target: "python3"
+      args:
+        - "-c"
+        - |
+          import os; os.environ['AMPLIHACK_AGENT_BINARY'] = 'copilot'
+          from agent_query import detect_runtime
+          result = detect_runtime()
+          assert result == 'copilot', f'Expected copilot, got {result}'
+          print(f'PASS: detect_runtime()={result}')
+      description: "detect_runtime returns copilot when AMPLIHACK_AGENT_BINARY=copilot"
+      timeout: 10s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "Script exits cleanly"
+
+    - action: verify_output
+      contains: "PASS: detect_runtime()=copilot"
+      description: "Runtime correctly detected as copilot"
+
+    # Scenario 2: detect_runtime returns "claude" when env var is set
+    - action: launch
+      target: "python3"
+      args:
+        - "-c"
+        - |
+          import os; os.environ['AMPLIHACK_AGENT_BINARY'] = 'claude'
+          from agent_query import detect_runtime
+          result = detect_runtime()
+          assert result == 'claude', f'Expected claude, got {result}'
+          print(f'PASS: detect_runtime()={result}')
+      description: "detect_runtime returns claude when AMPLIHACK_AGENT_BINARY=claude"
+      timeout: 10s
+
+    - action: verify_exit_code
+      expected: 0
+
+    - action: verify_output
+      contains: "PASS: detect_runtime()=claude"
+      description: "Runtime correctly detected as claude"
+
+    # Scenario 3: SDK_AVAILABLE is False when neither SDK is installed
+    - action: launch
+      target: "python3"
+      args:
+        - "-c"
+        - |
+          from agent_query import SDK_AVAILABLE, _CLAUDE_SDK_OK, _COPILOT_SDK_OK
+          print(f'CLAUDE_SDK_OK={_CLAUDE_SDK_OK}')
+          print(f'COPILOT_SDK_OK={_COPILOT_SDK_OK}')
+          print(f'SDK_AVAILABLE={SDK_AVAILABLE}')
+          # In CI neither SDK is typically installed
+          if not _CLAUDE_SDK_OK and not _COPILOT_SDK_OK:
+              assert not SDK_AVAILABLE, 'SDK_AVAILABLE should be False'
+              print('PASS: SDK_AVAILABLE=False when no SDK installed')
+          else:
+              print(f'PASS: SDK_AVAILABLE=True (at least one SDK present)')
+      description: "SDK_AVAILABLE reflects actual SDK availability"
+      timeout: 10s
+
+    - action: verify_exit_code
+      expected: 0
+
+    - action: verify_output
+      contains: "PASS:"
+      description: "SDK availability check passes"
+
+    # Scenario 4: query_agent returns empty string when no SDK available
+    - action: launch
+      target: "python3"
+      args:
+        - "-c"
+        - |
+          import asyncio
+          from agent_query import query_agent, _CLAUDE_SDK_OK, _COPILOT_SDK_OK
+          from pathlib import Path
+          result = asyncio.run(query_agent('test prompt', Path('/tmp')))
+          if not _CLAUDE_SDK_OK and not _COPILOT_SDK_OK:
+              assert result == '', f'Expected empty string, got {result!r}'
+              print('PASS: query_agent returns empty string (fail-open)')
+          else:
+              print(f'PASS: query_agent returned response (SDK available)')
+      description: "query_agent fails open with empty string when no SDK"
+      timeout: 15s
+
+    - action: verify_exit_code
+      expected: 0
+
+    - action: verify_output
+      contains: "PASS:"
+      description: "Fail-open behavior verified"
+
+    # Scenario 5: triage_pr.py CLI exits with code 1 and helpful message when no SDK
+    - action: launch
+      target: "python3"
+      args:
+        - ".claude/skills/pm-architect/scripts/triage_pr.py"
+        - "999"
+      description: "triage_pr.py exits with error when no SDK available"
+      timeout: 10s
+
+    - action: verify_exit_code
+      expected: 1
+      description: "Exits with code 1"
+
+    - action: verify_output
+      contains: "No agent SDK installed"
+      description: "Shows helpful error message mentioning both SDKs"
+
+    # Scenario 6: generate_daily_status.py CLI exits with helpful message
+    - action: launch
+      target: "python3"
+      args:
+        - ".claude/skills/pm-architect/scripts/generate_daily_status.py"
+      description: "generate_daily_status.py exits with error when no SDK"
+      timeout: 10s
+
+    - action: verify_exit_code
+      expected: 1
+
+    - action: verify_output
+      contains: "No agent SDK installed"
+      description: "Shows helpful error message"
+
+    # Scenario 7: generate_roadmap_review.py CLI exits with helpful message
+    - action: launch
+      target: "python3"
+      args:
+        - ".claude/skills/pm-architect/scripts/generate_roadmap_review.py"
+      description: "generate_roadmap_review.py exits with error when no SDK"
+      timeout: 10s
+
+    - action: verify_exit_code
+      expected: 1
+
+    - action: verify_output
+      contains: "No agent SDK installed"
+      description: "Shows helpful error message"
+
+    - action: capture_output
+      save_as: "agent-query-sdk-routing-evidence.txt"
+      description: "Save full test output as evidence"
+
+  cleanup:
+    - action: send_signal
+      signal: SIGTERM
+      description: "Ensure no processes left running"
