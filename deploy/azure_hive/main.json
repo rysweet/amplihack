@@ -1,0 +1,419 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.41.2.15936",
+      "templateHash": "6103719942110532566"
+    }
+  },
+  "parameters": {
+    "hiveName": {
+      "type": "string",
+      "defaultValue": "amplihive",
+      "metadata": {
+        "description": "Name of the hive deployment"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Azure region for all resources — always pass explicitly to ensure single-region deployment"
+      }
+    },
+    "agentCount": {
+      "type": "int",
+      "defaultValue": 100,
+      "metadata": {
+        "description": "Total number of agents to deploy"
+      }
+    },
+    "agentsPerApp": {
+      "type": "int",
+      "defaultValue": 5,
+      "metadata": {
+        "description": "Max agents per Container App (default: 5)"
+      }
+    },
+    "image": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Container image to deploy (e.g. myacr.azurecr.io/amplihive:latest)"
+      }
+    },
+    "acrName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Name of the Azure Container Registry"
+      }
+    },
+    "anthropicApiKey": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Anthropic API key for Claude SDK agents"
+      }
+    },
+    "agentPromptBase": {
+      "type": "string",
+      "defaultValue": "You are a distributed hive mind agent.",
+      "metadata": {
+        "description": "Agent system prompt base (agent index appended)"
+      }
+    },
+    "memoryTransport": {
+      "type": "string",
+      "defaultValue": "azure_event_hubs",
+      "allowedValues": ["local", "azure_event_hubs"],
+      "metadata": {
+        "description": "Memory transport type"
+      }
+    },
+    "memoryBackend": {
+      "type": "string",
+      "defaultValue": "cognitive",
+      "allowedValues": ["cognitive", "hierarchical"],
+      "metadata": {
+        "description": "Memory backend type"
+      }
+    },
+    "agentModel": {
+      "type": "string",
+      "defaultValue": "claude-sonnet-4-6",
+      "metadata": {
+        "description": "LLM model for agents (e.g. claude-sonnet-4-6, claude-opus-4-6)"
+      }
+    },
+    "enableDistributedRetrieval": {
+      "type": "string",
+      "defaultValue": "true",
+      "allowedValues": ["true", "false"],
+      "metadata": {
+        "description": "Whether Azure agents should perform distributed hive retrieval during question answering"
+      }
+    },
+    "memoryQueryFanout": {
+      "type": "int",
+      "defaultValue": 0,
+      "minValue": 0,
+      "metadata": {
+        "description": "Max shards to query per distributed retrieval request (0 = all deployed agents)"
+      }
+    },
+    "shardQueryTimeoutSeconds": {
+      "type": "int",
+      "defaultValue": 0,
+      "minValue": 0,
+      "metadata": {
+        "description": "Timeout in seconds for remote shard queries (0 = no timeout)"
+      }
+    },
+    "deploymentProfile": {
+      "type": "string",
+      "defaultValue": "federated-100",
+      "metadata": {
+        "description": "Deployment profile label propagated to agents and harnesses"
+      }
+    },
+    "enableOpenTelemetry": {
+      "type": "string",
+      "defaultValue": "true",
+      "allowedValues": ["true", "false"],
+      "metadata": {
+        "description": "Whether to enable OpenTelemetry inside deployed agents"
+      }
+    },
+    "otelOtlpEndpoint": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "OTLP collector endpoint for agent spans"
+      }
+    },
+    "otelOtlpProtocol": {
+      "type": "string",
+      "defaultValue": "http/protobuf",
+      "allowedValues": ["grpc", "http/protobuf"],
+      "metadata": {
+        "description": "OTLP protocol for agent telemetry export"
+      }
+    },
+    "otelExporterHeaders": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional OTLP exporter headers"
+      }
+    },
+    "otelServiceNamespace": {
+      "type": "string",
+      "defaultValue": "amplihack",
+      "metadata": {
+        "description": "OTel service namespace propagated to agents"
+      }
+    },
+    "otelConsoleExporter": {
+      "type": "string",
+      "defaultValue": "true",
+      "allowedValues": ["true", "false"],
+      "metadata": {
+        "description": "Emit spans to stdout when no OTLP endpoint is configured"
+      }
+    }
+  },
+  "variables": {
+    "suffix": "[uniqueString(resourceGroup().id)]",
+    "acrNameResolved": "[if(empty(parameters('acrName')), format('acr{0}', variables('suffix')), parameters('acrName'))]",
+    "logAnalyticsName": "[format('hive-logs-{0}', variables('suffix'))]",
+    "envName": "[format('hive-env-{0}', parameters('hiveName'))]",
+    "ehNamespaceName": "[format('hive-eh-{0}', variables('suffix'))]",
+    "ehEventsHub": "[format('hive-events-{0}', parameters('hiveName'))]",
+    "ehShardsHub": "[format('hive-shards-{0}', parameters('hiveName'))]",
+    "ehEvalHub": "[format('eval-responses-{0}', parameters('hiveName'))]",
+    "appCount": "[div(sub(add(parameters('agentCount'), parameters('agentsPerApp')), 1), parameters('agentsPerApp'))]",
+    "perAgentCpu": "[json(if(lessOrEquals(parameters('agentsPerApp'), 1), '2.0', if(lessOrEquals(parameters('agentsPerApp'), 2), '1.0', if(lessOrEquals(parameters('agentsPerApp'), 5), '0.75', if(lessOrEquals(parameters('agentsPerApp'), 8), '0.5', '0.25')))))]",
+    "perAgentMemory": "[if(lessOrEquals(parameters('agentsPerApp'), 1), '4Gi', if(lessOrEquals(parameters('agentsPerApp'), 2), '2Gi', if(lessOrEquals(parameters('agentsPerApp'), 5), '1.5Gi', if(lessOrEquals(parameters('agentsPerApp'), 8), '1Gi', '0.5Gi'))))]",
+    "memoryQueryFanoutResolved": "[if(greater(parameters('memoryQueryFanout'), 0), parameters('memoryQueryFanout'), parameters('agentCount'))]",
+    "shardQueryTimeoutSecondsResolved": "[parameters('shardQueryTimeoutSeconds')]",
+    "ehPartitionCount": "[min(add(parameters('agentCount'), 4), 32)]",
+    "ehCapacity": "[if(lessOrEquals(parameters('agentCount'), 20), 1, if(lessOrEquals(parameters('agentCount'), 50), 2, 4))]",
+    "resolvedImage": "[if(empty(parameters('image')), format('{0}.azurecr.io/amplihive:latest', variables('acrNameResolved')), parameters('image'))]",
+    "otelSecrets": "[if(empty(parameters('otelExporterHeaders')), createArray(), createArray(createObject('name', 'otel-exporter-headers', 'value', parameters('otelExporterHeaders'))))]"
+  },
+  "resources": [
+    {
+      "condition": "[empty(parameters('acrName'))]",
+      "type": "Microsoft.ContainerRegistry/registries",
+      "apiVersion": "2023-07-01",
+      "name": "[variables('acrNameResolved')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Basic"
+      },
+      "properties": {
+        "adminUserEnabled": true
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces",
+      "apiVersion": "2023-09-01",
+      "name": "[variables('logAnalyticsName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "sku": {
+          "name": "PerGB2018"
+        },
+        "retentionInDays": 30
+      }
+    },
+    {
+      "type": "Microsoft.EventHub/namespaces",
+      "apiVersion": "2023-01-01-preview",
+      "name": "[variables('ehNamespaceName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Standard",
+        "tier": "Standard",
+        "capacity": "[variables('ehCapacity')]"
+      },
+      "properties": {
+        "isAutoInflateEnabled": "[greater(parameters('agentCount'), 20)]",
+        "maximumThroughputUnits": "[if(greater(parameters('agentCount'), 20), 10, 0)]"
+      }
+    },
+    {
+      "type": "Microsoft.EventHub/namespaces/eventhubs",
+      "apiVersion": "2023-01-01-preview",
+      "name": "[format('{0}/{1}', variables('ehNamespaceName'), variables('ehEventsHub'))]",
+      "properties": {
+        "partitionCount": "[variables('ehPartitionCount')]",
+        "messageRetentionInDays": 1
+      },
+      "dependsOn": ["[resourceId('Microsoft.EventHub/namespaces', variables('ehNamespaceName'))]"]
+    },
+    {
+      "copy": {
+        "name": "ehEventsConsumerGroups",
+        "count": "[length(range(0, variables('appCount')))]"
+      },
+      "type": "Microsoft.EventHub/namespaces/eventhubs/consumergroups",
+      "apiVersion": "2023-01-01-preview",
+      "name": "[format('{0}/{1}/{2}', variables('ehNamespaceName'), variables('ehEventsHub'), format('cg-app-{0}', range(0, variables('appCount'))[copyIndex()]))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.EventHub/namespaces/eventhubs', variables('ehNamespaceName'), variables('ehEventsHub'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.EventHub/namespaces/eventhubs",
+      "apiVersion": "2023-01-01-preview",
+      "name": "[format('{0}/{1}', variables('ehNamespaceName'), variables('ehShardsHub'))]",
+      "properties": {
+        "partitionCount": "[variables('ehPartitionCount')]",
+        "messageRetentionInDays": 1
+      },
+      "dependsOn": ["[resourceId('Microsoft.EventHub/namespaces', variables('ehNamespaceName'))]"]
+    },
+    {
+      "copy": {
+        "name": "ehShardsConsumerGroups",
+        "count": "[length(range(0, variables('appCount')))]"
+      },
+      "type": "Microsoft.EventHub/namespaces/eventhubs/consumergroups",
+      "apiVersion": "2023-01-01-preview",
+      "name": "[format('{0}/{1}/{2}', variables('ehNamespaceName'), variables('ehShardsHub'), format('cg-app-{0}', range(0, variables('appCount'))[copyIndex()]))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.EventHub/namespaces/eventhubs', variables('ehNamespaceName'), variables('ehShardsHub'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.EventHub/namespaces/eventhubs",
+      "apiVersion": "2023-01-01-preview",
+      "name": "[format('{0}/{1}', variables('ehNamespaceName'), variables('ehEvalHub'))]",
+      "properties": {
+        "partitionCount": "[variables('ehPartitionCount')]",
+        "messageRetentionInDays": 1
+      },
+      "dependsOn": ["[resourceId('Microsoft.EventHub/namespaces', variables('ehNamespaceName'))]"]
+    },
+    {
+      "type": "Microsoft.EventHub/namespaces/eventhubs/consumergroups",
+      "apiVersion": "2023-01-01-preview",
+      "name": "[format('{0}/{1}/{2}', variables('ehNamespaceName'), variables('ehEvalHub'), 'eval-reader')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.EventHub/namespaces/eventhubs', variables('ehNamespaceName'), variables('ehEvalHub'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.EventHub/namespaces/eventhubs/consumergroups",
+      "apiVersion": "2023-01-01-preview",
+      "name": "[format('{0}/{1}/{2}', variables('ehNamespaceName'), variables('ehEvalHub'), 'eval-monitor')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.EventHub/namespaces/eventhubs', variables('ehNamespaceName'), variables('ehEvalHub'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.App/managedEnvironments",
+      "apiVersion": "2024-03-01",
+      "name": "[variables('envName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "appLogsConfiguration": {
+          "destination": "log-analytics",
+          "logAnalyticsConfiguration": {
+            "customerId": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsName')), '2023-09-01').customerId]",
+            "sharedKey": "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsName')), '2023-09-01').primarySharedKey]"
+          }
+        },
+        "workloadProfiles": [
+          {
+            "name": "Consumption",
+            "workloadProfileType": "Consumption"
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsName'))]"
+      ]
+    },
+    {
+      "copy": {
+        "name": "containerApps",
+        "count": "[length(range(0, variables('appCount')))]"
+      },
+      "type": "Microsoft.App/containerApps",
+      "apiVersion": "2024-03-01",
+      "name": "[format('{0}-app-{1}', parameters('hiveName'), range(0, variables('appCount'))[copyIndex()])]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "managedEnvironmentId": "[resourceId('Microsoft.App/managedEnvironments', variables('envName'))]",
+        "workloadProfileName": "Consumption",
+        "configuration": {
+          "activeRevisionsMode": "Single",
+          "secrets": "[concat(createArray(createObject('name', 'acr-password', 'value', if(empty(parameters('acrName')), listCredentials(resourceId('Microsoft.ContainerRegistry/registries', variables('acrNameResolved')), '2023-07-01'), listCredentials(resourceId('Microsoft.ContainerRegistry/registries', parameters('acrName')), '2023-07-01')).passwords[0].value), createObject('name', 'anthropic-api-key', 'value', parameters('anthropicApiKey')), createObject('name', 'eh-connection-string', 'value', listKeys(format('{0}/AuthorizationRules/RootManageSharedAccessKey', resourceId('Microsoft.EventHub/namespaces', variables('ehNamespaceName'))), '2023-01-01-preview').primaryConnectionString)), variables('otelSecrets'))]",
+          "registries": [
+            {
+              "server": "[format('{0}.azurecr.io', variables('acrNameResolved'))]",
+              "username": "[if(empty(parameters('acrName')), listCredentials(resourceId('Microsoft.ContainerRegistry/registries', variables('acrNameResolved')), '2023-07-01'), listCredentials(resourceId('Microsoft.ContainerRegistry/registries', parameters('acrName')), '2023-07-01')).username]",
+              "passwordSecretRef": "acr-password"
+            }
+          ]
+        },
+        "template": {
+          "copy": [
+            {
+              "name": "containers",
+              "count": "[length(range(0, min(parameters('agentsPerApp'), sub(parameters('agentCount'), mul(range(0, variables('appCount'))[copyIndex()], parameters('agentsPerApp'))))))]",
+              "input": {
+                "name": "[format('agent-{0}', add(mul(range(0, variables('appCount'))[copyIndex()], parameters('agentsPerApp')), range(0, min(parameters('agentsPerApp'), sub(parameters('agentCount'), mul(range(0, variables('appCount'))[copyIndex()], parameters('agentsPerApp')))))[copyIndex('containers')]))]",
+                "image": "[variables('resolvedImage')]",
+                "resources": {
+                  "cpu": "[variables('perAgentCpu')]",
+                  "memory": "[variables('perAgentMemory')]"
+                },
+                "env": "[concat(createArray(createObject('name', 'AMPLIHACK_AGENT_NAME', 'value', format('agent-{0}', add(mul(range(0, variables('appCount'))[copyIndex()], parameters('agentsPerApp')), range(0, min(parameters('agentsPerApp'), sub(parameters('agentCount'), mul(range(0, variables('appCount'))[copyIndex()], parameters('agentsPerApp')))))[copyIndex('containers')]))), createObject('name', 'AMPLIHACK_AGENT_PROMPT', 'value', format('{0} You are agent {1}.', parameters('agentPromptBase'), add(mul(range(0, variables('appCount'))[copyIndex()], parameters('agentsPerApp')), range(0, min(parameters('agentsPerApp'), sub(parameters('agentCount'), mul(range(0, variables('appCount'))[copyIndex()], parameters('agentsPerApp')))))[copyIndex('containers')]))), createObject('name', 'AMPLIHACK_MEMORY_BACKEND', 'value', parameters('memoryBackend')), createObject('name', 'AMPLIHACK_MEMORY_TRANSPORT', 'value', parameters('memoryTransport')), createObject('name', 'AMPLIHACK_MEMORY_STORAGE_PATH', 'value', format('/data/agent-{0}', add(mul(range(0, variables('appCount'))[copyIndex()], parameters('agentsPerApp')), range(0, min(parameters('agentsPerApp'), sub(parameters('agentCount'), mul(range(0, variables('appCount'))[copyIndex()], parameters('agentsPerApp')))))[copyIndex('containers')]))), createObject('name', 'AMPLIHACK_MODEL', 'value', parameters('agentModel')), createObject('name', 'AMPLIHACK_HIVE_NAME', 'value', parameters('hiveName')), createObject('name', 'AMPLIHACK_AGENT_COUNT', 'value', format('{0}', parameters('agentCount'))), createObject('name', 'AMPLIHACK_AGENTS_PER_APP', 'value', format('{0}', parameters('agentsPerApp'))), createObject('name', 'AMPLIHACK_APP_COUNT', 'value', format('{0}', variables('appCount'))), createObject('name', 'AMPLIHACK_EH_CONNECTION_STRING', 'secretRef', 'eh-connection-string'), createObject('name', 'AMPLIHACK_EH_NAME', 'value', variables('ehShardsHub')), createObject('name', 'AMPLIHACK_EH_INPUT_HUB', 'value', variables('ehEventsHub')), createObject('name', 'AMPLIHACK_EVAL_RESPONSE_HUB', 'value', variables('ehEvalHub')), createObject('name', 'ANTHROPIC_API_KEY', 'secretRef', 'anthropic-api-key'), createObject('name', 'AMPLIHACK_APP_INDEX', 'value', format('{0}', range(0, variables('appCount'))[copyIndex()])), createObject('name', 'AMPLIHACK_ENABLE_DISTRIBUTED_RETRIEVAL', 'value', parameters('enableDistributedRetrieval')), createObject('name', 'AMPLIHACK_MEMORY_QUERY_FANOUT', 'value', format('{0}', variables('memoryQueryFanoutResolved'))), createObject('name', 'AMPLIHACK_MEMORY_QUERY_MAX_WORKERS', 'value', '8'), createObject('name', 'AMPLIHACK_SHARD_QUERY_TIMEOUT_SECONDS', 'value', format('{0}', variables('shardQueryTimeoutSecondsResolved'))), createObject('name', 'OMP_NUM_THREADS', 'value', '1'), createObject('name', 'OPENBLAS_NUM_THREADS', 'value', '1'), createObject('name', 'MKL_NUM_THREADS', 'value', '1'), createObject('name', 'NUMEXPR_NUM_THREADS', 'value', '1'), createObject('name', 'TOKENIZERS_PARALLELISM', 'value', 'false'), createObject('name', 'AMPLIHACK_DEPLOYMENT_PROFILE', 'value', parameters('deploymentProfile')), createObject('name', 'AMPLIHACK_OTEL_ENABLED', 'value', parameters('enableOpenTelemetry')), createObject('name', 'AMPLIHACK_OTEL_SERVICE_NAMESPACE', 'value', parameters('otelServiceNamespace')), createObject('name', 'AMPLIHACK_OTEL_CONSOLE_EXPORTER', 'value', parameters('otelConsoleExporter')), createObject('name', 'OTEL_SERVICE_NAME', 'value', 'amplihack.azure-hive-agent'), createObject('name', 'OTEL_SERVICE_NAMESPACE', 'value', parameters('otelServiceNamespace')), createObject('name', 'OTEL_EXPORTER_OTLP_ENDPOINT', 'value', parameters('otelOtlpEndpoint')), createObject('name', 'OTEL_EXPORTER_OTLP_PROTOCOL', 'value', parameters('otelOtlpProtocol')), createObject('name', 'OTEL_RESOURCE_ATTRIBUTES', 'value', format('deployment.profile={0},amplihack.hive.name={1},amplihack.app.index={2},amplihack.agent.count={3},amplihack.agents.per.app={4}', parameters('deploymentProfile'), parameters('hiveName'), range(0, variables('appCount'))[copyIndex()], parameters('agentCount'), parameters('agentsPerApp')))), if(empty(parameters('otelExporterHeaders')), createArray(), createArray(createObject('name', 'OTEL_EXPORTER_OTLP_HEADERS', 'secretRef', 'otel-exporter-headers'))))]",
+                "volumeMounts": [
+                  {
+                    "volumeName": "hive-data",
+                    "mountPath": "/data"
+                  }
+                ]
+              }
+            }
+          ],
+          "volumes": [
+            {
+              "name": "hive-data",
+              "storageType": "EmptyDir"
+            }
+          ],
+          "scale": {
+            "minReplicas": 1,
+            "maxReplicas": 1
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ContainerRegistry/registries', variables('acrNameResolved'))]",
+        "[resourceId('Microsoft.App/managedEnvironments', variables('envName'))]",
+        "[resourceId('Microsoft.EventHub/namespaces', variables('ehNamespaceName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "acrLoginServer": {
+      "type": "string",
+      "value": "[if(empty(parameters('acrName')), reference(resourceId('Microsoft.ContainerRegistry/registries', variables('acrNameResolved')), '2023-07-01').loginServer, reference(resourceId('Microsoft.ContainerRegistry/registries', parameters('acrName')), '2023-07-01').loginServer)]"
+    },
+    "containerAppNames": {
+      "type": "array",
+      "copy": {
+        "count": "[length(range(0, variables('appCount')))]",
+        "input": "[format('{0}-app-{1}', parameters('hiveName'), range(0, variables('appCount'))[copyIndex()])]"
+      }
+    },
+    "ehConnectionStringSecretName": {
+      "type": "string",
+      "value": "eh-connection-string"
+    },
+    "ehNamespaceName": {
+      "type": "string",
+      "value": "[variables('ehNamespaceName')]"
+    },
+    "ehEventsHub": {
+      "type": "string",
+      "value": "[variables('ehEventsHub')]"
+    },
+    "ehShardsHub": {
+      "type": "string",
+      "value": "[variables('ehShardsHub')]"
+    },
+    "ehEvalHub": {
+      "type": "string",
+      "value": "[variables('ehEvalHub')]"
+    }
+  }
+}

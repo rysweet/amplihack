@@ -148,6 +148,13 @@ nav:
       - Hooks Configuration: HOOK_CONFIGURATION_GUIDE.md
   - Advanced Topics:
       - Development Guide: DEVELOPING_AMPLIHACK.md
+      - Hive Mind:
+          - Architecture: hive_mind/ARCHITECTURE.md
+          - Getting Started: hive_mind/GETTING_STARTED.md
+          - Tutorial: hive_mind/TUTORIAL.md
+          - Design: hive_mind/DESIGN.md
+          - Evaluation: hive_mind/EVAL.md
+          - Investigation Guide: INVESTIGATION_hive_mind_guide.md
       - Agent Memory Integration: AGENT_MEMORY_INTEGRATION.md
       - Memory Quickstart: AGENT_MEMORY_QUICKSTART.md
       - External Knowledge: external_knowledge_integration.md

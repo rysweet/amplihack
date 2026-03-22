@@ -260,7 +260,7 @@ def test_run_harness_returns_scores(tmp_path):
             stdout=json.dumps({"answers": [{"question": "Q1", "answer": "A1", "confidence": 0.9}]}),
         )
 
-        with patch("amplihack.eval.grader.grade_answer") as mock_grade:
+        with patch("amplihack.eval.harness_runner.grade_answer") as mock_grade:
             mock_grade.return_value = MagicMock(score=0.85, reasoning="Good answer")
 
             result = run_harness(config)

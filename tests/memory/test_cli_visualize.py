@@ -1,10 +1,10 @@
-"""Tests fer memory tree visualization CLI.
+"""Tests for memory tree visualization CLI.
 
 Tests the visualize_memory_tree function and tree building logic.
 
 Testing Philosophy:
 - Test the contract (tree structure, colors, emojis), not implementation details
-- Use mock backends fer fast execution
+- Use mock backends for fast execution
 - Verify output format matches documentation
 """
 
@@ -244,7 +244,7 @@ class TestVisualizationFunction:
             depth=None,
         )
 
-        # Should query with type filter (check first call, which is fer sessions)
+        # Should query with type filter (check first call, which is for sessions)
         first_call_args = mock_backend.retrieve_memories.call_args_list[0]
         query = first_call_args[0][0]
         assert query.memory_type == MemoryType.CONVERSATION
@@ -344,7 +344,7 @@ class TestIntegrationWithBackends:
         """Test with Kùzu backend (skipped if not installed)."""
         # Try to import real kuzu module
         try:
-            from amplihack.memory.backends.kuzu_backend import KuzuBackend
+            from amplihack.memory.kuzu_store import KuzuGraphStore
         except ImportError:
             pytest.skip("Kùzu not installed")
 

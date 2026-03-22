@@ -17,14 +17,202 @@ Philosophy:
 
 from __future__ import annotations
 
+import inspect
+import itertools
 import logging
 import sys
 from pathlib import Path
 from typing import Any
 
-from .hive_mind.constants import DEFAULT_CONFIDENCE_GATE, DEFAULT_QUALITY_THRESHOLD
+from .hive_mind.constants import (
+    DEFAULT_CONFIDENCE_GATE,
+    DEFAULT_QUALITY_THRESHOLD,
+    KUZU_BUFFER_POOL_SIZE,
+)
+from .retrieval_constants import (
+    BIGRAM_WEIGHT,
+    FALLBACK_SCAN_MULTIPLIER,
+    HOP_DEPTH,
+    MAX_EDGES_PER_NODE,
+    SEARCH_CANDIDATE_MULTIPLIER,
+    SIMILARITY_THRESHOLD,
+    UNIGRAM_WEIGHT,
+)
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Stop words for query filtering (improves search precision)
+# ---------------------------------------------------------------------------
+_QUERY_STOP_WORDS = frozenset(
+    {
+        "what",
+        "is",
+        "the",
+        "a",
+        "an",
+        "are",
+        "was",
+        "were",
+        "how",
+        "does",
+        "do",
+        "and",
+        "or",
+        "of",
+        "in",
+        "to",
+        "for",
+        "with",
+        "on",
+        "at",
+        "by",
+        "from",
+        "that",
+        "this",
+        "it",
+        "as",
+        "be",
+        "been",
+        "has",
+        "have",
+        "had",
+        "will",
+        "would",
+        "could",
+        "should",
+        "did",
+        "which",
+        "who",
+        "when",
+        "where",
+        "why",
+        "any",
+        "some",
+        "all",
+        "both",
+        "each",
+        "few",
+        "more",
+        "most",
+        "other",
+        "such",
+        "into",
+        "through",
+        "during",
+        "before",
+        "after",
+        "than",
+        "then",
+        "these",
+        "those",
+        "there",
+        "their",
+        "they",
+        "its",
+        "our",
+        "your",
+        "my",
+        "we",
+        "i",
+        "you",
+        "he",
+        "she",
+        "me",
+        "him",
+        "her",
+        "them",
+        "used",
+        "found",
+        "given",
+        "made",
+        "came",
+        "went",
+        "said",
+        "got",
+    }
+)
+
+
+def _filter_stop_words(query: str) -> str:
+    """Return query with stop words removed, preserving meaningful terms."""
+    words = [w.strip("?.,!;:'\"()[]") for w in query.lower().split()]
+    filtered = [w for w in words if w and w not in _QUERY_STOP_WORDS and len(w) > 1]
+    return " ".join(filtered) if filtered else query.lower()
+
+
+def _ngram_overlap_score(query: str, text: str) -> float:
+    """Score text by unigram + bigram overlap with query (after stop word removal).
+
+    Returns a float in [0, 1] where higher = more overlap.
+    """
+    q_words = [w.strip("?.,!;:'\"") for w in query.lower().split()]
+    t_words = text.lower().split()
+
+    # Unigram overlap (stop-word filtered)
+    q_terms = {w for w in q_words if w and w not in _QUERY_STOP_WORDS and len(w) > 1}
+    t_set = set(t_words)
+    # Also check substring containment for partial matches (e.g. "login" in "logins")
+    unigram_hits = sum(
+        1
+        for t in q_terms
+        if t in t_set or any(w.startswith(t) or t.startswith(w) for w in t_set if len(w) > 2)
+    )
+    unigram = unigram_hits / max(1, len(q_terms)) if q_terms else 0.0
+
+    # Bigram overlap
+    q_bigrams = list(itertools.pairwise(q_words))
+    t_bigrams = set(itertools.pairwise(t_words))
+    bigram_hits = sum(1 for bg in q_bigrams if bg in t_bigrams)
+    bigram = bigram_hits / max(1, len(q_bigrams)) if q_bigrams else 0.0
+
+    return unigram * UNIGRAM_WEIGHT + bigram * BIGRAM_WEIGHT
+
+
+def _build_cognitive_memory_kwargs(
+    *,
+    agent_name: str,
+    db_path: str,
+    buffer_pool_size: int,
+) -> dict[str, Any]:
+    """Build kwargs compatible with both legacy and tuned CognitiveMemory releases."""
+    kwargs: dict[str, Any] = {
+        "agent_name": agent_name,
+        "db_path": db_path,
+    }
+    tuned_kwargs: dict[str, Any] = {
+        "buffer_pool_size": buffer_pool_size,
+        "similarity_threshold": SIMILARITY_THRESHOLD,
+        "max_edges_per_node": MAX_EDGES_PER_NODE,
+        "hop_depth": HOP_DEPTH,
+    }
+
+    try:
+        signature = inspect.signature(CognitiveMemory.__init__)
+    except (TypeError, ValueError):
+        logger.info(
+            "Unable to inspect CognitiveMemory.__init__; using legacy-compatible constructor args"
+        )
+        return kwargs
+
+    supports_var_kwargs = any(
+        param.kind == inspect.Parameter.VAR_KEYWORD for param in signature.parameters.values()
+    )
+    unsupported: list[str] = []
+    for key, value in tuned_kwargs.items():
+        if supports_var_kwargs or key in signature.parameters:
+            kwargs[key] = value
+        else:
+            unsupported.append(key)
+
+    if unsupported:
+        logger.info(
+            "CognitiveMemory.__init__ does not accept %s; using library defaults for those settings",
+            ", ".join(sorted(unsupported)),
+        )
+
+    return kwargs
+
 
 # Try importing CognitiveMemory, fall back to HierarchicalMemory
 try:
@@ -79,6 +267,7 @@ class CognitiveAdapter:
         quality_threshold: float = DEFAULT_QUALITY_THRESHOLD,
         confidence_gate: float = DEFAULT_CONFIDENCE_GATE,
         enable_query_expansion: bool = False,
+        buffer_pool_size: int = KUZU_BUFFER_POOL_SIZE,
     ):
         self.agent_name = agent_name
         self.memory: Any = None  # CognitiveMemory or HierarchicalMemory
@@ -89,6 +278,8 @@ class CognitiveAdapter:
         self._confidence_gate = confidence_gate
         # Query expansion: opt-in, disabled by default
         self._enable_query_expansion = enable_query_expansion and _HAS_QUERY_EXPANSION
+        # Buffer pool size for Kuzu (passed via functools.partial when creating the DB)
+        self._buffer_pool_size = buffer_pool_size
 
         if db_path is None:
             db_path = Path.home() / ".amplihack" / "cognitive_memory" / agent_name
@@ -102,7 +293,14 @@ class CognitiveAdapter:
             kuzu_path = db_path / "kuzu_db"
             if not kuzu_path.exists():
                 kuzu_path.parent.mkdir(parents=True, exist_ok=True)
-            self.memory = CognitiveMemory(agent_name=agent_name, db_path=str(kuzu_path))
+
+            self.memory = CognitiveMemory(
+                **_build_cognitive_memory_kwargs(
+                    agent_name=agent_name,
+                    db_path=str(kuzu_path),
+                    buffer_pool_size=buffer_pool_size,
+                )
+            )
             self._cognitive = True
         else:
             if require_cognitive:
@@ -179,8 +377,15 @@ class CognitiveAdapter:
                 temporal_metadata=temporal_metadata,
             )
 
-        # Auto-promote to shared hive if connected
-        self._promote_to_hive(context.strip(), fact.strip(), confidence, tags)
+        # Legacy: auto-promote when hive_store is set directly on CognitiveAdapter.
+        # New architecture: DistributedCognitiveMemory handles promotion transparently.
+        self._promote_to_hive(
+            context.strip(),
+            fact.strip(),
+            confidence,
+            tags,
+            temporal_metadata,
+        )
 
         return node_id
 
@@ -190,6 +395,7 @@ class CognitiveAdapter:
         fact: str,
         confidence: float,
         tags: list[str] | None = None,
+        temporal_metadata: dict[str, Any] | None = None,
     ) -> None:
         """Promote a fact to the shared hive store.
 
@@ -228,6 +434,7 @@ class CognitiveAdapter:
                 confidence=confidence,
                 source_agent=self.agent_name,
                 tags=list(tags) if tags else [],
+                metadata=dict(temporal_metadata or {}),
             )
             # Ensure agent is registered before promoting
             if hasattr(self._hive_store, "get_agent"):
@@ -247,48 +454,211 @@ class CognitiveAdapter:
     ) -> list[dict[str, Any]]:
         """Search memory and return flat list of result dicts.
 
+        Uses substring matching with n-gram overlap re-ranking for improved recall.
+        Stop words are filtered before querying the backend to reduce noise.
+        Falls back to full-corpus scan with n-gram ranking when filtered search
+        returns no results so that all stored content is always reachable.
+
         When a hive_store is connected, searches both local memory and
         the shared hive, deduplicates by content, and returns merged results.
         """
         if not query or not query.strip():
             return []
 
+        # Filter stop words for more targeted backend search
+        filtered_query = _filter_stop_words(query)
+        search_q = filtered_query if filtered_query.strip() else query.strip()
+
         if self._cognitive:
+            # Request extra candidates so n-gram re-ranking has more to work with
             results = self.memory.search_facts(
-                query=query.strip(), limit=limit, min_confidence=min_confidence
+                query=search_q,
+                limit=limit * SEARCH_CANDIDATE_MULTIPLIER,
+                min_confidence=min_confidence,
             )
             local_results = [self._semantic_fact_to_dict(r) for r in results]
+            # Fallback: scan all stored content when filtered search returns nothing
+            if not local_results:
+                all_facts = self.memory.get_all_facts(limit=limit * FALLBACK_SCAN_MULTIPLIER)
+                local_results = [self._semantic_fact_to_dict(r) for r in all_facts]
         else:
-            subgraph = self.memory.retrieve_subgraph(query=query.strip(), max_nodes=limit)
+            subgraph = self.memory.retrieve_subgraph(
+                query=search_q, max_nodes=limit * SEARCH_CANDIDATE_MULTIPLIER
+            )
             local_results = [
                 self._node_to_dict(n) for n in subgraph.nodes if n.confidence >= min_confidence
             ]
+            # Fallback: scan all stored content when filtered search returns nothing
+            if not local_results and hasattr(self.memory, "get_all_knowledge"):
+                nodes = self.memory.get_all_knowledge(limit=limit * FALLBACK_SCAN_MULTIPLIER)
+                local_results = [self._node_to_dict(n) for n in nodes]
 
-        if self._hive_store is None:
-            return local_results
+        # Re-rank by n-gram overlap with original query for relevance ordering
+        if local_results:
+            scored = []
+            for r in local_results:
+                content = r.get("outcome", r.get("content", ""))
+                concept = r.get("context", r.get("concept", ""))
+                score = _ngram_overlap_score(query, f"{concept} {content}")
+                scored.append((score, r))
+            scored.sort(key=lambda x: x[0], reverse=True)
+            local_results = [r for _, r in scored[:limit]]
 
-        # Query hive and merge
-        hive_results = self._search_hive(query.strip(), limit=limit)
-        return self._merge_results(local_results, hive_results, limit)
+        # NOTE: When topology=distributed, self.memory is a
+        # DistributedCognitiveMemory whose search_facts() already fans out
+        # to the hive.  CognitiveAdapter is topology-unaware — no hive
+        # branching here.
+        return local_results
 
-    def get_all_facts(self, limit: int = 50) -> list[dict[str, Any]]:
-        """Retrieve all facts without keyword filtering.
+    def search_local(
+        self,
+        query: str,
+        limit: int = 10,
+        min_confidence: float = 0.0,
+    ) -> list[dict[str, Any]]:
+        """Search LOCAL memory only — no hive/distributed query.
 
-        When a hive_store is connected, returns facts from both local
-        memory and the shared hive, deduplicated by content.
+        Used by shard query handlers to avoid recursive SHARD_QUERY storms:
+        when agent A queries agent B, agent B must search only its own local
+        memory, not trigger another round of distributed queries.
+
+        When self.memory is a DistributedCognitiveMemory, this bypasses it
+        and queries the underlying local CognitiveMemory directly.
+        """
+        if not query or not query.strip():
+            return []
+
+        # Use the public local_search_facts() when available (DistributedCognitiveMemory
+        # provides it to avoid the need for private-attribute access).
+        # Falls back to self.memory for single-agent topology (no wrapper).
+        local_mem = self.memory
+        use_local_search = hasattr(self.memory, "local_search_facts")
+
+        filtered_query = _filter_stop_words(query)
+        search_q = filtered_query if filtered_query.strip() else query.strip()
+
+        if self._cognitive:
+            if use_local_search:
+                results = local_mem.local_search_facts(
+                    query=search_q,
+                    limit=limit * SEARCH_CANDIDATE_MULTIPLIER,
+                    min_confidence=min_confidence,
+                )
+            else:
+                results = local_mem.search_facts(
+                    query=search_q,
+                    limit=limit * SEARCH_CANDIDATE_MULTIPLIER,
+                    min_confidence=min_confidence,
+                )
+            local_results = [self._semantic_fact_to_dict(r) for r in results]
+            if not local_results:
+                if use_local_search:
+                    all_facts = local_mem.local_get_all_facts(
+                        limit=limit * FALLBACK_SCAN_MULTIPLIER
+                    )
+                else:
+                    all_facts = local_mem.get_all_facts(limit=limit * FALLBACK_SCAN_MULTIPLIER)
+                local_results = [self._semantic_fact_to_dict(r) for r in all_facts]
+        else:
+            subgraph = local_mem.retrieve_subgraph(
+                query=search_q, max_nodes=limit * SEARCH_CANDIDATE_MULTIPLIER
+            )
+            local_results = [
+                self._node_to_dict(n) for n in subgraph.nodes if n.confidence >= min_confidence
+            ]
+            if not local_results and hasattr(local_mem, "get_all_knowledge"):
+                nodes = local_mem.get_all_knowledge(limit=limit * FALLBACK_SCAN_MULTIPLIER)
+                local_results = [self._node_to_dict(n) for n in nodes]
+
+        if local_results:
+            scored = []
+            for r in local_results:
+                content = r.get("outcome", r.get("content", ""))
+                concept = r.get("context", r.get("concept", ""))
+                score = _ngram_overlap_score(query, f"{concept} {content}")
+                scored.append((score, r))
+            scored.sort(key=lambda x: x[0], reverse=True)
+            local_results = [r for _, r in scored[:limit]]
+
+        return local_results
+
+    def search_by_concept_local(self, keywords: list[str], limit: int = 30) -> list[dict[str, Any]]:
+        """Search local concept indexes only — no distributed fan-out."""
+        local_mem = self.memory
+        use_local_search = hasattr(local_mem, "local_search_by_concept")
+
+        if self._cognitive:
+            if use_local_search:
+                results = local_mem.local_search_by_concept(keywords=keywords, limit=limit)
+            elif hasattr(local_mem, "search_by_concept"):
+                results = local_mem.search_by_concept(keywords=keywords, limit=limit)
+            else:
+                return []
+            return [self._semantic_fact_to_dict(r) for r in results]
+
+        if hasattr(local_mem, "search_by_concept"):
+            nodes = local_mem.search_by_concept(keywords=keywords, limit=limit)
+            return [self._node_to_dict(n) for n in nodes]
+        return []
+
+    def get_all_facts(self, limit: int = 50, query: str = "") -> list[dict[str, Any]]:
+        """Retrieve all facts.
+
+        When topology=distributed, self.memory is a DistributedCognitiveMemory
+        whose get_all_facts() transparently fans out to the hive.
+        CognitiveAdapter is topology-unaware.
+
+        Args:
+            limit: Maximum results to return.
+            query: Optional question text passed through to the memory backend.
         """
         if self._cognitive:
-            results = self.memory.get_all_facts(limit=limit)
+            get_all_facts = self.memory.get_all_facts
+            supports_query = any(
+                param.kind == inspect.Parameter.VAR_KEYWORD or name == "query"
+                for name, param in inspect.signature(get_all_facts).parameters.items()
+            )
+            if query and supports_query:
+                results = get_all_facts(limit=limit, query=query)
+            elif query and hasattr(self.memory, "search_facts"):
+                # Route plain cognitive backends through the adapter's search path so
+                # stop-word filtering, candidate expansion, and fallback re-ranking
+                # still apply even when get_all_facts() does not support query=.
+                return self.search(query=query, limit=limit)
+            else:
+                results = get_all_facts(limit=limit)
             local_results = [self._semantic_fact_to_dict(r) for r in results]
         else:
             nodes = self.memory.get_all_knowledge(limit=limit)
             local_results = [self._node_to_dict(n) for n in nodes]
 
-        if self._hive_store is None:
-            return local_results
+        return local_results
 
-        hive_results = self._get_all_hive_facts(limit=limit)
-        return self._merge_results(local_results, hive_results, limit)
+    @staticmethod
+    def _restore_hive_metadata(
+        tags: list[str] | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Rehydrate temporal metadata from hive tags when structured metadata is absent."""
+        restored = dict(metadata or {})
+        for raw_tag in tags or []:
+            if not isinstance(raw_tag, str):
+                continue
+            if raw_tag.startswith("date:") and not restored.get("source_date"):
+                source_date = raw_tag.removeprefix("date:")
+                restored["source_date"] = source_date
+                if not restored.get("temporal_index"):
+                    digits = "".join(ch for ch in source_date if ch.isdigit())
+                    if digits:
+                        restored["temporal_index"] = int(digits)
+            elif raw_tag.startswith("time:") and not restored.get("temporal_order"):
+                temporal_order = raw_tag.removeprefix("time:")
+                restored["temporal_order"] = temporal_order
+                if not restored.get("temporal_index"):
+                    digits = "".join(ch for ch in temporal_order if ch.isdigit())
+                    if digits:
+                        restored["temporal_index"] = int(digits)
+        return restored
 
     @staticmethod
     def _hive_fact_to_dict(
@@ -297,20 +667,23 @@ class CognitiveAdapter:
         confidence: float,
         tags: list[str] | None = None,
         source: str = "unknown",
+        timestamp: Any = "",
+        metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Convert a hive fact to the same dict format as local facts.
 
         Uses "outcome" key (not "fact") to match _semantic_fact_to_dict output,
         so LearningAgent can process hive facts identically to local ones.
         """
+        restored_metadata = CognitiveAdapter._restore_hive_metadata(tags, metadata)
         return {
             "experience_id": "",
             "context": concept,
             "outcome": content,
             "confidence": confidence,
-            "timestamp": "",
+            "timestamp": "" if timestamp in ("", None) else str(timestamp),
             "tags": tags or [],
-            "metadata": {},
+            "metadata": restored_metadata,
             "source": f"hive:{source}",
         }
 
@@ -326,7 +699,10 @@ class CognitiveAdapter:
         (InMemoryHiveGraph tree traversal) → query_facts (local only).
         """
         if self._hive_store is None:
+            logger.info("_search_hive: no hive_store, skipping")
             return []
+
+        logger.info("_search_hive: querying hive for '%s' (limit=%d)", query[:80], limit)
 
         # Optional query expansion
         search_query = query
@@ -361,33 +737,77 @@ class CognitiveAdapter:
         """Execute the actual hive search using the best available method."""
         # FederatedGraphStore.federated_query returns FederatedQueryResult
         if hasattr(self._hive_store, "federated_query"):
+            try:
+                from amplihack.agents.goal_seeking.hive_mind.tracing import trace_log
+
+                trace_log("_execute_hive_search", "using federated_query")
+            except ImportError:
+                pass
             fqr = self._hive_store.federated_query(query, limit=limit)
-            return [
+            results = [
                 self._hive_fact_to_dict(
                     content=r.get("content", ""),
                     concept=r.get("concept", ""),
                     confidence=r.get("confidence", 0.5),
                     tags=r.get("tags", []),
                     source=r.get("source", "unknown"),
+                    timestamp=r.get("created_at", r.get("timestamp", "")),
+                    metadata=r.get("metadata", {})
+                    if isinstance(r.get("metadata", {}), dict)
+                    else {},
                 )
                 for r in (fqr.results if hasattr(fqr, "results") else fqr)
             ]
+            try:
+                from amplihack.agents.goal_seeking.hive_mind.tracing import trace_log
+
+                trace_log("_execute_hive_search", "federated_query returned %d", len(results))
+            except ImportError:
+                pass
+            return results
         # Proposal 5: Prefer query_federated (tree traversal)
         if hasattr(self._hive_store, "query_federated"):
+            try:
+                from amplihack.agents.goal_seeking.hive_mind.tracing import trace_log
+
+                trace_log("_execute_hive_search", "using query_federated")
+            except ImportError:
+                pass
             facts = self._hive_store.query_federated(query, limit=limit)
-            return [
+            results = [
                 self._hive_fact_to_dict(
                     content=f.content,
                     concept=f.concept,
                     confidence=f.confidence,
                     tags=getattr(f, "tags", []),
                     source=getattr(f, "source_agent", "unknown"),
+                    timestamp=getattr(f, "created_at", ""),
+                    metadata=getattr(f, "metadata", {}),
                 )
                 for f in facts
             ]
+            try:
+                from amplihack.agents.goal_seeking.hive_mind.tracing import trace_log
+
+                trace_log("_execute_hive_search", "query_federated returned %d", len(results))
+            except ImportError:
+                pass
+            return results
         # Fallback: local-only query (no federation)
         if hasattr(self._hive_store, "query_facts"):
+            try:
+                from amplihack.agents.goal_seeking.hive_mind.tracing import trace_log
+
+                trace_log("_execute_hive_search", "using query_facts (DHT fan-out)")
+            except ImportError:
+                pass
             facts = self._hive_store.query_facts(query, limit=limit)
+            try:
+                from amplihack.agents.goal_seeking.hive_mind.tracing import trace_log
+
+                trace_log("_execute_hive_search", "query_facts returned %d facts", len(facts))
+            except ImportError:
+                pass
             return [
                 self._hive_fact_to_dict(
                     content=f.content,
@@ -395,9 +815,17 @@ class CognitiveAdapter:
                     confidence=f.confidence,
                     tags=getattr(f, "tags", []),
                     source=getattr(f, "source_agent", "unknown"),
+                    timestamp=getattr(f, "created_at", ""),
+                    metadata=getattr(f, "metadata", {}),
                 )
                 for f in facts
             ]
+        try:
+            from amplihack.agents.goal_seeking.hive_mind.tracing import trace_log
+
+            trace_log("_execute_hive_search", "NO search method found on hive_store!")
+        except ImportError:
+            pass
         return []
 
     def _get_all_hive_facts(self, limit: int = 50) -> list[dict[str, Any]]:
@@ -489,6 +917,25 @@ class CognitiveAdapter:
             return [self._node_to_dict(n) for n in nodes]
         return []
 
+    def retrieve_by_entity_local(self, entity_name: str, limit: int = 50) -> list[dict[str, Any]]:
+        """Retrieve entity facts from local memory only."""
+        local_mem = self.memory
+        use_local_entity = hasattr(local_mem, "local_retrieve_by_entity")
+
+        if self._cognitive:
+            if use_local_entity:
+                results = local_mem.local_retrieve_by_entity(entity_name=entity_name, limit=limit)
+            elif hasattr(local_mem, "retrieve_by_entity"):
+                results = local_mem.retrieve_by_entity(entity_name=entity_name, limit=limit)
+            else:
+                return []
+            return [self._semantic_fact_to_dict(r) for r in results]
+
+        if hasattr(local_mem, "retrieve_by_entity"):
+            nodes = local_mem.retrieve_by_entity(entity_name=entity_name, limit=limit)
+            return [self._node_to_dict(n) for n in nodes]
+        return []
+
     def search_by_concept(self, keywords: list[str], limit: int = 30) -> list[dict[str, Any]]:
         """Search for facts by concept/content keyword matching.
 
@@ -497,8 +944,13 @@ class CognitiveAdapter:
             limit: Maximum nodes to return per keyword
 
         Returns:
-            List of fact dicts matching any of the keywords
+            List of fact dicts matching any of the keywords, including
+            distributed hive results when a hive_store is connected.
         """
+        # NOTE: When topology=distributed, self.memory is a
+        # DistributedCognitiveMemory whose __getattr__ delegates
+        # search_by_concept to the local backend.  CognitiveAdapter is
+        # topology-unaware — no hive branching here.
         if self._cognitive and hasattr(self.memory, "search_by_concept"):
             results = self.memory.search_by_concept(keywords=keywords, limit=limit)
             return [self._semantic_fact_to_dict(r) for r in results]
@@ -520,6 +972,21 @@ class CognitiveAdapter:
         if hasattr(self.memory, "execute_aggregation"):
             return self.memory.execute_aggregation(
                 query_type=query_type, entity_filter=entity_filter
+            )
+        return {"count": 0, "query_type": query_type, "error": "Not supported"}
+
+    def execute_aggregation_local(self, query_type: str, entity_filter: str = "") -> dict[str, Any]:
+        """Execute an aggregation against local memory only."""
+        local_mem = self.memory
+        if hasattr(local_mem, "local_execute_aggregation"):
+            return local_mem.local_execute_aggregation(
+                query_type=query_type,
+                entity_filter=entity_filter,
+            )
+        if hasattr(local_mem, "execute_aggregation"):
+            return local_mem.execute_aggregation(
+                query_type=query_type,
+                entity_filter=entity_filter,
             )
         return {"count": 0, "query_type": query_type, "error": "Not supported"}
 
@@ -609,7 +1076,13 @@ class CognitiveAdapter:
 
     @staticmethod
     def _semantic_fact_to_dict(fact: Any) -> dict[str, Any]:
-        """Convert CognitiveMemory SemanticFact to flat dict."""
+        """Convert CognitiveMemory SemanticFact (or dict) to flat dict.
+
+        Handles both SemanticFact objects (from local CognitiveMemory) and
+        plain dicts (from DistributedCognitiveMemory's hive merge).
+        """
+        if isinstance(fact, dict):
+            return fact
         return {
             "experience_id": fact.node_id,
             "context": fact.concept,

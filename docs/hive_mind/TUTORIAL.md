@@ -201,18 +201,18 @@ bash experiments/hive_mind/deploy_azure_hive.sh --cleanup
 
 ### What Gets Provisioned
 
-| Resource           | Details                                                   |
-| ------------------ | --------------------------------------------------------- |
-| Resource Group     | `hive-mind-eval-rg` (eastus)                              |
-| Service Bus        | Standard SKU, `hive-events` topic, 21 subscriptions       |
-| Storage Account    | Azure Files share for Kuzu DB persistence                 |
-| Container Registry | Basic SKU for agent images                                |
-| Container Apps     | 21 apps (20 domain + 1 adversary), 2.0 CPU / 4.0 GiB each |
+| Resource           | Details                                                                   |
+| ------------------ | ------------------------------------------------------------------------- |
+| Resource Group     | `hive-mind-rg` (eastus)                                                   |
+| Container Registry | `hivacrhivemind` — Basic SKU, admin enabled                               |
+| Service Bus        | `hive-sb-dj2qo2w7vu5zi` — Standard SKU, `hive-events` topic, 21 subs     |
+| Storage Account    | Azure Files share for Kuzu DB persistence                                 |
+| Container Apps     | 21 apps (20 domain + 1 adversary), 2.0 CPU / 4.0 GiB each                |
 
 ### Environment Overrides
 
 ```bash
-export HIVE_RESOURCE_GROUP="my-rg"      # Default: hive-mind-eval-rg
+export HIVE_RESOURCE_GROUP="my-rg"      # Default: hive-mind-rg
 export HIVE_LOCATION="westus2"           # Default: eastus
 export HIVE_AGENT_COUNT=10               # Default: 20
 export HIVE_IMAGE_TAG="v2"               # Default: latest

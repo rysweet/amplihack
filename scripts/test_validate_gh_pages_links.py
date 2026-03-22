@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests fer GitHub Pages link validator - TDD approach.
+"""Tests for GitHub Pages link validator - TDD approach.
 
 Testing pyramid:
 - 60% Unit tests (fast, heavily mocked)

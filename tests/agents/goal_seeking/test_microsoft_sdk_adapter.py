@@ -38,6 +38,28 @@ from amplihack.agents.goal_seeking.sdk_adapters.microsoft_sdk import (
 
 _TEST_API_KEY = "test-key-for-unit-tests"  # pragma: allowlist secret
 
+import amplihack.agents.goal_seeking.sdk_adapters.microsoft_sdk as _ms_sdk
+
+# Permanently mock agent-framework at module level since it's not installed.
+# This allows all tests to create MicrosoftGoalSeekingAgent instances without
+# needing the real agent-framework package.
+_MOCK_SESSION = MagicMock()
+_MOCK_AF_AGENT_INSTANCE = MagicMock()
+_MOCK_AF_AGENT_INSTANCE.create_session.return_value = _MOCK_SESSION
+_MOCK_AF_AGENT_CLS = MagicMock(return_value=_MOCK_AF_AGENT_INSTANCE)
+_MOCK_AF_FUNCTION_TOOL_CLS = MagicMock()
+_MOCK_OPENAI_CLIENT_CLS = MagicMock()
+
+_ms_sdk._HAS_AGENT_FRAMEWORK = True
+_ms_sdk.AFAgent = _MOCK_AF_AGENT_CLS
+_ms_sdk.AFFunctionTool = _MOCK_AF_FUNCTION_TOOL_CLS
+_ms_sdk.OpenAIChatClient = _MOCK_OPENAI_CLIENT_CLS
+
+# Keep backward-compatible aliases used in some tests
+_MOCK_AF_AGENT = _MOCK_AF_AGENT_INSTANCE
+_MOCK_AF_FUNCTION_TOOL = _MOCK_AF_FUNCTION_TOOL_CLS
+_MOCK_OPENAI_CLIENT = _MOCK_OPENAI_CLIENT_CLS
+
 
 def _make_agent(
     name: str = "test-agent",
@@ -46,7 +68,7 @@ def _make_agent(
     enable_memory: bool = False,
     **kwargs: Any,
 ) -> MicrosoftGoalSeekingAgent:
-    """Create a MicrosoftGoalSeekingAgent with OPENAI_API_KEY mocked."""
+    """Create a MicrosoftGoalSeekingAgent with agent-framework mocked."""
     with patch.dict(os.environ, {"OPENAI_API_KEY": _TEST_API_KEY}):
         return MicrosoftGoalSeekingAgent(
             name=name,
@@ -257,7 +279,8 @@ class TestToolImplementationsWithMemory:
 
     def test_learn_stores_fact(self):
         agent = _make_agent_with_mock_memory()
-        result = agent._tool_learn(content="Python is a language")
+        with patch.object(agent, "_get_learning_agent", return_value=None):
+            result = agent._tool_learn(content="Python is a language")
         assert result["status"] == "learned"
         agent.memory.store_fact.assert_called_once()
 
@@ -351,18 +374,18 @@ class TestSessionManagement:
 
     def test_has_thread(self):
         agent = _make_agent()
-        assert agent._thread is not None
+        assert agent._session is not None
 
     def test_reset_session(self):
         agent = _make_agent()
         agent.reset_session()
         # Should create a new thread
-        assert agent._thread is not None
+        assert agent._session is not None
 
     def test_close(self):
         agent = _make_agent()
         agent.close()
-        assert agent._thread is None
+        assert agent._session is None
 
 
 # ===========================================================================

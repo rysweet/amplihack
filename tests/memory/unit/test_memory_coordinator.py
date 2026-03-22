@@ -1,410 +1,37 @@
 """Unit tests for MemoryCoordinator - the main memory interface.
 
-This file implements the core unit tests from the testing strategy.
 Tests are fast (<100ms), isolated, and focus on behavior validation.
+Uses mocked backends to avoid LLM calls and database I/O.
 """
 
 from datetime import datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from amplihack.memory.coordinator import MemoryCoordinator
-from amplihack.memory.models import MemoryEntry, MemoryQuery, MemoryType
+import pytest
 
+from amplihack.memory.coordinator import MemoryCoordinator, RetrievalQuery, StorageRequest
+from amplihack.memory.models import MemoryEntry, MemoryType
 
-class TestMemoryCoordinatorStore:
-    """Test memory storage operations (<100ms)."""
 
-    def test_store_episodic_memory_creates_entry(self, mock_backend):
-        """Test storing episodic memory creates valid entry."""
-        # ARRANGE
-        coordinator = MemoryCoordinator(backend=mock_backend)
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
 
-        # ACT
-        result = coordinator.store(
-            memory_type=MemoryType.EPISODIC,
-            title="User asked about authentication",
-            content="Discussion about JWT vs session-based auth",
-            session_id="sess_123",
-            agent_id="architect",
-            metadata={"topic": "security"},
-        )
 
-        # ASSERT
-        assert result.success is True
-        assert result.memory_id is not None
-        mock_backend.store.assert_called_once()
+@pytest.fixture
+def async_backend():
+    """Mock backend with correct async method names for MemoryCoordinator."""
+    backend = MagicMock()
+    backend.initialize = AsyncMock(return_value=None)
+    backend.store_memory = AsyncMock(return_value=True)
+    backend.retrieve_memories = AsyncMock(return_value=[])
+    backend.delete_memory = AsyncMock(return_value=True)
+    backend.get_stats = AsyncMock(return_value={"total_memories": 0})
+    return backend
 
-        # Verify stored entry structure
-        stored_entry = mock_backend.store.call_args[0][0]
-        assert isinstance(stored_entry, MemoryEntry)
-        assert stored_entry.memory_type == MemoryType.EPISODIC
-        assert stored_entry.session_id == "sess_123"
-        assert stored_entry.agent_id == "architect"
 
-    def test_store_with_importance_auto_calculation(self, mock_backend):
-        """Test importance is automatically calculated during storage."""
-        # ARRANGE
-        coordinator = MemoryCoordinator(backend=mock_backend)
-
-        # ACT
-        result = coordinator.store(
-            memory_type=MemoryType.SEMANTIC,
-            title="Critical security vulnerability found",
-            content="SQL injection vulnerability in login endpoint",
-            session_id="sess_456",
-            agent_id="security",
-            metadata={"severity": "critical"},
-        )
-
-        # ASSERT
-        assert result.success is True
-        stored_entry = mock_backend.store.call_args[0][0]
-
-        # Critical security findings should have high importance
-        # (Actual scoring logic in storage pipeline)
-        assert stored_entry.importance is not None
-
-    def test_store_procedural_with_steps(self, mock_backend):
-        """Test storing procedural memory with execution steps."""
-        # ARRANGE
-        coordinator = MemoryCoordinator(backend=mock_backend)
-
-        # ACT
-        result = coordinator.store(
-            memory_type=MemoryType.PROCEDURAL,
-            title="How to fix import errors",
-            content="1. Check dependencies\n2. Verify PYTHONPATH\n3. Restart IDE",
-            session_id="sess_789",
-            agent_id="builder",
-            metadata={"success_rate": 0.95},
-        )
-
-        # ASSERT
-        assert result.success is True
-        stored_entry = mock_backend.store.call_args[0][0]
-        assert stored_entry.memory_type == MemoryType.PROCEDURAL
-        assert "1." in stored_entry.content
-        assert stored_entry.metadata["success_rate"] == 0.95
-
-    def test_store_fails_gracefully_on_empty_title(self, mock_backend):
-        """Test error handling for invalid memory entries."""
-        # ARRANGE
-        coordinator = MemoryCoordinator(backend=mock_backend)
-
-        # ACT
-        result = coordinator.store(
-            memory_type=MemoryType.EPISODIC,
-            title="",  # Invalid: empty title
-            content="Some content",
-            session_id="sess_999",
-            agent_id="test",
-        )
-
-        # ASSERT
-        assert result.success is False
-        assert "title" in result.error.lower() or "required" in result.error.lower()
-        mock_backend.store.assert_not_called()
-
-    def test_store_fails_on_missing_required_fields(self, mock_backend):
-        """Test validation of required fields."""
-        # ARRANGE
-        coordinator = MemoryCoordinator(backend=mock_backend)
-
-        # ACT & ASSERT - Missing session_id
-        result = coordinator.store(
-            memory_type=MemoryType.EPISODIC,
-            title="Test",
-            content="Content",
-            session_id="",  # Invalid
-            agent_id="test",
-        )
-        assert result.success is False
-
-    def test_store_working_memory_with_expiration(self, mock_backend):
-        """Test storing working memory with automatic expiration."""
-        # ARRANGE
-        coordinator = MemoryCoordinator(backend=mock_backend)
-        expiration = datetime.now() + timedelta(hours=1)
-
-        # ACT
-        result = coordinator.store(
-            memory_type=MemoryType.WORKING,
-            title="Temporary context",
-            content="Active task state",
-            session_id="sess_work",
-            agent_id="builder",
-            expires_at=expiration,
-        )
-
-        # ASSERT
-        assert result.success is True
-        stored_entry = mock_backend.store.call_args[0][0]
-        assert stored_entry.memory_type == MemoryType.WORKING
-        assert stored_entry.expires_at == expiration
-
-
-class TestMemoryCoordinatorRetrieve:
-    """Test memory retrieval operations (<50ms without review)."""
-
-    def test_retrieve_by_session_id(self, mock_backend, sample_memory_entry):
-        """Test retrieving all memories for a session."""
-        # ARRANGE
-        coordinator = MemoryCoordinator(backend=mock_backend)
-        mock_backend.query.return_value = [
-            sample_memory_entry,
-            create_mock_memory("mem_2", "sess_100"),
-        ]
-
-        # ACT
-        result = coordinator.retrieve(query=MemoryQuery(session_id="sess_100"))
-
-        # ASSERT
-        assert len(result.memories) == 2
-        assert all(m.session_id == "sess_100" for m in result.memories)
-        mock_backend.query.assert_called_once()
-
-    def test_retrieve_by_memory_type(self, mock_backend):
-        """Test filtering by memory type."""
-        # ARRANGE
-        coordinator = MemoryCoordinator(backend=mock_backend)
-        semantic_memory = create_mock_memory("mem_3", "sess_200", memory_type=MemoryType.SEMANTIC)
-        mock_backend.query.return_value = [semantic_memory]
-
-        # ACT
-        result = coordinator.retrieve(query=MemoryQuery(memory_type=MemoryType.SEMANTIC))
-
-        # ASSERT
-        assert len(result.memories) == 1
-        assert result.memories[0].memory_type == MemoryType.SEMANTIC
-
-    def test_retrieve_with_content_search(self, mock_backend):
-        """Test full-text search functionality."""
-        # ARRANGE
-        coordinator = MemoryCoordinator(backend=mock_backend)
-        mock_backend.query.return_value = [
-            create_mock_memory("mem_4", "sess_300", content="authentication flow details"),
-        ]
-
-        # ACT
-        result = coordinator.retrieve(query=MemoryQuery(content_search="authentication"))
-
-        # ASSERT
-        assert len(result.memories) == 1
-        assert "authentication" in result.memories[0].content.lower()
-
-    def test_retrieve_with_importance_threshold(self, mock_backend):
-        """Test filtering by importance score."""
-        # ARRANGE
-        coordinator = MemoryCoordinator(backend=mock_backend)
-        mock_backend.query.return_value = [
-            create_mock_memory("mem_5", "sess_400", importance=9),
-            create_mock_memory("mem_6", "sess_400", importance=8),
-        ]
-
-        # ACT
-        result = coordinator.retrieve(query=MemoryQuery(min_importance=8))
-
-        # ASSERT
-        assert len(result.memories) == 2
-        assert all(m.importance >= 8 for m in result.memories)
-
-    def test_retrieve_empty_results(self, mock_backend):
-        """Test handling of no matching memories."""
-        # ARRANGE
-        coordinator = MemoryCoordinator(backend=mock_backend)
-        mock_backend.query.return_value = []
-
-        # ACT
-        result = coordinator.retrieve(query=MemoryQuery(session_id="nonexistent"))
-
-        # ASSERT
-        assert len(result.memories) == 0
-        assert result.success is True
-
-    def test_retrieve_with_time_range(self, mock_backend):
-        """Test filtering by time range."""
-        # ARRANGE
-        coordinator = MemoryCoordinator(backend=mock_backend)
-        start_time = datetime.now() - timedelta(days=7)
-        end_time = datetime.now()
-
-        mock_backend.query.return_value = [create_mock_memory("mem_recent", "sess_500")]
-
-        # ACT
-        result = coordinator.retrieve(
-            query=MemoryQuery(created_after=start_time, created_before=end_time)
-        )
-
-        # ASSERT
-        assert len(result.memories) == 1
-        mock_backend.query.assert_called_once()
-
-    def test_retrieve_with_limit(self, mock_backend):
-        """Test pagination with limit."""
-        # ARRANGE
-        coordinator = MemoryCoordinator(backend=mock_backend)
-        mock_backend.query.return_value = [
-            create_mock_memory(f"mem_{i}", "sess_600") for i in range(10)
-        ]
-
-        # ACT
-        result = coordinator.retrieve(query=MemoryQuery(session_id="sess_600", limit=5))
-
-        # ASSERT
-        assert len(result.memories) <= 5
-
-
-class TestMemoryCoordinatorWorkingMemory:
-    """Test working memory operations (temporary context)."""
-
-    def test_clear_working_memory_for_session(self, mock_backend):
-        """Test clearing working memory at session boundaries."""
-        # ARRANGE
-        coordinator = MemoryCoordinator(backend=mock_backend)
-        mock_backend.delete_by_query.return_value = 3  # 3 memories deleted
-
-        # ACT
-        result = coordinator.clear_working_memory(session_id="sess_500")
-
-        # ASSERT
-        assert result.success is True
-        assert result.deleted_count == 3
-        mock_backend.delete_by_query.assert_called_once()
-
-    def test_working_memory_auto_expires(self, mock_backend):
-        """Test working memory expires after timeout."""
-        # ARRANGE
-        coordinator = MemoryCoordinator(backend=mock_backend)
-        _ = datetime.now() - timedelta(hours=2)
-
-        # Mock: no expired memories returned
-        mock_backend.query.return_value = []
-
-        # ACT - Query should exclude expired memories by default
-        result = coordinator.retrieve(
-            query=MemoryQuery(
-                session_id="sess_600", memory_type=MemoryType.WORKING, include_expired=False
-            )
-        )
-
-        # ASSERT
-        assert len(result.memories) == 0
-
-    def test_include_expired_memories_when_requested(self, mock_backend):
-        """Test retrieving expired memories when explicitly requested."""
-        # ARRANGE
-        coordinator = MemoryCoordinator(backend=mock_backend)
-        expired_memory = create_mock_memory("mem_expired", "sess_700")
-        expired_memory.expires_at = datetime.now() - timedelta(hours=1)
-
-        mock_backend.query.return_value = [expired_memory]
-
-        # ACT
-        result = coordinator.retrieve(
-            query=MemoryQuery(session_id="sess_700", include_expired=True)
-        )
-
-        # ASSERT
-        assert len(result.memories) == 1
-
-
-class TestMemoryCoordinatorDelete:
-    """Test memory deletion operations."""
-
-    def test_delete_by_id(self, mock_backend):
-        """Test deleting specific memory by ID."""
-        # ARRANGE
-        coordinator = MemoryCoordinator(backend=mock_backend)
-        mock_backend.delete.return_value = True
-
-        # ACT
-        result = coordinator.delete(memory_id="mem_to_delete")
-
-        # ASSERT
-        assert result.success is True
-        mock_backend.delete.assert_called_once_with("mem_to_delete")
-
-    def test_delete_nonexistent_memory(self, mock_backend):
-        """Test deleting non-existent memory."""
-        # ARRANGE
-        coordinator = MemoryCoordinator(backend=mock_backend)
-        mock_backend.delete.return_value = False
-
-        # ACT
-        result = coordinator.delete(memory_id="nonexistent")
-
-        # ASSERT
-        assert result.success is False
-
-
-class TestMemoryCoordinatorBoundaryConditions:
-    """Test boundary conditions and edge cases."""
-
-    def test_store_with_very_long_content(self, mock_backend):
-        """Test storing memory with very long content."""
-        # ARRANGE
-        coordinator = MemoryCoordinator(backend=mock_backend)
-        long_content = "x" * 100000  # 100KB content
-
-        # ACT
-        result = coordinator.store(
-            memory_type=MemoryType.EPISODIC,
-            title="Large content test",
-            content=long_content,
-            session_id="sess_large",
-            agent_id="test",
-        )
-
-        # ASSERT
-        assert result.success is True
-        stored_entry = mock_backend.store.call_args[0][0]
-        assert len(stored_entry.content) == 100000
-
-    def test_retrieve_with_zero_limit(self, mock_backend):
-        """Test retrieval with limit=0 (no results)."""
-        # ARRANGE
-        coordinator = MemoryCoordinator(backend=mock_backend)
-        mock_backend.query.return_value = []
-
-        # ACT
-        result = coordinator.retrieve(query=MemoryQuery(session_id="sess_800", limit=0))
-
-        # ASSERT
-        assert len(result.memories) == 0
-
-    def test_store_with_null_metadata(self, mock_backend):
-        """Test storing memory with empty metadata."""
-        # ARRANGE
-        coordinator = MemoryCoordinator(backend=mock_backend)
-
-        # ACT
-        result = coordinator.store(
-            memory_type=MemoryType.EPISODIC,
-            title="No metadata",
-            content="Content without metadata",
-            session_id="sess_900",
-            agent_id="test",
-            metadata={},
-        )
-
-        # ASSERT
-        assert result.success is True
-        stored_entry = mock_backend.store.call_args[0][0]
-        assert stored_entry.metadata == {}
-
-
-# =============================================================================
-# Test Fixtures and Helpers
-# =============================================================================
-
-
-def create_mock_memory(
-    memory_id: str,
-    session_id: str,
-    memory_type: MemoryType = MemoryType.EPISODIC,
-    importance: int = 5,
-    content: str = "Test content",
-) -> MemoryEntry:
-    """Helper to create mock memory entries."""
+def _make_entry(memory_id, session_id, memory_type=MemoryType.EPISODIC,
+                content="Test content", importance=5):
     return MemoryEntry(
         id=memory_id,
         session_id=session_id,
@@ -419,23 +46,284 @@ def create_mock_memory(
     )
 
 
-# =============================================================================
-# Test Performance Validation
-# =============================================================================
+# ---------------------------------------------------------------------------
+# StorageRequest validation tests
+# ---------------------------------------------------------------------------
+
+
+class TestStorageRequest:
+    """Tests for StorageRequest input validation."""
+
+    def test_empty_content_raises_value_error(self):
+        """Empty content must raise ValueError."""
+        with pytest.raises(ValueError):
+            StorageRequest(content="")
+
+    def test_whitespace_only_content_raises_value_error(self):
+        """Whitespace-only content must raise ValueError."""
+        with pytest.raises(ValueError):
+            StorageRequest(content="   ")
+
+    def test_valid_request_defaults_to_episodic(self):
+        """Valid content creates request with EPISODIC type by default."""
+        req = StorageRequest(content="Valid content here")
+        assert req.memory_type == MemoryType.EPISODIC
+
+    def test_valid_request_with_explicit_type(self):
+        """Memory type can be set explicitly."""
+        req = StorageRequest(content="Valid content", memory_type=MemoryType.SEMANTIC)
+        assert req.memory_type == MemoryType.SEMANTIC
+
+    def test_valid_request_with_metadata(self):
+        """Metadata is stored on the request."""
+        req = StorageRequest(content="Valid content", metadata={"key": "val"})
+        assert req.metadata["key"] == "val"
+
+
+# ---------------------------------------------------------------------------
+# Storage tests
+# ---------------------------------------------------------------------------
+
+
+class TestMemoryCoordinatorStore:
+    """Test memory storage operations."""
+
+    @pytest.mark.asyncio
+    async def test_store_returns_memory_id_on_success(self, async_backend):
+        """Successful storage returns a non-None memory ID string."""
+        coordinator = MemoryCoordinator(backend=async_backend, session_id="sess_123")
+        with patch.object(coordinator, "_review_quality", AsyncMock(return_value=7)):
+            with patch.object(coordinator, "_is_duplicate", AsyncMock(return_value=False)):
+                request = StorageRequest(
+                    content="Discussion about JWT vs session-based auth",
+                    memory_type=MemoryType.EPISODIC,
+                )
+                memory_id = await coordinator.store(request)
+
+        assert memory_id is not None
+        assert isinstance(memory_id, str)
+        async_backend.store_memory.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_store_creates_entry_with_correct_memory_type(self, async_backend):
+        """Stored MemoryEntry carries the requested memory type in metadata."""
+        coordinator = MemoryCoordinator(backend=async_backend, session_id="sess_456")
+        with patch.object(coordinator, "_review_quality", AsyncMock(return_value=7)):
+            with patch.object(coordinator, "_is_duplicate", AsyncMock(return_value=False)):
+                request = StorageRequest(
+                    content="SQL injection vulnerability in login endpoint",
+                    memory_type=MemoryType.SEMANTIC,
+                )
+                await coordinator.store(request)
+
+        stored_entry = async_backend.store_memory.call_args[0][0]
+        assert isinstance(stored_entry, MemoryEntry)
+        assert stored_entry.metadata.get("new_memory_type") == MemoryType.SEMANTIC.value
+
+    @pytest.mark.asyncio
+    async def test_store_procedural_memory_preserves_content(self, async_backend):
+        """Procedural memory content is stored verbatim."""
+        content = "1. Check dependencies\n2. Verify PYTHONPATH\n3. Restart IDE"
+        coordinator = MemoryCoordinator(backend=async_backend, session_id="sess_789")
+        with patch.object(coordinator, "_review_quality", AsyncMock(return_value=7)):
+            with patch.object(coordinator, "_is_duplicate", AsyncMock(return_value=False)):
+                request = StorageRequest(content=content, memory_type=MemoryType.PROCEDURAL)
+                await coordinator.store(request)
+
+        stored_entry = async_backend.store_memory.call_args[0][0]
+        assert "1." in stored_entry.content
+        assert stored_entry.metadata.get("new_memory_type") == MemoryType.PROCEDURAL.value
+
+    @pytest.mark.asyncio
+    async def test_trivial_short_content_is_rejected(self, async_backend):
+        """Very short trivial content is filtered before storage."""
+        coordinator = MemoryCoordinator(backend=async_backend, session_id="sess_triv")
+        request = StorageRequest(content="ok")
+        memory_id = await coordinator.store(request)
+
+        assert memory_id is None
+        async_backend.store_memory.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_low_quality_content_is_rejected(self, async_backend):
+        """Content scoring below the quality threshold (5/10) is not stored."""
+        coordinator = MemoryCoordinator(backend=async_backend, session_id="sess_lq")
+        with patch.object(coordinator, "_review_quality", AsyncMock(return_value=3)):
+            with patch.object(coordinator, "_is_duplicate", AsyncMock(return_value=False)):
+                request = StorageRequest(
+                    content="This content scores below the quality threshold"
+                )
+                memory_id = await coordinator.store(request)
+
+        assert memory_id is None
+        async_backend.store_memory.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_duplicate_content_is_rejected(self, async_backend):
+        """Content already in the store is not stored again."""
+        coordinator = MemoryCoordinator(backend=async_backend, session_id="sess_dup")
+        with patch.object(coordinator, "_is_duplicate", AsyncMock(return_value=True)):
+            request = StorageRequest(content="Duplicate content that was already stored")
+            memory_id = await coordinator.store(request)
+
+        assert memory_id is None
+        async_backend.store_memory.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Retrieval tests
+# ---------------------------------------------------------------------------
+
+
+class TestMemoryCoordinatorRetrieve:
+    """Test memory retrieval operations."""
+
+    @pytest.mark.asyncio
+    async def test_retrieve_returns_list(self, async_backend):
+        """retrieve() returns a list (may be empty)."""
+        coordinator = MemoryCoordinator(backend=async_backend, session_id="sess_100")
+        query = RetrievalQuery(query_text="authentication")
+        memories = await coordinator.retrieve(query)
+        assert isinstance(memories, list)
+
+    @pytest.mark.asyncio
+    async def test_retrieve_empty_when_backend_returns_nothing(self, async_backend):
+        """Empty backend results yields empty memory list."""
+        async_backend.retrieve_memories = AsyncMock(return_value=[])
+        coordinator = MemoryCoordinator(backend=async_backend, session_id="sess_200")
+        memories = await coordinator.retrieve(RetrievalQuery(query_text="test"))
+        assert len(memories) == 0
+
+    @pytest.mark.asyncio
+    async def test_retrieve_respects_zero_token_budget(self, async_backend):
+        """Zero token budget returns empty list without querying backend."""
+        coordinator = MemoryCoordinator(backend=async_backend, session_id="sess_300")
+        query = RetrievalQuery(query_text="test", token_budget=0)
+        memories = await coordinator.retrieve(query)
+        assert len(memories) == 0
+        async_backend.retrieve_memories.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_retrieve_filters_by_memory_type(self, async_backend):
+        """retrieve() filters results to requested memory types."""
+        semantic = _make_entry("m1", "sess_400", memory_type=MemoryType.SEMANTIC)
+        semantic.metadata["new_memory_type"] = MemoryType.SEMANTIC.value
+        episodic = _make_entry("m2", "sess_400", memory_type=MemoryType.EPISODIC)
+        episodic.metadata["new_memory_type"] = MemoryType.EPISODIC.value
+        async_backend.retrieve_memories = AsyncMock(return_value=[semantic, episodic])
+
+        coordinator = MemoryCoordinator(backend=async_backend, session_id="sess_400")
+        query = RetrievalQuery(query_text="test", memory_types=[MemoryType.SEMANTIC])
+        memories = await coordinator.retrieve(query)
+
+        assert all(
+            m.metadata.get("new_memory_type") == MemoryType.SEMANTIC.value
+            for m in memories
+        )
+
+    @pytest.mark.asyncio
+    async def test_retrieve_applies_time_range_filter(self, async_backend):
+        """retrieve() excludes entries outside the requested time range."""
+        old_entry = _make_entry("m_old", "sess_500")
+        old_entry.created_at = datetime.now() - timedelta(days=30)
+        async_backend.retrieve_memories = AsyncMock(return_value=[old_entry])
+
+        coordinator = MemoryCoordinator(backend=async_backend, session_id="sess_500")
+        start = datetime.now() - timedelta(days=1)
+        end = datetime.now()
+        query = RetrievalQuery(query_text="test", time_range=(start, end))
+        memories = await coordinator.retrieve(query)
+
+        assert len(memories) == 0
+
+
+# ---------------------------------------------------------------------------
+# Clear-all / session management tests
+# ---------------------------------------------------------------------------
+
+
+class TestMemoryCoordinatorClearAll:
+    """Test session memory cleanup operations."""
+
+    @pytest.mark.asyncio
+    async def test_clear_all_deletes_session_memories(self, async_backend):
+        """clear_all() deletes all memories belonging to the specified session."""
+        entry = _make_entry("mem_1", "sess_clear")
+        async_backend.retrieve_memories = AsyncMock(return_value=[entry])
+        coordinator = MemoryCoordinator(backend=async_backend, session_id="sess_clear")
+
+        await coordinator.clear_all(session_id="sess_clear")
+
+        async_backend.delete_memory.assert_called_once_with("mem_1")
+
+    @pytest.mark.asyncio
+    async def test_clear_all_without_session_raises_value_error(self, async_backend):
+        """clear_all() without a session_id raises ValueError."""
+        coordinator = MemoryCoordinator(backend=async_backend, session_id="sess_x")
+        coordinator.session_id = None  # Remove session
+
+        with pytest.raises(ValueError):
+            await coordinator.clear_all()
+
+    @pytest.mark.asyncio
+    async def test_clear_all_uses_coordinator_session_id_by_default(self, async_backend):
+        """clear_all() uses the coordinator's own session_id when none given."""
+        entry = _make_entry("mem_default", "sess_coord")
+        async_backend.retrieve_memories = AsyncMock(return_value=[entry])
+        coordinator = MemoryCoordinator(backend=async_backend, session_id="sess_coord")
+
+        await coordinator.clear_all()  # No explicit session_id
+
+        async_backend.delete_memory.assert_called_once_with("mem_default")
+
+
+# ---------------------------------------------------------------------------
+# Statistics tests
+# ---------------------------------------------------------------------------
+
+
+class TestMemoryCoordinatorStatistics:
+    """Test statistics and monitoring."""
+
+    @pytest.mark.asyncio
+    async def test_statistics_returns_dict(self, async_backend):
+        """get_statistics() returns a dictionary."""
+        coordinator = MemoryCoordinator(backend=async_backend, session_id="sess_stats")
+        stats = await coordinator.get_statistics()
+        assert isinstance(stats, dict)
+
+    @pytest.mark.asyncio
+    async def test_statistics_tracks_stored_count(self, async_backend):
+        """Stored memory count increases after successful store."""
+        coordinator = MemoryCoordinator(backend=async_backend, session_id="sess_cnt")
+        with patch.object(coordinator, "_review_quality", AsyncMock(return_value=7)):
+            with patch.object(coordinator, "_is_duplicate", AsyncMock(return_value=False)):
+                await coordinator.store(
+                    StorageRequest(content="A well-formed memory about the system")
+                )
+
+        stats = await coordinator.get_statistics()
+        assert stats.get("total_stored", 0) >= 1
+
+
+# ---------------------------------------------------------------------------
+# Performance constraint (no external benchmark dep)
+# ---------------------------------------------------------------------------
 
 
 class TestPerformanceConstraints:
     """Validate unit tests meet performance constraints (<100ms)."""
 
-    def test_all_unit_tests_complete_quickly(self, mock_backend, benchmark):
-        """Benchmark test to ensure unit tests are fast."""
-        # ARRANGE
-        coordinator = MemoryCoordinator(backend=mock_backend)
-        mock_backend.query.return_value = []
+    @pytest.mark.asyncio
+    async def test_retrieve_completes_quickly(self, async_backend):
+        """Retrieval must complete in under 200ms (unit test, mocked backend)."""
+        import time
 
-        # ACT & ASSERT - Should complete in <100ms
-        def retrieve_operation():
-            coordinator.retrieve(query=MemoryQuery(session_id="test"))
+        coordinator = MemoryCoordinator(backend=async_backend, session_id="sess_perf")
+        query = RetrievalQuery(query_text="test")
 
-        _ = benchmark(retrieve_operation)
-        # Benchmark automatically validates timing
+        start = time.perf_counter()
+        await coordinator.retrieve(query)
+        elapsed_ms = (time.perf_counter() - start) * 1000
+
+        assert elapsed_ms < 200, f"Retrieval took {elapsed_ms:.1f}ms, exceeds 200ms limit"

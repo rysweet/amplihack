@@ -31,7 +31,7 @@ def main():
     try:
         # Import memory coordinator
         from amplihack.memory.coordinator import MemoryCoordinator
-        from amplihack.memory.types import MemoryType
+        from amplihack.memory.models import MemoryType
 
         # Get session context from environment or stdin
         session_context = json.loads(sys.stdin.read()) if not sys.stdin.isatty() else {}

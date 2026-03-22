@@ -7,14 +7,11 @@ Philosophy: Single responsibility - just grading, no other logic.
 
 from __future__ import annotations
 
-import json
 import logging
-import os
-import re
 import statistics
 from dataclasses import dataclass
 
-import anthropic  # type: ignore[import-untyped]
+from .llm_grader import call_grader_json, get_grader_model
 
 logger = logging.getLogger(__name__)
 
@@ -26,54 +23,6 @@ class GradeResult:
     score: float  # 0.0 to 1.0
     reasoning: str
     vote_scores: list[float] | None = None  # Individual vote scores when multi-vote
-
-
-def _extract_json(text: str) -> dict:
-    """Extract a JSON object from LLM response text.
-
-    Handles common LLM response patterns:
-    - Raw JSON: {"score": 0.85, ...}
-    - Markdown fenced: ```json\\n{...}\\n```
-    - Markdown fenced without language tag: ```\\n{...}\\n```
-
-    Args:
-        text: Raw LLM response text
-
-    Returns:
-        Parsed JSON dict
-
-    Raises:
-        json.JSONDecodeError: If no valid JSON object can be extracted
-    """
-    stripped = text.strip()
-
-    # Try direct parse first
-    try:
-        return json.loads(stripped)
-    except json.JSONDecodeError:
-        pass
-
-    # Strip markdown code fences: ```json ... ``` or ``` ... ```
-    fenced = re.search(r"```(?:json)?\s*\n?(.*?)\n?\s*```", stripped, re.DOTALL)
-    if fenced:
-        try:
-            return json.loads(fenced.group(1).strip())
-        except json.JSONDecodeError:
-            pass
-
-    # Find first { ... } block as last resort
-    brace_match = re.search(r"\{.*\}", stripped, re.DOTALL)
-    if brace_match:
-        try:
-            return json.loads(brace_match.group(0))
-        except json.JSONDecodeError:
-            pass
-
-    raise json.JSONDecodeError(
-        f"No valid JSON found in response: {stripped[:200]}",
-        stripped,
-        0,
-    )
 
 
 def _build_grading_prompt(question: str, expected: str, actual: str, level: str) -> str:
@@ -159,25 +108,17 @@ Return ONLY a JSON object with this structure:
 {{"score": 0.85, "reasoning": "Brief explanation of grade"}}"""
 
 
-def _single_grade_call(client: anthropic.Anthropic, model: str, prompt: str) -> GradeResult:
+def _single_grade_call(model: str, prompt: str) -> GradeResult:
     """Execute a single grading LLM call.
 
     Args:
-        client: Anthropic client
         model: Model identifier
         prompt: Grading prompt
 
     Returns:
         GradeResult from this single call
     """
-    message = client.messages.create(
-        model=model,
-        max_tokens=500,
-        messages=[{"role": "user", "content": prompt}],
-    )
-
-    response_text = message.content[0].text
-    result_json = _extract_json(response_text)
+    result_json = call_grader_json(prompt, model=model, max_tokens=500)
 
     return GradeResult(
         score=float(result_json["score"]),
@@ -215,25 +156,20 @@ def grade_answer(
     if not actual or not actual.strip():
         return GradeResult(score=0.0, reasoning="Agent provided no answer")
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise OSError("ANTHROPIC_API_KEY environment variable is required for grading")
-    client = anthropic.Anthropic(api_key=api_key)
-
-    grader_model = os.environ.get("GRADER_MODEL", "claude-opus-4-6")
+    grader_model = get_grader_model()
     prompt = _build_grading_prompt(question, expected, actual, level)
 
     # Clamp num_votes to valid range
     num_votes = max(1, min(num_votes, 9))
 
     if num_votes == 1:
-        return _single_grade_call(client, grader_model, prompt)
+        return _single_grade_call(grader_model, prompt)
 
     # Multi-vote: run N grading calls and take median
     vote_results: list[GradeResult] = []
     for vote_idx in range(num_votes):
         try:
-            result = _single_grade_call(client, grader_model, prompt)
+            result = _single_grade_call(grader_model, prompt)
             vote_results.append(result)
         except Exception as e:
             logger.warning("Grading vote %d failed: %s", vote_idx, e)

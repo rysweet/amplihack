@@ -123,7 +123,7 @@ def count_tests():
         )
 
         if result.returncode == 0:
-            # Look fer line like "39 tests collected"
+            # Look for line like "39 tests collected"
             for line in result.stdout.split("\n"):
                 if "test" in line and "collected" in line:
                     print(f"✓ {line.strip()}")

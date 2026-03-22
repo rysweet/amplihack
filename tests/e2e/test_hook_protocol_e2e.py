@@ -1,4 +1,4 @@
-"""End-to-end tests fer hook protocol.
+"""End-to-end tests for hook protocol.
 
 Tests complete hook workflows from outside-in perspective:
 - Hook creation and execution
@@ -118,7 +118,7 @@ sys.exit(1)
         # Create slow hook
         hook_script = """
 import time
-time.sleep(60)  # Sleep fer 60 seconds
+time.sleep(60)  # Sleep for 60 seconds
 """
         harness.create_hook("slow_hook", hook_script, language="python")
 

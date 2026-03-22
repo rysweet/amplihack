@@ -10,7 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from amplihack.memory.coordinator import MemoryCoordinator, RetrievalQuery, StorageRequest
-from amplihack.memory.types import MemoryType
+from amplihack.memory.models import MemoryType
 
 
 async def test_code_context_parameter():
@@ -19,7 +19,7 @@ async def test_code_context_parameter():
     print()
 
     # Create coordinator
-    from amplihack.memory.backends import create_backend
+    from amplihack.memory.sqlite_backend import create_backend
 
     backend = create_backend("kuzu", db_path="/tmp/simple_test.db")
     coordinator = MemoryCoordinator(backend=backend)

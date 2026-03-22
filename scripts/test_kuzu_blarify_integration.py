@@ -51,7 +51,7 @@ def create_sample_blarify_output() -> dict:
                 "last_modified": "2025-01-01T00:00:00Z",
             },
             {
-                "path": "src/amplihack/memory/backends/kuzu_backend.py",
+                "path": "src/amplihack/memory/kuzu_store.py",
                 "language": "python",
                 "lines_of_code": 1520,
                 "last_modified": "2025-01-01T00:00:00Z",
@@ -77,7 +77,7 @@ def create_sample_blarify_output() -> dict:
             {
                 "id": "class:KuzuBackend",
                 "name": "KuzuBackend",
-                "file_path": "src/amplihack/memory/backends/kuzu_backend.py",
+                "file_path": "src/amplihack/memory/kuzu_store.py",
                 "line_number": 40,
                 "docstring": "Kùzu graph database backend.",
                 "is_abstract": False,
@@ -123,7 +123,7 @@ def create_sample_blarify_output() -> dict:
             {
                 "id": "func:KuzuBackend.store_memory",
                 "name": "store_memory",
-                "file_path": "src/amplihack/memory/backends/kuzu_backend.py",
+                "file_path": "src/amplihack/memory/kuzu_store.py",
                 "line_number": 538,
                 "docstring": "Store a memory entry in appropriate node type.",
                 "parameters": ["self", "memory"],

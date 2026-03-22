@@ -9,10 +9,27 @@ Philosophy:
 - Returns structured results for LLM consumption
 """
 
+import re
 from pathlib import Path
 from typing import Any
 
 from amplihack_memory import Experience, ExperienceStore, ExperienceType
+
+_STRUCTURED_ID_PATTERN = re.compile(r'(?<!")\b([A-Z]{2,5}-\d{4}-\d{2,5})\b(?!")')
+
+
+def _normalize_fts_query(query: str) -> str:
+    """Normalize simple text queries before handing them to SQLite FTS5.
+
+    SQLite FTS5 treats hyphenated identifiers like ``INC-2024-001`` as query
+    syntax unless they are wrapped in double quotes. Quote structured IDs up
+    front so direct ID lookups work in the same way as normal text queries.
+    """
+    normalized = query.strip()
+    if not normalized:
+        return normalized
+
+    return _STRUCTURED_ID_PATTERN.sub(r'"\1"', normalized)
 
 
 class MemoryRetriever:
@@ -83,7 +100,7 @@ class MemoryRetriever:
             return []
 
         experiences = self.store.search(
-            query=query.strip(),
+            query=_normalize_fts_query(query),
             limit=limit,
             min_confidence=min_confidence,
             experience_type=experience_type,
@@ -149,7 +166,7 @@ class MemoryRetriever:
 
         return self.connector.store_experience(experience)
 
-    def get_all_facts(self, limit: int = 50) -> list[dict[str, Any]]:
+    def get_all_facts(self, limit: int = 50, **kwargs: Any) -> list[dict[str, Any]]:
         """Retrieve all experiences without keyword filtering.
 
         Bypasses search and retrieves experiences directly from the store.

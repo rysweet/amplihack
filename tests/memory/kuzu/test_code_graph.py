@@ -28,107 +28,9 @@ def kuzu_db(tmp_path):
     conn = KuzuConnector(db_path=str(db_path))
     conn.connect()
 
-    # Initialize schema (from kuzu_backend.py)
-    # Create code node tables
-    conn.execute_query("""
-        CREATE NODE TABLE IF NOT EXISTS CodeFile(
-            file_id STRING,
-            file_path STRING,
-            language STRING,
-            size_bytes INT64,
-            last_modified TIMESTAMP,
-            created_at TIMESTAMP,
-            metadata STRING,
-            PRIMARY KEY (file_id)
-        )
-    """)
-
-    conn.execute_query("""
-        CREATE NODE TABLE IF NOT EXISTS Class(
-            class_id STRING,
-            class_name STRING,
-            fully_qualified_name STRING,
-            docstring STRING,
-            is_abstract BOOL,
-            created_at TIMESTAMP,
-            metadata STRING,
-            PRIMARY KEY (class_id)
-        )
-    """)
-
-    conn.execute_query("""
-        CREATE NODE TABLE IF NOT EXISTS Function(
-            function_id STRING,
-            function_name STRING,
-            fully_qualified_name STRING,
-            signature STRING,
-            docstring STRING,
-            is_async BOOL,
-            cyclomatic_complexity INT64,
-            created_at TIMESTAMP,
-            metadata STRING,
-            PRIMARY KEY (function_id)
-        )
-    """)
-
-    # Create relationship tables
-    conn.execute_query("""
-        CREATE REL TABLE IF NOT EXISTS DEFINED_IN(
-            FROM Class TO CodeFile,
-            line_number INT64,
-            end_line INT64
-        )
-    """)
-
-    conn.execute_query("""
-        CREATE REL TABLE IF NOT EXISTS DEFINED_IN_FUNCTION(
-            FROM Function TO CodeFile,
-            line_number INT64,
-            end_line INT64
-        )
-    """)
-
-    conn.execute_query("""
-        CREATE REL TABLE IF NOT EXISTS METHOD_OF(
-            FROM Function TO Class,
-            method_type STRING,
-            visibility STRING
-        )
-    """)
-
-    conn.execute_query("""
-        CREATE REL TABLE IF NOT EXISTS CALLS(
-            FROM Function TO Function,
-            call_count INT64,
-            context STRING
-        )
-    """)
-
-    conn.execute_query("""
-        CREATE REL TABLE IF NOT EXISTS INHERITS(
-            FROM Class TO Class,
-            inheritance_order INT64,
-            inheritance_type STRING
-        )
-    """)
-
-    conn.execute_query("""
-        CREATE REL TABLE IF NOT EXISTS IMPORTS(
-            FROM CodeFile TO CodeFile,
-            import_type STRING,
-            alias STRING
-        )
-    """)
-
-    conn.execute_query("""
-        CREATE REL TABLE IF NOT EXISTS REFERENCES_CLASS(
-            FROM Function TO Class,
-            reference_type STRING,
-            context STRING
-        )
-    """)
-
-    # Create memory node tables (for linking tests)
+    # Create memory node tables (for linking tests).
+    # Code graph schema (CodeFile, CodeClass, CodeFunction, etc.) is created by
+    # KuzuCodeGraph._ensure_code_graph_schema() when the code_graph fixture initializes.
     conn.execute_query("""
         CREATE NODE TABLE IF NOT EXISTS EpisodicMemory(
             memory_id STRING,
@@ -167,7 +69,15 @@ def kuzu_db(tmp_path):
         )
     """)
 
-    # Memory-code relationship tables
+    yield conn
+
+    conn.close()
+
+
+@pytest.fixture(autouse=True)
+def ensure_memory_rel_tables(code_graph):
+    """Create memory-code relationship tables after code graph schema is initialized."""
+    conn = code_graph.conn
     conn.execute_query("""
         CREATE REL TABLE IF NOT EXISTS RELATES_TO_FILE_EPISODIC(
             FROM EpisodicMemory TO CodeFile,
@@ -176,7 +86,6 @@ def kuzu_db(tmp_path):
             timestamp TIMESTAMP
         )
     """)
-
     conn.execute_query("""
         CREATE REL TABLE IF NOT EXISTS RELATES_TO_FILE_SEMANTIC(
             FROM SemanticMemory TO CodeFile,
@@ -185,28 +94,22 @@ def kuzu_db(tmp_path):
             timestamp TIMESTAMP
         )
     """)
-
     conn.execute_query("""
         CREATE REL TABLE IF NOT EXISTS RELATES_TO_FUNCTION_EPISODIC(
-            FROM EpisodicMemory TO Function,
+            FROM EpisodicMemory TO CodeFunction,
             relevance_score DOUBLE,
             context STRING,
             timestamp TIMESTAMP
         )
     """)
-
     conn.execute_query("""
         CREATE REL TABLE IF NOT EXISTS RELATES_TO_FUNCTION_SEMANTIC(
-            FROM SemanticMemory TO Function,
+            FROM SemanticMemory TO CodeFunction,
             relevance_score DOUBLE,
             context STRING,
             timestamp TIMESTAMP
         )
     """)
-
-    yield conn
-
-    conn.close()
 
 
 @pytest.fixture
@@ -334,7 +237,7 @@ def test_import_classes(code_graph, sample_blarify_data, tmp_path):
     # Verify class exists
     result = code_graph.conn.execute_query(
         """
-        MATCH (c:Class {class_id: $class_id})
+        MATCH (c:CodeClass {class_id: $class_id})
         RETURN c.class_name, c.docstring, c.is_abstract
         """,
         {"class_id": "class:Example"},
@@ -347,7 +250,7 @@ def test_import_classes(code_graph, sample_blarify_data, tmp_path):
     # Verify DEFINED_IN relationship
     result = code_graph.conn.execute_query(
         """
-        MATCH (c:Class {class_id: $class_id})-[r:DEFINED_IN]->(cf:CodeFile)
+        MATCH (c:CodeClass {class_id: $class_id})-[r:CLASS_DEFINED_IN]->(cf:CodeFile)
         RETURN cf.file_id, r.line_number
         """,
         {"class_id": "class:Example"},
@@ -369,7 +272,7 @@ def test_import_functions(code_graph, sample_blarify_data, tmp_path):
     # Verify method function
     result = code_graph.conn.execute_query(
         """
-        MATCH (f:Function {function_id: $function_id})
+        MATCH (f:CodeFunction {function_id: $function_id})
         RETURN f.function_name, f.signature, f.is_async, f.cyclomatic_complexity
         """,
         {"function_id": "func:Example.process"},
@@ -382,7 +285,7 @@ def test_import_functions(code_graph, sample_blarify_data, tmp_path):
     # Verify METHOD_OF relationship
     result = code_graph.conn.execute_query(
         """
-        MATCH (f:Function {function_id: $function_id})-[r:METHOD_OF]->(c:Class)
+        MATCH (f:CodeFunction {function_id: $function_id})-[r:METHOD_OF]->(c:CodeClass)
         RETURN c.class_id, r.method_type
         """,
         {"function_id": "func:Example.process"},
@@ -394,7 +297,7 @@ def test_import_functions(code_graph, sample_blarify_data, tmp_path):
     # Verify standalone function
     result = code_graph.conn.execute_query(
         """
-        MATCH (f:Function {function_id: $function_id})
+        MATCH (f:CodeFunction {function_id: $function_id})
         RETURN f.function_name
         """,
         {"function_id": "func:helper"},
@@ -415,7 +318,7 @@ def test_import_relationships(code_graph, sample_blarify_data, tmp_path):
     # Verify CALLS relationship
     result = code_graph.conn.execute_query(
         """
-        MATCH (source:Function {function_id: $source_id})-[r:CALLS]->(target:Function {function_id: $target_id})
+        MATCH (source:CodeFunction {function_id: $source_id})-[r:CALLS]->(target:CodeFunction {function_id: $target_id})
         RETURN r.call_count, r.context
         """,
         {"source_id": "func:Example.process", "target_id": "func:helper"},
@@ -578,7 +481,7 @@ def test_link_memories_to_functions(code_graph, sample_blarify_data, tmp_path):
     # Verify relationship created
     result = code_graph.conn.execute_query(
         """
-        MATCH (m:SemanticMemory {memory_id: $memory_id})-[r:RELATES_TO_FUNCTION_SEMANTIC]->(f:Function)
+        MATCH (m:SemanticMemory {memory_id: $memory_id})-[r:RELATES_TO_FUNCTION_SEMANTIC]->(f:CodeFunction)
         RETURN f.function_name, r.relevance_score, r.context
         """,
         {"memory_id": "mem-2"},
@@ -733,7 +636,7 @@ def test_inheritance_relationship(code_graph, tmp_path):
     # Verify INHERITS relationship
     result = code_graph.conn.execute_query(
         """
-        MATCH (source:Class {class_id: $source_id})-[r:INHERITS]->(target:Class {class_id: $target_id})
+        MATCH (source:CodeClass {class_id: $source_id})-[r:INHERITS]->(target:CodeClass {class_id: $target_id})
         RETURN r.inheritance_type
         """,
         {"source_id": "class:Derived", "target_id": "class:Base"},

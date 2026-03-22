@@ -6,6 +6,7 @@ merge, plus hybrid scoring.
 
 from __future__ import annotations
 
+import importlib
 from dataclasses import dataclass
 from unittest.mock import MagicMock
 
@@ -44,6 +45,42 @@ class TestScoredFact:
 
 class TestCrossEncoderReranker:
     """Test CrossEncoderReranker with mocked model."""
+
+    def test_init_handles_cross_encoder_import_failures(self, monkeypatch):
+        """Cross-encoder import failures degrade gracefully instead of crashing."""
+        from amplihack.agents.goal_seeking.hive_mind import reranker as reranker_module
+
+        monkeypatch.setattr(reranker_module, "HAS_CROSS_ENCODER", True)
+
+        def _raise() -> type[object]:
+            raise OSError("No space left on device")
+
+        monkeypatch.setattr(reranker_module, "_load_cross_encoder_class", _raise)
+
+        reranker = reranker_module.CrossEncoderReranker("test-model")
+
+        assert reranker.available is False
+
+    def test_module_import_is_lazy_for_cross_encoder(self, monkeypatch):
+        """Importing reranker should not eagerly import sentence_transformers."""
+        import sys
+
+        module_name = "amplihack.agents.goal_seeking.hive_mind.reranker"
+        original_import_module = importlib.import_module
+        attempted: list[str] = []
+
+        def _guarded_import(name: str, package: str | None = None):
+            if name == "sentence_transformers":
+                attempted.append(name)
+                raise AssertionError("reranker import should stay lazy")
+            return original_import_module(name, package)
+
+        monkeypatch.setattr(importlib, "import_module", _guarded_import)
+        sys.modules.pop(module_name, None)
+
+        original_import_module(module_name)
+
+        assert attempted == []
 
     def test_unavailable_falls_back_to_confidence(self):
         """When model unavailable, falls back to confidence-based ranking."""
