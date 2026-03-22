@@ -98,8 +98,20 @@ async def query_agent(prompt: str, project_root: Path) -> str:
             return await _query_claude(prompt, project_root)
         if _COPILOT_SDK_OK:
             return await _query_copilot(prompt, project_root)
+    except TimeoutError:
+        print(
+            f"Error: {runtime} SDK query timed out after {QUERY_TIMEOUT}s. "
+            "Increase PM_ARCHITECT_QUERY_TIMEOUT if needed.",
+            file=sys.stderr,
+        )
     except Exception as e:
-        print(f"Error querying {runtime} SDK: {e}", file=sys.stderr)
+        hint = ""
+        err_str = str(e).lower()
+        if "api" in err_str or "key" in err_str or "auth" in err_str:
+            hint = " Check your API key (ANTHROPIC_API_KEY for Claude)."
+        elif "connect" in err_str or "network" in err_str or "timeout" in err_str:
+            hint = " Check network connectivity and retry."
+        print(f"Error querying {runtime} SDK: {e}{hint}", file=sys.stderr)
 
     return ""
 
@@ -141,11 +153,10 @@ async def _query_copilot(prompt: str, project_root: Path) -> str:
     try:
         await client.start()
         session = await client.create_session(SessionConfig())
-        async with asyncio.timeout(QUERY_TIMEOUT):
-            event = await session.send_and_wait(
-                MessageOptions(prompt=prompt),
-                timeout=float(QUERY_TIMEOUT),
-            )
+        event = await session.send_and_wait(
+            MessageOptions(prompt=prompt),
+            timeout=float(QUERY_TIMEOUT),
+        )
         if event and hasattr(event, "data") and event.data:
             return event.data.content or ""
         return ""
