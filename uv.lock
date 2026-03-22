@@ -168,12 +168,11 @@ dependencies = [
 
 [[package]]
 name = "amplihack"
-version = "0.6.85"
+version = "0.6.94"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
     { name = "amplihack-agent-eval" },
-    { name = "amplihack-memory-lib" },
     { name = "azure-identity" },
     { name = "claude-agent-sdk" },
     { name = "docker" },
@@ -183,7 +182,6 @@ dependencies = [
     { name = "github-copilot-sdk" },
     { name = "jedi-language-server" },
     { name = "json-repair" },
-    { name = "kuzu" },
     { name = "langchain" },
     { name = "langchain-anthropic" },
     { name = "langchain-google-genai" },
@@ -226,6 +224,10 @@ dev = [
     { name = "rich" },
     { name = "ruff" },
 ]
+memory = [
+    { name = "amplihack-memory-lib" },
+    { name = "kuzu" },
+]
 microsoft-sdk = [
     { name = "agent-framework-core" },
     { name = "opentelemetry-semantic-conventions-ai" },
@@ -254,7 +256,7 @@ requires-dist = [
     { name = "aiohttp", specifier = ">=3.8.0" },
     { name = "amplifier-core", marker = "extra == 'amplifier'", git = "https://github.com/microsoft/amplifier-core?rev=main" },
     { name = "amplihack-agent-eval", git = "https://github.com/rysweet/amplihack-agent-eval.git?rev=main" },
-    { name = "amplihack-memory-lib", git = "https://github.com/rysweet/amplihack-memory-lib.git?rev=v0.2.0" },
+    { name = "amplihack-memory-lib", marker = "extra == 'memory'", git = "https://github.com/rysweet/amplihack-memory-lib.git?rev=v0.2.0" },
     { name = "azure-identity", specifier = ">=1.12.0" },
     { name = "beautifulsoup4", marker = "extra == 'dev'", specifier = ">=4.9.0" },
     { name = "black", marker = "extra == 'dev'", specifier = ">=22.0.0" },
@@ -267,7 +269,7 @@ requires-dist = [
     { name = "github-copilot-sdk", specifier = ">=0.1.0" },
     { name = "jedi-language-server", specifier = ">=0.43.1" },
     { name = "json-repair", specifier = ">=0.47.7" },
-    { name = "kuzu", specifier = ">=0.11.0" },
+    { name = "kuzu", marker = "extra == 'memory'", specifier = ">=0.11.0" },
     { name = "langchain", specifier = ">=1.2.3" },
     { name = "langchain-anthropic", specifier = ">=1.3.1" },
     { name = "langchain-google-genai", specifier = ">=4.1.3" },
@@ -307,7 +309,7 @@ requires-dist = [
     { name = "typing-extensions", specifier = ">=4.12.2" },
     { name = "uvicorn", specifier = ">=0.15.0" },
 ]
-provides-extras = ["microsoft-sdk", "amplifier", "ui", "tui-testing", "test", "dev", "blarify-all"]
+provides-extras = ["memory", "microsoft-sdk", "amplifier", "ui", "tui-testing", "test", "dev", "blarify-all"]
 
 [package.metadata.requires-dev]
 dev = [
