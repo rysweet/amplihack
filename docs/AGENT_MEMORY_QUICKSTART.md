@@ -1,190 +1,93 @@
-# Agent Memory Integration - Quick Start
+# Agent Memory Quickstart
 
-**5-Minute Setup Guide**
+This quickstart focuses on the memory surfaces that are verified in this checkout today.
 
-## Prerequisites
+- the top-level CLI memory graph backed by `src/amplihack/memory`
+- generated goal-agent packages created with `amplihack new --enable-memory`
 
-- Docker installed and running
-- Python 3.8+
-- amplihack installed
+## 1. Inspect the CLI Memory Graph
 
-## Step 1: Verify Neo4j (30 seconds)
-
-The memory system uses Neo4j, which starts automatically with amplihack:
+The top-level `memory` command defaults to the Kuzu backend.
 
 ```bash
-# Check if Neo4j is running
-docker ps | grep amplihack-neo4j
+amplihack memory tree
 ```
 
-**Expected output:**
-
-```
-amplihack-neo4j   neo4j:5.13.0   "tini -g -- /startup..."   Up 5 minutes   7474/tcp, 7687/tcp
-```
-
-If not running, it will start automatically on next amplihack launch.
-
-## Step 2: Run Integration Tests (2 minutes)
+Useful variants:
 
 ```bash
-cd /path/to/MicrosoftHackathon2025-AgenticCoding
-python scripts/test_agent_memory_integration.py
+amplihack memory tree --backend kuzu --depth 2
+amplihack memory tree --session test_session_01
+amplihack memory tree --type learning
 ```
 
-**Expected output:**
+`memory tree --type` currently accepts the legacy compatibility names:
 
-```
-================================================================================
-AGENT MEMORY INTEGRATION TEST SUITE
-================================================================================
-...
-✅ PASS: Prerequisites
-✅ PASS: Container Management
-✅ PASS: Agent Type Detection
-...
-Total: 10 tests | Passed: 10 | Failed: 0
-```
+- `conversation`
+- `decision`
+- `pattern`
+- `context`
+- `learning`
+- `artifact`
 
-## Step 3: Use in Your Code (1 minute)
-
-### Option A: Explicit Integration (for custom agents)
-
-```python
-from amplihack.memory.neo4j.agent_integration import (
-    inject_memory_context,
-    extract_and_store_learnings
-)
-
-# Before agent runs
-memory_context = inject_memory_context(
-    agent_type="architect",
-    task="Design authentication system"
-)
-
-agent_prompt = f"{memory_context}\n\n{your_agent_prompt}"
-
-# Run your agent
-output = your_agent.run(agent_prompt)
-
-# After agent completes
-memory_ids = extract_and_store_learnings(
-    agent_type="architect",
-    output=output,
-    task="Design authentication system",
-    success=True
-)
-```
-
-### Option B: Automatic Integration (built-in agents)
-
-Memory integration is **automatic** for amplihack's built-in agents:
-
-- architect
-- builder
-- reviewer
-- tester
-- optimizer
-- etc.
-
-Just use the agents normally - memory is handled transparently.
-
-## Step 4: Verify It's Working (1 minute)
-
-### Run an agent twice with similar tasks
+## 2. Generate a Memory-Enabled Goal Agent
 
 ```bash
-# First run - no memories yet
-amplihack
-> @architect design authentication system
+printf '%s\n' \
+  'Build an agent that investigates deployment failures, remembers repeated causes, and suggests the next debugging step.' \
+  > goal.md
 
-# Second run - should see memories from first run
-amplihack
-> @architect design authorization system
+amplihack new \
+  --file goal.md \
+  --name incident-memory-agent \
+  --enable-memory \
+  --sdk copilot
 ```
 
-### Check logs
+That creates a package under `./goal_agents/incident-memory-agent/`.
+
+## 3. Install and Run the Generated Agent
 
 ```bash
-tail -f .claude/runtime/logs/session_start.log
+cd goal_agents/incident-memory-agent
+python -m pip install -r requirements.txt
+python main.py
 ```
 
-Look for:
+When `--enable-memory` is set, the generated package includes:
 
-```
-[INFO] Neo4j container started
-[INFO] Stored 5 learnings from architect
-```
+- `memory_config.yaml`
+- a local `./memory/` directory
+- helper functions in `main.py` such as `store_success()`, `store_failure()`, and `recall_relevant()`
+- `amplihack-memory-lib` in `requirements.txt`
 
-### View memories in Neo4j Browser
+## 4. Know Which Memory System You Are Looking At
+
+There are two real memory surfaces in this repo:
+
+- the top-level CLI memory backend under `src/amplihack/memory`, which defaults to Kuzu and stores data under `~/.amplihack/memory_kuzu.db` unless `AMPLIHACK_GRAPH_DB_PATH` is set
+- the generated agent package created by `--enable-memory`, which scaffolds `amplihack_memory` helpers and stores agent-local data under `./memory/`
+
+Those are related, but they are not the same storage location.
+
+## 5. Clean Test Sessions From the CLI Backend
+
+Preview deletions first:
 
 ```bash
-open http://localhost:7474
-# Login: neo4j / amplihack_neo4j
+amplihack memory clean --pattern 'test_*'
 ```
 
-Run query:
+Delete matching sessions after the dry run looks correct:
 
-```cypher
-MATCH (m:Memory)
-RETURN m.content, m.quality_score, m.agent_type
-ORDER BY m.created_at DESC
-LIMIT 10
+```bash
+amplihack memory clean --pattern 'test_*' --no-dry-run --confirm
 ```
-
-## That's It!
-
-Your agents now have memory. They will:
-
-- ✅ Learn from past experiences
-- ✅ Share knowledge across agent types
-- ✅ Improve over time with quality scoring
-- ✅ Avoid repeating mistakes
 
 ## Next Steps
 
-- Read full documentation: [AGENT_MEMORY_INTEGRATION.md](./AGENT_MEMORY_INTEGRATION.md)
-- Customize extraction patterns: `src/amplihack/memory/neo4j/extraction_patterns.py`
-- Tune configuration: `~/.amplihack/.claude/runtime/memory/.config`
-- View architecture: [Specs/Memory/AGENT_INTEGRATION_DESIGN.md](../Specs/Memory/AGENT_INTEGRATION_DESIGN.md)
-
-## Troubleshooting
-
-### Neo4j Won't Start
-
-```bash
-# Check Docker is running
-docker ps
-
-# Check compose file exists
-ls -la infra/docker-compose.yml
-
-# Manual start
-docker-compose -f infra/docker-compose.yml up -d
-```
-
-### Tests Failing
-
-```bash
-# Check prerequisites
-python scripts/test_agent_memory_integration.py 2>&1 | grep "Prerequisites"
-
-# View detailed logs
-tail -f .claude/runtime/logs/*.log
-```
-
-### No Memories Appearing
-
-```bash
-# Check Neo4j health
-docker exec amplihack-neo4j cypher-shell -u neo4j -p amplihack_neo4j "MATCH (m:Memory) RETURN count(m)"
-
-# Check extraction patterns
-grep -r "Decision:" .claude/runtime/logs/
-```
-
-## Get Help
-
-- GitHub Issues: [MicrosoftHackathon2025-AgenticCoding](https://github.com/...)
-- Documentation: `docs/AGENT_MEMORY_INTEGRATION.md`
-- Neo4j Docs: https://neo4j.com/docs/
+- [Memory docs landing page](./memory/README.md)
+- [Memory-enabled agents architecture](./concepts/memory-enabled-agents-architecture.md)
+- [Memory tutorial](./tutorials/memory-enabled-agents-getting-started.md)
+- [Memory CLI reference](./reference/memory-cli-reference.md)
+- [How to integrate memory into agents](./howto/integrate-memory-into-agents.md)

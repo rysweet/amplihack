@@ -200,3 +200,23 @@ class TestRerankFactsByQuery:
         )
 
         assert "APT29" in reranked[0]["outcome"]
+
+    def test_prefers_explicit_apt_identifier_for_attack_wording(self):
+        """APT-ID facts should outrank generic summaries even when the query says attack."""
+        facts = [
+            {
+                "context": "Threat Attribution",
+                "outcome": "The threat actor behind INC-2024-003 is attributed to a likely state-sponsored APT group.",
+            },
+            {
+                "context": "Development infrastructure incident",
+                "outcome": "INC-2024-003: TTPs matched APT29 for the development infrastructure incident.",
+            },
+        ]
+
+        reranked = rerank_facts_by_query(
+            facts,
+            "What APT group was attributed to the development infrastructure attack?",
+        )
+
+        assert "APT29" in reranked[0]["outcome"]

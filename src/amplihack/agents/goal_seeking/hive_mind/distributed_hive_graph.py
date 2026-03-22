@@ -39,8 +39,11 @@ from __future__ import annotations
 import concurrent.futures
 import hashlib
 import logging
+import os
 import threading
+import time
 import uuid
+from collections.abc import Callable
 from typing import Any, Protocol, runtime_checkable
 
 from ..retrieval_constants import CONFIDENCE_SORT_WEIGHT, POSITION_SCORE_DECREMENT
@@ -56,10 +59,52 @@ from .dht import DEFAULT_REPLICATION_FACTOR, DHTRouter, ShardFact
 from .hive_graph import HiveAgent, HiveEdge, HiveFact
 
 logger = logging.getLogger(__name__)
+_DEFAULT_QUERY_MAX_WORKERS = 8
+_SHARD_AGENT_ONLINE_EVENT = "SHARD_AGENT_ONLINE"
+
+
+def _default_query_max_workers() -> int:
+    raw = os.environ.get("AMPLIHACK_MEMORY_QUERY_MAX_WORKERS", "").strip()
+    if not raw:
+        return _DEFAULT_QUERY_MAX_WORKERS
+    try:
+        return max(1, int(raw))
+    except ValueError:
+        logger.warning(
+            "Invalid value for AMPLIHACK_MEMORY_QUERY_MAX_WORKERS: %s",
+            raw,
+        )
+        return _DEFAULT_QUERY_MAX_WORKERS
 
 
 class DistributedShardQueryError(RuntimeError):
     """Raised when a distributed shard request fails or returns partial data."""
+
+
+class _MailboxEvent:
+    """Mailbox item with an optional deferred acknowledgment callback.
+
+    Event Hubs callbacks may receive a SHARD_QUERY and enqueue it successfully,
+    but the process can still die before the listener handles the mailbox item.
+    Deferring the checkpoint until after handling preserves at-least-once
+    delivery for shard work instead of silently dropping it on restart.
+    """
+
+    def __init__(self, event: Any, ack: Callable[[], None] | None = None) -> None:
+        self.event = event
+        self._ack = ack
+        self._acked = False
+
+    def ack(self) -> None:
+        """Checkpoint the underlying Event Hubs message once handling succeeds."""
+        if self._acked or self._ack is None:
+            return
+        self._ack()
+        self._acked = True
+
+    def __getattr__(self, name: str) -> Any:
+        """Delegate event-like attribute access to the wrapped BusEvent."""
+        return getattr(self.event, name)
 
 
 # ---------------------------------------------------------------------------
@@ -141,12 +186,17 @@ class LocalShardTransport:
         limit: int,
     ) -> list[ShardFact]:
         """Retrieve entity-specific facts from the local bound agent."""
-        if self._local_agent is None or not hasattr(self._local_agent.memory, "retrieve_by_entity"):
+        if self._local_agent is None:
             raise DistributedShardQueryError(
-                "LocalShardTransport requires a bound agent with retrieve_by_entity()"
+                "LocalShardTransport requires a bound agent for entity retrieval"
             )
         return _facts_to_shard_facts(
-            self._local_agent.memory.retrieve_by_entity(entity_name, limit=limit),
+            _entity_facts_for_shard_response(
+                entity_name=entity_name,
+                limit=limit,
+                agent=self._local_agent,
+                agent_id=agent_id,
+            ),
             default_agent_id=agent_id,
         )
 
@@ -157,15 +207,15 @@ class LocalShardTransport:
         entity_filter: str = "",
     ) -> dict[str, Any]:
         """Execute an aggregation on the local bound agent."""
-        if self._local_agent is None or not hasattr(
-            self._local_agent.memory, "execute_aggregation"
-        ):
+        if self._local_agent is None:
             raise DistributedShardQueryError(
-                "LocalShardTransport requires a bound agent with execute_aggregation()"
+                "LocalShardTransport requires a bound agent for aggregation"
             )
-        return self._local_agent.memory.execute_aggregation(
+        return _aggregation_for_shard_response(
             query_type=query_type,
             entity_filter=entity_filter,
+            agent=self._local_agent,
+            agent_id=agent_id,
         )
 
     def store_on_shard(self, agent_id: str, fact: ShardFact) -> None:
@@ -305,14 +355,17 @@ class ServiceBusShardTransport:
     ) -> list[ShardFact]:
         """Retrieve entity-specific facts from one shard."""
         if agent_id == self._agent_id and self._local_graph is not None:
-            if self._local_agent is None or not hasattr(
-                self._local_agent.memory, "retrieve_by_entity"
-            ):
+            if self._local_agent is None:
                 raise DistributedShardQueryError(
-                    f"Local shard entity query for {agent_id} requires retrieve_by_entity()"
+                    f"Local shard entity query for {agent_id} requires a bound agent"
                 )
             return _facts_to_shard_facts(
-                self._local_agent.memory.retrieve_by_entity(entity_name, limit=limit),
+                _entity_facts_for_shard_response(
+                    entity_name=entity_name,
+                    limit=limit,
+                    agent=self._local_agent,
+                    agent_id=agent_id,
+                ),
                 default_agent_id=agent_id,
             )
 
@@ -331,15 +384,15 @@ class ServiceBusShardTransport:
     ) -> dict[str, Any]:
         """Execute an aggregation on one shard."""
         if agent_id == self._agent_id and self._local_graph is not None:
-            if self._local_agent is None or not hasattr(
-                self._local_agent.memory, "execute_aggregation"
-            ):
+            if self._local_agent is None:
                 raise DistributedShardQueryError(
-                    f"Local shard aggregation for {agent_id} requires execute_aggregation()"
+                    f"Local shard aggregation for {agent_id} requires a bound agent"
                 )
-            return self._local_agent.memory.execute_aggregation(
+            return _aggregation_for_shard_response(
                 query_type=query_type,
                 entity_filter=entity_filter,
+                agent=self._local_agent,
+                agent_id=agent_id,
             )
 
         payload = self._request_shard_payload(
@@ -665,18 +718,27 @@ def _entity_facts_for_shard_response(
     agent: Any,
     agent_id: str,
 ) -> list[dict[str, Any]]:
-    """Return entity-specific fact payloads for a SHARD_RESPONSE."""
-    if (
-        agent is None
-        or not hasattr(agent, "memory")
-        or not hasattr(agent.memory, "retrieve_by_entity")
-    ):
+    """Return entity-specific fact payloads for a SHARD_RESPONSE.
+
+    Must use local-only entity retrieval when available to avoid recursive
+    SHARD_QUERY fanout from inside a shard handler.
+    """
+    if agent is None or not hasattr(agent, "memory"):
         raise DistributedShardQueryError(
-            f"Agent {agent_id} cannot handle distributed entity retrieval without retrieve_by_entity()"
+            f"Agent {agent_id} cannot handle distributed entity retrieval without memory access"
         )
 
+    memory = agent.memory
     try:
-        results = agent.memory.retrieve_by_entity(entity_name, limit=limit)
+        if hasattr(memory, "retrieve_by_entity_local"):
+            results = memory.retrieve_by_entity_local(entity_name, limit=limit)
+        elif hasattr(memory, "retrieve_by_entity"):
+            results = memory.retrieve_by_entity(entity_name, limit=limit)
+        else:
+            raise DistributedShardQueryError(
+                f"Agent {agent_id} cannot handle distributed entity retrieval without "
+                "retrieve_by_entity_local() or retrieve_by_entity()"
+            )
     except Exception as exc:
         raise DistributedShardQueryError(
             f"retrieve_by_entity failed for {agent_id}: {exc}"
@@ -696,21 +758,33 @@ def _aggregation_for_shard_response(
     agent: Any,
     agent_id: str,
 ) -> dict[str, Any]:
-    """Return aggregation payload for a SHARD_RESPONSE."""
-    if (
-        agent is None
-        or not hasattr(agent, "memory")
-        or not hasattr(agent.memory, "execute_aggregation")
-    ):
+    """Return aggregation payload for a SHARD_RESPONSE.
+
+    Must use local-only aggregation when available to avoid recursive
+    SHARD_QUERY fanout from inside a shard handler.
+    """
+    if agent is None or not hasattr(agent, "memory"):
         raise DistributedShardQueryError(
-            f"Agent {agent_id} cannot handle distributed aggregation without execute_aggregation()"
+            f"Agent {agent_id} cannot handle distributed aggregation without memory access"
         )
 
+    memory = agent.memory
     try:
-        result = agent.memory.execute_aggregation(
-            query_type=query_type,
-            entity_filter=entity_filter,
-        )
+        if hasattr(memory, "execute_aggregation_local"):
+            result = memory.execute_aggregation_local(
+                query_type=query_type,
+                entity_filter=entity_filter,
+            )
+        elif hasattr(memory, "execute_aggregation"):
+            result = memory.execute_aggregation(
+                query_type=query_type,
+                entity_filter=entity_filter,
+            )
+        else:
+            raise DistributedShardQueryError(
+                f"Agent {agent_id} cannot handle distributed aggregation without "
+                "execute_aggregation_local() or execute_aggregation()"
+            )
     except Exception as exc:
         raise DistributedShardQueryError(
             f"execute_aggregation failed for {agent_id}: {exc}"
@@ -860,6 +934,7 @@ class EventHubsShardTransport:
         agent_id: str,
         consumer_group: str | None = None,
         timeout: float = 5.0,
+        local_boot_id: str = "",
         _start_receiving: bool = True,
     ) -> None:
         self._agent_id = agent_id
@@ -867,6 +942,7 @@ class EventHubsShardTransport:
         self._connection_string = connection_string
         self._eventhub_name = eventhub_name
         self._consumer_group = consumer_group or f"cg-{agent_id}"
+        self._local_boot_id = local_boot_id
         self._local_graph: Any = None
         self._local_agent: Any = None  # Bound via bind_agent() for LOCAL queries
 
@@ -880,6 +956,10 @@ class EventHubsShardTransport:
         self._pending_lock = threading.Lock()
         self._pending_errors: dict[str, str] = {}
         self._pending_payloads: dict[str, tuple[threading.Event, dict[str, Any]]] = {}
+        self._pending_requests: dict[str, dict[str, Any]] = {}
+        self._peer_boot_ids: dict[str, str] = {}
+        if local_boot_id:
+            self._peer_boot_ids[agent_id] = local_boot_id
 
         # Persistent producer — lazy-initialized, reused across all _publish()
         # calls to avoid ~1.5s AMQP connection setup per publish.
@@ -951,6 +1031,166 @@ class EventHubsShardTransport:
         """Return the effective wait timeout, or None for no timeout."""
         return self._timeout if self._timeout > 0 else None
 
+    def _make_shard_query_event(
+        self,
+        *,
+        correlation_id: str,
+        target_agent: str,
+        operation: str,
+        request_payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Build the SHARD_QUERY event payload for a remote shard request."""
+        return {
+            "event_id": uuid.uuid4().hex,
+            "event_type": "SHARD_QUERY",
+            "source_agent": self._agent_id,
+            "timestamp": time.time(),
+            "payload": {
+                "operation": operation,
+                "correlation_id": correlation_id,
+                "target_agent": target_agent,
+                **request_payload,
+            },
+        }
+
+    def _publish_shard_request(
+        self,
+        *,
+        correlation_id: str,
+        target_agent: str,
+        operation: str,
+        request_payload: dict[str, Any],
+    ) -> None:
+        """Publish a shard request to the target agent's deterministic partition."""
+        self._publish(
+            self._make_shard_query_event(
+                correlation_id=correlation_id,
+                target_agent=target_agent,
+                operation=operation,
+                request_payload=request_payload,
+            ),
+            partition_key=target_agent,
+        )
+
+    def _handle_peer_online(
+        self,
+        agent_id: str,
+        boot_id: str,
+        observed_at: float | None = None,
+    ) -> None:
+        """Fail pending shard requests when a target agent restarts.
+
+        Event Hubs consumers in this transport start at ``@latest`` and do not
+        use an external checkpoint store. If a helper restarts after a request
+        is sent, the old in-flight SHARD_QUERY can be lost. We explicitly wake
+        pending request waiters with an error so the caller can proceed
+        best-effort instead of hanging forever or creating a resend storm.
+        """
+        if not agent_id or agent_id == self._agent_id or not boot_id:
+            return
+
+        try:
+            observed_at_ts = float(observed_at or 0.0)
+        except (TypeError, ValueError):
+            observed_at_ts = 0.0
+
+        to_fail: list[tuple[str, threading.Event, str, str]] = []
+        with self._pending_lock:
+            previous_boot_id = self._peer_boot_ids.get(agent_id, "")
+            self._peer_boot_ids[agent_id] = boot_id
+            for correlation_id, request in self._pending_requests.items():
+                if request.get("target_agent") != agent_id:
+                    continue
+                sent_boot_id = request.get("target_boot_id", "")
+                try:
+                    request_sent_at = float(request.get("sent_at", 0.0) or 0.0)
+                except (TypeError, ValueError):
+                    request_sent_at = 0.0
+                boot_changed = bool(sent_boot_id) and boot_id != sent_boot_id
+                boot_after_request = (
+                    not sent_boot_id
+                    and observed_at_ts > 0
+                    and request_sent_at > 0
+                    and observed_at_ts >= request_sent_at
+                )
+                if not boot_changed and not boot_after_request:
+                    continue
+                request["target_boot_id"] = boot_id
+                if boot_changed:
+                    error = (
+                        f"Shard target {agent_id} restarted before response "
+                        f"(boot_id={sent_boot_id}->{boot_id})"
+                    )
+                    state_change = "restart"
+                else:
+                    error = (
+                        f"Shard target {agent_id} came online after request dispatch "
+                        f"(boot_id={boot_id}); pre-boot request may be lost"
+                    )
+                    state_change = "post-send boot"
+                pending = self._pending.get(correlation_id)
+                pending_payload = self._pending_payloads.get(correlation_id)
+                if pending:
+                    done_event, _ = pending
+                    self._pending_errors[correlation_id] = error
+                    to_fail.append((correlation_id, done_event, error, state_change))
+                elif pending_payload:
+                    done_event, response_payload = pending_payload
+                    response_payload["error"] = error
+                    to_fail.append((correlation_id, done_event, error, state_change))
+
+        if previous_boot_id and previous_boot_id != boot_id:
+            logger.warning(
+                "Agent %s detected helper restart: %s boot_id=%s -> %s",
+                self._agent_id,
+                agent_id,
+                previous_boot_id,
+                boot_id,
+            )
+        elif previous_boot_id != boot_id:
+            logger.info(
+                "Agent %s observed helper boot: %s boot_id=%s",
+                self._agent_id,
+                agent_id,
+                boot_id,
+            )
+
+        for correlation_id, done_event, error, state_change in to_fail:
+            logger.warning(
+                "Agent %s failing pending SHARD_QUERY correlation=%s after %s %s: %s",
+                self._agent_id,
+                correlation_id[:12],
+                agent_id,
+                state_change,
+                error,
+            )
+            done_event.set()
+
+    def publish_agent_online(self) -> None:
+        """Broadcast this agent's current boot_id on the shard hub."""
+        if not self._local_boot_id:
+            return
+
+        payload = {
+            "event_id": uuid.uuid4().hex,
+            "event_type": _SHARD_AGENT_ONLINE_EVENT,
+            "source_agent": self._agent_id,
+            "timestamp": time.time(),
+            "payload": {
+                "agent_id": self._agent_id,
+                "boot_id": self._local_boot_id,
+            },
+        }
+        for partition_id in map(str, range(self._get_num_partitions())):
+            self._publish(payload, partition_id=partition_id)
+        logger.info(
+            "Agent %s published %s boot_id=%s to %d partitions",
+            self._agent_id,
+            _SHARD_AGENT_ONLINE_EVENT,
+            self._local_boot_id,
+            self._get_num_partitions(),
+        )
+
     # -- Background receive loop ---------------------------------------------
 
     def _receive_loop(self) -> None:
@@ -1012,6 +1252,15 @@ class EventHubsShardTransport:
                     partition_context.update_checkpoint(event)
                     return
 
+                if event_type == _SHARD_AGENT_ONLINE_EVENT:
+                    self._handle_peer_online(
+                        data.get("source_agent", "") or payload.get("agent_id", ""),
+                        payload.get("boot_id", ""),
+                        data.get("timestamp", 0.0),
+                    )
+                    partition_context.update_checkpoint(event)
+                    return
+
                 # Other events: filter by target, route to mailbox
                 if target and target != self._agent_id:
                     partition_context.update_checkpoint(event)
@@ -1026,10 +1275,20 @@ class EventHubsShardTransport:
                     timestamp=data.get("timestamp", 0.0),
                     payload=payload,
                 )
+
+                def _ack() -> None:
+                    try:
+                        partition_context.update_checkpoint(event)
+                    except Exception:
+                        logger.debug(
+                            "EH checkpoint failed for %s",
+                            self._agent_id,
+                            exc_info=True,
+                        )
+
                 with self._mailbox_lock:
-                    self._mailbox.append(bus_evt)
+                    self._mailbox.append(_MailboxEvent(bus_evt, ack=_ack))
                 self._mailbox_ready.set()
-                partition_context.update_checkpoint(event)
             except Exception:
                 logger.debug("EH receive error for %s", self._agent_id, exc_info=True)
 
@@ -1082,7 +1341,12 @@ class EventHubsShardTransport:
 
     # -- Internal publish helper ---------------------------------------------
 
-    def _publish(self, payload: dict[str, Any], partition_key: str | None = None) -> None:
+    def _publish(
+        self,
+        payload: dict[str, Any],
+        partition_key: str | None = None,
+        partition_id: str | None = None,
+    ) -> None:
         """Publish a JSON event to the Event Hub using a persistent producer.
 
         Reuses a single EventHubProducerClient across all publish calls to
@@ -1107,8 +1371,8 @@ class EventHubsShardTransport:
         target = (payload.get("payload") or {}).get("target_agent", "")
 
         # Convert agent-name partition_key to explicit partition_id
-        route_partition_id: str | None = None
-        if partition_key and partition_key.startswith("agent-"):
+        route_partition_id: str | None = partition_id
+        if route_partition_id is None and partition_key and partition_key.startswith("agent-"):
             route_partition_id = self._target_partition(partition_key)
 
         with self._producer_lock:
@@ -1178,10 +1442,16 @@ class EventHubsShardTransport:
         with self._pending_lock:
             self._pending[correlation_id] = (done, results)
             self._pending_errors[correlation_id] = ""
+            self._pending_requests[correlation_id] = {
+                "target_agent": agent_id,
+                "operation": "search",
+                "request_payload": {"query": query, "limit": limit},
+                "sent_at": time.time(),
+                "target_boot_id": self._peer_boot_ids.get(agent_id, ""),
+                "resent_for_boot_id": "",
+            }
 
         try:
-            import time
-
             logger.info(
                 "Agent %s sending SHARD_QUERY → %s (query=%.60s, correlation=%s)",
                 self._agent_id,
@@ -1189,21 +1459,11 @@ class EventHubsShardTransport:
                 query,
                 correlation_id[:12],
             )
-            self._publish(
-                {
-                    "event_id": uuid.uuid4().hex,
-                    "event_type": "SHARD_QUERY",
-                    "source_agent": self._agent_id,
-                    "timestamp": time.time(),
-                    "payload": {
-                        "operation": "search",
-                        "query": query,
-                        "limit": limit,
-                        "correlation_id": correlation_id,
-                        "target_agent": agent_id,
-                    },
-                },
-                partition_key=agent_id,
+            self._publish_shard_request(
+                correlation_id=correlation_id,
+                target_agent=agent_id,
+                operation="search",
+                request_payload={"query": query, "limit": limit},
             )
             wait_timeout = self._wait_timeout()
             got_response = done.wait(timeout=wait_timeout)
@@ -1226,6 +1486,7 @@ class EventHubsShardTransport:
             with self._pending_lock:
                 self._pending.pop(correlation_id, None)
                 self._pending_errors.pop(correlation_id, None)
+                self._pending_requests.pop(correlation_id, None)
 
         return _payload_facts_to_shard_facts(results)
 
@@ -1237,14 +1498,17 @@ class EventHubsShardTransport:
     ) -> list[ShardFact]:
         """Retrieve entity-specific facts from one shard."""
         if agent_id == self._agent_id and self._local_graph is not None:
-            if self._local_agent is None or not hasattr(
-                self._local_agent.memory, "retrieve_by_entity"
-            ):
+            if self._local_agent is None:
                 raise DistributedShardQueryError(
-                    f"Local shard entity query for {agent_id} requires retrieve_by_entity()"
+                    f"Local shard entity query for {agent_id} requires a bound agent"
                 )
             return _facts_to_shard_facts(
-                self._local_agent.memory.retrieve_by_entity(entity_name, limit=limit),
+                _entity_facts_for_shard_response(
+                    entity_name=entity_name,
+                    limit=limit,
+                    agent=self._local_agent,
+                    agent_id=agent_id,
+                ),
                 default_agent_id=agent_id,
             )
 
@@ -1263,15 +1527,15 @@ class EventHubsShardTransport:
     ) -> dict[str, Any]:
         """Execute an aggregation on one shard."""
         if agent_id == self._agent_id and self._local_graph is not None:
-            if self._local_agent is None or not hasattr(
-                self._local_agent.memory, "execute_aggregation"
-            ):
+            if self._local_agent is None:
                 raise DistributedShardQueryError(
-                    f"Local shard aggregation for {agent_id} requires execute_aggregation()"
+                    f"Local shard aggregation for {agent_id} requires a bound agent"
                 )
-            return self._local_agent.memory.execute_aggregation(
+            return _aggregation_for_shard_response(
                 query_type=query_type,
                 entity_filter=entity_filter,
+                agent=self._local_agent,
+                agent_id=agent_id,
             )
 
         payload = self._request_shard_payload(
@@ -1325,29 +1589,26 @@ class EventHubsShardTransport:
         request_payload: dict[str, Any],
     ) -> dict[str, Any]:
         """Publish a shard request and wait for a structured SHARD_RESPONSE payload."""
-        import time
-
         correlation_id = uuid.uuid4().hex
         done = threading.Event()
         response_payload: dict[str, Any] = {}
         with self._pending_lock:
             self._pending_payloads[correlation_id] = (done, response_payload)
+            self._pending_requests[correlation_id] = {
+                "target_agent": agent_id,
+                "operation": operation,
+                "request_payload": dict(request_payload),
+                "sent_at": time.time(),
+                "target_boot_id": self._peer_boot_ids.get(agent_id, ""),
+                "resent_for_boot_id": "",
+            }
 
         try:
-            self._publish(
-                {
-                    "event_id": uuid.uuid4().hex,
-                    "event_type": "SHARD_QUERY",
-                    "source_agent": self._agent_id,
-                    "timestamp": time.time(),
-                    "payload": {
-                        "operation": operation,
-                        "correlation_id": correlation_id,
-                        "target_agent": agent_id,
-                        **request_payload,
-                    },
-                },
-                partition_key=agent_id,
+            self._publish_shard_request(
+                correlation_id=correlation_id,
+                target_agent=agent_id,
+                operation=operation,
+                request_payload=request_payload,
             )
             wait_timeout = self._wait_timeout()
             got_response = done.wait(timeout=wait_timeout)
@@ -1362,6 +1623,7 @@ class EventHubsShardTransport:
         finally:
             with self._pending_lock:
                 self._pending_payloads.pop(correlation_id, None)
+                self._pending_requests.pop(correlation_id, None)
 
     # -- Listener-side handlers (called by background thread via poll()) -----
 
@@ -1551,6 +1813,7 @@ class DistributedHiveGraph:
         hive_id: str = "",
         replication_factor: int = DEFAULT_REPLICATION_FACTOR,
         query_fanout: int = 5,
+        query_max_workers: int | None = None,
         embedding_generator: Any = None,
         enable_gossip: bool = True,
         enable_ttl: bool = False,
@@ -1564,6 +1827,10 @@ class DistributedHiveGraph:
         self._router = DHTRouter(
             replication_factor=replication_factor,
             query_fanout=query_fanout,
+        )
+        self._query_max_workers = max(
+            1,
+            query_max_workers if query_max_workers is not None else _default_query_max_workers(),
         )
         if embedding_generator:
             self._router.set_embedding_generator(embedding_generator)
@@ -1756,8 +2023,11 @@ class DistributedHiveGraph:
         the entire answer.  The caller merges whatever facts did respond.
         """
         results_by_agent: dict[str, list[ShardFact]] = {}
+        if not targets:
+            return results_by_agent
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, len(targets))) as pool:
+        max_workers = min(len(targets), self._query_max_workers)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as pool:
             futures = {pool.submit(fetcher, agent_id): agent_id for agent_id in targets}
             for future in concurrent.futures.as_completed(futures):
                 agent_id = futures[future]
@@ -1785,8 +2055,11 @@ class DistributedHiveGraph:
         Best-effort: failed shards are logged as warnings, not raised.
         """
         results_by_agent: dict[str, dict[str, Any]] = {}
+        if not targets:
+            return []
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, len(targets))) as pool:
+        max_workers = min(len(targets), self._query_max_workers)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as pool:
             futures = {
                 pool.submit(
                     self._transport.execute_aggregation_shard,

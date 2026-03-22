@@ -327,6 +327,31 @@ class TestAgentEntrypoint:
             call("1", run_id="run-2"),
         ]
 
+    def test_answer_publisher_suppresses_duplicate_ready_within_cooldown(self, monkeypatch):
+        mod = _load_entrypoint()
+        monkeypatch.setenv("AMPLIHACK_AGENT_READY_REPUBLISH_COOLDOWN_SECONDS", "30")
+
+        publisher = mod.AnswerPublisher(
+            agent_name="agent-1",
+            eh_connection_string="Endpoint=sb://dummy/",
+            eval_hub_name="eval-responses-test",
+            boot_id="boot-123",
+        )
+        published_payloads: list[dict] = []
+
+        with (
+            patch.object(publisher, "_publish_to_eh", side_effect=published_payloads.append),
+            patch("time.monotonic", side_effect=[100.0, 110.0, 131.0]),
+        ):
+            publisher.publish_agent_ready("50", run_id="run-xyz")
+            publisher.publish_agent_ready("50", run_id="run-xyz")
+            publisher.publish_agent_ready("50", run_id="run-xyz")
+
+        assert len(published_payloads) == 2
+        assert [payload["run_id"] for payload in published_payloads] == ["run-xyz", "run-xyz"]
+        assert [payload["total_turns"] for payload in published_payloads] == ["50", "50"]
+        assert all(payload["event_type"] == "AGENT_READY" for payload in published_payloads)
+
     def test_handle_store_fact_batch_uses_direct_storage_path(self):
         mod = _load_entrypoint()
         mock_mem = MagicMock()
@@ -466,6 +491,16 @@ class TestAgentEntrypoint:
         agent.process.assert_not_called()
         agent.process_store.assert_not_called()
 
+    def test_inline_control_handler_publishes_agent_online(self):
+        mod = _load_entrypoint()
+        answer_publisher = MagicMock()
+
+        handler = mod._inline_control_handler("agent-0", answer_publisher)
+
+        assert handler({"event_type": "ONLINE_CHECK", "run_id": "run-123"}) is True
+        assert handler({"event_type": "LEARN_CONTENT", "run_id": "run-123"}) is False
+        answer_publisher.publish_agent_online.assert_called_once_with(run_id="run-123")
+
     def test_run_event_driven_loop_publishes_shutdown_event_when_none_follows_shutdown(self):
         mod = _load_entrypoint()
         agent = MagicMock()
@@ -522,12 +557,51 @@ class TestAgentEntrypoint:
 
 
 class TestAnswerPublisher:
+    def test_publish_answer_includes_boot_id(self):
+        mod = _load_entrypoint()
+        publisher = mod.AnswerPublisher(
+            "agent-0",
+            "Endpoint=sb://fake.servicebus.windows.net/;SharedAccessKeyName=x;SharedAccessKey=y",
+            "eval-responses",
+            boot_id="boot-789",
+        )
+        publisher._publish_to_eh = MagicMock()
+        publisher.set_context("evt-123", "question-9", run_id="run-ctx")
+
+        publisher.publish_answer("agent-0", "answer text")
+
+        payload = publisher._publish_to_eh.call_args.args[0]
+        assert payload["event_type"] == "EVAL_ANSWER"
+        assert payload["event_id"] == "evt-123"
+        assert payload["question_id"] == "question-9"
+        assert payload["run_id"] == "run-ctx"
+        assert payload["boot_id"] == "boot-789"
+
+    def test_publish_agent_online_includes_boot_id(self):
+        mod = _load_entrypoint()
+        publisher = mod.AnswerPublisher(
+            "agent-0",
+            "Endpoint=sb://fake.servicebus.windows.net/;SharedAccessKeyName=x;SharedAccessKey=y",
+            "eval-responses",
+            boot_id="boot-123",
+        )
+        publisher._publish_to_eh = MagicMock()
+
+        publisher.publish_agent_online(run_id="run-ctx")
+
+        payload = publisher._publish_to_eh.call_args.args[0]
+        assert payload["event_type"] == "AGENT_ONLINE"
+        assert payload["agent_id"] == "agent-0"
+        assert payload["boot_id"] == "boot-123"
+        assert payload["run_id"] == "run-ctx"
+
     def test_publish_agent_shutdown_uses_run_context(self):
         mod = _load_entrypoint()
         publisher = mod.AnswerPublisher(
             "agent-0",
             "Endpoint=sb://fake.servicebus.windows.net/;SharedAccessKeyName=x;SharedAccessKey=y",
             "eval-responses",
+            boot_id="boot-456",
         )
         publisher._publish_to_eh = MagicMock()
         publisher._current_run_id = "run-ctx"
@@ -537,9 +611,38 @@ class TestAnswerPublisher:
         payload = publisher._publish_to_eh.call_args.args[0]
         assert payload["event_type"] == "AGENT_SHUTDOWN"
         assert payload["agent_id"] == "agent-0"
+        assert payload["boot_id"] == "boot-456"
         assert payload["reason"] == "signal"
         assert payload["detail"] == "signal=15"
         assert payload["run_id"] == "run-ctx"
+
+    def test_question_telemetry_fields_include_context_and_boot_id(self):
+        mod = _load_entrypoint()
+        publisher = mod.AnswerPublisher(
+            "agent-0",
+            "Endpoint=sb://fake.servicebus.windows.net/;SharedAccessKeyName=x;SharedAccessKey=y",
+            "eval-responses",
+            boot_id="boot-321",
+        )
+        publisher.set_context("evt-ctx", "question-ctx", run_id="run-ctx")
+
+        fields = mod._question_telemetry_fields(
+            agent_name="agent-0",
+            event_type="INPUT",
+            text="How many projects?",
+            metadata={"run_id": "run-meta"},
+            publisher=publisher,
+        )
+
+        assert fields == {
+            "agent_name": "agent-0",
+            "event_type": "INPUT",
+            "event_id": "evt-ctx",
+            "question_id": "question-ctx",
+            "run_id": "run-meta",
+            "boot_id": "boot-321",
+            "question_length": 18,
+        }
 
 
 class TestDockerfile:
@@ -633,7 +736,7 @@ class TestDeployScript:
         deploy_sh = Path(__file__).parent.parent / "deploy.sh"
         content = deploy_sh.read_text()
         assert 'OTEL_OTLP_ENDPOINT="${HIVE_OTEL_OTLP_ENDPOINT:-}"' in content
-        assert 'OTEL_CONSOLE_EXPORTER="${HIVE_OTEL_CONSOLE_EXPORTER:-false}"' in content
+        assert 'OTEL_CONSOLE_EXPORTER="${HIVE_OTEL_CONSOLE_EXPORTER:-true}"' in content
         assert 'enableOpenTelemetry="${OTEL_ENABLED}"' in content
 
     def test_deploy_sh_can_force_event_hubs_recreation(self):
@@ -731,6 +834,22 @@ class TestBicep:
         assert "OTEL_EXPORTER_OTLP_ENDPOINT" in content
         assert "OTEL_RESOURCE_ATTRIBUTES" in content
 
+    def test_bicep_defaults_otel_on(self):
+        bicep = Path(__file__).parent.parent / "main.bicep"
+        content = bicep.read_text()
+        assert "param enableOpenTelemetry string = 'true'" in content
+        assert "param otelConsoleExporter string = 'true'" in content
+
+    def test_bicep_caps_runtime_threads(self):
+        bicep = Path(__file__).parent.parent / "main.bicep"
+        content = bicep.read_text()
+        assert "AMPLIHACK_MEMORY_QUERY_MAX_WORKERS" in content
+        assert "OMP_NUM_THREADS" in content
+        assert "OPENBLAS_NUM_THREADS" in content
+        assert "MKL_NUM_THREADS" in content
+        assert "NUMEXPR_NUM_THREADS" in content
+        assert "TOKENIZERS_PARALLELISM" in content
+
     def test_bicep_has_shards_hub(self):
         """Bicep must declare hive-shards Event Hub for cross-shard DHT queries."""
         bicep = Path(__file__).parent.parent / "main.bicep"
@@ -819,10 +938,12 @@ class TestShardTransport:
                 eh_connection_string="Endpoint=sb://dummy/",
                 eh_name="hive-shards-test",
                 consumer_group="cg-app-0",
+                boot_id="boot-xyz",
             )
 
         assert result == (graph, None, transport)
         assert mock_transport.call_args.kwargs["timeout"] == 75.0
+        assert mock_transport.call_args.kwargs["local_boot_id"] == "boot-xyz"
 
     def test_main_exits_when_distributed_topology_requested_but_hive_init_fails(
         self, monkeypatch, tmp_path
@@ -925,6 +1046,46 @@ class TestShardTransport:
         init_hive.assert_not_called()
         mock_publisher.publish_agent_online.assert_called_once_with()
 
+    def test_main_publishes_shard_online_when_transport_present(self, monkeypatch, tmp_path):
+        mod = _load_entrypoint()
+
+        monkeypatch.setenv("AMPLIHACK_AGENT_NAME", "agent-0")
+        monkeypatch.setenv("AMPLIHACK_EH_CONNECTION_STRING", "Endpoint=sb://dummy/")
+        monkeypatch.setenv("AMPLIHACK_EH_NAME", "hive-shards-test")
+        monkeypatch.setenv("AMPLIHACK_EH_INPUT_HUB", "hive-events-test")
+        monkeypatch.setenv("AMPLIHACK_MEMORY_STORAGE_PATH", str(tmp_path / "agent-0"))
+
+        mock_agent = MagicMock()
+        mock_agent.memory = MagicMock()
+        mock_agent.memory.memory = MagicMock()
+        mock_input_source = MagicMock()
+        mock_publisher = MagicMock()
+        mock_transport = MagicMock()
+        mock_graph = MagicMock()
+
+        with patch.object(mod, "AnswerPublisher", return_value=mock_publisher):
+            with patch.object(
+                mod, "_init_dht_hive", return_value=(mock_graph, None, mock_transport)
+            ):
+                with patch(
+                    "amplihack.agents.goal_seeking.runtime_factory.create_goal_agent_runtime",
+                    return_value=mock_agent,
+                ):
+                    with patch("amplihack.memory.facade.Memory", return_value=MagicMock()):
+                        with patch(
+                            "amplihack.agents.goal_seeking.input_source.EventHubsInputSource",
+                            return_value=mock_input_source,
+                        ):
+                            with patch.object(
+                                mod, "_run_event_driven_loop", side_effect=SystemExit(0)
+                            ):
+                                with pytest.raises(SystemExit) as exc_info:
+                                    mod.main()
+
+        assert exc_info.value.code == 0
+        mock_transport.bind_agent.assert_called_once_with(mock_agent)
+        mock_transport.publish_agent_online.assert_called_once_with()
+
     def test_handle_shard_query_publishes_response(self):
         """EH transport handle_shard_query looks up local shard and publishes SHARD_RESPONSE."""
 
@@ -1009,6 +1170,66 @@ class TestShardTransport:
         assert len(responses) == 1
         assert responses[0].payload["correlation_id"] == "corr-1"
         assert any("Paris" in f["content"] for f in responses[0].payload["facts"])
+
+    def test_handle_shard_query_aggregation_uses_local_only_memory(self):
+        """EH shard aggregation must use local-only memory helpers to avoid recursion."""
+
+        from amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph import (
+            DistributedHiveGraph,
+            EventHubsShardTransport,
+        )
+        from amplihack.agents.goal_seeking.hive_mind.event_bus import BusEvent
+
+        transport = EventHubsShardTransport(
+            connection_string="dummy://",
+            eventhub_name="hive-shards",
+            agent_id="agent-0",
+            _start_receiving=False,
+        )
+        DistributedHiveGraph(hive_id="test-eh-agg", enable_gossip=False, transport=transport)
+
+        published: list[dict] = []
+        transport._publish = lambda payload, partition_key=None: published.append(payload)
+
+        class _MockMemory:
+            def execute_aggregation(self, query_type, entity_filter=""):
+                raise AssertionError(
+                    "handle_shard_query must not call distributed execute_aggregation()"
+                )
+
+            def execute_aggregation_local(self, query_type, entity_filter=""):
+                return {
+                    "items": ["Project Atlas", "Project Beacon"],
+                    "count": 2,
+                    "query_type": query_type,
+                }
+
+        class _MockAgent:
+            memory = _MockMemory()
+
+        event = BusEvent(
+            event_id="evt-agg",
+            event_type="SHARD_QUERY",
+            source_agent="requester",
+            timestamp=time.time(),
+            payload={
+                "operation": "execute_aggregation",
+                "query_type": "list_concepts",
+                "entity_filter": "project",
+                "correlation_id": "corr-agg",
+                "target_agent": "agent-0",
+            },
+        )
+
+        transport.handle_shard_query(event, agent=_MockAgent())
+
+        responses = [
+            payload for payload in published if payload.get("event_type") == "SHARD_RESPONSE"
+        ]
+        assert len(responses) == 1
+        aggregation = responses[0]["payload"]["aggregation"]
+        assert aggregation["count"] == 2
+        assert aggregation["items"] == ["Project Atlas", "Project Beacon"]
 
     def test_handle_shard_response_wakes_pending_query(self):
         """EH transport handle_shard_response signals threading.Event."""
@@ -1127,6 +1348,86 @@ class TestShardQueryListener:
         t.join()
 
         mock_transport.handle_shard_query.assert_called()
+
+    def test_listener_acknowledges_wrapped_query_event_after_success(self):
+        """Wrapped mailbox events are checkpointed only after successful handling."""
+        mod = _load_entrypoint()
+
+        from amplihack.agents.goal_seeking.hive_mind.event_bus import make_event
+
+        query_event = make_event(
+            event_type="SHARD_QUERY",
+            source_agent="requester",
+            payload={"query": "test", "limit": 5, "correlation_id": "corr-x"},
+        )
+
+        wrapped = MagicMock()
+        wrapped.event = query_event
+        wrapped.ack = MagicMock()
+
+        call_count = [0]
+        mock_transport = MagicMock()
+        mock_bus = MagicMock()
+        mock_bus.poll.side_effect = (
+            lambda _: [wrapped]
+            if call_count.__setitem__(0, call_count[0] + 1) is None and call_count[0] == 1
+            else []
+        )
+
+        shutdown = threading.Event()
+
+        def stop():
+            time.sleep(0.05)
+            shutdown.set()
+
+        t = threading.Thread(target=stop)
+        t.start()
+
+        mod._shard_query_listener(mock_transport, "agent-0", mock_bus, shutdown)
+        t.join()
+
+        mock_transport.handle_shard_query.assert_called_once()
+        wrapped.ack.assert_called_once_with()
+
+    def test_listener_leaves_wrapped_query_event_unacked_on_failure(self):
+        """Failed shard handlers must not checkpoint the mailbox item."""
+        mod = _load_entrypoint()
+
+        from amplihack.agents.goal_seeking.hive_mind.event_bus import make_event
+
+        query_event = make_event(
+            event_type="SHARD_QUERY",
+            source_agent="requester",
+            payload={"query": "test", "limit": 5, "correlation_id": "corr-x"},
+        )
+
+        wrapped = MagicMock()
+        wrapped.event = query_event
+        wrapped.ack = MagicMock()
+
+        call_count = [0]
+        mock_transport = MagicMock()
+        mock_transport.handle_shard_query.side_effect = RuntimeError("boom")
+        mock_bus = MagicMock()
+        mock_bus.poll.side_effect = (
+            lambda _: [wrapped]
+            if call_count.__setitem__(0, call_count[0] + 1) is None and call_count[0] == 1
+            else []
+        )
+
+        shutdown = threading.Event()
+
+        def stop():
+            time.sleep(0.05)
+            shutdown.set()
+
+        t = threading.Thread(target=stop)
+        t.start()
+
+        mod._shard_query_listener(mock_transport, "agent-0", mock_bus, shutdown)
+        t.join()
+
+        wrapped.ack.assert_not_called()
 
     def test_listener_handles_shard_response_events(self):
         """Listener dispatches SHARD_RESPONSE events to transport.handle_shard_response."""

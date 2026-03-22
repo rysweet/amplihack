@@ -14,6 +14,7 @@ Public API:
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -384,6 +385,9 @@ def rerank_facts_by_query(
         "when",
     }
     has_temporal_query = any(cue in query_lower for cue in temporal_cues)
+    has_apt_attribution_query = "apt" in query_lower and any(
+        cue in query_lower for cue in ("attributed", "group", "threat actor")
+    )
 
     scored: list[tuple[float, int, dict[str, Any]]] = []
     for idx, fact in enumerate(facts):
@@ -417,6 +421,12 @@ def rerank_facts_by_query(
                 or meta.get("temporal_order")
             ):
                 overlap += 0.15
+
+        if has_apt_attribution_query:
+            if re.search(r"\bapt(?:-| )?\d+\b", fact_text, re.IGNORECASE):
+                overlap += 0.35
+            if "matched apt" in fact_text_lower or "ttp" in fact_text_lower:
+                overlap += 0.1
 
         if meta.get("is_summary") and phrase_hits == 0 and anchor_overlap < 1.0:
             overlap -= 0.05

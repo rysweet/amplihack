@@ -7,6 +7,8 @@ Testing pyramid:
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 from amplihack.agents.goal_seeking.hive_mind.bloom import BloomFilter
 from amplihack.agents.goal_seeking.hive_mind.dht import (
     DHTRouter,
@@ -196,6 +198,47 @@ class TestDistributedHiveGraph:
         results = dhg.query_facts("PostgreSQL port")
         assert len(results) >= 1
         assert "PostgreSQL" in results[0].content
+
+    def test_query_workers_are_capped_by_env(self):
+        target_ids = [f"agent_{i}" for i in range(5)]
+        seen: dict[str, int] = {}
+
+        class _Future:
+            def __init__(self, value):
+                self._value = value
+
+            def result(self):
+                return self._value
+
+        class _Executor:
+            def __init__(self, max_workers: int):
+                seen["max_workers"] = max_workers
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def submit(self, fetcher, agent_id):
+                return _Future(fetcher(agent_id))
+
+        with (
+            patch.dict("os.environ", {"AMPLIHACK_MEMORY_QUERY_MAX_WORKERS": "3"}),
+            patch(
+                "amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph.concurrent.futures.ThreadPoolExecutor",
+                _Executor,
+            ),
+            patch(
+                "amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph.concurrent.futures.as_completed",
+                lambda futures: list(futures),
+            ),
+        ):
+            dhg = DistributedHiveGraph("test")
+            results = dhg._collect_shard_fact_results(target_ids, lambda agent_id: [])
+
+        assert seen["max_workers"] == 3
+        assert sorted(results) == target_ids
 
     def test_gossip_propagation(self):
         dhg = DistributedHiveGraph("test", replication_factor=1, enable_gossip=True)

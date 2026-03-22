@@ -24,6 +24,7 @@ import logging
 import sys
 import threading
 import time
+from collections.abc import Callable
 from typing import Protocol, runtime_checkable
 
 logger = logging.getLogger(__name__)
@@ -337,6 +338,7 @@ class EventHubsInputSource:
         max_wait_time: int = 60,
         shutdown_event: threading.Event | None = None,
         starting_position: str = "-1",
+        inline_event_handler: Callable[[dict[str, object]], bool] | None = None,
     ) -> None:
         try:
             from azure.eventhub import EventHubConsumerClient  # type: ignore[import-unresolved]
@@ -352,7 +354,8 @@ class EventHubsInputSource:
         self._max_wait_time = max_wait_time
         self._starting_position = starting_position
         self._num_partitions: int | None = None
-        self._last_event_metadata: dict[str, str] = {}
+        self._last_event_metadata: dict[str, object] = {}
+        self._inline_event_handler = inline_event_handler
         self._shutdown = shutdown_event or threading.Event()
         self._closed = False
 
@@ -418,14 +421,25 @@ class EventHubsInputSource:
                     return
 
                 text = _extract_text_from_bus_event(event_type, payload)
+                metadata: dict[str, object] = {
+                    "event_id": raw.get("event_id", ""),
+                    "event_type": event_type or "",
+                    "question_id": payload.get("question_id", ""),
+                    "run_id": raw.get("run_id", ""),
+                    "payload": payload,
+                }
+                if self._inline_event_handler is not None:
+                    try:
+                        if self._inline_event_handler(metadata):
+                            partition_context.update_checkpoint(event)
+                            return
+                    except Exception:
+                        logger.warning(
+                            "EventHubsInputSource: inline handler failed for event_type=%s",
+                            event_type or "unknown",
+                            exc_info=True,
+                        )
                 if text is not None:
-                    metadata = {
-                        "event_id": raw.get("event_id", ""),
-                        "event_type": event_type or "",
-                        "question_id": payload.get("question_id", ""),
-                        "run_id": raw.get("run_id", ""),
-                        "payload": payload,
-                    }
                     self._queue.put((text, metadata))
                     logger.debug(
                         "EventHubsInputSource: enqueued event_type=%s len=%d",

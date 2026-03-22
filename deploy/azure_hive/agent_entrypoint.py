@@ -55,10 +55,11 @@ import signal
 import sys
 import threading
 import time
-from collections.abc import Callable
+import uuid
+from collections.abc import Callable, Mapping
 from typing import Any
 
-from amplihack.observability import configure_otel, start_span
+from amplihack.observability import add_span_event, configure_otel, start_span
 
 logging.basicConfig(
     level=logging.INFO,
@@ -85,6 +86,60 @@ def _default_agent_count() -> int:
         except ValueError:
             logger.warning("Ignoring invalid agent count override: %s", raw)
     return 10 if os.environ.get("AMPLIHACK_DEPLOYMENT_PROFILE", "").strip() == "smoke-10" else 100
+
+
+def _question_telemetry_fields(
+    *,
+    agent_name: str,
+    event_type: str | None,
+    text: str,
+    metadata: Mapping[str, Any] | None,
+    publisher: Any,
+) -> dict[str, str | int]:
+    meta = metadata or {}
+    return {
+        "agent_name": agent_name,
+        "event_type": str(event_type or "unknown"),
+        "event_id": str(meta.get("event_id") or getattr(publisher, "_current_event_id", "")),
+        "question_id": str(
+            meta.get("question_id") or getattr(publisher, "_current_question_id", "")
+        ),
+        "run_id": str(meta.get("run_id") or getattr(publisher, "_current_run_id", "")),
+        "boot_id": str(getattr(publisher, "_boot_id", "")),
+        "question_length": len(text),
+    }
+
+
+def _log_question_lifecycle(
+    stage: str,
+    *,
+    fields: Mapping[str, str | int],
+    elapsed_seconds: float | None = None,
+) -> None:
+    base_args = (
+        fields["agent_name"],
+        stage,
+        fields["event_id"],
+        fields["question_id"],
+        fields["run_id"],
+        fields["boot_id"],
+        fields["event_type"],
+        fields["question_length"],
+    )
+    if elapsed_seconds is None:
+        logger.info(
+            "Agent %s question_%s event_id=%s question_id=%s run_id=%s "
+            "boot_id=%s event_type=%s question_length=%s",
+            *base_args,
+        )
+        return
+
+    logger.info(
+        "Agent %s question_%s event_id=%s question_id=%s run_id=%s "
+        "boot_id=%s event_type=%s question_length=%s elapsed=%.3fs",
+        *base_args,
+        elapsed_seconds,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -122,15 +177,31 @@ def _shard_query_listener(
                 events = transport.poll(agent_id)
             else:
                 events = []
-            for event in events:
+        except Exception:
+            logger.debug("Shard query listener error for %s", agent_id, exc_info=True)
+            continue
+        for item in events:
+            event = getattr(item, "event", item)
+            ack = getattr(item, "ack", None)
+            try:
                 if event.event_type == "SHARD_QUERY":
                     transport.handle_shard_query(event, agent=agent)
                 elif event.event_type == "SHARD_RESPONSE":
                     transport.handle_shard_response(event)
                 elif event.event_type == "SHARD_STORE":
                     transport.handle_shard_store(event)
-        except Exception:
-            logger.debug("Shard query listener error for %s", agent_id, exc_info=True)
+            except Exception:
+                logger.debug("Shard query listener error for %s", agent_id, exc_info=True)
+                continue
+            if callable(ack):
+                try:
+                    ack()
+                except Exception:
+                    logger.debug(
+                        "Shard query listener checkpoint error for %s",
+                        agent_id,
+                        exc_info=True,
+                    )
     logger.info("Agent %s shard query listener exiting", agent_id)
 
 
@@ -142,6 +213,7 @@ def _init_dht_hive(
     eh_connection_string: str = "",
     eh_name: str = "",
     consumer_group: str | None = None,
+    boot_id: str = "",
 ) -> tuple[object, object | None, object] | None:
     """Initialize the DHT shard store for this agent using DI pattern.
 
@@ -178,6 +250,7 @@ def _init_dht_hive(
             agent_id=agent_name,
             consumer_group=consumer_group,
             timeout=shard_query_timeout,
+            local_boot_id=boot_id,
         )
         dht_graph = DistributedHiveGraph(
             hive_id=f"shard-{agent_name}",
@@ -242,6 +315,7 @@ def main() -> None:
     distributed_retrieval_enabled = os.environ.get(
         "AMPLIHACK_ENABLE_DISTRIBUTED_RETRIEVAL", "true"
     ).strip().lower() in ("1", "true", "yes")
+    boot_id = uuid.uuid4().hex[:12]
 
     logger.info(
         "Starting agent: name=%s topology=%s transport=%s",
@@ -288,6 +362,7 @@ def main() -> None:
             eh_connection_string=eh_connection_string,
             eh_name=eh_name,
             consumer_group=consumer_group,
+            boot_id=boot_id,
         )
         if result:
             hive_store, hive_bus, shard_transport = result
@@ -387,6 +462,8 @@ def main() -> None:
     if shard_transport is not None and hasattr(shard_transport, "bind_agent"):
         shard_transport.bind_agent(agent)
         logger.info("Bound agent %s to shard transport for LOCAL queries", agent_name)
+        if hasattr(shard_transport, "publish_agent_online"):
+            shard_transport.publish_agent_online()
 
     # Store initial agent identity without routing it through question heuristics.
     with start_span(
@@ -400,7 +477,12 @@ def main() -> None:
         agent.process_store(f"Agent identity: {agent_name}. Role: {agent_prompt}")
 
     # Set up answer publisher for eval answer correlation via on_answer callback.
-    answer_publisher = AnswerPublisher(agent_name, eh_connection_string, eh_eval_hub)
+    answer_publisher = AnswerPublisher(
+        agent_name,
+        eh_connection_string,
+        eh_eval_hub,
+        boot_id=boot_id,
+    )
     agent.on_answer = answer_publisher.publish_answer
 
     logger.info("Agent %s memory initialized and entering OODA loop", agent_name)
@@ -469,6 +551,7 @@ def main() -> None:
             consumer_group=consumer_group,
             shutdown_event=shutdown_event,
             starting_position="@latest",
+            inline_event_handler=_inline_control_handler(agent_name, answer_publisher),
         )
         # Wrap the input source to set answer correlation context per message.
         input_source = _CorrelatingInputSource(eh_source, answer_publisher)
@@ -715,6 +798,8 @@ def _run_event_driven_loop(
             continue
 
         logger.info("Agent %s processing input via OODA (len=%d)", agent_name, len(text))
+        question_fields: dict[str, str | int] | None = None
+        question_started_at = 0.0
         try:
             # Set trace context for correlation tracing
             try:
@@ -779,18 +864,64 @@ def _run_event_driven_loop(
                             expected,
                         )
             else:
+                question_fields = _question_telemetry_fields(
+                    agent_name=agent_name,
+                    event_type=event_type,
+                    text=text,
+                    metadata=metadata,
+                    publisher=answer_publisher,
+                )
+                question_started_at = time.monotonic()
+                _log_question_lifecycle("start", fields=question_fields)
                 with start_span(
                     "azure_hive.answer_question",
                     tracer_name=__name__,
                     attributes={
                         "amplihack.agent.name": agent_name,
-                        "amplihack.event_type": event_type or "unknown",
-                        "amplihack.question_length": len(text),
-                        "amplihack.run_id": metadata.get("run_id", ""),
+                        "amplihack.event_type": question_fields["event_type"],
+                        "amplihack.question_length": question_fields["question_length"],
+                        "amplihack.run_id": question_fields["run_id"],
+                        "amplihack.event_id": question_fields["event_id"],
+                        "amplihack.question_id": question_fields["question_id"],
+                        "amplihack.boot_id": question_fields["boot_id"],
                     },
-                ):
+                ) as question_span:
+                    add_span_event(
+                        question_span,
+                        "question.start",
+                        {
+                            "amplihack.event_id": question_fields["event_id"],
+                            "amplihack.question_id": question_fields["question_id"],
+                            "amplihack.run_id": question_fields["run_id"],
+                            "amplihack.boot_id": question_fields["boot_id"],
+                        },
+                    )
                     agent.process(text)
+                    add_span_event(
+                        question_span,
+                        "question.finish",
+                        {
+                            "amplihack.event_id": question_fields["event_id"],
+                            "amplihack.question_id": question_fields["question_id"],
+                            "amplihack.run_id": question_fields["run_id"],
+                            "amplihack.boot_id": question_fields["boot_id"],
+                            "amplihack.elapsed_ms": int(
+                                (time.monotonic() - question_started_at) * 1000
+                            ),
+                        },
+                    )
+                _log_question_lifecycle(
+                    "finish",
+                    fields=question_fields,
+                    elapsed_seconds=time.monotonic() - question_started_at,
+                )
         except Exception:
+            if question_fields is not None:
+                _log_question_lifecycle(
+                    "error",
+                    fields=question_fields,
+                    elapsed_seconds=time.monotonic() - question_started_at,
+                )
             logger.exception("Error in OODA process for agent %s", agent_name)
         finally:
             try:
@@ -899,6 +1030,22 @@ def _handle_event(agent_name: str, event: Any, memory: Any, agent: Any) -> None:
         )
 
 
+def _inline_control_handler(
+    agent_name: str, answer_publisher: Any
+) -> Callable[[dict[str, object]], bool]:
+    """Acknowledge lightweight control messages from the EH receive thread."""
+
+    def _handle(metadata: dict[str, object]) -> bool:
+        if str(metadata.get("event_type") or "") != "ONLINE_CHECK":
+            return False
+        run_id = str(metadata.get("run_id") or "")
+        logger.info("Agent %s received ONLINE_CHECK inline. Publishing AGENT_ONLINE.", agent_name)
+        answer_publisher.publish_agent_online(run_id=run_id)
+        return True
+
+    return _handle
+
+
 class _CorrelatingInputSource:
     """InputSource wrapper that sets AnswerPublisher context per message.
 
@@ -947,13 +1094,36 @@ class AnswerPublisher:
     The current event_id is set by _CorrelatingInputSource before each process() call.
     """
 
-    def __init__(self, agent_name: str, eh_connection_string: str, eval_hub_name: str):
+    def __init__(
+        self,
+        agent_name: str,
+        eh_connection_string: str,
+        eval_hub_name: str,
+        boot_id: str = "",
+    ):
+        import uuid as _uuid
+
         self._agent_name = agent_name
         self._current_event_id: str = ""
         self._current_question_id: str = ""
         self._current_run_id: str = ""
+        self._boot_id = boot_id or _uuid.uuid4().hex[:12]
         self._eh_connection_string = eh_connection_string
         self._eval_hub_name = eval_hub_name
+        ready_cooldown_raw = os.environ.get(
+            "AMPLIHACK_AGENT_READY_REPUBLISH_COOLDOWN_SECONDS", "30"
+        ).strip()
+        try:
+            self._agent_ready_republish_cooldown = max(0.0, float(ready_cooldown_raw or "30"))
+        except ValueError:
+            logger.warning(
+                "AnswerPublisher: invalid AMPLIHACK_AGENT_READY_REPUBLISH_COOLDOWN_SECONDS=%r; "
+                "defaulting to 30s",
+                ready_cooldown_raw,
+            )
+            self._agent_ready_republish_cooldown = 30.0
+        self._last_agent_ready_key: tuple[str, str] | None = None
+        self._last_agent_ready_at = 0.0
 
         if eh_connection_string:
             logger.info("AnswerPublisher initialized for EH hub %s", eval_hub_name)
@@ -985,6 +1155,10 @@ class AnswerPublisher:
                 "amplihack.agent.name": self._agent_name,
                 "amplihack.eval_hub": self._eval_hub_name,
                 "amplihack.event_type": payload.get("event_type", "UNKNOWN"),
+                "amplihack.event_id": payload.get("event_id", ""),
+                "amplihack.question_id": payload.get("question_id", ""),
+                "amplihack.run_id": payload.get("run_id", ""),
+                "amplihack.boot_id": payload.get("boot_id", ""),
             },
         ):
             for attempt in range(1, max_retries + 1):
@@ -1051,9 +1225,15 @@ class AnswerPublisher:
                 "agent_id": agent_name,
                 "answer": answer,
                 "run_id": self._current_run_id,
+                "boot_id": self._boot_id,
             }
         )
-        logger.info("AnswerPublisher: published answer for event_id=%s", self._current_event_id)
+        logger.info(
+            "AnswerPublisher: published answer for event_id=%s question_id=%s boot_id=%s",
+            self._current_event_id,
+            self._current_question_id,
+            self._boot_id,
+        )
 
     def publish_agent_ready(self, total_turns: str, run_id: str = "") -> None:
         """Publish AGENT_READY event to eval-responses hub.
@@ -1063,15 +1243,36 @@ class AnswerPublisher:
         """
         import uuid as _uuid
 
+        normalized_run_id = run_id or self._current_run_id
+        ready_key = (normalized_run_id, total_turns)
+        now = time.monotonic()
+        if (
+            self._agent_ready_republish_cooldown > 0.0
+            and self._last_agent_ready_key == ready_key
+            and (now - self._last_agent_ready_at) < self._agent_ready_republish_cooldown
+        ):
+            logger.info(
+                "AnswerPublisher: suppressing duplicate AGENT_READY for agent=%s run_id=%s "
+                "total_turns=%s cooldown_remaining=%.1fs",
+                self._agent_name,
+                normalized_run_id or "unknown",
+                total_turns,
+                self._agent_ready_republish_cooldown - (now - self._last_agent_ready_at),
+            )
+            return
+
         self._publish_to_eh(
             {
                 "event_type": "AGENT_READY",
                 "event_id": _uuid.uuid4().hex,
                 "agent_id": self._agent_name,
                 "total_turns": total_turns,
-                "run_id": run_id or self._current_run_id,
+                "run_id": normalized_run_id,
+                "boot_id": self._boot_id,
             }
         )
+        self._last_agent_ready_key = ready_key
+        self._last_agent_ready_at = now
         logger.info("AnswerPublisher: published AGENT_READY for agent=%s", self._agent_name)
 
     def publish_agent_online(self, run_id: str = "") -> None:
@@ -1083,6 +1284,7 @@ class AnswerPublisher:
                 "event_type": "AGENT_ONLINE",
                 "event_id": _uuid.uuid4().hex,
                 "agent_id": self._agent_name,
+                "boot_id": self._boot_id,
                 "run_id": run_id or self._current_run_id,
             }
         )
@@ -1107,6 +1309,7 @@ class AnswerPublisher:
                 "processed_count": processed_count,
                 "input_event_type": input_event_type,
                 "run_id": run_id or self._current_run_id,
+                "boot_id": self._boot_id,
             }
         )
         logger.info(
@@ -1125,6 +1328,7 @@ class AnswerPublisher:
                 "event_type": "AGENT_SHUTDOWN",
                 "event_id": _uuid.uuid4().hex,
                 "agent_id": self._agent_name,
+                "boot_id": self._boot_id,
                 "reason": reason,
                 "detail": detail,
                 "run_id": run_id or self._current_run_id,
