@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-PM Architect - PR Triage using Claude Agent SDK.
+PM Architect - PR Triage.
 
-Uses Claude Agent SDK to analyze pull requests and provide intelligent
-triage recommendations including priority, complexity, and reviewer suggestions.
+Uses the detected agent SDK (Claude Agent SDK or GitHub Copilot SDK) to analyze
+pull requests and provide intelligent triage recommendations including priority,
+complexity, and reviewer suggestions.
 """
 
 import asyncio
@@ -15,13 +16,9 @@ from pathlib import Path
 # Unset CLAUDECODE to prevent nested session errors when spawning Claude CLI subprocesses
 os.environ.pop("CLAUDECODE", None)
 
-# Try to import Claude SDK
-try:
-    from claude_agent_sdk import ClaudeAgentOptions, query
-
-    CLAUDE_SDK_AVAILABLE = True
-except ImportError:
-    CLAUDE_SDK_AVAILABLE = False
+# Ensure sibling modules are importable regardless of working directory
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from agent_query import SDK_AVAILABLE, detect_runtime, query_agent
 
 
 def get_pr_details(project_root: Path, pr_number: int) -> dict | None:
@@ -160,7 +157,7 @@ def get_related_issues(project_root: Path, pr_body: str) -> str:
 
 
 async def triage_pr(project_root: Path, pr_number: int) -> str | None:
-    """Triage PR using Claude Agent SDK.
+    """Triage PR using the detected agent SDK.
 
     Args:
         project_root: Project root directory
@@ -169,8 +166,8 @@ async def triage_pr(project_root: Path, pr_number: int) -> str | None:
     Returns:
         Markdown triage analysis, or None if analysis fails
     """
-    if not CLAUDE_SDK_AVAILABLE:
-        print("Error: Claude SDK not available", file=sys.stderr)
+    if not SDK_AVAILABLE:
+        print("Error: No agent SDK available (need claude-agent-sdk or copilot)", file=sys.stderr)
         return None
 
     # Get PR details
@@ -278,22 +275,7 @@ Generate the triage analysis now:
 """
 
     try:
-        # Configure SDK
-        options = ClaudeAgentOptions(
-            cwd=str(project_root),
-            permission_mode="bypassPermissions",
-        )
-
-        # Collect response
-        response_parts = []
-        async for message in query(prompt=prompt, options=options):
-            if hasattr(message, "text"):
-                response_parts.append(message.text)
-            elif hasattr(message, "content"):
-                response_parts.append(str(message.content))
-
-        # Join all parts
-        triage = "".join(response_parts)
+        triage = await query_agent(prompt, project_root)
         return triage if triage.strip() else None
 
     except Exception as e:
@@ -305,7 +287,7 @@ def main():
     """Main entry point for PR triage."""
     import argparse
 
-    parser = argparse.ArgumentParser(description="Triage PR using Claude Agent SDK")
+    parser = argparse.ArgumentParser(description="Triage PR using detected agent SDK")
     parser.add_argument("pr_number", type=int, help="Pull request number to triage")
     parser.add_argument(
         "--project-root",
@@ -321,9 +303,13 @@ def main():
 
     args = parser.parse_args()
 
-    if not CLAUDE_SDK_AVAILABLE:
-        print("Error: claude-agent-sdk not installed", file=sys.stderr)
-        print("Install with: pip install claude-agent-sdk", file=sys.stderr)
+    if not SDK_AVAILABLE:
+        runtime = detect_runtime()
+        print(f"Error: No agent SDK installed (runtime={runtime})", file=sys.stderr)
+        print(
+            "Install one of: pip install claude-agent-sdk | pip install github-copilot-sdk",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     # Perform triage

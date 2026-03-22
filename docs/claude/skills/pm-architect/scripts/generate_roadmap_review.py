@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-PM Architect - Weekly Roadmap Review using Claude Agent SDK.
+PM Architect - Weekly Roadmap Review.
 
-Uses Claude Agent SDK to analyze roadmap alignment, goal progress, and
-generate strategic recommendations for project direction.
+Uses the detected agent SDK (Claude Agent SDK or GitHub Copilot SDK) to analyze
+roadmap alignment, goal progress, and generate strategic recommendations for
+project direction.
 """
 
 import asyncio
@@ -15,13 +16,9 @@ from pathlib import Path
 # Unset CLAUDECODE to prevent nested session errors when spawning Claude CLI subprocesses
 os.environ.pop("CLAUDECODE", None)
 
-# Try to import Claude SDK
-try:
-    from claude_agent_sdk import ClaudeAgentOptions, query
-
-    CLAUDE_SDK_AVAILABLE = True
-except ImportError:
-    CLAUDE_SDK_AVAILABLE = False
+# Ensure sibling modules are importable regardless of working directory
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from agent_query import SDK_AVAILABLE, detect_runtime, query_agent
 
 
 def load_project_state(project_root: Path) -> dict | None:
@@ -194,7 +191,7 @@ def get_milestone_progress(project_root: Path) -> str:
 
 
 async def generate_roadmap_review(project_root: Path, state: dict | None = None) -> str | None:
-    """Generate weekly roadmap review using Claude Agent SDK.
+    """Generate weekly roadmap review using the detected agent SDK.
 
     Args:
         project_root: Project root directory
@@ -203,8 +200,8 @@ async def generate_roadmap_review(project_root: Path, state: dict | None = None)
     Returns:
         Markdown roadmap review, or None if generation fails
     """
-    if not CLAUDE_SDK_AVAILABLE:
-        print("Error: Claude SDK not available", file=sys.stderr)
+    if not SDK_AVAILABLE:
+        print("Error: No agent SDK available (need claude-agent-sdk or copilot)", file=sys.stderr)
         return None
 
     # Load state if not provided
@@ -318,22 +315,7 @@ Generate the roadmap review now:
 """
 
     try:
-        # Configure SDK
-        options = ClaudeAgentOptions(
-            cwd=str(project_root),
-            permission_mode="bypassPermissions",
-        )
-
-        # Collect response
-        response_parts = []
-        async for message in query(prompt=prompt, options=options):
-            if hasattr(message, "text"):
-                response_parts.append(message.text)
-            elif hasattr(message, "content"):
-                response_parts.append(str(message.content))
-
-        # Join all parts
-        review = "".join(response_parts)
+        review = await query_agent(prompt, project_root)
         return review if review.strip() else None
 
     except Exception as e:
@@ -346,7 +328,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Generate weekly roadmap review using Claude Agent SDK"
+        description="Generate weekly roadmap review using detected agent SDK"
     )
     parser.add_argument(
         "--project-root",
@@ -362,9 +344,13 @@ def main():
 
     args = parser.parse_args()
 
-    if not CLAUDE_SDK_AVAILABLE:
-        print("Error: claude-agent-sdk not installed", file=sys.stderr)
-        print("Install with: pip install claude-agent-sdk", file=sys.stderr)
+    if not SDK_AVAILABLE:
+        runtime = detect_runtime()
+        print(f"Error: No agent SDK installed (runtime={runtime})", file=sys.stderr)
+        print(
+            "Install one of: pip install claude-agent-sdk | pip install github-copilot-sdk",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     # Generate review
