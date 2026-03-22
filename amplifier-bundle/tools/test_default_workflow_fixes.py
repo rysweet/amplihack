@@ -127,7 +127,7 @@ _BL002_FIXED_STEP4_FULL = textwrap.dedent("""\
     cd "$REPO_PATH"
 
     BRANCH_EXISTS=$(git branch --list "$BRANCH_NAME")
-    WORKTREE_EXISTS=$(git worktree list --porcelain | grep -F "worktree $WORKTREE_PATH" || true)
+    WORKTREE_EXISTS=$(git worktree list --porcelain | grep -Fx "worktree $WORKTREE_PATH" || true)
 
     if [ -n "$BRANCH_EXISTS" ] && [ -n "$WORKTREE_EXISTS" ]; then
       echo "INFO: Branch and worktree already exist — reusing." >&2

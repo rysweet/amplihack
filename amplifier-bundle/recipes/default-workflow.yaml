@@ -371,7 +371,7 @@ steps:
       # Security note: grep -F is required (not -E/-P) so that filesystem path
       # characters (., +, *) in WORKTREE_PATH are not interpreted as regex metacharacters.
       BRANCH_EXISTS=$(git branch --list "${BRANCH_NAME}")
-      WORKTREE_EXISTS=$(git worktree list --porcelain | grep -F "worktree ${WORKTREE_PATH}" || true)
+      WORKTREE_EXISTS=$(git worktree list --porcelain | grep -Fx "worktree ${WORKTREE_PATH}" || true)
 
       if [ -n "$BRANCH_EXISTS" ] && [ -n "$WORKTREE_EXISTS" ]; then
         echo "INFO: Branch '${BRANCH_NAME}' and worktree '${WORKTREE_PATH}' already exist — reusing." >&2
@@ -1149,7 +1149,7 @@ steps:
       {{design_spec}}
       EOFDESIGN
       )
-      PR_BODY=$(printf '## Summary\n%s\n\n## Issue\nCloses #%s\n\n## Changes\n%s\n\n## Testing\n- Unit tests added\n- Local testing completed\n- Pre-commit hooks pass\n\n## Checklist\n- [x] Tests pass\n- [x] Documentation updated\n- [x] No stubs or TODOs\n- [ ] Code review completed\n- [ ] Philosophy check passed\n\n---\n*This PR was created as a draft for review before merging.*\n' "$TASK_DESC" {{issue_number}} "$PR_DESIGN")
+      PR_BODY=$(printf '## Summary\n%s\n\n## Issue\nCloses #%s\n\n## Changes\n%s\n\n## Testing\n- Unit tests added\n- Local testing completed\n- Pre-commit hooks pass\n\n## Checklist\n- [x] Tests pass\n- [x] Documentation updated\n- [x] No stubs or TODOs\n- [ ] Code review completed\n- [ ] Philosophy check passed\n\n---\n*This PR was created as a draft for review before merging.*\n' "$TASK_DESC" "$ISSUE_NUM" "$PR_DESIGN")
       # timeout 120: gh pr create contacts GitHub GraphQL API — cap wait to 2 minutes
       # 2>/dev/null: suppress gh stderr to prevent output contract corruption of pr_url
       timeout 120 gh pr create --draft \
