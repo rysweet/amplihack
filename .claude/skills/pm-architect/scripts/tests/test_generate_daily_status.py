@@ -104,7 +104,7 @@ class TestMainFunction:
 
     def test_main_sdk_not_available(self, capsys):
         """Test main when SDK not available."""
-        with patch("generate_daily_status.CLAUDE_SDK_AVAILABLE", False):
+        with patch("generate_daily_status.SDK_AVAILABLE", False):
             with patch("sys.argv", ["generate_daily_status.py"]):
                 from generate_daily_status import main
 
@@ -113,4 +113,4 @@ class TestMainFunction:
 
                 assert exc_info.value.code == 1
                 captured = capsys.readouterr()
-                assert "not installed" in captured.err
+                assert "No agent SDK installed" in captured.err
