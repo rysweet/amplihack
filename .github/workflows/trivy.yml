@@ -1,0 +1,29 @@
+# Trivy Security Scanner
+# This workflow is intentionally disabled (workflow_dispatch only).
+# To enable automatic scanning, add push/pull_request/schedule triggers.
+
+name: Trivy Security Scan
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  trivy-scan:
+    name: Trivy vulnerability scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner (filesystem)
+        uses: aquasecurity/trivy-action@0.30.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          exit-code: 1
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
