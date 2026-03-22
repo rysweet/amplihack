@@ -1,6 +1,6 @@
-# Recipe Resilience: Branch Sanitization & Sub-Recipe Recovery
+# Recipe Resilience: Branch Sanitization, Sub-Recipe Recovery, Idempotent PR Creation & ARG_MAX Protection
 
-This document describes two resilience improvements to the amplihack recipe runner:
+This document describes four resilience improvements to the amplihack recipe runner:
 
 1. **Branch Name Sanitization** (Issue #2952) — `default-workflow` step 4 now
    produces valid git branch names from any `task_description`, including
@@ -8,6 +8,10 @@ This document describes two resilience improvements to the amplihack recipe runn
 2. **Sub-Recipe Agentic Recovery** (Issue #2953) — when a sub-recipe step fails,
    the runner invokes an agent recovery step before raising a hard error, giving
    the workflow a chance to self-heal.
+3. **Idempotent PR Creation** (PR #3335) — step 16 handles pre-existing PRs,
+   zero-commit branches, and issue-referenced PRs without failing.
+4. **ARG_MAX Protection** (PR #3366) — large recipe context values are spilled
+   to temp files to prevent `E2BIG` / ARG_MAX overflow on step execution.
 
 ---
 
@@ -253,10 +257,120 @@ partial output content (which may be sensitive) appearing in standard logs.
 
 ---
 
+---
+
+## Idempotent PR Creation (Step 16)
+
+### Problem
+
+`step-16-create-draft-pr` in `default-workflow.yaml` previously failed when run
+more than once in a branch's lifetime. Three common situations triggered errors:
+
+1. **PR already exists for the branch** — `gh pr create` exits non-zero when a
+   PR already targets the same branch.
+2. **Issue-referenced PR** — the branch has no open PR itself, but a PR already
+   references the issue (`Closes #N`). Running step 16 created a duplicate.
+3. **No commits ahead of base** — a fresh worktree with no commits yet causes
+   `gh pr create` to fail immediately.
+
+### Solution: Four-Path Decision Tree
+
+Step 16 now evaluates four paths in order:
+
+```
+Is there already an open PR whose head branch matches CURRENT_BRANCH?
+    └── Yes → echo existing PR URL, exit 0
+
+Is there already an open PR that closes/fixes the issue?
+    └── Yes → echo that PR URL, exit 0
+
+Does the branch have zero commits ahead of the base?
+    └── Yes → emit warning to stderr, exit 0 (nothing to PR yet)
+
+Otherwise → gh pr create --draft   (original behaviour)
+```
+
+Each short-circuit path outputs the PR URL on stdout and routes all diagnostic
+messages to stderr, keeping the step's output consistent regardless of path.
+
+#### Security: Injection Prevention
+
+`ISSUE_NUM` is validated to be strictly numeric before use:
+
+```bash
+case "$ISSUE_NUM" in
+  ''|*[!0-9]*) echo "Error: ISSUE_NUM must be numeric" >&2; exit 1 ;;
+esac
+```
+
+This prevents shell injection from attacker-influenced issue number values
+arriving via the recipe context.
+
+### Testing
+
+17 tests in `tests/recipes/test_pr_creation_idempotency.py` cover all four
+paths, edge cases (empty `gh pr list` output, `jq` null returns), and the
+injection-prevention guard.
+
+---
+
+## ARG_MAX Protection
+
+### Problem
+
+Recipe steps receive context values as environment variables. Very large agent
+outputs (multi-KB philosophy checks, quality audit results) caused step
+execution to fail with `E2BIG` (ARG_MAX exceeded) when the kernel rejected the
+`execve` call for having too large an environment block.
+
+### Solution: Two Complementary Approaches
+
+**Phase 1 — Agent step conversion** (step-19d, step-21): Steps that previously
+echoed large context variables via bash now use `amplihack:reviewer` agent
+steps. Agent steps receive context through the recipe runner's internal
+mechanism, not through environment variables, so ARG_MAX does not apply.
+
+**Phase 2 — 32 KB size guard in `rust_runner.py`**: The Python wrapper
+`_build_rust_command()` checks every context value before passing it to the
+Rust binary:
+
+```
+for each context value:
+    if len(value) > 32 * 1024:
+        write value to temp file under mkdtemp()
+        replace value with  file:///path/to/spill_file
+    else:
+        pass through unchanged
+```
+
+Template expansion in the Rust runner transparently reads the `file://` URI
+content, so recipe YAML never needs to know whether a value was spilled. The
+temp directory is cleaned up in a `finally` block.
+
+#### Why 32 KB?
+
+32 KB is half of a typical 64 KB per-variable limit and well below common
+ARG_MAX values (128 KB–2 MB). Values smaller than 32 KB pass through unchanged
+for full backward compatibility.
+
+### Impact
+
+Zero content is truncated or lost. Large values are preserved in full — they
+just travel via temp files rather than environment variable bytes. Recipes that
+previously hit ARG_MAX on workflows with verbose agent output now complete
+successfully.
+
+### Testing
+
+117 tests: 76 unit tests (`tests/recipes/`) and 41 gadugi scenario tests
+(`tests/skills/test_gadugi_scenarios_3366.py`). All pass.
+
+---
+
 ## Configuration
 
-Neither feature introduces new configuration knobs. The sanitization pipeline
-and recovery flow are always active.
+No feature introduces new configuration knobs. The sanitization pipeline,
+recovery flow, idempotency logic, and ARG_MAX guard are always active.
 
 To disable recovery for a specific sub-recipe step (not currently supported
 via YAML), set `adapter=None` when constructing `RecipeRunner`.
