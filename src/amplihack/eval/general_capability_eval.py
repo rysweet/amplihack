@@ -31,7 +31,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-import anthropic  # type: ignore[import-untyped]  # pyright: ignore[reportMissingImports]
+from .llm_grader import call_grader_json, get_grader_model
 
 logger = logging.getLogger(__name__)
 
@@ -682,14 +682,6 @@ COLLABORATIVE_SCENARIOS = [
 # ---------------------------------------------------------------------------
 
 
-def _get_anthropic_client() -> anthropic.Anthropic:
-    """Create Anthropic client from environment."""
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise OSError("ANTHROPIC_API_KEY environment variable required for grading")
-    return anthropic.Anthropic(api_key=api_key)
-
-
 def _extract_json(text: str) -> dict:
     """Extract JSON object from LLM response text."""
     import re
@@ -724,14 +716,7 @@ def _llm_grade(prompt: str, grader_model: str | None = None) -> dict[str, Any]:
     Returns:
         Parsed JSON dict from grader response
     """
-    client = _get_anthropic_client()
-    model = grader_model or os.environ.get("GRADER_MODEL", "claude-opus-4-6")
-    message = client.messages.create(
-        model=model,
-        max_tokens=1000,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    return _extract_json(message.content[0].text)
+    return call_grader_json(prompt, model=grader_model or get_grader_model(), max_tokens=1000)
 
 
 # ---------------------------------------------------------------------------
@@ -1158,27 +1143,17 @@ class GeneralCapabilityEval:
 
     def _create_agent(self) -> Any:
         """Create a fresh agent instance."""
-        if self.sdk == "mini":
-            from amplihack.agents.goal_seeking.learning_agent import LearningAgent
+        from amplihack.agents.goal_seeking.runtime_factory import create_goal_agent_runtime
 
-            kwargs: dict[str, Any] = {
-                "agent_name": self.agent_name,
-                "use_hierarchical": True,
-                "storage_path": self.storage_path,
-            }
-            if self.model:
-                kwargs["model"] = self.model
-            return LearningAgent(**kwargs)
-        from amplihack.agents.goal_seeking.sdk_adapters.factory import create_agent
-
-        kwargs = {
-            "name": self.agent_name,
+        kwargs: dict[str, Any] = {
+            "agent_name": self.agent_name,
             "sdk": self.sdk,
+            "use_hierarchical": True,
             "storage_path": self.storage_path,
         }
         if self.model:
             kwargs["model"] = self.model
-        return create_agent(**kwargs)
+        return create_goal_agent_runtime(**kwargs, bind_answer_mode=False)
 
     def _learn_content(self, agent: Any, content: str) -> None:
         """Feed content to the agent."""

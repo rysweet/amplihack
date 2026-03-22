@@ -95,7 +95,7 @@ class TestStoreDiscovery:
     def test_store_discovery_uses_semantic_type(self):
         """Test that discoveries use SEMANTIC memory type."""
         from amplihack.memory.discoveries import store_discovery
-        from amplihack.memory.types import MemoryType
+        from amplihack.memory.models import MemoryType
 
         with patch("amplihack.memory.discoveries.MemoryCoordinator") as mock_coord_cls:
             mock_coordinator = MagicMock()
@@ -187,7 +187,7 @@ class TestGetRecentDiscoveries:
     def test_get_recent_discoveries_uses_semantic_type(self):
         """Test that retrieval queries SEMANTIC memory type."""
         from amplihack.memory.discoveries import get_recent_discoveries
-        from amplihack.memory.types import MemoryType
+        from amplihack.memory.models import MemoryType
 
         with patch("amplihack.memory.discoveries.MemoryCoordinator") as mock_coord_cls:
             mock_coordinator = MagicMock()

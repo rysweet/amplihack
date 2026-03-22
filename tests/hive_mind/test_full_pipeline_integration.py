@@ -58,6 +58,9 @@ class TestCognitiveAdapterHiveIntegration:
     def hive_and_adapters(self, tmp_path):
         """Create a shared hive and two CognitiveAdapters."""
         from amplihack.agents.goal_seeking.cognitive_adapter import CognitiveAdapter
+        from amplihack.agents.goal_seeking.hive_mind.distributed_memory import (
+            DistributedCognitiveMemory,
+        )
 
         hive = InMemoryHiveGraph(
             "integration-hive",
@@ -71,12 +74,21 @@ class TestCognitiveAdapterHiveIntegration:
         adapter_a = CognitiveAdapter(
             agent_name="agent_a",
             db_path=tmp_path / "agent_a_db",
-            hive_store=hive,
+        )
+        # Wrap local memory with DistributedCognitiveMemory (same as entrypoint DI)
+        adapter_a.memory = DistributedCognitiveMemory(
+            local_memory=adapter_a.memory,
+            hive_graph=hive,
+            agent_name="agent_a",
         )
         adapter_b = CognitiveAdapter(
             agent_name="agent_b",
             db_path=tmp_path / "agent_b_db",
-            hive_store=hive,
+        )
+        adapter_b.memory = DistributedCognitiveMemory(
+            local_memory=adapter_b.memory,
+            hive_graph=hive,
+            agent_name="agent_b",
         )
 
         yield hive, adapter_a, adapter_b

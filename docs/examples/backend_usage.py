@@ -12,7 +12,7 @@ import asyncio
 from datetime import datetime
 
 from amplihack.memory.coordinator import MemoryCoordinator, StorageRequest
-from amplihack.memory.types import MemoryType
+from amplihack.memory.models import MemoryType
 
 
 async def example_default_backend():
@@ -101,7 +101,7 @@ async def example_working_memory():
 
     coordinator = MemoryCoordinator()
 
-    # Store working memory fer active task
+    # Store working memory for active task
     request = StorageRequest(
         content="Currently implementing backend abstraction layer",
         memory_type=MemoryType.WORKING,

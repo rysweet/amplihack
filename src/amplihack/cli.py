@@ -1237,7 +1237,7 @@ def main(argv: list[str] | None = None) -> int:
     if not platform_result.compatible:
         print(platform_result.message, file=sys.stderr)
         return 1
-    elif platform_result.message:
+    if platform_result.message:
         # Partial support (e.g., native Windows) — warn but continue
         print(platform_result.message, file=sys.stderr)
 
@@ -1758,31 +1758,13 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "memory":
         if args.memory_command == "tree":
             from .memory.cli_visualize import visualize_memory_tree
+
+            # Select backend (SQLite only; use KuzuGraphStore for graph storage)
+            from .memory.database import MemoryDatabase
             from .memory.models import MemoryType
 
-            # Select backend
-            if args.backend == "kuzu":
-                try:
-                    import asyncio
-
-                    from .memory.backends.kuzu_backend import KuzuBackend
-
-                    backend = KuzuBackend()
-                    asyncio.run(backend.initialize())
-                except ImportError:
-                    print(
-                        "Error: Kùzu backend not available. Kuzu should be installed automatically with amplihack."
-                    )
-                    print("Fallin' back to SQLite backend...")
-                    from .memory.database import MemoryDatabase
-
-                    backend = MemoryDatabase()
-                    backend.initialize()
-            else:
-                from .memory.database import MemoryDatabase
-
-                backend = MemoryDatabase()
-                backend.initialize()
+            backend = MemoryDatabase()
+            backend.initialize()
 
             # Convert type string to enum if provided
             memory_type = None
@@ -1859,40 +1841,10 @@ def main(argv: list[str] | None = None) -> int:
                 return 1
 
         if args.memory_command == "clean":
-            from .memory.cli_cleanup import cleanup_memory_sessions
-
-            # Select backend
-            if args.backend == "kuzu":
-                try:
-                    import asyncio
-
-                    from .memory.backends.kuzu_backend import KuzuBackend
-
-                    backend = KuzuBackend()
-                    asyncio.run(backend.initialize())
-                except ImportError:
-                    print("Error: Kùzu backend not available. Install with: pip install amplihack")
-                    return 1
-            else:
-                from .memory.database import MemoryDatabase
-
-                backend = MemoryDatabase()
-                backend.initialize()
-
-            # Run cleanup
-            result = cleanup_memory_sessions(
-                backend=backend,
-                pattern=args.pattern,
-                dry_run=not args.no_dry_run,
-                confirm=args.confirm,
+            print(
+                "The 'memory clean' command has been removed. Use the database directly to clean up sessions."
             )
-
-            # Cleanup backend
-            if hasattr(backend, "close"):
-                backend.close()
-
-            # Return non-zero if there were errors
-            return 1 if result["errors"] > 0 else 0
+            return 1
 
         create_parser().print_help()
         return 1

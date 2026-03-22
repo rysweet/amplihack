@@ -14,7 +14,7 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from amplihack.memory.backends import create_backend
+from amplihack.memory.sqlite_backend import create_backend
 from amplihack.memory.coordinator import MemoryCoordinator
 from amplihack.memory.evaluation import (
     BackendComparison,

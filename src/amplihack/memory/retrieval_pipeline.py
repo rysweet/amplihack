@@ -1,4 +1,4 @@
-"""Retrieval pipeline fer 5-type memory system.
+"""Retrieval pipeline for 5-type memory system.
 
 Re-exports RetrievalQuery from coordinator.
 

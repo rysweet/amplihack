@@ -32,7 +32,6 @@ from .long_horizon_memory import (
     EvalReport,
     LongHorizonMemoryEval,
     _print_report,
-    _SDKAgentWrapper,
 )
 
 logger = logging.getLogger(__name__)
@@ -114,9 +113,9 @@ def _create_agent(
 ) -> Any:
     """Create an agent based on the configuration.
 
-    For mini: uses LearningAgent directly.
+    For mini: uses the canonical runtime factory.
     For multi_agent: uses MultiAgentLearningAgent.
-    For SDK agents: uses create_agent from factory, wrapped in _SDKAgentWrapper.
+    For SDK agents: uses the canonical runtime factory.
 
     Args:
         config: Agent configuration
@@ -142,28 +141,16 @@ def _create_agent(
             enable_spawning=config.enable_spawning,
         )
 
-    if config.sdk == "mini":
-        from amplihack.agents.goal_seeking.learning_agent import LearningAgent
+    from amplihack.agents.goal_seeking.runtime_factory import create_goal_agent_runtime
 
-        return LearningAgent(
-            agent_name=f"matrix_{config.name}",
-            model=model,
-            storage_path=db_path,
-            use_hierarchical=True,
-        )
-
-    # SDK agents: use factory and wrap
-    from amplihack.agents.goal_seeking.sdk_adapters.factory import create_agent
-
-    sdk_agent = create_agent(
-        name=f"matrix_{config.name}",
+    return create_goal_agent_runtime(
+        agent_name=f"matrix_{config.name}",
         sdk=config.sdk,
         instructions="You are a learning agent. Learn facts and answer questions accurately.",
         model=model,
         storage_path=db_path,
-        enable_memory=True,
+        use_hierarchical=True,
     )
-    return _SDKAgentWrapper(sdk_agent)
 
 
 def run_matrix_eval(
@@ -287,7 +274,10 @@ def run_matrix_eval(
 
             # Run dialogue (learning phase)
             logger.info("Starting learning phase for %s...", config.name)
-            learning_time = agent_eval.run_dialogue(agent)
+            learning_result = agent_eval.run_dialogue(agent)
+            learning_time = (
+                learning_result[0] if isinstance(learning_result, tuple) else learning_result
+            )
             logger.info("Learning complete for %s: %.1fs", config.name, learning_time)
 
             # Run evaluation (questioning + grading)

@@ -1,7 +1,7 @@
-"""Integration tests fer multi-agent review coordination.
+"""Integration tests for multi-agent review coordination.
 
 Tests parallel agent invocation and consensus building
-fer memory importance scoring.
+for memory importance scoring.
 
 Philosophy:
 - Test agent coordination (mocked Task tool)
@@ -25,22 +25,22 @@ try:
         ParallelReviewer,
     )
 
-    from amplihack.memory.types import MemoryType
+    from amplihack.memory.models import MemoryType
 except ImportError:
     pytest.skip("Agent review not implemented yet", allow_module_level=True)
 
 
 class TestParallelAgentReview:
-    """Test parallel agent invocation fer reviews."""
+    """Test parallel agent invocation for reviews."""
 
     @pytest.fixture
     def mock_task_tool(self):
-        """Mock Task tool fer agent invocation."""
+        """Mock Task tool for agent invocation."""
         return AsyncMock()
 
     @pytest.mark.asyncio
     async def test_three_agents_invoked_in_parallel(self, mock_task_tool):
-        """Three agents invoked in parallel fer efficiency."""
+        """Three agents invoked in parallel for efficiency."""
         coordinator = AgentReviewCoordinator()
 
         # Mock agent responses
@@ -118,7 +118,7 @@ class TestAgentReviewContent:
 
     @pytest.fixture
     def mock_task_tool(self):
-        """Mock Task tool fer capturing prompts."""
+        """Mock Task tool for capturing prompts."""
         return AsyncMock()
 
     @pytest.mark.asyncio

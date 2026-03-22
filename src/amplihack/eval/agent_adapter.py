@@ -21,7 +21,10 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from amplihack_eval.adapters.base import AgentAdapter, AgentResponse
+from amplihack_eval.adapters.base import (  # type: ignore[import-not-found]
+    AgentAdapter,
+    AgentResponse,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -41,10 +44,11 @@ class AmplihackLearningAgentAdapter(AgentAdapter):
         use_hierarchical: bool = False,
         **kwargs: Any,
     ):
-        from amplihack.agents.goal_seeking.learning_agent import LearningAgent
+        from amplihack.agents.goal_seeking.runtime_factory import create_goal_agent_runtime
 
         init_kwargs: dict[str, Any] = {
             "agent_name": agent_name,
+            "sdk": "mini",
             "use_hierarchical": use_hierarchical,
         }
         if model:
@@ -52,10 +56,10 @@ class AmplihackLearningAgentAdapter(AgentAdapter):
         if storage_path:
             init_kwargs["storage_path"] = storage_path
 
+        init_kwargs.update(kwargs)
         self._agent_name = agent_name
         self._init_kwargs = init_kwargs
-        self._extra_kwargs = kwargs
-        self._agent = LearningAgent(**init_kwargs)
+        self._agent: Any = create_goal_agent_runtime(**init_kwargs)
 
     def learn(self, content: str) -> None:
         """Feed content to the LearningAgent."""
@@ -79,9 +83,9 @@ class AmplihackLearningAgentAdapter(AgentAdapter):
     def reset(self) -> None:
         """Reset agent by closing and re-creating."""
         self._agent.close()
-        from amplihack.agents.goal_seeking.learning_agent import LearningAgent
+        from amplihack.agents.goal_seeking.runtime_factory import create_goal_agent_runtime
 
-        self._agent = LearningAgent(**self._init_kwargs)
+        self._agent = create_goal_agent_runtime(**self._init_kwargs)
 
     def close(self) -> None:
         """Release agent resources."""
@@ -176,10 +180,10 @@ class AmplihackSDKAgentAdapter(AgentAdapter):
         storage_path: Path | None = None,
         **kwargs: Any,
     ):
-        from amplihack.agents.goal_seeking.sdk_adapters.factory import create_agent
+        from amplihack.agents.goal_seeking.runtime_factory import create_goal_agent_runtime
 
         create_kwargs: dict[str, Any] = {
-            "name": agent_name,
+            "agent_name": agent_name,
             "sdk": sdk,
         }
         if model:
@@ -191,7 +195,7 @@ class AmplihackSDKAgentAdapter(AgentAdapter):
         self._agent_name = agent_name
         self._sdk = sdk
         self._create_kwargs = create_kwargs
-        self._agent = create_agent(**create_kwargs)
+        self._agent: Any = create_goal_agent_runtime(**create_kwargs, bind_answer_mode=False)
         self._learned_content: list[str] = []
 
     def _run_async(self, coro: Any) -> Any:
@@ -228,9 +232,9 @@ class AmplihackSDKAgentAdapter(AgentAdapter):
     def reset(self) -> None:
         """Reset by closing and re-creating the SDK agent."""
         self._agent.close()
-        from amplihack.agents.goal_seeking.sdk_adapters.factory import create_agent
+        from amplihack.agents.goal_seeking.runtime_factory import create_goal_agent_runtime
 
-        self._agent = create_agent(**self._create_kwargs)
+        self._agent = create_goal_agent_runtime(**self._create_kwargs, bind_answer_mode=False)
         self._learned_content.clear()
 
     def close(self) -> None:

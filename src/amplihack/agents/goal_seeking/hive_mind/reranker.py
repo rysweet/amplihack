@@ -21,8 +21,9 @@ Public API (the "studs"):
 
 from __future__ import annotations
 
+import importlib
+import importlib.util
 import logging
-import sys
 from dataclasses import dataclass
 from typing import Any
 
@@ -44,14 +45,39 @@ from .constants import (
 # Optional dependency: sentence-transformers CrossEncoder
 # ---------------------------------------------------------------------------
 
-try:
-    from sentence_transformers import CrossEncoder  # type: ignore[import-untyped]
 
-    HAS_CROSS_ENCODER = True
-except ImportError:
-    CrossEncoder = None  # type: ignore[assignment,misc]
-    HAS_CROSS_ENCODER = False
-    print("WARNING: sentence_transformers.CrossEncoder not available", file=sys.stderr)
+def _cross_encoder_package_available() -> bool:
+    """Check for the optional dependency without importing heavy torch stacks."""
+    try:
+        return importlib.util.find_spec("sentence_transformers") is not None
+    except Exception:
+        logger.warning(
+            "Failed to probe sentence_transformers availability; disabling cross-encoder",
+            exc_info=True,
+        )
+        return False
+
+
+HAS_CROSS_ENCODER = _cross_encoder_package_available()
+
+
+def _load_cross_encoder_class() -> type[Any] | None:
+    """Import CrossEncoder lazily so startup survives torch/cache failures."""
+    if not HAS_CROSS_ENCODER:
+        return None
+    try:
+        module = importlib.import_module("sentence_transformers")
+    except Exception:
+        logger.warning(
+            "Failed to import sentence_transformers CrossEncoder; disabling cross-encoder",
+            exc_info=True,
+        )
+        return None
+    cross_encoder_class = getattr(module, "CrossEncoder", None)
+    if cross_encoder_class is None:
+        logger.warning("sentence_transformers.CrossEncoder is unavailable")
+        return None
+    return cross_encoder_class
 
 
 # ---------------------------------------------------------------------------
@@ -99,11 +125,14 @@ class CrossEncoderReranker:
 
     def __init__(self, model_name: str = DEFAULT_CROSS_ENCODER_MODEL) -> None:
         self._model_name = model_name
-        self._model: CrossEncoder | None = None
+        self._model: Any | None = None
 
         if HAS_CROSS_ENCODER:
             try:
-                self._model = CrossEncoder(model_name)
+                cross_encoder_class = _load_cross_encoder_class()
+                if cross_encoder_class is None:
+                    return
+                self._model = cross_encoder_class(model_name)
                 logger.info("Loaded cross-encoder model %s", model_name)
             except Exception:
                 logger.warning("Failed to load cross-encoder model %s", model_name, exc_info=True)

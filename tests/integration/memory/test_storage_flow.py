@@ -1,4 +1,4 @@
-"""Integration tests fer complete storage flow.
+"""Integration tests for complete storage flow.
 
 Tests end-to-end storage from request through agent review
 to database persistence.
@@ -22,7 +22,7 @@ try:
     from amplihack.memory.coordinator import MemoryCoordinator
     from amplihack.memory.database import MemoryDatabase
     from amplihack.memory.storage_pipeline import StoragePipeline, StorageRequest
-    from amplihack.memory.types import MemoryType
+    from amplihack.memory.models import MemoryType
 except ImportError:
     pytest.skip("Memory system not implemented yet", allow_module_level=True)
 
@@ -32,7 +32,7 @@ class TestStorageFlowIntegration:
 
     @pytest.fixture
     def temp_db(self, tmp_path):
-        """Create temporary SQLite database fer testing."""
+        """Create temporary SQLite database for testing."""
         db_path = tmp_path / "test_memory.db"
         db = MemoryDatabase(db_path)
         db.initialize()
@@ -41,7 +41,7 @@ class TestStorageFlowIntegration:
 
     @pytest.fixture
     def mock_task_tool(self):
-        """Mock Task tool fer agent invocation."""
+        """Mock Task tool for agent invocation."""
         return AsyncMock()
 
     @pytest.mark.asyncio

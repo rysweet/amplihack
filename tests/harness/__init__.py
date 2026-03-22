@@ -1,6 +1,6 @@
-"""Test harness fer outside-in plugin testin'.
+"""Test harness for outside-in plugin testin'.
 
-Provides subprocess-based test harnesses fer plugin lifecycle, hooks, and LSP detection.
+Provides subprocess-based test harnesses for plugin lifecycle, hooks, and LSP detection.
 """
 
 from .subprocess_test_harness import (

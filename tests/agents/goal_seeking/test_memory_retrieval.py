@@ -130,6 +130,22 @@ class TestMemoryRetriever:
         assert "timestamp" in result
         assert "tags" in result
 
+    def test_search_quotes_structured_ids_for_fts(self, retriever):
+        """Hyphenated incident/CVE IDs should work as literal phrase searches."""
+        retriever.store_fact(
+            context="Incident INC-2024-001",
+            fact="INC-2024-001 tracks a container escape vulnerability.",
+            confidence=0.9,
+            tags=["incident"],
+        )
+
+        results = retriever.search("INC-2024-001", limit=5)
+
+        assert len(results) > 0
+        assert any(
+            "INC-2024-001" in r["context"] or "INC-2024-001" in r["outcome"] for r in results
+        )
+
     def test_get_statistics(self, retriever):
         """Test getting memory statistics."""
         # Store some facts

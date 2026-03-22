@@ -1,4 +1,4 @@
-"""Performance evaluator fer memory backends.
+"""Performance evaluator for memory backends.
 
 Measures speed, throughput, and scalability:
 - Storage latency: Time to store memories (ms)
@@ -10,7 +10,7 @@ Measures speed, throughput, and scalability:
 Philosophy:
 - Real benchmarks: Actual timing measurements
 - Multiple scales: Test 100, 1000, 10000 memories
-- Fair comparison: Same data fer all backends
+- Fair comparison: Same data for all backends
 
 Public API:
     PerformanceEvaluator: Main evaluator class
@@ -24,7 +24,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ..coordinator import MemoryCoordinator, RetrievalQuery, StorageRequest
-from ..types import MemoryType
+from ..models import MemoryType
 
 logger = logging.getLogger(__name__)
 

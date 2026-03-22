@@ -1,11 +1,11 @@
-"""Unit tests fer memory type classification and validation.
+"""Unit tests for memory type classification and validation.
 
 Tests memory type enums, classification logic, and schema validation
-fer the 5 psychological memory types.
+for the 5 psychological memory types.
 
 Philosophy:
 - Test type classification logic in isolation
-- Validate schemas fer each memory type
+- Validate schemas for each memory type
 - Test memory type conversions and comparisons
 """
 
@@ -15,7 +15,7 @@ import pytest
 
 # These imports will fail until implementation exists (TDD)
 try:
-    from amplihack.memory.types import (
+    from amplihack.memory.models import (
         EpisodicMemory,
         MemorySchema,
         MemoryType,
@@ -56,7 +56,7 @@ class TestEpisodicMemory:
     """Test episodic memory schema and validation (What happened when)."""
 
     def test_episodic_memory_requires_timestamp(self):
-        """Episodic memories must have timestamp fer when they occurred."""
+        """Episodic memories must have timestamp for when they occurred."""
         with pytest.raises(ValueError, match="timestamp"):
             EpisodicMemory(
                 content="User asked about auth",
@@ -118,7 +118,7 @@ class TestSemanticMemory:
             )
 
     def test_semantic_memory_requires_confidence_score(self):
-        """Semantic memories need confidence score fer quality."""
+        """Semantic memories need confidence score for quality."""
         with pytest.raises(ValueError, match="confidence"):
             SemanticMemory(
                 concept="Input Validation Pattern",
@@ -169,7 +169,7 @@ class TestProspectiveMemory:
             )
 
     def test_prospective_memory_deadline_optional(self):
-        """Deadline is optional fer prospective memories."""
+        """Deadline is optional for prospective memories."""
         memory = ProspectiveMemory(
             task="Refactor auth module",
             trigger="after team review",

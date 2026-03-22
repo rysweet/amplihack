@@ -1,4 +1,4 @@
-"""CLI command fer memory backend evaluation.
+"""CLI command for memory backend evaluation.
 
 Usage:
     amplihack memory evaluate               # Compare all backends
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 def main():
-    """CLI entry point fer memory evaluation."""
+    """CLI entry point for memory evaluation."""
     parser = argparse.ArgumentParser(
         description="Evaluate memory backend quality and performance",
         formatter_class=argparse.RawDescriptionHelpFormatter,

@@ -7,7 +7,7 @@ This script verifies that all components are properly implemented.
 import sys
 from pathlib import Path
 
-# Colors fer output
+# Colors for output
 GREEN = "\033[92m"
 RED = "\033[91m"
 RESET = "\033[0m"
@@ -128,7 +128,7 @@ def main():
     print("\n" + "=" * 60)
     if all_good:
         print(f"{GREEN}✓ ALL CHECKS PASSED{RESET}")
-        print("\nImplementation is complete and ready fer testing!")
+        print("\nImplementation is complete and ready for testing!")
         return 0
     print(f"{RED}✗ SOME CHECKS FAILED{RESET}")
     print("\nPlease review errors above.")

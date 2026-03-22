@@ -17,7 +17,7 @@ from pathlib import Path
 import pytest
 
 from amplihack.memory.coordinator import MemoryCoordinator, RetrievalQuery, StorageRequest
-from amplihack.memory.types import MemoryType
+from amplihack.memory.models import MemoryType
 
 # Skip if Kuzu not available
 pytest_plugins = []
@@ -41,7 +41,7 @@ def coordinator_with_code_graph(temp_db_path: Path) -> MemoryCoordinator:
     if not KUZU_AVAILABLE:
         pytest.skip("Kuzu not available")
 
-    from amplihack.memory.backends import create_backend
+    from amplihack.memory.sqlite_backend import create_backend
 
     backend = create_backend("kuzu", db_path=str(temp_db_path))
     coordinator = MemoryCoordinator(backend=backend)
@@ -51,7 +51,7 @@ def coordinator_with_code_graph(temp_db_path: Path) -> MemoryCoordinator:
 @pytest.fixture
 def coordinator_sqlite(tmp_path: Path) -> MemoryCoordinator:
     """Create coordinator with SQLite backend (no code graph)."""
-    from amplihack.memory.backends import create_backend
+    from amplihack.memory.sqlite_backend import create_backend
 
     backend = create_backend("sqlite", db_path=str(tmp_path / "test_sqlite.db"))
     coordinator = MemoryCoordinator(backend=backend)
@@ -66,7 +66,7 @@ async def test_retrieve_with_code_context_flag(coordinator_with_code_graph: Memo
     request = StorageRequest(
         content="Fixed bug in retrieve_memories function",
         memory_type=MemoryType.EPISODIC,
-        metadata={"file": "src/amplihack/memory/backends/kuzu_backend.py"},
+        metadata={"file": "src/amplihack/memory/kuzu_store.py"},
     )
 
     memory_id = await coordinator_with_code_graph.store(request)

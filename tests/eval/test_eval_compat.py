@@ -105,32 +105,32 @@ class TestCompatImports:
 
 
 class TestAmplihackLearningAgentAdapter:
-    """Test AmplihackLearningAgentAdapter wraps LearningAgent correctly."""
+    """Test AmplihackLearningAgentAdapter wraps the canonical runtime correctly."""
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.LearningAgent")
-    def test_init_creates_agent(self, mock_agent_cls):
-        """Constructor should instantiate a LearningAgent."""
+    @patch("amplihack.agents.goal_seeking.runtime_factory.create_goal_agent_runtime")
+    def test_init_creates_agent(self, mock_create_runtime):
+        """Constructor should instantiate the canonical runtime."""
         from amplihack.eval.agent_adapter import AmplihackLearningAgentAdapter
 
         adapter = AmplihackLearningAgentAdapter(agent_name="test")
-        mock_agent_cls.assert_called_once()
+        mock_create_runtime.assert_called_once()
         assert adapter.name == "AmplihackLearning(test)"
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.LearningAgent")
-    def test_learn_delegates(self, mock_agent_cls):
+    @patch("amplihack.agents.goal_seeking.runtime_factory.create_goal_agent_runtime")
+    def test_learn_delegates(self, mock_create_runtime):
         """learn() should call agent.learn_from_content()."""
         from amplihack.eval.agent_adapter import AmplihackLearningAgentAdapter
 
         mock_instance = MagicMock()
-        mock_agent_cls.return_value = mock_instance
+        mock_create_runtime.return_value = mock_instance
 
         adapter = AmplihackLearningAgentAdapter(agent_name="test")
         adapter.learn("The sky is blue.")
 
         mock_instance.learn_from_content.assert_called_once_with("The sky is blue.")
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.LearningAgent")
-    def test_answer_returns_agent_response_from_string(self, mock_agent_cls):
+    @patch("amplihack.agents.goal_seeking.runtime_factory.create_goal_agent_runtime")
+    def test_answer_returns_agent_response_from_string(self, mock_create_runtime):
         """answer() should wrap a string return in AgentResponse."""
         from amplihack_eval.adapters.base import AgentResponse
 
@@ -138,7 +138,7 @@ class TestAmplihackLearningAgentAdapter:
 
         mock_instance = MagicMock()
         mock_instance.answer_question.return_value = "Blue"
-        mock_agent_cls.return_value = mock_instance
+        mock_create_runtime.return_value = mock_instance
 
         adapter = AmplihackLearningAgentAdapter(agent_name="test")
         response = adapter.answer("What color is the sky?")
@@ -147,8 +147,8 @@ class TestAmplihackLearningAgentAdapter:
         assert response.answer == "Blue"
         assert response.reasoning_trace == ""
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.LearningAgent")
-    def test_answer_handles_tuple_return(self, mock_agent_cls):
+    @patch("amplihack.agents.goal_seeking.runtime_factory.create_goal_agent_runtime")
+    def test_answer_handles_tuple_return(self, mock_create_runtime):
         """answer() should unpack (answer, trace) tuples."""
         from amplihack_eval.adapters.base import AgentResponse
 
@@ -158,7 +158,7 @@ class TestAmplihackLearningAgentAdapter:
         mock_trace = MagicMock()
         mock_trace.__str__ = lambda self: "reasoning trace here"
         mock_instance.answer_question.return_value = ("Blue", mock_trace)
-        mock_agent_cls.return_value = mock_instance
+        mock_create_runtime.return_value = mock_instance
 
         adapter = AmplihackLearningAgentAdapter(agent_name="test")
         response = adapter.answer("What color is the sky?")
@@ -167,36 +167,36 @@ class TestAmplihackLearningAgentAdapter:
         assert response.answer == "Blue"
         assert "reasoning trace here" in response.reasoning_trace
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.LearningAgent")
-    def test_close_delegates(self, mock_agent_cls):
+    @patch("amplihack.agents.goal_seeking.runtime_factory.create_goal_agent_runtime")
+    def test_close_delegates(self, mock_create_runtime):
         """close() should call agent.close()."""
         from amplihack.eval.agent_adapter import AmplihackLearningAgentAdapter
 
         mock_instance = MagicMock()
-        mock_agent_cls.return_value = mock_instance
+        mock_create_runtime.return_value = mock_instance
 
         adapter = AmplihackLearningAgentAdapter(agent_name="test")
         adapter.close()
 
         mock_instance.close.assert_called_once()
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.LearningAgent")
-    def test_reset_recreates_agent(self, mock_agent_cls):
+    @patch("amplihack.agents.goal_seeking.runtime_factory.create_goal_agent_runtime")
+    def test_reset_recreates_agent(self, mock_create_runtime):
         """reset() should close and re-create the agent."""
         from amplihack.eval.agent_adapter import AmplihackLearningAgentAdapter
 
         mock_instance = MagicMock()
-        mock_agent_cls.return_value = mock_instance
+        mock_create_runtime.return_value = mock_instance
 
         adapter = AmplihackLearningAgentAdapter(agent_name="test")
         adapter.reset()
 
         mock_instance.close.assert_called_once()
         # Should have been called twice: once in __init__, once in reset()
-        assert mock_agent_cls.call_count == 2
+        assert mock_create_runtime.call_count == 2
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.LearningAgent")
-    def test_implements_agent_adapter(self, mock_agent_cls):
+    @patch("amplihack.agents.goal_seeking.runtime_factory.create_goal_agent_runtime")
+    def test_implements_agent_adapter(self, mock_create_runtime):
         """Adapter should be a valid AgentAdapter subclass."""
         from amplihack_eval.adapters.base import AgentAdapter
 
@@ -265,20 +265,21 @@ class TestAmplihackMultiAgentAdapter:
 class TestAmplihackSDKAgentAdapter:
     """Test AmplihackSDKAgentAdapter wraps SDK agents correctly."""
 
-    @patch("amplihack.agents.goal_seeking.sdk_adapters.factory.create_agent")
-    def test_init_creates_agent_with_sdk(self, mock_create):
-        """Constructor should call create_agent with correct SDK."""
+    @patch("amplihack.agents.goal_seeking.runtime_factory.create_goal_agent_runtime")
+    def test_init_creates_agent_with_sdk(self, mock_create_runtime):
+        """Constructor should call create_goal_agent_runtime with correct SDK."""
         from amplihack.eval.agent_adapter import AmplihackSDKAgentAdapter
 
         adapter = AmplihackSDKAgentAdapter(agent_name="sdk-test", sdk="mini")
-        mock_create.assert_called_once()
-        call_kwargs = mock_create.call_args[1]
+        mock_create_runtime.assert_called_once()
+        call_kwargs = mock_create_runtime.call_args[1]
         assert call_kwargs["sdk"] == "mini"
-        assert call_kwargs["name"] == "sdk-test"
+        assert call_kwargs["agent_name"] == "sdk-test"
+        assert call_kwargs["bind_answer_mode"] is False
         assert adapter.name == "AmplihackSDK(mini/sdk-test)"
 
-    @patch("amplihack.agents.goal_seeking.sdk_adapters.factory.create_agent")
-    def test_capabilities_vary_by_sdk(self, mock_create):
+    @patch("amplihack.agents.goal_seeking.runtime_factory.create_goal_agent_runtime")
+    def test_capabilities_vary_by_sdk(self, mock_create_runtime):
         """mini SDK should only have 'memory'; others should have 'tool_use' too."""
         from amplihack.eval.agent_adapter import AmplihackSDKAgentAdapter
 
@@ -288,35 +289,35 @@ class TestAmplihackSDKAgentAdapter:
         claude_adapter = AmplihackSDKAgentAdapter(sdk="claude")
         assert "tool_use" in claude_adapter.capabilities
 
-    @patch("amplihack.agents.goal_seeking.sdk_adapters.factory.create_agent")
-    def test_close_delegates(self, mock_create):
+    @patch("amplihack.agents.goal_seeking.runtime_factory.create_goal_agent_runtime")
+    def test_close_delegates(self, mock_create_runtime):
         """close() should call the underlying agent's close()."""
         from amplihack.eval.agent_adapter import AmplihackSDKAgentAdapter
 
         mock_agent = MagicMock()
-        mock_create.return_value = mock_agent
+        mock_create_runtime.return_value = mock_agent
 
         adapter = AmplihackSDKAgentAdapter(sdk="mini")
         adapter.close()
 
         mock_agent.close.assert_called_once()
 
-    @patch("amplihack.agents.goal_seeking.sdk_adapters.factory.create_agent")
-    def test_reset_recreates_agent(self, mock_create):
+    @patch("amplihack.agents.goal_seeking.runtime_factory.create_goal_agent_runtime")
+    def test_reset_recreates_agent(self, mock_create_runtime):
         """reset() should close and re-create the SDK agent."""
         from amplihack.eval.agent_adapter import AmplihackSDKAgentAdapter
 
         mock_agent = MagicMock()
-        mock_create.return_value = mock_agent
+        mock_create_runtime.return_value = mock_agent
 
         adapter = AmplihackSDKAgentAdapter(sdk="mini")
         adapter.reset()
 
         mock_agent.close.assert_called_once()
-        assert mock_create.call_count == 2  # init + reset
+        assert mock_create_runtime.call_count == 2  # init + reset
 
-    @patch("amplihack.agents.goal_seeking.sdk_adapters.factory.create_agent")
-    def test_implements_agent_adapter(self, mock_create):
+    @patch("amplihack.agents.goal_seeking.runtime_factory.create_goal_agent_runtime")
+    def test_implements_agent_adapter(self, mock_create_runtime):
         """Adapter should be a valid AgentAdapter subclass."""
         from amplihack_eval.adapters.base import AgentAdapter
 
@@ -326,8 +327,8 @@ class TestAmplihackSDKAgentAdapter:
         assert isinstance(adapter, AgentAdapter)
 
     @pytest.mark.parametrize("sdk_type", ["mini", "claude", "copilot", "microsoft"])
-    @patch("amplihack.agents.goal_seeking.sdk_adapters.factory.create_agent")
-    def test_all_sdk_types_accepted(self, mock_create, sdk_type):
+    @patch("amplihack.agents.goal_seeking.runtime_factory.create_goal_agent_runtime")
+    def test_all_sdk_types_accepted(self, mock_create_runtime, sdk_type):
         """All SDK types should be passable to the adapter."""
         from amplihack.eval.agent_adapter import AmplihackSDKAgentAdapter
 
