@@ -1,52 +1,53 @@
 {
-  "last_run": "2026-03-20T00:00:00Z",
-  "run_id": "23323829228",
+  "last_run": "2026-03-22T00:00:00Z",
+  "run_id": "23397292579",
   "triaged_prs": {
+    "3394": {
+      "title": "[docs] docs: document 2026-03-20 merged PRs (#3268 #3286 #3335 #3351 #3366)",
+      "risk": "low",
+      "draft": true,
+      "status": "triage:complete",
+      "labels_applied": ["documentation", "automation", "triage:low-risk", "triage:complete"],
+      "recommendation": "Draft docs-only update; review and merge before expiry (Mar 23 06:20 UTC)",
+      "comment_posted": false,
+      "run": "23397292579"
+    },
+    "3390": {
+      "title": "fix: correct issue number extraction and idempotent step-4 worktree setup",
+      "risk": "medium",
+      "draft": false,
+      "status": "triage:complete",
+      "labels_applied": ["bug", "workflow", "triage:complete", "triage:needs-review", "triage:medium-risk"],
+      "recommendation": "4 quality-audit cycles converged clean; 23 unit tests + 15 outside-in scenarios; ready for review",
+      "comment_posted": false,
+      "run": "23397292579"
+    },
+    "3389": {
+      "title": "fix(recipes): preserve equals-style Copilot permissions",
+      "risk": "high",
+      "draft": false,
+      "status": "triage:complete",
+      "labels_applied": ["bug", "copilot", "triage:complete", "triage:needs-review", "triage:high-risk", "triage:has-tests"],
+      "recommendation": "Security-adjacent permission fix; reviewer should verify no equals-style flags are dropped",
+      "comment_posted": false,
+      "run": "23397292579"
+    },
+    "3369": {
+      "title": "[docs] Daily documentation update 2026-03-21",
+      "risk": "low",
+      "draft": true,
+      "status": "triage:complete",
+      "labels_applied": ["documentation", "automation", "triage:low-risk", "triage:complete"],
+      "recommendation": "Automated docs update; expired (Mar 22 06:13 UTC)",
+      "comment_posted": false,
+      "run": "23323829228"
+    },
     "3342": {
       "title": "fix: truncate large context in verification gate echoes (ARG_MAX)",
       "risk": "low",
       "status": "triage:complete",
       "labels_applied": ["triage:low-risk", "triage:complete", "triage:needs-review"],
       "recommendation": "Low-risk fix; truncates echo output in verification gate steps",
-      "comment_posted": false,
-      "run": "23323829228"
-    },
-    "3338": {
-      "title": "[docs] Daily documentation update 2026-03-19",
-      "risk": "low",
-      "draft": false,
-      "status": "triage:complete",
-      "labels_applied": ["documentation", "automation", "triage:low-risk", "triage:complete"],
-      "recommendation": "Automated docs update; review and merge",
-      "comment_posted": false,
-      "run": "23323829228"
-    },
-    "3337": {
-      "title": "Fix GitHub issue #3327: amplihack import eagerly auto-installs memory lib",
-      "risk": "low",
-      "draft": true,
-      "status": "triage:complete",
-      "labels_applied": ["triage:low-risk", "triage:complete"],
-      "recommendation": "Draft; awaiting review — duplicate approach to #3334",
-      "comment_posted": false,
-      "run": "23323829228"
-    },
-    "3335": {
-      "title": "fix(recipe): make step-16-create-draft-pr idempotent",
-      "risk": "low",
-      "draft": true,
-      "status": "triage:complete",
-      "labels_applied": ["triage:low-risk", "triage:complete", "triage:has-tests"],
-      "recommendation": "Draft; 268 tests pass; review idempotency logic",
-      "comment_posted": false,
-      "run": "23323829228"
-    },
-    "3334": {
-      "title": "fix: remove eager auto-install of memory lib on import (#3327)",
-      "risk": "medium",
-      "status": "triage:complete",
-      "labels_applied": ["triage:complete", "triage:medium-risk", "triage:has-tests", "triage:high-priority"],
-      "recommendation": "BREAKING CHANGE — memory lib now optional dep; verify downstream usage",
       "comment_posted": false,
       "run": "23323829228"
     },
@@ -76,24 +77,6 @@
       "recommendation": "Rebase required; coordinate with implementation PRs to avoid CI red period",
       "comment_posted": true,
       "run": "23232157458"
-    },
-    "3286": {
-      "title": "fix: add progress markers to step-02b-analyze-codebase (closes #3266)",
-      "risk": "low",
-      "status": "triage:complete",
-      "labels_applied": ["triage:low-risk", "triage:complete", "triage:needs-review"],
-      "recommendation": "Rebase required; coordinate with #3288 (both fix #3266)",
-      "comment_posted": true,
-      "run": "23232157458"
-    },
-    "3268": {
-      "title": "fix(baseline): flatten triple-nested exception handling in cli.py (#3233)",
-      "risk": "medium",
-      "status": "triage:complete",
-      "labels_applied": ["bug", "error_handling", "triage:complete", "triage:medium-risk", "triage:has-tests"],
-      "recommendation": "Approve with awareness of behavior change (errors now propagate)",
-      "comment_posted": true,
-      "run": "23223326025"
     },
     "3261": {
       "title": "docs(design): LearningAgent integration into goal-seeking agent generator",
