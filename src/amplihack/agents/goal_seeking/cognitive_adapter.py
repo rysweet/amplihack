@@ -178,9 +178,9 @@ def _build_cognitive_memory_kwargs(
     kwargs: dict[str, Any] = {
         "agent_name": agent_name,
         "db_path": db_path,
-        "buffer_pool_size": buffer_pool_size,
     }
     tuned_kwargs: dict[str, Any] = {
+        "buffer_pool_size": buffer_pool_size,
         "similarity_threshold": SIMILARITY_THRESHOLD,
         "max_edges_per_node": MAX_EDGES_PER_NODE,
         "hop_depth": HOP_DEPTH,
@@ -968,6 +968,21 @@ class CognitiveAdapter:
         if hasattr(self.memory, "execute_aggregation"):
             return self.memory.execute_aggregation(
                 query_type=query_type, entity_filter=entity_filter
+            )
+        return {"count": 0, "query_type": query_type, "error": "Not supported"}
+
+    def execute_aggregation_local(self, query_type: str, entity_filter: str = "") -> dict[str, Any]:
+        """Execute an aggregation against local memory only."""
+        local_mem = self.memory
+        if hasattr(local_mem, "local_execute_aggregation"):
+            return local_mem.local_execute_aggregation(
+                query_type=query_type,
+                entity_filter=entity_filter,
+            )
+        if hasattr(local_mem, "execute_aggregation"):
+            return local_mem.execute_aggregation(
+                query_type=query_type,
+                entity_filter=entity_filter,
             )
         return {"count": 0, "query_type": query_type, "error": "Not supported"}
 

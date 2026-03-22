@@ -13,12 +13,14 @@ Philosophy:
 - Temporal metadata tracked on episodic memories for chronological reasoning
 """
 
+import itertools
 import json
 import logging
 import os
 import re
 import threading
 import time
+from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
@@ -211,7 +213,7 @@ class LearningAgent:
     def _llm_completion_with_retry(
         self, messages: list, temperature: float = 0.0, max_retries: int = 5
     ) -> str:
-        """Call litellm.completion with exponential backoff on rate limits.
+        """Call litellm.completion with exponential backoff on transient failures.
 
         Returns the response text content. Raises on non-rate-limit errors.
         """
@@ -225,21 +227,27 @@ class LearningAgent:
                 )
                 return response.choices[0].message.content
             except Exception as exc:
-                is_rate_limit = (
-                    isinstance(exc, litellm.RateLimitError) or "rate_limit" in str(exc).lower()
-                )
-                if not is_rate_limit or _retry_attempt >= max_retries:
+                is_transient = self._is_transient_llm_error(exc)
+                if not is_transient or _retry_attempt >= max_retries:
                     raise
                 delay = 2**_retry_attempt * 2  # 2, 4, 8, 16, 32
                 logger.warning(
-                    "Rate limited, retrying in %ds (attempt %d/%d)",
+                    "Transient LLM error (%s), retrying in %ds (attempt %d/%d)",
+                    type(exc).__name__,
                     delay,
-                    _retry_attempt,
+                    _retry_attempt + 1,
                     max_retries,
                 )
                 time.sleep(delay)
                 last_exception = exc
         raise last_exception  # type: ignore[misc]
+
+    @classmethod
+    def _is_transient_llm_error(cls, exc: Exception) -> bool:
+        if isinstance(exc, cls._TRANSIENT_LLM_ERROR_TYPES):
+            return True
+        error_text = str(exc).lower()
+        return any(marker in error_text for marker in cls._TRANSIENT_LLM_ERROR_MARKERS)
 
     @staticmethod
     def _load_variant_prompt(variant_num: int) -> str:
@@ -954,14 +962,22 @@ class LearningAgent:
             if summary_nodes:
                 intent["summary_context"] = "\n".join(f"- {s['outcome']}" for s in summary_nodes)
 
+        deterministic_meta_answer = None
+        if intent_type == "meta_memory":
+            deterministic_meta_answer = self._deterministic_meta_memory_answer(
+                question,
+                relevant_facts,
+            )
+
         # Pre-compute math result if needed, so synthesis can use it directly
-        if intent.get("needs_math"):
+        if intent.get("needs_math") and deterministic_meta_answer is None:
             computed = self._compute_math_result(question, relevant_facts, intent)
             if computed:
                 intent["computed_math"] = computed
 
-        # Pre-compute temporal code generation for temporal trap/evolution questions
+        # Pre-compute temporal code generation for temporal trap/current/change-count questions
         question_lower_for_temporal = question.lower()
+        direct_temporal_lookup = self._heuristic_temporal_entity_field(question)
         _temporal_code_keywords = (
             "after first",
             "before final",
@@ -973,17 +989,36 @@ class LearningAgent:
             "originally",
             "original",
             "previous",
+            "current",
+            "latest",
+            "final",
+            "last",
+            "change",
+            "changed",
+            "how many times",
+            "times did",
         )
-        is_temporal_code_candidate = (
-            intent.get("needs_temporal")
-            or intent_type in ("temporal_comparison", "incremental_update")
-        ) and any(kw in question_lower_for_temporal for kw in _temporal_code_keywords)
+        is_temporal_code_candidate = direct_temporal_lookup is not None or (
+            (
+                intent.get("needs_temporal")
+                or intent_type in ("temporal_comparison", "incremental_update")
+            )
+            and any(kw in question_lower_for_temporal for kw in _temporal_code_keywords)
+        )
 
         if is_temporal_code_candidate:
             try:
-                code_result = self._code_generation_tool(question)
-                if code_result.get("result"):
+                code_result = self._code_generation_tool(question, candidate_facts=relevant_facts)
+                if code_result.get("result") is not None:
                     intent["temporal_code"] = code_result
+                    logger.info(
+                        "TEMPORAL_CODE_DIAG question=%.80s operation=%s states=%d result=%r direct_lookup=%s",
+                        question,
+                        code_result.get("operation", ""),
+                        code_result.get("state_count", 0),
+                        code_result.get("result"),
+                        "true" if direct_temporal_lookup is not None else "false",
+                    )
             except Exception as e:
                 logger.warning("Temporal code generation failed: %s", e)
 
@@ -997,13 +1032,18 @@ class LearningAgent:
             "true" if used_simple_path else "false",
         )
 
-        # Synthesize answer from the oriented world model (relevant_facts).
-        answer = self._synthesize_with_llm(
-            question=question,
-            context=relevant_facts,
-            question_level=question_level,
-            intent=intent,
-        )
+        if deterministic_meta_answer is not None:
+            answer = deterministic_meta_answer
+        elif self._should_short_circuit_temporal_answer(question, intent.get("temporal_code")):
+            answer = self._format_temporal_lookup_answer(question, intent.get("temporal_code"))
+        else:
+            # Synthesize answer from the oriented world model (relevant_facts).
+            answer = self._synthesize_with_llm(
+                question=question,
+                context=relevant_facts,
+                question_level=question_level,
+                intent=intent,
+            )
 
         # Step 4: If math was needed, validate arithmetic in the answer
         if intent.get("needs_math"):
@@ -1674,6 +1714,426 @@ class LearningAgent:
 
         return results
 
+    _PERSON_DETAIL_CUES = (
+        "allerg",
+        "birthday",
+        "degree",
+        "favorite food",
+        "hobby",
+        "hometown",
+        "personal information",
+        "pet",
+        "team",
+    )
+    _NON_PERSON_NAME_TOKENS = frozenset(
+        {
+            "affected",
+            "allergies",
+            "allergy",
+            "award",
+            "birthday",
+            "center",
+            "city",
+            "climate",
+            "competitor",
+            "computer",
+            "customer",
+            "daily",
+            "data",
+            "database",
+            "development",
+            "difference",
+            "discrepancy",
+            "educational",
+            "engineering",
+            "estimate",
+            "experience",
+            "facilities",
+            "favorite",
+            "food",
+            "framework",
+            "gartner",
+            "hiring",
+            "hobby",
+            "hometown",
+            "incident",
+            "indicators",
+            "information",
+            "innovation",
+            "internal",
+            "island",
+            "market",
+            "marketing",
+            "migration",
+            "nationality",
+            "newsletter",
+            "personnel",
+            "personal",
+            "pet",
+            "pets",
+            "preference",
+            "product",
+            "professional",
+            "production",
+            "project",
+            "report",
+            "rhode",
+            "school",
+            "security",
+            "segment",
+            "senior",
+            "size",
+            "sprint",
+            "success",
+            "satisfaction",
+            "team",
+            "threat",
+            "user",
+            "vulnerability",
+        }
+    )
+    _NON_PROJECT_NAMES = frozenset(
+        {
+            "assignment",
+            "framework",
+            "identity",
+            "lead",
+            "leadership",
+            "management",
+            "new",
+            "overview",
+            "status",
+            "type",
+        }
+    )
+    _TEMPORAL_DATE_VALUE_PATTERN = re.compile(
+        r"\b("
+        r"(?:January|February|March|April|May|June|July|August|September|October|November|December)"
+        r"\s+\d{1,2}(?:,\s+\d{4})?"
+        r")\b"
+    )
+    _DEADLINE_DIRECT_VALUE_PATTERNS = (
+        re.compile(
+            r"\b(?:current|latest|final|last|original|initial)\s+deadline\s+"
+            r"(?:is|was|of)\s+(?P<fragment>.+)$",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"\bdeadline\s+(?:is|was|of)\s+(?P<fragment>.+)$",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"\bdeadline\s+(?:has\s+been\s+)?(?:changed|moved|pushed|extended|updated)"
+            r"(?:\s+again)?\s+to\s+(?P<fragment>.+)$",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"\btarget\s+(?:delivery\s+)?date\s+(?:is|was|of)\s+(?P<fragment>.+)$",
+            re.IGNORECASE,
+        ),
+    )
+    _DIRECT_TEMPORAL_LOOKUP_PATTERN = re.compile(
+        r"^\s*(?:what|who)\s+(?:is|was)\s+the\s+"
+        r"(?P<qualifier>current|latest|original|initial|previous|final|last)\s+"
+        r"(?P<field>.+?)\s+(?:for|of)\s+(?P<entity>.+?)\s*\??\s*$",
+        re.IGNORECASE,
+    )
+    _DIRECT_TEMPORAL_ENTITY_TRAIL_PATTERN = re.compile(
+        r"\s+\b(?:before|after|when|as of)\b.*$",
+        re.IGNORECASE,
+    )
+    _PERSON_NAME_PART_PATTERN = re.compile(r"^[A-Z][a-z]*(?:['\u2019\-][A-Z]?[a-z]+)?$")
+    _PERSON_NAME_FRAGMENT = (
+        r"[A-Z][a-z]*(?:['\u2019\-][A-Z]?[a-z]+)?"
+        r"\s+[A-Z][a-z]*(?:['\u2019\-][A-Z]?[a-z]+)?"
+    )
+    _PERSON_NAME_PATTERN = re.compile(rf"\b({_PERSON_NAME_FRAGMENT})\b")
+    _PERSON_ATTRIBUTE_PATTERNS = (
+        re.compile(
+            rf"\b({_PERSON_NAME_FRAGMENT})(?:'s|\u2019s)\s+"
+            r"(?:birthday|favorite food|degree|hobby|hometown|pet|team|allerg(?:y|ies)|nationality)\b"
+        ),
+        re.compile(rf"\b({_PERSON_NAME_FRAGMENT})\s+(?:has|holds|is)\b"),
+    )
+    _PROJECT_NAME_PATTERNS = (re.compile(r"\bProject\s+([A-Z][A-Za-z0-9_-]+)\b"),)
+    _TRANSIENT_LLM_ERROR_TYPES = (
+        litellm.RateLimitError,
+        litellm.InternalServerError,
+        litellm.ServiceUnavailableError,
+        litellm.APIConnectionError,
+    )
+    _TRANSIENT_LLM_ERROR_MARKERS = (
+        "rate_limit",
+        "overloaded",
+        "overloaded_error",
+        "service unavailable",
+        "temporarily unavailable",
+        "connection error",
+    )
+    _APT_ATTRIBUTION_SEARCH_TERMS = ("threat attribution", "matched APT", "TTPs matched")
+    _APT_ATTRIBUTION_HINT_TERMS = (
+        "development infrastructure",
+        "event-stream",
+        "supply chain",
+        "dns tunneling",
+        "xz-utils",
+    )
+    _APT_ATTRIBUTION_FACT_CUES = (
+        "apt",
+        "attribution",
+        "development infrastructure",
+        "threat actor",
+        "ttp",
+    )
+    _APT_ATTRIBUTION_FACT_SCAN_LIMIT = 50
+    _APT_ATTRIBUTION_MAX_ENTITY_IDS = 3
+    _APT_ATTRIBUTION_MAX_SEARCH_TERMS = 6
+    _APT_ATTRIBUTION_SEARCH_LIMIT = 50
+
+    @staticmethod
+    def _format_distinct_item_list(items: list[str]) -> str:
+        if not items:
+            return ""
+        if len(items) == 1:
+            return items[0]
+        if len(items) == 2:
+            return f"{items[0]} and {items[1]}"
+        return f"{', '.join(items[:-1])}, and {items[-1]}"
+
+    @staticmethod
+    def _normalize_person_name(candidate: str) -> str:
+        candidate = " ".join(candidate.split()).strip()
+        return re.sub(r"(?:'s|\u2019s)\b", "", candidate).strip()
+
+    def _looks_like_person_name(self, candidate: str) -> bool:
+        candidate = self._normalize_person_name(candidate)
+        if not candidate or any(ch.isdigit() for ch in candidate):
+            return False
+        parts = candidate.split()
+        if len(parts) != 2:
+            return False
+        return all(
+            self._PERSON_NAME_PART_PATTERN.match(part)
+            and part.casefold() not in self._NON_PERSON_NAME_TOKENS
+            for part in parts
+        )
+
+    def _looks_like_project_name(self, candidate: str) -> bool:
+        candidate = candidate.strip(".,;:!?()[]{}\"'")
+        if not candidate or any(ch.isspace() for ch in candidate):
+            return False
+        return candidate.casefold() not in self._NON_PROJECT_NAMES
+
+    def _extract_personal_detail_people(self, facts: list[dict[str, Any]]) -> list[str]:
+        people: dict[str, str] = {}
+        personal_texts: list[str] = []
+
+        for fact in facts:
+            text = f"{fact.get('context', '')} {fact.get('outcome', fact.get('fact', ''))}"
+            if not any(cue in text.lower() for cue in self._PERSON_DETAIL_CUES):
+                continue
+            personal_texts.append(text)
+            for pattern in self._PERSON_ATTRIBUTE_PATTERNS:
+                for match in pattern.findall(text):
+                    cleaned = self._normalize_person_name(match)
+                    if self._looks_like_person_name(cleaned):
+                        people.setdefault(cleaned.casefold(), cleaned)
+
+        if people:
+            return [people[key] for key in sorted(people)]
+
+        for text in personal_texts:
+            for match in self._PERSON_NAME_PATTERN.findall(text):
+                cleaned = self._normalize_person_name(match)
+                if self._looks_like_person_name(cleaned):
+                    people.setdefault(cleaned.casefold(), cleaned)
+
+        return [people[key] for key in sorted(people)]
+
+    def _extract_project_names(self, facts: list[dict[str, Any]]) -> list[str]:
+        context_projects: dict[str, str] = {}
+        outcome_projects: dict[str, str] = {}
+        outcome_counts: dict[str, int] = {}
+        for fact in facts:
+            context_text = fact.get("context", "")
+            outcome_text = fact.get("outcome", fact.get("fact", ""))
+            for pattern in self._PROJECT_NAME_PATTERNS:
+                for match in pattern.findall(context_text):
+                    cleaned = match.strip(".,;:!?()[]{}\"'")
+                    if not self._looks_like_project_name(cleaned):
+                        continue
+                    context_projects.setdefault(cleaned.casefold(), cleaned)
+
+                for match in pattern.findall(outcome_text):
+                    cleaned = match.strip(".,;:!?()[]{}\"'")
+                    if not self._looks_like_project_name(cleaned):
+                        continue
+                    key = cleaned.casefold()
+                    outcome_projects.setdefault(key, cleaned)
+                    outcome_counts[key] = outcome_counts.get(key, 0) + 1
+
+        projects = dict(context_projects)
+        for key, value in outcome_projects.items():
+            if key in projects or outcome_counts.get(key, 0) >= 2:
+                projects.setdefault(key, value)
+
+        return [projects[key] for key in sorted(projects)]
+
+    @classmethod
+    def _facts_contain_specific_apt(cls, facts: list[dict[str, Any]]) -> bool:
+        return any(
+            re.search(
+                r"\bapt(?:-| )?\d+\b",
+                f"{fact.get('context', '')} {fact.get('outcome', fact.get('fact', ''))}",
+                re.IGNORECASE,
+            )
+            for fact in facts
+        )
+
+    @staticmethod
+    def _is_apt_attribution_question(question: str) -> bool:
+        question_lower = question.lower()
+        return "apt" in question_lower and any(
+            cue in question_lower for cue in ("attributed", "group", "threat actor")
+        )
+
+    def _apt_attribution_retrieval(
+        self,
+        question: str,
+        existing_facts: list[dict[str, Any]],
+        local_only: bool = False,
+    ) -> list[dict[str, Any]]:
+        question_lower = question.lower()
+        if not self._is_apt_attribution_question(question):
+            return []
+
+        candidate_ids = list(self._ENTITY_ID_PATTERN.findall(question))
+        relevant_fact_texts: list[str] = []
+        for fact in existing_facts[: self._APT_ATTRIBUTION_FACT_SCAN_LIMIT]:
+            text = f"{fact.get('context', '')} {fact.get('outcome', fact.get('fact', ''))}"
+            text_lower = text.lower()
+            if any(cue in text_lower for cue in self._APT_ATTRIBUTION_FACT_CUES):
+                relevant_fact_texts.append(text)
+                candidate_ids.extend(self._ENTITY_ID_PATTERN.findall(text))
+
+        unique_candidate_ids = list(dict.fromkeys(candidate_ids))[
+            : self._APT_ATTRIBUTION_MAX_ENTITY_IDS
+        ]
+        search_terms = [f"{entity_id} APT" for entity_id in unique_candidate_ids]
+        relevant_fact_text = " ".join(relevant_fact_texts)
+        relevant_fact_text_lower = relevant_fact_text.lower()
+        if not unique_candidate_ids:
+            for hint in self._APT_ATTRIBUTION_HINT_TERMS:
+                if hint in question_lower or hint in relevant_fact_text_lower:
+                    search_terms.append(hint)
+        if local_only and not unique_candidate_ids:
+            search_terms.extend(self._APT_ATTRIBUTION_SEARCH_TERMS)
+
+        deduped_terms = list(dict.fromkeys(term for term in search_terms if term))[
+            : self._APT_ATTRIBUTION_MAX_SEARCH_TERMS
+        ]
+        new_facts: list[dict[str, Any]] = []
+        seen_ids: set[str] = set()
+
+        for term in deduped_terms:
+            results = self._search_memory(
+                term, self._APT_ATTRIBUTION_SEARCH_LIMIT, local_only=local_only
+            )
+            for fact in results:
+                if not isinstance(fact, dict):
+                    continue
+                key = (
+                    fact.get("experience_id")
+                    or f"{fact.get('context', '')}::{fact.get('outcome', '')}"
+                )
+                if key in seen_ids:
+                    continue
+                seen_ids.add(key)
+                new_facts.append(fact)
+            if self._facts_contain_specific_apt(new_facts):
+                break
+
+        has_specific_apt = self._facts_contain_specific_apt(new_facts)
+
+        if local_only and not has_specific_apt:
+            logger.info(
+                "APT attribution retrieval lacked a specific APT match locally; retrying distributed search "
+                "for '%s'",
+                question[:60],
+            )
+            distributed_facts = self._apt_attribution_retrieval(
+                question, existing_facts, local_only=False
+            )
+            for fact in distributed_facts:
+                key = (
+                    fact.get("experience_id")
+                    or f"{fact.get('context', '')}::{fact.get('outcome', '')}"
+                )
+                if key in seen_ids:
+                    continue
+                seen_ids.add(key)
+                new_facts.append(fact)
+
+        if new_facts:
+            logger.info(
+                "APT attribution retrieval: %d search terms -> %d facts for '%s'",
+                len(deduped_terms),
+                len(new_facts),
+                question[:60],
+            )
+
+        return new_facts
+
+    def _deterministic_meta_memory_answer(
+        self, question: str, facts: list[dict[str, Any]]
+    ) -> str | None:
+        question_lower = question.lower()
+        count_like_query = "how many different" in question_lower
+        if not count_like_query:
+            return None
+
+        if "project" in question_lower:
+            projects = self._extract_project_names(facts)
+            if projects and len(projects) <= 10:
+                logger.info(
+                    "Meta-memory deterministic project resolution: %d projects for '%s'",
+                    len(projects),
+                    question[:60],
+                )
+                return (
+                    f"You told me about {len(projects)} different projects: "
+                    f"{self._format_distinct_item_list(projects)}."
+                )
+            if len(projects) > 10:
+                logger.warning(
+                    "Skipping deterministic project resolution with suspicious count=%d for '%s'",
+                    len(projects),
+                    question[:60],
+                )
+
+        if "personal details" in question_lower and any(
+            token in question_lower for token in ("people", "person")
+        ):
+            people = self._extract_personal_detail_people(facts)
+            if people and len(people) <= 20:
+                logger.info(
+                    "Meta-memory deterministic people resolution: %d people for '%s'",
+                    len(people),
+                    question[:60],
+                )
+                return (
+                    f"You shared personal details about {len(people)} people: "
+                    f"{self._format_distinct_item_list(people)}."
+                )
+            if len(people) > 20:
+                logger.warning(
+                    "Skipping deterministic people resolution with suspicious count=%d for '%s'",
+                    len(people),
+                    question[:60],
+                )
+
+        return None
+
     def _entity_retrieval(self, question: str, local_only: bool = False) -> list[dict[str, Any]]:
         """Try entity-centric retrieval for questions about specific people/projects.
 
@@ -1929,9 +2389,25 @@ class LearningAgent:
         }
         supplemented = list(existing_facts)
         added = 0
+        is_apt_attribution = self._is_apt_attribution_question(question)
 
-        targeted_facts = self._entity_retrieval(question, local_only=local_only)
-        targeted_facts.extend(self._concept_retrieval(question, local_only=local_only))
+        if is_apt_attribution:
+            targeted_facts = self._apt_attribution_retrieval(
+                question, existing_facts, local_only=local_only
+            )
+        else:
+            targeted_facts = self._entity_retrieval(question, local_only=local_only)
+            targeted_facts.extend(self._concept_retrieval(question, local_only=local_only))
+            targeted_facts.extend(
+                self._apt_attribution_retrieval(question, existing_facts, local_only=local_only)
+            )
+            targeted_facts.extend(
+                self._infrastructure_relation_retrieval(
+                    question,
+                    existing_facts + targeted_facts,
+                    local_only=local_only,
+                )
+            )
 
         if not targeted_facts and local_only:
             logger.info(
@@ -1939,8 +2415,16 @@ class LearningAgent:
                 "for '%s'",
                 question[:60],
             )
-            targeted_facts = self._entity_retrieval(question, local_only=False)
-            targeted_facts.extend(self._concept_retrieval(question, local_only=False))
+            if is_apt_attribution:
+                targeted_facts = self._apt_attribution_retrieval(
+                    question, existing_facts, local_only=False
+                )
+            else:
+                targeted_facts = self._entity_retrieval(question, local_only=False)
+                targeted_facts.extend(self._concept_retrieval(question, local_only=False))
+                targeted_facts.extend(
+                    self._apt_attribution_retrieval(question, existing_facts, local_only=False)
+                )
 
         for fact in targeted_facts:
             key = (
@@ -1960,6 +2444,79 @@ class LearningAgent:
             )
 
         return supplemented
+
+    _INFRASTRUCTURE_RELATION_PATTERNS: dict[str, tuple[re.Pattern[str], ...]] = {
+        "subnet": (
+            re.compile(r"subnet\s+named\s+['\"]?([A-Za-z0-9_.-]+)['\"]?", re.IGNORECASE),
+            re.compile(r"\b([A-Za-z0-9_.-]+)\s+subnet\b", re.IGNORECASE),
+        ),
+    }
+
+    def _infrastructure_relation_retrieval(
+        self,
+        question: str,
+        existing_facts: list[dict[str, Any]],
+        local_only: bool = False,
+    ) -> list[dict[str, Any]]:
+        """Follow infrastructure relation targets (e.g. subnet -> CIDR) for specificity."""
+        q_lower = question.lower()
+        relation_patterns: tuple[re.Pattern[str], ...] = ()
+        if "subnet" in q_lower:
+            relation_patterns = self._INFRASTRUCTURE_RELATION_PATTERNS["subnet"]
+
+        if not relation_patterns:
+            return []
+
+        existing_ids = {
+            f.get("experience_id") or f"{f.get('context', '')}::{f.get('outcome', '')}"
+            for f in existing_facts
+        }
+        candidate_names: list[str] = []
+        seen_candidates: set[str] = set()
+
+        for fact in existing_facts:
+            fact_text = f"{fact.get('context', '')} {fact.get('outcome', '')}"
+            for pattern in relation_patterns:
+                for match in pattern.finditer(fact_text):
+                    candidate = match.group(1).strip(" '\".,:;()")
+                    if not candidate or candidate.casefold() in seen_candidates:
+                        continue
+                    if candidate.casefold() in {"subnet", "named", "in", "the", "on", "for"}:
+                        continue
+                    seen_candidates.add(candidate.casefold())
+                    candidate_names.append(candidate)
+
+        new_facts: list[dict[str, Any]] = []
+        for candidate in candidate_names:
+            results = self._retrieve_by_entity_memory(
+                candidate,
+                ENTITY_SEARCH_LIMIT,
+                local_only=local_only,
+            )
+            if not results and local_only:
+                results = self._retrieve_by_entity_memory(
+                    candidate,
+                    ENTITY_SEARCH_LIMIT,
+                    local_only=False,
+                )
+            for fact in results:
+                key = (
+                    fact.get("experience_id")
+                    or f"{fact.get('context', '')}::{fact.get('outcome', '')}"
+                )
+                if key in existing_ids:
+                    continue
+                existing_ids.add(key)
+                new_facts.append(fact)
+
+        if new_facts:
+            logger.info(
+                "Infrastructure relation retrieval: %d related facts for '%s'",
+                len(new_facts),
+                question[:60],
+            )
+
+        return new_facts
 
     # Regex for structured entity IDs (e.g. INC-2024-001, CVE-2024-3094)
     _ENTITY_ID_PATTERN = re.compile(r"\b([A-Z]{2,5}-\d{4}-\d{2,5})\b")
@@ -2756,11 +3313,18 @@ class LearningAgent:
                 "Read EVERY fact before answering. Count precisely -- do NOT estimate.\n"
                 "IMPORTANT: When asked to LIST or ENUMERATE items, include EVERY item from "
                 "the facts. Do not summarize or skip any. Count them explicitly.\n"
+                "If a Knowledge Overview section is provided below, use it as a checklist and "
+                "take the UNION of distinct items from the overview and detailed facts.\n"
+                "Prefer the full de-duplicated list over an early partial cluster.\n"
             ),
             "temporal_comparison": (
                 "\n\nIMPORTANT - TEMPORAL COMPARISON:\n"
-                "Identify the LATEST value for the asked entity.\n"
-                "State what changed from the previous value and by how much.\n"
+                "Reconstruct the FULL chronological chain before answering.\n"
+                "If the question asks for the current/latest/final value, use the LAST state.\n"
+                "If it asks for an original/previous/intermediate value, identify the exact "
+                "historical state requested.\n"
+                "If it asks how many times something changed, answer with the number of "
+                "TRANSITIONS (number of states minus one), not the number of states.\n"
             ),
         }
 
@@ -2877,13 +3441,26 @@ class LearningAgent:
 
         # Inject temporal code generation result if available
         temporal_code = intent.get("temporal_code")
-        if temporal_code and temporal_code.get("result"):
+        temporal_code_result = temporal_code.get("result") if temporal_code else None
+        if temporal_code and temporal_code_result is not None:
+            resolved_label = (
+                "Resolved change count"
+                if temporal_code.get("operation") == "change_count"
+                else "Resolved value"
+            )
             extra_instructions += (
-                f"\n\nTEMPORAL CODE GENERATION RESULT (use as hint):\n"
+                "\n\nAUTHORITATIVE TEMPORAL RESOLUTION:\n"
+                "A deterministic temporal resolution is provided below. Use it directly when it "
+                "answers the question.\n"
+                "Do NOT replace it with a guessed timeline count or alternate value.\n"
                 f"Code: {temporal_code['code']}\n"
-                f"Resolved value: {temporal_code['result']}\n"
+                f"{resolved_label}: {temporal_code_result}\n"
                 f"Chain length: {len(temporal_code.get('transitions', []))}\n"
             )
+            if temporal_code.get("operation") == "change_count":
+                extra_instructions += (
+                    "For change-count questions, number of changes = number of states - 1.\n"
+                )
 
         # Add multi-source synthesis instructions
         if intent_type == "multi_source_synthesis":
@@ -2906,11 +3483,19 @@ class LearningAgent:
                 "    from each country IN THAT ARTICLE, then compare country counts\n"
             )
 
-        # Add summary context only for multi-source synthesis (not every question)
+        # Add summary context only for intents that benefit from a bird's-eye checklist.
         summary_section = ""
-        if intent_type == "multi_source_synthesis" and intent.get("summary_context"):
+        if intent.get("summary_context") and intent_type in (
+            "multi_source_synthesis",
+            "meta_memory",
+        ):
+            heading = (
+                "Knowledge Overview (use as checklist before counting):"
+                if intent_type == "meta_memory"
+                else "Knowledge Overview (what was learned):"
+            )
             summary_section = f"""
-Knowledge Overview (what was learned):
+{heading}
 {intent["summary_context"]}
 """
 
@@ -3426,7 +4011,99 @@ Knowledge Overview (what was learned):
         "last": "-1",
     }
 
-    def retrieve_transition_chain(self, entity: str, field: str) -> list[dict[str, Any]]:
+    def _transition_chain_from_facts(
+        self, entity: str, field: str, facts: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """Extract a temporal transition chain from candidate facts."""
+        entity_lower = entity.lower()
+        field_lower = field.lower()
+        chain: list[dict[str, Any]] = []
+        seen_keys: set[tuple[str, str, int, str, bool]] = set()
+
+        for fact_index, fact in enumerate(facts):
+            context = fact.get("context", "").lower()
+            outcome = fact.get("outcome", fact.get("fact", ""))
+            combined = f"{context} {str(outcome).lower()}"
+            if entity_lower not in combined or field_lower not in combined:
+                continue
+
+            meta = fact.get("metadata", {}) or {}
+            timestamp = fact.get("timestamp", "")
+            temporal_index = int(meta.get("temporal_index", 0) or 0)
+            experience_id = str(fact.get("experience_id", "") or fact.get("id", "") or "")
+            if not experience_id:
+                experience_id = f"fact-{fact_index}"
+            extracted_values = self._extract_temporal_state_values(str(outcome), field)
+
+            if len(extracted_values) > 1:
+                for offset, state_value in enumerate(extracted_values):
+                    state_superseded = offset < len(extracted_values) - 1 or bool(
+                        meta.get("superseded", False)
+                    )
+                    dedupe_key = (
+                        experience_id,
+                        state_value.casefold(),
+                        temporal_index,
+                        timestamp,
+                        state_superseded,
+                    )
+                    if dedupe_key in seen_keys:
+                        continue
+                    seen_keys.add(dedupe_key)
+                    chain.append(
+                        {
+                            "value": state_value,
+                            "timestamp": timestamp,
+                            "temporal_index": temporal_index,
+                            "experience_id": experience_id,
+                            "sequence_position": offset,
+                            "superseded": state_superseded,
+                            "metadata": {
+                                **meta,
+                                "experience_id": experience_id,
+                                "temporal_index": temporal_index,
+                                "sequence_position": offset,
+                                "superseded": state_superseded,
+                            },
+                        }
+                    )
+                continue
+
+            if not extracted_values and field_lower in {"date", "deadline"}:
+                continue
+
+            atomic_value = extracted_values[0] if extracted_values else str(outcome)
+            superseded = bool(meta.get("superseded", False))
+            dedupe_key = (
+                experience_id,
+                atomic_value.casefold(),
+                temporal_index,
+                timestamp,
+                superseded,
+            )
+            if dedupe_key in seen_keys:
+                continue
+            seen_keys.add(dedupe_key)
+            chain.append(
+                {
+                    "value": atomic_value,
+                    "timestamp": timestamp,
+                    "temporal_index": temporal_index,
+                    "experience_id": experience_id,
+                    "sequence_position": 0,
+                    "superseded": superseded,
+                    "metadata": meta,
+                }
+            )
+
+        chain.sort(
+            key=lambda x: (x.get("timestamp", ""), x["temporal_index"], x["sequence_position"])
+        )
+        return chain
+
+    def retrieve_transition_chain(
+        self, entity: str, field: str, candidate_facts: list[dict[str, Any]] | None = None
+    ) -> list[dict[str, Any]]:
         """Retrieve all SUPERSEDED states for an entity/field from memory.
 
         Queries memory for all facts related to the entity and field,
@@ -3441,6 +4118,11 @@ Knowledge Overview (what was learned):
             List of state dicts ordered chronologically, each with
             'value', 'timestamp', and 'metadata' keys.
         """
+        if candidate_facts:
+            chain = self._transition_chain_from_facts(entity, field, candidate_facts)
+            if chain:
+                return chain
+
         if not hasattr(self.memory, "search"):
             return []
 
@@ -3448,32 +4130,200 @@ Knowledge Overview (what was learned):
         # (get_all_facts with limit=15000 caused 89GB RAM usage during 5000-turn eval)
         query = f"{entity} {field}"
         matching_facts = self.memory.search(query=query, limit=100)
+        return self._transition_chain_from_facts(entity, field, matching_facts)
 
-        entity_lower = entity.lower()
-        field_lower = field.lower()
+    @classmethod
+    def _extract_temporal_state_values(cls, value: str, field: str) -> list[str]:
+        cleaned_value = re.sub(r"\*+", "", value).strip()
+        if not cleaned_value:
+            return []
 
-        # Collect facts matching entity and field
-        chain: list[dict[str, Any]] = []
-        for fact in matching_facts:
-            context = fact.get("context", "").lower()
-            outcome = fact.get("outcome", fact.get("fact", "")).lower()
-            combined = f"{context} {outcome}"
+        field_lower = field.casefold()
+        if field_lower in {"date", "deadline"}:
+            from_to_match = re.search(r"\bfrom\s+(.+?)\s+to\s+(.+)", cleaned_value, re.IGNORECASE)
+            if from_to_match:
+                ordered: list[str] = []
+                seen: set[str] = set()
+                sequence = re.sub(r"(?i)^from\s+", "", from_to_match.group(0))
+                for part in re.split(r"\s+to\s+", sequence):
+                    match = cls._TEMPORAL_DATE_VALUE_PATTERN.search(part)
+                    if not match:
+                        continue
+                    candidate = match.group(0)
+                    key = candidate.casefold()
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    ordered.append(candidate)
+                if len(ordered) > 1:
+                    return ordered
 
-            if entity_lower in combined and field_lower in combined:
-                meta = fact.get("metadata", {}) or {}
-                chain.append(
-                    {
-                        "value": fact.get("outcome", fact.get("fact", "")),
-                        "timestamp": fact.get("timestamp", ""),
-                        "temporal_index": meta.get("temporal_index", 0),
-                        "superseded": meta.get("superseded", False),
-                        "metadata": meta,
-                    }
-                )
+            if field_lower == "deadline":
+                for pattern in cls._DEADLINE_DIRECT_VALUE_PATTERNS:
+                    direct_match = pattern.search(cleaned_value)
+                    if not direct_match:
+                        continue
+                    fragment = direct_match.group("fragment")
+                    date_match = cls._TEMPORAL_DATE_VALUE_PATTERN.search(fragment)
+                    if date_match:
+                        return [date_match.group(0)]
 
-        # Sort by temporal_index (chronological order)
-        chain.sort(key=lambda x: (x["temporal_index"], x["timestamp"]))
-        return chain
+            matches = cls._TEMPORAL_DATE_VALUE_PATTERN.findall(cleaned_value)
+            if len(matches) == 1:
+                ordered: list[str] = []
+                seen: set[str] = set()
+                for match in matches:
+                    key = match.casefold()
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    ordered.append(match)
+                return ordered
+            return []
+
+        return [cleaned_value]
+
+    def _collapse_change_count_transitions(
+        self, transitions: list[dict[str, Any]], field: str
+    ) -> list[dict[str, Any]]:
+        seen_values: set[str] = set()
+        collapsed_transitions: list[dict[str, Any]] = []
+
+        for transition in transitions:
+            state_values = self._extract_temporal_state_values(transition.get("value", ""), field)
+            if not state_values:
+                continue
+
+            for state_value in state_values:
+                key = state_value.casefold()
+                if key in seen_values:
+                    continue
+                seen_values.add(key)
+                collapsed_transitions.append({**transition, "value": state_value})
+
+        return collapsed_transitions or transitions
+
+    @staticmethod
+    def _collapse_temporal_lookup_transitions(
+        transitions: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        representatives: dict[str, dict[str, Any]] = {}
+        first_seen: dict[str, int] = {}
+        adjacency: dict[str, set[str]] = defaultdict(set)
+        indegree: dict[str, int] = {}
+        grouped_sequences: dict[str, list[tuple[int, int, str]]] = defaultdict(list)
+
+        for index, transition in enumerate(transitions):
+            state_value = str(transition.get("value", "")).strip()
+            if not state_value:
+                continue
+
+            key = state_value.casefold()
+            if key not in representatives:
+                representatives[key] = transition
+                first_seen[key] = index
+            indegree.setdefault(key, 0)
+
+            experience_id = str(
+                transition.get("experience_id")
+                or transition.get("metadata", {}).get("experience_id")
+                or f"transition-{index}"
+            )
+            grouped_sequences[experience_id].append(
+                (int(transition.get("sequence_position", 0) or 0), index, key)
+            )
+
+        for sequence in grouped_sequences.values():
+            ordered_keys: list[str] = []
+            for _, _, key in sorted(sequence):
+                if ordered_keys and ordered_keys[-1] == key:
+                    continue
+                ordered_keys.append(key)
+
+            for previous_key, next_key in itertools.pairwise(ordered_keys):
+                if previous_key == next_key or next_key in adjacency[previous_key]:
+                    continue
+                adjacency[previous_key].add(next_key)
+                indegree[next_key] = indegree.get(next_key, 0) + 1
+
+        ready = sorted(
+            (key for key, degree in indegree.items() if degree == 0),
+            key=lambda key: first_seen[key],
+        )
+        ordered_keys: list[str] = []
+        while ready:
+            key = ready.pop(0)
+            ordered_keys.append(key)
+            for next_key in sorted(
+                adjacency.get(key, ()), key=lambda candidate: first_seen[candidate]
+            ):
+                indegree[next_key] -= 1
+                if indegree[next_key] == 0:
+                    insert_at = 0
+                    while (
+                        insert_at < len(ready)
+                        and first_seen[ready[insert_at]] <= first_seen[next_key]
+                    ):
+                        insert_at += 1
+                    ready.insert(insert_at, next_key)
+
+        if len(ordered_keys) != len(indegree):
+            ordered_keys = sorted(representatives, key=lambda key: first_seen[key])
+
+        return [representatives[key] for key in ordered_keys] or transitions
+
+    @classmethod
+    def _format_temporal_lookup_answer(
+        cls,
+        question: str,
+        temporal_code: dict[str, Any] | None,
+    ) -> str:
+        result = str((temporal_code or {}).get("result", "")).strip()
+        if not result:
+            return result
+
+        match = cls._DIRECT_TEMPORAL_LOOKUP_PATTERN.match(question.strip())
+        if not match:
+            return result
+
+        field = re.sub(r"\s+", " ", match.group("field")).strip(" .?!")
+        entity = cls._DIRECT_TEMPORAL_ENTITY_TRAIL_PATTERN.sub("", match.group("entity"))
+        entity = re.sub(r"\s+", " ", entity).strip(" .?!")
+        qualifier = match.group("qualifier").lower()
+        transitions = list((temporal_code or {}).get("transitions") or [])
+        history_clause = ""
+
+        if qualifier in {"current", "latest", "final", "last"}:
+            descriptor = "current"
+            verb = "is"
+            unique_values: list[str] = []
+            seen_values: set[str] = set()
+            for transition in transitions:
+                value = str(transition.get("value", "")).strip()
+                if not value:
+                    continue
+                key = value.casefold()
+                if key in seen_values:
+                    continue
+                seen_values.add(key)
+                unique_values.append(value)
+            if unique_values and unique_values[-1].casefold() != result.casefold():
+                unique_values.append(result)
+            history_values = list(reversed(unique_values[:-1]))
+            if history_values:
+                history_parts = [
+                    ("changed from " if index == 0 else "which was changed from ") + value
+                    for index, value in enumerate(history_values)
+                ]
+                history_clause = f" ({', '.join(history_parts)})"
+        elif qualifier in {"original", "initial"}:
+            descriptor = "original"
+            verb = "was"
+        else:
+            descriptor = qualifier
+            verb = "was"
+
+        return f"The {descriptor} {field} for {entity} {verb} {result}{history_clause}."
 
     def _parse_temporal_index(self, question: str) -> str:
         """Parse a temporal question to determine which state index is requested.
@@ -3530,12 +4380,44 @@ Knowledge Overview (what was learned):
         # Default: latest value
         return "-1"
 
-    def temporal_code_synthesis(self, question: str, entity: str, field: str) -> dict[str, Any]:
-        """Generate Python code to resolve a temporal question.
+    @classmethod
+    def _heuristic_temporal_entity_field(cls, question: str) -> tuple[str, str] | None:
+        """Extract entity/field from direct temporal lookup questions without an LLM."""
+        match = cls._DIRECT_TEMPORAL_LOOKUP_PATTERN.match(question.strip())
+        if not match:
+            return None
+
+        field = re.sub(r"\s+", " ", match.group("field")).strip(" .?!")
+        entity = cls._DIRECT_TEMPORAL_ENTITY_TRAIL_PATTERN.sub("", match.group("entity"))
+        entity = re.sub(r"\s+", " ", entity).strip(" .?!")
+        if not entity or not field:
+            return None
+
+        return entity, field
+
+    @classmethod
+    def _should_short_circuit_temporal_answer(
+        cls, question: str, temporal_code: dict[str, Any] | None
+    ) -> bool:
+        """Return direct deterministic temporal lookups instead of re-synthesizing."""
+        if not temporal_code or temporal_code.get("result") is None:
+            return False
+        if temporal_code.get("operation") != "state_lookup":
+            return False
+        return bool(cls._DIRECT_TEMPORAL_LOOKUP_PATTERN.match(question.strip()))
+
+    def temporal_code_synthesis(
+        self,
+        question: str,
+        entity: str,
+        field: str,
+        candidate_facts: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        """Generate Python code to resolve a temporal question deterministically.
 
         Produces a code snippet that retrieves the transition chain for
-        the entity/field and indexes into it based on the temporal
-        keywords in the question.
+        the entity/field and either indexes into it based on the temporal
+        keywords in the question or counts the number of transitions.
 
         Args:
             question: The temporal question text
@@ -3545,11 +4427,24 @@ Knowledge Overview (what was learned):
         Returns:
             Dict with:
                 - code: Generated Python code string
-                - index_expr: The resolved index expression
+                - index_expr: The resolved expression used to answer
                 - transitions: The actual transition chain retrieved
                 - result: The resolved value (if chain is non-empty)
         """
-        index_expr = self._parse_temporal_index(question)
+        question_lower = question.lower()
+        change_count_question = (
+            "how many times" in question_lower
+            or "how many changes" in question_lower
+            or "number of changes" in question_lower
+        ) and any(
+            token in question_lower
+            for token in ("change", "changed", "update", "updated", "modification")
+        )
+        index_expr = (
+            "max(0, len(transitions) - 1)"
+            if change_count_question
+            else self._parse_temporal_index(question)
+        )
 
         # Generate the code snippet
         code_lines = [
@@ -3557,38 +4452,71 @@ Knowledge Overview (what was learned):
             f"# Temporal index: {index_expr}",
         ]
 
-        # Use safe index expression
-        if index_expr.startswith("len("):
+        # Use safe expression resolution
+        if change_count_question:
+            code_lines.append(
+                f"states = _collapse_change_count_transitions(transitions, {field!r})"
+            )
+            code_lines.append("# Count transitions after collapsing recap/duplicate states")
+            code_lines.append("answer = max(0, len(states) - 1)")
+        elif index_expr.startswith("len("):
+            code_lines.append("transitions = _collapse_temporal_lookup_transitions(transitions)")
             code_lines.append(f"idx = {index_expr}")
             code_lines.append("answer = transitions[idx].value")
         else:
+            code_lines.append("transitions = _collapse_temporal_lookup_transitions(transitions)")
             code_lines.append(f"answer = transitions[{index_expr}].value")
 
         code = "\n".join(code_lines)
 
         # Execute the retrieval
-        transitions = self.retrieve_transition_chain(entity, field)
+        transitions = self.retrieve_transition_chain(entity, field, candidate_facts=candidate_facts)
+        effective_transitions = (
+            self._collapse_change_count_transitions(transitions, field)
+            if change_count_question
+            else self._collapse_temporal_lookup_transitions(transitions)
+        )
         result = None
-        if transitions:
+        if effective_transitions:
             try:
                 # Evaluate the index safely
-                if index_expr.startswith("len("):
-                    idx = len(transitions) // 2
+                if change_count_question:
+                    result = max(0, len(effective_transitions) - 1)
+                elif index_expr == "-1":
+                    latest_state = next(
+                        (
+                            state
+                            for state in reversed(effective_transitions)
+                            if not state.get("superseded", False)
+                        ),
+                        None,
+                    )
+                    if latest_state is not None:
+                        result = latest_state["value"]
+                    else:
+                        result = effective_transitions[-1]["value"]
                 else:
-                    idx = int(index_expr)
-                if -len(transitions) <= idx < len(transitions):
-                    result = transitions[idx]["value"]
+                    if index_expr.startswith("len("):
+                        idx = len(effective_transitions) // 2
+                    else:
+                        idx = int(index_expr)
+                    if -len(effective_transitions) <= idx < len(effective_transitions):
+                        result = effective_transitions[idx]["value"]
             except (ValueError, IndexError) as e:
                 logger.warning("Temporal index resolution failed for %r: %s", index_expr, e)
 
         return {
             "code": code,
             "index_expr": index_expr,
-            "transitions": transitions,
+            "transitions": effective_transitions,
             "result": result,
+            "operation": "change_count" if change_count_question else "state_lookup",
+            "state_count": len(effective_transitions),
         }
 
-    def _code_generation_tool(self, question: str) -> dict[str, Any]:
+    def _code_generation_tool(
+        self, question: str, candidate_facts: list[dict[str, Any]] | None = None
+    ) -> dict[str, Any]:
         """Tool interface for temporal code generation.
 
         Extracts entity and field from the question using LLM, then
@@ -3600,6 +4528,16 @@ Knowledge Overview (what was learned):
         Returns:
             Dict with generated code and result
         """
+        heuristic = self._heuristic_temporal_entity_field(question)
+        if heuristic is not None:
+            entity, field = heuristic
+            return self.temporal_code_synthesis(
+                question,
+                entity,
+                field,
+                candidate_facts=candidate_facts,
+            )
+
         # Extract entity and field from question using LLM
         prompt = _load_prompt("entity_field_extraction_user", question=question)
 
@@ -3620,7 +4558,12 @@ Knowledge Overview (what was learned):
                 if not entity or not field:
                     logger.warning("LLM returned empty entity=%r or field=%r", entity, field)
                     return {"code": "", "index_expr": "", "transitions": [], "result": None}
-                return self.temporal_code_synthesis(question, entity, field)
+                return self.temporal_code_synthesis(
+                    question,
+                    entity,
+                    field,
+                    candidate_facts=candidate_facts,
+                )
         except json.JSONDecodeError:
             logger.warning("LLM did not return valid JSON for entity/field extraction")
         except Exception as e:

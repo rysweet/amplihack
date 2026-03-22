@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import queue
 import sys
 import threading
@@ -157,6 +158,7 @@ class TestInputSourcePartitionRouting:
         src._shutdown = threading.Event()
         src._closed = False
         src._queue = queue.Queue()
+        src._inline_event_handler = None
         return src
 
     def test_target_partition_wraps(self):
@@ -208,6 +210,39 @@ class TestInputSourcePartitionRouting:
 
         assert src.next() == "hello"
         assert src.last_event_metadata == {"event_id": "evt-1"}
+
+    def test_receive_loop_handles_online_check_inline(self):
+        src = self._make_source(agent_name="agent-5")
+        src._inline_event_handler = MagicMock(return_value=True)
+        partition_context = MagicMock()
+        event = MagicMock()
+        event.body_as_str.return_value = json.dumps(
+            {
+                "event_type": "ONLINE_CHECK",
+                "event_id": "evt-online-1",
+                "run_id": "run-123",
+                "target_agent": "agent-5",
+                "payload": {"target_agent": "agent-5"},
+            }
+        )
+
+        def _receive(**kwargs):
+            kwargs["on_event"](partition_context, event)
+            src._shutdown.set()
+
+        src._consumer.receive.side_effect = _receive
+
+        src._receive_loop()
+
+        src._inline_event_handler.assert_called_once()
+        metadata = src._inline_event_handler.call_args.args[0]
+        assert metadata["event_type"] == "ONLINE_CHECK"
+        assert metadata["run_id"] == "run-123"
+        queued_text, queued_meta = src._queue.get_nowait()
+        assert queued_text is None
+        assert queued_meta == {}
+        assert src._queue.empty()
+        partition_context.update_checkpoint.assert_called_once_with(event)
 
 
 class TestPublishPartitionRouting:
@@ -307,6 +342,157 @@ class TestPublishPartitionRouting:
                 partition_key="agent-1",
             )
             assert transport._producer is None
+
+
+class TestReceiveLoopCheckpointing:
+    """EventHubsShardTransport should checkpoint shard work only after handling."""
+
+    @patch.object(EventHubsShardTransport, "__init__", lambda self, **kw: None)
+    def _make_transport(self):
+        t = EventHubsShardTransport()  # type: ignore[call-arg]
+        t._num_partitions = 32
+        t._connection_string = "fake"
+        t._consumer_group = "cg-agent-5"
+        t._eventhub_name = "hub"
+        t._agent_id = "agent-5"
+        t._local_boot_id = "boot-local"
+        t._pending = {}
+        t._pending_lock = threading.Lock()
+        t._pending_errors = {}
+        t._pending_payloads = {}
+        t._pending_requests = {}
+        t._peer_boot_ids = {}
+        t._mailbox = []
+        t._mailbox_lock = threading.Lock()
+        t._mailbox_ready = threading.Event()
+        t._shutdown = threading.Event()
+        return t
+
+    def test_receive_loop_defers_checkpoint_for_shard_query(self):
+        import json
+
+        transport = self._make_transport()
+        partition_context = MagicMock()
+        event = MagicMock()
+        event.body_as_str.return_value = json.dumps(
+            {
+                "event_id": "evt-1",
+                "event_type": "SHARD_QUERY",
+                "source_agent": "requester",
+                "timestamp": 1.23,
+                "payload": {
+                    "target_agent": "agent-5",
+                    "correlation_id": "corr-1",
+                    "query": "projects",
+                    "limit": 5,
+                },
+            }
+        )
+        mock_consumer = MagicMock()
+
+        def _receive(**kwargs):
+            kwargs["on_event"](partition_context, event)
+            transport._shutdown.set()
+
+        mock_consumer.receive.side_effect = _receive
+
+        with patch("azure.eventhub.EventHubConsumerClient") as MockConsumer:
+            MockConsumer.from_connection_string.return_value = mock_consumer
+            transport._receive_loop()
+
+        partition_context.update_checkpoint.assert_not_called()
+
+        items = transport.poll("agent-5")
+        assert len(items) == 1
+        mailbox_item = items[0]
+        assert mailbox_item.event.event_type == "SHARD_QUERY"
+
+        mailbox_item.ack()
+        partition_context.update_checkpoint.assert_called_once_with(event)
+
+    def test_handle_peer_online_fails_pending_query_on_new_boot(self):
+        transport = self._make_transport()
+        transport._publish = MagicMock()
+
+        done = threading.Event()
+        with transport._pending_lock:
+            transport._pending["corr-1"] = (done, [])
+            transport._pending_errors["corr-1"] = ""
+            transport._pending_requests["corr-1"] = {
+                "target_agent": "agent-9",
+                "operation": "search",
+                "request_payload": {"query": "projects", "limit": 5},
+                "target_boot_id": "boot-old",
+            }
+
+        transport._handle_peer_online("agent-9", "boot-new")
+
+        transport._publish.assert_not_called()
+        assert done.is_set()
+        assert transport._pending_errors["corr-1"].startswith(
+            "Shard target agent-9 restarted before response"
+        )
+
+    def test_handle_peer_online_fails_unknown_boot_published_after_request(self):
+        transport = self._make_transport()
+        transport._publish = MagicMock()
+
+        done = threading.Event()
+        with transport._pending_lock:
+            transport._pending["corr-1"] = (done, [])
+            transport._pending_errors["corr-1"] = ""
+            transport._pending_requests["corr-1"] = {
+                "target_agent": "agent-9",
+                "operation": "search",
+                "request_payload": {"query": "projects", "limit": 5},
+                "sent_at": 100.0,
+                "target_boot_id": "",
+            }
+
+        transport._handle_peer_online("agent-9", "boot-new", observed_at=101.0)
+
+        transport._publish.assert_not_called()
+        assert done.is_set()
+        assert transport._pending_errors["corr-1"].startswith(
+            "Shard target agent-9 came online after request dispatch"
+        )
+
+    def test_handle_peer_online_ignores_stale_unknown_boot_broadcast(self):
+        transport = self._make_transport()
+        transport._publish = MagicMock()
+
+        done = threading.Event()
+        with transport._pending_lock:
+            transport._pending["corr-1"] = (done, [])
+            transport._pending_errors["corr-1"] = ""
+            transport._pending_requests["corr-1"] = {
+                "target_agent": "agent-9",
+                "operation": "search",
+                "request_payload": {"query": "projects", "limit": 5},
+                "sent_at": 100.0,
+                "target_boot_id": "",
+            }
+
+        transport._handle_peer_online("agent-9", "boot-new", observed_at=99.0)
+
+        transport._publish.assert_not_called()
+        assert not done.is_set()
+        assert transport._pending_errors["corr-1"] == ""
+
+    def test_publish_agent_online_broadcasts_to_all_partitions(self):
+        transport = self._make_transport()
+        transport._publish = MagicMock()
+        transport._num_partitions = 4
+
+        transport.publish_agent_online()
+
+        assert transport._publish.call_count == 4
+        partition_ids = [call.kwargs["partition_id"] for call in transport._publish.call_args_list]
+        assert partition_ids == ["0", "1", "2", "3"]
+        for call in transport._publish.call_args_list:
+            payload = call.args[0]
+            assert payload["event_type"] == "SHARD_AGENT_ONLINE"
+            assert payload["timestamp"] > 0
 
 
 class TestRemoteAdapterPublishPartitionRouting:

@@ -81,7 +81,7 @@ param deploymentProfile string = 'federated-100'
 
 @description('Whether to enable OpenTelemetry inside deployed agents')
 @allowed(['true', 'false'])
-param enableOpenTelemetry string = 'false'
+param enableOpenTelemetry string = 'true'
 
 @description('OTLP collector endpoint for agent spans')
 param otelOtlpEndpoint string = ''
@@ -102,7 +102,7 @@ param otelServiceNamespace string = 'amplihack'
 
 @description('Emit spans to stdout when no OTLP endpoint is configured')
 @allowed(['true', 'false'])
-param otelConsoleExporter string = 'false'
+param otelConsoleExporter string = 'true'
 
 
 // ---------- Naming ----------
@@ -386,8 +386,32 @@ resource containerApps 'Microsoft.App/containerApps@2024-03-01' = [
                 value: '${memoryQueryFanoutResolved}'
               }
               {
+                name: 'AMPLIHACK_MEMORY_QUERY_MAX_WORKERS'
+                value: '8'
+              }
+              {
                 name: 'AMPLIHACK_SHARD_QUERY_TIMEOUT_SECONDS'
                 value: '${shardQueryTimeoutSecondsResolved}'
+              }
+              {
+                name: 'OMP_NUM_THREADS'
+                value: '1'
+              }
+              {
+                name: 'OPENBLAS_NUM_THREADS'
+                value: '1'
+              }
+              {
+                name: 'MKL_NUM_THREADS'
+                value: '1'
+              }
+              {
+                name: 'NUMEXPR_NUM_THREADS'
+                value: '1'
+              }
+              {
+                name: 'TOKENIZERS_PARALLELISM'
+                value: 'false'
               }
               {
                 name: 'AMPLIHACK_DEPLOYMENT_PROFILE'

@@ -1,282 +1,129 @@
-# Getting Started with Memory-Enabled Agents
+# Tutorial: Create and Run a Memory-Enabled Goal Agent
 
-A step-by-step tutorial to create and run your first learning agent.
+This tutorial shows the current generated-agent memory path.
 
-**Time Required**: 30 minutes
-**Prerequisites**: Python 3.10+, amplihack installed
+By the end, you will have:
 
----
+- generated a memory-enabled goal agent package
+- installed its dependencies
+- run the package locally
+- inspected the files that `--enable-memory` adds
 
-## What You'll Learn
+## Before You Start
 
-- Install the amplihack-memory-lib package
-- Generate a memory-enabled goal-seeking agent
-- Run the agent and observe learning behavior
-- Query the agent's accumulated memory
-- Understand learning metrics
+Make sure `amplihack` is installed and the `amplihack` CLI is on your path.
 
----
+## Step 1: Write a Goal Prompt
 
-## Step 1: Install amplihack-memory-lib
-
-The memory library is a standalone package that provides persistent memory capabilities for agents:
+Create a prompt file:
 
 ```bash
-pip install amplihack-memory-lib
+printf '%s\n' \
+  'Build an agent that investigates deployment failures, remembers repeated causes, and suggests the next debugging step.' \
+  > goal.md
 ```
 
-Verify installation:
+## Step 2: Generate the Agent Package
 
 ```bash
-python -c "from amplihack_memory import MemoryConnector; print('OK')"
-# Output: OK
+amplihack new \
+  --file goal.md \
+  --name incident-memory-agent \
+  --enable-memory \
+  --sdk copilot
 ```
 
----
+This creates a package in `goal_agents/incident-memory-agent/`.
 
-## Step 2: Generate Your First Memory-Enabled Agent
-
-Use the enhanced goal agent generator to create a learning agent:
+## Step 3: Inspect the Generated Files
 
 ```bash
-amplihack goal-agent generate \
-  --name "doc-analyzer" \
-  --objective "Analyze documentation quality and suggest improvements" \
-  --enable-memory
+cd goal_agents/incident-memory-agent
+find . -maxdepth 2 -type f | sort
 ```
 
-This creates an agent bundle with memory integration enabled:
+For a memory-enabled package, the important additions are:
 
-```
-agents/doc-analyzer/
-├── agent.md              # Agent definition
-├── memory_config.yaml    # Memory configuration
-├── metrics.py            # Learning metrics
-└── tests/                # Validation tests
-```
+- `main.py`
+- `memory_config.yaml`
+- `memory/.gitignore`
+- `requirements.txt`
 
-**Output**:
+Open `main.py` and search for these helper functions:
 
-```
-✓ Created agent: doc-analyzer
-✓ Memory enabled with default configuration
-✓ Created 4 experience types: success, failure, pattern, insight
-✓ Validation tests generated
-```
+- `store_success`
+- `store_failure`
+- `store_pattern`
+- `store_insight`
+- `recall_relevant`
+- `cleanup_memory`
 
----
+Those helpers are what `--enable-memory` injects into the generated package.
 
-## Step 3: Run the Agent (First Time)
-
-Execute the agent on a documentation directory:
+## Step 4: Install the Generated Package Dependencies
 
 ```bash
-amplihack goal-agent run doc-analyzer --target ./docs
+python -m pip install -r requirements.txt
 ```
 
-**First Run Output**:
+The generated `requirements.txt` includes:
 
-```
-[doc-analyzer] Starting analysis...
-[doc-analyzer] No prior experiences found (first run)
-[doc-analyzer] Analyzing 47 markdown files...
-[doc-analyzer] Found 12 issues:
-  - 5 broken links
-  - 3 missing code examples
-  - 4 unclear headings
-[doc-analyzer] Storing experiences: 12 patterns recognized
-[doc-analyzer] Runtime: 45.2s
-[doc-analyzer] ✓ Complete
-```
+- `amplihack`
+- `amplihack-memory-lib`
 
-The agent stores what it learned during this run in its memory.
-
----
-
-## Step 4: Run the Agent Again (Observe Learning)
-
-Run the same agent on the same or different documentation:
+## Step 5: Run the Generated Agent
 
 ```bash
-amplihack goal-agent run doc-analyzer --target ./docs/tutorials
+python main.py
 ```
 
-**Second Run Output**:
+The generated package runs through `AutoMode`, using the SDK you selected when you called `amplihack new`.
 
+## Step 6: Understand Where the Memory Lives
+
+The generated package creates and owns a local `./memory/` directory.
+
+That is separate from the top-level CLI memory backend used by `amplihack memory tree` and `amplihack memory clean`.
+
+## Step 7: Add a Simple Memory Hook
+
+`--enable-memory` gives you helper functions, but you still need to decide where to call them in your generated package.
+
+A simple first step is to record whether the run succeeded. In `main.py`, after `exit_code = auto_mode.run()`, add:
+
+```python
+if exit_code == 0:
+    store_success(
+        context="Goal execution completed",
+        outcome=initial_prompt,
+        confidence=0.95,
+    )
+else:
+    store_failure(
+        context="Goal execution failed",
+        outcome="Exit code {}".format(exit_code),
+        confidence=0.95,
+    )
 ```
-[doc-analyzer] Starting analysis...
-[doc-analyzer] Loading 12 prior experiences
-[doc-analyzer] Recognized 8 known patterns immediately
-[doc-analyzer] Analyzing 15 markdown files...
-[doc-analyzer] Found 4 issues:
-  - 2 broken links (pattern match: external_link_dead)
-  - 2 missing code examples (pattern match: tutorial_no_example)
-[doc-analyzer] Storing experiences: 4 new patterns, 8 confirmed patterns
-[doc-analyzer] Runtime: 18.7s (59% faster)
-[doc-analyzer] ✓ Complete
+
+You can also recall previous experiences before starting the run:
+
+```python
+recent = recall_relevant(initial_prompt, limit=3)
+for item in recent:
+    print("Previous experience: {} -> {}".format(item.context, item.outcome))
 ```
 
-**Key observation**: The agent runs faster and recognizes patterns immediately because it remembers what it learned before.
+## Step 8: Inspect the CLI Memory Graph Separately
 
----
-
-## Step 5: Query Agent Memory
-
-View what the agent has learned:
+The top-level CLI memory graph is a different surface, but it is still useful when you are working on the in-repo backend.
 
 ```bash
-amplihack memory query doc-analyzer --type patterns
+amplihack memory tree --backend kuzu --depth 2
 ```
-
-**Output**:
-
-```
-Agent: doc-analyzer
-Total Experiences: 16
-Experience Types: success=4, failure=2, pattern=8, insight=2
-
-Recent Patterns:
-1. external_link_dead
-   - Confidence: 0.95 (8 occurrences)
-   - Context: Links to external sites without status checks
-   - First seen: 2026-02-14 10:23:15
-   - Last seen: 2026-02-14 10:45:32
-
-2. tutorial_no_example
-   - Confidence: 0.87 (5 occurrences)
-   - Context: Tutorial documents missing runnable code examples
-   - First seen: 2026-02-14 10:23:18
-   - Last seen: 2026-02-14 10:45:30
-
-3. unclear_heading_generic
-   - Confidence: 0.72 (4 occurrences)
-   - Context: Headings like "Introduction" or "Overview" without context
-   - First seen: 2026-02-14 10:23:25
-   - Last seen: 2026-02-14 10:45:35
-```
-
----
-
-## Step 6: View Learning Metrics
-
-See how the agent improves over time:
-
-```bash
-amplihack memory metrics doc-analyzer
-```
-
-**Output**:
-
-```
-Agent: doc-analyzer
-Runs: 2
-
-Learning Metrics:
-- Pattern recognition rate: 66% (8/12 patterns recognized in run 2)
-- Average runtime improvement: 59% faster (45.2s → 18.7s)
-- Confidence growth: +23% average across patterns
-- New insights: 2 (discovered on run 2)
-
-Memory Usage:
-- Total experiences: 16
-- Storage size: 24.5 KB
-- Average retrieval time: 12ms
-```
-
----
-
-## Step 7: Understanding the Learning Loop
-
-Here's how memory-enabled agents learn:
-
-```
-┌─────────────────┐
-│  Agent Starts   │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────────┐
-│ Load Prior          │
-│ Experiences         │◄─────┐
-│ (if any)            │      │
-└────────┬────────────┘      │
-         │                   │
-         ▼                   │
-┌─────────────────────┐      │
-│ Execute Task        │      │
-│ - Apply learned     │      │
-│   patterns          │      │
-│ - Recognize known   │      │
-│   situations        │      │
-└────────┬────────────┘      │
-         │                   │
-         ▼                   │
-┌─────────────────────┐      │
-│ Store New           │      │
-│ Experiences         │──────┘
-│ - Successes         │   Next Run
-│ - Failures          │
-│ - Patterns          │
-│ - Insights          │
-└─────────────────────┘
-```
-
-Each run:
-
-1. **Retrieves** relevant past experiences
-2. **Applies** learned patterns to the current task
-3. **Stores** new experiences for future runs
-4. **Improves** performance through pattern recognition
-
----
 
 ## Next Steps
 
-Now that you understand the basics, explore:
-
-- **[How to Integrate Memory into Existing Agents](../howto/integrate-memory-into-agents.md)** - Add memory to your custom agents
-- **[How to Design Custom Learning Metrics](../howto/design-custom-learning-metrics.md)** - Track domain-specific improvements
-- **[Memory-Enabled Agents API Reference](../reference/memory-enabled-agents-api.md)** - Complete technical documentation
-- **[Four Demonstration Agents](../features/memory-enabled-agents.md#demonstration-agents)** - Production examples
-
----
-
-## Troubleshooting
-
-### Agent doesn't show learning improvement
-
-**Problem**: Agent runtime doesn't improve between runs.
-
-**Solution**: Check that experiences are being stored:
-
-```bash
-amplihack memory query <agent-name> --count
-```
-
-If count is 0, verify memory configuration in `memory_config.yaml`.
-
-### Memory queries return no results
-
-**Problem**: `amplihack memory query` shows no experiences.
-
-**Solution**:
-
-1. Verify agent has run at least once
-2. Check memory storage path: `~/.amplihack/memory/<agent-name>/`
-3. Ensure write permissions on memory directory
-
-### Import errors for amplihack_memory
-
-**Problem**: `ModuleNotFoundError: No module named 'amplihack_memory'`
-
-**Solution**:
-
-```bash
-pip install amplihack-memory-lib
-```
-
----
-
-**Estimated completion time**: 30 minutes
-
-**Next Tutorial**: [Integrating Memory with gadugi-agentic-test](./memory-agents-validation.md)
+- [Agent Memory Quickstart](../AGENT_MEMORY_QUICKSTART.md)
+- [How to integrate memory into agents](../howto/integrate-memory-into-agents.md)
+- [Memory-enabled agents architecture](../concepts/memory-enabled-agents-architecture.md)

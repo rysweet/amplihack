@@ -238,6 +238,15 @@ class DistributedCognitiveMemory:
             return self._local.retrieve_by_entity(entity_name=entity_name, limit=limit)
         return []
 
+    def local_execute_aggregation(self, query_type: str, entity_filter: str = "") -> dict[str, Any]:
+        """Execute an aggregation against the local backend only."""
+        if hasattr(self._local, "execute_aggregation"):
+            return self._local.execute_aggregation(
+                query_type=query_type,
+                entity_filter=entity_filter,
+            )
+        return {"count": 0, "query_type": query_type, "error": "Not supported"}
+
     def local_get_all_facts(self, limit: int = 50, **kwargs: Any) -> list:
         """Retrieve facts from ONLY the local memory backend."""
         return self._local.get_all_facts(limit=limit, **kwargs)

@@ -1,261 +1,101 @@
-# Distributed Hive Mind — Evaluation Methodology
+# Distributed Hive Evaluation
 
-> New to the hive mind? Start with [GETTING_STARTED.md](GETTING_STARTED.md) for
-> a step-by-step tutorial from single agent to Azure deployment.
->
-> For complete eval instructions (how to run, generate reports, and interpret
-> results), see the **[amplihack-agent-eval documentation](https://rysweet.github.io/amplihack-agent-eval/)**.
+This repo owns the **agent/runtime side** of the distributed eval story.
 
-## Overview
+- `deploy/azure_hive/` contains the Azure Container Apps and Event Hubs deployment assets
+- `src/amplihack/eval/long_horizon_memory.py` is the thin local wrapper used from this repo
+- `src/amplihack/eval/long_horizon_multi_seed.py` is the thin multi-seed wrapper used from this repo
 
-The hive mind evaluation uses **real LLM-backed LearningAgents** (not keyword
-matching) to measure whether distributed knowledge sharing improves agent
-performance on a long-horizon memory benchmark.
+The authoritative long-horizon dataset generator and Azure distributed runner live in the sibling `amplihack-agent-eval` repo.
 
-Each agent uses:
+## Use This Repo For
 
-- **CognitiveMemory** (Kuzu graph DB) for local fact storage
-- **LLM extraction** (~3 calls per content turn) for structured fact extraction
-- **LLM synthesis** (~2 calls per question) for answer generation
-- **Hybrid grading** (deterministic rubric + LLM judgment) for scoring
-- **Exponential backoff retry** on rate limits (5 retries, 2-32s delay)
+- changing the agent runtime
+- changing the Azure deployment shape
+- running the thin local wrappers while you are editing `amplihack`
 
-## The Three Conditions
+## Use `amplihack-agent-eval` For
 
-| Condition     | Agents | Hive Topology                   | What It Tests                                  |
-| ------------- | ------ | ------------------------------- | ---------------------------------------------- |
-| **SINGLE**    | 1      | None                            | Baseline: one agent, no sharing                |
-| **HIVE_FLAT** | N      | Single shared InMemoryHiveGraph | Does flat sharing help? (round-robin learning) |
-| **HIVE_FED**  | N      | M groups in federation tree     | Does federation add value over flat?           |
+- authoritative long-horizon question generation
+- the Event Hubs distributed runner
+- packaged eval reports and rerun metadata
+- the end-to-end `run_distributed_eval.sh` wrapper
 
-## How It Works
+## Local Wrapper: Single Run
 
-1. **Data generation**: `generate_dialogue(num_turns=N)` creates deterministic
-   content turns across 12 information blocks (people, infrastructure, security,
-   etc.)
-2. **Learning phase**: Each turn is fed to `agent.learn_from_content(content)`
-   which triggers LLM fact extraction. In multi-agent modes, turns are
-   distributed round-robin.
-3. **Auto-promotion**: `CognitiveAdapter.store_fact()` automatically promotes
-   every stored fact to the shared hive. Other agents see these facts when they
-   query.
-4. **Quiz phase**: `agent.answer_question(question)` synthesizes answers using
-   LLM from both local memory and hive facts.
-5. **Grading**: Hybrid deterministic (rubric keywords) + LLM judgment on 5
-   dimensions.
-
-## Key Architecture: CognitiveAdapter Hive Integration
-
-```
-learn_from_content(content)
-  -> LLM extracts facts
-  -> CognitiveAdapter.store_fact()
-    -> Stores in local Kuzu DB
-    -> Auto-promotes to hive (InMemoryHiveGraph)
-
-answer_question(question)
-  -> CognitiveAdapter.search() / get_all_facts()
-    -> Queries local Kuzu DB
-    -> Queries shared hive
-    -> Merges + deduplicates (local facts prioritized)
-  -> LLM synthesizes answer from merged facts
-```
-
-## Running the Eval
-
-For a hands-on walkthrough with code examples, see
-[GETTING_STARTED.md Step 5](GETTING_STARTED.md#step-5-running-the-eval).
-
-### CLI Usage
+The wrapper in this repo delegates to `amplihack_eval`, so include both repos on `PYTHONPATH` when you are testing sibling checkouts.
 
 ```bash
-# Full 3-condition eval (single + flat + federated)
-PYTHONPATH=src uv run python experiments/hive_mind/run_learning_agent_hive_eval.py \
-  --turns 100 --questions 20 --agents 5 --groups 2
-
-# Single condition only (faster iteration)
-PYTHONPATH=src uv run python experiments/hive_mind/run_learning_agent_hive_eval.py \
-  --turns 50 --questions 10 --conditions single
-
-# Specify model and output path
-PYTHONPATH=src uv run python experiments/hive_mind/run_learning_agent_hive_eval.py \
-  --model claude-sonnet-4-5-20250929 --turns 100 --questions 20 \
-  --output /tmp/eval_results.json
-
-# Test with a prompt variant
-PYTHONPATH=src uv run python experiments/hive_mind/run_learning_agent_hive_eval.py \
-  --turns 50 --questions 10 --prompt-variant 3
+PYTHONPATH=/path/to/amplihack-agent-eval/src:/path/to/amplihack/src \
+python -m amplihack.eval.long_horizon_memory \
+  --turns 100 \
+  --questions 20 \
+  --question-set standard \
+  --output-dir /tmp/eval-run
 ```
 
-### CLI Options
+Useful flags from this wrapper:
 
-```
---turns N            Dialogue turns (default: 100)
---questions N        Quiz questions (default: 20)
---agents N           Agents for hive conditions (default: 5)
---groups N           Groups for federated condition (default: 2)
---model MODEL        LLM model (default: claude-sonnet-4-5-20250929)
---conditions LIST    Comma-separated: single,flat,federated
---output PATH        Output JSON path
---prompt-variant N   Prompt variant 1-5 (affects synthesis prompt)
---parallel-workers N Workers for Q&A grading (default: 5)
---seed N             Random seed (default: 42)
-```
+- `--question-set {standard,holdout}`
+- `--sdk {mini,claude,copilot,microsoft}`
+- `--memory-type {auto,hierarchical,cognitive}`
+- `--answer-mode {single-shot,agentic}`
+- `--parallel-workers`
+- `--load-db` and `--skip-learning`
 
-### Expected Timing
-
-| Turns | Questions | LLM Calls/Condition | Approx Time/Condition |
-| ----- | --------- | ------------------- | --------------------- |
-| 50    | 10        | ~170                | 2-5 min               |
-| 100   | 20        | ~340                | 5-10 min              |
-| 1000  | 100       | ~3400               | 50-100 min            |
-
-## Scoring Dimensions
-
-Each question is graded on 5 dimensions (0.0 to 1.0):
-
-| Dimension                  | Grading Method | What It Measures                             |
-| -------------------------- | -------------- | -------------------------------------------- |
-| **factual_accuracy**       | Deterministic  | Are required keywords present in the answer? |
-| **specificity**            | Deterministic  | Are specific details included (not generic)? |
-| **temporal_awareness**     | LLM            | Does the answer respect temporal ordering?   |
-| **source_attribution**     | LLM            | Can the agent cite where facts came from?    |
-| **confidence_calibration** | LLM            | Is the agent's confidence well-calibrated?   |
-
-Overall score = average across all dimensions for all questions.
-
-## Eval Pipeline Architecture
-
-```
-generate_dialogue()         Deterministic content generation
-(12 info blocks)            across domains (people, infra, security...)
-        |
-        v
-Learning Phase              Round-robin distribution to N agents
-learn_from_content          LLM extraction -> local Kuzu + hive
-        |
-        v
-Quiz Phase                  20 questions across 10 categories
-answer_question             LLM synthesis from local + hive facts
-        |
-        v
-Grading Phase               5 dimensions per question
-Deterministic + LLM         Hybrid rubric-based scoring
-        |
-        v
-Output JSON                 Per-condition scores, category breakdown,
-(result file)               per-question details, timing, fact counts
-```
-
-## Interpreting Results
-
-### Output JSON Structure
-
-```json
-{
-  "config": {
-    "turns": 100, "questions": 20, "model": "claude-sonnet-4-5-20250929",
-    "seed": 42, "agents": 5, "groups": 2
-  },
-  "results": [
-    {
-      "mode": "single",
-      "num_agents": 1,
-      "overall_score": 0.75,
-      "hive_facts": 0,
-      "elapsed_s": 300.0,
-      "category_breakdown": [...],
-      "per_question": [...]
-    }
-  ]
-}
-```
-
-### What to Look For
-
-- **Single vs Flat**: Flat should equal or beat single — sharing adds knowledge
-  coverage
-- **Flat vs Federated**: Federation may lag flat at small scale due to
-  multi-pool scoring; check per-category for where gaps appear
-- **Category breakdown**: Identifies which question types benefit most from
-  sharing (e.g., incident tracking, cross-reference)
-- **Hive fact counts**: Higher counts in federated (broadcast copies) vs flat
-  (one shared pool)
-
-### Statistical Rigor
-
-Single eval runs are unreliable due to LLM stochasticity. For meaningful
-results:
-
-- Run 3+ trials with different seeds
-- Report **median** scores (more robust than mean to outliers)
-- Note the range (min-max) to indicate variance
-- Use the same model and turn count across compared runs
-
-### Question Categories
-
-| Category                 | What It Tests                            |
-| ------------------------ | ---------------------------------------- |
-| needle_in_haystack       | Finding specific facts in a large corpus |
-| temporal_evolution       | Understanding time-ordered changes       |
-| numerical_precision      | Exact numbers, ports, versions           |
-| cross_reference          | Connecting facts from different domains  |
-| meta_memory              | Self-awareness of what agent has learned |
-| source_attribution       | Citing where facts originated            |
-| infrastructure_knowledge | Server/network/deployment facts          |
-| security_log_analysis    | Security event interpretation            |
-| distractor_resistance    | Ignoring irrelevant information          |
-| incident_tracking        | Following incident timelines             |
-
-## Azure Deployment Eval
-
-For deployment instructions, see
-[GETTING_STARTED.md Step 6](GETTING_STARTED.md#step-6-azure-deployment).
-
-### Agent Runner
-
-The Azure agent runner (`experiments/hive_mind/agent_runner.py`) wraps a real
-LearningAgent:
-
-- `/learn` endpoint: feeds raw content to `agent.learn_from_content()` (LLM
-  extraction)
-- `/query` endpoint: calls `agent.answer_question()` (LLM synthesis)
-- Service Bus propagates facts between containers
-- Each container has its own Kuzu DB + shared hive store
+## Local Wrapper: Multi-Seed Comparison
 
 ```bash
-# Deploy
-bash experiments/hive_mind/deploy_azure_hive.sh
-
-# Check status
-bash experiments/hive_mind/deploy_azure_hive.sh --status
-
-# Run eval
-bash experiments/hive_mind/deploy_azure_hive.sh --eval
-
-# Cleanup
-bash experiments/hive_mind/deploy_azure_hive.sh --cleanup
+PYTHONPATH=/path/to/amplihack-agent-eval/src:/path/to/amplihack/src \
+python -m amplihack.eval.long_horizon_multi_seed \
+  --turns 100 \
+  --questions 20 \
+  --seeds 42,123,456,789 \
+  --question-set holdout \
+  --output-dir /tmp/eval-compare
 ```
 
-## Known Limitations
+## Distributed Azure Run
 
-1. **LLM cost**: 100 turns x 3 conditions = ~1000 LLM calls. Use `--model` to
-   select a cheaper model for rapid iteration.
-2. **Round-robin distribution**: Simple round-robin may not optimally distribute
-   facts by domain. Future work: domain-aware routing.
-3. **Best-of-N answering**: Multi-agent adapter queries all agents and picks the
-   longest answer. More sophisticated routing (by domain relevance) would
-   improve results.
-4. **In-memory hive**: Azure containers lose hive state on restart. Kuzu DB
-   persists via Azure Files mount but the hive does not.
-5. **Prompt variants**: Only affect synthesis prompt, not extraction or grading.
+For real Azure distributed runs, switch to the sibling `amplihack-agent-eval` repo and use its wrapper or direct runner.
 
-## Key Files
+```bash
+cd /path/to/amplihack-agent-eval
 
-| File                                                    | Purpose                                     |
-| ------------------------------------------------------- | ------------------------------------------- |
-| `experiments/hive_mind/run_learning_agent_hive_eval.py` | Main eval script (3 conditions)             |
-| `experiments/hive_mind/agent_runner.py`                 | Azure agent HTTP server                     |
-| `experiments/hive_mind/deploy_azure_hive.sh`            | Azure deployment (idempotent)               |
-| `src/.../hive_mind/hive_graph.py`                       | HiveGraph protocol, InMemoryHiveGraph       |
-| `src/.../cognitive_adapter.py`                          | CognitiveAdapter (local Kuzu + hive bridge) |
+export ANTHROPIC_API_KEY=...
+export AMPLIHACK_SOURCE_ROOT=/path/to/amplihack
+
+./run_distributed_eval.sh \
+  --agents 100 \
+  --turns 5000 \
+  --questions 50 \
+  --question-set standard
+```
+
+That path drives the Azure deployment assets from this repo, but the harness and reporting stay centralized in `amplihack-agent-eval`.
+
+## Question Sets
+
+| Value      | Meaning                                                       |
+| ---------- | ------------------------------------------------------------- |
+| `standard` | Canonical deterministic question slice                        |
+| `holdout`  | Alternate deterministic slice for anti-overfitting validation |
+
+`holdout` changes which questions are asked. It does not generate a second fact universe.
+
+## Important Checkout Note
+
+This repo uses a `src/` layout. If you run the wrappers with only `PYTHONPATH=src`, Python may resolve a globally installed `amplihack_eval` instead of the sibling checkout you are editing. Include both source roots explicitly when validating local changes.
+
+## Current Verified Results
+
+A current validation snapshot, including the accepted Azure scores and the latest reproducible local test commands, lives here:
+
+- [Current validation results](./current-validation-results.md)
+
+## Related Docs
+
+- `amplihack-agent-eval/docs/distributed-hive-eval.md`
+- `amplihack-agent-eval/docs/running-evals.md`
+- [Getting Started](./GETTING_STARTED.md)
+- [How to Run the Learning Eval Harness](../howto/agent-learning-eval-harness.md)
