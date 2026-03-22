@@ -38,6 +38,7 @@ import logging
 import os
 import re
 import statistics
+import tempfile
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -1430,7 +1431,10 @@ def main() -> None:
         "--questions", type=int, default=100, help="Number of quiz questions (default: 100)"
     )
     parser.add_argument(
-        "--output-dir", type=str, default="/tmp/memory-eval", help="Output directory for results"
+        "--output-dir",
+        type=str,
+        default=os.path.join(tempfile.gettempdir(), "memory-eval"),
+        help="Output directory for results",
     )
     parser.add_argument(
         "--model",

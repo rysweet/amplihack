@@ -86,5 +86,13 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 
+  // Atlas: Click-to-zoom for SVG diagram containers
+  document.addEventListener("click", function (e) {
+    var container = e.target.closest(".atlas-diagram-container");
+    if (container) {
+      container.classList.toggle("zoomed");
+    }
+  });
+
   console.log("amplihack documentation enhancements loaded");
 });

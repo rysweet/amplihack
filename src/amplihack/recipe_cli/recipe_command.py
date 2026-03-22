@@ -15,8 +15,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from amplihack.recipes import RecipeParser, RecipeRunner, discover_recipes
-from amplihack.recipes.adapters.cli_subprocess import CLISubprocessAdapter
+from amplihack.recipes import RecipeParser, discover_recipes, run_recipe_via_rust
 from amplihack.recipes.models import Recipe
 
 from .recipe_output import (
@@ -136,23 +135,19 @@ def handle_run(
             if dry_run:
                 print("DRY RUN MODE - No actual execution", file=sys.stderr)
 
-        # Create adapter and runner
-        # Cast to str since adapter __init__ expects str, not str | None
-        wd: str = working_dir if working_dir is not None else "."
-        adapter = CLISubprocessAdapter(working_dir=wd)
-        runner = RecipeRunner(adapter=adapter)
-
         # Merge context: user context overrides recipe defaults.
         # Smart inference fills gaps for common variables when not provided.
         recipe_defaults = recipe.context or {}
         merged_context = {**recipe_defaults, **context}
         merged_context = _infer_missing_context(recipe_defaults, merged_context, verbose)
 
-        # Execute recipe
-        result = runner.execute(
-            recipe,
+        # Execute recipe via Rust runner
+        wd: str = working_dir if working_dir is not None else "."
+        result = run_recipe_via_rust(
+            name=str(validated_path),
             user_context=merged_context,
             dry_run=dry_run,
+            working_dir=wd,
         )
 
         # Format and print output

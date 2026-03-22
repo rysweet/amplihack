@@ -9,7 +9,7 @@ Following TDD approach - these tests should FAIL initially as append_instruction
 import sys
 import tempfile
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
@@ -115,10 +115,14 @@ class TestAppendInstructionsBasic:
 
         filename = md_files[0].stem  # Filename without extension
 
-        # Parse timestamp from filename (format: YYYYMMDD_HHMMSS)
+        # Parse timestamp from filename (format: YYYYMMDD_HHMMSS_ffffff)
         try:
-            file_time = datetime.strptime(filename, "%Y%m%d_%H%M%S")
-            assert before_time <= file_time <= after_time, (
+            file_time = datetime.strptime(filename, "%Y%m%d_%H%M%S_%f")
+            # Truncate to second precision for reliable comparison
+            before_sec = before_time.replace(microsecond=0)
+            after_sec = after_time.replace(microsecond=0) + timedelta(seconds=1)
+            file_sec = file_time.replace(microsecond=0)
+            assert before_sec <= file_sec <= after_sec, (
                 "Timestamp should be within test execution time"
             )
         except ValueError:
@@ -295,9 +299,9 @@ class TestAppendInstructionsErrorHandling:
 
             instruction = "Test instruction"
 
-            # Mock write to raise permission error
+            # Mock write to raise permission error (code uses os.open, not builtins.open)
             with patch("pathlib.Path.cwd", return_value=workspace):
-                with patch("builtins.open", side_effect=PermissionError("Access denied")):
+                with patch("os.open", side_effect=PermissionError("Access denied")):
                     with pytest.raises((PermissionError, AppendError, OSError)):
                         append_instructions(instruction)
 
@@ -501,22 +505,20 @@ class TestAppendResult:
         - timestamp: datetime or str
         - message: optional str
         """
-        # This will fail until AppendResult is implemented
-        with pytest.raises((TypeError, AttributeError, NameError)):
-            result = AppendResult(
-                success=True,
-                filename="20241023_120000.md",
-                session_id="auto_claude_1729699200",
-                append_dir=Path("/tmp/append"),
-                timestamp="20241023_120000",
-                message="Instruction added successfully",
-            )
+        result = AppendResult(
+            success=True,
+            filename="20241023_120000.md",
+            session_id="auto_claude_1729699200",
+            append_dir=Path("/tmp/append"),
+            timestamp="20241023_120000",
+            message="Instruction added successfully",
+        )
 
-            assert hasattr(result, "success")
-            assert hasattr(result, "filename")
-            assert hasattr(result, "session_id")
-            assert hasattr(result, "append_dir")
-            assert hasattr(result, "timestamp")
+        assert hasattr(result, "success")
+        assert hasattr(result, "filename")
+        assert hasattr(result, "session_id")
+        assert hasattr(result, "append_dir")
+        assert hasattr(result, "timestamp")
 
     def test_append_result_to_dict(self):
         """Test converting AppendResult to dictionary.
@@ -525,21 +527,20 @@ class TestAppendResult:
         - Should have to_dict() method or be dict-serializable
         - Should include all relevant information
         """
-        with pytest.raises((TypeError, AttributeError, NameError)):
-            result = AppendResult(
-                success=True,
-                filename="test.md",
-                session_id="auto_claude_123",
-                append_dir=Path("/tmp"),
-                timestamp="20241023_120000",
-            )
+        result = AppendResult(
+            success=True,
+            filename="test.md",
+            session_id="auto_claude_123",
+            append_dir=Path("/tmp"),
+            timestamp="20241023_120000",
+        )
 
-            result_dict = result.to_dict() if hasattr(result, "to_dict") else dict(result)
+        result_dict = result.to_dict() if hasattr(result, "to_dict") else dict(result)
 
-            assert isinstance(result_dict, dict)
-            assert "success" in result_dict
-            assert "filename" in result_dict
-            assert "session_id" in result_dict
+        assert isinstance(result_dict, dict)
+        assert "success" in result_dict
+        assert "filename" in result_dict
+        assert "session_id" in result_dict
 
 
 class TestCLIIntegration:

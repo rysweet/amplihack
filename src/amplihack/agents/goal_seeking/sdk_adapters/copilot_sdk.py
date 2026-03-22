@@ -16,6 +16,7 @@ import asyncio
 import json
 import logging
 import os
+import sys
 import types
 from pathlib import Path
 from typing import Any, Self
@@ -43,7 +44,7 @@ try:
 
     HAS_COPILOT_SDK = True
 except ImportError:
-    pass  # Checked in CopilotGoalSeekingAgent.__init__
+    print("WARNING: copilot SDK not available", file=sys.stderr)
 
 
 def _make_tool_handler(agent_tool: AgentTool):

@@ -12,18 +12,24 @@ Tests cover:
 
 import subprocess
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from unittest.mock import Mock, patch
+
+import requests
 
 from amplihack.auto_update import (
     UpdateCache,
     UpdateCheckResult,
     _compare_versions,
     _fetch_latest_version,
+    _find_rust_cli,
     _load_cache,
+    _restart_cli,
     _run_upgrade,
     _save_cache,
     check_for_updates,
     prompt_and_upgrade,
+    run_update_command,
 )
 
 
@@ -239,7 +245,8 @@ class TestFetchLatestVersion:
     @patch("amplihack.auto_update.requests")
     def test_fetch_timeout(self, mock_requests):
         """Should return None on timeout."""
-        mock_requests.get.side_effect = mock_requests.Timeout("Timeout")
+        mock_requests.Timeout = requests.Timeout
+        mock_requests.get.side_effect = requests.Timeout("Timeout")
 
         result = _fetch_latest_version(timeout=5)
 
@@ -248,7 +255,9 @@ class TestFetchLatestVersion:
     @patch("amplihack.auto_update.requests")
     def test_fetch_network_error(self, mock_requests):
         """Should return None on network errors."""
-        mock_requests.get.side_effect = mock_requests.RequestException("Network error")
+        mock_requests.Timeout = requests.Timeout
+        mock_requests.RequestException = requests.RequestException
+        mock_requests.get.side_effect = requests.RequestException("Network error")
 
         result = _fetch_latest_version(timeout=5)
 
@@ -618,3 +627,94 @@ class TestIntegration:
 
         # Only one API call despite two check_for_updates calls
         assert mock_fetch.call_count == 1
+
+
+class TestManualUpdateCommand:
+    """Tests for explicit `amplihack update` handling."""
+
+    def test_find_rust_cli_prefers_local_bin(self, tmp_path):
+        local_bin = tmp_path / ".local" / "bin"
+        cargo_bin = tmp_path / ".cargo" / "bin"
+        local_bin.mkdir(parents=True)
+        cargo_bin.mkdir(parents=True)
+
+        local_cli = local_bin / "amplihack"
+        cargo_cli = cargo_bin / "amplihack"
+        local_cli.write_text("")
+        cargo_cli.write_text("")
+
+        with (
+            patch("amplihack.auto_update.Path.home", return_value=tmp_path),
+            patch("amplihack.auto_update._current_cli_path", return_value=None),
+        ):
+            assert _find_rust_cli() == local_cli.resolve()
+
+    @patch("amplihack.auto_update.subprocess.run")
+    def test_run_update_command_delegates_to_rust_cli(self, mock_run, tmp_path, capsys):
+        cargo_bin = tmp_path / ".cargo" / "bin"
+        cargo_bin.mkdir(parents=True)
+        rust_cli = cargo_bin / "amplihack"
+        rust_cli.write_text("")
+        mock_run.return_value = Mock(returncode=0)
+
+        with (
+            patch("amplihack.auto_update.Path.home", return_value=tmp_path),
+            patch("amplihack.auto_update._current_cli_path", return_value=None),
+        ):
+            result = run_update_command()
+
+        assert result == 0
+        mock_run.assert_called_once_with(
+            [str(rust_cli.resolve()), "update"],
+            check=False,
+            timeout=300,
+        )
+        captured = capsys.readouterr()
+        assert str(rust_cli.resolve()) in captured.out
+
+    @patch("amplihack.auto_update.subprocess.run")
+    def test_run_update_command_timeout_returns_error(self, mock_run, tmp_path, capsys):
+        cargo_bin = tmp_path / ".cargo" / "bin"
+        cargo_bin.mkdir(parents=True)
+        rust_cli = cargo_bin / "amplihack"
+        rust_cli.write_text("")
+        mock_run.side_effect = subprocess.TimeoutExpired(cmd=["amplihack", "update"], timeout=300)
+
+        with (
+            patch("amplihack.auto_update.Path.home", return_value=tmp_path),
+            patch("amplihack.auto_update._current_cli_path", return_value=None),
+        ):
+            result = run_update_command()
+
+        assert result == 1
+
+    def test_run_update_command_falls_back_to_python_upgrade(self, capsys):
+        with (
+            patch("amplihack.auto_update._find_rust_cli", return_value=None),
+            patch("amplihack.auto_update._run_upgrade", return_value=True),
+        ):
+            result = run_update_command()
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "Updated Python amplihack." in captured.out
+
+
+class TestRestartCli:
+    """Tests for CLI restart behavior after Python upgrades."""
+
+    @patch("amplihack.auto_update.subprocess.Popen")
+    def test_restart_cli_uses_current_cli_path(self, mock_popen):
+        with (
+            patch("amplihack.auto_update._current_cli_path", return_value=Path("/tmp/amplihack")),
+            patch("amplihack.auto_update.sys.exit", side_effect=SystemExit(0)),
+        ):
+            try:
+                _restart_cli(["claude"])
+            except SystemExit as exc:
+                assert exc.code == 0
+
+        mock_popen.assert_called_once_with(
+            ["/tmp/amplihack", "claude"],
+            start_new_session=True,
+        )

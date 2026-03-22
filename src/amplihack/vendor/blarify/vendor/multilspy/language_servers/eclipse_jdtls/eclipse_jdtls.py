@@ -10,6 +10,7 @@ import os
 import pathlib
 import shutil
 import stat
+import sys
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -215,7 +216,8 @@ class EclipseJDTLS(LanguageServer):
                 logger, dependency["url"], vscode_java_path, dependency["archiveType"]
             )
 
-        os.chmod(jre_path, stat.S_IEXEC)
+        if sys.platform != "win32":
+            os.chmod(jre_path, stat.S_IEXEC)
 
         assert os.path.exists(vscode_java_path)
         assert os.path.exists(jre_home_path)

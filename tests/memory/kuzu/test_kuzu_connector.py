@@ -10,6 +10,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+pytest.importorskip("kuzu")
+
 
 class TestKuzuConnectorImport:
     """Test module import behavior."""

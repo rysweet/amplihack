@@ -1,0 +1,112 @@
+digraph api_contracts {
+    rankdir=TD;
+    node [shape=record, fontname="Helvetica", fontsize=10];
+    edge [fontname="Helvetica", fontsize=9];
+
+    // Entry point
+    main [label="{amplihack CLI|main() entry point|parse_args_with_passthrough()}"];
+
+    // Management commands
+    subgraph cluster_mgmt {
+        label="Management Commands";
+        style=filled; fillcolor="#dfe6e9";
+        install [label="{install|copytree_manifest to ~/.claude}"];
+        uninstall [label="{uninstall|Remove from ~/.claude}"];
+        update [label="{update|Delegate to Rust CLI}"];
+        version [label="{version|Show version string}"];
+        local_install [label="{_local_install|repo_root arg}"];
+    }
+
+    // SDK launcher commands
+    subgraph cluster_sdk {
+        label="SDK Launcher Commands";
+        style=filled; fillcolor="#b2f2bb";
+        launch [label="{launch|--with-proxy-config PATH\l--builtin-proxy\l--checkout-repo URI\l--docker\l--auto / --max-turns N\l--append PROMPT\l--ui\l--no-reflection\l--subprocess-safe}"];
+        claude [label="{claude|alias for launch}"];
+        rustyclawd [label="{RustyClawd|Rust implementation}"];
+        copilot [label="{copilot|GitHub Copilot CLI}"];
+        codex [label="{codex|OpenAI Codex CLI}"];
+        amplifier [label="{amplifier|MS Amplifier}"];
+    }
+
+    // Plugin commands
+    subgraph cluster_plugin {
+        label="Plugin Commands";
+        style=filled; fillcolor="#d0bfff";
+        p_install [label="{plugin install|source: git URL or path\l--force}"];
+        p_uninstall [label="{plugin uninstall|plugin_name}"];
+        p_link [label="{plugin link|[plugin_name]}"];
+        p_verify [label="{plugin verify|[plugin_name]}"];
+    }
+
+    // Memory commands
+    subgraph cluster_memory {
+        label="Memory Commands";
+        style=filled; fillcolor="#ffd8a8";
+        m_tree [label="{memory tree|--session ID\l--type TYPE\l--depth N\l--backend kuzu/sqlite}"];
+        m_export [label="{memory export|--agent NAME\l-o PATH\l-f json/kuzu}"];
+        m_import [label="{memory import|--agent NAME\l-i PATH\l--merge}"];
+        m_clean [label="{memory clean|--pattern GLOB\l--no-dry-run\l--confirm}"];
+    }
+
+    // Recipe commands
+    subgraph cluster_recipe {
+        label="Recipe Commands";
+        style=filled; fillcolor="#fff3bf";
+        r_run [label="{recipe run|recipe_path\l-c KEY=VALUE\l--dry-run\l-v / -f FORMAT\l-w DIR}"];
+        r_list [label="{recipe list|[recipe_dir]\l-f FORMAT\l-t TAG}"];
+        r_validate [label="{recipe validate|recipe_path}"];
+        r_show [label="{recipe show|recipe_path\l--no-steps --no-context}"];
+    }
+
+    // Other commands
+    subgraph cluster_other {
+        label="Other Commands";
+        style=filled; fillcolor="#e9ecef";
+        new_cmd [label="{new|--file PATH\l--output DIR\l--name NAME\l--sdk TYPE\l--multi-agent\l--enable-spawning\l--enable-memory}"];
+        mode [label="{mode|detect / to-plugin / to-local}"];
+        fleet [label="{fleet|delegates to Click CLI}"];
+        uvx_help [label="{uvx-help|--find-path / --info}"];
+    }
+
+    // Hooks
+    subgraph cluster_hooks {
+        label="Hook Events";
+        style=filled; fillcolor="#ffc9c9";
+        stop_hook [label="{stop hook|session end cleanup}"];
+        xpia_hook [label="{XPIA hook|web fetch defense}"];
+    }
+
+    // Edges
+    main -> install;
+    main -> uninstall;
+    main -> update;
+    main -> version;
+    main -> local_install;
+    main -> launch;
+    main -> claude;
+    main -> rustyclawd;
+    main -> copilot;
+    main -> codex;
+    main -> amplifier;
+    main -> p_install;
+    main -> p_uninstall;
+    main -> p_link;
+    main -> p_verify;
+    main -> m_tree;
+    main -> m_export;
+    main -> m_import;
+    main -> m_clean;
+    main -> r_run;
+    main -> r_list;
+    main -> r_validate;
+    main -> r_show;
+    main -> new_cmd;
+    main -> mode;
+    main -> fleet;
+    main -> uvx_help;
+
+    claude -> launch [style=dashed, label="alias"];
+    launch -> stop_hook [style=dotted, label="on exit"];
+    launch -> xpia_hook [style=dotted, label="web fetch"];
+}

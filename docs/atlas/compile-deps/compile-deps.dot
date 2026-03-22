@@ -1,0 +1,122 @@
+digraph compile_deps {
+    rankdir=TD;
+    fontname="Helvetica";
+    node [fontname="Helvetica", fontsize=10, shape=box, style="rounded,filled"];
+    edge [fontsize=9];
+    compound=true;
+
+    subgraph cluster_external {
+        label="External Dependencies (pyproject.toml)";
+        style="dashed";
+        color="#999999";
+        node [fillcolor="#e8f4fd"];
+
+        flask [label="flask >=2.0"];
+        requests [label="requests >=2.32.4"];
+        fastapi [label="fastapi >=0.68"];
+        uvicorn [label="uvicorn >=0.15"];
+        aiohttp [label="aiohttp >=3.8"];
+        litellm [label="litellm >=1.0"];
+        dotenv [label="python-dotenv >=0.19"];
+        claude_sdk [label="claude-agent-sdk >=0.1"];
+        copilot_sdk [label="github-copilot-sdk >=0.1"];
+        rich [label="rich >=13.0"];
+        azure_id [label="azure-identity >=1.12"];
+        kuzu [label="kuzu >=0.11"];
+        memory_lib [label="amplihack-memory-lib\n@git v0.2.0"];
+        agent_eval [label="amplihack-agent-eval\n@git main"];
+        tree_sitter [label="tree-sitter >=0.23\n+ 7 language grammars"];
+        langchain [label="langchain >=1.2.3\n+ openai/anthropic/google"];
+        psutil [label="psutil >=7.0"];
+        protobuf [label="protobuf >=5.29"];
+        falkordb [label="falkordb >=1.0"];
+        neo4j [label="neo4j >=5.25"];
+        jedi_lsp [label="jedi-language-server >=0.43"];
+        docker_py [label="docker >=7.1"];
+        packaging [label="packaging >=21.0"];
+    }
+
+    subgraph cluster_internal {
+        label="Internal Package Import Graph";
+        style="filled";
+        fillcolor="#f5f5f5";
+        node [fillcolor="#c8e6c9"];
+
+        cli [label="cli"];
+        launcher [label="launcher"];
+        proxy [label="proxy"];
+        fleet [label="fleet"];
+        recipes [label="recipes"];
+        recipe_cli [label="recipe_cli"];
+        bundle [label="bundle_generator"];
+        eval_pkg [label="eval"];
+        knowledge [label="knowledge_builder"];
+        memory [label="memory"];
+        security [label="security"];
+        utils [label="utils"];
+        settings [label="settings"];
+        hooks [label="hooks"];
+        vendor [label="vendor/blarify"];
+        uvx [label="uvx"];
+        docker_int [label="docker"];
+        lsp [label="lsp_detector"];
+        context [label="context"];
+        workflows [label="workflows"];
+        plugin [label="plugin_manager"];
+        safety [label="safety"];
+        tracing [label="tracing"];
+    }
+
+    // Internal imports
+    cli -> launcher [label="imports"];
+    cli -> proxy [label="imports"];
+    cli -> fleet [label="imports"];
+    cli -> recipes [label="imports"];
+    cli -> bundle [label="imports"];
+    cli -> plugin [label="imports"];
+    cli -> eval_pkg [label="imports"];
+    cli -> settings [label="imports"];
+    cli -> uvx [label="imports"];
+    cli -> docker_int [label="imports"];
+    cli -> security [label="imports"];
+
+    recipe_cli -> recipes [label="imports"];
+    launcher -> hooks [label="imports"];
+    eval_pkg -> knowledge [label="imports"];
+
+<<<<<<< HEAD
+=======
+    // Intra-package: recipes/rust_runner -> recipes/discovery
+    subgraph cluster_recipes_internal {
+        label="recipes (intra-package)";
+        style="dotted";
+        color="#6666aa";
+        node [fillcolor="#d4e8d4"];
+        rust_runner [label="rust_runner.py"];
+        discovery [label="discovery.py"];
+    }
+    rust_runner -> discovery [label="imports\n_AMPLIHACK_HOME_BUNDLE_DIR", style=solid, color="#6666aa"];
+
+>>>>>>> origin/main
+    // External dependency edges
+    proxy -> flask [style=dashed, label="web server"];
+    proxy -> aiohttp [style=dashed, label="async HTTP"];
+    proxy -> litellm [style=dashed, label="LLM routing"];
+    launcher -> claude_sdk [style=dashed, label="agent SDK"];
+    launcher -> rich [style=dashed, label="TUI"];
+    fleet -> rich [style=dashed, label="TUI"];
+    vendor -> tree_sitter [style=dashed, label="parsing"];
+    vendor -> langchain [style=dashed, label="LLM agents"];
+    vendor -> falkordb [style=dashed, label="graph DB"];
+    vendor -> neo4j [style=dashed, label="graph DB"];
+    memory -> kuzu [style=dashed, label="embedded graph"];
+    memory -> memory_lib [style=dashed, label="memory system"];
+    eval_pkg -> agent_eval [style=dashed, label="eval framework"];
+    bundle -> packaging [style=dashed, label="version compare"];
+    docker_int -> docker_py [style=dashed, label="Docker API"];
+    lsp -> jedi_lsp [style=dashed, label="Python LSP"];
+
+    // Circular dep note
+    node [shape=note, fillcolor="#fff9c4", style="filled"];
+    circ_note [label="No circular cross-package\nimports detected.\nvendor/blarify is self-contained."];
+}

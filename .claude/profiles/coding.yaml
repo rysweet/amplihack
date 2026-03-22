@@ -42,6 +42,7 @@ components:
       - "creative"
       - "research"
     include:
+      - "qa-team"
       - "outside-in-testing"
       - "design-patterns-expert"
 

@@ -127,11 +127,18 @@ Do NOT merge automatically - wait for:
 
 ### State Machine
 
-```
-PUSHED → CHECKING → FAILING → FIXING → PUSHING → CHECKING → ...
-                                  ↑_______________|
-                    ↓
-                  PASSED → MERGEABLE → WAITING_FOR_USER
+```mermaid
+stateDiagram-v2
+    [*] --> PUSHED
+    PUSHED --> CHECKING
+    CHECKING --> FAILING : checks failed
+    CHECKING --> PASSED : all checks green
+    FAILING --> FIXING : diagnose failures
+    FIXING --> PUSHING : fixes applied
+    PUSHING --> CHECKING : re-run CI
+    PASSED --> MERGEABLE
+    MERGEABLE --> WAITING_FOR_USER
+    WAITING_FOR_USER --> [*]
 ```
 
 ### State Definitions

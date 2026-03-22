@@ -27,6 +27,7 @@ import logging
 import os
 import re
 import shutil
+import sys
 import tempfile
 import time
 import uuid
@@ -51,16 +52,19 @@ try:
     import yaml
 except ImportError:
     yaml = None  # type: ignore[assignment]
+    print("WARNING: yaml not available", file=sys.stderr)
 
 try:
     from amplihack_memory.cognitive_memory import CognitiveMemory
 except ImportError:
     CognitiveMemory = None  # type: ignore[assignment,misc]
+    print("WARNING: amplihack_memory.cognitive_memory not available", file=sys.stderr)
 
 try:
     from amplihack_memory.graph import KuzuGraphStore
 except ImportError:
     KuzuGraphStore = None  # type: ignore[assignment,misc]
+    print("WARNING: amplihack_memory.graph.KuzuGraphStore not available", file=sys.stderr)
 
 try:
     from .distributed import (
@@ -72,12 +76,14 @@ except ImportError:
     AgentNode = None  # type: ignore[assignment,misc]
     HiveCoordinator = None  # type: ignore[assignment,misc]
     _make_sized_cognitive_memory = None  # type: ignore[assignment]
+    print("WARNING: hive_mind.distributed not available", file=sys.stderr)
 
 try:
     from .event_bus import LocalEventBus, create_event_bus
 except ImportError:
     LocalEventBus = None  # type: ignore[assignment,misc]
     create_event_bus = None  # type: ignore[assignment]
+    print("WARNING: hive_mind.event_bus not available", file=sys.stderr)
 
 
 # ---------------------------------------------------------------------------

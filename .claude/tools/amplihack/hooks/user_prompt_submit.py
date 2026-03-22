@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 try:
     from amplihack.utils.paths import FrameworkPathResolver
 except ImportError:
+    print("WARNING: FrameworkPathResolver not available - using fallback path resolution", file=sys.stderr)
     FrameworkPathResolver = None
 
 
@@ -436,7 +437,8 @@ class UserPromptSubmitHook(HookProcessor):
             return ClaudeStrategy(self.project_root, self.log)
 
         except ImportError as e:
-            self.log(f"Adaptive strategy not available: {e}", "DEBUG")
+            self.log(f"Adaptive strategy not available: {e}", "WARNING")
+            print(f"WARNING: Adaptive strategy not available: {e}", file=sys.stderr)
             return None
 
 

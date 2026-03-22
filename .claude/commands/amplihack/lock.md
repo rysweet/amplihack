@@ -1,83 +1,83 @@
 ---
 name: lock
-version: 1.0.0
-description: Enable continuous work mode without stopping
+version: 3.0.0
+description: Enable autonomous co-pilot mode — agent formulates goal and works until done
 triggers:
   - "Enable continuous work mode"
   - "Work autonomously"
   - "Don't stop until done"
   - "Keep working through all tasks"
+  - "Work toward this goal"
 ---
 
-# Lock: Enable Continuous Work Mode
+# Lock: Autonomous Co-Pilot Mode
 
-**Purpose**: Enable continuous work mode to prevent Claude from stopping until explicitly unlocked.
-
-**Usage**: `amplihack:lock [optional lock message]`
-
-When locked, Claude will:
-
-- use the Bash tool to run the amplihack lock tool:,
-
-**Basic usage (default continuation prompt):**
-
-```bash
-python .claude/tools/amplihack/lock_tool.py lock
-```
-
-**With custom instruction:**
-
-```bash
-python .claude/tools/amplihack/lock_tool.py lock --message "Focus on security fixes first"
-```
-
-- Continue working through all TODOs and next steps
-- Block stop attempts and keep pursuing the user's objective
-- Look for additional work and execute in parallel
-- Not stop until `/amplihack:unlock` is run
-
-Use this mode when you want Claude to work autonomously through a complex task without stopping.
-
-## Custom Continuation Messages
-
-The optional message a user can supply on the /amplihack:lock command will be passed to the lock tool with the `--message` flag and allows you to provide a custom instruction that Claude sees when attempting to stop.
-This enables:
-
-- Task-specific guidance
-- Context about what to prioritize
-- Domain-specific instructions
-- Direction for autonomous work
-
-**Example custom messages:**
-
-```
-"Focus on security fixes first, then performance optimizations"
-"Check all API endpoints for authentication issues"
-"Run full test suite after each change"
-"When condition X is met, you may remove the lock file."
-```
-
-**Note**: Messages are limited to 1000 characters. Messages over 500 characters will show a warning.
-
----
+**Purpose**: Enable autonomous co-pilot mode. The agent formulates a goal from the user's natural language, defines what "done" looks like, and works until the goal is achieved or it needs human help.
 
 ## Instructions
 
-Use the Bash tool to run the lock tool:
+When the user invokes this command:
 
-**Basic usage (default continuation prompt):**
+### Step 1: Formulate the goal
+
+Read the user's message. From their natural language, formulate:
+
+1. **Goal**: A clear, specific objective statement
+2. **Definition of Done**: Concrete criteria for when the goal is achieved (e.g. "tests pass", "PR created", "file exists with X content")
+
+Write both to the goal file as a single document:
+
+```bash
+mkdir -p .claude/runtime/locks
+```
+
+Then use the Write tool to create `.claude/runtime/locks/.lock_goal` with content like:
+
+```
+Goal: [clear objective from user's words]
+
+Definition of Done:
+- [concrete criterion 1]
+- [concrete criterion 2]
+- [concrete criterion 3]
+```
+
+### Step 2: Enable lock
 
 ```bash
 python .claude/tools/amplihack/lock_tool.py lock
 ```
 
-**With custom instruction:**
+### Step 3: Begin working
 
-```bash
-python .claude/tools/amplihack/lock_tool.py lock --message "Focus on security fixes first"
-```
+Immediately start working toward the goal. Do not ask for confirmation. The LockModeHook will use SessionCopilot to monitor progress and provide guidance on each turn.
 
-**Lock files:**
+## How it works
 
-- Lock flag: `~/.amplihack/.claude/runtime/locks/.lock_active`
-- Custom message: `~/.amplihack/.claude/runtime/locks/.lock_message`
+1. The hook fires on every `provider:request` event
+2. SessionCopilot reads the session transcript and reasons about progress
+3. If the agent is working — no intervention
+4. If the agent is idle — injects specific next-step guidance
+5. If the goal is achieved — auto-disables lock mode
+6. If stuck — auto-disables and escalates to the user
+
+## Disabling
+
+Lock mode auto-disables when:
+- Goal is achieved (`mark_complete`)
+- Co-pilot needs human help (`escalate`)
+- User runs `/amplihack:unlock`
+
+## Examples
+
+User says: "fix the auth bug and make sure tests pass"
+→ Agent writes goal: "Fix the authentication bug. Definition of Done: auth tests pass, no regressions in test suite."
+→ Agent enables lock, starts working.
+
+User says: "implement OAuth2 login and create a PR"
+→ Agent writes goal: "Implement OAuth2 login flow. Definition of Done: OAuth2 endpoint works, tests cover happy path and error cases, PR created on GitHub."
+→ Agent enables lock, starts working.
+
+User says: "keep going"
+→ Agent writes goal: "Continue working on the current task until all pending items are complete. Definition of Done: all TODO items resolved, tests pass."
+→ Agent enables lock, continues.

@@ -1,0 +1,83 @@
+# Outside-in test for /top5 with configured sources
+# Validates generate_top5.py queries GitHub when sources.yaml is provided,
+# produces ranked output with score breakdown and source attribution.
+
+scenario:
+  name: "Top 5 Priorities - GitHub Source Aggregation"
+  description: |
+    Verifies that generate_top5.py correctly reads a sources.yaml config,
+    queries GitHub for issues and PRs, aggregates scores, and returns
+    a ranked list with proper source attribution and metadata.
+    Requires gh CLI authenticated with at least one account.
+  type: cli
+  level: 2
+  tags: [cli, integration, top5, pm-architect, github]
+
+  prerequisites:
+    - "Python 3.11+ is available"
+    - "PyYAML is installed"
+    - "gh CLI is authenticated"
+    - "Network access to GitHub API"
+
+  environment:
+    variables:
+      GH_PAGER: ""
+
+  steps:
+    # Setup: create a minimal sources.yaml pointing to a known public repo
+    - action: launch
+      target: "bash"
+      args:
+        - "-c"
+        - |
+          TMPDIR=$(mktemp -d) &&
+          mkdir -p "$TMPDIR/.pm" &&
+          cat > "$TMPDIR/.pm/sources.yaml" << 'SOURCES'
+          github:
+            - account: rysweet
+              repos:
+                - amplihack
+          SOURCES
+          python .claude/skills/pm-architect/scripts/generate_top5.py --project-root "$TMPDIR" --sources "$TMPDIR/.pm/sources.yaml"
+      description: "Run generate_top5.py with sources pointing to amplihack repo"
+      timeout: 45s
+
+    # Verify JSON structure
+    - action: verify_output
+      contains: '"top5"'
+      timeout: 5s
+      description: "Output has top5 array"
+
+    - action: verify_output
+      contains: '"github_issues"'
+      description: "Sources breakdown includes github_issues count"
+
+    - action: verify_output
+      contains: '"github_prs"'
+      description: "Sources breakdown includes github_prs count"
+
+    - action: verify_output
+      contains: '"accounts"'
+      description: "Sources breakdown includes accounts queried"
+
+    # Verify ranked items have required fields
+    - action: verify_output
+      matches: '"score":\\s*[0-9]'
+      description: "Items have numeric scores"
+
+    - action: verify_output
+      matches: '"source":\\s*"github_(issue|pr)"'
+      description: "Items have source attribution"
+
+    - action: verify_output
+      matches: '"rationale":'
+      description: "Items include rationale text"
+
+    - action: verify_exit_code
+      expected: 0
+      description: "Script exits cleanly"
+
+  cleanup:
+    - action: stop_application
+      force: true
+      description: "Ensure process is terminated"

@@ -5,8 +5,7 @@ backend-path = ["."]
 
 [project]
 name = "amplihack"
-
-version = "0.5.115"
+version = "0.6.94"
 description = "Amplifier bundle for agentic coding with comprehensive skills, recipes, and workflows"
 requires-python = ">=3.11"
 dependencies = [
@@ -18,15 +17,17 @@ dependencies = [
     "litellm>=1.0.0",
     "python-dotenv>=0.19.0",
 
-    # agent-framework is optional because it requires pre-release Azure deps
+    # agent-framework-core is optional because it requires pre-release Azure deps
     # that break uv/uvx resolution in fresh environments. Installed at startup
     # via dep_check.ensure_sdk_deps() which targets the running interpreter.
+    # NOTE: Use agent-framework-core (not the meta-package agent-framework) to
+    # avoid pulling 20+ optional sub-packages with heavy transitive deps.
     "claude-agent-sdk>=0.1.0", # Claude Python Agent SDK for auto mode streaming
     "github-copilot-sdk>=0.1.0", # GitHub Copilot SDK for embedding Copilot in applications
     "rich>=13.0.0", # Required for --ui interactive TUI mode
     "azure-identity>=1.12.0", # Azure Service Principal authentication for remote execution
     "kuzu>=0.11.0", # Embedded graph database for memory system
-    "amplihack-memory-lib @ git+https://github.com/rysweet/amplihack-memory-lib.git@30e614b1eec307b525b5e2f9a94e805eb6988fc4", # Pinned installable memory-lib main for reproducible local/Docker/Azure builds
+    "amplihack-memory-lib @ git+https://github.com/rysweet/amplihack-memory-lib.git@v0.2.0", # Standalone memory system with CognitiveMemory 6-type system
 
     # Blarify vendored code dependencies (using vendored copy in src/amplihack/vendor/blarify, not PyPI package)
     "json-repair>=0.47.7", # JSON repair for blarify LLM provider
@@ -44,7 +45,7 @@ dependencies = [
     "tree-sitter-php>=0.23.4", # PHP grammar
     "tree-sitter-ruby>=0.23.0", # Ruby grammar
     "psutil>=7.0.0", # Process utilities for blarify
-    "protobuf>=5.29.0", # Protobuf for SCIP index format (relaxed for agent-framework compat)
+    "protobuf>=5.29.0", # Protobuf for SCIP index format (relaxed for agent-framework-core compat)
     "typing-extensions>=4.12.2", # Backport for Python 3.10 (NotRequired, etc.)
     "falkordb>=1.0.10", # FalkorDB graph database (blarify vendored code imports)
     "neo4j>=5.25.0", # Neo4j graph database (blarify vendored code imports)
@@ -56,15 +57,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# agent-haymaker integration: WorkloadBase, EventData, ServiceBusEventBus, deploy_container_app
-haymaker = [
-    "agent-haymaker>=0.2.0",
-    "click>=8.1.0",
-    "azure-servicebus>=7.11.0",
-]
 # Microsoft Agent Framework requires pre-release Azure deps
 microsoft-sdk = [
-    "agent-framework>=1.0.0rc1",
+    "agent-framework-core>=1.0.0rc1",
     "opentelemetry-semantic-conventions-ai>=0.4.1,<0.4.14",
 ]
 # When running as an Amplifier bundle, hook modules need amplifier-core
@@ -112,15 +107,7 @@ blarify-all = [
 
 [project.scripts]
 amplihack = "amplihack:main"
-amplihack-hive = "amplihack.cli.hive:main"
-
-# Register HiveMindWorkload with agent-haymaker's workload discovery
-[project.entry-points."agent_haymaker.workloads"]
-hive-mind = "amplihack.workloads.hive:HiveMindWorkload"
-
-# Register hive CLI extension with agent-haymaker CLI
-[project.entry-points."agent_haymaker.cli_extensions"]
-hive = "amplihack.cli.hive_haymaker:hive_group"
+amplihack-rust-trial = "amplihack.rust_trial:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -212,7 +199,7 @@ filterwarnings = [
 ]
 
 [tool.uv]
-# agent-framework and its transitive deps (azure-ai-projects, sqlalchemy, etc.)
+# agent-framework-core and its transitive deps (azure-ai-projects, sqlalchemy, etc.)
 # are only published as pre-release versions. Allow them explicitly so that
 # `uv sync` works without --prerelease=allow.
 prerelease = "if-necessary-or-explicit"

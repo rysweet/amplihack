@@ -38,6 +38,7 @@ if _CLAUDE_HOOKS.exists():
     except ImportError as e:
         _IMPORT_ERROR = str(e)
         logger.warning(f"PowerSteeringHook: Import failed - {e}")
+        print(f"WARNING: power_steering_checker not available - power steering delegation disabled", file=sys.stderr)
 else:
     _IMPORT_ERROR = f"Claude hooks directory not found: {_CLAUDE_HOOKS}"
     logger.warning(_IMPORT_ERROR)
@@ -64,6 +65,7 @@ class PowerSteeringHook(Hook):
                     logger.info("PowerSteeringHook: Delegating to PowerSteeringChecker")
                 except ImportError as e:
                     logger.warning(f"PowerSteeringHook: Delegation failed - {e}")
+                    print(f"WARNING: power_steering_checker not available - checker delegation disabled", file=sys.stderr)
                     self._checker = None
             else:
                 logger.info(f"PowerSteeringHook: Checker not available ({_IMPORT_ERROR})")

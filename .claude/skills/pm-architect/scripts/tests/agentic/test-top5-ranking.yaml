@@ -1,0 +1,104 @@
+# Outside-in test for /top5 ranking correctness
+# Validates that output is strictly ranked by score descending,
+# limited to 5 items, and each item has a rank field 1-5.
+
+scenario:
+  name: "Top 5 Priorities - Ranking and Limit Enforcement"
+  description: |
+    Verifies that generate_top5.py returns exactly TOP_N (5) items,
+    ranked by descending score, with rank fields 1 through 5.
+    Uses local backlog with >5 items to verify the limit.
+  type: cli
+  level: 2
+  tags: [cli, integration, top5, pm-architect, ranking]
+
+  prerequisites:
+    - "Python 3.11+ is available"
+    - "PyYAML is installed"
+
+  steps:
+    # Setup: 7 local items to verify only top 5 are returned
+    - action: launch
+      target: "bash"
+      args:
+        - "-c"
+        - |
+          TMPDIR=$(mktemp -d) &&
+          mkdir -p "$TMPDIR/.pm/backlog" &&
+          cat > "$TMPDIR/.pm/backlog/items.yaml" << 'BACKLOG'
+          items:
+            - id: "item-1"
+              title: "Critical security fix"
+              status: "READY"
+              priority: "HIGH"
+              estimated_hours: 1
+            - id: "item-2"
+              title: "API rate limiting"
+              status: "READY"
+              priority: "HIGH"
+              estimated_hours: 2
+            - id: "item-3"
+              title: "Database migration"
+              status: "READY"
+              priority: "MEDIUM"
+              estimated_hours: 4
+            - id: "item-4"
+              title: "Update documentation"
+              status: "READY"
+              priority: "MEDIUM"
+              estimated_hours: 6
+            - id: "item-5"
+              title: "Add unit tests"
+              status: "READY"
+              priority: "MEDIUM"
+              estimated_hours: 3
+            - id: "item-6"
+              title: "Refactor config loader"
+              status: "READY"
+              priority: "LOW"
+              estimated_hours: 8
+            - id: "item-7"
+              title: "Add logging headers"
+              status: "READY"
+              priority: "LOW"
+              estimated_hours: 10
+          BACKLOG
+          cat > "$TMPDIR/.pm/sources.yaml" << 'SOURCES'
+          github: []
+          SOURCES
+          python .claude/skills/pm-architect/scripts/generate_top5.py --project-root "$TMPDIR" --sources "$TMPDIR/.pm/sources.yaml"
+      description: "Run with 7 local items to verify top-5 limit"
+      timeout: 15s
+
+    # Verify rank fields 1-5 exist
+    - action: verify_output
+      contains: '"rank": 1'
+      timeout: 5s
+      description: "First ranked item present"
+
+    - action: verify_output
+      contains: '"rank": 5'
+      description: "Fifth ranked item present"
+
+    # Verify rank 6 and 7 are NOT in output (limit enforced)
+    - action: verify_output
+      not_contains: '"rank": 6'
+      description: "No sixth rank (limit to 5)"
+
+    - action: verify_output
+      not_contains: '"rank": 7'
+      description: "No seventh rank (limit to 5)"
+
+    # Verify total_candidates reflects all 7 items considered
+    - action: verify_output
+      contains: '"total_candidates": 7'
+      description: "Total candidates count includes all 7 items"
+
+    - action: verify_exit_code
+      expected: 0
+      description: "Script exits cleanly"
+
+  cleanup:
+    - action: stop_application
+      force: true
+      description: "Ensure process is terminated"

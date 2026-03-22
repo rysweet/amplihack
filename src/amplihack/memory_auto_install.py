@@ -1,49 +1,48 @@
-"""Auto-installer for amplihack-memory-lib during startup."""
+"""Startup check for amplihack-memory-lib.
+
+amplihack-memory-lib is a mandatory dependency declared in pyproject.toml.
+pip/uv installs it automatically. This module verifies it is importable at
+CLI startup and fails loudly if the install is broken.
+
+No subprocess calls. No auto-install. The package manager handles installation.
+"""
+
+import sys
 
 
 def ensure_memory_lib_installed() -> bool:
-    """Ensure amplihack-memory-lib is installed, auto-install if missing.
+    """Verify amplihack-memory-lib is importable.
+
+    This is a startup prerequisite check, not an installer. The library is
+    declared as a mandatory dependency in pyproject.toml — the package manager
+    (pip, uv, etc.) installs it when amplihack is installed.
+
+    If the import fails, the installation is broken and we fail loudly with
+    actionable repair instructions.
 
     Returns:
-        bool: True if library is available (was installed or got installed)
+        True if the library is available.
+
+    Raises:
+        SystemExit: If the library cannot be imported (broken install).
     """
     try:
-        import amplihack_memory  # noqa: F401
+        import amplihack_memory  # type: ignore[import-untyped]  # noqa: F401
 
-        return True  # Already installed
+        return True
     except ImportError:
-        pass
-
-    # Not installed - auto-install
-    import subprocess
-    import sys
-
-    print("📦 Installing amplihack-memory-lib (required for learning agents)...")
-
-    try:
-        result = subprocess.run(
-            [
-                sys.executable,
-                "-m",
-                "pip",
-                "install",
-                "git+https://github.com/rysweet/amplihack-memory-lib.git@v0.1.0",
-                "--quiet",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=120,
-        )
-
-        if result.returncode == 0:
-            print("✅ amplihack-memory-lib installed successfully")
-            return True
-        print(f"⚠️ Auto-install failed: {result.stderr}")
         print(
-            "   Install manually: pip install git+https://github.com/rysweet/amplihack-memory-lib.git@v0.1.0"
+            "ERROR: amplihack-memory-lib is not importable.\n"
+            "\n"
+            "This is a required dependency that should have been installed\n"
+            "automatically. Your installation may be broken.\n"
+            "\n"
+            "Repair with:\n"
+            "  pip install --force-reinstall amplihack\n"
+            "  # or:\n"
+            "  pip install amplihack-memory-lib\n",
+            file=sys.stderr,
         )
-        return False
-
-    except Exception as e:
-        print(f"⚠️ Could not auto-install: {e}")
+        # Return False instead of sys.exit so the CLI can still start
+        # for commands that don't need memory (e.g. --help, version).
         return False

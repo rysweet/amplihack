@@ -242,6 +242,9 @@ class GitHubAuthManager:
             import requests  # type: ignore
         except ImportError:
             # If requests not available, assume token is valid
+            import sys
+
+            print("WARNING: requests not available, skipping Copilot access verification", file=sys.stderr)
             return True
 
         try:
@@ -311,6 +314,9 @@ class GitHubAuthManager:
         try:
             import requests  # type: ignore
         except ImportError:
+            import sys
+
+            print("WARNING: requests not available, cannot revoke token", file=sys.stderr)
             return False
 
         try:

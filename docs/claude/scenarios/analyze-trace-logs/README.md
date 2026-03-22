@@ -1,10 +1,10 @@
 # Analyze Trace Logs
 
-Comprehensive trace log analysis tool that extracts user preference patterns from claude-trace JSONL logs.
+Comprehensive trace log analysis tool that extracts user preference patterns from amplihack trace JSONL logs.
 
 ## Overview
 
-The Analyze Trace Logs tool analyzes claude-trace conversation logs to identify user communication patterns, preferences, and common request types. This data helps calibrate AI agent behavior and improve user experience.
+The Analyze Trace Logs tool analyzes amplihack trace conversation logs to identify user communication patterns, preferences, and common request types. This data helps calibrate AI agent behavior and improve user experience.
 
 ### Problem Statement
 
@@ -19,7 +19,7 @@ However, manually reviewing thousands of conversation logs is impractical.
 
 ### Solution Approach
 
-This tool automatically analyzes claude-trace JSONL logs to extract:
+This tool automatically analyzes trace JSONL logs to extract:
 
 - Request categorization (fix/debug, implement, testing, etc.)
 - Task verb frequency (fix, create, analyze, etc.)
@@ -37,7 +37,7 @@ This tool automatically analyzes claude-trace JSONL logs to extract:
 ## Prerequisites
 
 - Python 3.8+
-- claude-trace JSONL logs in `.claude-trace/` directory
+- Trace JSONL logs in `.claude/runtime/amplihack-traces/` directory
 - amplihack framework installed
 
 ## Installation
@@ -54,7 +54,7 @@ This tool automatically analyzes claude-trace JSONL logs to extract:
 make analyze-trace-logs
 ```
 
-This analyzes the 15 most recent trace logs in `.claude-trace/` and generates a report at `~/.amplihack/.claude/runtime/TRACE_LOG_ANALYSIS.md`.
+This analyzes the 15 most recent trace logs in `.claude/runtime/amplihack-traces/` and generates a report at `~/.amplihack/.claude/runtime/TRACE_LOG_ANALYSIS.md`.
 
 ### Specify Custom Log Directory
 
@@ -92,7 +92,7 @@ python .claude/scenarios/analyze-trace-logs/tool.py --sample-size 20 --output re
 
 | Parameter     | Description                       | Default                               | Required |
 | ------------- | --------------------------------- | ------------------------------------- | -------- |
-| log_dir       | Directory containing JSONL logs   | .claude-trace                         | no       |
+| log_dir       | Directory containing JSONL logs   | .claude/runtime/amplihack-traces      | no       |
 | --sample-size | Number of recent files to analyze | 15                                    | no       |
 | --output      | Output report path                | .claude/runtime/TRACE_LOG_ANALYSIS.md | no       |
 
@@ -108,7 +108,7 @@ make analyze-trace-logs
 
 ```
 ================================================================================
-Claude-Trace Log Analysis
+Trace Log Analysis
 ================================================================================
 
 Found 47 non-empty JSONL files
@@ -217,7 +217,7 @@ The tool generates a comprehensive markdown report with these sections:
 ## Report Example Snippet
 
 ```markdown
-# Claude-Trace Log Analysis Report
+# Trace Log Analysis Report
 
 ## Executive Summary
 
@@ -304,7 +304,7 @@ None required. Tool uses standard Python libraries.
 
 ### File Locations
 
-- **Input**: `.claude-trace/*.jsonl` (default)
+- **Input**: `.claude/runtime/amplihack-traces/*.jsonl` (default)
 - **Output**: `~/.amplihack/.claude/runtime/TRACE_LOG_ANALYSIS.md` (default)
 
 ## Troubleshooting
@@ -312,7 +312,7 @@ None required. Tool uses standard Python libraries.
 ### Common Issues
 
 **Issue**: No JSONL files found
-**Solution**: Ensure claude-trace is enabled and generating logs
+**Solution**: Ensure trace logging is enabled (`AMPLIHACK_TRACE_LOGGING=true`) and generating logs
 
 **Issue**: Parsing errors in logs
 **Solution**: Tool automatically skips malformed JSON lines with warnings

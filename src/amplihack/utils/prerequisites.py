@@ -38,6 +38,8 @@ from pathlib import Path
 try:
     from .claude_cli import get_claude_cli_path
 except ImportError:
+    print("WARNING: claude_cli module not available, using fallback", file=sys.stderr)
+
     # Fallback if import fails
     def get_claude_cli_path(auto_install: bool = True) -> str | None:
         return None
@@ -267,15 +269,22 @@ class InteractiveInstaller:
         print("  - Modify system packages or configuration")
         print(f"\n{'=' * 70}\n")
 
-        while True:
-            response = (
-                input(f"Do you want to proceed with installing {tool}? [y/N]: ").strip().lower()
-            )
+        max_attempts = 5  # Prevent infinite loop
+        for _ in range(max_attempts):
+            try:
+                response = (
+                    input(f"Do you want to proceed with installing {tool}? [y/N]: ").strip().lower()
+                )
+            except (EOFError, OSError):
+                # stdin closed or not available - decline
+                return False
             if response in ["y", "yes"]:
                 return True
             if response in ["n", "no", ""]:
                 return False
             print("Please enter 'y' or 'n'")
+        # Exhausted attempts - decline
+        return False
 
     def _execute_install_command(self, command: list[str]) -> subprocess.CompletedProcess:
         """Execute installation command with interactive stdin.
@@ -290,6 +299,7 @@ class InteractiveInstaller:
             - No shell=True (prevents shell injection)
             - stdin=sys.stdin (allows password prompts)
             - List[str] command (no string interpolation)
+            - 120-second timeout prevents hanging
         """
         return subprocess.run(
             command,
@@ -297,6 +307,7 @@ class InteractiveInstaller:
             capture_output=True,
             text=True,
             check=False,  # Don't raise exception, handle errors explicitly
+            timeout=120,  # Prevent hanging in sandboxed environments
         )
 
     def _log_audit(self, entry: InstallationAuditEntry) -> None:
@@ -466,8 +477,8 @@ class PrerequisiteChecker:
     providing platform-specific installation commands when tools are missing.
 
     Required tools:
-        - Node.js (for claude-trace)
-        - npm (for installing claude-trace)
+        - Node.js (for Claude CLI)
+        - npm (for installing Claude CLI)
         - uv (for Python package management)
         - git (for repository operations)
 
@@ -487,6 +498,7 @@ class PrerequisiteChecker:
         "uv": "--version",
         "git": "--version",
         "rg": "--version",  # ripgrep - required for custom slash commands
+        "tmux": "-V",  # required for recipe runner workflow execution
     }
 
     # Optional tools (checked but not required)
@@ -503,6 +515,7 @@ class PrerequisiteChecker:
             "uv": "brew install uv",
             "git": "brew install git",
             "rg": "brew install ripgrep",
+            "tmux": "brew install tmux",
             "claude": "brew install --cask claude-code",
         },
         Platform.LINUX: {
@@ -511,6 +524,7 @@ class PrerequisiteChecker:
             "uv": "curl -LsSf https://astral.sh/uv/install.sh | sh",
             "git": "# Ubuntu/Debian:\nsudo apt install git\n# Fedora/RHEL:\nsudo dnf install git\n# Arch:\nsudo pacman -S git",
             "rg": "# Ubuntu/Debian:\nsudo apt install ripgrep\n# Fedora/RHEL:\nsudo dnf install ripgrep\n# Arch:\nsudo pacman -S ripgrep",
+            "tmux": "# Ubuntu/Debian:\nsudo apt install tmux\n# Fedora/RHEL:\nsudo dnf install tmux\n# Arch:\nsudo pacman -S tmux",
             "claude": "curl -fsSL https://claude.ai/install.sh | bash",
         },
         Platform.WSL: {
@@ -519,6 +533,7 @@ class PrerequisiteChecker:
             "uv": "curl -LsSf https://astral.sh/uv/install.sh | sh",
             "git": "sudo apt install git  # or your WSL distro's package manager",
             "rg": "sudo apt install ripgrep",
+            "tmux": "sudo apt install tmux",
             "claude": "curl -fsSL https://claude.ai/install.sh | bash",
         },
         Platform.WINDOWS: {
@@ -548,6 +563,7 @@ class PrerequisiteChecker:
             "uv": ["brew", "install", "uv"],
             "git": ["brew", "install", "git"],
             "rg": ["brew", "install", "ripgrep"],
+            "tmux": ["brew", "install", "tmux"],
             "claude": ["brew", "install", "--cask", "claude-code"],
         },
         Platform.LINUX: {
@@ -556,6 +572,7 @@ class PrerequisiteChecker:
             "uv": ["sh", "-c", "curl -LsSf https://astral.sh/uv/install.sh | sh"],
             "git": ["sudo", "apt", "install", "-y", "git"],
             "rg": ["sudo", "apt", "install", "-y", "ripgrep"],
+            "tmux": ["sudo", "apt", "install", "-y", "tmux"],
             "claude": ["sh", "-c", "curl -fsSL https://claude.ai/install.sh | bash"],
         },
         Platform.WSL: {
@@ -564,6 +581,7 @@ class PrerequisiteChecker:
             "uv": ["sh", "-c", "curl -LsSf https://astral.sh/uv/install.sh | sh"],
             "git": ["sudo", "apt", "install", "-y", "git"],
             "rg": ["sudo", "apt", "install", "-y", "ripgrep"],
+            "tmux": ["sudo", "apt", "install", "-y", "tmux"],
             "claude": ["sh", "-c", "curl -fsSL https://claude.ai/install.sh | bash"],
         },
         Platform.WINDOWS: {
@@ -584,6 +602,7 @@ class PrerequisiteChecker:
         "uv": "https://docs.astral.sh/uv/",
         "git": "https://git-scm.com/",
         "rg": "https://github.com/BurntSushi/ripgrep",
+        "tmux": "https://github.com/tmux/tmux",
         "claude": "https://code.claude.com/docs/en/setup",
     }
 
@@ -888,7 +907,8 @@ def check_prerequisites() -> bool:
     """Quick prerequisite check with automatic interactive installation.
 
     In interactive environments (TTY), prompts user to install missing tools.
-    In non-interactive environments (CI), prints manual instructions.
+    In non-interactive environments (CI/AMPLIHACK_NONINTERACTIVE=1), prints
+    manual instructions without attempting installation.
 
     Returns:
         True if all prerequisites available, False otherwise
@@ -902,8 +922,14 @@ def check_prerequisites() -> bool:
         >>> if not check_prerequisites():
         ...     sys.exit(1)
     """
+    # Respect AMPLIHACK_NONINTERACTIVE to avoid blocking in sandboxed environments
+    noninteractive = os.environ.get("AMPLIHACK_NONINTERACTIVE", "").strip() in (
+        "1",
+        "true",
+        "yes",
+    )
     checker = PrerequisiteChecker()
-    result = checker.check_and_install(interactive=True)
+    result = checker.check_and_install(interactive=not noninteractive)
     return result.all_available
 
 

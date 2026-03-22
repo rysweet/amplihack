@@ -25,6 +25,7 @@ Public API (the "studs"):
 from __future__ import annotations
 
 import logging
+import sys
 import threading
 import time
 import uuid
@@ -56,6 +57,7 @@ try:
     _HAS_RERANKER = True
 except ImportError:
     _HAS_RERANKER = False
+    print("WARNING: hive_mind.reranker not available", file=sys.stderr)
 
 # Graceful imports for CRDT, gossip, and fact lifecycle modules
 try:
@@ -64,6 +66,7 @@ try:
     _HAS_CRDT = True
 except ImportError:
     _HAS_CRDT = False
+    print("WARNING: hive_mind.crdt not available", file=sys.stderr)
 
 try:
     from .gossip import run_gossip_round as _run_gossip_round
@@ -71,6 +74,7 @@ try:
     _HAS_GOSSIP = True
 except ImportError:
     _HAS_GOSSIP = False
+    print("WARNING: hive_mind.gossip not available", file=sys.stderr)
 
 try:
     from .fact_lifecycle import FactTTL, decay_confidence, gc_expired_facts
@@ -78,6 +82,7 @@ try:
     _HAS_LIFECYCLE = True
 except ImportError:
     _HAS_LIFECYCLE = False
+    print("WARNING: hive_mind.fact_lifecycle not available", file=sys.stderr)
 
 # ---------------------------------------------------------------------------
 # Data models

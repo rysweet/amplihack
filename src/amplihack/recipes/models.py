@@ -7,8 +7,11 @@ steps, recipes, results, and error types.
 from __future__ import annotations
 
 import enum
+import logging
 from dataclasses import dataclass, field
 from typing import Any
+
+log = logging.getLogger(__name__)
 
 
 class StepType(enum.Enum):
@@ -47,6 +50,34 @@ class Step:
     auto_stage: bool | None = None  # None = inherit from runner default
     recipe: str | None = None  # Sub-recipe name (for StepType.RECIPE)
     sub_context: dict[str, Any] | None = None  # Context to merge into sub-recipe
+
+    def evaluate_condition(self, context: dict[str, Any]) -> bool:
+        """Evaluate the step condition against a context dict.
+
+        Returns True if the step should execute (condition is met or absent).
+        The condition is a Python expression evaluated with *context* as the
+        namespace.  Booleans are coerced to lowercase strings so that
+        ``force_single_workstream == 'true'`` works regardless of whether the
+        value arrived as ``bool`` or ``str`` (fix #3075).  Numeric types are
+        kept as-is to support ``num_versions >= 4`` comparisons.
+        """
+        if not self.condition:
+            return True
+        # Coerce booleans to lowercase strings so recipe conditions like
+        # ``== 'true'`` work.  Keep numbers as-is for numeric comparisons.
+        eval_ctx: dict[str, Any] = {
+            k: str(v).lower() if isinstance(v, bool) else v
+            for k, v in context.items()
+        }
+        try:
+            return bool(eval(self.condition.strip(), {"__builtins__": {}}, eval_ctx))  # noqa: S307
+        except Exception as exc:
+            log.warning(
+                "Step condition %r could not be evaluated: %s — defaulting to True (step will run)",
+                self.condition,
+                exc,
+            )
+            return True
 
 
 @dataclass
@@ -95,13 +126,33 @@ class RecipeResult:
     step_results: list[StepResult] = field(default_factory=list)
     context: dict[str, Any] = field(default_factory=dict)
 
+    @property
+    def output(self) -> str:
+        """Aggregate output from all completed steps as a single string.
+
+        Useful for callers that need a string summary of the recipe execution
+        (e.g. for logging, truncation with ``result.output[:500]``, etc.).
+        """
+        parts = []
+        for sr in self.step_results:
+            if sr.output:
+                parts.append(sr.output)
+            elif sr.error:
+                parts.append(f"[{sr.step_id} error] {sr.error}")
+        return "\n".join(parts)
+
     def __str__(self) -> str:
-        """Return a human-readable summary of the recipe execution."""
         status = "SUCCESS" if self.success else "FAILED"
-        lines = [f"Recipe '{self.recipe_name}': {status}"]
-        for step_result in self.step_results:
-            lines.append(f"  {step_result}")
-        return "\n".join(lines)
+        step_count = len(self.step_results)
+        base = f"RecipeResult({self.recipe_name}: {status}, {step_count} steps)"
+        if self.step_results:
+            step_lines = "\n  ".join(str(sr) for sr in self.step_results)
+            return f"{base}\n  {step_lines}"
+        return base
+
+    def __getitem__(self, key: int | slice) -> str:
+        """Support subscripting (e.g. ``result[:500]``) by delegating to ``.output``."""
+        return self.output[key]
 
 
 class StepExecutionError(Exception):

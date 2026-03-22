@@ -53,7 +53,8 @@ Like a brick model, our software is built from small, clear modules. Each module
 - **No shortcuts**: Every function must work or not exist; no stubs or placeholders, no dead code, unimplemented functions, or TODOs in code
 - **Do not compromise**: Always choose quality over speed of implementation
 - **No faked APIs or mock implementations**: Implement real functionality from the start, do not create fake data or mock services (except in tests)
-- **No swallowed exceptions**: Handle errors transparently and ensure they are visible during development
+- **No swallowed exceptions**: Handle errors transparently and ensure they are visible during development — see [Forbidden Patterns](#forbidden-patterns--things-ai-agents-must-never-do)
+- **No silent fallbacks**: A fallback is a silent failure. If a value is missing, fail loudly — never substitute a default that changes behavior
 
 ### 4. Library vs Custom Code
 
@@ -129,6 +130,7 @@ Our AI builders can spawn multiple versions of software in parallel:
 - Log detailed information for debugging
 - Provide clear error messages to users
 - Fail fast and visibly during development
+- **Never swallow, suppress, or silently degrade** — see [Forbidden Patterns](#forbidden-patterns--things-ai-agents-must-never-do)
 
 ## Decision-Making Framework
 
@@ -201,6 +203,25 @@ Stop and reassess if:
 - Created > 5 abstraction layers for a single feature
 
 **Remember**: Complexity must always justify itself. Default to simplicity.
+
+## Forbidden Patterns — Things AI Agents Must Never Do
+
+> **Full reference with cross-language examples:** [FORBIDDEN_PATTERNS.md](FORBIDDEN_PATTERNS.md)
+
+These patterns are **absolutely prohibited**. The unifying principle: **Errors must be
+visible. Failures must be loud. Nothing is silently swallowed, dropped, degraded, or hidden.**
+
+| #   | Category                        | Summary                                                                                                                                                     |
+| --- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Error Swallowing**            | No catch/except blocks that return null, false, empty, or default. No log-only catches. No empty catch blocks. No discarded Go errors or Rust Results.      |
+| 2   | **Silent Fallbacks**            | No `??`, `.get()`, `\|\|` defaults on required values. No optional config that silently disables features. A fallback is a silent failure.                  |
+| 3   | **Data Loss & Result Dropping** | No fire-and-forget async. No unchecked HTTP responses. No silent truncation. No `Task.WhenAll`/`Promise.all`/`gather` without checking individual failures. |
+| 4   | **Shell Anti-Patterns**         | No `\|\| true`. No `>/dev/null 2>&1`. No `set +e`. No `\|\| fallback`. Every script must start with `set -euo pipefail`.                                    |
+| 5   | **Retry Exhaustion**            | Retry loops must re-throw the last exception. Never fall through silently.                                                                                  |
+| 6   | **Async Anti-Patterns**         | No `async void` (C#). No sync-over-async. No unawaited coroutines/promises. Propagate cancellation tokens.                                                  |
+| 7   | **Config Divergence**           | Deploy configs must match what services read. No silent fallback defaults for missing env vars. Validate at startup.                                        |
+| 8   | **Validation Gaps**             | Validate all user input at API boundaries. No string interpolation in queries. Set pagination and size limits.                                              |
+| 9   | **Health & Observability**      | Health checks must reflect reality. Errors must produce metrics. Distinguish permanent vs transient errors.                                                 |
 
 ## Areas to Embrace Complexity
 

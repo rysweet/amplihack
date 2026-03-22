@@ -1,0 +1,20 @@
+{
+  "auto-workflow": "3baaee4ed35b2381",
+  "cascade-workflow": "ee2ce111ae5d88ef",
+  "code-atlas": "51dad46bd26fd345",
+  "consensus-workflow": "098041b8bea08edc",
+  "debate-workflow": "cf667901c45b498b",
+  "default-workflow": "875da70567593236",
+  "domain-agent-eval": "2cea1e684b0f50c5",
+  "guide": "3a317f9f004c1ddb",
+  "investigation-workflow": "b6873035e21bd58c",
+  "long-horizon-memory-eval": "0d11f6e10dd9472a",
+  "n-version-workflow": "d922b126cdce08f2",
+  "oxidizer-workflow": "4c7053cd374fc192",
+  "qa-workflow": "99eb59c337fe12c5",
+  "quality-audit-cycle": "c41c211dd5b8d770",
+  "sdk-comparison": "e644801df4c13bcc",
+  "self-improvement-loop": "387fbb52144ab4a7",
+  "smart-orchestrator": "82f357ccd5f96a5f",
+  "verification-workflow": "5227881f37c97325"
+}

@@ -54,11 +54,17 @@ class TestRecipeResultStr:
         assert "bad-recipe" in text
         assert "FAILED" in text
 
-    def test_str_includes_step_results(self) -> None:
+    def test_str_includes_step_count(self) -> None:
+        """RecipeResult.__str__ now returns summary format like 'RecipeResult(my-recipe: SUCCESS, 1 steps)'.
+
+        The old test asserted 'step-1' (the step_id) was in the output, but the new
+        __str__ implementation returns a compact summary string that includes the step
+        count rather than individual step IDs.
+        """
         step = StepResult(step_id="step-1", status=StepStatus.COMPLETED)
         result = RecipeResult(recipe_name="my-recipe", success=True, step_results=[step])
         text = str(result)
-        assert "step-1" in text
+        assert "1 steps" in text
 
     def test_str_is_sliceable(self) -> None:
         """str(RecipeResult)[:500] must not raise TypeError — this was the original bug."""
@@ -71,3 +77,63 @@ class TestRecipeResultStr:
         text = str(result)
         assert "empty" in text
         assert isinstance(text, str)
+
+
+class TestEvaluateCondition:
+    """Tests for Step.evaluate_condition() — condition evaluation with type coercion."""
+
+    def _step(self, condition: str) -> "Step":
+        from amplihack.recipes.models import Step, StepType
+        return Step(id="test", step_type=StepType.BASH, condition=condition)
+
+    def test_no_condition_returns_true(self) -> None:
+        from amplihack.recipes.models import Step, StepType
+        step = Step(id="test", step_type=StepType.BASH, condition=None)
+        assert step.evaluate_condition({}) is True
+
+    def test_empty_condition_returns_true(self) -> None:
+        assert self._step("").evaluate_condition({}) is True
+
+    def test_bool_true_coerced_to_string(self) -> None:
+        step = self._step("flag == 'true'")
+        assert step.evaluate_condition({"flag": True}) is True
+
+    def test_bool_false_coerced_to_string(self) -> None:
+        step = self._step("flag == 'false'")
+        assert step.evaluate_condition({"flag": False}) is True
+
+    def test_bool_true_not_equal_false_string(self) -> None:
+        step = self._step("flag == 'false'")
+        assert step.evaluate_condition({"flag": True}) is False
+
+    def test_numeric_comparison_int(self) -> None:
+        step = self._step("count >= 4")
+        assert step.evaluate_condition({"count": 5}) is True
+        assert step.evaluate_condition({"count": 3}) is False
+
+    def test_numeric_comparison_preserves_type(self) -> None:
+        step = self._step("count == 0")
+        assert step.evaluate_condition({"count": 0}) is True
+
+    def test_string_equality(self) -> None:
+        step = self._step("mode == 'debug'")
+        assert step.evaluate_condition({"mode": "debug"}) is True
+        assert step.evaluate_condition({"mode": "release"}) is False
+
+    def test_none_value_in_context(self) -> None:
+        step = self._step("val is None")
+        assert step.evaluate_condition({"val": None}) is True
+
+    def test_undefined_variable_returns_true_with_warning(self) -> None:
+        """Undefined variables cause NameError — should return True (run step)."""
+        step = self._step("undefined_var == 5")
+        assert step.evaluate_condition({}) is True
+
+    def test_syntax_error_returns_true_with_warning(self) -> None:
+        step = self._step("this is not valid python !!!")
+        assert step.evaluate_condition({}) is True
+
+    def test_complex_expression(self) -> None:
+        step = self._step("force == 'true' and count >= 2")
+        assert step.evaluate_condition({"force": True, "count": 3}) is True
+        assert step.evaluate_condition({"force": False, "count": 3}) is False

@@ -1,0 +1,124 @@
+# Outside-in test: smart-orchestrator adaptive error recovery (#3132)
+# Verifies that routing failures are detected, surfaced with full details,
+# and recovered from via adaptive strategy — never silently degraded.
+
+scenario:
+  name: "Smart Orchestrator - Adaptive Error Recovery"
+  description: |
+    When the smart-orchestrator encounters a routing gap (no execution path
+    fires), it must: (1) detect the gap, (2) surface full diagnostic details,
+    (3) attempt adaptive recovery via direct recipe invocation with explicit
+    announcement, and (4) never silently degrade behavior. This test verifies
+    the fix for issue #3132.
+  type: cli
+  level: 2
+
+  tags: [orchestrator, error-recovery, adaptive, regression, issue-3132]
+
+  prerequisites:
+    - "recipe-runner-rs binary is available at ~/.cargo/bin/recipe-runner-rs"
+    - "amplifier-bundle/recipes/smart-orchestrator.yaml exists"
+    - "Python 3.10+ with amplihack package importable"
+
+  environment:
+    variables:
+      AMPLIHACK_MAX_DEPTH: "3"
+      PYTHONPATH: "src"
+
+  steps:
+    # Scenario 1: Verify detect-execution-gap step exists in recipe
+    - action: launch
+      target: "~/.cargo/bin/recipe-runner-rs"
+      args:
+        - "amplifier-bundle/recipes/smart-orchestrator.yaml"
+        - "--dry-run"
+        - "--output-format=json"
+        - "--set"
+        - "task_description=implement a new feature"
+        - "--set"
+        - "repo_path=."
+      description: "Dry-run smart-orchestrator to verify gap detection step"
+      timeout: 30s
+
+    # Verify the detect-execution-gap step is present
+    - action: verify_output
+      contains: "detect-execution-gap"
+      description: "Gap detection step must exist in the recipe"
+
+    # Verify the file-routing-bug step is present (auto-files GH issues)
+    - action: verify_output
+      contains: "file-routing-bug"
+      description: "Bug-filing step must exist for infrastructure failures"
+
+    # Verify adaptive execution steps exist
+    - action: verify_output
+      contains: "adaptive-execute-development"
+      description: "Adaptive development execution step must exist"
+
+    - action: verify_output
+      contains: "adaptive-execute-investigation"
+      description: "Adaptive investigation execution step must exist"
+
+    # Scenario 2: Verify NO silent fallback language in recipe
+    - action: launch
+      target: "grep"
+      args:
+        - "-ci"
+        - "falls back\\|silent.*fallback\\|degrade.*silently"
+        - "amplifier-bundle/recipes/smart-orchestrator.yaml"
+      description: "Verify no silent fallback language in recipe"
+      timeout: 5s
+
+    - action: verify_output
+      contains: "0"
+      description: "Recipe must contain zero instances of silent fallback language"
+
+    # Scenario 3: Verify SKILL.md uses adaptive language
+    - action: launch
+      target: "grep"
+      args:
+        - "-c"
+        - "adaptive"
+        - ".claude/skills/dev-orchestrator/SKILL.md"
+      description: "Count adaptive strategy references in SKILL.md"
+      timeout: 5s
+
+    - action: verify_output
+      matches: "[1-9]"
+      description: "SKILL.md must reference adaptive strategies"
+
+    # Scenario 4: Verify hollow success detection exists
+    - action: launch
+      target: "grep"
+      args:
+        - "-c"
+        - "HOLLOW"
+        - "amplifier-bundle/recipes/smart-orchestrator.yaml"
+      description: "Count HOLLOW references in recipe"
+      timeout: 5s
+
+    - action: verify_output
+      matches: "[1-9]"
+      description: "Recipe must detect hollow success conditions"
+
+  cleanup:
+    - action: capture_output
+      save_as: "adaptive-error-recovery-output.txt"
+      description: "Save full test output for debugging"
+
+# Expected Behavior:
+# - detect-execution-gap fires when no normal execution path runs
+# - file-routing-bug auto-creates a GitHub issue with diagnostic details
+# - adaptive-execute-development/investigation run the appropriate direct
+#   recipe with an explicit [ADAPTIVE] announcement
+# - Hollow success (GOAL_STATUS: HOLLOW) is detected and surfaced
+# - No silent fallbacks exist anywhere in the recipe or skill definition
+#
+# Philosophy:
+# Failures must be VISIBLE and SURFACED with full details.
+# The system adapts to changing conditions but never silently degrades.
+# When errors occur, bugs are filed and alternative strategies are attempted
+# with explicit announcement — the user always knows what happened.
+#
+# Run Command:
+# gadugi-test run tests/gadugi/smart-orchestrator-adaptive-recovery.yaml --verbose

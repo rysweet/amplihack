@@ -7,8 +7,10 @@ import shlex
 import shutil
 import signal
 import subprocess
+import sys
 import tempfile
 import threading
+from collections.abc import MutableMapping
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -193,44 +195,59 @@ def _compare_versions(current: str, latest: str) -> bool:
         return False
 
 
-def check_for_update() -> str | None:
+def _get_current_copilot_version(
+    env: MutableMapping[str, str] | None = None,
+    home: Path | None = None,
+) -> str | None:
+    """Get the currently installed Copilot CLI version.
+
+    Returns:
+        Version string (e.g. "1.4.0") or None if not installed / not parseable.
+    """
+    effective_env = os.environ if env is None else env
+    _ensure_copilot_bin_on_path(env=effective_env, home=home)
+    try:
+        kwargs: dict = {"capture_output": True, "text": True, "timeout": 10, "check": False}
+        if env is not None:
+            kwargs["env"] = effective_env
+        result = subprocess.run(["copilot", "--version"], **kwargs)
+        if result.returncode != 0:
+            return None
+        output = result.stdout.strip()
+        if "/" not in output:
+            return None
+        parts = output.split("/")
+        if len(parts) < 3:
+            return None
+        return parts[2].split()[0]
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError, IndexError):
+        return None
+
+
+def check_for_update(
+    env: MutableMapping[str, str] | None = None,
+    home: Path | None = None,
+) -> str | None:
     """Check if a newer version of Copilot CLI is available.
+
+    Args:
+        env: Environment mapping (defaults to os.environ).
+        home: Home directory for Copilot npm-global prefix.
 
     Returns:
         New version string if update available, None otherwise
     """
     try:
-        # Get current version
-        current_result = subprocess.run(
-            ["copilot", "--version"],
-            capture_output=True,
-            text=True,
-            timeout=1,
-            check=False,
-        )
-        if current_result.returncode != 0:
+        current_version = _get_current_copilot_version(env=env, home=home)
+        if current_version is None:
             return None
-
-        # Parse version from output: "@github/copilot/1.4.0 linux-x64 node-v20.10.0"
-        current_output = current_result.stdout.strip()
-        if "/" not in current_output:
-            return None
-
-        parts = current_output.split("/")
-        if len(parts) < 3:
-            return None
-
-        # Extract version from: "1.4.0 linux-x64..." -> "1.4.0"
-        current_version = parts[2].split()[0]
 
         # Get latest version from npm
-        latest_result = subprocess.run(
-            ["npm", "view", "@github/copilot", "version"],
-            capture_output=True,
-            text=True,
-            timeout=3,
-            check=False,
-        )
+        effective_env = os.environ if env is None else env
+        kwargs: dict = {"capture_output": True, "text": True, "timeout": 15, "check": False}
+        if env is not None:
+            kwargs["env"] = effective_env
+        latest_result = subprocess.run(["npm", "view", "@github/copilot", "version"], **kwargs)
         if latest_result.returncode != 0:
             return None
 
@@ -349,55 +366,53 @@ def prompt_user_to_update(new_version: str, install_method: str) -> bool:
     return user_input == "y"
 
 
-def execute_update(install_method: str) -> bool:
+def execute_update(
+    install_method: str,
+    env: MutableMapping[str, str] | None = None,
+    home: Path | None = None,
+) -> bool:
     """Execute Copilot CLI update based on installation method.
 
     Args:
         install_method: Installation method ('npm' or 'uvx')
+        env: Environment mapping (defaults to os.environ).
+        home: Home directory for npm-global prefix resolution.
 
     Returns:
         True if update succeeded, False otherwise
     """
+    effective_env = os.environ if env is None else env
+    _ensure_copilot_bin_on_path(env=effective_env, home=home)
+
     print(f"\n📦 Updating Copilot CLI via {install_method}...")
 
     try:
-        # Get current version before update
-        try:
-            pre_result = subprocess.run(
-                ["copilot", "--version"],
-                capture_output=True,
-                text=True,
-                timeout=2,
-                check=False,
-            )
-            pre_version = None
-            if pre_result.returncode == 0:
-                output = pre_result.stdout.strip()
-                if "/" in output:
-                    parts = output.split("/")
-                    if len(parts) >= 3:
-                        pre_version = parts[2].split()[0]
-        except (subprocess.TimeoutExpired, FileNotFoundError, IndexError):
-            pre_version = None
+        pre_version = _get_current_copilot_version(env=env, home=home)
 
         # Execute update command
+        run_kwargs: dict = {"check": False}
+        if env is not None:
+            run_kwargs["env"] = effective_env
+
         if install_method == "uvx":
-            # uvx update: run copilot with latest version
             result = subprocess.run(
                 ["uvx", "--from", "@github/copilot@latest", "copilot", "--version"],
                 capture_output=True,
                 text=True,
-                timeout=30,
-                check=False,
+                timeout=60,
+                **run_kwargs,
             )
         else:
-            # npm update
+            # npm update — use the same --prefix as install_copilot() so the
+            # binary lands in the correct npm-global directory.
+            npm_prefix = _copilot_home(home=home, env=effective_env) / ".npm-global"
+            npm_prefix.mkdir(parents=True, exist_ok=True)
             result = subprocess.run(
-                ["npm", "install", "-g", "@github/copilot"],
+                ["npm", "install", "-g", "--prefix", str(npm_prefix), "@github/copilot"],
                 capture_output=True,
                 text=True,
-                timeout=60,
-                check=False,
+                timeout=120,
+                **run_kwargs,
             )
 
         if result.returncode != 0:
@@ -405,28 +420,13 @@ def execute_update(install_method: str) -> bool:
             return False
 
         # Verify update by checking version
-        try:
-            post_result = subprocess.run(
-                ["copilot", "--version"],
-                capture_output=True,
-                text=True,
-                timeout=2,
-                check=False,
-            )
-            if post_result.returncode == 0:
-                output = post_result.stdout.strip()
-                if "/" in output:
-                    parts = output.split("/")
-                    if len(parts) >= 3:
-                        post_version = parts[2].split()[0]
-                        if pre_version and post_version != pre_version:
-                            print(f"✓ Updated from {pre_version} to {post_version}")
-                            return True
-                        if post_version:
-                            print(f"✓ Update complete (version: {post_version})")
-                            return True
-        except (subprocess.TimeoutExpired, FileNotFoundError, IndexError):
-            pass
+        post_version = _get_current_copilot_version(env=env, home=home)
+        if post_version:
+            if pre_version and post_version != pre_version:
+                print(f"✓ Updated from {pre_version} to {post_version}")
+            else:
+                print(f"✓ Update complete (version: {post_version})")
+            return True
 
         # If version check fails but update command succeeded
         print("✓ Update completed")
@@ -443,7 +443,87 @@ def execute_update(install_method: str) -> bool:
         return False
 
 
-def check_copilot() -> bool:
+def ensure_latest_copilot(
+    env: MutableMapping[str, str] | None = None,
+    home: Path | None = None,
+) -> bool:
+    """Ensure the latest Copilot CLI is installed, updating automatically if needed.
+
+    This is the primary pre-launch update gate. It runs without user prompts
+    so that new CLI flags (e.g. --autopilot) are always available.
+
+    Set AMPLIHACK_SKIP_UPDATE=1 to bypass the update check.
+
+    Args:
+        env: Environment mapping (defaults to os.environ).
+        home: Home directory for npm-global prefix resolution.
+
+    Returns:
+        True if copilot is up-to-date (or was successfully updated), False on
+        update failure (launch should still proceed with the current version).
+    """
+    effective_env = os.environ if env is None else env
+
+    if effective_env.get("AMPLIHACK_SKIP_UPDATE", "") == "1":
+        return True
+
+    _ensure_copilot_bin_on_path(env=effective_env, home=home)
+
+    # If copilot isn't installed at all, install_copilot() handles that separately
+    if not check_copilot(env=env, home=home):
+        return True  # let the caller's install_copilot() path handle this
+
+    try:
+        new_version = check_for_update(env=env, home=home)
+        if new_version is None:
+            return True  # already up-to-date (or couldn't check — don't block)
+
+        current = _get_current_copilot_version(env=env, home=home) or "unknown"
+        print(f"🔄 Copilot CLI update available: {current} → {new_version}")
+
+        install_method = detect_install_method()
+        if execute_update(install_method, env=env, home=home):
+            return True
+
+        print("⚠ Update failed — continuing with current version")
+        return False
+    except Exception as e:
+        import logging
+
+        logging.getLogger(__name__).debug(f"Copilot auto-update failed: {type(e).__name__}: {e}")
+        return False
+
+
+def _copilot_home(home: Path | None = None, env: MutableMapping[str, str] | None = None) -> Path:
+    """Resolve the home directory used for Copilot installation/discovery."""
+    if home is not None:
+        return home.expanduser().resolve()
+    if env is not None and env.get("HOME"):
+        return Path(env["HOME"]).expanduser().resolve()
+    return Path.home()
+
+
+def _copilot_npm_bin(home: Path | None = None, env: MutableMapping[str, str] | None = None) -> Path:
+    """Return the npm-global bin directory used for Copilot CLI installs."""
+    return _copilot_home(home=home, env=env) / ".npm-global" / "bin"
+
+
+def _ensure_copilot_bin_on_path(
+    env: MutableMapping[str, str] | None = None, home: Path | None = None
+) -> Path:
+    """Prepend the Copilot npm-global bin dir to PATH for the selected environment."""
+    target_env = os.environ if env is None else env
+    bin_path = _copilot_npm_bin(home=home, env=target_env)
+    current_path = target_env.get("PATH", "")
+    path_entries = [entry for entry in current_path.split(os.pathsep) if entry]
+    if str(bin_path) not in path_entries:
+        target_env["PATH"] = (
+            f"{bin_path}{os.pathsep}{current_path}" if current_path else str(bin_path)
+        )
+    return bin_path
+
+
+def check_copilot(env: MutableMapping[str, str] | None = None, home: Path | None = None) -> bool:
     """Check if Copilot CLI is installed.
 
     Returns:
@@ -453,32 +533,47 @@ def check_copilot() -> bool:
         Handles FileNotFoundError (not installed), PermissionError (WSL),
         and TimeoutExpired (hanging command) gracefully.
     """
+    effective_env = os.environ if env is None else env
+    _ensure_copilot_bin_on_path(env=effective_env, home=home)
     try:
-        subprocess.run(["copilot", "--version"], capture_output=True, timeout=5, check=False)
+        kwargs = {"capture_output": True, "timeout": 5, "check": False}
+        if env is not None:
+            kwargs["env"] = effective_env
+        subprocess.run(["copilot", "--version"], **kwargs)
         return True
     except (FileNotFoundError, PermissionError, subprocess.TimeoutExpired):
         return False
 
 
-def install_copilot() -> bool:
+def install_copilot(env: MutableMapping[str, str] | None = None, home: Path | None = None) -> bool:
     """Install GitHub Copilot CLI via npm to user-local directory."""
     print("Installing GitHub Copilot CLI...")
 
-    npm_prefix = Path.home() / ".npm-global"
+    effective_env = os.environ if env is None else env
+    npm_prefix = _copilot_home(home=home, env=effective_env) / ".npm-global"
     npm_prefix.mkdir(parents=True, exist_ok=True)
 
     try:
-        result = subprocess.run(
-            ["npm", "install", "-g", "--prefix", str(npm_prefix), "@github/copilot"], check=False
-        )
+        if env is not None:
+            result = subprocess.run(
+                ["npm", "install", "-g", "--prefix", str(npm_prefix), "@github/copilot"],
+                check=False,
+                env=effective_env,
+            )
+        else:
+            result = subprocess.run(
+                ["npm", "install", "-g", "--prefix", str(npm_prefix), "@github/copilot"],
+                check=False,
+            )
         if result.returncode == 0:
             print("✓ Copilot CLI installed")
 
             # Add to PATH for current process
             bin_path = npm_prefix / "bin"
-            path_env = os.environ.get("PATH", "")
-            if str(bin_path) not in path_env:
-                os.environ["PATH"] = f"{bin_path}:{path_env}"
+            path_env = effective_env.get("PATH", "")
+            path_entries = [entry for entry in path_env.split(os.pathsep) if entry]
+            if str(bin_path) not in path_entries:
+                _ensure_copilot_bin_on_path(env=effective_env, home=home)
                 print(f"\n⚠️  Added to PATH for this session: {bin_path}")
                 print("   Add to ~/.bashrc or ~/.zshrc for persistence:")
                 print(f'   export PATH="{bin_path}:$PATH"')
@@ -642,8 +737,11 @@ def stage_hooks(package_dir: Path, user_dir: Path) -> int:
     Copilot CLI reads hooks from .github/hooks/ in the repo root.
     This function:
     1. Copies amplihack-hooks.json to user's .github/hooks/
-    2. Creates bash wrapper scripts that use $HOME/.amplihack/.claude/tools/
-       (portable across machines, not hardcoded absolute paths)
+    2. Creates bash wrapper scripts that invoke hooks
+
+    When AMPLIHACK_HOOK_ENGINE=rust, hooks with Rust equivalents use the
+    amplihack-hooks binary. Hooks without Rust equivalents (e.g.,
+    workflow_classification_reminder.py) still use Python.
 
     Existing user hooks are preserved — only amplihack-managed hooks are written.
     A hook is considered amplihack-managed if it contains "amplihack" in its content.
@@ -655,6 +753,8 @@ def stage_hooks(package_dir: Path, user_dir: Path) -> int:
     Returns:
         Number of hooks staged
     """
+    from ..settings import find_rust_hook_binary, get_hook_engine
+
     # Source hooks manifest from the package's .github/hooks/
     # Try package .github first, then repo root .github
     source_hooks_json = package_dir / ".github" / "hooks" / "amplihack-hooks.json"
@@ -670,6 +770,21 @@ def stage_hooks(package_dir: Path, user_dir: Path) -> int:
     # Copy hooks manifest (amplihack-specific, safe to overwrite)
     shutil.copy2(source_hooks_json, target_hooks_dir / "amplihack-hooks.json")
 
+    # Determine hook engine
+    hook_engine = get_hook_engine()
+    rust_binary = None
+    if hook_engine == "rust":
+        rust_binary = find_rust_hook_binary()
+        if rust_binary is None:
+            raise FileNotFoundError(
+                "AMPLIHACK_HOOK_ENGINE=rust but amplihack-hooks binary not found. "
+                "Install it from https://github.com/rysweet/amplihack-rs or set "
+                "AMPLIHACK_HOOK_ENGINE=python."
+            )
+
+    # Import the mapping
+    from .. import RUST_HOOK_MAP
+
     # Map of copilot hook names to Python implementation filenames
     # Events with multiple scripts use a list — all scripts run sequentially
     hook_map = {
@@ -679,6 +794,9 @@ def stage_hooks(package_dir: Path, user_dir: Path) -> int:
         "post-tool-use": ["post_tool_use.py"],
         "user-prompt-submit": ["user_prompt_submit.py", "workflow_classification_reminder.py"],
     }
+    # pre-compact is NOT listed here — Copilot CLI does not support this event type.
+    # It is only available via Claude Code's settings.json (see HOOK_CONFIGS).
+
     # error-occurred is handled by the bash wrapper directly (no Python hook)
 
     staged = 0
@@ -691,7 +809,11 @@ def stage_hooks(package_dir: Path, user_dir: Path) -> int:
             if "amplihack" not in existing:
                 continue  # User's own hook, don't overwrite
 
-        if len(py_files) == 1:
+        if hook_engine == "rust":
+            wrapper_content = _generate_rust_wrapper(
+                hook_name, py_files, rust_binary, RUST_HOOK_MAP
+            )
+        elif len(py_files) == 1:
             # Single-script hook — use exec for exit code propagation
             py_file = py_files[0]
             wrapper_content = f"""#!/usr/bin/env bash
@@ -729,7 +851,8 @@ INPUT=$(cat)
 """
 
         wrapper_path.write_text(wrapper_content)
-        wrapper_path.chmod(0o755)
+        if sys.platform != "win32":
+            wrapper_path.chmod(0o755)
         staged += 1
 
     # Stage the error-occurred wrapper separately (no Python hook, uses inline fallback)
@@ -738,14 +861,116 @@ INPUT=$(cat)
         source_error = package_dir.parent.parent / ".github" / "hooks" / "error-occurred"
         if source_error.exists():
             shutil.copy2(source_error, error_wrapper)
-            error_wrapper.chmod(0o755)
+            if sys.platform != "win32":
+                error_wrapper.chmod(0o755)
             staged += 1
 
     return staged
 
 
+def _generate_rust_wrapper(hook_name, py_files, rust_binary, rust_hook_map):
+    """Generate a bash wrapper script that uses the Rust hook binary.
+
+    For hooks with Rust equivalents, uses ``amplihack-hooks <subcommand>``.
+    For hooks without (e.g., workflow_classification_reminder.py), uses Python.
+    Multi-script events run each script sequentially.
+    """
+    # Partition files into Rust and Python
+    rust_commands = []
+    python_files = []
+    for py_file in py_files:
+        subcmd = rust_hook_map.get(py_file)
+        if subcmd:
+            rust_commands.append((py_file, subcmd))
+        else:
+            python_files.append(py_file)
+
+    if len(rust_commands) == 1 and not python_files:
+        # Single Rust hook — use exec for exit code propagation
+        _, subcmd = rust_commands[0]
+        quoted_binary = shlex.quote(rust_binary)
+        return f"""#!/usr/bin/env bash
+# Copilot hook wrapper - generated by amplihack (rust engine)
+exec {quoted_binary} {subcmd} "$@"
+"""
+
+    # Multi-command: capture stdin, pipe to each
+    quoted_binary = shlex.quote(rust_binary)
+    blocks = []
+    for _, subcmd in rust_commands:
+        blocks.append(f'echo "$INPUT" | {quoted_binary} {subcmd} "$@" || true')
+    for py_file in python_files:
+        blocks.append(f"""AMPLIHACK_HOOKS="$HOME/.amplihack/.claude/tools/amplihack/hooks"
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || REPO_ROOT=""
+if [[ -f "${{AMPLIHACK_HOOKS}}/{py_file}" ]]; then
+    echo "$INPUT" | python3 "${{AMPLIHACK_HOOKS}}/{py_file}" "$@" 2>/dev/null || true
+elif [[ -n "$REPO_ROOT" ]] && [[ -f "${{REPO_ROOT}}/.claude/tools/amplihack/hooks/{py_file}" ]]; then
+    echo "$INPUT" | python3 "${{REPO_ROOT}}/.claude/tools/amplihack/hooks/{py_file}" "$@" 2>/dev/null || true
+fi""")
+
+    body = "\n\n".join(blocks)
+    return f"""#!/usr/bin/env bash
+# Copilot hook wrapper - generated by amplihack (rust engine)
+# Runs multiple hook scripts for this event
+INPUT=$(cat)
+
+{body}
+"""
+
+
 INSTRUCTIONS_MARKER_START = "<!-- AMPLIHACK_INSTRUCTIONS_START -->"
 INSTRUCTIONS_MARKER_END = "<!-- AMPLIHACK_INSTRUCTIONS_END -->"
+
+
+def _read_text_if_exists(path: Path) -> str:
+    """Read a text file if it exists, otherwise return an empty string."""
+    return path.read_text() if path.exists() else ""
+
+
+def _extract_heading_block(text: str, start_heading: str, end_heading: str) -> str:
+    """Extract a markdown section bounded by two headings."""
+    start = text.find(start_heading)
+    if start == -1:
+        return ""
+
+    block = text[start:]
+    end = block.find(end_heading)
+    if end != -1:
+        block = block[:end]
+
+    return block.strip()
+
+
+def build_copilot_agents_context(claude_dir: Path, preferences_text: str | None = None) -> str:
+    """Build the AGENTS.md context Copilot needs for workflow enforcement."""
+    routing_prompt = _read_text_if_exists(
+        claude_dir / "tools" / "amplihack" / "hooks" / "templates" / "routing_prompt.txt"
+    ).strip()
+    dev_skill = _read_text_if_exists(claude_dir / "skills" / "dev-orchestrator" / "SKILL.md")
+    execution_block = _extract_heading_block(
+        dev_skill, "## Execution Instructions", "## Task Type Classification"
+    )
+
+    sections = [
+        "## Amplihack Copilot Workflow Rules\n\n"
+        "For any DEV, INVESTIGATE, or HYBRID request, invoke "
+        '`Skill(skill="dev-orchestrator")` immediately.\n\n'
+        "After the skill is activated, the next tool call must execute the "
+        '`smart-orchestrator` recipe via `run_recipe_by_name("smart-orchestrator")`.\n\n'
+        "Do not follow the workflow manually and do not fall back to legacy "
+        "`ultrathink` behavior.",
+    ]
+
+    if routing_prompt:
+        sections.append("## Auto-routing prompt\n\n" + routing_prompt)
+
+    if execution_block:
+        sections.append(execution_block)
+
+    if preferences_text:
+        sections.append("## User Preferences\n\n" + preferences_text.strip())
+
+    return "\n\n".join(section for section in sections if section)
 
 
 def generate_copilot_instructions(copilot_home: Path) -> None:
@@ -785,7 +1010,8 @@ Read workflow files from `{copilot_home}/workflow/amplihack/` to follow structur
 - `INVESTIGATION_WORKFLOW.md` — Research and exploration (6 phases)
 - `CASCADE_WORKFLOW.md`, `DEBATE_WORKFLOW.md`, `N_VERSION_WORKFLOW.md` — Fault tolerance patterns
 
-For any non-trivial development task, read DEFAULT_WORKFLOW.md and follow its steps.
+    For any non-trivial development or investigation task, use `/dev` (or `Skill(skill="dev-orchestrator")`)
+    so the smart-orchestrator recipe executes the workflow instead of handling it manually.
 
 ## Context
 Read context files from `{copilot_home}/context/amplihack/` for project philosophy and patterns:
@@ -794,11 +1020,12 @@ Read context files from `{copilot_home}/context/amplihack/` for project philosop
 - `TRUST.md` — Anti-sycophancy and direct communication guidelines
 - `USER_PREFERENCES.md` — User-specific preferences (MANDATORY)
 
-## Commands
-Read command definitions from `{copilot_home}/commands/amplihack/` for available capabilities:
-- `ultrathink.md` — Deep analysis orchestration for complex tasks
-- `analyze.md` — Comprehensive code review
-- `improve.md` — Self-improvement and learning capture
+    ## Commands
+    Read command definitions from `{copilot_home}/commands/amplihack/` for available capabilities:
+    - `dev.md` — Primary dev-orchestrator entry point
+    - `ultrathink.md` — Deprecated alias to `/dev`
+    - `analyze.md` — Comprehensive code review
+    - `improve.md` — Self-improvement and learning capture
 
 ## Agents
 Custom agents are available at `{copilot_home}/agents/amplihack/`. Use them via the task tool.
@@ -863,22 +1090,12 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
     Returns:
         Exit code
     """
-    # Check for updates (non-blocking)
+    # Auto-update to latest version before launching (fixes #3097).
+    # This ensures new flags like --autopilot are always supported.
     try:
-        new_version = check_for_update()
-        if new_version:
-            install_method = detect_install_method()
-            if prompt_user_to_update(new_version, install_method):
-                # User wants to update
-                if execute_update(install_method):
-                    print("✓ Copilot CLI updated successfully")
-                else:
-                    print("⚠ Update failed - continuing with current version")
-    except Exception as e:
-        # Ignore update check failures — non-critical background operation
-        import logging
-
-        logging.getLogger(__name__).debug(f"Copilot update check failed: {type(e).__name__}: {e}")
+        ensure_latest_copilot()
+    except Exception:
+        pass  # non-critical — continue with current version
 
     # Ensure copilot is installed
     if not check_copilot():
@@ -903,6 +1120,27 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
 
     # Register awesome-copilot marketplace extensions (best-effort, silent on failure)
     register_awesome_copilot_marketplace()
+
+    # Ensure XPIA defender binary is installed (security-critical, fail-closed)
+    try:
+        from ..security.xpia_install import ensure_xpia_binary
+
+        binary_path = ensure_xpia_binary()
+        print(f"✓ XPIA security defender ready ({binary_path})")
+    except ImportError:
+        # Module not available — installer not yet integrated, warn but continue
+        import logging
+
+        logging.getLogger(__name__).warning("XPIA installer module not found")
+        print("⚠ XPIA defender installer not available (module missing)")
+    except Exception as e:
+        # Installation failed — warn loudly but don't block startup.
+        # The pre-tool-use hook will enforce fail-closed at validation time.
+        import logging
+
+        logging.getLogger(__name__).error("XPIA defender binary install failed: %s", e)
+        print(f"⚠ XPIA defender not installed: {e}")
+        print("  Security validation will block tool use until xpia-defend is available.")
 
     # Prompt to re-enable power-steering if disabled (#2544)
     try:
@@ -997,12 +1235,14 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
         # Generate copilot-instructions.md so copilot knows where everything is
         generate_copilot_instructions(copilot_home)
 
-        # Inject preferences into AGENTS.md for copilot context
+        # Inject workflow instructions and preferences into AGENTS.md for Copilot context.
+        # Copilot's UserPromptSubmit hook is observe-only, so AGENTS.md must carry the
+        # actual routing/workflow instructions up front.
         prefs_file = user_dir / ".claude/context/USER_PREFERENCES.md"
         if not prefs_file.exists():
             prefs_file = claude_dir / "context/USER_PREFERENCES.md"
-        if prefs_file.exists():
-            strategy.inject_context(prefs_file.read_text())
+        preferences_text = prefs_file.read_text() if prefs_file.exists() else None
+        strategy.inject_context(build_copilot_agents_context(claude_dir, preferences_text))
     except Exception as e:
         # Fail gracefully - Copilot will work without preferences
         print(f"Warning: Could not prepare Copilot environment: {e}")
@@ -1015,6 +1255,15 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
         "copilot",
         "--allow-all-tools",
     ]
+    if not args:
+        cmd.extend(
+            [
+                "--autopilot",
+                "--yolo",
+                "--max-autopilot-continues",
+                "100",
+            ]
+        )
     copilot_model = os.getenv("COPILOT_MODEL", "")
     if copilot_model:
         cmd.extend(["--model", copilot_model])
@@ -1026,10 +1275,17 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
     # Disable GitHub MCP server to save context tokens
     cmd.extend(["--disable-mcp-server", "github-mcp-server"])
 
+    # If the user passes Copilot CLI args after `--`, treat that as a full override
+    # of the default autopilot/yolo launch behavior.
     if args:
         cmd.extend(args)
 
+    # Build explicit env with agent identity and home directory for Rust CLI parity
+    env = os.environ.copy()
+    env["AMPLIHACK_AGENT_BINARY"] = "copilot"
+    env.setdefault("AMPLIHACK_HOME", os.path.expanduser("~/.amplihack"))
+
     # Launch using subprocess.run() for proper terminal handling
     # Note: os.execvp() doesn't work properly on Windows - it corrupts stdin/terminal state
-    result = subprocess.run(cmd, check=False)
+    result = subprocess.run(cmd, check=False, env=env)
     return result.returncode

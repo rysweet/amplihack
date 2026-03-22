@@ -35,18 +35,37 @@ Philosophy:
 import asyncio
 import os
 import re
+import sys
+import uuid
 from pathlib import Path
+
+# Ensure hooks directory is importable for both package and standalone execution
+_hooks_dir = os.path.dirname(os.path.abspath(__file__))
+if _hooks_dir not in sys.path:
+    sys.path.insert(0, _hooks_dir)
 
 # Unset CLAUDECODE to prevent nested session errors when spawning Claude CLI subprocesses
 os.environ.pop("CLAUDECODE", None)
 
-# Try to import Claude SDK
-try:
-    from claude_agent_sdk import ClaudeAgentOptions, query  # type: ignore[import-not-found]
+# Ensure every process in this tree shares a stable tree ID.
+# setdefault is safe: if AMPLIHACK_TREE_ID was already exported by the parent
+# session (e.g. via session_tree.py register), we inherit it unchanged.
+os.environ.setdefault("AMPLIHACK_TREE_ID", uuid.uuid4().hex[:8])
 
-    CLAUDE_SDK_AVAILABLE = True
-except ImportError:
-    CLAUDE_SDK_AVAILABLE = False
+from power_steering_sdk import SDK_AVAILABLE as CLAUDE_SDK_AVAILABLE
+from power_steering_sdk import query_llm
+
+# Session tree spawn counter — limits tree-wide LLM calls to prevent runaway fan-out.
+# Fail-open: if session_tree is unavailable, all gates pass.
+try:
+    _tools_dir = str(Path(__file__).parent.parent.parent)
+    if _tools_dir not in sys.path:
+        sys.path.insert(0, _tools_dir)
+    from session_tree import increment_tree_spawn_count as _increment_tree_spawn_count
+
+    _SESSION_TREE_AVAILABLE = True
+except Exception:
+    _SESSION_TREE_AVAILABLE = False
 
 # Template paths (relative to this file)
 TEMPLATE_DIR = Path(__file__).parent / "templates"
@@ -88,6 +107,26 @@ __all__ = [
     "analyze_workflow_invocation_sync",
     "CLAUDE_SDK_AVAILABLE",
 ]
+
+
+def _gate_spawn() -> bool:
+    """Increment the tree-wide spawn counter and return True if the call is allowed.
+
+    Returns False if the tree spawn cap has been reached (caller should return its
+    fail-open value without calling query_llm).  Returns True on any unexpected
+    error other than the cap — fail-open means we never block work due to bugs.
+
+    Catch order: RuntimeError (cap exceeded) must come before Exception (other errors).
+    """
+    if not _SESSION_TREE_AVAILABLE:
+        return True
+    try:
+        _increment_tree_spawn_count()
+        return True
+    except RuntimeError:
+        return False
+    except Exception:
+        return True
 
 
 def is_shutting_down() -> bool:
@@ -239,31 +278,9 @@ async def analyze_consideration(
         return (True, None)  # Fail-open on prompt formatting error
 
     try:
-        options = ClaudeAgentOptions(
-            cwd=str(project_root),
-        )
-
-        # Query Claude with timeout
-        response_parts = []
-        async with asyncio.timeout(CHECKER_TIMEOUT):
-            async for message in query(prompt=prompt, options=options):
-                # Extract text from AssistantMessage content blocks
-                content = getattr(message, "content", None)
-                if content is not None:
-                    if isinstance(content, list):
-                        # AssistantMessage: content is list[ContentBlock]
-                        for block in content:
-                            text = getattr(block, "text", None)
-                            if isinstance(text, str):
-                                response_parts.append(text)
-                    elif isinstance(content, str):
-                        # UserMessage: content can be str
-                        response_parts.append(content)
-
-        # Join all parts
-        response = "".join(response_parts)
-
-        # Sanitize HTML before processing
+        if not _gate_spawn():
+            return (True, None)
+        response = await query_llm(prompt, project_root)
         response = _sanitize_html(response)
 
         # Validate response before processing
@@ -571,27 +588,9 @@ Example bad guidance:
 Be direct and specific."""
 
     try:
-        options = ClaudeAgentOptions(
-            cwd=str(project_root),
-        )
-
-        response_parts = []
-        async with asyncio.timeout(CHECKER_TIMEOUT):
-            async for message in query(prompt=prompt, options=options):
-                # Extract text from AssistantMessage content blocks
-                content = getattr(message, "content", None)
-                if content is not None:
-                    if isinstance(content, list):
-                        # AssistantMessage: content is list[ContentBlock]
-                        for block in content:
-                            text = getattr(block, "text", None)
-                            if isinstance(text, str):
-                                response_parts.append(text)
-                    elif isinstance(content, str):
-                        # UserMessage: content can be str
-                        response_parts.append(content)
-
-        guidance = "".join(response_parts).strip()
+        if not _gate_spawn():
+            return _generate_template_guidance(failed_checks)
+        guidance = (await query_llm(prompt, project_root)).strip()
 
         # Sanitize HTML before processing
         guidance = _sanitize_html(guidance)
@@ -674,27 +673,9 @@ If no completion claims are found, respond with: []
 Be specific - only include actual claims about completion, not general discussion."""
 
     try:
-        options = ClaudeAgentOptions(
-            cwd=str(project_root),
-        )
-
-        response_parts = []
-        async with asyncio.timeout(CHECKER_TIMEOUT):
-            async for message in query(prompt=prompt, options=options):
-                # Extract text from AssistantMessage content blocks
-                content = getattr(message, "content", None)
-                if content is not None:
-                    if isinstance(content, list):
-                        # AssistantMessage: content is list[ContentBlock]
-                        for block in content:
-                            text = getattr(block, "text", None)
-                            if isinstance(text, str):
-                                response_parts.append(text)
-                    elif isinstance(content, str):
-                        # UserMessage: content can be str
-                        response_parts.append(content)
-
-        response = "".join(response_parts).strip()
+        if not _gate_spawn():
+            return []
+        response = (await query_llm(prompt, project_root)).strip()
 
         # Validate response before parsing
         if not _validate_sdk_response(response):
@@ -797,27 +778,9 @@ Look for:
 Be conservative - only say ADDRESSED if there is clear evidence in the new content."""
 
     try:
-        options = ClaudeAgentOptions(
-            cwd=str(project_root),
-        )
-
-        response_parts = []
-        async with asyncio.timeout(CHECKER_TIMEOUT):
-            async for message in query(prompt=prompt, options=options):
-                # Extract text from AssistantMessage content blocks
-                content = getattr(message, "content", None)
-                if content is not None:
-                    if isinstance(content, list):
-                        # AssistantMessage: content is list[ContentBlock]
-                        for block in content:
-                            text = getattr(block, "text", None)
-                            if isinstance(text, str):
-                                response_parts.append(text)
-                    elif isinstance(content, str):
-                        # UserMessage: content can be str
-                        response_parts.append(content)
-
-        response = "".join(response_parts).strip()
+        if not _gate_spawn():
+            return None
+        response = (await query_llm(prompt, project_root)).strip()
 
         # Sanitize HTML before processing
         response = _sanitize_html(response)
@@ -1056,29 +1019,9 @@ Be conservative - default to INVOKED unless there is clear evidence of ad-hoc wo
 """
 
     try:
-        options = ClaudeAgentOptions(
-            cwd=str(project_root),
-        )
-
-        # Query Claude with timeout
-        response_parts = []
-        async with asyncio.timeout(CHECKER_TIMEOUT):
-            async for message in query(prompt=prompt, options=options):
-                # Extract text from AssistantMessage content blocks
-                content = getattr(message, "content", None)
-                if content is not None:
-                    if isinstance(content, list):
-                        # AssistantMessage: content is list[ContentBlock]
-                        for block in content:
-                            text = getattr(block, "text", None)
-                            if isinstance(text, str):
-                                response_parts.append(text)
-                    elif isinstance(content, str):
-                        # UserMessage: content can be str
-                        response_parts.append(content)
-
-        # Join all parts
-        response = "".join(response_parts)
+        if not _gate_spawn():
+            return (True, None)
+        response = await query_llm(prompt, project_root)
 
         # Sanitize HTML before processing
         response = _sanitize_html(response)

@@ -211,3 +211,100 @@ steps:
         assert any("comand" in w for w in warnings), (
             f"Expected warning about 'comand' typo, got: {warnings}"
         )
+
+
+class TestStepFieldTypeCoercion:
+    """Test that string values from YAML are coerced to the correct Python types."""
+
+    def _make_yaml(self, **step_overrides: str) -> str:
+        fields = {"id": "s1", "type": "bash", "command": "echo hi"}
+        fields.update(step_overrides)
+        step_lines = "\n".join(f"    {k}: {v}" for k, v in fields.items())
+        return f"name: coerce-test\nsteps:\n  - {step_lines.lstrip()}"
+
+    def test_string_true_coerced_to_bool_parse_json(self) -> None:
+        recipe = RecipeParser().parse(self._make_yaml(parse_json="'true'"))
+        assert recipe.steps[0].parse_json is True
+
+    def test_string_false_coerced_to_bool_parse_json(self) -> None:
+        recipe = RecipeParser().parse(self._make_yaml(parse_json="'false'"))
+        assert recipe.steps[0].parse_json is False
+
+    def test_string_yes_coerced_to_bool_auto_stage(self) -> None:
+        recipe = RecipeParser().parse(self._make_yaml(auto_stage="'yes'"))
+        assert recipe.steps[0].auto_stage is True
+
+    def test_string_no_coerced_to_bool_auto_stage(self) -> None:
+        recipe = RecipeParser().parse(self._make_yaml(auto_stage="'no'"))
+        assert recipe.steps[0].auto_stage is False
+
+    def test_string_int_coerced_to_int_timeout(self) -> None:
+        recipe = RecipeParser().parse(self._make_yaml(timeout="'30'"))
+        assert recipe.steps[0].timeout == 30
+        assert isinstance(recipe.steps[0].timeout, int)
+
+    def test_native_bool_preserved(self) -> None:
+        recipe = RecipeParser().parse(self._make_yaml(parse_json="true"))
+        assert recipe.steps[0].parse_json is True
+
+    def test_native_int_preserved(self) -> None:
+        recipe = RecipeParser().parse(self._make_yaml(timeout="60"))
+        assert recipe.steps[0].timeout == 60
+
+
+class TestStepFieldTypeValidation:
+    """Test that invalid types raise clear ValueErrors."""
+
+    def _make_yaml(self, **step_overrides: str) -> str:
+        fields = {"id": "s1", "type": "bash", "command": "echo hi"}
+        fields.update(step_overrides)
+        step_lines = "\n".join(f"    {k}: {v}" for k, v in fields.items())
+        return f"name: validate-test\nsteps:\n  - {step_lines.lstrip()}"
+
+    def test_timeout_non_numeric_string_raises(self) -> None:
+        with pytest.raises(ValueError, match="must be an integer.*'not_an_int'"):
+            RecipeParser().parse(self._make_yaml(timeout="'not_an_int'"))
+
+    def test_parse_json_invalid_string_raises(self) -> None:
+        with pytest.raises(ValueError, match="must be a boolean.*'maybe'"):
+            RecipeParser().parse(self._make_yaml(parse_json="'maybe'"))
+
+    def test_auto_stage_invalid_string_raises(self) -> None:
+        with pytest.raises(ValueError, match="must be a boolean.*'sometimes'"):
+            RecipeParser().parse(self._make_yaml(auto_stage="'sometimes'"))
+
+    def test_timeout_bool_raises(self) -> None:
+        with pytest.raises(ValueError, match="must be an integer.*bool"):
+            RecipeParser().parse(self._make_yaml(timeout="true"))
+
+
+class TestConflictingFieldWarnings:
+    """Test that conflicting step field combinations produce warnings."""
+
+    def test_bash_step_with_agent_field_warns(self) -> None:
+        yaml_str = """\
+name: conflict-test
+steps:
+  - id: s1
+    type: bash
+    command: echo hi
+    agent: amplihack:builder
+"""
+        parser = RecipeParser()
+        recipe = parser.parse(yaml_str)
+        warnings = parser.validate(recipe)
+        assert any("bash step has 'agent' field" in w for w in warnings)
+
+    def test_agent_step_with_agent_field_no_warning(self) -> None:
+        yaml_str = """\
+name: no-conflict
+steps:
+  - id: s1
+    type: agent
+    agent: amplihack:builder
+    prompt: do something
+"""
+        parser = RecipeParser()
+        recipe = parser.parse(yaml_str)
+        warnings = parser.validate(recipe)
+        assert not any("bash step has 'agent' field" in w for w in warnings)

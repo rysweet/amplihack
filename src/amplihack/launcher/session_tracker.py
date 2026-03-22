@@ -12,10 +12,14 @@ Public API (the "studs"):
 """
 
 import json
+import logging
+import os
 import time
 import uuid
 from dataclasses import asdict, dataclass
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -77,10 +81,14 @@ class SessionTracker:
         """
         self._ensure_runtime_dir()
 
-    def _ensure_runtime_dir(self):
-        """Create .claude/runtime directory if it doesn't exist"""
+    def _ensure_runtime_dir(self) -> None:
+        """Ensure .claude/runtime/ exists; idempotent (exist_ok=True). Fixes #3053."""
         runtime_dir = self.RUNTIME_LOG.parent
-        runtime_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            runtime_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+        except OSError as e:
+            logger.debug("Failed to create runtime dir: %s", e)
+            raise RuntimeError("Session tracking unavailable") from None
 
     def start_session(
         self,
@@ -156,6 +164,8 @@ class SessionTracker:
 
     def _end_session(self, session_id: str, status: str):
         """Internal: Mark session as ended with given status"""
+        self._ensure_runtime_dir()
+
         # Create a minimal entry to record the end
         # We don't need all fields since we're just updating status
         entry = {
@@ -165,15 +175,24 @@ class SessionTracker:
         }
 
         # Append to JSONL
-        with open(self.RUNTIME_LOG, "a") as f:
-            f.write(json.dumps(entry) + "\n")
+        self._write_log(json.dumps(entry))
 
     def _append_entry(self, entry: SessionEntry):
         """Append session entry to JSONL file"""
         self._ensure_runtime_dir()
+        self._write_log(json.dumps(asdict(entry)))
 
-        with open(self.RUNTIME_LOG, "a") as f:
-            f.write(json.dumps(asdict(entry)) + "\n")
+    def _write_log(self, line: str) -> None:
+        """Append a line to RUNTIME_LOG with 0o600 permissions on new files."""
+        fd = os.open(
+            str(self.RUNTIME_LOG),
+            os.O_WRONLY | os.O_APPEND | os.O_CREAT,
+            0o600,
+        )
+        try:
+            os.write(fd, (line + "\n").encode())
+        finally:
+            os.close(fd)
 
     def _generate_session_id(self) -> str:
         """Generate unique session ID"""

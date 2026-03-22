@@ -144,10 +144,11 @@ class UVXSettingsManager:
                 # Use UVX template hooks if none exist
                 merged_settings["hooks"] = uvx_template["hooks"]
 
-            # Write merged settings
+            # Write merged settings (atomic to prevent data loss)
             target_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(target_path, "w", encoding="utf-8") as f:
-                json.dump(merged_settings, f, indent=2, ensure_ascii=False)
+            from ..settings import write_json_atomic
+
+            write_json_atomic(str(target_path), merged_settings)
 
             return True
 

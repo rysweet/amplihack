@@ -8,6 +8,7 @@ Supports multi-agent packaging with sub-agent configurations.
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 from .models import GoalAgentBundle
@@ -261,7 +262,8 @@ if __name__ == "__main__":
 
         main_path = agent_dir / "main.py"
         main_path.write_text(main_content)
-        main_path.chmod(0o755)  # Make executable
+        if sys.platform != "win32":
+            main_path.chmod(0o755)  # Make executable
 
     def _write_readme(self, agent_dir: Path, bundle: GoalAgentBundle) -> None:
         """Write README file."""

@@ -157,6 +157,11 @@ class RecipeParser:
                 warnings.append(f"Step '{step.id}': bash step is missing a 'command' field")
             if step.step_type == StepType.RECIPE and not step.recipe:
                 warnings.append(f"Step '{step.id}': recipe step is missing a 'recipe' field")
+            if step.step_type == StepType.BASH and step.agent:
+                warnings.append(
+                    f"Step '{step.id}': bash step has 'agent' field set "
+                    f"(did you mean type: agent?)"
+                )
 
         # Check for unrecognized fields if raw YAML is provided
         if raw_yaml is not None:
@@ -176,12 +181,75 @@ class RecipeParser:
 
         return warnings
 
+    _BOOL_TRUE = frozenset({"true", "yes", "1"})
+    _BOOL_FALSE = frozenset({"false", "no", "0"})
+
+    @staticmethod
+    def _coerce_bool(value: Any, field_name: str, step_id: str) -> bool:
+        """Coerce a value to bool, accepting string representations from YAML."""
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            lower = value.lower()
+            if lower in RecipeParser._BOOL_TRUE:
+                return True
+            if lower in RecipeParser._BOOL_FALSE:
+                return False
+            raise ValueError(
+                f"Step '{step_id}': field '{field_name}' must be a boolean, "
+                f"got string '{value}'"
+            )
+        if isinstance(value, int):
+            return bool(value)
+        raise ValueError(
+            f"Step '{step_id}': field '{field_name}' must be a boolean, "
+            f"got {type(value).__name__}"
+        )
+
+    @staticmethod
+    def _coerce_int(value: Any, field_name: str, step_id: str) -> int:
+        """Coerce a value to int, accepting string digit representations from YAML."""
+        if isinstance(value, int) and not isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            try:
+                return int(value)
+            except ValueError:
+                raise ValueError(
+                    f"Step '{step_id}': field '{field_name}' must be an integer, "
+                    f"got '{value}'"
+                ) from None
+        raise ValueError(
+            f"Step '{step_id}': field '{field_name}' must be an integer, "
+            f"got {type(value).__name__}"
+        )
+
     def _parse_step(self, raw: dict[str, Any]) -> Step:
         """Parse a single step dict into a Step object."""
         step_id = raw.get("id", "")
         if not step_id:
             raise ValueError("Every step must have a non-empty 'id' field")
         step_type = self._infer_step_type(raw)
+
+        # Coerce parse_json (bool field, default False)
+        raw_parse_json = raw.get("parse_json", False)
+        parse_json = self._coerce_bool(raw_parse_json, "parse_json", step_id)
+
+        # Coerce auto_stage (optional bool field)
+        raw_auto_stage = raw.get("auto_stage")
+        auto_stage = (
+            self._coerce_bool(raw_auto_stage, "auto_stage", step_id)
+            if raw_auto_stage is not None
+            else None
+        )
+
+        # Coerce timeout (optional int field)
+        raw_timeout = raw.get("timeout")
+        timeout = (
+            self._coerce_int(raw_timeout, "timeout", step_id)
+            if raw_timeout is not None
+            else None
+        )
 
         return Step(
             id=step_id,
@@ -191,11 +259,11 @@ class RecipeParser:
             prompt=raw.get("prompt"),
             output=raw.get("output"),
             condition=raw.get("condition"),
-            parse_json=raw.get("parse_json", False),
+            parse_json=parse_json,
             mode=raw.get("mode"),
             working_dir=raw.get("working_dir"),
-            timeout=raw.get("timeout"),
-            auto_stage=raw.get("auto_stage"),
+            timeout=timeout,
+            auto_stage=auto_stage,
             recipe=raw.get("recipe"),
             sub_context=raw.get("context") if isinstance(raw.get("context"), dict) else None,
         )

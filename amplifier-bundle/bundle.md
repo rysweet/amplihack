@@ -86,6 +86,7 @@ skills:
   microsoft-agent-framework: { path: skills/microsoft-agent-framework/skill.md }
   module-spec-generator: { path: skills/module-spec-generator/SKILL.md }
   outside-in-testing: { path: skills/outside-in-testing/SKILL.md }
+  qa-team: { path: skills/qa-team/SKILL.md }
   remote-work: { path: skills/remote-work/SKILL.md }
   skill-builder: { path: skills/skill-builder/SKILL.md }
   test-gap-analyzer: { path: skills/test-gap-analyzer/SKILL.md }

@@ -19,38 +19,25 @@ Public API (the "studs"):
 
 import json
 import os
+import sys
 import tempfile
 import time
 from collections.abc import Callable
 from pathlib import Path
 
-# Import file locking utilities
-try:
-    from .file_lock_utils import acquire_file_lock
-except ImportError:
-    from file_lock_utils import acquire_file_lock
+# Ensure hooks directory is importable for both package and standalone execution
+_hooks_dir = os.path.dirname(os.path.abspath(__file__))
+if _hooks_dir not in sys.path:
+    sys.path.insert(0, _hooks_dir)
 
-# Import models
-try:
-    from .power_steering_models import PowerSteeringTurnState
-except ImportError:
-    from power_steering_models import PowerSteeringTurnState
-
-# Import constants
-try:
-    from .power_steering_constants import (
-        INITIAL_RETRY_DELAY,
-        LOCK_TIMEOUT_SECONDS,
-        MAX_SAVE_RETRIES,
-        MAX_TURN_COUNT,
-    )
-except ImportError:
-    from power_steering_constants import (
-        INITIAL_RETRY_DELAY,
-        LOCK_TIMEOUT_SECONDS,
-        MAX_SAVE_RETRIES,
-        MAX_TURN_COUNT,
-    )
+from file_lock_utils import acquire_file_lock
+from power_steering_models import PowerSteeringTurnState
+from power_steering_constants import (
+    INITIAL_RETRY_DELAY,
+    LOCK_TIMEOUT_SECONDS,
+    MAX_SAVE_RETRIES,
+    MAX_TURN_COUNT,
+)
 
 
 __all__ = [

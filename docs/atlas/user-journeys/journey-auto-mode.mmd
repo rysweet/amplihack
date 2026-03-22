@@ -1,0 +1,34 @@
+sequenceDiagram
+    actor User
+    participant CLI as cli.py
+    participant Auto as AutoMode
+    participant Coord as AutoModeCoordinator
+    participant State as AutoModeState
+    participant Verifier as CompletionVerifier
+    participant Claude as claude binary
+    participant Log as runtime/logs/
+
+    User->>CLI: amplihack launch --auto -- -p "implement auth"
+    CLI->>Auto: AutoMode(sdk, prompt, max_turns=10)
+    Auto->>State: initialize state
+    State->>Log: create log directory
+
+    loop Each Turn (up to max_turns)
+        Auto->>Coord: execute_turn()
+        Coord->>Claude: subprocess.run(claude, -p prompt)
+        Claude-->>Coord: output
+        Coord->>State: update(turn_output)
+        State->>Log: persist JSON state
+        Coord->>Verifier: check_completion(output)
+        alt Task complete
+            Verifier-->>Coord: COMPLETE
+            Coord-->>Auto: done
+        else Needs more work
+            Verifier-->>Coord: CONTINUE
+            Note over Coord: Next turn with updated context
+        end
+    end
+
+    Auto->>Auto: generate WorkSummary
+    Auto-->>CLI: exit_code
+    CLI-->>User: exit_code

@@ -8,6 +8,34 @@ metadata:
 
 # Quality Audit Workflow
 
+## Workflow Graph
+
+```mermaid
+flowchart TD
+    START[Start Audit] --> SEEK
+
+    subgraph CYCLE["Audit Cycle (min 3, max 6)"]
+        SEEK[SEEK: Scan for issues<br/>reviewer agent<br/>escalating depth per cycle] --> VAL_CHECK{Findings found?}
+        VAL_CHECK -->|no| DECISION
+        VAL_CHECK -->|yes| V1[VALIDATE Agent 1<br/>analyzer] & V2[VALIDATE Agent 2<br/>reviewer] & V3[VALIDATE Agent 3<br/>architect]
+        V1 & V2 & V3 --> MERGE[Merge Validations<br/>require >=2/3 agreement]
+        MERGE --> FIX_CHECK{Confirmed findings?}
+        FIX_CHECK -->|no| DECISION
+        FIX_CHECK -->|yes| FIX[FIX ALL confirmed<br/>builder agent<br/>fix-all-per-cycle rule]
+        FIX --> VERIFY[Verify all fixes applied]
+        VERIFY --> ACCUM[Accumulate cycle history]
+        ACCUM --> DECISION{Recurse decision}
+    end
+
+    DECISION -->|"CONTINUE<br/>(cycle < min OR<br/>NEW high/critical found OR<br/>>3 NEW medium found)"| SEEK
+    DECISION -->|"STOP<br/>(thresholds met OR<br/>max cycles reached)"| SUMMARY
+
+    SUMMARY[Final Summary<br/>architect agent] --> SELF[Self-Improvement Review<br/>architect agent]
+    SELF --> DONE[Audit Complete]
+
+    style CYCLE fill:#f9f9f9,stroke:#333,stroke-width:2px
+```
+
 ## Purpose
 
 Orchestrates a systematic, parallel quality audit of any codebase with automated remediation through PR generation and PM-prioritized recommendations.
@@ -106,23 +134,31 @@ This workflow ruthlessly applies:
 
 ### Standard Categories
 
-| Category     | What It Detects                                              |
-| ------------ | ------------------------------------------------------------ |
-| Security     | Hardcoded secrets, missing input validation                  |
-| Reliability  | Missing timeouts, bare except clauses                        |
-| Dead Code    | Unused imports, unreachable branches, stale TODOs            |
-| Test Gaps    | Files without tests, tests without assertions                |
-| Doc Gaps     | Public functions without docstrings, outdated docs           |
+| Category    | What It Detects                                                              |
+| ----------- | ---------------------------------------------------------------------------- |
+| Security    | Hardcoded secrets, missing input validation, string interpolation in queries |
+| Reliability | Missing timeouts, bare except clauses, unhandled async                       |
+| Dead Code   | Unused imports, unreachable branches, stale TODOs                            |
+| Test Gaps   | Files without tests, tests without assertions                                |
+| Doc Gaps    | Public functions without docstrings, outdated docs                           |
 
 ### Extended Categories
 
-| Category           | What It Detects                                              |
-| ------------------ | ------------------------------------------------------------ |
-| Silent Fallbacks   | `except: pass`, broad catches that return defaults silently, fallback chains that mask failures |
-| Error Swallowing   | Catch blocks with no logging/re-raise, error-to-None transforms, catch-all discarding exceptions |
-| Structural Issues  | Files >500 LOC, functions >50 lines, nesting >4 levels, >5 parameters, circular imports |
-| Documentation      | Point-in-time content, unprofessional tone (pirate speak, chatbot artifacts), quality/correctness gaps |
-| Hardcoded Limits   | Non-configurable numeric caps (`[:N]`, `max_X = N`), silent truncation without logging, data loss from processing limits |
+| Category               | What It Detects                                                                                                                                                                                                                                                |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- | -------------------------- |
+| Silent Fallbacks       | `except: pass`, broad catches that return defaults silently, fallback chains that mask failures, `?? defaultValue` hiding missing config, `dict.get(key, default)` on required values, `                                                                       |     | fallback` in shell scripts |
+| Error Swallowing       | Catch blocks with no re-raise/re-throw, error-to-None/null transforms, catch-all discarding exceptions, log-only catch blocks, empty catch blocks, `catch (Exception)` returning false/default/empty collection                                                |
+| Result Dropping        | Fire-and-forget async (`_ = Task()`, `asyncio.create_task()` without error handling), unchecked HTTP response status, discarded return values, `Task.WhenAll`/`Promise.all`/`asyncio.gather` without individual failure checks, unchecked `subprocess.run()`   |
+| Shell Anti-Patterns    | `\|\| true`, `>/dev/null 2>&1`, `2>/dev/null`, `set +e`, `\|\| fallback_command`, missing `set -euo pipefail`                                                                                                                                                  |
+| Silent Truncation      | `Take(N)`/`[:N]`/`.slice(0,N)` without logging, `.Where()`/list comprehensions that silently drop items that should be processed, string substring without bounds logging                                                                                      |
+| Async Anti-Patterns    | `async void` (C#), `.Result`/`.Wait()` sync-over-async, unawaited coroutines/promises, shared mutable state without synchronization, CancellationToken not propagated, Timer/CancellationTokenSource not disposed                                              |
+| Config Divergence      | Env vars defined in deploy configs but read with silent fallbacks in code, `IsDevelopment()` guards that could leak to staging/prod, services expecting config that infrastructure doesn't provide                                                             |
+| Validation Gaps        | API endpoints without input validation, string interpolation in SQL/GraphQL/Cypher, missing pagination limits, missing request size limits, enum parsing from user input without validation, trusting deserialized external data without null checks           |
+| Health & Observability | Degraded reported when Unhealthy is appropriate, background worker failures not surfaced to /health, log-only error handling without metrics, permanent errors treated as transient (retried instead of dead-lettered), partial success marked as full success |
+| Retry Anti-Patterns    | Retry loops that fall through silently after exhaustion, circuit breakers that open without alerting, retry logic that eventually gives up without raising the last error                                                                                      |
+| Structural Issues      | Files >500 LOC, functions >50 lines, nesting >4 levels, >5 parameters, circular imports                                                                                                                                                                        |
+| Documentation          | Point-in-time content, unprofessional tone (pirate speak, chatbot artifacts), quality/correctness gaps                                                                                                                                                         |
+| Hardcoded Limits       | Non-configurable numeric caps (`[:N]`, `max_X = N`), silent truncation without logging, data loss from processing limits                                                                                                                                       |
 
 ## Multi-Agent Validation (v3.0)
 
@@ -166,19 +202,21 @@ Override defaults via recipe context or environment:
 
 **Structured Inputs (recipe context, per #2843)**:
 
-| Input                  | Default    | Description                                            |
-| ---------------------- | ---------- | ------------------------------------------------------ |
-| `target_path`          | `src/amplihack` | Directory to audit                                |
-| `min_cycles`           | `3`        | Minimum audit cycles                                   |
-| `max_cycles`           | `6`        | Maximum cycles (safety valve)                          |
-| `validation_threshold` | `2`        | Min validators that must agree (out of 3)              |
-| `severity_threshold`   | `medium`   | Minimum severity to report                             |
-| `module_loc_limit`     | `300`      | Flag modules exceeding this LOC                        |
-| `fix_all_per_cycle`    | `true`     | Must fix ALL findings before next cycle (#2842)        |
-| `categories`           | (all)      | Comma-separated list of categories to check            |
+| Input                  | Default         | Description                                     |
+| ---------------------- | --------------- | ----------------------------------------------- |
+| `target_path`          | `src/amplihack` | Directory to audit                              |
+| `min_cycles`           | `3`             | Minimum audit cycles                            |
+| `max_cycles`           | `6`             | Maximum cycles (safety valve)                   |
+| `validation_threshold` | `2`             | Min validators that must agree (out of 3)       |
+| `severity_threshold`   | `medium`        | Minimum severity to report                      |
+| `module_loc_limit`     | `300`           | Flag modules exceeding this LOC                 |
+| `fix_all_per_cycle`    | `true`          | Must fix ALL findings before next cycle (#2842) |
+| `categories`           | (all)           | Comma-separated list of categories to check     |
 
 **Available Categories**: `security`, `reliability`, `dead_code`, `silent_fallbacks`,
-`error_swallowing`, `structural`, `hardcoded_limits`, `test_gaps`, `doc_gaps`, `documentation`
+`error_swallowing`, `result_dropping`, `shell_anti_patterns`, `silent_truncation`,
+`async_anti_patterns`, `config_divergence`, `validation_gaps`, `health_observability`,
+`retry_anti_patterns`, `structural`, `hardcoded_limits`, `test_gaps`, `doc_gaps`, `documentation`
 
 **Example invocation**:
 

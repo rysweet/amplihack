@@ -1,0 +1,88 @@
+# Outside-in test for /top5 error handling
+# Validates generate_top5.py handles failure modes gracefully:
+# invalid sources, missing gh CLI, malformed YAML.
+
+scenario:
+  name: "Top 5 Priorities - Error Handling"
+  description: |
+    Verifies that generate_top5.py degrades gracefully when GitHub is
+    unreachable, sources.yaml is malformed, or the project root is invalid.
+    The script should always return valid JSON, never crash.
+  type: cli
+  level: 2
+  tags: [cli, error-handling, top5, pm-architect, resilience]
+
+  prerequisites:
+    - "Python 3.11+ is available"
+    - "PyYAML is installed"
+
+  steps:
+    # Test 1: Non-existent project root (no .pm/ dir)
+    - action: launch
+      target: "python"
+      args:
+        - ".claude/skills/pm-architect/scripts/generate_top5.py"
+        - "--project-root"
+        - "/tmp/top5-test-nonexistent-path-12345"
+      description: "Run with non-existent project root"
+      timeout: 15s
+
+    - action: verify_output
+      contains: '"top5"'
+      description: "Still returns valid JSON with top5 key"
+
+    - action: verify_output
+      contains: '"total_candidates": 0'
+      description: "Reports zero candidates when no sources available"
+
+    - action: verify_exit_code
+      expected: 0
+      description: "Exits cleanly even with missing project root"
+
+    # Test 2: Malformed sources.yaml
+    - action: launch
+      target: "bash"
+      args:
+        - "-c"
+        - |
+          TMPDIR=$(mktemp -d) &&
+          mkdir -p "$TMPDIR/.pm" &&
+          echo "not: [valid: yaml: {{{{" > "$TMPDIR/.pm/sources.yaml" &&
+          python .claude/skills/pm-architect/scripts/generate_top5.py --project-root "$TMPDIR" --sources "$TMPDIR/.pm/sources.yaml"
+      description: "Run with malformed sources.yaml"
+      timeout: 15s
+
+    # Script should handle YAML parse errors (may return error JSON or empty results)
+    - action: verify_exit_code
+      expected_one_of: [0, 1]
+      description: "Exits with 0 or 1, never crashes with traceback"
+
+    # Test 3: Empty sources.yaml (valid but no accounts)
+    - action: launch
+      target: "bash"
+      args:
+        - "-c"
+        - |
+          TMPDIR=$(mktemp -d) &&
+          mkdir -p "$TMPDIR/.pm" &&
+          echo "github: []" > "$TMPDIR/.pm/sources.yaml" &&
+          python .claude/skills/pm-architect/scripts/generate_top5.py --project-root "$TMPDIR" --sources "$TMPDIR/.pm/sources.yaml"
+      description: "Run with empty sources list"
+      timeout: 15s
+
+    - action: verify_output
+      contains: '"top5"'
+      description: "Returns valid JSON with empty top5"
+
+    - action: verify_output
+      contains: '"total_candidates": 0'
+      description: "Reports zero candidates"
+
+    - action: verify_exit_code
+      expected: 0
+      description: "Exits cleanly with empty sources"
+
+  cleanup:
+    - action: stop_application
+      force: true
+      description: "Ensure all processes are terminated"

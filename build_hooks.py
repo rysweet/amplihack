@@ -2,8 +2,8 @@
 
 This module provides custom build hooks that copy directories from the repository
 root into src/amplihack/ before building the wheel. This ensures the framework
-files, plugin manifest, and bundle files are included in the wheel distribution
-for UVX deployment.
+files, plugin manifest, bundle files, and staged Rust binaries are included in
+the wheel distribution for UVX deployment.
 
 Why this is needed:
 - MANIFEST.in only controls sdist, not wheels
@@ -21,7 +21,10 @@ NOTE: This file is only used during package building (not runtime),
 so missing setuptools import at runtime is expected and not an error.
 """
 
+import os
 import shutil
+import stat
+import sys
 from pathlib import Path
 
 from setuptools import build_meta as _orig
@@ -53,6 +56,7 @@ class _CustomBuildBackend:
         self.skills_dest = pkg_root / "skills"
         self.agents_src = self.claude_src / "agents"
         self.agents_dest = pkg_root / "agents"
+        self.rust_binaries = ("amplihack", "amplihack-hooks")
 
     def _get_ignore_patterns(self):
         """Return common ignore patterns for directory copying."""
@@ -112,6 +116,57 @@ class _CustomBuildBackend:
     def _copy_claude_directory(self):
         """Copy .claude/ from repo root to src/amplihack/ if needed."""
         self._copy_plugin_directory(self.claude_src, self.claude_dest, ".claude/")
+
+    def _find_rust_binary(self, binary_name):
+        """Locate a Rust binary to stage into the wheel, if one is available."""
+        env_dir = os.environ.get("AMPLIHACK_RS_BIN_DIR")
+        candidates = []
+        if env_dir:
+            candidates.append(Path(env_dir) / binary_name)
+
+        sibling_target = self.repo_root.parent / "amplihack-rs" / "target"
+        candidates.extend(
+            [
+                sibling_target / "release" / binary_name,
+                sibling_target / "debug" / binary_name,
+                Path.home() / ".cargo" / "bin" / binary_name,
+            ]
+        )
+
+        on_path = shutil.which(binary_name)
+        if on_path:
+            candidates.append(Path(on_path))
+
+        for candidate in candidates:
+            expanded = candidate.expanduser()
+            if expanded.is_file() and os.access(expanded, os.X_OK):
+                return expanded
+        return None
+
+    def _copy_rust_binaries(self):
+        """Stage Rust CLI binaries into amplihack/.claude/bin when available."""
+        bin_dest = self.claude_dest / "bin"
+        bin_dest.mkdir(parents=True, exist_ok=True)
+
+        staged = 0
+        for binary_name in self.rust_binaries:
+            source = self._find_rust_binary(binary_name)
+            if source is None:
+                print(f"Info: {binary_name} not found for wheel staging")
+                continue
+
+            target = bin_dest / binary_name
+            print(f"Copying Rust binary {source} -> {target}")
+            shutil.copy2(source, target)
+            if sys.platform != "win32":
+                current_mode = target.stat().st_mode
+                target.chmod(current_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+            staged += 1
+
+        if staged == 0:
+            print(
+                "Info: No Rust binaries staged; wheel will use Python-only packaging for binaries"
+            )
 
     def _copy_plugin_manifest(self):
         """Copy .claude-plugin/ from repo root to src/amplihack/ for wheel inclusion."""
@@ -256,6 +311,7 @@ class _CustomBuildBackend:
         """Build wheel with .claude/, .claude-plugin/, .github/, amplifier-bundle/, AMPLIHACK.md, and CLAUDE.md included."""
         try:
             self._copy_claude_directory()
+            self._copy_rust_binaries()
             self._copy_plugin_manifest()
             self._copy_github_directory()
             self._copy_bundle_directory()

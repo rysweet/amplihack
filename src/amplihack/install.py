@@ -12,7 +12,6 @@ Public API (the "studs"):
     ensure_dirs: Ensure base Claude directory exists
 """
 
-import json
 import os
 import shutil
 import stat
@@ -52,19 +51,26 @@ def copytree_manifest(
     Returns:
         List of copied directory paths relative to dst
     """
-    # Try two essential locations only:
+    # Try common editable and packaged layouts:
     # 1. Direct path (package or repo root)
-    # 2. Parent directory (for src/amplihack case)
+    # 2. Parent directory (for package/.claude)
+    # 3. Grandparent directory (for repo/src/amplihack -> repo/.claude)
+    search_paths = [
+        os.path.abspath(os.path.join(repo_root, rel_top)),
+        os.path.abspath(os.path.join(repo_root, "..", rel_top)),
+        os.path.abspath(os.path.join(repo_root, "..", "..", rel_top)),
+    ]
 
-    direct_path = os.path.join(repo_root, rel_top)
-    parent_path = os.path.join(repo_root, "..", rel_top)
+    base = None
+    for candidate in search_paths:
+        if os.path.exists(candidate):
+            base = candidate
+            break
 
-    if os.path.exists(direct_path):
-        base = direct_path
-    elif os.path.exists(parent_path):
-        base = parent_path
-    else:
-        print(f"  ❌ .claude not found at {direct_path} or {parent_path}")
+    if base is None:
+        print("  ❌ .claude not found at:")
+        for candidate in search_paths:
+            print(f"     {candidate}")
         return []
 
     copied = []
@@ -270,9 +276,10 @@ def get_all_files_and_dirs(root_dirs: list[str]) -> tuple[list[str], list[str]]:
 
 def write_manifest(files: list[str], dirs: list[str]) -> None:
     """Write manifest file with list of files and directories."""
+    from .settings import write_json_atomic
+
     os.makedirs(os.path.dirname(MANIFEST_JSON), exist_ok=True)
-    with open(MANIFEST_JSON, "w", encoding="utf-8") as f:
-        json.dump({"files": files, "dirs": dirs}, f, indent=2)
+    write_json_atomic(MANIFEST_JSON, {"files": files, "dirs": dirs})
 
 
 def _local_install(repo_root, profile_uri=None):
@@ -403,6 +410,28 @@ def _local_install(repo_root, profile_uri=None):
     from .hook_verification import verify_hooks  # type: ignore[attr-defined]
 
     hooks_ok = verify_hooks()
+
+    # Step 6.5: Ensure Rust recipe runner binary
+    print("\n🦀 Ensuring Rust recipe runner:")
+    try:
+        from .recipes.rust_runner import ensure_rust_recipe_runner
+
+        if ensure_rust_recipe_runner():
+            print("   ✅ recipe-runner-rs is available")
+        else:
+            print("   ❌ recipe-runner-rs not installed (recipe execution will fail without it)")
+            print(
+                "   Install: cargo install --git https://github.com/rysweet/amplihack-recipe-runner"
+            )
+    except Exception as e:
+        print(f"   ⚠️  recipe-runner-rs check failed: {e}")
+        import logging as _install_logging
+
+        _install_logging.getLogger(__name__).warning(
+            "Could not ensure recipe-runner-rs: %s",
+            e,
+            exc_info=True,
+        )
 
     # Step 7: Generate manifest for uninstall
     print("\n📝 Generating uninstall manifest:")

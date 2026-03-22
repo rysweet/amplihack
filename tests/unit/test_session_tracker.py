@@ -335,3 +335,133 @@ class TestSessionTrackerE2E:
             nested_start = json.loads(lines[1])
             assert nested_start["is_nested"] is True
             assert nested_start["parent_session_id"] == parent_sid
+
+
+# BUG FIX TESTS — Issue 3053: _end_session crashes when runtime dir is deleted
+class TestEndSessionMissingDirectory:
+    """Regression tests for Issue 3053.
+
+    _end_session() must tolerate the .claude/runtime/ directory being absent
+    at the time complete_session() or crash_session() is called.
+
+    Root cause: _end_session did not call _ensure_runtime_dir() before opening
+    the log file, so deleting the directory after __init__ caused FileNotFoundError.
+
+    Expected fix: _end_session() calls self._ensure_runtime_dir() as its first
+    statement, mirroring the guard already present in _append_entry().
+    """
+
+    def test_complete_session_creates_missing_dir(self, tmp_path):
+        """complete_session succeeds and re-creates the runtime dir when absent.
+
+        Sequence:
+        1. Create tracker (directory created in __init__)
+        2. start_session (writes start entry)
+        3. Delete the runtime directory entirely (simulates dir removal)
+        4. complete_session must NOT raise FileNotFoundError
+        5. The runtime directory and log file must exist afterwards
+        """
+        import shutil
+
+        runtime_log = tmp_path / ".claude" / "runtime" / "sessions.jsonl"
+
+        with patch.object(SessionTracker, "RUNTIME_LOG", runtime_log):
+            tracker = SessionTracker()
+
+            session_id = tracker.start_session(
+                pid=12345,
+                launch_dir="/test/dir",
+                argv=["amplihack", "launch"],
+                is_auto_mode=False,
+                is_nested=False,
+                parent_session_id=None,
+            )
+
+            # Simulate the runtime directory being removed mid-session
+            shutil.rmtree(runtime_log.parent)
+            assert not runtime_log.parent.exists(), "Pre-condition: dir must be gone"
+
+            # Must not raise — _end_session should re-create the directory
+            tracker.complete_session(session_id)
+
+            # Post-conditions: directory and file were re-created
+            assert runtime_log.parent.exists(), "Runtime dir was not re-created"
+            assert runtime_log.exists(), "Log file was not re-created"
+
+            content = runtime_log.read_text().strip()
+            lines = content.split("\n")
+            assert len(lines) == 1, "Only the complete entry should be written"
+            complete_entry = json.loads(lines[0])
+            assert complete_entry["session_id"] == session_id
+            assert complete_entry["status"] == "completed"
+
+    def test_crash_session_creates_missing_dir(self, tmp_path):
+        """crash_session succeeds and re-creates the runtime dir when absent.
+
+        Sequence:
+        1. Create tracker (directory created in __init__)
+        2. start_session (writes start entry)
+        3. Delete the runtime directory entirely
+        4. crash_session must NOT raise FileNotFoundError
+        5. The runtime directory and log file must exist afterwards
+        """
+        import shutil
+
+        runtime_log = tmp_path / ".claude" / "runtime" / "sessions.jsonl"
+
+        with patch.object(SessionTracker, "RUNTIME_LOG", runtime_log):
+            tracker = SessionTracker()
+
+            session_id = tracker.start_session(
+                pid=12345,
+                launch_dir="/test/dir",
+                argv=["amplihack", "launch"],
+                is_auto_mode=False,
+                is_nested=False,
+                parent_session_id=None,
+            )
+
+            # Simulate the runtime directory being removed mid-session
+            shutil.rmtree(runtime_log.parent)
+            assert not runtime_log.parent.exists(), "Pre-condition: dir must be gone"
+
+            # Must not raise — _end_session should re-create the directory
+            tracker.crash_session(session_id)
+
+            # Post-conditions: directory and file were re-created
+            assert runtime_log.parent.exists(), "Runtime dir was not re-created"
+            assert runtime_log.exists(), "Log file was not re-created"
+
+            content = runtime_log.read_text().strip()
+            lines = content.split("\n")
+            assert len(lines) == 1, "Only the crash entry should be written"
+            crash_entry = json.loads(lines[0])
+            assert crash_entry["session_id"] == session_id
+            assert crash_entry["status"] == "crashed"
+
+    def test_end_session_idempotent_when_dir_exists(self, tmp_path):
+        """_ensure_runtime_dir is safe to call when directory already exists.
+
+        Calling complete_session on an existing directory must not raise
+        (exist_ok=True guarantees idempotency).
+        """
+        runtime_log = tmp_path / ".claude" / "runtime" / "sessions.jsonl"
+
+        with patch.object(SessionTracker, "RUNTIME_LOG", runtime_log):
+            tracker = SessionTracker()
+
+            session_id = tracker.start_session(
+                pid=99999,
+                launch_dir="/existing/dir",
+                argv=["amplihack"],
+                is_auto_mode=False,
+                is_nested=False,
+                parent_session_id=None,
+            )
+
+            # Directory still exists — must not raise
+            tracker.complete_session(session_id)
+
+            assert runtime_log.exists()
+            lines = runtime_log.read_text().strip().split("\n")
+            assert len(lines) == 2  # start + complete

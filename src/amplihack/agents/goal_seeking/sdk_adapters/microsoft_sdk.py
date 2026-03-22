@@ -1,9 +1,9 @@
 """Microsoft Agent Framework implementation of GoalSeekingAgent.
 
-Uses the agent-framework package (Microsoft's unified AI agent platform).
+Uses the agent-framework-core package (Microsoft's unified AI agent platform).
 API: Agent(client, instructions, name=..., tools=[...]) -> agent.run(messages, session=session)
 
-Install: pip install agent-framework
+Install: pip install agent-framework-core
 """
 
 from __future__ import annotations
@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -39,7 +40,7 @@ try:
 
     _HAS_AGENT_FRAMEWORK = True
 except ImportError:
-    pass  # Checked in MicrosoftGoalSeekingAgent.__init__
+    print("WARNING: agent_framework not available", file=sys.stderr)
 
 
 # ---------------------------------------------------------------------------
@@ -116,7 +117,7 @@ class MicrosoftGoalSeekingAgent(GoalSeekingAgent):
     ):
         if not _HAS_AGENT_FRAMEWORK:
             raise ImportError(
-                "agent-framework not installed. Install with: pip install agent-framework"
+                "agent-framework-core not installed. Install with: pip install agent-framework-core"
             )
 
         resolved_model = model or os.environ.get(
