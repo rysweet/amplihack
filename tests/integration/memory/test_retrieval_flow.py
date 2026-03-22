@@ -18,6 +18,7 @@ import pytest
 try:
     from amplihack.memory.coordinator import MemoryCoordinator
     from amplihack.memory.database import MemoryDatabase
+    from amplihack.memory.models import MemoryEntry, MemoryType
     from amplihack.memory.retrieval_pipeline import (
         RetrievalPipeline,
         RetrievalQuery,
