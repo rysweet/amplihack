@@ -26,6 +26,7 @@ from amplihack.recipes.models import StepStatus
 from amplihack.recipes.rust_runner import (
     RustRunnerNotFoundError,
     _redact_command_for_log,
+    _validate_context_keys,
     _write_progress_file,
     ensure_rust_recipe_runner,
     find_rust_binary,
@@ -851,3 +852,54 @@ class TestProgressFile:
         assert result is not None
         assert result["step_name"] == "first"
         assert result["status"] == "running"
+
+
+# ============================================================================
+# _validate_context_keys
+# ============================================================================
+
+
+class TestValidateContextKeys:
+    """Tests for _validate_context_keys() — ensures user_context keys are safe identifiers."""
+
+    def test_valid_simple_key_passes(self) -> None:
+        _validate_context_keys({"my_var": "value"})  # No exception
+
+    def test_valid_camel_case_passes(self) -> None:
+        _validate_context_keys({"myVariable": "x"})
+
+    def test_valid_leading_underscore_passes(self) -> None:
+        _validate_context_keys({"_internal": True})
+
+    def test_valid_alphanumeric_passes(self) -> None:
+        _validate_context_keys({"var123": 42})
+
+    def test_empty_dict_passes(self) -> None:
+        _validate_context_keys({})  # No exception
+
+    def test_multiple_valid_keys_pass(self) -> None:
+        _validate_context_keys({"a": 1, "b_c": 2, "D3": 3})
+
+    def test_key_with_space_raises(self) -> None:
+        with pytest.raises(ValueError, match="my var"):
+            _validate_context_keys({"my var": "value"})
+
+    def test_key_with_dash_raises(self) -> None:
+        with pytest.raises(ValueError, match="my-key"):
+            _validate_context_keys({"my-key": "value"})
+
+    def test_key_with_equals_raises(self) -> None:
+        with pytest.raises(ValueError, match="key=inject"):
+            _validate_context_keys({"key=inject": "value"})
+
+    def test_key_starting_with_digit_raises(self) -> None:
+        with pytest.raises(ValueError, match="1bad"):
+            _validate_context_keys({"1bad": "value"})
+
+    def test_key_with_semicolon_raises(self) -> None:
+        with pytest.raises(ValueError, match="a;b"):
+            _validate_context_keys({"a;b": "value"})
+
+    def test_empty_key_raises(self) -> None:
+        with pytest.raises(ValueError):
+            _validate_context_keys({"": "value"})

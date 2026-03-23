@@ -36,6 +36,10 @@ _ENV_VAR_SIZE_LIMIT = 32 * 1024  # 32 768 bytes — kernel limit guard
 # _sanitize_key() call.
 _KEY_SANITIZE_RE: re.Pattern[str] = re.compile(r"[^a-zA-Z0-9_]")
 
+# Valid context key: must be a legal identifier (letters/digits/underscore,
+# not starting with a digit).  Prevents shell-injection via --set args.
+_VALID_CONTEXT_KEY_RE: re.Pattern[str] = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
+
 # Fast-path threshold for the encode() guard.
 # UTF-8 uses at most 4 bytes per code-point, so a string shorter than
 # limit/4 characters cannot possibly encode to >= limit bytes.
@@ -55,6 +59,28 @@ def _sanitize_key(key: str) -> str:
     """
     safe = _KEY_SANITIZE_RE.sub("_", key)[:64]
     return safe if safe else "_empty_key_"
+
+
+def _validate_context_keys(user_context: dict[str, Any]) -> None:
+    """Validate that all user_context keys are safe identifiers.
+
+    Keys are passed verbatim into ``--set {key}={value}`` CLI arguments.
+    A key containing spaces, ``=``, or shell metacharacters could corrupt the
+    argument list or enable injection attacks.  Only ``[a-zA-Z_][a-zA-Z0-9_]*``
+    keys are accepted — the same rule as Python/shell variable names.
+
+    Args:
+        user_context: Mapping of context keys to values to validate.
+
+    Raises:
+        ValueError: If any key does not match the safe-identifier pattern.
+    """
+    for key in user_context:
+        if not _VALID_CONTEXT_KEY_RE.match(key):
+            raise ValueError(
+                f"Invalid user_context key {key!r}: keys must match "
+                r"[a-zA-Z_][a-zA-Z0-9_]* (no spaces, dashes, or special chars)"
+            )
 
 
 def _write_spill_bytes(key: str, encoded: bytes, tmp_dir: Path) -> str:
@@ -340,6 +366,9 @@ def _build_rust_command(
     When *tmp_dir* is ``None``, spilling is disabled and all values are passed
     inline (backward-compatible).
     """
+    if user_context:
+        _validate_context_keys(user_context)
+
     abs_working_dir = str(Path(working_dir).resolve())
     cmd = [binary, name, "--output-format", "json", "-C", abs_working_dir]
 
