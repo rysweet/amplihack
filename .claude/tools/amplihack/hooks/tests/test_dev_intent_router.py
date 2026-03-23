@@ -11,6 +11,7 @@ evaluates with full natural language understanding. These tests verify:
 5. The workflow-active semaphore blocks injection during orchestration
 """
 
+import json
 import os
 import sys
 import tempfile
@@ -27,6 +28,7 @@ from dev_intent_router import (
     clear_workflow_active,
     disable_auto_dev,
     enable_auto_dev,
+    get_recipe_progress,
     is_auto_dev_enabled,
     is_workflow_active,
     set_workflow_active,
@@ -250,6 +252,79 @@ class TestSemaphoreToggle(unittest.TestCase):
         shutil.rmtree(fresh, ignore_errors=True)
 
 
+class TestRecipeProgress(unittest.TestCase):
+    """Progress-file queries for recipe execution status."""
+
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp()
+
+    def tearDown(self):
+        import shutil
+
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def _write_progress(self, filename: str, payload: dict) -> Path:
+        path = Path(self._tmp) / filename
+        path.write_text(json.dumps(payload), encoding="utf-8")
+        return path
+
+    @patch("dev_intent_router._tempfile.gettempdir")
+    def test_returns_none_when_no_progress_file_exists(self, mock_gettempdir):
+        mock_gettempdir.return_value = self._tmp
+        self.assertIsNone(get_recipe_progress("smart-orchestrator"))
+
+    @patch("dev_intent_router._tempfile.gettempdir")
+    def test_reads_named_recipe_progress(self, mock_gettempdir):
+        mock_gettempdir.return_value = self._tmp
+        self._write_progress(
+            "amplihack-progress-smart_orchestrator-123.json",
+            {
+                "recipe_name": "smart-orchestrator",
+                "current_step": 2,
+                "total_steps": 0,
+                "step_name": "classify-and-decompose",
+                "elapsed_seconds": 4.5,
+                "status": "running",
+            },
+        )
+
+        result = get_recipe_progress("smart-orchestrator")
+        self.assertEqual(result["current_step"], 2)
+        self.assertEqual(result["step_name"], "classify-and-decompose")
+        self.assertEqual(result["status"], "running")
+
+    @patch("dev_intent_router._tempfile.gettempdir")
+    def test_prefers_most_recent_progress_file(self, mock_gettempdir):
+        mock_gettempdir.return_value = self._tmp
+        older = self._write_progress(
+            "amplihack-progress-default_workflow-100.json",
+            {
+                "current_step": 1,
+                "total_steps": 0,
+                "step_name": "old-step",
+                "elapsed_seconds": 1.0,
+                "status": "running",
+            },
+        )
+        newer = self._write_progress(
+            "amplihack-progress-smart_orchestrator-200.json",
+            {
+                "current_step": 3,
+                "total_steps": 0,
+                "step_name": "new-step",
+                "elapsed_seconds": 7.0,
+                "status": "completed",
+            },
+        )
+        os.utime(older, (1, 1))
+        os.utime(newer, (2, 2))
+
+        result = get_recipe_progress()
+        self.assertEqual(result["current_step"], 3)
+        self.assertEqual(result["step_name"], "new-step")
+        self.assertEqual(result["status"], "completed")
+
+
 class TestEnvVarFallback(unittest.TestCase):
     """AMPLIHACK_AUTO_DEV env var works when no semaphore dir exists (legacy)."""
 
@@ -328,7 +403,7 @@ class TestRoutingPromptContent(unittest.TestCase):
         self.assertIn("what is OAuth?", _ROUTING_PROMPT)
 
     def test_prompt_is_concise(self):
-# New prompt is longer due to MANDATORY RULE section for code/docs changes
+        # New prompt is longer due to MANDATORY RULE section for code/docs changes
         self.assertLess(len(_ROUTING_PROMPT), 2500)
 
     def test_auto_routed_announcement(self):
