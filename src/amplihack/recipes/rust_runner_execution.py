@@ -5,16 +5,21 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import signal
 import subprocess
 import sys
+import tempfile
 import threading
+import time
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 from amplihack.recipes.models import RecipeResult, StepResult, StepStatus
 
 logger = logging.getLogger(__name__)
+_RECIPE_NAME_SANITIZE_RE = re.compile(r"[^a-zA-Z0-9_]")
 
 _ALLOWED_RUST_ENV_VARS = {
     "AMPLIHACK_AGENT_BINARY",
@@ -115,11 +120,127 @@ def _stream_process_output(process: subprocess.Popen[str]) -> tuple[str, str, in
     return "".join(stdout_chunks), "".join(stderr_chunks), returncode
 
 
+def _progress_file_path(recipe_name: str, pid: int | None = None) -> Path:
+    """Return the temp-file path used to publish machine-readable recipe progress."""
+    if pid is None:
+        pid = os.getpid()
+    stem = Path(recipe_name).stem if ("/" in recipe_name or os.sep in recipe_name) else recipe_name
+    safe_name = _RECIPE_NAME_SANITIZE_RE.sub("_", stem)[:64]
+    return Path(tempfile.gettempdir()) / f"amplihack-progress-{safe_name}-{pid}.json"
+
+
+def _write_progress_file(
+    recipe_name: str,
+    *,
+    current_step: int,
+    total_steps: int,
+    step_name: str,
+    elapsed_seconds: float,
+    status: str,
+    pid: int | None = None,
+) -> Path:
+    """Write the current recipe progress to a deterministic JSON file."""
+    if pid is None:
+        pid = os.getpid()
+    path = _progress_file_path(recipe_name, pid)
+    payload: dict[str, Any] = {
+        "recipe_name": recipe_name,
+        "current_step": current_step,
+        "total_steps": total_steps,
+        "step_name": step_name,
+        "elapsed_seconds": round(elapsed_seconds, 3),
+        "status": status,
+        "pid": pid,
+        "updated_at": time.time(),
+    }
+    try:
+        path.write_text(json.dumps(payload), encoding="utf-8")
+    except OSError as error:
+        logger.debug("Could not write progress file %s: %s", path, error)
+    return path
+
+
+def _stream_process_output_with_progress(
+    process: subprocess.Popen[str],
+    *,
+    recipe_name: str,
+) -> tuple[str, str, int]:
+    """Collect stdout, relay stderr live, and persist step-level progress markers."""
+    stdout_chunks: list[str] = []
+    stderr_chunks: list[str] = []
+    started_at = time.time()
+    state: dict[str, Any] = {"current_step": 0, "step_name": ""}
+
+    def _drain_stdout() -> None:
+        if process.stdout is None:
+            return
+        for line in process.stdout:
+            stdout_chunks.append(line)
+
+    def _drain_stderr() -> None:
+        if process.stderr is None:
+            return
+        for line in process.stderr:
+            stderr_chunks.append(line)
+            print(line, end="", file=sys.stderr, flush=True)
+            stripped = line.strip()
+            if stripped.startswith("▶"):
+                state["current_step"] += 1
+                state["step_name"] = stripped[1:].strip().split("(")[0].strip()
+                _write_progress_file(
+                    recipe_name,
+                    current_step=state["current_step"],
+                    total_steps=0,
+                    step_name=state["step_name"],
+                    elapsed_seconds=time.time() - started_at,
+                    status="running",
+                )
+            elif stripped.startswith("✓"):
+                _write_progress_file(
+                    recipe_name,
+                    current_step=state["current_step"],
+                    total_steps=0,
+                    step_name=state["step_name"],
+                    elapsed_seconds=time.time() - started_at,
+                    status="completed",
+                )
+            elif stripped.startswith("✗"):
+                _write_progress_file(
+                    recipe_name,
+                    current_step=state["current_step"],
+                    total_steps=0,
+                    step_name=state["step_name"],
+                    elapsed_seconds=time.time() - started_at,
+                    status="failed",
+                )
+            elif stripped.startswith("⊘"):
+                _write_progress_file(
+                    recipe_name,
+                    current_step=state["current_step"],
+                    total_steps=0,
+                    step_name=state["step_name"],
+                    elapsed_seconds=time.time() - started_at,
+                    status="skipped",
+                )
+
+    stdout_thread = threading.Thread(target=_drain_stdout)
+    stderr_thread = threading.Thread(target=_drain_stderr)
+    stdout_thread.start()
+    stderr_thread.start()
+    try:
+        returncode = process.wait()
+    finally:
+        stdout_thread.join()
+        stderr_thread.join()
+    return "".join(stdout_chunks), "".join(stderr_chunks), returncode
+
+
 def _run_rust_process(
     cmd: list[str],
     *,
     progress: bool,
     env: dict[str, str],
+    recipe_name: str,
 ) -> tuple[str, str, int]:
     if progress:
         process = subprocess.Popen(
@@ -130,7 +251,7 @@ def _run_rust_process(
             bufsize=1,
             env=env,
         )
-        return _stream_process_output(process)
+        return _stream_process_output_with_progress(process, recipe_name=recipe_name)
 
     result = subprocess.run(
         cmd,
@@ -255,7 +376,12 @@ def execute_rust_command(
             "Set the env var via the amplihack CLI dispatcher to use a different agent."
         )
 
-    stdout, stderr, returncode = _run_rust_process(cmd, progress=progress, env=env)
+    stdout, stderr, returncode = _run_rust_process(
+        cmd,
+        progress=progress,
+        env=env,
+        recipe_name=name,
+    )
     data = _parse_rust_response(stdout, stderr=stderr, returncode=returncode, name=name)
 
     success_value, normalized_step_results, context_data = _validate_rust_response_payload(

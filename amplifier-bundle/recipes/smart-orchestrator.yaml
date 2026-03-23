@@ -40,6 +40,8 @@ steps:
     type: "agent"
     agent: "amplihack:core:architect"
     prompt: |
+      === [RECIPE PROGRESS] Step: classify-and-decompose ===
+
       You are an intelligent task orchestrator. Analyze this request and produce a
       structured orchestration plan.
 
