@@ -22,7 +22,7 @@ os.environ.pop("CLAUDECODE", None)
 
 # Ensure sibling modules are importable regardless of working directory
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from agent_query import SDK_AVAILABLE, AgentQueryError, detect_runtime, query_agent
+from agent_query import SDK_AVAILABLE, AgentQueryError, query_agent
 
 
 def _get_agent_runtime() -> str:
@@ -319,7 +319,7 @@ async def triage_pr(project_root: Path, pr_number: int) -> str | None:
     """
     runtime = _get_agent_runtime()
 
-    if runtime == "claude" and not CLAUDE_SDK_AVAILABLE:
+    if runtime == "claude" and not SDK_AVAILABLE:
         print("Error: Claude SDK not available", file=sys.stderr)
         return None
 
@@ -364,7 +364,7 @@ def main():
 
     runtime = _get_agent_runtime()
 
-    if runtime == "claude" and not CLAUDE_SDK_AVAILABLE:
+    if runtime == "claude" and not SDK_AVAILABLE:
         print("Error: claude-agent-sdk not installed", file=sys.stderr)
         print("Install with: pip install claude-agent-sdk", file=sys.stderr)
         sys.exit(1)

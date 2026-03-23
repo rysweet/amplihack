@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 """
-PM Architect - PR Triage.
+PM Architect - PR Triage using Claude Agent SDK or GitHub Copilot CLI.
 
-Uses the detected agent SDK (Claude Agent SDK or GitHub Copilot SDK) to analyze
-pull requests and provide intelligent triage recommendations including priority,
-complexity, and reviewer suggestions.
+Uses the active agent runtime to analyze pull requests and provide intelligent
+triage recommendations including priority, complexity, and reviewer suggestions.
+
+Runtime is selected via the AMPLIHACK_AGENT_BINARY environment variable:
+  - "copilot" -> GitHub Copilot CLI subprocess
+  - anything else (or unset) -> Claude Agent SDK (default)
 """
 
 import asyncio
 import json
+import logging
 import os
 import sys
 from pathlib import Path
@@ -18,7 +22,13 @@ os.environ.pop("CLAUDECODE", None)
 
 # Ensure sibling modules are importable regardless of working directory
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from agent_query import SDK_AVAILABLE, AgentQueryError, detect_runtime, query_agent
+from agent_query import SDK_AVAILABLE, AgentQueryError, query_agent
+
+
+def _get_agent_runtime() -> str:
+    """Return active agent runtime: 'copilot' or 'claude' (default)."""
+    binary = os.environ.get("AMPLIHACK_AGENT_BINARY", "").lower()
+    return "copilot" if binary == "copilot" else "claude"
 
 
 def get_pr_details(project_root: Path, pr_number: int) -> dict | None:
@@ -156,31 +166,17 @@ def get_related_issues(project_root: Path, pr_body: str) -> str:
     return "\n## Related Issues\n\nUnable to retrieve issue details.\n"
 
 
-async def triage_pr(project_root: Path, pr_number: int) -> str | None:
-    """Triage PR using the detected agent SDK.
+def _build_triage_prompt(pr_details: dict, diff_summary: str, related_issues: str) -> str:
+    """Build the triage prompt from PR context.
 
     Args:
-        project_root: Project root directory
-        pr_number: Pull request number
+        pr_details: PR detail dictionary from GitHub API
+        diff_summary: Formatted diff summary string
+        related_issues: Formatted related issues string
 
     Returns:
-        Markdown triage analysis, or None if analysis fails
+        Complete triage prompt string
     """
-    if not SDK_AVAILABLE:
-        print("Error: No agent SDK available (need claude-agent-sdk or copilot)", file=sys.stderr)
-        return None
-
-    # Get PR details
-    pr_details = get_pr_details(project_root, pr_number)
-    if not pr_details:
-        print(f"Error: Could not retrieve PR #{pr_number}", file=sys.stderr)
-        return None
-
-    # Gather additional context
-    diff_summary = get_pr_diff_summary(project_root, pr_number)
-    related_issues = get_related_issues(project_root, pr_details.get("body", ""))
-
-    # Format PR details for analysis
     pr_context = f"""
 ## Pull Request Details
 
@@ -206,7 +202,6 @@ async def triage_pr(project_root: Path, pr_number: int) -> str | None:
 {chr(10).join(f"- @{review['author']['login']}: {review['state']}" for review in pr_details.get("reviews", [])) or "- No reviews yet"}
 """
 
-    # Build triage prompt
     prompt = f"""You are the PM Architect performing intelligent PR triage.
 
 {pr_context}
@@ -273,7 +268,32 @@ Be objective and thorough. Use emojis sparingly for visual clarity (✅, ⚠️,
 
 Generate the triage analysis now:
 """
+    return prompt
 
+
+def _run_copilot_triage(prompt: str, project_root: Path) -> str | None:
+    """Run triage via Copilot CLI subprocess."""
+    import subprocess
+
+    cmd = ["amplihack", "copilot", "--allow-all-tools", "--add-dir", "/", "-p", prompt]
+    result = subprocess.run(cmd, cwd=project_root, capture_output=True, text=True, timeout=300)
+    if result.returncode != 0:
+        logging.warning(f"Copilot triage failed (exit {result.returncode}): {result.stderr[:500]}")
+        return None
+    output = result.stdout.strip()
+    return output if output else None
+
+
+async def _run_claude_triage(prompt: str, project_root: Path) -> str | None:
+    """Run triage via Claude Agent SDK.
+
+    Args:
+        prompt: The triage prompt to send to the SDK
+        project_root: Project root directory for SDK working directory
+
+    Returns:
+        Markdown triage analysis, or None if analysis fails
+    """
     try:
         triage = await query_agent(prompt, project_root)
         return triage if triage.strip() else None
@@ -283,11 +303,50 @@ Generate the triage analysis now:
         return None
 
 
+async def triage_pr(project_root: Path, pr_number: int) -> str | None:
+    """Triage PR using the active agent runtime.
+
+    Detects the runtime via AMPLIHACK_AGENT_BINARY:
+      - "copilot" -> GitHub Copilot CLI subprocess
+      - anything else (or unset) -> Claude Agent SDK
+
+    Args:
+        project_root: Project root directory
+        pr_number: Pull request number
+
+    Returns:
+        Markdown triage analysis, or None if analysis fails
+    """
+    runtime = _get_agent_runtime()
+
+    if runtime == "claude" and not SDK_AVAILABLE:
+        print("Error: Claude SDK not available", file=sys.stderr)
+        return None
+
+    # Get PR details
+    pr_details = get_pr_details(project_root, pr_number)
+    if not pr_details:
+        print(f"Error: Could not retrieve PR #{pr_number}", file=sys.stderr)
+        return None
+
+    # Gather additional context
+    diff_summary = get_pr_diff_summary(project_root, pr_number)
+    related_issues = get_related_issues(project_root, pr_details.get("body", ""))
+
+    # Build triage prompt
+    prompt = _build_triage_prompt(pr_details, diff_summary, related_issues)
+
+    if runtime == "copilot":
+        return _run_copilot_triage(prompt, project_root)
+
+    return await _run_claude_triage(prompt, project_root)
+
+
 def main():
     """Main entry point for PR triage."""
     import argparse
 
-    parser = argparse.ArgumentParser(description="Triage PR using detected agent SDK")
+    parser = argparse.ArgumentParser(description="Triage PR using Claude Agent SDK or Copilot CLI")
     parser.add_argument("pr_number", type=int, help="Pull request number to triage")
     parser.add_argument(
         "--project-root",
@@ -303,13 +362,11 @@ def main():
 
     args = parser.parse_args()
 
-    if not SDK_AVAILABLE:
-        runtime = detect_runtime()
-        print(f"Error: No agent SDK installed (runtime={runtime})", file=sys.stderr)
-        print(
-            "Install one of: pip install claude-agent-sdk | pip install github-copilot-sdk",
-            file=sys.stderr,
-        )
+    runtime = _get_agent_runtime()
+
+    if runtime == "claude" and not SDK_AVAILABLE:
+        print("Error: claude-agent-sdk not installed", file=sys.stderr)
+        print("Install with: pip install claude-agent-sdk", file=sys.stderr)
         sys.exit(1)
 
     # Perform triage
