@@ -554,9 +554,11 @@ class TestRemoteAdapterPublishPartitionRouting:
         mock_batch = MagicMock()
         mock_producer.create_batch.return_value = mock_batch
 
-        with (
-            patch("azure.eventhub.EventHubProducerClient") as MockProducer,
-            patch("azure.eventhub.EventData") as MockEventData,
+        MockProducer = MagicMock()
+        MockEventData = MagicMock()
+        with _install_fake_eventhub(
+            EventHubProducerClient=MockProducer,
+            EventData=MockEventData,
         ):
             MockProducer.from_connection_string.return_value = mock_producer
             MockEventData.side_effect = lambda data: data
@@ -574,9 +576,11 @@ class TestRemoteAdapterPublishPartitionRouting:
         mock_batch = MagicMock()
         mock_producer.create_batch.return_value = mock_batch
 
-        with (
-            patch("azure.eventhub.EventHubProducerClient") as MockProducer,
-            patch("azure.eventhub.EventData") as MockEventData,
+        MockProducer = MagicMock()
+        MockEventData = MagicMock()
+        with _install_fake_eventhub(
+            EventHubProducerClient=MockProducer,
+            EventData=MockEventData,
         ):
             MockProducer.from_connection_string.return_value = mock_producer
             MockEventData.side_effect = lambda data: data
