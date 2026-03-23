@@ -19,7 +19,11 @@ Toggle during a session:
 Legacy env var still respected: export AMPLIHACK_AUTO_DEV=false
 """
 
+import glob as _glob
+import json as _json
 import os
+import re as _re
+import tempfile as _tempfile
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
@@ -239,3 +243,36 @@ def should_auto_route(prompt: str) -> tuple[bool, str]:
         pass  # fail-open
 
     return True, _ROUTING_PROMPT
+
+
+def get_recipe_progress(recipe_name: str | None = None) -> dict | None:
+    """Return the most recent machine-readable progress record for a recipe run."""
+    tmp_dir = _tempfile.gettempdir()
+
+    if recipe_name is not None:
+        stem = (
+            Path(recipe_name).stem if ("/" in recipe_name or os.sep in recipe_name) else recipe_name
+        )
+        safe_name = _re.sub(r"[^a-zA-Z0-9_]", "_", stem)[:64]
+        pattern = str(Path(tmp_dir) / f"amplihack-progress-{safe_name}-*.json")
+    else:
+        pattern = str(Path(tmp_dir) / "amplihack-progress-*.json")
+
+    files = _glob.glob(pattern)
+    if not files:
+        return None
+
+    files.sort(key=lambda candidate: Path(candidate).stat().st_mtime, reverse=True)
+
+    try:
+        data = _json.loads(Path(files[0]).read_text(encoding="utf-8"))
+    except (OSError, _json.JSONDecodeError, ValueError):
+        return None
+
+    return {
+        "current_step": data.get("current_step", 0),
+        "total_steps": data.get("total_steps", 0),
+        "step_name": data.get("step_name", ""),
+        "elapsed_seconds": data.get("elapsed_seconds", 0.0),
+        "status": data.get("status", "unknown"),
+    }
