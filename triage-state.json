@@ -1,9 +1,36 @@
 {
-  "ts": "2026-03-23T00:00:00Z",
-  "run": 23416519367,
-  "open_prs": [3419, 3418, 3416, 3415, 3412, 3398, 3394, 3389, 3290],
+  "ts": "2026-03-23T06:30:00Z",
+  "run": 23424609096,
+  "open_prs": [3430, 3425, 3423, 3419, 3418, 3416, 3415, 3412, 3398, 3394, 3389, 3290],
   "closed_since_last": [],
   "prs": {
+    "3430": {
+      "risk": "low",
+      "priority": "low",
+      "type": "docs-automated",
+      "tests": false,
+      "labels": ["triage:low-risk", "triage:complete", "documentation"],
+      "status": "open",
+      "note": "Auto-generated docs mirror sync for PR #3401 dual-SDK support. Expires Mar 24 2026. Docs-only changes."
+    },
+    "3425": {
+      "risk": "medium",
+      "priority": "medium",
+      "type": "bugfix-ci-workflow",
+      "tests": true,
+      "labels": ["triage:medium-risk", "triage:complete", "triage:needs-review", "triage:has-tests", "bug"],
+      "status": "open",
+      "note": "Makes version-check.yml advisory-only for PRs; stops auto-committing pyproject.toml bumps onto contributor branches. 14 unit tests + gadugi scenario. Stacked on feat/parity-distributed-hive-3410."
+    },
+    "3423": {
+      "risk": "medium",
+      "priority": "medium",
+      "type": "bugfix-deploy",
+      "tests": true,
+      "labels": ["triage:medium-risk", "triage:complete", "triage:needs-review", "triage:has-tests", "bug"],
+      "status": "open",
+      "note": "Lazy compatibility shim for azure_hive remote_agent_adapter; 44 passed, 25 intentionally skipped (external package gate). Stacked on feat/parity-distributed-hive-3410."
+    },
     "3419": {
       "risk": "low",
       "priority": "low",
@@ -11,7 +38,7 @@
       "tests": false,
       "labels": ["triage:low-risk", "triage:complete", "triage:needs-review", "github-actions"],
       "status": "open",
-      "note": "Copilot-created PR adding a disabled Trivy filesystem scanner workflow (workflow_dispatch only). Low risk, CI-only change. Note: prompt asked to disable existing trivy workflows; agent added a new pre-disabled one instead."
+      "note": "Copilot-created PR adding a disabled Trivy filesystem scanner workflow (workflow_dispatch only). Low risk, CI-only change."
     },
     "3418": {
       "risk": "medium",
