@@ -3,7 +3,7 @@ Mode: static-approximation
 # Layer 2: AST+LSP Symbol Bindings
 
 **Slug:** `ast-lsp-bindings` | **Display Order:** 2
-**Last rebuilt:** 2026-03-23 | **Package version:** 0.6.96
+**Last rebuilt:** 2026-03-23 | **Package version:** 0.6.99
 
 No LSP server was available for this analysis. All symbol bindings were derived via static grep/read of `__all__` exports and `from amplihack.X import Y` statements.
 
@@ -48,6 +48,7 @@ Key import relationships between top-level subpackages:
 | `agents.goal_seeking.input_source`                     | `agents.goal_seeking.partition_routing`                                                                                               |
 | `agents.goal_seeking.hive_mind.distributed_hive_graph` | `agents.goal_seeking.partition_routing`                                                                                               |
 | `recipe_cli/recipe_command`                            | `recipes`                                                                                                                             |
+| `.claude.tools.amplihack.hooks.dev_intent_router`      | Routing prompt injection, workflow-active semaphores, and `get_recipe_progress()` for reading recipe progress temp files              |
 | `launcher/auto_mode`                                   | `launcher` (internal: `completion_signals`, `fork_manager`, `json_logger`, `session_capture`, `work_summary`)                         |
 | `fleet/fleet_copilot`                                  | `fleet` (internal: `_constants`, `_validation`, `_backends`, `_transcript`, `fleet_session_reasoner`, `prompts`)                      |
 | `eval/*`                                               | `agents.domain_agents`, `knowledge_builder`                                                                                           |

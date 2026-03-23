@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -13,6 +14,7 @@ import pytest
 
 from amplihack.recipes.models import StepStatus
 from amplihack.recipes.rust_runner import RustRunnerNotFoundError, run_recipe_via_rust
+from amplihack.recipes.rust_runner_execution import _write_progress_file
 
 
 @pytest.fixture(autouse=True)
@@ -440,3 +442,63 @@ class TestProgressStreaming:
         assert "▶ classify-and-decompose" in streamed_stderr.getvalue()
         # Issue #3049: no timeout should be passed to process.wait()
         assert fake.timeout is None
+
+    @patch(
+        "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
+    )
+    @patch("subprocess.Popen")
+    def test_progress_mode_writes_progress_file(self, mock_popen, mock_find, tmp_path):
+        class FakePopen:
+            def __init__(self, stdout: str, stderr: str, returncode: int = 0):
+                self.stdout = io.StringIO(stdout)
+                self.stderr = io.StringIO(stderr)
+                self._returncode = returncode
+
+            def wait(self, timeout=None):
+                return self._returncode
+
+        mock_popen.return_value = FakePopen(
+            stdout=self._make_rust_output(),
+            stderr="▶ classify-and-decompose (agent)\n✓ classify-and-decompose\n",
+        )
+
+        with patch(
+            "amplihack.recipes.rust_runner_execution.tempfile.gettempdir",
+            return_value=str(tmp_path),
+        ):
+            run_recipe_via_rust("smart-orchestrator", progress=True)
+
+        progress_files = list(tmp_path.glob("amplihack-progress-smart_orchestrator-*.json"))
+        assert len(progress_files) == 1
+        payload = json.loads(progress_files[0].read_text(encoding="utf-8"))
+        assert payload["recipe_name"] == "smart-orchestrator"
+        assert payload["current_step"] == 1
+        assert payload["step_name"] == "classify-and-decompose"
+        assert payload["status"] == "completed"
+
+
+class TestProgressFiles:
+    def test_write_progress_file_writes_expected_schema(self, tmp_path):
+        pid = os.getpid()
+        with patch(
+            "amplihack.recipes.rust_runner_execution.tempfile.gettempdir",
+            return_value=str(tmp_path),
+        ):
+            path = _write_progress_file(
+                "default-workflow",
+                current_step=2,
+                total_steps=5,
+                step_name="step-02-clarify-requirements",
+                elapsed_seconds=3.75,
+                status="running",
+                pid=pid,
+            )
+
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        assert payload["recipe_name"] == "default-workflow"
+        assert payload["current_step"] == 2
+        assert payload["total_steps"] == 5
+        assert payload["step_name"] == "step-02-clarify-requirements"
+        assert payload["status"] == "running"
+        assert payload["pid"] == pid
+        assert "updated_at" in payload
