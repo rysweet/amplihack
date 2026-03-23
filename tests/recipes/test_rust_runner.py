@@ -578,9 +578,16 @@ class TestRustRunnerEnvironment:
         "os.environ",
         {
             "PATH": "/usr/bin",
+            "AMPLIHACK_HOME": "/tmp/amplihack-home",
             "HOME": "/tmp/home",
             "LANG": "C.UTF-8",
             "AMPLIHACK_AGENT_BINARY": "copilot",
+            "AMPLIHACK_NONINTERACTIVE": "1",
+            "AMPLIHACK_TREE_ID": "tree-123",
+            "AMPLIHACK_SESSION_ID": "session-456",
+            "AMPLIHACK_SESSION_DEPTH": "2",
+            "AMPLIHACK_MAX_DEPTH": "3",
+            "AMPLIHACK_MAX_SESSIONS": "10",
             "RECIPE_RUNNER_RS_PATH": "/custom/bin/recipe-runner-rs",
             "GITHUB_TOKEN": "secret-token",  # pragma: allowlist secret
             "AWS_SECRET_ACCESS_KEY": "super-secret",  # pragma: allowlist secret
@@ -591,9 +598,16 @@ class TestRustRunnerEnvironment:
         env = _build_rust_env()
 
         assert env["PATH"].endswith("/usr/bin")
+        assert env["AMPLIHACK_HOME"] == "/tmp/amplihack-home"
         assert env["HOME"] == "/tmp/home"
         assert env["LANG"] == "C.UTF-8"
         assert env["AMPLIHACK_AGENT_BINARY"] == "copilot"
+        assert env["AMPLIHACK_NONINTERACTIVE"] == "1"
+        assert env["AMPLIHACK_TREE_ID"] == "tree-123"
+        assert env["AMPLIHACK_SESSION_ID"] == "session-456"
+        assert env["AMPLIHACK_SESSION_DEPTH"] == "2"
+        assert env["AMPLIHACK_MAX_DEPTH"] == "3"
+        assert env["AMPLIHACK_MAX_SESSIONS"] == "10"
         assert env["RECIPE_RUNNER_RS_PATH"] == "/custom/bin/recipe-runner-rs"
         assert "GITHUB_TOKEN" not in env
         assert "AWS_SECRET_ACCESS_KEY" not in env

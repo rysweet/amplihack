@@ -45,7 +45,9 @@ def discover_recipe_definitions(recipe_dir: str | None, *, verbose: bool = False
     if recipe_dir is None:
         discovered = discover_recipes()
     else:
-        validated_dir = validate_user_path(recipe_dir, must_exist=False)
+        validated_dir = validate_user_path(recipe_dir, must_exist=True)
+        if not validated_dir.is_dir():
+            raise NotADirectoryError(f"Not a directory: {validated_dir}")
         discovered = discover_recipes([validated_dir])
 
     if isinstance(discovered, dict):

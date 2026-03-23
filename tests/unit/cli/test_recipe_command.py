@@ -111,6 +111,23 @@ class TestHandleList:
         assert exit_code == 1
         assert "Error: missing" in capsys.readouterr().err
 
+    def test_returns_error_for_real_missing_recipe_dir(self, tmp_path, capsys):
+        missing_dir = tmp_path / "missing-recipes"
+
+        exit_code = handle_list(recipe_dir=str(missing_dir))
+
+        assert exit_code == 1
+        assert f"Error: Path does not exist: {missing_dir}" in capsys.readouterr().err
+
+    def test_returns_error_when_recipe_dir_is_a_file(self, tmp_path, capsys):
+        recipe_file = tmp_path / "recipe.yaml"
+        recipe_file.write_text("name: test\nsteps: []\n", encoding="utf-8")
+
+        exit_code = handle_list(recipe_dir=str(recipe_file))
+
+        assert exit_code == 1
+        assert f"Error: Not a directory: {recipe_file}" in capsys.readouterr().err
+
 
 class TestHandleValidate:
     @patch("amplihack.recipe_cli.recipe_command.format_validation_result", return_value="valid")
