@@ -310,6 +310,28 @@ class TestRunRecipeViaRust:
         "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
     )
     @patch("subprocess.run")
+    def test_invalid_success_type_raises(self, mock_run, mock_find):
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout=json.dumps(
+                {
+                    "recipe_name": "test-recipe",
+                    "success": "false",
+                    "step_results": [],
+                    "context": {"result": "done"},
+                }
+            ),
+            stderr="",
+        )
+
+        with pytest.raises(RuntimeError, match="success"):
+            run_recipe_via_rust("test-recipe")
+
+    @patch(
+        "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
+    )
+    @patch("subprocess.run")
     def test_invalid_step_result_entry_raises(self, mock_run, mock_find):
         mock_run.return_value = subprocess.CompletedProcess(
             args=[],

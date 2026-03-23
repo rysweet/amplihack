@@ -188,11 +188,18 @@ def _parse_rust_response(
 
 def _validate_rust_response_payload(
     data: Any, *, name: str
-) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+) -> tuple[bool, list[dict[str, Any]], dict[str, Any]]:
     if not isinstance(data, dict):
         raise RuntimeError(
             f"Rust recipe runner returned an invalid response for '{name}': "
             "top-level JSON must be an object."
+        )
+
+    raw_success = data.get("success", False)
+    if not isinstance(raw_success, bool):
+        raise RuntimeError(
+            f"Rust recipe runner returned an invalid response for '{name}': "
+            "'success' must be a boolean."
         )
 
     raw_step_results = data.get("step_results", [])
@@ -216,7 +223,7 @@ def _validate_rust_response_payload(
             "'context' must be an object."
         )
 
-    return raw_step_results, raw_context
+    return raw_success, raw_step_results, raw_context
 
 
 def _build_step_results(step_results_data: list[dict[str, Any]]) -> list[StepResult]:
@@ -251,11 +258,13 @@ def execute_rust_command(
     stdout, stderr, returncode = _run_rust_process(cmd, progress=progress, env=env)
     data = _parse_rust_response(stdout, stderr=stderr, returncode=returncode, name=name)
 
-    normalized_step_results, context_data = _validate_rust_response_payload(data, name=name)
+    success_value, normalized_step_results, context_data = _validate_rust_response_payload(
+        data, name=name
+    )
 
     return RecipeResult(
         recipe_name=str(data.get("recipe_name", name)),
-        success=bool(data.get("success", False)),
+        success=success_value,
         step_results=_build_step_results(normalized_step_results),
         context=context_data,
     )

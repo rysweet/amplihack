@@ -36,3 +36,17 @@ class TestDiscoverRecipeDefinitions:
         assert [recipe.name for recipe in recipes] == ["valid"]
         assert "Warning: Skipped invalid recipe definitions" in captured.err
         assert "broken.yaml" in captured.err
+
+    def test_warns_for_non_mapping_step_entries(self, tmp_path, capsys) -> None:
+        _write_recipe(
+            tmp_path / "valid.yaml",
+            "name: valid\nsteps:\n  - id: step-01\n    type: bash\n    command: echo hi\n",
+        )
+        _write_recipe(tmp_path / "broken.yaml", "name: broken\nsteps:\n  - bad-entry\n")
+
+        recipes = discover_recipe_definitions(str(tmp_path))
+
+        captured = capsys.readouterr()
+        assert [recipe.name for recipe in recipes] == ["valid"]
+        assert "Warning: Skipped invalid recipe definitions" in captured.err
+        assert "broken.yaml" in captured.err
