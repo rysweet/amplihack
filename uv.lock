@@ -168,7 +168,7 @@ dependencies = [
 
 [[package]]
 name = "amplihack"
-version = "0.6.96"
+version = "0.6.99"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
@@ -253,7 +253,7 @@ requires-dist = [
     { name = "agent-framework-core", marker = "extra == 'microsoft-sdk'", specifier = ">=1.0.0rc1" },
     { name = "aiohttp", specifier = ">=3.8.0" },
     { name = "amplifier-core", marker = "extra == 'amplifier'", git = "https://github.com/microsoft/amplifier-core?rev=main" },
-    { name = "amplihack-agent-eval", git = "https://github.com/rysweet/amplihack-agent-eval.git?rev=main" },
+    { name = "amplihack-agent-eval", git = "https://github.com/rysweet/amplihack-agent-eval.git?rev=d7a28a552bed6e8daa752e465475024b281913f6" },
     { name = "amplihack-memory-lib", git = "https://github.com/rysweet/amplihack-memory-lib.git?rev=v0.2.0" },
     { name = "azure-identity", specifier = ">=1.12.0" },
     { name = "beautifulsoup4", marker = "extra == 'dev'", specifier = ">=4.9.0" },
@@ -317,13 +317,13 @@ dev = [
 
 [[package]]
 name = "amplihack-agent-eval"
-version = "0.1.0"
-source = { git = "https://github.com/rysweet/amplihack-agent-eval.git?rev=main#4ec3d9a7556156ce9e9820311f60559f8651dd49" }
+version = "0.1.1"
+source = { git = "https://github.com/rysweet/amplihack-agent-eval.git?rev=d7a28a552bed6e8daa752e465475024b281913f6#d7a28a552bed6e8daa752e465475024b281913f6" }
 
 [[package]]
 name = "amplihack-memory-lib"
-version = "0.4.0"
-source = { git = "https://github.com/rysweet/amplihack-memory-lib.git?rev=30e614b1eec307b525b5e2f9a94e805eb6988fc4#30e614b1eec307b525b5e2f9a94e805eb6988fc4" }
+version = "0.2.0"
+source = { git = "https://github.com/rysweet/amplihack-memory-lib.git?rev=v0.2.0#1dd8cc4af8b19fa29660345fff46d1248d2c357d" }
 dependencies = [
     { name = "kuzu" },
 ]
