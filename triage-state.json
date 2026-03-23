@@ -1,9 +1,18 @@
 {
-  "ts": "2026-03-22T00:00:00Z",
-  "run": 23409293669,
-  "open_prs": [3418, 3416, 3415, 3412, 3398, 3394, 3389, 3290],
-  "closed_since_last": [3346, 3332, 3296, 3261, 2876],
+  "ts": "2026-03-23T00:00:00Z",
+  "run": 23416519367,
+  "open_prs": [3419, 3418, 3416, 3415, 3412, 3398, 3394, 3389, 3290],
+  "closed_since_last": [],
   "prs": {
+    "3419": {
+      "risk": "low",
+      "priority": "low",
+      "type": "chore-ci",
+      "tests": false,
+      "labels": ["triage:low-risk", "triage:complete", "triage:needs-review", "github-actions"],
+      "status": "open",
+      "note": "Copilot-created PR adding a disabled Trivy filesystem scanner workflow (workflow_dispatch only). Low risk, CI-only change. Note: prompt asked to disable existing trivy workflows; agent added a new pre-disabled one instead."
+    },
     "3418": {
       "risk": "medium",
       "priority": "medium",
@@ -56,7 +65,7 @@
       "tests": false,
       "labels": ["documentation", "automation", "triage:low-risk", "triage:complete"],
       "status": "draft",
-      "note": "Auto-generated daily doc update for PRs #3268 #3286 #3335 #3351 #3366; expires Mar 23 2026"
+      "note": "Auto-generated daily doc update for PRs #3268 #3286 #3335 #3351 #3366; EXPIRED Mar 23 2026 - candidate for closure"
     },
     "3389": {
       "risk": "high",
