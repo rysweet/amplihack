@@ -9,7 +9,7 @@ title: "Layer 4: Runtime Topology"
 # Layer 4: Runtime Topology
 
 <div class="atlas-metadata">
-Category: <strong>Structural</strong> | Generated: 2026-03-19T00:27:22.305927+00:00
+Category: <strong>Structural</strong> | Generated: 2026-03-23T16:46:55.721123+00:00
 </div>
 
 ## Map
@@ -18,55 +18,69 @@ Category: <strong>Structural</strong> | Generated: 2026-03-19T00:27:22.305927+00
 
     ```mermaid
     graph LR
-        S0(["subprocess.run"])
-        S1(["uv"])
-        S2(["subprocess.Popen"])
-        S3(["&lt;dynamic&gt;"])
-        S4(["pytest"])
-        S5(["gh"])
-        S6(["git"])
-        B0{{"flask :None (http)"}}
-        B1{{"flask :None (http)"}}
+        S0(["git"])
+        S1(["bash"])
+        S2(["subprocess.run"])
+        S3(["az"])
+        S4(["gh"])
+        S5(["soffice"])
+        S6(["&lt;dynamic&gt;"])
+        S7(["mkdocs"])
+        S8(["amplihack"])
+        S9(["pandoc"])
+        S10(["which"])
+        B0{{"uvicorn :8080 (http)"}}
+        B1{{"uvicorn :None (http)"}}
         B2{{"flask :None (http)"}}
-        B3{{"uvicorn :None (http)"}}
-        B4{{"uvicorn :None (http)"}}
-        FN0["microsoft_sdk"]
+        B3{{"flask :None (http)"}}
+        B4{{"flask :None (http)"}}
+        B5{{"uvicorn :None (http)"}}
+        B6{{"uvicorn :None (http)"}}
+        B7{{"socket :None (tcp)"}}
+        FN0["check_point_in_time_docs"]
         FN0 --> S0
-        FN1["auto_update"]
-        FN1 --> S1
-        FN1 --> S2
-        FN1 --> S3
-        FN1 --> S2
-        FN2["cli"]
-        FN2 --> S4
-        FN3["distributor"]
-        FN3 --> S5
-        FN3 --> S0
-        FN3 --> S0
-        FN3 --> S5
-        FN3 --> S0
-        FN3 --> S6
-        FN3 --> S6
-        FN3 --> S6
-        FN3 --> S6
-        FN3 --> S0
-        FN3 --> S0
-        FN3 --> S0
-        FN3 --> S6
-        FN3 --> S6
-        FN4["filesystem_packager"]
-        FN4 --> S3
-        FN5["repository_creator"]
-        FN5 --> S5
-        FN5 --> S5
-        FN5 --> S0
-        FN5 --> S0
-        FN5 --> S5
-        FN5 --> S5
-        FN5 --> S6
-        FN5 --> S5
-        FN6["update_manager"]
-        FN6 --> S6
+        FN0 --> S0
+        FN0 --> S0
+        FN0 --> S0
+        FN1["check_unrelated_changes"]
+        FN1 --> S0
+        FN1 --> S0
+        FN1 --> S0
+        FN1 --> S0
+        FN2["ab_comparison_harness"]
+        FN2 --> S1
+        FN2 --> S2
+        FN3["auth_check"]
+        FN3 --> S3
+        FN3 --> S3
+        FN3 --> S3
+        FN4["common"]
+        FN4 --> S2
+        FN5["link_checker"]
+        FN5 --> S2
+        FN6["shadow_parity_harness"]
+        FN6 --> S1
+        FN6 --> S2
+        FN7["check_drift"]
+        FN7 --> S4
+        FN8["pack"]
+        FN8 --> S5
+        FN9["verify_skill"]
+        FN9 --> S6
+        FN10["deployer"]
+        FN10 --> S2
+        FN11["generator"]
+        FN11 --> S7
+        FN11 --> S7
+        FN11 --> S8
+        FN12["test_docx_skill"]
+        FN12 --> S5
+        FN12 --> S6
+        FN12 --> S9
+        FN13["test_integration"]
+        FN13 --> S10
+        FN13 --> S6
+        FN13 --> S6
     ```
 
 === "High-Fidelity (Graphviz)"
@@ -79,11 +93,11 @@ Category: <strong>Structural</strong> | Generated: 2026-03-19T00:27:22.305927+00
 
     | Metric | Value |
     |--------|-------|
-    | Subprocess calls | 286 |
-    | Unique files with subprocesses | 109 |
-    | Port bindings | 5 |
+    | Subprocess calls | 1047 |
+    | Unique files with subprocesses | 335 |
+    | Port bindings | 8 |
     | Docker services | 0 |
-    | Environment variables | 335 |
+    | Environment variables | 863 |
 
 ## Legend
 
@@ -100,8 +114,8 @@ Category: <strong>Structural</strong> | Generated: 2026-03-19T00:27:22.305927+00
 
 ## Key Findings
 
-- 286 subprocess calls across 109 files
-- 335 environment variable reads
+- 1047 subprocess calls across 335 files
+- 863 environment variable reads
 
 ## Detail
 
@@ -109,12 +123,12 @@ Category: <strong>Structural</strong> | Generated: 2026-03-19T00:27:22.305927+00
 
     **Summary metrics:**
     
-    - **Subprocess Call Count**: 286
-    - **Unique Subprocess Files**: 109
-    - **Port Binding Count**: 5
+    - **Subprocess Call Count**: 1047
+    - **Unique Subprocess Files**: 335
+    - **Port Binding Count**: 8
     - **Docker Service Count**: 0
     - **Dockerfile Count**: 1
-    - **Env Var Count**: 335
+    - **Env Var Count**: 863
 
 ## Cross-References
 

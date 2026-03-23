@@ -9,7 +9,7 @@ title: "Layer 5: API Contracts"
 # Layer 5: API Contracts
 
 <div class="atlas-metadata">
-Category: <strong>Behavioral</strong> | Generated: 2026-03-19T00:27:26.095238+00:00
+Category: <strong>Behavioral</strong> | Generated: 2026-03-23T16:47:06.367483+00:00
 </div>
 
 ## Map
@@ -19,110 +19,350 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-19T00:27:26.095238+00
     ```mermaid
     graph TD
         ROOT["amplihack"]
-        C0["generate"]
+        C0["list"]
         ROOT --> C0
-        C1["test"]
+        C1["enable"]
         ROOT --> C1
-        C2["package"]
+        C2["disable"]
         ROOT --> C2
-        C3["distribute"]
+        C3["validate"]
         ROOT --> C3
-        C4["create-repo"]
+        C4["add"]
         ROOT --> C4
-        C5["update"]
+        C5["remove"]
         ROOT --> C5
-        C6["pipeline"]
+        C6["show"]
         ROOT --> C6
-        C7["version"]
+        C7["export"]
         ROOT --> C7
-        C8["install"]
+        C8["import"]
         ROOT --> C8
-        C9["uninstall"]
+        C9["init"]
         ROOT --> C9
-        C10["update"]
+        C10["add-item"]
         ROOT --> C10
-        C11["launch"]
+        C11["update-item"]
         ROOT --> C11
-        C12["claude"]
+        C12["create-workstream"]
         ROOT --> C12
-        C13["RustyClawd"]
+        C13["update-workstream"]
         ROOT --> C13
-        C14["copilot"]
+        C14["list-backlog"]
         ROOT --> C14
-        C15["codex"]
+        C15["list-workstreams"]
         ROOT --> C15
-        C16["amplifier"]
+        C16["init"]
         ROOT --> C16
-        C17["uvx-help"]
+        C17["update-decision"]
         ROOT --> C17
-        C18["_local_install"]
+        C18["track-preference"]
         ROOT --> C18
-        C19["plugin"]
+        C19["set-focus"]
         ROOT --> C19
-        C20["install"]
+        C20["add-question"]
         ROOT --> C20
-        C21["uninstall"]
+        C21["add-action"]
         ROOT --> C21
-        C22["link"]
+        C22["show"]
         ROOT --> C22
-        C23["verify"]
+        C23["search"]
         ROOT --> C23
-        C24["memory"]
+        C24["lock"]
         ROOT --> C24
-        C25["tree"]
+        C25["unlock"]
         ROOT --> C25
-        C26["export"]
+        C26["check"]
         ROOT --> C26
-        C27["import"]
+        C27["diagnose"]
         ROOT --> C27
-        C28["clean"]
+        C28["iterate-fixes"]
         ROOT --> C28
-        C29["new"]
+        C29["poll-status"]
         ROOT --> C29
-        C30["recipe"]
+        C30["check-complexity"]
         ROOT --> C30
-        C31["run"]
+        C31["check-hard-stops"]
         ROOT --> C31
-        C32["list"]
+        C32["validate-stage"]
         ROOT --> C32
-        C33["validate"]
+        C33["validate-all"]
         ROOT --> C33
-        C34["show"]
+        C34["create-issue"]
         ROOT --> C34
-        C35["mode"]
+        C35["create-pr"]
         ROOT --> C35
-        C36["detect"]
+        C36["mark-pr-ready"]
         ROOT --> C36
-        C37["to-plugin"]
+        C37["add-pr-comment"]
         ROOT --> C37
-        C38["to-local"]
+        C38["check-ci-status"]
         ROOT --> C38
-        C39["fleet"]
+        C39["analyze"]
         ROOT --> C39
-        C40["stats"]
+        C40["auto-fix"]
         ROOT --> C40
-        C41["files"]
+        C41["verify-env"]
         ROOT --> C41
-        C42["functions"]
+        C42["verify-success"]
         ROOT --> C42
-        C43["classes"]
+        C43["init"]
         ROOT --> C43
-        C44["search"]
+        C44["add-item"]
         ROOT --> C44
-        C45["callers"]
+        C45["update-item"]
         ROOT --> C45
-        C46["callees"]
+        C46["create-workstream"]
         ROOT --> C46
-        C47["plugin"]
+        C47["update-workstream"]
         ROOT --> C47
-        C48["install"]
+        C48["list-backlog"]
         ROOT --> C48
-        C49["uninstall"]
+        C49["list-workstreams"]
         ROOT --> C49
-        C50["verify"]
+        C50["init"]
         ROOT --> C50
-        C51["create"]
+        C51["update-decision"]
         ROOT --> C51
+        C52["track-preference"]
+        ROOT --> C52
+        C53["set-focus"]
+        ROOT --> C53
+        C54["add-question"]
+        ROOT --> C54
+        C55["add-action"]
+        ROOT --> C55
+        C56["show"]
+        ROOT --> C56
+        C57["search"]
+        ROOT --> C57
+        C58["lock"]
+        ROOT --> C58
+        C59["unlock"]
+        ROOT --> C59
+        C60["check"]
+        ROOT --> C60
+        C61["diagnose"]
+        ROOT --> C61
+        C62["iterate-fixes"]
+        ROOT --> C62
+        C63["poll-status"]
+        ROOT --> C63
+        C64["check-complexity"]
+        ROOT --> C64
+        C65["check-hard-stops"]
+        ROOT --> C65
+        C66["validate-stage"]
+        ROOT --> C66
+        C67["validate-all"]
+        ROOT --> C67
+        C68["create-issue"]
+        ROOT --> C68
+        C69["create-pr"]
+        ROOT --> C69
+        C70["mark-pr-ready"]
+        ROOT --> C70
+        C71["add-pr-comment"]
+        ROOT --> C71
+        C72["check-ci-status"]
+        ROOT --> C72
+        C73["analyze"]
+        ROOT --> C73
+        C74["auto-fix"]
+        ROOT --> C74
+        C75["verify-env"]
+        ROOT --> C75
+        C76["verify-success"]
+        ROOT --> C76
+        C77["list"]
+        ROOT --> C77
+        C78["enable"]
+        ROOT --> C78
+        C79["disable"]
+        ROOT --> C79
+        C80["validate"]
+        ROOT --> C80
+        C81["add"]
+        ROOT --> C81
+        C82["remove"]
+        ROOT --> C82
+        C83["show"]
+        ROOT --> C83
+        C84["export"]
+        ROOT --> C84
+        C85["import"]
+        ROOT --> C85
+        C86["init"]
+        ROOT --> C86
+        C87["add-item"]
+        ROOT --> C87
+        C88["update-item"]
+        ROOT --> C88
+        C89["create-workstream"]
+        ROOT --> C89
+        C90["update-workstream"]
+        ROOT --> C90
+        C91["list-backlog"]
+        ROOT --> C91
+        C92["list-workstreams"]
+        ROOT --> C92
+        C93["init"]
+        ROOT --> C93
+        C94["update-decision"]
+        ROOT --> C94
+        C95["track-preference"]
+        ROOT --> C95
+        C96["set-focus"]
+        ROOT --> C96
+        C97["add-question"]
+        ROOT --> C97
+        C98["add-action"]
+        ROOT --> C98
+        C99["show"]
+        ROOT --> C99
+        C100["search"]
+        ROOT --> C100
+        C101["lock"]
+        ROOT --> C101
+        C102["unlock"]
+        ROOT --> C102
+        C103["check"]
+        ROOT --> C103
+        C104["diagnose"]
+        ROOT --> C104
+        C105["iterate-fixes"]
+        ROOT --> C105
+        C106["poll-status"]
+        ROOT --> C106
+        C107["check-complexity"]
+        ROOT --> C107
+        C108["check-hard-stops"]
+        ROOT --> C108
+        C109["validate-stage"]
+        ROOT --> C109
+        C110["validate-all"]
+        ROOT --> C110
+        C111["analyze"]
+        ROOT --> C111
+        C112["auto-fix"]
+        ROOT --> C112
+        C113["verify-env"]
+        ROOT --> C113
+        C114["verify-success"]
+        ROOT --> C114
+        C115["generate"]
+        ROOT --> C115
+        C116["test"]
+        ROOT --> C116
+        C117["package"]
+        ROOT --> C117
+        C118["distribute"]
+        ROOT --> C118
+        C119["create-repo"]
+        ROOT --> C119
+        C120["update"]
+        ROOT --> C120
+        C121["pipeline"]
+        ROOT --> C121
+        C122["version"]
+        ROOT --> C122
+        C123["install"]
+        ROOT --> C123
+        C124["uninstall"]
+        ROOT --> C124
+        C125["update"]
+        ROOT --> C125
+        C126["launch"]
+        ROOT --> C126
+        C127["claude"]
+        ROOT --> C127
+        C128["RustyClawd"]
+        ROOT --> C128
+        C129["copilot"]
+        ROOT --> C129
+        C130["codex"]
+        ROOT --> C130
+        C131["amplifier"]
+        ROOT --> C131
+        C132["uvx-help"]
+        ROOT --> C132
+        C133["_local_install"]
+        ROOT --> C133
+        C134["plugin"]
+        ROOT --> C134
+        C135["install"]
+        ROOT --> C135
+        C136["uninstall"]
+        ROOT --> C136
+        C137["link"]
+        ROOT --> C137
+        C138["verify"]
+        ROOT --> C138
+        C139["memory"]
+        ROOT --> C139
+        C140["tree"]
+        ROOT --> C140
+        C141["export"]
+        ROOT --> C141
+        C142["import"]
+        ROOT --> C142
+        C143["clean"]
+        ROOT --> C143
+        C144["new"]
+        ROOT --> C144
+        C145["recipe"]
+        ROOT --> C145
+        C146["run"]
+        ROOT --> C146
+        C147["list"]
+        ROOT --> C147
+        C148["validate"]
+        ROOT --> C148
+        C149["show"]
+        ROOT --> C149
+        C150["mode"]
+        ROOT --> C150
+        C151["detect"]
+        ROOT --> C151
+        C152["to-plugin"]
+        ROOT --> C152
+        C153["to-local"]
+        ROOT --> C153
+        C154["fleet"]
+        ROOT --> C154
+        C155["create"]
+        ROOT --> C155
+        C156["add-agent"]
+        ROOT --> C156
+        C157["start"]
+        ROOT --> C157
+        C158["status"]
+        ROOT --> C158
+        C159["stop"]
+        ROOT --> C159
+        C160["stats"]
+        ROOT --> C160
+        C161["files"]
+        ROOT --> C161
+        C162["functions"]
+        ROOT --> C162
+        C163["classes"]
+        ROOT --> C163
+        C164["search"]
+        ROOT --> C164
+        C165["callers"]
+        ROOT --> C165
+        C166["callees"]
+        ROOT --> C166
+        C167["plugin"]
+        ROOT --> C167
+        C168["install"]
+        ROOT --> C168
+        C169["uninstall"]
+        ROOT --> C169
+        C170["verify"]
+        ROOT --> C170
+        C171["create"]
+        ROOT --> C171
     
         click ROOT "../" "Back to Atlas"
     ```
@@ -137,46 +377,46 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-19T00:27:26.095238+00
 
     | Command | Args | Help |
     |---------|------|------|
-    | `generate` | 0 | Generate agent bundle from prompt |
-    | `test` | 0 | Test generated agents and bundles |
-    | `package` | 0 | Package bundle for distribution |
-    | `distribute` | 0 | Distribute bundle to GitHub |
-    | `create-repo` | 0 | Create GitHub repository for bundle |
-    | `update` | 0 | Check for bundle updates (full update coming soon) |
-    | `pipeline` | 0 | Run complete pipeline |
-    | `version` | 0 | Show amplihack version |
-    | `install` | 0 | Install amplihack agents and tools to ~/.claude |
-    | `uninstall` | 0 | Remove amplihack agents and tools from ~/.claude |
-    | `update` | 0 | Update amplihack, delegating to the Rust CLI when one is ins |
-    | `launch` | 0 | Launch Claude Code with optional proxy configuration |
-    | `claude` | 0 | Launch Claude Code (alias for launch) |
-    | `RustyClawd` | 0 | Launch RustyClawd (Rust implementation) |
-    | `copilot` | 0 | Launch GitHub Copilot CLI |
-    | `codex` | 0 | Launch OpenAI Codex CLI |
-    | `amplifier` | 0 | Launch Microsoft Amplifier with amplihack bundle |
-    | `uvx-help` | 0 | Get help with UVX deployment |
-    | `_local_install` | 0 | _local_install |
-    | `plugin` | 0 | Plugin management commands |
-    | `install` | 0 | Install plugin from git URL or local path |
-    | `uninstall` | 0 | Remove plugin |
-    | `link` | 0 | Link installed plugin to Claude Code settings |
-    | `verify` | 0 | Verify plugin installation and discoverability |
-    | `memory` | 0 | Memory system commands |
-    | `tree` | 0 | Visualize memory graph as tree |
-    | `export` | 0 | Export agent memory to a portable format |
-    | `import` | 0 | Import memory from a portable format into an agent |
-    | `clean` | 0 | Clean up test sessions |
-    | `new` | 0 | Generate a new goal-seeking agent |
-    | `recipe` | 0 | Recipe management and execution commands |
-    | `run` | 0 | Execute a recipe from YAML file |
-    | `list` | 0 | List available recipes |
-    | `validate` | 0 | Validate a recipe YAML file |
-    | `show` | 0 | Show detailed recipe information |
-    | `mode` | 0 | Claude installation mode commands |
-    | `detect` | 0 | Detect current Claude installation mode |
-    | `to-plugin` | 0 | Migrate from local to plugin mode |
-    | `to-local` | 0 | Create local .claude/ from plugin |
-    | `fleet` | 0 | Fleet orchestration — manage coding agents across VMs |
+    | `list` | 0 | List all MCP servers |
+    | `enable` | 0 | Enable an MCP server |
+    | `disable` | 0 | Disable an MCP server |
+    | `validate` | 0 | Validate MCP configuration |
+    | `add` | 0 | Add MCP server |
+    | `remove` | 0 | Remove MCP server |
+    | `show` | 0 | Show server details |
+    | `export` | 0 | Export configuration |
+    | `import` | 0 | Import configuration |
+    | `init` | 0 | Initialize PM |
+    | `add-item` | 0 | Add backlog item |
+    | `update-item` | 0 | Update backlog item |
+    | `create-workstream` | 0 | Create workstream |
+    | `update-workstream` | 0 | Update workstream |
+    | `list-backlog` | 0 | List backlog items |
+    | `list-workstreams` | 0 | List workstreams |
+    | `init` | 0 | Initialize session state |
+    | `update-decision` | 0 | Record decision |
+    | `track-preference` | 0 | Track stakeholder preference |
+    | `set-focus` | 0 | Set current focus |
+    | `add-question` | 0 | Add open question |
+    | `add-action` | 0 | Add next action |
+    | `show` | 0 | Show current state |
+    | `search` | 0 | Search decisions |
+    | `lock` | 0 | Enable autonomous co-pilot mode |
+    | `unlock` | 0 | Disable autonomous co-pilot mode |
+    | `check` | 0 | Check lock status |
+    | `diagnose` | 0 | Run parallel CI diagnostics |
+    | `iterate-fixes` | 0 | Iterate CI fixes with max attempts |
+    | `poll-status` | 0 | Poll CI status with exponential backoff |
+    | `check-complexity` | 0 | Check improvement complexity |
+    | `check-hard-stops` | 0 | Check for hard stop conditions |
+    | `validate-stage` | 0 | Validate a pipeline stage |
+    | `validate-all` | 0 | Run all validations |
+    | `create-issue` | 0 | Create issue |
+    | `create-pr` | 0 | Create pull request |
+    | `mark-pr-ready` | 0 | Mark PR as ready |
+    | `add-pr-comment` | 0 | Add PR comment |
+    | `check-ci-status` | 0 | Check CI status |
+    | `analyze` | 0 | Analyze pre-commit failures |
 
 ## Legend
 
@@ -193,8 +433,8 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-19T00:27:26.095238+00
 
 ## Key Findings
 
-- 52 CLI commands
-- 22 HTTP routes
+- 172 CLI commands
+- 33 HTTP routes
 - 19 recipes defined
 
 ## Detail
@@ -203,10 +443,11 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-19T00:27:26.095238+00
 
     **Summary metrics:**
     
-    - **Cli Command Count**: 52
-    - **Cli Argument Count**: 236
-    - **Click Typer Command Count**: 11
-    - **Http Route Count**: 22
+    - **Cli Command Count**: 172
+    - **Cli Argument Count**: 1057
+    - **Click Typer Command Count**: 33
+    - **Rust Clap Command Count**: 1
+    - **Http Route Count**: 33
     - **Hook Event Count**: 274
     - **Recipe Count**: 19
     - **Skill Count**: 402
