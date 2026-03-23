@@ -1,8 +1,8 @@
 {
-  "ts": "2026-03-23T06:30:00Z",
-  "run": 23424609096,
-  "open_prs": [3430, 3425, 3423, 3419, 3418, 3416, 3415, 3412, 3398, 3394, 3389, 3290],
-  "closed_since_last": [],
+  "ts": "2026-03-23T17:00:00Z",
+  "run": 23453339309,
+  "open_prs": [3430, 3425, 3423, 3419, 3418, 3416, 3415, 3412, 3398, 3389, 3290],
+  "closed_since_last": [3394],
   "prs": {
     "3430": {
       "risk": "low",
@@ -84,15 +84,6 @@
       "labels": ["triage:medium-risk", "triage:needs-review", "triage:needs-testing", "triage:complete", "enhancement", "copilot"],
       "status": "open",
       "note": "Adds Copilot CLI runtime to triage_pr.py via AMPLIHACK_AGENT_BINARY env var; test plan described but not confirmed (unchecked boxes); direct to main"
-    },
-    "3394": {
-      "risk": "low",
-      "priority": "low",
-      "type": "docs-automated",
-      "tests": false,
-      "labels": ["documentation", "automation", "triage:low-risk", "triage:complete"],
-      "status": "draft",
-      "note": "Auto-generated daily doc update for PRs #3268 #3286 #3335 #3351 #3366; EXPIRED Mar 23 2026 - candidate for closure"
     },
     "3389": {
       "risk": "high",
