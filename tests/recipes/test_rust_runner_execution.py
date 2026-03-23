@@ -15,6 +15,16 @@ from amplihack.recipes.models import StepStatus
 from amplihack.recipes.rust_runner import RustRunnerNotFoundError, run_recipe_via_rust
 
 
+@pytest.fixture(autouse=True)
+def _mock_runner_version_check():
+    """Keep execution tests focused on command/response behavior, not version gating."""
+    with patch(
+        "amplihack.recipes.rust_runner.runner_binary.raise_for_runner_version",
+        return_value=None,
+    ):
+        yield
+
+
 class TestRunRecipeViaRust:
     """Tests for run_recipe_via_rust()."""
 
