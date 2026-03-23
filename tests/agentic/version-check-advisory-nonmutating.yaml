@@ -1,0 +1,172 @@
+# Version Check Workflow - Advisory Only / Non-Mutating
+
+name: "Version Check Workflow - Advisory Only"
+description: "Verifies the PR-time version check warns on missing version bumps without mutating pyproject.toml or contributor branches."
+version: "1.0.0"
+
+config:
+  timeout: 180000
+  retries: 1
+  parallel: false
+
+agents:
+  - name: "repo-agent"
+    type: "system"
+    config:
+      shell: "bash"
+      cwd: "${PWD}"
+      timeout: 120000
+      capture_output: true
+
+steps:
+  - name: "Workflow advertises advisory-only behavior"
+    agent: "repo-agent"
+    action: "execute_command"
+    params:
+      command: |
+        python - <<'PY'
+        from pathlib import Path
+        import yaml
+
+        workflow = yaml.safe_load(Path(".github/workflows/version-check.yml").read_text())
+        permissions = workflow.get("permissions", {})
+        jobs = workflow.get("jobs", {})
+
+        assert permissions.get("contents") == "read", permissions
+        assert "auto-fix-version" not in jobs, jobs.keys()
+        assert "check-version-bump" in jobs, jobs.keys()
+
+        advisory_step = next(
+            step
+            for step in jobs["check-version-bump"]["steps"]
+            if step["name"] == "Advisory message"
+        )
+        advisory_text = advisory_step["run"]
+        assert "will not modify the branch" in advisory_text
+        assert "GITHUB_STEP_SUMMARY" in advisory_text
+
+        print("WORKFLOW_IS_ADVISORY_ONLY")
+        PY
+    expect:
+      exit_code: 0
+      stdout_contains:
+        - "WORKFLOW_IS_ADVISORY_ONLY"
+    timeout: 30000
+
+  - name: "Record pyproject hash before version check"
+    agent: "repo-agent"
+    action: "execute_command"
+    params:
+      command: |
+        sha256sum pyproject.toml | tee /tmp/version-check-before.sha
+    expect:
+      exit_code: 0
+      stdout_contains:
+        - "pyproject.toml"
+    timeout: 10000
+
+  - name: "Version checker warns when PR version is unchanged"
+    agent: "repo-agent"
+    action: "execute_command"
+    params:
+      command: |
+        set +e
+        python scripts/check_version_bump.py > /tmp/version-check-check.stdout 2> /tmp/version-check-check.stderr
+        status=$?
+        set -e
+        echo "CHECK_EXIT_CODE:$status"
+        echo "--- STDERR ---"
+        cat /tmp/version-check-check.stderr
+    expect:
+      exit_code: 0
+      stdout_contains:
+        - "CHECK_EXIT_CODE:1"
+        - "Version Check Failed"
+        - "Current version in"
+    timeout: 30000
+
+  - name: "Version checker does not mutate pyproject"
+    agent: "repo-agent"
+    action: "execute_command"
+    params:
+      command: |
+        before_hash="$(cut -d' ' -f1 /tmp/version-check-before.sha)"
+        after_hash="$(sha256sum pyproject.toml | cut -d' ' -f1)"
+        if [ "$before_hash" != "$after_hash" ]; then
+          echo "PYPROJECT_MUTATED"
+          exit 1
+        fi
+
+        if ! git diff --quiet -- pyproject.toml; then
+          echo "PYPROJECT_DIFF_PRESENT"
+          exit 1
+        fi
+
+        if [ -n "$(git status --short -- pyproject.toml)" ]; then
+          echo "PYPROJECT_STATUS_DIRTY"
+          exit 1
+        fi
+
+        echo "PYPROJECT_UNCHANGED"
+    expect:
+      exit_code: 0
+      stdout_contains:
+        - "PYPROJECT_UNCHANGED"
+    timeout: 10000
+
+  - name: "Docs describe the same non-mutating contract"
+    agent: "repo-agent"
+    action: "execute_command"
+    params:
+      command: |
+        python - <<'PY'
+        from pathlib import Path
+
+        docs = Path(".github/workflows/VERSION_WORKFLOWS.md").read_text().lower()
+        assert "advisory warning and step summary" in docs
+        assert "does **not** commit or push changes to the pr branch" in docs
+        assert "auto-version-on-merge.yml" in docs
+
+        print("DOCS_MATCH_ADVISORY_CONTRACT")
+        PY
+    expect:
+      exit_code: 0
+      stdout_contains:
+        - "DOCS_MATCH_ADVISORY_CONTRACT"
+    timeout: 10000
+
+assertions:
+  - name: "Workflow is advisory-only"
+    type: "command_success"
+    agent: "repo-agent"
+    params:
+      step: "Workflow advertises advisory-only behavior"
+
+  - name: "Version check fails without mutation"
+    type: "command_success"
+    agent: "repo-agent"
+    params:
+      step: "Version checker does not mutate pyproject"
+
+  - name: "Docs align with workflow"
+    type: "command_success"
+    agent: "repo-agent"
+    params:
+      step: "Docs describe the same non-mutating contract"
+
+cleanup:
+  - name: "Remove temporary hash and output files"
+    agent: "repo-agent"
+    action: "execute_command"
+    params:
+      command: |
+        rm -f /tmp/version-check-before.sha /tmp/version-check-check.stdout /tmp/version-check-check.stderr
+
+metadata:
+  tags:
+    - "agentic"
+    - "workflow"
+    - "version-check"
+    - "non-mutating"
+  priority: "high"
+  author: "copilot"

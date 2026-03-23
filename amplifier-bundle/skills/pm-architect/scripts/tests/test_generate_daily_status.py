@@ -4,9 +4,10 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
+import pytest  # pyright: ignore[reportMissingImports]
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
+from agent_query import AgentQueryError
 from generate_daily_status import get_recent_git_activity, load_project_state
 
 
@@ -104,7 +105,7 @@ class TestMainFunction:
 
     def test_main_sdk_not_available(self, capsys):
         """Test main when SDK not available."""
-        with patch("generate_daily_status.CLAUDE_SDK_AVAILABLE", False):
+        with patch("generate_daily_status.SDK_AVAILABLE", False):
             with patch("sys.argv", ["generate_daily_status.py"]):
                 from generate_daily_status import main
 
@@ -113,4 +114,26 @@ class TestMainFunction:
 
                 assert exc_info.value.code == 1
                 captured = capsys.readouterr()
-                assert "not installed" in captured.err
+                assert "No agent SDK installed" in captured.err
+
+
+class TestGenerateStatusReport:
+    """Tests for generate_status_report error handling."""
+
+    @pytest.mark.asyncio
+    async def test_generate_status_report_handles_agent_query_error(self, project_root, capsys):
+        """Agent query failures should be surfaced explicitly."""
+        from generate_daily_status import generate_status_report
+
+        with patch("generate_daily_status.SDK_AVAILABLE", True):
+            with patch("generate_daily_status.get_recent_git_activity", return_value="## Git"):
+                with patch("generate_daily_status.get_open_prs_and_issues", return_value="## PRs"):
+                    with patch(
+                        "generate_daily_status.query_agent",
+                        side_effect=AgentQueryError("SDK error"),
+                    ):
+                        result = await generate_status_report(project_root)
+
+        assert result is None
+        captured = capsys.readouterr()
+        assert "Error generating status report: SDK error" in captured.err

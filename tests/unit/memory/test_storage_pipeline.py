@@ -17,6 +17,7 @@ import pytest
 
 # These imports will fail until implementation exists (TDD)
 try:
+    from amplihack.memory.models import MemoryType
     from amplihack.memory.storage_pipeline import (
         AgentReview,
         QualityGate,

@@ -11,13 +11,28 @@ Each function returns an exit code (0=success, 1=error, 130=SIGINT).
 
 from __future__ import annotations
 
+__all__ = [
+    "handle_run",
+    "handle_list",
+    "handle_validate",
+    "handle_show",
+    "parse_context_args",
+    "_infer_missing_context",
+]
+
 import sys
+import traceback
 from pathlib import Path
 from typing import Any
 
-from amplihack.recipes import RecipeParser, discover_recipes, run_recipe_via_rust
-from amplihack.recipes.models import Recipe
+from amplihack.recipes import run_recipe_via_rust
+from amplihack.recipes.models import Recipe, RecipeResult
 
+from .context import (
+    infer_missing_context as _infer_missing_context,
+)
+from .context import merge_recipe_context, parse_context_args
+from .loader import discover_recipe_definitions, filter_recipes_by_tags, load_recipe_definition
 from .recipe_output import (
     format_recipe_details,
     format_recipe_list,
@@ -25,76 +40,59 @@ from .recipe_output import (
     format_validation_result,
 )
 
-
-def parse_context_args(
-    context_args: list[str] | list[list[str]],
-) -> tuple[dict[str, str], list[str]]:
-    """Parse context key=value arguments.
-
-    Handles two input formats:
-    - list[str]: Each element is a "key=value" string (legacy/direct call)
-    - list[list[str]]: Each element is a list of tokens from argparse nargs="+"
-      that should be joined with spaces before parsing (CLI with special chars)
-
-    Args:
-        context_args: Context arguments from argparse or direct invocation
-
-    Returns:
-        Tuple of (parsed_context_dict, error_messages)
-    """
-    context: dict[str, str] = {}
-    errors: list[str] = []
-
-    for ctx_arg in context_args:
-        # Handle nargs="+" format: each -c flag produces a list of tokens
-        # e.g. -c "task=Fix bug (#2453)" may arrive as ["task=Fix", "bug", "(#2453)"]
-        if isinstance(ctx_arg, list):
-            ctx_arg = " ".join(ctx_arg)
-
-        if "=" in ctx_arg:
-            key, value = ctx_arg.split("=", 1)
-            context[key] = value
-        else:
-            errors.append(
-                f"Invalid context format '{ctx_arg}'. "
-                "Use key=value format (e.g., -c 'question=What is X?' -c 'var=value')"
-            )
-
-    return context, errors
+_VALID_FORMATS = {"table", "json", "yaml"}
 
 
-def _validate_path(path_str: str, must_exist: bool = True) -> Path:
-    """Validate and resolve a user-provided path.
+def _validate_output_format(format_name: str) -> None:
+    if format_name not in _VALID_FORMATS:
+        raise ValueError(f"Invalid format: {format_name}. Must be table, json, or yaml")
 
-    Args:
-        path_str: Path string from user input
-        must_exist: If True, verify path exists
 
-    Returns:
-        Resolved Path object
+def _print_error(error: Exception, *, verbose: bool = False, prefix: str = "") -> int:
+    print(f"Error: {prefix}{error}", file=sys.stderr)
+    if verbose and not isinstance(error, (FileNotFoundError, ValueError, PermissionError)):
+        traceback.print_exc()
+    return 1
 
-    Raises:
-        ValueError: If path is invalid or contains suspicious patterns
-        FileNotFoundError: If must_exist=True and path doesn't exist
-    """
-    # Basic path validation
-    if not path_str or not path_str.strip():
-        raise ValueError("Path cannot be empty")
 
-    # Check for suspicious path patterns
-    if ".." in path_str:
-        # Allow .. but resolve to absolute path to prevent traversal
-        pass
+def _print_run_preamble(recipe_name: str, *, dry_run: bool, verbose: bool) -> None:
+    if not verbose:
+        return
+    print(f"Executing recipe: {recipe_name}", file=sys.stderr)
+    if dry_run:
+        print("DRY RUN MODE - No actual execution", file=sys.stderr)
 
-    try:
-        path = Path(path_str).resolve()
-    except (OSError, RuntimeError) as e:
-        raise ValueError(f"Invalid path: {e}")
 
-    if must_exist and not path.exists():
-        raise FileNotFoundError(f"Path does not exist: {path}")
+def _execute_recipe(
+    validated_path: Path,
+    merged_context: dict[str, Any],
+    *,
+    dry_run: bool,
+    verbose: bool,
+    working_dir: str | None,
+) -> RecipeResult:
+    return run_recipe_via_rust(
+        name=str(validated_path),
+        user_context=merged_context,
+        dry_run=dry_run,
+        working_dir=working_dir or ".",
+        progress=verbose,
+    )
 
-    return path
+
+def _render_validation(
+    recipe: Recipe | None, *, is_valid: bool, errors: list[str], format: str, verbose: bool = False
+) -> int:
+    print(
+        format_validation_result(
+            recipe=recipe,
+            is_valid=is_valid,
+            errors=errors,
+            format=format,
+            verbose=verbose,
+        )
+    )
+    return 0 if is_valid else 1
 
 
 def handle_run(
@@ -105,140 +103,32 @@ def handle_run(
     format: str = "table",
     working_dir: str | None = None,
 ) -> int:
-    """Execute a recipe from a YAML file.
-
-    Args:
-        recipe_path: Path to recipe YAML file
-        context: User-provided context variables (overrides recipe defaults)
-        dry_run: If True, show what would be executed without running
-        verbose: Show detailed step-by-step output
-        format: Output format (table/json/yaml)
-        working_dir: Working directory for recipe execution
-
-    Returns:
-        Exit code (0=success, 1=error, 130=SIGINT)
-    """
-    # Validate format before try block for fail-fast behavior
-    if format not in ["table", "json", "yaml"]:
-        raise ValueError(f"Invalid format: {format}. Must be table, json, or yaml")
+    """Execute a recipe from a YAML file."""
+    _validate_output_format(format)
 
     try:
-        # Validate and resolve recipe path
-        validated_path = _validate_path(recipe_path, must_exist=False)
-
-        # Parse recipe file
-        parser = RecipeParser()
-        recipe = parser.parse_file(str(validated_path))
-
-        if verbose:
-            print(f"Executing recipe: {recipe.name}", file=sys.stderr)
-            if dry_run:
-                print("DRY RUN MODE - No actual execution", file=sys.stderr)
-
-        # Merge context: user context overrides recipe defaults.
-        # Smart inference fills gaps for common variables when not provided.
-        recipe_defaults = recipe.context or {}
-        merged_context = {**recipe_defaults, **context}
-        merged_context = _infer_missing_context(recipe_defaults, merged_context, verbose)
-
-        # Execute recipe via Rust runner
-        wd: str = working_dir if working_dir is not None else "."
-        result = run_recipe_via_rust(
-            name=str(validated_path),
-            user_context=merged_context,
+        recipe, validated_path = load_recipe_definition(recipe_path)
+        _print_run_preamble(recipe.name, dry_run=dry_run, verbose=verbose)
+        merged_context = merge_recipe_context(recipe.context or {}, context, verbose=verbose)
+        result = _execute_recipe(
+            validated_path,
+            merged_context,
             dry_run=dry_run,
-            working_dir=wd,
+            verbose=verbose,
+            working_dir=working_dir,
         )
-
-        # Format and print output
-        output = format_recipe_result(result, format=format, show_context=False)
-        print(output)
-
-        # Return exit code based on success
-        return 0 if result.success else 1
-
     except KeyboardInterrupt:
         print("\nInterrupted by user", file=sys.stderr)
         return 130
-    except FileNotFoundError as e:
-        print(f"Error: {e}", file=sys.stderr)
-        return 1
-    except ValueError as e:
-        print(f"Error: {e}", file=sys.stderr)
-        return 1
-    except PermissionError as e:
-        print(f"Error: Permission denied - {e}", file=sys.stderr)
-        return 1
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        if verbose:
-            import traceback
+    except PermissionError as error:
+        return _print_error(error, prefix="Permission denied - ")
+    except (FileNotFoundError, ValueError) as error:
+        return _print_error(error)
+    except Exception as error:
+        return _print_error(error, verbose=verbose)
 
-            traceback.print_exc()
-        return 1
-
-
-def _infer_missing_context(
-    recipe_defaults: dict[str, Any],
-    merged: dict[str, Any],
-    verbose: bool = False,
-) -> dict[str, Any]:
-    """Infer missing context variables from environment when not explicitly set.
-
-    Inference strategies (in priority order):
-    1. Explicit --context values (already in merged, highest priority)
-    2. Environment variables (AMPLIHACK_CONTEXT_<KEY>)
-    3. Recipe defaults (already in merged from recipe YAML)
-
-    Only infers for variables that exist in recipe defaults but are empty strings
-    (the recipe declared them but no value was provided).
-
-    Args:
-        recipe_defaults: Original defaults from recipe YAML
-        merged: Already-merged context (recipe defaults + user overrides)
-        verbose: Print inference details
-
-    Returns:
-        Updated context dict with inferred values
-    """
-    import os
-
-    result = merged.copy()
-    inferred: list[str] = []
-
-    for key, value in result.items():
-        # Only infer for empty-string defaults (recipe declared but unfilled)
-        if value != "":
-            continue
-
-        # Strategy: check AMPLIHACK_CONTEXT_<KEY> environment variable
-        env_key = f"AMPLIHACK_CONTEXT_{key.upper()}"
-        env_value = os.environ.get(env_key, "")
-        if env_value:
-            result[key] = env_value
-            inferred.append(f"{key} (from ${env_key})")
-            continue
-
-        # Strategy: common variable inference from well-known env vars
-        if key == "task_description":
-            # Check if the smart-orchestrator already set this via user_context
-            task = os.environ.get("AMPLIHACK_TASK_DESCRIPTION", "")
-            if task:
-                result[key] = task
-                inferred.append(f"{key} (from $AMPLIHACK_TASK_DESCRIPTION)")
-        elif key == "repo_path":
-            # Default to current directory if not set
-            result[key] = os.environ.get("AMPLIHACK_REPO_PATH", ".")
-            if result[key] != ".":
-                inferred.append(f"{key} (from $AMPLIHACK_REPO_PATH)")
-
-    if inferred and verbose:
-        print(
-            f"[context] Inferred {len(inferred)} variable(s): {', '.join(inferred)}",
-            file=sys.stderr,
-        )
-
-    return result
+    print(format_recipe_result(result, format=format, show_context=False))
+    return 0 if result.success else 1
 
 
 def handle_list(
@@ -247,66 +137,17 @@ def handle_list(
     tags: list[str] | None = None,
     verbose: bool = False,
 ) -> int:
-    """List available recipes in a directory.
-
-    Args:
-        recipe_dir: Directory to search for recipes (None = use default search paths)
-        format: Output format (table/json/yaml)
-        tags: Filter recipes by tags (AND logic - must have all tags)
-        verbose: Show full recipe details
-
-    Returns:
-        Exit code (0=success, 1=error)
-    """
+    """List available recipes in a directory."""
     try:
-        # Discover recipes - use default search paths if no directory specified
-        if recipe_dir is None:
-            recipe_result = discover_recipes()
-        else:
-            # Validate and resolve recipe directory path
-            validated_dir = _validate_path(recipe_dir, must_exist=False)
-            recipe_result = discover_recipes([validated_dir])
+        recipes = discover_recipe_definitions(recipe_dir, verbose=verbose)
+        recipes = filter_recipes_by_tags(recipes, tags)
+    except FileNotFoundError as error:
+        return _print_error(error)
+    except Exception as error:
+        return _print_error(error)
 
-        # Handle both dict (real implementation) and list (test mocks)
-        recipes: list[Recipe]
-        if isinstance(recipe_result, dict):
-            # Real implementation: parse each RecipeInfo
-            parser = RecipeParser()
-            recipes = []
-            for recipe_info in recipe_result.values():
-                try:
-                    recipe = parser.parse_file(str(recipe_info.path))
-                    recipes.append(recipe)
-                except Exception as e:
-                    # Skip recipes that fail to parse
-                    if verbose:
-                        print(f"Warning: Skipped recipe {recipe_info.path}: {e}", file=sys.stderr)
-                    continue
-        else:
-            # Test mock: already a list of Recipe objects
-            recipes = list(recipe_result)
-
-        # Filter by tags if specified
-        if tags:
-            filtered = []
-            for recipe in recipes:
-                recipe_tags = set(recipe.tags or [])
-                if all(tag in recipe_tags for tag in tags):
-                    filtered.append(recipe)
-            recipes = filtered
-
-        # Format and print output
-        output = format_recipe_list(recipes, format=format, verbose=verbose, show_tags=True)
-        print(output)
-
-        return 0
-
-    except FileNotFoundError as e:
-        print(f"Error: {e}", file=sys.stderr)
-        return 1
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        return 1
+    print(format_recipe_list(recipes, format=format, verbose=verbose, show_tags=True))
+    return 0
 
 
 def handle_validate(
@@ -314,62 +155,24 @@ def handle_validate(
     verbose: bool = False,
     format: str = "table",
 ) -> int:
-    """Validate a recipe YAML file.
-
-    Args:
-        recipe_path: Path to recipe YAML file
-        verbose: Show detailed validation information
-        format: Output format (table/json/yaml)
-
-    Returns:
-        Exit code (0=valid, 1=invalid)
-    """
+    """Validate a recipe YAML file."""
     try:
-        # Validate and resolve recipe path
-        validated_path = _validate_path(recipe_path, must_exist=False)
-
-        # Try to parse the recipe
-        parser = RecipeParser()
-        recipe = parser.parse_file(str(validated_path))
-
-        # If we got here, recipe is valid
-        output = format_validation_result(
-            recipe=recipe,
-            is_valid=True,
-            errors=[],
-            format=format,
-            verbose=verbose,
+        recipe, _ = load_recipe_definition(recipe_path)
+    except FileNotFoundError as error:
+        return _render_validation(
+            None, is_valid=False, errors=[f"File not found: {error}"], format=format
         )
-        print(output)
-        return 0
-
-    except FileNotFoundError as e:
-        output = format_validation_result(
-            recipe=None,
+    except ValueError as error:
+        return _render_validation(None, is_valid=False, errors=[str(error)], format=format)
+    except Exception as error:
+        return _render_validation(
+            None,
             is_valid=False,
-            errors=[f"File not found: {e}"],
+            errors=[f"Validation error: {error}"],
             format=format,
         )
-        print(output)
-        return 1
-    except ValueError as e:
-        output = format_validation_result(
-            recipe=None,
-            is_valid=False,
-            errors=[str(e)],
-            format=format,
-        )
-        print(output)
-        return 1
-    except Exception as e:
-        output = format_validation_result(
-            recipe=None,
-            is_valid=False,
-            errors=[f"Validation error: {e}"],
-            format=format,
-        )
-        print(output)
-        return 1
+
+    return _render_validation(recipe, is_valid=True, errors=[], format=format, verbose=verbose)
 
 
 def handle_show(
@@ -378,39 +181,22 @@ def handle_show(
     show_steps: bool = True,
     show_context: bool = True,
 ) -> int:
-    """Show detailed recipe information.
-
-    Args:
-        recipe_path: Path to recipe YAML file
-        format: Output format (table/json/yaml)
-        show_steps: Include step details
-        show_context: Include context variables
-
-    Returns:
-        Exit code (0=success, 1=error)
-    """
+    """Show detailed recipe information."""
     try:
-        # Validate and resolve recipe path
-        validated_path = _validate_path(recipe_path, must_exist=False)
+        recipe, _ = load_recipe_definition(recipe_path)
+    except FileNotFoundError as error:
+        print(f"Error: File not found - {error}", file=sys.stderr)
+        return 1
+    except Exception as error:
+        return _print_error(error)
 
-        # Parse recipe
-        parser = RecipeParser()
-        recipe = parser.parse_file(str(validated_path))
-
-        # Format and print output
-        output = format_recipe_details(
+    print(
+        format_recipe_details(
             recipe,
             format=format,
             show_steps=show_steps,
             show_context=show_context,
             show_tags=True,
         )
-        print(output)
-        return 0
-
-    except FileNotFoundError as e:
-        print(f"Error: File not found - {e}", file=sys.stderr)
-        return 1
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        return 1
+    )
+    return 0

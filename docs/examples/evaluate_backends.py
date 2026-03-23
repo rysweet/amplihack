@@ -23,6 +23,7 @@ from amplihack.memory.evaluation import (
     ReliabilityEvaluator,
     run_evaluation,
 )
+from amplihack.memory.sqlite_backend import create_backend
 
 
 async def example_quality_evaluation():

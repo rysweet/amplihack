@@ -9,6 +9,7 @@ import queue
 import sys
 import threading
 from pathlib import Path
+from types import ModuleType
 from unittest.mock import MagicMock, patch
 
 import pytest  # type: ignore[import-unresolved]
@@ -44,7 +45,22 @@ def _load_remote_agent_adapter():
 
 
 _REMOTE_ADAPTER = _load_remote_agent_adapter()
-RemoteAgentAdapter = _REMOTE_ADAPTER.RemoteAgentAdapter
+
+
+def _require_remote_agent_adapter():
+    try:
+        return _REMOTE_ADAPTER.RemoteAgentAdapter
+    except ImportError as exc:
+        pytest.skip(str(exc))
+
+
+def _install_fake_eventhub(**symbols):
+    azure_module = ModuleType("azure")
+    eventhub_module = ModuleType("azure.eventhub")
+    for name, value in symbols.items():
+        setattr(eventhub_module, name, value)
+    azure_module.__dict__["eventhub"] = eventhub_module
+    return patch.dict(sys.modules, {"azure": azure_module, "azure.eventhub": eventhub_module})
 
 
 def _stable_hash_index(agent_id: str) -> int:
@@ -297,13 +313,11 @@ class TestPublishPartitionRouting:
         mock_batch = MagicMock()
         mock_producer.create_batch.return_value = mock_batch
 
-        with (
-            patch(
-                "azure.eventhub.EventHubProducerClient",
-            ) as MockProducer,
-            patch(
-                "azure.eventhub.EventData",
-            ) as MockEventData,
+        MockProducer = MagicMock()
+        MockEventData = MagicMock()
+        with _install_fake_eventhub(
+            EventHubProducerClient=MockProducer,
+            EventData=MockEventData,
         ):
             MockProducer.from_connection_string.return_value = mock_producer
             MockEventData.side_effect = lambda data: data
@@ -326,13 +340,11 @@ class TestPublishPartitionRouting:
         mock_batch = MagicMock()
         mock_producer.create_batch.return_value = mock_batch
 
-        with (
-            patch(
-                "azure.eventhub.EventHubProducerClient",
-            ) as MockProducer,
-            patch(
-                "azure.eventhub.EventData",
-            ) as MockEventData,
+        MockProducer = MagicMock()
+        MockEventData = MagicMock()
+        with _install_fake_eventhub(
+            EventHubProducerClient=MockProducer,
+            EventData=MockEventData,
         ):
             MockProducer.from_connection_string.return_value = mock_producer
             MockEventData.side_effect = lambda data: data
@@ -352,13 +364,11 @@ class TestPublishPartitionRouting:
         mock_producer = MagicMock()
         mock_producer.create_batch.side_effect = ConnectionError("network down")
 
-        with (
-            patch(
-                "azure.eventhub.EventHubProducerClient",
-            ) as MockProducer,
-            patch(
-                "azure.eventhub.EventData",
-            ),
+        MockProducer = MagicMock()
+        MockEventData = MagicMock()
+        with _install_fake_eventhub(
+            EventHubProducerClient=MockProducer,
+            EventData=MockEventData,
         ):
             MockProducer.from_connection_string.return_value = mock_producer
 
@@ -422,7 +432,8 @@ class TestReceiveLoopCheckpointing:
 
         mock_consumer.receive.side_effect = _receive
 
-        with patch("azure.eventhub.EventHubConsumerClient") as MockConsumer:
+        MockConsumer = MagicMock()
+        with _install_fake_eventhub(EventHubConsumerClient=MockConsumer):
             MockConsumer.from_connection_string.return_value = mock_consumer
             transport._receive_loop()
 
@@ -524,9 +535,10 @@ class TestReceiveLoopCheckpointing:
 class TestRemoteAdapterPublishPartitionRouting:
     """Verify RemoteAgentAdapter uses explicit partition routing for targeted input."""
 
-    @patch.object(RemoteAgentAdapter, "__init__", lambda self, **kw: None)
     def _make_adapter(self):
-        adapter = RemoteAgentAdapter()  # type: ignore[call-arg]
+        remote_agent_adapter = _require_remote_agent_adapter()
+        with patch.object(remote_agent_adapter, "__init__", lambda self, **kw: None):
+            adapter = remote_agent_adapter()  # type: ignore[call-arg]
         adapter._num_partitions = 32
         adapter._connection_string = "fake"
         adapter._input_hub = "hive-events-test"
