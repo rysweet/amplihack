@@ -374,6 +374,10 @@ Full reference:
 <summary>Quality, Security & Customization (5 features)</summary>
 
 - **[Security Analysis](/amplihack:xpia)** — Cross-prompt injection defense
+- **[Supply Chain Audit](/amplihack:supply-chain-audit)** — Audit CI/CD and
+  dependency attack surface (15 dimensions: Actions pinning, NuGet, PyPI, Cargo,
+  npm, Go, containers, Dependabot, branch protection). See
+  [how-to guide](docs/howto/run-supply-chain-audit.md).
 - **[Socratic Questioning](/amplihack:socratic)** — Challenge claims and clarify
   requirements
 - **[Benchmarking](https://rysweet.github.io/amplihack/BENCHMARKING/)** —
