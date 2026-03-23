@@ -7,6 +7,8 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Protocol
 
+import yaml
+
 from amplihack.recipes import RecipeParser, discover_recipes
 from amplihack.recipes.models import Recipe
 
@@ -29,13 +31,24 @@ def _parse_discovered_recipes(
 ) -> list[Recipe]:
     parser = RecipeParser()
     recipes: list[Recipe] = []
+    failures: list[str] = []
 
     for recipe_info in recipe_infos:
         try:
             recipes.append(parser.parse_file(str(recipe_info.path)))
-        except Exception as error:
-            if verbose:
-                print(f"Warning: Skipped recipe {recipe_info.path}: {error}", file=sys.stderr)
+        except (FileNotFoundError, ValueError, yaml.YAMLError) as error:
+            failures.append(f"{recipe_info.path}: {error}")
+
+    if failures:
+        detail_lines = failures if verbose else failures[:3]
+        remaining = len(failures) - len(detail_lines)
+        more_suffix = f"\n... and {remaining} more" if remaining > 0 else ""
+        print(
+            "Warning: Skipped invalid recipe definitions:\n"
+            + "\n".join(f"- {detail}" for detail in detail_lines)
+            + more_suffix,
+            file=sys.stderr,
+        )
 
     return recipes
 

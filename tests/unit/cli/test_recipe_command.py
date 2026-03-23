@@ -128,6 +128,20 @@ class TestHandleList:
         assert exit_code == 1
         assert f"Error: Not a directory: {recipe_file}" in capsys.readouterr().err
 
+    def test_returns_error_when_discovered_recipe_is_invalid(self, tmp_path, capsys):
+        (tmp_path / "valid.yaml").write_text(
+            "name: valid\nsteps:\n  - id: step-01\n    type: bash\n    command: echo hi\n",
+            encoding="utf-8",
+        )
+        (tmp_path / "broken.yaml").write_text("name: broken\n", encoding="utf-8")
+
+        exit_code = handle_list(recipe_dir=str(tmp_path))
+
+        captured = capsys.readouterr()
+        assert exit_code == 0
+        assert "valid" in captured.out
+        assert "broken.yaml" in captured.err
+
 
 class TestHandleValidate:
     @patch("amplihack.recipe_cli.recipe_command.format_validation_result", return_value="valid")

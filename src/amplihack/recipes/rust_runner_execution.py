@@ -186,6 +186,39 @@ def _parse_rust_response(
         ) from error
 
 
+def _validate_rust_response_payload(
+    data: Any, *, name: str
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    if not isinstance(data, dict):
+        raise RuntimeError(
+            f"Rust recipe runner returned an invalid response for '{name}': "
+            "top-level JSON must be an object."
+        )
+
+    raw_step_results = data.get("step_results", [])
+    if not isinstance(raw_step_results, list):
+        raise RuntimeError(
+            f"Rust recipe runner returned an invalid response for '{name}': "
+            "'step_results' must be a list."
+        )
+
+    for index, step_result in enumerate(raw_step_results):
+        if not isinstance(step_result, dict):
+            raise RuntimeError(
+                f"Rust recipe runner returned an invalid response for '{name}': "
+                f"'step_results[{index}]' must be an object."
+            )
+
+    raw_context = data.get("context", {})
+    if not isinstance(raw_context, dict):
+        raise RuntimeError(
+            f"Rust recipe runner returned an invalid response for '{name}': "
+            "'context' must be an object."
+        )
+
+    return raw_step_results, raw_context
+
+
 def _build_step_results(step_results_data: list[dict[str, Any]]) -> list[StepResult]:
     return [
         StepResult(
@@ -218,14 +251,7 @@ def execute_rust_command(
     stdout, stderr, returncode = _run_rust_process(cmd, progress=progress, env=env)
     data = _parse_rust_response(stdout, stderr=stderr, returncode=returncode, name=name)
 
-    raw_step_results = data.get("step_results", [])
-    step_results_data = raw_step_results if isinstance(raw_step_results, list) else []
-    normalized_step_results = [
-        step_result for step_result in step_results_data if isinstance(step_result, dict)
-    ]
-
-    raw_context = data.get("context", {})
-    context_data = raw_context if isinstance(raw_context, dict) else {}
+    normalized_step_results, context_data = _validate_rust_response_payload(data, name=name)
 
     return RecipeResult(
         recipe_name=str(data.get("recipe_name", name)),
