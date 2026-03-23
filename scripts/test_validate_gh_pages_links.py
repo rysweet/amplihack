@@ -60,8 +60,8 @@ class TestLinkExtraction:
         html = '<a href="/page1">Link 1</a><a href="/page2">Link 2</a>'
         links = validator.extract_links(html, "https://example.com/")
         assert len(links) == 2
-        assert any(l["url"] == "https://example.com/page1" for l in links)
-        assert any(l["url"] == "https://example.com/page2" for l in links)
+        assert any(link["url"] == "https://example.com/page1" for link in links)
+        assert any(link["url"] == "https://example.com/page2" for link in links)
 
     def test_extract_anchor_with_fragment(self):
         """Extract links with fragments (#section)"""
