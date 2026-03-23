@@ -11,8 +11,10 @@ Covers:
 
 from __future__ import annotations
 
+import importlib.util
 import io
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -24,11 +26,24 @@ from amplihack.recipes.models import StepStatus
 from amplihack.recipes.rust_runner import (
     RustRunnerNotFoundError,
     _redact_command_for_log,
+    _write_progress_file,
     ensure_rust_recipe_runner,
     find_rust_binary,
     is_rust_runner_available,
     run_recipe_via_rust,
 )
+
+
+def _import_dev_intent_router():
+    """Import dev_intent_router from its non-package location."""
+    hooks_dir = Path(__file__).parent.parent.parent / ".claude" / "tools" / "amplihack" / "hooks"
+    spec = importlib.util.spec_from_file_location(
+        "dev_intent_router", hooks_dir / "dev_intent_router.py"
+    )
+    mod = importlib.util.module_from_spec(spec)  # type: ignore[arg-type]
+    spec.loader.exec_module(mod)  # type: ignore[union-attr]
+    return mod
+
 
 # ============================================================================
 # find_rust_binary
@@ -718,6 +733,121 @@ class TestProgressStreaming:
         cmd = mock_popen.call_args[0][0]
         assert "--progress" in cmd
         assert result.success is True
-        assert "▶ classify-and-decompose" in streamed_stderr.getvalue()
+        # Banner emitted to stderr by both run_recipe_via_rust and _execute_rust_command
+        captured = streamed_stderr.getvalue()
+        assert "[amplihack]" in captured, "startup banner must appear in stderr"
+        assert "test-recipe" in captured, "recipe name must appear in banner"
+        # Progress lines still streamed
+        assert "▶ classify-and-decompose" in captured
         # Issue #3049: no timeout should be passed to process.wait()
         assert fake.timeout is None
+
+
+# ============================================================================
+# Progress file tests
+# ============================================================================
+
+
+class TestProgressFile:
+    """Tests for _write_progress_file() and get_recipe_progress()."""
+
+    def test_write_progress_file_creates_file(self, tmp_path):
+        """_write_progress_file() creates the file at the expected temp path."""
+        pid = os.getpid()
+        with patch("amplihack.recipes.rust_runner.tempfile") as mock_tmp:
+            mock_tmp.gettempdir.return_value = str(tmp_path)
+            path = _write_progress_file(
+                "test-recipe",
+                current_step=1,
+                total_steps=5,
+                step_name="init",
+                elapsed_seconds=1.5,
+                status="running",
+                pid=pid,
+            )
+        assert path.exists(), "progress file must be created"
+        # Filename must embed recipe name and PID
+        assert "test-recipe" in path.name or "test_recipe" in path.name
+        assert str(pid) in path.name
+
+    def test_write_progress_file_correct_schema(self, tmp_path):
+        """_write_progress_file() writes valid JSON with all required fields."""
+        pid = os.getpid()
+        with patch("amplihack.recipes.rust_runner.tempfile") as mock_tmp:
+            mock_tmp.gettempdir.return_value = str(tmp_path)
+            path = _write_progress_file(
+                "my-recipe",
+                current_step=2,
+                total_steps=10,
+                step_name="build",
+                elapsed_seconds=3.7,
+                status="completed",
+                pid=pid,
+            )
+        data = json.loads(path.read_text())
+        assert data["recipe_name"] == "my-recipe"
+        assert data["current_step"] == 2
+        assert data["total_steps"] == 10
+        assert data["step_name"] == "build"
+        assert abs(data["elapsed_seconds"] - 3.7) < 0.05
+        assert data["status"] == "completed"
+        assert data["pid"] == pid
+        assert "updated_at" in data
+
+    def test_get_recipe_progress_reads_file_back(self, tmp_path):
+        """get_recipe_progress() reads back progress written by _write_progress_file()."""
+        pid = os.getpid()
+        # Write the progress file into tmp_path
+        with patch("amplihack.recipes.rust_runner.tempfile") as mock_tmp:
+            mock_tmp.gettempdir.return_value = str(tmp_path)
+            _write_progress_file(
+                "workflow-recipe",
+                current_step=3,
+                total_steps=7,
+                step_name="test-step",
+                elapsed_seconds=12.0,
+                status="running",
+                pid=pid,
+            )
+
+        # Now query via get_recipe_progress, patching gettempdir in dev_intent_router
+        router = _import_dev_intent_router()
+        with patch.object(router._tempfile, "gettempdir", return_value=str(tmp_path)):
+            result = router.get_recipe_progress("workflow-recipe")
+
+        assert result is not None, "should find the progress file"
+        assert result["current_step"] == 3
+        assert result["total_steps"] == 7
+        assert result["step_name"] == "test-step"
+        assert abs(result["elapsed_seconds"] - 12.0) < 0.05
+        assert result["status"] == "running"
+
+    def test_get_recipe_progress_returns_none_when_no_file(self, tmp_path):
+        """get_recipe_progress() returns None when no matching file exists."""
+        router = _import_dev_intent_router()
+        with patch.object(router._tempfile, "gettempdir", return_value=str(tmp_path)):
+            result = router.get_recipe_progress("nonexistent-recipe")
+        assert result is None
+
+    def test_get_recipe_progress_none_recipe_name_finds_any(self, tmp_path):
+        """get_recipe_progress(None) returns the most recent progress file."""
+        pid = os.getpid()
+        with patch("amplihack.recipes.rust_runner.tempfile") as mock_tmp:
+            mock_tmp.gettempdir.return_value = str(tmp_path)
+            _write_progress_file(
+                "some-recipe",
+                current_step=1,
+                total_steps=3,
+                step_name="first",
+                elapsed_seconds=0.5,
+                status="running",
+                pid=pid,
+            )
+
+        router = _import_dev_intent_router()
+        with patch.object(router._tempfile, "gettempdir", return_value=str(tmp_path)):
+            result = router.get_recipe_progress()  # recipe_name=None
+
+        assert result is not None
+        assert result["step_name"] == "first"
+        assert result["status"] == "running"
