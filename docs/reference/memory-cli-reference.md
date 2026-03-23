@@ -1,6 +1,6 @@
 # Memory CLI Reference
 
-This page documents the current `amplihack memory` command surface.
+This page documents the current top-level `amplihack memory` surface.
 
 ## Synopsis
 
@@ -8,35 +8,33 @@ This page documents the current `amplihack memory` command surface.
 amplihack memory <subcommand> [options]
 ```
 
-## Subcommands
+## Supported Subcommands
 
-| Subcommand | Purpose                                                             |
-| ---------- | ------------------------------------------------------------------- |
-| `tree`     | Visualize the in-repo memory graph                                  |
-| `clean`    | Preview or delete matching sessions from the in-repo memory backend |
-| `export`   | Export an agent memory store to JSON or Kuzu format                 |
-| `import`   | Import an agent memory store from JSON or Kuzu format               |
+| Subcommand | Purpose                                         |
+| ---------- | ----------------------------------------------- |
+| `tree`     | Visualize the top-level session memory graph    |
+| `export`   | Export an agent-local hierarchical memory store |
+| `import`   | Import an agent-local hierarchical memory store |
 
 ## `memory tree`
 
-Visualize the current memory graph.
+`amplihack memory tree` renders the repo's top-level session memory graph using `MemoryDatabase`, the SQLite-backed store at `~/.amplihack/memory.db` by default.
 
 ```bash
-amplihack memory tree [--session SESSION] [--type TYPE] [--depth N] [--backend {kuzu,sqlite}]
+amplihack memory tree [--session SESSION] [--type TYPE] [--depth N]
 ```
 
 ### Options
 
-| Flag                      | Meaning                           |
-| ------------------------- | --------------------------------- |
-| `--session SESSION`       | Filter by session ID              |
-| `--type TYPE`             | Filter by memory type             |
-| `--depth N`               | Limit tree depth                  |
-| `--backend {kuzu,sqlite}` | Select backend; default is `kuzu` |
+| Flag                | Meaning                                   |
+| ------------------- | ----------------------------------------- |
+| `--session SESSION` | Filter by session ID                      |
+| `--type TYPE`       | Filter by the current legacy parser types |
+| `--depth N`         | Limit tree depth                          |
 
 ### Current `--type` choices
 
-The CLI currently accepts the legacy compatibility names:
+The current parser accepts these legacy compatibility names:
 
 - `conversation`
 - `decision`
@@ -45,46 +43,18 @@ The CLI currently accepts the legacy compatibility names:
 - `learning`
 - `artifact`
 
-The underlying model layer also supports the preferred primary types (`episodic`, `semantic`, `procedural`, `prospective`, `working`), but those are not the current `tree --type` parser choices.
-
 ### Examples
 
 ```bash
 amplihack memory tree
-amplihack memory tree --backend kuzu --depth 2
+amplihack memory tree --depth 2
 amplihack memory tree --session demo_run_01
 amplihack memory tree --type learning
 ```
 
-## `memory clean`
-
-Preview or delete sessions that match a wildcard pattern.
-
-```bash
-amplihack memory clean [--pattern PATTERN] [--backend {kuzu,sqlite}] [--no-dry-run] [--confirm]
-```
-
-### Options
-
-| Flag                      | Meaning                                                    |
-| ------------------------- | ---------------------------------------------------------- |
-| `--pattern PATTERN`       | Wildcard pattern to match; default is `test_*`             |
-| `--backend {kuzu,sqlite}` | Select backend; default is `kuzu`                          |
-| `--no-dry-run`            | Actually delete matching sessions                          |
-| `--confirm`               | Skip the confirmation prompt when used with `--no-dry-run` |
-
-### Examples
-
-```bash
-amplihack memory clean --pattern 'test_*'
-amplihack memory clean --pattern 'demo_*'
-amplihack memory clean --pattern '*_temp'
-amplihack memory clean --pattern 'dev_*' --no-dry-run --confirm
-```
-
 ## `memory export`
 
-Export an agent memory store.
+`memory export` copies an agent-local hierarchical memory store into a portable JSON file or raw Kuzu directory.
 
 ```bash
 amplihack memory export --agent AGENT --output OUTPUT [--format {json,kuzu}] [--storage-path STORAGE_PATH]
@@ -97,11 +67,18 @@ amplihack memory export --agent AGENT --output OUTPUT [--format {json,kuzu}] [--
 | `--agent AGENT`               | Agent name to export                                   |
 | `--output OUTPUT`             | Output file path for JSON or output directory for Kuzu |
 | `--format {json,kuzu}`        | Export format; default is `json`                       |
-| `--storage-path STORAGE_PATH` | Override the agent's Kuzu storage path                 |
+| `--storage-path STORAGE_PATH` | Override the agent's hierarchical-memory storage path  |
+
+### Examples
+
+```bash
+amplihack memory export --agent incident-memory-agent --output ./incident-memory.json
+amplihack memory export --agent incident-memory-agent --output ./incident-memory-kuzu --format kuzu
+```
 
 ## `memory import`
 
-Import an agent memory store.
+`memory import` loads a JSON export into an existing agent memory store, or replaces an agent's raw Kuzu store.
 
 ```bash
 amplihack memory import --agent AGENT --input INPUT [--format {json,kuzu}] [--merge] [--storage-path STORAGE_PATH]
@@ -109,40 +86,35 @@ amplihack memory import --agent AGENT --input INPUT [--format {json,kuzu}] [--me
 
 ### Options
 
-| Flag                          | Meaning                                              |
-| ----------------------------- | ---------------------------------------------------- |
-| `--agent AGENT`               | Target agent name                                    |
-| `--input INPUT`               | Input file path for JSON or input directory for Kuzu |
-| `--format {json,kuzu}`        | Import format; default is `json`                     |
-| `--merge`                     | Merge into existing memory instead of replacing it   |
-| `--storage-path STORAGE_PATH` | Override the agent's Kuzu storage path               |
+| Flag                          | Meaning                                               |
+| ----------------------------- | ----------------------------------------------------- |
+| `--agent AGENT`               | Target agent name                                     |
+| `--input INPUT`               | Input file path for JSON or input directory for Kuzu  |
+| `--format {json,kuzu}`        | Import format; default is `json`                      |
+| `--merge`                     | Merge into existing memory instead of replacing it    |
+| `--storage-path STORAGE_PATH` | Override the agent's hierarchical-memory storage path |
 
-## Source-Checkout Caveat for `export` and `import`
+### Important caveat
 
-The parser currently exposes `export` and `import`, but in this source checkout those commands still import `amplihack.agents.goal_seeking.memory_export` and related modules that are missing from `src/`.
+`--merge` is supported only for JSON imports. Raw Kuzu imports replace the target store.
 
-When run from this checkout with `PYTHONPATH=src`, they can fail with `ModuleNotFoundError` before the export or import work begins.
-
-Treat `tree` and `clean` as the verified top-level CLI memory commands here, and use `export` or `import` only if you have restored those source modules or you are running from a package build that includes them.
-
-## Backend Path Resolution
-
-For the Kuzu backend, the preferred environment variable is:
+### Examples
 
 ```bash
-export AMPLIHACK_GRAPH_DB_PATH=/path/to/memory_kuzu.db
+amplihack memory import --agent incident-memory-agent --input ./incident-memory.json --merge
+amplihack memory import --agent incident-memory-agent --input ./incident-memory-kuzu --format kuzu
 ```
 
-The legacy alias still exists:
+## What Is Not Exposed by the Top-Level CLI
+
+The current top-level parser does **not** expose these older surfaces:
+
+- `amplihack memory clean`
+- `amplihack memory evaluate`
+- `amplihack memory tree --backend ...`
+
+If you need the backend evaluation module directly, run:
 
 ```bash
-export AMPLIHACK_KUZU_DB_PATH=/path/to/memory_kuzu.db
+python -m amplihack.memory.cli_evaluate --backend sqlite
 ```
-
-If neither is set, the default path is `~/.amplihack/memory_kuzu.db`.
-
-## Related Docs
-
-- [Top-level CLI reference](./cli.md)
-- [Agent Memory Quickstart](../AGENT_MEMORY_QUICKSTART.md)
-- [Memory-enabled agents architecture](../concepts/memory-enabled-agents-architecture.md)

@@ -1,13 +1,14 @@
 # Agent Memory Quickstart
 
-This quickstart focuses on the memory surfaces that are verified in this checkout today.
+This quickstart covers the memory surfaces verified in this checkout today:
 
-- the top-level CLI memory graph backed by `src/amplihack/memory`
+- the top-level `amplihack memory tree` graph view
+- the agent-local `amplihack memory export` / `amplihack memory import` transfer commands
 - generated goal-agent packages created with `amplihack new --enable-memory`
 
-## 1. Inspect the CLI Memory Graph
+## 1. Inspect the Top-Level CLI Memory Graph
 
-The top-level `memory` command defaults to the Kuzu backend.
+The top-level graph view uses `MemoryDatabase`, a SQLite store at `~/.amplihack/memory.db` by default.
 
 ```bash
 amplihack memory tree
@@ -16,7 +17,7 @@ amplihack memory tree
 Useful variants:
 
 ```bash
-amplihack memory tree --backend kuzu --depth 2
+amplihack memory tree --depth 2
 amplihack memory tree --session test_session_01
 amplihack memory tree --type learning
 ```
@@ -61,28 +62,31 @@ When `--enable-memory` is set, the generated package includes:
 - helper functions in `main.py` such as `store_success()`, `store_failure()`, and `recall_relevant()`
 - `amplihack-memory-lib` in `requirements.txt`
 
-## 4. Know Which Memory System You Are Looking At
+## 4. Export or Import an Agent-Local Memory Store
 
-There are two real memory surfaces in this repo:
-
-- the top-level CLI memory backend under `src/amplihack/memory`, which defaults to Kuzu and stores data under `~/.amplihack/memory_kuzu.db` unless `AMPLIHACK_GRAPH_DB_PATH` is set
-- the generated agent package created by `--enable-memory`, which scaffolds `amplihack_memory` helpers and stores agent-local data under `./memory/`
-
-Those are related, but they are not the same storage location.
-
-## 5. Clean Test Sessions From the CLI Backend
-
-Preview deletions first:
+Use the transfer commands when you want to move an agent's hierarchical memory between environments.
 
 ```bash
-amplihack memory clean --pattern 'test_*'
+amplihack memory export --agent incident-memory-agent --output ./incident-memory.json
+amplihack memory import --agent incident-memory-agent --input ./incident-memory.json --merge
 ```
 
-Delete matching sessions after the dry run looks correct:
+For raw Kuzu store replacement instead of JSON merge:
 
 ```bash
-amplihack memory clean --pattern 'test_*' --no-dry-run --confirm
+amplihack memory export --agent incident-memory-agent --output ./incident-memory-kuzu --format kuzu
+amplihack memory import --agent incident-memory-agent --input ./incident-memory-kuzu --format kuzu
 ```
+
+## 5. Know Which Memory System You Are Looking At
+
+There are three related but different surfaces in this repo:
+
+- the top-level CLI graph view, which reads SQLite `MemoryDatabase` at `~/.amplihack/memory.db`
+- the agent-local hierarchical store used by `memory export` / `memory import`
+- the generated package created by `--enable-memory`, which scaffolds `amplihack_memory` helpers and stores local data under `./memory/`
+
+Those surfaces are related, but they are not the same storage location.
 
 ## Next Steps
 

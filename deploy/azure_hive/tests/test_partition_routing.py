@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import queue
@@ -46,6 +47,11 @@ _REMOTE_ADAPTER = _load_remote_agent_adapter()
 RemoteAgentAdapter = _REMOTE_ADAPTER.RemoteAgentAdapter
 
 
+def _stable_hash_index(agent_id: str) -> int:
+    digest = hashlib.sha256(agent_id.encode("utf-8")).hexdigest()
+    return int(digest[:16], 16)
+
+
 # ===========================================================================
 # EventHubsShardTransport — partition routing
 # ===========================================================================
@@ -63,15 +69,13 @@ class TestAgentIndex:
         # rsplit("-", 1) takes the last segment
         assert EventHubsShardTransport._agent_index("hive-agent-7") == 7
 
-    def test_non_numeric_name_uses_hash(self):
+    def test_non_numeric_name_uses_stable_hash(self):
         result = EventHubsShardTransport._agent_index("coordinator")
-        assert isinstance(result, int)
-        assert result >= 0
+        assert result == _stable_hash_index("coordinator")
 
-    def test_empty_string_uses_hash(self):
+    def test_empty_string_uses_stable_hash(self):
         result = EventHubsShardTransport._agent_index("")
-        assert isinstance(result, int)
-        assert result >= 0
+        assert result == _stable_hash_index("")
 
 
 class TestTargetPartition:
@@ -125,10 +129,16 @@ class TestGetNumPartitions:
 
     def test_fallback_on_import_error(self):
         t = self._make_transport()
-        with patch.dict("sys.modules", {"azure.eventhub": None}):
+        with (
+            patch.dict("sys.modules", {"azure.eventhub": None}),
+            patch(
+                "amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph.logger.warning"
+            ) as mock_warning,
+        ):
             # Force import to fail
             result = t._get_num_partitions()
             assert result == 32  # default fallback
+        mock_warning.assert_called_once()
 
     def test_caches_after_first_call(self):
         t = self._make_transport()
@@ -164,6 +174,11 @@ class TestInputSourcePartitionRouting:
     def test_target_partition_wraps(self):
         src = self._make_source(agent_name="agent-33", num_partitions=32)
         assert src._target_partition("agent-33") == "1"
+
+    def test_target_partition_uses_stable_hash_for_non_numeric_agent(self):
+        src = self._make_source(agent_name="coordinator", num_partitions=32)
+        expected = str(_stable_hash_index("coordinator") % 32)
+        assert src._target_partition("coordinator") == expected
 
     def test_receive_uses_explicit_partition_id(self):
         src = self._make_source(agent_name="agent-5")
@@ -210,6 +225,17 @@ class TestInputSourcePartitionRouting:
 
         assert src.next() == "hello"
         assert src.last_event_metadata == {"event_id": "evt-1"}
+
+    def test_partition_count_fallback_logs_warning(self):
+        src = self._make_source(agent_name="agent-5")
+        src._num_partitions = None
+        src._consumer.get_partition_ids.side_effect = RuntimeError("boom")
+
+        with patch("amplihack.agents.goal_seeking.input_source.logger.warning") as mock_warning:
+            result = src._get_num_partitions()
+
+        assert result == 32
+        mock_warning.assert_called_once()
 
     def test_receive_loop_handles_online_check_inline(self):
         src = self._make_source(agent_name="agent-5")
