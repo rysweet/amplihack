@@ -45,12 +45,7 @@ def parse_context_args(
     context: dict[str, str] = {}
     errors: list[str] = []
 
-    for ctx_arg in context_args:
-        # Handle nargs="+" format: each -c flag produces a list of tokens
-        # e.g. -c "task=Fix bug (#2453)" may arrive as ["task=Fix", "bug", "(#2453)"]
-        if isinstance(ctx_arg, list):
-            ctx_arg = " ".join(ctx_arg)
-
+    def _append_context_arg(ctx_arg: str) -> None:
         if "=" in ctx_arg:
             key, value = ctx_arg.split("=", 1)
             context[key] = value
@@ -59,6 +54,29 @@ def parse_context_args(
                 f"Invalid context format '{ctx_arg}'. "
                 "Use key=value format (e.g., -c 'question=What is X?' -c 'var=value')"
             )
+
+    for ctx_arg in context_args:
+        # Handle nargs="+" format: each -c flag produces a list of tokens
+        # e.g. -c "task=Fix bug (#2453)" may arrive as ["task=Fix", "bug", "(#2453)"].
+        # Also support multiple key=value pairs after a single -c flag:
+        #   -c target=src min_cycles=3 max_cycles=3
+        if isinstance(ctx_arg, list):
+            current: str | None = None
+            for token in ctx_arg:
+                if "=" in token:
+                    if current is not None:
+                        _append_context_arg(current)
+                    current = token
+                elif current is not None:
+                    current = f"{current} {token}"
+                else:
+                    _append_context_arg(token)
+                    current = None
+            if current is not None:
+                _append_context_arg(current)
+            continue
+
+        _append_context_arg(ctx_arg)
 
     return context, errors
 
@@ -148,6 +166,7 @@ def handle_run(
             user_context=merged_context,
             dry_run=dry_run,
             working_dir=wd,
+            progress=verbose,
         )
 
         # Format and print output
