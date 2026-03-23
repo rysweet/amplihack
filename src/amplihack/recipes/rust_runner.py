@@ -36,10 +36,6 @@ _ENV_VAR_SIZE_LIMIT = 32 * 1024  # 32 768 bytes — kernel limit guard
 # _sanitize_key() call.
 _KEY_SANITIZE_RE: re.Pattern[str] = re.compile(r"[^a-zA-Z0-9_]")
 
-# Valid context key: must be a legal identifier (letters/digits/underscore,
-# not starting with a digit).  Prevents shell-injection via --set args.
-_VALID_CONTEXT_KEY_RE: re.Pattern[str] = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
-
 # Fast-path threshold for the encode() guard.
 # UTF-8 uses at most 4 bytes per code-point, so a string shorter than
 # limit/4 characters cannot possibly encode to >= limit bytes.
@@ -66,20 +62,20 @@ def _validate_context_keys(user_context: dict[str, Any]) -> None:
 
     Keys are passed verbatim into ``--set {key}={value}`` CLI arguments.
     A key containing spaces, ``=``, or shell metacharacters could corrupt the
-    argument list or enable injection attacks.  Only ``[a-zA-Z_][a-zA-Z0-9_]*``
-    keys are accepted — the same rule as Python/shell variable names.
+    argument list or enable injection attacks.  Only valid Python identifiers
+    are accepted — the same rule as Python/shell variable names.
 
     Args:
         user_context: Mapping of context keys to values to validate.
 
     Raises:
-        ValueError: If any key does not match the safe-identifier pattern.
+        ValueError: If any key is not a valid Python identifier.
     """
     for key in user_context:
-        if not _VALID_CONTEXT_KEY_RE.match(key):
+        if not key.isidentifier():
             raise ValueError(
-                f"Invalid user_context key {key!r}: keys must match "
-                r"[a-zA-Z_][a-zA-Z0-9_]* (no spaces, dashes, or special chars)"
+                f"Invalid user_context key {key!r}: keys must be valid Python identifiers "
+                "(no spaces, dashes, or special chars)"
             )
 
 
@@ -102,8 +98,11 @@ def _write_spill_bytes(key: str, encoded: bytes, tmp_dir: Path) -> str:
     """
     tmp_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
     file_path = tmp_dir / _sanitize_key(key)
-    file_path.write_bytes(encoded)
-    file_path.chmod(0o600)
+    fd = os.open(str(file_path), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        os.write(fd, encoded)
+    finally:
+        os.close(fd)
     return f"file://{file_path.resolve()}"
 
 
@@ -122,17 +121,30 @@ def _spill_large_value(key: str, value: str, tmp_dir: Path) -> str:
     return _write_spill_bytes(key, value.encode("utf-8"), tmp_dir)
 
 
-def _resolve_context_value(value: str) -> str:
+def _resolve_context_value(value: str, allowed_dir: Path | None = None) -> str:
     """Dereference a ``file://`` URI back to the file's text content.
 
     Plain strings (no ``file://`` prefix) are returned unchanged with no I/O.
 
+    Args:
+        value: The value to resolve. May be a ``file://`` URI or a plain string.
+        allowed_dir: When provided, restricts resolution to paths within this
+            directory. Raises ``ValueError`` if the resolved path escapes it.
+            When ``None``, no path restriction is applied (use only for
+            values produced by ``_spill_large_value`` within the same process).
+
     Security: only call this on values produced by ``_spill_large_value``
-    within the same process.  Never call on externally-supplied values —
-    this function reads arbitrary filesystem paths.
+    within the same process, or with ``allowed_dir`` set to the temp
+    directory used for spill files.  Never call on externally-supplied
+    values without setting ``allowed_dir``.
     """
     if value.startswith("file://"):
-        return Path(value[7:]).read_text(encoding="utf-8")
+        p = Path(value[7:]).resolve()
+        if allowed_dir is not None:
+            allowed = allowed_dir.resolve()
+            if not str(p).startswith(str(allowed)):
+                raise ValueError(f"file:// URI escapes allowed directory: {p} not under {allowed}")
+        return p.read_text(encoding="utf-8")
     return value
 
 
@@ -150,8 +162,12 @@ def _binary_search_paths() -> list[str]:
 
 
 def _install_timeout() -> int:
-    """Return the install timeout in seconds (env-configurable)."""
-    return int(os.environ.get("RECIPE_RUNNER_INSTALL_TIMEOUT", "300"))
+    """Return the install timeout in seconds (env-configurable, range 10-3600)."""
+    raw = int(os.environ.get("RECIPE_RUNNER_INSTALL_TIMEOUT", "300"))
+    return max(10, min(3600, raw))
+
+
+_EXPECTED_BINARY_NAME = "recipe-runner-rs"
 
 
 def find_rust_binary() -> str | None:
@@ -159,11 +175,24 @@ def find_rust_binary() -> str | None:
 
     Checks the RECIPE_RUNNER_RS_PATH env var first, then known locations.
     Returns the path to the binary, or None if not found.
+
+    Security: when ``RECIPE_RUNNER_RS_PATH`` is set, validates that the
+    resolved binary is named ``recipe-runner-rs`` to prevent arbitrary binary
+    substitution attacks.
     """
     env_path = os.environ.get("RECIPE_RUNNER_RS_PATH")
     if env_path:
         resolved = shutil.which(env_path)
         if resolved:
+            resolved_name = Path(resolved).name
+            if resolved_name != _EXPECTED_BINARY_NAME:
+                logger.warning(
+                    "RECIPE_RUNNER_RS_PATH resolved to unexpected binary name %r "
+                    "(expected %r) — refusing to use untrusted binary",
+                    resolved_name,
+                    _EXPECTED_BINARY_NAME,
+                )
+                return None
             return resolved
 
     for candidate in _binary_search_paths():
@@ -195,7 +224,7 @@ def get_runner_version(binary: str | None = None) -> str | None:
             parts = result.stdout.strip().rsplit(" ", 1)
             return parts[-1] if len(parts) >= 2 else result.stdout.strip()
     except Exception as exc:
-        logger.debug("Could not get runner version from %s: %s", binary, exc)
+        logger.warning("Could not get runner version from %s: %s", binary, exc)
     return None
 
 
@@ -508,7 +537,11 @@ def _write_progress_file(
         "updated_at": time.time(),
     }
     try:
-        path.write_text(json.dumps(data), encoding="utf-8")
+        fd = os.open(str(path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        try:
+            os.write(fd, json.dumps(data).encode("utf-8"))
+        finally:
+            os.close(fd)
     except OSError as exc:
         logger.debug("Could not write progress file %s: %s", path, exc)
     return path
@@ -596,6 +629,15 @@ def _stream_process_output_with_progress(
     finally:
         stdout_thread.join()
         stderr_thread.join()
+    # Write terminal status so polling consumers know execution finished.
+    _write_progress_file(
+        recipe_name,
+        current_step=state["current_step"],
+        total_steps=0,
+        step_name=state["step_name"],
+        elapsed_seconds=time.time() - started_at,
+        status="completed" if returncode == 0 else "failed",
+    )
     return "".join(stdout_chunks), "".join(stderr_chunks), returncode
 
 
@@ -727,7 +769,7 @@ def _default_package_recipe_dirs() -> list[str]:
         if dirs:
             return dirs
     except Exception as exc:
-        logger.debug("Could not resolve default recipe dirs: %s", exc)
+        logger.warning("Could not resolve default recipe dirs: %s", exc)
     return []
 
 
@@ -770,7 +812,7 @@ def _resolve_recipe_target(
         if resolved is not None:
             return str(resolved.resolve())
     except Exception as exc:
-        logger.debug("Could not resolve recipe path for %s: %s", name, exc)
+        logger.warning("Could not resolve recipe path for %s: %s", name, exc)
 
     return name
 

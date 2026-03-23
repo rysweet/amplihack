@@ -86,6 +86,20 @@ class TestFindRustBinary:
         result = find_rust_binary()
         assert result is None
 
+    @patch.dict("os.environ", {"RECIPE_RUNNER_RS_PATH": "/tmp/evil-binary"})
+    @patch("shutil.which", return_value="/tmp/evil-binary")
+    def test_env_var_wrong_binary_name_returns_none(self, mock_which):
+        """RECIPE_RUNNER_RS_PATH pointing to a differently-named binary is refused."""
+        result = find_rust_binary()
+        assert result is None
+
+    @patch.dict("os.environ", {"RECIPE_RUNNER_RS_PATH": "/opt/tools/recipe-runner-rs"})
+    @patch("shutil.which", return_value="/opt/tools/recipe-runner-rs")
+    def test_env_var_correct_binary_name_in_nonstandard_dir(self, mock_which):
+        """RECIPE_RUNNER_RS_PATH with correct binary name in any directory is accepted."""
+        result = find_rust_binary()
+        assert result == "/opt/tools/recipe-runner-rs"
+
 
 class TestIsRustRunnerAvailable:
     """Tests for is_rust_runner_available()."""
@@ -852,6 +866,46 @@ class TestProgressFile:
         assert result is not None
         assert result["step_name"] == "first"
         assert result["status"] == "running"
+
+    def test_stream_process_output_with_progress_writes_terminal_status(self, tmp_path):
+        """_stream_process_output_with_progress writes completed/failed terminal status."""
+        import io
+        import os
+        import time
+        from unittest.mock import patch
+
+        from amplihack.recipes.rust_runner import (
+            _progress_file_path,
+            _stream_process_output_with_progress,
+        )
+
+        pid = os.getpid()
+
+        class FakePopen:
+            def __init__(self):
+                self.stdout = io.StringIO("")
+                self.stderr = io.StringIO("▶ step-one\n✓ step-one\n")
+                self._returncode = 0
+
+            def wait(self, timeout=None):
+                return self._returncode
+
+        fake = FakePopen()
+        started_at = time.time()
+
+        with patch("amplihack.recipes.rust_runner.tempfile") as mock_tmp:
+            mock_tmp.gettempdir.return_value = str(tmp_path)
+            _stream_process_output_with_progress(fake, "my-recipe", started_at)
+            path = _progress_file_path("my-recipe", pid)
+
+        # After returning, progress file should have terminal status
+        assert path.exists(), "terminal progress file must exist"
+        import json
+
+        data = json.loads(path.read_text())
+        assert data["status"] in ("completed", "failed"), (
+            f"expected terminal status, got: {data['status']}"
+        )
 
 
 # ============================================================================
