@@ -333,7 +333,16 @@ steps:
       {{issue_creation}}
       EOFISSUECREATION
       )
-      printf '%s' "$ISSUE_CREATION" | grep -oE 'issues/[0-9]+' | grep -oE '[0-9]+' | head -1
+      EXTRACTED=$(printf '%s' "$ISSUE_CREATION" | grep -oE 'issues/[0-9]+' | grep -oE '[0-9]+' | head -1)
+      if [ -z "$EXTRACTED" ]; then
+        echo "ERROR: step-03b failed to extract issue number from issue_creation output." >&2
+        echo "Raw issue_creation output was:" >&2
+        printf '%s\n' "$ISSUE_CREATION" >&2
+        echo "This means step-03a (create-issue) likely failed or returned unexpected output." >&2
+        echo "Downstream steps (commit, PR) will fail without a valid issue number." >&2
+        exit 1
+      fi
+      printf '%s' "$EXTRACTED"
     output: "issue_number"
 
   # ==========================================================================
@@ -1103,7 +1112,13 @@ steps:
       if [ -n "$(git diff --cached --name-only)" ]; then \
         git commit -m "$COMMIT_MSG" ; \
       else \
-        echo "WARNING: Nothing to commit - changes already committed" ; \
+        echo "ERROR: Nothing staged to commit. The implementation step may have written files" >&2 ; \
+        echo "outside the worktree ({{worktree_setup.worktree_path}}), or no code changes were produced." >&2 ; \
+        echo "This is a hollow-success condition — the workflow completed structurally but" >&2 ; \
+        echo "produced no git artifacts. Check that agents created files in the worktree," >&2 ; \
+        echo "not in AMPLIHACK_HOME or other locations." >&2 ; \
+        git --no-pager status >&2 ; \
+        exit 1 ; \
       fi && \
       echo "" && \
       echo "--- Pushing to Remote ---" && \
@@ -1164,9 +1179,14 @@ steps:
       COMMITS_AHEAD=$(git rev-list --count origin/main..HEAD 2>/dev/null || echo "0")
 
       if [ "$COMMITS_AHEAD" -eq 0 ]; then
-          echo "WARNING: 0 commits ahead of main and no related PR found for issue-$ISSUE_NUM. Work may be on another branch or already merged." >&2
-          printf ''
-          exit 0
+          echo "ERROR: 0 commits ahead of main and no related PR found for issue-$ISSUE_NUM." >&2
+          echo "This is a hollow-success condition: the workflow ran but produced no commits." >&2
+          echo "Possible causes:" >&2
+          echo "  1. step-15-commit-push failed silently (check commit_result output)" >&2
+          echo "  2. Implementation agents wrote files outside the worktree" >&2
+          echo "  3. Work was done on a different branch" >&2
+          git --no-pager log --oneline -5 >&2
+          exit 1
       fi
 
       # Normal path: 1+ commits ahead, no existing PR — create the PR

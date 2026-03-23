@@ -41,24 +41,35 @@ from pathlib import Path
 # The FIXED extraction command — tests assert this behaves correctly.
 # NOTE: The EOFISSUECREATION delimiter is intentionally long and specific to
 # prevent accidental collision with issue body text that might contain "EOF".
+# FIX (#3480): Now fails with exit 1 when extraction produces empty result.
 _BL001_FIXED_CMD = textwrap.dedent("""\
     set +H  # disable history expansion so !-tokens are safe
     ISSUE_CREATION=$(cat <<'EOFISSUECREATION'
     {issue_creation}
     EOFISSUECREATION
     )
-    printf '%s' "$ISSUE_CREATION" | grep -oE 'issues/[0-9]+' | grep -oE '[0-9]+' | head -1
+    EXTRACTED=$(printf '%s' "$ISSUE_CREATION" | grep -oE 'issues/[0-9]+' | grep -oE '[0-9]+' | head -1)
+    if [ -z "$EXTRACTED" ]; then
+      echo "ERROR: step-03b failed to extract issue number from issue_creation output." >&2
+      exit 1
+    fi
+    printf '%s' "$EXTRACTED"
 """)
 
 
 def _run_extraction_fixed(issue_creation: str) -> str:
-    """Run the FIXED BL-001 extraction bash snippet and return trimmed stdout."""
+    """Run the FIXED BL-001 extraction bash snippet and return trimmed stdout.
+
+    Raises RuntimeError if the script exits non-zero (e.g. empty extraction).
+    """
     script = _BL001_FIXED_CMD.format(issue_creation=issue_creation)
     result = subprocess.run(
         ["bash", "-c", script],
         capture_output=True,
         text=True,
     )
+    if result.returncode != 0:
+        raise RuntimeError(f"Extraction failed (rc={result.returncode}): {result.stderr.strip()}")
     return result.stdout.strip()
 
 
@@ -209,16 +220,18 @@ class TestExtractIssueNumber(unittest.TestCase):
         )
 
     def test_extract_issue_number_no_url(self):
-        """No issue URL present → empty output, no crash."""
+        """No issue URL present → extraction fails with error, not silent empty."""
         issue_creation = "Error: authentication required\n"
-        result = _run_extraction_fixed(issue_creation)
-        self.assertEqual(result, "", "Empty output expected when no issues/ URL present")
+        with self.assertRaises(RuntimeError) as ctx:
+            _run_extraction_fixed(issue_creation)
+        self.assertIn("step-03b failed", str(ctx.exception))
 
     def test_extract_issue_number_multiline_no_url(self):
-        """Multiple lines, none containing an issue URL → empty output."""
+        """Multiple lines, none containing an issue URL → extraction fails."""
         issue_creation = "Creating issue...\nDone.\n"
-        result = _run_extraction_fixed(issue_creation)
-        self.assertEqual(result, "")
+        with self.assertRaises(RuntimeError) as ctx:
+            _run_extraction_fixed(issue_creation)
+        self.assertIn("step-03b failed", str(ctx.exception))
 
     # --- Regression: tail-1 selects wrong number ---
 
