@@ -18,6 +18,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 from pathlib import Path
 from typing import Any
 
@@ -421,14 +422,171 @@ def _stream_process_output(process: subprocess.Popen[str]) -> tuple[str, str, in
     return "".join(stdout_chunks), "".join(stderr_chunks), returncode
 
 
+def _progress_file_path(recipe_name: str, pid: int | None = None) -> Path:
+    """Return the deterministic temp-file path keyed by *recipe_name* and *pid*.
+
+    Uses the stem of the path (handles absolute YAML paths like
+    ``/a/b/my-recipe.yaml`` → ``my_recipe``) and sanitises to
+    ``[a-zA-Z0-9_]`` so the filename is safe on all platforms.
+    """
+    if pid is None:
+        pid = os.getpid()
+    stem = Path(recipe_name).stem if ("/" in recipe_name or os.sep in recipe_name) else recipe_name
+    safe_name = _KEY_SANITIZE_RE.sub("_", stem)[:64]
+    return Path(tempfile.gettempdir()) / f"amplihack-progress-{safe_name}-{pid}.json"
+
+
+def _write_progress_file(
+    recipe_name: str,
+    *,
+    current_step: int,
+    total_steps: int,
+    step_name: str,
+    elapsed_seconds: float,
+    status: str,
+    pid: int | None = None,
+) -> Path:
+    """Write machine-readable JSON step status to a deterministic temp file.
+
+    The file is keyed by *recipe_name* + PID so concurrent runs do not
+    overwrite each other.
+
+    Schema::
+
+        recipe_name     - name passed to run_recipe_via_rust
+        current_step    - 1-based index of the step in progress / just finished
+        total_steps     - total steps known (0 when not yet determined)
+        step_name       - human-readable name of the current / last step
+        elapsed_seconds - wall-clock seconds since recipe execution started
+        status          - "running" | "completed" | "failed" | "skipped"
+        pid             - process ID of the writer
+        updated_at      - Unix timestamp of last write
+
+    Returns the path to the written file (useful for tests and callers that
+    want to locate the file without recomputing the path).
+    """
+    if pid is None:
+        pid = os.getpid()
+    path = _progress_file_path(recipe_name, pid)
+    data: dict[str, Any] = {
+        "recipe_name": recipe_name,
+        "current_step": current_step,
+        "total_steps": total_steps,
+        "step_name": step_name,
+        "elapsed_seconds": round(elapsed_seconds, 3),
+        "status": status,
+        "pid": pid,
+        "updated_at": time.time(),
+    }
+    try:
+        path.write_text(json.dumps(data), encoding="utf-8")
+    except OSError as exc:
+        logger.debug("Could not write progress file %s: %s", path, exc)
+    return path
+
+
+def _stream_process_output_with_progress(
+    process: subprocess.Popen[str],
+    recipe_name: str,
+    started_at: float,
+) -> tuple[str, str, int]:
+    """Collect stdout while streaming stderr live and writing progress on step transitions.
+
+    Detects step-start (``▶``) and step-end (``✓``, ``✗``, ``⊘``) markers
+    emitted on stderr and calls :func:`_write_progress_file` on each
+    transition so external tools can query progress without parsing the live
+    log.
+
+    Returns the same ``(stdout, stderr, returncode)`` tuple as
+    :func:`_stream_process_output`.
+    """
+    stdout_chunks: list[str] = []
+    stderr_chunks: list[str] = []
+    # Mutable state shared with the stderr drain thread.
+    state: dict[str, Any] = {"current_step": 0, "step_name": ""}
+
+    def _drain_stdout() -> None:
+        if process.stdout is None:
+            return
+        for line in process.stdout:
+            stdout_chunks.append(line)
+
+    def _drain_stderr() -> None:
+        if process.stderr is None:
+            return
+        for line in process.stderr:
+            stderr_chunks.append(line)
+            print(line, end="", file=sys.stderr, flush=True)
+            stripped = line.strip()
+            # Step started: "▶ step-name (optional label)"
+            if stripped.startswith("▶"):
+                state["current_step"] += 1
+                state["step_name"] = stripped[1:].strip().split("(")[0].strip()
+                _write_progress_file(
+                    recipe_name,
+                    current_step=state["current_step"],
+                    total_steps=0,
+                    step_name=state["step_name"],
+                    elapsed_seconds=time.time() - started_at,
+                    status="running",
+                )
+            elif stripped.startswith("✓"):
+                _write_progress_file(
+                    recipe_name,
+                    current_step=state["current_step"],
+                    total_steps=0,
+                    step_name=state["step_name"],
+                    elapsed_seconds=time.time() - started_at,
+                    status="completed",
+                )
+            elif stripped.startswith("✗"):
+                _write_progress_file(
+                    recipe_name,
+                    current_step=state["current_step"],
+                    total_steps=0,
+                    step_name=state["step_name"],
+                    elapsed_seconds=time.time() - started_at,
+                    status="failed",
+                )
+            elif stripped.startswith("⊘"):
+                _write_progress_file(
+                    recipe_name,
+                    current_step=state["current_step"],
+                    total_steps=0,
+                    step_name=state["step_name"],
+                    elapsed_seconds=time.time() - started_at,
+                    status="skipped",
+                )
+
+    stdout_thread = threading.Thread(target=_drain_stdout)
+    stderr_thread = threading.Thread(target=_drain_stderr)
+    stdout_thread.start()
+    stderr_thread.start()
+    try:
+        returncode = process.wait()
+    finally:
+        stdout_thread.join()
+        stderr_thread.join()
+    return "".join(stdout_chunks), "".join(stderr_chunks), returncode
+
+
 def _execute_rust_command(cmd: list[str], *, name: str, progress: bool) -> RecipeResult:
     """Run the Rust binary and parse its JSON output into a ``RecipeResult``."""
+    # Startup banner — always emitted so users know the runner is active.
+    print(
+        f"[amplihack] recipe-runner --- executing: {name}",
+        file=sys.stderr,
+        flush=True,
+    )
+
     env = os.environ.copy()
     if "AMPLIHACK_AGENT_BINARY" not in env:
         logger.warning(
             "AMPLIHACK_AGENT_BINARY not set — Rust runner will default to 'claude'. "
             "Set the env var via the amplihack CLI dispatcher to use a different agent."
         )
+
+    started_at = time.time()
 
     if progress:
         process = subprocess.Popen(
@@ -439,7 +597,7 @@ def _execute_rust_command(cmd: list[str], *, name: str, progress: bool) -> Recip
             bufsize=1,
             env=env,
         )
-        stdout, stderr, returncode = _stream_process_output(process)
+        stdout, stderr, returncode = _stream_process_output_with_progress(process, name, started_at)
     else:
         result = subprocess.run(
             cmd,
@@ -608,6 +766,13 @@ def run_recipe_via_rust(
         RuntimeError: If the binary produces unparseable output.
     """
     binary = _find_rust_binary()
+
+    # Startup banner — visible to the user before any output from the binary.
+    print(
+        f"[amplihack] recipe-runner --- starting: {name}",
+        file=sys.stderr,
+        flush=True,
+    )
 
     # When no explicit recipe_dirs are provided, inject the package bundle
     # directory so the Rust binary can find the same recipes as Python

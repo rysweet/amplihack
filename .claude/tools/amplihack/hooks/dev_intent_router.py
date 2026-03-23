@@ -19,7 +19,11 @@ Toggle during a session:
 Legacy env var still respected: export AMPLIHACK_AUTO_DEV=false
 """
 
+import glob as _glob
+import json as _json
 import os
+import re as _re
+import tempfile as _tempfile
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
@@ -239,3 +243,60 @@ def should_auto_route(prompt: str) -> tuple[bool, str]:
         pass  # fail-open
 
     return True, _ROUTING_PROMPT
+
+
+# ---------------------------------------------------------------------------
+# Recipe progress query
+# ---------------------------------------------------------------------------
+
+
+def get_recipe_progress(recipe_name: str | None = None) -> dict | None:
+    """Locate and parse the most recent recipe progress file.
+
+    Progress files are written by ``amplihack.recipes.rust_runner._write_progress_file``
+    to a deterministic path in the system temp directory:
+    ``<tmpdir>/amplihack-progress-<safe_name>-<pid>.json``
+
+    When *recipe_name* is given, only files for that recipe are considered.
+    When *recipe_name* is ``None``, the most-recently-modified progress file
+    across all recipes is returned.
+
+    Returns a dict with the keys::
+
+        current_step    - 1-based index of the step in progress / last finished
+        total_steps     - total steps (0 when not yet determined)
+        step_name       - human-readable name of the current / last step
+        elapsed_seconds - wall-clock seconds since recipe execution started
+        status          - "running" | "completed" | "failed" | "skipped"
+
+    Returns ``None`` when no matching progress file is found or readable.
+    """
+    tmp_dir = _tempfile.gettempdir()
+
+    if recipe_name is not None:
+        stem = (
+            Path(recipe_name).stem if ("/" in recipe_name or os.sep in recipe_name) else recipe_name
+        )
+        safe_name = _re.sub(r"[^a-zA-Z0-9_]", "_", stem)[:64]
+        pattern = str(Path(tmp_dir) / f"amplihack-progress-{safe_name}-*.json")
+    else:
+        pattern = str(Path(tmp_dir) / "amplihack-progress-*.json")
+
+    files = _glob.glob(pattern)
+    if not files:
+        return None
+
+    # Pick the most recently modified file.
+    files.sort(key=lambda p: Path(p).stat().st_mtime, reverse=True)
+
+    try:
+        data = _json.loads(Path(files[0]).read_text(encoding="utf-8"))
+        return {
+            "current_step": data.get("current_step", 0),
+            "total_steps": data.get("total_steps", 0),
+            "step_name": data.get("step_name", ""),
+            "elapsed_seconds": data.get("elapsed_seconds", 0.0),
+            "status": data.get("status", "unknown"),
+        }
+    except (OSError, _json.JSONDecodeError, ValueError):
+        return None
