@@ -3,7 +3,7 @@ Mode: static-approximation
 # Layer 2: AST+LSP Symbol Bindings
 
 **Slug:** `ast-lsp-bindings` | **Display Order:** 2
-**Last rebuilt:** 2026-03-22 | **Package version:** 0.6.94
+**Last rebuilt:** 2026-03-23 | **Package version:** 0.6.96
 
 No LSP server was available for this analysis. All symbol bindings were derived via static grep/read of `__all__` exports and `from amplihack.X import Y` statements.
 
@@ -42,17 +42,28 @@ Modules with explicit `__all__` declarations (38 files found):
 
 Key import relationships between top-level subpackages:
 
-| Source                           | Imports From                                                                                                                          |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `cli.py`                         | `launcher`, `proxy`, `fleet`, `recipes`, `bundle_generator`, `plugin_manager`, `eval`, `settings`, `uvx`, `docker`, `security`        |
-| `recipe_cli/recipe_command`      | `recipes`                                                                                                                             |
-| `launcher/auto_mode`             | `launcher` (internal: `completion_signals`, `fork_manager`, `json_logger`, `session_capture`, `work_summary`)                         |
-| `fleet/fleet_copilot`            | `fleet` (internal: `_constants`, `_validation`, `_backends`, `_transcript`, `fleet_session_reasoner`, `prompts`)                      |
-| `eval/*`                         | `agents.domain_agents`, `knowledge_builder`                                                                                           |
-| `knowledge_builder/orchestrator` | `knowledge_builder.kb_types`, `knowledge_builder.modules.*`                                                                           |
-| `recipes/rust_runner`            | `recipes.discovery` (`_AMPLIHACK_HOME_BUNDLE_DIR`, `_PACKAGE_BUNDLE_DIR`, `_REPO_ROOT_BUNDLE_DIR`), `recipes.models`, stdlib `signal` |
-| `recipes/discovery`              | stdlib `os` (module-level `os.environ.get` for `AMPLIHACK_HOME`)                                                                      |
-| `vendor/blarify/*`               | Self-contained (only intra-vendor imports)                                                                                            |
+| Source                                                 | Imports From                                                                                                                          |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `cli.py`                                               | `launcher`, `proxy`, `fleet`, `recipes`, `bundle_generator`, `plugin_manager`, `eval`, `settings`, `uvx`, `docker`, `security`        |
+| `agents.goal_seeking.input_source`                     | `agents.goal_seeking.partition_routing`                                                                                               |
+| `agents.goal_seeking.hive_mind.distributed_hive_graph` | `agents.goal_seeking.partition_routing`                                                                                               |
+| `recipe_cli/recipe_command`                            | `recipes`                                                                                                                             |
+| `launcher/auto_mode`                                   | `launcher` (internal: `completion_signals`, `fork_manager`, `json_logger`, `session_capture`, `work_summary`)                         |
+| `fleet/fleet_copilot`                                  | `fleet` (internal: `_constants`, `_validation`, `_backends`, `_transcript`, `fleet_session_reasoner`, `prompts`)                      |
+| `eval/*`                                               | `agents.domain_agents`, `knowledge_builder`                                                                                           |
+| `knowledge_builder/orchestrator`                       | `knowledge_builder.kb_types`, `knowledge_builder.modules.*`                                                                           |
+| `recipes/rust_runner`                                  | `recipes.discovery` (`_AMPLIHACK_HOME_BUNDLE_DIR`, `_PACKAGE_BUNDLE_DIR`, `_REPO_ROOT_BUNDLE_DIR`), `recipes.models`, stdlib `signal` |
+| `recipes/discovery`                                    | stdlib `os` (module-level `os.environ.get` for `AMPLIHACK_HOME`)                                                                      |
+| `vendor/blarify/*`                                     | Self-contained (only intra-vendor imports)                                                                                            |
+
+## Recent Impact Notes
+
+- `agents.goal_seeking.partition_routing` is now the shared binding point for
+  deterministic non-numeric agent routing used by both the Azure Event Hubs
+  input source and the distributed hive graph transport.
+- `deploy/azure_hive/tests/test_partition_routing.py` now serves as the
+  user-visible regression surface for those bindings, including the warning path
+  when partition-count discovery falls back to the default.
 
 ## Dead Code Candidates
 

@@ -48,8 +48,15 @@ from typing import Any
 
 from .llm_grader import call_grader_json, get_grader_model
 
+AMPLIHACK_AGENT_EVAL_REV = "5b8a8b2fef172ab87b326c6c1c848c0874fe874f"  # pragma: allowlist secret
+AMPLIHACK_AGENT_EVAL_INSTALL = (
+    "pip install 'amplihack-agent-eval @ "
+    "git+https://github.com/rysweet/amplihack-agent-eval.git@"
+    f"{AMPLIHACK_AGENT_EVAL_REV}'"
+)
+
 # Requires amplihack-agent-eval package.
-# Install: pip install "amplihack-agent-eval @ git+https://github.com/rysweet/amplihack-agent-eval.git@main"
+# Install: pip install "amplihack-agent-eval @ git+https://github.com/rysweet/amplihack-agent-eval.git@5b8a8b2fef172ab87b326c6c1c848c0874fe874f"
 try:
     from amplihack_eval.data.long_horizon import (  # type: ignore[import-not-found]
         GradingRubric,
@@ -61,8 +68,7 @@ try:
 except ImportError:
     raise ImportError(
         "amplihack-agent-eval package is required but not installed. "
-        "Install with: pip install 'amplihack-agent-eval @ "
-        "git+https://github.com/rysweet/amplihack-agent-eval.git@main'"
+        f"Install with: {AMPLIHACK_AGENT_EVAL_INSTALL}"
     )
 
 logger = logging.getLogger(__name__)

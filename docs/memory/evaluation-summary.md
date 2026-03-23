@@ -97,17 +97,19 @@ Generated: 2026-01-12 12:36:06
 
 ## Usage
 
-### CLI
+### Module entry point
+
+The current top-level `amplihack` parser does not expose `memory evaluate`. Run the evaluation module directly instead:
 
 ```bash
 # Compare all backends
-amplihack memory evaluate
+python -m amplihack.memory.cli_evaluate
 
-# Evaluate specific backend
-amplihack memory evaluate --backend sqlite
+# Evaluate a specific backend
+python -m amplihack.memory.cli_evaluate --backend sqlite
 
 # Save report to file
-amplihack memory evaluate --output report.md
+python -m amplihack.memory.cli_evaluate --output report.md
 ```
 
 ### Python API

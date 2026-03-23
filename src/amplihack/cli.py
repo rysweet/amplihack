@@ -531,7 +531,7 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
-    from amplihack import __version__  # local import avoids circular dependency at module load
+    from . import __version__  # local import avoids circular dependency at module load
 
     parser.add_argument(
         "--version",
@@ -660,9 +660,6 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         help="Filter by memory type",
     )
     tree_parser.add_argument("--depth", type=int, help="Maximum tree depth")
-    tree_parser.add_argument(
-        "--backend", choices=["kuzu", "sqlite"], default="kuzu", help="Memory backend to use"
-    )
 
     # Export subcommand
     export_parser = memory_subparsers.add_parser(
@@ -704,36 +701,6 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         "--merge", action="store_true", help="Merge into existing memory (default: replace)"
     )
     import_parser.add_argument("--storage-path", help="Custom storage path for the agent's Kuzu DB")
-
-    # Clean subcommand
-    clean_parser = memory_subparsers.add_parser(
-        "clean",
-        help="Clean up test sessions",
-        epilog="Examples:\n"
-        "  amplihack memory clean --pattern 'test_*'     # Clean test sessions\n"
-        "  amplihack memory clean --pattern 'demo_*'     # Clean demo sessions\n"
-        "  amplihack memory clean --pattern '*_temp'     # Clean temporary sessions\n"
-        "  amplihack memory clean --pattern 'dev_*' --no-dry-run  # Actually delete dev sessions",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    clean_parser.add_argument(
-        "--pattern",
-        default="test_*",
-        help="Session ID pattern to match (supports * wildcards, default: test_*)",
-    )
-    clean_parser.add_argument(
-        "--backend", choices=["kuzu", "sqlite"], default="kuzu", help="Memory backend to use"
-    )
-    clean_parser.add_argument(
-        "--no-dry-run",
-        action="store_true",
-        help="Actually delete sessions (default is dry-run mode)",
-    )
-    clean_parser.add_argument(
-        "--confirm",
-        action="store_true",
-        help="Skip confirmation prompt (use with --no-dry-run)",
-    )
 
     # Goal agent generator command
     new_parser = subparsers.add_parser("new", help="Generate a new goal-seeking agent")
@@ -1818,6 +1785,13 @@ def main(argv: list[str] | None = None) -> int:
 
             from .agents.goal_seeking.memory_export import import_memory
 
+            if args.merge and getattr(args, "format", "json") == "kuzu":
+                print(
+                    "Error importing memory: --merge is not supported with --format kuzu. "
+                    "Use --format json for merge imports."
+                )
+                return 1
+
             storage = _Path(args.storage_path) if args.storage_path else None
             try:
                 result = import_memory(
@@ -1839,12 +1813,6 @@ def main(argv: list[str] | None = None) -> int:
             except Exception as e:
                 print(f"Error importing memory: {e}")
                 return 1
-
-        if args.memory_command == "clean":
-            print(
-                "The 'memory clean' command has been removed. Use the database directly to clean up sessions."
-            )
-            return 1
 
         create_parser().print_help()
         return 1

@@ -83,7 +83,7 @@ The generated package runs through `AutoMode`, using the SDK you selected when y
 
 The generated package creates and owns a local `./memory/` directory.
 
-That is separate from the top-level CLI memory backend used by `amplihack memory tree` and `amplihack memory clean`.
+That is separate from the top-level CLI graph shown by `amplihack memory tree` and from the agent-local transfer commands `amplihack memory export` / `amplihack memory import`.
 
 ## Step 7: Add a Simple Memory Hook
 
@@ -116,11 +116,13 @@ for item in recent:
 
 ## Step 8: Inspect the CLI Memory Graph Separately
 
-The top-level CLI memory graph is a different surface, but it is still useful when you are working on the in-repo backend.
+The top-level CLI memory graph is a different surface, but it is still useful when you are working on the in-repo session graph.
 
 ```bash
-amplihack memory tree --backend kuzu --depth 2
+amplihack memory tree --depth 2
 ```
+
+If you want to move a generated agent's hierarchical memory instead of inspecting the top-level graph, use `amplihack memory export` / `amplihack memory import`.
 
 ## Next Steps
 

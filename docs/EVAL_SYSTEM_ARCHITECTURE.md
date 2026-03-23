@@ -28,6 +28,7 @@ Progressive test suite (3-run median, mini SDK):
 Long-horizon memory evaluation: **98.9% at 1000 turns**.
 
 **Recent improvements (2026-02-28):**
+
 - Overall accuracy: 96.0% → 97.8% (+1.8%)
 - temporal_evolution: 86.6% → 99.8% (+13.2%)
 - security_log_analysis: 88% → 100% (+12%)
@@ -175,7 +176,7 @@ ensure facts from L1 cannot leak into L2.
 The `LearningAgent` now includes three retrieval strategies:
 
 1. **Entity-Linked Retrieval** (`_entity_linked_retrieval`): When questions
-   contain structured entity IDs (INC-*, CVE-*, PROJ-*), retrieves all facts
+   contain structured entity IDs (INC-_, CVE-_, PROJ-\*), retrieves all facts
    containing those IDs across ALL context tags. This addresses the problem
    where facts about a single entity are stored under different contexts
    (e.g., incident data in "incidents", "security_logs", and "post_mortems").
@@ -426,6 +427,7 @@ Blocks 9-12 (security domain) together account for 30% of turns.
 **Security Domain Improvements** (2026-02-28):
 
 Block 9 (Security Logs) now achieves 100% accuracy due to:
+
 - Entity-linked retrieval for CVE IDs and incident references
 - Improved conflict detection for superseded vulnerabilities
 - Better aggregation of security event chains across contexts
@@ -735,7 +737,7 @@ provides amplihack-specific adapter implementations.
 ### Installation
 
 ```bash
-pip install "amplihack-agent-eval @ git+https://github.com/rysweet/amplihack-agent-eval.git@main"
+pip install "amplihack-agent-eval @ git+https://github.com/rysweet/amplihack-agent-eval.git@5b8a8b2fef172ab87b326c6c1c848c0874fe874f"
 ```
 
 ### Package Relationship
@@ -762,11 +764,13 @@ amplihack_eval/                       src/amplihack/eval/
    (`PatchProposal`, `propose_patch`, `ReviewVote`, `ReviewResult`,
    `vote_on_proposal`).
 
-2. **amplihack** adds the optional `eval` dependency in `pyproject.toml`:
+2. **amplihack** pins `amplihack-agent-eval` as a direct git dependency in `pyproject.toml`:
 
    ```toml
-   [project.optional-dependencies]
-   eval = ["amplihack-agent-eval>=0.1.0"]
+   [project]
+   dependencies = [
+       "amplihack-agent-eval @ git+https://github.com/rysweet/amplihack-agent-eval.git@5b8a8b2fef172ab87b326c6c1c848c0874fe874f",
+   ]
    ```
 
 3. **`long_horizon_memory.py`** imports data types from the package:

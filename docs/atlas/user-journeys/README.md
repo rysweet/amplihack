@@ -61,6 +61,16 @@ Agent stores a memory entry, later retrieved by user via CLI.
 ![Journey: Memory Store](journey-memory-store-mermaid.svg)
 
 **Path (store)**: Agent -> MemoryCoordinator -> MemoryManager -> MemoryDatabase -> SQLite INSERT
-**Path (retrieve)**: CLI -> MemoryDatabase -> SQLite SELECT -> tree visualization
+**Path (retrieve)**: CLI `memory tree` -> MemoryDatabase -> SQLite SELECT -> tree visualization
+**Path (transfer)**: CLI `memory export` / `memory import` -> agent-local hierarchical store -> portable JSON/Kuzu transfer
 
-**Key modules**: `memory/coordinator.py`, `memory/manager.py`, `memory/database.py`, `memory/models.py`, `memory/cli_visualize.py`
+**Key modules**: `memory/coordinator.py`, `memory/manager.py`, `memory/database.py`, `memory/models.py`, `memory/cli_visualize.py`, `cli.py`
+
+### Current CLI surface note
+
+- The supported top-level memory journey is now explicitly `memory tree`,
+  `memory export`, and `memory import`.
+- `memory clean` is removed from the top-level CLI.
+- `memory tree --backend ...` is no longer part of the supported user journey;
+  backend-specific import/export behavior remains behind the dedicated memory
+  transfer commands and lower-level tooling.
