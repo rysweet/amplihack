@@ -38,6 +38,7 @@ from amplihack.recipes.models import (
 from amplihack.recipes.parser import RecipeParser
 from amplihack.recipes.rust_runner import (
     RustRunnerNotFoundError,
+    RustRunnerVersionError,
     ensure_rust_recipe_runner,
     find_rust_binary,
     is_rust_runner_available,
@@ -53,6 +54,7 @@ __all__ = [
     "Recipe",
     "RecipeResult",
     "RustRunnerNotFoundError",
+    "RustRunnerVersionError",
     "Step",
     "StepExecutionError",
     "StepResult",

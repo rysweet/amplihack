@@ -16,7 +16,7 @@ Shared dual-SDK query abstraction used by all AI-powered scripts below.
 2. `LauncherDetector` — reads `.claude/runtime/launcher_context.json`
 3. Fallback to whichever SDK is importable
 
-**Fail-open:** Returns empty string if neither SDK is available.
+**Explicit failure:** Raises `AgentQueryError` if neither SDK is available or if the SDK query fails. Callers should surface the error and exit non-zero.
 
 **Environment Variables:**
 

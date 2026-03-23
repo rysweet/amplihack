@@ -1,0 +1,69 @@
+name: "Nested Copilot compatibility smoke"
+description: "Verify nested Copilot launches merge unsupported prompt flags and preserve explicit equals-style permissions."
+version: "1.0.0"
+
+config:
+  timeout: 30000
+  retries: 0
+  parallel: false
+
+environment:
+  requires: []
+
+agents:
+  - name: "cli-agent"
+    type: "cli"
+    config:
+      workingDirectory: "."
+      defaultTimeout: 10000
+      executionMode: "spawn"
+      captureOutput: true
+      ioConfig:
+        encoding: "utf8"
+        handleInteractivePrompts: false
+      logConfig:
+        logCommands: true
+        logOutput: true
+        logLevel: "info"
+
+steps:
+  - name: "Run nested Copilot smoke harness"
+    agent: "cli-agent"
+    action: "execute_command"
+    params:
+      command: "python3 tests/gadugi/copilot_nested_compat_smoke.py"
+    timeout: 10000
+
+  - name: "Verify prompt compatibility marker"
+    agent: "cli-agent"
+    action: "wait_for_output"
+    params:
+      target: "PROMPT_COMPAT_OK"
+    timeout: 5000
+
+  - name: "Verify permission compatibility marker"
+    agent: "cli-agent"
+    action: "wait_for_output"
+    params:
+      target: "PERMISSION_COMPAT_OK"
+    timeout: 5000
+
+  - name: "Verify overall smoke marker"
+    agent: "cli-agent"
+    action: "wait_for_output"
+    params:
+      target: "SMOKE_OK"
+    timeout: 5000
+
+cleanup:
+  - name: "Capture CLI output"
+    agent: "cli-agent"
+    action: "capture_output"
+
+metadata:
+  tags:
+    - "cli"
+    - "copilot"
+    - "smoke"
+    - "nested"
+  priority: "high"

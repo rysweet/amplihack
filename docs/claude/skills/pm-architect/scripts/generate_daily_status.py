@@ -18,7 +18,7 @@ os.environ.pop("CLAUDECODE", None)
 
 # Ensure sibling modules are importable regardless of working directory
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from agent_query import SDK_AVAILABLE, detect_runtime, query_agent
+from agent_query import SDK_AVAILABLE, AgentQueryError, detect_runtime, query_agent
 
 
 def load_project_state(project_root: Path) -> dict | None:
@@ -254,7 +254,7 @@ Generate the report now:
         report = await query_agent(prompt, project_root)
         return report if report.strip() else None
 
-    except Exception as e:
+    except AgentQueryError as e:
         print(f"Error generating status report: {e}", file=sys.stderr)
         return None
 
