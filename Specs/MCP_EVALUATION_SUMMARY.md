@@ -411,13 +411,13 @@ Adding new tools doesn't require framework changes. Adding new scenarios works w
 
 ## Quick Reference
 
-| Document                                | Purpose                           |
-| --------------------------------------- | --------------------------------- |
-| `MCP_EVALUATION_FRAMEWORK.md`           | Complete framework architecture   |
-| `MCP_TOOL_CONFIGURATION_SCHEMA.md`      | How to describe any MCP tool      |
-| `SERENA_TOOL_CONFIGURATION.yaml`        | Serena-specific configuration     |
-| `MCP_EVALUATION_IMPLEMENTATION_PLAN.md` | Detailed implementation plan      |
-| `docs/memory/evaluation-summary.md`     | This document (executive summary) |
+| Document                                | Purpose                          |
+| --------------------------------------- | -------------------------------- |
+| `MCP_EVALUATION_FRAMEWORK.md`           | Complete framework architecture  |
+| `MCP_TOOL_CONFIGURATION_SCHEMA.md`      | How to describe any MCP tool     |
+| `SERENA_TOOL_CONFIGURATION.yaml`        | Serena-specific configuration    |
+| `MCP_EVALUATION_IMPLEMENTATION_PLAN.md` | Detailed implementation plan     |
+| `docs/evaluation-framework.md`          | Durable backend evaluation guide |
 
 **Files Created**: 5 specifications
 **Total Lines**: ~1400 lines of detailed design documentation

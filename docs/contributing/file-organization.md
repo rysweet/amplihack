@@ -32,8 +32,9 @@ All documentation goes in the `docs/` directory, organized by type:
 docs/
 ├── contributing/       # Contribution guidelines
 │   └── file-organization.md  # This file
+├── evaluation-framework.md  # Durable memory backend evaluation guide
 ├── memory/            # Memory system documentation
-│   └── evaluation-summary.md  # Memory evaluation results
+│   └── README.md      # Memory docs landing page
 ├── testing/           # Testing documentation
 │   └── gh-pages-link-validation.txt  # Link validation results
 ├── howto/             # Task-oriented guides
@@ -61,11 +62,11 @@ archive/
 
 These files were moved from root to organized locations:
 
-| Original Location              | New Location                                | Reason                       |
-| ------------------------------ | ------------------------------------------- | ---------------------------- |
-| `EVALUATION_SUMMARY.md`        | `docs/memory/evaluation-summary.md`         | Memory system documentation  |
-| `gh_pages_link_validation.txt` | `docs/testing/gh-pages-link-validation.txt` | Testing results              |
-| `setup.py`                     | `archive/legacy/setup.py`                   | Superseded by pyproject.toml |
+| Original Location              | New Location                                | Reason                          |
+| ------------------------------ | ------------------------------------------- | ------------------------------- |
+| `EVALUATION_SUMMARY.md`        | `docs/evaluation-framework.md`              | Durable memory evaluation guide |
+| `gh_pages_link_validation.txt` | `docs/testing/gh-pages-link-validation.txt` | Testing results                 |
+| `setup.py`                     | `archive/legacy/setup.py`                   | Superseded by pyproject.toml    |
 
 ### When to Move Files
 

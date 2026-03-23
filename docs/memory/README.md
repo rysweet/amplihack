@@ -11,6 +11,7 @@ This is the landing page for the current memory documentation.
 - [Memory tutorial](../tutorials/memory-enabled-agents-getting-started.md) - step-by-step walkthrough for generating and running a memory-enabled goal agent
 - [How to integrate memory into agents](../howto/integrate-memory-into-agents.md) - practical guide for adding memory helpers to generated agent code
 - [Memory CLI reference](../reference/memory-cli-reference.md) - exact top-level command syntax and caveats
+- [Memory backend evaluation framework](../evaluation-framework.md) - durable guide to backend quality, performance, and reliability evaluation
 - [Kuzu code schema](./KUZU_CODE_SCHEMA.md) - schema details for the lower-level Kuzu-backed graph store
 - [Memory diagrams](../../Specs/MEMORY_AGENTS_DIAGRAMS.md) - presentation-friendly architecture diagrams
 

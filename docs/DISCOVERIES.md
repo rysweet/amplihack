@@ -30,7 +30,7 @@ Root directory accumulated documentation files that belonged in `docs/` subdirec
    - Example: `setup.py` archived when superseded by `pyproject.toml`
 
 3. **Moved Misplaced Files**:
-   - `EVALUATION_SUMMARY.md` → `docs/memory/evaluation-summary.md`
+   - `EVALUATION_SUMMARY.md` → `docs/evaluation-framework.md`
    - `gh_pages_link_validation.txt` → `docs/testing/gh-pages-link-validation.txt`
    - `setup.py` → `archive/legacy/setup.py`
 
