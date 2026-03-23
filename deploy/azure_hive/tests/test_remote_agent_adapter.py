@@ -7,6 +7,7 @@ import json
 import threading
 import time
 from pathlib import Path
+from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 import pytest  # type: ignore[import-unresolved]
@@ -20,6 +21,14 @@ def _load_module():
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
+
+
+def _require_remote_agent_adapter(mod):
+    try:
+        remote_agent_adapter = mod.RemoteAgentAdapter
+    except ImportError as exc:
+        pytest.skip(str(exc))
+    return cast(type[Any], remote_agent_adapter)
 
 
 # ---------------------------------------------------------------------------
@@ -41,7 +50,8 @@ def _make_adapter(mod, agent_count=5, answer_timeout=0):
         mock_threading.Thread.return_value = mock_thread
 
         # Pre-set listener_alive so __init__ doesn't block
-        adapter = object.__new__(mod.RemoteAgentAdapter)
+        adapter_class = _require_remote_agent_adapter(mod)
+        adapter = object.__new__(adapter_class)
         adapter._connection_string = (
             "Endpoint=sb://fake.servicebus.windows.net/;SharedAccessKeyName=x;SharedAccessKey=y"
         )
@@ -94,7 +104,20 @@ def _make_adapter(mod, agent_count=5, answer_timeout=0):
 class TestRemoteAgentAdapterInit:
     def test_module_loads(self):
         mod = _load_module()
-        assert hasattr(mod, "RemoteAgentAdapter")
+        assert hasattr(mod, "threading")
+        assert hasattr(mod, "is_remote_agent_adapter_available")
+
+    def test_remote_agent_adapter_access_matches_dependency_state(self):
+        mod = _load_module()
+
+        if mod.is_remote_agent_adapter_available():
+            assert mod.RemoteAgentAdapter is not None
+            return
+
+        with pytest.raises(
+            ImportError, match="RemoteAgentAdapter now lives in amplihack-agent-eval"
+        ):
+            _ = mod.RemoteAgentAdapter
 
     def test_adapter_attrs(self):
         mod = _load_module()
