@@ -125,31 +125,7 @@ def get_runner_version(binary: str | None = None) -> str | None:
 
 def check_runner_version(binary: str | None = None) -> bool:
     """Check whether the installed binary meets the minimum version requirement."""
-    version = get_runner_version(binary)
-    if version is None:
-        return True
-
-    try:
-        parsed_version = runner_binary._version_tuple(version)
-        parsed_minimum = runner_binary._version_tuple(MIN_RUNNER_VERSION)
-        if not parsed_version:
-            raise ValueError(version)
-        if parsed_version < parsed_minimum:
-            logger.warning(
-                "recipe-runner-rs version %s is older than minimum %s. Update: cargo install --git %s",
-                version,
-                MIN_RUNNER_VERSION,
-                runner_binary._REPO_URL,
-            )
-            return False
-    except (TypeError, ValueError):
-        logger.warning(
-            "Could not parse recipe-runner-rs version '%s'; continuing without compatibility check.",
-            version,
-        )
-        return True
-
-    return True
+    return runner_binary.check_runner_version(binary)
 
 
 def is_rust_runner_available() -> bool:
@@ -212,12 +188,7 @@ def _find_rust_binary() -> str:
             "Install it: cargo install --git https://github.com/rysweet/amplihack-recipe-runner "
             "or set RECIPE_RUNNER_RS_PATH to the binary location."
         )
-    if not check_runner_version(binary):
-        version = get_runner_version(binary) or "unknown"
-        raise RustRunnerVersionError(
-            f"recipe-runner-rs version {version} is older than the required minimum "
-            f"{MIN_RUNNER_VERSION}. Update it with: cargo install --git {runner_binary._REPO_URL}"
-        )
+    runner_binary.raise_for_runner_version(binary)
     return binary
 
 

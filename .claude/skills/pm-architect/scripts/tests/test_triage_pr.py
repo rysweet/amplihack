@@ -8,9 +8,10 @@ import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
+import pytest  # pyright: ignore[reportMissingImports]
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
+from agent_query import AgentQueryError
 from triage_pr import (
     get_pr_details,
     get_pr_diff_summary,
@@ -322,7 +323,7 @@ Approve for review after addressing minor concerns.
         """Test handling of SDK exception during triage."""
 
         async def mock_query_exception(prompt, project_root):
-            raise RuntimeError("SDK error")
+            raise AgentQueryError("SDK error")
 
         with patch("triage_pr.SDK_AVAILABLE", True):
             with patch("triage_pr.get_pr_details", return_value=sample_pr_data):

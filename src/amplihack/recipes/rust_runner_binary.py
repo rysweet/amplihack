@@ -95,16 +95,26 @@ def _evaluate_runner_version(binary: str | None = None) -> tuple[str | None, boo
     """Return the discovered version and whether it is compatible."""
     version = get_runner_version(binary)
     if version is None:
-        return None, True
+        logger.warning(
+            "Could not determine recipe-runner-rs version; refusing to run without a "
+            "compatibility check. Update: cargo install --git %s",
+            _REPO_URL,
+        )
+        return None, False
 
     try:
-        compatible = _version_tuple(version) >= _version_tuple(MIN_RUNNER_VERSION)
+        parsed_version = _version_tuple(version)
+        if not parsed_version:
+            raise ValueError(version)
+        compatible = parsed_version >= _version_tuple(MIN_RUNNER_VERSION)
     except (TypeError, ValueError):
         logger.warning(
-            "Could not parse recipe-runner-rs version '%s'; continuing without compatibility check.",
+            "Could not parse recipe-runner-rs version '%s'; refusing to run without a "
+            "compatibility check. Update: cargo install --git %s",
             version,
+            _REPO_URL,
         )
-        return version, True
+        return version, False
 
     if not compatible:
         logger.warning(
@@ -128,9 +138,23 @@ def raise_for_runner_version(binary: str) -> None:
     if compatible:
         return
 
-    version_display = version or "unknown"
+    if version is None:
+        raise RustRunnerVersionError(
+            "Could not determine the installed recipe-runner-rs version. "
+            "Refusing to run without a verifiable version. "
+            f"Update it with: cargo install --git {_REPO_URL}"
+        )
+
+    parsed_version = _version_tuple(version)
+    if not parsed_version:
+        raise RustRunnerVersionError(
+            f"recipe-runner-rs reported an unparseable version '{version}'. "
+            "Refusing to run without a verifiable version. "
+            f"Update it with: cargo install --git {_REPO_URL}"
+        )
+
     raise RustRunnerVersionError(
-        f"recipe-runner-rs version {version_display} is older than the required minimum "
+        f"recipe-runner-rs version {version} is older than the required minimum "
         f"{MIN_RUNNER_VERSION}. Update it with: cargo install --git {_REPO_URL}"
     )
 

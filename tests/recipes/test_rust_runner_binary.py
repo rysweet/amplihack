@@ -155,20 +155,46 @@ class TestRunnerVersionChecks:
     def test_check_runner_version_rejects_old_runner(self, _mock_version):
         assert check_runner_version("/usr/bin/recipe-runner-rs") is False
 
-    @patch("amplihack.recipes.rust_runner_binary.get_runner_version", return_value="dev-build")
-    def test_check_runner_version_allows_unparseable_version(self, _mock_version):
-        assert check_runner_version("/usr/bin/recipe-runner-rs") is True
+    @patch("amplihack.recipes.rust_runner_binary.get_runner_version", return_value=None)
+    def test_check_runner_version_rejects_unknown_runner_version(self, _mock_version):
+        assert check_runner_version("/usr/bin/recipe-runner-rs") is False
 
-    @patch("amplihack.recipes.rust_runner.get_runner_version", return_value="0.0.9")
-    @patch("amplihack.recipes.rust_runner.check_runner_version", return_value=False)
+    @patch("amplihack.recipes.rust_runner_binary.get_runner_version", return_value="dev-build")
+    def test_check_runner_version_rejects_unparseable_version(self, _mock_version):
+        assert check_runner_version("/usr/bin/recipe-runner-rs") is False
+
     @patch(
         "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
     )
+    @patch("amplihack.recipes.rust_runner_binary.get_runner_version", return_value="0.0.9")
     def test_run_recipe_raises_when_runner_version_is_too_old(
         self,
-        _mock_find,
-        _mock_check_version,
         _mock_get_version,
+        _mock_find,
     ):
         with pytest.raises(RustRunnerVersionError, match="0.0.9"):
+            run_recipe_via_rust("test-recipe")
+
+    @patch(
+        "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
+    )
+    @patch("amplihack.recipes.rust_runner_binary.get_runner_version", return_value=None)
+    def test_run_recipe_raises_when_runner_version_is_unknown(
+        self,
+        _mock_get_version,
+        _mock_find,
+    ):
+        with pytest.raises(RustRunnerVersionError, match="Could not determine"):
+            run_recipe_via_rust("test-recipe")
+
+    @patch(
+        "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
+    )
+    @patch("amplihack.recipes.rust_runner_binary.get_runner_version", return_value="dev-build")
+    def test_run_recipe_raises_when_runner_version_is_unparseable(
+        self,
+        _mock_get_version,
+        _mock_find,
+    ):
+        with pytest.raises(RustRunnerVersionError, match="unparseable version 'dev-build'"):
             run_recipe_via_rust("test-recipe")
