@@ -1,26 +1,96 @@
 {
-  "last_run": "2026-03-22T00:00:00Z",
-  "run_id": "23397292579",
+  "last_run": "2026-03-23T00:00:00Z",
+  "run_id": "23437094020",
   "triaged_prs": {
-    "3394": {
-      "title": "[docs] docs: document 2026-03-20 merged PRs (#3268 #3286 #3335 #3351 #3366)",
+    "3430": {
+      "title": "[docs] docs(pm-architect): sync scripts README with dual-SDK support",
       "risk": "low",
-      "draft": true,
+      "draft": false,
       "status": "triage:complete",
-      "labels_applied": ["documentation", "automation", "triage:low-risk", "triage:complete"],
-      "recommendation": "Draft docs-only update; review and merge before expiry (Mar 23 06:20 UTC)",
+      "labels_applied": ["documentation", "triage:low-risk", "triage:complete"],
+      "recommendation": "Docs-only update syncing pm-architect README for dual-SDK support; low-risk, ready to merge after review",
       "comment_posted": false,
-      "run": "23397292579"
+      "run": "23437094020"
     },
-    "3390": {
-      "title": "fix: correct issue number extraction and idempotent step-4 worktree setup",
+    "3425": {
+      "title": "fix(workflows): stop mutating PR branches for version bumps",
       "risk": "medium",
       "draft": false,
       "status": "triage:complete",
-      "labels_applied": ["bug", "workflow", "triage:complete", "triage:needs-review", "triage:medium-risk"],
-      "recommendation": "4 quality-audit cycles converged clean; 23 unit tests + 15 outside-in scenarios; ready for review",
+      "labels_applied": ["bug", "triage:complete", "triage:needs-review", "triage:medium-risk", "triage:has-tests"],
+      "recommendation": "Stacked on feat/parity-distributed-hive-3410; makes version-check advisory-only; 14 unit tests pass; review after base merges",
       "comment_posted": false,
-      "run": "23397292579"
+      "run": "23437094020"
+    },
+    "3423": {
+      "title": "fix(azure-hive): gate missing remote adapter contract",
+      "risk": "medium",
+      "draft": false,
+      "status": "triage:complete",
+      "labels_applied": ["bug", "triage:complete", "triage:needs-review", "triage:medium-risk", "triage:has-tests"],
+      "recommendation": "Stacked on feat/parity-distributed-hive-3410; 44 passed, 25 skipped; dependency on external package alignment; review after base merges",
+      "comment_posted": false,
+      "run": "23437094020"
+    },
+    "3419": {
+      "title": "chore: add trivy workflow in disabled state",
+      "risk": "low",
+      "draft": false,
+      "status": "triage:complete",
+      "labels_applied": ["github-actions", "triage:low-risk", "triage:complete", "triage:needs-review"],
+      "recommendation": "Copilot-generated; adds disabled Trivy scanner workflow; no auto-trigger risk; safe to merge",
+      "comment_posted": false,
+      "run": "23437094020"
+    },
+    "3418": {
+      "title": "feat(eval): port distributed hive parity",
+      "risk": "medium",
+      "draft": false,
+      "status": "triage:complete",
+      "labels_applied": ["enhancement", "triage:complete", "triage:needs-review", "triage:medium-risk", "triage:has-tests"],
+      "recommendation": "Stacked on feat/parity-pm-architect-dual-sdk-3401; 203 passed; blocker #3417 tracked separately via #3423; review after base merges",
+      "comment_posted": false,
+      "run": "23437094020"
+    },
+    "3416": {
+      "title": "feat(pm-architect): port dual-SDK parity",
+      "risk": "medium",
+      "draft": false,
+      "status": "triage:complete",
+      "labels_applied": ["enhancement", "triage:complete", "triage:needs-review", "triage:medium-risk", "triage:has-tests"],
+      "recommendation": "Stacked on feat/parity-workflow-hardening-3390; 73 tests pass; review after base merges",
+      "comment_posted": false,
+      "run": "23437094020"
+    },
+    "3415": {
+      "title": "fix(workflow): port recent upstream hardening",
+      "risk": "medium",
+      "draft": false,
+      "status": "triage:complete",
+      "labels_applied": ["bug", "triage:complete", "triage:needs-review", "triage:medium-risk", "triage:has-tests"],
+      "recommendation": "Stacked on feat/parity-next-gap-stacked; 47 tests pass; foundation for parity stack - review first",
+      "comment_posted": false,
+      "run": "23437094020"
+    },
+    "3412": {
+      "title": "fix(memory): make memory dependency optional",
+      "risk": "medium",
+      "draft": false,
+      "status": "triage:complete",
+      "labels_applied": ["bug", "triage:complete", "triage:needs-review", "triage:medium-risk", "triage:has-tests", "triage:high-priority"],
+      "recommendation": "High-priority; base of parity stack; 15 outside-in + unit tests; fixes CLI crash on missing optional memory dep; review first",
+      "comment_posted": false,
+      "run": "23437094020"
+    },
+    "3398": {
+      "title": "feat: add Copilot CLI support to PM Architect triage_pr.py",
+      "risk": "medium",
+      "draft": false,
+      "status": "triage:complete",
+      "labels_applied": ["enhancement", "copilot", "triage:complete", "triage:needs-review", "triage:medium-risk", "triage:needs-testing"],
+      "recommendation": "Targets main; SDK detection via env var; needs manual Copilot path verification before merge",
+      "comment_posted": false,
+      "run": "23437094020"
     },
     "3389": {
       "title": "fix(recipes): preserve equals-style Copilot permissions",
@@ -32,43 +102,6 @@
       "comment_posted": false,
       "run": "23397292579"
     },
-    "3369": {
-      "title": "[docs] Daily documentation update 2026-03-21",
-      "risk": "low",
-      "draft": true,
-      "status": "triage:complete",
-      "labels_applied": ["documentation", "automation", "triage:low-risk", "triage:complete"],
-      "recommendation": "Automated docs update; expired (Mar 22 06:13 UTC)",
-      "comment_posted": false,
-      "run": "23323829228"
-    },
-    "3342": {
-      "title": "fix: truncate large context in verification gate echoes (ARG_MAX)",
-      "risk": "low",
-      "status": "triage:complete",
-      "labels_applied": ["triage:low-risk", "triage:complete", "triage:needs-review"],
-      "recommendation": "Low-risk fix; truncates echo output in verification gate steps",
-      "comment_posted": false,
-      "run": "23323829228"
-    },
-    "3332": {
-      "title": "fix(hive-eval): patch all 5 root causes before 100-agent eval rerun",
-      "risk": "high",
-      "status": "triage:complete",
-      "labels_applied": ["triage:complete", "triage:needs-review", "triage:high-risk"],
-      "recommendation": "High-risk eval infrastructure changes; needs careful review before eval rerun",
-      "comment_posted": false,
-      "run": "23323829228"
-    },
-    "3296": {
-      "title": "feat(eval): distributed eval infrastructure, retrieval parity fixes, 100-agent scale",
-      "risk": "high",
-      "status": "triage:complete",
-      "labels_applied": ["triage:complete", "triage:needs-deep-review", "triage:high-risk", "triage:has-tests"],
-      "recommendation": "Needs deep review — large eval infrastructure change with scale bottleneck analysis",
-      "comment_posted": true,
-      "run": "23244544065"
-    },
     "3290": {
       "title": "test(tdd): add failing security tests for SEC-01 through SEC-07 hardening",
       "risk": "medium",
@@ -77,15 +110,6 @@
       "recommendation": "Rebase required; coordinate with implementation PRs to avoid CI red period",
       "comment_posted": true,
       "run": "23232157458"
-    },
-    "3261": {
-      "title": "docs(design): LearningAgent integration into goal-seeking agent generator",
-      "risk": "low",
-      "status": "triage:complete",
-      "labels_applied": ["documentation", "triage:low-risk", "triage:complete"],
-      "recommendation": "Safe to merge — rebase for cleanliness, track follow-up impl PR",
-      "comment_posted": true,
-      "run": "23244544065"
     },
     "2876": {
       "title": "feat(hive): replace broadcast replication with proper DHT sharding (#3034)",
