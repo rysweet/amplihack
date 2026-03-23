@@ -8,9 +8,10 @@ import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
+import pytest  # pyright: ignore[reportMissingImports]
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
+from agent_query import AgentQueryError
 from triage_pr import (
     get_pr_details,
     get_pr_diff_summary,
@@ -264,18 +265,18 @@ class TestTriagePr:
 
     @pytest.mark.asyncio
     async def test_triage_sdk_not_available(self, project_root, capsys):
-        """Test behavior when Claude SDK not available."""
-        with patch("triage_pr.CLAUDE_SDK_AVAILABLE", False):
+        """Test behavior when no agent SDK is available."""
+        with patch("triage_pr.SDK_AVAILABLE", False):
             result = await triage_pr(project_root, 456)
 
             assert result is None
             captured = capsys.readouterr()
-            assert "Claude SDK not available" in captured.err
+            assert "No agent SDK available" in captured.err
 
     @pytest.mark.asyncio
     async def test_triage_pr_not_found(self, project_root, capsys):
         """Test triage when PR not found."""
-        with patch("triage_pr.CLAUDE_SDK_AVAILABLE", True):
+        with patch("triage_pr.SDK_AVAILABLE", True):
             with patch("triage_pr.get_pr_details") as mock_get_pr:
                 mock_get_pr.return_value = None
 
@@ -303,15 +304,14 @@ Rationale: This PR addresses a critical bug.
 Approve for review after addressing minor concerns.
 """
 
-        async def mock_query_generator(*args, **kwargs):
-            """Mock async generator for query responses."""
-            yield MagicMock(text=mock_response)
+        async def mock_query(prompt, project_root):
+            return mock_response
 
-        with patch("triage_pr.CLAUDE_SDK_AVAILABLE", True):
+        with patch("triage_pr.SDK_AVAILABLE", True):
             with patch("triage_pr.get_pr_details", return_value=sample_pr_data):
                 with patch("triage_pr.get_pr_diff_summary", return_value="## Diff\nSome changes"):
                     with patch("triage_pr.get_related_issues", return_value="## Issues\n#123"):
-                        with patch("triage_pr.query", side_effect=mock_query_generator):
+                        with patch("triage_pr.query_agent", side_effect=mock_query):
                             result = await triage_pr(project_root, 456)
 
                             assert result is not None
@@ -322,15 +322,14 @@ Approve for review after addressing minor concerns.
     async def test_triage_sdk_exception(self, project_root, sample_pr_data, capsys):
         """Test handling of SDK exception during triage."""
 
-        async def mock_query_exception(*args, **kwargs):
-            """Mock query that raises exception."""
-            raise RuntimeError("SDK error")
+        async def mock_query_exception(prompt, project_root):
+            raise AgentQueryError("SDK error")
 
-        with patch("triage_pr.CLAUDE_SDK_AVAILABLE", True):
+        with patch("triage_pr.SDK_AVAILABLE", True):
             with patch("triage_pr.get_pr_details", return_value=sample_pr_data):
                 with patch("triage_pr.get_pr_diff_summary", return_value="## Diff"):
                     with patch("triage_pr.get_related_issues", return_value="## Issues"):
-                        with patch("triage_pr.query", side_effect=mock_query_exception):
+                        with patch("triage_pr.query_agent", side_effect=mock_query_exception):
                             result = await triage_pr(project_root, 456)
 
                             assert result is None
@@ -341,15 +340,14 @@ Approve for review after addressing minor concerns.
     async def test_triage_empty_response(self, project_root, sample_pr_data):
         """Test handling of empty response from SDK."""
 
-        async def mock_query_empty(*args, **kwargs):
-            """Mock query with empty response."""
-            yield MagicMock(text="")
+        async def mock_query_empty(prompt, project_root):
+            return ""
 
-        with patch("triage_pr.CLAUDE_SDK_AVAILABLE", True):
+        with patch("triage_pr.SDK_AVAILABLE", True):
             with patch("triage_pr.get_pr_details", return_value=sample_pr_data):
                 with patch("triage_pr.get_pr_diff_summary", return_value="## Diff"):
                     with patch("triage_pr.get_related_issues", return_value="## Issues"):
-                        with patch("triage_pr.query", side_effect=mock_query_empty):
+                        with patch("triage_pr.query_agent", side_effect=mock_query_empty):
                             result = await triage_pr(project_root, 456)
 
                             assert result is None
@@ -360,7 +358,7 @@ class TestMainFunction:
 
     def test_main_sdk_not_available(self, capsys):
         """Test main when SDK not available."""
-        with patch("triage_pr.CLAUDE_SDK_AVAILABLE", False):
+        with patch("triage_pr.SDK_AVAILABLE", False):
             with patch("sys.argv", ["triage_pr.py", "456"]):
                 from triage_pr import main
 
@@ -369,7 +367,7 @@ class TestMainFunction:
 
                 assert exc_info.value.code == 1
                 captured = capsys.readouterr()
-                assert "not installed" in captured.err
+                assert "No agent SDK installed" in captured.err
 
     def test_main_triage_failure(self, capsys):
         """Test main when triage fails."""
@@ -377,7 +375,7 @@ class TestMainFunction:
         async def mock_triage_fail(*args, **kwargs):
             return None
 
-        with patch("triage_pr.CLAUDE_SDK_AVAILABLE", True):
+        with patch("triage_pr.SDK_AVAILABLE", True):
             with patch("triage_pr.triage_pr", side_effect=mock_triage_fail):
                 with patch("sys.argv", ["triage_pr.py", "999"]):
                     from triage_pr import main
@@ -394,7 +392,7 @@ class TestMainFunction:
         async def mock_triage_async(*args, **kwargs):
             return mock_triage
 
-        with patch("triage_pr.CLAUDE_SDK_AVAILABLE", True):
+        with patch("triage_pr.SDK_AVAILABLE", True):
             with patch("triage_pr.triage_pr", side_effect=mock_triage_async):
                 with patch("sys.argv", ["triage_pr.py", "456"]):
                     from triage_pr import main
@@ -414,7 +412,7 @@ class TestMainFunction:
         async def mock_triage_async(*args, **kwargs):
             return mock_triage
 
-        with patch("triage_pr.CLAUDE_SDK_AVAILABLE", True):
+        with patch("triage_pr.SDK_AVAILABLE", True):
             with patch("triage_pr.triage_pr", side_effect=mock_triage_async):
                 with patch("sys.argv", ["triage_pr.py", "456", "--output", str(output_file)]):
                     from triage_pr import main

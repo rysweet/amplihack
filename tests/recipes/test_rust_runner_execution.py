@@ -1,13 +1,4 @@
-"""Tests for the Rust recipe runner integration (rust_runner.py).
-
-Covers:
-- Binary discovery (find_rust_binary, is_rust_runner_available)
-- Recipe execution via Rust binary (run_recipe_via_rust)
-- JSON output parsing and error handling
-- Engine selection in run_recipe_by_name
-- Configurable install timeout
-- Empty step_results and exception paths
-"""
+"""Tests for Rust runner command execution and streamed output handling."""
 
 from __future__ import annotations
 
@@ -16,78 +7,22 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
 from amplihack.recipes.models import StepStatus
-from amplihack.recipes.rust_runner import (
-    RustRunnerNotFoundError,
-    _redact_command_for_log,
-    ensure_rust_recipe_runner,
-    find_rust_binary,
-    is_rust_runner_available,
-    run_recipe_via_rust,
-)
-
-# ============================================================================
-# find_rust_binary
-# ============================================================================
+from amplihack.recipes.rust_runner import RustRunnerNotFoundError, run_recipe_via_rust
 
 
-class TestFindRustBinary:
-    """Tests for find_rust_binary()."""
-
-    @patch.dict("os.environ", {"RECIPE_RUNNER_RS_PATH": "/custom/recipe-runner-rs"})
-    @patch(
-        "shutil.which",
-        side_effect=lambda p: str(p) if str(p) == "/custom/recipe-runner-rs" else "/other/binary",
-    )
-    def test_env_var_takes_priority(self, mock_which):
-        result = find_rust_binary()
-        assert result == "/custom/recipe-runner-rs"
-        # Verify which was only called once (env var path, not search paths)
-        mock_which.assert_called_once_with("/custom/recipe-runner-rs")
-
-    @patch.dict("os.environ", {"RECIPE_RUNNER_RS_PATH": "/nonexistent/binary"})
-    @patch("shutil.which", return_value=None)
-    def test_env_var_invalid_returns_none(self, mock_which):
-        result = find_rust_binary()
-        assert result is None
-
-    @patch.dict("os.environ", {}, clear=True)
-    @patch(
-        "shutil.which",
-        side_effect=lambda p: "/usr/bin/recipe-runner-rs" if p == "recipe-runner-rs" else None,
-    )
-    def test_path_lookup(self, mock_which):
-        result = find_rust_binary()
-        assert result == "/usr/bin/recipe-runner-rs"
-
-    @patch.dict("os.environ", {}, clear=True)
-    @patch("shutil.which", return_value=None)
-    def test_not_found(self, mock_which):
-        result = find_rust_binary()
-        assert result is None
-
-
-class TestIsRustRunnerAvailable:
-    """Tests for is_rust_runner_available()."""
-
-    @patch(
-        "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
-    )
-    def test_available(self, mock_find):
-        assert is_rust_runner_available() is True
-
-    @patch("amplihack.recipes.rust_runner.find_rust_binary", return_value=None)
-    def test_not_available(self, mock_find):
-        assert is_rust_runner_available() is False
-
-
-# ============================================================================
-# run_recipe_via_rust
-# ============================================================================
+@pytest.fixture(autouse=True)
+def _mock_runner_version_check():
+    """Keep execution tests focused on command/response behavior, not version gating."""
+    with patch(
+        "amplihack.recipes.rust_runner.runner_binary.raise_for_runner_version",
+        return_value=None,
+    ):
+        yield
 
 
 class TestRunRecipeViaRust:
@@ -362,315 +297,99 @@ class TestRunRecipeViaRust:
     @patch(
         "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
     )
+    @patch("subprocess.run")
+    def test_invalid_step_results_type_raises(self, mock_run, mock_find):
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout=json.dumps(
+                {
+                    "recipe_name": "test-recipe",
+                    "success": True,
+                    "step_results": "not-a-list",
+                    "context": {"result": "done"},
+                }
+            ),
+            stderr="",
+        )
+
+        with pytest.raises(RuntimeError, match="step_results"):
+            run_recipe_via_rust("test-recipe")
+
+    @patch(
+        "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
+    )
+    @patch("subprocess.run")
+    def test_invalid_success_type_raises(self, mock_run, mock_find):
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout=json.dumps(
+                {
+                    "recipe_name": "test-recipe",
+                    "success": "false",
+                    "step_results": [],
+                    "context": {"result": "done"},
+                }
+            ),
+            stderr="",
+        )
+
+        with pytest.raises(RuntimeError, match="success"):
+            run_recipe_via_rust("test-recipe")
+
+    @patch(
+        "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
+    )
+    @patch("subprocess.run")
+    def test_invalid_step_result_entry_raises(self, mock_run, mock_find):
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout=json.dumps(
+                {
+                    "recipe_name": "test-recipe",
+                    "success": True,
+                    "step_results": ["bad-entry"],
+                    "context": {"result": "done"},
+                }
+            ),
+            stderr="",
+        )
+
+        with pytest.raises(RuntimeError, match=r"step_results\[0\]"):
+            run_recipe_via_rust("test-recipe")
+
+    @patch(
+        "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
+    )
+    @patch("subprocess.run")
+    def test_invalid_context_type_raises(self, mock_run, mock_find):
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout=json.dumps(
+                {
+                    "recipe_name": "test-recipe",
+                    "success": True,
+                    "step_results": [],
+                    "context": ["bad-context"],
+                }
+            ),
+            stderr="",
+        )
+
+        with pytest.raises(RuntimeError, match="context"):
+            run_recipe_via_rust("test-recipe")
+
+    @patch(
+        "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
+    )
     @patch("subprocess.run", side_effect=OSError("No such file or directory"))
     def test_oserror_during_subprocess(self, mock_run, mock_find):
         """PR-M5: OSError during subprocess.run propagates cleanly."""
         with pytest.raises(OSError, match="No such file or directory"):
             run_recipe_via_rust("test-recipe")
-
-
-# ============================================================================
-# Helper function tests
-# ============================================================================
-
-
-class TestRedactCommandForLog:
-    """Tests for _redact_command_for_log()."""
-
-    def test_masks_set_values(self):
-        cmd = ["/bin/rr", "recipe", "--set", "api_key=secret123", "--dry-run"]
-        result = _redact_command_for_log(cmd)
-        assert "secret123" not in result
-        assert "api_key=***" in result
-        assert "--dry-run" in result
-
-    def test_no_set_flags(self):
-        cmd = ["/bin/rr", "recipe", "--dry-run"]
-        result = _redact_command_for_log(cmd)
-        assert result == "/bin/rr recipe --dry-run"
-
-
-class TestConfigurableTimeouts:
-    """Tests for configurable timeouts."""
-
-    @patch.dict("os.environ", {"RECIPE_RUNNER_INSTALL_TIMEOUT": "120"})
-    @patch("amplihack.recipes.rust_runner.is_rust_runner_available", return_value=False)
-    @patch("shutil.which", return_value="/usr/bin/cargo")
-    @patch("subprocess.run")
-    def test_install_timeout_from_env(self, mock_run, mock_which, mock_avail):
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=[],
-            returncode=0,
-            stdout="",
-            stderr="",
-        )
-        ensure_rust_recipe_runner(quiet=True)
-        assert mock_run.call_args[1].get("timeout") == 120
-
-
-# ============================================================================
-# Engine selection (run_recipe_by_name)
-# ============================================================================
-
-
-class TestEngineSelection:
-    """Tests for run_recipe_by_name — always uses Rust runner."""
-
-    @patch("amplihack.recipes.run_recipe_via_rust")
-    def test_always_uses_rust(self, mock_rust):
-        from amplihack.recipes import run_recipe_by_name
-
-        mock_rust.return_value = MagicMock()
-        run_recipe_by_name("test")
-        mock_rust.assert_called_once()
-
-    @patch("amplihack.recipes.run_recipe_via_rust")
-    def test_adapter_kwarg_accepted_but_ignored(self, mock_rust):
-        from amplihack.recipes import run_recipe_by_name
-
-        mock_rust.return_value = MagicMock()
-        run_recipe_by_name("test", adapter=MagicMock())
-        mock_rust.assert_called_once()
-
-    @patch("amplihack.recipes.run_recipe_via_rust")
-    def test_forwards_recipe_dirs(self, mock_rust):
-        """Issue #3002: run_recipe_by_name must forward recipe_dirs."""
-        from amplihack.recipes import run_recipe_by_name
-
-        mock_rust.return_value = MagicMock()
-        run_recipe_by_name("test", recipe_dirs=["/custom/recipes"])
-        mock_rust.assert_called_once_with(
-            name="test",
-            user_context=None,
-            dry_run=False,
-            recipe_dirs=["/custom/recipes"],
-            working_dir=".",
-            auto_stage=True,
-            progress=False,
-        )
-
-    @patch("amplihack.recipes.run_recipe_via_rust")
-    def test_forwards_working_dir(self, mock_rust):
-        """Issue #3002: run_recipe_by_name must forward working_dir."""
-        from amplihack.recipes import run_recipe_by_name
-
-        mock_rust.return_value = MagicMock()
-        run_recipe_by_name("test", working_dir="/some/path")
-        _, kwargs = mock_rust.call_args
-        assert kwargs["working_dir"] == "/some/path"
-
-    @patch("amplihack.recipes.run_recipe_via_rust")
-    def test_forwards_auto_stage(self, mock_rust):
-        """Issue #3002: run_recipe_by_name must forward auto_stage."""
-        from amplihack.recipes import run_recipe_by_name
-
-        mock_rust.return_value = MagicMock()
-        run_recipe_by_name("test", auto_stage=False)
-        _, kwargs = mock_rust.call_args
-        assert kwargs["auto_stage"] is False
-
-    @patch("amplihack.recipes.run_recipe_via_rust")
-    def test_forwards_progress(self, mock_rust):
-        """Issue #3024: run_recipe_by_name must forward progress mode."""
-        from amplihack.recipes import run_recipe_by_name
-
-        mock_rust.return_value = MagicMock()
-        run_recipe_by_name("test", progress=True)
-        _, kwargs = mock_rust.call_args
-        assert kwargs["progress"] is True
-
-    @patch("amplihack.recipes.run_recipe_via_rust")
-    def test_passes_recipe_name_directly_to_rust(self, mock_rust):
-        """Recipe name is passed directly to Rust binary — it does its own discovery."""
-        from amplihack.recipes import run_recipe_by_name
-
-        mock_rust.return_value = MagicMock()
-        run_recipe_by_name("default-workflow")
-
-        _, kwargs = mock_rust.call_args
-        assert kwargs["name"] == "default-workflow"
-
-    @patch(
-        "amplihack.recipes.run_recipe_via_rust", side_effect=RustRunnerNotFoundError("not found")
-    )
-    def test_rust_not_found_raises(self, mock_rust):
-        from amplihack.recipes import run_recipe_by_name
-
-        with pytest.raises(RustRunnerNotFoundError):
-            run_recipe_by_name("test")
-
-    def test_python_runner_no_longer_importable(self):
-        with pytest.raises(ImportError):
-            from amplihack.recipes import RecipeRunner  # noqa: F401
-
-    def test_adapters_no_longer_importable(self):
-        with pytest.raises(ImportError):
-            from amplihack.recipes.adapters import CLISubprocessAdapter  # noqa: F401
-
-    def test_context_no_longer_importable(self):
-        with pytest.raises(ImportError):
-            from amplihack.recipes import context  # noqa: F401
-
-
-# ============================================================================
-# ensure_rust_recipe_runner
-# ============================================================================
-
-
-class TestEnsureRustRecipeRunner:
-    """Tests for ensure_rust_recipe_runner()."""
-
-    @patch("amplihack.recipes.rust_runner.is_rust_runner_available", return_value=True)
-    def test_already_installed(self, mock_avail):
-        assert ensure_rust_recipe_runner() is True
-
-    @patch("amplihack.recipes.rust_runner.is_rust_runner_available", return_value=False)
-    @patch("shutil.which", return_value=None)
-    def test_no_cargo(self, mock_which, mock_avail):
-        assert ensure_rust_recipe_runner(quiet=True) is False
-
-    @patch("amplihack.recipes.rust_runner.is_rust_runner_available", return_value=False)
-    @patch("shutil.which", return_value="/usr/bin/cargo")
-    @patch("subprocess.run")
-    def test_cargo_install_success(self, mock_run, mock_which, mock_avail):
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=[],
-            returncode=0,
-            stdout="",
-            stderr="",
-        )
-        assert ensure_rust_recipe_runner(quiet=True) is True
-        cmd = mock_run.call_args[0][0]
-        assert cmd[0] == "/usr/bin/cargo"
-        assert "install" in cmd
-        assert "--git" in cmd
-
-    @patch("amplihack.recipes.rust_runner.is_rust_runner_available", return_value=False)
-    @patch("shutil.which", return_value="/usr/bin/cargo")
-    @patch("subprocess.run")
-    def test_cargo_install_failure(self, mock_run, mock_which, mock_avail):
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=[],
-            returncode=1,
-            stdout="",
-            stderr="error",
-        )
-        assert ensure_rust_recipe_runner(quiet=True) is False
-
-    @patch("amplihack.recipes.rust_runner.is_rust_runner_available", return_value=False)
-    @patch("shutil.which", return_value="/usr/bin/cargo")
-    @patch("subprocess.run", side_effect=subprocess.TimeoutExpired("cargo", 300))
-    def test_cargo_install_timeout(self, mock_run, mock_which, mock_avail):
-        assert ensure_rust_recipe_runner(quiet=True) is False
-
-
-# ============================================================================
-# Validation and edge-case tests (C2-PR-9, C2-PR-10)
-# ============================================================================
-
-
-class TestPackageBundleDirInjection:
-    """Issue #3002: run_recipe_via_rust auto-injects package bundle dir."""
-
-    @patch(
-        "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
-    )
-    @patch("subprocess.run")
-    def test_auto_injects_package_bundle_dir(self, mock_run, mock_find):
-        """When recipe_dirs is None, the package bundle dir should be injected."""
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=[],
-            returncode=0,
-            stdout=json.dumps(
-                {
-                    "recipe_name": "test",
-                    "success": True,
-                    "step_results": [],
-                    "context": {},
-                }
-            ),
-            stderr="",
-        )
-        with patch(
-            "amplihack.recipes.rust_runner._default_package_recipe_dirs",
-            return_value=["/pkg/amplihack/amplifier-bundle/recipes"],
-        ):
-            run_recipe_via_rust("test")
-        cmd = mock_run.call_args[0][0]
-        assert "-R" in cmd
-        idx = cmd.index("-R")
-        assert cmd[idx + 1] == "/pkg/amplihack/amplifier-bundle/recipes"
-
-    @patch(
-        "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
-    )
-    @patch("subprocess.run")
-    def test_explicit_recipe_dirs_not_overridden(self, mock_run, mock_find):
-        """When recipe_dirs is provided explicitly, package dir is NOT injected."""
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=[],
-            returncode=0,
-            stdout=json.dumps(
-                {
-                    "recipe_name": "test",
-                    "success": True,
-                    "step_results": [],
-                    "context": {},
-                }
-            ),
-            stderr="",
-        )
-        with patch(
-            "amplihack.recipes.rust_runner._default_package_recipe_dirs",
-            return_value=["/pkg/amplihack/amplifier-bundle/recipes"],
-        ):
-            run_recipe_via_rust("test", recipe_dirs=["/my/custom/dir"])
-        cmd = mock_run.call_args[0][0]
-        r_indices = [i for i, v in enumerate(cmd) if v == "-R"]
-        assert len(r_indices) == 1
-        assert cmd[r_indices[0] + 1] == "/my/custom/dir"
-
-    @patch(
-        "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
-    )
-    @patch("subprocess.run")
-    def test_no_injection_when_package_dir_missing(self, mock_run, mock_find):
-        """When package bundle dir does not exist, no -R flag is added."""
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=[],
-            returncode=0,
-            stdout=json.dumps(
-                {
-                    "recipe_name": "test",
-                    "success": True,
-                    "step_results": [],
-                    "context": {},
-                }
-            ),
-            stderr="",
-        )
-        with patch(
-            "amplihack.recipes.rust_runner._default_package_recipe_dirs",
-            return_value=[],
-        ):
-            run_recipe_via_rust("test")
-        cmd = mock_run.call_args[0][0]
-        assert "-R" not in cmd
-
-
-class TestNoRunTimeoutInSource:
-    """Issue #3049: The _run_timeout helper must not exist in the source."""
-
-    def test_no_run_timeout_function_in_source(self):
-        """Verify _run_timeout() was removed from rust_runner.py."""
-        import inspect
-
-        import amplihack.recipes.rust_runner as mod
-
-        source = inspect.getsource(mod)
-        assert "_run_timeout" not in source, (
-            "_run_timeout should be removed — the Rust binary manages its own timeouts"
-        )
 
 
 class TestProgressStreaming:
