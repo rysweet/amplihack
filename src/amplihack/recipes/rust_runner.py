@@ -36,6 +36,10 @@ _ENV_VAR_SIZE_LIMIT = 32 * 1024  # 32 768 bytes — kernel limit guard
 # _sanitize_key() call.
 _KEY_SANITIZE_RE: re.Pattern[str] = re.compile(r"[^a-zA-Z0-9_]")
 
+# Pattern for structured step markers emitted by the Rust binary.
+# Format: "=== Step <N>/<T>: <step_name> ==="
+_STEP_MARKER_RE: re.Pattern[str] = re.compile(r"^=== Step (\d+)/(\d+): (.+) ===$")
+
 # Fast-path threshold for the encode() guard.
 # UTF-8 uses at most 4 bytes per code-point, so a string shorter than
 # limit/4 characters cannot possibly encode to >= limit bytes.
@@ -241,6 +245,7 @@ def check_runner_version(binary: str | None = None) -> bool:
     """
     version = get_runner_version(binary)
     if version is None:
+        logger.warning("Could not determine recipe-runner-rs version — can't check, assume ok")
         return True  # can't check, assume ok
     try:
         if _version_tuple(version) < _version_tuple(MIN_RUNNER_VERSION):
@@ -522,6 +527,11 @@ def _write_progress_file(
 
     Returns the path to the written file (useful for tests and callers that
     want to locate the file without recomputing the path).
+
+    Note: This function returns ``Path`` rather than ``None`` as an intentional
+    deviation from the original spec.  Returning the path improves testability
+    (callers can assert on file existence without recomputing the deterministic
+    name) and has no negative side-effects.
     """
     if pid is None:
         pid = os.getpid()
@@ -549,23 +559,29 @@ def _write_progress_file(
 
 def _stream_process_output_with_progress(
     process: subprocess.Popen[str],
+    *,
     recipe_name: str,
-    started_at: float,
 ) -> tuple[str, str, int]:
     """Collect stdout while streaming stderr live and writing progress on step transitions.
 
     Detects step-start (``▶``) and step-end (``✓``, ``✗``, ``⊘``) markers
-    emitted on stderr and calls :func:`_write_progress_file` on each
-    transition so external tools can query progress without parsing the live
-    log.
+    emitted on stderr, as well as structured step markers matching
+    ``_STEP_MARKER_RE`` (``=== Step N/T: name ===``), and calls
+    :func:`_write_progress_file` on each transition so external tools can
+    query progress without parsing the live log.
+
+    Args:
+        process:     The running subprocess.
+        recipe_name: Name of the recipe being executed (keyword-only).
 
     Returns the same ``(stdout, stderr, returncode)`` tuple as
     :func:`_stream_process_output`.
     """
+    started_at = time.time()
     stdout_chunks: list[str] = []
     stderr_chunks: list[str] = []
     # Mutable state shared with the stderr drain thread.
-    state: dict[str, Any] = {"current_step": 0, "step_name": ""}
+    state: dict[str, Any] = {"current_step": 0, "total_steps": 0, "step_name": ""}
 
     def _drain_stdout() -> None:
         if process.stdout is None:
@@ -580,6 +596,21 @@ def _stream_process_output_with_progress(
             stderr_chunks.append(line)
             print(line, end="", file=sys.stderr, flush=True)
             stripped = line.strip()
+            # Structured step marker: "=== Step N/T: step_name ==="
+            _m = _STEP_MARKER_RE.match(stripped)
+            if _m:
+                state["current_step"] = int(_m.group(1))
+                state["total_steps"] = int(_m.group(2))
+                state["step_name"] = _m.group(3).strip()
+                _write_progress_file(
+                    recipe_name,
+                    current_step=state["current_step"],
+                    total_steps=state["total_steps"],
+                    step_name=state["step_name"],
+                    elapsed_seconds=time.time() - started_at,
+                    status="running",
+                )
+                continue
             # Step started: "▶ step-name (optional label)"
             if stripped.startswith("▶"):
                 state["current_step"] += 1
@@ -633,7 +664,7 @@ def _stream_process_output_with_progress(
     _write_progress_file(
         recipe_name,
         current_step=state["current_step"],
-        total_steps=0,
+        total_steps=state["total_steps"],
         step_name=state["step_name"],
         elapsed_seconds=time.time() - started_at,
         status="completed" if returncode == 0 else "failed",
@@ -643,21 +674,12 @@ def _stream_process_output_with_progress(
 
 def _execute_rust_command(cmd: list[str], *, name: str, progress: bool) -> RecipeResult:
     """Run the Rust binary and parse its JSON output into a ``RecipeResult``."""
-    # Startup banner — always emitted so users know the runner is active.
-    print(
-        f"[amplihack] recipe-runner --- executing: {name}",
-        file=sys.stderr,
-        flush=True,
-    )
-
     env = os.environ.copy()
     if "AMPLIHACK_AGENT_BINARY" not in env:
         logger.warning(
             "AMPLIHACK_AGENT_BINARY not set — Rust runner will default to 'claude'. "
             "Set the env var via the amplihack CLI dispatcher to use a different agent."
         )
-
-    started_at = time.time()
 
     if progress:
         process = subprocess.Popen(
@@ -668,7 +690,7 @@ def _execute_rust_command(cmd: list[str], *, name: str, progress: bool) -> Recip
             bufsize=1,
             env=env,
         )
-        stdout, stderr, returncode = _stream_process_output_with_progress(process, name, started_at)
+        stdout, stderr, returncode = _stream_process_output_with_progress(process, recipe_name=name)
     else:
         result = subprocess.run(
             cmd,
@@ -836,14 +858,17 @@ def run_recipe_via_rust(
         RustRunnerNotFoundError: If the binary is not installed.
         RuntimeError: If the binary produces unparseable output.
     """
-    binary = _find_rust_binary()
-
-    # Startup banner — visible to the user before any output from the binary.
+    # Startup banner — printed before binary lookup so the user gets feedback
+    # even if the binary is missing.  Control characters are stripped to prevent
+    # terminal injection via a crafted recipe name (M3).
+    safe_banner_name = re.sub(r"[\x00-\x1f\x7f]", "?", name)
     print(
-        f"[amplihack] recipe-runner --- starting: {name}",
+        f"[amplihack] recipe-runner --- starting: {safe_banner_name}",
         file=sys.stderr,
         flush=True,
     )
+
+    binary = _find_rust_binary()
 
     # When no explicit recipe_dirs are provided, inject the package bundle
     # directory so the Rust binary can find the same recipes as Python

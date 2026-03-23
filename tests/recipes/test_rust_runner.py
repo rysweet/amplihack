@@ -748,7 +748,7 @@ class TestProgressStreaming:
         cmd = mock_popen.call_args[0][0]
         assert "--progress" in cmd
         assert result.success is True
-        # Banner emitted to stderr by both run_recipe_via_rust and _execute_rust_command
+        # Banner emitted to stderr by run_recipe_via_rust (before binary lookup)
         captured = streamed_stderr.getvalue()
         assert "[amplihack]" in captured, "startup banner must appear in stderr"
         assert "test-recipe" in captured, "recipe name must appear in banner"
@@ -871,7 +871,6 @@ class TestProgressFile:
         """_stream_process_output_with_progress writes completed/failed terminal status."""
         import io
         import os
-        import time
         from unittest.mock import patch
 
         from amplihack.recipes.rust_runner import (
@@ -891,11 +890,10 @@ class TestProgressFile:
                 return self._returncode
 
         fake = FakePopen()
-        started_at = time.time()
 
         with patch("amplihack.recipes.rust_runner.tempfile") as mock_tmp:
             mock_tmp.gettempdir.return_value = str(tmp_path)
-            _stream_process_output_with_progress(fake, "my-recipe", started_at)
+            _stream_process_output_with_progress(fake, recipe_name="my-recipe")
             path = _progress_file_path("my-recipe", pid)
 
         # After returning, progress file should have terminal status

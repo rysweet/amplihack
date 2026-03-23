@@ -60,7 +60,7 @@ def _get_semaphore_path() -> Path:
     """Return the path to the auto-dev semaphore file."""
     project_dir = os.environ.get("CLAUDE_PROJECT_DIR", "")
     if project_dir:
-        return Path(project_dir) / ".claude" / "runtime" / "locks" / ".auto_dev_active"
+        return Path(project_dir).resolve() / ".claude" / "runtime" / "locks" / ".auto_dev_active"
     return Path.cwd() / ".claude" / "runtime" / "locks" / ".auto_dev_active"
 
 
@@ -119,7 +119,7 @@ def disable_auto_dev() -> str:
 def _get_workflow_active_path() -> Path:
     """Return the path to the workflow-in-progress semaphore."""
     project_dir = os.environ.get("CLAUDE_PROJECT_DIR", "")
-    base = Path(project_dir) if project_dir else Path.cwd()
+    base = Path(project_dir).resolve() if project_dir else Path.cwd()
     return base / ".claude" / "runtime" / "locks" / ".workflow_active"
 
 
