@@ -269,7 +269,7 @@ class TestTriagePr:
     @pytest.mark.asyncio
     async def test_triage_sdk_not_available(self, project_root, capsys):
         """Test behavior when Claude SDK not available."""
-        with patch("triage_pr.CLAUDE_SDK_AVAILABLE", False):
+        with patch("triage_pr.SDK_AVAILABLE", False):
             with patch.dict(os.environ, {}, clear=True):
                 os.environ.pop("AMPLIHACK_AGENT_BINARY", None)
                 result = await triage_pr(project_root, 456)
@@ -314,13 +314,13 @@ Approve for review after addressing minor concerns.
 
         with patch.dict(os.environ, {}, clear=True):
             os.environ.pop("AMPLIHACK_AGENT_BINARY", None)
-            with patch("triage_pr.CLAUDE_SDK_AVAILABLE", True):
+            with patch("triage_pr.SDK_AVAILABLE", True):
                 with patch("triage_pr.get_pr_details", return_value=sample_pr_data):
                     with patch(
                         "triage_pr.get_pr_diff_summary", return_value="## Diff\nSome changes"
                     ):
                         with patch("triage_pr.get_related_issues", return_value="## Issues\n#123"):
-                            with patch("triage_pr.query", side_effect=mock_query_generator):
+                            with patch("triage_pr.query", side_effect=mock_query):
                                 result = await triage_pr(project_root, 456)
 
                                 assert result is not None
@@ -336,7 +336,7 @@ Approve for review after addressing minor concerns.
 
         with patch.dict(os.environ, {}, clear=True):
             os.environ.pop("AMPLIHACK_AGENT_BINARY", None)
-            with patch("triage_pr.CLAUDE_SDK_AVAILABLE", True):
+            with patch("triage_pr.SDK_AVAILABLE", True):
                 with patch("triage_pr.get_pr_details", return_value=sample_pr_data):
                     with patch("triage_pr.get_pr_diff_summary", return_value="## Diff"):
                         with patch("triage_pr.get_related_issues", return_value="## Issues"):
@@ -356,7 +356,7 @@ Approve for review after addressing minor concerns.
 
         with patch.dict(os.environ, {}, clear=True):
             os.environ.pop("AMPLIHACK_AGENT_BINARY", None)
-            with patch("triage_pr.CLAUDE_SDK_AVAILABLE", True):
+            with patch("triage_pr.SDK_AVAILABLE", True):
                 with patch("triage_pr.get_pr_details", return_value=sample_pr_data):
                     with patch("triage_pr.get_pr_diff_summary", return_value="## Diff"):
                         with patch("triage_pr.get_related_issues", return_value="## Issues"):
@@ -371,7 +371,7 @@ class TestMainFunction:
 
     def test_main_sdk_not_available(self, capsys):
         """Test main when SDK not available."""
-        with patch("triage_pr.CLAUDE_SDK_AVAILABLE", False):
+        with patch("triage_pr.SDK_AVAILABLE", False):
             with patch.dict(os.environ, {}, clear=True):
                 os.environ.pop("AMPLIHACK_AGENT_BINARY", None)
                 with patch("sys.argv", ["triage_pr.py", "456"]):
@@ -447,7 +447,7 @@ class TestMainFunction:
         async def mock_triage_async(*args, **kwargs):
             return mock_triage
 
-        with patch("triage_pr.CLAUDE_SDK_AVAILABLE", False):
+        with patch("triage_pr.SDK_AVAILABLE", False):
             with patch.dict(os.environ, {"AMPLIHACK_AGENT_BINARY": "copilot"}):
                 with patch("triage_pr.triage_pr", side_effect=mock_triage_async):
                     with patch("sys.argv", ["triage_pr.py", "456"]):
