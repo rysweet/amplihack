@@ -43,7 +43,7 @@ These skills add NEW capabilities like decision recording, email drafting, meeti
 | **context-management**        | 48.5  | Proactive context window management via token monitoring and intelligent snapshots  | [#1347](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1347) | -                                                                                  |
 | **dynamic-debugger** 🆕       | 92.0  | Interactive debugging for Python/C++/Rust via DAP-MCP (opt-in, disabled by default) | [#1552](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1552) | [#1553](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1553) |
 | **multitask** 🆕              | -     | Parallel workstream execution with Recipe Runner code-enforced workflows            | [#2306](https://github.com/rysweet/amplihack/issues/2306)                            | [#2308](https://github.com/rysweet/amplihack/pull/2308)                            |
-| **workiq-wsl** 🆕              | -     | Access M365 data (emails, calendar, files) from WSL via Windows Copilot CLI bridge  | -                                                                                    | [#3136](https://github.com/rysweet/amplihack/pull/3136)                            |
+| **workiq-wsl** 🆕             | -     | Access M365 data (emails, calendar, files) from WSL via Windows Copilot CLI bridge  | -                                                                                    | [#3136](https://github.com/rysweet/amplihack/pull/3136)                            |
 
 ### Type 2: Domain Expert Analyst Skills (23 skills)
 
@@ -243,7 +243,6 @@ name: example-skill
 description: |
   A clear description of what this skill does.
 ---
-
 # Example Skill
 
 Content starts after the frontmatter...
@@ -253,7 +252,6 @@ Content starts after the frontmatter...
 
 ```yaml
 # Example Skill  ← WRONG: Title before frontmatter
-
 ---
 name: example-skill
 <!-- This is a comment -->  ← WRONG: HTML in YAML
@@ -321,3 +319,46 @@ When adding new skills:
 **Status**: Production Ready
 
 🤖 Skills documentation maintained as part of amplihack project
+
+---
+
+## Security Skills (Added 2026-03)
+
+### supply-chain-audit 🆕
+
+**Purpose**: Audits the full build and deployment supply chain for security vulnerabilities.
+
+**Issue**: [#3440](https://github.com/rysweet/amplihack/issues/3440)
+**PR**: [#3398](https://github.com/rysweet/amplihack/pull/3398)
+**Location**: [.claude/skills/supply-chain-audit/](.claude/skills/supply-chain-audit/)
+
+**Motivated by** the March 19, 2026 Trivy supply chain compromise where 75 of 76 action tags were force-pushed with malicious code — any pipeline using `aquasecurity/trivy-action@master` silently executed attacker-controlled code with full GITHUB_TOKEN access.
+
+**Audit Dimensions** (15 total, auto-detected by ecosystem):
+
+| #   | Dimension                                                                       | Severity Range  |
+| --- | ------------------------------------------------------------------------------- | --------------- |
+| 1   | GitHub Actions pinning                                                          | Critical–High   |
+| 2   | Action permission scope                                                         | High–Medium     |
+| 3   | Secret exposure patterns                                                        | Critical–High   |
+| 4   | Cache poisoning vectors                                                         | High–Medium     |
+| 5   | Container base image pinning                                                    | High–Medium     |
+| 6   | OIDC vs secret-based auth                                                       | Critical        |
+| 7   | .NET / NuGet lock files and restore                                             | Critical–Medium |
+| 8   | Python / PyPI hash pinning                                                      | High–Medium     |
+| 9   | Rust / Cargo lock files                                                         | High–Medium     |
+| 10  | Node.js / npm lock files                                                        | Critical–Medium |
+| 11  | Go module integrity                                                             | High–Medium     |
+| 12  | Docker / OCI build chain                                                        | High–Medium     |
+| 13  | Dangerous trigger patterns (`pull_request_target`, `workflow_run`, self-hosted) | Critical–High   |
+| 14  | Dependabot / Renovate configuration                                             | High–Medium     |
+| 15  | Branch protection and CODEOWNERS                                                | Critical–Medium |
+
+**Auto-triggers**: "supply chain audit", "audit dependencies", "check action pinning", "dependency security", "CI security audit", "SBOM", "SLSA compliance"
+
+**Integrates with**:
+
+- `dependency-resolver` — lock file drift detection
+- `pre-commit-manager` — install action SHA pinning hooks
+- `cybersecurity-analyst` — runtime security (complements static checks)
+- `silent-degradation-audit` — CI reliability post-fix
