@@ -6,7 +6,7 @@ This document explains the automated version management system for the amplihack
 
 The repository uses a multi-layer approach to ensure that every merge to `main` increments the version number:
 
-1. **PR-level auto-fix** (optional): `version-check.yml`
+1. **PR-level advisory check** (optional): `version-check.yml`
 2. **Merge-level auto-bump** (safety net): `auto-version-on-merge.yml`
 3. **Auto-tagging**: `version-tag.yml`
 
@@ -21,11 +21,11 @@ The repository uses a multi-layer approach to ensure that every merge to `main` 
 **Behavior**:
 
 - Checks if the PR has bumped the version compared to `main`
-- If not bumped, automatically commits a patch version bump to the PR branch
-- Comments on the PR to notify the author
+- If not bumped, emits an advisory warning and step summary
+- Does **not** commit or push changes to the PR branch
 - Allows manual override for minor/major version bumps
 
-**Note**: This is a convenience feature to help developers remember to bump versions. Even if skipped, the merge-level workflow (below) will ensure version is bumped.
+**Note**: This is a convenience signal to help developers remember to bump versions. Even if skipped, the merge-level workflow (below) will ensure version is bumped.
 
 ### 2. Auto Version on Merge (auto-version-on-merge.yml)
 
@@ -82,7 +82,7 @@ To manually bump to a specific version:
 
 1. Edit the `version` field in `pyproject.toml` to your desired version
 2. Commit and push to your PR branch
-3. The workflows will detect the manual bump and skip auto-bumping
+3. The workflows will detect the manual bump and skip merge-time auto-bumping
 
 **Examples**:
 
@@ -104,7 +104,7 @@ To manually bump to a specific version:
 1. Developer creates PR
 2. version-check.yml runs
    ├─ If version bumped: ✅ Pass
-   └─ If not bumped: Auto-bump patch in PR
+   └─ If not bumped: Advisory warning only (no branch mutation)
 3. PR merged to main
 4. auto-version-on-merge.yml runs
    ├─ Check if version bumped in merge
@@ -134,7 +134,7 @@ To manually bump to a specific version:
 1. **PR-level** (`version-check.yml`):
    - Developer convenience
    - Immediate feedback
-   - Allows manual override before merge
+   - Keeps PR diffs clean by avoiding automation commits on contributor branches
 
 2. **Merge-level** (`auto-version-on-merge.yml`):
    - Safety net - ensures version is ALWAYS bumped
