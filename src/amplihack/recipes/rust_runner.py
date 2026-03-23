@@ -7,73 +7,69 @@ execution fails immediately with a clear error.
 
 from __future__ import annotations
 
-import functools
 import json
 import logging
 import os
 import re
-import shlex
 import shutil
-import signal
 import subprocess
-import sys
 import tempfile
-import threading
 from pathlib import Path
 from typing import Any
 
-from amplihack.recipes.models import RecipeResult, StepResult, StepStatus
+from amplihack.recipes import rust_runner_binary as runner_binary
+from amplihack.recipes.models import RecipeResult
+from amplihack.recipes.rust_runner_binary import (
+    MIN_RUNNER_VERSION,
+    RustRunnerNotFoundError,
+    RustRunnerVersionError,
+    find_rust_binary,
+)
+from amplihack.recipes.rust_runner_copilot import (
+    _create_copilot_compat_wrapper_dir,
+    _normalize_copilot_cli_args,
+)
+from amplihack.recipes.rust_runner_execution import build_rust_env, execute_rust_command
+from amplihack.recipes.rust_runner_recipe_resolution import (
+    _default_package_recipe_dirs,
+    _normalize_recipe_dirs,
+    _resolve_recipe_target,
+)
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Env-var size guard: values >= this byte threshold are spilled to temp files
-# ---------------------------------------------------------------------------
+__all__ = [
+    "MIN_RUNNER_VERSION",
+    "RustRunnerNotFoundError",
+    "RustRunnerVersionError",
+    "check_runner_version",
+    "ensure_rust_recipe_runner",
+    "find_rust_binary",
+    "get_runner_version",
+    "is_rust_runner_available",
+    "run_recipe_via_rust",
+    "_build_rust_env",
+    "_normalize_copilot_cli_args",
+    "_redact_command_for_log",
+    "_resolve_recipe_target",
+]
 
-_ENV_VAR_SIZE_LIMIT = 32 * 1024  # 32 768 bytes — kernel limit guard
-
-# Pre-compiled at module level to avoid regex recompilation on every
-# _sanitize_key() call.
-_KEY_SANITIZE_RE: re.Pattern[str] = re.compile(r"[^a-zA-Z0-9_]")
-
-# Fast-path threshold for the encode() guard.
-# UTF-8 uses at most 4 bytes per code-point, so a string shorter than
-# limit/4 characters cannot possibly encode to >= limit bytes.
-# Strings below this character count skip encode() entirely.
-_FAST_PATH_CHAR_LIMIT: int = _ENV_VAR_SIZE_LIMIT // 4  # 8 192
+_ENV_VAR_SIZE_LIMIT = 32 * 1024
+_KEY_SANITIZE_RE = re.compile(r"[^a-zA-Z0-9_]")
+_FAST_PATH_CHAR_LIMIT: int = _ENV_VAR_SIZE_LIMIT // 4
 
 
 def _sanitize_key(key: str) -> str:
-    """Return a filesystem-safe name derived from an env-var key.
-
-    Replaces any character outside ``[a-zA-Z0-9_]`` with ``_`` and
-    truncates to 64 characters.  Falls back to ``_empty_key_`` when the
-    result would otherwise be empty.
-
-    SECURITY: strips all characters outside [A-Za-z0-9_] to prevent
-    path traversal (e.g. '../../../etc/passwd' → 'etcpasswd').
-    """
+    """Return a filesystem-safe name derived from an env-var key."""
     safe = _KEY_SANITIZE_RE.sub("_", key)[:64]
     return safe if safe else "_empty_key_"
 
 
+# Context spill helpers ------------------------------------------------------
+
+
 def _write_spill_bytes(key: str, encoded: bytes, tmp_dir: Path) -> str:
-    """Write pre-encoded bytes to ``<tmp_dir>/<safe_key>`` and return a ``file://`` URI.
-
-    Internal helper used by :func:`_build_rust_command` when it already holds
-    encoded bytes — avoids a second ``encode()`` call.
-
-    The directory is created lazily (mode 0o700 — owner-only); the file is
-    restricted to 0o600 (owner read/write only).
-
-    Args:
-        key:     Context variable name (used to derive the filename).
-        encoded: UTF-8 bytes already produced by the caller.
-        tmp_dir: Directory under which the file is written.
-
-    Returns:
-        Absolute ``file://`` URI pointing at the written file.
-    """
+    """Write pre-encoded bytes to ``<tmp_dir>/<safe_key>`` and return a ``file://`` URI."""
     tmp_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
     file_path = tmp_dir / _sanitize_key(key)
     file_path.write_bytes(encoded)
@@ -82,212 +78,24 @@ def _write_spill_bytes(key: str, encoded: bytes, tmp_dir: Path) -> str:
 
 
 def _spill_large_value(key: str, value: str, tmp_dir: Path) -> str:
-    """Write *value* to a temp file under *tmp_dir* and return its ``file://`` URI.
-
-    Public interface — accepts a plain string, encodes it to UTF-8 once, and
-    delegates to :func:`_write_spill_bytes`.
-
-    The directory is created lazily (mode 0o700 — owner-only) and the
-    resulting file is restricted to 0o600 (owner read/write only).
-
-    Security: only call this on values produced within the same process.
-    Never pass externally-supplied paths to the resolver.
-    """
+    """Write *value* to a temp file under *tmp_dir* and return its ``file://`` URI."""
     return _write_spill_bytes(key, value.encode("utf-8"), tmp_dir)
 
 
 def _resolve_context_value(value: str) -> str:
-    """Dereference a ``file://`` URI back to the file's text content.
-
-    Plain strings (no ``file://`` prefix) are returned unchanged with no I/O.
-
-    Security: only call this on values produced by ``_spill_large_value``
-    within the same process.  Never call on externally-supplied values —
-    this function reads arbitrary filesystem paths.
-    """
+    """Dereference a ``file://`` URI back to the file's text content."""
     if value.startswith("file://"):
         return Path(value[7:]).read_text(encoding="utf-8")
     return value
 
 
-@functools.lru_cache(maxsize=1)
-def _binary_search_paths() -> list[str]:
-    """Return known locations to search for the Rust binary.
-
-    Evaluated lazily on first call so Path.home() is only resolved when needed.
-    """
-    return [
-        "recipe-runner-rs",  # PATH
-        str(Path.home() / ".cargo" / "bin" / "recipe-runner-rs"),
-        str(Path.home() / ".local" / "bin" / "recipe-runner-rs"),
-    ]
-
-
-def _install_timeout() -> int:
-    """Return the install timeout in seconds (env-configurable)."""
-    return int(os.environ.get("RECIPE_RUNNER_INSTALL_TIMEOUT", "300"))
-
-
-def find_rust_binary() -> str | None:
-    """Find the recipe-runner-rs binary.
-
-    Checks the RECIPE_RUNNER_RS_PATH env var first, then known locations.
-    Returns the path to the binary, or None if not found.
-    """
-    env_path = os.environ.get("RECIPE_RUNNER_RS_PATH")
-    if env_path:
-        resolved = shutil.which(env_path)
-        if resolved:
-            return resolved
-
-    for candidate in _binary_search_paths():
-        resolved = shutil.which(candidate)
-        if resolved:
-            return resolved
-
-    return None
-
-
-# Minimum compatible recipe-runner-rs version (semver).
-MIN_RUNNER_VERSION = "0.1.0"
-
-
-def get_runner_version(binary: str | None = None) -> str | None:
-    """Return the version string of the installed recipe-runner-rs, or None."""
-    binary = binary or find_rust_binary()
-    if not binary:
-        return None
-    try:
-        result = subprocess.run(
-            [binary, "--version"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-        if result.returncode == 0:
-            # Format: "recipe-runner 0.1.0"
-            parts = result.stdout.strip().rsplit(" ", 1)
-            return parts[-1] if len(parts) >= 2 else result.stdout.strip()
-    except Exception as exc:
-        logger.debug("Could not get runner version from %s: %s", binary, exc)
-    return None
-
-
-def _version_tuple(ver: str) -> tuple[int, ...]:
-    """Parse a semver string into a comparable tuple."""
-    return tuple(int(x) for x in ver.split(".") if x.isdigit())
-
-
-def check_runner_version(binary: str | None = None) -> bool:
-    """Check if the installed binary meets the minimum version requirement.
-
-    Returns True if version is compatible or cannot be determined (best-effort).
-    Returns False and logs a warning if the binary is too old.
-    """
-    version = get_runner_version(binary)
-    if version is None:
-        return True  # can't check, assume ok
-    try:
-        if _version_tuple(version) < _version_tuple(MIN_RUNNER_VERSION):
-            logger.warning(
-                "recipe-runner-rs version %s is older than minimum %s. "
-                "Update: cargo install --git %s",
-                version,
-                MIN_RUNNER_VERSION,
-                _REPO_URL,
-            )
-            return False
-    except (ValueError, TypeError):
-        return True  # unparseable version, assume ok
-    return True
-
-
-def is_rust_runner_available() -> bool:
-    """Check if the Rust recipe runner binary is available."""
-    return find_rust_binary() is not None
-
-
-class RustRunnerNotFoundError(RuntimeError):
-    """Raised when the Rust recipe runner binary is required but not found."""
-
-
-_REPO_URL = "https://github.com/rysweet/amplihack-recipe-runner"
-
-
-def ensure_rust_recipe_runner(*, quiet: bool = False) -> bool:
-    """Ensure the recipe-runner-rs binary is installed.
-
-    If the binary is already available, returns True immediately.
-    Otherwise, attempts to install via ``cargo install --git``.
-
-    Args:
-        quiet: Suppress progress messages.
-
-    Returns:
-        True if binary is available after this call, False if installation failed.
-    """
-    if is_rust_runner_available():
-        return True
-
-    cargo = shutil.which("cargo")
-    if cargo is None:
-        if not quiet:
-            logger.warning(
-                "cargo not found — cannot auto-install recipe-runner-rs. "
-                "Install Rust (https://rustup.rs) then run: "
-                "cargo install --git %s",
-                _REPO_URL,
-            )
-        return False
-
-    if not quiet:
-        logger.info("Installing recipe-runner-rs from %s …", _REPO_URL)
-
-    timeout = _install_timeout()
-    try:
-        result = subprocess.run(
-            [cargo, "install", "--git", _REPO_URL],
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-        )
-        if result.returncode == 0:
-            if not quiet:
-                logger.info("recipe-runner-rs installed successfully")
-            return True
-
-        logger.warning(
-            "cargo install failed (exit %d): %s",
-            result.returncode,
-            result.stderr[:500] if result.stderr else "no output",
-        )
-        return False
-    except subprocess.TimeoutExpired:
-        logger.warning("cargo install timed out after %ds", timeout)
-        return False
-    except Exception as exc:
-        logger.warning("cargo install failed: %s", exc)
-        return False
-
-
-# -- Helpers for run_recipe_via_rust -----------------------------------------
-
-
-def _serialize_context_value(v: Any) -> str:
-    """Serialize a context value to a string suitable for ``--set key=<str>``.
-
-    * ``bool``  → ``"true"`` / ``"false"`` (not Python's ``"True"``/``"False"``)
-    * ``dict`` / ``list`` → JSON-encoded string
-    * Everything else → ``str(v)``
-
-    Serialization happens *before* the byte-length guard so that the guard
-    operates on the form the Rust binary actually receives.
-    """
-    if isinstance(v, bool):
-        return "true" if v else "false"
-    if isinstance(v, (dict, list)):
-        return json.dumps(v)
-    return str(v)
+def _serialize_context_value(value: Any) -> str:
+    """Serialize a context value to a string suitable for ``--set key=<str>``."""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (dict, list)):
+        return json.dumps(value)
+    return str(value)
 
 
 def _redact_command_for_log(cmd: list[str]) -> str:
@@ -307,8 +115,96 @@ def _redact_command_for_log(cmd: list[str]) -> str:
     return " ".join(parts)
 
 
+# Binary discovery and compatibility ----------------------------------------
+
+
+def get_runner_version(binary: str | None = None) -> str | None:
+    """Return the version string of the installed recipe-runner-rs, or ``None``."""
+    return runner_binary.get_runner_version(binary)
+
+
+def check_runner_version(binary: str | None = None) -> bool:
+    """Check whether the installed binary meets the minimum version requirement."""
+    version = get_runner_version(binary)
+    if version is None:
+        return True
+
+    try:
+        parsed_version = runner_binary._version_tuple(version)
+        parsed_minimum = runner_binary._version_tuple(MIN_RUNNER_VERSION)
+        if not parsed_version:
+            raise ValueError(version)
+        if parsed_version < parsed_minimum:
+            logger.warning(
+                "recipe-runner-rs version %s is older than minimum %s. Update: cargo install --git %s",
+                version,
+                MIN_RUNNER_VERSION,
+                runner_binary._REPO_URL,
+            )
+            return False
+    except (TypeError, ValueError):
+        logger.warning(
+            "Could not parse recipe-runner-rs version '%s'; continuing without compatibility check.",
+            version,
+        )
+        return True
+
+    return True
+
+
+def is_rust_runner_available() -> bool:
+    """Check if the Rust recipe runner binary is available."""
+    return find_rust_binary() is not None
+
+
+def ensure_rust_recipe_runner(*, quiet: bool = False) -> bool:
+    """Ensure the recipe-runner-rs binary is installed."""
+    if is_rust_runner_available():
+        return True
+
+    cargo = shutil.which("cargo")
+    if cargo is None:
+        if not quiet:
+            logger.warning(
+                "cargo not found — cannot auto-install recipe-runner-rs. "
+                "Install Rust (https://rustup.rs) then run: cargo install --git %s",
+                runner_binary._REPO_URL,
+            )
+        return False
+
+    if not quiet:
+        logger.info("Installing recipe-runner-rs from %s …", runner_binary._REPO_URL)
+
+    timeout = runner_binary._install_timeout()
+    try:
+        result = subprocess.run(
+            [cargo, "install", "--git", runner_binary._REPO_URL],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired:
+        logger.warning("cargo install timed out after %ds", timeout)
+        return False
+    except Exception as error:
+        logger.warning("cargo install failed: %s", error)
+        return False
+
+    if result.returncode == 0:
+        if not quiet:
+            logger.info("recipe-runner-rs installed successfully")
+        return True
+
+    logger.warning(
+        "cargo install failed (exit %d): %s",
+        result.returncode,
+        result.stderr[:500] if result.stderr else "no output",
+    )
+    return False
+
+
 def _find_rust_binary() -> str:
-    """Locate the Rust binary or raise ``RustRunnerNotFoundError``."""
+    """Locate the Rust binary or raise a clear compatibility error."""
     binary = find_rust_binary()
     if binary is None:
         raise RustRunnerNotFoundError(
@@ -316,8 +212,44 @@ def _find_rust_binary() -> str:
             "Install it: cargo install --git https://github.com/rysweet/amplihack-recipe-runner "
             "or set RECIPE_RUNNER_RS_PATH to the binary location."
         )
-    check_runner_version(binary)
+    if not check_runner_version(binary):
+        version = get_runner_version(binary) or "unknown"
+        raise RustRunnerVersionError(
+            f"recipe-runner-rs version {version} is older than the required minimum "
+            f"{MIN_RUNNER_VERSION}. Update it with: cargo install --git {runner_binary._REPO_URL}"
+        )
     return binary
+
+
+# Command construction -------------------------------------------------------
+
+
+def _append_recipe_dirs(cmd: list[str], recipe_dirs: list[str] | None) -> None:
+    if not recipe_dirs:
+        return
+    for recipe_dir in recipe_dirs:
+        cmd.extend(["-R", recipe_dir])
+
+
+def _append_user_context(
+    cmd: list[str],
+    user_context: dict[str, Any] | None,
+    *,
+    tmp_dir: Path | None,
+) -> None:
+    if not user_context:
+        return
+
+    for key, value in user_context.items():
+        serialized = _serialize_context_value(value)
+        if tmp_dir is None or len(serialized) < _FAST_PATH_CHAR_LIMIT:
+            cmd.extend(["--set", f"{key}={serialized}"])
+            continue
+
+        encoded = serialized.encode("utf-8")
+        if len(encoded) >= _ENV_VAR_SIZE_LIMIT:
+            serialized = _write_spill_bytes(key, encoded, tmp_dir)
+        cmd.extend(["--set", f"{key}={serialized}"])
 
 
 def _build_rust_command(
@@ -332,479 +264,59 @@ def _build_rust_command(
     user_context: dict[str, Any] | None,
     tmp_dir: Path | None = None,
 ) -> list[str]:
-    """Assemble the CLI command list for the Rust binary.
-
-    Large context values (>= ``_ENV_VAR_SIZE_LIMIT`` UTF-8 bytes) are spilled
-    to temporary files under *tmp_dir* and replaced with ``file://`` URIs.
-    *tmp_dir* is created lazily — only when the first value exceeds the limit.
-    When *tmp_dir* is ``None``, spilling is disabled and all values are passed
-    inline (backward-compatible).
-    """
+    """Assemble the CLI command list for the Rust binary."""
     abs_working_dir = str(Path(working_dir).resolve())
     cmd = [binary, name, "--output-format", "json", "-C", abs_working_dir]
 
     if dry_run:
         cmd.append("--dry-run")
-
     if not auto_stage:
         cmd.append("--no-auto-stage")
-
     if progress:
         cmd.append("--progress")
 
-    # NOTE: Agent binary preference is communicated via the AMPLIHACK_AGENT_BINARY
-    # env var, which the Rust binary reads at init time.  We no longer pass
-    # --agent-binary on the CLI because older installed binaries reject the flag
-    # (see issue #3275).  The env var is inherited by the subprocess automatically.
-
-    if recipe_dirs:
-        for d in recipe_dirs:
-            cmd.extend(["-R", d])
-
-    if user_context:
-        for key, value in user_context.items():
-            serialized = _serialize_context_value(value)
-
-            # Fast-path: a string with fewer than _FAST_PATH_CHAR_LIMIT chars
-            # cannot encode to >= _ENV_VAR_SIZE_LIMIT bytes (UTF-8 uses at most
-            # 4 bytes per code-point, so len(s) < limit/4 => encoded < limit).
-            # Also skip spilling when no tmp_dir is provided.
-            if tmp_dir is None or len(serialized) < _FAST_PATH_CHAR_LIMIT:
-                cmd.extend(["--set", f"{key}={serialized}"])
-                continue
-
-            # Encode once — reuse the same bytes for both the size check and
-            # the file write, avoiding a second full encode() call.
-            encoded = serialized.encode("utf-8")
-            if len(encoded) >= _ENV_VAR_SIZE_LIMIT:
-                serialized = _write_spill_bytes(key, encoded, tmp_dir)
-            cmd.extend(["--set", f"{key}={serialized}"])
-
+    _append_recipe_dirs(cmd, recipe_dirs)
+    _append_user_context(cmd, user_context, tmp_dir=tmp_dir)
     return cmd
 
 
-_ALLOWED_RUST_ENV_VARS = {
-    "AMPLIHACK_AGENT_BINARY",
-    "CURL_CA_BUNDLE",
-    "FORCE_COLOR",
-    "HOME",
-    "HTTP_PROXY",
-    "HTTPS_PROXY",
-    "LANG",
-    "LC_ALL",
-    "LC_CTYPE",
-    "LOGNAME",
-    "NO_COLOR",
-    "NO_PROXY",
-    "PATH",
-    "RECIPE_RUNNER_RS_PATH",
-    "REQUESTS_CA_BUNDLE",
-    "SHELL",
-    "SSL_CERT_DIR",
-    "SSL_CERT_FILE",
-    "TEMP",
-    "TERM",
-    "TMP",
-    "TMPDIR",
-    "USER",
-    "http_proxy",
-    "https_proxy",
-    "no_proxy",
-}
-
-
-def _has_explicit_copilot_permission(token: str, *, category: str) -> bool:
-    """Return True when a Copilot arg already sets explicit permissions."""
-    if category == "tool":
-        prefixes = ("--allow-all-tools", "--allow-tool", "--deny-tool")
-    elif category == "path":
-        prefixes = ("--allow-all-paths", "--allow-path", "--deny-path")
-    else:
-        raise ValueError(f"Unsupported Copilot permission category: {category}")
-
-    return any(token == prefix or token.startswith(f"{prefix}=") for prefix in prefixes)
-
-
-def _normalize_copilot_cli_args(args: list[str]) -> list[str]:
-    """Normalize Copilot CLI args for nested agent compatibility."""
-    normalized: list[str] = []
-    system_prompt_parts: list[str] = []
-    prompt_parts: list[str] = []
-    saw_tool_permissions = False
-    saw_path_permissions = False
-    i = 0
-
-    while i < len(args):
-        token = args[i]
-
-        if token in {"--system-prompt", "--append-system-prompt"}:
-            if i + 1 < len(args):
-                system_prompt_parts.append(args[i + 1])
-            i += 2
-            continue
-
-        if token.startswith("--system-prompt=") or token.startswith("--append-system-prompt="):
-            _, _, value = token.partition("=")
-            if value:
-                system_prompt_parts.append(value)
-            i += 1
-            continue
-
-        if token in {"-p", "--prompt"}:
-            if i + 1 < len(args):
-                prompt_parts.append(args[i + 1])
-            i += 2
-            continue
-
-        if token.startswith("--prompt="):
-            _, _, value = token.partition("=")
-            if value:
-                prompt_parts.append(value)
-            i += 1
-            continue
-
-        if _has_explicit_copilot_permission(token, category="tool"):
-            saw_tool_permissions = True
-        if _has_explicit_copilot_permission(token, category="path"):
-            saw_path_permissions = True
-
-        normalized.append(token)
-        i += 1
-
-    prefix: list[str] = []
-    if not saw_tool_permissions:
-        prefix.append("--allow-all-tools")
-    if not saw_path_permissions:
-        prefix.append("--allow-all-paths")
-
-    merged_parts = system_prompt_parts + prompt_parts
-    if merged_parts:
-        merged_prompt = "\n\n".join(part for part in merged_parts if part)
-        if merged_prompt:
-            normalized.extend(["-p", merged_prompt])
-
-    return prefix + normalized
-
-
-@functools.lru_cache(maxsize=1)
-def _create_copilot_compat_wrapper_dir(real_binary: str) -> str:
-    """Create a Copilot wrapper for nested recipe-runner agent launches."""
-    wrapper_dir = Path(tempfile.mkdtemp(prefix="amplihack-copilot-compat-"))
-    wrapper_path = wrapper_dir / "copilot"
-    wrapper_py_path = wrapper_dir / "copilot.py"
-    wrapper_cmd_path = wrapper_dir / "copilot.cmd"
-
-    wrapper_source = f"""#!/usr/bin/env python3
-import subprocess
-import sys
-
-REAL_BINARY = {real_binary!r}
-
-
-def normalize(args):
-    normalized = []
-    system_prompt_parts = []
-    prompt_parts = []
-    saw_tool_permissions = False
-    saw_path_permissions = False
-    i = 0
-    while i < len(args):
-        token = args[i]
-        if token in ("--system-prompt", "--append-system-prompt"):
-            if i + 1 < len(args):
-                system_prompt_parts.append(args[i + 1])
-            i += 2
-            continue
-        if token.startswith("--system-prompt=") or token.startswith("--append-system-prompt="):
-            _, _, value = token.partition("=")
-            if value:
-                system_prompt_parts.append(value)
-            i += 1
-            continue
-        if token in ("-p", "--prompt"):
-            if i + 1 < len(args):
-                prompt_parts.append(args[i + 1])
-            i += 2
-            continue
-        if token.startswith("--prompt="):
-            _, _, value = token.partition("=")
-            if value:
-                prompt_parts.append(value)
-            i += 1
-            continue
-        if token == "--allow-all-tools" or token.startswith("--allow-tool=") or token.startswith("--deny-tool=") or token in ("--allow-tool", "--deny-tool"):
-            saw_tool_permissions = True
-        if token == "--allow-all-paths" or token.startswith("--allow-path=") or token.startswith("--deny-path=") or token in ("--allow-path", "--deny-path"):
-            saw_path_permissions = True
-        normalized.append(token)
-        i += 1
-
-    prefix = []
-    if not saw_tool_permissions:
-        prefix.append("--allow-all-tools")
-    if not saw_path_permissions:
-        prefix.append("--allow-all-paths")
-
-    merged_parts = system_prompt_parts + prompt_parts
-    if merged_parts:
-        merged_prompt = "\\n\\n".join(part for part in merged_parts if part)
-        if merged_prompt:
-            normalized.extend(["-p", merged_prompt])
-
-    return prefix + normalized
-
-
-def main():
-    cmd = [REAL_BINARY] + normalize(sys.argv[1:])
-    completed = subprocess.run(cmd, check=False)
-    raise SystemExit(completed.returncode)
-
-
-if __name__ == "__main__":
-    main()
-"""
-
-    wrapper_py_path.write_text(wrapper_source, encoding="utf-8")
-    wrapper_cmd_path.write_text(
-        f'@echo off\r\n"{sys.executable}" "%~dp0copilot.py" %*\r\n',
-        encoding="utf-8",
-    )
-    wrapper_path.write_text(
-        f'#!/usr/bin/env bash\nexec {shlex.quote(sys.executable)} {shlex.quote(str(wrapper_py_path))} "$@"\n',
-        encoding="utf-8",
-    )
-
-    if os.name != "nt":
-        wrapper_path.chmod(0o755)
-        wrapper_py_path.chmod(0o755)
-
-    return str(wrapper_dir)
+# Execution helpers ----------------------------------------------------------
 
 
 def _build_rust_env() -> dict[str, str]:
     """Return the minimal subprocess environment for the Rust runner."""
-    env: dict[str, str] = {}
-    for key in _ALLOWED_RUST_ENV_VARS:
-        value = os.environ.get(key)
-        if value is not None:
-            env[key] = value
-
-    if env.get("AMPLIHACK_AGENT_BINARY") == "copilot":
-        real_copilot = shutil.which("copilot", path=env.get("PATH"))
-        if real_copilot:
-            wrapper_dir = _create_copilot_compat_wrapper_dir(real_copilot)
-            existing_path = env.get("PATH", "")
-            env["PATH"] = (
-                f"{wrapper_dir}{os.pathsep}{existing_path}" if existing_path else wrapper_dir
-            )
-
-    return env
-
-
-_STATUS_MAP = {
-    "completed": StepStatus.COMPLETED,
-    "skipped": StepStatus.SKIPPED,
-    "failed": StepStatus.FAILED,
-    "pending": StepStatus.PENDING,
-    "running": StepStatus.RUNNING,
-}
-
-
-def _stream_process_output(process: subprocess.Popen[str]) -> tuple[str, str, int]:
-    """Collect stdout while relaying stderr live for progress-enabled runs."""
-    stdout_chunks: list[str] = []
-    stderr_chunks: list[str] = []
-
-    def _drain_stdout() -> None:
-        if process.stdout is None:
-            return
-        for line in process.stdout:
-            stdout_chunks.append(line)
-
-    def _drain_stderr() -> None:
-        if process.stderr is None:
-            return
-        for line in process.stderr:
-            stderr_chunks.append(line)
-            print(line, end="", file=sys.stderr, flush=True)
-
-    stdout_thread = threading.Thread(target=_drain_stdout)
-    stderr_thread = threading.Thread(target=_drain_stderr)
-    stdout_thread.start()
-    stderr_thread.start()
-    try:
-        returncode = process.wait()
-    finally:
-        stdout_thread.join()
-        stderr_thread.join()
-    return "".join(stdout_chunks), "".join(stderr_chunks), returncode
+    return build_rust_env(
+        wrapper_factory=_create_copilot_compat_wrapper_dir,
+        which=shutil.which,
+    )
 
 
 def _execute_rust_command(cmd: list[str], *, name: str, progress: bool) -> RecipeResult:
     """Run the Rust binary and parse its JSON output into a ``RecipeResult``."""
-    env = _build_rust_env()
-    if "AMPLIHACK_AGENT_BINARY" not in env:
-        logger.warning(
-            "AMPLIHACK_AGENT_BINARY not set — Rust runner will default to 'claude'. "
-            "Set the env var via the amplihack CLI dispatcher to use a different agent."
-        )
-
-    if progress:
-        process = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            bufsize=1,
-            env=env,
-        )
-        stdout, stderr, returncode = _stream_process_output(process)
-    else:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            env=env,
-        )
-        stdout = result.stdout
-        stderr = result.stderr
-        returncode = result.returncode
-
-    try:
-        data = json.loads(stdout)
-    except (json.JSONDecodeError, TypeError):
-        if returncode != 0:
-            # Negative exit codes indicate signal kills (e.g. -15 = SIGTERM).
-            # Produce a clear message instead of dumping the entire progress
-            # stderr buffer which makes the error unreadable.
-            if returncode < 0:
-                sig_num = -returncode
-                sig_name = (
-                    signal.Signals(sig_num).name
-                    if sig_num in signal.valid_signals()
-                    else str(sig_num)
-                )
-                raise RuntimeError(
-                    f"Rust recipe runner killed by signal {sig_name} ({sig_num}). "
-                    f"The process was terminated externally before producing output."
-                )
-            # For non-signal failures, show only the last few lines of stderr
-            # (not the full progress log which can be thousands of lines).
-            stderr_tail = ""
-            if stderr:
-                lines = stderr.strip().splitlines()
-                # Skip progress/heartbeat lines, show last 5 meaningful lines
-                meaningful = [
-                    ln for ln in lines if not ln.strip().startswith(("▶", "✓", "⊘", "✗", "[agent]"))
-                ]
-                stderr_tail = "\n".join(meaningful[-5:]) if meaningful else "\n".join(lines[-5:])
-            raise RuntimeError(
-                f"Rust recipe runner failed (exit {returncode}): {stderr_tail or 'no stderr'}"
-            )
-        raise RuntimeError(
-            f"Rust recipe runner returned unparseable output (exit {returncode}): "
-            f"{stdout[:500] if stdout else 'empty stdout'}"
-        )
-
-    step_results = [
-        StepResult(
-            step_id=sr.get("step_id", "unknown"),
-            status=_STATUS_MAP.get(sr.get("status", "failed").lower(), StepStatus.FAILED),
-            output=sr.get("output", ""),
-            error=sr.get("error", ""),
-        )
-        for sr in data.get("step_results", [])
-    ]
-
-    return RecipeResult(
-        recipe_name=data.get("recipe_name", name),
-        success=data.get("success", False),
-        step_results=step_results,
-        context=data.get("context", {}),
-    )
+    return execute_rust_command(cmd, name=name, progress=progress, env_builder=_build_rust_env)
 
 
-# -- Public entry point ------------------------------------------------------
-
-
-def _default_package_recipe_dirs() -> list[str]:
-    """Return bundled recipe directories visible to Python discovery.
-
-    In editable installs, ``src/amplihack/amplifier-bundle/recipes`` may exist
-    but only contain a subset of recipes, while the full bundle lives at the
-    repo root ``amplifier-bundle/recipes``.  The Rust runner needs both paths
-    to match Python-side discovery in real environments (issue #3002).
-
-    Also includes ``$AMPLIHACK_HOME/amplifier-bundle/recipes/`` when the env
-    var is set, so recipes are found when running from non-amplihack repos
-    (issue #3237).
-    """
-    try:
-        from amplihack.recipes.discovery import (
-            _AMPLIHACK_HOME_BUNDLE_DIR,
-            _PACKAGE_BUNDLE_DIR,
-            _REPO_ROOT_BUNDLE_DIR,
-        )
-
-        candidates = [_PACKAGE_BUNDLE_DIR, _REPO_ROOT_BUNDLE_DIR]
-        if _AMPLIHACK_HOME_BUNDLE_DIR is not None:
-            candidates.append(_AMPLIHACK_HOME_BUNDLE_DIR)
-
-        dirs: list[str] = []
-        for candidate in candidates:
-            if candidate.is_dir():
-                candidate_str = str(candidate)
-                if candidate_str not in dirs:
-                    dirs.append(candidate_str)
-        if dirs:
-            return dirs
-    except Exception as exc:
-        logger.debug("Could not resolve default recipe dirs: %s", exc)
-    return []
-
-
-def _normalize_recipe_dirs(recipe_dirs: list[str] | None, *, working_dir: str) -> list[str] | None:
-    """Return absolute recipe directories rooted at ``working_dir`` when needed."""
-    if recipe_dirs is None:
-        return None
-
-    base_dir = Path(working_dir).resolve()
-    normalized: list[str] = []
-    for recipe_dir in recipe_dirs:
-        candidate = Path(recipe_dir)
-        if not candidate.is_absolute():
-            candidate = base_dir / candidate
-        normalized.append(str(candidate.resolve()))
-    return normalized
-
-
-def _resolve_recipe_target(
-    name: str,
-    *,
+def _resolve_effective_recipe_dirs(
     recipe_dirs: list[str] | None,
+    *,
     working_dir: str,
-) -> str:
-    """Resolve a recipe name to a concrete YAML path when Python discovery can find it."""
-    working_path = Path(working_dir).resolve()
-    candidate = Path(name)
+) -> list[str] | None:
+    effective_recipe_dirs = _normalize_recipe_dirs(recipe_dirs, working_dir=working_dir)
+    if effective_recipe_dirs is not None:
+        return effective_recipe_dirs
+    return _normalize_recipe_dirs(_default_package_recipe_dirs() or None, working_dir=working_dir)
 
-    if candidate.is_absolute():
-        return str(candidate.resolve())
 
-    if candidate.suffix in {".yaml", ".yml"} or os.sep in name or (os.altsep and os.altsep in name):
-        return str((working_path / candidate).resolve())
+def _create_context_spill_dir() -> Path:
+    return Path(tempfile.mkdtemp(prefix=f"recipe-context-{os.getpid()}-"))
 
-    try:
-        from amplihack.recipes.discovery import find_recipe
 
-        search_dirs = [Path(d) for d in recipe_dirs] if recipe_dirs else None
-        resolved = find_recipe(name, search_dirs=search_dirs)
-        if resolved is not None:
-            return str(resolved.resolve())
-    except Exception as exc:
-        logger.debug("Could not resolve recipe path for %s: %s", name, exc)
+def _cleanup_context_spill_dir(tmp_dir: Path) -> None:
+    if tmp_dir.exists():
+        shutil.rmtree(tmp_dir, ignore_errors=True)
 
-    return name
+
+# Public entry point ---------------------------------------------------------
 
 
 def run_recipe_via_rust(
@@ -816,39 +328,15 @@ def run_recipe_via_rust(
     auto_stage: bool = True,
     progress: bool = False,
 ) -> RecipeResult:
-    """Execute a recipe using the Rust binary.
-
-    When *recipe_dirs* is ``None``, the installed Python package's bundled
-    recipe directory is automatically included so the Rust binary can
-    discover recipes that Python discovery already knows about.
-
-    Raises:
-        RustRunnerNotFoundError: If the binary is not installed.
-        RuntimeError: If the binary produces unparseable output.
-    """
+    """Execute a recipe using the Rust binary."""
     binary = _find_rust_binary()
-
-    # When no explicit recipe_dirs are provided, inject the package bundle
-    # directory so the Rust binary can find the same recipes as Python
-    # discovery.  This fixes the Python/Rust discovery mismatch (#3002).
-    effective_recipe_dirs = _normalize_recipe_dirs(recipe_dirs, working_dir=working_dir)
-    if effective_recipe_dirs is None:
-        effective_recipe_dirs = _normalize_recipe_dirs(
-            _default_package_recipe_dirs() or None,
-            working_dir=working_dir,
-        )
-
+    effective_recipe_dirs = _resolve_effective_recipe_dirs(recipe_dirs, working_dir=working_dir)
     resolved_name = _resolve_recipe_target(
         name,
         recipe_dirs=effective_recipe_dirs,
         working_dir=working_dir,
     )
-
-    # Create a process-scoped temp directory for context value spill files.
-    # tempfile.mkdtemp() creates it atomically (O_CREAT|O_EXCL) with 0o700
-    # permissions, eliminating TOCTOU race conditions from predictable paths.
-    # The finally block removes it unconditionally.
-    tmp_dir = Path(tempfile.mkdtemp(prefix=f"recipe-context-{os.getpid()}-"))
+    tmp_dir = _create_context_spill_dir()
 
     try:
         cmd = _build_rust_command(
@@ -862,16 +350,12 @@ def run_recipe_via_rust(
             user_context=user_context,
             tmp_dir=tmp_dir,
         )
-
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug(
                 "Executing recipe '%s' via Rust binary: %s",
                 name,
                 _redact_command_for_log(cmd),
             )
-
         return _execute_rust_command(cmd, name=name, progress=progress)
     finally:
-        # Clean up spill directory whether execution succeeded or failed.
-        if tmp_dir.exists():
-            shutil.rmtree(tmp_dir, ignore_errors=True)
+        _cleanup_context_spill_dir(tmp_dir)

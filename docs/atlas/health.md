@@ -14,23 +14,23 @@ Overall: :material-alert-circle:{ .atlas-health--warn } **PASS_WITH_WARNINGS** |
 
 ## Check Results
 
-| Check | Status | Details |
-|-------|--------|---------|
-| FILE_COVERAGE | :material-check-circle:{ .atlas-health--pass } | 2304 .py files covered across layers 1, 2, 7 |
-| CLI_COMMAND_COVERAGE | :material-check-circle:{ .atlas-health--pass } | 84 CLI commands all have journeys |
-| EXPORT_CONSISTENCY | :material-alert-circle:{ .atlas-health--warn } | 16 exported names missing definitions |
-| DEPENDENCY_CONSISTENCY | :material-alert-circle:{ .atlas-health--warn } | 18 declared deps appear unused |
-| IO_TRACEABILITY | :material-alert-circle:{ .atlas-health--warn } | 533/916 I/O files in unreachable packages |
-| SUBPROCESS_TRACEABILITY | :material-alert-circle:{ .atlas-health--warn } | 190/335 subprocess files in unreachable packages |
-| PACKAGE_CONSISTENCY | :material-alert-circle:{ .atlas-health--warn } | layer1 vs manifest: 65 differences; layer3 vs manifest: 0 missing, 2083 extra |
-| ROUTE_COVERAGE | :material-check-circle:{ .atlas-health--pass } | 21 HTTP routes all have journeys |
-| IMPORT_RESOLUTION | :material-alert-circle:{ .atlas-health--warn } | 84/2938 imports unresolved |
-| CLI_HANDLER_REACHABILITY | :material-check-circle:{ .atlas-health--pass } | 172 CLI commands have reachable handlers |
-| DEAD_DEP_CROSS_VALIDATION | :material-alert-circle:{ .atlas-health--warn } | 1 deps marked unused in layer3 but found in layer2 |
-| CIRCULAR_IMPORT_SEVERITY | :material-alert-circle:{ .atlas-health--warn } | 12 circular dependency cycles found (10 internal, 2 vendor) |
-| ENV_VAR_COMPLETENESS | :material-alert-circle:{ .atlas-health--warn } | 253 env vars found but no .env.example file |
-| ROUTE_TEST_COVERAGE | :material-alert-circle:{ .atlas-health--warn } | 15/33 routes without test references |
-| REEXPORT_CHAIN_VALIDATION | :material-alert-circle:{ .atlas-health--warn } | 14 broken re-export chains |
+| Check                     | Status                                         | Details                                                                       |
+| ------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------- |
+| FILE_COVERAGE             | :material-check-circle:{ .atlas-health--pass } | 2304 .py files covered across layers 1, 2, 7                                  |
+| CLI_COMMAND_COVERAGE      | :material-check-circle:{ .atlas-health--pass } | 84 CLI commands all have journeys                                             |
+| EXPORT_CONSISTENCY        | :material-alert-circle:{ .atlas-health--warn } | 16 exported names missing definitions                                         |
+| DEPENDENCY_CONSISTENCY    | :material-alert-circle:{ .atlas-health--warn } | 18 declared deps appear unused                                                |
+| IO_TRACEABILITY           | :material-alert-circle:{ .atlas-health--warn } | 533/916 I/O files in unreachable packages                                     |
+| SUBPROCESS_TRACEABILITY   | :material-alert-circle:{ .atlas-health--warn } | 190/335 subprocess files in unreachable packages                              |
+| PACKAGE_CONSISTENCY       | :material-alert-circle:{ .atlas-health--warn } | layer1 vs manifest: 65 differences; layer3 vs manifest: 0 missing, 2083 extra |
+| ROUTE_COVERAGE            | :material-check-circle:{ .atlas-health--pass } | 21 HTTP routes all have journeys                                              |
+| IMPORT_RESOLUTION         | :material-alert-circle:{ .atlas-health--warn } | 84/2938 imports unresolved                                                    |
+| CLI_HANDLER_REACHABILITY  | :material-check-circle:{ .atlas-health--pass } | 172 CLI commands have reachable handlers                                      |
+| DEAD_DEP_CROSS_VALIDATION | :material-alert-circle:{ .atlas-health--warn } | 1 deps marked unused in layer3 but found in layer2                            |
+| CIRCULAR_IMPORT_SEVERITY  | :material-alert-circle:{ .atlas-health--warn } | 12 circular dependency cycles found (10 internal, 2 vendor)                   |
+| ENV_VAR_COMPLETENESS      | :material-alert-circle:{ .atlas-health--warn } | 253 env vars found but no .env.example file                                   |
+| ROUTE_TEST_COVERAGE       | :material-alert-circle:{ .atlas-health--warn } | 15/33 routes without test references                                          |
+| REEXPORT_CHAIN_VALIDATION | :material-alert-circle:{ .atlas-health--warn } | 14 broken re-export chains                                                    |
 
 ## Warnings
 
@@ -40,22 +40,22 @@ Overall: :material-alert-circle:{ .atlas-health--warn } **PASS_WITH_WARNINGS** |
 
 Missing items:
 
-- `/tmp/.tmplCKJO0/amplihack/.claude/scenarios/az-devops-tools/__init__.py::auth_check`
-- `/tmp/.tmplCKJO0/amplihack/.claude/scenarios/az-devops-tools/__init__.py::format_html`
-- `/tmp/.tmplCKJO0/amplihack/.claude/scenarios/az-devops-tools/__init__.py::create_work_item`
-- `/tmp/.tmplCKJO0/amplihack/.claude/scenarios/az-devops-tools/__init__.py::link_parent`
-- `/tmp/.tmplCKJO0/amplihack/.claude/scenarios/az-devops-tools/__init__.py::query_wiql`
-- `/tmp/.tmplCKJO0/amplihack/.claude/scenarios/az-devops-tools/__init__.py::list_types`
-- `/tmp/.tmplCKJO0/amplihack/.claude/tools/amplihack/hooks/claude_power_steering.py::CLAUDE_SDK_AVAILABLE`
-- `/tmp/.tmplCKJO0/amplihack/.claude/tools/amplihack/profile_management/__init__.py::cli_main`
-- `/tmp/.tmplCKJO0/amplihack/amplifier-bundle/tools/amplihack/profile_management/__init__.py::cli_main`
-- `/tmp/.tmplCKJO0/amplihack/docs/claude/tools/amplihack/profile_management/__init__.py::cli_main`
-- `/tmp/.tmplCKJO0/amplihack/src/amplihack/cli/hive_haymaker.py::hive_group`
-- `/tmp/.tmplCKJO0/amplihack/src/amplihack/eval/__init__.py::LongHorizonRunnerResult`
-- `/tmp/.tmplCKJO0/amplihack/src/amplihack/eval/__init__.py::CapabilityEvalTypeResult`
-- `/tmp/.tmplCKJO0/amplihack/src/amplihack/eval/__init__.py::CapabilityScenarioResult`
-- `/tmp/.tmplCKJO0/amplihack/src/amplihack/eval/__init__.py::CapabilityToolCall`
-- `/tmp/.tmplCKJO0/amplihack/src/amplihack/vendor/blarify/vendor/multilspy/__init__.py::Types`
+- `.claude/scenarios/az-devops-tools/__init__.py::auth_check`
+- `.claude/scenarios/az-devops-tools/__init__.py::format_html`
+- `.claude/scenarios/az-devops-tools/__init__.py::create_work_item`
+- `.claude/scenarios/az-devops-tools/__init__.py::link_parent`
+- `.claude/scenarios/az-devops-tools/__init__.py::query_wiql`
+- `.claude/scenarios/az-devops-tools/__init__.py::list_types`
+- `.claude/tools/amplihack/hooks/claude_power_steering.py::CLAUDE_SDK_AVAILABLE`
+- `.claude/tools/amplihack/profile_management/__init__.py::cli_main`
+- `amplifier-bundle/tools/amplihack/profile_management/__init__.py::cli_main`
+- `docs/claude/tools/amplihack/profile_management/__init__.py::cli_main`
+- `src/amplihack/cli/hive_haymaker.py::hive_group`
+- `src/amplihack/eval/__init__.py::LongHorizonRunnerResult`
+- `src/amplihack/eval/__init__.py::CapabilityEvalTypeResult`
+- `src/amplihack/eval/__init__.py::CapabilityScenarioResult`
+- `src/amplihack/eval/__init__.py::CapabilityToolCall`
+- `src/amplihack/vendor/blarify/vendor/multilspy/__init__.py::Types`
 
 ### DEPENDENCY_CONSISTENCY
 
@@ -88,16 +88,16 @@ Missing items:
 
 Missing items:
 
-- `/tmp/.tmplCKJO0/amplihack/amplifier-bundle/skills/pptx/scripts/rearrange.py`
-- `/tmp/.tmplCKJO0/amplihack/.claude/skills/dynamic-debugger/tests/test_mcp_integration.py`
-- `/tmp/.tmplCKJO0/amplihack/.claude/scenarios/az-devops-tools/format_html.py`
-- `/tmp/.tmplCKJO0/amplihack/.claude/tools/amplihack/remote/test_components.py`
-- `/tmp/.tmplCKJO0/amplihack/.github/scripts/link_fixer.py`
-- `/tmp/.tmplCKJO0/amplihack/tests/eval/test_long_horizon_memory.py`
-- `/tmp/.tmplCKJO0/amplihack/.claude/tools/amplihack/remote/test_with_existing_vm.py`
-- `/tmp/.tmplCKJO0/amplihack/.claude/tools/test_ci_status.py`
-- `/tmp/.tmplCKJO0/amplihack/tests/test_settings_migration.py`
-- `/tmp/.tmplCKJO0/amplihack/.claude/tools/amplihack/remote/tests/test_session.py`
+- `amplifier-bundle/skills/pptx/scripts/rearrange.py`
+- `.claude/skills/dynamic-debugger/tests/test_mcp_integration.py`
+- `.claude/scenarios/az-devops-tools/format_html.py`
+- `.claude/tools/amplihack/remote/test_components.py`
+- `.github/scripts/link_fixer.py`
+- `tests/eval/test_long_horizon_memory.py`
+- `.claude/tools/amplihack/remote/test_with_existing_vm.py`
+- `.claude/tools/test_ci_status.py`
+- `tests/test_settings_migration.py`
+- `.claude/tools/amplihack/remote/tests/test_session.py`
 
 ### SUBPROCESS_TRACEABILITY
 
@@ -105,16 +105,16 @@ Missing items:
 
 Missing items:
 
-- `/tmp/.tmplCKJO0/amplihack/.claude/skills/dynamic-debugger/tests/test_mcp_integration.py`
-- `/tmp/.tmplCKJO0/amplihack/.claude/tools/amplihack/remote/test_components.py`
-- `/tmp/.tmplCKJO0/amplihack/.github/scripts/link_fixer.py`
-- `/tmp/.tmplCKJO0/amplihack/.claude/tools/amplihack/remote/test_with_existing_vm.py`
-- `/tmp/.tmplCKJO0/amplihack/.claude/tools/platform_bridge/detector.py`
-- `/tmp/.tmplCKJO0/amplihack/.claude/skills/common/verification/verify_skill.py`
-- `/tmp/.tmplCKJO0/amplihack/.claude/tools/amplihack/hooks/test_integration.py`
-- `/tmp/.tmplCKJO0/amplihack/.claude/tools/ci_workflow.py`
-- `/tmp/.tmplCKJO0/amplihack/.claude/tools/amplihack/remote/tests/test_context_packager.py`
-- `/tmp/.tmplCKJO0/amplihack/.claude/tools/amplihack/hooks/session_end.py`
+- `.claude/skills/dynamic-debugger/tests/test_mcp_integration.py`
+- `.claude/tools/amplihack/remote/test_components.py`
+- `.github/scripts/link_fixer.py`
+- `.claude/tools/amplihack/remote/test_with_existing_vm.py`
+- `.claude/tools/platform_bridge/detector.py`
+- `.claude/skills/common/verification/verify_skill.py`
+- `.claude/tools/amplihack/hooks/test_integration.py`
+- `.claude/tools/ci_workflow.py`
+- `.claude/tools/amplihack/remote/tests/test_context_packager.py`
+- `.claude/tools/amplihack/hooks/session_end.py`
 
 ### PACKAGE_CONSISTENCY
 
@@ -131,26 +131,26 @@ Missing items:
 
 Missing items:
 
-- `/tmp/.tmplCKJO0/amplihack/.claude/tools/amplihack/builders/claude_transcript_builder.py imports amplihack from /tmp/.tmplCKJO0/amplihack/amplihack/__init__.py`
-- `/tmp/.tmplCKJO0/amplihack/.claude/tools/amplihack/builders/codex_transcripts_builder.py imports amplihack from /tmp/.tmplCKJO0/amplihack/amplihack/__init__.py`
-- `/tmp/.tmplCKJO0/amplihack/.claude/tools/amplihack/hooks/power_steering_checker/__init__.py imports get_shared_runtime_dir from /tmp/.tmplCKJO0/amplihack/.claude/tools/amplihack/hooks/power_steering_checker/main_checker.py`
-- `/tmp/.tmplCKJO0/amplihack/.claude/tools/amplihack/hooks/power_steering_checker/__init__.py imports analyze_consideration from /tmp/.tmplCKJO0/amplihack/.claude/tools/amplihack/hooks/power_steering_checker/sdk_calls.py`
-- `/tmp/.tmplCKJO0/amplihack/.claude/tools/amplihack/memory/context_preservation.py imports amplihack from /tmp/.tmplCKJO0/amplihack/amplihack/__init__.py`
-- `/tmp/.tmplCKJO0/amplihack/.claude/tools/amplihack/memory/examples.py imports amplihack from /tmp/.tmplCKJO0/amplihack/amplihack/__init__.py`
-- `/tmp/.tmplCKJO0/amplihack/.claude/tools/amplihack/paths.py imports amplihack from /tmp/.tmplCKJO0/amplihack/amplihack/__init__.py`
-- `/tmp/.tmplCKJO0/amplihack/.claude/tools/amplihack/remote/tests/test_cli.py imports cli from /tmp/.tmplCKJO0/amplihack/.claude/tools/amplihack/remote/__init__.py`
-- `/tmp/.tmplCKJO0/amplihack/.github/scripts/pr_triage/validator.py imports github_client from /tmp/.tmplCKJO0/amplihack/.github/scripts/pr_triage/__init__.py`
-- `/tmp/.tmplCKJO0/amplihack/.github/scripts/pr_triage/validator.py imports security from /tmp/.tmplCKJO0/amplihack/.github/scripts/pr_triage/__init__.py`
-- `/tmp/.tmplCKJO0/amplihack/.github/scripts/pr_triage/validator.py imports analyzers from /tmp/.tmplCKJO0/amplihack/.github/scripts/pr_triage/__init__.py`
-- `/tmp/.tmplCKJO0/amplihack/.github/scripts/pr_triage/validator.py imports analyzers_mvp from /tmp/.tmplCKJO0/amplihack/.github/scripts/pr_triage/__init__.py`
-- `/tmp/.tmplCKJO0/amplihack/amplifier-bundle/tools/amplihack/builders/claude_transcript_builder.py imports amplihack from /tmp/.tmplCKJO0/amplihack/amplihack/__init__.py`
-- `/tmp/.tmplCKJO0/amplihack/amplifier-bundle/tools/amplihack/builders/codex_transcripts_builder.py imports amplihack from /tmp/.tmplCKJO0/amplihack/amplihack/__init__.py`
-- `/tmp/.tmplCKJO0/amplihack/amplifier-bundle/tools/amplihack/memory/context_preservation.py imports amplihack from /tmp/.tmplCKJO0/amplihack/amplihack/__init__.py`
-- `/tmp/.tmplCKJO0/amplihack/amplifier-bundle/tools/amplihack/memory/examples.py imports amplihack from /tmp/.tmplCKJO0/amplihack/amplihack/__init__.py`
-- `/tmp/.tmplCKJO0/amplihack/amplifier-bundle/tools/amplihack/paths.py imports amplihack from /tmp/.tmplCKJO0/amplihack/amplihack/__init__.py`
-- `/tmp/.tmplCKJO0/amplihack/amplifier-bundle/tools/amplihack/remote/tests/test_cli.py imports cli from /tmp/.tmplCKJO0/amplihack/amplifier-bundle/tools/amplihack/remote/__init__.py`
-- `/tmp/.tmplCKJO0/amplihack/docs/claude/tools/amplihack/builders/claude_transcript_builder.py imports amplihack from /tmp/.tmplCKJO0/amplihack/amplihack/__init__.py`
-- `/tmp/.tmplCKJO0/amplihack/docs/claude/tools/amplihack/builders/codex_transcripts_builder.py imports amplihack from /tmp/.tmplCKJO0/amplihack/amplihack/__init__.py`
+- `.claude/tools/amplihack/builders/claude_transcript_builder.py imports amplihack from amplihack/__init__.py`
+- `.claude/tools/amplihack/builders/codex_transcripts_builder.py imports amplihack from amplihack/__init__.py`
+- `.claude/tools/amplihack/hooks/power_steering_checker/__init__.py imports get_shared_runtime_dir from .claude/tools/amplihack/hooks/power_steering_checker/main_checker.py`
+- `.claude/tools/amplihack/hooks/power_steering_checker/__init__.py imports analyze_consideration from .claude/tools/amplihack/hooks/power_steering_checker/sdk_calls.py`
+- `.claude/tools/amplihack/memory/context_preservation.py imports amplihack from amplihack/__init__.py`
+- `.claude/tools/amplihack/memory/examples.py imports amplihack from amplihack/__init__.py`
+- `.claude/tools/amplihack/paths.py imports amplihack from amplihack/__init__.py`
+- `.claude/tools/amplihack/remote/tests/test_cli.py imports cli from .claude/tools/amplihack/remote/__init__.py`
+- `.github/scripts/pr_triage/validator.py imports github_client from .github/scripts/pr_triage/__init__.py`
+- `.github/scripts/pr_triage/validator.py imports security from .github/scripts/pr_triage/__init__.py`
+- `.github/scripts/pr_triage/validator.py imports analyzers from .github/scripts/pr_triage/__init__.py`
+- `.github/scripts/pr_triage/validator.py imports analyzers_mvp from .github/scripts/pr_triage/__init__.py`
+- `amplifier-bundle/tools/amplihack/builders/claude_transcript_builder.py imports amplihack from amplihack/__init__.py`
+- `amplifier-bundle/tools/amplihack/builders/codex_transcripts_builder.py imports amplihack from amplihack/__init__.py`
+- `amplifier-bundle/tools/amplihack/memory/context_preservation.py imports amplihack from amplihack/__init__.py`
+- `amplifier-bundle/tools/amplihack/memory/examples.py imports amplihack from amplihack/__init__.py`
+- `amplifier-bundle/tools/amplihack/paths.py imports amplihack from amplihack/__init__.py`
+- `amplifier-bundle/tools/amplihack/remote/tests/test_cli.py imports cli from amplifier-bundle/tools/amplihack/remote/__init__.py`
+- `docs/claude/tools/amplihack/builders/claude_transcript_builder.py imports amplihack from amplihack/__init__.py`
+- `docs/claude/tools/amplihack/builders/codex_transcripts_builder.py imports amplihack from amplihack/__init__.py`
 
 ### DEAD_DEP_CROSS_VALIDATION
 
@@ -232,17 +232,17 @@ Missing items:
 
 Missing items:
 
-- `/tmp/.tmplCKJO0/amplihack/.claude/scenarios/az-devops-tools/__init__.py::auth_check`
-- `/tmp/.tmplCKJO0/amplihack/.claude/scenarios/az-devops-tools/__init__.py::format_html`
-- `/tmp/.tmplCKJO0/amplihack/.claude/scenarios/az-devops-tools/__init__.py::create_work_item`
-- `/tmp/.tmplCKJO0/amplihack/.claude/scenarios/az-devops-tools/__init__.py::link_parent`
-- `/tmp/.tmplCKJO0/amplihack/.claude/scenarios/az-devops-tools/__init__.py::query_wiql`
-- `/tmp/.tmplCKJO0/amplihack/.claude/scenarios/az-devops-tools/__init__.py::list_types`
-- `/tmp/.tmplCKJO0/amplihack/.claude/tools/amplihack/profile_management/__init__.py::cli_main`
-- `/tmp/.tmplCKJO0/amplihack/amplifier-bundle/tools/amplihack/profile_management/__init__.py::cli_main`
-- `/tmp/.tmplCKJO0/amplihack/docs/claude/tools/amplihack/profile_management/__init__.py::cli_main`
-- `/tmp/.tmplCKJO0/amplihack/src/amplihack/eval/__init__.py::LongHorizonRunnerResult`
-- `/tmp/.tmplCKJO0/amplihack/src/amplihack/eval/__init__.py::CapabilityEvalTypeResult`
-- `/tmp/.tmplCKJO0/amplihack/src/amplihack/eval/__init__.py::CapabilityScenarioResult`
-- `/tmp/.tmplCKJO0/amplihack/src/amplihack/eval/__init__.py::CapabilityToolCall`
-- `/tmp/.tmplCKJO0/amplihack/src/amplihack/vendor/blarify/vendor/multilspy/__init__.py::Types`
+- `.claude/scenarios/az-devops-tools/__init__.py::auth_check`
+- `.claude/scenarios/az-devops-tools/__init__.py::format_html`
+- `.claude/scenarios/az-devops-tools/__init__.py::create_work_item`
+- `.claude/scenarios/az-devops-tools/__init__.py::link_parent`
+- `.claude/scenarios/az-devops-tools/__init__.py::query_wiql`
+- `.claude/scenarios/az-devops-tools/__init__.py::list_types`
+- `.claude/tools/amplihack/profile_management/__init__.py::cli_main`
+- `amplifier-bundle/tools/amplihack/profile_management/__init__.py::cli_main`
+- `docs/claude/tools/amplihack/profile_management/__init__.py::cli_main`
+- `src/amplihack/eval/__init__.py::LongHorizonRunnerResult`
+- `src/amplihack/eval/__init__.py::CapabilityEvalTypeResult`
+- `src/amplihack/eval/__init__.py::CapabilityScenarioResult`
+- `src/amplihack/eval/__init__.py::CapabilityToolCall`
+- `src/amplihack/vendor/blarify/vendor/multilspy/__init__.py::Types`

@@ -24,11 +24,15 @@ import pytest
 from amplihack.recipes.models import StepStatus
 from amplihack.recipes.rust_runner import (
     RustRunnerNotFoundError,
+    RustRunnerVersionError,
     _build_rust_env,
     _normalize_copilot_cli_args,
     _redact_command_for_log,
+    _resolve_recipe_target,
+    check_runner_version,
     ensure_rust_recipe_runner,
     find_rust_binary,
+    get_runner_version,
     is_rust_runner_available,
     run_recipe_via_rust,
 )
@@ -832,3 +836,82 @@ class TestProgressStreaming:
         assert "▶ classify-and-decompose" in streamed_stderr.getvalue()
         # Issue #3049: no timeout should be passed to process.wait()
         assert fake.timeout is None
+
+
+class TestRunnerVersionChecks:
+    """Tests for runner version discovery and enforcement."""
+
+    @patch("subprocess.run")
+    def test_get_runner_version_parses_semver_output(self, mock_run):
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout="recipe-runner 0.2.5\n",
+            stderr="",
+        )
+
+        assert get_runner_version("/usr/bin/recipe-runner-rs") == "0.2.5"
+
+    @patch("subprocess.run", side_effect=OSError("boom"))
+    def test_get_runner_version_returns_none_on_subprocess_error(self, mock_run):
+        assert get_runner_version("/usr/bin/recipe-runner-rs") is None
+
+    @patch("amplihack.recipes.rust_runner_binary.get_runner_version", return_value="0.0.9")
+    def test_check_runner_version_rejects_old_runner(self, _mock_version):
+        assert check_runner_version("/usr/bin/recipe-runner-rs") is False
+
+    @patch("amplihack.recipes.rust_runner_binary.get_runner_version", return_value="dev-build")
+    def test_check_runner_version_allows_unparseable_version(self, _mock_version):
+        assert check_runner_version("/usr/bin/recipe-runner-rs") is True
+
+    @patch("amplihack.recipes.rust_runner.get_runner_version", return_value="0.0.9")
+    @patch("amplihack.recipes.rust_runner.check_runner_version", return_value=False)
+    @patch(
+        "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
+    )
+    def test_run_recipe_raises_when_runner_version_is_too_old(
+        self,
+        _mock_find,
+        _mock_check_version,
+        _mock_get_version,
+    ):
+        with pytest.raises(RustRunnerVersionError, match="0.0.9"):
+            run_recipe_via_rust("test-recipe")
+
+
+class TestResolveRecipeTarget:
+    """Tests for recipe target resolution and fallbacks."""
+
+    def test_relative_recipe_path_resolves_against_working_dir(self):
+        resolved = _resolve_recipe_target(
+            "recipes/test.yaml",
+            recipe_dirs=None,
+            working_dir="/repo/worktree",
+        )
+
+        assert resolved == str(Path("/repo/worktree/recipes/test.yaml").resolve())
+
+    @patch(
+        "amplihack.recipes.discovery.find_recipe",
+        return_value=Path("/recipes/default-workflow.yaml"),
+    )
+    def test_recipe_name_resolves_via_discovery(self, mock_find_recipe):
+        resolved = _resolve_recipe_target(
+            "default-workflow",
+            recipe_dirs=["/recipes"],
+            working_dir="/repo/worktree",
+        )
+
+        assert resolved == str(Path("/recipes/default-workflow.yaml").resolve())
+        mock_find_recipe.assert_called_once()
+
+    @patch("amplihack.recipes.discovery.find_recipe", side_effect=RuntimeError("lookup failed"))
+    def test_recipe_name_falls_back_when_discovery_errors(self, mock_find_recipe):
+        resolved = _resolve_recipe_target(
+            "default-workflow",
+            recipe_dirs=["/recipes"],
+            working_dir="/repo/worktree",
+        )
+
+        assert resolved == "default-workflow"
+        mock_find_recipe.assert_called_once()
