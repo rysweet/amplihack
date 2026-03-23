@@ -34,6 +34,7 @@ import kuzu  # type: ignore[import-not-found]
 from .similarity import compute_similarity
 
 logger = logging.getLogger(__name__)
+KUZU_MAX_DB_SIZE = 256 * 1024 * 1024
 
 
 class MemoryCategory(str, Enum):
@@ -305,7 +306,7 @@ class HierarchicalMemory:
             self.db_path = db_path
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
 
-        self.database = kuzu.Database(str(self.db_path))
+        self.database = kuzu.Database(str(self.db_path), max_db_size=KUZU_MAX_DB_SIZE)
         self.connection = kuzu.Connection(self.database)
         self._classifier = MemoryClassifier()
         self._init_schema()

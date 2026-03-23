@@ -27,6 +27,8 @@ import time
 from collections.abc import Callable
 from typing import Protocol, runtime_checkable
 
+from .partition_routing import DEFAULT_EVENT_HUB_PARTITIONS, stable_agent_index
+
 logger = logging.getLogger(__name__)
 
 
@@ -385,10 +387,7 @@ class EventHubsInputSource:
     @staticmethod
     def _agent_index(agent_id: str) -> int:
         """Extract numeric index from ``agent-N`` names."""
-        try:
-            return int(agent_id.rsplit("-", 1)[-1])
-        except (ValueError, IndexError):
-            return abs(hash(agent_id))
+        return stable_agent_index(agent_id)
 
     def _get_num_partitions(self) -> int:
         """Return the input hub partition count, caching the first result."""
@@ -397,7 +396,12 @@ class EventHubsInputSource:
         try:
             self._num_partitions = len(self._consumer.get_partition_ids())
         except Exception:
-            self._num_partitions = 32
+            logger.warning(
+                "EventHubsInputSource: failed to query partition ids; falling back to %d",
+                DEFAULT_EVENT_HUB_PARTITIONS,
+                exc_info=True,
+            )
+            self._num_partitions = DEFAULT_EVENT_HUB_PARTITIONS
         return self._num_partitions
 
     def _target_partition(self, agent_id: str) -> str:

@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pytest
 
+from amplihack.agents.goal_seeking import _hierarchical_memory_local as local_hierarchical_memory
 from amplihack.agents.goal_seeking.hierarchical_memory import (
     HierarchicalMemory,
     KnowledgeSubgraph,
@@ -76,6 +77,38 @@ class TestHierarchicalMemory:
         """Empty agent name should raise ValueError."""
         with pytest.raises(ValueError, match="agent_name cannot be empty"):
             HierarchicalMemory(agent_name="", db_path=temp_db / "fail_db")
+
+    def test_local_init_caps_kuzu_max_db_size(self, temp_db, monkeypatch):
+        """Local fallback uses a bounded Kuzu database size."""
+        calls: dict[str, object] = {}
+
+        class DummyConnection:
+            def close(self):
+                return None
+
+        def fake_database(path: str, **kwargs):
+            calls["path"] = path
+            calls["kwargs"] = kwargs
+            return object()
+
+        monkeypatch.setattr(local_hierarchical_memory.kuzu, "Database", fake_database)
+        monkeypatch.setattr(
+            local_hierarchical_memory.kuzu, "Connection", lambda database: DummyConnection()
+        )
+        monkeypatch.setattr(
+            local_hierarchical_memory.HierarchicalMemory, "_init_schema", lambda self: None
+        )
+
+        mem = local_hierarchical_memory.HierarchicalMemory(
+            agent_name="test_local",
+            db_path=temp_db / "local_db",
+        )
+
+        assert calls["path"] == str(mem.db_path)
+        assert calls["kwargs"] == {
+            "max_db_size": local_hierarchical_memory.KUZU_MAX_DB_SIZE,
+        }
+        mem.close()
 
     def test_store_knowledge_returns_id(self, memory):
         """store_knowledge should return a valid node ID."""
