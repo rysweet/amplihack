@@ -1,0 +1,12 @@
+name: CI
+on: [push, pull_request_target]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+      - run: pip install -r requirements.txt
+      - run: echo "Token=${{ secrets.API_TOKEN }}"
+      - run: pytest
