@@ -16,6 +16,7 @@ import pytest
 
 # These imports will fail until implementation exists (TDD)
 try:
+    from amplihack.memory.models import MemoryEntry, MemoryType
     from amplihack.memory.retrieval_pipeline import (
         ContextFormatter,
         RelevanceScorer,

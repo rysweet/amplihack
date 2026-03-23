@@ -20,6 +20,7 @@ from typing import Any
 
 from ..sqlite_backend import create_backend
 from ..coordinator import MemoryCoordinator
+from ..sqlite_backend import create_backend
 from .performance_evaluator import PerformanceEvaluator, PerformanceMetrics
 from .quality_evaluator import QualityEvaluator, QualityMetrics
 from .reliability_evaluator import ReliabilityEvaluator, ReliabilityMetrics
