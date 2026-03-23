@@ -1,4 +1,4 @@
-"""Unit tests fer token budget enforcement in memory retrieval.
+"""Unit tests for token budget enforcement in memory retrieval.
 
 Tests token counting, budget allocation, and enforcement logic
 to ensure memory injection stays within 8000 token limit.
@@ -21,13 +21,13 @@ try:
         estimate_tokens,
     )
 
-    from amplihack.memory.types import MemoryEntry, MemoryType
+    from amplihack.memory.models import MemoryEntry, MemoryType
 except ImportError:
     pytest.skip("Token budget not implemented yet", allow_module_level=True)
 
 
 class TestTokenCounter:
-    """Test token counting fer different content types."""
+    """Test token counting for different content types."""
 
     def test_count_empty_string(self):
         """Empty string is 0 tokens."""

@@ -798,7 +798,7 @@ def validate_no_todos_in_production():
 
 @pytest.fixture
 def sample_plugin(tmp_path):
-    """Create a sample plugin fer testin'.
+    """Create a sample plugin for testin'.
 
     Returns:
         Path: Directory containin' sample plugin with valid manifest
@@ -810,7 +810,7 @@ def sample_plugin(tmp_path):
     manifest = {
         "name": "sample-plugin",
         "version": "1.0.0",
-        "description": "Sample plugin fer testin'",
+        "description": "Sample plugin for testin'",
         "author": "Test Author",
         "mcpServers": {"sample-server": {"command": "node", "args": ["server.js"]}},
     }
@@ -827,7 +827,7 @@ def sample_plugin(tmp_path):
 
 @pytest.fixture
 def invalid_plugin(tmp_path):
-    """Create an invalid plugin fer testin' error handlin'.
+    """Create an invalid plugin for testin' error handlin'.
 
     Returns:
         Path: Directory containin' plugin with invalid/missing manifest
@@ -843,7 +843,7 @@ def invalid_plugin(tmp_path):
 
 @pytest.fixture
 def multi_language_project(tmp_path):
-    """Create a multi-language project fer LSP testin'.
+    """Create a multi-language project for LSP testin'.
 
     Returns:
         Path: Directory containin' Python, TypeScript, and Rust files
@@ -871,7 +871,7 @@ def multi_language_project(tmp_path):
 def assert_subprocess_success(result):
     """Assert that a subprocess result was successful.
 
-    Helper function fer clearer test assertions.
+    Helper function for clearer test assertions.
 
     Args:
         result: SubprocessResult from test harness

@@ -21,6 +21,8 @@ import types
 from pathlib import Path
 from typing import Any, Self
 
+from amplihack.observability import otel_env_overrides
+
 from .base import AgentResult, AgentTool, GoalSeekingAgent, SDKType
 
 logger = logging.getLogger(__name__)
@@ -231,6 +233,17 @@ class CopilotGoalSeekingAgent(GoalSeekingAgent):
         client_opts = {}
         if self._cli_path:
             client_opts["cli_path"] = self._cli_path
+        child_env = otel_env_overrides(
+            service_name="amplihack.copilot-sdk-agent",
+            attributes={
+                "amplihack.agent.name": self.name,
+                "amplihack.sdk": "copilot",
+            },
+        )
+        if child_env:
+            merged_env = dict(os.environ)
+            merged_env.update(child_env)
+            client_opts["env"] = merged_env
 
         self._client = CopilotClient(client_opts or None)
         await self._client.start()

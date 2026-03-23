@@ -1,11 +1,11 @@
-"""Unit tests fer trivial content filtering logic.
+"""Unit tests for trivial content filtering logic.
 
 Tests pre-filter logic that rejects low-value content before
 storage pipeline to save processing time.
 
 Philosophy:
 - Fast rejection of obvious trivial content
-- Clear rules fer what constitutes trivial
+- Clear rules for what constitutes trivial
 - Transparent filtering decisions
 """
 
@@ -115,7 +115,7 @@ class TestDocumentationCheck:
 
     def test_documented_fact_is_trivial(self):
         """Information directly from docs is trivial to store."""
-        content = "amplihack uses specialized agents fer different tasks"
+        content = "amplihack uses specialized agents for different tasks"
         docs_content = [
             "amplihack architecture uses specialized agents",
             "different agents handle different tasks",
@@ -133,7 +133,7 @@ class TestDocumentationCheck:
 
     def test_rephrased_documentation_is_trivial(self):
         """Rephrasing of existing docs is trivial."""
-        content = "Agents in amplihack are specialized fer specific tasks"
+        content = "Agents in amplihack are specialized for specific tasks"
         docs_content = [
             "amplihack uses specialized agents",
             "each agent handles specific tasks",
@@ -158,7 +158,7 @@ class TestTemporaryDebugDetection:
 
     def test_meaningful_log_not_trivial(self):
         """Meaningful log with error info not trivial."""
-        assert not is_temporary_debug("ERROR: Authentication failed fer user john@example.com")
+        assert not is_temporary_debug("ERROR: Authentication failed for user john@example.com")
         assert not is_temporary_debug("WARNING: Rate limit approaching (90% capacity)")
 
     def test_stack_trace_not_trivial(self):
@@ -179,7 +179,7 @@ class TestFilterResult:
     """Test FilterResult data structure."""
 
     def test_filter_result_not_trivial(self):
-        """FilterResult fer non-trivial content."""
+        """FilterResult for non-trivial content."""
         result = FilterResult(
             is_trivial=False,
             reason=None,
@@ -190,7 +190,7 @@ class TestFilterResult:
         assert result.should_store()
 
     def test_filter_result_trivial_with_reason(self):
-        """FilterResult fer trivial content includes reason."""
+        """FilterResult for trivial content includes reason."""
         result = FilterResult(
             is_trivial=True,
             reason=FilterReason.SIMPLE_GREETING,
@@ -207,7 +207,7 @@ class TestFilterResult:
             reason=FilterReason.SIMPLE_GREETING,
             confidence=0.3,  # Low confidence
         )
-        # With low confidence, allow storage fer agent review
+        # With low confidence, allow storage for agent review
         assert result.should_store_despite_low_confidence()
 
 

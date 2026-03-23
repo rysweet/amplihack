@@ -1,17 +1,17 @@
-"""Discovery memory adapter - sync interface fer session hooks.
+"""Discovery memory adapter - sync interface for session hooks.
 
 Provides simple sync functions to store/retrieve discoveries
 from the memory system. Used by session_start.py hook.
 
 Philosophy:
 - Thin adapter, not an abstraction layer
-- Sync wrappers fer async MemoryCoordinator
+- Sync wrappers for async MemoryCoordinator
 - Discovery-specific metadata structure
 - Graceful fallback when memory unavailable
 
 Public API:
     store_discovery: Store a discovery in memory
-    get_recent_discoveries: Retrieve recent discoveries fer context
+    get_recent_discoveries: Retrieve recent discoveries for context
 """
 
 import asyncio
@@ -20,7 +20,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from .coordinator import MemoryCoordinator, RetrievalQuery, StorageRequest
-from .types import MemoryType
+from .models import MemoryType
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ def store_discovery(
         category: Optional category (e.g., "bug-fix", "pattern", "architecture")
         date: Discovery date (defaults to now)
         summary: Brief summary (first 100 chars of content if not provided)
-        session_id: Session ID fer coordinator
+        session_id: Session ID for coordinator
 
     Returns:
         Memory ID if stored, None if rejected or failed
@@ -73,12 +73,12 @@ def get_recent_discoveries(
     limit: int = 10,
     session_id: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Retrieve recent discoveries fer session context.
+    """Retrieve recent discoveries for session context.
 
     Args:
         days: How far back to look (default 30)
         limit: Maximum discoveries to return
-        session_id: Session ID fer coordinator
+        session_id: Session ID for coordinator
 
     Returns:
         List of discovery dicts with content and metadata
@@ -92,7 +92,7 @@ def get_recent_discoveries(
         query_text="discovery learning pattern solution",  # Semantic search terms
         memory_types=[MemoryType.SEMANTIC],
         time_range=(start_time, end_time),
-        token_budget=4000,  # Reasonable budget fer context
+        token_budget=4000,  # Reasonable budget for context
     )
 
     try:

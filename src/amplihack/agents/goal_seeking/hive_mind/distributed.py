@@ -22,6 +22,7 @@ import sys
 import threading
 import time
 from collections import OrderedDict
+from typing import Any
 
 try:
     import kuzu
@@ -251,7 +252,7 @@ class AgentNode:
             for f in facts
         ]
 
-    def get_all_facts(self, limit: int = 500) -> list[dict]:
+    def get_all_facts(self, limit: int = 500, **kwargs: Any) -> list[dict]:
         """Return all facts in this agent's local DB.
 
         Args:

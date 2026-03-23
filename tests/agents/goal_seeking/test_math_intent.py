@@ -355,6 +355,7 @@ class TestCategoryInstructions:
             "needs_math": False,
             "needs_temporal": False,
             "math_type": "none",
+            "summary_context": "- Project Atlas\n- Project Beacon",
         }
 
         self.agent._synthesize_with_llm(
@@ -369,6 +370,8 @@ class TestCategoryInstructions:
         messages = call_args[1].get("messages", call_args[0][0] if call_args[0] else [])
         prompt_text = " ".join(m.get("content", "") for m in messages if isinstance(m, dict))
         assert "COUNTING" in prompt_text or "ENUMERATION" in prompt_text
+        assert "Knowledge Overview" in prompt_text
+        assert "UNION" in prompt_text
 
     @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
     def test_temporal_comparison_instructions(self, mock_completion: MagicMock):
@@ -395,6 +398,43 @@ class TestCategoryInstructions:
         messages = call_args[1].get("messages", call_args[0][0] if call_args[0] else [])
         prompt_text = " ".join(m.get("content", "") for m in messages if isinstance(m, dict))
         assert "TEMPORAL" in prompt_text
+
+    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
+    def test_temporal_code_result_is_authoritative(self, mock_completion: MagicMock):
+        """Temporal code results should be surfaced as authoritative guidance."""
+        mock_completion.return_value = _make_llm_response("The deadline changed 2 times.")
+
+        context = [{"context": "Atlas", "outcome": "June 15 -> August 3 -> September 20"}]
+        intent = {
+            "intent": "temporal_comparison",
+            "needs_math": False,
+            "needs_temporal": True,
+            "math_type": "none",
+            "temporal_code": {
+                "code": "answer = max(0, len(transitions) - 1)",
+                "result": 2,
+                "transitions": [
+                    {"value": "June 15"},
+                    {"value": "August 3"},
+                    {"value": "September 20"},
+                ],
+                "operation": "change_count",
+            },
+        }
+
+        self.agent._synthesize_with_llm(
+            "How many times did the Atlas deadline change?",
+            context,
+            "L3",
+            intent=intent,
+        )
+
+        messages = mock_completion.call_args[1].get(
+            "messages", mock_completion.call_args[0][0] if mock_completion.call_args[0] else []
+        )
+        prompt_text = " ".join(m.get("content", "") for m in messages if isinstance(m, dict))
+        assert "AUTHORITATIVE TEMPORAL RESOLUTION" in prompt_text
+        assert "Resolved change count: 2" in prompt_text
 
     @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
     def test_simple_intent_skips_category_instructions(self, mock_completion: MagicMock):
@@ -735,9 +775,12 @@ class TestQAEchoFiltering:
 class TestSummaryConditionalFilter:
     """Tests for SUMMARY fact filtering in answer_question().
 
-    SUMMARY facts are filtered out ONLY for meta_memory intent (counting,
-    aggregation) to avoid inflating counts. For other intents, SUMMARY facts
-    are retained because they provide useful context for recall.
+    For meta_memory intent, only DB-stored SUMMARY nodes (context="SUMMARY")
+    are filtered out. Tiered retrieval summaries tagged with "summary" are
+    retained because they provide broad coverage for enumeration/counting.
+
+    For other intents, SUMMARY facts are also retained because they provide
+    useful context for recall.
 
     The filtering happens at approximately lines 498-506 of learning_agent.py.
     """
@@ -754,7 +797,7 @@ class TestSummaryConditionalFilter:
     def test_summary_filtered_for_meta_memory(
         self, mock_agg: MagicMock, mock_intent: MagicMock, mock_synth: MagicMock
     ):
-        """For meta_memory intent, SUMMARY facts are filtered out."""
+        """For meta_memory intent, only DB SUMMARY nodes are filtered out."""
         mock_intent.return_value = {
             "intent": "meta_memory",
             "needs_math": False,
@@ -790,7 +833,7 @@ class TestSummaryConditionalFilter:
         fact_outcomes = [f.get("outcome", "") for f in facts_passed]
         assert "Beta launched in January" in fact_outcomes
         assert "Overall project summary with 5 topics" not in fact_outcomes
-        assert "Summary of all work done" not in fact_outcomes
+        assert "Summary of all work done" in fact_outcomes
 
     @patch.object(LearningAgent, "_synthesize_with_llm", return_value="Mocked answer")
     @patch.object(LearningAgent, "_detect_intent")
@@ -840,11 +883,11 @@ class TestSummaryConditionalFilter:
     def test_summary_filter_uses_both_conditions(
         self, mock_agg: MagicMock, mock_intent: MagicMock, mock_synth: MagicMock
     ):
-        """SUMMARY filter catches facts by context='SUMMARY' OR tags containing 'summary'.
+        """Meta-memory filtering removes DB SUMMARY nodes but keeps tiered summaries.
 
         For meta_memory intent:
         - context="SUMMARY" -> filtered
-        - tags=["summary"] -> filtered
+        - tags=["summary"] -> retained
         - both context="SUMMARY" and tags=["summary"] -> filtered
         - neither -> retained
         """
@@ -861,7 +904,7 @@ class TestSummaryConditionalFilter:
             "outcome": "High-level overview",
             "tags": ["overview"],
         }
-        # Only tags=["summary"] -> filtered
+        # Only tags=["summary"] -> retained
         summary_tag_only = {
             "context": "Project Report",
             "outcome": "Condensed report",
@@ -895,8 +938,8 @@ class TestSummaryConditionalFilter:
             else synth_call_args[1].get("context", [])
         )
         fact_outcomes = [f.get("outcome", "") for f in facts_passed]
-        # Only the regular fact should survive
+        # DB SUMMARY nodes are filtered; tiered summaries stay available.
         assert "Team grew by 3 members" in fact_outcomes
         assert "High-level overview" not in fact_outcomes
-        assert "Condensed report" not in fact_outcomes
+        assert "Condensed report" in fact_outcomes
         assert "Full summary with tags" not in fact_outcomes

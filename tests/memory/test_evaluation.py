@@ -1,4 +1,4 @@
-"""Tests fer memory evaluation framework.
+"""Tests for memory evaluation framework.
 
 Tests:
 - QualityEvaluator: Relevance, precision, recall, NDCG
@@ -10,7 +10,7 @@ Tests:
 import pytest
 import pytest_asyncio
 
-from src.amplihack.memory.backends import create_backend
+from amplihack.memory.sqlite_backend import create_backend
 from src.amplihack.memory.coordinator import MemoryCoordinator, StorageRequest
 from src.amplihack.memory.evaluation import (
     BackendComparison,
@@ -20,19 +20,19 @@ from src.amplihack.memory.evaluation import (
     run_evaluation,
 )
 from src.amplihack.memory.evaluation.quality_evaluator import QueryTestCase
-from src.amplihack.memory.types import MemoryType
+from amplihack.memory.models import MemoryType
 
 
 @pytest_asyncio.fixture
 async def coordinator():
-    """Create coordinator with SQLite backend fer testing."""
+    """Create coordinator with SQLite backend for testing."""
     backend = create_backend(backend_type="sqlite", db_path=":memory:")
     coordinator = MemoryCoordinator(backend=backend)
     return coordinator
 
 
 class TestQualityEvaluator:
-    """Tests fer quality evaluation."""
+    """Tests for quality evaluation."""
 
     @pytest.mark.asyncio
     async def test_evaluate_with_perfect_results(self, coordinator):
@@ -87,7 +87,7 @@ class TestQualityEvaluator:
 
 
 class TestPerformanceEvaluator:
-    """Tests fer performance evaluation."""
+    """Tests for performance evaluation."""
 
     @pytest.mark.asyncio
     async def test_evaluate_latency(self, coordinator):
@@ -136,7 +136,7 @@ class TestPerformanceEvaluator:
 
 
 class TestReliabilityEvaluator:
-    """Tests fer reliability evaluation."""
+    """Tests for reliability evaluation."""
 
     @pytest.mark.asyncio
     async def test_data_integrity(self, coordinator):
@@ -171,7 +171,7 @@ class TestReliabilityEvaluator:
 
 
 class TestBackendComparison:
-    """Tests fer backend comparison."""
+    """Tests for backend comparison."""
 
     @pytest.mark.asyncio
     async def test_evaluate_sqlite_backend(self):
@@ -207,7 +207,7 @@ class TestBackendComparison:
 
     @pytest.mark.asyncio
     async def test_run_evaluation_convenience_function(self):
-        """Test convenience function fer running evaluation."""
+        """Test convenience function for running evaluation."""
         report = await run_evaluation("sqlite", db_path=":memory:")
 
         # Verify report generation

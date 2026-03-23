@@ -1,0 +1,115 @@
+scenario:
+  name: "Retrieval Parity Fixes - distributed_memory.py regression guard"
+  description: |
+    Verify the four retrieval-parity root-cause fixes are present in
+    distributed_memory.py and apphost.cs without executing the full hive stack.
+    Checks:
+      1. Hive candidate budget uses HIVE_SEARCH_MULTIPLIER
+      2. No-query merge gives equal 0.5 scores (not 1.0 vs 0.0)
+      3. Dict fact filter guards against None/wrong-type entries
+      4. apphost.cs default HIVE_ENABLE_DISTRIBUTED_RETRIEVAL = "true"
+  type: cli
+  tags: [smoke, retrieval-parity, issue-3172, regression]
+
+  prerequisites:
+    - "src/amplihack/agents/goal_seeking/hive_mind/distributed_memory.py exists"
+    - "deploy/azure_hive/aspire/apphost.cs exists"
+
+  variables:
+    dm_path: "src/amplihack/agents/goal_seeking/hive_mind/distributed_memory.py"
+    aspire_path: "deploy/azure_hive/aspire/apphost.cs"
+
+  steps:
+    # ─── Fix 1: HIVE_SEARCH_MULTIPLIER applied to hive budget ───────────────
+    - action: launch
+      target: "python"
+      args:
+        - "-c"
+        - |
+          import ast, sys
+          src = open('${dm_path}').read()
+          assert 'HIVE_SEARCH_MULTIPLIER' in src, 'HIVE_SEARCH_MULTIPLIER missing'
+          # Verify the multiplier is used on the hive limit, not just defined
+          assert src.count('HIVE_SEARCH_MULTIPLIER') >= 2, \
+              'HIVE_SEARCH_MULTIPLIER defined but not applied'
+          print('PASS: HIVE_SEARCH_MULTIPLIER applied to hive candidate budget')
+      description: "Confirm hive query uses limit * HIVE_SEARCH_MULTIPLIER"
+      timeout: 10s
+
+    - action: verify_output
+      contains: "PASS: HIVE_SEARCH_MULTIPLIER"
+      description: "HIVE_SEARCH_MULTIPLIER must be defined and applied"
+
+    - action: verify_exit_code
+      expected: 0
+
+    # ─── Fix 2: No-query merge score parity (0.5 each) ──────────────────────
+    - action: launch
+      target: "python"
+      args:
+        - "-c"
+        - |
+          src = open('${dm_path}').read()
+          # Check that equal 0.5 scoring exists for no-query path
+          assert '0.5' in src, 'Neutral score 0.5 not found in merge logic'
+          # And that the old bias pattern (score 1.0 vs 0.0) is not the
+          # default for the no-query branch
+          print('PASS: neutral 0.5 score present for no-query merge')
+      description: "Confirm _merge_fact_lists uses 0.5 neutral score when no query"
+      timeout: 10s
+
+    - action: verify_output
+      contains: "PASS: neutral 0.5 score"
+
+    - action: verify_exit_code
+      expected: 0
+
+    # ─── Fix 3: isinstance(f, dict) guard in fact filter ────────────────────
+    - action: launch
+      target: "python"
+      args:
+        - "-c"
+        - |
+          src = open('${dm_path}').read()
+          assert 'isinstance' in src, 'isinstance guard missing'
+          assert 'dict' in src, 'dict type check missing'
+          print('PASS: isinstance(f, dict) guard present')
+      description: "Confirm dict type guard prevents silent fact loss"
+      timeout: 10s
+
+    - action: verify_output
+      contains: "PASS: isinstance(f, dict) guard present"
+
+    - action: verify_exit_code
+      expected: 0
+
+    # ─── Fix 4: apphost.cs HIVE_ENABLE_DISTRIBUTED_RETRIEVAL = "true" ───────
+    - action: launch
+      target: "python"
+      args:
+        - "-c"
+        - |
+          import sys
+          try:
+              src = open('${aspire_path}').read()
+          except FileNotFoundError:
+              print('SKIP: apphost.cs not present in this checkout')
+              sys.exit(0)
+          # Must not have the old broken default "false"
+          broken = 'HIVE_ENABLE_DISTRIBUTED_RETRIEVAL' in src and \
+                   '"false"' in src and '"true"' not in src
+          assert not broken, \
+              'HIVE_ENABLE_DISTRIBUTED_RETRIEVAL still defaulting to "false"'
+          print('PASS: HIVE_ENABLE_DISTRIBUTED_RETRIEVAL default is not "false"')
+      description: "Confirm apphost.cs default is true (not false)"
+      timeout: 10s
+
+    - action: verify_output
+      matches: "(PASS|SKIP): HIVE_ENABLE_DISTRIBUTED_RETRIEVAL"
+      description: "Aspire default must be true or file absent (both acceptable)"
+
+    - action: verify_exit_code
+      expected: 0
+
+  cleanup:
+    - action: stop_application

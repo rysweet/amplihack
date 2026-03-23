@@ -58,6 +58,54 @@ Agents in each group share a group-level hive. High-confidence facts (>= 0.9)
 broadcast to all groups via the root. Cross-group queries use `query_federated()`
 which recursively traverses the tree.
 
+### Distributed: N Agents, Event Hubs Transport
+
+```mermaid
+graph TD
+    subgraph "Azure Container App 0 (5 agents)"
+        A0["Agent 0"] --> DM0["DistributedCognitiveMemory"]
+        A1["Agent 1"] --> DM1["DistributedCognitiveMemory"]
+        DM0 --> K0[(Kuzu DB)]
+        DM1 --> K1[(Kuzu DB)]
+    end
+
+    subgraph "Azure Container App 1 (5 agents)"
+        A5["Agent 5"] --> DM5["DistributedCognitiveMemory"]
+        DM5 --> K5[(Kuzu DB)]
+    end
+
+    DM0 <--> EH["Event Hubs<br/>(SHARD_QUERY / SHARD_RESPONSE)"]
+    DM5 <--> EH
+```
+
+Each agent runs the **identical OODA loop** as in single-agent mode. The agent
+is topology-unaware — it calls `self.memory.search_facts()` or
+`self.memory.get_all_facts()` without knowing whether results come from local
+Kuzu or 99 remote agents.
+
+**Transparent proxy**: `DistributedCognitiveMemory` wraps local
+`CognitiveMemory` + hive transport behind the same interface. It overrides
+`search_facts()`, `get_all_facts()`, `store_fact()`, and `search_by_concept()`
+to fan out queries via Event Hubs and merge results.
+
+**DI wiring** happens in `agent_entrypoint.py` (composition root):
+
+```python
+# Agent created with local memory (topology-unaware)
+agent = GoalSeekingAgent(...)
+
+# Wrap with distributed proxy when config says distributed
+agent.memory.memory = DistributedCognitiveMemory(
+    local_memory=agent.memory.memory,
+    hive_graph=hive_store,
+    agent_name=agent_name,
+)
+```
+
+**Local-only access**: Shard query handlers use `local_search_facts()` /
+`local_get_all_facts()` to search ONLY the local backend, preventing
+recursive SHARD_QUERY storms.
+
 ## Retrieval Pipeline
 
 ### Vector Search + Keyword Fallback
@@ -387,16 +435,22 @@ Key constants from `hive_mind/constants.py`:
 
 ## Key Files
 
-| File                                  | Purpose                                       |
-| ------------------------------------- | --------------------------------------------- |
-| `src/.../hive_mind/hive_graph.py`     | HiveGraph protocol, InMemoryHiveGraph         |
-| `src/.../hive_mind/crdt.py`           | GSet, ORSet, LWWRegister implementations      |
-| `src/.../hive_mind/gossip.py`         | Gossip protocol and convergence measurement   |
-| `src/.../hive_mind/fact_lifecycle.py` | FactTTL, confidence decay, garbage collection |
-| `src/.../hive_mind/embeddings.py`     | EmbeddingGenerator (sentence-transformers)    |
-| `src/.../hive_mind/reranker.py`       | hybrid_score_weighted, rrf_merge              |
-| `src/.../hive_mind/controller.py`     | HiveController (desired-state YAML manifests) |
-| `src/.../hive_mind/distributed.py`    | AgentNode, HiveCoordinator                    |
-| `src/.../hive_mind/event_bus.py`      | EventBus protocol + Local/Azure SB/Redis      |
-| `src/.../hive_mind/constants.py`      | All shared constants and thresholds           |
-| `src/.../cognitive_adapter.py`        | CognitiveAdapter (local Kuzu + hive bridge)   |
+| File                                          | Purpose                                                |
+| --------------------------------------------- | ------------------------------------------------------ |
+| `src/.../hive_mind/distributed_memory.py`     | DistributedCognitiveMemory transparent proxy           |
+| `src/.../hive_mind/hive_graph.py`             | HiveGraph protocol, InMemoryHiveGraph                  |
+| `src/.../hive_mind/distributed_hive_graph.py` | DistributedHiveGraph + EventHubsShardTransport         |
+| `src/.../hive_mind/dht.py`                    | DHT router for shard target selection                  |
+| `src/.../hive_mind/crdt.py`                   | GSet, ORSet, LWWRegister implementations               |
+| `src/.../hive_mind/gossip.py`                 | Gossip protocol and convergence measurement            |
+| `src/.../hive_mind/fact_lifecycle.py`         | FactTTL, confidence decay, garbage collection          |
+| `src/.../hive_mind/embeddings.py`             | EmbeddingGenerator (sentence-transformers)             |
+| `src/.../hive_mind/reranker.py`               | hybrid_score_weighted, rrf_merge                       |
+| `src/.../hive_mind/controller.py`             | HiveController (desired-state YAML manifests)          |
+| `src/.../hive_mind/distributed.py`            | AgentNode, HiveCoordinator                             |
+| `src/.../hive_mind/event_bus.py`              | EventBus protocol + Local/Azure SB/Redis               |
+| `src/.../hive_mind/tracing.py`                | Lightweight contextvars correlation tracing            |
+| `src/.../hive_mind/orchestrator.py`           | HiveMindOrchestrator (unified four-layer coordination) |
+| `src/.../hive_mind/constants.py`              | All shared constants and thresholds                    |
+| `src/.../cognitive_adapter.py`                | CognitiveAdapter (topology-unaware Kuzu bridge)        |
+| `deploy/azure_hive/agent_entrypoint.py`       | Composition root / DI wiring for distributed           |

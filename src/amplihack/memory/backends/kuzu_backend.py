@@ -82,14 +82,18 @@ class KuzuBackend:
             env_legacy = os.environ.get("AMPLIHACK_KUZU_DB_PATH", "").strip()
 
             if env_primary:
-                db_path = Path(KuzuConnector._validate_env_db_path(env_primary, "AMPLIHACK_GRAPH_DB_PATH"))
+                db_path = Path(
+                    KuzuConnector._validate_env_db_path(env_primary, "AMPLIHACK_GRAPH_DB_PATH")
+                )
             elif env_legacy:
                 warnings.warn(
                     "AMPLIHACK_KUZU_DB_PATH is deprecated; use AMPLIHACK_GRAPH_DB_PATH instead.",
                     DeprecationWarning,
                     stacklevel=2,
                 )
-                db_path = Path(KuzuConnector._validate_env_db_path(env_legacy, "AMPLIHACK_KUZU_DB_PATH"))
+                db_path = Path(
+                    KuzuConnector._validate_env_db_path(env_legacy, "AMPLIHACK_KUZU_DB_PATH")
+                )
             else:
                 db_path = Path.home() / ".amplihack" / "memory_kuzu.db"
         elif isinstance(db_path, str):

@@ -121,7 +121,7 @@ class FlatRetrieverAdapter:
 
         return results[:limit]
 
-    def get_all_facts(self, limit: int = 50) -> list[dict[str, Any]]:
+    def get_all_facts(self, limit: int = 50, **kwargs: Any) -> list[dict[str, Any]]:
         """Retrieve all facts without keyword filtering.
 
         Uses get_all_knowledge internally.

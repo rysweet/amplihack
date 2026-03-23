@@ -1,4 +1,4 @@
-"""Reliability evaluator fer memory backends.
+"""Reliability evaluator for memory backends.
 
 Measures robustness and data integrity:
 - Data integrity: Can retrieve what was stored?
@@ -20,7 +20,7 @@ import logging
 from dataclasses import dataclass
 
 from ..coordinator import MemoryCoordinator, RetrievalQuery, StorageRequest
-from ..types import MemoryType
+from ..models import MemoryType
 
 logger = logging.getLogger(__name__)
 
@@ -143,7 +143,7 @@ class ReliabilityEvaluator:
         num_concurrent_ops = 10
         successful_ops = 0
 
-        # Create tasks fer concurrent storage
+        # Create tasks for concurrent storage
         async def store_memory(index: int) -> bool:
             try:
                 request = StorageRequest(

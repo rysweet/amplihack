@@ -405,11 +405,11 @@ class TestAutoBackendModule:
         assert "get_backend_status" in __all__
 
     def test_backend_type_enum_values(self):
-        """Test BackendType enum has expected values."""
+        """Test BackendType enum has expected values (Kuzu only since Neo4j removed)."""
         from amplihack.memory.auto_backend import BackendType
 
         assert BackendType.KUZU.value == "kuzu"
-        assert BackendType.NEO4J.value == "neo4j"
+        assert not hasattr(BackendType, "NEO4J")  # Neo4j support removed in Week 7 cleanup
 
     def test_get_backend_status_returns_dict(self):
         """Test get_backend_status returns a dictionary."""
@@ -418,4 +418,4 @@ class TestAutoBackendModule:
         status = get_backend_status()
         assert isinstance(status, dict)
         assert "kuzu_available" in status
-        assert "docker_available" in status
+        # docker_available removed when Neo4j support was dropped

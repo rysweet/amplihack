@@ -152,6 +152,7 @@ Understand the philosophy and architecture behind amplihack.
 - [Development Patterns](claude/context/PATTERNS.md) - Proven implementation patterns
 - [Unified Staging Architecture](concepts/unified-staging-architecture.md) - How .claude/ staging works across all commands
 - [Framework Injection Architecture](concepts/framework-injection-architecture.md) - How AMPLIHACK.md injection works
+- [Unified Distributed Cognitive Memory](concepts/unified-distributed-cognitive-memory.md) - Planned architecture for deterministic cluster-wide memory retrieval
 - [How to Use Blarify Code Graph](howto/blarify-code-graph.md) - Enable, query, and configure
 - [Enable Blarify Code Indexing](howto/enable-blarify.md) - `AMPLIHACK_ENABLE_BLARIFY`, non-interactive skip, staleness detection
 - [Blarify Architecture](blarify_architecture.md) - Understanding the Blarify integration
@@ -503,6 +504,29 @@ python -m amplihack.memory.kuzu.query_code_graph functions --file <path>
 ### External Knowledge
 
 - [External Knowledge Integration](external_knowledge_integration.md) - Import external data sources
+
+### Distributed Hive Mind ⭐ NEW
+
+Multi-agent distributed memory system enabling agents to share knowledge across a gossip-based graph network.
+
+- [Overview](distributed_hive_mind.md) - Architecture overview and design goals
+- [Architecture](hive_mind/ARCHITECTURE.md) - Technical architecture: DHT shards, CRDT gossip, event bus
+- [Design](hive_mind/DESIGN.md) - Design decisions, data model, and trade-offs
+- [Getting Started](hive_mind/GETTING_STARTED.md) - Deploy a local hive mind in minutes
+- [Tutorial](hive_mind/TUTORIAL.md) - Step-by-step guide to building distributed agents
+- [Evaluation](hive_mind/EVAL.md) - Benchmarks, eval scenarios, and performance results
+- [Presentation](hive_mind_presentation.md) - High-level slides and demo walkthrough
+- [Prompt-to-Hive Tutorial](tutorial_prompt_to_distributed_hive.md) - End-to-end walkthrough from prompt to deployed hive
+
+**Key Features**:
+
+- **DHT-based sharding**: Consistent-hash ring distributes facts across agent shards
+- **CRDT gossip**: Bloom-filter gossip protocol for eventual consistency without conflicts
+- **Azure Service Bus transport**: Cross-process event bus for production deployments
+- **NetworkGraphStore**: Pluggable transport layer wrapping any local GraphStore
+- **Kuzu-backed shards**: Each shard uses Kuzu embedded graph for POSIX-safe persistent storage
+
+---
 
 ### Blarify Code Indexing
 

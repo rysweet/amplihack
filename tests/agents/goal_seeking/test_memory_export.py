@@ -138,7 +138,7 @@ class TestExportToJson:
     def test_export_format_version(self, populated_memory):
         """Export should include a format version."""
         data = populated_memory.export_to_json()
-        assert data["format_version"] == "1.0"
+        assert data["format_version"] == "1.1"
 
     def test_export_is_json_serializable(self, populated_memory):
         """Exported data should be JSON-serializable without error."""
@@ -360,6 +360,7 @@ class TestJsonHumanReadability:
             "similar_to_edges",
             "derives_from_edges",
             "supersedes_edges",
+            "transitioned_to_edges",
             "statistics",
         }
         assert set(data.keys()) == expected_keys

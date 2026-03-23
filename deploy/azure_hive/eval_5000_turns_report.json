@@ -1,0 +1,64 @@
+{
+  "agent_name": "app-0",
+  "turns_fed": 5000,
+  "learn_errors": 0,
+  "learn_elapsed_s": 56.6,
+  "learn_throughput_tps": 88.3,
+  "questions_total": 10,
+  "questions_passed": 10,
+  "query_errors": 0,
+  "answer_question_calls": 10,
+  "qa_results": [
+    {
+      "question": "What CVE is associated with the Log4Shell vulnerability?",
+      "answer": "The provided knowledge base does not contain any information about the Log4Shell vulnerability or its associated CVE. The CVEs mentioned in the facts are:\n\n- **CVE-2024-21626** (associated with INC-2024-001: Ransomware attempt on file server)\n- **CVE-2024-3094** (associated with INC-2024-003: APT campaign / supply chain compromise)\n\nFor completeness, the Log4Shell vulnerability is widely known to be associated with **CVE-2021-44228**, a critical remote code execution vulnerability in Apache Log4j 2. However, this information is not present in the provided knowledge base facts.",
+      "passed": true
+    },
+    {
+      "question": "Which threat actor is associated with APT29?",
+      "answer": "**APT29** is associated with **Incident INC-2024-003**, which involves an **APT campaign targeting development infrastructure**. The threat actor is attributed as **likely state-sponsored**, with TTPs (Tactics, Techniques, and Procedures) matching APT29.",
+      "passed": true
+    },
+    {
+      "question": "What happened in incident INC-2024-001?",
+      "answer": "## Incident INC-2024-001: Ransomware Attempt on File Server\n\n**Severity:** Critical\n**Final Status:** Closed\n\n### Description\nA ransomware attempt targeted the file server infrastructure. Initial entry was via a **phishing email**.\n\n### Affected Systems\n- **FS-01**\n- **FS-02**\n- **BACKUP-01**\n\n### CVEs\n- **CVE-2024-21626**\n\n### Indicators of Compromise (IOCs)\n- **IP:** 185.220.101.45\n- **Domain:** evil.com\n- **Payload:** payload.exe\n- **Tool:** Cobalt Strike\n\n### Timeline\n1. **2024-03-17 19:00** \u2013 Ransomware behavior detected on FS-01\n2. **2024-03-17 19:15** \u2013 Incident declared, SOC notified\n3. **2024-03-17 19:30** \u2013 FS-01 isolated from network\n\n### Status Progression\n1. **Contained** \u2192 **Investigating** \u2013 Root cause analysis in progress; initial entry via phishing email\n2. **Investigating** \u2192 **Remediated** \u2013 All encrypted files restored from backup; attacker C2 blocked at firewall\n3. **Remediated** \u2192 **Closed** \u2013 Post-incident review complete; MFA enforced for all admin accounts\n\n### Cross-Reference\n- The C2 IP **185.220.101.45** also appeared in **INC-2024-002** (data exfiltration incident), where a C2 connection from DB-PROD-01 was confirmed to the same IP address, suggesting a possible link between the two incidents.",
+      "passed": true
+    },
+    {
+      "question": "How many documents did jsmith download in the insider threat incident?",
+      "answer": "The user (jsmith) downloaded **500+ sensitive documents** in the insider threat incident (INC-2024-006). The DLP alert on 2024-03-17 at 14:00 flagged the bulk download of over 500 sensitive documents from SHAREPOINT-01.",
+      "passed": true
+    },
+    {
+      "question": "What was the CVSS score of CVE-2021-44228?",
+      "answer": "Based on the provided knowledge base, the CVSS score of CVE-2021-44228 is not recorded in the facts. The knowledge base mentions CVE-2021-44228 only in the context of a previous Q&A identifying it as the Log4Shell vulnerability, but no CVSS score is stored for it.\n\nFor reference, CVE-2021-44228 (Log4Shell) is widely known to have a **CVSS score of 10.0** (the maximum), but this specific data point is not contained in the provided facts.",
+      "passed": true
+    },
+    {
+      "question": "Which malicious npm package was used in the supply chain attack?",
+      "answer": "The malicious npm package used in the supply chain attack was **event-stream@5.0.0**.\n\nThis was identified as part of **Incident INC-2024-003**, an APT campaign targeting development infrastructure. The supply chain compromise in the event-stream package was detected on **2024-03-17 at 16:00**. The associated CVE is **CVE-2024-3094**, and the attack was attributed to a likely state-sponsored group with TTPs matching **APT29**. Affected systems included CI-SERVER-01, GIT-01, and DEV-WORKSTATION-12. Additional IOCs from this incident include **tunnel.attacker.net** (DNS tunneling) and **xmrig** (crypto miner found running on CI-SERVER-01).",
+      "passed": true
+    },
+    {
+      "question": "What IP address was the C2 server in INC-2024-002?",
+      "answer": "The C2 server IP address in INC-2024-002 was **185.220.101.45**.",
+      "passed": true
+    },
+    {
+      "question": "How were the encrypted files restored after INC-2024-001?",
+      "answer": "The encrypted files after INC-2024-001 were **restored from backup**. Additionally, as part of the remediation, the attacker's command-and-control (C2) communication was blocked at the firewall.",
+      "passed": true
+    },
+    {
+      "question": "What is DNS tunneling used for in the APT29 campaign?",
+      "answer": "In the APT29 campaign (INC-2024-003), DNS tunneling was used for **covert communications from the GIT-01 server**. Specifically, DNS tunneling from GIT-01 was confirmed on 2024-03-17 at 17:00, with the associated indicator of compromise (IOC) being **tunnel.attacker.net**. This was part of a broader APT campaign targeting development infrastructure that also involved a supply chain compromise and crypto mining.",
+      "passed": true
+    },
+    {
+      "question": "What security improvement was enforced after INC-2024-001?",
+      "answer": "**MFA (Multi-Factor Authentication) was enforced for all admin accounts.**\n\nThis security improvement was implemented as part of the post-incident review when INC-2024-001 was closed, following the remediation of the ransomware attempt on the file servers.",
+      "passed": true
+    }
+  ],
+  "success": true
+}
