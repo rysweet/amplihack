@@ -214,48 +214,14 @@ steps:
       **Clarified Requirements:** {{clarified_requirements}}
       **Repository:** {{repo_path}}
 
-      ## IMPORTANT: Emit progress markers throughout this analysis
-
-      This step runs under a watchdog that times out if no output is seen for
-      60+ seconds. You MUST emit a progress line before each major exploration
-      phase so the recipe runner can see activity. Use this format:
-
-      ```
-      ## Progress: [Phase name] — [brief description]
-      ```
-
-      ## Exploration Phases
-
-      Work through these phases in order, emitting a progress marker before each:
-
-      **Phase 1 — Project structure**
-      Print: `## Progress: Phase 1/4 — Scanning project structure`
-      Use Glob to identify top-level layout, key config files (pyproject.toml,
-      package.json, Cargo.toml, etc.), and source directory organization.
-
-      **Phase 2 — Relevant code paths**
-      Print: `## Progress: Phase 2/4 — Searching for task-relevant code`
-      Use Grep to find code related to the task: relevant class/function names,
-      imports, config keys, and patterns mentioned in the requirements.
-
-      **Phase 3 — Dependencies and integration points**
-      Print: `## Progress: Phase 3/4 — Analyzing dependencies and interfaces`
-      Read key files (imports, interfaces, config) to understand how components
-      connect. Identify external dependencies relevant to the task.
-
-      **Phase 4 — Synthesis**
-      Print: `## Progress: Phase 4/4 — Synthesizing findings`
-      Compile findings into a structured summary.
-
-      ## Output
-
-      Provide a codebase context summary covering:
+      Analyze the existing codebase to understand:
       1. Relevant existing code and patterns
-      2. Files that will likely need modification
+      2. Files that may need modification
       3. Dependencies and integration points
       4. Potential conflicts or considerations
 
       Use glob and grep to explore the codebase. Avoid web searches.
+      Provide a codebase context summary for subsequent agents.
     output: "codebase_analysis"
 
   - id: "step-02c-resolve-ambiguity"
