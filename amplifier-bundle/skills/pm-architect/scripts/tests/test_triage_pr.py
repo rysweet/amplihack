@@ -320,7 +320,7 @@ Approve for review after addressing minor concerns.
                         "triage_pr.get_pr_diff_summary", return_value="## Diff\nSome changes"
                     ):
                         with patch("triage_pr.get_related_issues", return_value="## Issues\n#123"):
-                            with patch("triage_pr.query", side_effect=mock_query):
+                            with patch("triage_pr.query_agent", side_effect=mock_query):
                                 result = await triage_pr(project_root, 456)
 
                                 assert result is not None
@@ -340,7 +340,7 @@ Approve for review after addressing minor concerns.
                 with patch("triage_pr.get_pr_details", return_value=sample_pr_data):
                     with patch("triage_pr.get_pr_diff_summary", return_value="## Diff"):
                         with patch("triage_pr.get_related_issues", return_value="## Issues"):
-                            with patch("triage_pr.query", side_effect=mock_query_exception):
+                            with patch("triage_pr.query_agent", side_effect=mock_query_exception):
                                 result = await triage_pr(project_root, 456)
 
                                 assert result is None
@@ -360,7 +360,7 @@ Approve for review after addressing minor concerns.
                 with patch("triage_pr.get_pr_details", return_value=sample_pr_data):
                     with patch("triage_pr.get_pr_diff_summary", return_value="## Diff"):
                         with patch("triage_pr.get_related_issues", return_value="## Issues"):
-                            with patch("triage_pr.query", side_effect=mock_query_empty):
+                            with patch("triage_pr.query_agent", side_effect=mock_query_empty):
                                 result = await triage_pr(project_root, 456)
 
                                 assert result is None
