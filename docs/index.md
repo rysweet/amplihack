@@ -196,6 +196,12 @@ Proven methodologies for consistent, high-quality results.
 - [Investigation Workflow](claude/workflow/INVESTIGATION_WORKFLOW.md) - Deep codebase analysis and understanding
 - [Document-Driven Development (DDD)](document_driven_development/README.md) - Documentation-first approach for large features
 
+**default-workflow deep dives** (issues #3022 and #3023):
+
+- [Step Internals Reference](reference/default-workflow-step-internals.md) - Exact behavior of step-03b (issue extraction) and step-04 (worktree setup): inputs, outputs, idempotency states, failure modes
+- [How to Re-run the Default Workflow](howto/rerun-default-workflow.md) - Safely resume interrupted runs without duplicate branches, worktrees, or issues
+- [Shell Safety in Default-Workflow Steps](concepts/default-workflow-shell-safety.md) - Why heredoc, `printf '%s'`, `head -1`, and `grep -F` are used instead of simpler alternatives
+
 ### DDD Deep Dive
 
 Document-Driven Development is a systematic methodology where documentation comes first and acts as the specification.
@@ -378,6 +384,8 @@ Modular, on-demand capabilities that extend amplihack:
 - [Mermaid Diagrams](claude/skills/mermaid-diagram-generator/SKILL.md) - Visual documentation
 - [Test Gap Analyzer](claude/skills/test-gap-analyzer/SKILL.md) - Find untested code
 - [Code Smell Detector](claude/skills/code-smell-detector/SKILL.md) - Identify anti-patterns
+- [Supply Chain Audit](../claude/skills/supply-chain-audit/SKILL.md) 🛡️ - Audit CI/CD and dependency attack surface (15 dimensions: Actions, NuGet, PyPI, Cargo, npm, Go, containers, Dependabot, branch protection)
+  - [How-To: Run a Supply Chain Audit](howto/run-supply-chain-audit.md) - Quick start guide with examples
 
 ### Scenario Tools
 
