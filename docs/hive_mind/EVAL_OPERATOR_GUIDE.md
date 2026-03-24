@@ -10,7 +10,7 @@ This is a how-to guide. It focuses on which repo to run from, which environment 
 | ---------------------------------------------------------------------- | ---------------------- | -------------------------------------------------------- |
 | Edit the agent runtime and run the thin local wrappers                 | `amplihack`            | `python -m amplihack.eval.*`                             |
 | Run the authoritative local eval CLI                                   | `amplihack-agent-eval` | `amplihack-eval run`, `amplihack-eval compare`           |
-| Run the distributed Azure runner against an already live hive          | `amplihack-agent-eval` | `python -m amplihack_eval.azure.eval_distributed`        |
+| Run the distributed Azure runner against an already live hive          | `amplihack`            | `python deploy/azure_hive/eval_distributed.py`           |
 | Deploy Azure and run an end-to-end distributed eval                    | `amplihack-agent-eval` | `./run_distributed_eval.sh`                              |
 | Orchestrate deploy, monitor, or eval scripts with the Aspire dashboard | `amplihack`            | `dotnet run apphost.cs` from `deploy/azure_hive/aspire/` |
 
@@ -49,7 +49,8 @@ export PYTHONPATH="${AMPLIHACK_EVAL_SOURCE_ROOT}/src:${AMPLIHACK_SOURCE_ROOT}/sr
 Most eval paths need Anthropic access for grading.
 
 ```bash
-export ANTHROPIC_API_KEY=your_key_here
+read -rsp "Anthropic API key: " ANTHROPIC_API_KEY && echo
+export ANTHROPIC_API_KEY
 ```
 
 Azure paths also need Azure CLI auth.
@@ -147,7 +148,7 @@ This wrapper:
 
 1. calls `amplihack/deploy/azure_hive/deploy.sh`
 2. looks up the Event Hubs connection string
-3. runs `python -m amplihack_eval.azure.eval_distributed`
+3. runs the distributed eval runner against that live hive
 4. writes `eval_report.json`, logs, metadata, and a rerun command bundle
 
 ## Path 4: Reuse An Existing Azure Hive
@@ -170,19 +171,22 @@ export HIVE_RESOURCE_GROUP=hive-pr3175-rg
 
 ## Path 5: Run The Distributed Runner Directly
 
-Use this when you already know the Event Hubs connection string and hub names.
-Do not paste the secret directly into the Python command line; load it into a shell
-variable first so it does not end up in your shell history or process list.
+Use this when you already have a live hive and want the lowest-level runner that
+still keeps the Event Hubs secret out of `argv`.
+
+The authoritative implementation still lives in `amplihack-agent-eval`; this
+repo's compatibility wrapper delegates into it while reading `EH_CONN` from the
+environment.
 
 ```bash
-cd "${AMPLIHACK_EVAL_SOURCE_ROOT}"
+cd "${AMPLIHACK_SOURCE_ROOT}"
 
 read -rsp "Event Hubs connection string: " EH_CONN && echo
+export EH_CONN
+export AMPLIHACK_EH_INPUT_HUB="hive-events-amplihive3175e"
+export AMPLIHACK_EH_RESPONSE_HUB="eval-responses-amplihive3175e"
 
-python -m amplihack_eval.azure.eval_distributed \
-  --connection-string "$EH_CONN" \
-  --input-hub "hive-events-amplihive3175e" \
-  --response-hub "eval-responses-amplihive3175e" \
+python deploy/azure_hive/eval_distributed.py \
   --agents 100 \
   --agents-per-app 5 \
   --turns 5000 \
@@ -195,6 +199,8 @@ python -m amplihack_eval.azure.eval_distributed \
   --output /tmp/eval_report.json
 
 unset EH_CONN
+unset AMPLIHACK_EH_INPUT_HUB
+unset AMPLIHACK_EH_RESPONSE_HUB
 ```
 
 ## Path 6: Use Aspire To Orchestrate The Scripts Locally
@@ -228,6 +234,7 @@ The monitor and eval resources are only added when the Event Hubs connection str
 
 ```bash
 read -rsp "Event Hubs connection string: " EH_CONN && echo
+export EH_CONN
 export AMPLIHACK_EH_INPUT_HUB="hive-events-amplihive3175e"
 export AMPLIHACK_EH_RESPONSE_HUB="eval-responses-amplihive3175e"
 export HIVE_AGENT_COUNT=100
@@ -241,12 +248,15 @@ cd "${AMPLIHACK_SOURCE_ROOT}/deploy/azure_hive/aspire"
 dotnet run apphost.cs
 
 unset EH_CONN
+unset AMPLIHACK_EH_INPUT_HUB
+unset AMPLIHACK_EH_RESPONSE_HUB
 ```
 
 ### Aspire Security Eval Flow
 
 ```bash
 read -rsp "Event Hubs connection string: " EH_CONN && echo
+export EH_CONN
 export AMPLIHACK_EH_INPUT_HUB="hive-events-amplihive3175e"
 export AMPLIHACK_EH_RESPONSE_HUB="eval-responses-amplihive3175e"
 export HIVE_AGENT_COUNT=100
@@ -260,6 +270,8 @@ cd "${AMPLIHACK_SOURCE_ROOT}/deploy/azure_hive/aspire"
 dotnet run apphost.cs
 
 unset EH_CONN
+unset AMPLIHACK_EH_INPUT_HUB
+unset AMPLIHACK_EH_RESPONSE_HUB
 ```
 
 ## Outputs To Expect
