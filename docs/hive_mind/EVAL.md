@@ -11,7 +11,7 @@ The authoritative long-horizon dataset generator and Azure distributed runner li
 ## Read This Next
 
 - [Day-zero operator guide](./EVAL_OPERATOR_GUIDE.md) — exact commands for local wrappers, the eval CLI, Azure distributed runs, and Aspire flows
-- [How the eval stack fits together](./EVAL_COMPONENTS.md) — plain-English component diagram for `amplihack`, `amplihack-agent-eval`, Event Hubs, Container Apps, and Aspire
+- [How the eval stack fits together](./EVAL_COMPONENTS.md) — five-minute walkthrough of repo ownership, local versus distributed paths, Event Hubs, Container Apps, why Aspire is in C#, and how `EH_CONN` reaches runners without going through `argv`
 
 ## Use This Repo For
 
