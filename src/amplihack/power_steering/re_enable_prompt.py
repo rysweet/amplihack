@@ -368,6 +368,21 @@ except ImportError:
 TIMEOUT_SECONDS = 30
 
 
+def _is_noninteractive_terminal() -> bool:
+    """Return True when prompts should not attempt interactive stdin reads."""
+    try:
+        from ..launcher.core import _is_noninteractive as launcher_is_noninteractive
+
+        return launcher_is_noninteractive()
+    except Exception:
+        import sys
+
+        try:
+            return sys.stdin is None or not hasattr(sys.stdin, "isatty") or not sys.stdin.isatty()
+        except (AttributeError, OSError):
+            return True
+
+
 def _remove_disabled_file_safe(disabled_file: Path, context: str = "") -> None:
     """Remove .disabled file with fail-open error handling.
 
@@ -497,6 +512,11 @@ def prompt_re_enable_if_disabled(project_root: Path | None = None) -> bool:
         # Check if .disabled file exists
         if not disabled_file.exists():
             # Already enabled
+            return True
+
+        if _is_noninteractive_terminal():
+            logger.info("Non-interactive terminal detected, defaulting to YES")
+            _remove_disabled_file_safe(disabled_file, "(non-interactive, defaulted to YES)")
             return True
 
         # File exists - prompt user
