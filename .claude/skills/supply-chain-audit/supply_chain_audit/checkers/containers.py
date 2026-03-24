@@ -9,7 +9,7 @@ import re
 from pathlib import Path
 
 from ..schema import Finding
-from ._utils import _assign_ids, _relative_path
+from ._utils import _relative_path
 
 _SHA_DIGEST_PATTERN = re.compile(r"^sha256:[a-f0-9]{64}$")
 
@@ -139,7 +139,6 @@ def check_container_image_pinning(root: Path) -> list[Finding]:
                 )
             )
 
-    findings = _assign_ids(findings)
     return findings
 
 
@@ -216,5 +215,4 @@ def check_docker_build_chain(root: Path) -> list[Finding]:
                     )
                 )
 
-    findings = _assign_ids(findings)
     return findings

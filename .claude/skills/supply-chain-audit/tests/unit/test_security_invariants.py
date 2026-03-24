@@ -250,6 +250,7 @@ class TestAcceptedRisksConstraints:
         result = run_audit(str(tmp_path), scope="gha")
         # Finding should have restored severity (not Info)
         restored = [f for f in result.findings if "checkout" in f.current_value]
+        assert len(restored) > 0, "Expected at least one restored finding"
         if restored:
             assert restored[0].severity != "Info"
 
@@ -266,6 +267,7 @@ class TestAcceptedRisksConstraints:
         result = run_audit(str(tmp_path), scope="gha")
         # The accepted finding should still appear but as Info
         accepted = [f for f in result.findings if hasattr(f, "accepted_risk") and f.accepted_risk]
+        assert len(accepted) > 0, "Expected at least one accepted-risk finding"
         if accepted:
             assert all(f.severity == "Info" for f in accepted)
 

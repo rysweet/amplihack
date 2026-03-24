@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 
 from ..schema import Finding
-from ._utils import _assign_ids, _relative_path
+from ._utils import _relative_path
 
 
 def check_cargo_supply_chain(root: Path) -> list[Finding]:
@@ -153,5 +153,4 @@ def check_cargo_supply_chain(root: Path) -> list[Finding]:
             )
         )
 
-    findings = _assign_ids(findings)
     return findings
