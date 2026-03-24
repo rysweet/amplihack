@@ -8,6 +8,11 @@ This repo owns the **agent/runtime side** of the distributed eval story.
 
 The authoritative long-horizon dataset generator and Azure distributed runner live in the sibling `amplihack-agent-eval` repo.
 
+## Read This Next
+
+- [Day-zero operator guide](./EVAL_OPERATOR_GUIDE.md) — exact commands for local wrappers, the eval CLI, Azure distributed runs, and Aspire flows
+- [How the eval stack fits together](./EVAL_COMPONENTS.md) — five-minute walkthrough of repo ownership, local versus distributed paths, Event Hubs, Container Apps, why Aspire is in C#, and how `EH_CONN` reaches runners without going through `argv`
+
 ## Use This Repo For
 
 - changing the agent runtime
@@ -30,18 +35,18 @@ PYTHONPATH=/path/to/amplihack-agent-eval/src:/path/to/amplihack/src \
 python -m amplihack.eval.long_horizon_memory \
   --turns 100 \
   --questions 20 \
-  --question-set standard \
   --output-dir /tmp/eval-run
 ```
 
 Useful flags from this wrapper:
 
-- `--question-set {standard,holdout}`
 - `--sdk {mini,claude,copilot,microsoft}`
 - `--memory-type {auto,hierarchical,cognitive}`
 - `--answer-mode {single-shot,agentic}`
 - `--parallel-workers`
 - `--load-db` and `--skip-learning`
+
+If you need `standard` versus `holdout` question slices, use the `amplihack-agent-eval` CLI or distributed runner rather than the thin wrappers in this repo.
 
 ## Local Wrapper: Multi-Seed Comparison
 
@@ -51,7 +56,6 @@ python -m amplihack.eval.long_horizon_multi_seed \
   --turns 100 \
   --questions 20 \
   --seeds 42,123,456,789 \
-  --question-set holdout \
   --output-dir /tmp/eval-compare
 ```
 
@@ -95,6 +99,8 @@ A current validation snapshot, including the accepted Azure scores and the lates
 
 ## Related Docs
 
+- [Day-zero operator guide](./EVAL_OPERATOR_GUIDE.md)
+- [How the eval stack fits together](./EVAL_COMPONENTS.md)
 - `amplihack-agent-eval/docs/distributed-hive-eval.md`
 - `amplihack-agent-eval/docs/running-evals.md`
 - [Getting Started](./GETTING_STARTED.md)

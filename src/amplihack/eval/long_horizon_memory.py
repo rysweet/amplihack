@@ -48,8 +48,16 @@ from typing import Any
 
 from .llm_grader import call_grader_json, get_grader_model
 
+# Keep this in sync with pyproject.toml's direct git dependency pin.
+AMPLIHACK_AGENT_EVAL_REV = "d7a28a552bed6e8daa752e465475024b281913f6"  # pragma: allowlist secret
+AMPLIHACK_AGENT_EVAL_INSTALL = (
+    "pip install 'amplihack-agent-eval @ "
+    "git+https://github.com/rysweet/amplihack-agent-eval.git@"
+    f"{AMPLIHACK_AGENT_EVAL_REV}'"
+)
+
 # Requires amplihack-agent-eval package.
-# Install: pip install "amplihack-agent-eval @ git+https://github.com/rysweet/amplihack-agent-eval.git@main"
+# Install: pip install "amplihack-agent-eval @ git+https://github.com/rysweet/amplihack-agent-eval.git@d7a28a552bed6e8daa752e465475024b281913f6"
 try:
     from amplihack_eval.data.long_horizon import (  # type: ignore[import-not-found]
         GradingRubric,
@@ -61,8 +69,7 @@ try:
 except ImportError:
     raise ImportError(
         "amplihack-agent-eval package is required but not installed. "
-        "Install with: pip install 'amplihack-agent-eval @ "
-        "git+https://github.com/rysweet/amplihack-agent-eval.git@main'"
+        f"Install with: {AMPLIHACK_AGENT_EVAL_INSTALL}"
     )
 
 logger = logging.getLogger(__name__)

@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import queue
 import sys
 import threading
 from pathlib import Path
+from types import ModuleType
 from unittest.mock import MagicMock, patch
 
 import pytest  # type: ignore[import-unresolved]
@@ -43,7 +45,27 @@ def _load_remote_agent_adapter():
 
 
 _REMOTE_ADAPTER = _load_remote_agent_adapter()
-RemoteAgentAdapter = _REMOTE_ADAPTER.RemoteAgentAdapter
+
+
+def _require_remote_agent_adapter():
+    try:
+        return _REMOTE_ADAPTER.RemoteAgentAdapter
+    except ImportError as exc:
+        pytest.skip(str(exc))
+
+
+def _install_fake_eventhub(**symbols):
+    azure_module = ModuleType("azure")
+    eventhub_module = ModuleType("azure.eventhub")
+    for name, value in symbols.items():
+        setattr(eventhub_module, name, value)
+    azure_module.__dict__["eventhub"] = eventhub_module
+    return patch.dict(sys.modules, {"azure": azure_module, "azure.eventhub": eventhub_module})
+
+
+def _stable_hash_index(agent_id: str) -> int:
+    digest = hashlib.sha256(agent_id.encode("utf-8")).hexdigest()
+    return int(digest[:16], 16)
 
 
 # ===========================================================================
@@ -63,15 +85,13 @@ class TestAgentIndex:
         # rsplit("-", 1) takes the last segment
         assert EventHubsShardTransport._agent_index("hive-agent-7") == 7
 
-    def test_non_numeric_name_uses_hash(self):
+    def test_non_numeric_name_uses_stable_hash(self):
         result = EventHubsShardTransport._agent_index("coordinator")
-        assert isinstance(result, int)
-        assert result >= 0
+        assert result == _stable_hash_index("coordinator")
 
-    def test_empty_string_uses_hash(self):
+    def test_empty_string_uses_stable_hash(self):
         result = EventHubsShardTransport._agent_index("")
-        assert isinstance(result, int)
-        assert result >= 0
+        assert result == _stable_hash_index("")
 
 
 class TestTargetPartition:
@@ -125,10 +145,16 @@ class TestGetNumPartitions:
 
     def test_fallback_on_import_error(self):
         t = self._make_transport()
-        with patch.dict("sys.modules", {"azure.eventhub": None}):
+        with (
+            patch.dict("sys.modules", {"azure.eventhub": None}),
+            patch(
+                "amplihack.agents.goal_seeking.hive_mind.distributed_hive_graph.logger.warning"
+            ) as mock_warning,
+        ):
             # Force import to fail
             result = t._get_num_partitions()
             assert result == 32  # default fallback
+        mock_warning.assert_called_once()
 
     def test_caches_after_first_call(self):
         t = self._make_transport()
@@ -164,6 +190,11 @@ class TestInputSourcePartitionRouting:
     def test_target_partition_wraps(self):
         src = self._make_source(agent_name="agent-33", num_partitions=32)
         assert src._target_partition("agent-33") == "1"
+
+    def test_target_partition_uses_stable_hash_for_non_numeric_agent(self):
+        src = self._make_source(agent_name="coordinator", num_partitions=32)
+        expected = str(_stable_hash_index("coordinator") % 32)
+        assert src._target_partition("coordinator") == expected
 
     def test_receive_uses_explicit_partition_id(self):
         src = self._make_source(agent_name="agent-5")
@@ -210,6 +241,17 @@ class TestInputSourcePartitionRouting:
 
         assert src.next() == "hello"
         assert src.last_event_metadata == {"event_id": "evt-1"}
+
+    def test_partition_count_fallback_logs_warning(self):
+        src = self._make_source(agent_name="agent-5")
+        src._num_partitions = None
+        src._consumer.get_partition_ids.side_effect = RuntimeError("boom")
+
+        with patch("amplihack.agents.goal_seeking.input_source.logger.warning") as mock_warning:
+            result = src._get_num_partitions()
+
+        assert result == 32
+        mock_warning.assert_called_once()
 
     def test_receive_loop_handles_online_check_inline(self):
         src = self._make_source(agent_name="agent-5")
@@ -271,13 +313,11 @@ class TestPublishPartitionRouting:
         mock_batch = MagicMock()
         mock_producer.create_batch.return_value = mock_batch
 
-        with (
-            patch(
-                "azure.eventhub.EventHubProducerClient",
-            ) as MockProducer,
-            patch(
-                "azure.eventhub.EventData",
-            ) as MockEventData,
+        MockProducer = MagicMock()
+        MockEventData = MagicMock()
+        with _install_fake_eventhub(
+            EventHubProducerClient=MockProducer,
+            EventData=MockEventData,
         ):
             MockProducer.from_connection_string.return_value = mock_producer
             MockEventData.side_effect = lambda data: data
@@ -300,13 +340,11 @@ class TestPublishPartitionRouting:
         mock_batch = MagicMock()
         mock_producer.create_batch.return_value = mock_batch
 
-        with (
-            patch(
-                "azure.eventhub.EventHubProducerClient",
-            ) as MockProducer,
-            patch(
-                "azure.eventhub.EventData",
-            ) as MockEventData,
+        MockProducer = MagicMock()
+        MockEventData = MagicMock()
+        with _install_fake_eventhub(
+            EventHubProducerClient=MockProducer,
+            EventData=MockEventData,
         ):
             MockProducer.from_connection_string.return_value = mock_producer
             MockEventData.side_effect = lambda data: data
@@ -326,13 +364,11 @@ class TestPublishPartitionRouting:
         mock_producer = MagicMock()
         mock_producer.create_batch.side_effect = ConnectionError("network down")
 
-        with (
-            patch(
-                "azure.eventhub.EventHubProducerClient",
-            ) as MockProducer,
-            patch(
-                "azure.eventhub.EventData",
-            ),
+        MockProducer = MagicMock()
+        MockEventData = MagicMock()
+        with _install_fake_eventhub(
+            EventHubProducerClient=MockProducer,
+            EventData=MockEventData,
         ):
             MockProducer.from_connection_string.return_value = mock_producer
 
@@ -396,7 +432,8 @@ class TestReceiveLoopCheckpointing:
 
         mock_consumer.receive.side_effect = _receive
 
-        with patch("azure.eventhub.EventHubConsumerClient") as MockConsumer:
+        MockConsumer = MagicMock()
+        with _install_fake_eventhub(EventHubConsumerClient=MockConsumer):
             MockConsumer.from_connection_string.return_value = mock_consumer
             transport._receive_loop()
 
@@ -498,9 +535,10 @@ class TestReceiveLoopCheckpointing:
 class TestRemoteAdapterPublishPartitionRouting:
     """Verify RemoteAgentAdapter uses explicit partition routing for targeted input."""
 
-    @patch.object(RemoteAgentAdapter, "__init__", lambda self, **kw: None)
     def _make_adapter(self):
-        adapter = RemoteAgentAdapter()  # type: ignore[call-arg]
+        remote_agent_adapter = _require_remote_agent_adapter()
+        with patch.object(remote_agent_adapter, "__init__", lambda self, **kw: None):
+            adapter = remote_agent_adapter()  # type: ignore[call-arg]
         adapter._num_partitions = 32
         adapter._connection_string = "fake"
         adapter._input_hub = "hive-events-test"

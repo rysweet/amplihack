@@ -25,20 +25,24 @@ The evaluation framework measures backends across three dimensions:
 
 ## Quick Start
 
-### Using the CLI
+### Top-Level CLI Status
+
+The current top-level `amplihack` parser does **not** expose `amplihack memory evaluate`. That evaluation entry point still exists as a module.
+
+### Run the Evaluation Module Directly
 
 ```bash
 # Compare all backends
-amplihack memory evaluate
+python -m amplihack.memory.cli_evaluate
 
-# Evaluate specific backend
-amplihack memory evaluate --backend sqlite
+# Evaluate a specific backend
+python -m amplihack.memory.cli_evaluate --backend sqlite
 
 # Save report to file
-amplihack memory evaluate --output report.md
+python -m amplihack.memory.cli_evaluate --output report.md
 
 # Custom database path
-amplihack memory evaluate --backend sqlite --db-path /tmp/memory.db
+python -m amplihack.memory.cli_evaluate --backend sqlite --db-path /tmp/memory.db
 ```
 
 ### Using Python API

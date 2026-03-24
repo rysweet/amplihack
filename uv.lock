@@ -168,7 +168,7 @@ dependencies = [
 
 [[package]]
 name = "amplihack"
-version = "0.6.85"
+version = "0.6.99"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
@@ -188,7 +188,6 @@ dependencies = [
     { name = "langchain-anthropic" },
     { name = "langchain-google-genai" },
     { name = "langchain-openai" },
-    { name = "litellm" },
     { name = "neo4j" },
     { name = "packaging" },
     { name = "protobuf" },
@@ -196,6 +195,7 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "requests" },
     { name = "rich" },
+    { name = "simpleeval" },
     { name = "tree-sitter" },
     { name = "tree-sitter-c-sharp" },
     { name = "tree-sitter-go" },
@@ -253,8 +253,8 @@ requires-dist = [
     { name = "agent-framework-core", marker = "extra == 'microsoft-sdk'", specifier = ">=1.0.0rc1" },
     { name = "aiohttp", specifier = ">=3.8.0" },
     { name = "amplifier-core", marker = "extra == 'amplifier'", git = "https://github.com/microsoft/amplifier-core?rev=main" },
-    { name = "amplihack-agent-eval", git = "https://github.com/rysweet/amplihack-agent-eval.git?rev=main" },
-    { name = "amplihack-memory-lib", git = "https://github.com/rysweet/amplihack-memory-lib.git?rev=30e614b1eec307b525b5e2f9a94e805eb6988fc4" },
+    { name = "amplihack-agent-eval", git = "https://github.com/rysweet/amplihack-agent-eval.git?rev=d7a28a552bed6e8daa752e465475024b281913f6" },
+    { name = "amplihack-memory-lib", git = "https://github.com/rysweet/amplihack-memory-lib.git?rev=v0.2.0" },
     { name = "azure-identity", specifier = ">=1.12.0" },
     { name = "beautifulsoup4", marker = "extra == 'dev'", specifier = ">=4.9.0" },
     { name = "black", marker = "extra == 'dev'", specifier = ">=22.0.0" },
@@ -272,7 +272,6 @@ requires-dist = [
     { name = "langchain-anthropic", specifier = ">=1.3.1" },
     { name = "langchain-google-genai", specifier = ">=4.1.3" },
     { name = "langchain-openai", specifier = ">=1.1.7" },
-    { name = "litellm", specifier = ">=1.0.0" },
     { name = "lxml", marker = "extra == 'dev'", specifier = ">=4.6.0" },
     { name = "neo4j", specifier = ">=5.25.0" },
     { name = "opentelemetry-semantic-conventions-ai", marker = "extra == 'microsoft-sdk'", specifier = ">=0.4.1,<0.4.14" },
@@ -294,6 +293,7 @@ requires-dist = [
     { name = "rich", marker = "extra == 'dev'", specifier = ">=13.0.0" },
     { name = "rich", marker = "extra == 'ui'", specifier = ">=13.0.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
+    { name = "simpleeval", specifier = ">=0.9.13" },
     { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2.0.0" },
     { name = "tree-sitter", specifier = ">=0.23.2" },
     { name = "tree-sitter-c-sharp", specifier = ">=0.23.1" },
@@ -317,13 +317,13 @@ dev = [
 
 [[package]]
 name = "amplihack-agent-eval"
-version = "0.1.0"
-source = { git = "https://github.com/rysweet/amplihack-agent-eval.git?rev=main#4ec3d9a7556156ce9e9820311f60559f8651dd49" }
+version = "0.1.1"
+source = { git = "https://github.com/rysweet/amplihack-agent-eval.git?rev=d7a28a552bed6e8daa752e465475024b281913f6#d7a28a552bed6e8daa752e465475024b281913f6" }
 
 [[package]]
 name = "amplihack-memory-lib"
-version = "0.4.0"
-source = { git = "https://github.com/rysweet/amplihack-memory-lib.git?rev=30e614b1eec307b525b5e2f9a94e805eb6988fc4#30e614b1eec307b525b5e2f9a94e805eb6988fc4" }
+version = "0.2.0"
+source = { git = "https://github.com/rysweet/amplihack-memory-lib.git?rev=v0.2.0#1dd8cc4af8b19fa29660345fff46d1248d2c357d" }
 dependencies = [
     { name = "kuzu" },
 ]
@@ -1655,29 +1655,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/ec/dd/d69922b79fb692b9736206574e5ba69b6354080cf1cc9796449d9fe61f9a/langsmith-0.4.47.tar.gz", hash = "sha256:6a576405696ee97147ccb96c9ae5c9437430500a5d118bd447ec2d1f8cf26de1", size = 986584, upload-time = "2025-11-24T16:02:00.914Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/80/1a/0c84f7096d41d64425d29db549c8d6fe075f925a5f2022e8087d01d862c2/langsmith-0.4.47-py3-none-any.whl", hash = "sha256:b9e514611d4e1570e33595d33ccb1fe6eda9f96c5f961095a138651f746c1ef5", size = 411207, upload-time = "2025-11-24T16:01:59.123Z" },
-]
-
-[[package]]
-name = "litellm"
-version = "1.78.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "aiohttp" },
-    { name = "click" },
-    { name = "fastuuid" },
-    { name = "httpx" },
-    { name = "importlib-metadata" },
-    { name = "jinja2" },
-    { name = "jsonschema" },
-    { name = "openai" },
-    { name = "pydantic" },
-    { name = "python-dotenv" },
-    { name = "tiktoken" },
-    { name = "tokenizers" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/fd/3e/1a96a3caeeb6092d85e70904e2caa98598abb7179cefe734e2fbffac6978/litellm-1.78.0.tar.gz", hash = "sha256:020e40e0d6e16009bb3a6b156d4c1d98cb5c33704aa340fdf9ffd014bfd31f3b", size = 10684595, upload-time = "2025-10-11T19:28:27.369Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/fc/fb/38a48efe3e05a8e9a9765b991740282e0358a83fb896ec00d70bf1448791/litellm-1.78.0-py3-none-any.whl", hash = "sha256:a9d6deee882de8df38ca24beb930689f49209340137ff8a3dcab0c5fc4a0513d", size = 9677983, upload-time = "2025-10-11T19:28:23.242Z" },
 ]
 
 [[package]]
@@ -3136,6 +3113,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/73/e6/03b882225a1b0627e75339b420883dc3c90707a8917d2284abef7a58d317/ruff-0.14.0-py3-none-win32.whl", hash = "sha256:7450a243d7125d1c032cb4b93d9625dea46c8c42b4f06c6b709baac168e10543", size = 12367872, upload-time = "2025-10-07T18:21:46.67Z" },
     { url = "https://files.pythonhosted.org/packages/41/77/56cf9cf01ea0bfcc662de72540812e5ba8e9563f33ef3d37ab2174892c47/ruff-0.14.0-py3-none-win_amd64.whl", hash = "sha256:ea95da28cd874c4d9c922b39381cbd69cb7e7b49c21b8152b014bd4f52acddc2", size = 13464628, upload-time = "2025-10-07T18:21:50.318Z" },
     { url = "https://files.pythonhosted.org/packages/c6/2a/65880dfd0e13f7f13a775998f34703674a4554906167dce02daf7865b954/ruff-0.14.0-py3-none-win_arm64.whl", hash = "sha256:f42c9495f5c13ff841b1da4cb3c2a42075409592825dada7c5885c2c844ac730", size = 12565142, upload-time = "2025-10-07T18:21:53.577Z" },
+]
+
+[[package]]
+name = "simpleeval"
+version = "1.0.7"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/b4/9d/e7c9309940794dd3073cba2e5101df5874d84243595ce63b1e1c8f9b9c76/simpleeval-1.0.7.tar.gz", hash = "sha256:1e10e5f9fec597814444e20c0892ed15162fa214c8a88f434b5b077cf2fef85b", size = 30250, upload-time = "2026-03-16T10:53:03.464Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0f/2f/f32aa85591882378bb43caa09363f3ed97df399369a5144c7f19f2275bc0/simpleeval-1.0.7-py3-none-any.whl", hash = "sha256:97ac271bfd8f2af9e7b9a36ceea67617f26fa873f9d5ae1922f64d4c1442534b", size = 18792, upload-time = "2026-03-16T10:53:02.103Z" },
 ]
 
 [[package]]

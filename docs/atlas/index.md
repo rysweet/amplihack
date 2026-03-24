@@ -4,7 +4,7 @@ title: Code Atlas
 
 # Code Atlas
 
-<div class="atlas-metadata">Generated: 2026-03-19 00:32 UTC</div>
+<div class="atlas-metadata">Generated: 2026-03-23 16:47 UTC</div>
 
 ## Layer Overview
 
@@ -28,12 +28,12 @@ title: Code Atlas
     Cross-file imports, symbol references, dead code
 
     <div class="atlas-coverage">
-    <div class="atlas-coverage__bar" style="width:26%"></div>
+    <div class="atlas-coverage__bar" style="width:45%"></div>
     </div>
-    <small>601/2293 files analyzed (26%)</small>
+    <small>2304/5092 files analyzed (45%)</small>
 
     <div class="atlas-scale">
-    **total definitions**: 3369 | **total exports**: 1070 | **total imports**: 4235 | **potentially dead**: 140
+    **total definitions**: 14350 | **total exports**: 2113 | **total imports**: 16388 | **potentially dead**: 403
     </div>
 
 -   <span class="atlas-icon--structural">:material-package-variant:</span> **[Layer 3: Compile-time Dependencies](compile-deps/)**
@@ -48,7 +48,7 @@ title: Code Atlas
     <small>100% coverage</small>
 
     <div class="atlas-scale">
-    **external dep**: 67 | **internal packages**: 601 | **internal edges**: 715 | **circular dependency**: 8
+    **external dep**: 67 | **internal packages**: 2303 | **internal edges**: 1498 | **circular dependency**: 12
     </div>
 
 -   <span class="atlas-icon--structural">:material-server-network:</span> **[Layer 4: Runtime Topology](runtime-topology/)**
@@ -63,7 +63,7 @@ title: Code Atlas
     <small>100% coverage</small>
 
     <div class="atlas-scale">
-    **subprocess call**: 286 | **unique subprocess files**: 109 | **port binding**: 5 | **docker service**: 0
+    **subprocess call**: 1047 | **unique subprocess files**: 335 | **port binding**: 8 | **docker service**: 0
     </div>
 
 -   <span class="atlas-icon--behavioral">:material-api:</span> **[Layer 5: API Contracts](api-contracts/)**
@@ -78,7 +78,7 @@ title: Code Atlas
     <small>100% coverage</small>
 
     <div class="atlas-scale">
-    **cli command**: 52 | **cli argument**: 236 | **click typer command**: 11 | **http route**: 22
+    **cli command**: 172 | **cli argument**: 1057 | **click typer command**: 33 | **rust clap command**: 1
     </div>
 
 -   <span class="atlas-icon--behavioral">:material-transit-connection-variant:</span> **[Layer 6: Data Flow](data-flow/)**
@@ -93,7 +93,7 @@ title: Code Atlas
     <small>100% coverage</small>
 
     <div class="atlas-scale">
-    **file io**: 844 | **database op**: 293 | **network io**: 23 | **transformation point**: 45
+    **file io**: 4322 | **database op**: 485 | **network io**: 56 | **transformation point**: 194
     </div>
 
 -   <span class="atlas-icon--structural">:material-view-module:</span> **[Layer 7: Service Components](service-components/)**
@@ -108,7 +108,7 @@ title: Code Atlas
     <small>100% coverage</small>
 
     <div class="atlas-scale">
-    **total packages**: 77 | **core packages**: 0 | **leaf packages**: 16
+    **total packages**: 220 | **core packages**: 0 | **leaf packages**: 67
     </div>
 
 -   <span class="atlas-icon--behavioral">:material-routes:</span> **[Layer 8: User Journeys](user-journeys/)**
@@ -123,20 +123,33 @@ title: Code Atlas
     <small>100% coverage</small>
 
     <div class="atlas-scale">
-    **total journeys**: 351 | **cli journeys**: 55 | **http journeys**: 22 | **hook journeys**: 274
+    **total journeys**: 479 | **cli journeys**: 172 | **http journeys**: 33 | **hook journeys**: 274
     </div>
 
 </div>
 
 ## Languages
 
-Primary language: **Python** | Total code: **139,522** lines | Detected via: *tokei*
+Primary language: **Python** | Total code: **475,044** lines | Detected via: *tokei*
 
 | Language | Files | Code Lines | % | Analysis Available |
 |----------|------:|-----------:|--:|-------------------|
-| Python | 533 | 120,895 | 86.6% | Full (AST, imports, dead code, journeys) |
-| Json | 24 | 17,065 | 12.2% | File-level only |
-| Xml | 13 | 1,562 | 1.1% | File-level only |
+| Python | 1,753 | 424,389 | 89.3% | Full (AST, imports, dead code, journeys) |
+| Yaml | 166 | 24,757 | 5.2% | File-level only |
+| Json | 73 | 10,120 | 2.1% | File-level only |
+| Bash | 52 | 7,075 | 1.5% | File-level only |
+| Svg | 20 | 3,076 | 0.6% | File-level only |
+| Javascript | 4 | 1,974 | 0.4% | Dependencies (package.json) |
+| Csharp | 7 | 1,192 | 0.3% | Dependencies (*.csproj) |
+| Rust | 7 | 1,081 | 0.2% | Dependencies (Cargo.toml) |
+| Xml | 2 | 442 | 0.1% | File-level only |
+| Toml | 11 | 286 | 0.1% | File-level only |
+| Css | 1 | 236 | 0.0% | File-level only |
+| Ini | 6 | 166 | 0.0% | File-level only |
+| Makefile | 1 | 115 | 0.0% | File-level only |
+| Dockerfile | 5 | 90 | 0.0% | File-level only |
+| Html | 1 | 26 | 0.0% | File-level only |
+| Autoconf | 1 | 19 | 0.0% | File-level only |
 
 > **Note**: Full AST analysis is currently available for Python only. Other languages have dependency and file-level analysis.
 

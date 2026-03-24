@@ -66,7 +66,8 @@
 | `AZURE_CLAUDE_HAIKU_DEPLOYMENT` | proxy/passthrough.py | Optional | `"gpt-4o-mini"` | Azure deployment for Haiku model mapping |
 | `AZURE_CLAUDE_OPUS_DEPLOYMENT` | proxy/passthrough.py | Optional | `"gpt-4"` | Azure deployment for Opus model mapping |
 | `CLAUDE_BINARY_PATH` | launcher/claude_binary_manager.py | Optional | - | Explicit path to Claude binary |
-| `CLAUDE_PROJECT_DIR` | fleet/_cli_commands.py, launcher/core.py, fleet/_transcript.py | Optional | `"."` | Claude Code project directory |
+| `CLAUDE_PROJECT_DIR` | fleet/_cli_commands.py, launcher/core.py, fleet/_transcript.py, recipes/rust_runner.py | Optional | `"."` | Claude Code project directory. Forwarded through Rust runner env bridge; auto-seeded from `working_dir` when absent (#3496) |
+| `PYTHONPATH` | recipes/rust_runner_execution.py | Optional | - | Forwarded through Rust runner env bridge to ensure nested workflow steps import repo source (#3496) |
 | `CLAUDE_PLUGIN_ROOT` | cli.py | Optional | - | Plugin root directory for Claude Code |
 | `COPILOT_MODEL` | launcher/copilot.py | Optional | `""` | Override model for Copilot sessions |
 | `ENABLE_LSP_TOOL` | launcher/core.py | Optional | `""` | Set to `"1"` to enable LSP tool |

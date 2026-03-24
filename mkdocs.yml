@@ -154,6 +154,8 @@ nav:
           - Tutorial: hive_mind/TUTORIAL.md
           - Design: hive_mind/DESIGN.md
           - Evaluation: hive_mind/EVAL.md
+          - Eval Operator Guide: hive_mind/EVAL_OPERATOR_GUIDE.md
+          - Eval Components: hive_mind/EVAL_COMPONENTS.md
           - Investigation Guide: INVESTIGATION_hive_mind_guide.md
       - Agent Memory Integration: AGENT_MEMORY_INTEGRATION.md
       - Memory Quickstart: AGENT_MEMORY_QUICKSTART.md

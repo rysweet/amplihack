@@ -45,6 +45,7 @@ from .agentic_loop import (
 )
 from .cognitive_adapter import HAS_COGNITIVE_MEMORY, CognitiveAdapter
 from .flat_retriever_adapter import FlatRetrieverAdapter
+from .goal_seeking_agent import GoalSeekingAgent
 from .graph_rag_retriever import GraphRAGRetriever
 from .hierarchical_memory import (
     HierarchicalMemory,
@@ -54,6 +55,7 @@ from .hierarchical_memory import (
     MemoryCategory,
     MemoryClassifier,
 )
+from .input_source import InputSource, ListInputSource, ServiceBusInputSource, StdinInputSource
 from .learning_agent import LearningAgent
 from .memory_export import export_memory, import_memory
 from .memory_retrieval import MemoryRetriever
@@ -88,6 +90,7 @@ __all__ = [
     "FlatRetrieverAdapter",
     "GraphRAGRetriever",
     "HierarchicalMemory",
+    "InputSource",
     "KnowledgeEdge",
     "KnowledgeNode",
     "KnowledgeSubgraph",

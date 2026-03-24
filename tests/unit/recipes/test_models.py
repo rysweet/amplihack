@@ -9,7 +9,7 @@ enables safe string conversion so callers can do str(result)[:500] without error
 
 from __future__ import annotations
 
-from amplihack.recipes.models import RecipeResult, StepResult, StepStatus
+from amplihack.recipes.models import RecipeResult, Step, StepResult, StepStatus, StepType
 
 
 class TestStepResultStr:
@@ -82,12 +82,10 @@ class TestRecipeResultStr:
 class TestEvaluateCondition:
     """Tests for Step.evaluate_condition() — condition evaluation with type coercion."""
 
-    def _step(self, condition: str) -> "Step":
-        from amplihack.recipes.models import Step, StepType
+    def _step(self, condition: str) -> Step:
         return Step(id="test", step_type=StepType.BASH, condition=condition)
 
     def test_no_condition_returns_true(self) -> None:
-        from amplihack.recipes.models import Step, StepType
         step = Step(id="test", step_type=StepType.BASH, condition=None)
         assert step.evaluate_condition({}) is True
 
@@ -137,3 +135,19 @@ class TestEvaluateCondition:
         step = self._step("force == 'true' and count >= 2")
         assert step.evaluate_condition({"force": True, "count": 3}) is True
         assert step.evaluate_condition({"force": False, "count": 3}) is False
+
+    def test_in_operator(self) -> None:
+        step = self._step("'API' in description")
+        assert step.evaluate_condition({"description": "Build an API"}) is True
+        assert step.evaluate_condition({"description": "Build a CLI"}) is False
+
+    def test_import_blocked(self) -> None:
+        """simpleeval must block __import__ — no code execution via conditions."""
+        step = self._step("__import__('os').system('echo pwned')")
+        # Should not execute os.system; returns True (default on eval failure)
+        assert step.evaluate_condition({}) is True
+
+    def test_open_blocked(self) -> None:
+        """simpleeval must block open() — no file access via conditions."""
+        step = self._step("open('/etc/passwd').read()")
+        assert step.evaluate_condition({}) is True

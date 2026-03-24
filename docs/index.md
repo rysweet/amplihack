@@ -109,6 +109,7 @@ amplihack copilot
 - Adaptive hooks enable preference injection and context loading
 - All 38 agents available via `--agent <name>` flag
 - See [GitHub Copilot Integration](github-copilot-litellm-integration.md) for complete guide
+- See [How to Use amplihack with a Non-Claude Agent](howto/use-non-claude-agent.md) for `AMPLIHACK_AGENT_BINARY` propagation and nested Copilot compatibility details
 
 **Codex**
 

@@ -4,9 +4,10 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
+import pytest  # pyright: ignore[reportMissingImports]
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
+from agent_query import AgentQueryError
 from generate_roadmap_review import get_git_velocity_metrics, load_project_state
 
 
@@ -65,7 +66,7 @@ class TestMainFunction:
 
     def test_main_sdk_not_available(self, capsys):
         """Test main when SDK not available."""
-        with patch("generate_roadmap_review.CLAUDE_SDK_AVAILABLE", False):
+        with patch("generate_roadmap_review.SDK_AVAILABLE", False):
             with patch("sys.argv", ["generate_roadmap_review.py"]):
                 from generate_roadmap_review import main
 
@@ -74,4 +75,31 @@ class TestMainFunction:
 
                 assert exc_info.value.code == 1
                 captured = capsys.readouterr()
-                assert "not installed" in captured.err
+                assert "No agent SDK installed" in captured.err
+
+
+class TestGenerateRoadmapReview:
+    """Tests for generate_roadmap_review error handling."""
+
+    @pytest.mark.asyncio
+    async def test_generate_roadmap_review_handles_agent_query_error(self, project_root, capsys):
+        """Agent query failures should be surfaced explicitly."""
+        from generate_roadmap_review import generate_roadmap_review
+
+        with patch("generate_roadmap_review.SDK_AVAILABLE", True):
+            with patch(
+                "generate_roadmap_review.get_git_velocity_metrics", return_value="## Velocity"
+            ):
+                with patch(
+                    "generate_roadmap_review.get_milestone_progress",
+                    return_value="## Milestones",
+                ):
+                    with patch(
+                        "generate_roadmap_review.query_agent",
+                        side_effect=AgentQueryError("SDK error"),
+                    ):
+                        result = await generate_roadmap_review(project_root)
+
+        assert result is None
+        captured = capsys.readouterr()
+        assert "Error generating roadmap review: SDK error" in captured.err

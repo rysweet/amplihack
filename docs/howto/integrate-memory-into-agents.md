@@ -65,31 +65,40 @@ else:
 
 ## Keep the Two Memory Surfaces Straight
 
-The generated package and the CLI backend are different systems.
+The generated package and the top-level CLI graph are different systems.
 
-| Surface                  | Entry Point                                        | Storage                              |
-| ------------------------ | -------------------------------------------------- | ------------------------------------ |
-| generated agent scaffold | `amplihack new --enable-memory`                    | local `./memory/` directory          |
-| in-repo CLI backend      | `amplihack memory tree` / `amplihack memory clean` | Kuzu or SQLite backend, default Kuzu |
+| Surface                  | Entry Point                                           | Storage                                             |
+| ------------------------ | ----------------------------------------------------- | --------------------------------------------------- |
+| generated agent scaffold | `amplihack new --enable-memory`                       | local `./memory/` directory                         |
+| top-level CLI graph      | `amplihack memory tree`                               | SQLite `MemoryDatabase` at `~/.amplihack/memory.db` |
+| agent-local transfer     | `amplihack memory export` / `amplihack memory import` | hierarchical Kuzu store for the named agent         |
 
-If you want to inspect or clean the CLI backend, use:
+If you want to inspect the top-level CLI graph, use:
 
 ```bash
-amplihack memory tree --backend kuzu
-amplihack memory clean --pattern 'test_*'
+amplihack memory tree --depth 2
+```
+
+If you want to move an agent-local hierarchical memory store between environments, use:
+
+```bash
+amplihack memory export --agent incident-memory-agent --output ./incident-memory.json
+amplihack memory import --agent incident-memory-agent --input ./incident-memory.json --merge
 ```
 
 Do not expect those commands to be a direct live view into a generated agent's local `./memory/` directory.
 
-## Configure the CLI Backend Path
+## Configure Kuzu-backed Graph Paths
 
-For the in-repo Kuzu backend, the preferred environment variable is:
+For lower-level Kuzu graph integrations and agent-local hierarchical stores, the preferred environment variable is:
 
 ```bash
 export AMPLIHACK_GRAPH_DB_PATH=/path/to/memory_kuzu.db
 ```
 
 `AMPLIHACK_KUZU_DB_PATH` still exists as a deprecated alias.
+
+The top-level `amplihack memory tree` command does not read this setting; it opens the SQLite `MemoryDatabase` unless you change code.
 
 ## Related Docs
 

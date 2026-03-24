@@ -18,7 +18,7 @@ os.environ.pop("CLAUDECODE", None)
 
 # Ensure sibling modules are importable regardless of working directory
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from agent_query import SDK_AVAILABLE, detect_runtime, query_agent
+from agent_query import SDK_AVAILABLE, AgentQueryError, detect_runtime, query_agent
 
 
 def get_pr_details(project_root: Path, pr_number: int) -> dict | None:
@@ -278,7 +278,7 @@ Generate the triage analysis now:
         triage = await query_agent(prompt, project_root)
         return triage if triage.strip() else None
 
-    except Exception as e:
+    except AgentQueryError as e:
         print(f"Error performing PR triage: {e}", file=sys.stderr)
         return None
 

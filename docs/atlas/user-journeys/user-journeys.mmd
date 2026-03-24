@@ -11,34 +11,35 @@ sequenceDiagram
     cli-->>CLI: result
     CLI-->>User: exit code
 
-    User->>CLI: cli:cli.py
-    CLI->>cli: main()
-    participant memory_export
-    cli->>memory_export: file_io: _export_json
-    participant auto_update
-    cli->>auto_update: return_value: UpdateCache.from_dict
-    cli->>auto_update: file_io: _fetch_latest_version
-    cli-->>CLI: result
+    participant ci_workflow
+    User->>CLI: iterate-fixes
+    CLI->>ci_workflow: iterate-fixes()
+    participant ci_status
+    ci_workflow->>ci_status: subprocess: get_current_branch
+    ci_workflow->>ci_workflow: return_value: analyze_diagnostics
+    ci_workflow->>ci_workflow: subprocess: run_command
+    ci_workflow-->>CLI: result
+    CLI-->>User: exit code
+
+    User->>CLI: iterate-fixes
+    CLI->>ci_workflow: iterate-fixes()
+    ci_workflow->>ci_status: subprocess: get_current_branch
+    ci_workflow->>ci_workflow: return_value: analyze_diagnostics
+    ci_workflow->>ci_workflow: subprocess: run_command
+    ci_workflow-->>CLI: result
+    CLI-->>User: exit code
+
+    User->>CLI: iterate-fixes
+    CLI->>ci_workflow: iterate-fixes()
+    ci_workflow->>ci_status: subprocess: get_current_branch
+    ci_workflow->>ci_workflow: return_value: analyze_diagnostics
+    ci_workflow->>ci_workflow: subprocess: run_command
+    ci_workflow-->>CLI: result
     CLI-->>User: exit code
 
     User->>CLI: recipe
     CLI->>cli: recipe()
     participant rust_runner
     cli->>rust_runner: return_value: _binary_search_paths
-    cli-->>CLI: result
-    CLI-->>User: exit code
-
-    User->>CLI: claude
-    CLI->>cli: claude()
-    cli->>cli: return_value: _debug_print
-    participant prerequisites
-    cli->>prerequisites: subprocess: safe_subprocess_call
-    cli-->>CLI: result
-    CLI-->>User: exit code
-
-    User->>CLI: plugin
-    CLI->>cli: plugin()
-    participant __init__
-    cli->>__init__: return_value: is_uvx_deployment
     cli-->>CLI: result
     CLI-->>User: exit code

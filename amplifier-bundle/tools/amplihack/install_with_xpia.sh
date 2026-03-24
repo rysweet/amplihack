@@ -2,7 +2,7 @@
 # Enhanced install script with XPIA security hook integration
 # Fixes Issue #137: XPIA hooks not configured during installation
 
-AMPLIHACK_INSTALL_LOCATION=${AMPLIHACK_INSTALL_LOCATION:-https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding}
+AMPLIHACK_INSTALL_LOCATION=${AMPLIHACK_INSTALL_LOCATION:-https://github.com/rysweet/amplihack}
 
 # Colors for output
 RED='\033[0;31m'
