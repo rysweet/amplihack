@@ -8,22 +8,17 @@ The amplihack launcher uses `sonnet[1m]` as the default model when launching Cla
 
 When the launcher determines which model to use, it follows this strict priority order:
 
-1. **Azure Proxy Configuration** (highest priority)
-   - When `--with-proxy-config` is specified with an Azure configuration file
-   - Azure proxy settings completely override all other model specifications
-   - The proxy determines the model based on its own configuration
-
-2. **--model Flag**
+1. **--model Flag** (highest priority)
    - Explicitly specified model via command-line flag
    - Example: `amplihack launch --model opus`
    - Overrides environment variable and hardcoded default
 
-3. **AMPLIHACK_DEFAULT_MODEL Environment Variable**
+2. **AMPLIHACK_DEFAULT_MODEL Environment Variable**
    - Set in your shell environment
    - Example: `export AMPLIHACK_DEFAULT_MODEL=opus`
    - Overrides hardcoded default but not command-line flag
 
-4. **Hardcoded Default** (lowest priority)
+3. **Hardcoded Default** (lowest priority)
    - `sonnet[1m]` is used when no other configuration is present
    - Provides sensible default for most development work
 
@@ -60,18 +55,6 @@ amplihack launch
 
 # Still can override with flag
 amplihack launch --model haiku
-```
-
-### Azure Proxy Takes Precedence
-
-```bash
-# Azure proxy configuration determines the model
-amplihack launch --with-proxy-config ./azure.env --model opus
-
-# In this case:
-# - Azure proxy configuration is used
-# - The --model flag is effectively ignored
-# - Model is determined by Azure deployment configuration
 ```
 
 ## Available Models
@@ -114,12 +97,6 @@ For more information about the statusline, see [STATUSLINE.md](./STATUSLINE.md).
 
 ## Troubleshooting
 
-### Model flag not working with Azure proxy
-
-**Problem**: You specify `--model opus` but Azure model is used instead.
-
-**Solution**: This is expected behavior. Azure proxy configuration always takes precedence over model flags. To use a different model with Azure, modify your Azure proxy configuration file.
-
 ### Environment variable not being respected
 
 **Problem**: You set `AMPLIHACK_DEFAULT_MODEL` but the default `sonnet[1m]` is still used.
@@ -138,6 +115,5 @@ For more information about the statusline, see [STATUSLINE.md](./STATUSLINE.md).
 
 ## Related Documentation
 
-- [Proxy Configuration Guide](../PROXY_CONFIG_GUIDE.md) - Azure OpenAI proxy setup
 - [Statusline Reference](./STATUSLINE.md) - Session information display
 - [Auto Mode](../AUTO_MODE.md) - Autonomous mode with model selection

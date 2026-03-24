@@ -2,7 +2,7 @@
 
 > [Security](./README.md) > API Reference
 
-Complete reference for `amplihack.utils.token_sanitizer` module.
+Complete reference for `amplihack.tracing.token_sanitizer` module.
 
 ## Contents
 
@@ -13,10 +13,10 @@ Complete reference for `amplihack.utils.token_sanitizer` module.
 
 ## TokenSanitizer Class
 
-**Module**: `amplihack.utils.token_sanitizer`
+**Module**: `amplihack.tracing.token_sanitizer`
 
 ```python
-from amplihack.utils.token_sanitizer import TokenSanitizer
+from amplihack.tracing.token_sanitizer import TokenSanitizer
 
 sanitizer = TokenSanitizer()
 ```
@@ -46,7 +46,7 @@ Initializes TokenSanitizer with compiled regex patterns for all supported token 
 **Example**:
 
 ```python
-from amplihack.utils.token_sanitizer import TokenSanitizer
+from amplihack.tracing.token_sanitizer import TokenSanitizer
 
 sanitizer = TokenSanitizer()
 ```
@@ -370,7 +370,7 @@ Patterns match tokens even when embedded in text:
 
 ### Benchmark Results
 
-From `tests/proxy/test_security_sanitization.py`:
+Typical performance benchmarks:
 
 ```python
 # Simple string: 100 iterations
@@ -428,4 +428,4 @@ with ThreadPoolExecutor(max_workers=10) as executor:
 
 ---
 
-**Implementation**: See `src/amplihack/proxy/security.py` for complete source code.
+**Implementation**: See `src/amplihack/tracing/token_sanitizer.py` for complete source code.

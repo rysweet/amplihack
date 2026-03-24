@@ -28,7 +28,7 @@ Automatically detect and redact sensitive tokens from logs, errors, and debug ou
 **Quick Start**:
 
 ```python
-from amplihack.utils.token_sanitizer import TokenSanitizer
+from amplihack.tracing.token_sanitizer import TokenSanitizer
 
 sanitizer = TokenSanitizer()
 safe_msg = sanitizer.sanitize("Token: gho_abc123xyz")
@@ -61,8 +61,6 @@ Unified model validation preventing routing conflicts and injection attacks.
 - Length limits (200 chars max)
 - ASCII-only enforcement
 
-**Implementation**: `ModelValidator` class in `src/amplihack/proxy/server.py`
-
 ### Input Validation (NEW)
 
 Security-focused input validation for all external data.
@@ -75,8 +73,6 @@ Security-focused input validation for all external data.
 - Path traversal checks
 - Newline/null byte detection
 
-**Implementation**: `validate_model_name()` in `src/amplihack/proxy/github_models.py`
-
 ### Secure File Permissions (NEW)
 
 Automatic secure permissions for sensitive files.
@@ -87,7 +83,7 @@ Automatic secure permissions for sensitive files.
 - Config directories: 0700 (rwx owner only)
 - Automatic permission enforcement on save
 
-**Implementation**: `save_token()` in `src/amplihack/proxy/github_auth.py`
+**Implementation**: `save_token()` in `amplihack.security`
 
 ---
 
@@ -104,7 +100,6 @@ Comprehensive security analysis:
 Guidelines for secure autonomous operations:
 
 - [Auto Mode Safety](../AUTOMODE_SAFETY.md) - Autonomous operation guardrails
-- [Passthrough Mode](../PASSTHROUGH_MODE.md) - Direct API access patterns
 
 ---
 
@@ -113,7 +108,6 @@ Guidelines for secure autonomous operations:
 Secure configuration practices:
 
 - [Profile Management](../PROFILE_MANAGEMENT.md) - Secure environment configurations
-- [Proxy Configuration](../PROXY_CONFIG_GUIDE.md) - Network security setup
 - [Hook Configuration](../HOOK_CONFIGURATION_GUIDE.md) - Secure hook customization
 
 ---
@@ -123,7 +117,6 @@ Secure configuration practices:
 Cloud deployment security:
 
 - [Azure Integration](../AZURE_INTEGRATION.md) - Secure Azure deployment
-- [Test Azure Proxy](../TEST_AZURE_PROXY.md) - Validate secure proxy setup
 
 ---
 
@@ -148,11 +141,11 @@ How to test and validate security implementations:
 
 ```bash
 # All security tests
-pytest tests/proxy/test_security_sanitization.py -v
+pytest tests/ -k "security or sanitiz" -v
 
 # With coverage
-pytest tests/proxy/test_security_sanitization.py \
-  --cov=amplihack.utils.token_sanitizer \
+pytest tests/ -k "security or sanitiz" \
+  --cov=amplihack.tracing.token_sanitizer \
   --cov-fail-under=90
 ```
 
