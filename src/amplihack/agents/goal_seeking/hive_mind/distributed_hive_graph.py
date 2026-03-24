@@ -46,6 +46,7 @@ import uuid
 from collections.abc import Callable
 from typing import Any, Protocol, runtime_checkable
 
+from ..partition_routing import DEFAULT_EVENT_HUB_PARTITIONS, stable_agent_index
 from ..retrieval_constants import CONFIDENCE_SORT_WEIGHT, POSITION_SCORE_DECREMENT
 from .bloom import BloomFilter
 from .constants import (
@@ -999,10 +1000,7 @@ class EventHubsShardTransport:
     @staticmethod
     def _agent_index(agent_id: str) -> int:
         """Extract numeric index from 'agent-N' format."""
-        try:
-            return int(agent_id.rsplit("-", 1)[-1])
-        except (ValueError, IndexError):
-            return abs(hash(agent_id))
+        return stable_agent_index(agent_id)
 
     def _get_num_partitions(self) -> int:
         """Get partition count (cached). Falls back to 32 if query fails."""
@@ -1020,7 +1018,12 @@ class EventHubsShardTransport:
             c.close()
             self._num_partitions = len(pids)
         except Exception:
-            self._num_partitions = 32
+            logger.warning(
+                "EventHubsShardTransport: failed to query partition ids; falling back to %d",
+                DEFAULT_EVENT_HUB_PARTITIONS,
+                exc_info=True,
+            )
+            self._num_partitions = DEFAULT_EVENT_HUB_PARTITIONS
         return self._num_partitions
 
     def _target_partition(self, agent_id: str) -> str:

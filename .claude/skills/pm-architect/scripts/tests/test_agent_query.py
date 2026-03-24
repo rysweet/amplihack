@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
-import pytest
+import pytest  # pyright: ignore[reportMissingImports]
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -43,14 +43,14 @@ class TestQueryAgent:
     """Tests for query_agent function."""
 
     @pytest.mark.asyncio
-    async def test_returns_empty_when_no_sdk(self):
-        """Test fail-open behavior when no SDK is available."""
+    async def test_raises_when_no_sdk(self):
+        """Test explicit failure when no SDK is available."""
         with patch("agent_query._CLAUDE_SDK_OK", False):
             with patch("agent_query._COPILOT_SDK_OK", False):
-                from agent_query import query_agent
+                from agent_query import AgentQueryError, query_agent
 
-                result = await query_agent("test prompt", Path("/tmp"))
-                assert result == ""
+                with pytest.raises(AgentQueryError, match="No supported agent SDK is available"):
+                    await query_agent("test prompt", Path("/tmp"))
 
     @pytest.mark.asyncio
     async def test_routes_to_claude_when_detected(self):
@@ -107,16 +107,18 @@ class TestQueryAgent:
                         assert result == "fallback copilot"
 
     @pytest.mark.asyncio
-    async def test_handles_sdk_exception_gracefully(self):
-        """Test fail-open on SDK exception."""
+    async def test_raises_on_sdk_exception(self):
+        """Test explicit failure on SDK exception."""
         with patch("agent_query.detect_runtime", return_value="claude"):
             with patch("agent_query._CLAUDE_SDK_OK", True):
                 with patch("agent_query._query_claude", new_callable=AsyncMock) as mock_claude:
                     mock_claude.side_effect = RuntimeError("SDK crashed")
-                    from agent_query import query_agent
+                    from agent_query import AgentQueryError, query_agent
 
-                    result = await query_agent("prompt", Path("/tmp"))
-                    assert result == ""
+                    with pytest.raises(
+                        AgentQueryError, match="Error querying claude SDK: SDK crashed"
+                    ):
+                        await query_agent("prompt", Path("/tmp"))
 
 
 class TestSDKAvailable:

@@ -30,6 +30,14 @@ from pathlib import Path
 from .grader import grade_answer
 from .metacognition_grader import grade_metacognition
 
+# Keep this in sync with pyproject.toml's direct git dependency pin.
+AMPLIHACK_AGENT_EVAL_REV = "d7a28a552bed6e8daa752e465475024b281913f6"  # pragma: allowlist secret
+AMPLIHACK_AGENT_EVAL_INSTALL = (
+    "pip install 'amplihack-agent-eval @ "
+    "git+https://github.com/rysweet/amplihack-agent-eval.git@"
+    f"{AMPLIHACK_AGENT_EVAL_REV}'"
+)
+
 try:
     from amplihack_eval.data.progressive_levels import (  # type: ignore[import-not-found]
         ADVANCED_LEVELS,
@@ -39,8 +47,7 @@ try:
 except ImportError:
     raise ImportError(
         "amplihack-agent-eval package is required but not installed. "
-        "Install with: pip install 'amplihack-agent-eval @ "
-        "git+https://github.com/rysweet/amplihack-agent-eval.git@main'"
+        f"Install with: {AMPLIHACK_AGENT_EVAL_INSTALL}"
     )
 
 

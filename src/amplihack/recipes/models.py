@@ -11,6 +11,8 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
+from simpleeval import EvalWithCompoundTypes  # type: ignore[import-untyped]
+
 log = logging.getLogger(__name__)
 
 
@@ -66,11 +68,11 @@ class Step:
         # Coerce booleans to lowercase strings so recipe conditions like
         # ``== 'true'`` work.  Keep numbers as-is for numeric comparisons.
         eval_ctx: dict[str, Any] = {
-            k: str(v).lower() if isinstance(v, bool) else v
-            for k, v in context.items()
+            k: str(v).lower() if isinstance(v, bool) else v for k, v in context.items()
         }
         try:
-            return bool(eval(self.condition.strip(), {"__builtins__": {}}, eval_ctx))  # noqa: S307
+            evaluator = EvalWithCompoundTypes(names=eval_ctx)
+            return bool(evaluator.eval(self.condition.strip()))
         except Exception as exc:
             log.warning(
                 "Step condition %r could not be evaluated: %s — defaulting to True (step will run)",

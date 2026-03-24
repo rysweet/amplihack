@@ -82,7 +82,8 @@ if (!string.IsNullOrWhiteSpace(eventHubConnectionString) && !string.IsNullOrWhit
     {
         var azureHiveEvalMonitor = builder
             .AddExecutable("azure-hive-eval-monitor", "python", repoRoot)
-            .WithArgs(BuildMonitorArgs(builder, eventHubConnectionString, responseHub))
+            .WithArgs(BuildMonitorArgs(builder, responseHub))
+            .WithEnvironment("EH_CONN", eventHubConnectionString)
             .WithEnvironment("PYTHONPATH", pythonPath)
             .WithEnvironment("PYTHONUNBUFFERED", "1")
             .WithEnvironment("AMPLIHACK_OTEL_ENABLED", "true")
@@ -104,7 +105,8 @@ if (
     {
         var azureHiveRetrievalSmoke = builder
             .AddExecutable("azure-hive-retrieval-smoke", "python", repoRoot)
-            .WithArgs(BuildRetrievalSmokeArgs(builder, eventHubConnectionString, inputHub, responseHub))
+            .WithArgs(BuildRetrievalSmokeArgs(builder, inputHub, responseHub))
+            .WithEnvironment("EH_CONN", eventHubConnectionString)
             .WithEnvironment("PYTHONPATH", pythonPath)
             .WithEnvironment("PYTHONUNBUFFERED", "1")
             .WithEnvironment("AMPLIHACK_OTEL_ENABLED", "true")
@@ -119,7 +121,8 @@ if (
     {
         var azureHiveLongHorizonEval = builder
             .AddExecutable("azure-hive-long-horizon-eval", "python", repoRoot)
-            .WithArgs(BuildLongHorizonArgs(builder, eventHubConnectionString, inputHub, responseHub))
+            .WithArgs(BuildLongHorizonArgs(builder, inputHub, responseHub))
+            .WithEnvironment("EH_CONN", eventHubConnectionString)
             .WithEnvironment("PYTHONPATH", pythonPath)
             .WithEnvironment("PYTHONUNBUFFERED", "1")
             .WithEnvironment("AMPLIHACK_OTEL_ENABLED", "true")
@@ -134,7 +137,8 @@ if (
     {
         var azureHiveSecurityEval = builder
             .AddExecutable("azure-hive-security-eval", "python", repoRoot)
-            .WithArgs(BuildSecurityEvalArgs(builder, eventHubConnectionString, inputHub, responseHub))
+            .WithArgs(BuildSecurityEvalArgs(builder, inputHub, responseHub))
+            .WithEnvironment("EH_CONN", eventHubConnectionString)
             .WithEnvironment("PYTHONPATH", pythonPath)
             .WithEnvironment("PYTHONUNBUFFERED", "1")
             .WithEnvironment("AMPLIHACK_OTEL_ENABLED", "true")
@@ -215,17 +219,11 @@ static void AddOptionalPositiveArg(
     }
 }
 
-static string[] BuildMonitorArgs(
-    IDistributedApplicationBuilder builder,
-    string connectionString,
-    string responseHub
-)
+static string[] BuildMonitorArgs(IDistributedApplicationBuilder builder, string responseHub)
 {
     var args = new List<string>
     {
         "deploy/azure_hive/eval_monitor.py",
-        "--connection-string",
-        connectionString,
         "--response-hub",
         responseHub,
         "--consumer-group",
@@ -287,7 +285,6 @@ static string[] BuildMonitorArgs(
 
 static string[] BuildRetrievalSmokeArgs(
     IDistributedApplicationBuilder builder,
-    string connectionString,
     string inputHub,
     string responseHub
 )
@@ -295,8 +292,6 @@ static string[] BuildRetrievalSmokeArgs(
     return new[]
     {
         "deploy/azure_hive/eval_retrieval_smoke.py",
-        "--connection-string",
-        connectionString,
         "--input-hub",
         inputHub,
         "--response-hub",
@@ -324,7 +319,6 @@ static string[] BuildRetrievalSmokeArgs(
 
 static string[] BuildLongHorizonArgs(
     IDistributedApplicationBuilder builder,
-    string connectionString,
     string inputHub,
     string responseHub
 )
@@ -332,8 +326,6 @@ static string[] BuildLongHorizonArgs(
     var args = new List<string>
     {
         "deploy/azure_hive/eval_distributed.py",
-        "--connection-string",
-        connectionString,
         "--input-hub",
         inputHub,
         "--response-hub",
@@ -377,7 +369,6 @@ static string[] BuildLongHorizonArgs(
 
 static string[] BuildSecurityEvalArgs(
     IDistributedApplicationBuilder builder,
-    string connectionString,
     string inputHub,
     string responseHub
 )
@@ -385,8 +376,6 @@ static string[] BuildSecurityEvalArgs(
     var args = new List<string>
     {
         "deploy/azure_hive/eval_distributed_security.py",
-        "--connection-string",
-        connectionString,
         "--input-hub",
         inputHub,
         "--response-hub",

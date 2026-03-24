@@ -50,33 +50,38 @@ The two surfaces optimize for different things.
 
 That means you should not assume the CLI memory tree is a live view into a generated agent's `./memory/` directory.
 
-## Kuzu Backend Defaults
+## Top-Level CLI Graph Defaults
 
-When the in-repo memory backend uses Kuzu, the database path resolves in this order:
+`amplihack memory tree` opens the top-level `MemoryDatabase`, which stores session data in SQLite at `~/.amplihack/memory.db` by default.
+
+## Agent-Local Kuzu Stores
+
+`amplihack memory export` / `amplihack memory import` and generated goal-agent scaffolds work with agent-local hierarchical stores backed by Kuzu. When lower-level graph code resolves a Kuzu path directly, it checks:
 
 1. `AMPLIHACK_GRAPH_DB_PATH`
 2. `AMPLIHACK_KUZU_DB_PATH` (deprecated)
 3. `~/.amplihack/memory_kuzu.db`
 
-This is the backend used by `amplihack memory tree` and `amplihack memory clean` unless you override `--backend`.
-
 ## Current CLI Shape
 
-The verified top-level CLI memory surfaces in this checkout are:
+The verified top-level memory surfaces in this checkout are:
 
 - `amplihack memory tree`
-- `amplihack memory clean`
+- `amplihack memory export`
+- `amplihack memory import`
 - `amplihack new --enable-memory`
 
-The `tree` and `clean` commands talk to the in-repo memory backend. The generator command scaffolds a standalone package that uses `amplihack_memory`.
+`memory tree` talks to the top-level SQLite session graph. `memory export` / `memory import` talk to agent-local hierarchical memory stores. The generator command scaffolds a standalone package that uses `amplihack_memory`.
 
 ## Architecture Diagram
 
 ```mermaid
 flowchart LR
-    CLI[amplihack memory tree/clean] --> RepoMemory[src/amplihack/memory]
-    RepoMemory --> Kuzu[(~/.amplihack/memory_kuzu.db)]
-    RepoMemory --> SQLite[(sqlite backend optional)]
+    CLI[amplihack memory tree] --> RepoMemory[src/amplihack/memory]
+    RepoMemory --> SQLite[(~/.amplihack/memory.db)]
+
+    Transfer[amplihack memory export/import] --> AgentStore[HierarchicalMemory export/import]
+    AgentStore --> AgentKuzu[(agent-local Kuzu store)]
 
     Generator[amplihack new --enable-memory] --> Package[generated agent package]
     Package --> MainPy[main.py helpers]

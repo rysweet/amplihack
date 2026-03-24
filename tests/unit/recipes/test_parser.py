@@ -120,6 +120,25 @@ steps:
         with pytest.raises(ValueError, match="(?i)duplicate"):
             parser.parse(yaml_str)
 
+    def test_parse_non_list_steps_raises(self) -> None:
+        yaml_str = """\
+name: "bad-steps-type"
+steps: "not-a-list"
+"""
+        parser = RecipeParser()
+        with pytest.raises(ValueError, match="(?i)steps.*list"):
+            parser.parse(yaml_str)
+
+    def test_parse_non_mapping_step_entry_raises(self) -> None:
+        yaml_str = """\
+name: "bad-step-entry"
+steps:
+  - "not-a-mapping"
+"""
+        parser = RecipeParser()
+        with pytest.raises(ValueError, match="(?i)index 0.*mapping"):
+            parser.parse(yaml_str)
+
 
 class TestParseStepIdValidation:
     """Test that steps must have non-empty ids."""

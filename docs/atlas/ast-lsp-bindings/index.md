@@ -9,7 +9,7 @@ title: "Layer 2: AST + LSP Bindings"
 # Layer 2: AST + LSP Bindings
 
 <div class="atlas-metadata">
-Category: <strong>Structural</strong> | Generated: 2026-03-19T00:27:18.282947+00:00
+Category: <strong>Structural</strong> | Generated: 2026-03-24T15:33:23.195155+00:00
 </div>
 
 ## Map
@@ -18,52 +18,39 @@ Category: <strong>Structural</strong> | Generated: 2026-03-19T00:27:18.282947+00
 
     ```mermaid
     graph LR
-        F0["constants<br/>refs: 45"]
-        F1["models<br/>refs: 38"]
-        F2["models<br/>refs: 28"]
-        F3["models<br/>refs: 28"]
-        F4["exceptions<br/>refs: 28"]
-        F5["models<br/>refs: 26"]
-        F6["base<br/>refs: 23"]
-        F7["xpia_defense_interface<br/>refs: 22"]
-        F8["uvx_models<br/>refs: 18"]
-        F9["__init__<br/>refs: 17"]
-        F10["exceptions<br/>refs: 17"]
-        F11["base<br/>refs: 16"]
-        F12["coordinator<br/>refs: 15"]
-        F13["settings<br/>refs: 14"]
-        F14["language_definitions<br/>refs: 14"]
-        F15["event_bus<br/>refs: 13"]
-        F16["long_horizon_memory<br/>refs: 13"]
-        F17["monitoring<br/>refs: 13"]
-        F18["conversion<br/>refs: 12"]
-        F19["Reference<br/>refs: 11"]
-        F20["multi_agent_template<br/>refs: 10"]
-        F21["azure_errors<br/>refs: 10"]
-        F22["xpia_patterns<br/>refs: 10"]
-        F23["defensive<br/>refs: 10"]
-        F24["queries<br/>refs: 10"]
-        F25["controller<br/>refs: 9"]
-        F26["reviewer_voting<br/>refs: 9"]
-        F27["install<br/>refs: 9"]
-        F28["cli_handlers<br/>refs: 9"]
-        F29["azure_unified_integration<br/>refs: 9"]
-        F9 --> F27
-        F9 --> F13
-        F25 --> F0
-        F25 --> F15
-        F27 --> F9
-        F27 --> F13
-        F12 --> F3
-        F21 --> F4
-        F21 --> F17
-        F18 --> F21
-        F18 --> F4
-        F18 --> F5
-        F18 --> F17
-        F17 --> F4
-        F17 --> F21
-        F13 --> F9
+        F0["models<br/>refs: 59"]
+        F1["constants<br/>refs: 55"]
+        F2["retrieval_constants<br/>refs: 38"]
+        F3["models<br/>refs: 38"]
+        F4["types<br/>refs: 36"]
+        F5["errors<br/>refs: 29"]
+        F6["errors<br/>refs: 29"]
+        F7["errors<br/>refs: 29"]
+        F8["models<br/>refs: 29"]
+        F9["models<br/>refs: 28"]
+        F10["exceptions<br/>refs: 28"]
+        F11["models<br/>refs: 26"]
+        F12["file_utils<br/>refs: 24"]
+        F13["file_utils<br/>refs: 24"]
+        F14["file_utils<br/>refs: 24"]
+        F15["base<br/>refs: 23"]
+        F16["common<br/>refs: 22"]
+        F17["utils<br/>refs: 22"]
+        F18["xpia_defense_interface<br/>refs: 22"]
+        F19["event_bus<br/>refs: 20"]
+        F20["uvx_launcher<br/>refs: 19"]
+        F21["uvx_models<br/>refs: 18"]
+        F22["considerations<br/>refs: 17"]
+        F23["orchestrator<br/>refs: 17"]
+        F24["orchestrator<br/>refs: 17"]
+        F25["orchestrator<br/>refs: 17"]
+        F26["__init__<br/>refs: 17"]
+        F27["exceptions<br/>refs: 17"]
+        F28["output_validator<br/>refs: 17"]
+        F29["models<br/>refs: 16"]
+        F23 --> F5
+        F24 --> F6
+        F25 --> F7
     
         click F0 "../ast-lsp-bindings/" "View AST bindings"
     ```
@@ -78,11 +65,11 @@ Category: <strong>Structural</strong> | Generated: 2026-03-19T00:27:18.282947+00
 
     | Metric | Value |
     |--------|-------|
-    | Total definitions | 3369 |
-    | Total exports | 1070 |
-    | Total imports | 4235 |
-    | Potentially dead | 140 |
-    | Files with `__all__` | 206 |
+    | Total definitions | 14491 |
+    | Total exports | 2139 |
+    | Total imports | 16542 |
+    | Potentially dead | 414 |
+    | Files with `__all__` | 406 |
 
 ## Legend
 
@@ -98,9 +85,9 @@ Category: <strong>Structural</strong> | Generated: 2026-03-19T00:27:18.282947+00
 
 ## Key Findings
 
-- 3369 total definitions across all files
-- 140 potentially dead definitions (4.2% of total)
-- 395 files without `__all__` exports
+- 14491 total definitions across all files
+- 414 potentially dead definitions (2.9% of total)
+- 1916 files without `__all__` exports
 
 ## Detail
 
@@ -108,26 +95,15 @@ Category: <strong>Structural</strong> | Generated: 2026-03-19T00:27:18.282947+00
 
     **Summary metrics:**
     
-    - **Total Definitions**: 3369
-    - **Total Exports**: 1070
-    - **Total Imports**: 4235
-    - **Potentially Dead Count**: 140
-    - **Files With All**: 206
-    - **Files Without All**: 395
-    - **Importlib Dynamic Imports**: 1
+    - **Total Definitions**: 14491
+    - **Total Exports**: 2139
+    - **Total Imports**: 16542
+    - **Potentially Dead Count**: 414
+    - **Files With All**: 406
+    - **Files Without All**: 1916
+    - **Importlib Dynamic Imports**: 23
     - **Language Counts**:
-        - `python`: 3369
-    - **Blarify Relationships**:
-        - `CONTAINS`: 605
-        - `FUNCTION_DEFINITION`: 4549
-        - `CLASS_DEFINITION`: 904
-        - `CALLS`: 3734
-        - `USES`: 1280
-        - `IMPORTS`: 982
-        - `TYPES`: 458
-        - `INSTANTIATES`: 1444
-        - `ASSIGNS`: 66
-        - `total`: 14022
+        - `python`: 14491
 
 ## Cross-References
 

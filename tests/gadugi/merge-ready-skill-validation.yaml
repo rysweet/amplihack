@@ -1,0 +1,102 @@
+# Outside-in test: merge-ready skill structure validation
+# Verifies that the merge-ready skill has correct frontmatter, required
+# sections, non-negotiable guardrails, and the PR description template.
+
+scenario:
+  name: "Merge-Ready Skill - Structure and Content Validation"
+  description: |
+    The merge-ready skill acts as the final gate before PR merge. It must
+    enforce 6 criteria: QA-team evidence, docs, quality-audit convergence,
+    CI status, scope, and PR description evidence. This scenario validates
+    the skill definition has all required structural elements.
+  type: cli
+  level: 1
+
+  tags: [skill, merge-ready, structure, qa-gate]
+
+  prerequisites:
+    - ".claude/skills/merge-ready/SKILL.md exists"
+    - ".claude/skills/merge-ready/pr-description-template.md exists"
+
+  steps:
+    # --- Frontmatter validation ---
+    - action: grep
+      target: ".claude/skills/merge-ready/SKILL.md"
+      pattern: "name: merge-ready"
+      description: "Skill must have name: merge-ready in frontmatter"
+
+    - action: grep
+      target: ".claude/skills/merge-ready/SKILL.md"
+      pattern: "argument-hint"
+      description: "Skill must have argument-hint for PR number"
+
+    # --- 6 merge criteria must be documented ---
+    - action: grep
+      target: ".claude/skills/merge-ready/SKILL.md"
+      pattern: "qa-team"
+      description: "Must reference qa-team skill for QA criterion"
+
+    - action: grep
+      target: ".claude/skills/merge-ready/SKILL.md"
+      pattern: "quality-audit"
+      description: "Must reference quality-audit skill"
+
+    - action: grep
+      target: ".claude/skills/merge-ready/SKILL.md"
+      pattern: "gadugi-test validate"
+      description: "Must require gadugi-test validate command"
+
+    - action: grep
+      target: ".claude/skills/merge-ready/SKILL.md"
+      pattern: "gadugi-test run"
+      description: "Must require gadugi-test run command"
+
+    - action: grep
+      target: ".claude/skills/merge-ready/SKILL.md"
+      pattern: "gh pr checks"
+      description: "Must reference CI check commands"
+
+    - action: grep
+      target: ".claude/skills/merge-ready/SKILL.md"
+      pattern: "MERGE_READY"
+      description: "Must define MERGE_READY verdict"
+
+    - action: grep
+      target: ".claude/skills/merge-ready/SKILL.md"
+      pattern: "NOT_MERGE_READY"
+      description: "Must define NOT_MERGE_READY verdict"
+
+    # --- Non-negotiable guardrails ---
+    - action: grep
+      target: ".claude/skills/merge-ready/SKILL.md"
+      pattern: "3.*cycle"
+      description: "Must require minimum 3 quality-audit cycles"
+
+    - action: grep
+      target: ".claude/skills/merge-ready/SKILL.md"
+      pattern: "final cycle.*clean"
+      description: "Must require clean final cycle"
+
+    - action: grep
+      target: ".claude/skills/merge-ready/SKILL.md"
+      pattern: "default-workflow"
+      description: "Must reference default-workflow for fixes"
+
+    # --- PR description template ---
+    - action: grep
+      target: ".claude/skills/merge-ready/pr-description-template.md"
+      pattern: "QA"
+      description: "PR template must have QA evidence section"
+
+    - action: grep
+      target: ".claude/skills/merge-ready/pr-description-template.md"
+      pattern: "Quality"
+      description: "PR template must have quality-audit section"
+
+  cleanup:
+    - action: capture_output
+      save_as: "merge-ready-skill-validation-output.txt"
+      description: "Save full test output"
+
+# Run Command:
+# gadugi-test run tests/gadugi/merge-ready-skill-validation.yaml --verbose

@@ -2,20 +2,21 @@
 """Dual-SDK query abstraction for PM Architect scripts.
 
 Auto-detects the active agent runtime (Claude Code or GitHub Copilot CLI) and
-routes LLM queries to the appropriate SDK. Falls back gracefully when a
-preferred SDK is unavailable.
+routes LLM queries to the appropriate SDK. Falls back to the other supported
+SDK when the preferred SDK is unavailable, but surfaces query failures
+explicitly.
 
 Detection priority:
   1. AMPLIHACK_AGENT_BINARY env var (set by CLI launcher)
   2. LauncherDetector (reads .claude/runtime/launcher_context.json)
   3. Default to whichever SDK is importable
 
-Fail-open: if neither SDK is available, query_agent() returns "".
+Explicit failure: if neither SDK is available, or if the SDK query fails,
+query_agent() raises AgentQueryError.
 """
 
 import asyncio
 import os
-import sys
 from pathlib import Path
 
 # --- Claude Agent SDK ---------------------------------------------------------
@@ -46,7 +47,11 @@ SDK_AVAILABLE = _CLAUDE_SDK_OK or _COPILOT_SDK_OK
 
 QUERY_TIMEOUT = int(os.environ.get("PM_ARCHITECT_QUERY_TIMEOUT", "120"))
 
-__all__ = ["query_agent", "SDK_AVAILABLE", "detect_runtime"]
+__all__ = ["AgentQueryError", "query_agent", "SDK_AVAILABLE", "detect_runtime"]
+
+
+class AgentQueryError(RuntimeError):
+    """Raised when PM Architect cannot query any supported agent SDK."""
 
 
 def detect_runtime() -> str:
@@ -87,9 +92,16 @@ async def query_agent(prompt: str, project_root: Path) -> str:
         project_root: Project root directory (used as cwd for SDK)
 
     Returns:
-        Response text, or "" on any failure (fail-open)
+        Response text from the selected SDK.
+
+    Raises:
+        AgentQueryError: If no supported SDK is available or the query fails.
     """
     runtime = detect_runtime()
+    if not (_CLAUDE_SDK_OK or _COPILOT_SDK_OK):
+        raise AgentQueryError(
+            "No supported agent SDK is available. Install claude-agent-sdk or github-copilot-sdk."
+        )
 
     try:
         if runtime == "copilot" and _COPILOT_SDK_OK:
@@ -98,12 +110,14 @@ async def query_agent(prompt: str, project_root: Path) -> str:
             return await _query_claude(prompt, project_root)
         if _COPILOT_SDK_OK:
             return await _query_copilot(prompt, project_root)
-    except TimeoutError:
-        print(
-            f"Error: {runtime} SDK query timed out after {QUERY_TIMEOUT}s. "
-            "Increase PM_ARCHITECT_QUERY_TIMEOUT if needed.",
-            file=sys.stderr,
+        raise AgentQueryError(
+            f"No supported SDK implementation is available for runtime '{runtime}'."
         )
+    except TimeoutError as error:
+        raise AgentQueryError(
+            f"{runtime} SDK query timed out after {QUERY_TIMEOUT}s. "
+            "Increase PM_ARCHITECT_QUERY_TIMEOUT if needed."
+        ) from error
     except Exception as e:
         hint = ""
         err_str = str(e).lower()
@@ -111,9 +125,7 @@ async def query_agent(prompt: str, project_root: Path) -> str:
             hint = " Check your API key (ANTHROPIC_API_KEY for Claude)."
         elif "connect" in err_str or "network" in err_str or "timeout" in err_str:
             hint = " Check network connectivity and retry."
-        print(f"Error querying {runtime} SDK: {e}{hint}", file=sys.stderr)
-
-    return ""
+        raise AgentQueryError(f"Error querying {runtime} SDK: {e}{hint}") from e
 
 
 async def _query_claude(prompt: str, project_root: Path) -> str:

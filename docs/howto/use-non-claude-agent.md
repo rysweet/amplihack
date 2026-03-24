@@ -33,8 +33,8 @@ export AMPLIHACK_AGENT_BINARY=copilot
 After setting the variable, confirm it is visible to subprocesses:
 
 ```bash
-amplihack env | grep AMPLIHACK_AGENT_BINARY
-# Should print: AMPLIHACK_AGENT_BINARY=your-agent-binary
+printenv AMPLIHACK_AGENT_BINARY
+# Should print: your-agent-binary
 ```
 
 When the recipe runner launches nested agent steps, it inherits this variable.
@@ -44,12 +44,9 @@ than a hardcoded `claude` invocation.
 ## Fallback behaviour
 
 If `AMPLIHACK_AGENT_BINARY` is not set, amplihack falls back to `claude` and
-emits a warning:
-
-```
-WARNING: AMPLIHACK_AGENT_BINARY is not set; defaulting to 'claude'.
-         Set AMPLIHACK_AGENT_BINARY to suppress this warning.
-```
+emits a warning that the variable was not set and `claude` is being used as
+the fallback agent. The exact wording varies slightly between top-level
+launcher code paths and nested Rust-runner code paths.
 
 This preserves backward compatibility for environments that do not set the
 variable (direct Python imports, existing test suites, legacy configurations).
@@ -72,6 +69,25 @@ orchestrator = KnowledgeOrchestrator(agent_cmd="claude")
 The dev-orchestrator recipe runner preserves `AMPLIHACK_AGENT_BINARY` when
 launching sub-recipes. If you set the variable before your first `/dev` call,
 all workstreams — including parallel ones — inherit it.
+
+### Nested Copilot prompt compatibility
+
+Nested Copilot launches still need a small compatibility bridge because the
+Rust recipe runner can emit Claude-style prompt flags that Copilot CLI does
+not accept directly.
+
+When `AMPLIHACK_AGENT_BINARY=copilot`, amplihack prepends a narrow wrapper to
+`PATH` for nested recipe-runner launches only. That wrapper:
+
+- rewrites `--system-prompt` and `--append-system-prompt` into one merged `-p`
+  prompt for Copilot CLI
+- preserves explicit Copilot permission flags when they are already present
+- injects broad Copilot permission defaults only when the nested launch did not
+  provide explicit permission flags
+- leaves top-level `amplihack copilot` launcher behavior unchanged
+
+This is an adapter for the current nested launch contract, not a general
+argument normalization layer for every Copilot invocation.
 
 ## See Also
 

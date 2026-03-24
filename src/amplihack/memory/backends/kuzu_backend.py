@@ -66,7 +66,7 @@ class KuzuBackend:
         (mirrors amplihack-rs backend-neutral env-var contract):
 
         1. ``AMPLIHACK_GRAPH_DB_PATH`` env var (preferred, backend-neutral)
-        2. ``AMPLIHACK_KUZU_DB_PATH`` env var (deprecated – emits DeprecationWarning)
+        2. ``AMPLIHACK_KUZU_DB_PATH`` env var (deprecated - emits DeprecationWarning)
         3. ``~/.amplihack/memory_kuzu.db`` (built-in default)
 
         Args:

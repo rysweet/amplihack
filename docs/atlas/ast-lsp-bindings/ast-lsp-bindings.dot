@@ -50,16 +50,19 @@ digraph ast_lsp_bindings {
     recipe_cmd -> recipes [label="imports"];
     eval_harness -> eval_pkg [label="internal"];
 
-<<<<<<< HEAD
-=======
     // Intra-module: recipes/rust_runner -> recipes/discovery
     node [shape=record, style="filled", fillcolor="#d4e8d4"];
-    rust_runner [label="{recipes/rust_runner|signal (stdlib)\los, json, subprocess\lRecipeResult, StepResult\l}"];
+    rust_runner [label="{recipes/rust_runner|contextlib, signal (stdlib)\los, json, subprocess\lRecipeResult, StepResult\l_project_dir_context()\l}"];
     discovery_mod [label="{recipes/discovery|os (stdlib)\lhashlib, json, subprocess\l_AMPLIHACK_HOME_BUNDLE_DIR\l_PACKAGE_BUNDLE_DIR\l_REPO_ROOT_BUNDLE_DIR\l}"];
 
-    rust_runner -> discovery_mod [label="imports\n_AMPLIHACK_HOME_BUNDLE_DIR\n_PACKAGE_BUNDLE_DIR\n_REPO_ROOT_BUNDLE_DIR", color="#6666aa"];
+    rust_runner_exec [label="{recipes/rust_runner_execution|build_rust_env()\lexecute_rust_command()\l_ALLOWED_RUST_ENV_VARS\l}"];
+    rust_runner_copilot [label="{recipes/rust_runner_copilot|_create_copilot_compat_wrapper_dir()\l_normalize_copilot_cli_args()\l}"];
+    rust_runner_resolution [label="{recipes/rust_runner_recipe_resolution|_default_package_recipe_dirs()\l_normalize_recipe_dirs()\l_resolve_recipe_target()\l}"];
 
->>>>>>> origin/main
+    rust_runner -> discovery_mod [label="imports\n_AMPLIHACK_HOME_BUNDLE_DIR\n_PACKAGE_BUNDLE_DIR\n_REPO_ROOT_BUNDLE_DIR", color="#6666aa"]; // pragma: allowlist secret
+    rust_runner -> rust_runner_exec [label="imports\nbuild_rust_env\nexecute_rust_command", color="#6666aa"];
+    rust_runner -> rust_runner_copilot [label="imports\n_create_copilot_compat_wrapper_dir\n_normalize_copilot_cli_args", color="#6666aa"];
+    rust_runner -> rust_runner_resolution [label="imports\n_default_package_recipe_dirs\n_normalize_recipe_dirs\n_resolve_recipe_target", color="#6666aa"];
     // Dead code candidates
     node [shape=box, style="dashed,filled", fillcolor="#ffcdd2"];
     dead1 [label="examples/usage_example.py\n(demo only)"];
