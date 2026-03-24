@@ -9,7 +9,7 @@ title: "Layer 6: Data Flow"
 # Layer 6: Data Flow
 
 <div class="atlas-metadata">
-Category: <strong>Behavioral</strong> | Generated: 2026-03-23T16:47:22.571333+00:00
+Category: <strong>Behavioral</strong> | Generated: 2026-03-24T16:58:32.422680+00:00
 </div>
 
 ## Map
@@ -18,17 +18,17 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-23T16:47:22.571333+00
 
     ```mermaid
     flowchart TD
-        IO0[/"json write<br/>n=1686"/]
-        IO1[("json read<br/>n=1287")]
-        IO2[("text read<br/>n=583")]
-        IO3[/"text write<br/>n=575"/]
-        IO4[("yaml read<br/>n=136")]
+        IO0[/"json write<br/>n=1693"/]
+        IO1[("json read<br/>n=1291")]
+        IO2[("text read<br/>n=585")]
+        IO3[/"text write<br/>n=578"/]
+        IO4[("yaml read<br/>n=140")]
         IO5[/"yaml write<br/>n=45"/]
         IO6[("toml read<br/>n=9")]
         IO7[/"csv write<br/>n=1"/]
         DB8[("neo4j<br/>ops: 62")]
         DB9[("sqlite<br/>ops: 100")]
-        DB10[("kuzu<br/>ops: 321")]
+        DB10[("kuzu<br/>ops: 322")]
         DB11[("falkordb<br/>ops: 2")]
         NET12("Network I/O<br/>n=56")
         T0{{"save_session_marker"}}
@@ -53,11 +53,11 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-23T16:47:22.571333+00
 
     | Metric | Value |
     |--------|-------|
-    | File I/O operations | 4322 |
-    | Database operations | 485 |
+    | File I/O operations | 4342 |
+    | Database operations | 486 |
     | Network I/O | 56 |
     | Transformation points | 194 |
-    | Files with I/O | 962 |
+    | Files with I/O | 973 |
 
 ## Legend
 
@@ -74,8 +74,8 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-23T16:47:22.571333+00
 
 ## Key Findings
 
-- 4322 file I/O operations
-- 485 database operations
+- 4342 file I/O operations
+- 486 database operations
 
 ## Detail
 
@@ -83,11 +83,11 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-23T16:47:22.571333+00
 
     **Summary metrics:**
     
-    - **File Io Count**: 4322
-    - **Database Op Count**: 485
+    - **File Io Count**: 4342
+    - **Database Op Count**: 486
     - **Network Io Count**: 56
     - **Transformation Point Count**: 194
-    - **Files With Io**: 962
+    - **Files With Io**: 973
 
 ## Cross-References
 

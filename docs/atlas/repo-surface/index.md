@@ -9,7 +9,7 @@ title: "Layer 1: Repository Surface"
 # Layer 1: Repository Surface
 
 <div class="atlas-metadata">
-Category: <strong>Structural</strong> | Generated: 2026-03-23T16:43:59.535072+00:00
+Category: <strong>Structural</strong> | Generated: 2026-03-24T16:57:39.682651+00:00
 </div>
 
 ## Map
@@ -18,7 +18,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-23T16:43:59.535072+00
 
     ```mermaid
     graph TD
-        D0["amplihack&lt;br/&gt;2 py / 34 total"]
+        D0["supply&lt;br/&gt;2 py / 34 total"]
         D1[".claude&lt;br/&gt;1 py / 5 total"]
         D2[".claude-plugin&lt;br/&gt;0 py / 2 total"]
         D3["agents&lt;br/&gt;0 py / 1 total"]
@@ -111,56 +111,56 @@ Category: <strong>Structural</strong> | Generated: 2026-03-23T16:43:59.535072+00
 
     | Directory | Role | Python | Total |
     |-----------|------|--------|-------|
-    | `/tmp/.tmplCKJO0/amplihack` | other | 2 | 34 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude` | package | 1 | 5 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude-plugin` | other | 0 | 2 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/agents` | docs | 0 | 1 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/agents/amplihack/core` | docs | 0 | 7 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/agents/amplihack/specialized` | docs | 0 | 30 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/agents/amplihack/workflows` | docs | 0 | 2 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/agents/eval-recipes` | docs | 0 | 1 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/agents/eval-recipes/amplihack` | config | 0 | 3 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/agents/eval-recipes/claude_code` | config | 0 | 3 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/bin` | other | 0 | 1 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/ci` | other | 3 | 3 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/commands` | other | 2 | 3 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/commands/amplihack` | docs | 0 | 37 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/commands/ddd` | docs | 0 | 8 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/config` | config | 0 | 3 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/context` | docs | 0 | 19 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/data/azure_aks_expert` | docs | 0 | 3 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/data/learnings` | config | 0 | 6 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/data/multi-repo` | config | 0 | 2 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/data/python_asyncio_basics_and_event_loop_fundamentals` | docs | 0 | 5 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/data/test-mapping` | config | 0 | 2 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/docs` | docs | 0 | 11 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/profiles` | config | 0 | 3 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/scenarios` | docs | 0 | 1 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/scenarios/ab-comparison` | other | 2 | 4 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/scenarios/analyze-codebase` | other | 1 | 3 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/scenarios/analyze-codebase/examples` | other | 1 | 1 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/scenarios/analyze-codebase/tests` | tests | 1 | 1 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/scenarios/analyze-trace-logs` | other | 1 | 3 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/scenarios/analyze-trace-logs/examples` | other | 1 | 1 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/scenarios/analyze-trace-logs/tests` | tests | 1 | 1 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/scenarios/az-devops-tools` | package | 14 | 16 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/scenarios/az-devops-tools/tests` | tests | 2 | 2 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/scenarios/check-broken-links` | package | 2 | 3 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/scenarios/check-broken-links/examples` | other | 0 | 1 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/scenarios/check-broken-links/tests` | tests | 1 | 4 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/scenarios/mcp-manager` | package | 4 | 7 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/scenarios/mcp-manager/examples` | other | 1 | 1 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/scenarios/mcp-manager/tests` | tests | 5 | 5 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/scenarios/mcp-manager/tests/fixtures` | other | 0 | 1 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/scenarios/parity-harness` | other | 2 | 4 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/scenarios/templates` | docs | 0 | 2 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/schemas/modular-build` | other | 0 | 2 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/skills/agent-generator-tutor` | docs | 0 | 1 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/skills/amplihack-expert` | docs | 0 | 3 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/skills/amplihack-expert/tests` | tests | 2 | 2 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/skills/anthropologist-analyst` | docs | 0 | 3 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/skills/anthropologist-analyst/tests` | tests | 0 | 1 |
-    | `/tmp/.tmplCKJO0/amplihack/.claude/skills/aspire` | docs | 0 | 6 |
+    | `/home/azureuser/src/supply` | other | 2 | 34 |
+    | `/home/azureuser/src/supply/.claude` | package | 1 | 5 |
+    | `/home/azureuser/src/supply/.claude-plugin` | other | 0 | 2 |
+    | `/home/azureuser/src/supply/.claude/agents` | docs | 0 | 1 |
+    | `/home/azureuser/src/supply/.claude/agents/amplihack/core` | docs | 0 | 7 |
+    | `/home/azureuser/src/supply/.claude/agents/amplihack/specialized` | docs | 0 | 30 |
+    | `/home/azureuser/src/supply/.claude/agents/amplihack/workflows` | docs | 0 | 2 |
+    | `/home/azureuser/src/supply/.claude/agents/eval-recipes` | docs | 0 | 1 |
+    | `/home/azureuser/src/supply/.claude/agents/eval-recipes/amplihack` | config | 0 | 3 |
+    | `/home/azureuser/src/supply/.claude/agents/eval-recipes/claude_code` | config | 0 | 3 |
+    | `/home/azureuser/src/supply/.claude/bin` | other | 0 | 1 |
+    | `/home/azureuser/src/supply/.claude/ci` | other | 3 | 3 |
+    | `/home/azureuser/src/supply/.claude/commands` | other | 2 | 3 |
+    | `/home/azureuser/src/supply/.claude/commands/amplihack` | docs | 0 | 37 |
+    | `/home/azureuser/src/supply/.claude/commands/ddd` | docs | 0 | 8 |
+    | `/home/azureuser/src/supply/.claude/config` | config | 0 | 3 |
+    | `/home/azureuser/src/supply/.claude/context` | docs | 0 | 19 |
+    | `/home/azureuser/src/supply/.claude/data/azure_aks_expert` | docs | 0 | 3 |
+    | `/home/azureuser/src/supply/.claude/data/learnings` | config | 0 | 6 |
+    | `/home/azureuser/src/supply/.claude/data/multi-repo` | config | 0 | 2 |
+    | `/home/azureuser/src/supply/.claude/data/python_asyncio_basics_and_event_loop_fundamentals` | docs | 0 | 5 |
+    | `/home/azureuser/src/supply/.claude/data/test-mapping` | config | 0 | 2 |
+    | `/home/azureuser/src/supply/.claude/docs` | docs | 0 | 11 |
+    | `/home/azureuser/src/supply/.claude/profiles` | config | 0 | 3 |
+    | `/home/azureuser/src/supply/.claude/scenarios` | docs | 0 | 1 |
+    | `/home/azureuser/src/supply/.claude/scenarios/ab-comparison` | other | 2 | 4 |
+    | `/home/azureuser/src/supply/.claude/scenarios/analyze-codebase` | other | 1 | 3 |
+    | `/home/azureuser/src/supply/.claude/scenarios/analyze-codebase/examples` | other | 1 | 1 |
+    | `/home/azureuser/src/supply/.claude/scenarios/analyze-codebase/tests` | tests | 1 | 1 |
+    | `/home/azureuser/src/supply/.claude/scenarios/analyze-trace-logs` | other | 1 | 3 |
+    | `/home/azureuser/src/supply/.claude/scenarios/analyze-trace-logs/examples` | other | 1 | 1 |
+    | `/home/azureuser/src/supply/.claude/scenarios/analyze-trace-logs/tests` | tests | 1 | 1 |
+    | `/home/azureuser/src/supply/.claude/scenarios/az-devops-tools` | package | 14 | 16 |
+    | `/home/azureuser/src/supply/.claude/scenarios/az-devops-tools/tests` | tests | 2 | 2 |
+    | `/home/azureuser/src/supply/.claude/scenarios/check-broken-links` | package | 2 | 3 |
+    | `/home/azureuser/src/supply/.claude/scenarios/check-broken-links/examples` | other | 0 | 1 |
+    | `/home/azureuser/src/supply/.claude/scenarios/check-broken-links/tests` | tests | 1 | 4 |
+    | `/home/azureuser/src/supply/.claude/scenarios/mcp-manager` | package | 4 | 7 |
+    | `/home/azureuser/src/supply/.claude/scenarios/mcp-manager/examples` | other | 1 | 1 |
+    | `/home/azureuser/src/supply/.claude/scenarios/mcp-manager/tests` | tests | 5 | 5 |
+    | `/home/azureuser/src/supply/.claude/scenarios/mcp-manager/tests/fixtures` | other | 0 | 1 |
+    | `/home/azureuser/src/supply/.claude/scenarios/parity-harness` | other | 2 | 4 |
+    | `/home/azureuser/src/supply/.claude/scenarios/templates` | docs | 0 | 2 |
+    | `/home/azureuser/src/supply/.claude/schemas/modular-build` | other | 0 | 2 |
+    | `/home/azureuser/src/supply/.claude/skills/agent-generator-tutor` | docs | 0 | 1 |
+    | `/home/azureuser/src/supply/.claude/skills/amplihack-expert` | docs | 0 | 3 |
+    | `/home/azureuser/src/supply/.claude/skills/amplihack-expert/tests` | tests | 2 | 2 |
+    | `/home/azureuser/src/supply/.claude/skills/anthropologist-analyst` | docs | 0 | 3 |
+    | `/home/azureuser/src/supply/.claude/skills/anthropologist-analyst/tests` | tests | 0 | 1 |
+    | `/home/azureuser/src/supply/.claude/skills/aspire` | docs | 0 | 6 |
 
 ## Legend
 
@@ -176,7 +176,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-23T16:43:59.535072+00
 
 ## Key Findings
 
-- 1031 directories discovered
+- 1049 directories discovered
 - 5 entry points identified
 
 ## Detail
