@@ -5,7 +5,7 @@
 
 ## Direct Dependencies (pyproject.toml)
 
-The project declares 37 direct dependencies in `pyproject.toml` (v0.6.99). Python >=3.11 required.
+The project declares 36 direct dependencies in `pyproject.toml` (v0.6.99). Python >=3.11 required.
 
 ### Core Framework
 
@@ -26,7 +26,6 @@ The project declares 37 direct dependencies in `pyproject.toml` (v0.6.99). Pytho
 
 | Dependency             | Version | Used By                       |
 | ---------------------- | ------- | ----------------------------- |
-| litellm                | >=1.0   | `proxy/` LLM routing          |
 | claude-agent-sdk       | >=0.1   | `launcher/` Claude Agent SDK  |
 | github-copilot-sdk     | >=0.1   | GitHub Copilot integration    |
 | langchain              | >=1.2.3 | `vendor/blarify/` LLM agents  |
