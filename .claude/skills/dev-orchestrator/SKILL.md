@@ -176,8 +176,7 @@ Call `run_recipe_by_name()` directly:
 
 ```bash
 cd /path/to/repo && env -u CLAUDECODE \
-  AMPLIHACK_HOME=/path/to/amplihack PYTHONPATH=src \
-  python3 -c "
+  AMPLIHACK_HOME=/path/to/amplihack PYTHONPATH=src python3 -c "
 from amplihack.recipes import run_recipe_by_name
 
 result = run_recipe_by_name(
@@ -231,8 +230,7 @@ print(f"Recipe result: {result}")
 RECIPE_SCRIPT
 tmux new-session -d -s recipe-runner \
   "cd /path/to/repo && env -u CLAUDECODE \
-   AMPLIHACK_HOME=/path/to/amplihack PYTHONPATH=src \
-   python3 $SCRIPT_FILE 2>&1 | tee $LOG_FILE"
+   AMPLIHACK_HOME=/path/to/amplihack PYTHONPATH=src python3 $SCRIPT_FILE 2>&1 | tee $LOG_FILE"
 echo "Recipe runner log: $LOG_FILE"
 ```
 

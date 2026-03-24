@@ -2,6 +2,31 @@
 
 This document tracks recent bug fixes and improvements to the Recipe Runner and Skills systems following the Diátaxis framework.
 
+## Rust Runner Env Propagation & Investigation Routing (PR #3512, Issue #3496)
+
+**Problem**: Nested workflow sessions started in temp cwds with wrong environment,
+causing three distinct failures:
+
+1. `PYTHONPATH` was dropped at the Python→Rust runner boundary, so nested steps
+   imported installed `amplihack` from the UV cache instead of the repo source tree.
+2. `CLAUDE_PROJECT_DIR` was neither forwarded nor seeded, so workflow lock files
+   were keyed off temp cwds instead of the actual repo root.
+3. Single-workstream Investigation tasks were routed through `default-workflow`
+   (which requires a git repo) instead of `investigation-workflow`.
+
+**Fix**:
+
+- `rust_runner_execution.py`: Added `PYTHONPATH` and `CLAUDE_PROJECT_DIR` to
+  the env allowlist forwarded to the Rust binary.
+- `rust_runner.py`: Added `_project_dir_context()` context manager that seeds
+  `CLAUDE_PROJECT_DIR` from the resolved `working_dir` when absent.
+- `smart-orchestrator.yaml`: Split single-workstream and blocked-fallback
+  routing by task type — Development → `default-workflow`,
+  Investigation → `investigation-workflow`.
+
+**Impact**: Transparent improvement — nested workflow sessions now inherit the
+correct repo identity and import paths. No user action required.
+
 ## Dev-Orchestrator Execution Modes (PRs #3214, #3216)
 
 ### Direct subprocess is now the default (PR #3214)
