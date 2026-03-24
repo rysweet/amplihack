@@ -135,7 +135,12 @@ class TestHealthCheck:
     def test_returns_healthy(self):
         report = health_check()
         assert "overall_status" in report
-        assert report["overall_status"] in ("healthy", "degraded", "error")
+        assert report["overall_status"] in (
+            "healthy",
+            "healthy_with_warnings",
+            "partially_functional",
+            "unhealthy",
+        )
 
 
 class TestListPatterns:
