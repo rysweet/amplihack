@@ -822,8 +822,12 @@ def run_recipe_via_rust(
         )
 
     resolved_working_dir = str(Path(working_dir).resolve())
-    effective_recipe_dirs = _resolve_effective_recipe_dirs(recipe_dirs, working_dir=working_dir)
-
+    effective_recipe_dirs = _normalize_recipe_dirs(recipe_dirs, working_dir=working_dir)
+    if effective_recipe_dirs is None:
+        effective_recipe_dirs = _normalize_recipe_dirs(
+            _default_package_recipe_dirs() or None,
+            working_dir=working_dir,
+        )
 
     resolved_name = _resolve_recipe_target(
         name,

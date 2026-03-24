@@ -162,6 +162,29 @@ class TestPreCompactHook(unittest.TestCase):
         self.assertEqual(events[0]["compaction_trigger"], "token_limit")
         self.assertEqual(events[0]["messages_exported"], 1)
 
+    def test_process_uses_input_session_id(self):
+        """Runtime session_id should control the output directory."""
+        hook = self._create_hook_with_mocked_paths()
+
+        input_data = {
+            "session_id": "runtime-session-123",
+            "conversation": [
+                {
+                    "role": "user",
+                    "content": "This is a sufficiently long original request that should be preserved in the runtime session directory.",
+                    "timestamp": "2025-09-23T10:00:00",
+                }
+            ],
+            "trigger": "token_limit",
+        }
+
+        result = hook.process(input_data)
+
+        self.assertEqual(result["status"], "success")
+        runtime_dir = Path(self.temp_dir) / ".claude" / "runtime" / "logs" / "runtime-session-123"
+        self.assertTrue(runtime_dir.exists())
+        self.assertTrue((runtime_dir / "CONVERSATION_TRANSCRIPT.md").exists())
+
     def test_transcript_copy_creation(self):
         """Test that transcript copies are created in subdirectory."""
         hook = self._create_hook_with_mocked_paths()
