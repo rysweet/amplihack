@@ -39,6 +39,40 @@ language package ecosystems. Produces structured findings with severity ratings,
 
 ---
 
+## Prerequisites — External Tool Check
+
+**Before running the audit**, check for missing external tools and offer to install them:
+
+```python
+from supply_chain_audit.external_tools import check_missing_tools, install_tool
+
+missing = check_missing_tools()
+if missing:
+    # Show the user what's missing and what each tool does
+    for tool in missing:
+        print(f"Missing: {tool['name']} — {tool['description']}")
+        for opt in tool['install_options']:
+            print(f"  Install: {opt}")
+
+    # Ask the user if they want to install
+    # If yes, install each one:
+    for tool in missing:
+        success, msg = install_tool(tool['name'])
+        print(f"  {tool['name']}: {msg}")
+```
+
+The audit runs without these tools (offline/degraded mode) but produces fewer findings:
+
+| Tool     | What's lost without it                            |
+| -------- | ------------------------------------------------- |
+| `gh`     | Cannot resolve action tags to SHAs via GitHub API |
+| `crane`  | Cannot resolve container image digests            |
+| `syft`   | Cannot generate SBOMs (SPDX/CycloneDX)            |
+| `grype`  | Cannot scan for known CVEs                        |
+| `cosign` | Cannot verify image signatures or attestations    |
+
+---
+
 ## Ecosystem Detection
 
 Detect which dimensions apply before running checks:
