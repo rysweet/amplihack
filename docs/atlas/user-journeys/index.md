@@ -142,10 +142,10 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-19T00:32:00.001334+00
 
 <div class="atlas-crossref" markdown>
 
-- [Layer 2: AST + LSP Bindings](../ast-lsp-bindings/)
-- [Layer 4: Runtime Topology](../runtime-topology/)
-- [Layer 5: API Contracts](../api-contracts/)
-- [Layer 6: Data Flow](../data-flow/)
+- [Layer 2: AST + LSP Bindings](../ast-lsp-bindings/index.md)
+- [Layer 4: Runtime Topology](../runtime-topology/index.md)
+- [Layer 5: API Contracts](../api-contracts/index.md)
+- [Layer 6: Data Flow](../data-flow/index.md)
 
 </div>
 

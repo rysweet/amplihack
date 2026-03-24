@@ -120,8 +120,8 @@ Category: <strong>Structural</strong> | Generated: 2026-03-19T00:27:22.305927+00
 
 <div class="atlas-crossref" markdown>
 
-- [Layer 6: Data Flow](../data-flow/)
-- [Layer 8: User Journeys](../user-journeys/)
+- [Layer 6: Data Flow](../data-flow/index.md)
+- [Layer 8: User Journeys](../user-journeys/index.md)
 
 </div>
 
