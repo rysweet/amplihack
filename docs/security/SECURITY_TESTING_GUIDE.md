@@ -34,17 +34,17 @@ Run the complete security test suite:
 
 ```bash
 # From project root
-pytest tests/proxy/test_security_sanitization.py -v
+pytest tests/ -k "security or sanitiz" -v
 
 # Run with coverage
-pytest tests/proxy/test_security_sanitization.py --cov=amplihack.utils.token_sanitizer --cov-report=term-missing
+pytest tests/ -k "security or sanitiz" --cov=amplihack.tracing.token_sanitizer --cov-report=term-missing
 ```
 
 Expected output:
 
 ```
-tests/proxy/test_security_sanitization.py::TestTokenPatternDetection::test_github_token_detection PASSED
-tests/proxy/test_security_sanitization.py::TestTokenPatternDetection::test_openai_token_detection PASSED
+tests/test_security_sanitization.py::TestTokenPatternDetection::test_github_token_detection PASSED
+tests/test_security_sanitization.py::TestTokenPatternDetection::test_openai_token_detection PASSED
 ...
 ========================= 50 passed in 1.2s =========================
 ```
@@ -53,18 +53,18 @@ tests/proxy/test_security_sanitization.py::TestTokenPatternDetection::test_opena
 
 ```bash
 # Unit tests only (fast)
-pytest tests/proxy/test_security_sanitization.py::TestTokenPatternDetection -v
-pytest tests/proxy/test_security_sanitization.py::TestStringSanitization -v
+pytest tests/ -k "TestTokenPatternDetection" -v
+pytest tests/ -k "TestStringSanitization" -v
 
 # Integration tests only
-pytest tests/proxy/test_security_sanitization.py::TestRealErrorScenarios -v
-pytest tests/proxy/test_security_sanitization.py::TestEdgeCases -v
+pytest tests/ -k "TestRealErrorScenarios" -v
+pytest tests/ -k "TestEdgeCases" -v
 
 # E2E tests only
-pytest tests/proxy/test_security_sanitization.py::TestEndToEndSanitization -v
+pytest tests/ -k "TestEndToEndSanitization" -v
 
 # Performance tests
-pytest tests/proxy/test_security_sanitization.py::TestPerformance -v
+pytest tests/ -k "TestPerformance" -v
 ```
 
 ### Continuous Integration
@@ -81,8 +81,8 @@ CI configuration includes:
 # .github/workflows/security-tests.yml
 - name: Run security tests
   run: |
-    pytest tests/proxy/test_security_sanitization.py \
-      --cov=amplihack.utils.token_sanitizer \
+    pytest tests/ -k "security or sanitiz" \
+      --cov=amplihack.tracing.token_sanitizer \
       --cov-fail-under=90
 ```
 
@@ -102,7 +102,7 @@ Testing pyramid:
 """
 
 import pytest
-from amplihack.utils.token_sanitizer import TokenSanitizer
+from amplihack.tracing.token_sanitizer import TokenSanitizer
 
 # Unit tests (60%)
 class TestBasicFunctionality:
@@ -246,8 +246,8 @@ def test_complete_error_sanitization_workflow():
 Security code requires **90% minimum coverage**:
 
 ```bash
-pytest tests/proxy/test_security_sanitization.py \
-  --cov=amplihack.utils.token_sanitizer \
+pytest tests/ -k "security or sanitiz" \
+  --cov=amplihack.tracing.token_sanitizer \
   --cov-fail-under=90
 ```
 
@@ -270,8 +270,8 @@ Must test:
 Generate detailed coverage report:
 
 ```bash
-pytest tests/proxy/test_security_sanitization.py \
-  --cov=amplihack.utils.token_sanitizer \
+pytest tests/ -k "security or sanitiz" \
+  --cov=amplihack.tracing.token_sanitizer \
   --cov-report=html
 
 # Open in browser
@@ -418,4 +418,4 @@ Before merging security changes:
 
 ---
 
-**Test Implementation**: See `tests/proxy/test_security_sanitization.py` for complete test suite.
+**Test Implementation**: See security test files in `tests/` for complete test suite.

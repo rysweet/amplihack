@@ -14,8 +14,7 @@ Amplihack enables intelligent delegation to specialized agents, workflow orchest
 
 ```
 amplihack/
-├── launcher/           # Claude Code and proxy integration
-├── proxy/             # Azure OpenAI and GitHub Models support
+├── launcher/           # Claude Code launch integration
 ├── bundle_generator/  # Agent bundle creation and distribution
 ├── knowledge_builder/ # Socratic knowledge acquisition
 ├── memory/            # Neo4j-based persistent memory
@@ -82,7 +81,6 @@ uvx --from git+https://github.com/owner/repo amplihack launch
 # Usage
 amplihack launch                     # Launch Claude Code
 amplihack launch --auto              # Launch with auto mode
-amplihack launch --with-proxy-config azure.env
 
 # Key Commands
 /amplihack:ultrathink <task>        # Orchestrate workflow

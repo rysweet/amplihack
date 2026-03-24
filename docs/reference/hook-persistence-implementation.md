@@ -38,7 +38,6 @@ The problematic execution flow was:
 
 ```python
 def launch_interactive(
-    proxy_manager: ProxyManager | None = None,
     append_system_prompt: Path | None = None,
     force_staging: bool = False,
     checkout_repo: str | None = None,
@@ -60,7 +59,6 @@ def launch_interactive(
 
         # Launch Claude Code
         launcher = ClaudeLauncher(
-            proxy_manager=proxy_manager,
             append_system_prompt=append_system_prompt,
             force_staging=force_staging,
             checkout_repo=checkout_repo,
@@ -79,7 +77,6 @@ def launch_interactive(
 
 ```python
 def launch_interactive(
-    proxy_manager: ProxyManager | None = None,
     append_system_prompt: Path | None = None,
     force_staging: bool = False,
     checkout_repo: str | None = None,
@@ -93,7 +90,6 @@ def launch_interactive(
 
     # Launch Claude Code
     launcher = ClaudeLauncher(
-        proxy_manager=proxy_manager,
         append_system_prompt=append_system_prompt,
         force_staging=force_staging,
         checkout_repo=checkout_repo,
