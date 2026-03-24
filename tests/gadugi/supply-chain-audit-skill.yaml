@@ -224,4 +224,37 @@ steps:
     expect:
       stdout_contains: ["PASS"]
 
+  # --- Live Audit Run (the real test) ---
+  - name: "Audit runs on amplihack repo without crashing"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: 'cd /home/azureuser/src/amplihack/worktrees/feat/issue--review-github-issue-3440-gh-issue-view-3440-and-th && PYTHONPATH=.claude/skills/supply-chain-audit python3 -c "from supply_chain_audit.audit import run_audit; r = run_audit(chr(47)+''home''+chr(47)+''azureuser''+chr(47)+''src''+chr(47)+''amplihack''); print(''FINDINGS: ''+str(len(r.findings))); assert len(r.findings) > 0; assert ''Supply Chain Audit Report'' in r.render_report(); print(''LIVE_AUDIT_PASS'')"'
+    expect:
+      stdout_contains: ["LIVE_AUDIT_PASS", "FINDINGS:"]
+
+  - name: "Audit produces findings across multiple dimensions"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: 'cd /home/azureuser/src/amplihack/worktrees/feat/issue--review-github-issue-3440-gh-issue-view-3440-and-th && PYTHONPATH=.claude/skills/supply-chain-audit python3 -c "from supply_chain_audit.audit import run_audit; r = run_audit(chr(47)+''home''+chr(47)+''azureuser''+chr(47)+''src''+chr(47)+''amplihack''); dims = set(f.dimension for f in r.findings); print(''ACTIVE_DIMS: ''+str(sorted(dims))); assert len(dims) >= 3; print(''MULTI_DIM_PASS'')"'
+    expect:
+      stdout_contains: ["MULTI_DIM_PASS", "ACTIVE_DIMS:"]
+
+  - name: "XPIA detection produces advisories not crashes"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: 'cd /home/azureuser/src/amplihack/worktrees/feat/issue--review-github-issue-3440-gh-issue-view-3440-and-th && PYTHONPATH=.claude/skills/supply-chain-audit python3 -c "from supply_chain_audit.audit import run_audit; r = run_audit(chr(47)+''home''+chr(47)+''azureuser''+chr(47)+''src''+chr(47)+''amplihack''); xpia = [a for a in r.get_advisory_messages() if ''XPIA'' in a]; print(''XPIA_ADVISORIES: ''+str(len(xpia))); assert len(xpia) >= 1; print(''XPIA_ADVISORY_PASS'')"'
+    expect:
+      stdout_contains: ["XPIA_ADVISORY_PASS"]
+
+  - name: "Scoped audit (gha-only) completes"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: 'cd /home/azureuser/src/amplihack/worktrees/feat/issue--review-github-issue-3440-gh-issue-view-3440-and-th && PYTHONPATH=.claude/skills/supply-chain-audit python3 -c "from supply_chain_audit.audit import run_audit; r = run_audit(chr(47)+''home''+chr(47)+''azureuser''+chr(47)+''src''+chr(47)+''amplihack'', scope=''gha''); dims = set(f.dimension for f in r.findings); print(''GHA_DIMS: ''+str(sorted(dims))); assert all(d in (1,2,3,4,6) for d in dims); print(''SCOPED_AUDIT_PASS'')"'
+    expect:
+      stdout_contains: ["SCOPED_AUDIT_PASS"]
+
 # Run: gadugi-test run -f tests/gadugi/supply-chain-audit-skill.yaml
